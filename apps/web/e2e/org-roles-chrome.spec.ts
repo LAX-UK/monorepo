@@ -105,7 +105,11 @@ test.describe("shared header chrome @roles", () => {
       // The bid bar shows once the in-page bid action has scrolled out of view.
       await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
       await expect(bidBar).toBeVisible({ timeout: 30_000 });
-      await expect(tabBar).toBeHidden();
+      // The tab bar steps aside by fading out and going inert, not by leaving the layout, and
+      // Playwright counts a transparent element as visible. Its own state says it stepped aside.
+      await expect(tabBar).toHaveAttribute("data-visible", "false");
+      await expect(tabBar).toHaveAttribute("data-hidden-reason", "slot-claimed");
+      await expect(tabBar).toHaveAttribute("inert", "");
     } finally {
       await session.close();
     }

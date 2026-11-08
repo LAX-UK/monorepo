@@ -62,6 +62,10 @@ test.describe("lax.art shared chrome @smoke", () => {
       return;
     }
     await expect(actionBar).toBeVisible();
-    await expect(tabBar).toBeHidden();
+    // The tab bar steps aside by fading out and going inert, not by leaving the layout, and
+    // Playwright counts a transparent element as visible. Its own state says it stepped aside.
+    await expect(tabBar).toHaveAttribute("data-visible", "false");
+    await expect(tabBar).toHaveAttribute("data-hidden-reason", "slot-claimed");
+    await expect(tabBar).toHaveAttribute("inert", "");
   });
 });

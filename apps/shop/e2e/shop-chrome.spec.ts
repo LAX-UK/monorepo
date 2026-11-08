@@ -45,7 +45,7 @@ test.describe("Shop shared chrome @smoke", () => {
     test.skip(testInfo.project.name !== "chromium-desktop", "sizes are set by the test");
     await page.setViewportSize({ width: 375, height: 812 });
     await page.goto("/artworks/vessel-study");
-    const tabBar = page.getByRole("navigation", { name: "Shortcuts" });
+    const tabBar = page.getByTestId("marketing-bottom-tab-bar");
     const addBar = page.getByRole("region", { name: "Buy this edition" });
 
     // The Add bar only appears once the main button has scrolled out of view.
@@ -54,10 +54,15 @@ test.describe("Shop shared chrome @smoke", () => {
 
     await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
     await expect(addBar).toBeVisible();
-    await expect(tabBar).toBeHidden();
+    // The tab bar steps aside by fading out and going inert, not by leaving the layout, and
+    // Playwright counts a transparent element as visible. Its own state says it stepped aside.
+    await expect(tabBar).toHaveAttribute("data-visible", "false");
+    await expect(tabBar).toHaveAttribute("data-hidden-reason", "slot-claimed");
+    await expect(tabBar).toHaveAttribute("inert", "");
 
     await page.evaluate(() => window.scrollTo(0, 0));
     await expect(addBar).toBeHidden();
-    await expect(tabBar).toBeVisible();
+    await expect(tabBar).toHaveAttribute("data-visible", "true");
+    await expect(tabBar).not.toHaveAttribute("inert", "");
   });
 });
