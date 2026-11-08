@@ -113,7 +113,7 @@ describe.skipIf(!hasShopIntegrationDb)("the From Zoho All list (Postgres)", () =
     });
     // A listing that is an edition run is never the lax.art listing of an original.
     await createDbFromPool(ownerPool).execute(
-      sql`UPDATE shop_artwork SET run_kind = 'open' WHERE zoho_product_id = ${run.zohoProductId}`,
+      sql`UPDATE shop_artwork SET run_kind = 'open', run_role = 'main', open_default_artist_pct = 50 WHERE zoho_product_id = ${run.zohoProductId}`,
     );
     await createDbFromPool(ownerPool).execute(
       sql`UPDATE artwork_register SET offer_state = 'sold' WHERE id = ${sold.id}`,
