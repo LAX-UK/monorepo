@@ -1,8 +1,14 @@
 import { legalEntityFor } from "@auction/branding";
+import {
+  DEFAULT_DELIVERY_REGIONS,
+  DEFAULT_EXPORT_RESTRICTED_COUNTRIES,
+} from "@auction/shop-domain";
 import { createArtistApplicantService } from "./application/artist-applications/artist-applicant.service.js";
 import { createArtistApplicationRateLimiters } from "./application/artist-applications/artist-application-rate-limits.js";
 import { createArtistApplicationReviewService } from "./application/artist-applications/artist-application-review.service.js";
 import { ArtworkRegisterReviewService } from "./application/artwork-register/artwork-register-review.service.js";
+import type { DeliveryRegionsState } from "./application/delivery-regions/delivery-regions.ports.js";
+import { createDeliveryRegionsService } from "./application/delivery-regions/delivery-regions.service.js";
 import { createEnquiryInboxService } from "./application/enquiry-inbox.service.js";
 import {
   createEditionAlertRateLimiter,
@@ -18,9 +24,18 @@ import { createSavedViewService } from "./application/saved-view.service.js";
 import type { ShopApiAppDeps } from "./container.js";
 import { createInMemoryFixedWindowCounter } from "./infrastructure/in-memory-fixed-window-counter.js";
 import { createInMemoryArtistApplications } from "./test-support/in-memory-artist-applications.js";
+import { createInMemoryPrintPartyStore } from "./test-support/in-memory-print-parties.js";
 import { createInMemorySavedViewRepository } from "./test-support/in-memory-saved-view-repository.js";
 import { createStubEnquiryInboxRepository } from "./test-support/stub-enquiry-inbox-repository.js";
 import { createStubProductionTaskRepository } from "./test-support/stub-production-task-repository.js";
+
+/** The delivery settings as migration 0328 seeds them, for tests that do not touch the database. */
+export function testDeliveryRegionsState(): DeliveryRegionsState {
+  return {
+    regions: [...DEFAULT_DELIVERY_REGIONS],
+    restrictedCountries: [...DEFAULT_EXPORT_RESTRICTED_COUNTRIES],
+  };
+}
 
 function unstubbed(name: string) {
   return async (): Promise<never> => {
@@ -153,6 +168,7 @@ export function createMinimalShopApiTestDeps(
         saleStates: [],
       }),
       listPublicCategories: async () => ({ items: [] }),
+      deliveryRegions: { read: async () => testDeliveryRegionsState() },
       getPublicCategory: async () => null,
       listPublicArtists: async () => ({ items: [] }),
       getPublicArtist: async () => null,
@@ -259,6 +275,7 @@ export function createMinimalShopApiTestDeps(
       }),
       savedViews: createSavedViewService({ repository: createInMemorySavedViewRepository() }),
       releaseAlertSummary: { counts: async () => ({ confirmed: 0, awaitingConfirmation: 0 }) },
+      printParties: createInMemoryPrintPartyStore(),
       leads: new LeadsService({
         list: async () => ({
           rows: [],
@@ -570,7 +587,6 @@ export function createMinimalShopApiTestDeps(
         certificates: {
           listToSend: async () => ({ items: [] }),
           markSent: async () => ({ issuedAt: "2026-01-01T00:00:00.000Z" }),
-          recordAuthority: async () => ({ recordedAt: "2026-01-01T00:00:00.000Z" }),
           approveHorsCommerce: async () => ({
             approvedAt: "2026-01-01T00:00:00.000Z",
             approvedBy: "staff-1",
@@ -589,6 +605,11 @@ export function createMinimalShopApiTestDeps(
         }),
       },
       artCache: { invalidateEditorial: async () => {}, invalidateCatalogue: async () => {} },
+      deliveryRegions: createDeliveryRegionsService({
+        uow: { run: () => Promise.reject(new Error("No delivery regions store in this test")) },
+        reader: { read: async () => testDeliveryRegionsState() },
+        clock: { now: () => new Date() },
+      }),
       homeFeatures: createHomeFeaturesService({
         uow: { run: () => Promise.reject(new Error("No featured lists store in this test")) },
         lists: {

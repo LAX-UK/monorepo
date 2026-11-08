@@ -643,7 +643,10 @@ export {
   ADMIN_EDITION_FACTS_BULK_MAX,
   AdminAffectedOrderSchema,
   AdminArtworkRunSummarySchema,
+  AdminCertificateAuthoritySchema,
   AdminCertificateSchema,
+  AdminPublisherSchema,
+  AdminStampSchema,
   AdminCompanionListingBodySchema,
   AdminEditionFactsBulkBodySchema,
   AdminEditionFactsBulkResponseSchema,
@@ -699,8 +702,6 @@ export {
   type AdminStockBatchInput,
 } from "./edition-run-admin.js";
 export {
-  AUTHORITY_REFERENCE_FIELD_MAX,
-  AdminCertificateAuthorityBodySchema,
   AdminCertificateStatusSchema,
   AdminCertificateToSendSchema,
   AdminCertificatesToSendSchema,
@@ -714,7 +715,6 @@ export {
   AdminSwapPrintResponseSchema,
   PRINT_SCAN_MAX_LENGTH,
   SWAP_REASON_FIELD_MAX,
-  type AdminCertificateAuthorityBody,
   type AdminCertificateStatus,
   type AdminCertificateToSend,
   type AdminCertificatesToSend,
@@ -786,6 +786,31 @@ export {
   type FramingRejectedBody,
   type FramingStatusValue,
 } from "./framing-admin.js";
+export {
+  AdminDeliveryRegionIssueSchema,
+  AdminDeliveryRegionParamsSchema,
+  AdminDeliveryRegionRejectedBodySchema,
+  AdminDeliveryRegionUpdateBodySchema,
+  AdminDeliveryRegionsSchema,
+  AdminDeliveryRestrictedCountriesBodySchema,
+  AdminDeliveryRestrictedCountryIssueSchema,
+  DELIVERY_REGION_ID_VALUES,
+  DeliveryCountrySchema,
+  DeliveryRegionIdSchema,
+  DeliveryRegionSchema,
+  LeadTimeSchema,
+  PublicDeliveryRegionsSchema,
+  type AdminDeliveryRegionIssue,
+  type AdminDeliveryRegionUpdateBody,
+  type AdminDeliveryRegions,
+  type AdminDeliveryRestrictedCountriesBody,
+  type AdminDeliveryRestrictedCountryIssue,
+  type DeliveryCountry,
+  type DeliveryRegionIdValue,
+  type DeliveryRegionView,
+  type LeadTime,
+  type PublicDeliveryRegions,
+} from "./delivery-regions.js";
 export { CursorListQuerySchema, type CursorListQuery } from "./cursor-list.js";
 export {
   PortalCollectionItemSchema,
@@ -1107,3 +1132,13 @@ export {
   type AdminZohoUnlinkBody,
   type AdminZohoUnlinkResult,
 } from "./admin-zoho-link.js";
+
+export {
+  AdminPrintPartyCreateBodySchema,
+  AdminPrintPartyListSchema,
+  AdminPrintPartySchema,
+  PRINT_PARTY_NAME_MAX_LENGTH,
+  type AdminPrintParty,
+  type AdminPrintPartyCreateBody,
+  type AdminPrintPartyList,
+} from "./admin-print-parties.js";

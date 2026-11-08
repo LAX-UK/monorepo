@@ -2,6 +2,7 @@ import type { shopEditionFacts } from "@auction/db/schema";
 import {
   type Certificate,
   type EditionFacts,
+  type Publisher,
   ShopDomainError,
   type Signature,
 } from "@auction/shop-domain";
@@ -19,9 +20,13 @@ export type FactsColumns = Omit<
 >;
 
 type SignatureColumns = Pick<FactsColumns, "signatureKind" | "signatureMedium" | "signaturePlace">;
+type PartyColumns = Pick<
+  FactsColumns,
+  "stamp" | "printedBy" | "publishedByKind" | "publishedByName"
+>;
 type CertificateColumns = Omit<
   FactsColumns,
-  keyof SignatureColumns | "numbering" | "confirmedBySubjectId" | "confirmedAt"
+  keyof SignatureColumns | keyof PartyColumns | "numbering" | "confirmedBySubjectId" | "confirmedAt"
 >;
 
 function signatureToColumns(signature: Signature): SignatureColumns {
@@ -53,6 +58,8 @@ function certificateToColumns(certificate: Certificate): CertificateColumns {
       certificateWithinWeeks: null,
       certificateNumberedToMatch: null,
       certificateNumberedToMatchReason: null,
+      certificateAuthorityGivenBy: null,
+      certificateAuthorityDatedOn: null,
     };
   }
   return {
@@ -64,6 +71,18 @@ function certificateToColumns(certificate: Certificate): CertificateColumns {
       certificate.arrives.kind === "separately" ? certificate.arrives.withinWeeks : null,
     certificateNumberedToMatch: certificate.numberedToMatch,
     certificateNumberedToMatchReason: certificate.numberedToMatchReason?.trim() || null,
+    certificateAuthorityGivenBy: certificate.authority?.givenBy ?? null,
+    certificateAuthorityDatedOn: certificate.authority?.datedOn ?? null,
+  };
+}
+
+function partiesToColumns(facts: EditionFacts): PartyColumns {
+  const published = facts.publishedBy;
+  return {
+    stamp: facts.stamp ?? "none",
+    printedBy: facts.printedBy?.trim() || null,
+    publishedByKind: published?.kind ?? null,
+    publishedByName: published?.kind === "named" ? published.name.trim() : null,
   };
 }
 
@@ -72,6 +91,7 @@ export function factsToColumns(facts: EditionFacts): FactsColumns {
     numbering: facts.numbering,
     ...signatureToColumns(facts.signature),
     ...certificateToColumns(facts.certificate),
+    ...partiesToColumns(facts),
     confirmedBySubjectId: facts.confirmed?.by ?? null,
     confirmedAt: facts.confirmed?.at ?? null,
   };
@@ -91,7 +111,9 @@ function signatureFromColumns(row: FactsColumns): Signature {
   throw new ShopDomainError("The stored signature is incomplete");
 }
 
-function certificateFromColumns(row: FactsColumns): Certificate {
+function certificateFromColumns(
+  row: FactsColumns & Partial<Pick<FactsRow, "certificateAuthorityReference">>,
+): Certificate {
   if (row.certificateKind === "none") return { kind: "none" };
   if (
     !row.certificateIssuer ||
@@ -114,14 +136,43 @@ function certificateFromColumns(row: FactsColumns): Certificate {
     ...(row.certificateNumberedToMatchReason
       ? { numberedToMatchReason: row.certificateNumberedToMatchReason }
       : {}),
+    ...(row.certificateAuthorityGivenBy && row.certificateAuthorityDatedOn
+      ? {
+          authority: {
+            givenBy: row.certificateAuthorityGivenBy,
+            datedOn: row.certificateAuthorityDatedOn,
+            ...(row.certificateAuthorityReference
+              ? { reference: row.certificateAuthorityReference }
+              : {}),
+          },
+        }
+      : {}),
   };
 }
 
-export function factsFromColumns(row: FactsColumns): EditionFacts {
+function publishedByFromColumns(row: FactsColumns): Publisher | null {
+  switch (row.publishedByKind) {
+    case "artist":
+    case "lax":
+      return { kind: row.publishedByKind };
+    case "named":
+      if (!row.publishedByName) throw new ShopDomainError("The stored publisher has no name");
+      return { kind: "named", name: row.publishedByName };
+    default:
+      return null;
+  }
+}
+
+export function factsFromColumns(
+  row: FactsColumns & Partial<Pick<FactsRow, "certificateAuthorityReference">>,
+): EditionFacts {
   return {
     numbering: row.numbering,
     signature: signatureFromColumns(row),
     certificate: certificateFromColumns(row),
+    stamp: row.stamp,
+    printedBy: row.printedBy,
+    publishedBy: publishedByFromColumns(row),
     confirmed:
       row.confirmedBySubjectId && row.confirmedAt
         ? { by: row.confirmedBySubjectId, at: row.confirmedAt }

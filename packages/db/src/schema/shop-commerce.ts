@@ -4,6 +4,7 @@ import {
   bigint,
   boolean,
   check,
+  date,
   index,
   integer,
   jsonb,
@@ -590,6 +591,20 @@ export const shopEditionFacts = pgTable(
       mode: "date",
       withTimezone: true,
     }),
+    /** Who gave the authority and the date of their letter; set together, and only for "lax". */
+    certificateAuthorityGivenBy: text("certificate_authority_given_by").$type<
+      "artist" | "estate"
+    >(),
+    certificateAuthorityDatedOn: date("certificate_authority_dated_on", { mode: "string" }),
+    /** A blind stamp on the print; "none" says nothing. */
+    stamp: text("stamp")
+      .$type<"none" | "publisher_blind" | "printer_blind" | "estate_back">()
+      .notNull()
+      .default("none"),
+    /** Names as spelled in shop_print_party when chosen; kept as text so history never changes. */
+    printedBy: text("printed_by"),
+    publishedByKind: text("published_by_kind").$type<"artist" | "lax" | "named">(),
+    publishedByName: text("published_by_name"),
     confirmedBySubjectId: text("confirmed_by_subject_id"),
     confirmedAt: timestamp("confirmed_at", { mode: "date", withTimezone: true }),
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
@@ -607,6 +622,21 @@ export const shopEditionFacts = pgTable(
       sql`((${table.certificateAuthorityReference} IS NULL) = (${table.certificateAuthorityRecordedBy} IS NULL)) AND ((${table.certificateAuthorityReference} IS NULL) = (${table.certificateAuthorityRecordedAt} IS NULL)) AND (${table.certificateAuthorityReference} IS NULL OR length(btrim(${table.certificateAuthorityReference})) > 0)`,
     ),
   ],
+);
+
+/**
+ * The studios and publishers staff pick "Printed by" and "Published by" from, so a name is
+ * spelled one way. Facts store the chosen name as text, never a reference.
+ */
+export const shopPrintParty = pgTable(
+  "shop_print_party",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    name: text("name").notNull(),
+    createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
+    createdBy: text("created_by"),
+  },
+  (table) => [uniqueIndex("shop_print_party_name_uid").on(sql`lower(${table.name})`)],
 );
 
 /** One addition of unnumbered prints to an open edition, with the owner split it used. */

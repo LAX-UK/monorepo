@@ -142,6 +142,9 @@ export const SHOP_COMMERCE_TABLES = [
   "shop_alert_announcement",
   /** How far shop-api has read the shared event log for each of its own projections. */
   "shop_projection_cursor",
+  /** Where the Shop delivers: regions with lead times and optional fixed prices, and the countries it does not deliver to. */
+  "shop_delivery_region",
+  "shop_delivery_restricted_country",
 ] as const;
 
 /** Append-only Shop tables: shop_app may INSERT and SELECT only. */

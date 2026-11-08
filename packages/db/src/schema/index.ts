@@ -8,6 +8,7 @@ export * from "./shop-commerce.js";
 export * from "./shop-framing.js";
 export * from "./shop-artist-application.js";
 export * from "./shop-editorial.js";
+export * from "./shop-delivery.js";
 export * from "./user-invitation.js";
 export * from "./lots.js";
 export * from "./lot-lifecycle-snapshot.js";

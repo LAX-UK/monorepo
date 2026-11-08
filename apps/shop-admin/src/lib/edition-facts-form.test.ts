@@ -2,10 +2,13 @@ import type { AdminEditionRunSpec } from "@auction/shop-contracts";
 import { describe, expect, it } from "vitest";
 import {
   type FactsFormValues,
+  PUBLISHED_BY_ARTIST,
+  certificateNeedsAuthority,
   emptyFactsForm,
   factsFormValues,
   factsInput,
   factsPreview,
+  publishedByNamedValue,
   validateFactsForm,
   withRun,
 } from "./edition-facts-form";
@@ -96,6 +99,9 @@ describe("Shoppers will see", () => {
       number:
         "Numbered by hand on the print. Your number appears in your order once payment is confirmed.",
       certificate: "Certificate of authenticity from the artist, sent with your print",
+      stamp: null,
+      printedBy: null,
+      publishedBy: null,
       proofs: "The artist also kept 3 artist's proofs, outside the edition of 24.",
     });
     expect(preview.description.cardLine).toBe("Limited edition of 24 · Hand-signed");
@@ -111,5 +117,104 @@ describe("Shoppers will see", () => {
       "Open edition · Unsigned",
     );
     expect(preview.state === "complete" && preview.orderLine).toBe("Open edition · Unsigned");
+  });
+});
+
+const laxIssued: FactsFormValues = { ...handSigned, issuer: "lax" };
+const withAuthority: FactsFormValues = {
+  ...laxIssued,
+  authorityGivenBy: "artist",
+  authorityDatedOn: "2026-09-12",
+  authorityReference: "  Signed letter in the artist file ",
+};
+
+describe("print facts in the form", () => {
+  it("says nothing about a stamp, printer or publisher until chosen", () => {
+    const input = factsInput(handSigned);
+    expect(input).not.toHaveProperty("stamp");
+    expect(input).not.toHaveProperty("printedBy");
+    expect(input).not.toHaveProperty("publishedBy");
+  });
+
+  it("sends the stamp, the printer and each kind of publisher as chosen", () => {
+    const stamped = factsInput({
+      ...handSigned,
+      stamp: "printer_blind",
+      printedBy: " Coriander Studio, London ",
+      publishedBy: publishedByNamedValue("Kestrel Editions"),
+    });
+    expect(stamped).toMatchObject({
+      stamp: "printer_blind",
+      printedBy: "Coriander Studio, London",
+      publishedBy: { kind: "named", name: "Kestrel Editions" },
+    });
+    expect(factsInput({ ...handSigned, publishedBy: PUBLISHED_BY_ARTIST })).toMatchObject({
+      publishedBy: { kind: "artist" },
+    });
+  });
+
+  it("reads stored facts back into the form", () => {
+    const stored = factsInput({
+      ...withAuthority,
+      stamp: "estate_back",
+      printedBy: "Coriander Studio, London",
+      publishedBy: publishedByNamedValue("Kestrel Editions"),
+    });
+    expect(stored).not.toBeNull();
+    const form = factsFormValues(stored, true);
+    expect(form).toMatchObject({
+      stamp: "estate_back",
+      printedBy: "Coriander Studio, London",
+      publishedBy: publishedByNamedValue("Kestrel Editions"),
+      authorityGivenBy: "artist",
+      authorityDatedOn: "2026-09-12",
+      authorityReference: "Signed letter in the artist file",
+    });
+  });
+
+  it("asks for the authority only when London Art Exchange issues the certificate", () => {
+    expect(certificateNeedsAuthority(handSigned)).toBe(false);
+    expect(certificateNeedsAuthority(laxIssued)).toBe(true);
+    expect(validateFactsForm(handSigned, STANDARD)).toEqual({});
+    expect(validateFactsForm(laxIssued, STANDARD)).toEqual({
+      authorityGivenBy: "Say whether the artist or their estate gave the authority",
+      authorityDatedOn: "Enter the date of the letter",
+      authorityReference: "Say where the signed letter is kept",
+    });
+    expect(validateFactsForm(withAuthority, STANDARD)).toEqual({});
+  });
+
+  it("sends the authority only for a London Art Exchange certificate, and not without it", () => {
+    expect(factsInput(laxIssued)).toBeNull();
+    expect(factsInput(withAuthority)?.certificate).toMatchObject({
+      issuer: "lax",
+      authority: {
+        givenBy: "artist",
+        datedOn: "2026-09-12",
+        reference: "Signed letter in the artist file",
+      },
+    });
+    // Switching the issuer away drops a half-typed authority.
+    const artist = factsInput({ ...withAuthority, issuer: "artist" });
+    expect(artist?.certificate).not.toHaveProperty("authority");
+  });
+
+  it("previews the certificate on the authority it stands on, and the new rows", () => {
+    const preview = factsPreview(
+      {
+        ...withAuthority,
+        stamp: "printer_blind",
+        printedBy: "Coriander Studio, London",
+      },
+      STANDARD,
+    );
+    expect(preview.state).toBe("complete");
+    if (preview.state !== "complete") return;
+    expect(preview.description.rows).toMatchObject({
+      certificate:
+        "Certificate of authenticity issued by London Art Exchange Ltd on the artist's written authority, sent with your print",
+      stamp: "Blind stamp of the printer",
+      printedBy: "Coriander Studio, London",
+    });
   });
 });

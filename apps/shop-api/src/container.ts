@@ -25,6 +25,7 @@ import {
 import { OfferOnLaxArtService } from "./application/artwork-register/offer-on-lax-art.service.js";
 import { ZohoLinkService } from "./application/artwork-register/zoho-link.service.js";
 import { createShopDeletionEligibilityService } from "./application/deletion-eligibility.service.js";
+import { createDeliveryRegionsService } from "./application/delivery-regions/delivery-regions.service.js";
 import { createEditionRunServices } from "./application/edition-runs/edition-run-services.js";
 import { createEditorialLinksService } from "./application/editorial-links.service.js";
 import { createEnquiryInboxService } from "./application/enquiry-inbox.service.js";
@@ -85,6 +86,8 @@ import type {
 import { createShopAlertRuntime } from "./infrastructure/alerts/create-shop-alert-runtime.js";
 import { ShopAlertSubscriberEraser } from "./infrastructure/alerts/drizzle-shop-alert-subscriber-erasure.js";
 import { createArtistApplicationServices } from "./infrastructure/artist-applications/create-artist-application-services.js";
+import { readDeliveryRegions } from "./infrastructure/delivery-regions/drizzle-delivery-regions.store.js";
+import { createDrizzleDeliveryRegionsUnitOfWork } from "./infrastructure/delivery-regions/drizzle-delivery-regions.unit-of-work.js";
 import { createDrizzleAdminReadRepository } from "./infrastructure/drizzle-admin-read.repository.js";
 import { createDrizzleArtListingLookup } from "./infrastructure/drizzle-art-listing-lookup.js";
 import { createDrizzleArtistCatalogueWriter } from "./infrastructure/drizzle-artist-catalogue.writer.js";
@@ -118,6 +121,7 @@ import { createDrizzlePortalFavoritesRepository } from "./infrastructure/drizzle
 import { createDrizzlePortalOwnershipRepository } from "./infrastructure/drizzle-portal-ownership.repository.js";
 import { createDrizzlePortalPortfolioRepository } from "./infrastructure/drizzle-portal-portfolio.repository.js";
 import { createDrizzlePortalSalesRepository } from "./infrastructure/drizzle-portal-sales.repository.js";
+import { createDrizzlePrintPartyStore } from "./infrastructure/drizzle-print-party.store.js";
 import { createDrizzleProductionTaskRepository } from "./infrastructure/drizzle-production-task.repository.js";
 import { createDrizzleRegisterOverviewReader } from "./infrastructure/drizzle-register-overview.js";
 import { createDrizzleSaleAuthorityWriter } from "./infrastructure/drizzle-sale-authority.writer.js";
@@ -464,6 +468,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
   const editionRuns = createEditionRunServices({
     uow: createDrizzleEditionRunUnitOfWork(shopUow),
     clock: { now: () => new Date() },
+    laxCertificatesEnabled: () => env.SHOP_LAX_CERTIFICATES_ENABLED,
   });
   const printFulfilment = createPrintFulfilmentServices({
     uow: createDrizzlePrintFulfilmentUnitOfWork(shopUow),
@@ -517,6 +522,12 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
   const framing = createFramingService({
     uow: createDrizzleFramingUnitOfWork(shopUow),
     lists: createDrizzleFramingListReader(db),
+  });
+  const deliveryRegionsReader = { read: () => readDeliveryRegions(db) };
+  const deliveryRegions = createDeliveryRegionsService({
+    uow: createDrizzleDeliveryRegionsUnitOfWork(shopUow),
+    reader: deliveryRegionsReader,
+    clock: { now: () => new Date() },
   });
   const artCache =
     env.ART_REVALIDATE_URL && env.ART_REVALIDATE_SECRET
@@ -698,6 +709,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
           settings: createDrizzleZohoLinkSettings(db),
         }),
         releaseAlertSummary: shopAlerts.summary,
+        printParties: createDrizzlePrintPartyStore(db),
         guestErasure: new GuestErasureService(
           createDrizzleGuestErasureStore(db, {
             domainEventMode: env.DOMAIN_EVENT_PUBLISH_VALIDATE,
@@ -733,6 +745,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
         artCache,
         homeFeatures,
         framing,
+        deliveryRegions,
         thirdPartySales,
         originalSales: adminOriginalSales,
         linkArtistIdentity,
@@ -793,6 +806,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
         listArtworkObjectTypeFacets: createListArtworkObjectTypeFacetsHandler(catalogueReader),
         countArtworkFacets: createCountArtworkFacetsHandler(catalogueReader),
         listPublicCategories: createListPublicCategoriesHandler(categoryReader),
+        deliveryRegions: deliveryRegionsReader,
         getPublicCategory: createGetPublicCategoryHandler(categoryReader),
         listPublicArtists: createListPublicArtistsHandler(artistReader),
         getPublicArtist: createGetPublicArtistHandler(artistReader),

@@ -1,3 +1,4 @@
+import { bidCoverSrcSet } from "@/lib/media/bid-image-src-set";
 import { COVER_PLATE_MIN_LONG_SIDE, COVER_SLOT_FLOORS } from "@auction/domain/cover";
 import type {
   CoverFilm,
@@ -182,6 +183,9 @@ export function photoFromCover(cover: SaleCoverSlotAssets | undefined): CoverPho
   };
 }
 
+/** The plate is drawn at most 600px wide from 768px and 290px wide on a phone. */
+const COVER_PLATE_SIZES = "(min-width: 768px) 600px, 290px";
+
 /** The lead lot, whole, on a field of its own colour; needs a photograph big enough to hang. */
 export function plateFromLot(lot: BidCoverLot | null): CoverPlateMedia | null {
   const image = lot?.image;
@@ -192,6 +196,8 @@ export function plateFromLot(lot: BidCoverLot | null): CoverPlateMedia | null {
     alt: `${lot.title}, shown whole`,
     side: "left",
     src: image.src,
+    srcSet: bidCoverSrcSet(image.src, image.width),
+    sizes: COVER_PLATE_SIZES,
     width: image.width,
     height: image.height,
     ...(image.blurDataURL ? { blurDataURL: image.blurDataURL } : {}),

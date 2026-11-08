@@ -25,6 +25,8 @@ export function MarketingCover({
   label,
   Link,
   priority = false,
+  srcSetFor,
+  onSrcSetFallback,
   headerSignal,
   className,
 }: MarketingCoverProps) {
@@ -81,6 +83,8 @@ export function MarketingCover({
         media={media}
         Link={Link}
         priority={priority && index === 0}
+        srcSetFor={srcSetFor}
+        onSrcSetFallback={onSrcSetFallback}
         underHeader={underHeader}
         onMediaFail={onMediaFail}
         pager={several ? { index, count: shown.length, onStep } : null}

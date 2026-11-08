@@ -12,7 +12,11 @@ import type { Clock, EditionRunUnitOfWork } from "./edition-run.ports.js";
 import { createSaveEditionFactsService } from "./save-edition-facts.service.js";
 
 /** The edition run use cases, wired to one unit of work. */
-export function createEditionRunServices(deps: { uow: EditionRunUnitOfWork; clock: Clock }) {
+export function createEditionRunServices(deps: {
+  uow: EditionRunUnitOfWork;
+  clock: Clock;
+  laxCertificatesEnabled?: () => boolean;
+}) {
   const facts = createSaveEditionFactsService(deps);
   const stock = createAddOpenEditionStockService(deps);
   const runs = createEditionRunService({ uow: deps.uow, facts, stock });

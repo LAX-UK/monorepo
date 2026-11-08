@@ -26,7 +26,11 @@
       "page": "lax-admin:framing/page.tsx",
       "reason": "Framing catalogue: a short fixed list of options, not a searchable work list"
     },
-    { "page": "lax-admin:settings/page.tsx", "reason": "Settings" }
+    { "page": "lax-admin:settings/page.tsx", "reason": "Settings" },
+    {
+      "page": "lax-admin:settings/delivery-regions/page.tsx",
+      "reason": "Settings editor: four fixed regions and a country list"
+    }
   ],
   "pending": []
 }

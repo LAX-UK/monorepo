@@ -4,7 +4,11 @@ import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@/components/ui/media-image", () => ({
-  MediaImage: ({ alt }: { alt: string }) => <span data-testid="cover">{alt}</span>,
+  MediaImage: ({ alt, priority }: { alt: string; priority?: boolean }) => (
+    <span data-testid="cover" data-priority={priority ? "true" : "false"}>
+      {alt}
+    </span>
+  ),
 }));
 
 const base: ResultsRowVM = {
@@ -33,6 +37,33 @@ describe("ResultsSaleRow", () => {
     for (const link of within(row).getAllByRole("link")) {
       expect(link).toHaveAttribute("href", base.href);
     }
+  });
+
+  it("loads only the first cover of the page's first row eagerly: that is what is painted largest", () => {
+    const { rerender } = render(
+      <ul>
+        <ResultsSaleRow
+          row={{
+            ...base,
+            covers: [
+              { url: "/a.jpg", alt: "A" },
+              { url: "/b.jpg", alt: "B" },
+            ],
+          }}
+          priority
+        />
+      </ul>,
+    );
+    expect(screen.getAllByTestId("cover").map((c) => c.dataset.priority)).toEqual([
+      "true",
+      "false",
+    ]);
+    rerender(
+      <ul>
+        <ResultsSaleRow row={base} />
+      </ul>,
+    );
+    expect(screen.getAllByTestId("cover").every((c) => c.dataset.priority === "false")).toBe(true);
   });
 
   it("marks a finalising sale and says the figures are to follow", () => {
