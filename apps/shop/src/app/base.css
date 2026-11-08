@@ -124,7 +124,8 @@
 
   --container-max: 90rem;
   --container-inner: 86rem;
-  --header-height: 7rem;
+  /* The header before the page measures it: the 56px bar and hairline; 109px with the top bar. */
+  --header-height: 57px;
   --page-bottom-padding: 3rem;
   --color-footer-bg: #ededef;
   --color-nav-border: #e6e8eb;
@@ -146,6 +147,12 @@
   --font-label: var(--font-outfit), ui-sans-serif, system-ui, sans-serif;
   --font-supporting: var(--font-outfit), ui-sans-serif, system-ui, sans-serif;
   --font-footer-links: var(--font-outfit), ui-sans-serif, system-ui, sans-serif;
+}
+
+@media (min-width: 64rem) {
+  :root {
+    --header-height: 109px;
+  }
 }
 
 :root {

@@ -102,7 +102,7 @@ export function LotMoreFromRail({
                         label="Lot artwork"
                         className="size-full"
                         imgClassName="size-full object-cover transition-transform duration-500 motion-safe:group-hover:scale-[1.02]"
-                        sizes="(max-width: 1023px) 100vw, 42vw"
+                        sizes="200px"
                       />
                       {isCompact ? (
                         <MarketingLotOverlayActions

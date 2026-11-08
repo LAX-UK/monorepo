@@ -56,6 +56,8 @@ export {
   type MediaSrcResolver,
 } from "./media/default-media-src-resolver.js";
 export { MediaImage, type MediaImageProps } from "./media/media-image.js";
+export { NEXT_IMAGE_QUALITY, nextImageSrcSet } from "./media/next-image-src-set.js";
+export { ResponsiveImg, type ResponsiveImgProps } from "./media/responsive-img.js";
 export { MediaImageServer, type MediaImageServerProps } from "./media/media-image.server.js";
 export { MarketingCardMedia } from "./marketing-card-media.js";
 export { MarketingCardShell } from "./marketing-card-shell.js";

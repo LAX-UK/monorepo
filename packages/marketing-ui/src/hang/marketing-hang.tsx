@@ -5,6 +5,7 @@ import { cn } from "@auction/ui";
 import { TextLink } from "@auction/ui/lax/text-link";
 import Link from "next/link";
 import { type CSSProperties, type ReactNode, useCallback, useId, useMemo, useState } from "react";
+import { ResponsiveImg } from "../media/responsive-img.js";
 import {
   HANG_DESKTOP_FIT_PX,
   HANG_MAX_WORKS,
@@ -25,7 +26,10 @@ export type MarketingHangWork = HangWorkInput & {
   imageAlt?: string;
   /** Resized files to choose from, so the browser fetches one that fits the box. */
   imageSrcSet?: string | undefined;
-  /** What `imageSrcSet` means in layout terms, for example "(min-width: 640px) 480px, 240px". */
+  /**
+   * What `imageSrcSet` means in layout terms. Left out, it is the width the wall solved for this
+   * work (they differ a great deal: a small print is far narrower than a large one).
+   */
   imageSizes?: string | undefined;
   /** Source picture size in pixels, so the box is sized before the picture arrives. */
   sourceWidthPx?: number | null | undefined;
@@ -95,6 +99,13 @@ function wallVars(desktop: HangLayout, phone: HangLayout): CSSProperties {
     vars["--fh-m"] = `${phone.figure.height}px`;
   }
   return vars as CSSProperties;
+}
+
+/** The width each of the two solved layouts draws a work at, as the `sizes` of its picture. */
+function workSizes(desktop: HangLayout, phone: HangLayout, index: number): string {
+  const d = Math.round(desktop.items[index]?.width ?? 0);
+  const m = Math.round(phone.items[index]?.width ?? 0);
+  return `(min-width: 640px) ${d}px, ${m}px`;
 }
 
 function workVars(
@@ -281,10 +292,10 @@ export function MarketingHang({
                             : "bg-surface-container-low",
                         )}
                       >
-                        <img
+                        <ResponsiveImg
                           src={work.imageSrc}
                           srcSet={work.imageSrcSet}
-                          sizes={work.imageSrcSet ? work.imageSizes : undefined}
+                          sizes={work.imageSizes ?? workSizes(desktop, phone, i)}
                           alt={work.imageAlt ?? ""}
                           width={work.sourceWidthPx ?? undefined}
                           height={work.sourceHeightPx ?? undefined}

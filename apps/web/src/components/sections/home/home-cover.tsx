@@ -4,6 +4,7 @@ import { type BidViewerSale, withBidViewer } from "@/lib/marketing-cover/bid-cov
 import type { BidCoverViewer } from "@/lib/marketing-cover/bid-cover.adapter";
 import { fetchCoverViewer } from "@/lib/marketing-cover/cover-viewer.client";
 import { HOME_COVER_LABEL, HOME_COVER_LINKS } from "@/lib/marketing-cover/home-cover-links";
+import { bidCoverSrcSet } from "@/lib/media/bid-image-src-set";
 import { type CoverSlide, MarketingCover } from "@auction/marketing-ui";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
@@ -48,5 +49,13 @@ export function HomeCover({ slides, leadSale, signedIn }: Props) {
         : slides,
     [slides, leadSale, viewer],
   );
-  return <MarketingCover slides={shown} label={HOME_COVER_LABEL} Link={Link} priority />;
+  return (
+    <MarketingCover
+      slides={shown}
+      label={HOME_COVER_LABEL}
+      Link={Link}
+      priority
+      srcSetFor={bidCoverSrcSet}
+    />
+  );
 }

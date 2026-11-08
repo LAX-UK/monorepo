@@ -83,6 +83,37 @@ describe("MarketingHang", () => {
     expect(screen.getByText("salon line")).toBeInTheDocument();
   });
 
+  it("tells the browser the width the wall solved for each work, not a guess", () => {
+    const works = makeWorks(2, (i) => (i === 0 ? 20 : 120)).map((work) => ({
+      ...work,
+      imageSrcSet: `/_next/image?url=${work.id}&w=256 256w, /_next/image?url=${work.id}&w=640 640w`,
+    }));
+    const { container } = render(<MarketingHang title="In this sale" works={works} />);
+    for (const img of container.querySelectorAll("img")) {
+      const box = img.closest("li") as HTMLElement;
+      const wide = Number.parseFloat(box.style.getPropertyValue("--w-d"));
+      const narrow = Number.parseFloat(box.style.getPropertyValue("--w-m"));
+      expect(img.getAttribute("sizes")).toBe(
+        `(min-width: 640px) ${Math.round(wide)}px, ${Math.round(narrow)}px`,
+      );
+    }
+  });
+
+  it("uses the sizes a page gives over the ones the wall works out", () => {
+    const works = makeWorks(1).map((work) => ({
+      ...work,
+      imageSrcSet: "/_next/image?url=a&w=256 256w",
+      imageSizes: "300px",
+    }));
+    const { container } = render(<MarketingHang title="In this sale" works={works} />);
+    expect(container.querySelector("img")?.getAttribute("sizes")).toBe("300px");
+  });
+
+  it("names no sizes for a work with no resized files", () => {
+    const { container } = render(<MarketingHang title="In this sale" works={makeWorks(1)} />);
+    expect(container.querySelector("img")?.hasAttribute("sizes")).toBe(false);
+  });
+
   it("draws the See all links as the kit text link: ink and underlined", () => {
     render(<MarketingHang title="In this sale" works={makeWorks(3)} seeAll={SEE_ALL} />);
     for (const link of screen.getAllByRole("link", { name: "See all 8 lots" })) {

@@ -299,8 +299,12 @@
 :root {
   /* shadcn calendar cell sizing */
   --cell-size: 2rem;
-  /* Fixed marketing header offset — keep in sync with site-header (pt-3 pb-4 inner + rows). */
-  --header-height: 61px;
+  /*
+   * The fixed header's height before the page's scripts measure it (they then publish the real
+   * one): the 56px bar and its hairline on a phone, with the 36px LAX top bar from 1024px.
+   * A default that is off moves the whole page when the real height arrives.
+   */
+  --header-height: 57px;
   --container-max: 1440px;
   --container-inner: 1376px;
   --auth-column: 528px;
@@ -352,6 +356,12 @@
   --overlay-border: var(--color-outline-variant);
   --overlay-fg-opaque: var(--color-foreground);
   --overlay-bg-opaque: var(--color-surface);
+}
+
+@media (min-width: 64rem) {
+  :root {
+    --header-height: 109px;
+  }
 }
 
 /* lg — utility bar + gap-4 + mega row + pt-3 pb-4 (matches `lg:` in site-header). */

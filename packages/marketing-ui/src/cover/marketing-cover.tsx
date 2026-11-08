@@ -25,6 +25,7 @@ export function MarketingCover({
   label,
   Link,
   priority = false,
+  srcSetFor,
   className,
 }: MarketingCoverProps) {
   const shown = useMemo(() => slides.slice(0, COVER_MAX_SLIDES), [slides]);
@@ -73,6 +74,7 @@ export function MarketingCover({
         media={media}
         Link={Link}
         priority={priority && index === 0}
+        srcSetFor={srcSetFor}
         onMediaFail={onMediaFail}
         pager={several ? { index, count: shown.length, onStep } : null}
         group={several ? { label: `${index + 1} of ${shown.length}` } : null}

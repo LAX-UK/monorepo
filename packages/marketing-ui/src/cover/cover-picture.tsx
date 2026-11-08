@@ -3,7 +3,7 @@
 import { cn } from "@auction/ui";
 import { type CSSProperties, type ReactNode, useCallback, useState } from "react";
 import { COVER_WIDE_FROM_PX, planCoverBoxes } from "./cover-crop.js";
-import type { CoverPhotoMedia, CoverPlateMedia } from "./cover-types.js";
+import type { CoverPhotoMedia, CoverPlateMedia, CoverSrcSetFor } from "./cover-types.js";
 
 /** The fade from the blurred preview to the sharp picture. */
 const FADE_CLASS = "transition-opacity duration-[240ms] ease-out motion-reduce:transition-none";
@@ -74,30 +74,46 @@ const FRAME_CLASS = [
 export function CoverPhoto({
   media,
   priority,
+  srcSetFor,
   onFail,
 }: {
   media: CoverPhotoMedia;
   priority: boolean;
+  srcSetFor?: CoverSrcSetFor | undefined;
   onFail: () => void;
 }) {
   const plan = planCoverBoxes(media);
-  const { hidden, ref, onLoad } = useImageLoad(onFail);
+  // A resized file the server refuses costs the picture nothing: the original is tried first.
+  const [original, setOriginal] = useState(false);
+  const resize = original ? undefined : srcSetFor;
+  const fail = useCallback(() => {
+    if (resize) setOriginal(true);
+    else onFail();
+  }, [resize, onFail]);
+  const { hidden, ref, onLoad } = useImageLoad(fail);
+  const setOf = (box: "phone" | "desktop" | "wide") => {
+    const { slot, frame } = plan[box];
+    const set = resize?.(slot.src, slot.width) ?? "";
+    // The box is the page's width, and the picture is drawn at its frame's share of it.
+    return set ? { srcSet: set, sizes: `${frame.width}vw` } : { srcSet: slot.src };
+  };
   const preview = plan.desktop.slot.blurDataURL ?? media.slots.default.blurDataURL;
   return (
     <div className="absolute inset-0 overflow-hidden" style={frameVars(media)}>
       <BlurUp colour={media.colour} blurDataURL={preview} />
       <picture>
-        <source media={`(min-width: ${COVER_WIDE_FROM_PX}px)`} srcSet={plan.wide.slot.src} />
-        <source media="(min-width: 768px)" srcSet={plan.desktop.slot.src} />
+        <source media={`(min-width: ${COVER_WIDE_FROM_PX}px)`} {...setOf("wide")} />
+        <source media="(min-width: 768px)" {...setOf("desktop")} />
         <img
           ref={ref}
           src={plan.phone.slot.src}
+          {...(resize ? setOf("phone") : {})}
           alt={media.alt}
           decoding="async"
           fetchPriority={priority ? "high" : "auto"}
           loading={priority ? "eager" : "lazy"}
           onLoad={onLoad}
-          onError={onFail}
+          onError={fail}
           className={cn(FRAME_CLASS, FADE_CLASS, hidden ? "opacity-0" : "opacity-100")}
         />
       </picture>
@@ -122,7 +138,14 @@ export function CoverPlate({
   priority: boolean;
   onFail: () => void;
 }) {
-  const { hidden, ref, onLoad } = useImageLoad(onFail);
+  // The resized files are tried first; if they are refused the original takes over.
+  const [original, setOriginal] = useState(false);
+  const resized = !original && media.srcSet;
+  const fail = useCallback(() => {
+    if (resized) setOriginal(true);
+    else onFail();
+  }, [resized, onFail]);
+  const { hidden, ref, onLoad } = useImageLoad(fail);
   return (
     <div
       className={cn(
@@ -147,7 +170,7 @@ export function CoverPlate({
           <img
             ref={ref}
             src={media.src}
-            {...(media.srcSet ? { srcSet: media.srcSet, sizes: media.sizes } : {})}
+            {...(resized ? { srcSet: media.srcSet, sizes: media.sizes } : {})}
             alt={media.alt}
             width={media.width}
             height={media.height}
@@ -155,7 +178,7 @@ export function CoverPlate({
             fetchPriority={priority ? "high" : "auto"}
             loading={priority ? "eager" : "lazy"}
             onLoad={onLoad}
-            onError={onFail}
+            onError={fail}
             className={cn(
               "block h-auto max-h-[270px] w-auto max-w-[min(290px,100%)] object-contain md:max-h-[470px] md:max-w-[min(600px,100%)]",
               "shadow-[0_2px_4px_rgba(0,0,0,0.28),0_28px_56px_-18px_rgba(0,0,0,0.6)]",
