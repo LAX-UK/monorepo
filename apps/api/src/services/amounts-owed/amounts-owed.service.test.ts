@@ -317,14 +317,22 @@ describe("what holds an organisation's purchases: the Pay page plan's own checks
     expect(assess).not.toHaveBeenCalled();
   });
 
-  it("is held by the organisation when it is closed too", async () => {
+  it("is refused, apart from under review, when the organisation is closed", async () => {
     const { service } = build([orgLot()], "clear", {
       eligibility: { kind: "refused", reason: "organisation_closed" },
     });
-    expect((await asFinance(service))?.entries[0]).toMatchObject({
+    const entry = (await asFinance(service))?.entries[0];
+    expect(entry).toMatchObject({
       state: "in-review",
       holder: "organisation",
+      blocker: "review",
+      refused: true,
     });
+    // A hold under review is not refused: it clears once LAX has finished checking.
+    const review = build([orgLot()], "clear", {
+      eligibility: { kind: "held", reason: "organisation_under_review" },
+    });
+    expect((await asFinance(review.service))?.entries[0]?.refused).toBeUndefined();
   });
 
   it("is held by the payer's own source-of-funds check, which they can answer with documents", async () => {

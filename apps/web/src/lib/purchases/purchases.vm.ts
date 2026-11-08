@@ -166,6 +166,9 @@ function dueDate(row: PortfolioRow, facts: AccountPurchaseFacts | null = null): 
   return invoiceDueAt(new Date(from));
 }
 
+/** The Pay page's words for a rejected or archived organisation. */
+const REFUSED_ORGANISATION = "This organisation can't make payments. Contact client services.";
+
 /**
  * What the member still has to send on a part-funded bank transfer for this purchase, in whole
  * pence. Only the member who pays is asked; the one who merely won is told how payment goes. The
@@ -188,11 +191,13 @@ function noteFor(
   fulfilment: LotFulfilmentSnapshot | undefined,
   facts: AccountPurchaseFacts | null = null,
   stillToSend: number | null = null,
+  refused = false,
 ): string | null {
   switch (state) {
     case "payment-due":
       return `Pay by ${DAY_MONTH_LONG.format(dueDate(row, facts))}`;
     case "in-review":
+      if (refused) return REFUSED_ORGANISATION;
       return blocker === "documents"
         ? "We need to confirm the source of funds before you pay"
         : "We're checking a few details before you can pay";
@@ -402,7 +407,15 @@ export function purchaseCard(row: PortfolioRow, sources: PurchaseSources): Purch
     statusNote: informed
       ? (informedNoteFor(state, sources.payerName) ??
         noteFor(state, row, blocker, fulfilment, facts ?? null))
-      : noteFor(state, row, blocker, fulfilment, facts ?? null, stillToSend),
+      : noteFor(
+          state,
+          row,
+          blocker,
+          fulfilment,
+          facts ?? null,
+          stillToSend,
+          owed?.refused === true,
+        ),
     amountLabel: amountLabel(state, stillToSend),
     amount: totalMajor ? formatMoney(totalMajor, currency) : "—",
     payable,
@@ -434,10 +447,10 @@ function documentsActionFor(blocker: AmountOwedBlocker | null): PayNowDocumentsA
  * can open its setup), the payer's own checks, or the winner's, which only we can finish.
  */
 function reviewNow(
-  holder: AmountsOwedSummary["holder"],
-  blocker: AmountOwedBlocker | null,
+  owed: Pick<AmountsOwedSummary, "holder" | "blocker" | "refused">,
   sources: PurchaseSources,
 ): PayNowVm {
+  const { holder, blocker } = owed;
   const organisation = sources.organisation ?? null;
   if (!organisation) {
     const documentsAction = documentsActionFor(blocker);
@@ -448,6 +461,15 @@ function reviewNow(
         ? "We need some documents before you can pay."
         : "You can pay once our checks are done.",
       documentsAction,
+    };
+  }
+  if (owed.refused) {
+    // Closed for good, not a check that will clear: the same words as the Pay page.
+    return {
+      kind: "review",
+      title: `${organisation.name} can't make payments`,
+      description: "Contact client services and we'll help.",
+      documentsAction: null,
     };
   }
   if (holder === "organisation") {
@@ -489,7 +511,7 @@ function payNowFor(cards: readonly PurchaseCardVm[], sources: PurchaseSources): 
   if (payable.length === 0) {
     // Nothing can be paid yet: say so only when our checks are what holds it.
     if (!owed.inReview) return null;
-    return reviewNow(owed.holder, owed.blocker, sources);
+    return reviewNow(owed, sources);
   }
   const documentsAction = documentsActionFor(owed.blocker);
   const [first] = payable;
