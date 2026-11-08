@@ -29,7 +29,13 @@ export type PrivateSaleDealEvent =
     }
   | {
       eventType: "private_sale_deal.party_named";
-      payload: { dealId: string; reference: string; role: PrivateSalePartyRole };
+      payload: {
+        dealId: string;
+        reference: string;
+        role: PrivateSalePartyRole;
+        /** The member named, kept so a person later replaced is still on the record. */
+        actingUserId: string | null;
+      };
     }
   | {
       eventType: "private_sale_deal.terms_accepted";
@@ -96,11 +102,11 @@ export function dealTermsChangedEvent(
 
 export function dealPartyNamedEvent(
   deal: DealRef,
-  role: PrivateSalePartyRole,
+  party: { role: PrivateSalePartyRole; actingUserId: string | null },
 ): PrivateSaleDealEvent {
   return {
     eventType: "private_sale_deal.party_named",
-    payload: { dealId: deal.id, reference: deal.reference, role },
+    payload: { dealId: deal.id, reference: deal.reference, ...party },
   };
 }
 

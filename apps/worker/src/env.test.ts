@@ -56,3 +56,21 @@ describe("worker ALERT_RETENTION_PURGE_ENABLED", () => {
     }
   });
 });
+
+describe("worker PRIVATE_SALE_RECORD_RETENTION_YEARS", () => {
+  const years = (value: unknown) =>
+    envSchema.safeParse({
+      DATABASE_URL: "postgres://localhost/test",
+      PRIVATE_SALE_RECORD_RETENTION_YEARS: value,
+    });
+
+  it("refuses less than the five years the money laundering rules require", () => {
+    expect(years("4").success).toBe(false);
+  });
+
+  it("accepts five or more, and defaults to five", () => {
+    expect(years("5").success).toBe(true);
+    const parsed = years("");
+    expect(parsed.success && parsed.data.PRIVATE_SALE_RECORD_RETENTION_YEARS).toBe(5);
+  });
+});
