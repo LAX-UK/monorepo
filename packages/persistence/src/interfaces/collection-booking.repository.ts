@@ -7,6 +7,7 @@ import type {
   CollectorKind,
   DateKey,
 } from "@auction/domain";
+import type { DbTransaction } from "./artist-delete.repository.js";
 
 /** The rules a place sets, with the online-booking switch and the contact address. */
 export type CollectionPlaceSettings = CollectionRules & {
@@ -38,6 +39,8 @@ export interface ICollectionPlaceRepository {
    * The settings and weekly hours of the place a lot is collected from (its sale's venue), or
    * `null` when the lot has no sale or venue, or the place has not been set up. Creates nothing.
    */
+  /** The venue's name and address on one line, for the calendar file; `null` if it has none. */
+  findAddress(venueId: string): Promise<{ name: string; address: string } | null>;
   findForLot(
     lotId: string,
   ): Promise<{ settings: CollectionPlaceSettings; hours: CollectionWeeklyHours[] } | null>;
@@ -172,6 +175,16 @@ export type CancelOutcome =
   | { outcome: "not_found" }
   | { outcome: "stale" };
 
+/**
+ * Work to do inside the transaction that stores a change, once it has succeeded: the audit event
+ * goes here, so a booking and its record in the audit log stand or fall together. If it throws,
+ * the change is rolled back.
+ */
+export type WithinBookingTransaction = (
+  tx: DbTransaction,
+  booking: CollectionBookingRecord,
+) => Promise<void>;
+
 /** Making, changing and cancelling a booking. */
 export interface ICollectionBookingWriter {
   /**
@@ -179,13 +192,13 @@ export interface ICollectionBookingWriter {
    * free numbered place in the slot, and the database refuses a second claim on the same one.
    * Nothing is stored unless the place and every lot are won together.
    */
-  book(input: NewCollectionBooking): Promise<BookingOutcome>;
+  book(input: NewCollectionBooking, within?: WithinBookingTransaction): Promise<BookingOutcome>;
   /**
    * Moves a live booking to another slot, lots or collector. The new place is claimed first and
    * the old one is released by the same statement, so a failed change keeps the old time.
    */
-  change(input: ChangeCollectionBooking): Promise<ChangeOutcome>;
-  cancel(input: CancelCollectionBooking): Promise<CancelOutcome>;
+  change(input: ChangeCollectionBooking, within?: WithinBookingTransaction): Promise<ChangeOutcome>;
+  cancel(input: CancelCollectionBooking, within?: WithinBookingTransaction): Promise<CancelOutcome>;
 }
 
 export type RecordHandOver = {
@@ -241,6 +254,8 @@ export interface ICollectionOutcomeWriter {
 /** Reading bookings. */
 export interface ICollectionBookingReader {
   findById(bookingId: string): Promise<CollectionBookingRecord | null>;
+  /** Whether the account has already made a booking with this idempotency key. */
+  hasIdempotencyKey(legalEntityId: string, key: string): Promise<boolean>;
   findByReference(reference: string): Promise<CollectionBookingRecord | null>;
   /** The account's bookings, newest visit first. */
   listForAccount(legalEntityId: string, limit: number): Promise<CollectionBookingRecord[]>;

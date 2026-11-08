@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  DEFAULT_COLLECTION_HANDOVER_RETENTION_YEARS,
   DEFAULT_COLLECTION_RULES,
   DEFAULT_COLLECTION_WEEKLY_HOURS,
+  MIN_COLLECTION_HANDOVER_RETENTION_YEARS,
   collectionRulesIssues,
 } from "./collection-rules.js";
 
@@ -22,6 +24,14 @@ describe("collection rules", () => {
       undoHandOverMinutes: 10,
     });
     expect(collectionRulesIssues(DEFAULT_COLLECTION_RULES)).toEqual([]);
+  });
+
+  it("keeps a hand-over record six years by default and never under three", () => {
+    expect(DEFAULT_COLLECTION_HANDOVER_RETENTION_YEARS).toBe(6);
+    expect(MIN_COLLECTION_HANDOVER_RETENTION_YEARS).toBe(3);
+    expect(DEFAULT_COLLECTION_HANDOVER_RETENTION_YEARS).toBeGreaterThanOrEqual(
+      MIN_COLLECTION_HANDOVER_RETENTION_YEARS,
+    );
   });
 
   it("opens Monday to Friday, 10:00 to 19:00, until staff change the hours", () => {

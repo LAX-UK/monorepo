@@ -1,4 +1,5 @@
 import { collectionBooking } from "@auction/db/schema";
+import { MIN_COLLECTION_HANDOVER_RETENTION_YEARS } from "@auction/domain";
 import type { ITransactionRunner } from "@auction/persistence/interfaces";
 import { and, inArray, isNotNull, isNull, lt } from "drizzle-orm";
 import { THIRD_PARTY_COLLECTOR_PLACEHOLDER } from "../anonymisation/collection-booking-erasure.js";
@@ -9,8 +10,13 @@ type Logger = {
 
 /** The moment a hand-over must be older than for its record to be cleared. */
 export function collectionHandoverCutoff(now: Date, retentionYears: number): Date {
-  if (!Number.isInteger(retentionYears) || retentionYears < 1) {
-    throw new RangeError("Hand-over records are kept for at least one year");
+  if (
+    !Number.isInteger(retentionYears) ||
+    retentionYears < MIN_COLLECTION_HANDOVER_RETENTION_YEARS
+  ) {
+    throw new RangeError(
+      `Hand-over records are kept for at least ${MIN_COLLECTION_HANDOVER_RETENTION_YEARS} years`,
+    );
   }
   const cutoff = new Date(now);
   cutoff.setUTCFullYear(cutoff.getUTCFullYear() - retentionYears);

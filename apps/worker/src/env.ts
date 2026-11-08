@@ -1,5 +1,9 @@
 import { DEV_ALERT_LINK_SECRET, isUsableAlertLinkSecret } from "@auction/alerts";
-import { resolveStrictBidEligibilityRollout } from "@auction/domain";
+import {
+  DEFAULT_COLLECTION_HANDOVER_RETENTION_YEARS,
+  MIN_COLLECTION_HANDOVER_RETENTION_YEARS,
+  resolveStrictBidEligibilityRollout,
+} from "@auction/domain";
 import { parseOptionalBooleanFlag } from "@auction/validators";
 import { z } from "zod";
 
@@ -270,11 +274,16 @@ export const envSchema = z
     ),
     /**
      * Years the record of who collected works (the collector's name and the kind of ID checked) is
-     * kept after a hand-over when the person's account has been erased; never under 1.
+     * kept after a hand-over when the person's account has been erased; never under 3.
      */
     COLLECTION_HANDOVER_RETENTION_YEARS: z.preprocess(
       (value) => (value === "" ? undefined : value),
-      z.coerce.number().int().min(1).max(30).default(6),
+      z.coerce
+        .number()
+        .int()
+        .min(MIN_COLLECTION_HANDOVER_RETENTION_YEARS)
+        .max(30)
+        .default(DEFAULT_COLLECTION_HANDOVER_RETENTION_YEARS),
     ),
     DISABLE_PAYOUT_SETTLEMENT: z
       .preprocess((val) => val === "true" || val === true, z.boolean())
