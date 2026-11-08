@@ -62,6 +62,8 @@ const CONVERT_ERROR_STATUS = {
   work_not_found: 422,
   work_has_no_seller_contact: 422,
   buyer_is_seller: 422,
+  work_not_available: 422,
+  work_in_deal: 409,
   stale_version: 409,
   unavailable: 503,
 } as const satisfies Record<ConvertEnquiryError, 404 | 409 | 422 | 503>;

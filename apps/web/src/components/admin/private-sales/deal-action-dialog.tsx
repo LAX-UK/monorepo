@@ -73,6 +73,7 @@ export function DealActionDialog({
     setFailure(null);
     setBusy(true);
     const result = await move(deal.reference, action, {
+      version: deal.version,
       ...(reason.trim() ? { reason: reason.trim() } : {}),
       idempotencyKey: key.current,
     });

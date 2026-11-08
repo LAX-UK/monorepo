@@ -11,6 +11,7 @@ import {
 import type {
   IDealWorkStore,
   IMarketingEnquiryRepository,
+  IPrivateSaleDealQueryReader,
   IPrivateSaleDealWriter,
   ITransactionRunner,
   MarketingEnquiryDetailRecord,
@@ -26,6 +27,8 @@ import type { DealPartyResolver, ResolvedDealParty } from "./deal-party-resolver
 export type EnquiryConversionDeps = {
   enquiries: Pick<IMarketingEnquiryRepository, "findByRef" | "updateInTransaction">;
   works: IDealWorkStore;
+  /** Whether a work is already in a live deal. */
+  openDeals: Pick<IPrivateSaleDealQueryReader, "hasOpenDealForWork">;
   /** The deal store, bound to the transaction the conversion runs in. */
   dealsForTx: (tx: Database) => Pick<IPrivateSaleDealWriter, "create">;
   parties: DealPartyResolver;
@@ -36,6 +39,29 @@ export type EnquiryConversionDeps = {
 
 /** Thrown inside the transaction so the deal and the enquiry change together or not at all. */
 class EnquiryMovedOn extends Error {}
+
+const ONE_OPEN_DEAL_INDEX = "private_sale_deal_one_open_per_work_uidx";
+
+/** Whether the database refused the deal because the work is already in a live deal. */
+export function isWorkAlreadyInDeal(error: unknown): boolean {
+  for (let e: unknown = error, depth = 0; e && typeof e === "object" && depth < 5; depth += 1) {
+    const { code, constraint, message, cause } = e as {
+      code?: unknown;
+      constraint?: unknown;
+      message?: unknown;
+      cause?: unknown;
+    };
+    if (
+      code === "23505" &&
+      (constraint === ONE_OPEN_DEAL_INDEX ||
+        (typeof message === "string" && message.includes(ONE_OPEN_DEAL_INDEX)))
+    ) {
+      return true;
+    }
+    e = cause;
+  }
+  return false;
+}
 
 type DealSides = {
   seller: ResolvedDealParty;
@@ -122,6 +148,8 @@ export class EnquiryConversionService implements IEnquiryConversion {
       return { ok: true, reference };
     } catch (error) {
       if (error instanceof EnquiryMovedOn) return { ok: false, error: "stale_version" };
+      // Two people converting for the same work at once: the second is refused by the database.
+      if (isWorkAlreadyInDeal(error)) return { ok: false, error: "work_in_deal" };
       throw error;
     }
   }
@@ -154,10 +182,22 @@ export class EnquiryConversionService implements IEnquiryConversion {
     if (!input.workReference) return { error: "work_required" };
     const work = await this.deps.works.findByReference(input.workReference);
     if (!work) return { error: "work_not_found" };
+    // Only an approved consignment that has not become a lot can be sold privately: not a draft,
+    // a rejected or withdrawn work, one already sold, or one on a live or scheduled lot.
+    if (work.status !== "approved" || work.convertedLotId !== null) {
+      return { error: "work_not_available" };
+    }
+    if (await this.deps.openDeals.hasOpenDealForWork(work.id)) return { error: "work_in_deal" };
     if (!work.submittedByUserId) return { error: "work_has_no_seller_contact" };
-    if (work.legalEntityId === enquirer.legalEntityId) return { error: "buyer_is_seller" };
+    // Whoever acts for the seller must be a client with an active place in the owning account.
+    const seller = await this.deps.parties.resolve({
+      userId: work.submittedByUserId,
+      legalEntityId: work.legalEntityId,
+    });
+    if (!seller) return { error: "work_has_no_seller_contact" };
+    if (seller.legalEntityId === enquirer.legalEntityId) return { error: "buyer_is_seller" };
     return {
-      seller: { legalEntityId: work.legalEntityId, actingUserId: work.submittedByUserId },
+      seller,
       buyer: enquirer,
       workId: async () => work.id,
     };

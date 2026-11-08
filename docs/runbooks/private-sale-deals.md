@@ -45,6 +45,21 @@ Approved defaults live in code: source of funds from £9,000 (`SOF_THRESHOLD_AMO
 Issuing the invoice and refunding need a recent sign-in and an idempotency key. The person who
 recorded the agreement cannot issue the invoice for the same deal.
 
+## Who sees which deal
+
+- Administrators, sales managers (`auction.manage`), client services, finance and compliance see every deal.
+- A specialist (`private_sale.manage` without those) sees and acts only on deals they own: the person who converted the enquiry.
+- Fulfilment sees only paid deals waiting to be handed over.
+- Identity, screening and source-of-funds rows are shown only to those who run the deal or decide the checks. Finance and fulfilment are told a deal is "waiting on the compliance checks" and nothing more.
+
+## What is locked once the price is agreed
+
+The price, buyer's fee, commission, costs and disclosure cannot change after agreement, because both sides accepted them. Only the VAT treatment stays open until the invoice. To change anything else, cancel the deal and start again. Agreement needs a commission on the deal, and the invoice needs the commission rate and terms version configured in policy.
+
+## One live deal per work
+
+A work can be in one deal that is neither cancelled nor settled (a partial unique index backs this). A buy enquiry can only name an approved consignment that has not become a lot, and whose owner is a client with an active place in the owning account.
+
 ## Checks
 
 The record reads identity, screening and source of funds from the existing Compliance records and

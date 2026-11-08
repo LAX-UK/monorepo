@@ -1,8 +1,8 @@
 import { resolvePrivateSalePolicy } from "@auction/domain";
-import type { MarketingEnquiryDetailRecord } from "@auction/persistence/interfaces";
+import type { DealWork, MarketingEnquiryDetailRecord } from "@auction/persistence/interfaces";
 import { describe, expect, it, vi } from "vitest";
 import { inlineTransactions, makeDeal, recordingSink } from "./deal-fixtures.test-util.js";
-import { EnquiryConversionService } from "./enquiry-conversion.service.js";
+import { EnquiryConversionService, isWorkAlreadyInDeal } from "./enquiry-conversion.service.js";
 
 const VIEWER = { userId: "u-specialist", readsPrivateSale: true };
 
@@ -50,40 +50,52 @@ function setup(
   record: MarketingEnquiryDetailRecord | null = enquiry(),
   options: {
     partyResolves?: { legalEntityId: string; actingUserId: string } | null;
-    work?: {
-      id: string;
-      reference: string;
-      legalEntityId: string;
-      submittedByUserId: string | null;
-      title: string;
-    } | null;
+    work?:
+      | (Partial<DealWork> &
+          Pick<DealWork, "id" | "reference" | "legalEntityId" | "submittedByUserId" | "title">)
+      | null;
+    /** What the work's owner resolves to; `undefined` means a client with a place in the account. */
+    sellerResolves?: { legalEntityId: string; actingUserId: string } | null;
+    openDeal?: boolean;
+    createError?: unknown;
     moved?: boolean;
   } = {},
 ) {
   const events = recordingSink();
-  const create = vi.fn(async (input: { itemSubmissionId: string }) =>
-    makeDeal({ id: "deal-new", reference: "PS-0007", stage: "proposed", ...input } as never),
-  );
+  const create = vi.fn(async (input: { itemSubmissionId: string }) => {
+    if (options.createError) throw options.createError;
+    return makeDeal({ id: "deal-new", reference: "PS-0007", stage: "proposed", ...input } as never);
+  });
   const createDraft = vi.fn(async () => ({
     id: "sub-new",
     reference: "C-2000",
     legalEntityId: "le-henry",
     submittedByUserId: "u-henry",
     title: "Harbour at dusk",
+    status: "draft",
+    convertedLotId: null,
   }));
   const updateInTransaction = vi.fn(async () => (options.moved === false ? null : ({} as never)));
   const service = new EnquiryConversionService({
     enquiries: { findByRef: async () => record, updateInTransaction },
     works: {
       createDraftInTransaction: createDraft,
-      findByReference: async () => options.work ?? null,
+      findByReference: async () =>
+        options.work ? { status: "approved", convertedLotId: null, ...options.work } : null,
     },
+    openDeals: { hasOpenDealForWork: async () => options.openDeal ?? false },
     dealsForTx: () => ({ create }),
     parties: {
-      resolve: async () =>
-        options.partyResolves === undefined
-          ? { legalEntityId: "le-henry", actingUserId: "u-henry" }
-          : options.partyResolves,
+      resolve: async (input: { userId: string; legalEntityId?: string }) => {
+        if (input.userId === "u-henry") {
+          return options.partyResolves === undefined
+            ? { legalEntityId: "le-henry", actingUserId: "u-henry" }
+            : options.partyResolves;
+        }
+        return options.sellerResolves === undefined
+          ? { legalEntityId: input.legalEntityId ?? "le-x", actingUserId: input.userId }
+          : options.sellerResolves;
+      },
     } as never,
     policy: resolvePrivateSalePolicy({ commissionRateBps: 1500 }),
     transactionRunner: inlineTransactions,
@@ -240,5 +252,118 @@ describe("EnquiryConversionService", () => {
       ok: false,
       error: "stale_version",
     });
+  });
+
+  describe("which works can be sold privately", () => {
+    const buy = enquiry({ intent: "private_sale_buy", privateSale: null });
+    const work = {
+      id: "sub-9",
+      reference: "C-1042",
+      legalEntityId: "le-owner",
+      submittedByUserId: "u-owner",
+      title: "A work",
+    };
+    const convert = (options: Parameters<typeof setup>[1]) =>
+      setup(buy, options).service.convert(VIEWER, "E-1042", { workReference: "C-1042" });
+
+    it.each([
+      "draft",
+      "submitted",
+      "under_review",
+      "rejected",
+      "withdrawn",
+      "changes_requested",
+      "converted",
+    ])("refuses a work that is %s", async (status) => {
+      expect(await convert({ work: { ...work, status } })).toEqual({
+        ok: false,
+        error: "work_not_available",
+      });
+    });
+
+    it("refuses a work that has become a lot, live, scheduled or sold", async () => {
+      expect(await convert({ work: { ...work, convertedLotId: "lot-1" } })).toEqual({
+        ok: false,
+        error: "work_not_available",
+      });
+    });
+
+    it("accepts an approved work that is not on a lot", async () => {
+      expect(await convert({ work })).toEqual({ ok: true, reference: "PS-0007" });
+    });
+
+    it("refuses a work that is already in a live deal, before anything is written", async () => {
+      const { service, create } = setup(buy, { work, openDeal: true });
+      expect(await service.convert(VIEWER, "E-1042", { workReference: "C-1042" })).toEqual({
+        ok: false,
+        error: "work_in_deal",
+      });
+      expect(create).not.toHaveBeenCalled();
+    });
+
+    it("answers work_in_deal when two conversions race and the database refuses the second", async () => {
+      const refused = Object.assign(new Error("duplicate key"), {
+        code: "23505",
+        constraint: "private_sale_deal_one_open_per_work_uidx",
+      });
+      expect(
+        await convert({ work, createError: new Error("wrapped", { cause: refused }) }),
+      ).toEqual({
+        ok: false,
+        error: "work_in_deal",
+      });
+    });
+
+    it("lets any other database failure through rather than hiding it", async () => {
+      await expect(convert({ work, createError: new Error("connection lost") })).rejects.toThrow(
+        "connection lost",
+      );
+    });
+
+    it("converts the same work only once: the first wins, the second is refused", async () => {
+      let taken = false;
+      const run = async () => {
+        const { service } = setup(buy, { work, openDeal: taken });
+        const result = await service.convert(VIEWER, "E-1042", { workReference: "C-1042" });
+        if (result.ok) taken = true;
+        return result;
+      };
+      expect((await run()).ok).toBe(true);
+      expect(await run()).toEqual({ ok: false, error: "work_in_deal" });
+    });
+  });
+
+  describe("who acts for the seller on a buy deal", () => {
+    const buy = enquiry({ intent: "private_sale_buy", privateSale: null });
+    const work = {
+      id: "sub-9",
+      reference: "C-1042",
+      legalEntityId: "le-owner",
+      submittedByUserId: "u-owner",
+      title: "A work",
+    };
+
+    it("refuses someone who is staff or has left the owning account", async () => {
+      const { service, create } = setup(buy, { work, sellerResolves: null });
+      expect(await service.convert(VIEWER, "E-1042", { workReference: "C-1042" })).toEqual({
+        ok: false,
+        error: "work_has_no_seller_contact",
+      });
+      expect(create).not.toHaveBeenCalled();
+    });
+  });
+});
+
+describe("isWorkAlreadyInDeal", () => {
+  it("recognises the unique index violation, however deep it is wrapped", () => {
+    const error = { code: "23505", constraint: "private_sale_deal_one_open_per_work_uidx" };
+    expect(isWorkAlreadyInDeal(error)).toBe(true);
+    expect(isWorkAlreadyInDeal({ cause: { cause: error } })).toBe(true);
+  });
+
+  it("does not take another unique violation, or another error, for it", () => {
+    expect(isWorkAlreadyInDeal({ code: "23505", constraint: "something_else" })).toBe(false);
+    expect(isWorkAlreadyInDeal(new Error("boom"))).toBe(false);
+    expect(isWorkAlreadyInDeal(null)).toBe(false);
   });
 });

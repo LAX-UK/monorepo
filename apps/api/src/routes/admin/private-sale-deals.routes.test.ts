@@ -68,17 +68,30 @@ describe("who may open the deals", () => {
 });
 
 describe("what the desk is told about the person", () => {
+  const ALL = { kind: "all" } as const;
   it.each([
-    ["sales_manager", { manage: true, finance: false, release: false }],
-    ["specialist", { manage: true, finance: false, release: false }],
-    ["finance", { manage: false, finance: true, release: false }],
-    ["fulfilment", { manage: false, finance: false, release: true }],
-    ["administrator", { manage: true, finance: true, release: true }],
-  ] as const)("%s", async (role, abilities) => {
+    ["sales_manager", { manage: true, finance: false, release: false }, true, ALL],
+    [
+      "specialist",
+      { manage: true, finance: false, release: false },
+      true,
+      { kind: "owned", userId: "staff-1" },
+    ],
+    ["finance", { manage: false, finance: true, release: false }, false, ALL],
+    [
+      "fulfilment",
+      { manage: false, finance: false, release: true },
+      false,
+      { kind: "stages", stages: ["paid"] },
+    ],
+    ["client_services", { manage: false, finance: false, release: false }, false, ALL],
+    ["compliance", { manage: false, finance: false, release: false }, true, ALL],
+    ["administrator", { manage: true, finance: true, release: true }, true, ALL],
+  ] as const)("%s", async (role, abilities, checks, scope) => {
     const { app, privateSaleDeals } = createApp([role]);
     await app.request("http://test/private-sales/PS-0012");
     expect(privateSaleDeals.detail).toHaveBeenCalledWith(
-      { userId: "staff-1", abilities },
+      { userId: "staff-1", abilities, checks, scope },
       "PS-0012",
     );
   });
@@ -206,12 +219,38 @@ describe("POST /private-sales/:ref/actions/:action", () => {
     const { app, privateSaleDeals } = createApp(["sales_manager"]);
     const res = await app.request(
       "http://test/private-sales/PS-0012/actions/cancel",
-      send("POST", { reason: "Seller withdrew" }),
+      send("POST", { version: 4, reason: "Seller withdrew" }),
     );
     expect(res.status).toBe(200);
     expect(privateSaleDeals.act).toHaveBeenCalledWith(expect.anything(), "PS-0012", "cancel", {
+      version: 4,
       reason: "Seller withdrew",
     });
+  });
+
+  it("needs the version the person was looking at", async () => {
+    const { app, privateSaleDeals } = createApp(["administrator"]);
+    const res = await app.request(
+      "http://test/private-sales/PS-0012/actions/agree",
+      send("POST", {}),
+    );
+    expect(res.status).toBe(400);
+    expect(privateSaleDeals.act).not.toHaveBeenCalled();
+  });
+
+  it("answers a stale version with the current one", async () => {
+    const { app, privateSaleDeals } = createApp(["administrator"]);
+    privateSaleDeals.act.mockResolvedValueOnce({
+      ok: false,
+      error: "stale_version",
+      currentVersion: 6,
+    });
+    const res = await app.request(
+      "http://test/private-sales/PS-0012/actions/agree",
+      send("POST", { version: 4 }),
+    );
+    expect(res.status).toBe(409);
+    expect(await res.json()).toEqual({ error: "stale_version", currentVersion: 6 });
   });
 
   it("does not know a move that is not on the list", async () => {
@@ -219,7 +258,7 @@ describe("POST /private-sales/:ref/actions/:action", () => {
     for (const action of ["mark_paid", "settle", "delete"]) {
       const res = await app.request(
         `http://test/private-sales/PS-0012/actions/${action}`,
-        send("POST", {}),
+        send("POST", { version: 4 }),
       );
       expect(res.status).toBe(400);
     }
@@ -238,7 +277,7 @@ describe("POST /private-sales/:ref/actions/:action", () => {
     privateSaleDeals.act.mockResolvedValueOnce({ ok: false, error: "blocked", blockers });
     const res = await app.request(
       "http://test/private-sales/PS-0012/actions/agree",
-      send("POST", {}),
+      send("POST", { version: 4 }),
     );
     expect(res.status).toBe(422);
     expect(await res.json()).toEqual({ error: "blocked", blockers });
@@ -248,16 +287,40 @@ describe("POST /private-sales/:ref/actions/:action", () => {
     "asks for a recent sign-in and an idempotency key before %s",
     async (action) => {
       const { app, stepUp, idempotentScopes, privateSaleDeals } = createApp(["administrator"]);
-      await app.request(`http://test/private-sales/PS-0012/actions/${action}`, send("POST", {}));
+      await app.request(
+        `http://test/private-sales/PS-0012/actions/${action}`,
+        send("POST", { version: 4 }),
+      );
       expect(stepUp).toHaveBeenCalledTimes(1);
       expect(idempotentScopes).toContain(`private-sales.${action}`);
       expect(privateSaleDeals.act).toHaveBeenCalledTimes(1);
     },
   );
 
+  it("guards every move that holds the finance ability, whatever it is called", async () => {
+    const { ACTION_ABILITY } = await import(
+      "../../services/private-sale-deal/deal-staff-permissions.js"
+    );
+    const money = Object.entries(ACTION_ABILITY)
+      .filter(([, ability]) => ability === "finance")
+      .map(([action]) => action);
+    expect(money.sort()).toEqual(["issue_invoice", "refund"]);
+    for (const action of money) {
+      const { app, stepUp } = createApp(["administrator"]);
+      await app.request(
+        `http://test/private-sales/PS-0012/actions/${action}`,
+        send("POST", { version: 4 }),
+      );
+      expect(stepUp).toHaveBeenCalledTimes(1);
+    }
+  });
+
   it("does not ask for a recent sign-in for a move that moves no money", async () => {
     const { app, stepUp } = createApp(["administrator"]);
-    await app.request("http://test/private-sales/PS-0012/actions/agree", send("POST", {}));
+    await app.request(
+      "http://test/private-sales/PS-0012/actions/agree",
+      send("POST", { version: 4 }),
+    );
     expect(stepUp).not.toHaveBeenCalled();
   });
 
@@ -272,7 +335,7 @@ describe("POST /private-sales/:ref/actions/:action", () => {
     );
     const res = await app.request(
       "http://test/private-sales/PS-0012/actions/issue_invoice",
-      send("POST", {}),
+      send("POST", { version: 4 }),
     );
     expect(res.status).toBe(403);
     expect(privateSaleDeals.act).not.toHaveBeenCalled();

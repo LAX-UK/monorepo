@@ -142,7 +142,7 @@ export async function nameDealBuyerAction(
 export async function dealMoveAction(
   ref: string,
   action: StaffDealAction,
-  input: { reason?: string; idempotencyKey?: string },
+  input: { version: number; reason?: string; idempotencyKey?: string },
 ): Promise<ActionResult<DealRecord>> {
   return instrumentServerAction("dealMoveAction", async () => {
     const denied = await denyUnlessAdminCapability(
@@ -150,7 +150,10 @@ export async function dealMoveAction(
     );
     if (denied) return denied;
     const reference = privateSaleReferenceSchema.safeParse(ref);
-    const body = adminDealActionSchema.safeParse({ reason: input.reason || undefined });
+    const body = adminDealActionSchema.safeParse({
+      version: input.version,
+      reason: input.reason || undefined,
+    });
     if (!reference.success || !body.success) {
       return actionFailure(body.error?.issues[0]?.message ?? "Check the details.", undefined, 400);
     }

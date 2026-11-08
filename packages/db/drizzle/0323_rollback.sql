@@ -2,6 +2,8 @@
 -- previous release reads the column as text. Every value is kept, as the id's text form.
 SET LOCAL lock_timeout = '30s';
 --> statement-breakpoint
+DROP INDEX IF EXISTS "private_sale_deal_one_open_per_work_uidx";
+--> statement-breakpoint
 DROP INDEX IF EXISTS "private_sale_deal_artwork_register_idx";
 --> statement-breakpoint
 ALTER TABLE "private_sale_deal" DROP CONSTRAINT IF EXISTS "private_sale_deal_artwork_register_id_fk";

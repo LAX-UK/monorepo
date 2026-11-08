@@ -20,6 +20,8 @@ export const DEAL_ERROR_COPY: Readonly<Record<string, string>> = {
     "The sender has no LAX account yet. Invite them to create one, then convert the enquiry.",
   work_required: "Enter the reference of the work this buyer is asking about, such as C-1042.",
   work_not_found: "No work has that reference.",
+  work_not_available: "Only an approved consignment that isn't on a lot yet can be sold privately.",
+  work_in_deal: "That work is already in a private sale.",
   work_has_no_seller_contact: "That work has no one who can act for its owner yet.",
 };
 

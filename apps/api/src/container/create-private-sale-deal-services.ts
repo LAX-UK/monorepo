@@ -31,7 +31,8 @@ import type { IStripeCustomerGateway } from "../services/interfaces/stripe-custo
 import type { IProviderEventClaim } from "../services/payment-group/payment-group-settlement.service.js";
 import type { PaymentTierPolicy } from "../services/payment/payment-tier.policy.js";
 import { ComplianceDealClearanceReader } from "../services/private-sale-deal/deal-clearance.reader.js";
-import { PrivateSaleDealDeskService } from "../services/private-sale-deal/deal-desk.service.js";
+import { PrivateSaleDealCommandService } from "../services/private-sale-deal/deal-command.service.js";
+import { PrivateSaleDealDesk } from "../services/private-sale-deal/deal-desk.js";
 import { DealInvoiceService } from "../services/private-sale-deal/deal-invoice.service.js";
 import { DealPartyResolver } from "../services/private-sale-deal/deal-party-resolver.js";
 import { PrivateSaleDealPartyService } from "../services/private-sale-deal/deal-party.service.js";
@@ -41,6 +42,7 @@ import {
 } from "../services/private-sale-deal/deal-payment-settlement.service.js";
 import { DealPaymentService } from "../services/private-sale-deal/deal-payment.service.js";
 import { DealPayoutSettlementService } from "../services/private-sale-deal/deal-payout-settlement.service.js";
+import { PrivateSaleDealQueryService } from "../services/private-sale-deal/deal-query.service.js";
 import { DealReversalService } from "../services/private-sale-deal/deal-reversal.service.js";
 import { DealTransitionService } from "../services/private-sale-deal/deal-transition.service.js";
 import { EnquiryConversionService } from "../services/private-sale-deal/enquiry-conversion.service.js";
@@ -163,6 +165,29 @@ export function createPrivateSaleDealServices(
   });
   const enquiries = new DrizzleMarketingEnquiryRepository(db);
 
+  const deskQueries = new PrivateSaleDealQueryService({
+    deals,
+    queries,
+    payments,
+    payouts,
+    transitions,
+    clearance,
+    policy,
+    enquiries,
+    names: new UserRepositoryActorNames(input.users),
+  });
+  const deskCommands = new PrivateSaleDealCommandService({
+    deals,
+    payments,
+    transitions,
+    invoices,
+    reversal,
+    policy,
+    parties,
+    events,
+    records: deskQueries,
+  });
+
   return {
     policy,
     transitions,
@@ -171,24 +196,11 @@ export function createPrivateSaleDealServices(
     reversal,
     payoutSettlement: new DealPayoutSettlementService({ payouts, transitions }),
     webhooks: { settlement, payments },
-    desk: new PrivateSaleDealDeskService({
-      deals,
-      queries,
-      payments,
-      payouts,
-      transitions,
-      invoices,
-      reversal,
-      clearance,
-      policy,
-      parties,
-      enquiries,
-      names: new UserRepositoryActorNames(input.users),
-      events,
-    }),
+    desk: new PrivateSaleDealDesk(deskQueries, deskCommands),
     conversion: new EnquiryConversionService({
       enquiries,
       works: new DrizzleDealWorkStore(db),
+      openDeals: queries,
       dealsForTx: (tx) => new DrizzlePrivateSaleDealRepository(tx),
       parties,
       policy,
@@ -200,6 +212,7 @@ export function createPrivateSaleDealServices(
       queries,
       clearance,
       policy,
+      memberships: input.memberships,
       payments: dealPayments,
       events,
     }),

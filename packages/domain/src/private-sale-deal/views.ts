@@ -52,6 +52,28 @@ export function dealViewCriteria(view: DealView): DealViewCriteria {
   return VIEW_CRITERIA[view];
 }
 
+/**
+ * Which deals a person may see at all. Those who run every deal see them all; a specialist sees
+ * the deals they own; fulfilment sees only the deals that are paid and waiting to be handed over.
+ */
+export type DealScope =
+  | { kind: "all" }
+  | { kind: "owned"; userId: string }
+  | { kind: "stages"; stages: readonly PrivateSaleDealStage[] };
+
+/** Stages in which a paid work is waiting to be handed over. */
+export const RELEASE_READY_STAGES: readonly PrivateSaleDealStage[] = ["paid"];
+
+/** Whether a deal is inside a person's scope. */
+export function dealInScope(
+  deal: { stage: PrivateSaleDealStage; ownerUserId: string | null },
+  scope: DealScope,
+): boolean {
+  if (scope.kind === "all") return true;
+  if (scope.kind === "owned") return deal.ownerUserId === scope.userId;
+  return scope.stages.includes(deal.stage);
+}
+
 /** Deals per stage, and how many of them the viewer owns. */
 export type DealStageCount = { stage: PrivateSaleDealStage; total: number; ownedByViewer: number };
 

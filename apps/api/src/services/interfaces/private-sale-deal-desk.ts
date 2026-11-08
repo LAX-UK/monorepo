@@ -82,11 +82,12 @@ export type DealStaffRecord = {
   money: PrivateSaleDealMoney | null;
   seller: DealRecordParty;
   buyer: DealRecordParty | null;
+  /** `null` for people who may not see how the checks stand. */
   sourceOfFunds: {
     status: SourceOfFundsStatus;
     required: boolean;
     thresholdMinor: number;
-  };
+  } | null;
   documents: Pick<
     PrivateSaleDealDocument,
     "id" | "kind" | "version" | "acceptedAt" | "legalEntityId" | "audience"
@@ -135,10 +136,14 @@ export type DealWriteResult =
       currentVersion?: number;
     };
 
-/** Staff work on private sale deals here. Who may see or do what is decided in this service. */
-export interface IPrivateSaleDealDesk {
+/** The lists and the record, cut to what the person may see. */
+export interface IPrivateSaleDealQueries {
   list(viewer: DealStaffViewer, query: AdminDealListQuery): Promise<DealListPage>;
   detail(viewer: DealStaffViewer, ref: string): Promise<DealStaffRecord | null>;
+}
+
+/** Every change a person can make to a deal, each against the version they were looking at. */
+export interface IPrivateSaleDealCommands {
   updateTerms(
     viewer: DealStaffViewer,
     ref: string,
@@ -153,9 +158,12 @@ export interface IPrivateSaleDealDesk {
     viewer: DealStaffViewer,
     ref: string,
     action: StaffDealAction,
-    input: { reason?: string | undefined },
+    input: { version: number; reason?: string | undefined },
   ): Promise<DealWriteResult>;
 }
+
+/** Staff work on private sale deals here. Who may see or do what is decided in these services. */
+export interface IPrivateSaleDealDesk extends IPrivateSaleDealQueries, IPrivateSaleDealCommands {}
 
 export type ConvertEnquiryError =
   | "enquiry_not_found"
@@ -168,6 +176,10 @@ export type ConvertEnquiryError =
   | "work_not_found"
   | "work_has_no_seller_contact"
   | "buyer_is_seller"
+  /** The work is not an approved consignment, or is already on a lot. */
+  | "work_not_available"
+  /** The work is already in a deal that is neither cancelled nor settled. */
+  | "work_in_deal"
   | "stale_version"
   | "unavailable";
 

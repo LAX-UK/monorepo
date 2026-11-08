@@ -15,7 +15,14 @@ const POLICY = resolvePrivateSalePolicy({ termsVersion: "v1", commissionRateBps:
 
 function setup(
   deal: PrivateSaleDealDetail | null = makeDeal({ stage: "offer", vatTreatment: null }),
-  options: { clearance?: DealClearanceSnapshot; policy?: typeof POLICY } = {},
+  options: {
+    clearance?: DealClearanceSnapshot;
+    policy?: typeof POLICY;
+    /** The entities a person still has an active place in; everyone has theirs by default. */
+    members?: (userId: string, legalEntityId: string) => boolean;
+    /** A person's personal account, which has no organisation membership. */
+    personal?: (userId: string) => string;
+  } = {},
 ) {
   const events = recordingSink();
   const recordAcceptance = vi.fn(async () => ({}) as never);
@@ -47,6 +54,14 @@ function setup(
     },
     clearance: { snapshot: async () => options.clearance ?? CLEAR },
     policy: options.policy ?? POLICY,
+    memberships: {
+      findActiveMembership: async (userId: string, legalEntityId: string) =>
+        (options.members ?? (() => true))(userId, legalEntityId) ? ({} as never) : null,
+      ensurePersonalEntity: async (userId: string) => {
+        if (!options.personal) throw new Error("no personal entity");
+        return { id: options.personal(userId) } as never;
+      },
+    },
     payments: { start },
     events,
     now: () => new Date("2026-11-04T09:00:00Z"),
@@ -252,6 +267,49 @@ describe("PrivateSaleDealPartyService", () => {
       });
       start.mockResolvedValueOnce({ ok: false, error: { kind: "blocked", blockers: [] } } as never);
       expect(await service.pay("u-buyer", "PS-0001")).toEqual({ ok: false, error: "not_payable" });
+    });
+  });
+
+  describe("someone who has left the account", () => {
+    const left = (userId: string, legalEntityId: string) =>
+      !(userId === "u-buyer" && legalEntityId === "le-buyer");
+
+    it("sees no deal, and it is not in their list", async () => {
+      const { service } = setup(makeDeal({ stage: "invoiced" }), { members: left });
+      expect(await service.detail("u-buyer", "PS-0012")).toBeNull();
+      expect(await service.detail("u-buyer", "PS-0001")).toBeNull();
+      expect(await service.list("u-buyer")).toEqual([]);
+    });
+
+    it("cannot accept the terms or pay", async () => {
+      const { service, recordAcceptance, start } = setup(makeDeal({ stage: "offer" }), {
+        members: left,
+      });
+      expect(await service.acceptTerms("u-buyer", "PS-0001")).toEqual({
+        ok: false,
+        error: "deal_not_found",
+      });
+      expect(await service.pay("u-buyer", "PS-0001")).toEqual({
+        ok: false,
+        error: "deal_not_found",
+      });
+      expect(recordAcceptance).not.toHaveBeenCalled();
+      expect(start).not.toHaveBeenCalled();
+    });
+
+    it("leaves the other side's access alone", async () => {
+      const { service } = setup(makeDeal({ stage: "invoiced" }), { members: left });
+      expect(await service.detail("u-seller", "PS-0001")).not.toBeNull();
+    });
+
+    it("keeps a person's own personal account working without a membership row", async () => {
+      const { service } = setup(makeDeal({ stage: "invoiced" }), {
+        members: () => false,
+        personal: (userId) => (userId === "u-buyer" ? "le-buyer" : "le-other"),
+      });
+      expect(await service.detail("u-buyer", "PS-0001")).not.toBeNull();
+      // Another person's personal account is not an account they act in.
+      expect(await service.detail("u-seller", "PS-0001")).toBeNull();
     });
   });
 });

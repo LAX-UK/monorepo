@@ -1,13 +1,11 @@
 import {
-  PRIVATE_SALE_DEALS_FINANCE_ACCESS,
-  PRIVATE_SALE_DEALS_MANAGE_ACCESS,
   PRIVATE_SALE_DEALS_READ_ACCESS,
-  PRIVATE_SALE_DEALS_RELEASE_ACCESS,
   type StaffRoles,
   type UserRole,
   userHasAccessTo,
 } from "@auction/types";
 import {
+  type StaffDealAction,
   adminDealActionSchema,
   adminDealBuyerSchema,
   adminDealListQuerySchema,
@@ -16,27 +14,27 @@ import {
   privateSaleRefParamSchema,
 } from "@auction/validators";
 import type { Context } from "hono";
+import { createMiddleware } from "hono/factory";
 import { zValidator } from "../../lib/z-validator.js";
 import { createRequireAccess } from "../../middleware/require-capability.js";
 import type { AdminEnquiryRoutesContainer } from "../../services/interfaces/admin-routes/index.js";
 import type { DealWriteError } from "../../services/interfaces/private-sale-deal-desk.js";
-import type { DealStaffViewer } from "../../services/private-sale-deal/deal-staff-permissions.js";
+import {
+  ACTION_ABILITY,
+  type DealStaffViewer,
+} from "../../services/private-sale-deal/deal-staff-permissions.js";
+import { dealViewerFrom } from "../../services/private-sale-deal/deal-viewer.js";
 import type { AdminHono, AdminStaffMutationGuards } from "./_shared.js";
 
 const requireDealsRead = createRequireAccess(PRIVATE_SALE_DEALS_READ_ACCESS);
 
-/** What the signed-in person may do on a deal, from their capabilities. */
+/** What the signed-in person may see and do on deals, from their capabilities. */
 function viewerOf(c: Context): DealStaffViewer {
   const role = c.get("userRole") as UserRole;
   const staff = c.get("userStaffRoles") as StaffRoles | undefined;
-  return {
-    userId: c.get("userId") as string,
-    abilities: {
-      manage: userHasAccessTo(role, staff, PRIVATE_SALE_DEALS_MANAGE_ACCESS),
-      finance: userHasAccessTo(role, staff, PRIVATE_SALE_DEALS_FINANCE_ACCESS),
-      release: userHasAccessTo(role, staff, PRIVATE_SALE_DEALS_RELEASE_ACCESS),
-    },
-  };
+  return dealViewerFrom(c.get("userId") as string, (requirement) =>
+    userHasAccessTo(role, staff, requirement),
+  );
 }
 
 const WRITE_ERROR_STATUS = {
@@ -113,18 +111,22 @@ export function attachAdminPrivateSaleDealRoutes(
     },
   );
 
-  // Moving money needs a recent sign-in and a key that makes a retry safe.
-  for (const action of ["issue_invoice", "refund"] as const) {
-    admin.use(
-      `/private-sales/:ref/actions/${action}`,
-      guards.requireStepUp,
-      guards.idempotent(`private-sales.${action}`),
-    );
-  }
+  // Moving money needs a recent sign-in and a key that makes a retry safe. Which moves move money
+  // is read from the permission table, not from the path, so a new money move is guarded the
+  // moment it is given the finance ability.
+  const moneyGuards = createMiddleware(async (c, next) => {
+    const action = c.req.param("action") as StaffDealAction;
+    if (ACTION_ABILITY[action] !== "finance") return next();
+    // Step-up answers itself when the sign-in is too old; otherwise the key check runs, then the move.
+    return guards.requireStepUp(c as never, async () => {
+      await guards.idempotent(`private-sales.${action}`)(c as never, next);
+    });
+  });
 
   /** POST /admin/private-sales/:ref/actions/:action — make one move on the deal. */
   admin.post(
     "/private-sales/:ref/actions/:action",
+    moneyGuards,
     zValidator("param", privateSaleActionParamSchema),
     zValidator("json", adminDealActionSchema),
     async (c) => {

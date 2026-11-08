@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { DEAL_VIEWS, dealIsInView, dealViewCounts, dealViewCriteria } from "./views.js";
+import { editableDealTerms } from "./terms.js";
+import {
+  DEAL_VIEWS,
+  dealInScope,
+  dealIsInView,
+  dealViewCounts,
+  dealViewCriteria,
+} from "./views.js";
 
 describe("deal views", () => {
   it("offers every view once, active first", () => {
@@ -53,5 +60,22 @@ describe("deal views", () => {
     expect(dealViewCriteria("active").order).toBe("oldest_first");
     expect(dealViewCriteria("settled").order).toBe("newest_first");
     expect(dealViewCriteria("all").stages).toBeNull();
+  });
+
+  it("keeps a deal in scope only for those allowed to see it", () => {
+    const deal = { stage: "paid", ownerUserId: "u1" } as const;
+    expect(dealInScope(deal, { kind: "all" })).toBe(true);
+    expect(dealInScope(deal, { kind: "owned", userId: "u1" })).toBe(true);
+    expect(dealInScope(deal, { kind: "owned", userId: "u2" })).toBe(false);
+    expect(dealInScope(deal, { kind: "stages", stages: ["paid"] })).toBe(true);
+    expect(dealInScope({ ...deal, stage: "invoiced" }, { kind: "stages", stages: ["paid"] })).toBe(
+      false,
+    );
+  });
+
+  it("locks everything but the VAT treatment once the price is agreed", () => {
+    for (const stage of ["agreed", "cleared"] as const) {
+      expect(editableDealTerms(stage)).toEqual(["vatTreatment"]);
+    }
   });
 });

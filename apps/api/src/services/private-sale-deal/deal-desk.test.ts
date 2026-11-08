@@ -9,13 +9,15 @@ import type {
   PrivateSaleStageChange,
 } from "@auction/types";
 import { describe, expect, it, vi } from "vitest";
-import { type DealDeskDeps, PrivateSaleDealDeskService } from "./deal-desk.service.js";
+import { PrivateSaleDealCommandService } from "./deal-command.service.js";
+import { PrivateSaleDealDesk } from "./deal-desk.js";
 import {
   InMemoryDealPayments,
   makeDeal,
   makePayment,
   recordingSink,
 } from "./deal-fixtures.test-util.js";
+import { PrivateSaleDealQueryService } from "./deal-query.service.js";
 import type { DealStaffViewer } from "./deal-staff-permissions.js";
 import { DealTransitionService } from "./deal-transition.service.js";
 
@@ -33,11 +35,17 @@ const CONFIGURED = resolvePrivateSalePolicy({
   paymentDueDays: 7,
 });
 
-const staff = (abilities: Partial<DealStaffViewer["abilities"]>, userId = "u-staff") =>
-  ({
-    userId,
-    abilities: { manage: false, finance: false, release: false, ...abilities },
-  }) satisfies DealStaffViewer;
+const staff = (
+  abilities: Partial<DealStaffViewer["abilities"]>,
+  userId = "u-staff",
+  extra: Partial<Pick<DealStaffViewer, "checks" | "scope">> = {},
+): DealStaffViewer => ({
+  userId,
+  abilities: { manage: false, finance: false, release: false, ...abilities },
+  checks: true,
+  scope: { kind: "all" },
+  ...extra,
+});
 
 const MANAGER = staff({ manage: true });
 const FINANCE = staff({ finance: true }, "u-finance");
@@ -107,12 +115,13 @@ function setup(options: Setup = {}) {
       transitions.transition(input.dealId, "issue_invoice", { actorUserId: input.actorUserId }),
     ),
   };
-  const deps: DealDeskDeps = {
+  const queryDeps = {
     deals: deals as never,
     queries: {
       list: async () => [],
       countByStage: async () => [],
       listIdsForActingUser: async () => [],
+      hasOpenDealForWork: async () => false,
       findWorkSummary: async () => ({
         title: "Harbour at dusk",
         reference: "C-1042",
@@ -122,9 +131,18 @@ function setup(options: Setup = {}) {
     payments,
     payouts: { hasPayoutLine: async () => options.hasPayoutLine ?? false },
     transitions,
+    clearance: clearancePort,
+    policy,
+    enquiries: { findById: async () => null },
+    names: { namesOf: async () => new Map() },
+  };
+  const queries = new PrivateSaleDealQueryService(queryDeps);
+  const commands = new PrivateSaleDealCommandService({
+    deals: deals as never,
+    payments,
+    transitions,
     invoices,
     reversal,
-    clearance: clearancePort,
     policy,
     parties: {
       resolve: async () =>
@@ -132,12 +150,26 @@ function setup(options: Setup = {}) {
           ? { legalEntityId: "le-new-buyer", actingUserId: "u-new-buyer" }
           : options.partyResolves,
     } as never,
-    enquiries: { findById: async () => null },
-    names: { namesOf: async () => new Map() },
     events,
+    records: queries,
+  });
+  const real = new PrivateSaleDealDesk(queries, commands);
+  // Moves are made against the version the person saw; these tests saw the deal as it is now.
+  const desk = {
+    list: real.list,
+    detail: real.detail,
+    updateTerms: real.updateTerms,
+    nameBuyer: real.nameBuyer,
+    act: (
+      viewer: DealStaffViewer,
+      ref: string,
+      action: Parameters<typeof real.act>[2],
+      input: { version?: number; reason?: string } = {},
+    ) => real.act(viewer, ref, action, { version: deal.version, ...input }),
   };
   return {
-    desk: new PrivateSaleDealDeskService(deps),
+    desk,
+    real,
     events,
     reversal,
     invoices,
@@ -151,7 +183,7 @@ function setup(options: Setup = {}) {
 const stageDeal = (stage: PrivateSaleDealStage, over: Partial<PrivateSaleDealDetail> = {}) =>
   makeDeal({ stage, ...over });
 
-describe("PrivateSaleDealDeskService record", () => {
+describe("the staff desk record", () => {
   it("reports what is still to be set up, so a screen can say the terms are not configured", async () => {
     const { desk } = setup({ policy: resolvePrivateSalePolicy() });
     const record = await desk.detail(MANAGER, "PS-0001");
@@ -251,11 +283,12 @@ describe("PrivateSaleDealDeskService record", () => {
 
   it("lists only the terms the person may change in this stage", async () => {
     const { desk } = setup({ deal: stageDeal("agreed") });
-    expect((await desk.detail(MANAGER, "PS-0001"))?.editableTerms.sort()).toEqual(
-      ["costsMinor", "partiesDisclosed"].sort(),
-    );
-    expect((await desk.detail(FINANCE, "PS-0001"))?.editableTerms.sort()).toEqual(
-      ["buyerFeeBps", "sellerCommissionBps", "vatTreatment"].sort(),
+    // Everything either side accepted is locked once the price is agreed; only VAT stays open.
+    expect((await desk.detail(MANAGER, "PS-0001"))?.editableTerms).toEqual([]);
+    expect((await desk.detail(FINANCE, "PS-0001"))?.editableTerms).toEqual(["vatTreatment"]);
+    const offer = setup({ deal: stageDeal("offer") });
+    expect((await offer.desk.detail(MANAGER, "PS-0001"))?.editableTerms.sort()).toEqual(
+      ["costsMinor", "offerExpiresAt", "partiesDisclosed", "priceMinor"].sort(),
     );
     const invoiced = await setup({ deal: stageDeal("invoiced") }).desk.detail(FINANCE, "PS-0001");
     expect(invoiced?.editableTerms).toEqual([]);
@@ -560,5 +593,154 @@ describe("PrivateSaleDealDeskService act", () => {
       ok: false,
       error: "deal_not_found",
     });
+  });
+});
+
+describe("the staff desk: locked terms and versions", () => {
+  it.each([
+    ["priceMinor", MANAGER, { priceMinor: 1 }],
+    ["costsMinor", MANAGER, { costsMinor: 1 }],
+    ["partiesDisclosed", MANAGER, { partiesDisclosed: true }],
+    ["buyerFeeBps", FINANCE, { buyerFeeBps: 100 }],
+    ["sellerCommissionBps", FINANCE, { sellerCommissionBps: 100 }],
+  ] as const)("refuses a change to %s once the price is agreed", async (field, viewer, terms) => {
+    const { desk, updateTerms } = setup({ deal: stageDeal("agreed") });
+    expect(await desk.updateTerms(viewer, "PS-0001", { version: 4, terms })).toEqual({
+      ok: false,
+      error: "term_locked",
+      fields: [field],
+    });
+    expect(updateTerms).not.toHaveBeenCalled();
+  });
+
+  it("still lets finance choose the VAT treatment after agreement", async () => {
+    const { desk } = setup({ deal: stageDeal("agreed", { vatTreatment: null }) });
+    const result = await desk.updateTerms(FINANCE, "PS-0001", {
+      version: 4,
+      terms: { vatTreatment: "margin_scheme" },
+    });
+    expect(result.ok).toBe(true);
+  });
+
+  it.each(["open_offer", "agree", "clear", "cancel"] as const)(
+    "refuses %s made against an older version, and changes nothing",
+    async (action) => {
+      const { real, applyStageChange, reversal } = setup();
+      expect(await real.act(MANAGER, "PS-0001", action, { version: 3, reason: "x" })).toEqual({
+        ok: false,
+        error: "stale_version",
+        currentVersion: 4,
+      });
+      expect(applyStageChange).not.toHaveBeenCalled();
+      expect(reversal.cancel).not.toHaveBeenCalled();
+    },
+  );
+
+  it("refuses an invoice and a refund made against an older version", async () => {
+    const { real, invoices, reversal } = setup({ deal: stageDeal("cleared") });
+    expect(await real.act(FINANCE, "PS-0001", "issue_invoice", { version: 1 })).toMatchObject({
+      error: "stale_version",
+    });
+    expect(await real.act(FINANCE, "PS-0001", "refund", { version: 1 })).toMatchObject({
+      error: "stale_version",
+    });
+    expect(invoices.issue).not.toHaveBeenCalled();
+    expect(reversal.refund).not.toHaveBeenCalled();
+  });
+
+  it("cannot invoice while the commission rate is not configured in policy, even if typed on the deal", async () => {
+    const { desk, currentDeal } = setup({
+      deal: stageDeal("cleared", { vatTreatment: "margin_scheme", agreedByUserId: "u-other" }),
+      policy: resolvePrivateSalePolicy({
+        vatTreatments: [{ code: "margin_scheme", label: "Margin scheme" }],
+        termsVersion: "v1",
+        paymentDueDays: 7,
+      }),
+    });
+    const result = await desk.act(FINANCE, "PS-0001", "issue_invoice", {});
+    expect(result.ok === false && result.blockers?.map((b) => b.code)).toContain(
+      "commission_rate_not_configured",
+    );
+    expect(currentDeal().stage).toBe("cleared");
+  });
+});
+
+describe("the staff desk: who sees which deal", () => {
+  const SPECIALIST = staff({ manage: true }, "u-spec", {
+    scope: { kind: "owned", userId: "u-spec" },
+  });
+  const FULFILMENT = staff({ release: true }, "u-ful", {
+    checks: false,
+    scope: { kind: "stages", stages: ["paid"] },
+  });
+  const FINANCE_ONLY = staff({ finance: true }, "u-fin", { checks: false });
+
+  it("shows a specialist only the deals they own, and answers not found for any other", async () => {
+    const { desk, real } = setup({ deal: stageDeal("offer", { ownerUserId: "u-other" }) });
+    expect(await desk.detail(SPECIALIST, "PS-0001")).toBeNull();
+    expect(await desk.detail(MANAGER, "PS-0001")).not.toBeNull();
+    const own = setup({ deal: stageDeal("offer", { ownerUserId: "u-spec" }) });
+    expect(await own.desk.detail(SPECIALIST, "PS-0001")).not.toBeNull();
+    expect(real).toBeDefined();
+  });
+
+  it("does not let a specialist act on, or change, a deal that is not theirs", async () => {
+    const { real, updateTerms, applyStageChange } = setup({
+      deal: stageDeal("offer", { ownerUserId: "u-other" }),
+    });
+    expect(await real.act(SPECIALIST, "PS-0001", "cancel", { version: 4, reason: "x" })).toEqual({
+      ok: false,
+      error: "deal_not_found",
+    });
+    expect(
+      await real.updateTerms(SPECIALIST, "PS-0001", { version: 4, terms: { costsMinor: 1 } }),
+    ).toEqual({ ok: false, error: "deal_not_found" });
+    expect(await real.nameBuyer(SPECIALIST, "PS-0001", { version: 4, buyerUserId: "u" })).toEqual({
+      ok: false,
+      error: "deal_not_found",
+    });
+    expect(updateTerms).not.toHaveBeenCalled();
+    expect(applyStageChange).not.toHaveBeenCalled();
+  });
+
+  it("shows fulfilment only deals that are paid and ready to release", async () => {
+    expect(
+      await setup({ deal: stageDeal("invoiced") }).desk.detail(FULFILMENT, "PS-0001"),
+    ).toBeNull();
+    expect(
+      await setup({ deal: stageDeal("paid") }).desk.detail(FULFILMENT, "PS-0001"),
+    ).not.toBeNull();
+  });
+
+  it("gives fulfilment and finance the record without the screening or source-of-funds sections", async () => {
+    for (const viewer of [FULFILMENT, FINANCE_ONLY]) {
+      const { desk } = setup({
+        deal: stageDeal("paid"),
+        clearance: { ...CLEAR, seller: { kyc: "clear", aml: "review" } },
+      });
+      const record = await desk.detail(viewer, "PS-0001");
+      expect(record?.sourceOfFunds).toBeNull();
+      expect(record?.seller).toMatchObject({ kyc: null, aml: null });
+      expect(record?.buyer).toMatchObject({ kyc: null, aml: null });
+    }
+    const full = await setup({ deal: stageDeal("paid") }).desk.detail(MANAGER, "PS-0001");
+    expect(full?.sourceOfFunds).not.toBeNull();
+    expect(full?.seller.kyc).toBe("clear");
+  });
+
+  it("tells finance a deal is waiting on checks without saying which", async () => {
+    const { desk } = setup({
+      deal: stageDeal("cleared", { vatTreatment: "margin_scheme", agreedByUserId: "u-other" }),
+      clearance: {
+        ...CLEAR,
+        buyer: { kyc: "pending", aml: "review" },
+        buyerSourceOfFunds: "pending",
+      },
+    });
+    const record = await desk.detail(FINANCE_ONLY, "PS-0001");
+    const invoice = record?.actions.find((a) => a.action === "issue_invoice");
+    expect(invoice?.blockers.map((b) => b.code)).toEqual(["checks_pending"]);
+    const result = await desk.act(FINANCE_ONLY, "PS-0001", "issue_invoice", {});
+    expect(result.ok === false && result.blockers?.map((b) => b.code)).toEqual(["checks_pending"]);
   });
 });

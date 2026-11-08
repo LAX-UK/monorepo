@@ -10,6 +10,7 @@ import {
   termsAcceptance,
 } from "@auction/domain";
 import type {
+  ILegalEntityMembershipReader,
   IPrivateSaleDealQueryReader,
   IPrivateSaleDealReader,
   IPrivateSaleDocumentWriter,
@@ -33,6 +34,7 @@ export type DealPartiesDeps = {
   queries: Pick<IPrivateSaleDealQueryReader, "listIdsForActingUser" | "findWorkSummary">;
   clearance: DealClearancePort;
   policy: PrivateSalePolicy;
+  memberships: Pick<ILegalEntityMembershipReader, "findActiveMembership" | "ensurePersonalEntity">;
   payments: Pick<DealPaymentService, "start">;
   events: IDomainEventSink;
   now?: () => Date;
@@ -55,7 +57,7 @@ export class PrivateSaleDealPartyService implements IPrivateSaleDealParties {
     const deals = await Promise.all(ids.map((id) => this.deps.deals.findById(id)));
     const rows: PartyDealRow[] = [];
     for (const deal of deals) {
-      const role = deal ? roleOf(deal, userId) : null;
+      const role = deal ? await this.roleOf(deal, userId) : null;
       if (!deal || !role) continue;
       const view = projectDealForParty(deal, role);
       if (!view) continue;
@@ -84,7 +86,7 @@ export class PrivateSaleDealPartyService implements IPrivateSaleDealParties {
 
   async acceptTerms(userId: string, ref: string): Promise<AcceptTermsResult> {
     const deal = await this.deps.deals.findByReference(ref);
-    const role = deal ? roleOf(deal, userId) : null;
+    const role = deal ? await this.roleOf(deal, userId) : null;
     if (!deal || !role) return { ok: false, error: "deal_not_found" };
     const { termsVersion } = this.deps.policy;
     if (termsVersion === null) return { ok: false, error: "terms_not_configured" };
@@ -118,7 +120,8 @@ export class PrivateSaleDealPartyService implements IPrivateSaleDealParties {
   async pay(userId: string, ref: string): Promise<PayDealResult> {
     const deal = await this.deps.deals.findByReference(ref);
     // Only the buyer pays; the seller, and anyone else, learns nothing about the deal.
-    if (!deal || roleOf(deal, userId) !== "buyer") return { ok: false, error: "deal_not_found" };
+    if (!deal || (await this.roleOf(deal, userId)) !== "buyer")
+      return { ok: false, error: "deal_not_found" };
     const result = await this.deps.payments.start({ dealId: deal.id, payerUserId: userId });
     if (result.ok) {
       return {
@@ -142,11 +145,41 @@ export class PrivateSaleDealPartyService implements IPrivateSaleDealParties {
     }
   }
 
+  /**
+   * Which side of the deal the person is on: the one they are named to act for, and only while they
+   * still have a place in that account. Someone who has left the organisation has no deal here.
+   */
+  private async roleOf(
+    deal: PrivateSaleDealDetail,
+    userId: string,
+  ): Promise<PrivateSalePartyRole | null> {
+    const sides = [
+      ["buyer", deal.buyer],
+      ["seller", deal.seller],
+    ] as const;
+    for (const [role, party] of sides) {
+      if (party?.actingUserId === userId && (await this.isMember(userId, party.legalEntityId))) {
+        return role;
+      }
+    }
+    return null;
+  }
+
+  private async isMember(userId: string, legalEntityId: string): Promise<boolean> {
+    const { memberships } = this.deps;
+    if (await memberships.findActiveMembership(userId, legalEntityId)) return true;
+    try {
+      return (await memberships.ensurePersonalEntity(userId)).id === legalEntityId;
+    } catch {
+      return false;
+    }
+  }
+
   private async detailOf(
     deal: PrivateSaleDealDetail,
     userId: string,
   ): Promise<PartyDealDetail | null> {
-    const role = roleOf(deal, userId);
+    const role = await this.roleOf(deal, userId);
     const view = role ? projectDealForParty(deal, role) : null;
     if (!role || !view) return null;
     const [work, { need, buyerClear }] = await Promise.all([
@@ -205,10 +238,4 @@ export class PrivateSaleDealPartyService implements IPrivateSaleDealParties {
     if (role === "buyer" && deal.stage === "invoiced") return { need: "pay", buyerClear };
     return { need: null, buyerClear };
   }
-}
-
-function roleOf(deal: PrivateSaleDealDetail, userId: string): PrivateSalePartyRole | null {
-  if (deal.buyer?.actingUserId === userId) return "buyer";
-  if (deal.seller.actingUserId === userId) return "seller";
-  return null;
 }

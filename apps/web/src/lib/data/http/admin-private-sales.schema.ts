@@ -93,11 +93,14 @@ export const dealRecordSchema = z.object({
   money: moneySchema.nullable(),
   seller: partySchema,
   buyer: partySchema.nullable(),
-  sourceOfFunds: z.object({
-    status: z.enum(["approved", "pending", "declined", "not_requested"]),
-    required: z.boolean(),
-    thresholdMinor: z.number(),
-  }),
+  /** `null` for people who may not see how the checks stand. */
+  sourceOfFunds: z
+    .object({
+      status: z.enum(["approved", "pending", "declined", "not_requested"]),
+      required: z.boolean(),
+      thresholdMinor: z.number(),
+    })
+    .nullable(),
   documents: z.array(
     z.object({
       id: z.string(),

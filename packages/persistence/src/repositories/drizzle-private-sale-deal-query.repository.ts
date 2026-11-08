@@ -5,9 +5,9 @@ import {
   privateSaleDeal,
   privateSaleDealParty,
 } from "@auction/db/schema";
-import { consignmentReference, dealViewCriteria } from "@auction/domain";
+import { type DealScope, consignmentReference, dealViewCriteria } from "@auction/domain";
 import type { PrivateSaleDealStage } from "@auction/types";
-import { type SQL, and, asc, desc, eq, inArray, sql } from "drizzle-orm";
+import { type SQL, and, asc, desc, eq, inArray, notInArray, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import type {
   DealWork,
@@ -24,6 +24,13 @@ const buyer = alias(privateSaleDealParty, "deal_buyer");
 const sellerEntity = alias(legalEntity, "deal_seller_entity");
 const buyerEntity = alias(legalEntity, "deal_buyer_entity");
 
+/** What a person's scope allows, as conditions on the deal. */
+function scopeConditions(scope: DealScope): SQL[] {
+  if (scope.kind === "all") return [];
+  if (scope.kind === "owned") return [eq(privateSaleDeal.ownerUserId, scope.userId)];
+  return [inArray(privateSaleDeal.stage, [...scope.stages])];
+}
+
 /** The deal lists staff work from, and the deals a person is named to act in. */
 export class DrizzlePrivateSaleDealQueryRepository implements IPrivateSaleDealQueryReader {
   constructor(private readonly db: Database) {}
@@ -35,6 +42,7 @@ export class DrizzlePrivateSaleDealQueryRepository implements IPrivateSaleDealQu
     if (criteria.stages) {
       conditions.push(inArray(privateSaleDeal.stage, [...criteria.stages]));
     }
+    conditions.push(...scopeConditions(filter.scope));
     if (criteria.ownedByViewer) {
       conditions.push(eq(privateSaleDeal.ownerUserId, filter.viewerUserId));
     }
@@ -83,7 +91,21 @@ export class DrizzlePrivateSaleDealQueryRepository implements IPrivateSaleDealQu
     }));
   }
 
-  async countByStage(viewerUserId: string): Promise<PrivateSaleDealStageCount[]> {
+  async hasOpenDealForWork(itemSubmissionId: string): Promise<boolean> {
+    const [row] = await this.db
+      .select({ id: privateSaleDeal.id })
+      .from(privateSaleDeal)
+      .where(
+        and(
+          eq(privateSaleDeal.itemSubmissionId, itemSubmissionId),
+          notInArray(privateSaleDeal.stage, ["cancelled", "settled"]),
+        ),
+      )
+      .limit(1);
+    return row !== undefined;
+  }
+
+  async countByStage(viewerUserId: string, scope: DealScope): Promise<PrivateSaleDealStageCount[]> {
     const rows = await this.db
       .select({
         stage: privateSaleDeal.stage,
@@ -91,6 +113,7 @@ export class DrizzlePrivateSaleDealQueryRepository implements IPrivateSaleDealQu
         ownedByViewer: sql<number>`count(*) filter (where ${privateSaleDeal.ownerUserId} = ${viewerUserId})::int`,
       })
       .from(privateSaleDeal)
+      .where(and(...scopeConditions(scope)))
       .groupBy(privateSaleDeal.stage);
     return rows.map((row) => ({ ...row, stage: row.stage as PrivateSaleDealStage }));
   }
@@ -166,5 +189,7 @@ function toWork(row: typeof itemSubmission.$inferSelect): DealWork {
     legalEntityId: row.legalEntityId,
     submittedByUserId: row.submittedByUserId,
     title: row.title,
+    status: row.status,
+    convertedLotId: row.convertedLotId,
   };
 }

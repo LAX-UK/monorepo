@@ -1,4 +1,4 @@
-import type { DealTermField } from "@auction/domain";
+import { type DealScope, type DealTermField, dealInScope } from "@auction/domain";
 import type { AdminDealTerms, StaffDealAction } from "@auction/validators";
 
 /**
@@ -17,7 +17,17 @@ export type DealStaffAbilities = {
 
 export type DealAbility = keyof DealStaffAbilities;
 
-export type DealStaffViewer = { userId: string; abilities: DealStaffAbilities };
+export type DealStaffViewer = {
+  userId: string;
+  abilities: DealStaffAbilities;
+  /**
+   * May see how the parties' identity, screening and source of funds stand. Only those who run
+   * the deal or decide the checks; finance and fulfilment work without them.
+   */
+  checks: boolean;
+  /** Which deals the person may see and act on at all. */
+  scope: DealScope;
+};
 
 export const ACTION_ABILITY: Readonly<Record<StaffDealAction, DealAbility>> = {
   open_offer: "manage",
@@ -48,3 +58,9 @@ export const TERM_RULES: Readonly<Record<keyof AdminDealTerms, TermRule>> = {
 
 export const canDo = (viewer: DealStaffViewer, ability: DealAbility): boolean =>
   viewer.abilities[ability];
+
+/** Whether the deal is one this person may see and act on. */
+export const canSeeDeal = (
+  viewer: DealStaffViewer,
+  deal: { stage: Parameters<typeof dealInScope>[0]["stage"]; ownerUserId: string | null },
+): boolean => dealInScope(deal, viewer.scope);

@@ -1,5 +1,5 @@
 import type { IUserRepository } from "@auction/persistence/interfaces";
-import type { DealActorNames } from "./deal-desk.service.js";
+import type { DealActorNames } from "./deal-query.service.js";
 
 /** Names staff for a deal's timeline from the user records. */
 export class UserRepositoryActorNames implements DealActorNames {

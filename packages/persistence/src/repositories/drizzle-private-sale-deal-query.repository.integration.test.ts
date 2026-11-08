@@ -69,6 +69,20 @@ describe.skipIf(!HAS_DB)("private sale deal lists and works (integration)", () =
     }
   }
 
+  /** A fresh work: only one live deal may exist for each. */
+  const work = async (db: Database): Promise<string> => {
+    const [row] = await db
+      .insert(itemSubmission)
+      .values({
+        legalEntityId: sellerEntityId,
+        title: "Another work",
+        status: "draft",
+        submittedByUserId: sellerUserId,
+      })
+      .returning({ id: itemSubmission.id });
+    return row?.id as string;
+  };
+
   const newDeal = (
     submissionId: string,
     extra: Partial<{ ownerUserId: string; buyer: boolean }> = {},
@@ -90,21 +104,26 @@ describe.skipIf(!HAS_DB)("private sale deal lists and works (integration)", () =
       .where(eq(privateSaleDeal.id, id));
 
   it("lists each view with the work, both sides and the price, and counts them", async () => {
-    await inRollback(async (db, submissionId) => {
+    await inRollback(async (db) => {
       const deals = new DrizzlePrivateSaleDealRepository(db);
       const queries = new DrizzlePrivateSaleDealQueryRepository(db);
-      const proposed = await deals.create(newDeal(submissionId));
+      const proposed = await deals.create(newDeal(await work(db)));
       const offered = await deals.create(
-        newDeal(submissionId, { buyer: true, ownerUserId: otherStaffId }),
+        newDeal(await work(db), { buyer: true, ownerUserId: otherStaffId }),
       );
       await setStage(db, offered.id, "offer", { priceMinor: 4_800_000 });
-      const cancelled = await deals.create(newDeal(submissionId));
+      const cancelled = await deals.create(newDeal(await work(db)));
       await setStage(db, cancelled.id, "cancelled", {
         cancelReason: "Seller withdrew",
         cancelledAt: new Date(),
       });
 
-      const active = await queries.list({ view: "active", viewerUserId: staffId, limit: 100 });
+      const active = await queries.list({
+        view: "active",
+        viewerUserId: staffId,
+        scope: { kind: "all" },
+        limit: 100,
+      });
       const ours = active.filter((row) => [proposed.id, offered.id].includes(row.id));
       expect(ours.map((row) => row.id).sort()).toEqual([proposed.id, offered.id].sort());
       expect(ours.find((row) => row.id === offered.id)).toMatchObject({
@@ -119,19 +138,34 @@ describe.skipIf(!HAS_DB)("private sale deal lists and works (integration)", () =
       });
       expect(ours.find((row) => row.id === proposed.id)?.buyerName).toBeNull();
 
-      const mine = await queries.list({ view: "needs_me", viewerUserId: staffId, limit: 100 });
+      const mine = await queries.list({
+        view: "needs_me",
+        viewerUserId: staffId,
+        scope: { kind: "all" },
+        limit: 100,
+      });
       expect(mine.map((row) => row.id)).toContain(proposed.id);
       expect(mine.map((row) => row.id)).not.toContain(offered.id);
 
-      const closed = await queries.list({ view: "cancelled", viewerUserId: staffId, limit: 100 });
+      const closed = await queries.list({
+        view: "cancelled",
+        viewerUserId: staffId,
+        scope: { kind: "all" },
+        limit: 100,
+      });
       expect(closed.map((row) => row.id)).toContain(cancelled.id);
       expect(
-        (await queries.list({ view: "active", viewerUserId: staffId, limit: 100 })).map(
-          (r) => r.id,
-        ),
+        (
+          await queries.list({
+            view: "active",
+            viewerUserId: staffId,
+            scope: { kind: "all" },
+            limit: 100,
+          })
+        ).map((r) => r.id),
       ).not.toContain(cancelled.id);
 
-      const counts = await queries.countByStage(staffId);
+      const counts = await queries.countByStage(staffId, { kind: "all" });
       const of = (stage: string) => counts.find((c) => c.stage === stage);
       expect(of("proposed")?.total).toBeGreaterThanOrEqual(1);
       expect(of("proposed")?.ownedByViewer).toBeGreaterThanOrEqual(1);
@@ -141,11 +175,11 @@ describe.skipIf(!HAS_DB)("private sale deal lists and works (integration)", () =
   });
 
   it("pages in the view's order without repeating or skipping a deal", async () => {
-    await inRollback(async (db, submissionId) => {
+    await inRollback(async (db) => {
       const deals = new DrizzlePrivateSaleDealRepository(db);
       const queries = new DrizzlePrivateSaleDealQueryRepository(db);
       const created = [];
-      for (let i = 0; i < 5; i += 1) created.push(await deals.create(newDeal(submissionId)));
+      for (let i = 0; i < 5; i += 1) created.push(await deals.create(newDeal(await work(db))));
       // Three deals changed in the same millisecond must still page in a stable order.
       const same = new Date("2026-10-02T09:00:00.123Z");
       await db
@@ -165,7 +199,13 @@ describe.skipIf(!HAS_DB)("private sale deal lists and works (integration)", () =
       const seen: string[] = [];
       let after: { updatedAt: Date; id: string } | null = null;
       for (let guard = 0; guard < 100; guard += 1) {
-        const page = await queries.list({ view: "all", viewerUserId: staffId, after, limit: 2 });
+        const page = await queries.list({
+          view: "all",
+          viewerUserId: staffId,
+          scope: { kind: "all" },
+          after,
+          limit: 2,
+        });
         const rows = page.slice(0, 2);
         seen.push(...rows.map((row) => row.id));
         const last = rows.at(-1);
@@ -177,12 +217,71 @@ describe.skipIf(!HAS_DB)("private sale deal lists and works (integration)", () =
     });
   });
 
-  it("lists the deals a person is named to act in, on either side", async () => {
+  it("cuts the list and the counts to the viewer's scope", async () => {
+    await inRollback(async (db) => {
+      const deals = new DrizzlePrivateSaleDealRepository(db);
+      const queries = new DrizzlePrivateSaleDealQueryRepository(db);
+      const mine = await deals.create(newDeal(await work(db), { ownerUserId: staffId }));
+      const theirs = await deals.create(newDeal(await work(db), { ownerUserId: otherStaffId }));
+      await setStage(db, theirs.id, "paid", { priceMinor: 100, agreedAt: new Date() });
+
+      const owned = await queries.list({
+        view: "all",
+        viewerUserId: staffId,
+        scope: { kind: "owned", userId: staffId },
+        limit: 100,
+      });
+      expect(owned.map((row) => row.id)).toContain(mine.id);
+      expect(owned.map((row) => row.id)).not.toContain(theirs.id);
+
+      const ready = await queries.list({
+        view: "all",
+        viewerUserId: staffId,
+        scope: { kind: "stages", stages: ["paid"] },
+        limit: 100,
+      });
+      expect(ready.map((row) => row.id)).toContain(theirs.id);
+      expect(ready.map((row) => row.id)).not.toContain(mine.id);
+
+      const counts = await queries.countByStage(staffId, { kind: "owned", userId: staffId });
+      expect(counts.find((c) => c.stage === "paid")?.total ?? 0).toBe(
+        (await queries.countByStage(staffId, { kind: "owned", userId: staffId })).find(
+          (c) => c.stage === "paid",
+        )?.total ?? 0,
+      );
+      expect(counts.every((c) => c.total === c.ownedByViewer)).toBe(true);
+    });
+  });
+
+  it("allows one live deal per work, and a new one once the first is cancelled or settled", async () => {
     await inRollback(async (db, submissionId) => {
       const deals = new DrizzlePrivateSaleDealRepository(db);
       const queries = new DrizzlePrivateSaleDealQueryRepository(db);
-      const sellerOnly = await deals.create(newDeal(submissionId));
-      const both = await deals.create(newDeal(submissionId, { buyer: true }));
+      expect(await queries.hasOpenDealForWork(submissionId)).toBe(false);
+      const first = await deals.create(newDeal(submissionId));
+      expect(await queries.hasOpenDealForWork(submissionId)).toBe(true);
+
+      // The database refuses a second live deal for the same work, even if the check was raced.
+      await expect(deals.create(newDeal(submissionId))).rejects.toMatchObject({
+        message: expect.stringMatching(/private_sale_deal_one_open_per_work_uidx|duplicate key/),
+      });
+
+      await setStage(db, first.id, "cancelled", {
+        cancelReason: "Seller withdrew",
+        cancelledAt: new Date(),
+      });
+      expect(await queries.hasOpenDealForWork(submissionId)).toBe(false);
+      const second = await deals.create(newDeal(submissionId));
+      expect(second.id).not.toBe(first.id);
+    });
+  });
+
+  it("lists the deals a person is named to act in, on either side", async () => {
+    await inRollback(async (db) => {
+      const deals = new DrizzlePrivateSaleDealRepository(db);
+      const queries = new DrizzlePrivateSaleDealQueryRepository(db);
+      const sellerOnly = await deals.create(newDeal(await work(db)));
+      const both = await deals.create(newDeal(await work(db), { buyer: true }));
       expect(new Set(await queries.listIdsForActingUser(sellerUserId, 10))).toEqual(
         new Set([sellerOnly.id, both.id]),
       );

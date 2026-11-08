@@ -44,7 +44,7 @@ beforeEach(() => {
 describe("dealMoveAction", () => {
   it("makes the move on the deal and returns the fresh record", async () => {
     fetchMock.mockResolvedValue(json({ data: dealRecord({ stage: "agreed" }) }));
-    const result = await dealMoveAction("PS-0012", "agree", {});
+    const result = await dealMoveAction("PS-0012", "agree", { version: 4 });
     expect(result.ok && result.data?.stage).toBe("agreed");
     expect(sent().path).toBe("/admin/private-sales/PS-0012/actions/agree");
     expect(sent().init.method).toBe("POST");
@@ -52,16 +52,19 @@ describe("dealMoveAction", () => {
 
   it("sends the dialog's idempotency key with a move that takes money, and not with one that does not", async () => {
     fetchMock.mockImplementation(async () => json({ data: dealRecord() }));
-    await dealMoveAction("PS-0012", "issue_invoice", { idempotencyKey: "key-for-this-dialog" });
+    await dealMoveAction("PS-0012", "issue_invoice", {
+      version: 4,
+      idempotencyKey: "key-for-this-dialog",
+    });
     expect(sent().init.headers["Idempotency-Key"]).toBe("key-for-this-dialog");
     fetchMock.mockClear();
-    await dealMoveAction("PS-0012", "agree", { idempotencyKey: "key-for-this-dialog" });
+    await dealMoveAction("PS-0012", "agree", { version: 4, idempotencyKey: "key-for-this-dialog" });
     expect(sent().init.headers["Idempotency-Key"]).toBeUndefined();
   });
 
   it("makes a key when the dialog supplied none or a poor one", async () => {
     fetchMock.mockImplementation(async () => json({ data: dealRecord() }));
-    await dealMoveAction("PS-0012", "refund", { idempotencyKey: "x" });
+    await dealMoveAction("PS-0012", "refund", { version: 4, idempotencyKey: "x" });
     expect(sent().init.headers["Idempotency-Key"]).toMatch(/.{8,}/);
   });
 
@@ -70,7 +73,7 @@ describe("dealMoveAction", () => {
       { code: "kyc_not_clear", message: "The buyer has not verified their identity yet." },
     ];
     fetchMock.mockResolvedValue(json({ error: "blocked", blockers }, 422));
-    const result = await dealMoveAction("PS-0012", "agree", {});
+    const result = await dealMoveAction("PS-0012", "agree", { version: 4 });
     expect(result).toMatchObject({
       ok: false,
       errorCode: "blocked",
@@ -82,7 +85,7 @@ describe("dealMoveAction", () => {
   it("turns a stale sign-in into the step-up code", async () => {
     stepUpMock.mockResolvedValue(true);
     fetchMock.mockResolvedValue(json({ code: "step_up_required" }, 403));
-    expect(await dealMoveAction("PS-0012", "refund", {})).toMatchObject({
+    expect(await dealMoveAction("PS-0012", "refund", { version: 4 })).toMatchObject({
       ok: false,
       errorCode: "step_up_required",
     });
@@ -90,17 +93,23 @@ describe("dealMoveAction", () => {
 
   it("does not call the API for someone without the capability, or for a bad reference", async () => {
     denyMock.mockResolvedValue({ ok: false, error: "no", status: 403 });
-    expect(await dealMoveAction("PS-0012", "agree", {})).toMatchObject({ ok: false, status: 403 });
+    expect(await dealMoveAction("PS-0012", "agree", { version: 4 })).toMatchObject({
+      ok: false,
+      status: 403,
+    });
     denyMock.mockResolvedValue(null);
-    expect(await dealMoveAction("nope", "agree", {})).toMatchObject({ ok: false, status: 400 });
+    expect(await dealMoveAction("nope", "agree", { version: 4 })).toMatchObject({
+      ok: false,
+      status: 400,
+    });
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("asks the right capability for each move", async () => {
     fetchMock.mockImplementation(async () => json({ data: dealRecord() }));
-    await dealMoveAction("PS-0012", "issue_invoice", {});
-    await dealMoveAction("PS-0012", "release", {});
-    await dealMoveAction("PS-0012", "cancel", { reason: "x" });
+    await dealMoveAction("PS-0012", "issue_invoice", { version: 4 });
+    await dealMoveAction("PS-0012", "release", { version: 4 });
+    await dealMoveAction("PS-0012", "cancel", { version: 4, reason: "x" });
     const required = denyMock.mock.calls.map((c) => JSON.stringify(c[0]));
     expect(required[0]).toContain("finance.platform.write");
     expect(required[1]).toContain("operations.fulfilment");
@@ -109,7 +118,7 @@ describe("dealMoveAction", () => {
 
   it("says nothing was changed when the API does not answer", async () => {
     fetchMock.mockRejectedValue(new Error("down"));
-    expect(await dealMoveAction("PS-0012", "agree", {})).toMatchObject({
+    expect(await dealMoveAction("PS-0012", "agree", { version: 4 })).toMatchObject({
       ok: false,
       status: 503,
       error: expect.stringContaining("Nothing was changed"),

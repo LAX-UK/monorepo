@@ -251,9 +251,12 @@ const PAYMENT_STATUS: Record<string, string> = {
   cancelled: "Cancelled",
 };
 
+/** Whether this person may see how the checks stand; finance and fulfilment work without them. */
+export const checksVisible = (deal: DealRecord): boolean => deal.sourceOfFunds !== null;
+
 function PartyChecks({ party, deal }: { party: DealParty; deal: DealRecord }) {
   const sof = deal.sourceOfFunds;
-  const items: KeyValueItem[] = [
+  const checkItems: KeyValueItem[] = [
     {
       label: "Identity",
       value: party.kyc ? (
@@ -270,6 +273,9 @@ function PartyChecks({ party, deal }: { party: DealParty; deal: DealRecord }) {
         <span className="text-staff-muted">No account to check</span>
       ),
     },
+  ];
+  const items: KeyValueItem[] = [
+    ...(sof ? checkItems : []),
     {
       label: "Terms",
       value: deal.policy.termsVersion ? (
@@ -283,7 +289,7 @@ function PartyChecks({ party, deal }: { party: DealParty; deal: DealRecord }) {
       ),
     },
   ];
-  if (party.role === "buyer") {
+  if (party.role === "buyer" && sof) {
     items.push({
       label: "Source of funds",
       value: sof.required ? (
@@ -303,19 +309,21 @@ export function PartiesSection({ deal }: { deal: DealRecord }) {
   return (
     <Section
       id="parties"
-      title="Parties and checks"
+      title={checksVisible(deal) ? "Parties and checks" : "Parties"}
       description={
-        <>
-          Read from the existing records. Compliance decides them, in{" "}
-          <TextLink href="/admin/compliance/aml" Link={Link}>
-            AML screening
-          </TextLink>{" "}
-          and{" "}
-          <TextLink href="/admin/compliance/source-of-funds" Link={Link}>
-            Source of funds
-          </TextLink>
-          .
-        </>
+        checksVisible(deal) ? (
+          <>
+            Read from the existing records. Compliance decides them, in{" "}
+            <TextLink href="/admin/compliance/aml" Link={Link}>
+              AML screening
+            </TextLink>{" "}
+            and{" "}
+            <TextLink href="/admin/compliance/source-of-funds" Link={Link}>
+              Source of funds
+            </TextLink>
+            .
+          </>
+        ) : undefined
       }
     >
       <div className="flex flex-col gap-5">

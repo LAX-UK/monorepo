@@ -264,6 +264,29 @@ describe("DealView: terms and buyer", () => {
   });
 });
 
+describe("DealView: people who work without the checks", () => {
+  it("shows the parties and their terms, and no identity, screening or source-of-funds rows", () => {
+    renderView(
+      dealRecord({
+        sourceOfFunds: null,
+        seller: { ...dealRecord().seller, kyc: null, aml: null },
+        buyer: {
+          ...(dealRecord().buyer as NonNullable<ReturnType<typeof dealRecord>["buyer"]>),
+          kyc: null,
+          aml: null,
+        },
+      }),
+    );
+    const parties = screen.getByRole("region", { name: "Parties" });
+    expect(within(parties).getAllByText("Terms")).toHaveLength(2);
+    for (const label of ["Identity", "Screening", "Source of funds"]) {
+      expect(within(parties).queryByText(label)).toBeNull();
+    }
+    expect(within(parties).queryByRole("link", { name: "AML screening" })).toBeNull();
+    expect(screen.queryByRole("region", { name: "Parties and checks" })).toBeNull();
+  });
+});
+
 describe("DealView: people who cannot act", () => {
   it("is view only, with no buttons that would be refused", () => {
     renderView(dealRecord({ actions: [], editableTerms: [], canNameBuyer: false }));

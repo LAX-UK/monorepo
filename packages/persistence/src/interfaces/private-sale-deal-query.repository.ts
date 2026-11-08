@@ -1,5 +1,5 @@
 import type { Database } from "@auction/db";
-import type { DealView } from "@auction/domain";
+import type { DealScope, DealView } from "@auction/domain";
 import type { PrivateSaleDealStage } from "@auction/types";
 
 /** One deal as a list row: enough to find it and see what it waits for. */
@@ -24,6 +24,8 @@ export type PrivateSaleDealListRow = {
 export type PrivateSaleDealListFilter = {
   view: DealView;
   viewerUserId: string;
+  /** The deals the viewer may see at all. */
+  scope: DealScope;
   /** Continue after this row, in the view's order. */
   after?: { updatedAt: Date; id: string } | null | undefined;
   limit: number;
@@ -40,7 +42,9 @@ export type PrivateSaleDealStageCount = {
 export interface IPrivateSaleDealQueryReader {
   /** One page of a view. Returns up to `limit + 1` rows so the caller can tell whether more follow. */
   list(filter: PrivateSaleDealListFilter): Promise<PrivateSaleDealListRow[]>;
-  countByStage(viewerUserId: string): Promise<PrivateSaleDealStageCount[]>;
+  countByStage(viewerUserId: string, scope: DealScope): Promise<PrivateSaleDealStageCount[]>;
+  /** Whether a work is already in a deal that is neither cancelled nor settled. */
+  hasOpenDealForWork(itemSubmissionId: string): Promise<boolean>;
   /** Deals a person is named to act in, most recently changed first. */
   listIdsForActingUser(userId: string, limit: number): Promise<string[]>;
   /** The title and consignment reference of a work, for a deal's record. */
@@ -58,6 +62,10 @@ export type DealWork = {
   /** The member who sent the work in, who acts for the seller on the deal. */
   submittedByUserId: string | null;
   title: string;
+  /** The consignment's state. Only an approved work can be sold privately. */
+  status: string;
+  /** The lot the work became, once it has one. */
+  convertedLotId: string | null;
 };
 
 export type NewDealWork = {

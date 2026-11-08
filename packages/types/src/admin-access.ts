@@ -390,6 +390,29 @@ export const PRIVATE_SALE_DEALS_READ_ACCESS: CapabilityRequirement = {
 };
 
 /**
+ * See every private sale deal. A specialist holds the same management capability but sees only the
+ * deals they own, and fulfilment sees only the deals that are paid and waiting to be handed over.
+ */
+export const PRIVATE_SALE_DEALS_ALL_ACCESS: CapabilityRequirement = {
+  anyOf: [
+    "platform.admin.full",
+    "auction.manage",
+    "support.respond",
+    "finance.read",
+    "aml.review",
+    "compliance.mlro",
+  ],
+};
+
+/**
+ * See how a deal's parties stand on identity, screening and source of funds: those who run the deal
+ * and those who decide the checks. Finance and fulfilment work without them.
+ */
+export const PRIVATE_SALE_DEALS_CHECKS_ACCESS: CapabilityRequirement = {
+  anyOf: ["platform.admin.full", "private_sale.manage", "aml.review", "compliance.mlro"],
+};
+
+/**
  * Set a deal's VAT treatment, issue its invoice and return the buyer's money. These move money,
  * so they follow platform-wide finance write, like releasing or refunding a held payment.
  */

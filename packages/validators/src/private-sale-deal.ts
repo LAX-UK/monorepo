@@ -73,6 +73,8 @@ export type AdminDealBuyerInput = z.infer<typeof adminDealBuyerSchema>;
 
 /** A move on a deal. A reason is needed to cancel, and is ignored by the other moves. */
 export const adminDealActionSchema = z.object({
+  /** The version the person was looking at. */
+  version: z.number().int().min(1),
   reason: z.string().trim().min(1).max(1000).optional(),
 });
 export type AdminDealActionInput = z.infer<typeof adminDealActionSchema>;

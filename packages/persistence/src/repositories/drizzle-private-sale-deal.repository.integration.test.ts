@@ -124,7 +124,17 @@ describe.skipIf(!HAS_DB)("private sale deals (integration)", () => {
         newDeal(submissionId, { artworkRegisterId: registerId }),
       );
       expect(withRegister.artworkRegisterId).toBe(registerId);
-      const without = await repo.create(newDeal(submissionId));
+      // Only one live deal may exist for a work, so the second deal is for another one.
+      const [other] = await db
+        .insert(itemSubmission)
+        .values({
+          legalEntityId: sellerEntityId,
+          title: "Another work",
+          status: "draft",
+          submittedByUserId: sellerUserId,
+        })
+        .returning({ id: itemSubmission.id });
+      const without = await repo.create(newDeal(other?.id as string));
       expect(without.artworkRegisterId).toBeNull();
     });
   });

@@ -37,6 +37,18 @@ describe("migration 0323 private sale deal register link", () => {
     expect(migration).toMatch(/SET LOCAL lock_timeout = '30s'/);
   });
 
+  it("allows one live deal per work, through a partial unique index", () => {
+    expect(migration).toMatch(
+      /CREATE UNIQUE INDEX IF NOT EXISTS "private_sale_deal_one_open_per_work_uidx"[\s\S]*WHERE "stage" NOT IN \('cancelled', 'settled'\)/,
+    );
+    expect(rollback).toMatch(/DROP INDEX IF EXISTS "private_sale_deal_one_open_per_work_uidx"/);
+    const config = getTableConfig(privateSaleDeal);
+    const index = config.indexes.find(
+      (i) => i.config.name === "private_sale_deal_one_open_per_work_uidx",
+    );
+    expect(index?.config.unique).toBe(true);
+  });
+
   it("has a rollback that returns the column to text and keeps its values", () => {
     expect(rollback).toMatch(
       /DROP CONSTRAINT IF EXISTS "private_sale_deal_artwork_register_id_fk"/,
