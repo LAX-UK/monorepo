@@ -14,6 +14,7 @@ export {
 } from "./buyer-default-copy.js";
 export { renderEmail } from "./render.js";
 export {
+  MARKETING_OPT_OUT_EMAIL_TEMPLATES,
   OPTIONAL_EMAIL_TEMPLATES,
   isOptionalEmailTemplate,
   suppressionBlocksTemplate,

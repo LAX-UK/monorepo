@@ -7,6 +7,20 @@ export interface Clock {
   now(): Date;
 }
 
+/**
+ * A subscription became confirmed by the person's own act: they pressed the confirm link, or a
+ * verified account switched an email topic on. Every path that does this runs the same hook.
+ */
+export type SubscriptionConfirmed = {
+  subscriberId: string;
+  product: AlertProduct;
+  email: string;
+  /** When the person asked, by the engine's clock. */
+  at: Date;
+};
+
+export type SubscriptionConfirmedHook = (event: SubscriptionConfirmed) => Promise<void>;
+
 export interface AlertLogger {
   info(fields: Record<string, unknown>, message: string): void;
   warn(fields: Record<string, unknown>, message: string): void;
