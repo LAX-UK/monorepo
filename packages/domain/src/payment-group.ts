@@ -128,21 +128,23 @@ export type GroupRefundAttribution = {
  * reported rather than spread across invoices.
  */
 export function attributeGroupRefunds(
-  memberPaymentIds: readonly string[],
+  members: readonly { paymentId: string; amountPence: number }[],
   refunds: readonly GroupRefund[],
 ): GroupRefundAttribution {
-  const members = new Set(memberPaymentIds);
+  const capacity = new Map(members.map((m) => [m.paymentId, m.amountPence]));
   const refundedPenceByPayment = new Map<string, number>();
   let unattributedPence = 0;
   for (const refund of refunds) {
-    if (refund.paymentId && members.has(refund.paymentId)) {
-      refundedPenceByPayment.set(
-        refund.paymentId,
-        (refundedPenceByPayment.get(refund.paymentId) ?? 0) + refund.amountPence,
-      );
-    } else {
+    const room = refund.paymentId ? capacity.get(refund.paymentId) : undefined;
+    if (!refund.paymentId || room === undefined) {
       unattributedPence += refund.amountPence;
+      continue;
     }
+    // An invoice is never refunded more than it was: the excess is reported, not attributed.
+    const already = refundedPenceByPayment.get(refund.paymentId) ?? 0;
+    const placed = Math.max(0, Math.min(refund.amountPence, room - already));
+    if (placed > 0) refundedPenceByPayment.set(refund.paymentId, already + placed);
+    unattributedPence += refund.amountPence - placed;
   }
   return { refundedPenceByPayment, unattributedPence };
 }
