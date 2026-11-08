@@ -81,7 +81,7 @@ export class DrizzleKycRetentionLegalEntityStore implements IKycRetentionSubject
     `);
     if (deals.rows.length === 0) return [];
     const latest = await this.db.execute<{ latest: Date | string | null }>(sql`
-      SELECT MAX("created_at") AS latest FROM "legal_entity_document"
+      SELECT MAX(GREATEST("uploaded_at", "reviewed_at")) AS latest FROM "legal_entity_document"
       WHERE "legal_entity_id" = ${subjectId}
     `);
     const at = latest.rows[0]?.latest;
