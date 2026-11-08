@@ -32,6 +32,17 @@ describe("ResponsiveImg", () => {
     expect(onError).toHaveBeenCalledTimes(1);
   });
 
+  it("tells the page once, with the address, that it fell back", () => {
+    const onFallback = vi.fn();
+    render(
+      <ResponsiveImg src="https://cdn/a.jpg" alt="Harbour" srcSet={SET} onFallback={onFallback} />,
+    );
+    const img = screen.getByRole("img", { name: "Harbour" });
+    fireEvent.error(img);
+    fireEvent.error(img);
+    expect(onFallback).toHaveBeenCalledExactlyOnceWith("https://cdn/a.jpg");
+  });
+
   it("reports an error at once when there were no resized files", () => {
     const onError = vi.fn();
     render(<ResponsiveImg src="https://cdn/a.jpg" alt="Harbour" onError={onError} />);

@@ -2,6 +2,7 @@ import type { HomeAlertThumbnail } from "@/lib/home-sections/types";
 import { HOME_ALERTS_ANCHOR } from "@/lib/marketing-cover/cover-alerts-outcome";
 import { MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
 import { bidThumbSrcSet } from "@/lib/media/bid-image-src-set";
+import { reportImageFallback } from "@/lib/observability/report-image-fallback";
 import { MarketingSplitFeature, ResponsiveImg } from "@auction/marketing-ui";
 import type { ReactNode } from "react";
 
@@ -25,6 +26,7 @@ function Thumbnails({ items }: { items: readonly HomeAlertThumbnail[] }) {
           <ResponsiveImg
             src={item.src}
             srcSet={bidThumbSrcSet(item.src)}
+            onFallback={reportImageFallback}
             sizes="(min-width: 768px) 56px, 44px"
             alt=""
             loading="lazy"

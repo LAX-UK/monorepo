@@ -1,6 +1,7 @@
 import type { HomeCardImage, HomeComingUpLayout, HomeComingUpRow } from "@/lib/home-sections/types";
 import { FOCUS_RING } from "@/lib/marketing/chrome";
 import { bidCardSrcSet } from "@/lib/media/bid-image-src-set";
+import { reportImageFallback } from "@/lib/observability/report-image-fallback";
 import { CoverTimeLine, ResponsiveImg } from "@auction/marketing-ui";
 import { cn } from "@auction/ui";
 import { ButtonLink } from "@auction/ui/lax";
@@ -32,6 +33,7 @@ function Picture({
     <ResponsiveImg
       src={image.src}
       srcSet={bidCardSrcSet(image.src)}
+      onFallback={reportImageFallback}
       sizes={PICTURE_SIZES[variant]}
       alt=""
       loading="lazy"

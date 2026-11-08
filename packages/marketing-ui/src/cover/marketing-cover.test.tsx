@@ -413,6 +413,22 @@ describe("MarketingCover resized pictures", () => {
     expect(container.querySelector("[data-cover-mode='photo']")).toBeNull();
   });
 
+  it("tells the page, once, which picture fell back to the original", () => {
+    const onSrcSetFallback = vi.fn();
+    const { container } = render(
+      <MarketingCover
+        slides={photo().slides}
+        label="Featured sales"
+        srcSetFor={ladder}
+        onSrcSetFallback={onSrcSetFallback}
+      />,
+    );
+    fireEvent.error(container.querySelector("img") as HTMLImageElement);
+    expect(onSrcSetFallback).toHaveBeenCalledTimes(1);
+    fireEvent.error(container.querySelector("img") as HTMLImageElement);
+    expect(onSrcSetFallback).toHaveBeenCalledTimes(1);
+  });
+
   it("does the same for a plate: its own resized files first, then the original", () => {
     const slides = fixture(BID_COVER_FIXTURES, "no-cover").slides.map((slide) => ({
       ...slide,
@@ -422,11 +438,15 @@ describe("MarketingCover resized pictures", () => {
           : media,
       ),
     }));
-    const { container } = render(<MarketingCover slides={slides} label="Featured sales" />);
+    const onSrcSetFallback = vi.fn();
+    const { container } = render(
+      <MarketingCover slides={slides} label="Featured sales" onSrcSetFallback={onSrcSetFallback} />,
+    );
     const img = container.querySelector("img") as HTMLImageElement;
     expect(img.getAttribute("srcset")).toContain("640w");
     expect(img.getAttribute("sizes")).toBe("290px");
     fireEvent.error(img);
+    expect(onSrcSetFallback).toHaveBeenCalledTimes(1);
     expect(container.querySelector("img")?.hasAttribute("srcset")).toBe(false);
     expect(container.querySelector("[data-cover-mode='plate']")).not.toBeNull();
   });

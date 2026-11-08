@@ -75,21 +75,26 @@ export function CoverPhoto({
   media,
   priority,
   srcSetFor,
+  onFallback,
   onFail,
 }: {
   media: CoverPhotoMedia;
   priority: boolean;
   srcSetFor?: CoverSrcSetFor | undefined;
+  onFallback?: ((src: string) => void) | undefined;
   onFail: () => void;
 }) {
   const plan = planCoverBoxes(media);
   // A resized file the server refuses costs the picture nothing: the original is tried first.
   const [original, setOriginal] = useState(false);
   const resize = original ? undefined : srcSetFor;
+  const defaultSrc = plan.phone.slot.src;
   const fail = useCallback(() => {
-    if (resize) setOriginal(true);
-    else onFail();
-  }, [resize, onFail]);
+    if (resize) {
+      setOriginal(true);
+      onFallback?.(defaultSrc);
+    } else onFail();
+  }, [resize, onFail, onFallback, defaultSrc]);
   const { hidden, ref, onLoad } = useImageLoad(fail);
   const setOf = (box: "phone" | "desktop" | "wide") => {
     const { slot, frame } = plan[box];
@@ -130,21 +135,26 @@ export function CoverPlate({
   media,
   credit,
   priority,
+  onFallback,
   onFail,
 }: {
   media: CoverPlateMedia;
   /** The credit shown under the work from the desktop width up. */
   credit?: ReactNode;
   priority: boolean;
+  onFallback?: ((src: string) => void) | undefined;
   onFail: () => void;
 }) {
   // The resized files are tried first; if they are refused the original takes over.
   const [original, setOriginal] = useState(false);
   const resized = !original && media.srcSet;
+  const plateSrc = media.src;
   const fail = useCallback(() => {
-    if (resized) setOriginal(true);
-    else onFail();
-  }, [resized, onFail]);
+    if (resized) {
+      setOriginal(true);
+      onFallback?.(plateSrc);
+    } else onFail();
+  }, [resized, onFail, onFallback, plateSrc]);
   const { hidden, ref, onLoad } = useImageLoad(fail);
   return (
     <div

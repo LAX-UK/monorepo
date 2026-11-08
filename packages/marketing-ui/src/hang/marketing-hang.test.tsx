@@ -109,6 +109,21 @@ describe("MarketingHang", () => {
     expect(container.querySelector("img")?.getAttribute("sizes")).toBe("300px");
   });
 
+  it("tells the page when a work's resized files were refused, and keeps the work", () => {
+    const onImageFallback = vi.fn();
+    const works = makeWorks(1).map((work) => ({
+      ...work,
+      imageSrcSet: "/_next/image?url=a&w=256 256w",
+    }));
+    const { container } = render(
+      <MarketingHang title="In this sale" works={works} onImageFallback={onImageFallback} />,
+    );
+    fireEvent.error(container.querySelector("img") as HTMLImageElement);
+    expect(onImageFallback).toHaveBeenCalledExactlyOnceWith("/img/1.jpg");
+    expect(container.querySelector("img")).not.toBeNull();
+    expect(container.querySelector("img")?.hasAttribute("srcset")).toBe(false);
+  });
+
   it("names no sizes for a work with no resized files", () => {
     const { container } = render(<MarketingHang title="In this sale" works={makeWorks(1)} />);
     expect(container.querySelector("img")?.hasAttribute("sizes")).toBe(false);

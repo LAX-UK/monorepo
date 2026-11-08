@@ -302,9 +302,12 @@
   /*
    * The fixed header's height before the page's scripts measure it (they then publish the real
    * one): the 56px bar and its hairline on a phone, with the 36px LAX top bar from 1024px.
-   * A default that is off moves the whole page when the real height arrives.
+   * A default that is off moves the whole page when the real height arrives. On a notched phone
+   * the bar also clears the status area. A signed-in person's attention strip under the phone bar
+   * (below 640px) is not in this default, so the page still shifts slightly for them until the
+   * header is measured.
    */
-  --header-height: 57px;
+  --header-height: calc(57px + env(safe-area-inset-top, 0px));
   --container-max: 1440px;
   --container-inner: 1376px;
   --auth-column: 528px;
@@ -358,16 +361,10 @@
   --overlay-bg-opaque: var(--color-surface);
 }
 
+/* From 1024px the 36px LAX top bar joins the 72px row, with the hairline (matches `lg:` in site-header). */
 @media (min-width: 64rem) {
   :root {
     --header-height: 109px;
-  }
-}
-
-/* lg — utility bar + gap-4 + mega row + pt-3 pb-4 (matches `lg:` in site-header). */
-@media (min-width: 1024px) {
-  :root {
-    --header-height: 110px;
   }
 }
 

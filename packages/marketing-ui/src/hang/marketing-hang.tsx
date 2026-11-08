@@ -73,6 +73,8 @@ export type MarketingHangProps = {
   headingSize?: "compact" | "section";
   /** Keeps the heading for assistive technology only, when a tab or label already names the sale. */
   hideTitle?: boolean;
+  /** Called once per work, with its address, when its resized files were refused and the original took over. */
+  onImageFallback?: ((src: string) => void) | undefined;
   className?: string;
   /** An id and data attributes for the section, so a page or a test can find it. */
   sectionProps?: { id?: string; [attribute: `data-${string}`]: string | undefined };
@@ -143,6 +145,7 @@ export function MarketingHang({
   rowLabel = "Works on the wall, scrolls sideways",
   headingSize = "compact",
   hideTitle = false,
+  onImageFallback,
   className,
   sectionProps,
 }: MarketingHangProps) {
@@ -296,6 +299,7 @@ export function MarketingHang({
                           src={work.imageSrc}
                           srcSet={work.imageSrcSet}
                           sizes={work.imageSizes ?? workSizes(desktop, phone, i)}
+                          onFallback={onImageFallback}
                           alt={work.imageAlt ?? ""}
                           width={work.sourceWidthPx ?? undefined}
                           height={work.sourceHeightPx ?? undefined}

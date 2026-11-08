@@ -167,6 +167,7 @@ export type CoverSlideViewProps = {
   priority: boolean;
   /** Resized files for the cover's photographs, when the page can make them. */
   srcSetFor?: CoverSrcSetFor | undefined;
+  onSrcSetFallback?: ((src: string) => void) | undefined;
   onMediaFail: () => void;
   pager: { index: number; count: number; onStep: (direction: 1 | -1) => void } | null;
   group: { label: string } | null;
@@ -179,6 +180,7 @@ export function CoverSlideView({
   Link,
   priority,
   srcSetFor,
+  onSrcSetFallback,
   onMediaFail,
   pager,
   group,
@@ -254,6 +256,7 @@ export function CoverSlideView({
                 media={ground.media}
                 priority={priority}
                 srcSetFor={srcSetFor}
+                onFallback={onSrcSetFallback}
                 onFail={onMediaFail}
               />
             ) : (
@@ -261,6 +264,7 @@ export function CoverSlideView({
                 media={ground.media}
                 credit={creditNode}
                 priority={priority}
+                onFallback={onSrcSetFallback}
                 onFail={onMediaFail}
               />
             )}

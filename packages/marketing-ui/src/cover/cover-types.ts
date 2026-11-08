@@ -130,5 +130,7 @@ export type MarketingCoverProps = {
    * uploaded, however small the screen. If a resized file is refused the original is used.
    */
   srcSetFor?: CoverSrcSetFor | undefined;
+  /** Called once per picture, with its address, when resized files were refused and the original took over. */
+  onSrcSetFallback?: ((src: string) => void) | undefined;
   className?: string;
 };
