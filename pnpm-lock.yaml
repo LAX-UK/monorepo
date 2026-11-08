@@ -719,6 +719,9 @@ importers:
       '@auction/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@auction/domain':
+        specifier: workspace:*
+        version: link:../../packages/domain
       '@auction/email':
         specifier: workspace:*
         version: link:../../packages/email

@@ -1,5 +1,6 @@
 import type { LegalEntity } from "@auction/branding";
 import type { Database } from "@auction/db";
+import type { DeliveryQuoteRequestService } from "./application/delivery-quote-request/delivery-quote-request.service.js";
 import { createGuestCheckoutRateLimiters } from "./application/enquiry-rate-limit.js";
 import { createGuestCheckoutService } from "./application/guest-checkout/guest-checkout.service.js";
 import type {
@@ -22,6 +23,7 @@ export function createGuestCheckoutDeps(
   input: {
     identity: IdentityMachineClient;
     checkout: Pick<CheckoutWriter, "createCheckoutOrder" | "resumeCheckoutOrder">;
+    quotes?: Pick<DeliveryQuoteRequestService, "request">;
     orders: Pick<OrderReader, "getOrder" | "getCustomerProfile">;
     notifications: ShopNotificationPublisher;
     paymentGateway: PaymentCheckoutGateway;
@@ -43,6 +45,7 @@ export function createGuestCheckoutDeps(
       accounts: createHttpLaxAccountDirectory(input.identity),
       guests: createDrizzleGuestCustomerStore(db, { domainEventMode: input.domainEventMode }),
       checkout: input.checkout,
+      ...(input.quotes ? { quotes: input.quotes } : {}),
       links,
       rateLimiter: limiters.checkout,
     }),

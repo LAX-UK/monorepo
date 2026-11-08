@@ -4,6 +4,11 @@ import {
   isPlausibleGuestEmail,
   normaliseGuestEmail,
 } from "@auction/shop-domain";
+import type {
+  DeliveryQuoteRequestInput,
+  DeliveryQuoteRequestOutcome,
+  DeliveryQuoteRequestService,
+} from "../delivery-quote-request/delivery-quote-request.service.js";
 import type { EnquiryRateLimiter } from "../enquiry-rate-limit.js";
 import type {
   CheckoutOrderInput,
@@ -49,10 +54,32 @@ export type GuestOrderResult =
     }
   | GuestCheckoutRefusal;
 
+export type GuestQuoteRequestInput = Omit<
+  DeliveryQuoteRequestInput,
+  "subject" | "guest" | "fallbackEmail"
+> & {
+  email: string;
+  name: string;
+  marketingConsent: boolean;
+  basketTokenHash: string;
+  clientIp: string | null;
+};
+
+export type GuestQuoteRequestResult =
+  | {
+      kind: "answered";
+      outcome: DeliveryQuoteRequestOutcome;
+      /** Opens the order without an account; absent when no order was made. */
+      access: { token: string; expiresAt: Date } | null;
+    }
+  | GuestCheckoutRefusal;
+
 export type GuestCheckoutDeps = {
   accounts: LaxAccountDirectory;
   guests: GuestCustomerStore;
   checkout: Pick<CheckoutWriter, "createCheckoutOrder">;
+  /** Asking for a delivery quote outside the UK; absent where the Shop does not offer it. */
+  quotes?: Pick<DeliveryQuoteRequestService, "request">;
   links: Pick<GuestOrderLinks, "issue">;
   rateLimiter: EnquiryRateLimiter;
   /** Called when the limiter cannot be reached; checks then continue rather than block a sale. */
@@ -153,6 +180,45 @@ export function createGuestCheckoutService(deps: GuestCheckoutDeps) {
       });
       const access = await deps.links.issue(session.orderId, now());
       return { kind: "created", session, access };
+    },
+
+    /** A guest's delivery quote request: the same email check and lead, then the request. */
+    async requestDeliveryQuote(input: GuestQuoteRequestInput): Promise<GuestQuoteRequestResult> {
+      const quotes = deps.quotes;
+      if (!quotes) return { kind: "unavailable" };
+      const admission = await admit(input.email, input.clientIp);
+      if (admission.kind !== "admitted") return admission;
+      const {
+        email: _email,
+        name,
+        marketingConsent,
+        basketTokenHash,
+        clientIp: _clientIp,
+        ...request
+      } = input;
+      const { guestCustomerId } = await deps.guests.record(
+        {
+          email: admission.email,
+          name: name.trim(),
+          phone: input.deliveryPhone.trim(),
+          marketingConsent,
+        },
+        now(),
+      );
+      const outcome = await quotes.request({
+        ...request,
+        subject: guestOrderSubject(guestCustomerId),
+        guest: { guestCustomerId, basketTokenHash },
+        fallbackEmail: admission.email,
+      });
+      const orderId =
+        outcome.kind === "quote_requested"
+          ? outcome.request.orderId
+          : outcome.kind === "pay_now"
+            ? outcome.session.orderId
+            : null;
+      const access = orderId ? await deps.links.issue(orderId, now()) : null;
+      return { kind: "answered", outcome, access };
     },
   };
 }

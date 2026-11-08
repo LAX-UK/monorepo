@@ -142,6 +142,9 @@ export function createMinimalShopApiTestDeps(
         throw new Error("not implemented");
       },
       cancelCheckoutOrder: async () => undefined,
+      requestDeliveryQuote: async () => {
+        throw new Error("not implemented");
+      },
       listOrders: async () => ({ items: [] }),
       getOrder: async () => null,
       getCustomerProfile: async () => ({ name: null, email: null }),

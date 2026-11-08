@@ -357,6 +357,125 @@
   color: var(--color-on-surface-variant);
 }
 
+/* A refused destination: said plainly, with the way out beside it. */
+.shop-checkout__refusal {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--shop-space-3);
+  padding: var(--shop-space-5);
+  border: 1px solid var(--color-border-hairline);
+  border-radius: var(--radius-card);
+  background: var(--color-surface-container-low);
+}
+
+.shop-checkout__refusal > button,
+.shop-checkout__refusal > a {
+  max-width: 100%;
+  height: auto;
+  min-height: 2.75rem;
+  white-space: normal;
+  text-align: center;
+}
+
+.shop-checkout__refusal p {
+  margin: 0;
+  max-width: 60ch;
+  font-size: var(--shop-text-sm);
+  line-height: 1.5;
+  color: var(--color-on-surface-variant);
+}
+
+.shop-checkout__refusal-title {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: var(--shop-text-md);
+  font-weight: 600;
+  line-height: 1.5rem;
+  color: var(--color-on-surface);
+}
+
+/* The request is in: what was asked, what is held, and what happens next. */
+.shop-checkout__sent {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--shop-space-4);
+  max-width: 40rem;
+  margin: 0 auto;
+}
+
+.shop-checkout__sent-title {
+  margin: 0;
+  scroll-margin-top: 6rem;
+  font-family: var(--font-headline, inherit);
+  font-size: 1.5rem;
+  font-weight: 600;
+  line-height: 2rem;
+  color: var(--color-on-surface);
+}
+
+.shop-checkout__sent-title:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 4px;
+}
+
+.shop-checkout__sent-lead,
+.shop-checkout__sent-note,
+.shop-checkout__sent-steps {
+  margin: 0;
+  font-size: var(--shop-text-sm);
+  line-height: 1.5;
+  color: var(--color-on-surface-variant);
+}
+
+.shop-checkout__sent-facts {
+  display: grid;
+  gap: var(--shop-space-3);
+  width: 100%;
+  margin: 0;
+  padding: var(--shop-space-5);
+  border: 1px solid var(--color-border-hairline);
+  border-radius: var(--radius-card);
+  background: var(--color-surface-container-low);
+}
+
+.shop-checkout__sent-facts div {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--shop-space-2);
+}
+
+.shop-checkout__sent-facts dt {
+  font-size: var(--shop-text-sm);
+  color: var(--color-on-surface-variant);
+}
+
+.shop-checkout__sent-facts dd {
+  margin: 0;
+  font-size: var(--shop-text-sm);
+  font-weight: 600;
+  color: var(--color-on-surface);
+}
+
+.shop-checkout__sent-subtitle {
+  margin: var(--shop-space-2) 0 0;
+  font-family: var(--font-body);
+  font-size: var(--shop-text-md);
+  font-weight: 600;
+  color: var(--color-on-surface);
+}
+
+.shop-checkout__sent-steps {
+  padding-left: var(--shop-space-5);
+  list-style: decimal;
+}
+
+.shop-checkout__sent-steps li + li {
+  margin-top: var(--shop-space-2);
+}
+
 .shop-checkout__international {
   display: flex;
   flex-direction: column;

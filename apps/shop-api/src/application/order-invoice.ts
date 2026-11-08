@@ -4,6 +4,13 @@ import PDFDocument from "pdfkit";
 import { orderRecordVat } from "./order-vat.js";
 import type { OrderRecord } from "./ports/commerce.ports.js";
 
+const regionNames = new Intl.DisplayNames(["en-GB"], { type: "region" });
+
+/** A delivery country as the invoice prints it: the name, never the code. */
+function countryLabel(code: string): string {
+  return /^[A-Za-z]{2}$/.test(code) ? (regionNames.of(code.toUpperCase()) ?? code) : code;
+}
+
 export type InvoiceCustomer = { name: string | null; email: string | null };
 
 type InvoiceRow = { description: string; detail: string | null; vatRate: string; amount: string };
@@ -115,7 +122,7 @@ export function buildOrderInvoiceModel(input: {
         address.line1,
         address.line2,
         `${address.city} ${address.postcode}`,
-        address.country === "GB" ? "United Kingdom" : address.country,
+        countryLabel(address.country),
       ].filter((line): line is string => Boolean(line))
     : null;
 

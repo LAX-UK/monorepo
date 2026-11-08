@@ -1,5 +1,6 @@
 import { legalEntityFor } from "@auction/branding";
 import type { Database } from "@auction/db";
+import { createDeliveryQuoteRequestService } from "./application/delivery-quote-request/delivery-quote-request.service.js";
 import { guardAgainstPendingDeletion } from "./application/guard-against-pending-deletion.js";
 import {
   createCancelCheckoutOrderHandler,
@@ -21,7 +22,9 @@ import type { PaymentEventProcessor } from "./application/ports/payment-event.pr
 import type { CommerceRoutesDeps, StripeWebhookDeps } from "./commerce-route-deps.js";
 import { createGuestCheckoutDeps } from "./create-guest-checkout-deps.js";
 import type { ShopApiEnv } from "./env.js";
+import { readDeliveryRegions } from "./infrastructure/delivery-regions/drizzle-delivery-regions.store.js";
 import { createDrizzleCommerceRepository } from "./infrastructure/drizzle-commerce.repository.js";
+import { createDrizzleDeliveryQuoteOrderStore } from "./infrastructure/drizzle-delivery-quote-order.store.js";
 import { createDrizzlePaymentEventProcessor } from "./infrastructure/drizzle-payment-event.processor.js";
 import { createDrizzlePendingDeletionReader } from "./infrastructure/drizzle-pending-deletion.reader.js";
 import { createDrizzleShopNotificationPublisher } from "./infrastructure/drizzle-shop-notification.publisher.js";
@@ -79,10 +82,21 @@ export function createCommerceServices(
     supplier: legalEntityFor("shop"),
     vatNumber: env.SHOP_VAT_REGISTRATION_NUMBER ?? legalEntityFor("shop").vatNumber ?? null,
   };
+  const quoteRequests = createDeliveryQuoteRequestService({
+    regions: { read: () => readDeliveryRegions(db) },
+    orders: createDrizzleDeliveryQuoteOrderStore(db, {
+      domainEventMode,
+      vatPolicy: loadShopVatPolicy(env),
+      merchandiseEnabled: env.SHOP_MERCHANDISE_ENABLED,
+      notifications,
+    }),
+    checkout: repository,
+  });
   const guestCheckout = identityConfig
     ? createGuestCheckoutDeps(db, {
         identity: createIdentityMachineClient(identityConfig),
         checkout: repository,
+        quotes: quoteRequests,
         orders: repository,
         notifications,
         paymentGateway,
@@ -129,6 +143,9 @@ export function createCommerceServices(
         createResumeCheckoutOrderHandler(repository),
       ),
       cancelCheckoutOrder: createCancelCheckoutOrderHandler(repository),
+      requestDeliveryQuote: guardAgainstPendingDeletion(pendingDeletion, (input) =>
+        quoteRequests.request(input),
+      ),
       listOrders: createListOrdersHandler(repository),
       getOrder: createGetOrderHandler(repository),
       getCustomerProfile: (subject) => repository.getCustomerProfile(subject),

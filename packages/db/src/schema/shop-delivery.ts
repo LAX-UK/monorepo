@@ -1,5 +1,15 @@
 import { sql } from "drizzle-orm";
-import { check, integer, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import {
+  check,
+  index,
+  integer,
+  pgTable,
+  text,
+  timestamp,
+  uniqueIndex,
+  uuid,
+} from "drizzle-orm/pg-core";
+import { shopOrder } from "./shop-commerce.js";
 
 /**
  * Where LAX Shop delivers (see `@auction/shop-domain` delivery-regions): one row per region with
@@ -49,5 +59,64 @@ export const shopDeliveryRestrictedCountry = pgTable(
   },
   (table) => [
     check("shop_delivery_restricted_country_code", sql`${table.countryCode} ~ '^[A-Z]{2}$'`),
+  ],
+);
+
+/**
+ * A buyer's request for a delivery quote on an order going outside the UK. The order holds the
+ * prints (its checkout expiry is the hold) and carries the address; this row carries the quote:
+ * the status uses the saleroom's quote steps (requested, quoted, accepted, withdrawn), and a
+ * withdrawn quote says why. One row per order; asking again after a request ends is a new order.
+ */
+export const shopDeliveryQuote = pgTable(
+  "shop_delivery_quote",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    orderId: uuid("order_id")
+      .notNull()
+      .references(() => shopOrder.id, { onDelete: "restrict" }),
+    status: text("status").notNull().default("requested"),
+    /** The region the country sits in, or null for a country outside the four regions. */
+    regionId: text("region_id"),
+    destinationCountry: text("destination_country").notNull(),
+    /** When the held prints are released if the quote has not been paid. */
+    holdUntil: timestamp("hold_until", { mode: "date", withTimezone: true }).notNull(),
+    requestedAt: timestamp("requested_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    /** Set when staff quote: the delivery price the buyer pays with the prints. */
+    quotedPricePence: integer("quoted_price_pence"),
+    quotedService: text("quoted_service"),
+    quotedLeadTimeNote: text("quoted_lead_time_note"),
+    quotedAt: timestamp("quoted_at", { mode: "date", withTimezone: true }),
+    quotedBySubjectId: text("quoted_by_subject_id"),
+    decidedAt: timestamp("decided_at", { mode: "date", withTimezone: true }),
+    /** Why a withdrawn quote ended: cancelled_by_buyer, cannot_deliver or expired. */
+    endReason: text("end_reason"),
+    createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("shop_delivery_quote_order_uid").on(table.orderId),
+    index("shop_delivery_quote_open_hold_idx")
+      .on(table.holdUntil)
+      .where(sql`${table.status} IN ('requested', 'quoted')`),
+    check(
+      "shop_delivery_quote_status_check",
+      sql`${table.status} IN ('requested', 'quoted', 'accepted', 'withdrawn')`,
+    ),
+    check(
+      "shop_delivery_quote_region_known",
+      sql`${table.regionId} IS NULL OR ${table.regionId} IN ('eu', 'north_america', 'asia_pacific')`,
+    ),
+    check("shop_delivery_quote_country_code", sql`${table.destinationCountry} ~ '^[A-Z]{2}$'`),
+    check(
+      "shop_delivery_quote_end_reason_check",
+      sql`(${table.status} = 'withdrawn') = (${table.endReason} IS NOT NULL) AND (${table.endReason} IS NULL OR ${table.endReason} IN ('cancelled_by_buyer', 'cannot_deliver', 'expired'))`,
+    ),
+    check(
+      "shop_delivery_quote_price_check",
+      sql`(${table.status} NOT IN ('quoted', 'accepted') OR ${table.quotedPricePence} > 0) AND (${table.quotedPricePence} IS NULL OR ${table.quotedPricePence} BETWEEN 1 AND 10000000)`,
+    ),
   ],
 );

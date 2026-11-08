@@ -9,6 +9,7 @@ const names = [
   "shop-release-alert",
   "shop-zoho-dead-letter-notice",
   "shop-production-started",
+  "shop-delivery-quote-requested",
   "shop-print-swapped",
   "shop-dispatch-notice",
   "shop-checkout-ops-alert",
@@ -96,6 +97,15 @@ type ShopTemplateVars = {
     artworkTitle: string;
     /** "Edition 3", "Proof 1" or "Open edition". */
     editionLabel: string;
+  };
+  "shop-delivery-quote-requested": {
+    orderReference: string;
+    /** "Germany": the country as the buyer reads it, never the code. */
+    countryName: string;
+    /** When the held print is released if the quote is not paid: "12 November 2026". */
+    holdUntilOn: string;
+    /** One line per print, as the receipt words them. */
+    itemsSummary: string;
   };
   "shop-print-swapped": {
     /** "LAX-S-10482". */
@@ -208,6 +218,7 @@ export const shopTemplates = {
     "shop-release-alert": "snapshot",
     "shop-zoho-dead-letter-notice": "snapshot",
     "shop-production-started": "snapshot",
+    "shop-delivery-quote-requested": "snapshot",
     "shop-print-swapped": "snapshot",
     "shop-dispatch-notice": "snapshot",
     "shop-checkout-ops-alert": "snapshot",
