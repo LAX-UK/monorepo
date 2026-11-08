@@ -106,20 +106,16 @@ export function nonConformingCodePart(value: string): "artist" | "collection" | 
   return null;
 }
 
-/** The part of a code shared by a run of numbers, for example `LAX-ORI-PH-GAC-26`. */
-function formatStockCodePrefix(prefix: StockCodePrefix): string {
-  assertPrefix(prefix);
-  const year = String(prefix.year).padStart(2, "0");
-  return `LAX-${KIND_SEGMENT[prefix.kind]}-${prefix.artist}-${prefix.second}-${year}`;
-}
-
 export function formatStockCode(parts: StockCodeParts): string {
   if (!Number.isInteger(parts.number) || parts.number < 1 || parts.number > STOCK_CODE_MAX_NUMBER) {
     throw new StockCodeError(
       `Number ${parts.number} must be between 1 and ${STOCK_CODE_MAX_NUMBER}`,
     );
   }
-  return `${formatStockCodePrefix(parts)}-${String(parts.number).padStart(4, "0")}`;
+  assertPrefix(parts);
+  const year = String(parts.year).padStart(2, "0");
+  const number = String(parts.number).padStart(4, "0");
+  return `LAX-${KIND_SEGMENT[parts.kind]}-${parts.artist}-${parts.second}-${year}-${number}`;
 }
 
 /**

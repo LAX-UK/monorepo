@@ -20,7 +20,7 @@ export interface ZohoListingProducts {
 }
 
 /** Zoho answers these when the data itself is wrong, so sending it again cannot help. */
-const NON_RETRYABLE_CODES = new Set([
+export const NON_RETRYABLE_CODES = new Set([
   "INVALID_DATA",
   "MANDATORY_NOT_FOUND",
   "INVALID_MODULE",

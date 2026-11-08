@@ -210,6 +210,7 @@ Picklist values, in order: Not offered, Draft on lax.art, On lax.art, Draft lot 
 | Variable | App | Purpose |
 |----------|-----|---------|
 | `ZOHO_ARTWORK_LISTING_MODE` | worker | `off` (default) \| `dry_run` \| `live`. `dry_run` reads LAX, lax.art and Zoho, logs each update it would send (`zoho_listing_dry_run`) and the nightly pass reports it in Last check; `live` writes. Independent of `ZOHO_ARTWORK_WRITEBACK_MODE`. |
+| `ZOHO_FULFILMENT_MIRROR_MODE` | worker | `off` (default) \| `dry_run` \| `live`. Mirrors each print group made from an original to Zoho CRM (`Print_Products`, one `Edition_Ledgers` counter) and adds its `LAX-PRT` row to the artwork register. `dry_run` logs what it would write and writes nothing, in Zoho or the register; `live` writes and must pass the org check. Order events are heard and skipped until the order mirror lands. |
 | `SHOP_API_INVENTORY_BASE_URL` | worker | LAX Shop's API, for the lax.art lookup. |
 | `INVENTORY_MACHINE_CLIENT_ID`, `INVENTORY_MACHINE_CLIENT_SECRET` | worker | The inventory machine pair LAX Shop holds. |
 | `LAX_ART_PUBLIC_URL`, `LAX_ADMIN_PUBLIC_URL` | worker | For the link. LAX Bid's comes from `WEB_ORIGIN`. |

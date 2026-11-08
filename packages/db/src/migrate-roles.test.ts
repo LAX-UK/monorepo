@@ -45,6 +45,7 @@ import {
   WORKER_READ_TABLES,
   WORKER_SHOP_ENQUIRY_READ_COLUMNS,
   WORKER_SHOP_ORDER_READ_COLUMNS,
+  WORKER_SHOP_PRINT_GROUP_READ_COLUMNS,
   WORKER_ZOHO_ARTWORK_SYNC_TABLES,
   WORKER_ZOHO_CAMPAIGNS_LIFT_READ_TABLES,
   WORKER_ZOHO_CAMPAIGNS_SUPPRESSION_TABLES,
@@ -517,6 +518,18 @@ describe("migrate-roles invariants", () => {
       "reference",
     ]);
     // Column grants only: both tables stay in the deny list and in no whole-table worker list.
+    for (const table of Object.keys(columns)) {
+      expect([...WORKER_DENY_TABLES]).toContain(table);
+    }
+  });
+
+  it("lets the worker read the Shop columns a print group needs, and no whole Shop table", () => {
+    const columns = Object.fromEntries(WORKER_SHOP_PRINT_GROUP_READ_COLUMNS);
+    expect(Object.keys(columns).sort()).toEqual(["shop_artwork", "shop_edition"]);
+    expect([...columns.shop_edition].sort()).toEqual(["allocation", "artwork_id", "proof_number"]);
+    for (const personal of ["print_price_pence", "description", "import_key"]) {
+      expect(columns.shop_artwork).not.toContain(personal);
+    }
     for (const table of Object.keys(columns)) {
       expect([...WORKER_DENY_TABLES]).toContain(table);
     }
