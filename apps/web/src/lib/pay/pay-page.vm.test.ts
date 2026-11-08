@@ -123,6 +123,7 @@ describe("the page does no money arithmetic", () => {
       ...plan,
       totals: {
         pence: plan.totals.pence,
+        deliveryPence: 0,
         byKind: [
           { kind: "hammer", pence: 311_111 },
           { kind: "buyers_premium", pence: 77_777 },
@@ -133,6 +134,73 @@ describe("the page does no money arithmetic", () => {
       { label: "Hammer price", amount: "£3,111.11" },
       { label: "Buyer's premium", amount: "£777.77" },
     ]);
+  });
+});
+
+describe("delivery", () => {
+  const courier = {
+    lotId: LOT_B,
+    quoteId: "quote-1",
+    amountPence: 18_000,
+    destination: "Studio, Unit 3, 12 Vyner Street, London E2 9DG",
+    note: "Two days, signed for",
+  };
+  const several = (over: Partial<PayPlan> = {}) =>
+    planOf(
+      [
+        payable(LOT_A, 100_000, 25_000, { title: "Harbour" }),
+        payable(LOT_B, 200_000, 50_000, { title: "Lowland Storm" }),
+      ],
+      over,
+    );
+
+  it("says the choice comes after paying while no quote joins the payment", () => {
+    const vm = build(one());
+    expect(vm.delivery?.rows).toEqual([
+      {
+        lotId: LOT_A,
+        title: "Coastal Notation",
+        detail: "Collect in London, insured courier or your own shipper. You choose after paying.",
+        badge: { label: "Choose after paying", tone: "neutral", shape: "ring" },
+      },
+    ]);
+    expect(vm.delivery?.quoteLink).toBeNull();
+  });
+
+  it("offers a way to a quote only while one can still join the payment", () => {
+    const vm = build(planOf([payable(LOT_A, 190_000, 47_500)], { deliveryInPayment: true }));
+    expect(vm.delivery?.quoteLink).toEqual({
+      before: "Want the delivery cost first?",
+      label: "Get a courier quote",
+      after: "An accepted quote is added to this payment.",
+      href: `/purchases/${LOT_A}`,
+    });
+  });
+
+  it("shows an accepted quote as a charge on its lot and a line in the money, apart from the invoice", () => {
+    const vm = build(several({ deliveryInPayment: true, delivery: [courier] }));
+    expect(vm.delivery?.rows.map((r) => [r.title, r.badge.label])).toEqual([
+      ["Harbour", "Choose after paying"],
+      ["Lowland Storm", "Courier · £180.00"],
+    ]);
+    expect(vm.delivery?.rows[1]?.detail).toBe(
+      "Insured courier to Studio, Unit 3, 12 Vyner Street, London E2 9DG · Two days, signed for",
+    );
+    expect(vm.money?.lines.at(-1)).toEqual({
+      label: "Courier delivery, Lowland Storm",
+      amount: "£180.00",
+    });
+    // The total is the server's, with the delivery in it.
+    expect(vm.money?.total).toBe("£3,930.00");
+    expect(vm.action).toMatchObject({ kind: "pay", expectedTotalPence: 393_000 });
+  });
+
+  it("names the line plainly for a single lot", () => {
+    const plan = planOf([payable(LOT_B, 200_000, 50_000)], {
+      deliveryInPayment: true,
+      delivery: [courier],
+    });
+    expect(build(plan).money?.lines.at(-1)?.label).toBe("Courier delivery");
   });
 });
 

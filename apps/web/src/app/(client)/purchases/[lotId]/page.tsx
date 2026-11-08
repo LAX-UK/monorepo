@@ -1,6 +1,6 @@
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { AccountLoadError } from "@/components/dashboard/primitives/account-load-error";
-import { PurchaseDetail } from "@/components/dashboard/purchases/purchase-detail";
+import { DELIVERY_ANCHOR, PurchaseDetail } from "@/components/dashboard/purchases/purchase-detail";
 import { AccountRestoreHop } from "@/components/layout/account-switcher/account-restore-hop";
 import { SetMobileShellTitle } from "@/components/layout/set-mobile-shell-title";
 import { WorkspacePageNoAccess } from "@/components/organisations/workspace-page-no-access";
@@ -16,6 +16,7 @@ import { openRecordInItsAccount } from "@/lib/legal-entity/open-record-in-accoun
 import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
 import { loadDeliveryAddresses } from "@/lib/purchases/delivery-addresses.server";
 import { deliveryPanel } from "@/lib/purchases/purchase-delivery.vm";
+import { parsePaidLots, purchaseHandover } from "@/lib/purchases/purchase-handover";
 import { purchaseProblemPanel } from "@/lib/purchases/purchase-problem";
 import { loadPurchaseSources } from "@/lib/purchases/purchase-sources.server";
 import { purchaseCard } from "@/lib/purchases/purchases.vm";
@@ -27,15 +28,19 @@ export const metadata: Metadata = { title: "Purchase" };
 /** Delivery stages that show where and how to collect. */
 const COLLECTION_STAGES = new Set(["awaiting_payment", "choose", "preparing", "ready_to_collect"]);
 
-type PageProps = { params: Promise<{ lotId: string }> };
+type PageProps = {
+  params: Promise<{ lotId: string }>;
+  searchParams: Promise<{ paid?: string | string[] }>;
+};
 
 /**
  * One purchase: where it stands, what was paid, how it is delivered and its documents. It reads
  * the same sources as the list, so the two never disagree, and only the account's members who
  * follow its purchases open it.
  */
-export default async function PurchaseDetailPage({ params }: PageProps) {
+export default async function PurchaseDetailPage({ params, searchParams }: PageProps) {
   const { lotId } = await params;
+  const paidLots = parsePaidLots((await searchParams).paid);
   const scope = await (await getServerDataContainer()).buying.scope();
   const view = buyingPageView(scope, "purchases");
   if (view.kind === "forbidden") {
@@ -114,6 +119,12 @@ export default async function PurchaseDetailPage({ params }: PageProps) {
           .join(" · ")}
         panel={panel}
         problem={reported ? purchaseProblemPanel(reported) : null}
+        handover={purchaseHandover({
+          paidLots,
+          state: card.state,
+          canChooseDelivery: panel?.kind === "choose",
+          deliveryAnchor: DELIVERY_ANCHOR,
+        })}
         shipperEmail={collection?.kind === "email" ? collection.email : SITE_CONTACT_EMAIL}
       />
     </DashboardPage>

@@ -1,4 +1,5 @@
 import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
+import { paidPurchaseHref } from "@/lib/purchases/purchase-handover";
 import type { PayPlan } from "@auction/types";
 import { payLandingRedirect } from "./pay-landing";
 import { payHref } from "./pay-links";
@@ -21,9 +22,7 @@ export function legacyCheckoutTarget(
   const returned = Array.isArray(payment) ? payment[0] : payment;
   const [only] = lotIds;
   if (returned === "success") {
-    return lotIds.length === 1 && only
-      ? `${CLIENT_ROUTES.purchases}/${only}`
-      : CLIENT_ROUTES.purchases;
+    return lotIds.length === 1 && only ? paidPurchaseHref(only, 1) : CLIENT_ROUTES.purchases;
   }
   const paid = plan ? payLandingRedirect(lotIds, plan) : null;
   if (paid) return paid;

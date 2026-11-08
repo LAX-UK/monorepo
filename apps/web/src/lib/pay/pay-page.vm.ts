@@ -43,6 +43,23 @@ export type PayNotice = {
 
 export type PayLine = { label: string; amount: string };
 
+/** One lot's delivery in the payment: a courier quote joining it, or a choice still to make. */
+export type PayDeliveryRowVm = {
+  lotId: string;
+  title: string;
+  /** Where the courier delivers, and what the price covers; `null` for a choice made after paying. */
+  detail: string | null;
+  badge: { label: string; tone: "info" | "neutral"; shape: "dot" | "ring" };
+};
+
+/** What the Delivery panel says: a row for each lot, a sentence under them and a way to a quote. */
+export type PayDeliveryVm = {
+  rows: PayDeliveryRowVm[];
+  note: string;
+  /** Where to get a courier quote before paying, while one can still join this payment. */
+  quoteLink: { before: string; label: string; after: string; href: string } | null;
+};
+
 export type PayLotVm = {
   lotId: string;
   title: string;
@@ -143,6 +160,8 @@ export type PayPageVm = {
   notices: PayNotice[];
   lots: PayLotVm[];
   money: PayMoneyVm | null;
+  /** How each lot is delivered, with any courier quote that joins the payment. */
+  delivery: PayDeliveryVm | null;
   /** The choice of how to pay, only while Pay is offered. */
   methods: PayMethodsVm | null;
   action: PayAction | null;
@@ -194,14 +213,82 @@ function lotVm(
   };
 }
 
-/** The invoice's own lines for one lot, the lines summed per kind for several. */
+/** The courier quotes that join the payment, each as its own line after the invoice's. */
+function deliveryLines(plan: PayPlan): PayLine[] {
+  const several = plan.payable.length > 1;
+  return plan.delivery.map((charge) => {
+    const lot = plan.payable.find((p) => p.lotId === charge.lotId);
+    return {
+      label: several && lot ? PAY_COPY.deliveryLineFor(lot.title) : PAY_COPY.deliveryLine,
+      amount: formatGbp(charge.amountPence),
+    };
+  });
+}
+
+/** The invoice's own lines for one lot, the lines summed per kind for several, then any delivery. */
 function moneyLines(plan: PayPlan): PayLine[] {
   const [only] = plan.payable;
-  if (plan.payable.length === 1 && only) return only.lines.map(lineVm);
-  return plan.totals.byKind.map((entry) => ({
-    label: INVOICE_LINE_KIND_LABEL[entry.kind],
-    amount: formatGbp(entry.pence),
-  }));
+  const invoice =
+    plan.payable.length === 1 && only
+      ? only.lines.map(lineVm)
+      : plan.totals.byKind.map((entry) => ({
+          label: INVOICE_LINE_KIND_LABEL[entry.kind],
+          amount: formatGbp(entry.pence),
+        }));
+  return [...invoice, ...deliveryLines(plan)];
+}
+
+/**
+ * How each lot is delivered. A lot with an accepted courier quote shows it as a charge in this
+ * payment; every other lot says the choice comes after paying, because collection, a courier and
+ * one's own shipper are chosen on the purchase page once the work is paid for.
+ */
+function deliveryVm(plan: PayPlan): PayDeliveryVm {
+  const several = plan.payable.length > 1;
+  const rows = plan.payable.map((p): PayDeliveryRowVm => {
+    const charge = plan.delivery.find((d) => d.lotId === p.lotId);
+    if (!charge) {
+      return {
+        lotId: p.lotId,
+        title: p.title,
+        detail: several ? null : PAY_COPY.deliveryNote,
+        badge: { label: PAY_COPY.deliveryTitle, tone: "neutral", shape: "ring" },
+      };
+    }
+    return {
+      lotId: p.lotId,
+      title: p.title,
+      detail: [PAY_COPY.deliveryCourierTo(charge.destination), charge.note]
+        .filter((part): part is string => Boolean(part))
+        .join(" · "),
+      badge: {
+        label: PAY_COPY.deliveryCourier(formatGbp(charge.amountPence)),
+        tone: "info",
+        shape: "dot",
+      },
+    };
+  });
+  const quoteStillOpen = plan.deliveryInPayment && plan.delivery.length < plan.payable.length;
+  const [only] = plan.payable;
+  const note =
+    plan.delivery.length > 0
+      ? PAY_COPY.deliveryChargedNote
+      : several
+        ? PAY_COPY.deliverySeveralNote
+        : "";
+  return {
+    rows,
+    note,
+    quoteLink: quoteStillOpen
+      ? {
+          before: PAY_COPY.deliveryQuoteHint,
+          label: PAY_COPY.deliveryQuoteLink,
+          after: PAY_COPY.deliveryQuoteAdded,
+          href:
+            !several && only ? `${CLIENT_ROUTES.purchases}/${only.lotId}` : CLIENT_ROUTES.purchases,
+        }
+      : null,
+  };
 }
 
 /** The company that issues the invoices, and its numbers once they exist. */
@@ -415,6 +502,7 @@ export function blankPayVm(): PayPageVm {
     notices: [],
     lots: [],
     money: null,
+    delivery: null,
     methods: null,
     action: null,
     railPay: null,
@@ -614,6 +702,7 @@ export function buildPayPageVm(plan: PayPlan, now: Date, context: PayVmContext):
     title,
     subtitle,
     lots: plan.payable.map((p) => lotVm(p, now, several, details)),
+    delivery: deliveryVm(plan),
     empty: null,
     methods: null as PayMethodsVm | null,
     progress: null,

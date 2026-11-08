@@ -18,13 +18,13 @@ describe("legacyCheckoutTarget", () => {
   });
 
   it("opens the purchase of a single lot that is already paid", () => {
-    expect(legacyCheckoutTarget([LOT_A], undefined, paid)).toBe(`/purchases/${LOT_A}`);
+    expect(legacyCheckoutTarget([LOT_A], undefined, paid)).toBe(`/purchases/${LOT_A}?paid=1`);
   });
 
   it("returns from a payment to the purchase, never to a fresh Pay button", () => {
     // Even if the plan still shows the lot payable (the payment has not landed yet).
-    expect(legacyCheckoutTarget([LOT_A], "success", payableNow)).toBe(`/purchases/${LOT_A}`);
-    expect(legacyCheckoutTarget([LOT_A], "success", null)).toBe(`/purchases/${LOT_A}`);
+    expect(legacyCheckoutTarget([LOT_A], "success", payableNow)).toBe(`/purchases/${LOT_A}?paid=1`);
+    expect(legacyCheckoutTarget([LOT_A], "success", null)).toBe(`/purchases/${LOT_A}?paid=1`);
     expect(legacyCheckoutTarget([LOT_A, LOT_B], "success", null)).toBe("/purchases");
     expect(legacyCheckoutTarget([], ["success"], null)).toBe("/purchases");
   });
@@ -37,7 +37,7 @@ describe("legacyCheckoutTarget", () => {
   });
 
   it("opens the purchase when the lot turns out to be paid, even after a cancel", () => {
-    expect(legacyCheckoutTarget([LOT_A], "cancelled", paid)).toBe(`/purchases/${LOT_A}`);
+    expect(legacyCheckoutTarget([LOT_A], "cancelled", paid)).toBe(`/purchases/${LOT_A}?paid=1`);
   });
 
   it("ignores any other value of payment", () => {
