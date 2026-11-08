@@ -8,21 +8,12 @@ import { deleteSavedSearch } from "@/lib/data/http/saved-searches.client";
 import { removeWatchlistLot } from "@/lib/data/http/watchlist.client";
 import { calendarSalesHref } from "@/lib/marketing/sales-calendar-params";
 import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
-import { NOTIFICATION_SETTINGS_HREF } from "@/lib/navigation/settings-links";
 import { notify } from "@/lib/ui/notify";
-import {
-  type TopicReach,
-  type WatchingAlertReach,
-  reachLabel,
-  searchReachLabel,
-} from "@/lib/watching/alert-reach";
+import { type TopicReach, type WatchingAlertReach, reachLabel } from "@/lib/watching/alert-reach";
 import { artistAlertSummary } from "@/lib/watching/artist-alert";
-import { savedSearchHref, savedSearchSummary } from "@/lib/watching/saved-search";
 import {
   type AlertAccess,
-  type SearchEmailControl,
   needsOthersConfirmation,
-  searchEmailControl,
   switchSearchEmail,
   turnedOnMessage,
 } from "@/lib/watching/search-email";
@@ -48,17 +39,17 @@ import {
   ShowingCount,
   SortMenu,
   StatusBadge,
-  Switch,
   type TabNavItem,
 } from "@auction/ui/lax";
-import { Lock, Search, UserRound } from "lucide-react";
+import { Lock, UserRound } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useId, useState, useTransition } from "react";
-import { HeldOffSwitch } from "../settings/held-off-switch";
+import { useState, useTransition } from "react";
+import { AlertReachNote } from "./alert-reach-note";
 import { ArtistAlertDialog } from "./artist-alert-dialog";
 import { LotReminderDialog } from "./lot-reminder-dialog";
 import { TurnOnEmailDialog } from "./turn-on-email-dialog";
+import { SearchesList } from "./watching-searches-list";
 
 export type WatchedArtistVm = {
   artistId: string;
@@ -462,177 +453,6 @@ function ArtistsList({
         ))}
       </RecordList>
       <AlertReachNote />
-    </>
-  );
-}
-
-function SearchesList({
-  searches,
-  reach,
-  query,
-  onClear,
-  onRemove,
-  onEmail,
-  access,
-  busy,
-}: {
-  searches: SavedSearchRow[] | null;
-  reach: TopicReach | null;
-  query: string;
-  onClear: () => void;
-  onRemove: (search: SavedSearchRow) => void;
-  onEmail: (search: SavedSearchRow, on: boolean) => void;
-  access: AlertAccess;
-  busy: boolean;
-}) {
-  if (!searches) return <ListLoadError />;
-  if (searches.length === 0) {
-    return (
-      <ListEmpty
-        illustration="search"
-        title="No saved searches"
-        description="Save a search in the catalogue to hear when new lots match it."
-        actions={
-          <ButtonLink href="/search" Link={Link}>
-            Search the catalogue
-          </ButtonLink>
-        }
-      />
-    );
-  }
-  const controlFor = (search: SavedSearchRow) =>
-    searchEmailControl({
-      access,
-      notifyEmail: search.notifyEmail,
-      topicEmailOn: reach?.emailOn ?? null,
-    });
-  /** The row menu's email item shares the switch's state: held rows lead to where it is fixed. */
-  const emailMenuItem = (search: SavedSearchRow) => {
-    const control = controlFor(search);
-    if (control.kind === "held") {
-      return {
-        type: "item" as const,
-        label: "Turn on email",
-        onSelect: () => window.location.assign(control.action.href),
-      };
-    }
-    return {
-      type: "item" as const,
-      label: control.checked ? "Turn off email" : "Turn on email",
-      onSelect: () => onEmail(search, !control.checked),
-    };
-  };
-  const rows = searches.filter((search) =>
-    matchesEveryWord([search.label, savedSearchSummary(search.query)], query),
-  );
-  if (rows.length === 0) return <ListNoResults query={query} onClear={onClear} />;
-  return (
-    <>
-      <RecordList aria-label="Saved searches">
-        {rows.map((search) => (
-          <RecordRow
-            key={search.id}
-            href={savedSearchHref(search.query)}
-            linkAs={Link}
-            leading={
-              <RecordRowMedia className="grid place-items-center">
-                <Search aria-hidden className="size-5 text-lax-muted" strokeWidth={1.5} />
-              </RecordRowMedia>
-            }
-            title={search.label}
-            meta={[
-              savedSearchSummary(search.query),
-              searchReachLabel(search.notifyEmail, reach),
-            ].filter((part): part is string => part !== null)}
-            action={
-              <SearchEmailAction
-                search={search}
-                control={controlFor(search)}
-                busy={busy}
-                onEmail={onEmail}
-              />
-            }
-            menu={
-              <InlineActionMenu
-                label={`More for ${search.label}`}
-                items={[
-                  {
-                    type: "item",
-                    label: "Run search",
-                    onSelect: () => window.location.assign(savedSearchHref(search.query)),
-                  },
-                  emailMenuItem(search),
-                  { type: "separator" },
-                  {
-                    type: "item",
-                    label: "Remove",
-                    destructive: true,
-                    onSelect: () => onRemove(search),
-                  },
-                ]}
-              />
-            }
-          />
-        ))}
-      </RecordList>
-      <AlertReachNote />
-    </>
-  );
-}
-
-/** Under the artist and search lists: how their matches arrive, and where to change that. */
-function AlertReachNote() {
-  return (
-    <p className="text-lax-13 text-lax-muted">
-      When email is on, matches come in one email at 08:00 London and in the app.{" "}
-      <Link
-        href={NOTIFICATION_SETTINGS_HREF}
-        className="lax-focus rounded-lax-control text-lax-fg underline underline-offset-2"
-      >
-        Where alerts reach you
-      </Link>
-    </p>
-  );
-}
-
-/** A saved search's email control: a switch, or the held switch with where to put it right. */
-function SearchEmailAction({
-  search,
-  control,
-  busy,
-  onEmail,
-}: {
-  search: SavedSearchRow;
-  control: SearchEmailControl;
-  busy: boolean;
-  onEmail: (search: SavedSearchRow, on: boolean) => void;
-}) {
-  const descriptionId = useId();
-  const label = `Email alerts for ${search.label}`;
-  if (control.kind === "held") {
-    return (
-      <span className="flex items-center gap-2">
-        <HeldOffSwitch label={label} reason={control.reason} />
-        <ButtonLink Link={Link} size="sm" variant="ghost" href={control.action.href}>
-          {control.action.label}
-        </ButtonLink>
-      </span>
-    );
-  }
-  return (
-    <>
-      <Switch
-        aria-label={label}
-        checked={control.checked}
-        disabled={busy}
-        onCheckedChange={(on) => onEmail(search, on === true)}
-        {...(control.description ? { "aria-describedby": descriptionId } : {})}
-      />
-      {control.description ? (
-        <span id={descriptionId} className="sr-only">
-          {control.description}
-        </span>
-      ) : null}
     </>
   );
 }
