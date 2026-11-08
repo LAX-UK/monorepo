@@ -67,6 +67,7 @@ function item(
   return {
     registerId: `00000000-0000-4000-8000-00000000000${n}`,
     zohoProductId: `900${n}`,
+    zohoModule: "Products",
     title: `Work ${n}`,
     artistName: "Ada Rowe",
     artistCode: "AR",

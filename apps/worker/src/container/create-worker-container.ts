@@ -90,6 +90,7 @@ import { createZohoArtworkListing } from "./create-zoho-artwork-listing.js";
 import { createZohoArtworkSyncRuntime } from "./create-zoho-artwork-sync.js";
 import { createZohoArtworkWriteback } from "./create-zoho-artwork-writeback.js";
 import { createZohoCampaignsSuppressionRuntime } from "./create-zoho-campaigns-suppression.js";
+import { createZohoFulfilmentMirror } from "./create-zoho-fulfilment-mirror.js";
 
 export type WorkerContainer = {
   env: WorkerEnv;
@@ -357,6 +358,7 @@ export function createWorkerContainer(): WorkerContainer {
   const zohoArtworkSync = createZohoArtworkSyncRuntime({ env, db, log });
   const zohoArtworkWriteback = createZohoArtworkWriteback({ env, db, log });
   const zohoArtworkListing = createZohoArtworkListing({ env, db, log });
+  const zohoFulfilment = createZohoFulfilmentMirror({ env, db, log });
   const zohoCampaignsSuppression = createZohoCampaignsSuppressionRuntime({ env, db, log });
   const webhookProcessorDeps: ProcessInboundWebhookDeps = {
     env,
@@ -545,6 +547,7 @@ export function createWorkerContainer(): WorkerContainer {
       crmSyncService,
       ...(zohoArtworkWriteback ? { zohoArtworkWriteback } : {}),
       ...(zohoArtworkListing ? { zohoArtworkListing: zohoArtworkListing.writeback } : {}),
+      ...(zohoFulfilment ? { zohoFulfilment } : {}),
       artworkOfferLock: new BidOfferLockRecorder(
         new ArtworkOfferLock(new DrizzleArtworkRegisterRepository(db)),
         new DrizzleLotRegisterLinkReader(db),

@@ -36,6 +36,8 @@ export const AdminRegisterArtworkSummarySchema = Type.Object({
   artistCode: Type.String(),
   stockCode: Type.String(),
   kind: Type.Union([Type.Literal("original"), Type.Literal("print")]),
+  /** The Zoho module the record lives in, for "Edit in Zoho". */
+  zohoModule: Type.Union([Type.Literal("Products"), Type.Literal("Print_Products")]),
   missing: Type.Array(GapSchema),
   /** When Zoho last changed the Product. */
   zohoModifiedAt: Type.Union([Type.String({ format: "date-time" }), Type.Null()]),
@@ -199,6 +201,8 @@ export const AdminRegisterDetailSchema = Type.Object({
   zohoProductId: Type.String(),
   stockCode: Type.String(),
   kind: Type.Union([Type.Literal("original"), Type.Literal("print")]),
+  /** The Zoho module the record lives in, for "Edit in Zoho". */
+  zohoModule: Type.Union([Type.Literal("Products"), Type.Literal("Print_Products")]),
   title: Type.String(),
   artistName: Type.String(),
   artistCode: Type.String(),

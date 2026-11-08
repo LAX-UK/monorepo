@@ -3,8 +3,8 @@ import { getZohoCrmAccessToken } from "./oauth-token-refresh.js";
 import { ZohoCrmAuthError } from "./types.js";
 
 /**
- * Anything that writes to Zoho: the CRM sync in canary/live, or the artwork writeback or the LAX
- * listing in live.
+ * Anything that writes to Zoho: the CRM sync in canary/live, or the artwork writeback, the LAX
+ * listing or the fulfilment mirror in live.
  */
 function writesToZoho(env: WorkerEnv): boolean {
   const mode = env.ZOHO_CRM_SYNC_MODE;
@@ -12,7 +12,8 @@ function writesToZoho(env: WorkerEnv): boolean {
     mode === "live" ||
     mode === "canary" ||
     env.ZOHO_ARTWORK_WRITEBACK_MODE === "live" ||
-    env.ZOHO_ARTWORK_LISTING_MODE === "live"
+    env.ZOHO_ARTWORK_LISTING_MODE === "live" ||
+    env.ZOHO_FULFILMENT_MIRROR_MODE === "live"
   );
 }
 

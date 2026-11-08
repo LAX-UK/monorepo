@@ -1,4 +1,13 @@
-export type CrmModule = "Leads" | "Contacts" | "Deals" | "Products" | "Arts" | "Notes" | "Tasks";
+export type CrmModule =
+  | "Leads"
+  | "Contacts"
+  | "Deals"
+  | "Products"
+  | "Arts"
+  | "Notes"
+  | "Tasks"
+  | "Print_Products"
+  | "Edition_Ledgers";
 
 /** A lookup value; `module` names the parent module of a Note. */
 export type CrmLookupValue = { id: string; module?: { api_name: string } };

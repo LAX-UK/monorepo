@@ -534,6 +534,30 @@ export const WORKER_SHOP_ORDER_READ_COLUMNS = [
   ["shop_guest_customer", ["id", "name"]],
 ] as const;
 
+/**
+ * The Zoho fulfilment mirror works out a print group from these columns and no others: the prints
+ * listing, the original it was made from (the same table), and how its prints are held. The tables
+ * stay denied to the worker as a whole; only a column-level SELECT is granted.
+ */
+export const WORKER_SHOP_PRINT_GROUP_READ_COLUMNS = [
+  [
+    "shop_artwork",
+    [
+      "id",
+      "title",
+      "medium",
+      "dimensions",
+      "year_created",
+      "source_original_artwork_id",
+      "zoho_product_id",
+      "run_kind",
+      "run_role",
+      "main_run_artwork_id",
+    ],
+  ],
+  ["shop_edition", ["artwork_id", "allocation", "proof_number"]],
+] as const;
+
 type RoleName = "auth_app" | "api_app" | "shop_app" | "worker_app";
 
 export const APPLICATION_ROLE_GRANT_LOCK_KEY = "lax:application_role_grants";
@@ -1045,6 +1069,9 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
           await grantColumnSelectIfExists(client, "worker_app", tableName, columns);
         }
         for (const [tableName, columns] of WORKER_SHOP_ORDER_READ_COLUMNS) {
+          await grantColumnSelectIfExists(client, "worker_app", tableName, columns);
+        }
+        for (const [tableName, columns] of WORKER_SHOP_PRINT_GROUP_READ_COLUMNS) {
           await grantColumnSelectIfExists(client, "worker_app", tableName, columns);
         }
 

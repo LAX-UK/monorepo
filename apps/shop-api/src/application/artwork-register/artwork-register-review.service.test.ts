@@ -10,6 +10,7 @@ import type {
 import {
   type ArtworkRegisterReviewDeps,
   ArtworkRegisterReviewService,
+  presentArtworkSummary,
 } from "./artwork-register-review.service.js";
 
 const ID = "2f0b6d7e-0000-4000-8000-000000000001";
@@ -130,6 +131,24 @@ function service(overrides: Partial<ArtworkRegisterReviewDeps> = {}) {
   };
   return { service: new ArtworkRegisterReviewService(deps), deps, queue };
 }
+
+describe("presentArtworkSummary: which Zoho module the record is in", () => {
+  it("is Print_Products for a print group LAX issued, Products for everything else", () => {
+    const group = entry({
+      kind: "print",
+      stockCode: "LAX-PRT-PH-GAC-26-0001",
+      sourceOriginalId: "o",
+    });
+    const zohoBorn = entry({
+      kind: "print",
+      stockCode: "LAX-PRI-PH-GAC-26-0001",
+      sourceOriginalId: null,
+    });
+    expect(presentArtworkSummary(group).zohoModule).toBe("Print_Products");
+    expect(presentArtworkSummary(zohoBorn).zohoModule).toBe("Products");
+    expect(presentArtworkSummary(entry()).zohoModule).toBe("Products");
+  });
+});
 
 describe("ArtworkRegisterReviewService", () => {
   it("lists new artworks with what each lacks, the artists and both counts", async () => {

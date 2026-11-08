@@ -9,6 +9,7 @@ import {
   WORKER_EMAIL_SUPPRESSION_UPDATE_COLUMNS,
   WORKER_SHOP_ENQUIRY_READ_COLUMNS,
   WORKER_SHOP_ORDER_READ_COLUMNS,
+  WORKER_SHOP_PRINT_GROUP_READ_COLUMNS,
 } from "./migrate-roles.js";
 import {
   expectTablePrivileges,
@@ -73,7 +74,27 @@ describe.skipIf(!WORKER_URL)("worker_app role contract", { timeout: 60_000 }, ()
           [table],
         );
         const allowed = all.rows.filter((row) => row.allowed).map((row) => row.column_name);
-        expect(allowed.sort(), table).toEqual([...columns].sort());
+        // Another read grant may add columns of the same table (the print group reads shop_artwork).
+        const shared = WORKER_SHOP_PRINT_GROUP_READ_COLUMNS.filter(
+          ([name]) => name === table,
+        ).flatMap(([, more]) => [...more]);
+        expect(allowed.sort(), table).toEqual([...new Set([...columns, ...shared])].sort());
+        const whole = await readTablePrivileges(client, [table], ["INSERT", "UPDATE", "DELETE"]);
+        expectUniformTablePrivileges(whole, false);
+      }
+    });
+  });
+
+  it("reads the Shop columns a print group needs, and no whole Shop table", async () => {
+    await withWorkerClient(async (client) => {
+      for (const [table, columns] of WORKER_SHOP_PRINT_GROUP_READ_COLUMNS) {
+        for (const column of columns) {
+          const result = await client.query<{ allowed: boolean }>(
+            "select has_column_privilege(current_user, 'public.' || $1, $2, 'SELECT') as allowed",
+            [table, column],
+          );
+          expect(result.rows[0]?.allowed, `${table}.${column}`).toBe(true);
+        }
         const whole = await readTablePrivileges(client, [table], ["INSERT", "UPDATE", "DELETE"]);
         expectUniformTablePrivileges(whole, false);
       }
