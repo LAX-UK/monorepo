@@ -80,6 +80,13 @@ export async function loadPurchaseSources(): Promise<PurchaseSources | null> {
     saleTitleById,
     paymentRoleByLot,
     payerName: organisation?.name ?? null,
+    organisation: organisation
+      ? {
+          id: organisation.id,
+          name: organisation.name,
+          canManage: organisation.actor.role === "owner" || organisation.actor.role === "admin",
+        }
+      : null,
     // Invoice and delivery state degrade to what the payment says when they cannot be read.
     factsByLot:
       factsResult.status === "fulfilled" && factsResult.value

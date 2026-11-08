@@ -1,4 +1,4 @@
-import { type AccountHold, amountOwedEntry } from "@auction/domain";
+import { type AccountHold, type HoldHolder, amountOwedEntry } from "@auction/domain";
 import type { PurchaseSources } from "./purchases.vm";
 
 /**
@@ -10,6 +10,7 @@ export function owedFor(
     factsByLot?: PurchaseSources["factsByLot"];
   },
   gate: AccountHold = "clear",
+  holder: HoldHolder | null = gate === "clear" ? null : "payer",
 ): PurchaseSources["owedByLot"] {
   const entries = sources.rows.flatMap((candidate) => {
     const { lot, payment } = candidate;
@@ -27,6 +28,7 @@ export function owedFor(
         currency: "GBP",
       },
       gate,
+      holder,
     );
     return entry ? [[lot.id, entry] as const] : [];
   });

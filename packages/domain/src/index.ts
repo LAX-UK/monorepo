@@ -682,6 +682,7 @@ export {
   type AmountOwedFacts,
   type AmountOwedState,
   type AmountsOwedSummary,
+  type HoldHolder,
 } from "./amounts-owed.js";
 export {
   OWED_PAYMENT_STATUSES,
