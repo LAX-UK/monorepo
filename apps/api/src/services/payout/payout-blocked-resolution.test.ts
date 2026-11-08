@@ -86,8 +86,11 @@ describe("PayoutService.adoptBlockedTransfer", () => {
   });
 
   it.each([
-    ["directly", { code: "23505" }],
-    ["wrapped by the driver", { cause: { code: "23505" } }],
+    ["directly", { code: "23505", constraint: "payout_stripe_transfer_id_key" }],
+    [
+      "wrapped by the driver",
+      { cause: { code: "23505", constraint: "payout_stripe_transfer_id_key" } },
+    ],
   ])(
     "maps a unique violation on the transfer id (%s) to the linked-elsewhere refusal",
     async (_label, dbError) => {
@@ -103,6 +106,16 @@ describe("PayoutService.adoptBlockedTransfer", () => {
       expect(publish).not.toHaveBeenCalled();
     },
   );
+
+  it("passes through a unique violation on any other constraint", async () => {
+    const { service, repo } = setup();
+    repo.updateStatusIfCurrent.mockRejectedValueOnce(
+      Object.assign(new Error("other unique"), { code: "23505", constraint: "payout_other_key" }),
+    );
+    await expect(
+      service.adoptBlockedTransfer("staff-1", "po1", { stripeTransferId: "tr_ok", reason: REASON }),
+    ).rejects.toThrow("other unique");
+  });
 
   it("does not hide other database errors", async () => {
     const { service, repo } = setup();

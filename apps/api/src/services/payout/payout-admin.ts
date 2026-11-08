@@ -130,9 +130,18 @@ async function transitionOrThrow(
 }
 
 /** A Postgres unique violation, possibly wrapped by the driver layer. */
-function isUniqueViolation(err: unknown): boolean {
-  const e = err as { code?: unknown; cause?: { code?: unknown } } | null;
-  return e?.code === "23505" || e?.cause?.code === "23505";
+/** The unique index on payout.stripe_transfer_id (declared inline in 0027, so Postgres names it). */
+const PAYOUT_TRANSFER_ID_UNIQUE = "payout_stripe_transfer_id_key";
+
+/** True only when the transfer id is already held by another payout; any other error passes through. */
+function isTransferAlreadyLinked(err: unknown): boolean {
+  const e = err as {
+    code?: unknown;
+    constraint?: unknown;
+    cause?: { code?: unknown; constraint?: unknown };
+  } | null;
+  const pg = e?.code === "23505" ? e : e?.cause?.code === "23505" ? e.cause : null;
+  return pg?.constraint === PAYOUT_TRANSFER_ID_UNIQUE;
 }
 
 function requireTransactional(deps: PayoutServiceDeps) {
@@ -227,7 +236,7 @@ export async function adoptBlockedTransfer(
       });
     } catch (err) {
       // Two staff adopting the same transfer onto two payouts: the unique index lets one win.
-      if (isUniqueViolation(err)) {
+      if (isTransferAlreadyLinked(err)) {
         throw new PayoutStatusTransitionError("transfer_linked_to_other_payout");
       }
       throw err;
