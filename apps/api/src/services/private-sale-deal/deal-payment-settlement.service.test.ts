@@ -140,7 +140,7 @@ describe("DealPaymentSettlementService other events", () => {
     expect(payments.rows[0]?.status).toBe("paid");
   });
 
-  it("records a full refund made at the provider, and leaves a partial one for finance", async () => {
+  it("records a full refund made at the provider, and a partial one as the amount returned so far", async () => {
     const { service, payments, events } = setup({ status: "paid" });
     payments.rows = payments.rows.map((r) => ({
       ...r,
@@ -155,7 +155,28 @@ describe("DealPaymentSettlementService other events", () => {
       refundId: "re_1",
     });
     expect(partial).toMatchObject({ reason: "partial_refund" });
-    expect(payments.rows[0]?.status).toBe("paid");
+    expect(payments.rows[0]).toMatchObject({ status: "paid", refundedMinor: 1_000 });
+    expect(events.events.at(-1)).toMatchObject({
+      eventType: "private_sale_deal.payment_partly_refunded",
+      payload: { refundedMinor: 1_000 },
+    });
+
+    // The provider reports the running total, so a larger one moves it up and a repeat is ignored.
+    await service.refunded({
+      eventId: "r1b",
+      chargeId: "ch_1",
+      refundedMinor: 2_500,
+      refundId: null,
+    });
+    expect(payments.rows[0]?.refundedMinor).toBe(2_500);
+    const repeat = await service.refunded({
+      eventId: "r1c",
+      chargeId: "ch_1",
+      refundedMinor: 2_500,
+      refundId: null,
+    });
+    expect(repeat).toMatchObject({ action: "skipped" });
+    expect(payments.rows[0]?.refundedMinor).toBe(2_500);
 
     const full = await service.refunded({
       eventId: "r2",
@@ -166,5 +187,172 @@ describe("DealPaymentSettlementService other events", () => {
     expect(full).toEqual({ processed: true, action: "refund_received" });
     expect(payments.rows[0]).toMatchObject({ status: "refunded", refundedMinor: 4_800_000 });
     expect(events.events.at(-1)?.eventType).toBe("private_sale_deal.payment_refunded");
+  });
+});
+
+describe("DealPaymentSettlementService receipt", () => {
+  it("sends the buyer's receipt once the payment is recorded, and not for a repeat", async () => {
+    const receipt = { send: vi.fn(async () => undefined) };
+    const { payments, events, transition } = setup();
+    const deal = makeDeal();
+    const service = new DealPaymentSettlementService({
+      transactionRunner: inlineTransactions,
+      scopeForTx: () => fakeScope(deal, payments, events),
+      transitions: { transition },
+      claims: { claim: async (_tx, id) => id !== "dup" },
+      receipt,
+    });
+    await service.settle(paid);
+    expect(receipt.send).toHaveBeenCalledWith({ paymentId: "pay-1" });
+    await service.settle({ ...paid, eventId: "dup" });
+    expect(receipt.send).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps the payment recorded when the receipt cannot be sent", async () => {
+    const receipt = {
+      send: vi.fn(async () => {
+        throw new Error("mail down");
+      }),
+    };
+    const { payments, events, transition } = setup();
+    const deal = makeDeal();
+    const service = new DealPaymentSettlementService({
+      transactionRunner: inlineTransactions,
+      scopeForTx: () => fakeScope(deal, payments, events),
+      transitions: { transition },
+      claims: { claim: async () => true },
+      receipt,
+    });
+    const quiet = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    expect(await service.settle(paid)).toEqual({
+      processed: true,
+      action: "payment_intent_succeeded",
+    });
+    quiet.mockRestore();
+    expect(payments.rows[0]?.status).toBe("paid");
+  });
+});
+
+describe("DealPaymentSettlementService.recordTransferReceived", () => {
+  const invoiced = makeDeal({ stage: "invoiced", priceMinor: 4_800_000 });
+  const transfer = {
+    dealId: "deal-1",
+    recordedByUserId: "u-finance",
+    bankReference: "FP 4411",
+    amountMinor: 4_800_000,
+  };
+
+  function transferSetup(
+    opts: { rows?: ReturnType<typeof makePayment>[]; transition?: DealTransitionOutcome } = {},
+  ) {
+    const payments = new InMemoryDealPayments(opts.rows ?? []);
+    const events = recordingSink();
+    const transition = vi.fn(
+      async (): Promise<DealTransitionOutcome> => opts.transition ?? { kind: "ok", deal: invoiced },
+    );
+    const receipt = { send: vi.fn(async () => undefined) };
+    const service = new DealPaymentSettlementService({
+      transactionRunner: inlineTransactions,
+      scopeForTx: () => fakeScope(invoiced, payments, events),
+      transitions: { transition },
+      claims: { claim: async () => true },
+      receipt,
+      now: () => new Date("2026-11-04T09:00:00Z"),
+    });
+    return { service, payments, events, transition, receipt };
+  }
+
+  it("records the transfer as the deal's paid payment, moves the deal to paid and sends the receipt", async () => {
+    const { service, payments, events, transition, receipt } = transferSetup();
+    const result = await service.recordTransferReceived(transfer);
+    expect(result).toMatchObject({ ok: true });
+    expect(payments.rows).toHaveLength(1);
+    expect(payments.rows[0]).toMatchObject({
+      status: "paid",
+      rail: "gb_bank_transfer",
+      amountMinor: 4_800_000,
+      recordedByUserId: "u-finance",
+      bankReference: "FP 4411",
+      createdByUserId: "u-buyer",
+    });
+    expect(transition).toHaveBeenCalledWith(
+      "deal-1",
+      "mark_paid",
+      { actorUserId: "u-finance" },
+      expect.anything(),
+    );
+    expect(events.events.map((e) => e.eventType)).toEqual([
+      "private_sale_deal.bank_transfer_recorded",
+      "private_sale_deal.payment_paid",
+    ]);
+    expect(receipt.send).toHaveBeenCalledWith({ paymentId: payments.rows[0]?.id });
+  });
+
+  it("lets go of the buyer's open checkout when it records the transfer", async () => {
+    const { service, payments, events } = transferSetup({
+      rows: [makePayment({ status: "open", stripeCheckoutSessionId: "cs_1" })],
+    });
+    expect(await service.recordTransferReceived(transfer)).toMatchObject({ ok: true });
+    expect(payments.rows.map((r) => r.status).sort()).toEqual(["cancelled", "paid"]);
+    expect(events.events[0]).toMatchObject({
+      eventType: "private_sale_deal.payment_cancelled",
+      payload: { reason: "transfer_recorded" },
+    });
+  });
+
+  it.each([
+    ["a different amount", { amountMinor: 4_799_999 }, "amount_mismatch"],
+    ["too much", { amountMinor: 4_800_001 }, "amount_mismatch"],
+  ])("refuses %s and records nothing", async (_why, change, error) => {
+    const { service, payments, transition, receipt } = transferSetup();
+    expect(await service.recordTransferReceived({ ...transfer, ...change })).toEqual({
+      ok: false,
+      error,
+    });
+    expect(payments.rows).toHaveLength(0);
+    expect(transition).not.toHaveBeenCalled();
+    expect(receipt.send).not.toHaveBeenCalled();
+  });
+
+  it("leaves the buyer's own bank transfer to land instead of recording a second payment", async () => {
+    const { service, payments } = transferSetup({ rows: [makePayment({ status: "processing" })] });
+    expect(await service.recordTransferReceived(transfer)).toEqual({
+      ok: false,
+      error: "transfer_in_flight",
+    });
+    expect(payments.rows).toHaveLength(1);
+  });
+
+  it("will not record a second payment for a deal that is paid", async () => {
+    const { service, payments } = transferSetup({ rows: [makePayment({ status: "paid" })] });
+    expect(await service.recordTransferReceived(transfer)).toEqual({
+      ok: false,
+      error: "already_paid",
+    });
+    expect(payments.rows).toHaveLength(1);
+  });
+
+  it("cannot be recorded for a deal that is not waiting for payment", async () => {
+    const payments = new InMemoryDealPayments();
+    const service = new DealPaymentSettlementService({
+      transactionRunner: inlineTransactions,
+      scopeForTx: () => fakeScope(makeDeal({ stage: "agreed" }), payments, recordingSink()),
+      transitions: { transition: vi.fn() },
+      claims: { claim: async () => true },
+    });
+    expect(await service.recordTransferReceived(transfer)).toEqual({
+      ok: false,
+      error: "not_invoiced",
+    });
+    expect(payments.rows).toHaveLength(0);
+  });
+
+  it("undoes the record when the deal does not move to paid", async () => {
+    const { service, receipt } = transferSetup({ transition: { kind: "conflict" } });
+    expect(await service.recordTransferReceived(transfer)).toEqual({
+      ok: false,
+      error: "not_invoiced",
+    });
+    expect(receipt.send).not.toHaveBeenCalled();
   });
 });

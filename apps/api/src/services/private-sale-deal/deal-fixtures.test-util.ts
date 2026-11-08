@@ -71,6 +71,8 @@ export function makePayment(
     stripeCheckoutSessionId: null,
     stripePaymentIntentId: null,
     stripeChargeId: null,
+    recordedByUserId: null,
+    bankReference: null,
     refundedMinor: 0,
     stripeRefundId: null,
     paidAt: null,
@@ -144,6 +146,23 @@ export class InMemoryDealPayments
   }
   async markCancelled(id: string) {
     return this.patch(id, ["open", "processing"], { status: "cancelled" });
+  }
+  async markPaidByTransfer(
+    id: string,
+    t: { recordedByUserId: string; bankReference: string; at: Date },
+  ) {
+    return this.patch(id, ["open"], {
+      status: "paid",
+      paidAt: t.at,
+      recordedByUserId: t.recordedByUserId,
+      bankReference: t.bankReference,
+    });
+  }
+  async markPartlyRefunded(id: string, r: { refundedMinor: number; at: Date }) {
+    const row = this.rows.find((p) => p.id === id);
+    if (!row || row.status !== "paid" || r.refundedMinor <= row.refundedMinor) return null;
+    if (r.refundedMinor >= row.amountMinor) return null;
+    return this.patch(id, ["paid"], { refundedMinor: r.refundedMinor, refundedAt: r.at });
   }
   async markRefunded(id: string, r: { refundedMinor: number; refundId: string | null; at: Date }) {
     return this.patch(id, ["paid"], {

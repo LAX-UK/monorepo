@@ -4,6 +4,7 @@ import {
   type PrivateSalePolicy,
   dealCommandsFrom,
   dealRefundRecorded,
+  dealRefundableMinor,
   dealViewCounts,
   privateSalePolicyGaps,
   projectDealForStaff,
@@ -35,6 +36,7 @@ import {
   OFFER_STAGES,
   REFUND_BLOCKERS,
   STAFF_COMMANDS,
+  TRANSFER_BLOCKERS,
   commandOf,
   redactBlockers,
   termIsOpen,
@@ -208,6 +210,8 @@ export class PrivateSaleDealQueryService implements IPrivateSaleDealQueries {
             rail: livePayment.rail,
             amountMinor: livePayment.amountMinor,
             paidAt: livePayment.paidAt,
+            refundedMinor: livePayment.refundedMinor,
+            recordedTransfer: livePayment.bankReference !== null,
           }
         : null,
       timeline: history.map((h) => ({
@@ -227,7 +231,8 @@ export class PrivateSaleDealQueryService implements IPrivateSaleDealQueries {
       ),
       canNameBuyer: canDo(viewer, "manage") && OFFER_STAGES.has(deal.stage),
       actions: await this.actionsFor(viewer, deal, {
-        hasPaidPayment: paid?.status === "paid",
+        hasPaidPayment: paid?.status === "paid" && dealRefundableMinor(paid) > 0,
+        transferInFlight: payments.some((p) => p.status === "processing"),
         hasPayoutLine,
         refundRecorded,
       }),
@@ -238,12 +243,18 @@ export class PrivateSaleDealQueryService implements IPrivateSaleDealQueries {
   private async actionsFor(
     viewer: DealStaffViewer,
     deal: PrivateSaleDealDetail,
-    money: { hasPaidPayment: boolean; hasPayoutLine: boolean; refundRecorded: boolean },
+    money: {
+      hasPaidPayment: boolean;
+      transferInFlight: boolean;
+      hasPayoutLine: boolean;
+      refundRecorded: boolean;
+    },
   ): Promise<DealActionState[]> {
     const fromStage = new Set(dealCommandsFrom(deal.stage));
     const offered = STAFF_DEAL_ACTIONS.filter((action) => {
       if (!canDo(viewer, ACTION_ABILITY[action])) return false;
       if (action === "refund") return money.hasPaidPayment;
+      if (action === "record_bank_transfer") return deal.stage === "invoiced";
       const command = STAFF_COMMANDS[action];
       return command !== undefined && fromStage.has(command);
     });
@@ -255,7 +266,11 @@ export class PrivateSaleDealQueryService implements IPrivateSaleDealQueries {
             ? money.hasPayoutLine
               ? [REFUND_BLOCKERS.payout_queued]
               : []
-            : await this.blockersFor(viewer, deal, action, money.refundRecorded),
+            : action === "record_bank_transfer"
+              ? money.transferInFlight
+                ? [TRANSFER_BLOCKERS.transfer_in_flight]
+                : []
+              : await this.blockersFor(viewer, deal, action, money.refundRecorded),
       })),
     );
   }
@@ -271,6 +286,7 @@ export class PrivateSaleDealQueryService implements IPrivateSaleDealQueries {
       actorUserId: viewer.userId,
       // The reason is asked for in the dialog, so a missing one is not what keeps the move off.
       ...(command === "cancel" ? { cancelReason: "pending", refundRecorded } : {}),
+      ...(command === "release" ? { releaseNote: "pending" } : {}),
     });
     return redactBlockers(viewer, (blockers ?? []).map(toBlocker));
   }

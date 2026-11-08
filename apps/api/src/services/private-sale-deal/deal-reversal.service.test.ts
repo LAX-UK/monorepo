@@ -29,7 +29,10 @@ function setup(
     transitions: { transition: vi.fn() },
     claims: { claim: async () => true },
   });
-  const createRefund = vi.fn(async () => ({ kind: "created" as const, refundId: "re_1" }));
+  const createRefund = vi.fn(async (_input: { sequence?: number }) => ({
+    kind: "created" as const,
+    refundId: "re_1",
+  }));
   const expireCheckout = vi.fn(async () => undefined);
   const transition = vi.fn(async () => ({ kind: "ok" as const, deal }));
   const service = new DealReversalService({
@@ -52,15 +55,76 @@ describe("DealReversalService.refund", () => {
     expect(await service.refund({ dealId: "deal-1", actorUserId: "u-fin" })).toEqual({
       ok: true,
       refundedMinor: 4_800_000,
+      remainingMinor: 0,
     });
     expect(createRefund).toHaveBeenCalledWith({
       chargeId: "ch_1",
       amount: 4_800_000,
       paymentId: "pay-1",
+      sequence: 0,
       reason: "requested_by_customer",
     });
     expect(payments.rows[0]).toMatchObject({ status: "refunded", refundedMinor: 4_800_000 });
     expect(events.events.at(-1)?.eventType).toBe("private_sale_deal.payment_refunded");
+  });
+
+  it("returns part of the payment and leaves it paid with the amount recorded", async () => {
+    const { service, payments, createRefund, events } = setup();
+    expect(
+      await service.refund({ dealId: "deal-1", actorUserId: "u-fin", amountMinor: 100_000 }),
+    ).toEqual({ ok: true, refundedMinor: 100_000, remainingMinor: 4_700_000 });
+    expect(createRefund).toHaveBeenCalledWith(
+      expect.objectContaining({ amount: 100_000, sequence: 0 }),
+    );
+    expect(payments.rows[0]).toMatchObject({ status: "paid", refundedMinor: 100_000 });
+    expect(events.events.at(-1)).toMatchObject({
+      eventType: "private_sale_deal.payment_partly_refunded",
+      payload: { paymentId: "pay-1", amountMinor: 4_800_000, refundedMinor: 100_000 },
+    });
+  });
+
+  it("makes a second part refund of the same size a refund of its own", async () => {
+    const { service, payments, createRefund } = setup();
+    await service.refund({ dealId: "deal-1", actorUserId: "u", amountMinor: 100_000 });
+    await service.refund({ dealId: "deal-1", actorUserId: "u", amountMinor: 100_000 });
+    expect(createRefund.mock.calls.map(([call]) => call.sequence)).toEqual([0, 100_000]);
+    expect(payments.rows[0]).toMatchObject({ status: "paid", refundedMinor: 200_000 });
+  });
+
+  it("returns only what is left when the rest is refunded after a part refund", async () => {
+    const part = makePayment({
+      status: "paid",
+      stripeChargeId: "ch_1",
+      paidAt: new Date(),
+      refundedMinor: 1_000_000,
+    });
+    const { service, payments, createRefund } = setup({ payments: [part] });
+    expect(await service.refund({ dealId: "deal-1", actorUserId: "u" })).toEqual({
+      ok: true,
+      refundedMinor: 3_800_000,
+      remainingMinor: 0,
+    });
+    expect(createRefund).toHaveBeenCalledWith(expect.objectContaining({ amount: 3_800_000 }));
+    expect(payments.rows[0]).toMatchObject({ status: "refunded", refundedMinor: 4_800_000 });
+  });
+
+  it.each([0, -5, 1.5, 4_800_001])("refuses an amount of %s", async (amountMinor) => {
+    const { service, createRefund } = setup();
+    expect(await service.refund({ dealId: "deal-1", actorUserId: "u", amountMinor })).toEqual({
+      ok: false,
+      error: "invalid_amount",
+    });
+    expect(createRefund).not.toHaveBeenCalled();
+  });
+
+  it("has nothing to return when the payment is already fully refunded", async () => {
+    const { service } = setup({
+      payments: [makePayment({ status: "paid", stripeChargeId: "ch_1", refundedMinor: 4_800_000 })],
+    });
+    expect(await service.refund({ dealId: "deal-1", actorUserId: "u" })).toEqual({
+      ok: false,
+      error: "nothing_to_refund",
+    });
   });
 
   it("has nothing to return when no payment is paid", async () => {

@@ -164,8 +164,10 @@ export type DealActionCopy = {
   /** What will happen, in the present tense. */
   effect: (deal: DealRecord) => string;
   confirm: string;
-  /** The move asks for a reason, kept with the deal. */
-  reason: { label: string; required: boolean; hint: string } | null;
+  /** The move asks for a reason or a note, kept with the deal. */
+  reason: { label: string; required: boolean; hint: string; missing: string } | null;
+  /** The move takes an amount of money in pounds; left empty it means all that applies. */
+  amount?: { label: string; required: boolean; hint: string; missing: string };
   /** The move takes or returns money: it needs a recent sign-in. */
   money: boolean;
   /** The past tense for the toast. */
@@ -213,7 +215,12 @@ export const DEAL_ACTION_COPY = {
     effect: () =>
       "Records that the work has been collected or shipped. The seller's payout can then be queued.",
     confirm: "Release work",
-    reason: null,
+    reason: {
+      label: "How it was handed over",
+      required: true,
+      hint: "Who collected it, or the carrier and tracking reference. Kept with the deal.",
+      missing: "Say how the work was handed over.",
+    },
     money: false,
     done: "Work released",
   },
@@ -230,18 +237,49 @@ export const DEAL_ACTION_COPY = {
       label: "Reason",
       required: true,
       hint: "Kept with the deal. Don't paste the clients' personal details.",
+      missing: "Give a reason for cancelling.",
     },
     money: false,
     done: "Deal cancelled",
   },
   refund: {
     label: "Refund the buyer",
-    effect: (deal) =>
-      `Returns the whole payment${deal.money ? ` of ${formatStaffMoney(deal.money.totalDueMinor)}` : ""} to the buyer. This can't be undone. Cancel the deal afterwards if it is not going ahead.`,
+    effect: (deal) => {
+      const paid = deal.payment?.amountMinor ?? deal.money?.totalDueMinor ?? null;
+      const back = deal.payment?.refundedMinor ?? 0;
+      const left = paid === null ? null : paid - back;
+      return `Returns the money to the buyer: the amount below, or all that is left${left === null ? "" : ` (${formatStaffMoney(left)})`} if you leave it empty.${back > 0 ? ` ${formatStaffMoney(back)} has already gone back.` : ""} This can't be undone. Cancel the deal afterwards if it is not going ahead.`;
+    },
     confirm: "Refund buyer",
     reason: null,
+    amount: {
+      label: "Amount to return",
+      required: false,
+      hint: "Leave empty to return everything that is left.",
+      missing: "",
+    },
     money: true,
     done: "Buyer refunded",
+  },
+  record_bank_transfer: {
+    label: "Record a bank transfer",
+    effect: (deal) =>
+      `Records that the buyer's bank transfer has landed${deal.money ? `: it must be exactly ${formatStaffMoney(deal.money.totalDueMinor)}` : ""}. The deal moves to Paid and the buyer gets their receipt. Their own checkout is ended.`,
+    confirm: "Record transfer",
+    reason: {
+      label: "Bank reference",
+      required: true,
+      hint: "The reference on your bank statement. Kept with the payment.",
+      missing: "Give the bank's reference for the transfer.",
+    },
+    amount: {
+      label: "Amount received",
+      required: true,
+      hint: "The full amount the buyer owes, including any buyer's fee.",
+      missing: "Enter the amount that landed.",
+    },
+    money: true,
+    done: "Bank transfer recorded",
   },
 } as const satisfies Record<StaffDealAction, DealActionCopy>;
 

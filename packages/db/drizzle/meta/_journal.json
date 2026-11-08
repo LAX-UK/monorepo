@@ -2262,6 +2262,13 @@
       "when": 1803456000000,
       "tag": "0328_shop_delivery_regions",
       "breakpoints": true
+    },
+    {
+      "idx": 324,
+      "version": "7",
+      "when": 1803542400000,
+      "tag": "0335_private_sale_deal_follow_ups",
+      "breakpoints": true
     }
   ]
 }

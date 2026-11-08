@@ -1,8 +1,12 @@
 import type { Database } from "@auction/db";
 import {
   PRIVATE_SALE_DEAL_EVENT_AGGREGATE,
+  dealBankTransferRecordedEvent,
+  dealPaymentBlockers,
   dealPaymentCancelledEvent,
+  dealPaymentDueMinor,
   dealPaymentPaidEvent,
+  dealPaymentPartlyRefundedEvent,
   dealPaymentRefundedEvent,
 } from "@auction/domain";
 import type {
@@ -25,7 +29,32 @@ export type DealPaymentCancelReason =
   | "checkout_cancelled"
   | "checkout_expired"
   | "bank_transfer_failed"
-  | "checkout_unavailable";
+  | "checkout_unavailable"
+  /** Finance recorded the transfer by hand, so the checkout is no longer needed. */
+  | "transfer_recorded";
+
+/** Tells the buyer their payment was received. Sent after the payment is committed. */
+export interface IDealReceipt {
+  send(input: { paymentId: string }): Promise<void>;
+}
+
+export type RecordTransferError =
+  | "not_found"
+  /** The deal is not waiting for payment, or has no price. */
+  | "not_invoiced"
+  | "buyer_missing"
+  /** The amount must be exactly what the buyer owes; a different amount is not recorded. */
+  | "amount_mismatch"
+  | "already_paid"
+  /** The buyer's own bank transfer through the checkout is on its way; wait for it to land. */
+  | "transfer_in_flight";
+
+export type RecordTransferResult =
+  | { ok: true; paymentId: string }
+  | { ok: false; error: RecordTransferError };
+
+/** Thrown inside the transaction to undo it when the deal turns out not to be waiting for money. */
+class NotInvoiced extends Error {}
 
 export type DealPaymentSettlementDeps = {
   transactionRunner: ITransactionRunner;
@@ -33,6 +62,8 @@ export type DealPaymentSettlementDeps = {
   scopeForTx: (tx: Database) => DealPaymentScope;
   transitions: Pick<DealTransitionService, "transition">;
   claims: IProviderEventClaim;
+  /** The buyer's receipt; absent where emails are not sent. */
+  receipt?: IDealReceipt;
   now?: () => Date;
 };
 
@@ -58,7 +89,21 @@ export class DealPaymentSettlementService {
   constructor(private readonly deps: DealPaymentSettlementDeps) {}
 
   /** The money is in: the payment is paid and the deal moves from invoiced to paid. */
-  settle(input: {
+  async settle(input: {
+    eventId: string;
+    paymentId: string;
+    paymentIntentId: string | null;
+    chargeId: string | null;
+    amountMinor: number;
+  }): Promise<PaymentWebhookResult> {
+    const result = await this.settleInTransaction(input);
+    if (result.processed && result.action === "payment_intent_succeeded" && !result.reason) {
+      await this.sendReceipt(input.paymentId);
+    }
+    return result;
+  }
+
+  private settleInTransaction(input: {
     eventId: string;
     paymentId: string;
     paymentIntentId: string | null;
@@ -145,9 +190,9 @@ export class DealPaymentSettlementService {
   }
 
   /**
-   * The provider reports money back to the buyer. Only a full refund is recorded: a partial one
-   * leaves the payment paid for finance to settle by hand, because a paid deal cancels only after
-   * all of the buyer's money has gone back.
+   * The provider reports money back to the buyer. `refundedMinor` is the total returned on the
+   * charge so far. A part refund is recorded on the payment, which stays paid; the deal can be
+   * cancelled only once all of the buyer's money has gone back.
    */
   refunded(input: {
     eventId: string;
@@ -162,34 +207,158 @@ export class DealPaymentSettlementService {
       if (!found) return UNKNOWN;
       const payment = await scope.payments.findByIdForUpdate(found.id);
       if (!payment) return UNKNOWN;
-      if (input.refundedMinor < payment.amountMinor) {
-        recordMoneyPathEvent("private_sale_partial_refund_not_recorded");
-        return { processed: true, action: "refund_received", reason: "partial_refund" };
-      }
       const updated = await this.recordRefund(scope, payment, input);
-      return updated
-        ? { processed: true, action: "refund_received" }
-        : { processed: true, action: "skipped", reason: "payment_not_paid" };
+      if (updated) {
+        return {
+          processed: true,
+          action: "refund_received",
+          ...(updated.status === "paid" ? { reason: "partial_refund" } : {}),
+        };
+      }
+      // Nothing more than is already recorded, or the payment is not paid: a repeat changes nothing.
+      return { processed: true, action: "skipped", reason: "payment_not_paid" };
     });
   }
 
-  /** Records a refund the platform made itself, in the caller's transaction. */
+  /**
+   * Records money returned to the buyer, in the caller's transaction. `refundedMinor` is the total
+   * returned so far: the whole amount closes the payment as refunded, less leaves it paid with the
+   * amount recorded. A total no higher than the one already recorded changes nothing, so the
+   * provider's report and the platform's own record of the same refund agree.
+   */
   async recordRefund(
     scope: DealPaymentScope,
     payment: PrivateSaleDealPayment,
     refund: { refundedMinor: number; refundId: string | null },
   ): Promise<PrivateSaleDealPayment | null> {
-    const updated = await scope.payments.markRefunded(payment.id, {
-      refundedMinor: Math.min(refund.refundedMinor, payment.amountMinor),
-      refundId: refund.refundId,
-      at: (this.deps.now ?? (() => new Date()))(),
-    });
+    const total = Math.min(Math.max(refund.refundedMinor, 0), payment.amountMinor);
+    const at = (this.deps.now ?? (() => new Date()))();
+    const whole = total >= payment.amountMinor;
+    const updated = whole
+      ? await scope.payments.markRefunded(payment.id, {
+          refundedMinor: total,
+          refundId: refund.refundId,
+          at,
+        })
+      : await scope.payments.markPartlyRefunded(payment.id, { refundedMinor: total, at });
     if (!updated) return null;
     const deal = await scope.deals.findById(payment.dealId);
     if (deal) {
-      await this.publish(scope, deal, dealPaymentRefundedEvent(deal, updated), null, payment);
+      await this.publish(
+        scope,
+        deal,
+        whole
+          ? dealPaymentRefundedEvent(deal, updated)
+          : dealPaymentPartlyRefundedEvent(deal, updated),
+        null,
+        payment,
+      );
     }
     return updated;
+  }
+
+  /**
+   * Finance saw the buyer's bank transfer land: it is recorded as the deal's paid payment and the
+   * deal moves from invoiced to paid, in one transaction. The amount must be exactly what the
+   * buyer owes. A checkout still open is let go in the same step; a transfer already on its way
+   * through the checkout is left to land.
+   */
+  async recordTransferReceived(input: {
+    dealId: string;
+    recordedByUserId: string;
+    bankReference: string;
+    amountMinor: number;
+  }): Promise<RecordTransferResult> {
+    let paymentId: string;
+    try {
+      const outcome = await this.deps.transactionRunner.runInTransaction(async (tx) => {
+        const scope = this.deps.scopeForTx(tx);
+        const deal = await scope.deals.findById(input.dealId);
+        if (!deal) return { error: "not_found" } as const;
+        const live = await scope.payments.findLiveForDeal(deal.id);
+        if (live?.status === "paid") return { error: "already_paid" } as const;
+        if (live?.status === "processing") return { error: "transfer_in_flight" } as const;
+        if (dealPaymentBlockers(deal).length > 0) return { error: "not_invoiced" } as const;
+        const buyer = deal.buyer;
+        if (!buyer) return { error: "buyer_missing" } as const;
+        const due = dealPaymentDueMinor(deal);
+        if (due === null || due !== input.amountMinor) return { error: "amount_mismatch" } as const;
+
+        if (live) {
+          const cancelled = await scope.payments.markCancelled(live.id);
+          if (cancelled) {
+            await this.publish(
+              scope,
+              deal,
+              dealPaymentCancelledEvent(deal, cancelled, "transfer_recorded"),
+              input.recordedByUserId,
+              live,
+            );
+          }
+        }
+        const claim = await scope.payments.claim({
+          dealId: deal.id,
+          buyerLegalEntityId: buyer.legalEntityId,
+          createdByUserId: buyer.actingUserId,
+          rail: "gb_bank_transfer",
+          amountMinor: due,
+        });
+        const paid = await scope.payments.markPaidByTransfer(claim.payment.id, {
+          recordedByUserId: input.recordedByUserId,
+          bankReference: input.bankReference,
+          at: (this.deps.now ?? (() => new Date()))(),
+        });
+        if (!paid) return { error: "already_paid" } as const;
+        await this.publish(
+          scope,
+          deal,
+          dealBankTransferRecordedEvent(deal, paid),
+          input.recordedByUserId,
+          paid,
+        );
+        await this.publish(
+          scope,
+          deal,
+          dealPaymentPaidEvent(deal, paid),
+          input.recordedByUserId,
+          paid,
+        );
+        const moved = await this.deps.transitions.transition(
+          deal.id,
+          "mark_paid",
+          { actorUserId: input.recordedByUserId },
+          scope,
+        );
+        // Undo the whole record if the deal was not waiting for money after all.
+        if (moved.kind !== "ok") throw new NotInvoiced();
+        return { paymentId: paid.id } as const;
+      });
+      if ("error" in outcome) return { ok: false, error: outcome.error };
+      paymentId = outcome.paymentId;
+    } catch (error) {
+      if (error instanceof NotInvoiced) return { ok: false, error: "not_invoiced" };
+      throw error;
+    }
+    recordMoneyPathEvent("private_sale_transfer_recorded");
+    await this.sendReceipt(paymentId);
+    return { ok: true, paymentId };
+  }
+
+  /** The receipt is a courtesy after the money is safely recorded, so a failure never undoes it. */
+  private async sendReceipt(paymentId: string): Promise<void> {
+    const { receipt } = this.deps;
+    if (!receipt) return;
+    try {
+      await receipt.send({ paymentId });
+    } catch (error) {
+      console.error(
+        JSON.stringify({
+          msg: "private_sale_receipt_failed",
+          paymentId,
+          error: error instanceof Error ? error.message : String(error),
+        }),
+      );
+    }
   }
 
   private async publish(

@@ -36,6 +36,7 @@ export const ACTION_ABILITY: Readonly<Record<StaffDealAction, DealAbility>> = {
   cancel: "manage",
   issue_invoice: "finance",
   refund: "finance",
+  record_bank_transfer: "finance",
   release: "release",
 };
 

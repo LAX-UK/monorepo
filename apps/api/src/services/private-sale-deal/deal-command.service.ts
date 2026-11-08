@@ -21,6 +21,7 @@ import type {
 import {
   OFFER_STAGES,
   REFUND_BLOCKERS,
+  TRANSFER_BLOCKERS,
   commandOf,
   redactBlockers,
   termIsOpen,
@@ -37,6 +38,7 @@ import {
   canDo,
   canSeeDeal,
 } from "./deal-staff-permissions.js";
+import type { DealTransferService } from "./deal-transfer.service.js";
 import type { DealTransitionOutcome, DealTransitionService } from "./deal-transition.service.js";
 
 export type DealCommandDeps = {
@@ -45,6 +47,7 @@ export type DealCommandDeps = {
   transitions: Pick<DealTransitionService, "transition" | "blockers">;
   invoices: Pick<DealInvoiceService, "issue">;
   reversal: Pick<DealReversalService, "cancel" | "refund">;
+  transfers: Pick<DealTransferService, "record">;
   policy: PrivateSalePolicy;
   parties: DealPartyResolver;
   events: IDomainEventSink;
@@ -136,7 +139,7 @@ export class PrivateSaleDealCommandService implements IPrivateSaleDealCommands {
     viewer: DealStaffViewer,
     ref: string,
     action: StaffDealAction,
-    input: { version: number; reason?: string | undefined },
+    input: { version: number; reason?: string | undefined; amountMinor?: number | undefined },
   ): Promise<DealWriteResult> {
     if (!canDo(viewer, ACTION_ABILITY[action])) return { ok: false, error: "forbidden" };
     const deal = await this.load(viewer, ref);
@@ -146,7 +149,8 @@ export class PrivateSaleDealCommandService implements IPrivateSaleDealCommands {
       return { ok: false, error: "stale_version", currentVersion: deal.version };
     }
 
-    if (action === "refund") return this.refund(viewer, deal);
+    if (action === "refund") return this.refund(viewer, deal, input.amountMinor);
+    if (action === "record_bank_transfer") return this.recordTransfer(viewer, deal, input);
     if (action === "cancel") return this.cancel(viewer, deal, input.reason, input.version);
 
     const outcome =
@@ -159,6 +163,7 @@ export class PrivateSaleDealCommandService implements IPrivateSaleDealCommands {
         : await this.deps.transitions.transition(deal.id, commandOf(action), {
             actorUserId: viewer.userId,
             expectedVersion: input.version,
+            ...(action === "release" ? { releaseNote: input.reason ?? "" } : {}),
           });
     if (outcome.kind === "ok" && action === "agree") {
       // Agreement clears the deal in the same step when every check is already green.
@@ -206,11 +211,45 @@ export class PrivateSaleDealCommandService implements IPrivateSaleDealCommands {
   private async refund(
     viewer: DealStaffViewer,
     deal: PrivateSaleDealDetail,
+    amountMinor: number | undefined,
   ): Promise<DealWriteResult> {
-    const result = await this.deps.reversal.refund({ dealId: deal.id, actorUserId: viewer.userId });
+    const result = await this.deps.reversal.refund({
+      dealId: deal.id,
+      actorUserId: viewer.userId,
+      ...(amountMinor !== undefined ? { amountMinor } : {}),
+    });
     if (result.ok) return this.freshRecord(viewer, deal.reference);
     if (result.error === "not_found") return { ok: false, error: "deal_not_found" };
     return { ok: false, error: "blocked", blockers: [REFUND_BLOCKERS[result.error]] };
+  }
+
+  /** Finance saw the buyer's bank transfer land: the amount and the bank's reference are recorded. */
+  private async recordTransfer(
+    viewer: DealStaffViewer,
+    deal: PrivateSaleDealDetail,
+    input: { reason?: string | undefined; amountMinor?: number | undefined },
+  ): Promise<DealWriteResult> {
+    if (input.amountMinor === undefined || !input.reason) {
+      return {
+        ok: false,
+        error: "blocked",
+        blockers: [
+          {
+            code: "transfer_details_required",
+            message: "Give the amount received and the bank's reference for the transfer.",
+          },
+        ],
+      };
+    }
+    const result = await this.deps.transfers.record({
+      dealId: deal.id,
+      recordedByUserId: viewer.userId,
+      bankReference: input.reason,
+      amountMinor: input.amountMinor,
+    });
+    if (result.ok) return this.freshRecord(viewer, deal.reference);
+    if (result.error === "not_found") return { ok: false, error: "deal_not_found" };
+    return { ok: false, error: "blocked", blockers: [TRANSFER_BLOCKERS[result.error]] };
   }
 
   private async resultOf(

@@ -28,6 +28,7 @@ import type {
   IPrivateSaleDealParties,
 } from "../services/interfaces/private-sale-deal-desk.js";
 import type { IStripeCustomerGateway } from "../services/interfaces/stripe-customer.js";
+import type { NotificationDispatcher } from "../services/notification.dispatcher.js";
 import type { IProviderEventClaim } from "../services/payment-group/payment-group-settlement.service.js";
 import type { PaymentTierPolicy } from "../services/payment/payment-tier.policy.js";
 import { ComplianceDealClearanceReader } from "../services/private-sale-deal/deal-clearance.reader.js";
@@ -43,7 +44,9 @@ import {
 import { DealPaymentService } from "../services/private-sale-deal/deal-payment.service.js";
 import { DealPayoutSettlementService } from "../services/private-sale-deal/deal-payout-settlement.service.js";
 import { PrivateSaleDealQueryService } from "../services/private-sale-deal/deal-query.service.js";
+import { DealReceiptNotifier } from "../services/private-sale-deal/deal-receipt.notifier.js";
 import { DealReversalService } from "../services/private-sale-deal/deal-reversal.service.js";
+import { DealTransferService } from "../services/private-sale-deal/deal-transfer.service.js";
 import { DealTransitionService } from "../services/private-sale-deal/deal-transition.service.js";
 import { EnquiryConversionService } from "../services/private-sale-deal/enquiry-conversion.service.js";
 import { privateSalePolicyFromEnv } from "../services/private-sale-deal/private-sale-policy.config.js";
@@ -89,6 +92,8 @@ export type CreatePrivateSaleDealServicesInput = {
    * the accounting system the business has chosen, so no production implementation exists.
    */
   invoiceIssuer?: DealInvoiceIssuer | null;
+  /** Sends the buyer's receipt; absent where notices are not sent. */
+  notificationDispatcher?: Pick<NotificationDispatcher, "dispatch"> | null;
 };
 
 /** Private sale deals: the state machine, the buyer's payment, refunds and the seller's payout. */
@@ -124,11 +129,18 @@ export function createPrivateSaleDealServices(
     claim: async (tx, eventId) =>
       (await tryClaimProcessedStripeEvent(tx, eventId, PAYMENT_WEBHOOK_EVENT_SOURCE)).claimed,
   };
+  const queries = new DrizzlePrivateSaleDealQueryRepository(db);
   const settlement = new DealPaymentSettlementService({
     transactionRunner: input.transactionRunner,
     scopeForTx,
     transitions,
     claims,
+    receipt: new DealReceiptNotifier({
+      payments,
+      deals,
+      works: queries,
+      dispatcher: input.notificationDispatcher ?? null,
+    }),
   });
   const gateway = new StripeDealCheckoutGateway(input.stripeClientFactory);
   const invoices = new DealInvoiceService({
@@ -158,7 +170,7 @@ export function createPrivateSaleDealServices(
     transactionRunner: input.transactionRunner,
     scopeForTx,
   });
-  const queries = new DrizzlePrivateSaleDealQueryRepository(db);
+  const transfers = new DealTransferService({ deals, payments, checkout: gateway, settlement });
   const parties = new DealPartyResolver({
     memberships: input.memberships,
     users: input.users,
@@ -182,6 +194,7 @@ export function createPrivateSaleDealServices(
     transitions,
     invoices,
     reversal,
+    transfers,
     policy,
     parties,
     events,

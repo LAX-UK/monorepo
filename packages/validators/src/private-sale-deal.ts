@@ -19,6 +19,7 @@ export const STAFF_DEAL_ACTIONS = [
   "release",
   "cancel",
   "refund",
+  "record_bank_transfer",
 ] as const;
 export type StaffDealAction = (typeof STAFF_DEAL_ACTIONS)[number];
 
@@ -71,11 +72,17 @@ export const adminDealBuyerSchema = z.object({
 });
 export type AdminDealBuyerInput = z.infer<typeof adminDealBuyerSchema>;
 
-/** A move on a deal. A reason is needed to cancel, and is ignored by the other moves. */
+/**
+ * A move on a deal. The reason is why a deal is cancelled, how the work was handed over on a
+ * release, or the bank's reference when a transfer is recorded; the other moves ignore it. The
+ * amount, in pence, is how much of the payment a refund returns (all that is left when absent) or
+ * how much the transfer was for.
+ */
 export const adminDealActionSchema = z.object({
   /** The version the person was looking at. */
   version: z.number().int().min(1),
   reason: z.string().trim().min(1).max(1000).optional(),
+  amountMinor: z.number().int().min(1).max(1_000_000_000_00).optional(),
 });
 export type AdminDealActionInput = z.infer<typeof adminDealActionSchema>;
 

@@ -42,6 +42,8 @@ function mapPayment(row: PaymentRow): PrivateSaleDealPayment {
     stripeCheckoutSessionId: row.stripeCheckoutSessionId,
     stripePaymentIntentId: row.stripePaymentIntentId,
     stripeChargeId: row.stripeChargeId,
+    recordedByUserId: row.recordedByUserId,
+    bankReference: row.bankReference,
     refundedMinor: row.refundedMinor,
     stripeRefundId: row.stripeRefundId,
     paidAt: row.paidAt,
@@ -144,6 +146,37 @@ export class DrizzlePrivateSaleDealPaymentRepository
 
   async markCancelled(id: string): Promise<PrivateSaleDealPayment | null> {
     return this.move(id, ["open", "processing"], { status: "cancelled" });
+  }
+
+  async markPaidByTransfer(
+    id: string,
+    transfer: { recordedByUserId: string; bankReference: string; at: Date },
+  ): Promise<PrivateSaleDealPayment | null> {
+    return this.move(id, ["open"], {
+      status: "paid",
+      paidAt: transfer.at,
+      recordedByUserId: transfer.recordedByUserId,
+      bankReference: transfer.bankReference,
+    });
+  }
+
+  async markPartlyRefunded(
+    id: string,
+    refund: { refundedMinor: number; at: Date },
+  ): Promise<PrivateSaleDealPayment | null> {
+    const [row] = await this.db
+      .update(privateSaleDealPayment)
+      .set({ refundedMinor: refund.refundedMinor, refundedAt: refund.at, updatedAt: sql`now()` })
+      .where(
+        and(
+          eq(privateSaleDealPayment.id, id),
+          eq(privateSaleDealPayment.status, "paid"),
+          sql`${privateSaleDealPayment.refundedMinor} < ${refund.refundedMinor}`,
+          sql`${privateSaleDealPayment.amountMinor} > ${refund.refundedMinor}`,
+        ),
+      )
+      .returning();
+    return row ? mapPayment(row) : null;
   }
 
   async markRefunded(

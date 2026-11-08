@@ -109,6 +109,72 @@ describe.skipIf(!HAS_DB)("private sale deal payments and payouts (integration)",
     });
   });
 
+  it("records a bank transfer landing on an open payment, once, with who recorded it", async () => {
+    await inRollback(async (db, dealId) => {
+      const repo = new DrizzlePrivateSaleDealPaymentRepository(db);
+      const { payment } = await repo.claim(newPayment(dealId));
+      const at = new Date("2026-11-04T09:00:00Z");
+      const paid = await repo.markPaidByTransfer(payment.id, {
+        recordedByUserId: staffId,
+        bankReference: "FP 4411",
+        at,
+      });
+      expect(paid).toMatchObject({
+        status: "paid",
+        paidAt: at,
+        recordedByUserId: staffId,
+        bankReference: "FP 4411",
+        stripeChargeId: null,
+      });
+      expect(
+        await repo.markPaidByTransfer(payment.id, {
+          recordedByUserId: staffId,
+          bankReference: "again",
+          at,
+        }),
+      ).toBeNull();
+    });
+  });
+
+  it("refuses a recorded transfer without its reference or off the bank transfer rail", async () => {
+    await inRollback(async (db, dealId) => {
+      const repo = new DrizzlePrivateSaleDealPaymentRepository(db);
+      const { payment } = await repo.claim({ ...newPayment(dealId), rail: "card" });
+      await expect(
+        db.transaction((tx) =>
+          new DrizzlePrivateSaleDealPaymentRepository(tx).markPaidByTransfer(payment.id, {
+            recordedByUserId: staffId,
+            bankReference: "FP 4411",
+            at: new Date(),
+          }),
+        ),
+      ).rejects.toThrow();
+    });
+  });
+
+  it("records part refunds as a running total that only goes up, and leaves the payment paid", async () => {
+    await inRollback(async (db, dealId) => {
+      const repo = new DrizzlePrivateSaleDealPaymentRepository(db);
+      const { payment } = await repo.claim(newPayment(dealId));
+      const at = new Date("2026-11-04T09:00:00Z");
+      expect(await repo.markPartlyRefunded(payment.id, { refundedMinor: 100, at })).toBeNull();
+      await repo.markPaid(payment.id, { chargeId: "ch_1", paymentIntentId: "pi_1", at });
+      expect(
+        await repo.markPartlyRefunded(payment.id, { refundedMinor: 100_000, at }),
+      ).toMatchObject({ status: "paid", refundedMinor: 100_000 });
+      expect(await repo.markPartlyRefunded(payment.id, { refundedMinor: 100_000, at })).toBeNull();
+      expect(await repo.markPartlyRefunded(payment.id, { refundedMinor: 50_000, at })).toBeNull();
+      expect(
+        await repo.markPartlyRefunded(payment.id, { refundedMinor: 250_000, at }),
+      ).toMatchObject({ refundedMinor: 250_000 });
+      // The whole amount is a refund, not a part one.
+      expect(
+        await repo.markPartlyRefunded(payment.id, { refundedMinor: 4_800_000, at }),
+      ).toBeNull();
+      expect((await repo.findById(payment.id))?.status).toBe("paid");
+    });
+  });
+
   it("applies each move only from the statuses that may make it", async () => {
     await inRollback(async (db, dealId) => {
       const repo = new DrizzlePrivateSaleDealPaymentRepository(db);

@@ -26,8 +26,8 @@ with its reason. Nothing is ever guessed.
 | `PRIVATE_SALE_TERMS_VERSION` | Agreement (both sides accept this version in the product) |
 | `PRIVATE_SALE_COMMISSION_BPS` | The invoice (a commission is copied onto each new deal) |
 | `PRIVATE_SALE_VAT_TREATMENTS` | The invoice (finance chooses a treatment from this list) |
-| `PRIVATE_SALE_PAYMENT_DUE_DAYS` | The invoice (sets the payment deadline) |
-| `PRIVATE_SALE_COLLECTION_DUE_DAYS` | Nothing; the collection date is left unset |
+| `PRIVATE_SALE_PAYMENT_DUE_DAYS` | Nothing; 7 days is suggested until the owner decides (sets the payment deadline at the invoice) |
+| `PRIVATE_SALE_COLLECTION_DUE_DAYS` | Nothing; 14 days is suggested until the owner decides (sets the collection deadline when the deal is paid) |
 | `PRIVATE_SALE_BUYER_FEE_BPS` | Nothing; there is no buyer's fee by default |
 
 Approved defaults live in code: source of funds from £9,000 (`SOF_THRESHOLD_AMOUNT`), AML threshold
@@ -39,11 +39,40 @@ Approved defaults live in code: source of funds from £9,000 (`SOF_THRESHOLD_AMO
 | --- | --- |
 | `PRIVATE_SALE_DEALS_READ_ACCESS` (private sale managers, private sale enquiry readers, finance, fulfilment, compliance) | Open the list and the record |
 | `private_sale.manage` | Name the buyer, set the price, costs and disclosure, open the offer, record the agreement, re-check clearance, cancel |
-| `finance.platform.write` | Set the buyer's fee, the commission and the VAT treatment, issue the invoice, refund the buyer |
+| `finance.platform.write` | Set the buyer's fee, the commission and the VAT treatment, issue the invoice, record a bank transfer, refund the buyer (all or part) |
 | `operations.fulfilment` | Release the work |
 
-Issuing the invoice and refunding need a recent sign-in and an idempotency key. The person who
+Issuing the invoice, recording a bank transfer and refunding need a recent sign-in and an idempotency key. The person who
 recorded the agreement cannot issue the invoice for the same deal.
+
+## Releasing the work
+
+**Release the work** (fulfilment, once the deal is paid) asks how the work was handed over: who collected it, or the carrier and tracking reference. The note is required and is kept with the move in the deal's history, with who made it and when. Only then can the seller's payout be queued.
+
+## Recording a bank transfer
+
+A buyer normally pays at the checkout, and a bank transfer made there lands by itself. When money arrives another way, finance uses **Record a bank transfer** on an invoiced deal and gives the amount received and the bank's reference.
+
+- The amount must be exactly what the buyer owes (the price plus any buyer's fee). A different amount is refused and nothing is recorded; a short or split payment is dealt with outside the deal.
+- It is recorded as the deal's paid payment on the bank transfer rail, with who recorded it and the reference, and the deal moves to Paid in the same step. The buyer's own checkout, if still open, is ended first.
+- If the buyer's own bank transfer through the checkout is on its way, recording is refused: wait for it to land, which is recorded automatically.
+- The buyer gets the same payment receipt as a card payment, once per payment.
+- A transfer recorded this way has no card or Stripe charge, so it cannot be refunded here: finance returns the money from the bank, and the deal cannot be cancelled until a refund is recorded. Say so to finance when recording.
+
+## Refunds
+
+**Refund the buyer** returns the whole of what is left, or the amount given. Each part refund is a refund of its own at the payment provider and is added to the amount returned so far, shown on the payment. The payment stays Paid until all of the money has gone back, and only then can a paid deal be cancelled. A refund made directly in the Stripe dashboard is recorded the same way from the provider's report. Refunds are refused once the seller's payout includes the deal.
+
+A part refund does not change the seller's payout, which stays on the agreed price. If a part refund should come out of the seller's share, finance adjusts the payout by hand; the amount returned is on the payment for that.
+
+## Reminders
+
+Buyers are reminded of a deal's two deadlines, on the same schedule as an unpaid lot invoice (two days before, on the day at 09:00 London time, and three days after), by the same hourly job. Each step is sent once.
+
+- Payment: while the deal is invoiced and unpaid. Not sent to a buyer LAX itself is holding for compliance, or to a closed account; a buyer who cannot pay yet is told what to do instead.
+- Collection: while the deal is paid and not yet released.
+
+The deadlines come from the settings above, which the owner's answer replaces. A deal keeps the deadline it was given when it was invoiced or paid, so changing a setting affects new deals only.
 
 ## Who sees which deal
 

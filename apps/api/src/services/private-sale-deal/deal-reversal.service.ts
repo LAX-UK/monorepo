@@ -1,5 +1,5 @@
 import type { Database } from "@auction/db";
-import { dealRefundRecorded } from "@auction/domain";
+import { dealRefundRecorded, dealRefundableMinor } from "@auction/domain";
 import type {
   IPrivateSaleDealPaymentReader,
   IPrivateSaleDealPayoutStore,
@@ -18,12 +18,14 @@ export type RefundDealError =
   | "not_found"
   /** There is no paid payment to return. */
   | "nothing_to_refund"
+  /** The amount is not between one penny and what is left to return. */
+  | "invalid_amount"
   /** The payout already includes the deal, so the money cannot be pulled back from here. */
   | "payout_queued"
   | "refund_unavailable";
 
 export type RefundDealResult =
-  | { ok: true; refundedMinor: number }
+  | { ok: true; refundedMinor: number; remainingMinor: number }
   | { ok: false; error: RefundDealError };
 
 export type DealReversalDeps = {
@@ -46,13 +48,27 @@ export type DealReversalDeps = {
 export class DealReversalService {
   constructor(private readonly deps: DealReversalDeps) {}
 
-  /** Returns the whole of the buyer's payment. */
-  async refund(input: { dealId: string; actorUserId: string }): Promise<RefundDealResult> {
+  /**
+   * Returns the buyer's money: the whole of what is left, or `amountMinor` of it. Each part
+   * refund is a refund of its own at the provider and is recorded on the payment, which stays paid
+   * until all of the money has gone back.
+   */
+  async refund(input: {
+    dealId: string;
+    actorUserId: string;
+    amountMinor?: number;
+  }): Promise<RefundDealResult> {
     const deal = await this.deps.deals.findById(input.dealId);
     if (!deal) return { ok: false, error: "not_found" };
     const payments = await this.deps.payments.listForDeal(deal.id);
     const paid = payments.find((p) => p.status === "paid");
     if (!paid) return { ok: false, error: "nothing_to_refund" };
+    const remaining = dealRefundableMinor(paid);
+    if (remaining <= 0) return { ok: false, error: "nothing_to_refund" };
+    const amount = input.amountMinor ?? remaining;
+    if (!Number.isInteger(amount) || amount < 1 || amount > remaining) {
+      return { ok: false, error: "invalid_amount" };
+    }
     if (await this.deps.payouts.hasPayoutLine(deal.id)) {
       return { ok: false, error: "payout_queued" };
     }
@@ -62,20 +78,24 @@ export class DealReversalService {
     // Idempotent per payment: a retry after a failure returns the refund already made.
     const refund = await this.deps.refunds.createRefund({
       chargeId: paid.stripeChargeId,
-      amount: paid.amountMinor,
+      amount,
       paymentId: paid.id,
+      // The amount already returned tells this refund from an earlier one of the same size.
+      sequence: paid.refundedMinor,
       reason: "requested_by_customer",
     });
     await this.deps.transactionRunner.runInTransaction(async (tx) => {
       const scope = this.deps.scopeForTx(tx);
       const locked = await scope.payments.findByIdForUpdate(paid.id);
       if (!locked) return;
+      // The total returned: what was returned before plus this refund. If the provider's report of
+      // it landed first, the higher of the two is the same figure and nothing is counted twice.
       await this.deps.settlement.recordRefund(scope, locked, {
-        refundedMinor: locked.amountMinor,
+        refundedMinor: Math.max(locked.refundedMinor, paid.refundedMinor + amount),
         refundId: refund.kind === "created" ? refund.refundId : null,
       });
     });
-    return { ok: true, refundedMinor: paid.amountMinor };
+    return { ok: true, refundedMinor: amount, remainingMinor: remaining - amount };
   }
 
   /**

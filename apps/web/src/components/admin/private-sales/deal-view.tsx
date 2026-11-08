@@ -69,7 +69,7 @@ export function DealView({ deal }: { deal: DealRecord }) {
   const readOnly = deal.actions.length === 0 && !canEdit && !deal.canNameBuyer;
 
   const overflowActions = [
-    ...(["clear", "refund", "cancel"] as const)
+    ...(["clear", "record_bank_transfer", "refund", "cancel"] as const)
       .filter((action) => offered.has(action) && action !== next)
       .map((action) => {
         const state = offered.get(action);
