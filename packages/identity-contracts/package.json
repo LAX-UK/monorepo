@@ -27,6 +27,10 @@
     "./staff-step-up": {
       "types": "./dist/staff-step-up.d.ts",
       "default": "./dist/staff-step-up.js"
+    },
+    "./legal-documents": {
+      "types": "./dist/legal-documents.d.ts",
+      "default": "./dist/legal-documents.js"
     }
   },
   "scripts": {
