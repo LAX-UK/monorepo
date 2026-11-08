@@ -11,7 +11,21 @@ type Row = Record<string, unknown>;
 function fakeTx(input: {
   matched: Array<{ id: string; status: string }>;
   /** The deals made from the converted enquiries, answered to the second select. */
-  deals?: Array<{ enquiryId: string; stage: string }>;
+  deals?: Array<{
+    id?: string;
+    enquiryId: string;
+    stage: string;
+    agreedAt?: Date | null;
+    cancelledAt?: Date | null;
+    createdAt?: Date;
+  }>;
+  /** The people acting for each deal's two sides. */
+  parties?: Array<{ dealId: string; userId: string | null }>;
+  /** When each deal settled, from its stage history. */
+  settled?: Array<{ dealId: string; at: Date }>;
+  /** Screenings and source-of-funds cases opened for those people. */
+  screenings?: Array<{ userId: string; at: Date }>;
+  funds?: Array<{ userId: string; at: Date }>;
   detached?: Row[];
   notes?: Row[];
   enquiries?: Row[];
@@ -38,7 +52,16 @@ function fakeTx(input: {
   const del = vi.fn(() => ({
     where: () => ({ returning: () => Promise.resolve(deleteResult) }),
   }));
-  const answers = [input.matched, input.deals ?? []];
+  // Answered by call order: the enquiries, the deals, then (when there are deals) their parties,
+  // settlements, screenings and source-of-funds cases.
+  const answers = [
+    input.matched,
+    (input.deals ?? []).map((d) => ({ id: "d1", ...d })),
+    input.parties ?? [],
+    input.settled ?? [],
+    input.screenings ?? [],
+    input.funds ?? [],
+  ];
   const select = vi.fn(() => ({
     from: () => ({ where: () => Promise.resolve(answers.shift() ?? []) }),
   }));
@@ -118,36 +141,148 @@ describe("anonymiseEnquiries", () => {
     });
   });
 
-  describe("a converted enquiry and its deal", () => {
+  describe("a converted enquiry and the record of its deal", () => {
     const converted = [{ id: "e1", status: "converted" }];
-
-    it.each(["settled", "cancelled"])("is erased once its deal is %s", async (stage) => {
-      const { tx, sets } = fakeTx({
-        matched: converted,
-        deals: [{ enquiryId: "e1", stage }],
-        enquiries: [{ id: "e1" }],
-      });
-      const counts = await anonymiseEnquiries(tx, { kind: "email", email: "a@b.co" });
-      expect(counts).toMatchObject({ enquiries: 1, held: 0 });
-      expect(sets.find((s) => "message" in s)).toMatchObject({ name: ERASED_ENQUIRY.name });
-    });
+    const NOW = new Date("2026-11-08T12:00:00Z");
+    const run = (input: Parameters<typeof fakeTx>[0], retentionYears?: number) => {
+      const { tx, update, sets } = fakeTx({ ...input, enquiries: [{ id: "e1" }] });
+      return anonymiseEnquiries(
+        tx,
+        { kind: "email", email: "a@b.co" },
+        { now: NOW, ...(retentionYears ? { retentionYears } : {}) },
+      ).then((counts) => ({ counts, update, sets }));
+    };
+    const created = new Date("2026-01-01T00:00:00Z");
+    const settledDeal = {
+      enquiryId: "e1",
+      stage: "settled",
+      agreedAt: new Date("2026-02-01T00:00:00Z"),
+      createdAt: created,
+    };
 
     it.each(["proposed", "offer", "agreed", "invoiced", "paid", "released"])(
       "is held while its deal is %s",
       async (stage) => {
-        const { tx, update } = fakeTx({
+        const { counts, update } = await run({
           matched: converted,
-          deals: [{ enquiryId: "e1", stage }],
+          deals: [{ enquiryId: "e1", stage, createdAt: created }],
         });
-        const counts = await anonymiseEnquiries(tx, { kind: "email", email: "a@b.co" });
         expect(counts).toEqual({ enquiries: 0, notes: 0, attachments: 0, held: 1 });
         expect(update).not.toHaveBeenCalled();
       },
     );
 
+    it("is held once the deal has settled, within the five years", async () => {
+      const { counts, update } = await run({
+        matched: converted,
+        deals: [settledDeal],
+        settled: [{ dealId: "d1", at: new Date("2026-03-01T00:00:00Z") }],
+      });
+      expect(counts.held).toBe(1);
+      expect(update).not.toHaveBeenCalled();
+    });
+
+    it("is erased once the five years since settlement have passed", async () => {
+      const { counts, sets } = await run({
+        matched: converted,
+        deals: [settledDeal],
+        settled: [{ dealId: "d1", at: new Date("2021-03-01T00:00:00Z") }],
+      });
+      expect(counts).toMatchObject({ enquiries: 1, held: 0 });
+      expect(sets.find((s) => "message" in s)).toMatchObject({ name: ERASED_ENQUIRY.name });
+    });
+
+    it("keeps the record as long as the configured retention says", async () => {
+      const input = {
+        matched: converted,
+        deals: [settledDeal],
+        settled: [{ dealId: "d1", at: new Date("2021-03-01T00:00:00Z") }],
+      };
+      expect((await run(input, 10)).counts.held).toBe(1);
+      expect((await run(input, 3)).counts.held).toBe(0);
+    });
+
+    it("is held when the deal settled but its end date is not recorded", async () => {
+      const { counts } = await run({ matched: converted, deals: [settledDeal] });
+      expect(counts.held).toBe(1);
+    });
+
+    const cancelled = (agreedAt: Date | null) => ({
+      enquiryId: "e1",
+      stage: "cancelled",
+      agreedAt,
+      cancelledAt: new Date("2026-04-01T00:00:00Z"),
+      createdAt: created,
+    });
+    const parties = [
+      { dealId: "d1", userId: "u-seller" },
+      { dealId: "d1", userId: "u-buyer" },
+    ];
+
+    it("is erased when the deal was cancelled before agreement and no check was opened", async () => {
+      const { counts } = await run({ matched: converted, deals: [cancelled(null)], parties });
+      expect(counts).toMatchObject({ enquiries: 1, held: 0 });
+    });
+
+    it("is held when the deal was cancelled after agreement", async () => {
+      const { counts } = await run({
+        matched: converted,
+        deals: [cancelled(new Date("2026-02-01T00:00:00Z"))],
+        parties,
+      });
+      expect(counts.held).toBe(1);
+    });
+
+    it.each([
+      [
+        "a screening",
+        { screenings: [{ userId: "u-buyer", at: new Date("2026-02-15T00:00:00Z") }] },
+      ],
+      [
+        "a source-of-funds case",
+        { funds: [{ userId: "u-seller", at: new Date("2026-02-15T00:00:00Z") }] },
+      ],
+    ])("is held when the deal was cancelled before agreement but had %s", async (_why, checks) => {
+      const { counts } = await run({
+        matched: converted,
+        deals: [cancelled(null)],
+        parties,
+        ...checks,
+      });
+      expect(counts.held).toBe(1);
+    });
+
+    it("ignores a check from before the deal began", async () => {
+      const { counts } = await run({
+        matched: converted,
+        deals: [cancelled(null)],
+        parties,
+        screenings: [{ userId: "u-buyer", at: new Date("2025-06-01T00:00:00Z") }],
+      });
+      expect(counts).toMatchObject({ enquiries: 1, held: 0 });
+    });
+
+    it("ignores a check opened for someone who is not a party", async () => {
+      const { counts } = await run({
+        matched: converted,
+        deals: [cancelled(null)],
+        parties,
+        screenings: [{ userId: "u-stranger", at: new Date("2026-02-15T00:00:00Z") }],
+      });
+      expect(counts.held).toBe(0);
+    });
+
+    it("is erased once the retention has run after a cancellation that had to be kept", async () => {
+      const old = {
+        ...cancelled(new Date("2020-02-01T00:00:00Z")),
+        cancelledAt: new Date("2020-04-01T00:00:00Z"),
+      };
+      const { counts } = await run({ matched: converted, deals: [old], parties });
+      expect(counts).toMatchObject({ enquiries: 1, held: 0 });
+    });
+
     it("is held when it has no deal at all", async () => {
-      const { tx, update } = fakeTx({ matched: converted });
-      const counts = await anonymiseEnquiries(tx, { kind: "email", email: "a@b.co" });
+      const { counts, update } = await run({ matched: converted });
       expect(counts.held).toBe(1);
       expect(update).not.toHaveBeenCalled();
     });

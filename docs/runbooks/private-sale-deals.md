@@ -70,7 +70,14 @@ use **Check clearance** once Compliance has decided.
 
 ## Erasure and the converted enquiry
 
-A converted private sale enquiry is held from erasure while its deal is open, because the deal's records need the original contact. Once every deal made from it is settled or cancelled the hold is released and a later erasure request or retention run erases the enquiry like any other. An enquiry marked converted that has no deal stays held.
+A converted private sale enquiry is part of its deal's record (the sender's contact, the work described, its provenance). Money Laundering Regulations 2017, regulation 40, requires that record to be kept for five years from the transaction, so the enquiry is held from erasure:
+
+- while any deal made from it is open;
+- after a deal settles, until `PRIVATE_SALE_RECORD_RETENTION_YEARS` (default 5) have passed since settlement;
+- after a deal is cancelled, for the same period from the cancellation, if it ever reached agreement or an identity, screening or source-of-funds case was opened for either party while it ran;
+- always, if it is marked converted but has no deal.
+
+A deal cancelled before anyone agreed a price, with no check opened for either side, is not a transaction: its enquiry is erased like any other. Once the period has passed, a later erasure request or retention run erases the enquiry. The setting applies to the Bid API and the worker; the owner's answer on deal record retention replaces the default.
 
 ## Rolling back
 

@@ -263,6 +263,11 @@ export const envSchema = z
     SOF_THRESHOLD_AMOUNT: z.coerce.number().nonnegative().default(9000),
     SOF_THRESHOLD_CURRENCY: z.string().min(3).max(3).default("GBP"),
     SOF_APPROVAL_VALIDITY_DAYS: z.coerce.number().int().positive().default(365),
+    /** Years a private sale's record, with its enquiry, is kept after the deal ends. */
+    PRIVATE_SALE_RECORD_RETENTION_YEARS: z.preprocess(
+      (value) => (value === "" ? undefined : value),
+      z.coerce.number().int().min(1).max(30).default(5),
+    ),
     DISABLE_PAYOUT_SETTLEMENT: z
       .preprocess((val) => val === "true" || val === true, z.boolean())
       .default(false),

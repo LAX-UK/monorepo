@@ -41,7 +41,9 @@ describe("applyBidPersonalDataAnonymisation", () => {
   it("anonymises the subject and writes one audit event with the counts and no personal data", async () => {
     const { tx, values } = auditTx(false);
     await applyBidPersonalDataAnonymisation(tx, row(7), now);
-    expect(anonymise).toHaveBeenCalledWith(tx, "user_1");
+    expect(anonymise).toHaveBeenCalledWith(tx, "user_1", undefined, {
+      privateSaleRecordRetentionYears: undefined,
+    });
     expect(values).toHaveBeenCalledWith({
       aggregateType: "user",
       aggregateId: "user_1",
