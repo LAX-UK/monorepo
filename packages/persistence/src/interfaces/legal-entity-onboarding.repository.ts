@@ -13,6 +13,8 @@ export type OnboardingDocumentRow = {
   kind: string;
   label: string | null;
   reviewStatus: string;
+  /** When the copy was sent. */
+  uploadedAt: Date;
 };
 
 export type OnboardingAddressRow = {

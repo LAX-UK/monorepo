@@ -1,5 +1,5 @@
 import type { LegalEntity } from "@auction/types";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { LegalEntityComplianceTab } from "./compliance-tab";
 
@@ -135,7 +135,9 @@ describe("LegalEntityComplianceTab restrict", () => {
     fireEvent.click(restrictButton() as HTMLElement);
 
     expect(screen.getByRole("heading", { name: "Restrict Gallery One?" })).toBeInTheDocument();
-    expect(screen.getByText(/can still bid and submit lots/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Bidding, registering and sending works are paused/),
+    ).toBeInTheDocument();
 
     const confirm = screen.getByRole("button", { name: "Restrict organisation" });
     fireEvent.click(confirm);
@@ -145,8 +147,41 @@ describe("LegalEntityComplianceTab restrict", () => {
       target: { value: REASON },
     });
     fireEvent.click(confirm);
-    await waitFor(() => expect(restrictAction).toHaveBeenCalledWith("le_1", REASON));
+    await waitFor(() => expect(restrictAction).toHaveBeenCalledWith("le_1", REASON, ""));
     await waitFor(() => expect(refresh).toHaveBeenCalled());
     expect(notifySuccess).toHaveBeenCalledWith("Gallery One restricted");
+  });
+
+  it("sends the message the members read, kept apart from the reason", async () => {
+    restrictAction.mockResolvedValue({ ok: true });
+    render(<LegalEntityComplianceTab entity={approved} canManageRestriction />);
+    fireEvent.click(restrictButton() as HTMLElement);
+    fireEvent.change(screen.getByLabelText("Reason for restricting"), {
+      target: { value: REASON },
+    });
+    fireEvent.change(
+      within(screen.getByRole("dialog")).getByLabelText(
+        "Message to the organisation (shown to its members)",
+      ),
+      { target: { value: "Please send an updated proof of address." } },
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Restrict organisation" }));
+    await waitFor(() =>
+      expect(restrictAction).toHaveBeenCalledWith(
+        "le_1",
+        REASON,
+        "Please send an updated proof of address.",
+      ),
+    );
+  });
+
+  it("shows the message already set to staff, labelled as the members' message", () => {
+    render(
+      <LegalEntityComplianceTab
+        entity={{ ...restricted, clientMessage: "We need a proof of address." } as LegalEntity}
+      />,
+    );
+    expect(screen.getByText("Message to members")).toBeInTheDocument();
+    expect(screen.getByText("We need a proof of address.")).toBeInTheDocument();
   });
 });

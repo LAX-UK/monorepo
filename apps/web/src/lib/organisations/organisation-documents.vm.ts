@@ -21,6 +21,8 @@ export type OrganisationDocumentRecord = {
   kind: string;
   label: string | null;
   reviewStatus: string;
+  /** When the copy was sent (ISO date). */
+  uploadedAt?: string | null;
 };
 
 /** What to send for one row: the document's kind and, for "other" documents, its name. */
@@ -88,11 +90,28 @@ const CHECK_DATE = new Intl.DateTimeFormat("en-GB", {
   year: "numeric",
 });
 
+/** "9 May 2026", or `null` without a usable date. */
+export function longDateOrNull(value: Date | string | null | undefined): string | null {
+  if (!value) return null;
+  const date = value instanceof Date ? value : new Date(value);
+  return Number.isNaN(date.getTime()) ? null : CHECK_DATE.format(date);
+}
+
+/** The most recent time a copy was sent, or `null` when none carries a usable date. */
+export function latestUploadedAt(records: readonly OrganisationDocumentRecord[]): Date | null {
+  let latest: Date | null = null;
+  for (const record of records) {
+    if (!record.uploadedAt) continue;
+    const at = new Date(record.uploadedAt);
+    if (!Number.isNaN(at.getTime()) && (!latest || at > latest)) latest = at;
+  }
+  return latest;
+}
+
 /** "Checked on 9 May 2026", or `null` without a usable date. */
 export function checkedOnLine(checkedOn: Date | string | null | undefined): string | null {
-  if (!checkedOn) return null;
-  const date = checkedOn instanceof Date ? checkedOn : new Date(checkedOn);
-  return Number.isNaN(date.getTime()) ? null : `Checked on ${CHECK_DATE.format(date)}`;
+  const date = longDateOrNull(checkedOn);
+  return date ? `Checked on ${date}` : null;
 }
 
 function hintFor(

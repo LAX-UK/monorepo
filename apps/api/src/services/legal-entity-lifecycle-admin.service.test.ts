@@ -191,6 +191,82 @@ describe("LegalEntityLifecycleAdminService", () => {
   });
 });
 
+describe("LegalEntityLifecycleAdminService client message", () => {
+  const entityId = "00000000-0000-4000-8000-000000000001";
+
+  async function savedValues(
+    op: LifecycleAdminOp,
+    status: string,
+    reason: string | undefined,
+    clientMessage: string | null | undefined,
+  ) {
+    const set = vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue(undefined) });
+    const txHandle = {
+      select: vi.fn().mockReturnValue({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            for: vi.fn().mockReturnValue({
+              limit: vi.fn().mockResolvedValue([{ id: entityId, status }]),
+            }),
+          }),
+        }),
+      }),
+      update: vi.fn().mockReturnValue({ set }),
+    };
+    const db = {
+      select: vi.fn().mockReturnValue({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue([{ id: entityId, status }]),
+          }),
+        }),
+      }),
+      transaction: vi.fn(async (fn: (tx: typeof txHandle) => Promise<unknown>) => fn(txHandle)),
+    };
+    const svc = new LegalEntityLifecycleAdminService(
+      transactionRunnerFromDb(db as never),
+      new DrizzleLegalEntityLifecycleAdminRepository(db as never),
+      mockDomainEventSink(vi.fn().mockResolvedValue(undefined)) as never,
+    );
+    const result = await svc.runTransition("actor-1", entityId, op, reason, clientMessage);
+    expect(result.isOk()).toBe(true);
+    return set.mock.calls[0]?.[0] as { statusReason: string | null; clientMessage: string | null };
+  }
+
+  it("keeps the message for the members when an organisation is restricted", async () => {
+    const saved = await savedValues(
+      "restrict",
+      "approved",
+      "Ownership under review",
+      "  We need an updated proof of address.  ",
+    );
+    expect(saved.clientMessage).toBe("We need an updated proof of address.");
+    expect(saved.statusReason).toBe("Ownership under review");
+  });
+
+  it("keeps the message when an organisation is not approved", async () => {
+    const saved = await savedValues("reject", "lead", "Failed checks", "We couldn't verify it.");
+    expect(saved.clientMessage).toBe("We couldn't verify it.");
+  });
+
+  it("stores nothing for an empty message, so the standard wording stays", async () => {
+    expect((await savedValues("restrict", "approved", "Audit", "   ")).clientMessage).toBeNull();
+    expect(
+      (await savedValues("restrict", "approved", "Audit", undefined)).clientMessage,
+    ).toBeNull();
+  });
+
+  it("clears the message when the restriction is lifted or the organisation moves on", async () => {
+    expect(
+      (await savedValues("lift_restriction", "restricted", "Resolved", "Old message"))
+        .clientMessage,
+    ).toBeNull();
+    expect(
+      (await savedValues("start_review", "docs_received", undefined, "x")).clientMessage,
+    ).toBeNull();
+  });
+});
+
 describe("LegalEntityLifecycleAdminService invoice terms", () => {
   const entityId = "00000000-0000-4000-8000-000000000001";
 

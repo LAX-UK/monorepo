@@ -14,6 +14,7 @@ export function toMemberLegalEntity(entity: LegalEntity): MemberLegalEntity {
     subkind: entity.subkind,
     status: entity.status,
     statusChangedAt: entity.statusChangedAt,
+    clientMessage: entity.clientMessage ?? null,
     stripeConnectChargesEnabled: entity.stripeConnectChargesEnabled,
     stripeConnectPayoutsEnabled: entity.stripeConnectPayoutsEnabled,
     stripeConnectRequirementsCurrentlyDue: entity.stripeConnectRequirementsCurrentlyDue,

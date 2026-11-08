@@ -515,6 +515,7 @@ describe.skipIf(!HAS_DB)("stored invoice due dates (integration)", () => {
             actorUserId: base.buyerId,
             nextStatus: to,
             statusReason: null,
+            clientMessage: null,
             payHeldSince: payHeldSinceAfter({
               from: from as (typeof path)[number],
               to,

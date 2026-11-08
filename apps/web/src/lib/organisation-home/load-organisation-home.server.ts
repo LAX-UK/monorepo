@@ -16,6 +16,8 @@ import { type PagedRead, readAllPages } from "@/lib/data/paging/read-all-pages";
 import { listMembersAction } from "@/lib/legal-entity/member-management.actions";
 import { resolveSellerWorkspaceContext } from "@/lib/legal-entity/seller-acting-context.server";
 import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
+import { loadOrganisationRecovery } from "@/lib/organisations/organisation-recovery.server";
+import type { OrganisationRecoveryView } from "@/lib/organisations/organisation-recovery.vm";
 import { visibleConsignedLots } from "@/lib/seller/consignment-records";
 import { loadSellerAccountFacts } from "@/lib/seller/seller-account-facts.server";
 import {
@@ -69,6 +71,8 @@ export type LoadedOrganisationHome = {
   listLimitNotice: string | null;
   /** The people who run the organisation get "Sell a work" beside the title. */
   sellHref: string | null;
+  /** What a held organisation still allows and how to move on; `null` while nothing is held. */
+  recovery: OrganisationRecoveryView | null;
   /** Whether the organisation's state lets it bid, so Home only suggests sales it can join. */
   biddingOpen: boolean;
 };
@@ -240,7 +244,11 @@ export async function loadOrganisationHome(
       }
     : null;
   const model = buildOrganisationHome(facts, activity, figures, needsYou);
-  const ctx = { organisationName: organisation.displayName, now: new Date() };
+  const ctx = {
+    organisationName: organisation.displayName,
+    now: new Date(),
+    clientMessage: organisation.clientMessage,
+  };
 
   const welcome = welcomeCardFor({
     role: actor.role,
@@ -275,6 +283,7 @@ export async function loadOrganisationHome(
         ? "Some lists are longer than Home reads. Open each page to see everything."
         : null,
     sellHref: model.shortcuts.includes("sell") ? CLIENT_ROUTES.sellingNew : null,
+    recovery: await loadOrganisationRecovery({ viewer: user, organisation, actor }),
     biddingOpen: model.state.actions.bid,
   };
 }

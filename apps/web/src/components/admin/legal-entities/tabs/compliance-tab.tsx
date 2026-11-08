@@ -36,6 +36,9 @@ export function LegalEntityComplianceTab({ entity, canManageRestriction = false 
     ...(entity.statusReason?.trim()
       ? [{ label: "Status reason", value: entity.statusReason.trim() }]
       : []),
+    ...(entity.clientMessage?.trim()
+      ? [{ label: "Message to members", value: entity.clientMessage.trim() }]
+      : []),
     ...(entity.statusChangedAt
       ? [{ label: "Status changed", value: <StaffDate value={entity.statusChangedAt} withTime /> }]
       : []),

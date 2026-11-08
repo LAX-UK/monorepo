@@ -69,6 +69,11 @@ export const legalEntity = pgTable(
     payHeldSince: timestamp("pay_held_since", { mode: "date", withTimezone: true }),
     /** Human-readable reason for the current status (reject, request docs, etc.). */
     statusReason: text("status_reason"),
+    /**
+     * A short message to the organisation's members about why it is restricted or was not
+     * approved. Written by staff for the client to read; `statusReason` stays the staff note.
+     */
+    clientMessage: text("client_message"),
     stripeConnectAccountId: text("stripe_connect_account_id").unique(),
     /** Stripe Customer id (`cus_…`) for buyer bank-transfer Checkout on the platform account. */
     stripeCustomerId: text("stripe_customer_id"),

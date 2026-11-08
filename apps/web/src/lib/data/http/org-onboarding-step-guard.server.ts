@@ -17,6 +17,8 @@ export type OrgOnboardingDocumentDto = {
   kind: string;
   label: string | null;
   reviewStatus: string;
+  /** When the copy was sent, as an ISO date; absent from older responses. */
+  uploadedAt?: string | null;
 };
 
 export type OrgOnboardingState = {

@@ -111,6 +111,43 @@ describe("organisation state copy: every key has words", () => {
   });
 });
 
+describe("LAX's message to the members", () => {
+  const banner = (key: OrganisationBannerKey) => ({
+    kind: "blocked" as const,
+    key,
+    audience: "told" as const,
+  });
+  const withMessage = { ...ctx, clientMessage: "  We need an updated proof of address.  " };
+
+  it.each(["restricted", "not_approved"] as const)("is shown under %s, trimmed", (key) => {
+    expect(organisationBannerView(banner(key), withMessage).message).toBe(
+      "We need an updated proof of address.",
+    );
+  });
+
+  it.each(["restricted", "not_approved"] as const)(
+    "keeps the standard wording when empty (%s)",
+    (key) => {
+      expect(organisationBannerView(banner(key), ctx).message).toBeNull();
+      expect(
+        organisationBannerView(banner(key), { ...ctx, clientMessage: "   " }).message,
+      ).toBeNull();
+      expect(
+        organisationBannerView(banner(key), { ...ctx, clientMessage: null }).message,
+      ).toBeNull();
+    },
+  );
+
+  it.each([
+    "documents_requested",
+    "documents_under_review",
+    "payouts_not_set_up",
+    "archived",
+  ] as const)("is never shown under %s", (key) => {
+    expect(organisationBannerView(banner(key), withMessage).message).toBeNull();
+  });
+});
+
 describe("banner audience", () => {
   const bannerFor = (role: LegalEntityMemberRole, status: "docs_requested" | "connect_pending") => {
     const banner = organisationStatePolicy(status, entityCapabilitiesOf({ role })).banner;

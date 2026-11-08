@@ -97,7 +97,7 @@ export type OrganisationHomeView = {
   dashboard: OrganisationDashboardView | null;
 };
 
-type Ctx = { organisationName: string; now: Date };
+type Ctx = { organisationName: string; now: Date; clientMessage?: string | null | undefined };
 
 function quoted(subject: HomeSubject): string {
   return `“${subject.title}”`;

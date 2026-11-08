@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import {
   type OrganisationDocumentRecord,
   buildOrganisationDocumentsView,
+  latestUploadedAt,
 } from "./organisation-documents.vm";
 
 const SLOTS = [
@@ -131,5 +132,30 @@ describe("buildOrganisationDocumentsView", () => {
       description: "We haven't asked Northbank Gallery for any documents.",
     });
     expect(empty.closedNote).toBeNull();
+  });
+});
+
+describe("latestUploadedAt", () => {
+  const doc = (uploadedAt?: string | null) => ({
+    id: "d",
+    kind: "k",
+    label: null,
+    reviewStatus: "pending",
+    ...(uploadedAt === undefined ? {} : { uploadedAt }),
+  });
+
+  it("is the most recent copy sent", () => {
+    expect(
+      latestUploadedAt([
+        doc("2026-11-02T10:00:00Z"),
+        doc("2026-11-04T09:00:00Z"),
+        doc("2026-11-03T09:00:00Z"),
+      ])?.toISOString(),
+    ).toBe("2026-11-04T09:00:00.000Z");
+  });
+
+  it("skips copies without a usable date, and is null when none has one", () => {
+    expect(latestUploadedAt([doc(), doc(null), doc("not a date")])).toBeNull();
+    expect(latestUploadedAt([])).toBeNull();
   });
 });

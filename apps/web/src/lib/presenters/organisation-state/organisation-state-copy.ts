@@ -20,7 +20,11 @@ import type { LegalEntityMemberRole } from "@auction/types";
  */
 
 /** Names the organisation the copy is about. */
-export type OrganisationStateCopyContext = { organisationName: string };
+export type OrganisationStateCopyContext = {
+  organisationName: string;
+  /** Staff's message to the members; shown only where a state says it explains itself. */
+  clientMessage?: string | null | undefined;
+};
 
 /** One way on from a notice: a page in the workspace, or writing to LAX. */
 export type OrganisationStateLink = { label: string; href: string; kind: "page" | "contact" };
@@ -30,6 +34,8 @@ export type OrganisationBannerView = {
   /** Short, ends with a full stop; read inline before the line. */
   title: string;
   line: string;
+  /** What LAX wrote to the members about this state, or `null` when it wrote nothing. */
+  message: string | null;
   /** Offered only to people who can act on it, or to everyone when it is "Contact us". */
   action: OrganisationStateLink | null;
 };
@@ -40,6 +46,8 @@ type BannerCopy = {
   line: (ctx: OrganisationStateCopyContext) => string;
   /** What the people who can act do about it. */
   act: OrganisationStateLink | null;
+  /** Whether LAX's own message belongs under this state (a restriction or a refusal). */
+  explainedByMessage?: true;
 };
 
 const CONTACT = (subject: string): OrganisationStateLink => ({
@@ -77,11 +85,13 @@ const BANNER_COPY: Record<OrganisationBannerKey, BannerCopy> = {
     line: ({ organisationName }) =>
       `${organisationName} can still see its history and pay its invoices.`,
     act: CONTACT("Organisation paused"),
+    explainedByMessage: true,
   },
   not_approved: {
     title: `${organisationStatusView("rejected").label}.`,
     line: ({ organisationName }) => `We couldn't approve ${organisationName}.`,
     act: CONTACT("Organisation not approved"),
+    explainedByMessage: true,
   },
   archived: {
     title: `${organisationStatusView("archived").label}.`,
@@ -141,10 +151,12 @@ export function organisationBannerView(
   const copy = BANNER_COPY[banner.key];
   const line = copy.line(ctx);
   const contact = copy.act?.kind === "contact" ? copy.act : null;
+  const message = copy.explainedByMessage ? (ctx.clientMessage?.trim() ?? "") : "";
   return {
     kind: banner.kind,
     title: copy.title,
     line: banner.audience === "act" ? line : toldLine(banner.key, line),
+    message: message === "" ? null : message,
     action: banner.audience === "act" ? copy.act : contact,
   };
 }

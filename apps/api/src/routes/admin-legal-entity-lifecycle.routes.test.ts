@@ -372,6 +372,43 @@ describe("POST /admin/legal-entities/:id/restrict (legal_entity.write + step-up)
     expect(event.eventType).toBe("legal_entity.restricted");
     expect(event.payload.reason).toBe("Ownership under review");
   });
+
+  it("hands the message for the members to the transition, trimmed", async () => {
+    const runTransition = vi
+      .fn()
+      .mockResolvedValue({ isOk: () => true, match: (ok: (v: unknown) => unknown) => ok({}) });
+    const app = lifecycleApp(
+      minimalContainer({ legalEntityLifecycleAdminService: { runTransition } }),
+      ADMIN_ID,
+      "staff",
+    );
+    await post(app, {
+      reason: "Ownership under review",
+      clientMessage: "  Please send a proof of address.  ",
+    });
+    expect(runTransition).toHaveBeenCalledWith(
+      ADMIN_ID,
+      ENTITY_ID,
+      "restrict",
+      "Ownership under review",
+      "Please send a proof of address.",
+    );
+  });
+
+  it("returns 400 when the message for the members is too long", async () => {
+    const runTransition = vi.fn();
+    const app = lifecycleApp(
+      minimalContainer({ legalEntityLifecycleAdminService: { runTransition } }),
+      ADMIN_ID,
+      "staff",
+    );
+    const res = await post(app, {
+      reason: "Ownership under review",
+      clientMessage: "x".repeat(601),
+    });
+    expect(res.status).toBe(400);
+    expect(runTransition).not.toHaveBeenCalled();
+  });
 });
 
 describe("POST /admin/legal-entities/:id/reject (legal_entity.approve)", () => {

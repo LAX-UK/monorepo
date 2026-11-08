@@ -66,6 +66,7 @@ export class DrizzleLegalEntityLifecycleAdminRepository
         statusChangedAt: new Date(),
         statusChangedByUserId: input.actorUserId,
         statusReason: input.statusReason,
+        clientMessage: input.clientMessage,
         payHeldSince: input.payHeldSince,
         updatedAt: new Date(),
       })

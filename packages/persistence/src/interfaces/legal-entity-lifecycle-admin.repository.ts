@@ -20,6 +20,8 @@ export type LegalEntityLifecycleTransitionUpdate = {
   actorUserId: string;
   nextStatus: LegalEntityStatus;
   statusReason: string | null;
+  /** The message members read about this status; `null` clears it. */
+  clientMessage: string | null;
   /** The organisation's hold on paying after this transition. */
   payHeldSince: Date | null;
 };

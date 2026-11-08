@@ -16,6 +16,7 @@ export class DrizzleLegalEntityMembershipReader implements ILegalEntityMembershi
         kind: legalEntity.kind,
         subkind: legalEntity.subkind,
         status: legalEntity.status,
+        clientMessage: legalEntity.clientMessage,
         role: legalEntityMember.role,
         isPrimaryAdmin: legalEntityMember.isPrimaryAdmin,
         invitedByUserId: legalEntityMember.invitedByUserId,
@@ -37,6 +38,7 @@ export class DrizzleLegalEntityMembershipReader implements ILegalEntityMembershi
       kind: r.kind,
       subkind: r.subkind,
       status: r.status,
+      clientMessage: r.clientMessage ?? null,
       role: r.role,
       isPrimaryAdmin: r.isPrimaryAdmin,
       // The person who set the organisation up is recorded as inviting themselves.
