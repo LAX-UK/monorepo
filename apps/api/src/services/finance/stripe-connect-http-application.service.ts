@@ -1,4 +1,5 @@
 import { entityActorCan } from "@auction/domain";
+import { toMemberConnectStatus } from "../../lib/member-connect-status.js";
 import {
   isPlatformProfileStripeMessage,
   stripeConnectErrorToHttp,
@@ -73,7 +74,7 @@ export class StripeConnectHttpApplicationService implements IStripeConnectHttpAp
   async getStatus(ctx: StripeConnectLegalEntityContext): Promise<FinanceHttpJson> {
     try {
       const status = await this.stripeConnectService.getStatus(ctx.legalEntityId);
-      return { status: 200, body: { data: status } };
+      return { status: 200, body: { data: toMemberConnectStatus(status) } };
     } catch (err) {
       const mapped = mapConnectError(err);
       if (mapped) return mapped;
@@ -87,7 +88,7 @@ export class StripeConnectHttpApplicationService implements IStripeConnectHttpAp
     }
     try {
       const status = await this.stripeConnectService.syncAccountFromStripe(ctx.legalEntityId);
-      return { status: 200, body: { data: status } };
+      return { status: 200, body: { data: toMemberConnectStatus(status) } };
     } catch (err) {
       const mapped = mapConnectError(err);
       if (mapped) return mapped;
@@ -122,8 +123,9 @@ export class StripeConnectHttpApplicationService implements IStripeConnectHttpAp
       return { status: 403, body: { error: "insufficient_role" } };
     }
     try {
-      const result = await this.stripeConnectService.ensureAccount(ctx.legalEntityId);
-      return { status: 201, body: { data: result } };
+      await this.stripeConnectService.ensureAccount(ctx.legalEntityId);
+      // Members are told an account exists; neither its id nor the entity record is returned.
+      return { status: 201, body: { data: { accountLinked: true } } };
     } catch (err) {
       const mapped = mapConnectError(err, { recordAccountCreateFailure: true });
       if (mapped) return mapped;

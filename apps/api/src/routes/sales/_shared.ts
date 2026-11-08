@@ -31,6 +31,7 @@ type SaleRouteMiddleware = {
 };
 
 export type SaleRouteDeps = SaleRouteMiddleware & {
+  requireStaffStepUp: MiddlewareHandler;
   container: ContainerSaleRoutesSlice;
 };
 
@@ -39,6 +40,8 @@ export type SaleReadRouteDeps = SaleRouteMiddleware & {
 };
 
 export type SaleLifecycleWriteRouteDeps = SaleRouteMiddleware & {
+  /** Staff delete and cancel need a recent sign-in; other roles pass through. */
+  requireStaffStepUp: MiddlewareHandler;
   container: ContainerSaleLifecycleWriteRoutesSlice;
 };
 

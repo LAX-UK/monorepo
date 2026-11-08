@@ -25,6 +25,7 @@ const summary: AdminPayoutListSummary = {
   failed: 3,
   reversed: 1,
   clawbackPending: 1,
+  transferBlocked: 2,
   totalNet: "1234.5",
   readiness: {
     inFlightCount: 15,
@@ -92,8 +93,13 @@ describe("payouts staff list view model", () => {
 
   it("turns rows into plain data with the seller's name and the steps open to the payout", () => {
     const names = new Map([[row.legalEntityId, "Gallery One"]]);
-    const [scheduled, paid, failed] = toPayoutsStaffRows(
-      [row, { ...row, id: "p2", status: "paid" }, { ...row, id: "p3", status: "failed" }],
+    const [scheduled, paid, failed, blocked] = toPayoutsStaffRows(
+      [
+        row,
+        { ...row, id: "p2", status: "paid" },
+        { ...row, id: "p3", status: "failed" },
+        { ...row, id: "p4", status: "transfer_blocked" },
+      ],
       names,
     );
     expect(scheduled).toMatchObject({
@@ -105,6 +111,7 @@ describe("payouts staff list view model", () => {
       canAdjust: true,
       canReverse: false,
       canRetryTransfer: false,
+      canResolveBlocked: false,
     });
     expect(paid).toMatchObject({ canMarkPaid: false, canAdjust: false, canReverse: true });
     expect(failed).toMatchObject({
@@ -112,6 +119,14 @@ describe("payouts staff list view model", () => {
       canAdjust: false,
       canReverse: false,
       canRetryTransfer: true,
+      canResolveBlocked: false,
+    });
+    expect(blocked).toMatchObject({
+      canMarkPaid: false,
+      canAdjust: false,
+      canReverse: false,
+      canRetryTransfer: false,
+      canResolveBlocked: true,
     });
     expect(toPayoutsStaffRows([row], new Map())[0]?.seller).toBe("Seller 11111111");
   });
@@ -133,6 +148,7 @@ describe("payouts staff list view model", () => {
       "Failed",
       "Reversed",
       "Clawback pending",
+      "Blocked, needs review",
     ]);
     expect(payoutsViews({ status: "paid" })[0]?.href).toBe("/admin/payouts");
     expect(activePayoutsView({ status: "failed" })).toBe("failed");
@@ -143,10 +159,20 @@ describe("payouts staff list view model", () => {
     const items = payoutsAttention({}, summary, 2);
     expect(items.map((item) => [item.count, item.label, item.href])).toEqual([
       [3, "payouts failed", "/admin/payouts?status=failed"],
+      [2, "payouts blocked, need review", "/admin/payouts?status=transfer_blocked"],
       [1, "payout needs funds recovered", "/admin/payouts?status=clawback_pending"],
       [4, "payouts have settlement blockers", "/admin/payouts/settlement"],
       [2, "disputes are open", "/admin/disputes"],
     ]);
+  });
+
+  it("words a single blocked payout in the singular, as a danger row", () => {
+    const items = payoutsAttention({}, { ...summary, transferBlocked: 1 }, 0);
+    expect(items.find((item) => item.id === "transfer-blocked")).toMatchObject({
+      count: 1,
+      label: "payout blocked, needs review",
+      tone: "danger",
+    });
   });
 
   it("summarises the matching payouts in four numbers", () => {

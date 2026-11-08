@@ -62,6 +62,8 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
     "amountCents",
     "currency",
     "stripeConnectAccountId",
+    "adopted",
+    "adoptionSource",
   ]),
   /** Stripe transfer failure — error details are operational, not PII. */
   "payout.transfer_failed": new Set([
@@ -69,6 +71,14 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
     "stripeErrorMessage",
     "amountCents",
     "currency",
+  ]),
+  /** Staff resolved a blocked payout; the free-text reason stays redacted for non-PII readers. */
+  "payout.transfer_block_resolved": new Set([
+    "resolution",
+    "previousStatus",
+    "status",
+    "stripeTransferId",
+    "legalEntityId",
   ]),
   /** Stripe Connect account cannot currently receive payouts. */
   "payout.transfer_blocked": new Set(["payoutId", "legalEntityId", "reason"]),
@@ -181,6 +191,8 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
     "stripeChargeId",
     "stripeCustomerId",
     "stripeEventId",
+    "possibleGroup.id",
+    "possibleGroup.status",
   ]),
   /** How it was closed; a staff note is kept, as a refund's staff reason is. */
   "payment.unapplied_money_resolved": new Set(["dedupeKey", "stripeChargeId", "via", "note"]),
@@ -416,6 +428,8 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
   "data_request.extended": new Set(["reference"]),
   "data_request.closed": new Set(["reference"]),
   "data_request.continued": new Set(["reference"]),
+  "data_request.enquiry_erasure_requested": new Set(["reference"]),
+  "data_request.enquiries_erased": new Set(["reference"]),
   "failed_job.retried": new Set(["queue", "jobName", "confirmRepeat"]),
   "failed_job.discarded": new Set(["queue", "jobName", "reason", "note"]),
   "failed_job.restored": new Set(["queue", "jobName"]),
@@ -456,6 +470,10 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
   /** Identifiers and stage codes only: the parties, the price and the cancel reason stay on the deal. */
   "private_sale_deal.created": new Set(["dealId", "reference", "stage"]),
   "private_sale_deal.stage_changed": new Set(["dealId", "reference", "from", "to"]),
+  /** The names of the terms that changed, never their values or who the parties are. */
+  "private_sale_deal.terms_changed": new Set(["dealId", "reference", "fields"]),
+  "private_sale_deal.party_named": new Set(["dealId", "reference", "role"]),
+  "private_sale_deal.terms_accepted": new Set(["dealId", "reference", "role", "version"]),
   "private_sale_deal.payment_started": new Set([
     "dealId",
     "reference",

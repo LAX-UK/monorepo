@@ -119,6 +119,8 @@ export type { ISavedSearchRepository, SavedSearchRow } from "./saved-search.repo
 export type { IAccountDeletionEligibilityReader } from "./account-deletion-eligibility.reader.js";
 export type {
   BidPaymentFact,
+  BidPaymentGroupFact,
+  BidPaymentGroupMemberFact,
   BidPayoutFact,
   BidPortfolioFacts,
   BidSellerLotFact,
@@ -126,6 +128,7 @@ export type {
   BidWonLotFact,
   IBidPortfolioReader,
 } from "./bid-portfolio.reader.js";
+export type { IPaymentGroupFactsReader } from "./payment-group-facts.reader.js";
 export type {
   AwaitingConsignmentAgreement,
   ConsignmentAgreementProposalRow,
@@ -1174,6 +1177,15 @@ export type {
   IConsignmentStaffDirectory,
 } from "./consignment-staff-directory.reader.js";
 export type {
+  DealWork,
+  IDealWorkStore,
+  IPrivateSaleDealQueryReader,
+  NewDealWork,
+  PrivateSaleDealListFilter,
+  PrivateSaleDealListRow,
+  PrivateSaleDealStageCount,
+} from "./private-sale-deal-query.repository.js";
+export type {
   ClaimDealPaymentResult,
   IPrivateSaleDealFinanceStore,
   IPrivateSaleDealPaymentReader,
@@ -1182,13 +1194,16 @@ export type {
   NewPrivateSaleDealPayment,
 } from "./private-sale-deal-payment.repository.js";
 export type {
+  ChargeableDeliveryQuote,
   ClaimPaymentGroupInput,
   ClaimPaymentGroupResult,
+  IChargeableDeliveryReader,
   IPaySeveralInvoiceFlagsReader,
   IPaymentGroupRepository,
   LivePaymentGroupFacts,
   LockedPaymentGroup,
   PaySeveralInvoiceFlags,
+  PaymentGroupDelivery,
   PaymentGroupMember,
   PaymentGroupRecord,
 } from "./payment-group.repository.js";

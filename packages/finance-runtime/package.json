@@ -21,6 +21,7 @@
     "@auction/email": "workspace:*",
     "@auction/finance-cron-app": "workspace:*",
     "@auction/persistence": "workspace:*",
+    "@auction/stripe-connect": "workspace:*",
     "@auction/types": "workspace:*",
     "@auction/validators": "workspace:*",
     "drizzle-orm": "^0.45.2",

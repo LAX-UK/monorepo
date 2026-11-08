@@ -12,6 +12,7 @@ import {
   DrizzleLaxStaffAccessRepository,
   DrizzleLotViewerFactsReader,
   DrizzleOrganisationBiddingLimitRepository,
+  DrizzlePaymentGroupFactsReader,
   DrizzleRecordPeopleReader,
   DrizzleStaffAccessReviewReader,
   DrizzleStaffNoticeRecipientReader,
@@ -19,6 +20,7 @@ import {
   DrizzleStaffRoster,
   DrizzleWatchlistReminderRepository,
 } from "@auction/persistence/repositories";
+import { DrizzleDataRequestErasureHistory } from "./container/adapters/drizzle-data-request-erasure-history.js";
 import type { Container, ContainerComposedSlices } from "./container/container-slices.js";
 import { createAdminServices } from "./container/create-admin-services.js";
 import { createContainerAuthenticator } from "./container/create-auth.js";
@@ -207,7 +209,12 @@ export function createContainer(env: Env): Container {
     payments,
   });
   const enquiryDrafts = createEnquiryDraftTokens(env);
+  // One step-up guard for the admin app and the shared routes staff also use (exports).
+  const staffStepUp = new StaffStepUpService(identityIssuer, {
+    maxAgeSeconds: env.STAFF_STEP_UP_MAX_AGE_SECONDS,
+  });
   const compliance = createComplianceRouteServices({
+    staffStepUp,
     db,
     transactionRunner: platform.transactionRunner,
     legalEntityRepository: repos.legalEntityRepository,
@@ -240,6 +247,7 @@ export function createContainer(env: Env): Container {
     marketingAttributionEnabled: complianceMedia.marketingAttributionEnabled,
     sourceOfFundsDocumentCollectionService: complianceMedia.sourceOfFundsDocumentCollectionService,
     dealPayoutSettler: payments.privateSaleDeals.payoutSettlement,
+    privateSaleDealParties: payments.privateSaleDeals.parties,
     settlementCronService: cron.settlementCronService,
     paymentMaintenanceCronService: cron.paymentMaintenanceCronService,
     accountingReplayCronService: cron.accountingReplayCronService,
@@ -736,6 +744,7 @@ export function createContainer(env: Env): Container {
       bidPortfolioReader: repos.bidPortfolioReader,
       recordPeople: new DrizzleRecordPeopleReader(db),
       lotFulfilmentRepository: payments.lotFulfilmentRepository,
+      paymentGroupFacts: new DrizzlePaymentGroupFactsReader(db),
       personalLegalEntityResolver: userMisc.personalLegalEntityResolver,
       lotViewerState,
       categoryInterestsEligibilityReader: repos.categoryInterestsEligibilityReader,
@@ -787,6 +796,8 @@ export function createContainer(env: Env): Container {
       buyerAgentAuthorisations,
       deliveryQuotes: organisationBuying.staffDeliveryQuotes,
       marketingEnquiries: marketingEnquiries.desk,
+      privateSaleDeals: payments.privateSaleDeals.desk,
+      enquiryConversion: payments.privateSaleDeals.conversion,
       enquiryRouting: marketingEnquiries.routing,
       purchaseProblems: createPurchaseProblemDesk({
         db,
@@ -801,6 +812,7 @@ export function createContainer(env: Env): Container {
         }),
         audit: new DomainEventDataRequestAuditTrail(platform.domainEventSink),
         enquiryErasure: marketingEnquiries.erasure,
+        erasureHistory: new DrizzleDataRequestErasureHistory(db),
         accounts: {
           findByEmail: async (email) => {
             const subject = await identityIssuer.findSubjectByEmail(email);
@@ -813,7 +825,7 @@ export function createContainer(env: Env): Container {
           },
         },
       }),
-      stepUp: new StaffStepUpService(identityIssuer),
+      stepUp: staffStepUp,
       idempotencyStore: new RedisIdempotencyStore(infra.redis),
     },
     finance,
@@ -899,6 +911,7 @@ export type {
   ContainerPaymentHttpRoutesSlice,
   ContainerPaymentsSlice,
   ContainerPayoutRoutesSlice,
+  ContainerPrivateSaleDealRoutesSlice,
   ContainerPayoutStatementRoutesSlice,
   ContainerPlatformSlice,
   ContainerPostmarkWebhookRoutesSlice,

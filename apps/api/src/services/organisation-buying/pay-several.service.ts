@@ -52,10 +52,15 @@ export type PaySeveralDeps = {
 /** One invoice the payment will take, with the payment it settles. */
 type Charge = { lotId: string; paymentId: string; pence: number };
 
+/** One accepted courier quote the payment will take, with the lot it is for. */
+type DeliveryCharge = { quoteId: string; lotId: string; pence: number };
+
 /** The plan as the combined-payment screen tells it, and what charging it would take. */
 type PlanView = {
   quote: PaySeveralQuote;
+  /** Everything the payment charges: the invoices and the delivery. */
   totalPence: number;
+  deliveries: DeliveryCharge[];
   /** Payable lots with their payment; `null` while a lot still has no invoice. */
   charges: { lotId: string; paymentId: string | null; pence: number }[];
 };
@@ -144,6 +149,11 @@ export class PaySeveralService implements IPaySeveralService {
         lotId: c.lotId,
         amount: gbpPenceToMajorString(c.pence),
       })),
+      deliveries: current.deliveries.map((d) => ({
+        quoteId: d.quoteId,
+        lotId: d.lotId,
+        amount: gbpPenceToMajorString(d.pence),
+      })),
     });
     if (started.isErr()) return err(buyingError(CHECKOUT_ERRORS[started.error]));
     return ok({
@@ -151,6 +161,7 @@ export class PaySeveralService implements IPaySeveralService {
       total,
       currency: current.quote.currency,
       payable: charges.map((c) => ({ lotId: c.lotId, amount: gbpPenceToMajorString(c.pence) })),
+      delivery: current.quote.delivery,
       skipped: current.quote.skipped,
     });
   }
@@ -173,9 +184,16 @@ export class PaySeveralService implements IPaySeveralService {
   /** The plan told in the screen's terms; lots refused at raise time are left out as not invoiced. */
   private view(plan: PayPlan, notInvoiced: ReadonlySet<string>): PlanView {
     const payable = plan.payable.filter((p) => !notInvoiced.has(p.lotId));
-    const totalPence = payable.reduce((sum, p) => sum + p.totalPence, 0);
+    const covered = new Set(payable.map((p) => p.lotId));
+    const deliveries = plan.delivery
+      .filter((d) => covered.has(d.lotId))
+      .map((d) => ({ quoteId: d.quoteId, lotId: d.lotId, pence: d.amountPence }));
+    const totalPence =
+      payable.reduce((sum, p) => sum + p.totalPence, 0) +
+      deliveries.reduce((sum, d) => sum + d.pence, 0);
     return {
       totalPence,
+      deliveries,
       charges: payable.map((p) => ({
         lotId: p.lotId,
         paymentId: p.paymentId,
@@ -196,6 +214,10 @@ export class PaySeveralService implements IPaySeveralService {
             .map((p) => ({ lotId: p.lotId, reason: "not_invoiced" as const })),
         ],
         currency: plan.currency,
+        delivery: deliveries.map((d) => ({
+          lotId: d.lotId,
+          amount: gbpPenceToMajorString(d.pence),
+        })),
         total: gbpPenceToMajorString(totalPence),
         // A check open on the amount stops the payment; the finance threshold and the limits are
         // decided on the total by `payTogether`.

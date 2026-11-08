@@ -141,8 +141,12 @@ export type {
   BulkSettlementEntityOutcomeLog,
   BulkSettlementTransferPort,
   BulkSettlementWithTransfersResult,
+  IConnectAccountReadinessSync,
+  InitiateTransferOptions,
   InitiateTransferResult,
+  TransferAdoptionVerification,
 } from "./payout/types.js";
+export { ConnectTransferInitiationService } from "./stripe/connect-transfer-initiation.service.js";
 export {
   entityId,
   makeSettlementRepo,

@@ -28,6 +28,7 @@ import type { IEnquiryRouting, IMarketingEnquiryDesk } from "../marketing-enquir
 import type { IOnsiteEventAdminService } from "../onsite-event-admin-service.js";
 import type { IOnsiteEventStaffCheckInService } from "../onsite-event-staff-check-in-service.js";
 import type { IStaffDeliveryQuoteService } from "../organisation-buying-service.js";
+import type { IEnquiryConversion, IPrivateSaleDealDesk } from "../private-sale-deal-desk.js";
 import type { IPurchaseProblemDesk } from "../purchase-problem-desk-service.js";
 import type {
   ActorContext,
@@ -89,11 +90,16 @@ export type AdminSatelliteRouteServices = {
   deliveryOps: DeliveryOpsApplicationService;
 };
 
-/** Contact form enquiries and buyers' purchase problems in the staff work inbox. */
+/**
+ * Contact form enquiries and buyers' purchase problems in the staff work inbox, and the private
+ * sale deals that private sale enquiries become.
+ */
 export type AdminEnquiryRouteServices = {
   marketingEnquiries: IMarketingEnquiryDesk;
   enquiryRouting: IEnquiryRouting;
   purchaseProblems: IPurchaseProblemDesk;
+  privateSaleDeals: IPrivateSaleDealDesk;
+  enquiryConversion: IEnquiryConversion;
 };
 
 /** Third-party integrations staff operate from the admin (composed in the container root). */

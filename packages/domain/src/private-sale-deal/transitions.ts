@@ -111,6 +111,13 @@ const vatTreatmentChosen: Guard = (deal, ctx) => {
 const commissionSet: Guard = (deal) =>
   deal.sellerCommissionBps === null ? [{ code: "commission_not_set" }] : [];
 
+/** The commission rate must be configured in policy, not just typed on the deal. */
+const commissionRateConfigured: Guard = (_deal, ctx) =>
+  ctx.policy.commissionRateBps === null ? [{ code: "commission_rate_not_configured" }] : [];
+
+const termsVersionConfigured: Guard = (_deal, ctx) =>
+  ctx.policy.termsVersion === null ? [{ code: "terms_version_not_configured" }] : [];
+
 const paymentDeadlineConfigured: Guard = (_deal, ctx) =>
   ctx.policy.paymentDueDays === null ? [{ code: "payment_due_days_not_configured" }] : [];
 
@@ -140,7 +147,8 @@ export const DEAL_TRANSITIONS: Readonly<Record<DealCommand, TransitionRow>> = {
   agree: {
     from: ["offer"],
     to: "agreed",
-    guards: [buyerNamed, priceSet, partiesCleared, termsAccepted],
+    // The commission is part of what the seller accepts, so it is set before the price is agreed.
+    guards: [buyerNamed, priceSet, commissionSet, partiesCleared, termsAccepted],
     changes: (_deal, ctx) => ({ agreedAt: ctx.now, agreedByUserId: ctx.actorUserId }),
   },
   clear: {
@@ -156,6 +164,8 @@ export const DEAL_TRANSITIONS: Readonly<Record<DealCommand, TransitionRow>> = {
       sourceOfFundsSatisfied,
       vatTreatmentChosen,
       commissionSet,
+      commissionRateConfigured,
+      termsVersionConfigured,
       paymentDeadlineConfigured,
       differentPersonInvoices,
     ],

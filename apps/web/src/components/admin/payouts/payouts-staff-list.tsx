@@ -287,6 +287,8 @@ export function PayoutsStaffList(props: PayoutsStaffListProps) {
         onMarkPaid={money.markPaid}
         onAdjust={money.adjust}
         onRetryTransfer={money.retryTransfer}
+        onAdoptBlocked={money.adoptBlocked}
+        onReleaseBlocked={money.releaseBlocked}
         onReverse={money.reverse}
         moneyActions={openRow ? money.actionsFor(openRow) : []}
       />

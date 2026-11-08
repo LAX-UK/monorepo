@@ -1,4 +1,8 @@
-import type { UnappliedMoneyPayload, UnappliedMoneyReason } from "@auction/domain";
+import {
+  type UnappliedMoneyPayload,
+  type UnappliedMoneyReason,
+  possibleSourceText,
+} from "@auction/domain";
 import type { IEmailService } from "@auction/email";
 import { formatMoneyMajor } from "@auction/email";
 import { FINANCE_ACCESS, adminRoutes } from "@auction/types";
@@ -14,15 +18,17 @@ const SITUATION: Record<UnappliedMoneyReason, string> = {
   group_not_settleable:
     "A payment for several invoices arrived, but they could no longer all be settled by it.",
   group_overpaid:
-    "A bank transfer for several invoices sent more than their total. The excess is for finance to return or apply.",
+    "A payment for several invoices received more than its total. The excess is for finance to return or apply.",
   customer_balance_unapplied:
-    "A bank transfer is sitting in a buyer's Stripe balance with no open invoice to pay.",
+    "Money is left in a buyer's Stripe balance with no open invoice to pay. The amount shown is the balance now, not necessarily what the latest transfer added.",
   paid_not_recorded: "Stripe shows an invoice paid, but the payment has not been recorded here.",
 };
 
 /** What one alert says: the money, the situation and where to look. */
 export type UnappliedMoneyAlert = {
   situation: keyof typeof SITUATION;
+  /** A hedged pointer to a payment the money might belong to; absent when none is certain enough. */
+  possibleSource: string | null;
   paymentId: string | null;
   reference: string;
   amountCents: number;
@@ -32,6 +38,7 @@ export type UnappliedMoneyAlert = {
 export function alertFromUnappliedMoney(payload: UnappliedMoneyPayload): UnappliedMoneyAlert {
   return {
     situation: payload.reason,
+    possibleSource: possibleSourceText(payload.possibleGroup ?? null),
     paymentId: payload.paymentId,
     reference:
       payload.stripePaymentIntentId ??
@@ -71,7 +78,7 @@ export async function fanoutUnappliedMoney(options: {
       ...(target.snapshot ? { recipientResolution: "snapshot" as const } : {}),
       vars: {
         recipientFirstName: target.firstName,
-        situation: SITUATION[alert.situation],
+        situation: [SITUATION[alert.situation], alert.possibleSource].filter(Boolean).join(" "),
         amount,
         reference: alert.reference,
         reviewUrl: `${base}${path}`,

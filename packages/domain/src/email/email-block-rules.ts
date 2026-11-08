@@ -76,6 +76,17 @@ export const EMAIL_BLOCK_RULES: Readonly<Record<EmailBlockReason, EmailBlockRule
     isComplaint: false,
     providerReactivation: "none",
   },
+  // A marketing opt-out recorded from Zoho Campaigns. It only silences alert and marketing mail, so
+  // staff may lift it when the person asks to hear from LAX again; nothing else needs saying.
+  unsubscribed_marketing: {
+    liftBy: "support",
+    stopsEssentialEmail: false,
+    liftReasons: ["asked_to_receive_again", "blocked_by_mistake", "other"],
+    noteAlwaysRequired: false,
+    writtenRequestRequired: false,
+    isComplaint: false,
+    providerReactivation: "none",
+  },
 };
 
 export type EmailLiftActor = {

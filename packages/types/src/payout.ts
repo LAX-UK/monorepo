@@ -6,6 +6,8 @@ export const payoutStatuses = [
   "failed",
   "reversed",
   "clawback_pending",
+  /** Stripe already holds a transfer for this payout that we cannot safely adopt: staff must look. */
+  "transfer_blocked",
 ] as const;
 export type PayoutStatus = (typeof payoutStatuses)[number];
 

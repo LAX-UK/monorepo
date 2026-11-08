@@ -53,6 +53,7 @@ function detail(patch: Partial<AdminRegisterDetail> = {}): AdminRegisterDetail {
     zohoProductId: "1023341000017963004",
     stockCode: "LAX-ORI-AR-TM-26-0004",
     kind: "original",
+    zohoModule: "Products",
     title: "Tidal margin IV",
     artistName: "Ada Rowe",
     artistCode: "AR",

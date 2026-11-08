@@ -6,8 +6,10 @@ import { readUserReadCutoverFromEnv } from "./applied-user-read-cutover.js";
 import { createDb } from "./client.js";
 import {
   WORKER_DENY_TABLES,
+  WORKER_EMAIL_SUPPRESSION_UPDATE_COLUMNS,
   WORKER_SHOP_ENQUIRY_READ_COLUMNS,
   WORKER_SHOP_ORDER_READ_COLUMNS,
+  WORKER_SHOP_PRINT_GROUP_READ_COLUMNS,
 } from "./migrate-roles.js";
 import {
   expectTablePrivileges,
@@ -72,10 +74,61 @@ describe.skipIf(!WORKER_URL)("worker_app role contract", { timeout: 60_000 }, ()
           [table],
         );
         const allowed = all.rows.filter((row) => row.allowed).map((row) => row.column_name);
-        expect(allowed.sort(), table).toEqual([...columns].sort());
+        // Another read grant may add columns of the same table (the print group reads shop_artwork).
+        const shared = WORKER_SHOP_PRINT_GROUP_READ_COLUMNS.filter(
+          ([name]) => name === table,
+        ).flatMap(([, more]) => [...more]);
+        expect(allowed.sort(), table).toEqual([...new Set([...columns, ...shared])].sort());
         const whole = await readTablePrivileges(client, [table], ["INSERT", "UPDATE", "DELETE"]);
         expectUniformTablePrivileges(whole, false);
       }
+    });
+  });
+
+  it("reads the Shop columns a print group needs, and no whole Shop table", async () => {
+    await withWorkerClient(async (client) => {
+      for (const [table, columns] of WORKER_SHOP_PRINT_GROUP_READ_COLUMNS) {
+        for (const column of columns) {
+          const result = await client.query<{ allowed: boolean }>(
+            "select has_column_privilege(current_user, 'public.' || $1, $2, 'SELECT') as allowed",
+            [table, column],
+          );
+          expect(result.rows[0]?.allowed, `${table}.${column}`).toBe(true);
+        }
+        const whole = await readTablePrivileges(client, [table], ["INSERT", "UPDATE", "DELETE"]);
+        expectUniformTablePrivileges(whole, false);
+      }
+    });
+  });
+
+  it("updates only the reason, source and created_at of a suppression, and cannot delete one", async () => {
+    await withWorkerClient(async (client) => {
+      const columns = await client.query<{ column_name: string; allowed: boolean }>(
+        `select column_name,
+                has_column_privilege(current_user, 'public.email_suppression', column_name, 'UPDATE') as allowed
+           from information_schema.columns
+          where table_schema = 'public' and table_name = 'email_suppression'`,
+      );
+      const updatable = columns.rows.filter((row) => row.allowed).map((row) => row.column_name);
+      expect(updatable.sort()).toEqual([...WORKER_EMAIL_SUPPRESSION_UPDATE_COLUMNS].sort());
+      const whole = await client.query<{ update: boolean; insert: boolean; del: boolean }>(
+        `select has_table_privilege(current_user, 'public.email_suppression', 'UPDATE') as update,
+                has_table_privilege(current_user, 'public.email_suppression', 'INSERT') as insert,
+                has_table_privilege(current_user, 'public.email_suppression', 'DELETE') as del`,
+      );
+      expect(whole.rows[0]).toEqual({ update: false, insert: true, del: false });
+    });
+  });
+
+  it("lifts an opt-out only through the definer function, and reads the lift record", async () => {
+    await withWorkerClient(async (client) => {
+      const result = await client.query<{ run: boolean; select: boolean; write: boolean }>(
+        `select has_function_privilege(current_user, 'public.lift_zoho_campaigns_opt_out(text, timestamptz, boolean)', 'EXECUTE') as run,
+                has_table_privilege(current_user, 'public.zoho_campaigns_optout_lift', 'SELECT') as select,
+                (has_table_privilege(current_user, 'public.zoho_campaigns_optout_lift', 'INSERT')
+                 or has_table_privilege(current_user, 'public.zoho_campaigns_optout_lift', 'UPDATE')) as write`,
+      );
+      expect(result.rows[0]).toEqual({ run: true, select: true, write: false });
     });
   });
 

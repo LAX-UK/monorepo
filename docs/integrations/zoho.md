@@ -210,11 +210,49 @@ Picklist values, in order: Not offered, Draft on lax.art, On lax.art, Draft lot 
 | Variable | App | Purpose |
 |----------|-----|---------|
 | `ZOHO_ARTWORK_LISTING_MODE` | worker | `off` (default) \| `dry_run` \| `live`. `dry_run` reads LAX, lax.art and Zoho, logs each update it would send (`zoho_listing_dry_run`) and the nightly pass reports it in Last check; `live` writes. Independent of `ZOHO_ARTWORK_WRITEBACK_MODE`. |
+| `ZOHO_FULFILMENT_MIRROR_MODE` | worker | `off` (default) \| `dry_run` \| `live`. Mirrors each print group made from an original to Zoho CRM (`Print_Products`, one `Edition_Ledgers` counter) and adds its `LAX-PRT` row to the artwork register. `dry_run` logs what it would write and writes nothing, in Zoho or the register; `live` writes and must pass the org check. Order events are heard and skipped until the order mirror lands. |
 | `SHOP_API_INVENTORY_BASE_URL` | worker | LAX Shop's API, for the lax.art lookup. |
 | `INVENTORY_MACHINE_CLIENT_ID`, `INVENTORY_MACHINE_CLIENT_SECRET` | worker | The inventory machine pair LAX Shop holds. |
 | `LAX_ART_PUBLIC_URL`, `LAX_ADMIN_PUBLIC_URL` | worker | For the link. LAX Bid's comes from `WEB_ORIGIN`. |
 
 Everything is required once the mode is not `off`; `live` also turns on the wrong-org guard. Roll out: sandbox `dry_run`, review Last check; sandbox `live`, check a few Products; production `dry_run`; production `live` with the owner's go.
+
+## Campaigns suppression (inbound)
+
+LAX copies Zoho Campaigns unsubscribes and hard bounces into its own suppression list, so mail sent from LAX respects a choice made in Campaigns. Read-only towards Zoho.
+
+**What it records.** An unsubscribe becomes `unsubscribed_marketing`: it stops alert mail (`shop-edition-available-notify`, `shop-release-alert`, `alert-digest`) and nothing else. An alert confirmation (`alert-confirm`) is never stopped by it, because it answers a request the person has just made. A hard bounce becomes `hard_bounce`. Soft or unlabelled bounces are skipped. An entry is only ever widened by the sync, never narrowed.
+
+**Consent and lifts.** A Campaigns opt-out must not block alerts the person later asks for, and a lift must last. A lift is recorded per address hash in `zoho_campaigns_optout_lift` (`lifted_at`), kept apart from `email_suppression` because a lift can happen when there is no row yet. The sync skips a marketing opt-out dated at or before `lifted_at`; one with no readable time counts as old when a lift exists; a newer unsubscribe applies again. Bounces and complaints are never held back by a lift and never lifted. Only an entry with `source = 'zoho_campaigns'` and `reason = 'unsubscribed_marketing'` is ever removed.
+
+One SQL function, `lift_zoho_campaigns_opt_out()` (migration 0323, `SECURITY DEFINER`), is the only writer of a lift: it records `lifted_at` (latest wins) and deletes only that kind of entry, under a per-address advisory lock shared with the sync. No role has `DELETE` on `email_suppression` for this; `api_app` and `worker_app` may `EXECUTE` the function, and the worker reads the lift table. A lift happens in the one "subscription became confirmed" step, on every path:
+
+| Path | How it lifts |
+|------|--------------|
+| Bid confirm link; a signed-in Bid account turning alerts on (`PreferencesService`, `saveConfirmedForAccount`) | Bid API calls the function directly. |
+| LAX Shop and lax.art confirm link; a signed-in account turning alerts on; a lax.art follow | `shop-api` writes the domain event `alert.subscription.confirmed` (address hash only). The worker projector `zoho_campaigns_opt_out_lift` calls the function. `shop_app` gets no new grant. |
+| Staff, from the person's email panel | Same function, via `liftMarketingOptOut`. |
+| Newsletter sign-up through LAX | The `zoho-campaigns-sync` job lifts once the address is pushed to the list. |
+| Re-subscribe in Campaigns | The sync also reads the subscribed list (`status=active`, `subscribed_time`); a contact whose Campaigns opt-out is older than their subscribe time is lifted, dated at the subscribe time. A row with no subscribe time is skipped. Live mode only. |
+
+A lift made in the same minute a person confirms is judged by the engine's clock, not Zoho's; a skew of seconds can at worst let an opt-out dated just after the lift through, which then stands as a new unsubscribe.
+
+**Schedule and load.** Campaigns has no "changed since" filter, so every pass reads the unsubscribed, bounced and subscribed lists whole (200 per page, up to 500 pages each). It runs **daily at 03:15 London**, not hourly, to stay within Zoho's API allowance. Every row is applied on every pass, however old, because the upsert is idempotent: an unsubscribe that appears late in the list is still recorded. The watermark (`zoho_campaigns_suppression_state`) only feeds the summary's `due` count. No hourly need is documented; if one arises, add a page budget first and record the need here.
+
+**Errors.** A non-2xx answer, a body whose `status` is not `success`, or a 200 with no `list_of_details` array stops the pass and lands in Failed jobs. Nothing is read as "an empty list".
+
+| Variable | App | Purpose |
+|----------|-----|---------|
+| `ZOHO_CAMPAIGNS_SUPPRESSION_SYNC_MODE` | worker | `off` (default) \| `dry_run` \| `live`. `dry_run` reads Zoho and logs what it would record; `live` records it. |
+| `ZOHO_CAMPAIGNS_LIST_KEY` | worker | The Campaigns list to read. Required once the mode is not `off`, with the Zoho OAuth trio. |
+
+**Confirm in dry run before going live.** The adapter was written from the documented shape, not against the Campaigns sandbox. Run `dry_run` first and check each of these against real answers:
+
+1. **Host.** `ZOHO_API_HOST` (EU: `https://www.zohoapis.eu`) serves `/api/v1.1/getlistsubscribers`. Campaigns has historically used its own host (for example `campaigns.zoho.eu`), so confirm which one answers with this OAuth token.
+2. **Response shape.** `200 { "status": "success", "list_of_details": [ ... ] }`; the row fields (`contact_email`, `unsubscribed_time` / `bounced_time` / `subscribed_time`, `bounce_type`); that `status=active` returns subscribed contacts; the 1-based `fromindex` and `range` paging; and what an empty page or empty list returns. If a valid empty list omits `list_of_details`, the pass will fail and the adapter must be changed before live.
+3. **OAuth scope.** The refresh token needs **`ZohoCampaigns.contact.READ`** in addition to the CRM scopes above. Without it the call fails with an auth error.
+
+Roll out: sandbox `dry_run`, read the logged summary (`read`, `due`, `skipped`, `heldByLift`, `resubscribed`); sandbox `live`; production `dry_run`; production `live` with the owner's go.
 
 ## Ops scripts
 

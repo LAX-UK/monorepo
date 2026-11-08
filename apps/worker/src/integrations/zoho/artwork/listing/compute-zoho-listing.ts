@@ -47,7 +47,12 @@ export function computeZohoListing(
   });
   const phase =
     where.key === "bid_sale" && lot
-      ? deriveBidSalePhase({ lotStatus: lot.status, saleStatus: lot.sale?.status ?? null })
+      ? deriveBidSalePhase({
+          lotStatus: lot.status,
+          saleStatus: lot.sale?.status ?? null,
+          saleStartTime: lot.sale?.startTime ?? null,
+          now,
+        })
       : null;
   const key = laxListingKeyFor(where, phase);
   const { detail, link } = LISTING_PRESENTERS[key]({ facts, where, links });

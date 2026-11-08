@@ -25,3 +25,4 @@ export {
   type DemoImageEntry,
   type DemoImageKind,
 } from "./seed/demo/demo-images.js";
+export { liftZohoCampaignsOptOut } from "./services/lift-zoho-campaigns-opt-out.js";

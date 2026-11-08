@@ -42,7 +42,7 @@ export function buildPayoutAccount(read: PayoutAccountRead): PayoutAccountVm {
 }
 
 function describeStage(status: PortalPayeeConnectStatus): Omit<PayoutAccountVm, "publishableKey"> {
-  if (!status.stripeAccountId) {
+  if (!status.accountLinked) {
     return {
       stage: "not_set_up",
       statusLabel: "Not set up",

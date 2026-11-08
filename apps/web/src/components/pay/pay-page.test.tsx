@@ -5,7 +5,8 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const refresh = vi.fn();
-vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh }) }));
+const replace = vi.fn();
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh, replace }) }));
 vi.mock("@/lib/shell/shell-chrome-context", () => ({ HideBottomTabBarWhileMounted: () => null }));
 
 const payAction = vi.fn();
@@ -15,13 +16,13 @@ vi.mock("@/lib/pay/pay.actions", () => ({
 
 import { PayPage } from "./pay-page";
 
-const draw = (plan: PayPlan) =>
+const draw = (plan: PayPlan, returned: "cancelled" | null = null) =>
   render(
     <PayPage
       vm={buildPayPageVm(plan, NOW, {
         returnTo: "/purchases/pay?lots=a",
         contactHref: "/contact",
-        returned: null,
+        returned,
         details: {},
       })}
     />,
@@ -30,6 +31,7 @@ const draw = (plan: PayPlan) =>
 const assign = vi.fn();
 beforeEach(() => {
   vi.clearAllMocks();
+  window.sessionStorage.clear();
   Object.defineProperty(window, "location", {
     configurable: true,
     value: { ...window.location, assign },
@@ -113,6 +115,66 @@ describe("the Pay page, ready to pay", () => {
     const bar = container.querySelector("[data-pay-phone-bar]") as HTMLElement;
     expect(within(bar).getByText("£2,375.00")).toBeInTheDocument();
     expect(within(bar).getByRole("button", { name: "Pay £2,375.00" })).toBeInTheDocument();
+  });
+});
+
+describe("the Pay page, delivery", () => {
+  const courier = {
+    lotId: LOT_A,
+    quoteId: "quote-1",
+    amountPence: 18_000,
+    destination: "12 Vyner Street, London E2 9DG",
+    note: null,
+  };
+
+  it("says the choice comes after paying, and links to a quote while one can still join", () => {
+    draw(
+      planOf([payable(LOT_A, 190_000, 47_500, { title: "Coastal Notation" })], {
+        deliveryInPayment: true,
+      }),
+    );
+    const delivery = screen.getByRole("region", { name: "Delivery" });
+    expect(within(delivery).getByText("Choose after paying")).toBeInTheDocument();
+    expect(within(delivery).getByRole("link", { name: "Get a courier quote" })).toHaveAttribute(
+      "href",
+      `/purchases/${LOT_A}`,
+    );
+    expect(within(delivery).getByText(/added to this payment/)).toBeInTheDocument();
+  });
+
+  it("offers no quote link while delivery is not charged with the payment", () => {
+    draw(ready());
+    const delivery = screen.getByRole("region", { name: "Delivery" });
+    expect(within(delivery).queryByRole("link", { name: "Get a courier quote" })).toBeNull();
+  });
+
+  it("shows an accepted courier quote as a charge, a payment line and part of the total", () => {
+    draw(
+      planOf([payable(LOT_A, 190_000, 47_500, { title: "Coastal Notation" })], {
+        deliveryInPayment: true,
+        delivery: [courier],
+      }),
+    );
+    const delivery = screen.getByRole("region", { name: "Delivery" });
+    expect(within(delivery).getByText("Courier · £180.00")).toBeInTheDocument();
+    expect(within(delivery).getByText(/Insured courier to 12 Vyner Street/)).toBeInTheDocument();
+    const payment = screen.getByRole("region", { name: "Payment" });
+    expect(within(payment).getByText("Courier delivery")).toBeInTheDocument();
+    expect(within(payment).getByText("£2,555.00", { selector: "dd" })).toBeInTheDocument();
+  });
+
+  it("sends the total shown, delivery included, and nothing else it worked out", async () => {
+    payAction.mockResolvedValue({ kind: "redirect", url: "https://pay.example/cs" });
+    draw(
+      planOf([payable(LOT_A, 190_000, 47_500)], { deliveryInPayment: true, delivery: [courier] }),
+    );
+    fireEvent.click(screen.getAllByRole("button", { name: /^Pay £2,555.00/ })[0] as HTMLElement);
+    await waitFor(() => expect(payAction).toHaveBeenCalled());
+    expect(payAction).toHaveBeenCalledExactlyOnceWith({
+      lotIds: [LOT_A],
+      expectedTotalPence: 255_500,
+      method: "card",
+    });
   });
 });
 
@@ -274,5 +336,85 @@ describe("the Pay page, a single lot", () => {
     const { container } = draw(ready());
     const bar = container.querySelector("[data-pay-phone-bar]") as HTMLElement;
     expect(within(bar).getByRole("button", { name: "Pay £2,375.00" })).toHaveTextContent("Pay");
+  });
+});
+
+describe("the Pay page, back from the payment page without paying", () => {
+  it("shows that nothing was charged once, then takes it out of the address", async () => {
+    draw(ready(), "cancelled");
+    const note = screen.getByRole("alert");
+    expect(note).toHaveTextContent("Payment not completed");
+    expect(note).toHaveTextContent(/You were not charged/);
+    await waitFor(() =>
+      expect(replace).toHaveBeenCalledExactlyOnceWith("/purchases/pay?lots=a", { scroll: false }),
+    );
+    // The note stays on screen: it is state, not the address.
+    expect(screen.getByRole("alert")).toHaveTextContent("Payment not completed");
+  });
+
+  it("does not touch the address when nothing was returned", () => {
+    draw(ready());
+    expect(replace).not.toHaveBeenCalled();
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("is replaced by the new total when a later payment attempt finds the plan changed", async () => {
+    payAction.mockResolvedValue({
+      kind: "changed",
+      message: "The total has changed to £2,400.00. Check it and pay again.",
+    });
+    draw(ready(), "cancelled");
+    fireEvent.click(screen.getAllByRole("button", { name: /Try again/ })[0] as HTMLElement);
+    await waitFor(() =>
+      expect(screen.getByRole("alert")).toHaveTextContent("The total has changed to £2,400.00"),
+    );
+    expect(screen.queryByText(/Payment not completed/)).toBeNull();
+  });
+
+  it("names the phone bar's button by the amount, except while it is opening the payment", async () => {
+    payAction.mockReturnValue(new Promise(() => {}));
+    const { container } = draw(ready());
+    const bar = container.querySelector("[data-pay-phone-bar]") as HTMLElement;
+    const button = within(bar).getByRole("button", { name: "Pay £2,375.00" });
+    fireEvent.click(button);
+    await waitFor(() =>
+      expect(
+        within(bar).getByRole("button", { name: "Opening secure payment…" }),
+      ).toBeInTheDocument(),
+    );
+    expect(within(bar).getByRole("button")).not.toHaveAttribute("aria-label");
+  });
+
+  it("keeps Try again on the card action while the note is on screen, after the address is cleaned", () => {
+    const context = {
+      returnTo: "/purchases/pay?lots=a",
+      contactHref: "/contact",
+      details: {},
+    };
+    const { rerender } = render(
+      <PayPage vm={buildPayPageVm(ready(), NOW, { ...context, returned: "cancelled" })} />,
+    );
+    expect(screen.getAllByRole("button", { name: "Try again · £2,375.00" }).length).toBeGreaterThan(
+      0,
+    );
+    // The address is replaced, and the page reads its plan again without the return.
+    rerender(<PayPage vm={buildPayPageVm(ready(), NOW, { ...context, returned: null })} />);
+    expect(screen.getAllByRole("button", { name: "Try again · £2,375.00" }).length).toBeGreaterThan(
+      0,
+    );
+    expect(screen.getByRole("alert")).toHaveTextContent("Payment not completed");
+    // Choosing bank transfer is a different action, worded as usual.
+    fireEvent.click(screen.getByRole("radio", { name: "UK bank transfer" }));
+    expect(
+      screen.getAllByRole("button", { name: "Continue to bank transfer" }).length,
+    ).toBeGreaterThan(0);
+  });
+
+  it("shows the answer to a new attempt instead of the not-completed note", async () => {
+    payAction.mockResolvedValue({ kind: "failed", message: "Paying is paused.", refresh: false });
+    draw(ready(), "cancelled");
+    fireEvent.click(screen.getAllByRole("button", { name: /Try again/ })[0] as HTMLElement);
+    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("Paying is paused."));
+    expect(screen.queryByText(/Payment not completed/)).toBeNull();
   });
 });

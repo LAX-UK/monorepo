@@ -15,6 +15,31 @@ export type EnquiryErasureOutcome =
   | ({ ok: true } & EnquiryErasureCounts & AlertSubscriberErasureCounts)
   | { ok: false; error: "confirmation_mismatch" | "reason_invalid" };
 
+/**
+ * Checks the typed confirmation and the reason, so a caller can refuse a mistyped erasure before
+ * it records anything. `eraseByEmail` applies the same checks again.
+ */
+export function checkEnquiryErasureInput(input: {
+  email: string;
+  confirmation: string;
+  reason: string;
+}):
+  | { ok: true; email: string; reason: string }
+  | { ok: false; error: "confirmation_mismatch" | "reason_invalid" } {
+  const email = input.email.trim().toLowerCase();
+  if (input.confirmation.trim().toLowerCase() !== email) {
+    return { ok: false, error: "confirmation_mismatch" };
+  }
+  const reason = input.reason.trim();
+  if (
+    reason.length < ENQUIRY_ERASURE_REASON_MIN_LENGTH ||
+    reason.length > ENQUIRY_ERASURE_REASON_MAX_LENGTH
+  ) {
+    return { ok: false, error: "reason_invalid" };
+  }
+  return { ok: true, email, reason };
+}
+
 export interface IEnquiryErasure {
   eraseByEmail(input: {
     email: string;
@@ -50,17 +75,9 @@ export class EnquiryErasureService implements IEnquiryErasure {
     actorUserId: string;
     requestReference?: string;
   }): Promise<EnquiryErasureOutcome> {
-    const email = input.email.trim().toLowerCase();
-    if (input.confirmation.trim().toLowerCase() !== email) {
-      return { ok: false, error: "confirmation_mismatch" };
-    }
-    const reason = input.reason.trim();
-    if (
-      reason.length < ENQUIRY_ERASURE_REASON_MIN_LENGTH ||
-      reason.length > ENQUIRY_ERASURE_REASON_MAX_LENGTH
-    ) {
-      return { ok: false, error: "reason_invalid" };
-    }
+    const checked = checkEnquiryErasureInput(input);
+    if (!checked.ok) return checked;
+    const { email, reason } = checked;
     const counts = await this.deps.transactionRunner.runInTransaction(async (tx) => {
       const enquiries = await this.deps.erasure.anonymiseInTransaction(tx, {
         kind: "email",

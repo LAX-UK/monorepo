@@ -51,6 +51,7 @@ export function parseAdminWorkItem(raw: unknown): AdminWorkItem | null {
     sourceUpdatedAt,
     severity,
     subtitle: parseString(o.subtitle),
+    hint: parseString(o.hint),
     saleId: parseString(o.saleId),
     dueAt: parseString(o.dueAt),
     assignedToUserId: parseString(o.assignedToUserId),

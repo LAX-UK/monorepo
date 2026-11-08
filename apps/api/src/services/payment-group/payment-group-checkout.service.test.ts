@@ -77,6 +77,7 @@ const INPUT: StartGroupCheckoutInput = {
     { paymentId: "pay-2", lotId: "lot-2", amount: "600.10" },
     { paymentId: "pay-3", lotId: "lot-3", amount: "400.00" },
   ],
+  deliveries: [],
 };
 
 function setup(
@@ -88,6 +89,8 @@ function setup(
     invoices?: [string, BidInvoiceRecord][];
     earlier?: "clear" | "in_progress" | "unavailable";
     recorded?: boolean;
+    /** The quotes the claim stored on the group. */
+    deliveries?: { quoteId: string; lotId: string; amount: string }[];
   } = {},
 ) {
   const group = { ...GROUP, ...over.group };
@@ -98,6 +101,7 @@ function setup(
         : { kind: "claimed" as const, group },
     ),
     listMembers: vi.fn(async () => MEMBERS),
+    listDeliveries: vi.fn(async () => over.deliveries ?? []),
     recordCheckout: vi.fn(async () => over.recorded ?? true),
   };
   const gateway = {
@@ -169,6 +173,67 @@ describe("PaymentGroupCheckoutService.start", () => {
     expect(groups.recordCheckout).toHaveBeenCalledWith("group-1", {
       sessionId: "cs_1",
       paymentIntentId: null,
+    });
+  });
+
+  describe("with courier delivery", () => {
+    const CHARGE = { quoteId: "quote-1", lotId: "lot-3", amount: "180.00" };
+    const WITH_DELIVERY: StartGroupCheckoutInput = {
+      ...INPUT,
+      total: "1180.10",
+      deliveries: [CHARGE],
+    };
+
+    it("claims the quote with the invoices and records it in the event", async () => {
+      const { svc, groups } = setup({ group: { totalAmount: "1180.10" }, deliveries: [CHARGE] });
+      (await svc.start(WITH_DELIVERY))._unsafeUnwrap();
+      expect(groups.claim).toHaveBeenCalledWith(
+        expect.objectContaining({ totalAmount: "1180.10", deliveries: [CHARGE] }),
+      );
+    });
+
+    it("charges the delivery the claim stored, as its own line, inside the group total", async () => {
+      const { svc, groups, gateway } = setup({
+        group: { totalAmount: "1180.10" },
+        deliveries: [CHARGE],
+      });
+      (await svc.start(WITH_DELIVERY))._unsafeUnwrap();
+      expect(groups.listDeliveries).toHaveBeenCalledWith("group-1");
+      expect(gateway.createCheckout).toHaveBeenCalledWith(
+        expect.objectContaining({
+          totalPence: 118_010,
+          deliveries: [
+            {
+              quoteId: "quote-1",
+              lotId: "lot-3",
+              lotTitle: "Study",
+              lotNumber: 3,
+              amountPence: 18_000,
+            },
+          ],
+        }),
+      );
+    });
+
+    it("answers a quote that was taken by another payment with a conflict and opens nothing", async () => {
+      const { svc, gateway, singleCheckouts } = setup({ claim: "conflict" });
+      expect((await svc.start(WITH_DELIVERY))._unsafeUnwrapErr()).toBe("conflict");
+      expect(singleCheckouts.revoke).not.toHaveBeenCalled();
+      expect(gateway.createCheckout).not.toHaveBeenCalled();
+    });
+
+    it("lets the group go, quote included, when the checkout cannot be opened", async () => {
+      const { svc, settlement } = setup({
+        group: { totalAmount: "1180.10" },
+        deliveries: [CHARGE],
+        createCheckout: vi.fn(async () => {
+          throw new Error("provider down");
+        }),
+      });
+      expect((await svc.start(WITH_DELIVERY))._unsafeUnwrapErr()).toBe("unavailable");
+      expect(settlement.release).toHaveBeenCalledWith(
+        expect.objectContaining({ groupId: "group-1", reason: "checkout_unavailable" }),
+      );
     });
   });
 

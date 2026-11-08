@@ -3,6 +3,7 @@ import {
   artistWatchlistArtistIdParamSchema,
   artistWatchlistBodySchema,
   savedSearchBodySchema,
+  savedSearchEmailBodySchema,
   savedSearchIdParamSchema,
   watchlistBodySchema,
   watchlistLotIdParamSchema,
@@ -162,6 +163,24 @@ export function attachUserWatchlistRoutes(r: UserHono, deps: UserRouteDeps): voi
       const userId = c.get("userId") as string;
       const body = c.req.valid("json");
       const response = await container.userRoutes.watchlistHttp.createSavedSearch({ userId, body });
+      return respondUserHttpJson(c, response);
+    },
+  );
+
+  r.patch(
+    "/me/saved-searches/:id",
+    requireAuth,
+    zValidator("param", savedSearchIdParamSchema),
+    zValidator("json", savedSearchEmailBodySchema),
+    async (c) => {
+      const userId = c.get("userId") as string;
+      const { id } = c.req.valid("param");
+      const { notifyEmail } = c.req.valid("json");
+      const response = await container.userRoutes.watchlistHttp.setSavedSearchEmail({
+        userId,
+        id,
+        notifyEmail,
+      });
       return respondUserHttpJson(c, response);
     },
   );

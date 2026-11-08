@@ -33,6 +33,11 @@ export const alertStopSchema = z
  * `on` subscribes (or leaves the subscription, with the topic's email off when `email` is false).
  * `email` defaults to the same as `on`.
  */
-export const alertTopicSwitchSchema = z.object({ on: z.boolean(), email: z.boolean().optional() });
+export const alertTopicSwitchSchema = z.object({
+  on: z.boolean(),
+  email: z.boolean().optional(),
+  /** An explicit "turn my alerts back on": the only switch that may restart stopped alerts. */
+  restart: z.boolean().optional(),
+});
 
 export type AlertSignupInput = z.infer<typeof alertSignupSchema>;

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { RecordingNotices, createEngineHarness } from "../testing/harness.js";
+import { ConfirmService } from "./confirm.service.js";
 
 const snapshot = { title: "Modern British and Irish Art", path: "/sales/modern" };
 
@@ -24,6 +25,50 @@ async function confirmedVisitor(
 }
 
 describe("sign-up and confirmation", () => {
+  it("runs the after-confirm hook with the address, on the press and again on a repeat", async () => {
+    const h = createEngineHarness();
+    const lifted: string[] = [];
+    const confirm = new ConfirmService({
+      subscribers: h.stores,
+      topics: h.stores,
+      codec: h.codec,
+      clock: { now: () => h.now },
+      topicsToEnable: () => ["bid.new_sales"],
+      afterConfirm: async ({ email }) => {
+        lifted.push(email);
+      },
+    });
+    await h.subscribe.requestAsVisitor({
+      product: "bid",
+      topic: "bid.new_sales",
+      email: "Opted.Out@Example.com",
+      source: "web_home_alerts",
+    });
+    const token = tokenOf(h.mailer.confirmations[0]?.confirmUrl ?? "");
+    expect(await confirm.preview(token, "bid")).toMatchObject({ state: "ready" });
+    expect(lifted).toEqual([]);
+    expect(await confirm.confirm(token, "bid")).toBe("confirmed");
+    expect(await confirm.confirm(token, "bid")).toBe("already_confirmed");
+    expect(lifted).toEqual(["opted.out@example.com", "opted.out@example.com"]);
+  });
+
+  it("does not run the hook for an invalid link", async () => {
+    const h = createEngineHarness();
+    let called = false;
+    const confirm = new ConfirmService({
+      subscribers: h.stores,
+      topics: h.stores,
+      codec: h.codec,
+      clock: { now: () => h.now },
+      topicsToEnable: () => ["bid.new_sales"],
+      afterConfirm: async () => {
+        called = true;
+      },
+    });
+    expect(await confirm.confirm("not-a-token", "bid")).toBe("invalid");
+    expect(called).toBe(false);
+  });
+
   it("sends one confirmation, and no second one inside the pause", async () => {
     const h = createEngineHarness();
     const input = {
@@ -290,9 +335,56 @@ describe("account preferences", () => {
       subjectId: "u1",
       topic: "bid.new_sales",
       source: "s",
+      restartStopped: true,
     });
     expect(again).toBe("blocked");
     expect(await h.stores.listEmailRecipients("bid.new_sales", null, 10)).toEqual([]);
+  });
+
+  it("leaves a subscriber who stopped all alerts stopped unless the switch is an explicit restart", async () => {
+    const h = createEngineHarness();
+    h.accounts.set("u1", { email: "client@example.com", verified: true });
+    const input = { product: "bid", subjectId: "u1", topic: "bid.searches", source: "s" } as const;
+    await h.subscribe.enableForAccount({ ...input, topic: "bid.new_sales" });
+    const [row] = [...h.stores.subscribersById.values()];
+    await h.stores.stop(row?.id ?? "", "settings", h.now);
+
+    expect(await h.subscribe.enableForAccount(input)).toBe("stopped");
+    expect([...h.stores.subscribersById.values()][0]?.status).toBe("stopped");
+    expect(await h.stores.listEmailRecipients("bid.searches", null, 10)).toEqual([]);
+
+    expect(await h.subscribe.enableForAccount({ ...input, restartStopped: true })).toBe("enabled");
+    expect([...h.stores.subscribersById.values()][0]?.status).toBe("confirmed");
+  });
+
+  it("answers blocked, not stopped, for an address that complained, even without a restart", async () => {
+    const h = createEngineHarness();
+    h.accounts.set("u1", { email: "client@example.com", verified: true });
+    const input = { product: "bid", subjectId: "u1", topic: "bid.new_sales", source: "s" } as const;
+    await h.subscribe.enableForAccount(input);
+    const [row] = [...h.stores.subscribersById.values()];
+    await h.stores.stop(row?.id ?? "", "complaint", h.now);
+    expect(await h.subscribe.enableForAccount(input)).toBe("blocked");
+    expect(await h.subscribe.enableForAccount({ ...input, restartStopped: true })).toBe("blocked");
+  });
+
+  it("does not restart a stopped subscriber from a topic switch", async () => {
+    const h = createEngineHarness();
+    h.accounts.set("u1", { email: "client@example.com", verified: true });
+    await h.subscribe.enableForAccount({
+      product: "bid",
+      subjectId: "u1",
+      topic: "bid.new_sales",
+      source: "s",
+    });
+    const [row] = [...h.stores.subscribersById.values()];
+    await h.stores.stop(row?.id ?? "", "one_click", h.now);
+
+    const asked = { product: "bid", subjectId: "u1", topic: "bid.searches", on: true } as const;
+    expect(await h.preferences.setTopic(asked)).toBe("stopped");
+    expect([...h.stores.subscribersById.values()][0]?.status).toBe("stopped");
+    expect(await h.preferences.setTopic({ ...asked, restartStopped: true })).toBe("saved");
+    expect([...h.stores.subscribersById.values()][0]?.status).toBe("confirmed");
   });
 
   it("reports an unverified address", async () => {
@@ -650,5 +742,67 @@ describe("announcing and the daily digest", () => {
       expect(h.mailer.digests).toHaveLength(1);
       expect(notices.written).toHaveLength(0);
     });
+  });
+});
+
+describe("the subscription-confirmed step", () => {
+  it("runs for an account switching email alerts on, with the address and the time", async () => {
+    const seen: { email: string; at: Date; product: string }[] = [];
+    const h = createEngineHarness(undefined, {
+      afterConfirm: async ({ email, at, product }) => {
+        seen.push({ email, at, product });
+      },
+    });
+    h.accounts.set("u1", { email: "Client@Example.com", verified: true });
+    await h.subscribe.enableForAccount({
+      product: "bid",
+      subjectId: "u1",
+      topic: "bid.new_sales",
+      source: "web_home_alerts",
+    });
+    expect(seen).toEqual([{ email: "client@example.com", at: h.now, product: "bid" }]);
+  });
+
+  it("runs when a signed-in person turns a topic on in their preferences, not when off", async () => {
+    const seen: string[] = [];
+    const h = createEngineHarness(undefined, {
+      afterConfirm: async ({ email }) => {
+        seen.push(email);
+      },
+    });
+    h.accounts.set("u1", { email: "client@example.com", verified: true });
+    const base = { product: "bid", subjectId: "u1", topic: "bid.new_sales" } as const;
+    await h.preferences.setTopic({ ...base, on: true });
+    expect(seen).toEqual(["client@example.com"]);
+    await h.preferences.setTopic({ ...base, on: false });
+    await h.preferences.setTopic({ ...base, on: true, email: false });
+    expect(seen).toEqual(["client@example.com"]);
+  });
+
+  it("does not run for an unverified address or an unknown account", async () => {
+    const seen: string[] = [];
+    const h = createEngineHarness(undefined, {
+      afterConfirm: async ({ email }) => {
+        seen.push(email);
+      },
+    });
+    h.accounts.set("u2", { email: "new@example.com", verified: false });
+    const base = { product: "bid", topic: "bid.new_sales", source: "s" } as const;
+    await h.subscribe.enableForAccount({ ...base, subjectId: "u2" });
+    await h.subscribe.enableForAccount({ ...base, subjectId: "nobody" });
+    expect(seen).toEqual([]);
+  });
+
+  it("passes the subscriber and the time of the confirm press", async () => {
+    const seen: { subscriberId: string; at: Date }[] = [];
+    const h = createEngineHarness(undefined, {
+      afterConfirm: async ({ subscriberId, at }) => {
+        seen.push({ subscriberId, at });
+      },
+    });
+    const msg = await confirmedVisitor(h, "press@example.com");
+    expect(msg.to).toBe("press@example.com");
+    expect(seen).toHaveLength(1);
+    expect(seen[0]?.at).toEqual(h.now);
   });
 });

@@ -70,6 +70,8 @@ function facts(
     compliance: { hold: false },
     limits,
     classified: classifyPayPlanLots(ACCOUNT, lots),
+    deliveryInPayment: false,
+    delivery: [],
     progress: null,
     ...overrides,
   };
@@ -183,6 +185,7 @@ describe("buildPayPlan: totals", () => {
     );
     expect(plan.totals).toEqual({
       pence: 166_666,
+      deliveryPence: 0,
       byKind: [
         { kind: "hammer", pence: 133_333 },
         { kind: "buyers_premium", pence: 33_333 },
@@ -206,7 +209,54 @@ describe("buildPayPlan: totals", () => {
   it("has no first due date when nothing is payable", () => {
     const plan = buildPayPlan(facts({}, [lot("a", { invoice: "paid" })]));
     expect(plan.firstDueAt).toBeNull();
-    expect(plan.totals).toEqual({ pence: 0, byKind: [] });
+    expect(plan.totals).toEqual({ pence: 0, deliveryPence: 0, byKind: [] });
+  });
+});
+
+describe("buildPayPlan: delivery", () => {
+  const courier = (lotId: string, amountPence: number) => ({
+    lotId,
+    quoteId: `quote-${lotId}`,
+    amountPence,
+    destination: "12 Vyner Street, London E2 9DG",
+    note: null,
+  });
+
+  it("adds an accepted quote to the total, apart from the invoices' lines", () => {
+    const plan = buildPayPlan(
+      facts({ deliveryInPayment: true, delivery: [courier("a", 18_000)] }, [
+        lot("a", { lines: lines(100_000, 25_000) }),
+      ]),
+    );
+    expect(plan.delivery).toEqual([courier("a", 18_000)]);
+    expect(plan.totals).toEqual({
+      pence: 143_000,
+      deliveryPence: 18_000,
+      byKind: [
+        { kind: "hammer", pence: 100_000 },
+        { kind: "buyers_premium", pence: 25_000 },
+      ],
+    });
+    expect(plan.payable[0]?.totalPence).toBe(125_000);
+  });
+
+  it("drops a quote for a lot the payment does not cover", () => {
+    const plan = buildPayPlan(
+      facts({ delivery: [courier("a", 18_000), courier("gone", 9_900)] }, [
+        lot("a"),
+        lot("gone", { invoice: "paid" }),
+      ]),
+    );
+    expect(plan.delivery.map((d) => d.lotId)).toEqual(["a"]);
+    expect(plan.totals.deliveryPence).toBe(18_000);
+  });
+
+  it("counts delivery toward the card and finance limits", () => {
+    const near = limits.cardMaxPence - 1_000;
+    const plan = buildPayPlan(
+      facts({ delivery: [courier("a", 5_000)] }, [lot("a", { lines: lines(near, 0) })]),
+    );
+    expect(plan.methods.find((m) => m.method === "card")?.available).toBe(false);
   });
 });
 

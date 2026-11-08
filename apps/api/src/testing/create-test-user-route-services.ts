@@ -13,6 +13,7 @@ export function createTestUserRouteServicesInput(
     bidPortfolioReader: { loadForPerson: vi.fn() },
     recordPeople: { namesFor: vi.fn(async () => new Map<string, string>()) },
     lotFulfilmentRepository: { statusesForLots: vi.fn(async () => new Map()) },
+    paymentGroupFacts: { processingForPayments: vi.fn(async () => new Map()) },
     personalLegalEntityResolver: {
       resolveForUser: vi.fn(async () => ({ id: "personal-1" })),
     } as never,

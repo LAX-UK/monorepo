@@ -10,6 +10,7 @@ import {
   lotFulfilment,
   payment,
   paymentExternalRef,
+  paymentGroup,
   payout,
   payoutLine,
   user,
@@ -51,6 +52,7 @@ describe.skipIf(!HAS_DB)("bid portfolio reader (integration)", () => {
     const orgInSale = randomUUID();
     const paidPayment = randomUUID();
     const refundedPayment = randomUUID();
+    const groupId = randomUUID();
     const soldPayment = randomUUID();
     const payoutId = randomUUID();
     const otherPayoutId = randomUUID();
@@ -187,21 +189,30 @@ describe.skipIf(!HAS_DB)("bid portfolio reader (integration)", () => {
           status,
           createdAt: now,
         });
-        await tx
-          .insert(payment)
-          .values([
-            newPayment(paidPayment, wonPaid, meId, personalId, otherPersonalId, "captured"),
-            newPayment(refundedPayment, wonRefunded, meId, personalId, otherPersonalId, "refunded"),
-            newPayment(soldPayment, soldPaidOut, otherId, otherPersonalId, personalId, "captured"),
-            newPayment(
-              billedToOrgPayment,
-              wonBilledToOrg,
+        await tx.insert(paymentGroup).values({
+          id: groupId,
+          buyerLegalEntityId: personalId,
+          status: "processing",
+          totalAmount: "2500.00",
+          checkoutRail: "gb_bank_transfer",
+          amountReceived: "1000.00",
+        });
+        await tx.insert(payment).values([
+          newPayment(paidPayment, wonPaid, meId, personalId, otherPersonalId, "captured"),
+          {
+            ...newPayment(
+              refundedPayment,
+              wonRefunded,
               meId,
-              orgId,
+              personalId,
               otherPersonalId,
-              "captured",
+              "refunded",
             ),
-          ]);
+            paymentGroupId: groupId,
+          },
+          newPayment(soldPayment, soldPaidOut, otherId, otherPersonalId, personalId, "captured"),
+          newPayment(billedToOrgPayment, wonBilledToOrg, meId, orgId, otherPersonalId, "captured"),
+        ]);
         await tx.insert(paymentExternalRef).values({
           paymentId: paidPayment,
           xeroInvoiceNumber: "INV-0001",
@@ -299,6 +310,16 @@ describe.skipIf(!HAS_DB)("bid portfolio reader (integration)", () => {
           status: "captured",
         });
         expect(facts.wonLots.find((l) => l.lotId === wonBilledToOrg)?.hammerPrice).toBe("1000.00");
+        // The combined payment an invoice is settled through carries what a transfer has delivered.
+        expect(facts.payments.find((p) => p.id === refundedPayment)?.group).toEqual({
+          id: groupId,
+          status: "processing",
+          checkoutRail: "gb_bank_transfer",
+          totalAmount: "2500.00",
+          amountReceived: "1000.00",
+          members: [{ lotId: wonRefunded, status: "refunded", amount: "1250.00" }],
+        });
+        expect(facts.payments.find((p) => p.id === paidPayment)?.group).toBeNull();
         expect(facts.payments.find((p) => p.id === paidPayment)?.hasInvoice).toBe(true);
         expect(facts.payments.find((p) => p.id === refundedPayment)?.hasInvoice).toBe(false);
 

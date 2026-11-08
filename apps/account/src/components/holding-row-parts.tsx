@@ -37,9 +37,12 @@ export function amountsOf(row: HoldingRowVm) {
   return row.due.length > 0 ? row.due : row.paid;
 }
 
-/** What the amount in a row is: owed, being confirmed, or paid. */
-export function amountLabel(status: HoldingRowVm["item"]["status"]): string {
-  if (status === "awaiting_payment") return "Due";
+/** What the amount in a row is: owed, still to send on a part-paid transfer, being confirmed, or paid. */
+export function amountLabel(
+  status: HoldingRowVm["item"]["status"],
+  owedState?: NonNullable<HoldingRowVm["item"]["owed"]>["state"],
+): string {
+  if (status === "awaiting_payment") return owedState === "still_to_send" ? "Still to send" : "Due";
   return status === "payment_confirming" ? "Confirming" : "Paid";
 }
 
@@ -55,7 +58,9 @@ export function PaidCell({ row }: { row: HoldingRowVm }) {
     <>
       {(row.item.status === "awaiting_payment" || row.item.status === "payment_confirming") &&
       amounts.length > 0 ? (
-        <span className="mr-1 text-xs text-on-surface-variant">{amountLabel(row.item.status)}</span>
+        <span className="mr-1 text-xs text-on-surface-variant">
+          {amountLabel(row.item.status, row.item.owed?.state)}
+        </span>
       ) : null}
       <CurrencyAmounts totals={amounts} />
       <InReviewNote row={row} />

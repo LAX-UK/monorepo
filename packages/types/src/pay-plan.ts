@@ -96,6 +96,21 @@ export type PayPlanPayable = {
   overdue: boolean;
 };
 
+/**
+ * An accepted courier quote that joins the payment as its own line. It belongs to no invoice: it
+ * is charged to the same payment, kept apart from every invoice's amount, and goes to LAX.
+ */
+export type PayPlanDelivery = {
+  lotId: string;
+  quoteId: string;
+  /** What the buyer accepted, in whole pence. */
+  amountPence: number;
+  /** Where the work is delivered, as the buyer wrote it. */
+  destination: string;
+  /** What the price covers, written by the saleroom team. */
+  note: string | null;
+};
+
 export type PayPlan = {
   account: { legalEntityId: string; kind: "individual" | "organisation"; name: string };
   payerRole: "payer" | "informed";
@@ -104,7 +119,19 @@ export type PayPlan = {
   gate: PayPlanGate;
   payable: PayPlanPayable[];
   leftOut: { lotId: string; reason: PayPlanLeftOutReason }[];
-  totals: { pence: number; byKind: { kind: InvoiceLineKind; pence: number }[] };
+  /** Whether an accepted courier quote is charged with the invoices at all. */
+  deliveryInPayment: boolean;
+  /** Accepted courier quotes charged with the invoices; always empty while `deliveryInPayment` is false. */
+  delivery: PayPlanDelivery[];
+  /**
+   * `pence` is everything the payment charges: the invoices plus `deliveryPence`. `byKind` splits
+   * the invoices' lines only.
+   */
+  totals: {
+    pence: number;
+    deliveryPence: number;
+    byKind: { kind: InvoiceLineKind; pence: number }[];
+  };
   /** ISO 8601 instant of the earliest due date among the payable invoices. */
   firstDueAt: string | null;
   methods: PayPlanMethod[];

@@ -239,10 +239,9 @@ describe.skipIf(!hasShopIntegrationDb)("shop Connect payouts integration", () =>
         "https://shop.example/f",
       ),
     ).rejects.toMatchObject({ code: SHOP_API_ERROR_CODES.VALIDATION });
-    await expect(service.getStatusForSubject(subject)).resolves.toMatchObject({
-      stripeAccountId: first.stripeAccountId,
-      ready: false,
-    });
+    const status = await service.getStatusForSubject(subject);
+    expect(status).toMatchObject({ accountLinked: true, ready: false });
+    expect(JSON.stringify(status)).not.toContain(first.stripeAccountId);
   });
 
   it("onboarding links accept lax.art return URLs and reject foreign origins with 400", async () => {

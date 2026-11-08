@@ -3,6 +3,8 @@ import {
   adminManualReversePayoutSchema,
   createPayoutAdjustmentSchema,
   listPayoutsQuerySchema,
+  payoutActionReasonSchema,
+  resolveBlockedPayoutSchema,
   runSettlementSchema,
 } from "@auction/validators";
 import { Hono } from "hono";
@@ -33,9 +35,13 @@ const payoutIdParam = z.object({ payoutId: z.string().uuid() });
 const settlementPreviewQuery = z.object({ legalEntityId: z.string().uuid() });
 const markPaidBodySchema = z.object({
   stripeTransferId: z.string().min(3).max(200),
+  reason: payoutActionReasonSchema,
 });
 
-const retryTransferBodySchema = z.object({ confirmed: z.literal(true) });
+const retryTransferBodySchema = z.object({
+  confirmed: z.literal(true),
+  reason: payoutActionReasonSchema,
+});
 
 function handleError(err: unknown) {
   if (err instanceof PayoutNotFoundError) return { status: 404 as const, code: err.code };
@@ -203,8 +209,8 @@ export function createAdminPayoutRoutes(
       try {
         const result = await container.admin.payouts.createSettlement(userId, {
           legalEntityId: body.legalEntityId,
-          periodStart: new Date(0),
-          periodEnd: new Date(),
+          reason: body.reason,
+          ...(body.periodStart ? { periodStart: new Date(body.periodStart) } : {}),
         });
         if (!result.ok) return c.json({ error: result.reason }, 409);
         return c.json({ data: result.payout }, 201);
@@ -274,16 +280,49 @@ export function createAdminPayoutRoutes(
     async (c) => {
       const userId = c.get("userId") as string;
       const { payoutId } = c.req.valid("param");
+      const { reason } = c.req.valid("json");
       try {
-        const outcome = await container.admin.payouts.retryFailedTransfer(userId, payoutId);
+        const outcome = await container.admin.payouts.retryFailedTransfer(userId, payoutId, reason);
         if (!outcome.ok) {
           return c.json(
             {
               error: outcome.reason,
-              ...(outcome.stripeErrorMessage ? { message: outcome.stripeErrorMessage } : {}),
+              ...(outcome.message || outcome.stripeErrorMessage
+                ? { message: outcome.message ?? outcome.stripeErrorMessage }
+                : {}),
             },
             409,
           );
+        }
+        return c.json({ data: outcome.payout });
+      } catch (err) {
+        const mapped = handleError(err);
+        if (mapped) return c.json({ error: mapped.code }, mapped.status);
+        throw err;
+      }
+    },
+  );
+
+  /**
+   * POST /admin/payouts/:payoutId/resolve-blocked — the two ways out of `transfer_blocked`:
+   * adopt the Stripe transfer that already pays it, or release it to `failed` for a retry.
+   */
+  r.post(
+    "/:payoutId/resolve-blocked",
+    requireAuth,
+    adminMutate,
+    requireStepUp,
+    idempotent("payouts.resolve-blocked"),
+    zValidator("param", payoutIdParam),
+    zValidator("json", resolveBlockedPayoutSchema),
+    async (c) => {
+      const userId = c.get("userId") as string;
+      const { payoutId } = c.req.valid("param");
+      const body = c.req.valid("json");
+      try {
+        const outcome = await container.admin.payouts.resolveBlockedPayout(userId, payoutId, body);
+        if (!outcome.ok) {
+          return c.json({ error: outcome.reason, message: outcome.message }, 409);
         }
         return c.json({ data: outcome.payout });
       } catch (err) {

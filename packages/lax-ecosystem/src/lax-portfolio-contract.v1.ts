@@ -115,7 +115,7 @@ export const LaxPortfolioActionV1 = Type.Object({
 });
 export type LaxPortfolioActionV1 = Static<typeof LaxPortfolioActionV1>;
 
-export const LAX_OWED_STATES = ["due", "in_review"] as const;
+export const LAX_OWED_STATES = ["due", "in_review", "still_to_send"] as const;
 export type LaxOwedState = (typeof LAX_OWED_STATES)[number];
 
 export const LAX_OWED_BLOCKERS = ["documents", "review"] as const;
@@ -125,7 +125,9 @@ export type LaxOwedBlocker = (typeof LAX_OWED_BLOCKERS)[number];
  * What the buyer still owes on a work that is awaiting payment: the total one payment covers
  * (hammer and premium), so the same figure appears here, in the product and in its invoice.
  * `in_review` means the buyer's account is held for checks and cannot pay yet; `blocker` says
- * whether the buyer can act (`documents`) or is waiting on LAX (`review`).
+ * whether the buyer can act (`documents`) or is waiting on LAX (`review`). `still_to_send`
+ * means a bank transfer has delivered part of the payment: `amount` is this work's share of what
+ * is left to send, and nothing is paid until all of it arrives.
  */
 export const LaxPortfolioOwedV1 = Type.Object({
   amount: minorUnitsSchema,
@@ -180,6 +182,11 @@ export const LaxMoneyEntryV1 = Type.Object({
   occurredAt: isoDateTimeSchema,
   /** Deep link to the product's invoice or payout page. */
   href: Type.String({ minLength: 1 }),
+  /**
+   * Set on an amount owed that is the rest of a part-funded bank transfer, so the ledger can say
+   * "still to send" rather than "owed".
+   */
+  stillToSend: Type.Optional(Type.Boolean()),
   /**
    * The product the money belongs to. LAX Shop and lax.art share one business, so the business
    * cannot say it. Optional so payloads from before the field stay valid; a consumer falls back

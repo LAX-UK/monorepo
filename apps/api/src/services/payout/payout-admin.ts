@@ -64,6 +64,10 @@ export async function previewPending(
     pendingNet: subtractDecimal(grossAmount, platformFee),
     paymentCount: rows.length,
     currency: DEFAULT_CURRENCY,
+    earliestCapturedAt: rows.reduce<Date | null>(
+      (oldest, r) => (r.capturedAt && (!oldest || r.capturedAt < oldest) ? r.capturedAt : oldest),
+      null,
+    ),
   };
 }
 
@@ -171,6 +175,104 @@ export async function markPaid(
         currency: updated.currency,
         processedAt: updated.processedAt?.toISOString() ?? null,
         via: "mark_paid",
+        reason: input.reason,
+      },
+      actorUserId,
+      actingLegalEntityId: updated.legalEntityId,
+    });
+    return updated;
+  });
+}
+
+/** What staff gave for resolving a blocked payout; the reason is kept in the audit event. */
+export type BlockedPayoutResolutionInput = { reason: string };
+
+/**
+ * Staff adopt a Stripe transfer for a `transfer_blocked` payout: it moves to `in_transit` with
+ * that transfer. The transfer was checked against Stripe by the caller; here the payout is moved
+ * only if it is still blocked and the transfer is not already linked to another payout, in one
+ * transaction with the event.
+ */
+export async function adoptBlockedTransfer(
+  deps: PayoutServiceDeps,
+  actorUserId: string,
+  payoutId: string,
+  input: BlockedPayoutResolutionInput & { stripeTransferId: string },
+): Promise<Payout> {
+  const { runner, publisher } = requireTransactional(deps);
+  return await runner.runInTransaction(async (tx) => {
+    const r = deps.payoutRepoForTx(tx);
+    const found = await r.findById(payoutId);
+    if (!found) throw new PayoutNotFoundError();
+    if (found.status !== "transfer_blocked") {
+      throw new PayoutStatusTransitionError("payout_not_blocked");
+    }
+    const linked = await r.findByStripeTransferId(input.stripeTransferId);
+    if (linked && linked.id !== payoutId) {
+      throw new PayoutStatusTransitionError("transfer_linked_to_other_payout");
+    }
+    const updated = await transitionOrThrow(r, found, {
+      status: "in_transit",
+      stripeTransferId: input.stripeTransferId,
+      processedAt: null,
+      failureReason: null,
+    });
+    await publisher.withTx(tx).publish({
+      aggregateType: "payout",
+      aggregateId: updated.id,
+      eventType: "payout.transfer_block_resolved",
+      payload: {
+        legalEntityId: updated.legalEntityId,
+        resolution: "adopt_transfer",
+        previousStatus: found.status,
+        status: updated.status,
+        stripeTransferId: input.stripeTransferId,
+        reason: input.reason,
+      },
+      actorUserId,
+      actingLegalEntityId: updated.legalEntityId,
+    });
+    return updated;
+  });
+}
+
+/**
+ * Staff release a `transfer_blocked` payout to `failed` so it can be retried, having checked in
+ * Stripe that no live transfer exists. The confirmation and reason are kept in the event. The
+ * failure time is set now, so the retry cool-off applies and the retry gets a fresh idempotency
+ * key.
+ */
+export async function releaseBlockedPayout(
+  deps: PayoutServiceDeps,
+  actorUserId: string,
+  payoutId: string,
+  input: BlockedPayoutResolutionInput & { noLiveTransferConfirmed: true },
+): Promise<Payout> {
+  const { runner, publisher } = requireTransactional(deps);
+  return await runner.runInTransaction(async (tx) => {
+    const r = deps.payoutRepoForTx(tx);
+    const found = await r.findById(payoutId);
+    if (!found) throw new PayoutNotFoundError();
+    if (found.status !== "transfer_blocked") {
+      throw new PayoutStatusTransitionError("payout_not_blocked");
+    }
+    const updated = await transitionOrThrow(r, found, {
+      status: "failed",
+      stripeTransferId: null,
+      processedAt: new Date(),
+      failureReason: `released_from_transfer_blocked: ${found.failureReason ?? "no reason recorded"}`,
+    });
+    await publisher.withTx(tx).publish({
+      aggregateType: "payout",
+      aggregateId: updated.id,
+      eventType: "payout.transfer_block_resolved",
+      payload: {
+        legalEntityId: updated.legalEntityId,
+        resolution: "release_to_failed",
+        previousStatus: found.status,
+        status: updated.status,
+        noLiveTransferConfirmed: input.noLiveTransferConfirmed,
+        reason: input.reason,
       },
       actorUserId,
       actingLegalEntityId: updated.legalEntityId,

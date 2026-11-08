@@ -30,6 +30,7 @@
   "dependencies": {
     "@auction/branding": "workspace:*",
     "@auction/domain": "workspace:*",
+    "@auction/identity-contracts": "workspace:*",
     "@auction/types": "workspace:*",
     "@auction/ui": "workspace:*",
     "@radix-ui/react-slot": "^1.2.4",

@@ -27,8 +27,8 @@ describe("audit log views", () => {
     }
   });
 
-  it("leaves only machine-driven shop, bid and export events outside the views", () => {
+  it("leaves only machine-driven shop, bid, alert and export events outside the views", () => {
     const unplaced = ALL_LIVE_DOMAIN_EVENT_TYPES.filter((type) => viewsOf(type).length === 0);
-    expect(unplaced.every((type) => /^(shop\.|bid\.|export\.)/.test(type))).toBe(true);
+    expect(unplaced.every((type) => /^(shop\.|bid\.|alert\.|export\.)/.test(type))).toBe(true);
   });
 });

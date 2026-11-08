@@ -64,6 +64,8 @@ export type AuditActorRecord = {
 
 export type FinanceIssueSnapshot = {
   failedPayoutCount: number;
+  /** Payouts in `transfer_blocked`: Stripe already holds a transfer staff must resolve. */
+  blockedPayoutCount: number;
   legalEntitiesWithStripeConnectRequirementsCount: number;
   staleBlockedScheduledPayoutCount: number;
   entitiesPendingReviewCount: number;

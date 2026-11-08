@@ -164,6 +164,32 @@ describe("convert", () => {
     });
   });
 
+  describe("a work in a private sale", () => {
+    function withDeal(reference: string | null) {
+      return baseDeps({
+        privateSaleDeals: { findLiveDealReferenceForWork: vi.fn().mockResolvedValue(reference) },
+      });
+    }
+
+    it("refuses to become a lot, and says which private sale it is in", async () => {
+      hoisted.txSubFindById.mockResolvedValue(mkApprovedSubmission({ id: "sub-1" }));
+      const result = await convert(withDeal("PS-0012"), "admin-1", "sub-1");
+      expect(result.isErr()).toBe(true);
+      expect(result._unsafeUnwrapErr().status).toBe(409);
+      expect(result._unsafeUnwrapErr().message).toBe("This work is in private sale PS-0012.");
+      expect(hoisted.txLotCreate).not.toHaveBeenCalled();
+      expect(hoisted.txSubUpdate).not.toHaveBeenCalled();
+    });
+
+    it("becomes a lot when it is in no private sale", async () => {
+      const submission = mkApprovedSubmission({ id: "sub-1" });
+      hoisted.txSubFindById.mockResolvedValue(submission);
+      hoisted.txLotCreate.mockResolvedValue(mkCreatedLot({ id: "lot-1", title: submission.title }));
+      hoisted.txSubUpdate.mockResolvedValue({ ...submission, status: "converted" });
+      expect((await convert(withDeal(null), "admin-1", "sub-1")).isOk()).toBe(true);
+    });
+  });
+
   it("uses forTransaction for both submission and lot repos", async () => {
     const submission = mkApprovedSubmission({ id: "sub-1" });
     const createdLot = mkCreatedLot({ id: "lot-1", title: submission.title });

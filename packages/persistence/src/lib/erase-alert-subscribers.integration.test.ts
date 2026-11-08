@@ -2,12 +2,15 @@ import { randomUUID } from "node:crypto";
 import { createDb } from "@auction/db";
 import { bidAlertSubscriber, bidAlertTopic, visitorSaleAlertSubscriber } from "@auction/db/schema";
 import { eq, sql } from "drizzle-orm";
-import { describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { holdAlertTablesLock } from "../testing/alert-tables-lock.js";
 import { eraseAlertSubscribers } from "./erase-alert-subscribers.js";
 
 const HAS_DB = Boolean(process.env.DATABASE_URL);
 const now = new Date();
 const consent = { consentText: "Email me", consentSource: "test", requestedAt: now };
+
+holdAlertTablesLock({ beforeAll, afterAll }, "shared");
 
 describe.skipIf(!HAS_DB)("alert subscriber erasure (integration)", () => {
   it("erases by normalised email, keeps complaint suppressions, and is idempotent", async () => {

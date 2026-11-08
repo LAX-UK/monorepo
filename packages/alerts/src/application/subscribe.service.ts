@@ -7,6 +7,7 @@ import type {
   AlertUrls,
   Clock,
   SubscriberStore,
+  SubscriptionConfirmedHook,
   TopicStore,
   VerifiedAddressLookup,
 } from "../ports.js";
@@ -20,10 +21,15 @@ export type SubscribeDeps = {
   urls: AlertUrls;
   addresses: VerifiedAddressLookup;
   clock: Clock;
+  /** Runs when an account's email topic is switched on: the same step as a confirm link. */
+  afterConfirm?: SubscriptionConfirmedHook;
 };
 
-/** `blocked`: the address complained, so only a person at LAX can switch it back on. */
-export type AccountEnableOutcome = "enabled" | "unverified" | "no_account" | "blocked";
+/**
+ * `blocked`: the address complained, so only a person at LAX can switch it back on.
+ * `stopped`: the person stopped all alerts, and this switch was not an explicit restart.
+ */
+export type AccountEnableOutcome = "enabled" | "unverified" | "no_account" | "blocked" | "stopped";
 
 /** Starting alerts: a visitor by double opt-in, or an account with a verified address at once. */
 export class SubscribeService {
@@ -67,11 +73,28 @@ export class SubscribeService {
     topic: AlertTopic;
     source: string;
     emailOn?: boolean;
+    /**
+     * Only an explicit "turn my alerts back on" may start a subscriber who stopped all alerts.
+     * Anything else (following an artist, one search's switch) leaves them stopped.
+     */
+    restartStopped?: boolean;
   }): Promise<AccountEnableOutcome> {
     const address = await this.deps.addresses.find(input.subjectId);
     if (!address) return "no_account";
     if (!address.verified) return "unverified";
     const now = this.deps.clock.now();
+    if (!input.restartStopped) {
+      const existing =
+        (await this.deps.subscribers.findBySubject(input.product, input.subjectId)) ??
+        (await this.deps.subscribers.findByEmail(
+          input.product,
+          normaliseAlertEmail(address.email),
+        ));
+      if (existing?.status === "stopped") {
+        // A complaint needs a person at LAX, not a settings switch, whoever asks.
+        return existing.stopReason === "complaint" ? "blocked" : "stopped";
+      }
+    }
     const record = await this.deps.subscribers.saveConfirmedForAccount({
       product: input.product,
       email: normaliseAlertEmail(address.email),
@@ -81,7 +104,17 @@ export class SubscribeService {
       now,
     });
     if (record.status !== "confirmed") return "blocked";
-    await this.deps.topics.setEmail(record.id, input.topic, input.emailOn ?? true, "person", now);
+    const emailOn = input.emailOn ?? true;
+    await this.deps.topics.setEmail(record.id, input.topic, emailOn, "person", now);
+    // Asking for email is the person's own choice, so it counts as a confirmation of their address.
+    if (emailOn) {
+      await this.deps.afterConfirm?.({
+        subscriberId: record.id,
+        product: record.product,
+        email: record.email,
+        at: now,
+      });
+    }
     return "enabled";
   }
 }

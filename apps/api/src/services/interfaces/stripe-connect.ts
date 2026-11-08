@@ -1,4 +1,9 @@
 import type { Database } from "@auction/db";
+import type {
+  InitiateTransferOptions,
+  InitiateTransferResult,
+  TransferAdoptionVerification,
+} from "@auction/finance-runtime";
 import type { LegalEntity, LegalEntityMemberRole } from "@auction/types";
 import type Stripe from "stripe";
 
@@ -38,24 +43,12 @@ export type AccountLink = {
   expiresAt: Date;
 };
 
-/** result of initiating a Stripe Connect transfer for a payout. */
-export type InitiateTransferResult =
-  | { ok: true; stripeTransferId: string }
-  | {
-      ok: false;
-      reason:
-        | "stripe_not_configured"
-        | "internal_misconfiguration"
-        | "payout_not_found"
-        | "payout_already_processed"
-        | "entity_not_found"
-        | "no_connect_account"
-        | "connect_not_ready"
-        | "negative_net_amount"
-        | "stripe_error";
-      stripeErrorCode?: string;
-      stripeErrorMessage?: string;
-    };
+/** Transfer initiation types: the one definition lives in `@auction/finance-runtime`. */
+export type {
+  InitiateTransferOptions,
+  InitiateTransferResult,
+  TransferAdoptionVerification,
+} from "@auction/finance-runtime";
 
 export class StripeConnectNotConfiguredError extends Error {
   constructor() {
@@ -102,16 +95,6 @@ export interface IConnectSessionProvider {
   ): Promise<{ clientSecret: string }>;
 }
 
-/** How a transfer attempt treats the payout it starts from. */
-export type InitiateTransferOptions = {
-  keepScheduledOnTransferFailure?: boolean;
-  /**
-   * Start from a payout whose earlier transfer failed instead of a scheduled one. The payout stays
-   * failed until the new transfer is accepted, so the settlement cron never competes with it.
-   */
-  retryFailed?: boolean;
-};
-
 /** Payout transfer initiation + transfer webhooks. */
 export interface IConnectTransferInitiator {
   handleTransferEvent(event: Stripe.Event): Promise<{ processed: boolean }>;
@@ -119,6 +102,11 @@ export interface IConnectTransferInitiator {
     payoutId: string,
     opts?: InitiateTransferOptions,
   ): Promise<InitiateTransferResult>;
+  /** Fetches the transfer from Stripe and checks it against the payout; changes nothing. */
+  verifyTransferForAdoption(
+    payoutId: string,
+    stripeTransferId: string,
+  ): Promise<TransferAdoptionVerification>;
 }
 
 /** Initiates platform → seller Stripe Connect transfers for scheduled payouts. */
@@ -127,6 +115,10 @@ export interface IConnectTransferInitiationService {
     payoutId: string,
     opts?: InitiateTransferOptions,
   ): Promise<InitiateTransferResult>;
+  verifyTransferForAdoption(
+    payoutId: string,
+    stripeTransferId: string,
+  ): Promise<TransferAdoptionVerification>;
 }
 
 export interface IStripeConnectService

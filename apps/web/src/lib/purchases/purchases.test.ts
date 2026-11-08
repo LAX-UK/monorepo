@@ -168,14 +168,16 @@ function sources(
 
 function facts(
   lotId: string,
-  invoice: AccountPurchaseFacts["invoice"],
+  invoice: Omit<AccountPurchaseFacts["invoice"], "stillToSendPence"> & {
+    stillToSendPence?: number | null;
+  },
   overrides: Partial<AccountPurchaseFacts> = {},
 ): AccountPurchaseFacts {
   return {
     lotId,
     wonBy: { userId: "u-2", name: "Tom Whitfield" },
     paymentRole: "payer",
-    invoice,
+    invoice: { stillToSendPence: null, ...invoice },
     delivery: {
       stage: "awaiting_payment",
       method: null,
@@ -453,5 +455,52 @@ describe("the Purchases list query", () => {
       { id: "sale", label: "Sale: Jewels and objects of vertu" },
       { id: "wonBy", label: "Won by: Tom" },
     ]);
+  });
+});
+
+describe("a purchase inside a part-funded bank transfer", () => {
+  const onItsWay = row("lot-9", 9, { id: "p9", status: "authorized", manualReviewReason: null });
+  const processing = (stillToSendPence: number | null) =>
+    facts("lot-9", {
+      status: "processing",
+      dueAt: null,
+      paymentId: "p9",
+      totalDue: "8000.00",
+      stillToSendPence,
+    });
+  const cardOf = (stillToSendPence: number | null, over: Partial<PurchaseSources> = {}) => {
+    const vm = buildPurchasesVm(
+      sources({ rows: [onItsWay], factsByLot: { "lot-9": processing(stillToSendPence) }, ...over }),
+    );
+    return vm.cardsByTab["in-progress"][0];
+  };
+
+  it("says what is still to send, with a link to the transfer details", () => {
+    const card = cardOf(30_005);
+    expect(card).toMatchObject({
+      statusLabel: "Still to send",
+      statusNote: "£300.05 still to send on your bank transfer",
+      badge: { label: "Still to send" },
+      amountLabel: "total due",
+      primaryAction: { label: "See transfer details", href: "/purchases/pay?lots=lot-9" },
+    });
+    expect(card?.statusNote).not.toContain("being confirmed");
+  });
+
+  it("is still being confirmed when nothing has arrived yet, or the transfer is complete", () => {
+    expect(cardOf(null)).toMatchObject({
+      statusLabel: "Payment processing",
+      statusNote: "Your payment is being confirmed",
+      primaryAction: null,
+    });
+  });
+
+  it("only tells the member who won, who does not pay", () => {
+    const card = cardOf(30_005, {
+      paymentRoleByLot: { "lot-9": "informed" },
+      payerName: "Northbank Gallery",
+    });
+    expect(card?.primaryAction).toBeNull();
+    expect(card?.statusNote).toBe("Northbank Gallery's payment is being confirmed");
   });
 });

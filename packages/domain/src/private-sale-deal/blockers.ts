@@ -15,6 +15,8 @@ export type DealBlockerCode =
   | "vat_treatment_not_chosen"
   | "vat_treatment_not_allowed"
   | "commission_not_set"
+  | "commission_rate_not_configured"
+  | "checks_pending"
   | "payment_due_days_not_configured"
   | "same_person_agreed_and_invoiced"
   | "cancel_reason_required"
@@ -59,6 +61,10 @@ export function describeDealBlocker(blocker: DealBlocker): string {
       return "Finance has not chosen the VAT treatment yet.";
     case "vat_treatment_not_allowed":
       return "The chosen VAT treatment is not on the approved list.";
+    case "commission_rate_not_configured":
+      return "The commission rate has not been set up yet.";
+    case "checks_pending":
+      return "Waiting on the compliance checks.";
     case "commission_not_set":
       return "The seller's commission has not been set.";
     case "payment_due_days_not_configured":

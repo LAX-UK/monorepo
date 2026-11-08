@@ -11,7 +11,7 @@ export const stripeConnectStatusSchema = z
   .preprocess(toObjectRecord, z.record(z.unknown()))
   .transform(
     (row): StripeConnectStatus => ({
-      stripeAccountId: row.stripeAccountId == null ? null : String(row.stripeAccountId),
+      accountLinked: Boolean(row.accountLinked),
       chargesEnabled: Boolean(row.chargesEnabled),
       payoutsEnabled: Boolean(row.payoutsEnabled),
       requirementsCurrentlyDue: zStringArrayFromUnknown.parse(row.requirementsCurrentlyDue),

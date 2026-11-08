@@ -1,4 +1,5 @@
 import { AdminFailedPage } from "@/components/admin-fetch-state";
+import { AllFromZohoList } from "@/components/from-zoho/all-from-zoho-list.client";
 import { NeedsDecisionList, NewFromZohoList } from "@/components/from-zoho/from-zoho-list.client";
 import { LastCheckView } from "@/components/from-zoho/last-check-view.client";
 import { LinkLaxArtReport } from "@/components/from-zoho/link-lax-art-report.client";
@@ -11,6 +12,7 @@ import {
   zohoQueueApiQuery,
 } from "@/server/domain/zoho-register.vm";
 import type {
+  AdminRegisterAllList,
   AdminRegisterConflictList,
   AdminRegisterLastCheck,
   AdminRegisterNewList,
@@ -72,7 +74,29 @@ export default async function FromZohoPage({
     );
     if (result.status === "unauthorized") redirect("/login");
     if (result.status !== "ok") return <AdminFailedPage title={TITLE} status={result.status} />;
-    return <NeedsDecisionList query={query} page={result.data} unlinked={unlinked} />;
+    return (
+      <NeedsDecisionList
+        query={query}
+        page={result.data}
+        unlinked={unlinked}
+        zohoUrlTemplate={getShopAdminContainer().config.crmRecordUrlTemplate ?? null}
+      />
+    );
+  }
+
+  if (tab === "all") {
+    const result = await fetchAdminJson<AdminRegisterAllList>(`artwork-register/all${suffix}`);
+    if (result.status === "unauthorized") redirect("/login");
+    if (result.status !== "ok") return <AdminFailedPage title={TITLE} status={result.status} />;
+    return (
+      <AllFromZohoList
+        query={query}
+        page={result.data}
+        unlinked={unlinked}
+        bidAdminUrl={await loadBidAdminUrl()}
+        zohoUrlTemplate={getShopAdminContainer().config.crmRecordUrlTemplate ?? null}
+      />
+    );
   }
 
   const result = await fetchAdminJson<AdminRegisterNewList>(`artwork-register/new${suffix}`);

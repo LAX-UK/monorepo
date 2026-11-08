@@ -35,6 +35,19 @@ describe("the queue's URL state", () => {
     expect(parseZohoQueueQuery({ tab: ["check", "new"] })).toEqual({ tab: "check" });
   });
 
+  it("reads the All tab and its Where it is filter", () => {
+    expect(parseZohoQueueQuery({ tab: "all", place: "draft_lax_art", artist: "PH" })).toEqual({
+      tab: "all",
+      place: "draft_lax_art",
+      artist: "PH",
+    });
+    expect(parseZohoQueueQuery({ tab: "all", place: "draft_bid_lot" })).toEqual({ tab: "all" });
+    expect(activeZohoTab({ tab: "all" })).toBe("all");
+    expect(zohoQueueHref({ tab: "all", place: "sold", page: "2" }, { place: "lax_art" })).toBe(
+      "/from-zoho?tab=all&place=lax_art",
+    );
+  });
+
   it("opens on New from Zoho", () => {
     expect(activeZohoTab({})).toBe("new");
     expect(activeZohoTab({ tab: "check" })).toBe("check");
@@ -54,6 +67,15 @@ describe("the queue's URL state", () => {
     expect(hasActiveZohoFilters({})).toBe(false);
     expect(hasActiveZohoFilters({ tab: "decisions", page: "2" })).toBe(false);
     expect(hasActiveZohoFilters({ missing: "image" })).toBe(true);
+    expect(hasActiveZohoFilters({ tab: "all", place: "sold" })).toBe(true);
+    expect(hasActiveZohoFilters({ tab: "all", missing: "image" })).toBe(false);
+  });
+
+  it("sends the place to the API", () => {
+    expect(zohoQueueApiQuery({ tab: "all", place: "sold", artist: "PH" })).toEqual({
+      artist: "PH",
+      place: "sold",
+    });
   });
 
   it("sends only what the API takes", () => {
@@ -109,6 +131,21 @@ describe("offer states and values", () => {
       "https://crm.zoho.eu/crm/org20111813184/tab/Products/5001",
     );
     expect(zohoProductUrl(undefined, "5001")).toBeNull();
+  });
+
+  it("opens Products for a print that came in from Zoho, which is a Product", () => {
+    const template = "https://crm.zoho.eu/crm/org20111813184/tab/{module}/{recordId}";
+    expect(zohoProductUrl(template, "5002")).toBe(
+      "https://crm.zoho.eu/crm/org20111813184/tab/Products/5002",
+    );
+  });
+
+  it("opens a print group's own module, not Products", () => {
+    const template = "https://crm.zoho.eu/crm/org20111813184/tab/{module}/{recordId}";
+    expect(zohoProductUrl(template, "7001", "Print_Products")).toBe(
+      "https://crm.zoho.eu/crm/org20111813184/tab/Print_Products/7001",
+    );
+    expect(zohoProductUrl(template, "7001", "Products")).toContain("/tab/Products/");
   });
 });
 

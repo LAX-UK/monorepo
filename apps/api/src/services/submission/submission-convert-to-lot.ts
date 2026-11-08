@@ -61,6 +61,11 @@ export async function convert(
         if (!s.legalEntityId) {
           throw new SubmissionError("Legal entity context missing", 400);
         }
+        // A work in a private sale cannot also be offered at auction.
+        const dealReference = await deps.privateSaleDeals?.findLiveDealReferenceForWork(id);
+        if (dealReference) {
+          throw new SubmissionError(`This work is in private sale ${dealReference}.`, 409);
+        }
         let artistId: string | null = requestedArtistId ?? null;
         if (newArtist) {
           const created = await insertArtistInTx(tx, adminId, {

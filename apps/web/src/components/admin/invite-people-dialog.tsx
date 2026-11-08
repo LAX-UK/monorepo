@@ -10,6 +10,7 @@ import {
 } from "@/components/admin/invite-platform-access-picker";
 import { adminCreateInvitationResultAction } from "@/lib/actions/admin/admin-invitations";
 import { MAX_INVITE_BATCH } from "@/lib/admin/parse-invite-email-list";
+import { handleStaffStepUp } from "@/lib/auth/step-up/staff-step-up.client";
 import { notify } from "@/lib/ui/notify";
 import {
   ChoiceRow,
@@ -143,6 +144,7 @@ export function InvitePeopleDialog({
     setSubmitting(true);
     const failures: Failure[] = [];
     const sentTo = new Set<string>();
+    let stepUpStopped = false;
     for (const email of emails) {
       try {
         const result = await adminCreateInvitationResultAction({
@@ -151,13 +153,22 @@ export function InvitePeopleDialog({
           ...(role === "staff" ? { grants: draftGrants(grants) } : {}),
         });
         if (result.ok) sentTo.add(email);
-        else failures.push({ email, message: result.error });
+        else if (handleStaffStepUp(result)) {
+          // Nothing else is sent until the person has signed in again; the rest stay listed.
+          stepUpStopped = true;
+          break;
+        } else failures.push({ email, message: result.error });
       } catch {
         failures.push({ email, message: "Something went wrong. Try again." });
       }
     }
     setSubmitting(false);
 
+    if (stepUpStopped) {
+      if (sentTo.size > 0) router.refresh();
+      setEmails((current) => current.filter((email) => !sentTo.has(email)));
+      return;
+    }
     if (sentTo.size > 0) router.refresh();
     if (failures.length === 0) {
       notify.success(sentMessage(sentTo.size));

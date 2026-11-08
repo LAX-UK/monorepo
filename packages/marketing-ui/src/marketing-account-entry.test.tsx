@@ -109,4 +109,20 @@ describe("MarketingAccountEntry signed in", () => {
     expect(screen.getByTestId("account-entry-name")).toHaveTextContent("sam");
     expect(screen.getByTestId("account-entry-attention")).toBeInTheDocument();
   });
+
+  it("draws the product's own trigger content and name in place of the avatar and first name", () => {
+    render(
+      <MarketingAccountEntry
+        viewer={{ displayName: "Oliver Grant", email: "o@example.com" }}
+        {...SIGNED_OUT}
+        triggerLabel="Your accounts, acting as Northbank Gallery"
+        triggerContent={<span>Northbank Gallery</span>}
+      />,
+    );
+    const trigger = screen.getByRole("button", {
+      name: "Your accounts, acting as Northbank Gallery",
+    });
+    expect(trigger).toHaveTextContent("Northbank Gallery");
+    expect(screen.queryByTestId("account-entry-name")).toBeNull();
+  });
 });

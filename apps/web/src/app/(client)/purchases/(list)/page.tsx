@@ -1,5 +1,6 @@
 import { DashboardListPage } from "@/components/dashboard/dashboard-list-page";
 import { PortfolioNoticeToast } from "@/components/dashboard/portfolio-notice-toast";
+import { PrivateSalesPanel } from "@/components/dashboard/private-sales/private-sales-panel";
 import { PurchasesExportButton } from "@/components/dashboard/purchases/purchases-export-button";
 import { PurchasesView } from "@/components/dashboard/purchases/purchases-view";
 import { SetMobileShellTitle } from "@/components/layout/set-mobile-shell-title";
@@ -55,6 +56,7 @@ export default async function DashboardPurchasesPage({ searchParams }: PageProps
     >
       <SetMobileShellTitle title={view.title} />
       <PortfolioNoticeToast />
+      <PrivateSalesPanel side="buyer" />
       <PurchasesView
         vm={vm}
         query={parsePurchasesListQuery(sp, fallbackView)}

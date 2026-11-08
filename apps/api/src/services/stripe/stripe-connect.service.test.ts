@@ -592,6 +592,7 @@ describe("StripeConnectService.initiateTransfer", () => {
     );
     injectStripeOnService(svc, {
       transfers: {
+        list: vi.fn().mockResolvedValue({ data: [], has_more: false }),
         create: vi.fn().mockRejectedValue(rejectErr),
       },
     } as unknown as Stripe);
@@ -662,7 +663,10 @@ describe("StripeConnectService.initiateTransfer", () => {
       makeDomainEventSink(),
     );
     injectStripeOnService(svc, {
-      transfers: { create: transfersCreate },
+      transfers: {
+        list: vi.fn().mockResolvedValue({ data: [], has_more: false }),
+        create: transfersCreate,
+      },
       charges: { retrieve: chargesRetrieve },
       accounts: {
         retrieve: vi.fn().mockRejectedValue(new Error("skip live sync")),
@@ -737,7 +741,10 @@ describe("StripeConnectService.initiateTransfer", () => {
       publisher,
     );
     injectStripeOnService(svc, {
-      transfers: { create: transfersCreate },
+      transfers: {
+        list: vi.fn().mockResolvedValue({ data: [], has_more: false }),
+        create: transfersCreate,
+      },
       accounts: {
         retrieve: vi.fn().mockRejectedValue(new Error("skip live sync")),
       },

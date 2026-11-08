@@ -3,6 +3,7 @@ import type { AccountPurchaseFacts } from "@/lib/data/http/account-buying.types"
 import type { LotFulfilmentSnapshot } from "@/lib/data/http/payments.schema";
 import { formatMoney, lotChargeCurrency } from "@/lib/format-currency";
 import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
+import { payHref } from "@/lib/pay/pay-links";
 import { lotPath } from "@/lib/seo/url";
 import {
   type AmountOwedBlocker,
@@ -14,6 +15,7 @@ import {
   summariseAmountsOwed,
 } from "@auction/domain";
 import type { PortfolioRow } from "@auction/types";
+import { formatGbp } from "@auction/ui";
 import { PURCHASE_STATE_LABEL } from "./purchase-labels";
 import { purchaseProblemHref } from "./purchase-problem";
 import {
@@ -158,12 +160,28 @@ function dueDate(row: PortfolioRow, facts: AccountPurchaseFacts | null = null): 
   return invoiceDueAt(new Date(from));
 }
 
+/**
+ * What the member still has to send on a part-funded bank transfer for this purchase, in whole
+ * pence. Only the member who pays is asked; the one who merely won is told how payment goes. The
+ * figure is the API's share of the transfer's whole remainder, so it is the same on every page
+ * and the same one the LAX Account portfolio and the header chip state.
+ */
+function stillToSendOf(
+  state: PurchaseState,
+  informed: boolean,
+  facts: AccountPurchaseFacts | null,
+): number | null {
+  if (informed || state !== "payment-processing") return null;
+  return facts?.invoice.stillToSendPence || null;
+}
+
 function noteFor(
   state: PurchaseState,
   row: PortfolioRow,
   blocker: AmountOwedBlocker | null,
   fulfilment: LotFulfilmentSnapshot | undefined,
   facts: AccountPurchaseFacts | null = null,
+  stillToSend: number | null = null,
 ): string | null {
   switch (state) {
     case "payment-due":
@@ -173,7 +191,9 @@ function noteFor(
         ? "We need to confirm the source of funds before you pay"
         : "We're checking a few details before you can pay";
     case "payment-processing":
-      return "Your payment is being confirmed";
+      return stillToSend === null
+        ? "Your payment is being confirmed"
+        : `${formatGbp(stillToSend)} still to send on your bank transfer`;
     case "choose-delivery":
       return "Collect in London or send by insured courier";
     case "preparing":
@@ -234,7 +254,12 @@ function capitalise(text: string): string {
 function primaryActionFor(
   state: PurchaseState,
   row: PortfolioRow,
+  stillToSend: number | null,
 ): PurchaseCardVm["primaryAction"] {
+  // The rest of a transfer is sent with the details already given, which the Pay page shows.
+  if (stillToSend !== null) {
+    return { label: "See transfer details", href: payHref([row.lot.id]) };
+  }
   if (state === "choose-delivery") {
     return { label: "Arrange delivery", href: `${CLIENT_ROUTES.purchases}/${row.lot.id}` };
   }
@@ -300,8 +325,8 @@ const PAID_STATES: ReadonlySet<PurchaseState> = new Set([
   "collected",
 ]);
 
-function amountLabel(state: PurchaseState): string {
-  if (state === "payment-due" || state === "in-review") return "total due";
+function amountLabel(state: PurchaseState, stillToSend: number | null): string {
+  if (state === "payment-due" || state === "in-review" || stillToSend !== null) return "total due";
   if (state === "refunded") return "refunded";
   if (state === "cancelled") return "was due";
   return "total paid";
@@ -331,6 +356,7 @@ export function purchaseCard(row: PortfolioRow, sources: PurchaseSources): Purch
   });
   const currency = lotChargeCurrency(lot);
   const informed = (sources.paymentRoleByLot[lot.id] ?? "payer") !== "payer";
+  const stillToSend = stillToSendOf(state, informed, facts);
   const paidBy =
     informed && PAID_STATES.has(state)
       ? `${capitalise(possessive(payer(sources.payerName)))} finance team`
@@ -364,12 +390,14 @@ export function purchaseCard(row: PortfolioRow, sources: PurchaseSources): Purch
     statusLabel:
       informed && (state === "payment-due" || state === "in-review")
         ? "Awaiting payment"
-        : PURCHASE_STATE_LABEL[state],
+        : stillToSend !== null
+          ? "Still to send"
+          : PURCHASE_STATE_LABEL[state],
     statusNote: informed
       ? (informedNoteFor(state, sources.payerName) ??
         noteFor(state, row, blocker, fulfilment, facts ?? null))
-      : noteFor(state, row, blocker, fulfilment, facts ?? null),
-    amountLabel: amountLabel(state),
+      : noteFor(state, row, blocker, fulfilment, facts ?? null, stillToSend),
+    amountLabel: amountLabel(state, stillToSend),
     amount: totalMajor ? formatMoney(totalMajor, currency) : "—",
     payable,
     dueAt: dueDate(row, facts).getTime(),
@@ -377,7 +405,7 @@ export function purchaseCard(row: PortfolioRow, sources: PurchaseSources): Purch
     steps: stepsFor(state, row, fulfilment, facts),
     breakdown: breakdownFor(row, paidBy),
     // Paying and arranging delivery belong to whoever pays; the member who won is only told.
-    primaryAction: informed ? null : primaryActionFor(state, row),
+    primaryAction: informed ? null : primaryActionFor(state, row, stillToSend),
     invoiceHref: sources.invoiceByLot[lot.id] ?? null,
     problemHref: canReportProblem(state) ? purchaseProblemHref(lot.id) : null,
   };

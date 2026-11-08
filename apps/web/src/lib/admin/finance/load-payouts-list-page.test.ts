@@ -24,6 +24,7 @@ const summary = {
   failed: 3,
   reversed: 1,
   clawbackPending: 1,
+  transferBlocked: 2,
   totalNet: "1000.00",
   readiness: {
     inFlightCount: 15,

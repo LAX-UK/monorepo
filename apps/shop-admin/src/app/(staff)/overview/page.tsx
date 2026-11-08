@@ -1,6 +1,7 @@
 import { AdminFailedPage } from "@/components/admin-fetch-state";
 import { fetchAdminJson, loadAdminSession } from "@/server/application/load-admin-data";
 import { loadEnquirySummary } from "@/server/application/load-enquiry-summary";
+import { loadRegisterQueueCounts } from "@/server/application/load-register-queue-counts";
 import { buildAdminNavGroups } from "@/server/domain/admin-nav.vm";
 import {
   buildOverviewTiles,
@@ -32,7 +33,10 @@ export default async function OverviewPage() {
   }
 
   const session = sessionResult.data;
-  const enquiries = await loadEnquirySummary(session.capabilities);
+  const [enquiries, registerCounts] = await Promise.all([
+    loadEnquirySummary(session.capabilities),
+    loadRegisterQueueCounts(session.capabilities),
+  ]);
   const navGroups = buildAdminNavGroups({
     capabilities: session.capabilities,
     features: session.features,
@@ -41,6 +45,7 @@ export default async function OverviewPage() {
     navGroups,
     kpis: kpisResult.data,
     newEnquiryCount: enquiries?.newCount ?? null,
+    zohoDecisionCount: registerCounts?.decisions ?? null,
   });
   const sections = buildWelcomeSections(navGroups);
   const nothingWaiting = !overviewNeedsAttention(tiles);

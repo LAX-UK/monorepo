@@ -7,8 +7,8 @@ type FollowLogger = { warn(fields: Record<string, unknown>, message: string): vo
 /**
  * Following an artist on lax.art switches on emails about their new work, for a signed-in person
  * with a verified address: they were told "Follow this artist to hear when new works arrive".
- * Following again after stopping the emails switches them back on, because pressing Follow is the
- * person asking. A follow that already existed is left as the person set it.
+ * A person who stopped all alerts stays stopped: the follow is saved, and turning alerts back on is
+ * their own choice. A follow that already existed is left as the person set it.
  */
 export class FollowAlertsService {
   constructor(

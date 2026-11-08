@@ -1,6 +1,10 @@
 import { artCommerceRequest } from "@/lib/art-commerce-request.server";
 import { fetchPortalFollowedArtists, fetchPortalSavedArtworks } from "@/lib/art-portal.server";
-import { FOLLOW_EMAILS_PATH, readFollowEmailsOn } from "@/lib/favorites/follow-emails";
+import {
+  FOLLOW_EMAILS_PATH,
+  readFollowEmailsOn,
+  readFollowEmailsStopped,
+} from "@/lib/favorites/follow-emails";
 import { cache } from "react";
 
 /** One BFF read per request, shared by every card on the page. */
@@ -18,15 +22,27 @@ export const loadArtFollowedArtistSlugs = cache(async (): Promise<ReadonlySet<st
     : new Set<string>();
 });
 
-/** Whether emails about followed artists are on; null when Shop cannot say. One read per request. */
-export const loadArtFollowEmailsOn = cache(async (): Promise<boolean | null> => {
+export type FollowEmailsState = {
+  /** Whether emails about followed artists are on; null when Shop cannot say. */
+  on: boolean | null;
+  /** The person stopped all alerts, so following does not switch these emails on. */
+  stopped: boolean;
+};
+
+/** One read per request. */
+export const loadArtFollowEmailsState = cache(async (): Promise<FollowEmailsState> => {
   try {
     const response = await artCommerceRequest(FOLLOW_EMAILS_PATH, {
       headers: { accept: "application/json" },
     });
-    if (!response.ok) return null;
-    return readFollowEmailsOn(await response.json().catch(() => null));
+    if (!response.ok) return { on: null, stopped: false };
+    const body = await response.json().catch(() => null);
+    return { on: readFollowEmailsOn(body), stopped: readFollowEmailsStopped(body) };
   } catch {
-    return null;
+    return { on: null, stopped: false };
   }
 });
+
+/** Whether emails about followed artists are on; null when Shop cannot say. */
+export const loadArtFollowEmailsOn = async (): Promise<boolean | null> =>
+  (await loadArtFollowEmailsState()).on;

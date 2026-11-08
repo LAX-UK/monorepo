@@ -26,6 +26,7 @@ function group(overrides: Partial<PaymentGroupRecord> = {}): PaymentGroupRecord 
 const NOW = new Date("2026-11-05T10:30:00Z");
 
 function setup(groups: PaymentGroupRecord[], statusAfterExpire: GroupCheckoutStatus = "expired") {
+  const findById = vi.fn(async () => groups[0] ?? null);
   const expireCheckout = vi.fn(async () => undefined);
   const checkoutStatus = vi.fn(async () => statusAfterExpire);
   const release = vi.fn(async () => ({
@@ -33,12 +34,12 @@ function setup(groups: PaymentGroupRecord[], statusAfterExpire: GroupCheckoutSta
     action: "payment_intent_canceled" as const,
   }));
   const deps: OpenGroupCheckoutsDeps = {
-    groups: { findLiveByPaymentIds: async () => groups },
+    groups: { findLiveByPaymentIds: async () => groups, findById },
     gateway: { expireCheckout, checkoutStatus },
     settlement: { release },
     now: () => NOW,
   };
-  return { ends: new OpenGroupCheckouts(deps), expireCheckout, checkoutStatus, release };
+  return { ends: new OpenGroupCheckouts(deps), expireCheckout, checkoutStatus, release, findById };
 }
 
 describe("OpenGroupCheckouts", () => {
@@ -58,6 +59,7 @@ describe("OpenGroupCheckouts", () => {
       eventId: null,
       groupId: "group-1",
       reason: "checkout_abandoned",
+      onlyIfNoCheckout: false,
     });
     // Ended before it was released, never the other way round.
     expect(expireCheckout.mock.invocationCallOrder[0]).toBeLessThan(
@@ -129,6 +131,45 @@ describe("OpenGroupCheckouts", () => {
     const { ends, release } = setup([group({ createdAt: new Date("2026-11-05T10:29:30Z") })]);
     await expect(ends.endFor(["pay-1"], "user-1")).resolves.toBe("clear");
     expect(release).toHaveBeenCalledOnce();
+  });
+
+  it("releases a checkout-less group only if it is still checkout-less under the lock", async () => {
+    const { ends, release } = setup([group({ stripeCheckoutSessionId: null })]);
+    await ends.endFor(["pay-1"], "user-1");
+    expect(release).toHaveBeenCalledWith(expect.objectContaining({ onlyIfNoCheckout: true }));
+  });
+
+  it("ends through the provider a checkout that a slow start recorded just before the release", async () => {
+    const { ends, release, expireCheckout, checkoutStatus, findById } = setup([
+      group({ stripeCheckoutSessionId: null }),
+    ]);
+    findById.mockResolvedValue(group({ stripeCheckoutSessionId: "cs_late" }));
+    release
+      .mockResolvedValueOnce({
+        processed: true,
+        action: "skipped" as never,
+        reason: "checkout_recorded",
+      } as never)
+      .mockResolvedValueOnce({ processed: true, action: "payment_intent_canceled" } as never);
+    checkoutStatus.mockResolvedValue("expired");
+    await expect(ends.endFor(["pay-1"], "user-1")).resolves.toBe("clear");
+    expect(expireCheckout).toHaveBeenCalledWith("cs_late");
+    expect(release).toHaveBeenCalledTimes(2);
+  });
+
+  it("leaves a late-recorded checkout that turns out to be finished", async () => {
+    const { ends, release, checkoutStatus, findById } = setup([
+      group({ stripeCheckoutSessionId: null }),
+    ]);
+    findById.mockResolvedValue(group({ stripeCheckoutSessionId: "cs_late" }));
+    release.mockResolvedValueOnce({
+      processed: true,
+      action: "skipped" as never,
+      reason: "checkout_recorded",
+    } as never);
+    checkoutStatus.mockResolvedValue("complete");
+    await expect(ends.endFor(["pay-1"], "user-1")).resolves.toBe("in_progress");
+    expect(release).toHaveBeenCalledTimes(1);
   });
 
   it("stops at the first group that is in progress", async () => {

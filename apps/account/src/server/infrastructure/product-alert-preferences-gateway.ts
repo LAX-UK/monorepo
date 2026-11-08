@@ -162,7 +162,12 @@ export function createProductAlertPreferencesGateway(deps: {
             handle,
             "lax.alerts.write",
             routes[source].topic(change.topic),
-            { method: "PUT", body: { on: change.on } },
+            {
+              method: "PUT",
+              // The account page's switch is explicit, so in Bid it may start alerts again after
+              // a stop (Shop's own handler already treats it that way).
+              body: change.on && source === "bid" ? { on: true, restart: true } : { on: change.on },
+            },
             signal,
           );
           if (response.ok) return { status: "ok" } as const;

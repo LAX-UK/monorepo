@@ -98,4 +98,19 @@ describe("DealTransitionService", () => {
     });
     expect(events.events).toEqual([]);
   });
+
+  it("writes the move against the version the person saw", async () => {
+    const { service, applyStageChange } = setup();
+    await service.transition("deal-1", "mark_paid", { actorUserId: null, expectedVersion: 4 });
+    expect(applyStageChange).toHaveBeenCalledWith("deal-1", 4, expect.anything());
+  });
+
+  it("refuses a move made against an older version, and writes nothing", async () => {
+    const { service, applyStageChange, events } = setup();
+    expect(
+      await service.transition("deal-1", "mark_paid", { actorUserId: null, expectedVersion: 3 }),
+    ).toEqual({ kind: "conflict" });
+    expect(applyStageChange).not.toHaveBeenCalled();
+    expect(events.events).toEqual([]);
+  });
 });

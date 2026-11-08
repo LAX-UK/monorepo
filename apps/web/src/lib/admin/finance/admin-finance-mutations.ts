@@ -22,6 +22,8 @@ function formValue(formData: FormData, key: string): string {
   return typeof raw === "string" ? raw.trim() : "";
 }
 
+/** The API asks for at least this many characters of reason. */
+const SETTLEMENT_REASON_MIN = 10;
 const SETTLEMENT_PATH = "/admin/payouts/settlement";
 
 function redirectSettlement(code: SettlementResultCode): never {
@@ -37,6 +39,8 @@ export async function runPayoutSettlementAction(formData: FormData): Promise<voi
 
       const legalEntityId = formValue(formData, "legalEntityId");
       if (!legalEntityId) redirectSettlement("missing_seller");
+      const reason = formValue(formData, "reason");
+      if (reason.length < SETTLEMENT_REASON_MIN) redirectSettlement("reason_required");
 
       const res = await authedServerFetch("/admin/payouts/run-settlement", {
         method: "POST",
@@ -44,10 +48,19 @@ export async function runPayoutSettlementAction(formData: FormData): Promise<voi
           "Content-Type": "application/json",
           [IDEMPOTENCY_KEY_HEADER]: idempotencyKeyFrom(formData),
         },
-        body: JSON.stringify({ legalEntityId, dryRun: false }),
+        body: JSON.stringify({ legalEntityId, dryRun: false, reason }),
       });
       await redirectIfStaffStepUpRequired(res, SETTLEMENT_PATH);
-      if (!res.ok) redirectSettlement(settlementResultForStatus(res.status));
+      if (!res.ok) {
+        const body = (await res.json().catch(() => ({}))) as { error?: unknown };
+        const periodRefused =
+          res.status === 409 &&
+          typeof body.error === "string" &&
+          body.error.startsWith("settlement_period_");
+        redirectSettlement(
+          periodRefused ? "period_conflict" : settlementResultForStatus(res.status),
+        );
+      }
 
       revalidatePath("/admin/payouts");
       revalidatePath("/admin/payouts/settlement");

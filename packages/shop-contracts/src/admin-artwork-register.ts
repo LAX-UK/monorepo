@@ -5,6 +5,21 @@ import {
 } from "./admin-offer-on-lax-art.js";
 import { AdminWhereItIsSchema } from "./admin-where-it-is.js";
 
+/**
+ * The places the All tab can filter by, in the order the filter lists them. A draft lot in LAX Bid
+ * is not among them: that draft lives in LAX Bid, so only the record page can show it.
+ */
+export const REGISTER_PLACE_VALUES = [
+  "not_offered",
+  "draft_lax_art",
+  "lax_art",
+  "bid_sale",
+  "private_sale",
+  "withdrawn",
+  "sold",
+] as const;
+const PlaceSchema = Type.Union(REGISTER_PLACE_VALUES.map((place) => Type.Literal(place)));
+
 /** What a record can still lack before it is offered anywhere. */
 export const REGISTER_GAP_VALUES = ["image", "size", "medium"] as const;
 const GapSchema = Type.Union(REGISTER_GAP_VALUES.map((gap) => Type.Literal(gap)));
@@ -21,6 +36,8 @@ export const AdminRegisterArtworkSummarySchema = Type.Object({
   artistCode: Type.String(),
   stockCode: Type.String(),
   kind: Type.Union([Type.Literal("original"), Type.Literal("print")]),
+  /** The Zoho module the record lives in, for "Edit in Zoho". */
+  zohoModule: Type.Union([Type.Literal("Products"), Type.Literal("Print_Products")]),
   missing: Type.Array(GapSchema),
   /** When Zoho last changed the Product. */
   zohoModifiedAt: Type.Union([Type.String({ format: "date-time" }), Type.Null()]),
@@ -30,6 +47,8 @@ export const AdminRegisterQueueQuerySchema = Type.Object({
   /** The artist part of the stock code. */
   artist: Type.Optional(Type.String({ minLength: 1, maxLength: 20 })),
   missing: Type.Optional(GapSchema),
+  /** The All tab only: where the artwork is. */
+  place: Type.Optional(PlaceSchema),
   page: Type.Optional(Type.Integer({ minimum: 1, maximum: 10000 })),
 });
 
@@ -53,6 +72,28 @@ export const AdminRegisterNewListSchema = Type.Object({
   ),
   ...PagingSchema,
 });
+
+/** One artwork in the All tab: the summary and where it is, as the record draws it. */
+export const AdminRegisterAllItemSchema = Type.Composite([
+  AdminRegisterArtworkSummarySchema,
+  Type.Object({ whereItIs: Type.Pick(AdminWhereItIsSchema, ["key", "chip"]) }),
+]);
+
+export const AdminRegisterAllListSchema = Type.Object({
+  items: Type.Array(AdminRegisterAllItemSchema),
+  /** Every artist with a record, for the artist filter. */
+  artists: Type.Array(
+    Type.Object({ code: Type.String(), name: Type.String(), count: Type.Integer() }),
+  ),
+  /** Each place with its words and how many records are there, for the Where it is filter. */
+  places: Type.Array(
+    Type.Object({ value: PlaceSchema, label: Type.String(), count: Type.Integer() }),
+  ),
+  ...PagingSchema,
+});
+
+/** The two queues' sizes, for the Overview. */
+export const AdminRegisterCountsSchema = QueueCountsSchema;
 
 const ConflictFieldSchema = Type.Union([
   Type.Literal("stockCode"),
@@ -160,6 +201,8 @@ export const AdminRegisterDetailSchema = Type.Object({
   zohoProductId: Type.String(),
   stockCode: Type.String(),
   kind: Type.Union([Type.Literal("original"), Type.Literal("print")]),
+  /** The Zoho module the record lives in, for "Edit in Zoho". */
+  zohoModule: Type.Union([Type.Literal("Products"), Type.Literal("Print_Products")]),
   title: Type.String(),
   artistName: Type.String(),
   artistCode: Type.String(),
@@ -201,6 +244,10 @@ export type AdminRegisterGap = (typeof REGISTER_GAP_VALUES)[number];
 export type AdminRegisterArtworkSummary = Static<typeof AdminRegisterArtworkSummarySchema>;
 export type AdminRegisterQueueQuery = Static<typeof AdminRegisterQueueQuerySchema>;
 export type AdminRegisterNewList = Static<typeof AdminRegisterNewListSchema>;
+export type AdminRegisterPlace = (typeof REGISTER_PLACE_VALUES)[number];
+export type AdminRegisterAllItem = Static<typeof AdminRegisterAllItemSchema>;
+export type AdminRegisterAllList = Static<typeof AdminRegisterAllListSchema>;
+export type AdminRegisterCounts = Static<typeof AdminRegisterCountsSchema>;
 export type AdminRegisterConflict = Static<typeof AdminRegisterConflictSchema>;
 export type AdminRegisterConflictItem = Static<typeof AdminRegisterConflictItemSchema>;
 export type AdminRegisterConflictList = Static<typeof AdminRegisterConflictListSchema>;

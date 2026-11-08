@@ -40,6 +40,7 @@ export function payment(overrides: Partial<BidPaymentFact> = {}): BidPaymentFact
     status: "captured",
     createdAt: new Date("2026-03-02T09:00:00.000Z"),
     hasInvoice: true,
+    group: null,
     ...overrides,
   };
 }

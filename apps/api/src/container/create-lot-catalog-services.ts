@@ -3,6 +3,7 @@ import type { ILotCancelledLifecycleRecorder } from "@auction/persistence/interf
 import {
   DrizzleConsignmentAgreementRepository,
   DrizzleConsignmentMessageRepository,
+  DrizzlePrivateSaleDealQueryRepository,
 } from "@auction/persistence/repositories";
 import {
   DrizzleLotSoftDeleteGuardReader,
@@ -369,6 +370,7 @@ export function createLotCatalogServices(
       messages: new DrizzleConsignmentMessageRepository(db),
       audit: new ConsignmentThreadAudit(domainEventSink),
     }),
+    new DrizzlePrivateSaleDealQueryRepository(db),
   );
   const consignmentAgreementService = new ConsignmentAgreementService({
     agreements: consignmentAgreementRepository,

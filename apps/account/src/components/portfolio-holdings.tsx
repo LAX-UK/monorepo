@@ -140,7 +140,9 @@ function SingleCard({ row, imageOrigins }: { row: HoldingRowVm; imageOrigins: re
         <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">
           <dt className="text-on-surface-variant">Acquired</dt>
           <dd>{formatDate(row.item.acquiredAt)}</dd>
-          <dt className="text-on-surface-variant">{amountLabel(row.item.status)}</dt>
+          <dt className="text-on-surface-variant">
+            {amountLabel(row.item.status, row.item.owed?.state)}
+          </dt>
           <dd>
             <CurrencyAmounts totals={amountsOf(row)} />
             <InReviewNote row={row} />

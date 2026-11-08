@@ -452,7 +452,10 @@ export type ContainerSaleRoutesSlice = Pick<
   | "requireSubmissionsLegalEntityContext"
   | "catalogRoutes"
   | "bidding"
->;
+> & {
+  /** Staff sale delete and cancel need a recent sign-in. */
+  admin: Pick<AdminStaffSecurityRouteServices, "stepUp">;
+};
 
 /** Sale read routes — public/admin catalogue detail only. */
 export type ContainerSaleReadRoutesSlice = Pick<
@@ -491,7 +494,10 @@ export type ContainerLotRouteDepsSlice = ContainerBiddingRoutesSlice &
     | "userSuspensionChecker"
     | "requireSubmissionsLegalEntityContext"
     | "catalogRoutes"
-  >;
+  > & {
+    /** Staff lot delete and cancel need a recent sign-in. */
+    admin: Pick<AdminStaffSecurityRouteServices, "stepUp">;
+  };
 
 /** Lot read routes — public catalogue/detail only. */
 export type ContainerLotReadRoutesSlice = Pick<
@@ -772,6 +778,10 @@ export type ContainerExportRoutesSlice = ContainerComplianceSlice &
 
 /** Artist registry + profile browse (public + staff). */
 export type ContainerArtistRoutesSlice = Pick<Container, "userSuspensionChecker" | "catalogRoutes">;
+
+/** A buyer's and a seller's own private sale deals. */
+export type ContainerPrivateSaleDealRoutesSlice = ContainerFinanceSlice &
+  Pick<Container, "userSuspensionChecker">;
 
 /** Seller payout list/preview (legal entity scoped). */
 export type ContainerPayoutRoutesSlice = ContainerFinanceSlice &

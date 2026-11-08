@@ -20,7 +20,7 @@ export const UNAPPLIED_MONEY_REASONS = [
   "amount_mismatch",
   /** A "Pay several" payment arrived but its invoices could no longer all be settled. */
   "group_not_settleable",
-  /** A bank transfer for a "Pay several" payment sent more than its total; the excess is finance's. */
+  /** A "Pay several" payment is known to have received more than its own total. */
   "group_overpaid",
   /** A bank transfer landed in the buyer's Stripe balance with no open invoice to apply it to. */
   "customer_balance_unapplied",
@@ -49,6 +49,11 @@ export type UnappliedMoney = {
   stripeChargeId: string | null;
   /** Stripe customer, for money sitting in a customer balance. */
   stripeCustomerId: string | null;
+  /**
+   * A guess, never a fact: the one recent bank-transfer payment of the buyer's account this
+   * balance might belong to. Set only when exactly one fits; finance checks before acting.
+   */
+  possibleGroup?: { id: string; status: "open" | "processing" | "paid" } | null;
   /** The Stripe event that reported money with no intent or charge (a balance credit). */
   stripeEventId?: string | null;
   amountCents: number;
@@ -56,6 +61,20 @@ export type UnappliedMoney = {
 };
 
 export type UnappliedMoneyPayload = UnappliedMoney & { dedupeKey: string };
+
+/**
+ * What finance reads about the payment a balance might belong to, worded by the payment's state.
+ * A hedge, never a fact: the email and the work inbox both show it, so the words live here.
+ */
+export function possibleSourceText(
+  group: NonNullable<UnappliedMoney["possibleGroup"]> | null,
+): string | null {
+  if (!group) return null;
+  const ref = `PG-${group.id.slice(0, 8).toUpperCase()}`;
+  return group.status === "paid"
+    ? `Possible overpayment of payment ${ref}. Check before acting.`
+    : `May belong to the unpaid payment ${ref}. Check before acting.`;
+}
 
 /**
  * One finance task per piece of money: the same intent (or balance credit) reported again, by a

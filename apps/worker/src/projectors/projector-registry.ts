@@ -53,6 +53,11 @@ import { UNSOLD_FOLLOW_UP_PROJECTOR, processUnsoldFollowUp } from "./unsold-foll
 import { createXeroProjector } from "./xero-projector.js";
 import { createZohoArtworkListingProjector } from "./zoho-artwork-listing-projector.js";
 import { createZohoArtworkWritebackProjector } from "./zoho-artwork-writeback-projector.js";
+import {
+  ZOHO_CAMPAIGNS_OPT_OUT_LIFT_PROJECTOR,
+  processZohoCampaignsOptOutLift,
+} from "./zoho-campaigns-opt-out-lift.js";
+import { createZohoFulfilmentProjector } from "./zoho-fulfilment-projector.js";
 import { createZohoProjector } from "./zoho-projector.js";
 
 export class ProjectorRegistry {
@@ -305,6 +310,14 @@ export function createDefaultProjectorRegistry(): ProjectorRegistry {
     },
     createZohoArtworkWritebackProjector(),
     createZohoArtworkListingProjector(),
+    createZohoFulfilmentProjector(),
+    {
+      name: ZOHO_CAMPAIGNS_OPT_OUT_LIFT_PROJECTOR,
+      async run(ctx) {
+        await ctx.projectorStateRepo.ensureCursor(ZOHO_CAMPAIGNS_OPT_OUT_LIFT_PROJECTOR);
+        await processZohoCampaignsOptOutLift({ ctx, log: ctx.log });
+      },
+    },
   ];
 
   return new ProjectorRegistry(projectors);

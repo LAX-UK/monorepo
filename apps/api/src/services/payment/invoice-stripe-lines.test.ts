@@ -173,6 +173,7 @@ describe("group checkout lines", () => {
     const items = groupStripeLineItems(
       {
         currency: "GBP",
+        deliveries: [],
         totalPence: a.totalPence + b.totalPence,
         lines: [member("pay-a", a), member("pay-b", b)],
       },
@@ -185,11 +186,69 @@ describe("group checkout lines", () => {
     expect(items.every((i) => i.quantity === 1)).toBe(true);
   });
 
+  it("adds one delivery line per accepted quote, inside the group total", () => {
+    const a = invoiceFor(lot("1000.00"), null, "inv-a");
+    const items = groupStripeLineItems(
+      {
+        currency: "GBP",
+        totalPence: a.totalPence + 18_000,
+        lines: [member("pay-a", a)],
+        deliveries: [
+          {
+            quoteId: "quote-1",
+            lotId: "lot-pay-a",
+            lotTitle: "Harbour",
+            lotNumber: 4,
+            amountPence: 18_000,
+          },
+        ],
+      },
+      { paymentGroupId: "g" },
+    );
+    const courier = items[items.length - 1];
+    expect(courier?.price_data?.unit_amount).toBe(18_000);
+    expect(courier?.price_data?.product_data?.name).toMatch(/Courier delivery/);
+    expect(courier?.price_data?.product_data?.metadata).toMatchObject({
+      lineKind: "delivery",
+      deliveryQuoteId: "quote-1",
+      paymentGroupId: "g",
+    });
+    expect(items).toHaveLength(a.lines.length + 1);
+  });
+
+  it("refuses a group whose lines and delivery do not add up to its total", () => {
+    const a = invoiceFor(lot("1000.00"), null, "inv-a");
+    expect(() =>
+      groupStripeLineItems(
+        {
+          currency: "GBP",
+          totalPence: a.totalPence,
+          lines: [member("pay-a", a)],
+          deliveries: [
+            {
+              quoteId: "quote-1",
+              lotId: "lot-pay-a",
+              lotTitle: "Harbour",
+              lotNumber: 4,
+              amountPence: 18_000,
+            },
+          ],
+        },
+        {},
+      ),
+    ).toThrow(InvoiceLinesError);
+  });
+
   it("refuses a group whose lines do not add up to its total", () => {
     const a = invoiceFor(lot("1000.00"), null);
     expect(() =>
       groupStripeLineItems(
-        { currency: "GBP", totalPence: a.totalPence + 1, lines: [member("pay-a", a)] },
+        {
+          currency: "GBP",
+          deliveries: [],
+          totalPence: a.totalPence + 1,
+          lines: [member("pay-a", a)],
+        },
         {},
       ),
     ).toThrow(InvoiceLinesError);
@@ -201,6 +260,7 @@ describe("group checkout lines", () => {
       groupStripeLineItems(
         {
           currency: "GBP",
+          deliveries: [],
           totalPence: a.totalPence,
           lines: [{ ...member("pay-a", a), invoiceLines: [] }],
         },
@@ -226,10 +286,16 @@ describe("group checkout lines", () => {
         invoiceLines: five,
       }));
     expect(
-      groupStripeLineItems({ currency: "GBP", totalPence: 20 * 500, lines: members(20) }, {}),
+      groupStripeLineItems(
+        { currency: "GBP", deliveries: [], totalPence: 20 * 500, lines: members(20) },
+        {},
+      ),
     ).toHaveLength(STRIPE_MAX_LINE_ITEMS);
     expect(() =>
-      groupStripeLineItems({ currency: "GBP", totalPence: 21 * 500, lines: members(21) }, {}),
+      groupStripeLineItems(
+        { currency: "GBP", deliveries: [], totalPence: 21 * 500, lines: members(21) },
+        {},
+      ),
     ).toThrow(/more than one Stripe checkout/);
   });
 });

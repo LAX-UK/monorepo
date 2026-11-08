@@ -1,6 +1,7 @@
 import { SITE_CONTACT_EMAIL, legalEntityFor } from "@auction/branding";
 import type { Database } from "@auction/db";
 import type { PaymentTierLimits } from "@auction/domain";
+import { renderBidInvoicePdf } from "@auction/exports/documents";
 import type { InvoiceRaiser, LotInvoiceInitiationService } from "@auction/finance-runtime";
 import type {
   IBidInvoiceReader,
@@ -12,8 +13,10 @@ import type {
 import {
   DrizzleAccountPurchaseFactsReader,
   DrizzleAccountRegistrationsReader,
+  DrizzleChargeableDeliveryReader,
   DrizzleDeliveryQuoteRepository,
   DrizzlePaySeveralInvoiceFlagsReader,
+  DrizzlePaymentGroupFactsReader,
   DrizzlePurchaseProblemRepository,
 } from "@auction/persistence/repositories";
 import type { Env } from "../env.js";
@@ -33,6 +36,7 @@ import type {
   IPayProgressReadService,
   IPaySeveralService,
   IPayTransferService,
+  IPurchaseInvoicePdfService,
   IPurchaseProblemService,
   IStaffDeliveryQuoteService,
 } from "../services/interfaces/organisation-buying-service.js";
@@ -51,10 +55,12 @@ import { PayProgressResolver } from "../services/organisation-buying/pay-progres
 import { PaySeveralService } from "../services/organisation-buying/pay-several.service.js";
 import { PayTransferService } from "../services/organisation-buying/pay-transfer.service.js";
 import { PurchaseCandidateReader } from "../services/organisation-buying/purchase-candidate.reader.js";
+import { PurchaseInvoicePdfService } from "../services/organisation-buying/purchase-invoice-pdf.service.js";
 import { PurchaseProblemService } from "../services/organisation-buying/purchase-problem.service.js";
 import { WonLotLookups } from "../services/organisation-buying/won-lot-lookups.js";
 import type { PaymentGroupCheckoutService } from "../services/payment-group/payment-group-checkout.service.js";
 import type { IPaymentGroupGateway } from "../services/payment-group/payment-group-ports.js";
+import { StillToSendService } from "../services/payment-group/still-to-send.service.js";
 import type { IPaymentEligibilityGate } from "../services/payment/payment-eligibility.gate.js";
 
 /** The client workspace's buying modules for the acting account. */
@@ -64,6 +70,7 @@ export type OrganisationBuyingServices = {
   payPlan: IPayPlanService;
   paySeveral: IPaySeveralService;
   payTransfer: IPayTransferService;
+  invoicePdf: IPurchaseInvoicePdfService;
   payProgress: IPayProgressReadService;
   deliveryQuotes: IDeliveryQuoteService;
   collection: ICollectionBookingService;
@@ -75,6 +82,7 @@ export type CreateOrganisationBuyingInput = {
   env: Pick<
     Env,
     | "COLLECTION_SELF_SERVE_ENABLED"
+    | "DELIVERY_IN_PAYMENT_ENABLED"
     | "COLLECTION_SLOT_CAPACITY_PER_HOUR"
     | "COLLECTION_HOURS"
     | "COLLECTION_BOOKING_EMAIL"
@@ -131,6 +139,9 @@ export function createOrganisationBuyingServices(input: CreateOrganisationBuying
     compliance: input.payments.compliance,
     limits: input.payments.tierLimits,
     progress,
+    delivery: input.env.DELIVERY_IN_PAYMENT_ENABLED
+      ? new DrizzleChargeableDeliveryReader(input.db)
+      : null,
     issuer: {
       name: bid.name,
       address: bid.registeredAddress.inline,
@@ -144,7 +155,11 @@ export function createOrganisationBuyingServices(input: CreateOrganisationBuying
       registrations: new AccountRegistrationsService(
         new DrizzleAccountRegistrationsReader(input.db),
       ),
-      purchases: new AccountPurchasesService({ reader: purchases, now: () => new Date() }),
+      purchases: new AccountPurchasesService({
+        reader: purchases,
+        stillToSend: new StillToSendService(new DrizzlePaymentGroupFactsReader(input.db)),
+        now: () => new Date(),
+      }),
       payPlan,
       paySeveral: new PaySeveralService({
         planner: payPlan,
@@ -155,6 +170,12 @@ export function createOrganisationBuyingServices(input: CreateOrganisationBuying
         metrics: { record: recordMoneyPathEvent },
       }),
       payProgress: new PayProgressReadService({ candidates, progress }),
+      invoicePdf: new PurchaseInvoicePdfService({
+        candidates,
+        invoices: input.payments.invoices,
+        accounts: input.accounts,
+        render: renderBidInvoicePdf,
+      }),
       payTransfer: new PayTransferService({
         candidates,
         progress,

@@ -3,6 +3,9 @@ import { expect, test } from "@playwright/test";
 const enabled = process.env.PLAYWRIGHT_E2E === "1";
 const skipReason = "Set PLAYWRIGHT_E2E=1, PLAYWRIGHT_BASE_URL, and start apps/web (pnpm dev).";
 
+/** The lead sale's action on the cover: its label follows the sale's state. */
+const COVER_PRIMARY = /^(View lots|Preview the lots|See the results)$/;
+
 const VIEWPORTS = [
   { width: 375, height: 812, label: "mobile" },
   { width: 768, height: 1024, label: "tablet" },
@@ -56,7 +59,7 @@ test.describe("marketing viewport audit @a11y", () => {
     await expect(cover).toBeVisible();
     await expectCoverPhotoLoadedWhenPresent(cover);
 
-    const cta = page.getByRole("link", { name: /^(Join the saleroom|View lots)$/ }).first();
+    const cta = cover.getByRole("link", { name: COVER_PRIMARY }).first();
     await expect(cta).toBeVisible();
     await expect(cta).toBeInViewport();
 
@@ -98,7 +101,7 @@ test.describe("marketing viewport audit @a11y", () => {
       expect(heroBox.height).toBeLessThanOrEqual(1080 + headerHeight + 1);
     }
 
-    const cta = page.getByRole("link", { name: /^(Join the saleroom|View lots)$/ }).first();
+    const cta = heroShell.getByRole("link", { name: COVER_PRIMARY }).first();
     await expect(cta).toBeVisible();
     await expect(cta).toBeInViewport();
 

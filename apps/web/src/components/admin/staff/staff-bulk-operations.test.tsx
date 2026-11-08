@@ -9,6 +9,11 @@ vi.mock("@/lib/ui/notify", () => ({
   notify: { success: vi.fn(), error: vi.fn(), warning: vi.fn(), action: vi.fn() },
 }));
 
+const stepUp = vi.fn();
+vi.mock("@/lib/auth/step-up/staff-step-up.client", () => ({
+  handleStaffStepUp: (failure: unknown) => stepUp(failure),
+}));
+
 const run = vi.fn();
 const noun = { one: "sale", other: "sales" };
 
@@ -27,6 +32,19 @@ describe("StaffBulkOperations", () => {
   beforeEach(() => {
     run.mockReset();
     run.mockResolvedValue({ ok: true });
+    stepUp.mockReset();
+    stepUp.mockReturnValue(false);
+  });
+
+  it("sends a stale sign-in to re-authentication instead of reporting a failed bulk action", async () => {
+    const stale = { ok: false, error: "Recent sign-in required", errorCode: "step_up_required" };
+    run.mockResolvedValue(stale);
+    stepUp.mockReturnValue(true);
+    renderOps({ id: "publish", label: "Publish", confirm: "Publish all?", run });
+    fireEvent.click(screen.getByRole("button", { name: "Publish" }));
+    fireEvent.click(screen.getAllByRole("button", { name: "Publish" }).at(-1) as HTMLElement);
+    await waitFor(() => expect(stepUp).toHaveBeenCalledWith(stale));
+    expect(refresh).not.toHaveBeenCalled();
   });
 
   it("asks for the reason through the kit confirm and sends it", async () => {

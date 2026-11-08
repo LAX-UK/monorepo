@@ -1,6 +1,7 @@
 import { accountPurchaseScope } from "@auction/domain";
 import { type ExportColumn, formatCsvDocument } from "@auction/exports";
 import type {
+  AccountPurchaseFactsRow,
   AccountRecordsScope,
   IAccountPurchaseFactsReader,
 } from "@auction/persistence/interfaces";
@@ -12,6 +13,7 @@ import type {
   PurchasesPage,
 } from "../interfaces/organisation-buying-service.js";
 import type { OrganisationMemberActor } from "../interfaces/organisation-membership-service.js";
+import type { IStillToSendService } from "../payment-group/still-to-send.service.js";
 import { buyingError, entityActorOf, purchaseView } from "./purchase-view.js";
 
 /** The most rows one export carries; a larger history is exported a year at a time. */
@@ -59,6 +61,7 @@ const isoDay = (d: Date | null) => (d ? d.toISOString().slice(0, 10) : "");
 
 export type AccountPurchasesDeps = {
   reader: IAccountPurchaseFactsReader;
+  stillToSend: IStillToSendService;
   now: () => Date;
 };
 
@@ -79,6 +82,27 @@ export class AccountPurchasesService implements IAccountPurchasesService {
     };
   }
 
+  /**
+   * What each listed invoice still has to send on a part-funded bank transfer: its share of the
+   * group's remainder, the same on every page and for every member who sees it.
+   */
+  private stillToSendOf(rows: readonly AccountPurchaseFactsRow[]) {
+    return this.deps.stillToSend.forPayments(
+      rows.flatMap((row) =>
+        row.payment
+          ? [
+              {
+                id: row.payment.id,
+                lotId: row.lotId,
+                status: row.payment.status,
+                amount: row.payment.amount,
+              },
+            ]
+          : [],
+      ),
+    );
+  }
+
   async list(
     actor: OrganisationMemberActor,
     page: { limit: number; offset: number },
@@ -91,8 +115,12 @@ export class AccountPurchasesService implements IAccountPurchasesService {
       offset: page.offset,
     });
     const now = this.deps.now();
+    const items = rows.slice(0, page.limit);
+    const stillToSend = await this.stillToSendOf(items);
     return ok({
-      items: rows.slice(0, page.limit).map((row) => purchaseView(row, actor, now)),
+      items: items.map((row) =>
+        purchaseView(row, actor, now, stillToSend.get(row.lotId)?.pence ?? null),
+      ),
       nextOffset: rows.length > page.limit ? page.offset + page.limit : null,
     });
   }

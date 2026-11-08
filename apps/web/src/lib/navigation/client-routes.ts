@@ -11,8 +11,6 @@ export const CLIENT_ROUTES = {
   purchases: "/purchases",
   /** One payment for one invoice or several: `/purchases/pay?lots=a,b`. */
   pay: "/purchases/pay",
-  /** The old checkout pages, kept only as redirects to the Pay page (emailed links live on). */
-  checkout: "/purchases/checkout",
   watching: "/watching",
   /** Saved searches and their alerts, a view of Watching. */
   watchingSearches: "/watching?tab=searches",
@@ -21,6 +19,8 @@ export const CLIENT_ROUTES = {
   selling: "/selling",
   sellingNew: "/selling/new",
   consignments: "/selling/consignments",
+  /** One private sale the person is a party to: `/private-sales/PS-0012`. */
+  privateSales: "/private-sales",
   /** The organisation's own works, under the Collection heading. */
   collection: "/collection",
   payouts: "/selling/payouts",
@@ -49,6 +49,7 @@ export const CLIENT_AREA_PREFIXES = [
   "/home",
   "/bids",
   "/purchases",
+  "/private-sales",
   "/watching",
   "/notifications",
   "/settings",

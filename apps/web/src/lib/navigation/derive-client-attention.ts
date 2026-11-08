@@ -1,5 +1,6 @@
 import { groupMyBids } from "@/lib/bid/my-bid-status";
 import type { BidWithLot } from "@/lib/data/dto/dashboard-dtos";
+import type { StillToSendEntry } from "@/lib/data/http/amounts-owed.server";
 import { type AmountOwedEntry, groupBidderAttention, summariseAmountsOwed } from "@auction/domain";
 import type { UserNotification } from "@auction/types";
 import type { ClientAttention } from "./client-attention";
@@ -9,6 +10,8 @@ export type ClientAttentionSources = {
   bids: readonly BidWithLot[];
   /** What the account owes, lot by lot (the amounts-owed reading Purchases also uses). */
   amountsOwed: readonly AmountOwedEntry[];
+  /** The lots the person pays inside a bank transfer that has delivered only part of its payment. */
+  stillToSend: readonly StillToSendEntry[];
   unreadNotifications: readonly Pick<UserNotification, "read">[];
 };
 
@@ -37,6 +40,11 @@ export function deriveClientAttention(sources: ClientAttentionSources): ClientAt
     ),
     paymentsDue: owed.count,
     paymentsInReview: owed.inReview,
+    stillToSend: {
+      count: sources.stillToSend.length,
+      pence: sources.stillToSend.reduce((sum, entry) => sum + entry.pence, 0),
+      lotIds: sources.stillToSend.map((entry) => entry.lotId),
+    },
     unreadNotifications: sources.unreadNotifications.filter((n) => !n.read).length,
   };
 }

@@ -8,16 +8,15 @@ import { deleteSavedSearch } from "@/lib/data/http/saved-searches.client";
 import { removeWatchlistLot } from "@/lib/data/http/watchlist.client";
 import { calendarSalesHref } from "@/lib/marketing/sales-calendar-params";
 import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
-import { NOTIFICATION_SETTINGS_HREF } from "@/lib/navigation/settings-links";
 import { notify } from "@/lib/ui/notify";
-import {
-  type TopicReach,
-  type WatchingAlertReach,
-  reachLabel,
-  searchReachLabel,
-} from "@/lib/watching/alert-reach";
+import { type TopicReach, type WatchingAlertReach, reachLabel } from "@/lib/watching/alert-reach";
 import { artistAlertSummary } from "@/lib/watching/artist-alert";
-import { savedSearchHref, savedSearchSummary } from "@/lib/watching/saved-search";
+import {
+  type AlertAccess,
+  needsOthersConfirmation,
+  switchSearchEmail,
+  turnedOnMessage,
+} from "@/lib/watching/search-email";
 import { reminderRowLabel } from "@/lib/watching/watched-lot-reminder.vm";
 import {
   WATCHED_LOT_SORTS,
@@ -42,12 +41,15 @@ import {
   StatusBadge,
   type TabNavItem,
 } from "@auction/ui/lax";
-import { Lock, Search, UserRound } from "lucide-react";
+import { Lock, UserRound } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+import { AlertReachNote } from "./alert-reach-note";
 import { ArtistAlertDialog } from "./artist-alert-dialog";
 import { LotReminderDialog } from "./lot-reminder-dialog";
+import { TurnOnEmailDialog } from "./turn-on-email-dialog";
+import { SearchesList } from "./watching-searches-list";
 
 export type WatchedArtistVm = {
   artistId: string;
@@ -65,6 +67,8 @@ export type WatchingViewProps = {
   searches: SavedSearchRow[] | null;
   /** Where artist and search alerts reach the person; null when it could not be read. */
   reach: WatchingAlertReach;
+  /** Whether email can be switched on from here, or alerts are stopped or the address unverified. */
+  emailAccess: AlertAccess;
   /** The organisation the person acts for: the list is theirs alone, and says so. */
   organisation: string | null;
 };
@@ -85,6 +89,7 @@ export function WatchingView({
   artists,
   searches,
   reach,
+  emailAccess,
   organisation,
 }: WatchingViewProps) {
   const router = useRouter();
@@ -92,6 +97,7 @@ export function WatchingView({
   const [sort, setSort] = useState<WatchedLotSort>("closing");
   const [editing, setEditing] = useState<WatchedArtistVm | null>(null);
   const [reminding, setReminding] = useState<WatchedLotRowVm | null>(null);
+  const [confirming, setConfirming] = useState<SavedSearchRow | null>(null);
   const [busy, start] = useTransition();
   const counts: Record<WatchingViewId, number | undefined> = {
     lots: lots?.length,
@@ -129,6 +135,33 @@ export function WatchingView({
       } else notify.error("We couldn't stop following that artist. Try again in a moment.");
       refresh();
     });
+  const topicEmailOn = reach?.searches.emailOn ?? null;
+  const othersOn = (search: SavedSearchRow) =>
+    (searches ?? []).filter((other) => other.id !== search.id && other.notifyEmail).length;
+  const runSearchEmail = (search: SavedSearchRow, on: boolean) =>
+    start(async () => {
+      const result = await switchSearchEmail({
+        id: search.id,
+        on,
+        previous: search.notifyEmail,
+        access: emailAccess,
+      });
+      if (result.ok) {
+        // Turning the topic back on brings back the others that already had their own switch on.
+        const broughtBack = on && topicEmailOn === false ? othersOn(search) : 0;
+        notify.success(on ? turnedOnMessage(broughtBack) : "Email alerts off for this search");
+      } else notify.error("We couldn't save that change", { description: result.error });
+      setConfirming(null);
+      refresh();
+    });
+  /** Turning on asks first when it would also bring back other searches' email. */
+  const setSearchEmail = (search: SavedSearchRow, on: boolean) => {
+    if (on && needsOthersConfirmation({ topicEmailOn, othersOn: othersOn(search) })) {
+      setConfirming(search);
+      return;
+    }
+    runSearchEmail(search, on);
+  };
   const removeSearch = (search: SavedSearchRow) =>
     start(async () => {
       if (await deleteSavedSearch(search.id)) notify.success("Saved search removed");
@@ -204,6 +237,9 @@ export function WatchingView({
           query={query}
           onClear={() => setQuery("")}
           onRemove={removeSearch}
+          onEmail={setSearchEmail}
+          access={emailAccess}
+          busy={busy}
         />
       ) : null}
       <ArtistAlertDialog
@@ -213,6 +249,13 @@ export function WatchingView({
         }}
         artist={editing ? { id: editing.artistId, name: editing.name, alert: editing.alert } : null}
         onSaved={refresh}
+      />
+      <TurnOnEmailDialog
+        open={confirming !== null}
+        othersOn={confirming ? othersOn(confirming) : 0}
+        busy={busy}
+        onConfirm={() => confirming && runSearchEmail(confirming, true)}
+        onCancel={() => setConfirming(null)}
       />
       <LotReminderDialog
         lot={reminding}
@@ -411,97 +454,5 @@ function ArtistsList({
       </RecordList>
       <AlertReachNote />
     </>
-  );
-}
-
-function SearchesList({
-  searches,
-  reach,
-  query,
-  onClear,
-  onRemove,
-}: {
-  searches: SavedSearchRow[] | null;
-  reach: TopicReach | null;
-  query: string;
-  onClear: () => void;
-  onRemove: (search: SavedSearchRow) => void;
-}) {
-  if (!searches) return <ListLoadError />;
-  if (searches.length === 0) {
-    return (
-      <ListEmpty
-        illustration="search"
-        title="No saved searches"
-        description="Save a search in the catalogue to hear when new lots match it."
-        actions={
-          <ButtonLink href="/search" Link={Link}>
-            Search the catalogue
-          </ButtonLink>
-        }
-      />
-    );
-  }
-  const rows = searches.filter((search) =>
-    matchesEveryWord([search.label, savedSearchSummary(search.query)], query),
-  );
-  if (rows.length === 0) return <ListNoResults query={query} onClear={onClear} />;
-  return (
-    <>
-      <RecordList aria-label="Saved searches">
-        {rows.map((search) => (
-          <RecordRow
-            key={search.id}
-            href={savedSearchHref(search.query)}
-            linkAs={Link}
-            leading={
-              <RecordRowMedia className="grid place-items-center">
-                <Search aria-hidden className="size-5 text-lax-muted" strokeWidth={1.5} />
-              </RecordRowMedia>
-            }
-            title={search.label}
-            meta={[
-              savedSearchSummary(search.query),
-              searchReachLabel(search.notifyEmail, reach),
-            ].filter((part): part is string => part !== null)}
-            menu={
-              <InlineActionMenu
-                label={`More for ${search.label}`}
-                items={[
-                  {
-                    type: "item",
-                    label: "Run search",
-                    onSelect: () => window.location.assign(savedSearchHref(search.query)),
-                  },
-                  { type: "separator" },
-                  {
-                    type: "item",
-                    label: "Remove",
-                    destructive: true,
-                    onSelect: () => onRemove(search),
-                  },
-                ]}
-              />
-            }
-          />
-        ))}
-      </RecordList>
-      <AlertReachNote />
-    </>
-  );
-}
-
-/** Under the artist and search lists: how their matches arrive, and where to change that. */
-function AlertReachNote() {
-  return (
-    <p className="text-lax-13 text-lax-muted">
-      When email is on, matches come in one email at 08:00 London and in the app.{" "}
-      <Link
-        href={NOTIFICATION_SETTINGS_HREF}
-        className="lax-focus rounded-lax-control text-lax-fg underline underline-offset-2"
-      >
-        Where alerts reach you
-      </Link>
-    </p>
   );
 }

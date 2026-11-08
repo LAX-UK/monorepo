@@ -30,6 +30,8 @@ export function buildOverviewTiles(input: {
   navGroups: readonly AdminNavGroup[];
   kpis: AdminOverviewKpis;
   newEnquiryCount: number | null;
+  /** Artworks where Zoho and LAX disagree; null when the person cannot open From Zoho. */
+  zohoDecisionCount?: number | null;
 }): OverviewTile[] {
   const reachable = new Set(input.navGroups.flatMap((group) => group.items.map((i) => i.href)));
   const sources: TileSource[] = [
@@ -69,6 +71,13 @@ export function buildOverviewTiles(input: {
       label: "New enquiries",
       href: enquiriesList.href(enquiriesList.parse({}), { view: "new" }),
       value: input.newEnquiryCount ?? undefined,
+    },
+    {
+      key: "zoho-decisions",
+      label: "Zoho needs a decision",
+      href: "/from-zoho?tab=decisions",
+      value: input.zohoDecisionCount ?? undefined,
+      alertWhenAbove: "warning",
     },
   ];
   const queues = sources.flatMap(({ href, value, alertWhenAbove, ...rest }) => {

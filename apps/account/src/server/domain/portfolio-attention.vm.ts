@@ -3,7 +3,7 @@ import { PRODUCT_LABELS } from "./portfolio-labels";
 import { workDetailHref } from "./portfolio-routes";
 import { safeDeepLink } from "./safe-deep-link";
 
-export type AttentionKind = "pay" | "held" | "confirming" | "track" | "payout" | "invoice";
+export type AttentionKind = "pay" | "held" | "send" | "confirming" | "track" | "payout" | "invoice";
 
 export type AttentionRowVm = {
   key: string;
@@ -36,6 +36,15 @@ function rowFor(item: LaxPortfolioItemV1): AttentionRowVm | null {
   };
   switch (item.status) {
     case "awaiting_payment": {
+      // A bank transfer that has delivered part of the payment is finished by sending the rest.
+      if (item.owed?.state === "still_to_send") {
+        return {
+          ...base,
+          kind: "send",
+          text: `Send the rest of the transfer for ${title}`,
+          ...detail,
+        };
+      }
       const pay = actionHref(item, "pay");
       const target = pay ? { href: pay, external: true } : detail;
       // Payment cannot start while the account's checks are open; the product's page is where

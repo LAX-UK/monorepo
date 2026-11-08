@@ -30,4 +30,31 @@ describe("UserWatchlistHttpApplicationService", () => {
 
     expect(response.status).toBe(404);
   });
+
+  it("turns email on for the person's own saved search", async () => {
+    const setNotifyEmail = vi.fn().mockResolvedValue({ id: "s1", notifyEmail: true });
+    const svc = serviceWith({ setNotifyEmail });
+    const response = await svc.setSavedSearchEmail({ userId: "u1", id: "s1", notifyEmail: true });
+    expect(setNotifyEmail).toHaveBeenCalledWith("u1", "s1", true);
+    expect(response).toEqual({ status: 200, body: { data: { id: "s1", notifyEmail: true } } });
+  });
+
+  it("returns 404 for a saved search that is not theirs", async () => {
+    const svc = serviceWith({ setNotifyEmail: vi.fn().mockResolvedValue(null) });
+    const response = await svc.setSavedSearchEmail({ userId: "u2", id: "s1", notifyEmail: false });
+    expect(response.status).toBe(404);
+  });
 });
+
+function serviceWith(savedSearchService: object) {
+  return new UserWatchlistHttpApplicationService({
+    watchlistService: {} as never,
+    userDashboardReadService: {} as never,
+    lotService: {} as never,
+    marketingEventService: {} as never,
+    attributionStore: {} as never,
+    marketingAttributionEnabled: false,
+    artistWatchlistService: {} as never,
+    savedSearchService: savedSearchService as never,
+  });
+}

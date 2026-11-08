@@ -32,6 +32,7 @@ import { withAdminIdempotency } from "../application/admin/with-admin-idempotenc
 import type { ShopAlertAnnouncer } from "../application/alerts/alert-ports.js";
 import type { OriginalPrintsRecorder } from "../application/edition-runs/create-prints-from-original.service.js";
 import type { EditionRunRecorder } from "../application/edition-runs/edition-run-services.js";
+import { becameSoldByHand } from "../application/original-sold-by-hand.js";
 import type {
   ArtworkCatalogueWriter,
   ArtworkEditableFields,
@@ -450,6 +451,9 @@ export function createDrizzleArtworkCatalogueWriter(
               );
             }
             await replaceImages(tx, artwork.id, input.images);
+            if (becameSoldByHand(null, artwork.saleState)) {
+              await offers.recordSold(session, artwork, `staff:${input.actorSubjectId}`);
+            }
             await tx.events.append({
               aggregateType: "shop_artwork",
               aggregateId: artwork.id,
@@ -604,6 +608,14 @@ export function createDrizzleArtworkCatalogueWriter(
               throw new ShopApiError(SHOP_API_ERROR_CODES.INTERNAL, "Failed to save artwork", 500);
             }
             await replaceImages(tx, input.artworkId, input.images);
+            // A hand edit to Sold reaches the register the way a sale does.
+            if (becameSoldByHand(before.saleState, after.saleState)) {
+              await offers.recordSold(
+                shopPhaseDbSession(tx),
+                after,
+                `staff:${input.actorSubjectId}`,
+              );
+            }
             const diff = changedFields(
               auditFields(before, beforeKeys),
               auditFields(after, [...new Set(nextKeys)]),

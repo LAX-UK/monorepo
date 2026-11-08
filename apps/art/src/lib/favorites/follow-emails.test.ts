@@ -3,7 +3,7 @@ import type {
   ArtCommerceMutationResult,
 } from "@/lib/art-commerce-mutation.server";
 import { describe, expect, it, vi } from "vitest";
-import { readFollowEmailsOn, turnOnFollowEmails } from "./follow-emails";
+import { readFollowEmailsOn, readFollowEmailsStopped, turnOnFollowEmails } from "./follow-emails";
 
 const client = (result: ArtCommerceMutationResult) => {
   const mutate = vi.fn(async () => result);
@@ -61,5 +61,24 @@ describe("turnOnFollowEmails", () => {
       ok: false,
       message: expect.stringContaining("Try again"),
     });
+  });
+});
+
+describe("readFollowEmailsStopped", () => {
+  it("is true only when Shop says the person stopped all alerts", () => {
+    expect(
+      readFollowEmailsStopped({
+        topics: [{ topic: "art.followed_artists", emailOn: false, stopped: true }],
+      }),
+    ).toBe(true);
+    expect(
+      readFollowEmailsStopped({ topics: [{ topic: "art.followed_artists", emailOn: false }] }),
+    ).toBe(false);
+    expect(readFollowEmailsStopped(null)).toBe(false);
+    expect(
+      readFollowEmailsStopped({
+        topics: [{ topic: "shop.releases", emailOn: false, stopped: true }],
+      }),
+    ).toBe(false);
   });
 });

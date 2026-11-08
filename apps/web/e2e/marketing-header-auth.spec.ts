@@ -10,8 +10,9 @@ import {
   e2eSkipReason,
 } from "./helpers/auth";
 
-const accountMenu = (page: Page) => page.getByRole("button", { name: /account menu/i });
-const guestMenu = (page: Page) => page.getByRole("button", { name: "Account", exact: true });
+// Signed in, the trigger is named "Account menu, <name>"; signed out it is "Account menu" alone.
+const accountMenu = (page: Page) => page.getByRole("button", { name: /^account menu, /i });
+const guestMenu = (page: Page) => page.getByRole("button", { name: "Account menu", exact: true });
 
 test.describe("marketing header auth @journey", () => {
   test("header shows authenticated state after client navigation to search", async ({ page }) => {

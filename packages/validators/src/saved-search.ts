@@ -11,3 +11,8 @@ export const savedSearchBodySchema = z.object({
 export const savedSearchIdParamSchema = z.object({
   id: z.string().uuid(),
 });
+
+/** Turns email alerts on or off for one saved search. */
+export const savedSearchEmailBodySchema = z.object({
+  notifyEmail: z.boolean(),
+});

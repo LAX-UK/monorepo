@@ -56,6 +56,10 @@ function draw(fallback: SearchFallback) {
       saveAlertOnArrival={false}
       alertState="none"
       topicEmailOn={null}
+      alertSearchId={null}
+      alertSearchNotifyEmail={false}
+      emailAccess="ok"
+      otherSearchesOn={0}
     />,
   );
 }

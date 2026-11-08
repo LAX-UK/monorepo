@@ -1,6 +1,6 @@
 import type { AccountAlerts } from "@/lib/data/http/alerts.server";
 import { describe, expect, it } from "vitest";
-import { engineAlertStateOf, searchTopicEmailOn } from "./engine-alert-state";
+import { alertAccessOf, engineAlertStateOf, searchTopicEmailOn } from "./engine-alert-state";
 
 const mine = (state: AccountAlerts["state"], emailOn: boolean): AccountAlerts => ({
   state,
@@ -32,5 +32,30 @@ describe("searchTopicEmailOn", () => {
   it("is unknown only when the read failed or the topic has no row", () => {
     expect(searchTopicEmailOn(null, true)).toBeNull();
     expect(searchTopicEmailOn({ state: "none", linked: false, topics: [] }, true)).toBeNull();
+  });
+});
+
+describe("engineAlertStateOf: stopped", () => {
+  it("says so when the client stopped all alerts", () => {
+    expect(engineAlertStateOf(mine("stopped", true))?.stopped).toBe(true);
+    expect(engineAlertStateOf(mine("confirmed", true))).not.toHaveProperty("stopped");
+  });
+});
+
+describe("alertAccessOf", () => {
+  it("holds alerts once stopped or while the address is not verified", () => {
+    expect(alertAccessOf(mine("stopped", true), true)).toBe("stopped");
+    expect(alertAccessOf(mine("confirmed", true), false)).toBe("unverified");
+    expect(alertAccessOf(mine("stopped", true), false)).toBe("unverified");
+  });
+
+  it("holds alerts when the settings could not be read, so a failed read can't undo a stop", () => {
+    expect(alertAccessOf(null, true)).toBe("unreadable");
+    expect(alertAccessOf(null, undefined)).toBe("unreadable");
+  });
+
+  it("is ok otherwise", () => {
+    expect(alertAccessOf(mine("confirmed", true), true)).toBe("ok");
+    expect(alertAccessOf(mine("confirmed", false), undefined)).toBe("ok");
   });
 });

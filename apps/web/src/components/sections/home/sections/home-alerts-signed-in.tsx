@@ -37,6 +37,7 @@ export function HomeAlertsSignedIn({
 }: { thumbnails?: readonly HomeAlertThumbnail[] }) {
   const [view, setView] = useState<View>("checking");
   const [busy, setBusy] = useState(false);
+  const [wasStopped, setWasStopped] = useState(false);
 
   useEffect(() => {
     let live = true;
@@ -46,6 +47,7 @@ export function HomeAlertsSignedIn({
         mine?.state === "confirmed" &&
         mine.topics.some((t) => t.topic === "bid.new_sales" && t.emailOn);
       setView(on ? "on" : "off");
+      setWasStopped(mine?.state === "stopped");
     });
     return () => {
       live = false;
@@ -54,14 +56,18 @@ export function HomeAlertsSignedIn({
 
   const turnOn = async () => {
     setBusy(true);
-    const result = await setAlertTopic("bid.new_sales", true);
+    const result = await setAlertTopic("bid.new_sales", true, { restart: true });
     setBusy(false);
     if (!result.ok) {
       notify.error(result.error);
       return;
     }
     setView("on");
-    notify.success("Sale alerts are on");
+    // Starting again after stopping everything brings alerts back, with only this one switched on.
+    notify.success(
+      wasStopped ? "Your alerts are back on, with sale alerts switched on" : "Sale alerts are on",
+    );
+    setWasStopped(false);
   };
 
   const copy = COPY[view];

@@ -2,6 +2,7 @@ import {
   PortalPayeeConnectSessionBodySchema as AccountSessionBodySchema,
   PortalPayeeConnectConfigSchema as ConnectClientConfigSchema,
   PortalPayeeConnectStatusSchema as ConnectStatusSchema,
+  PortalPayeeConnectAccountSchema,
   PortalPayeeConnectSessionResponseSchema,
   ShopApiErrorBodySchema,
 } from "@auction/shop-contracts";
@@ -81,13 +82,15 @@ export async function registerPortalConnectRoutes(
     {
       schema: {
         tags: ["shop-portal"],
-        response: { 200: Type.Object({ stripeAccountId: Type.String() }), ...errorResponses },
+        response: { 200: PortalPayeeConnectAccountSchema, ...errorResponses },
       },
     },
     async (request) => {
       requireShopScope(request, "shop.write");
       const subject = requireShopSubject(request);
-      return connect.ensureAccountForSubject(subject);
+      await connect.ensureAccountForSubject(subject);
+      // The seller learns that the account exists, never the Stripe id.
+      return { accountLinked: true };
     },
   );
 

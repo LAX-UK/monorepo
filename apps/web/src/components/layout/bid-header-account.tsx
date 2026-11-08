@@ -4,10 +4,12 @@ import { AccountMenuItems } from "@/components/layout/account-menu-items";
 import { AccountMenuIdentity } from "@/components/layout/account-menu/account-menu-identity";
 import { asDropdownItem } from "@/components/layout/account-menu/as-dropdown-item";
 import { ClientAccountMenu } from "@/components/layout/account-menu/client-account-menu";
+import { personInitials } from "@/components/layout/account-menu/person-initials";
 import {
   type HeaderAccountMenuState,
   useHeaderAccountMenu,
 } from "@/components/layout/account-menu/use-header-account-menu";
+import { DesktopAccountFace } from "@/components/layout/account-switcher/desktop-account-face";
 import { LogoutButton } from "@/components/layout/logout-button";
 import { useBidAttention } from "@/hooks/use-bid-attention";
 import { useIsLg } from "@/hooks/use-is-lg";
@@ -15,6 +17,7 @@ import { useAppSession } from "@/lib/auth/use-app-session";
 import { useAuthHeaderLinks } from "@/lib/auth/use-auth-header-links";
 import type { SessionUser } from "@/lib/data/contracts";
 import type { SiteHeaderTone } from "@/lib/layout/header-chrome-tone";
+import { accountButtonView } from "@/lib/navigation/account-button.vm";
 import type { AccountMenuEntry } from "@/lib/navigation/account-menu-model";
 import type { LaxProductLinkVm } from "@auction/lax-ecosystem";
 import { MarketingAccountEntry, MarketingAccountSheet } from "@auction/marketing-ui";
@@ -146,6 +149,16 @@ function SignedInAccount({
   const { chip, attention: facts } = useBidAttention();
   const attention = chip !== null || (facts?.unreadNotifications ?? 0) > 0;
   const displayName = user.name.trim() || user.email;
+  // Someone with an organisation sees the account in use on the button; the menu's account list
+  // is the same one the sidebar and the phone sheet show.
+  const current =
+    state.kind === "client" ? state.menu.switcher?.options.find((o) => o.current) : undefined;
+  const accountView = current
+    ? accountButtonView(current, {
+        initials: personInitials(user.name, user.email),
+        name: displayName,
+      })
+    : null;
 
   return (
     <>
@@ -155,6 +168,18 @@ function SignedInAccount({
           email: user.email,
           ...(user.image ? { avatarUrl: user.image } : {}),
         }}
+        {...(accountView
+          ? {
+              triggerLabel: accountView.label,
+              triggerContent: (
+                <DesktopAccountFace
+                  view={accountView}
+                  user={user}
+                  onDark={headerTone === "on-dark"}
+                />
+              ),
+            }
+          : {})}
         signInHref={signInHref}
         createAccountHref={registerHref}
         attention={attention}

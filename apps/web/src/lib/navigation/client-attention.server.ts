@@ -27,6 +27,7 @@ export async function loadClientAttention(userId: string): Promise<ClientAttenti
     bids: settled(bids, []),
     // Only what this person pays is counted: a buyer agent is told about a win, not asked to pay.
     amountsOwed: owed.status === "fulfilled" ? owed.value.entries : [],
+    stillToSend: owed.status === "fulfilled" ? owed.value.stillToSend : [],
     unreadNotifications: settled(unread, []),
   });
 }

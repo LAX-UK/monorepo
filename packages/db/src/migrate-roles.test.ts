@@ -14,6 +14,7 @@ import {
   AUTH_LEGAL_ACCEPTANCE_TABLES,
   AUTH_POLICY_TABLES,
   AUTH_READ_TABLES,
+  LIFT_ZOHO_CAMPAIGNS_OPT_OUT_ROLES,
   SHOP_ARTWORK_REGISTER_CONFLICT_TABLES,
   SHOP_ARTWORK_REGISTER_EVENT_TABLES,
   SHOP_ARTWORK_REGISTER_OFFER_TABLES,
@@ -29,6 +30,7 @@ import {
   WORKER_DATA_EXPORT_TABLES,
   WORKER_DENY_TABLES,
   WORKER_DOMAIN_EVENT_DELIVERY_TABLES,
+  WORKER_EMAIL_SUPPRESSION_UPDATE_COLUMNS,
   WORKER_FULL_TABLES,
   WORKER_INVOICE_RAISE_FULFILMENT_TABLES,
   WORKER_INVOICE_RAISE_INSERT_TABLES,
@@ -43,7 +45,10 @@ import {
   WORKER_READ_TABLES,
   WORKER_SHOP_ENQUIRY_READ_COLUMNS,
   WORKER_SHOP_ORDER_READ_COLUMNS,
+  WORKER_SHOP_PRINT_GROUP_READ_COLUMNS,
   WORKER_ZOHO_ARTWORK_SYNC_TABLES,
+  WORKER_ZOHO_CAMPAIGNS_LIFT_READ_TABLES,
+  WORKER_ZOHO_CAMPAIGNS_SUPPRESSION_TABLES,
 } from "./migrate-roles.js";
 
 /** AST-based audit of every `db.update(user|userTable).set({ ... })` call in `apps/api`.
@@ -518,6 +523,18 @@ describe("migrate-roles invariants", () => {
     }
   });
 
+  it("lets the worker read the Shop columns a print group needs, and no whole Shop table", () => {
+    const columns = Object.fromEntries(WORKER_SHOP_PRINT_GROUP_READ_COLUMNS);
+    expect(Object.keys(columns).sort()).toEqual(["shop_artwork", "shop_edition"]);
+    expect([...columns.shop_edition].sort()).toEqual(["allocation", "artwork_id", "proof_number"]);
+    for (const personal of ["print_price_pence", "description", "import_key"]) {
+      expect(columns.shop_artwork).not.toContain(personal);
+    }
+    for (const table of Object.keys(columns)) {
+      expect([...WORKER_DENY_TABLES]).toContain(table);
+    }
+  });
+
   it("lets the worker read the Shop order columns the Deal name needs, and no whole Shop table", () => {
     const columns = Object.fromEntries(WORKER_SHOP_ORDER_READ_COLUMNS);
     expect(Object.keys(columns).sort()).toEqual([
@@ -608,6 +625,29 @@ describe("migrate-roles invariants", () => {
     for (const table of WORKER_ZOHO_ARTWORK_SYNC_TABLES) {
       expect([...WORKER_DENY_TABLES]).not.toContain(table);
     }
+  });
+
+  it("lets the worker keep the Zoho Campaigns suppression watermark and update suppressions", async () => {
+    expect([...WORKER_ZOHO_CAMPAIGNS_SUPPRESSION_TABLES]).toEqual([
+      "zoho_campaigns_suppression_state",
+    ]);
+    const source = await readFile(join(__dirname, "migrate-roles.ts"), "utf8");
+    // UPDATE on email_suppression is column-level: reason, source and created_at, never the key.
+    expect([...WORKER_EMAIL_SUPPRESSION_UPDATE_COLUMNS]).toEqual([
+      "reason",
+      "source",
+      "created_at",
+    ]);
+    expect(source).toContain('"worker_app", "email_suppression", "INSERT, SELECT");');
+    expect(source).not.toContain('"worker_app", "email_suppression", "INSERT, SELECT, UPDATE"');
+    expect(source).toContain("WORKER_EMAIL_SUPPRESSION_UPDATE_COLUMNS,");
+    // A lift is written by one definer function; the worker reads the record and holds no DELETE.
+    expect([...WORKER_ZOHO_CAMPAIGNS_LIFT_READ_TABLES]).toEqual(["zoho_campaigns_optout_lift"]);
+    expect([...LIFT_ZOHO_CAMPAIGNS_OPT_OUT_ROLES]).toEqual(["api_app", "worker_app"]);
+    expect(source).toContain(
+      'grantIfExists(client, "worker_app", tableName, "SELECT");\n        }\n        for (const role of LIFT_ZOHO_CAMPAIGNS_OPT_OUT_ROLES)',
+    );
+    expect(source).not.toMatch(/"(?:shop_app|worker_app)", "email_suppression", "[^"]*DELETE/);
   });
 
   it("WORKER_QR_CODE_SCAN_TABLES includes scan tables (qr-code-scan worker job)", () => {

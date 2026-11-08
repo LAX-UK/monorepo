@@ -1,31 +1,68 @@
 import type { IConnectTransferRepository } from "@auction/persistence/interfaces";
 import type { IPayoutRepository } from "@auction/persistence/interfaces";
+import {
+  checkTransferForAdoption,
+  connectTransferBlockMessage,
+  createConnectTransfer,
+  decideConnectTransfer,
+} from "@auction/stripe-connect";
 import type { Logger } from "pino";
 import type Stripe from "stripe";
 import StripeSdk from "stripe";
 import type { IDomainEventPublisher } from "../domain-event-publisher.js";
-import type { IConnectAccountReadinessSync, InitiateTransferResult } from "../payout/types.js";
+import { type IMoneyPathMetrics, noMoneyPathMetrics } from "../money-path-metrics.js";
+import type {
+  IConnectAccountReadinessSync,
+  InitiateTransferOptions,
+  InitiateTransferResult,
+  TransferAdoptionVerification,
+} from "../payout/types.js";
 import { connectReadyFromCachedEntity } from "./connect-shared.js";
 import type { IStripeClientFactory } from "./stripe-client-factory.js";
 import { executeWithStripeRetries } from "./stripe-retries.js";
 
+/**
+ * Stripe replays the first answer for a key, including a failure, so a retry needs a key of its
+ * own. It is tied to the failure being retried: staff who retry the same failure share one key
+ * and cannot send the money twice, and a later failure gets a fresh one.
+ */
+function transferIdempotencyKey(
+  payout: { id: string; processedAt: Date | null },
+  opts: InitiateTransferOptions | undefined,
+): string {
+  const base = `payout:transfer:${payout.id}`;
+  return opts?.retryFailed ? `${base}:retry:${payout.processedAt?.getTime() ?? 0}` : base;
+}
+
+/**
+ * Initiates platform → seller Stripe Connect transfers for scheduled payouts. The one
+ * implementation, used by the API (staff retry, adoption check) and the worker (settlement cron).
+ */
 export class ConnectTransferInitiationService {
   constructor(
-    private readonly log: Logger,
+    private readonly logger: Logger,
     private readonly connectTransferRepository: IConnectTransferRepository,
-    private readonly stripeFactory: IStripeClientFactory,
+    readonly stripeFactory: IStripeClientFactory,
     private readonly accountSync: IConnectAccountReadinessSync,
-    private readonly payoutRepository: IPayoutRepository,
-    private readonly domainEventPublisher?: IDomainEventPublisher | null,
+    private readonly payoutRepository: IPayoutRepository | undefined,
+    private readonly domainEventSink?: IDomainEventPublisher | null,
+    private readonly metrics: IMoneyPathMetrics = noMoneyPathMetrics,
   ) {}
+
+  private get stripe(): Stripe | null {
+    return this.stripeFactory.get();
+  }
 
   async initiateTransfer(
     payoutId: string,
-    opts?: { keepScheduledOnTransferFailure?: boolean },
+    opts?: InitiateTransferOptions,
   ): Promise<InitiateTransferResult> {
-    const stripe = this.stripeFactory.get();
+    const stripe = this.stripe;
     if (!stripe) {
       return { ok: false, reason: "stripe_not_configured" };
+    }
+    if (!this.payoutRepository) {
+      return { ok: false, reason: "internal_misconfiguration" };
     }
 
     const payout = await this.payoutRepository.findById(payoutId);
@@ -33,13 +70,14 @@ export class ConnectTransferInitiationService {
       return { ok: false, reason: "payout_not_found" };
     }
 
-    if (payout.status !== "scheduled") {
+    const startStatus = opts?.retryFailed ? "failed" : "scheduled";
+    if (payout.status !== startStatus) {
       return { ok: false, reason: "payout_already_processed" };
     }
 
     const amountCents = Math.round(Number.parseFloat(payout.netAmount) * 100);
     if (amountCents < 0) {
-      const moved1 = await this.payoutRepository.updateStatusIfCurrent(payoutId, "scheduled", {
+      const moved1 = await this.payoutRepository.updateStatusIfCurrent(payoutId, startStatus, {
         status: "clawback_pending",
         stripeTransferId: null,
         processedAt: new Date(),
@@ -47,20 +85,23 @@ export class ConnectTransferInitiationService {
       });
       if (!moved1) return { ok: false, reason: "payout_already_processed" };
 
-      await this.domainEventPublisher?.publish({
-        aggregateType: "payout",
-        aggregateId: payoutId,
-        eventType: "payout.clawback_required",
-        payload: {
-          payoutId,
-          legalEntityId: payout.legalEntityId,
-          netAmount: payout.netAmount,
-          currency: payout.currency,
-          reason: "negative_net_amount",
-        },
-        actorUserId: null,
-        actingLegalEntityId: payout.legalEntityId,
-      });
+      if (this.domainEventSink) {
+        await this.domainEventSink.publish({
+          aggregateType: "payout",
+          aggregateId: payoutId,
+          eventType: "payout.clawback_required",
+          payload: {
+            payoutId,
+            legalEntityId: payout.legalEntityId,
+            netAmount: payout.netAmount,
+            currency: payout.currency,
+            reason: "negative_net_amount",
+          },
+          actorUserId: null,
+          actingLegalEntityId: payout.legalEntityId,
+        });
+      }
+      this.metrics.record("payout_clawback_required");
 
       return { ok: false, reason: "negative_net_amount" };
     }
@@ -74,39 +115,44 @@ export class ConnectTransferInitiationService {
     }
 
     let connectReady = false;
-    try {
-      const live = await this.accountSync.syncAccountFromStripe(payout.legalEntityId);
-      connectReady = live.ready;
-    } catch (err) {
-      this.log.warn(
-        {
-          legalEntityId: payout.legalEntityId,
-          payoutId,
-          err: err instanceof Error ? err.message : String(err),
-        },
-        "stripe_connect_sync_degraded",
-      );
-      connectReady = connectReadyFromCachedEntity(entity);
+    if (this.stripe) {
+      try {
+        const live = await this.accountSync.syncAccountFromStripe(payout.legalEntityId);
+        connectReady = live.ready;
+      } catch (err) {
+        this.logger.warn(
+          {
+            legalEntityId: payout.legalEntityId,
+            payoutId,
+            err: err instanceof Error ? err.message : String(err),
+          },
+          "stripe_connect_sync_degraded",
+        );
+        this.metrics.record("stripe_connect_sync_degraded");
+        connectReady = connectReadyFromCachedEntity(entity);
+      }
     }
 
     if (!connectReady) {
-      await this.domainEventPublisher?.publish({
-        aggregateType: "payout",
-        aggregateId: payoutId,
-        eventType: "payout.transfer_blocked",
-        payload: {
-          payoutId,
-          legalEntityId: payout.legalEntityId,
-          reason: "connect_not_ready",
-        },
-        actorUserId: null,
-        actingLegalEntityId: payout.legalEntityId,
-      });
+      if (this.domainEventSink) {
+        await this.domainEventSink.publish({
+          aggregateType: "payout",
+          aggregateId: payoutId,
+          eventType: "payout.transfer_blocked",
+          payload: {
+            payoutId,
+            legalEntityId: payout.legalEntityId,
+            reason: "connect_not_ready",
+          },
+          actorUserId: null,
+          actingLegalEntityId: payout.legalEntityId,
+        });
+      }
       return { ok: false, reason: "connect_not_ready" };
     }
 
     if (amountCents <= 0) {
-      const moved2 = await this.payoutRepository.updateStatusIfCurrent(payoutId, "scheduled", {
+      const moved2 = await this.payoutRepository.updateStatusIfCurrent(payoutId, startStatus, {
         status: "paid",
         stripeTransferId: null,
         processedAt: new Date(),
@@ -123,24 +169,77 @@ export class ConnectTransferInitiationService {
     }
 
     try {
-      const transfer = await executeWithStripeRetries(() =>
-        stripe.transfers.create(
-          {
-            amount: amountCents,
-            currency: payout.currency.toLowerCase(),
-            destination: destinationAccountId,
-            transfer_group: `payout:${payoutId}`,
-            ...(sourceChargeId ? { source_transaction: sourceChargeId } : {}),
-            metadata: {
-              payoutId: payout.id,
-              legalEntityId: payout.legalEntityId,
-            },
-          },
-          { idempotencyKey: `payout:transfer:${payoutId}` },
-        ),
+      // Stripe forgets idempotency keys after 24h, so a retry must look at what Stripe already
+      // holds before it creates anything. One shared decision serves every caller.
+      const transferGroup = `payout:${payoutId}`;
+      const decision = await executeWithStripeRetries(() =>
+        decideConnectTransfer(stripe, {
+          transferGroup,
+          payoutId: payout.id,
+          destinationAccountId,
+          amountMinor: amountCents,
+          currency: payout.currency,
+          ...(payout.createdAt
+            ? { createdAfterUnix: Math.floor(payout.createdAt.getTime() / 1000) }
+            : {}),
+        }),
       );
+      if (decision.kind === "block") {
+        const blocked = await this.payoutRepository.updateStatusIfCurrent(payoutId, startStatus, {
+          status: "transfer_blocked",
+          stripeTransferId: null,
+          processedAt: null,
+          failureReason: connectTransferBlockMessage(decision),
+        });
+        // Someone else moved the payout first: they own the outcome, so raise nothing.
+        if (!blocked) return { ok: false, reason: "payout_already_processed" };
+        this.logger.error(
+          { payoutId, reason: decision.reason, transferIds: decision.transferIds },
+          "payout_transfer_blocked",
+        );
+        this.metrics.record("payout_transfer_blocked");
+        if (this.domainEventSink) {
+          await this.domainEventSink.publish({
+            aggregateType: "payout",
+            aggregateId: payoutId,
+            eventType: "payout.transfer_blocked",
+            payload: {
+              payoutId,
+              legalEntityId: payout.legalEntityId,
+              reason: decision.reason,
+            },
+            actorUserId: null,
+            actingLegalEntityId: payout.legalEntityId,
+          });
+        }
+        return { ok: false, reason: "transfer_blocked" };
+      }
+      const adopted = decision.kind === "adopt";
+      const transfer =
+        decision.kind === "adopt"
+          ? decision.transfer
+          : await executeWithStripeRetries(() =>
+              createConnectTransfer(stripe, {
+                amountMinor: amountCents,
+                currency: payout.currency,
+                destinationAccountId,
+                transferGroup,
+                ...(sourceChargeId ? { sourceChargeId } : {}),
+                metadata: {
+                  payoutId: payout.id,
+                  legalEntityId: payout.legalEntityId,
+                },
+                idempotencyKey: transferIdempotencyKey(payout, opts),
+              }),
+            );
+      if (adopted) {
+        this.logger.warn(
+          { payoutId, stripeTransferId: transfer.id },
+          "payout_transfer_adopted_existing",
+        );
+      }
 
-      const updated = await this.payoutRepository.updateStatusIfCurrent(payoutId, "scheduled", {
+      const updated = await this.payoutRepository.updateStatusIfCurrent(payoutId, startStatus, {
         status: "in_transit",
         stripeTransferId: transfer.id,
         processedAt: null,
@@ -155,7 +254,8 @@ export class ConnectTransferInitiationService {
             stripeTransferId: current.stripeTransferId ?? transfer.id,
           };
         }
-        this.log.error(
+        this.metrics.record("payout_transfer_status_cas_miss");
+        this.logger.error(
           { payoutId, stripeTransferId: transfer.id, currentStatus: current?.status ?? null },
           "payout_transfer_status_cas_miss",
         );
@@ -167,20 +267,23 @@ export class ConnectTransferInitiationService {
         };
       }
 
-      await this.domainEventPublisher?.publish({
-        aggregateType: "payout",
-        aggregateId: payoutId,
-        eventType: "payout.transfer_initiated",
-        payload: {
-          legalEntityId: payout.legalEntityId,
-          stripeTransferId: transfer.id,
-          amountCents,
-          currency: payout.currency,
-          stripeConnectAccountId: entity.stripeConnectAccountId,
-        },
-        actorUserId: null,
-        actingLegalEntityId: payout.legalEntityId,
-      });
+      if (this.domainEventSink) {
+        await this.domainEventSink.publish({
+          aggregateType: "payout",
+          aggregateId: payoutId,
+          eventType: "payout.transfer_initiated",
+          payload: {
+            legalEntityId: payout.legalEntityId,
+            stripeTransferId: transfer.id,
+            amountCents,
+            currency: payout.currency,
+            stripeConnectAccountId: entity.stripeConnectAccountId,
+            ...(adopted ? { adopted: true, adoptionSource: "stripe_transfer_group" } : {}),
+          },
+          actorUserId: null,
+          actingLegalEntityId: payout.legalEntityId,
+        });
+      }
 
       return { ok: true, stripeTransferId: transfer.id };
     } catch (err) {
@@ -192,7 +295,7 @@ export class ConnectTransferInitiationService {
       const errorMessage = err.message ?? "Transfer failed after retries";
       const failureReason = `stripe_transfer_failed: ${errorCode} - ${errorMessage}`;
 
-      const moved3 = await this.payoutRepository.updateStatusIfCurrent(payoutId, "scheduled", {
+      const moved3 = await this.payoutRepository.updateStatusIfCurrent(payoutId, startStatus, {
         status: opts?.keepScheduledOnTransferFailure ? "scheduled" : "failed",
         stripeTransferId: null,
         processedAt: opts?.keepScheduledOnTransferFailure ? null : new Date(),
@@ -200,20 +303,22 @@ export class ConnectTransferInitiationService {
       });
       if (!moved3) return { ok: false, reason: "payout_already_processed" };
 
-      await this.domainEventPublisher?.publish({
-        aggregateType: "payout",
-        aggregateId: payoutId,
-        eventType: "payout.transfer_failed",
-        payload: {
-          legalEntityId: payout.legalEntityId,
-          stripeErrorCode: errorCode,
-          stripeErrorMessage: errorMessage,
-          amountCents,
-          currency: payout.currency,
-        },
-        actorUserId: null,
-        actingLegalEntityId: payout.legalEntityId,
-      });
+      if (this.domainEventSink) {
+        await this.domainEventSink.publish({
+          aggregateType: "payout",
+          aggregateId: payoutId,
+          eventType: "payout.transfer_failed",
+          payload: {
+            legalEntityId: payout.legalEntityId,
+            stripeErrorCode: errorCode,
+            stripeErrorMessage: errorMessage,
+            amountCents,
+            currency: payout.currency,
+          },
+          actorUserId: null,
+          actingLegalEntityId: payout.legalEntityId,
+        });
+      }
 
       return {
         ok: false,
@@ -224,7 +329,44 @@ export class ConnectTransferInitiationService {
     }
   }
 
+  /**
+   * Fetches the transfer staff name from Stripe and checks it against the payout: same
+   * destination account, same currency, same amount, not reversed. Changes nothing.
+   */
+  async verifyTransferForAdoption(
+    payoutId: string,
+    stripeTransferId: string,
+  ): Promise<TransferAdoptionVerification> {
+    const stripe = this.stripe;
+    if (!stripe) return { ok: false, reason: "stripe_not_configured" };
+    if (!this.payoutRepository) return { ok: false, reason: "internal_misconfiguration" };
+    const payout = await this.payoutRepository.findById(payoutId);
+    if (!payout) return { ok: false, reason: "payout_not_found" };
+    const entity = await this.connectTransferRepository.findLegalEntityById(payout.legalEntityId);
+    if (!entity?.stripeConnectAccountId) return { ok: false, reason: "no_connect_account" };
+
+    let transfer: Stripe.Transfer;
+    try {
+      transfer = await executeWithStripeRetries(() => stripe.transfers.retrieve(stripeTransferId));
+    } catch (err) {
+      if (!(err instanceof StripeSdk.errors.StripeError)) throw err;
+      return {
+        ok: false,
+        reason: err.code === "resource_missing" ? "transfer_not_found" : "stripe_error",
+      };
+    }
+    const check = checkTransferForAdoption(transfer, {
+      payoutId: payout.id,
+      payoutCreatedAtUnix: Math.floor(payout.createdAt.getTime() / 1000),
+      destinationAccountId: entity.stripeConnectAccountId,
+      currency: payout.currency,
+      amountMinor: Math.round(Number.parseFloat(payout.netAmount) * 100),
+    });
+    return check.ok ? { ok: true, stripeTransferId: transfer.id } : check;
+  }
+
   private async findSourceChargeForPayout(payoutId: string): Promise<string | null> {
+    if (!this.payoutRepository) return null;
     const lines = await this.payoutRepository.listLines(payoutId);
     const saleLine = lines.find((line) => line.kind === "sale" && line.paymentId);
     if (!saleLine?.paymentId) return null;
@@ -244,15 +386,21 @@ export class ConnectTransferInitiationService {
       const chargeCurrency = charge.currency?.toLowerCase();
       const expectedCurrency = payoutCurrency.toLowerCase();
       if (chargeCurrency && chargeCurrency !== expectedCurrency) {
-        this.log.warn(
-          { payoutId, sourceChargeId, chargeCurrency, payoutCurrency: expectedCurrency },
+        this.logger.warn(
+          {
+            payoutId,
+            sourceChargeId,
+            chargeCurrency,
+            payoutCurrency: expectedCurrency,
+          },
           "stripe_connect_transfer_currency_mismatch",
         );
+        this.metrics.record("stripe_connect_transfer_currency_mismatch");
         return undefined;
       }
       return sourceChargeId;
     } catch (err) {
-      this.log.warn(
+      this.logger.warn(
         {
           payoutId,
           sourceChargeId,

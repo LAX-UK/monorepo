@@ -1,27 +1,37 @@
 import {
   type ArtworkRegisterEntry,
+  WHERE_IT_IS_CHIPS,
   canAcceptZohoValue,
   catalogueGapsOf,
+  deriveWhereItIs,
+  zohoModuleOf,
 } from "@auction/artwork-register-contracts";
 import {
   ADMIN_REGISTER_PAGE_SIZE,
   type AdminAuctionOfferAssessment,
+  type AdminRegisterAllItem,
+  type AdminRegisterAllList,
   type AdminRegisterArtworkSummary,
   type AdminRegisterConflict,
   type AdminRegisterConflictList,
+  type AdminRegisterCounts,
   type AdminRegisterDetail,
   type AdminRegisterLastCheck,
   type AdminRegisterNewList,
   type AdminRegisterQueueQuery,
   type AdminRegisterResolveBody,
   type AdminRegisterResolveResult,
+  REGISTER_PLACE_VALUES,
 } from "@auction/shop-contracts";
 import type {
+  ArtworkRegisterOverview,
   ArtworkRegisterQueue,
   ArtworkRegisterRecords,
   ConflictResolver,
   ListingRunReader,
   RegisterConflictRecord,
+  RegisterOverviewFilter,
+  RegisterOverviewRow,
   RegisterQueueFilter,
   SyncRunReader,
 } from "../ports/artwork-register-review.ports.js";
@@ -36,6 +46,8 @@ const HISTORY_LIMIT = 100;
 
 export type ArtworkRegisterReviewDeps = {
   queue: ArtworkRegisterQueue;
+  /** Every record with its place, for the All list. */
+  overview: ArtworkRegisterOverview;
   register: ArtworkRegisterRecords;
   resolver: ConflictResolver;
   runs: SyncRunReader;
@@ -75,6 +87,26 @@ function filterOf(query: AdminRegisterQueueQuery): RegisterQueueFilter {
   };
 }
 
+function overviewFilterOf(query: AdminRegisterQueueQuery): RegisterOverviewFilter {
+  return {
+    ...(query.artist ? { artistCode: query.artist } : {}),
+    ...(query.place ? { place: query.place } : {}),
+  };
+}
+
+/**
+ * Where a record is, as far as the list can tell: the register's offer and a lax.art draft. A
+ * withdrawn offer keeps reading Withdrawn here; the record page ages it back to Not offered. A
+ * draft lot in LAX Bid is not visible from Shop, so the record page is where it shows.
+ */
+function placeOf({
+  entry,
+  hasLaxArtDraft,
+}: RegisterOverviewRow): AdminRegisterAllItem["whereItIs"] {
+  const { key, chip } = deriveWhereItIs({ offer: entry.offer, now: new Date(0), hasLaxArtDraft });
+  return { key, chip };
+}
+
 function pageOf(query: AdminRegisterQueueQuery) {
   const page = query.page ?? 1;
   return { page, limit: ADMIN_REGISTER_PAGE_SIZE, offset: (page - 1) * ADMIN_REGISTER_PAGE_SIZE };
@@ -89,6 +121,7 @@ export function presentArtworkSummary(entry: ArtworkRegisterEntry): AdminRegiste
     artistCode: entry.artist.code,
     stockCode: entry.stockCode,
     kind: entry.kind,
+    zohoModule: zohoModuleOf(entry),
     missing: catalogueGapsOf(entry),
     zohoModifiedAt: iso(entry.zohoModifiedAt),
   };
@@ -128,6 +161,32 @@ export class ArtworkRegisterReviewService {
       items: held.entries.map(presentArtworkSummary),
       artists,
       total: held.total,
+      page,
+      pageSize: limit,
+      counts,
+    };
+  }
+
+  async listAll(query: AdminRegisterQueueQuery): Promise<AdminRegisterAllList> {
+    const { page, limit, offset } = pageOf(query);
+    const [all, artists, placeCounts, counts] = await Promise.all([
+      this.deps.overview.listAll(overviewFilterOf(query), { limit, offset }),
+      this.deps.overview.listArtists(),
+      this.deps.overview.countPlaces(query.artist),
+      this.counts(),
+    ]);
+    return {
+      items: all.rows.map((row) => ({
+        ...presentArtworkSummary(row.entry),
+        whereItIs: placeOf(row),
+      })),
+      artists,
+      places: REGISTER_PLACE_VALUES.map((value) => ({
+        value,
+        label: WHERE_IT_IS_CHIPS[value].label,
+        count: placeCounts[value],
+      })),
+      total: all.total,
       page,
       pageSize: limit,
       counts,
@@ -209,6 +268,7 @@ export class ArtworkRegisterReviewService {
       zohoProductId: entry.zohoProductId,
       stockCode: entry.stockCode,
       kind: entry.kind,
+      zohoModule: zohoModuleOf(entry),
       title: entry.title,
       artistName: entry.artist.name,
       artistCode: entry.artist.code,
@@ -260,6 +320,11 @@ export class ArtworkRegisterReviewService {
         conflict: presentConflict(result.conflict),
       },
     };
+  }
+
+  /** How many artworks wait in each queue, for the Overview. */
+  async queueCounts(): Promise<AdminRegisterCounts> {
+    return this.counts();
   }
 
   private async counts() {

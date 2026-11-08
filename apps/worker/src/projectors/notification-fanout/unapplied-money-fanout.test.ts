@@ -1,3 +1,4 @@
+import { possibleSourceText } from "@auction/domain";
 import { FINANCE_ACCESS } from "@auction/types";
 import { describe, expect, it, vi } from "vitest";
 import { alertFromUnappliedMoney, fanoutUnappliedMoney } from "./unapplied-money-fanout.js";
@@ -40,5 +41,50 @@ describe("unapplied money alert", () => {
         }),
       }),
     );
+  });
+
+  it("words a balance as a balance, and a suggested payment as a suggestion to check", async () => {
+    const enqueue = vi.fn().mockResolvedValue(undefined);
+    const alert = alertFromUnappliedMoney({
+      reason: "customer_balance_unapplied",
+      paymentId: null,
+      paymentGroupId: null,
+      possibleGroup: { id: "abcdef12-0000-4000-8000-000000000000", status: "open" },
+      stripePaymentIntentId: null,
+      stripeChargeId: null,
+      stripeCustomerId: "cus_1",
+      amountCents: 35000,
+      currency: "GBP",
+      dedupeKey: "customer_balance_unapplied:evt:gbp",
+    });
+    await fanoutUnappliedMoney({
+      staffOpsRecipientReader: {
+        listRecipients: vi
+          .fn()
+          .mockResolvedValue([{ id: "staff-1", email: "f@lax.test", firstName: "Fran" }]),
+      },
+      emailService: { enqueue } as never,
+      eventId: 7,
+      alert,
+    });
+    const situation = enqueue.mock.calls[0]?.[0].vars.situation as string;
+    expect(situation).toContain("The amount shown is the balance now");
+    expect(situation).toContain(
+      "May belong to the unpaid payment PG-ABCDEF12. Check before acting.",
+    );
+    expect(situation).not.toMatch(/overpa|sent more/i);
+  });
+
+  it("words the suggestion by the payment's state, and says nothing without one", () => {
+    const paid = { id: "abcdef12-0000", status: "paid" as const };
+    expect(possibleSourceText(paid)).toBe(
+      "Possible overpayment of payment PG-ABCDEF12. Check before acting.",
+    );
+    for (const status of ["open", "processing"] as const) {
+      expect(possibleSourceText({ ...paid, status })).toBe(
+        "May belong to the unpaid payment PG-ABCDEF12. Check before acting.",
+      );
+    }
+    expect(possibleSourceText(null)).toBeNull();
   });
 });

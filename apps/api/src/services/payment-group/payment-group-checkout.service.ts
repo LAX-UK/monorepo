@@ -35,6 +35,9 @@ export function payReturnUrl(
 /** One invoice to settle in the group, as the validated plan picked it. */
 export type GroupCheckoutInvoice = { paymentId: string; lotId: string; amount: string };
 
+/** One accepted courier quote the payment charges, as the validated plan picked it. */
+export type GroupCheckoutDeliveryCharge = { quoteId: string; lotId: string; amount: string };
+
 export type StartGroupCheckoutInput = {
   payerUserId: string;
   buyerLegalEntityId: string;
@@ -42,6 +45,8 @@ export type StartGroupCheckoutInput = {
   total: string;
   rail: CheckoutRailKind;
   invoices: readonly GroupCheckoutInvoice[];
+  /** Courier quotes charged with the invoices; the total includes them. */
+  deliveries: readonly GroupCheckoutDeliveryCharge[];
 };
 
 export type StartedGroupCheckout = {
@@ -113,6 +118,7 @@ export class PaymentGroupCheckoutService {
       totalAmount: input.total,
       checkoutRail: input.rail,
       paymentIds,
+      deliveries: input.deliveries,
     });
     if (claim.kind === "conflict") {
       recordMoneyPathEvent("payment_group_claim_conflict");
@@ -134,6 +140,11 @@ export class PaymentGroupCheckoutService {
           paymentId: i.paymentId,
           lotId: i.lotId,
           amount: i.amount,
+        })),
+        deliveries: input.deliveries.map((d) => ({
+          quoteId: d.quoteId,
+          lotId: d.lotId,
+          amount: d.amount,
         })),
       },
       actorUserId: input.payerUserId,
@@ -185,6 +196,8 @@ export class PaymentGroupCheckoutService {
               buyerName: payer.name,
             })
           : null;
+      // The charge is read back from what the claim stored, never from the request.
+      const deliveries = await this.deps.groups.listDeliveries(group.id);
       const checked = await loadCheckedInvoiceLines(
         this.deps.invoices,
         members.map((m) => ({ paymentId: m.paymentId, amountPence: gbpAmountToPence(m.amount) })),
@@ -202,6 +215,16 @@ export class PaymentGroupCheckoutService {
           amountPence: gbpAmountToPence(m.amount),
           invoiceLines: checked.get(m.paymentId)?.lines ?? [],
         })),
+        deliveries: deliveries.map((d) => {
+          const lot = members.find((m) => m.lotId === d.lotId);
+          return {
+            quoteId: d.quoteId,
+            lotId: d.lotId,
+            lotTitle: lot?.lotTitle ?? "",
+            lotNumber: lot?.lotNumber ?? null,
+            amountPence: gbpAmountToPence(d.amount),
+          };
+        }),
         buyerEmail: payer.email,
         stripeCustomerId,
         successUrl: payReturnUrl(web, members, "success"),
