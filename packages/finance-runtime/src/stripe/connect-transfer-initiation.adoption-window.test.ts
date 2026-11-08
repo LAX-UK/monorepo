@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import { ConnectTransferInitiationService } from "./connect-transfer-initiation.service.js";
 
+const silentLog = { warn: () => {}, error: () => {}, info: () => {} };
+
 const HOUR = 3_600_000;
 
 /** In-memory Stripe: keys are replayed for 24h, after which the same key creates a new transfer. */
@@ -57,7 +59,7 @@ function setup(stripe: ReturnType<typeof fakeStripe>, opts: { casLoses?: boolean
   };
   const sink = { publish: vi.fn().mockResolvedValue(undefined), withTx: vi.fn() };
   const service = new ConnectTransferInitiationService(
-    { LOG_LEVEL: "silent", NODE_ENV: "test" } as never,
+    silentLog as never,
     {
       findLegalEntityById: vi.fn().mockResolvedValue({ stripeConnectAccountId: "acct_1" }),
       findStripeChargeIdByPaymentId: vi.fn(),
