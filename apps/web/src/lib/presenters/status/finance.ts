@@ -35,6 +35,7 @@ export const payoutStatusLabel: Record<PayoutStatus, string> = {
   failed: "Failed",
   reversed: "Reversed",
   clawback_pending: "Clawback pending",
+  transfer_blocked: "Blocked, needs review",
 };
 
 export function payoutStatusToBadgeVariant(status: PayoutStatus | string): StatusBadgeVariant {
@@ -47,6 +48,7 @@ export function payoutStatusToBadgeVariant(status: PayoutStatus | string): Statu
       return "neutral";
     case "failed":
     case "clawback_pending":
+    case "transfer_blocked":
       return "danger";
     case "reversed":
       return "danger";

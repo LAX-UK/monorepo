@@ -1,5 +1,6 @@
 import type { IConnectTransferRepository } from "@auction/persistence/interfaces";
 import type { IPayoutRepository } from "@auction/persistence/interfaces";
+import { connectTransferBlockMessage, decideConnectTransfer } from "@auction/stripe-connect";
 import type { Logger } from "pino";
 import type Stripe from "stripe";
 import StripeSdk from "stripe";
@@ -123,41 +124,68 @@ export class ConnectTransferInitiationService {
     }
 
     try {
-      // Stripe forgets idempotency keys after 24h, so a retry must adopt a transfer that Stripe
-      // already accepted (but we failed to save) rather than create a second one.
+      // Stripe forgets idempotency keys after 24h, so a retry must look at what Stripe already
+      // holds before it creates anything. One shared decision serves every caller.
       const transferGroup = `payout:${payoutId}`;
-      const existing = await executeWithStripeRetries(async () => {
-        const page = await stripe.transfers.list({ transfer_group: transferGroup, limit: 20 });
-        return (
-          page.data.find((t) => {
-            const dest = typeof t.destination === "string" ? t.destination : t.destination?.id;
-            return (
-              !t.reversed &&
-              dest === destinationAccountId &&
-              (t.metadata?.payoutId === undefined || t.metadata.payoutId === payout.id)
-            );
-          }) ?? null
+      const decision = await executeWithStripeRetries(() =>
+        decideConnectTransfer(stripe, {
+          transferGroup,
+          payoutId: payout.id,
+          destinationAccountId,
+          amountMinor: amountCents,
+          currency: payout.currency,
+          ...(payout.createdAt
+            ? { createdAfterUnix: Math.floor(payout.createdAt.getTime() / 1000) }
+            : {}),
+        }),
+      );
+      if (decision.kind === "block") {
+        const blocked = await this.payoutRepository.updateStatusIfCurrent(payoutId, "scheduled", {
+          status: "transfer_blocked",
+          stripeTransferId: null,
+          processedAt: null,
+          failureReason: connectTransferBlockMessage(decision),
+        });
+        // Someone else moved the payout first: they own the outcome, so raise nothing.
+        if (!blocked) return { ok: false, reason: "payout_already_processed" };
+        this.log.error(
+          { payoutId, reason: decision.reason, transferIds: decision.transferIds },
+          "payout_transfer_blocked",
         );
-      });
-      const adopted = existing !== null;
+        await this.domainEventPublisher?.publish({
+          aggregateType: "payout",
+          aggregateId: payoutId,
+          eventType: "payout.transfer_blocked",
+          payload: {
+            payoutId,
+            legalEntityId: payout.legalEntityId,
+            reason: decision.reason,
+          },
+          actorUserId: null,
+          actingLegalEntityId: payout.legalEntityId,
+        });
+        return { ok: false, reason: "transfer_blocked" };
+      }
+      const adopted = decision.kind === "adopt";
       const transfer =
-        existing ??
-        (await executeWithStripeRetries(() =>
-          stripe.transfers.create(
-            {
-              amount: amountCents,
-              currency: payout.currency.toLowerCase(),
-              destination: destinationAccountId,
-              transfer_group: transferGroup,
-              ...(sourceChargeId ? { source_transaction: sourceChargeId } : {}),
-              metadata: {
-                payoutId: payout.id,
-                legalEntityId: payout.legalEntityId,
-              },
-            },
-            { idempotencyKey: `payout:transfer:${payoutId}` },
-          ),
-        ));
+        decision.kind === "adopt"
+          ? decision.transfer
+          : await executeWithStripeRetries(() =>
+              stripe.transfers.create(
+                {
+                  amount: amountCents,
+                  currency: payout.currency.toLowerCase(),
+                  destination: destinationAccountId,
+                  transfer_group: transferGroup,
+                  ...(sourceChargeId ? { source_transaction: sourceChargeId } : {}),
+                  metadata: {
+                    payoutId: payout.id,
+                    legalEntityId: payout.legalEntityId,
+                  },
+                },
+                { idempotencyKey: `payout:transfer:${payoutId}` },
+              ),
+            );
       if (adopted) {
         this.log.warn(
           { payoutId, stripeTransferId: transfer.id },

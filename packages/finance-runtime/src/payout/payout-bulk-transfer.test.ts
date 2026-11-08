@@ -25,6 +25,18 @@ describe("outcomeFromTransfer", () => {
     });
   });
 
+  it("reports a blocked transfer as blocked, not as a committed payout", () => {
+    expect(
+      outcomeFromTransfer(entityId, payoutId, { ok: false, reason: "transfer_blocked" }, true),
+    ).toEqual({
+      legalEntityId: entityId,
+      payoutId,
+      resume: true,
+      outcome: "transfer_blocked",
+      reason: "transfer_blocked",
+    });
+  });
+
   it("maps stripe_error with code", () => {
     expect(
       outcomeFromTransfer(

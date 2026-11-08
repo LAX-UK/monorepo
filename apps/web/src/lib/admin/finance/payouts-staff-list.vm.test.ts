@@ -133,6 +133,7 @@ describe("payouts staff list view model", () => {
       "Failed",
       "Reversed",
       "Clawback pending",
+      "Blocked, needs review",
     ]);
     expect(payoutsViews({ status: "paid" })[0]?.href).toBe("/admin/payouts");
     expect(activePayoutsView({ status: "failed" })).toBe("failed");

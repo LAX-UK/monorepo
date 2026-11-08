@@ -35,6 +35,9 @@ export function outcomeFromTransfer(
   if (tr.reason === "connect_not_ready") {
     return { legalEntityId, payoutId, resume, outcome: "connect_not_ready" };
   }
+  if (tr.reason === "transfer_blocked") {
+    return { legalEntityId, payoutId, resume, outcome: "transfer_blocked", reason: tr.reason };
+  }
   if (tr.reason === "stripe_error") {
     return {
       legalEntityId,

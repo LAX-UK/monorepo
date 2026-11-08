@@ -52,6 +52,7 @@ export type InitiateTransferResult =
         | "no_connect_account"
         | "connect_not_ready"
         | "negative_net_amount"
+        | "transfer_blocked"
         | "stripe_error";
       stripeErrorCode?: string;
       stripeErrorMessage?: string;

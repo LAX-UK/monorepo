@@ -37,6 +37,7 @@ export type InitiateTransferResult =
         | "no_connect_account"
         | "connect_not_ready"
         | "negative_net_amount"
+        | "transfer_blocked"
         | "stripe_error";
       stripeErrorCode?: string;
       stripeErrorMessage?: string;
@@ -53,7 +54,8 @@ export type BulkSettlementEntityOutcomeLog = {
     | "transfer_failed"
     | "connect_not_ready"
     | "committed_no_transfer"
-    | "transfer_skipped";
+    | "transfer_skipped"
+    | "transfer_blocked";
   reason?: string;
   stripeTransferId?: string;
   stripeErrorCode?: string;

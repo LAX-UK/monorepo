@@ -158,6 +158,13 @@ export function PayoutQuickView({
               repayment before closing it.
             </Notice>
           ) : null}
+          {row.status === "transfer_blocked" ? (
+            <Notice tone="danger" title="Blocked, needs review" className="mb-4">
+              Stripe already holds a transfer for this payout that does not match it exactly, so no
+              transfer was sent. Compare the payout with the transfers in Stripe before doing
+              anything else; it will not be retried automatically.
+            </Notice>
+          ) : null}
           {row.statementError ? (
             <Notice tone="warning" title="The statement PDF is unavailable" className="mb-4">
               {row.statementError}

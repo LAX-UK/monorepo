@@ -25,7 +25,12 @@ export function summarizeSettlementReadiness(
   const blockerIds = new Set<string>();
   for (const p of payouts) {
     if (p.failureReason || p.statementGenerationError) blockerIds.add(p.id);
-    if (p.status === "clawback_pending" || p.status === "failed" || p.status === "reversed") {
+    if (
+      p.status === "clawback_pending" ||
+      p.status === "failed" ||
+      p.status === "reversed" ||
+      p.status === "transfer_blocked"
+    ) {
       blockerIds.add(p.id);
     }
   }

@@ -1,6 +1,10 @@
 import type { IConnectTransferRepository } from "@auction/persistence/interfaces";
 import type { IPayoutRepository } from "@auction/persistence/interfaces";
-import { createConnectTransfer, findExistingConnectTransfer } from "@auction/stripe-connect";
+import {
+  connectTransferBlockMessage,
+  createConnectTransfer,
+  decideConnectTransfer,
+} from "@auction/stripe-connect";
 import type Stripe from "stripe";
 import StripeSdk from "stripe";
 import type { Env } from "../../../env.js";
@@ -165,33 +169,69 @@ export class ConnectTransferInitiationService implements IConnectTransferInitiat
     }
 
     try {
-      // Stripe forgets idempotency keys after 24h, so a retry must adopt a transfer that Stripe
-      // already accepted (but we failed to save) rather than create a second one.
+      // Stripe forgets idempotency keys after 24h, so a retry must look at what Stripe already
+      // holds before it creates anything. One shared decision serves every caller.
       const transferGroup = `payout:${payoutId}`;
-      const existing = await executeWithStripeRetries(() =>
-        findExistingConnectTransfer(stripe, {
+      const decision = await executeWithStripeRetries(() =>
+        decideConnectTransfer(stripe, {
           transferGroup,
-          destinationAccountId,
           payoutId: payout.id,
+          destinationAccountId,
+          amountMinor: amountCents,
+          currency: payout.currency,
+          ...(payout.createdAt
+            ? { createdAfterUnix: Math.floor(payout.createdAt.getTime() / 1000) }
+            : {}),
         }),
       );
-      const adopted = existing !== null;
-      const transfer =
-        existing ??
-        (await executeWithStripeRetries(() =>
-          createConnectTransfer(stripe, {
-            amountMinor: amountCents,
-            currency: payout.currency,
-            destinationAccountId,
-            transferGroup,
-            ...(sourceChargeId ? { sourceChargeId } : {}),
-            metadata: {
-              payoutId: payout.id,
+      if (decision.kind === "block") {
+        const blocked = await this.payoutRepository.updateStatusIfCurrent(payoutId, startStatus, {
+          status: "transfer_blocked",
+          stripeTransferId: null,
+          processedAt: null,
+          failureReason: connectTransferBlockMessage(decision),
+        });
+        // Someone else moved the payout first: they own the outcome, so raise nothing.
+        if (!blocked) return { ok: false, reason: "payout_already_processed" };
+        this.logger.error(
+          { payoutId, reason: decision.reason, transferIds: decision.transferIds },
+          "payout_transfer_blocked",
+        );
+        recordMoneyPathEvent("payout_transfer_blocked");
+        if (this.domainEventSink) {
+          await this.domainEventSink.publish({
+            aggregateType: "payout",
+            aggregateId: payoutId,
+            eventType: "payout.transfer_blocked",
+            payload: {
+              payoutId,
               legalEntityId: payout.legalEntityId,
+              reason: decision.reason,
             },
-            idempotencyKey: transferIdempotencyKey(payout, opts),
-          }),
-        ));
+            actorUserId: null,
+            actingLegalEntityId: payout.legalEntityId,
+          });
+        }
+        return { ok: false, reason: "transfer_blocked" };
+      }
+      const adopted = decision.kind === "adopt";
+      const transfer =
+        decision.kind === "adopt"
+          ? decision.transfer
+          : await executeWithStripeRetries(() =>
+              createConnectTransfer(stripe, {
+                amountMinor: amountCents,
+                currency: payout.currency,
+                destinationAccountId,
+                transferGroup,
+                ...(sourceChargeId ? { sourceChargeId } : {}),
+                metadata: {
+                  payoutId: payout.id,
+                  legalEntityId: payout.legalEntityId,
+                },
+                idempotencyKey: transferIdempotencyKey(payout, opts),
+              }),
+            );
       if (adopted) {
         this.logger.warn(
           { payoutId, stripeTransferId: transfer.id },

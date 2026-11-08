@@ -27,7 +27,8 @@ type PayoutStatus =
   | "paid"
   | "failed"
   | "reversed"
-  | "clawback_pending";
+  | "clawback_pending"
+  | "transfer_blocked";
 
 /** One lot the account sold, with the buyer's payment and the payout it is on. */
 export type SoldLotRow = {
