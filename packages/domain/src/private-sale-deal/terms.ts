@@ -40,16 +40,17 @@ export type DealTermField =
   | "partiesDisclosed";
 
 /**
- * Which terms may still be changed in each stage. The price is fixed once both sides have agreed
- * to it; the fee, commission, costs and VAT treatment stay open until the invoice is issued, so
- * finance can finish them after the agreement. Nothing changes after that: to change an invoiced
- * deal, cancel it and start again.
+ * Which terms may still be changed in each stage. Everything either side accepted is locked
+ * once the price is agreed: the price, the buyer's fee, the commission, the costs and whether the
+ * parties are disclosed. Only the VAT treatment, an accounting choice that moves neither side's
+ * money, stays open until the invoice is issued. To change anything else, cancel the deal and
+ * start again, so no one is held to terms they did not accept.
  */
 const EDITABLE_TERMS: Readonly<Record<PrivateSaleDealStage, readonly DealTermField[]>> = {
   proposed: ["price", "buyerFee", "sellerCommission", "costs", "vatTreatment", "partiesDisclosed"],
   offer: ["price", "buyerFee", "sellerCommission", "costs", "vatTreatment", "partiesDisclosed"],
-  agreed: ["buyerFee", "sellerCommission", "costs", "vatTreatment", "partiesDisclosed"],
-  cleared: ["buyerFee", "sellerCommission", "costs", "vatTreatment", "partiesDisclosed"],
+  agreed: ["vatTreatment"],
+  cleared: ["vatTreatment"],
   invoiced: [],
   paid: [],
   released: [],

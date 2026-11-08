@@ -23,6 +23,9 @@ vi.mock("@/lib/actions/admin/admin-enquiries", () => ({
   updateEnquiryAction: (...args: unknown[]) => update(...args),
   saveEnquiryRoutingAction: vi.fn(),
 }));
+vi.mock("@/lib/actions/admin/admin-private-sales", () => ({
+  convertEnquiryAction: vi.fn(),
+}));
 vi.mock("@/lib/ui/notify", () => ({
   notify: { success: (...args: unknown[]) => notifySuccess(...args), error: vi.fn() },
 }));
@@ -234,5 +237,41 @@ describe("EnquiryView: other states", () => {
   it("names a deleted assignee as a former colleague", () => {
     renderView({ enquiry: { ...sellEnquiry, assignedToUserId: "u-gone" } });
     expect(screen.getAllByText("Former staff member").length).toBeGreaterThan(0);
+  });
+});
+
+describe("EnquiryView: turning a private sale enquiry into a deal", () => {
+  it("offers Convert to deal on a started private sale enquiry to those who run deals", async () => {
+    renderView({ enquiry: buyEnquiry, canConvert: true });
+    fireEvent.click(screen.getByRole("button", { name: "Convert to deal" }));
+    const dialog = await screen.findByRole("dialog", { name: "Convert E-1041 to a deal" });
+    // A buy enquiry names the work the buyer is asking about.
+    expect(within(dialog).getByRole("textbox", { name: /Work/ })).toBeInTheDocument();
+  });
+
+  it("does not ask a sell enquiry for a work, because it brings its own", async () => {
+    renderView({
+      enquiry: {
+        ...sellEnquiry,
+        status: "in_progress",
+        nextStatuses: ["waiting_on_client", "closed", "converted"],
+      },
+      canConvert: true,
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Convert to deal" }));
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).queryByRole("textbox")).toBeNull();
+  });
+
+  it("waits until someone has started on the enquiry", () => {
+    renderView({ enquiry: sellEnquiry, canConvert: true });
+    expect(screen.queryByRole("button", { name: "Convert to deal" })).toBeNull();
+  });
+
+  it("is left out for people who do not run deals, and for an enquiry that is already a deal", () => {
+    renderView({ enquiry: buyEnquiry, canConvert: false });
+    expect(screen.queryByRole("button", { name: "Convert to deal" })).toBeNull();
+    renderView({ enquiry: convertedEnquiry, canConvert: true });
+    expect(screen.queryByRole("button", { name: "Convert to deal" })).toBeNull();
   });
 });

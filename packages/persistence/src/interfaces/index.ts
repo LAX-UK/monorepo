@@ -1177,6 +1177,15 @@ export type {
   IConsignmentStaffDirectory,
 } from "./consignment-staff-directory.reader.js";
 export type {
+  DealWork,
+  IDealWorkStore,
+  IPrivateSaleDealQueryReader,
+  NewDealWork,
+  PrivateSaleDealListFilter,
+  PrivateSaleDealListRow,
+  PrivateSaleDealStageCount,
+} from "./private-sale-deal-query.repository.js";
+export type {
   ClaimDealPaymentResult,
   IPrivateSaleDealFinanceStore,
   IPrivateSaleDealPaymentReader,

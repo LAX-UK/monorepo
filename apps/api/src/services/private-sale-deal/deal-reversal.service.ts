@@ -86,6 +86,7 @@ export class DealReversalService {
     dealId: string;
     actorUserId: string;
     reason: string;
+    expectedVersion?: number;
   }): Promise<DealTransitionOutcome> {
     const payments = await this.deps.payments.listForDeal(input.dealId);
     // A bank transfer already on its way cannot be called back: wait for it to land, then refund.
@@ -104,6 +105,7 @@ export class DealReversalService {
       actorUserId: input.actorUserId,
       cancelReason: input.reason,
       refundRecorded: payments.some((p) => dealRefundRecorded(p)),
+      ...(input.expectedVersion !== undefined ? { expectedVersion: input.expectedVersion } : {}),
     });
   }
 }

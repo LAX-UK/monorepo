@@ -19,9 +19,14 @@ export type DealInvoiceDeps = {
 export class DealInvoiceService {
   constructor(private readonly deps: DealInvoiceDeps) {}
 
-  async issue(input: { dealId: string; actorUserId: string }): Promise<DealTransitionOutcome> {
+  async issue(input: {
+    dealId: string;
+    actorUserId: string;
+    expectedVersion?: number;
+  }): Promise<DealTransitionOutcome> {
     const outcome = await this.deps.transitions.transition(input.dealId, "issue_invoice", {
       actorUserId: input.actorUserId,
+      ...(input.expectedVersion !== undefined ? { expectedVersion: input.expectedVersion } : {}),
     });
     if (outcome.kind !== "ok" || !this.deps.issuer) return outcome;
 

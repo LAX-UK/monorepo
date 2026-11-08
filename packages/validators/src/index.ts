@@ -36,6 +36,7 @@ export * from "./reset-password.js";
 export * from "./newsletter.js";
 export * from "./alerts.js";
 export * from "./marketing-enquiry.js";
+export * from "./private-sale-deal.js";
 export * from "./admin-purchase-problems.js";
 export * from "./marketing-attribution.js";
 export * from "./user.js";

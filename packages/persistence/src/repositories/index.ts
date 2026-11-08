@@ -307,6 +307,10 @@ export {
 export { DrizzlePaymentReminderStore } from "./drizzle-payment-reminder.store.js";
 export { DrizzlePrivateSaleDealRepository } from "./drizzle-private-sale-deal.repository.js";
 export {
+  DrizzleDealWorkStore,
+  DrizzlePrivateSaleDealQueryRepository,
+} from "./drizzle-private-sale-deal-query.repository.js";
+export {
   DrizzlePrivateSaleDealFinanceStore,
   DrizzlePrivateSaleDealPaymentRepository,
   DrizzlePrivateSaleDealPayoutStore,

@@ -49,6 +49,10 @@ export type ItemSubmissionServiceDeps = {
    * Without it (tests, tools) the owner changes on the record alone.
    */
   consignmentAssignment?: IConsignmentAssignment | null;
+  /** Whether a consignment is already sold or being sold privately; it cannot also become a lot. */
+  privateSaleDeals?: {
+    findLiveDealReferenceForWork(itemSubmissionId: string): Promise<string | null>;
+  } | null;
 };
 
 export function sellerPatchToRepoPatch(
