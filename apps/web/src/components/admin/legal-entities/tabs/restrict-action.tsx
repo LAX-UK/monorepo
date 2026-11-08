@@ -1,9 +1,11 @@
 "use client";
 
+import { ClientMessageField } from "@/components/admin/legal-entities/client-message-field";
 import { useStaffConfirm } from "@/components/admin/staff/use-staff-confirm";
 import { legalEntityRestrictResultAction } from "@/lib/admin/legal-entity-lifecycle.actions";
 import { StaffButton } from "@auction/staff-ui";
 import type { LegalEntity } from "@auction/types";
+import { useRef } from "react";
 
 const REASON_MIN = 3;
 
@@ -12,18 +14,20 @@ type Props = {
 };
 
 /**
- * Restricts an approved organisation after asking why. Restriction does not stop bidding or
- * consigning: the organisation sees an account-restrictions notice and its selling activity is
- * recorded for compliance review until the restriction is lifted.
+ * Restricts an approved organisation after asking why. Bidding, registering and sending works
+ * pause; the organisation keeps its history and can pay what it already owes. Its members read
+ * the optional message written here until the restriction is lifted.
  */
 export function RestrictAction({ entity }: Props) {
   const confirm = useStaffConfirm();
+  const message = useRef("");
 
-  const ask = () =>
+  const ask = () => {
+    message.current = "";
     confirm.ask({
       title: `Restrict ${entity.displayName}?`,
       description:
-        "The organisation sees an account restrictions notice, and its selling activity is recorded for compliance review until the restriction is lifted. It can still bid and submit lots.",
+        "Bidding, registering and sending works are paused for this organisation. Its members can still read their history and pay invoices already issued, and they see a notice on their Home page until the restriction is lifted.",
       confirmLabel: "Restrict organisation",
       cancelLabel: "Keep approved",
       stepUpAction: "restrict this organisation",
@@ -33,9 +37,18 @@ export function RestrictAction({ entity }: Props) {
         minLength: REASON_MIN,
         maxLength: 4000,
       },
-      run: ({ reason }) => legalEntityRestrictResultAction(entity.id, reason),
+      body: (
+        <ClientMessageField
+          purpose="to explain the restriction"
+          onChange={(value) => {
+            message.current = value;
+          }}
+        />
+      ),
+      run: ({ reason }) => legalEntityRestrictResultAction(entity.id, reason, message.current),
       success: `${entity.displayName} restricted`,
     });
+  };
 
   return (
     <>

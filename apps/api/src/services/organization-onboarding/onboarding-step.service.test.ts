@@ -17,6 +17,7 @@ const ENTITY_ROW = {
   statusChangedAt: null,
   statusChangedByUserId: null,
   statusReason: null,
+  clientMessage: null,
   stripeConnectAccountId: null,
   stripeCustomerId: null,
   stripeConnectChargesEnabled: false,

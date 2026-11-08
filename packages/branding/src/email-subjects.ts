@@ -17,6 +17,7 @@ export const emailSubjects = {
   emailChanged: "The email address on your LAX Account was changed",
   staffEmailChangeStarted: "LAX client services are changing your account email",
   staffEmailChangeConfirm: "Confirm your new email address",
+  staffEmailChangeCancelled: "Your email address change was cancelled",
   phoneVerified: "A phone number was verified on your LAX Account",
   signInMethodRemoved: "A sign-in method was removed from your LAX Account",
   phoneRemoved: "The phone number on your LAX Account was removed",

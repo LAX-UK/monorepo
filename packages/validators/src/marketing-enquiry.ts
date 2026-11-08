@@ -7,6 +7,7 @@ import {
   ENQUIRY_STATUSES,
   ENQUIRY_TIMINGS,
   ENQUIRY_VIEWS,
+  departmentBySlug,
 } from "@auction/domain";
 import { z } from "zod";
 
@@ -35,6 +36,12 @@ const departmentSlugSchema = z
   .min(1)
   .max(80)
   .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/);
+
+/** A slug from the departments list the Sell pages are built from; any other is refused. */
+const knownDepartmentSlugSchema = departmentSlugSchema.refine(
+  (slug) => departmentBySlug(slug) !== undefined,
+  { message: "Unknown department" },
+);
 
 /** Who is asking and how to reach them; common to every path. */
 const enquirerFields = {
@@ -72,7 +79,7 @@ export const privateSaleSellEnquirySchema = z.object({
   ...enquirerFields,
   ...organisationFields,
   /** A public Sell department slug; routes the enquiry to that department's specialist. */
-  departmentSlug: departmentSlugSchema,
+  departmentSlug: knownDepartmentSlugSchema,
   artist: z.string().trim().min(1).max(200),
   title: z.string().trim().min(1).max(300),
   medium: z.string().trim().min(1).max(200).optional(),

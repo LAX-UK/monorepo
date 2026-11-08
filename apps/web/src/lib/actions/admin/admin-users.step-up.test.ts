@@ -7,6 +7,7 @@ const adminUsers = vi.hoisted(() => ({
   unsuspend: vi.fn(),
   resetTwoFactor: vi.fn(),
   startEmailChange: vi.fn(),
+  cancelEmailChange: vi.fn(),
 }));
 const fetchMock = vi.hoisted(() => vi.fn());
 
@@ -26,6 +27,7 @@ vi.mock("@/lib/data/http/authed-server-fetch", () => ({
 
 const {
   adminBulkUsersResultAction,
+  adminCancelEmailChangeResultAction,
   adminResetTwoFactorResultAction,
   adminSetUserRoleResultAction,
   adminSetUserStaffRoleResultAction,
@@ -73,6 +75,11 @@ describe("admin user actions pass the step-up code to the page", () => {
         }),
       "startEmailChange",
     ],
+    [
+      "email change cancel",
+      () => adminCancelEmailChangeResultAction(USER_ID, { reason: REASON }),
+      "cancelEmailChange",
+    ],
   ] as const)("%s", async (_name, run, method) => {
     adminUsers[method].mockResolvedValue(STEP_UP);
 
@@ -117,6 +124,22 @@ describe("admin user actions pass the step-up code to the page", () => {
 
     expect(result.ok).toBe(false);
     expect(adminUsers.suspend).not.toHaveBeenCalled();
+  });
+
+  it("refuses cancelling an email change without a reason before calling the API", async () => {
+    const result = await adminCancelEmailChangeResultAction(USER_ID, { reason: "oops" });
+
+    expect(result.ok).toBe(false);
+    expect(adminUsers.cancelEmailChange).not.toHaveBeenCalled();
+  });
+
+  it("cancels an email change with the trimmed reason", async () => {
+    adminUsers.cancelEmailChange.mockResolvedValue({ ok: true, data: { ok: true } });
+
+    const result = await adminCancelEmailChangeResultAction(USER_ID, { reason: `  ${REASON}  ` });
+
+    expect(result.ok).toBe(true);
+    expect(adminUsers.cancelEmailChange).toHaveBeenCalledWith(USER_ID, { reason: REASON });
   });
 
   it("refuses an email change without a proof before calling the API", async () => {

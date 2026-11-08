@@ -470,11 +470,14 @@ export class IdentityOperationsService {
     return state.kind === "waiting" ? state.email : null;
   }
 
-  /** Cancelling also clears an expired change, so a stale row never lingers. */
+  /**
+   * Cancelling also clears an expired change, so a stale row never lingers. It is one conditional
+   * update, so a cancel racing the confirmation that applies the change reports that nothing is
+   * waiting rather than succeeding after the address has moved.
+   */
   async cancelEmailChange(subjectId: string): Promise<void> {
-    const row = await this.repositories.emailChanges.readPending(subjectId);
-    if (!row?.pendingNewEmail) throw new IdentityOperationError("none_in_progress");
-    await this.repositories.emailChanges.clearPending(subjectId, this.now());
+    const cleared = await this.repositories.emailChanges.clearPending(subjectId, this.now());
+    if (!cleared) throw new IdentityOperationError("none_in_progress");
   }
 
   async confirmEmailChange(input: {

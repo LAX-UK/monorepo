@@ -1770,6 +1770,7 @@ export async function runLegacyDemoSeed() {
       status: "restricted",
       statusChangedAt: new Date(now - 6 * day),
       statusChangedByUserId: ADMIN_ID,
+      clientMessage: "We need an updated proof of address before bidding can resume.",
       stripeConnectAccountId: "acct_seed_harrington_advisors",
       stripeConnectChargesEnabled: true,
       stripeConnectPayoutsEnabled: true,

@@ -7,6 +7,7 @@ import {
   accountAddressResultSchema,
   accountAddressesSchema,
   accountDeletionOutcomeSchema,
+  staffEmailChangeCancelledSchema,
   staffEmailChangeResultSchema,
 } from "@auction/identity-contracts";
 import type {
@@ -572,6 +573,23 @@ export class HttpIdentityIssuerClient
     const parsed = staffEmailChangeResultSchema.safeParse(body);
     if (!parsed.success) throw invalidResponse("staff email change");
     return parsed.data;
+  }
+
+  /** Clears a pending staff-assisted change, with the same credential that started it. */
+  async cancelStaffAssistedEmailChange(input: {
+    subjectId: string;
+    actorUserId: string;
+    reason: string;
+  }): Promise<void> {
+    const body = await this.credentialRequest(
+      this.staffEmailChangeCredential,
+      "POST",
+      `/identity/subjects/${encodeURIComponent(input.subjectId)}/staff-email-change/cancel`,
+      { actorSubjectId: input.actorUserId, reason: input.reason },
+    );
+    if (!staffEmailChangeCancelledSchema.safeParse(body).success) {
+      throw invalidResponse("staff email change cancellation");
+    }
   }
 
   async deleteOrphanSubject(subjectId: string): Promise<boolean> {

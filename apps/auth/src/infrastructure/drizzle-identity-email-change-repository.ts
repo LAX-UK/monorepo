@@ -100,8 +100,19 @@ export class DrizzleIdentityEmailChangeRepository implements IIdentityEmailChang
     return row ?? null;
   }
 
-  async clearPending(subjectId: string, now: Date): Promise<void> {
-    await this.clearPendingWith(this.db, subjectId, now);
+  async clearPending(subjectId: string, now: Date): Promise<boolean> {
+    const cleared = await this.db
+      .update(user)
+      .set({
+        pendingNewEmail: null,
+        emailChangeOldOk: false,
+        emailChangeNewOk: false,
+        emailChangeExpiresAt: null,
+        updatedAt: now,
+      })
+      .where(and(eq(user.id, subjectId), isNotNull(user.pendingNewEmail)))
+      .returning({ id: user.id });
+    return cleared.length > 0;
   }
 
   async loadForConfirmation(

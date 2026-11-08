@@ -36,6 +36,7 @@ export function rowToEntity(row: typeof legalEntity.$inferSelect): LegalEntity {
     statusChangedAt: row.statusChangedAt ?? null,
     statusChangedByUserId: row.statusChangedByUserId ?? null,
     statusReason: row.statusReason ?? null,
+    clientMessage: row.clientMessage ?? null,
     stripeConnectAccountId: row.stripeConnectAccountId ?? null,
     stripeCustomerId: row.stripeCustomerId ?? null,
     stripeConnectChargesEnabled: row.stripeConnectChargesEnabled,
@@ -58,6 +59,7 @@ export type OrganizationOnboardingDocumentDto = {
   kind: string;
   label: string | null;
   reviewStatus: string;
+  uploadedAt: Date;
 };
 
 export type OrganizationOnboardingGetResult = {

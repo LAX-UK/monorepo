@@ -3,6 +3,7 @@
 import { StaffEmailChangeDialog } from "@/components/admin/people/staff-email-change-dialog";
 import { useStaffConfirm } from "@/components/admin/staff/use-staff-confirm";
 import {
+  adminCancelEmailChangeResultAction,
   adminResetTwoFactorResultAction,
   adminSetUserRoleResultAction,
   adminSuspendUserResultAction,
@@ -21,7 +22,11 @@ import {
   StaffDialog,
 } from "@auction/staff-ui";
 import type { UserRole, UserStaffRole } from "@auction/types";
-import { ADMIN_SUSPEND_REASON_MIN, ADMIN_TWO_FACTOR_RESET_REASON_MIN } from "@auction/validators";
+import {
+  ADMIN_EMAIL_CHANGE_REASON_MIN,
+  ADMIN_SUSPEND_REASON_MIN,
+  ADMIN_TWO_FACTOR_RESET_REASON_MIN,
+} from "@auction/validators";
 import { useRouter } from "next/navigation";
 import { useCallback, useRef, useState, useTransition } from "react";
 
@@ -154,8 +159,9 @@ function RoleDialog({
 
 /**
  * A person's account actions, the same from a list row's `…` menu, the record panel and their
- * page: change role, reset two-step verification, suspend and unsuspend. Suspending and the
- * reset take an audited reason and may ask for a fresh sign-in; Cancel always has the first
+ * page: change role, change or cancel an email change, reset two-step verification, suspend and
+ * unsuspend. Suspending, the reset and cancelling an email change take an audited reason and may
+ * ask for a fresh sign-in; Cancel always has the first
  * focus. Actions a role can never take are left out; ones the account's state blocks are
  * disabled with the reason.
  */
@@ -225,6 +231,27 @@ export function usePersonActions(access: PersonActionAccess) {
     [ask],
   );
 
+  const cancelEmailChange = useCallback(
+    (person: PersonActionTarget) =>
+      ask({
+        title: `Cancel ${person.name}'s email change?`,
+        description:
+          "The link already emailed to the new address stops working and the address stays as it is. Any sessions ended when the change started stay ended. We tell them by email that LAX staff cancelled it.",
+        confirmLabel: "Cancel email change",
+        cancelLabel: "Keep it",
+        reason: {
+          label: "Reason for cancelling",
+          description: `At least ${ADMIN_EMAIL_CHANGE_REASON_MIN} characters. Kept in the audit log.`,
+          minLength: ADMIN_EMAIL_CHANGE_REASON_MIN,
+          maxLength: 500,
+        },
+        stepUpAction: "cancel the email change",
+        run: ({ reason }) => adminCancelEmailChangeResultAction(person.id, { reason }),
+        success: "Email change cancelled",
+      }),
+    [ask],
+  );
+
   const actionsFor = useCallback(
     (person: PersonActionTarget): OverflowAction[] => {
       const actions: OverflowAction[] = [];
@@ -243,6 +270,12 @@ export function usePersonActions(access: PersonActionAccess) {
           id: "change-email",
           label: "Change email address",
           onSelect: () => setEmailTarget(person),
+          ...(blocked ? { disabledReason: blocked } : {}),
+        });
+        actions.push({
+          id: "cancel-email-change",
+          label: "Cancel email change",
+          onSelect: () => cancelEmailChange(person),
           ...(blocked ? { disabledReason: blocked } : {}),
         });
       }
@@ -273,6 +306,7 @@ export function usePersonActions(access: PersonActionAccess) {
       access.canManageRoles,
       access.canModerate,
       access.emailChange,
+      cancelEmailChange,
       resetTwoFactor,
       suspend,
       unsuspend,
@@ -309,6 +343,7 @@ export function usePersonActions(access: PersonActionAccess) {
     suspend,
     unsuspend,
     resetTwoFactor,
+    cancelEmailChange,
     changeRole: setRoleTarget,
     changeEmail: setEmailTarget,
   };

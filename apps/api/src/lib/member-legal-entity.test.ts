@@ -42,6 +42,7 @@ describe("toMemberLegalEntity", () => {
         "subkind",
         "status",
         "statusChangedAt",
+        "clientMessage",
         "stripeConnectChargesEnabled",
         "stripeConnectPayoutsEnabled",
         "stripeConnectRequirementsCurrentlyDue",

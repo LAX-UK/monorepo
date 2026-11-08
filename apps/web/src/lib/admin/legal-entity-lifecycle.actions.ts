@@ -5,6 +5,7 @@ import {
   type AdminNoticeCode,
   adminNoticeCodeForStatus,
 } from "@/lib/admin/admin-notice";
+import { CLIENT_MESSAGE_MAX } from "@/lib/admin/legal-entity-client-message";
 import { denyUnlessAdminCapability } from "@/lib/auth/assert-admin-action-capability";
 import { isStaffStepUpResponse } from "@/lib/auth/step-up/staff-step-up.server";
 import type { AdminLegalEntityDocument } from "@/lib/data/http/admin.server";
@@ -97,6 +98,12 @@ const REASONED_PATH = {
   lift_restriction: "lift-restriction",
 } as const;
 
+/** The message to the members as a request field; left out when empty. */
+function messageField(clientMessage: string | undefined): { clientMessage?: string } {
+  const trimmed = clientMessage?.trim() ?? "";
+  return trimmed ? { clientMessage: trimmed.slice(0, CLIENT_MESSAGE_MAX) } : {};
+}
+
 /**
  * Posts a transition that needs a reason. A stale sign-in comes back as the step-up code, so the
  * dialog can ask the person to sign in again and retry.
@@ -105,6 +112,7 @@ async function runReasonedTransition(
   op: keyof typeof REASONED_PATH,
   legalEntityId: string,
   reason: string,
+  clientMessage?: string,
 ): Promise<ActionResult<void>> {
   const denied = await denyUnlessAdminCapability(LEGAL_ENTITY_WRITE_ACCESS);
   if (denied) return denied;
@@ -120,7 +128,7 @@ async function runReasonedTransition(
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ reason: trimmed }),
+      body: JSON.stringify({ reason: trimmed, ...messageField(clientMessage) }),
     },
   );
   if (res.ok) {
@@ -133,13 +141,17 @@ async function runReasonedTransition(
   return actionFailure(await readFailureMessage(res), undefined, res.status);
 }
 
-/** Restricts an approved organisation, with the reason kept in the audit log. */
+/**
+ * Restricts an approved organisation, with the reason kept in the audit log and, optionally, a
+ * message its members read on their Home page.
+ */
 export async function legalEntityRestrictResultAction(
   legalEntityId: string,
   reason: string,
+  clientMessage?: string,
 ): Promise<ActionResult<void>> {
   return instrumentServerAction("legalEntityRestrictResultAction", () =>
-    runReasonedTransition("restrict", legalEntityId, reason),
+    runReasonedTransition("restrict", legalEntityId, reason, clientMessage),
   );
 }
 
@@ -162,6 +174,7 @@ export async function legalEntityRejectAction(formData: FormData): Promise<void>
     async () => {
       const id = val(formData, "legalEntityId");
       const reason = val(formData, "reason");
+      const clientMessage = val(formData, "clientMessage");
       const confirmationPhrase = val(formData, "confirmationPhrase");
       if (!id) redirectToList("entity_missing");
       if (confirmationPhrase !== "REJECT") {
@@ -175,7 +188,7 @@ export async function legalEntityRejectAction(formData: FormData): Promise<void>
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ reason, confirmationPhrase }),
+          body: JSON.stringify({ reason, confirmationPhrase, ...messageField(clientMessage) }),
         },
       );
       if (!res.ok) {

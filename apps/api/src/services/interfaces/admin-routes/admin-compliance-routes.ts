@@ -58,6 +58,7 @@ export interface IAdminLegalEntityLifecycleApplicationService {
     entityId: string,
     op: LifecycleAdminOp,
     reason?: string | null,
+    clientMessage?: string | null,
   ): Promise<Result<{ id: string; status: LegalEntityStatus }, LegalEntityLifecycleFailure>>;
   listDocuments(entityId: string): Promise<AdminLegalEntityDocumentDto[] | null>;
   reviewDocument: LegalEntityDocumentAdminService["reviewDocument"];

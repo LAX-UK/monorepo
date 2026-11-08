@@ -14,6 +14,7 @@ const BASE_ROW = {
   payHeldSince: null,
   statusChangedByUserId: null,
   statusReason: null,
+  clientMessage: null,
   stripeConnectAccountId: null,
   stripeCustomerId: null,
   stripeConnectChargesEnabled: false,

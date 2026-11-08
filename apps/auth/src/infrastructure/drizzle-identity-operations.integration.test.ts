@@ -286,6 +286,60 @@ describe.skipIf(!DATABASE_URL)("drizzle identity operations adapters", () => {
     });
   });
 
+  describe("cancelling a pending change", () => {
+    const nextEmail = "identity-operations-cancel@lax.bid";
+
+    it("clears a pending change once, and the second cancel finds nothing", async () => {
+      if (!emailChanges) return;
+      await emailChanges.startChange({
+        subjectId,
+        newEmail: nextEmail,
+        expiresAt: new Date(NOW.getTime() + 60_000),
+        now: NOW,
+      });
+      await expect(emailChanges.clearPending(subjectId, NOW)).resolves.toBe(true);
+      await expect(emailChanges.readPending(subjectId)).resolves.toMatchObject({
+        pendingNewEmail: null,
+      });
+      await expect(emailChanges.clearPending(subjectId, NOW)).resolves.toBe(false);
+    });
+
+    it("finds nothing to cancel once the change has been applied, and leaves the new address", async () => {
+      if (!unitOfWork || !emailChanges) return;
+      await emailChanges.startChange({
+        subjectId,
+        newEmail: nextEmail,
+        expiresAt: new Date(NOW.getTime() + 60_000),
+        now: NOW,
+      });
+      await unitOfWork.transaction(async (transaction) => {
+        await emailChanges.applyPendingEmail(transaction, subjectId, nextEmail, NOW);
+      });
+
+      await expect(emailChanges.clearPending(subjectId, NOW)).resolves.toBe(false);
+      await expect(subjects?.findByEmail(nextEmail)).resolves.toMatchObject({
+        id: subjectId,
+        email: nextEmail,
+      });
+    });
+
+    it("clears an expired change too, so a stale row never lingers", async () => {
+      if (!emailChanges) return;
+      await emailChanges.startChange({
+        subjectId,
+        newEmail: nextEmail,
+        expiresAt: new Date(NOW.getTime() - 60_000),
+        now: NOW,
+      });
+      await expect(emailChanges.clearPending(subjectId, NOW)).resolves.toBe(true);
+    });
+
+    it("finds nothing when no change was ever started", async () => {
+      if (!emailChanges) return;
+      await expect(emailChanges.clearPending(subjectId, NOW)).resolves.toBe(false);
+    });
+  });
+
   it("completes a staff-vouched change on the new inbox's confirmation alone", async () => {
     if (!unitOfWork || !emailChanges) return;
     const nextEmail = "identity-operations-vouched@lax.bid";

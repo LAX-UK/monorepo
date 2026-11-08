@@ -35,6 +35,7 @@ import {
   adminResetTwoFactorBodySchema,
   adminSetRoleBodySchema,
   adminStaffEmailChangeBodySchema,
+  adminStaffEmailChangeCancelBodySchema,
   adminSuspendBodySchema,
 } from "@auction/validators";
 import { revalidatePath } from "next/cache";
@@ -287,6 +288,36 @@ export async function adminStartEmailChangeResultAction(
     }
     revalidateAdminUserDetailPaths(id);
     return actionSuccess({ pendingEmail: r.data.pendingEmail });
+  });
+}
+
+/**
+ * Withdraws a change that is waiting for the person to follow its link. Identity clears the
+ * pending address, which ends the emailed link; it needs the same rule and fresh sign-in as
+ * starting one, and a reason for the audit log.
+ */
+export async function adminCancelEmailChangeResultAction(
+  userId: string,
+  body: z.infer<typeof adminStaffEmailChangeCancelBodySchema>,
+): Promise<ActionResult<void>> {
+  return instrumentServerAction("adminCancelEmailChangeResultAction", async () => {
+    const denied = await denyUnlessAdminCapability(STAFF_EMAIL_CHANGE_ACCESS);
+    if (denied) return denied;
+    const id = userId.trim();
+    if (!id) {
+      return actionFailure("Missing user");
+    }
+    const p = adminStaffEmailChangeCancelBodySchema.safeParse(body);
+    if (!p.success) {
+      return actionFailure(firstZodErrorMessage(p.error), zodErrorToFieldErrors(p.error));
+    }
+    const { adminUsers } = getWriteContainer();
+    const r = await adminUsers.cancelEmailChange(id, p.data);
+    if (!r.ok) {
+      return actionFailure(r.message, undefined, r.status, stepUpErrorCode(r));
+    }
+    revalidateAdminUserDetailPaths(id);
+    return actionSuccess();
   });
 }
 

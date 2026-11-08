@@ -180,3 +180,85 @@ describe("StaffEmailChangeService.start", () => {
     expect(operations.startStaffAssistedEmailChange).not.toHaveBeenCalled();
   });
 });
+
+describe("StaffEmailChangeService.cancel", () => {
+  const CANCEL = { actorSubjectId: "staff-2", reason: "Caller found the old mailbox again." };
+
+  it("clears the pending change, which ends the link already sent, and audits who and why", async () => {
+    const { service, operations, audit, email } = setup();
+    expect(await service.cancel(SUBJECT, CANCEL)).toEqual({ ok: true });
+    expect(operations.cancelEmailChange).toHaveBeenCalledWith(SUBJECT);
+    expect(audit).toHaveBeenCalledTimes(1);
+    const [entry, message] = audit.mock.calls[0] ?? [];
+    expect(message).toBe("staff_assisted_email_change_cancelled");
+    expect(entry).toEqual({
+      subjectId: SUBJECT,
+      actorSubjectId: "staff-2",
+      reason: CANCEL.reason,
+    });
+    // Cancelling sends no new link and ends no session: only the pending address goes.
+    expect(email.enqueue).toHaveBeenCalledTimes(1);
+    expect(email.enqueue.mock.calls[0]?.[0].template).toBe("staff-email-change-cancelled-notice");
+    expect(operations.revokeAllSessions).not.toHaveBeenCalled();
+  });
+
+  it("tells the account's current address, and only that one, that staff cancelled it", async () => {
+    const { service, email } = setup();
+    await service.cancel(SUBJECT, CANCEL);
+    const notice = email.enqueue.mock.calls[0]?.[0];
+    expect(notice).toMatchObject({
+      template: "staff-email-change-cancelled-notice",
+      to: "Old@Example.com",
+      userId: SUBJECT,
+      category: "auth",
+    });
+    expect(notice?.vars).toMatchObject({
+      userName: "Ada",
+      secureAccountUrl: "https://account.example/account/security",
+    });
+    expect(JSON.stringify(notice?.vars)).not.toContain("new@example.com");
+  });
+
+  it("still cancels, and logs it, when the notice cannot be queued", async () => {
+    const { service, email, audit } = setup();
+    email.enqueue.mockRejectedValueOnce(new Error("outbox down"));
+    expect(await service.cancel(SUBJECT, CANCEL)).toEqual({ ok: true });
+    expect(audit.mock.calls.map((call) => call[1])).toEqual([
+      "staff_assisted_email_change_cancelled",
+      "staff_assisted_email_change_cancel_notice_failed",
+    ]);
+  });
+
+  it("sends no notice when nothing was cancelled", async () => {
+    const { service, operations, email } = setup();
+    operations.cancelEmailChange.mockRejectedValueOnce(
+      new IdentityOperationError("none_in_progress"),
+    );
+    await service.cancel(SUBJECT, CANCEL);
+    expect(email.enqueue).not.toHaveBeenCalled();
+  });
+
+  it("says so when no change is waiting, and audits nothing", async () => {
+    const { service, operations, audit } = setup();
+    operations.cancelEmailChange.mockRejectedValueOnce(
+      new IdentityOperationError("none_in_progress"),
+    );
+    expect(await service.cancel(SUBJECT, CANCEL)).toEqual({ ok: false, kind: "none_in_progress" });
+    expect(audit).not.toHaveBeenCalled();
+  });
+
+  it("reports an unknown account without touching anything", async () => {
+    const { service, operations, audit } = setup();
+    operations.readSubject.mockResolvedValueOnce(null as never);
+    expect(await service.cancel(SUBJECT, CANCEL)).toEqual({ ok: false, kind: "subject_not_found" });
+    expect(operations.cancelEmailChange).not.toHaveBeenCalled();
+    expect(audit).not.toHaveBeenCalled();
+  });
+
+  it("does not hide an unexpected failure", async () => {
+    const { service, operations, audit } = setup();
+    operations.cancelEmailChange.mockRejectedValueOnce(new Error("db down"));
+    await expect(service.cancel(SUBJECT, CANCEL)).rejects.toThrow("db down");
+    expect(audit).not.toHaveBeenCalled();
+  });
+});

@@ -31,5 +31,10 @@ export async function loadOrganisationStateBanner(
   const { banner } = organisationStatePolicy(entity.status, entityCapabilitiesOf(actor), {
     payoutsReady,
   });
-  return banner ? organisationBannerView(banner, { organisationName: entity.displayName }) : null;
+  return banner
+    ? organisationBannerView(banner, {
+        organisationName: entity.displayName,
+        clientMessage: entity.clientMessage,
+      })
+    : null;
 }

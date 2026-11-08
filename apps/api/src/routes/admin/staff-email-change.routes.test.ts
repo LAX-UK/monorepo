@@ -19,6 +19,7 @@ function setup(session: { role: string; staffRoles: StaffRoles | undefined }, re
   });
   const change = vi.fn().mockResolvedValue(ok({ pendingEmail: "new@example.com" }));
   const kycRecord = vi.fn().mockResolvedValue(ok(null));
+  const cancel = vi.fn().mockResolvedValue(ok({ cancelled: true }));
   const platform: AdminHono = new Hono();
   platform.use("*", async (c, next) => {
     c.set("userId", ACTOR_ID);
@@ -29,7 +30,7 @@ function setup(session: { role: string; staffRoles: StaffRoles | undefined }, re
   });
   attachAdminStaffEmailChangeRoutes(
     platform,
-    { change, kycRecord },
+    { change, cancel, kycRecord },
     createTestStaffGuards({ recent }),
   );
   const app = new Hono();
@@ -40,8 +41,14 @@ function setup(session: { role: string; staffRoles: StaffRoles | undefined }, re
       headers: { "content-type": "application/json" },
       body: JSON.stringify(body),
     });
+  const postCancel = (body: unknown) =>
+    app.request(`http://test/admin/users/${TARGET_ID}/email-change/cancel`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    });
   const get = () => app.request(`http://test/admin/users/${TARGET_ID}/email-change/kyc-record`);
-  return { post, get, change, kycRecord };
+  return { post, postCancel, get, change, cancel, kycRecord };
 }
 
 describe("POST /admin/users/:userId/email-change", () => {
@@ -137,5 +144,74 @@ describe("GET /admin/users/:userId/email-change/kyc-record", () => {
     const { get, kycRecord } = setup({ role: "staff", staffRoles: ["fulfilment"] });
     expect((await get()).status).toBe(403);
     expect(kycRecord).not.toHaveBeenCalled();
+  });
+});
+
+describe("POST /admin/users/:userId/email-change/cancel", () => {
+  const CANCEL_BODY = { reason: "Caller found the old mailbox again." };
+
+  it.each([["administrator"], ["client_services"]])(
+    "lets %s withdraw the change and passes the actor, target and reason on",
+    async (role) => {
+      const staffRoles = normalizeStaffRoles([role]);
+      const { postCancel, cancel } = setup({ role: "staff", staffRoles });
+      const res = await postCancel(CANCEL_BODY);
+      expect(res.status).toBe(200);
+      expect(await res.json()).toEqual({ ok: true });
+      expect(cancel).toHaveBeenCalledWith(
+        { userId: ACTOR_ID, role: "staff", staffRoles },
+        TARGET_ID,
+        CANCEL_BODY,
+      );
+    },
+  );
+
+  it.each([["fulfilment"], ["finance"], ["read_only"], ["compliance"], ["specialist"]])(
+    "refuses %s",
+    async (role) => {
+      const { postCancel, cancel } = setup({
+        role: "staff",
+        staffRoles: normalizeStaffRoles([role]),
+      });
+      expect((await postCancel(CANCEL_BODY)).status).toBe(403);
+      expect(cancel).not.toHaveBeenCalled();
+    },
+  );
+
+  it("refuses a customer", async () => {
+    const { postCancel, cancel } = setup({ role: "client", staffRoles: [] });
+    expect((await postCancel(CANCEL_BODY)).status).toBe(403);
+    expect(cancel).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["no reason", {}],
+    ["a one-word reason", { reason: "oops" }],
+  ])("rejects %s", async (_label, body) => {
+    const { postCancel, cancel } = setup({ role: "staff", staffRoles: ["administrator"] });
+    expect((await postCancel(body)).status).toBe(400);
+    expect(cancel).not.toHaveBeenCalled();
+  });
+
+  it("asks for a fresh sign-in first, and cancels nothing", async () => {
+    const { postCancel, cancel } = setup({ role: "staff", staffRoles: ["administrator"] }, false);
+    const res = await postCancel(CANCEL_BODY);
+    expect(res.status).toBe(403);
+    expect(await res.json()).toEqual({
+      error: "Recent sign-in required",
+      code: "step_up_required",
+    });
+    expect(cancel).not.toHaveBeenCalled();
+  });
+
+  it("passes a refusal on with its status and message", async () => {
+    const { postCancel, cancel } = setup({ role: "staff", staffRoles: ["administrator"] });
+    cancel.mockResolvedValueOnce({
+      match: (_ok: unknown, onErr: (e: unknown) => unknown) =>
+        onErr({ status: 409, message: "No email change is waiting for this person." }),
+    });
+    const res = await postCancel(CANCEL_BODY);
+    expect(res.status).toBe(409);
+    expect(await res.json()).toEqual({ error: "No email change is waiting for this person." });
   });
 });

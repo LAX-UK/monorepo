@@ -2248,6 +2248,13 @@
       "when": 1803283200000,
       "tag": "0326_private_sale_deal_register_fk",
       "breakpoints": true
+    },
+    {
+      "idx": 322,
+      "version": "7",
+      "when": 1803369600000,
+      "tag": "0327_legal_entity_client_message",
+      "breakpoints": true
     }
   ]
 }

@@ -157,4 +157,78 @@ describe("bulk settlement parity (shared finance-runtime)", () => {
     expect(initiateTransfer.mock.calls.filter((c) => c[0] === "po-resume-5")).toHaveLength(2);
     expect(create.mock.calls.filter((c) => c[0]?.legalEntityId === e5)).toHaveLength(1);
   });
+
+  it("starts a first-run cron payout at the oldest captured payment, not the epoch", async () => {
+    const e1 = entityId(1);
+    const create = vi.fn().mockResolvedValue(payoutRow({ id: "po-first", legalEntityId: e1 }));
+    const repo = makeSettlementRepo({
+      listLegalEntityIdsWithUnlinkedCapturedPayments: vi.fn().mockResolvedValue([e1]),
+      findUnlinkedCapturedPayments: vi
+        .fn()
+        .mockResolvedValue(
+          pending([
+            { capturedAt: new Date("2026-03-05T00:00:00Z") },
+            { capturedAt: new Date("2026-02-01T00:00:00Z") },
+          ]),
+        ),
+      list: vi.fn().mockResolvedValue([]),
+      create,
+    });
+    await runBulkSettlementParity(
+      settlementDeps(repo),
+      vi.fn().mockResolvedValue({ ok: true, stripeTransferId: "tr_1" }),
+    );
+    expect(create.mock.calls[0]?.[0].periodStart).toEqual(new Date("2026-02-01T00:00:00Z"));
+  });
+
+  it("floors a first-run start at 2000-01-01", async () => {
+    const e1 = entityId(1);
+    const create = vi.fn().mockResolvedValue(payoutRow({ id: "po-floor", legalEntityId: e1 }));
+    const repo = makeSettlementRepo({
+      listLegalEntityIdsWithUnlinkedCapturedPayments: vi.fn().mockResolvedValue([e1]),
+      findUnlinkedCapturedPayments: vi
+        .fn()
+        .mockResolvedValue(pending([{ capturedAt: new Date(0) }])),
+      list: vi.fn().mockResolvedValue([]),
+      create,
+    });
+    await runBulkSettlementParity(
+      settlementDeps(repo),
+      vi.fn().mockResolvedValue({ ok: true, stripeTransferId: "tr_1" }),
+    );
+    expect(create.mock.calls[0]?.[0].periodStart).toEqual(new Date("2000-01-01T00:00:00Z"));
+  });
+
+  it("follows the entity's last payout period end", async () => {
+    const e1 = entityId(1);
+    const lastEnd = new Date("2026-01-31T00:00:00Z");
+    const create = vi.fn().mockResolvedValue(payoutRow({ id: "po-next", legalEntityId: e1 }));
+    const repo = makeSettlementRepo({
+      listLegalEntityIdsWithUnlinkedCapturedPayments: vi.fn().mockResolvedValue([e1]),
+      findUnlinkedCapturedPayments: vi.fn().mockResolvedValue(pending([{}])),
+      list: vi.fn().mockResolvedValue([payoutRow({ periodEnd: lastEnd })]),
+      create,
+    });
+    await runBulkSettlementParity(
+      settlementDeps(repo),
+      vi.fn().mockResolvedValue({ ok: true, stripeTransferId: "tr_1" }),
+    );
+    expect(create.mock.calls[0]?.[0].periodStart).toEqual(lastEnd);
+  });
+
+  it("skips an entity whose last payout ends well after now, creating nothing", async () => {
+    const e1 = entityId(1);
+    const create = vi.fn();
+    const repo = makeSettlementRepo({
+      listLegalEntityIdsWithUnlinkedCapturedPayments: vi.fn().mockResolvedValue([e1]),
+      findUnlinkedCapturedPayments: vi.fn().mockResolvedValue(pending([{}])),
+      list: vi.fn().mockResolvedValue([payoutRow({ periodEnd: new Date("2999-01-01T00:00:00Z") })]),
+      create,
+    });
+    const r = await runBulkSettlementParity(settlementDeps(repo), vi.fn());
+    expect(r.settlement.items).toEqual([
+      { legalEntityId: e1, outcome: "skipped", reason: "settlement_period_overlaps" },
+    ]);
+    expect(create).not.toHaveBeenCalled();
+  });
 });

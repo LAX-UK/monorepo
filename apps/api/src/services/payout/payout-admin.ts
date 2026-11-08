@@ -129,6 +129,21 @@ async function transitionOrThrow(
   throw new PayoutStatusTransitionError("payout_state_changed");
 }
 
+/** A Postgres unique violation, possibly wrapped by the driver layer. */
+/** The unique index on payout.stripe_transfer_id (declared inline in 0027, so Postgres names it). */
+const PAYOUT_TRANSFER_ID_UNIQUE = "payout_stripe_transfer_id_key";
+
+/** True only when the transfer id is already held by another payout; any other error passes through. */
+function isTransferAlreadyLinked(err: unknown): boolean {
+  const e = err as {
+    code?: unknown;
+    constraint?: unknown;
+    cause?: { code?: unknown; constraint?: unknown };
+  } | null;
+  const pg = e?.code === "23505" ? e : e?.cause?.code === "23505" ? e.cause : null;
+  return pg?.constraint === PAYOUT_TRANSFER_ID_UNIQUE;
+}
+
 function requireTransactional(deps: PayoutServiceDeps) {
   const runner = deps.transactionRunner;
   const publisher = deps.domainEventSink;
@@ -211,12 +226,21 @@ export async function adoptBlockedTransfer(
     if (linked && linked.id !== payoutId) {
       throw new PayoutStatusTransitionError("transfer_linked_to_other_payout");
     }
-    const updated = await transitionOrThrow(r, found, {
-      status: "in_transit",
-      stripeTransferId: input.stripeTransferId,
-      processedAt: null,
-      failureReason: null,
-    });
+    let updated: Payout;
+    try {
+      updated = await transitionOrThrow(r, found, {
+        status: "in_transit",
+        stripeTransferId: input.stripeTransferId,
+        processedAt: null,
+        failureReason: null,
+      });
+    } catch (err) {
+      // Two staff adopting the same transfer onto two payouts: the unique index lets one win.
+      if (isTransferAlreadyLinked(err)) {
+        throw new PayoutStatusTransitionError("transfer_linked_to_other_payout");
+      }
+      throw err;
+    }
     await publisher.withTx(tx).publish({
       aggregateType: "payout",
       aggregateId: updated.id,
