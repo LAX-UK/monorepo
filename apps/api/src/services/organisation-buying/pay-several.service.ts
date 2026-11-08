@@ -32,6 +32,7 @@ import { buyingError, memberIsPayer } from "./purchase-view.js";
 
 const CHECKOUT_ERRORS: Record<GroupCheckoutError, OrganisationBuyingErrorCode> = {
   conflict: "pay_several_conflict",
+  in_progress: "payment_in_progress_elsewhere",
   unavailable: "pay_several_unavailable",
 };
 
@@ -127,7 +128,7 @@ export class PaySeveralService implements IPaySeveralService {
     // move: for the payer on the total, and for each lot's winner on what they won.
     const hold = await this.complianceHold(actor, current, winners);
     if (hold) return err(buyingError(hold));
-    const together = payTogether(current.totalPence, this.deps.limits, false);
+    const together = payTogether(current.totalPence, this.deps.limits, false, request.method);
     if (!together.allowed) return err(buyingError(`pay_several_${together.reason}`));
 
     const total = gbpPenceToMajorString(current.totalPence);
@@ -217,7 +218,7 @@ export class PaySeveralService implements IPaySeveralService {
       view.charges.length === shown.size &&
       view.charges.every((c) => shown.has(c.lotId));
     if (!same) return { ...buyingError("pay_plan_changed"), quote: view.quote };
-    const together = payTogether(view.totalPence, this.deps.limits, false);
+    const together = payTogether(view.totalPence, this.deps.limits, false, request.method);
     return together.allowed ? null : buyingError(`pay_several_${together.reason}`);
   }
 

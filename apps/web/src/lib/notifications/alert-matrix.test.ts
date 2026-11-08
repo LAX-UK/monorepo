@@ -67,6 +67,52 @@ describe("alert matrix", () => {
     });
   });
 
+  it("has Artists you follow and Saved searches rows on their own engine topics and app switches", () => {
+    const artists = row("artists");
+    const searches = row("searches");
+    expect([artists.engineTopic, artists.app]).toEqual(["bid.artists", ["artistAlertsInApp"]]);
+    expect([searches.engineTopic, searches.app]).toEqual(["bid.searches", ["searchAlertsInApp"]]);
+    const engine = {
+      subscribed: { "bid.artists": true, "bid.searches": true },
+      email: { "bid.artists": true, "bid.searches": false },
+    };
+    expect(alertCell(artists, "email", DEFAULTS, engine)).toMatchObject({ checked: true });
+    expect(alertCell(searches, "email", DEFAULTS, engine)).toMatchObject({ checked: false });
+    expect(
+      alertCell(searches, "app", { ...DEFAULTS, searchAlertsInApp: false }, engine),
+    ).toMatchObject({ checked: false });
+    expect(withAlertCell(DEFAULTS, artists, "app", false).artistAlertsInApp).toBe(false);
+  });
+
+  it("holds App off with a reason while the email is off for artist and search alerts", () => {
+    const emailOff = {
+      subscribed: { "bid.artists": true, "bid.searches": true },
+      email: { "bid.artists": false, "bid.searches": false },
+    };
+    for (const id of ["artists", "searches"]) {
+      expect(alertCell(row(id), "app", DEFAULTS, emailOff)).toEqual({
+        kind: "switch",
+        checked: false,
+        lockedReason: null,
+        disabledReason: "Comes with the email",
+      });
+    }
+    const emailOn = { ...emailOff, email: { "bid.artists": true, "bid.searches": true } };
+    expect(alertCell(row("artists"), "app", DEFAULTS, emailOn)).toMatchObject({ checked: true });
+    expect(alertCell(row("artists"), "app", DEFAULTS, emailOn)).not.toHaveProperty(
+      "disabledReason",
+    );
+  });
+
+  it("keeps New sales app alerts independent of its email", () => {
+    const appOnly = { subscribed: { "bid.new_sales": true }, email: { "bid.new_sales": false } };
+    expect(alertCell(row("new-sales"), "app", DEFAULTS, appOnly)).toEqual({
+      kind: "switch",
+      checked: true,
+      lockedReason: null,
+    });
+  });
+
   it("shows nothing for New sales when the engine's state could not be read", () => {
     expect(alertCell(row("new-sales"), "email", DEFAULTS, null)).toEqual({ kind: "none" });
   });

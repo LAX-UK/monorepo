@@ -75,6 +75,7 @@ export function BidRow({
         card.placedBy ? `Placed by ${card.placedBy}` : null,
         card.placementNote,
       ]}
+      metaShrink={1}
       figures={card.figures}
       aligned
       status={

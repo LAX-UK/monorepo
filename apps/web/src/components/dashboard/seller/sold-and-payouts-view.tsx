@@ -103,7 +103,7 @@ function PayoutListRow({ payout }: { payout: PayoutRow }) {
       href={payoutHref(payout.id)}
       linkAs={Link}
       title={`Payout of ${payout.net}`}
-      meta={[payout.period]}
+      meta={[payout.period, payout.reference]}
       figures={[
         { id: "gross", value: payout.gross, label: "sales" },
         // The figure cells are a fixed width, so the label stays one short word (commission is a fee).

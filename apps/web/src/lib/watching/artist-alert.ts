@@ -12,7 +12,7 @@ export function artistAlertSummary(alert: ArtistAlertCriteria): string {
   } else if (alert.priceMax) {
     parts.push(`Up to ${formatPounds(alert.priceMax)}`);
   }
-  return parts.length > 0 ? parts.join(" · ") : "Every new work";
+  return parts.length > 0 ? parts.join(" · ") : "Every new lot";
 }
 
 /** The alert form as typed: amounts in pounds, with or without "£" and commas. */

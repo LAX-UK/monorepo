@@ -93,11 +93,13 @@ export {
   needsManualReviewGate,
   paymentMethodsFor,
   parsePaymentTierLimits,
+  resolveChosenRail,
   resolveCheckoutRail,
   resolveManualReviewReason,
   validateCheckoutAmountPence,
   STRIPE_GBP_MIN_PENCE,
   type CheckoutRailKind,
+  type ChosenPaymentMethod,
   type ManualReviewReason,
   type PaymentMethodAvailability,
   type PaymentTierKind,
@@ -489,6 +491,13 @@ export {
 } from "./money-totals.js";
 export { BUSINESS_TIME_ZONE, londonCalendarYear, type CalendarYear } from "./calendar-year.js";
 export {
+  formatPayoutReference,
+  parsePayoutReference,
+  parsePayoutSearch,
+  type ParsedPayoutReference,
+  type PayoutSearch,
+} from "./payout-reference.js";
+export {
   MEMBER_REMOVED_STOP_REASON,
   stopsOnRemoval,
   type StandingInstructionCandidate,
@@ -595,6 +604,11 @@ export {
   type ConsignedLotScope,
   type SubmissionSenderScope,
 } from "./submission-visibility.js";
+export {
+  summariseSubmissionCounts,
+  type SubmissionStatusCounts,
+  type SubmissionSummary,
+} from "./submission-summary.js";
 export {
   consignmentStage,
   type ConsignmentAfterSaleStage,
@@ -771,6 +785,7 @@ export {
   type DisputeDeadlineState,
   type DisputeView,
 } from "./dispute-case-view.js";
+export { payProgressOf, type PayProgressFacts } from "./pay-progress.js";
 export {
   payTogether,
   type PayTogetherDecision,
