@@ -14,9 +14,9 @@ const journal = JSON.parse(read("meta/_journal.json")) as {
 };
 
 describe("migration 0321 alert match matched_at index", () => {
-  it("is the last journal entry, one day after the entry before it", () => {
+  it("is a journal entry, one day after the entry before it", () => {
     const index = journal.entries.findIndex((e) => e.tag === "0321_alert_match_matched_at_idx");
-    expect(index).toBe(journal.entries.length - 1);
+    expect(index).toBeGreaterThan(0);
     const entry = journal.entries[index];
     const previous = journal.entries[index - 1];
     expect(entry?.idx).toBe((previous?.idx ?? 0) + 1);

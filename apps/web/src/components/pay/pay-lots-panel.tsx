@@ -32,7 +32,7 @@ export function PayLotsPanel({ lots }: { lots: readonly PayLotVm[] }) {
                   {lot.detail.subtitle ? (
                     <p className="text-lax-13 text-lax-muted">{lot.detail.subtitle}</p>
                   ) : null}
-                  <p className="text-lax-13 text-lax-muted">{lot.detail.due}</p>
+                  <p className="text-lax-13 text-lax-muted">{lot.detail.note}</p>
                 </>
               ) : null}
             </div>

@@ -7,9 +7,9 @@ import {
   payoutLine,
   privateSaleDeal,
 } from "@auction/db/schema";
-import { dealPayoutAmounts, minorUnitsToMoneyString } from "@auction/domain";
+import { dealPayoutAmounts, minorUnitsToMoneyString, parsePayoutSearch } from "@auction/domain";
 import type { Payout, PayoutLine, PayoutLineKind, PayoutStatus } from "@auction/types";
-import { and, desc, eq, isNotNull, ne, sql } from "drizzle-orm";
+import { type SQL, and, desc, eq, isNotNull, ne, sql } from "drizzle-orm";
 import type {
   CreatePayoutInput,
   IPayoutProcessorReader,
@@ -80,6 +80,34 @@ function dealLineFacts(deal: {
     amount: minorUnitsToMoneyString(BigInt(amounts.grossMinor)),
     platformFee: minorUnitsToMoneyString(BigInt(amounts.deductionsMinor)),
   };
+}
+
+/** Escapes `%`, `_` and `\\` so typed text is matched literally by LIKE. */
+function likeLiteral(text: string): string {
+  return text.replace(/[\\%_]/g, (ch) => `\\${ch}`);
+}
+
+/**
+ * The WHERE clause of the admin payout list. A search matches a payout reference
+ * (`PO-YYYY-XXXXXXXX`: id prefix plus the year the period ends), the start of a payout id, or
+ * the seller's name.
+ */
+function listWhere(filter: Omit<ListPayoutsFilter, "limit" | "offset">): SQL | undefined {
+  const search = filter.search ? parsePayoutSearch(filter.search) : null;
+  let searchCondition: SQL | undefined;
+  if (search?.kind === "reference") {
+    searchCondition = sql`${payout.id}::text like ${`${likeLiteral(search.idPrefix)}%`} and extract(year from ${payout.periodEnd} at time zone 'UTC') = ${search.year}`;
+  } else if (search?.kind === "id") {
+    searchCondition = sql`${payout.id}::text like ${`${likeLiteral(search.idPrefix)}%`}`;
+  } else if (search?.kind === "text") {
+    searchCondition = sql`${payout.legalEntityId} in (select ${legalEntity.id} from ${legalEntity} where ${legalEntity.displayName} ilike ${`%${likeLiteral(search.text)}%`})`;
+  }
+  const conditions = [
+    filter.legalEntityId ? eq(payout.legalEntityId, filter.legalEntityId) : undefined,
+    filter.status ? eq(payout.status, filter.status) : undefined,
+    searchCondition,
+  ].filter((c): c is NonNullable<typeof c> => c !== undefined);
+  return conditions.length > 0 ? and(...conditions) : undefined;
 }
 
 export class DrizzlePayoutRepository implements IPayoutRepository, IPayoutProcessorReader {
@@ -162,11 +190,7 @@ export class DrizzlePayoutRepository implements IPayoutRepository, IPayoutProces
   }
 
   async list(filter: ListPayoutsFilter): Promise<Payout[]> {
-    const conditions = [
-      filter.legalEntityId ? eq(payout.legalEntityId, filter.legalEntityId) : undefined,
-      filter.status ? eq(payout.status, filter.status) : undefined,
-    ].filter((c): c is NonNullable<typeof c> => c !== undefined);
-    const where = conditions.length > 0 ? and(...conditions) : undefined;
+    const where = listWhere(filter);
     const limit = filter.limit ?? 50;
     const offset = filter.offset ?? 0;
 
@@ -186,11 +210,7 @@ export class DrizzlePayoutRepository implements IPayoutRepository, IPayoutProces
   }
 
   async countMatching(filter: Omit<ListPayoutsFilter, "limit" | "offset">): Promise<number> {
-    const conditions = [
-      filter.legalEntityId ? eq(payout.legalEntityId, filter.legalEntityId) : undefined,
-      filter.status ? eq(payout.status, filter.status) : undefined,
-    ].filter((c): c is NonNullable<typeof c> => c !== undefined);
-    const where = conditions.length > 0 ? and(...conditions) : undefined;
+    const where = listWhere(filter);
     const [row] = await (where
       ? this.db.select({ n: sql<number>`count(*)::int` }).from(payout).where(where)
       : this.db.select({ n: sql<number>`count(*)::int` }).from(payout));
@@ -200,11 +220,7 @@ export class DrizzlePayoutRepository implements IPayoutRepository, IPayoutProces
   async summarizeMatching(
     filter: Omit<ListPayoutsFilter, "limit" | "offset">,
   ): Promise<import("../interfaces/payout.repository.js").AdminPayoutListSummary> {
-    const conditions = [
-      filter.legalEntityId ? eq(payout.legalEntityId, filter.legalEntityId) : undefined,
-      filter.status ? eq(payout.status, filter.status) : undefined,
-    ].filter((c): c is NonNullable<typeof c> => c !== undefined);
-    const where = conditions.length > 0 ? and(...conditions) : undefined;
+    const where = listWhere(filter);
 
     const [row] = await (where
       ? this.db

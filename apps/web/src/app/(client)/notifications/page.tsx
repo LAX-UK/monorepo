@@ -20,7 +20,11 @@ export default async function NotificationsPage({
   return (
     <>
       <SetMobileShellTitle title="Notifications" />
-      <Suspense fallback={<ListSkeleton label="Loading your notifications" rows={4} />}>
+      <Suspense
+        fallback={
+          <ListSkeleton label="Loading your notifications" rows={4} title="Notifications" />
+        }
+      >
         <NotificationsInboxContent
           searchParams={searchParams}
           role={user.role}

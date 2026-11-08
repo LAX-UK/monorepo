@@ -30,7 +30,11 @@ export type PurchaseCandidateReaderDeps = {
   now: () => Date;
 };
 
-const NO_FLAGS: PaySeveralInvoiceFlags = { heldForReview: false, inPaymentInProgress: false };
+const NO_FLAGS: PaySeveralInvoiceFlags = {
+  heldForReview: false,
+  inPaymentInProgress: false,
+  group: null,
+};
 
 /**
  * Reads the lots picked for a payment, the one way both the pay plan and "Pay several" see them,

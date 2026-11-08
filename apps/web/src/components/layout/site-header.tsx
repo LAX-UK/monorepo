@@ -19,9 +19,11 @@ import { cn } from "@auction/ui";
 import { Menu, X } from "lucide-react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { Suspense, forwardRef, useEffect, useMemo, useRef, useState } from "react";
+import { AccountNeedsYouProvider } from "./account-switcher/account-needs-you";
 import { BidAttentionPrompt } from "./bid-attention-prompt";
 import { BidHeaderAccount } from "./bid-header-account";
 import { BidHeaderLockup } from "./bid-header-lockup";
+import { BidPhoneAccount } from "./bid-phone-account";
 import { BidPhoneMenu } from "./bid-phone-menu";
 import { HeaderMegaNav } from "./header-mega-nav";
 import { utilityNav } from "./header-nav-config";
@@ -98,35 +100,43 @@ function SiteHeaderShell({
               headerTone={headerTone}
               logo={<BidHeaderLockup tone={headerTone} />}
               trailing={
-                <div className="flex shrink-0 items-center justify-end gap-1 sm:gap-2 lg:gap-3">
-                  {/* From 640px the attention prompt is a chip in the row; below it is the
+                // One provider for the phone account button and the account menu, so the
+                // "needs you" numbers are read once when either list opens.
+                <AccountNeedsYouProvider enabled={user !== null}>
+                  <div className="flex shrink-0 items-center justify-end gap-1 sm:gap-2 lg:gap-3">
+                    {/* From 640px the attention prompt is a chip in the row; below it is the
                       strip under the bar. */}
-                  <BidAttentionPrompt placement="bar" />
-                  <MarketingTopBarSlots
-                    searchField={
-                      <HeaderSearchTrigger tone={headerTone} layout="pill" fullBarFrom="xl" />
-                    }
-                    searchIcon={
-                      <HeaderSearchTrigger tone={headerTone} layout="icon" fullBarFrom="xl" />
-                    }
-                    productAction={
-                      <div className="hidden lg:flex">
-                        <ThemeToggle headerTone={headerTone} />
-                      </div>
-                    }
-                    account={
-                      <BidHeaderAccount headerTone={headerTone} laxProductLinks={laxProductLinks} />
-                    }
-                    menuButton={
-                      <MobileMenuIconButton
-                        ref={menuButtonRef}
-                        menuOpen={menuOpen}
-                        headerTone={headerTone}
-                        onToggle={() => setMenuOpen((o) => !o)}
-                      />
-                    }
-                  />
-                </div>
+                    <BidAttentionPrompt placement="bar" />
+                    <BidPhoneAccount />
+                    <MarketingTopBarSlots
+                      searchField={
+                        <HeaderSearchTrigger tone={headerTone} layout="pill" fullBarFrom="xl" />
+                      }
+                      searchIcon={
+                        <HeaderSearchTrigger tone={headerTone} layout="icon" fullBarFrom="xl" />
+                      }
+                      productAction={
+                        <div className="hidden lg:flex">
+                          <ThemeToggle headerTone={headerTone} />
+                        </div>
+                      }
+                      account={
+                        <BidHeaderAccount
+                          headerTone={headerTone}
+                          laxProductLinks={laxProductLinks}
+                        />
+                      }
+                      menuButton={
+                        <MobileMenuIconButton
+                          ref={menuButtonRef}
+                          menuOpen={menuOpen}
+                          headerTone={headerTone}
+                          onToggle={() => setMenuOpen((o) => !o)}
+                        />
+                      }
+                    />
+                  </div>
+                </AccountNeedsYouProvider>
               }
             />
           </div>

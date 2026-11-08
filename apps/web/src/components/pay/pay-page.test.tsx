@@ -76,6 +76,7 @@ describe("the Pay page, ready to pay", () => {
     expect(payAction).toHaveBeenCalledExactlyOnceWith({
       lotIds: [LOT_A],
       expectedTotalPence: 237_500,
+      method: "card",
     });
   });
 
@@ -135,6 +136,7 @@ describe("the Pay page, several lots", () => {
       expect(payAction).toHaveBeenCalledWith({
         lotIds: [LOT_A, LOT_B],
         expectedTotalPence: 375_000,
+        method: "card",
       }),
     );
   });

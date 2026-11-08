@@ -88,6 +88,7 @@ export function PayoutQuickView({
                 value: row.paidAt ? <StaffDate value={row.paidAt} withTime /> : null,
               },
               { label: "Created", value: <StaffDate value={row.createdAt} withTime /> },
+              { label: "Reference", value: row.reference, copyValue: row.reference },
               { label: "Payout ID", value: row.id, copyValue: row.id },
             ]
           : []

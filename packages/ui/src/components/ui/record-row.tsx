@@ -1,5 +1,4 @@
 import type * as React from "react";
-import { Children } from "react";
 import { cn } from "../../lib/utils.js";
 
 export type RecordListProps = {
@@ -46,6 +45,12 @@ export type RecordRowProps = {
   linkAs?: LinkComponent;
   /** One line of facts, shown with "·" between them. Empty entries are dropped. */
   meta?: readonly React.ReactNode[];
+  /**
+   * The position in `meta` of the one fact that gives way to a long value. When set, a wide row
+   * keeps its facts on one line, truncating that fact, in tabular figures; a narrow row wraps
+   * them as usual. Without it, facts wrap at every width.
+   */
+  metaShrink?: number;
   /** A status badge. */
   status?: React.ReactNode;
   /** A figure, such as an amount; right-aligned with tabular digits. */
@@ -156,20 +161,32 @@ function isShown(node: React.ReactNode): boolean {
  * dot: every fact carries its dot in front, and the line is shifted left by one dot's width and
  * clipped, so the dot that would open a line falls outside it. The dot is silent to readers.
  */
-function MetaLine({ items }: { items: readonly React.ReactNode[] }) {
-  const shown = items.filter(isShown);
+function MetaLine({
+  items,
+  shrink,
+}: {
+  items: readonly React.ReactNode[];
+  shrink?: number | undefined;
+}) {
+  const shown = items.flatMap((item, index) => (isShown(item) ? [{ item, index }] : []));
   if (shown.length === 0) return null;
+  const oneLine = shrink !== undefined;
   return (
     <p
       data-record-meta
-      className="mt-0.5 overflow-hidden font-body text-label-3 leading-5 text-on-surface-variant"
+      className={`mt-0.5 overflow-hidden font-body text-label-3 leading-5 text-on-surface-variant${
+        oneLine ? " tabular-nums" : ""
+      }`}
     >
-      <span className="-ml-4 flex min-w-0 flex-wrap">
+      <span className={`-ml-4 flex min-w-0 flex-wrap${oneLine ? " @2xl:flex-nowrap" : ""}`}>
         {/* Facts are positional: the caller's order is the reading order. */}
-        {Children.map(shown, (item) => (
+        {shown.map(({ item, index }) => (
           <span
+            key={index}
             data-record-fact
-            className="flex min-w-0 before:w-4 before:shrink-0 before:text-center before:content-['·'_/_'']"
+            className={`flex min-w-0 before:w-4 before:shrink-0 before:text-center before:content-['·'_/_'']${
+              oneLine && index !== shrink ? " @2xl:shrink-0" : ""
+            }`}
           >
             <span className="min-w-0 truncate">{item}</span>
           </span>
@@ -191,6 +208,7 @@ export function RecordRow({
   href,
   linkAs: Link = "a",
   meta = [],
+  metaShrink,
   status,
   value,
   figures = [],
@@ -243,7 +261,7 @@ export function RecordRow({
                   title
                 )}
               </p>
-              <MetaLine items={meta} />
+              <MetaLine items={meta} shrink={metaShrink} />
             </div>
             {hasFoot ? (
               <div
