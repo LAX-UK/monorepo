@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { PayoutNotFoundError, PayoutStatusTransitionError } from "../interfaces/payout.js";
+
 import { AdminFailedPayoutRetryService } from "./admin-failed-payout-retry.service.js";
 
 const failed = {
@@ -39,7 +40,9 @@ describe("AdminFailedPayoutRetryService", () => {
       found: { ...failed, status: "transfer_blocked" },
     });
 
-    await expect(service.retry("staff-1", "payout-1")).rejects.toThrow(PayoutStatusTransitionError);
+    await expect(service.retry("staff-1", "payout-1", REASON)).rejects.toThrow(
+      PayoutStatusTransitionError,
+    );
 
     expect(initiateTransfer).not.toHaveBeenCalled();
     expect(publish).not.toHaveBeenCalled();
@@ -77,26 +80,30 @@ describe("AdminFailedPayoutRetryService", () => {
         now: new Date("2026-11-08T10:04:59Z"),
       });
 
-      await expect(service.retry("staff-1", "payout-1")).resolves.toEqual(tooSoon);
+      await expect(service.retry("staff-1", "payout-1", REASON)).resolves.toEqual(tooSoon);
       expect(publish).not.toHaveBeenCalled();
       expect(initiateTransfer).not.toHaveBeenCalled();
     });
 
     it("refuses a retry made the moment the payout failed", async () => {
       const { service, initiateTransfer } = setup({ now: failed.processedAt });
-      await expect(service.retry("staff-1", "payout-1")).resolves.toEqual(tooSoon);
+      await expect(service.retry("staff-1", "payout-1", REASON)).resolves.toEqual(tooSoon);
       expect(initiateTransfer).not.toHaveBeenCalled();
     });
 
     it("allows a retry at exactly five minutes", async () => {
       const { service, initiateTransfer } = setup({ now: AFTER_COOL_OFF });
-      await expect(service.retry("staff-1", "payout-1")).resolves.toMatchObject({ ok: true });
+      await expect(service.retry("staff-1", "payout-1", REASON)).resolves.toMatchObject({
+        ok: true,
+      });
       expect(initiateTransfer).toHaveBeenCalledTimes(1);
     });
 
     it("does not delay a failed payout that has no processing time", async () => {
       const { service, initiateTransfer } = setup({ found: { ...failed, processedAt: null } });
-      await expect(service.retry("staff-1", "payout-1")).resolves.toMatchObject({ ok: true });
+      await expect(service.retry("staff-1", "payout-1", REASON)).resolves.toMatchObject({
+        ok: true,
+      });
       expect(initiateTransfer).toHaveBeenCalledTimes(1);
     });
   });

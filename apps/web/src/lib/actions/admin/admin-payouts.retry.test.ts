@@ -80,7 +80,9 @@ describe("adminRetryPayoutTransferResultAction", () => {
   it("explains the retry cool-off in fixed copy", async () => {
     authedServerFetch.mockResolvedValue(json(409, { error: "retry_too_soon" }));
 
-    await expect(adminRetryPayoutTransferResultAction("p1")).resolves.toMatchObject({
+    await expect(
+      adminRetryPayoutTransferResultAction("p1", { reason: REASON }),
+    ).resolves.toMatchObject({
       ok: false,
       error: "Wait a few minutes: Stripe may still be finishing the last attempt",
     });
