@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { buildPayoutAccount, buildPayoutsList } from "./selling-payouts.vm";
 
 const status = (overrides: Partial<PortalPayeeConnectStatus>): PortalPayeeConnectStatus => ({
-  stripeAccountId: "acct_example",
+  accountLinked: true,
   chargesEnabled: true,
   payoutsEnabled: true,
   requirementsCurrentlyDue: [],
@@ -15,7 +15,7 @@ const config = { publishableKey: "pk_test_example", connectConfigured: true };
 
 describe("buildPayoutAccount", () => {
   it("names each setup stage plainly, with the action that moves it on", () => {
-    const notSetUp = buildPayoutAccount({ status: status({ stripeAccountId: null }), config });
+    const notSetUp = buildPayoutAccount({ status: status({ accountLinked: false }), config });
     expect([notSetUp.statusLabel, notSetUp.action?.label]).toEqual([
       "Not set up",
       "Set up payouts",
@@ -32,7 +32,7 @@ describe("buildPayoutAccount", () => {
 
   it("offers nothing to open when Stripe is not configured", () => {
     const account = buildPayoutAccount({
-      status: status({ stripeAccountId: null }),
+      status: status({ accountLinked: false }),
       config: { publishableKey: null, connectConfigured: false },
     });
     expect(account.stage).toBe("not_offered");

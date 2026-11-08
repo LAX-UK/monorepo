@@ -23,7 +23,7 @@ import type {
 import { resolveShopUserEmail } from "./resolve-shop-user-email.js";
 
 const NO_ACCOUNT_STATUS: ShopPayeeConnectStatus = {
-  stripeAccountId: null,
+  accountLinked: false,
   chargesEnabled: false,
   payoutsEnabled: false,
   requirementsCurrentlyDue: [],
@@ -38,7 +38,7 @@ function statusFromRow(row: ShopPayeeConnectAccountRow): ShopPayeeConnectStatus 
     disabledReason: row.disabledReason,
   };
   return {
-    stripeAccountId: row.stripeConnectAccountId,
+    accountLinked: true,
     chargesEnabled: row.chargesEnabled,
     ...status,
     ready: isPayeeConnectReady(status),
