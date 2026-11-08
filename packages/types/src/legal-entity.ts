@@ -79,6 +79,37 @@ export type LegalEntity = {
   updatedAt: Date;
 };
 
+/**
+ * What a member of an organisation (or the person it is their own account) may read about it.
+ * An explicit list: staff-only fields (audit reasons, staff user ids, payment-provider and
+ * accounting ids, fee terms) are never added here by accident. Payment-provider ids become the
+ * facts the client needs: whether an account is linked.
+ */
+export type MemberLegalEntity = Pick<
+  LegalEntity,
+  | "id"
+  | "displayName"
+  | "legalName"
+  | "slug"
+  | "kind"
+  | "subkind"
+  | "status"
+  | "statusChangedAt"
+  | "clientMessage"
+  | "stripeConnectChargesEnabled"
+  | "stripeConnectPayoutsEnabled"
+  | "stripeConnectRequirementsCurrentlyDue"
+  | "stripeConnectRequirementsErrors"
+  | "stripeConnectDisabledReason"
+  | "vatNumber"
+  | "isLaxManaged"
+  | "createdAt"
+  | "updatedAt"
+> & {
+  /** Whether a payout account is linked; its id is not shared. */
+  stripeConnectAccountLinked: boolean;
+};
+
 /** Lightweight summary for acting context switcher */
 export type LegalEntitySummary = {
   id: string;
@@ -86,7 +117,6 @@ export type LegalEntitySummary = {
   kind: LegalEntityKind;
   subkind: LegalEntitySubkind;
   status: LegalEntityStatus;
-  statusReason?: string | null;
   clientMessage?: string | null;
   role: LegalEntityMemberRole;
   isPrimaryAdmin: boolean;

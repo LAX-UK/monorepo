@@ -7,6 +7,7 @@ import { ClientFlashNotice } from "@/components/flash/client-flash-notice";
 import { SetMobileShellTitle } from "@/components/layout/set-mobile-shell-title";
 import { WorkspacePageNoAccess } from "@/components/organisations/workspace-page-no-access";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
+import { getServerDataContainer } from "@/lib/data/container.server";
 import { resolveSellerWorkspaceContext } from "@/lib/legal-entity/seller-acting-context.server";
 import { SELL_A_WORK_LABEL } from "@/lib/marketing/sell-flow-copy";
 import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
@@ -45,9 +46,11 @@ export default async function SellerConsignmentsPage({ searchParams }: PageProps
     );
   }
   const access = sellingAccess(sellerCtx);
-  const [{ records, truncated }, sp] = await Promise.all([
+  const [{ records, truncated }, sp, summary] = await Promise.all([
     loadConsignments(sellerCtx, user.id),
     searchParams,
+    // The count is a nicety: the list reads without it.
+    getServerDataContainer().then((c) => c.submissions.getSummary().catch(() => null)),
   ]);
   const fallbackView = records ? defaultConsignmentView(records) : "all";
   const query = parseConsignmentsListQuery(sp, fallbackView);
@@ -96,6 +99,7 @@ export default async function SellerConsignmentsPage({ searchParams }: PageProps
         canSell={access.canSell}
         pausedReason={access.pausedReason}
         truncated={truncated}
+        needsChanges={summary?.needsChanges ?? null}
       />
     </DashboardListPage>
   );

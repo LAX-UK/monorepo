@@ -10,7 +10,7 @@ import {
   organisationBannerView,
 } from "@/lib/presenters/organisation-state/organisation-state-copy";
 import { type EntityActor, entityCapabilitiesOf, organisationStatePolicy } from "@auction/domain";
-import type { LegalEntity } from "@auction/types";
+import type { MemberLegalEntity } from "@auction/types";
 
 /**
  * The organisation's state banner for this member, outside Home (the Organisation page). The
@@ -19,7 +19,7 @@ import type { LegalEntity } from "@auction/types";
  */
 export async function loadOrganisationStateBanner(
   actor: EntityActor,
-  entity: LegalEntity,
+  entity: MemberLegalEntity,
 ): Promise<OrganisationBannerView | null> {
   const config = await getServerStripeConnectClientConfig().catch(() => null);
   const payoutsReady = config

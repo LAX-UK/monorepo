@@ -22,6 +22,7 @@ import type {
 } from "@/lib/data/http/seller-payouts.server";
 import type { StripeConnectStatusLoadResult } from "@/lib/data/http/stripe-connect.server";
 import type { MySessionsLoadResult } from "@/lib/data/user-session-row";
+import type { SubmissionSummary } from "@auction/domain";
 import type {
   Category,
   CategoryNode,
@@ -125,10 +126,7 @@ export type DashboardSubmissionsReader = {
     limit?: number;
     offset?: number;
   }): Promise<{ rows: ItemSubmission[]; total: number }>;
-  getSummary(): Promise<{
-    counts: Record<ItemSubmissionStatus, number>;
-    total: number;
-  }>;
+  getSummary(): Promise<SubmissionSummary>;
   getMineById(id: string): Promise<ItemSubmission | null>;
 };
 

@@ -4,6 +4,7 @@ import type { LegalEntity } from "@auction/types";
 import { slugifyRecordKey } from "@auction/types";
 import type { CreateOrganizationInput, PublicOrganisationSubkind } from "@auction/validators";
 import { PUBLIC_ORG_SUBKIND_META } from "@auction/validators";
+import { toMemberLegalEntity } from "../lib/member-legal-entity.js";
 import type { IDomainEventSink } from "./domain-event-sink.js";
 import type {
   CheckNameResult,
@@ -185,7 +186,7 @@ export class OrganizationOnboardingService implements IOrganizationOnboardingSer
     if (requirements.requiresStripeConnect) nextSteps.push("stripe_connect");
     nextSteps.push("ready_to_consign");
 
-    return { entity: rowToEntity(entity), nextSteps };
+    return { entity: toMemberLegalEntity(rowToEntity(entity)), nextSteps };
   }
 
   async checkNameAvailability(displayName: string): Promise<CheckNameResult> {

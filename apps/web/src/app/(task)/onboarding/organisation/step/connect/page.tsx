@@ -24,7 +24,7 @@ export default async function OrgOnboardingConnectStepPage({
   const entity = await hub.getEntityDetail(entityId).catch(() => null);
   const [clientConfig, connectRes] = await Promise.all([
     getServerStripeConnectClientConfig(),
-    entity?.stripeConnectAccountId
+    entity?.stripeConnectAccountLinked
       ? syncServerStripeConnectStatus(entityId)
       : getServerStripeConnectStatus(entityId),
   ]);

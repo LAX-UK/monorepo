@@ -5,11 +5,14 @@ import { formatDeduction } from "@/lib/money/currency";
 import { payoutBankLineWithCurrency } from "@/lib/organisation-team/payout-bank-account.vm";
 import { formatPeriod } from "@/lib/ui/format";
 import { csvDocument } from "@/lib/workspace/csv";
+import { formatPayoutReference } from "@auction/domain";
 import type { Payout } from "@auction/types";
 
 export type PayoutRow = {
   id: string;
   period: string;
+  /** The readable reference, such as PO-2026-3FA9C1D2. */
+  reference: string;
   gross: string;
   /** LAX's commission and fees, plus the transfer fee when there was one. */
   fees: string;
@@ -50,6 +53,7 @@ export function buildPayoutRows(payouts: readonly Payout[], sellerEntityId: stri
       return {
         id: payout.id,
         period: formatPeriod(payout.periodStart, payout.periodEnd),
+        reference: formatPayoutReference(payout),
         gross: formatMoney(payout.grossAmount, payout.currency),
         fees: formatDeduction(Number.isFinite(fees) ? fees : 0, payout.currency),
         net: formatMoney(payout.netAmount, payout.currency),

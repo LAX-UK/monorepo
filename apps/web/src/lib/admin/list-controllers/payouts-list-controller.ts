@@ -52,6 +52,7 @@ export const payoutsListController: IAdminListController<AdminPayoutRow, Payouts
       offset: query.offset,
       ...(query.status ? { status: query.status } : {}),
       ...(query.legalEntityId ? { legalEntityId: query.legalEntityId } : {}),
+      ...(query.q ? { search: query.q } : {}),
     });
     return {
       rows: page.rows,
