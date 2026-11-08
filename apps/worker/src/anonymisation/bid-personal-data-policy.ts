@@ -1,6 +1,7 @@
 import {
   artistWatchlist,
   bidUserProfile,
+  collectionBooking,
   legalEntity,
   legalEntityAddress,
   legalEntityContactDetails,
@@ -18,7 +19,7 @@ import {
   watchlist,
 } from "@auction/db/schema";
 import { anonymiseEnquiries, eraseAlertSubscribers } from "@auction/persistence/lib";
-import { inArray } from "drizzle-orm";
+import { and, inArray, isNull, or, sql } from "drizzle-orm";
 import type { AnyPgColumn, PgTable } from "drizzle-orm/pg-core";
 import type { ProjectorDbConnection } from "../interfaces/worker-db.types.js";
 
@@ -132,6 +133,46 @@ const enquiryRule: BidAnonymisationRule = {
   },
 };
 
+/** What replaces the name of a third party who came to collect for the person. */
+const THIRD_PARTY_COLLECTOR_PLACEHOLDER = "Deleted collector";
+
+/**
+ * A collection booking is kept (it records who handed which works to whom), but the collector's
+ * name, email and company are personal data: the person's own, or a third party they named. They
+ * are replaced for every booking the person made, authorised or collected, and for the bookings
+ * on their personal account. The ID check type, times and lots stay.
+ */
+const collectionBookingRule: BidAnonymisationRule = {
+  table: "collection_booking",
+  treatment: "scrub",
+  fields: ["collector_name", "collector_email", "collector_company"],
+  async apply(tx, scope) {
+    const subjects = [...scope.subjectIds];
+    const accounts = [...scope.personalLegalEntityIds];
+    const rows = await tx
+      .update(collectionBooking)
+      .set({
+        collectorName: sql`CASE WHEN ${collectionBooking.collectorKind} = 'third_party' THEN ${THIRD_PARTY_COLLECTOR_PLACEHOLDER} ELSE ${scope.pseudonym} END`,
+        collectorEmail: null,
+        collectorCompany: null,
+        personalDetailsErasedAt: new Date(),
+      })
+      .where(
+        and(
+          isNull(collectionBooking.personalDetailsErasedAt),
+          or(
+            inArray(collectionBooking.bookedByUserId, subjects),
+            inArray(collectionBooking.collectorUserId, subjects),
+            inArray(collectionBooking.authorisedByUserId, subjects),
+            accounts.length > 0 ? inArray(collectionBooking.legalEntityId, accounts) : undefined,
+          ),
+        ),
+      )
+      .returning({ id: collectionBooking.id });
+    return rows.length;
+  },
+};
+
 const alertSubscribersRule: BidAnonymisationRule = {
   table: "bid_alert_subscriber",
   treatment: "delete",
@@ -241,6 +282,7 @@ export const BID_ANONYMISATION_RULES: readonly BidAnonymisationRule[] = [
   ),
   deleteBySubject(marketingClickIds, "marketing_click_ids", marketingClickIds.userId),
   deleteBySubject(userUiPreference, "user_ui_preference", userUiPreference.userId),
+  collectionBookingRule,
   enquiryRule,
   alertSubscribersRule,
 ];
