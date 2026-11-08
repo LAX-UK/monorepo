@@ -9,6 +9,7 @@ import {
   lotFulfilment,
   payment,
   paymentExternalRef,
+  paymentGroup,
   payout,
   payoutLine,
 } from "@auction/db/schema";
@@ -22,6 +23,27 @@ import type {
   BidWonLotFact,
   IBidPortfolioReader,
 } from "../interfaces/bid-portfolio.reader.js";
+
+/** The combined payment a row belongs to, or null when its invoice is paid on its own. */
+function groupOf(row: {
+  groupId: string | null;
+  groupStatus: string | null;
+  groupRail: string | null;
+  groupTotal: string | null;
+  groupReceived: string | null;
+}): BidPaymentFact["group"] {
+  const { groupId, groupStatus, groupRail, groupTotal, groupReceived } = row;
+  if (!groupId || !groupStatus || !groupRail || groupTotal === null || groupReceived === null) {
+    return null;
+  }
+  return {
+    id: groupId,
+    status: groupStatus,
+    checkoutRail: groupRail,
+    totalAmount: groupTotal,
+    amountReceived: groupReceived,
+  };
+}
 
 /** Newest rows kept per list; a personal account that outgrows this needs paging, not a bigger read. */
 const MAX_ROWS = 500;
@@ -127,9 +149,15 @@ export class DrizzleBidPortfolioReader implements IBidPortfolioReader {
         createdAt: payment.createdAt,
         invoiceNumber: paymentExternalRef.xeroInvoiceNumber,
         invoiceUrl: paymentExternalRef.onlineInvoiceUrl,
+        groupId: paymentGroup.id,
+        groupStatus: paymentGroup.status,
+        groupRail: paymentGroup.checkoutRail,
+        groupTotal: paymentGroup.totalAmount,
+        groupReceived: paymentGroup.amountReceived,
       })
       .from(payment)
       .leftJoin(paymentExternalRef, eq(paymentExternalRef.paymentId, payment.id))
+      .leftJoin(paymentGroup, eq(paymentGroup.id, payment.paymentGroupId))
       .where(
         or(
           eq(payment.buyerLegalEntityId, entityId),
@@ -147,6 +175,7 @@ export class DrizzleBidPortfolioReader implements IBidPortfolioReader {
       status: row.status,
       createdAt: row.createdAt,
       hasInvoice: row.invoiceNumber !== null || row.invoiceUrl !== null,
+      group: groupOf(row),
     }));
   }
 

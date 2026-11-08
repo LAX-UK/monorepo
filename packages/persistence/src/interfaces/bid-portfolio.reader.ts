@@ -18,6 +18,16 @@ export type BidWonLotFact = {
   fulfilmentStatus: string | null;
 };
 
+/** The combined ("Pay several") payment an invoice is settled through, while it is under way. */
+export type BidPaymentGroupFact = {
+  id: string;
+  status: string;
+  checkoutRail: string;
+  /** The group's total and what a bank transfer has delivered, both `numeric(18,2)` strings. */
+  totalAmount: string;
+  amountReceived: string;
+};
+
 export type BidPaymentFact = {
   id: string;
   lotId: string;
@@ -32,6 +42,8 @@ export type BidPaymentFact = {
     | "cancelled";
   createdAt: Date;
   hasInvoice: boolean;
+  /** Null when the invoice is paid on its own. */
+  group: BidPaymentGroupFact | null;
 };
 
 export type BidSubmissionFact = {

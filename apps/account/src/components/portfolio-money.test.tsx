@@ -34,6 +34,25 @@ const entries = [
   }),
 ];
 
+describe("PortfolioMoney still to send", () => {
+  it("says the rest of a part-paid transfer is still to send, beside its owed amount", () => {
+    const html = render([
+      moneyEntry({
+        id: "rest",
+        direction: "owed_by_you",
+        status: "pending",
+        amount: 570_100,
+        stillToSend: true,
+      }),
+      moneyEntry({ id: "bill", direction: "owed_by_you", status: "pending", amount: 90_000 }),
+    ]);
+    expect(html).toContain("£5,701.00 still to send on your bank transfer");
+    // Only the transfer's rest carries the note; an ordinary amount owed does not.
+    expect(html.match(/still to send on your bank transfer/g)).toHaveLength(2);
+    expect(html).toContain("£6,601.00");
+  });
+});
+
 describe("PortfolioMoney", () => {
   it("shows a summary card per business, Bid then Art", () => {
     const html = render(entries);

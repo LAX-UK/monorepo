@@ -68,6 +68,16 @@ function EntryLink({ entry }: { entry: LaxMoneyEntryV1 }) {
   );
 }
 
+/** The rest of a part-paid bank transfer says so beside its amount, so it is not read as a fresh bill. */
+function StillToSendNote({ entry }: { entry: LaxMoneyEntryV1 }) {
+  if (!entry.stillToSend) return null;
+  return (
+    <span className="block text-xs text-on-surface-variant">
+      {formatMinorUnits(entry.amount, entry.currency)} still to send on your bank transfer
+    </span>
+  );
+}
+
 function EntryProduct({ entry }: { entry: LaxMoneyEntryV1 }) {
   const product = moneyProductOf(entry);
   return <ProductName product={product}>{PRODUCT_LABELS[product]}</ProductName>;
@@ -187,7 +197,10 @@ function Ledger({ ledger }: { ledger: LaxMoneyEntryV1[] }) {
                     {entry.business.legalName}
                   </span>
                 </TableCell>
-                <TableCell>{MONEY_SECTION_LABELS[moneySectionOf(entry)]}</TableCell>
+                <TableCell>
+                  {MONEY_SECTION_LABELS[moneySectionOf(entry)]}
+                  <StillToSendNote entry={entry} />
+                </TableCell>
                 <TableCell>
                   <EntryStatus entry={entry} />
                 </TableCell>
@@ -212,6 +225,7 @@ function Ledger({ ledger }: { ledger: LaxMoneyEntryV1[] }) {
             <p className="text-sm">
               <EntryProduct entry={entry} /> · {MONEY_SECTION_LABELS[moneySectionOf(entry)]}
             </p>
+            <StillToSendNote entry={entry} />
             <p className="text-xs text-on-surface-variant">{entry.business.legalName}</p>
             <p className="text-xs text-on-surface-variant">
               {formatDate(entry.occurredAt)} · <EntryLink entry={entry} />

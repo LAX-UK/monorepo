@@ -1,4 +1,9 @@
-import { type AmountOwedEntry, decisivePaymentByLot } from "@auction/domain";
+import {
+  type AmountOwedEntry,
+  type StillToSend,
+  decisivePaymentByLot,
+  stillToSendByLot,
+} from "@auction/domain";
 import type {
   LaxBusinessV1,
   LaxCostLineV1,
@@ -35,6 +40,38 @@ const PAYMENT_CURRENCY = "GBP";
 
 /** What the account owes, by lot: the one reading Purchases, the header chip and the menu share. */
 export type BidOwedByLot = ReadonlyMap<string, AmountOwedEntry>;
+
+/** What a part-funded bank transfer still has to deliver, by lot. */
+export type BidStillToSendByLot = ReadonlyMap<string, StillToSend>;
+
+/**
+ * The share of a part-funded bank transfer each of its invoices still has to send. Only an invoice
+ * whose deciding payment is on its way inside such a transfer carries one; amounts stay in whole
+ * pence from the database, and the shares are worked out once by the domain.
+ */
+export function stillToSendOf(payments: readonly BidPaymentFact[]): BidStillToSendByLot {
+  const groups = new Map<string, Parameters<typeof stillToSendByLot>[0][number]>();
+  for (const payment of decisivePaymentByLot(payments).values()) {
+    const group = payment.group;
+    const amountPence = toPence(payment.amount);
+    const totalPence = group ? toPence(group.totalAmount) : null;
+    const receivedPence = group ? toPence(group.amountReceived) : null;
+    if (!group || amountPence === null || totalPence === null || receivedPence === null) continue;
+    const known = groups.get(group.id) ?? {
+      id: group.id,
+      status: group.status,
+      rail: group.checkoutRail === "card" ? ("card" as const) : ("gb_bank_transfer" as const),
+      totalPence,
+      receivedPence,
+      members: [],
+    };
+    groups.set(group.id, {
+      ...known,
+      members: [...known.members, { lotId: payment.lotId, status: payment.status, amountPence }],
+    });
+  }
+  return stillToSendByLot([...groups.values()]);
+}
 
 /** Fulfilment stages before the work has reached the buyer. */
 const IN_FULFILMENT_STATUSES: ReadonlySet<string> = new Set([
@@ -96,8 +133,11 @@ function wonLotStatus(
   owed: AmountOwedEntry | undefined,
   payment: BidPaymentFact | undefined,
   fulfilmentStatus: string | null,
+  stillToSend: StillToSend | undefined,
 ): LaxPortfolioItemV1["status"] | null {
   if (owed) return owed.state === "cancelled" ? null : "awaiting_payment";
+  // A bank transfer that has delivered only part of the payment still leaves money to send.
+  if (stillToSend) return "awaiting_payment";
   if (payment?.status === "authorized") return "payment_confirming";
   if (payment?.status !== "captured") return null;
   return fulfilmentStatus !== null && IN_FULFILMENT_STATUSES.has(fulfilmentStatus)
@@ -105,8 +145,17 @@ function wonLotStatus(
     : "owned";
 }
 
-/** The amount due as the contract carries it, or null when no readable amount is known. */
-function owedOf(owed: AmountOwedEntry | undefined): LaxPortfolioOwedV1 | null {
+/**
+ * The amount due as the contract carries it, or null when no readable amount is known. A work in
+ * a part-funded bank transfer owes its share of what is left to send (never both).
+ */
+function owedOf(
+  owed: AmountOwedEntry | undefined,
+  stillToSend?: StillToSend,
+): LaxPortfolioOwedV1 | null {
+  if (!owed && stillToSend) {
+    return { amount: stillToSend.pence, currency: PAYMENT_CURRENCY, state: "still_to_send" };
+  }
   if (!owed || owed.state === "cancelled") return null;
   const amount = toPence(owed.amountDue);
   if (amount === null) return null;
@@ -122,17 +171,19 @@ function wonLotItem(
   lot: BidWonLotFact,
   payment: BidPaymentFact | undefined,
   owedEntry: AmountOwedEntry | undefined,
+  stillToSend: StillToSend | undefined,
   ctx: BidPortfolioContext,
 ): LaxPortfolioItemV1 | null {
-  const status = wonLotStatus(owedEntry, payment, lot.fulfilmentStatus);
+  const status = wonLotStatus(owedEntry, payment, lot.fulfilmentStatus, stillToSend);
   // A refunded, cancelled or ended purchase is not a holding; it still appears in the money ledger.
   if (!status) return null;
 
-  const owed = owedOf(owedEntry);
+  const owed = owedOf(owedEntry, stillToSend);
   const actions: LaxPortfolioActionV1[] = [];
   if (status === "awaiting_payment") {
-    // Payment cannot start while checks are open, so no pay link is offered until they clear.
-    if (owedEntry?.state !== "in-review") {
+    // Payment cannot start while checks are open, so no pay link is offered until they clear. A
+    // transfer under way is finished by sending the rest of it, not by paying again.
+    if (owedEntry?.state !== "in-review" && !stillToSend) {
       actions.push({ kind: "pay", href: `${ctx.webOrigin}/purchases/checkout/${lot.lotId}` });
     }
   } else if (status !== "payment_confirming") {
@@ -208,8 +259,15 @@ export function buildBidPortfolioItems(
   owed: BidOwedByLot,
 ): LaxPortfolioItemV1[] {
   const paymentByLot = decisivePaymentByLot(facts.payments);
+  const stillToSend = stillToSendOf(facts.payments);
   const won = facts.wonLots.flatMap((lot) => {
-    const item = wonLotItem(lot, paymentByLot.get(lot.lotId), owed.get(lot.lotId), ctx);
+    const item = wonLotItem(
+      lot,
+      paymentByLot.get(lot.lotId),
+      owed.get(lot.lotId),
+      stillToSend.get(lot.lotId),
+      ctx,
+    );
     return item ? [item] : [];
   });
   const consigned = facts.submissions.map(
@@ -245,10 +303,11 @@ function moneyStatus(status: string): LaxMoneyEntryV1["status"] {
 function owedEntries(
   wonLots: readonly BidWonLotFact[],
   owed: BidOwedByLot,
+  stillToSend: BidStillToSendByLot,
   ctx: BidPortfolioContext,
 ): LaxMoneyEntryV1[] {
   return wonLots.flatMap((lot): LaxMoneyEntryV1[] => {
-    const due = owedOf(owed.get(lot.lotId));
+    const due = owedOf(owed.get(lot.lotId), stillToSend.get(lot.lotId));
     if (!due) return [];
     return [
       {
@@ -261,6 +320,7 @@ function owedEntries(
         occurredAt: lot.endedAt.toISOString(),
         product: "bid",
         href: purchasesPage(ctx),
+        ...(due.state === "still_to_send" ? { stillToSend: true } : {}),
       },
     ];
   });
@@ -338,7 +398,7 @@ export function buildBidMoneyEntries(
   owed: BidOwedByLot,
 ): LaxMoneyEntryV1[] {
   return [
-    ...owedEntries(facts.wonLots, owed, ctx),
+    ...owedEntries(facts.wonLots, owed, stillToSendOf(facts.payments), ctx),
     ...facts.payments.flatMap((payment) => paymentEntries(payment, ctx)),
     ...facts.payouts.flatMap((payout) => payoutEntries(payout, ctx)),
   ];

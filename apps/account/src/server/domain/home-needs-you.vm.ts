@@ -27,7 +27,7 @@ export type NeedsYouLineVm = {
 export type NeedsYouVm = { lines: NeedsYouLineVm[]; moreCount: number };
 
 /** Payments come first: they are the one thing a person can lose money or standing over. */
-const PAYMENT_KINDS: ReadonlySet<AttentionKind> = new Set(["pay", "held", "confirming"]);
+const PAYMENT_KINDS: ReadonlySet<AttentionKind> = new Set(["pay", "held", "send", "confirming"]);
 
 const owedAmount = (row: AttentionRowVm): string | null =>
   row.owed ? formatMinorUnits(row.owed.amount, row.owed.currency) : null;
@@ -35,6 +35,7 @@ const owedAmount = (row: AttentionRowVm): string | null =>
 const META_SUFFIX: Record<AttentionKind, (row: AttentionRowVm) => string | null> = {
   pay: owedAmount,
   held: (row) => [owedAmount(row), "waiting on identity checks"].filter(Boolean).join(" · "),
+  send: (row) => [owedAmount(row), "still to send"].filter(Boolean).join(" "),
   confirming: () => "payment being confirmed",
   track: () => "awaiting shipment",
   payout: () => "payout pending",

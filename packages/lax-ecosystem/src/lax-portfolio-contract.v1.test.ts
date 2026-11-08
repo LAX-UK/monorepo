@@ -93,6 +93,15 @@ describe("owed", () => {
     ).toBe(true);
   });
 
+  it("accepts the rest of a part-funded transfer as still to send", () => {
+    expect(
+      Value.Check(
+        LaxPortfolioItemV1,
+        owedItem({ amount: 570_100, currency: "GBP", state: "still_to_send" }),
+      ),
+    ).toBe(true);
+  });
+
   it("stays optional, so an older product still validates", () => {
     expect(Value.Check(LaxPortfolioItemV1, item({ status: "awaiting_payment" }))).toBe(true);
     expect(Value.Check(LaxPortfolioItemV1, item({ status: "payment_confirming" }))).toBe(true);
@@ -113,6 +122,13 @@ describe("LaxMoneyEntryV1", () => {
   it("accepts a valid entry and rejects an unknown direction", () => {
     expect(Value.Check(LaxMoneyEntryV1, moneyEntry())).toBe(true);
     expect(Value.Check(LaxMoneyEntryV1, { ...moneyEntry(), direction: "netted" })).toBe(false);
+  });
+
+  it("marks an amount owed as the rest of a part-funded transfer, and only with a boolean", () => {
+    const owed = { ...moneyEntry(), direction: "owed_by_you", status: "pending" };
+    expect(Value.Check(LaxMoneyEntryV1, { ...owed, stillToSend: true })).toBe(true);
+    expect(Value.Check(LaxMoneyEntryV1, owed)).toBe(true);
+    expect(Value.Check(LaxMoneyEntryV1, { ...owed, stillToSend: "yes" })).toBe(false);
   });
 });
 

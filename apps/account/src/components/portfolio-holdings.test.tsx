@@ -79,6 +79,20 @@ describe("PortfolioHoldings", () => {
     expect(render(works)).toContain("Due");
   });
 
+  it("labels the rest of a part-paid transfer as still to send, not as due or paid", () => {
+    const html = render([
+      item({
+        id: "lot 7",
+        title: "Red Field",
+        status: "awaiting_payment",
+        owed: { amount: 389_779, currency: "GBP", state: "still_to_send" },
+      }),
+    ]);
+    expect(html).toContain("Still to send");
+    expect(html).toContain("£3,897.79");
+    expect(html).not.toMatch(/>Due</);
+  });
+
   it("shows the total due for an unpaid work, not its hammer price, and notes a hold", () => {
     const unpaid = item({
       id: "lot 9",
