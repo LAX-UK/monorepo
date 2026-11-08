@@ -1,5 +1,6 @@
 "use client";
 
+import { DashboardListPage } from "@/components/dashboard/dashboard-list-page";
 import { Button, EmptyState, type EmptyStateProps, Notice, Skeleton } from "@auction/ui/lax";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
@@ -61,8 +62,25 @@ export function ListLoadError({ onRetry }: { onRetry?: () => void }) {
 
 const ROWS = ["a", "b", "c", "d"] as const;
 
-/** The list loading: rows of the size that is coming, so nothing jumps when it arrives. */
-export function ListSkeleton({ label, rows = 3 }: { label: string; rows?: number }) {
+/**
+ * The list loading: rows of the size that is coming, so nothing jumps when it arrives. Give it
+ * the page's `title` when it stands in for the whole page: the h1 shows at once, in the place the
+ * real heading takes, so the heading does not jump and screen readers have one while it loads.
+ */
+export function ListSkeleton({
+  label,
+  rows = 3,
+  title,
+}: {
+  label: string;
+  rows?: number;
+  title?: string;
+}) {
+  const list = <ListSkeletonRows label={label} rows={rows} />;
+  return title ? <DashboardListPage title={title}>{list}</DashboardListPage> : list;
+}
+
+function ListSkeletonRows({ label, rows }: { label: string; rows: number }) {
   return (
     <output aria-label={label} className={`block ${CARD}`}>
       <ul className="divide-y divide-lax-line">

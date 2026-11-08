@@ -34,6 +34,8 @@ export type InsertPayoutLineInput = {
 export type ListPayoutsFilter = {
   legalEntityId?: string;
   status?: Payout["status"];
+  /** A payout reference (PO-YYYY-XXXXXXXX), the start of a payout id, or a seller name. */
+  search?: string;
   limit?: number;
   offset?: number;
 };
