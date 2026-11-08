@@ -17,7 +17,7 @@ import {
 } from "react";
 
 /** What the last attempt to pay left the person to read. */
-export type PayFeedback = { tone: "warning" | "danger"; message: string };
+export type PayFeedback = { tone: "warning" | "danger"; message: string; detail?: string };
 
 /** How long the secure payment page may take to open before the person is told and can retry. */
 export const OPEN_TIMEOUT_MS = 8_000;
@@ -68,18 +68,30 @@ function remember(key: string, method: PayMethod): void {
 export function PaySessionProvider({
   methods,
   storageKey,
+  returned,
   children,
 }: {
   methods: PayMethodsVm | null;
   /** Identifies this payment (its lots), so a remembered method is never used for another. */
   storageKey: string;
+  /** The payment page sent the person back without paying (see `PayPageVm.returned`). */
+  returned: { title: string; detail: string; cleanHref: string } | null;
   children: ReactNode;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [opening, setOpening] = useState(false);
   const [openTimedOut, setOpenTimedOut] = useState(false);
-  const [feedback, setFeedback] = useState<PayFeedback | null>(null);
+  const [feedback, setFeedback] = useState<PayFeedback | null>(
+    returned ? { tone: "danger", message: returned.title, detail: returned.detail } : null,
+  );
+
+  // The note is shown once: take it out of the address, so a refresh or a changed plan later does
+  // not show it again. The note stays on screen (it is state, not the address).
+  const cleanHref = returned?.cleanHref ?? null;
+  useEffect(() => {
+    if (cleanHref) router.replace(cleanHref, { scroll: false });
+  }, [cleanHref, router]);
   const [method, setMethod] = useState<PayMethod>(methods?.defaultMethod ?? "card");
   const lastAction = useRef<PayNowAction | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);

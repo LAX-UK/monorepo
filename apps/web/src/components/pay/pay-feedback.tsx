@@ -43,7 +43,9 @@ export function PayFeedbackNotice() {
           {PAY_COPY.openFailedBody}
         </Notice>
       ) : feedback ? (
-        <Notice tone={feedback.tone} alert title={feedback.message} />
+        <Notice tone={feedback.tone} alert title={feedback.message}>
+          {feedback.detail}
+        </Notice>
       ) : null}
     </div>
   );

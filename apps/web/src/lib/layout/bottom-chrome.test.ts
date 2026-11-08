@@ -1,7 +1,6 @@
 import {
   bulkBarBottomOffset,
   consentOffset,
-  isFixedPayBarRoute,
   isHideDashboardTabBarRoute,
   pageBottomPadding,
   showsPublicBottomBar,
@@ -18,32 +17,26 @@ describe("bottom-chrome", () => {
     const padding = pageBottomPadding({
       consentBannerVisible: true,
       dashboardTabBarActive: false,
-      fixedPayBarRoute: false,
       hideDashboardTabBar: false,
     });
     expect(padding).toBe("1.5rem");
   });
 
-  it("detects the Pay page, which carries its own pay bar", () => {
-    expect(isFixedPayBarRoute("/purchases/pay")).toBe(true);
-    expect(isFixedPayBarRoute("/purchases/checkout/abc-123")).toBe(false);
-    expect(isFixedPayBarRoute("/purchases")).toBe(false);
-    // The tab bar yields only while the page's own bar is mounted, not on every state of the page.
+  it("keeps the tab bar on the Pay page", () => {
+    // It yields only while the page's own bar is mounted, and the page reserves that space itself.
     expect(isHideDashboardTabBarRoute("/purchases/pay")).toBe(false);
     expect(isHideDashboardTabBarRoute("/selling/new")).toBe(true);
     expect(isHideDashboardTabBarRoute("/selling/consignments/abc-123")).toBe(true);
     expect(isHideDashboardTabBarRoute("/selling/consignments")).toBe(false);
   });
 
-  it("uses pay bar padding on the Pay page", () => {
+  it("reserves the tab bar's height on the Pay page, and no more", () => {
     const padding = pageBottomPadding({
       consentBannerVisible: false,
       dashboardTabBarActive: true,
-      fixedPayBarRoute: true,
-      hideDashboardTabBar: true,
+      hideDashboardTabBar: false,
     });
-    expect(padding).toContain("4.5rem");
-    expect(padding).not.toContain("--bottom-nav-height");
+    expect(padding).toContain("--bottom-nav-height");
   });
 
   it("computes bulk bar offset when dashboard tab bar is active", () => {

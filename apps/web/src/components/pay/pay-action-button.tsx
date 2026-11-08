@@ -36,7 +36,7 @@ export function PayActionButton({
       className={className}
       loading={pending}
       // The bar shows the total beside a short label; assistive technology still reads the amount.
-      {...(compact ? { "aria-label": words.label } : {})}
+      {...(compact && !pending ? { "aria-label": words.label } : {})}
       onClick={() => pay(action)}
     >
       {pending ? PAY_COPY.opening : compact ? words.barLabel : words.label}

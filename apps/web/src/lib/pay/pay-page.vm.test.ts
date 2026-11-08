@@ -468,17 +468,21 @@ describe("nothing to pay: why", () => {
 });
 
 describe("a return from the payment page", () => {
-  it("says a payment that was not completed charged nothing, above everything else", () => {
+  it("says a payment that was not completed charged nothing, as a note shown once", () => {
     const vm = build(one(), { returned: "cancelled" });
-    expect(vm.notices[0]).toEqual({
-      tone: "danger",
+    expect(vm.returned).toEqual({
       title: "Payment not completed. You were not charged.",
       detail:
         "Your bank's check (3D Secure) was not finished, or the card was declined. Try again, use another card, or pay by UK bank transfer.",
-      alert: true,
-      focus: true,
+      cleanHref: RETURN_TO,
     });
+    // It is the page's alert, not one of the notices that are read again on every refresh.
+    expect(vm.notices).toEqual([]);
     expect(vm.action?.kind).toBe("pay");
+  });
+
+  it("has no note when nothing was returned", () => {
+    expect(build(one()).returned).toBeNull();
   });
 
   it("words the card action as Try again, with the total, and leaves bank transfer as it was", () => {
@@ -496,7 +500,8 @@ describe("a return from the payment page", () => {
     const vm = build(planOf([], { leftOut: [{ lotId: LOT_A, reason: "paid" }] }), {
       returned: "cancelled",
     });
-    expect(vm.notices[0]?.title).toBe("Payment not completed. You were not charged.");
+    expect(vm.returned?.title).toBe("Payment not completed. You were not charged.");
+    expect(vm.notices.map((n) => n.title)).not.toContain(vm.returned?.title);
   });
 });
 
