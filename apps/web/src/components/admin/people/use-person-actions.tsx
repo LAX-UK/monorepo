@@ -236,7 +236,7 @@ export function usePersonActions(access: PersonActionAccess) {
       ask({
         title: `Cancel ${person.name}'s email change?`,
         description:
-          "The link already emailed to the new address stops working and the address stays as it is. They stay signed out until they sign in again. If no change is waiting, nothing happens.",
+          "The link already emailed to the new address stops working and the address stays as it is. Any sessions ended when the change started stay ended. We tell them by email that LAX staff cancelled it.",
         confirmLabel: "Cancel email change",
         cancelLabel: "Keep it",
         reason: {

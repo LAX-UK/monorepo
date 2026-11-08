@@ -125,7 +125,41 @@ export class StaffEmailChangeService {
       { subjectId, actorSubjectId: request.actorSubjectId, reason: request.reason },
       "staff_assisted_email_change_cancelled",
     );
+    await this.tellAccountHolder(subjectId, subject);
     return { ok: true };
+  }
+
+  /**
+   * Tells the address the account keeps that staff cancelled the pending change. The cancellation
+   * has already happened and is recorded, so a failure to queue the email is logged, never turned
+   * into a failed cancel.
+   */
+  private async tellAccountHolder(
+    subjectId: string,
+    subject: { email: string; name: string },
+  ): Promise<void> {
+    try {
+      await this.deps.email.enqueue({
+        template: "staff-email-change-cancelled-notice",
+        to: subject.email,
+        userId: subjectId,
+        category: "auth",
+        vars: {
+          userName: subject.name,
+          whenDisplay: formatLondonTime(this.now()),
+          deviceLabel: null,
+          secureAccountUrl: this.deps.secureAccountUrl,
+        },
+      });
+    } catch (error) {
+      this.deps.audit(
+        {
+          subjectId,
+          error: error instanceof Error ? error.message : String(error),
+        },
+        "staff_assisted_email_change_cancel_notice_failed",
+      );
+    }
   }
 
   private async sendNotices(input: {

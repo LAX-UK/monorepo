@@ -18,6 +18,18 @@ const CONFIRM = {
 } as const;
 
 describe("staff-assisted email change emails", () => {
+  it("tells the account's address that staff cancelled a pending change, and how to secure it", async () => {
+    const { newEmail: _newEmail, ...vars } = NOTICE;
+    const rendered = await renderEmail("staff-email-change-cancelled-notice", vars);
+    expect(rendered.subject).toBe("Your email address change was cancelled");
+    for (const body of [rendered.html, rendered.text]) {
+      expect(body).toContain("A pending change of your email address was cancelled by LAX staff");
+      expect(body).toContain("https://account.lax.bid/account/security");
+      expect(body).toContain("support@lax.bid");
+    }
+    expect(rendered.html).toContain("lax-account-lockup");
+  });
+
   it("tells the old address who is changing it, to what, and how to stop it", async () => {
     const rendered = await renderEmail("staff-email-change-notice", NOTICE);
     expect(rendered.subject).toBe("LAX client services are changing your account email");

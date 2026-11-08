@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { IdentityIssuerClientError } from "../../infrastructure/http-identity-issuer.client.js";
 import {
   AdminStaffEmailChangeService,
-  STAFF_EMAIL_CHANGE_CANCELLED_EVENT,
+  STAFF_EMAIL_CHANGE_CANCEL_REQUESTED_EVENT,
   STAFF_EMAIL_CHANGE_KYC_VIEWED_EVENT,
   STAFF_EMAIL_CHANGE_REQUESTED_EVENT,
   type StaffEmailChangeActor,
@@ -237,7 +237,7 @@ describe("AdminStaffEmailChangeService.cancel", () => {
 
     expect(result._unsafeUnwrap()).toEqual({ cancelled: true });
     expect(audit.publish).toHaveBeenCalledWith({
-      eventType: STAFF_EMAIL_CHANGE_CANCELLED_EVENT,
+      eventType: STAFF_EMAIL_CHANGE_CANCEL_REQUESTED_EVENT,
       aggregateType: "user",
       aggregateId: TARGET_ID,
       actorUserId: SUPPORT.userId,

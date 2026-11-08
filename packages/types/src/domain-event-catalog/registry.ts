@@ -112,6 +112,7 @@ export const ALL_LIVE_DOMAIN_EVENT_TYPES = [
   "auth.two_factor_policy_changed",
   "auth.two_factor_reset_by_staff",
   "auth.email_change_requested_by_staff",
+  "auth.email_change_cancel_requested_by_staff",
   "auth.email_change_kyc_record_viewed",
   "auth.two_factor_security_email",
   "bid.first_for_user",

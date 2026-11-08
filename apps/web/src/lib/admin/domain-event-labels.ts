@@ -33,6 +33,7 @@ const LABELS: Record<string, string> = {
   "auth.two_factor_policy_changed": "Two-step verification policy changed",
   "auth.two_factor_reset_by_staff": "Two-step verification reset by staff",
   "auth.email_change_requested_by_staff": "Email change started by staff",
+  "auth.email_change_cancel_requested_by_staff": "Email change cancelled by staff",
   "auth.email_change_kyc_record_viewed": "KYC record shown for an email change",
   "auth.two_factor_security_email": "Two-step security email sent",
 

@@ -19,7 +19,8 @@ import type { IAuthAuditPublisher } from "../interfaces/auth-audit-publisher.js"
 import type { IIdentityStaffEmailChangeClient } from "../interfaces/identity-issuer-client.js";
 
 export const STAFF_EMAIL_CHANGE_REQUESTED_EVENT = "auth.email_change_requested_by_staff";
-export const STAFF_EMAIL_CHANGE_CANCELLED_EVENT = "auth.email_change_cancelled_by_staff";
+export const STAFF_EMAIL_CHANGE_CANCEL_REQUESTED_EVENT =
+  "auth.email_change_cancel_requested_by_staff";
 export const STAFF_EMAIL_CHANGE_KYC_VIEWED_EVENT = "auth.email_change_kyc_record_viewed";
 
 export type StaffEmailChangeActor = {
@@ -168,7 +169,7 @@ export class AdminStaffEmailChangeService {
       return err({ status: 403, message: "Only a platform admin can change a staff account" });
     }
     await this.deps.audit.publish({
-      eventType: STAFF_EMAIL_CHANGE_CANCELLED_EVENT,
+      eventType: STAFF_EMAIL_CHANGE_CANCEL_REQUESTED_EVENT,
       aggregateType: "user",
       aggregateId: targetUserId,
       actorUserId: actor.userId,

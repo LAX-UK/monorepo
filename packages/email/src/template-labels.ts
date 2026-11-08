@@ -35,6 +35,7 @@ export const EMAIL_TEMPLATE_LABELS: Readonly<Record<TemplateName, string>> = {
   "change-email": "Confirm your new email address",
   "staff-email-change-confirm": "Confirm your new email address (client services)",
   "staff-email-change-notice": "Email address being changed by client services",
+  "staff-email-change-cancelled-notice": "Email address change cancelled by LAX staff",
   "account-deletion-requested": "Account deletion requested",
   "account-deletion-cancelled": "Account deletion cancelled",
   "data-export-requested": "Data download requested",

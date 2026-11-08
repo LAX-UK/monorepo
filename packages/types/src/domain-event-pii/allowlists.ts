@@ -390,6 +390,8 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
     "kycSessionId",
     "proofReference",
   ]),
+  /** Why staff asked to withdraw a pending change: a staff-typed note. No address is recorded. */
+  "auth.email_change_cancel_requested_by_staff": new Set(["reason"]),
   /** Staff were shown the verified name and date of birth; only the record's id is kept. */
   "auth.email_change_kyc_record_viewed": new Set(["kycSessionId"]),
   "auth.two_factor_security_email": new Set(["kind"]),
