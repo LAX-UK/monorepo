@@ -405,6 +405,22 @@ describe("migrate-roles invariants", () => {
     expect([...WORKER_READ_TABLES]).toContain("identity_lifecycle_outbox");
   });
 
+  it("the worker reads collection hours, rules and bookings but never writes them", () => {
+    const tables = [
+      "collection_place",
+      "collection_weekly_hours",
+      "collection_exception",
+      "collection_booking",
+      "collection_booking_lot",
+    ];
+    for (const table of tables) {
+      expect([...WORKER_READ_TABLES]).toContain(table);
+      expect([...WORKER_FULL_TABLES]).not.toContain(table);
+      expect([...API_DENY_TABLES]).not.toContain(table);
+      expect([...API_READ_TABLES]).not.toContain(table);
+    }
+  });
+
   it("denies api_app and worker_app on shop append-only commerce tables", () => {
     for (const table of SHOP_COMMERCE_APPEND_ONLY_TABLES) {
       expect([...API_DENY_TABLES]).toContain(table);

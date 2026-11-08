@@ -293,6 +293,12 @@ export const WORKER_READ_TABLES = [
   "private_sale_deal",
   /** The payment expiry job closes each invoice's open Checkout sessions before cancelling it. */
   "payment_checkout_session",
+  /** The collection reminder sweep reads the next day's visits, their lots and the place's rules. */
+  "collection_place",
+  "collection_weekly_hours",
+  "collection_exception",
+  "collection_booking",
+  "collection_booking_lot",
 ];
 // Postgres requires UPDATE on the target table for `select ... for update` row locks even
 // when no rows are mutated. The projector runner pulls events with FOR UPDATE SKIP LOCKED,

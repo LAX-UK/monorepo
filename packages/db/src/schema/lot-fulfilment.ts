@@ -34,6 +34,10 @@ export const lotFulfilment = pgTable(
     shippingCarrier: text("shipping_carrier"),
     trackingNumber: text("tracking_number"),
     collectedBy: text("collected_by"),
+    /** The staff member who handed the work over. */
+    collectedByUserId: text("collected_by_user_id").references(() => user.id, {
+      onDelete: "set null",
+    }),
     collectedAt: timestamp("collected_at", { mode: "date", withTimezone: true }),
     addressSnapshot: jsonb("address_snapshot").$type<Record<string, unknown>>(),
     notes: text("notes"),
