@@ -14,9 +14,9 @@ const journal = JSON.parse(read("meta/_journal.json")) as {
 };
 
 describe("migration 0326 private sale deal register link", () => {
-  it("is journalled one day after 0322", () => {
+  it("is journalled one day after 0325", () => {
     const entry = journal.entries.find((e) => e.tag === "0326_private_sale_deal_register_fk");
-    const previous = journal.entries.find((e) => e.tag === "0322_payment_group_received");
+    const previous = journal.entries.find((e) => e.tag === "0325_payment_group_delivery");
     expect(entry?.idx).toBe((previous?.idx ?? 0) + 1);
     expect(entry?.when).toBe((previous?.when ?? 0) + 24 * 60 * 60 * 1000);
   });
