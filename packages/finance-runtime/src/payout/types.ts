@@ -1,16 +1,34 @@
 import type { PayoutLine, StripeConnectRequirementError } from "@auction/types";
 
+/**
+ * A settlement to run. The period is worked out inside the settlement, after the entity is locked,
+ * so two runs can never be handed overlapping periods: it ends at `periodEnd` and starts where the
+ * entity's last settled period ended. `periodStart` only asks for a later start.
+ */
 export type CreateSettlementInput = {
+  legalEntityId: string;
+  /** Inclusive UTC end of the period: the moment the run is made. */
+  periodEnd: Date;
+  /** A start later than where the last settled period ended; left out, the run continues from it. */
+  periodStart?: Date;
+  /** Why staff ran it, kept in the audit event. */
+  reason?: string;
+};
+
+/** The period the settlement covers, once it has been worked out. */
+export type ResolvedSettlementInput = {
   legalEntityId: string;
   periodStart: Date;
   periodEnd: Date;
-  /** Why staff ran it, kept in the audit event. */
   reason?: string;
 };
 
 export type CreateSettlementResult =
   | { ok: true; payout: import("@auction/types").Payout & { lines: PayoutLine[] } }
-  | { ok: false; reason: "no_pending_payments" };
+  | {
+      ok: false;
+      reason: "no_pending_payments" | import("@auction/domain").SettlementPeriodRefusal;
+    };
 
 export type BulkPayoutSettlementItemResult = {
   legalEntityId: string;

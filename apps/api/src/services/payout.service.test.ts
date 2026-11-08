@@ -155,7 +155,6 @@ describe("PayoutService.createSettlement", () => {
     const svc = serviceFor(makeRepo());
     const r = await svc.createSettlement(ACTOR_ID, {
       legalEntityId: ENTITY_ID,
-      periodStart: new Date(0),
       periodEnd: new Date(),
     });
     expect(r.ok).toBe(false);
