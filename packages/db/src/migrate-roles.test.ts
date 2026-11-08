@@ -417,6 +417,14 @@ describe("migrate-roles invariants", () => {
     expect([...SHOP_COMMERCE_TABLES]).toContain("shop_admin_command");
   });
 
+  it("keeps the Shop's delivery regions to shop_app, denied to the Bid API and the worker", () => {
+    for (const table of ["shop_delivery_region", "shop_delivery_restricted_country"]) {
+      expect([...SHOP_COMMERCE_TABLES]).toContain(table);
+      expect([...API_DENY_TABLES]).toContain(table);
+      expect([...WORKER_DENY_TABLES]).toContain(table);
+    }
+  });
+
   it("keeps each tool's saved views to its own role", () => {
     // LAX Admin's views belong to shop_app alone.
     expect([...SHOP_COMMERCE_TABLES]).toContain("shop_staff_saved_view");

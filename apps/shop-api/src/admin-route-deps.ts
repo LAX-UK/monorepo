@@ -4,6 +4,7 @@ import type { ArtistApplicationReviewService } from "./application/artist-applic
 import type { ArtworkRegisterReviewService } from "./application/artwork-register/artwork-register-review.service.js";
 import type { OfferOnLaxArtService } from "./application/artwork-register/offer-on-lax-art.service.js";
 import type { ZohoLinkService } from "./application/artwork-register/zoho-link.service.js";
+import type { DeliveryRegionsService } from "./application/delivery-regions/delivery-regions.service.js";
 import type { EditionRunServices } from "./application/edition-runs/edition-run-services.js";
 import type { EnquiryInboxService } from "./application/enquiry-inbox.service.js";
 import type { GuestErasureService } from "./application/guest-erasure/guest-erasure.service.js";
@@ -147,6 +148,8 @@ export type AdminRoutesDeps = {
   artCache: ArtCacheInvalidator;
   /** Featured on home: the prints, artists and categories the home pages feature. */
   homeFeatures: HomeFeaturesService;
+  /** Where the Shop delivers: regions, lead times, fixed prices and countries not delivered to. */
+  deliveryRegions: DeliveryRegionsService;
   thirdPartySales: {
     recordSale(
       command: RecordThirdPartySaleCommand,
