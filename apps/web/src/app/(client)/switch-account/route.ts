@@ -84,7 +84,11 @@ export async function POST(request: Request) {
   };
   const to = field("to");
   const next = safeHopNext(field("next"));
-  const signedIn = await hopUser(request, to ? confirmSwitchHref(to, next) : next);
+  const reason = hopReasonOf(field(HOP_REASON_PARAM));
+  const signedIn = await hopUser(
+    request,
+    to ? confirmSwitchHref(to, next, reason ?? undefined) : next,
+  );
   if (signedIn instanceof Response) return signedIn;
-  return switchHop(to, next, true, null, hopReasonOf(field(HOP_REASON_PARAM)));
+  return switchHop(to, next, true, null, reason);
 }

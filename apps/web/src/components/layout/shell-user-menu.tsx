@@ -24,9 +24,20 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react
 
 const MENU_ID = "shell-account-menu";
 
+/**
+ * Rows that cannot take focus are skipped. The row being switched to is only aria-disabled and
+ * keeps focus during the switch, so it stays in the arrow order.
+ */
+function isDisabledItem(item: HTMLElement): boolean {
+  return item.matches(":disabled");
+}
+
 function menuItemsFromPanel(panel: HTMLElement | null): HTMLElement[] {
   if (!panel) return [];
-  return [...panel.querySelectorAll<HTMLElement>("[data-account-menu-item]")];
+  // A row that is disabled (an account mid-switch) cannot take focus, so the arrows skip it.
+  return [...panel.querySelectorAll<HTMLElement>("[data-account-menu-item]")].filter(
+    (item) => !isDisabledItem(item),
+  );
 }
 
 type ShellUserMenuProps = {

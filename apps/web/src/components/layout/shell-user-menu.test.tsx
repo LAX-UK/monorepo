@@ -142,6 +142,32 @@ describe("ShellUserMenu", () => {
       expect(items.indexOf(document.activeElement as HTMLElement)).toBe(2);
       expect(items.at(-1)).toHaveTextContent("Sign out");
     });
+
+    it("skips a disabled account row with the arrow keys, so they do not stall during a switch", async () => {
+      const trigger = openMenu();
+      // Another account's row is disabled while a switch runs.
+      const personal = screen.getByRole("menuitem", { name: /Personal/ });
+      personal.setAttribute("disabled", "");
+
+      fireEvent.keyDown(trigger, { key: "ArrowDown" });
+      const current = screen.getByRole("menuitem", { name: /Northbank Gallery/ });
+      await waitFor(() => expect(current).toHaveFocus());
+
+      fireEvent.keyDown(current, { key: "ArrowDown" });
+      expect(document.activeElement).not.toBe(personal);
+      expect(document.activeElement).not.toBe(current);
+    });
+
+    it("keeps the row being switched to in the arrow order, since it holds focus", async () => {
+      const trigger = openMenu();
+      fireEvent.keyDown(trigger, { key: "ArrowDown" });
+      const current = screen.getByRole("menuitem", { name: /Northbank Gallery/ });
+      await waitFor(() => expect(current).toHaveFocus());
+      current.setAttribute("aria-disabled", "true");
+
+      fireEvent.keyDown(current, { key: "ArrowDown" });
+      expect(document.activeElement).not.toBe(current);
+    });
   });
 
   it("shows the role pill in sentence case at 12px", () => {
