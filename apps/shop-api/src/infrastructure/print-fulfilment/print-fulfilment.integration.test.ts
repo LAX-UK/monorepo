@@ -76,6 +76,8 @@ describe.skipIf(!hasShopIntegrationDb)("packing numbered prints", { timeout: 90_
     const runs = createEditionRunServices({
       uow: createDrizzleEditionRunUnitOfWork(uow),
       clock: { now: () => new Date() },
+      // Saving facts that name London Art Exchange as issuer; issuing is switched separately below.
+      laxCertificatesEnabled: () => true,
     });
     const fulfilment = createPrintFulfilmentServices({
       uow: createDrizzlePrintFulfilmentUnitOfWork(uow),
@@ -424,15 +426,57 @@ describe.skipIf(!hasShopIntegrationDb)("packing numbered prints", { timeout: 90_
     });
   });
 
-  it("holds a LAX certificate until the artist's authority is recorded", async () => {
+  it("issues a LAX certificate on the authority saved with the facts", async () => {
     const { fulfilment } = setup({ laxCertificates: true });
-    const artworkId = await runOfTwelve("authority", {
+    const artworkId = await runOfTwelve("authority-saved", {
       kind: "included",
       issuer: "lax",
       form: "digital",
       arrives: { kind: "with_print" },
       numberedToMatch: true,
+      authority: {
+        givenBy: "artist",
+        datedOn: "2026-09-12",
+        reference: "Letter of 12 September 2026",
+      },
     });
+    const { line } = await buyNextPrint(artworkId);
+    expect(
+      await fulfilment.confirm.confirm({
+        actorSubjectId: ACTOR,
+        idempotencyKey: key(),
+        orderLineId: line.id,
+        scanned: { source: "typed_label", value: "1/12" },
+      }),
+    ).toMatchObject({ outcome: "confirmed", certificate: { status: "issued" } });
+    const [facts] = await db
+      .select()
+      .from(shopEditionFacts)
+      .where(eq(shopEditionFacts.artworkId, artworkId));
+    expect(facts).toMatchObject({
+      certificateAuthorityGivenBy: "artist",
+      certificateAuthorityDatedOn: "2026-09-12",
+      certificateAuthorityReference: "Letter of 12 September 2026",
+      certificateAuthorityRecordedBy: ACTOR,
+    });
+    const [certificate] = await db
+      .select()
+      .from(shopCertificate)
+      .where(eq(shopCertificate.editionId, line.editionId ?? ""));
+    expect(certificate).toMatchObject({
+      issuer: "lax",
+      authorityReference: "Letter of 12 September 2026",
+    });
+  });
+
+  it("holds a LAX certificate on facts saved before the authority was recorded, until it is", async () => {
+    const { fulfilment } = setup({ laxCertificates: true });
+    const artworkId = await runOfTwelve("authority");
+    // Facts saved before authority was part of them: London Art Exchange as issuer, no record.
+    await db
+      .update(shopEditionFacts)
+      .set({ certificateIssuer: "lax", certificateForm: "digital" })
+      .where(eq(shopEditionFacts.artworkId, artworkId));
     const { orderId, line } = await buyNextPrint(artworkId);
     const confirm = () =>
       fulfilment.confirm.confirm({

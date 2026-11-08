@@ -17,6 +17,7 @@ import { isOpenRun } from "@auction/shop-domain";
 import {
   ChoiceFieldset,
   ChoiceRow,
+  DateInput,
   EnumSelect,
   Field,
   FieldRow,
@@ -458,11 +459,9 @@ function AuthorityToCertify({
           id={factsFieldId("authorityDatedOn")}
           disabled={disabled}
         >
-          <TextInput
-            type="date"
-            autoComplete="off"
-            value={values.authorityDatedOn}
-            onChange={(event) => onChange({ authorityDatedOn: event.target.value })}
+          <DateInput
+            value={values.authorityDatedOn || null}
+            onValueChange={(day) => onChange({ authorityDatedOn: day ?? "" })}
           />
         </Field>
       </FieldRow>
