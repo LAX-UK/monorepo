@@ -25,6 +25,7 @@ function setup(latest: { periodEnd: Date } | null, earliestCapturedAt: Date | nu
     // biome-ignore lint/suspicious/noExplicitAny: unused here.
     {} as any,
     { retry: vi.fn() },
+    { resolve: vi.fn() },
     () => NOW,
   );
   return { service, payouts, settlements };

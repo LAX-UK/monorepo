@@ -30,6 +30,7 @@ export const adminFinanceIssuesPayloadSchema = z
   .transform(
     (row): AdminFinanceIssuesPayload => ({
       failedPayoutCount: Number(row.failedPayoutCount ?? 0),
+      blockedPayoutCount: Number(row.blockedPayoutCount ?? 0),
       legalEntitiesWithStripeConnectRequirementsCount: Number(
         row.legalEntitiesWithStripeConnectRequirementsCount ?? 0,
       ),

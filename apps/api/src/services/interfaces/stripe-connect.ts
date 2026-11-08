@@ -52,6 +52,7 @@ export type InitiateTransferResult =
         | "no_connect_account"
         | "connect_not_ready"
         | "negative_net_amount"
+        | "transfer_blocked"
         | "stripe_error";
       stripeErrorCode?: string;
       stripeErrorMessage?: string;
@@ -112,6 +113,26 @@ export type InitiateTransferOptions = {
   retryFailed?: boolean;
 };
 
+/** Whether a Stripe transfer staff name can stand as a payout's transfer. */
+export type TransferAdoptionVerification =
+  | { ok: true; stripeTransferId: string }
+  | {
+      ok: false;
+      reason:
+        | "stripe_not_configured"
+        | "internal_misconfiguration"
+        | "payout_not_found"
+        | "no_connect_account"
+        | "transfer_not_found"
+        | "stripe_error"
+        | "transfer_belongs_to_other_payout"
+        | "transfer_not_for_this_payout"
+        | "transfer_reversed"
+        | "destination_mismatch"
+        | "currency_mismatch"
+        | "amount_mismatch";
+    };
+
 /** Payout transfer initiation + transfer webhooks. */
 export interface IConnectTransferInitiator {
   handleTransferEvent(event: Stripe.Event): Promise<{ processed: boolean }>;
@@ -119,6 +140,11 @@ export interface IConnectTransferInitiator {
     payoutId: string,
     opts?: InitiateTransferOptions,
   ): Promise<InitiateTransferResult>;
+  /** Fetches the transfer from Stripe and checks it against the payout; changes nothing. */
+  verifyTransferForAdoption(
+    payoutId: string,
+    stripeTransferId: string,
+  ): Promise<TransferAdoptionVerification>;
 }
 
 /** Initiates platform → seller Stripe Connect transfers for scheduled payouts. */
@@ -127,6 +153,10 @@ export interface IConnectTransferInitiationService {
     payoutId: string,
     opts?: InitiateTransferOptions,
   ): Promise<InitiateTransferResult>;
+  verifyTransferForAdoption(
+    payoutId: string,
+    stripeTransferId: string,
+  ): Promise<TransferAdoptionVerification>;
 }
 
 export interface IStripeConnectService

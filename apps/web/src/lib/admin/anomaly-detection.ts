@@ -99,6 +99,16 @@ export function detectAnomalies(
     );
   }
 
+  const blocked = metrics.payoutsBlocked ?? 0;
+  if (blocked > 0) {
+    push(
+      "blocked-payouts",
+      "critical",
+      `${blocked} payout${blocked === 1 ? "" : "s"} blocked, need${blocked === 1 ? "s" : ""} review`,
+      "/admin/payouts?status=transfer_blocked",
+    );
+  }
+
   const disputes = metrics.disputesOpen ?? 0;
   if (disputes > 0) {
     push(

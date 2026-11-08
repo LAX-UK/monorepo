@@ -1,7 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const createConnectTransfer = vi.fn();
-vi.mock("@auction/stripe-connect", () => ({ createConnectTransfer }));
+vi.mock("@auction/stripe-connect", () => ({
+  createConnectTransfer,
+  connectTransferBlockMessage: vi.fn(),
+  decideConnectTransfer: vi.fn().mockResolvedValue({ kind: "create" }),
+}));
 
 const { ConnectTransferInitiationService } = await import(
   "./connect-transfer-initiation.service.js"

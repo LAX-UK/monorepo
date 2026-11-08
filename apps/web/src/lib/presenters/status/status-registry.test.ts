@@ -53,6 +53,7 @@ const DOMAIN_STATUS_EXPECTATIONS: Partial<
     ["failed", "danger"],
     ["reversed", "danger"],
     ["clawback_pending", "danger"],
+    ["transfer_blocked", "danger"],
   ],
   registration: [
     ["approved", "success"],

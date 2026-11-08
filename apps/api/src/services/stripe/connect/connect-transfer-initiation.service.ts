@@ -1,6 +1,11 @@
 import type { IConnectTransferRepository } from "@auction/persistence/interfaces";
 import type { IPayoutRepository } from "@auction/persistence/interfaces";
-import { createConnectTransfer } from "@auction/stripe-connect";
+import {
+  checkTransferForAdoption,
+  connectTransferBlockMessage,
+  createConnectTransfer,
+  decideConnectTransfer,
+} from "@auction/stripe-connect";
 import type Stripe from "stripe";
 import StripeSdk from "stripe";
 import type { Env } from "../../../env.js";
@@ -14,6 +19,7 @@ import type {
   IConnectTransferInitiationService,
   InitiateTransferOptions,
   InitiateTransferResult,
+  TransferAdoptionVerification,
 } from "../../interfaces/stripe-connect.js";
 import { connectReadyFromCachedEntity } from "./connect-shared.js";
 
@@ -165,20 +171,75 @@ export class ConnectTransferInitiationService implements IConnectTransferInitiat
     }
 
     try {
-      const transfer = await executeWithStripeRetries(() =>
-        createConnectTransfer(stripe, {
+      // Stripe forgets idempotency keys after 24h, so a retry must look at what Stripe already
+      // holds before it creates anything. One shared decision serves every caller.
+      const transferGroup = `payout:${payoutId}`;
+      const decision = await executeWithStripeRetries(() =>
+        decideConnectTransfer(stripe, {
+          transferGroup,
+          payoutId: payout.id,
+          destinationAccountId,
           amountMinor: amountCents,
           currency: payout.currency,
-          destinationAccountId,
-          transferGroup: `payout:${payoutId}`,
-          ...(sourceChargeId ? { sourceChargeId } : {}),
-          metadata: {
-            payoutId: payout.id,
-            legalEntityId: payout.legalEntityId,
-          },
-          idempotencyKey: transferIdempotencyKey(payout, opts),
+          ...(payout.createdAt
+            ? { createdAfterUnix: Math.floor(payout.createdAt.getTime() / 1000) }
+            : {}),
         }),
       );
+      if (decision.kind === "block") {
+        const blocked = await this.payoutRepository.updateStatusIfCurrent(payoutId, startStatus, {
+          status: "transfer_blocked",
+          stripeTransferId: null,
+          processedAt: null,
+          failureReason: connectTransferBlockMessage(decision),
+        });
+        // Someone else moved the payout first: they own the outcome, so raise nothing.
+        if (!blocked) return { ok: false, reason: "payout_already_processed" };
+        this.logger.error(
+          { payoutId, reason: decision.reason, transferIds: decision.transferIds },
+          "payout_transfer_blocked",
+        );
+        recordMoneyPathEvent("payout_transfer_blocked");
+        if (this.domainEventSink) {
+          await this.domainEventSink.publish({
+            aggregateType: "payout",
+            aggregateId: payoutId,
+            eventType: "payout.transfer_blocked",
+            payload: {
+              payoutId,
+              legalEntityId: payout.legalEntityId,
+              reason: decision.reason,
+            },
+            actorUserId: null,
+            actingLegalEntityId: payout.legalEntityId,
+          });
+        }
+        return { ok: false, reason: "transfer_blocked" };
+      }
+      const adopted = decision.kind === "adopt";
+      const transfer =
+        decision.kind === "adopt"
+          ? decision.transfer
+          : await executeWithStripeRetries(() =>
+              createConnectTransfer(stripe, {
+                amountMinor: amountCents,
+                currency: payout.currency,
+                destinationAccountId,
+                transferGroup,
+                ...(sourceChargeId ? { sourceChargeId } : {}),
+                metadata: {
+                  payoutId: payout.id,
+                  legalEntityId: payout.legalEntityId,
+                },
+                idempotencyKey: transferIdempotencyKey(payout, opts),
+              }),
+            );
+      if (adopted) {
+        this.logger.warn(
+          { payoutId, stripeTransferId: transfer.id },
+          "payout_transfer_adopted_existing",
+        );
+      }
 
       const updated = await this.payoutRepository.updateStatusIfCurrent(payoutId, startStatus, {
         status: "in_transit",
@@ -219,6 +280,7 @@ export class ConnectTransferInitiationService implements IConnectTransferInitiat
             amountCents,
             currency: payout.currency,
             stripeConnectAccountId: entity.stripeConnectAccountId,
+            ...(adopted ? { adopted: true, adoptionSource: "stripe_transfer_group" } : {}),
           },
           actorUserId: null,
           actingLegalEntityId: payout.legalEntityId,
@@ -267,6 +329,42 @@ export class ConnectTransferInitiationService implements IConnectTransferInitiat
         stripeErrorMessage: errorMessage,
       };
     }
+  }
+
+  /**
+   * Fetches the transfer staff name from Stripe and checks it against the payout: same
+   * destination account, same currency, same amount, not reversed. Changes nothing.
+   */
+  async verifyTransferForAdoption(
+    payoutId: string,
+    stripeTransferId: string,
+  ): Promise<TransferAdoptionVerification> {
+    const stripe = this.stripe;
+    if (!stripe) return { ok: false, reason: "stripe_not_configured" };
+    if (!this.payoutRepository) return { ok: false, reason: "internal_misconfiguration" };
+    const payout = await this.payoutRepository.findById(payoutId);
+    if (!payout) return { ok: false, reason: "payout_not_found" };
+    const entity = await this.connectTransferRepository.findLegalEntityById(payout.legalEntityId);
+    if (!entity?.stripeConnectAccountId) return { ok: false, reason: "no_connect_account" };
+
+    let transfer: Stripe.Transfer;
+    try {
+      transfer = await executeWithStripeRetries(() => stripe.transfers.retrieve(stripeTransferId));
+    } catch (err) {
+      if (!(err instanceof StripeSdk.errors.StripeError)) throw err;
+      return {
+        ok: false,
+        reason: err.code === "resource_missing" ? "transfer_not_found" : "stripe_error",
+      };
+    }
+    const check = checkTransferForAdoption(transfer, {
+      payoutId: payout.id,
+      payoutCreatedAtUnix: Math.floor(payout.createdAt.getTime() / 1000),
+      destinationAccountId: entity.stripeConnectAccountId,
+      currency: payout.currency,
+      amountMinor: Math.round(Number.parseFloat(payout.netAmount) * 100),
+    });
+    return check.ok ? { ok: true, stripeTransferId: transfer.id } : check;
   }
 
   private async findSourceChargeForPayout(payoutId: string): Promise<string | null> {

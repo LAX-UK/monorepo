@@ -232,6 +232,7 @@ export class DrizzlePayoutRepository implements IPayoutRepository, IPayoutProces
             failed: sql<number>`count(*) filter (where ${payout.status} = 'failed')::int`,
             reversed: sql<number>`count(*) filter (where ${payout.status} = 'reversed')::int`,
             clawbackPending: sql<number>`count(*) filter (where ${payout.status} = 'clawback_pending')::int`,
+            transferBlocked: sql<number>`count(*) filter (where ${payout.status} = 'transfer_blocked')::int`,
             totalNet: sql<string>`coalesce(sum(${payout.netAmount})::text, '0')`,
             inFlightCount: sql<number>`count(*) filter (where ${payout.status} in ('scheduled', 'in_transit'))::int`,
             missingTransferRefCount: sql<number>`count(*) filter (where ${payout.status} in ('scheduled', 'in_transit') and (${payout.stripeTransferId} is null or btrim(${payout.stripeTransferId}) = ''))::int`,
@@ -240,7 +241,7 @@ export class DrizzlePayoutRepository implements IPayoutRepository, IPayoutProces
             clawbackCount: sql<number>`count(*) filter (where ${payout.status} = 'clawback_pending')::int`,
             failedCount: sql<number>`count(*) filter (where ${payout.status} = 'failed')::int`,
             reversedCount: sql<number>`count(*) filter (where ${payout.status} = 'reversed')::int`,
-            blockerPayoutCount: sql<number>`count(*) filter (where ${payout.failureReason} is not null or ${payout.statementGenerationError} is not null or ${payout.status} in ('clawback_pending', 'failed', 'reversed'))::int`,
+            blockerPayoutCount: sql<number>`count(*) filter (where ${payout.failureReason} is not null or ${payout.statementGenerationError} is not null or ${payout.status} in ('clawback_pending', 'failed', 'reversed', 'transfer_blocked'))::int`,
           })
           .from(payout)
           .where(where)
@@ -253,6 +254,7 @@ export class DrizzlePayoutRepository implements IPayoutRepository, IPayoutProces
             failed: sql<number>`count(*) filter (where ${payout.status} = 'failed')::int`,
             reversed: sql<number>`count(*) filter (where ${payout.status} = 'reversed')::int`,
             clawbackPending: sql<number>`count(*) filter (where ${payout.status} = 'clawback_pending')::int`,
+            transferBlocked: sql<number>`count(*) filter (where ${payout.status} = 'transfer_blocked')::int`,
             totalNet: sql<string>`coalesce(sum(${payout.netAmount})::text, '0')`,
             inFlightCount: sql<number>`count(*) filter (where ${payout.status} in ('scheduled', 'in_transit'))::int`,
             missingTransferRefCount: sql<number>`count(*) filter (where ${payout.status} in ('scheduled', 'in_transit') and (${payout.stripeTransferId} is null or btrim(${payout.stripeTransferId}) = ''))::int`,
@@ -261,7 +263,7 @@ export class DrizzlePayoutRepository implements IPayoutRepository, IPayoutProces
             clawbackCount: sql<number>`count(*) filter (where ${payout.status} = 'clawback_pending')::int`,
             failedCount: sql<number>`count(*) filter (where ${payout.status} = 'failed')::int`,
             reversedCount: sql<number>`count(*) filter (where ${payout.status} = 'reversed')::int`,
-            blockerPayoutCount: sql<number>`count(*) filter (where ${payout.failureReason} is not null or ${payout.statementGenerationError} is not null or ${payout.status} in ('clawback_pending', 'failed', 'reversed'))::int`,
+            blockerPayoutCount: sql<number>`count(*) filter (where ${payout.failureReason} is not null or ${payout.statementGenerationError} is not null or ${payout.status} in ('clawback_pending', 'failed', 'reversed', 'transfer_blocked'))::int`,
           })
           .from(payout));
 
@@ -273,6 +275,7 @@ export class DrizzlePayoutRepository implements IPayoutRepository, IPayoutProces
       failed: 0,
       reversed: 0,
       clawbackPending: 0,
+      transferBlocked: 0,
       totalNet: "0",
       inFlightCount: 0,
       missingTransferRefCount: 0,
@@ -292,6 +295,7 @@ export class DrizzlePayoutRepository implements IPayoutRepository, IPayoutProces
       failed: stats.failed,
       reversed: stats.reversed,
       clawbackPending: stats.clawbackPending,
+      transferBlocked: stats.transferBlocked,
       totalNet: stats.totalNet,
       readiness: {
         inFlightCount: stats.inFlightCount,

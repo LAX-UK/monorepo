@@ -138,6 +138,7 @@ export async function loadAdminDashboardPage(
     stalePendingPayments: metricsSlice.metrics.stalePendingPayments,
     pendingSubmissions: metricsSlice.metrics.pendingSubmissions,
     failedPayouts: financeIssues?.failedPayoutCount ?? 0,
+    payoutsBlocked: financeIssues?.blockedPayoutCount ?? 0,
   });
 
   const onsiteRadarRows = live.onsiteRadarRows;

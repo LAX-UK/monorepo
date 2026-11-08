@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { PayoutNotFoundError, PayoutStatusTransitionError } from "../interfaces/payout.js";
+
 import { AdminFailedPayoutRetryService } from "./admin-failed-payout-retry.service.js";
 
 const failed = {
@@ -9,9 +10,11 @@ const failed = {
   netAmount: "480.00",
   currency: "GBP",
   failureReason: "stripe_transfer_failed: account_closed - Account closed",
+  processedAt: new Date("2026-11-08T10:00:00Z"),
 };
+const AFTER_COOL_OFF = new Date("2026-11-08T10:05:00Z");
 
-function setup(options: { found?: unknown; transfer?: unknown } = {}) {
+function setup(options: { found?: unknown; transfer?: unknown; now?: Date } = {}) {
   const findById = vi
     .fn()
     .mockResolvedValueOnce("found" in options ? options.found : failed)
@@ -24,6 +27,7 @@ function setup(options: { found?: unknown; transfer?: unknown } = {}) {
     { findById } as never,
     { initiateTransfer },
     { publish, withTx: vi.fn() },
+    () => options.now ?? AFTER_COOL_OFF,
   );
   return { service, initiateTransfer, publish };
 }
@@ -31,6 +35,19 @@ function setup(options: { found?: unknown; transfer?: unknown } = {}) {
 const REASON = "Seller fixed their bank details";
 
 describe("AdminFailedPayoutRetryService", () => {
+  it("skips a blocked payout: staff retry never sends a transfer for it", async () => {
+    const { service, initiateTransfer, publish } = setup({
+      found: { ...failed, status: "transfer_blocked" },
+    });
+
+    await expect(service.retry("staff-1", "payout-1", REASON)).rejects.toThrow(
+      PayoutStatusTransitionError,
+    );
+
+    expect(initiateTransfer).not.toHaveBeenCalled();
+    expect(publish).not.toHaveBeenCalled();
+  });
+
   it("records the request against the actor, then sends the transfer again", async () => {
     const { service, initiateTransfer, publish } = setup();
 
@@ -49,6 +66,46 @@ describe("AdminFailedPayoutRetryService", () => {
     expect(publish.mock.invocationCallOrder[0]).toBeLessThan(
       initiateTransfer.mock.invocationCallOrder[0] as number,
     );
+  });
+
+  describe("cool-off after a failure", () => {
+    const tooSoon = {
+      ok: false,
+      reason: "retry_too_soon",
+      message: "Wait a few minutes: Stripe may still be finishing the last attempt",
+    };
+
+    it("refuses a retry one second inside five minutes, recording and sending nothing", async () => {
+      const { service, initiateTransfer, publish } = setup({
+        now: new Date("2026-11-08T10:04:59Z"),
+      });
+
+      await expect(service.retry("staff-1", "payout-1", REASON)).resolves.toEqual(tooSoon);
+      expect(publish).not.toHaveBeenCalled();
+      expect(initiateTransfer).not.toHaveBeenCalled();
+    });
+
+    it("refuses a retry made the moment the payout failed", async () => {
+      const { service, initiateTransfer } = setup({ now: failed.processedAt });
+      await expect(service.retry("staff-1", "payout-1", REASON)).resolves.toEqual(tooSoon);
+      expect(initiateTransfer).not.toHaveBeenCalled();
+    });
+
+    it("allows a retry at exactly five minutes", async () => {
+      const { service, initiateTransfer } = setup({ now: AFTER_COOL_OFF });
+      await expect(service.retry("staff-1", "payout-1", REASON)).resolves.toMatchObject({
+        ok: true,
+      });
+      expect(initiateTransfer).toHaveBeenCalledTimes(1);
+    });
+
+    it("does not delay a failed payout that has no processing time", async () => {
+      const { service, initiateTransfer } = setup({ found: { ...failed, processedAt: null } });
+      await expect(service.retry("staff-1", "payout-1", REASON)).resolves.toMatchObject({
+        ok: true,
+      });
+      expect(initiateTransfer).toHaveBeenCalledTimes(1);
+    });
   });
 
   it("refuses a payout that is not failed, without recording or sending", async () => {
