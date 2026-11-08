@@ -1,5 +1,6 @@
 export type ShopPayeeConnectStatus = {
-  stripeAccountId: string | null;
+  /** Whether a Stripe account exists; the seller is never told its id. */
+  accountLinked: boolean;
   chargesEnabled: boolean;
   payoutsEnabled: boolean;
   requirementsCurrentlyDue: string[];

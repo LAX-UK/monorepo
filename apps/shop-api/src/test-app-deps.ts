@@ -667,7 +667,7 @@ export function createMinimalShopApiTestDeps(
     payeeConnect: {
       getClientConfig: () => ({ publishableKey: null, connectConfigured: false }),
       getStatusForSubject: async () => ({
-        stripeAccountId: null,
+        accountLinked: false,
         chargesEnabled: false,
         payoutsEnabled: false,
         requirementsCurrentlyDue: [],
