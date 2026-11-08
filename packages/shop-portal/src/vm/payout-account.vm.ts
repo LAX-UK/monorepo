@@ -16,7 +16,7 @@ export type PayoutAccountViewModel = {
 export function buildPayoutAccountViewModel(
   status: PortalPayeeConnectStatus | null,
 ): PayoutAccountViewModel {
-  if (!status?.stripeAccountId) {
+  if (!status?.accountLinked) {
     return {
       stage: "not_started",
       title: "Set up your lax.art and LAX Shop payout account",
