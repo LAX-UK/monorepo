@@ -135,6 +135,8 @@ export const ALL_LIVE_DOMAIN_EVENT_TYPES = [
   "data_request.extended",
   "data_request.closed",
   "data_request.continued",
+  "data_request.enquiry_erasure_requested",
+  "data_request.enquiries_erased",
   "category.archived",
   "category.created",
   "category.deleted",
@@ -673,6 +675,12 @@ const REGISTRY_OVERRIDES: Partial<Record<LiveDomainEventType, RegistryOverride>>
     piiClassification: "none",
   },
   "data_request.viewed": {
+    producers: ["apps/api"],
+    consumers: [],
+    idempotencyPolicy: "none",
+    piiClassification: "operational",
+  },
+  "data_request.enquiries_erased": {
     producers: ["apps/api"],
     consumers: [],
     idempotencyPolicy: "none",
