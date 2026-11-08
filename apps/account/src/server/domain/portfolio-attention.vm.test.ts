@@ -24,6 +24,23 @@ describe("buildAttentionRows", () => {
     ]);
   });
 
+  it("asks for the rest of a part-paid transfer, not a second payment", () => {
+    const [row] = buildAttentionRows([
+      item({
+        status: "awaiting_payment",
+        owed: { amount: 570_100, currency: "GBP", state: "still_to_send" },
+        actions: [{ kind: "view", href: "https://lax.bid/lots/1" }],
+      }),
+    ]);
+    expect(row).toMatchObject({
+      kind: "send",
+      text: "Send the rest of the transfer for Green Line",
+      owed: { amount: 570_100, currency: "GBP" },
+      href: "/account/portfolio/bid/lot-1",
+      external: false,
+    });
+  });
+
   it("says a payment is being confirmed and offers no pay link", () => {
     expect(buildAttentionRows([item({ status: "payment_confirming", actions: [] })])).toEqual([
       expect.objectContaining({

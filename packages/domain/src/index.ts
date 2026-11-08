@@ -1045,3 +1045,8 @@ export {
   type PaymentEligibilityHold,
   type PaymentEligibilityRefusal,
 } from "./payment-eligibility.js";
+export {
+  stillToSendByLot,
+  type StillToSend,
+  type StillToSendGroup,
+} from "./still-to-send.js";
