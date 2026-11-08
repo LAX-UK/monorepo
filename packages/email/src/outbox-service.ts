@@ -97,7 +97,10 @@ export class PostmarkEmailService implements IEmailService {
       : false;
     const status = suppressed && input.category === "transactional" ? "suppressed" : "pending";
     const flaggedAddress =
-      suppressed && input.category === "auth" && suppression?.reason !== "unsubscribe";
+      suppressed &&
+      input.category === "auth" &&
+      suppression?.reason !== "unsubscribe" &&
+      suppression?.reason !== "unsubscribed_marketing";
     const shouldSnapshot = resolution === "snapshot";
     const now = new Date();
 

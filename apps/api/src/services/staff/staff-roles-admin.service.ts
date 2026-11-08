@@ -54,10 +54,10 @@ export type StaffAccessReviewRow = {
 };
 
 export type StaffRolesError = {
-  status: 404 | 409;
+  status: 403 | 404 | 409;
   message: string;
   /** The role rule that refused the change, for the screens to explain. */
-  code?: StaffRoleAssignmentRefusal;
+  code?: StaffRoleAssignmentRefusal | "cannot_change_own_role";
 };
 
 /** ISP: the two roster changes the staff record makes. */

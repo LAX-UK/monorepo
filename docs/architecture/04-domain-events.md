@@ -133,6 +133,7 @@ This catalog is the contract between event producers and projectors. When you ad
 | `user.deletion_requested` | apps/auth | bid identity directory, shop identity projection | Self-serve account deletion requested | `{schemaVersion, subjectId, requestedAt}` |
 | `user.deletion_cancelled` | apps/auth | bid identity directory, shop identity projection, zoho | Pending account deletion cancelled | `{schemaVersion, subjectId, cancelledAt}` |
 | `user.deletion_held` | apps/auth | bid identity directory (staff work inbox) | The daily purge found something open and kept the details | `{schemaVersion, subjectId, heldAt, reasons[{code, message, href}]}` |
+| `alert.subscription.confirmed` | shop-api | worker `zoho_campaigns_opt_out_lift` | A person confirmed an alert subscription on LAX Shop or lax.art (confirm link, or an account switching email alerts on) | `{schemaVersion, emailHash, product, confirmedAt}` (aggregate type `alert_subscriber`; address hash only) |
 | `user.identity_deleted` | apps/auth | bid identity directory, product lifecycle projectors | Identity PII purge completed | `{schemaVersion, subjectId, deletedAt}` |
 | `kyc.verified` | apps/api | none | Individual KYC approved; sole-trader `lead` → `connect_pending` | `{legalEntityIdsAdvancedToConnectPending[]}` (aggregate type `user`, id = userId) |
 | `bid.first_for_user` | apps/api | zoho | First bid by this user on this lot | `{bidId, lotId, userId, amountCents, placedAt}` |

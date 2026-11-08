@@ -188,3 +188,61 @@ describe("LegalEntityAccessService.getLegalEntityDetailForUser", () => {
     expect(r.body).toEqual({ error: "not_a_member_of_legal_entity" });
   });
 });
+
+describe("what a member of an organisation reads", () => {
+  const staffOnly: LegalEntity = {
+    ...baseEntity,
+    createdByUserId: "staff-created-1",
+    statusChangedByUserId: "staff-changed-1",
+    statusReason: "Internal: failed enhanced checks",
+    stripeConnectAccountId: "acct_secret_1",
+    stripeCustomerId: "cus_secret_1",
+    xeroContactId: "xero-secret-1",
+    platformFeeBps: 1234,
+  };
+
+  const forbidden = [
+    "statusReason",
+    "statusChangedByUserId",
+    "createdByUserId",
+    "stripeConnectAccountId",
+    "stripeCustomerId",
+    "xeroContactId",
+    "platformFeeBps",
+    "marginSchemeEligible",
+  ];
+  const secrets = [
+    "Internal: failed enhanced checks",
+    "staff-created-1",
+    "staff-changed-1",
+    "acct_secret_1",
+    "cus_secret_1",
+    "xero-secret-1",
+    "1234",
+  ];
+
+  it("carries none of the staff-only fields or values, but says a payout account is linked", async () => {
+    const { svc } = createSut({
+      repo: {
+        findById: vi.fn().mockResolvedValue(staffOnly),
+        findActiveMembership: vi.fn().mockResolvedValue({ role: "owner", isPrimaryAdmin: true }),
+      },
+    });
+    const result = await svc.getLegalEntityDetailForUser({
+      userId,
+      userRole: "client",
+      legalEntityId: entityId,
+      actingLegalEntityCookie: null,
+    });
+    expect(result.status).toBe(200);
+    if (result.status !== 200) return;
+    const body = JSON.stringify(result.body);
+    for (const key of forbidden) expect(Object.keys(result.body.data)).not.toContain(key);
+    for (const secret of secrets) expect(body).not.toContain(secret);
+    expect(result.body.data).toMatchObject({
+      id: entityId,
+      stripeConnectAccountLinked: true,
+      membership: { role: "owner", isPrimaryAdmin: true },
+    });
+  });
+});

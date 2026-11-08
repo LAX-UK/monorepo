@@ -19,8 +19,11 @@ import {
   BidAlertSaleReader,
   BidAlertSubscriberStore,
   BidAlertTopicStore,
+  DrizzleEmailSuppressionRepository,
 } from "@auction/persistence/repositories";
 import type { Env } from "../env.js";
+import { createBaseLogger } from "../lib/logger.js";
+import { liftOptOutOnConfirm } from "./lift-opt-out-on-confirm.js";
 
 /** The Bid alert engine as the API uses it: sign-up, links, stopping and a client's own switches. */
 export type BidAlertEngine = {
@@ -44,6 +47,7 @@ export function createBidAlertEngine(input: {
 }): BidAlertEngine {
   const { env, db, email, userRepo } = input;
   const subscribers = new BidAlertSubscriberStore(db);
+  const suppressions = new DrizzleEmailSuppressionRepository(db);
   const topics = new BidAlertTopicStore(db);
   const clock = { now: () => new Date() };
   const codec = new AlertLinkCodec(
@@ -67,6 +71,8 @@ export function createBidAlertEngine(input: {
       };
     },
   };
+  // One step for the confirm link and for an account turning alerts on.
+  const liftOptOut = liftOptOutOnConfirm(suppressions, createBaseLogger(env));
   const subscribe = new SubscribeService({
     subscribers,
     topics,
@@ -81,6 +87,7 @@ export function createBidAlertEngine(input: {
     ),
     addresses,
     clock,
+    afterConfirm: liftOptOut,
   });
   return {
     subscribe,
@@ -90,6 +97,7 @@ export function createBidAlertEngine(input: {
       codec,
       clock,
       topicsToEnable: () => BID_CONFIRM_TOPICS,
+      afterConfirm: liftOptOut,
     }),
     stop: new StopService({ subscribers, topics, codec, clock }),
     preferences: new PreferencesService({ subscribers, topics, subscribe, addresses, clock }),

@@ -54,7 +54,7 @@ export default async function SellerPayoutSetupPage() {
     entityStatus = entity?.status ?? "connect_pending";
     memberRole = sellerCtx.personalEntity?.role ?? "owner";
 
-    const connectRes = entity?.stripeConnectAccountId
+    const connectRes = entity?.stripeConnectAccountLinked
       ? await syncServerStripeConnectStatus(sellerEntityId)
       : await getServerStripeConnectStatus(sellerEntityId);
 

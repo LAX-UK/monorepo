@@ -31,6 +31,8 @@ function setup(options: { found?: unknown; transfer?: unknown; now?: Date } = {}
   return { service, initiateTransfer, publish };
 }
 
+const REASON = "Seller fixed their bank details";
+
 describe("AdminFailedPayoutRetryService", () => {
   it("skips a blocked payout: staff retry never sends a transfer for it", async () => {
     const { service, initiateTransfer, publish } = setup({
@@ -46,7 +48,7 @@ describe("AdminFailedPayoutRetryService", () => {
   it("records the request against the actor, then sends the transfer again", async () => {
     const { service, initiateTransfer, publish } = setup();
 
-    const outcome = await service.retry("staff-1", "payout-1");
+    const outcome = await service.retry("staff-1", "payout-1", REASON);
 
     expect(outcome).toMatchObject({ ok: true, payout: { status: "in_transit" } });
     expect(publish).toHaveBeenCalledWith(
@@ -54,6 +56,7 @@ describe("AdminFailedPayoutRetryService", () => {
         aggregateId: "payout-1",
         eventType: "payout.transfer_retry_requested",
         actorUserId: "staff-1",
+        payload: expect.objectContaining({ reason: REASON }),
       }),
     );
     expect(initiateTransfer).toHaveBeenCalledWith("payout-1", { retryFailed: true });
@@ -103,7 +106,7 @@ describe("AdminFailedPayoutRetryService", () => {
       found: { ...failed, status: "in_transit" },
     });
 
-    await expect(service.retry("staff-1", "payout-1")).rejects.toMatchObject({
+    await expect(service.retry("staff-1", "payout-1", REASON)).rejects.toMatchObject({
       code: "payout_not_failed",
     });
     expect(publish).not.toHaveBeenCalled();
@@ -112,7 +115,9 @@ describe("AdminFailedPayoutRetryService", () => {
 
   it("reports an unknown payout", async () => {
     const { service } = setup({ found: null });
-    await expect(service.retry("staff-1", "nope")).rejects.toBeInstanceOf(PayoutNotFoundError);
+    await expect(service.retry("staff-1", "nope", REASON)).rejects.toBeInstanceOf(
+      PayoutNotFoundError,
+    );
   });
 
   it("returns why the transfer could not start", async () => {
@@ -120,7 +125,7 @@ describe("AdminFailedPayoutRetryService", () => {
       transfer: { ok: false, reason: "stripe_error", stripeErrorMessage: "Account closed" },
     });
 
-    await expect(service.retry("staff-1", "payout-1")).resolves.toEqual({
+    await expect(service.retry("staff-1", "payout-1", REASON)).resolves.toEqual({
       ok: false,
       reason: "stripe_error",
       stripeErrorMessage: "Account closed",
@@ -130,7 +135,7 @@ describe("AdminFailedPayoutRetryService", () => {
   it("reports a payout another writer moved first as a state change", async () => {
     const { service } = setup({ transfer: { ok: false, reason: "payout_already_processed" } });
 
-    await expect(service.retry("staff-1", "payout-1")).rejects.toBeInstanceOf(
+    await expect(service.retry("staff-1", "payout-1", REASON)).rejects.toBeInstanceOf(
       PayoutStatusTransitionError,
     );
   });

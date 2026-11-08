@@ -375,6 +375,25 @@ export const WORKER_ARTWORK_REGISTER_APPEND_ONLY_TABLES = ["artwork_register_eve
  * The Zoho artwork sync keeps its watermark and the result for each Product it reads; the nightly
  * LAX listing pass keeps its summary.
  */
+/**
+ * The Zoho Campaigns sync upserts into email_suppression, so the worker may rewrite these three
+ * columns on a conflict and nothing else (the address hash is the key and is never changed).
+ */
+export const WORKER_EMAIL_SUPPRESSION_UPDATE_COLUMNS = ["reason", "source", "created_at"] as const;
+export const WORKER_ZOHO_CAMPAIGNS_SUPPRESSION_TABLES = [
+  "zoho_campaigns_suppression_state",
+] as const;
+/**
+ * The sync reads when each person last asked for mail again. It never writes it: a lift goes
+ * through LIFT_ZOHO_CAMPAIGNS_OPT_OUT_FUNCTION, which also removes the opt-out, so neither
+ * worker_app nor shop_app needs DELETE on email_suppression.
+ */
+export const WORKER_ZOHO_CAMPAIGNS_LIFT_READ_TABLES = ["zoho_campaigns_optout_lift"] as const;
+/** Migration 0323's definer function; the one writer of a lift. */
+export const LIFT_ZOHO_CAMPAIGNS_OPT_OUT_FUNCTION =
+  "lift_zoho_campaigns_opt_out(text, timestamptz, boolean)";
+/** Roles that may call it: the Bid API (confirm link) and the worker (Shop event, sync, newsletter). */
+export const LIFT_ZOHO_CAMPAIGNS_OPT_OUT_ROLES = ["api_app", "worker_app"] as const;
 export const WORKER_ZOHO_ARTWORK_SYNC_TABLES = [
   "zoho_artwork_sync_state",
   "zoho_artwork_sync_outcome",
@@ -674,10 +693,22 @@ async function grantColumnUpdateIfExists(
   client: pg.Client,
   role: RoleName,
   tableName: string,
-  columns: readonly string[],
+  requested: readonly string[],
   schemaName = "public",
+  /** For a column a later migration adds: grant what exists now; the next run grants the rest. */
+  skipMissingColumns = false,
 ): Promise<void> {
-  if (!(await tableExists(client, tableName, schemaName)) || columns.length === 0) return;
+  if (!(await tableExists(client, tableName, schemaName)) || requested.length === 0) return;
+  let columns = requested;
+  if (skipMissingColumns) {
+    const present = await client.query<{ column_name: string }>(
+      "select column_name from information_schema.columns where table_schema = $1 and table_name = $2",
+      [schemaName, tableName],
+    );
+    const have = new Set(present.rows.map((row) => row.column_name));
+    columns = requested.filter((column) => have.has(column));
+    if (columns.length === 0) return;
+  }
   const columnList = columns.map(quoteIdent).join(", ");
   await client.query(
     `grant update (${columnList}) on table ${quoteIdent(schemaName)}.${quoteIdent(tableName)} to ${quoteIdent(role)}`,
@@ -695,6 +726,22 @@ async function grantColumnSelectIfExists(
   const columnList = columns.map(quoteIdent).join(", ");
   await client.query(
     `grant select (${columnList}) on table ${quoteIdent(schemaName)}.${quoteIdent(tableName)} to ${quoteIdent(role)}`,
+  );
+}
+
+async function grantExecuteIfFunctionExists(
+  client: pg.Client,
+  role: RoleName,
+  signature: string,
+  schemaName = "public",
+): Promise<void> {
+  const found = await client.query(
+    "select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = $1 and p.oid = to_regprocedure($2)",
+    [schemaName, `${schemaName}.${signature}`],
+  );
+  if (found.rowCount === 0) return;
+  await client.query(
+    `grant execute on function ${quoteIdent(schemaName)}.${signature} to ${quoteIdent(role)}`,
   );
 }
 
@@ -863,8 +910,20 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
         }
         /** The impersonation sweeper ends sessions that have expired. */
         await grantIfExists(client, "worker_app", "impersonation_session", "SELECT, UPDATE");
-        /** worker send-email reads suppression list and inserts manual suppressions for missing users. */
+        /** worker send-email reads suppression list and inserts manual suppressions for missing users;
+         * the Zoho Campaigns suppression sync upserts unsubscribes and hard bounces, which needs
+         * UPDATE on three columns only. */
         await grantIfExists(client, "worker_app", "email_suppression", "INSERT, SELECT");
+        await revokeIfExists(client, "worker_app", "email_suppression", "UPDATE");
+        await grantColumnUpdateIfExists(
+          client,
+          "worker_app",
+          "email_suppression",
+          WORKER_EMAIL_SUPPRESSION_UPDATE_COLUMNS,
+          "public",
+          // `source` arrives with migration 0323; roles may be applied before it runs.
+          true,
+        );
         /** worker enqueues mail from notification-fanout projectors (INSERT) and the send-email
          * job updates rows to sent/failed/sending (SELECT, UPDATE). DELETE remains denied so the
          * outbox stays an immutable audit trail of attempted delivery. */
@@ -912,6 +971,15 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
         }
         for (const tableName of WORKER_ARTWORK_REGISTER_APPEND_ONLY_TABLES) {
           await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT");
+        }
+        for (const tableName of WORKER_ZOHO_CAMPAIGNS_SUPPRESSION_TABLES) {
+          await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT, UPDATE");
+        }
+        for (const tableName of WORKER_ZOHO_CAMPAIGNS_LIFT_READ_TABLES) {
+          await grantIfExists(client, "worker_app", tableName, "SELECT");
+        }
+        for (const role of LIFT_ZOHO_CAMPAIGNS_OPT_OUT_ROLES) {
+          await grantExecuteIfFunctionExists(client, role, LIFT_ZOHO_CAMPAIGNS_OPT_OUT_FUNCTION);
         }
         for (const tableName of WORKER_ZOHO_ARTWORK_SYNC_TABLES) {
           await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT, UPDATE");

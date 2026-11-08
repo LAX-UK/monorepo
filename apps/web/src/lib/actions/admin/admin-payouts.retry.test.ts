@@ -26,6 +26,8 @@ const json = (status: number, body: unknown) =>
     headers: { "content-type": "application/json" },
   });
 
+const REASON = "Seller fixed their bank details";
+
 describe("adminRetryPayoutTransferResultAction", () => {
   beforeEach(() => {
     authedServerFetch.mockReset();
@@ -36,28 +38,38 @@ describe("adminRetryPayoutTransferResultAction", () => {
     authedServerFetch.mockResolvedValue(json(200, { data: {} }));
 
     const result = await adminRetryPayoutTransferResultAction("p1", {
+      reason: REASON,
       idempotencyKey: "retry-dialog-key-1",
     });
 
     expect(result.ok).toBe(true);
     const [path, init] = authedServerFetch.mock.calls[0] as [string, RequestInit];
     expect(path).toBe("/admin/payouts/p1/retry-transfer");
-    expect(init.body).toBe(JSON.stringify({ confirmed: true }));
+    expect(init.body).toBe(JSON.stringify({ confirmed: true, reason: REASON }));
     expect((init.headers as Record<string, string>)["Idempotency-Key"]).toBe("retry-dialog-key-1");
+  });
+
+  it("asks for a reason and does not call the API without one", async () => {
+    const result = await adminRetryPayoutTransferResultAction("p1", { reason: "short" });
+
+    expect(result.ok).toBe(false);
+    expect(authedServerFetch).not.toHaveBeenCalled();
   });
 
   it("does not call the API for someone without finance access", async () => {
     const denied = { ok: false, error: "No access" };
     denyUnlessAdminCapability.mockResolvedValue(denied);
 
-    await expect(adminRetryPayoutTransferResultAction("p1")).resolves.toBe(denied);
+    await expect(adminRetryPayoutTransferResultAction("p1", { reason: REASON })).resolves.toBe(
+      denied,
+    );
     expect(authedServerFetch).not.toHaveBeenCalled();
   });
 
   it("explains a refusal in fixed copy, not the API's code", async () => {
     authedServerFetch.mockResolvedValue(json(409, { error: "connect_not_ready" }));
 
-    const result = await adminRetryPayoutTransferResultAction("p1");
+    const result = await adminRetryPayoutTransferResultAction("p1", { reason: REASON });
 
     expect(result).toMatchObject({
       ok: false,

@@ -6,6 +6,7 @@ import {
   LIFT_REASON_COPY,
   firstNameOf,
 } from "@/lib/admin/email-delivery/email-delivery-copy";
+import { blockDateKnown } from "@/lib/admin/email-delivery/email-delivery.vm";
 import {
   type LiftDraft,
   type LiftErrors,
@@ -153,7 +154,14 @@ export function LiftEmailBlockDialog({
       label: "Block",
       value: (
         <span>
-          {copy.name}, since <StaffDate value={block.since} withTime className="text-staff-fg" />
+          {copy.name}
+          {blockDateKnown(block.since) ? (
+            <>
+              , since <StaffDate value={block.since} withTime className="text-staff-fg" />
+            </>
+          ) : (
+            ", date unknown"
+          )}
         </span>
       ),
     },

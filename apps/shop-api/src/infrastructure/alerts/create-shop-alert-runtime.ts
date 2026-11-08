@@ -41,7 +41,9 @@ import {
 import type { StorefrontOrigins } from "../../domain/storefront-origins.js";
 import { hashLinkToken } from "../link-token.js";
 import { resolveShopUserEmail } from "../resolve-shop-user-email.js";
+import type { ShopDomainEventPublisherMode } from "../shop-domain-event-publisher.js";
 import { ShopAlertCatalogue } from "./shop-alert-catalogue.js";
+import { publishAlertConfirmed } from "./shop-alert-confirmed.js";
 import {
   ShopAlertAnnouncementStore,
   ShopAlertDigestLedger,
@@ -70,6 +72,8 @@ export type ShopAlertRuntimeEnv = {
   ALERT_LINK_KEY_ID: string;
   LAX_ACCOUNT_PUBLIC_ORIGIN?: string | undefined;
   NODE_ENV?: string | undefined;
+  /** How strictly the confirmed-subscription event is checked before it is written. */
+  DOMAIN_EVENT_PUBLISH_VALIDATE?: ShopDomainEventPublisherMode | undefined;
   ALERT_LINK_PREVIOUS_SECRET?: string | undefined;
   ALERT_LINK_PREVIOUS_KEY_ID?: string | undefined;
 };
@@ -145,6 +149,8 @@ export function createShopAlertRuntime(input: {
     shop: shopAlertUrls(origins.shop, manageUrl),
     art: artAlertUrls(origins.art, manageUrl),
   } as const;
+  // One step for the confirm link and for an account turning alerts on (including a lax.art follow).
+  const afterConfirm = publishAlertConfirmed(db, env.DOMAIN_EVENT_PUBLISH_VALIDATE ?? "off");
   const subscribe = new SubscribeService({
     subscribers,
     topics,
@@ -153,6 +159,7 @@ export function createShopAlertRuntime(input: {
     urls: urls.shop,
     addresses,
     clock,
+    afterConfirm,
   });
   const preferences = new PreferencesService({ subscribers, topics, subscribe, addresses, clock });
   const record = new RecordMatchService({ topics, ledger: matches, announcements, clock });
@@ -203,6 +210,7 @@ export function createShopAlertRuntime(input: {
         codec,
         clock,
         topicsToEnable: (product) => CONFIRM_TOPICS[product],
+        afterConfirm,
       }),
       stop: new StopService({ subscribers, topics, codec, clock }),
       preferences,

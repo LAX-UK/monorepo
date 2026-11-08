@@ -196,7 +196,12 @@ export function usePayoutMoneyActions({
         description="Records this payout as paid against the Stripe transfer below. Check the transfer ID first. This cannot be undone."
         confirmLabel={pending ? `Mark ${pending.payout.net} paid` : "Mark paid"}
         loading={busy}
-        onConfirm={() => {
+        reason={{
+          label: "Reason for marking it paid",
+          description: "Kept with the payout and in the audit log.",
+          minLength: REASON_MIN,
+        }}
+        onConfirm={({ reason }) => {
           if (pending?.kind !== "mark-paid") return;
           const { payout, idempotencyKey } = pending;
           if (!transferId.trim()) {
@@ -207,6 +212,7 @@ export function usePayoutMoneyActions({
             () =>
               adminMarkPayoutPaidResultAction(payout.id, {
                 stripeTransferId: transferId,
+                reason,
                 idempotencyKey,
               }),
             `mark ${payout.net} as paid`,
@@ -297,11 +303,16 @@ export function usePayoutMoneyActions({
         description="Sends the Stripe transfer again. If Stripe accepts it the payout moves to in transit; if not, it stays failed with the new reason. Retrying the same failure twice cannot send the money twice."
         confirmLabel={pending ? `Retry ${pending.payout.net} transfer` : "Retry transfer"}
         loading={busy}
-        onConfirm={() => {
+        reason={{
+          label: "Reason for the retry",
+          description: "Kept with the payout and in the audit log.",
+          minLength: REASON_MIN,
+        }}
+        onConfirm={({ reason }) => {
           if (pending?.kind !== "retry") return;
           const { payout, idempotencyKey } = pending;
           run(
-            () => adminRetryPayoutTransferResultAction(payout.id, { idempotencyKey }),
+            () => adminRetryPayoutTransferResultAction(payout.id, { reason, idempotencyKey }),
             `retry the ${payout.net} transfer to ${payout.seller}`,
             `Sent the ${payout.net} transfer to ${payout.seller} again`,
           );

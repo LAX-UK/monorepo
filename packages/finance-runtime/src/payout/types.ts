@@ -4,6 +4,8 @@ export type CreateSettlementInput = {
   legalEntityId: string;
   periodStart: Date;
   periodEnd: Date;
+  /** Why staff ran it, kept in the audit event. */
+  reason?: string;
 };
 
 export type CreateSettlementResult =

@@ -29,6 +29,7 @@ function baseCtx(overrides: Partial<ProjectorRunContext> = {}): ProjectorRunCont
     paymentRefundNotifyReader: {} as never,
     payoutTransferFailedNotifyReader: {} as never,
     clearArtistBlocksRepo: {} as never,
+    zohoCampaignsOptOutLiftRepo: {} as never,
     ensurePersonalLegalEntity: {} as never,
     sourceOfFundsSettlementReader: {} as never,
     sourceOfFundsBuyerReader: {} as never,

@@ -6,8 +6,8 @@ import { describe, expect, it } from "vitest";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const read = (name: string) => readFileSync(join(__dirname, "../drizzle", name), "utf8");
-const migration = read("0323_payout_transfer_blocked.sql");
-const rollback = read("0323_rollback.sql");
+const migration = read("0324_payout_transfer_blocked.sql");
+const rollback = read("0324_rollback.sql");
 const schema = readFileSync(join(__dirname, "schema/payouts.ts"), "utf8");
 const journal = JSON.parse(read("meta/_journal.json")) as {
   entries: { idx: number; tag: string; when: number }[];
@@ -18,9 +18,9 @@ const listed = (sql: string): string[] => {
   return [...(match?.[1] ?? "").matchAll(/'([a-z_]+)'/g)].map((m) => m[1] as string);
 };
 
-describe("migration 0323 payout transfer blocked", () => {
+describe("migration 0324 payout transfer blocked", () => {
   it("is a journal entry after the one before it, in order", () => {
-    const index = journal.entries.findIndex((e) => e.tag === "0323_payout_transfer_blocked");
+    const index = journal.entries.findIndex((e) => e.tag === "0324_payout_transfer_blocked");
     expect(index).toBeGreaterThan(0);
     const entry = journal.entries[index];
     const previous = journal.entries[index - 1];
