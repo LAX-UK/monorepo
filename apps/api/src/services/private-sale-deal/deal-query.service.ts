@@ -231,7 +231,10 @@ export class PrivateSaleDealQueryService implements IPrivateSaleDealQueries {
       ),
       canNameBuyer: canDo(viewer, "manage") && OFFER_STAGES.has(deal.stage),
       actions: await this.actionsFor(viewer, deal, {
-        hasPaidPayment: paid?.status === "paid" && dealRefundableMinor(paid) > 0,
+        hasPaidPayment:
+          paid?.status === "paid" && dealRefundableMinor(paid) > 0 && paid.bankReference === null,
+        hasRecordedTransferToReturn:
+          paid?.status === "paid" && dealRefundableMinor(paid) > 0 && paid.bankReference !== null,
         transferInFlight: payments.some((p) => p.status === "processing"),
         hasPayoutLine,
         refundRecorded,
@@ -245,6 +248,7 @@ export class PrivateSaleDealQueryService implements IPrivateSaleDealQueries {
     deal: PrivateSaleDealDetail,
     money: {
       hasPaidPayment: boolean;
+      hasRecordedTransferToReturn: boolean;
       transferInFlight: boolean;
       hasPayoutLine: boolean;
       refundRecorded: boolean;
@@ -255,6 +259,7 @@ export class PrivateSaleDealQueryService implements IPrivateSaleDealQueries {
       if (!canDo(viewer, ACTION_ABILITY[action])) return false;
       if (action === "refund") return money.hasPaidPayment;
       if (action === "record_bank_transfer") return deal.stage === "invoiced";
+      if (action === "record_bank_refund") return money.hasRecordedTransferToReturn;
       const command = STAFF_COMMANDS[action];
       return command !== undefined && fromStage.has(command);
     });
@@ -262,7 +267,7 @@ export class PrivateSaleDealQueryService implements IPrivateSaleDealQueries {
       offered.map(async (action) => ({
         action,
         blockers:
-          action === "refund"
+          action === "refund" || action === "record_bank_refund"
             ? money.hasPayoutLine
               ? [REFUND_BLOCKERS.payout_queued]
               : []

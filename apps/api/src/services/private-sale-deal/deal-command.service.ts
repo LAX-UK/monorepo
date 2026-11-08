@@ -46,7 +46,7 @@ export type DealCommandDeps = {
   payments: Pick<IPrivateSaleDealPaymentReader, "listForDeal">;
   transitions: Pick<DealTransitionService, "transition" | "blockers">;
   invoices: Pick<DealInvoiceService, "issue">;
-  reversal: Pick<DealReversalService, "cancel" | "refund">;
+  reversal: Pick<DealReversalService, "cancel" | "refund" | "recordBankRefund">;
   transfers: Pick<DealTransferService, "record">;
   policy: PrivateSalePolicy;
   parties: DealPartyResolver;
@@ -151,6 +151,7 @@ export class PrivateSaleDealCommandService implements IPrivateSaleDealCommands {
 
     if (action === "refund") return this.refund(viewer, deal, input.amountMinor);
     if (action === "record_bank_transfer") return this.recordTransfer(viewer, deal, input);
+    if (action === "record_bank_refund") return this.recordBankRefund(viewer, deal, input);
     if (action === "cancel") return this.cancel(viewer, deal, input.reason, input.version);
 
     const outcome =
@@ -217,6 +218,35 @@ export class PrivateSaleDealCommandService implements IPrivateSaleDealCommands {
       dealId: deal.id,
       actorUserId: viewer.userId,
       ...(amountMinor !== undefined ? { amountMinor } : {}),
+    });
+    if (result.ok) return this.freshRecord(viewer, deal.reference);
+    if (result.error === "not_found") return { ok: false, error: "deal_not_found" };
+    return { ok: false, error: "blocked", blockers: [REFUND_BLOCKERS[result.error]] };
+  }
+
+  /** Finance returned money to the buyer by bank: the amount and the bank's reference are recorded. */
+  private async recordBankRefund(
+    viewer: DealStaffViewer,
+    deal: PrivateSaleDealDetail,
+    input: { reason?: string | undefined; amountMinor?: number | undefined },
+  ): Promise<DealWriteResult> {
+    if (input.amountMinor === undefined || !input.reason) {
+      return {
+        ok: false,
+        error: "blocked",
+        blockers: [
+          {
+            code: "bank_refund_details_required",
+            message: "Give the amount you returned and the bank's reference for it.",
+          },
+        ],
+      };
+    }
+    const result = await this.deps.reversal.recordBankRefund({
+      dealId: deal.id,
+      actorUserId: viewer.userId,
+      amountMinor: input.amountMinor,
+      bankReference: input.reason,
     });
     if (result.ok) return this.freshRecord(viewer, deal.reference);
     if (result.error === "not_found") return { ok: false, error: "deal_not_found" };

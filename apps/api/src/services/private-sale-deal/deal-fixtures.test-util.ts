@@ -189,12 +189,22 @@ export class InMemoryDealPayments
 
 export type RecordedEvent = { eventType: string; payload: Record<string, unknown> };
 
-export function recordingSink(): IDomainEventSink & { events: RecordedEvent[] } {
+export function recordingSink(): IDomainEventSink & {
+  events: RecordedEvent[];
+  /** The actor of each event, in the same order as `events`. */
+  actors: (string | null | undefined)[];
+} {
   const events: RecordedEvent[] = [];
-  const sink: IDomainEventSink & { events: RecordedEvent[] } = {
+  const actors: (string | null | undefined)[] = [];
+  const sink: IDomainEventSink & {
+    events: RecordedEvent[];
+    actors: (string | null | undefined)[];
+  } = {
     events,
+    actors,
     publish: async (e) => {
       events.push({ eventType: e.eventType, payload: e.payload });
+      actors.push(e.actorUserId);
     },
     withTx: () => sink,
   };

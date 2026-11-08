@@ -20,6 +20,7 @@ export const STAFF_DEAL_ACTIONS = [
   "cancel",
   "refund",
   "record_bank_transfer",
+  "record_bank_refund",
 ] as const;
 export type StaffDealAction = (typeof STAFF_DEAL_ACTIONS)[number];
 

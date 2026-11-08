@@ -43,6 +43,7 @@ const ACTION_ACCESS: Record<StaffDealAction, CapabilityRequirement> = {
   issue_invoice: PRIVATE_SALE_DEALS_FINANCE_ACCESS,
   refund: PRIVATE_SALE_DEALS_FINANCE_ACCESS,
   record_bank_transfer: PRIVATE_SALE_DEALS_FINANCE_ACCESS,
+  record_bank_refund: PRIVATE_SALE_DEALS_FINANCE_ACCESS,
   release: PRIVATE_SALE_DEALS_RELEASE_ACCESS,
 };
 
@@ -50,6 +51,7 @@ const MONEY_ACTIONS: ReadonlySet<StaffDealAction> = new Set([
   "issue_invoice",
   "refund",
   "record_bank_transfer",
+  "record_bank_refund",
 ]);
 
 function idempotencyHeader(key: string | undefined): Record<string, string> {

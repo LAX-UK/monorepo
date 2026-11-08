@@ -109,6 +109,9 @@ function setup(options: Setup = {}) {
   const reversal = {
     cancel: vi.fn(async () => ({ kind: "ok", deal }) as const),
     refund: vi.fn(async () => ({ ok: true, refundedMinor: 1, remainingMinor: 0 }) as const),
+    recordBankRefund: vi.fn(
+      async (_input: object) => ({ ok: true, refundedMinor: 1, remainingMinor: 0 }) as never,
+    ),
   };
   const invoices = {
     issue: vi.fn((input: { dealId: string; actorUserId: string }) =>
@@ -827,6 +830,20 @@ describe("recording a bank transfer", () => {
     expect(transfers.record).not.toHaveBeenCalled();
   });
 
+  it.each([
+    ["checkout_completed", "checkout_completed"],
+    ["checkout_not_ended", "checkout_not_ended"],
+    ["already_paid", "already_paid"],
+  ])("explains a transfer refused with %s", async (error, code) => {
+    const { desk, transfers } = setup({ deal: invoiced() });
+    transfers.record.mockResolvedValueOnce({ ok: false, error } as never);
+    const result = await desk.act(FINANCE, "PS-0001", "record_bank_transfer", {
+      reason: "FP 4411",
+      amountMinor: 4_800_000,
+    });
+    expect(result.ok === false && result.blockers?.[0]?.code).toBe(code);
+  });
+
   it("explains why a transfer could not be recorded", async () => {
     const { desk, transfers } = setup({ deal: invoiced() });
     transfers.record.mockResolvedValueOnce({ ok: false, error: "amount_mismatch" } as never);
@@ -860,5 +877,78 @@ describe("releasing the work", () => {
   it("is offered without being blocked on the note, which is asked for in the dialog", async () => {
     const record = await setup({ deal: stageDeal("paid") }).desk.detail(FULFILMENT_ONLY, "PS-0001");
     expect(record?.actions.find((a) => a.action === "release")?.blockers).toEqual([]);
+  });
+});
+
+describe("recording a refund made at the bank", () => {
+  const recorded = () =>
+    new InMemoryDealPayments([
+      makePayment({
+        status: "paid",
+        rail: "gb_bank_transfer",
+        recordedByUserId: "u-finance",
+        bankReference: "FP 4411",
+      }),
+    ]);
+
+  it("is offered to finance for a recorded transfer, in place of the Stripe refund", async () => {
+    const record = await setup({ deal: stageDeal("paid"), payments: recorded() }).desk.detail(
+      FINANCE,
+      "PS-0001",
+    );
+    const actions = record?.actions.map((a) => a.action) ?? [];
+    expect(actions).toContain("record_bank_refund");
+    expect(actions).not.toContain("refund");
+    const manager = await setup({ deal: stageDeal("paid"), payments: recorded() }).desk.detail(
+      MANAGER,
+      "PS-0001",
+    );
+    expect(manager?.actions.map((a) => a.action)).not.toContain("record_bank_refund");
+  });
+
+  it("is not offered for a card payment, which is refunded through Stripe", async () => {
+    const card = new InMemoryDealPayments([makePayment({ status: "paid" })]);
+    const record = await setup({ deal: stageDeal("paid"), payments: card }).desk.detail(
+      FINANCE,
+      "PS-0001",
+    );
+    const actions = record?.actions.map((a) => a.action) ?? [];
+    expect(actions).toContain("refund");
+    expect(actions).not.toContain("record_bank_refund");
+  });
+
+  it("records the amount and reference for finance only, and asks for both", async () => {
+    const { desk, reversal } = setup({ deal: stageDeal("paid"), payments: recorded() });
+    const input = { reason: "BACS 77", amountMinor: 100_000 };
+    expect(await desk.act(MANAGER, "PS-0001", "record_bank_refund", input)).toMatchObject({
+      error: "forbidden",
+    });
+    for (const incomplete of [{}, { reason: "BACS 77" }, { amountMinor: 100_000 }]) {
+      const result = await desk.act(FINANCE, "PS-0001", "record_bank_refund", incomplete);
+      expect(result.ok === false && result.blockers?.[0]?.code).toBe(
+        "bank_refund_details_required",
+      );
+    }
+    expect(reversal.recordBankRefund).not.toHaveBeenCalled();
+    await desk.act(FINANCE, "PS-0001", "record_bank_refund", input);
+    expect(reversal.recordBankRefund).toHaveBeenCalledWith({
+      dealId: "deal-1",
+      actorUserId: "u-finance",
+      amountMinor: 100_000,
+      bankReference: "BACS 77",
+    });
+  });
+
+  it("explains a refund that cannot be recorded", async () => {
+    const { desk, reversal } = setup({ deal: stageDeal("paid"), payments: recorded() });
+    reversal.recordBankRefund.mockResolvedValueOnce({
+      ok: false,
+      error: "invalid_amount",
+    } as never);
+    const result = await desk.act(FINANCE, "PS-0001", "record_bank_refund", {
+      reason: "BACS 77",
+      amountMinor: 99_999_999,
+    });
+    expect(result.ok === false && result.blockers?.[0]?.code).toBe("refund_amount_invalid");
   });
 });

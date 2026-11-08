@@ -70,10 +70,25 @@ export function termIsOpen(deal: PrivateSaleDealDetail, field: keyof AdminDealTe
 
 export const REFUND_BLOCKERS: Readonly<
   Record<
-    "nothing_to_refund" | "invalid_amount" | "payout_queued" | "refund_unavailable",
+    | "nothing_to_refund"
+    | "invalid_amount"
+    | "payout_queued"
+    | "refund_unavailable"
+    | "bank_transfer_payment"
+    | "not_a_recorded_transfer",
     DealActionBlocker
   >
 > = {
+  bank_transfer_payment: {
+    code: "bank_transfer_payment",
+    message:
+      "This payment came by bank transfer that finance recorded. Record the refund you made at the bank instead.",
+  },
+  not_a_recorded_transfer: {
+    code: "not_a_recorded_transfer",
+    message:
+      "This payment went through the checkout, so it is refunded with Refund the buyer, not by recording a bank refund.",
+  },
   invalid_amount: {
     code: "refund_amount_invalid",
     message: "Enter an amount of at least one penny and no more than is left to return.",
@@ -105,6 +120,16 @@ export const TRANSFER_BLOCKERS: Readonly<Record<RecordTransferError, DealActionB
     message: "The amount must be exactly what the buyer owes, including any buyer's fee.",
   },
   already_paid: { code: "already_paid", message: "This deal has already been paid." },
+  checkout_completed: {
+    code: "checkout_completed",
+    message:
+      "The buyer has finished their checkout, so money may still arrive. Wait for it, or ask the buyer, before recording a transfer.",
+  },
+  checkout_not_ended: {
+    code: "checkout_not_ended",
+    message:
+      "The buyer's checkout could not be confirmed ended, so it could still be paid. Try again in a moment.",
+  },
   transfer_in_flight: {
     code: "transfer_in_flight",
     message:

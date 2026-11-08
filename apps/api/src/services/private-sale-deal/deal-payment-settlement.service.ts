@@ -9,9 +9,12 @@ import {
   dealPaymentPartlyRefundedEvent,
   dealPaymentRefundedEvent,
 } from "@auction/domain";
+import type { UnappliedMoneyReason } from "@auction/domain";
+import type { IUnappliedMoneyRecorder } from "@auction/finance-runtime";
 import type {
   IPrivateSaleDealPaymentReader,
   IPrivateSaleDealPaymentWriter,
+  IPrivateSaleDealPayoutStore,
   ITransactionRunner,
 } from "@auction/persistence/interfaces";
 import type { PrivateSaleDeal, PrivateSaleDealPayment } from "@auction/types";
@@ -47,7 +50,11 @@ export type RecordTransferError =
   | "amount_mismatch"
   | "already_paid"
   /** The buyer's own bank transfer through the checkout is on its way; wait for it to land. */
-  | "transfer_in_flight";
+  | "transfer_in_flight"
+  /** The buyer finished the checkout (a card taken, a transfer chosen), so money may still arrive. */
+  | "checkout_completed"
+  /** The buyer's checkout could not be confirmed ended, so it could yet be paid. */
+  | "checkout_not_ended";
 
 export type RecordTransferResult =
   | { ok: true; paymentId: string }
@@ -56,12 +63,29 @@ export type RecordTransferResult =
 /** Thrown inside the transaction to undo it when the deal turns out not to be waiting for money. */
 class NotInvoiced extends Error {}
 
+/** Thrown inside the transaction to undo it when another person has already paid the deal. */
+class AlreadyPaid extends Error {}
+
+/** Whether the database refused a row because another with the same unique key already exists. */
+function isUniqueViolation(error: unknown): boolean {
+  let current: unknown = error;
+  for (let depth = 0; depth < 5 && current; depth += 1) {
+    if ((current as { code?: unknown }).code === "23505") return true;
+    current = (current as { cause?: unknown }).cause;
+  }
+  return false;
+}
+
 export type DealPaymentSettlementDeps = {
   transactionRunner: ITransactionRunner;
   /** The reads, writes and events of one transaction. */
   scopeForTx: (tx: Database) => DealPaymentScope;
   transitions: Pick<DealTransitionService, "transition">;
   claims: IProviderEventClaim;
+  /** Opens a finance task and alert for money that could not be applied. Never refunds. */
+  unappliedMoney: Pick<IUnappliedMoneyRecorder, "record">;
+  /** Whether the seller's payout already includes a deal, so a refund may need it adjusted. */
+  payouts: Pick<IPrivateSaleDealPayoutStore, "hasPayoutLine">;
   /** The buyer's receipt; absent where emails are not sent. */
   receipt?: IDealReceipt;
   now?: () => Date;
@@ -115,9 +139,12 @@ export class DealPaymentSettlementService {
       const scope = this.deps.scopeForTx(tx);
       const payment = await scope.payments.findByIdForUpdate(input.paymentId);
       if (!payment) return UNKNOWN;
+      // Money that cannot be applied is never dropped: finance gets a task and an alert to return
+      // it or apply it, and the payment is left as it is.
       if (payment.amountMinor !== input.amountMinor) {
         recordMoneyPathEvent("private_sale_payment_amount_mismatch");
-        return { processed: false, action: "skipped", reason: "amount_mismatch" };
+        await this.unapplied(tx, payment, input, "amount_mismatch");
+        return { processed: true, action: "unapplied_money_recorded", reason: "amount_mismatch" };
       }
       const paid = await scope.payments.markPaid(payment.id, {
         chargeId: input.chargeId,
@@ -125,7 +152,18 @@ export class DealPaymentSettlementService {
         at: (this.deps.now ?? (() => new Date()))(),
       });
       if (!paid) {
-        return { processed: true, action: "skipped", reason: "payment_not_open" };
+        // The same money reported again changes nothing. Money that is not the money already
+        // recorded (the checkout was ended, or the deal was paid another way) is finance's.
+        if (isRecordedMoney(payment, input)) {
+          return { processed: true, action: "skipped", reason: "payment_not_open" };
+        }
+        recordMoneyPathEvent("private_sale_payment_money_not_applied");
+        await this.unapplied(tx, payment, input, "private_sale_payment_not_applied");
+        return {
+          processed: true,
+          action: "unapplied_money_recorded",
+          reason: "private_sale_payment_not_applied",
+        };
       }
       const deal = await scope.deals.findById(payment.dealId);
       if (!deal) return UNKNOWN;
@@ -149,6 +187,39 @@ export class DealPaymentSettlementService {
       }
       return { processed: true, action: "payment_intent_succeeded" };
     });
+  }
+
+  /** Opens the finance task for money the deal's payment could not take. */
+  private async unapplied(
+    tx: Database,
+    payment: PrivateSaleDealPayment,
+    money: {
+      eventId: string;
+      paymentIntentId: string | null;
+      chargeId: string | null;
+      amountMinor: number;
+    },
+    reason: UnappliedMoneyReason,
+  ): Promise<void> {
+    const deal = await this.deps.scopeForTx(tx).deals.findById(payment.dealId);
+    await this.deps.unappliedMoney.record(
+      tx,
+      {
+        reason,
+        paymentId: null,
+        paymentGroupId: null,
+        stripePaymentIntentId: money.paymentIntentId,
+        stripeChargeId: money.chargeId,
+        stripeCustomerId: null,
+        stripeEventId: money.eventId,
+        privateSaleDealId: payment.dealId,
+        privateSaleDealReference: deal?.reference ?? null,
+        privateSaleDealPaymentId: payment.id,
+        amountCents: money.amountMinor,
+        currency: payment.currency,
+      },
+      payment.buyerLegalEntityId,
+    );
   }
 
   /** A bank transfer is on its way: the deal keeps waiting and the checkout stays open. */
@@ -208,6 +279,28 @@ export class DealPaymentSettlementService {
       const payment = await scope.payments.findByIdForUpdate(found.id);
       if (!payment) return UNKNOWN;
       const updated = await this.recordRefund(scope, payment, input);
+      if (updated && (await this.deps.payouts.hasPayoutLine(payment.dealId))) {
+        recordMoneyPathEvent("private_sale_refund_after_payout");
+        const deal = await scope.deals.findById(payment.dealId);
+        await this.deps.unappliedMoney.record(
+          tx,
+          {
+            reason: "private_sale_refund_after_payout",
+            paymentId: null,
+            paymentGroupId: null,
+            stripePaymentIntentId: null,
+            stripeChargeId: null,
+            stripeCustomerId: null,
+            stripeEventId: input.eventId,
+            privateSaleDealId: payment.dealId,
+            privateSaleDealReference: deal?.reference ?? null,
+            privateSaleDealPaymentId: payment.id,
+            amountCents: updated.refundedMinor - payment.refundedMinor,
+            currency: payment.currency,
+          },
+          payment.buyerLegalEntityId,
+        );
+      }
       if (updated) {
         return {
           processed: true,
@@ -303,6 +396,9 @@ export class DealPaymentSettlementService {
           rail: "gb_bank_transfer",
           amountMinor: due,
         });
+        // Someone else (a second finance user, or the buyer starting a checkout) took the deal's
+        // one live payment first: this record is not made.
+        if (claim.kind !== "created") throw new AlreadyPaid();
         const paid = await scope.payments.markPaidByTransfer(claim.payment.id, {
           recordedByUserId: input.recordedByUserId,
           bankReference: input.bankReference,
@@ -329,7 +425,9 @@ export class DealPaymentSettlementService {
           { actorUserId: input.recordedByUserId },
           scope,
         );
-        // Undo the whole record if the deal was not waiting for money after all.
+        // Undo the whole record if the deal moved under us: to paid by someone else, or out of
+        // the stage that waits for money.
+        if (moved.kind === "conflict") throw new AlreadyPaid();
         if (moved.kind !== "ok") throw new NotInvoiced();
         return { paymentId: paid.id } as const;
       });
@@ -337,6 +435,10 @@ export class DealPaymentSettlementService {
       paymentId = outcome.paymentId;
     } catch (error) {
       if (error instanceof NotInvoiced) return { ok: false, error: "not_invoiced" };
+      // Two people recording at once: the database lets one in, the other is told it is paid.
+      if (error instanceof AlreadyPaid || isUniqueViolation(error)) {
+        return { ok: false, error: "already_paid" };
+      }
       throw error;
     }
     recordMoneyPathEvent("private_sale_transfer_recorded");
@@ -377,4 +479,16 @@ export class DealPaymentSettlementService {
       actingLegalEntityId: payment.buyerLegalEntityId,
     });
   }
+}
+
+/** Whether the money reported is the money the payment already holds, a repeat of the same report. */
+function isRecordedMoney(
+  payment: Pick<PrivateSaleDealPayment, "status" | "stripePaymentIntentId" | "stripeChargeId">,
+  money: { paymentIntentId: string | null; chargeId: string | null },
+): boolean {
+  if (payment.status !== "paid" && payment.status !== "refunded") return false;
+  return (
+    (money.paymentIntentId !== null && money.paymentIntentId === payment.stripePaymentIntentId) ||
+    (money.chargeId !== null && money.chargeId === payment.stripeChargeId)
+  );
 }

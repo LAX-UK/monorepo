@@ -114,6 +114,9 @@ const seg = (id: string): string => encodeURIComponent(id);
 
 /** One builder per link target. Ids are encoded; query strings are part of the builder. */
 export const adminRoutes = {
+  privateSales: {
+    deal: (reference: string) => `/admin/private-sales/${encodeURIComponent(reference)}`,
+  },
   payments: {
     list: () => "/admin/payments",
     manualReview: () => "/admin/payments?manualReview=1",

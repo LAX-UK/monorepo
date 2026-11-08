@@ -194,3 +194,21 @@ describe("NotificationFactory private sale deal reminders", () => {
     expect(new Set([before, day, late].map((row) => row.meta?.emailIdempotencyKey)).size).toBe(3);
   });
 });
+
+describe("NotificationFactory private sale wording", () => {
+  it("never says lot or auction in what a private sale buyer is told", () => {
+    const steps = ["before_due", "due_day", "overdue"] as const;
+    for (const step of steps) {
+      const row = factory.createDealCollectionReminder({
+        userId: "user-1",
+        legalEntityId: null,
+        dealId: "deal-1",
+        workTitle: "Harbour at dusk",
+        dueDate: "20 November 2026",
+        step,
+      });
+      expect(`${row.title} ${row.message}`).not.toMatch(/\blots?\b|auction|bid/i);
+      expect(row.message).toContain("Harbour at dusk");
+    }
+  });
+});

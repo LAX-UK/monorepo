@@ -11,9 +11,19 @@ import { DealPaymentSettlementService } from "./deal-payment-settlement.service.
 import type { DealTransitionOutcome } from "./deal-transition.service.js";
 
 function setup(
-  opts: { status?: "open" | "processing" | "paid"; transition?: DealTransitionOutcome } = {},
+  opts: {
+    status?: "open" | "processing" | "paid" | "cancelled" | "refunded";
+    transition?: DealTransitionOutcome;
+    payment?: Partial<ReturnType<typeof makePayment>>;
+    payoutLine?: boolean;
+  } = {},
 ) {
-  const payments = new InMemoryDealPayments([makePayment({ status: opts.status ?? "open" })]);
+  const payments = new InMemoryDealPayments([
+    makePayment({ status: opts.status ?? "open", ...opts.payment }),
+  ]);
+  const unapplied = vi.fn(
+    async (_tx: unknown, _money: Record<string, unknown>, _le?: unknown) => {},
+  );
   const events = recordingSink();
   const deal = makeDeal();
   const seen = new Set<string>();
@@ -21,6 +31,8 @@ function setup(
     async (): Promise<DealTransitionOutcome> => opts.transition ?? { kind: "ok", deal },
   );
   const service = new DealPaymentSettlementService({
+    unappliedMoney: { record: unapplied },
+    payouts: { hasPayoutLine: async () => opts.payoutLine ?? false },
     transactionRunner: inlineTransactions,
     scopeForTx: () => fakeScope(deal, payments, events),
     transitions: { transition },
@@ -33,7 +45,7 @@ function setup(
     },
     now: () => new Date("2026-11-04T09:00:00Z"),
   });
-  return { service, payments, events, transition };
+  return { service, payments, events, transition, unapplied };
 }
 
 const paid = {
@@ -78,18 +90,85 @@ describe("DealPaymentSettlementService.settle", () => {
     expect(events.events).toHaveLength(1);
   });
 
-  it("does not pay twice when a second event arrives for a paid payment", async () => {
-    const { service, transition } = setup({ status: "paid" });
+  it("does not pay twice, or raise anything, when the same money is reported again", async () => {
+    const { service, transition, unapplied } = setup({
+      status: "paid",
+      payment: { stripePaymentIntentId: "pi_1", stripeChargeId: "ch_1" },
+    });
     const result = await service.settle({ ...paid, eventId: "evt_2" });
     expect(result).toMatchObject({ reason: "payment_not_open" });
     expect(transition).not.toHaveBeenCalled();
+    expect(unapplied).not.toHaveBeenCalled();
   });
 
-  it("refuses an amount that differs from what the checkout charged", async () => {
-    const { service, payments } = setup();
+  it("opens a finance task, never a silent skip, for money that arrives after a recorded transfer", async () => {
+    // The race: the deal was paid by a transfer finance recorded, then the buyer's card was taken.
+    const { service, payments, transition, unapplied } = setup({
+      status: "paid",
+      payment: { rail: "gb_bank_transfer", recordedByUserId: "u-finance", bankReference: "FP 1" },
+    });
+    const result = await service.settle({ ...paid, eventId: "evt_late" });
+    expect(result).toEqual({
+      processed: true,
+      action: "unapplied_money_recorded",
+      reason: "private_sale_payment_not_applied",
+    });
+    expect(transition).not.toHaveBeenCalled();
+    expect(payments.rows[0]).toMatchObject({ status: "paid", bankReference: "FP 1" });
+    expect(unapplied).toHaveBeenCalledTimes(1);
+    expect(unapplied.mock.calls[0]?.[1]).toMatchObject({
+      reason: "private_sale_payment_not_applied",
+      stripePaymentIntentId: "pi_1",
+      stripeChargeId: "ch_1",
+      stripeEventId: "evt_late",
+      privateSaleDealId: "deal-1",
+      privateSaleDealPaymentId: "pay-1",
+      amountCents: 4_800_000,
+      currency: "GBP",
+    });
+    expect(unapplied.mock.calls[0]?.[2]).toBe("le-buyer");
+  });
+
+  it("opens a finance task for money that arrives on a payment whose checkout was ended", async () => {
+    const { service, payments, unapplied } = setup({ status: "cancelled" });
+    const result = await service.settle(paid);
+    expect(result).toMatchObject({ processed: true, action: "unapplied_money_recorded" });
+    expect(payments.rows[0]?.status).toBe("cancelled");
+    expect(unapplied.mock.calls[0]?.[1]).toMatchObject({
+      reason: "private_sale_payment_not_applied",
+    });
+  });
+
+  it("sends no receipt for money that was not applied", async () => {
+    const receipt = { send: vi.fn(async () => undefined) };
+    const payments = new InMemoryDealPayments([makePayment({ status: "cancelled" })]);
+    const service = new DealPaymentSettlementService({
+      unappliedMoney: { record: vi.fn(async () => undefined) },
+      payouts: { hasPayoutLine: async () => false },
+      transactionRunner: inlineTransactions,
+      scopeForTx: () => fakeScope(makeDeal(), payments, recordingSink()),
+      transitions: { transition: vi.fn() },
+      claims: { claim: async () => true },
+      receipt,
+    });
+    await service.settle(paid);
+    expect(receipt.send).not.toHaveBeenCalled();
+  });
+
+  it("opens a finance task for an amount that differs from what the checkout charged", async () => {
+    const { service, payments, unapplied } = setup();
     const result = await service.settle({ ...paid, amountMinor: 100 });
-    expect(result).toMatchObject({ processed: false, reason: "amount_mismatch" });
+    expect(result).toEqual({
+      processed: true,
+      action: "unapplied_money_recorded",
+      reason: "amount_mismatch",
+    });
     expect(payments.rows[0]?.status).toBe("open");
+    expect(unapplied.mock.calls[0]?.[1]).toMatchObject({
+      reason: "amount_mismatch",
+      amountCents: 100,
+      privateSaleDealPaymentId: "pay-1",
+    });
   });
 
   it("keeps the money recorded when the deal was no longer waiting for it", async () => {
@@ -196,6 +275,8 @@ describe("DealPaymentSettlementService receipt", () => {
     const { payments, events, transition } = setup();
     const deal = makeDeal();
     const service = new DealPaymentSettlementService({
+      unappliedMoney: { record: vi.fn(async () => undefined) },
+      payouts: { hasPayoutLine: async () => false },
       transactionRunner: inlineTransactions,
       scopeForTx: () => fakeScope(deal, payments, events),
       transitions: { transition },
@@ -217,6 +298,8 @@ describe("DealPaymentSettlementService receipt", () => {
     const { payments, events, transition } = setup();
     const deal = makeDeal();
     const service = new DealPaymentSettlementService({
+      unappliedMoney: { record: vi.fn(async () => undefined) },
+      payouts: { hasPayoutLine: async () => false },
       transactionRunner: inlineTransactions,
       scopeForTx: () => fakeScope(deal, payments, events),
       transitions: { transition },
@@ -252,6 +335,8 @@ describe("DealPaymentSettlementService.recordTransferReceived", () => {
     );
     const receipt = { send: vi.fn(async () => undefined) };
     const service = new DealPaymentSettlementService({
+      unappliedMoney: { record: vi.fn(async () => undefined) },
+      payouts: { hasPayoutLine: async () => false },
       transactionRunner: inlineTransactions,
       scopeForTx: () => fakeScope(invoiced, payments, events),
       transitions: { transition },
@@ -323,6 +408,53 @@ describe("DealPaymentSettlementService.recordTransferReceived", () => {
     expect(payments.rows).toHaveLength(1);
   });
 
+  it("tells the second of two finance users the deal is paid, without a raw error", async () => {
+    // The first record committed between the second's check and its claim: the claim hands back
+    // the payment that won, and nothing of the second record is kept.
+    const { service, payments, transition, receipt } = transferSetup();
+    const claim = payments.claim.bind(payments);
+    payments.claim = async (input) => {
+      await claim(input);
+      return claim(input);
+    };
+    expect(await service.recordTransferReceived(transfer)).toEqual({
+      ok: false,
+      error: "already_paid",
+    });
+    expect(transition).not.toHaveBeenCalled();
+    expect(receipt.send).not.toHaveBeenCalled();
+  });
+
+  it("maps the database's unique-key refusal to already paid", async () => {
+    const { service, payments } = transferSetup();
+    payments.claim = async () => {
+      throw Object.assign(new Error("insert failed"), {
+        cause: { code: "23505", constraint: "private_sale_deal_payment_live_uidx" },
+      });
+    };
+    expect(await service.recordTransferReceived(transfer)).toEqual({
+      ok: false,
+      error: "already_paid",
+    });
+  });
+
+  it("lets any other database error through, so it is not mistaken for a paid deal", async () => {
+    const { service, payments } = transferSetup();
+    payments.claim = async () => {
+      throw new Error("connection lost");
+    };
+    await expect(service.recordTransferReceived(transfer)).rejects.toThrow("connection lost");
+  });
+
+  it("tells the second user the deal is paid when the deal moved under the record", async () => {
+    const { service, receipt } = transferSetup({ transition: { kind: "conflict" } });
+    expect(await service.recordTransferReceived(transfer)).toEqual({
+      ok: false,
+      error: "already_paid",
+    });
+    expect(receipt.send).not.toHaveBeenCalled();
+  });
+
   it("will not record a second payment for a deal that is paid", async () => {
     const { service, payments } = transferSetup({ rows: [makePayment({ status: "paid" })] });
     expect(await service.recordTransferReceived(transfer)).toEqual({
@@ -335,6 +467,8 @@ describe("DealPaymentSettlementService.recordTransferReceived", () => {
   it("cannot be recorded for a deal that is not waiting for payment", async () => {
     const payments = new InMemoryDealPayments();
     const service = new DealPaymentSettlementService({
+      unappliedMoney: { record: vi.fn(async () => undefined) },
+      payouts: { hasPayoutLine: async () => false },
       transactionRunner: inlineTransactions,
       scopeForTx: () => fakeScope(makeDeal({ stage: "agreed" }), payments, recordingSink()),
       transitions: { transition: vi.fn() },
@@ -348,11 +482,53 @@ describe("DealPaymentSettlementService.recordTransferReceived", () => {
   });
 
   it("undoes the record when the deal does not move to paid", async () => {
-    const { service, receipt } = transferSetup({ transition: { kind: "conflict" } });
+    const { service, receipt } = transferSetup({ transition: { kind: "blocked", blockers: [] } });
     expect(await service.recordTransferReceived(transfer)).toEqual({
       ok: false,
       error: "not_invoiced",
     });
     expect(receipt.send).not.toHaveBeenCalled();
+  });
+});
+
+describe("DealPaymentSettlementService part refunds after the payout", () => {
+  const refund = { eventId: "r1", chargeId: "ch_1", refundedMinor: 100_000, refundId: "re_1" };
+  const chargePaid = { status: "paid" as const, payment: { stripeChargeId: "ch_1" } };
+
+  it("raises a finance task when part of the money goes back after the payout included the deal", async () => {
+    const { service, payments, unapplied } = setup({ ...chargePaid, payoutLine: true });
+    await service.refunded(refund);
+    expect(payments.rows[0]).toMatchObject({ status: "paid", refundedMinor: 100_000 });
+    expect(unapplied).toHaveBeenCalledTimes(1);
+    expect(unapplied.mock.calls[0]?.[1]).toMatchObject({
+      reason: "private_sale_refund_after_payout",
+      stripeEventId: "r1",
+      privateSaleDealId: "deal-1",
+      privateSaleDealPaymentId: "pay-1",
+      amountCents: 100_000,
+    });
+  });
+
+  it("raises one for each part refund, with the amount that went back this time", async () => {
+    const { service, unapplied } = setup({ ...chargePaid, payoutLine: true });
+    await service.refunded(refund);
+    await service.refunded({ ...refund, eventId: "r2", refundedMinor: 250_000 });
+    expect(unapplied.mock.calls.map((call) => call[1].amountCents)).toEqual([100_000, 150_000]);
+  });
+
+  it("raises one when the rest goes back too, and none when the payout does not include the deal", async () => {
+    const withPayout = setup({ ...chargePaid, payoutLine: true });
+    await withPayout.service.refunded({ ...refund, refundedMinor: 4_800_000 });
+    expect(withPayout.unapplied).toHaveBeenCalledTimes(1);
+    const noPayout = setup(chargePaid);
+    await noPayout.service.refunded(refund);
+    expect(noPayout.unapplied).not.toHaveBeenCalled();
+  });
+
+  it("raises nothing for a report that records nothing new", async () => {
+    const { service, unapplied } = setup({ ...chargePaid, payoutLine: true });
+    await service.refunded(refund);
+    await service.refunded({ ...refund, eventId: "r3" });
+    expect(unapplied).toHaveBeenCalledTimes(1);
   });
 });

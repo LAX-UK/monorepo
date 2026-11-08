@@ -1,5 +1,10 @@
 import type { Database } from "@auction/db";
-import { dealRefundRecorded, dealRefundableMinor } from "@auction/domain";
+import {
+  PRIVATE_SALE_DEAL_EVENT_AGGREGATE,
+  dealBankRefundRecordedEvent,
+  dealRefundRecorded,
+  dealRefundableMinor,
+} from "@auction/domain";
 import type {
   IPrivateSaleDealPaymentReader,
   IPrivateSaleDealPayoutStore,
@@ -20,6 +25,10 @@ export type RefundDealError =
   | "nothing_to_refund"
   /** The amount is not between one penny and what is left to return. */
   | "invalid_amount"
+  /** The payment came by a transfer finance recorded, so it is returned at the bank, not at Stripe. */
+  | "bank_transfer_payment"
+  /** A bank refund is recorded only for a payment finance recorded by hand. */
+  | "not_a_recorded_transfer"
   /** The payout already includes the deal, so the money cannot be pulled back from here. */
   | "payout_queued"
   | "refund_unavailable";
@@ -72,6 +81,7 @@ export class DealReversalService {
     if (await this.deps.payouts.hasPayoutLine(deal.id)) {
       return { ok: false, error: "payout_queued" };
     }
+    if (paid.bankReference !== null) return { ok: false, error: "bank_transfer_payment" };
     if (!paid.stripeChargeId || !this.deps.refunds.isConfigured()) {
       return { ok: false, error: "refund_unavailable" };
     }
@@ -96,6 +106,66 @@ export class DealReversalService {
       });
     });
     return { ok: true, refundedMinor: amount, remainingMinor: remaining - amount };
+  }
+
+  /**
+   * Finance returned money to the buyer by bank for a transfer they had recorded, and records it
+   * here with the amount and the bank's reference. Nothing moves at the provider: this is the
+   * record of what finance did, so it takes the same care as recording the transfer. The amount
+   * is checked under the payment's lock, so two people recording at once cannot return more than
+   * was paid, and the payment closes as refunded only when all of it has gone back.
+   */
+  async recordBankRefund(input: {
+    dealId: string;
+    actorUserId: string;
+    amountMinor: number;
+    bankReference: string;
+  }): Promise<RefundDealResult> {
+    const deal = await this.deps.deals.findById(input.dealId);
+    if (!deal) return { ok: false, error: "not_found" };
+    const paid = (await this.deps.payments.listForDeal(deal.id)).find((p) => p.status === "paid");
+    if (!paid) return { ok: false, error: "nothing_to_refund" };
+    if (paid.bankReference === null) return { ok: false, error: "not_a_recorded_transfer" };
+    if (await this.deps.payouts.hasPayoutLine(deal.id)) {
+      return { ok: false, error: "payout_queued" };
+    }
+    const recorded = await this.deps.transactionRunner.runInTransaction(async (tx) => {
+      const scope = this.deps.scopeForTx(tx);
+      const locked = await scope.payments.findByIdForUpdate(paid.id);
+      if (!locked || locked.status !== "paid") return { error: "nothing_to_refund" } as const;
+      const remaining = dealRefundableMinor(locked);
+      if (remaining <= 0) return { error: "nothing_to_refund" } as const;
+      if (
+        !Number.isInteger(input.amountMinor) ||
+        input.amountMinor < 1 ||
+        input.amountMinor > remaining
+      ) {
+        return { error: "invalid_amount" } as const;
+      }
+      const total = locked.refundedMinor + input.amountMinor;
+      const updated = await this.deps.settlement.recordRefund(scope, locked, {
+        refundedMinor: total,
+        refundId: null,
+      });
+      if (!updated) return { error: "nothing_to_refund" } as const;
+      const event = dealBankRefundRecordedEvent(deal, {
+        paymentId: locked.id,
+        amountMinor: input.amountMinor,
+        refundedMinor: updated.refundedMinor,
+        bankReference: input.bankReference,
+      });
+      await scope.events.publish({
+        aggregateType: PRIVATE_SALE_DEAL_EVENT_AGGREGATE,
+        aggregateId: deal.id,
+        eventType: event.eventType,
+        payload: event.payload,
+        actorUserId: input.actorUserId,
+        actingLegalEntityId: locked.buyerLegalEntityId,
+      });
+      return { remainingMinor: remaining - input.amountMinor } as const;
+    });
+    if ("error" in recorded) return { ok: false, error: recorded.error };
+    return { ok: true, refundedMinor: input.amountMinor, remainingMinor: recorded.remainingMinor };
   }
 
   /**

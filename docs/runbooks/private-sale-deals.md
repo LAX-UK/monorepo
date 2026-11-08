@@ -39,10 +39,10 @@ Approved defaults live in code: source of funds from £9,000 (`SOF_THRESHOLD_AMO
 | --- | --- |
 | `PRIVATE_SALE_DEALS_READ_ACCESS` (private sale managers, private sale enquiry readers, finance, fulfilment, compliance) | Open the list and the record |
 | `private_sale.manage` | Name the buyer, set the price, costs and disclosure, open the offer, record the agreement, re-check clearance, cancel |
-| `finance.platform.write` | Set the buyer's fee, the commission and the VAT treatment, issue the invoice, record a bank transfer, refund the buyer (all or part) |
+| `finance.platform.write` | Set the buyer's fee, the commission and the VAT treatment, issue the invoice, record a bank transfer, refund the buyer (all or part), record a refund made at the bank |
 | `operations.fulfilment` | Release the work |
 
-Issuing the invoice, recording a bank transfer and refunding need a recent sign-in and an idempotency key. The person who
+Issuing the invoice, recording a bank transfer, refunding and recording a bank refund need a recent sign-in and an idempotency key. The person who
 recorded the agreement cannot issue the invoice for the same deal.
 
 ## Releasing the work
@@ -54,25 +54,41 @@ recorded the agreement cannot issue the invoice for the same deal.
 A buyer normally pays at the checkout, and a bank transfer made there lands by itself. When money arrives another way, finance uses **Record a bank transfer** on an invoiced deal and gives the amount received and the bank's reference.
 
 - The amount must be exactly what the buyer owes (the price plus any buyer's fee). A different amount is refused and nothing is recorded; a short or split payment is dealt with outside the deal.
-- It is recorded as the deal's paid payment on the bank transfer rail, with who recorded it and the reference, and the deal moves to Paid in the same step. The buyer's own checkout, if still open, is ended first.
+- It is recorded as the deal's paid payment on the bank transfer rail, with who recorded it and the reference, and the deal moves to Paid in the same step.
+- **The buyer's open checkout is ended first, and read back from Stripe.** Only a checkout Stripe shows as expired is replaced. If the buyer had already finished it (a card taken, or a bank transfer chosen) the record is refused with "the buyer has finished their checkout": money may still arrive, so wait for it or ask the buyer. If Stripe cannot confirm the checkout ended, it is refused too and can be tried again in a moment.
 - If the buyer's own bank transfer through the checkout is on its way, recording is refused: wait for it to land, which is recorded automatically.
+- Two finance users recording at once: one is recorded, the other is told the deal has been paid. Nothing of the second is kept.
 - The buyer gets the same payment receipt as a card payment, once per payment.
-- A transfer recorded this way has no card or Stripe charge, so it cannot be refunded here: finance returns the money from the bank, and the deal cannot be cancelled until a refund is recorded. Say so to finance when recording.
+
+### Money that arrives and cannot be applied
+
+Money that reaches a deal's payment and cannot be applied is never dropped or quietly skipped. Finance gets a task and an alert (the same inbox and email as unapplied money on a lot invoice, naming the deal) to return it or apply it. This covers money arriving after the checkout was ended or after finance recorded a transfer (so the deal could be paid twice), and a payment of a different amount from the checkout. Nothing is refunded automatically. The task is closed by refunding the charge in Stripe or by a note from finance.
 
 ## Refunds
 
-**Refund the buyer** returns the whole of what is left, or the amount given. Each part refund is a refund of its own at the payment provider and is added to the amount returned so far, shown on the payment. The payment stays Paid until all of the money has gone back, and only then can a paid deal be cancelled. A refund made directly in the Stripe dashboard is recorded the same way from the provider's report. Refunds are refused once the seller's payout includes the deal.
+**Refund the buyer** returns the whole of what is left, or the amount given. Each part refund is a refund of its own at the payment provider and is added to the amount returned so far, shown on the payment. The payment stays Paid until all of the money has gone back, and only then can a paid deal be cancelled. A refund made directly in the Stripe dashboard is recorded the same way from the provider's report. Refunds made here are refused once the seller's payout includes the deal.
 
-A part refund does not change the seller's payout, which stays on the agreed price. If a part refund should come out of the seller's share, finance adjusts the payout by hand; the amount returned is on the payment for that.
+A part refund does not change the seller's payout, which stays on the agreed price. **When money goes back to the buyer after the payout included the deal** (for example a refund made in the Stripe dashboard), finance gets a task and an alert naming the deal: "the seller's payout may need adjusting". One is raised for every refund report that adds to what has been returned, so each part refund is seen. Finance adjusts the payout by hand.
+
+### A refund made at the bank
+
+A payment finance recorded as a bank transfer has no Stripe charge, so **Refund the buyer** is not offered for it. Finance returns the money from the bank and then uses **Record a bank refund** with the amount returned and the bank's reference. Nothing is sent from here: it records what finance did, so it needs the same care as recording the transfer.
+
+- The amount is checked against what is left to return while the payment is locked, so two people recording at once cannot return more than was paid.
+- Each record is kept as an audit event with who made it, the amount, the running total and the bank's reference.
+- The payment becomes Refunded once all of it is recorded, and then the deal can be cancelled.
+- Like a refund, it is refused once the seller's payout includes the deal.
 
 ## Reminders
 
-Buyers are reminded of a deal's two deadlines, on the same schedule as an unpaid lot invoice (two days before, on the day at 09:00 London time, and three days after), by the same hourly job. Each step is sent once.
+Buyers are reminded of a deal's two deadlines, on the same schedule as an unpaid lot invoice (two days before, on the day at 09:00 London time, and three days after), by the same hourly job. **Each step is sent at most once.** Which steps have gone out is kept per deal, deadline and step, and is never cleared. If a deadline is moved later after a step was sent, that step is not sent again; steps not yet sent are sent against the new date. A job that was down sends only the latest step reached, not a backlog.
 
 - Payment: while the deal is invoiced and unpaid. Not sent to a buyer LAX itself is holding for compliance, or to a closed account; a buyer who cannot pay yet is told what to do instead.
 - Collection: while the deal is paid and not yet released.
 
 The deadlines come from the settings above, which the owner's answer replaces. A deal keeps the deadline it was given when it was invoiced or paid, so changing a setting affects new deals only.
+
+The collection reminder uses the "ready to collect" notice type, worded for a work and never for a lot ("Collect your work soon", "Your work is waiting to be collected"). The payment reminder reuses the lot invoice reminder, which still labels the work "Lot" in its email: that label is a known follow-up.
 
 ## Who sees which deal
 

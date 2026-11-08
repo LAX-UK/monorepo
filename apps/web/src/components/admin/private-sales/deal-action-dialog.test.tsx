@@ -113,3 +113,31 @@ describe("DealActionDialog: refunding", () => {
     );
   });
 });
+
+describe("DealActionDialog: recording a refund made at the bank", () => {
+  it("needs the amount and the bank's reference, and sends the amount in pence with them", async () => {
+    renderDialog("record_bank_refund");
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(within(dialog).getByRole("button", { name: "Record refund" }));
+    expect(await within(dialog).findByText("Enter the amount you returned.")).toBeInTheDocument();
+    expect(
+      within(dialog).getByText("Give the bank's reference for the refund."),
+    ).toBeInTheDocument();
+    expect(move).not.toHaveBeenCalled();
+
+    fireEvent.change(within(dialog).getByRole("textbox", { name: /Amount returned/ }), {
+      target: { value: "1,200.50" },
+    });
+    fireEvent.change(within(dialog).getByRole("textbox", { name: /Bank reference/ }), {
+      target: { value: "BACS 77" },
+    });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Record refund" }));
+    await waitFor(() =>
+      expect(move).toHaveBeenCalledWith(
+        "PS-0012",
+        "record_bank_refund",
+        expect.objectContaining({ reason: "BACS 77", amountMinor: 120_050 }),
+      ),
+    );
+  });
+});

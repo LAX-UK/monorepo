@@ -281,6 +281,30 @@ export const DEAL_ACTION_COPY = {
     money: true,
     done: "Bank transfer recorded",
   },
+  record_bank_refund: {
+    label: "Record a bank refund",
+    effect: (deal) => {
+      const paid = deal.payment?.amountMinor ?? null;
+      const back = deal.payment?.refundedMinor ?? 0;
+      const left = paid === null ? null : paid - back;
+      return `Records money you have already returned to the buyer by bank. Nothing is sent from here.${left === null ? "" : ` Up to ${formatStaffMoney(left)} is left to record.`} Once all of it is recorded the deal can be cancelled.`;
+    },
+    confirm: "Record refund",
+    reason: {
+      label: "Bank reference",
+      required: true,
+      hint: "The reference on your bank statement for the money you returned. Kept with the payment.",
+      missing: "Give the bank's reference for the refund.",
+    },
+    amount: {
+      label: "Amount returned",
+      required: true,
+      hint: "What you returned by bank, in pounds.",
+      missing: "Enter the amount you returned.",
+    },
+    money: true,
+    done: "Bank refund recorded",
+  },
 } as const satisfies Record<StaffDealAction, DealActionCopy>;
 
 export const TERM_LABELS = {

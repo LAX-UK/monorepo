@@ -24,6 +24,8 @@ function setup(
   const deal = makeDeal({ stage: "paid" });
   const scopeForTx = () => fakeScope(deal, payments, events);
   const settlement = new DealPaymentSettlementService({
+    unappliedMoney: { record: vi.fn(async () => undefined) },
+    payouts: { hasPayoutLine: async () => false },
     transactionRunner: inlineTransactions,
     scopeForTx,
     transitions: { transition: vi.fn() },
@@ -195,5 +197,107 @@ describe("DealReversalService.cancel", () => {
       kind: "conflict",
     });
     expect(transition).not.toHaveBeenCalled();
+  });
+});
+
+describe("DealReversalService.recordBankRefund", () => {
+  const TRANSFER = makePayment({
+    status: "paid",
+    rail: "gb_bank_transfer",
+    paidAt: new Date(),
+    recordedByUserId: "u-finance",
+    bankReference: "FP 4411",
+  });
+  const refund = {
+    dealId: "deal-1",
+    actorUserId: "u-fin",
+    amountMinor: 100_000,
+    bankReference: "BACS 77",
+  };
+
+  it("records money returned by bank as part of the total, and leaves the payment paid", async () => {
+    const { service, payments, events, createRefund } = setup({ payments: [TRANSFER] });
+    expect(await service.recordBankRefund(refund)).toEqual({
+      ok: true,
+      refundedMinor: 100_000,
+      remainingMinor: 4_700_000,
+    });
+    expect(createRefund).not.toHaveBeenCalled();
+    expect(payments.rows[0]).toMatchObject({ status: "paid", refundedMinor: 100_000 });
+    expect(events.events.map((e) => e.eventType)).toEqual([
+      "private_sale_deal.payment_partly_refunded",
+      "private_sale_deal.bank_refund_recorded",
+    ]);
+    expect(events.events.at(-1)?.payload).toMatchObject({
+      paymentId: "pay-1",
+      amountMinor: 100_000,
+      refundedMinor: 100_000,
+      bankReference: "BACS 77",
+    });
+  });
+
+  it("closes the payment as refunded once all of it has gone back, so the deal can be cancelled", async () => {
+    const { service, payments, events } = setup({ payments: [TRANSFER] });
+    await service.recordBankRefund({ ...refund, amountMinor: 4_700_000 });
+    await service.recordBankRefund({ ...refund, amountMinor: 100_000, bankReference: "BACS 78" });
+    expect(payments.rows[0]).toMatchObject({ status: "refunded", refundedMinor: 4_800_000 });
+    expect(
+      events.events.filter((e) => e.eventType === "private_sale_deal.bank_refund_recorded"),
+    ).toHaveLength(2);
+    expect(events.events.some((e) => e.eventType === "private_sale_deal.payment_refunded")).toBe(
+      true,
+    );
+  });
+
+  it("records the actor with the audit event", async () => {
+    const { service, events } = setup({ payments: [TRANSFER] });
+    await service.recordBankRefund(refund);
+    expect(events.actors.at(-1)).toBe("u-fin");
+  });
+
+  it.each([0, -1, 1.5, 4_800_001])("refuses an amount of %s", async (amountMinor) => {
+    const { service, payments } = setup({ payments: [TRANSFER] });
+    expect(await service.recordBankRefund({ ...refund, amountMinor })).toEqual({
+      ok: false,
+      error: "invalid_amount",
+    });
+    expect(payments.rows[0]?.refundedMinor).toBe(0);
+  });
+
+  it("will not return more than was paid, even when two people record at once", async () => {
+    const { service, payments } = setup({ payments: [TRANSFER] });
+    await service.recordBankRefund({ ...refund, amountMinor: 4_000_000 });
+    expect(await service.recordBankRefund({ ...refund, amountMinor: 4_000_000 })).toEqual({
+      ok: false,
+      error: "invalid_amount",
+    });
+    expect(payments.rows[0]?.refundedMinor).toBe(4_000_000);
+  });
+
+  it("is only for a payment finance recorded by hand, and the Stripe refund is not for one", async () => {
+    const card = setup();
+    expect(await card.service.recordBankRefund(refund)).toEqual({
+      ok: false,
+      error: "not_a_recorded_transfer",
+    });
+    const transfer = setup({ payments: [TRANSFER] });
+    expect(await transfer.service.refund({ dealId: "deal-1", actorUserId: "u" })).toEqual({
+      ok: false,
+      error: "bank_transfer_payment",
+    });
+    expect(transfer.createRefund).not.toHaveBeenCalled();
+  });
+
+  it("will not record a refund once the payout includes the deal, or when nothing is paid", async () => {
+    const queued = setup({ payments: [TRANSFER], payoutLine: true });
+    expect(await queued.service.recordBankRefund(refund)).toEqual({
+      ok: false,
+      error: "payout_queued",
+    });
+    const unpaid = setup({ payments: [makePayment({ status: "open" })] });
+    expect(await unpaid.service.recordBankRefund(refund)).toEqual({
+      ok: false,
+      error: "nothing_to_refund",
+    });
   });
 });

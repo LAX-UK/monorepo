@@ -1,5 +1,6 @@
 import type { Database } from "@auction/db";
 import type { DealInvoiceIssuer, PrivateSalePolicy } from "@auction/domain";
+import type { IUnappliedMoneyRecorder } from "@auction/finance-runtime";
 import type {
   IAmlHoldStore,
   IKycRepository,
@@ -94,6 +95,8 @@ export type CreatePrivateSaleDealServicesInput = {
   invoiceIssuer?: DealInvoiceIssuer | null;
   /** Sends the buyer's receipt; absent where notices are not sent. */
   notificationDispatcher?: Pick<NotificationDispatcher, "dispatch"> | null;
+  /** The finance task and alert for money that could not be applied. */
+  unappliedMoney: Pick<IUnappliedMoneyRecorder, "record">;
 };
 
 /** Private sale deals: the state machine, the buyer's payment, refunds and the seller's payout. */
@@ -135,6 +138,8 @@ export function createPrivateSaleDealServices(
     scopeForTx,
     transitions,
     claims,
+    unappliedMoney: input.unappliedMoney,
+    payouts,
     receipt: new DealReceiptNotifier({
       payments,
       deals,

@@ -117,7 +117,11 @@ export function DealActionDialog({
           <StaffButton
             type="submit"
             form={`${ids}-form`}
-            variant={action === "cancel" || action === "refund" ? "danger" : "primary"}
+            variant={
+              action === "cancel" || action === "refund" || action === "record_bank_refund"
+                ? "danger"
+                : "primary"
+            }
             loading={busy}
           >
             {copy.confirm}
