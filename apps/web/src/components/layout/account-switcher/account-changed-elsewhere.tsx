@@ -5,11 +5,7 @@ import {
   onAccountSwitch,
 } from "@/lib/legal-entity/account-switch-channel";
 import { getClientActingLegalEntityId } from "@/lib/legal-entity/client-acting-context";
-import {
-  ACCOUNT_NOTICE_COOKIE,
-  ACCOUNT_NOTICE_MAX_AGE_SEC,
-  encodeAccountNotice,
-} from "@/lib/navigation/account-notice";
+import { leaveAccountNotice } from "@/lib/navigation/account-notice-cookie.client";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
@@ -34,11 +30,7 @@ export function AccountChangedElsewhere({ renderedAccountId }: Props) {
       if (!browserAccountId || !accountChangedElsewhere(renderedAccountId, browserAccountId)) {
         return;
       }
-      const notice = encodeAccountNotice({
-        kind: "switched_elsewhere",
-        accountId: browserAccountId,
-      });
-      document.cookie = `${ACCOUNT_NOTICE_COOKIE}=${notice}; path=/; max-age=${ACCOUNT_NOTICE_MAX_AGE_SEC}; SameSite=Lax`;
+      leaveAccountNotice({ kind: "switched_elsewhere", accountId: browserAccountId });
       router.refresh();
     };
     const followWhenSeen = () => {

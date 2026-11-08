@@ -95,7 +95,7 @@ function WorkspaceFrame({
         familyLinks={familyLinks}
         phoneTitle={phoneTitle}
         scrolledTitle={scrolledTitle}
-        phoneAccountSheet={accountSheetFromAvatar ? account.switcher : null}
+        phoneAccount={accountSheetFromAvatar ? account : null}
         search={
           <WorkspaceSearch
             accountId={account.current.id}

@@ -33,6 +33,8 @@ export type FullActors = {
   rivalUserId: string;
   rivalEntityId: string;
   northbankBuyerUserId: string;
+  /** Northbank Gallery's owner: wins the one Northbank invoice that is clear to pay. */
+  northbankOwnerUserId: string;
   northbankId: string;
   heldUserId: string;
   heldEntityId: string;
@@ -41,7 +43,7 @@ export type FullActors = {
   laxStockId: string;
 };
 
-type BidderKey = "collector" | "rival" | "northbank" | "held" | "payer";
+type BidderKey = "collector" | "rival" | "northbank" | "northbankOwner" | "held" | "payer";
 
 type LotSpec = {
   work: WorkKey;
@@ -392,6 +394,19 @@ const SALES: SaleSpec[] = [
         outcome: "sold",
         invoice: { raisedDaysAgo: 3 },
       },
+      // Northbank Gallery's one invoice that is clear to pay: £6,500 with the premium, won by
+      // the owner, whose open purchases stay under the £9,000 source-of-funds threshold (the
+      // buyer agent's £15,000 clock above is what holds the others in review). Finance pays it.
+      {
+        work: "creche",
+        reserve: 4_000,
+        bids: [
+          ["rival", 5_000],
+          ["northbankOwner", 5_200],
+        ],
+        outcome: "sold",
+        invoice: { raisedDaysAgo: 1 },
+      },
     ],
   },
 ];
@@ -401,6 +416,7 @@ export function buildFullCatalogue(now: number, actors: FullActors): DemoCatalog
     collector: { userId: actors.collectorUserId, entityId: actors.collectorEntityId },
     rival: { userId: actors.rivalUserId, entityId: actors.rivalEntityId },
     northbank: { userId: actors.northbankBuyerUserId, entityId: actors.northbankId },
+    northbankOwner: { userId: actors.northbankOwnerUserId, entityId: actors.northbankId },
     held: { userId: actors.heldUserId, entityId: actors.heldEntityId },
     payer: { userId: actors.payerUserId, entityId: actors.payerEntityId },
   };
@@ -547,7 +563,7 @@ export function buildFullCatalogue(now: number, actors: FullActors): DemoCatalog
       spec.key === "depts"
         ? ["collector", "rival", "northbank"]
         : spec.key === "autumnPast"
-          ? ["collector", "rival", "northbank", "held", "payer"]
+          ? ["collector", "rival", "northbank", "northbankOwner", "held", "payer"]
           : spec.key === "room"
             ? ["collector", "rival"]
             : [];

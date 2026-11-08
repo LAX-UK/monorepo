@@ -32,7 +32,7 @@ export async function openRecordInItsAccount(input: {
   if (!target) return { kind: "render" };
   if (!isHop(pathOf(target))) redirect(target);
   if (owner.kind === "ok" && !isSameOriginNavigation(await headers())) {
-    redirect(confirmSwitchHref(owner.legalEntityId, input.next));
+    redirect(confirmSwitchHref(owner.legalEntityId, input.next, "record"));
   }
   return { kind: "hop", href: target };
 }

@@ -11,6 +11,7 @@ const PAYOUT_ID = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee";
 const ENTITY_ID = "bbbbbbbb-cccc-4ddd-8eee-ffffffffffff";
 const ACTOR_ID = "staff-user-1";
 const TRANSFER_REF = "transfer-ref-0001";
+const REASON = "Matched to the Stripe dashboard.";
 const REVERSE_REASON = "Duplicate payment, bookkeeping correction required.";
 const STEP_UP = { error: "Recent sign-in required", code: "step_up_required" };
 
@@ -68,14 +69,32 @@ describe("POST /admin/payouts/:payoutId/mark-paid", () => {
       const res = await post(
         app,
         `/${PAYOUT_ID}/mark-paid`,
-        { stripeTransferId: TRANSFER_REF },
+        { stripeTransferId: TRANSFER_REF, reason: REASON },
         key("mark-paid-key-1"),
       );
 
       expect(res.status).toBe(200);
       expect(payouts.markPaid).toHaveBeenCalledWith(ACTOR_ID, PAYOUT_ID, {
         stripeTransferId: TRANSFER_REF,
+        reason: REASON,
       });
+    },
+  );
+
+  it.each([{}, { reason: "short" }, { reason: "   " }])(
+    "refuses a missing or short reason %j, and marks nothing",
+    async (extra) => {
+      const { app, payouts } = mount("finance");
+
+      const res = await post(
+        app,
+        `/${PAYOUT_ID}/mark-paid`,
+        { stripeTransferId: TRANSFER_REF, ...extra },
+        key("mark-paid-reason-1"),
+      );
+
+      expect(res.status).toBe(400);
+      expect(payouts.markPaid).not.toHaveBeenCalled();
     },
   );
 
@@ -85,7 +104,7 @@ describe("POST /admin/payouts/:payoutId/mark-paid", () => {
     const res = await post(
       app,
       `/${PAYOUT_ID}/mark-paid`,
-      { stripeTransferId: TRANSFER_REF },
+      { stripeTransferId: TRANSFER_REF, reason: REASON },
       key("mark-paid-key-2"),
     );
 
@@ -100,7 +119,7 @@ describe("POST /admin/payouts/:payoutId/mark-paid", () => {
     const res = await post(
       app,
       `/${PAYOUT_ID}/mark-paid`,
-      { stripeTransferId: TRANSFER_REF },
+      { stripeTransferId: TRANSFER_REF, reason: REASON },
       key("mark-paid-key-3"),
     );
 
@@ -112,7 +131,10 @@ describe("POST /admin/payouts/:payoutId/mark-paid", () => {
   it("refuses a request without an Idempotency-Key", async () => {
     const { app, payouts } = mount("finance");
 
-    const res = await post(app, `/${PAYOUT_ID}/mark-paid`, { stripeTransferId: TRANSFER_REF });
+    const res = await post(app, `/${PAYOUT_ID}/mark-paid`, {
+      stripeTransferId: TRANSFER_REF,
+      reason: REASON,
+    });
 
     expect(res.status).toBe(400);
     expect(payouts.markPaid).not.toHaveBeenCalled();
@@ -124,7 +146,7 @@ describe("POST /admin/payouts/:payoutId/mark-paid", () => {
       post(
         app,
         `/${PAYOUT_ID}/mark-paid`,
-        { stripeTransferId: TRANSFER_REF },
+        { stripeTransferId: TRANSFER_REF, reason: REASON },
         key("mark-paid-key-4"),
       );
 
@@ -142,14 +164,14 @@ describe("POST /admin/payouts/:payoutId/mark-paid", () => {
     await post(
       app,
       `/${PAYOUT_ID}/mark-paid`,
-      { stripeTransferId: TRANSFER_REF },
+      { stripeTransferId: TRANSFER_REF, reason: REASON },
       key("mark-paid-key-5"),
     );
 
     const res = await post(
       app,
       `/${PAYOUT_ID}/mark-paid`,
-      { stripeTransferId: "transfer-ref-9999" },
+      { stripeTransferId: "transfer-ref-9999", reason: REASON },
       key("mark-paid-key-5"),
     );
 
@@ -165,7 +187,7 @@ describe("POST /admin/payouts/:payoutId/mark-paid", () => {
       post(
         app,
         `/${PAYOUT_ID}/mark-paid`,
-        { stripeTransferId: TRANSFER_REF },
+        { stripeTransferId: TRANSFER_REF, reason: REASON },
         key("mark-paid-key-6"),
       );
 
@@ -247,7 +269,7 @@ describe("payout transition conflicts", () => {
     const res = await post(
       app,
       `/${PAYOUT_ID}/mark-paid`,
-      { stripeTransferId: TRANSFER_REF },
+      { stripeTransferId: TRANSFER_REF, reason: REASON },
       key("mark-paid-key-7"),
     );
 
@@ -309,7 +331,7 @@ describe("POST /admin/payouts/:payoutId/reverse", () => {
 });
 
 describe("POST /admin/payouts/run-settlement", () => {
-  const run = { legalEntityId: ENTITY_ID, dryRun: false };
+  const run = { legalEntityId: ENTITY_ID, dryRun: false, reason: REASON };
 
   it.each(["administrator", "finance"])(
     "lets %s run a settlement for one entity",
@@ -321,8 +343,7 @@ describe("POST /admin/payouts/run-settlement", () => {
       expect(res.status).toBe(201);
       expect(payouts.createSettlement).toHaveBeenCalledWith(ACTOR_ID, {
         legalEntityId: ENTITY_ID,
-        periodStart: new Date(0),
-        periodEnd: expect.any(Date),
+        reason: REASON,
       });
     },
   );
@@ -353,6 +374,46 @@ describe("POST /admin/payouts/run-settlement", () => {
 
     expect(res.status).toBe(400);
     expect(payouts.createSettlement).not.toHaveBeenCalled();
+  });
+
+  it("requires a reason, and settles nothing without one", async () => {
+    const { app, payouts } = mount("finance");
+
+    const res = await post(
+      app,
+      "/run-settlement",
+      { legalEntityId: ENTITY_ID, dryRun: false },
+      key("settlement-reason-1"),
+    );
+
+    expect(res.status).toBe(400);
+    expect(payouts.createSettlement).not.toHaveBeenCalled();
+  });
+
+  it("passes a requested period start on, and never an epoch start of its own", async () => {
+    const { app, payouts } = mount("finance");
+    const periodStart = "2026-11-01T00:00:00.000Z";
+
+    await post(app, "/run-settlement", { ...run, periodStart }, key("settlement-period-1"));
+
+    expect(payouts.createSettlement).toHaveBeenCalledWith(ACTOR_ID, {
+      legalEntityId: ENTITY_ID,
+      reason: REASON,
+      periodStart: new Date(periodStart),
+    });
+  });
+
+  it("answers 409 with the period code when the period overlaps a settled one", async () => {
+    const { app, payouts } = mount("finance");
+    payouts.createSettlement.mockResolvedValueOnce({
+      ok: false,
+      reason: "settlement_period_overlaps",
+    });
+
+    const res = await post(app, "/run-settlement", run, key("settlement-period-2"));
+
+    expect(res.status).toBe(409);
+    expect(await res.json()).toEqual({ error: "settlement_period_overlaps" });
   });
 
   it("requires a legal entity", async () => {
@@ -436,7 +497,7 @@ describe("POST /admin/payouts/run-settlement", () => {
 });
 
 describe("POST /admin/payouts/:payoutId/retry-transfer", () => {
-  const retry = (app: Hono, idem: string, body: unknown = { confirmed: true }) =>
+  const retry = (app: Hono, idem: string, body: unknown = { confirmed: true, reason: REASON }) =>
     post(app, `/${PAYOUT_ID}/retry-transfer`, body, key(idem));
 
   it.each(["administrator", "finance"])("lets %s retry with the actor recorded", async (role) => {
@@ -445,7 +506,7 @@ describe("POST /admin/payouts/:payoutId/retry-transfer", () => {
     const res = await retry(app, "retry-key-0001");
 
     expect(res.status).toBe(200);
-    expect(payouts.retryFailedTransfer).toHaveBeenCalledWith(ACTOR_ID, PAYOUT_ID);
+    expect(payouts.retryFailedTransfer).toHaveBeenCalledWith(ACTOR_ID, PAYOUT_ID, REASON);
   });
 
   it.each(["sales_manager", "client_services", "read_only"])("refuses %s", async (role) => {
@@ -466,6 +527,15 @@ describe("POST /admin/payouts/:payoutId/retry-transfer", () => {
     expect(payouts.retryFailedTransfer).not.toHaveBeenCalled();
   });
 
+  it("refuses a retry without a reason", async () => {
+    const { app, payouts } = mount("finance");
+
+    const res = await retry(app, "retry-key-0009", { confirmed: true });
+
+    expect(res.status).toBe(400);
+    expect(payouts.retryFailedTransfer).not.toHaveBeenCalled();
+  });
+
   it("refuses a request that was not confirmed", async () => {
     const { app, payouts } = mount("finance");
 
@@ -478,7 +548,10 @@ describe("POST /admin/payouts/:payoutId/retry-transfer", () => {
   it("refuses a request without an Idempotency-Key", async () => {
     const { app, payouts } = mount("finance");
 
-    const res = await post(app, `/${PAYOUT_ID}/retry-transfer`, { confirmed: true });
+    const res = await post(app, `/${PAYOUT_ID}/retry-transfer`, {
+      confirmed: true,
+      reason: REASON,
+    });
 
     expect(res.status).toBe(400);
     expect(payouts.retryFailedTransfer).not.toHaveBeenCalled();

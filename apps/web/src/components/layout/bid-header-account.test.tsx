@@ -1,6 +1,7 @@
 import { BidHeaderAccount } from "@/components/layout/bid-header-account";
 import type { BidAttention } from "@/hooks/use-bid-attention";
 import type { SessionUser } from "@/lib/data/contracts";
+import type { AccountOption } from "@/lib/navigation/account-switcher-model";
 import { NO_ATTENTION } from "@/lib/navigation/client-attention";
 import { buildHeaderAccountMenu } from "@/lib/navigation/header-account-menu.vm";
 import { fireEvent, render, screen, within } from "@testing-library/react";
@@ -11,6 +12,7 @@ let user: SessionUser | null = null;
 let pending = false;
 let isLg = true;
 let attention: BidAttention;
+let accounts: AccountOption[] | null = null;
 
 vi.mock("@/lib/auth/use-app-session", () => ({
   useAppSession: () => ({ user, pending }),
@@ -45,7 +47,7 @@ vi.mock("@/components/layout/account-menu/use-header-account-menu", () => ({
     chip: attention.chip,
     menu: buildHeaderAccountMenu({
       scope: { context: { kind: "personal" }, hasSubmissions: false },
-      accounts: null,
+      accounts,
       pendingInvitations: 0,
       attention: NO_ATTENTION,
       pathname: "/sales",
@@ -73,6 +75,7 @@ beforeEach(() => {
   pending = false;
   isLg = true;
   attention = QUIET;
+  accounts = null;
 });
 
 const open = (el: HTMLElement) => fireEvent.keyDown(el, { key: "Enter" });
@@ -114,6 +117,60 @@ describe("BidHeaderAccount signed in", () => {
     expect(screen.getByRole("menuitem", { name: /Sign out/ })).toBeInTheDocument();
     expect(screen.getByRole("menuitem", { name: /bids/i })).toHaveAttribute("href", "/bids");
     expect(screen.queryByTestId("account-sheet")).toBeNull();
+  });
+
+  describe("with an organisation", () => {
+    const personal: AccountOption = {
+      id: "me",
+      kind: "personal",
+      name: "Personal",
+      detail: "Jordan Hale",
+      initials: "JH",
+      current: true,
+      underReview: false,
+    };
+    const northbank: AccountOption = {
+      id: "org-1",
+      kind: "organisation",
+      name: "Northbank Gallery",
+      detail: "Owner",
+      initials: "NG",
+      current: false,
+      underReview: false,
+    };
+
+    it("shows the person's avatar and Personal, and lists the accounts in the menu", () => {
+      accounts = [personal, northbank];
+      render(<BidHeaderAccount />);
+      const trigger = screen.getByRole("button", {
+        name: "Your accounts, Jordan Hale, Personal",
+      });
+      expect(trigger).toHaveTextContent("Jordan Hale");
+      expect(trigger).toHaveTextContent("Personal");
+      open(trigger);
+      expect(screen.getByText("Northbank Gallery")).toBeInTheDocument();
+    });
+
+    it("shows an organisation as its tile with the person's initials as a badge", () => {
+      accounts = [
+        { ...personal, current: false },
+        { ...northbank, current: true },
+      ];
+      render(<BidHeaderAccount />);
+      const trigger = screen.getByRole("button", {
+        name: "Your accounts, acting as Northbank Gallery",
+      });
+      expect(trigger).toHaveTextContent("NG");
+      expect(trigger).toHaveTextContent("JH");
+      expect(trigger).toHaveTextContent("Northbank Gallery");
+      expect(trigger).toHaveTextContent("Jordan Hale · Owner");
+    });
+
+    it("keeps the plain account menu for a person with only their own account", () => {
+      accounts = [personal];
+      render(<BidHeaderAccount />);
+      expect(screen.getByRole("button", { name: "Account menu, Jordan Hale" })).toBeInTheDocument();
+    });
   });
 
   it("opens the same items in the account sheet from 768 to 1023px", () => {

@@ -1,6 +1,7 @@
 import "server-only";
 
 import { resolveOrgModuleEnabledFromRequest } from "@/lib/legal-entity/org-module-host.server";
+import type { HopReason } from "@/lib/navigation/account-link";
 import type { LegalEntitySummary } from "@auction/types";
 import { browserAccountId } from "./account-hop.server";
 import { type HopPlan, planSwitchHop } from "./account-hops";
@@ -28,6 +29,7 @@ export async function planSwitchForBrowser(
   requestedId: string | null,
   next: string,
   notificationFrom: string | null = null,
+  reason: HopReason | null = null,
 ): Promise<SwitchHopOutcome> {
   const [lookup, orgModuleEnabled, browserId] = await Promise.all([
     listMyAccounts({ mustInclude: requestedId }),
@@ -48,6 +50,7 @@ export async function planSwitchForBrowser(
     memberships: lookup.accounts,
     orgModuleEnabled,
     notificationFrom,
+    reason,
   });
   const requested = plan.switchTo
     ? (lookup.accounts.find((account) => account.id === plan.switchTo?.accountId) ?? null)

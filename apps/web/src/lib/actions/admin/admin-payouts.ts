@@ -48,19 +48,23 @@ async function payoutCallResult(res: Response, fallback: string): Promise<Payout
 /** Records a payout as paid against the Stripe transfer that moved the money. */
 export async function adminMarkPayoutPaidResultAction(
   payoutId: string,
-  input: { stripeTransferId: string; idempotencyKey?: string },
+  input: { stripeTransferId: string; reason: string; idempotencyKey?: string },
 ): Promise<ActionResult<void>> {
   return instrumentServerAction("adminMarkPayoutPaidResultAction", async () => {
     const denied = await denyUnlessAdminCapability(FINANCE_ACCESS);
     if (denied) return denied;
     const id = payoutId.trim();
     const stripeTransferId = input.stripeTransferId.trim();
+    const reason = input.reason.trim();
     if (!id) return actionFailure("Missing payout");
     if (!stripeTransferId) return actionFailure("Enter the Stripe transfer ID.");
+    if (reason.length < NOTE_MIN) {
+      return actionFailure(`Enter a reason of at least ${NOTE_MIN} characters.`);
+    }
     const res = await authedServerFetch(`/admin/payouts/${encodeURIComponent(id)}/mark-paid`, {
       method: "POST",
       headers: { "Content-Type": "application/json", ...idempotencyHeader(input.idempotencyKey) },
-      body: JSON.stringify({ stripeTransferId }),
+      body: JSON.stringify({ stripeTransferId, reason }),
     });
     const result = await payoutCallResult(res, "The payout could not be marked as paid.");
     if (!result.ok) return result;
@@ -139,17 +143,21 @@ const RETRY_REFUSALS: Record<string, string> = {
 /** Sends the Stripe transfer again for a payout whose earlier transfer failed. */
 export async function adminRetryPayoutTransferResultAction(
   payoutId: string,
-  input: { idempotencyKey?: string } = {},
+  input: { reason: string; idempotencyKey?: string },
 ): Promise<ActionResult<void>> {
   return instrumentServerAction("adminRetryPayoutTransferResultAction", async () => {
     const denied = await denyUnlessAdminCapability(FINANCE_ACCESS);
     if (denied) return denied;
     const id = payoutId.trim();
+    const reason = input.reason.trim();
     if (!id) return actionFailure("Missing payout");
+    if (reason.length < NOTE_MIN) {
+      return actionFailure(`Enter a reason of at least ${NOTE_MIN} characters.`);
+    }
     const res = await authedServerFetch(`/admin/payouts/${encodeURIComponent(id)}/retry-transfer`, {
       method: "POST",
       headers: { "Content-Type": "application/json", ...idempotencyHeader(input.idempotencyKey) },
-      body: JSON.stringify({ confirmed: true }),
+      body: JSON.stringify({ confirmed: true, reason }),
     });
     if (res.status === 409) {
       const body = (await res.json().catch(() => ({}))) as { error?: unknown };

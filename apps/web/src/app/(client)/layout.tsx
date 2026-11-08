@@ -3,6 +3,7 @@ import { ExportShellClient } from "@/components/exports/export-shell-client";
 import { AccountChangedElsewhere } from "@/components/layout/account-switcher/account-changed-elsewhere";
 import { AccountNotice } from "@/components/layout/account-switcher/account-notice";
 import { NotificationSwitchToast } from "@/components/layout/account-switcher/notification-switch-toast";
+import { RecordSwitchToast } from "@/components/layout/account-switcher/record-switch-toast";
 import { BidSiteChrome } from "@/components/layout/bid-site-chrome";
 import { CommandPaletteLazy } from "@/components/layout/command-palette-lazy";
 import { ReadOnlyBoundary } from "@/components/layout/view-as-client/read-only-boundary";
@@ -30,12 +31,14 @@ import {
   ACCOUNT_NOTICE_COOKIE,
   accountNoticeMessage,
   decodeAccountNotice,
+  noticeBelongsToAccount,
   notificationSwitchToast,
 } from "@/lib/navigation/account-notice";
 import { buildAccountChrome } from "@/lib/navigation/account-switcher-model";
 import { chooseClientLayout } from "@/lib/navigation/client-layout";
 import { clientNavScopeFor } from "@/lib/navigation/client-nav-scope";
 import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
+import { recordSwitchToast } from "@/lib/navigation/record-switch-toast.vm";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
 import { navCountsFrom } from "@/lib/workspace/needs-you-counts";
 import { canAccessStaffAdminShell } from "@auction/types";
@@ -124,20 +127,23 @@ export default async function ClientAreaLayout({ children }: { children: ReactNo
     pendingInvitations: pendingInvites.length,
   });
 
-  const notice = decodeAccountNotice(jar.get(ACCOUNT_NOTICE_COOKIE)?.value);
+  // A notice is shown only when it is true of the account in use, and "chose" is greeted by the
+  // root toast, which reaches public pages too.
+  const rawNotice = decodeAccountNotice(jar.get(ACCOUNT_NOTICE_COOKIE)?.value);
+  const notice =
+    rawNotice?.kind !== "chose" && noticeBelongsToAccount(rawNotice, account.current.id)
+      ? rawNotice
+      : null;
   const optionOf = (id: string) => account.switcher?.options.find((o) => o.id === id) ?? null;
   // Opening a notification for another account says so in a toast that offers the way back.
   const switchToast =
     notice?.kind === "opened_notification" ? notificationSwitchToast(notice, optionOf) : null;
-  const noticeMessage = switchToast
-    ? null
-    : accountNoticeMessage(notice, (id) => {
-        const option = optionOf(id);
-        if (!option) return null;
-        return option.kind === "personal" ? "your personal account" : option.name;
-      });
+  // A record link that opened its owner's account says so, with the way back to where it came from.
+  const recordToast = notice?.kind === "switched" ? recordSwitchToast(notice, optionOf) : null;
+  const noticeMessage = switchToast || recordToast ? null : accountNoticeMessage(notice, optionOf);
   const banners = [
     ...(switchToast ? [<NotificationSwitchToast key="switch-toast" {...switchToast} />] : []),
+    ...(recordToast ? [<RecordSwitchToast key="record-toast" {...recordToast} />] : []),
     ...(noticeMessage ? [<AccountNotice key={noticeMessage} message={noticeMessage} />] : []),
     ...layoutWarnings.map((w) => (
       <DashboardFetchWarningBanner key={w.title} title={w.title} message={w.message} />

@@ -6,7 +6,7 @@ import { mapSaleToFeaturedAuctionCardVM } from "@/components/sections/sales/sale
 import { toCatalogLotVMs } from "@/lib/lot/to-catalog-lot-vm";
 import type { CatalogLinkParams } from "@/lib/marketing/catalog-links";
 import type { SearchFallback } from "@/lib/marketing/load-search-fallback";
-import { pastResultsSentence } from "@/lib/marketing/search-fallback";
+import { type SearchAlertState, pastResultsSentence } from "@/lib/marketing/search-fallback";
 import type { CatalogLayoutView } from "@/lib/preferences/view-cookie";
 import type { LotMediaTreatmentIndex } from "@auction/domain";
 import { ButtonLink, EmptyState } from "@auction/ui/lax";
@@ -32,7 +32,8 @@ type Props = {
   alertReturnHref: string;
   saveAlertOnArrival: boolean;
   /** True when the account already has an alert for this search. */
-  alertSet: boolean;
+  alertState: SearchAlertState;
+  topicEmailOn: boolean | null;
   catalogLinkParams?: CatalogLinkParams;
 };
 
@@ -91,7 +92,8 @@ export function SearchNoMatches(props: Props) {
                 {...(categoryId ? { categoryId } : {})}
                 returnHref={props.alertReturnHref}
                 saveOnArrival={props.saveAlertOnArrival}
-                alertSet={props.alertSet}
+                alertState={props.alertState}
+                topicEmailOn={props.topicEmailOn}
               />
               <ButtonLink Link={Link} variant="ghost" href={props.clearHref}>
                 Clear search

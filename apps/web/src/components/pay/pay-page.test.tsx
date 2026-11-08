@@ -5,7 +5,8 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const refresh = vi.fn();
-vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh }) }));
+const replace = vi.fn();
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh, replace }) }));
 vi.mock("@/lib/shell/shell-chrome-context", () => ({ HideBottomTabBarWhileMounted: () => null }));
 
 const payAction = vi.fn();
@@ -15,13 +16,13 @@ vi.mock("@/lib/pay/pay.actions", () => ({
 
 import { PayPage } from "./pay-page";
 
-const draw = (plan: PayPlan) =>
+const draw = (plan: PayPlan, returned: "cancelled" | null = null) =>
   render(
     <PayPage
       vm={buildPayPageVm(plan, NOW, {
         returnTo: "/purchases/pay?lots=a",
         contactHref: "/contact",
-        returned: null,
+        returned,
         details: {},
       })}
     />,
@@ -76,6 +77,7 @@ describe("the Pay page, ready to pay", () => {
     expect(payAction).toHaveBeenCalledExactlyOnceWith({
       lotIds: [LOT_A],
       expectedTotalPence: 237_500,
+      method: "card",
     });
   });
 
@@ -135,6 +137,7 @@ describe("the Pay page, several lots", () => {
       expect(payAction).toHaveBeenCalledWith({
         lotIds: [LOT_A, LOT_B],
         expectedTotalPence: 375_000,
+        method: "card",
       }),
     );
   });
@@ -272,5 +275,52 @@ describe("the Pay page, a single lot", () => {
     const { container } = draw(ready());
     const bar = container.querySelector("[data-pay-phone-bar]") as HTMLElement;
     expect(within(bar).getByRole("button", { name: "Pay £2,375.00" })).toHaveTextContent("Pay");
+  });
+});
+
+describe("the Pay page, back from the payment page without paying", () => {
+  it("shows that nothing was charged once, then takes it out of the address", async () => {
+    draw(ready(), "cancelled");
+    const note = screen.getByRole("alert");
+    expect(note).toHaveTextContent("Payment not completed");
+    expect(note).toHaveTextContent(/You were not charged/);
+    await waitFor(() =>
+      expect(replace).toHaveBeenCalledExactlyOnceWith("/purchases/pay?lots=a", { scroll: false }),
+    );
+    // The note stays on screen: it is state, not the address.
+    expect(screen.getByRole("alert")).toHaveTextContent("Payment not completed");
+  });
+
+  it("does not touch the address when nothing was returned", () => {
+    draw(ready());
+    expect(replace).not.toHaveBeenCalled();
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("is replaced by the new total when a later payment attempt finds the plan changed", async () => {
+    payAction.mockResolvedValue({
+      kind: "changed",
+      message: "The total has changed to £2,400.00. Check it and pay again.",
+    });
+    draw(ready(), "cancelled");
+    fireEvent.click(screen.getAllByRole("button", { name: /Try again/ })[0] as HTMLElement);
+    await waitFor(() =>
+      expect(screen.getByRole("alert")).toHaveTextContent("The total has changed to £2,400.00"),
+    );
+    expect(screen.queryByText(/Payment not completed/)).toBeNull();
+  });
+
+  it("names the phone bar's button by the amount, except while it is opening the payment", async () => {
+    payAction.mockReturnValue(new Promise(() => {}));
+    const { container } = draw(ready());
+    const bar = container.querySelector("[data-pay-phone-bar]") as HTMLElement;
+    const button = within(bar).getByRole("button", { name: "Pay £2,375.00" });
+    fireEvent.click(button);
+    await waitFor(() =>
+      expect(
+        within(bar).getByRole("button", { name: "Opening secure payment…" }),
+      ).toBeInTheDocument(),
+    );
+    expect(within(bar).getByRole("button")).not.toHaveAttribute("aria-label");
   });
 });

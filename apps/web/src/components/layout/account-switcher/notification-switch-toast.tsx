@@ -1,76 +1,26 @@
 "use client";
 
-import {
-  ACCOUNT_NOTICE_COOKIE,
-  type NotificationSwitchToastView,
-} from "@/lib/navigation/account-notice";
-import { Button } from "@auction/ui/lax";
-import { X } from "lucide-react";
-import { usePathname, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
-import { AccountTile } from "./account-tile";
-import { useAccountSwitch } from "./use-account-switch";
-
-/** Long enough to read and reach "Switch back"; it stays while hovered or focused. */
-const SHOWN_MS = 12_000;
+import type { NotificationSwitchToastView } from "@/lib/navigation/account-notice";
+import { SwitchBackToast } from "./switch-back-toast";
 
 /**
  * "Now acting as Cedar & Stone Fine Art": opening a notification for another account switched to
- * it. The toast names the account and offers "Switch back", which opens the same page in the
- * account the notification was opened from. It clears its cookie at once, so it never repeats.
+ * it. The toast names the account and offers "Switch back".
  */
-export function NotificationSwitchToast({ account, fromAccountId }: NotificationSwitchToastView) {
-  const pathname = usePathname();
-  const search = useSearchParams().toString();
-  // Switching back reopens this same page, in the account the notification was opened from.
-  const { pendingId, choose } = useAccountSwitch(`${pathname}${search ? `?${search}` : ""}`);
-  const [open, setOpen] = useState(true);
-  const [held, setHeld] = useState(false);
-
-  useEffect(() => {
-    document.cookie = `${ACCOUNT_NOTICE_COOKIE}=; path=/; max-age=0; SameSite=Lax`;
-  }, []);
-  useEffect(() => {
-    if (!open || held) return;
-    const timer = window.setTimeout(() => setOpen(false), SHOWN_MS);
-    return () => window.clearTimeout(timer);
-  }, [open, held]);
-
-  if (!open) return null;
+export function NotificationSwitchToast({
+  account,
+  fromAccountId,
+  fromKind,
+}: NotificationSwitchToastView) {
   return (
-    <section
-      aria-label="Account changed"
-      aria-live="polite"
-      data-testid="notification-switch-toast"
-      onMouseEnter={() => setHeld(true)}
-      onMouseLeave={() => setHeld(false)}
-      onFocus={() => setHeld(true)}
-      onBlur={() => setHeld(false)}
-      className="fixed inset-x-4 bottom-20 z-50 flex items-center gap-3 rounded-lax-control border border-lax-line bg-lax-raised py-3 pr-3 pl-4 shadow-lax-md sm:inset-x-auto sm:right-6 sm:bottom-6 sm:w-[440px] lg:bottom-6"
-    >
-      <AccountTile account={account} size="sm" />
-      <div className="min-w-0 flex-1">
-        <p className="text-lax-14 font-medium text-lax-fg">Now acting as {account.name}</p>
-        <p className="text-lax-13 text-lax-muted">You opened a notification for that account.</p>
-      </div>
-      <Button
-        size="sm"
-        className="shrink-0"
-        aria-busy={pendingId !== null || undefined}
-        disabled={pendingId !== null}
-        onClick={() => void choose({ id: fromAccountId, current: false })}
-      >
-        Switch back
-      </Button>
-      <Button
-        variant="ghost"
-        size="icon-sm"
-        aria-label="Dismiss"
-        className="-mr-1 shrink-0"
-        onClick={() => setOpen(false)}
-      >
-        <X aria-hidden />
-      </Button>
-    </section>
+    <SwitchBackToast
+      account={account}
+      title={`Now acting as ${account.name}`}
+      detail="You opened a notification for that account."
+      backLabel="Switch back"
+      fromKind={fromKind}
+      fromAccountId={fromAccountId}
+      testId="notification-switch-toast"
+    />
   );
 }

@@ -21,6 +21,8 @@ const GROUP: PaymentGroupRecord = {
   stripeCheckoutSessionId: null,
   stripePaymentIntentId: null,
   stripeChargeId: null,
+  amountReceived: "0.00",
+  receivedEventAt: null,
   createdAt: new Date(),
   settledAt: null,
 };
@@ -84,6 +86,8 @@ function setup(
     createCheckout?: ReturnType<typeof vi.fn>;
     group?: Partial<PaymentGroupRecord>;
     invoices?: [string, BidInvoiceRecord][];
+    earlier?: "clear" | "in_progress" | "unavailable";
+    recorded?: boolean;
   } = {},
 ) {
   const group = { ...GROUP, ...over.group };
@@ -94,7 +98,7 @@ function setup(
         : { kind: "claimed" as const, group },
     ),
     listMembers: vi.fn(async () => MEMBERS),
-    recordCheckout: vi.fn(async () => {}),
+    recordCheckout: vi.fn(async () => over.recorded ?? true),
   };
   const gateway = {
     isConfigured: () => true,
@@ -106,8 +110,11 @@ function setup(
         paymentIntentId: null,
       })),
     expireCheckout: vi.fn(),
+    checkoutStatus: vi.fn(),
+    bankTransferInstructions: vi.fn(),
     listChargeRefunds: vi.fn(),
   };
+  const openCheckouts = { endFor: vi.fn(async () => over.earlier ?? ("clear" as const)) };
   const singleCheckouts = { revoke: vi.fn(async () => {}) };
   const settlement = { release: vi.fn(async () => ({ processed: true })) };
   const stripeCustomers = {
@@ -124,12 +131,13 @@ function setup(
       findById: async () => ({ id: "payer-1", email: "payer@example.com", name: "Payer" }),
     } as never,
     singleCheckouts,
+    openCheckouts,
     accounting: { ensureInvoices: async () => over.accountingOk ?? true },
     settlement,
     events: mockDomainEventSink(),
     webOrigin: "https://lax.example/",
   });
-  return { svc, groups, gateway, singleCheckouts, settlement, stripeCustomers };
+  return { svc, groups, gateway, singleCheckouts, settlement, stripeCustomers, openCheckouts };
 }
 
 describe("PaymentGroupCheckoutService.start", () => {
@@ -154,7 +162,8 @@ describe("PaymentGroupCheckoutService.start", () => {
           expect.objectContaining({ paymentId: "pay-2", amountPence: 60_010, lotNumber: 2 }),
           expect.objectContaining({ paymentId: "pay-3", amountPence: 40_000 }),
         ],
-        successUrl: "https://lax.example/purchases?payment=success&paymentGroup=group-1",
+        successUrl: "https://lax.example/purchases/pay?lots=lot-2,lot-3&returned=success",
+        cancelUrl: "https://lax.example/purchases/pay?lots=lot-2,lot-3&returned=cancelled",
       }),
     );
     expect(groups.recordCheckout).toHaveBeenCalledWith("group-1", {
@@ -174,6 +183,35 @@ describe("PaymentGroupCheckoutService.start", () => {
     expect(gateway.createCheckout).toHaveBeenCalledWith(
       expect.objectContaining({ rail: "gb_bank_transfer", stripeCustomerId: "cus_org" }),
     );
+  });
+
+  it("ends a checkout the payer left open before it takes the invoices", async () => {
+    const { svc, groups, openCheckouts } = setup();
+    await svc.start(INPUT);
+    expect(openCheckouts.endFor).toHaveBeenCalledWith(["pay-2", "pay-3"], "payer-1");
+    expect(openCheckouts.endFor.mock.invocationCallOrder[0]).toBeLessThan(
+      groups.claim.mock.invocationCallOrder[0] ?? 0,
+    );
+  });
+
+  it("expires a checkout it just opened if the group was let go meanwhile, and says conflict", async () => {
+    const { svc, gateway } = setup({ recorded: false });
+    expect((await svc.start(INPUT))._unsafeUnwrapErr()).toBe("conflict");
+    expect(gateway.expireCheckout).toHaveBeenCalledExactlyOnceWith("cs_1");
+  });
+
+  it("opens nothing while a payment for the invoices is finished or on its way", async () => {
+    const { svc, groups, gateway } = setup({ earlier: "in_progress" });
+    expect((await svc.start(INPUT))._unsafeUnwrapErr()).toBe("in_progress");
+    expect(groups.claim).not.toHaveBeenCalled();
+    expect(gateway.createCheckout).not.toHaveBeenCalled();
+  });
+
+  it("opens nothing when the earlier checkout could not be ended", async () => {
+    const { svc, groups, gateway } = setup({ earlier: "unavailable" });
+    expect((await svc.start(INPUT))._unsafeUnwrapErr()).toBe("unavailable");
+    expect(groups.claim).not.toHaveBeenCalled();
+    expect(gateway.createCheckout).not.toHaveBeenCalled();
   });
 
   it("answers a lost race with a conflict and opens nothing", async () => {

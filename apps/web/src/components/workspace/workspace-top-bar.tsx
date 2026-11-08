@@ -25,7 +25,8 @@ const CLIENT_SHELL_ROLE = "client" as const;
  *   content's left edge, the search field and the person's menu on the right;
  * - on a phone, the compact lockup (or a back button on a nested page), the page's title once
  *   its large title has scrolled away, then search and the person's menu.
- * The account is named only by the switcher, never here.
+ * With an organisation, the person's button on the right shows the account in use and is the
+ * switcher; the sidebar's tile opens the same list.
  */
 export function WorkspaceTopBar({
   user,
@@ -33,7 +34,7 @@ export function WorkspaceTopBar({
   search,
   phoneTitle,
   scrolledTitle,
-  phoneAccountSheet = null,
+  phoneAccount = null,
 }: {
   user: SessionUser;
   familyLinks: readonly LaxFamilyLinkVm[];
@@ -44,10 +45,11 @@ export function WorkspaceTopBar({
   /** The page's title, once its large title has scrolled out of view. */
   scrolledTitle: string | null;
   /**
-   * The accounts the person can switch between. When set, the avatar on a phone opens the
-   * account sheet instead of the person menu; from 1024px the person menu stays.
+   * The account in use and the accounts to switch between. When set, a phone shows the account
+   * button (which opens the account sheet) instead of the person menu; from 1024px the person
+   * menu stays.
    */
-  phoneAccountSheet?: AccountChrome["switcher"];
+  phoneAccount?: AccountChrome | null;
 }) {
   const viewingAs = useViewingAsClient();
   const showTitle = Boolean(scrolledTitle) || Boolean(phoneTitle.backHref);
@@ -110,13 +112,17 @@ export function WorkspaceTopBar({
           {search}
           {viewingAs ? (
             <ViewAsClientMenu name={viewingAs.name} />
-          ) : phoneAccountSheet ? (
+          ) : phoneAccount?.switcher ? (
             <>
               <div className="lg:hidden">
-                <PhoneAccountButton user={user} switcher={phoneAccountSheet} />
+                <PhoneAccountButton
+                  user={user}
+                  current={phoneAccount.current}
+                  switcher={phoneAccount.switcher}
+                />
               </div>
               <div className="max-lg:hidden">
-                <ShellUserMenu user={user} role={CLIENT_SHELL_ROLE} />
+                <ShellUserMenu user={user} role={CLIENT_SHELL_ROLE} account={phoneAccount} />
               </div>
             </>
           ) : (

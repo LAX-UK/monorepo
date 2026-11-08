@@ -8,9 +8,12 @@ import {
 } from "@/lib/legal-entity/account-hop.server";
 import { planSwitchForBrowser } from "@/lib/legal-entity/switch-hop.server";
 import {
+  HOP_REASON_PARAM,
+  type HopReason,
   NOTIFICATION_FROM_PARAM,
   accountsUnavailableHref,
   confirmSwitchHref,
+  hopReasonOf,
   safeHopNext,
   switchAccountHref,
 } from "@/lib/navigation/account-link";
@@ -35,15 +38,16 @@ async function switchHop(
   next: string,
   confirmed: boolean,
   notificationFrom: string | null = null,
+  reason: HopReason | null = null,
 ): Promise<Response> {
   if (await isImpersonating()) return seeOther(next);
-  const outcome = await planSwitchForBrowser(to, next, notificationFrom);
+  const outcome = await planSwitchForBrowser(to, next, notificationFrom, reason);
   if (outcome.kind === "unavailable") {
     // "Try again" is a link on our own page, so the retry is a same-origin GET of this hop.
     return seeOther(accountsUnavailableHref(to ? switchAccountHref(to, next) : next));
   }
   if (outcome.plan.switchTo && !confirmed) {
-    return seeOther(confirmSwitchHref(outcome.plan.switchTo.accountId, next));
+    return seeOther(confirmSwitchHref(outcome.plan.switchTo.accountId, next, reason ?? undefined));
   }
   return carryOutHop(outcome.plan);
 }
@@ -64,6 +68,7 @@ export async function GET(request: Request) {
     hopNext(request),
     isSameOriginNavigation(request.headers),
     params.get(NOTIFICATION_FROM_PARAM),
+    hopReasonOf(params.get(HOP_REASON_PARAM)),
   );
 }
 
@@ -81,5 +86,5 @@ export async function POST(request: Request) {
   const next = safeHopNext(field("next"));
   const signedIn = await hopUser(request, to ? confirmSwitchHref(to, next) : next);
   if (signedIn instanceof Response) return signedIn;
-  return switchHop(to, next, true);
+  return switchHop(to, next, true, null, hopReasonOf(field(HOP_REASON_PARAM)));
 }

@@ -100,7 +100,7 @@ describe("buildWatchedLots", () => {
 describe("artist alerts", () => {
   it("summarises the criteria in a few words", () => {
     expect(artistAlertSummary({ medium: null, priceMin: null, priceMax: null })).toBe(
-      "Every new work",
+      "Every new lot",
     );
     expect(artistAlertSummary({ medium: "oil", priceMin: "2000.00", priceMax: null })).toBe(
       "Oil · £2,000 and up",

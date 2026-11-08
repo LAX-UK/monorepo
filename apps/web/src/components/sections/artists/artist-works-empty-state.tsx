@@ -31,8 +31,8 @@ export function ArtistOnSaleEmptyState({
         title={`No works by ${artistName} are on sale`}
         description={
           watching
-            ? `You follow ${artistName}. We will email you when a work is consigned.`
-            : `Follow ${artistName} and we will email you when a work is consigned.`
+            ? `You follow ${artistName}. We will email you when a work comes up for sale.`
+            : `Follow ${artistName} and we will email you when a work comes up for sale.`
         }
         actions={
           <>

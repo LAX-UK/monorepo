@@ -60,6 +60,7 @@ export function resolveSellerConnectPresentation(input: {
 export function legalEntityToConnectFields(entity: {
   status: string;
   stripeConnectAccountId?: string | null;
+  stripeConnectAccountLinked?: boolean;
   stripeConnectChargesEnabled?: boolean;
   stripeConnectPayoutsEnabled: boolean;
   stripeConnectRequirementsCurrentlyDue?: string[] | null;
@@ -69,6 +70,9 @@ export function legalEntityToConnectFields(entity: {
   const fields: ConnectLegalEntityFields = {
     status: entity.status,
     stripeConnectAccountId: entity.stripeConnectAccountId ?? null,
+    ...(entity.stripeConnectAccountLinked !== undefined
+      ? { stripeConnectAccountLinked: entity.stripeConnectAccountLinked }
+      : {}),
     stripeConnectPayoutsEnabled: entity.stripeConnectPayoutsEnabled,
     stripeConnectRequirementsCurrentlyDue: entity.stripeConnectRequirementsCurrentlyDue ?? [],
     stripeConnectDisabledReason: entity.stripeConnectDisabledReason ?? null,

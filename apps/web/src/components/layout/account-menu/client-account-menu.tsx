@@ -1,18 +1,15 @@
 "use client";
 
-import { useAccountSwitch } from "@/components/layout/account-switcher/use-account-switch";
+import type { WrapItem } from "@/components/layout/account-switcher/account-switcher-list";
+import { MenuAccountList } from "@/components/layout/account-switcher/menu-account-list";
 import { useLogout } from "@/lib/auth/use-logout";
 import type { AttentionCount } from "@/lib/navigation/client-attention";
-import type {
-  HeaderAccountMenu,
-  HeaderMenuAccount,
-  HeaderMenuLink,
-} from "@/lib/navigation/header-account-menu.vm";
+import type { HeaderAccountMenu, HeaderMenuLink } from "@/lib/navigation/header-account-menu.vm";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/lax";
-import { ArrowRight, Check, ExternalLink, LogOut, Mail } from "lucide-react";
+import { ExternalLink, LogOut, Mail } from "lucide-react";
 import Link from "next/link";
-import { Fragment, type ReactElement, type ReactNode, createContext, useContext } from "react";
+import { Fragment, type ReactNode, createContext, useContext } from "react";
 
 /** `popover`: the desktop dropdown (a menu); `sheet`: the phone sheet (a plain list). */
 export type AccountMenuSurface = "popover" | "sheet";
@@ -38,7 +35,6 @@ const COUNT_TONE: Record<AttentionCount["tone"], string> = {
  * each row is wrapped (as its child) in the dropdown's own item, which gives arrow-key movement
  * and typeahead. Identity by default.
  */
-type WrapItem = (row: ReactElement) => ReactElement;
 const IDENTITY: WrapItem = (row) => row;
 const WrapItemContext = createContext<WrapItem>(IDENTITY);
 
@@ -152,80 +148,6 @@ function PageLink({
   );
 }
 
-function AccountRow({
-  account,
-  surface,
-  onNavigate,
-}: {
-  account: HeaderMenuAccount;
-  surface: AccountMenuSurface;
-  onNavigate: () => void;
-}) {
-  const wrap = useContext(WrapItemContext);
-  // One way to switch: the same server action and page load as the workspace switcher. A link to
-  // the switch hop would be followed by the client router, which keeps the old account's frame.
-  const { choose } = useAccountSwitch(account.href);
-  const className = cn(ROW_BASE, ROW[surface], "group gap-3 py-2", surface === "sheet" && "py-2.5");
-  if (account.here) {
-    return wrap(
-      <Link
-        href={account.href}
-        aria-current="true"
-        className={className}
-        onClick={onNavigate}
-        {...itemProps(surface)}
-      >
-        <AccountRowBody account={account} />
-      </Link>,
-    );
-  }
-  return wrap(
-    <Button
-      type="button"
-      variant="ghost"
-      className={cn(className, "h-auto justify-start border-0 font-normal shadow-none")}
-      onClick={() => {
-        onNavigate();
-        void choose({ id: account.id, current: account.here });
-      }}
-      {...itemProps(surface)}
-    >
-      <AccountRowBody account={account} />
-    </Button>,
-  );
-}
-
-function AccountRowBody({ account }: { account: HeaderMenuAccount }) {
-  return (
-    <>
-      <span
-        aria-hidden
-        className={cn(
-          "grid size-7 shrink-0 place-items-center bg-surface-container-high font-label text-xs font-semibold text-on-surface",
-          account.kind === "personal" ? "rounded-full" : "rounded-md",
-        )}
-      >
-        {account.initials}
-      </span>
-      <span className="min-w-0 flex-1 text-left">
-        <span className="block truncate font-medium">{account.name}</span>
-        <span className="block truncate text-xs text-on-surface-variant">{account.detail}</span>
-      </span>
-      {account.here ? (
-        <span className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-product-accent">
-          <Check className="size-3.5" aria-hidden />
-          Here
-        </span>
-      ) : (
-        <span className="inline-flex shrink-0 items-center gap-1 text-xs text-on-surface-variant group-hover:text-on-surface">
-          Open
-          <ArrowRight className="size-3.5" aria-hidden />
-        </span>
-      )}
-    </>
-  );
-}
-
 function InvitationsRow({
   href,
   label,
@@ -288,19 +210,15 @@ export function ClientAccountMenu({ menu, surface, onNavigate, wrapItem }: Clien
   const pad = surface === "popover" ? "p-1.5" : "px-0 py-2";
   return (
     <WrapItemContext.Provider value={wrapItem ?? IDENTITY}>
-      {menu.accounts ? (
+      {menu.switcher ? (
         <>
-          <MenuGroup label="Your accounts" className={pad}>
-            <GroupHeading>Your accounts</GroupHeading>
-            {menu.accounts.map((account) => (
-              <AccountRow
-                key={account.id}
-                account={account}
-                surface={surface}
-                onNavigate={onNavigate}
-              />
-            ))}
-          </MenuGroup>
+          <div className={pad}>
+            <MenuAccountList
+              switcher={menu.switcher}
+              onNavigate={onNavigate}
+              {...(wrapItem ? { wrapItem } : {})}
+            />
+          </div>
           <Separator />
         </>
       ) : null}

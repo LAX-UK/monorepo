@@ -72,12 +72,10 @@ export function planOf(payables: PayPlanPayable[], overrides: Partial<PayPlan> =
         available: totalPence <= 1_000_000,
         reason: totalPence <= 1_000_000 ? null : "over_card_limit",
       },
-      {
-        method: "bank_transfer",
-        available: totalPence > 1_000_000,
-        reason: totalPence > 1_000_000 ? null : "within_card_limit",
-      },
+      { method: "bank_transfer", available: true, reason: null },
     ],
+    cardLimitPence: 1_000_000,
+    progress: null,
     currency: "GBP",
     ...overrides,
   };

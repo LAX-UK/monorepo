@@ -2,6 +2,8 @@
 
 import { updateNotificationPreferencesFromValuesAction } from "@/lib/actions/user-notification-preferences";
 import { setAlertTopic } from "@/lib/data/http/alerts.client";
+import { laxAccountUrl } from "@/lib/lax-account-url";
+import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
 import {
   ALERT_PRESETS,
   ALERT_PRESET_COPY,
@@ -26,8 +28,11 @@ import { LOCKED_NOTIFICATION_PREFERENCE_REASON } from "@auction/domain";
 import type { NotificationPreference } from "@auction/types";
 import { Button, Field, NativeSelect, PresetCards, ReasonTooltip, Switch } from "@auction/ui/lax";
 import { Lock } from "lucide-react";
+import Link from "next/link";
 import { useRef, useState, useTransition } from "react";
 import { DevicePushRow } from "./device-push-row";
+
+const NOTE_LINK = "lax-focus rounded-lax-control text-lax-fg underline underline-offset-2";
 
 const CHANNELS: readonly { id: AlertChannel; label: string }[] = [
   { id: "email", label: "Email" },
@@ -186,6 +191,19 @@ export function AlertsSettings({
             </tbody>
           </table>
         </div>
+        {engine ? (
+          <p className="mt-2 text-lax-13 text-lax-muted">
+            Choose artists and searches in{" "}
+            <Link href={CLIENT_ROUTES.watching} className={NOTE_LINK}>
+              Watching
+            </Link>
+            . Alerts from LAX Shop and lax.art are in{" "}
+            <a href={laxAccountUrl("/account/alerts")} className={NOTE_LINK}>
+              LAX Account
+            </a>
+            .
+          </p>
+        ) : null}
         <p className="mt-2 flex items-start gap-1.5 text-lax-13 text-lax-fg">
           <Lock aria-hidden className="mt-0.5 size-3.5 shrink-0" />
           {LOCKED_NOTIFICATION_PREFERENCE_REASON}
@@ -223,6 +241,27 @@ function AlertSwitch({
           className="lax-focus inline-flex size-8 items-center justify-center rounded-lax-control text-lax-13 text-lax-muted"
         >
           –
+        </span>
+      </ReasonTooltip>
+    );
+  }
+  if (cell.disabledReason) {
+    const label = `${row.label} by ${channel.label.toLowerCase()}`;
+    return (
+      <ReasonTooltip reason={cell.disabledReason}>
+        <span
+          role="switch"
+          aria-checked="false"
+          aria-disabled="true"
+          aria-label={label}
+          aria-describedby={`${row.id}-${channel.id}-reason`}
+          tabIndex={0}
+          className="lax-focus inline-flex rounded-lax-control"
+        >
+          <Switch aria-hidden tabIndex={-1} checked={false} disabled />
+          <span id={`${row.id}-${channel.id}-reason`} className="sr-only">
+            {cell.disabledReason}
+          </span>
         </span>
       </ReasonTooltip>
     );

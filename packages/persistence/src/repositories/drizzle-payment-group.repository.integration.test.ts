@@ -242,11 +242,138 @@ describe.skipIf(!HAS_DB)("payment groups (integration)", () => {
 
   it("flags invoices held for review and those already in an open payment", async () => {
     const [a, b, , held] = paymentIds as [string, string, string, string];
-    await groups.claim(claimInput([a]));
+    const claimed = await groups.claim(claimInput([a]));
+    if (claimed.kind !== "claimed") throw new Error("expected a claim");
     const result = await flags.flagsFor([a, b, held]);
-    expect(result.get(a)).toEqual({ heldForReview: false, inPaymentInProgress: true });
-    expect(result.get(b)).toEqual({ heldForReview: false, inPaymentInProgress: false });
-    expect(result.get(held)).toEqual({ heldForReview: true, inPaymentInProgress: false });
+    expect(result.get(a)).toEqual({
+      heldForReview: false,
+      inPaymentInProgress: true,
+      group: {
+        id: claimed.group.id,
+        status: "open",
+        checkoutRail: "card",
+        stripeCheckoutSessionId: null,
+        totalAmount: "300.00",
+        amountReceived: "0.00",
+        memberCount: 1,
+      },
+    });
+    expect(result.get(b)).toEqual({
+      heldForReview: false,
+      inPaymentInProgress: false,
+      group: null,
+    });
+    expect(result.get(held)).toEqual({
+      heldForReview: true,
+      inPaymentInProgress: false,
+      group: null,
+    });
+  });
+
+  it("finds the live groups that hold any of the payments, once each", async () => {
+    const [a, b, c] = paymentIds as [string, string, string];
+    const claimed = await groups.claim(claimInput([a, b]));
+    if (claimed.kind !== "claimed") throw new Error("expected a claim");
+    const live = await groups.findLiveByPaymentIds([a, b, c]);
+    expect(live.map((g) => g.id)).toEqual([claimed.group.id]);
+    await db.transaction(async (tx) => {
+      await groups.transitionInTransaction(tx, claimed.group.id, ["open"], "cancelled");
+    });
+    expect(await groups.findLiveByPaymentIds([a, b, c])).toEqual([]);
+    expect(await groups.findLiveByPaymentIds([])).toEqual([]);
+  });
+
+  describe("the bank-transfer groups of a Stripe customer", () => {
+    const customer = `cus_pg_${randomUUID()}`;
+    const since = new Date(Date.now() - 30 * 86_400_000);
+
+    it("lists the account's live or paid bank-transfer groups, newest first, and nothing else", async () => {
+      const [a, b, c] = paymentIds as [string, string, string];
+      await db
+        .update(legalEntity)
+        .set({ stripeCustomerId: customer })
+        .where(eq(legalEntity.id, orgId));
+      try {
+        expect(await groups.findBankTransferGroupsForCustomer(customer, since)).toEqual([]);
+        const card = await groups.claim(claimInput([a]));
+        expect(await groups.findBankTransferGroupsForCustomer(customer, since)).toEqual([]);
+        const bank = await groups.claim({
+          ...claimInput([b, c]),
+          checkoutRail: "gb_bank_transfer",
+        });
+        if (card.kind !== "claimed" || bank.kind !== "claimed") throw new Error("expected claims");
+        expect(
+          (await groups.findBankTransferGroupsForCustomer(customer, since)).map((g) => g.id),
+        ).toEqual([bank.group.id]);
+        // Old groups and other customers do not count.
+        expect(
+          await groups.findBankTransferGroupsForCustomer(customer, new Date(Date.now() + 60_000)),
+        ).toEqual([]);
+        expect(await groups.findBankTransferGroupsForCustomer("cus_other", since)).toEqual([]);
+        await db.transaction(async (tx) => {
+          await groups.transitionInTransaction(tx, bank.group.id, ["open"], "cancelled");
+        });
+        expect(await groups.findBankTransferGroupsForCustomer(customer, since)).toEqual([]);
+      } finally {
+        await db
+          .update(legalEntity)
+          .set({ stripeCustomerId: null })
+          .where(eq(legalEntity.id, orgId));
+      }
+    });
+  });
+
+  describe("money received so far", () => {
+    const at = (seconds: number) => new Date(1_793_000_000_000 + seconds * 1000);
+    const record = (groupId: string, amount: string, eventAt: Date) =>
+      db.transaction((tx) => groups.recordReceivedInTransaction(tx, groupId, { amount, eventAt }));
+    const open = async () => {
+      const [a, b] = paymentIds as [string, string];
+      const claimed = await groups.claim({ ...claimInput([a, b]), totalAmount: "200.00" });
+      if (claimed.kind !== "claimed") throw new Error("expected a claim");
+      return claimed.group.id;
+    };
+
+    it("stores the figure with the event's time, and only ever raises it", async () => {
+      const id = await open();
+      expect(await record(id, "60.00", at(10))).toBe(true);
+      expect(await record(id, "120.00", at(20))).toBe(true);
+      expect(await record(id, "90.00", at(30))).toBe(true);
+      const row = await groups.findById(id);
+      expect(row?.amountReceived).toBe("120.00");
+      expect(row?.receivedEventAt?.getTime()).toBe(at(30).getTime());
+    });
+
+    it("ignores an event older than the last one applied", async () => {
+      const id = await open();
+      await record(id, "120.00", at(20));
+      expect(await record(id, "60.00", at(10))).toBe(false);
+      const row = await groups.findById(id);
+      expect(row?.amountReceived).toBe("120.00");
+      expect(row?.receivedEventAt?.getTime()).toBe(at(20).getTime());
+    });
+
+    it("never stores more than the group's total", async () => {
+      const id = await open();
+      await record(id, "999.00", at(10));
+      expect((await groups.findById(id))?.amountReceived).toBe("200.00");
+    });
+
+    it("stores nothing for a group that is no longer live", async () => {
+      const id = await open();
+      await db.transaction(async (tx) => {
+        await groups.transitionInTransaction(tx, id, ["open"], "cancelled");
+      });
+      expect(await record(id, "60.00", at(10))).toBe(false);
+      expect((await groups.findById(id))?.amountReceived).toBe("0.00");
+    });
+
+    it("lets two events at the same moment both apply, keeping the larger figure", async () => {
+      const id = await open();
+      await record(id, "120.00", at(10));
+      expect(await record(id, "60.00", at(10))).toBe(true);
+      expect((await groups.findById(id))?.amountReceived).toBe("120.00");
+    });
   });
 
   it("leaves grouped payments out of the stale-payment expiry", async () => {

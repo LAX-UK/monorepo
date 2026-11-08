@@ -239,6 +239,7 @@ const LABELS: Record<string, string> = {
   "shop.stock_hold.expired": "Stock hold expired",
   "shop.third_party_sale.recorded": "Third-party sale recorded",
   "shop.sale_fee.approved": "Sale fee approved",
+  "alert.subscription.confirmed": "Alert subscription confirmed",
   "shop.original_sale.reserved": "Original reserved for sale",
 
   "source_of_funds.required": "Source of Funds required",

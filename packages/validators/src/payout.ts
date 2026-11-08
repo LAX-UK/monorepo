@@ -26,6 +26,8 @@ export type AdminManualReversePayoutInput = z.infer<typeof adminManualReversePay
 export const listPayoutsQuerySchema = z.object({
   legalEntityId: z.string().uuid().optional(),
   status: z.enum(payoutStatuses).optional(),
+  /** Admin list search: a payout reference, the start of a payout id, or a seller name. */
+  search: z.string().trim().max(100).optional(),
   periodStart: z.coerce.date().optional(),
   periodEnd: z.coerce.date().optional(),
   limit: z.coerce.number().int().min(1).max(100).optional().default(20),
@@ -33,9 +35,16 @@ export const listPayoutsQuerySchema = z.object({
 });
 
 /** Run Settlement Input (admin) */
+/** Money actions on a payout name why, for the audit log. */
+export const PAYOUT_ACTION_REASON_MIN = 10;
+export const payoutActionReasonSchema = z.string().trim().min(PAYOUT_ACTION_REASON_MIN).max(1000);
+
 export const runSettlementSchema = z.object({
   legalEntityId: z.string().uuid().optional(), // if omitted, runs for all eligible
   dryRun: z.boolean().optional().default(false),
+  reason: payoutActionReasonSchema,
+  /** Optional start of the period; it must follow the last settled period. Defaults to that end. */
+  periodStart: z.string().datetime().optional(),
 });
 
 export type RunSettlementInput = z.infer<typeof runSettlementSchema>;

@@ -13,23 +13,39 @@ const SITUATION: Record<UnappliedMoneyReason, string> = {
   amount_mismatch: "A payment arrived for a different amount from the invoice total.",
   group_not_settleable:
     "A payment for several invoices arrived, but they could no longer all be settled by it.",
+  group_overpaid:
+    "A payment for several invoices received more than its total. The excess is for finance to return or apply.",
   customer_balance_unapplied:
-    "A bank transfer is sitting in a buyer's Stripe balance with no open invoice to pay.",
+    "Money is left in a buyer's Stripe balance with no open invoice to pay. The amount shown is the balance now, not necessarily what the latest transfer added.",
   paid_not_recorded: "Stripe shows an invoice paid, but the payment has not been recorded here.",
 };
 
 /** What one alert says: the money, the situation and where to look. */
 export type UnappliedMoneyAlert = {
   situation: keyof typeof SITUATION;
+  /** A hedged pointer to a payment the money might belong to; absent when none is certain enough. */
+  possibleSource: string | null;
   paymentId: string | null;
   reference: string;
   amountCents: number;
   currency: string;
 };
 
+/** What finance reads about the payment a balance might belong to, worded by the payment's state. */
+export function possibleSourceText(
+  group: { id: string; status: "open" | "processing" | "paid" } | null,
+): string | null {
+  if (!group) return null;
+  const ref = `PG-${group.id.slice(0, 8).toUpperCase()}`;
+  return group.status === "paid"
+    ? `Possible overpayment of payment ${ref}. Check before acting.`
+    : `May belong to the unpaid payment ${ref}. Check before acting.`;
+}
+
 export function alertFromUnappliedMoney(payload: UnappliedMoneyPayload): UnappliedMoneyAlert {
   return {
     situation: payload.reason,
+    possibleSource: possibleSourceText(payload.possibleGroup ?? null),
     paymentId: payload.paymentId,
     reference:
       payload.stripePaymentIntentId ??
@@ -69,7 +85,7 @@ export async function fanoutUnappliedMoney(options: {
       ...(target.snapshot ? { recipientResolution: "snapshot" as const } : {}),
       vars: {
         recipientFirstName: target.firstName,
-        situation: SITUATION[alert.situation],
+        situation: [SITUATION[alert.situation], alert.possibleSource].filter(Boolean).join(" "),
         amount,
         reference: alert.reference,
         reviewUrl: `${base}${path}`,

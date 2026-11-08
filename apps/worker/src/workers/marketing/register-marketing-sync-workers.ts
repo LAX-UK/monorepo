@@ -26,6 +26,7 @@ export function registerMarketingSyncWorkers(
     heartbeat,
     reportWorkerJobFailure,
     newsletterSignupSyncRepo,
+    zohoCampaignsOptOutLiftRepo,
   } = deps;
 
   const marketingSyncQueue = new Queue<MarketingSyncJobData>(
@@ -38,6 +39,7 @@ export function registerMarketingSyncWorkers(
       if (job.name === "zoho-campaigns-sync") {
         await zohoCampaignsSyncJob({
           newsletterSignupSyncRepo,
+          optOutLift: zohoCampaignsOptOutLiftRepo,
           env,
           log,
           data: job.data as ZohoCampaignsSyncJobData,

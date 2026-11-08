@@ -1,9 +1,11 @@
 import { WorkspacePanel } from "@/components/dashboard/primitives/workspace-panel";
 import { PAY_COPY } from "@/lib/pay/pay-copy";
+import type { PayMethodsVm } from "@/lib/pay/pay-methods";
 import type { PayAction, PayMoneyVm, PayPageVm } from "@/lib/pay/pay-page.vm";
-import { Button, TextLink } from "@auction/ui/lax";
+import { Button, Meter, TextLink } from "@auction/ui/lax";
 import Link from "next/link";
-import { PayActionButton } from "./pay-action-button";
+import { PayActionButton, PayActionNote } from "./pay-action-button";
+import { PayMethodChoice } from "./pay-method-choice";
 
 /**
  * The money as the invoice states it, who it is from, how it is paid and the one action. Every
@@ -12,16 +14,14 @@ import { PayActionButton } from "./pay-action-button";
  */
 export function PayPaymentPanel({
   money,
-  howYouPay,
+  methods,
   action,
   railPay,
-  actionNote,
 }: {
   money: PayMoneyVm;
-  howYouPay: readonly string[];
+  methods: PayMethodsVm | null;
   action: PayAction | null;
   railPay: PayPageVm["railPay"];
-  actionNote: string | null;
 }) {
   const pays = action?.kind === "pay";
   return (
@@ -33,26 +33,29 @@ export function PayPaymentPanel({
             <dd className="text-right tabular-nums text-lax-fg">{line.amount}</dd>
           </div>
         ))}
-        <div className="mt-2 flex justify-between gap-4 border-t border-lax-line pt-3 font-semibold">
+        <div
+          className={
+            money.lines.length > 0
+              ? "mt-2 flex justify-between gap-4 border-t border-lax-line pt-3 font-semibold"
+              : "flex justify-between gap-4 font-semibold"
+          }
+        >
           <dt className="text-lax-fg">{money.totalLabel}</dt>
           <dd className="tabular-nums text-lax-fg">{money.total}</dd>
         </div>
       </dl>
-      <p className="mt-3 text-lax-13 text-lax-muted">{money.due}</p>
+      {money.meter ? (
+        <div className="mt-4">
+          <Meter value={money.meter.percent} label={money.meter.label} />
+          <p className="mt-2 text-lax-13 text-lax-muted">{money.meter.caption}</p>
+        </div>
+      ) : null}
+      {money.due ? <p className="mt-3 text-lax-13 text-lax-muted">{money.due}</p> : null}
       <p className="mt-3 text-lax-13 text-lax-muted">
         {money.company}
         {money.registration.length > 0 ? `. ${money.registration.join(", ")}` : ""}
       </p>
-      {howYouPay.length > 0 ? (
-        <div className="mt-5 border-t border-lax-line-subtle pt-5">
-          <h3 className="text-lax-14 font-semibold text-lax-fg">{PAY_COPY.howYouPay}</h3>
-          {howYouPay.map((line) => (
-            <p key={line} className="mt-1 text-lax-13 text-lax-muted">
-              {line}
-            </p>
-          ))}
-        </div>
-      ) : null}
+      {methods ? <PayMethodChoice methods={methods} /> : null}
       {railPay ? (
         <div className="mt-5 max-lg:hidden">
           <Button
@@ -73,7 +76,7 @@ export function PayPaymentPanel({
         <div className="mt-5 flex flex-col gap-3">
           {/* On a phone the same action sits in the bar at the bottom. */}
           <PayActionButton action={action} className="w-full max-lg:hidden" />
-          {actionNote ? <p className="text-lax-13 text-lax-muted">{actionNote}</p> : null}
+          <PayActionNote action={action} />
           <p className="text-lax-13 text-lax-muted">
             {PAY_COPY.conditionsLine}
             <TextLink href="/terms" Link={Link}>

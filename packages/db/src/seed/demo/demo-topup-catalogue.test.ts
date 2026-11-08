@@ -10,6 +10,7 @@ const actors = {
   rivalUserId: "rival",
   rivalEntityId: "rival-entity",
   northbankBuyerUserId: "buyer",
+  northbankOwnerUserId: "owner",
   northbankId: "northbank",
   consignorUserId: "consignor",
   laxStockId: "lax",

@@ -17,6 +17,8 @@ export type PendingPayoutPreview = {
   /** Number of payments that would be in the next payout. */
   paymentCount: number;
   currency: string;
+  /** Capture time of the oldest payment waiting, when any is. */
+  earliestCapturedAt?: Date | null;
 };
 
 export type PayoutWithLines = Payout & { lines: PayoutLine[] };
@@ -29,6 +31,8 @@ export type ListPayoutsFilter = {
 
 export type AdminListPayoutsFilter = ListPayoutsFilter & {
   legalEntityId?: string;
+  /** A payout reference (PO-YYYY-XXXXXXXX), the start of a payout id, or a seller name. */
+  search?: string;
 };
 
 export type CreateSettlementInput = {
@@ -39,6 +43,8 @@ export type CreateSettlementInput = {
   periodEnd: Date;
   /** Optional override of the platform fee rate (decimal, e.g. 0.18). */
   platformFeeRateOverride?: number;
+  /** Why staff ran it, kept in the audit event. */
+  reason?: string;
 };
 
 export type CreateSettlementResult =
@@ -100,6 +106,8 @@ export type BulkSettlementWithTransfersResult = {
 
 export type MarkPaidInput = {
   stripeTransferId: string;
+  /** Why staff marked it paid, kept in the audit event. */
+  reason: string;
 };
 
 export type StripeTransferReconciliationInput = {

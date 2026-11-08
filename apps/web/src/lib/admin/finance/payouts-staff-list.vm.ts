@@ -2,6 +2,7 @@ import { buildListHref } from "@/lib/admin/admin-list-params";
 import { staffStatus } from "@/lib/admin/staff-kit-status";
 import type { AdminPayoutListSummary } from "@/lib/data/http/admin-payouts.shared";
 import type { AdminPayoutRow } from "@/lib/data/http/admin.server";
+import { formatPayoutReference } from "@auction/domain";
 import {
   type AttentionStripItem,
   type Metric,
@@ -34,6 +35,8 @@ function poundsToPence(amount: string): number | null {
 /** One payout as the staff list shows it; plain data, so it crosses to the client as is. */
 export type PayoutsStaffRow = {
   id: string;
+  /** The reference people quote, such as PO-2026-3FA9C1D2; the id stays the address. */
+  reference: string;
   legalEntityId: string;
   /** The seller's name; a short reference when the name could not be looked up. */
   seller: string;
@@ -99,6 +102,7 @@ export function toPayoutsStaffRows(
     const open = row.status === "scheduled" || row.status === "in_transit";
     return {
       id: row.id,
+      reference: formatPayoutReference({ id: row.id, periodEnd: new Date(row.periodEnd) }),
       legalEntityId: row.legalEntityId,
       seller:
         row.legalEntityName ??

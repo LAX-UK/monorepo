@@ -1,7 +1,7 @@
 import type { Database } from "@auction/db";
 import { legalEntity, lot, payment, paymentGroup } from "@auction/db/schema";
 import type { PaymentGroupStatus } from "@auction/domain";
-import { and, asc, eq, inArray, isNull, or } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, isNull, lte, or, sql } from "drizzle-orm";
 import type {
   ClaimPaymentGroupInput,
   ClaimPaymentGroupResult,
@@ -27,6 +27,8 @@ function mapGroup(row: GroupRow): PaymentGroupRecord {
     stripeCheckoutSessionId: row.stripeCheckoutSessionId,
     stripePaymentIntentId: row.stripePaymentIntentId,
     stripeChargeId: row.stripeChargeId,
+    amountReceived: String(row.amountReceived),
+    receivedEventAt: row.receivedEventAt,
     createdAt: row.createdAt,
     settledAt: row.settledAt,
   };
@@ -120,25 +122,89 @@ export class DrizzlePaymentGroupRepository implements IPaymentGroupRepository {
     return this.membersQuery(this.db, groupId);
   }
 
+  async findBankTransferGroupsForCustomer(
+    stripeCustomerId: string,
+    since: Date,
+  ): Promise<PaymentGroupRecord[]> {
+    const rows = await this.db
+      .select({ group: paymentGroup })
+      .from(paymentGroup)
+      .innerJoin(legalEntity, eq(legalEntity.id, paymentGroup.buyerLegalEntityId))
+      .where(
+        and(
+          eq(legalEntity.stripeCustomerId, stripeCustomerId),
+          eq(paymentGroup.checkoutRail, "gb_bank_transfer"),
+          inArray(paymentGroup.status, ["open", "processing", "paid"]),
+          gte(paymentGroup.createdAt, since),
+        ),
+      )
+      .orderBy(desc(paymentGroup.createdAt))
+      .limit(5);
+    return rows.map((row) => mapGroup(row.group));
+  }
+
+  async findLiveByPaymentIds(paymentIds: readonly string[]): Promise<PaymentGroupRecord[]> {
+    if (paymentIds.length === 0) return [];
+    const rows = await this.db
+      .selectDistinct({ group: paymentGroup })
+      .from(payment)
+      .innerJoin(paymentGroup, eq(paymentGroup.id, payment.paymentGroupId))
+      .where(
+        and(inArray(payment.id, [...paymentIds]), inArray(paymentGroup.status, LIVE_STATUSES)),
+      );
+    return rows.map((r) => mapGroup(r.group));
+  }
+
+  async recordReceivedInTransaction(
+    tx: Database,
+    groupId: string,
+    received: { amount: string; eventAt: Date },
+  ): Promise<boolean> {
+    // One statement decides everything: a late (older) event changes nothing, the figure only
+    // goes up, and it is capped at the total, so replays and reordering cannot lower or inflate it.
+    const rows = await tx
+      .update(paymentGroup)
+      .set({
+        amountReceived: sql`least(greatest(${paymentGroup.amountReceived}, ${received.amount}::numeric), ${paymentGroup.totalAmount})`,
+        receivedEventAt: received.eventAt,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(paymentGroup.id, groupId),
+          inArray(paymentGroup.status, LIVE_STATUSES),
+          or(
+            isNull(paymentGroup.receivedEventAt),
+            lte(paymentGroup.receivedEventAt, received.eventAt),
+          ),
+        ),
+      )
+      .returning({ id: paymentGroup.id });
+    return rows.length > 0;
+  }
+
   async recordCheckout(
     groupId: string,
     checkout: { sessionId: string; paymentIntentId: string | null },
-  ): Promise<void> {
-    await this.db.transaction(async (tx) => {
-      await tx
+  ): Promise<boolean> {
+    return this.db.transaction(async (tx) => {
+      const updated = await tx
         .update(paymentGroup)
         .set({
           stripeCheckoutSessionId: checkout.sessionId,
           ...(checkout.paymentIntentId ? { stripePaymentIntentId: checkout.paymentIntentId } : {}),
           updatedAt: new Date(),
         })
-        .where(eq(paymentGroup.id, groupId));
+        .where(and(eq(paymentGroup.id, groupId), inArray(paymentGroup.status, LIVE_STATUSES)))
+        .returning({ id: paymentGroup.id });
+      if (updated.length === 0) return false;
       if (checkout.paymentIntentId) {
         await tx
           .update(payment)
           .set({ stripePaymentIntentId: checkout.paymentIntentId })
           .where(eq(payment.paymentGroupId, groupId));
       }
+      return true;
     });
   }
 
@@ -215,21 +281,44 @@ export class DrizzlePaySeveralInvoiceFlagsReader implements IPaySeveralInvoiceFl
       .select({
         paymentId: payment.id,
         sellerStatus: legalEntity.status,
+        groupId: paymentGroup.id,
         groupStatus: paymentGroup.status,
+        groupRail: paymentGroup.checkoutRail,
+        groupSession: paymentGroup.stripeCheckoutSessionId,
+        groupTotal: paymentGroup.totalAmount,
+        groupReceived: paymentGroup.amountReceived,
+        groupMembers: sql<number>`(select count(*)::int from payment member where member.payment_group_id = ${paymentGroup.id})`,
       })
       .from(payment)
       .innerJoin(legalEntity, eq(legalEntity.id, payment.sellerLegalEntityId))
       .leftJoin(paymentGroup, eq(paymentGroup.id, payment.paymentGroupId))
       .where(inArray(payment.id, [...paymentIds]));
     return new Map(
-      rows.map((r) => [
-        r.paymentId,
-        {
-          heldForReview: r.sellerStatus === "archived",
-          inPaymentInProgress:
-            r.groupStatus !== null && LIVE_STATUSES.includes(r.groupStatus as PaymentGroupStatus),
-        },
-      ]),
+      rows.map((r) => {
+        const live =
+          r.groupId !== null &&
+          r.groupStatus !== null &&
+          LIVE_STATUSES.includes(r.groupStatus as PaymentGroupStatus);
+        return [
+          r.paymentId,
+          {
+            heldForReview: r.sellerStatus === "archived",
+            inPaymentInProgress: live,
+            group:
+              live && r.groupId !== null
+                ? {
+                    id: r.groupId,
+                    status: r.groupStatus as "open" | "processing",
+                    checkoutRail: r.groupRail as PaymentGroupRecord["checkoutRail"],
+                    stripeCheckoutSessionId: r.groupSession,
+                    totalAmount: String(r.groupTotal),
+                    amountReceived: String(r.groupReceived),
+                    memberCount: Number(r.groupMembers),
+                  }
+                : null,
+          },
+        ];
+      }),
     );
   }
 }

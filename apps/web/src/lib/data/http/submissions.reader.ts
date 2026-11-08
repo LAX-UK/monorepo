@@ -14,6 +14,7 @@ import {
   SubmissionsAccessError,
   parseSubmissionsAccessFailure,
 } from "@/lib/legal-entity/submissions-access-errors";
+import { type SubmissionSummary, summariseSubmissionCounts } from "@auction/domain";
 import type { ItemSubmission, ItemSubmissionStatus } from "@auction/types";
 import { cache } from "react";
 import { z } from "zod";
@@ -45,16 +46,19 @@ export async function getMySubmissions(
   return readListEnvelope(body, itemSubmissionSchema, "GET /submissions/mine");
 }
 
-export async function getMySubmissionSummary(): Promise<{
-  counts: Record<ItemSubmissionStatus, number>;
-  total: number;
-}> {
+export async function getMySubmissionSummary(): Promise<SubmissionSummary> {
   const res = await authedServerFetchWithEntityFallback("/submissions/mine/summary");
   if (!res.ok) {
     throw new SubmissionsAccessError(await parseSubmissionsAccessFailure(res));
   }
   const body = await readJsonBody(res);
-  return readDataEnvelope(body, submissionSummarySchema, "GET /submissions/mine/summary");
+  const { counts } = readDataEnvelope(
+    body,
+    submissionSummarySchema,
+    "GET /submissions/mine/summary",
+  );
+  // The domain owns what the counts mean, so an older API reply still gets drafts and needsChanges.
+  return summariseSubmissionCounts(counts);
 }
 
 export async function getSubmissionForUser(id: string): Promise<ItemSubmission | null> {

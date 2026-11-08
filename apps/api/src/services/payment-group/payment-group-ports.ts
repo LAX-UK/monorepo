@@ -1,5 +1,5 @@
 import type { CheckoutRailKind } from "@auction/domain";
-import type { InvoiceLine } from "@auction/types";
+import type { BankTransferInstructions, InvoiceLine } from "@auction/types";
 
 /** One invoice as it appears on the combined checkout. */
 export type GroupCheckoutLine = {
@@ -31,6 +31,9 @@ export type GroupCheckoutSession = {
   paymentIntentId: string | null;
 };
 
+/** `complete`: the payer finished it (a card was submitted, a transfer was chosen). */
+export type GroupCheckoutStatus = "open" | "complete" | "expired";
+
 export type GroupChargeRefund = {
   /** The invoice's payment the refund names, `null` when it names none. */
   paymentId: string | null;
@@ -50,6 +53,13 @@ export interface IPaymentGroupGateway {
   createCheckout(input: CreateGroupCheckoutInput): Promise<GroupCheckoutSession>;
   /** Expires the checkout so it can no longer be paid; a finished one is left as it is. */
   expireCheckout(sessionId: string): Promise<void>;
+  /** Whether the payer is still on the hosted checkout, finished it, or it ran out. */
+  checkoutStatus(sessionId: string): Promise<GroupCheckoutStatus>;
+  /**
+   * The account details and reference the provider issued for the group's bank transfer, or
+   * `null` while it has issued none (the payer has not chosen the transfer yet).
+   */
+  bankTransferInstructions(sessionId: string): Promise<BankTransferInstructions | null>;
   /** Every refund that went through, or is going through, against the charge. */
   listChargeRefunds(chargeId: string): Promise<GroupChargeRefund[]>;
 }

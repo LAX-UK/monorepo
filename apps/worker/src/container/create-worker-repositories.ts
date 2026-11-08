@@ -64,6 +64,7 @@ import type {
 import type { IStaffOpsRecipientReader } from "../interfaces/staff-ops-recipient.reader.js";
 import type { IUploadValidationRepository } from "../interfaces/upload-validation.repository.js";
 import type { IWorkerDomainEventSink } from "../interfaces/worker-domain-event-sink.js";
+import type { IZohoCampaignsOptOutLiftRepository } from "../interfaces/zoho-campaigns-suppression.repository.js";
 import { WorkerDomainEventPublisher } from "../lib/domain-event-publisher.js";
 import { WorkerDomainEventSink } from "../lib/worker-domain-event-sink.js";
 import { DrizzleProfileMarketingReader } from "../marketing/drizzle-profile.reader.js";
@@ -106,6 +107,7 @@ import {
 } from "../repositories/drizzle-source-of-funds-review-projector.repository.js";
 import { DrizzleStaffOpsRecipientReader } from "../repositories/drizzle-staff-ops-recipient.reader.js";
 import { DrizzleUploadValidationRepository } from "../repositories/drizzle-upload-validation.repository.js";
+import { DrizzleZohoCampaignsSuppressionRepository } from "../repositories/drizzle-zoho-campaigns-suppression.repository.js";
 import type { WorkerDb } from "../workers/types.js";
 
 export type WorkerRepositories = {
@@ -144,6 +146,7 @@ export type WorkerRepositories = {
   paymentRefundNotifyReader: IPaymentRefundNotifyReader;
   payoutTransferFailedNotifyReader: IPayoutTransferFailedNotifyReader;
   clearArtistBlocksRepo: IClearArtistBlocksRepository;
+  zohoCampaignsOptOutLiftRepo: IZohoCampaignsOptOutLiftRepository;
   ensurePersonalLegalEntity: IEnsurePersonalLegalEntityService;
   sourceOfFundsSettlementReader: ISourceOfFundsSettlementReader;
   sourceOfFundsBuyerReader: ISourceOfFundsBuyerReader;
@@ -208,6 +211,7 @@ export function createWorkerRepositories(
     paymentRefundNotifyReader: new DrizzlePaymentRefundNotifyReader(db),
     payoutTransferFailedNotifyReader: new DrizzlePayoutTransferFailedNotifyReader(db),
     clearArtistBlocksRepo: new DrizzleClearArtistBlocksRepository(db),
+    zohoCampaignsOptOutLiftRepo: new DrizzleZohoCampaignsSuppressionRepository(db),
     ensurePersonalLegalEntity: new EnsurePersonalLegalEntityService(db),
     sourceOfFundsSettlementReader: new DrizzleSourceOfFundsSettlementReader(db),
     sourceOfFundsBuyerReader: new DrizzleSourceOfFundsBuyerReader(db),

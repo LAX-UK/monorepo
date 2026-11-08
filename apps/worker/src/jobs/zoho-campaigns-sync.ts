@@ -1,6 +1,8 @@
+import { emailHash } from "@auction/email";
 import type pino from "pino";
 import type { WorkerEnv } from "../env.js";
 import type { INewsletterSignupSyncRepository } from "../interfaces/newsletter-signup-sync.repository.js";
+import type { IZohoCampaignsOptOutLiftRepository } from "../interfaces/zoho-campaigns-suppression.repository.js";
 
 export type ZohoCampaignsSyncJobData = {
   signupLogId: string;
@@ -9,11 +11,14 @@ export type ZohoCampaignsSyncJobData = {
 
 export async function zohoCampaignsSyncJob({
   newsletterSignupSyncRepo,
+  optOutLift,
   env,
   log,
   data,
 }: {
   newsletterSignupSyncRepo: INewsletterSignupSyncRepository;
+  /** Lifts an old Campaigns marketing opt-out once the person is on the list again. */
+  optOutLift: IZohoCampaignsOptOutLiftRepository;
   env: WorkerEnv;
   log: pino.Logger;
   data: ZohoCampaignsSyncJobData;
@@ -41,6 +46,13 @@ export async function zohoCampaignsSyncJob({
 
   if (res.ok) {
     await newsletterSignupSyncRepo.markPushed(data.signupLogId, res.status);
+    // Signing up for the newsletter is asking for mail, so an earlier Campaigns opt-out no longer
+    // holds. The push is done and recorded, so a failed lift is logged, not retried with the push.
+    try {
+      await optOutLift.liftOptOut(emailHash(data.email), new Date());
+    } catch (err) {
+      log.error({ err, signupLogId: data.signupLogId }, "newsletter signup opt-out lift failed");
+    }
     return;
   }
 

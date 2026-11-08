@@ -64,6 +64,7 @@ export async function runDemoFull(db: Db, now: number = Date.now()): Promise<Dem
     rivalUserId: people.ids.rivalBidder,
     rivalEntityId: personalEntityOf(DEMO_PEOPLE.rivalBidder),
     northbankBuyerUserId: people.ids.northbankBuyer,
+    northbankOwnerUserId: people.ids.northbankOwner,
     northbankId: base.northbankId,
     heldUserId: people.ids.heldBuyer,
     heldEntityId: personalEntityOf(DEMO_PEOPLE.heldBuyer),

@@ -1,4 +1,4 @@
-import type { Database } from "@auction/db";
+import { type Database, liftZohoCampaignsOptOut } from "@auction/db";
 import { domainEvent, emailOutbox, emailSuppression } from "@auction/db/schema";
 import { bidIdentityDirectory } from "@auction/db/schema";
 import { and, desc, eq, sql } from "drizzle-orm";
@@ -45,6 +45,11 @@ export class DrizzleEmailBlockRepository implements IEmailBlockRepository {
         ),
       )
       .returning();
+    // A staff lift of a Campaigns opt-out is recorded, so the next daily sync does not block the
+    // person again for the same old unsubscribe.
+    if (row?.reason === "unsubscribed_marketing" && row.source === "zoho_campaigns") {
+      await liftZohoCampaignsOptOut(tx, row.emailHash, new Date());
+    }
     return row ? { emailHash: row.emailHash, reason: row.reason, since: row.createdAt } : null;
   }
 

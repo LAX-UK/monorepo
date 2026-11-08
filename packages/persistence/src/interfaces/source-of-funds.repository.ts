@@ -88,7 +88,14 @@ export interface ISourceOfFundsRepository {
     status: SourceOfFundsStatus,
     conn?: Database,
   ): Promise<AdminSourceOfFundsListSummary>;
-  create(input: CreateSourceOfFundsCaseInput, conn?: Database): Promise<SourceOfFundsCase>;
+  /**
+   * Opens a pending case for the buyer, idempotently: when one is already pending (including a
+   * concurrent insert) it returns that case with `created: false` and raises no error.
+   */
+  create(
+    input: CreateSourceOfFundsCaseInput,
+    conn?: Database,
+  ): Promise<{ case: SourceOfFundsCase; created: boolean }>;
   setTriage(input: SourceOfFundsTriageInput, conn?: Database): Promise<SourceOfFundsCase | null>;
   setReview(input: SourceOfFundsReviewInput, conn?: Database): Promise<SourceOfFundsCase | null>;
   /** Re-open a rejected case for a fresh maker-checker cycle (clears triage/decision). */
