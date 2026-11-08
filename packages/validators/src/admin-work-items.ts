@@ -60,6 +60,8 @@ export const adminWorkItemSchema = z.object({
   domain: adminWorkItemDomainSchema,
   title: z.string(),
   subtitle: z.string().nullable(),
+  /** Something to read before acting, such as a payment the money may belong to. */
+  hint: z.string().nullable().optional(),
   href: z.string(),
   saleId: z.string().nullable(),
   createdAt: z.string(),

@@ -63,6 +63,20 @@ export type UnappliedMoney = {
 export type UnappliedMoneyPayload = UnappliedMoney & { dedupeKey: string };
 
 /**
+ * What finance reads about the payment a balance might belong to, worded by the payment's state.
+ * A hedge, never a fact: the email and the work inbox both show it, so the words live here.
+ */
+export function possibleSourceText(
+  group: NonNullable<UnappliedMoney["possibleGroup"]> | null,
+): string | null {
+  if (!group) return null;
+  const ref = `PG-${group.id.slice(0, 8).toUpperCase()}`;
+  return group.status === "paid"
+    ? `Possible overpayment of payment ${ref}. Check before acting.`
+    : `May belong to the unpaid payment ${ref}. Check before acting.`;
+}
+
+/**
  * One finance task per piece of money: the same intent (or balance credit) reported again, by a
  * webhook replay or a second cron run, has the same key and raises nothing new.
  */

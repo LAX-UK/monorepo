@@ -25,6 +25,8 @@ export type AdminWorkItemSourceRow = {
   domain: "finance" | "compliance" | "catalogue" | "saleroom" | "fulfilment" | "clients";
   title: string;
   subtitle: string | null;
+  /** A hedged pointer finance should read before acting (a payment the money may belong to). */
+  hint?: string | null;
   href: string;
   saleId: string | null;
   createdAt: Date;

@@ -1,4 +1,8 @@
-import type { UnappliedMoneyPayload, UnappliedMoneyReason } from "@auction/domain";
+import {
+  type UnappliedMoneyPayload,
+  type UnappliedMoneyReason,
+  possibleSourceText,
+} from "@auction/domain";
 import type { IEmailService } from "@auction/email";
 import { formatMoneyMajor } from "@auction/email";
 import { FINANCE_ACCESS, adminRoutes } from "@auction/types";
@@ -30,17 +34,6 @@ export type UnappliedMoneyAlert = {
   amountCents: number;
   currency: string;
 };
-
-/** What finance reads about the payment a balance might belong to, worded by the payment's state. */
-export function possibleSourceText(
-  group: { id: string; status: "open" | "processing" | "paid" } | null,
-): string | null {
-  if (!group) return null;
-  const ref = `PG-${group.id.slice(0, 8).toUpperCase()}`;
-  return group.status === "paid"
-    ? `Possible overpayment of payment ${ref}. Check before acting.`
-    : `May belong to the unpaid payment ${ref}. Check before acting.`;
-}
 
 export function alertFromUnappliedMoney(payload: UnappliedMoneyPayload): UnappliedMoneyAlert {
   return {
