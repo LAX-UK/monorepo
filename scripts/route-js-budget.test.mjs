@@ -39,20 +39,16 @@ test("rows carry each route's size against its group's budget", () => {
   );
 });
 
-test("over budget is a warning until enforced, then an error that fails the check", () => {
+test("over budget and missing routes are warnings until enforced, then errors that fail", () => {
   const rows = budgetRows(groups, (route) => sizes[route]);
   const warned = verdict(rows, { enforce: false });
   assert.match(warned.lines[0], /^::warning::\/b loads 420 KB/);
-  // A route missing from the build always fails: the budget would otherwise silently stop applying.
-  assert.equal(warned.failed, true);
+  assert.match(warned.lines[1], /^::warning::\/c is not in the build manifest/);
+  assert.equal(warned.failed, false);
 
-  const present = budgetRows(
-    groups.map((g) => ({ ...g, routes: ["/a", "/b"] })),
-    (r) => sizes[r],
-  );
-  assert.equal(verdict(present, { enforce: false }).failed, false);
-  const enforced = verdict(present, { enforce: true });
+  const enforced = verdict(rows, { enforce: true });
   assert.match(enforced.lines[0], /^error: \/b loads 420 KB/);
+  assert.match(enforced.lines[1], /^error: \/c is not in the build manifest/);
   assert.equal(enforced.failed, true);
 });
 

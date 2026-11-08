@@ -1,8 +1,10 @@
 import { SaleroomDayGallery } from "@/components/sections/saleroom/saleroom-day-gallery";
 import type { DayGalleryVM } from "@/components/sections/saleroom/view-models";
 import type { SaleDayMedia } from "@auction/types";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+
+const preloaded = vi.hoisted(() => ({ count: 0 }));
 
 const mediaLightboxMock = vi.fn(
   ({
@@ -13,19 +15,24 @@ const mediaLightboxMock = vi.fn(
     open: boolean;
     index: number;
     onClose: () => void;
-  }) =>
-    open ? (
-      <div data-testid="media-lightbox" data-index={index}>
+  }) => (
+    // Always rendered once mounted, like the real viewer, which plays its closing motion.
+    <div data-testid="media-lightbox" data-index={index} data-open={String(open)}>
+      {open ? (
         <button type="button" onClick={onClose}>
           Close lightbox
         </button>
-      </div>
-    ) : null,
+      ) : null}
+    </div>
+  ),
 );
 
-vi.mock("@/components/gallery/engine/media-lightbox", () => ({
-  MediaLightbox: (props: Parameters<typeof mediaLightboxMock>[0]) => mediaLightboxMock(props),
-}));
+vi.mock("@/components/gallery/engine/media-lightbox", () => {
+  preloaded.count += 1;
+  return {
+    MediaLightbox: (props: Parameters<typeof mediaLightboxMock>[0]) => mediaLightboxMock(props),
+  };
+});
 
 vi.mock("@/components/ui/media-image", () => ({
   MediaImage: ({ alt, label }: { alt?: string; label?: string }) => (
@@ -62,6 +69,18 @@ function clickFirstButton(name: string | RegExp) {
 }
 
 describe("SaleroomDayGallery", () => {
+  it("starts fetching the viewer when a picture is pointed at, before anything is opened", async () => {
+    render(
+      <SaleroomDayGallery vm={makeVm(Array.from({ length: 15 }, (_, i) => imageItem(i + 1)))} />,
+    );
+    expect(preloaded.count).toBe(0);
+    const thumbnail = screen.getAllByRole("button", { name: "Open photo 2 of 15: Photo 2" })[0];
+    if (!thumbnail) throw new Error("Expected a picture");
+    fireEvent.pointerEnter(thumbnail);
+    await waitFor(() => expect(preloaded.count).toBe(1));
+    expect(screen.queryByTestId("media-lightbox")).toBeNull();
+  });
+
   it("renders all items inline for small sets without View all", () => {
     render(
       <SaleroomDayGallery vm={makeVm(Array.from({ length: 5 }, (_, i) => imageItem(i + 1)))} />,
@@ -105,6 +124,26 @@ describe("SaleroomDayGallery", () => {
 
     clickFirstButton("Open photo 1 of 15: Photo 1");
     expect(await screen.findByTestId("media-lightbox")).toHaveAttribute("data-index", "0");
+  });
+
+  it("keeps the viewer mounted after it closes, and leaves focus on the picture that opened it", async () => {
+    render(
+      <SaleroomDayGallery vm={makeVm(Array.from({ length: 15 }, (_, i) => imageItem(i + 1)))} />,
+    );
+    expect(screen.queryByTestId("media-lightbox")).toBeNull();
+
+    const thumbnail = screen.getAllByRole("button", { name: "Open photo 1 of 15: Photo 1" })[0];
+    if (!thumbnail) throw new Error("Expected the first picture");
+    thumbnail.focus();
+    fireEvent.click(thumbnail);
+    const viewer = await screen.findByTestId("media-lightbox");
+    expect(viewer).toHaveAttribute("data-open", "true");
+
+    fireEvent.click(screen.getByRole("button", { name: "Close lightbox" }));
+    // Still mounted, now closed: the closing motion plays and the picture keeps focus.
+    expect(screen.getByTestId("media-lightbox")).toHaveAttribute("data-open", "false");
+    expect(document.body.contains(thumbnail)).toBe(true);
+    expect(document.activeElement).toBe(thumbnail);
   });
 
   it("opens the sheet from the overflow tile", () => {

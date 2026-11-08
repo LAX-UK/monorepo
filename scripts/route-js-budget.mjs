@@ -57,21 +57,26 @@ export function budgetRows(groups, sizeOfRoute) {
   );
 }
 
-/** What to print and whether to fail: warnings until `enforce`, errors after. */
+/**
+ * What to print and whether to fail: warnings until `enforce`, errors after. A route the build
+ * lacks is the same: it only fails once enforced, so a renamed route cannot break an unrelated PR
+ * while the budget is still settling.
+ */
 export function verdict(rows, { enforce }) {
   const over = rows.filter((row) => row.gzipKb !== null && row.gzipKb > row.budgetKb);
   const missing = rows.filter((row) => row.gzipKb === null);
+  const say = (message) => (enforce ? `error: ${message}` : `::warning::${message}`);
   const lines = [
-    ...over.map((row) => {
-      const message = `${row.route} loads ${row.gzipKb.toFixed(0)} KB of JavaScript (gzip); the ${row.group} budget is ${row.budgetKb} KB`;
-      return enforce ? `error: ${message}` : `::warning::${message}`;
-    }),
-    ...missing.map(
-      (row) =>
-        `error: ${row.route} is not in the build manifest; update scripts/route-js-budget.mjs`,
+    ...over.map((row) =>
+      say(
+        `${row.route} loads ${row.gzipKb.toFixed(0)} KB of JavaScript (gzip); the ${row.group} budget is ${row.budgetKb} KB`,
+      ),
+    ),
+    ...missing.map((row) =>
+      say(`${row.route} is not in the build manifest; update scripts/route-js-budget.mjs`),
     ),
   ];
-  return { lines, failed: missing.length > 0 || (enforce && over.length > 0) };
+  return { lines, failed: enforce && (missing.length > 0 || over.length > 0) };
 }
 
 function readJson(file) {
@@ -86,8 +91,17 @@ function main(argv) {
     else if (argv[i] === "--chunks") args.chunks = argv[++i];
   }
   const nextDir = path.join(ROOT, args.app, ".next");
-  const appManifest = readJson(path.join(nextDir, "app-build-manifest.json"));
-  const buildManifest = readJson(path.join(nextDir, "build-manifest.json"));
+  const enforce = process.env.BUDGET_ENFORCE === "1";
+  let appManifest;
+  let buildManifest;
+  try {
+    appManifest = readJson(path.join(nextDir, "app-build-manifest.json"));
+    buildManifest = readJson(path.join(nextDir, "build-manifest.json"));
+  } catch {
+    const message = `no production build found in ${path.join(args.app, ".next")}; run next build first`;
+    console.log(enforce ? `error: ${message}` : `::warning::${message}`);
+    return enforce ? 1 : 0;
+  }
   const gzipCache = new Map();
   const gzipKb = (file) => {
     if (!gzipCache.has(file)) {
@@ -128,7 +142,7 @@ function main(argv) {
       console.log(`  ${size.padStart(8)} / ${row.budgetKb} KB  ${row.route}`);
     }
   }
-  const { lines, failed } = verdict(rows, { enforce: process.env.BUDGET_ENFORCE === "1" });
+  const { lines, failed } = verdict(rows, { enforce });
   for (const line of lines) console.log(line);
   return failed ? 1 : 0;
 }

@@ -89,7 +89,7 @@
   "devDependencies": {
     "@auction/config-ts": "workspace:*",
     "@axe-core/playwright": "^4.10.1",
-    "@next/bundle-analyzer": "15.5.21",
+    "@next/bundle-analyzer": "^15.5.21",
     "@playwright/test": "1.55.1",
     "@tailwindcss/oxide-wasm32-wasi": "4.2.2",
     "@tailwindcss/postcss": "^4.2.2",

@@ -16,14 +16,8 @@ import type { DayGalleryVM } from "@/components/sections/saleroom/view-models";
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import type { SaleDayMedia } from "@auction/types";
 import { cn } from "@auction/ui";
-import dynamic from "next/dynamic";
 import { useState } from "react";
-
-// The viewer (and its zoom and thumbnail plugins) is only needed once a picture is opened.
-const MediaLightbox = dynamic(
-  () => import("@/components/gallery/engine/media-lightbox").then((module) => module.MediaLightbox),
-  { ssr: false },
-);
+import { LazyMediaLightbox, preloadMediaLightbox } from "./media-lightbox.lazy";
 
 type Props = {
   vm: DayGalleryVM;
@@ -39,6 +33,8 @@ function previewBackgroundSrc(items: SaleDayMedia[]): string | null {
 
 export function SaleroomDayGallery({ vm, className }: Props) {
   const [lightboxIndex, setLightboxIndex] = useState<number>(-1);
+  // The viewer mounts on the first open and stays, so its closing motion plays and focus returns.
+  const [viewerMounted, setViewerMounted] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
   const reduceMotion = useReducedMotion();
 
@@ -49,6 +45,7 @@ export function SaleroomDayGallery({ vm, className }: Props) {
 
   const openLightboxAt = (index: number) => {
     setSheetOpen(false);
+    setViewerMounted(true);
     setLightboxIndex(index);
   };
 
@@ -75,7 +72,8 @@ export function SaleroomDayGallery({ vm, className }: Props) {
               total={total}
               saleTitle={vm.saleTitle}
               variant="inline"
-              onClick={() => setLightboxIndex(index)}
+              onIntent={() => void preloadMediaLightbox()}
+              onClick={() => openLightboxAt(index)}
             />
           ))}
           {overflowCount > 0 ? (
@@ -98,11 +96,11 @@ export function SaleroomDayGallery({ vm, className }: Props) {
         onSelectIndex={openLightboxAt}
       />
 
-      {lightboxIndex >= 0 ? (
-        <MediaLightbox
+      {viewerMounted ? (
+        <LazyMediaLightbox
           items={vm.items}
-          open
-          index={lightboxIndex}
+          open={lightboxIndex >= 0}
+          index={Math.max(lightboxIndex, 0)}
           onClose={() => setLightboxIndex(-1)}
           onIndexChange={setLightboxIndex}
           animation={animation}

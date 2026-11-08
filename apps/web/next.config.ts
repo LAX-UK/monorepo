@@ -1,7 +1,6 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { resolveSentryOrg } from "@auction/observability";
-import bundleAnalyzer from "@next/bundle-analyzer";
 import { withSentryConfig } from "@sentry/nextjs";
 import type { NextConfig } from "next";
 import { laxAccountOrigin } from "./src/lib/lax-account-url";
@@ -141,14 +140,6 @@ const nextConfig: NextConfig = {
   },
 };
 
-// `ANALYZE=true next build` writes the bundle report: `ANALYZE_MODE=json` for stats the budget
-// notes read, otherwise the interactive treemap.
-const withBundleAnalyzer = bundleAnalyzer({
-  enabled: process.env.ANALYZE === "true",
-  analyzerMode: process.env.ANALYZE_MODE === "json" ? "json" : "static",
-  openAnalyzer: false,
-});
-
 // Skip Sentry webpack plugin locally when no DSN is configured.
 const hasSentry = Boolean(process.env.SENTRY_DSN_WEB || process.env.NEXT_PUBLIC_SENTRY_DSN_WEB);
 
@@ -165,6 +156,18 @@ const sentryBuildOptions = {
 
 const finalConfig = hasSentry ? withSentryConfig(nextConfig, sentryBuildOptions) : nextConfig;
 
-export default withBundleAnalyzer(
-  finalConfig as Parameters<typeof withBundleAnalyzer>[0],
-) as NextConfig;
+/**
+ * `ANALYZE=true next build` writes the bundle report (`ANALYZE_MODE=json` for stats, otherwise
+ * the interactive treemap). The analyzer is loaded only then, so a normal build and every runtime
+ * never touch it.
+ */
+export default async function config() {
+  if (process.env.ANALYZE !== "true") return finalConfig;
+  const { default: bundleAnalyzer } = await import("@next/bundle-analyzer");
+  const withBundleAnalyzer = bundleAnalyzer({
+    enabled: true,
+    analyzerMode: process.env.ANALYZE_MODE === "json" ? "json" : "static",
+    openAnalyzer: false,
+  });
+  return withBundleAnalyzer(finalConfig as Parameters<typeof withBundleAnalyzer>[0]) as NextConfig;
+}
