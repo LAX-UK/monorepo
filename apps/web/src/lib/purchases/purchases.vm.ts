@@ -435,8 +435,10 @@ function reviewNow(
   if (holder === "winner") {
     return {
       kind: "review",
-      title: "A check on the person who won is in review",
-      description: "We're checking a few details. You can pay once we have.",
+      // Never say whose check it is: the rows name who won, and naming a colleague under a
+      // compliance check would tip them off. Same neutral words as the Pay page.
+      title: "We're checking a few details before this can be paid",
+      description: "You can pay once we have.",
       documentsAction: null,
     };
   }

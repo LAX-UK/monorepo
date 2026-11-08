@@ -471,15 +471,16 @@ describe("buildPurchasesVm", () => {
       });
     });
 
-    it("tells the payer to wait when the check is on the person who won", () => {
+    it("tells the payer to wait, without saying the check is on the person who won", () => {
       const vm = buildPurchasesVm(
         sources({ organisation: northbank }, "source_of_funds_required", "winner"),
       );
       expect(vm.payNow).toMatchObject({
         kind: "review",
-        title: "A check on the person who won is in review",
+        title: "We're checking a few details before this can be paid",
         documentsAction: null,
       });
+      expect(JSON.stringify(vm.payNow)).not.toMatch(/won|winner|person/i);
     });
 
     it("offers to pay when the organisation's checks are clear", () => {
