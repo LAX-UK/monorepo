@@ -102,7 +102,7 @@ export function AlertsSettings({
     });
     setSaved("Saving…");
     const result = subscribe
-      ? await setAlertTopic(topic, true, { email })
+      ? await setAlertTopic(topic, true, { email, restart: true })
       : await setAlertTopic(topic, false);
     if (!result.ok) {
       setEngine(previous);

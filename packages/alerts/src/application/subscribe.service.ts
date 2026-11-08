@@ -22,8 +22,11 @@ export type SubscribeDeps = {
   clock: Clock;
 };
 
-/** `blocked`: the address complained, so only a person at LAX can switch it back on. */
-export type AccountEnableOutcome = "enabled" | "unverified" | "no_account" | "blocked";
+/**
+ * `blocked`: the address complained, so only a person at LAX can switch it back on.
+ * `stopped`: the person stopped all alerts, and this switch was not an explicit restart.
+ */
+export type AccountEnableOutcome = "enabled" | "unverified" | "no_account" | "blocked" | "stopped";
 
 /** Starting alerts: a visitor by double opt-in, or an account with a verified address at once. */
 export class SubscribeService {
@@ -67,11 +70,25 @@ export class SubscribeService {
     topic: AlertTopic;
     source: string;
     emailOn?: boolean;
+    /**
+     * Only an explicit "turn my alerts back on" may start a subscriber who stopped all alerts.
+     * Anything else (following an artist, one search's switch) leaves them stopped.
+     */
+    restartStopped?: boolean;
   }): Promise<AccountEnableOutcome> {
     const address = await this.deps.addresses.find(input.subjectId);
     if (!address) return "no_account";
     if (!address.verified) return "unverified";
     const now = this.deps.clock.now();
+    if (!input.restartStopped) {
+      const existing =
+        (await this.deps.subscribers.findBySubject(input.product, input.subjectId)) ??
+        (await this.deps.subscribers.findByEmail(
+          input.product,
+          normaliseAlertEmail(address.email),
+        ));
+      if (existing?.status === "stopped") return "stopped";
+    }
     const record = await this.deps.subscribers.saveConfirmedForAccount({
       product: input.product,
       email: normaliseAlertEmail(address.email),

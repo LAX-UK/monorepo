@@ -37,6 +37,8 @@ export class FollowAlertsService {
       subjectId,
       topic: "art.followed_artists",
       source: FOLLOW_ALERT_SOURCE,
+      // Pressing Follow is an explicit choice, so it starts emails again after a stop.
+      restartStopped: true,
     });
   }
 }

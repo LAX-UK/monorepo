@@ -75,6 +75,25 @@ describe("confirming the others", () => {
   });
 });
 
+describe("an unreadable alert state", () => {
+  it("is held, with a reason and a place to look, and calls nothing", async () => {
+    expect(
+      searchEmailControl({ access: "unreadable", notifyEmail: true, topicEmailOn: null }),
+    ).toMatchObject({
+      kind: "held",
+      reason: "We couldn't check your alert settings. Try again.",
+    });
+    const p = ports();
+    const result = await switchSearchEmail({ ...on, access: "unreadable" }, p);
+    expect(result).toEqual({
+      ok: false,
+      error: "We couldn't check your alert settings. Try again.",
+    });
+    expect(p.setSearch).not.toHaveBeenCalled();
+    expect(p.enableTopicEmail).not.toHaveBeenCalled();
+  });
+});
+
 describe("savedWhileHeldMessage", () => {
   it("says why nothing will be sent", () => {
     expect(savedWhileHeldMessage("stopped")).toBe(

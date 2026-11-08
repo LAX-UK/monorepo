@@ -39,7 +39,7 @@ describe("HomeAlertsSignedIn", () => {
     render(<HomeAlertsSignedIn />);
     fireEvent.click(await screen.findByRole("button", { name: "Turn on sale alerts" }));
     await waitFor(() => expect(screen.getByText("You'll hear about new sales")).toBeTruthy());
-    expect(setAlertTopic).toHaveBeenCalledWith("bid.new_sales", true);
+    expect(setAlertTopic).toHaveBeenCalledWith("bid.new_sales", true, { restart: true });
     expect(success).toHaveBeenCalledWith("Sale alerts are on");
     expect(screen.queryByRole("button", { name: "Turn on sale alerts" })).toBeNull();
   });

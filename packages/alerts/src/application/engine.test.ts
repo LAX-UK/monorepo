@@ -290,9 +290,45 @@ describe("account preferences", () => {
       subjectId: "u1",
       topic: "bid.new_sales",
       source: "s",
+      restartStopped: true,
     });
     expect(again).toBe("blocked");
     expect(await h.stores.listEmailRecipients("bid.new_sales", null, 10)).toEqual([]);
+  });
+
+  it("leaves a subscriber who stopped all alerts stopped unless the switch is an explicit restart", async () => {
+    const h = createEngineHarness();
+    h.accounts.set("u1", { email: "client@example.com", verified: true });
+    const input = { product: "bid", subjectId: "u1", topic: "bid.searches", source: "s" } as const;
+    await h.subscribe.enableForAccount({ ...input, topic: "bid.new_sales" });
+    const [row] = [...h.stores.subscribersById.values()];
+    await h.stores.stop(row?.id ?? "", "settings", h.now);
+
+    expect(await h.subscribe.enableForAccount(input)).toBe("stopped");
+    expect([...h.stores.subscribersById.values()][0]?.status).toBe("stopped");
+    expect(await h.stores.listEmailRecipients("bid.searches", null, 10)).toEqual([]);
+
+    expect(await h.subscribe.enableForAccount({ ...input, restartStopped: true })).toBe("enabled");
+    expect([...h.stores.subscribersById.values()][0]?.status).toBe("confirmed");
+  });
+
+  it("does not restart a stopped subscriber from a topic switch", async () => {
+    const h = createEngineHarness();
+    h.accounts.set("u1", { email: "client@example.com", verified: true });
+    await h.subscribe.enableForAccount({
+      product: "bid",
+      subjectId: "u1",
+      topic: "bid.new_sales",
+      source: "s",
+    });
+    const [row] = [...h.stores.subscribersById.values()];
+    await h.stores.stop(row?.id ?? "", "one_click", h.now);
+
+    const asked = { product: "bid", subjectId: "u1", topic: "bid.searches", on: true } as const;
+    expect(await h.preferences.setTopic(asked)).toBe("stopped");
+    expect([...h.stores.subscribersById.values()][0]?.status).toBe("stopped");
+    expect(await h.preferences.setTopic({ ...asked, restartStopped: true })).toBe("saved");
+    expect([...h.stores.subscribersById.values()][0]?.status).toBe("confirmed");
   });
 
   it("reports an unverified address", async () => {

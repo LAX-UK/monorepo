@@ -183,6 +183,36 @@ describe("a signed-in client's alert routes", () => {
   });
 });
 
+describe("switching a topic after the person stopped all alerts", () => {
+  it("passes an explicit restart on, and only then", async () => {
+    const e = engine();
+    const app = createAlertRoutes(container(e), authenticator({ role: "client" }));
+    await app.request("/me/topics/bid.searches", { ...json({ on: true }), method: "PUT" });
+    expect(e.preferences.setTopic.mock.calls[0]?.[0]).not.toHaveProperty("restartStopped");
+    await app.request("/me/topics/bid.searches", {
+      ...json({ on: true, restart: true }),
+      method: "PUT",
+    });
+    expect(e.preferences.setTopic.mock.calls[1]?.[0]).toMatchObject({ restartStopped: true });
+  });
+
+  it("answers 409 with a plain reason when alerts are stopped", async () => {
+    const e = engine();
+    e.preferences.setTopic.mockResolvedValue("stopped");
+    const app = createAlertRoutes(container(e), authenticator({ role: "client" }));
+    const res = await app.request("/me/topics/bid.searches", {
+      ...json({ on: true }),
+      method: "PUT",
+    });
+    expect(res.status).toBe(409);
+    expect(await res.json()).toMatchObject({
+      ok: false,
+      reason: "stopped",
+      error: "You stopped all alerts. Turn them back on in Settings.",
+    });
+  });
+});
+
 describe("the first sale-alerts routes", () => {
   it("still confirm, preview and one-click stop, and say when they go", async () => {
     const e = engine();

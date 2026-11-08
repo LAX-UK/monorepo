@@ -3,7 +3,7 @@ import { setSavedSearchEmail } from "@/lib/data/http/saved-searches.client";
 import { NOTIFICATION_SETTINGS_HREF } from "@/lib/navigation/settings-links";
 
 /** Whether the person's alerts can be switched on from here, or are held by a choice or a check. */
-export type AlertAccess = "ok" | "stopped" | "unverified";
+export type AlertAccess = "ok" | "stopped" | "unverified" | "unreadable";
 
 export type SearchEmailControl =
   /** Off and not changeable here, with why and where to put it right. */
@@ -15,6 +15,10 @@ const HELD: Record<Exclude<AlertAccess, "ok">, { reason: string; label: string }
   unverified: {
     reason: "Verify your email address to get alerts",
     label: "Verify your email",
+  },
+  unreadable: {
+    reason: "We couldn't check your alert settings. Try again.",
+    label: "Alert settings",
   },
 };
 
@@ -73,9 +77,9 @@ export function turnedOnMessage(othersBroughtBack: number): string {
 
 /** What to tell the person when their alert was saved but nothing can be sent yet. */
 export function savedWhileHeldMessage(access: Exclude<AlertAccess, "ok">): string {
-  return access === "stopped"
-    ? "Alert saved. You stopped all alerts, so nothing will be sent."
-    : "Alert saved. Verify your email address to get alerts.";
+  if (access === "stopped") return "Alert saved. You stopped all alerts, so nothing will be sent.";
+  if (access === "unverified") return "Alert saved. Verify your email address to get alerts.";
+  return "Alert saved. We couldn't check your alert settings, so email may not be sent.";
 }
 
 export type SearchEmailResult = { ok: true } | { ok: false; error: string };

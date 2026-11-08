@@ -54,7 +54,7 @@ export function HomeAlertsSignedIn({
 
   const turnOn = async () => {
     setBusy(true);
-    const result = await setAlertTopic("bid.new_sales", true);
+    const result = await setAlertTopic("bid.new_sales", true, { restart: true });
     setBusy(false);
     if (!result.ok) {
       notify.error(result.error);

@@ -42,9 +42,13 @@ describe("alertAccessOf", () => {
     expect(alertAccessOf(mine("stopped", true), false)).toBe("unverified");
   });
 
-  it("is ok otherwise, including when the read failed", () => {
+  it("holds alerts when the settings could not be read, so a failed read can't undo a stop", () => {
+    expect(alertAccessOf(null, true)).toBe("unreadable");
+    expect(alertAccessOf(null, undefined)).toBe("unreadable");
+  });
+
+  it("is ok otherwise", () => {
     expect(alertAccessOf(mine("confirmed", true), true)).toBe("ok");
-    expect(alertAccessOf(null, true)).toBe("ok");
     expect(alertAccessOf(mine("confirmed", false), undefined)).toBe("ok");
   });
 });

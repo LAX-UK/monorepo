@@ -51,8 +51,10 @@ export function createAccountEmailAlertHandlers(deps: AccountEmailAlertDeps) {
         subjectId: input.identitySubjectId,
         topic: input.topic,
         on: input.on,
+        // The account page's switch is an explicit choice, so it starts alerts again after a stop.
+        restartStopped: true,
       });
-      return outcome === "saved" ? null : outcome;
+      return outcome === "saved" ? null : outcome === "stopped" ? "blocked" : outcome;
     },
   };
 }

@@ -13,16 +13,17 @@ export function engineAlertStateOf(mine: AccountAlerts | null): EngineAlertState
 }
 
 /**
- * Whether alerts can be switched on for this client: held once they stopped all alerts, or while
- * their address is not verified (nothing is sent either way). Unknown reads count as "ok", since
- * the API refuses a switch it can't honour.
+ * Whether alerts can be switched on for this client: held once they stopped all alerts, while
+ * their address is not verified (nothing is sent either way), and when their alert settings could
+ * not be read, since a switch must never start alerts the person stopped.
  */
 export function alertAccessOf(
   mine: AccountAlerts | null,
   emailVerified: boolean | undefined,
 ): AlertAccess {
   if (emailVerified === false) return "unverified";
-  if (mine?.state === "stopped") return "stopped";
+  if (!mine) return "unreadable";
+  if (mine.state === "stopped") return "stopped";
   return "ok";
 }
 
