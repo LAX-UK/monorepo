@@ -1,4 +1,4 @@
-import { formatLegalDocumentDate } from "@auction/identity-contracts";
+import { formatLegalDocumentDate } from "@auction/identity-contracts/legal-documents";
 import { describe, expect, it } from "vitest";
 import { formatLegalPolicyDate } from "./legal-policy-page.js";
 

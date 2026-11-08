@@ -1,5 +1,5 @@
 import { type LaxOperatedProduct, legalEntityFor, legalOperatorSentence } from "@auction/branding";
-import { formatLegalDocumentDate } from "@auction/identity-contracts";
+import { formatLegalDocumentDate } from "@auction/identity-contracts/legal-documents";
 import Link from "next/link";
 import { Fragment, type ReactNode } from "react";
 import { TextWithEmails } from "../../email-text.js";
