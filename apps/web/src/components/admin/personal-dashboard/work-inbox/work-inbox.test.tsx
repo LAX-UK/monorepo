@@ -68,13 +68,13 @@ describe("unapplied money in the work inbox", () => {
   it("shows the possible payment under Check first when the panel opens", () => {
     show(unapplied(HINT));
     const panel = screen.getByRole("dialog");
-    expect(within(panel).getByText("Check first")).toBeInTheDocument();
+    expect(within(panel).getByText("Possible payment")).toBeInTheDocument();
     expect(within(panel).getByText(HINT)).toBeInTheDocument();
   });
 
   it("shows no Check first line when there is no suggestion", () => {
     show(unapplied(null));
-    expect(screen.queryByText("Check first")).toBeNull();
+    expect(screen.queryByText("Possible payment")).toBeNull();
   });
 });
 

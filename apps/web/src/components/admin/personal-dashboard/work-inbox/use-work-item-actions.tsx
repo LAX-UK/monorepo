@@ -83,7 +83,7 @@ export function useWorkItemActions({ onDone }: { onDone?: () => void } = {}) {
                   <KeyValueList
                     items={[
                       { label: "Money", value: item.subtitle },
-                      ...(item.hint ? [{ label: "Check first", value: item.hint }] : []),
+                      ...(item.hint ? [{ label: "Possible payment", value: item.hint }] : []),
                     ]}
                   />
                 ),
