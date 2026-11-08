@@ -21,16 +21,18 @@ function fakeTx(input: {
   }>;
   /** The people acting for each deal's two sides. */
   parties?: Array<{ dealId: string; userId: string | null }>;
-  /** Everyone named on a deal by a party-named event, including a buyer later replaced. */
+  /** Everyone ever named on a deal, from its party history, including a buyer later replaced. */
   named?: Array<{ dealId: string; userId: string | null }>;
   /** When each deal settled, from its stage history. */
   settled?: Array<{ dealId: string; at: Date }>;
   /** Screenings and source-of-funds cases opened for those people. */
   screenings?: Array<{ userId: string; at: Date }>;
   funds?: Array<{ userId: string; at: Date }>;
-  /** Anti-money-laundering holds and identity verifications that did not pass. */
+  /** Holds still in place, accounts whose identity check was rejected, declined decisions (Veriff 9102) and screening decisions. */
   holds?: Array<{ userId: string; at: Date }>;
+  rejected?: Array<{ userId: string; at: Date }>;
   declined?: Array<{ userId: string; at: Date }>;
+  decisions?: Array<{ userId: string; at: Date }>;
   detached?: Row[];
   notes?: Row[];
   enquiries?: Row[];
@@ -58,8 +60,8 @@ function fakeTx(input: {
     where: () => ({ returning: () => Promise.resolve(deleteResult) }),
   }));
   // Answered by call order: the enquiries, the deals, then (when there are deals) their parties,
-  // the people named by events, settlements, then screenings, source-of-funds cases, holds and
-  // declined identity checks.
+  // the people named, settlements, then screenings, source-of-funds cases, holds, rejected
+  // accounts, declined decisions and screening decisions.
   const answers = [
     input.matched,
     (input.deals ?? []).map((d) => ({ id: "d1", ...d })),
@@ -69,7 +71,9 @@ function fakeTx(input: {
     input.screenings ?? [],
     input.funds ?? [],
     input.holds ?? [],
+    input.rejected ?? [],
     input.declined ?? [],
+    input.decisions ?? [],
   ];
   const select = vi.fn(() => ({
     from: () => ({ where: () => Promise.resolve(answers.shift() ?? []) }),
@@ -299,8 +303,16 @@ describe("anonymiseEnquiries", () => {
         { holds: [{ userId: "u-buyer", at: new Date("2026-02-15T00:00:00Z") }] },
       ],
       [
-        "a declined identity check",
+        "a rejected identity check",
+        { rejected: [{ userId: "u-buyer", at: new Date("2026-02-15T00:00:00Z") }] },
+      ],
+      [
+        "a declined Veriff decision",
         { declined: [{ userId: "u-buyer", at: new Date("2026-02-15T00:00:00Z") }] },
+      ],
+      [
+        "an AML hold that was cleared before the request",
+        { decisions: [{ userId: "u-buyer", at: new Date("2026-02-15T00:00:00Z") }] },
       ],
     ])("is held when the deal was cancelled before agreement but had %s", async (_why, checks) => {
       const { counts } = await run({

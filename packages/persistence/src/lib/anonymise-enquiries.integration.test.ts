@@ -2,7 +2,6 @@ import { randomUUID } from "node:crypto";
 import { type Database, createDb } from "@auction/db";
 import {
   bidUserProfile,
-  domainEvent,
   itemSubmission,
   kycWatchlistScreening,
   legalEntity,
@@ -321,12 +320,20 @@ describe.skipIf(!HAS_DB)("enquiry erasure (integration)", () => {
           decisionOutcome: "clear",
           screenedAt: new Date(),
         } as never);
-        await tx.insert(domainEvent).values({
-          aggregateType: "private_sale_deal",
-          aggregateId: dealId,
-          eventType: "private_sale_deal.party_named",
-          payload: { dealId, reference: "PS-X", role: "buyer", actingUserId: firstBuyer },
-          producer: "test",
+        // The buyer is named, screened, then replaced before agreement.
+        const deals = new DrizzlePrivateSaleDealRepository(tx as never);
+        const current = await deals.findById(dealId);
+        const sellerEntity = current?.seller.legalEntityId as string;
+        await deals.setParty(dealId, current?.version as number, {
+          role: "buyer",
+          legalEntityId: sellerEntity,
+          actingUserId: firstBuyer,
+        });
+        const named = await deals.findById(dealId);
+        await deals.setParty(dealId, named?.version as number, {
+          role: "buyer",
+          legalEntityId: sellerEntity,
+          actingUserId: null,
         });
         await cancel(tx, dealId, false, new Date());
         expect(await anonymiseEnquiries(tx, { kind: "email", email })).toMatchObject({
