@@ -71,6 +71,8 @@ export type PurchaseCardVm = {
   statusNote: string | null;
   amountLabel: string;
   amount: string;
+  /** Someone else pays this purchase (an organisation's); the member is told, never asked. */
+  informed: boolean;
   /** Set when this member can pick the invoice to pay now: its amount, as a decimal string. */
   payable: { totalDue: string; currency: string } | null;
   /** For sorting: the due date (or the win), and when it was won. */
@@ -418,6 +420,7 @@ export function purchaseCard(row: PortfolioRow, sources: PurchaseSources): Purch
         ),
     amountLabel: amountLabel(state, stillToSend),
     amount: totalMajor ? formatMoney(totalMajor, currency) : "—",
+    informed,
     payable,
     dueAt: dueDate(row, facts).getTime(),
     wonAt: lot.endTime.getTime(),

@@ -14,6 +14,15 @@ export type { StaffRoleAssignmentRefusal, StaffRosterFacts } from "./staff-role-
 /** The role that holds every permission; Bid must always keep at least one active holder. */
 export const ADMINISTRATOR_STAFF_ROLE: UserStaffRole = "administrator";
 
+/**
+ * Whether a person may change their own staff roles: only an Administrator may. Anyone else who
+ * has been given role management still cannot give themselves, or take from themselves, a role.
+ * `activeRoles` are the roles the person holds right now.
+ */
+export function mayChangeOwnStaffRoles(activeRoles: readonly UserStaffRole[]): boolean {
+  return activeRoles.includes(ADMINISTRATOR_STAFF_ROLE);
+}
+
 export type ForbiddenStaffRoleCombination = AnyForbiddenStaffRoleCombination<UserStaffRole>;
 export type StaffRoleChange = AnyStaffRoleChange<UserStaffRole>;
 export type StaffRoleAssignmentCheck = AnyStaffRoleAssignmentCheck<UserStaffRole>;
