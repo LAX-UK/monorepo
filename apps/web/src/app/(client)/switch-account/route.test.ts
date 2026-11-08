@@ -96,6 +96,50 @@ describe("/switch-account", () => {
     expect(setCookie).not.toHaveBeenCalled();
   });
 
+  it("explains a record only for a link that says it is a record's", async () => {
+    const noticeAfter = async (request: Request) => {
+      cookieValues.clear();
+      cookieValues.set("lax_acting_legal_entity_id", PERSONAL.id);
+      await GET(request);
+      return decodeURIComponent(cookieValues.get("lax_account_notice") ?? "");
+    };
+    const record = new URL(
+      `https://lax.bid/switch-account?${new URLSearchParams({ to: ORG.id, next: "/home", reason: "record" })}`,
+    );
+    const plain = hop({ "sec-fetch-site": "same-origin" });
+    expect(
+      await noticeAfter(new Request(record, { headers: { "sec-fetch-site": "same-origin" } })),
+    ).toContain('"record":true');
+    expect(await noticeAfter(plain)).not.toContain("record");
+    expect(await noticeAfter(plain)).toContain('"kind":"switched"');
+  });
+
+  it("keeps the record reason through the confirm page", async () => {
+    const request = new Request(
+      `https://lax.bid/switch-account?${new URLSearchParams({ to: ORG.id, next: "/home", reason: "record" })}`,
+      { headers: { "sec-fetch-site": "cross-site" } },
+    );
+    const res = await GET(request);
+    expect(res.headers.get("location")).toBe(
+      `/switch-account/confirm?to=${ORG.id}&next=%2Fhome&reason=record`,
+    );
+    const confirmed = await POST(
+      new Request("https://lax.bid/switch-account", {
+        method: "POST",
+        headers: {
+          "content-type": "application/x-www-form-urlencoded",
+          "sec-fetch-site": "same-origin",
+          origin: "https://lax.bid",
+        },
+        body: new URLSearchParams({ to: ORG.id, next: "/home", reason: "record" }).toString(),
+      }),
+    );
+    expect(confirmed.status).toBe(303);
+    expect(decodeURIComponent(cookieValues.get("lax_account_notice") ?? "")).toContain(
+      '"record":true',
+    );
+  });
+
   it("asks first when the browser sends no Fetch Metadata", async () => {
     const res = await GET(hop({}));
     expect(res.headers.get("location")).toMatch(/^\/switch-account\/confirm\?/);

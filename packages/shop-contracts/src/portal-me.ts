@@ -225,15 +225,21 @@ export const PortalEnquiriesResponseSchema = Type.Object({
 export type PortalCollectionItem = Static<typeof PortalCollectionItemSchema>;
 export type PortalEnquiry = Static<typeof PortalEnquirySchema>;
 
-/** Payee's payout account on the LAX Art Stripe platform (D38). */
+/**
+ * Payee's payout account on the LAX Art Stripe platform (D38). The seller reads whether an
+ * account is linked, never its Stripe id.
+ */
 export const PortalPayeeConnectStatusSchema = Type.Object({
-  stripeAccountId: Type.Union([Type.String(), Type.Null()]),
+  accountLinked: Type.Boolean(),
   chargesEnabled: Type.Boolean(),
   payoutsEnabled: Type.Boolean(),
   requirementsCurrentlyDue: Type.Array(Type.String()),
   disabledReason: Type.Union([Type.String(), Type.Null()]),
   ready: Type.Boolean(),
 });
+
+/** The answer to creating the payout account: it is linked; the Stripe id stays server-side. */
+export const PortalPayeeConnectAccountSchema = Type.Object({ accountLinked: Type.Boolean() });
 
 export const PortalPayeeConnectConfigSchema = Type.Object({
   publishableKey: Type.Union([Type.String(), Type.Null()]),
@@ -249,6 +255,7 @@ export const PortalPayeeConnectSessionResponseSchema = Type.Object({
 });
 
 export type PortalPayeeConnectStatus = Static<typeof PortalPayeeConnectStatusSchema>;
+export type PortalPayeeConnectAccount = Static<typeof PortalPayeeConnectAccountSchema>;
 export type PortalPayeeConnectConfig = Static<typeof PortalPayeeConnectConfigSchema>;
 export type PortalPayeeConnectSurface = Static<
   typeof PortalPayeeConnectSessionBodySchema

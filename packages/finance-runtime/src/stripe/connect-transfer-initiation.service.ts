@@ -1,5 +1,6 @@
 import type { IConnectTransferRepository } from "@auction/persistence/interfaces";
 import type { IPayoutRepository } from "@auction/persistence/interfaces";
+import { connectTransferBlockMessage, decideConnectTransfer } from "@auction/stripe-connect";
 import type { Logger } from "pino";
 import type Stripe from "stripe";
 import StripeSdk from "stripe";
@@ -123,22 +124,74 @@ export class ConnectTransferInitiationService {
     }
 
     try {
-      const transfer = await executeWithStripeRetries(() =>
-        stripe.transfers.create(
-          {
-            amount: amountCents,
-            currency: payout.currency.toLowerCase(),
-            destination: destinationAccountId,
-            transfer_group: `payout:${payoutId}`,
-            ...(sourceChargeId ? { source_transaction: sourceChargeId } : {}),
-            metadata: {
-              payoutId: payout.id,
-              legalEntityId: payout.legalEntityId,
-            },
-          },
-          { idempotencyKey: `payout:transfer:${payoutId}` },
-        ),
+      // Stripe forgets idempotency keys after 24h, so a retry must look at what Stripe already
+      // holds before it creates anything. One shared decision serves every caller.
+      const transferGroup = `payout:${payoutId}`;
+      const decision = await executeWithStripeRetries(() =>
+        decideConnectTransfer(stripe, {
+          transferGroup,
+          payoutId: payout.id,
+          destinationAccountId,
+          amountMinor: amountCents,
+          currency: payout.currency,
+          ...(payout.createdAt
+            ? { createdAfterUnix: Math.floor(payout.createdAt.getTime() / 1000) }
+            : {}),
+        }),
       );
+      if (decision.kind === "block") {
+        const blocked = await this.payoutRepository.updateStatusIfCurrent(payoutId, "scheduled", {
+          status: "transfer_blocked",
+          stripeTransferId: null,
+          processedAt: null,
+          failureReason: connectTransferBlockMessage(decision),
+        });
+        // Someone else moved the payout first: they own the outcome, so raise nothing.
+        if (!blocked) return { ok: false, reason: "payout_already_processed" };
+        this.log.error(
+          { payoutId, reason: decision.reason, transferIds: decision.transferIds },
+          "payout_transfer_blocked",
+        );
+        await this.domainEventPublisher?.publish({
+          aggregateType: "payout",
+          aggregateId: payoutId,
+          eventType: "payout.transfer_blocked",
+          payload: {
+            payoutId,
+            legalEntityId: payout.legalEntityId,
+            reason: decision.reason,
+          },
+          actorUserId: null,
+          actingLegalEntityId: payout.legalEntityId,
+        });
+        return { ok: false, reason: "transfer_blocked" };
+      }
+      const adopted = decision.kind === "adopt";
+      const transfer =
+        decision.kind === "adopt"
+          ? decision.transfer
+          : await executeWithStripeRetries(() =>
+              stripe.transfers.create(
+                {
+                  amount: amountCents,
+                  currency: payout.currency.toLowerCase(),
+                  destination: destinationAccountId,
+                  transfer_group: transferGroup,
+                  ...(sourceChargeId ? { source_transaction: sourceChargeId } : {}),
+                  metadata: {
+                    payoutId: payout.id,
+                    legalEntityId: payout.legalEntityId,
+                  },
+                },
+                { idempotencyKey: `payout:transfer:${payoutId}` },
+              ),
+            );
+      if (adopted) {
+        this.log.warn(
+          { payoutId, stripeTransferId: transfer.id },
+          "payout_transfer_adopted_existing",
+        );
+      }
 
       const updated = await this.payoutRepository.updateStatusIfCurrent(payoutId, "scheduled", {
         status: "in_transit",
@@ -177,6 +230,7 @@ export class ConnectTransferInitiationService {
           amountCents,
           currency: payout.currency,
           stripeConnectAccountId: entity.stripeConnectAccountId,
+          ...(adopted ? { adopted: true, adoptionSource: "stripe_transfer_group" } : {}),
         },
         actorUserId: null,
         actingLegalEntityId: payout.legalEntityId,

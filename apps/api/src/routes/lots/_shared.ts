@@ -28,6 +28,8 @@ type LotRouteMiddleware = {
 };
 
 export type LotRouteDeps = LotRouteMiddleware & {
+  /** Staff delete and cancel need a recent sign-in; other roles pass through. */
+  requireStaffStepUp: MiddlewareHandler;
   container: ContainerLotRouteDepsSlice;
 };
 

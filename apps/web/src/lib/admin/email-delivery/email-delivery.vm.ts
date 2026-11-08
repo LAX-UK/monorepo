@@ -10,6 +10,11 @@ import {
   firstNameOf,
 } from "./email-delivery-copy";
 
+/** Undated provider events are stored at the epoch; staff see "date unknown", never 1 Jan 1970. */
+export function blockDateKnown(since: string): boolean {
+  return Date.parse(since) > 0;
+}
+
 export const SENDS_COLLAPSED = 5;
 
 export type EmailFact = { label: string; value: string; sub?: string };
@@ -65,7 +70,7 @@ function blockVm(block: EmailBlockView, who: string, viewerCanLift: boolean): Em
     reason: block.reason,
     title: copy.title,
     tone: block.stopsEssentialEmail ? "danger" : "info",
-    body: `Since ${formatStaffDateTime(block.since)}. ${copy.body(who)}`,
+    body: `${blockDateKnown(block.since) ? `Since ${formatStaffDateTime(block.since)}. ` : ""}${copy.body(who)}`,
     detail: block.providerDetail?.trim() || null,
     lift: liftVm(block, viewerCanLift),
   };
@@ -89,13 +94,20 @@ function factsFor(view: PersonEmailDeliveryView): EmailFact[] {
   } else if (block.stopsEssentialEmail) {
     facts.push({
       label: "Address",
-      value: `Blocked since ${formatStaffDate(block.since)}`,
+      value: blockDateKnown(block.since)
+        ? `Blocked since ${formatStaffDate(block.since)}`
+        : "Blocked (date unknown)",
       sub: delivered,
     });
     facts.push({ label: "Stops", value: "All email, essential and optional" });
   } else {
     facts.push({ label: "Address", value: "Delivering essential email", sub: delivered });
-    facts.push({ label: "Optional email", value: `Off since ${formatStaffDate(block.since)}` });
+    facts.push({
+      label: "Optional email",
+      value: blockDateKnown(block.since)
+        ? `Off since ${formatStaffDate(block.since)}`
+        : "Off (date unknown)",
+    });
   }
   if (view.alerts) {
     const blockedOn = block?.stopsEssentialEmail && view.alerts.state === "on";

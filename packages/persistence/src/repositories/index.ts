@@ -286,6 +286,7 @@ export {
 } from "./drizzle-workspace-selling.readers.js";
 export { DrizzleAccessRequestRepository } from "./drizzle-access-request.repository.js";
 export {
+  DrizzleChargeableDeliveryReader,
   DrizzlePaySeveralInvoiceFlagsReader,
   DrizzlePaymentGroupRepository,
 } from "./drizzle-payment-group.repository.js";

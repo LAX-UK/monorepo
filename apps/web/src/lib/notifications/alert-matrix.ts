@@ -37,6 +37,8 @@ export type EngineAlertState = {
   subscribed: Readonly<Record<string, boolean>>;
   /** The topic's email is on. */
   email: Readonly<Record<string, boolean>>;
+  /** The client stopped all alerts, so turning one on starts them again. */
+  stopped?: boolean;
 };
 
 export const ALERT_ROWS: readonly AlertRow[] = [

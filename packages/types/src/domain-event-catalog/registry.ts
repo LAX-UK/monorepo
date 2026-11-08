@@ -1,4 +1,5 @@
 import type { z } from "zod";
+import { alertSubscriptionConfirmedPayloadSchemaV1 } from "./alert-payload-schemas.js";
 import {
   artworkRegisterOfferChangedPayloadSchemaV1,
   artworkRegisterStockCodeAssignedPayloadSchemaV1,
@@ -89,6 +90,7 @@ import type {
 export const ALL_LIVE_DOMAIN_EVENT_TYPES = [
   "admin.impersonation_ended",
   "admin.impersonation_started",
+  "alert.subscription.confirmed",
   "aml.match_flagged",
   "aml.screening_evaluated",
   "artist.approved",
@@ -133,6 +135,8 @@ export const ALL_LIVE_DOMAIN_EVENT_TYPES = [
   "data_request.extended",
   "data_request.closed",
   "data_request.continued",
+  "data_request.enquiry_erasure_requested",
+  "data_request.enquiries_erased",
   "category.archived",
   "category.created",
   "category.deleted",
@@ -232,6 +236,7 @@ export const ALL_LIVE_DOMAIN_EVENT_TYPES = [
   "payout.paid",
   "payout.reversed",
   "payout.settlement_created",
+  "payout.transfer_block_resolved",
   "payout.transfer_blocked",
   "payout.transfer_failed",
   "payout.transfer_initiated",
@@ -337,6 +342,13 @@ const REGISTRY_OVERRIDES: Partial<Record<LiveDomainEventType, RegistryOverride>>
     piiClassification: "contains_pii",
   },
   "admin.impersonation_ended": { piiClassification: "contains_pii" },
+  "alert.subscription.confirmed": {
+    schema: alertSubscriptionConfirmedPayloadSchemaV1,
+    producers: ["shop-api"],
+    consumers: ["zoho_campaigns_opt_out_lift"],
+    idempotencyPolicy: "none",
+    piiClassification: "operational",
+  },
   "aml.match_flagged": {
     consumers: ["aml_match_review"],
     schema: amlScreeningPayloadSchemaV1,
@@ -667,6 +679,12 @@ const REGISTRY_OVERRIDES: Partial<Record<LiveDomainEventType, RegistryOverride>>
     piiClassification: "none",
   },
   "data_request.viewed": {
+    producers: ["apps/api"],
+    consumers: [],
+    idempotencyPolicy: "none",
+    piiClassification: "operational",
+  },
+  "data_request.enquiries_erased": {
     producers: ["apps/api"],
     consumers: [],
     idempotencyPolicy: "none",

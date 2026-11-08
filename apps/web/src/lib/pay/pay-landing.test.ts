@@ -6,7 +6,7 @@ import { LOT_A, LOT_B, payable, planOf } from "./pay-plan-fixtures.test-util";
 describe("payLandingRedirect", () => {
   it("opens the purchase of a single lot that is already paid", () => {
     const plan = planOf([], { leftOut: [{ lotId: LOT_A, reason: "paid" }] });
-    expect(payLandingRedirect([LOT_A], plan)).toBe(`/purchases/${LOT_A}`);
+    expect(payLandingRedirect([LOT_A], plan)).toBe(`/purchases/${LOT_A}?paid=1`);
   });
 
   it("stays on the Pay page for anything still to pay", () => {
@@ -18,11 +18,21 @@ describe("payLandingRedirect", () => {
     expect(payLandingRedirect([LOT_A], plan)).toBeNull();
   });
 
-  it("stays on the Pay page for several lots that are all paid", () => {
+  it("opens the first lot of several that are all paid, saying how many were paid", () => {
     const plan = planOf([], {
       leftOut: [
         { lotId: LOT_A, reason: "paid" },
         { lotId: LOT_B, reason: "paid" },
+      ],
+    });
+    expect(payLandingRedirect([LOT_A, LOT_B], plan)).toBe(`/purchases/${LOT_A}?paid=2`);
+  });
+
+  it("stays on the Pay page when only some of several lots are paid", () => {
+    const plan = planOf([], {
+      leftOut: [
+        { lotId: LOT_A, reason: "paid" },
+        { lotId: LOT_B, reason: "other_account" },
       ],
     });
     expect(payLandingRedirect([LOT_A, LOT_B], plan)).toBeNull();

@@ -84,6 +84,8 @@ export function createShopAlertHandlers(deps: ShopAlertHandlerDeps) {
         subjectId: input.identitySubjectId,
         topic: "shop.releases",
         source: input.source ?? DEFAULT_SOURCE,
+        // Pressing Subscribe is an explicit choice, so it starts alerts again after a stop.
+        restartStopped: true,
       });
       return outcome === "enabled" ? "subscribed" : null;
     },

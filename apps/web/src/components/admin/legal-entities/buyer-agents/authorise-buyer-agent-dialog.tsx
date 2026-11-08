@@ -1,6 +1,7 @@
 "use client";
 
 import { adminAuthoriseBuyerAgentAction } from "@/lib/admin/legal-entities/buyer-agent-authorisation.actions";
+import { handleStaffStepUp } from "@/lib/auth/step-up/staff-step-up.client";
 import {
   type AuthorisationDraft,
   type AuthorisationDraftErrors,
@@ -89,6 +90,7 @@ export function AuthoriseBuyerAgentDialog({
     startTransition(async () => {
       const result = await adminAuthoriseBuyerAgentAction(legalEntityId, draft);
       if (!result.ok) {
+        if (handleStaffStepUp(result)) return;
         if (result.fieldErrors) setErrors(result.fieldErrors);
         setFailure(result.error);
         return;

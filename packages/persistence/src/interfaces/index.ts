@@ -1191,13 +1191,16 @@ export type {
   NewPrivateSaleDealPayment,
 } from "./private-sale-deal-payment.repository.js";
 export type {
+  ChargeableDeliveryQuote,
   ClaimPaymentGroupInput,
   ClaimPaymentGroupResult,
+  IChargeableDeliveryReader,
   IPaySeveralInvoiceFlagsReader,
   IPaymentGroupRepository,
   LivePaymentGroupFacts,
   LockedPaymentGroup,
   PaySeveralInvoiceFlags,
+  PaymentGroupDelivery,
   PaymentGroupMember,
   PaymentGroupRecord,
 } from "./payment-group.repository.js";

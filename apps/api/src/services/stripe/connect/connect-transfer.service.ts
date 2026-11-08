@@ -13,6 +13,7 @@ import type {
   IConnectTransferInitiationService,
   InitiateTransferOptions,
   InitiateTransferResult,
+  TransferAdoptionVerification,
 } from "../../interfaces/stripe-connect.js";
 import { ConnectTransferInitiationService } from "./connect-transfer-initiation.service.js";
 import { ConnectTransferWebhookService } from "./connect-transfer-webhook.service.js";
@@ -52,5 +53,12 @@ export class ConnectTransferService {
     opts?: InitiateTransferOptions,
   ): Promise<InitiateTransferResult> {
     return this.initiationService.initiateTransfer(payoutId, opts);
+  }
+
+  verifyTransferForAdoption(
+    payoutId: string,
+    stripeTransferId: string,
+  ): Promise<TransferAdoptionVerification> {
+    return this.initiationService.verifyTransferForAdoption(payoutId, stripeTransferId);
   }
 }

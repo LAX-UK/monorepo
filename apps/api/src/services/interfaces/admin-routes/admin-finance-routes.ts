@@ -149,7 +149,7 @@ export interface IAdminPayoutApplicationService {
   adminSettlementPreview(legalEntityId: string): Promise<unknown>;
   createSettlement(
     actorUserId: string,
-    input: { legalEntityId: string; periodStart: Date; periodEnd: Date },
+    input: { legalEntityId: string; reason: string; periodStart?: Date },
   ): Promise<{ ok: true; payout: unknown } | { ok: false; reason: string }>;
   addAdjustment(
     actorUserId: string,
@@ -159,12 +159,20 @@ export interface IAdminPayoutApplicationService {
   markPaid(
     actorUserId: string,
     payoutId: string,
-    body: { stripeTransferId: string },
+    body: { stripeTransferId: string; reason: string },
   ): Promise<unknown>;
   retryFailedTransfer(
     actorUserId: string,
     payoutId: string,
+    reason: string,
   ): Promise<import("../../admin/admin-failed-payout-retry.service.js").FailedPayoutRetryOutcome>;
+  resolveBlockedPayout(
+    actorUserId: string,
+    payoutId: string,
+    body: import("@auction/validators").ResolveBlockedPayoutInput,
+  ): Promise<
+    import("../../admin/admin-blocked-payout-resolution.service.js").BlockedPayoutResolutionOutcome
+  >;
   adminManualReverse(
     actor: import("../payout.js").PayoutReversalActor,
     payoutId: string,

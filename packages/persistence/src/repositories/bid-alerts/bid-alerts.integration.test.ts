@@ -4,7 +4,8 @@ import { describeAlertStoreContract } from "@auction/alerts/testing";
 import { createDb } from "@auction/db";
 import { legalEntity } from "@auction/db/schema";
 import { sql } from "drizzle-orm";
-import { describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { holdAlertTablesLock } from "../../testing/alert-tables-lock.js";
 import {
   BidAlertAnnouncementStore,
   BidAlertDigestLedger,
@@ -84,6 +85,8 @@ async function insertSale(status: string, title = "Modern British and Irish Art"
     values (${id}, ${title}, ${status}::sale_status, '2026-11-18T10:00:00Z', '2026-11-26T18:00:00Z', 'online', ${entityId})`);
   return id;
 }
+
+holdAlertTablesLock({ beforeAll, afterAll }, "exclusive");
 
 describe.skipIf(!HAS_DB)("Bid alert adapters (integration)", () => {
   it("turns a sale that was withdrawn or ended into a stale match", async () => {

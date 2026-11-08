@@ -1,10 +1,9 @@
-import { WorkspacePanel } from "@/components/dashboard/primitives/workspace-panel";
 import { ListEmpty } from "@/components/workspace/list-states";
-import { PAY_COPY } from "@/lib/pay/pay-copy";
 import type { PayPageVm } from "@/lib/pay/pay-page.vm";
 import { ButtonLink, StatusBadge, TextLink, pageTitleClass } from "@auction/ui/lax";
 import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
+import { PayDeliveryPanel } from "./pay-delivery-panel";
 import { PayFeedbackNotice } from "./pay-feedback";
 import { PayLotsPanel } from "./pay-lots-panel";
 import { PayNotices } from "./pay-notices";
@@ -22,7 +21,11 @@ import { PayTransferPanel } from "./pay-transfer-panel";
 export function PayPage({ vm }: { vm: PayPageVm }) {
   const bar = vm.action && vm.money ? { action: vm.action, money: vm.money } : null;
   return (
-    <PaySessionProvider methods={vm.methods} storageKey={vm.lots.map((lot) => lot.lotId).join(",")}>
+    <PaySessionProvider
+      methods={vm.methods}
+      storageKey={vm.lots.map((lot) => lot.lotId).join(",")}
+      returned={vm.returned}
+    >
       {/* Room for the bar at the bottom of a phone. */}
       <div className={bar ? "flex flex-col gap-6 max-lg:pb-24" : "flex flex-col gap-6"}>
         <div className="flex flex-col gap-3">
@@ -100,10 +103,7 @@ export function PayPage({ vm }: { vm: PayPageVm }) {
               />
             </div>
             <div className="min-w-0 lg:col-start-1">
-              <WorkspacePanel title={PAY_COPY.panelDelivery}>
-                <p className="text-lax-14 font-medium text-lax-fg">{PAY_COPY.deliveryTitle}</p>
-                <p className="mt-1 text-lax-13 text-lax-muted">{PAY_COPY.deliveryNote}</p>
-              </WorkspacePanel>
+              {vm.delivery ? <PayDeliveryPanel delivery={vm.delivery} /> : null}
             </div>
           </div>
         ) : null}

@@ -1,4 +1,5 @@
 import type {
+  AccountEnableOutcome,
   AnnouncementStore,
   Clock,
   MatchLedger,
@@ -92,7 +93,7 @@ export class FollowedArtistMatcher implements ArtworkMatcher {
 export function followerResolver(deps: {
   subscribers: Pick<SubscriberStore, "findBySubject">;
   topics: Pick<TopicStore, "list">;
-  enable: (subjectId: string) => Promise<"enabled" | "unverified" | "no_account" | "blocked">;
+  enable: (subjectId: string) => Promise<AccountEnableOutcome>;
 }): (subjectId: string) => Promise<string | null> {
   const emailIsOn = async (subscriberId: string) =>
     (await deps.topics.list(subscriberId)).some(

@@ -1,7 +1,8 @@
 import type { StripeConnectRequirementError } from "@auction/types";
 
 export type StripeConnectStatus = {
-  stripeAccountId: string | null;
+  /** Whether a payout account is linked; its id is not shared with members. */
+  accountLinked: boolean;
   chargesEnabled: boolean;
   payoutsEnabled: boolean;
   requirementsCurrentlyDue: string[];

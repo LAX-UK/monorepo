@@ -110,7 +110,7 @@ describe("createShopSellingGateway", () => {
     const { gateway } = setup((url) =>
       url.endsWith("/status")
         ? json({
-            stripeAccountId: null,
+            accountLinked: false,
             chargesEnabled: false,
             payoutsEnabled: false,
             requirementsCurrentlyDue: [],

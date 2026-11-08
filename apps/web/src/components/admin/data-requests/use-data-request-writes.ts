@@ -7,6 +7,7 @@ import {
   patchDataRequestAction,
 } from "@/lib/actions/admin/admin-data-requests";
 import { isStaleDataRequest } from "@/lib/admin/data-requests/data-request-errors";
+import { handleStaffStepUp } from "@/lib/auth/step-up/staff-step-up.client";
 import type { ActionResult } from "@/lib/forms/form-result";
 import type { DataRequestRecord } from "@auction/identity-contracts/data-requests";
 import { useRouter } from "next/navigation";
@@ -64,6 +65,8 @@ export function useDataRequestWrites(
           version.current = result.data.version;
           router.refresh();
         }
+        // A stale sign-in sends the person to sign in again; they repeat the change by hand.
+        if (!result.ok) handleStaffStepUp(result);
         return result;
       } finally {
         setBusy(false);

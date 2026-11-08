@@ -26,15 +26,26 @@ export function PayFeedbackNotice() {
           alert
           title={PAY_COPY.openFailedTitle}
           actions={
-            <Button variant="secondary" disabled={pending} onClick={retry}>
-              {PAY_COPY.tryAgain}
-            </Button>
+            <>
+              <Button variant="secondary" disabled={pending} onClick={retry}>
+                {PAY_COPY.tryAgain}
+              </Button>
+              {/* Try again waits for the first attempt to answer; if it never does, a fresh load
+                  of the page is the way out, and shows where the payment really stands. */}
+              {pending ? (
+                <Button variant="secondary" onClick={() => window.location.reload()}>
+                  {PAY_COPY.refresh}
+                </Button>
+              ) : null}
+            </>
           }
         >
           {PAY_COPY.openFailedBody}
         </Notice>
       ) : feedback ? (
-        <Notice tone={feedback.tone} alert title={feedback.message} />
+        <Notice tone={feedback.tone} alert title={feedback.message}>
+          {feedback.detail}
+        </Notice>
       ) : null}
     </div>
   );

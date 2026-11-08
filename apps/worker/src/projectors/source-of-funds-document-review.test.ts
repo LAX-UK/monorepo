@@ -29,6 +29,7 @@ describe("processSourceOfFundsDocumentReview", () => {
       paymentRefundNotifyReader: {} as never,
       payoutTransferFailedNotifyReader: {} as never,
       clearArtistBlocksRepo: {} as never,
+      zohoCampaignsOptOutLiftRepo: {} as never,
       ensurePersonalLegalEntity: { ensure: vi.fn() },
       sourceOfFundsSettlementReader: {} as never,
       sourceOfFundsBuyerReader: {} as never,

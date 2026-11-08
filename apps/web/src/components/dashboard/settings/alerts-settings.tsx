@@ -31,6 +31,7 @@ import { Lock } from "lucide-react";
 import Link from "next/link";
 import { useRef, useState, useTransition } from "react";
 import { DevicePushRow } from "./device-push-row";
+import { HeldOffSwitch } from "./held-off-switch";
 
 const NOTE_LINK = "lax-focus rounded-lax-control text-lax-fg underline underline-offset-2";
 
@@ -99,9 +100,10 @@ export function AlertsSettings({
       subscribed: { ...engine.subscribed, [topic]: subscribe },
       email: { ...engine.email, [topic]: email },
     });
+    const restarting = engine.stopped === true && subscribe;
     setSaved("Saving…");
     const result = subscribe
-      ? await setAlertTopic(topic, true, { email })
+      ? await setAlertTopic(topic, true, { email, restart: true })
       : await setAlertTopic(topic, false);
     if (!result.ok) {
       setEngine(previous);
@@ -109,6 +111,8 @@ export function AlertsSettings({
       notify.error("We couldn't save that change", { description: result.error });
       return;
     }
+    // Switching one on after stopping everything starts alerts again, with only this one on.
+    if (restarting) notify.success(`Your alerts are back on, with ${row.label} switched on`);
     if (channel === "app") save(withAlertCell(values, row, "app", true), values);
     else setSaved("All changes saved");
   };
@@ -246,24 +250,11 @@ function AlertSwitch({
     );
   }
   if (cell.disabledReason) {
-    const label = `${row.label} by ${channel.label.toLowerCase()}`;
     return (
-      <ReasonTooltip reason={cell.disabledReason}>
-        <span
-          role="switch"
-          aria-checked="false"
-          aria-disabled="true"
-          aria-label={label}
-          aria-describedby={`${row.id}-${channel.id}-reason`}
-          tabIndex={0}
-          className="lax-focus inline-flex rounded-lax-control"
-        >
-          <Switch aria-hidden tabIndex={-1} checked={false} disabled />
-          <span id={`${row.id}-${channel.id}-reason`} className="sr-only">
-            {cell.disabledReason}
-          </span>
-        </span>
-      </ReasonTooltip>
+      <HeldOffSwitch
+        label={`${row.label} by ${channel.label.toLowerCase()}`}
+        reason={cell.disabledReason}
+      />
     );
   }
   return (

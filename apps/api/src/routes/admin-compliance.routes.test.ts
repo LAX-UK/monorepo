@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { describe, expect, it, vi } from "vitest";
 import type { Container } from "../container.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
+import { stubStepUpGuard } from "../testing/staff-mutation-guards.js";
 import { createAdminRoutes } from "./admin.js";
 
 const staffUserId = "staff-user-id";
@@ -12,6 +13,7 @@ const docId = "66666666-6666-4666-8666-666666666666";
 function createComplianceContainer(partial: {
   aml?: Container["admin"]["aml"];
   sourceOfFunds?: Container["admin"]["sourceOfFunds"];
+  recentSignIn?: boolean;
 }) {
   return {
     env: { LOG_LEVEL: "silent", NODE_ENV: "test" } as never,
@@ -20,6 +22,7 @@ function createComplianceContainer(partial: {
         isSuspended: vi.fn().mockResolvedValue(false),
         reconcileAdminRequestCookie: vi.fn().mockResolvedValue(undefined),
       },
+      stepUp: stubStepUpGuard(partial.recentSignIn ?? true),
       aml: partial.aml,
       sourceOfFunds: partial.sourceOfFunds,
     },
@@ -27,6 +30,38 @@ function createComplianceContainer(partial: {
 }
 
 describe("admin compliance routes (DIP facade)", () => {
+  it("POST /compliance/aml/screenings/:id/decide answers 403 step_up_required on a stale sign-in and decides nothing", async () => {
+    const decide = vi.fn();
+    const container = createComplianceContainer({
+      aml: { decide } as never,
+      recentSignIn: false,
+    });
+    const authenticator: IAuthenticator = {
+      getSessionUser: vi.fn().mockResolvedValue({
+        id: staffUserId,
+        identitySessionId: "session-1",
+        role: "staff",
+        staffRoles: ["compliance"],
+        scopes: ["bid.read", "bid.write"],
+      }),
+    };
+    const app = new Hono();
+    app.route("/admin", createAdminRoutes(container, authenticator));
+
+    const res = await app.request(
+      `http://test/admin/compliance/aml/screenings/${screeningId}/decide`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ decision: "clear", reason: "x" }),
+      },
+    );
+
+    expect(res.status).toBe(403);
+    expect(((await res.json()) as { code: string }).code).toBe("step_up_required");
+    expect(decide).not.toHaveBeenCalled();
+  });
+
   it("GET /compliance/aml/screenings returns pending rows with meta.total and summary", async () => {
     const getPage = vi.fn().mockResolvedValue({
       rows: [{ id: screeningId }],
@@ -41,6 +76,7 @@ describe("admin compliance routes (DIP facade)", () => {
     const authenticator: IAuthenticator = {
       getSessionUser: vi.fn().mockResolvedValue({
         id: staffUserId,
+        identitySessionId: "session-1",
         role: "staff",
         staffRoles: ["compliance"],
         scopes: ["bid.read"],
@@ -73,6 +109,7 @@ describe("admin compliance routes (DIP facade)", () => {
     const authenticator: IAuthenticator = {
       getSessionUser: vi.fn().mockResolvedValue({
         id: staffUserId,
+        identitySessionId: "session-1",
         role: "staff",
         staffRoles: ["compliance"],
         scopes: ["bid.write"],
@@ -108,6 +145,7 @@ describe("admin compliance routes (DIP facade)", () => {
     const authenticator: IAuthenticator = {
       getSessionUser: vi.fn().mockResolvedValue({
         id: staffUserId,
+        identitySessionId: "session-1",
         role: "staff",
         staffRoles: ["compliance"],
         scopes: ["bid.read"],
@@ -152,6 +190,7 @@ describe("admin compliance routes (DIP facade)", () => {
     const authenticator: IAuthenticator = {
       getSessionUser: vi.fn().mockResolvedValue({
         id: staffUserId,
+        identitySessionId: "session-1",
         role: "staff",
         staffRoles: ["compliance"],
         scopes: ["bid.read"],

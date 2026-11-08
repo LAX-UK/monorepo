@@ -17,6 +17,7 @@ const INPUT: CreateGroupCheckoutInput = {
   rail: "card",
   currency: "GBP",
   totalPence: 100_010,
+  deliveries: [],
   lines: [
     {
       paymentId: "pay-2",

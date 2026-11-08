@@ -60,7 +60,7 @@ export class PaymentGroupChargeEvents {
       this.deps.gateway.listChargeRefunds(charge.id),
     ]);
     const attribution = attributeGroupRefunds(
-      members.map((m) => m.paymentId),
+      members.map((m) => ({ paymentId: m.paymentId, amountPence: gbpAmountToPence(m.amount) })),
       refunds,
     );
 

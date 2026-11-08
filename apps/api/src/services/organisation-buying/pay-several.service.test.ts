@@ -3,6 +3,7 @@ import { AmlSettlementCompliancePolicy, SourceOfFundsGateService } from "@auctio
 import type {
   AccountPurchaseFactsRow,
   BidInvoiceRecord,
+  ChargeableDeliveryQuote,
   PaySeveralInvoiceFlags,
 } from "@auction/persistence/interfaces";
 import type { InvoiceLine, LegalEntityMemberRole, Lot, PaymentStatus } from "@auction/types";
@@ -108,6 +109,8 @@ type World = {
   eligibility?: PaymentEligibility;
   start?: ReturnType<typeof vi.fn>;
   withNotInvoiced?: boolean;
+  /** Accepted courier quotes no payment has charged; a test may change them between steps. */
+  delivery?: { quotes: ChargeableDeliveryQuote[] };
   metrics?: { record: (event: string) => void };
 };
 
@@ -185,6 +188,12 @@ function service(over: World = {}) {
   }));
   const limits = over.limits ?? LIMITS;
   const planner = new PayPlanService({
+    delivery: over.delivery
+      ? {
+          acceptedFor: async (_account, lotIds) =>
+            (over.delivery?.quotes ?? []).filter((q) => lotIds.includes(q.lotId)),
+        }
+      : null,
     // Every live group counts as a payment the payer finished.
     progress: new PayProgressResolver({ checkoutStatus: async () => "complete" }),
     candidates: new PurchaseCandidateReader({
@@ -316,6 +325,90 @@ describe("PaySeveralService.plan", () => {
   });
 });
 
+const COURIER: ChargeableDeliveryQuote = {
+  quoteId: "quote-1",
+  lotId: LOTS.due,
+  amount: "180.00",
+  destination: "Studio, Unit 3, 12 Vyner Street, London E2 9DG",
+  quoteNote: null,
+};
+
+describe("PaySeveralService: courier delivery in the payment", () => {
+  it("quotes the total with the delivery in it, and lists the delivery apart", async () => {
+    const { svc } = service({ delivery: { quotes: [COURIER] } });
+    const quote = (await svc.plan(actor("finance"), [LOTS.due, LOTS.overdue]))._unsafeUnwrap();
+    expect(quote.total).toBe("1180.10");
+    expect(quote.delivery).toEqual([{ lotId: LOTS.due, amount: "180.00" }]);
+    expect(quote.payable).toEqual([
+      { lotId: LOTS.due, totalDue: "600.10" },
+      { lotId: LOTS.overdue, totalDue: "400.00" },
+    ]);
+  });
+
+  it("charges the delivery with the invoices, in one total, and the check runs on that total", async () => {
+    const { svc, start, evaluate } = service({ delivery: { quotes: [COURIER] } });
+    const started = (
+      await payShown(svc, actor("finance"), [LOTS.due, LOTS.overdue])
+    )._unsafeUnwrap();
+    expect(start).toHaveBeenCalledWith(
+      expect.objectContaining({
+        total: "1180.10",
+        invoices: [
+          { paymentId: "pay-2", lotId: LOTS.due, amount: "600.10" },
+          { paymentId: "pay-3", lotId: LOTS.overdue, amount: "400.00" },
+        ],
+        deliveries: [{ quoteId: "quote-1", lotId: LOTS.due, amount: "180.00" }],
+      }),
+    );
+    expect(evaluate).toHaveBeenCalledWith(
+      expect.objectContaining({ buyerUserId: "finance-1", amountPence: 118_010 }),
+    );
+    expect(started.total).toBe("1180.10");
+    expect(started.delivery).toEqual([{ lotId: LOTS.due, amount: "180.00" }]);
+  });
+
+  it("refuses with the fresh plan when a quote was accepted after the page was shown", async () => {
+    const quotes: ChargeableDeliveryQuote[] = [];
+    const { svc, start } = service({ delivery: { quotes } });
+    const shown = (await svc.plan(actor("finance"), [LOTS.due]))._unsafeUnwrap();
+    expect(shown.total).toBe("600.10");
+    quotes.push(COURIER);
+    const refused = (
+      await svc.pay(actor("finance"), {
+        lotIds: [LOTS.due],
+        expectedTotalPence: 60_010,
+        expectedLotIds: [LOTS.due],
+      })
+    )._unsafeUnwrapErr();
+    expect(refused).toMatchObject({ code: "pay_plan_changed", status: 409 });
+    expect(refused.quote?.total).toBe("780.10");
+    expect(start).not.toHaveBeenCalled();
+  });
+
+  it("charges no delivery for a quote on a lot the payment does not cover", async () => {
+    const { svc, start } = service({
+      delivery: { quotes: [{ ...COURIER, lotId: LOTS.paid, quoteId: "quote-paid" }] },
+    });
+    await payShown(svc, actor("finance"), [LOTS.due, LOTS.paid]);
+    expect(start).toHaveBeenCalledWith(
+      expect.objectContaining({ deliveries: [], total: "600.10" }),
+    );
+  });
+
+  it("charges the delivery in whole pence, never fractions", async () => {
+    const { svc, start } = service({
+      delivery: {
+        quotes: [
+          { ...COURIER, amount: "0.07" },
+          { ...COURIER, quoteId: "q2", lotId: LOTS.overdue, amount: "19.99" },
+        ],
+      },
+    });
+    await payShown(svc, actor("finance"), [LOTS.due, LOTS.overdue]);
+    expect(start).toHaveBeenCalledWith(expect.objectContaining({ total: "1020.16" }));
+  });
+});
+
 describe("PaySeveralService.pay", () => {
   it("opens one checkout for the payable invoices, by their payments and amounts", async () => {
     const { svc, start, evaluate, ensureForLot } = service();
@@ -333,6 +426,7 @@ describe("PaySeveralService.pay", () => {
         { paymentId: "pay-2", lotId: LOTS.due, amount: "600.10" },
         { paymentId: "pay-3", lotId: LOTS.overdue, amount: "400.00" },
       ],
+      deliveries: [],
     });
     expect(evaluate).toHaveBeenCalledWith({
       buyerUserId: "finance-1",

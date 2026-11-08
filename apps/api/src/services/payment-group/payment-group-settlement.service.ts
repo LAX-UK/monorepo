@@ -9,6 +9,7 @@ import type {
   IPaymentGroupRepository,
   IPaymentLifecycleRepository,
   ITransactionRunner,
+  PaymentGroupDelivery,
   PaymentGroupMember,
   PaymentGroupRecord,
 } from "@auction/persistence/interfaces";
@@ -26,7 +27,11 @@ export interface IProviderEventClaim {
 
 /** The one receipt for a group's payment, sent once it is paid. */
 export interface IPaymentGroupReceipt {
-  send(group: PaymentGroupRecord, members: readonly PaymentGroupMember[]): Promise<void>;
+  send(
+    group: PaymentGroupRecord,
+    members: readonly PaymentGroupMember[],
+    deliveries: readonly PaymentGroupDelivery[],
+  ): Promise<void>;
 }
 
 /** Why a group was let go before it was paid. */
@@ -90,13 +95,17 @@ export class PaymentGroupSettlementService {
     const afterCommit: (() => Promise<void>)[] = [];
     // Read before the transaction opens; a failed read throws, so the provider retries the event.
     const blocked = await this.accountBlock(input.groupId);
-    let paid: { group: PaymentGroupRecord; members: PaymentGroupMember[] } | null = null;
+    let paid: {
+      group: PaymentGroupRecord;
+      members: PaymentGroupMember[];
+      deliveries: PaymentGroupDelivery[];
+    } | null = null;
 
     const result = await this.deps.transactionRunner.runInTransaction(async (tx) => {
       if (!(await this.deps.claims.claim(tx, input.eventId))) return DUPLICATE;
       const locked = await this.deps.groups.lockInTransaction(tx, input.groupId);
       if (!locked) return UNKNOWN_GROUP;
-      const { group, members } = locked;
+      const { group, members, deliveries } = locked;
 
       const decision = decidePaymentGroupSettlement({
         group: {
@@ -108,6 +117,10 @@ export class PaymentGroupSettlementService {
           paymentId: m.paymentId,
           amountPence: gbpAmountToPence(m.amount),
           status: m.status,
+        })),
+        deliveries: deliveries.map((d) => ({
+          quoteId: d.quoteId,
+          amountPence: gbpAmountToPence(d.amount),
         })),
         received: { amountPence: input.amountPence, currency: input.currency },
       });
@@ -164,14 +177,18 @@ export class PaymentGroupSettlementService {
         actorUserId: null,
         actingLegalEntityId: group.buyerLegalEntityId,
       });
-      paid = { group, members };
+      paid = { group, members, deliveries };
       return { processed: true, action: "payment_intent_succeeded" } as const;
     });
 
     for (const run of afterCommit) await run();
-    const settled = paid as { group: PaymentGroupRecord; members: PaymentGroupMember[] } | null;
+    const settled = paid as {
+      group: PaymentGroupRecord;
+      members: PaymentGroupMember[];
+      deliveries: PaymentGroupDelivery[];
+    } | null;
     if (settled) {
-      await this.deps.receipt.send(settled.group, settled.members);
+      await this.deps.receipt.send(settled.group, settled.members, settled.deliveries);
       recordMoneyPathEvent("payment_group_paid");
     }
     return result;
@@ -271,6 +288,12 @@ export class PaymentGroupSettlementService {
     eventId: string | null;
     groupId: string;
     reason: PaymentGroupReleaseReason;
+    /**
+     * Release only a group that still has no checkout recorded. A start that was slow may have
+     * recorded its checkout since the caller looked; that checkout can be paid, so the group is
+     * left as it is (`checkout_recorded`) for the caller to end through the provider first.
+     */
+    onlyIfNoCheckout?: boolean;
   }): Promise<PaymentWebhookResult> {
     return this.deps.transactionRunner.runInTransaction(async (tx) => {
       if (input.eventId && !(await this.deps.claims.claim(tx, input.eventId))) return DUPLICATE;
@@ -278,6 +301,9 @@ export class PaymentGroupSettlementService {
       if (!locked) return UNKNOWN_GROUP;
       if (!paymentGroupIsLive(locked.group.status)) {
         return { processed: true, action: "skipped", reason: "payment_group_not_live" };
+      }
+      if (input.onlyIfNoCheckout && locked.group.stripeCheckoutSessionId) {
+        return { processed: true, action: "skipped", reason: "checkout_recorded" };
       }
       await this.deps.groups.transitionInTransaction(tx, input.groupId, LIVE, "cancelled");
       const released = await this.deps.groups.releaseMembersInTransaction(tx, input.groupId);
@@ -299,8 +325,9 @@ export class PaymentGroupSettlementService {
   }
 
   /**
-   * More money arrived than the group's total. The group is held and the excess is a finance task
-   * and alert, never refunded automatically.
+   * A guard: the provider reports money received beyond the group's total. In practice an
+   * overpayment arrives as money left in the buyer's balance (see the cash-balance handler); this
+   * catches the figure should the intent ever report it. A finance task, never a refund.
    */
   private async alertIfOverpaid(
     tx: Database,

@@ -12,12 +12,23 @@ export type GroupCheckoutLine = {
   invoiceLines: readonly InvoiceLine[];
 };
 
+/** An accepted courier quote charged on the combined checkout, as its own line. */
+export type GroupCheckoutDelivery = {
+  quoteId: string;
+  lotId: string;
+  lotTitle: string;
+  lotNumber: number | null;
+  amountPence: number;
+};
+
 export type CreateGroupCheckoutInput = {
   paymentGroupId: string;
   rail: CheckoutRailKind;
   currency: string;
   totalPence: number;
   lines: readonly GroupCheckoutLine[];
+  /** Courier quotes charged with the invoices; they are part of `totalPence`. */
+  deliveries: readonly GroupCheckoutDelivery[];
   buyerEmail: string;
   /** The Stripe customer that receives the bank transfer; required for `gb_bank_transfer`. */
   stripeCustomerId: string | null;

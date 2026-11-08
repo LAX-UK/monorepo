@@ -8,6 +8,8 @@ const markPaidAction = vi.fn();
 const retryAction = vi.fn();
 const adjustAction = vi.fn();
 const reverseAction = vi.fn();
+const adoptAction = vi.fn();
+const releaseAction = vi.fn();
 const notifySuccess = vi.fn();
 
 // Radix's dialog portals, traps focus and animates, which is slow and noisy in jsdom. This
@@ -18,6 +20,8 @@ vi.mock("@/lib/actions/admin/admin-payouts", () => ({
   adminRetryPayoutTransferResultAction: (...args: unknown[]) => retryAction(...args),
   adminAddPayoutAdjustmentResultAction: (...args: unknown[]) => adjustAction(...args),
   adminReversePayoutResultAction: (...args: unknown[]) => reverseAction(...args),
+  adminAdoptBlockedPayoutTransferResultAction: (...args: unknown[]) => adoptAction(...args),
+  adminReleaseBlockedPayoutResultAction: (...args: unknown[]) => releaseAction(...args),
 }));
 vi.mock("@/lib/ui/notify", () => ({
   notify: { success: (title: string) => notifySuccess(title), error: vi.fn() },
@@ -51,6 +55,7 @@ const payout: PayoutsStaffRow = {
   canAdjust: true,
   canReverse: false,
   canRetryTransfer: false,
+  canResolveBlocked: false,
 };
 
 function Harness({
@@ -91,6 +96,8 @@ describe("usePayoutMoneyActions", () => {
       retryAction,
       adjustAction,
       reverseAction,
+      adoptAction,
+      releaseAction,
       notifySuccess,
     ]) {
       fn.mockReset();
@@ -125,13 +132,16 @@ describe("usePayoutMoneyActions", () => {
     expect(transfer).toHaveValue("tr_gallery_one");
 
     fireEvent.change(transfer, { target: { value: "tr_bank_run" } });
+    fireEvent.change(screen.getByLabelText("Reason for marking it paid"), {
+      target: { value: REASON },
+    });
     fireEvent.click(
       screen.getAllByRole("button", { name: "Mark £4,500.00 paid" }).at(-1) as HTMLElement,
     );
     await waitFor(() =>
       expect(markPaidAction).toHaveBeenCalledWith(
         "payout_1",
-        expect.objectContaining({ stripeTransferId: "tr_bank_run" }),
+        expect.objectContaining({ stripeTransferId: "tr_bank_run", reason: REASON }),
       ),
     );
     await waitFor(() =>
@@ -143,6 +153,9 @@ describe("usePayoutMoneyActions", () => {
   it("will not mark a payout paid without a transfer ID", () => {
     render(<Harness row={{ ...payout, stripeTransferId: null }} />);
     fireEvent.click(screen.getByRole("button", { name: "Mark £4,500.00 paid" }));
+    fireEvent.change(screen.getByLabelText("Reason for marking it paid"), {
+      target: { value: REASON },
+    });
     fireEvent.click(
       screen.getAllByRole("button", { name: "Mark £4,500.00 paid" }).at(-1) as HTMLElement,
     );
@@ -249,6 +262,9 @@ describe("usePayoutMoneyActions", () => {
     });
     render(<Harness row={payout} />);
     fireEvent.click(screen.getByRole("button", { name: "Mark £4,500.00 paid" }));
+    fireEvent.change(screen.getByLabelText("Reason for marking it paid"), {
+      target: { value: REASON },
+    });
     fireEvent.click(
       screen.getAllByRole("button", { name: "Mark £4,500.00 paid" }).at(-1) as HTMLElement,
     );
@@ -286,11 +302,14 @@ describe("usePayoutMoneyActions", () => {
     expect(screen.getByText(/account_closed/)).toBeInTheDocument();
     expect(retryAction).not.toHaveBeenCalled();
 
+    fireEvent.change(screen.getByLabelText("Reason for the retry"), {
+      target: { value: REASON },
+    });
     fireEvent.click(screen.getByRole("button", { name: "Retry £4,500.00 transfer" }));
     await waitFor(() =>
       expect(retryAction).toHaveBeenCalledWith(
         "payout_1",
-        expect.objectContaining({ idempotencyKey: expect.any(String) }),
+        expect.objectContaining({ reason: REASON, idempotencyKey: expect.any(String) }),
       ),
     );
     await waitFor(() =>
@@ -308,11 +327,139 @@ describe("usePayoutMoneyActions", () => {
     });
     render(<Harness row={failedPayout} />);
     fireEvent.click(screen.getByRole("button", { name: "Retry transfer" }));
+    fireEvent.change(screen.getByLabelText("Reason for the retry"), {
+      target: { value: REASON },
+    });
     fireEvent.click(screen.getByRole("button", { name: "Retry £4,500.00 transfer" }));
 
     expect(
       await screen.findByText("The seller's Stripe account cannot receive transfers yet."),
     ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Retry £4,500.00 transfer" })).toBeInTheDocument();
+  });
+
+  describe("a blocked payout", () => {
+    const blockedPayout = {
+      ...payout,
+      status: "transfer_blocked" as const,
+      stripeTransferId: null,
+      canMarkPaid: false,
+      canAdjust: false,
+      canResolveBlocked: true,
+      failureReason: "transfer_blocked: multiple_live_transfers (tr_a, tr_b)",
+    };
+    const BLOCKED_REASON = "Checked Stripe: tr_a is the live transfer";
+
+    it("offers both resolutions only to someone who can process, and only when blocked", () => {
+      const { unmount } = render(<Harness row={payout} />);
+      expect(
+        screen.queryByRole("button", { name: "Adopt Stripe transfer" }),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Release for retry" })).not.toBeInTheDocument();
+      unmount();
+      const cannot = render(<Harness row={blockedPayout} canProcess={false} />);
+      expect(
+        screen.queryByRole("button", { name: "Adopt Stripe transfer" }),
+      ).not.toBeInTheDocument();
+      cannot.unmount();
+      render(<Harness row={blockedPayout} />);
+      expect(screen.getByRole("button", { name: "Adopt Stripe transfer" })).toBeEnabled();
+      expect(screen.getByRole("button", { name: "Release for retry" })).toBeEnabled();
+    });
+
+    it("adopts a transfer with its ID and a reason, then confirms", async () => {
+      adoptAction.mockResolvedValue({ ok: true });
+      render(<Harness row={blockedPayout} />);
+      fireEvent.click(screen.getByRole("button", { name: "Adopt Stripe transfer" }));
+
+      expect(screen.getByText(/multiple_live_transfers/)).toBeInTheDocument();
+      fireEvent.change(screen.getByLabelText("Stripe transfer ID"), {
+        target: { value: " tr_a " },
+      });
+      fireEvent.change(screen.getByLabelText("Reason for adopting this transfer"), {
+        target: { value: BLOCKED_REASON },
+      });
+      fireEvent.click(screen.getByRole("button", { name: "Adopt for £4,500.00 payout" }));
+
+      await waitFor(() =>
+        expect(adoptAction).toHaveBeenCalledWith("payout_1", {
+          stripeTransferId: " tr_a ",
+          reason: BLOCKED_REASON,
+          idempotencyKey: expect.any(String),
+        }),
+      );
+      await waitFor(() =>
+        expect(notifySuccess).toHaveBeenCalledWith(
+          "Adopted the Stripe transfer for the £4,500.00 payout to Gallery One",
+        ),
+      );
+      expect(refresh).toHaveBeenCalled();
+    });
+
+    it("will not adopt without a transfer ID, or with a reason that is too short", () => {
+      render(<Harness row={blockedPayout} />);
+      fireEvent.click(screen.getByRole("button", { name: "Adopt Stripe transfer" }));
+      fireEvent.change(screen.getByLabelText("Reason for adopting this transfer"), {
+        target: { value: BLOCKED_REASON },
+      });
+      fireEvent.click(screen.getByRole("button", { name: "Adopt for £4,500.00 payout" }));
+      expect(adoptAction).not.toHaveBeenCalled();
+      expect(screen.getByText("Enter the Stripe transfer ID.")).toBeInTheDocument();
+
+      fireEvent.change(screen.getByLabelText("Stripe transfer ID"), { target: { value: "tr_a" } });
+      fireEvent.change(screen.getByLabelText("Reason for adopting this transfer"), {
+        target: { value: "short" },
+      });
+      fireEvent.click(screen.getByRole("button", { name: "Adopt for £4,500.00 payout" }));
+      expect(adoptAction).not.toHaveBeenCalled();
+    });
+
+    it("keeps the dialog open and shows the API's reason when the transfer is refused", async () => {
+      adoptAction.mockResolvedValue({
+        ok: false,
+        error: "That transfer's amount is not the payout's net amount.",
+      });
+      render(<Harness row={blockedPayout} />);
+      fireEvent.click(screen.getByRole("button", { name: "Adopt Stripe transfer" }));
+      fireEvent.change(screen.getByLabelText("Stripe transfer ID"), { target: { value: "tr_a" } });
+      fireEvent.change(screen.getByLabelText("Reason for adopting this transfer"), {
+        target: { value: BLOCKED_REASON },
+      });
+      fireEvent.click(screen.getByRole("button", { name: "Adopt for £4,500.00 payout" }));
+
+      expect(
+        await screen.findByText("That transfer's amount is not the payout's net amount."),
+      ).toBeInTheDocument();
+      expect(notifySuccess).not.toHaveBeenCalled();
+    });
+
+    it("will not release until the Stripe check is confirmed and a reason is given", async () => {
+      releaseAction.mockResolvedValue({ ok: true });
+      render(<Harness row={blockedPayout} />);
+      fireEvent.click(screen.getByRole("button", { name: "Release for retry" }));
+      fireEvent.change(screen.getByLabelText("Reason for releasing it"), {
+        target: { value: BLOCKED_REASON },
+      });
+
+      fireEvent.click(screen.getByRole("button", { name: "Release £4,500.00 payout" }));
+      expect(releaseAction).not.toHaveBeenCalled();
+      expect(screen.getByText(/Confirm that you have checked in Stripe/)).toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole("checkbox"));
+      fireEvent.click(screen.getByRole("button", { name: "Release £4,500.00 payout" }));
+
+      await waitFor(() =>
+        expect(releaseAction).toHaveBeenCalledWith("payout_1", {
+          reason: BLOCKED_REASON,
+          noLiveTransferConfirmed: true,
+          idempotencyKey: expect.any(String),
+        }),
+      );
+      await waitFor(() =>
+        expect(notifySuccess).toHaveBeenCalledWith(
+          "Released the £4,500.00 payout to Gallery One. It can now be retried.",
+        ),
+      );
+    });
   });
 });

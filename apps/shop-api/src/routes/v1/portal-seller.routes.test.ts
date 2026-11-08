@@ -39,6 +39,25 @@ function sellerApp(
   });
 }
 
+/** A Connect service that, wrongly, still holds the Stripe id on what it returns. */
+function leakyPayeeConnect() {
+  const base = createMinimalShopApiTestDeps().payeeConnect;
+  return {
+    ...base,
+    getStatusForSubject: async () =>
+      ({
+        accountLinked: true,
+        stripeAccountId: "acct_secret123",
+        chargesEnabled: true,
+        payoutsEnabled: true,
+        requirementsCurrentlyDue: [],
+        disabledReason: null,
+        ready: true,
+      }) as Awaited<ReturnType<typeof base.getStatusForSubject>>,
+    ensureAccountForSubject: async () => ({ stripeAccountId: "acct_secret123" }),
+  };
+}
+
 const sellerReadRoutes = [
   "/v1/me/sale-authority",
   "/v1/me/sale-authority-requests",
@@ -48,6 +67,42 @@ const sellerReadRoutes = [
   "/v1/me/sales",
   "/v1/me/seller-access",
 ];
+
+describe("the seller's payout account answers", () => {
+  function leakyApp() {
+    const base = createMinimalShopApiTestDeps();
+    return createShopApiApp({
+      deps: createMinimalShopApiTestDeps({
+        env: { ...base.env, SHOP_PORTAL_OWNERSHIP_ENABLED: true, SHOP_PAYOUTS_ENABLED: true },
+        payeeConnect: leakyPayeeConnect(),
+      }),
+      logger: false,
+    });
+  }
+
+  it("says whether an account is linked and never returns a Stripe account id", async () => {
+    const app = leakyApp();
+    await app.ready();
+    asScope("lax.selling.read");
+    const status = await app.inject({ method: "GET", url: "/v1/me/connect/status", headers });
+    expect(status.statusCode).toBe(200);
+    expect(status.json()).toMatchObject({ accountLinked: true, ready: true });
+    expect(status.body).not.toContain("acct_");
+    expect(status.json()).not.toHaveProperty("stripeAccountId");
+
+    asScope("shop.write");
+    const created = await app.inject({
+      method: "POST",
+      url: "/v1/me/connect/account",
+      headers,
+      payload: {},
+    });
+    expect(created.statusCode).toBe(200);
+    expect(created.json()).toEqual({ accountLinked: true });
+    expect(created.body).not.toContain("acct_");
+    await app.close();
+  });
+});
 
 describe("seller routes and the selling scopes", () => {
   it("opens the seller read routes to lax.selling.read and shop.read", async () => {

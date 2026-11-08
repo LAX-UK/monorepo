@@ -6,15 +6,10 @@ export const BOTTOM_CHROME = {
   consent: "5.5rem",
 } as const;
 
-/** Fixed checkout pay bar height (matches checkout-lot-mobile-chrome). */
-export const CHECKOUT_PAY_BAR = "4.5rem";
-
 export type BottomChromeState = {
   consentBannerVisible: boolean;
   /** Dashboard mobile tab bar is mounted on this route. */
   dashboardTabBarActive: boolean;
-  /** Lot checkout uses a fixed pay bar instead of the tab bar. */
-  fixedPayBarRoute: boolean;
   /** Tab bar is hidden (wizard / lot checkout) — do not reserve tab height. */
   hideDashboardTabBar: boolean;
 };
@@ -28,9 +23,6 @@ export function consentOffset(visible: boolean): string {
  * reserved once, on the body.
  */
 export function pageBottomPadding(state: BottomChromeState): string {
-  if (state.fixedPayBarRoute) {
-    return `calc(${CHECKOUT_PAY_BAR} + 1rem + env(safe-area-inset-bottom, 0px))`;
-  }
   if (state.dashboardTabBarActive && !state.hideDashboardTabBar) {
     return `calc(${BOTTOM_CHROME.tab} + 1rem + env(safe-area-inset-bottom, 0px))`;
   }
@@ -51,11 +43,6 @@ export function showsPublicBottomBar(pathname: string): boolean {
 
 export function isDashboardTabBarRoute(pathname: string): boolean {
   return isClientAreaPath(pathname);
-}
-
-/** The Pay page: its fixed pay bar replaces the tab bar on a phone. */
-export function isFixedPayBarRoute(pathname: string): boolean {
-  return pathname === "/purchases/pay";
 }
 
 /**

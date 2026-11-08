@@ -30,6 +30,20 @@ describe("email block rules", () => {
     expect(emailLiftAccessRefusal("complaint", ADMIN)).toBeNull();
   });
 
+  it("lets client services lift a marketing opt-out on request, and it never stops essential email", () => {
+    expect(emailLiftAccessRefusal("unsubscribed_marketing", SUPPORT)).toBeNull();
+    expect(emailLiftAccessRefusal("unsubscribed_marketing", ADMIN)).toBeNull();
+    expect(emailLiftAccessRefusal("unsubscribed_marketing", READ_ONLY)).toBe("not_allowed");
+    expect(
+      emailLiftInputRefusal("unsubscribed_marketing", { reason: "asked_to_receive_again" }),
+    ).toBeNull();
+    expect(emailLiftInputRefusal("unsubscribed_marketing", { reason: "mailbox_fixed" })).toBe(
+      "reason_not_accepted",
+    );
+    expect(EMAIL_BLOCK_RULES.unsubscribed_marketing.stopsEssentialEmail).toBe(false);
+    expect(EMAIL_BLOCK_RULES.unsubscribed_marketing.providerReactivation).toBe("none");
+  });
+
   it("lets nobody lift an unsubscribe", () => {
     expect(emailLiftAccessRefusal("unsubscribe", ADMIN)).toBe("unsubscribe_not_liftable");
     expect(EMAIL_BLOCK_RULES.unsubscribe.stopsEssentialEmail).toBe(false);

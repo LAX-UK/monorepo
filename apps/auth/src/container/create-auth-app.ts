@@ -40,6 +40,7 @@ export function createAuthApp(options: CreateAuthAppOptions): Hono {
   const clientIp = createClientIpResolver(
     options.oidc.env.AUTH_TRUSTED_PROXY_CIDRS,
     options.oidc.env.AUTH_TRUSTED_CLOUDFLARE_PROXY_CIDRS,
+    options.oidc.env.AUTH_TRUSTED_PROXY_HOPS,
   );
   // Better Auth hooks only see headers: hand them the peer-checked address, never a client's copy.
   app.use("*", async (c, next) => {

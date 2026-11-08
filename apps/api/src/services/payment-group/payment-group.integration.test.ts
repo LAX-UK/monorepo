@@ -198,6 +198,7 @@ describe.skipIf(!HAS_DB)("pay several: one payment for several invoices (integra
       total: `${invoiceIds.length * 100}.00`,
       rail: "card",
       invoices: invoiceIds.map((paymentId) => ({ paymentId, lotId: "", amount: "100.00" })),
+      deliveries: [],
     });
   const startOk = async (invoiceIds: string[]) => {
     const started = await start(invoiceIds);
@@ -361,6 +362,7 @@ describe.skipIf(!HAS_DB)("pay several: one payment for several invoices (integra
         totalAmount: `${paymentIds.length * 100}.00`,
         checkoutRail: "card",
         paymentIds,
+        deliveries: [],
       });
     const results = await Promise.all([claim([ids.a, ids.b]), claim([ids.b, ids.c])]);
     expect(results.filter((r) => r.kind === "claimed")).toHaveLength(1);
@@ -375,6 +377,7 @@ describe.skipIf(!HAS_DB)("pay several: one payment for several invoices (integra
       totalAmount: "200.00",
       checkoutRail: "card",
       paymentIds: [ids.a, ids.b],
+      deliveries: [],
     });
     if (claimed.kind !== "claimed") throw new Error("expected a claim");
     // The group exists but its checkout is not recorded yet, so the first start is mid-way.
@@ -703,6 +706,7 @@ describe.skipIf(!HAS_DB)("pay several: one payment for several invoices (integra
         totalAmount: "200.00",
         checkoutRail: "card",
         paymentIds: [ids.a, ids.b],
+        deliveries: [],
       });
       if (claimed.kind !== "claimed") throw new Error("expected a claim");
       await db
@@ -711,6 +715,55 @@ describe.skipIf(!HAS_DB)("pay several: one payment for several invoices (integra
         .where(eq(paymentGroup.id, claimed.group.id));
       expect((await start([ids.a, ids.b])).isOk()).toBe(true);
       expect((await groups.findById(claimed.group.id))?.status).toBe("cancelled");
+    });
+
+    describe("a slow start that records its checkout just before the release", () => {
+      const slowStart = async (statusAfterExpire: "complete" | "expired") => {
+        const claimed = await groups.claim({
+          buyerLegalEntityId: orgId,
+          createdByUserId: payerId,
+          currency: "GBP",
+          totalAmount: "200.00",
+          checkoutRail: "card",
+          paymentIds: [ids.a, ids.b],
+          deliveries: [],
+        });
+        if (claimed.kind !== "claimed") throw new Error("expected a claim");
+        await db
+          .update(paymentGroup)
+          .set({ createdAt: new Date(Date.now() - 10 * 60_000) })
+          .where(eq(paymentGroup.id, claimed.group.id));
+        // The second start reads the group before the slow start commits its checkout.
+        const stale = await groups.findLiveByPaymentIds([ids.a, ids.b]);
+        const spy = vi.spyOn(groups, "findLiveByPaymentIds").mockImplementationOnce(async () => {
+          await groups.recordCheckout(claimed.group.id, {
+            sessionId: "cs_slow",
+            paymentIntentId: null,
+          });
+          return stale;
+        });
+        gateway.checkoutStatus.mockResolvedValue(statusAfterExpire);
+        try {
+          return { groupId: claimed.group.id, result: await start([ids.a, ids.b]) };
+        } finally {
+          spy.mockRestore();
+          gateway.checkoutStatus.mockResolvedValue("expired");
+        }
+      };
+
+      it("ends it through the provider and leaves it alone when the payer had finished it", async () => {
+        const { groupId, result } = await slowStart("complete");
+        expect(result._unsafeUnwrapErr()).toBe("in_progress");
+        expect(gateway.expireCheckout).toHaveBeenCalledWith("cs_slow");
+        expect((await groups.findById(groupId))?.status).toBe("open");
+      });
+
+      it("releases it only after the provider says it can no longer be paid", async () => {
+        const { groupId, result } = await slowStart("expired");
+        expect(result.isOk()).toBe(true);
+        expect(gateway.expireCheckout).toHaveBeenCalledWith("cs_slow");
+        expect((await groups.findById(groupId))?.status).toBe("cancelled");
+      });
     });
 
     it("does not record a checkout against a group that was let go meanwhile", async () => {

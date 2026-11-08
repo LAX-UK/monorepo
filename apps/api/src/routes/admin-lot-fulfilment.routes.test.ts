@@ -3,12 +3,14 @@ import { ok } from "neverthrow";
 import { describe, expect, it, vi } from "vitest";
 import type { Container } from "../container.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
+import { stubStepUpGuard } from "../testing/staff-mutation-guards.js";
 import { createAdminRoutes } from "./admin.js";
 
 const LOT_ID = "00000000-0000-4000-8000-000000000001";
 
 function createFulfilmentContainer(partial: {
   lotFulfilment?: Partial<Container["admin"]["lotFulfilment"]>;
+  recent?: boolean;
 }) {
   return {
     env: { LOG_LEVEL: "silent", NODE_ENV: "test" } as never,
@@ -18,6 +20,7 @@ function createFulfilmentContainer(partial: {
         reconcileAdminRequestCookie: vi.fn().mockResolvedValue(undefined),
       },
       lotFulfilment: partial.lotFulfilment,
+      stepUp: stubStepUpGuard(partial.recent ?? true),
     },
   } as unknown as Container;
 }
@@ -105,6 +108,7 @@ describe("admin lot fulfilment routes (DIP facade)", () => {
         id: "staff-1",
         role: "staff",
         staffRoles: ["administrator"],
+        identitySessionId: "session-1",
         scopes: ["bid.write"],
       }),
     };
@@ -121,5 +125,33 @@ describe("admin lot fulfilment routes (DIP facade)", () => {
     expect(approveRelease).toHaveBeenCalledWith(
       expect.objectContaining({ lotId: LOT_ID, actorUserId: "staff-1", notes: "Ready" }),
     );
+  });
+  it("POST /lot-fulfilment/:lotId/release asks for a recent sign-in and releases nothing", async () => {
+    const approveRelease = vi.fn();
+    const container = createFulfilmentContainer({
+      lotFulfilment: { approveRelease } as never,
+      recent: false,
+    });
+    const authenticator: IAuthenticator = {
+      getSessionUser: vi.fn().mockResolvedValue({
+        id: "staff-1",
+        role: "staff",
+        staffRoles: ["administrator"],
+        identitySessionId: "session-1",
+        scopes: ["bid.write"],
+      }),
+    };
+    const app = new Hono();
+    app.route("/admin", createAdminRoutes(container, authenticator));
+
+    const res = await app.request(`http://test/admin/lot-fulfilment/${LOT_ID}/release`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ notes: "Ready" }),
+    });
+
+    expect(res.status).toBe(403);
+    expect(((await res.json()) as { code: string }).code).toBe("step_up_required");
+    expect(approveRelease).not.toHaveBeenCalled();
   });
 });

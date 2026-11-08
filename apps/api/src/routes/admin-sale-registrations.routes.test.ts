@@ -3,6 +3,7 @@ import { err, ok } from "neverthrow";
 import { describe, expect, it, vi } from "vitest";
 import type { Container } from "../container.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
+import { stubStepUpGuard } from "../testing/staff-mutation-guards.js";
 import { createAdminRoutes } from "./admin.js";
 
 const staffUserId = "staff-user-id";
@@ -19,6 +20,7 @@ function createSaleRegistrationsContainer(partial: {
         isSuspended: vi.fn().mockResolvedValue(false),
         reconcileAdminRequestCookie: vi.fn().mockResolvedValue(undefined),
       },
+      stepUp: stubStepUpGuard(true),
       saleRegistrations: partial.saleRegistrations,
     },
   } as unknown as Container;
@@ -34,6 +36,7 @@ describe("admin sale registration routes (DIP facade)", () => {
     const authenticator: IAuthenticator = {
       getSessionUser: vi.fn().mockResolvedValue({
         id: staffUserId,
+        identitySessionId: "session-1",
         role: "staff",
         staffRoles: ["sales_manager"],
         scopes: ["bid.read"],
@@ -59,6 +62,7 @@ describe("admin sale registration routes (DIP facade)", () => {
     const authenticator: IAuthenticator = {
       getSessionUser: vi.fn().mockResolvedValue({
         id: staffUserId,
+        identitySessionId: "session-1",
         role: "staff",
         staffRoles: ["sales_manager"],
         scopes: ["bid.write"],
@@ -94,6 +98,7 @@ describe("admin sale registration routes (DIP facade)", () => {
     const authenticator: IAuthenticator = {
       getSessionUser: vi.fn().mockResolvedValue({
         id: staffUserId,
+        identitySessionId: "session-1",
         role: "staff",
         staffRoles: ["sales_manager"],
         scopes: ["bid.write"],
@@ -125,6 +130,7 @@ describe("admin sale registration routes (DIP facade)", () => {
     const authenticator: IAuthenticator = {
       getSessionUser: vi.fn().mockResolvedValue({
         id: staffUserId,
+        identitySessionId: "session-1",
         role: "staff",
         staffRoles: ["sales_manager"],
         scopes: ["bid.write"],

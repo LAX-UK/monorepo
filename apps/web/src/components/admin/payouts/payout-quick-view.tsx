@@ -27,6 +27,8 @@ export function PayoutQuickView({
   onMarkPaid,
   onAdjust,
   onRetryTransfer,
+  onAdoptBlocked,
+  onReleaseBlocked,
   onReverse,
   moneyActions = [],
 }: {
@@ -37,6 +39,8 @@ export function PayoutQuickView({
   onMarkPaid: (row: PayoutsStaffRow) => void;
   onAdjust: (row: PayoutsStaffRow) => void;
   onRetryTransfer: (row: PayoutsStaffRow) => void;
+  onAdoptBlocked: (row: PayoutsStaffRow) => void;
+  onReleaseBlocked: (row: PayoutsStaffRow) => void;
   onReverse: (row: PayoutsStaffRow) => void;
   /** The row menu's money actions, for the panel's `…`. */
   moneyActions?: readonly OverflowAction[];
@@ -44,7 +48,8 @@ export function PayoutQuickView({
   const sellerHref = row ? `/admin/legal-entities/${encodeURIComponent(row.legalEntityId)}` : "";
   const showFooter =
     row !== null &&
-    ((canProcess && (row.canMarkPaid || row.canAdjust || row.canRetryTransfer)) ||
+    ((canProcess &&
+      (row.canMarkPaid || row.canAdjust || row.canRetryTransfer || row.canResolveBlocked)) ||
       (canReverse && row.canReverse));
   return (
     <DetailPanel
@@ -131,6 +136,16 @@ export function PayoutQuickView({
                 Add adjustment
               </StaffButton>
             ) : null}
+            {canProcess && row.canResolveBlocked ? (
+              <>
+                <StaffButton variant="secondary" onClick={() => onReleaseBlocked(row)}>
+                  Release for retry
+                </StaffButton>
+                <StaffButton variant="primary" onClick={() => onAdoptBlocked(row)}>
+                  Adopt Stripe transfer
+                </StaffButton>
+              </>
+            ) : null}
             {canProcess && row.canRetryTransfer ? (
               <StaffButton variant="primary" onClick={() => onRetryTransfer(row)}>
                 Retry transfer
@@ -148,14 +163,40 @@ export function PayoutQuickView({
       {row ? (
         <>
           {row.failureReason ? (
-            <Notice tone="danger" title="The Stripe transfer failed" className="mb-4">
+            <Notice
+              tone="danger"
+              title={
+                row.status === "transfer_blocked"
+                  ? "Stripe already holds a transfer for this payout"
+                  : "The Stripe transfer failed"
+              }
+              className="mb-4"
+            >
               {row.failureReason}
+            </Notice>
+          ) : null}
+          {row.status === "transfer_blocked" ? (
+            <Notice
+              tone="danger"
+              title="This payout needs review before any money moves"
+              className="mb-4"
+            >
+              No transfer will be sent. Check the transfers in Stripe, then adopt the one that pays
+              this seller or release the payout for a retry. See the runbook "Payout transfer
+              blocked".
             </Notice>
           ) : null}
           {row.status === "clawback_pending" ? (
             <Notice tone="danger" title="Funds need to be recovered" className="mb-4">
               This payout has a negative net amount. Recover the funds by reversal, offset or direct
               repayment before closing it.
+            </Notice>
+          ) : null}
+          {row.status === "transfer_blocked" ? (
+            <Notice tone="danger" title="Blocked, needs review" className="mb-4">
+              Stripe already holds a transfer for this payout that does not match it exactly, so no
+              transfer was sent. Compare the payout with the transfers in Stripe before doing
+              anything else; it will not be retried automatically.
             </Notice>
           ) : null}
           {row.statementError ? (

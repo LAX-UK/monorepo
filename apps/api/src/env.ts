@@ -6,6 +6,7 @@ import {
   DEFAULT_TRUSTED_PROXY_CIDRS,
   parseCidrList,
 } from "@auction/http-headers/client-ip";
+import { STAFF_STEP_UP_MAX_AGE_SECONDS } from "@auction/identity-contracts";
 import { parseOptionalBooleanFlag } from "@auction/validators";
 import { z } from "zod";
 
@@ -45,6 +46,16 @@ const envSchema = z
     API_PUBLIC_URL: z.string().url().default("http://localhost:3001"),
     OIDC_ISSUER_URL: z.string().url(),
     OIDC_INTERNAL_BASE_URL: z.string().url().optional(),
+    /**
+     * How recent a staff sign-in must be, in seconds, for a dangerous Bid admin action (refund,
+     * payout, role change, erasure, KYC decision). The default is the shared staff window.
+     */
+    STAFF_STEP_UP_MAX_AGE_SECONDS: z.coerce
+      .number()
+      .int()
+      .min(60)
+      .max(3600)
+      .default(STAFF_STEP_UP_MAX_AGE_SECONDS),
     /**
      * Where saved addresses come from. `identity` serves the LAX-wide address book (with the old
      * Bid table as a read fallback for addresses not yet copied); `legacy` is the rollback to the
@@ -134,6 +145,12 @@ const envSchema = z
     DATABASE_URL_API: z.preprocess(emptyToUndefined, z.string().optional()),
     /** ATG White Label sync: the API only enqueues `atg-sync` jobs; the worker calls ATG. */
     ATG_SYNC_ENABLED: z.preprocess(parseOptionalBooleanFlag, z.boolean().default(false)),
+    /**
+     * Charge an accepted courier quote in the same payment as the invoice it belongs to. Stays off
+     * until operations confirm a quote may be charged before the lot is released and the
+     * accountant confirms how VAT applies to delivery; until then delivery is paid separately.
+     */
+    DELIVERY_IN_PAYMENT_ENABLED: z.preprocess(parseOptionalBooleanFlag, z.boolean().default(false)),
     /**
      * Self-serve collection booking. Stays off until operations confirm the saleroom's hours and
      * capacity; until then buyers get the address, the hours and an email address to book by.

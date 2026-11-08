@@ -10,7 +10,9 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 import { user } from "./auth.js";
+import { deliveryQuote } from "./delivery-quote.js";
 import { legalEntity } from "./legal-entities.js";
+import { lot } from "./lots.js";
 
 /**
  * One payment that settles several invoices of the same buyer account ("Pay several"). Each
@@ -72,5 +74,35 @@ export const paymentGroup = pgTable(
       "payment_group_amount_received_check",
       sql`${table.amountReceived} >= 0 and ${table.amountReceived} <= ${table.totalAmount}`,
     ),
+  ],
+);
+
+/**
+ * A courier quote charged in a combined payment: the pounds charged for it, kept apart from every
+ * invoice's `payment.amount` so seller payouts and platform fees are unchanged. One row per quote,
+ * for good: the unique index holds the quote while the group is open and after it is paid, and a
+ * group that is let go before it is paid deletes its rows so the quote can be charged again.
+ */
+export const paymentGroupDelivery = pgTable(
+  "payment_group_delivery",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    paymentGroupId: uuid("payment_group_id")
+      .notNull()
+      .references(() => paymentGroup.id, { onDelete: "restrict" }),
+    deliveryQuoteId: uuid("delivery_quote_id")
+      .notNull()
+      .references(() => deliveryQuote.id, { onDelete: "restrict" }),
+    lotId: uuid("lot_id")
+      .notNull()
+      .references(() => lot.id, { onDelete: "restrict" }),
+    /** The quote's price at the moment the group was opened. */
+    amount: numeric("amount", { precision: 18, scale: 2 }).notNull(),
+    createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("payment_group_delivery_quote_uidx").on(table.deliveryQuoteId),
+    index("payment_group_delivery_group_idx").on(table.paymentGroupId),
+    check("payment_group_delivery_amount_check", sql`${table.amount} > 0`),
   ],
 );

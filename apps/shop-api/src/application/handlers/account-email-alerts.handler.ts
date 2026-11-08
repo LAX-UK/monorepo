@@ -35,7 +35,7 @@ export function createAccountEmailAlertHandlers(deps: AccountEmailAlertDeps) {
         const emailOn =
           view?.state === "confirmed" &&
           view.topics.some((entry) => entry.topic === topic && entry.emailOn);
-        return { topic, emailOn };
+        return view?.state === "stopped" ? { topic, emailOn, stopped: true } : { topic, emailOn };
       });
       return { topics, waitingEditions: await deps.countWaitingEditions(identitySubjectId) };
     },
@@ -51,8 +51,10 @@ export function createAccountEmailAlertHandlers(deps: AccountEmailAlertDeps) {
         subjectId: input.identitySubjectId,
         topic: input.topic,
         on: input.on,
+        // The account page's switch is an explicit choice, so it starts alerts again after a stop.
+        restartStopped: true,
       });
-      return outcome === "saved" ? null : outcome;
+      return outcome === "saved" ? null : outcome === "stopped" ? "blocked" : outcome;
     },
   };
 }

@@ -14,6 +14,7 @@ import {
 } from "../lib/compliance-route-response.js";
 import { zValidator } from "../lib/z-validator.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
+import { createStaffOnlyStepUp } from "../middleware/require-recent-staff-auth.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 
 export function createExportRoutes(
@@ -35,7 +36,10 @@ export function createExportRoutes(
 
   r.use("*", requireAuth);
 
-  r.post("/", zValidator("json", createExportBodySchema), async (c) => {
+  // Staff exports carry personal data, so they need a recent sign-in (registry: personal_data_export).
+  const requireStaffStepUp = createStaffOnlyStepUp(() => container.compliance.staffStepUp);
+
+  r.post("/", requireStaffStepUp, zValidator("json", createExportBodySchema), async (c) => {
     const result = await exportHttp.createExport({
       viewer: complianceViewerFromContext(c),
       body: c.req.valid("json"),

@@ -34,3 +34,4 @@ docs/audits/pre-go-live-audit.md
 progress.md
 actionlint
 jar.txt
+apps/account/e2e/.auth

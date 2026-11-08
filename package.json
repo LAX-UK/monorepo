@@ -26,6 +26,7 @@
     "lint:e2e-tags": "pnpm --filter @auction/web check:e2e-tags",
     "lint:client-copy": "node scripts/ci/verify-client-copy.mjs && node --test scripts/ci/verify-client-copy.test.mjs",
     "lint:brand-name": "node scripts/check-brand-name.mjs && node --test scripts/check-brand-name.test.mjs",
+    "lint:legal-names": "node scripts/check-legal-names.mjs && node --test scripts/check-legal-names.test.mjs",
     "lint:test-mocks": "node scripts/check-test-mocks.mjs && node --test scripts/check-test-mocks.test.mjs scripts/vitest/workspace-source-aliases.test.mjs",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",

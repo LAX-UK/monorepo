@@ -54,6 +54,18 @@ export const PAY_COPY = {
   panelDelivery: "Delivery",
   deliveryTitle: "Choose after paying",
   deliveryNote: "Collect in London, insured courier or your own shipper. You choose after paying.",
+  deliverySeveralNote:
+    "Collect in London, insured courier or your own shipper: you choose for each lot after paying.",
+  /** Under the delivery rows while a courier quote can still be added to this payment. */
+  deliveryQuoteHint: "Want the delivery cost first?",
+  deliveryQuoteLink: "Get a courier quote",
+  deliveryQuoteAdded: "An accepted quote is added to this payment.",
+  deliveryChargedNote:
+    "An accepted courier quote is charged with this payment. Collection is free, and your own shipper adds nothing.",
+  deliveryCourier: (amount: string) => `Courier · ${amount}`,
+  deliveryCourierTo: (destination: string) => `Insured courier to ${destination}`,
+  deliveryLine: "Courier delivery",
+  deliveryLineFor: (lotTitle: string) => `Courier delivery, ${lotTitle}`,
   invoiceFrom: (company: string, address: string) => `Invoice from ${company}, ${address}`,
   totalToPay: "Total to pay",
   dueBy: (date: string) => `Due by ${date}`,
@@ -175,6 +187,12 @@ export const PAY_COPY = {
   setupBadge: "Setup needed",
   unavailableBadge: "Not available",
   awaitingBadge: "Awaiting payment",
+  paidTitle: "Paid. Thank you.",
+  paidDetailOne: "We emailed your receipt. Next, choose how you receive the work.",
+  paidDetailDone: "We emailed your receipt.",
+  paidDetailMany: (count: number) =>
+    `We emailed your receipt for ${count} lots. Next, choose how you receive this work; the others are in Purchases.`,
+  chooseDelivery: "Choose delivery",
 } as const;
 
 /** One notice for each check that can stop a payment: the approved wording and the next step. */

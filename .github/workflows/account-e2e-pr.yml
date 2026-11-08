@@ -1,0 +1,190 @@
+name: Account PR browser gates
+
+on:
+  pull_request:
+    branches: [main, master]
+  merge_group:
+    branches: [main, master]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: account-e2e-pr-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  changes:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      account: ${{ steps.filter.outputs.account }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d
+        id: filter
+        with:
+          filters: |
+            account:
+              - "apps/account/**"
+              - "apps/auth/**"
+              - "apps/api/src/**"
+              - "apps/shop-api/**"
+              - "packages/auth/**"
+              - "packages/identity-contracts/**"
+              - "packages/identity-rp/**"
+              - "packages/lax-ecosystem/**"
+              - "packages/ui/**"
+              - "packages/marketing-ui/**"
+              - "packages/branding/**"
+              - "packages/db/src/seed/**"
+              - "pnpm-lock.yaml"
+              - ".github/workflows/account-e2e-pr.yml"
+  account-browser-gates:
+    needs: changes
+    if: github.event_name == 'merge_group' || needs.changes.outputs.account == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: auction_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+    env:
+      CI: "true"
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/auction_ci
+      REDIS_URL: redis://127.0.0.1:6379
+      BETTER_AUTH_SECRET: ci-auth-secret-at-least-sixteen-characters
+      AUTH_DEK_KEY: "0707070707070707070707070707070707070707070707070707070707070707"
+      CHECK_IN_TOKEN_SECRET: ci-api-token-secret-at-least-sixteen-characters
+      IDENTITY_MACHINE_CLIENT_ID: api-service
+      IDENTITY_MACHINE_CLIENT_SECRET: ci-identity-machine-secret-at-least-32
+      API_PUBLIC_URL: http://localhost:3001
+      OIDC_ISSUER_URL: http://localhost:3003
+      OIDC_INTERNAL_BASE_URL: http://localhost:3003
+      # Account is the lax-account-web client; the shop-api values mirror the Art gate.
+      OIDC_CLIENT_ID: lax-account-web
+      OIDC_CLIENT_SECRET_LAX_ACCOUNT_WEB: ci-account-web-client-secret-at-least-32
+      LAX_ACCOUNT_PUBLIC_ORIGIN: http://localhost:3040
+      LAX_ACCOUNT_SESSION_ENCRYPTION_KEY: ci-account-session-key-0123456789abcdef
+      LAX_BID_API_URL: http://localhost:3001
+      LAX_SHOP_API_URL: http://localhost:3011
+      LAX_BID_PUBLIC_URL: http://localhost:3000
+      LAX_SHOP_PUBLIC_URL: http://localhost:3020
+      LAX_ART_PUBLIC_URL: http://localhost:3050
+      DATABASE_URL_SHOP: postgresql://shop_app:postgres@localhost:5432/auction_ci
+      SHOP_API_BASE_URL: http://localhost:3011
+      SHOP_API_PUBLIC_BASE_URL: http://localhost:3011
+      SHOP_API_BFF_TOKEN: ci-shop-api-bff-token-at-least-32-characters
+      AUTH_APP_DB_PASSWORD: postgres
+      API_APP_DB_PASSWORD: postgres
+      SHOP_APP_DB_PASSWORD: postgres
+      WORKER_APP_DB_PASSWORD: postgres
+      ALLOW_HTTP_COOKIES: "true"
+      REQUIRE_EMAIL_VERIFICATION: "false"
+      APP_ENV: development
+      SHOP_PORTAL_OWNERSHIP_ENABLED: "true"
+      PLAYWRIGHT_E2E: "1"
+      PLAYWRIGHT_BASE_URL: http://localhost:3040
+      # Charlotte Hayes: Bid works from the demo seed plus one Shop edition seeded below.
+      ACCOUNT_E2E_COLLECTOR_EMAIL: collector@lax.bid
+      ACCOUNT_E2E_COLLECTOR_PASSWORD: Password123!
+      # Felix Nakamura: a dev-seeded password user with no lots, bids, orders or payments in any
+      # product (apple-test@lax.bid has bids, so it is not an empty account).
+      ACCOUNT_E2E_EMPTY_EMAIL: unverified@lax.bid
+      ACCOUNT_E2E_EMPTY_PASSWORD: Password123!
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "pnpm"
+      - run: pnpm install --frozen-lockfile
+      - name: Fast static checks
+        run: |
+          node scripts/ci/require-node-version.mjs
+          pnpm --filter @auction/account exec playwright test --list
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ hashFiles('pnpm-lock.yaml') }}
+      - name: Install pinned Chromium
+        run: pnpm --filter @auction/account exec playwright install chromium --with-deps
+      - name: Migrate and seed
+        run: |
+          pnpm --filter @auction/db... build
+          pnpm --filter @auction/db db:migrate
+          pnpm --filter @auction/db db:seed:dev
+          pnpm --filter @auction/db db:seed:demo-full
+          DATABASE_URL_OWNER="$DATABASE_URL" pnpm --filter @auction/db db:roles
+          DATABASE_URL_AUTH="$DATABASE_URL" \
+            OIDC_CLIENT_IDS=lax-account-web \
+            pnpm --filter @auction/db db:configure-oidc-clients
+      - name: Build Account stack
+        run: >-
+          pnpm turbo run build
+          --filter=@auction/auth-app
+          --filter=@auction/api
+          --filter=@auction/shop-api
+          --filter=@auction/account
+      - name: Seed the collector's Shop edition
+        env:
+          # Charlotte Hayes, demo person 1 (packages/db/src/seed/demo/demo-topup-ids.ts).
+          SHOP_ACCEPTANCE_PORTAL_SUBJECT_ID: 9de00000-0000-4000-8000-000000000001
+          SHOP_ACCEPTANCE_PORTAL_DISPLAY_NAME: Charlotte Hayes
+        run: |
+          pnpm --filter @auction/shop-api seed:catalogue
+          pnpm --filter @auction/shop-api seed:acceptance-portal
+      - name: Start stack
+        run: |
+          mkdir -p /tmp/account-e2e-logs
+          PORT=3003 pnpm --filter @auction/auth-app start > /tmp/account-e2e-logs/auth.log 2>&1 &
+          PORT=3001 pnpm --filter @auction/api start > /tmp/account-e2e-logs/api.log 2>&1 &
+          PORT=3011 pnpm --filter @auction/shop-api start > /tmp/account-e2e-logs/shop-api.log 2>&1 &
+          pnpm --filter @auction/account start > /tmp/account-e2e-logs/account.log 2>&1 &
+          npx --yes wait-on http://localhost:3003/health/live http://localhost:3001/health/live http://localhost:3011/health/ready http://localhost:3040/health/live --timeout 120000
+      - name: Run Account journeys and accessibility checks
+        run: pnpm --filter @auction/account exec playwright test
+      - name: Upload Playwright report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: account-pr-playwright-report
+          path: |
+            apps/account/playwright-report
+            apps/account/test-results
+          if-no-files-found: warn
+          retention-days: 7
+      - name: Upload process logs
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: account-pr-process-logs
+          path: /tmp/account-e2e-logs
+          if-no-files-found: warn
+          retention-days: 7

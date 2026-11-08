@@ -29,6 +29,7 @@ export const PAYOUT_STATUS_BADGE: Record<PayoutStatus, Badge> = {
   failed: { label: "Delayed", tone: "warning", shape: "alert" },
   reversed: { label: "Delayed", tone: "warning", shape: "alert" },
   clawback_pending: { label: "Under review", tone: "warning", shape: "alert" },
+  transfer_blocked: { label: "Under review", tone: "warning", shape: "alert" },
 };
 
 export type SoldStage = SoldLot["stage"];

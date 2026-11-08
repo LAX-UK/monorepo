@@ -1,5 +1,6 @@
 "use client";
 
+import { handleStaffStepUp } from "@/lib/auth/step-up/staff-step-up.client";
 import { setStaffTwoFactorPolicyAction } from "@/lib/security/two-factor-policy.actions";
 import { notify } from "@/lib/ui/notify";
 import {
@@ -44,6 +45,7 @@ export function StaffTwoFactorPolicy({
       const result = await setStaffTwoFactorPolicyAction(next);
       setAsking(null);
       if (!result.ok) {
+        if (handleStaffStepUp(result)) return;
         setError(result.error);
         return;
       }

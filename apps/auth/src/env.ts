@@ -101,6 +101,11 @@ const envSchema = z
         z.array(z.string().min(1)),
       )
       .default([]),
+    /** Proxies we operate that append to the forwarded-for chain; 1 is the App Platform ingress. */
+    AUTH_TRUSTED_PROXY_HOPS: z.preprocess((val) => {
+      const n = typeof val === "string" && val.trim() !== "" ? Number(val) : val;
+      return typeof n === "number" && Number.isInteger(n) && n >= 1 && n <= 10 ? n : 1;
+    }, z.number().int().min(1)),
     AUTH_CLIENT_IP_DIAGNOSTICS: z
       .preprocess((value) => value === "true" || value === true, z.boolean())
       .default(false),

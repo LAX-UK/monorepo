@@ -15,7 +15,7 @@ import { zValidator } from "../../lib/z-validator.js";
 import type { LotHono, LotRouteDeps } from "./_shared.js";
 
 export function attachLotLifecycleRoutes(r: LotHono, deps: LotRouteDeps): void {
-  const { container, requireAuth } = deps;
+  const { container, requireAuth, requireStaffStepUp } = deps;
   const http = () => container.catalogRoutes.lotLifecycleHttp;
 
   r.post("/bulk", requireAuth, zValidator("json", bulkLotsBodySchema), async (c) => {
@@ -60,6 +60,7 @@ export function attachLotLifecycleRoutes(r: LotHono, deps: LotRouteDeps): void {
   r.post(
     "/:id/cancel",
     requireAuth,
+    requireStaffStepUp,
     zValidator("param", lotIdParamSchema),
     zValidator("json", cancelLotBodySchema),
     async (c) => {
@@ -83,6 +84,7 @@ export function attachLotLifecycleRoutes(r: LotHono, deps: LotRouteDeps): void {
   r.post(
     "/:id/delete",
     requireAuth,
+    requireStaffStepUp,
     zValidator("param", lotIdParamSchema),
     zValidator("json", deleteLotBodySchema),
     async (c) => {

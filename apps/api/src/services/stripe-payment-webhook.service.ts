@@ -167,6 +167,11 @@ export class StripePaymentWebhookService {
     event: Stripe.Event,
     balance: Stripe.CashBalance,
   ): Promise<PaymentWebhookResult> {
-    return handleCustomerBalanceFundsAvailable(this.deps, event, balance);
+    return handleCustomerBalanceFundsAvailable(
+      this.deps,
+      event,
+      balance,
+      this.paymentGroups?.groups ?? null,
+    );
   }
 }

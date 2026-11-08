@@ -13,6 +13,7 @@ export type AdminPayoutListSummary = {
   failed: number;
   reversed: number;
   clawbackPending: number;
+  transferBlocked: number;
   totalNet: string;
   readiness: {
     inFlightCount: number;
@@ -63,6 +64,7 @@ const EMPTY_SUMMARY: AdminPayoutListSummary = {
   failed: 0,
   reversed: 0,
   clawbackPending: 0,
+  transferBlocked: 0,
   totalNet: "0",
   readiness: {
     inFlightCount: 0,
@@ -95,6 +97,8 @@ const summarySchema = z.object({
   failed: z.coerce.number(),
   reversed: z.coerce.number(),
   clawbackPending: z.coerce.number(),
+  /** Absent from an API that predates the blocked status. */
+  transferBlocked: z.coerce.number().optional().default(0),
   totalNet: z.coerce.string(),
   readiness: readinessSchema,
 });

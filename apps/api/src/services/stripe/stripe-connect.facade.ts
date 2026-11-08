@@ -18,6 +18,7 @@ import type {
   IStripeConnectService,
   InitiateTransferOptions,
   InitiateTransferResult,
+  TransferAdoptionVerification,
 } from "../interfaces/stripe-connect.js";
 import { ConnectAccountService } from "./connect/connect-account.service.js";
 import type { ConnectBankChangeHandler } from "./connect/connect-bank-change.handler.js";
@@ -152,5 +153,12 @@ export class StripeConnectFacade implements IStripeConnectService {
     opts?: InitiateTransferOptions,
   ): Promise<InitiateTransferResult> {
     return this.transferService.initiateTransfer(payoutId, opts);
+  }
+
+  verifyTransferForAdoption(
+    payoutId: string,
+    stripeTransferId: string,
+  ): Promise<TransferAdoptionVerification> {
+    return this.transferService.verifyTransferForAdoption(payoutId, stripeTransferId);
   }
 }

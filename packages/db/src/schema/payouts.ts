@@ -73,7 +73,7 @@ export const payout = pgTable(
     check("payout_currency_gbp", sql`${table.currency} = 'GBP'`),
     check(
       "payout_status_check",
-      sql`${table.status} IN ('scheduled', 'in_transit', 'paid', 'failed', 'reversed', 'clawback_pending')`,
+      sql`${table.status} IN ('scheduled', 'in_transit', 'paid', 'failed', 'reversed', 'clawback_pending', 'transfer_blocked')`,
     ),
   ],
 );

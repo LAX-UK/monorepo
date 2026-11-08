@@ -65,6 +65,8 @@ const LABELS: Record<string, string> = {
   "data_request.extended": "Data request extended",
   "data_request.closed": "Data request closed",
   "data_request.continued": "Data request continued manually",
+  "data_request.enquiry_erasure_requested": "Data request enquiry erasure requested",
+  "data_request.enquiries_erased": "Data request enquiries erased",
 
   "failed_job.retried": "Failed job retried",
   "failed_job.discarded": "Failed job discarded",
@@ -170,6 +172,7 @@ const LABELS: Record<string, string> = {
   "payout.settlement_created": "Settlement created",
   "payout.transfer_initiated": "Payout transfer started",
   "payout.transfer_blocked": "Payout transfer blocked",
+  "payout.transfer_block_resolved": "Blocked payout resolved",
   "payout.transfer_failed": "Payout transfer failed",
   "marketing_enquiry.received": "Contact enquiry received",
   "marketing_enquiry.handled": "Contact enquiry handled",
@@ -240,6 +243,7 @@ const LABELS: Record<string, string> = {
   "shop.stock_hold.expired": "Stock hold expired",
   "shop.third_party_sale.recorded": "Third-party sale recorded",
   "shop.sale_fee.approved": "Sale fee approved",
+  "alert.subscription.confirmed": "Alert subscription confirmed",
   "shop.original_sale.reserved": "Original reserved for sale",
 
   "source_of_funds.required": "Source of Funds required",

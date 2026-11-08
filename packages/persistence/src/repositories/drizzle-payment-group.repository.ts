@@ -1,14 +1,24 @@
 import type { Database } from "@auction/db";
-import { legalEntity, lot, payment, paymentGroup } from "@auction/db/schema";
+import {
+  deliveryQuote,
+  legalEntity,
+  lot,
+  payment,
+  paymentGroup,
+  paymentGroupDelivery,
+} from "@auction/db/schema";
 import type { PaymentGroupStatus } from "@auction/domain";
-import { and, asc, eq, inArray, isNull, lte, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, isNull, lte, or, sql } from "drizzle-orm";
 import type {
+  ChargeableDeliveryQuote,
   ClaimPaymentGroupInput,
   ClaimPaymentGroupResult,
+  IChargeableDeliveryReader,
   IPaySeveralInvoiceFlagsReader,
   IPaymentGroupRepository,
   LockedPaymentGroup,
   PaySeveralInvoiceFlags,
+  PaymentGroupDelivery,
   PaymentGroupMember,
   PaymentGroupRecord,
 } from "../interfaces/payment-group.repository.js";
@@ -50,6 +60,18 @@ const SETTLED_STATUSES: PaymentGroupStatus[] = ["paid", "cancelled"];
 /** Thrown inside the claim transaction to roll it back when not every payment could be taken. */
 class ClaimConflict extends Error {}
 
+/** Whole pence of a pounds figure kept as a decimal string, so two figures compare to the penny. */
+function samePounds(a: string | null, b: string): boolean {
+  return a !== null && Math.round(Number(a) * 100) === Math.round(Number(b) * 100);
+}
+
+/** Postgres unique violation: the courier quote is already charged by another payment. */
+function isUniqueViolation(err: unknown): boolean {
+  const code = (err as { code?: string })?.code;
+  const causeCode = (err as { cause?: { code?: string } })?.cause?.code;
+  return code === "23505" || causeCode === "23505";
+}
+
 export class DrizzlePaymentGroupRepository implements IPaymentGroupRepository {
   constructor(private readonly db: Database) {}
 
@@ -85,13 +107,60 @@ export class DrizzlePaymentGroupRepository implements IPaymentGroupRepository {
           )
           .returning({ id: payment.id });
         if (taken.length !== ids.length) throw new ClaimConflict();
+        await this.takeDeliveries(tx, created.id, input);
         return mapGroup(created);
       });
       return { kind: "claimed", group };
     } catch (err) {
-      if (err instanceof ClaimConflict) return { kind: "conflict" };
+      if (err instanceof ClaimConflict || isUniqueViolation(err)) return { kind: "conflict" };
       throw err;
     }
+  }
+
+  /**
+   * Takes the accepted quotes into the group. The quotes are locked first, so a quote withdrawn
+   * or re-priced meanwhile is seen as it now stands; the unique index stops a second payment.
+   */
+  private async takeDeliveries(
+    tx: Database,
+    groupId: string,
+    input: ClaimPaymentGroupInput,
+  ): Promise<void> {
+    if (input.deliveries.length === 0) return;
+    const ids = input.deliveries.map((d) => d.quoteId);
+    if (new Set(ids).size !== ids.length) throw new ClaimConflict();
+    const quotes = await tx
+      .select({
+        id: deliveryQuote.id,
+        lotId: deliveryQuote.lotId,
+        buyerLegalEntityId: deliveryQuote.buyerLegalEntityId,
+        status: deliveryQuote.status,
+        currency: deliveryQuote.currency,
+        amount: deliveryQuote.amount,
+      })
+      .from(deliveryQuote)
+      .where(inArray(deliveryQuote.id, ids))
+      .for("update");
+    const byId = new Map(quotes.map((q) => [q.id, q]));
+    for (const wanted of input.deliveries) {
+      const quote = byId.get(wanted.quoteId);
+      const same =
+        quote !== undefined &&
+        quote.status === "accepted" &&
+        quote.buyerLegalEntityId === input.buyerLegalEntityId &&
+        quote.lotId === wanted.lotId &&
+        quote.currency === input.currency &&
+        samePounds(quote.amount, wanted.amount);
+      if (!same) throw new ClaimConflict();
+    }
+    await tx.insert(paymentGroupDelivery).values(
+      input.deliveries.map((d) => ({
+        paymentGroupId: groupId,
+        deliveryQuoteId: d.quoteId,
+        lotId: d.lotId,
+        amount: d.amount,
+      })),
+    );
   }
 
   async findById(id: string): Promise<PaymentGroupRecord | null> {
@@ -120,6 +189,31 @@ export class DrizzlePaymentGroupRepository implements IPaymentGroupRepository {
 
   async listMembers(groupId: string): Promise<PaymentGroupMember[]> {
     return this.membersQuery(this.db, groupId);
+  }
+
+  async listDeliveries(groupId: string): Promise<PaymentGroupDelivery[]> {
+    return this.deliveriesQuery(this.db, groupId);
+  }
+
+  async findBankTransferGroupsForCustomer(
+    stripeCustomerId: string,
+    since: Date,
+  ): Promise<PaymentGroupRecord[]> {
+    const rows = await this.db
+      .select({ group: paymentGroup })
+      .from(paymentGroup)
+      .innerJoin(legalEntity, eq(legalEntity.id, paymentGroup.buyerLegalEntityId))
+      .where(
+        and(
+          eq(legalEntity.stripeCustomerId, stripeCustomerId),
+          eq(paymentGroup.checkoutRail, "gb_bank_transfer"),
+          inArray(paymentGroup.status, ["open", "processing", "paid"]),
+          gte(paymentGroup.createdAt, since),
+        ),
+      )
+      .orderBy(desc(paymentGroup.createdAt))
+      .limit(5);
+    return rows.map((row) => mapGroup(row.group));
   }
 
   async findLiveByPaymentIds(paymentIds: readonly string[]): Promise<PaymentGroupRecord[]> {
@@ -199,7 +293,11 @@ export class DrizzlePaymentGroupRepository implements IPaymentGroupRepository {
       .from(payment)
       .where(eq(payment.paymentGroupId, groupId))
       .for("update");
-    return { group: mapGroup(row), members: await this.membersQuery(tx, groupId) };
+    return {
+      group: mapGroup(row),
+      members: await this.membersQuery(tx, groupId),
+      deliveries: await this.deliveriesQuery(tx, groupId),
+    };
   }
 
   async transitionInTransaction(
@@ -237,7 +335,22 @@ export class DrizzlePaymentGroupRepository implements IPaymentGroupRepository {
         ),
       )
       .returning({ id: payment.id });
+    // The quotes are free again only once the group has handed everything back.
+    await tx.delete(paymentGroupDelivery).where(eq(paymentGroupDelivery.paymentGroupId, groupId));
     return rows.map((r) => r.id);
+  }
+
+  private async deliveriesQuery(conn: Database, groupId: string): Promise<PaymentGroupDelivery[]> {
+    const rows = await conn
+      .select({
+        quoteId: paymentGroupDelivery.deliveryQuoteId,
+        lotId: paymentGroupDelivery.lotId,
+        amount: paymentGroupDelivery.amount,
+      })
+      .from(paymentGroupDelivery)
+      .where(eq(paymentGroupDelivery.paymentGroupId, groupId))
+      .orderBy(asc(paymentGroupDelivery.createdAt), asc(paymentGroupDelivery.id));
+    return rows.map((r) => ({ ...r, amount: String(r.amount) }));
   }
 
   private async membersQuery(conn: Database, groupId: string): Promise<PaymentGroupMember[]> {
@@ -248,6 +361,37 @@ export class DrizzlePaymentGroupRepository implements IPaymentGroupRepository {
       .where(eq(payment.paymentGroupId, groupId))
       .orderBy(asc(payment.createdAt), asc(payment.id));
     return rows.map((r) => ({ ...r, amount: String(r.amount) }));
+  }
+}
+
+export class DrizzleChargeableDeliveryReader implements IChargeableDeliveryReader {
+  constructor(private readonly db: Database) {}
+
+  async acceptedFor(
+    buyerLegalEntityId: string,
+    lotIds: readonly string[],
+  ): Promise<ChargeableDeliveryQuote[]> {
+    if (lotIds.length === 0) return [];
+    const rows = await this.db
+      .select({
+        quoteId: deliveryQuote.id,
+        lotId: deliveryQuote.lotId,
+        amount: deliveryQuote.amount,
+        destination: deliveryQuote.destination,
+        quoteNote: deliveryQuote.quoteNote,
+      })
+      .from(deliveryQuote)
+      .leftJoin(paymentGroupDelivery, eq(paymentGroupDelivery.deliveryQuoteId, deliveryQuote.id))
+      .where(
+        and(
+          eq(deliveryQuote.buyerLegalEntityId, buyerLegalEntityId),
+          inArray(deliveryQuote.lotId, [...lotIds]),
+          eq(deliveryQuote.status, "accepted"),
+          isNull(paymentGroupDelivery.id),
+        ),
+      )
+      .orderBy(asc(deliveryQuote.decidedAt), asc(deliveryQuote.id));
+    return rows.flatMap((r) => (r.amount === null ? [] : [{ ...r, amount: String(r.amount) }]));
   }
 }
 

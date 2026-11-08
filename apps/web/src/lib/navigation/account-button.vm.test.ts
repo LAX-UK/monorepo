@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { accountButtonView } from "./account-button.vm";
 
-const person = { initials: "OG" };
+const person = { initials: "OG", name: "Oliver Grant" };
 
 describe("accountButtonView", () => {
   it("shows an organisation as its tile with the person's initials as a badge", () => {
@@ -15,6 +15,8 @@ describe("accountButtonView", () => {
       tileInitials: "NG",
       badgeInitials: "OG",
       label: "Your accounts, acting as Northbank Gallery",
+      title: "Northbank Gallery",
+      caption: "Oliver Grant · Owner",
     });
   });
 
@@ -29,6 +31,8 @@ describe("accountButtonView", () => {
       avatarInitials: "OG",
       text: "Personal",
       label: "Your accounts, Oliver Grant, Personal",
+      title: "Oliver Grant",
+      caption: "Personal",
     });
   });
 });

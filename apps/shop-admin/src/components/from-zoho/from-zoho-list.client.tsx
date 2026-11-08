@@ -1,15 +1,14 @@
 "use client";
 
-import { OfferAtAuctionDialog } from "@/components/artworks/offer-at-auction-dialog.client";
-import { OfferOnLaxArtDialog } from "@/components/from-zoho/offer-on-lax-art-dialog.client";
-import { useCanOfferAtAuction } from "@/components/from-zoho/use-offer-at-auction.client";
-import { useCanOfferOnLaxArt } from "@/components/from-zoho/use-offer-on-lax-art.client";
 import {
   FROM_ZOHO_DESCRIPTION,
   FROM_ZOHO_TITLE,
   useQueueFrame,
 } from "@/components/from-zoho/use-queue-frame.client";
-import { NO_OFFER_LINKS } from "@/lib/offer-at-auction-links";
+import {
+  registerRecordHref as recordHref,
+  useRegisterRowActions,
+} from "@/components/from-zoho/use-register-row-actions.client";
 import {
   CONFLICT_FIELD_LABEL,
   GAP_LABEL,
@@ -19,7 +18,6 @@ import {
   pageLinks,
   pageSummary,
   presentConflictValue,
-  zohoProductUrl,
   zohoQueueHref,
 } from "@/server/domain/zoho-register.vm";
 import type {
@@ -32,19 +30,14 @@ import {
   type DataColumn,
   FilterSheet,
   ListPage,
-  type OverflowAction,
   PrimaryCell,
   StaffDate,
   StatusBadge,
-  toast,
 } from "@auction/staff-ui";
-import { Copy, ExternalLink, Gavel, Globe, PanelRight } from "@auction/staff-ui/icons";
 import Link from "next/link";
-import { useCallback, useMemo, useState } from "react";
+import { useMemo } from "react";
 
-const recordHref = (registerId: string) => `/from-zoho/${registerId}`;
-
-function artworkCell(row: AdminRegisterArtworkSummary) {
+export function artworkCell(row: AdminRegisterArtworkSummary) {
   return (
     <PrimaryCell
       href={recordHref(row.registerId)}
@@ -138,68 +131,11 @@ export function NewFromZohoList({
       : []),
   ];
   const links = pageLinks(query, page);
-  const canOffer = useCanOfferOnLaxArt();
-  const canOfferAtAuction = useCanOfferAtAuction();
-  const [offering, setOffering] = useState<AdminRegisterArtworkSummary | null>(null);
-  const [offeringAtAuction, setOfferingAtAuction] = useState<AdminRegisterArtworkSummary | null>(
-    null,
-  );
-
-  const rowActions = useCallback(
-    (row: AdminRegisterArtworkSummary): OverflowAction[] => {
-      const zohoUrl = zohoProductUrl(zohoUrlTemplate, row.zohoProductId);
-      return [
-        {
-          id: "open",
-          label: "Open",
-          icon: PanelRight,
-          onSelect: () => navigate(recordHref(row.registerId)),
-        },
-        ...(canOffer && row.kind === "original"
-          ? [
-              {
-                id: "offer-on-lax-art",
-                label: "Offer on lax.art…",
-                icon: Globe,
-                onSelect: () => setOffering(row),
-              },
-            ]
-          : []),
-        ...(canOfferAtAuction && row.kind === "original"
-          ? [
-              {
-                id: "offer-at-auction",
-                label: "Offer at auction…",
-                icon: Gavel,
-                onSelect: () => setOfferingAtAuction(row),
-              },
-            ]
-          : []),
-        ...(zohoUrl
-          ? [
-              {
-                id: "edit-in-zoho",
-                label: "Edit in Zoho",
-                icon: ExternalLink,
-                onSelect: () => window.open(zohoUrl, "_blank", "noopener,noreferrer"),
-              },
-            ]
-          : []),
-        {
-          id: "copy-stock-code",
-          label: "Copy stock code",
-          icon: Copy,
-          onSelect: () => {
-            navigator.clipboard
-              .writeText(row.stockCode)
-              .then(() => toast.success("Stock code copied"))
-              .catch(() => toast.error("Could not copy the stock code"));
-          },
-        },
-      ];
-    },
-    [canOffer, canOfferAtAuction, navigate, zohoUrlTemplate],
-  );
+  const { actionsFor, dialogs } = useRegisterRowActions({
+    navigate,
+    zohoUrlTemplate,
+    bidAdminUrl,
+  });
 
   return (
     <>
@@ -260,7 +196,10 @@ export function NewFromZohoList({
           getRowId: (row) => row.registerId,
           defaultDensity: "comfortable",
           onRowOpen: (row) => navigate(recordHref(row.registerId)),
-          rowActions: { label: (row) => `Actions for ${row.title}`, actions: rowActions },
+          rowActions: {
+            label: (row) => `Actions for ${row.title}`,
+            actions: (row) => actionsFor(row, true),
+          },
         }}
         pagination={
           page.items.length > 0
@@ -268,33 +207,7 @@ export function NewFromZohoList({
             : null
         }
       />
-      {offering ? (
-        <OfferOnLaxArtDialog
-          key={offering.registerId}
-          open
-          onOpenChange={(open) => {
-            if (!open) setOffering(null);
-          }}
-          registerId={offering.registerId}
-          title={offering.title}
-        />
-      ) : null}
-      {offeringAtAuction ? (
-        <OfferAtAuctionDialog
-          key={offeringAtAuction.registerId}
-          open
-          onOpenChange={(open) => {
-            if (!open) setOfferingAtAuction(null);
-          }}
-          target={{ kind: "register", registerId: offeringAtAuction.registerId }}
-          title={offeringAtAuction.title}
-          links={{
-            ...NO_OFFER_LINKS,
-            bidAdminUrl,
-            zohoUrl: zohoProductUrl(zohoUrlTemplate, offeringAtAuction.zohoProductId),
-          }}
-        />
-      ) : null}
+      {dialogs}
     </>
   );
 }
@@ -304,12 +217,20 @@ export function NeedsDecisionList({
   query,
   page,
   unlinked = 0,
+  zohoUrlTemplate = null,
 }: {
   query: ZohoQueueQuery;
   page: AdminRegisterConflictList;
   unlinked?: number;
+  zohoUrlTemplate?: string | null;
 }) {
   const { pending, navigate, ListLink, views } = useQueueFrame(query, page.counts, unlinked);
+  // A conflict is settled on the record, so a row offers no new listing from here.
+  const { actionsFor, dialogs } = useRegisterRowActions({
+    navigate,
+    zohoUrlTemplate,
+    bidAdminUrl: null,
+  });
   const links = pageLinks(query, page);
 
   const columns = useMemo<DataColumn<AdminRegisterConflictItem>[]>(
@@ -357,33 +278,40 @@ export function NeedsDecisionList({
   );
 
   return (
-    <ListPage<AdminRegisterConflictItem>
-      title={FROM_ZOHO_TITLE}
-      description={FROM_ZOHO_DESCRIPTION}
-      Link={ListLink}
-      listKey="from-zoho-decisions"
-      views={views}
-      loading={pending}
-      filtered={false}
-      empty={{
-        illustration: "plinth",
-        title: "Nothing needs a decision",
-        description:
-          "When Zoho and LAX disagree about an artwork, it appears here with both versions.",
-      }}
-      noResults={{ noun: "conflicts" }}
-      table={{
-        columns,
-        data: page.items,
-        getRowId: (row) => row.conflict.conflictId,
-        defaultDensity: "comfortable",
-        onRowOpen: (row) => navigate(recordHref(row.artwork.registerId)),
-      }}
-      pagination={
-        page.items.length > 0
-          ? { summary: pageSummary(page), prevLabel: "Previous page", ...links }
-          : null
-      }
-    />
+    <>
+      <ListPage<AdminRegisterConflictItem>
+        title={FROM_ZOHO_TITLE}
+        description={FROM_ZOHO_DESCRIPTION}
+        Link={ListLink}
+        listKey="from-zoho-decisions"
+        views={views}
+        loading={pending}
+        filtered={false}
+        empty={{
+          illustration: "plinth",
+          title: "Nothing needs a decision",
+          description:
+            "When Zoho and LAX disagree about an artwork, it appears here with both versions.",
+        }}
+        noResults={{ noun: "conflicts" }}
+        table={{
+          columns,
+          data: page.items,
+          getRowId: (row) => row.conflict.conflictId,
+          defaultDensity: "comfortable",
+          onRowOpen: (row) => navigate(recordHref(row.artwork.registerId)),
+          rowActions: {
+            label: (row) => `Actions for ${row.artwork.title}`,
+            actions: (row) => actionsFor(row.artwork, false),
+          },
+        }}
+        pagination={
+          page.items.length > 0
+            ? { summary: pageSummary(page), prevLabel: "Previous page", ...links }
+            : null
+        }
+      />
+      {dialogs}
+    </>
   );
 }

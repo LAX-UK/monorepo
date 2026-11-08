@@ -90,6 +90,7 @@ describe("Postmark bounce without outbox match", () => {
       upsert: vi.fn(async (hash: string, reason: string) => {
         upserted.push({ emailHash: hash, reason });
       }),
+      liftMarketingOptOut: vi.fn(async () => false),
     };
     const emailWebhookIngest = {
       insertEmailEvent: vi.fn(),

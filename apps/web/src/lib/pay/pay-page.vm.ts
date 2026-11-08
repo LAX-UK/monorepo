@@ -35,13 +35,26 @@ export type PayNotice = {
   detail?: string;
   /** A link to the one step that clears the notice. */
   action?: { label: string; href: string };
-  /** Announced at once, as a failure is. */
-  alert?: boolean;
-  /** Takes focus when the page opens: the person came back to find out what happened. */
-  focus?: boolean;
 };
 
 export type PayLine = { label: string; amount: string };
+
+/** One lot's delivery in the payment: a courier quote joining it, or a choice still to make. */
+export type PayDeliveryRowVm = {
+  lotId: string;
+  title: string;
+  /** Where the courier delivers, and what the price covers; `null` for a choice made after paying. */
+  detail: string | null;
+  badge: { label: string; tone: "info" | "neutral"; shape: "dot" | "ring" };
+};
+
+/** What the Delivery panel says: a row for each lot, a sentence under them and a way to a quote. */
+export type PayDeliveryVm = {
+  rows: PayDeliveryRowVm[];
+  note: string;
+  /** Where to get a courier quote before paying, while one can still join this payment. */
+  quoteLink: { before: string; label: string; after: string; href: string } | null;
+};
 
 export type PayLotVm = {
   lotId: string;
@@ -113,6 +126,12 @@ export type PayMethodAction = {
   barLabel: string;
   /** The sentence under the action. */
   note: string;
+  /**
+   * Words for the same action after a payment page was left without paying. The page keeps using
+   * them while it shows the not-completed note, even after the address has been cleaned and the
+   * plan read again without the return.
+   */
+  retry?: { label: string; barLabel: string };
 };
 
 /** The one thing the rail and the phone bar offer. */
@@ -143,6 +162,8 @@ export type PayPageVm = {
   notices: PayNotice[];
   lots: PayLotVm[];
   money: PayMoneyVm | null;
+  /** How each lot is delivered, with any courier quote that joins the payment. */
+  delivery: PayDeliveryVm | null;
   /** The choice of how to pay, only while Pay is offered. */
   methods: PayMethodsVm | null;
   action: PayAction | null;
@@ -150,6 +171,11 @@ export type PayPageVm = {
   railPay: { label: string; reason: string } | null;
   /** A payment already under way: confirming, or a bank transfer waiting for its money. */
   progress: PayProgressVm | null;
+  /**
+   * The payment page sent the person back without paying: the note to show once, and this page's
+   * clean address to replace the URL with so a refresh does not show it again.
+   */
+  returned: { title: string; detail: string; cleanHref: string } | null;
   /** A way back to where the person came from. */
   back: { label: string; href: string } | null;
   empty: PayEmptyVm | null;
@@ -194,14 +220,82 @@ function lotVm(
   };
 }
 
-/** The invoice's own lines for one lot, the lines summed per kind for several. */
+/** The courier quotes that join the payment, each as its own line after the invoice's. */
+function deliveryLines(plan: PayPlan): PayLine[] {
+  const several = plan.payable.length > 1;
+  return plan.delivery.map((charge) => {
+    const lot = plan.payable.find((p) => p.lotId === charge.lotId);
+    return {
+      label: several && lot ? PAY_COPY.deliveryLineFor(lot.title) : PAY_COPY.deliveryLine,
+      amount: formatGbp(charge.amountPence),
+    };
+  });
+}
+
+/** The invoice's own lines for one lot, the lines summed per kind for several, then any delivery. */
 function moneyLines(plan: PayPlan): PayLine[] {
   const [only] = plan.payable;
-  if (plan.payable.length === 1 && only) return only.lines.map(lineVm);
-  return plan.totals.byKind.map((entry) => ({
-    label: INVOICE_LINE_KIND_LABEL[entry.kind],
-    amount: formatGbp(entry.pence),
-  }));
+  const invoice =
+    plan.payable.length === 1 && only
+      ? only.lines.map(lineVm)
+      : plan.totals.byKind.map((entry) => ({
+          label: INVOICE_LINE_KIND_LABEL[entry.kind],
+          amount: formatGbp(entry.pence),
+        }));
+  return [...invoice, ...deliveryLines(plan)];
+}
+
+/**
+ * How each lot is delivered. A lot with an accepted courier quote shows it as a charge in this
+ * payment; every other lot says the choice comes after paying, because collection, a courier and
+ * one's own shipper are chosen on the purchase page once the work is paid for.
+ */
+function deliveryVm(plan: PayPlan): PayDeliveryVm {
+  const several = plan.payable.length > 1;
+  const rows = plan.payable.map((p): PayDeliveryRowVm => {
+    const charge = plan.delivery.find((d) => d.lotId === p.lotId);
+    if (!charge) {
+      return {
+        lotId: p.lotId,
+        title: p.title,
+        detail: several ? null : PAY_COPY.deliveryNote,
+        badge: { label: PAY_COPY.deliveryTitle, tone: "neutral", shape: "ring" },
+      };
+    }
+    return {
+      lotId: p.lotId,
+      title: p.title,
+      detail: [PAY_COPY.deliveryCourierTo(charge.destination), charge.note]
+        .filter((part): part is string => Boolean(part))
+        .join(" · "),
+      badge: {
+        label: PAY_COPY.deliveryCourier(formatGbp(charge.amountPence)),
+        tone: "info",
+        shape: "dot",
+      },
+    };
+  });
+  const quoteStillOpen = plan.deliveryInPayment && plan.delivery.length < plan.payable.length;
+  const [only] = plan.payable;
+  const note =
+    plan.delivery.length > 0
+      ? PAY_COPY.deliveryChargedNote
+      : several
+        ? PAY_COPY.deliverySeveralNote
+        : "";
+  return {
+    rows,
+    note,
+    quoteLink: quoteStillOpen
+      ? {
+          before: PAY_COPY.deliveryQuoteHint,
+          label: PAY_COPY.deliveryQuoteLink,
+          after: PAY_COPY.deliveryQuoteAdded,
+          href:
+            !several && only ? `${CLIENT_ROUTES.purchases}/${only.lotId}` : CLIENT_ROUTES.purchases,
+        }
+      : null,
+  };
 }
 
 /** The company that issues the invoices, and its numbers once they exist. */
@@ -415,10 +509,12 @@ export function blankPayVm(): PayPageVm {
     notices: [],
     lots: [],
     money: null,
+    delivery: null,
     methods: null,
     action: null,
     railPay: null,
     progress: null,
+    returned: null,
     back: null,
     empty: null,
   };
@@ -517,17 +613,18 @@ function methodActions(
   organisation: string | null,
   returned: PayVmContext["returned"],
 ): Record<PayMethod, PayMethodAction> {
-  const retry = returned === "cancelled";
-  const card = retry
-    ? { label: PAY_COPY.tryAgainTotal(total), barLabel: PAY_COPY.tryAgain }
-    : {
-        label: organisation
-          ? PAY_COPY.payForOrganisation(total, organisation)
-          : PAY_COPY.payLabel(total),
-        barLabel: PAY_COPY.payBar,
-      };
+  const again = { label: PAY_COPY.tryAgainTotal(total), barLabel: PAY_COPY.tryAgain };
+  const card =
+    returned === "cancelled"
+      ? again
+      : {
+          label: organisation
+            ? PAY_COPY.payForOrganisation(total, organisation)
+            : PAY_COPY.payLabel(total),
+          barLabel: PAY_COPY.payBar,
+        };
   return {
-    card: { ...card, note: PAY_COPY.underButton },
+    card: { ...card, note: PAY_COPY.underButton, retry: again },
     bank_transfer: {
       label: PAY_COPY.continueToBankTransfer,
       barLabel: PAY_COPY.continueBar,
@@ -563,21 +660,16 @@ function payActionFor(
 }
 
 /**
- * The notice for a payment the payment page sent the person back from. It is announced and takes
- * focus, so someone who left a bank's check unfinished finds out what happened and what to do.
+ * The note for a payment the payment page sent the person back from, shown once. It is announced
+ * and takes focus, so someone who left a bank's check unfinished finds out what happened.
  */
-function returnedNotice(returned: PayVmContext["returned"]): PayNotice[] {
+function returnedNote(
+  returned: PayVmContext["returned"],
+  cleanHref: string,
+): PayPageVm["returned"] {
   return returned === "cancelled"
-    ? [
-        {
-          tone: "danger",
-          title: PAY_COPY.notCompletedTitle,
-          detail: PAY_COPY.notCompletedBody,
-          alert: true,
-          focus: true,
-        },
-      ]
-    : [];
+    ? { title: PAY_COPY.notCompletedTitle, detail: PAY_COPY.notCompletedBody, cleanHref }
+    : null;
 }
 
 /** The overdue invoice's notice: factual, with the date and an offer of help, no consequences. */
@@ -599,12 +691,19 @@ function overdueNotice(plan: PayPlan, now: Date, contactHref: string): PayNotice
  * action becomes the one step that clears it.
  */
 export function buildPayPageVm(plan: PayPlan, now: Date, context: PayVmContext): PayPageVm {
+  return {
+    ...buildPayBody(plan, now, context),
+    returned: returnedNote(context.returned, context.returnTo),
+  };
+}
+
+function buildPayBody(
+  plan: PayPlan,
+  now: Date,
+  context: PayVmContext,
+): Omit<PayPageVm, "returned"> {
   const { returnTo, details } = context;
-  const returned = returnedNotice(context.returned);
-  if (plan.payable.length === 0) {
-    const vm = nothingPayable(plan, returnTo);
-    return { ...vm, notices: [...returned, ...vm.notices] };
-  }
+  if (plan.payable.length === 0) return nothingPayable(plan, returnTo);
 
   const several = plan.payable.length > 1;
   const { title, subtitle } = heading(plan, now, details);
@@ -614,6 +713,7 @@ export function buildPayPageVm(plan: PayPlan, now: Date, context: PayVmContext):
     title,
     subtitle,
     lots: plan.payable.map((p) => lotVm(p, now, several, details)),
+    delivery: deliveryVm(plan),
     empty: null,
     methods: null as PayMethodsVm | null,
     progress: null,
@@ -631,7 +731,6 @@ export function buildPayPageVm(plan: PayPlan, now: Date, context: PayVmContext):
       state: "informed",
       badge: { label: PAY_COPY.awaitingBadge, tone: "neutral", shape: "ring" },
       notices: [
-        ...returned,
         { tone: "info", title: copy.title, detail: copy.detail },
         ...(leftOut ? [leftOut] : []),
       ],
@@ -648,7 +747,7 @@ export function buildPayPageVm(plan: PayPlan, now: Date, context: PayVmContext):
       ...common,
       state: "held",
       badge: outcome.badge,
-      notices: [...returned, outcome.notice, ...(leftOut ? [leftOut] : [])],
+      notices: [outcome.notice, ...(leftOut ? [leftOut] : [])],
       money: moneyVm(plan, now, PAY_COPY.totalToPay),
       railPay: identity
         ? { label: PAY_COPY.payLabel(formatGbp(plan.totals.pence)), reason: PAY_COPY.verifyToPay }
@@ -665,7 +764,6 @@ export function buildPayPageVm(plan: PayPlan, now: Date, context: PayVmContext):
     state: "ready",
     badge: readyBadge(plan, now),
     notices: [
-      ...returned,
       ...overdueNotice(plan, now, context.contactHref),
       ...(pay.notice ? [pay.notice] : []),
       ...(leftOut ? [leftOut] : []),

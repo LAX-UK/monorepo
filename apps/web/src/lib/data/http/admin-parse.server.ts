@@ -56,7 +56,8 @@ export function isPayoutStatus(s: unknown): s is PayoutStatus {
     s === "paid" ||
     s === "failed" ||
     s === "reversed" ||
-    s === "clawback_pending"
+    s === "clawback_pending" ||
+    s === "transfer_blocked"
   );
 }
 

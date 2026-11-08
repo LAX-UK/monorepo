@@ -8,7 +8,7 @@ import { getServerMySavedSearches } from "@/lib/data/http/saved-searches.server"
 import { getServerWatchlistReminders } from "@/lib/data/http/watchlist-reminders.server";
 import { resolveSaleTitles } from "@/lib/data/sale-titles.server";
 import { getLotMediaTreatments } from "@/lib/departments/lot-media-treatments.server";
-import { engineAlertStateOf } from "@/lib/notifications/engine-alert-state";
+import { alertAccessOf, engineAlertStateOf } from "@/lib/notifications/engine-alert-state";
 import { artistPath } from "@/lib/seo/url";
 import { watchingAlertReach } from "@/lib/watching/alert-reach";
 import { buildWatchedLots, parseWatchingView, withReminders } from "@/lib/watching/watching.vm";
@@ -76,13 +76,14 @@ async function loadArtists(): Promise<WatchedArtistVm[] | null> {
 export default async function WatchingPage({ searchParams }: PageProps) {
   const sp = await searchParams;
   const c = await getServerDataContainer();
-  const [scope, lots, artists, searches, accountAlerts, prefs] = await Promise.all([
+  const [scope, lots, artists, searches, accountAlerts, prefs, user] = await Promise.all([
     c.buying.scope(),
     loadLots(),
     loadArtists(),
     settle(getServerMySavedSearches),
     getServerAccountAlerts(),
     settle(() => c.notificationPreferences.getMine()),
+    settle(() => c.session.getCurrent()),
   ]);
   const organisation = scope.account.kind === "organisation" ? scope.account.name : null;
   return (
@@ -98,6 +99,7 @@ export default async function WatchingPage({ searchParams }: PageProps) {
         artists={artists}
         searches={searches}
         reach={watchingAlertReach(engineAlertStateOf(accountAlerts), prefs)}
+        emailAccess={alertAccessOf(accountAlerts, user?.emailVerified)}
         organisation={organisation}
       />
     </DashboardListPage>

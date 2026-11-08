@@ -1,5 +1,6 @@
 "use client";
 
+import { HOP_REASON_PARAM, type HopReason } from "@/lib/navigation/account-link";
 import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
 import type { SwitchConfirmation as SwitchConfirmationVm } from "@/lib/navigation/switch-confirmation.vm";
 import { EmptyState } from "@auction/ui/components/empty-state";
@@ -14,6 +15,8 @@ type Props = {
   /** The account to switch to and the page to open, posted to the switch hop. */
   accountId: string;
   next: string;
+  /** Why the link opens this account, posted along so the page can explain it. */
+  reason?: HopReason | null;
 };
 
 /**
@@ -21,7 +24,7 @@ type Props = {
  * the account in use, so the person chooses. Continuing posts to the switch hop (a plain form, so
  * it works before scripts load); staying keeps the current account and goes to its Home.
  */
-export function SwitchConfirmation({ confirmation, accountId, next }: Props) {
+export function SwitchConfirmation({ confirmation, accountId, next, reason = null }: Props) {
   const [submitting, setSubmitting] = useState(false);
   return (
     <EmptyState
@@ -43,6 +46,7 @@ export function SwitchConfirmation({ confirmation, accountId, next }: Props) {
         >
           <input type="hidden" name="to" value={accountId} />
           <input type="hidden" name="next" value={next} />
+          {reason ? <input type="hidden" name={HOP_REASON_PARAM} value={reason} /> : null}
           <Button
             type="submit"
             variant="primary"

@@ -90,13 +90,14 @@ export function createAlertRoutes(
     zValidator("json", alertTopicSwitchSchema),
     async (c) => {
       const { topic } = c.req.valid("param");
-      const { on, email } = c.req.valid("json");
+      const { on, email, restart } = c.req.valid("json");
       const outcome = await engine().preferences.setTopic({
         product: "bid",
         subjectId: c.get("userId") as string,
         topic,
         on,
         ...(email === undefined ? {} : { email }),
+        ...(restart ? { restartStopped: true } : {}),
       });
       if (outcome === "saved") return c.json({ ok: true });
       const error =
@@ -104,7 +105,9 @@ export function createAlertRoutes(
           ? "Verify your email address to get alerts."
           : outcome === "blocked"
             ? "Alerts to this address were stopped. Contact us to switch them back on."
-            : "We couldn't find your account.";
+            : outcome === "stopped"
+              ? "You stopped all alerts. Turn them back on in Settings."
+              : "We couldn't find your account.";
       return c.json({ ok: false, error, reason: outcome }, 409);
     },
   );
