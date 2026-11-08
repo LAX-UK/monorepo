@@ -199,6 +199,14 @@ function buildFacts(
         { label: labels.signature, value: edition.rows.signature },
         { label: labels.number, value: edition.rows.number },
         { label: labels.certificate, value: edition.rows.certificate },
+        // Set by staff in the Edition facts card; a row appears only when it is stated.
+        ...(edition.rows.stamp ? [{ label: labels.stamp, value: edition.rows.stamp }] : []),
+        ...(edition.rows.printedBy
+          ? [{ label: labels.printedBy, value: edition.rows.printedBy }]
+          : []),
+        ...(edition.rows.publishedBy
+          ? [{ label: labels.publishedBy, value: edition.rows.publishedBy }]
+          : []),
         ...(edition.rows.proofs ? [{ label: labels.proofs, value: edition.rows.proofs }] : []),
       ]
     : [{ label: labels.edition, value: edition.edition }];
