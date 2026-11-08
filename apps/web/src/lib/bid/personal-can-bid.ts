@@ -11,6 +11,9 @@ export function personalCanBid(input: {
   unavailable?: boolean;
 }): boolean {
   if (input.unavailable || !input.summary) return false;
+  // Deliberate: a refused identity check hides the switch, even though the API lets a rejected
+  // person under the threshold bid. Offering a one-tap switch into an account whose check was
+  // refused would send them to a dead end; do not relax this to match the API.
   if (input.summary.status === "rejected") return false;
   const gate = resolveKycBidGate(input);
   return gate !== null && (!gate.requiresKyc || input.summary.status === "approved");
