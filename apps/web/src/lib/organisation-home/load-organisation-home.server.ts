@@ -99,7 +99,7 @@ function settle<T>(enabled: boolean, load: () => Promise<T>, fallback: T): Promi
   return load().catch(() => fallback);
 }
 
-const NOTHING_OWED: AmountsOwedView = { entries: [] };
+const NOTHING_OWED: AmountsOwedView = { entries: [], stillToSend: [] };
 
 /**
  * Loads only what the member's role may see, builds the Home model in the domain and turns it

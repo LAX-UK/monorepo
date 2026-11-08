@@ -14,8 +14,10 @@ import type {
   AmountsOwedAccount,
   AmountsOwedView,
   IAmountsOwedService,
+  StillToSendEntry,
 } from "../interfaces/amounts-owed.js";
 import type { IPaymentBuyerService } from "../interfaces/payment-service.js";
+import type { IStillToSendService } from "../payment-group/still-to-send.service.js";
 import { accountPurchaseLots, personalPurchaseLots } from "./purchase-lot-queries.js";
 
 const PLATFORM_CURRENCY = "GBP";
@@ -32,6 +34,7 @@ export type AmountsOwedDeps = {
     "listMyPaymentsForBuyerApi" | "listEntityPaymentsForBuyerApi" | "getBuyerComplianceGateStatus"
   >;
   fulfilments: { statusesForLots(lotIds: readonly string[]): Promise<Map<string, string>> };
+  stillToSend: IStillToSendService;
   /** The id of the person's own account, to tell it from an organisation's. */
   personalAccount: { idFor(userId: string): Promise<string> };
 };
@@ -126,6 +129,35 @@ export class AmountsOwedService implements IAmountsOwedService {
       );
       return entry ? [entry] : [];
     });
-    return { entries };
+    return {
+      entries,
+      stillToSend: await this.stillToSendOf(priced, paymentByLot, (lot) => roleOf(lot as Lot)),
+    };
+  }
+
+  /**
+   * The lots the person pays that sit inside a part-funded bank transfer. The remainder is shared
+   * over the lots read here (the ones Purchases lists) only, so a sibling invoice outside that
+   * read carries a share this result does not account for.
+   */
+  private async stillToSendOf(
+    lots: readonly { id: string }[],
+    paymentByLot: ReadonlyMap<string, PaymentRow>,
+    roleOf: (lot: { id: string }) => AmountOwedEntry["role"],
+  ): Promise<StillToSendEntry[]> {
+    const payments = lots.flatMap((lot) => {
+      const payment = paymentByLot.get(lot.id);
+      return payment
+        ? [{ id: payment.id, lotId: lot.id, status: payment.status, amount: payment.amount }]
+        : [];
+    });
+    const shares = await this.deps.stillToSend.forPayments(payments);
+    // A lot someone else pays is theirs to send, not this person's: they are not asked for it.
+    return lots.flatMap((lot) => {
+      const share = shares.get(lot.id);
+      return share && roleOf(lot) === "payer"
+        ? [{ lotId: lot.id, groupId: share.groupId, pence: share.pence }]
+        : [];
+    });
   }
 }

@@ -1,4 +1,6 @@
+import { payHref } from "@/lib/pay/pay-links";
 import type { BidderAttentionGroup } from "@auction/domain";
+import { formatGbp } from "@auction/ui";
 import { CLIENT_ROUTES } from "./client-routes";
 
 /**
@@ -15,6 +17,11 @@ export type ClientAttention = {
   paymentsDue: number;
   /** Something is owed and all of it waits on account checks, so nothing can be paid yet. */
   paymentsInReview: boolean;
+  /**
+   * Lots inside a bank transfer that has delivered part of its payment: what is still to send
+   * for them (whole pence) and which lots they are. They are owed, but not a payment to start.
+   */
+  stillToSend: { count: number; pence: number; lotIds: readonly string[] };
   unreadNotifications: number;
   /**
    * The same prompts named by the work, with a link and a count per kind. The chip, the menu and
@@ -28,6 +35,7 @@ export const NO_ATTENTION: ClientAttention = {
   outbidLots: [],
   paymentsDue: 0,
   paymentsInReview: false,
+  stillToSend: { count: 0, pence: 0, lotIds: [] },
   unreadNotifications: 0,
   groups: [],
 };
@@ -57,7 +65,10 @@ function count(
 /** Which menu entries carry a count, keyed by the entry id in the client nav model. */
 const COUNT_RULES: Readonly<Record<string, CountRule>> = {
   bids: (a) => count(a.outbidLots.length, "danger", `${a.outbidLots.length} outbid`),
-  purchases: (a) => count(a.paymentsDue, "neutral", `${a.paymentsDue} to pay`, "text"),
+  purchases: (a) => {
+    const toPay = a.paymentsDue + a.stillToSend.count;
+    return count(toPay, "neutral", `${toPay} to pay`, "text");
+  },
   notifications: (a) => count(a.unreadNotifications, "neutral", `${a.unreadNotifications} unread`),
 };
 
@@ -71,7 +82,7 @@ export function attentionCountFor(
 
 /** The header chip: one short, urgent prompt with a link to where it is resolved. */
 export type AttentionChip = {
-  kind: "outbid" | "payment-due" | "account-in-review";
+  kind: "outbid" | "payment-due" | "still-to-send" | "account-in-review";
   /** "Outbid on Harbour at Dawn", or "Outbid on 2 lots" when several are waiting. */
   label: string;
   href: string;
@@ -104,6 +115,16 @@ function outbidChip(attention: ClientAttention): Omit<AttentionChip, "kind"> {
   return { label, href: OUTBID_LIST_HREF, accessibleName: `${label}. Go to My bids` };
 }
 
+/** A transfer that has delivered part of a payment: one lot opens its transfer details, several open Purchases. */
+function stillToSendChip(attention: ClientAttention): Omit<AttentionChip, "kind"> {
+  const { pence, lotIds } = attention.stillToSend;
+  const label = `${formatGbp(pence)} still to send`;
+  const [only] = lotIds;
+  return only !== undefined && lotIds.length === 1
+    ? { label, href: payHref([only]), accessibleName: `${label}. Go to the transfer details` }
+    : { label, href: CLIENT_ROUTES.purchases, accessibleName: `${label}. Go to Purchases` };
+}
+
 /** In priority order: being outbid wins while a sale is live; the account's checks, then payment, wait a little longer. */
 const CHIP_RULES: readonly ChipRule[] = [
   {
@@ -130,6 +151,12 @@ const CHIP_RULES: readonly ChipRule[] = [
       href: CLIENT_ROUTES.purchases,
       accessibleName: "Payment due. Go to Purchases",
     }),
+  },
+  {
+    // Last, because a payment still to start is the more pressing ask.
+    kind: "still-to-send",
+    applies: (a) => a.stillToSend.count > 0,
+    chip: stillToSendChip,
   },
 ];
 

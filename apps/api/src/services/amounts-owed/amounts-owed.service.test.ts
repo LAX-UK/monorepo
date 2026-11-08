@@ -1,6 +1,7 @@
 import { PURCHASE_LIST_LIMIT } from "@auction/domain";
 import type { PaymentStatus } from "@auction/types";
 import { describe, expect, it, vi } from "vitest";
+import type { IStillToSendService } from "../payment-group/still-to-send.service.js";
 import { AmountsOwedService } from "./amounts-owed.service.js";
 
 const USER = "user-1";
@@ -32,6 +33,7 @@ function lotFor(fixture: Fixture) {
 function build(
   fixtures: Fixture[],
   gate: "clear" | "aml_hold" | "source_of_funds_required" = "clear",
+  stillToSend: IStillToSendService = { forPayments: async () => new Map() },
 ) {
   const lots = fixtures.map(lotFor);
   // The hammer is 1000.00 and the lot carries a 15% buyer's premium.
@@ -86,6 +88,7 @@ function build(
           ),
       ),
     },
+    stillToSend,
     personalAccount: { idFor: async () => PERSONAL },
   });
   return { service, lotList };
@@ -254,5 +257,61 @@ describe("amounts owed for an organisation", () => {
       account: { legalEntityId: PERSONAL, role: "owner" },
     });
     expect(view?.entries[0]).toMatchObject({ role: "payer", state: "payment-due" });
+  });
+});
+
+describe("amounts owed inside a part-funded bank transfer", () => {
+  const sharing = (shares: [string, number][]): IStillToSendService => ({
+    forPayments: async () =>
+      new Map(shares.map(([lotId, pence]) => [lotId, { groupId: "group-1", pence }])),
+  });
+
+  it("lists what is still to send, and no longer owes the invoice as a payment to start", async () => {
+    const { service } = build(
+      [{ lotId: "a", payment: { status: "authorized" } }],
+      "clear",
+      sharing([["a", 30_005]]),
+    );
+    const view = await service.forPerson(USER);
+    expect(view.entries).toEqual([]);
+    expect(view.stillToSend).toEqual([{ lotId: "a", groupId: "group-1", pence: 30_005 }]);
+  });
+
+  it("asks the reader about the invoices on their way, over the lots read", async () => {
+    const forPayments = vi.fn(async () => new Map());
+    const { service } = build(
+      [
+        { lotId: "a", payment: { status: "authorized" } },
+        { lotId: "b", payment: { status: "pending" } },
+      ],
+      "clear",
+      { forPayments },
+    );
+    await service.forPerson(USER);
+    expect(forPayments).toHaveBeenCalledWith([
+      expect.objectContaining({ id: "pay-a", lotId: "a", status: "authorized" }),
+      expect.objectContaining({ id: "pay-b", lotId: "b", status: "pending" }),
+    ]);
+  });
+
+  it("does not ask someone else's payer to send it", async () => {
+    const { service } = build(
+      [
+        {
+          lotId: "a",
+          payment: { status: "authorized" },
+          buyerLegalEntityId: ORG,
+          winnerId: USER,
+        },
+      ],
+      "clear",
+      sharing([["a", 30_005]]),
+    );
+    expect((await service.forPerson(USER)).stillToSend).toEqual([]);
+  });
+
+  it("has nothing to send when no transfer is part-funded", async () => {
+    const { service } = build([{ lotId: "a", payment: { status: "authorized" } }]);
+    expect((await service.forPerson(USER)).stillToSend).toEqual([]);
   });
 });

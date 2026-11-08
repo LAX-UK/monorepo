@@ -49,6 +49,11 @@ export type AccountPurchaseFacts = {
     dueAt: Date | null;
     paymentId: string | null;
     totalDue: string | null;
+    /**
+     * What a part-funded bank transfer still has to send for this invoice, in whole pence; `null`
+     * when it is not inside one. Shared over the purchases listed, not the account's whole history.
+     */
+    stillToSendPence: number | null;
   };
   delivery: {
     stage: PurchaseDeliveryStage;

@@ -22,7 +22,11 @@ const actor = (role: LegalEntityMemberRole, over: Partial<OrganisationMemberActo
 });
 
 const purchasesService = (reader = new InMemoryPurchaseFacts()) =>
-  new AccountPurchasesService({ reader, now: () => NOW });
+  new AccountPurchasesService({
+    reader,
+    stillToSend: { forPayments: async () => new Map() },
+    now: () => NOW,
+  });
 
 describe("AccountPurchasesService.list", () => {
   it("gives owners and finance every purchase, with invoice states worked out", async () => {

@@ -1,9 +1,4 @@
-import {
-  type AmountOwedEntry,
-  type StillToSend,
-  decisivePaymentByLot,
-  stillToSendByLot,
-} from "@auction/domain";
+import { type AmountOwedEntry, type StillToSend, decisivePaymentByLot } from "@auction/domain";
 import type {
   LaxBusinessV1,
   LaxCostLineV1,
@@ -22,6 +17,7 @@ import type {
 } from "@auction/persistence/interfaces";
 import { lotPath } from "@auction/types";
 import { gbpAmountToPence } from "../../lib/decimal-money.js";
+import { stillToSendOfPayments } from "../../lib/still-to-send.js";
 
 /**
  * Maps what Bid knows about a person's personal entity onto the shared portfolio contract.
@@ -50,27 +46,7 @@ export type BidStillToSendByLot = ReadonlyMap<string, StillToSend>;
  * pence from the database, and the shares are worked out once by the domain.
  */
 export function stillToSendOf(payments: readonly BidPaymentFact[]): BidStillToSendByLot {
-  const groups = new Map<string, Parameters<typeof stillToSendByLot>[0][number]>();
-  for (const payment of decisivePaymentByLot(payments).values()) {
-    const group = payment.group;
-    const amountPence = toPence(payment.amount);
-    const totalPence = group ? toPence(group.totalAmount) : null;
-    const receivedPence = group ? toPence(group.amountReceived) : null;
-    if (!group || amountPence === null || totalPence === null || receivedPence === null) continue;
-    const known = groups.get(group.id) ?? {
-      id: group.id,
-      status: group.status,
-      rail: group.checkoutRail === "card" ? ("card" as const) : ("gb_bank_transfer" as const),
-      totalPence,
-      receivedPence,
-      members: [],
-    };
-    groups.set(group.id, {
-      ...known,
-      members: [...known.members, { lotId: payment.lotId, status: payment.status, amountPence }],
-    });
-  }
-  return stillToSendByLot([...groups.values()]);
+  return stillToSendOfPayments([...decisivePaymentByLot(payments).values()]);
 }
 
 /** Fulfilment stages before the work has reached the buyer. */

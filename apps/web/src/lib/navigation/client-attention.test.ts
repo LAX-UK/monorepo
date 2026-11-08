@@ -67,6 +67,35 @@ describe("attentionChip", () => {
     ).toMatchObject({ value: 3, label: "3 to pay" });
   });
 
+  it("says what is still to send on a part-funded transfer, linking to its details for one lot", () => {
+    const stillToSend = { count: 1, pence: 30_005, lotIds: ["lot-9"] };
+    expect(attentionChip(attention({ stillToSend }))).toEqual({
+      kind: "still-to-send",
+      label: "£300.05 still to send",
+      href: "/purchases/pay?lots=lot-9",
+      accessibleName: "£300.05 still to send. Go to the transfer details",
+    });
+  });
+
+  it("sends several lots to Purchases, and lets a payment to start come first", () => {
+    const stillToSend = { count: 2, pence: 50_005, lotIds: ["a", "b"] };
+    expect(attentionChip(attention({ stillToSend }))).toMatchObject({
+      kind: "still-to-send",
+      href: "/purchases",
+    });
+    expect(attentionChip(attention({ stillToSend, paymentsDue: 1 }))?.kind).toBe("payment-due");
+  });
+
+  it("counts a lot still to send among the purchases to pay in the menu", () => {
+    const stillToSend = { count: 1, pence: 30_005, lotIds: ["lot-9"] };
+    expect(
+      attentionCountFor("purchases", attention({ paymentsDue: 2, stillToSend })),
+    ).toMatchObject({
+      value: 3,
+      label: "3 to pay",
+    });
+  });
+
   it("lets outbid win while a sale is live", () => {
     expect(attentionChip(attention({ outbidLots: ["8"], paymentsDue: 1 }))?.kind).toBe("outbid");
   });

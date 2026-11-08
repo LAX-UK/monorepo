@@ -162,6 +162,7 @@ describe("Home, the lists and the menu agree", () => {
         userId: ME,
         bids: [],
         amountsOwed: owedEntries(sources),
+        stillToSend: [],
         unreadNotifications: [],
       });
       expect(figure.purchases).toBe(4);
@@ -190,6 +191,7 @@ describe("Home, the lists and the menu agree", () => {
         userId: ME,
         bids: [],
         amountsOwed: owedEntries(sources),
+        stillToSend: [],
         unreadNotifications: [],
       }).paymentsDue,
     ).toBe(3);
@@ -211,6 +213,7 @@ describe("Home, the lists and the menu agree", () => {
       userId: ME,
       bids: [],
       amountsOwed: owedEntries(sources),
+      stillToSend: [],
       unreadNotifications: [],
     });
     expect(attention.paymentsDue).toBe(1);
@@ -230,6 +233,7 @@ describe("Home, the lists and the menu agree", () => {
       userId: ME,
       bids: [],
       amountsOwed: owedEntries(sources),
+      stillToSend: [],
       unreadNotifications: [],
     });
     expect(attention).toMatchObject({ paymentsDue: 4, paymentsInReview: true });
@@ -336,12 +340,12 @@ describe("createAccountBuyingReader", () => {
       personal: {
         bids: vi.fn(async () => []),
         purchases: vi.fn(async () => []),
-        amountsOwed: vi.fn(async () => ({ entries: [] })),
+        amountsOwed: vi.fn(async () => ({ entries: [], stillToSend: [] })),
       },
       organisation: {
         bids: vi.fn(async () => BIDS),
         purchases: vi.fn(async () => PURCHASES),
-        amountsOwed: vi.fn(async () => ({ entries: [] })),
+        amountsOwed: vi.fn(async () => ({ entries: [], stillToSend: [] })),
       },
     };
   }

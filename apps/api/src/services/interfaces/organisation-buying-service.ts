@@ -85,6 +85,12 @@ export type AccountPurchaseView = {
     paymentId: string | null;
     /** The invoice total; `null` until an invoice is raised. */
     totalDue: string | null;
+    /**
+     * What a part-funded bank transfer still has to send for this invoice, in whole pence; `null`
+     * when the invoice is not inside one. Its share of the remainder is worked out over the
+     * invoices listed alongside it only.
+     */
+    stillToSendPence: number | null;
   };
   delivery: {
     stage: PurchaseDeliveryStage;
