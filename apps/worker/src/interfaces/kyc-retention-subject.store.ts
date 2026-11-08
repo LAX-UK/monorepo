@@ -1,3 +1,4 @@
+import type { EnquiryDealRecord } from "@auction/domain";
 import type { KycRecordKind, RetentionSubjectKind } from "../retention/kyc-retention-policy.js";
 
 export type RetentionCandidate = {
@@ -28,6 +29,11 @@ export interface IKycRetentionSubjectStore {
     afterId: string | null;
     limit: number;
   }): Promise<RetentionCandidate[]>;
+  /**
+   * The private sale deals the subject is, or was ever named as, a party to. Their evidence is
+   * kept while any of those deals' records is retained, even after the subject's own five years.
+   */
+  dealRecords(subjectId: string): Promise<EnquiryDealRecord[]>;
   describeHolding(subjectId: string): Promise<RetentionHolding>;
   /**
    * Deletes the subject's rows and writes one tombstone per record kind, in one transaction.
