@@ -2,7 +2,6 @@ import { ArtworkAboutWork } from "@/components/artwork/artwork-about-work";
 import { ArtworkArtistSummary } from "@/components/artwork/artwork-artist-summary";
 import { ArtworkBuyBox } from "@/components/artwork/artwork-buy-box.client";
 import { ArtworkBuyColumn, ArtworkPriceBlock } from "@/components/artwork/artwork-buy-column";
-import { ArtworkEditionExplainer } from "@/components/artwork/artwork-edition-explainer";
 import { ArtworkEditionFacts } from "@/components/artwork/artwork-edition-facts";
 import { ArtworkGallery } from "@/components/artwork/artwork-gallery.client";
 import { ArtworkMoreAbout } from "@/components/artwork/artwork-more-about.client";
@@ -175,11 +174,8 @@ export default async function ArtworkDetailPage({ params }: ArtworkPageProps) {
 
           <div className="shop-edition__details">
             {vm.facts ? <ArtworkEditionFacts facts={vm.facts} /> : null}
-            {vm.facts?.statement ? (
-              <ArtworkEditionExplainer statement={vm.facts.statement} />
-            ) : null}
-            {vm.about.description || vm.about.rows.length > 0 ? (
-              <ArtworkMoreAbout>
+            {vm.facts?.statement || vm.about.description || vm.about.rows.length > 0 ? (
+              <ArtworkMoreAbout statement={vm.facts?.statement}>
                 <ArtworkAboutWork about={vm.about} />
               </ArtworkMoreAbout>
             ) : null}

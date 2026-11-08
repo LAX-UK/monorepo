@@ -7,8 +7,9 @@ import Link from "next/link";
 
 /**
  * "About this edition", always open: the run, signature, number, certificate and any kept proofs
- * as label-value rows, the other runs of the same image and the way to
- * the original. What a limited edition is lives in `ArtworkEditionExplainer`, after this block. Every sentence about the edition is written by shop-domain.
+ * as label-value rows, the other runs of the same image and the way to the original. What a
+ * limited edition is lives in the "More about this edition" disclosure, not here. Every sentence
+ * about the edition is written by shop-domain.
  */
 export function ArtworkEditionFacts({ facts }: { facts: ArtworkFactsVm }) {
   return (
