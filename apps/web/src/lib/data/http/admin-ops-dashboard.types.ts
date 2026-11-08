@@ -12,6 +12,7 @@ export type AdminTodayMetricsPayload = {
 
 export type AdminFinanceIssuesPayload = {
   failedPayoutCount: number;
+  blockedPayoutCount: number;
   legalEntitiesWithStripeConnectRequirementsCount: number;
   staleBlockedScheduledPayoutCount: number;
   entitiesPendingReviewCount: number;

@@ -170,6 +170,8 @@ export type AdminPayoutListSummary = {
   failed: number;
   reversed: number;
   clawbackPending: number;
+  /** Payouts held because Stripe already has a transfer staff must resolve. */
+  transferBlocked: number;
   totalNet: string;
   readiness: {
     inFlightCount: number;

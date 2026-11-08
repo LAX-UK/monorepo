@@ -63,6 +63,8 @@ export type PayoutsStaffRow = {
   canReverse: boolean;
   /** A failed transfer can be sent again. */
   canRetryTransfer: boolean;
+  /** A blocked payout waits on staff: adopt the Stripe transfer or release it for a retry. */
+  canResolveBlocked: boolean;
 };
 
 export function presentPayoutStatus(status: PayoutStatus): StatusPresentation {
@@ -126,6 +128,7 @@ export function toPayoutsStaffRows(
       canAdjust: open,
       canReverse: row.status === "paid" || row.status === "in_transit",
       canRetryTransfer: row.status === "failed",
+      canResolveBlocked: row.status === "transfer_blocked",
     };
   });
 }
@@ -183,6 +186,18 @@ export function payoutsAttention(
       count: failed,
       label: noun(failed, "payout failed", "payouts failed"),
       href: payoutsListHref(search, { status: "failed" }),
+      tone: "danger",
+    },
+    {
+      id: "transfer-blocked",
+      count: summary.transferBlocked,
+      label: noun(
+        summary.transferBlocked,
+        "payout blocked, needs review",
+        "payouts blocked, need review",
+      ),
+      href: payoutsListHref(search, { status: "transfer_blocked" }),
+      actionLabel: "Review",
       tone: "danger",
     },
     {

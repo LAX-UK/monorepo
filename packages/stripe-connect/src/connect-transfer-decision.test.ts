@@ -1,7 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   type ExistingTransferLike,
+  TRANSFER_GROUP_MANDATORY_FROM_UNIX,
   type TransferListParams,
+  checkTransferForAdoption,
   connectTransferBlockMessage,
   decideConnectTransfer,
 } from "./connect-transfer-decision.js";
@@ -127,6 +129,52 @@ describe("decideConnectTransfer", () => {
   });
 
   describe("legacy transfers without a transfer group", () => {
+    it("filters the legacy scan to the payout's destination account", async () => {
+      const stripe = fakeStripe([]);
+      await decideConnectTransfer(stripe, input);
+      const legacyCall = stripe.transfers.list.mock.calls
+        .map(([p]) => p)
+        .find((p) => p.transfer_group === undefined);
+      expect(legacyCall).toMatchObject({ destination: "acct_1", created: { gte: 1_000 } });
+      const groupCall = stripe.transfers.list.mock.calls[0]?.[0];
+      expect(groupCall?.destination).toBeUndefined();
+    });
+
+    it("scans when the payout's creation time is unknown", async () => {
+      const stripe = fakeStripe([]);
+      const { createdAfterUnix: _unused, ...unknownCreation } = input;
+      await decideConnectTransfer(stripe, unknownCreation);
+      expect(stripe.transfers.list).toHaveBeenCalledTimes(2);
+    });
+
+    it("scans a payout created just before transfer groups became mandatory", async () => {
+      const stripe = fakeStripe([]);
+      await decideConnectTransfer(stripe, {
+        ...input,
+        createdAfterUnix: TRANSFER_GROUP_MANDATORY_FROM_UNIX - 1,
+      });
+      expect(stripe.transfers.list).toHaveBeenCalledTimes(2);
+    });
+
+    it("skips the scan for a payout created when transfer groups became mandatory", async () => {
+      const stripe = fakeStripe([
+        { ...good({ id: "tr_legacy" }), created: TRANSFER_GROUP_MANDATORY_FROM_UNIX + 10 },
+      ]);
+      const decision = await decideConnectTransfer(stripe, {
+        ...input,
+        createdAfterUnix: TRANSFER_GROUP_MANDATORY_FROM_UNIX,
+      });
+      expect(decision).toEqual({ kind: "create" });
+      expect(stripe.transfers.list).toHaveBeenCalledTimes(1);
+      expect(stripe.transfers.list.mock.calls[0]?.[0].transfer_group).toBe("payout:p1");
+    });
+
+    it("dates the cutoff at 2026-05-24 UTC", () => {
+      expect(new Date(TRANSFER_GROUP_MANDATORY_FROM_UNIX * 1000).toISOString()).toBe(
+        "2026-05-24T00:00:00.000Z",
+      );
+    });
+
     it("adopts a transfer found only by metadata.payoutId", async () => {
       const stripe = fakeStripe([
         { ...good({ id: "tr_other", metadata: { payoutId: "p2" } }), created: 2_000 },
@@ -200,5 +248,28 @@ describe("decideConnectTransfer", () => {
         transferIds: ["tr_a", "tr_b"],
       }),
     ).toBe("transfer_blocked: multiple_live_transfers (tr_a, tr_b)");
+  });
+});
+
+describe("checkTransferForAdoption", () => {
+  const expected = { destinationAccountId: "acct_1", currency: "GBP", amountMinor: 48_000 };
+
+  it("accepts a live transfer to the right account, currency and amount", () => {
+    expect(checkTransferForAdoption(good({ destination: { id: "acct_1" } }), expected)).toEqual({
+      ok: true,
+    });
+  });
+
+  it.each([
+    ["reversed", { reversed: true }, "transfer_reversed"],
+    ["fully reversed by amount", { amount_reversed: 48_000 }, "transfer_reversed"],
+    ["partly reversed", { amount_reversed: 100 }, "transfer_reversed"],
+    ["another account", { destination: "acct_2" }, "destination_mismatch"],
+    ["no destination", { destination: undefined }, "destination_mismatch"],
+    ["another currency", { currency: "usd" }, "currency_mismatch"],
+    ["a different amount", { amount: 47_999 }, "amount_mismatch"],
+    ["no amount", { amount: undefined }, "amount_mismatch"],
+  ] as const)("refuses a transfer that is %s", (_name, over, reason) => {
+    expect(checkTransferForAdoption(good(over), expected)).toEqual({ ok: false, reason });
   });
 });

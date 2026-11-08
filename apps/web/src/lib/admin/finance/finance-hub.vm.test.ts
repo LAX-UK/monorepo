@@ -4,6 +4,7 @@ import { financeAttention, financeTools } from "./finance-hub.vm";
 
 const issues = {
   failedPayoutCount: 2,
+  blockedPayoutCount: 0,
   legalEntitiesWithStripeConnectRequirementsCount: 1,
   staleBlockedScheduledPayoutCount: 0,
   entitiesPendingReviewCount: 3,

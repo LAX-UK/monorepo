@@ -20,6 +20,7 @@ export class DrizzleAdminFinanceIssueSnapshotReader implements IAdminFinanceIssu
     const staleLeadCutoff = new Date(Date.now() - 7 * 86_400_000);
     const [
       [failedRow],
+      [blockedRow],
       [dueRow],
       [staleBlockedPayoutRow],
       [entitiesPendingRow],
@@ -32,6 +33,10 @@ export class DrizzleAdminFinanceIssueSnapshotReader implements IAdminFinanceIssu
         .select({ n: sql<number>`count(*)::int` })
         .from(payout)
         .where(eq(payout.status, "failed")),
+      this.db
+        .select({ n: sql<number>`count(*)::int` })
+        .from(payout)
+        .where(eq(payout.status, "transfer_blocked")),
       this.db
         .select({ n: sql<number>`count(*)::int` })
         .from(legalEntity)
@@ -84,6 +89,7 @@ export class DrizzleAdminFinanceIssueSnapshotReader implements IAdminFinanceIssu
     ]);
     return {
       failedPayoutCount: Number(failedRow?.n ?? 0),
+      blockedPayoutCount: Number(blockedRow?.n ?? 0),
       legalEntitiesWithStripeConnectRequirementsCount: Number(dueRow?.n ?? 0),
       staleBlockedScheduledPayoutCount: Number(staleBlockedPayoutRow?.n ?? 0),
       entitiesPendingReviewCount: Number(entitiesPendingRow?.n ?? 0),

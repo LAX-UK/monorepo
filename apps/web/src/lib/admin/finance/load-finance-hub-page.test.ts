@@ -35,6 +35,14 @@ describe("loadAdminFinanceHubPage", () => {
     expect(result.loadError).toBeNull();
   });
 
+  it("raises an anomaly for blocked payouts", async () => {
+    getFinanceIssues.mockResolvedValue({ failedPayoutCount: 0, blockedPayoutCount: 3 });
+    const result = await loadAdminFinanceHubPage();
+    expect(result.anomalies).toContainEqual(
+      expect.objectContaining({ id: "blocked-payouts", severity: "critical" }),
+    );
+  });
+
   it("captures load errors without throwing", async () => {
     getFinanceIssues.mockRejectedValue(new Error("forbidden"));
     const result = await loadAdminFinanceHubPage();

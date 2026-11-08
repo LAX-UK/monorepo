@@ -3,24 +3,57 @@ import { z } from "zod";
 
 const decimalString = z.string().regex(/^-?\d+(\.\d{1,2})?$/, "Must be a valid decimal string");
 
+/** Fewest characters of reason staff give for a money action on a payout. */
+export const PAYOUT_ACTION_REASON_MIN = 10;
+export const PAYOUT_ACTION_REASON_MAX = 1000;
+
 /** Create Payout Adjustment Input (admin) */
 export const createPayoutAdjustmentSchema = z.object({
   amount: decimalString.refine(
     (s) => Number.parseFloat(s) !== 0,
     "Adjustment amount cannot be zero",
   ),
-  note: z.string().min(10).max(1000),
+  note: z.string().min(PAYOUT_ACTION_REASON_MIN).max(PAYOUT_ACTION_REASON_MAX),
 });
 
 export type CreatePayoutAdjustmentInput = z.infer<typeof createPayoutAdjustmentSchema>;
 
 /** Admin manual reverse payout (typed confirmation phrase validated in route). */
 export const adminManualReversePayoutSchema = z.object({
-  reason: z.string().min(10).max(1000),
+  reason: z.string().min(PAYOUT_ACTION_REASON_MIN).max(PAYOUT_ACTION_REASON_MAX),
   confirmationPhrase: z.string().min(1).max(500),
 });
 
 export type AdminManualReversePayoutInput = z.infer<typeof adminManualReversePayoutSchema>;
+
+const blockedPayoutReason = z
+  .string()
+  .trim()
+  .min(PAYOUT_ACTION_REASON_MIN)
+  .max(PAYOUT_ACTION_REASON_MAX);
+
+/**
+ * Admin: the two ways out of a `transfer_blocked` payout. Adopt names the Stripe transfer that
+ * already pays it; release sends it back to `failed` once staff have checked Stripe holds no live
+ * transfer for it, which staff must confirm.
+ */
+export const resolveBlockedPayoutSchema = z.discriminatedUnion("resolution", [
+  z.object({
+    resolution: z.literal("adopt_transfer"),
+    stripeTransferId: z
+      .string()
+      .trim()
+      .regex(/^tr_[A-Za-z0-9]+$/, "Enter a Stripe transfer ID, such as tr_…"),
+    reason: blockedPayoutReason,
+  }),
+  z.object({
+    resolution: z.literal("release_to_failed"),
+    noLiveTransferConfirmed: z.literal(true),
+    reason: blockedPayoutReason,
+  }),
+]);
+
+export type ResolveBlockedPayoutInput = z.infer<typeof resolveBlockedPayoutSchema>;
 
 /** List Payouts Query */
 export const listPayoutsQuerySchema = z.object({

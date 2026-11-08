@@ -1,4 +1,4 @@
-import type { CreatePayoutAdjustmentInput } from "@auction/validators";
+import type { CreatePayoutAdjustmentInput, ResolveBlockedPayoutInput } from "@auction/validators";
 import type { IAdminPayoutApplicationService } from "../interfaces/admin-routes/admin-finance-routes.js";
 import type { IPayoutStatementApplicationService } from "../interfaces/finance-routes/finance-payout-statement.js";
 import type {
@@ -7,6 +7,7 @@ import type {
   PayoutReversalActor,
 } from "../interfaces/payout.js";
 import type { AdminListPayoutsFilter } from "../interfaces/payout.js";
+import type { AdminBlockedPayoutResolutionService } from "./admin-blocked-payout-resolution.service.js";
 import type { AdminFailedPayoutRetryService } from "./admin-failed-payout-retry.service.js";
 import type { AdminPayoutListPage } from "./admin-payout-list-query.service.js";
 
@@ -16,6 +17,7 @@ export class AdminPayoutApplicationService implements IAdminPayoutApplicationSer
     private readonly settlements: IPayoutSettlementService,
     private readonly payoutStatement: IPayoutStatementApplicationService,
     private readonly failedRetries: Pick<AdminFailedPayoutRetryService, "retry">,
+    private readonly blockedResolutions: Pick<AdminBlockedPayoutResolutionService, "resolve">,
   ) {}
 
   adminListPage(
@@ -45,6 +47,10 @@ export class AdminPayoutApplicationService implements IAdminPayoutApplicationSer
 
   retryFailedTransfer(actorUserId: string, payoutId: string) {
     return this.failedRetries.retry(actorUserId, payoutId);
+  }
+
+  resolveBlockedPayout(actorUserId: string, payoutId: string, body: ResolveBlockedPayoutInput) {
+    return this.blockedResolutions.resolve(actorUserId, payoutId, body);
   }
 
   adminManualReverse(actor: PayoutReversalActor, payoutId: string, input: { reason: string }) {

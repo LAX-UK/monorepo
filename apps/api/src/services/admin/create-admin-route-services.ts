@@ -200,7 +200,7 @@ export type CreateAdminRouteServicesInput = {
   disputeDesk: IAdminDisputeDeskService;
   bidRepo: IBidRepository;
   payoutService: IPayoutAdminService;
-  payoutRepository: Pick<IPayoutRepository, "findById">;
+  payoutRepository: Pick<IPayoutRepository, "findById" | "findByStripeTransferId">;
   payoutSettlementService: IPayoutSettlementService;
   payoutStatementApplication: IPayoutStatementApplicationService;
   env: Pick<

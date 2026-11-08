@@ -1,6 +1,7 @@
 import type { IConnectTransferRepository } from "@auction/persistence/interfaces";
 import type { IPayoutRepository } from "@auction/persistence/interfaces";
 import {
+  checkTransferForAdoption,
   connectTransferBlockMessage,
   createConnectTransfer,
   decideConnectTransfer,
@@ -18,6 +19,7 @@ import type {
   IConnectTransferInitiationService,
   InitiateTransferOptions,
   InitiateTransferResult,
+  TransferAdoptionVerification,
 } from "../../interfaces/stripe-connect.js";
 import { connectReadyFromCachedEntity } from "./connect-shared.js";
 
@@ -327,6 +329,40 @@ export class ConnectTransferInitiationService implements IConnectTransferInitiat
         stripeErrorMessage: errorMessage,
       };
     }
+  }
+
+  /**
+   * Fetches the transfer staff name from Stripe and checks it against the payout: same
+   * destination account, same currency, same amount, not reversed. Changes nothing.
+   */
+  async verifyTransferForAdoption(
+    payoutId: string,
+    stripeTransferId: string,
+  ): Promise<TransferAdoptionVerification> {
+    const stripe = this.stripe;
+    if (!stripe) return { ok: false, reason: "stripe_not_configured" };
+    if (!this.payoutRepository) return { ok: false, reason: "internal_misconfiguration" };
+    const payout = await this.payoutRepository.findById(payoutId);
+    if (!payout) return { ok: false, reason: "payout_not_found" };
+    const entity = await this.connectTransferRepository.findLegalEntityById(payout.legalEntityId);
+    if (!entity?.stripeConnectAccountId) return { ok: false, reason: "no_connect_account" };
+
+    let transfer: Stripe.Transfer;
+    try {
+      transfer = await executeWithStripeRetries(() => stripe.transfers.retrieve(stripeTransferId));
+    } catch (err) {
+      if (!(err instanceof StripeSdk.errors.StripeError)) throw err;
+      return {
+        ok: false,
+        reason: err.code === "resource_missing" ? "transfer_not_found" : "stripe_error",
+      };
+    }
+    const check = checkTransferForAdoption(transfer, {
+      destinationAccountId: entity.stripeConnectAccountId,
+      currency: payout.currency,
+      amountMinor: Math.round(Number.parseFloat(payout.netAmount) * 100),
+    });
+    return check.ok ? { ok: true, stripeTransferId: transfer.id } : check;
   }
 
   private async findSourceChargeForPayout(payoutId: string): Promise<string | null> {
