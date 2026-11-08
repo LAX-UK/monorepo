@@ -1,15 +1,19 @@
 import { APIError, getOAuthState } from "better-auth/api";
 import type { AuthHookDeps } from "./auth-hook-deps.js";
 import { signUpLegalAcceptance } from "./legal-acceptance.js";
+import { socialFlow } from "./social-flow.js";
 
 export function buildUserDatabaseHooks(deps: AuthHookDeps) {
   return {
     create: {
-      before: async () => {
-        if (!deps.blockNewUserRegistration) return;
-        throw new APIError("SERVICE_UNAVAILABLE", {
-          message: "New registrations are temporarily disabled",
-        });
+      before: async (_user: unknown, context?: unknown) => {
+        if (deps.blockNewUserRegistration) {
+          throw new APIError("SERVICE_UNAVAILABLE", {
+            message: "New registrations are temporarily disabled",
+          });
+        }
+        // The account row made next in this request is this person's first, not a link.
+        socialFlow(context).newUser = true;
       },
       after: async (
         authUser: {

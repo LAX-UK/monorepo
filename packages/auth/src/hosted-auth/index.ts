@@ -83,6 +83,10 @@ export {
 export { HOSTED_TWO_FACTOR_SCRIPT, buildHostedTwoFactorHtml } from "./pages/two-factor.js";
 export { buildHostedTwoFactorHelpHtml } from "./pages/two-factor-help.js";
 export {
+  HOSTED_TWO_FACTOR_PASSWORD_SCRIPT,
+  buildHostedTwoFactorPasswordHtml,
+} from "./pages/two-factor-password.js";
+export {
   HOSTED_TWO_FACTOR_SETUP_SCRIPT,
   HOSTED_TWO_FACTOR_MANAGE_SCRIPT,
   buildHostedTwoFactorManageHtml,
