@@ -92,6 +92,26 @@ function setup(
   };
 }
 
+describe("ZohoArtworkWritebackService print groups", () => {
+  it("leaves a print group alone: its code lives in Print_Group_ID, on a Print_Products record", async () => {
+    for (const mode of ["dry_run", "live"] as const) {
+      const { service, products, register, log } = setup(mode, {
+        entry: entry({ kind: "print", stockCode: "LAX-PRT-PH-GAC-26-0001", sourceOriginalId: "o" }),
+      });
+      for (const event of [stockCodeEvent, offerEvent()]) {
+        expect(await service.deliver(event)).toEqual({
+          outcome: "skipped",
+          reason: "print_group_not_a_product",
+        });
+      }
+      expect(products.read).not.toHaveBeenCalled();
+      expect(products.update).not.toHaveBeenCalled();
+      expect(register.recordCatalogueStatusWritten).not.toHaveBeenCalled();
+      expect(log.info).not.toHaveBeenCalled();
+    }
+  });
+});
+
 describe("ZohoArtworkWritebackService modes", () => {
   it("off does nothing and never reads the register or Zoho", async () => {
     const { service, products, register } = setup("off");

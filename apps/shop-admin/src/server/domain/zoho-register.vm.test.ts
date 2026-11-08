@@ -132,6 +132,14 @@ describe("offer states and values", () => {
     );
     expect(zohoProductUrl(undefined, "5001")).toBeNull();
   });
+
+  it("opens a print group's own module, not Products", () => {
+    const template = "https://crm.zoho.eu/crm/org20111813184/tab/{module}/{recordId}";
+    expect(zohoProductUrl(template, "7001", "print")).toBe(
+      "https://crm.zoho.eu/crm/org20111813184/tab/Print_Products/7001",
+    );
+    expect(zohoProductUrl(template, "7001", "original")).toContain("/tab/Products/");
+  });
 });
 
 const run: NonNullable<AdminRegisterLastCheck["run"]> = {

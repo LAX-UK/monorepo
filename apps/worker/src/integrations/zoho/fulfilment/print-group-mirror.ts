@@ -44,6 +44,12 @@ export class PrintGroupMirror {
     const { facts: reader, register, zoho, mode } = this.deps;
     const facts = await reader.read(printsArtworkId);
     if (!facts?.original) return { outcome: "skipped", reason: "not_a_print_of_an_original" };
+    if (!facts.isMainRun) {
+      // Proof and companion listings share their main run's original, so they would map to the
+      // same group and overwrite its numbers with their own.
+      this.deps.log.info({ printsArtworkId }, "print group left to the main run");
+      return { outcome: "skipped", reason: "not_the_main_run" };
+    }
     if (!facts.original.zohoProductId) {
       return { outcome: "skipped", reason: "original_not_in_register" };
     }

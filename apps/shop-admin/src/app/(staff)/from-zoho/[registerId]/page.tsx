@@ -32,6 +32,7 @@ export default async function FromZohoRecordPage({
       zohoUrl={zohoProductUrl(
         getShopAdminContainer().config.crmRecordUrlTemplate,
         result.data.zohoProductId,
+        result.data.kind,
       )}
     />
   );

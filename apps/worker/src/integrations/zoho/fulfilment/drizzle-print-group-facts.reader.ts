@@ -25,6 +25,8 @@ export function createDrizzlePrintGroupFactsReader(db: Database): PrintGroupFact
           dimensions: shopArtwork.dimensions,
           year: shopArtwork.yearCreated,
           runKind: shopArtwork.runKind,
+          runRole: shopArtwork.runRole,
+          mainRunArtworkId: shopArtwork.mainRunArtworkId,
           originalId: shopArtwork.sourceOriginalArtworkId,
           originalZohoProductId: original.zohoProductId,
         })
@@ -51,6 +53,8 @@ export function createDrizzlePrintGroupFactsReader(db: Database): PrintGroupFact
 
       return {
         printsArtworkId,
+        isMainRun:
+          row.mainRunArtworkId === null && row.runRole !== "proof" && row.runRole !== "companion",
         title: row.title,
         medium: row.medium,
         dimensions: row.dimensions,

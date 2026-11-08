@@ -12,15 +12,17 @@ export type PrintProductFields = {
   Linked_Original_Artwork: string | null;
 };
 
-/** The fields LAX fills on an Edition_Ledgers record: one counter record per group. */
+/**
+ * The fields LAX fills on an Edition_Ledgers record: one counter record per group. The
+ * `Assigned_To_*` counters (prints sold, paid and unreleased, per bucket) and `Print_Sold` belong
+ * to the order mirror, which knows what has sold; until then they are left out rather than filled
+ * with the run's planned allocation.
+ */
 export type EditionLedgerFields = {
   LAX_Mirror_Key: string;
   /** The Print_Products record the ledger counts. */
   Linked_Print_Product_Group: string;
   Total_Edition: number;
-  Assigned_To_Client: number;
-  Assigned_To_Artist: number;
-  Assigned_To_LAX: number;
 };
 
 /** What Zoho holds now for a group; absent records are null. */
@@ -54,9 +56,6 @@ export function wantedLedger(
     LAX_Mirror_Key: ledgerMirrorKey(code),
     Linked_Print_Product_Group: printProductId,
     Total_Edition: facts.total,
-    Assigned_To_Client: facts.collector,
-    Assigned_To_Artist: facts.artist,
-    Assigned_To_LAX: facts.lax,
   };
 }
 

@@ -18,6 +18,7 @@ describe.skipIf(!ownerUrl || !workerUrl)("print group facts reader as worker_app
   const artistId = randomUUID();
   const originalId = randomUUID();
   const printsId = randomUUID();
+  const proofId = randomUUID();
   let owner: pg.Pool;
 
   beforeAll(async () => {
@@ -40,9 +41,20 @@ describe.skipIf(!ownerUrl || !workerUrl)("print group facts reader as worker_app
     );
     await owner.query(
       `insert into shop_artwork (id, slug, title, artist_id, eligible_for_edition_allocation, import_key,
-         source_original_artwork_id, run_kind, medium, dimensions, year_created)
-       values ($1, $2, 'Harbour at dusk (prints)', $3, true, $4, $5, 'limited', 'Screenprint', '50 x 70 cm', 2026)`,
+         source_original_artwork_id, run_kind, run_role, run_template, run_size, alloc_buyer,
+         alloc_artist, alloc_lax, medium, dimensions, year_created)
+       values ($1, $2, 'Harbour at dusk (prints)', $3, true, $4, $5, 'limited', 'main', 'custom',
+         4, 2, 1, 1, 'Screenprint', '50 x 70 cm', 2026)`,
       [printsId, `harbour-prints-${tag}`, artistId, `print-group:${tag}:p`, originalId],
+    );
+    // A proof listing is made from the main run and copies its original.
+    await owner.query(
+      `insert into shop_artwork (id, slug, title, artist_id, eligible_for_edition_allocation, import_key,
+         source_original_artwork_id, run_kind, run_role, run_size, alloc_buyer, alloc_artist, alloc_lax,
+         proof_type, main_run_artwork_id)
+       values ($1, $2, 'Harbour at dusk (proof)', $3, true, $4, $5, 'limited', 'proof', 1, 0, 0, 1,
+         'ap', $6)`,
+      [proofId, `harbour-proof-${tag}`, artistId, `print-group:${tag}:x`, originalId, printsId],
     );
     const editions: [string, number, number | null][] = [
       ["original_buyer_entitlement", 1, null],
@@ -63,7 +75,8 @@ describe.skipIf(!ownerUrl || !workerUrl)("print group facts reader as worker_app
   afterAll(async () => {
     if (!owner) return;
     await owner.query("delete from shop_edition where artwork_id = $1", [printsId]);
-    await owner.query("delete from shop_artwork where id in ($1, $2)", [printsId, originalId]);
+    await owner.query("delete from shop_artwork where id in ($1, $2)", [proofId, printsId]);
+    await owner.query("delete from shop_artwork where id = $1", [originalId]);
     await owner.query("delete from shop_artist where id = $1", [artistId]);
     await owner.query("delete from shop_party where id = $1", [partyId]);
     await owner.end();
@@ -74,6 +87,7 @@ describe.skipIf(!ownerUrl || !workerUrl)("print group facts reader as worker_app
     const reader = createDrizzlePrintGroupFactsReader(createDb(workerUrl!));
     expect(await reader.read(printsId)).toEqual({
       printsArtworkId: printsId,
+      isMainRun: true,
       title: "Harbour at dusk (prints)",
       medium: "Screenprint",
       dimensions: "50 x 70 cm",
@@ -85,6 +99,12 @@ describe.skipIf(!ownerUrl || !workerUrl)("print group facts reader as worker_app
       artist: 1,
       lax: 1,
     });
+  });
+
+  it("says a proof listing is not the main run", async () => {
+    // biome-ignore lint/style/noNonNullAssertion: gated by skipIf
+    const reader = createDrizzlePrintGroupFactsReader(createDb(workerUrl!));
+    expect(await reader.read(proofId)).toMatchObject({ isMainRun: false, total: 0 });
   });
 
   it("says a listing with no original has none, and a missing listing is null", async () => {

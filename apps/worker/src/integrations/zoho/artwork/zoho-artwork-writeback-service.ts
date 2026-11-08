@@ -59,6 +59,10 @@ export class ZohoArtworkWritebackService {
     try {
       const entry = await this.deps.register.findById(registerId);
       if (!entry) return { outcome: "skipped", reason: "register_entry_missing" };
+      // A print group's Zoho record is a Print_Products one, whose code is its Print_Group_ID; the
+      // Products fields written here do not exist for it.
+      if (entry.kind === "print")
+        return { outcome: "skipped", reason: "print_group_not_a_product" };
       return event.eventType === OFFER_CHANGED_EVENT
         ? await this.sendStatus(entry, event)
         : await this.sendStockCode(entry, event);

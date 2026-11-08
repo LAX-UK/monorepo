@@ -40,7 +40,7 @@ export function useRegisterRowActions({
 
   const actionsFor = useCallback(
     (row: RowSubject, offerable: boolean): OverflowAction[] => {
-      const zohoUrl = zohoProductUrl(zohoUrlTemplate, row.zohoProductId);
+      const zohoUrl = zohoProductUrl(zohoUrlTemplate, row.zohoProductId, row.kind);
       const mayOffer = offerable && row.kind === "original";
       return [
         {

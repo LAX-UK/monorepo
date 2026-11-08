@@ -551,6 +551,8 @@ export const WORKER_SHOP_PRINT_GROUP_READ_COLUMNS = [
       "source_original_artwork_id",
       "zoho_product_id",
       "run_kind",
+      "run_role",
+      "main_run_artwork_id",
     ],
   ],
   ["shop_edition", ["artwork_id", "allocation", "proof_number"]],

@@ -9,6 +9,7 @@ const facts: PrintGroupFacts = {
   medium: null,
   dimensions: null,
   year: null,
+  isMainRun: true,
   original: { artworkId: "o1", zohoProductId: "zp-orig" },
   editionType: "Numbered",
   total: 24,
@@ -64,13 +65,22 @@ describe("planLedger", () => {
     LAX_Mirror_Key: `group:${CODE}`,
     Linked_Print_Product_Group: "pp",
     Total_Edition: 24,
-    Assigned_To_Client: 10,
-    Assigned_To_Artist: 10,
-    Assigned_To_LAX: 4,
   };
 
   it("keys the ledger by the group's code and points it at the group", () => {
     expect(planLedger(CODE, facts, { printProduct: null, ledger: null }, "pp")).toEqual(ledger);
+  });
+
+  it("leaves the sold counters and Print_Sold out until the order mirror knows what sold", () => {
+    const written = planLedger(CODE, facts, { printProduct: null, ledger: null }, "pp");
+    expect(Object.keys(written ?? {}).sort()).toEqual([
+      "LAX_Mirror_Key",
+      "Linked_Print_Product_Group",
+      "Total_Edition",
+    ]);
+    expect(
+      Object.keys(planPrintProduct(CODE, facts, { printProduct: null, ledger: null }) ?? {}),
+    ).not.toContain("Print_Sold");
   });
 
   it("writes nothing when the ledger already agrees", () => {

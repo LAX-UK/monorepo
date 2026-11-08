@@ -17,6 +17,7 @@ const NOW = new Date("2026-11-09T09:00:00.000Z");
 
 const facts = (over: Partial<PrintGroupFacts> = {}): PrintGroupFacts => ({
   printsArtworkId: "prints-1",
+  isMainRun: true,
   title: "Harbour at dusk (prints)",
   medium: "Screenprint",
   dimensions: "50 x 70 cm",
@@ -151,10 +152,10 @@ describe("PrintGroupMirror", () => {
       LAX_Mirror_Key: `group:${GROUP_CODE}`,
       Linked_Print_Product_Group: "pp-1",
       Total_Edition: 24,
-      Assigned_To_Client: 10,
-      Assigned_To_Artist: 10,
-      Assigned_To_LAX: 4,
     });
+    // What sold is the order mirror's to write; none of it is sent from the run's plan.
+    expect(JSON.stringify(upsertLedger.mock.calls)).not.toMatch(/Assigned_To|Print_Sold/);
+    expect(JSON.stringify(upsertPrintProduct.mock.calls)).not.toMatch(/Print_Sold/);
   });
 
   it("reuses the code on a re-run: no second group, no second write", async () => {
@@ -224,6 +225,43 @@ describe("PrintGroupMirror", () => {
     expect(upsertPrintProduct).not.toHaveBeenCalled();
     expect(upsertLedger).not.toHaveBeenCalled();
     expect(register.issuePrintGroup).not.toHaveBeenCalled();
+  });
+
+  it("mirrors the main run only: a proof listing on the same original writes nothing", async () => {
+    const main = setup();
+    await main.mirror.deliver("prints-1");
+    const proof = new PrintGroupMirror({
+      facts: {
+        read: async () =>
+          facts({
+            printsArtworkId: "proof-1",
+            isMainRun: false,
+            total: 0,
+            collector: 0,
+            artist: 0,
+            lax: 0,
+          }),
+      },
+      register: main.register,
+      zoho: main.zoho,
+      mode: "live",
+      now: () => NOW,
+      log: { info: vi.fn(), warn: vi.fn() },
+    });
+
+    expect(await proof.deliver("proof-1")).toEqual({
+      outcome: "skipped",
+      reason: "not_the_main_run",
+    });
+
+    // The main run's numbers are untouched by the proof's 0 / 0 / 0.
+    expect(main.upsertPrintProduct).toHaveBeenCalledTimes(1);
+    expect(main.upsertLedger).toHaveBeenCalledTimes(1);
+    expect(main.register.issuePrintGroup).toHaveBeenCalledTimes(1);
+    expect(await main.mirror.deliver("prints-1")).toEqual({
+      outcome: "skipped",
+      reason: "print_group_already_in_sync",
+    });
   });
 
   it("dry_run plans and logs but writes nothing anywhere", async () => {

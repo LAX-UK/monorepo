@@ -28,15 +28,7 @@ const PRODUCT_COLUMNS = [
   "Edition_Type",
   "Linked_Original_Artwork",
 ];
-const LEDGER_COLUMNS = [
-  "id",
-  "LAX_Mirror_Key",
-  "Linked_Print_Product_Group",
-  "Total_Edition",
-  "Assigned_To_Client",
-  "Assigned_To_Artist",
-  "Assigned_To_LAX",
-];
+const LEDGER_COLUMNS = ["id", "LAX_Mirror_Key", "Linked_Print_Product_Group", "Total_Edition"];
 
 export function printProductQuery(code: string): string {
   return `select ${PRODUCT_COLUMNS.join(", ")} from Print_Products where Print_Group_ID = '${escapeCoqlString(code)}' limit 1`;
@@ -92,9 +84,6 @@ function ledgerFrom(row: Record<string, unknown>): ZohoPrintGroupState["ledger"]
       LAX_Mirror_Key: text(row.LAX_Mirror_Key),
       Linked_Print_Product_Group: lookupId(row.Linked_Print_Product_Group),
       Total_Edition: count(row.Total_Edition),
-      Assigned_To_Client: count(row.Assigned_To_Client),
-      Assigned_To_Artist: count(row.Assigned_To_Artist),
-      Assigned_To_LAX: count(row.Assigned_To_LAX),
     }),
   };
 }

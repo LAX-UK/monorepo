@@ -60,9 +60,6 @@ describe("CrmZohoPrintModules", () => {
       LAX_Mirror_Key: "group:C",
       Linked_Print_Product_Group: "pp-1",
       Total_Edition: 24,
-      Assigned_To_Client: 10,
-      Assigned_To_Artist: 10,
-      Assigned_To_LAX: 4,
     });
     expect(g.upsert.mock.calls[0]?.[0]).toMatchObject({
       module: "Print_Products",
@@ -81,14 +78,7 @@ describe("CrmZohoPrintModules", () => {
     const g = gateway();
     g.upsert.mockResolvedValueOnce({ status: "error", code: "INVALID_DATA", recordId: "" });
     g.upsert.mockResolvedValueOnce({ status: "error", code: "INTERNAL_ERROR", recordId: "" });
-    const fields = {
-      LAX_Mirror_Key: "k",
-      Linked_Print_Product_Group: "p",
-      Total_Edition: 1,
-      Assigned_To_Client: 1,
-      Assigned_To_Artist: 0,
-      Assigned_To_LAX: 0,
-    };
+    const fields = { LAX_Mirror_Key: "k", Linked_Print_Product_Group: "p", Total_Edition: 1 };
     await expect(g.modules.upsertLedger(fields)).rejects.toMatchObject({ retryable: false });
     await expect(g.modules.upsertLedger(fields)).rejects.toMatchObject({ retryable: true });
   });

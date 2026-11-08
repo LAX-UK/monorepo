@@ -5,6 +5,11 @@ export type PrintGroupFacts = {
   medium: string | null;
   dimensions: string | null;
   year: number | null;
+  /**
+   * Whether this listing is the main run. Proof and companion listings are made from a main run and
+   * copy its original, so they would map to the same group code as the main run.
+   */
+  isMainRun: boolean;
   /** The original the prints were made from; null for a listing that is not a print of one. */
   original: { artworkId: string; zohoProductId: string | null } | null;
   /** "Numbered" for a limited run, "Open" for an open edition; null while no run is recorded. */
