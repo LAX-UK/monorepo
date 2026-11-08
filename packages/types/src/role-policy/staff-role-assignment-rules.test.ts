@@ -6,6 +6,7 @@ import {
   checkStaffRoleSet,
   forbiddenStaffRoleCombination,
   isForbiddenStaffRoleCombination,
+  mayChangeOwnStaffRoles,
 } from "./staff-role-assignment-rules.js";
 import type { StaffRoleAssignment } from "./staff-role-assignment.js";
 
@@ -225,6 +226,20 @@ describe("checkStaffRoleSet", () => {
         if (a === b) continue;
         expect(checkStaffRoleSet([a, b]).ok).toBe(!isForbiddenStaffRoleCombination(a, b));
       }
+    }
+  });
+});
+
+describe("changing your own staff roles", () => {
+  it("is allowed to an Administrator, alone or with other roles", () => {
+    expect(mayChangeOwnStaffRoles(["administrator"])).toBe(true);
+    expect(mayChangeOwnStaffRoles(["administrator", "finance"])).toBe(true);
+  });
+
+  it("is not allowed to anyone else, whatever else they may do with roles", () => {
+    expect(mayChangeOwnStaffRoles([])).toBe(false);
+    for (const role of userStaffRoles.filter((candidate) => candidate !== "administrator")) {
+      expect(mayChangeOwnStaffRoles([role])).toBe(false);
     }
   });
 });

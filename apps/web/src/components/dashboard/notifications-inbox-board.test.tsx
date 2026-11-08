@@ -241,6 +241,79 @@ describe("NotificationsInboxBoard", () => {
     });
   });
 
+  describe("with a person's own money-driven Needs action", () => {
+    const account = { kind: "personal" as const, name: "Ada Lovelace", initials: "AL" };
+    const rows: NeedsActionView["rows"] = [
+      {
+        key: "pay:lot-1",
+        topic: "purchase",
+        title: "Pay £8,000.00 for “Estuary at Dusk”",
+        detail: "Pay by 12 November",
+        due: { text: "Due 12 Nov 2026", tone: "warning", dateTime: "2026-11-12T00:00:00.000Z" },
+        raised: null,
+        action: { label: "Pay", href: "/purchases/pay?lots=lot-1" },
+        section: "purchases",
+        items: 1,
+      },
+      {
+        key: "waiting:lot-2",
+        topic: "purchase",
+        title: "Payment for “Harbour”",
+        detail: "£500.00 · being confirmed",
+        due: null,
+        raised: null,
+        action: { label: "View", href: "/purchases/lot-2" },
+        section: "purchases",
+        items: 1,
+      },
+    ];
+
+    it("lists the amounts to pay with their due dates and the payments waiting, for the person", () => {
+      renderBoard(
+        parseInboxQuery({}),
+        { account, rows, failed: false },
+        { needsAction: 0, unread: 3 },
+      );
+      const listed = screen.getAllByRole("listitem").filter((li) => li.dataset.testid);
+      expect(listed).toHaveLength(2);
+      const first = within(listed[0] as HTMLElement);
+      expect(first.getByText("Pay £8,000.00 for “Estuary at Dusk”")).toBeInTheDocument();
+      // The date shows once on a phone and once beside the button on wider screens.
+      expect(first.getAllByText("Due 12 Nov 2026").length).toBeGreaterThan(0);
+      expect(first.getByText("Ada Lovelace")).toBeInTheDocument();
+      expect(first.getByRole("link", { name: "Pay" })).toHaveAttribute(
+        "href",
+        "/purchases/pay?lots=lot-1",
+      );
+      expect(
+        within(listed[1] as HTMLElement).getByRole("link", { name: "View" }),
+      ).toBeInTheDocument();
+    });
+
+    it("counts the tab by the money tasks", () => {
+      renderBoard(
+        parseInboxQuery({}),
+        { account, rows, failed: false },
+        { needsAction: 0, unread: 3 },
+      );
+      const first = screen
+        .getAllByRole("link")
+        .find((a) => a.getAttribute("href")?.startsWith("/notifications"));
+      expect(first?.textContent).toBe("Needs action2");
+    });
+
+    it("says nothing needs you when nothing is owed, waiting or on hold", () => {
+      renderBoard(parseInboxQuery({}), { account, rows: [], failed: false });
+      expect(screen.getByText("Nothing needs you")).toBeInTheDocument();
+    });
+
+    it("says the list could not load when the money could not be read", () => {
+      renderBoard(parseInboxQuery({}), { account, rows: [], failed: true });
+      expect(screen.getByText("We couldn't load this list.")).toBeInTheDocument();
+      expect(screen.queryByText("Nothing needs you")).toBeNull();
+    });
+  });
+
   it("offers to clear a search that matched nothing", () => {
     renderBoard(parseInboxQuery({ q: "Hockney" }));
     expect(screen.getByText("No results for “Hockney”")).toBeInTheDocument();
