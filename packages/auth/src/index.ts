@@ -162,3 +162,14 @@ export {
 } from "./sliding-window-rate-limit.js";
 export { wrapAuthDatabaseAdapter } from "./adapter-at-rest.js";
 export { wrapOAuthConsentUpsertAdapter } from "./oauth-consent-upsert.js";
+export {
+  SOCIAL_PROVIDER_IDS,
+  SOCIAL_SIGN_IN_ERROR_CODES,
+  decideImplicitLink,
+  isSocialProviderId,
+  mayUseSocialSignIn,
+  type ImplicitLinkBlockReason,
+  type ImplicitLinkDecision,
+  type SocialProviderId,
+  type SocialSubject,
+} from "./social-sign-in-policy.js";

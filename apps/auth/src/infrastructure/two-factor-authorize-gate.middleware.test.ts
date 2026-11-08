@@ -111,12 +111,43 @@ describe("two-factor authorize gate", () => {
     expect(new URL(response.headers.get("location") ?? "").pathname).toBe("/two-factor");
   });
 
-  it("accepts a social sign-in for a policy requirement", async () => {
+  it("does not accept a social sign-in for a policy requirement: a person who can enrol is sent to set up", async () => {
+    const { app } = setup({ requirement: STAFF_REQUIRED, socialAuthAt: new Date() });
+
+    const response = await app.request(authorize());
+
+    expect(response.status).toBe(302);
+    expect(new URL(response.headers.get("location") ?? "").pathname).toBe("/two-factor/setup");
+  });
+
+  it("asks a person who signed in with Google and has two-step on for the code", async () => {
+    const { app } = setup({
+      requirement: STAFF_REQUIRED,
+      socialAuthAt: new Date(),
+      twoFactorEnabled: true,
+    });
+
+    const response = await app.request(authorize());
+
+    expect(new URL(response.headers.get("location") ?? "").pathname).toBe("/two-factor");
+  });
+
+  it("leaves a social-only member of a two-step organisation unmet until they can answer a code", async () => {
     const { app } = setup({
       requirement: STAFF_REQUIRED,
       socialAuthAt: new Date(),
       hasPassword: false,
     });
+
+    const response = await app.request(authorize());
+
+    expect(new URL(response.headers.get("location") ?? "").searchParams.get("error")).toBe(
+      "unmet_authentication_requirements",
+    );
+  });
+
+  it("still passes a social sign-in when no requirement applies", async () => {
+    const { app } = setup({ socialAuthAt: new Date(), hasPassword: false });
 
     const response = await app.request(authorize());
 

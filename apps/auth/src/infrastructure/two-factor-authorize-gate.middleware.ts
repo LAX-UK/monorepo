@@ -87,7 +87,7 @@ export function createTwoFactorAuthorizeGateMiddleware(options: {
     }
 
     const requirement = await options.readRequirement(subjectId);
-    if (!requestsSilver && (!requirement.required || identitySession.socialAuthAt)) {
+    if (!requestsSilver && !requirement.required) {
       await next();
       return;
     }
@@ -108,7 +108,6 @@ export function createTwoFactorAuthorizeGateMiddleware(options: {
       requestsSilver,
       requiredByPolicy: requirement.required,
       mfaCompletedAt: identitySession.mfaCompletedAt,
-      socialAuthAt: identitySession.socialAuthAt,
       twoFactorEnabled: Boolean(subject?.twoFactorEnabled),
       canEnrolTotp: Boolean(credentialAccount?.id),
     });

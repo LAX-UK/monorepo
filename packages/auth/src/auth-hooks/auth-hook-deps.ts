@@ -9,6 +9,7 @@ export type AuthHookDeps = {
     | "email"
     | "securityNotices"
     | "legalAcceptance"
+    | "twoFactorPolicyStore"
   >;
   /** Invoked from `databaseHooks.user.create.after` for every new auth user (email + OAuth). */
   onUserCreated?:
@@ -36,6 +37,11 @@ export type AuthHookDeps = {
   enableNewDeviceLoginEmail?: boolean | undefined;
   /** When true, reject new auth user rows (email + OAuth) at `user.create.before`. */
   blockNewUserRegistration?: boolean | undefined;
+  /**
+   * Ends every session and product token of a person, as a password reset does. Used when a
+   * provider proves an email whose password was set before it was confirmed (SM5).
+   */
+  revokeAllSessions?: ((userId: string) => Promise<number>) | undefined;
 };
 
 export type { EmailSender };
