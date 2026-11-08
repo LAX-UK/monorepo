@@ -37,6 +37,34 @@ describe("deriveBidSalePhase", () => {
     expect(phase("cancelled", "scheduled")).toBe("ended");
   });
 
+  describe("from the sale's own start time", () => {
+    const at = (
+      saleStatus: BidSaleStatus,
+      startTime: string,
+      lotStatus: BidLotStatus = "scheduled",
+    ) =>
+      deriveBidSalePhase({ lotStatus, saleStatus, saleStartTime: new Date(startTime), now: NOW });
+
+    it("is upcoming before the sale starts", () => {
+      expect(at("scheduled", "2026-11-05T18:00:00Z")).toBe("upcoming");
+    });
+
+    it("is live now once the sale has started, with no active lot", () => {
+      expect(at("scheduled", "2026-11-05T11:00:00Z")).toBe("live_now");
+      expect(at("scheduled", "2026-11-05T12:00:00Z")).toBe("live_now");
+    });
+
+    it("is ended for an ended sale, whatever its start time", () => {
+      expect(at("ended", "2026-11-05T11:00:00Z")).toBe("ended");
+      expect(at("cancelled", "2026-11-05T11:00:00Z")).toBe("ended");
+    });
+
+    it("does not start a draft sale or a closed lot", () => {
+      expect(at("draft", "2026-11-05T11:00:00Z")).toBe("upcoming");
+      expect(at("scheduled", "2026-11-05T11:00:00Z", "ended")).toBe("ended");
+    });
+  });
+
   it("is ended once the sale ends or is cancelled", () => {
     expect(phase("scheduled", "ended")).toBe("ended");
     expect(phase("scheduled", "cancelled")).toBe("ended");

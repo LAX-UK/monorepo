@@ -18,16 +18,23 @@ export type BidSaleStatus = "draft" | "scheduled" | "active" | "ended" | "cancel
 /**
  * The phase from the lot and its sale. A lot that has closed is ended even while the rest of its
  * sale runs; otherwise the sale decides, so every lot of a sale that has started reads live now,
- * including those still waiting for the block. A lot outside a sale has not started.
+ * including those still waiting for the block. A sale also counts as started once its own start
+ * time has passed, even if no lot is active yet and its status has not caught up. A lot outside a
+ * sale has not started. The start time and `now` are optional; without them only status decides.
  */
 export function deriveBidSalePhase(input: {
   lotStatus: BidLotStatus;
   saleStatus: BidSaleStatus | null;
+  saleStartTime?: Date | null;
+  now?: Date;
 }): BidSalePhase {
-  const { lotStatus, saleStatus } = input;
+  const { lotStatus, saleStatus, saleStartTime, now } = input;
   if (lotStatus === "ended" || lotStatus === "cancelled" || lotStatus === "voided") return "ended";
   if (saleStatus === "ended" || saleStatus === "cancelled") return "ended";
   if (lotStatus === "active" || saleStatus === "active") return "live_now";
+  const startedByTime =
+    saleStatus === "scheduled" && saleStartTime != null && now != null && saleStartTime <= now;
+  if (startedByTime) return "live_now";
   return "upcoming";
 }
 
