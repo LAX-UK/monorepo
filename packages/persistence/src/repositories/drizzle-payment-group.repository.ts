@@ -8,7 +8,7 @@ import {
   paymentGroupDelivery,
 } from "@auction/db/schema";
 import type { PaymentGroupStatus } from "@auction/domain";
-import { and, asc, eq, inArray, isNull, lte, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, isNull, lte, or, sql } from "drizzle-orm";
 import type {
   ChargeableDeliveryQuote,
   ClaimPaymentGroupInput,
@@ -193,6 +193,27 @@ export class DrizzlePaymentGroupRepository implements IPaymentGroupRepository {
 
   async listDeliveries(groupId: string): Promise<PaymentGroupDelivery[]> {
     return this.deliveriesQuery(this.db, groupId);
+  }
+
+  async findBankTransferGroupsForCustomer(
+    stripeCustomerId: string,
+    since: Date,
+  ): Promise<PaymentGroupRecord[]> {
+    const rows = await this.db
+      .select({ group: paymentGroup })
+      .from(paymentGroup)
+      .innerJoin(legalEntity, eq(legalEntity.id, paymentGroup.buyerLegalEntityId))
+      .where(
+        and(
+          eq(legalEntity.stripeCustomerId, stripeCustomerId),
+          eq(paymentGroup.checkoutRail, "gb_bank_transfer"),
+          inArray(paymentGroup.status, ["open", "processing", "paid"]),
+          gte(paymentGroup.createdAt, since),
+        ),
+      )
+      .orderBy(desc(paymentGroup.createdAt))
+      .limit(5);
+    return rows.map((row) => mapGroup(row.group));
   }
 
   async findLiveByPaymentIds(paymentIds: readonly string[]): Promise<PaymentGroupRecord[]> {

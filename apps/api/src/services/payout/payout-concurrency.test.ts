@@ -99,8 +99,14 @@ describe("payout status transitions under concurrency", () => {
     const { svc, publish } = serviceFor(repo);
 
     const { won, lost } = await settle([
-      svc.markPaid(ACTOR_ID, "po1", { stripeTransferId: "tr_a" }),
-      svc.markPaid(ACTOR_ID, "po1", { stripeTransferId: "tr_b" }),
+      svc.markPaid(ACTOR_ID, "po1", {
+        stripeTransferId: "tr_a",
+        reason: "Matched to the Stripe dashboard",
+      }),
+      svc.markPaid(ACTOR_ID, "po1", {
+        stripeTransferId: "tr_b",
+        reason: "Matched to the Stripe dashboard",
+      }),
     ]);
 
     expect(won).toHaveLength(1);
@@ -116,7 +122,10 @@ describe("payout status transitions under concurrency", () => {
     const { svc, publish } = serviceFor(repo);
 
     const { won, lost } = await settle([
-      svc.markPaid(ACTOR_ID, "po1", { stripeTransferId: "tr_a" }),
+      svc.markPaid(ACTOR_ID, "po1", {
+        stripeTransferId: "tr_a",
+        reason: "Matched to the Stripe dashboard",
+      }),
       svc.adminManualReverse(REVERSER, "po1", { reason: "bank returned the transfer" }),
     ]);
 
@@ -148,26 +157,38 @@ describe("payout status transitions under concurrency", () => {
   it("reports payout_already_paid when mark-paid is repeated after the first call finished", async () => {
     const { repo } = makeFakeRepo(basePayout({ status: "scheduled" }));
     const { svc } = serviceFor(repo);
-    await svc.markPaid(ACTOR_ID, "po1", { stripeTransferId: "tr_a" });
-    await expect(svc.markPaid(ACTOR_ID, "po1", { stripeTransferId: "tr_a" })).rejects.toMatchObject(
-      { code: "payout_already_paid" },
-    );
+    await svc.markPaid(ACTOR_ID, "po1", {
+      stripeTransferId: "tr_a",
+      reason: "Matched to the Stripe dashboard",
+    });
+    await expect(
+      svc.markPaid(ACTOR_ID, "po1", {
+        stripeTransferId: "tr_a",
+        reason: "Matched to the Stripe dashboard",
+      }),
+    ).rejects.toMatchObject({ code: "payout_already_paid" });
   });
 
   it("answers not found for an unknown payout", async () => {
     const { repo } = makeFakeRepo(basePayout());
     const { svc } = serviceFor(repo);
     await expect(
-      svc.markPaid(ACTOR_ID, "missing", { stripeTransferId: "tr_a" }),
+      svc.markPaid(ACTOR_ID, "missing", {
+        stripeTransferId: "tr_a",
+        reason: "Matched to the Stripe dashboard",
+      }),
     ).rejects.toBeInstanceOf(PayoutNotFoundError);
   });
 
   it("refuses to run a transition without a transaction runner", async () => {
     const { repo } = makeFakeRepo(basePayout());
     const svc = new PayoutService(repo);
-    await expect(svc.markPaid(ACTOR_ID, "po1", { stripeTransferId: "tr_a" })).rejects.toThrow(
-      "payout_transactions_not_configured",
-    );
+    await expect(
+      svc.markPaid(ACTOR_ID, "po1", {
+        stripeTransferId: "tr_a",
+        reason: "Matched to the Stripe dashboard",
+      }),
+    ).rejects.toThrow("payout_transactions_not_configured");
     await expect(svc.adminManualReverse(REVERSER, "po1", { reason: "no runner" })).rejects.toThrow(
       "payout_transactions_not_configured",
     );

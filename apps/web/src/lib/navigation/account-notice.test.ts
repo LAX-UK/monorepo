@@ -21,6 +21,16 @@ describe("account notice", () => {
     expect(decodeAccountNotice(encodeAccountNotice(notice))).toEqual(notice);
   });
 
+  it("keeps the account a record link came from, when there was one", () => {
+    const notice = { kind: "switched", accountId: "org-1", fromAccountId: "me" } as const;
+    expect(decodeAccountNotice(encodeAccountNotice(notice))).toEqual(notice);
+    const record = { ...notice, record: true } as const;
+    expect(decodeAccountNotice(encodeAccountNotice(record))).toEqual(record);
+    expect(
+      decodeAccountNotice(encodeAccountNotice({ kind: "switched", accountId: "org-1" })),
+    ).toEqual({ kind: "switched", accountId: "org-1" });
+  });
+
   it("ignores malformed cookies", () => {
     expect(decodeAccountNotice("not-json")).toBeNull();
     expect(decodeAccountNotice(encodeURIComponent('{"kind":"switched"}'))).toBeNull();
@@ -28,8 +38,12 @@ describe("account notice", () => {
   });
 
   it("says which account a link switched to", () => {
+    expect(
+      accountNoticeMessage({ kind: "switched", accountId: "org-1", record: true }, names),
+    ).toBe("Switched to Northbank Gallery to show this.");
+    // A link that is not a record's has nothing to show.
     expect(accountNoticeMessage({ kind: "switched", accountId: "org-1" }, names)).toBe(
-      "Switched to Northbank Gallery to show this.",
+      "Now acting as Northbank Gallery",
     );
   });
 

@@ -25,7 +25,8 @@ const CLIENT_SHELL_ROLE = "client" as const;
  *   content's left edge, the search field and the person's menu on the right;
  * - on a phone, the compact lockup (or a back button on a nested page), the page's title once
  *   its large title has scrolled away, then search and the person's menu.
- * The account is named only by the switcher, never here.
+ * With an organisation, the person's button on the right shows the account in use and is the
+ * switcher; the sidebar's tile opens the same list.
  */
 export function WorkspaceTopBar({
   user,
@@ -121,7 +122,7 @@ export function WorkspaceTopBar({
                 />
               </div>
               <div className="max-lg:hidden">
-                <ShellUserMenu user={user} role={CLIENT_SHELL_ROLE} />
+                <ShellUserMenu user={user} role={CLIENT_SHELL_ROLE} account={phoneAccount} />
               </div>
             </>
           ) : (

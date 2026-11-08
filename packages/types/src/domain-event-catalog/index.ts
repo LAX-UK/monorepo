@@ -113,6 +113,7 @@ export {
   shopStockHoldReleasedPayloadSchemaV1,
   shopThirdPartySaleRecordedPayloadSchemaV1,
 } from "./shop-phase-payload-schemas.js";
+export { alertSubscriptionConfirmedPayloadSchemaV1 } from "./alert-payload-schemas.js";
 export {
   paymentCapturedPayloadSchemaV1,
   paymentRefundedPayloadSchemaV1,

@@ -15,6 +15,11 @@ import {
   ZOHO_ARTWORK_NIGHTLY_TIME_ZONE,
 } from "../jobs/zoho-artwork-sync.job.js";
 import {
+  ZOHO_CAMPAIGNS_SUPPRESSION_JOB_NAME,
+  ZOHO_CAMPAIGNS_SUPPRESSION_PATTERN,
+  ZOHO_CAMPAIGNS_SUPPRESSION_TIME_ZONE,
+} from "../jobs/zoho-campaigns-suppression-sync.job.js";
+import {
   ZOHO_LISTING_NIGHTLY_JOB_NAME,
   ZOHO_LISTING_NIGHTLY_PATTERN,
   ZOHO_LISTING_NIGHTLY_TIME_ZONE,
@@ -33,6 +38,8 @@ export type RegisterWebhookWorkerInput = WorkerBootstrapDeps & {
   runZohoArtworkNightlyCheck?: () => Promise<void>;
   /** Set when the LAX listing on Zoho is on; schedules its nightly pass on this queue. */
   runZohoListingNightlyCheck?: () => Promise<void>;
+  /** Set when the Zoho Campaigns suppression sync is on; schedules its daily pass here. */
+  runZohoCampaignsSuppressionSync?: () => Promise<void>;
 };
 
 export function registerWebhookWorker(input: RegisterWebhookWorkerInput): WebhookWorkersHandle {
@@ -43,6 +50,7 @@ export function registerWebhookWorker(input: RegisterWebhookWorkerInput): Webhoo
     webhookProcessorDeps,
     runZohoArtworkNightlyCheck,
     runZohoListingNightlyCheck,
+    runZohoCampaignsSuppressionSync,
     queueOpts,
     log,
   } = input;
@@ -66,6 +74,14 @@ export function registerWebhookWorker(input: RegisterWebhookWorkerInput): Webhoo
         if (!runZohoArtworkNightlyCheck)
           throw new Error("zoho artwork nightly check not configured");
         await runZohoArtworkNightlyCheck();
+        await heartbeat("webhook-events");
+        return;
+      }
+
+      if (job.name === ZOHO_CAMPAIGNS_SUPPRESSION_JOB_NAME) {
+        if (!runZohoCampaignsSuppressionSync)
+          throw new Error("zoho campaigns suppression sync not configured");
+        await runZohoCampaignsSuppressionSync();
         await heartbeat("webhook-events");
         return;
       }
@@ -112,6 +128,21 @@ export function registerWebhookWorker(input: RegisterWebhookWorkerInput): Webhoo
         repeat: {
           pattern: ZOHO_ARTWORK_NIGHTLY_PATTERN,
           tz: ZOHO_ARTWORK_NIGHTLY_TIME_ZONE,
+        },
+        removeOnComplete: 30,
+      },
+    );
+  }
+
+  if (runZohoCampaignsSuppressionSync) {
+    void webhookQueue.add(
+      ZOHO_CAMPAIGNS_SUPPRESSION_JOB_NAME,
+      { eventKey: ZOHO_CAMPAIGNS_SUPPRESSION_JOB_NAME },
+      {
+        jobId: ZOHO_CAMPAIGNS_SUPPRESSION_JOB_NAME,
+        repeat: {
+          pattern: ZOHO_CAMPAIGNS_SUPPRESSION_PATTERN,
+          tz: ZOHO_CAMPAIGNS_SUPPRESSION_TIME_ZONE,
         },
         removeOnComplete: 30,
       },

@@ -10,6 +10,7 @@ export const EMAIL_BLOCK_REASONS = [
   "complaint",
   "manual",
   "unsubscribe",
+  "unsubscribed_marketing",
 ] as const;
 export type EmailBlockReason = (typeof EMAIL_BLOCK_REASONS)[number];
 

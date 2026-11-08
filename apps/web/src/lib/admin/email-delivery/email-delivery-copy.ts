@@ -52,6 +52,12 @@ export const BLOCK_COPY: Record<EmailBlockReason, BlockCopy> = {
     body: (who) =>
       `${who} unsubscribed. Invoices, receipts and account email still go. Only ${who} can turn optional email back on, from their own settings.`,
   },
+  unsubscribed_marketing: {
+    title: "Marketing and alert email is off",
+    name: "Marketing email off",
+    body: (who) =>
+      `${who} unsubscribed from LAX marketing email. Alert email stops too. Invoices, receipts and account email still go. Lift this if ${who} asks to hear from LAX again.`,
+  },
 };
 
 export const SEND_STATUS: Record<EmailSendStatus, { label: string; tone: StaffStatusTone }> = {

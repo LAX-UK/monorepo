@@ -4,6 +4,7 @@ import {
   accountLinkTarget,
   accountsUnavailableHref,
   confirmSwitchHref,
+  hopReasonOf,
   isHop,
   refusedPageTarget,
   restoreAccountHref,
@@ -94,6 +95,23 @@ describe("hop links", () => {
     expect(accountsUnavailableHref("/restore-account?next=%2Fhome")).toBe(
       `/switch-account/unavailable?retry=${encodeURIComponent("/restore-account?next=%2Fhome")}`,
     );
+  });
+
+  it("says why a link opens another account only for a record, through the confirm page too", () => {
+    expect(switchAccountHref("org-1", "/purchases/p1", { reason: "record" })).toBe(
+      "/switch-account?to=org-1&next=%2Fpurchases%2Fp1&reason=record",
+    );
+    expect(switchAccountHref("org-1", "/home", { notificationFrom: "me" })).toBe(
+      "/switch-account?to=org-1&next=%2Fhome&from=me",
+    );
+    expect(confirmSwitchHref("org-1", "/purchases/p1", "record")).toBe(
+      "/switch-account/confirm?to=org-1&next=%2Fpurchases%2Fp1&reason=record",
+    );
+  });
+
+  it("reads only the one reason it knows", () => {
+    expect(hopReasonOf("record")).toBe("record");
+    for (const other of ["other", "", null, undefined]) expect(hopReasonOf(other)).toBeNull();
   });
 
   it("never comes back to a hop's own pages", () => {

@@ -94,7 +94,7 @@ describe.skipIf(!migrationUrl)(
         [userId],
       );
       // Later migrations that depend on the quote table go first, as a real rollback would.
-      await client.query(read("0323_rollback.sql"));
+      await client.query(read("0325_rollback.sql"));
       await client.query(read("0257_rollback.sql"));
 
       for (const type of NEW_TYPES) expect(await acceptsType(type)).toBe(false);

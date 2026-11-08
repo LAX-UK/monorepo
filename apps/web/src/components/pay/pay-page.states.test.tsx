@@ -149,6 +149,14 @@ describe("opening the secure payment page (S4)", () => {
     });
     const retry = within(screen.getByRole("alert")).getByRole("button", { name: "Try again" });
     expect(retry).toBeDisabled();
+    // The first attempt may never answer: a fresh load of the page is offered, so nobody is stuck.
+    const reload = vi.fn();
+    Object.defineProperty(window, "location", {
+      configurable: true,
+      value: { ...window.location, assign, reload },
+    });
+    fireEvent.click(within(screen.getByRole("alert")).getByRole("button", { name: "Refresh" }));
+    expect(reload).toHaveBeenCalledOnce();
     fireEvent.click(retry);
     expect(payAction).toHaveBeenCalledTimes(1);
 

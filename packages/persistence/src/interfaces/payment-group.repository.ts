@@ -87,6 +87,15 @@ export interface IPaymentGroupRepository {
   listMembers(groupId: string): Promise<PaymentGroupMember[]>;
   /** The courier quotes the group charges. */
   listDeliveries(groupId: string): Promise<PaymentGroupDelivery[]>;
+  /**
+   * The bank-transfer groups (`open`, `processing` or `paid`) created since `since` for the
+   * account that owns this Stripe customer, newest first. A customer's balance cannot say which of
+   * them its money is from, so callers treat more than one as no answer.
+   */
+  findBankTransferGroupsForCustomer(
+    stripeCustomerId: string,
+    since: Date,
+  ): Promise<PaymentGroupRecord[]>;
   /** The groups still holding any of these payments (`open` or `processing`). */
   findLiveByPaymentIds(paymentIds: readonly string[]): Promise<PaymentGroupRecord[]>;
   /**

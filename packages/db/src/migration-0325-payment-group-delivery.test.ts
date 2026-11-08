@@ -7,15 +7,15 @@ import { paymentGroupDelivery } from "./schema/payment-group.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const read = (name: string) => readFileSync(join(__dirname, "../drizzle", name), "utf8");
-const migration = read("0323_payment_group_delivery.sql");
-const rollback = read("0323_rollback.sql");
+const migration = read("0325_payment_group_delivery.sql");
+const rollback = read("0325_rollback.sql");
 const journal = JSON.parse(read("meta/_journal.json")) as {
   entries: { idx: number; tag: string; when: number }[];
 };
 
-describe("migration 0323 payment group delivery", () => {
+describe("migration 0325 payment group delivery", () => {
   it("is a journal entry after the one before it, in order", () => {
-    const index = journal.entries.findIndex((e) => e.tag === "0323_payment_group_delivery");
+    const index = journal.entries.findIndex((e) => e.tag === "0325_payment_group_delivery");
     expect(index).toBeGreaterThan(0);
     const entry = journal.entries[index];
     const previous = journal.entries[index - 1];

@@ -1,7 +1,7 @@
 import { pinClock } from "@/test/pin-clock";
 import type { EmailBlockView, PersonEmailDeliveryView } from "@auction/types";
 import { describe, expect, it } from "vitest";
-import { buildEmailDeliveryPanelVm } from "./email-delivery.vm";
+import { blockDateKnown, buildEmailDeliveryPanelVm } from "./email-delivery.vm";
 
 const block = (over: Partial<EmailBlockView> = {}): EmailBlockView => ({
   reason: "hard_bounce",
@@ -98,5 +98,12 @@ describe("email delivery panel view model", () => {
     expect(row?.status).toEqual({ label: "Not sent: blocked", tone: "warning" });
     expect(row?.necessity).toBe("Essential");
     expect(row?.product).toBe("LAX Bid");
+  });
+});
+
+describe("blockDateKnown", () => {
+  it("treats an epoch-dated block as having no known date", () => {
+    expect(blockDateKnown(new Date(0).toISOString())).toBe(false);
+    expect(blockDateKnown("2026-11-08T10:00:00.000Z")).toBe(true);
   });
 });
