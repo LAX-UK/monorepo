@@ -7,6 +7,7 @@ import {
   LOTS_READ_ACCESS,
   LOT_FULFILMENT_ACCESS,
   ONBOARDING_QUEUES_ACCESS,
+  PRIVATE_SALE_DEALS_READ_ACCESS,
   PURCHASE_PROBLEMS_ACCESS,
   SALEROOM_ACCESS,
   SALES_ACCESS,
@@ -65,6 +66,11 @@ export const ADMIN_ROUTE_TABLE = [
     requirement: CONDITION_REPORTS_READ_ACCESS,
   },
   { pattern: "/admin/enquiries/[reference]", area: "platform", requirement: ENQUIRIES_ACCESS },
+  {
+    pattern: "/admin/private-sales/[reference]",
+    area: "shared",
+    requirement: PRIVATE_SALE_DEALS_READ_ACCESS,
+  },
   { pattern: "/admin/purchase-problems", area: "platform", requirement: PURCHASE_PROBLEMS_ACCESS },
   {
     pattern: "/admin/purchase-problems/[id]",

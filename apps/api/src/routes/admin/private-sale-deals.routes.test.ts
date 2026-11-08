@@ -304,7 +304,12 @@ describe("POST /private-sales/:ref/actions/:action", () => {
     const money = Object.entries(ACTION_ABILITY)
       .filter(([, ability]) => ability === "finance")
       .map(([action]) => action);
-    expect(money.sort()).toEqual(["issue_invoice", "refund"]);
+    expect(money.sort()).toEqual([
+      "issue_invoice",
+      "record_bank_refund",
+      "record_bank_transfer",
+      "refund",
+    ]);
     for (const action of money) {
       const { app, stepUp } = createApp(["administrator"]);
       await app.request(
