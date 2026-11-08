@@ -2,6 +2,8 @@ import StripeSdk from "stripe";
 import { describe, expect, it, vi } from "vitest";
 import { ConnectTransferInitiationService } from "./connect-transfer-initiation.service.js";
 
+const silentLog = { warn: () => {}, error: () => {}, info: () => {} };
+
 const payout = {
   id: "payout-1",
   legalEntityId: "entity-1",
@@ -33,7 +35,7 @@ function setup(
   const stripe = "stripe" in options ? options.stripe : { transfers: { retrieve } };
   const updateStatusIfCurrent = vi.fn();
   const service = new ConnectTransferInitiationService(
-    { LOG_LEVEL: "silent", NODE_ENV: "test" } as never,
+    silentLog as never,
     {
       findLegalEntityById: vi.fn().mockResolvedValue({
         stripeConnectAccountId: "account" in options ? options.account : "acct_1",

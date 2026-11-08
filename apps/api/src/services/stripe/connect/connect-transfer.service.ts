@@ -1,3 +1,4 @@
+import { ConnectTransferInitiationService } from "@auction/finance-runtime";
 import type {
   IConnectTransferRepository,
   ITransactionRunner,
@@ -5,7 +6,9 @@ import type {
 import type { IPayoutRepository } from "@auction/persistence/interfaces";
 import type Stripe from "stripe";
 import type { Env } from "../../../env.js";
+import { createBaseLogger } from "../../../lib/logger.js";
 import type { IStripeClientFactory } from "../../../lib/stripe-client.js";
+import { recordMoneyPathEvent } from "../../../middleware/metrics.js";
 import type { IDomainEventSink } from "../../domain-event-sink.js";
 import type { IPayoutService } from "../../interfaces/payout.js";
 import type {
@@ -15,7 +18,6 @@ import type {
   InitiateTransferResult,
   TransferAdoptionVerification,
 } from "../../interfaces/stripe-connect.js";
-import { ConnectTransferInitiationService } from "./connect-transfer-initiation.service.js";
 import { ConnectTransferWebhookService } from "./connect-transfer-webhook.service.js";
 
 /** Thin coordinator composing transfer webhook reconciliation and initiation (SRP split). */
@@ -35,12 +37,13 @@ export class ConnectTransferService {
   ) {
     this.webhookService = new ConnectTransferWebhookService(transactionRunner, payoutService);
     this.initiationService = new ConnectTransferInitiationService(
-      env,
+      createBaseLogger(env),
       connectTransferRepository,
       stripeFactory,
       accountSync,
       payoutRepository,
       domainEventSink,
+      { record: recordMoneyPathEvent },
     );
   }
 
