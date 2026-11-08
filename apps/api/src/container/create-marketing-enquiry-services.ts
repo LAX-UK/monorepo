@@ -54,6 +54,7 @@ export type CreateMarketingEnquiryServicesInput = {
     | "LOG_LEVEL"
     | "NODE_ENV"
     | "CHECK_IN_TOKEN_SECRET"
+    | "PRIVATE_SALE_RECORD_RETENTION_YEARS"
   >;
   email: IEmailService;
   memberships: Pick<
@@ -148,7 +149,9 @@ export function createMarketingEnquiryServices(
       now: () => new Date(),
     }),
     erasure: new EnquiryErasureService({
-      erasure: new DrizzleEnquiryErasureRepository(),
+      erasure: new DrizzleEnquiryErasureRepository({
+        retentionYears: input.env.PRIVATE_SALE_RECORD_RETENTION_YEARS,
+      }),
       alertSubscribers: new DrizzleAlertSubscriberErasureRepository(),
       transactionRunner: input.transactionRunner,
       events: input.events,

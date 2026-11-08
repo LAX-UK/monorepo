@@ -127,6 +127,18 @@ export class DrizzleItemSubmissionRepository implements IItemSubmissionRepositor
     return mapItemSubmissionRow(row, categories.get(row.id) ?? []);
   }
 
+  async findByIdForUpdate(id: string) {
+    const [row] = await this.db
+      .select()
+      .from(itemSubmission)
+      .where(eq(itemSubmission.id, id))
+      .for("update")
+      .limit(1);
+    if (!row) return null;
+    const categories = await this.categoryIdsBySubmissionIds([row.id]);
+    return mapItemSubmissionRow(row, categories.get(row.id) ?? []);
+  }
+
   async create(input: CreateItemSubmissionInput) {
     const now = new Date();
     const categoryIds = input.categoryIds ?? (input.categoryId ? [input.categoryId] : []);
