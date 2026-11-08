@@ -1347,3 +1347,18 @@ export type {
   CollectionLotRecord,
   ICollectionLotFactsReader,
 } from "./collection-lot-facts.reader.js";
+export type {
+  AddCollectionException,
+  AddExceptionOutcome,
+  CollectionVenueChoice,
+  ICollectionSettingsReader,
+  ICollectionSettingsWriter,
+  RemoveCollectionException,
+  RemoveExceptionOutcome,
+  SaveCollectionSettings,
+  SaveSettingsOutcome,
+  SettingsField,
+  StaffExceptionRecord,
+  StaffSettingsRecord,
+  WithinSettingsTransaction,
+} from "./collection-settings.repository.js";

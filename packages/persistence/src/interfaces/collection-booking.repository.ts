@@ -51,6 +51,7 @@ export interface ICollectionPlaceRepository {
   readCalendarFacts(
     venueId: string,
     range: { from: DateKey; to: DateKey },
+    now?: Date,
   ): Promise<CollectionCalendarFacts>;
 }
 
