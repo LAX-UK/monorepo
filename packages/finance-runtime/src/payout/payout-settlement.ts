@@ -14,6 +14,7 @@ import {
   DEFAULT_CURRENCY,
   type PayoutSettlementDeps,
   listSettlementEntityIds,
+  resolveEntitySettlementPeriod,
   settlementAmounts,
 } from "./payout-helpers.js";
 import type { CreateSettlementInput, CreateSettlementResult } from "./types.js";
@@ -213,16 +214,20 @@ export async function runBulkSettlement(
 ): Promise<BulkPayoutSettlementResult> {
   const legalEntityIds = await listSettlementEntityIds(deps);
   const periodEnd = opts?.periodEnd ?? new Date();
-  const periodStart = new Date(0);
   const items: BulkPayoutSettlementResult["items"] = [];
   let createdCount = 0;
 
   for (const legalEntityId of legalEntityIds) {
     try {
+      const period = await resolveEntitySettlementPeriod(deps, legalEntityId, periodEnd);
+      if (!period.ok) {
+        items.push({ legalEntityId, outcome: "skipped", reason: period.reason });
+        continue;
+      }
       const result = await createSettlement(deps, actorUserId, {
         legalEntityId,
-        periodStart,
-        periodEnd,
+        periodStart: period.periodStart,
+        periodEnd: period.periodEnd,
       });
       if (result.ok) {
         createdCount += 1;
