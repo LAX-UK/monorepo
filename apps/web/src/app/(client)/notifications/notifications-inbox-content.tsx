@@ -10,22 +10,33 @@ import {
 import { resolveActingContext } from "@/lib/legal-entity/acting-context.server";
 import { parseInboxQuery } from "@/lib/notifications/inbox-query";
 import { type NeedsActionView, needsActionRows } from "@/lib/notifications/needs-action";
-import { personalNeedsActionRows } from "@/lib/notifications/personal-needs-action";
+import { personalNeedsAction } from "@/lib/notifications/personal-needs-action";
 import { loadPurchaseSources } from "@/lib/purchases/purchase-sources.server";
 import { buildPurchasesVm } from "@/lib/purchases/purchases.vm";
 import { organisationStatePolicy } from "@auction/domain";
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
-/** The person's own money tasks; a read that fails is said, never shown as "nothing needs you". */
-async function personalNeedsAction(): Promise<Pick<NeedsActionView, "rows" | "failed">> {
+/**
+ * The person's own Needs action: money first, then everything else the Needs-you reader lists for
+ * them. A read that fails is said, never shown as "nothing needs you".
+ */
+async function loadPersonalNeedsAction(acting: {
+  id: string;
+  displayName: string;
+  role: Parameters<typeof personalNeedsAction>[0]["ctx"]["actor"]["role"];
+}): Promise<Pick<NeedsActionView, "rows" | "failed">> {
   try {
-    const sources = await loadPurchaseSources();
-    if (!sources) return { rows: [], failed: true };
-    return {
-      rows: personalNeedsActionRows(buildPurchasesVm(sources), { now: new Date() }),
-      failed: false,
-    };
+    const [sources, response] = await Promise.all([
+      loadPurchaseSources(),
+      getServerNeedsYou(acting.id),
+    ]);
+    if (!sources || !response) return { rows: [], failed: true };
+    return personalNeedsAction({
+      purchases: buildPurchasesVm(sources),
+      response,
+      ctx: { name: acting.displayName, now: new Date(), actor: { role: acting.role } },
+    });
   } catch {
     return { rows: [], failed: true };
   }
@@ -70,7 +81,7 @@ export async function NotificationsInboxContent({
             name: acting.displayName,
             initials: initials(acting.displayName),
           },
-          ...(await personalNeedsAction()),
+          ...(await loadPersonalNeedsAction(acting)),
         };
   // A paused organisation still gets its notifications; the page says so.
   const paused =

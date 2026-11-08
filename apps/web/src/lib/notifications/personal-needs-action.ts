@@ -1,7 +1,49 @@
+import { type NeedsActionView, needsActionRows } from "@/lib/notifications/needs-action";
 import { type NeedsYouRowView, needsYouDue } from "@/lib/organisation-home/needs-you-view";
 import { payHref } from "@/lib/pay/pay-links";
 import type { PurchaseCardVm, PurchasesVm } from "@/lib/purchases/purchases.vm";
 import { formatDateInline } from "@/lib/ui/format";
+import type { NeedsYouResponse } from "@/lib/workspace/needs-you-read";
+import type { EntityActor } from "@auction/domain";
+
+/**
+ * The tasks whose rows the money rows replace: what is owed is shown with its amount and date
+ * from the purchase cards, so the reader's own "pay" rows would say the same thing twice.
+ */
+const MONEY_TASK_KINDS: ReadonlySet<string> = new Set(["pay", "won_awaiting_payment"]);
+
+/**
+ * A person's own Needs action: the whole task model the organisation list reads (outbid lots,
+ * consignment agreements, changes asked for and messages, identity and source-of-funds checks,
+ * delivery and collection steps), with money first. The money rows come from the purchase cards,
+ * because only they know the amount, the due date, a payment waiting on the bank and a hold.
+ * Nothing the reader lists is dropped except the "pay" rows those cards replace. An outbid lot
+ * shows only while it is open. If either source cannot be read the list says so rather than
+ * showing part of it as everything.
+ */
+export function personalNeedsAction(input: {
+  purchases: Pick<PurchasesVm, "cardsByTab"> & { payNow?: PurchasesVm["payNow"] };
+  response: NeedsYouResponse;
+  ctx: { name: string; now: Date; actor: EntityActor };
+}): Pick<NeedsActionView, "rows" | "failed"> {
+  const { purchases, response, ctx } = input;
+  const money = personalNeedsActionRows(purchases, { now: ctx.now });
+  const open = {
+    ...response,
+    tasks: response.tasks.flatMap((task): NeedsYouResponse["tasks"] => {
+      if (MONEY_TASK_KINDS.has(task.kind)) return [];
+      if (task.kind !== "outbid") return [task];
+      const lots = task.lots.filter((lot) => lot.endsAt.getTime() > ctx.now.getTime());
+      return lots.length > 0 ? [{ ...task, lots }] : [];
+    }),
+  };
+  const others = needsActionRows(open, {
+    organisationName: ctx.name,
+    now: ctx.now,
+    actor: ctx.actor,
+  });
+  return { rows: [...money, ...others.rows], failed: false };
+}
 
 /**
  * A person's own Needs action, driven by money like an organisation's Needs you: amounts to pay

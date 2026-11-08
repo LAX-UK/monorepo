@@ -266,6 +266,17 @@ describe("NotificationsInboxBoard", () => {
         section: "purchases",
         items: 1,
       },
+      {
+        key: "identity",
+        topic: "account",
+        title: "Verify your identity",
+        detail: "We need to check who you are before you can bid.",
+        due: null,
+        raised: null,
+        action: { label: "Verify", href: "/verify-identity" },
+        section: null,
+        items: 1,
+      },
     ];
 
     it("lists the amounts to pay with their due dates and the payments waiting, for the person", () => {
@@ -275,7 +286,11 @@ describe("NotificationsInboxBoard", () => {
         { needsAction: 0, unread: 3 },
       );
       const listed = screen.getAllByRole("listitem").filter((li) => li.dataset.testid);
-      expect(listed).toHaveLength(2);
+      // Money first, then the other tasks the person has: nothing is dropped.
+      expect(listed).toHaveLength(3);
+      expect(
+        within(listed[2] as HTMLElement).getByText("Verify your identity"),
+      ).toBeInTheDocument();
       const first = within(listed[0] as HTMLElement);
       expect(first.getByText("Pay £8,000.00 for “Estuary at Dusk”")).toBeInTheDocument();
       // The date shows once on a phone and once beside the button on wider screens.
@@ -290,7 +305,7 @@ describe("NotificationsInboxBoard", () => {
       ).toBeInTheDocument();
     });
 
-    it("counts the tab by the money tasks", () => {
+    it("counts the tab by the rows it lists, whatever the notification counts say", () => {
       renderBoard(
         parseInboxQuery({}),
         { account, rows, failed: false },
@@ -299,7 +314,7 @@ describe("NotificationsInboxBoard", () => {
       const first = screen
         .getAllByRole("link")
         .find((a) => a.getAttribute("href")?.startsWith("/notifications"));
-      expect(first?.textContent).toBe("Needs action2");
+      expect(first?.textContent).toBe("Needs action3");
     });
 
     it("says nothing needs you when nothing is owed, waiting or on hold", () => {

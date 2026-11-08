@@ -1,9 +1,10 @@
 import type { AccountPurchaseFacts } from "@/lib/data/http/account-buying.types";
 import { owedFor } from "@/lib/purchases/owed-fixtures.test-util";
 import { type PurchaseSources, buildPurchasesVm } from "@/lib/purchases/purchases.vm";
+import type { NeedsYouResponse } from "@/lib/workspace/needs-you-read";
 import type { Lot, PortfolioRow } from "@auction/types";
 import { describe, expect, it } from "vitest";
-import { personalNeedsActionRows } from "./personal-needs-action";
+import { personalNeedsAction, personalNeedsActionRows } from "./personal-needs-action";
 
 const NOW = new Date("2026-11-09T10:00:00Z");
 
@@ -186,5 +187,151 @@ describe("a person's Needs action, driven by money", () => {
     const card = vm.cardsByTab["to-pay"][0];
     const [needs] = personalNeedsActionRows(vm, { now: NOW });
     expect(needs?.title).toBe(`Pay ${card?.amount} for “One”`);
+  });
+});
+
+describe("a person's whole Needs action: money first, then every other task", () => {
+  const ctx = { name: "Ada Lovelace", now: NOW, actor: { role: "owner" as const } };
+  const emptyPurchases = { cardsByTab: { "to-pay": [], "in-progress": [], completed: [] } };
+  const response = (tasks: NeedsYouResponse["tasks"]): NeedsYouResponse => ({
+    kinds: [],
+    tasks,
+    counts: {},
+    truncated: false,
+  });
+  const owedPurchases = () => {
+    const base = [row("one", "One", null, "1150")];
+    return buildPurchasesVm({
+      rows: base,
+      invoiceByLot: {},
+      fulfilmentByLot: {},
+      saleTitleById: {},
+      paymentRoleByLot: {},
+      payerName: null,
+      owedByLot: owedFor({ rows: base, fulfilmentByLot: {}, paymentRoleByLot: {} }),
+    });
+  };
+
+  const OPEN_LOT = { id: "l1", title: "Open lot", endsAt: new Date("2026-11-10T12:00:00Z") };
+  const CLOSED_LOT = { id: "l2", title: "Closed lot", endsAt: new Date("2026-11-08T12:00:00Z") };
+
+  it("keeps every non-money task the reader lists, one row each, after the money rows", () => {
+    const tasks = [
+      {
+        kind: "outbid",
+        lots: [OPEN_LOT],
+        raisedAt: null,
+        link: { page: "lot", id: "l1" },
+      },
+      {
+        kind: "agreement",
+        consignment: { id: "c1", title: "Blue study" },
+        raisedAt: null,
+        link: { page: "consignment", id: "c1" },
+      },
+      {
+        kind: "changes",
+        submission: { id: "s1", title: "Red field" },
+        note: "Please add a photo of the back",
+        raisedAt: null,
+        link: { page: "consignment", id: "s1" },
+      },
+      {
+        kind: "reply",
+        consignment: { id: "c2", title: "Green line" },
+        from: "Cat Alogue",
+        raisedAt: null,
+        link: { page: "consignment_messages", id: "c2" },
+      },
+      { kind: "identity", raisedAt: null, link: { page: "verify_identity" } },
+      { kind: "source_of_funds", raisedAt: null, link: { page: "source_of_funds" } },
+    ] as unknown as NeedsYouResponse["tasks"];
+    const { rows, failed } = personalNeedsAction({
+      purchases: owedPurchases(),
+      response: response(tasks),
+      ctx,
+    });
+    expect(failed).toBe(false);
+    expect(rows.map((r) => r.key)).toEqual([
+      "pay:one",
+      "outbid",
+      "agreement:c1",
+      "changes:s1",
+      "reply:c2",
+      "identity",
+      "source_of_funds",
+    ]);
+  });
+
+  it("names each kind with its own action", () => {
+    const tasks = [
+      { kind: "identity", raisedAt: null, link: { page: "verify_identity" } },
+      { kind: "source_of_funds", raisedAt: null, link: { page: "source_of_funds" } },
+      {
+        kind: "agreement",
+        consignment: { id: "c1", title: "Blue study" },
+        raisedAt: null,
+        link: { page: "consignment", id: "c1" },
+      },
+    ] as unknown as NeedsYouResponse["tasks"];
+    const { rows } = personalNeedsAction({
+      purchases: emptyPurchases,
+      response: response(tasks),
+      ctx,
+    });
+    expect(rows.map((r) => r.action.href)).toEqual([
+      "/verify-identity",
+      "/compliance/source-of-funds",
+      "/selling/consignments/c1#agreement",
+    ]);
+  });
+
+  it("shows an outbid lot only while it is open, and drops the row when none is", () => {
+    const outbid = (lots: (typeof OPEN_LOT)[]) =>
+      [
+        { kind: "outbid", lots, raisedAt: null, link: { page: "bids" } },
+      ] as unknown as NeedsYouResponse["tasks"];
+    const mixed = personalNeedsAction({
+      purchases: emptyPurchases,
+      response: response(outbid([OPEN_LOT, CLOSED_LOT])),
+      ctx,
+    });
+    expect(mixed.rows).toHaveLength(1);
+    expect(mixed.rows[0]?.title).toBe("Outbid on “Open lot”");
+    const closed = personalNeedsAction({
+      purchases: emptyPurchases,
+      response: response(outbid([CLOSED_LOT])),
+      ctx,
+    });
+    expect(closed.rows).toEqual([]);
+  });
+
+  it("does not list the reader's pay rows twice: the money rows carry them", () => {
+    const tasks = [
+      {
+        kind: "pay",
+        purchases: [{ id: "one", title: "One" }],
+        raisedAt: null,
+        link: { page: "purchase", id: "one" },
+      },
+    ] as unknown as NeedsYouResponse["tasks"];
+    const { rows } = personalNeedsAction({
+      purchases: owedPurchases(),
+      response: response(tasks),
+      ctx,
+    });
+    expect(rows.map((r) => r.key)).toEqual(["pay:one"]);
+  });
+
+  it("counts what it lists, so the tab and the rows agree", () => {
+    const tasks = [
+      { kind: "identity", raisedAt: null, link: { page: "verify_identity" } },
+    ] as unknown as NeedsYouResponse["tasks"];
+    const { rows } = personalNeedsAction({
+      purchases: owedPurchases(),
+      response: response(tasks),
+      ctx,
+    });
+    expect(rows).toHaveLength(2);
   });
 });
