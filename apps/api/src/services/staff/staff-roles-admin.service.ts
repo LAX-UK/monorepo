@@ -10,6 +10,7 @@ import {
   type LaxShopStaffRole,
   type StaffRoleAssignmentRefusal,
   type UserStaffRole,
+  mayChangeOwnStaffRoles,
   staffRoleRefusalMessage,
 } from "@auction/types";
 import { type Result, err, ok } from "neverthrow";
@@ -70,6 +71,12 @@ export interface IStaffRoleChanges {
 const SIGN_IN_BATCH = 100;
 
 const notStaff: StaffRolesError = { status: 404, message: "Staff member not found" };
+
+const cannotChangeOwnRole: StaffRolesError = {
+  status: 403,
+  code: "cannot_change_own_role",
+  message: "You cannot change your own staff role",
+};
 
 type Period = {
   id: string;
@@ -139,18 +146,30 @@ export class StaffRolesAdminService {
   }
 
   assign(input: AssignStaffRoleInput): Promise<Result<void, StaffRolesError>> {
-    return this.change(input.userId, () => this.deps.changes.assign(input));
+    return this.change(input, () => this.deps.changes.assign(input));
   }
 
   remove(input: RemoveStaffRoleInput): Promise<Result<void, StaffRolesError>> {
-    return this.change(input.userId, () => this.deps.changes.remove(input));
+    return this.change(input, () => this.deps.changes.remove(input));
+  }
+
+  /** Only an Administrator may change their own roles; the roster still keeps the last one. */
+  private async refusedAsOwnChange(input: {
+    userId: string;
+    actorUserId: string;
+  }): Promise<boolean> {
+    if (input.userId !== input.actorUserId) return false;
+    const held = await this.deps.roles.listActiveRoles(input.actorUserId, this.now());
+    return !mayChangeOwnStaffRoles(held);
   }
 
   private async change(
-    userId: string,
+    input: { userId: string; actorUserId: string },
     run: () => Promise<void>,
   ): Promise<Result<void, StaffRolesError>> {
+    const { userId } = input;
     if (!(await this.isStaff(userId))) return err(notStaff);
+    if (await this.refusedAsOwnChange(input)) return err(cannotChangeOwnRole);
     try {
       await run();
       return ok(undefined);

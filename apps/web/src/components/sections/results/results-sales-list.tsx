@@ -7,8 +7,8 @@ export function ResultsSalesList({ rows }: { rows: readonly ResultsRowVM[] }) {
     <section aria-label="Sales with results" className="flex flex-col gap-4">
       <p className="text-lax-14 text-lax-muted">{RESULTS_SORT_LABEL}</p>
       <ul className="flex flex-col gap-4">
-        {rows.map((row) => (
-          <ResultsSaleRow key={row.id} row={row} />
+        {rows.map((row, index) => (
+          <ResultsSaleRow key={row.id} row={row} priority={index === 0} />
         ))}
       </ul>
     </section>

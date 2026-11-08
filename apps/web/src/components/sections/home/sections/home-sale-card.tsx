@@ -1,6 +1,8 @@
 import type { HomeCardImage, HomeComingUpLayout, HomeComingUpRow } from "@/lib/home-sections/types";
 import { FOCUS_RING } from "@/lib/marketing/chrome";
-import { CoverTimeLine } from "@auction/marketing-ui";
+import { bidCardSrcSet } from "@/lib/media/bid-image-src-set";
+import { reportImageFallback } from "@/lib/observability/report-image-fallback";
+import { CoverTimeLine, ResponsiveImg } from "@auction/marketing-ui";
 import { cn } from "@auction/ui";
 import { ButtonLink } from "@auction/ui/lax";
 import Link from "next/link";
@@ -13,10 +15,26 @@ type Props = {
   signedIn: boolean;
 };
 
-function Picture({ image, className }: { image: HomeCardImage; className: string }) {
+/**
+ * The card's picture is drawn across the card: nearly half of a lone feature card from 768px, a
+ * third or a half of a row of cards from 640px, the width of the page below that.
+ */
+const PICTURE_SIZES: Record<HomeComingUpLayout, string> = {
+  feature: "(min-width: 768px) 46vw, 100vw",
+  row: "(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw",
+};
+
+function Picture({
+  image,
+  className,
+  variant,
+}: { image: HomeCardImage; className: string; variant: HomeComingUpLayout }) {
   return (
-    <img
+    <ResponsiveImg
       src={image.src}
+      srcSet={bidCardSrcSet(image.src)}
+      onFallback={reportImageFallback}
+      sizes={PICTURE_SIZES[variant]}
       alt=""
       loading="lazy"
       decoding="async"
@@ -50,7 +68,7 @@ export function HomeSaleCard({ row, variant, signedIn }: Props) {
             feature ? "aspect-[3/2] md:aspect-auto md:w-[46%] md:min-h-[320px]" : "aspect-[3/2]",
           )}
         >
-          <Picture image={row.image} className="" />
+          <Picture image={row.image} className="" variant={variant} />
         </div>
       ) : null}
       <div

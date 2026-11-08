@@ -7,6 +7,8 @@ import type { createListPublicArtistsHandler } from "./application/handlers/list
 import type { createListPublicArtworksHandler } from "./application/handlers/list-public-artworks.handler.js";
 import type { createListPublicCategoriesHandler } from "./application/handlers/list-public-categories.handler.js";
 
+import type { DeliveryRegionsReader } from "./application/delivery-regions/delivery-regions.ports.js";
+
 export type CatalogueRoutesDeps = {
   listPublicArtworks: ReturnType<typeof createListPublicArtworksHandler>;
   getPublicArtwork: ReturnType<typeof createGetPublicArtworkHandler>;
@@ -16,4 +18,6 @@ export type CatalogueRoutesDeps = {
   getPublicCategory: ReturnType<typeof createGetPublicCategoryHandler>;
   listPublicArtists: ReturnType<typeof createListPublicArtistsHandler>;
   getPublicArtist: ReturnType<typeof createGetPublicArtistHandler>;
+  /** Where the Shop delivers, for the delivery page and, later, checkout. */
+  deliveryRegions: DeliveryRegionsReader;
 };

@@ -7,7 +7,11 @@ const FIGURE_LABEL = "text-lax-12 text-lax-muted";
 const FIGURE_VALUE = "text-lax-16 font-semibold text-lax-fg tabular-nums";
 
 /** The sale's top works side by side; a hatched placeholder holds the place when there are none. */
-function Covers({ covers, title }: { covers: readonly ResultsCover[]; title: string }) {
+function Covers({
+  covers,
+  title,
+  priority,
+}: { covers: readonly ResultsCover[]; title: string; priority: boolean }) {
   const slots: (ResultsCover | null)[] = [covers[0] ?? null, covers[1] ?? covers[0] ?? null];
   return (
     <div aria-hidden className="flex w-full max-w-60 gap-2 md:w-60">
@@ -24,6 +28,7 @@ function Covers({ covers, title }: { covers: readonly ResultsCover[]; title: str
             className="absolute inset-0 size-full"
             imgClassName="size-full object-cover"
             sizes="120px"
+            priority={priority && index === 0}
           />
         </div>
       ))}
@@ -59,12 +64,16 @@ function Figures({ figures }: { figures: ResultsFigures }) {
   );
 }
 
-export function ResultsSaleRow({ row }: { row: ResultsRowVM }) {
+/** `priority` is for the first row of the page: its first cover is what the page paints largest. */
+export function ResultsSaleRow({
+  row,
+  priority = false,
+}: { row: ResultsRowVM; priority?: boolean }) {
   const finalising = row.figures.state === "finalising";
   return (
     <li className="min-w-0 rounded-lax-card border border-lax-line bg-lax-surface p-4 md:p-5">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:gap-8">
-        <Covers covers={row.covers} title={row.title} />
+        <Covers covers={row.covers} title={row.title} priority={priority} />
         <div className="flex min-w-0 flex-1 flex-col gap-3">
           <div className="flex min-w-0 flex-col gap-1.5">
             <div className="flex min-w-0 flex-wrap items-center gap-2">

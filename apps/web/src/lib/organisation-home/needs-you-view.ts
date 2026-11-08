@@ -80,6 +80,9 @@ function due(at: Date, text: string, now: Date): NeedsYouDue {
   };
 }
 
+/** The same date badge, for lists that are not built from the reader's tasks. */
+export const needsYouDue = due;
+
 /** The Team tab each team task is done on. */
 const TEAM_TAB: Record<Extract<NeedsYouLink, { page: "team" }>["view"], TeamTab> = {
   members: "members",

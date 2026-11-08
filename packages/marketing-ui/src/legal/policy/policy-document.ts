@@ -54,6 +54,16 @@ export type LegalPolicyRelease = {
   lastUpdated: string;
   /** How the date is introduced; "Last updated" unless the policy says otherwise. */
   dateLabel?: string;
+  /** Dated changes since version 1.0, newest first: the change log the terms promise. */
+  changeLog?: readonly LegalPolicyChange[];
+};
+
+/** One dated change to a policy. A wording-only change does not ask anyone to accept again. */
+export type LegalPolicyChange = {
+  version: string;
+  /** ISO date (YYYY-MM-DD). */
+  date: string;
+  summary: string;
 };
 
 export type LegalPolicyVisibility = "published" | "draft-preview" | "hidden";

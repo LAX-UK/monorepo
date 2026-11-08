@@ -38,6 +38,22 @@ describe("HomeSaleCard", () => {
     expect(screen.getByText(/in 4 days/)).toBeTruthy();
   });
 
+  it("names resized files for the cover, sized to the card, instead of the uploaded original", () => {
+    const remote = {
+      ...row,
+      image: { ...row.image, src: "https://cdn.example/cover-2400.jpg" },
+    } as HomeComingUpRow;
+    const feature = render(<HomeSaleCard row={remote} variant="feature" signedIn={false} />);
+    const img = feature.container.querySelector("img");
+    expect(img?.getAttribute("srcset")).toContain(
+      "/_next/image?url=https%3A%2F%2Fcdn.example%2Fcover-2400.jpg&w=640",
+    );
+    expect(img?.getAttribute("sizes")).toBe("(min-width: 768px) 46vw, 100vw");
+    feature.unmount();
+    const card = render(<HomeSaleCard row={remote} variant="row" signedIn={false} />);
+    expect(card.container.querySelector("img")?.getAttribute("sizes")).toContain("33vw");
+  });
+
   it("has no picture and stays compact when the sale has no cover", () => {
     const { container } = render(
       <HomeSaleCard row={{ ...row, image: null }} variant="feature" signedIn />,

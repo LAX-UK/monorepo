@@ -24,6 +24,19 @@ describe("Art structured data", () => {
     });
   });
 
+  it("publishes the gallery's opening hours, phone and contact address on the gallery entry", () => {
+    const gallery = artSiteJsonLd(SITE)[1];
+    expect(gallery).toMatchObject({
+      email: "info@thelax.art",
+      openingHoursSpecification: {
+        "@type": "OpeningHoursSpecification",
+        dayOfWeek: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
+        opens: "10:00",
+        closes: "19:00",
+      },
+    });
+  });
+
   it("links London Art Exchange's own social profiles and never the auction company's", () => {
     const nodes = artSiteJsonLd(SITE);
     const withProfiles = nodes.filter((node) => "sameAs" in node);
@@ -32,7 +45,8 @@ describe("Art structured data", () => {
       expect(node.sameAs).toEqual([
         "https://www.youtube.com/@LondonArtExchange",
         "https://www.instagram.com/thelondonartexchange/",
-        "https://www.tiktok.com/@londonartexchange",
+        "https://x.com/TheLAX_art",
+        "https://www.tiktok.com/@thelax_art",
       ]);
     }
     for (const node of nodes) {
