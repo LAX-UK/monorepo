@@ -1,6 +1,6 @@
+import type { ConnectTransferInitiationService } from "@auction/finance-runtime";
 import { defineCompileTimeContract } from "../../testing/compile-time-contract.js";
 import type { IConnectTransferInitiationService } from "../interfaces/stripe-connect.js";
-import type { ConnectTransferInitiationService } from "./connect/connect-transfer-initiation.service.js";
 
 /**
  * Compile-time LSP contract: initiation service must remain substitutable for its interface.

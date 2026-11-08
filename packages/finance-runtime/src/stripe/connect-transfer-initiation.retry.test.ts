@@ -11,6 +11,8 @@ const { ConnectTransferInitiationService } = await import(
   "./connect-transfer-initiation.service.js"
 );
 
+const silentLog = { warn: () => {}, error: () => {}, info: () => {} };
+
 const FAILED_AT = new Date("2026-10-30T10:00:00.000Z");
 
 function setup(status: string) {
@@ -28,7 +30,7 @@ function setup(status: string) {
     listLines: vi.fn().mockResolvedValue([]),
   };
   const service = new ConnectTransferInitiationService(
-    { LOG_LEVEL: "silent", NODE_ENV: "test" } as never,
+    silentLog as never,
     {
       findLegalEntityById: vi.fn().mockResolvedValue({ stripeConnectAccountId: "acct_1" }),
       findStripeChargeIdByPaymentId: vi.fn(),

@@ -1,4 +1,9 @@
 import type { Database } from "@auction/db";
+import type {
+  InitiateTransferOptions,
+  InitiateTransferResult,
+  TransferAdoptionVerification,
+} from "@auction/finance-runtime";
 import type { LegalEntity, LegalEntityMemberRole } from "@auction/types";
 import type Stripe from "stripe";
 
@@ -38,25 +43,12 @@ export type AccountLink = {
   expiresAt: Date;
 };
 
-/** result of initiating a Stripe Connect transfer for a payout. */
-export type InitiateTransferResult =
-  | { ok: true; stripeTransferId: string }
-  | {
-      ok: false;
-      reason:
-        | "stripe_not_configured"
-        | "internal_misconfiguration"
-        | "payout_not_found"
-        | "payout_already_processed"
-        | "entity_not_found"
-        | "no_connect_account"
-        | "connect_not_ready"
-        | "negative_net_amount"
-        | "transfer_blocked"
-        | "stripe_error";
-      stripeErrorCode?: string;
-      stripeErrorMessage?: string;
-    };
+/** Transfer initiation types: the one definition lives in `@auction/finance-runtime`. */
+export type {
+  InitiateTransferOptions,
+  InitiateTransferResult,
+  TransferAdoptionVerification,
+} from "@auction/finance-runtime";
 
 export class StripeConnectNotConfiguredError extends Error {
   constructor() {
@@ -102,36 +94,6 @@ export interface IConnectSessionProvider {
     surface: ConnectSessionSurface,
   ): Promise<{ clientSecret: string }>;
 }
-
-/** How a transfer attempt treats the payout it starts from. */
-export type InitiateTransferOptions = {
-  keepScheduledOnTransferFailure?: boolean;
-  /**
-   * Start from a payout whose earlier transfer failed instead of a scheduled one. The payout stays
-   * failed until the new transfer is accepted, so the settlement cron never competes with it.
-   */
-  retryFailed?: boolean;
-};
-
-/** Whether a Stripe transfer staff name can stand as a payout's transfer. */
-export type TransferAdoptionVerification =
-  | { ok: true; stripeTransferId: string }
-  | {
-      ok: false;
-      reason:
-        | "stripe_not_configured"
-        | "internal_misconfiguration"
-        | "payout_not_found"
-        | "no_connect_account"
-        | "transfer_not_found"
-        | "stripe_error"
-        | "transfer_belongs_to_other_payout"
-        | "transfer_not_for_this_payout"
-        | "transfer_reversed"
-        | "destination_mismatch"
-        | "currency_mismatch"
-        | "amount_mismatch";
-    };
 
 /** Payout transfer initiation + transfer webhooks. */
 export interface IConnectTransferInitiator {
