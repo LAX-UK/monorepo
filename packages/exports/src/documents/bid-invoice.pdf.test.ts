@@ -65,6 +65,14 @@ describe("bidInvoiceView", () => {
     expect(view.facts).toContainEqual(["Was due", "Fri 13 Nov 2026"]);
   });
 
+  it("reads as refunded once the payment was given back, never as awaiting payment", () => {
+    const view = bidInvoiceView({ ...base, status: "refunded" });
+    expect(view.total).toEqual(["Total refunded", "£2,375.00"]);
+    expect(view.facts).toContainEqual(["Status", "Refunded"]);
+    expect(view.facts).toContainEqual(["Was due", "Fri 13 Nov 2026"]);
+    expect(JSON.stringify(view)).not.toContain("Awaiting payment");
+  });
+
   it("has no number in the title until one is assigned, and no lot line without a lot", () => {
     const view = bidInvoiceView({
       ...base,
@@ -117,6 +125,22 @@ describe("renderBidInvoicePdf", () => {
       status: "paid",
       lot: { title: "A very long title ".repeat(12), lotNumber: 1, saleTitle: null },
     });
+    expect(pdf.subarray(0, 5).toString()).toBe("%PDF-");
+  });
+
+  it("embeds a Unicode font so names in Greek and Cyrillic print", async () => {
+    const pdf = await renderBidInvoicePdf({
+      ...base,
+      billedTo: "Галерея «Северный берег»",
+      lot: { title: "Παράκτιος συμβολισμός", lotNumber: 3, saleTitle: "Škoda Ærø Łódź" },
+    });
+    const text = pdf.toString("latin1");
+    expect(text).toContain("NotoSans");
+    expect(text).not.toContain("Helvetica");
+  });
+
+  it("renders a refunded invoice", async () => {
+    const pdf = await renderBidInvoicePdf({ ...base, status: "refunded" });
     expect(pdf.subarray(0, 5).toString()).toBe("%PDF-");
   });
 

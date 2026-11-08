@@ -177,6 +177,7 @@ function mount(
             ({ id: BUYING_ACCOUNT, displayName: "Northbank Gallery", legalName: null }) as never,
         },
         render: renderBidInvoicePdf,
+        metrics: { record: () => undefined },
       }),
       payTransfer: new PayTransferService({
         candidates,
@@ -535,6 +536,7 @@ describe("organisation buying routes", () => {
       expect(res.status).toBe(200);
       expect(res.headers.get("content-type")).toBe("application/pdf");
       expect(res.headers.get("cache-control")).toBe("no-store");
+      expect(res.headers.get("x-content-type-options")).toBe("nosniff");
       expect(res.headers.get("content-disposition")).toMatch(
         /^attachment; filename="invoice-[A-Za-z0-9-]+\.pdf"$/,
       );

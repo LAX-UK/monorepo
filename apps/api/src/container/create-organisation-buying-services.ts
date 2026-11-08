@@ -175,6 +175,7 @@ export function createOrganisationBuyingServices(input: CreateOrganisationBuying
         invoices: input.payments.invoices,
         accounts: input.accounts,
         render: renderBidInvoicePdf,
+        metrics: { record: recordMoneyPathEvent },
       }),
       payTransfer: new PayTransferService({
         candidates,

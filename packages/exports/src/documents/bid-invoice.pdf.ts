@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { finished } from "node:stream/promises";
 import { legalEntityFor, productCopyrightLine } from "@auction/branding";
 import PDFDocument from "pdfkit";
@@ -21,8 +22,11 @@ export type BidInvoiceDocument = {
   lot: { title: string; lotNumber: number | null; saleTitle: string | null };
   lines: readonly BidInvoiceDocumentLine[];
   totalPence: number;
-  /** `paid` once the payment has been received; the invoice is otherwise awaiting payment. */
-  status: "awaiting_payment" | "paid";
+  /**
+   * `paid` once the payment has been received and `refunded` once it was given back; the invoice
+   * is otherwise awaiting payment.
+   */
+  status: "awaiting_payment" | "paid" | "refunded";
 };
 
 /** The invoice's lines do not add up to its total: it is not issued rather than shown wrongly. */
@@ -31,6 +35,26 @@ export class InvoiceTotalMismatchError extends Error {
     super(`Invoice lines add up to ${sumPence} pence, not the invoice total of ${totalPence}`);
     this.name = "InvoiceTotalMismatchError";
   }
+}
+
+/**
+ * Noto Sans (SIL Open Font License) is embedded so names print in Latin, Latin Extended, Greek
+ * and Cyrillic scripts as well as the standard PDF fonts would; the PDF base fonts cover only
+ * Western European text. Scripts outside those (for example Arabic or CJK) are not in the font.
+ */
+const FONT_FILES = {
+  regular: "NotoSans_400Regular.ttf",
+  bold: "NotoSans_700Bold.ttf",
+} as const;
+
+let fontBuffers: { regular: Buffer; bold: Buffer } | null = null;
+
+function invoiceFonts(): { regular: Buffer; bold: Buffer } {
+  fontBuffers ??= {
+    regular: readFileSync(new URL(`../../fonts/${FONT_FILES.regular}`, import.meta.url)),
+    bold: readFileSync(new URL(`../../fonts/${FONT_FILES.bold}`, import.meta.url)),
+  };
+  return fontBuffers;
 }
 
 const GBP = new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP" });
@@ -51,6 +75,18 @@ function dayLabel(date: Date): string {
 export function invoiceMoney(pence: number): string {
   return GBP.format(pence / 100);
 }
+
+const STATUS_WORDS: Record<BidInvoiceDocument["status"], string> = {
+  awaiting_payment: "Awaiting payment",
+  paid: "Paid",
+  refunded: "Refunded",
+};
+
+const TOTAL_WORDS: Record<BidInvoiceDocument["status"], string> = {
+  awaiting_payment: "Total to pay",
+  paid: "Total paid",
+  refunded: "Total refunded",
+};
 
 /** What the document says, in order, as plain text rows: the part under test. */
 export type BidInvoiceView = {
@@ -78,7 +114,7 @@ export function bidInvoiceView(input: BidInvoiceDocument): BidInvoiceView {
   ]
     .filter((part): part is string => Boolean(part))
     .join(" · ");
-  const paid = input.status === "paid";
+  const settled = input.status !== "awaiting_payment";
   return {
     issuer: {
       name: issuer.name,
@@ -94,11 +130,11 @@ export function bidInvoiceView(input: BidInvoiceDocument): BidInvoiceView {
       ["Work", input.lot.title],
       ...(lotRef ? ([["Lot", lotRef]] as [string, string][]) : []),
       ["Raised", dayLabel(input.raisedAt)],
-      [paid ? "Was due" : "Due by", dayLabel(input.dueAt)],
-      ["Status", paid ? "Paid" : "Awaiting payment"],
+      [settled ? "Was due" : "Due by", dayLabel(input.dueAt)],
+      ["Status", STATUS_WORDS[input.status]],
     ],
     lines: input.lines.map((line) => [line.label, invoiceMoney(line.amountPence)]),
-    total: [paid ? "Total paid" : "Total to pay", invoiceMoney(input.totalPence)],
+    total: [TOTAL_WORDS[input.status], invoiceMoney(input.totalPence)],
     footer: [`Invoice from ${issuer.name}, ${issuer.registeredAddress.inline}`],
   };
 }
@@ -116,27 +152,30 @@ export async function renderBidInvoicePdf(input: BidInvoiceDocument): Promise<Bu
   });
   const chunks: Buffer[] = [];
   doc.on("data", (c: Buffer) => chunks.push(c));
+  const fonts = invoiceFonts();
+  doc.registerFont("Body", fonts.regular);
+  doc.registerFont("Body-Bold", fonts.bold);
 
-  doc.font("Helvetica-Bold").fontSize(18).text("LAX Bid");
-  doc.font("Helvetica").fontSize(9).fillColor("#555555");
+  doc.font("Body-Bold").fontSize(18).text("LAX Bid");
+  doc.font("Body").fontSize(9).fillColor("#555555");
   doc.text(`${view.issuer.name}, ${view.issuer.address}`);
   if (view.issuer.registration.length > 0) doc.text(view.issuer.registration.join(" · "));
   doc.moveDown(1.2);
-  doc.font("Helvetica-Bold").fontSize(14).fillColor("#111111").text(view.title);
+  doc.font("Body-Bold").fontSize(14).fillColor("#111111").text(view.title);
   doc.moveDown(0.8);
 
   doc.fontSize(10);
   for (const [label, value] of view.facts) {
     const y = doc.y;
-    doc.font("Helvetica").fillColor("#555555").text(label, 50, y, { width: 130 });
-    doc.font("Helvetica").fillColor("#111111").text(value, 190, y, { width: 355 });
+    doc.font("Body").fillColor("#555555").text(label, 50, y, { width: 130 });
+    doc.font("Body").fillColor("#111111").text(value, 190, y, { width: 355 });
     doc.moveDown(0.4);
   }
 
   doc.moveDown(0.8);
-  doc.font("Helvetica-Bold").fontSize(11).fillColor("#111111").text("Charges", 50);
+  doc.font("Body-Bold").fontSize(11).fillColor("#111111").text("Charges", 50);
   doc.moveDown(0.3);
-  doc.font("Helvetica").fontSize(10);
+  doc.font("Body").fontSize(10);
   for (const [label, amount] of view.lines) {
     const y = doc.y;
     doc.text(label, 50, y, { width: 360 });
@@ -147,11 +186,11 @@ export async function renderBidInvoicePdf(input: BidInvoiceDocument): Promise<Bu
   doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor("#cccccc").stroke();
   doc.moveDown(0.4);
   const y = doc.y;
-  doc.font("Helvetica-Bold").text(view.total[0], 50, y, { width: 360 });
+  doc.font("Body-Bold").text(view.total[0], 50, y, { width: 360 });
   doc.text(view.total[1], 420, y, { width: 125, align: "right" });
 
   doc.moveDown(3);
-  doc.font("Helvetica").fontSize(8).fillColor("#555555");
+  doc.font("Body").fontSize(8).fillColor("#555555");
   for (const line of view.footer) doc.text(line, 50);
   doc.text(productCopyrightLine("bid"));
   doc.end();

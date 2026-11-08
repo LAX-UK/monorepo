@@ -48,7 +48,9 @@ export type OrganisationBuyingErrorCode =
   | "onboarding_required"
   | "pay_plan_changed"
   /** The invoice of this lot cannot be shown: none is raised, it was voided, or it is not the member's to see. */
-  | "invoice_not_ready";
+  | "invoice_not_ready"
+  /** The stored invoice's lines do not add up to its total, so it is not shown; finance is told. */
+  | "invoice_total_mismatch";
 
 export type OrganisationBuyingError = {
   code: OrganisationBuyingErrorCode;

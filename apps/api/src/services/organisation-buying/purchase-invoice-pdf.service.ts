@@ -1,5 +1,5 @@
 import { accountPurchaseScope } from "@auction/domain";
-import type { BidInvoiceDocument } from "@auction/exports/documents";
+import { type BidInvoiceDocument, InvoiceTotalMismatchError } from "@auction/exports/documents";
 import type { IBidInvoiceReader, ILegalEntityRepository } from "@auction/persistence/interfaces";
 import { err, ok } from "neverthrow";
 import type {
@@ -17,7 +17,12 @@ export type PurchaseInvoicePdfDeps = {
   accounts: Pick<ILegalEntityRepository, "findById">;
   /** Renders the document; it refuses lines that do not add up to the invoice total. */
   render: (document: BidInvoiceDocument) => Promise<Buffer>;
+  /** Tells finance when a stored invoice cannot be shown (an alert, not a page error). */
+  metrics: { record(event: string): void };
 };
+
+/** The money-path event finance's alert watches (see the monitoring runbook). */
+export const INVOICE_PDF_TOTAL_MISMATCH_EVENT = "invoice_pdf_total_mismatch";
 
 /**
  * The invoice of a won lot as a PDF, for the member who pays it. The figures are the stored
@@ -45,22 +50,37 @@ export class PurchaseInvoicePdfService implements IPurchaseInvoicePdfService {
     const account = await this.deps.accounts.findById(actor.legalEntityId);
     if (!account) return err(buyingError("invoice_not_ready"));
 
-    const pdf = await this.deps.render({
-      number: invoice.number,
-      raisedAt: invoice.raisedAt,
-      dueAt: invoice.dueAt,
-      billedTo: account.legalName?.trim() || account.displayName,
-      lot: {
-        title: entry.row.lotTitle,
-        lotNumber: entry.row.lotNumber,
-        saleTitle: entry.row.saleTitle,
-      },
-      lines: invoice.lines,
-      totalPence: invoice.totalPence,
-      status: entry.row.payment?.status === "captured" ? "paid" : "awaiting_payment",
-    });
-    return ok({ pdf, filename: invoiceFilename(invoice.number, lotId) });
+    const status = entry.row.payment?.status;
+    try {
+      const pdf = await this.deps.render({
+        number: invoice.number,
+        raisedAt: invoice.raisedAt,
+        dueAt: invoice.dueAt,
+        billedTo: account.legalName?.trim() || account.displayName,
+        lot: {
+          title: entry.row.lotTitle,
+          lotNumber: entry.row.lotNumber,
+          saleTitle: entry.row.saleTitle,
+        },
+        lines: invoice.lines,
+        totalPence: invoice.totalPence,
+        status: documentStatusOf(status),
+      });
+      return ok({ pdf, filename: invoiceFilename(invoice.number, lotId) });
+    } catch (error) {
+      if (!(error instanceof InvoiceTotalMismatchError)) throw error;
+      // Never shown wrongly: the member is told it is being looked at, and finance is alerted.
+      this.deps.metrics.record(INVOICE_PDF_TOTAL_MISMATCH_EVENT);
+      return err(buyingError("invoice_total_mismatch"));
+    }
   }
+}
+
+/** How the document describes the payment: a refund is never shown as awaiting payment. */
+function documentStatusOf(status: string | undefined): BidInvoiceDocument["status"] {
+  if (status === "captured") return "paid";
+  if (status === "refunded") return "refunded";
+  return "awaiting_payment";
 }
 
 /** A name that is safe in a header: letters, digits and dashes only. */
