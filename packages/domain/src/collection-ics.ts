@@ -22,7 +22,8 @@ export type CollectionIcsParty = {
  *   (RFC 5546) to update or remove the entry, so both are required. The organizer is the
  *   configured sender; the attendee is the recipient of that email, whether the buyer or the
  *   collector, each with their own file.
- * - PUBLISH is the page's "Add to calendar" download. It names nobody.
+ * - PUBLISH is the page's "Add to calendar" download. It has no attendee; the organizer is
+ *   included when given (RFC 5546).
  */
 type CollectionIcsParties =
   | {
@@ -30,7 +31,7 @@ type CollectionIcsParties =
       organizer: CollectionIcsParty;
       attendee: CollectionIcsParty;
     }
-  | { method: "PUBLISH"; organizer?: undefined; attendee?: undefined };
+  | { method: "PUBLISH"; organizer?: CollectionIcsParty | undefined; attendee?: undefined };
 
 export type CollectionIcsInput = CollectionIcsParties & CollectionIcsEvent;
 
@@ -55,11 +56,26 @@ export type CollectionIcsEvent = {
 
 const ICS_EMAIL = /^[^\s@,;:"<>]+@[^\s@,;:"<>]+\.[^\s@,;:"<>]+$/;
 
+/** Control characters other than tab: line breaks, NUL, escape, DEL and the rest. */
+function isControlCharacter(code: number): boolean {
+  return (code >= 0x00 && code <= 0x08) || (code >= 0x0a && code <= 0x1f) || code === 0x7f;
+}
+
+/** A name safe inside a quoted parameter: no control characters or double quotes. */
+function plainParameterText(value: string): string {
+  let text = "";
+  for (const char of value) {
+    const code = char.codePointAt(0) ?? 0;
+    text += isControlCharacter(code) || char === '"' ? " " : char;
+  }
+  return text.trim();
+}
+
 function partyLine(property: "ORGANIZER" | "ATTENDEE", party: CollectionIcsParty): string {
   if (!ICS_EMAIL.test(party.email)) {
     throw new RangeError(`Not an email address for ${property}: ${party.email}`);
   }
-  const name = party.name?.replace(/[\r\n"]+/g, " ").trim();
+  const name = party.name ? plainParameterText(party.name) : undefined;
   const common = name ? `;CN="${name}"` : "";
   const attendeeParams =
     property === "ATTENDEE"
@@ -210,9 +226,8 @@ export function buildCollectionIcs(input: CollectionIcsInput): string {
     `SUMMARY:${escapeIcsText(input.summary)}`,
     `LOCATION:${escapeIcsText(input.location)}`,
     `DESCRIPTION:${escapeIcsText(input.description.join("\n"))}`,
-    ...(input.method === "PUBLISH"
-      ? []
-      : [partyLine("ORGANIZER", input.organizer), partyLine("ATTENDEE", input.attendee)]),
+    ...(input.organizer ? [partyLine("ORGANIZER", input.organizer)] : []),
+    ...(input.attendee ? [partyLine("ATTENDEE", input.attendee)] : []),
     `STATUS:${cancelled ? "CANCELLED" : "CONFIRMED"}`,
     "TRANSP:OPAQUE",
   ];

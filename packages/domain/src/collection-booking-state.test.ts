@@ -129,7 +129,7 @@ describe("staff outcomes", () => {
       ok: true,
       status: "collected",
       calendarUpdate: false,
-      auditEvent: "collection.handed_over",
+      auditEvent: "collection.booking.handed_over",
     });
   });
 
@@ -138,7 +138,7 @@ describe("staff outcomes", () => {
       ok: true,
       status: "partly_collected",
       calendarUpdate: false,
-      auditEvent: "collection.handed_over",
+      auditEvent: "collection.booking.handed_over",
     });
   });
 
@@ -155,7 +155,7 @@ describe("staff outcomes", () => {
       ok: true,
       status: "not_collected",
       calendarUpdate: false,
-      auditEvent: "collection.not_collected",
+      auditEvent: "collection.booking.not_collected",
     });
     expect(staff("mark_not_collected", "2026-11-11T09:00:00Z").ok).toBe(true);
   });
@@ -176,7 +176,7 @@ describe("undoing a hand-over", () => {
         ok: true,
         status: "booked",
         calendarUpdate: false,
-        auditEvent: "collection.hand_over_undone",
+        auditEvent: "collection.booking.hand_over_undone",
       });
     },
   );

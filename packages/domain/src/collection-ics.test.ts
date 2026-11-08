@@ -123,7 +123,24 @@ describe("organizer and attendee", () => {
 
   it("keeps odd characters in a name from breaking the line", () => {
     const l = lines(ics({ attendee: { email: "a@example.com", name: 'Sam "SJ"\nOkoro, Jr' } }));
-    expect(l.find((x) => x.startsWith("ATTENDEE"))).toContain('CN="Sam  SJ Okoro, Jr"');
+    expect(l.find((x) => x.startsWith("ATTENDEE"))).toContain('CN="Sam  SJ  Okoro, Jr"');
+  });
+
+  it("strips every control character from a name, keeping tab and ordinary text", () => {
+    const controls = Array.from({ length: 0x20 }, (_, i) => String.fromCharCode(i)).join("");
+    const name = `A${controls}\u007fB\tC`;
+    const line = lines(ics({ attendee: { email: "a@example.com", name } })).find((x) =>
+      x.startsWith("ATTENDEE"),
+    ) as string;
+    const cn = /CN="([^"]*)"/.exec(line)?.[1] ?? "";
+    // Only the letters, the two tabs and spaces remain.
+    expect(cn.replace(/[ ]/g, "")).toBe("A\tB\tC");
+    for (const char of cn) {
+      const code = char.charCodeAt(0);
+      expect(code === 9 || code >= 0x20).toBe(true);
+      expect(code).not.toBe(0x7f);
+    }
+    expect(line.split("\r\n")).toHaveLength(1);
   });
 
   it("refuses an address that is not an email", () => {
@@ -141,6 +158,24 @@ describe("the add-to-calendar download (PUBLISH)", () => {
     expect(l()).toContain("METHOD:PUBLISH");
     expect(l().some((x) => x.startsWith("ORGANIZER") || x.startsWith("ATTENDEE"))).toBe(false);
     expect(publish()).not.toContain("mailto:");
+  });
+
+  it("includes the organizer when given, and still no attendee", () => {
+    const { organizer } = base;
+    const { organizer: _o, attendee: _a, ...rest } = base;
+    const withOrganizer = lines(buildCollectionIcs({ ...rest, organizer, method: "PUBLISH" }));
+    expect(withOrganizer).toContain(
+      'ORGANIZER;CN="LAX collections":mailto:collections@lax.example',
+    );
+    expect(withOrganizer.some((x) => x.startsWith("ATTENDEE"))).toBe(false);
+    expect(withOrganizer).toContain("METHOD:PUBLISH");
+  });
+
+  it("refuses an organizer that is not an email", () => {
+    const { organizer: _o, attendee: _a, ...rest } = base;
+    expect(() =>
+      buildCollectionIcs({ ...rest, organizer: { email: "nope" }, method: "PUBLISH" }),
+    ).toThrow(RangeError);
   });
 
   it("is the same entry as the email: same UID, sequence, times and details", () => {

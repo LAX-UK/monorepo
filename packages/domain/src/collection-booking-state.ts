@@ -44,13 +44,18 @@ export type TransitionContext = {
   calendar: CollectionCalendar;
 };
 
-/** The domain event to record for the Audit log when a transition is applied. */
+/**
+ * The domain events of a booking, one family, for the Audit log. Creating a booking is not a
+ * transition, so `created` is recorded by whoever makes the booking; every transition names its
+ * own event in its result.
+ */
 export type CollectionAuditEvent =
+  | "collection.booking.created"
   | "collection.booking.changed"
   | "collection.booking.cancelled"
-  | "collection.handed_over"
-  | "collection.hand_over_undone"
-  | "collection.not_collected";
+  | "collection.booking.handed_over"
+  | "collection.booking.hand_over_undone"
+  | "collection.booking.not_collected";
 
 export type TransitionResult =
   | {
@@ -115,21 +120,21 @@ const TRANSITIONS: Record<CollectionBookingAction, TransitionRule> = {
     actors: ["staff"],
     to: "collected",
     calendarUpdate: false,
-    auditEvent: "collection.handed_over",
+    auditEvent: "collection.booking.handed_over",
   },
   hand_over_some: {
     from: ["booked"],
     actors: ["staff"],
     to: "partly_collected",
     calendarUpdate: false,
-    auditEvent: "collection.handed_over",
+    auditEvent: "collection.booking.handed_over",
   },
   undo_hand_over: {
     from: ["collected", "partly_collected"],
     actors: ["staff"],
     to: "booked",
     calendarUpdate: false,
-    auditEvent: "collection.hand_over_undone",
+    auditEvent: "collection.booking.hand_over_undone",
     guard: insideUndoWindow,
   },
   mark_not_collected: {
@@ -137,7 +142,7 @@ const TRANSITIONS: Record<CollectionBookingAction, TransitionRule> = {
     actors: ["staff"],
     to: "not_collected",
     calendarUpdate: false,
-    auditEvent: "collection.not_collected",
+    auditEvent: "collection.booking.not_collected",
     guard: (context) => (context.now < context.slotStart ? "too_early" : null),
   },
 };
