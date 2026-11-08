@@ -1,18 +1,16 @@
-import { SHOP_API_ERROR_CODES } from "@auction/shop-contracts";
-import { PRINT_CLAIM_MESSAGE, findPrintClaimWord } from "@auction/shop-domain";
-import { ShopApiError } from "../../errors/shop-api-error.js";
+import { findPrintClaimWord } from "@auction/shop-domain";
+import { PrintClaimError } from "../../errors/print-claim-error.js";
 
 /**
  * Staff-typed Shop text may not make claims about a print: those belong in the Edition facts,
- * where the shop domain words them. Refuses the save with a plain message.
+ * where the shop domain words them. Refuses the save with a plain message that names the first
+ * field containing a claim word. `texts` is keyed by the form field the words were typed into.
  */
 export function assertNoPrintClaims(
-  texts: ReadonlyArray<string | null | undefined>,
+  texts: Readonly<Record<string, string | null | undefined>>,
   options: { certificateStated?: boolean } = {},
 ): void {
-  for (const text of texts) {
-    if (text && findPrintClaimWord(text, options)) {
-      throw new ShopApiError(SHOP_API_ERROR_CODES.VALIDATION, PRINT_CLAIM_MESSAGE, 400);
-    }
+  for (const [field, text] of Object.entries(texts)) {
+    if (text && findPrintClaimWord(text, options)) throw new PrintClaimError(field);
   }
 }

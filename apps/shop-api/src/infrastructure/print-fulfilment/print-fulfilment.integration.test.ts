@@ -469,8 +469,8 @@ describe.skipIf(!hasShopIntegrationDb)("packing numbered prints", { timeout: 90_
     });
   });
 
-  it("holds a LAX certificate on facts saved before the authority was recorded, until it is", async () => {
-    const { fulfilment } = setup({ laxCertificates: true });
+  it("holds a LAX certificate on facts saved before the authority was recorded, until a correction records it", async () => {
+    const { fulfilment, runs } = setup({ laxCertificates: true });
     const artworkId = await runOfTwelve("authority");
     // Facts saved before authority was part of them: London Art Exchange as issuer, no record.
     await db
@@ -488,11 +488,32 @@ describe.skipIf(!hasShopIntegrationDb)("packing numbered prints", { timeout: 90_
     await expect(confirm()).rejects.toMatchObject({ statusCode: 409 });
     expect(await linesAwaitingPackConfirmation(db, orderId)).toEqual([line.id]);
 
-    await fulfilment.certificates.recordAuthority({
+    // Facts lock at the first sale, so a shop admin's correction records the authority.
+    const [stored] = await db
+      .select()
+      .from(shopEditionFacts)
+      .where(eq(shopEditionFacts.artworkId, artworkId));
+    await runs.facts.correct({
       actorSubjectId: ACTOR,
       idempotencyKey: key(),
       artworkId,
-      reference: "Letter of 3 October 2026",
+      facts: editionFactsInput({
+        ...PAPER_CERTIFICATE_FACTS,
+        certificate: {
+          kind: "included",
+          issuer: "lax",
+          form: "digital",
+          arrives: { kind: "with_print" },
+          numberedToMatch: true,
+          authority: {
+            givenBy: "artist",
+            datedOn: "2026-10-03",
+            reference: "Letter of 3 October 2026",
+          },
+        },
+      }),
+      reason: "Record the artist's written authority",
+      expectedFactsVersion: stored?.updatedAt.toISOString() ?? null,
     });
     const [facts] = await db
       .select()

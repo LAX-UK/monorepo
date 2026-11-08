@@ -3,7 +3,7 @@
 -- migration are lost, and the printers and publishers list is dropped.
 BEGIN;
 
-SET LOCAL lock_timeout = '30s';
+SET LOCAL lock_timeout = '5s';
 DROP TABLE IF EXISTS "shop_print_party";
 ALTER TABLE "shop_edition_facts"
   DROP CONSTRAINT IF EXISTS "shop_edition_facts_authority_giver_ck",

@@ -26,7 +26,7 @@ describe("migration 0329 shop print facts", () => {
 
   it("only adds: nothing is dropped, and every new column but the stamp is nullable", () => {
     expect(migration).not.toMatch(/\bDROP\b/);
-    expect(migration).toMatch(/SET LOCAL lock_timeout/);
+    expect(migration).toMatch(/SET LOCAL lock_timeout = '5s'/);
     const columns = getTableColumns(shopEditionFacts);
     for (const key of [
       "printedBy",
@@ -59,6 +59,7 @@ describe("migration 0329 shop print facts", () => {
   });
 
   it("is undone by dropping only what it added", () => {
+    expect(rollback).toMatch(/SET LOCAL lock_timeout = '5s'/);
     expect(rollback).toMatch(/^BEGIN;/m);
     expect(rollback).toMatch(/COMMIT;/);
     expect(rollback).toMatch(/DROP TABLE IF EXISTS "shop_print_party"/);

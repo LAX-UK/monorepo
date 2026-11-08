@@ -702,8 +702,6 @@ export {
   type AdminStockBatchInput,
 } from "./edition-run-admin.js";
 export {
-  AUTHORITY_REFERENCE_FIELD_MAX,
-  AdminCertificateAuthorityBodySchema,
   AdminCertificateStatusSchema,
   AdminCertificateToSendSchema,
   AdminCertificatesToSendSchema,
@@ -717,7 +715,6 @@ export {
   AdminSwapPrintResponseSchema,
   PRINT_SCAN_MAX_LENGTH,
   SWAP_REASON_FIELD_MAX,
-  type AdminCertificateAuthorityBody,
   type AdminCertificateStatus,
   type AdminCertificateToSend,
   type AdminCertificatesToSend,

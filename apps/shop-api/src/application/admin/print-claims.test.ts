@@ -1,6 +1,7 @@
 import type { AdminArtworkUpdateBody } from "@auction/shop-contracts";
 import { PRINT_CLAIM_MESSAGE } from "@auction/shop-domain";
 import { describe, expect, it } from "vitest";
+import { PrintClaimError } from "../../errors/print-claim-error.js";
 import { ShopApiError } from "../../errors/shop-api-error.js";
 import { cleanArtworkFields } from "./artwork-input.js";
 import { assertNoPrintClaims } from "./print-claims.js";
@@ -21,20 +22,40 @@ const BODY = {
   expectedVersion: "2026-11-09T09:00:00.000Z",
 } as unknown as AdminArtworkUpdateBody;
 
+function claimError(run: () => void): PrintClaimError {
+  try {
+    run();
+  } catch (error) {
+    expect(error).toBeInstanceOf(PrintClaimError);
+    return error as PrintClaimError;
+  }
+  throw new Error("expected a print claim error");
+}
+
 describe("assertNoPrintClaims", () => {
-  it("refuses a claim with the plain message, as a 400", () => {
-    try {
-      assertNoPrintClaims(["Museum quality, signed and numbered."]);
-      expect.unreachable();
-    } catch (error) {
-      expect(error).toBeInstanceOf(ShopApiError);
-      expect((error as ShopApiError).message).toBe(PRINT_CLAIM_MESSAGE);
-      expect((error as ShopApiError).statusCode).toBe(400);
-    }
+  it("refuses a claim with the plain message, as a 400 that names the field", () => {
+    const error = claimError(() =>
+      assertNoPrintClaims({ title: "Tide line", description: "Museum-quality, signed." }),
+    );
+    expect(error).toBeInstanceOf(ShopApiError);
+    expect(error.message).toBe(PRINT_CLAIM_MESSAGE);
+    expect(error.statusCode).toBe(400);
+    expect(error.responseFields()).toEqual({
+      issues: [{ field: "description", message: PRINT_CLAIM_MESSAGE }],
+    });
+  });
+
+  it("names the first field that has a claim", () => {
+    const error = claimError(() =>
+      assertNoPrintClaims({ title: "A rare find", description: "An investment piece" }),
+    );
+    expect(error.field).toBe("title");
   });
 
   it("passes plain text and blanks", () => {
-    expect(() => assertNoPrintClaims(["A quiet shoreline.", null, undefined, ""])).not.toThrow();
+    expect(() =>
+      assertNoPrintClaims({ a: "A quiet shoreline.", b: null, c: undefined, d: "" }),
+    ).not.toThrow();
   });
 });
 
@@ -44,11 +65,13 @@ describe("cleanArtworkFields and print claims", () => {
   });
 
   it.each(["title", "description", "seoTitle", "seoDescription"] as const)(
-    "refuses a claim in the %s",
+    "refuses a claim in the %s and points at it",
     (field) => {
-      expect(() => cleanArtworkFields({ ...BODY, [field]: "An investment piece" })).toThrow(
-        PRINT_CLAIM_MESSAGE,
+      const error = claimError(() =>
+        cleanArtworkFields({ ...BODY, [field]: "An investment piece" }),
       );
+      expect(error.field).toBe(field);
+      expect(error.message).toBe(PRINT_CLAIM_MESSAGE);
     },
   );
 

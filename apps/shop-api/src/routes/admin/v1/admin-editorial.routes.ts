@@ -44,13 +44,13 @@ function assertNoStoryClaims(body: {
   summary?: string | null;
   subtitle?: string | null;
 }): void {
-  assertNoPrintClaims([
-    body.title,
-    body.standfirst,
-    body.summary,
-    body.subtitle,
-    editorialBlocksPlainText(body.body),
-  ]);
+  assertNoPrintClaims({
+    title: body.title,
+    standfirst: body.standfirst,
+    summary: body.summary,
+    subtitle: body.subtitle,
+    body: editorialBlocksPlainText(body.body),
+  });
 }
 
 const PreviewTokenBodySchema = Type.Object({

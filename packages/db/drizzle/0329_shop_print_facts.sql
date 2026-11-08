@@ -4,7 +4,7 @@
 -- renaming or removing a list entry never changes what a buyer was told.
 -- Additive: new nullable columns and one defaulted column on shop_edition_facts, and one new
 -- table, so running services keep working. Existing runs read as "no stamp", with no parties.
-SET LOCAL lock_timeout = '30s';
+SET LOCAL lock_timeout = '5s';
 --> statement-breakpoint
 ALTER TABLE "shop_edition_facts"
   ADD COLUMN IF NOT EXISTS "stamp" text NOT NULL DEFAULT 'none',

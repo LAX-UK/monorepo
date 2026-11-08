@@ -139,13 +139,6 @@ export interface CertificateStore {
   lock(certificateId: string): Promise<StoredCertificate | null>;
   markSent(input: { certificateId: string; actorSubjectId: string; at: Date }): Promise<void>;
   listToSend(): Promise<CertificateToSend[]>;
-  /** Records the artist's written authority. False when the run has no facts to attach it to. */
-  recordAuthority(input: {
-    artworkId: string;
-    reference: string;
-    actorSubjectId: string;
-    at: Date;
-  }): Promise<boolean>;
 }
 
 export type PrintEvent = {

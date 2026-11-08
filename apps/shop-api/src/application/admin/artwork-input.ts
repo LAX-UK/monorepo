@@ -25,7 +25,15 @@ export function cleanArtworkFields(
   body: EditableBody,
   options: { certificateStated?: boolean } = {},
 ): ArtworkEditableFields {
-  assertNoPrintClaims([body.title, body.description, body.seoTitle, body.seoDescription], options);
+  assertNoPrintClaims(
+    {
+      title: body.title,
+      description: body.description,
+      seoTitle: body.seoTitle,
+      seoDescription: body.seoDescription,
+    },
+    options,
+  );
   return {
     title: required(body.title, "Title"),
     artistId: body.artistId,

@@ -34,6 +34,7 @@ import {
   type ArtworkFormValues,
   artworkConflictField,
   artworkErrorSummary,
+  artworkFieldErrorsFromIssues,
   artworkFieldId,
   artworkFormValues,
   buildArtworkCreateBody,
@@ -406,8 +407,13 @@ export function ArtworkEditor({
       setSaving(false);
       if (!result.ok) {
         const field = result.kind === "conflict" ? artworkConflictField(result.message) : null;
+        const named =
+          result.kind === "validation" ? artworkFieldErrorsFromIssues(result.issues) : {};
         if (result.kind === "conflict" && field) {
           setServerErrors({ [field]: result.message });
+          setFailedSubmits((count) => count + 1);
+        } else if (Object.keys(named).length > 0) {
+          setServerErrors(named);
           setFailedSubmits((count) => count + 1);
         } else setFormError(adminMutationErrorMessage(result));
         toast.error(wantsPrints ? "Nothing was created" : "The artwork was not created");
@@ -444,8 +450,12 @@ export function ArtworkEditor({
     setSaving(false);
     if (!result.ok) {
       setBaseline(previous);
+      const named = result.kind === "validation" ? artworkFieldErrorsFromIssues(result.issues) : {};
       if (result.kind === "conflict" && result.currentVersion) {
         setConflict({ currentVersion: result.currentVersion });
+      } else if (Object.keys(named).length > 0) {
+        setServerErrors(named);
+        setFailedSubmits((count) => count + 1);
       } else {
         setFormError(adminMutationErrorMessage(result));
       }

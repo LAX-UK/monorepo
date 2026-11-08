@@ -9,7 +9,7 @@ export const PRINT_CLAIM_WORDS = [
   "guaranteed",
   "certified",
   "rare",
-  "authenticated by",
+  "authenticated",
 ] as const;
 
 export type PrintClaimWord = (typeof PRINT_CLAIM_WORDS)[number];
@@ -17,12 +17,23 @@ export type PrintClaimWord = (typeof PRINT_CLAIM_WORDS)[number];
 export const PRINT_CLAIM_MESSAGE =
   "Shop descriptions can't make claims about the print. Use the Edition facts card instead.";
 
-// The words are plain letters and spaces: a space matches any run of whitespace, and a word
-// matches only whole, so "rare" does not match "rarefied" or "prepare".
-const PATTERNS: ReadonlyArray<readonly [PrintClaimWord, RegExp]> = PRINT_CLAIM_WORDS.map((word) => [
-  word,
-  new RegExp(`(?<![\\p{L}\\p{N}])${word.replace(/ /g, "\\s+")}(?![\\p{L}\\p{N}])`, "iu"),
-]);
+/** A letter or digit on either side means the match is only part of a longer word. */
+const WHOLE = (forms: string) =>
+  new RegExp(`(?<![\\p{L}\\p{N}])(?:${forms})(?![\\p{L}\\p{N}])`, "iu");
+
+/**
+ * Each claim word with the forms of it that are blocked, written out so nothing depends on
+ * guessing: a space or hyphen joins a two-word claim ("museum quality", "museum-quality"),
+ * "investment-grade" is caught by "investment", and "rarefied" or "prepare" are not claims.
+ */
+const PATTERNS: ReadonlyArray<readonly [PrintClaimWord, RegExp]> = [
+  ["museum quality", WHOLE("museum[\\s-]+quality")],
+  ["investment", WHOLE("invest(?:ment|ments|ing)")],
+  ["guaranteed", WHOLE("guarantee[sd]?")],
+  ["certified", WHOLE("certif(?:y|ied)|certificate-backed")],
+  ["rare", WHOLE("rar(?:e|er|est|ity|ities)")],
+  ["authenticated", WHOLE("authenticat(?:ed|ion)")],
+];
 
 /**
  * The first claim word in `text`, or null. "Certified" is allowed once the run states a
