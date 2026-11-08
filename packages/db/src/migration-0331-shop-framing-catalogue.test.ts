@@ -12,19 +12,19 @@ import {
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const read = (name: string) => readFileSync(join(__dirname, "../drizzle", name), "utf8");
-const migration = read("0329_shop_framing_catalogue.sql");
-const rollback = read("0329_rollback.sql");
+const migration = read("0331_shop_framing_catalogue.sql");
+const rollback = read("0331_rollback.sql");
 const journal = JSON.parse(read("meta/_journal.json")) as {
   entries: { idx: number; tag: string; when: number }[];
 };
 
-describe("migration 0329 shop framing catalogue", () => {
-  it("follows 0327 in the journal, with the next index and a later time", () => {
-    const index = journal.entries.findIndex((e) => e.tag === "0329_shop_framing_catalogue");
+describe("migration 0331 shop framing catalogue", () => {
+  it("follows 0330 in the journal, with the next index and a later time", () => {
+    const index = journal.entries.findIndex((e) => e.tag === "0331_shop_framing_catalogue");
     expect(index).toBeGreaterThan(0);
     const entry = journal.entries[index];
     const previous = journal.entries[index - 1];
-    expect(previous?.tag).toBe("0327_legal_entity_client_message");
+    expect(previous?.tag).toMatch(/^0330_/);
     expect(entry?.idx).toBe((previous?.idx ?? 0) + 1);
     expect(entry?.when).toBeGreaterThan(previous?.when ?? 0);
   });

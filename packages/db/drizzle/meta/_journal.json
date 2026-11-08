@@ -2257,10 +2257,10 @@
       "breakpoints": true
     },
     {
-      "idx": 323,
+      "idx": 326,
       "version": "7",
-      "when": 1803542400000,
-      "tag": "0329_shop_framing_catalogue",
+      "when": 1803715200000,
+      "tag": "0331_shop_framing_catalogue",
       "breakpoints": true
     }
   ]
