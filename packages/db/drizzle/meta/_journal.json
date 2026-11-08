@@ -2267,7 +2267,14 @@
       "idx": 324,
       "version": "7",
       "when": 1803542400000,
-      "tag": "0329_shop_print_facts",
+      "tag": "0329_private_sale_deal_party_history",
+      "breakpoints": true
+    },
+    {
+      "idx": 325,
+      "version": "7",
+      "when": 1803628800000,
+      "tag": "0330_shop_print_facts",
       "breakpoints": true
     }
   ]

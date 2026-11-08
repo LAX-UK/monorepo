@@ -7,19 +7,19 @@ import { shopEditionFacts, shopPrintParty } from "./schema/shop-commerce.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const read = (name: string) => readFileSync(join(__dirname, "../drizzle", name), "utf8");
-const migration = read("0329_shop_print_facts.sql");
-const rollback = read("0329_rollback.sql");
+const migration = read("0330_shop_print_facts.sql");
+const rollback = read("0330_rollback.sql");
 const journal = JSON.parse(read("meta/_journal.json")) as {
   entries: { idx: number; tag: string; when: number }[];
 };
 
-describe("migration 0329 shop print facts", () => {
-  it("follows 0328 in the journal, one day later", () => {
-    const index = journal.entries.findIndex((e) => e.tag === "0329_shop_print_facts");
+describe("migration 0330 shop print facts", () => {
+  it("follows 0329 in the journal, one day later", () => {
+    const index = journal.entries.findIndex((e) => e.tag === "0330_shop_print_facts");
     expect(index).toBeGreaterThan(0);
     const entry = journal.entries[index];
     const previous = journal.entries[index - 1];
-    expect(previous?.tag).toBe("0328_shop_delivery_regions");
+    expect(previous?.tag).toBe("0329_private_sale_deal_party_history");
     expect(entry?.idx).toBe((previous?.idx ?? 0) + 1);
     expect(entry?.when).toBe((previous?.when ?? 0) + 24 * 60 * 60 * 1000);
   });
