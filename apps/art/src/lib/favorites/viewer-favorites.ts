@@ -1,5 +1,6 @@
 import type { ArtViewerState } from "@/lib/art-viewer-state";
 import { type ArtFavoriteAuth, buildArtFavoriteAuth } from "@/lib/favorites/favorite-auth";
+import type { FollowEmailsState } from "@/lib/favorites/follow-emails";
 import type { ArtFavoritesReadPort, ArtViewerPort } from "@/lib/ports";
 
 export type ViewerFavoriteContext = {
@@ -7,8 +8,8 @@ export type ViewerFavoriteContext = {
   favoriteAuth: ArtFavoriteAuth;
   savedArtworkSlugs: ReadonlySet<string>;
   followedArtistSlugs: ReadonlySet<string>;
-  /** Whether emails about followed artists are on; null when not read or not known. */
-  followEmailsOn: boolean | null;
+  /** The followed-artist email state; null when not read or not known. */
+  followEmails: FollowEmailsState | null;
 };
 
 /** Which favourites sets the page renders; each one costs a signed-in viewer one BFF read. */
@@ -36,20 +37,20 @@ export async function loadViewerFavoriteContext(
       (): ArtViewerState => ({ kind: "unavailable", message: "Account status is unavailable." }),
     );
   const signedIn = viewer.kind === "authenticated";
-  const [savedArtworkSlugs, followedArtistSlugs, followEmailsOn] = await Promise.all([
+  const [savedArtworkSlugs, followedArtistSlugs, followEmails] = await Promise.all([
     signedIn && reads.savedArtworks
       ? services.favorites.savedArtworkSlugs().catch(() => EMPTY)
       : EMPTY,
     signedIn && reads.followedArtists
       ? services.favorites.followedArtistSlugs().catch(() => EMPTY)
       : EMPTY,
-    signedIn && reads.followEmails ? services.favorites.followEmailsOn().catch(() => null) : null,
+    signedIn && reads.followEmails ? services.favorites.followEmails().catch(() => null) : null,
   ]);
   return {
     viewer,
     favoriteAuth: buildArtFavoriteAuth(viewer, returnTo),
     savedArtworkSlugs,
     followedArtistSlugs,
-    followEmailsOn,
+    followEmails,
   };
 }

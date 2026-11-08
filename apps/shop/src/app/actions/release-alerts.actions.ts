@@ -12,7 +12,7 @@ import { redirect } from "next/navigation";
  * too many requests, and `failed` is anything else; each reads differently in the form.
  */
 export type ReleaseAlertSubscribeResult =
-  | { ok: true; status: "check_email" | "subscribed" }
+  | { ok: true; status: "check_email" | "subscribed"; restarted: boolean }
   | { ok: false; kind: "invalid" | "limited" | "failed"; message: string };
 
 export type ReleaseAlertStopResult = { ok: true } | { ok: false; message: string };
@@ -74,7 +74,8 @@ export async function subscribeReleaseAlerts(input: {
   );
   if (!response.ok) return failure(response.status, await readJson(response));
   try {
-    return { ok: true, status: parseReleaseAlertSubscribeResponse(await response.json()).status };
+    const body = parseReleaseAlertSubscribeResponse(await response.json());
+    return { ok: true, status: body.status, restarted: body.restarted === true };
   } catch {
     return { ok: false, kind: "failed", message: SAVE_FAILED };
   }

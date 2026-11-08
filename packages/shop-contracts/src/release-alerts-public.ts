@@ -38,7 +38,11 @@ export const ReleaseAlertSubscribeBodySchema = Type.Object(
  * the address was already known, so the form cannot be used to find out who is subscribed.
  */
 export const ReleaseAlertSubscribeResponseSchema = Type.Object(
-  { status: Type.Union([Type.Literal("check_email"), Type.Literal("subscribed")]) },
+  {
+    status: Type.Union([Type.Literal("check_email"), Type.Literal("subscribed")]),
+    /** A signed-in shopper who had stopped all alerts is subscribed again by pressing Subscribe. */
+    restarted: Type.Optional(Type.Boolean()),
+  },
   { additionalProperties: false },
 );
 

@@ -38,7 +38,7 @@ import {
   fetchEditorialVenues,
 } from "@/lib/editorial/art-editorial.server";
 import {
-  loadArtFollowEmailsOn,
+  loadArtFollowEmailsState,
   loadArtFollowedArtistSlugs,
   loadArtSavedArtworkSlugs,
 } from "@/lib/favorites/art-favorites.server";
@@ -89,7 +89,7 @@ export const artServices: ArtServices = {
   favorites: {
     savedArtworkSlugs: loadArtSavedArtworkSlugs,
     followedArtistSlugs: loadArtFollowedArtistSlugs,
-    followEmailsOn: loadArtFollowEmailsOn,
+    followEmails: loadArtFollowEmailsState,
     listSavedArtworks: fetchPortalSavedArtworks,
     listFollowedArtists: fetchPortalFollowedArtists,
   },

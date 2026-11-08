@@ -47,7 +47,8 @@ export function ArtArtistHero({ vm, pageUrl }: { vm: ArtistPageVm; pageUrl: stri
               slug={vm.slug}
               name={vm.name}
               initialFollowing={vm.following}
-              initialEmailsOn={vm.followEmailsOn}
+              initialEmailsOn={vm.followEmails?.on ?? null}
+              initialStopped={vm.followEmails?.stopped ?? false}
               manageHref={laxAccountUrl("alerts")}
               auth={vm.favoriteAuth}
               {...(onMedia ? { className: ON_MEDIA_CONTROL } : {})}

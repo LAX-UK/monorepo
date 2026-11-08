@@ -2,6 +2,7 @@ import { artCommerceRequest } from "@/lib/art-commerce-request.server";
 import { fetchPortalFollowedArtists, fetchPortalSavedArtworks } from "@/lib/art-portal.server";
 import {
   FOLLOW_EMAILS_PATH,
+  type FollowEmailsState,
   readFollowEmailsOn,
   readFollowEmailsStopped,
 } from "@/lib/favorites/follow-emails";
@@ -22,13 +23,6 @@ export const loadArtFollowedArtistSlugs = cache(async (): Promise<ReadonlySet<st
     : new Set<string>();
 });
 
-export type FollowEmailsState = {
-  /** Whether emails about followed artists are on; null when Shop cannot say. */
-  on: boolean | null;
-  /** The person stopped all alerts, so following does not switch these emails on. */
-  stopped: boolean;
-};
-
 /** One read per request. */
 export const loadArtFollowEmailsState = cache(async (): Promise<FollowEmailsState> => {
   try {
@@ -42,7 +36,3 @@ export const loadArtFollowEmailsState = cache(async (): Promise<FollowEmailsStat
     return { on: null, stopped: false };
   }
 });
-
-/** Whether emails about followed artists are on; null when Shop cannot say. */
-export const loadArtFollowEmailsOn = async (): Promise<boolean | null> =>
-  (await loadArtFollowEmailsState()).on;

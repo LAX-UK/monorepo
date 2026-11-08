@@ -31,7 +31,7 @@ type Props = {
 type Phase =
   | { kind: "idle" }
   | { kind: "check-email"; email: string }
-  | { kind: "on"; email: string; justNow: boolean }
+  | { kind: "on"; email: string; justNow: boolean; restarted?: boolean }
   | { kind: "stopped" };
 
 type Problem = { tone: "warning" | "error"; title: string; message: string };
@@ -81,7 +81,7 @@ export function ShopReleaseAlertsForm({ viewer, source, layout = "inline" }: Pro
       }
       setPhase(
         result.status === "subscribed" && viewer.kind === "account"
-          ? { kind: "on", email: viewer.email, justNow: true }
+          ? { kind: "on", email: viewer.email, justNow: true, restarted: result.restarted }
           : { kind: "check-email", email: typed ?? "" },
       );
     });
@@ -125,7 +125,11 @@ export function ShopReleaseAlertsForm({ viewer, source, layout = "inline" }: Pro
         <MarketingCheckIcon className="shop-release-alerts__done-icon" aria-hidden />
         <div>
           <p className="shop-release-alerts__done-title">
-            {phase.justNow ? "Done" : "You’re on the list"}
+            {phase.restarted
+              ? "Your alerts are back on"
+              : phase.justNow
+                ? "Done"
+                : "You’re on the list"}
           </p>
           <p>
             We’ll email <span className="shop-release-alerts__email">{phase.email}</span> when a new

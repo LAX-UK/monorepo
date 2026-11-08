@@ -40,7 +40,7 @@ describe("ShopReleaseAlertsForm", () => {
   });
 
   it("asks a visitor to confirm by email and announces it politely", async () => {
-    subscribeMock.mockResolvedValueOnce({ ok: true, status: "check_email" });
+    subscribeMock.mockResolvedValueOnce({ ok: true, status: "check_email", restarted: false });
     render(<ShopReleaseAlertsForm viewer={{ kind: "guest" }} source="shop_home" />);
     fireEvent.change(screen.getByLabelText("Email address"), {
       target: { value: " grace@example.com " },
@@ -87,7 +87,7 @@ describe("ShopReleaseAlertsForm", () => {
   });
 
   it("passes the honeypot through untouched", async () => {
-    subscribeMock.mockResolvedValueOnce({ ok: true, status: "check_email" });
+    subscribeMock.mockResolvedValueOnce({ ok: true, status: "check_email", restarted: false });
     const { container } = render(
       <ShopReleaseAlertsForm viewer={{ kind: "guest" }} source="shop_home" />,
     );
@@ -105,7 +105,7 @@ describe("ShopReleaseAlertsForm", () => {
   });
 
   it("subscribes a signed-in shopper with one button, then offers to stop", async () => {
-    subscribeMock.mockResolvedValueOnce({ ok: true, status: "subscribed" });
+    subscribeMock.mockResolvedValueOnce({ ok: true, status: "subscribed", restarted: false });
     stopMock.mockResolvedValueOnce({ ok: true });
     render(
       <ShopReleaseAlertsForm
@@ -119,6 +119,19 @@ describe("ShopReleaseAlertsForm", () => {
     expect(subscribeMock).toHaveBeenCalledWith({ source: "shop_home" });
     fireEvent.click(await screen.findByRole("button", { name: "Stop alerts" }));
     await waitFor(() => expect(screen.getByText(/Release alerts stopped/)).toBeTruthy());
+  });
+
+  it("tells a shopper who had stopped all alerts that they are back on", async () => {
+    subscribeMock.mockResolvedValueOnce({ ok: true, status: "subscribed", restarted: true });
+    render(
+      <ShopReleaseAlertsForm
+        viewer={{ kind: "account", email: "robert@example.test", subscribed: false }}
+        source="shop_home"
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", GET));
+    await waitFor(() => expect(screen.getByText("Your alerts are back on")).toBeTruthy());
+    expect(screen.queryByText("Done")).toBeNull();
   });
 
   it("shows a shopper who is already subscribed that they are on the list", () => {

@@ -16,6 +16,8 @@ export type ArtArtistFollowControlProps = {
   initialFollowing: boolean;
   /** Whether emails about followed artists are on; null when that is not known. */
   initialEmailsOn: boolean | null;
+  /** The person stopped all alerts; known on page load, so the line is right before any press. */
+  initialStopped?: boolean;
   auth: ArtFavoriteAuth;
   /** LAX Account's Email alerts page, where these emails are managed. */
   manageHref: string;
@@ -32,13 +34,14 @@ export function ArtArtistFollowControl({
   name,
   initialFollowing,
   initialEmailsOn,
+  initialStopped = false,
   auth,
   manageHref,
   className,
 }: ArtArtistFollowControlProps) {
   const [following, setFollowing] = useState(initialFollowing);
   const [emailsOn, setEmailsOn] = useState(initialEmailsOn);
-  const [stopped, setStopped] = useState(false);
+  const [stopped, setStopped] = useState(initialStopped);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const first = useRef(true);

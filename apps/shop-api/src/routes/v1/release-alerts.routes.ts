@@ -95,7 +95,9 @@ export async function registerReleaseAlertRoutes(
             409,
           );
         }
-        return { status: "subscribed" as const };
+        return result === "restarted"
+          ? { status: "subscribed" as const, restarted: true }
+          : { status: "subscribed" as const };
       }
       const email = body.email?.trim();
       if (!email) {
