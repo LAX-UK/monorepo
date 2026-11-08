@@ -23,6 +23,7 @@ import type {
   RecordHandOver,
   UndoHandOver,
   UndoOutcome,
+  WithinBookingTransaction,
 } from "../interfaces/collection-booking.repository.js";
 import { collectionRequestFingerprint } from "../lib/collection-request-fingerprint.js";
 import { pgUniqueViolationConstraint } from "../lib/pg-unique-violation.js";
@@ -160,6 +161,20 @@ export class DrizzleCollectionBookingRepository
     return record ?? null;
   }
 
+  async hasIdempotencyKey(legalEntityId: string, key: string): Promise<boolean> {
+    const [row] = await this.db
+      .select({ id: collectionBooking.id })
+      .from(collectionBooking)
+      .where(
+        and(
+          eq(collectionBooking.legalEntityId, legalEntityId),
+          eq(collectionBooking.idempotencyKey, key),
+        ),
+      )
+      .limit(1);
+    return Boolean(row);
+  }
+
   async findByReference(reference: string): Promise<CollectionBookingRecord | null> {
     const [row] = await this.db
       .select({ id: collectionBooking.id })
@@ -228,7 +243,10 @@ export class DrizzleCollectionBookingRepository
 
   // ---- booking ----------------------------------------------------------------------------
 
-  async book(input: NewCollectionBooking): Promise<BookingOutcome> {
+  async book(
+    input: NewCollectionBooking,
+    within?: WithinBookingTransaction,
+  ): Promise<BookingOutcome> {
     const lotIds = unique(input.lotIds);
     const fingerprint = collectionRequestFingerprint(input);
     try {
@@ -246,7 +264,9 @@ export class DrizzleCollectionBookingRepository
         await tx
           .insert(collectionBookingLot)
           .values(lotIds.map((lotId) => ({ bookingId: id, lotId })));
-        return { outcome: "booked", booking: await loadRecord(tx, id) };
+        const booking = await loadRecord(tx, id);
+        await within?.(tx, booking);
+        return { outcome: "booked", booking };
       });
     } catch (error) {
       const constraint = pgUniqueViolationConstraint(error);
@@ -267,7 +287,10 @@ export class DrizzleCollectionBookingRepository
     }
   }
 
-  async change(input: ChangeCollectionBooking): Promise<ChangeOutcome> {
+  async change(
+    input: ChangeCollectionBooking,
+    within?: WithinBookingTransaction,
+  ): Promise<ChangeOutcome> {
     const lotIds = unique(input.lotIds);
     try {
       return await this.db.transaction(async (tx): Promise<ChangeOutcome> => {
@@ -300,7 +323,9 @@ export class DrizzleCollectionBookingRepository
           overCapacityReason: candidate > input.placesPerSlot ? input.overCapacityReason : null,
         }));
         if (seat === null) throw new Abandon<ChangeOutcome>({ outcome: "slot_full" });
-        return { outcome: "changed", booking: await loadRecord(tx, input.bookingId) };
+        const booking = await loadRecord(tx, input.bookingId);
+        await within?.(tx, booking);
+        return { outcome: "changed", booking };
       });
     } catch (error) {
       if (error instanceof Abandon) return error.outcome as ChangeOutcome;
@@ -315,7 +340,10 @@ export class DrizzleCollectionBookingRepository
     }
   }
 
-  async cancel(input: CancelCollectionBooking): Promise<CancelOutcome> {
+  async cancel(
+    input: CancelCollectionBooking,
+    within?: WithinBookingTransaction,
+  ): Promise<CancelOutcome> {
     return this.db.transaction(async (tx): Promise<CancelOutcome> => {
       const row = await lockBooking(tx, input.bookingId);
       if (!row) return { outcome: "not_found" };
@@ -336,7 +364,9 @@ export class DrizzleCollectionBookingRepository
         .update(collectionBookingLot)
         .set({ active: false })
         .where(eq(collectionBookingLot.bookingId, input.bookingId));
-      return { outcome: "cancelled", booking: await loadRecord(tx, input.bookingId) };
+      const booking = await loadRecord(tx, input.bookingId);
+      await within?.(tx, booking);
+      return { outcome: "cancelled", booking };
     });
   }
 

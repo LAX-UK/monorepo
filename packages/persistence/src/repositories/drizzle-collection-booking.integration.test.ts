@@ -291,6 +291,36 @@ describe.skipIf(!HAS_DB)("collection booking (integration)", () => {
       expect(loser.outcome).toBe("booked");
     });
 
+    it("knows whether an account has used a key, and only that account", async () => {
+      const input = request();
+      expect(await bookings.hasIdempotencyKey(entityId, input.idempotencyKey)).toBe(false);
+      booked(await bookings.book(input));
+      expect(await bookings.hasIdempotencyKey(entityId, input.idempotencyKey)).toBe(true);
+      expect(await bookings.hasIdempotencyKey(randomUUID(), input.idempotencyKey)).toBe(false);
+    });
+
+    it("runs the audit step in the same transaction, and keeps nothing if it fails", async () => {
+      const seen: string[] = [];
+      const ok = request();
+      booked(
+        await bookings.book(ok, async (_tx, booking) => {
+          seen.push(booking.reference);
+        }),
+      );
+      expect(seen).toHaveLength(1);
+
+      const doomed = request();
+      await expect(
+        bookings.book(doomed, async () => {
+          throw new Error("audit unavailable");
+        }),
+      ).rejects.toThrow("audit unavailable");
+      expect(await bookings.hasIdempotencyKey(entityId, doomed.idempotencyKey)).toBe(false);
+      expect((await bookings.findLiveByLots(doomed.lotIds)).size).toBe(0);
+      const taken = await bookings.takenPlaces(venueId, rangeOf(doomed));
+      expect(taken.get(doomed.slotStart.getTime())).toBeUndefined();
+    });
+
     it("returns the original booking for a later repeat", async () => {
       const input = request();
       const first = booked(await bookings.book(input));

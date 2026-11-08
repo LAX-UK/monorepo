@@ -5,6 +5,7 @@ import {
   collectionWeeklyHours,
   lot,
   sale,
+  venue,
 } from "@auction/db/schema";
 import {
   type CollectionException,
@@ -61,6 +62,25 @@ export class DrizzleCollectionPlaceRepository implements ICollectionPlaceReposit
       .where(eq(collectionPlace.venueId, venueId))
       .limit(1);
     return row ? toSettings(row) : null;
+  }
+
+  async findAddress(venueId: string): Promise<{ name: string; address: string } | null> {
+    const [row] = await this.db
+      .select({
+        name: venue.name,
+        line1: venue.addressLine1,
+        line2: venue.addressLine2,
+        city: venue.city,
+        postcode: venue.postcode,
+      })
+      .from(venue)
+      .where(eq(venue.id, venueId))
+      .limit(1);
+    if (!row) return null;
+    const address = [row.line1, row.line2, row.city, row.postcode]
+      .filter((part): part is string => Boolean(part?.trim()))
+      .join(", ");
+    return { name: row.name, address };
   }
 
   async findForLot(

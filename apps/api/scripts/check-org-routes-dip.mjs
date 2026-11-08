@@ -20,6 +20,7 @@ const files = [
   "src/routes/organisation-membership.ts",
   "src/routes/organisation-home.ts",
   "src/routes/organisation-buying.ts",
+  "src/routes/organisation-collection-visits.ts",
   "src/routes/organisation-selling.ts",
   "src/routes/organisation-access-requests.ts",
   "src/routes/organisation-workspace.ts",
