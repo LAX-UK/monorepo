@@ -67,4 +67,21 @@ describe("admin payout routes — list page", () => {
     expect(body.meta.total).toBe(1);
     expect(body.meta.summary.scheduled).toBe(1);
   });
+
+  it("passes the search term to the list", async () => {
+    const { app, payouts } = mountApp();
+    payouts.adminListPage.mockResolvedValue({
+      rows: [],
+      total: 0,
+      offset: 0,
+      limit: 25,
+      summary: {},
+    });
+
+    const res = await app.request("/admin/payouts?limit=25&offset=0&search=PO-2026-3FA9C1D2");
+    expect(res.status).toBe(200);
+    expect(payouts.adminListPage).toHaveBeenCalledWith(
+      expect.objectContaining({ search: "PO-2026-3FA9C1D2", limit: 25, offset: 0 }),
+    );
+  });
 });

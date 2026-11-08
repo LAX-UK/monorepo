@@ -1,5 +1,10 @@
 import type { legalEntity } from "@auction/db/schema";
-import type { LegalEntity, LegalEntityStatus, OrgOnboardingStepKey } from "@auction/types";
+import type {
+  LegalEntity,
+  LegalEntityStatus,
+  MemberLegalEntity,
+  OrgOnboardingStepKey,
+} from "@auction/types";
 import type { PublicOrganisationSubkind } from "@auction/validators";
 
 export const ESTATE_CANONICAL_LABELS = [
@@ -56,7 +61,8 @@ export type OrganizationOnboardingDocumentDto = {
 };
 
 export type OrganizationOnboardingGetResult = {
-  entity: LegalEntity;
+  /** What a member may read; staff-only fields stay out. */
+  entity: MemberLegalEntity;
   completedSteps: OrgOnboardingStepKey[];
   documents: OrganizationOnboardingDocumentDto[];
   primaryAddress: OrganizationOnboardingProfileInput["primaryAddress"] | null;

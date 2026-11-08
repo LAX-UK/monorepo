@@ -160,7 +160,7 @@ export function getConnectGapState(
     });
   }
 
-  if (!entity.stripeConnectAccountId) {
+  if (!entity.stripeConnectAccountId && !entity.stripeConnectAccountLinked) {
     return withEntityDisabledReason(entity, {
       stage: "not_started",
       missing: [],

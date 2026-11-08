@@ -152,6 +152,7 @@ export function createAdminPayoutRoutes(
     const page = await container.admin.payouts.adminListPage({
       ...(q.legalEntityId !== undefined ? { legalEntityId: q.legalEntityId } : {}),
       ...(q.status !== undefined ? { status: q.status } : {}),
+      ...(q.search ? { search: q.search } : {}),
       limit: q.limit,
       offset: q.offset,
     });
