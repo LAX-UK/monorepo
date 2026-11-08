@@ -79,7 +79,7 @@ describe("POST /contact-enquiries", () => {
       intent: "private_sale_sell",
       name: "Ada Lovelace",
       email: "ada@example.com",
-      departmentSlug: "modern-british",
+      departmentSlug: "paintings",
       artist: "David Hockney",
       title: "Pool study",
       locationTown: "Bath",
@@ -90,11 +90,27 @@ describe("POST /contact-enquiries", () => {
     expect(submit).toHaveBeenCalledWith(
       expect.objectContaining({
         intent: "private_sale_sell",
-        departmentSlug: "modern-british",
+        departmentSlug: "paintings",
         marketingOptIn: true,
       }),
       null,
     );
+  });
+
+  it("refuses a private sale seller's enquiry for a department that is not on the Sell list", async () => {
+    const { post, submit } = setup();
+    const res = await post({
+      intent: "private_sale_sell",
+      name: "Ada Lovelace",
+      email: "ada@example.com",
+      departmentSlug: "modern-british",
+      artist: "David Hockney",
+      title: "Pool study",
+      locationTown: "Bath",
+      locationCountry: "United Kingdom",
+    });
+    expect(res.status).toBe(400);
+    expect(submit).not.toHaveBeenCalled();
   });
 
   it("accepts a private sale buyer's structured enquiry", async () => {
