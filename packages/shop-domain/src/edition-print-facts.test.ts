@@ -14,7 +14,10 @@ const laxCertificate = {
 const facts = (overrides: Partial<EditionFacts> = {}): EditionFacts => ({
   numbering: "on_print",
   signature: { kind: "hand_signed", medium: "pencil", place: "front_lower_margin" },
-  certificate: { ...laxCertificate, authority: { givenBy: "artist", datedOn: "2026-09-12" } },
+  certificate: {
+    ...laxCertificate,
+    authority: { givenBy: "artist", datedOn: "2026-09-12", reference: "Letter in the artist file" },
+  },
   confirmed: null,
   ...overrides,
 });
@@ -79,7 +82,11 @@ describe("a certificate London Art Exchange issues", () => {
         facts({
           certificate: {
             ...laxCertificate,
-            authority: { givenBy: "estate", datedOn: "2026-09-12" },
+            authority: {
+              givenBy: "estate",
+              datedOn: "2026-09-12",
+              reference: "Letter in the artist file",
+            },
           },
         }),
       ).rows.certificate,
@@ -96,7 +103,7 @@ describe("a certificate London Art Exchange issues", () => {
         facts({
           certificate: {
             ...laxCertificate,
-            authority: { givenBy: "gallery" as never, datedOn: "2026-09-12" },
+            authority: { givenBy: "gallery" as never, datedOn: "2026-09-12", reference: "Letter" },
           },
         }),
       ),
@@ -113,6 +120,30 @@ describe("a certificate London Art Exchange issues", () => {
     }
   });
 
+  it("needs to say where the signed letter is kept", () => {
+    expect(() =>
+      assertEditionFacts(
+        LAX_STANDARD_RUN,
+        facts({
+          certificate: {
+            ...laxCertificate,
+            authority: { givenBy: "artist", datedOn: "2026-09-12", reference: "  " },
+          },
+        }),
+      ),
+    ).toThrow(/written authority is kept/);
+  });
+
+  it("keeps where the letter is kept off the order snapshot", () => {
+    const snapshot = createEditionSnapshot({
+      run: LAX_STANDARD_RUN,
+      proofsKept: null,
+      facts: facts(),
+    });
+    expect(JSON.stringify(snapshot)).not.toContain("Letter in the artist file");
+    expect(JSON.stringify(snapshot)).toContain("2026-09-12");
+  });
+
   it("is the only certificate that carries an authority", () => {
     expect(() =>
       assertEditionFacts(
@@ -121,7 +152,11 @@ describe("a certificate London Art Exchange issues", () => {
           certificate: {
             ...laxCertificate,
             issuer: "artist",
-            authority: { givenBy: "artist", datedOn: "2026-09-12" },
+            authority: {
+              givenBy: "artist",
+              datedOn: "2026-09-12",
+              reference: "Letter in the artist file",
+            },
           },
         }),
       ),

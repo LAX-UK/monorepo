@@ -36,7 +36,19 @@ function factsOnly(facts: EditionFacts): AdminEditionFacts {
             ...(certificate.numberedToMatchReason
               ? { numberedToMatchReason: certificate.numberedToMatchReason }
               : {}),
+            ...(certificate.authority?.datedOn && certificate.authority.reference
+              ? {
+                  authority: {
+                    givenBy: certificate.authority.givenBy,
+                    datedOn: certificate.authority.datedOn,
+                    reference: certificate.authority.reference,
+                  },
+                }
+              : {}),
           },
+    ...(facts.stamp && facts.stamp !== "none" ? { stamp: facts.stamp } : {}),
+    ...(facts.printedBy ? { printedBy: facts.printedBy } : {}),
+    ...(facts.publishedBy ? { publishedBy: facts.publishedBy } : {}),
   };
 }
 

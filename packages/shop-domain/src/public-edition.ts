@@ -1,6 +1,8 @@
 import {
   type EditionFactRows,
   type EditionFacts,
+  type Publisher,
+  type Stamp,
   describeAlsoAvailable,
   describeEditionFacts,
   describeEditionRun,
@@ -23,10 +25,11 @@ export type PublicEditionRun =
   | { kind: "proof"; proofType: ProofType; size: number };
 
 /** The confirmed facts as a storefront receives them: who confirmed them stays inside. */
-export type PublicEditionFacts = Pick<
-  EditionFacts,
-  "numbering" | "signature" | "certificate" | "stamp" | "printedBy" | "publishedBy"
->;
+export type PublicEditionFacts = Pick<EditionFacts, "numbering" | "signature" | "certificate"> & {
+  stamp?: Stamp;
+  printedBy?: string | null;
+  publishedBy?: Publisher | null;
+};
 
 /** Proofs a main run kept, without the BAT proof, which is never listed or mentioned. */
 export type PublicProofsKept = Pick<ProofsKept, "ap" | "pp" | "hc">;

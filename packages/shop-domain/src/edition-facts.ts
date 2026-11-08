@@ -6,6 +6,7 @@ import {
   proofLabel,
   runSize,
 } from "./edition-run.js";
+import { assertAuthorityReference } from "./print-fulfilment.js";
 import { ShopDomainError } from "./shop-domain-error.js";
 
 /**
@@ -43,10 +44,16 @@ export const AUTHORITY_GIVERS = ["artist", "estate"] as const;
 export type AuthorityGiver = (typeof AUTHORITY_GIVERS)[number];
 
 /**
- * The written authority a certificate London Art Exchange issues stands on: who gave it and the
- * date of their letter. Where the letter is kept stays with staff and is never part of the facts.
+ * The written authority a certificate London Art Exchange issues stands on: who gave it, the date
+ * of their letter and where the signed letter is kept. A saved authority has all three; a
+ * storefront is told only who gave it, and an older sale's record may hold fewer.
  */
-export type CertificateAuthority = { givenBy: AuthorityGiver; datedOn: string };
+export type CertificateAuthority = {
+  givenBy: AuthorityGiver;
+  datedOn?: string | undefined;
+  /** Where the signed letter is kept. Staff only; never shown to shoppers. */
+  reference?: string | undefined;
+};
 export type CertificateForm = "paper" | "digital" | "both";
 export type CertificateArrival =
   | { kind: "with_print" }
@@ -63,7 +70,7 @@ export type Certificate =
       /** Why a numbered run's certificate is not numbered to match (rule 7). */
       numberedToMatchReason?: string | undefined;
       /** Required when London Art Exchange is the issuer, and only then. */
-      authority?: CertificateAuthority | undefined;
+      authority?: CertificateAuthority;
     };
 
 export type EditionFacts = {
@@ -144,9 +151,11 @@ function assertCertificateAuthority(certificate: Certificate, requireAuthority: 
   if (!(AUTHORITY_GIVERS as readonly string[]).includes(authority.givenBy)) {
     throw new ShopDomainError("Say whether the artist or their estate gave the authority");
   }
-  if (!isRealDate(authority.datedOn)) {
+  if (!requireAuthority && authority.datedOn === undefined) return;
+  if (authority.datedOn === undefined || !isRealDate(authority.datedOn)) {
     throw new ShopDomainError("The authority needs the date of the letter");
   }
+  if (requireAuthority) assertAuthorityReference(authority.reference);
 }
 
 function assertPrintParties(facts: EditionFacts): void {

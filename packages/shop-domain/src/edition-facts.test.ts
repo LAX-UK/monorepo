@@ -50,7 +50,7 @@ const laxDigital: Certificate = {
   form: "digital",
   arrives: { kind: "with_print" },
   numberedToMatch: true,
-  authority: { givenBy: "artist", datedOn: "2026-09-12" },
+  authority: { givenBy: "artist", datedOn: "2026-09-12", reference: "Letter in the artist file" },
 };
 
 const pencil: Signature = { kind: "hand_signed", medium: "pencil", place: "front_lower_margin" };

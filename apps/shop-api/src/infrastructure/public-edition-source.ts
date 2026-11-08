@@ -35,8 +35,15 @@ function publicFacts(row: FactsRow | undefined): PublicEditionFacts | null {
             form: certificate.form,
             arrives: certificate.arrives,
             numberedToMatch: certificate.numberedToMatch,
+            // Shoppers learn who gave the authority; the date and the letter stay with staff.
+            ...(certificate.authority
+              ? { authority: { givenBy: certificate.authority.givenBy } }
+              : {}),
           }
         : { kind: "none" },
+    ...(facts.stamp && facts.stamp !== "none" ? { stamp: facts.stamp } : {}),
+    ...(facts.printedBy ? { printedBy: facts.printedBy } : {}),
+    ...(facts.publishedBy ? { publishedBy: facts.publishedBy } : {}),
   };
 }
 

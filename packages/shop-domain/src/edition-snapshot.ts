@@ -45,12 +45,19 @@ export type ReadEditionSnapshot = {
   facts: EditionFacts | null;
 };
 
+/** Where the signed letter is kept stays with staff, so it is not kept on an order. */
+function withoutLetterReference(certificate: Certificate): Certificate {
+  if (certificate.kind !== "included" || !certificate.authority) return certificate;
+  const { reference: _kept, ...authority } = certificate.authority;
+  return { ...certificate, authority };
+}
+
 export function editionFactsToPlain(facts: EditionFacts | null): PlainEditionFacts | null {
   if (!facts) return null;
   return {
     numbering: facts.numbering,
     signature: facts.signature,
-    certificate: facts.certificate,
+    certificate: withoutLetterReference(facts.certificate),
     ...(facts.stamp ? { stamp: facts.stamp } : {}),
     ...(facts.printedBy ? { printedBy: facts.printedBy } : {}),
     ...(facts.publishedBy ? { publishedBy: facts.publishedBy } : {}),

@@ -101,6 +101,18 @@ export const AdminSignatureSchema = Type.Union([
   Type.Object({ kind: Type.Literal("unsigned") }, { additionalProperties: false }),
 ]);
 
+/** The written authority a London Art Exchange certificate stands on. Staff only. */
+export const AdminCertificateAuthoritySchema = Type.Object(
+  {
+    givenBy: Type.Union([Type.Literal("artist"), Type.Literal("estate")]),
+    /** The date of the letter, as YYYY-MM-DD. */
+    datedOn: Type.String({ pattern: "^\\d{4}-\\d{2}-\\d{2}$" }),
+    /** Where the signed letter is kept. */
+    reference: Type.String({ minLength: 1, maxLength: 200 }),
+  },
+  { additionalProperties: false },
+);
+
 export const AdminCertificateSchema = Type.Union([
   Type.Object({ kind: Type.Literal("none") }, { additionalProperties: false }),
   Type.Object(
@@ -120,6 +132,31 @@ export const AdminCertificateSchema = Type.Union([
       ]),
       numberedToMatch: Type.Boolean(),
       numberedToMatchReason: Type.Optional(Type.String({ maxLength: FACTS_REASON_MAX_LENGTH })),
+      /** Required when London Art Exchange issues the certificate, and only then. */
+      authority: Type.Optional(AdminCertificateAuthoritySchema),
+    },
+    { additionalProperties: false },
+  ),
+]);
+
+export const PRINT_PARTY_NAME_MAX = 80;
+
+/** A blind stamp on the print. "none" and an absent value both say nothing. */
+export const AdminStampSchema = Type.Union([
+  Type.Literal("none"),
+  Type.Literal("publisher_blind"),
+  Type.Literal("printer_blind"),
+  Type.Literal("estate_back"),
+]);
+
+/** The publisher: the artist, London Art Exchange, or a name from the Settings list. */
+export const AdminPublisherSchema = Type.Union([
+  Type.Object({ kind: Type.Literal("artist") }, { additionalProperties: false }),
+  Type.Object({ kind: Type.Literal("lax") }, { additionalProperties: false }),
+  Type.Object(
+    {
+      kind: Type.Literal("named"),
+      name: Type.String({ minLength: 1, maxLength: PRINT_PARTY_NAME_MAX }),
     },
     { additionalProperties: false },
   ),
@@ -135,6 +172,12 @@ export const AdminEditionFactsSchema = Type.Object(
     ]),
     signature: AdminSignatureSchema,
     certificate: AdminCertificateSchema,
+    stamp: Type.Optional(AdminStampSchema),
+    /** A name from the printers and publishers list; absent says nothing. */
+    printedBy: Type.Optional(
+      Type.Union([Type.String({ minLength: 1, maxLength: PRINT_PARTY_NAME_MAX }), Type.Null()]),
+    ),
+    publishedBy: Type.Optional(Type.Union([AdminPublisherSchema, Type.Null()])),
   },
   { additionalProperties: false },
 );

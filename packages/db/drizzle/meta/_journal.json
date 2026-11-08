@@ -2255,6 +2255,13 @@
       "when": 1803369600000,
       "tag": "0327_legal_entity_client_message",
       "breakpoints": true
+    },
+    {
+      "idx": 323,
+      "version": "7",
+      "when": 1803456000000,
+      "tag": "0328_shop_print_facts",
+      "breakpoints": true
     }
   ]
 }

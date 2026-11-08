@@ -70,12 +70,13 @@ export function createSaveEditionFactsService(deps: { uow: EditionRunUnitOfWork;
 
   /** Checks and stores facts on a run already locked in `tx`. Returns the new facts version. */
   async function apply(tx: EditionRunTx, input: ApplyFactsInput): Promise<string> {
+    const at = clock.now();
     const facts: EditionFacts = {
       ...input.facts,
-      confirmed: input.confirmed ? { by: input.actorSubjectId, at: clock.now() } : null,
+      confirmed: input.confirmed ? { by: input.actorSubjectId, at } : null,
     };
     assertEditionFacts(input.run, facts);
-    return tx.facts.save(input.artworkId, facts);
+    return tx.facts.save(input.artworkId, facts, { by: input.actorSubjectId, at });
   }
 
   async function loadRun(
