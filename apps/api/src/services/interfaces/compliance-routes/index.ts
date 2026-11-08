@@ -22,6 +22,7 @@ export type {
 export type { ILotDocumentHttpApplicationService } from "./compliance-lot-document-http.js";
 export type { ISaleDocumentHttpApplicationService } from "./compliance-sale-document-http.js";
 
+import type { IStaffStepUpGuard } from "../../staff-step-up.service.js";
 import type { IBuyerComplianceHttpApplicationService } from "./compliance-buyer-http.js";
 import type { IExportHttpApplicationService } from "./compliance-export-http.js";
 import type { IKycHttpApplicationService } from "./compliance-kyc-http.js";
@@ -36,6 +37,8 @@ export type ComplianceRouteServices = {
   kycHttp: IKycHttpApplicationService;
   uploadHttp: IUploadHttpApplicationService;
   exportHttp: IExportHttpApplicationService;
+  /** Recent sign-in check for staff on shared routes (exports of personal data). */
+  staffStepUp: IStaffStepUpGuard;
   lotDocumentHttp: ILotDocumentHttpApplicationService;
   saleDocumentHttp: ISaleDocumentHttpApplicationService;
 };

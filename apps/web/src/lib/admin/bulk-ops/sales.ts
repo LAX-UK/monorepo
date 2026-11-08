@@ -6,6 +6,7 @@ import {
   adminPublishSaleResultAction,
 } from "@/lib/admin/catalog-lifecycle/admin-catalog-lifecycle-mutations";
 import { actionFailure, actionSuccess } from "@/lib/forms/form-result";
+import { STAFF_STEP_UP_REQUIRED } from "@auction/identity-contracts/staff-step-up";
 import type { SaleStatus } from "@auction/types";
 import { bulkSaleDeleteConfirmationPhrase } from "@auction/validators";
 
@@ -40,7 +41,14 @@ async function runSequential(
   const failures: string[] = [];
   for (const id of ids) {
     const result = await op(id);
-    if (!result.ok) failures.push(id);
+    if (!result.ok) {
+      // A stale sign-in stops the run: every later item would be refused the same way.
+      const errorCode = (result as { errorCode?: string }).errorCode;
+      if (errorCode === STAFF_STEP_UP_REQUIRED) {
+        return actionFailure("Recent sign-in required", undefined, 403, STAFF_STEP_UP_REQUIRED);
+      }
+      failures.push(id);
+    }
   }
   const bulk = toSequentialBulkResult(ids, failures);
   if (failures.length > 0) {

@@ -2,13 +2,17 @@ import { Hono } from "hono";
 import { describe, expect, it, vi } from "vitest";
 import type { ContainerExportRoutesSlice } from "../container.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
+import { stubStepUpGuard } from "../testing/staff-mutation-guards.js";
 import { createExportRoutes } from "./exports.js";
 
 const userId = "user-1";
 
-function buildContainer(exportHttp: ContainerExportRoutesSlice["compliance"]["exportHttp"]) {
+function buildContainer(
+  exportHttp: ContainerExportRoutesSlice["compliance"]["exportHttp"],
+  recent = true,
+) {
   return {
-    compliance: { exportHttp },
+    compliance: { exportHttp, staffStepUp: stubStepUpGuard(recent) },
     userSuspensionChecker: { isSuspended: vi.fn().mockResolvedValue(false) },
   } as unknown as ContainerExportRoutesSlice;
 }
@@ -31,6 +35,7 @@ describe("export routes", () => {
         id: userId,
         role: "staff",
         staffRoles: ["sales_manager"],
+        identitySessionId: "session-1",
         scopes: ["bid.write"],
       }),
     };
@@ -74,6 +79,7 @@ describe("export routes", () => {
         id: userId,
         role: "staff",
         staffRoles: ["sales_manager"],
+        identitySessionId: "session-1",
         scopes: ["bid.write"],
       }),
     };
@@ -133,6 +139,7 @@ describe("export routes", () => {
         id: userId,
         role: "staff",
         staffRoles: ["sales_manager"],
+        identitySessionId: "session-1",
         scopes: ["bid.write"],
       }),
     };
@@ -150,5 +157,62 @@ describe("export routes", () => {
     const body = (await res.json()) as { estimatedRows: number; syncMaxRows: number };
     expect(body.estimatedRows).toBe(12);
     expect(body.syncMaxRows).toBe(5000);
+  });
+  it("POST / asks staff for a recent sign-in and exports nothing", async () => {
+    const createExport = vi.fn();
+    const container = buildContainer({ createExport } as never, false);
+    const authenticator: IAuthenticator = {
+      getSessionUser: vi.fn().mockResolvedValue({
+        id: userId,
+        role: "staff",
+        staffRoles: ["sales_manager"],
+        identitySessionId: "session-1",
+        scopes: ["bid.write"],
+      }),
+    };
+    const app = new Hono();
+    app.route("/exports", createExportRoutes(container, authenticator));
+
+    const res = await app.request("http://test/exports", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ entityType: "lots", format: "csv", filters: {} }),
+    });
+
+    expect(res.status).toBe(403);
+    expect(((await res.json()) as { code: string }).code).toBe("step_up_required");
+    expect(createExport).not.toHaveBeenCalled();
+  });
+
+  it("POST / does not ask a client for a sign-in or call Identity", async () => {
+    const createExport = vi.fn().mockResolvedValue({
+      kind: "json",
+      status: 202,
+      body: { mode: "async", job: { id: "exp-1" } },
+    });
+    const container = buildContainer({ createExport } as never, false);
+    const isRecent = vi.fn();
+    (container as unknown as { compliance: { staffStepUp: unknown } }).compliance.staffStepUp = {
+      isRecent,
+    };
+    const authenticator: IAuthenticator = {
+      getSessionUser: vi.fn().mockResolvedValue({
+        id: userId,
+        role: "client",
+        staffRoles: [],
+        scopes: ["bid.write"],
+      }),
+    };
+    const app = new Hono();
+    app.route("/exports", createExportRoutes(container, authenticator));
+
+    const res = await app.request("http://test/exports", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ entityType: "lots", format: "csv", filters: {} }),
+    });
+
+    expect(res.status).toBe(202);
+    expect(isRecent).not.toHaveBeenCalled();
   });
 });

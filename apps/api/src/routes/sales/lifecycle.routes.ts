@@ -16,7 +16,7 @@ import { zValidator } from "../../lib/z-validator.js";
 import type { SaleHono, SaleLifecycleWriteRouteDeps } from "./_shared.js";
 
 export function attachSaleLifecycleRoutes(r: SaleHono, deps: SaleLifecycleWriteRouteDeps): void {
-  const { container, requireAuth } = deps;
+  const { container, requireAuth, requireStaffStepUp } = deps;
   const http = () => container.catalogRoutes.saleLifecycleHttp;
 
   r.post("/bulk", requireAuth, zValidator("json", bulkSalesBodySchema), async (c) => {
@@ -97,6 +97,7 @@ export function attachSaleLifecycleRoutes(r: SaleHono, deps: SaleLifecycleWriteR
   r.post(
     "/:id/cancel",
     requireAuth,
+    requireStaffStepUp,
     zValidator("param", saleIdParamSchema),
     zValidator("json", cancelSaleBodySchema),
     async (c) => {
@@ -114,6 +115,7 @@ export function attachSaleLifecycleRoutes(r: SaleHono, deps: SaleLifecycleWriteR
   r.post(
     "/:id/delete",
     requireAuth,
+    requireStaffStepUp,
     zValidator("param", saleIdParamSchema),
     zValidator("json", deleteSaleBodySchema),
     async (c) => {

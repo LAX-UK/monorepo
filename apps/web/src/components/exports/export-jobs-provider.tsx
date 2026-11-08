@@ -1,6 +1,8 @@
 "use client";
 
+import { handleStaffStepUp } from "@/lib/auth/step-up/staff-step-up.client";
 import {
+  ExportApiError,
   cancelExportJob,
   createExport,
   downloadBlob,
@@ -207,6 +209,8 @@ export function ExportJobsProvider({ children }: Props) {
         }
       } catch (err) {
         notify.dismiss(toastId);
+        // A staff export of personal data needs a recent sign-in; send the person to confirm it.
+        if (err instanceof ExportApiError && handleStaffStepUp(err.code)) return;
         notify.error("Export failed", { description: exportErrorMessage(err) });
         throw err;
       }

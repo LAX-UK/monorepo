@@ -3,6 +3,8 @@
 import { postBulkAction } from "@/lib/actions/admin/_shared/bulk-action";
 import { redirectWithAdminFlash } from "@/lib/admin/flash/flash.server";
 import { denyUnlessAdminCapability } from "@/lib/auth/assert-admin-action-capability";
+import { redirectToStaffReauth } from "@/lib/auth/step-up/staff-step-up.server";
+import { stepUpErrorCode } from "@/lib/auth/step-up/step-up-error-code";
 import { getWriteContainer } from "@/lib/data/write-container.server";
 import {
   type ActionResult,
@@ -13,6 +15,7 @@ import {
 } from "@/lib/forms/form-result";
 import { INVITATIONS_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { instrumentServerAction } from "@/lib/observability/instrument-server-action";
+import { STAFF_STEP_UP_REQUIRED } from "@auction/identity-contracts/staff-step-up";
 import {
   adminBulkInvitationsBodySchema,
   adminCreateInvitationBodySchema,
@@ -55,7 +58,7 @@ export async function adminCreateInvitationResultAction(
     }
     const r = await getWriteContainer().invitations.create(parsed.data);
     if (!r.ok) {
-      return actionFailure(r.message, undefined, r.status);
+      return actionFailure(r.message, undefined, r.status, stepUpErrorCode(r));
     }
     revalidatePath("/admin/invitations");
     return actionSuccess();
@@ -71,6 +74,8 @@ export async function adminCreateInvitationAction(formData: FormData): Promise<v
         targetRole: String(formData.get("targetRole") ?? "").trim(),
       });
       if (!r.ok) {
+        if (r.errorCode === STAFF_STEP_UP_REQUIRED)
+          await redirectToStaffReauth("/admin/invitations");
         return redirectWithAdminFlash("/admin/invitations", "error", r.error);
       }
       redirect("/admin/invitations");

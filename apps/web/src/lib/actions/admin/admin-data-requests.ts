@@ -9,6 +9,7 @@ import {
   validateErasureReason,
 } from "@/lib/admin/data-requests/enquiry-erasure";
 import { denyUnlessAdminCapability } from "@/lib/auth/assert-admin-action-capability";
+import { isStaffStepUpResponse } from "@/lib/auth/step-up/staff-step-up.server";
 import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
 import { readDataEnvelope, readJsonBody } from "@/lib/data/http/envelope";
 import { type ActionResult, actionFailure, actionSuccess } from "@/lib/forms/form-result";
@@ -22,6 +23,7 @@ import {
   extendDataRequestBodySchema,
   patchDataRequestBodySchema,
 } from "@auction/identity-contracts/data-requests";
+import { STAFF_STEP_UP_REQUIRED } from "@auction/identity-contracts/staff-step-up";
 import { revalidatePath } from "next/cache";
 import type { z } from "zod";
 import { z as zod } from "zod";
@@ -34,6 +36,11 @@ export type FoundAccountResult = { subjectId: string; name: string; status: stri
 const foundAccountSchema = zod
   .object({ subjectId: zod.string(), name: zod.string(), status: zod.string() })
   .nullable();
+
+/** A stale staff sign-in as an action result; the page then sends the person to sign in again. */
+function stepUpRequired() {
+  return actionFailure("Recent sign-in required", undefined, 403, STAFF_STEP_UP_REQUIRED);
+}
 
 async function errorCodeOf(res: Response): Promise<string | undefined> {
   const body = (await res.json().catch(() => null)) as { error?: unknown } | null;
@@ -73,6 +80,7 @@ async function send(
       ...(payload ? { headers: { "Content-Type": "application/json" }, body: payload } : {}),
     }).catch(() => null);
     if (!res) return actionFailure(dataRequestErrorMessage(undefined, undefined), undefined, 503);
+    if (await isStaffStepUpResponse(res)) return stepUpRequired();
     if (!res.ok) {
       const code = await errorCodeOf(res);
       return actionFailure(dataRequestErrorMessage(code, res.status), undefined, res.status, code);
@@ -190,6 +198,7 @@ export async function eraseDataRequestEnquiriesAction(
       }),
     }).catch(() => null);
     if (!res) return actionFailure(erasureErrorMessage(undefined, undefined), undefined, 503);
+    if (await isStaffStepUpResponse(res)) return stepUpRequired();
     if (!res.ok) {
       const code = await errorCodeOf(res);
       return actionFailure(erasureErrorMessage(code, res.status), undefined, res.status, code);

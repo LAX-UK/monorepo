@@ -5,6 +5,8 @@ import {
   assertAdminCapabilityForRedirect,
   denyUnlessAdminCapability,
 } from "@/lib/auth/assert-admin-action-capability";
+import { redirectToStaffReauth } from "@/lib/auth/step-up/staff-step-up.server";
+import { stepUpErrorCode } from "@/lib/auth/step-up/step-up-error-code";
 import { getAdminXeroOAuthConsentUrl } from "@/lib/data/http/admin-payments.server";
 import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
 import { getWriteContainer } from "@/lib/data/write-container.server";
@@ -50,6 +52,7 @@ export async function adminCapturePaymentAction(formData: FormData): Promise<voi
       const { adminPayments } = getWriteContainer();
       const r = await adminPayments.capture(id);
       if (!r.ok) {
+        if (stepUpErrorCode(r)) await redirectToStaffReauth("/admin/payments");
         return redirectWithAdminFlash("/admin/payments", "error", r.message);
       }
       revalidatePath("/admin/payments");

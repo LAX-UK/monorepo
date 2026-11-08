@@ -1,6 +1,17 @@
 import { browserApiBase, browserFetch } from "@/lib/data/http/hc-browser";
 import type { CreateExportRequest, CreateExportResponse, ExportJobView } from "@/lib/exports/types";
 
+/** A refused export request; `code` carries the API code, such as `step_up_required`. */
+export class ExportApiError extends Error {
+  constructor(
+    message: string,
+    readonly code?: string,
+  ) {
+    super(message);
+    this.name = "ExportApiError";
+  }
+}
+
 function parseFilename(contentDisposition: string | null, fallback: string): string {
   if (!contentDisposition) return fallback;
   const match = /filename="([^"]+)"/.exec(contentDisposition);
@@ -15,8 +26,11 @@ export async function createExport(body: CreateExportRequest): Promise<CreateExp
   });
 
   if (!res.ok) {
-    const errBody = (await res.json().catch(() => null)) as { error?: string } | null;
-    throw new Error(errBody?.error ?? `Export failed (${res.status})`);
+    const errBody = (await res.json().catch(() => null)) as {
+      error?: string;
+      code?: string;
+    } | null;
+    throw new ExportApiError(errBody?.error ?? `Export failed (${res.status})`, errBody?.code);
   }
 
   const contentType = res.headers.get("Content-Type") ?? "";
