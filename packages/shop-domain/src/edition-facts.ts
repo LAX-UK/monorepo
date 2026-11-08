@@ -1,3 +1,4 @@
+import { assertAuthorityReference } from "./authority-reference.js";
 import {
   type EditionRunSpec,
   type ProofType,
@@ -6,7 +7,6 @@ import {
   proofLabel,
   runSize,
 } from "./edition-run.js";
-import { assertAuthorityReference } from "./print-fulfilment.js";
 import { ShopDomainError } from "./shop-domain-error.js";
 
 /**
