@@ -158,7 +158,7 @@ describe("NotificationFactory payment reminder for a private sale", () => {
   const input = {
     userId: "user-1",
     legalEntityId: null,
-    lotId: null,
+    lotId: "lot-1",
     lotTitle: "Harbour at dusk",
     paymentId: "deal-1",
     amount: "48000.00",
