@@ -18,6 +18,8 @@ export function createTestUserRouteServicesInput(
       resolveForUser: vi.fn(async () => ({ id: "personal-1" })),
     } as never,
     lotViewerState: { forLot: vi.fn(), forLots: vi.fn() },
+    paymentEligibility: { check: vi.fn(async () => ({ kind: "payable" as const })) },
+    settlementCompliance: null,
     categoryInterestsEligibilityReader: {
       getProfile: vi.fn(),
     } as never,

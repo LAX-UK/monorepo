@@ -31,6 +31,7 @@ const owedEntry = (patch: Partial<AmountOwedEntry> = {}): AmountOwedEntry => ({
   amountDue: "1150.00",
   currency: "GBP",
   blocker: null,
+  holder: null,
   ...patch,
 });
 

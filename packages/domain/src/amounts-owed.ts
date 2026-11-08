@@ -16,8 +16,23 @@ import { purchaseEnding, purchaseIsToPay } from "./purchase-state.js";
  */
 export const PURCHASE_LIST_LIMIT = 500;
 
-/** The buyer's account-wide checks: they hold every unpaid purchase until cleared. */
-export type AccountHold = "clear" | "aml_hold" | "source_of_funds_required";
+/**
+ * The checks that hold every unpaid purchase of an account until cleared: the buyer's own anti
+ * money laundering and source-of-funds checks, or, for an organisation, LAX still checking the
+ * organisation itself.
+ */
+export type AccountHold =
+  | "clear"
+  | "aml_hold"
+  | "source_of_funds_required"
+  | "organisation_under_review";
+
+/**
+ * Whose check holds a purchase: the organisation's own (LAX is checking it), the person who pays,
+ * or the person who won (an organisation's payer is often not its winner). A purchase held by its
+ * own payment review has no holder.
+ */
+export type HoldHolder = "organisation" | "payer" | "winner";
 
 /** What stops a purchase being paid: documents the buyer can provide, or checks we are doing. */
 export type AmountOwedBlocker = "documents" | "review";
@@ -51,6 +66,8 @@ export type AmountOwedEntry = {
   currency: string;
   /** Set only for the person who pays, and only while the purchase is held. */
   blocker: AmountOwedBlocker | null;
+  /** Whose check holds it, when an account-level check does; `null` when none does. */
+  holder: HoldHolder | null;
 };
 
 /** The reason the lot's own payment is held, when it is one of the checks or a finance hold. */
@@ -66,21 +83,26 @@ function holdingReason(facts: AmountOwedFacts, account: AccountHold): ManualRevi
 export function amountOwedEntry(
   facts: AmountOwedFacts,
   account: AccountHold,
+  holder: HoldHolder | null = null,
 ): AmountOwedEntry | null {
   const { lotId, role, amountDue, currency } = facts;
   const paymentStatus = facts.paymentStatus;
   const ending = purchaseEnding({ paymentStatus, fulfilmentStatus: facts.fulfilmentStatus });
   if (ending === "refunded") return null;
   if (ending === "cancelled") {
-    return { lotId, state: "cancelled", role, amountDue, currency, blocker: null };
+    return { lotId, state: "cancelled", role, amountDue, currency, blocker: null, holder: null };
   }
   if (!purchaseIsToPay({ paymentStatus })) return null;
 
   const reason = holdingReason(facts, account);
   const held = paymentStatus === "requires_manual_review" || reason !== null;
+  // Documents are the payer's to give only for the payer's own check; another person's check, or
+  // LAX checking the organisation, is waited out.
+  const ownCheck = !facts.paymentReviewReason;
+  const heldBy = held && ownCheck ? holder : null;
   const blocker: AmountOwedBlocker | null =
     held && role === "payer"
-      ? reason === "source_of_funds_required"
+      ? reason === "source_of_funds_required" && heldBy !== "winner"
         ? "documents"
         : "review"
       : null;
@@ -91,6 +113,7 @@ export function amountOwedEntry(
     amountDue,
     currency,
     blocker,
+    holder: heldBy,
   };
 }
 
@@ -105,7 +128,15 @@ export type AmountsOwedSummary = {
   inReview: boolean;
   /** The one thing to ask for: documents if any lot needs them, else just "checks open". */
   blocker: AmountOwedBlocker | null;
+  /** Whose check holds the purchases: the payer's own first, then the organisation's, then the winner's. */
+  holder: HoldHolder | null;
 };
+
+const HOLDER_ORDER: readonly HoldHolder[] = ["payer", "organisation", "winner"];
+
+function firstHolder(entries: readonly AmountOwedEntry[]): HoldHolder | null {
+  return HOLDER_ORDER.find((holder) => entries.some((entry) => entry.holder === holder)) ?? null;
+}
 
 /** What the person pays themselves, summed. Lots someone else pays, and cancelled sales, are out. */
 export function summariseAmountsOwed(entries: readonly AmountOwedEntry[]): AmountsOwedSummary {
@@ -122,5 +153,6 @@ export function summariseAmountsOwed(entries: readonly AmountOwedEntry[]): Amoun
     payableCount,
     inReview: mine.length > 0 && payableCount === 0,
     blocker: blockers.includes("documents") ? "documents" : (blockers[0] ?? null),
+    holder: firstHolder(mine),
   };
 }

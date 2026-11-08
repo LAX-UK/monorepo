@@ -1,6 +1,6 @@
 import type { AccountPurchaseFacts } from "@/lib/data/http/account-buying.types";
 import type { LotFulfilmentSnapshot } from "@/lib/data/http/payments.schema";
-import { type AccountHold, PURCHASE_LIST_LIMIT } from "@auction/domain";
+import { type AccountHold, type HoldHolder, PURCHASE_LIST_LIMIT } from "@auction/domain";
 import type { Lot, PortfolioRow } from "@auction/types";
 import { describe, expect, it } from "vitest";
 import { owedFor } from "./owed-fixtures.test-util";
@@ -143,6 +143,7 @@ function row(id: string, lotNumber: number, payment: PortfolioRow["payment"]): P
 function sources(
   overrides: Partial<PurchaseSources> = {},
   gate: AccountHold = "clear",
+  holder?: HoldHolder | null,
 ): PurchaseSources {
   const base: Omit<PurchaseSources, "owedByLot"> = {
     rows: [
@@ -163,7 +164,7 @@ function sources(
     payerName: null,
     ...overrides,
   };
-  return { ...base, owedByLot: owedFor(base, gate), ...overrides };
+  return { ...base, owedByLot: owedFor(base, gate, holder), ...overrides };
 }
 
 function facts(
@@ -425,6 +426,74 @@ describe("buildPurchasesVm", () => {
       statusNote: "We need to confirm the source of funds before you pay",
       payable: null,
       primaryAction: null,
+    });
+  });
+
+  describe("whose check holds an organisation's purchases", () => {
+    const northbank = { id: "org-1", name: "Northbank Gallery", canManage: true };
+
+    it("names the organisation when LAX is still checking it, and offers its setup to owners and admins", () => {
+      const vm = buildPurchasesVm(
+        sources(
+          { organisation: northbank, payerName: northbank.name },
+          "organisation_under_review",
+          "organisation",
+        ),
+      );
+      expect(vm.payNow).toEqual({
+        kind: "review",
+        title: "Northbank Gallery is in review",
+        description: "We're checking this organisation's details. You can pay once we have.",
+        documentsAction: { label: "Open organisation setup", href: "/organisation?account=org-1" },
+      });
+    });
+
+    it("offers no setup to a member who cannot change the organisation", () => {
+      const vm = buildPurchasesVm(
+        sources(
+          { organisation: { ...northbank, canManage: false } },
+          "organisation_under_review",
+          "organisation",
+        ),
+      );
+      expect(vm.payNow).toMatchObject({
+        title: "Northbank Gallery is in review",
+        documentsAction: null,
+      });
+    });
+
+    it("asks the payer for their own documents when their own check is open", () => {
+      const vm = buildPurchasesVm(
+        sources({ organisation: northbank }, "source_of_funds_required", "payer"),
+      );
+      expect(vm.payNow).toMatchObject({
+        kind: "review",
+        title: "Your own checks are in review",
+        documentsAction: { label: "Provide documents" },
+      });
+    });
+
+    it("tells the payer to wait, without saying the check is on the person who won", () => {
+      const vm = buildPurchasesVm(
+        sources({ organisation: northbank }, "source_of_funds_required", "winner"),
+      );
+      expect(vm.payNow).toMatchObject({
+        kind: "review",
+        title: "We're checking a few details before this can be paid",
+        documentsAction: null,
+      });
+      expect(JSON.stringify(vm.payNow)).not.toMatch(/won|winner|person/i);
+    });
+
+    it("offers to pay when the organisation's checks are clear", () => {
+      const vm = buildPurchasesVm(sources({ organisation: northbank }));
+      expect(vm.payNow).toMatchObject({ kind: "pay" });
+    });
+
+    it("keeps a person's own account in review wording", () => {
+      expect(buildPurchasesVm(sources({}, "aml_hold")).payNow).toMatchObject({
+        title: "Your account is in review",
+      });
     });
   });
 

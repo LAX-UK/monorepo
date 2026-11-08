@@ -20,6 +20,7 @@ const entrySchema = z.object({
   amountDue: z.string().nullable(),
   currency: z.string(),
   blocker: z.enum(["documents", "review"]).nullable(),
+  holder: z.enum(["organisation", "payer", "winner"]).nullable(),
 }) satisfies z.ZodType<AmountOwedEntry, z.ZodTypeDef, unknown>;
 
 const stillToSendSchema = z.object({
