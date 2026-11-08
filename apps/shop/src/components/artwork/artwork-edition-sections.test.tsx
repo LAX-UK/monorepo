@@ -160,7 +160,7 @@ describe("ArtworkBuyColumn", () => {
 });
 
 describe("ArtworkEditionFacts", () => {
-  it("shows the label-value rows and what a limited edition is, from the shared contract", () => {
+  it("shows the label-value rows, and not the limited-edition statement", () => {
     const facts = vmFor(detail()).facts;
     if (!facts) throw new Error("expected facts");
     render(<ArtworkEditionFacts facts={facts} />);
@@ -174,7 +174,7 @@ describe("ArtworkEditionFacts", () => {
         "Numbered by hand on the print. Your number appears in your order once payment is confirmed.",
       ),
     ).toBeTruthy();
-    expect(within(section).getByText(/A limited edition is a fixed number of prints/)).toBeTruthy();
+    expect(within(section).queryByText(/A limited edition is a fixed number of prints/)).toBeNull();
     expect(within(section).queryByText("Proofs")).toBeNull();
   });
 

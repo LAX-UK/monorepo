@@ -174,8 +174,8 @@ export default async function ArtworkDetailPage({ params }: ArtworkPageProps) {
 
           <div className="shop-edition__details">
             {vm.facts ? <ArtworkEditionFacts facts={vm.facts} /> : null}
-            {vm.about.description || vm.about.rows.length > 0 ? (
-              <ArtworkMoreAbout>
+            {vm.facts?.statement || vm.about.description || vm.about.rows.length > 0 ? (
+              <ArtworkMoreAbout statement={vm.facts?.statement}>
                 <ArtworkAboutWork about={vm.about} />
               </ArtworkMoreAbout>
             ) : null}
