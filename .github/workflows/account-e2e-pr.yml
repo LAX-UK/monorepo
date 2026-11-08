@@ -107,6 +107,12 @@ jobs:
       REQUIRE_EMAIL_VERIFICATION: "false"
       APP_ENV: development
       SHOP_PORTAL_OWNERSHIP_ENABLED: "true"
+      # With payouts off LAX Shop flags its portfolio read as partial (sales are not read), and
+      # Account then rightly says some works are "not shown yet" instead of showing the new-person
+      # state. The gate runs with the whole read on so the empty states can be asserted.
+      SHOP_PAYOUTS_ENABLED: "true"
+      # Payouts need a VAT policy to start (the standard rate, in basis points).
+      SHOP_VAT_STANDARD_RATE_BP: "2000"
       PLAYWRIGHT_E2E: "1"
       PLAYWRIGHT_BASE_URL: http://localhost:3040
       # Charlotte Hayes: Bid works from the demo seed plus one Shop edition seeded below.

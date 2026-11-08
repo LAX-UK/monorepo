@@ -6,10 +6,6 @@ const skipReason = newPersonSkipReason();
 
 test.describe("Account for a person with no data @journey", () => {
   test.skip(skipReason !== null, skipReason ?? "");
-  // Parked: in CI the no-data person's LAX Bid and LAX Shop reads come back incomplete, so Account
-  // rightly shows "not shown yet" instead of the new-person state. Re-enable once those reads
-  // answer for that person (tracked as AC-6b).
-  test.fixme(true, "Bid and Shop portfolio reads are incomplete for the CI no-data person");
   test.use({ storageState: accountAuthState.newPerson });
 
   test("Home invites them to start a collection", async ({ page }) => {
