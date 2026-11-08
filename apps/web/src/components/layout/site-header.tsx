@@ -4,6 +4,7 @@ import type { MegaMenuSection } from "@/components/layout/header-nav-config";
 import { emptyMegaMenuSections } from "@/components/layout/header-nav-config";
 import { ChromeIconButton } from "@/components/marketing/chrome-icon-button";
 import { useAppSession } from "@/lib/auth/use-app-session";
+import { bidHeroPresence, bidRouteMayHaveHero } from "@/lib/layout/bid-hero-presence";
 import { type SiteHeaderTone, headerChromeIconClass } from "@/lib/layout/header-chrome-tone";
 import { MARKETING_PAGE_GUTTER_X } from "@/lib/marketing/chrome";
 import { useMarketingHeaderTitle } from "@/lib/marketing/marketing-header-title-context";
@@ -62,7 +63,12 @@ function SiteHeaderShell({
   const searchKey = searchParams == null ? "" : searchParams.toString();
   const { title: marketingPageTitle } = useMarketingHeaderTitle();
 
-  const resolvedVariant: SiteHeaderChromeVariant = chromeVariant ?? "solid";
+  // Over a cover photograph the header starts transparent and goes solid on scroll; the page says
+  // whether one is there (the cover registers itself), the route only whether one could be.
+  const heroPresent = bidHeroPresence.useHeroPresent();
+  const overHero = bidRouteMayHaveHero(pathname) && heroPresent;
+  const resolvedVariant: SiteHeaderChromeVariant =
+    chromeVariant ?? (overHero ? "transparentUntilScroll" : "solid");
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: close mobile menu when the route changes
   useEffect(() => {

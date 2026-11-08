@@ -370,3 +370,40 @@ describe("a pale plate in the dark theme", () => {
     expect(deep.container.querySelector("[data-cover-swap]")).toBeNull();
   });
 });
+
+describe("MarketingCover under a transparent header", () => {
+  const signal = <span data-testid="header-signal" />;
+  const withSignal = (item: CoverFixture) =>
+    render(<MarketingCover slides={item.slides} label="Featured sales" headerSignal={signal} />);
+
+  it("pulls a photograph under the header, adds a dark band for the header, and sends the signal", () => {
+    const { container } = withSignal(fixture(BID_COVER_FIXTURES, "live"));
+    const cover = container.querySelector("[data-cover-mode='photo']");
+    expect(cover).toHaveAttribute("data-cover-under-header");
+    expect(cover?.className).toContain("-mt-[var(--header-height)]");
+    expect(cover?.className).toContain("md:h-[calc(640px+var(--header-height))]");
+    expect(container.querySelector("[data-cover-header-scrim]")).not.toBeNull();
+    expect(container.querySelector("[data-cover-media]")?.className).toContain(
+      "h-[calc(340px+var(--header-height))]",
+    );
+    expect(screen.getByTestId("header-signal")).toBeInTheDocument();
+  });
+
+  it("leaves a plate and plain type below the header, with no signal", () => {
+    for (const id of ["no-cover", "no-images"]) {
+      const { container, unmount } = withSignal(fixture(BID_COVER_FIXTURES, id));
+      expect(container.querySelector("[data-cover-under-header]")).toBeNull();
+      expect(container.querySelector("[data-cover-header-scrim]")).toBeNull();
+      expect(screen.queryByTestId("header-signal")).toBeNull();
+      unmount();
+    }
+  });
+
+  it("is unchanged for a page that does not ask for it", () => {
+    const { container } = renderFixture(fixture(BID_COVER_FIXTURES, "live"));
+    expect(container.querySelector("[data-cover-under-header]")).toBeNull();
+    expect(container.querySelector("[data-cover-mode='photo']")?.className).toContain(
+      "md:h-[640px]",
+    );
+  });
+});

@@ -3,7 +3,7 @@
 import { cn } from "@auction/ui";
 import { ButtonLink, TextLink } from "@auction/ui/lax";
 import { Check, Clock, Info } from "lucide-react";
-import { type CSSProperties, type ElementType, useState } from "react";
+import { type CSSProperties, type ElementType, type ReactNode, useState } from "react";
 import { CoverAlertField } from "./cover-alert.js";
 import { CoverFilmButton, CoverFilmPlayer } from "./cover-film.js";
 import { coverSettles } from "./cover-motion.js";
@@ -159,6 +159,8 @@ export type CoverSlideViewProps = {
   media: CoverMedia | null;
   Link: ElementType | undefined;
   priority: boolean;
+  /** Rendered, with the cover pulled under the header, while the cover is a photograph. */
+  headerSignal?: ReactNode;
   onMediaFail: () => void;
   pager: { index: number; count: number; onStep: (direction: 1 | -1) => void } | null;
   group: { label: string } | null;
@@ -170,11 +172,15 @@ export function CoverSlideView({
   media,
   Link,
   priority,
+  headerSignal,
   onMediaFail,
   pager,
   group,
 }: CoverSlideViewProps) {
   const ground = groundFor(media);
+  // Only a photograph is drawn under a transparent header; a plate and plain type keep the page
+  // tone behind it, so the header stays solid there.
+  const underHeader = headerSignal != null && ground.mode === "photo";
   const side: CoverSide = ground.mode === "type" ? "left" : ground.media.side;
   const onImage = ground.mode === "type" ? null : ground.tone;
   const swap = ground.mode === "plate" && ground.swap;
@@ -209,8 +215,12 @@ export function CoverSlideView({
       data-cover-mode={ground.mode}
       {...(swap ? { "data-cover-swap": "" } : {})}
       data-cover-side={side}
+      {...(underHeader ? { "data-cover-under-header": "" } : {})}
       className={cn(
-        "relative isolate md:h-[640px] min-[1600px]:h-[720px] md:overflow-hidden",
+        "relative isolate md:overflow-hidden",
+        underHeader
+          ? "-mt-[var(--header-height)] md:h-[calc(640px+var(--header-height))] min-[1600px]:h-[calc(720px+var(--header-height))]"
+          : "md:h-[640px] min-[1600px]:h-[720px]",
         ground.mode === "type" && "md:bg-surface-container-low",
       )}
       style={vars}
@@ -218,6 +228,7 @@ export function CoverSlideView({
         ? { role: "group", "aria-roledescription": "slide", "aria-label": group.label }
         : {})}
     >
+      {underHeader ? headerSignal : null}
       {playing && slide.film ? (
         <CoverFilmPlayer
           film={slide.film}
@@ -236,7 +247,10 @@ export function CoverSlideView({
         />
       ) : (
         <div
-          className="relative h-[340px] overflow-hidden bg-surface-container md:absolute md:inset-0 md:h-auto"
+          className={cn(
+            "relative overflow-hidden bg-surface-container md:absolute md:inset-0 md:h-auto",
+            underHeader ? "h-[calc(340px+var(--header-height))]" : "h-[340px]",
+          )}
           data-cover-media=""
         >
           <div className={cn("absolute inset-0", settles && "marketing-cover-settle")}>
@@ -252,10 +266,24 @@ export function CoverSlideView({
             )}
           </div>
           {ground.mode === "photo" ? <Scrims scrims={ground.scrims} side={side} /> : null}
+          {underHeader ? (
+            // The header's type is light over a picture, whatever the picture is: a dark band the
+            // height of the header, fading out, keeps it readable on a bright photograph.
+            <div
+              aria-hidden
+              data-cover-header-scrim=""
+              className="pointer-events-none absolute inset-x-0 top-0 h-[calc(var(--header-height)+2.5rem)] bg-gradient-to-b from-black/55 to-transparent"
+            />
+          ) : null}
           {slide.badge ? (
             <span
               aria-hidden
-              className={cn(BADGE_BASE, PHONE_IMAGE_BADGE, "absolute left-4 top-4 md:hidden")}
+              className={cn(
+                BADGE_BASE,
+                PHONE_IMAGE_BADGE,
+                "absolute left-4 md:hidden",
+                underHeader ? "top-[calc(var(--header-height)+1rem)]" : "top-4",
+              )}
             >
               {slide.badgeLive ? <LiveDot /> : null}
               {slide.badge}

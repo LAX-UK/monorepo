@@ -203,6 +203,7 @@ export {
   MarketingChromeIconButton,
   type MarketingChromeIconButtonProps,
 } from "./header/marketing-chrome-icon-button.js";
+export { type HeroPresence, createHeroPresence } from "./header/hero-presence.js";
 export {
   HEADER_SCROLL_FADE_THRESHOLD_PX,
   type HeaderChrome,
