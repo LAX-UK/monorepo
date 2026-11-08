@@ -228,6 +228,12 @@ export const adminStaffEmailChangeBodySchema = z.object({
 });
 export type AdminStaffEmailChangeBody = z.infer<typeof adminStaffEmailChangeBodySchema>;
 
+/** Withdrawing a staff-started change that is waiting for its link: the reason is kept in the audit log. */
+export const adminStaffEmailChangeCancelBodySchema = z.object({
+  reason: z.string().trim().min(ADMIN_EMAIL_CHANGE_REASON_MIN).max(500),
+});
+export type AdminStaffEmailChangeCancelBody = z.infer<typeof adminStaffEmailChangeCancelBodySchema>;
+
 /**
  * The verified details staff compare with what the caller says. Only the name and date of birth
  * leave the KYC record; ID numbers and documents stay where they are.

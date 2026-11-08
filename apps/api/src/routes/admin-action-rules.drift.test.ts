@@ -257,6 +257,14 @@ const ACTIONS: AdminAction[] = [
     expectedRoles: ["administrator", "client_services"],
   },
   {
+    name: "cancel a person's pending email change",
+    rule: STAFF_EMAIL_CHANGE_ACCESS,
+    method: "POST",
+    path: `/admin/users/${PERSON_ID}/email-change/cancel`,
+    body: { reason: "Caller found the old mailbox again." },
+    expectedRoles: ["administrator", "client_services"],
+  },
+  {
     name: "see the KYC record to match for an email change",
     rule: STAFF_EMAIL_CHANGE_ACCESS,
     method: "GET",

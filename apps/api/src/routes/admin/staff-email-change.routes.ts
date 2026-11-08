@@ -1,4 +1,7 @@
-import { adminStaffEmailChangeBodySchema } from "@auction/validators";
+import {
+  adminStaffEmailChangeBodySchema,
+  adminStaffEmailChangeCancelBodySchema,
+} from "@auction/validators";
 import { z } from "zod";
 import { asHttpStatus } from "../../lib/http-status.js";
 import { zValidator } from "../../lib/z-validator.js";
@@ -11,7 +14,7 @@ const userParamSchema = z.object({ userId: z.string().min(1) });
 /** Moving a person's account to a new email address when they have lost the old inbox. */
 export function attachAdminStaffEmailChangeRoutes(
   platform: AdminHono,
-  staffEmailChange: Pick<AdminStaffEmailChangeService, "change" | "kycRecord">,
+  staffEmailChange: Pick<AdminStaffEmailChangeService, "change" | "cancel" | "kycRecord">,
   guards: AdminStaffMutationGuards,
 ): void {
   const actorOf = (c: {
@@ -34,6 +37,27 @@ export function attachAdminStaffEmailChangeRoutes(
       const result = await staffEmailChange.kycRecord(actorOf(c), c.req.valid("param").userId);
       return result.match(
         (record) => c.json({ data: record }),
+        (error) => c.json({ error: error.message }, asHttpStatus(error.status)),
+      );
+    },
+  );
+
+  // Withdraws a change that is waiting for its link. It needs the same rule and fresh sign-in
+  // as starting one.
+  platform.post(
+    "/users/:userId/email-change/cancel",
+    requireStaffEmailChange,
+    guards.requireStepUp,
+    zValidator("param", userParamSchema),
+    zValidator("json", adminStaffEmailChangeCancelBodySchema),
+    async (c) => {
+      const result = await staffEmailChange.cancel(
+        actorOf(c),
+        c.req.valid("param").userId,
+        c.req.valid("json"),
+      );
+      return result.match(
+        () => c.json({ ok: true }),
         (error) => c.json({ error: error.message }, asHttpStatus(error.status)),
       );
     },

@@ -131,7 +131,7 @@ export type AdminIntegrationRouteServices = {
 export type AdminStaffSecurityRouteServices = {
   staffTwoFactorPolicy: Pick<TwoFactorPolicyService, "readStaffPolicy" | "setStaffPolicy">;
   twoFactorReset: Pick<AdminTwoFactorResetService, "reset">;
-  staffEmailChange: Pick<AdminStaffEmailChangeService, "change" | "kycRecord">;
+  staffEmailChange: Pick<AdminStaffEmailChangeService, "change" | "cancel" | "kycRecord">;
   staffAccess: Pick<StaffAccessAdminService, "summaries" | "detail" | "myTools">;
   /** A staff member's Bid roles, role changes and the access review. */
   staffRoles: Pick<StaffRolesAdminService, "overview" | "assign" | "remove" | "accessReview">;

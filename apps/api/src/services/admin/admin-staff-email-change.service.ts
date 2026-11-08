@@ -8,13 +8,19 @@ import {
   hasStaffRole,
   userHasAccessTo,
 } from "@auction/types";
-import type { AdminEmailChangeKycRecord, AdminStaffEmailChangeBody } from "@auction/validators";
+import type {
+  AdminEmailChangeKycRecord,
+  AdminStaffEmailChangeBody,
+  AdminStaffEmailChangeCancelBody,
+} from "@auction/validators";
 import { type Result, err, ok } from "neverthrow";
 import { IdentityIssuerClientError } from "../../infrastructure/http-identity-issuer.client.js";
 import type { IAuthAuditPublisher } from "../interfaces/auth-audit-publisher.js";
 import type { IIdentityStaffEmailChangeClient } from "../interfaces/identity-issuer-client.js";
 
 export const STAFF_EMAIL_CHANGE_REQUESTED_EVENT = "auth.email_change_requested_by_staff";
+export const STAFF_EMAIL_CHANGE_CANCEL_REQUESTED_EVENT =
+  "auth.email_change_cancel_requested_by_staff";
 export const STAFF_EMAIL_CHANGE_KYC_VIEWED_EVENT = "auth.email_change_kyc_record_viewed";
 
 export type StaffEmailChangeActor = {
@@ -31,6 +37,11 @@ const IDENTITY_REFUSALS: Readonly<Record<string, StaffEmailChangeError>> = {
   email_taken: {
     status: 409,
     message: "Another account already uses that address, or is waiting to change to it.",
+  },
+  none_in_progress: {
+    status: 409,
+    message:
+      "No email change is waiting for this person. It may already be done, cancelled or have lapsed.",
   },
 };
 
@@ -129,6 +140,48 @@ export class AdminStaffEmailChangeService {
         proof: body.proof,
       });
       return ok(started);
+    } catch (error) {
+      const code = error instanceof IdentityIssuerClientError ? error.code : undefined;
+      return err((code && IDENTITY_REFUSALS[code]) || UNAVAILABLE);
+    }
+  }
+
+  /**
+   * Withdraws a change that is waiting for the person to follow its link. It needs the same rule
+   * as starting one (and a fresh sign-in, asked for by the route), the same limits on who may be
+   * acted on, and a reason. The request is recorded before Identity is asked to act. Identity
+   * clears the pending address, which ends the emailed link; the sessions that starting the change
+   * ended stay ended.
+   */
+  async cancel(
+    actor: StaffEmailChangeActor,
+    targetUserId: string,
+    body: AdminStaffEmailChangeCancelBody,
+  ): Promise<Result<{ cancelled: true }, StaffEmailChangeError>> {
+    const refused = this.refuse(actor, targetUserId);
+    if (refused) return err(refused);
+    const target = await this.deps.users.getById(targetUserId);
+    if (!target) return err({ status: 404, message: "User not found" });
+    if (
+      target.role === "staff" &&
+      !hasStaffRole(actor.staffRoles ?? NO_STAFF_ROLES, ADMINISTRATOR_STAFF_ROLE)
+    ) {
+      return err({ status: 403, message: "Only a platform admin can change a staff account" });
+    }
+    await this.deps.audit.publish({
+      eventType: STAFF_EMAIL_CHANGE_CANCEL_REQUESTED_EVENT,
+      aggregateType: "user",
+      aggregateId: targetUserId,
+      actorUserId: actor.userId,
+      payload: { reason: body.reason },
+    });
+    try {
+      await this.deps.identity.cancelStaffAssistedEmailChange({
+        subjectId: targetUserId,
+        actorUserId: actor.userId,
+        reason: body.reason,
+      });
+      return ok({ cancelled: true });
     } catch (error) {
       const code = error instanceof IdentityIssuerClientError ? error.code : undefined;
       return err((code && IDENTITY_REFUSALS[code]) || UNAVAILABLE);

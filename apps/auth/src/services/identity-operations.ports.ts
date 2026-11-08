@@ -179,7 +179,12 @@ export interface IIdentityEmailChangeRepository {
   readPending(
     subjectId: string,
   ): Promise<{ pendingNewEmail: string | null; emailChangeExpiresAt: Date | null } | null>;
-  clearPending(subjectId: string, now: Date): Promise<void>;
+  /**
+   * Clears the pending change in one conditional update and says whether there was one. A change
+   * a confirmation has just applied has no pending address left, so this finds nothing and the
+   * caller is told so, instead of reporting a cancel of something already done.
+   */
+  clearPending(subjectId: string, now: Date): Promise<boolean>;
   loadForConfirmation(
     transaction: IdentityOperationTransaction,
     subjectId: string,

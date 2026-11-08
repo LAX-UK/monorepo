@@ -11,6 +11,7 @@ const suspendAction = vi.fn();
 const unsuspendAction = vi.fn();
 const resetAction = vi.fn();
 const roleAction = vi.fn();
+const cancelEmailAction = vi.fn();
 const notifySuccess = vi.fn();
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh }) }));
@@ -19,6 +20,7 @@ vi.mock("@/lib/actions/admin", () => ({
   adminUnsuspendUserResultAction: (...args: unknown[]) => unsuspendAction(...args),
   adminResetTwoFactorResultAction: (...args: unknown[]) => resetAction(...args),
   adminSetUserRoleResultAction: (...args: unknown[]) => roleAction(...args),
+  adminCancelEmailChangeResultAction: (...args: unknown[]) => cancelEmailAction(...args),
 }));
 vi.mock("@/lib/ui/notify", () => ({
   notify: { success: (title: string) => notifySuccess(title), error: vi.fn(), info: vi.fn() },
@@ -67,7 +69,14 @@ function Harness({
 
 describe("usePersonActions", () => {
   beforeEach(() => {
-    for (const fn of [refresh, suspendAction, unsuspendAction, resetAction, roleAction]) {
+    for (const fn of [
+      refresh,
+      suspendAction,
+      unsuspendAction,
+      resetAction,
+      roleAction,
+      cancelEmailAction,
+    ]) {
       fn.mockReset();
     }
     notifySuccess.mockReset();
@@ -121,6 +130,98 @@ describe("usePersonActions", () => {
       expect(
         screen.getByRole("dialog", { name: "Change Ada Lovelace's email address" }),
       ).toBeInTheDocument();
+    });
+  });
+
+  describe("cancel email change", () => {
+    const withEmail: PersonActionTarget = {
+      ...ada,
+      email: "ada@example.com",
+      kycStatus: "approved",
+    };
+    const support = { canChange: true, canChangeStaff: false, viewerId: "viewer_1" };
+    const asSupport = { ...FULL, emailChange: support };
+
+    it("is offered with the email change, and left out without it", () => {
+      render(<Harness target={withEmail} access={asSupport} />);
+      expect(screen.getByRole("button", { name: "Cancel email change" })).toBeEnabled();
+    });
+
+    it("is left out where the email change is not offered or the role cannot use it", () => {
+      const none = { canChange: false, canChangeStaff: false, viewerId: "viewer_1" };
+      const { unmount } = render(<Harness target={withEmail} />);
+      expect(screen.queryByRole("button", { name: "Cancel email change" })).toBeNull();
+      unmount();
+      render(<Harness target={withEmail} access={{ ...FULL, emailChange: none }} />);
+      expect(screen.queryByRole("button", { name: "Cancel email change" })).toBeNull();
+    });
+
+    it("says why it is unavailable for your own account or a staff member", () => {
+      const { unmount } = render(
+        <Harness target={{ ...withEmail, id: "viewer_1" }} access={asSupport} />,
+      );
+      expect(screen.getByRole("button", { name: "Cancel email change" })).toHaveAttribute(
+        "title",
+        "Change your own address from LAX Account",
+      );
+      unmount();
+      render(<Harness target={{ ...withEmail, role: "staff" }} access={asSupport} />);
+      expect(screen.getByRole("button", { name: "Cancel email change" })).toHaveAttribute(
+        "title",
+        "Only an Administrator can change a staff member's email",
+      );
+    });
+
+    it("asks for a reason, starting on Keep it, and cancels with it", async () => {
+      cancelEmailAction.mockResolvedValue({ ok: true });
+      render(<Harness target={withEmail} access={asSupport} />);
+      fireEvent.click(screen.getByRole("button", { name: "Cancel email change" }));
+
+      const dialog = await screen.findByRole("dialog", {
+        name: "Cancel Ada Lovelace's email change?",
+      });
+      expect(dialog).toHaveTextContent("The link already emailed to the new address stops working");
+      await waitFor(() => expect(screen.getByRole("button", { name: "Keep it" })).toHaveFocus());
+
+      const confirm = screen.getAllByRole("button", { name: "Cancel email change" }).at(-1);
+      if (!confirm) throw new Error("no confirm button");
+      fireEvent.click(confirm);
+      expect(await screen.findByText("Enter a reason of at least 10 characters.")).toBeVisible();
+      expect(cancelEmailAction).not.toHaveBeenCalled();
+
+      fireEvent.change(screen.getByLabelText("Reason for cancelling"), {
+        target: { value: "Caller found the old mailbox again." },
+      });
+      fireEvent.click(confirm);
+      await waitFor(() =>
+        expect(cancelEmailAction).toHaveBeenCalledWith("user_1", {
+          reason: "Caller found the old mailbox again.",
+        }),
+      );
+      await waitFor(() => expect(notifySuccess).toHaveBeenCalledWith("Email change cancelled"));
+    });
+
+    it("keeps the dialog open with the reason when nothing is waiting", async () => {
+      cancelEmailAction.mockResolvedValue({
+        ok: false,
+        error: "No email change is waiting for this person. It may already be done.",
+        status: 409,
+      });
+      render(<Harness target={withEmail} access={asSupport} />);
+      fireEvent.click(screen.getByRole("button", { name: "Cancel email change" }));
+      await screen.findByRole("dialog", { name: "Cancel Ada Lovelace's email change?" });
+      fireEvent.change(screen.getByLabelText("Reason for cancelling"), {
+        target: { value: "Caller found the old mailbox again." },
+      });
+      const confirm = screen.getAllByRole("button", { name: "Cancel email change" }).at(-1);
+      if (!confirm) throw new Error("no confirm button");
+      fireEvent.click(confirm);
+      expect(await screen.findByText(/No email change is waiting for this person/)).toBeVisible();
+      expect(screen.getByRole("dialog")).toBeInTheDocument();
+      expect(screen.getByLabelText("Reason for cancelling")).toHaveValue(
+        "Caller found the old mailbox again.",
+      );
+      expect(notifySuccess).not.toHaveBeenCalled();
     });
   });
 

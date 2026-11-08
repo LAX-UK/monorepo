@@ -13,6 +13,9 @@ export const STAFF_EMAIL_CHANGE_MACHINE_SCOPE = "staff_email_change";
 /** Under Identity's `/internal` machine base; the subject is the account whose address changes. */
 export const STAFF_EMAIL_CHANGE_SUBROUTE = "/subjects/:subjectId/staff-email-change";
 
+/** Cancels a pending staff-assisted change; it is served to the same credential as the start. */
+export const STAFF_EMAIL_CHANGE_CANCEL_SUBROUTE = "/subjects/:subjectId/staff-email-change/cancel";
+
 /** A reason is required so the audit entry says why the address was moved. */
 export const STAFF_EMAIL_CHANGE_REASON_MIN = 10;
 export const STAFF_EMAIL_CHANGE_REASON_MAX = 500;
@@ -46,6 +49,15 @@ export const staffEmailChangeRequestSchema = z.object({
 });
 export type StaffEmailChangeRequest = z.infer<typeof staffEmailChangeRequestSchema>;
 
+export const staffEmailChangeCancelRequestSchema = z.object({
+  actorSubjectId: z.string().trim().min(1).max(191),
+  reason: z.string().trim().min(STAFF_EMAIL_CHANGE_REASON_MIN).max(STAFF_EMAIL_CHANGE_REASON_MAX),
+});
+export type StaffEmailChangeCancelRequest = z.infer<typeof staffEmailChangeCancelRequestSchema>;
+
+export const staffEmailChangeCancelledSchema = z.object({ cancelled: z.literal(true) }).strict();
+export type StaffEmailChangeCancelled = z.infer<typeof staffEmailChangeCancelledSchema>;
+
 export const staffEmailChangeResultSchema = z.object({ pendingEmail: z.string().min(3) }).strict();
 export type StaffEmailChangeResult = z.infer<typeof staffEmailChangeResultSchema>;
 
@@ -55,5 +67,7 @@ export const STAFF_EMAIL_CHANGE_FAILURES = [
   "same_email",
   "email_taken",
   "channel_unavailable",
+  /** Cancelling: there is no change waiting (it was confirmed, cancelled or has lapsed). */
+  "none_in_progress",
 ] as const;
 export type StaffEmailChangeFailure = (typeof STAFF_EMAIL_CHANGE_FAILURES)[number];

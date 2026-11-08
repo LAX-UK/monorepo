@@ -1,6 +1,7 @@
 import type {
   AdminEmailChangeKycRecord,
   AdminStaffEmailChangeBody,
+  AdminStaffEmailChangeCancelBody,
   adminPatchStaffRoleBodySchema,
   adminResetTwoFactorBodySchema,
   adminSetRoleBodySchema,
@@ -33,4 +34,9 @@ export interface IAdminUserService {
   ): Promise<ServiceResult<{ pendingEmail: string }>>;
   /** The verified name and date of birth to compare with the caller; null when there is none. */
   emailChangeKycRecord(userId: string): Promise<ServiceResult<AdminEmailChangeKycRecord | null>>;
+  /** Withdraws a staff-started email change that is waiting for the person to follow its link. */
+  cancelEmailChange(
+    userId: string,
+    body: AdminStaffEmailChangeCancelBody,
+  ): Promise<ServiceResult<{ ok: true }>>;
 }

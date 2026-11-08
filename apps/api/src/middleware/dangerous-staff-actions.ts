@@ -123,6 +123,12 @@ export const DANGEROUS_STAFF_ACTIONS: readonly DangerousStaffAction[] = [
   ),
   // Sign-in protection of staff accounts
   a("sign_in_protection", "user.email-change", "POST", "/admin/users/:userId/email-change"),
+  a(
+    "sign_in_protection",
+    "user.email-change-cancel",
+    "POST",
+    "/admin/users/:userId/email-change/cancel",
+  ),
   a("sign_in_protection", "user.two-factor-reset", "POST", "/admin/users/:userId/two-factor/reset"),
   a(
     "sign_in_protection",

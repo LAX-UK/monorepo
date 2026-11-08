@@ -35,6 +35,7 @@ function setup(withScope = true) {
     expire: async () => 1,
     ttl: async () => 60,
   };
+  const cancel = vi.fn<(...args: unknown[]) => Promise<unknown>>(async () => ({ ok: true }));
   const onFailure = vi.fn();
   const app = createInternalIdentityRoutes({
     lifecycle: {
@@ -51,7 +52,7 @@ function setup(withScope = true) {
     ...(withScope
       ? {
           staffEmailChange: {
-            changes: { start } as never,
+            changes: { start, cancel } as never,
             redis,
             clientId: STAFF.id,
             clientSecret: STAFF.secret,
@@ -60,7 +61,7 @@ function setup(withScope = true) {
         }
       : {}),
   });
-  return { app, start, onFailure };
+  return { app, start, cancel, onFailure };
 }
 
 async function token(
@@ -168,6 +169,70 @@ describe("staff email change machine route", () => {
     const { app, start, onFailure } = setup();
     start.mockRejectedValueOnce(new Error("db exploded"));
     const response = await post(app, await accessToken(app));
+    expect(response.status).toBe(503);
+    expect(await response.json()).toEqual({ error: "temporarily_unavailable" });
+    expect(onFailure).toHaveBeenCalled();
+  });
+});
+
+const CANCEL_BODY = { actorSubjectId: "staff-1", reason: "Caller found the old mailbox again." };
+
+function postCancel(
+  app: ReturnType<typeof setup>["app"],
+  bearer: string | null,
+  body: unknown = CANCEL_BODY,
+) {
+  return app.request(`/identity/subjects/${SUBJECT}/staff-email-change/cancel`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      ...(bearer ? { authorization: `Bearer ${bearer}` } : {}),
+    },
+    body: JSON.stringify(body),
+  });
+}
+
+describe("staff email change cancel route", () => {
+  it("refuses a request with no token, and a lifecycle token", async () => {
+    const { app, cancel } = setup();
+    expect((await postCancel(app, null)).status).toBe(401);
+    const lifecycleToken = await accessToken(app, { ...LIFECYCLE }, "identity.lifecycle");
+    expect((await postCancel(app, lifecycleToken)).status).toBe(401);
+    expect(cancel).not.toHaveBeenCalled();
+  });
+
+  it("cancels for a valid token and request", async () => {
+    const { app, cancel } = setup();
+    const response = await postCancel(app, await accessToken(app));
+    expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(await response.json()).toEqual({ cancelled: true });
+    expect(cancel).toHaveBeenCalledWith(SUBJECT, CANCEL_BODY);
+  });
+
+  it("rejects a request without a reason", async () => {
+    const { app, cancel } = setup();
+    const bearer = await accessToken(app);
+    expect((await postCancel(app, bearer, { ...CANCEL_BODY, reason: "no" })).status).toBe(400);
+    expect((await postCancel(app, bearer, { actorSubjectId: "staff-1" })).status).toBe(400);
+    expect(cancel).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["subject_not_found", 404],
+    ["none_in_progress", 409],
+  ])("answers %s with %i", async (kind, status) => {
+    const { app, cancel } = setup();
+    cancel.mockResolvedValueOnce({ ok: false, kind });
+    const response = await postCancel(app, await accessToken(app));
+    expect(response.status).toBe(status);
+    expect(await response.json()).toEqual({ error: kind });
+  });
+
+  it("reports an unexpected failure without leaking it", async () => {
+    const { app, cancel, onFailure } = setup();
+    cancel.mockRejectedValueOnce(new Error("db exploded"));
+    const response = await postCancel(app, await accessToken(app));
     expect(response.status).toBe(503);
     expect(await response.json()).toEqual({ error: "temporarily_unavailable" });
     expect(onFailure).toHaveBeenCalled();

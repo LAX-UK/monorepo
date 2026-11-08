@@ -1,4 +1,8 @@
-import type { AdminEmailChangeKycRecord, AdminStaffEmailChangeBody } from "@auction/validators";
+import type {
+  AdminEmailChangeKycRecord,
+  AdminStaffEmailChangeBody,
+  AdminStaffEmailChangeCancelBody,
+} from "@auction/validators";
 import type { IAuthedApiClient } from "../http/authed-api-client";
 import type { ServiceResult } from "../http/service-result";
 import type {
@@ -74,6 +78,20 @@ export class AdminUserService implements IAdminUserService {
   ): Promise<ServiceResult<{ pendingEmail: string }>> {
     return this.api.json<{ pendingEmail: string }>(
       `/admin/users/${encodeURIComponent(userId)}/email-change`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      },
+    );
+  }
+
+  async cancelEmailChange(
+    userId: string,
+    body: AdminStaffEmailChangeCancelBody,
+  ): Promise<ServiceResult<{ ok: true }>> {
+    return this.api.json<{ ok: true }>(
+      `/admin/users/${encodeURIComponent(userId)}/email-change/cancel`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },

@@ -32,6 +32,7 @@ const names = [
   "account-deletion-completed",
   "staff-email-change-confirm",
   "staff-email-change-notice",
+  "staff-email-change-cancelled-notice",
 ] as const;
 
 type AuthTemplateName = (typeof names)[number];
@@ -198,6 +199,8 @@ type AuthTemplateVarsBase = {
   "staff-email-change-notice": SecurityNoticeVars & {
     newEmail: string;
   };
+  /** To the address on file when LAX staff cancel a pending change of it. */
+  "staff-email-change-cancelled-notice": SecurityNoticeVars;
 };
 
 /** Shared account mail may say which product the person is acting in; the footer then names its company. */
@@ -239,6 +242,8 @@ export const authTemplates = {
     // Each goes to an address the account does not (or no longer) holds, so it is fixed at send.
     "staff-email-change-confirm": "snapshot",
     "staff-email-change-notice": "snapshot",
+    // The account keeps its address, so the notice goes to whatever it is now.
+    "staff-email-change-cancelled-notice": "live",
   },
 } satisfies TemplateDomainSlice<AuthTemplateName, AuthTemplateVars>;
 
