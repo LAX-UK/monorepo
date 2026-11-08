@@ -11,6 +11,7 @@ import { type EditorialCardVm, exhibitionCard, storyCard } from "@/lib/editorial
 import { newestFirst } from "@/lib/editorial/editorial-story.vm";
 import { bidSellUrl } from "@/lib/editorial/how-to-sell.vm";
 import type { ArtFavoriteAuth } from "@/lib/favorites/favorite-auth";
+import type { FollowEmailsState } from "@/lib/favorites/follow-emails";
 import { loadViewerFavoriteContext } from "@/lib/favorites/viewer-favorites";
 import type {
   ArtCataloguePort,
@@ -70,8 +71,8 @@ export type ArtistPageVm = {
   soldSurface: MarketingSectionSurface;
   viewer: ArtViewerState;
   following: boolean;
-  /** Whether emails about followed artists are on; null when that is not known. */
-  followEmailsOn: boolean | null;
+  /** The followed-artist email state; null when that is not known. */
+  followEmails: FollowEmailsState | null;
   favoriteAuth: ArtFavoriteAuth;
   structuredData: JsonLd[];
 };
@@ -242,7 +243,7 @@ export async function composeArtistPage(
       ),
       viewer: favorites.viewer,
       following: favorites.followedArtistSlugs.has(detail.slug),
-      followEmailsOn: favorites.followEmailsOn,
+      followEmails: favorites.followEmails,
       favoriteAuth: favorites.favoriteAuth,
       structuredData: artistJsonLd(detail, siteUrl),
     },

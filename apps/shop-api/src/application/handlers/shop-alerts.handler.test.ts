@@ -96,6 +96,27 @@ describe("shop alert handlers", () => {
     expect(row).toMatchObject({ email: "ada@example.com", status: "confirmed" });
   });
 
+  it("says an account that had stopped all alerts was restarted, once, by pressing Subscribe", async () => {
+    const { h, handlers } = setup();
+    h.accounts.set("sub-1", { email: "ada@example.com", verified: true });
+    await handlers.subscribeAccount({ identitySubjectId: "sub-1" });
+    const row = await h.stores.findBySubject("shop", "sub-1");
+    const token = h.codec.create({
+      kind: "stop",
+      product: "shop",
+      subscriberId: row?.id ?? "",
+      linkVersion: 1,
+    });
+    await handlers.unsubscribe(token);
+    expect(await handlers.isSubscribed("sub-1")).toBe(false);
+
+    expect(await handlers.subscribeAccount({ identitySubjectId: "sub-1" })).toBe("restarted");
+    expect(await handlers.isSubscribed("sub-1")).toBe(true);
+    expect(await handlers.subscribeAccount({ identitySubjectId: "sub-1" })).toBe(
+      "already_subscribed",
+    );
+  });
+
   it("does nothing for an account with no address, or one that is not verified", async () => {
     const { h, handlers } = setup();
     expect(await handlers.subscribeAccount({ identitySubjectId: "sub-1" })).toBeNull();

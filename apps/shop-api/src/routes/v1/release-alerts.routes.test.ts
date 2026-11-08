@@ -114,6 +114,15 @@ describe("release alert routes", () => {
     await app.close();
   });
 
+  it("tells a signed-in shopper whose stopped alerts were restarted", async () => {
+    const { app } = await buildApp(
+      handlers({ subscribeAccount: vi.fn(async () => "restarted" as const) }),
+    );
+    const response = await app.inject({ ...subscribe({}), headers: userHeaders });
+    expect(response.json()).toEqual({ status: "subscribed", restarted: true });
+    await app.close();
+  });
+
   it("says so when an account has no address to write to", async () => {
     const { app } = await buildApp(handlers({ subscribeAccount: vi.fn(async () => null) }));
     const response = await app.inject({ ...subscribe({}), headers: userHeaders });

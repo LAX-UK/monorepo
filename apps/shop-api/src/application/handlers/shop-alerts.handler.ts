@@ -12,7 +12,12 @@ import { normalizeAlertEmail } from "../edition-alert-email.js";
 
 const DEFAULT_SOURCE = "shop_home";
 
-export type SubscribeReleaseAlertsResult = "check_email" | "subscribed" | "already_subscribed";
+export type SubscribeReleaseAlertsResult =
+  | "check_email"
+  | "subscribed"
+  | "already_subscribed"
+  /** The account had stopped all alerts, and pressing Subscribe started them again. */
+  | "restarted";
 
 export type AlertConfirmResult = "confirmed" | "expired" | "invalid";
 
@@ -50,12 +55,11 @@ export function createShopAlertHandlers(deps: ShopAlertHandlerDeps) {
     return deps.legacy.findByLegacyLinkHash(deps.hashLegacyToken(token));
   }
 
+  const releasesOn = (view: Awaited<ReturnType<typeof deps.preferences.view>>): boolean =>
+    view.state === "confirmed" && view.topics.some((t) => t.topic === "shop.releases" && t.emailOn);
+
   async function isOn(identitySubjectId: string): Promise<boolean> {
-    const view = await deps.preferences.view("shop", identitySubjectId);
-    return (
-      view.state === "confirmed" &&
-      view.topics.some((t) => t.topic === "shop.releases" && t.emailOn)
-    );
+    return releasesOn(await deps.preferences.view("shop", identitySubjectId));
   }
 
   return {
@@ -78,7 +82,8 @@ export function createShopAlertHandlers(deps: ShopAlertHandlerDeps) {
       identitySubjectId: string;
       source?: string | undefined;
     }): Promise<SubscribeReleaseAlertsResult | null> {
-      if (await isOn(input.identitySubjectId)) return "already_subscribed";
+      const before = await deps.preferences.view("shop", input.identitySubjectId);
+      if (releasesOn(before)) return "already_subscribed";
       const outcome = await deps.subscribe.enableForAccount({
         product: "shop",
         subjectId: input.identitySubjectId,
@@ -87,7 +92,8 @@ export function createShopAlertHandlers(deps: ShopAlertHandlerDeps) {
         // Pressing Subscribe is an explicit choice, so it starts alerts again after a stop.
         restartStopped: true,
       });
-      return outcome === "enabled" ? "subscribed" : null;
+      if (outcome !== "enabled") return null;
+      return before.state === "stopped" ? "restarted" : "subscribed";
     },
 
     isSubscribed: isOn,

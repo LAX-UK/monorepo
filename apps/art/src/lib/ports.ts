@@ -14,6 +14,7 @@ import type {
   ArtExhibitionStatus,
   ArtStoryListFilter,
 } from "@/lib/editorial/art-editorial.types";
+import type { FollowEmailsState } from "@/lib/favorites/follow-emails";
 import type { ArtHelpArticleFilter } from "@/lib/help/art-help.types";
 import type { LaxProductLinkVm } from "@auction/lax-ecosystem";
 import type { LaxAccountDestination } from "@auction/lax-ecosystem/lax-account-origin";
@@ -93,8 +94,8 @@ export type ArtViewerPort = {
 export type ArtFavoritesReadPort = {
   savedArtworkSlugs(): Promise<ReadonlySet<string>>;
   followedArtistSlugs(): Promise<ReadonlySet<string>>;
-  /** Whether emails about followed artists are on; null when that is not known. */
-  followEmailsOn(): Promise<boolean | null>;
+  /** Whether emails about followed artists are on, and whether all alerts were stopped. */
+  followEmails(): Promise<FollowEmailsState>;
   listSavedArtworks(): Promise<ShopPortalFetchResult<PortalSavedArtwork[]>>;
   listFollowedArtists(): Promise<ShopPortalFetchResult<PortalFollowedArtist[]>>;
 };

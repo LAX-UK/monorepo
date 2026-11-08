@@ -20,7 +20,11 @@ const auth = { signedIn: true, loginHref: "/sign-in" };
 let host: HTMLDivElement;
 let root: Root;
 
-async function render(props: { following: boolean; emailsOn: boolean | null }) {
+async function render(props: {
+  following: boolean;
+  emailsOn: boolean | null;
+  stopped?: boolean;
+}) {
   await act(async () => {
     root.render(
       <ArtArtistFollowControl
@@ -28,6 +32,7 @@ async function render(props: { following: boolean; emailsOn: boolean | null }) {
         name="Iris Calder"
         initialFollowing={props.following}
         initialEmailsOn={props.emailsOn}
+        initialStopped={props.stopped ?? false}
         auth={auth}
         manageHref="https://account.test/account/alerts"
       />,
@@ -105,6 +110,15 @@ describe("artist Follow with emails", () => {
     expect(link?.textContent).toBe("Turn alerts back on in LAX Account");
     expect(link?.getAttribute("href")).toBe("https://account.test/account/alerts");
     expect(turnOnFollowEmailsAction).not.toHaveBeenCalled();
+  });
+
+  it("says the person stopped all alerts on page load, before anything is pressed", async () => {
+    await render({ following: true, emailsOn: false, stopped: true });
+    expect(caption()?.textContent).toContain(
+      "You stopped all alerts, so we won't email you about this artist.",
+    );
+    expect(caption()?.querySelector("button")).toBeNull();
+    expect(followEmailsStateAction).not.toHaveBeenCalled();
   });
 
   it("asks what happened to the emails once the person follows", async () => {

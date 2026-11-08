@@ -68,6 +68,31 @@ describe("composeArtistPage", () => {
     expect(result.vm.worksFailed).toBe(true);
   });
 
+  it("carries the stopped-all-alerts state of a signed-in viewer to the page load", async () => {
+    const services = fakeArtServices(SIGNED_IN_VIEWER);
+    services.catalogue.getArtist.mockResolvedValue(artist);
+    services.catalogue.listArtworks.mockImplementation(availableOnly);
+    services.favorites.followedArtistSlugs.mockResolvedValue(new Set(["flora-powers"]));
+    services.favorites.followEmails.mockResolvedValue({ on: false, stopped: true });
+
+    const result = await composeArtistPage(services, "flora-powers", SITE_URL);
+
+    if (result.kind !== "ok") throw new Error("expected ok");
+    expect(result.vm.followEmails).toEqual({ on: false, stopped: true });
+  });
+
+  it("does not read the email state for guests", async () => {
+    const services = fakeArtServices();
+    services.catalogue.getArtist.mockResolvedValue(artist);
+    services.catalogue.listArtworks.mockImplementation(availableOnly);
+
+    const result = await composeArtistPage(services, "flora-powers", SITE_URL);
+
+    if (result.kind !== "ok") throw new Error("expected ok");
+    expect(result.vm.followEmails).toBeNull();
+    expect(services.favorites.followEmails).not.toHaveBeenCalled();
+  });
+
   it("maps hero, life line, exhibitions and stories into the profile", async () => {
     const services = fakeArtServices();
     services.catalogue.getArtist.mockResolvedValue({

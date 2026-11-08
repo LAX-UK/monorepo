@@ -3,6 +3,13 @@ import type { ArtCommerceMutationClient } from "@/lib/art-commerce-mutation.serv
 export const FOLLOW_EMAILS_TOPIC = "art.followed_artists";
 export const FOLLOW_EMAILS_PATH = "/commerce/me/email-alerts";
 
+export type FollowEmailsState = {
+  /** Whether emails about followed artists are on; null when Shop cannot say. */
+  on: boolean | null;
+  /** The person stopped all alerts, so following does not switch these emails on. */
+  stopped: boolean;
+};
+
 /**
  * Whether emails about followed artists are on, from the alert switches Shop reports. Null when
  * the answer is missing or off-contract, so the page says nothing rather than guessing.

@@ -1,12 +1,12 @@
 "use server";
 
 import { artCommerceMutationClient } from "@/lib/art-commerce-mutation.server";
-import type { FollowEmailsState } from "@/lib/favorites/art-favorites.server";
 import {
   type FavoriteMutationOutcome,
   type FavoriteTarget,
   mutateFavorite,
 } from "@/lib/favorites/favorite-mutation";
+import type { FollowEmailsState } from "@/lib/favorites/follow-emails";
 import { type TurnOnFollowEmailsOutcome, turnOnFollowEmails } from "@/lib/favorites/follow-emails";
 import { revalidatePath } from "next/cache";
 
