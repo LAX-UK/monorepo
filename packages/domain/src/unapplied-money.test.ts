@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   type UnappliedMoney,
+  possibleSourceText,
   unappliedMoneyDedupeKey,
   unappliedMoneyPayload,
 } from "./unapplied-money.js";
@@ -49,5 +50,24 @@ describe("unappliedMoneyDedupeKey", () => {
       currency: "GBP",
       dedupeKey: "invoice_already_paid:pi_1",
     });
+  });
+});
+
+describe("possibleSourceText", () => {
+  const group = { id: "abcdef12-0000-4000-8000-000000000000", status: "paid" as const };
+
+  it("words the suggestion by the payment's state, always as a hedge", () => {
+    expect(possibleSourceText(group)).toBe(
+      "Possible overpayment of payment PG-ABCDEF12. Check before acting.",
+    );
+    for (const status of ["open", "processing"] as const) {
+      expect(possibleSourceText({ ...group, status })).toBe(
+        "May belong to the unpaid payment PG-ABCDEF12. Check before acting.",
+      );
+    }
+  });
+
+  it("says nothing without a suggestion", () => {
+    expect(possibleSourceText(null)).toBeNull();
   });
 });

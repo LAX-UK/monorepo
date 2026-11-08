@@ -85,6 +85,35 @@ describe("AdminWorkItemsService", () => {
     expect(result.items.some((item) => item.kind === "aml_screening")).toBe(false);
   });
 
+  it("carries the hint for unapplied money to finance, and none when there is none", async () => {
+    const listUnappliedMoney = vi.fn().mockResolvedValue([
+      row({
+        sourceId: "customer_balance_unapplied:evt_1:gbp",
+        kind: "payment_money_unapplied",
+        domain: "finance",
+        title: "Money received that could not be applied",
+        hint: "May belong to the unpaid payment PG-ABCDEF12. Check before acting.",
+      }),
+      row({
+        sourceId: "customer_balance_unapplied:evt_2:gbp",
+        kind: "payment_money_unapplied",
+        domain: "finance",
+        title: "Money received that could not be applied",
+      }),
+    ]);
+    const service = new AdminWorkItemsService(createReader({ listUnappliedMoney }));
+    const { items } = await service.listWorkItems({
+      actorUserId: "u1",
+      actorRole: "staff",
+      actorStaffRoles: ["finance"],
+      query: { limit: 25, assignment: "all", urgentOnly: false },
+    });
+    expect(items.map((item) => item.hint)).toEqual([
+      "May belong to the unpaid payment PG-ABCDEF12. Check before acting.",
+      null,
+    ]);
+  });
+
   it("offers finance Reinstate payment and Refund on money taken for a closed payment", async () => {
     const listBlockedCaptures = vi.fn().mockResolvedValue([
       row({

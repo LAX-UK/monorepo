@@ -181,6 +181,8 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
     "stripeChargeId",
     "stripeCustomerId",
     "stripeEventId",
+    "possibleGroup.id",
+    "possibleGroup.status",
   ]),
   /** How it was closed; a staff note is kept, as a refund's staff reason is. */
   "payment.unapplied_money_resolved": new Set(["dedupeKey", "stripeChargeId", "via", "note"]),

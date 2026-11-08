@@ -1,10 +1,7 @@
+import { possibleSourceText } from "@auction/domain";
 import { FINANCE_ACCESS } from "@auction/types";
 import { describe, expect, it, vi } from "vitest";
-import {
-  alertFromUnappliedMoney,
-  fanoutUnappliedMoney,
-  possibleSourceText,
-} from "./unapplied-money-fanout.js";
+import { alertFromUnappliedMoney, fanoutUnappliedMoney } from "./unapplied-money-fanout.js";
 
 describe("unapplied money alert", () => {
   it("emails each finance member once per event, linking to the payment", async () => {

@@ -301,6 +301,7 @@ export function WorkInbox({
             { label: "Due", value: <StaffDate value={open.dueAt ?? open.createdAt} withTime /> },
           ]}
           summary={[
+            ...(open.hint ? [{ label: "Check first", value: open.hint }] : []),
             {
               label: "Waiting since",
               value: <StaffDate value={open.createdAt} withTime />,

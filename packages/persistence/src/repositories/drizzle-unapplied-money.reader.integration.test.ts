@@ -24,8 +24,13 @@ describe.skipIf(!HAS_DB)("unapplied money reader (integration)", () => {
     await db.delete(domainEvent).where(like(domainEvent.aggregateId, `%${run}%`));
   });
 
-  const received = (n: string, paymentId: string | null) => {
+  const received = (
+    n: string,
+    paymentId: string | null,
+    possibleGroup?: { id: string; status: "open" | "processing" | "paid" },
+  ) => {
     const payload = unappliedMoneyPayload({
+      ...(possibleGroup ? { possibleGroup } : {}),
       reason: "invoice_already_paid",
       paymentId,
       paymentGroupId: null,
@@ -61,6 +66,17 @@ describe.skipIf(!HAS_DB)("unapplied money reader (integration)", () => {
       href: `/admin/payments?payment=${paymentId}`,
       subtitle: "Invoice already paid · £500.00",
     });
+  });
+
+  it("puts the possible payment in the inbox hint, worded by its state, and no hint without one", async () => {
+    const group = { id: "abcdef12-0000-4000-8000-000000000000", status: "paid" as const };
+    await db.insert(domainEvent).values([received("hint", null, group), received("nohint", null)]);
+
+    const items = await new DrizzleAdminWorkItemsReader(db).listUnappliedMoney(200);
+    const hint = items.find((i) => i.sourceId === `invoice_already_paid:${pi("hint")}`)?.hint;
+    const none = items.find((i) => i.sourceId === `invoice_already_paid:${pi("nohint")}`)?.hint;
+    expect(hint).toBe("Possible overpayment of payment PG-ABCDEF12. Check before acting.");
+    expect(none ?? null).toBeNull();
   });
 
   it("a resolved task leaves the inbox but is still known, so it is never raised again", async () => {
