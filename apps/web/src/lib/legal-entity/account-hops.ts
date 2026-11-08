@@ -1,4 +1,8 @@
-import { accountsUnavailableHref, switchAccountHref } from "@/lib/navigation/account-link";
+import {
+  type HopReason,
+  accountsUnavailableHref,
+  switchAccountHref,
+} from "@/lib/navigation/account-link";
 import type { AccountNotice } from "@/lib/navigation/account-notice";
 import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
 import { type UsableAccount, canUseAccount } from "@auction/domain";
@@ -27,6 +31,8 @@ export function planSwitchHop(input: {
   orgModuleEnabled: boolean;
   /** A notification was opened from this account: the notice offers to switch back to it. */
   notificationFrom?: string | null;
+  /** The link opens a record that belongs to the requested account. */
+  reason?: HopReason | null;
 }): HopPlan {
   const { requestedId, next } = input;
   if (!requestedId || requestedId === input.actingId) return { redirect: next };
@@ -43,6 +49,7 @@ export function planSwitchHop(input: {
           accountId: requestedId,
           // A record link says where it came from, so the notice can offer the way back.
           ...(input.actingId ? { fromAccountId: input.actingId } : {}),
+          ...(input.reason === "record" ? { record: true as const } : {}),
         };
   return {
     redirect: next,
@@ -114,7 +121,7 @@ export function recordHop(
   if (owner.kind === "unavailable") return accountsUnavailableHref(next);
   if (owner.kind === "no_access") return noAccessHref(next);
   if (owner.kind === "ok" && owner.legalEntityId !== actingId) {
-    return switchAccountHref(owner.legalEntityId, next);
+    return switchAccountHref(owner.legalEntityId, next, { reason: "record" });
   }
   return null;
 }

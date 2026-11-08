@@ -40,18 +40,31 @@ function isAccountHop(path: string): boolean {
   );
 }
 
+/** Why a link opens another account; only a record page's link says "record". */
+export type HopReason = "record";
+
+/** The switch hop's parameter saying why the link opens another account. */
+export const HOP_REASON_PARAM = "reason";
+
+/** The reason a hop's query names, or `null` for any other (or no) value. */
+export function hopReasonOf(value: string | null | undefined): HopReason | null {
+  return value === "record" ? "record" : null;
+}
+
 /**
  * The hop that opens `next` in account `accountId`, switching to it when the person may.
- * `openedFrom` is the account a notification was opened from: the notice then offers to switch
- * back to it.
+ * `notificationFrom` is the account a notification was opened from: the notice then offers to
+ * switch back to it. `reason: "record"` says the page is a record that belongs to that account,
+ * which the notice then explains.
  */
 export function switchAccountHref(
   accountId: string,
   next: string,
-  openedFrom?: { notificationFrom: string },
+  options: { notificationFrom?: string; reason?: HopReason } = {},
 ): string {
   const params = new URLSearchParams({ to: accountId, next });
-  if (openedFrom) params.set(NOTIFICATION_FROM_PARAM, openedFrom.notificationFrom);
+  if (options.notificationFrom) params.set(NOTIFICATION_FROM_PARAM, options.notificationFrom);
+  if (options.reason) params.set(HOP_REASON_PARAM, options.reason);
   return `${CLIENT_ROUTES.accountSwitch}?${params.toString()}`;
 }
 
@@ -62,8 +75,9 @@ export const NOTIFICATION_FROM_PARAM = "from";
  * Asks before opening `next` in account `accountId`: where a link from another site (an email, a
  * shared message) lands, since only the person may change the account they use.
  */
-export function confirmSwitchHref(accountId: string, next: string): string {
+export function confirmSwitchHref(accountId: string, next: string, reason?: HopReason): string {
   const params = new URLSearchParams({ to: accountId, next });
+  if (reason) params.set(HOP_REASON_PARAM, reason);
   return `${CLIENT_ROUTES.accountSwitchConfirm}?${params.toString()}`;
 }
 

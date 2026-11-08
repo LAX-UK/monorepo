@@ -15,7 +15,7 @@ const SHOWN_MS = 12_000;
 export type SwitchBackToastProps = {
   account: Pick<AccountOption, "kind" | "initials">;
   title: string;
-  detail: string;
+  detail?: string | undefined;
   /** The button's words: "Switch back", "Back to Personal". */
   backLabel: string;
   /** The kind of account the way back goes to, which decides the page it opens. */

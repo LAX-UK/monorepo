@@ -59,8 +59,8 @@ async function accountsOf(
 }
 
 /** The hop a record link takes to open `next` in an account (the app's own link, as written). */
-const switchHrefFor = (accountId: string, next = "/bids") =>
-  `/switch-account?${new URLSearchParams({ to: accountId, next }).toString()}`;
+const switchHrefFor = (accountId: string, next = "/bids", reason?: "record") =>
+  `/switch-account?${new URLSearchParams({ to: accountId, next, ...(reason ? { reason } : {}) }).toString()}`;
 
 /** Chooses an account in this browser as an earlier visit would have left it. */
 async function useAccountInThisBrowser(context: BrowserContext, baseURL: string, id: string) {
@@ -226,13 +226,25 @@ test.describe("account switching on the production build @roles", () => {
     // this site, as a record page sends it: same-origin, so no confirmation.
     await page.goto("/about");
     await expect(accountMenuButton(page)).toBeVisible({ timeout: 30_000 });
-    await page.evaluate((href) => window.location.assign(href), switchHrefFor(organisation.id));
+    await page.evaluate(
+      (href) => window.location.assign(href),
+      switchHrefFor(organisation.id, "/bids", "record"),
+    );
     const toast = page.getByTestId("record-switch-toast");
     await expect(toast).toContainText(`Opened in ${organisation.name}`, { timeout: 30_000 });
     await expect(toast).toContainText("This record belongs to the organisation.");
     await toast.getByRole("button", { name: "Back to Personal" }).click();
     await expect(workspaceSwitcher(page)).toHaveCount(0, { timeout: 30_000 });
     await expect(accountMenuButton(page)).toHaveAccessibleName(/^Your accounts, .+, Personal$/);
+
+    // Any other link into the account (an email's ?account=, an invitation) opens it without a
+    // record to explain: the same toast and way back, but no sentence about a record.
+    await page.evaluate((href) => window.location.assign(href), switchHrefFor(organisation.id));
+    const plainToast = page.getByTestId("record-switch-toast");
+    await expect(plainToast).toContainText(`Opened in ${organisation.name}`, { timeout: 30_000 });
+    await expect(plainToast).not.toContainText("This record belongs");
+    await plainToast.getByRole("button", { name: "Back to Personal" }).click();
+    await expect(workspaceSwitcher(page)).toHaveCount(0, { timeout: 30_000 });
 
     // Signing out clears the account choice on the server, whatever the page does after: the
     // browser's own cleanup (which also runs) is not what this proves.

@@ -1,6 +1,8 @@
 "use client";
 
 import { AccountMenuItems, useAccountMenuGroups } from "@/components/layout/account-menu-items";
+import { asMenuItem } from "@/components/layout/account-menu/as-menu-item";
+import { personInitials } from "@/components/layout/account-menu/person-initials";
 import { DesktopAccountFace } from "@/components/layout/account-switcher/desktop-account-face";
 import { MenuAccountList } from "@/components/layout/account-switcher/menu-account-list";
 import { type AppShellRole, appShellRoleMeta } from "@/components/layout/app-shell-nav";
@@ -21,15 +23,6 @@ import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 
 const MENU_ID = "shell-account-menu";
-
-function initials(name: string, email: string): string {
-  const source = name.trim() || email;
-  const parts = source.split(/\s+/).filter(Boolean);
-  const first = parts[0]?.[0] ?? "";
-  const second = parts.length > 1 ? (parts[parts.length - 1]?.[0] ?? "") : "";
-  const fromEmail = email[0] ?? "";
-  return (first + second).toUpperCase() || fromEmail.toUpperCase() || "?";
-}
 
 function menuItemsFromPanel(panel: HTMLElement | null): HTMLElement[] {
   if (!panel) return [];
@@ -68,9 +61,12 @@ export function ShellUserMenu({ user, role, account = null }: ShellUserMenuProps
   useEscapeKey(open, closeMenu);
   useClickOutside(open, wrapRef, closeMenu);
 
+  // Opening from the keyboard lands on the account in use when the menu lists accounts, else on
+  // the first item.
   const focusFirstItem = useCallback(() => {
     const items = menuItemsFromPanel(panelRef.current);
-    queueMicrotask(() => items[0]?.focus());
+    const start = items.find((item) => item.getAttribute("aria-current") === "true") ?? items[0];
+    queueMicrotask(() => start?.focus());
   }, []);
 
   useLayoutEffect(() => {
@@ -120,7 +116,7 @@ export function ShellUserMenu({ user, role, account = null }: ShellUserMenuProps
   const accountView =
     account && switcher
       ? accountButtonView(account.current, {
-          initials: initials(user.name, user.email),
+          initials: personInitials(user.name, user.email),
           name: displayName,
         })
       : null;
@@ -145,13 +141,13 @@ export function ShellUserMenu({ user, role, account = null }: ShellUserMenuProps
         onKeyDown={onTriggerKeyDown}
       >
         {accountView ? (
-          <DesktopAccountFace view={accountView} user={user} />
+          <DesktopAccountFace view={accountView} user={user} open={open} />
         ) : (
           <>
             <PersonAvatar
               src={user.image}
               name={displayName}
-              initials={initials(user.name, user.email)}
+              initials={personInitials(user.name, user.email)}
             />
             <span className="hidden max-w-[10rem] truncate font-label text-sm font-medium text-on-surface lg:inline">
               {firstName}
@@ -168,8 +164,8 @@ export function ShellUserMenu({ user, role, account = null }: ShellUserMenuProps
       </Button>
 
       {open ? (
-        // The panel holds who is signed in and display settings, then the menu proper: only
-        // menu items sit inside role="menu", so assistive tech gets a valid menu.
+        // The panel holds who is signed in and display settings, then the menu proper: the
+        // accounts, pages and Sign out, each a menu item inside role="menu".
         <div
           ref={panelRef}
           className="absolute right-0 top-[calc(100%+0.5rem)] z-50 max-h-[calc(100dvh-5rem)] w-[min(100vw-2rem,18rem)] overflow-y-auto overscroll-contain rounded-lg border border-shell-stroke bg-surface-container-lowest shadow-[var(--shadow-rest)]"
@@ -190,12 +186,6 @@ export function ShellUserMenu({ user, role, account = null }: ShellUserMenuProps
               <span className="font-label text-xs font-semibold">{rolePillLabel}</span>
             </div>
           </div>
-
-          {switcher ? (
-            <div className="border-b border-shell-stroke p-1.5">
-              <MenuAccountList switcher={switcher} onNavigate={closeMenu} />
-            </div>
-          ) : null}
 
           {!isClient ? (
             <div className="border-b border-shell-stroke px-4 py-4">
@@ -218,6 +208,12 @@ export function ShellUserMenu({ user, role, account = null }: ShellUserMenuProps
           ) : null}
 
           <div id={MENU_ID} role="menu" aria-label="Account">
+            {switcher ? (
+              // The accounts are the menu's first group, labelled "Switch account" by the list.
+              <div className="border-b border-shell-stroke p-1.5">
+                <MenuAccountList switcher={switcher} onNavigate={closeMenu} wrapItem={asMenuItem} />
+              </div>
+            ) : null}
             {isClient ? (
               <div className="border-b border-shell-stroke py-1">
                 <AccountMenuItems groups={groups} variant="shell" menu onNavigate={closeMenu} />

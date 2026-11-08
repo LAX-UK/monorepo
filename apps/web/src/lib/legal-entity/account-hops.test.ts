@@ -36,6 +36,24 @@ describe("planSwitchHop", () => {
     });
   });
 
+  it("marks the notice as a record's only when the link says it is one", () => {
+    const base = {
+      requestedId: "org-1",
+      next,
+      actingId: "me",
+      memberships,
+      orgModuleEnabled: true,
+    };
+    expect(planSwitchHop({ ...base, reason: "record" }).switchTo?.notice).toEqual({
+      kind: "switched",
+      accountId: "org-1",
+      fromAccountId: "me",
+      record: true,
+    });
+    expect(planSwitchHop({ ...base, reason: null }).switchTo?.notice).not.toHaveProperty("record");
+    expect(planSwitchHop(base).switchTo?.notice).not.toHaveProperty("record");
+  });
+
   it("has no way back when the browser had no account yet", () => {
     expect(
       planSwitchHop({
@@ -121,7 +139,7 @@ describe("planRestoreHop", () => {
 describe("recordHop", () => {
   it("switches to the organisation that owns a consignment", () => {
     expect(recordHop({ kind: "ok", legalEntityId: "org-1" }, "me", next)).toBe(
-      `/switch-account?to=org-1&next=${encodeURIComponent(next)}`,
+      `/switch-account?to=org-1&next=${encodeURIComponent(next)}&reason=record`,
     );
   });
 
