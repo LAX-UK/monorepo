@@ -15,6 +15,9 @@ export async function registerDeliveryRegionRoutes(
   app.get(
     "/v1/delivery-regions",
     { schema: { tags: ["catalogue"], response: { 200: PublicDeliveryRegionsSchema } } },
-    async () => presentPublicDeliveryRegions(await catalogue.deliveryRegions.read()),
+    async (_request, reply) => {
+      reply.header("cache-control", "no-store");
+      return presentPublicDeliveryRegions(await catalogue.deliveryRegions.read());
+    },
   );
 }

@@ -42,7 +42,10 @@ export function DeliveryRegionsEditor({
       cell: (row) => (
         <span className="flex flex-col">
           <span className="font-medium text-staff-fg">{row.name}</span>
-          <span className="text-staff-xs text-staff-muted">{row.note}</span>
+          <span className="text-staff-xs text-staff-muted">
+            {row.note}
+            <span className="md:hidden"> · {row.price}</span>
+          </span>
         </span>
       ),
     },
@@ -51,16 +54,22 @@ export function DeliveryRegionsEditor({
       header: "Standard",
       mobile: "meta",
       truncate: false,
-      cell: (row) => labelled(row.standard, "working days"),
+      cell: (row) => leadTime("Standard", row.standard, null),
     },
     {
       id: "specialist",
       header: "Specialist",
       mobile: "meta",
       truncate: false,
-      cell: (row) => labelled(row.specialist, "working days"),
+      cell: (row) => leadTime("Specialist", row.specialist, "working days"),
     },
-    { id: "price", header: "Price", mobile: "badge", truncate: false, cell: (row) => row.price },
+    {
+      id: "price",
+      header: "Price",
+      mobile: "hidden",
+      truncate: false,
+      cell: (row) => row.price,
+    },
     {
       id: "edit",
       header: "Edit",
@@ -71,6 +80,7 @@ export function DeliveryRegionsEditor({
           <StaffButton
             variant="ghost"
             size="sm"
+            className="max-md:min-h-11 max-md:min-w-11"
             aria-label={`Edit ${row.name}`}
             onClick={() => setEditing(data.regions.find((region) => region.id === row.id) ?? null)}
           >
@@ -146,12 +156,23 @@ export function DeliveryRegionsEditor({
   );
 }
 
-/** A lead time with its unit; a region with no stated time has no unit to show. */
-function labelled(value: string, unit: string) {
-  if (!/\d/.test(value)) return <span className="text-staff-muted">{value}</span>;
+/**
+ * A lead time. On a phone it names itself ("Standard 5 to 10") and the last one carries the unit,
+ * so a row reads "Standard 5 to 10 · Specialist 10 to 20 working days"; in the table the column
+ * heading names it and each cell has its own unit. A region with no stated time has no unit.
+ */
+function leadTime(name: string, value: string, phoneUnit: string | null) {
+  const stated = /\d/.test(value);
   return (
-    <span className="tabular-nums">
-      {value} <span className="text-staff-muted">{unit}</span>
+    <span className={stated ? "tabular-nums" : "text-staff-muted"}>
+      <span className="md:hidden">{name} </span>
+      {value}
+      {stated ? (
+        <>
+          <span className="hidden text-staff-muted md:inline"> working days</span>
+          {phoneUnit ? <span className="text-staff-muted md:hidden"> {phoneUnit}</span> : null}
+        </>
+      ) : null}
     </span>
   );
 }

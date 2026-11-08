@@ -137,9 +137,13 @@ export const FormErrorSummary = React.forwardRef<HTMLDivElement, FormErrorSummar
           <p id={titleId} className="font-semibold">
             {title}
           </p>
-          <ul className="mt-1 list-disc pl-4">
+          {/* The bullet is its own element, so a message that wraps keeps it on the first line. */}
+          <ul className="mt-1 list-none">
             {errors.map((error) => (
-              <li key={error.fieldId}>
+              <li key={error.fieldId} className="flex gap-2 leading-6">
+                <span aria-hidden className="w-2 shrink-0 text-center">
+                  •
+                </span>
                 <a
                   href={`#${error.fieldId}`}
                   onClick={(event) => {
