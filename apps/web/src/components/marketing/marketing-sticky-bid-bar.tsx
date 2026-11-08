@@ -1,9 +1,9 @@
 "use client";
 
 import { CookieDockSlot } from "@/components/marketing/consent/cookie-dock";
-import { MARKETING_PAGE_INNER } from "@/lib/marketing/chrome";
 import { useClaimBottomSlot } from "@auction/marketing-ui";
 import { cn } from "@auction/ui";
+import { laxDensityAttributes } from "@auction/ui/lax";
 import type { ReactNode } from "react";
 
 export type MarketingStickyBidBarProps = {
@@ -13,9 +13,12 @@ export type MarketingStickyBidBarProps = {
 };
 
 /**
- * The sale page's bar on phones. It sits in the cookie dock, stacked under the cookie banner, so the
- * two never cover each other, and the dock reserves the space at the end of the page. It holds the
- * shared bottom slot, so the docked tab bar steps aside while it shows.
+ * The sale page's bar on phones, in the kit's bottom-bar look (the same surface as the lot page's
+ * bar). It sits in the cookie dock, stacked under the cookie banner, so the two never cover each
+ * other, and the dock reserves the space at the end of the page. It holds the shared bottom slot
+ * while it is mounted, so the docked tab bar steps aside and comes back when it goes. It is a
+ * labelled region, not a dialog, so focus is never trapped. From 768px it is not drawn: the
+ * page's own actions are in reach there.
  */
 export function MarketingStickyBidBar({
   children,
@@ -28,18 +31,13 @@ export function MarketingStickyBidBar({
     <CookieDockSlot>
       <section
         aria-label="Sale"
+        {...laxDensityAttributes("client")}
         className={cn(
-          "border-t border-outline-variant/25 bg-surface-container-lowest pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 shadow-[0_-12px_40px_rgba(0,0,0,0.12)] dark:border-outline-variant/20 dark:shadow-[0_-12px_40px_rgba(0,0,0,0.45)] lg:hidden",
+          "border-t border-lax-line bg-lax-raised px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] font-lax text-lax-fg shadow-[0_-8px_24px_-12px_rgb(0_0_0/0.18)] md:hidden",
           className,
         )}
       >
-        <div
-          className={cn(
-            MARKETING_PAGE_INNER,
-            "flex w-full items-center justify-between gap-3",
-            innerClassName,
-          )}
-        >
+        <div className={cn("flex w-full items-center justify-between gap-3", innerClassName)}>
           {children}
         </div>
       </section>

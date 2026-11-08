@@ -1,5 +1,5 @@
 import type { CoverScrimSetting, UnitPoint, UnitRect } from "@auction/types";
-import type { ElementType } from "react";
+import type { ElementType, ReactNode } from "react";
 
 /** The colour of the type: "light" is white type on a dark scrim, "dark" is ink type on paper. */
 export type CoverTone = "light" | "dark";
@@ -121,5 +121,14 @@ export type MarketingCoverProps = {
   Link?: ElementType;
   /** The first slide's picture is the page's largest element: load it eagerly. */
   priority?: boolean;
+  /**
+   * Set by a page whose header turns transparent over the cover. When the lead slide is a
+   * photograph, the whole cover starts under the header (pulled up by `--header-height`, with a
+   * dark band so the header's light type stays readable) and renders this node once, which tells
+   * the header to go transparent. It is decided from the lead slide alone, so the page never
+   * moves when the slides change; a plate or type-only slide in that cover draws within the same
+   * layout, under the same band. A cover that leads with a plate or type sits below the header.
+   */
+  headerSignal?: ReactNode;
   className?: string;
 };

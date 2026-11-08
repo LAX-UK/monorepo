@@ -370,3 +370,83 @@ describe("a pale plate in the dark theme", () => {
     expect(deep.container.querySelector("[data-cover-swap]")).toBeNull();
   });
 });
+
+describe("MarketingCover under a transparent header", () => {
+  const signal = <span data-testid="header-signal" />;
+  const slidesOf = (...ids: string[]) =>
+    ids.flatMap((id) => fixture(BID_COVER_FIXTURES, id).slides);
+  const withSignal = (slides: CoverFixture["slides"]) =>
+    render(<MarketingCover slides={slides} label="Featured sales" headerSignal={signal} />);
+  const coverRoot = (container: HTMLElement) => container.querySelector("[data-cover-mode]");
+
+  it("pulls a photograph under the header and sends the signal once", () => {
+    const { container } = withSignal(slidesOf("live"));
+    const cover = coverRoot(container);
+    expect(cover).toHaveAttribute("data-cover-mode", "photo");
+    expect(cover).toHaveAttribute("data-cover-under-header");
+    expect(cover?.className).toContain("-mt-[var(--header-height)]");
+    expect(cover?.className).toContain("md:h-[calc(640px+var(--header-height))]");
+    expect(container.querySelector("[data-cover-media]")?.className).toContain(
+      "h-[calc(340px+var(--header-height))]",
+    );
+    expect(screen.getAllByTestId("header-signal")).toHaveLength(1);
+  });
+
+  it("holds the band steady for the whole header, then fades it, so light type has contrast", () => {
+    const { container } = withSignal(slidesOf("live"));
+    const band = container.querySelector<HTMLElement>("[data-cover-header-scrim]");
+    expect(band).not.toBeNull();
+    expect(band?.style.height).toBe("calc(var(--header-height) + 2.75rem)");
+    const gradient = band?.style.backgroundImage ?? "";
+    // 60% black from the top to the bottom of the header, then transparent 2.75rem further down.
+    expect(gradient).toContain("rgb(0 0 0 / 0.6) 0");
+    expect(gradient).toContain("rgb(0 0 0 / 0.6) var(--header-height)");
+    expect(gradient).toContain("transparent calc(var(--header-height) + 2.75rem)");
+  });
+
+  it("leaves a cover that leads with a plate or plain type below the header, with no signal", () => {
+    for (const id of ["no-cover", "no-images"]) {
+      const { container, unmount } = withSignal(slidesOf(id));
+      expect(container.querySelector("[data-cover-under-header]")).toBeNull();
+      expect(container.querySelector("[data-cover-header-scrim]")).toBeNull();
+      expect(screen.queryByTestId("header-signal")).toBeNull();
+      unmount();
+    }
+  });
+
+  it("keeps one layout when the slides change: decided from the lead slide", () => {
+    // Photograph first, plate second: stepping to the plate must not move the page.
+    const mixed = slidesOf("live", "no-cover");
+    const { container } = withSignal(mixed);
+    const lead = coverRoot(container);
+    expect(lead).toHaveAttribute("data-cover-under-header");
+
+    fireEvent.click(screen.getByRole("button", { name: /next/i }));
+    const second = coverRoot(container);
+    expect(second).toHaveAttribute("data-cover-mode", "plate");
+    expect(second).toHaveAttribute("data-cover-under-header");
+    expect(second?.className).toContain("-mt-[var(--header-height)]");
+    expect(second?.className).toContain("md:h-[calc(640px+var(--header-height))]");
+    expect(container.querySelector("[data-cover-header-scrim]")).not.toBeNull();
+    // The signal belongs to the cover, so it does not come and go with the slide.
+    expect(screen.getAllByTestId("header-signal")).toHaveLength(1);
+  });
+
+  it("does the opposite for a plate first: no slide goes under the header", () => {
+    const mixed = slidesOf("no-cover", "live");
+    const { container } = withSignal(mixed);
+    expect(container.querySelector("[data-cover-under-header]")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: /next/i }));
+    expect(coverRoot(container)).toHaveAttribute("data-cover-mode", "photo");
+    expect(container.querySelector("[data-cover-under-header]")).toBeNull();
+    expect(screen.queryByTestId("header-signal")).toBeNull();
+  });
+
+  it("is unchanged for a page that does not ask for it", () => {
+    const { container } = renderFixture(fixture(BID_COVER_FIXTURES, "live"));
+    expect(container.querySelector("[data-cover-under-header]")).toBeNull();
+    expect(container.querySelector("[data-cover-mode='photo']")?.className).toContain(
+      "md:h-[640px]",
+    );
+  });
+});

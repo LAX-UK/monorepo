@@ -4,6 +4,7 @@ import type { MegaMenuSection } from "@/components/layout/header-nav-config";
 import { emptyMegaMenuSections } from "@/components/layout/header-nav-config";
 import { ChromeIconButton } from "@/components/marketing/chrome-icon-button";
 import { useAppSession } from "@/lib/auth/use-app-session";
+import { bidHeroPresence, bidRouteMayHaveHero } from "@/lib/layout/bid-hero-presence";
 import { type SiteHeaderTone, headerChromeIconClass } from "@/lib/layout/header-chrome-tone";
 import { MARKETING_PAGE_GUTTER_X } from "@/lib/marketing/chrome";
 import { useMarketingHeaderTitle } from "@/lib/marketing/marketing-header-title-context";
@@ -18,7 +19,15 @@ import {
 import { cn } from "@auction/ui";
 import { Menu, X } from "lucide-react";
 import { usePathname, useSearchParams } from "next/navigation";
-import { Suspense, forwardRef, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Suspense,
+  forwardRef,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { AccountNeedsYouProvider } from "./account-switcher/account-needs-you";
 import { BidAttentionPrompt } from "./bid-attention-prompt";
 import { BidHeaderAccount } from "./bid-header-account";
@@ -29,6 +38,9 @@ import { HeaderMegaNav } from "./header-mega-nav";
 import { utilityNav } from "./header-nav-config";
 import { HeaderSearchTrigger } from "./header-search";
 import { ThemeToggle } from "./theme-toggle";
+
+/** There is nothing to subscribe to: the value only differs between the server and the client. */
+const subscribeNever = () => () => {};
 
 type SiteHeaderChromeVariant = "solid" | "transparentUntilScroll";
 
@@ -62,7 +74,20 @@ function SiteHeaderShell({
   const searchKey = searchParams == null ? "" : searchParams.toString();
   const { title: marketingPageTitle } = useMarketingHeaderTitle();
 
-  const resolvedVariant: SiteHeaderChromeVariant = chromeVariant ?? "solid";
+  // Over a cover photograph the header starts transparent and goes solid on scroll; the page says
+  // whether one is there (the cover registers itself), the route only whether one could be.
+  const heroPresent = bidHeroPresence.useHeroPresent();
+  const overHero = bidRouteMayHaveHero(pathname) && heroPresent;
+  // Before the scripts have run the server could not know a cover is there; the stylesheet draws
+  // the header for it from the cover's marker (`data-hero-pending`, see globals.css).
+  const hydrated = useSyncExternalStore(
+    subscribeNever,
+    () => true,
+    () => false,
+  );
+  const heroPending = !hydrated && chromeVariant === undefined && bidRouteMayHaveHero(pathname);
+  const resolvedVariant: SiteHeaderChromeVariant =
+    chromeVariant ?? (overHero ? "transparentUntilScroll" : "solid");
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: close mobile menu when the route changes
   useEffect(() => {
@@ -82,6 +107,7 @@ function SiteHeaderShell({
       <header
         ref={attachHeader}
         data-chrome-variant={resolvedVariant}
+        {...(heroPending ? { "data-hero-pending": "" } : {})}
         data-at-top={atTop ? "true" : "false"}
         data-header-tone={headerTone}
         className={headerChromeClassName(isTransparent, megaOpen)}

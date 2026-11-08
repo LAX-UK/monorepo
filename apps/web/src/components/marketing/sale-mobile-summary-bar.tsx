@@ -13,12 +13,12 @@ import { useActiveSaleCountdownEndIso } from "@/lib/sale/use-active-sale-countdo
 import {
   type SaleroomLotRef,
   resolveSaleroomMobileSummaryBarMode,
-  saleroomBidNowCtaClassName,
 } from "@/lib/saleroom/saleroom-mobile-chrome";
 import { closingChipText, opensLine } from "@/lib/time/opens-line";
 import { useClientClock } from "@/lib/time/use-client-clock";
 import type { Sale, SaleDeliveryMode } from "@auction/types";
 import { Countdown, LiveDot } from "@auction/ui";
+import { Button } from "@auction/ui/lax";
 import Link from "next/link";
 
 /** When a sale opens, by the time rule: the date beyond a week, then days, hours and minutes. */
@@ -29,8 +29,8 @@ function OpensText({ start }: { start: Date }) {
       ? opensLine(start, new Date(nowMs))
       : { label: "Opens", value: formatLondonWhen(start) };
   return (
-    <p className="font-body text-sm text-on-surface">
-      <span className="text-on-surface-variant">{line.label} </span>
+    <p className="m-0 text-lax-13 leading-5 text-lax-fg">
+      <span className="text-lax-muted">{line.label} </span>
       <span className="font-semibold tabular-nums" suppressHydrationWarning>
         {line.value}
       </span>
@@ -93,6 +93,10 @@ export function SaleMobileSummaryBar({
         )
       : null;
 
+  // The hero's own actions are on screen first; the bar takes over once they scroll out. A sale
+  // with no such row (ended, or handled elsewhere) has nothing to wait for, so its bar shows at once.
+  if (!heroActionsScrolledOut) return null;
+
   if (status === "ended" || status === "cancelled" || status === "voided") {
     return (
       <MarketingStickyBidBar>
@@ -100,12 +104,9 @@ export function SaleMobileSummaryBar({
           <SaleLifecycleBadge status={status} />
           <span className="sr-only">{saleTitle}</span>
         </div>
-        <Link
-          href="#catalog"
-          className="shrink-0 rounded-sm border border-outline-variant/40 px-4 py-3 font-label text-xs font-bold text-on-surface-variant"
-        >
-          View results
-        </Link>
+        <Button variant="secondary" size="lg" asChild>
+          <Link href="#catalog">View results</Link>
+        </Button>
       </MarketingStickyBidBar>
     );
   }
@@ -120,9 +121,6 @@ export function SaleMobileSummaryBar({
     );
   }
 
-  // The hero's own actions are on screen first; the bar takes over once they scroll out.
-  if (!heroActionsScrolledOut) return null;
-
   const isUpcoming = status === "scheduled" || status === "draft";
   const target = isUpcoming ? start : end;
   const kicker = isUpcoming ? "Opens in" : "Live sale";
@@ -135,15 +133,12 @@ export function SaleMobileSummaryBar({
     if (isOnsite) {
       if (!isUpcoming && streamUrl) {
         return (
-          <a
-            href={streamUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex shrink-0 items-center gap-2 rounded-sm bg-cta-bg px-4 py-3 font-label text-xs font-bold text-cta-on"
-          >
-            <LiveDot className="live-dot-pulse h-2 w-2" />
-            Watch live
-          </a>
+          <Button variant="primary" size="lg" asChild>
+            <a href={streamUrl} target="_blank" rel="noopener noreferrer">
+              <LiveDot className="live-dot-pulse h-2 w-2" />
+              Watch live
+            </a>
+          </Button>
         );
       }
       if (isUpcoming && sale) {
@@ -152,35 +147,32 @@ export function SaleMobileSummaryBar({
             sale={sale}
             lotTitle={sale.title}
             locationLine={locationLine}
-            className="h-auto shrink-0 rounded-sm px-4 py-3 font-label text-xs font-bold"
+            className="shrink-0"
           />
         );
       }
       if (directionsUrl) {
         return (
-          <a
-            href={directionsUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={saleroomBidNowCtaClassName}
-          >
-            Get directions
-          </a>
+          <Button variant="primary" size="lg" asChild>
+            <a href={directionsUrl} target="_blank" rel="noopener noreferrer">
+              Get directions
+            </a>
+          </Button>
         );
       }
       return (
-        <Link href="#plan-visit" className={saleroomBidNowCtaClassName}>
-          Plan visit
-        </Link>
+        <Button variant="primary" size="lg" asChild>
+          <Link href="#plan-visit">Plan visit</Link>
+        </Button>
       );
     }
 
     const ctaHref = isUpcoming ? (canParticipate ? "/register" : "#catalog") : "#catalog";
     const ctaLabel = isUpcoming ? (canParticipate ? "Register" : "View lots") : "View lots";
     return (
-      <Link href={ctaHref} className={saleroomBidNowCtaClassName}>
-        {ctaLabel}
-      </Link>
+      <Button variant="primary" size="lg" asChild>
+        <Link href={ctaHref}>{ctaLabel}</Link>
+      </Button>
     );
   };
 
@@ -199,18 +191,16 @@ export function SaleMobileSummaryBar({
               end={target}
               format={closingChipText}
               announce={isUpcoming || deliveryMode === "online"}
-              className="font-headline text-sm text-on-surface tabular-nums md:text-base"
+              className="font-lax text-lax-13 font-semibold text-lax-fg tabular-nums"
             />
           ) : null}
         </CountdownFadeSlot>
         {saleroomMode?.kind === "live_no_lot" ? (
-          <p className="mt-0.5 font-label text-xs text-on-surface-variant">
+          <p className="m-0 text-lax-13 leading-5 text-lax-muted">
             Saleroom live · {saleroomMode.progressLabel}
           </p>
         ) : !isUpcoming && typeof liveLotsCount === "number" && liveLotsCount > 0 ? (
-          <p className="mt-0.5 font-label text-xs text-on-surface-variant">
-            {liveLotsCount} lots active
-          </p>
+          <p className="m-0 text-lax-13 leading-5 text-lax-muted">{liveLotsCount} lots active</p>
         ) : null}
       </div>
       {renderCta()}
