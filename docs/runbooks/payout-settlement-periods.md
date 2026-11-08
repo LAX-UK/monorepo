@@ -17,13 +17,15 @@ payout's end and continues from it.
 
 ## A reversed payout and payments that come back
 
-A reversed payout keeps its period. If staff relink payments from a reversed payout so they are
-paid again, those payments were captured before the latest period's end. The next payout starts at
-that end, so its statement period does not contain their capture dates.
+A reversed payout keeps its period, and reversing it does not release its payments: they stay
+linked to it, and nothing in the application links them to a new payout. The case below only arises
+from a manual database or finance operation that frees those payments to be paid again. Any future
+supported relink must run under the same per-seller settlement lock as a settlement.
 
-This is expected. The payout's lines, not its period dates, say which payments it pays. When a
-seller asks why a payment sits outside the statement period, check the payout lines for the payment
-and the reversed payout it came from.
+If payments are freed that way, they were captured before the latest period's end. The next payout
+starts at that end, so its statement period can omit their capture dates. The payout's lines, not
+its period dates, decide what is paid. When a seller asks why a payment sits outside the statement
+period, check the payout lines for the payment and the reversed payout it came from.
 
 ## Monitoring
 
