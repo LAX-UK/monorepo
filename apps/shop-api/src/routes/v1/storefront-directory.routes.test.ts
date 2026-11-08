@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { createShopApiApp } from "../../app.js";
-import { createMinimalShopApiTestDeps } from "../../test-app-deps.js";
+import { createMinimalShopApiTestDeps, testDeliveryRegionsState } from "../../test-app-deps.js";
 
 function createDeps() {
   return createMinimalShopApiTestDeps({
     catalogue: {
+      deliveryRegions: { read: async () => testDeliveryRegionsState() },
       listPublicArtworks: async () => ({ items: [] }),
       getPublicArtwork: async () => null,
       listArtworkObjectTypeFacets: async () => [],
