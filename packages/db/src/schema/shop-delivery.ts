@@ -93,6 +93,13 @@ export const shopDeliveryQuote = pgTable(
     decidedAt: timestamp("decided_at", { mode: "date", withTimezone: true }),
     /** Why a withdrawn quote ended: cancelled_by_buyer, cannot_deliver or expired. */
     endReason: text("end_reason"),
+    /**
+     * For a guest's request only: keyed hashes of the client IP and of the browser's basket
+     * token, so open holds can be capped per IP and per browser without storing either. Never
+     * set for a signed-in buyer, and not read once the request has ended.
+     */
+    guestIpHash: text("guest_ip_hash"),
+    basketTokenHash: text("basket_token_hash"),
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
   },
@@ -101,6 +108,14 @@ export const shopDeliveryQuote = pgTable(
     index("shop_delivery_quote_open_hold_idx")
       .on(table.holdUntil)
       .where(sql`${table.status} IN ('requested', 'quoted')`),
+    index("shop_delivery_quote_open_ip_idx")
+      .on(table.guestIpHash)
+      .where(sql`${table.status} IN ('requested', 'quoted') AND ${table.guestIpHash} IS NOT NULL`),
+    index("shop_delivery_quote_open_basket_token_idx")
+      .on(table.basketTokenHash)
+      .where(
+        sql`${table.status} IN ('requested', 'quoted') AND ${table.basketTokenHash} IS NOT NULL`,
+      ),
     check(
       "shop_delivery_quote_status_check",
       sql`${table.status} IN ('requested', 'quoted', 'accepted', 'withdrawn')`,

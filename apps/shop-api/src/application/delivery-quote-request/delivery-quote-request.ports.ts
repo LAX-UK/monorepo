@@ -29,6 +29,8 @@ export type CreateQuoteOrderInput = DeliveryQuoteOwner &
     holdUntil: Date;
     /** Where the "we have your request" email goes when it cannot be read from the account. */
     fallbackEmail: string | null;
+    /** A guest's keyed client IP hash, for the cap on open holds per IP; null when not known. */
+    guestIpHash: string | null;
   };
 
 export type CreatedQuoteOrder = DeliveryQuoteDestination & {

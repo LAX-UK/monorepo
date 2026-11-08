@@ -52,6 +52,8 @@ export function createMinimalShopApiTestDeps(
       PORT: 3011,
       DATABASE_URL_SHOP: "postgresql://shop:shop@localhost:5432/auction",
       SHOP_EDITION_ORDER_LIMIT: 2,
+      SHOP_EXPORT_PAYMENT_ENABLED: false,
+      SHOP_GUEST_QUOTE_HOLD_WORKING_DAYS: 1,
       LOG_LEVEL: "error",
       SHOP_API_PUBLIC_BASE_URL: "http://localhost:3011",
       SHOP_STOREFRONT_URL: "http://localhost:3020",

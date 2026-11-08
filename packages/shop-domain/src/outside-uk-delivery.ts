@@ -33,9 +33,24 @@ export function addWorkingDays(from: Date, days: number): Date {
  */
 export const MAX_OPEN_QUOTE_REQUESTS_PER_BUYER = 3;
 
-/** When a print held for a quote asked for at `now` is released if the quote is not paid. */
-export function quoteHoldUntil(now: Date): Date {
-  return addWorkingDays(now, QUOTE_HOLD_WORKING_DAYS);
+/**
+ * A guest's hold is shorter by default: a guest cannot be held to account the way a signed-in
+ * buyer can, so a request costs the gallery less stock for less time. A setting, within 1 to 3.
+ */
+export const GUEST_QUOTE_HOLD_WORKING_DAYS_DEFAULT = 1;
+
+/** Open requests one client IP can have across guests: a shared office is allowed a few. */
+export const MAX_OPEN_QUOTE_REQUESTS_PER_GUEST_IP = 4;
+
+/** Open requests one browser (its basket token) can have, whatever email it gives. */
+export const MAX_OPEN_QUOTE_REQUESTS_PER_BASKET_TOKEN = 2;
+
+/**
+ * When a print held for a quote asked for at `now` is released if the quote is not paid, after
+ * `workingDays` (three for a signed-in buyer).
+ */
+export function quoteHoldUntil(now: Date, workingDays: number = QUOTE_HOLD_WORKING_DAYS): Date {
+  return addWorkingDays(now, workingDays);
 }
 
 /** Why a quote request ended without being paid; the buyer is told which. */

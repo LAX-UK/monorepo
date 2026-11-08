@@ -2,6 +2,7 @@ import { deliveryQuoteTransition } from "@auction/domain";
 import { SHOP_API_ERROR_CODES } from "@auction/shop-contracts";
 import {
   type DeliveryRegionId,
+  QUOTE_HOLD_WORKING_DAYS,
   assessOutsideUkDelivery,
   outsideUkAddressIssues,
   quoteHoldUntil,
@@ -29,6 +30,8 @@ export type DeliveryQuoteRequestInput = DeliveryQuoteOwner & {
   deliveryAddress: ShopDeliveryAddress & { recipientName: string };
   deliveryPhone: string;
   fallbackEmail: string | null;
+  /** A guest's keyed client IP hash; absent for a signed-in buyer. */
+  guestIpHash?: string | null;
 };
 
 export type DeliveryQuoteRequestOutcome =
@@ -43,6 +46,13 @@ export type DeliveryQuoteRequestDeps = {
   regions: DeliveryRegionsReader;
   orders: DeliveryQuoteOrderStore;
   checkout: Pick<CheckoutWriter, "createCheckoutOrder">;
+  /**
+   * Whether a region's fixed rate is charged at checkout. Off until VAT on exports is confirmed:
+   * a fixed-rate region is then asked for as a quote like any other.
+   */
+  exportPaymentEnabled: boolean;
+  /** Working days a guest's request holds the print; a signed-in buyer's is the full hold. */
+  guestHoldWorkingDays: number;
   now?: () => Date;
 };
 
@@ -87,7 +97,7 @@ export function createDeliveryQuoteRequestService(deps: DeliveryQuoteRequestDeps
       }
 
       const normalised = { ...address, country: assessment.country };
-      if (assessment.kind === "fixed") {
+      if (assessment.kind === "fixed" && deps.exportPaymentEnabled) {
         const session = await deps.checkout.createCheckoutOrder({
           ...(input.guest ? { guest: input.guest } : {}),
           subject: input.subject,
@@ -124,10 +134,16 @@ export function createDeliveryQuoteRequestService(deps: DeliveryQuoteRequestDeps
         deliveryAddress: normalised,
         deliveryPhone: input.deliveryPhone,
         country: assessment.country,
-        regionId: toQuotedRegion(assessment.regionId),
+        regionId: toQuotedRegion(
+          assessment.kind === "quote" || assessment.kind === "fixed" ? assessment.regionId : null,
+        ),
         status: step.next,
-        holdUntil: quoteHoldUntil(now()),
+        holdUntil: quoteHoldUntil(
+          now(),
+          input.guest ? deps.guestHoldWorkingDays : QUOTE_HOLD_WORKING_DAYS,
+        ),
         fallbackEmail: input.fallbackEmail,
+        guestIpHash: input.guest ? (input.guestIpHash ?? null) : null,
       });
       return { kind: "quote_requested", request };
     },

@@ -5,6 +5,10 @@ import {
   type DeliveryRegion,
 } from "./delivery-regions.js";
 import {
+  GUEST_QUOTE_HOLD_WORKING_DAYS_DEFAULT,
+  MAX_OPEN_QUOTE_REQUESTS_PER_BASKET_TOKEN,
+  MAX_OPEN_QUOTE_REQUESTS_PER_BUYER,
+  MAX_OPEN_QUOTE_REQUESTS_PER_GUEST_IP,
   QUOTE_HOLD_WORKING_DAYS,
   addWorkingDays,
   assessOutsideUkDelivery,
@@ -71,6 +75,21 @@ describe("the quote hold", () => {
     expect(addWorkingDays(new Date("2026-11-14T09:30:00Z"), 3).toISOString()).toBe(
       "2026-11-18T09:30:00.000Z",
     );
+  });
+
+  it("is shorter for a guest, by the number of days it is given", () => {
+    expect(GUEST_QUOTE_HOLD_WORKING_DAYS_DEFAULT).toBeLessThan(QUOTE_HOLD_WORKING_DAYS);
+    // Wednesday 11 November at noon: one working day is Thursday.
+    expect(quoteHoldUntil(new Date("2026-11-11T12:00:00Z"), 1).toISOString()).toBe(
+      "2026-11-12T12:00:00.000Z",
+    );
+  });
+
+  it("caps open holds tightest per browser, then per buyer, then per network", () => {
+    expect(MAX_OPEN_QUOTE_REQUESTS_PER_BASKET_TOKEN).toBeLessThan(
+      MAX_OPEN_QUOTE_REQUESTS_PER_BUYER,
+    );
+    expect(MAX_OPEN_QUOTE_REQUESTS_PER_BUYER).toBeLessThan(MAX_OPEN_QUOTE_REQUESTS_PER_GUEST_IP);
   });
 
   it("does not move the date it is given", () => {

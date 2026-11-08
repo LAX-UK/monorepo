@@ -2,7 +2,9 @@ import type { Database } from "@auction/db";
 import { shopBasket, shopDeliveryQuote, shopOrder } from "@auction/db/schema";
 import { SHOP_API_ERROR_CODES } from "@auction/shop-contracts";
 import {
+  MAX_OPEN_QUOTE_REQUESTS_PER_BASKET_TOKEN,
   MAX_OPEN_QUOTE_REQUESTS_PER_BUYER,
+  MAX_OPEN_QUOTE_REQUESTS_PER_GUEST_IP,
   reservedUntilFromCheckoutExpiry,
 } from "@auction/shop-domain";
 import { and, count, eq, inArray } from "drizzle-orm";
@@ -77,6 +79,32 @@ export function createDrizzleDeliveryQuoteOrderStore(
       : null;
   }
 
+  const openQuote = inArray(shopDeliveryQuote.status, ["requested", "quoted"]);
+  const tooMany = () =>
+    new ShopApiError(
+      SHOP_API_ERROR_CODES.CONFLICT,
+      "There are already delivery quote requests waiting from this browser or network. Wait for a reply before asking again.",
+      409,
+    );
+
+  /** A guest has no account to hold to account, so open holds are also capped per browser and IP. */
+  async function assertGuestHoldsWithinCaps(
+    basketTokenHash: string,
+    ipHash: string | null,
+  ): Promise<void> {
+    const [byToken] = await db
+      .select({ open: count() })
+      .from(shopDeliveryQuote)
+      .where(and(eq(shopDeliveryQuote.basketTokenHash, basketTokenHash), openQuote));
+    if ((byToken?.open ?? 0) >= MAX_OPEN_QUOTE_REQUESTS_PER_BASKET_TOKEN) throw tooMany();
+    if (!ipHash) return;
+    const [byIp] = await db
+      .select({ open: count() })
+      .from(shopDeliveryQuote)
+      .where(and(eq(shopDeliveryQuote.guestIpHash, ipHash), openQuote));
+    if ((byIp?.open ?? 0) >= MAX_OPEN_QUOTE_REQUESTS_PER_GUEST_IP) throw tooMany();
+  }
+
   return {
     async createQuoteOrder(input) {
       // A retry finds its request before the basket, which the first attempt has already retired.
@@ -105,6 +133,10 @@ export function createDrizzleDeliveryQuoteOrderStore(
           "You already have delivery quote requests waiting. Wait for a reply, or cancel one, before asking again.",
           409,
         );
+      }
+
+      if (input.guest) {
+        await assertGuestHoldsWithinCaps(input.guest.basketTokenHash, input.guestIpHash);
       }
 
       const details = checkoutDeliveryDetails({
@@ -156,6 +188,8 @@ export function createDrizzleDeliveryQuoteOrderStore(
           await tx.insert(shopDeliveryQuote).values({
             orderId: order.id,
             status: input.status,
+            guestIpHash: input.guest ? input.guestIpHash : null,
+            basketTokenHash: input.guest ? input.guest.basketTokenHash : null,
             regionId: input.regionId,
             destinationCountry: input.country,
             holdUntil: input.holdUntil,

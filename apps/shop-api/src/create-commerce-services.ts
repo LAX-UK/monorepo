@@ -91,6 +91,8 @@ export function createCommerceServices(
       notifications,
     }),
     checkout: repository,
+    exportPaymentEnabled: env.SHOP_EXPORT_PAYMENT_ENABLED,
+    guestHoldWorkingDays: env.SHOP_GUEST_QUOTE_HOLD_WORKING_DAYS,
   });
   const guestCheckout = identityConfig
     ? createGuestCheckoutDeps(db, {
@@ -103,6 +105,7 @@ export function createCommerceServices(
         rateLimitCounter: options.rateLimitCounter,
         storefrontUrl: env.SHOP_STOREFRONT_URL,
         domainEventMode,
+        ipHashSecret: env.SHOP_API_BFF_TOKEN ?? "shop-guest-hold-development-secret",
         invoiceIssuer,
       })
     : undefined;

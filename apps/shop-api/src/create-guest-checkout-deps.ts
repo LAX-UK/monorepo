@@ -1,3 +1,4 @@
+import { createHmac } from "node:crypto";
 import type { LegalEntity } from "@auction/branding";
 import type { Database } from "@auction/db";
 import type { DeliveryQuoteRequestService } from "./application/delivery-quote-request/delivery-quote-request.service.js";
@@ -30,6 +31,8 @@ export function createGuestCheckoutDeps(
     rateLimitCounter: FixedWindowCounter;
     storefrontUrl: string;
     domainEventMode: ShopDomainEventPublisherMode;
+    /** The secret that keys client IP hashes for the guest hold caps. */
+    ipHashSecret: string;
     invoiceIssuer: { supplier: LegalEntity; vatNumber: string | null };
   },
 ): GuestCheckoutRoutesDeps {
@@ -48,6 +51,8 @@ export function createGuestCheckoutDeps(
       ...(input.quotes ? { quotes: input.quotes } : {}),
       links,
       rateLimiter: limiters.checkout,
+      quoteRateLimiter: limiters.quoteRequests,
+      hashClientIp: (ip) => createHmac("sha256", input.ipHashSecret).update(ip).digest("hex"),
     }),
     links,
     resumeCheckout: (order) => input.checkout.resumeCheckoutOrder(order),

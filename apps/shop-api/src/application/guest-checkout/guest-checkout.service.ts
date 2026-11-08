@@ -82,6 +82,10 @@ export type GuestCheckoutDeps = {
   quotes?: Pick<DeliveryQuoteRequestService, "request">;
   links: Pick<GuestOrderLinks, "issue">;
   rateLimiter: EnquiryRateLimiter;
+  /** The lower allowance for delivery quote requests, which hold stock; falls back to the checkout one. */
+  quoteRateLimiter?: EnquiryRateLimiter;
+  /** A keyed, one-way hash of a client IP, so holds can be capped per IP without storing it. */
+  hashClientIp?: (ip: string) => string;
   /** Called when the limiter cannot be reached; checks then continue rather than block a sale. */
   onRateLimitUnavailable?: (error: unknown) => void;
   now?: () => Date;
@@ -103,11 +107,12 @@ export function createGuestCheckoutService(deps: GuestCheckoutDeps) {
   async function admit(
     email: string,
     clientIp: string | null,
+    rateLimiter: EnquiryRateLimiter = deps.rateLimiter,
   ): Promise<GuestCheckoutRefusal | { kind: "admitted"; email: string }> {
     if (!isPlausibleGuestEmail(email)) return { kind: "invalid_email" };
     const normalised = normaliseGuestEmail(email);
     try {
-      const decision = await deps.rateLimiter.consume({
+      const decision = await rateLimiter.consume({
         clientIp,
         senderKey: `email:${normalised}`,
       });
@@ -186,14 +191,18 @@ export function createGuestCheckoutService(deps: GuestCheckoutDeps) {
     async requestDeliveryQuote(input: GuestQuoteRequestInput): Promise<GuestQuoteRequestResult> {
       const quotes = deps.quotes;
       if (!quotes) return { kind: "unavailable" };
-      const admission = await admit(input.email, input.clientIp);
+      const admission = await admit(
+        input.email,
+        input.clientIp,
+        deps.quoteRateLimiter ?? deps.rateLimiter,
+      );
       if (admission.kind !== "admitted") return admission;
       const {
         email: _email,
         name,
         marketingConsent,
         basketTokenHash,
-        clientIp: _clientIp,
+        clientIp,
         ...request
       } = input;
       const { guestCustomerId } = await deps.guests.record(
@@ -210,6 +219,7 @@ export function createGuestCheckoutService(deps: GuestCheckoutDeps) {
         subject: guestOrderSubject(guestCustomerId),
         guest: { guestCustomerId, basketTokenHash },
         fallbackEmail: admission.email,
+        guestIpHash: clientIp && deps.hashClientIp ? deps.hashClientIp(clientIp) : null,
       });
       const orderId =
         outcome.kind === "quote_requested"

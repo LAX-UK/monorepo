@@ -51,10 +51,12 @@ describe("migration 0332 shop delivery quote", () => {
 
   it("is mirrored by the table's columns", () => {
     expect(Object.keys(getTableColumns(shopDeliveryQuote)).sort()).toEqual([
+      "basketTokenHash",
       "createdAt",
       "decidedAt",
       "destinationCountry",
       "endReason",
+      "guestIpHash",
       "holdUntil",
       "id",
       "orderId",

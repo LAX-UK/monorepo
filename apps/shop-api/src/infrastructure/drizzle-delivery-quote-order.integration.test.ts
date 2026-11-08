@@ -3,9 +3,15 @@ import {
   shopBasket,
   shopDeliveryQuote,
   shopEdition,
+  shopGuestCustomer,
   shopOrder,
 } from "@auction/db/schema";
-import { DEFAULT_DELIVERY_REGIONS, MAX_OPEN_QUOTE_REQUESTS_PER_BUYER } from "@auction/shop-domain";
+import {
+  DEFAULT_DELIVERY_REGIONS,
+  MAX_OPEN_QUOTE_REQUESTS_PER_BASKET_TOKEN,
+  MAX_OPEN_QUOTE_REQUESTS_PER_BUYER,
+  MAX_OPEN_QUOTE_REQUESTS_PER_GUEST_IP,
+} from "@auction/shop-domain";
 import { eq } from "drizzle-orm";
 import type pg from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -73,6 +79,7 @@ describe.skipIf(!hasShopIntegrationDb)("delivery quote requests", () => {
     label: string,
     regions = DEFAULT_DELIVERY_REGIONS.map((r) => ({ ...r })),
     authorised = 1,
+    exportPaymentEnabled = true,
   ) {
     const db = createShopDb(shopPool);
     const suffix = integrationSuffix(label);
@@ -97,7 +104,39 @@ describe.skipIf(!hasShopIntegrationDb)("delivery quote requests", () => {
         notifications: createDrizzleShopNotificationPublisher(),
       }),
       checkout: repo,
+      exportPaymentEnabled,
+      guestHoldWorkingDays: 1,
     });
+    const newGuest = async (token: string, ip: string) => {
+      const [row] = await db
+        .insert(shopGuestCustomer)
+        .values({ email: `${integrationSuffix("guest")}@example.test` })
+        .returning({ id: shopGuestCustomer.id });
+      return { id: requireDefined(row, "guest").id, token, ip };
+    };
+    const guestBasket = (token: string) =>
+      repo.addOrUpdateLine({
+        owner: { kind: "anonymous", tokenHash: token },
+        artworkSlug: imported.slug,
+        quantity: 1,
+      });
+    const guestRequest = (
+      basketId: string,
+      guest: { id: string; token: string; ip: string },
+      key = `delivery-quote:${basketId}`,
+    ) =>
+      quotes.request({
+        subject: `guest:${guest.id}`,
+        guest: { guestCustomerId: guest.id, basketTokenHash: guest.token },
+        guestIpHash: guest.ip,
+        basketId,
+        idempotencyKey: key,
+        successUrl: "http://localhost:3020/checkout/confirmation?orderId={ORDER_ID}",
+        cancelUrl: "http://localhost:3020/checkout/cancel?orderId={ORDER_ID}",
+        deliveryAddress: address("DE"),
+        deliveryPhone: "+49 30 1234567",
+        fallbackEmail: `${suffix}@example.test`,
+      });
     const request = (basketId: string, country = "DE", key = `delivery-quote:${basketId}`) =>
       quotes.request({
         subject,
@@ -121,7 +160,21 @@ describe.skipIf(!hasShopIntegrationDb)("delivery quote requests", () => {
         (await db.select().from(shopOrder).where(eq(shopOrder.id, orderId)).limit(1))[0],
         "order",
       );
-    return { db, repo, recording, subject, imported, addBasket, request, quoteFor, order, suffix };
+    return {
+      db,
+      repo,
+      recording,
+      subject,
+      imported,
+      addBasket,
+      request,
+      guestRequest,
+      newGuest,
+      guestBasket,
+      quoteFor,
+      order,
+      suffix,
+    };
   }
 
   it("holds the print for three working days without opening a payment", async () => {
@@ -281,5 +334,78 @@ describe.skipIf(!hasShopIntegrationDb)("delivery quote requests", () => {
     expect(row.totalPence).toBe(8_000 + 3_500);
     expect(row.fulfilment).toBe("international_quotation");
     expect(recording.created).toHaveLength(1);
+  });
+
+  it("asks for a quote instead of charging a fixed rate while export payment is off", async () => {
+    const regions = DEFAULT_DELIVERY_REGIONS.map((r) =>
+      r.id === "eu" ? { ...r, fixedPricePence: 3_500 } : { ...r },
+    );
+    const { request, addBasket, order, quoteFor, recording } = await setup(
+      "flag-off",
+      regions,
+      1,
+      false,
+    );
+    const basket = await addBasket();
+    const outcome = await request(basket.basketId);
+    if (outcome.kind !== "quote_requested") throw new Error(`expected a request: ${outcome.kind}`);
+    const row = await order(outcome.request.orderId);
+    // Nothing is priced into the order and no payment is opened.
+    expect(row.fulfilmentSurchargePence).toBe(0);
+    expect(row.totalPence).toBe(8_000);
+    expect(recording.created).toEqual([]);
+    expect((await quoteFor(outcome.request.orderId)).status).toBe("requested");
+  });
+
+  it("holds a guest's print for one working day, and records who asked only as hashes", async () => {
+    const { guestRequest, newGuest, guestBasket, quoteFor } = await setup("guest-hold");
+    const guest = await newGuest("token-a", "ip-hash-a");
+    const basket = await guestBasket(guest.token);
+    const outcome = await guestRequest(basket.basketId, guest);
+    if (outcome.kind !== "quote_requested") throw new Error("expected a request");
+    const quote = await quoteFor(outcome.request.orderId);
+    expect(quote.guestIpHash).toBe("ip-hash-a");
+    expect(quote.basketTokenHash).toBe("token-a");
+    // One working day from now, not three.
+    const hours = (quote.holdUntil.getTime() - quote.requestedAt.getTime()) / 3_600_000;
+    expect(hours).toBeGreaterThanOrEqual(23);
+    expect(hours).toBeLessThanOrEqual(24 * 4);
+  });
+
+  it("caps open holds per browser whatever email it gives", async () => {
+    const { guestRequest, newGuest, guestBasket } = await setup(
+      "guest-token-cap",
+      DEFAULT_DELIVERY_REGIONS.map((r) => ({ ...r })),
+      MAX_OPEN_QUOTE_REQUESTS_PER_BASKET_TOKEN + 1,
+    );
+    // The same browser (basket token) as three different guests, each from a different network.
+    for (let i = 0; i < MAX_OPEN_QUOTE_REQUESTS_PER_BASKET_TOKEN; i++) {
+      const guest = await newGuest("shared-token", `ip-${i}`);
+      const basket = await guestBasket(guest.token);
+      expect((await guestRequest(basket.basketId, guest)).kind).toBe("quote_requested");
+    }
+    const another = await newGuest("shared-token", "ip-other");
+    const basket = await guestBasket(another.token);
+    await expect(guestRequest(basket.basketId, another)).rejects.toMatchObject({
+      statusCode: 409,
+    });
+  });
+
+  it("caps open holds per network, whatever browser or email", async () => {
+    const { guestRequest, newGuest, guestBasket } = await setup(
+      "guest-ip-cap",
+      DEFAULT_DELIVERY_REGIONS.map((r) => ({ ...r })),
+      MAX_OPEN_QUOTE_REQUESTS_PER_GUEST_IP + 1,
+    );
+    for (let i = 0; i < MAX_OPEN_QUOTE_REQUESTS_PER_GUEST_IP; i++) {
+      const guest = await newGuest(`token-${i}`, "shared-ip");
+      const basket = await guestBasket(guest.token);
+      expect((await guestRequest(basket.basketId, guest)).kind).toBe("quote_requested");
+    }
+    const another = await newGuest("token-fresh", "shared-ip");
+    const basket = await guestBasket(another.token);
+    await expect(guestRequest(basket.basketId, another)).rejects.toMatchObject({
+      statusCode: 409,
+    });
   });
 });

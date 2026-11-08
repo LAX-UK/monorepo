@@ -19,6 +19,8 @@ CREATE TABLE IF NOT EXISTS "shop_delivery_quote" (
   "quoted_by_subject_id" text,
   "decided_at" timestamp with time zone,
   "end_reason" text,
+  "guest_ip_hash" text,
+  "basket_token_hash" text,
   "created_at" timestamp with time zone DEFAULT now() NOT NULL,
   "updated_at" timestamp with time zone DEFAULT now() NOT NULL,
   CONSTRAINT "shop_delivery_quote_status_check" CHECK ("status" IN ('requested', 'quoted', 'accepted', 'withdrawn')),
@@ -31,3 +33,7 @@ CREATE TABLE IF NOT EXISTS "shop_delivery_quote" (
 CREATE UNIQUE INDEX IF NOT EXISTS "shop_delivery_quote_order_uid" ON "shop_delivery_quote" ("order_id");
 --> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "shop_delivery_quote_open_hold_idx" ON "shop_delivery_quote" ("hold_until") WHERE "status" IN ('requested', 'quoted');
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "shop_delivery_quote_open_ip_idx" ON "shop_delivery_quote" ("guest_ip_hash") WHERE "status" IN ('requested', 'quoted') AND "guest_ip_hash" IS NOT NULL;
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "shop_delivery_quote_open_basket_token_idx" ON "shop_delivery_quote" ("basket_token_hash") WHERE "status" IN ('requested', 'quoted') AND "basket_token_hash" IS NOT NULL;

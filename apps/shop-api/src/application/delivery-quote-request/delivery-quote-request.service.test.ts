@@ -41,7 +41,10 @@ const input = (overrides: Partial<DeliveryQuoteRequestInput> = {}): DeliveryQuot
   ...overrides,
 });
 
-function build(regions: DeliveryRegionsState = state()) {
+function build(
+  regions: DeliveryRegionsState = state(),
+  options: { exportPaymentEnabled?: boolean; guestHoldWorkingDays?: number } = {},
+) {
   const created: CreatedQuoteOrder = {
     orderId: "order-1",
     orderReference: "LAX-S-10482",
@@ -59,6 +62,8 @@ function build(regions: DeliveryRegionsState = state()) {
     regions: { read: async () => regions },
     orders: { createQuoteOrder },
     checkout: { createCheckoutOrder },
+    exportPaymentEnabled: options.exportPaymentEnabled ?? true,
+    guestHoldWorkingDays: options.guestHoldWorkingDays ?? 1,
     now: () => NOW,
   });
   return { service, createQuoteOrder, createCheckoutOrder, created };
@@ -115,6 +120,48 @@ describe("delivery quote request", () => {
         outsideUk: { country: "DE", regionId: "eu", pricePence: 3500 },
         deliveryAddress: expect.objectContaining({ country: "DE" }),
       }),
+    );
+  });
+
+  it("asks for a quote instead of charging a fixed rate while export payment is off", async () => {
+    const { service, createQuoteOrder, createCheckoutOrder } = build(
+      state({ regions: withRate("eu", 3500) }),
+      { exportPaymentEnabled: false },
+    );
+    const outcome = await service.request(input());
+    expect(outcome.kind).toBe("quote_requested");
+    // No payment is opened and no rate is read into an order.
+    expect(createCheckoutOrder).not.toHaveBeenCalled();
+    expect(createQuoteOrder).toHaveBeenCalledWith(
+      expect.objectContaining({ country: "DE", regionId: "eu", status: "requested" }),
+    );
+  });
+
+  it("keeps quote requests on while export payment is off: nothing is charged", async () => {
+    const { service, createQuoteOrder } = build(state(), { exportPaymentEnabled: false });
+    expect((await service.request(input())).kind).toBe("quote_requested");
+    expect(createQuoteOrder).toHaveBeenCalledOnce();
+  });
+
+  it("holds a guest's print for the shorter guest hold, a buyer's for three days", async () => {
+    const { service, createQuoteOrder } = build();
+    await service.request(
+      input({
+        subject: "guest:guest-1",
+        guest: { guestCustomerId: "guest-1", basketTokenHash: "token" },
+        guestIpHash: "iphash",
+      }),
+    );
+    // Wednesday 11 November at noon: one working day is Thursday.
+    expect(createQuoteOrder).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        holdUntil: new Date("2026-11-12T12:00:00Z"),
+        guestIpHash: "iphash",
+      }),
+    );
+    await service.request(input());
+    expect(createQuoteOrder).toHaveBeenLastCalledWith(
+      expect.objectContaining({ holdUntil: new Date("2026-11-16T12:00:00Z"), guestIpHash: null }),
     );
   });
 
