@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { type EditionFacts, assertEditionFacts, describeEditionFacts } from "./edition-facts.js";
 import { LAX_STANDARD_RUN } from "./edition-run.js";
-import { createEditionSnapshot, readEditionSnapshot } from "./edition-snapshot.js";
+import {
+  createEditionSnapshot,
+  describeSnapshotPrint,
+  readEditionSnapshot,
+} from "./edition-snapshot.js";
 
 const laxCertificate = {
   kind: "included",
@@ -171,6 +175,18 @@ describe("a certificate London Art Exchange issues", () => {
     expect(
       describeEditionFacts(LAX_STANDARD_RUN, read?.facts as EditionFacts).rows.certificate,
     ).toBe("Certificate of authenticity from London Art Exchange, sent with your print");
+  });
+
+  it("names the printer on the invoice from the facts taken at payment", () => {
+    const snapshot = createEditionSnapshot({
+      run: LAX_STANDARD_RUN,
+      proofsKept: null,
+      facts: facts({ printedBy: "Coriander Studio, London" }),
+    });
+    const read = readEditionSnapshot(JSON.parse(JSON.stringify(snapshot)));
+    expect(read && describeSnapshotPrint(read, { editionNumber: 7 })?.invoiceDetail).toBe(
+      "Limited edition of 24, no. 7, signed by hand, with certificate of authenticity, printed by Coriander Studio, London",
+    );
   });
 
   it("keeps the stamp and parties in a snapshot", () => {
