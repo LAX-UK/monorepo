@@ -2,6 +2,7 @@ import { type ArtworkRegisterEntry, CATALOGUE_GAPS } from "@auction/artwork-regi
 import { type AdminAuctionOfferAssessment, REGISTER_GAP_VALUES } from "@auction/shop-contracts";
 import { describe, expect, it, vi } from "vitest";
 import type {
+  ArtworkRegisterOverview,
   ArtworkRegisterQueue,
   RegisterConflictRecord,
   RegisterEventRecord,
@@ -82,8 +83,28 @@ function service(overrides: Partial<ArtworkRegisterReviewDeps> = {}) {
     countOpenConflicts: vi.fn(async () => 1),
     listHeldArtists: vi.fn(async () => [{ code: "PH", name: "Aidan Phelan", count: 31 }]),
   };
+  const overview: ArtworkRegisterOverview = {
+    listAll: vi.fn(async () => ({
+      rows: [
+        { entry: entry(), hasLaxArtDraft: true },
+        { entry: entry({ id: "b", offer: { state: "sold", ref: null } }), hasLaxArtDraft: false },
+      ],
+      total: 2,
+    })),
+    listArtists: vi.fn(async () => [{ code: "PH", name: "Aidan Phelan", count: 2 }]),
+    countPlaces: vi.fn(async () => ({
+      not_offered: 0,
+      draft_lax_art: 1,
+      lax_art: 0,
+      bid_sale: 0,
+      private_sale: 0,
+      withdrawn: 0,
+      sold: 1,
+    })),
+  };
   const deps: ArtworkRegisterReviewDeps = {
     queue,
+    overview,
     register: { findById: vi.fn(async () => entry()), listEvents: vi.fn(async () => []) },
     resolver: {
       resolveConflict: vi.fn(async () => ({
@@ -127,6 +148,49 @@ describe("ArtworkRegisterReviewService", () => {
       missing: ["image", "size"],
       zohoModifiedAt: T0.toISOString(),
     });
+  });
+
+  it("lists every record with where it is, the place counts and the queue counts", async () => {
+    const { service: s } = service();
+    const list = await s.listAll({});
+    expect(list.items.map((item) => [item.whereItIs.key, item.whereItIs.chip.label])).toEqual([
+      ["draft_lax_art", "Draft on lax.art"],
+      ["sold", "Sold"],
+    ]);
+    expect(list.places.map((place) => [place.value, place.label, place.count])).toEqual([
+      ["not_offered", "Not offered", 0],
+      ["draft_lax_art", "Draft on lax.art", 1],
+      ["lax_art", "On lax.art", 0],
+      ["bid_sale", "In a LAX Bid sale", 0],
+      ["private_sale", "In a private sale", 0],
+      ["withdrawn", "Withdrawn", 0],
+      ["sold", "Sold", 1],
+    ]);
+    expect(list).toMatchObject({ total: 2, counts: { new: 31, decisions: 1 } });
+  });
+
+  it("keeps a withdrawn record reading Withdrawn in the list, whatever its age", async () => {
+    const { service: s, deps } = service();
+    vi.mocked(deps.overview.listAll).mockResolvedValue({
+      rows: [{ entry: entry({ offer: { state: "withdrawn", ref: null } }), hasLaxArtDraft: false }],
+      total: 1,
+    });
+    const list = await s.listAll({});
+    expect(list.items[0]?.whereItIs.key).toBe("withdrawn");
+  });
+
+  it("passes the artist, place and page offset to the overview", async () => {
+    const { service: s, deps } = service();
+    await s.listAll({ artist: "PH", place: "sold", page: 2 });
+    expect(deps.overview.listAll).toHaveBeenCalledWith(
+      { artistCode: "PH", place: "sold" },
+      { limit: 25, offset: 25 },
+    );
+  });
+
+  it("reports both queue sizes for the Overview", async () => {
+    const { service: s } = service();
+    expect(await s.queueCounts()).toEqual({ new: 31, decisions: 1 });
   });
 
   it("passes the filters and the page offset to the queue", async () => {

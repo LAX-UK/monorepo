@@ -66,6 +66,36 @@ describe("buildOverviewTiles", () => {
     ]);
   });
 
+  it("adds a line for artworks where Zoho and LAX disagree, in the warning tone", () => {
+    const capabilities = capabilitiesForRole("shop_admin");
+    const tiles = buildOverviewTiles({
+      navGroups: buildAdminNavGroups({ capabilities, features: FEATURES }),
+      kpis: {},
+      newEnquiryCount: null,
+      zohoDecisionCount: 4,
+    });
+    expect(tiles).toEqual([
+      {
+        key: "zoho-decisions",
+        label: "Zoho needs a decision",
+        href: "/from-zoho?tab=decisions",
+        value: 4,
+        tone: "warning",
+      },
+    ]);
+  });
+
+  it("leaves that line out for a person who cannot open From Zoho", () => {
+    const capabilities = capabilitiesForRole("finance");
+    const tiles = buildOverviewTiles({
+      navGroups: buildAdminNavGroups({ capabilities, features: FEATURES }),
+      kpis: {},
+      newEnquiryCount: null,
+      zohoDecisionCount: 4,
+    });
+    expect(tiles).toEqual([]);
+  });
+
   it("drops a figure the API sent when its page is switched off", () => {
     const capabilities = capabilitiesForRole("shop_admin");
     const tiles = buildOverviewTiles({

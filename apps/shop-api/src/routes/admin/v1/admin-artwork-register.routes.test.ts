@@ -76,6 +76,19 @@ async function buildApp(
       countOpenConflicts: async () => 0,
       listHeldArtists: async () => [],
     },
+    overview: {
+      listAll: async () => ({ rows: [], total: 0 }),
+      listArtists: async () => [],
+      countPlaces: async () => ({
+        not_offered: 0,
+        draft_lax_art: 0,
+        lax_art: 0,
+        bid_sale: 0,
+        private_sale: 0,
+        withdrawn: 0,
+        sold: 0,
+      }),
+    },
     register: {
       findById: async (id) => (id === REGISTER_ID ? null : null),
       listEvents: async () => [],
@@ -105,6 +118,13 @@ describe("From Zoho queue capabilities", () => {
       name: "conflict list",
       method: "GET",
       url: "/admin/v1/artwork-register/conflicts",
+      allowed: CAN_READ,
+    },
+    { name: "all list", method: "GET", url: "/admin/v1/artwork-register/all", allowed: CAN_READ },
+    {
+      name: "queue counts",
+      method: "GET",
+      url: "/admin/v1/artwork-register/counts",
       allowed: CAN_READ,
     },
     {

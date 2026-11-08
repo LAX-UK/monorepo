@@ -4,19 +4,21 @@ import type {
   AdminRegisterEvent,
   AdminRegisterGap,
   AdminRegisterLastCheck,
+  AdminRegisterPlace,
 } from "@auction/shop-contracts";
-import { REGISTER_GAP_VALUES } from "@auction/shop-contracts";
+import { REGISTER_GAP_VALUES, REGISTER_PLACE_VALUES } from "@auction/shop-contracts";
 import type { TimelineEvent } from "@auction/staff-ui";
 import { type RawSearchParams, listHref, oneOf, singleParam } from "./list-url-state";
 
 export const ZOHO_QUEUE_PATH = "/from-zoho";
 
-export const ZOHO_QUEUE_TABS = ["new", "decisions", "link", "check"] as const;
+export const ZOHO_QUEUE_TABS = ["new", "decisions", "all", "link", "check"] as const;
 export type ZohoQueueTab = (typeof ZOHO_QUEUE_TABS)[number];
 
 export const ZOHO_QUEUE_TAB_LABEL: Record<ZohoQueueTab, string> = {
   new: "New from Zoho",
   decisions: "Needs a decision",
+  all: "All artworks",
   link: "Link lax.art",
   check: "Last check",
 };
@@ -26,6 +28,8 @@ export type ZohoQueueQuery = {
   tab?: Exclude<ZohoQueueTab, "new">;
   artist?: string;
   missing?: AdminRegisterGap;
+  /** All artworks: where the artwork is. */
+  place?: AdminRegisterPlace;
   page?: string;
   /** Link lax.art: the part of the report shown (Matched when absent). */
   view?: Exclude<ZohoLinkView, "matched">;
@@ -63,7 +67,7 @@ export const GAP_OPTIONS = REGISTER_GAP_VALUES.map((value) => ({
 }));
 
 export function parseZohoQueueQuery(params: RawSearchParams): ZohoQueueQuery {
-  const tab = oneOf(singleParam(params.tab), ["decisions", "link", "check"] as const);
+  const tab = oneOf(singleParam(params.tab), ["decisions", "all", "link", "check"] as const);
   const artist = singleParam(params.artist)?.slice(0, 80);
   const view = oneOf(singleParam(params.view), ["choice", "none", "linked"] as const);
   const q = singleParam(params.q)?.trim().slice(0, ZOHO_LINK_SEARCH_MAX);
@@ -71,11 +75,13 @@ export function parseZohoQueueQuery(params: RawSearchParams): ZohoQueueQuery {
   const on = oneOf(singleParam(params.on), ["live", "draft"] as const);
   const sort = oneOf(singleParam(params.sort), ["artist"] as const);
   const missing = oneOf(singleParam(params.missing), REGISTER_GAP_VALUES);
+  const place = oneOf(singleParam(params.place), REGISTER_PLACE_VALUES);
   const page = singleParam(params.page);
   return {
     ...(tab ? { tab } : {}),
     ...(artist ? { artist } : {}),
     ...(missing ? { missing } : {}),
+    ...(place ? { place } : {}),
     ...(view ? { view } : {}),
     ...(q ? { q } : {}),
     ...(matched ? { matched } : {}),
@@ -90,7 +96,7 @@ export function activeZohoTab(query: ZohoQueueQuery): ZohoQueueTab {
 }
 
 export function hasActiveZohoFilters(query: ZohoQueueQuery): boolean {
-  return Boolean(query.artist || query.missing);
+  return Boolean(query.artist || query.missing || query.place);
 }
 
 /** The queue's URL with `change` applied; changing anything but the page returns to page one. */
@@ -109,6 +115,7 @@ export function zohoQueueApiQuery(query: ZohoQueueQuery): Record<string, string>
   const api: Record<string, string | undefined> = {
     artist: query.artist,
     missing: query.missing,
+    place: query.place,
     page: query.page,
   };
   return Object.fromEntries(Object.entries(api).filter(([, value]) => Boolean(value))) as Record<
