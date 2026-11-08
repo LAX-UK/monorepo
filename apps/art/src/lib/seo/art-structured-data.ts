@@ -2,6 +2,8 @@ import { artistHref, artworkHref } from "@/lib/catalogue/catalogue-artwork-card.
 import type { ArtEditorialStoryDetail } from "@/lib/editorial/art-editorial.types";
 import { helpArticleHref, helpCategoryHref } from "@/lib/help/help.vm";
 import {
+  GALLERY_CONTACT,
+  GALLERY_OPENING_HOURS,
   type JsonLd,
   LAX_PRODUCT_NAMES,
   breadcrumbJsonLd,
@@ -68,7 +70,14 @@ export function artSiteJsonLd(siteUrl: URL): JsonLd[] {
   };
   return [
     organizationJsonLd(shared),
-    localBusinessJsonLd({ ...shared, type: "ArtGallery", image: logo }),
+    localBusinessJsonLd({
+      ...shared,
+      type: "ArtGallery",
+      image: logo,
+      telephone: GALLERY_CONTACT.phone,
+      email: GALLERY_CONTACT.email,
+      openingHours: GALLERY_OPENING_HOURS,
+    }),
     websiteJsonLd({
       name: ART_SITE_NAME,
       url,

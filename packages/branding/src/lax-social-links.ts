@@ -1,11 +1,12 @@
 import { type LaxOperatedProduct, type LegalEntityId, legalEntityFor } from "./legal-entity.js";
 
-export const LAX_SOCIAL_NETWORKS = ["youtube", "instagram", "tiktok", "linkedin"] as const;
+export const LAX_SOCIAL_NETWORKS = ["youtube", "instagram", "x", "tiktok", "linkedin"] as const;
 export type LaxSocialNetwork = (typeof LAX_SOCIAL_NETWORKS)[number];
 
 const NETWORK_NAMES: Record<LaxSocialNetwork, string> = {
   youtube: "YouTube",
   instagram: "Instagram",
+  x: "X",
   tiktok: "TikTok",
   linkedin: "LinkedIn",
 };
@@ -27,7 +28,8 @@ const SOCIAL_PROFILES: Readonly<
   "london-art-exchange": {
     youtube: "https://www.youtube.com/@LondonArtExchange",
     instagram: "https://www.instagram.com/thelondonartexchange/",
-    tiktok: "https://www.tiktok.com/@londonartexchange",
+    x: "https://x.com/TheLAX_art",
+    tiktok: "https://www.tiktok.com/@thelax_art",
   },
 };
 

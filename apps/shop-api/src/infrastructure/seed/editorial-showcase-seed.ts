@@ -149,10 +149,7 @@ const SEED_COVER = {
 } as const;
 
 /** The gallery's published hours, in the venue editor's row format. */
-const OPENING_HOURS = [
-  { label: "Mon – Fri", hours: "10:00 – 19:00" },
-  { label: "Sat – Sun", hours: "Closed" },
-];
+const OPENING_HOURS = GALLERY_CONTACT.openingHoursRows;
 
 /** Card address lines and map pin for the seeded gallery. */
 const VENUE_LOCATION = {

@@ -96,7 +96,7 @@ describe("Your LAX data.html", () => {
     expect(html).toContain("Card and bank details");
     expect(html).toContain('id="rights"');
     expect(html).toContain("support@lax.bid");
-    expect(html).toContain("info@lax.art");
+    expect(html).toContain("info@thelax.art");
     expect(html).toContain("London Auction Xchange LTD, 156 New Cavendish Street");
     expect(html).toContain("London Art Exchange Ltd, 156 New Cavendish Street");
     expect(html).toContain("Information Commissioner");
