@@ -229,19 +229,6 @@ describe("the certificate a confirmed print gets", () => {
     });
     expect(memory.lines.get(line.orderLineId)?.confirmedAt).toBeNull();
   });
-
-  it("records the authority once the facts exist, and refuses an empty reference", async () => {
-    const { memory, services } = setup({ certificate: laxDigital });
-    await services.certificates.recordAuthority({
-      ...staff(),
-      artworkId: "art1",
-      reference: "  Estate letter, 3 Oct 2026 ",
-    });
-    expect(memory.state.authority?.reference).toBe("Estate letter, 3 Oct 2026");
-    await expect(
-      services.certificates.recordAuthority({ ...staff(), artworkId: "art1", reference: "  " }),
-    ).rejects.toThrow(/written authority/);
-  });
 });
 
 describe("sending another print in place of the one sold", () => {

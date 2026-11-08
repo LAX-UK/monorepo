@@ -64,20 +64,6 @@ export async function markCertificateSent(input: {
   });
 }
 
-export async function recordCertificateAuthority(input: {
-  artworkId: string;
-  reference: string;
-  idempotencyKey: string;
-}): Promise<AdminMutationResult<{ recordedAt: string }>> {
-  if (!UUID.test(input.artworkId)) return invalidInput;
-  return forwardAdminJsonMutation({
-    bffPath: `artworks/${input.artworkId}/certificate-authority`,
-    method: "PUT",
-    jsonBody: { reference: input.reference },
-    idempotencyKey: input.idempotencyKey,
-  });
-}
-
 export async function approveHorsCommerce(input: {
   artworkId: string;
   idempotencyKey: string;

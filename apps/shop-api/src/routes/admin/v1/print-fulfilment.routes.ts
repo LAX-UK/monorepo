@@ -1,6 +1,4 @@
 import {
-  type AdminCertificateAuthorityBody,
-  AdminCertificateAuthorityBodySchema,
   AdminCertificatesToSendSchema,
   type AdminConfirmPrintBody,
   AdminConfirmPrintBodySchema,
@@ -137,26 +135,6 @@ export async function registerAdminPrintFulfilmentRoutes(
     async (request) => {
       requireShopStaffCapability(request, "fulfilment.write");
       return certificates.markSent({ ...actor(request), certificateId: idOf(request) });
-    },
-  );
-
-  app.put(
-    "/artworks/:id/certificate-authority",
-    {
-      schema: {
-        tags: ["shop-admin"],
-        params: IdParams,
-        body: AdminCertificateAuthorityBodySchema,
-        response: { 200: Type.Object({ recordedAt: Type.String() }), ...ERRORS },
-      },
-    },
-    async (request) => {
-      requireShopStaffCapability(request, "catalogue.write");
-      return certificates.recordAuthority({
-        ...actor(request),
-        artworkId: idOf(request),
-        reference: (request.body as AdminCertificateAuthorityBody).reference,
-      });
     },
   );
 

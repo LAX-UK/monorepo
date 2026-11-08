@@ -5,7 +5,13 @@ import type {
   AdminProofsKept,
   AdminStockBatchInput,
 } from "@auction/shop-contracts";
-import type { Certificate, EditionFacts, MainRunSpec, ProofsKept } from "@auction/shop-domain";
+import type {
+  Certificate,
+  EditionFacts,
+  MainRunSpec,
+  ProofsKept,
+  Publisher,
+} from "@auction/shop-domain";
 
 /** What a new run is recorded with: the run, its proofs kept and, when known, its facts. */
 export type NewRunCommand = {
@@ -60,7 +66,20 @@ function certificate(input: AdminEditionFacts["certificate"]): Certificate {
         : { kind: "separately", withinWeeks: input.arrives.withinWeeks },
     numberedToMatch: input.numberedToMatch,
     ...(reason ? { numberedToMatchReason: reason } : {}),
+    ...(input.authority
+      ? {
+          authority: {
+            givenBy: input.authority.givenBy,
+            datedOn: input.authority.datedOn,
+            reference: input.authority.reference.trim(),
+          },
+        }
+      : {}),
   };
+}
+
+function publisher(input: NonNullable<AdminEditionFacts["publishedBy"]>): Publisher {
+  return input.kind === "named" ? { kind: "named", name: input.name.trim() } : { kind: input.kind };
 }
 
 /** The facts as the domain checks and describes them, without who confirmed them. */
@@ -69,6 +88,9 @@ export function editionFactsInput(input: AdminEditionFacts): Omit<EditionFacts, 
     numbering: input.numbering,
     signature: { ...input.signature },
     certificate: certificate(input.certificate),
+    stamp: input.stamp ?? "none",
+    printedBy: input.printedBy?.trim() || null,
+    publishedBy: input.publishedBy ? publisher(input.publishedBy) : null,
   };
 }
 

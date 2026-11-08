@@ -3,7 +3,6 @@ import {
   type AdminHorsCommerceApprovalResponse,
   SHOP_API_ERROR_CODES,
 } from "@auction/shop-contracts";
-import { ShopDomainError, assertAuthorityReference } from "@auction/shop-domain";
 import { ShopApiError, notFound } from "../../errors/shop-api-error.js";
 import { withAdminIdempotency } from "../admin/with-admin-idempotency.js";
 import type { Clock, PrintFulfilmentUnitOfWork, StaffCommand } from "./print-fulfilment.ports.js";
@@ -64,42 +63,6 @@ export function createCertificatesService(deps: {
               afterJson: { label: certificate.printLabel },
             });
             return { issuedAt: at.toISOString() };
-          },
-        }),
-      );
-    },
-
-    recordAuthority(
-      command: StaffCommand & { artworkId: string; reference: string },
-    ): Promise<{ recordedAt: string }> {
-      return uow.run((tx) =>
-        withAdminIdempotency({
-          tx,
-          commandType: "certificate.record_authority",
-          idempotencyKey: command.idempotencyKey,
-          actorSubjectId: command.actorSubjectId,
-          requestPayload: command,
-          run: async () => {
-            const reference = assertAuthorityReference(command.reference);
-            const at = clock.now();
-            const recorded = await tx.certificates.recordAuthority({
-              artworkId: command.artworkId,
-              reference,
-              actorSubjectId: command.actorSubjectId,
-              at,
-            });
-            if (!recorded) {
-              throw new ShopDomainError("Save the edition facts before recording the authority");
-            }
-            await tx.audit.append({
-              actorSubjectId: command.actorSubjectId,
-              capability: "catalogue.write",
-              action: "record_certificate_authority",
-              targetType: "shop_artwork",
-              targetId: command.artworkId,
-              afterJson: { reference },
-            });
-            return { recordedAt: at.toISOString() };
           },
         }),
       );
