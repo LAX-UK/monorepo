@@ -76,6 +76,8 @@ describe.skipIf(!migrationUrl)("migration 0261 payment groups", { timeout: 30_00
 
   it("rolls back to one charge per payment and drops the groups", async () => {
     await client.query(read("0261_payment_groups.sql"));
+    // Later migrations that depend on the group table go first, as a real rollback would.
+    await client.query(read("0323_rollback.sql"));
     await client.query(read("0261_rollback.sql"));
     expect(await chargeIndexDefinition()).not.toContain("payment_group_id");
     const table = await client.query("select to_regclass('payment_group') as t");
