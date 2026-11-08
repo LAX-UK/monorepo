@@ -19,6 +19,7 @@ describe("migration 0335 private sale deal follow-ups", () => {
     expect(index).toBeGreaterThan(0);
     const entry = journal.entries[index];
     const previous = journal.entries[index - 1];
+    expect(previous?.tag).toBe("0329_private_sale_deal_party_history");
     expect(entry?.idx).toBe((previous?.idx ?? 0) + 1);
     expect(entry?.when).toBe((previous?.when ?? 0) + 24 * 60 * 60 * 1000);
     expect(index).toBe(journal.entries.length - 1);

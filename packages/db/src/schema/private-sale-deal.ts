@@ -147,6 +147,37 @@ export const privateSaleDealParty = pgTable(
 );
 
 /**
+ * Everyone ever named on a deal, one row per person and role, written with the party and never
+ * changed. The party table keeps only the current buyer; this keeps a buyer who was replaced, whose
+ * compliance checks still belong to the deal's record. `acting_user_id` has no foreign key so
+ * deleting an account does not erase who was named.
+ */
+export const privateSaleDealPartyHistory = pgTable(
+  "private_sale_deal_party_history",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    dealId: uuid("deal_id")
+      .notNull()
+      .references(() => privateSaleDeal.id, { onDelete: "restrict" }),
+    role: text("role").notNull(),
+    legalEntityId: uuid("legal_entity_id").references(() => legalEntity.id, {
+      onDelete: "restrict",
+    }),
+    actingUserId: text("acting_user_id").notNull(),
+    namedAt: timestamp("named_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("private_sale_deal_party_history_naming_uidx").on(
+      table.dealId,
+      table.role,
+      table.actingUserId,
+    ),
+    index("private_sale_deal_party_history_user_idx").on(table.actingUserId),
+    check("private_sale_deal_party_history_role_check", sql`${table.role} IN ('seller', 'buyer')`),
+  ],
+);
+
+/**
  * One row per stage change, written with the change and never altered. `from_stage` is null for
  * the row that opens the deal; `actor_user_id` is null when the system made the change.
  */
