@@ -85,6 +85,7 @@ describe("one lot, ready to pay", () => {
           label: "Pay £2,375.00",
           barLabel: "Pay",
           note: "You finish on a secure payment page. Nothing is charged until you confirm there.",
+          retry: { label: "Try again · £2,375.00", barLabel: "Try again" },
         },
         bank_transfer: {
           label: "Continue to bank transfer",

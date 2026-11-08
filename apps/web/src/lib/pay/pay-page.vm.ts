@@ -109,6 +109,12 @@ export type PayMethodAction = {
   barLabel: string;
   /** The sentence under the action. */
   note: string;
+  /**
+   * Words for the same action after a payment page was left without paying. The page keeps using
+   * them while it shows the not-completed note, even after the address has been cleaned and the
+   * plan read again without the return.
+   */
+  retry?: { label: string; barLabel: string };
 };
 
 /** The one thing the rail and the phone bar offer. */
@@ -519,17 +525,18 @@ function methodActions(
   organisation: string | null,
   returned: PayVmContext["returned"],
 ): Record<PayMethod, PayMethodAction> {
-  const retry = returned === "cancelled";
-  const card = retry
-    ? { label: PAY_COPY.tryAgainTotal(total), barLabel: PAY_COPY.tryAgain }
-    : {
-        label: organisation
-          ? PAY_COPY.payForOrganisation(total, organisation)
-          : PAY_COPY.payLabel(total),
-        barLabel: PAY_COPY.payBar,
-      };
+  const again = { label: PAY_COPY.tryAgainTotal(total), barLabel: PAY_COPY.tryAgain };
+  const card =
+    returned === "cancelled"
+      ? again
+      : {
+          label: organisation
+            ? PAY_COPY.payForOrganisation(total, organisation)
+            : PAY_COPY.payLabel(total),
+          barLabel: PAY_COPY.payBar,
+        };
   return {
-    card: { ...card, note: PAY_COPY.underButton },
+    card: { ...card, note: PAY_COPY.underButton, retry: again },
     bank_transfer: {
       label: PAY_COPY.continueToBankTransfer,
       barLabel: PAY_COPY.continueBar,

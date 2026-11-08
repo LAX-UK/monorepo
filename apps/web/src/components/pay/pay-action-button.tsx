@@ -1,6 +1,7 @@
 "use client";
 
 import { PAY_COPY } from "@/lib/pay/pay-copy";
+import type { PayMethod } from "@/lib/pay/pay-methods";
 import type { PayAction } from "@/lib/pay/pay-page.vm";
 import { Button, ButtonLink } from "@auction/ui/lax";
 import Link from "next/link";
@@ -20,7 +21,7 @@ export function PayActionButton({
   /** The total is shown beside the button, so the label need not repeat it. */
   compact?: boolean;
 }) {
-  const { pay, pending, method } = usePaySession();
+  const { pay, pending, method, afterReturn } = usePaySession();
   if (action.kind === "link") {
     return (
       <ButtonLink href={action.href} Link={Link} variant="primary" size="lg" className={className}>
@@ -28,7 +29,7 @@ export function PayActionButton({
       </ButtonLink>
     );
   }
-  const words = action.byMethod[method];
+  const words = actionWords(action, method, afterReturn);
   return (
     <Button
       variant="primary"
@@ -42,6 +43,20 @@ export function PayActionButton({
       {pending ? PAY_COPY.opening : compact ? words.barLabel : words.label}
     </Button>
   );
+}
+
+/**
+ * What the action says: the words for the way the person chose to pay, except that a card action
+ * reads Try again while the page still shows the not-completed note from the return.
+ */
+export function actionWords(
+  action: Extract<PayAction, { kind: "pay" }>,
+  method: PayMethod,
+  afterReturn: boolean,
+): { label: string; barLabel: string } {
+  const chosen = action.byMethod[method];
+  const again = action.byMethod.card.retry;
+  return method === "card" && afterReturn && again ? again : chosen;
 }
 
 /** The sentence under the action, for the way the person chose to pay. */
