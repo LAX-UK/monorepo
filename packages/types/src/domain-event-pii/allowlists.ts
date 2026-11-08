@@ -530,6 +530,7 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
     "venueId",
     "slotStart",
     "cancelledVia",
+    "reason",
   ]),
   "collection.booking.handed_over": new Set([
     "bookingId",

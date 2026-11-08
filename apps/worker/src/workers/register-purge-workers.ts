@@ -1,10 +1,12 @@
 import { pruneAlertRetention } from "@auction/alerts";
 import {
   PURGE_ALERT_RETENTION_QUEUE_NAME,
+  PURGE_COLLECTION_HANDOVER_QUEUE_NAME,
   PURGE_KYC_RETENTION_QUEUE_NAME,
   PURGE_QR_CODE_SCANS_QUEUE_NAME,
 } from "@auction/queues";
 import { Queue, Worker } from "bullmq";
+import { purgeCollectionHandoverRecords } from "../jobs/purge-collection-handover-records.js";
 import { purgeKycRetentionJob } from "../jobs/purge-kyc-retention.js";
 import { purgeQrCodeScans } from "../jobs/purge-qr-code-scans.js";
 import { withSentryCronMonitor } from "../lib/sentry-cron.js";
@@ -26,6 +28,7 @@ export function registerPurgeWorkers(deps: WorkerBootstrapDeps): PurgeWorkersHan
     kycRetentionStores,
     alertRetentionStores,
     uploadStorage,
+    transactionRunner,
     sentryMonitorSlugs,
     reportWorkerJobFailure,
   } = deps;
@@ -126,14 +129,48 @@ export function registerPurgeWorkers(deps: WorkerBootstrapDeps): PurgeWorkersHan
     },
   );
 
+  // The kept record of who collected works, cleared once its retention has passed.
+  const purgeCollectionHandoverQueue = new Queue(
+    PURGE_COLLECTION_HANDOVER_QUEUE_NAME,
+    queueOpts(PURGE_COLLECTION_HANDOVER_QUEUE_NAME),
+  );
+  const purgeCollectionHandoverWorker = new Worker(
+    PURGE_COLLECTION_HANDOVER_QUEUE_NAME,
+    async () => {
+      await withSentryCronMonitor("purge-collection-handover", sentryMonitorSlugs, async () => {
+        await purgeCollectionHandoverRecords({
+          transactionRunner,
+          retentionYears: env.COLLECTION_HANDOVER_RETENTION_YEARS,
+          log,
+        });
+      });
+    },
+    bullConnection,
+  );
+  purgeCollectionHandoverWorker.on("failed", (job, err) => {
+    reportWorkerJobFailure(PURGE_COLLECTION_HANDOVER_QUEUE_NAME, job, err);
+  });
+  void purgeCollectionHandoverQueue.add(
+    "purge",
+    {},
+    {
+      jobId: "purge-collection-handover-daily",
+      repeat: { every: 24 * 60 * 60 * 1000 },
+      removeOnComplete: 5,
+    },
+  );
+
   return {
     errorHandlers: [
+      { worker: purgeCollectionHandoverWorker, queue: PURGE_COLLECTION_HANDOVER_QUEUE_NAME },
       { worker: purgeQrCodeScansWorker, queue: PURGE_QR_CODE_SCANS_QUEUE_NAME },
       { worker: purgeKycRetentionWorker, queue: PURGE_KYC_RETENTION_QUEUE_NAME },
       { worker: purgeAlertRetentionWorker, queue: PURGE_ALERT_RETENTION_QUEUE_NAME },
     ],
     close: () =>
       closeAll([
+        purgeCollectionHandoverWorker,
+        purgeCollectionHandoverQueue,
         purgeQrCodeScansWorker,
         purgeQrCodeScansQueue,
         purgeKycRetentionWorker,

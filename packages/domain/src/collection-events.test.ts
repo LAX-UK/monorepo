@@ -85,6 +85,14 @@ describe("collection booking events", () => {
     }
   });
 
+  it("record why Bid cancelled a visit on its own, in a form the audit filter lets through", () => {
+    const erased = collectionBookingCancelled(booking, "system", "account_erased");
+    expect(erased.payload).toMatchObject({ cancelledVia: "system", reason: "account_erased" });
+    expect(redactDomainEventPayload(erased.eventType, erased.payload)).toEqual(erased.payload);
+    // A cancellation people made carries no reason.
+    expect(collectionBookingCancelled(booking, "client").payload).not.toHaveProperty("reason");
+  });
+
   it("record a change with the time it moved from and the calendar sequence", () => {
     const changed = collectionBookingChanged(booking, new Date("2026-11-11T10:00:00Z"));
     expect(changed.payload).toMatchObject({

@@ -390,15 +390,27 @@ export const WORKER_ARTWORK_REGISTER_APPEND_ONLY_TABLES = ["artwork_register_eve
  */
 export const WORKER_EMAIL_SUPPRESSION_UPDATE_COLUMNS = ["reason", "source", "created_at"] as const;
 /**
- * Anonymising a purged person scrubs the collector's name, email and company on the collection
- * bookings they made, and nothing else on the row.
+ * Erasing a purged person's account touches collection bookings in three ways, and the worker may
+ * change only these columns:
+ * - a live visit is cancelled (status, who and when it was cancelled, the calendar sequence);
+ * - an ended visit loses the collector's email and company, and the name unless it is a hand-over
+ *   record that is kept for its retention period;
+ * - after that period the retained name and ID type are cleared.
  */
-export const WORKER_COLLECTION_BOOKING_SCRUB_COLUMNS = [
+export const WORKER_COLLECTION_BOOKING_ERASURE_COLUMNS = [
+  "status",
+  "cancelled_at",
+  "ics_sequence",
+  "updated_at",
   "collector_name",
   "collector_email",
   "collector_company",
+  "id_check_type",
   "personal_details_erased_at",
+  "handover_record_cleared_at",
 ] as const;
+/** Cancelling a live visit gives its lots back. */
+export const WORKER_COLLECTION_LOT_RELEASE_COLUMNS = ["active"] as const;
 export const WORKER_ZOHO_CAMPAIGNS_SUPPRESSION_TABLES = [
   "zoho_campaigns_suppression_state",
 ] as const;
@@ -967,12 +979,19 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
           // `source` arrives with migration 0323; roles may be applied before it runs.
           true,
         );
-        /** The anonymisation projector scrubs a purged person's collector details, column by column. */
+        /** Erasure cancels a purged person's live visits and scrubs the collector's details, and
+         * the retention purge clears the kept hand-over record, column by column. */
         await grantColumnUpdateIfExists(
           client,
           "worker_app",
           "collection_booking",
-          WORKER_COLLECTION_BOOKING_SCRUB_COLUMNS,
+          WORKER_COLLECTION_BOOKING_ERASURE_COLUMNS,
+        );
+        await grantColumnUpdateIfExists(
+          client,
+          "worker_app",
+          "collection_booking_lot",
+          WORKER_COLLECTION_LOT_RELEASE_COLUMNS,
         );
         /** worker enqueues mail from notification-fanout projectors (INSERT) and the send-email
          * job updates rows to sent/failed/sending (SELECT, UPDATE). DELETE remains denied so the

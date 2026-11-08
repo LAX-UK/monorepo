@@ -859,8 +859,9 @@ const REGISTRY_OVERRIDES: Partial<Record<LiveDomainEventType, RegistryOverride>>
     idempotencyPolicy: "none",
     piiClassification: "none",
   },
+  /** The API when a person or staff cancel; the worker when it cancels a visit on account erasure. */
   "collection.booking.cancelled": {
-    producers: ["apps/api"],
+    producers: ["apps/api", "apps/worker"],
     consumers: [],
     idempotencyPolicy: "none",
     piiClassification: "none",

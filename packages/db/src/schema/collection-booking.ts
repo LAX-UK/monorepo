@@ -185,6 +185,8 @@ export const collectionBooking = pgTable(
     policyVersion: text("policy_version"),
     icsSequence: integer("ics_sequence").notNull().default(0),
     idempotencyKey: text("idempotency_key").notNull(),
+    /** A digest of the request made with the key; the same key with another request is refused. */
+    requestFingerprint: text("request_fingerprint").notNull(),
     /** The kind of photo ID staff checked; never the number or a copy. */
     idCheckType: text("id_check_type"),
     /** The staff member who handed over or marked the visit not collected. */
@@ -197,8 +199,13 @@ export const collectionBooking = pgTable(
       onDelete: "set null",
     }),
     cancelledAt: timestamp("cancelled_at", { mode: "date", withTimezone: true }),
-    /** Set when the collector's name, email and company were erased. */
+    /** Set when the collector's email and company (and, for an unhanded visit, name) were erased. */
     personalDetailsErasedAt: timestamp("personal_details_erased_at", {
+      mode: "date",
+      withTimezone: true,
+    }),
+    /** Set when the retained hand-over record (collector name and ID type) was cleared. */
+    handoverRecordClearedAt: timestamp("handover_record_cleared_at", {
       mode: "date",
       withTimezone: true,
     }),

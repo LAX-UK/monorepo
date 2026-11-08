@@ -27,7 +27,8 @@ import {
   WORKER_ARTWORK_REGISTER_TABLES,
   WORKER_BID_ALERT_PRUNE_DELETE_TABLES,
   WORKER_BID_ALERT_TABLES,
-  WORKER_COLLECTION_BOOKING_SCRUB_COLUMNS,
+  WORKER_COLLECTION_BOOKING_ERASURE_COLUMNS,
+  WORKER_COLLECTION_LOT_RELEASE_COLUMNS,
   WORKER_DATA_EXPORT_TABLES,
   WORKER_DENY_TABLES,
   WORKER_DOMAIN_EVENT_DELIVERY_TABLES,
@@ -422,16 +423,40 @@ describe("migrate-roles invariants", () => {
     }
   });
 
-  it("lets the worker scrub only the collector's details on a booking", async () => {
+  it("lets the worker change only the columns erasure needs on a booking and its lots", async () => {
     const source = await readFile(join(__dirname, "migrate-roles.ts"), "utf8");
-    expect([...WORKER_COLLECTION_BOOKING_SCRUB_COLUMNS]).toEqual([
-      "collector_name",
-      "collector_email",
-      "collector_company",
-      "personal_details_erased_at",
-    ]);
+    expect([...WORKER_COLLECTION_BOOKING_ERASURE_COLUMNS].sort()).toEqual(
+      [
+        "status",
+        "cancelled_at",
+        "ics_sequence",
+        "updated_at",
+        "collector_name",
+        "collector_email",
+        "collector_company",
+        "id_check_type",
+        "personal_details_erased_at",
+        "handover_record_cleared_at",
+      ].sort(),
+    );
+    // Never the place, the time, the lots chosen, who booked, or the idempotency record.
+    for (const column of [
+      "slot_start",
+      "seat",
+      "legal_entity_id",
+      "booked_by_user_id",
+      "idempotency_key",
+      "request_fingerprint",
+      "reference",
+    ]) {
+      expect([...WORKER_COLLECTION_BOOKING_ERASURE_COLUMNS]).not.toContain(column);
+    }
+    expect([...WORKER_COLLECTION_LOT_RELEASE_COLUMNS]).toEqual(["active"]);
     expect(source).toContain(
-      '"collection_booking",\n          WORKER_COLLECTION_BOOKING_SCRUB_COLUMNS,',
+      '"collection_booking",\n          WORKER_COLLECTION_BOOKING_ERASURE_COLUMNS,',
+    );
+    expect(source).toContain(
+      '"collection_booking_lot",\n          WORKER_COLLECTION_LOT_RELEASE_COLUMNS,',
     );
   });
 

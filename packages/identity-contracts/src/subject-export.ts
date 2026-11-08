@@ -395,7 +395,10 @@ const BID_CATEGORIES = [
         "yourRoles",
         "Whether you booked it, authorised the person collecting, or are the person collecting.",
       ),
-      f("bookedBy", "Whether you or the gallery's team made the booking."),
+      f(
+        "bookedBy",
+        "Whether you, another member of your organisation or the gallery's team made the booking.",
+      ),
       f("lots", "The lots in the visit, each with whether it was collected or left."),
       f(
         "collector",

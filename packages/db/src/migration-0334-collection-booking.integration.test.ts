@@ -67,6 +67,7 @@ async function fixture(pool: pg.Pool): Promise<Fixture> {
         collector_kind: "self",
         collector_name: "Charlotte Hayes",
         idempotency_key: randomUUID(),
+        request_fingerprint: "fingerprint",
         ...over,
       };
       const keys = Object.keys(row);

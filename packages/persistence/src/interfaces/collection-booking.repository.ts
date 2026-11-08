@@ -131,8 +131,10 @@ export type NewCollectionBooking = {
 
 export type BookingOutcome =
   | { outcome: "booked"; booking: CollectionBookingRecord }
-  /** The same key was sent before: this is that booking, unchanged. */
+  /** The same key was sent before with the same request: this is that booking, unchanged. */
   | { outcome: "replayed"; booking: CollectionBookingRecord }
+  /** The key was used before for a different request (the API answers 409 idempotency_key_reused). */
+  | { outcome: "key_reused" }
   /** Every place in the slot is taken. */
   | { outcome: "slot_full" }
   /** At least one lot is already in a live booking. */

@@ -10,9 +10,12 @@
 --     sale days are added with their source, so staff can see why a day is closed.
 --   collection_booking: one visit. It holds one numbered place ("seat") in its slot, and a partial
 --     unique index on (venue, slot start, seat) while the booking is live is what stops two people
---     taking the same place, however many API instances run. The collector's name, email and
---     company are personal data of someone who may not have an account: they are erased with the
---     booker's account (see the persistence erasure) and never appear in domain events.
+--     taking the same place, however many API instances run. A request fingerprint is stored with
+--     the idempotency key, so the same key with a different request is refused, not replayed.
+--     The collector's name, email and company are personal data of someone who may not have an
+--     account. When the booker's account is erased, live visits are cancelled first; ended visits
+--     lose the email and company at once, and the name and ID type once the hand-over record's
+--     retention has passed (handover_record_cleared_at). They never appear in domain events.
 --   collection_booking_lot: the lots in a visit. A lot is in at most one live booking.
 --   lot_fulfilment.collected_by_user_id: the staff member who handed the works over.
 --
@@ -137,12 +140,14 @@ CREATE TABLE IF NOT EXISTS "collection_booking" (
   "policy_version" text,
   "ics_sequence" integer DEFAULT 0 NOT NULL,
   "idempotency_key" text NOT NULL,
+  "request_fingerprint" text NOT NULL,
   "id_check_type" text,
   "outcome_by_user_id" text,
   "outcome_at" timestamp with time zone,
   "cancelled_by_user_id" text,
   "cancelled_at" timestamp with time zone,
   "personal_details_erased_at" timestamp with time zone,
+  "handover_record_cleared_at" timestamp with time zone,
   "created_at" timestamp with time zone DEFAULT now() NOT NULL,
   "updated_at" timestamp with time zone DEFAULT now() NOT NULL,
   CONSTRAINT "collection_booking_status_check" CHECK (

@@ -31,10 +31,13 @@ export type CollectionExportInput = {
 };
 
 /**
- * A person's collection bookings: the ones they made, authorised or are named to collect at. The
- * collector's details are what the booker typed in, so they come back to the booker; once erased
- * they read as the placeholder. Over-capacity reasons, the staff member who handed over or
- * cancelled, the idempotency key and the policy version are never selected.
+ * A person's collection bookings: the ones they made, authorised or are named to collect at, and
+ * no one else's. A booking an organisation's other member made, with nobody named in it but that
+ * member, is not here. The collector's details are what the booker typed in, so they come back to
+ * the booker, and to the person named when it is them; once erased they read as the placeholder.
+ * Another member who booked is shown as "another member", never by name or id. Over-capacity
+ * reasons, the staff member who handed over or cancelled, the idempotency key, the request
+ * fingerprint and the policy version are never selected.
  */
 export function mapCollection(input: CollectionExportInput, subjectId: string, webOrigin: string) {
   const roles = [
@@ -49,7 +52,13 @@ export function mapCollection(input: CollectionExportInput, subjectId: string, w
     status: input.status,
     visit: { start: isoRequired(input.slotStart), end: isoRequired(input.slotEnd) },
     yourRoles: roles,
-    bookedBy: input.bookedVia === "staff" ? "gallery_team" : "you",
+    // Another member of an organisation is never named: it is their data, not the person's.
+    bookedBy:
+      input.bookedByUserId === subjectId
+        ? "you"
+        : input.bookedVia === "staff"
+          ? "gallery_team"
+          : "another_member",
     lots: input.lots.map((entry) => ({
       lot: lotRef(entry.lot, webOrigin),
       outcome: entry.outcome,

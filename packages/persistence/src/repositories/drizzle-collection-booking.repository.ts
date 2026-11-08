@@ -24,6 +24,7 @@ import type {
   UndoHandOver,
   UndoOutcome,
 } from "../interfaces/collection-booking.repository.js";
+import { collectionRequestFingerprint } from "../lib/collection-request-fingerprint.js";
 import { pgUniqueViolationConstraint } from "../lib/pg-unique-violation.js";
 
 /** A database or a transaction on it: both run the same queries. */
@@ -229,12 +230,18 @@ export class DrizzleCollectionBookingRepository
 
   async book(input: NewCollectionBooking): Promise<BookingOutcome> {
     const lotIds = unique(input.lotIds);
+    const fingerprint = collectionRequestFingerprint(input);
     try {
       return await this.db.transaction(async (tx): Promise<BookingOutcome> => {
-        const replay = await this.findByKey(tx, input.legalEntityId, input.idempotencyKey);
-        if (replay) return { outcome: "replayed", booking: replay };
+        const prior = await this.priorAnswer(
+          tx,
+          input.legalEntityId,
+          input.idempotencyKey,
+          fingerprint,
+        );
+        if (prior) return prior;
 
-        const id = await claimNewSeat(tx, input);
+        const id = await claimNewSeat(tx, input, fingerprint);
         if (id === null) return { outcome: "slot_full" };
         await tx
           .insert(collectionBookingLot)
@@ -244,9 +251,14 @@ export class DrizzleCollectionBookingRepository
     } catch (error) {
       const constraint = pgUniqueViolationConstraint(error);
       if (constraint === IDEMPOTENCY_INDEX) {
-        // The same request raced itself: the other attempt won, and this one is its replay.
-        const booking = await this.findByKey(this.db, input.legalEntityId, input.idempotencyKey);
-        if (booking) return { outcome: "replayed", booking };
+        // Another request with this key won the race: this one is its replay, or a clash with it.
+        const prior = await this.priorAnswer(
+          this.db,
+          input.legalEntityId,
+          input.idempotencyKey,
+          fingerprint,
+        );
+        if (prior) return prior;
       }
       if (constraint !== null && LOT_HELD_INDEXES.includes(constraint)) {
         return { outcome: "lot_taken", lotIds: await this.lotsHeldElsewhere(lotIds, null) };
@@ -433,13 +445,19 @@ export class DrizzleCollectionBookingRepository
 
   // ---- internals --------------------------------------------------------------------------
 
-  private async findByKey(
+  /**
+   * What a key already stands for, as the answer to a new request with it: the booking when the
+   * request is the same one again, `key_reused` when it is a different request, `null` when the
+   * key is new.
+   */
+  private async priorAnswer(
     conn: Conn,
     legalEntityId: string,
     key: string,
-  ): Promise<CollectionBookingRecord | null> {
+    fingerprint: string,
+  ): Promise<BookingOutcome | null> {
     const [row] = await conn
-      .select({ id: collectionBooking.id })
+      .select({ id: collectionBooking.id, fingerprint: collectionBooking.requestFingerprint })
       .from(collectionBooking)
       .where(
         and(
@@ -448,7 +466,9 @@ export class DrizzleCollectionBookingRepository
         ),
       )
       .limit(1);
-    return row ? loadRecord(conn, row.id) : null;
+    if (!row) return null;
+    if (row.fingerprint !== fingerprint) return { outcome: "key_reused" };
+    return { outcome: "replayed", booking: await loadRecord(conn, row.id) };
   }
 
   /** Makes the booking's active lots exactly `lotIds`, reusing a lot's row if it was once in it. */
@@ -585,7 +605,11 @@ async function liveBookingsByLot(
  * wait for the first, and when the first commits the second finds it taken (`do nothing`) and
  * tries the next place. Returns the new booking's id, or `null` when no place is free.
  */
-async function claimNewSeat(conn: Conn, input: NewCollectionBooking): Promise<string | null> {
+async function claimNewSeat(
+  conn: Conn,
+  input: NewCollectionBooking,
+  fingerprint: string,
+): Promise<string | null> {
   const staffOverride = input.overCapacityReason !== null;
   // Places already seen as taken are skipped, which saves a reference number and a round trip per
   // place. The check is only a shortcut: the insert below is what decides, so a place taken a
@@ -618,6 +642,7 @@ async function claimNewSeat(conn: Conn, input: NewCollectionBooking): Promise<st
         overCapacityReason: beyond ? input.overCapacityReason : null,
         ...collectorColumns(input.collector),
         idempotencyKey: input.idempotencyKey,
+        requestFingerprint: fingerprint,
       })
       .onConflictDoNothing({
         target: [collectionBooking.venueId, collectionBooking.slotStart, collectionBooking.seat],

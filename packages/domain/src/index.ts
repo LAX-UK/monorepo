@@ -943,6 +943,9 @@ export {
 } from "./collection-ics.js";
 export {
   COLLECTION_BOOKING_EVENT_AGGREGATE,
+  COLLECTION_CANCEL_REASONS,
+  type CollectionCancelReason,
+  type CollectionCancelledVia,
   collectionBookingCancelled,
   collectionBookingChanged,
   collectionBookingCreated,

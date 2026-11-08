@@ -229,7 +229,7 @@ describe.skipIf(!HAS_DB)("collection booking (integration)", () => {
       expect(outcomes.filter((o) => o.outcome === "replayed")).toHaveLength(9);
       const ids = new Set(
         outcomes.flatMap((o) =>
-          o.outcome === "slot_full" || o.outcome === "lot_taken" ? [] : [o.booking.id],
+          o.outcome === "booked" || o.outcome === "replayed" ? [o.booking.id] : [],
         ),
       );
       expect(ids.size).toBe(1);
@@ -238,6 +238,57 @@ describe.skipIf(!HAS_DB)("collection booking (integration)", () => {
         .from(collectionBooking)
         .where(eq(collectionBooking.idempotencyKey, input.idempotencyKey));
       expect(rows).toHaveLength(1);
+    });
+
+    it("refuses the same key used for a different request, and books nothing for it", async () => {
+      const input = request();
+      const first = booked(await bookings.book(input));
+      const other = request({ idempotencyKey: input.idempotencyKey });
+      expect(await bookings.book(other)).toEqual({ outcome: "key_reused" });
+      // Even a small change: another lot, another collector name, another time.
+      expect(
+        await bookings.book({ ...input, collector: { ...input.collector, name: "Someone Else" } }),
+      ).toEqual({ outcome: "key_reused" });
+      expect(await bookings.book({ ...input, lotIds: freshLots(1) })).toEqual({
+        outcome: "key_reused",
+      });
+      const rows = await db
+        .select()
+        .from(collectionBooking)
+        .where(eq(collectionBooking.idempotencyKey, input.idempotencyKey));
+      expect(rows.map((row) => row.id)).toEqual([first.id]);
+      // The original request still gets its booking back.
+      expect(await bookings.book({ ...input })).toMatchObject({
+        outcome: "replayed",
+        booking: { id: first.id },
+      });
+    });
+
+    it("lets the lots come in any order on a repeat", async () => {
+      const lots = freshLots(2);
+      const input = request({ lotIds: lots });
+      const first = booked(await bookings.book(input));
+      expect(await bookings.book({ ...input, lotIds: [...lots].reverse() })).toMatchObject({
+        outcome: "replayed",
+        booking: { id: first.id },
+      });
+    });
+
+    it("books one of two different requests sent with the same key at once, and refuses the other", async () => {
+      const key = randomUUID();
+      const [a, b] = await Promise.all([
+        bookings.book(request({ idempotencyKey: key })),
+        bookings.book(request({ idempotencyKey: key })),
+      ]);
+      expect([a.outcome, b.outcome].sort()).toEqual(["booked", "key_reused"]);
+      const rows = await db
+        .select()
+        .from(collectionBooking)
+        .where(eq(collectionBooking.idempotencyKey, key));
+      expect(rows).toHaveLength(1);
+      // No lot is held by the request that was refused.
+      const loser = a.outcome === "key_reused" ? b : a;
+      expect(loser.outcome).toBe("booked");
     });
 
     it("returns the original booking for a later repeat", async () => {

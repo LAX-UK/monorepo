@@ -1,7 +1,6 @@
 import {
   artistWatchlist,
   bidUserProfile,
-  collectionBooking,
   legalEntity,
   legalEntityAddress,
   legalEntityContactDetails,
@@ -19,9 +18,10 @@ import {
   watchlist,
 } from "@auction/db/schema";
 import { anonymiseEnquiries, eraseAlertSubscribers } from "@auction/persistence/lib";
-import { and, inArray, isNull, or, sql } from "drizzle-orm";
+import { inArray } from "drizzle-orm";
 import type { AnyPgColumn, PgTable } from "drizzle-orm/pg-core";
 import type { ProjectorDbConnection } from "../interfaces/worker-db.types.js";
+import { eraseCollectionBookings } from "./collection-booking-erasure.js";
 
 /**
  * What Bid does with a person's data when Identity purges their account. This file is the single
@@ -133,44 +133,18 @@ const enquiryRule: BidAnonymisationRule = {
   },
 };
 
-/** What replaces the name of a third party who came to collect for the person. */
-const THIRD_PARTY_COLLECTOR_PLACEHOLDER = "Deleted collector";
-
 /**
- * A collection booking is kept (it records who handed which works to whom), but the collector's
- * name, email and company are personal data: the person's own, or a third party they named. They
- * are replaced for every booking the person made, authorised or collected, and for the bookings
- * on their personal account. The ID check type, times and lots stay.
+ * Collection bookings keep the record of a visit, but the collector's details are personal data:
+ * the person's own, or a third party they named. A live visit is cancelled first (with an
+ * `account_erased` cancellation event); ended visits lose the collector's email and company, and
+ * the name too unless works were handed over, in which case the name and ID type are kept for
+ * `COLLECTION_HANDOVER_RETENTION_YEARS` and cleared by the retention purge.
  */
 const collectionBookingRule: BidAnonymisationRule = {
   table: "collection_booking",
   treatment: "scrub",
   fields: ["collector_name", "collector_email", "collector_company"],
-  async apply(tx, scope) {
-    const subjects = [...scope.subjectIds];
-    const accounts = [...scope.personalLegalEntityIds];
-    const rows = await tx
-      .update(collectionBooking)
-      .set({
-        collectorName: sql`CASE WHEN ${collectionBooking.collectorKind} = 'third_party' THEN ${THIRD_PARTY_COLLECTOR_PLACEHOLDER} ELSE ${scope.pseudonym} END`,
-        collectorEmail: null,
-        collectorCompany: null,
-        personalDetailsErasedAt: new Date(),
-      })
-      .where(
-        and(
-          isNull(collectionBooking.personalDetailsErasedAt),
-          or(
-            inArray(collectionBooking.bookedByUserId, subjects),
-            inArray(collectionBooking.collectorUserId, subjects),
-            inArray(collectionBooking.authorisedByUserId, subjects),
-            accounts.length > 0 ? inArray(collectionBooking.legalEntityId, accounts) : undefined,
-          ),
-        ),
-      )
-      .returning({ id: collectionBooking.id });
-    return rows.length;
-  },
+  apply: (tx, scope) => eraseCollectionBookings(tx, scope),
 };
 
 const alertSubscribersRule: BidAnonymisationRule = {

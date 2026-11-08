@@ -70,6 +70,10 @@ const FORBIDDEN_COLUMNS = [
   "collectionBooking.cancelledByUserId",
   "collectionBooking.idempotencyKey",
   "collectionBooking.policyVersion",
+  "collectionBooking.requestFingerprint",
+  "collectionBooking.handoverRecordClearedAt",
+  "collectionBooking.personalDetailsErasedAt",
+  "collectionBooking.legalEntityId", // the account is never named: another member's bookings share it
   "lotFulfilment.releaseApprovedByUserId",
   "conditionReportRequest.fulfilledByUserId",
   // staff-only thread content and thread handling

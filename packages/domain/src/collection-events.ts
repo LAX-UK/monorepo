@@ -11,6 +11,13 @@ export const COLLECTION_BOOKING_EVENT_AGGREGATE = "collection_booking";
  */
 type BookingRef = { bookingId: string; reference: string; legalEntityId: string };
 
+/** Who cancelled a visit; "system" is Bid cancelling on its own, always with a reason. */
+export type CollectionCancelledVia = "client" | "staff" | "system";
+
+/** Why Bid cancelled a visit without being asked. */
+export const COLLECTION_CANCEL_REASONS = ["account_erased"] as const;
+export type CollectionCancelReason = (typeof COLLECTION_CANCEL_REASONS)[number];
+
 type VisitFields = {
   venueId: string;
   slotStart: string;
@@ -34,7 +41,10 @@ export type CollectionBookingEvent =
       payload: BookingRef & {
         venueId: string;
         slotStart: string;
-        cancelledVia: "client" | "staff";
+        /** Who cancelled it; "system" is Bid cancelling a visit on its own. */
+        cancelledVia: CollectionCancelledVia;
+        /** Why, when it was not the buyer's or staff's choice. */
+        reason?: CollectionCancelReason;
       };
     }
   | {
@@ -67,7 +77,9 @@ export type CollectionBookingFacts = {
   lots: { lotId: string; active: boolean }[];
 };
 
-const ref = (booking: CollectionBookingFacts): BookingRef => ({
+const ref = (
+  booking: Pick<CollectionBookingFacts, "id" | "reference" | "legalEntityId">,
+): BookingRef => ({
   bookingId: booking.id,
   reference: booking.reference,
   legalEntityId: booking.legalEntityId,
@@ -104,9 +116,18 @@ export const collectionBookingChanged = (
   },
 });
 
+/**
+ * A cancellation. When Bid cancels a visit because the person who booked it erased their account,
+ * `reason` is `account_erased`: that event is what the buyer-cancel email (the organisation's
+ * owners, or the account that is still open) hangs off, since the erased person cannot be told.
+ */
 export const collectionBookingCancelled = (
-  booking: CollectionBookingFacts,
-  cancelledVia: "client" | "staff",
+  booking: Pick<
+    CollectionBookingFacts,
+    "id" | "reference" | "legalEntityId" | "venueId" | "slotStart"
+  >,
+  cancelledVia: CollectionCancelledVia,
+  reason?: CollectionCancelReason,
 ): CollectionBookingEvent => ({
   eventType: "collection.booking.cancelled",
   payload: {
@@ -114,6 +135,7 @@ export const collectionBookingCancelled = (
     venueId: booking.venueId,
     slotStart: booking.slotStart.toISOString(),
     cancelledVia,
+    ...(reason ? { reason } : {}),
   },
 });
 

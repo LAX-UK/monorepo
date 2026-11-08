@@ -623,6 +623,40 @@ describe("Bid subject export: what each category may contain", () => {
     ).toMatchObject({ yourRoles: ["booker", "collector"], bookedBy: "you", origin: "provided" });
   });
 
+  it("never names another member who booked, and keeps the collector details the person typed", () => {
+    const base = {
+      id: "c2",
+      reference: "COL-1043",
+      status: "booked",
+      slotStart: AT,
+      slotEnd: AT,
+      bookedVia: "client",
+      collectorKind: "member",
+      collectorName: "Sarah Whitfield",
+      collectorEmail: "sarah@example.com",
+      collectorCompany: null,
+      bookedByUserId: "colleague-7",
+      authorisedByUserId: null,
+      collectorUserId: SUBJECT,
+      authorisedAt: null,
+      idCheckType: null,
+      outcomeAt: null,
+      cancelledAt: null,
+      createdAt: AT,
+      lots: [],
+    };
+    // Named as the collector by a colleague: sees their own details, and that "another member" booked.
+    const named = mapCollection(base, SUBJECT, WEB);
+    expect(named.bookedBy).toBe("another_member");
+    expect(named.collector).toMatchObject({ name: "Sarah Whitfield", email: "sarah@example.com" });
+    expect(JSON.stringify(named)).not.toContain("colleague-7");
+    // The colleague, asking for their own data, is the booker.
+    expect(mapCollection(base, "colleague-7", WEB)).toMatchObject({
+      bookedBy: "you",
+      yourRoles: ["booker"],
+    });
+  });
+
   it("shows a held-for-review invoice as open, with no hint of the review", () => {
     expect(
       mapInvoice({
