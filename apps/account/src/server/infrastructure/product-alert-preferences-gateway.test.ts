@@ -141,6 +141,16 @@ describe("createProductAlertPreferencesGateway", () => {
     }
   });
 
+  it("lets the account page's switch start Bid alerts again after a stop, and no other product", async () => {
+    const { gateway, calls } = setup(() => json({ ok: true }));
+    await gateway.setTopic(handle, { topic: "bid.artists", on: true });
+    await gateway.setTopic(handle, { topic: "art.followed_artists", on: true });
+    expect(calls.find((c) => c.url.includes("bid-api"))?.body).toBe(
+      JSON.stringify({ on: true, restart: true }),
+    );
+    expect(calls.find((c) => c.url.includes("shop-api"))?.body).toBe(JSON.stringify({ on: true }));
+  });
+
   it("says why a topic cannot be switched on", async () => {
     const refusal = setup(() => json({ ok: false, reason: "unverified" }, 409));
     expect(await refusal.gateway.setTopic(handle, { topic: "shop.releases", on: true })).toEqual({

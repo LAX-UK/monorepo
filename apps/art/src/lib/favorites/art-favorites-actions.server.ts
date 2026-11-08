@@ -1,6 +1,7 @@
 "use server";
 
 import { artCommerceMutationClient } from "@/lib/art-commerce-mutation.server";
+import type { FollowEmailsState } from "@/lib/favorites/art-favorites.server";
 import {
   type FavoriteMutationOutcome,
   type FavoriteTarget,
@@ -40,8 +41,8 @@ export async function turnOnFollowEmailsAction(): Promise<TurnOnFollowEmailsOutc
   return turnOnFollowEmails(artCommerceMutationClient);
 }
 
-/** Whether emails about followed artists are on right now, after a follow changed the answer. */
-export async function followEmailsStateAction(): Promise<boolean | null> {
-  const { loadArtFollowEmailsOn } = await import("@/lib/favorites/art-favorites.server");
-  return loadArtFollowEmailsOn();
+/** What a follow did to the emails: whether they are on, and whether the person stopped them all. */
+export async function followEmailsStateAction(): Promise<FollowEmailsState> {
+  const { loadArtFollowEmailsState } = await import("@/lib/favorites/art-favorites.server");
+  return loadArtFollowEmailsState();
 }

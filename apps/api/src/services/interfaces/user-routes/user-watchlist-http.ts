@@ -47,5 +47,12 @@ export interface IUserWatchlistHttpApplicationService {
 
   createSavedSearch(input: { userId: string; body: SavedSearchBody }): Promise<UserHttpJson>;
 
+  /** Turns email alerts on or off for one of the person's own saved searches. */
+  setSavedSearchEmail(input: {
+    userId: string;
+    id: string;
+    notifyEmail: boolean;
+  }): Promise<UserHttpJson>;
+
   removeSavedSearch(input: { userId: string; id: string }): Promise<UserHttpJson>;
 }

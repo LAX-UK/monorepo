@@ -178,6 +178,20 @@ export class UserWatchlistHttpApplicationService implements IUserWatchlistHttpAp
     return { status: 201, body: { data: row } };
   }
 
+  async setSavedSearchEmail(input: {
+    userId: string;
+    id: string;
+    notifyEmail: boolean;
+  }): Promise<UserHttpJson> {
+    const row = await this.deps.savedSearchService.setNotifyEmail(
+      input.userId,
+      input.id,
+      input.notifyEmail,
+    );
+    if (!row) return { status: 404, body: { error: "Not found" } };
+    return { status: 200, body: { data: row } };
+  }
+
   async removeSavedSearch(input: { userId: string; id: string }): Promise<UserHttpJson> {
     const removed = await this.deps.savedSearchService.remove(input.userId, input.id);
     if (!removed) return { status: 404, body: { error: "Not found" } };

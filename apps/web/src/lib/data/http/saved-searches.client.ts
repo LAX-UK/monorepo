@@ -51,6 +51,19 @@ export async function createSavedSearch(input: {
   }
 }
 
+/** PATCH /users/me/saved-searches/:id: email alerts on or off for one saved search. */
+export async function setSavedSearchEmail(id: string, notifyEmail: boolean): Promise<boolean> {
+  try {
+    const res = await browserFetch(
+      `${browserApiBase()}/users/me/saved-searches/${encodeURIComponent(id)}`,
+      { method: "PATCH", headers: jsonHeaders, body: JSON.stringify({ notifyEmail }) },
+    );
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
 /** DELETE /users/me/saved-searches/:id */
 export async function deleteSavedSearch(id: string): Promise<boolean> {
   try {

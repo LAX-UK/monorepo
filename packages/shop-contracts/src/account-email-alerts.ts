@@ -30,7 +30,12 @@ export const AccountEmailAlertsSchema = Type.Object(
     /** Every switchable topic, in page order; a topic the person never used is off. */
     topics: Type.Array(
       Type.Object(
-        { topic: AccountEmailAlertTopicSchema, emailOn: Type.Boolean() },
+        {
+          topic: AccountEmailAlertTopicSchema,
+          emailOn: Type.Boolean(),
+          /** Present (true) only when the person stopped all alerts for this topic's product. */
+          stopped: Type.Optional(Type.Boolean()),
+        },
         { additionalProperties: false },
       ),
     ),

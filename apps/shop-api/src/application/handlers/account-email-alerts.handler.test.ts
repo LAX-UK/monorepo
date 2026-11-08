@@ -41,6 +41,28 @@ describe("account email alert handlers", () => {
     ]);
   });
 
+  it("marks the topics of a product whose alerts the person stopped, and only those", async () => {
+    const { h, handlers } = setup();
+    h.accounts.set("s1", { email: "ada@example.com", verified: true });
+    await handlers.setTopic({ identitySubjectId: "s1", topic: "art.followed_artists", on: true });
+    await handlers.setTopic({ identitySubjectId: "s1", topic: "shop.releases", on: true });
+    const art = await h.stores.findBySubject("art", "s1");
+    await h.stores.stop(art?.id ?? "", "link", h.now);
+
+    expect((await handlers.view("s1")).topics).toEqual([
+      { topic: "shop.releases", emailOn: true },
+      { topic: "art.followed_artists", emailOn: false, stopped: true },
+    ]);
+    // The account page's switch is an explicit choice, so it starts them again.
+    expect(
+      await handlers.setTopic({ identitySubjectId: "s1", topic: "art.followed_artists", on: true }),
+    ).toBe(null);
+    expect((await handlers.view("s1")).topics[1]).toEqual({
+      topic: "art.followed_artists",
+      emailOn: true,
+    });
+  });
+
   it("says why an address that is not verified cannot be switched on", async () => {
     const { h, handlers } = setup();
     h.accounts.set("s1", { email: "ada@example.com", verified: false });

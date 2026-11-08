@@ -50,7 +50,7 @@ export type AlertSwitchResult = { ok: true } | { ok: false; error: string };
 export async function setAlertTopic(
   topic: string,
   on: boolean,
-  options: { email?: boolean } = {},
+  options: { email?: boolean; restart?: boolean } = {},
 ): Promise<AlertSwitchResult> {
   try {
     const res = await fetch(url(`/me/topics/${encodeURIComponent(topic)}`), {
@@ -59,6 +59,7 @@ export async function setAlertTopic(
       body: JSON.stringify({
         on,
         ...(options.email === undefined ? {} : { email: options.email }),
+        ...(options.restart ? { restart: true } : {}),
       }),
     });
     if (res.ok) return { ok: true };
