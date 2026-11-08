@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { artE2eEnabled, artE2eSkipReason } from "./helpers/art-e2e";
+import { artE2eEnabled, artE2eSkipReason, firstArtworkHref } from "./helpers/art-e2e";
 
 /**
  * The shared header chrome on lax.art: the bottom tab bar is a phone-only dock, and the phone
@@ -39,5 +39,27 @@ test.describe("lax.art shared chrome @smoke", () => {
     await page.keyboard.press("Escape");
     await expect(menu).toBeHidden();
     await expect(trigger).toBeFocused();
+  });
+
+  test("on an artwork page the sticky action bar and the tab bar are never both shown", async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== "chromium-desktop", "sizes are set by the test");
+    await page.setViewportSize({ width: 375, height: 812 });
+    const href = await firstArtworkHref(page);
+    test.skip(href === null, "the art channel has no published works");
+    await page.goto(href as string);
+
+    const conversations = page.getByTestId("art-artwork-conversations");
+    await expect(conversations).toBeVisible();
+    const tabBar = page.getByTestId("art-bottom-tab-bar");
+    const actionBar = page.getByRole("region", { name: "Artwork actions" });
+    // A sold work has no action bar; then the tab bar keeps the slot. Either way, one at a time.
+    if ((await actionBar.count()) === 0) {
+      await expect(tabBar).toBeVisible();
+      return;
+    }
+    await expect(actionBar).toBeVisible();
+    await expect(tabBar).toBeHidden();
   });
 });
