@@ -22,6 +22,7 @@ jobs:
       pull-requests: read
     outputs:
       browser: ${{ steps.filter.outputs.browser }}
+      frontend: ${{ steps.filter.outputs.frontend }}
       lax_admin: ${{ steps.filter.outputs.lax_admin }}
     steps:
       - uses: actions/checkout@v4
@@ -36,6 +37,33 @@ jobs:
               - "apps/shop-admin/**"
               - "packages/staff-ui/**"
               - "scripts/ci/start-lax-admin-stack.sh"
+            # On a pull request the browser gates run only for changes a page can show: the apps,
+            # their UI packages, the e2e suites, seeds and this workflow. Every other change still
+            # runs the full gates in the merge queue (merge_group always runs), so nothing reaches
+            # main untested; it just stops paying for a browser run on every backend-only push.
+            frontend:
+              - "apps/web/src/app/**"
+              - "apps/web/src/components/**"
+              - "apps/web/src/lib/**"
+              - "apps/web/e2e/**"
+              - "apps/web/next.config.*"
+              - "apps/web/package.json"
+              - "apps/shop/**"
+              - "apps/auth/**"
+              - "apps/shop-identity/**"
+              - "packages/ui/**"
+              - "packages/branding/**"
+              - "packages/marketing-ui/**"
+              - "packages/lax-ecosystem/**"
+              - "packages/identity-contracts/**"
+              - "packages/auth/**"
+              - "packages/db/src/seed/**"
+              - "packages/db/drizzle/**"
+              - "scripts/ci/run-pr-browser-gates.mjs"
+              - "scripts/ci/prepare-e2e-auth-states.mjs"
+              - "scripts/ci/e2e-session-state.mjs"
+              - ".github/workflows/e2e-pr.yml"
+              - "pnpm-lock.yaml"
             browser:
               - "apps/web/**"
               - "apps/shop/**"
@@ -93,7 +121,7 @@ jobs:
 
   browser-gates:
     needs: changes
-    if: github.event_name == 'merge_group' || needs.changes.outputs.browser == 'true' || needs.changes.outputs.lax_admin == 'true'
+    if: github.event_name == 'merge_group' || needs.changes.outputs.frontend == 'true' || needs.changes.outputs.lax_admin == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 50
     services:
