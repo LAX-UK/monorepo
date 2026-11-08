@@ -81,4 +81,21 @@ describe("resolveSettlementPeriod", () => {
       }),
     ).toEqual({ ok: false, reason: "settlement_period_overlaps" });
   });
+
+  it("treats a last end up to 5 seconds after now as now", () => {
+    const skewed = new Date(NOW.getTime() + 5_000);
+    expect(
+      resolveSettlementPeriod({ now: NOW, lastSettledEnd: skewed, earliestPending: null }),
+    ).toEqual({ ok: true, periodStart: NOW, periodEnd: NOW });
+  });
+
+  it("still refuses a last end more than 5 seconds after now", () => {
+    expect(
+      resolveSettlementPeriod({
+        now: NOW,
+        lastSettledEnd: new Date(NOW.getTime() + 5_001),
+        earliestPending: null,
+      }),
+    ).toEqual({ ok: false, reason: "settlement_period_overlaps" });
+  });
 });

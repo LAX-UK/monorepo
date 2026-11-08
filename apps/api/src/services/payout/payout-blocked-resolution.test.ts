@@ -85,6 +85,33 @@ describe("PayoutService.adoptBlockedTransfer", () => {
     expect(publish).not.toHaveBeenCalled();
   });
 
+  it.each([
+    ["directly", { code: "23505" }],
+    ["wrapped by the driver", { cause: { code: "23505" } }],
+  ])(
+    "maps a unique violation on the transfer id (%s) to the linked-elsewhere refusal",
+    async (_label, dbError) => {
+      const { service, repo, publish } = setup();
+      repo.updateStatusIfCurrent.mockRejectedValueOnce(Object.assign(new Error("dup"), dbError));
+
+      await expect(
+        service.adoptBlockedTransfer("staff-1", "po1", {
+          stripeTransferId: "tr_ok",
+          reason: REASON,
+        }),
+      ).rejects.toMatchObject({ code: "transfer_linked_to_other_payout" });
+      expect(publish).not.toHaveBeenCalled();
+    },
+  );
+
+  it("does not hide other database errors", async () => {
+    const { service, repo } = setup();
+    repo.updateStatusIfCurrent.mockRejectedValueOnce(new Error("connection lost"));
+    await expect(
+      service.adoptBlockedTransfer("staff-1", "po1", { stripeTransferId: "tr_ok", reason: REASON }),
+    ).rejects.toThrow("connection lost");
+  });
+
   it("accepts a transfer already recorded on this same payout", async () => {
     const { service } = setup({ linked: { id: "po1" } });
     await expect(

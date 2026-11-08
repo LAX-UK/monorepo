@@ -1,4 +1,5 @@
 import type { Database } from "@auction/db";
+import { type SettlementPeriodResult, resolveSettlementPeriod } from "@auction/domain";
 import type {
   IPayoutRepository,
   IPrivateSaleDealPayoutStore,
@@ -55,4 +56,26 @@ export function settlementAmounts(p: {
     saleAmount,
     platformFee: (Number.parseFloat(p.platformFee) * ratio).toFixed(2),
   };
+}
+
+/**
+ * The period a cron settlement covers for one seller: it follows the seller's last payout and
+ * ends at `periodEnd`; a first run starts at the oldest waiting captured payment. This is the same
+ * resolver the staff run-settlement uses.
+ */
+export async function resolveEntitySettlementPeriod(
+  deps: PayoutSettlementDeps,
+  legalEntityId: string,
+  periodEnd: Date,
+): Promise<SettlementPeriodResult> {
+  const [latest] = await deps.repo.list({ legalEntityId, limit: 1 });
+  const pending = await deps.repo.findUnlinkedCapturedPayments(legalEntityId);
+  return resolveSettlementPeriod({
+    now: periodEnd,
+    lastSettledEnd: latest?.periodEnd ?? null,
+    earliestPending: pending.reduce<Date | null>(
+      (oldest, p) => (p.capturedAt && (!oldest || p.capturedAt < oldest) ? p.capturedAt : oldest),
+      null,
+    ),
+  });
 }

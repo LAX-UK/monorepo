@@ -1,6 +1,9 @@
 /** The earliest start an admin settlement period may have; anything older is an open-ended run. */
 export const SETTLEMENT_PERIOD_FLOOR = new Date("2000-01-01T00:00:00Z");
 
+/** How far past now a stored period end may sit before it counts as an overlap (clock skew). */
+export const SETTLEMENT_CLOCK_SKEW_MS = 5_000;
+
 export type SettlementPeriodRefusal =
   | "settlement_period_open_ended"
   | "settlement_period_overlaps"
@@ -21,9 +24,14 @@ export function resolveSettlementPeriod(input: {
   lastSettledEnd: Date | null;
   earliestPending: Date | null;
 }): SettlementPeriodResult {
-  const { now, requestedStart, lastSettledEnd, earliestPending } = input;
+  const { now, requestedStart, earliestPending } = input;
+  let lastSettledEnd = input.lastSettledEnd;
   if (lastSettledEnd && lastSettledEnd.getTime() > now.getTime()) {
-    return { ok: false, reason: "settlement_period_overlaps" };
+    // A last end only slightly ahead of now is clock skew between writers: treat it as now.
+    if (lastSettledEnd.getTime() - now.getTime() > SETTLEMENT_CLOCK_SKEW_MS) {
+      return { ok: false, reason: "settlement_period_overlaps" };
+    }
+    lastSettledEnd = now;
   }
   if (requestedStart) {
     if (requestedStart.getTime() < SETTLEMENT_PERIOD_FLOOR.getTime()) {
