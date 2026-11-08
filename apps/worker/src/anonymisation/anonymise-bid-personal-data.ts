@@ -43,8 +43,12 @@ export async function anonymiseBidPersonalData(
   tx: ProjectorDbConnection,
   subjectId: string,
   rules: readonly BidAnonymisationRule[] = BID_ANONYMISATION_RULES,
+  options: { privateSaleRecordRetentionYears?: number | undefined } = {},
 ): Promise<AnonymisationCounts> {
-  const scope = await resolveBidAnonymisationScope(tx, subjectId);
+  const scope = {
+    ...(await resolveBidAnonymisationScope(tx, subjectId)),
+    privateSaleRecordRetentionYears: options.privateSaleRecordRetentionYears,
+  };
   const counts: AnonymisationCounts = {};
   for (const rule of rules) {
     const changed = await rule.apply(tx, scope);

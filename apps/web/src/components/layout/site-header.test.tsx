@@ -1,10 +1,13 @@
+import { BidHeroSignal } from "@/components/layout/bid-hero-signal";
 import { SiteHeader } from "@/components/layout/site-header";
 import type { BidAttention } from "@/hooks/use-bid-attention";
 import type { LaxFamilyLinkVm } from "@auction/lax-ecosystem";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import { renderToString } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 let attention: BidAttention;
+let pathname = "/";
 
 vi.mock("@/lib/auth/use-app-session", () => ({
   useAppSession: () => ({ user: null, pending: false }),
@@ -13,7 +16,7 @@ vi.mock("@/lib/auth/use-app-session", () => ({
 vi.mock("@/hooks/use-bid-attention", () => ({ useBidAttention: () => attention }));
 
 vi.mock("next/navigation", () => ({
-  usePathname: () => "/",
+  usePathname: () => pathname,
   useSearchParams: () => new URLSearchParams(),
 }));
 
@@ -100,6 +103,7 @@ const OUTBID: BidAttention = {
 
 beforeEach(() => {
   attention = GUEST;
+  pathname = "/";
 });
 
 describe("SiteHeader", () => {
@@ -233,5 +237,99 @@ describe("SiteHeader attention prompt", () => {
       .find((chip) => chip.closest('[data-placement="bar"]'));
     expect(inRow?.closest('[data-placement="bar"]')?.className).toContain("max-sm:hidden");
     expect(row?.contains(inRow as Node)).toBe(true);
+  });
+});
+
+describe("SiteHeader over the cover photograph", () => {
+  const scrollTo = (y: number) => {
+    Object.defineProperty(window, "scrollY", { value: y, configurable: true });
+    act(() => {
+      window.dispatchEvent(new Event("scroll"));
+    });
+  };
+
+  beforeEach(() => scrollTo(0));
+
+  it("is solid until a cover photograph is on the page", () => {
+    render(<SiteHeader familyLinks={FAMILY} />);
+    const header = screen.getByRole("banner");
+    expect(header).toHaveAttribute("data-chrome-variant", "solid");
+    expect(header).toHaveAttribute("data-header-tone", "on-light");
+    expect(header.className).not.toContain("bg-transparent");
+  });
+
+  it("goes transparent with light type over the photograph, and solid once the page scrolls", () => {
+    render(
+      <>
+        <SiteHeader familyLinks={FAMILY} />
+        <BidHeroSignal />
+      </>,
+    );
+    const header = screen.getByRole("banner");
+    expect(header).toHaveAttribute("data-chrome-variant", "transparentUntilScroll");
+    expect(header).toHaveAttribute("data-header-tone", "on-dark");
+    expect(header.className).toContain("bg-transparent");
+    expect(header.className).toContain("motion-reduce:transition-none");
+
+    scrollTo(200);
+    expect(header).toHaveAttribute("data-header-tone", "on-light");
+    expect(header.className).not.toContain("bg-transparent");
+    expect(header).toHaveAttribute("data-at-top", "false");
+
+    scrollTo(0);
+    expect(header).toHaveAttribute("data-header-tone", "on-dark");
+  });
+
+  it("is solid while the phone menu is open, and again when the photograph goes", () => {
+    const view = render(
+      <>
+        <SiteHeader familyLinks={FAMILY} />
+        <BidHeroSignal />
+      </>,
+    );
+    const header = screen.getByRole("banner");
+    fireEvent.click(screen.getByRole("button", { name: "Open menu" }));
+    expect(header.className).not.toContain("bg-transparent");
+    fireEvent.click(screen.getByRole("button", { name: "Close menu" }));
+    expect(header.className).toContain("bg-transparent");
+
+    view.rerender(<SiteHeader familyLinks={FAMILY} />);
+    expect(header).toHaveAttribute("data-chrome-variant", "solid");
+  });
+
+  it("stays solid on a page that cannot have a cover, even if one is registered", () => {
+    pathname = "/purchases";
+    render(
+      <>
+        <SiteHeader familyLinks={FAMILY} />
+        <BidHeroSignal />
+      </>,
+    );
+    expect(screen.getByRole("banner")).toHaveAttribute("data-chrome-variant", "solid");
+  });
+});
+
+describe("SiteHeader first paint", () => {
+  it("marks a header on the home route as waiting for the cover, in the server's HTML", () => {
+    // The stylesheet draws it transparent when the cover's own marker is in the same HTML.
+    const html = renderToString(<SiteHeader familyLinks={FAMILY} />);
+    expect(html).toContain("data-hero-pending");
+    expect(html).toContain('data-chrome-variant="solid"');
+  });
+
+  it("does not mark a header on a page that cannot have a cover", () => {
+    pathname = "/purchases";
+    expect(renderToString(<SiteHeader familyLinks={FAMILY} />)).not.toContain("data-hero-pending");
+  });
+
+  it("does not mark a header whose variant was chosen by the page", () => {
+    expect(
+      renderToString(<SiteHeader chromeVariant="transparentUntilScroll" familyLinks={FAMILY} />),
+    ).not.toContain("data-hero-pending");
+  });
+
+  it("lets go of the mark once the page's scripts have run, so the header's own state governs", () => {
+    render(<SiteHeader familyLinks={FAMILY} />);
+    expect(screen.getByRole("banner")).not.toHaveAttribute("data-hero-pending");
   });
 });

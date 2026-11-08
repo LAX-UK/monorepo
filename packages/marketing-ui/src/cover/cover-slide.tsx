@@ -28,7 +28,13 @@ import type { PhotoScrims } from "./cover-scrim.js";
 import { CoverSeasons } from "./cover-seasons.js";
 import { CoverTimeLine } from "./cover-time-line.js";
 import { coverTitleClass } from "./cover-type-scale.js";
-import type { CoverMedia, CoverSide, CoverSlide, CoverTone } from "./cover-types.js";
+import type {
+  CoverMedia,
+  CoverSide,
+  CoverSlide,
+  CoverSrcSetFor,
+  CoverTone,
+} from "./cover-types.js";
 
 const BADGE_BASE =
   "inline-flex h-5 shrink-0 items-center rounded-[4px] px-2 font-body text-xs font-medium leading-4";
@@ -71,6 +77,18 @@ function groundFor(media: CoverMedia | null): Ground {
   }
   const scrims = scrimsForPhoto(media);
   return scrims ? { mode: "photo", media, tone: scrims.tone, scrims } : { mode: "type" };
+}
+
+/** Steady for the header, then a short fade into the picture. */
+const HEADER_BAND_FADE = "2.75rem";
+const HEADER_BAND_STYLE: CSSProperties = {
+  height: `calc(var(--header-height) + ${HEADER_BAND_FADE})`,
+  backgroundImage: `linear-gradient(to bottom, rgb(0 0 0 / 0.6) 0, rgb(0 0 0 / 0.6) var(--header-height), transparent calc(var(--header-height) + ${HEADER_BAND_FADE}))`,
+};
+
+/** Whether this media is drawn as a photograph (the only cover that goes under the header). */
+export function coverIsPhoto(media: CoverMedia | null): boolean {
+  return groundFor(media).mode === "photo";
 }
 
 /** The scrim and credit band for each desktop size; the wide pair shows from 1600px. */
@@ -159,6 +177,11 @@ export type CoverSlideViewProps = {
   media: CoverMedia | null;
   Link: ElementType | undefined;
   priority: boolean;
+  /** Resized files for the cover's photographs, when the page can make them. */
+  srcSetFor?: CoverSrcSetFor | undefined;
+  onSrcSetFallback?: ((src: string) => void) | undefined;
+  /** The cover starts under a transparent header: same layout for every slide of the cover. */
+  underHeader?: boolean;
   onMediaFail: () => void;
   pager: { index: number; count: number; onStep: (direction: 1 | -1) => void } | null;
   group: { label: string } | null;
@@ -170,6 +193,9 @@ export function CoverSlideView({
   media,
   Link,
   priority,
+  srcSetFor,
+  onSrcSetFallback,
+  underHeader = false,
   onMediaFail,
   pager,
   group,
@@ -209,15 +235,32 @@ export function CoverSlideView({
       data-cover-mode={ground.mode}
       {...(swap ? { "data-cover-swap": "" } : {})}
       data-cover-side={side}
+      {...(underHeader ? { "data-cover-under-header": "" } : {})}
       className={cn(
-        "relative isolate md:h-[640px] min-[1600px]:h-[720px] md:overflow-hidden",
+        "relative isolate md:overflow-hidden",
+        underHeader
+          ? "-mt-[var(--header-height)] md:h-[calc(640px+var(--header-height))] min-[1600px]:h-[calc(720px+var(--header-height))]"
+          : "md:h-[640px] min-[1600px]:h-[720px]",
         ground.mode === "type" && "md:bg-surface-container-low",
+        // A type-only slide has no picture to carry the header's height on a phone.
+        underHeader && ground.mode === "type" && "max-md:pt-[var(--header-height)]",
       )}
       style={vars}
       {...(group
         ? { role: "group", "aria-roledescription": "slide", "aria-label": group.label }
         : {})}
     >
+      {underHeader ? (
+        // The header's type is light over any picture, so a band holds 60% black for the full
+        // height of the header (white type reaches 5.7:1 even over a white photograph), then fades
+        // out. It is part of the layout for every slide, so a plate or plain slide gets it too.
+        <div
+          aria-hidden
+          data-cover-header-scrim=""
+          className="pointer-events-none absolute inset-x-0 top-0 z-[1]"
+          style={HEADER_BAND_STYLE}
+        />
+      ) : null}
       {playing && slide.film ? (
         <CoverFilmPlayer
           film={slide.film}
@@ -236,17 +279,27 @@ export function CoverSlideView({
         />
       ) : (
         <div
-          className="relative h-[340px] overflow-hidden bg-surface-container md:absolute md:inset-0 md:h-auto"
+          className={cn(
+            "relative overflow-hidden bg-surface-container md:absolute md:inset-0 md:h-auto",
+            underHeader ? "h-[calc(340px+var(--header-height))]" : "h-[340px]",
+          )}
           data-cover-media=""
         >
           <div className={cn("absolute inset-0", settles && "marketing-cover-settle")}>
             {ground.mode === "photo" ? (
-              <CoverPhoto media={ground.media} priority={priority} onFail={onMediaFail} />
+              <CoverPhoto
+                media={ground.media}
+                priority={priority}
+                srcSetFor={srcSetFor}
+                onFallback={onSrcSetFallback}
+                onFail={onMediaFail}
+              />
             ) : (
               <CoverPlate
                 media={ground.media}
                 credit={creditNode}
                 priority={priority}
+                onFallback={onSrcSetFallback}
                 onFail={onMediaFail}
               />
             )}
@@ -255,7 +308,12 @@ export function CoverSlideView({
           {slide.badge ? (
             <span
               aria-hidden
-              className={cn(BADGE_BASE, PHONE_IMAGE_BADGE, "absolute left-4 top-4 md:hidden")}
+              className={cn(
+                BADGE_BASE,
+                PHONE_IMAGE_BADGE,
+                "absolute left-4 md:hidden",
+                underHeader ? "top-[calc(var(--header-height)+1rem)]" : "top-4",
+              )}
             >
               {slide.badgeLive ? <LiveDot /> : null}
               {slide.badge}

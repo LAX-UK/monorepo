@@ -1,35 +1,11 @@
-import { useSyncExternalStore } from "react";
+import { createHeroPresence } from "@auction/marketing-ui";
 
 /*
  * Whether the page currently rendered has a hero under the header. Heroes register on mount, so a
  * page without an image (or a slower streamed one) is reflected without the layout knowing the data.
+ * The server cannot see mounted heroes; it renders assuming one, matching `artRouteMayHaveHero`.
  */
-let heroCount = 0;
-const listeners = new Set<() => void>();
+const artHeroPresence = createHeroPresence({ assumedOnServer: true });
 
-function emit() {
-  for (const listener of listeners) listener();
-}
-
-export function registerArtHero(): () => void {
-  heroCount += 1;
-  emit();
-  return () => {
-    heroCount -= 1;
-    emit();
-  };
-}
-
-function subscribe(listener: () => void): () => void {
-  listeners.add(listener);
-  return () => listeners.delete(listener);
-}
-
-/** The server cannot see mounted heroes; it renders assuming one, matching `artRouteMayHaveHero`. */
-export function useArtHeroPresent(): boolean {
-  return useSyncExternalStore(
-    subscribe,
-    () => heroCount > 0,
-    () => true,
-  );
-}
+export const registerArtHero = artHeroPresence.register;
+export const useArtHeroPresent = artHeroPresence.useHeroPresent;

@@ -1,13 +1,28 @@
 import type { Database } from "@auction/db";
 import {
+  bidUserProfile,
+  domainEvent,
+  kycVerification,
+  kycWatchlistScreening,
   marketingEnquiry,
   marketingEnquiryAttachment,
   marketingEnquiryNote,
+  privateSaleDeal,
+  privateSaleDealParty,
+  privateSaleDealStageHistory,
   privateSaleEnquiryDetail,
+  sourceOfFunds,
   uploadObject,
 } from "@auction/db/schema";
-import { ERASED_ENQUIRY, isEnquiryHeldFromErasure } from "@auction/domain";
-import { and, inArray, ne, or, sql } from "drizzle-orm";
+import {
+  DEFAULT_PRIVATE_SALE_RECORD_RETENTION_YEARS,
+  ERASED_ENQUIRY,
+  type EnquiryDealRecord,
+  PRIVATE_SALE_DEAL_EVENT_AGGREGATE,
+  isEnquiryHeldFromErasure,
+} from "@auction/domain";
+import type { PrivateSaleDealStage } from "@auction/types";
+import { and, eq, inArray, ne, or, sql } from "drizzle-orm";
 import type {
   EnquiryErasureCounts,
   EnquiryErasureTarget,
@@ -33,16 +48,29 @@ function targetCondition(target: EnquiryErasureTarget) {
 export async function anonymiseEnquiries(
   tx: Database,
   target: EnquiryErasureTarget,
+  options: { now?: Date; retentionYears?: number } = {},
 ): Promise<EnquiryErasureCounts> {
+  const now = options.now ?? new Date();
+  const retentionYears = options.retentionYears ?? DEFAULT_PRIVATE_SALE_RECORD_RETENTION_YEARS;
   const condition = targetCondition(target);
   if (!condition) return { ...NONE };
 
   const matched = await tx
-    .select({ id: marketingEnquiry.id, status: marketingEnquiry.status })
+    .select({
+      id: marketingEnquiry.id,
+      status: marketingEnquiry.status,
+      createdAt: marketingEnquiry.createdAt,
+    })
     .from(marketingEnquiry)
     .where(condition);
-  const held = matched.filter((row) => isEnquiryHeldFromErasure(row.status)).length;
-  const ids = matched.filter((row) => !isEnquiryHeldFromErasure(row.status)).map((row) => row.id);
+  const deals = await dealRecordsOf(
+    tx,
+    matched.filter((row) => row.status === "converted"),
+  );
+  const isHeld = (row: { id: string; status: string }) =>
+    isEnquiryHeldFromErasure(row.status, deals.get(row.id) ?? [], now, retentionYears);
+  const held = matched.filter(isHeld).length;
+  const ids = matched.filter((row) => !isHeld(row)).map((row) => row.id);
   if (ids.length === 0) return { ...NONE, held };
 
   const attachments = await detachFiles(tx, ids);
@@ -91,6 +119,146 @@ export async function anonymiseEnquiries(
     attachments,
     held,
   };
+}
+
+/**
+ * What the erasure rule needs about every deal made from each of the enquiries: its stage, whether
+ * it reached agreement, when it ended and whether a check was opened for anyone named on it since
+ * the enquiry arrived (staff vet the person before converting, so the deal's own start is too late).
+ */
+async function dealRecordsOf(
+  tx: Database,
+  enquiries: ReadonlyArray<{ id: string; createdAt: Date }>,
+): Promise<Map<string, EnquiryDealRecord[]>> {
+  const records = new Map<string, EnquiryDealRecord[]>();
+  if (enquiries.length === 0) return records;
+  const enquiryStart = new Map(enquiries.map((row) => [row.id, row.createdAt]));
+  const deals = await tx
+    .select({
+      id: privateSaleDeal.id,
+      enquiryId: privateSaleDeal.sourceEnquiryId,
+      stage: privateSaleDeal.stage,
+      agreedAt: privateSaleDeal.agreedAt,
+      cancelledAt: privateSaleDeal.cancelledAt,
+    })
+    .from(privateSaleDeal)
+    .where(
+      inArray(
+        privateSaleDeal.sourceEnquiryId,
+        enquiries.map((row) => row.id),
+      ),
+    );
+  if (deals.length === 0) return records;
+
+  const dealIds = deals.map((deal) => deal.id);
+  const [parties, named, settled] = await Promise.all([
+    tx
+      .select({ dealId: privateSaleDealParty.dealId, userId: privateSaleDealParty.actingUserId })
+      .from(privateSaleDealParty)
+      .where(inArray(privateSaleDealParty.dealId, dealIds)),
+    // Everyone ever named, including a buyer later replaced.
+    tx
+      .select({
+        dealId: domainEvent.aggregateId,
+        userId: sql<string | null>`${domainEvent.payload}->>'actingUserId'`,
+      })
+      .from(domainEvent)
+      .where(
+        and(
+          eq(domainEvent.aggregateType, PRIVATE_SALE_DEAL_EVENT_AGGREGATE),
+          eq(domainEvent.eventType, "private_sale_deal.party_named"),
+          inArray(domainEvent.aggregateId, dealIds),
+        ),
+      ),
+    tx
+      .select({
+        dealId: privateSaleDealStageHistory.dealId,
+        at: privateSaleDealStageHistory.createdAt,
+      })
+      .from(privateSaleDealStageHistory)
+      .where(
+        and(
+          inArray(privateSaleDealStageHistory.dealId, dealIds),
+          eq(privateSaleDealStageHistory.toStage, "settled"),
+        ),
+      ),
+  ]);
+  const usersOf = new Map<string, Set<string>>();
+  for (const row of [...parties, ...named]) {
+    if (!row.userId) continue;
+    usersOf.set(row.dealId, (usersOf.get(row.dealId) ?? new Set()).add(row.userId));
+  }
+  const checks = await checkTimesByUser(tx, [
+    ...new Set([...usersOf.values()].flatMap((users) => [...users])),
+  ]);
+
+  for (const deal of deals) {
+    const since = deal.enquiryId ? enquiryStart.get(deal.enquiryId) : undefined;
+    if (!deal.enquiryId || !since) continue;
+    const settledAt = settled
+      .filter((h) => h.dealId === deal.id)
+      .map((h) => h.at)
+      .sort((a, b) => b.getTime() - a.getTime())[0];
+    const list = records.get(deal.enquiryId) ?? [];
+    list.push({
+      stage: deal.stage as PrivateSaleDealStage,
+      agreedAt: deal.agreedAt,
+      endedAt: deal.stage === "cancelled" ? deal.cancelledAt : (settledAt ?? null),
+      hasComplianceCase: [...(usersOf.get(deal.id) ?? [])].some((userId) =>
+        (checks.get(userId) ?? []).some((at) => at >= since),
+      ),
+    });
+    records.set(deal.enquiryId, list);
+  }
+  return records;
+}
+
+/**
+ * When a compliance check was opened for each person: a watchlist screening, a source-of-funds
+ * case, an anti-money-laundering hold, or an identity verification that did not pass.
+ */
+async function checkTimesByUser(
+  tx: Database,
+  userIds: readonly string[],
+): Promise<Map<string, Date[]>> {
+  const times = new Map<string, Date[]>();
+  if (userIds.length === 0) return times;
+  const ids = [...userIds];
+  const [screenings, funds, holds, declined] = await Promise.all([
+    tx
+      .select({ userId: kycWatchlistScreening.userId, at: kycWatchlistScreening.createdAt })
+      .from(kycWatchlistScreening)
+      .where(inArray(kycWatchlistScreening.userId, ids)),
+    tx
+      .select({ userId: sourceOfFunds.userId, at: sourceOfFunds.createdAt })
+      .from(sourceOfFunds)
+      .where(inArray(sourceOfFunds.userId, ids)),
+    // A hold with no recorded time counts from now, so it is never missed.
+    tx
+      .select({
+        userId: bidUserProfile.userId,
+        at: sql<Date>`coalesce(${bidUserProfile.amlHoldAt}, now())`,
+      })
+      .from(bidUserProfile)
+      .where(and(inArray(bidUserProfile.userId, ids), ne(bidUserProfile.amlHoldStatus, "none"))),
+    tx
+      .select({
+        userId: kycVerification.userId,
+        at: sql<Date>`coalesce(${kycVerification.decisionAt}, ${kycVerification.createdAt})`,
+      })
+      .from(kycVerification)
+      .where(
+        and(
+          inArray(kycVerification.userId, ids),
+          inArray(kycVerification.status, ["requires_input", "canceled"]),
+          sql`${kycVerification.decisionAt} IS NOT NULL`,
+        ),
+      ),
+  ]);
+  for (const row of [...screenings, ...funds, ...holds, ...declined]) {
+    times.set(row.userId, [...(times.get(row.userId) ?? []), new Date(row.at)]);
+  }
+  return times;
 }
 
 /** Detaches the files from the enquiries and lets the unclaimed-file clean-up remove them. */

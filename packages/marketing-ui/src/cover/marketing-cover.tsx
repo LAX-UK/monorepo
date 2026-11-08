@@ -2,7 +2,7 @@
 
 import { cn } from "@auction/ui";
 import { useCallback, useMemo, useState } from "react";
-import { CoverSlideView } from "./cover-slide.js";
+import { CoverSlideView, coverIsPhoto } from "./cover-slide.js";
 import {
   COVER_MAX_SLIDES,
   activeCoverMedia,
@@ -25,6 +25,9 @@ export function MarketingCover({
   label,
   Link,
   priority = false,
+  srcSetFor,
+  onSrcSetFallback,
+  headerSignal,
   className,
 }: MarketingCoverProps) {
   const shown = useMemo(() => slides.slice(0, COVER_MAX_SLIDES), [slides]);
@@ -59,6 +62,12 @@ export function MarketingCover({
 
   if (!slide) return null;
   const several = shown.length > 1;
+  // Decided once, from the lead slide, so the layout is the same whichever slide is showing.
+  const lead = shown[0];
+  const underHeader =
+    headerSignal != null &&
+    lead !== undefined &&
+    coverIsPhoto(activeCoverMedia(lead.media, new Set()));
 
   return (
     <section
@@ -67,12 +76,16 @@ export function MarketingCover({
       data-lax-ui=""
       className={cn("w-full bg-surface text-on-surface", className)}
     >
+      {underHeader ? headerSignal : null}
       <CoverSlideView
         key={`${slide.id}:${mediaIndex}`}
         slide={slide}
         media={media}
         Link={Link}
         priority={priority && index === 0}
+        srcSetFor={srcSetFor}
+        onSrcSetFallback={onSrcSetFallback}
+        underHeader={underHeader}
         onMediaFail={onMediaFail}
         pager={several ? { index, count: shown.length, onStep } : null}
         group={several ? { label: `${index + 1} of ${shown.length}` } : null}

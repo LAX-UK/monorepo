@@ -16,6 +16,7 @@ const hoisted = vi.hoisted(() => ({
 function testRepoFactory(): IRepositoryFactory {
   const txSubRepo = {
     findById: hoisted.txSubFindById,
+    findByIdForUpdate: hoisted.txSubFindById,
     update: hoisted.txSubUpdate,
   };
   const txLotRepo = { create: hoisted.txLotCreate };

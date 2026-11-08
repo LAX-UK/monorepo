@@ -73,16 +73,29 @@ describe("enquiry anonymisation on purge", () => {
       held: 1,
     });
     const counts = await anonymiseBidPersonalData(emptyTx(), "user_1");
-    expect(anonymiseInTransaction).toHaveBeenCalledWith(expect.anything(), {
-      kind: "accounts",
-      userIds: ["user_1"],
-    });
+    expect(anonymiseInTransaction).toHaveBeenCalledWith(
+      expect.anything(),
+      { kind: "accounts", userIds: ["user_1"] },
+      {},
+    );
     expect(counts).toMatchObject({
       marketing_enquiry: 2,
       marketing_enquiry_note: 1,
       marketing_enquiry_attachment: 3,
       marketing_enquiry_held: 1,
     });
+  });
+
+  it("passes the configured private sale record retention on to the enquiry rule", async () => {
+    anonymiseInTransaction.mockResolvedValue({ enquiries: 0, notes: 0, attachments: 0, held: 2 });
+    await anonymiseBidPersonalData(emptyTx(), "user_1", undefined, {
+      privateSaleRecordRetentionYears: 7,
+    });
+    expect(anonymiseInTransaction).toHaveBeenCalledWith(
+      expect.anything(),
+      { kind: "accounts", userIds: ["user_1"] },
+      { retentionYears: 7 },
+    );
   });
 
   it("adds nothing to the audit on a repeat run", async () => {

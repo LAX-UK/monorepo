@@ -54,7 +54,7 @@ describe("Shop policy pages", () => {
     });
     const text = shopPolicyTexts(help).join("\n");
     for (const detail of [
-      "info(@)lax.art",
+      "info(@)thelax.art",
       "Phone: +44 800 208 4800",
       "156 New Cavendish St, London W1W 6YW",
       "[Your orders](/account/orders)",

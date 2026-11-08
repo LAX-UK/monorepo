@@ -2,7 +2,7 @@ import { AdminFailedPage } from "@/components/admin-fetch-state";
 import { PrintPartiesPanel } from "@/components/settings/print-parties-panel.client";
 import { fetchAdminJson, loadAdminSession } from "@/server/application/load-admin-data";
 import type { AdminEffectiveSettings, AdminPrintPartyList } from "@auction/shop-contracts";
-import { KeyValueList, PageHeader, Section, StatusBadge } from "@auction/staff-ui";
+import { KeyValueList, PageHeader, Section, StaffButtonLink, StatusBadge } from "@auction/staff-ui";
 import { redirect } from "next/navigation";
 
 export const metadata = { title: "Settings" };
@@ -60,6 +60,19 @@ export default async function SettingsPage() {
               { label: "VAT standard rate", value: vatRate(s.vatStandardRateBp) },
             ]}
           />
+        </Section>
+        <Section
+          title="Delivery regions"
+          description="Lead times and prices by region, and the countries LAX does not deliver to."
+          action={
+            <StaffButtonLink href="/settings/delivery-regions" variant="secondary" size="sm">
+              Open
+            </StaffButtonLink>
+          }
+        >
+          <p className="text-staff-sm text-staff-muted">
+            Anyone on staff can read them. Changing them needs settings access.
+          </p>
         </Section>
         <Section title="Areas switched on">
           <KeyValueList

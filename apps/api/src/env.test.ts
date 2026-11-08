@@ -181,3 +181,19 @@ describe("envSchema trusted proxies", () => {
     expect(parsed.data.API_TRUSTED_PROXY_CIDRS).toEqual(["10.0.0.0/8", "172.16.0.0/12"]);
   });
 });
+
+describe("envSchema PRIVATE_SALE_RECORD_RETENTION_YEARS", () => {
+  const years = (value: unknown) =>
+    envSchema.safeParse(productionEnvBase({ PRIVATE_SALE_RECORD_RETENTION_YEARS: value }));
+
+  it("refuses less than the five years the money laundering rules require", () => {
+    expect(years("4").success).toBe(false);
+  });
+
+  it("accepts five or more, and defaults to five", () => {
+    expect(years("5").success).toBe(true);
+    expect(years("10").success).toBe(true);
+    const parsed = years("");
+    expect(parsed.success && parsed.data.PRIVATE_SALE_RECORD_RETENTION_YEARS).toBe(5);
+  });
+});

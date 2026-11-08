@@ -23,6 +23,33 @@ describe("London Art Exchange Ltd policies", () => {
     }
   });
 
+  it("are dated versions: the contact email change is 1.1 with a change log, the cookie notice is untouched", () => {
+    for (const policy of Object.values(LAX_ART_POLICIES)) {
+      if (policy.slug === "cookies") {
+        expect(policy.release.version).toBe("1.0");
+        expect(policy.release.lastUpdated).toBe("2026-08-12");
+        expect(policy.release.changeLog).toBeUndefined();
+        continue;
+      }
+      expect(policy.release.version, policy.slug).toBe("1.1");
+      expect(policy.release.lastUpdated, policy.slug).toBe("2026-11-09");
+      expect(policy.release.changeLog, policy.slug).toEqual([
+        {
+          version: "1.1",
+          date: "2026-11-09",
+          summary: "Contact email changed to info@thelax.art.",
+        },
+      ]);
+    }
+  });
+
+  it("quote the contact email as info@thelax.art and no other lax.art address", () => {
+    for (const policy of Object.values(LAX_ART_POLICIES)) {
+      const text = legalPolicyTexts(policy.document).join("\n");
+      expect(text, policy.slug).not.toContain("info@lax.art");
+    }
+  });
+
   it("name the company and its registration as published", () => {
     const terms = legalPolicyTexts(LAX_ART_POLICIES.terms.document).join("\n");
     expect(terms).toContain(

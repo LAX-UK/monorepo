@@ -93,6 +93,21 @@ describe("plateFromLot", () => {
     const plate = plateFromLot(lot);
     expect(plate).toMatchObject({ kind: "plate", field: "#162936", tone: "light" });
   });
+  it("names resized files for the plate, sized to the slot it is drawn in", () => {
+    const plate = plateFromLot({
+      ...lot,
+      image: {
+        src: "https://lax-media.lon1.cdn.digitaloceanspaces.com/a.jpg",
+        field: "#162936",
+        width: 1800,
+        height: 2200,
+      },
+    });
+    expect(plate?.sizes).toBe("(min-width: 768px) 600px, 290px");
+    expect(plate?.srcSet).toContain("w=640");
+    expect(plate?.srcSet).toContain("w=1920");
+    expect(plate?.srcSet).not.toContain("w=256");
+  });
   it("needs 800px on the long side", () => {
     const small = { src: "s", field: "#162936", width: 500, height: 600 };
     expect(plateFromLot({ ...lot, image: small })).toBeNull();

@@ -752,6 +752,31 @@ export {
   type AdminHomeFeatureSlot,
   type AdminHomeFeatures,
 } from "./home-features-admin.js";
+export {
+  AdminDeliveryRegionIssueSchema,
+  AdminDeliveryRegionParamsSchema,
+  AdminDeliveryRegionRejectedBodySchema,
+  AdminDeliveryRegionUpdateBodySchema,
+  AdminDeliveryRegionsSchema,
+  AdminDeliveryRestrictedCountriesBodySchema,
+  AdminDeliveryRestrictedCountryIssueSchema,
+  DELIVERY_REGION_ID_VALUES,
+  DeliveryCountrySchema,
+  DeliveryRegionIdSchema,
+  DeliveryRegionSchema,
+  LeadTimeSchema,
+  PublicDeliveryRegionsSchema,
+  type AdminDeliveryRegionIssue,
+  type AdminDeliveryRegionUpdateBody,
+  type AdminDeliveryRegions,
+  type AdminDeliveryRestrictedCountriesBody,
+  type AdminDeliveryRestrictedCountryIssue,
+  type DeliveryCountry,
+  type DeliveryRegionIdValue,
+  type DeliveryRegionView,
+  type LeadTime,
+  type PublicDeliveryRegions,
+} from "./delivery-regions.js";
 export { CursorListQuerySchema, type CursorListQuery } from "./cursor-list.js";
 export {
   PortalCollectionItemSchema,

@@ -58,9 +58,10 @@ export async function applyBidPersonalDataAnonymisation(
   tx: ProjectorDbConnection,
   row: DomainEventProjectorRow,
   now: Date = new Date(),
+  options: { privateSaleRecordRetentionYears?: number | undefined } = {},
 ): Promise<void> {
   const payload = userIdentityDeletedPayloadSchemaV1.parse(row.payload);
-  const tables = await anonymiseBidPersonalData(tx, payload.subjectId);
+  const tables = await anonymiseBidPersonalData(tx, payload.subjectId, undefined, options);
   await recordAudit(tx, payload.subjectId, now, tables);
 }
 
@@ -79,7 +80,9 @@ export async function processBidPersonalDataAnonymisation(ctx: ProjectorRunConte
   for (const row of rows) {
     try {
       await ctx.transactionRunner.runInTransaction((tx) =>
-        applyBidPersonalDataAnonymisation(tx, row),
+        applyBidPersonalDataAnonymisation(tx, row, new Date(), {
+          privateSaleRecordRetentionYears: ctx.env?.PRIVATE_SALE_RECORD_RETENTION_YEARS,
+        }),
       );
       maxId = row.id;
     } catch (err) {

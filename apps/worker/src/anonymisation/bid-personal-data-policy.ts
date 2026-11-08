@@ -55,6 +55,8 @@ export type BidAnonymisationScope = {
   /** Individual legal entities created by the subject (their personal buyer or seller account). */
   personalLegalEntityIds: readonly string[];
   pseudonym: string;
+  /** Years a private sale's record is kept after the deal ends; the default applies when unset. */
+  privateSaleRecordRetentionYears?: number | undefined;
 };
 
 export type BidAnonymisationRule = {
@@ -114,10 +116,13 @@ const enquiryRule: BidAnonymisationRule = {
   treatment: "scrub",
   fields: ["name", "email", "phone", "message", "note_body", "location", "looking_for"],
   async apply(tx, scope) {
-    const counts = await anonymiseEnquiries(tx as never, {
-      kind: "accounts",
-      userIds: scope.subjectIds,
-    });
+    const counts = await anonymiseEnquiries(
+      tx as never,
+      { kind: "accounts", userIds: scope.subjectIds },
+      scope.privateSaleRecordRetentionYears === undefined
+        ? {}
+        : { retentionYears: scope.privateSaleRecordRetentionYears },
+    );
     return {
       marketing_enquiry: counts.enquiries,
       marketing_enquiry_note: counts.notes,

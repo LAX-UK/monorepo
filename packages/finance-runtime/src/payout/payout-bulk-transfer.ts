@@ -1,8 +1,4 @@
-import {
-  type PayoutSettlementDeps,
-  listSettlementEntityIds,
-  resolveEntitySettlementPeriod,
-} from "./payout-helpers.js";
+import { type PayoutSettlementDeps, listSettlementEntityIds } from "./payout-helpers.js";
 import { createSettlement } from "./payout-settlement.js";
 import type {
   BulkPayoutSettlementResult,
@@ -94,22 +90,7 @@ export async function runBulkSettlementWithTransfers(
 
   for (const legalEntityId of legalEntityIds) {
     try {
-      const period = await resolveEntitySettlementPeriod(deps, legalEntityId, periodEnd);
-      if (!period.ok) {
-        settlementItems.push({ legalEntityId, outcome: "skipped", reason: period.reason });
-        pushTransferLog({
-          legalEntityId,
-          outcome: "settlement_skipped",
-          reason: period.reason,
-          resume: false,
-        });
-        continue;
-      }
-      const result = await createSettlement(deps, actorUserId, {
-        legalEntityId,
-        periodStart: period.periodStart,
-        periodEnd: period.periodEnd,
-      });
+      const result = await createSettlement(deps, actorUserId, { legalEntityId, periodEnd });
       if (!result.ok) {
         settlementItems.push({ legalEntityId, outcome: "skipped", reason: result.reason });
         pushTransferLog({

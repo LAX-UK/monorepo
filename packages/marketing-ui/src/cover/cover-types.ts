@@ -1,5 +1,5 @@
 import type { CoverScrimSetting, UnitPoint, UnitRect } from "@auction/types";
-import type { ElementType } from "react";
+import type { ElementType, ReactNode } from "react";
 
 /** The colour of the type: "light" is white type on a dark scrim, "dark" is ink type on paper. */
 export type CoverTone = "light" | "dark";
@@ -112,6 +112,9 @@ export type CoverSlide = {
   media: readonly CoverMedia[];
 };
 
+/** A `srcset` for a picture address and its own width; empty when it cannot be resized. */
+export type CoverSrcSetFor = (src: string, intrinsicWidth: number) => string;
+
 export type MarketingCoverProps = {
   /** One to three slides. More than one adds previous and next; nothing rotates by itself. */
   slides: readonly CoverSlide[];
@@ -121,5 +124,22 @@ export type MarketingCoverProps = {
   Link?: ElementType;
   /** The first slide's picture is the page's largest element: load it eagerly. */
   priority?: boolean;
+  /**
+   * The resized files of a cover photograph, as a `srcset` for an address and the picture's own
+   * width (see `nextImageSrcSet`). Without it each picture is served as the one file staff
+   * uploaded, however small the screen. If a resized file is refused the original is used.
+   */
+  srcSetFor?: CoverSrcSetFor | undefined;
+  /** Called once per picture, with its address, when resized files were refused and the original took over. */
+  onSrcSetFallback?: ((src: string) => void) | undefined;
+  /**
+   * Set by a page whose header turns transparent over the cover. When the lead slide is a
+   * photograph, the whole cover starts under the header (pulled up by `--header-height`, with a
+   * dark band so the header's light type stays readable) and renders this node once, which tells
+   * the header to go transparent. It is decided from the lead slide alone, so the page never
+   * moves when the slides change; a plate or type-only slide in that cover draws within the same
+   * layout, under the same band. A cover that leads with a plate or type sits below the header.
+   */
+  headerSignal?: ReactNode;
   className?: string;
 };

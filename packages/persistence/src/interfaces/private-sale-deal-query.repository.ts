@@ -84,6 +84,11 @@ export type NewDealWork = {
 export interface IDealWorkStore {
   /** Opens a draft consignment for the work inside the caller's transaction. */
   createDraftInTransaction(tx: Database, input: NewDealWork): Promise<DealWork>;
+  /**
+   * Reads a work and holds its row until the transaction ends, so a lot cannot be made from it
+   * while a deal for it is being opened. `null` when there is none.
+   */
+  lockInTransaction(tx: Database, id: string): Promise<DealWork | null>;
   /** A work by its consignment reference (C-1042); `null` when there is none. */
   findByReference(reference: string): Promise<DealWork | null>;
 }

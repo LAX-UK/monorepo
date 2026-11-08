@@ -39,6 +39,10 @@ function makeFixture() {
   const releases = new WeakMap<object, () => void>();
 
   const repo = {
+    list: async () => {
+      await tick();
+      return payouts;
+    },
     findUnlinkedCapturedPayments: async () => {
       await tick();
       return ["pay-1", "pay-2"]
@@ -98,7 +102,6 @@ function makeFixture() {
 describe("settlement under concurrency", () => {
   const input = {
     legalEntityId: ENTITY_ID,
-    periodStart: new Date(0),
     periodEnd: new Date("2026-02-01"),
   };
 
