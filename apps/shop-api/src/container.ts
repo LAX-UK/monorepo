@@ -275,9 +275,16 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
   const categoryReader = createDrizzleCategoryCatalogueRepository(db);
   const merchandiseReader = createDrizzleMerchandiseCatalogueRepository(db);
   const artistReader = createDrizzleArtistDirectoryRepository(db, { resolveMediaUrl });
+  const originalOffers = createRegisterOriginalOffers(
+    (session) => new ArtworkOfferLock(new DrizzleArtworkRegisterRepository(session)),
+    {
+      blockUnlinked: (session) => createDrizzleZohoLinkSettings(session).blockUnlinkedPublish(),
+    },
+  );
   const artworkImportWriter = createDrizzleArtworkImportRepository(
     db,
     env.DOMAIN_EVENT_PUBLISH_VALIDATE,
+    originalOffers,
   );
   const importArtwork = createImportArtworkHandler(artworkImportWriter);
   const rateLimitRedis = env.REDIS_URL
@@ -286,12 +293,6 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
   const rateLimitCounter = rateLimitRedis
     ? createRedisFixedWindowCounter(rateLimitRedis)
     : createInMemoryFixedWindowCounter();
-  const originalOffers = createRegisterOriginalOffers(
-    (session) => new ArtworkOfferLock(new DrizzleArtworkRegisterRepository(session)),
-    {
-      blockUnlinked: (session) => createDrizzleZohoLinkSettings(session).blockUnlinkedPublish(),
-    },
-  );
   const { commerce, stripeWebhook } = createCommerceServices(db, env, {
     rateLimitCounter,
     originalOffers,
@@ -441,7 +442,9 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
     {
       commandType: "artwork.import",
       run: (tx, command: ImportArtworkCommand) =>
-        createImportArtworkHandler(createDrizzleArtworkImportRepository(tx, eventMode))(command),
+        createImportArtworkHandler(
+          createDrizzleArtworkImportRepository(tx, eventMode, originalOffers),
+        )(command),
     },
   );
   const adminGrantSaleAuthority = idempotentAdminCommand(

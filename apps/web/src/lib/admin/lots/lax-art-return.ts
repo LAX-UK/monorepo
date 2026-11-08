@@ -18,3 +18,25 @@ export type LaxArtReturnView =
 export function laxArtReturnTarget(view: LaxArtReturnView | null | undefined) {
   return view?.linked ? view : null;
 }
+
+/** What staff are told after a return, from the API's answer. */
+export type LaxArtReturnOutcome = {
+  laxArtListing: boolean;
+  hint?: string | undefined;
+};
+
+/** The toast for a finished return: a lax.art draft, or the register alone when it was never listed. */
+export function laxArtReturnSuccessMessage(
+  title: string,
+  outcome: LaxArtReturnOutcome | null,
+): string {
+  if (outcome && !outcome.laxArtListing) {
+    return `${title} is back in the LAX register`;
+  }
+  return `${title} is back on lax.art as a draft`;
+}
+
+/** The line under the toast: the API's hint, only when there was no lax.art listing. */
+export function laxArtReturnSuccessHint(outcome: LaxArtReturnOutcome | null): string {
+  return outcome && !outcome.laxArtListing ? (outcome.hint ?? "") : "";
+}

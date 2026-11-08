@@ -11,12 +11,17 @@ import {
   adminReturnLotToLaxArtResultAction,
   adminSoftDeleteLotResultAction,
 } from "@/lib/actions/admin";
+import {
+  type LaxArtReturnOutcome,
+  laxArtReturnSuccessHint,
+  laxArtReturnSuccessMessage,
+} from "@/lib/admin/lots/lax-art-return";
 import { humanizeSetupError } from "@/lib/admin/sale-setup/humanize-setup-error";
 import type { OverflowAction } from "@auction/staff-ui";
 import type { LotStatus } from "@auction/types";
 import { lotDeleteConfirmationPhrase } from "@auction/validators";
 import { useRouter } from "next/navigation";
-import { useCallback } from "react";
+import { useCallback, useRef } from "react";
 
 /** What the lot actions need to know about a lot, from a list row or the lot page. */
 export type LotActionTarget = {
@@ -168,16 +173,27 @@ export function useLotActions(
     [ask],
   );
 
+  // The API's answer to the last return, read by the toast once the action has run.
+  const laxArtOutcome = useRef<LaxArtReturnOutcome | null>(null);
+
   const returnToLaxArt = useCallback(
-    (lot: LotActionTarget) =>
+    (lot: LotActionTarget) => {
+      laxArtOutcome.current = null;
       ask({
         title: `Return ${lot.title} to lax.art?`,
         description:
-          "The artwork's lax.art listing is reopened as a draft. Nothing goes live until you publish it in LAX Admin. This lot stays here as it is.",
+          "If the artwork has a lax.art listing, it is reopened as a draft, and nothing goes live until you publish it in LAX Admin. If it was never listed there, only the LAX register is updated and no draft is made. This lot stays here as it is.",
         confirmLabel: "Return to lax.art",
-        run: () => adminReturnLotToLaxArtResultAction(lot.id),
-        success: `${lot.title} is back on lax.art as a draft`,
-      }),
+        run: async () => {
+          const result = await adminReturnLotToLaxArtResultAction(lot.id);
+          if (!result.ok) return result;
+          laxArtOutcome.current = result.data ?? null;
+          return { ok: true };
+        },
+        success: () => laxArtReturnSuccessMessage(lot.title, laxArtOutcome.current),
+        successDescription: () => laxArtReturnSuccessHint(laxArtOutcome.current),
+      });
+    },
     [ask],
   );
 

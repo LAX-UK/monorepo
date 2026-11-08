@@ -11,7 +11,10 @@ import type pg from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { normalizeArtworkCatalogueFilters } from "../application/artwork-catalogue-filters.js";
 import { createEditionRunServices } from "../application/edition-runs/edition-run-services.js";
-import type { OriginalOfferRegister } from "../application/ports/original-offer-register.js";
+import {
+  type OriginalOfferRegister,
+  noOriginalOfferRegister,
+} from "../application/ports/original-offer-register.js";
 import { ShopApiError } from "../errors/shop-api-error.js";
 import { StaleVersionError } from "../errors/stale-version-error.js";
 import { integrationSuffix, requireDefined } from "../test-support/shop-fixtures.js";
@@ -523,6 +526,32 @@ describe.skipIf(!hasShopIntegrationDb)("artwork catalogue administration", () =>
       `withdrawn:${ready.artworkId}`,
     ]);
     expect(calls).not.toContain(`published:${blocked.artworkId}`);
+  });
+
+  it("tells the register when staff mark an original sold by hand, once", async () => {
+    const sold: string[] = [];
+    const offers: OriginalOfferRegister = {
+      ...noOriginalOfferRegister,
+      recordSold: async (_session, artwork, actor) => void sold.push(`${artwork.id}:${actor}`),
+    };
+    const { writer } = setup(offers);
+    const artwork = await newArtwork("sold-by-hand", { editions: false });
+    const before = editable(await detailOf(artwork.artworkId));
+
+    await writer.updateArtwork({ ...before, title: "Retitled" });
+    expect(sold).toEqual([]);
+
+    await writer.updateArtwork({
+      ...editable(await detailOf(artwork.artworkId)),
+      saleState: "sold",
+    });
+    expect(sold).toEqual([`${artwork.artworkId}:staff:${ACTOR}`]);
+
+    await writer.updateArtwork({
+      ...editable(await detailOf(artwork.artworkId)),
+      title: "Retitled again",
+    });
+    expect(sold).toHaveLength(1);
   });
 
   it("lists by view with counts and searches by artist name", async () => {
