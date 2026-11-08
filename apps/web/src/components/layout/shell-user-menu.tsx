@@ -24,9 +24,16 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react
 
 const MENU_ID = "shell-account-menu";
 
+function isDisabledItem(item: HTMLElement): boolean {
+  return item.matches(":disabled") || item.getAttribute("aria-disabled") === "true";
+}
+
 function menuItemsFromPanel(panel: HTMLElement | null): HTMLElement[] {
   if (!panel) return [];
-  return [...panel.querySelectorAll<HTMLElement>("[data-account-menu-item]")];
+  // A row that is disabled (an account mid-switch) cannot take focus, so the arrows skip it.
+  return [...panel.querySelectorAll<HTMLElement>("[data-account-menu-item]")].filter(
+    (item) => !isDisabledItem(item),
+  );
 }
 
 type ShellUserMenuProps = {
