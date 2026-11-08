@@ -41,6 +41,7 @@ export function MenuContent({
   align = "end",
   ...props
 }: React.ComponentPropsWithoutRef<typeof DropdownMenuContent>) {
+  // `props` may carry `landmarkLabel`, which names the region the open menu sits in.
   const layer = useLayerAttributes();
   return (
     <DropdownMenuContent

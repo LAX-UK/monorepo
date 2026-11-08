@@ -72,6 +72,7 @@ function TabCount({ item }: { item: TabNavItem }) {
   if (item.count === undefined) return null;
   return (
     <Count
+      className="shrink-0"
       value={item.count}
       {...(item.countTone ? { tone: item.countTone } : {})}
       {...(item.countLabel ? { label: item.countLabel } : {})}
@@ -148,9 +149,12 @@ function ScrollingTabs({
   );
 }
 
-const tabClass = (active: boolean) =>
+const tabClass = (active: boolean, squeeze = false) =>
   cn(
-    "lax-focus relative flex h-10 shrink-0 items-center gap-1.5 rounded-lax-control px-2.5 text-lax-ui font-medium whitespace-nowrap transition-colors",
+    // A tab that has to give way (see `OverflowTabs`) shrinks to the room it has instead of
+    // being cut off; every other tab keeps its full width.
+    squeeze ? "min-w-0" : "shrink-0",
+    "lax-focus relative flex h-10 items-center gap-1.5 rounded-lax-control px-2.5 text-lax-ui font-medium whitespace-nowrap transition-colors",
     "in-data-[lax-density=client]:max-md:h-11",
     "after:absolute after:inset-x-2.5 after:bottom-0 after:h-0.5 after:rounded-full",
     active ? "text-lax-fg after:bg-lax-ink" : "text-lax-muted hover:text-lax-fg",
@@ -239,9 +243,14 @@ export function OverflowTabs({
   const visible = current?.visible ?? tabs.map((_, index) => index);
   const overflow = current?.overflow ?? [];
 
-  const content = (view: TabNavItem) => (
+  // The current tab always stays. If it is the only one that fits and still does not fit beside
+  // "More" (a narrow screen with filters in the same row), it gives way: its label is cut with an
+  // ellipsis, so neither the tab nor "More" is clipped.
+  const squeeze = overflow.length > 0 && visible.length === 1;
+
+  const content = (view: TabNavItem, truncate = false) => (
     <>
-      {view.label}
+      <span className={truncate ? "min-w-0 truncate" : undefined}>{view.label}</span>
       <TabCount item={view} />
     </>
   );
@@ -254,15 +263,19 @@ export function OverflowTabs({
           if (!view) return null;
           const active = view.id === currentId;
           return (
-            <li key={view.id} className="shrink-0">
-              <Link href={view.href} {...tabLinkProps(view, active)} className={tabClass(active)}>
-                {content(view)}
+            <li key={view.id} className={squeeze ? "min-w-0" : "shrink-0"}>
+              <Link
+                href={view.href}
+                {...tabLinkProps(view, active)}
+                className={tabClass(active, squeeze)}
+              >
+                {content(view, squeeze)}
               </Link>
             </li>
           );
         })}
         {overflow.length > 0 ? (
-          <li ref={moreRef}>
+          <li ref={moreRef} className="shrink-0">
             <Menu>
               <MenuTrigger asChild>
                 <Button
@@ -275,7 +288,11 @@ export function OverflowTabs({
                   <ChevronDown aria-hidden />
                 </Button>
               </MenuTrigger>
-              <MenuContent align="start" className="w-56">
+              <MenuContent
+                align="start"
+                className="w-56"
+                landmarkLabel={`More ${label.toLowerCase()}`}
+              >
                 {overflow.map((index) => {
                   const view = tabs[index];
                   if (!view) return null;

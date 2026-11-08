@@ -137,3 +137,89 @@ describe("SegmentedControl", () => {
     expect(screen.getByRole("radio", { name: "List" })).toBeDisabled();
   });
 });
+
+describe("TabNav that folds into More", () => {
+  const sections: TabNavItem[] = [
+    { id: "new", label: "New from Zoho", href: "/z", count: 3 },
+    { id: "decisions", label: "Needs a decision", href: "/z?tab=decisions", count: 1 },
+    { id: "all", label: "All artworks", href: "/z?tab=all" },
+  ];
+  const TAB_WIDTH = 140;
+  const MORE_WIDTH = 80;
+
+  /** jsdom has no layout, so the widths the kit measures are stood in for here. */
+  function withLayout(navWidth: number, run: () => void) {
+    const offset = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "offsetWidth");
+    const client = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "clientWidth");
+    Object.defineProperty(HTMLElement.prototype, "offsetWidth", {
+      configurable: true,
+      get(this: HTMLElement) {
+        return this.textContent?.startsWith("More") ? MORE_WIDTH : TAB_WIDTH;
+      },
+    });
+    Object.defineProperty(HTMLElement.prototype, "clientWidth", {
+      configurable: true,
+      get(this: HTMLElement) {
+        return this.tagName === "NAV" ? navWidth : 0;
+      },
+    });
+    try {
+      run();
+    } finally {
+      if (offset) Object.defineProperty(HTMLElement.prototype, "offsetWidth", offset);
+      if (client) Object.defineProperty(HTMLElement.prototype, "clientWidth", client);
+    }
+  }
+
+  const tabLink = (name: RegExp) => screen.getByRole("link", { name });
+
+  it("lets the only tab that fits give way, so neither it nor More is clipped", () => {
+    // Room for More and part of one tab: the current tab stays, and shrinks with an ellipsis.
+    withLayout(150, () => {
+      render(<TabNav items={sections} activeId="new" label="Views" Link={Link} />);
+      const link = tabLink(/New from Zoho/);
+      expect(link).toHaveClass("min-w-0");
+      expect(link).not.toHaveClass("shrink-0");
+      expect(link.closest("li")).toHaveClass("min-w-0");
+      expect(link.querySelector("span")).toHaveClass("truncate");
+      // More keeps its full width and says how many tabs it holds.
+      const more = screen.getByRole("button", { name: "More views, 2" });
+      expect(more.closest("li")).toHaveClass("shrink-0");
+      expect(screen.queryByRole("link", { name: /Needs a decision/ })).toBeNull();
+    });
+  });
+
+  it("keeps every tab at full width while more than one fits", () => {
+    withLayout(400, () => {
+      render(<TabNav items={sections} activeId="new" label="Views" Link={Link} />);
+      for (const name of [/New from Zoho/, /Needs a decision/]) {
+        expect(tabLink(name)).toHaveClass("shrink-0");
+        expect(tabLink(name).closest("li")).toHaveClass("shrink-0");
+      }
+      expect(screen.getByRole("button", { name: "More views, 1" })).toBeInTheDocument();
+    });
+  });
+
+  it("shows no More at all when every tab fits", () => {
+    withLayout(900, () => {
+      render(<TabNav items={sections} activeId="new" label="Views" Link={Link} />);
+      expect(screen.queryByRole("button", { name: /^More/ })).toBeNull();
+      expect(screen.getAllByRole("link")).toHaveLength(3);
+    });
+  });
+
+  it("opens the folded tabs in a named region, so no menu content sits outside a landmark", () => {
+    withLayout(400, () => {
+      render(<TabNav items={sections} activeId="new" label="Views" Link={Link} />);
+      fireEvent.keyDown(screen.getByRole("button", { name: "More views, 1" }), { key: "Enter" });
+      const region = screen.getByRole("region", { name: "More views" });
+      expect(region).toContainElement(screen.getByRole("menu"));
+      expect(region).toContainElement(screen.getByRole("menuitem", { name: /All artworks/ }));
+      // Everything the menu draws at the end of the page is inside that region.
+      const wrapper = document.querySelector("[data-radix-popper-content-wrapper]");
+      expect(wrapper?.closest("section")).toBe(region);
+      // The region adds no box, so the menu sits exactly where it did.
+      expect(region).toHaveClass("contents");
+    });
+  });
+});
