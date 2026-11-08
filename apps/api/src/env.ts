@@ -6,6 +6,7 @@ import {
   DEFAULT_TRUSTED_PROXY_CIDRS,
   parseCidrList,
 } from "@auction/http-headers/client-ip";
+import { STAFF_STEP_UP_MAX_AGE_SECONDS } from "@auction/identity-contracts";
 import { parseOptionalBooleanFlag } from "@auction/validators";
 import { z } from "zod";
 
@@ -45,6 +46,16 @@ const envSchema = z
     API_PUBLIC_URL: z.string().url().default("http://localhost:3001"),
     OIDC_ISSUER_URL: z.string().url(),
     OIDC_INTERNAL_BASE_URL: z.string().url().optional(),
+    /**
+     * How recent a staff sign-in must be, in seconds, for a dangerous Bid admin action (refund,
+     * payout, role change, erasure, KYC decision). The default is the shared staff window.
+     */
+    STAFF_STEP_UP_MAX_AGE_SECONDS: z.coerce
+      .number()
+      .int()
+      .min(60)
+      .max(3600)
+      .default(STAFF_STEP_UP_MAX_AGE_SECONDS),
     /**
      * Where saved addresses come from. `identity` serves the LAX-wide address book (with the old
      * Bid table as a read fallback for addresses not yet copied); `legacy` is the rollback to the

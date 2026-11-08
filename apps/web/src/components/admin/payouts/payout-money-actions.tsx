@@ -2,7 +2,9 @@
 
 import {
   adminAddPayoutAdjustmentResultAction,
+  adminAdoptBlockedPayoutTransferResultAction,
   adminMarkPayoutPaidResultAction,
+  adminReleaseBlockedPayoutResultAction,
   adminRetryPayoutTransferResultAction,
   adminReversePayoutResultAction,
 } from "@/lib/actions/admin/admin-payouts";
@@ -16,22 +18,24 @@ import {
   KeyValueList,
   Notice,
   type OverflowAction,
+  StaffCheckbox,
   TextInput,
   formatStaffMoney,
   useStaffStepUp,
 } from "@auction/staff-ui";
+import { PAYOUT_ACTION_REASON_MIN } from "@auction/validators";
 import { useRouter } from "next/navigation";
 import { useCallback, useState, useTransition } from "react";
 
 type Pending = {
-  kind: "mark-paid" | "adjust" | "reverse" | "retry";
+  kind: "mark-paid" | "adjust" | "reverse" | "retry" | "adopt" | "release";
   payout: PayoutsStaffRow;
   /** One key per dialog, so a double click repeats one request. */
   idempotencyKey: string;
 } | null;
 
-/** The API asks for at least this many characters of reason on adjustments and reversals. */
-const REASON_MIN = 10;
+/** The API asks for at least this many characters of reason on every payout money action. */
+const REASON_MIN = PAYOUT_ACTION_REASON_MIN;
 
 function PayoutFacts({ payout }: { payout: PayoutsStaffRow }) {
   return (
@@ -48,7 +52,8 @@ function PayoutFacts({ payout }: { payout: PayoutsStaffRow }) {
 }
 
 /**
- * Mark paid, add adjustment, retry a failed transfer and reverse for a payout, from a row's `…` menu or the record panel.
+ * Mark paid, add adjustment, retry a failed transfer, resolve a blocked payout (adopt the Stripe
+ * transfer or release it for a retry) and reverse for a payout, from a row's `…` menu or the record panel.
  * Each opens a confirm dialog that names the amount and the seller. An adjustment and a reversal
  * ask for a reason that is kept with the payout; a reversal also asks for the payout's reference
  * to be typed. When the API asks for a fresh sign-in, the step-up dialog takes over.
@@ -65,6 +70,7 @@ export function usePayoutMoneyActions({
   const [failure, setFailure] = useState<string | null>(null);
   const [transferId, setTransferId] = useState("");
   const [amountText, setAmountText] = useState("");
+  const [noLiveTransfer, setNoLiveTransfer] = useState(false);
   const [busy, startTransition] = useTransition();
   const stepUp = useStaffStepUp({ onReauthenticate: redirectToHostedReauth });
 
@@ -72,6 +78,7 @@ export function usePayoutMoneyActions({
     setFailure(null);
     setTransferId(payout.stripeTransferId ?? "");
     setAmountText("");
+    setNoLiveTransfer(false);
     setPendingState({ kind, payout, idempotencyKey: crypto.randomUUID() });
   }, []);
   const close = useCallback(() => {
@@ -108,6 +115,20 @@ export function usePayoutMoneyActions({
           label: "Retry transfer",
           onSelect: () => open("retry", payout),
         });
+      }
+      if (canProcess && payout.canResolveBlocked) {
+        actions.push(
+          {
+            id: "adopt",
+            label: "Adopt Stripe transfer",
+            onSelect: () => open("adopt", payout),
+          },
+          {
+            id: "release",
+            label: "Release for retry",
+            onSelect: () => open("release", payout),
+          },
+        );
       }
       if (canReverse) {
         actions.push({
@@ -310,6 +331,126 @@ export function usePayoutMoneyActions({
         ) : null}
       </ConfirmActionDialog>
       <ConfirmActionDialog
+        open={pending?.kind === "adopt"}
+        onOpenChange={(next) => {
+          if (!next && !busy) close();
+        }}
+        title={
+          pending
+            ? `Adopt a Stripe transfer for the ${pending.payout.net} payout to ${pending.payout.seller}?`
+            : "Adopt Stripe transfer"
+        }
+        description="Use this when Stripe already holds the transfer that pays this seller. Stripe is asked for it and it is accepted only if it went to this seller's account, in this currency, for exactly the net amount, is not reversed, and is not linked to another payout. The payout then moves to in transit."
+        confirmLabel={pending ? `Adopt for ${pending.payout.net} payout` : "Adopt transfer"}
+        loading={busy}
+        reason={{
+          label: "Reason for adopting this transfer",
+          description: "What you checked in Stripe. Kept in the audit log with your name.",
+          minLength: REASON_MIN,
+        }}
+        onConfirm={({ reason }) => {
+          if (pending?.kind !== "adopt") return;
+          const { payout, idempotencyKey } = pending;
+          if (!transferId.trim()) {
+            setFailure("Enter the Stripe transfer ID.");
+            return;
+          }
+          run(
+            () =>
+              adminAdoptBlockedPayoutTransferResultAction(payout.id, {
+                stripeTransferId: transferId,
+                reason,
+                idempotencyKey,
+              }),
+            `adopt a transfer for the ${payout.net} payout to ${payout.seller}`,
+            `Adopted the Stripe transfer for the ${payout.net} payout to ${payout.seller}`,
+          );
+        }}
+      >
+        {pending?.kind === "adopt" ? (
+          <>
+            {failureNotice("adoption")}
+            <PayoutFacts payout={pending.payout} />
+            {pending.payout.failureReason ? (
+              <Notice tone="warning" title="Why it is blocked">
+                {pending.payout.failureReason}
+              </Notice>
+            ) : null}
+            <Field label="Stripe transfer ID">
+              <TextInput
+                value={transferId}
+                placeholder="tr_…"
+                autoComplete="off"
+                spellCheck={false}
+                onChange={(event) => setTransferId(event.target.value)}
+              />
+            </Field>
+          </>
+        ) : null}
+      </ConfirmActionDialog>
+      <ConfirmActionDialog
+        open={pending?.kind === "release"}
+        onOpenChange={(next) => {
+          if (!next && !busy) close();
+        }}
+        title={
+          pending
+            ? `Release the ${pending.payout.net} payout to ${pending.payout.seller} for a retry?`
+            : "Release for retry"
+        }
+        description="Moves the payout from blocked to failed so the transfer can be retried. Only do this once you have checked in Stripe that no live transfer exists for it: a retry that finds one is blocked again, but a missed one risks paying the seller twice."
+        confirmLabel={pending ? `Release ${pending.payout.net} payout` : "Release payout"}
+        tone="danger"
+        loading={busy}
+        reason={{
+          label: "Reason for releasing it",
+          description: "What you checked in Stripe. Kept in the audit log with your name.",
+          minLength: REASON_MIN,
+        }}
+        onConfirm={({ reason }) => {
+          if (pending?.kind !== "release") return;
+          const { payout, idempotencyKey } = pending;
+          if (!noLiveTransfer) {
+            setFailure("Confirm that you have checked in Stripe that no live transfer exists.");
+            return;
+          }
+          run(
+            () =>
+              adminReleaseBlockedPayoutResultAction(payout.id, {
+                reason,
+                noLiveTransferConfirmed: noLiveTransfer,
+                idempotencyKey,
+              }),
+            `release the ${payout.net} payout to ${payout.seller}`,
+            `Released the ${payout.net} payout to ${payout.seller}. It can now be retried.`,
+          );
+        }}
+      >
+        {pending?.kind === "release" ? (
+          <>
+            {failureNotice("release")}
+            <PayoutFacts payout={pending.payout} />
+            {pending.payout.failureReason ? (
+              <Notice tone="warning" title="Why it is blocked">
+                {pending.payout.failureReason}
+              </Notice>
+            ) : null}
+            <div className="flex items-start gap-2 text-staff-fg text-sm">
+              <StaffCheckbox
+                id="release-blocked-confirmed"
+                checked={noLiveTransfer}
+                onCheckedChange={(next) => setNoLiveTransfer(next === true)}
+                className="mt-0.5"
+              />
+              <label htmlFor="release-blocked-confirmed">
+                I have checked in Stripe that no live transfer exists for this payout, by its payout
+                transfer group and by the seller's account.
+              </label>
+            </div>
+          </>
+        ) : null}
+      </ConfirmActionDialog>
+      <ConfirmActionDialog
         open={pending?.kind === "reverse"}
         onOpenChange={(next) => {
           if (!next && !busy) close();
@@ -357,6 +498,8 @@ export function usePayoutMoneyActions({
     markPaid: (payout: PayoutsStaffRow) => open("mark-paid", payout),
     adjust: (payout: PayoutsStaffRow) => open("adjust", payout),
     retryTransfer: (payout: PayoutsStaffRow) => open("retry", payout),
+    adoptBlocked: (payout: PayoutsStaffRow) => open("adopt", payout),
+    releaseBlocked: (payout: PayoutsStaffRow) => open("release", payout),
     reverse: (payout: PayoutsStaffRow) => open("reverse", payout),
     dialogs,
   };

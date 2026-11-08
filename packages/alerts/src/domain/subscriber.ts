@@ -33,6 +33,8 @@ export type SubscriberRecord = {
   /** The account the address belongs to once linked: a Bid user id, or a Shop identity subject. */
   subjectId: string | null;
   status: SubscriberStatus;
+  /** Why it stopped, once it has; a complaint is never undone by a settings switch. */
+  stopReason?: StopReason | null;
   requestedAt: Date;
   confirmationSentAt: Date | null;
   /** Bumped to revoke every link already sent. */

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { EnquiryErasureService } from "./enquiry-erasure.service.js";
+import { EnquiryErasureService, checkEnquiryErasureInput } from "./enquiry-erasure.service.js";
 
 const counts = { enquiries: 2, notes: 1, attachments: 3, held: 1 };
 const alertCounts = { alertSubscribers: 2, visitorSaleAlerts: 1, suppressionsKept: 1 };
@@ -117,5 +117,34 @@ describe("EnquiryErasureService", () => {
       attachments: 0,
       held: 1,
     });
+  });
+});
+
+describe("checkEnquiryErasureInput", () => {
+  const email = "Lena@North.com";
+
+  it("accepts the address typed again in any case, and trims the reason", () => {
+    expect(
+      checkEnquiryErasureInput({
+        email,
+        confirmation: " lena@north.com ",
+        reason: "  Asked to go ",
+      }),
+    ).toEqual({ ok: true, email: "lena@north.com", reason: "Asked to go" });
+  });
+
+  it("refuses a confirmation that is not the address", () => {
+    expect(
+      checkEnquiryErasureInput({ email, confirmation: "lena@north.co", reason: "Asked to go" }),
+    ).toEqual({ ok: false, error: "confirmation_mismatch" });
+  });
+
+  it("refuses a reason that is too short or too long", () => {
+    for (const reason of ["no", "x".repeat(501)]) {
+      expect(checkEnquiryErasureInput({ email, confirmation: email, reason })).toEqual({
+        ok: false,
+        error: "reason_invalid",
+      });
+    }
   });
 });

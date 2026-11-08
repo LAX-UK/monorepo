@@ -40,9 +40,11 @@ import {
   adminListPage,
   adminManualReverse,
   adminSettlementPreview,
+  adoptBlockedTransfer,
   markPaid,
   previewPending,
   reconcileStripeTransfer,
+  releaseBlockedPayout,
 } from "./payout/payout-admin.js";
 import { runBulkSettlementWithTransfers } from "./payout/payout-bulk-transfer.js";
 import {
@@ -154,6 +156,22 @@ export class PayoutService implements IPayoutService {
 
   markPaid(actorUserId: string, payoutId: string, input: MarkPaidInput): Promise<Payout> {
     return markPaid(this.deps, actorUserId, payoutId, input);
+  }
+
+  adoptBlockedTransfer(
+    actorUserId: string,
+    payoutId: string,
+    input: { stripeTransferId: string; reason: string },
+  ): Promise<Payout> {
+    return adoptBlockedTransfer(this.deps, actorUserId, payoutId, input);
+  }
+
+  releaseBlockedPayout(
+    actorUserId: string,
+    payoutId: string,
+    input: { reason: string; noLiveTransferConfirmed: true },
+  ): Promise<Payout> {
+    return releaseBlockedPayout(this.deps, actorUserId, payoutId, input);
   }
 
   reconcileStripeTransfer(input: StripeTransferReconciliationInput): Promise<Payout | null> {

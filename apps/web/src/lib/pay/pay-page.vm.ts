@@ -35,10 +35,6 @@ export type PayNotice = {
   detail?: string;
   /** A link to the one step that clears the notice. */
   action?: { label: string; href: string };
-  /** Announced at once, as a failure is. */
-  alert?: boolean;
-  /** Takes focus when the page opens: the person came back to find out what happened. */
-  focus?: boolean;
 };
 
 export type PayLine = { label: string; amount: string };
@@ -130,6 +126,12 @@ export type PayMethodAction = {
   barLabel: string;
   /** The sentence under the action. */
   note: string;
+  /**
+   * Words for the same action after a payment page was left without paying. The page keeps using
+   * them while it shows the not-completed note, even after the address has been cleaned and the
+   * plan read again without the return.
+   */
+  retry?: { label: string; barLabel: string };
 };
 
 /** The one thing the rail and the phone bar offer. */
@@ -169,6 +171,11 @@ export type PayPageVm = {
   railPay: { label: string; reason: string } | null;
   /** A payment already under way: confirming, or a bank transfer waiting for its money. */
   progress: PayProgressVm | null;
+  /**
+   * The payment page sent the person back without paying: the note to show once, and this page's
+   * clean address to replace the URL with so a refresh does not show it again.
+   */
+  returned: { title: string; detail: string; cleanHref: string } | null;
   /** A way back to where the person came from. */
   back: { label: string; href: string } | null;
   empty: PayEmptyVm | null;
@@ -507,6 +514,7 @@ export function blankPayVm(): PayPageVm {
     action: null,
     railPay: null,
     progress: null,
+    returned: null,
     back: null,
     empty: null,
   };
@@ -605,17 +613,18 @@ function methodActions(
   organisation: string | null,
   returned: PayVmContext["returned"],
 ): Record<PayMethod, PayMethodAction> {
-  const retry = returned === "cancelled";
-  const card = retry
-    ? { label: PAY_COPY.tryAgainTotal(total), barLabel: PAY_COPY.tryAgain }
-    : {
-        label: organisation
-          ? PAY_COPY.payForOrganisation(total, organisation)
-          : PAY_COPY.payLabel(total),
-        barLabel: PAY_COPY.payBar,
-      };
+  const again = { label: PAY_COPY.tryAgainTotal(total), barLabel: PAY_COPY.tryAgain };
+  const card =
+    returned === "cancelled"
+      ? again
+      : {
+          label: organisation
+            ? PAY_COPY.payForOrganisation(total, organisation)
+            : PAY_COPY.payLabel(total),
+          barLabel: PAY_COPY.payBar,
+        };
   return {
-    card: { ...card, note: PAY_COPY.underButton },
+    card: { ...card, note: PAY_COPY.underButton, retry: again },
     bank_transfer: {
       label: PAY_COPY.continueToBankTransfer,
       barLabel: PAY_COPY.continueBar,
@@ -651,21 +660,16 @@ function payActionFor(
 }
 
 /**
- * The notice for a payment the payment page sent the person back from. It is announced and takes
- * focus, so someone who left a bank's check unfinished finds out what happened and what to do.
+ * The note for a payment the payment page sent the person back from, shown once. It is announced
+ * and takes focus, so someone who left a bank's check unfinished finds out what happened.
  */
-function returnedNotice(returned: PayVmContext["returned"]): PayNotice[] {
+function returnedNote(
+  returned: PayVmContext["returned"],
+  cleanHref: string,
+): PayPageVm["returned"] {
   return returned === "cancelled"
-    ? [
-        {
-          tone: "danger",
-          title: PAY_COPY.notCompletedTitle,
-          detail: PAY_COPY.notCompletedBody,
-          alert: true,
-          focus: true,
-        },
-      ]
-    : [];
+    ? { title: PAY_COPY.notCompletedTitle, detail: PAY_COPY.notCompletedBody, cleanHref }
+    : null;
 }
 
 /** The overdue invoice's notice: factual, with the date and an offer of help, no consequences. */
@@ -687,12 +691,19 @@ function overdueNotice(plan: PayPlan, now: Date, contactHref: string): PayNotice
  * action becomes the one step that clears it.
  */
 export function buildPayPageVm(plan: PayPlan, now: Date, context: PayVmContext): PayPageVm {
+  return {
+    ...buildPayBody(plan, now, context),
+    returned: returnedNote(context.returned, context.returnTo),
+  };
+}
+
+function buildPayBody(
+  plan: PayPlan,
+  now: Date,
+  context: PayVmContext,
+): Omit<PayPageVm, "returned"> {
   const { returnTo, details } = context;
-  const returned = returnedNotice(context.returned);
-  if (plan.payable.length === 0) {
-    const vm = nothingPayable(plan, returnTo);
-    return { ...vm, notices: [...returned, ...vm.notices] };
-  }
+  if (plan.payable.length === 0) return nothingPayable(plan, returnTo);
 
   const several = plan.payable.length > 1;
   const { title, subtitle } = heading(plan, now, details);
@@ -720,7 +731,6 @@ export function buildPayPageVm(plan: PayPlan, now: Date, context: PayVmContext):
       state: "informed",
       badge: { label: PAY_COPY.awaitingBadge, tone: "neutral", shape: "ring" },
       notices: [
-        ...returned,
         { tone: "info", title: copy.title, detail: copy.detail },
         ...(leftOut ? [leftOut] : []),
       ],
@@ -737,7 +747,7 @@ export function buildPayPageVm(plan: PayPlan, now: Date, context: PayVmContext):
       ...common,
       state: "held",
       badge: outcome.badge,
-      notices: [...returned, outcome.notice, ...(leftOut ? [leftOut] : [])],
+      notices: [outcome.notice, ...(leftOut ? [leftOut] : [])],
       money: moneyVm(plan, now, PAY_COPY.totalToPay),
       railPay: identity
         ? { label: PAY_COPY.payLabel(formatGbp(plan.totals.pence)), reason: PAY_COPY.verifyToPay }
@@ -754,7 +764,6 @@ export function buildPayPageVm(plan: PayPlan, now: Date, context: PayVmContext):
     state: "ready",
     badge: readyBadge(plan, now),
     notices: [
-      ...returned,
       ...overdueNotice(plan, now, context.contactHref),
       ...(pay.notice ? [pay.notice] : []),
       ...(leftOut ? [leftOut] : []),

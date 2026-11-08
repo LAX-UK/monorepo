@@ -40,6 +40,7 @@ export type SoldLotFacts = {
     | "failed"
     | "reversed"
     | "clawback_pending"
+    | "transfer_blocked"
     | null;
 };
 
@@ -50,6 +51,7 @@ const BY_PAYOUT: Record<NonNullable<SoldLotFacts["payoutStatus"]>, SoldLotPayout
   failed: "payout_problem",
   reversed: "payout_problem",
   clawback_pending: "payout_problem",
+  transfer_blocked: "payout_problem",
 };
 
 /** The one payout stage for a sold lot; a payout, once the sale is on one, decides it. */

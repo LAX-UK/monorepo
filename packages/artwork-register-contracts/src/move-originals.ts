@@ -207,6 +207,11 @@ export type MoveRecord = {
   lotId?: string;
   /** The Shop artwork reopened as a draft, for a return. */
   shopArtworkId?: string;
+  /**
+   * A return of an artwork that was consigned on LAX Bid and has no lax.art record: only the
+   * register moved, and there was no listing to reopen.
+   */
+  noLaxArtListing?: true;
   /** Set when the consignor's agreement to sell at auction was confirmed. */
   consignorAgreed?: true;
   confirmedBy: string;

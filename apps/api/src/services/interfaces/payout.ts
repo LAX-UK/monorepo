@@ -87,7 +87,8 @@ export type BulkSettlementEntityOutcomeLog = {
     | "transfer_failed"
     | "connect_not_ready"
     | "committed_no_transfer"
-    | "transfer_skipped";
+    | "transfer_skipped"
+    | "transfer_blocked";
   reason?: string;
   stripeTransferId?: string;
   stripeErrorCode?: string;
@@ -214,6 +215,20 @@ export interface IPayoutAdminService {
    * Requires the Stripe transfer id for audit.
    */
   markPaid(actorUserId: string, payoutId: string, input: MarkPaidInput): Promise<Payout>;
+
+  /** Admin: a blocked payout takes a Stripe transfer staff checked: `transfer_blocked` → `in_transit`. */
+  adoptBlockedTransfer(
+    actorUserId: string,
+    payoutId: string,
+    input: { stripeTransferId: string; reason: string },
+  ): Promise<Payout>;
+
+  /** Admin: a blocked payout goes back to `failed` for a retry: `transfer_blocked` → `failed`. */
+  releaseBlockedPayout(
+    actorUserId: string,
+    payoutId: string,
+    input: { reason: string; noLiveTransferConfirmed: true },
+  ): Promise<Payout>;
 
   /**
    * Manual reversal bookkeeping (does not call Stripe). Needs `payout.reverse`, and the actor

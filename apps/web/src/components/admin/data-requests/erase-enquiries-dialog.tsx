@@ -7,6 +7,7 @@ import {
   type ErasureField,
   validateErasure,
 } from "@/lib/admin/data-requests/enquiry-erasure";
+import { handleStaffStepUp } from "@/lib/auth/step-up/staff-step-up.client";
 import type { ActionResult } from "@/lib/forms/form-result";
 import {
   Field,
@@ -77,6 +78,7 @@ export function EraseEnquiriesDialog({
       onOpenChange(false);
       onDone(result.data);
     } else {
+      if (!result.ok) handleStaffStepUp(result);
       setFailure(result.ok ? NO_ANSWER : result.error);
     }
   }

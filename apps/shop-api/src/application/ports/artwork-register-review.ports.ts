@@ -3,6 +3,7 @@ import type {
   CatalogueGap,
   FieldConflict,
 } from "@auction/artwork-register-contracts";
+import type { AdminRegisterPlace } from "@auction/shop-contracts";
 
 /**
  * What the From Zoho queue needs from the artwork register. The register belongs to neither Shop
@@ -56,6 +57,31 @@ export interface ArtworkRegisterQueue {
   countHeld(): Promise<number>;
   countOpenConflicts(): Promise<number>;
   listHeldArtists(): Promise<{ code: string; name: string; count: number }[]>;
+}
+
+/** Narrows the All list by artist and by where the artwork is. */
+export type RegisterOverviewFilter = { artistCode?: string; place?: AdminRegisterPlace };
+
+export type RegisterOverviewRow = {
+  entry: ArtworkRegisterEntry;
+  /** A lax.art listing made from the record that buyers cannot see yet. */
+  hasLaxArtDraft: boolean;
+};
+
+/**
+ * Every record, whatever its state, with what the register alone cannot say: whether a lax.art
+ * draft exists. The register belongs to neither product; the draft is Shop's, so Shop reads both.
+ */
+export interface ArtworkRegisterOverview {
+  /** Newest Zoho edit first. `total` counts every match, not just this page. */
+  listAll(
+    filter: RegisterOverviewFilter,
+    page: RegisterQueuePage,
+  ): Promise<{ rows: RegisterOverviewRow[]; total: number }>;
+  /** The artists with records, for the artist filter, by name. */
+  listArtists(): Promise<{ code: string; name: string; count: number }[]>;
+  /** How many records are in each place, for one artist's records when `artistCode` is given. */
+  countPlaces(artistCode?: string): Promise<Record<AdminRegisterPlace, number>>;
 }
 
 export interface ArtworkRegisterRecords {

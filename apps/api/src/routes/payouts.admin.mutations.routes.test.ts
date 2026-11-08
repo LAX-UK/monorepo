@@ -25,6 +25,9 @@ function mount(
     retryFailedTransfer: vi
       .fn()
       .mockResolvedValue({ ok: true, payout: { id: PAYOUT_ID, status: "in_transit" } }),
+    resolveBlockedPayout: vi
+      .fn()
+      .mockResolvedValue({ ok: true, payout: { id: PAYOUT_ID, status: "in_transit" } }),
     adminManualReverse: vi.fn().mockResolvedValue({ id: PAYOUT_ID, status: "reversed" }),
     addAdjustment: vi.fn().mockResolvedValue({ id: "adj-1", amount: "-25.00" }),
     createSettlement: vi.fn().mockResolvedValue({ ok: true, payout: { id: PAYOUT_ID, lines: [] } }),
@@ -588,4 +591,120 @@ describe("POST /admin/payouts/:payoutId/retry-transfer", () => {
     expect(res.status).toBe(409);
     expect(await res.json()).toEqual({ error: "payout_not_failed" });
   });
+});
+
+describe("POST /admin/payouts/:payoutId/resolve-blocked", () => {
+  const REASON = "Checked Stripe: tr_abc123 is the live transfer";
+  const adopt = { resolution: "adopt_transfer", stripeTransferId: "tr_abc123", reason: REASON };
+  const release = {
+    resolution: "release_to_failed",
+    noLiveTransferConfirmed: true,
+    reason: REASON,
+  };
+  const resolve = (app: Hono, idem: string, body: unknown = adopt) =>
+    post(app, `/${PAYOUT_ID}/resolve-blocked`, body, key(idem));
+
+  it.each(["administrator", "finance"])(
+    "lets %s adopt a transfer, actor recorded",
+    async (role) => {
+      const { app, payouts } = mount(role);
+
+      const res = await resolve(app, "resolve-key-0001");
+
+      expect(res.status).toBe(200);
+      expect(payouts.resolveBlockedPayout).toHaveBeenCalledWith(ACTOR_ID, PAYOUT_ID, adopt);
+    },
+  );
+
+  it("lets finance release a payout to failed", async () => {
+    const { app, payouts } = mount("finance");
+
+    const res = await resolve(app, "resolve-key-0002", release);
+
+    expect(res.status).toBe(200);
+    expect(payouts.resolveBlockedPayout).toHaveBeenCalledWith(ACTOR_ID, PAYOUT_ID, release);
+  });
+
+  it.each(["sales_manager", "client_services", "read_only"])("refuses %s", async (role) => {
+    const { app, payouts } = mount(role);
+
+    const res = await resolve(app, "resolve-key-0003");
+
+    expect(res.status).toBe(403);
+    expect(payouts.resolveBlockedPayout).not.toHaveBeenCalled();
+  });
+
+  it("asks for a fresh sign-in, and resolves nothing", async () => {
+    const { app, payouts } = mount("finance", { recent: false });
+
+    const res = await resolve(app, "resolve-key-0004");
+
+    expect(await res.json()).toEqual(STEP_UP);
+    expect(payouts.resolveBlockedPayout).not.toHaveBeenCalled();
+  });
+
+  it("refuses a request without an Idempotency-Key", async () => {
+    const { app, payouts } = mount("finance");
+
+    const res = await post(app, `/${PAYOUT_ID}/resolve-blocked`, adopt);
+
+    expect(res.status).toBe(400);
+    expect(payouts.resolveBlockedPayout).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["a reason under the minimum", { ...adopt, reason: "too short" }],
+    ["no reason", { resolution: "adopt_transfer", stripeTransferId: "tr_abc123" }],
+    ["a malformed transfer id", { ...adopt, stripeTransferId: "pi_abc123" }],
+    ["a release without the confirmation", { ...release, noLiveTransferConfirmed: undefined }],
+    ["a release with the confirmation false", { ...release, noLiveTransferConfirmed: false }],
+    ["an unknown resolution", { resolution: "mark_paid", reason: REASON }],
+  ])("refuses %s", async (_name, body) => {
+    const { app, payouts } = mount("finance");
+
+    const res = await resolve(app, "resolve-key-0005", body);
+
+    expect(res.status).toBe(400);
+    expect(payouts.resolveBlockedPayout).not.toHaveBeenCalled();
+  });
+
+  it("resolves once when the same request is replayed", async () => {
+    const { app, payouts } = mount("finance");
+
+    await resolve(app, "resolve-key-0006");
+    const second = await resolve(app, "resolve-key-0006");
+
+    expect(second.headers.get("Idempotent-Replayed")).toBe("true");
+    expect(payouts.resolveBlockedPayout).toHaveBeenCalledOnce();
+  });
+
+  it("reports a refused transfer as a conflict with the reason", async () => {
+    const { app, payouts } = mount("finance");
+    payouts.resolveBlockedPayout.mockResolvedValue({
+      ok: false,
+      reason: "amount_mismatch",
+      message: "That transfer's amount is not the payout's net amount.",
+    });
+
+    const res = await resolve(app, "resolve-key-0007");
+
+    expect(res.status).toBe(409);
+    expect(await res.json()).toEqual({
+      error: "amount_mismatch",
+      message: "That transfer's amount is not the payout's net amount.",
+    });
+  });
+
+  it.each(["payout_not_blocked", "payout_state_changed", "transfer_linked_to_other_payout"])(
+    "reports %s as a conflict",
+    async (code) => {
+      const { app, payouts } = mount("finance");
+      payouts.resolveBlockedPayout.mockRejectedValue(new PayoutStatusTransitionError(code));
+
+      const res = await resolve(app, `resolve-key-${code}`);
+
+      expect(res.status).toBe(409);
+      expect(await res.json()).toEqual({ error: code });
+    },
+  );
 });

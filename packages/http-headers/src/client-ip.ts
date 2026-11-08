@@ -20,6 +20,18 @@ export const SERVER_CLIENT_IP_TOKEN_HEADER = "x-lax-client-ip-token";
 
 export const UNKNOWN_CLIENT_IP = "unknown";
 
+/**
+ * Proxies we operate that append to `x-forwarded-for` (App Platform ingress = 1). The right-most
+ * `count - 1` entries are skipped as ours even when their addresses are outside the trusted CIDRs.
+ */
+export const DEFAULT_TRUSTED_PROXY_HOPS = 1;
+
+/** Parses a hop-count setting; anything but a positive integer gives the default. */
+export function parseTrustedProxyHops(raw: string | number | undefined): number {
+  const value = typeof raw === "number" ? raw : Number(raw?.trim() || Number.NaN);
+  return Number.isInteger(value) && value >= 1 && value <= 10 ? value : DEFAULT_TRUSTED_PROXY_HOPS;
+}
+
 /** Private ranges of the platform ingress that sits in front of every app container. */
 export const DEFAULT_TRUSTED_PROXY_CIDRS: readonly string[] = ["10.0.0.0/8"];
 
@@ -86,6 +98,8 @@ export function createCidrMatcher(cidrs: readonly string[], label: string): Addr
 export type ClientIpPolicy = {
   isTrustedProxy: AddressMatcher;
   isTrustedCloudflareProxy: AddressMatcher;
+  /** Defaults to {@link DEFAULT_TRUSTED_PROXY_HOPS}. */
+  trustedProxyHops?: number;
 };
 
 export function createClientIpPolicy(
@@ -94,9 +108,11 @@ export function createClientIpPolicy(
     trustedCloudflareProxyCidrs?: readonly string[];
     trustedProxyLabel?: string;
     trustedCloudflareProxyLabel?: string;
+    trustedProxyHops?: number;
   } = {},
 ): ClientIpPolicy {
   return {
+    trustedProxyHops: options.trustedProxyHops ?? DEFAULT_TRUSTED_PROXY_HOPS,
     isTrustedProxy: createCidrMatcher(
       options.trustedProxyCidrs ?? DEFAULT_TRUSTED_PROXY_CIDRS,
       options.trustedProxyLabel ?? "trusted proxy CIDRs",
@@ -132,13 +148,16 @@ export type ClientIpInput = ClientIpPolicy & {
    * assumed to have come through the platform ingress, which is the only way to reach the app.
    */
   peerBehindTrustedProxy?: boolean;
+  /** See {@link DEFAULT_TRUSTED_PROXY_HOPS}. */
+  trustedProxyHops?: number;
 };
 
 /**
  * 1. Peer not a trusted proxy: the peer itself; every header is ignored.
  * 2. `do-connecting-ip`, or the `cf-connecting-ip` behind it when that hop is a Cloudflare edge.
  * 3. `x-forwarded-for` walked from the right to the first hop that is not one of our proxies;
- *    a malformed chain is not believed.
+ *    a malformed chain is not believed. The leftmost entry is never used on its own: when every
+ *    hop is one of ours the peer is the answer.
  * 4. `x-real-ip`, then the peer.
  */
 export function resolveClientIp(input: ClientIpInput): string {
@@ -159,12 +178,16 @@ export function resolveClientIp(input: ClientIpInput): string {
   if (input.forwardedFor) {
     const chain = input.forwardedFor.split(",").map((value) => normalizedIp(value));
     if (chain.some((address) => address === null)) return fallback;
-    const hops = [...(chain as string[]), ...(remoteAddress ? [remoteAddress] : [])];
-    for (let index = hops.length - 1; index >= 0; index -= 1) {
-      const hop = hops[index];
-      if (hop && !input.isTrustedProxy(hop) && !input.isTrustedCloudflareProxy(hop)) return hop;
+    const entries = chain as string[];
+    // Entries appended by proxies we operate beyond the CIDR lists: the right-most `hops - 1`.
+    const ownHops = Math.max(0, (input.trustedProxyHops ?? DEFAULT_TRUSTED_PROXY_HOPS) - 1);
+    const firstOwnHop = entries.length - ownHops;
+    for (let index = entries.length - 1; index >= 0; index -= 1) {
+      const hop = entries[index];
+      if (!hop || index >= firstOwnHop) continue;
+      if (!input.isTrustedProxy(hop) && !input.isTrustedCloudflareProxy(hop)) return hop;
     }
-    return hops[0] ?? fallback;
+    return fallback;
   }
 
   return normalizedIp(input.realIp) ?? fallback;
@@ -195,6 +218,7 @@ export function createServerClientIpResolver(
   env: {
     TRUSTED_PROXY_CIDRS?: string | undefined;
     TRUSTED_CLOUDFLARE_PROXY_CIDRS?: string | undefined;
+    TRUSTED_PROXY_HOPS?: string | undefined;
   } = {},
 ): (headers: { get(name: string): string | null }) => string {
   const policy = createClientIpPolicy({
@@ -203,6 +227,7 @@ export function createServerClientIpResolver(
       env.TRUSTED_CLOUDFLARE_PROXY_CIDRS,
       DEFAULT_CLOUDFLARE_PROXY_CIDRS,
     ),
+    trustedProxyHops: parseTrustedProxyHops(env.TRUSTED_PROXY_HOPS),
   });
   return (headers) =>
     resolveClientIpFromHeaders((name) => headers.get(name), policy, {

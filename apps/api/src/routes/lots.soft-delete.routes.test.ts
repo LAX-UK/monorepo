@@ -6,6 +6,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { Container } from "../container.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 import { passThroughAccountOnboarding } from "../testing/pass-through-account-onboarding.middleware.js";
+import { stubStepUpGuard } from "../testing/staff-mutation-guards.js";
 import { stubBiddingRouteServices } from "../testing/stub-bidding-route-services.js";
 import { stubCatalogRouteServices } from "../testing/stub-catalog-route-services.js";
 import { createLotRoutes } from "./lots.js";
@@ -14,15 +15,17 @@ describe("POST /lots/:id/delete", () => {
   const lotId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
   const phrase = lotDeleteConfirmationPhrase("Test Lot");
 
-  function appWithAuth(role: string, staffRole: string | null) {
+  function appWithAuth(role: string, staffRole: string | null, recent = true) {
     const app = new Hono<{
       Variables: { userId?: string; userRole?: string; userStaffRoles?: StaffRoles | undefined };
     }>();
     const softDelete = vi.fn();
+    const cancel = vi.fn();
     const bulkLots = vi.fn();
     const base = stubCatalogRouteServices();
     const container = {
       userSuspensionChecker: { isSuspended: vi.fn().mockResolvedValue(false) },
+      admin: { stepUp: stubStepUpGuard(recent) },
       lotService: { getById: vi.fn(), bulkPublishOrCancel: vi.fn() },
       lotSoftDeleteService: { getDeleteEligibility: vi.fn() },
       saleService: { getById: vi.fn() },
@@ -32,7 +35,7 @@ describe("POST /lots/:id/delete", () => {
       redis: {},
       lotLifecycleQueryService: { getSnapshotsForLots: vi.fn() },
       catalogRoutes: stubCatalogRouteServices({
-        lotLifecycleHttp: { ...base.lotLifecycleHttp, softDelete, bulkLots },
+        lotLifecycleHttp: { ...base.lotLifecycleHttp, softDelete, cancel, bulkLots },
       }),
       bidding: stubBiddingRouteServices(),
     } as unknown as Container;
@@ -42,11 +45,12 @@ describe("POST /lots/:id/delete", () => {
         role,
         staffRoles: normalizeStaffRoles([staffRole]),
 
+        identitySessionId: "session-1",
         scopes: ["bid.write"],
       }),
     };
     app.route("/lots", createLotRoutes(container, authenticator, passThroughAccountOnboarding));
-    return { app, softDelete, bulkLots };
+    return { app, softDelete, cancel, bulkLots };
   }
 
   it("returns 204 when staff with auction.manage deletes a lot", async () => {
@@ -69,6 +73,30 @@ describe("POST /lots/:id/delete", () => {
         staffRoles: ["sales_manager"],
       }),
     );
+  });
+
+  it("asks staff for a recent sign-in before deleting, and does not delete", async () => {
+    const { app, softDelete } = appWithAuth("staff", "sales_manager", false);
+    const res = await app.request(`http://t/lots/${lotId}/delete`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ confirmationPhrase: phrase }),
+    });
+    expect(res.status).toBe(403);
+    expect(((await res.json()) as { code: string }).code).toBe("step_up_required");
+    expect(softDelete).not.toHaveBeenCalled();
+  });
+
+  it("asks staff for a recent sign-in before cancelling, and does not cancel", async () => {
+    const { app, cancel } = appWithAuth("staff", "sales_manager", false);
+    const res = await app.request(`http://t/lots/${lotId}/cancel`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
+    expect(res.status).toBe(403);
+    expect(((await res.json()) as { code: string }).code).toBe("step_up_required");
+    expect(cancel).not.toHaveBeenCalled();
   });
 
   it("returns 403 for client role", async () => {

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  findSearchAlert,
   hasSearchAlert,
   pastResultsSentence,
   searchAlertQuery,
@@ -79,5 +80,16 @@ describe("searchAlertState", () => {
     expect(searchAlertState(saved, "harbour", undefined, false)).toBe("email_off");
     expect(searchAlertState(saved, "harbour", undefined, true)).toBe("on");
     expect(searchAlertState(saved, "harbour", undefined, null)).toBe("on");
+  });
+});
+
+describe("findSearchAlert", () => {
+  it("finds the saved search holding this search", () => {
+    const saved = [
+      { id: "a", query: { q: "harbour" } },
+      { id: "b", query: { q: "oil" } },
+    ];
+    expect(findSearchAlert(saved, "oil")?.id).toBe("b");
+    expect(findSearchAlert(saved, "tide")).toBeUndefined();
   });
 });

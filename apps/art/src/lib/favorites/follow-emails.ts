@@ -16,6 +16,19 @@ export function readFollowEmailsOn(body: unknown): boolean | null {
   return typeof entry?.emailOn === "boolean" ? entry.emailOn : null;
 }
 
+/**
+ * Whether the person stopped all alerts, as Shop reports it for this topic. False when the answer
+ * is missing, so nothing is said about it rather than guessed.
+ */
+export function readFollowEmailsStopped(body: unknown): boolean {
+  const topics = (body as { topics?: unknown } | null)?.topics;
+  if (!Array.isArray(topics)) return false;
+  const entry = topics.find(
+    (candidate: { topic?: unknown }) => candidate?.topic === FOLLOW_EMAILS_TOPIC,
+  ) as { stopped?: unknown } | undefined;
+  return entry?.stopped === true;
+}
+
 export type TurnOnFollowEmailsOutcome = { ok: true } | { ok: false; message: string };
 
 const REFUSALS: Record<string, string> = {

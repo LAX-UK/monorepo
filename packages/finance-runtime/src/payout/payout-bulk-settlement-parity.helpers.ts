@@ -70,6 +70,7 @@ export function makeSettlementRepo(overrides: Partial<IPayoutRepository> = {}): 
         failed: 0,
         reversed: 0,
         clawbackPending: 0,
+        transferBlocked: 0,
         totalNet: "0.00",
         readiness: {
           inFlightCount: 0,

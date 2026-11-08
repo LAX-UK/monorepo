@@ -41,7 +41,7 @@ export type StaffConfirmRequest = {
   option?: { label: string; description?: ReactNode; defaultChecked: boolean };
   run: (details: { reason: string; option: boolean }) => Promise<StaffActionResult>;
   /** The toast once it is done: "Blue Interior withdrawn". */
-  success: string;
+  success: string | (() => string);
   /** A line under the toast, read once the action has run: "Sending the change to ATG now." */
   successDescription?: () => string;
   /** After success; the list refreshes unless this navigates away. */
@@ -85,8 +85,9 @@ export function useStaffConfirm() {
       if (result.ok) {
         close();
         const description = current.successDescription?.();
-        if (description) notify.success(current.success, { description });
-        else notify.success(current.success);
+        const message = typeof current.success === "function" ? current.success() : current.success;
+        if (description) notify.success(message, { description });
+        else notify.success(message);
         if (current.onSuccess) current.onSuccess();
         else router.refresh();
         return;

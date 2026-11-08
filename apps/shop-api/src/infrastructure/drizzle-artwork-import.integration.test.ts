@@ -4,6 +4,7 @@ import { domainEvent, shopArtist, shopArtwork, shopEdition, shopParty } from "@a
 import { eq } from "drizzle-orm";
 import pg from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { noOriginalOfferRegister } from "../application/ports/original-offer-register.js";
 import { createDrizzleArtworkImportRepository } from "./drizzle-artwork-import.repository.js";
 
 const ownerUrl = process.env.MIGRATION_TEST_DATABASE_URL;
@@ -23,6 +24,32 @@ describe.skipIf(!ownerUrl || !shopUrl)("drizzle artwork import", () => {
   afterAll(async () => {
     await ownerPool.end();
     await shopPool.end();
+  });
+
+  it("tells the register when an import marks an original sold, once", async () => {
+    const suffix = `${Date.now()}-sold`;
+    const sold: string[] = [];
+    const writer = createDrizzleArtworkImportRepository(createDbFromPool(shopPool), "observe", {
+      ...noOriginalOfferRegister,
+      recordSold: async (_session, artwork, actor) => void sold.push(`${artwork.id}:${actor}`),
+    });
+    const command = {
+      importKey: `integration:${suffix}`,
+      slug: `integration-${suffix}`,
+      title: "Integration Sold",
+      description: null,
+      primaryImageUrl: null,
+      artistSlug: `integration-artist-${suffix}`,
+      artistDisplayName: "Integration Artist",
+      eligibleForEditionAllocation: false,
+    };
+
+    const created = await writer.importArtwork({ ...command, saleState: "for_sale" });
+    expect(sold).toEqual([]);
+
+    await writer.importArtwork({ ...command, saleState: "sold" });
+    await writer.importArtwork({ ...command, saleState: "sold" });
+    expect(sold).toEqual([`${created.artworkId}:system`]);
   });
 
   it("allocates 24 editions and outbox events idempotently", async () => {

@@ -62,6 +62,8 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
     "amountCents",
     "currency",
     "stripeConnectAccountId",
+    "adopted",
+    "adoptionSource",
   ]),
   /** Stripe transfer failure — error details are operational, not PII. */
   "payout.transfer_failed": new Set([
@@ -69,6 +71,14 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
     "stripeErrorMessage",
     "amountCents",
     "currency",
+  ]),
+  /** Staff resolved a blocked payout; the free-text reason stays redacted for non-PII readers. */
+  "payout.transfer_block_resolved": new Set([
+    "resolution",
+    "previousStatus",
+    "status",
+    "stripeTransferId",
+    "legalEntityId",
   ]),
   /** Stripe Connect account cannot currently receive payouts. */
   "payout.transfer_blocked": new Set(["payoutId", "legalEntityId", "reason"]),
@@ -416,6 +426,8 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
   "data_request.extended": new Set(["reference"]),
   "data_request.closed": new Set(["reference"]),
   "data_request.continued": new Set(["reference"]),
+  "data_request.enquiry_erasure_requested": new Set(["reference"]),
+  "data_request.enquiries_erased": new Set(["reference"]),
   "failed_job.retried": new Set(["queue", "jobName", "confirmRepeat"]),
   "failed_job.discarded": new Set(["queue", "jobName", "reason", "note"]),
   "failed_job.restored": new Set(["queue", "jobName"]),

@@ -35,10 +35,10 @@ import {
   searchStatusLabel,
 } from "@/lib/marketing/parse-search-params";
 import { countSearchActiveFilters } from "@/lib/marketing/search-active-filter-count";
-import { searchAlertState } from "@/lib/marketing/search-fallback";
+import { findSearchAlert, searchAlertState } from "@/lib/marketing/search-fallback";
 import { shouldOfferPastResults } from "@/lib/marketing/search-fallback";
 import { buildSearchQs } from "@/lib/marketing/search-qs";
-import { searchTopicEmailOn } from "@/lib/notifications/engine-alert-state";
+import { alertAccessOf, searchTopicEmailOn } from "@/lib/notifications/engine-alert-state";
 import { resolveMarketingLayoutView } from "@/lib/preferences/resolve-marketing-layout-view.server";
 import { metadataForListing } from "@/lib/seo/metadata-factory";
 import { breadcrumbJsonLd, itemListJsonLd, jsonLdScript } from "@/lib/seo/structured-data";
@@ -215,6 +215,14 @@ export default async function SearchPage({ searchParams }: PageProps) {
     : [null, [] as string[], null, null];
   // A failed read falls back to the plain button; saving still avoids a duplicate.
   const topicEmailOn = searchTopicEmailOn(accountAlerts, session?.emailVerified);
+  const alertSearch = savedSearches
+    ? findSearchAlert(savedSearches, trimmed, categoryId)
+    : undefined;
+  const alertSearchId = alertSearch?.id ?? null;
+  const emailAccess = alertAccessOf(accountAlerts, session?.emailVerified);
+  const otherSearchesOn = (savedSearches ?? []).filter(
+    (row) => row.notifyEmail && row.id !== alertSearchId,
+  ).length;
   const alertState = savedSearches
     ? searchAlertState(savedSearches, trimmed, categoryId, topicEmailOn)
     : "none";
@@ -406,6 +414,10 @@ export default async function SearchPage({ searchParams }: PageProps) {
               saveAlertOnArrival={firstString(alertRaw) === "1"}
               alertState={alertState}
               topicEmailOn={topicEmailOn}
+              alertSearchId={alertSearchId}
+              alertSearchNotifyEmail={alertSearch?.notifyEmail ?? false}
+              emailAccess={emailAccess}
+              otherSearchesOn={otherSearchesOn}
               {...(lotCatalogLinkParams ? { catalogLinkParams: lotCatalogLinkParams } : {})}
             />
           ) : filtered.length === 0 ? (

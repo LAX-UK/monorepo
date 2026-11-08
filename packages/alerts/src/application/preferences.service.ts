@@ -59,7 +59,7 @@ export class PreferencesService {
     return { ...byEmail, subjectId };
   }
 
-  /** Turns one topic's email on or off. Turning it on after a stop starts fresh, by account. */
+  /** Turns one topic's email on or off. Turning it on after a stop needs `restartStopped`; without it a stopped subscriber stays stopped. */
   async setTopic(input: {
     product: AlertProduct;
     subjectId: string;
@@ -67,7 +67,9 @@ export class PreferencesService {
     on: boolean;
     /** Whether the topic's email is on. Defaults to `on`; false subscribes for the app alone. */
     email?: boolean;
-  }): Promise<"saved" | "unverified" | "no_account" | "blocked"> {
+    /** An explicit "turn my alerts back on" (not a topic switch) may restart a stopped subscriber. */
+    restartStopped?: boolean;
+  }): Promise<"saved" | "unverified" | "no_account" | "blocked" | "stopped"> {
     const record = await this.recordFor(input.product, input.subjectId);
     if (input.on) {
       const outcome = await this.deps.subscribe.enableForAccount({
@@ -76,6 +78,7 @@ export class PreferencesService {
         topic: input.topic,
         source: `${input.product}_settings`,
         emailOn: input.email ?? true,
+        ...(input.restartStopped ? { restartStopped: true } : {}),
       });
       return outcome === "enabled" ? "saved" : outcome;
     }

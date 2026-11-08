@@ -25,6 +25,16 @@ describe("the From Zoho tabs", () => {
     expect(screen.getByText("12")).toBeInTheDocument();
   });
 
+  it("lists All artworks after Needs a decision, without a count", () => {
+    render(<Frame />);
+    const names = screen.getAllByRole("link").map((link) => link.textContent);
+    expect(names.slice(0, 3)).toEqual(["New from Zoho3", "Needs a decision1", "All artworks"]);
+    expect(screen.getByRole("link", { name: "All artworks" })).toHaveAttribute(
+      "href",
+      "/from-zoho?tab=all",
+    );
+  });
+
   it("hides Link lax.art once every original is linked", () => {
     render(<Frame unlinked={0} />);
     expect(screen.queryByRole("link", { name: /Link lax\.art/ })).toBeNull();

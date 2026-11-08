@@ -46,14 +46,13 @@ describe("following an artist on lax.art", () => {
     expect(await emailsOn("sub-3")).toBeNull();
   });
 
-  it("switches emails back on when the person presses Follow again after stopping them", async () => {
-    const { h, alerts, emailsOn } = setup();
+  it("leaves a person who stopped all alerts stopped when they follow again", async () => {
+    const { h, alerts } = setup();
     await alerts.onFollowed("sub-1", "followed");
     const row = await h.stores.findBySubject("art", "sub-1");
     await h.stores.stop(row?.id ?? "", "link", h.now);
     await alerts.onFollowed("sub-1", "followed");
-    expect(await emailsOn("sub-1")).toBe(true);
-    expect((await h.stores.findBySubject("art", "sub-1"))?.status).toBe("confirmed");
+    expect((await h.stores.findBySubject("art", "sub-1"))?.status).toBe("stopped");
   });
 
   it("leaves a follow that already existed as the person set it", async () => {

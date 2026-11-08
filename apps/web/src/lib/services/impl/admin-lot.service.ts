@@ -5,6 +5,7 @@ import type {
   CancelLotBody,
   CreateLotInput,
   IAdminLotService,
+  LaxArtReturnAnswer,
   RecordBuyerDefaultInput,
   ReturnLotToInventoryBody,
   UpdateLotInput,
@@ -100,8 +101,8 @@ export class AdminLotService implements IAdminLotService {
     );
   }
 
-  async returnToLaxArt(id: string): Promise<ServiceResult<{ reopened: boolean }>> {
-    return this.api.json<{ reopened: boolean }>(
+  async returnToLaxArt(id: string): Promise<ServiceResult<LaxArtReturnAnswer>> {
+    return this.api.json<LaxArtReturnAnswer>(
       `/admin/lots/${encodeURIComponent(id)}/return-to-lax-art`,
       { method: "POST" },
     );

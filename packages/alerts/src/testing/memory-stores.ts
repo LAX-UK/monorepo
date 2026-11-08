@@ -18,7 +18,7 @@ export class MemoryAlertStores
   implements SubscriberStore, TopicStore, MatchLedger, DigestLedger, AnnouncementStore
 {
   private seq = 0;
-  readonly subscribersById = new Map<string, SubscriberRecord & { stopReason?: StopReason }>();
+  readonly subscribersById = new Map<string, SubscriberRecord>();
   private readonly topicRows = new Map<string, Map<AlertTopic, boolean>>();
   private readonly matchRows = new Map<
     string,

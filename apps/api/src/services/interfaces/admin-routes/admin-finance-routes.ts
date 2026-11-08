@@ -166,6 +166,13 @@ export interface IAdminPayoutApplicationService {
     payoutId: string,
     reason: string,
   ): Promise<import("../../admin/admin-failed-payout-retry.service.js").FailedPayoutRetryOutcome>;
+  resolveBlockedPayout(
+    actorUserId: string,
+    payoutId: string,
+    body: import("@auction/validators").ResolveBlockedPayoutInput,
+  ): Promise<
+    import("../../admin/admin-blocked-payout-resolution.service.js").BlockedPayoutResolutionOutcome
+  >;
   adminManualReverse(
     actor: import("../payout.js").PayoutReversalActor,
     payoutId: string,

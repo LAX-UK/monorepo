@@ -11,7 +11,8 @@ import {
   visitorSaleAlertSubscriber,
 } from "@auction/db/schema";
 import { eq, inArray, sql } from "drizzle-orm";
-import { describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { holdAlertTablesLock } from "../../testing/alert-tables-lock.js";
 import { DrizzleAlertRetentionStore } from "./alert-retention.store.js";
 import { createBidAlertRetentionStores } from "./bid-alert-retention.stores.js";
 
@@ -106,6 +107,8 @@ async function match(
 
 const present = async (table: typeof bidAlertSubscriber, ids: string[]) =>
   (await db.select({ id: table.id }).from(table).where(inArray(table.id, ids))).map((r) => r.id);
+
+holdAlertTablesLock({ beforeAll, afterAll }, "exclusive");
 
 describe.skipIf(!HAS_DB)("Bid alert retention prune (DB)", () => {
   it("deletes stale pending and stopped subscribers and nothing active", async () => {

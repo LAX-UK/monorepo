@@ -11,16 +11,15 @@ test.describe("marketing header logo @a11y", () => {
     await page.goto("/search");
     await page.waitForLoadState("domcontentloaded");
 
-    const logo = page.locator(".site-header-logo img.lax-logo-img").first();
+    // The header lockup is inline SVG; below 1024px the visible one is the compact LAX Bid mark.
+    const logo = page.getByTestId("bid-header-lockup").first().locator("svg.lax-lockup:visible");
+    await expect(logo).toHaveCount(1);
     await expect(logo).toBeVisible();
 
-    // Phones carry the compact mark (32px tall, about 27px wide), not the full lockup.
+    // Phones carry the compact mark (28px tall), not the full lockup.
     const box = await logo.boundingBox();
     expect(box).not.toBeNull();
     expect(box?.width ?? 0).toBeGreaterThanOrEqual(24);
-    expect(box?.height ?? 0).toBeGreaterThanOrEqual(28);
-
-    const naturalWidth = await logo.evaluate((el) => (el as HTMLImageElement).naturalWidth);
-    expect(naturalWidth).toBeGreaterThan(0);
+    expect(box?.height ?? 0).toBeGreaterThanOrEqual(27);
   });
 });

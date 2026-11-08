@@ -14,6 +14,7 @@ import {
   bulkLotsFailureMessage,
   parseBulkLotsApiResponse,
 } from "@/lib/admin/bulk-ops/lot-bulk-result";
+import type { LaxArtReturnOutcome } from "@/lib/admin/lots/lax-art-return";
 import { denyUnlessAdminCapability } from "@/lib/auth/assert-admin-action-capability";
 import { stepUpErrorCode } from "@/lib/auth/step-up/step-up-error-code";
 import { getAdminLotById } from "@/lib/data/http/admin.server";
@@ -207,7 +208,7 @@ export async function adminCancelLotResultAction(
     const { adminLots } = getWriteContainer();
     const r = await adminLots.cancel(id, p.data);
     if (!r.ok) {
-      return actionFailure(r.message, undefined, r.status);
+      return actionFailure(r.message, undefined, r.status, stepUpErrorCode(r));
     }
     revalidatePath("/admin/lots");
     revalidatePath(`/admin/lots/${id}`);
@@ -233,7 +234,7 @@ export async function adminSoftDeleteLotResultAction(
     const { adminLots } = getWriteContainer();
     const r = await adminLots.softDelete(id, phrase);
     if (!r.ok) {
-      return actionFailure(r.message, undefined, r.status);
+      return actionFailure(r.message, undefined, r.status, stepUpErrorCode(r));
     }
     revalidatePath("/admin/lots");
     revalidatePath("/");
@@ -244,7 +245,7 @@ export async function adminSoftDeleteLotResultAction(
 /** Reopens the artwork's lax.art listing as a draft once its lot has ended unsold or been withdrawn. */
 export async function adminReturnLotToLaxArtResultAction(
   lotId: string,
-): Promise<ActionResult<void>> {
+): Promise<ActionResult<LaxArtReturnOutcome>> {
   return instrumentServerAction("adminReturnLotToLaxArtResultAction", async () => {
     const denied = await denyUnlessAdminCapability(SALES_ACCESS);
     if (denied) return denied;
@@ -258,7 +259,11 @@ export async function adminReturnLotToLaxArtResultAction(
     }
     revalidatePath("/admin/lots");
     revalidatePath(`/admin/lots/${id}`);
-    return actionSuccess();
+    // An answer without the flag comes from an API that always reopened a listing.
+    return actionSuccess({
+      laxArtListing: r.data.laxArtListing !== false,
+      ...(r.data.hint ? { hint: r.data.hint } : {}),
+    });
   });
 }
 

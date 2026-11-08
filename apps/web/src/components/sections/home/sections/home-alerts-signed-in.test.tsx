@@ -39,9 +39,19 @@ describe("HomeAlertsSignedIn", () => {
     render(<HomeAlertsSignedIn />);
     fireEvent.click(await screen.findByRole("button", { name: "Turn on sale alerts" }));
     await waitFor(() => expect(screen.getByText("You'll hear about new sales")).toBeTruthy());
-    expect(setAlertTopic).toHaveBeenCalledWith("bid.new_sales", true);
+    expect(setAlertTopic).toHaveBeenCalledWith("bid.new_sales", true, { restart: true });
     expect(success).toHaveBeenCalledWith("Sale alerts are on");
     expect(screen.queryByRole("button", { name: "Turn on sale alerts" })).toBeNull();
+  });
+
+  it("says alerts are back on, not just sale alerts, after a press that follows stopping everything", async () => {
+    loadAccountAlerts.mockResolvedValue({ state: "stopped", topics: [] });
+    setAlertTopic.mockResolvedValue({ ok: true });
+    render(<HomeAlertsSignedIn />);
+    fireEvent.click(await screen.findByRole("button", { name: "Turn on sale alerts" }));
+    await waitFor(() =>
+      expect(success).toHaveBeenCalledWith("Your alerts are back on, with sale alerts switched on"),
+    );
   });
 
   it("shows the on state straight away for someone already subscribed", async () => {

@@ -3,6 +3,7 @@
 import { readApiActionErrorMeta } from "@/lib/actions/_utils";
 import { revalidateAdminSaleDetail } from "@/lib/actions/revalidate-admin-sale-detail";
 import { denyUnlessAdminCapability } from "@/lib/auth/assert-admin-action-capability";
+import { stepUpErrorCode } from "@/lib/auth/step-up/step-up-error-code";
 import { getWriteContainer } from "@/lib/data/write-container.server";
 import { type ActionResult, actionFailure, actionSuccess } from "@/lib/forms/form-result";
 import { LOTS_ACCESS, SALES_ACCESS } from "@/lib/navigation/staff-nav-access";
@@ -76,7 +77,7 @@ export async function adminCancelSaleResultAction(
     const { adminSales } = getWriteContainer();
     const trimmed = reason?.trim();
     const r = await adminSales.cancel(id, trimmed ? { reason: trimmed.slice(0, 500) } : {});
-    if (!r.ok) return actionFailure(r.message, undefined, r.status);
+    if (!r.ok) return actionFailure(r.message, undefined, r.status, stepUpErrorCode(r));
     revalidateAdminSaleDetail(id);
     revalidatePath("/");
     return actionSuccess();

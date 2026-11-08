@@ -20,6 +20,8 @@ describe("getPayoutStatusView", () => {
     expect(getPayoutStatusView("failed").tone).toBe("danger");
     expect(getPayoutStatusView("reversed").tone).toBe("danger");
     expect(getPayoutStatusView("clawback_pending").tone).toBe("danger");
+    expect(getPayoutStatusView("transfer_blocked").tone).toBe("danger");
+    expect(getPayoutStatusView("transfer_blocked").label).toBe("Blocked, needs review");
   });
 
   it("maps info-tone for in_transit", () => {

@@ -15,6 +15,7 @@ const columns = {
   email: t.email,
   subjectId: t.subjectId,
   status: t.status,
+  stopReason: t.stopReason,
   requestedAt: t.requestedAt,
   confirmationSentAt: t.confirmationSentAt,
   linkVersion: t.linkVersion,
@@ -26,6 +27,7 @@ type Row = {
   email: string;
   subjectId: string | null;
   status: string;
+  stopReason: string | null;
   requestedAt: Date;
   confirmationSentAt: Date | null;
   linkVersion: number;

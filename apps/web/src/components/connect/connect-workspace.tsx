@@ -129,12 +129,12 @@ export function ConnectWorkspace({
       resolveConnectSessionSurface({
         gapStage: gap.stage,
         memberRole,
-        hasStripeAccount: Boolean(localStatus?.stripeAccountId),
+        hasStripeAccount: Boolean(localStatus?.accountLinked),
       }),
-    [gap.stage, memberRole, localStatus?.stripeAccountId],
+    [gap.stage, memberRole, localStatus?.accountLinked],
   );
 
-  const hasStripeAccount = Boolean(localStatus?.stripeAccountId);
+  const hasStripeAccount = Boolean(localStatus?.accountLinked);
 
   const workspaceFlags = deriveConnectWorkspaceFlags({
     memberRole,

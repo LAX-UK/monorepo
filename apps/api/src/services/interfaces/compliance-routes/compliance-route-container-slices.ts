@@ -14,7 +14,7 @@ export type ComplianceKycRoutesContainer = ComplianceRoutePick<"kycHttp"> &
 export type ComplianceUploadRoutesContainer = ComplianceRoutePick<"uploadHttp"> &
   Pick<import("../../../container.js").Container, "userSuspensionChecker">;
 
-export type ComplianceExportRoutesContainer = ComplianceRoutePick<"exportHttp"> &
+export type ComplianceExportRoutesContainer = ComplianceRoutePick<"exportHttp" | "staffStepUp"> &
   Pick<import("../../../container.js").Container, "userSuspensionChecker">;
 
 export type ComplianceLotDocumentRoutesContainer = ComplianceRoutePick<"lotDocumentHttp"> &
