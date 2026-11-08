@@ -2,7 +2,6 @@ import { randomUUID } from "node:crypto";
 import { type Database, createDb } from "@auction/db";
 import {
   bidUserProfile,
-  domainEvent,
   itemSubmission,
   kycWatchlistScreening,
   legalEntity,
@@ -10,6 +9,7 @@ import {
   marketingEnquiryAttachment,
   marketingEnquiryNote,
   privateSaleDeal,
+  privateSaleDealPartyHistory,
   privateSaleDealStageHistory,
   sourceOfFunds,
   uploadObject,
@@ -303,6 +303,29 @@ describe.skipIf(!HAS_DB)("enquiry erasure (integration)", () => {
       });
     });
 
+    it("refuses to change or remove who was named on a deal", async () => {
+      await withDeal(async ({ tx, dealId, userId }) => {
+        const deals = new DrizzlePrivateSaleDealRepository(tx as never);
+        const current = await deals.findById(dealId);
+        expect(await tx.select().from(privateSaleDealPartyHistory)).not.toHaveLength(0);
+        expect(current?.seller.actingUserId).toBe(userId);
+        // Each attempt runs in its own savepoint so a refusal does not abort the scenario.
+        await expect(
+          tx.transaction((inner) =>
+            inner.update(privateSaleDealPartyHistory).set({ actingUserId: "someone-else" }),
+          ),
+        ).rejects.toThrow();
+        await expect(
+          tx.transaction((inner) => inner.delete(privateSaleDealPartyHistory)),
+        ).rejects.toThrow();
+        const kept = await tx
+          .select()
+          .from(privateSaleDealPartyHistory)
+          .where(eq(privateSaleDealPartyHistory.dealId, dealId));
+        expect(kept.map((row) => row.actingUserId)).toContain(userId);
+      });
+    });
+
     it("holds it when a buyer who was screened was replaced before agreement", async () => {
       await withDeal(async ({ tx, email, enquiryId, dealId }) => {
         const firstBuyer = `erase-first-buyer-${randomUUID().slice(0, 8)}`;
@@ -321,12 +344,20 @@ describe.skipIf(!HAS_DB)("enquiry erasure (integration)", () => {
           decisionOutcome: "clear",
           screenedAt: new Date(),
         } as never);
-        await tx.insert(domainEvent).values({
-          aggregateType: "private_sale_deal",
-          aggregateId: dealId,
-          eventType: "private_sale_deal.party_named",
-          payload: { dealId, reference: "PS-X", role: "buyer", actingUserId: firstBuyer },
-          producer: "test",
+        // The buyer is named, screened, then replaced before agreement.
+        const deals = new DrizzlePrivateSaleDealRepository(tx as never);
+        const current = await deals.findById(dealId);
+        const sellerEntity = current?.seller.legalEntityId as string;
+        await deals.setParty(dealId, current?.version as number, {
+          role: "buyer",
+          legalEntityId: sellerEntity,
+          actingUserId: firstBuyer,
+        });
+        const named = await deals.findById(dealId);
+        await deals.setParty(dealId, named?.version as number, {
+          role: "buyer",
+          legalEntityId: sellerEntity,
+          actingUserId: null,
         });
         await cancel(tx, dealId, false, new Date());
         expect(await anonymiseEnquiries(tx, { kind: "email", email })).toMatchObject({
