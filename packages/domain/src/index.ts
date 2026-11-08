@@ -489,6 +489,13 @@ export {
   type EstimateTotal,
   type MoneyTotal,
 } from "./money-totals.js";
+export {
+  SETTLEMENT_CLOCK_SKEW_MS,
+  SETTLEMENT_PERIOD_FLOOR,
+  resolveSettlementPeriod,
+  type SettlementPeriodRefusal,
+  type SettlementPeriodResult,
+} from "./settlement-period.js";
 export { BUSINESS_TIME_ZONE, londonCalendarYear, type CalendarYear } from "./calendar-year.js";
 export {
   formatPayoutReference,
