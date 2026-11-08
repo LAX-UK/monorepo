@@ -129,7 +129,7 @@ describe.skipIf(!HAS_DB)("private sale deal lists and works (integration)", () =
       expect(ours.find((row) => row.id === offered.id)).toMatchObject({
         reference: offered.reference,
         stage: "offer",
-        workTitle: "Low tide at Maldon",
+        workTitle: "Another work",
         workReference: expect.stringMatching(/^C-\d+$/),
         sellerName: "Henry Lowe",
         buyerName: "Marlow Collection Ltd",
@@ -223,7 +223,13 @@ describe.skipIf(!HAS_DB)("private sale deal lists and works (integration)", () =
       const queries = new DrizzlePrivateSaleDealQueryRepository(db);
       const mine = await deals.create(newDeal(await work(db), { ownerUserId: staffId }));
       const theirs = await deals.create(newDeal(await work(db), { ownerUserId: otherStaffId }));
-      await setStage(db, theirs.id, "paid", { priceMinor: 100, agreedAt: new Date() });
+      await setStage(db, theirs.id, "paid", {
+        priceMinor: 100,
+        agreedAt: new Date(),
+        vatTreatment: "margin_scheme",
+        sellerCommissionBps: 1500,
+        paymentDueAt: new Date(),
+      });
 
       const owned = await queries.list({
         view: "all",
