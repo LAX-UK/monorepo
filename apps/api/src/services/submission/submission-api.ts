@@ -1,3 +1,4 @@
+import { type SubmissionSummary, summariseSubmissionCounts } from "@auction/domain";
 import type {
   ListSubmissionsFilter,
   SubmissionSenderFilter,
@@ -5,7 +6,6 @@ import type {
 import type {
   CreateItemSubmissionInput,
   ItemSubmission,
-  ItemSubmissionStatus,
   Lot,
   StaffRoles,
   UpdateItemSubmissionInput,
@@ -56,10 +56,9 @@ export async function getSubmissionSummaryForSellerApi(
   deps: ItemSubmissionServiceDeps,
   legalEntityId: string,
   visibleTo?: SubmissionSenderFilter,
-): Promise<{ counts: Record<ItemSubmissionStatus, number>; total: number }> {
+): Promise<SubmissionSummary> {
   const counts = await deps.submissions.countStatusForLegalEntity(legalEntityId, visibleTo);
-  const total = Object.values(counts).reduce((sum, n) => sum + n, 0);
-  return { counts, total };
+  return summariseSubmissionCounts(counts);
 }
 
 export async function listSubmissionsForAdminApi(

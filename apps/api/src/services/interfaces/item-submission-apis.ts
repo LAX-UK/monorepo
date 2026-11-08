@@ -1,3 +1,4 @@
+import type { SubmissionSummary } from "@auction/domain";
 import type {
   ListSubmissionsFilter,
   SubmissionSenderFilter,
@@ -5,7 +6,6 @@ import type {
 import type {
   CreateItemSubmissionInput,
   ItemSubmission,
-  ItemSubmissionStatus,
   StaffRoles,
   UpdateItemSubmissionInput,
   UserRole,
@@ -45,7 +45,7 @@ export interface IItemSubmissionSellerApi {
   getSubmissionSummaryForSellerApi(
     legalEntityId: string,
     visibleTo?: SubmissionSenderFilter,
-  ): Promise<{ counts: Record<ItemSubmissionStatus, number>; total: number }>;
+  ): Promise<SubmissionSummary>;
   getSubmissionForViewerApi(input: {
     submissionId: string;
     role: UserRole;

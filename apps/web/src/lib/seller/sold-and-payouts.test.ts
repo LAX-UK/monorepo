@@ -25,6 +25,7 @@ describe("buildPayoutRows", () => {
       gross: "£3,800.00",
       fees: "\u2212£464.80",
       net: "£3,335.20",
+      reference: "PO-2026-P1",
       statementHref: "/legal-entities/le/payouts/p1/statement",
     });
   });

@@ -29,6 +29,8 @@ export type ListPayoutsFilter = {
 
 export type AdminListPayoutsFilter = ListPayoutsFilter & {
   legalEntityId?: string;
+  /** A payout reference (PO-YYYY-XXXXXXXX), the start of a payout id, or a seller name. */
+  search?: string;
 };
 
 export type CreateSettlementInput = {

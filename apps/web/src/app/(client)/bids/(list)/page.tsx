@@ -42,7 +42,7 @@ export default async function DashboardBidsPage({ searchParams }: PageProps) {
   return (
     <>
       <SetMobileShellTitle title={view.title} />
-      <Suspense fallback={<ListSkeleton label="Loading bids" />}>
+      <Suspense fallback={<ListSkeleton label="Loading bids" title={view.title} />}>
         <BidsPageContent
           searchParams={searchParams}
           title={view.title}
