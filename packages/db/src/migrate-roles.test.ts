@@ -27,6 +27,7 @@ import {
   WORKER_ARTWORK_REGISTER_TABLES,
   WORKER_BID_ALERT_PRUNE_DELETE_TABLES,
   WORKER_BID_ALERT_TABLES,
+  WORKER_COLLECTION_BOOKING_SCRUB_COLUMNS,
   WORKER_DATA_EXPORT_TABLES,
   WORKER_DENY_TABLES,
   WORKER_DOMAIN_EVENT_DELIVERY_TABLES,
@@ -419,6 +420,19 @@ describe("migrate-roles invariants", () => {
       expect([...API_DENY_TABLES]).not.toContain(table);
       expect([...API_READ_TABLES]).not.toContain(table);
     }
+  });
+
+  it("lets the worker scrub only the collector's details on a booking", async () => {
+    const source = await readFile(join(__dirname, "migrate-roles.ts"), "utf8");
+    expect([...WORKER_COLLECTION_BOOKING_SCRUB_COLUMNS]).toEqual([
+      "collector_name",
+      "collector_email",
+      "collector_company",
+      "personal_details_erased_at",
+    ]);
+    expect(source).toContain(
+      '"collection_booking",\n          WORKER_COLLECTION_BOOKING_SCRUB_COLUMNS,',
+    );
   });
 
   it("denies api_app and worker_app on shop append-only commerce tables", () => {

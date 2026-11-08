@@ -389,6 +389,16 @@ export const WORKER_ARTWORK_REGISTER_APPEND_ONLY_TABLES = ["artwork_register_eve
  * columns on a conflict and nothing else (the address hash is the key and is never changed).
  */
 export const WORKER_EMAIL_SUPPRESSION_UPDATE_COLUMNS = ["reason", "source", "created_at"] as const;
+/**
+ * Anonymising a purged person scrubs the collector's name, email and company on the collection
+ * bookings they made, and nothing else on the row.
+ */
+export const WORKER_COLLECTION_BOOKING_SCRUB_COLUMNS = [
+  "collector_name",
+  "collector_email",
+  "collector_company",
+  "personal_details_erased_at",
+] as const;
 export const WORKER_ZOHO_CAMPAIGNS_SUPPRESSION_TABLES = [
   "zoho_campaigns_suppression_state",
 ] as const;
@@ -956,6 +966,13 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
           "public",
           // `source` arrives with migration 0323; roles may be applied before it runs.
           true,
+        );
+        /** The anonymisation projector scrubs a purged person's collector details, column by column. */
+        await grantColumnUpdateIfExists(
+          client,
+          "worker_app",
+          "collection_booking",
+          WORKER_COLLECTION_BOOKING_SCRUB_COLUMNS,
         );
         /** worker enqueues mail from notification-fanout projectors (INSERT) and the send-email
          * job updates rows to sent/failed/sending (SELECT, UPDATE). DELETE remains denied so the
