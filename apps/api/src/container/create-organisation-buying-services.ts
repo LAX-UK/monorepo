@@ -7,6 +7,7 @@ import type {
   IBidInvoiceReader,
   ILegalEntityRepository,
   ILotRepository,
+  IPayoutRepository,
   ISaleRepository,
   ITransactionRunner,
 } from "@auction/persistence/interfaces";
@@ -107,6 +108,8 @@ export type CreateOrganisationBuyingInput = {
     /** Asks the payment provider how a combined checkout stands, and for transfer details. */
     groupGateway: Pick<IPaymentGroupGateway, "checkoutStatus" | "bankTransferInstructions">;
     invoices: IBidInvoiceReader;
+    /** What has been refunded for a payment so far, for the invoice document. */
+    refunds: Pick<IPayoutRepository, "sumRefundLineCentsForPayment">;
     /** Prices a lot not invoiced yet with the calculator that raises invoices. */
     pricing: Pick<InvoiceRaiser, "price">;
     /** Raises the invoice of a won lot that has none yet, as lot end does. */
@@ -175,6 +178,8 @@ export function createOrganisationBuyingServices(input: CreateOrganisationBuying
         invoices: input.payments.invoices,
         accounts: input.accounts,
         render: renderBidInvoicePdf,
+        refunds: input.payments.refunds,
+        metrics: { record: recordMoneyPathEvent },
       }),
       payTransfer: new PayTransferService({
         candidates,

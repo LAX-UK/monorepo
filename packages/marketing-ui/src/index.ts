@@ -205,6 +205,7 @@ export {
   MarketingChromeIconButton,
   type MarketingChromeIconButtonProps,
 } from "./header/marketing-chrome-icon-button.js";
+export { type HeroPresence, createHeroPresence } from "./header/hero-presence.js";
 export {
   HEADER_SCROLL_FADE_THRESHOLD_PX,
   type HeaderChrome,
@@ -470,6 +471,10 @@ export {
   type MarketingFilterLinkGroup,
   type MarketingFilterLinkGroupsProps,
 } from "./marketing-filter-link-groups.js";
+export {
+  MarketingFilterLinkRow,
+  type MarketingFilterLinkRowProps,
+} from "./marketing-filter-link-row.js";
 export { MarketingSortLinks, type MarketingSortLinksProps } from "./marketing-sort-links.js";
 export {
   type MarketingArtistDirectoryControls,

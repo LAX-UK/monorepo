@@ -21,6 +21,7 @@ const entrySchema = z.object({
   currency: z.string(),
   blocker: z.enum(["documents", "review"]).nullable(),
   holder: z.enum(["organisation", "payer", "winner"]).nullable(),
+  refused: z.literal(true).optional(),
 }) satisfies z.ZodType<AmountOwedEntry, z.ZodTypeDef, unknown>;
 
 const stillToSendSchema = z.object({

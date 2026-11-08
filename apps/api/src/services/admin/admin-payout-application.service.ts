@@ -1,4 +1,3 @@
-import { type SettlementPeriodRefusal, resolveSettlementPeriod } from "@auction/domain";
 import type { CreatePayoutAdjustmentInput, ResolveBlockedPayoutInput } from "@auction/validators";
 import type { IAdminPayoutApplicationService } from "../interfaces/admin-routes/admin-finance-routes.js";
 import type { IPayoutStatementApplicationService } from "../interfaces/finance-routes/finance-payout-statement.js";
@@ -34,26 +33,17 @@ export class AdminPayoutApplicationService implements IAdminPayoutApplicationSer
   }
 
   /**
-   * Settles one entity for the period after its last settled one. The period is worked out here
-   * from the stored payouts, never taken as open-ended, and an overlap is refused.
+   * Settles one entity for the period after its last settled one. The period is worked out inside
+   * the settlement, under the entity's lock, never taken as open-ended, and an overlap is refused.
    */
   async createSettlement(
     actorUserId: string,
     input: { legalEntityId: string; reason: string; periodStart?: Date },
-  ): Promise<CreateSettlementResult | { ok: false; reason: SettlementPeriodRefusal }> {
-    const [latest] = await this.payouts.adminList({ legalEntityId: input.legalEntityId, limit: 1 });
-    const { pending } = await this.payouts.adminSettlementPreview(input.legalEntityId);
-    const period = resolveSettlementPeriod({
-      now: this.now(),
-      requestedStart: input.periodStart,
-      lastSettledEnd: latest?.periodEnd ?? null,
-      earliestPending: pending.earliestCapturedAt ?? null,
-    });
-    if (!period.ok) return period;
+  ): Promise<CreateSettlementResult> {
     return this.settlements.createSettlement(actorUserId, {
       legalEntityId: input.legalEntityId,
-      periodStart: period.periodStart,
-      periodEnd: period.periodEnd,
+      periodEnd: this.now(),
+      ...(input.periodStart ? { periodStart: input.periodStart } : {}),
       reason: input.reason,
     });
   }

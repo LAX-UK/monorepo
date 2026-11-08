@@ -176,6 +176,7 @@ export function createOrganisationBuyingRoutes(
         return c.json({ error: e.code, message: e.message }, e.status);
       }
       c.header("Content-Type", "application/pdf");
+      c.header("X-Content-Type-Options", "nosniff");
       c.header("Content-Disposition", `attachment; filename="${result.value.filename}"`);
       c.header("Cache-Control", "no-store");
       return c.body(new Uint8Array(result.value.pdf));

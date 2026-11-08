@@ -67,6 +67,12 @@ export type ItemSubmissionUpdatePatch = {
 
 export interface IItemSubmissionRepository {
   findById(id: string): Promise<ItemSubmission | null>;
+  /**
+   * Reads a consignment and holds its row until the transaction ends, so two changes that each
+   * depend on its state (becoming a lot, entering a private sale) cannot both pass. Use it only
+   * on a repository bound to a transaction.
+   */
+  findByIdForUpdate(id: string): Promise<ItemSubmission | null>;
   create(input: CreateItemSubmissionInput): Promise<ItemSubmission>;
   update(id: string, patch: ItemSubmissionUpdatePatch): Promise<ItemSubmission>;
   listForLegalEntity(legalEntityId: string, f: ListSubmissionsFilter): Promise<ItemSubmission[]>;

@@ -51,7 +51,8 @@ export async function convert(
       await deps.transactionRunner.runInTransaction(async (tx) => {
         const subRepo = txRepos(deps, tx).itemSubmission;
         const lotRepo = txRepos(deps, tx).lot;
-        const s = await subRepo.findById(id);
+        // Held until the lot exists, so a private sale cannot start for this work at the same time.
+        const s = await subRepo.findByIdForUpdate(id);
         if (!s) {
           throw new SubmissionError("Not found", 404);
         }

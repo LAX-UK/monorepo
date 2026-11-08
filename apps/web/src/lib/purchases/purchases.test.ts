@@ -448,6 +448,34 @@ describe("buildPurchasesVm", () => {
       });
     });
 
+    it("says a rejected or archived organisation can't make payments, as the Pay page does", () => {
+      const vm = buildPurchasesVm(
+        sources(
+          { organisation: northbank, payerName: northbank.name },
+          "organisation_closed",
+          "organisation",
+        ),
+      );
+      expect(vm.payNow).toEqual({
+        kind: "review",
+        title: "Northbank Gallery can't make payments",
+        description: "Contact client services and we'll help.",
+        documentsAction: null,
+      });
+      expect(vm.cardsByTab["to-pay"][0]).toMatchObject({
+        statusNote: "This organisation can't make payments. Contact client services.",
+        payable: null,
+      });
+      // Under review keeps its own words.
+      const review = buildPurchasesVm(
+        sources({ organisation: northbank }, "organisation_under_review", "organisation"),
+      );
+      expect(review.payNow).toMatchObject({ title: "Northbank Gallery is in review" });
+      expect(review.cardsByTab["to-pay"][0]?.statusNote).toBe(
+        "We're checking a few details before you can pay",
+      );
+    });
+
     it("offers no setup to a member who cannot change the organisation", () => {
       const vm = buildPurchasesVm(
         sources(

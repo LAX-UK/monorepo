@@ -80,7 +80,7 @@ describe("MarketingFilterLinkGroups", () => {
     );
   });
 
-  it("shows a choice of one as a radio group of anchors", () => {
+  it("shows a choice of one as a group of plain links, the chosen one marked current", () => {
     render(
       <MarketingFilterLinkGroups
         groups={[
@@ -96,9 +96,10 @@ describe("MarketingFilterLinkGroups", () => {
         ]}
       />,
     );
-    expect(screen.getByRole("radiogroup", { name: "Sort by" })).toBeInTheDocument();
-    expect(screen.getByRole("radio", { name: "A–Z" })).toHaveAttribute("aria-checked", "true");
-    const other = screen.getByRole("radio", { name: "Most lots" });
+    expect(screen.getByRole("group", { name: "Sort by" })).toBeInTheDocument();
+    expect(screen.queryByRole("radio")).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "A–Z" })).toHaveAttribute("aria-current", "true");
+    const other = screen.getByRole("link", { name: "Most lots" });
     expect(other.tagName).toBe("A");
     expect(other).toHaveAttribute("href", "/artists?sort=popular");
   });

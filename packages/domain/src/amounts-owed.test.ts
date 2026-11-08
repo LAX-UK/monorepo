@@ -74,6 +74,21 @@ describe("amountOwedEntry", () => {
       expect(entryFor({}, "clear", null)).toMatchObject({ state: "payment-due", holder: null });
     });
 
+    it("carries a closed organisation apart from one under review", () => {
+      expect(entryFor({}, "organisation_closed", "organisation")).toMatchObject({
+        state: "in-review",
+        blocker: "review",
+        holder: "organisation",
+        refused: true,
+      });
+      expect(entryFor({}, "organisation_under_review", "organisation")?.refused).toBeUndefined();
+      expect(entryFor({}, "clear", null)?.refused).toBeUndefined();
+      const refused = entryFor({}, "organisation_closed", "organisation");
+      const review = entryFor({}, "organisation_under_review", "organisation");
+      expect(summariseAmountsOwed(refused ? [refused] : [])).toMatchObject({ refused: true });
+      expect(summariseAmountsOwed(review ? [review] : [])).toMatchObject({ refused: false });
+    });
+
     it("gives the payer nothing to upload for another person's check", () => {
       expect(entryFor({}, "source_of_funds_required", "winner")).toMatchObject({
         state: "in-review",
@@ -152,6 +167,7 @@ describe("summariseAmountsOwed", () => {
       inReview: false,
       blocker: null,
       holder: null,
+      refused: false,
     });
   });
 

@@ -80,7 +80,10 @@ function mkCreatedLot(partial: Partial<Lot> & Pick<Lot, "id">): Lot {
 
 function testRepoFactory(): IRepositoryFactory {
   const txSubRepo = {
-    findById: hoisted.txSubFindById,
+    findById: vi.fn(() => {
+      throw new Error("conversion must read the consignment with a lock");
+    }),
+    findByIdForUpdate: hoisted.txSubFindById,
     update: hoisted.txSubUpdate,
   };
   const txLotRepo = { create: hoisted.txLotCreate };
@@ -122,7 +125,13 @@ describe("convert", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     hoisted.forTransaction.mockImplementation(() => ({
-      itemSubmission: { findById: hoisted.txSubFindById, update: hoisted.txSubUpdate },
+      itemSubmission: {
+        findById: vi.fn(() => {
+          throw new Error("conversion must read the consignment with a lock");
+        }),
+        findByIdForUpdate: hoisted.txSubFindById,
+        update: hoisted.txSubUpdate,
+      },
       lot: { create: hoisted.txLotCreate },
     }));
   });
@@ -179,6 +188,24 @@ describe("convert", () => {
       expect(result._unsafeUnwrapErr().message).toBe("This work is in private sale PS-0012.");
       expect(hoisted.txLotCreate).not.toHaveBeenCalled();
       expect(hoisted.txSubUpdate).not.toHaveBeenCalled();
+    });
+
+    it("checks for the deal only after the consignment is held, so a deal being opened cannot slip past", async () => {
+      const order: string[] = [];
+      hoisted.txSubFindById.mockImplementation(async () => {
+        order.push("lock");
+        return mkApprovedSubmission({ id: "sub-1" });
+      });
+      const deps = baseDeps({
+        privateSaleDeals: {
+          findLiveDealReferenceForWork: vi.fn(async () => {
+            order.push("deal check");
+            return "PS-0012";
+          }),
+        },
+      });
+      await convert(deps, "admin-1", "sub-1");
+      expect(order).toEqual(["lock", "deal check"]);
     });
 
     it("becomes a lot when it is in no private sale", async () => {

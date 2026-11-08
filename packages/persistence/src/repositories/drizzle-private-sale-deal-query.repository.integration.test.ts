@@ -1,7 +1,9 @@
+import { randomUUID } from "node:crypto";
 import { type Database, createDb } from "@auction/db";
 import { itemSubmission, legalEntity, privateSaleDeal, user } from "@auction/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
+import { DrizzleItemSubmissionRepository } from "./drizzle-item-submission.repository.js";
 import {
   DrizzleDealWorkStore,
   DrizzlePrivateSaleDealQueryRepository,
@@ -358,6 +360,113 @@ describe.skipIf(!HAS_DB)("private sale deal lists and works (integration)", () =
       expect((await works.findByReference(work.reference.toLowerCase()))?.id).toBe(work.id);
       expect(await works.findByReference("C-999999999")).toBeNull();
       expect(await works.findByReference("hello")).toBeNull();
+    });
+  });
+
+  describe("holding a consignment while a lot or a deal is made from it", () => {
+    // These need committed rows and two connections, so the rows are removed in `finally`.
+    async function withCommittedWork(run: (workId: string) => Promise<void>) {
+      const databaseUrl = process.env.DATABASE_URL;
+      if (!databaseUrl) throw new Error("DATABASE_URL required");
+      const db = createDb(databaseUrl);
+      const suffix = randomUUID().slice(0, 8);
+      const userId = `psq-lock-${suffix}`;
+      const entityId = randomUUID();
+      const [work] = await (async () => {
+        await db.insert(user).values({
+          id: userId,
+          name: userId,
+          email: `${userId}@integration.test`,
+          emailVerified: true,
+          createdAt: t,
+          updatedAt: t,
+        });
+        await db.insert(legalEntity).values({
+          id: entityId,
+          displayName: "Lock test seller",
+          kind: "organisation",
+          subkind: "company",
+          createdByUserId: userId,
+          status: "approved",
+          createdAt: t,
+          updatedAt: t,
+        });
+        return db
+          .insert(itemSubmission)
+          .values({
+            legalEntityId: entityId,
+            title: "Lock test work",
+            status: "approved",
+            submittedByUserId: userId,
+          })
+          .returning({ id: itemSubmission.id });
+      })();
+      try {
+        await run(work?.id as string);
+      } finally {
+        await db.delete(itemSubmission).where(eq(itemSubmission.legalEntityId, entityId));
+        await db.delete(legalEntity).where(eq(legalEntity.id, entityId));
+        await db.delete(user).where(eq(user.id, userId));
+      }
+    }
+
+    /** Another connection asking for the row without waiting: it is refused while the row is held. */
+    async function rowIsHeld(workId: string): Promise<boolean> {
+      // biome-ignore lint/style/noNonNullAssertion: gated by HAS_DB
+      const other = createDb(process.env.DATABASE_URL!);
+      return other
+        .transaction((tx) =>
+          tx.execute(sql`SELECT id FROM item_submission WHERE id = ${workId} FOR UPDATE NOWAIT`),
+        )
+        .then(
+          () => false,
+          () => true,
+        );
+    }
+
+    it("takes a row lock when a deal reads the work, and lets go when the transaction ends", async () => {
+      await withCommittedWork(async (workId) => {
+        // biome-ignore lint/style/noNonNullAssertion: gated by HAS_DB
+        const db = createDb(process.env.DATABASE_URL!);
+        const works = new DrizzleDealWorkStore(db);
+        let heldDuring: boolean | null = null;
+        await db.transaction(async (tx) => {
+          const held = await works.lockInTransaction(tx as unknown as Database, workId);
+          expect(held).toMatchObject({ id: workId, status: "approved", convertedLotId: null });
+          heldDuring = await rowIsHeld(workId);
+        });
+        expect(heldDuring).toBe(true);
+        expect(await rowIsHeld(workId)).toBe(false);
+      });
+    });
+
+    it("takes a row lock when a lot is made from the consignment", async () => {
+      await withCommittedWork(async (workId) => {
+        // biome-ignore lint/style/noNonNullAssertion: gated by HAS_DB
+        const db = createDb(process.env.DATABASE_URL!);
+        let heldDuring: boolean | null = null;
+        await db.transaction(async (tx) => {
+          const repo = new DrizzleItemSubmissionRepository(tx as unknown as Database);
+          expect((await repo.findByIdForUpdate(workId))?.id).toBe(workId);
+          heldDuring = await rowIsHeld(workId);
+        });
+        expect(heldDuring).toBe(true);
+        expect(await rowIsHeld(workId)).toBe(false);
+      });
+    });
+
+    it("reads a plain consignment without holding it", async () => {
+      await withCommittedWork(async (workId) => {
+        // biome-ignore lint/style/noNonNullAssertion: gated by HAS_DB
+        const db = createDb(process.env.DATABASE_URL!);
+        let heldDuring: boolean | null = null;
+        await db.transaction(async (tx) => {
+          const repo = new DrizzleItemSubmissionRepository(tx as unknown as Database);
+          expect((await repo.findById(workId))?.id).toBe(workId);
+          heldDuring = await rowIsHeld(workId);
+        });
+        expect(heldDuring).toBe(false);
+      });
     });
   });
 });

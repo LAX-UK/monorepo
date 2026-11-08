@@ -33,7 +33,7 @@ export type CreatePayoutSettlementRuntimeInput = {
   legalEntityConnectRepo: ILegalEntityConnectRepository;
   domainEventSink: IDomainEventSinkPort;
   domainEventPublisher: IDomainEventPublisher;
-  /** Where payout money-path counters go; the worker passes none and counts are dropped. */
+  /** Where payout money-path counters go; left out, the counts are dropped. */
   metrics?: IMoneyPathMetrics;
 };
 

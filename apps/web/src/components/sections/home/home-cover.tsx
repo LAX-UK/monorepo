@@ -1,5 +1,6 @@
 "use client";
 
+import { BidHeroSignal } from "@/components/layout/bid-hero-signal";
 import { type BidViewerSale, withBidViewer } from "@/lib/marketing-cover/bid-cover.adapter";
 import type { BidCoverViewer } from "@/lib/marketing-cover/bid-cover.adapter";
 import { fetchCoverViewer } from "@/lib/marketing-cover/cover-viewer.client";
@@ -58,6 +59,7 @@ export function HomeCover({ slides, leadSale, signedIn }: Props) {
       priority
       srcSetFor={bidCoverSrcSet}
       onSrcSetFallback={reportImageFallback}
+      headerSignal={<BidHeroSignal />}
     />
   );
 }

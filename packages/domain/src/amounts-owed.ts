@@ -19,13 +19,15 @@ export const PURCHASE_LIST_LIMIT = 500;
 /**
  * The checks that hold every unpaid purchase of an account until cleared: the buyer's own anti
  * money laundering and source-of-funds checks, or, for an organisation, LAX still checking the
- * organisation itself.
+ * organisation itself. `organisation_closed` is not a check: the organisation was rejected or
+ * archived, so nothing it owes can be paid online (contact client services).
  */
 export type AccountHold =
   | "clear"
   | "aml_hold"
   | "source_of_funds_required"
-  | "organisation_under_review";
+  | "organisation_under_review"
+  | "organisation_closed";
 
 /**
  * Whose check holds a purchase: the organisation's own (LAX is checking it), the person who pays,
@@ -68,10 +70,18 @@ export type AmountOwedEntry = {
   blocker: AmountOwedBlocker | null;
   /** Whose check holds it, when an account-level check does; `null` when none does. */
   holder: HoldHolder | null;
+  /**
+   * Set when the organisation is rejected or archived: paying is closed, not waiting on a check.
+   * Carried apart from a hold under review, which clears once LAX has finished checking.
+   */
+  refused?: true | undefined;
 };
 
 /** The reason the lot's own payment is held, when it is one of the checks or a finance hold. */
-function holdingReason(facts: AmountOwedFacts, account: AccountHold): ManualReviewReason | null {
+function holdingReason(
+  facts: AmountOwedFacts,
+  account: AccountHold,
+): ManualReviewReason | "organisation_closed" | null {
   if (facts.paymentReviewReason) return facts.paymentReviewReason;
   return account === "clear" ? null : account;
 }
@@ -100,6 +110,7 @@ export function amountOwedEntry(
   // LAX checking the organisation, is waited out.
   const ownCheck = !facts.paymentReviewReason;
   const heldBy = held && ownCheck ? holder : null;
+  const refused = held && ownCheck && account === "organisation_closed";
   const blocker: AmountOwedBlocker | null =
     held && role === "payer"
       ? reason === "source_of_funds_required" && heldBy !== "winner"
@@ -114,6 +125,7 @@ export function amountOwedEntry(
     currency,
     blocker,
     holder: heldBy,
+    ...(refused ? { refused: true as const } : {}),
   };
 }
 
@@ -130,6 +142,8 @@ export type AmountsOwedSummary = {
   blocker: AmountOwedBlocker | null;
   /** Whose check holds the purchases: the payer's own first, then the organisation's, then the winner's. */
   holder: HoldHolder | null;
+  /** The organisation is rejected or archived: what it owes cannot be paid online. */
+  refused: boolean;
 };
 
 const HOLDER_ORDER: readonly HoldHolder[] = ["payer", "organisation", "winner"];
@@ -154,5 +168,6 @@ export function summariseAmountsOwed(entries: readonly AmountOwedEntry[]): Amoun
     inReview: mine.length > 0 && payableCount === 0,
     blocker: blockers.includes("documents") ? "documents" : (blockers[0] ?? null),
     holder: firstHolder(mine),
+    refused: mine.some((entry) => entry.refused === true),
   };
 }

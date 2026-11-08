@@ -24,6 +24,12 @@ export type DealViewCriteria = {
   order: "oldest_first" | "newest_first";
 };
 
+/** A deal that has ended: sold and paid out, or cancelled. */
+export const CLOSED_DEAL_STAGES: readonly PrivateSaleDealStage[] = ["settled", "cancelled"];
+
+export const isDealClosed = (stage: PrivateSaleDealStage): boolean =>
+  CLOSED_DEAL_STAGES.includes(stage);
+
 /** Stages in which a deal still needs someone to move it on. */
 export const OPEN_DEAL_STAGES: readonly PrivateSaleDealStage[] = [
   "proposed",
