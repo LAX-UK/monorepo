@@ -8,7 +8,7 @@ export function OrderSummaryTotals({
   note,
 }: {
   summary: BasketSummaryVm;
-  /** Shown under the total; the VAT note always leads it. */
+  /** Shown under the total; the total's own label already says VAT is included. */
   note?: string;
 }) {
   return (
@@ -27,9 +27,7 @@ export function OrderSummaryTotals({
           <dd>{summary.total}</dd>
         </div>
       </dl>
-      <p className="shop-basket__summary-note">
-        {summary.vatNote}.{note ? ` ${note}` : ""}
-      </p>
+      {note ? <p className="shop-basket__summary-note">{note}</p> : null}
     </>
   );
 }

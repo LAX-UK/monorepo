@@ -468,6 +468,10 @@ export {
   type MarketingFilterLinkGroup,
   type MarketingFilterLinkGroupsProps,
 } from "./marketing-filter-link-groups.js";
+export {
+  MarketingFilterLinkRow,
+  type MarketingFilterLinkRowProps,
+} from "./marketing-filter-link-row.js";
 export { MarketingSortLinks, type MarketingSortLinksProps } from "./marketing-sort-links.js";
 export {
   type MarketingArtistDirectoryControls,

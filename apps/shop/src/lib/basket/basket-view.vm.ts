@@ -93,10 +93,9 @@ export type BasketSummaryVm = {
   delivery: string;
   /** Collection is offered at checkout; say so before the shopper gets there. */
   deliveryNote: string;
-  /** "Total", or "Total before delivery" where delivery cannot be priced online. */
+  /** "Total, including VAT", or "Total before delivery" where delivery cannot be priced online. */
   totalLabel: string;
   total: string;
-  vatNote: string;
 };
 
 /**
@@ -125,8 +124,8 @@ export function presentBasketSummary(
       collection === 0
         ? "Collection in London is free. Choose it at checkout."
         : `Collection in London is ${formatGbpPence(collection)}. Choose it at checkout.`,
-    totalLabel: fulfilment === "international_quotation" ? "Total before delivery" : "Total",
+    totalLabel:
+      fulfilment === "international_quotation" ? "Total before delivery" : "Total, including VAT",
     total: formatGbpPence(subtotalPence + delivery.pence),
-    vatNote: "Prices include VAT",
   };
 }

@@ -20,6 +20,7 @@ import { commerceErrorMessage } from "@/lib/commerce-error-message";
 import { MarketingTrashIcon } from "@auction/marketing-ui";
 import type { BasketLine } from "@auction/shop-contracts";
 import { formatGbpPence } from "@auction/shop-portal/vm";
+import { cn } from "@auction/ui";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -248,7 +249,7 @@ function BasketLineRow({
 }) {
   const router = useRouter();
   return (
-    <li className="shop-basket__line">
+    <li className={cn("shop-basket__line", line?.soldOut && "shop-basket__line--sold-out")}>
       <BasketLineThumbnail vm={vm} />
       <div className="shop-basket__line-body">
         <div className="shop-basket__line-head">
@@ -300,7 +301,13 @@ function BasketLineRow({
         ) : null}
         {line?.outOfStock && line.soldOut ? (
           <ShopNotice tone="warning" title="Sold out">
-            <p>This edition has sold out. Remove it to continue to checkout.</p>
+            <p>This edition sold out while it was in your basket.</p>
+            <p>Remove it to continue to checkout, or ask to hear if it comes back.</p>
+            {vm.href ? (
+              <Link href={vm.href} className="shop-inline-link shop-focus-ring">
+                Get alerts
+              </Link>
+            ) : null}
           </ShopNotice>
         ) : line?.outOfStock ? (
           <ShopNotice tone="warning" title="Quantity not available">

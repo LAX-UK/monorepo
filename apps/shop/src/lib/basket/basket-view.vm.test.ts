@@ -122,6 +122,7 @@ describe("presentBasketSummary", () => {
       subtotal: "£325.00",
       delivery: "£15.00",
       total: "£340.00",
+      totalLabel: "Total, including VAT",
       deliveryNote: "Collection in London is free. Choose it at checkout.",
     });
   });

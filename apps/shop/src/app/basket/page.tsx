@@ -2,7 +2,6 @@ import { BasketLinesClient } from "@/components/basket/basket-lines.client";
 import { ShopBasketCancelNotice } from "@/components/basket/shop-basket-cancel-notice.client";
 import { ShopBasketResumePayment } from "@/components/basket/shop-basket-resume-payment.client";
 import { CatalogueGrid } from "@/components/catalogue-grid";
-import { ShopCheckoutSteps } from "@/components/checkout/shop-checkout-steps";
 import { ShopCatalogueStateRetryButton } from "@/components/home/shop-catalogue-state-retry.client";
 import { ShopAuthLink } from "@/components/shop-auth-link";
 import { ShopCommerceButton, shopButtonClassName } from "@/components/shop-commerce-button";
@@ -101,7 +100,7 @@ export default async function BasketPage() {
         </ShopCommerceButton>
         {viewer.kind === "guest" ? (
           <p className="shop-basket__summary-note">
-            Check out as a guest or sign in to your LAX Account at the next step.
+            Sign in for saved addresses. You can also check out as a guest.
           </p>
         ) : null}
       </>
@@ -160,8 +159,7 @@ export default async function BasketPage() {
   return (
     <MarketingDetailShell shellClassName="shop-page shop-page--basket">
       <ShopCommercePageShell header={shopPageWayfinding.basket} contentClassName="shop-basket">
-        {/* The step bar belongs to a basket with something to check out. */}
-        {lines.length > 0 ? <ShopCheckoutSteps current="Basket" /> : null}
+        {/* The steps start at checkout: the basket is not one of them. */}
         <Suspense fallback={null}>
           <ShopBasketCancelNotice />
         </Suspense>

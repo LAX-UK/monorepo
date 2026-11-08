@@ -781,19 +781,13 @@ a.shop-checkout-steps__link:hover .shop-checkout-steps__label {
 .shop-basket__thumb {
   position: relative;
   flex-shrink: 0;
-  width: 5rem;
+  width: 6rem;
   aspect-ratio: 4 / 5;
 }
 
 .shop-basket__thumb img {
   object-fit: contain;
   padding: 8%;
-}
-
-@media (min-width: 40rem) {
-  .shop-basket__thumb {
-    width: 7rem;
-  }
 }
 
 .shop-basket__line-body {
@@ -925,6 +919,13 @@ a.shop-checkout-steps__link:hover .shop-checkout-steps__label {
 
 .shop-basket__remove:disabled {
   cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* A sold-out line is dimmed (the picture and details); its message and Remove stay at full strength. */
+.shop-basket__line--sold-out .shop-basket__thumb,
+.shop-basket__line--sold-out .shop-basket__line-identity,
+.shop-basket__line--sold-out .shop-basket__line-price {
   opacity: 0.6;
 }
 
