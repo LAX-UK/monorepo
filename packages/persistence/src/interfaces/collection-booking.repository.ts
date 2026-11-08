@@ -35,6 +35,13 @@ export interface ICollectionPlaceRepository {
   /** The settings, or `null` when the place has never been set up. Creates nothing. */
   find(venueId: string): Promise<CollectionPlaceSettings | null>;
   /**
+   * The settings and weekly hours of the place a lot is collected from (its sale's venue), or
+   * `null` when the lot has no sale or venue, or the place has not been set up. Creates nothing.
+   */
+  findForLot(
+    lotId: string,
+  ): Promise<{ settings: CollectionPlaceSettings; hours: CollectionWeeklyHours[] } | null>;
+  /**
    * The hours and the exceptions that touch `from` to `to` (inclusive London days), with the
    * settings. Exceptions removed by staff are left out.
    */

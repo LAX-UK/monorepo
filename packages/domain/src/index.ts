@@ -832,9 +832,12 @@ export {
 } from "./artist-alert-criteria.js";
 export {
   collectionBookingOffer,
+  collectionSettingsFromPlace,
   type CollectionBookingOffer,
   type CollectionBookingSettings,
+  type CollectionPlaceForOffer,
 } from "./collection-booking.js";
+export { summariseWeeklyHours } from "./collection-hours-summary.js";
 export {
   bankHolidayClosures,
   createCollectionCalendar,

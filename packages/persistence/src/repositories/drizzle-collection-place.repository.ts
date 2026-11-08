@@ -1,5 +1,11 @@
 import type { Database } from "@auction/db";
-import { collectionException, collectionPlace, collectionWeeklyHours } from "@auction/db/schema";
+import {
+  collectionException,
+  collectionPlace,
+  collectionWeeklyHours,
+  lot,
+  sale,
+} from "@auction/db/schema";
 import {
   type CollectionException,
   type CollectionExceptionSource,
@@ -57,6 +63,34 @@ export class DrizzleCollectionPlaceRepository implements ICollectionPlaceReposit
     return row ? toSettings(row) : null;
   }
 
+  async findForLot(
+    lotId: string,
+  ): Promise<{ settings: CollectionPlaceSettings; hours: CollectionWeeklyHours[] } | null> {
+    const [row] = await this.db
+      .select({ venueId: sale.venueId })
+      .from(lot)
+      .innerJoin(sale, eq(sale.id, lot.saleId))
+      .where(eq(lot.id, lotId))
+      .limit(1);
+    if (!row?.venueId) return null;
+    const settings = await this.find(row.venueId);
+    if (!settings) return null;
+    return { settings, hours: await this.weeklyHours(row.venueId) };
+  }
+
+  private async weeklyHours(venueId: string): Promise<CollectionWeeklyHours[]> {
+    const rows = await this.db
+      .select()
+      .from(collectionWeeklyHours)
+      .where(eq(collectionWeeklyHours.venueId, venueId))
+      .orderBy(asc(collectionWeeklyHours.weekday), asc(collectionWeeklyHours.opensLocal));
+    return rows.map((row) => ({
+      weekday: row.weekday,
+      opensLocal: row.opensLocal,
+      closesLocal: row.closesLocal,
+    }));
+  }
+
   async ensure(venueId: string): Promise<CollectionPlaceSettings> {
     // A second caller racing the first waits on the primary key, finds the row and adds nothing.
     await this.db.transaction(async (tx) => {
@@ -85,11 +119,7 @@ export class DrizzleCollectionPlaceRepository implements ICollectionPlaceReposit
     range: { from: DateKey; to: DateKey },
   ): Promise<CollectionCalendarFacts> {
     const settings = await this.ensure(venueId);
-    const hours = await this.db
-      .select()
-      .from(collectionWeeklyHours)
-      .where(eq(collectionWeeklyHours.venueId, venueId))
-      .orderBy(asc(collectionWeeklyHours.weekday), asc(collectionWeeklyHours.opensLocal));
+    const hours = await this.weeklyHours(venueId);
     const exceptions = await this.db
       .select()
       .from(collectionException)
@@ -102,11 +132,6 @@ export class DrizzleCollectionPlaceRepository implements ICollectionPlaceReposit
         ),
       )
       .orderBy(asc(collectionException.startsOn), asc(collectionException.id));
-    const weekly: CollectionWeeklyHours[] = hours.map((row) => ({
-      weekday: row.weekday,
-      opensLocal: row.opensLocal,
-      closesLocal: row.closesLocal,
-    }));
-    return { settings, hours: weekly, exceptions: exceptions.map(toException) };
+    return { settings, hours, exceptions: exceptions.map(toException) };
   }
 }

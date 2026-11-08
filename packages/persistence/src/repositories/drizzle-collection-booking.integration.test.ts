@@ -45,12 +45,19 @@ describe.skipIf(!HAS_DB)("collection booking (integration)", () => {
     return taken;
   }
 
+  /** The range a slot covers, as the reader takes it. */
+  const rangeOf = (slot: { slotStart: Date; slotEnd: Date }) => ({
+    from: slot.slotStart,
+    to: slot.slotEnd,
+  });
+
   function request(over: Partial<NewCollectionBooking> = {}): NewCollectionBooking {
-    const slot = over.slotStart && over.slotEnd ? {} : freshSlot();
+    const slot = over.slotStart && over.slotEnd ? over : freshSlot();
     return {
       legalEntityId: entityId,
       venueId,
-      ...slot,
+      slotStart: slot.slotStart as Date,
+      slotEnd: slot.slotEnd as Date,
       placesPerSlot: 2,
       overCapacityReason: null,
       lotIds: over.lotIds ?? freshLots(1),
@@ -143,10 +150,7 @@ describe.skipIf(!HAS_DB)("collection booking (integration)", () => {
       expect(stored.map((row) => row.seat).sort()).toEqual([1, 2]);
       expect(stored.every((row) => row.status === "booked" && !row.overCapacity)).toBe(true);
 
-      const taken = await bookings.takenPlaces(venueId, {
-        from: slot.slotStart,
-        to: slot.slotEnd,
-      });
+      const taken = await bookings.takenPlaces(venueId, rangeOf(slot));
       expect(taken.get(slot.slotStart.getTime())).toBe(2);
 
       // The twenty lots that lost were not left half-booked.
@@ -314,7 +318,7 @@ describe.skipIf(!HAS_DB)("collection booking (integration)", () => {
       const slot = freshSlot();
       const outcome = await bookings.book(request({ ...slot, lotIds: [free, held] }));
       expect(outcome).toEqual({ outcome: "lot_taken", lotIds: [held] });
-      const taken = await bookings.takenPlaces(venueId, slot);
+      const taken = await bookings.takenPlaces(venueId, rangeOf(slot));
       expect(taken.get(slot.slotStart.getTime())).toBeUndefined();
       expect((await bookings.findLiveByLots([free])).size).toBe(0);
     });
@@ -399,7 +403,7 @@ describe.skipIf(!HAS_DB)("collection booking (integration)", () => {
         });
       const outcomes = (await Promise.all([change(a), change(b)])).map((o) => o.outcome).sort();
       expect(outcomes).toEqual(["changed", "slot_full"]);
-      const taken = await bookings.takenPlaces(venueId, target);
+      const taken = await bookings.takenPlaces(venueId, rangeOf(target));
       expect(taken.get(target.slotStart.getTime())).toBe(1);
     });
 
@@ -581,7 +585,9 @@ describe.skipIf(!HAS_DB)("collection booking (integration)", () => {
         outcomeByUserId: null,
       });
       expect(undone.booking.lots.every((l) => l.active && l.outcome === null)).toBe(true);
-      expect((await bookings.takenPlaces(venueId, slot)).get(slot.slotStart.getTime())).toBe(1);
+      expect(
+        (await bookings.takenPlaces(venueId, rangeOf(slot))).get(slot.slotStart.getTime()),
+      ).toBe(1);
     });
 
     it("cannot undo a hand-over once a left-behind lot has been booked again", async () => {
@@ -687,6 +693,40 @@ describe.skipIf(!HAS_DB)("collection booking (integration)", () => {
         await db.execute(sql`delete from collection_weekly_hours where venue_id = ${fresh}`);
         await db.execute(sql`delete from collection_place where venue_id = ${fresh}`);
         await db.execute(sql`delete from venue where id = ${fresh}`);
+      }
+    });
+
+    it("finds a lot's place through its sale's venue, and only once the place is set up", async () => {
+      const saleId = randomUUID();
+      const lotId = randomUUID();
+      await db.execute(sql`
+        insert into sale (id, title, start_time, end_time, venue_id)
+        values (${saleId}, 'Collection IT sale', now() - interval '30 days',
+           now() - interval '20 days', ${venueId})`);
+      await db.execute(sql`
+        insert into lot (id, seller_legal_entity_id, sale_id, title, auction_type, starting_price,
+           current_price, start_time, end_time, status)
+        values (${lotId}, ${entityId}, ${saleId}, 'Collection IT sale lot', 'english', 100, 100,
+           now() - interval '30 days', now() - interval '20 days', 'ended')`);
+      try {
+        const found = await places.findForLot(lotId);
+        expect(found?.settings).toMatchObject({ venueId, onlineBookingEnabled: false });
+        expect(found?.hours.map((h) => h.weekday)).toEqual([1, 2, 3, 4, 5]);
+        // A lot with no sale, or an unknown lot, has no place.
+        expect(await places.findForLot(lotIds[0] as string)).toBeNull();
+        expect(await places.findForLot(randomUUID())).toBeNull();
+        // A sale whose venue was never set up reads as no place.
+        const bare = randomUUID();
+        await db.execute(sql`
+          insert into venue (id, legal_entity_id, name, address_line1, city, postcode, country)
+          values (${bare}, ${entityId}, 'Bare gallery', '3 Test Street', 'London', 'W1W 6YW', 'GB')`);
+        await db.execute(sql`update sale set venue_id = ${bare} where id = ${saleId}`);
+        expect(await places.findForLot(lotId)).toBeNull();
+        await db.execute(sql`update sale set venue_id = ${venueId} where id = ${saleId}`);
+        await db.execute(sql`delete from venue where id = ${bare}`);
+      } finally {
+        await db.execute(sql`delete from lot where id = ${lotId}`);
+        await db.execute(sql`delete from sale where id = ${saleId}`);
       }
     });
 

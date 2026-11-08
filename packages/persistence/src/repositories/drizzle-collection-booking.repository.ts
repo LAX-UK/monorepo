@@ -587,7 +587,22 @@ async function liveBookingsByLot(
  */
 async function claimNewSeat(conn: Conn, input: NewCollectionBooking): Promise<string | null> {
   const staffOverride = input.overCapacityReason !== null;
+  // Places already seen as taken are skipped, which saves a reference number and a round trip per
+  // place. The check is only a shortcut: the insert below is what decides, so a place taken a
+  // moment after this read is still lost to whoever got it first.
+  const taken = await conn
+    .select({ seat: collectionBooking.seat })
+    .from(collectionBooking)
+    .where(
+      and(
+        eq(collectionBooking.venueId, input.venueId),
+        eq(collectionBooking.slotStart, input.slotStart),
+        eq(collectionBooking.status, "booked"),
+      ),
+    );
+  const seen = new Set(taken.map((row) => row.seat));
   for (const seat of seatsToTry(input.placesPerSlot, staffOverride)) {
+    if (seen.has(seat)) continue;
     const beyond = seat > input.placesPerSlot;
     const [created] = await conn
       .insert(collectionBooking)
