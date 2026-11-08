@@ -574,6 +574,11 @@ html:has([data-cover-under-header]) header[data-hero-pending] {
   --color-link: var(--color-hero-foreground);
   --color-brand-300: rgb(255 255 255 / 0.35);
   --color-brand-400: rgb(255 255 255 / 0.35);
-  --color-input-border: rgb(255 255 255 / 0.35);
   --color-product-accent: currentColor;
+}
+
+/* The search field's edge is a LAX system token (declared once, above), so it is set on the
+   field here instead of being redeclared for the header. */
+html:has([data-cover-under-header]) header[data-hero-pending] .site-header-search-trigger {
+  border-color: rgb(255 255 255 / 0.35);
 }
