@@ -124,7 +124,11 @@ export class PrivateSaleDealCommandService implements IPrivateSaleDealCommands {
     if (written.kind === "not_found") return { ok: false, error: "deal_not_found" };
     if (written.kind === "conflict") return this.staleOf(ref);
 
-    await this.publish(viewer, deal.id, dealPartyNamedEvent(deal, "buyer"));
+    await this.publish(
+      viewer,
+      deal.id,
+      dealPartyNamedEvent(deal, { role: "buyer", actingUserId: buyer.actingUserId }),
+    );
     return { ok: true, record: await this.deps.records.recordOf(viewer, written.deal) };
   }
 

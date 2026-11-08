@@ -9,7 +9,7 @@ type Row = Record<string, unknown>;
  * delete/update returns the next queued result, and every `set` payload is recorded.
  */
 function fakeTx(input: {
-  matched: Array<{ id: string; status: string }>;
+  matched: Array<{ id: string; status: string; createdAt?: Date }>;
   /** The deals made from the converted enquiries, answered to the second select. */
   deals?: Array<{
     id?: string;
@@ -21,11 +21,16 @@ function fakeTx(input: {
   }>;
   /** The people acting for each deal's two sides. */
   parties?: Array<{ dealId: string; userId: string | null }>;
+  /** Everyone named on a deal by a party-named event, including a buyer later replaced. */
+  named?: Array<{ dealId: string; userId: string | null }>;
   /** When each deal settled, from its stage history. */
   settled?: Array<{ dealId: string; at: Date }>;
   /** Screenings and source-of-funds cases opened for those people. */
   screenings?: Array<{ userId: string; at: Date }>;
   funds?: Array<{ userId: string; at: Date }>;
+  /** Anti-money-laundering holds and identity verifications that did not pass. */
+  holds?: Array<{ userId: string; at: Date }>;
+  declined?: Array<{ userId: string; at: Date }>;
   detached?: Row[];
   notes?: Row[];
   enquiries?: Row[];
@@ -53,14 +58,18 @@ function fakeTx(input: {
     where: () => ({ returning: () => Promise.resolve(deleteResult) }),
   }));
   // Answered by call order: the enquiries, the deals, then (when there are deals) their parties,
-  // settlements, screenings and source-of-funds cases.
+  // the people named by events, settlements, then screenings, source-of-funds cases, holds and
+  // declined identity checks.
   const answers = [
     input.matched,
     (input.deals ?? []).map((d) => ({ id: "d1", ...d })),
     input.parties ?? [],
+    input.named ?? [],
     input.settled ?? [],
     input.screenings ?? [],
     input.funds ?? [],
+    input.holds ?? [],
+    input.declined ?? [],
   ];
   const select = vi.fn(() => ({
     from: () => ({ where: () => Promise.resolve(answers.shift() ?? []) }),
@@ -142,7 +151,8 @@ describe("anonymiseEnquiries", () => {
   });
 
   describe("a converted enquiry and the record of its deal", () => {
-    const converted = [{ id: "e1", status: "converted" }];
+    const enquiryOpened = new Date("2026-01-01T00:00:00Z");
+    const converted = [{ id: "e1", status: "converted", createdAt: enquiryOpened }];
     const NOW = new Date("2026-11-08T12:00:00Z");
     const run = (input: Parameters<typeof fakeTx>[0], retentionYears?: number) => {
       const { tx, update, sets } = fakeTx({ ...input, enquiries: [{ id: "e1" }] });
@@ -152,7 +162,7 @@ describe("anonymiseEnquiries", () => {
         { now: NOW, ...(retentionYears ? { retentionYears } : {}) },
       ).then((counts) => ({ counts, update, sets }));
     };
-    const created = new Date("2026-01-01T00:00:00Z");
+    const created = new Date("2026-01-20T00:00:00Z");
     const settledDeal = {
       enquiryId: "e1",
       stage: "settled",
@@ -252,7 +262,7 @@ describe("anonymiseEnquiries", () => {
       expect(counts.held).toBe(1);
     });
 
-    it("ignores a check from before the deal began", async () => {
+    it("ignores a check from before the enquiry arrived", async () => {
       const { counts } = await run({
         matched: converted,
         deals: [cancelled(null)],
@@ -260,6 +270,46 @@ describe("anonymiseEnquiries", () => {
         screenings: [{ userId: "u-buyer", at: new Date("2025-06-01T00:00:00Z") }],
       });
       expect(counts).toMatchObject({ enquiries: 1, held: 0 });
+    });
+
+    it("is held when a check was opened between the enquiry and the deal", async () => {
+      const { counts } = await run({
+        matched: converted,
+        deals: [cancelled(null)],
+        parties,
+        screenings: [{ userId: "u-buyer", at: new Date("2026-01-10T00:00:00Z") }],
+      });
+      expect(counts.held).toBe(1);
+    });
+
+    it("is held when a buyer screened and then replaced is no longer a current party", async () => {
+      const { counts } = await run({
+        matched: converted,
+        deals: [cancelled(null)],
+        parties,
+        named: [{ dealId: "d1", userId: "u-first-buyer" }],
+        screenings: [{ userId: "u-first-buyer", at: new Date("2026-02-15T00:00:00Z") }],
+      });
+      expect(counts.held).toBe(1);
+    });
+
+    it.each([
+      [
+        "an anti-money-laundering hold",
+        { holds: [{ userId: "u-buyer", at: new Date("2026-02-15T00:00:00Z") }] },
+      ],
+      [
+        "a declined identity check",
+        { declined: [{ userId: "u-buyer", at: new Date("2026-02-15T00:00:00Z") }] },
+      ],
+    ])("is held when the deal was cancelled before agreement but had %s", async (_why, checks) => {
+      const { counts } = await run({
+        matched: converted,
+        deals: [cancelled(null)],
+        parties,
+        ...checks,
+      });
+      expect(counts.held).toBe(1);
     });
 
     it("ignores a check opened for someone who is not a party", async () => {

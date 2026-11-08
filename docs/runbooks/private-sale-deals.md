@@ -73,11 +73,13 @@ use **Check clearance** once Compliance has decided.
 A converted private sale enquiry is part of its deal's record (the sender's contact, the work described, its provenance). Money Laundering Regulations 2017, regulation 40, requires that record to be kept for five years from the transaction, so the enquiry is held from erasure:
 
 - while any deal made from it is open;
-- after a deal settles, until `PRIVATE_SALE_RECORD_RETENTION_YEARS` (default 5) have passed since settlement;
-- after a deal is cancelled, for the same period from the cancellation, if it ever reached agreement or an identity, screening or source-of-funds case was opened for either party while it ran;
+- after a deal settles, until `PRIVATE_SALE_RECORD_RETENTION_YEARS` (default 5, never below 5: the Bid API and the worker refuse a lower value) have passed since settlement;
+- after a deal is cancelled, for the same period from the cancellation, if it ever reached agreement or a check was opened for anyone named on the deal at any time since the enquiry arrived;
 - always, if it is marked converted but has no deal.
 
-A deal cancelled before anyone agreed a price, with no check opened for either side, is not a transaction: its enquiry is erased like any other. Once the period has passed, a later erasure request or retention run erases the enquiry. The setting applies to the Bid API and the worker; the owner's answer on deal record retention replaces the default.
+A check is a watchlist screening, a source-of-funds case, an anti-money-laundering hold on the account, or an identity verification that was declined. It counts from the date of the enquiry, not the deal, because staff vet the person before converting. It counts for everyone ever named on the deal, including a buyer who was replaced before agreement (each naming is recorded in the deal's `private_sale_deal.party_named` event with the person's account id). A hold that has since been cleared leaves no date, so only a hold still in place counts.
+
+A deal cancelled before anyone agreed a price, with no such check for anyone named on it, is not a transaction: its enquiry is erased like any other. Once the period has passed, a later erasure request or retention run erases the enquiry. The setting applies to the Bid API and the worker; the owner's answer on deal record retention replaces the default.
 
 ## Rolling back
 

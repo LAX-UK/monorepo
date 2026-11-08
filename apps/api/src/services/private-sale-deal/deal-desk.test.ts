@@ -423,7 +423,12 @@ describe("PrivateSaleDealDeskService nameBuyer", () => {
     expect(events.events).toEqual([
       {
         eventType: "private_sale_deal.party_named",
-        payload: { dealId: "deal-1", reference: "PS-0001", role: "buyer" },
+        payload: {
+          dealId: "deal-1",
+          reference: "PS-0001",
+          role: "buyer",
+          actingUserId: "u-new-buyer",
+        },
       },
     ]);
   });

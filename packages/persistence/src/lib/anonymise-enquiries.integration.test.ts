@@ -1,7 +1,10 @@
 import { randomUUID } from "node:crypto";
 import { type Database, createDb } from "@auction/db";
 import {
+  bidUserProfile,
+  domainEvent,
   itemSubmission,
+  kycWatchlistScreening,
   legalEntity,
   marketingEnquiry,
   marketingEnquiryAttachment,
@@ -266,6 +269,63 @@ describe.skipIf(!HAS_DB)("enquiry erasure (integration)", () => {
           trigger: "manual",
           thresholdAmount: "9000.00",
           exposureAmount: "10000.00",
+        });
+        await cancel(tx, dealId, false, new Date());
+        expect(await anonymiseEnquiries(tx, { kind: "email", email })).toMatchObject({
+          enquiries: 0,
+          held: 1,
+        });
+        expect(await message(tx, enquiryId)).toBe("A painting to sell");
+      });
+    });
+
+    it("holds it when the party was put on an anti-money-laundering hold", async () => {
+      await withDeal(async ({ tx, email, enquiryId, dealId, userId }) => {
+        await tx
+          .insert(bidUserProfile)
+          .values({
+            userId,
+            amlHoldStatus: "hold",
+            amlHoldAt: new Date(),
+            createdAt: t,
+            updatedAt: t,
+          })
+          .onConflictDoUpdate({
+            target: bidUserProfile.userId,
+            set: { amlHoldStatus: "hold", amlHoldAt: new Date() },
+          });
+        await cancel(tx, dealId, false, new Date());
+        expect(await anonymiseEnquiries(tx, { kind: "email", email })).toMatchObject({
+          enquiries: 0,
+          held: 1,
+        });
+        expect(await message(tx, enquiryId)).toBe("A painting to sell");
+      });
+    });
+
+    it("holds it when a buyer who was screened was replaced before agreement", async () => {
+      await withDeal(async ({ tx, email, enquiryId, dealId }) => {
+        const firstBuyer = `erase-first-buyer-${randomUUID().slice(0, 8)}`;
+        await tx.insert(user).values({
+          id: firstBuyer,
+          name: firstBuyer,
+          email: `${firstBuyer}@integration.test`,
+          emailVerified: true,
+          createdAt: t,
+          updatedAt: t,
+        });
+        await tx.insert(kycWatchlistScreening).values({
+          userId: firstBuyer,
+          providerSessionId: `session-${firstBuyer}`,
+          matchStatus: "no_match",
+          decisionOutcome: "clear",
+        } as never);
+        await tx.insert(domainEvent).values({
+          aggregateType: "private_sale_deal",
+          aggregateId: dealId,
+          eventType: "private_sale_deal.party_named",
+          payload: { dealId, reference: "PS-X", role: "buyer", actingUserId: firstBuyer },
+          producer: "test",
         });
         await cancel(tx, dealId, false, new Date());
         expect(await anonymiseEnquiries(tx, { kind: "email", email })).toMatchObject({

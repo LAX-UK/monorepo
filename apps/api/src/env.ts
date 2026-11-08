@@ -355,10 +355,10 @@ const envSchema = z
     ),
     /** The private sale terms version both sides accept. */
     PRIVATE_SALE_TERMS_VERSION: z.preprocess(emptyToUndefined, z.string().max(40).optional()),
-    /** Years a private sale's record, with its enquiry, is kept after the deal ends. */
+    /** Years a private sale's record, with its enquiry, is kept after the deal ends; never under the 5 the money laundering rules require. */
     PRIVATE_SALE_RECORD_RETENTION_YEARS: z.preprocess(
       emptyToUndefined,
-      z.coerce.number().int().min(1).max(30).default(5),
+      z.coerce.number().int().min(5).max(30).default(5),
     ),
     /**
      * Proxies whose forwarded client-address headers are believed (comma-separated CIDRs). A
