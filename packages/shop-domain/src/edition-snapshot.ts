@@ -3,7 +3,9 @@ import {
   type DescribedPrint,
   type EditionFacts,
   type Numbering,
+  type Publisher,
   type Signature,
+  type Stamp,
   assertEditionFacts,
   describeEditionFacts,
 } from "./edition-facts.js";
@@ -23,6 +25,9 @@ export type PlainEditionFacts = {
   numbering: Numbering;
   signature: Signature;
   certificate: Certificate;
+  stamp?: Stamp | undefined;
+  printedBy?: string | null | undefined;
+  publishedBy?: Publisher | null | undefined;
   confirmed: { by: string; at: string } | null;
 };
 
@@ -46,6 +51,9 @@ export function editionFactsToPlain(facts: EditionFacts | null): PlainEditionFac
     numbering: facts.numbering,
     signature: facts.signature,
     certificate: facts.certificate,
+    ...(facts.stamp ? { stamp: facts.stamp } : {}),
+    ...(facts.printedBy ? { printedBy: facts.printedBy } : {}),
+    ...(facts.publishedBy ? { publishedBy: facts.publishedBy } : {}),
     confirmed: facts.confirmed
       ? { by: facts.confirmed.by, at: facts.confirmed.at.toISOString() }
       : null,
@@ -77,13 +85,17 @@ function readFacts(run: EditionRunSpec, raw: unknown): EditionFacts | null {
     numbering: raw.numbering,
     signature: raw.signature,
     certificate: raw.certificate,
+    stamp: raw.stamp,
+    printedBy: raw.printedBy,
+    publishedBy: raw.publishedBy,
     confirmed:
       confirmed && typeof confirmed.by === "string" && at && !Number.isNaN(at.getTime())
         ? { by: confirmed.by, at }
         : null,
   } as EditionFacts;
   try {
-    assertEditionFacts(run, facts);
+    // What a buyer was told stays readable even when it predates the recorded authority.
+    assertEditionFacts(run, facts, { requireAuthority: false });
     return facts;
   } catch (error) {
     if (error instanceof ShopDomainError) return null;

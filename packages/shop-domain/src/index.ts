@@ -57,15 +57,20 @@ export {
   type RunUsage,
 } from "./edition-run.js";
 export {
+  AUTHORITY_GIVERS,
   CERTIFICATE_WITHIN_WEEKS_MAX,
+  PARTY_NAME_MAX,
   SIGNATURE_MEDIA,
   SIGNATURE_PLACES,
+  STAMPS,
   assertEditionFacts,
   describeAlsoAvailable,
   describeEditionFacts,
   describeEditionRun,
   type Certificate,
+  type AuthorityGiver,
   type CertificateArrival,
+  type CertificateAuthority,
   type CertificateForm,
   type CertificateIssuer,
   type DescribedPrint,
@@ -73,9 +78,11 @@ export {
   type EditionFacts,
   type EditionFactsDescription,
   type Numbering,
+  type Publisher,
   type Signature,
   type SignatureMedium,
   type SignaturePlace,
+  type Stamp,
 } from "./edition-facts.js";
 export {
   describePublicEdition,

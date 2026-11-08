@@ -23,7 +23,10 @@ export type PublicEditionRun =
   | { kind: "proof"; proofType: ProofType; size: number };
 
 /** The confirmed facts as a storefront receives them: who confirmed them stays inside. */
-export type PublicEditionFacts = Pick<EditionFacts, "numbering" | "signature" | "certificate">;
+export type PublicEditionFacts = Pick<
+  EditionFacts,
+  "numbering" | "signature" | "certificate" | "stamp" | "printedBy" | "publishedBy"
+>;
 
 /** Proofs a main run kept, without the BAT proof, which is never listed or mentioned. */
 export type PublicProofsKept = Pick<ProofsKept, "ap" | "pp" | "hc">;
@@ -66,7 +69,7 @@ function toFacts(facts: PublicEditionFacts | null): EditionFacts | null {
 export type PublicEditionDescription = {
   /** "Limited edition print", "Open edition print" or "Artist's proof". */
   eyebrow: string;
-  /** Edition, Signature, Number, Certificate, Proofs: null until staff confirm the facts. */
+  /** Edition, Signature, Number, Certificate, Stamp, Printed by, Published by, Proofs: null until staff confirm the facts. */
   rows: EditionFactRows | null;
   /** The edition row alone, which needs no confirmed facts. */
   edition: string;
