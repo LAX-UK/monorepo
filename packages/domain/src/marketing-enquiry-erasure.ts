@@ -1,4 +1,6 @@
+import type { PrivateSaleDealStage } from "@auction/types";
 import type { EnquiryStatus } from "./marketing-enquiry-vocabulary.js";
+import { isDealClosed } from "./private-sale-deal/views.js";
 
 /**
  * What an erased sender's enquiry shows afterwards. The reference, intent, department, dates and
@@ -19,6 +21,15 @@ export const ERASED_ENQUIRY = {
  */
 export const ENQUIRY_ERASURE_HOLD_STATUSES: readonly EnquiryStatus[] = ["converted"];
 
-export function isEnquiryHeldFromErasure(status: string): boolean {
-  return (ENQUIRY_ERASURE_HOLD_STATUSES as readonly string[]).includes(status);
+/**
+ * Whether an enquiry is kept whole. A converted enquiry is held while its deal is open, and
+ * released once every deal made from it has ended (settled or cancelled). An enquiry marked
+ * converted that has no deal at all stays held, because nothing shows its deal is finished.
+ */
+export function isEnquiryHeldFromErasure(
+  status: string,
+  dealStages: readonly PrivateSaleDealStage[] = [],
+): boolean {
+  if (!(ENQUIRY_ERASURE_HOLD_STATUSES as readonly string[]).includes(status)) return false;
+  return !(dealStages.length > 0 && dealStages.every(isDealClosed));
 }

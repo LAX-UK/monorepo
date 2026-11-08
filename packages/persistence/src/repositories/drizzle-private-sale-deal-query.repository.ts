@@ -171,6 +171,16 @@ export class DrizzleDealWorkStore implements IDealWorkStore {
     return toWork(row);
   }
 
+  async lockInTransaction(tx: Database, id: string): Promise<DealWork | null> {
+    const [row] = await tx
+      .select()
+      .from(itemSubmission)
+      .where(eq(itemSubmission.id, id))
+      .for("update")
+      .limit(1);
+    return row ? toWork(row) : null;
+  }
+
   async findByReference(reference: string): Promise<DealWork | null> {
     const match = /^C-?(\d{1,15})$/i.exec(reference.trim());
     if (!match?.[1]) return null;

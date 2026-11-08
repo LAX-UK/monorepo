@@ -68,6 +68,10 @@ needs the buyer's source of funds approved when the price with their other open 
 the threshold. A deal clears when agreement is recorded and the checks are already green; otherwise
 use **Check clearance** once Compliance has decided.
 
+## Erasure and the converted enquiry
+
+A converted private sale enquiry is held from erasure while its deal is open, because the deal's records need the original contact. Once every deal made from it is settled or cancelled the hold is released and a later erasure request or retention run erases the enquiry like any other. An enquiry marked converted that has no deal stays held.
+
 ## Rolling back
 
 `0323_rollback.sql` returns `private_sale_deal.artwork_register_id` to text and keeps its values.

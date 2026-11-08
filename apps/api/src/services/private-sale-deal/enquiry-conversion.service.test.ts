@@ -57,11 +57,16 @@ function setup(
     /** What the work's owner resolves to; `undefined` means a client with a place in the account. */
     sellerResolves?: { legalEntityId: string; actingUserId: string } | null;
     openDeal?: boolean;
+    /** What the work looks like once it is held, if it changed since the first look. */
+    heldAs?: Partial<DealWork> | null;
+    /** A deal for the work appears between the first look and the hold. */
+    dealAppearsAfterHold?: boolean;
     createError?: unknown;
     moved?: boolean;
   } = {},
 ) {
   const events = recordingSink();
+  const locked: string[] = [];
   const create = vi.fn(async (input: { itemSubmissionId: string }) => {
     if (options.createError) throw options.createError;
     return makeDeal({ id: "deal-new", reference: "PS-0007", stage: "proposed", ...input } as never);
@@ -80,11 +85,26 @@ function setup(
     enquiries: { findByRef: async () => record, updateInTransaction },
     works: {
       createDraftInTransaction: createDraft,
+      lockInTransaction: async () => {
+        locked.push("locked");
+        if (options.heldAs === null) return null;
+        return {
+          id: options.work?.id ?? "sub-9",
+          status: "approved",
+          convertedLotId: null,
+          ...options.work,
+          ...options.heldAs,
+        } as DealWork;
+      },
       findByReference: async () =>
         options.work ? { status: "approved", convertedLotId: null, ...options.work } : null,
     },
     openDeals: {
-      findLiveDealReferenceForWork: async () => (options.openDeal ? "PS-0003" : null),
+      findLiveDealReferenceForWork: async () => {
+        if (options.openDeal) return "PS-0003";
+        // The first look is before the hold; a deal that appears later is seen only after it.
+        return options.dealAppearsAfterHold && locked.length > 0 ? "PS-0004" : null;
+      },
     },
     dealsForTx: () => ({ create }),
     parties: {
@@ -103,7 +123,7 @@ function setup(
     transactionRunner: inlineTransactions,
     events,
   });
-  return { service, create, createDraft, updateInTransaction, events };
+  return { service, create, createDraft, updateInTransaction, events, locked };
 }
 
 describe("EnquiryConversionService", () => {
@@ -314,6 +334,46 @@ describe("EnquiryConversionService", () => {
         ok: false,
         error: "work_in_deal",
       });
+    });
+
+    it("holds the work before opening the deal, and opens it when nothing changed", async () => {
+      const { service, locked } = setup(buy, { work });
+      expect(await service.convert(VIEWER, "E-1042", { workReference: "C-1042" })).toEqual({
+        ok: true,
+        reference: "PS-0007",
+      });
+      expect(locked).toEqual(["locked"]);
+    });
+
+    it.each([
+      ["a lot was made from it", { convertedLotId: "lot-1" }],
+      ["it stopped being approved", { status: "withdrawn" }],
+    ])("refuses, and opens no deal, when %s after the first look", async (_why, heldAs) => {
+      const { service, create, updateInTransaction } = setup(buy, { work, heldAs });
+      expect(await service.convert(VIEWER, "E-1042", { workReference: "C-1042" })).toEqual({
+        ok: false,
+        error: "work_not_available",
+      });
+      expect(create).not.toHaveBeenCalled();
+      expect(updateInTransaction).not.toHaveBeenCalled();
+    });
+
+    it("refuses when the work is gone once held", async () => {
+      const { service, create } = setup(buy, { work, heldAs: null });
+      expect(await service.convert(VIEWER, "E-1042", { workReference: "C-1042" })).toEqual({
+        ok: false,
+        error: "work_not_available",
+      });
+      expect(create).not.toHaveBeenCalled();
+    });
+
+    it("refuses when another deal for the work was opened before the hold was taken", async () => {
+      const { service, create } = setup(buy, { work, dealAppearsAfterHold: true });
+      expect(await service.convert(VIEWER, "E-1042", { workReference: "C-1042" })).toEqual({
+        ok: false,
+        error: "work_in_deal",
+      });
+      expect(create).not.toHaveBeenCalled();
     });
 
     it("lets any other database failure through rather than hiding it", async () => {

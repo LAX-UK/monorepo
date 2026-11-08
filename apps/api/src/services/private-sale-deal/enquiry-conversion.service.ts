@@ -40,6 +40,13 @@ export type EnquiryConversionDeps = {
 /** Thrown inside the transaction so the deal and the enquiry change together or not at all. */
 class EnquiryMovedOn extends Error {}
 
+/** The work stopped being available between the first look and the moment it was held. */
+class WorkTaken extends Error {
+  constructor(readonly reason: "work_not_available" | "work_in_deal") {
+    super(reason);
+  }
+}
+
 const ONE_OPEN_DEAL_INDEX = "private_sale_deal_one_open_per_work_uidx";
 
 /** Whether the database refused the deal because the work is already in a live deal. */
@@ -148,6 +155,7 @@ export class EnquiryConversionService implements IEnquiryConversion {
       return { ok: true, reference };
     } catch (error) {
       if (error instanceof EnquiryMovedOn) return { ok: false, error: "stale_version" };
+      if (error instanceof WorkTaken) return { ok: false, error: error.reason };
       // Two people converting for the same work at once: the second is refused by the database.
       if (isWorkAlreadyInDeal(error)) return { ok: false, error: "work_in_deal" };
       throw error;
@@ -200,7 +208,18 @@ export class EnquiryConversionService implements IEnquiryConversion {
     return {
       seller,
       buyer: enquirer,
-      workId: async () => work.id,
+      // Held for the rest of the transaction, so a lot cannot be made from the work at the same
+      // time; what was true a moment ago is checked again under the hold.
+      workId: async (tx) => {
+        const held = await this.deps.works.lockInTransaction(tx, work.id);
+        if (!held || held.status !== "approved" || held.convertedLotId !== null) {
+          throw new WorkTaken("work_not_available");
+        }
+        if (await this.deps.openDeals.findLiveDealReferenceForWork(work.id)) {
+          throw new WorkTaken("work_in_deal");
+        }
+        return held.id;
+      },
     };
   }
 }

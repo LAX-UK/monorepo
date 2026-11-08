@@ -3,10 +3,12 @@ import {
   marketingEnquiry,
   marketingEnquiryAttachment,
   marketingEnquiryNote,
+  privateSaleDeal,
   privateSaleEnquiryDetail,
   uploadObject,
 } from "@auction/db/schema";
 import { ERASED_ENQUIRY, isEnquiryHeldFromErasure } from "@auction/domain";
+import type { PrivateSaleDealStage } from "@auction/types";
 import { and, inArray, ne, or, sql } from "drizzle-orm";
 import type {
   EnquiryErasureCounts,
@@ -41,8 +43,14 @@ export async function anonymiseEnquiries(
     .select({ id: marketingEnquiry.id, status: marketingEnquiry.status })
     .from(marketingEnquiry)
     .where(condition);
-  const held = matched.filter((row) => isEnquiryHeldFromErasure(row.status)).length;
-  const ids = matched.filter((row) => !isEnquiryHeldFromErasure(row.status)).map((row) => row.id);
+  const dealStages = await dealStagesOf(
+    tx,
+    matched.filter((row) => row.status === "converted").map((row) => row.id),
+  );
+  const isHeld = (row: { id: string; status: string }) =>
+    isEnquiryHeldFromErasure(row.status, dealStages.get(row.id) ?? []);
+  const held = matched.filter(isHeld).length;
+  const ids = matched.filter((row) => !isHeld(row)).map((row) => row.id);
   if (ids.length === 0) return { ...NONE, held };
 
   const attachments = await detachFiles(tx, ids);
@@ -91,6 +99,26 @@ export async function anonymiseEnquiries(
     attachments,
     held,
   };
+}
+
+/** The stage of every deal made from each of the enquiries, so a finished deal releases its hold. */
+async function dealStagesOf(
+  tx: Database,
+  enquiryIds: readonly string[],
+): Promise<Map<string, PrivateSaleDealStage[]>> {
+  const stages = new Map<string, PrivateSaleDealStage[]>();
+  if (enquiryIds.length === 0) return stages;
+  const deals = await tx
+    .select({ enquiryId: privateSaleDeal.sourceEnquiryId, stage: privateSaleDeal.stage })
+    .from(privateSaleDeal)
+    .where(inArray(privateSaleDeal.sourceEnquiryId, [...enquiryIds]));
+  for (const deal of deals) {
+    if (!deal.enquiryId) continue;
+    const list = stages.get(deal.enquiryId) ?? [];
+    list.push(deal.stage as PrivateSaleDealStage);
+    stages.set(deal.enquiryId, list);
+  }
+  return stages;
 }
 
 /** Detaches the files from the enquiries and lets the unclaimed-file clean-up remove them. */

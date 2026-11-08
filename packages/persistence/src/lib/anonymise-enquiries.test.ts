@@ -10,6 +10,8 @@ type Row = Record<string, unknown>;
  */
 function fakeTx(input: {
   matched: Array<{ id: string; status: string }>;
+  /** The deals made from the converted enquiries, answered to the second select. */
+  deals?: Array<{ enquiryId: string; stage: string }>;
   detached?: Row[];
   notes?: Row[];
   enquiries?: Row[];
@@ -36,7 +38,10 @@ function fakeTx(input: {
   const del = vi.fn(() => ({
     where: () => ({ returning: () => Promise.resolve(deleteResult) }),
   }));
-  const select = vi.fn(() => ({ from: () => ({ where: () => Promise.resolve(input.matched) }) }));
+  const answers = [input.matched, input.deals ?? []];
+  const select = vi.fn(() => ({
+    from: () => ({ where: () => Promise.resolve(answers.shift() ?? []) }),
+  }));
   return { tx: { select, update, delete: del } as never, sets, update, del };
 }
 
@@ -110,6 +115,50 @@ describe("anonymiseEnquiries", () => {
       notes: 0,
       attachments: 0,
       held: 0,
+    });
+  });
+
+  describe("a converted enquiry and its deal", () => {
+    const converted = [{ id: "e1", status: "converted" }];
+
+    it.each(["settled", "cancelled"])("is erased once its deal is %s", async (stage) => {
+      const { tx, sets } = fakeTx({
+        matched: converted,
+        deals: [{ enquiryId: "e1", stage }],
+        enquiries: [{ id: "e1" }],
+      });
+      const counts = await anonymiseEnquiries(tx, { kind: "email", email: "a@b.co" });
+      expect(counts).toMatchObject({ enquiries: 1, held: 0 });
+      expect(sets.find((s) => "message" in s)).toMatchObject({ name: ERASED_ENQUIRY.name });
+    });
+
+    it.each(["proposed", "offer", "agreed", "invoiced", "paid", "released"])(
+      "is held while its deal is %s",
+      async (stage) => {
+        const { tx, update } = fakeTx({
+          matched: converted,
+          deals: [{ enquiryId: "e1", stage }],
+        });
+        const counts = await anonymiseEnquiries(tx, { kind: "email", email: "a@b.co" });
+        expect(counts).toEqual({ enquiries: 0, notes: 0, attachments: 0, held: 1 });
+        expect(update).not.toHaveBeenCalled();
+      },
+    );
+
+    it("is held when it has no deal at all", async () => {
+      const { tx, update } = fakeTx({ matched: converted });
+      const counts = await anonymiseEnquiries(tx, { kind: "email", email: "a@b.co" });
+      expect(counts.held).toBe(1);
+      expect(update).not.toHaveBeenCalled();
+    });
+
+    it("asks for deals only when something is converted", async () => {
+      const { tx } = fakeTx({
+        matched: [{ id: "e1", status: "new" }],
+        enquiries: [{ id: "e1" }],
+      });
+      await anonymiseEnquiries(tx, { kind: "email", email: "a@b.co" });
+      expect(tx.select).toHaveBeenCalledTimes(1);
     });
   });
 });

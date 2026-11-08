@@ -298,6 +298,19 @@ describe("PrivateSaleDealPartyService", () => {
       expect(await service.detail("u-seller", "PS-0001")).not.toBeNull();
     });
 
+    it("shows a personal-account buyer their deal, through the same membership lookup", async () => {
+      const lookup = vi.fn(
+        (userId: string, legalEntityId: string) =>
+          userId === "u-buyer" && legalEntityId === "le-buyer",
+      );
+      const { service, ensured } = setup(makeDeal({ stage: "invoiced" }), { members: lookup });
+      expect(await service.detail("u-buyer", "PS-0001")).not.toBeNull();
+      expect(lookup).toHaveBeenCalledWith("u-buyer", "le-buyer");
+      expect(ensured).not.toHaveBeenCalled();
+      // Someone else's personal account is not one they act in.
+      expect(await service.detail("u-seller", "PS-0001")).toBeNull();
+    });
+
     it("only reads: looking at a deal never creates an account", async () => {
       const { service, ensured } = setup(makeDeal({ stage: "invoiced" }));
       await service.list("u-buyer");
