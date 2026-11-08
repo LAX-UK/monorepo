@@ -9,6 +9,7 @@ import {
   marketingEnquiryNote,
   privateSaleDeal,
   privateSaleDealParty,
+  privateSaleDealPartyHistory,
   privateSaleDealStageHistory,
   privateSaleEnquiryDetail,
   sourceOfFunds,
@@ -18,7 +19,6 @@ import {
   DEFAULT_PRIVATE_SALE_RECORD_RETENTION_YEARS,
   ERASED_ENQUIRY,
   type EnquiryDealRecord,
-  PRIVATE_SALE_DEAL_EVENT_AGGREGATE,
   isEnquiryHeldFromErasure,
 } from "@auction/domain";
 import type { PrivateSaleDealStage } from "@auction/types";
@@ -159,17 +159,11 @@ async function dealRecordsOf(
     // Everyone ever named, including a buyer later replaced.
     tx
       .select({
-        dealId: domainEvent.aggregateId,
-        userId: sql<string | null>`${domainEvent.payload}->>'actingUserId'`,
+        dealId: privateSaleDealPartyHistory.dealId,
+        userId: privateSaleDealPartyHistory.actingUserId,
       })
-      .from(domainEvent)
-      .where(
-        and(
-          eq(domainEvent.aggregateType, PRIVATE_SALE_DEAL_EVENT_AGGREGATE),
-          eq(domainEvent.eventType, "private_sale_deal.party_named"),
-          inArray(domainEvent.aggregateId, dealIds),
-        ),
-      ),
+      .from(privateSaleDealPartyHistory)
+      .where(inArray(privateSaleDealPartyHistory.dealId, dealIds)),
     tx
       .select({
         dealId: privateSaleDealStageHistory.dealId,
@@ -213,9 +207,17 @@ async function dealRecordsOf(
   return records;
 }
 
+/** Veriff's decision code for a declined identity verification. Expired and abandoned sessions have their own codes. */
+const VERIFF_DECLINED_CODE = "9102";
+
+/** The event written each time an anti-money-laundering screening is decided, whether it cleared or blocked. */
+const AML_SCREENING_EVALUATED_EVENT = "aml.screening_evaluated";
+
 /**
  * When a compliance check was opened for each person: a watchlist screening, a source-of-funds
- * case, an anti-money-laundering hold, or an identity verification that did not pass.
+ * case, an anti-money-laundering hold (still in place, or since cleared and so read from the
+ * screening decisions), or an identity verification that was declined. An expired or abandoned
+ * session is not a check.
  */
 async function checkTimesByUser(
   tx: Database,
@@ -224,7 +226,7 @@ async function checkTimesByUser(
   const times = new Map<string, Date[]>();
   if (userIds.length === 0) return times;
   const ids = [...userIds];
-  const [screenings, funds, holds, declined] = await Promise.all([
+  const [screenings, funds, holds, rejected, declined, decisions] = await Promise.all([
     tx
       .select({ userId: kycWatchlistScreening.userId, at: kycWatchlistScreening.createdAt })
       .from(kycWatchlistScreening)
@@ -243,6 +245,17 @@ async function checkTimesByUser(
       .where(and(inArray(bidUserProfile.userId, ids), ne(bidUserProfile.amlHoldStatus, "none"))),
     tx
       .select({
+        userId: bidUserProfile.userId,
+        // When the identity check was decided, not when the profile was last touched.
+        at: sql<Date>`coalesce((
+          select max(${kycVerification.decisionAt}) from ${kycVerification}
+          where ${kycVerification.userId} = ${bidUserProfile.userId}
+        ), ${bidUserProfile.updatedAt})`,
+      })
+      .from(bidUserProfile)
+      .where(and(inArray(bidUserProfile.userId, ids), eq(bidUserProfile.kycStatus, "rejected"))),
+    tx
+      .select({
         userId: kycVerification.userId,
         at: sql<Date>`coalesce(${kycVerification.decisionAt}, ${kycVerification.createdAt})`,
       })
@@ -250,12 +263,25 @@ async function checkTimesByUser(
       .where(
         and(
           inArray(kycVerification.userId, ids),
-          inArray(kycVerification.status, ["requires_input", "canceled"]),
-          sql`${kycVerification.decisionAt} IS NOT NULL`,
+          sql`${kycVerification.decisionPayload}->'verification'->>'code' = ${VERIFF_DECLINED_CODE}`,
+        ),
+      ),
+    // Every decision on a screening, so a hold cleared since still counts.
+    tx
+      .select({
+        userId: sql<string>`${domainEvent.payload}->>'userId'`,
+        at: domainEvent.occurredAt,
+      })
+      .from(domainEvent)
+      .where(
+        and(
+          eq(domainEvent.aggregateType, "aml_screening"),
+          eq(domainEvent.eventType, AML_SCREENING_EVALUATED_EVENT),
+          inArray(sql<string>`${domainEvent.payload}->>'userId'`, ids),
         ),
       ),
   ]);
-  for (const row of [...screenings, ...funds, ...holds, ...declined]) {
+  for (const row of [...screenings, ...funds, ...holds, ...rejected, ...declined, ...decisions]) {
     times.set(row.userId, [...(times.get(row.userId) ?? []), new Date(row.at)]);
   }
   return times;
