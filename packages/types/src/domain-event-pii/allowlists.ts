@@ -72,6 +72,14 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
     "amountCents",
     "currency",
   ]),
+  /** Staff resolved a blocked payout; the free-text reason stays redacted for non-PII readers. */
+  "payout.transfer_block_resolved": new Set([
+    "resolution",
+    "previousStatus",
+    "status",
+    "stripeTransferId",
+    "legalEntityId",
+  ]),
   /** Stripe Connect account cannot currently receive payouts. */
   "payout.transfer_blocked": new Set(["payoutId", "legalEntityId", "reason"]),
   /** Negative net payout that requires manual clawback/reconciliation. */

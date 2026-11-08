@@ -24,6 +24,9 @@ export {
   type ConnectTransferDecisionInput,
   type ConnectTransferListClient,
   type ExistingTransferLike,
+  type TransferAdoptionCheck,
+  TRANSFER_GROUP_MANDATORY_FROM_UNIX,
+  checkTransferForAdoption,
   connectTransferBlockMessage,
   decideConnectTransfer,
 } from "./connect-transfer-decision.js";

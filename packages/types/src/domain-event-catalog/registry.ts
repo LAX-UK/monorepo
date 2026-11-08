@@ -229,6 +229,7 @@ export const ALL_LIVE_DOMAIN_EVENT_TYPES = [
   "payout.paid",
   "payout.reversed",
   "payout.settlement_created",
+  "payout.transfer_block_resolved",
   "payout.transfer_blocked",
   "payout.transfer_failed",
   "payout.transfer_initiated",

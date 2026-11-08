@@ -34,6 +34,7 @@ export async function loadAdminFinanceHubPage(): Promise<FinanceHubPageModel> {
   const failedPayouts = financeIssues?.failedPayoutCount ?? navCounts.payoutsFailed;
   const anomalies = detectAnomaliesFromNavCounts(navCounts, {
     failedPayouts,
+    payoutsBlocked: financeIssues?.blockedPayoutCount ?? 0,
   });
 
   return {

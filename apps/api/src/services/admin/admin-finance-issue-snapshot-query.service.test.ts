@@ -4,7 +4,7 @@ import { AdminFinanceIssueSnapshotQueryService } from "./admin-finance-issue-sna
 
 describe("AdminFinanceIssueSnapshotQueryService.getFinanceIssueSnapshot", () => {
   it("maps aggregate counts into snapshot fields", async () => {
-    const counts = [1, 2, 3, 4, 5, 6, 7, 8];
+    const counts = [1, 2, 3, 4, 5, 6, 7, 8, 9];
     let call = 0;
     const select = vi.fn().mockImplementation(() => ({
       from: vi.fn().mockReturnThis(),
@@ -16,15 +16,16 @@ describe("AdminFinanceIssueSnapshotQueryService.getFinanceIssueSnapshot", () => 
 
     await expect(svc.getFinanceIssueSnapshot()).resolves.toEqual({
       failedPayoutCount: 1,
-      legalEntitiesWithStripeConnectRequirementsCount: 2,
-      staleBlockedScheduledPayoutCount: 3,
-      entitiesPendingReviewCount: 4,
-      artistsPendingApprovalCount: 5,
-      staleKycSessionsCount: 6,
-      documentsAwaitingReviewCount: 7,
-      staleLeadOrganisationsCount: 8,
+      blockedPayoutCount: 2,
+      legalEntitiesWithStripeConnectRequirementsCount: 3,
+      staleBlockedScheduledPayoutCount: 4,
+      entitiesPendingReviewCount: 5,
+      artistsPendingApprovalCount: 6,
+      staleKycSessionsCount: 7,
+      documentsAwaitingReviewCount: 8,
+      staleLeadOrganisationsCount: 9,
     });
-    expect(select).toHaveBeenCalledTimes(8);
+    expect(select).toHaveBeenCalledTimes(9);
   });
 });
 

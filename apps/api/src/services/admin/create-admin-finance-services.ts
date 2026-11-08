@@ -13,6 +13,7 @@ import type { IPayoutAdminService, IPayoutSettlementService } from "../interface
 import type { IStripeConnectService } from "../interfaces/stripe-connect.js";
 import type { IUnappliedMoneyHandling } from "../payment/unapplied-money-handling.service.js";
 import type { XeroOAuthService } from "../xero-oauth.service.js";
+import { AdminBlockedPayoutResolutionService } from "./admin-blocked-payout-resolution.service.js";
 import { AdminFailedPayoutRetryService } from "./admin-failed-payout-retry.service.js";
 import type { AdminPaymentListQueryService } from "./admin-payment-list-query.service.js";
 import { AdminPaymentsApplicationService } from "./admin-payments-application.service.js";
@@ -31,7 +32,7 @@ export type CreateAdminFinanceServicesInput = {
   paymentExternalRefRepository: IPaymentExternalRefRepository;
   userRepository: IUserRepository;
   payoutService: IPayoutAdminService;
-  payoutRepository: Pick<IPayoutRepository, "findById">;
+  payoutRepository: Pick<IPayoutRepository, "findById" | "findByStripeTransferId">;
   domainEventSink: IDomainEventSink;
   payoutSettlementService: IPayoutSettlementService;
   payoutStatementApplication: IPayoutStatementApplicationService;
@@ -65,6 +66,11 @@ export function createAdminFinanceServices(
         input.payoutRepository,
         input.stripeConnectService,
         input.domainEventSink,
+      ),
+      new AdminBlockedPayoutResolutionService(
+        input.payoutService,
+        input.payoutRepository,
+        input.stripeConnectService,
       ),
     ),
     stripeConnect: new AdminStripeConnectApplicationService(

@@ -18,6 +18,8 @@ export type ExistingTransferLike = {
 
 export type TransferListParams = {
   transfer_group?: string;
+  /** Only transfers to this connected account. */
+  destination?: string;
   created?: { gte: number };
   limit: number;
   starting_after?: string;
@@ -56,10 +58,17 @@ export type ConnectTransferDecisionInput = {
   currency: string;
   /**
    * When the payout was created (unix seconds). A legacy transfer cannot predate it, so the
-   * metadata fallback only scans from here.
+   * metadata fallback only scans from here. A payout created on or after
+   * `TRANSFER_GROUP_MANDATORY_FROM_UNIX` skips that fallback; when this is unknown it always runs.
    */
   createdAfterUnix?: number;
 };
+
+/**
+ * From this instant every payout transfer is created with a `transfer_group` (commit f863dac10,
+ * 2026-05-24), so a payout created at or after it has nothing in the metadata-only legacy shape.
+ */
+export const TRANSFER_GROUP_MANDATORY_FROM_UNIX = Date.UTC(2026, 4, 24) / 1000;
 
 const PAGE_SIZE = 100;
 /** 100 pages of 100: past this we block rather than guess. */
@@ -113,7 +122,8 @@ async function listAll(
  *
  * Transfers are found by the payout's deterministic `transfer_group` (every page). Transfers made
  * before the group existed carry only `metadata.payoutId`, so when the group holds no live transfer
- * the transfers created since the payout began are scanned for that metadata.
+ * the transfers to the payout's account created since the payout began are scanned for that
+ * metadata. Payouts created once the group was mandatory skip that scan.
  */
 export async function decideConnectTransfer(
   client: ConnectTransferListClient,
@@ -123,8 +133,12 @@ export async function decideConnectTransfer(
   let candidates = grouped.transfers;
   let complete = grouped.complete;
 
-  if (complete && !candidates.some((t) => !isFullyReversed(t))) {
+  const mayHaveLegacyTransfer =
+    input.createdAfterUnix === undefined ||
+    input.createdAfterUnix < TRANSFER_GROUP_MANDATORY_FROM_UNIX;
+  if (mayHaveLegacyTransfer && complete && !candidates.some((t) => !isFullyReversed(t))) {
     const legacy = await listAll(client, {
+      destination: input.destinationAccountId,
       ...(input.createdAfterUnix !== undefined ? { created: { gte: input.createdAfterUnix } } : {}),
     });
     complete = legacy.complete;
@@ -175,4 +189,37 @@ export function connectTransferBlockMessage(
 ): string {
   const ids = decision.transferIds.length > 0 ? ` (${decision.transferIds.join(", ")})` : "";
   return `transfer_blocked: ${decision.reason}${ids}`;
+}
+
+export type TransferAdoptionCheck =
+  | { ok: true }
+  | {
+      ok: false;
+      reason:
+        | "transfer_reversed"
+        | "destination_mismatch"
+        | "currency_mismatch"
+        | "amount_mismatch";
+    };
+
+/**
+ * Whether a transfer staff name can stand as the payout's transfer: live (not reversed, in whole
+ * or part), to the payout's account, in its currency, for exactly its amount. It does not look at
+ * other payouts; the caller checks the transfer is not already linked to one.
+ */
+export function checkTransferForAdoption(
+  transfer: ExistingTransferLike,
+  expected: { destinationAccountId: string; currency: string; amountMinor: number },
+): TransferAdoptionCheck {
+  if (isFullyReversed(transfer) || (transfer.amount_reversed ?? 0) > 0) {
+    return { ok: false, reason: "transfer_reversed" };
+  }
+  if (destinationId(transfer.destination) !== expected.destinationAccountId) {
+    return { ok: false, reason: "destination_mismatch" };
+  }
+  if (transfer.currency?.toLowerCase() !== expected.currency.toLowerCase()) {
+    return { ok: false, reason: "currency_mismatch" };
+  }
+  if (transfer.amount !== expected.amountMinor) return { ok: false, reason: "amount_mismatch" };
+  return { ok: true };
 }

@@ -3,6 +3,7 @@ import {
   adminManualReversePayoutSchema,
   createPayoutAdjustmentSchema,
   listPayoutsQuerySchema,
+  resolveBlockedPayoutSchema,
   runSettlementSchema,
 } from "@auction/validators";
 import { Hono } from "hono";
@@ -280,10 +281,42 @@ export function createAdminPayoutRoutes(
           return c.json(
             {
               error: outcome.reason,
-              ...(outcome.stripeErrorMessage ? { message: outcome.stripeErrorMessage } : {}),
+              ...(outcome.message || outcome.stripeErrorMessage
+                ? { message: outcome.message ?? outcome.stripeErrorMessage }
+                : {}),
             },
             409,
           );
+        }
+        return c.json({ data: outcome.payout });
+      } catch (err) {
+        const mapped = handleError(err);
+        if (mapped) return c.json({ error: mapped.code }, mapped.status);
+        throw err;
+      }
+    },
+  );
+
+  /**
+   * POST /admin/payouts/:payoutId/resolve-blocked — the two ways out of `transfer_blocked`:
+   * adopt the Stripe transfer that already pays it, or release it to `failed` for a retry.
+   */
+  r.post(
+    "/:payoutId/resolve-blocked",
+    requireAuth,
+    adminMutate,
+    requireStepUp,
+    idempotent("payouts.resolve-blocked"),
+    zValidator("param", payoutIdParam),
+    zValidator("json", resolveBlockedPayoutSchema),
+    async (c) => {
+      const userId = c.get("userId") as string;
+      const { payoutId } = c.req.valid("param");
+      const body = c.req.valid("json");
+      try {
+        const outcome = await container.admin.payouts.resolveBlockedPayout(userId, payoutId, body);
+        if (!outcome.ok) {
+          return c.json({ error: outcome.reason, message: outcome.message }, 409);
         }
         return c.json({ data: outcome.payout });
       } catch (err) {

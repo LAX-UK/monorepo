@@ -1,8 +1,22 @@
 import { lotNotDeleted } from "@auction/db";
 import type { Database } from "@auction/db";
 import { legalEntityMember, lot, payment, payout } from "@auction/db/schema";
+import type { PayoutStatus } from "@auction/types";
 import { and, eq, inArray, isNotNull, isNull } from "drizzle-orm";
 import type { IAccountDeletionEligibilityReader } from "../interfaces/account-deletion-eligibility.reader.js";
+
+/**
+ * Payouts whose money is not settled with the seller. `transfer_blocked` and `failed` mean a
+ * transfer may or may not exist at Stripe and staff still have to resolve it, so the account
+ * cannot be deleted until they do.
+ */
+export const PAYOUT_STATUSES_BLOCKING_DELETION = [
+  "scheduled",
+  "in_transit",
+  "clawback_pending",
+  "transfer_blocked",
+  "failed",
+] as const satisfies readonly PayoutStatus[];
 
 export class DrizzleAccountDeletionEligibilityReader implements IAccountDeletionEligibilityReader {
   constructor(private readonly db: Database) {}
@@ -56,7 +70,7 @@ export class DrizzleAccountDeletionEligibilityReader implements IAccountDeletion
       .where(
         and(
           inArray(payout.legalEntityId, entityIds),
-          inArray(payout.status, ["scheduled", "in_transit", "clawback_pending"]),
+          inArray(payout.status, [...PAYOUT_STATUSES_BLOCKING_DELETION]),
         ),
       )
       .limit(1);
