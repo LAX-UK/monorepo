@@ -1,4 +1,4 @@
-import type { SettlementPeriodRefusal } from "@auction/finance-runtime";
+import type { SettlementPeriodRefusal } from "@auction/domain";
 import type {
   CreatePayoutAdjustmentInput,
   Payout,

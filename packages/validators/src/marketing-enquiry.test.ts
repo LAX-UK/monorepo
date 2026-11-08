@@ -1,3 +1,4 @@
+import { DEPARTMENTS } from "@auction/domain";
 import { describe, expect, it } from "vitest";
 import {
   adminEnquiryListQuerySchema,
@@ -30,7 +31,7 @@ describe("enquiryIntakeSchema", () => {
     const parsed = enquiryIntakeSchema.parse({
       ...person,
       intent: "private_sale_sell",
-      departmentSlug: "modern-british",
+      departmentSlug: "paintings",
       artist: "David Hockney",
       title: "Pool study",
       locationTown: "Bath",
@@ -103,6 +104,27 @@ describe("enquiryIntakeSchema", () => {
     ).toBe(true);
   });
 
+  const sellWith = (departmentSlug: string) => ({
+    ...person,
+    intent: "private_sale_sell",
+    departmentSlug,
+    artist: "A",
+    title: "B",
+    locationTown: "C",
+    locationCountry: "D",
+  });
+
+  it.each(DEPARTMENTS.map((department) => department.slug))("accepts the %s department", (slug) => {
+    expect(enquiryIntakeSchema.safeParse(sellWith(slug)).success).toBe(true);
+  });
+
+  it.each(["modern-british", "prints", "not-a-department", "paintings-"])(
+    "refuses %j as a department",
+    (slug) => {
+      expect(enquiryIntakeSchema.safeParse(sellWith(slug)).success).toBe(false);
+    },
+  );
+
   it.each([
     [
       "a seller with no department",
@@ -134,7 +156,7 @@ describe("enquiryIntakeSchema", () => {
       "a price of zero",
       {
         intent: "private_sale_sell",
-        departmentSlug: "prints",
+        departmentSlug: "fine-prints",
         artist: "A",
         title: "B",
         locationTown: "C",

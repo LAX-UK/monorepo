@@ -129,12 +129,6 @@ export {
   runBulkSettlement,
 } from "./payout/payout-settlement.js";
 export {
-  SETTLEMENT_PERIOD_FLOOR,
-  resolveSettlementPeriod,
-  type SettlementPeriodRefusal,
-  type SettlementPeriodResult,
-} from "./payout/settlement-period.js";
-export {
   runBulkSettlementWithTransfers,
   outcomeFromTransfer,
 } from "./payout/payout-bulk-transfer.js";

@@ -27,7 +27,7 @@ export type CreateSettlementResult =
   | { ok: true; payout: import("@auction/types").Payout & { lines: PayoutLine[] } }
   | {
       ok: false;
-      reason: "no_pending_payments" | import("./settlement-period.js").SettlementPeriodRefusal;
+      reason: "no_pending_payments" | import("@auction/domain").SettlementPeriodRefusal;
     };
 
 export type BulkPayoutSettlementItemResult = {

@@ -4,6 +4,7 @@ import {
   dealPayoutAmounts,
   minorUnitsToMoneyString,
   payoutTotals,
+  resolveSettlementPeriod,
 } from "@auction/domain";
 import type {
   IPayoutRepository,
@@ -16,7 +17,6 @@ import {
   listSettlementEntityIds,
   settlementAmounts,
 } from "./payout-helpers.js";
-import { resolveSettlementPeriod } from "./settlement-period.js";
 import type {
   BulkPayoutSettlementResult,
   CreateSettlementInput,
@@ -170,12 +170,15 @@ export async function createSettlement(
     // The period is read here, under the lock and through this transaction, so the settled period
     // another run just wrote is already visible and the two cannot overlap.
     const [latest] = await r.list({ legalEntityId: input.legalEntityId, limit: 1 });
-    const [oldestPending] = await r.findUnlinkedCapturedPayments(input.legalEntityId);
+    const waiting = await r.findUnlinkedCapturedPayments(input.legalEntityId);
     const period = resolveSettlementPeriod({
       now: input.periodEnd,
       requestedStart: input.periodStart,
       lastSettledEnd: latest?.periodEnd ?? null,
-      earliestPending: oldestPending?.capturedAt ?? null,
+      earliestPending: waiting.reduce<Date | null>(
+        (oldest, p) => (p.capturedAt && (!oldest || p.capturedAt < oldest) ? p.capturedAt : oldest),
+        null,
+      ),
     });
     if (!period.ok) return period;
     const resolved: ResolvedSettlementInput = {

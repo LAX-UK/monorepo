@@ -1,9 +1,9 @@
+import { SETTLEMENT_PERIOD_FLOOR } from "@auction/domain";
 import type { IPayoutRepository } from "@auction/persistence/interfaces";
 import { describe, expect, it, vi } from "vitest";
 import { makeSettlementRepo, payoutRow, pending } from "./payout-bulk-settlement-parity.helpers.js";
 import type { PayoutSettlementDeps } from "./payout-helpers.js";
 import { createSettlement, runBulkSettlement } from "./payout-settlement.js";
-import { SETTLEMENT_PERIOD_FLOOR } from "./settlement-period.js";
 
 const ENTITY = "00000000-0000-4000-8000-000000000001";
 const NOW = new Date("2026-11-09T10:00:00.000Z");
