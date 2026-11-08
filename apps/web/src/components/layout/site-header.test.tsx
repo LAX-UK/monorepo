@@ -3,6 +3,7 @@ import { SiteHeader } from "@/components/layout/site-header";
 import type { BidAttention } from "@/hooks/use-bid-attention";
 import type { LaxFamilyLinkVm } from "@auction/lax-ecosystem";
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import { renderToString } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 let attention: BidAttention;
@@ -305,5 +306,30 @@ describe("SiteHeader over the cover photograph", () => {
       </>,
     );
     expect(screen.getByRole("banner")).toHaveAttribute("data-chrome-variant", "solid");
+  });
+});
+
+describe("SiteHeader first paint", () => {
+  it("marks a header on the home route as waiting for the cover, in the server's HTML", () => {
+    // The stylesheet draws it transparent when the cover's own marker is in the same HTML.
+    const html = renderToString(<SiteHeader familyLinks={FAMILY} />);
+    expect(html).toContain("data-hero-pending");
+    expect(html).toContain('data-chrome-variant="solid"');
+  });
+
+  it("does not mark a header on a page that cannot have a cover", () => {
+    pathname = "/purchases";
+    expect(renderToString(<SiteHeader familyLinks={FAMILY} />)).not.toContain("data-hero-pending");
+  });
+
+  it("does not mark a header whose variant was chosen by the page", () => {
+    expect(
+      renderToString(<SiteHeader chromeVariant="transparentUntilScroll" familyLinks={FAMILY} />),
+    ).not.toContain("data-hero-pending");
+  });
+
+  it("lets go of the mark once the page's scripts have run, so the header's own state governs", () => {
+    render(<SiteHeader familyLinks={FAMILY} />);
+    expect(screen.getByRole("banner")).not.toHaveAttribute("data-hero-pending");
   });
 });

@@ -3,7 +3,7 @@
 import { cn } from "@auction/ui";
 import { ButtonLink, TextLink } from "@auction/ui/lax";
 import { Check, Clock, Info } from "lucide-react";
-import { type CSSProperties, type ElementType, type ReactNode, useState } from "react";
+import { type CSSProperties, type ElementType, useState } from "react";
 import { CoverAlertField } from "./cover-alert.js";
 import { CoverFilmButton, CoverFilmPlayer } from "./cover-film.js";
 import { coverSettles } from "./cover-motion.js";
@@ -71,6 +71,18 @@ function groundFor(media: CoverMedia | null): Ground {
   }
   const scrims = scrimsForPhoto(media);
   return scrims ? { mode: "photo", media, tone: scrims.tone, scrims } : { mode: "type" };
+}
+
+/** Steady for the header, then a short fade into the picture. */
+const HEADER_BAND_FADE = "2.75rem";
+const HEADER_BAND_STYLE: CSSProperties = {
+  height: `calc(var(--header-height) + ${HEADER_BAND_FADE})`,
+  backgroundImage: `linear-gradient(to bottom, rgb(0 0 0 / 0.6) 0, rgb(0 0 0 / 0.6) var(--header-height), transparent calc(var(--header-height) + ${HEADER_BAND_FADE}))`,
+};
+
+/** Whether this media is drawn as a photograph (the only cover that goes under the header). */
+export function coverIsPhoto(media: CoverMedia | null): boolean {
+  return groundFor(media).mode === "photo";
 }
 
 /** The scrim and credit band for each desktop size; the wide pair shows from 1600px. */
@@ -159,8 +171,8 @@ export type CoverSlideViewProps = {
   media: CoverMedia | null;
   Link: ElementType | undefined;
   priority: boolean;
-  /** Rendered, with the cover pulled under the header, while the cover is a photograph. */
-  headerSignal?: ReactNode;
+  /** The cover starts under a transparent header: same layout for every slide of the cover. */
+  underHeader?: boolean;
   onMediaFail: () => void;
   pager: { index: number; count: number; onStep: (direction: 1 | -1) => void } | null;
   group: { label: string } | null;
@@ -172,15 +184,12 @@ export function CoverSlideView({
   media,
   Link,
   priority,
-  headerSignal,
+  underHeader = false,
   onMediaFail,
   pager,
   group,
 }: CoverSlideViewProps) {
   const ground = groundFor(media);
-  // Only a photograph is drawn under a transparent header; a plate and plain type keep the page
-  // tone behind it, so the header stays solid there.
-  const underHeader = headerSignal != null && ground.mode === "photo";
   const side: CoverSide = ground.mode === "type" ? "left" : ground.media.side;
   const onImage = ground.mode === "type" ? null : ground.tone;
   const swap = ground.mode === "plate" && ground.swap;
@@ -222,13 +231,25 @@ export function CoverSlideView({
           ? "-mt-[var(--header-height)] md:h-[calc(640px+var(--header-height))] min-[1600px]:h-[calc(720px+var(--header-height))]"
           : "md:h-[640px] min-[1600px]:h-[720px]",
         ground.mode === "type" && "md:bg-surface-container-low",
+        // A type-only slide has no picture to carry the header's height on a phone.
+        underHeader && ground.mode === "type" && "max-md:pt-[var(--header-height)]",
       )}
       style={vars}
       {...(group
         ? { role: "group", "aria-roledescription": "slide", "aria-label": group.label }
         : {})}
     >
-      {underHeader ? headerSignal : null}
+      {underHeader ? (
+        // The header's type is light over any picture, so a band holds 60% black for the full
+        // height of the header (white type reaches 5.7:1 even over a white photograph), then fades
+        // out. It is part of the layout for every slide, so a plate or plain slide gets it too.
+        <div
+          aria-hidden
+          data-cover-header-scrim=""
+          className="pointer-events-none absolute inset-x-0 top-0 z-[1]"
+          style={HEADER_BAND_STYLE}
+        />
+      ) : null}
       {playing && slide.film ? (
         <CoverFilmPlayer
           film={slide.film}
@@ -266,15 +287,6 @@ export function CoverSlideView({
             )}
           </div>
           {ground.mode === "photo" ? <Scrims scrims={ground.scrims} side={side} /> : null}
-          {underHeader ? (
-            // The header's type is light over a picture, whatever the picture is: a dark band the
-            // height of the header, fading out, keeps it readable on a bright photograph.
-            <div
-              aria-hidden
-              data-cover-header-scrim=""
-              className="pointer-events-none absolute inset-x-0 top-0 h-[calc(var(--header-height)+2.5rem)] bg-gradient-to-b from-black/55 to-transparent"
-            />
-          ) : null}
           {slide.badge ? (
             <span
               aria-hidden

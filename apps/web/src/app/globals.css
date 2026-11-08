@@ -550,3 +550,30 @@
   --color-shell-stroke: var(--lax-line);
   --color-border-hairline: var(--lax-line);
 }
+
+/*
+ * The header's first paint over a cover photograph. The server cannot know the home cover leads
+ * with a photograph (the header is in the layout, the cover in the page's data), but the cover's
+ * own marker is in the same HTML. Until the page's scripts have run, a header on a route that may
+ * have one carries `data-hero-pending`; with the marker present it is drawn exactly as the
+ * transparent state is: no surface, light type. Same technique as the workspace shell above: the
+ * header's tone classes read these tokens, so naming them here flips the whole header without
+ * touching a class. Once the scripts run, the attribute goes and the header's own state, which
+ * agrees with this, takes over, so nothing moves.
+ */
+html:has([data-cover-under-header]) header[data-hero-pending] {
+  border-color: transparent;
+  background-color: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+  --color-brand-800: var(--color-hero-foreground);
+  --color-brand-900: var(--color-hero-foreground);
+  --color-nav-text: var(--color-hero-foreground);
+  --color-on-surface: var(--color-hero-foreground);
+  --color-on-surface-variant: var(--color-hero-foreground);
+  --color-link: var(--color-hero-foreground);
+  --color-brand-300: rgb(255 255 255 / 0.35);
+  --color-brand-400: rgb(255 255 255 / 0.35);
+  --color-input-border: rgb(255 255 255 / 0.35);
+  --color-product-accent: currentColor;
+}
