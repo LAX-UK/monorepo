@@ -170,7 +170,7 @@ export class ArtworkRegisterReviewService {
     const [all, artists, placeCounts, counts] = await Promise.all([
       this.deps.overview.listAll(overviewFilterOf(query), { limit, offset }),
       this.deps.overview.listArtists(),
-      this.deps.overview.countPlaces(),
+      this.deps.overview.countPlaces(query.artist),
       this.counts(),
     ]);
     return {

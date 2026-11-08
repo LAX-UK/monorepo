@@ -68,6 +68,7 @@ describe("the queue's URL state", () => {
     expect(hasActiveZohoFilters({ tab: "decisions", page: "2" })).toBe(false);
     expect(hasActiveZohoFilters({ missing: "image" })).toBe(true);
     expect(hasActiveZohoFilters({ tab: "all", place: "sold" })).toBe(true);
+    expect(hasActiveZohoFilters({ tab: "all", missing: "image" })).toBe(false);
   });
 
   it("sends the place to the API", () => {

@@ -186,6 +186,7 @@ describe("ArtworkRegisterReviewService", () => {
       { artistCode: "PH", place: "sold" },
       { limit: 25, offset: 25 },
     );
+    expect(deps.overview.countPlaces).toHaveBeenCalledWith("PH");
   });
 
   it("reports both queue sizes for the Overview", async () => {

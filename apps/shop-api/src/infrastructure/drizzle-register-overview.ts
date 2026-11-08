@@ -2,7 +2,7 @@ import type { ArtworkRegisterEntry } from "@auction/artwork-register-contracts";
 import type { Database } from "@auction/db";
 import { artworkRegister as register, shopArtwork } from "@auction/db/schema";
 import { REGISTER_PLACE_VALUES } from "@auction/shop-contracts";
-import { type SQL, and, asc, eq, sql } from "drizzle-orm";
+import { type SQL, and, asc, eq, isNull, sql } from "drizzle-orm";
 import type {
   ArtworkRegisterOverview,
   RegisterOverviewFilter,
@@ -10,6 +10,11 @@ import type {
 
 /** A lax.art listing made from the record exists and buyers cannot see it (not published, or archived). */
 const HAS_DRAFT = sql`(${shopArtwork.id} IS NOT NULL AND (${shopArtwork.publishedAt} IS NULL OR ${shopArtwork.archivedAt} IS NOT NULL))`;
+/** The lax.art listing of a record; an edition run is never the listing of an original. */
+const LISTING_JOIN = and(
+  eq(shopArtwork.zohoProductId, register.zohoProductId),
+  isNull(shopArtwork.runKind),
+);
 const HELD = sql`${register.offerState} = 'held'`;
 
 /** Each place as a condition on the record and its lax.art listing; a draft only counts while held. */
@@ -45,7 +50,7 @@ export function createDrizzleRegisterOverviewReader(
         db
           .select({ entry: register, hasDraft: sql<boolean>`${HAS_DRAFT}` })
           .from(register)
-          .leftJoin(shopArtwork, eq(shopArtwork.zohoProductId, register.zohoProductId))
+          .leftJoin(shopArtwork, LISTING_JOIN)
           .where(where)
           .orderBy(sql`${register.zohoModifiedAt} DESC NULLS LAST`, asc(register.id))
           .limit(page.limit)
@@ -53,7 +58,7 @@ export function createDrizzleRegisterOverviewReader(
         db
           .select({ total: sql<number>`count(*)::int` })
           .from(register)
-          .leftJoin(shopArtwork, eq(shopArtwork.zohoProductId, register.zohoProductId))
+          .leftJoin(shopArtwork, LISTING_JOIN)
           .where(where),
       ]);
       return {
@@ -61,7 +66,7 @@ export function createDrizzleRegisterOverviewReader(
         total: counted?.total ?? 0,
       };
     },
-    async countPlaces() {
+    async countPlaces(artistCode) {
       const [row] = await db
         .select(
           Object.fromEntries(
@@ -72,7 +77,8 @@ export function createDrizzleRegisterOverviewReader(
           ) as Record<(typeof REGISTER_PLACE_VALUES)[number], SQL<number>>,
         )
         .from(register)
-        .leftJoin(shopArtwork, eq(shopArtwork.zohoProductId, register.zohoProductId));
+        .leftJoin(shopArtwork, LISTING_JOIN)
+        .where(artistCode ? eq(register.artistCode, artistCode) : undefined);
       return (row ??
         Object.fromEntries(REGISTER_PLACE_VALUES.map((place) => [place, 0]))) as Record<
         (typeof REGISTER_PLACE_VALUES)[number],

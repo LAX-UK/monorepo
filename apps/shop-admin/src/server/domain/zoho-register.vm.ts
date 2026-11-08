@@ -96,7 +96,8 @@ export function activeZohoTab(query: ZohoQueueQuery): ZohoQueueTab {
 }
 
 export function hasActiveZohoFilters(query: ZohoQueueQuery): boolean {
-  return Boolean(query.artist || query.missing || query.place);
+  // "Missing" belongs to New from Zoho; the other tabs have no chip for it.
+  return Boolean(query.artist || query.place || (activeZohoTab(query) === "new" && query.missing));
 }
 
 /** The queue's URL with `change` applied; changing anything but the page returns to page one. */

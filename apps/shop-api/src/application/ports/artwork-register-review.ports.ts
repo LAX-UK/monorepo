@@ -80,8 +80,8 @@ export interface ArtworkRegisterOverview {
   ): Promise<{ rows: RegisterOverviewRow[]; total: number }>;
   /** The artists with records, for the artist filter, by name. */
   listArtists(): Promise<{ code: string; name: string; count: number }[]>;
-  /** How many records are in each place. */
-  countPlaces(): Promise<Record<AdminRegisterPlace, number>>;
+  /** How many records are in each place, for one artist's records when `artistCode` is given. */
+  countPlaces(artistCode?: string): Promise<Record<AdminRegisterPlace, number>>;
 }
 
 export interface ArtworkRegisterRecords {

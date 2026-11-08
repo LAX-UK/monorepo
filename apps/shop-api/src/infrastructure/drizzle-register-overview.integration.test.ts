@@ -90,6 +90,7 @@ describe.skipIf(!hasShopIntegrationDb)("the From Zoho All list (Postgres)", () =
     const plain = await record("Plain");
     const drafted = await record("Drafted");
     const sold = await record("Sold");
+    const run = await record("Run");
     await offer.offer({
       registerId: drafted.id,
       body: {
@@ -100,13 +101,27 @@ describe.skipIf(!hasShopIntegrationDb)("the From Zoho All list (Postgres)", () =
       actorSubjectId: "overview-it-staff",
       idempotencyKey: `idem-${integrationSuffix("o")}`,
     });
+    await offer.offer({
+      registerId: run.id,
+      body: {
+        artistId: artist.artistId,
+        saleState: "for_sale",
+        slug: `it-overview-${integrationSuffix("e")}`,
+      },
+      actorSubjectId: "overview-it-staff",
+      idempotencyKey: `idem-${integrationSuffix("p")}`,
+    });
+    // A listing that is an edition run is never the lax.art listing of an original.
+    await createDbFromPool(ownerPool).execute(
+      sql`UPDATE shop_artwork SET run_kind = 'open' WHERE zoho_product_id = ${run.zohoProductId}`,
+    );
     await createDbFromPool(ownerPool).execute(
       sql`UPDATE artwork_register SET offer_state = 'sold' WHERE id = ${sold.id}`,
     );
 
     const reader = createDrizzleRegisterOverviewReader(db, registerRowToEntry);
     const all = await reader.listAll({ artistCode: code }, PAGE);
-    expect(all.total).toBe(3);
+    expect(all.total).toBe(4);
     const draftFlags = Object.fromEntries(
       all.rows.map((row) => [row.entry.title, [row.entry.offer.state, row.hasLaxArtDraft]]),
     );
@@ -114,23 +129,27 @@ describe.skipIf(!hasShopIntegrationDb)("the From Zoho All list (Postgres)", () =
       Plain: ["held", false],
       Drafted: ["held", true],
       Sold: ["sold", false],
+      Run: ["held", false],
     });
 
     const idsAt = async (place: Parameters<typeof reader.listAll>[0]["place"]) =>
       (await reader.listAll({ artistCode: code, ...(place ? { place } : {}) }, PAGE)).rows.map(
         (row) => row.entry.id,
       );
-    expect(await idsAt("not_offered")).toEqual([plain.id]);
+    expect((await idsAt("not_offered")).sort()).toEqual([plain.id, run.id].sort());
     expect(await idsAt("draft_lax_art")).toEqual([drafted.id]);
     expect(await idsAt("sold")).toEqual([sold.id]);
     expect(await idsAt("lax_art")).toEqual([]);
 
-    const places = await reader.countPlaces();
-    expect(places.draft_lax_art).toBeGreaterThanOrEqual(1);
-    expect(places.sold).toBeGreaterThanOrEqual(1);
-    expect(places.not_offered).toBeGreaterThanOrEqual(1);
+    // Counted for this artist alone, so they match what the filtered list shows.
+    expect(await reader.countPlaces(code)).toMatchObject({
+      not_offered: 2,
+      draft_lax_art: 1,
+      sold: 1,
+      lax_art: 0,
+    });
 
     const artists = await reader.listArtists();
-    expect(artists.find((entry) => entry.code === code)).toMatchObject({ count: 3 });
+    expect(artists.find((entry) => entry.code === code)).toMatchObject({ count: 4 });
   });
 });
