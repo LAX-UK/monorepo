@@ -16,6 +16,7 @@ import {
   basketLineStepperHint,
   presentBasketLine,
 } from "@/lib/basket/basket-view.vm";
+import { EDITION_ALERT_ANCHOR } from "@/lib/catalogue/edition-card.vm";
 import { commerceErrorMessage } from "@/lib/commerce-error-message";
 import { MarketingTrashIcon } from "@auction/marketing-ui";
 import type { BasketLine } from "@auction/shop-contracts";
@@ -304,7 +305,10 @@ function BasketLineRow({
             <p>This edition sold out while it was in your basket.</p>
             <p>Remove it to continue to checkout, or ask to hear if it comes back.</p>
             {vm.href ? (
-              <Link href={vm.href} className="shop-inline-link shop-focus-ring">
+              <Link
+                href={vm.kind === "edition" ? `${vm.href}#${EDITION_ALERT_ANCHOR}` : vm.href}
+                className="shop-inline-link shop-focus-ring"
+              >
                 Get alerts
               </Link>
             ) : null}

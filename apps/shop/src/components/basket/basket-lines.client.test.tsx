@@ -73,7 +73,7 @@ describe("BasketLinesClient", () => {
     expect(screen.getByText("This edition sold out while it was in your basket.")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Remove Warm Basket" })).toBeTruthy();
     const alerts = screen.getByRole("link", { name: "Get alerts" });
-    expect(alerts.getAttribute("href")).toBe("/artworks/warm-basket");
+    expect(alerts.getAttribute("href")).toBe("/artworks/warm-basket#edition-alert");
     // A sold-out line cannot be bought more of.
     expect(screen.queryByRole("group", { name: /quantity/i })).toBeNull();
   });

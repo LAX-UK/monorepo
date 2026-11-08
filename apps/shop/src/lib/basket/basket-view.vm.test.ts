@@ -135,7 +135,7 @@ describe("presentBasketSummary", () => {
       total: "£120.00",
     });
     expect(presentBasketSummary(lines, "international_quotation")).toMatchObject({
-      totalLabel: "Total before delivery",
+      totalLabel: "Total before delivery, including VAT",
       total: "£120.00",
     });
   });

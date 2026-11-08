@@ -16,6 +16,7 @@ vi.mock("next/link", () => ({
       {children}
     </a>
   ),
+  useLinkStatus: () => ({ pending: false }),
 }));
 
 const rail = {
@@ -93,19 +94,20 @@ describe("ArtworkCatalogueFilterBody", () => {
     expect(screen.getByRole("switch", { name: "Available only" })).toBeTruthy();
   });
 
-  it("offers sort as radios in the phone sheet, and the chosen one cannot be taken off", () => {
+  it("offers sort as links in the phone sheet, and the chosen one cannot be taken off", () => {
     renderRail({ sort });
-    const group = screen.getByRole("radiogroup", { name: "Sort" });
-    const newest = within(group).getByRole("radio", { name: "Newest" });
-    expect(newest.getAttribute("aria-checked")).toBe("true");
+    const group = screen.getByRole("group", { name: "Sort" });
+    expect(within(group).queryByRole("radio")).toBeNull();
+    const newest = within(group).getByRole("link", { name: "Newest" });
+    expect(newest.getAttribute("aria-current")).toBe("true");
     expect(newest.getAttribute("href")).toBe("/artworks");
     expect(
-      within(group).getByRole("radio", { name: "Price low to high" }).getAttribute("href"),
+      within(group).getByRole("link", { name: "Price low to high" }).getAttribute("href"),
     ).toBe("/artworks?sort=price_asc");
   });
 
   it("leaves out the sort group where sort sits above the results", () => {
     renderRail();
-    expect(screen.queryByRole("radiogroup", { name: "Sort" })).toBeNull();
+    expect(screen.queryByRole("group", { name: "Sort" })).toBeNull();
   });
 });

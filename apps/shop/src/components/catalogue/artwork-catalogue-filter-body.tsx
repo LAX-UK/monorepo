@@ -89,7 +89,8 @@ export function ArtworkCatalogueFilterBody({
       >
         {sort ? (
           <MarketingFilterAccordionSection value="sort" title="Sort">
-            <div role="radiogroup" aria-label="Sort" className="flex flex-col">
+            <fieldset className="m-0 flex min-w-0 flex-col border-0 p-0">
+              <legend className="sr-only">Sort</legend>
               {sort.options.map((option) => (
                 <MarketingFilterLinkRow
                   key={option.value}
@@ -101,7 +102,7 @@ export function ArtworkCatalogueFilterBody({
                   dense
                 />
               ))}
-            </div>
+            </fieldset>
           </MarketingFilterAccordionSection>
         ) : null}
         {rail.groups.map((group) => (
