@@ -63,6 +63,8 @@ export type AuthEnv = {
   totpIssuer?: string | undefined;
   /** URL for the sessions settings page linked from password-reset emails. */
   sessionsSettingsUrl?: string | undefined;
+  /** Called when the facts a Google or Apple sign-in depends on cannot be read; the sign-in fails closed. */
+  onSocialPolicyReadFailed?: ((error: unknown) => void) | undefined;
   /** Called after password reset succeeds — revoke all other sessions; returns count of revoked rows (optional; wired in apps/api). */
   revokeAllSessions?: ((userId: string) => Promise<number>) | undefined;
   /** Invoked from `databaseHooks.user.create.after` for every new auth user (email + OAuth).
@@ -190,6 +192,7 @@ export function createAuth(env: AuthEnv): Auth {
       securityNotices: ports.securityNotices,
       legalAcceptance: ports.legalAcceptance,
       twoFactorPolicyStore: ports.twoFactorPolicyStore,
+      events: ports.events,
     },
     onUserCreated: env.onUserCreated,
     onAccountCreated: env.onAccountCreated,
@@ -197,6 +200,7 @@ export function createAuth(env: AuthEnv): Auth {
     enableNewDeviceLoginEmail: env.enableNewDeviceLoginEmail,
     blockNewUserRegistration: env.blockNewUserRegistration,
     revokeAllSessions: env.revokeAllSessions,
+    onSocialPolicyReadFailed: env.onSocialPolicyReadFailed,
   };
 
   return betterAuth({

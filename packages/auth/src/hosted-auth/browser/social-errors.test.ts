@@ -9,6 +9,10 @@ describe("socialErrorMessage", () => {
     );
   });
 
+  it("says plainly when Google and Apple sign-in is unavailable", () => {
+    expect(socialErrorMessage("social_sign_in_unavailable")).toContain("isn't available just now");
+  });
+
   it("explains a refused staff sign-in, and does not promise a way to link that does not exist yet", () => {
     const staff = socialErrorMessage("staff_social_sign_in_not_allowed");
     expect(staff).toContain("Staff accounts can't sign in with Google or Apple");

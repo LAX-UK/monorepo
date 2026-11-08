@@ -58,6 +58,9 @@ export function buildSocialSignInPolicyPlugin(deps: AuthHookDeps): BetterAuthPlu
             const session = ctx.context.newSession;
             const provider = ctx.params?.id;
             if (userId && session && typeof provider === "string" && isSocialProviderId(provider)) {
+              await deps.ports.events
+                ?.publish({ type: "user.unconfirmed_password_removed", userId, provider })
+                .catch(() => undefined);
               await deps.ports.securityNotices?.notify({
                 kind: "unconfirmed_password_removed",
                 userId,

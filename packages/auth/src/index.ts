@@ -58,6 +58,8 @@ export {
   buildHostedTwoFactorHtml,
   buildHostedTwoFactorHelpHtml,
   buildHostedTwoFactorManageHtml,
+  buildHostedTwoFactorPasswordHtml,
+  HOSTED_TWO_FACTOR_PASSWORD_SCRIPT,
   buildHostedTwoFactorSetupHtml,
   parseTwoFactorSetupRequiredBy,
   type TwoFactorSetupRequiredBy,

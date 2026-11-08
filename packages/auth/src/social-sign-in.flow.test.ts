@@ -4,6 +4,7 @@ import type { AuthDatabase } from "./phone-number-plugin.js";
 import type {
   AccessMarker,
   AuthPorts,
+  IdentityLifecycleEvent,
   SecurityNoticeEvent,
   TwoFactorPolicyStore,
 } from "./ports/index.js";
@@ -31,6 +32,8 @@ type Harness = Awaited<ReturnType<typeof harness>>;
 async function harness(options: {
   staff?: string[];
   revokeAllSessions?: (userId: string) => Promise<number>;
+  /** Makes the staff and two-step read fail, as a database outage would. */
+  failPolicyRead?: boolean;
 }) {
   const rows: Rows = {
     user: [],
@@ -44,14 +47,21 @@ async function harness(options: {
     oauthConsent: [],
   };
   const notices: SecurityNoticeEvent[] = [];
+  const events: IdentityLifecycleEvent[] = [];
+  const policyReadFailures: unknown[] = [];
   const staff = new Set(options.staff ?? []);
   const user = (id: string) => rows.user?.find((row) => row.id === id);
 
   const policy: TwoFactorPolicyStore = {
-    readSubjectPolicyInputs: async (subjectId) => ({
-      markers: staff.has(subjectId) ? ([{ kind: "staff", product: "bid" }] as AccessMarker[]) : [],
-      policies: [],
-    }),
+    readSubjectPolicyInputs: async (subjectId) => {
+      if (options.failPolicyRead) throw new Error("identity database unavailable");
+      return {
+        markers: staff.has(subjectId)
+          ? ([{ kind: "staff", product: "bid" }] as AccessMarker[])
+          : [],
+        policies: [],
+      };
+    },
     readTwoFactorEnabled: async (ids) =>
       new Map(ids.map((id) => [id, user(id)?.twoFactorEnabled === true])),
     readPolicy: async () => null,
@@ -102,8 +112,8 @@ async function harness(options: {
     twoFactorPolicyStore: policy,
     email: undefined,
     sms: undefined,
-    events: undefined,
     securityNotices: { notify: async (event: SecurityNoticeEvent) => void notices.push(event) },
+    events: { publish: async (event: IdentityLifecycleEvent) => void events.push(event) },
   } as unknown as AuthPorts;
 
   const revoked: string[] = [];
@@ -126,6 +136,7 @@ async function harness(options: {
     googleClientId: "google-client",
     googleClientSecret: "google-secret",
     revokeAllSessions,
+    onSocialPolicyReadFailed: (error) => void policyReadFailures.push(error),
   });
   const context = await auth.$context;
 
@@ -223,6 +234,8 @@ async function harness(options: {
     context,
     rows,
     notices,
+    events,
+    policyReadFailures,
     revoked,
     createAccount,
     sessionFor,
@@ -351,6 +364,150 @@ describe("Google sign-in against an existing LAX account", () => {
       await h.createAccount({ id: "u1", email: "sam@example.com", emailVerified: true });
       const session = await h.sessionFor("u1");
       expect(session.userId).toBe("u1");
+    });
+  });
+
+  describe("audit records", () => {
+    it("records that a staff link was refused", async () => {
+      h = await harness({ staff: ["u1"] });
+      await h.createAccount({ id: "u1", email: "sam@example.com", emailVerified: true });
+      await h.continueWithGoogle("sam@example.com");
+      expect(h.events).toEqual([
+        {
+          type: "user.social_link_refused_staff",
+          userId: "u1",
+          provider: "google",
+          attempt: "link",
+        },
+      ]);
+    });
+
+    it("records that a staff sign-in through an older link was refused", async () => {
+      h = await harness({ staff: ["u1"] });
+      await h.createAccount({ id: "u1", email: "sam@example.com", emailVerified: true });
+      await h.context.adapter.create({
+        model: "account",
+        data: {
+          userId: "u1",
+          providerId: "google",
+          accountId: GOOGLE_SUB,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+        forceAllowId: true,
+      });
+      await h.continueWithGoogle("sam@example.com");
+      expect(h.events).toEqual([
+        {
+          type: "user.social_link_refused_staff",
+          userId: "u1",
+          provider: "google",
+          attempt: "sign_in",
+        },
+      ]);
+    });
+
+    it("records the removal of an unconfirmed password, with the notice", async () => {
+      h = await harness({});
+      await h.createAccount({ id: "u1", email: "ada@example.com", emailVerified: false });
+      await h.continueWithGoogle("ada@example.com");
+      expect(h.events).toEqual([
+        { type: "user.unconfirmed_password_removed", userId: "u1", provider: "google" },
+      ]);
+      expect(h.notices).toHaveLength(1);
+    });
+
+    it("writes nothing for an ordinary join, a refused two-step join or a first sign-up", async () => {
+      h = await harness({});
+      await h.createAccount({ id: "u1", email: "ada@example.com", emailVerified: true });
+      await h.createAccount({
+        id: "u2",
+        email: "bo@example.com",
+        emailVerified: true,
+        twoFactorEnabled: true,
+      });
+      await h.continueWithGoogle("ada@example.com");
+      await h.continueWithGoogle("bo@example.com");
+      await h.continueWithGoogle("new@example.com");
+      expect(h.events).toEqual([]);
+    });
+
+    it("still refuses a staff account when the audit record cannot be written", async () => {
+      h = await harness({ staff: ["u1"] });
+      await h.createAccount({ id: "u1", email: "sam@example.com", emailVerified: true });
+      (h.ports.events as { publish: unknown }).publish = async () => {
+        throw new Error("outbox unavailable");
+      };
+      const response = await h.continueWithGoogle("sam@example.com");
+      expect(location(response).searchParams.get("error")).toBe("staff_social_sign_in_not_allowed");
+      expect(providerAccounts(h)).toHaveLength(0);
+    });
+  });
+
+  describe("a refused staff sign-in lands on the hosted page, not a raw 403", () => {
+    it("is a redirect to the sign-in page that started it, with the code and no body to read", async () => {
+      h = await harness({ staff: ["u1"] });
+      await h.createAccount({ id: "u1", email: "sam@example.com", emailVerified: true });
+      await h.context.adapter.create({
+        model: "account",
+        data: {
+          userId: "u1",
+          providerId: "google",
+          accountId: GOOGLE_SUB,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+        forceAllowId: true,
+      });
+      const response = await h.continueWithGoogle("sam@example.com");
+      expect(response.status).toBe(302);
+      const target = location(response);
+      expect(`${target.origin}${target.pathname}`).toBe(`${BASE}/login`);
+      expect(target.searchParams.get("client_id")).toBe("lax-shop-web");
+      expect(target.searchParams.get("error")).toBe("staff_social_sign_in_not_allowed");
+      expect(await response.text()).toBe("");
+    });
+  });
+
+  describe("when the identity policy cannot be read", () => {
+    it("fails closed: no link and no session, and the failure is reported", async () => {
+      h = await harness({ failPolicyRead: true });
+      await h.createAccount({ id: "u1", email: "ada@example.com", emailVerified: true });
+      const response = await h.continueWithGoogle("ada@example.com");
+      expect(location(response).searchParams.get("error")).not.toBeNull();
+      expect(providerAccounts(h)).toHaveLength(0);
+      expect(h.rows.session ?? []).toHaveLength(0);
+      expect(h.policyReadFailures).toHaveLength(1);
+      expect(String(h.policyReadFailures[0])).toContain("identity database unavailable");
+    });
+
+    it("reports a failed read at sign-in through an existing link too", async () => {
+      h = await harness({ failPolicyRead: true });
+      await h.createAccount({ id: "u1", email: "ada@example.com", emailVerified: true });
+      await h.context.adapter.create({
+        model: "account",
+        data: {
+          userId: "u1",
+          providerId: "google",
+          accountId: GOOGLE_SUB,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+        forceAllowId: true,
+      });
+      const response = await h.continueWithGoogle("ada@example.com");
+      expect(response.status).toBe(302);
+      expect(location(response).searchParams.get("error")).toBe("social_sign_in_unavailable");
+      expect(h.rows.session ?? []).toHaveLength(0);
+      expect(h.policyReadFailures.length).toBeGreaterThan(0);
+    });
+
+    it("does not touch a first sign-up, which reads no policy", async () => {
+      h = await harness({ failPolicyRead: true });
+      const response = await h.continueWithGoogle("new@example.com");
+      expect(location(response).searchParams.get("error")).toBeNull();
+      expect(h.rows.session).toHaveLength(1);
+      expect(h.policyReadFailures).toEqual([]);
     });
   });
 

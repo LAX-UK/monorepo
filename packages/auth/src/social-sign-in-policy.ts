@@ -20,6 +20,8 @@ export const SOCIAL_SIGN_IN_ERROR_CODES = {
   accountNotLinked: "account_not_linked",
   /** The account is a staff account; staff sign in with a password and two-step verification. */
   staffNotAllowed: "staff_social_sign_in_not_allowed",
+  /** The facts the decision needs could not be read, so the sign-in was stopped. */
+  unavailable: "social_sign_in_unavailable",
 } as const;
 
 /** What is known about the existing LAX account a provider sign-in meets. */

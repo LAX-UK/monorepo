@@ -11,7 +11,7 @@ import {
   mayUseSocialSignIn,
 } from "../social-sign-in-policy.js";
 import type { AuthHookDeps } from "./auth-hook-deps.js";
-import { readSocialSubject, socialFlow } from "./social-flow.js";
+import { readSocialSubjectReporting, recordStaffRefusal, socialFlow } from "./social-flow.js";
 
 type EndpointContext = { context?: { adapter?: unknown } | undefined } | null | undefined;
 
@@ -43,9 +43,14 @@ export function buildAccountDatabaseHooks(deps: AuthHookDeps) {
     if (!isSocialProviderId(acct.providerId)) return;
     const flow = socialFlow(context);
     if (flow.newUser) return; // a first sign-up creates its own account; nothing to join
-    const subject = await readSocialSubject(deps.ports, acct.userId);
+    const subject = await readSocialSubjectReporting(deps, acct.userId);
     if (!mayUseSocialSignIn(subject)) {
       flow.blockedLink = "staff";
+      await recordStaffRefusal(deps, {
+        userId: acct.userId,
+        provider: acct.providerId,
+        attempt: "link",
+      });
       throw new APIError("FORBIDDEN", {
         message: STAFF_MESSAGE,
         code: SOCIAL_SIGN_IN_ERROR_CODES.staffNotAllowed,

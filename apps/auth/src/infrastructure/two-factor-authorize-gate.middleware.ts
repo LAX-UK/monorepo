@@ -4,6 +4,7 @@ import {
   AUTH_ROUTE_PATH,
   OIDC_ACR_SILVER,
   REGISTERED_OIDC_CLIENTS,
+  REGISTERED_OIDC_CLIENT_IDS,
   type RegisteredOidcClientId,
 } from "@auction/identity-contracts";
 import type { IdentityDatabase } from "@auction/identity-db";
@@ -34,6 +35,25 @@ function oauthErrorRedirect(
 function requiredByHint(requirement: TwoFactorRequirement): "staff" | "org" | null {
   const [first] = requirement.sources;
   return first?.scope ?? null;
+}
+
+/**
+ * LAX Account stays reachable when only an organisation asks for two-step verification: its
+ * Security page is where a member sets a password and an authenticator app, so locking them out
+ * of it would leave no way to meet the requirement. A staff requirement is never exempted.
+ */
+export function requirementForClient(
+  requirement: TwoFactorRequirement,
+  clientId: RegisteredOidcClientId,
+): TwoFactorRequirement {
+  if (
+    clientId === REGISTERED_OIDC_CLIENT_IDS.LAX_ACCOUNT_WEB &&
+    requirement.sources.length > 0 &&
+    requirement.sources.every((source) => source.scope === "org")
+  ) {
+    return { required: false, sources: [] };
+  }
+  return requirement;
 }
 
 /**
@@ -86,7 +106,7 @@ export function createTwoFactorAuthorizeGateMiddleware(options: {
       return;
     }
 
-    const requirement = await options.readRequirement(subjectId);
+    const requirement = requirementForClient(await options.readRequirement(subjectId), clientId);
     if (!requestsSilver && !requirement.required) {
       await next();
       return;
@@ -138,6 +158,16 @@ export function createTwoFactorAuthorizeGateMiddleware(options: {
       const hint = requestsSilver ? null : requiredByHint(requirement);
       if (hint) setup.searchParams.set("required_by", hint);
       return c.redirect(setup.toString(), 302);
+    }
+    if (!requestsSilver) {
+      // A policy asks for two-step verification and there is no password to enrol an
+      // authenticator app with (the person signs in only with Google or Apple): say so, and
+      // start the one step they can take, instead of returning an error nobody can read.
+      const password = new URL("/two-factor/password", options.issuerOrigin);
+      appendOidcAuthorizeParams(password, params, { ensureClientId: clientId });
+      const hint = requiredByHint(requirement);
+      if (hint) password.searchParams.set("required_by", hint);
+      return c.redirect(password.toString(), 302);
     }
     return c.redirect(
       oauthErrorRedirect(

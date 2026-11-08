@@ -10,6 +10,7 @@ export type AuthHookDeps = {
     | "securityNotices"
     | "legalAcceptance"
     | "twoFactorPolicyStore"
+    | "events"
   >;
   /** Invoked from `databaseHooks.user.create.after` for every new auth user (email + OAuth). */
   onUserCreated?:
@@ -42,6 +43,11 @@ export type AuthHookDeps = {
    * provider proves an email whose password was set before it was confirmed (SM5).
    */
   revokeAllSessions?: ((userId: string) => Promise<number>) | undefined;
+  /**
+   * Called when the staff, two-step or email facts a Google or Apple sign-in depends on cannot
+   * be read. The sign-in is stopped (it fails closed), so this is what an alert watches.
+   */
+  onSocialPolicyReadFailed?: ((error: unknown) => void) | undefined;
 };
 
 export type { EmailSender };

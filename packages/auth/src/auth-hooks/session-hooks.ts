@@ -2,7 +2,12 @@ import { APIError } from "better-auth/api";
 import { assertUserNotSuspendedForSession } from "../session-suspended-guard.js";
 import { SOCIAL_SIGN_IN_ERROR_CODES, mayUseSocialSignIn } from "../social-sign-in-policy.js";
 import type { AuthHookDeps } from "./auth-hook-deps.js";
-import { readSocialSubject, socialFlow } from "./social-flow.js";
+import {
+  readSocialSubjectReporting,
+  recordStaffRefusal,
+  socialFlow,
+  socialProviderOfRequest,
+} from "./social-flow.js";
 
 /** Session-creating requests that come back from Google or Apple (including an ID-token sign-in). */
 export function isSocialSessionPath(path: string | undefined): boolean {
@@ -19,8 +24,20 @@ export function buildSessionDatabaseHooks(deps: AuthHookDeps) {
         await assertUserNotSuspendedForSession(deps.ports.subjectStatusReader, sess.userId);
         // SM14: staff are never signed in by Google or Apple, even through a link made earlier.
         if (!isSocialSessionPath(context?.path) || socialFlow(context).newUser) return;
-        const subject = await readSocialSubject(deps.ports, sess.userId);
+        // A failed read stops the sign-in on the hosted page with a code it can explain, never a
+        // bare server error.
+        const subject = await readSocialSubjectReporting(deps, sess.userId).catch(() => {
+          throw new APIError("SERVICE_UNAVAILABLE", {
+            message: "Sign-in with Google or Apple is unavailable just now.",
+            code: SOCIAL_SIGN_IN_ERROR_CODES.unavailable,
+          });
+        });
         if (!mayUseSocialSignIn(subject)) {
+          await recordStaffRefusal(deps, {
+            userId: sess.userId,
+            provider: socialProviderOfRequest(context),
+            attempt: "sign_in",
+          });
           throw new APIError("FORBIDDEN", {
             message: "Staff accounts cannot sign in with Google or Apple.",
             code: SOCIAL_SIGN_IN_ERROR_CODES.staffNotAllowed,

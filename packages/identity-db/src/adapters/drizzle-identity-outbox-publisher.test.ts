@@ -41,4 +41,42 @@ describe("identity outbox publisher: data export requested", () => {
       }),
     );
   });
+
+  it("records a removed unconfirmed password, naming only the provider that proved the email", async () => {
+    const values = vi.fn(() => ({ onConflictDoNothing: vi.fn() }));
+    const transaction = { insert: vi.fn(() => ({ values })) } as unknown as IdentityDatabase;
+    await createDrizzleIdentityOutboxPublisher({
+      insert: vi.fn(),
+    } as unknown as IdentityDatabase).publish(
+      { type: "user.unconfirmed_password_removed", userId: "u1", provider: "apple" },
+      { transaction },
+    );
+    expect(values).toHaveBeenCalledWith(
+      expect.objectContaining({
+        aggregateId: "u1",
+        eventType: "user.unconfirmed_password_removed",
+        payload: expect.objectContaining({ subjectId: "u1", provider: "apple" }),
+      }),
+    );
+  });
+
+  it("records a refused staff Google or Apple link or sign-in, with no personal fields", async () => {
+    const values = vi.fn(() => ({ onConflictDoNothing: vi.fn() }));
+    const transaction = { insert: vi.fn(() => ({ values })) } as unknown as IdentityDatabase;
+    await createDrizzleIdentityOutboxPublisher({
+      insert: vi.fn(),
+    } as unknown as IdentityDatabase).publish(
+      { type: "user.social_link_refused_staff", userId: "u1", provider: "google", attempt: "link" },
+      { transaction },
+    );
+    const [row] = (values.mock.calls[0] ?? []) as unknown as [{ payload: Record<string, unknown> }];
+    expect(row).toMatchObject({ eventType: "user.social_link_refused_staff", aggregateId: "u1" });
+    expect(Object.keys(row.payload).sort()).toEqual([
+      "attempt",
+      "provider",
+      "refusedAt",
+      "schemaVersion",
+      "subjectId",
+    ]);
+  });
 });

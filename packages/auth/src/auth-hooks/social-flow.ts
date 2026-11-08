@@ -1,6 +1,12 @@
 import type { AccountLinkReader } from "../ports/account-link-reader.js";
+import type { IdentityLifecycleEvent } from "../ports/identity-event-publisher.js";
 import type { TwoFactorPolicyStore } from "../ports/two-factor-policy-store.js";
-import type { ImplicitLinkBlockReason, SocialSubject } from "../social-sign-in-policy.js";
+import {
+  type ImplicitLinkBlockReason,
+  type SocialProviderId,
+  type SocialSubject,
+  isSocialProviderId,
+} from "../social-sign-in-policy.js";
 
 /**
  * What one provider round trip decided along the way, kept on the request so the hook that
@@ -58,4 +64,60 @@ export async function readSocialSubject(
     twoFactorEnabled: twoFactor.get(userId) === true,
     emailVerified,
   };
+}
+
+/** What the policy needs from the hook's dependencies, plus the place a failed read is reported. */
+export type SocialPolicyDeps = {
+  ports: SocialSubjectPorts & {
+    events?: { publish(event: IdentityLifecycleEvent): Promise<void> } | undefined;
+  };
+  onSocialPolicyReadFailed?: ((error: unknown) => void) | undefined;
+};
+
+/**
+ * Reads the subject for a Google or Apple decision. A read that fails is reported and then
+ * rethrown, so the sign-in fails closed and the failure is visible to whoever watches the metric.
+ */
+export async function readSocialSubjectReporting(
+  deps: SocialPolicyDeps,
+  userId: string,
+): Promise<SocialSubject> {
+  try {
+    return await readSocialSubject(deps.ports, userId);
+  } catch (error) {
+    try {
+      deps.onSocialPolicyReadFailed?.(error);
+    } catch {
+      // Reporting must never replace the refusal.
+    }
+    throw error;
+  }
+}
+
+/** The provider a request is for: the callback's path parameter or an ID-token sign-in's body. */
+export function socialProviderOfRequest(endpointContext: unknown): SocialProviderId | null {
+  const ctx = endpointContext as
+    | { params?: { id?: unknown }; body?: { provider?: unknown } }
+    | null
+    | undefined;
+  const candidate = ctx?.params?.id ?? ctx?.body?.provider;
+  return typeof candidate === "string" && isSocialProviderId(candidate) ? candidate : null;
+}
+
+/** Records, for the audit trail, that a staff account was refused a Google or Apple link or sign-in. */
+export async function recordStaffRefusal(
+  deps: SocialPolicyDeps,
+  input: { userId: string; provider: SocialProviderId | null; attempt: "link" | "sign_in" },
+): Promise<void> {
+  if (!input.provider) return;
+  try {
+    await deps.ports.events?.publish({
+      type: "user.social_link_refused_staff",
+      userId: input.userId,
+      provider: input.provider,
+      attempt: input.attempt,
+    });
+  } catch {
+    // The refusal stands whether or not the record could be written.
+  }
 }
