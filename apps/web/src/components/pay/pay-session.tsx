@@ -30,6 +30,8 @@ type PaySession = {
   /** The secure payment page did not open in time. Nothing was charged. */
   openTimedOut: boolean;
   feedback: PayFeedback | null;
+  /** The not-completed note from the return is still the page's message: the card action reads Try again. */
+  afterReturn: boolean;
   /** How the person chose to pay; the action says what it will do for it. */
   method: PayMethod;
   chooseMethod: (method: PayMethod) => void;
@@ -82,6 +84,7 @@ export function PaySessionProvider({
   const [isPending, startTransition] = useTransition();
   const [opening, setOpening] = useState(false);
   const [openTimedOut, setOpenTimedOut] = useState(false);
+  const [afterReturn, setAfterReturn] = useState(returned !== null);
   const [feedback, setFeedback] = useState<PayFeedback | null>(
     returned ? { tone: "danger", message: returned.title, detail: returned.detail } : null,
   );
@@ -134,6 +137,7 @@ export function PaySessionProvider({
       attempts.current += 1;
       const attempt = attempts.current;
       setFeedback(null);
+      setAfterReturn(false);
       setOpenTimedOut(false);
       setOpening(true);
       if (timer.current) clearTimeout(timer.current);
@@ -175,12 +179,13 @@ export function PaySessionProvider({
       pending: opening || isPending,
       openTimedOut,
       feedback,
+      afterReturn,
       method,
       chooseMethod,
       pay,
       retry,
     }),
-    [opening, isPending, openTimedOut, feedback, method, chooseMethod, pay, retry],
+    [opening, isPending, openTimedOut, feedback, afterReturn, method, chooseMethod, pay, retry],
   );
   return <PaySessionContext.Provider value={value}>{children}</PaySessionContext.Provider>;
 }

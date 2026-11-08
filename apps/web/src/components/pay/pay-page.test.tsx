@@ -31,6 +31,7 @@ const draw = (plan: PayPlan, returned: "cancelled" | null = null) =>
 const assign = vi.fn();
 beforeEach(() => {
   vi.clearAllMocks();
+  window.sessionStorage.clear();
   Object.defineProperty(window, "location", {
     configurable: true,
     value: { ...window.location, assign },
@@ -322,5 +323,38 @@ describe("the Pay page, back from the payment page without paying", () => {
       ).toBeInTheDocument(),
     );
     expect(within(bar).getByRole("button")).not.toHaveAttribute("aria-label");
+  });
+
+  it("keeps Try again on the card action while the note is on screen, after the address is cleaned", () => {
+    const context = {
+      returnTo: "/purchases/pay?lots=a",
+      contactHref: "/contact",
+      details: {},
+    };
+    const { rerender } = render(
+      <PayPage vm={buildPayPageVm(ready(), NOW, { ...context, returned: "cancelled" })} />,
+    );
+    expect(screen.getAllByRole("button", { name: "Try again · £2,375.00" }).length).toBeGreaterThan(
+      0,
+    );
+    // The address is replaced, and the page reads its plan again without the return.
+    rerender(<PayPage vm={buildPayPageVm(ready(), NOW, { ...context, returned: null })} />);
+    expect(screen.getAllByRole("button", { name: "Try again · £2,375.00" }).length).toBeGreaterThan(
+      0,
+    );
+    expect(screen.getByRole("alert")).toHaveTextContent("Payment not completed");
+    // Choosing bank transfer is a different action, worded as usual.
+    fireEvent.click(screen.getByRole("radio", { name: "UK bank transfer" }));
+    expect(
+      screen.getAllByRole("button", { name: "Continue to bank transfer" }).length,
+    ).toBeGreaterThan(0);
+  });
+
+  it("shows the answer to a new attempt instead of the not-completed note", async () => {
+    payAction.mockResolvedValue({ kind: "failed", message: "Paying is paused.", refresh: false });
+    draw(ready(), "cancelled");
+    fireEvent.click(screen.getAllByRole("button", { name: /Try again/ })[0] as HTMLElement);
+    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("Paying is paused."));
+    expect(screen.queryByText(/Payment not completed/)).toBeNull();
   });
 });
