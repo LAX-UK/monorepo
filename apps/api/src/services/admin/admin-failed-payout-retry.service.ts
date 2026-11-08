@@ -21,7 +21,11 @@ export class AdminFailedPayoutRetryService {
     private readonly events: IDomainEventSink,
   ) {}
 
-  async retry(actorUserId: string, payoutId: string): Promise<FailedPayoutRetryOutcome> {
+  async retry(
+    actorUserId: string,
+    payoutId: string,
+    reason: string,
+  ): Promise<FailedPayoutRetryOutcome> {
     const payout = await this.payouts.findById(payoutId);
     if (!payout) throw new PayoutNotFoundError();
     if (payout.status !== "failed") {
@@ -37,6 +41,7 @@ export class AdminFailedPayoutRetryService {
         netAmount: payout.netAmount,
         currency: payout.currency,
         previousFailureReason: payout.failureReason,
+        reason,
       },
       actorUserId,
       actingLegalEntityId: payout.legalEntityId,

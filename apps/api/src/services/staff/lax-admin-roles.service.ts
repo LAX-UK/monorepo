@@ -156,6 +156,13 @@ export class LaxAdminRolesService {
     input: ChangeLaxAdminRoleInput,
     kind: { kind: "assign" | "remove"; endsAt: Date | null },
   ): Promise<Result<void, StaffRolesError>> {
+    if (input.userId === input.actorUserId) {
+      return err({
+        status: 403,
+        code: "cannot_change_own_role",
+        message: "You cannot change your own LAX Admin role",
+      });
+    }
     if (!(await this.deps.users.getById(input.userId))) {
       return err({ status: 404, message: "Person not found" });
     }

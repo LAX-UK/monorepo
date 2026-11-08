@@ -64,6 +64,10 @@ export async function previewPending(
     pendingNet: subtractDecimal(grossAmount, platformFee),
     paymentCount: rows.length,
     currency: DEFAULT_CURRENCY,
+    earliestCapturedAt: rows.reduce<Date | null>(
+      (oldest, r) => (r.capturedAt && (!oldest || r.capturedAt < oldest) ? r.capturedAt : oldest),
+      null,
+    ),
   };
 }
 
@@ -171,6 +175,7 @@ export async function markPaid(
         currency: updated.currency,
         processedAt: updated.processedAt?.toISOString() ?? null,
         via: "mark_paid",
+        reason: input.reason,
       },
       actorUserId,
       actingLegalEntityId: updated.legalEntityId,

@@ -182,6 +182,7 @@ export async function createSettlement(
         periodStart: input.periodStart.toISOString(),
         periodEnd: input.periodEnd.toISOString(),
         source,
+        ...(input.reason !== undefined ? { reason: input.reason } : {}),
       },
       actorUserId: actorUserId,
       actingLegalEntityId: input.legalEntityId,
