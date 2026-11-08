@@ -319,6 +319,7 @@ describe.skipIf(!HAS_DB)("enquiry erasure (integration)", () => {
           providerSessionId: `session-${firstBuyer}`,
           matchStatus: "no_match",
           decisionOutcome: "clear",
+          screenedAt: new Date(),
         } as never);
         await tx.insert(domainEvent).values({
           aggregateType: "private_sale_deal",
