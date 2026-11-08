@@ -121,7 +121,7 @@ function setup(options: Setup = {}) {
       list: async () => [],
       countByStage: async () => [],
       listIdsForActingUser: async () => [],
-      hasOpenDealForWork: async () => false,
+      findLiveDealReferenceForWork: async () => null,
       findWorkSummary: async () => ({
         title: "Harbour at dusk",
         reference: "C-1042",
@@ -567,6 +567,7 @@ describe("PrivateSaleDealDeskService act", () => {
       dealId: "deal-1",
       actorUserId: "u-staff",
       reason: "Buyer withdrew",
+      expectedVersion: 4,
     });
   });
 
@@ -635,6 +636,12 @@ describe("the staff desk: locked terms and versions", () => {
       expect(reversal.cancel).not.toHaveBeenCalled();
     },
   );
+
+  it("passes the version the person saw to the write, so it is conditional on it", async () => {
+    const { desk, applyStageChange } = setup({ deal: stageDeal("agreed") });
+    await desk.act(MANAGER, "PS-0001", "clear", { version: 4 });
+    expect(applyStageChange).toHaveBeenCalledWith("deal-1", 4, expect.anything());
+  });
 
   it("refuses an invoice and a refund made against an older version", async () => {
     const { real, invoices, reversal } = setup({ deal: stageDeal("cleared") });

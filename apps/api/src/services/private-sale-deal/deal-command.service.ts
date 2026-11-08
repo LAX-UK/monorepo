@@ -143,13 +143,18 @@ export class PrivateSaleDealCommandService implements IPrivateSaleDealCommands {
     }
 
     if (action === "refund") return this.refund(viewer, deal);
-    if (action === "cancel") return this.cancel(viewer, deal, input.reason);
+    if (action === "cancel") return this.cancel(viewer, deal, input.reason, input.version);
 
     const outcome =
       action === "issue_invoice"
-        ? await this.deps.invoices.issue({ dealId: deal.id, actorUserId: viewer.userId })
+        ? await this.deps.invoices.issue({
+            dealId: deal.id,
+            actorUserId: viewer.userId,
+            expectedVersion: input.version,
+          })
         : await this.deps.transitions.transition(deal.id, commandOf(action), {
             actorUserId: viewer.userId,
+            expectedVersion: input.version,
           });
     if (outcome.kind === "ok" && action === "agree") {
       // Agreement clears the deal in the same step when every check is already green.
@@ -168,6 +173,7 @@ export class PrivateSaleDealCommandService implements IPrivateSaleDealCommands {
     viewer: DealStaffViewer,
     deal: PrivateSaleDealDetail,
     reason: string | undefined,
+    version: number,
   ): Promise<DealWriteResult> {
     // Check the move first: cancelling also ends an open checkout, which must not happen for a
     // cancellation that the rules would refuse.
@@ -188,6 +194,7 @@ export class PrivateSaleDealCommandService implements IPrivateSaleDealCommands {
       dealId: deal.id,
       actorUserId: viewer.userId,
       reason: reason ?? "",
+      expectedVersion: version,
     });
     return this.resultOf(viewer, deal.reference, outcome);
   }

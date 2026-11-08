@@ -91,18 +91,18 @@ export class DrizzlePrivateSaleDealQueryRepository implements IPrivateSaleDealQu
     }));
   }
 
-  async hasOpenDealForWork(itemSubmissionId: string): Promise<boolean> {
+  async findLiveDealReferenceForWork(itemSubmissionId: string): Promise<string | null> {
     const [row] = await this.db
-      .select({ id: privateSaleDeal.id })
+      .select({ reference: privateSaleDeal.reference })
       .from(privateSaleDeal)
       .where(
         and(
           eq(privateSaleDeal.itemSubmissionId, itemSubmissionId),
-          notInArray(privateSaleDeal.stage, ["cancelled", "settled"]),
+          notInArray(privateSaleDeal.stage, ["cancelled"]),
         ),
       )
       .limit(1);
-    return row !== undefined;
+    return row?.reference ?? null;
   }
 
   async countByStage(viewerUserId: string, scope: DealScope): Promise<PrivateSaleDealStageCount[]> {

@@ -27,8 +27,8 @@ import type { DealPartyResolver, ResolvedDealParty } from "./deal-party-resolver
 export type EnquiryConversionDeps = {
   enquiries: Pick<IMarketingEnquiryRepository, "findByRef" | "updateInTransaction">;
   works: IDealWorkStore;
-  /** Whether a work is already in a live deal. */
-  openDeals: Pick<IPrivateSaleDealQueryReader, "hasOpenDealForWork">;
+  /** The deal a work is already in, if any. */
+  openDeals: Pick<IPrivateSaleDealQueryReader, "findLiveDealReferenceForWork">;
   /** The deal store, bound to the transaction the conversion runs in. */
   dealsForTx: (tx: Database) => Pick<IPrivateSaleDealWriter, "create">;
   parties: DealPartyResolver;
@@ -187,7 +187,8 @@ export class EnquiryConversionService implements IEnquiryConversion {
     if (work.status !== "approved" || work.convertedLotId !== null) {
       return { error: "work_not_available" };
     }
-    if (await this.deps.openDeals.hasOpenDealForWork(work.id)) return { error: "work_in_deal" };
+    if (await this.deps.openDeals.findLiveDealReferenceForWork(work.id))
+      return { error: "work_in_deal" };
     if (!work.submittedByUserId) return { error: "work_has_no_seller_contact" };
     // Whoever acts for the seller must be a client with an active place in the owning account.
     const seller = await this.deps.parties.resolve({

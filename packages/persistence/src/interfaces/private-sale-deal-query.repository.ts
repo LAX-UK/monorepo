@@ -43,8 +43,11 @@ export interface IPrivateSaleDealQueryReader {
   /** One page of a view. Returns up to `limit + 1` rows so the caller can tell whether more follow. */
   list(filter: PrivateSaleDealListFilter): Promise<PrivateSaleDealListRow[]>;
   countByStage(viewerUserId: string, scope: DealScope): Promise<PrivateSaleDealStageCount[]>;
-  /** Whether a work is already in a deal that is neither cancelled nor settled. */
-  hasOpenDealForWork(itemSubmissionId: string): Promise<boolean>;
+  /**
+   * The reference of the deal a work is in (PS-0012), or `null`. Only a cancelled deal frees the
+   * work: a settled one has sold it.
+   */
+  findLiveDealReferenceForWork(itemSubmissionId: string): Promise<string | null>;
   /** Deals a person is named to act in, most recently changed first. */
   listIdsForActingUser(userId: string, limit: number): Promise<string[]>;
   /** The title and consignment reference of a work, for a deal's record. */

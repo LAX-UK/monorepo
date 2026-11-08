@@ -34,7 +34,7 @@ export type DealPartiesDeps = {
   queries: Pick<IPrivateSaleDealQueryReader, "listIdsForActingUser" | "findWorkSummary">;
   clearance: DealClearancePort;
   policy: PrivateSalePolicy;
-  memberships: Pick<ILegalEntityMembershipReader, "findActiveMembership" | "ensurePersonalEntity">;
+  memberships: Pick<ILegalEntityMembershipReader, "findActiveMembership">;
   payments: Pick<DealPaymentService, "start">;
   events: IDomainEventSink;
   now?: () => Date;
@@ -165,14 +165,9 @@ export class PrivateSaleDealPartyService implements IPrivateSaleDealParties {
     return null;
   }
 
+  /** A read-only lookup: reading a deal never creates an account. */
   private async isMember(userId: string, legalEntityId: string): Promise<boolean> {
-    const { memberships } = this.deps;
-    if (await memberships.findActiveMembership(userId, legalEntityId)) return true;
-    try {
-      return (await memberships.ensurePersonalEntity(userId)).id === legalEntityId;
-    } catch {
-      return false;
-    }
+    return (await this.deps.memberships.findActiveMembership(userId, legalEntityId)) !== null;
   }
 
   private async detailOf(

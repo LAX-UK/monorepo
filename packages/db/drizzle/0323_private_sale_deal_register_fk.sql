@@ -33,8 +33,8 @@ CREATE INDEX IF NOT EXISTS "private_sale_deal_artwork_register_idx"
   ON "private_sale_deal" ("artwork_register_id")
   WHERE "artwork_register_id" IS NOT NULL;
 --> statement-breakpoint
--- One live deal per work. A work in a deal that is neither cancelled nor settled cannot be sold
--- twice. If two live deals already share a work this fails, and one of them must be cancelled first.
+-- One deal per work. Only a cancelled deal frees the work: a settled one has sold it, so it cannot be
+-- sold twice. If two such deals already share a work this fails, and one must be cancelled first.
 CREATE UNIQUE INDEX IF NOT EXISTS "private_sale_deal_one_open_per_work_uidx"
   ON "private_sale_deal" ("item_submission_id")
-  WHERE "stage" NOT IN ('cancelled', 'settled');
+  WHERE "stage" <> 'cancelled';

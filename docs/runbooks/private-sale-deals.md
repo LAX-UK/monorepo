@@ -58,7 +58,7 @@ The price, buyer's fee, commission, costs and disclosure cannot change after agr
 
 ## One live deal per work
 
-A work can be in one deal that is neither cancelled nor settled (a partial unique index backs this). A buy enquiry can only name an approved consignment that has not become a lot, and whose owner is a client with an active place in the owning account.
+A work can be in only one deal; only a cancelled deal frees it, so a settled (sold) work cannot be sold again. A partial unique index backs this, and creating an auction lot from a consignment that is in a private sale is refused. A buy enquiry can only name an approved consignment that has not become a lot, and whose owner is a client with an active place in the owning account.
 
 ## Checks
 

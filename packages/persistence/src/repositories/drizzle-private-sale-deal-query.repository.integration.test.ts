@@ -259,32 +259,47 @@ describe.skipIf(!HAS_DB)("private sale deal lists and works (integration)", () =
     });
   });
 
-  it("allows one live deal per work, and a new one once the first is cancelled or settled", async () => {
+  it("allows one deal per work: a settled work stays taken and only a cancelled deal frees it", async () => {
     await inRollback(async (db, submissionId) => {
       const deals = new DrizzlePrivateSaleDealRepository(db);
       const queries = new DrizzlePrivateSaleDealQueryRepository(db);
-      expect(await queries.hasOpenDealForWork(submissionId)).toBe(false);
+      expect(await queries.findLiveDealReferenceForWork(submissionId)).toBeNull();
       const first = await deals.create(newDeal(submissionId));
-      expect(await queries.hasOpenDealForWork(submissionId)).toBe(true);
+      expect(await queries.findLiveDealReferenceForWork(submissionId)).toBe(first.reference);
 
-      // The database refuses a second live deal for the same work, even if the check was raced.
-      const refused = await deals.create(newDeal(submissionId)).then(
-        () => null,
-        (error: unknown) => error,
-      );
-      // The driver wraps the database error; the unique index is named in the cause.
-      const chain: string[] = [];
-      for (let e = refused as { message?: string; cause?: unknown } | null; e; ) {
-        chain.push(e.message ?? "", String((e as { code?: unknown }).code ?? ""));
-        e = e.cause as typeof e;
-      }
-      expect(chain.join(" ")).toMatch(/private_sale_deal_one_open_per_work_uidx|23505/);
+      // The database refuses a second deal for the same work, even if the check was raced.
+      const duplicate = async () => {
+        const refused = await deals.create(newDeal(submissionId)).then(
+          () => null,
+          (error: unknown) => error,
+        );
+        // The driver wraps the database error; the unique index is named in the cause.
+        const chain: string[] = [];
+        for (let e = refused as { message?: string; cause?: unknown } | null; e; ) {
+          chain.push(e.message ?? "", String((e as { code?: unknown }).code ?? ""));
+          e = e.cause as typeof e;
+        }
+        return chain.join(" ");
+      };
+      expect(await duplicate()).toMatch(/private_sale_deal_one_open_per_work_uidx|23505/);
 
+      // Settled means sold: the work is still taken.
+      await setStage(db, first.id, "settled", {
+        priceMinor: 100,
+        agreedAt: new Date(),
+        vatTreatment: "margin_scheme",
+        sellerCommissionBps: 1500,
+        paymentDueAt: new Date(),
+      });
+      expect(await queries.findLiveDealReferenceForWork(submissionId)).toBe(first.reference);
+      expect(await duplicate()).toMatch(/private_sale_deal_one_open_per_work_uidx|23505/);
+
+      // Only a cancelled deal frees the work.
       await setStage(db, first.id, "cancelled", {
         cancelReason: "Seller withdrew",
         cancelledAt: new Date(),
       });
-      expect(await queries.hasOpenDealForWork(submissionId)).toBe(false);
+      expect(await queries.findLiveDealReferenceForWork(submissionId)).toBeNull();
       const second = await deals.create(newDeal(submissionId));
       expect(second.id).not.toBe(first.id);
     });

@@ -35,6 +35,8 @@ export type DealTransitionOptions = {
   cancelReason?: string;
   /** Set by the refund flow once a paid deal's money has been returned. */
   refundRecorded?: boolean;
+  /** The version the person was looking at; the move is refused as a conflict if the deal has moved on. */
+  expectedVersion?: number;
 };
 
 export type DealTransitionDeps = {
@@ -76,10 +78,18 @@ export class DealTransitionService {
     const deal = await scope.deals.findById(dealId);
     if (!deal) return { kind: "not_found" };
 
+    if (options.expectedVersion !== undefined && options.expectedVersion !== deal.version) {
+      return { kind: "conflict" };
+    }
     const result = transitionDeal(deal, command, await this.contextFor(deal, options));
     if (!result.ok) return { kind: "blocked", blockers: result.blockers };
 
-    const written = await scope.deals.applyStageChange(deal.id, deal.version, result.change);
+    // The write is conditional on the version the person saw, not only the one read just now.
+    const written = await scope.deals.applyStageChange(
+      deal.id,
+      options.expectedVersion ?? deal.version,
+      result.change,
+    );
     if (written.kind !== "ok") return { kind: written.kind };
 
     const event = dealStageChangedEvent(deal, result.change);

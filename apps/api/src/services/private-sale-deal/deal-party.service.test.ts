@@ -20,11 +20,10 @@ function setup(
     policy?: typeof POLICY;
     /** The entities a person still has an active place in; everyone has theirs by default. */
     members?: (userId: string, legalEntityId: string) => boolean;
-    /** A person's personal account, which has no organisation membership. */
-    personal?: (userId: string) => string;
   } = {},
 ) {
   const events = recordingSink();
+  const ensured = vi.fn();
   const recordAcceptance = vi.fn(async () => ({}) as never);
   const start = vi.fn(async () => ({
     ok: true as const,
@@ -57,16 +56,13 @@ function setup(
     memberships: {
       findActiveMembership: async (userId: string, legalEntityId: string) =>
         (options.members ?? (() => true))(userId, legalEntityId) ? ({} as never) : null,
-      ensurePersonalEntity: async (userId: string) => {
-        if (!options.personal) throw new Error("no personal entity");
-        return { id: options.personal(userId) } as never;
-      },
-    },
+      ensurePersonalEntity: ensured,
+    } as never,
     payments: { start },
     events,
     now: () => new Date("2026-11-04T09:00:00Z"),
   });
-  return { service, recordAcceptance, start, events };
+  return { service, recordAcceptance, start, events, ensured };
 }
 
 describe("PrivateSaleDealPartyService", () => {
@@ -302,14 +298,11 @@ describe("PrivateSaleDealPartyService", () => {
       expect(await service.detail("u-seller", "PS-0001")).not.toBeNull();
     });
 
-    it("keeps a person's own personal account working without a membership row", async () => {
-      const { service } = setup(makeDeal({ stage: "invoiced" }), {
-        members: () => false,
-        personal: (userId) => (userId === "u-buyer" ? "le-buyer" : "le-other"),
-      });
-      expect(await service.detail("u-buyer", "PS-0001")).not.toBeNull();
-      // Another person's personal account is not an account they act in.
-      expect(await service.detail("u-seller", "PS-0001")).toBeNull();
+    it("only reads: looking at a deal never creates an account", async () => {
+      const { service, ensured } = setup(makeDeal({ stage: "invoiced" }));
+      await service.list("u-buyer");
+      await service.detail("u-buyer", "PS-0001");
+      expect(ensured).not.toHaveBeenCalled();
     });
   });
 });

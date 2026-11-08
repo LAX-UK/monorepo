@@ -83,7 +83,9 @@ function setup(
       findByReference: async () =>
         options.work ? { status: "approved", convertedLotId: null, ...options.work } : null,
     },
-    openDeals: { hasOpenDealForWork: async () => options.openDeal ?? false },
+    openDeals: {
+      findLiveDealReferenceForWork: async () => (options.openDeal ? "PS-0003" : null),
+    },
     dealsForTx: () => ({ create }),
     parties: {
       resolve: async (input: { userId: string; legalEntityId?: string }) => {

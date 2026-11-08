@@ -79,10 +79,10 @@ export const privateSaleDeal = pgTable(
     uniqueIndex("private_sale_deal_reference_uidx").on(table.reference),
     index("private_sale_deal_submission_idx").on(table.itemSubmissionId),
     index("private_sale_deal_owner_idx").on(table.ownerUserId),
-    // One live deal per work: a work in a deal that is neither cancelled nor settled is taken.
+    // One deal per work: only a cancelled deal frees it. A settled work has been sold and stays taken.
     uniqueIndex("private_sale_deal_one_open_per_work_uidx")
       .on(table.itemSubmissionId)
-      .where(sql`${table.stage} NOT IN ('cancelled', 'settled')`),
+      .where(sql`${table.stage} <> 'cancelled'`),
     index("private_sale_deal_artwork_register_idx")
       .on(table.artworkRegisterId)
       .where(sql`${table.artworkRegisterId} IS NOT NULL`),
