@@ -15,7 +15,7 @@ export const registerRecordHref = (registerId: string) => `/from-zoho/${register
 
 type RowSubject = Pick<
   AdminRegisterArtworkSummary,
-  "registerId" | "title" | "kind" | "stockCode" | "zohoProductId"
+  "registerId" | "title" | "kind" | "stockCode" | "zohoProductId" | "zohoModule"
 >;
 
 /**
@@ -40,7 +40,7 @@ export function useRegisterRowActions({
 
   const actionsFor = useCallback(
     (row: RowSubject, offerable: boolean): OverflowAction[] => {
-      const zohoUrl = zohoProductUrl(zohoUrlTemplate, row.zohoProductId);
+      const zohoUrl = zohoProductUrl(zohoUrlTemplate, row.zohoProductId, row.zohoModule);
       const mayOffer = offerable && row.kind === "original";
       return [
         {

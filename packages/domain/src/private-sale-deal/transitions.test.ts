@@ -105,7 +105,13 @@ describe("open offer", () => {
 
 describe("agree: identity and screening gate", () => {
   const offer = (over = {}) =>
-    deal({ stage: "offer", buyer: BUYER, priceMinor: 4_800_000, ...over });
+    deal({
+      stage: "offer",
+      buyer: BUYER,
+      priceMinor: 4_800_000,
+      sellerCommissionBps: 1500,
+      ...over,
+    });
 
   it("is allowed when both parties are clear and have accepted the terms", () => {
     const result = transitionDeal(offer(), "agree", context());
@@ -442,6 +448,37 @@ describe("blocker messages", () => {
     );
     expect(describeDealBlocker({ code: "vat_treatment_not_chosen" })).toBe(
       "Finance has not chosen the VAT treatment yet.",
+    );
+  });
+});
+
+describe("terms locked by agreement", () => {
+  it("cannot be agreed without a commission on the deal", () => {
+    const offer = deal({ stage: "offer", buyer: BUYER, priceMinor: 4_800_000 });
+    expect(codes(dealBlockers(offer, "agree", context()))).toEqual(["commission_not_set"]);
+  });
+
+  it("cannot be invoiced while the commission rate or terms version is not configured in policy", () => {
+    const cleared = deal({
+      stage: "cleared",
+      buyer: BUYER,
+      priceMinor: 100_000,
+      sellerCommissionBps: 1500,
+      vatTreatment: "margin_scheme",
+      agreedByUserId: "u-other",
+    });
+    const configured = context();
+    expect(codes(dealBlockers(cleared, "issue_invoice", configured))).toEqual([]);
+    const noRate = {
+      ...configured,
+      policy: { ...configured.policy, commissionRateBps: null },
+    };
+    expect(codes(dealBlockers(cleared, "issue_invoice", noRate))).toContain(
+      "commission_rate_not_configured",
+    );
+    const noTerms = { ...configured, policy: { ...configured.policy, termsVersion: null } };
+    expect(codes(dealBlockers(cleared, "issue_invoice", noTerms))).toContain(
+      "terms_version_not_configured",
     );
   });
 });

@@ -1032,6 +1032,7 @@ export {
   UNAPPLIED_MONEY_HANDLED_ELSEWHERE,
   UNAPPLIED_MONEY_REASONS,
   UNAPPLIED_MONEY_RESOLVED_EVENT,
+  possibleSourceText,
   unappliedMoneyDedupeKey,
   unappliedMoneyPayload,
   type UnappliedMoney,
@@ -1046,3 +1047,8 @@ export {
   type PaymentEligibilityHold,
   type PaymentEligibilityRefusal,
 } from "./payment-eligibility.js";
+export {
+  stillToSendByLot,
+  type StillToSend,
+  type StillToSendGroup,
+} from "./still-to-send.js";

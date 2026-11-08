@@ -161,6 +161,7 @@ describe.skipIf(!HAS_DB)("Stripe checkout lines from stored invoices (integratio
       const group = groupStripeLineItems(
         {
           currency: "GBP",
+          deliveries: [],
           totalPence,
           lines: [
             {

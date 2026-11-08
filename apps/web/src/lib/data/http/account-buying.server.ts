@@ -62,6 +62,7 @@ const purchaseSchema = z.object({
     dueAt: zCoerceDate.nullable(),
     paymentId: z.string().nullable(),
     totalDue: z.string().nullable(),
+    stillToSendPence: z.number().int().nonnegative().nullable(),
   }),
   delivery: z.object({
     stage: z.enum([

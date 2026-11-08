@@ -13,6 +13,7 @@ import type { CrmSyncService } from "../../integrations/crm/crm-sync-service.js"
 import type { XeroLiveExecutorPorts } from "../../integrations/xero/xero-live-executor.js";
 import type { ZohoListingWriteback } from "../../integrations/zoho/artwork/listing/zoho-listing-writeback.js";
 import type { ZohoArtworkWritebackService } from "../../integrations/zoho/artwork/zoho-artwork-writeback-service.js";
+import type { ZohoFulfilmentMirror } from "../../integrations/zoho/fulfilment/zoho-fulfilment-mirror.js";
 import type { IAdminImpersonationNotifyReader } from "../../interfaces/admin-impersonation-notify.reader.js";
 import type { IAdminReviewTaskProjectorRepository } from "../../interfaces/admin-review-task-projector.repository.js";
 import type { IClearArtistBlocksRepository } from "../../interfaces/clear-artist-blocks.repository.js";
@@ -89,6 +90,8 @@ export type ProjectorRunContext = {
   zohoArtworkWriteback?: ZohoArtworkWritebackService | undefined;
   /** Keeps the LAX listing on Zoho Products in line; absent while the writeback mode is off. */
   zohoArtworkListing?: ZohoListingWriteback | undefined;
+  /** Mirrors print groups to Zoho CRM; absent while the mirror mode is off. */
+  zohoFulfilment?: ZohoFulfilmentMirror | undefined;
 };
 
 export interface Projector {

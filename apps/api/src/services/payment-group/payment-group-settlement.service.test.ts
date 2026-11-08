@@ -1,5 +1,9 @@
 import type { PaymentEligibility } from "@auction/domain";
-import type { PaymentGroupMember, PaymentGroupRecord } from "@auction/persistence/interfaces";
+import type {
+  PaymentGroupDelivery,
+  PaymentGroupMember,
+  PaymentGroupRecord,
+} from "@auction/persistence/interfaces";
 import { describe, expect, it, vi } from "vitest";
 import { mockDomainEventSink } from "../../test/domain-event-sink-mock.js";
 import {
@@ -47,7 +51,11 @@ const money = {
   currency: "gbp",
 };
 
-function setup(check: () => Promise<PaymentEligibility>, record = group()) {
+function setup(
+  check: () => Promise<PaymentEligibility>,
+  record = group(),
+  deliveries: PaymentGroupDelivery[] = [],
+) {
   const publish = vi.fn().mockResolvedValue(undefined);
   const captureInTransaction = vi.fn().mockResolvedValue({
     captured: true,
@@ -58,7 +66,9 @@ function setup(check: () => Promise<PaymentEligibility>, record = group()) {
     transactionRunner: { runInTransaction: async (fn: (tx: never) => unknown) => fn(TX) } as never,
     groups: {
       findById: vi.fn().mockResolvedValue(record),
-      lockInTransaction: vi.fn().mockResolvedValue({ group: record, members: members() }),
+      lockInTransaction: vi
+        .fn()
+        .mockResolvedValue({ group: record, members: members(), deliveries }),
       transitionInTransaction: vi.fn().mockResolvedValue(true),
     } as never,
     payments: { applyAuthorizedInTransaction: vi.fn() },
@@ -140,6 +150,48 @@ describe("PaymentGroupSettlementService.settle for accounts that cannot pay", ()
     });
     expect(captureInTransaction).toHaveBeenCalledTimes(2);
     expect(record$).not.toHaveBeenCalled();
+  });
+
+  describe("a payment that includes courier delivery", () => {
+    const courier: PaymentGroupDelivery = {
+      quoteId: "quote_1",
+      lotId: "lot_pay_a",
+      amount: "180.00",
+    };
+    const withDelivery = group({ totalAmount: "380.00" });
+
+    it("settles every invoice when the money is the invoices and the delivery", async () => {
+      const { service, captureInTransaction, record$, deps } = setup(
+        async () => ({ kind: "payable" }),
+        withDelivery,
+        [courier],
+      );
+      await expect(service.settle({ ...money, amountPence: 38_000 })).resolves.toMatchObject({
+        action: "payment_intent_succeeded",
+      });
+      expect(captureInTransaction).toHaveBeenCalledTimes(2);
+      expect(record$).not.toHaveBeenCalled();
+      // The receipt lists the delivery as well as the invoices.
+      expect(deps.receipt.send).toHaveBeenCalledWith(
+        withDelivery,
+        expect.arrayContaining([expect.objectContaining({ paymentId: "pay_a" })]),
+        [courier],
+      );
+    });
+
+    it("captures nothing and alerts finance when only the invoices' money arrived", async () => {
+      const { service, captureInTransaction, record$ } = setup(
+        async () => ({ kind: "payable" }),
+        withDelivery,
+        [courier],
+      );
+      await expect(service.settle(money)).resolves.toMatchObject({
+        action: "skipped",
+        reason: "amount_mismatch",
+      });
+      expect(captureInTransaction).not.toHaveBeenCalled();
+      expect(record$).toHaveBeenCalledTimes(1);
+    });
   });
 
   it("rejects when the eligibility read fails, so the provider retries", async () => {

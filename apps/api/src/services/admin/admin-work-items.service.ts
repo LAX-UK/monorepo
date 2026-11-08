@@ -321,6 +321,7 @@ export class AdminWorkItemsService {
         domain: row.domain,
         title: row.title,
         subtitle: row.subtitle,
+        hint: row.hint ?? null,
         href: row.href,
         saleId: row.saleId,
         createdAt: row.createdAt.toISOString(),

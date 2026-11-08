@@ -8,7 +8,10 @@ import type { AmountOwedEntry } from "@auction/domain";
 import { z } from "zod";
 
 /** What the acting account owes, lot by lot: the one reading every money figure is drawn from. */
-export type AmountsOwedView = { entries: AmountOwedEntry[] };
+export type AmountsOwedView = { entries: AmountOwedEntry[]; stillToSend: StillToSendEntry[] };
+
+/** What one lot still has to send on a part-funded bank transfer, in whole pence. */
+export type StillToSendEntry = { lotId: string; groupId: string; pence: number };
 
 const entrySchema = z.object({
   lotId: z.string(),
@@ -20,7 +23,16 @@ const entrySchema = z.object({
   holder: z.enum(["organisation", "payer", "winner"]).nullable(),
 }) satisfies z.ZodType<AmountOwedEntry, z.ZodTypeDef, unknown>;
 
-const viewSchema = z.object({ entries: z.array(entrySchema) });
+const stillToSendSchema = z.object({
+  lotId: z.string(),
+  groupId: z.string(),
+  pence: z.number().int().positive(),
+}) satisfies z.ZodType<StillToSendEntry, z.ZodTypeDef, unknown>;
+
+const viewSchema = z.object({
+  entries: z.array(entrySchema),
+  stillToSend: z.array(stillToSendSchema),
+});
 
 /**
  * Reads the amounts owed for the person's own account, or for the organisation named. The API

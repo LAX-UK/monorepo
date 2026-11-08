@@ -41,6 +41,9 @@ export function paymentGroupIsLive(status: PaymentGroupStatus): boolean {
   return status === "open" || status === "processing";
 }
 
+/** A courier quote charged in the group, apart from every invoice. */
+export type PaymentGroupDeliveryFacts = { quoteId: string; amountPence: number };
+
 /** The payment-row states a grouped invoice can be settled from. */
 const SETTLEABLE_MEMBER_STATUSES = new Set(["pending", "authorized"]);
 
@@ -65,7 +68,7 @@ export type PaymentGroupSettlementRefusal =
   | "no_members"
   /** An invoice in the group was paid, cancelled or held some other way meanwhile. */
   | "member_not_settleable"
-  /** The money received is not what the group's invoices add up to. */
+  /** The money received is not what the group's invoices and delivery add up to. */
   | "amount_mismatch"
   /** The money arrived in another currency. */
   | "currency_mismatch";
@@ -82,9 +85,11 @@ export type PaymentGroupSettlementDecision =
 export function decidePaymentGroupSettlement(input: {
   group: { status: PaymentGroupStatus; totalPence: number; currency: string };
   members: readonly PaymentGroupMemberFacts[];
+  /** Courier quotes the group charges: they are part of the total but of no invoice. */
+  deliveries: readonly PaymentGroupDeliveryFacts[];
   received: { amountPence: number; currency: string };
 }): PaymentGroupSettlementDecision {
-  const { group, members, received } = input;
+  const { group, members, deliveries, received } = input;
   if (group.status === "paid") return { apply: false, reason: "already_paid", alert: false };
   if (group.status === "cancelled") return { apply: false, reason: "group_released", alert: true };
   if (members.length === 0) return { apply: false, reason: "no_members", alert: true };
@@ -94,8 +99,10 @@ export function decidePaymentGroupSettlement(input: {
   if (members.some((m) => !SETTLEABLE_MEMBER_STATUSES.has(m.status))) {
     return { apply: false, reason: "member_not_settleable", alert: true };
   }
-  const membersPence = members.reduce((sum, m) => sum + m.amountPence, 0);
-  if (membersPence !== group.totalPence || received.amountPence !== group.totalPence) {
+  const chargedPence =
+    members.reduce((sum, m) => sum + m.amountPence, 0) +
+    deliveries.reduce((sum, d) => sum + d.amountPence, 0);
+  if (chargedPence !== group.totalPence || received.amountPence !== group.totalPence) {
     return { apply: false, reason: "amount_mismatch", alert: true };
   }
   return { apply: true };
@@ -121,21 +128,23 @@ export type GroupRefundAttribution = {
  * reported rather than spread across invoices.
  */
 export function attributeGroupRefunds(
-  memberPaymentIds: readonly string[],
+  members: readonly { paymentId: string; amountPence: number }[],
   refunds: readonly GroupRefund[],
 ): GroupRefundAttribution {
-  const members = new Set(memberPaymentIds);
+  const capacity = new Map(members.map((m) => [m.paymentId, m.amountPence]));
   const refundedPenceByPayment = new Map<string, number>();
   let unattributedPence = 0;
   for (const refund of refunds) {
-    if (refund.paymentId && members.has(refund.paymentId)) {
-      refundedPenceByPayment.set(
-        refund.paymentId,
-        (refundedPenceByPayment.get(refund.paymentId) ?? 0) + refund.amountPence,
-      );
-    } else {
+    const room = refund.paymentId ? capacity.get(refund.paymentId) : undefined;
+    if (!refund.paymentId || room === undefined) {
       unattributedPence += refund.amountPence;
+      continue;
     }
+    // An invoice is never refunded more than it was: the excess is reported, not attributed.
+    const already = refundedPenceByPayment.get(refund.paymentId) ?? 0;
+    const placed = Math.max(0, Math.min(refund.amountPence, room - already));
+    if (placed > 0) refundedPenceByPayment.set(refund.paymentId, already + placed);
+    unattributedPence += refund.amountPence - placed;
   }
   return { refundedPenceByPayment, unattributedPence };
 }

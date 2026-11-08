@@ -424,6 +424,7 @@ export function createPaymentsServices(
     stripePayments: stripePaymentGateway,
     stripeCustomers: stripeCustomerGateway,
     users: userRepo,
+    memberships: repos.legalEntityRepository,
     kyc: repos.kycRepository,
     amlHolds: amlHoldStore,
     screenings: repos.amlScreeningRepository,

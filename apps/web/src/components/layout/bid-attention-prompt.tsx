@@ -8,6 +8,7 @@ import { cn } from "@auction/ui";
 const TONE: Record<AttentionChip["kind"], MarketingAttentionTone> = {
   outbid: "danger",
   "payment-due": "warning",
+  "still-to-send": "info",
   "account-in-review": "info",
 };
 
@@ -15,6 +16,7 @@ const TONE: Record<AttentionChip["kind"], MarketingAttentionTone> = {
 const STRIP_ACTION: Record<AttentionChip["kind"], string> = {
   outbid: "Bid again",
   "payment-due": "Pay now",
+  "still-to-send": "See details",
   "account-in-review": "See why",
 };
 

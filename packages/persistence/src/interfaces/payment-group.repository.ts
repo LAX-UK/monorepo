@@ -34,6 +34,13 @@ export type PaymentGroupMember = {
   sellerLegalEntityId: string;
 };
 
+/** A courier quote charged in a group, with the pounds charged for it, as a decimal string. */
+export type PaymentGroupDelivery = {
+  quoteId: string;
+  lotId: string;
+  amount: string;
+};
+
 export type ClaimPaymentGroupInput = {
   buyerLegalEntityId: string;
   createdByUserId: string;
@@ -42,6 +49,11 @@ export type ClaimPaymentGroupInput = {
   checkoutRail: PaymentGroupRecord["checkoutRail"];
   /** The invoices' open payments, in the order picked. */
   paymentIds: readonly string[];
+  /**
+   * Accepted courier quotes charged with them. Each must still be accepted, belong to the account,
+   * be for the lot named and be at exactly this price, or the claim is a conflict.
+   */
+  deliveries: readonly PaymentGroupDelivery[];
 };
 
 export type ClaimPaymentGroupResult =
@@ -53,13 +65,17 @@ export type ClaimPaymentGroupResult =
 export type LockedPaymentGroup = {
   group: PaymentGroupRecord;
   members: PaymentGroupMember[];
+  deliveries: PaymentGroupDelivery[];
 };
 
 export interface IPaymentGroupRepository {
   /**
-   * Creates the group and takes every listed payment into it, all or none, in one transaction.
-   * A payment is taken only while it is due (`pending`), billed to the account and in no other
-   * group; when two payments race for the same invoices, exactly one wins.
+   * Creates the group and takes every listed payment and courier quote into it, all or none, in one
+   * transaction. A payment is taken only while it is due (`pending`), billed to the account and in
+   * no other group; a quote only while it is accepted and charged nowhere else. When two payments
+   * race for the same invoices or quote, exactly one wins. The caller states the total; the
+   * checkout charges the stored invoices and quotes and refuses a total they do not add up to, and
+   * settlement checks it again before any invoice is marked paid.
    */
   claim(input: ClaimPaymentGroupInput): Promise<ClaimPaymentGroupResult>;
   findById(id: string): Promise<PaymentGroupRecord | null>;
@@ -69,6 +85,8 @@ export interface IPaymentGroupRepository {
     paymentIntentId?: string | null;
   }): Promise<PaymentGroupRecord | null>;
   listMembers(groupId: string): Promise<PaymentGroupMember[]>;
+  /** The courier quotes the group charges. */
+  listDeliveries(groupId: string): Promise<PaymentGroupDelivery[]>;
   /**
    * The bank-transfer groups (`open`, `processing` or `paid`) created since `since` for the
    * account that owns this Stripe customer, newest first. A customer's balance cannot say which of
@@ -114,10 +132,32 @@ export interface IPaymentGroupRepository {
     opts?: { stripeChargeId?: string | null; stripePaymentIntentId?: string | null },
   ): Promise<boolean>;
   /**
-   * Hands every invoice of a released group back: each payment still open (`pending` or
-   * `authorized`) leaves the group and is due again (`pending`). Returns the payments released.
+   * Hands everything a released group held back: each payment still open (`pending` or
+   * `authorized`) leaves the group and is due again (`pending`), and its courier quotes are free to
+   * be charged again. Returns the payments released.
    */
   releaseMembersInTransaction(tx: Database, groupId: string): Promise<string[]>;
+}
+
+/** An accepted courier quote that no payment has charged yet. */
+export type ChargeableDeliveryQuote = {
+  quoteId: string;
+  lotId: string;
+  /** The accepted price, as a decimal string. */
+  amount: string;
+  destination: string;
+  quoteNote: string | null;
+};
+
+export interface IChargeableDeliveryReader {
+  /**
+   * The accepted quotes of the account for these lots that are charged by no payment, open or
+   * paid. A quote that was withdrawn, is still being priced or is already charged is absent.
+   */
+  acceptedFor(
+    buyerLegalEntityId: string,
+    lotIds: readonly string[],
+  ): Promise<ChargeableDeliveryQuote[]>;
 }
 
 /** Facts about invoices that decide whether they can join a "Pay several" payment. */

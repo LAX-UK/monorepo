@@ -12,6 +12,7 @@ const files = [
   "src/routes/payments.ts",
   "src/routes/payouts.ts",
   "src/routes/payout-statements.ts",
+  "src/routes/private-sale-deals.ts",
   "src/routes/stripe-connect.ts",
   "src/routes/xero-webhook.ts",
   "src/routes/webhooks/stripe.ts",

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { buildPayoutAccountViewModel } from "./payout-account.vm.js";
 
 const base = {
-  stripeAccountId: "acct_1",
+  accountLinked: true,
   chargesEnabled: false,
   payoutsEnabled: true,
   requirementsCurrentlyDue: [],
@@ -12,7 +12,7 @@ const base = {
 
 describe("buildPayoutAccountViewModel", () => {
   it("asks to set up when no account exists", () => {
-    const vm = buildPayoutAccountViewModel({ ...base, stripeAccountId: null, ready: false });
+    const vm = buildPayoutAccountViewModel({ ...base, accountLinked: false, ready: false });
     expect(vm).toMatchObject({ stage: "not_started", surface: "onboarding" });
     expect(vm.description).toMatch(/separate from any LAX\.bid/);
   });

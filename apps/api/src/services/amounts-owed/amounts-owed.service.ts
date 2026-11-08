@@ -20,8 +20,10 @@ import type {
   AmountsOwedAccount,
   AmountsOwedView,
   IAmountsOwedService,
+  StillToSendEntry,
 } from "../interfaces/amounts-owed.js";
 import type { IPaymentBuyerService } from "../interfaces/payment-service.js";
+import type { IStillToSendService } from "../payment-group/still-to-send.service.js";
 import type { IPaymentEligibilityGate } from "../payment/payment-eligibility.gate.js";
 import { accountPurchaseLots, personalPurchaseLots } from "./purchase-lot-queries.js";
 
@@ -39,6 +41,7 @@ export type AmountsOwedDeps = {
     "listMyPaymentsForBuyerApi" | "listEntityPaymentsForBuyerApi" | "getBuyerComplianceGateStatus"
   >;
   fulfilments: { statusesForLots(lotIds: readonly string[]): Promise<Map<string, string>> };
+  stillToSend: IStillToSendService;
   /** The id of the person's own account, to tell it from an organisation's. */
   personalAccount: { idFor(userId: string): Promise<string> };
   /**
@@ -133,12 +136,14 @@ export class AmountsOwedService implements IAmountsOwedService {
       this.deps.fulfilments.statusesForLots(lots.map((lot) => lot.id)),
     ]);
     const paymentByLot = decisivePaymentByLot(payments);
+    const stillToSend = await this.stillToSendOf(priced, paymentByLot, (lot) => roleOf(lot as Lot));
     const build = ({ hold, holder }: Hold) =>
       this.entries(priced, paymentByLot, fulfilments, roleOf, hold, holder);
     if (!holdOf) {
       const gate = await this.deps.paymentBuyerService.getBuyerComplianceGateStatus(userId);
       return {
         entries: build({ hold: gate.status, holder: gate.status === "clear" ? null : "payer" }),
+        stillToSend,
       };
     }
     // What the account owes decides what the checks are about, so it is worked out first.
@@ -157,7 +162,7 @@ export class AmountsOwedService implements IAmountsOwedService {
           ]
         : [];
     });
-    return { entries: build(owed.length > 0 ? await holdOf(owed) : NO_HOLD) };
+    return { entries: build(owed.length > 0 ? await holdOf(owed) : NO_HOLD), stillToSend };
   }
 
   private entries(
@@ -223,6 +228,31 @@ export class AmountsOwedService implements IAmountsOwedService {
     );
     if (!decision.hold || !decision.reason) return NO_HOLD;
     return { hold: decision.reason, holder: decision.subject === userId ? "payer" : "winner" };
+  }
+
+  /**
+   * The lots the person pays that sit inside a part-funded bank transfer, each with its share of
+   * the group's remainder (the same figure Purchases and the LAX Account portfolio show).
+   */
+  private async stillToSendOf(
+    lots: readonly { id: string }[],
+    paymentByLot: ReadonlyMap<string, PaymentRow>,
+    roleOf: (lot: { id: string }) => AmountOwedEntry["role"],
+  ): Promise<StillToSendEntry[]> {
+    const payments = lots.flatMap((lot) => {
+      const payment = paymentByLot.get(lot.id);
+      return payment
+        ? [{ id: payment.id, lotId: lot.id, status: payment.status, amount: payment.amount }]
+        : [];
+    });
+    const shares = await this.deps.stillToSend.forPayments(payments);
+    // A lot someone else pays is theirs to send, not this person's: they are not asked for it.
+    return lots.flatMap((lot) => {
+      const share = shares.get(lot.id);
+      return share && roleOf(lot) === "payer"
+        ? [{ lotId: lot.id, groupId: share.groupId, pence: share.pence }]
+        : [];
+    });
   }
 }
 

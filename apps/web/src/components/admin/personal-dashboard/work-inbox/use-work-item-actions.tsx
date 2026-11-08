@@ -78,7 +78,16 @@ export function useWorkItemActions({ onDone }: { onDone?: () => void } = {}) {
           description:
             "Use this when the money has been dealt with another way than a refund, for example applied to another invoice. Nothing is paid or refunded.",
           ...(item.subtitle
-            ? { body: <KeyValueList items={[{ label: "Money", value: item.subtitle }]} /> }
+            ? {
+                body: (
+                  <KeyValueList
+                    items={[
+                      { label: "Money", value: item.subtitle },
+                      ...(item.hint ? [{ label: "Possible payment", value: item.hint }] : []),
+                    ]}
+                  />
+                ),
+              }
             : {}),
           confirmLabel: "Mark handled",
           cancelLabel: "Keep open",

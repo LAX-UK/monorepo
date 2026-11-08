@@ -1,4 +1,5 @@
 import { type LaxOperatedProduct, legalEntityFor, legalOperatorSentence } from "@auction/branding";
+import { formatLegalDocumentDate } from "@auction/identity-contracts/legal-documents";
 import Link from "next/link";
 import { Fragment, type ReactNode } from "react";
 import { TextWithEmails } from "../../email-text.js";
@@ -17,15 +18,9 @@ import {
 /** Long pages get "On this page"; short ones are read top to bottom. */
 const TOC_MIN_SECTIONS = 4;
 
-const LONG_DATE = new Intl.DateTimeFormat("en-GB", {
-  day: "numeric",
-  month: "short",
-  year: "numeric",
-  timeZone: "Europe/London",
-});
-
+/** "17 June 2026": the shared policy-date style, so a policy page never abbreviates a month. */
 export function formatLegalPolicyDate(isoDate: string): string {
-  return LONG_DATE.format(new Date(`${isoDate}T12:00:00Z`));
+  return formatLegalDocumentDate(isoDate);
 }
 
 function PolicyText({ text }: { text: LegalPolicyText }) {

@@ -56,6 +56,10 @@ export function purchaseBadge(
   if (informed && (state === "payment-due" || state === "in-review")) {
     return { label: "Awaiting payment", tone: "neutral", shape: "ring" };
   }
+  // A bank transfer that has delivered part of its payment still has money to send.
+  if (!informed && state === "payment-processing" && facts?.invoice.stillToSendPence) {
+    return { label: "Still to send", tone: "warning", shape: "dot" };
+  }
   // An ended purchase owes nothing, so no invoice date or delivery stage speaks for it.
   if (purchaseEndedEarly(state)) {
     return { label: PURCHASE_STATE_LABEL[state], ...STATE_BADGE[state] };

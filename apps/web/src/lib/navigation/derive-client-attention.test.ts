@@ -77,6 +77,7 @@ describe("deriveClientAttention", () => {
         bidOn({ lotId: "d", lotNumber: null, winning: false, endsInHours: 9 }),
       ],
       amountsOwed: [],
+      stillToSend: [],
       unreadNotifications: [],
     });
     expect(attention.outbidLots).toEqual(["14", "22", null]);
@@ -88,6 +89,7 @@ describe("deriveClientAttention", () => {
       userId: "user-1",
       bids: [bidOn({ lotId: "z", lotNumber: 3, winning: false, endsInHours: 2 })],
       amountsOwed: [],
+      stillToSend: [],
       unreadNotifications: [],
     });
     expect(attention.groups).toMatchObject([
@@ -98,7 +100,13 @@ describe("deriveClientAttention", () => {
   it("is in review only when everything owed waits on checks", () => {
     const inReview = (lotId: string) => owed(lotId, { state: "in-review", blocker: "review" });
     const derive = (amountsOwed: AmountOwedEntry[]) =>
-      deriveClientAttention({ userId: "user-1", bids: [], amountsOwed, unreadNotifications: [] });
+      deriveClientAttention({
+        userId: "user-1",
+        bids: [],
+        amountsOwed,
+        stillToSend: [],
+        unreadNotifications: [],
+      });
     expect(derive([inReview("a"), inReview("b")])).toMatchObject({
       paymentsDue: 2,
       paymentsInReview: true,
@@ -120,14 +128,34 @@ describe("deriveClientAttention", () => {
         owed("c", { role: "informed" }),
         owed("d", { state: "cancelled" }),
       ],
+      stillToSend: [],
       unreadNotifications: [{ read: false }, { read: true }, { read: false }],
     });
     expect(attention).toEqual({
       outbidLots: [],
       paymentsDue: 2,
       paymentsInReview: false,
+      stillToSend: { count: 0, pence: 0, lotIds: [] },
       unreadNotifications: 2,
       groups: [],
+    });
+  });
+
+  it("adds up what is still to send on a part-funded transfer, apart from what is due", () => {
+    const attention = deriveClientAttention({
+      userId: "user-1",
+      bids: [],
+      amountsOwed: [],
+      stillToSend: [
+        { lotId: "a", groupId: "g1", pence: 30_005 },
+        { lotId: "b", groupId: "g1", pence: 20_000 },
+      ],
+      unreadNotifications: [],
+    });
+    expect(attention).toMatchObject({
+      paymentsDue: 0,
+      paymentsInReview: false,
+      stillToSend: { count: 2, pence: 50_005, lotIds: ["a", "b"] },
     });
   });
 });

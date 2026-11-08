@@ -91,3 +91,23 @@ describe("assertZohoCrmOrgEnvironment for the writeback", () => {
     await expect(run("sandbox", "sandbox")).resolves.toBeUndefined();
   });
 });
+
+describe("fulfilment mirror live mode", () => {
+  it("is checked like the other Zoho writers, only when live", () => {
+    const base = { ZOHO_CRM_SYNC_MODE: "off", ZOHO_CRM_EXPECTED_ORG_TYPE: "sandbox" } as const;
+    expect(shouldRunZohoCrmOrgCheck(env({ ...base, ZOHO_FULFILMENT_MIRROR_MODE: "live" }))).toBe(
+      true,
+    );
+    expect(shouldRunZohoCrmOrgCheck(env({ ...base, ZOHO_FULFILMENT_MIRROR_MODE: "dry_run" }))).toBe(
+      false,
+    );
+  });
+
+  it("refuses to start live without an expected org", () => {
+    expect(() =>
+      assertZohoCrmLiveRequiresExpectedOrg(
+        env({ ZOHO_CRM_SYNC_MODE: "off", ZOHO_FULFILMENT_MIRROR_MODE: "live" }),
+      ),
+    ).toThrow("zoho_crm_expected_org_type_required_for_live");
+  });
+});

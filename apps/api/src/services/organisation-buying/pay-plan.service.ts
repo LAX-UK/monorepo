@@ -14,11 +14,13 @@ import type { InvoiceRaiser } from "@auction/finance-runtime";
 import type {
   BidInvoiceRecord,
   IBidInvoiceReader,
+  IChargeableDeliveryReader,
   ILegalEntityRepository,
   ILotRepository,
 } from "@auction/persistence/interfaces";
-import type { PayPlan } from "@auction/types";
+import type { PayPlan, PayPlanDelivery } from "@auction/types";
 import { err, ok } from "neverthrow";
+import { gbpAmountToPence } from "../../lib/decimal-money.js";
 import {
   type ISettlementComplianceAssessor,
   assessSettlementSubjects,
@@ -49,6 +51,11 @@ export type PayPlanDeps = {
   limits: PaymentTierLimits;
   /** Where a payment already under way for the picked lots stands. */
   progress: Pick<PayProgressResolver, "resolve">;
+  /**
+   * Accepted courier quotes that join the payment. `null` while delivery is not charged with the
+   * invoices: the plan then lists none and the payment is the invoices alone.
+   */
+  delivery: IChargeableDeliveryReader | null;
   /** The company that issues Bid invoices. */
   issuer: PayPlan["entity"];
   now: () => Date;
@@ -122,6 +129,7 @@ export class PayPlanService implements IPayPlanService {
       ),
     );
     const classified = classifyPayPlanLots(actor.legalEntityId, lots, payerRole);
+    const delivery = await this.deliveryFor(actor, classified.payable);
     // The checks run in the order the gate reports them, and stop at the first that applies.
     let onboardingComplete = true;
     let eligibility: PaymentEligibility = PAYABLE;
@@ -134,7 +142,7 @@ export class PayPlanService implements IPayPlanService {
           buyerLegalEntityId: actor.legalEntityId,
         });
         if (eligibility.kind === "payable") {
-          compliance = await this.complianceOn(actor, classified.payable, winners);
+          compliance = await this.complianceOn(actor, classified.payable, delivery, winners);
         }
       }
     }
@@ -148,9 +156,30 @@ export class PayPlanService implements IPayPlanService {
       compliance,
       limits: this.deps.limits,
       classified,
+      deliveryInPayment: this.deps.delivery !== null,
+      delivery,
       progress: firstProgress(entries, progressByGroup),
     });
     return { plan, winners };
+  }
+
+  /** The accepted courier quotes for the lots the payment covers, at the price the buyer accepted. */
+  private async deliveryFor(
+    actor: OrganisationMemberActor,
+    payable: readonly PayPlan["payable"][number][],
+  ): Promise<PayPlanDelivery[]> {
+    if (!this.deps.delivery || payable.length === 0) return [];
+    const quotes = await this.deps.delivery.acceptedFor(
+      actor.legalEntityId,
+      payable.map((p) => p.lotId),
+    );
+    return quotes.map((q) => ({
+      lotId: q.lotId,
+      quoteId: q.quoteId,
+      amountPence: gbpAmountToPence(q.amount),
+      destination: q.destination,
+      note: q.quoteNote,
+    }));
   }
 
   /** What one picked lot is worth to the plan: stored lines for an invoice, priced lines if not. */
@@ -212,10 +241,14 @@ export class PayPlanService implements IPayPlanService {
   private async complianceOn(
     actor: OrganisationMemberActor,
     payable: readonly PayPlan["payable"][number][],
+    delivery: readonly PayPlanDelivery[],
     winners: ReadonlyMap<string, string | null>,
   ): Promise<PayPlanComplianceHold> {
     if (!this.deps.compliance || payable.length === 0) return NO_HOLD;
-    const total = payable.reduce((sum, p) => sum + p.totalPence, 0);
+    // The payer is checked on everything they pay; a winner only on the lot they won.
+    const total =
+      payable.reduce((sum, p) => sum + p.totalPence, 0) +
+      delivery.reduce((sum, d) => sum + d.amountPence, 0);
     const hold = await assessSettlementSubjects(
       this.deps.compliance,
       [

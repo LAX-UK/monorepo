@@ -10,6 +10,7 @@ import {
 } from "@/lib/admin/enquiries/enquiries.vm";
 import { enquiryRecordActions } from "@/lib/admin/enquiries/enquiry-actions";
 import { enquiryTimeline } from "@/lib/admin/enquiries/enquiry-timeline";
+import { dealHref } from "@/lib/admin/private-sales/private-sales.vm";
 import type {
   EnquiryAssignee,
   EnquiryView as EnquiryRecord,
@@ -17,6 +18,7 @@ import type {
 import { copyToClipboard } from "@/lib/ui/copy-to-clipboard";
 import { notify } from "@/lib/ui/notify";
 import type { EnquiryStatus } from "@auction/domain";
+import { isPrivateSaleEnquiryIntent } from "@auction/domain";
 import {
   DetailPage,
   MetaItem,
@@ -36,9 +38,11 @@ import {
   formatStaffDate,
   formatStaffDateTime,
 } from "@auction/staff-ui";
-import { ChevronDown, Copy, Undo2, UserRoundPlus } from "@auction/staff-ui/icons";
+import { ChevronDown, Copy, Handshake, Undo2, UserRoundPlus } from "@auction/staff-ui/icons";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { ConvertEnquiryDialog } from "../private-sales/convert-enquiry-dialog";
 import { AssignEnquiryDialog } from "./assign-enquiry-dialog";
 import { CloseEnquiryDialog } from "./close-enquiry-dialog";
 import { EnquiryStatusBadge } from "./enquiry-cells";
@@ -57,6 +61,8 @@ export type EnquiryViewProps = {
   assignees: EnquiryAssignee[];
   viewerId: string;
   canWork: boolean;
+  /** May turn a private sale enquiry into a deal. */
+  canConvert?: boolean;
   /** The server's clock, so the reply time reads the same on server and browser. */
   now: string;
 };
@@ -76,10 +82,23 @@ function dayLabel(iso: string): string {
  * internal notes; and its history. Assign, change status and close sit in the header and each
  * states its effect. Without the capability to work enquiries the page is view only.
  */
-export function EnquiryView({ enquiry, assignees, viewerId, canWork, now }: EnquiryViewProps) {
+export function EnquiryView({
+  enquiry,
+  assignees,
+  viewerId,
+  canWork,
+  canConvert = false,
+  now,
+}: EnquiryViewProps) {
+  const router = useRouter();
   const writes = useEnquiryWrites(enquiry.reference, enquiry.version);
   const actions = enquiryRecordActions(enquiry, { canWork });
-  const [dialog, setDialog] = useState<"assign" | "close" | null>(null);
+  const [dialog, setDialog] = useState<"assign" | "close" | "convert" | null>(null);
+  // Only a private sale enquiry that someone has started on can become a deal.
+  const convertible =
+    canConvert &&
+    isPrivateSaleEnquiryIntent(enquiry.intent) &&
+    enquiry.nextStatuses.includes("converted");
   const clock = new Date(now);
 
   const nameOf = (userId: string | null) =>
@@ -96,16 +115,25 @@ export function EnquiryView({ enquiry, assignees, viewerId, canWork, now }: Enqu
 
   const moveLabel = (status: "in_progress" | "waiting_on_client") => MOVE_LABELS[status];
 
-  const primary = actions.primary ? (
-    <StaffButton
-      variant="primary"
-      icon={actions.primary.kind === "reopen" ? <Undo2 aria-hidden /> : undefined}
-      loading={writes.busy}
-      onClick={() => void moveTo(actions.primary?.to ?? "in_progress")}
-    >
-      {actions.primary.kind === "reopen" ? "Reopen" : "Mark in progress"}
-    </StaffButton>
-  ) : undefined;
+  const primary =
+    convertible && !actions.primary ? (
+      <StaffButton
+        variant="primary"
+        icon={<Handshake aria-hidden />}
+        onClick={() => setDialog("convert")}
+      >
+        Convert to deal
+      </StaffButton>
+    ) : actions.primary ? (
+      <StaffButton
+        variant="primary"
+        icon={actions.primary.kind === "reopen" ? <Undo2 aria-hidden /> : undefined}
+        loading={writes.busy}
+        onClick={() => void moveTo(actions.primary?.to ?? "in_progress")}
+      >
+        {actions.primary.kind === "reopen" ? "Reopen" : "Mark in progress"}
+      </StaffButton>
+    ) : undefined;
 
   const hasStatusMenu = actions.moves.length > 0 || actions.canClose;
   const secondary = (
@@ -253,6 +281,17 @@ export function EnquiryView({ enquiry, assignees, viewerId, canWork, now }: Enqu
               : `${enquiry.reference} is unassigned`,
           )
         }
+      />
+      <ConvertEnquiryDialog
+        open={dialog === "convert"}
+        onOpenChange={(open) => setDialog(open ? "convert" : null)}
+        reference={enquiry.reference}
+        needsWork={enquiry.intent === "private_sale_buy"}
+        onReload={writes.reload}
+        onDone={(dealReference) => {
+          notify.success(`${enquiry.reference} converted · ${dealReference}`);
+          router.push(dealHref(dealReference));
+        }}
       />
       <CloseEnquiryDialog
         open={dialog === "close"}

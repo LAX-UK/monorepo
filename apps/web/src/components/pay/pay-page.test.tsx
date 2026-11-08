@@ -118,6 +118,66 @@ describe("the Pay page, ready to pay", () => {
   });
 });
 
+describe("the Pay page, delivery", () => {
+  const courier = {
+    lotId: LOT_A,
+    quoteId: "quote-1",
+    amountPence: 18_000,
+    destination: "12 Vyner Street, London E2 9DG",
+    note: null,
+  };
+
+  it("says the choice comes after paying, and links to a quote while one can still join", () => {
+    draw(
+      planOf([payable(LOT_A, 190_000, 47_500, { title: "Coastal Notation" })], {
+        deliveryInPayment: true,
+      }),
+    );
+    const delivery = screen.getByRole("region", { name: "Delivery" });
+    expect(within(delivery).getByText("Choose after paying")).toBeInTheDocument();
+    expect(within(delivery).getByRole("link", { name: "Get a courier quote" })).toHaveAttribute(
+      "href",
+      `/purchases/${LOT_A}`,
+    );
+    expect(within(delivery).getByText(/added to this payment/)).toBeInTheDocument();
+  });
+
+  it("offers no quote link while delivery is not charged with the payment", () => {
+    draw(ready());
+    const delivery = screen.getByRole("region", { name: "Delivery" });
+    expect(within(delivery).queryByRole("link", { name: "Get a courier quote" })).toBeNull();
+  });
+
+  it("shows an accepted courier quote as a charge, a payment line and part of the total", () => {
+    draw(
+      planOf([payable(LOT_A, 190_000, 47_500, { title: "Coastal Notation" })], {
+        deliveryInPayment: true,
+        delivery: [courier],
+      }),
+    );
+    const delivery = screen.getByRole("region", { name: "Delivery" });
+    expect(within(delivery).getByText("Courier · £180.00")).toBeInTheDocument();
+    expect(within(delivery).getByText(/Insured courier to 12 Vyner Street/)).toBeInTheDocument();
+    const payment = screen.getByRole("region", { name: "Payment" });
+    expect(within(payment).getByText("Courier delivery")).toBeInTheDocument();
+    expect(within(payment).getByText("£2,555.00", { selector: "dd" })).toBeInTheDocument();
+  });
+
+  it("sends the total shown, delivery included, and nothing else it worked out", async () => {
+    payAction.mockResolvedValue({ kind: "redirect", url: "https://pay.example/cs" });
+    draw(
+      planOf([payable(LOT_A, 190_000, 47_500)], { deliveryInPayment: true, delivery: [courier] }),
+    );
+    fireEvent.click(screen.getAllByRole("button", { name: /^Pay £2,555.00/ })[0] as HTMLElement);
+    await waitFor(() => expect(payAction).toHaveBeenCalled());
+    expect(payAction).toHaveBeenCalledExactlyOnceWith({
+      lotIds: [LOT_A],
+      expectedTotalPence: 255_500,
+      method: "card",
+    });
+  });
+});
+
 describe("the Pay page, several lots", () => {
   it("lists each lot with its total and pays them in one payment", async () => {
     payAction.mockResolvedValue({ kind: "redirect", url: "https://checkout.stripe.com/c/pay_2" });

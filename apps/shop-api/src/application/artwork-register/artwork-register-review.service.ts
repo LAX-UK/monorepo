@@ -4,6 +4,7 @@ import {
   canAcceptZohoValue,
   catalogueGapsOf,
   deriveWhereItIs,
+  zohoModuleOf,
 } from "@auction/artwork-register-contracts";
 import {
   ADMIN_REGISTER_PAGE_SIZE,
@@ -120,6 +121,7 @@ export function presentArtworkSummary(entry: ArtworkRegisterEntry): AdminRegiste
     artistCode: entry.artist.code,
     stockCode: entry.stockCode,
     kind: entry.kind,
+    zohoModule: zohoModuleOf(entry),
     missing: catalogueGapsOf(entry),
     zohoModifiedAt: iso(entry.zohoModifiedAt),
   };
@@ -266,6 +268,7 @@ export class ArtworkRegisterReviewService {
       zohoProductId: entry.zohoProductId,
       stockCode: entry.stockCode,
       kind: entry.kind,
+      zohoModule: zohoModuleOf(entry),
       title: entry.title,
       artistName: entry.artist.name,
       artistCode: entry.artist.code,

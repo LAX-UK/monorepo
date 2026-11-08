@@ -52,6 +52,7 @@ function build(bid: BidPortfolioFacts, lots: ReturnType<typeof lotRow>[]) {
     },
     fulfilments: { statusesForLots: vi.fn(async () => new Map<string, string>()) },
     organisationChecks: { eligibility: { check: vi.fn() } as never, compliance: null },
+    stillToSend: { forPayments: async () => new Map() },
     personalAccount: { idFor: async () => PERSONAL },
   });
   const reader: IBidPortfolioReader = { loadForPerson: async () => bid };

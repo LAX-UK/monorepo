@@ -2234,6 +2234,20 @@
       "when": 1803110400000,
       "tag": "0324_payout_transfer_blocked",
       "breakpoints": true
+    },
+    {
+      "idx": 320,
+      "version": "7",
+      "when": 1803196800000,
+      "tag": "0325_payment_group_delivery",
+      "breakpoints": true
+    },
+    {
+      "idx": 321,
+      "version": "7",
+      "when": 1803283200000,
+      "tag": "0326_private_sale_deal_register_fk",
+      "breakpoints": true
     }
   ]
 }

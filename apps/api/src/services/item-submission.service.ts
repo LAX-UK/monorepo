@@ -92,6 +92,7 @@ export class ItemSubmissionService implements IItemSubmissionService {
     sellerIdentity: ISellerIdentityReader | null = null,
     staffRoles: Pick<IStaffRoleAssignmentReader, "listActiveRoles"> | null = null,
     consignmentAssignment: IConsignmentAssignment | null = null,
+    privateSaleDeals: ItemSubmissionServiceDeps["privateSaleDeals"] = null,
   ) {
     this.deps = {
       transactionRunner,
@@ -110,6 +111,7 @@ export class ItemSubmissionService implements IItemSubmissionService {
       sellerIdentity,
       staffRoles,
       consignmentAssignment,
+      privateSaleDeals,
     };
   }
 

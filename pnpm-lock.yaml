@@ -1865,6 +1865,9 @@ importers:
       '@auction/domain':
         specifier: workspace:*
         version: link:../domain
+      '@auction/identity-contracts':
+        specifier: workspace:*
+        version: link:../identity-contracts
       '@auction/types':
         specifier: workspace:*
         version: link:../types

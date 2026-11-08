@@ -9,6 +9,7 @@ import type { Logger } from "pino";
 import type { IDomainEventPublisher } from "./domain-event-publisher.js";
 import type { IDomainEventSinkPort } from "./domain-event-sink-port.js";
 import type { FinanceRuntimeEnv } from "./env-slice.js";
+import { type IMoneyPathMetrics, noMoneyPathMetrics } from "./money-path-metrics.js";
 import { PayoutAdjustmentService } from "./payout/payout-adjustment.service.js";
 import { runBulkSettlementWithTransfers } from "./payout/payout-bulk-transfer.js";
 import { type PayoutSettlementDeps, payoutRepoForTx } from "./payout/payout-helpers.js";
@@ -32,6 +33,8 @@ export type CreatePayoutSettlementRuntimeInput = {
   legalEntityConnectRepo: ILegalEntityConnectRepository;
   domainEventSink: IDomainEventSinkPort;
   domainEventPublisher: IDomainEventPublisher;
+  /** Where payout money-path counters go; the worker passes none and counts are dropped. */
+  metrics?: IMoneyPathMetrics;
 };
 
 export type PayoutSettlementRuntime = {
@@ -76,6 +79,7 @@ export function createPayoutSettlementRuntime(
     accountSync,
     input.payoutRepo,
     input.domainEventPublisher,
+    input.metrics ?? noMoneyPathMetrics,
   );
 
   return {

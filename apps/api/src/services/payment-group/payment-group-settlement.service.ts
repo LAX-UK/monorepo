@@ -9,6 +9,7 @@ import type {
   IPaymentGroupRepository,
   IPaymentLifecycleRepository,
   ITransactionRunner,
+  PaymentGroupDelivery,
   PaymentGroupMember,
   PaymentGroupRecord,
 } from "@auction/persistence/interfaces";
@@ -26,7 +27,11 @@ export interface IProviderEventClaim {
 
 /** The one receipt for a group's payment, sent once it is paid. */
 export interface IPaymentGroupReceipt {
-  send(group: PaymentGroupRecord, members: readonly PaymentGroupMember[]): Promise<void>;
+  send(
+    group: PaymentGroupRecord,
+    members: readonly PaymentGroupMember[],
+    deliveries: readonly PaymentGroupDelivery[],
+  ): Promise<void>;
 }
 
 /** Why a group was let go before it was paid. */
@@ -90,13 +95,17 @@ export class PaymentGroupSettlementService {
     const afterCommit: (() => Promise<void>)[] = [];
     // Read before the transaction opens; a failed read throws, so the provider retries the event.
     const blocked = await this.accountBlock(input.groupId);
-    let paid: { group: PaymentGroupRecord; members: PaymentGroupMember[] } | null = null;
+    let paid: {
+      group: PaymentGroupRecord;
+      members: PaymentGroupMember[];
+      deliveries: PaymentGroupDelivery[];
+    } | null = null;
 
     const result = await this.deps.transactionRunner.runInTransaction(async (tx) => {
       if (!(await this.deps.claims.claim(tx, input.eventId))) return DUPLICATE;
       const locked = await this.deps.groups.lockInTransaction(tx, input.groupId);
       if (!locked) return UNKNOWN_GROUP;
-      const { group, members } = locked;
+      const { group, members, deliveries } = locked;
 
       const decision = decidePaymentGroupSettlement({
         group: {
@@ -108,6 +117,10 @@ export class PaymentGroupSettlementService {
           paymentId: m.paymentId,
           amountPence: gbpAmountToPence(m.amount),
           status: m.status,
+        })),
+        deliveries: deliveries.map((d) => ({
+          quoteId: d.quoteId,
+          amountPence: gbpAmountToPence(d.amount),
         })),
         received: { amountPence: input.amountPence, currency: input.currency },
       });
@@ -164,14 +177,18 @@ export class PaymentGroupSettlementService {
         actorUserId: null,
         actingLegalEntityId: group.buyerLegalEntityId,
       });
-      paid = { group, members };
+      paid = { group, members, deliveries };
       return { processed: true, action: "payment_intent_succeeded" } as const;
     });
 
     for (const run of afterCommit) await run();
-    const settled = paid as { group: PaymentGroupRecord; members: PaymentGroupMember[] } | null;
+    const settled = paid as {
+      group: PaymentGroupRecord;
+      members: PaymentGroupMember[];
+      deliveries: PaymentGroupDelivery[];
+    } | null;
     if (settled) {
-      await this.deps.receipt.send(settled.group, settled.members);
+      await this.deps.receipt.send(settled.group, settled.members, settled.deliveries);
       recordMoneyPathEvent("payment_group_paid");
     }
     return result;

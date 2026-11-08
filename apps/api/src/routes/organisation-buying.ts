@@ -63,6 +63,7 @@ export function createOrganisationBuyingRoutes(
     payPlan,
     paySeveral,
     payTransfer,
+    invoicePdf,
     payProgress,
     deliveryQuotes,
     collection,
@@ -158,6 +159,27 @@ export function createOrganisationBuyingRoutes(
     requireContext,
     zValidator("json", paySeveralStartBodySchema),
     async (c) => respond(c, await paySeveral.pay(memberActor(c), c.req.valid("json"))),
+  );
+
+  // The invoice of a won lot as a PDF, for the member who pays it. Never cached: it carries the
+  // account's name and the lot's figures.
+  r.get(
+    "/purchases/:lotId/invoice.pdf",
+    requireAuth,
+    requireBuyerRole,
+    requireContext,
+    zValidator("param", purchaseLotIdParamSchema),
+    async (c) => {
+      const result = await invoicePdf.render(memberActor(c), c.req.valid("param").lotId);
+      if (result.isErr()) {
+        const e = result.error;
+        return c.json({ error: e.code, message: e.message }, e.status);
+      }
+      c.header("Content-Type", "application/pdf");
+      c.header("Content-Disposition", `attachment; filename="${result.value.filename}"`);
+      c.header("Cache-Control", "no-store");
+      return c.body(new Uint8Array(result.value.pdf));
+    },
   );
 
   r.post(

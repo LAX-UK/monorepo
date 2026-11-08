@@ -1,6 +1,7 @@
 import type { IAttributionStore } from "@auction/marketing-events";
 import type {
   ILotFulfilmentRepository,
+  IPaymentGroupFactsReader,
   IRecordPeopleReader,
   IWatchlistReminderRepository,
 } from "@auction/persistence/interfaces";
@@ -31,6 +32,7 @@ import { LaxPortfolioHttpApplicationService } from "../services/lax-portfolio/la
 import type { IPersonalLegalEntityResolver } from "../services/legal-entity/personal-legal-entity-resolver.service.js";
 import type { NotificationQueryService } from "../services/notification-query.service.js";
 import type { INotificationAccountMuteService } from "../services/notifications/notification-account-mute.service.js";
+import { StillToSendService } from "../services/payment-group/still-to-send.service.js";
 import type { IPaymentEligibilityGate } from "../services/payment/payment-eligibility.gate.js";
 import type { ProfileService } from "../services/profile.service.js";
 import type { SavedSearchService } from "../services/saved-search.service.js";
@@ -88,6 +90,7 @@ export type CreateUserRouteServicesInput = {
   requireBuyingAccount: UserRouteServices["requireBuyingAccount"];
   recordPeople: IRecordPeopleReader;
   lotFulfilmentRepository: Pick<ILotFulfilmentRepository, "statusesForLots">;
+  paymentGroupFacts: IPaymentGroupFactsReader;
   personalLegalEntityResolver: IPersonalLegalEntityResolver;
   lotViewerState: ILotViewerStateService;
   /** The account rule and compliance checks the Pay page plan applies to an organisation. */
@@ -101,6 +104,7 @@ export function createUserRouteServices(input: CreateUserRouteServicesInput): Us
     saleService: input.saleService,
     paymentBuyerService: input.paymentBuyerService,
     fulfilments: input.lotFulfilmentRepository,
+    stillToSend: new StillToSendService(input.paymentGroupFacts),
     personalAccount: {
       idFor: async (userId) => (await input.personalLegalEntityResolver.resolveForUser(userId)).id,
     },

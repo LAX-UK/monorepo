@@ -221,14 +221,18 @@ export const RESOLUTION_LABEL = {
   accepted_zoho: "Accepted the Zoho value",
 } as const;
 
-/** The CRM Product's page, from the shared CRM address template; null without one. */
+/**
+ * The CRM record's page, from the shared CRM address template; null without one. An original is a
+ * Product; a print group is a Print_Products record, so its link opens that module.
+ */
 export function zohoProductUrl(
   template: string | null | undefined,
   zohoProductId: string,
+  module: "Products" | "Print_Products" = "Products",
 ): string | null {
   if (!template) return null;
   return template
-    .replace("{module}", encodeURIComponent("Products"))
+    .replace("{module}", encodeURIComponent(module))
     .replace("{recordId}", encodeURIComponent(zohoProductId));
 }
 

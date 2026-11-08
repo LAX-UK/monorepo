@@ -11,7 +11,13 @@ function facts(
     lotId: "lot-1",
     wonBy: null,
     paymentRole: "payer",
-    invoice: { status: "paid", dueAt: null, paymentId: "p1", totalDue: "1875.00" },
+    invoice: {
+      status: "paid",
+      dueAt: null,
+      paymentId: "p1",
+      totalDue: "1875.00",
+      stillToSendPence: null,
+    },
     delivery: {
       stage,
       method: null,

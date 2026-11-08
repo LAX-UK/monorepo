@@ -34,6 +34,24 @@ describe("buildNeedsYou", () => {
     expect(result[1]?.action).toMatchObject({ label: "Track", onPhone: false, primary: false });
   });
 
+  it("lists what is still to send as a payment line with no pay button", () => {
+    const { lines: result } = lines(
+      item({ id: "ship", title: "Harbor Print", status: "awaiting_shipment", actions: TRACK }),
+      item({
+        id: "send",
+        title: "Red Field",
+        status: "awaiting_payment",
+        owed: { amount: 570_100, currency: "GBP", state: "still_to_send" },
+        actions: [],
+      }),
+    );
+    expect(result[0]).toMatchObject({
+      title: "Send the rest of the transfer for Red Field",
+      meta: "LAX Bid · £5,701.00 still to send",
+      action: null,
+    });
+  });
+
   it("shows at most three lines and counts the rest", () => {
     const many = ["a", "b", "c", "d", "e"].map((id) =>
       item({ id, status: "awaiting_shipment", actions: TRACK }),

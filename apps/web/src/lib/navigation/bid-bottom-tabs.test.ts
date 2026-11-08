@@ -53,6 +53,12 @@ describe("Bid tab badges", () => {
       kind: "dot",
     });
     expect(accountBadge({ ...NO_ATTENTION, unreadNotifications: 1 })).toEqual({ kind: "dot" });
+    expect(
+      accountBadge({
+        ...NO_ATTENTION,
+        stillToSend: { count: 1, pence: 30_005, lotIds: ["lot-9"] },
+      }),
+    ).toEqual({ kind: "dot" });
   });
 
   it("wires the badges onto the right tabs, signed in only", () => {

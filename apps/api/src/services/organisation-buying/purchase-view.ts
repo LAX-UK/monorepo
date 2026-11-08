@@ -46,6 +46,7 @@ const STATUS: Record<OrganisationBuyingErrorCode, OrganisationBuyingError["statu
   pay_plan_unavailable: 503,
   onboarding_required: 403,
   pay_plan_changed: 409,
+  invoice_not_ready: 404,
 };
 
 const MESSAGE: Record<OrganisationBuyingErrorCode, string> = {
@@ -84,6 +85,7 @@ const MESSAGE: Record<OrganisationBuyingErrorCode, string> = {
     "We couldn't check your payment just now. Nothing was charged. Try again shortly.",
   onboarding_required: "Finish setting up your account before you pay.",
   pay_plan_changed: "The total has changed. Check it and pay again.",
+  invoice_not_ready: "This invoice isn't available. It appears once it is raised.",
 };
 
 /** The one place buying errors get their status and wording. */
@@ -112,7 +114,7 @@ export function quoteView(
   };
 }
 
-function invoiceOf(row: AccountPurchaseFactsRow, now: Date) {
+function invoiceOf(row: AccountPurchaseFactsRow, now: Date, stillToSendPence: number | null) {
   const state = purchaseInvoiceState(
     {
       saleCancelled: row.fulfilment?.status === "cancelled",
@@ -131,6 +133,7 @@ function invoiceOf(row: AccountPurchaseFactsRow, now: Date) {
     dueAt: state.dueAt,
     paymentId: row.payment?.id ?? null,
     totalDue: row.payment?.amount ?? null,
+    stillToSendPence,
   };
 }
 
@@ -147,8 +150,10 @@ export function purchaseView(
   row: AccountPurchaseFactsRow,
   actor: OrganisationMemberActor,
   now: Date,
+  /** What a part-funded bank transfer still has to send for this invoice, when it is one. */
+  stillToSendPence: number | null = null,
 ): AccountPurchaseView {
-  const invoice = invoiceOf(row, now);
+  const invoice = invoiceOf(row, now, stillToSendPence);
   return {
     lotId: row.lotId,
     lotTitle: row.lotTitle,

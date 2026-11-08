@@ -779,6 +779,10 @@ export type ContainerExportRoutesSlice = ContainerComplianceSlice &
 /** Artist registry + profile browse (public + staff). */
 export type ContainerArtistRoutesSlice = Pick<Container, "userSuspensionChecker" | "catalogRoutes">;
 
+/** A buyer's and a seller's own private sale deals. */
+export type ContainerPrivateSaleDealRoutesSlice = ContainerFinanceSlice &
+  Pick<Container, "userSuspensionChecker">;
+
 /** Seller payout list/preview (legal entity scoped). */
 export type ContainerPayoutRoutesSlice = ContainerFinanceSlice &
   Pick<Container, "userSuspensionChecker" | "requireLegalEntityContext">;

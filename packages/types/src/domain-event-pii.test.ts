@@ -15,6 +15,20 @@ describe("redactDomainEventPayload", () => {
     expect(out.note).toBe("[REDACTED]");
   });
 
+  it("keeps the payment suggestion on unapplied money readable in the audit log", () => {
+    const out = redactDomainEventPayload("payment.unapplied_money_received", {
+      reason: "customer_balance_unapplied",
+      dedupeKey: "customer_balance_unapplied:evt_1:gbp",
+      possibleGroup: { id: "11111111-2222-4333-8444-555555555555", status: "paid" },
+      note: "free text",
+    }) as { possibleGroup: { id: string; status: string }; note: string };
+    expect(out.possibleGroup).toEqual({
+      id: "11111111-2222-4333-8444-555555555555",
+      status: "paid",
+    });
+    expect(out.note).toBe("[REDACTED]");
+  });
+
   it("allows email for legal_entity.member_invited", () => {
     const out = redactDomainEventPayload("legal_entity.member_invited", {
       legalEntityId: "le1",

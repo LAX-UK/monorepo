@@ -1,13 +1,17 @@
 import { WorkspacePanel } from "@/components/dashboard/primitives/workspace-panel";
 import { dashboardCheckoutLotUrl } from "@/lib/dashboard/dashboard-copy";
 import type { DeliveryPanelVm } from "@/lib/purchases/purchase-delivery.vm";
+import type { PurchaseHandoverVm } from "@/lib/purchases/purchase-handover";
 import type { PurchaseProblemPanelVm } from "@/lib/purchases/purchase-problem";
 import type { PurchaseCardVm } from "@/lib/purchases/purchases.vm";
 import { cn } from "@auction/ui";
-import { ButtonLink, StatusBadge, pageTitleClass } from "@auction/ui/lax";
+import { ButtonLink, Notice, StatusBadge, pageTitleClass } from "@auction/ui/lax";
 import { Download, FileText } from "lucide-react";
 import Link from "next/link";
 import { DeliveryPanel } from "./delivery-panel";
+
+/** Where "Choose delivery" in the hand-over notice scrolls to. */
+export const DELIVERY_ANCHOR = "delivery";
 
 /** The steps as a vertical line: done steps filled, the current one ringed. */
 function Progress({ card }: { card: PurchaseCardVm }) {
@@ -66,6 +70,7 @@ export function PurchaseDetail({
   subtitle,
   panel,
   problem,
+  handover,
   shipperEmail,
 }: {
   card: PurchaseCardVm;
@@ -74,6 +79,8 @@ export function PurchaseDetail({
   panel: DeliveryPanelVm | null;
   /** The open report on this purchase, or `null` when none is open. */
   problem: PurchaseProblemPanelVm | null;
+  /** "Paid. Thank you." and the next step, for a person sent here after paying; else `null`. */
+  handover?: PurchaseHandoverVm | null;
   shipperEmail: string;
 }) {
   const action = card.payable
@@ -103,15 +110,32 @@ export function PurchaseDetail({
           </div>
         </div>
       </div>
+      {handover ? (
+        <Notice
+          tone="success"
+          title={handover.title}
+          actions={
+            handover.action ? (
+              <ButtonLink href={handover.action.href} Link={Link} variant="secondary">
+                {handover.action.label}
+              </ButtonLink>
+            ) : undefined
+          }
+        >
+          {handover.detail}
+        </Notice>
+      ) : null}
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <div className="flex min-w-0 flex-col gap-6">
           <WorkspacePanel title="Progress">
             <Progress card={card} />
           </WorkspacePanel>
           {panel ? (
-            <WorkspacePanel title="Delivery">
-              <DeliveryPanel lotId={card.lotId} panel={panel} shipperEmail={shipperEmail} />
-            </WorkspacePanel>
+            <div id={DELIVERY_ANCHOR} className="scroll-mt-24">
+              <WorkspacePanel title="Delivery">
+                <DeliveryPanel lotId={card.lotId} panel={panel} shipperEmail={shipperEmail} />
+              </WorkspacePanel>
+            </div>
           ) : null}
         </div>
         <div className="flex min-w-0 flex-col gap-6">
