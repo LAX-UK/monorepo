@@ -259,10 +259,8 @@
   margin-bottom: var(--shop-space-4);
 }
 
-.shop-edition-facts__statement {
-  margin: var(--shop-space-5) 0 0;
-  color: var(--color-on-surface-variant);
-  line-height: 1.6;
+.shop-edition-explainer {
+  margin-top: var(--shop-space-5);
 }
 
 .shop-edition-facts__also {
