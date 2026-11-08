@@ -5,6 +5,10 @@
 export const SETTLEMENT_RESULTS = {
   started: { tone: "success", message: "Settlement run started successfully." },
   missing_seller: { tone: "error", message: "Select a seller before running settlement." },
+  reason_required: {
+    tone: "error",
+    message: "Give a reason of at least 10 characters before running settlement.",
+  },
   not_permitted: {
     tone: "error",
     message: "Your role does not allow running a settlement.",
@@ -13,6 +17,11 @@ export const SETTLEMENT_RESULTS = {
     tone: "error",
     message:
       "The settlement could not run for this seller. Check their payout readiness and captured payments, then try again.",
+  },
+  period_conflict: {
+    tone: "error",
+    message:
+      "The settlement period overlaps one already settled for this seller. Refresh and check their payouts.",
   },
   failed: {
     tone: "error",
