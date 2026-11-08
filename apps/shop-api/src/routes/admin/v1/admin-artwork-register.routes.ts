@@ -1,6 +1,8 @@
 import {
+  AdminRegisterAllListSchema,
   AdminRegisterConflictListSchema,
   AdminRegisterConflictParamsSchema,
+  AdminRegisterCountsSchema,
   AdminRegisterDetailSchema,
   AdminRegisterLastCheckSchema,
   AdminRegisterNewListSchema,
@@ -44,6 +46,35 @@ export async function registerAdminArtworkRegisterRoutes(
     async (request) => {
       requireShopStaffCapability(request, "artwork_register.read");
       return review.listNew(request.query as AdminRegisterQueueQuery);
+    },
+  );
+
+  app.get(
+    "/artwork-register/all",
+    {
+      schema: {
+        tags: ["shop-admin"],
+        querystring: AdminRegisterQueueQuerySchema,
+        response: { 200: AdminRegisterAllListSchema, 403: ShopApiErrorBodySchema },
+      },
+    },
+    async (request) => {
+      requireShopStaffCapability(request, "artwork_register.read");
+      return review.listAll(request.query as AdminRegisterQueueQuery);
+    },
+  );
+
+  app.get(
+    "/artwork-register/counts",
+    {
+      schema: {
+        tags: ["shop-admin"],
+        response: { 200: AdminRegisterCountsSchema, 403: ShopApiErrorBodySchema },
+      },
+    },
+    async (request) => {
+      requireShopStaffCapability(request, "artwork_register.read");
+      return review.queueCounts();
     },
   );
 

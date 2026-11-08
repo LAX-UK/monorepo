@@ -5,6 +5,7 @@ import {
   ZOHO_QUEUE_TABS,
   ZOHO_QUEUE_TAB_LABEL,
   type ZohoQueueQuery,
+  type ZohoQueueTab,
   activeZohoTab,
   zohoQueueHref,
 } from "@/server/domain/zoho-register.vm";
@@ -13,6 +14,19 @@ import { DataViews } from "@auction/staff-ui";
 export const FROM_ZOHO_TITLE = "From Zoho";
 export const FROM_ZOHO_DESCRIPTION =
   "Artworks Zoho sends to LAX, and where Zoho and LAX disagree. Catalogue details are edited in Zoho.";
+
+type TabCount = { count: number } | Record<string, never>;
+
+/** The number beside a tab: the queues and the unlinked originals have one; All and the check do not. */
+function countOf(
+  id: ZohoQueueTab,
+  counts: { new: number; decisions: number },
+  unlinked: number,
+): TabCount {
+  if (id === "new" || id === "decisions") return { count: counts[id] };
+  if (id === "link") return { count: unlinked };
+  return {};
+}
 
 /**
  * What the tabs share: list navigation that keeps the URL as the state, and the tab strip with
@@ -29,7 +43,7 @@ export function useQueueFrame(
     id,
     label: ZOHO_QUEUE_TAB_LABEL[id],
     href: zohoQueueHref({}, { tab: id === "new" ? null : id }),
-    ...(id === "check" ? {} : { count: id === "link" ? unlinked : counts[id] }),
+    ...countOf(id, counts, unlinked),
   }));
   return {
     pending,

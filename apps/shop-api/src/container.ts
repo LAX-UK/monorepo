@@ -118,6 +118,7 @@ import { createDrizzlePortalOwnershipRepository } from "./infrastructure/drizzle
 import { createDrizzlePortalPortfolioRepository } from "./infrastructure/drizzle-portal-portfolio.repository.js";
 import { createDrizzlePortalSalesRepository } from "./infrastructure/drizzle-portal-sales.repository.js";
 import { createDrizzleProductionTaskRepository } from "./infrastructure/drizzle-production-task.repository.js";
+import { createDrizzleRegisterOverviewReader } from "./infrastructure/drizzle-register-overview.js";
 import { createDrizzleSaleAuthorityWriter } from "./infrastructure/drizzle-sale-authority.writer.js";
 import { createDrizzleSavedViewRepository } from "./infrastructure/drizzle-saved-view.repository.js";
 import { createDrizzleShopMediaAssetRepository } from "./infrastructure/drizzle-shop-media-asset.repository.js";
@@ -657,6 +658,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
         leads: new LeadsService(createDrizzleLeadReader(db)),
         artworkRegister: new ArtworkRegisterReviewService({
           queue: new DrizzleArtworkRegisterQueueReader(db),
+          overview: createDrizzleRegisterOverviewReader(db, registerRowToEntry),
           register: artworkRegisterRepository,
           resolver: artworkRegisterRepository,
           runs: new DrizzleZohoArtworkSyncStore(db),
