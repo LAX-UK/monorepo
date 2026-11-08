@@ -122,11 +122,11 @@ export class DrizzlePaymentGroupRepository implements IPaymentGroupRepository {
     return this.membersQuery(this.db, groupId);
   }
 
-  async findLatestBankTransferGroupForCustomer(
+  async findBankTransferGroupsForCustomer(
     stripeCustomerId: string,
     since: Date,
-  ): Promise<PaymentGroupRecord | null> {
-    const [row] = await this.db
+  ): Promise<PaymentGroupRecord[]> {
+    const rows = await this.db
       .select({ group: paymentGroup })
       .from(paymentGroup)
       .innerJoin(legalEntity, eq(legalEntity.id, paymentGroup.buyerLegalEntityId))
@@ -139,8 +139,8 @@ export class DrizzlePaymentGroupRepository implements IPaymentGroupRepository {
         ),
       )
       .orderBy(desc(paymentGroup.createdAt))
-      .limit(1);
-    return row ? mapGroup(row.group) : null;
+      .limit(5);
+    return rows.map((row) => mapGroup(row.group));
   }
 
   async findLiveByPaymentIds(paymentIds: readonly string[]): Promise<PaymentGroupRecord[]> {

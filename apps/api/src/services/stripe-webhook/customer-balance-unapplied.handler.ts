@@ -1,4 +1,5 @@
-import type { IPaymentGroupRepository } from "@auction/persistence/interfaces";
+import type { UnappliedMoney } from "@auction/domain";
+import type { IPaymentGroupRepository, PaymentGroupRecord } from "@auction/persistence/interfaces";
 import type Stripe from "stripe";
 import { tryClaimProcessedStripeEvent } from "../../lib/stripe-processed-event.js";
 import type { StripePaymentWebhookDeps } from "./payment-webhook-lookup.js";
@@ -7,34 +8,50 @@ import {
   type PaymentWebhookResult,
 } from "./payment-webhook-types.js";
 
-/** How far back a bank-transfer payment still explains money left in the buyer's balance. */
-export const OVERPAYMENT_LOOKBACK_MS = 30 * 86_400_000;
+/** How far back a bank-transfer payment can still be named as a possible source of the balance. */
+export const POSSIBLE_SOURCE_LOOKBACK_MS = 30 * 86_400_000;
+
+type PossibleGroup = NonNullable<UnappliedMoney["possibleGroup"]>;
 
 /**
- * Stripe sends `cash_balance.funds_available` when a bank transfer is left in the buyer's balance
- * after it applied what it could to open payments: a transfer after the invoice was cancelled, a
- * second transfer, or more than was due. Finance decides what to do with it, never an automatic
- * refund.
+ * The one recent bank-transfer payment, in this currency, the balance might belong to, or `null`.
+ * A balance is the sum of everything left over, so it cannot say which payment it came from: with
+ * no candidate, or with more than one, nothing is suggested.
+ */
+export function possibleSourceGroup(
+  candidates: readonly PaymentGroupRecord[],
+  currency: string,
+): PossibleGroup | null {
+  const fits = candidates.filter((g) => g.currency.toLowerCase() === currency.toLowerCase());
+  const [only] = fits;
+  if (fits.length !== 1 || !only) return null;
+  if (only.status !== "open" && only.status !== "processing" && only.status !== "paid") return null;
+  return { id: only.id, status: only.status };
+}
+
+/**
+ * Stripe sends `cash_balance.funds_available` when money is left in the buyer's balance after it
+ * applied what it could to open payments: a transfer after the invoice was cancelled, a second
+ * transfer, or more than was due. `balance.available` is the whole balance, not what this transfer
+ * added, so the task states the balance and nothing more. Finance decides what to do with it,
+ * never an automatic refund.
  *
- * Money left over by a transfer for a combined ("Pay several") payment is the way an overpayment
- * of one reaches us: Stripe applies the payment's amount and keeps the rest in the balance. When
- * the buyer's account has such a payment in the last 30 days, the money is raised as
- * `group_overpaid` against it so finance sees which payment it belongs to; otherwise it is the
- * general unapplied balance.
+ * When exactly one recent bank-transfer payment of the buyer's account could explain it, the task
+ * carries that payment as a suggestion to check. It is never stated as the cause.
  */
 export async function handleCustomerBalanceFundsAvailable(
   deps: StripePaymentWebhookDeps,
   event: Stripe.Event,
   balance: Stripe.CashBalance,
-  groups: Pick<IPaymentGroupRepository, "findLatestBankTransferGroupForCustomer"> | null = null,
+  groups: Pick<IPaymentGroupRepository, "findBankTransferGroupsForCustomer"> | null = null,
 ): Promise<PaymentWebhookResult> {
-  const group =
+  const candidates =
     groups && typeof balance.customer === "string"
-      ? await groups.findLatestBankTransferGroupForCustomer(
+      ? await groups.findBankTransferGroupsForCustomer(
           balance.customer,
-          new Date(Date.now() - OVERPAYMENT_LOOKBACK_MS),
+          new Date(Date.now() - POSSIBLE_SOURCE_LOOKBACK_MS),
         )
-      : null;
+      : [];
   return deps.transactionRunner.runInTransaction(async (tx) => {
     const { claimed } = await tryClaimProcessedStripeEvent(
       tx,
@@ -44,13 +61,13 @@ export async function handleCustomerBalanceFundsAvailable(
     if (!claimed) return { processed: false, action: "skipped", reason: "duplicate_event" };
     const available = Object.entries(balance.available ?? {}).filter(([, cents]) => cents > 0);
     for (const [currency, amountCents] of available) {
-      const ofGroup = group !== null && group.currency.toLowerCase() === currency.toLowerCase();
       await deps.unappliedMoney.record(
         tx,
         {
-          reason: ofGroup ? "group_overpaid" : "customer_balance_unapplied",
+          reason: "customer_balance_unapplied",
           paymentId: null,
-          paymentGroupId: ofGroup ? group.id : null,
+          paymentGroupId: null,
+          possibleGroup: possibleSourceGroup(candidates, currency),
           stripePaymentIntentId: null,
           stripeChargeId: null,
           stripeCustomerId: balance.customer,
@@ -58,7 +75,7 @@ export async function handleCustomerBalanceFundsAvailable(
           amountCents,
           currency,
         },
-        ofGroup ? group.buyerLegalEntityId : null,
+        null,
       );
     }
     return available.length > 0
