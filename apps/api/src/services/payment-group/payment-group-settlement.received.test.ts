@@ -42,6 +42,7 @@ function setup(
       lockInTransaction: vi.fn().mockResolvedValue({
         group: current,
         members: [{ paymentId: "pay_a" }, { paymentId: "pay_b" }],
+        deliveries: [],
       }),
       transitionInTransaction,
       recordReceivedInTransaction,

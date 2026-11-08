@@ -135,6 +135,12 @@ const envSchema = z
     /** ATG White Label sync: the API only enqueues `atg-sync` jobs; the worker calls ATG. */
     ATG_SYNC_ENABLED: z.preprocess(parseOptionalBooleanFlag, z.boolean().default(false)),
     /**
+     * Charge an accepted courier quote in the same payment as the invoice it belongs to. Stays off
+     * until operations confirm a quote may be charged before the lot is released and the
+     * accountant confirms how VAT applies to delivery; until then delivery is paid separately.
+     */
+    DELIVERY_IN_PAYMENT_ENABLED: z.preprocess(parseOptionalBooleanFlag, z.boolean().default(false)),
+    /**
      * Self-serve collection booking. Stays off until operations confirm the saleroom's hours and
      * capacity; until then buyers get the address, the hours and an email address to book by.
      */

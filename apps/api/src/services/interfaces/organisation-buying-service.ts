@@ -117,7 +117,9 @@ export type PaySeveralQuote = {
   payable: { lotId: string; totalDue: string }[];
   skipped: { lotId: string; reason: PaySeveralSkipReason }[];
   currency: string;
-  /** The sum of the payable lots, as a decimal string. */
+  /** Accepted courier quotes charged with the invoices, in pounds as decimal strings. */
+  delivery: { lotId: string; amount: string }[];
+  /** The sum of the payable lots and the delivery charged with them, as a decimal string. */
   total: string;
   payTogether: PayTogetherDecision;
 };
@@ -141,6 +143,7 @@ export type PaySeveralStarted = {
   total: string;
   currency: string;
   payable: { lotId: string; amount: string }[];
+  delivery: PaySeveralQuote["delivery"];
   skipped: PaySeveralQuote["skipped"];
 };
 

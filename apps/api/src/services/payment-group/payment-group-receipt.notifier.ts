@@ -1,17 +1,25 @@
-import type { PaymentGroupMember, PaymentGroupRecord } from "@auction/persistence/interfaces";
+import type {
+  PaymentGroupDelivery,
+  PaymentGroupMember,
+  PaymentGroupRecord,
+} from "@auction/persistence/interfaces";
 import { notificationRowToPayload } from "../notification-payload.js";
 import type { NotificationDispatcher } from "../notification.dispatcher.js";
 import type { IPaymentGroupReceipt } from "./payment-group-settlement.service.js";
 
 /**
  * The one receipt for a payment that settled several invoices: sent to the member who paid, as a
- * "payment received" notice listing each invoice, the total and how it was paid. The invoices'
+ * "payment received" notice listing each invoice and any courier delivery, the total and how it was paid. The invoices'
  * own per-invoice receipts are not sent for a group, so the payer gets this one only.
  */
 export class PaymentGroupReceiptNotifier implements IPaymentGroupReceipt {
   constructor(private readonly dispatcher: Pick<NotificationDispatcher, "dispatch"> | null) {}
 
-  async send(group: PaymentGroupRecord, members: readonly PaymentGroupMember[]): Promise<void> {
+  async send(
+    group: PaymentGroupRecord,
+    members: readonly PaymentGroupMember[],
+    deliveries: readonly PaymentGroupDelivery[],
+  ): Promise<void> {
     if (!this.dispatcher || !group.createdByUserId) return;
     const count = members.length;
     await this.dispatcher.dispatch(
@@ -28,11 +36,21 @@ export class PaymentGroupReceiptNotifier implements IPaymentGroupReceipt {
           currency: group.currency,
           lotTitle: `${count} invoices`,
           paymentMethod: group.checkoutRail === "card" ? "card" : "bank_transfer",
-          receiptLines: members.map((m) => ({
-            lotTitle: m.lotTitle,
-            lotNumber: m.lotNumber,
-            amount: m.amount,
-          })),
+          receiptLines: [
+            ...members.map((m) => ({
+              lotTitle: m.lotTitle,
+              lotNumber: m.lotNumber,
+              amount: m.amount,
+            })),
+            ...deliveries.map((d) => {
+              const lot = members.find((m) => m.lotId === d.lotId);
+              return {
+                lotTitle: `Courier delivery, ${lot?.lotTitle ?? "your purchase"}`,
+                lotNumber: lot?.lotNumber ?? null,
+                amount: d.amount,
+              };
+            }),
+          ],
           emailIdempotencyKey: `payment_group_receipt:${group.id}`,
         },
       }),

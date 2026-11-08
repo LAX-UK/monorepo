@@ -2,6 +2,7 @@ import type { PaymentEligibility, PaymentTierLimits } from "@auction/domain";
 import { AmlSettlementCompliancePolicy, SourceOfFundsGateService } from "@auction/finance-runtime";
 import type {
   BidInvoiceRecord,
+  ChargeableDeliveryQuote,
   IAmlHoldStore,
   ISourceOfFundsRepository,
   PaySeveralInvoiceFlags,
@@ -88,6 +89,8 @@ function build(
     facts?: InMemoryPurchaseFacts;
     /** What the payment provider says about a group's checkout; "complete" unless given. */
     checkoutStatus?: GroupCheckoutStatus | Error;
+    /** Accepted courier quotes no payment has charged; delivery is off (`null`) unless given. */
+    delivery?: ChargeableDeliveryQuote[];
   } = {},
 ) {
   const price = vi.fn(async (_lot: Lot) => ({
@@ -105,7 +108,11 @@ function build(
     return over.onboarding ?? true;
   });
   const assess = over.assess ?? vi.fn(async () => ({ hold: false, reason: null }));
+  const acceptedFor = vi.fn(async (_account: string, lotIds: readonly string[]) =>
+    (over.delivery ?? []).filter((q) => lotIds.includes(q.lotId)),
+  );
   const svc = new PayPlanService({
+    delivery: over.delivery ? { acceptedFor } : null,
     // Every live group counts as a payment the payer finished.
     progress: new PayProgressResolver({
       checkoutStatus: async () => {
@@ -146,7 +153,7 @@ function build(
     },
     now: () => NOW,
   });
-  return { svc, price, assess, eligibilityCheck, isComplete };
+  return { svc, price, assess, eligibilityCheck, isComplete, acceptedFor };
 }
 
 describe("PayPlanService.plan", () => {
@@ -169,6 +176,58 @@ describe("PayPlanService.plan", () => {
     expect(plan.entity.name).toBe("London Auction Xchange LTD");
     expect(plan.firstDueAt).toBe("2026-11-22T23:59:59.999Z");
     expect(plan.methods[0]).toMatchObject({ method: "card", available: true });
+  });
+
+  describe("courier delivery", () => {
+    const QUOTE: ChargeableDeliveryQuote = {
+      quoteId: "quote-1",
+      lotId: LOTS.due,
+      amount: "180.00",
+      destination: "Studio, Unit 3, 12 Vyner Street, London E2 9DG",
+      quoteNote: "Insured courier, two days",
+    };
+
+    it("adds an accepted quote to the total in whole pence, apart from the invoice", async () => {
+      const { svc, acceptedFor } = build({ delivery: [QUOTE] });
+      const plan = (await svc.plan(actor("finance"), [LOTS.due, LOTS.overdue]))._unsafeUnwrap();
+      expect(acceptedFor).toHaveBeenCalledWith(BUYING_ACCOUNT, [LOTS.due, LOTS.overdue]);
+      expect(plan.delivery).toEqual([
+        {
+          lotId: LOTS.due,
+          quoteId: "quote-1",
+          amountPence: 18_000,
+          destination: QUOTE.destination,
+          note: "Insured courier, two days",
+        },
+      ]);
+      expect(plan.totals).toMatchObject({ pence: 118_010, deliveryPence: 18_000 });
+      expect(plan.payable[0]?.totalPence).toBe(60_010);
+    });
+
+    it("lists no delivery while it is not charged with the invoices", async () => {
+      const { svc } = build();
+      const plan = (await svc.plan(actor("finance"), [LOTS.due]))._unsafeUnwrap();
+      expect(plan.delivery).toEqual([]);
+      expect(plan.totals.deliveryPence).toBe(0);
+    });
+
+    it("charges no delivery for a lot the payment leaves out", async () => {
+      const { svc } = build({
+        delivery: [QUOTE],
+        flags: { "pay-2": { heldForReview: true, inPaymentInProgress: false, group: null } },
+      });
+      const plan = (await svc.plan(actor("finance"), [LOTS.due, LOTS.overdue]))._unsafeUnwrap();
+      expect(plan.delivery).toEqual([]);
+      expect(plan.totals.pence).toBe(40_000);
+    });
+
+    it("checks the payer on everything they pay, delivery included", async () => {
+      const { svc, assess } = build({ delivery: [QUOTE] });
+      await svc.plan(actor("finance"), [LOTS.due]);
+      expect(assess).toHaveBeenCalledWith(
+        expect.objectContaining({ buyerUserId: "finance-1", amountPence: 78_010 }),
+      );
+    });
   });
 
   it("uses the stored due date and says when an invoice is overdue", async () => {

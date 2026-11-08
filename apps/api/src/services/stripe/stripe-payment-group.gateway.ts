@@ -30,7 +30,7 @@ export function groupCheckoutIdempotencyKey(
 
 /** One Stripe line per stored invoice line, at exactly the stored pence. */
 export function groupStripeLineItems(
-  input: Pick<CreateGroupCheckoutInput, "currency" | "lines" | "totalPence">,
+  input: Pick<CreateGroupCheckoutInput, "currency" | "lines" | "deliveries" | "totalPence">,
   metadata: Record<string, string>,
 ): NonNullable<Stripe.Checkout.SessionCreateParams["line_items"]> {
   const items = input.lines.flatMap((line) => {
@@ -60,15 +60,36 @@ export function groupStripeLineItems(
       },
     }));
   });
-  assertWithinStripeLineLimit(items.length);
-  const total = items.reduce((sum, item) => sum + (item.price_data?.unit_amount ?? 0), 0);
+  const deliveryItems = input.deliveries.map((delivery) => ({
+    quantity: 1,
+    price_data: {
+      currency: input.currency.toLowerCase(),
+      unit_amount: delivery.amountPence,
+      product_data: {
+        name: stripeLineName(delivery, { label: "Courier delivery" }),
+        description: truncateForStripe(
+          delivery.lotTitle.trim() || "Untitled lot",
+          PRODUCT_NAME_MAX,
+        ),
+        metadata: {
+          lotId: delivery.lotId,
+          deliveryQuoteId: delivery.quoteId,
+          lineKind: "delivery",
+          ...metadata,
+        },
+      },
+    },
+  }));
+  const all = [...items, ...deliveryItems];
+  assertWithinStripeLineLimit(all.length);
+  const total = all.reduce((sum, item) => sum + (item.price_data?.unit_amount ?? 0), 0);
   if (total !== input.totalPence) {
     throw new InvoiceLinesError(
       "invoice_mismatch",
       `Checkout lines add up to ${total} pence, not the group total of ${input.totalPence}`,
     );
   }
-  return items;
+  return all;
 }
 
 /** Stripe Checkout for "Pay several": one session and one PaymentIntent for the whole group. */
