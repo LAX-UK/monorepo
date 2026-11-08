@@ -16,16 +16,25 @@ function setup(
   over: {
     payments?: ReturnType<typeof makePayment>[];
     payoutLine?: boolean;
+    /** The answer to each look at the payout, in order; the last answer repeats. */
+    payoutLooks?: boolean[];
     stripe?: boolean;
   } = {},
 ) {
+  const looks = [...(over.payoutLooks ?? [])];
+  const hasPayoutLine = vi.fn(async () =>
+    looks.length > 1 ? (looks.shift() as boolean) : (looks[0] ?? over.payoutLine ?? false),
+  );
+  const unapplied = vi.fn(
+    async (_tx: unknown, _money: Record<string, unknown>, _le?: unknown) => {},
+  );
   const payments = new InMemoryDealPayments(over.payments ?? [PAID]);
   const events = recordingSink();
   const deal = makeDeal({ stage: "paid" });
   const scopeForTx = () => fakeScope(deal, payments, events);
   const settlement = new DealPaymentSettlementService({
-    unappliedMoney: { record: vi.fn(async () => undefined) },
-    payouts: { hasPayoutLine: async () => false },
+    unappliedMoney: { record: unapplied },
+    payouts: { hasPayoutLine },
     transactionRunner: inlineTransactions,
     scopeForTx,
     transitions: { transition: vi.fn() },
@@ -40,7 +49,7 @@ function setup(
   const service = new DealReversalService({
     deals: { findById: async () => deal },
     payments,
-    payouts: { hasPayoutLine: async () => over.payoutLine ?? false },
+    payouts: { hasPayoutLine },
     refunds: { isConfigured: () => over.stripe ?? true, createRefund },
     checkout: { expireCheckout },
     settlement,
@@ -48,7 +57,7 @@ function setup(
     transactionRunner: inlineTransactions,
     scopeForTx,
   });
-  return { service, payments, events, createRefund, expireCheckout, transition };
+  return { service, payments, events, createRefund, expireCheckout, transition, unapplied };
 }
 
 describe("DealReversalService.refund", () => {
@@ -299,5 +308,40 @@ describe("DealReversalService.recordBankRefund", () => {
       ok: false,
       error: "nothing_to_refund",
     });
+  });
+
+  it("looks at the payout again under the payment's lock: one queued in between is refused", async () => {
+    // Clear when first looked at, queued by the time the payment is held.
+    const { service, payments, events } = setup({
+      payments: [TRANSFER],
+      payoutLooks: [false, true],
+    });
+    expect(await service.recordBankRefund(refund)).toEqual({ ok: false, error: "payout_queued" });
+    expect(payments.rows[0]?.refundedMinor).toBe(0);
+    expect(events.events).toEqual([]);
+  });
+
+  it("tells finance the seller's payout may need adjusting when it is queued while the refund is recorded", async () => {
+    // Clear at both looks before the record, queued by the time it is made.
+    const { service, payments, unapplied } = setup({
+      payments: [TRANSFER],
+      payoutLooks: [false, false, true],
+    });
+    expect(await service.recordBankRefund(refund)).toMatchObject({ ok: true });
+    expect(payments.rows[0]?.refundedMinor).toBe(100_000);
+    expect(unapplied).toHaveBeenCalledTimes(1);
+    expect(unapplied.mock.calls[0]?.[1]).toMatchObject({
+      reason: "private_sale_refund_after_payout",
+      stripeEventId: "bank_refund:pay-1:100000",
+      privateSaleDealId: "deal-1",
+      privateSaleDealPaymentId: "pay-1",
+      amountCents: 100_000,
+    });
+  });
+
+  it("raises no alert when the payout never included the deal", async () => {
+    const { service, unapplied } = setup({ payments: [TRANSFER] });
+    await service.recordBankRefund(refund);
+    expect(unapplied).not.toHaveBeenCalled();
   });
 });

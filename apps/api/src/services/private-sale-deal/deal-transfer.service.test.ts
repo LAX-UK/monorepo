@@ -17,6 +17,7 @@ function setup(
     rows?: ReturnType<typeof makePayment>[];
     status?: DealCheckoutStatus | "throws";
     expireThrows?: boolean;
+    now?: Date;
   } = {},
 ) {
   const recordTransferReceived = vi.fn(async () => ({ ok: true, paymentId: "pay-9" }) as const);
@@ -35,6 +36,7 @@ function setup(
     },
     checkout: { expireCheckout, checkoutStatus },
     settlement: { recordTransferReceived },
+    now: () => over.now ?? new Date("2026-11-04T09:10:00Z"),
   });
   return { service, recordTransferReceived, expireCheckout, checkoutStatus };
 }
@@ -85,5 +87,40 @@ describe("DealTransferService.record", () => {
     await service.record(input);
     expect(expireCheckout).not.toHaveBeenCalled();
     expect(recordTransferReceived).toHaveBeenCalledWith(input);
+  });
+
+  describe("a checkout that is still being started", () => {
+    const started = (createdAt: string) =>
+      makePayment({
+        status: "open",
+        stripeCheckoutSessionId: null,
+        createdAt: new Date(createdAt),
+      });
+
+    it("is not replaced while its session is not recorded yet: it could be paid a moment from now", async () => {
+      const { service, recordTransferReceived, expireCheckout } = setup({
+        rows: [started("2026-11-04T09:09:00Z")],
+      });
+      expect(await service.record(input)).toEqual({ ok: false, error: "checkout_not_ended" });
+      expect(expireCheckout).not.toHaveBeenCalled();
+      expect(recordTransferReceived).not.toHaveBeenCalled();
+    });
+
+    it("is replaced once it has stayed unstarted past the grace", async () => {
+      const { service, recordTransferReceived, expireCheckout } = setup({
+        rows: [started("2026-11-04T09:07:59Z")],
+      });
+      expect(await service.record(input)).toEqual({ ok: true, paymentId: "pay-9" });
+      expect(expireCheckout).not.toHaveBeenCalled();
+      expect(recordTransferReceived).toHaveBeenCalledWith(input);
+    });
+
+    it("is waited for only when the transfer is the right amount for a deal waiting for payment", async () => {
+      const { service, recordTransferReceived } = setup({
+        rows: [started("2026-11-04T09:09:00Z")],
+      });
+      await service.record({ ...input, amountMinor: 1 });
+      expect(recordTransferReceived).toHaveBeenCalled();
+    });
   });
 });

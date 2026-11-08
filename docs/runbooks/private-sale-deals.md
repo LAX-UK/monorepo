@@ -56,6 +56,7 @@ A buyer normally pays at the checkout, and a bank transfer made there lands by i
 - The amount must be exactly what the buyer owes (the price plus any buyer's fee). A different amount is refused and nothing is recorded; a short or split payment is dealt with outside the deal.
 - It is recorded as the deal's paid payment on the bank transfer rail, with who recorded it and the reference, and the deal moves to Paid in the same step.
 - **The buyer's open checkout is ended first, and read back from Stripe.** Only a checkout Stripe shows as expired is replaced. If the buyer had already finished it (a card taken, or a bank transfer chosen) the record is refused with "the buyer has finished their checkout": money may still arrive, so wait for it or ask the buyer. If Stripe cannot confirm the checkout ended, it is refused too and can be tried again in a moment.
+- A checkout the buyer has only just started, whose session is not recorded yet, is not replaced: record the transfer again after two minutes. One left unstarted longer than that is let go.
 - If the buyer's own bank transfer through the checkout is on its way, recording is refused: wait for it to land, which is recorded automatically.
 - Two finance users recording at once: one is recorded, the other is told the deal has been paid. Nothing of the second is kept.
 - The buyer gets the same payment receipt as a card payment, once per payment.
@@ -77,7 +78,7 @@ A payment finance recorded as a bank transfer has no Stripe charge, so **Refund 
 - The amount is checked against what is left to return while the payment is locked, so two people recording at once cannot return more than was paid.
 - Each record is kept as an audit event with who made it, the amount, the running total and the bank's reference.
 - The payment becomes Refunded once all of it is recorded, and then the deal can be cancelled.
-- Like a refund, it is refused once the seller's payout includes the deal.
+- Like a refund, it is refused once the seller's payout includes the deal. The payout is looked at again while the payment is locked; if it is queued in the moment the record is made, the record stands (the money has gone back) and finance gets the "seller's payout may need adjusting" alert.
 
 ## Reminders
 

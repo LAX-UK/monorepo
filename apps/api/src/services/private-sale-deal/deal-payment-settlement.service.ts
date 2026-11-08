@@ -189,6 +189,38 @@ export class DealPaymentSettlementService {
     });
   }
 
+  /**
+   * Finance is told that money went back to the buyer after the seller's payout included the deal,
+   * so the payout may need adjusting. `key` makes the task one per refund: a repeat of the same
+   * report raises nothing new.
+   */
+  async raiseRefundAfterPayout(
+    tx: Database,
+    payment: PrivateSaleDealPayment,
+    refund: { key: string; amountMinor: number },
+  ): Promise<void> {
+    recordMoneyPathEvent("private_sale_refund_after_payout");
+    const deal = await this.deps.scopeForTx(tx).deals.findById(payment.dealId);
+    await this.deps.unappliedMoney.record(
+      tx,
+      {
+        reason: "private_sale_refund_after_payout",
+        paymentId: null,
+        paymentGroupId: null,
+        stripePaymentIntentId: null,
+        stripeChargeId: null,
+        stripeCustomerId: null,
+        stripeEventId: refund.key,
+        privateSaleDealId: payment.dealId,
+        privateSaleDealReference: deal?.reference ?? null,
+        privateSaleDealPaymentId: payment.id,
+        amountCents: refund.amountMinor,
+        currency: payment.currency,
+      },
+      payment.buyerLegalEntityId,
+    );
+  }
+
   /** Opens the finance task for money the deal's payment could not take. */
   private async unapplied(
     tx: Database,
@@ -280,26 +312,10 @@ export class DealPaymentSettlementService {
       if (!payment) return UNKNOWN;
       const updated = await this.recordRefund(scope, payment, input);
       if (updated && (await this.deps.payouts.hasPayoutLine(payment.dealId))) {
-        recordMoneyPathEvent("private_sale_refund_after_payout");
-        const deal = await scope.deals.findById(payment.dealId);
-        await this.deps.unappliedMoney.record(
-          tx,
-          {
-            reason: "private_sale_refund_after_payout",
-            paymentId: null,
-            paymentGroupId: null,
-            stripePaymentIntentId: null,
-            stripeChargeId: null,
-            stripeCustomerId: null,
-            stripeEventId: input.eventId,
-            privateSaleDealId: payment.dealId,
-            privateSaleDealReference: deal?.reference ?? null,
-            privateSaleDealPaymentId: payment.id,
-            amountCents: updated.refundedMinor - payment.refundedMinor,
-            currency: payment.currency,
-          },
-          payment.buyerLegalEntityId,
-        );
+        await this.raiseRefundAfterPayout(tx, payment, {
+          key: input.eventId,
+          amountMinor: updated.refundedMinor - payment.refundedMinor,
+        });
       }
       if (updated) {
         return {

@@ -43,7 +43,10 @@ export type DealReversalDeps = {
   payouts: Pick<IPrivateSaleDealPayoutStore, "hasPayoutLine">;
   refunds: Pick<IStripeCaptureRefundGateway, "isConfigured" | "createRefund">;
   checkout: Pick<IDealCheckoutGateway, "expireCheckout">;
-  settlement: Pick<DealPaymentSettlementService, "recordRefund" | "cancel">;
+  settlement: Pick<
+    DealPaymentSettlementService,
+    "recordRefund" | "cancel" | "raiseRefundAfterPayout"
+  >;
   transitions: Pick<DealTransitionService, "transition">;
   transactionRunner: ITransactionRunner;
   scopeForTx: (tx: Database) => DealPaymentScope;
@@ -133,6 +136,9 @@ export class DealReversalService {
       const scope = this.deps.scopeForTx(tx);
       const locked = await scope.payments.findByIdForUpdate(paid.id);
       if (!locked || locked.status !== "paid") return { error: "nothing_to_refund" } as const;
+      // The payout may have been queued since the check above: look again now the payment is held.
+      if (await this.deps.payouts.hasPayoutLine(deal.id))
+        return { error: "payout_queued" } as const;
       const remaining = dealRefundableMinor(locked);
       if (remaining <= 0) return { error: "nothing_to_refund" } as const;
       if (
@@ -162,6 +168,14 @@ export class DealReversalService {
         actorUserId: input.actorUserId,
         actingLegalEntityId: locked.buyerLegalEntityId,
       });
+      // A payout queued after that look, while the record was made, still has to be told: the money
+      // has gone back, so finance is asked to look at the seller's payout.
+      if (await this.deps.payouts.hasPayoutLine(deal.id)) {
+        await this.deps.settlement.raiseRefundAfterPayout(tx, locked, {
+          key: `bank_refund:${locked.id}:${updated.refundedMinor}`,
+          amountMinor: input.amountMinor,
+        });
+      }
       return { remainingMinor: remaining - input.amountMinor } as const;
     });
     if ("error" in recorded) return { ok: false, error: recorded.error };

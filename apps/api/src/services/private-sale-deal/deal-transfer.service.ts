@@ -3,6 +3,7 @@ import type {
   IPrivateSaleDealPaymentReader,
   IPrivateSaleDealReader,
 } from "@auction/persistence/interfaces";
+import { START_GRACE_MS } from "../payment-group/open-group-checkouts.js";
 import type { IDealCheckoutGateway } from "./deal-payment-ports.js";
 import type {
   DealPaymentSettlementService,
@@ -14,6 +15,7 @@ export type DealTransferDeps = {
   payments: Pick<IPrivateSaleDealPaymentReader, "listForDeal">;
   checkout: Pick<IDealCheckoutGateway, "expireCheckout" | "checkoutStatus">;
   settlement: Pick<DealPaymentSettlementService, "recordTransferReceived">;
+  now?: () => Date;
 };
 
 type Ended = "ended" | "checkout_completed" | "checkout_not_ended";
@@ -41,8 +43,17 @@ export class DealTransferService {
       dealPaymentDueMinor(deal) === input.amountMinor
     ) {
       const payments = await this.deps.payments.listForDeal(deal.id);
+      const now = (this.deps.now ?? (() => new Date()))().getTime();
       for (const open of payments.filter((p) => p.status === "open")) {
-        if (!open.stripeCheckoutSessionId) continue;
+        if (!open.stripeCheckoutSessionId) {
+          // The buyer's checkout is still being started: its session is not recorded yet, so it
+          // could be paid a moment from now. Only one that has stayed unstarted past the grace
+          // is a payment nobody is paying.
+          if (now - open.createdAt.getTime() < START_GRACE_MS) {
+            return { ok: false, error: "checkout_not_ended" };
+          }
+          continue;
+        }
         const ended = await this.end(open.stripeCheckoutSessionId);
         if (ended !== "ended") return { ok: false, error: ended };
       }
