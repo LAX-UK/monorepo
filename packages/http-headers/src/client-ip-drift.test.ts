@@ -20,7 +20,6 @@ const ALLOWED: Record<string, string> = {
     "passes the caller's headers on to the identity issuer, which resolves them itself",
   "apps/auth/src/container/mount-auth-operational-routes.ts":
     "logs the raw headers for diagnostics; the value is never used to decide anything",
-  "apps/shop-identity/src/commerce-client-ip.ts": "Shop identity's own peer-checked resolver",
   "packages/shop-portal/src/bff/create-commerce-bff-client.ts":
     "Shop BFF hands the browser's headers to Shop identity, which resolves them",
 };

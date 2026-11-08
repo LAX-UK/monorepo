@@ -834,6 +834,9 @@ importers:
 
   apps/shop-identity:
     dependencies:
+      '@auction/http-headers':
+        specifier: workspace:*
+        version: link:../../packages/http-headers
       '@auction/identity-contracts':
         specifier: workspace:*
         version: link:../../packages/identity-contracts
