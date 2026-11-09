@@ -24,7 +24,7 @@ export default function PaymentReminderEmail(vars: TemplateVarsByName["payment-r
       ))}
       <FactCard
         rows={[
-          { label: "Lot", value: vars.lotTitle },
+          { label: vars.itemLabel ?? "Lot", value: vars.lotTitle },
           { label: "Amount", value: vars.amount },
           { label: "Due", value: vars.dueDate },
         ]}

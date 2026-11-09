@@ -207,6 +207,8 @@ export class NotificationFactory implements INotificationFactory {
     /** The due date in words ("10 November 2026"). */
     dueDate: string;
     step: PaymentReminderStepKey;
+    /** The reminder is for a private sale deal: the email calls the item a work, not a lot. */
+    privateSale?: boolean;
     /** The invoice cannot be paid yet: the reminder says what to do instead. */
     held?: PaymentReminderHoldKey | null;
   }): CreateNotificationRow {
@@ -231,6 +233,7 @@ export class NotificationFactory implements INotificationFactory {
         lotTitle: input.lotTitle,
         reminderStep: input.step,
         ...(input.held ? { heldReason: input.held } : {}),
+        ...(input.privateSale ? { privateSale: true } : {}),
         audience: "buyer",
         // One email per person per step: an organisation's payers are each reminded.
         emailIdempotencyKey: `payment-reminder:${input.paymentId}:${input.step}:${input.userId}`,

@@ -43,7 +43,7 @@ export type ResolveOptions = {
  * 4. each lot can be collected: paid and cleared, no check open, not delivered, not already booked.
  */
 export class CollectionLotGuard {
-  constructor(private readonly facts: Pick<ICollectionLotFactsReader, "read">) {}
+  constructor(private readonly facts: Pick<ICollectionLotFactsReader, "read" | "lotIdsForBuyer">) {}
 
   async resolve(
     actor: OrganisationMemberActor,
@@ -104,6 +104,42 @@ export class CollectionLotGuard {
       }
     }
     return ok({ records, venueId: records[0]?.venueId as string, lines });
+  }
+
+  /**
+   * The account's other works at this place that the person may book and that can be collected now,
+   * after the ones asked about, up to `room` of them. Works that cannot be booked are left out: this
+   * is an offer, not a status report.
+   */
+  async othersAtPlace(
+    actor: OrganisationMemberActor,
+    venueId: string,
+    exclude: readonly string[],
+    room: number,
+  ): Promise<CollectionLotLine[]> {
+    if (room <= 0) return [];
+    const candidates = (await this.facts.lotIdsForBuyer(actor.legalEntityId, venueId, 200)).filter(
+      (id) => !exclude.includes(id),
+    );
+    if (candidates.length === 0) return [];
+    const found = await this.facts.read(candidates);
+    const lines: CollectionLotLine[] = [];
+    for (const id of candidates) {
+      const record = found.get(id);
+      if (!record || record.buyerLegalEntityId !== actor.legalEntityId) continue;
+      const decision = collectionBooker({
+        userId: actor.userId,
+        accountKind: record.buyerAccountKind ?? "individual",
+        winnerId: record.winnerId,
+        membership: { role: actor.role },
+        isImpersonation: false,
+      });
+      if (!decision.allowed) continue;
+      const line = this.lineOf(record, null);
+      if (line.collectable) lines.push(line);
+      if (lines.length >= room) break;
+    }
+    return lines;
   }
 
   private lineOf(record: CollectionLotRecord, ownBookingId: string | null): CollectionLotLine {

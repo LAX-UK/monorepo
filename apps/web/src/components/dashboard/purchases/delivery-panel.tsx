@@ -1,5 +1,8 @@
 "use client";
 
+import { COLLECT_COPY } from "@/lib/collect/collect-copy";
+import { collectHref } from "@/lib/collect/collect-links";
+import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
 import {
   type DeliveryAddress,
   initialDeliveryAddressId,
@@ -11,7 +14,8 @@ import {
   requestDeliveryQuoteAction,
   withdrawDeliveryQuoteAction,
 } from "@/lib/purchases/purchase.actions";
-import { Button, ButtonLink, Notice, PresetCards } from "@auction/ui/lax";
+import { Button, ButtonLink, Notice, PresetCards, TextLink } from "@auction/ui/lax";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { DeliveryAddressPicker } from "./delivery-address-picker";
@@ -51,7 +55,13 @@ function useStep() {
   return { pending, error, run };
 }
 
-function CollectionDetails({ collection }: { collection: CollectionVm | null }) {
+function CollectionDetails({
+  collection,
+  lotId,
+}: {
+  collection: CollectionVm | null;
+  lotId: string;
+}) {
   if (!collection) {
     return (
       <p className="text-lax-14 text-lax-muted">
@@ -75,7 +85,16 @@ function CollectionDetails({ collection }: { collection: CollectionVm | null }) 
           </>
         ) : null}
       </dl>
-      {collection.bookingEmail ? (
+      {collection.bookingEmail === null ? (
+        <div className="flex flex-wrap items-center gap-3">
+          <ButtonLink href={collectHref([lotId])} Link={Link} variant="primary">
+            {COLLECT_COPY.entry.button}
+          </ButtonLink>
+          <TextLink href={CLIENT_ROUTES.collect} Link={Link} className="text-lax-13">
+            {COLLECT_COPY.visitsTitle}
+          </TextLink>
+        </div>
+      ) : (
         <div className="flex flex-wrap items-center gap-3">
           <ButtonLink
             href={`mailto:${collection.bookingEmail}?subject=${encodeURIComponent("Book a collection")}`}
@@ -86,7 +105,7 @@ function CollectionDetails({ collection }: { collection: CollectionVm | null }) 
             Tell us the day, and who will collect. We confirm by email.
           </p>
         </div>
-      ) : null}
+      )}
     </div>
   );
 }
@@ -167,7 +186,7 @@ export function DeliveryPanel({
       return (
         <div className="flex flex-col gap-4">
           <p className="text-lax-14 text-lax-fg">{panel.line}</p>
-          <CollectionDetails collection={panel.collection} />
+          <CollectionDetails collection={panel.collection} lotId={lotId} />
         </div>
       );
     case "quote-requested":
@@ -262,7 +281,9 @@ export function DeliveryPanel({
               </div>
             </div>
           ) : null}
-          {choice === "collect" ? <CollectionDetails collection={panel.collection} /> : null}
+          {choice === "collect" ? (
+            <CollectionDetails collection={panel.collection} lotId={lotId} />
+          ) : null}
         </div>
       );
   }
