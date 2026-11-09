@@ -49,7 +49,7 @@ export type OrganisationBuyingErrorCode =
   | "pay_plan_changed"
   /** The invoice of this lot cannot be shown: none is raised, it was voided, or it is not the member's to see. */
   | "invoice_not_ready"
-  /** The stored invoice's lines do not add up to its total, so it is not shown; finance is told. */
+  /** The stored invoice cannot be trusted (its lines miss its total, or a refund is in another currency), so it is not shown; finance is told. */
   | "invoice_total_mismatch";
 
 export type OrganisationBuyingError = {

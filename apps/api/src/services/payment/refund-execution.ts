@@ -1,4 +1,8 @@
-import type { IPaymentWriteRepository, PaymentRecord } from "@auction/persistence/interfaces";
+import type {
+  IPaymentRefundLedger,
+  IPaymentWriteRepository,
+  PaymentRecord,
+} from "@auction/persistence/interfaces";
 import { type Result, err, ok } from "neverthrow";
 import { gbpAmountToPence } from "../../lib/decimal-money.js";
 import { PaymentProviderError } from "../../lib/errors.js";
@@ -10,6 +14,8 @@ import type { PaymentRefundReconcileService } from "./payment-refund-reconcile.s
 
 export type RefundLedgerDeps = {
   payments: IPaymentWriteRepository;
+  /** What the buyer was refunded, written with the `payment.refunded` event. */
+  paymentRefunds: IPaymentRefundLedger;
   transactionRunner: import("@auction/persistence/interfaces").ITransactionRunner;
   domainEventSink: IDomainEventSink;
   payoutAdjustments: IPayoutAdjustmentService | null;
@@ -59,6 +65,15 @@ export async function executePaymentRefundLedger(
       if (!refunded) {
         return;
       }
+      // The buyer's record does not depend on the seller: a payment with no payout line to
+      // reverse (no seller, or no adjustment service) was still refunded.
+      await deps.paymentRefunds.recordInTransaction(tx, {
+        paymentId,
+        idempotencyKey: stripeRefundId ?? sourceEventId,
+        amountPence: gbpAmountToPence(payment.amount),
+        currency: "GBP",
+        source: "staff",
+      });
       if (deps.payoutAdjustments && payment.sellerLegalEntityId) {
         const negativeAmount = (-gbpAmountToPence(payment.amount) / 100).toFixed(2);
         await deps.payoutAdjustments.addPaymentLineToOpenPayoutOrCreateClawback({

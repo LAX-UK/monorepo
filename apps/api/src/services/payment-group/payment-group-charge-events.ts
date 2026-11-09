@@ -1,8 +1,8 @@
-import type { Database } from "@auction/db";
 import { attributeGroupRefunds } from "@auction/domain";
 import type {
   IPaymentGroupRepository,
   IPaymentLifecycleRepository,
+  IPaymentRefundLedger,
   ITransactionRunner,
 } from "@auction/persistence/interfaces";
 import type Stripe from "stripe";
@@ -20,8 +20,8 @@ export type PaymentGroupChargeEventsDeps = {
   gateway: Pick<IPaymentGroupGateway, "listChargeRefunds">;
   payments: Pick<IPaymentLifecycleRepository, "applyRefundedInTransaction">;
   payoutAdjustments: Pick<IPayoutAdjustmentService, "addPaymentLineToOpenPayoutOrCreateClawback">;
-  /** What the seller's ledger already holds as refunded for the payment, in pence. */
-  refundedCentsSoFar: (tx: Database, paymentId: string) => Promise<number>;
+  /** What the buyer was refunded for each invoice so far, and where each new refund is kept. */
+  paymentRefunds: IPaymentRefundLedger;
   events: IDomainEventSink;
   claims: IProviderEventClaim;
 };
@@ -39,8 +39,10 @@ const paymentIntentIdOf = (pi: string | { id: string } | null | undefined) =>
  * Refunds on a charge that settled several invoices. Answers `null` when the charge is not a
  * group's, so the single-invoice handler takes it unchanged.
  *
- * Refunds are made per invoice and name it, so each invoice's ledger moves by its own refunds
- * only; a refund naming no invoice is reported, never spread. (Disputes on any charge are
+ * Refunds are made per invoice and name it, so each invoice's record moves by its own refunds
+ * only; a refund naming no invoice is reported, never spread. The buyer's record keeps what was
+ * refunded as it is, even above the invoice; the seller's ledger is never reversed by more than
+ * the invoice paid, so the excess is left for finance to see on the invoice. (Disputes on any charge are
  * recorded as dispute cases; one on a group's charge waits for the finance team to allocate it.)
  */
 export class PaymentGroupChargeEvents {
@@ -60,7 +62,7 @@ export class PaymentGroupChargeEvents {
       this.deps.gateway.listChargeRefunds(charge.id),
     ]);
     const attribution = attributeGroupRefunds(
-      members.map((m) => ({ paymentId: m.paymentId, amountPence: gbpAmountToPence(m.amount) })),
+      members.map((m) => ({ paymentId: m.paymentId })),
       refunds,
     );
 
@@ -69,22 +71,36 @@ export class PaymentGroupChargeEvents {
       let applied = 0;
       for (const member of members) {
         const refundedPence = attribution.refundedPenceByPayment.get(member.paymentId) ?? 0;
-        const deltaCents =
-          refundedPence - (await this.deps.refundedCentsSoFar(tx, member.paymentId));
+        const invoicePence = gbpAmountToPence(member.amount);
+        const { pence: recordedPence } =
+          await this.deps.paymentRefunds.sumRefundedPenceInTransaction(tx, member.paymentId);
+        const deltaCents = refundedPence - recordedPence;
         if (deltaCents <= 0) continue;
         applied += 1;
-        if (refundedPence >= gbpAmountToPence(member.amount)) {
+        if (refundedPence >= invoicePence) {
           await this.deps.payments.applyRefundedInTransaction(tx, member.paymentId, null);
         }
-        await this.deps.payoutAdjustments.addPaymentLineToOpenPayoutOrCreateClawback({
-          legalEntityId: member.sellerLegalEntityId,
+        const sourceEventId = `${event.id}:${member.paymentId}`;
+        await this.deps.paymentRefunds.recordInTransaction(tx, {
           paymentId: member.paymentId,
-          amount: (-deltaCents / 100).toFixed(2),
-          kind: "refund",
-          sourceEventId: `${event.id}:${member.paymentId}`,
-          note: `Refund: ${charge.id}`,
-          tx,
+          idempotencyKey: sourceEventId,
+          amountPence: deltaCents,
+          currency: charge.currency,
+          source: "group_webhook",
         });
+        const sellerDeltaCents =
+          Math.min(refundedPence, invoicePence) - Math.min(recordedPence, invoicePence);
+        if (sellerDeltaCents > 0) {
+          await this.deps.payoutAdjustments.addPaymentLineToOpenPayoutOrCreateClawback({
+            legalEntityId: member.sellerLegalEntityId,
+            paymentId: member.paymentId,
+            amount: (-sellerDeltaCents / 100).toFixed(2),
+            kind: "refund",
+            sourceEventId,
+            note: `Refund: ${charge.id}`,
+            tx,
+          });
+        }
         await this.deps.events.withTx(tx).publish({
           aggregateType: "payment",
           aggregateId: member.paymentId,

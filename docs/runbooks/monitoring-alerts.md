@@ -72,7 +72,15 @@ sum(increase(auction_api_money_path_events_total{event="invoice_pdf_total_mismat
 sum(increase(auction_api_money_path_events_total{event="invoice_pdf_refund_exceeds_total"}[1h])) > 0
 ```
 
-`invoice_pdf_refund_exceeds_total`: the refunds Stripe holds for a payment add up to more than its invoice total. The PDF shows the total as refunded, never more, so the member sees a plausible figure. The API log line with the same `event` carries `paymentId`, `lotId`, `invoiceId`, `totalPence` and `refundedPence`; compare them with the refunds on the charge in Stripe and correct the extra refund or the invoice through finance.
+`invoice_pdf_refund_exceeds_total`: the refunds recorded for a payment (Bid's `payment_refund` table, written in the same transaction as each `payment.refunded` event) add up to more than its invoice total. The sum is the raw one; nothing trims it before the alert. The PDF shows the total as refunded, never more, so the member sees a plausible figure. The API log line with the same `event` carries `paymentId`, `lotId`, `invoiceId`, `totalPence` and `refundedPence`; read the payment's rows in `payment_refund` (`source` says which path wrote each one), compare them with the refunds on the charge in Stripe, and correct the extra refund or the invoice through finance. For a "Pay several" charge the refunds are the ones naming this invoice.
+
+```promql
+sum(increase(auction_api_money_path_events_total{event=~"invoice_pdf_refund_currency|invoice_pdf_refund_missing"}[1h])) > 0
+```
+
+`invoice_pdf_refund_currency`: a refund is recorded for the payment in a currency other than GBP. The PDF is refused (the member sees "we can't show this invoice just now") rather than add pence of another currency to pounds. The log line carries the `currencies`; check the refund in Stripe and the payment's rows in `payment_refund`.
+
+`invoice_pdf_refund_missing`: the payment is marked refunded but `payment_refund` holds nothing for it. It was refunded before refunds were recorded and the payout ledger had no refund line to copy (no seller to claw back from). The PDF shows it as refunded with no amount; find the refund in Stripe and add the row through finance.
 
 Wire each to PagerDuty / email per your observability stack.
 

@@ -7,6 +7,7 @@ import type {
   IBidInvoiceReader,
   ILegalEntityRepository,
   ILotRepository,
+  IPaymentRefundReader,
   ISaleRepository,
   ITransactionRunner,
 } from "@auction/persistence/interfaces";
@@ -62,10 +63,7 @@ import { PayProgressResolver } from "../services/organisation-buying/pay-progres
 import { PaySeveralService } from "../services/organisation-buying/pay-several.service.js";
 import { PayTransferService } from "../services/organisation-buying/pay-transfer.service.js";
 import { PurchaseCandidateReader } from "../services/organisation-buying/purchase-candidate.reader.js";
-import {
-  type IBuyerRefundsReader,
-  PurchaseInvoicePdfService,
-} from "../services/organisation-buying/purchase-invoice-pdf.service.js";
+import { PurchaseInvoicePdfService } from "../services/organisation-buying/purchase-invoice-pdf.service.js";
 import { PurchaseProblemService } from "../services/organisation-buying/purchase-problem.service.js";
 import { WonLotLookups } from "../services/organisation-buying/won-lot-lookups.js";
 import type { PaymentGroupCheckoutService } from "../services/payment-group/payment-group-checkout.service.js";
@@ -121,7 +119,7 @@ export type CreateOrganisationBuyingInput = {
     groupGateway: Pick<IPaymentGroupGateway, "checkoutStatus" | "bankTransferInstructions">;
     invoices: IBidInvoiceReader;
     /** What the buyer has been refunded for a payment, for the invoice document. */
-    refunds: IBuyerRefundsReader;
+    refunds: IPaymentRefundReader;
     /** Prices a lot not invoiced yet with the calculator that raises invoices. */
     pricing: Pick<InvoiceRaiser, "price">;
     /** Raises the invoice of a won lot that has none yet, as lot end does. */

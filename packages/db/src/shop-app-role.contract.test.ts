@@ -47,6 +47,17 @@ describe.skipIf(!SHOP_URL)("shop_app role contract", { timeout: 60_000 }, () => 
     });
   });
 
+  it("has no access to buyer refunds", async () => {
+    await withShopClient(async (client) => {
+      const rows = await readTablePrivileges(
+        client,
+        ["payment_refund"],
+        ["SELECT", "INSERT", "UPDATE", "DELETE"],
+      );
+      expectTablePrivileges(rows, () => false);
+    });
+  });
+
   it("cannot read Identity or Bid-owned tables", async () => {
     await withShopClient(async (client) => {
       for (const table of [

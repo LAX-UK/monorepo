@@ -3,7 +3,9 @@ import type { BidInvoiceRecord } from "@auction/persistence/interfaces";
 import { describe, expect, it, vi } from "vitest";
 import type { OrganisationMemberActor } from "../interfaces/organisation-membership-service.js";
 import {
+  INVOICE_PDF_REFUND_CURRENCY_EVENT,
   INVOICE_PDF_REFUND_EXCEEDS_TOTAL_EVENT,
+  INVOICE_PDF_REFUND_MISSING_EVENT,
   INVOICE_PDF_TOTAL_MISMATCH_EVENT,
   PurchaseInvoicePdfService,
   invoiceFilename,
@@ -47,6 +49,7 @@ type Setup = {
   invoice?: BidInvoiceRecord | null;
   account?: object | null;
   refundedCents?: number;
+  otherCurrencies?: string[];
 };
 
 function setup(over: Setup = {}) {
@@ -72,7 +75,10 @@ function setup(over: Setup = {}) {
   }));
   const record = vi.fn();
   const warn = vi.fn();
-  const refundedCents = vi.fn(async (_paymentId: string) => over.refundedCents ?? 0);
+  const refundedCents = vi.fn(async (_paymentId: string) => ({
+    pence: over.refundedCents ?? 0,
+    otherCurrencies: over.otherCurrencies ?? [],
+  }));
   const service = new PurchaseInvoicePdfService({
     candidates: { read: read as never },
     invoices: { findByPaymentIds },
@@ -87,7 +93,7 @@ function setup(over: Setup = {}) {
           : over.account) as never,
     },
     render,
-    refunds: { refundedPence: refundedCents },
+    refunds: { sumRefundedPence: refundedCents },
     metrics: { record },
     log: { warn },
   });
@@ -243,6 +249,7 @@ describe("PurchaseInvoicePdfService", () => {
     const result = await service.render(actor("owner"), LOT);
     expect(result.isOk()).toBe(true);
     expect(render).toHaveBeenCalledOnce();
+    expect(render.mock.calls[0]?.[0].refundedPence).toBe(60_010);
     expect(record).toHaveBeenCalledExactlyOnceWith(INVOICE_PDF_REFUND_EXCEEDS_TOTAL_EVENT);
     expect(warn).toHaveBeenCalledExactlyOnceWith(
       {
@@ -252,6 +259,77 @@ describe("PurchaseInvoicePdfService", () => {
         invoiceId: "inv-2",
         totalPence: 60_010,
         refundedPence: 70_000,
+      },
+      expect.any(String),
+    );
+  });
+
+  it("alerts on a refund above the invoice that a grouped payment's charge refunded, raw and unclamped", async () => {
+    // One invoice of a "Pay several" charge, refunded 400 and then 400 again against a 600.10 invoice.
+    const { service, render, record, warn } = setup({
+      row: capturedRow("captured"),
+      refundedCents: 80_000,
+    });
+    await service.render(actor("owner"), LOT);
+    expect(record).toHaveBeenCalledExactlyOnceWith(INVOICE_PDF_REFUND_EXCEEDS_TOTAL_EVENT);
+    expect(warn).toHaveBeenCalledWith(
+      expect.objectContaining({ totalPence: 60_010, refundedPence: 80_000 }),
+      expect.any(String),
+    );
+    expect(render.mock.calls[0]?.[0].refundedPence).toBe(60_010);
+  });
+
+  it("does not alert when the refunds are exactly the total", async () => {
+    const { service, record } = setup({ row: capturedRow("refunded"), refundedCents: 60_010 });
+    await service.render(actor("owner"), LOT);
+    expect(record).not.toHaveBeenCalled();
+  });
+
+  it("shows a refunded payment that has no Stripe charge from its record", async () => {
+    // Marked paid by staff and refunded later: the record, not a charge, is what holds the refund.
+    const { service, render, record } = setup({
+      row: capturedRow("refunded"),
+      refundedCents: 60_010,
+    });
+    await service.render(actor("owner"), LOT);
+    expect(render.mock.calls[0]?.[0]).toMatchObject({ status: "refunded", refundedPence: 60_010 });
+    expect(record).not.toHaveBeenCalled();
+  });
+
+  it("tells finance of a payment marked refunded with no refund recorded", async () => {
+    const { service, render, record, warn } = setup({ row: capturedRow("refunded") });
+    const result = await service.render(actor("owner"), LOT);
+    expect(result.isOk()).toBe(true);
+    expect(render.mock.calls[0]?.[0]).toMatchObject({ status: "refunded", refundedPence: 0 });
+    expect(record).toHaveBeenCalledExactlyOnceWith(INVOICE_PDF_REFUND_MISSING_EVENT);
+    expect(warn).toHaveBeenCalledExactlyOnceWith(
+      {
+        event: INVOICE_PDF_REFUND_MISSING_EVENT,
+        paymentId: PAYMENT,
+        lotId: LOT,
+        invoiceId: "inv-2",
+      },
+      expect.any(String),
+    );
+  });
+
+  it("refuses the invoice and tells finance when a refund is in a currency other than GBP", async () => {
+    const { service, render, record, warn } = setup({
+      row: capturedRow("captured"),
+      refundedCents: 10_000,
+      otherCurrencies: ["EUR"],
+    });
+    const error = (await service.render(actor("owner"), LOT))._unsafeUnwrapErr();
+    expect(error).toMatchObject({ code: "invoice_total_mismatch", status: 409 });
+    expect(render).not.toHaveBeenCalled();
+    expect(record).toHaveBeenCalledExactlyOnceWith(INVOICE_PDF_REFUND_CURRENCY_EVENT);
+    expect(warn).toHaveBeenCalledExactlyOnceWith(
+      {
+        event: INVOICE_PDF_REFUND_CURRENCY_EVENT,
+        paymentId: PAYMENT,
+        lotId: LOT,
+        invoiceId: "inv-2",
+        currencies: ["EUR"],
       },
       expect.any(String),
     );

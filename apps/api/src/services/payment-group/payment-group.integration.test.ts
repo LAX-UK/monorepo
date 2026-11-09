@@ -9,6 +9,7 @@ import {
   lot,
   payment,
   paymentGroup,
+  paymentRefund,
   payout,
   payoutLine,
   processedStripeEvents,
@@ -20,6 +21,7 @@ import {
   DrizzleDisputeCaseRepository,
   DrizzleDisputePaymentReader,
   DrizzlePaymentGroupRepository,
+  DrizzlePaymentRefundRepository,
   DrizzlePaymentRepository,
   DrizzlePaymentWebhookLookupReader,
   DrizzlePayoutRepository,
@@ -131,14 +133,14 @@ describe.skipIf(!HAS_DB)("pay several: one payment for several invoices (integra
     events,
     webOrigin: "https://lax.example",
   });
+  const paymentRefunds = new DrizzlePaymentRefundRepository(db);
   const chargeEvents = new PaymentGroupChargeEvents({
     transactionRunner: runner,
     groups,
     gateway,
     payments,
     payoutAdjustments,
-    refundedCentsSoFar: (tx, paymentId) =>
-      new DrizzlePayoutRepository(tx).sumRefundLineCentsForPayment(paymentId),
+    paymentRefunds,
     events,
     claims,
   });
@@ -287,6 +289,7 @@ describe.skipIf(!HAS_DB)("pay several: one payment for several invoices (integra
       await db.select({ id: payment.id }).from(payment).where(inArray(payment.lotId, lotIds))
     ).map((r) => r.id);
     if (paymentIds.length) {
+      await db.delete(paymentRefund).where(inArray(paymentRefund.paymentId, paymentIds));
       await db.delete(payoutLine).where(inArray(payoutLine.paymentId, paymentIds));
     }
     await db.delete(payment).where(inArray(payment.lotId, lotIds));
@@ -340,6 +343,7 @@ describe.skipIf(!HAS_DB)("pay several: one payment for several invoices (integra
       await db.select({ id: payment.id }).from(payment).where(inArray(payment.lotId, lotIds))
     ).map((r) => r.id);
     if (paymentIds.length) {
+      await db.delete(paymentRefund).where(inArray(paymentRefund.paymentId, paymentIds));
       await db.delete(payoutLine).where(inArray(payoutLine.paymentId, paymentIds));
     }
     await db.delete(payment).where(inArray(payment.lotId, lotIds));
@@ -549,6 +553,8 @@ describe.skipIf(!HAS_DB)("pay several: one payment for several invoices (integra
     ).toMatchObject({ action: "refund_received" });
     expect(await payouts.sumRefundLineCentsForPayment(ids.a)).toBe(2_500);
     expect(await payouts.sumRefundLineCentsForPayment(ids.b)).toBe(0);
+    expect((await paymentRefunds.sumRefundedPence(ids.a)).pence).toBe(2_500);
+    expect((await paymentRefunds.sumRefundedPence(ids.b)).pence).toBe(0);
     expect((await statusOf(ids.a)).status).toBe("captured");
 
     // The rest of a later refunds it in full; b stays paid.
@@ -559,11 +565,40 @@ describe.skipIf(!HAS_DB)("pay several: one payment for several invoices (integra
     ];
     await webhooks.handleChargeRefunded(eventOf("charge.refunded", charge), charge);
     expect(await payouts.sumRefundLineCentsForPayment(ids.a)).toBe(10_000);
+    expect((await paymentRefunds.sumRefundedPence(ids.a)).pence).toBe(10_000);
     expect((await statusOf(ids.a)).status).toBe("refunded");
     expect((await statusOf(ids.b)).status).toBe("captured");
     expect(publish).toHaveBeenCalledWith(
       expect.objectContaining({ eventType: "payment_group.refund_unattributed" }),
     );
+  });
+
+  it("keeps a refund above the invoice on the buyer's record while the seller is reversed no more than the invoice", async () => {
+    const groupId = await startOk([ids.a, ids.b]);
+    const pi = succeeded(groupId);
+    await webhooks.handlePaymentIntentSucceeded(eventOf("payment_intent.succeeded", pi), pi);
+    const charge = {
+      id: pi.latest_charge as string,
+      payment_intent: pi.id,
+      amount: 20_000,
+      amount_refunded: 13_000,
+      currency: "gbp",
+      metadata: {},
+    } as unknown as Stripe.Charge;
+
+    chargeRefunds = [
+      { paymentId: ids.a, amountPence: 10_000 },
+      { paymentId: ids.a, amountPence: 3_000 },
+    ];
+    await webhooks.handleChargeRefunded(eventOf("charge.refunded", charge), charge);
+    expect((await paymentRefunds.sumRefundedPence(ids.a)).pence).toBe(13_000);
+    expect(await payouts.sumRefundLineCentsForPayment(ids.a)).toBe(10_000);
+    expect((await statusOf(ids.a)).status).toBe("refunded");
+
+    // The same refunds reported again change nothing.
+    const again = await webhooks.handleChargeRefunded(eventOf("charge.refunded", charge), charge);
+    expect(again).toMatchObject({ action: "skipped", reason: "no_new_refund_amount" });
+    expect((await paymentRefunds.sumRefundedPence(ids.a)).pence).toBe(13_000);
   });
 
   it("holds a dispute on a combined payment for allocation, then moves each seller's share once", async () => {

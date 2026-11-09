@@ -177,7 +177,7 @@ function mount(
             ({ id: BUYING_ACCOUNT, displayName: "Northbank Gallery", legalName: null }) as never,
         },
         render: renderBidInvoicePdf,
-        refunds: { refundedPence: async () => 0 },
+        refunds: { sumRefundedPence: async () => ({ pence: 0, otherCurrencies: [] }) },
         metrics: { record: () => undefined },
         log: { warn: () => undefined },
       }),

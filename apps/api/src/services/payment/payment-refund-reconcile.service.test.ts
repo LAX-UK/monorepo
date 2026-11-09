@@ -3,6 +3,7 @@ import type { IPaymentRefundReconcileRepository } from "@auction/persistence/int
 import type { IPaymentWriteRepository } from "@auction/persistence/interfaces";
 import { describe, expect, it, vi } from "vitest";
 import { mockDomainEventSink } from "../../test/domain-event-sink-mock.js";
+import { InMemoryPaymentRefunds } from "../../test/in-memory-payment-refunds.js";
 import { transactionRunnerFromDb } from "../../test/transaction-runner-from-db.js";
 import { PaymentRefundReconcileService } from "./payment-refund-reconcile.service.js";
 
@@ -32,17 +33,63 @@ describe("PaymentRefundReconcileService", () => {
     const db = {
       transaction: vi.fn(async (fn: (tx: Database) => Promise<void>) => fn({} as Database)),
     } as unknown as Database;
+    const paymentRefunds = new InMemoryPaymentRefunds();
     const svc = new PaymentRefundReconcileService(
       transactionRunnerFromDb(db),
       payments,
       null,
       mockDomainEventSink(vi.fn()),
       repo,
+      paymentRefunds,
     );
 
     const result = await svc.replayPending(5);
     expect(result).toEqual({ attempted: 1, reconciled: 1 });
     expect(repo.markReconciled).toHaveBeenCalledWith("pay-1");
+    expect(paymentRefunds.entries).toEqual([
+      {
+        paymentId: "pay-1",
+        idempotencyKey: "re_1",
+        amountPence: 10_000,
+        currency: "GBP",
+        source: "staff",
+      },
+    ]);
+  });
+
+  it("records the buyer's refund when the payment has no seller and no payout line is written", async () => {
+    const paymentRefunds = new InMemoryPaymentRefunds();
+    const addLine = vi.fn();
+    const svc = new PaymentRefundReconcileService(
+      transactionRunnerFromDb({
+        transaction: vi.fn(async (fn: (tx: Database) => Promise<void>) => fn({} as Database)),
+      } as unknown as Database),
+      {
+        applyRefundedInTransaction: vi.fn().mockResolvedValue(true),
+        findById: vi.fn().mockResolvedValue({ id: "pay-1", status: "refunded" }),
+      } as unknown as IPaymentWriteRepository,
+      { addPaymentLineToOpenPayoutOrCreateClawback: addLine },
+      mockDomainEventSink(vi.fn()),
+      {
+        listPending: vi.fn().mockResolvedValue([
+          {
+            paymentId: "pay-1",
+            stripeRefundId: null,
+            adminUserId: "admin-1",
+            attempts: 0,
+            payload: { sellerLegalEntityId: null, amount: "100.00", via: "admin_manual" },
+          },
+        ]),
+        markReconciled: vi.fn(),
+        markFailed: vi.fn(),
+      } as unknown as IPaymentRefundReconcileRepository,
+      paymentRefunds,
+    );
+    await svc.replayPending(5);
+    expect(addLine).not.toHaveBeenCalled();
+    expect(paymentRefunds.entries.map((e) => [e.idempotencyKey, e.amountPence])).toEqual([
+      ["admin_refund_reconcile:pay-1", 10_000],
+    ]);
   });
 
   it("does not mark reconciled when applyRefundedInTransaction no-ops", async () => {
@@ -70,16 +117,19 @@ describe("PaymentRefundReconcileService", () => {
     const db = {
       transaction: vi.fn(async (fn: (tx: Database) => Promise<void>) => fn({} as Database)),
     } as unknown as Database;
+    const paymentRefunds = new InMemoryPaymentRefunds();
     const svc = new PaymentRefundReconcileService(
       transactionRunnerFromDb(db),
       payments,
       null,
       mockDomainEventSink(vi.fn()),
       repo,
+      paymentRefunds,
     );
 
     const result = await svc.replayPending(5);
     expect(result).toEqual({ attempted: 1, reconciled: 0 });
     expect(repo.markReconciled).not.toHaveBeenCalled();
+    expect(paymentRefunds.entries).toEqual([]);
   });
 });
