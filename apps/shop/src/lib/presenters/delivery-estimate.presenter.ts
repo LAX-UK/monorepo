@@ -67,13 +67,33 @@ function arrivalRange(today: Date, window: WorkingDayWindow): string {
 }
 
 /**
+ * The delivery and collection windows pushed back by a framed print's lead time: framing is done
+ * before the print is packed, so both ends of each window move by their own end of the lead time.
+ */
+export function shiftDeliveryTimes(
+  times: CheckoutDeliveryTimes,
+  lead: { minDays: number; maxDays: number } | null,
+): CheckoutDeliveryTimes {
+  if (!lead) return times;
+  const shift = (window: WorkingDayWindow | null): WorkingDayWindow | null =>
+    window ? { min: window.min + lead.minDays, max: window.max + lead.maxDays } : null;
+  return { ukDelivery: shift(times.ukDelivery), collection: shift(times.collection) };
+}
+
+/**
  * The one delivery line under "Add to basket": "Insured UK delivery £15, arrives 2 to 4 Nov · Free
  * collection, ready Fri 30 Oct". Prices come from the surcharges checkout charges and the days
  * from the rules it counts by; a delivery time that is not configured is left out, not guessed.
  */
-export function presentDeliveryLine(input: { now: Date; times: CheckoutDeliveryTimes }): string {
+export function presentDeliveryLine(input: {
+  now: Date;
+  times: CheckoutDeliveryTimes;
+  /** Working days a framed print adds first: the option's shortest and longest lead time. */
+  framingLead?: { minDays: number; maxDays: number } | null;
+}): string {
   const today = londonToday(input.now);
-  const { ukDelivery, collection } = input.times;
+  const times = shiftDeliveryTimes(input.times, input.framingLead ?? null);
+  const { ukDelivery, collection } = times;
   const deliveryPrice = formatGbpPenceForDisplay(FULFILMENT_SURCHARGE_PENCE.uk_insured_delivery);
   const collectionPence = FULFILMENT_SURCHARGE_PENCE.collect_new_cavendish;
   const delivery = `Insured UK delivery ${deliveryPrice}${

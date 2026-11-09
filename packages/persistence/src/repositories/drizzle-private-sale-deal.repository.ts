@@ -92,18 +92,13 @@ async function recordNamings(
     actingUserId: string | null;
   }>,
 ): Promise<void> {
-  const named = parties.flatMap((party) =>
-    party.actingUserId
-      ? [
-          {
-            dealId,
-            role: party.role,
-            legalEntityId: party.legalEntityId,
-            actingUserId: party.actingUserId,
-          },
-        ]
-      : [],
-  );
+  // Every naming is kept: a person, or an organisation named before anyone acts for it.
+  const named = parties.map((party) => ({
+    dealId,
+    role: party.role,
+    legalEntityId: party.legalEntityId,
+    actingUserId: party.actingUserId,
+  }));
   if (named.length === 0) return;
   await tx.insert(privateSaleDealPartyHistory).values(named).onConflictDoNothing();
 }

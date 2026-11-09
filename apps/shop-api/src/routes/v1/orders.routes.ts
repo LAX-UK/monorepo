@@ -2,6 +2,10 @@ import { randomUUID } from "node:crypto";
 import { attachmentContentDisposition } from "@auction/artwork-register-contracts";
 import {
   CheckoutSessionSchema,
+  type DeliveryQuoteRequestBody,
+  DeliveryQuoteRequestBodySchema,
+  DeliveryQuoteRequestRejectedBodySchema,
+  DeliveryQuoteRequestResultSchema,
   type OrderProblemReportRequest,
   OrderProblemReportRequestSchema,
   OrderProblemReportResponseSchema,
@@ -27,7 +31,11 @@ import { DEFAULT_ORDER_LIST_LIMIT } from "../../application/ports/commerce.ports
 import type { CommerceRoutesDeps } from "../../commerce-route-deps.js";
 import { ShopApiError, notFound } from "../../errors/shop-api-error.js";
 import { requireShopScope, requireShopSubject } from "../../plugins/shop-auth.js";
-import { presentCheckoutSession, presentOrder } from "../../presenters/commerce.presenter.js";
+import {
+  presentCheckoutSession,
+  presentDeliveryQuoteOutcome,
+  presentOrder,
+} from "../../presenters/commerce.presenter.js";
 import { admitEnquiry } from "./enquiry-admission.js";
 
 const OrderListQuerySchema = Type.Object({
@@ -285,6 +293,72 @@ export async function registerOrderRoutes(app: FastifyInstance, deps: CommerceRo
           (error) => request.log.warn({ err: error }, "shop_checkout_address_save_failed"),
         );
       }
+      return presentCheckoutSession(session);
+    },
+  );
+
+  app.post(
+    "/v1/orders/delivery-quote-request",
+    {
+      schema: {
+        tags: ["commerce"],
+        body: DeliveryQuoteRequestBodySchema,
+        response: {
+          200: DeliveryQuoteRequestResultSchema,
+          400: DeliveryQuoteRequestRejectedBodySchema,
+          403: ShopApiErrorBodySchema,
+          404: ShopApiErrorBodySchema,
+          409: ShopApiErrorBodySchema,
+        },
+      },
+    },
+    async (request) => {
+      requireShopScope(request, "shop.write");
+      const subject = requireShopSubject(request);
+      const body = request.body as DeliveryQuoteRequestBody;
+      const outcome = await deps.requestDeliveryQuote({
+        subject,
+        basketId: body.basketId,
+        idempotencyKey: body.idempotencyKey,
+        successUrl: body.successUrl,
+        cancelUrl: body.cancelUrl,
+        deliveryAddress: body.deliveryAddress,
+        deliveryPhone: body.deliveryPhone.trim(),
+        fallbackEmail: null,
+      });
+      return presentDeliveryQuoteOutcome(outcome);
+    },
+  );
+
+  app.post(
+    "/v1/orders/:orderId/accept-delivery-quote",
+    {
+      schema: {
+        tags: ["commerce"],
+        params: Type.Object({ orderId: Type.String({ format: "uuid" }) }),
+        body: Type.Object({
+          successUrl: Type.String({ minLength: 1 }),
+          cancelUrl: Type.String({ minLength: 1 }),
+        }),
+        response: {
+          200: CheckoutSessionSchema,
+          403: ShopApiErrorBodySchema,
+          404: ShopApiErrorBodySchema,
+          409: ShopApiErrorBodySchema,
+        },
+      },
+    },
+    async (request) => {
+      requireShopScope(request, "shop.write");
+      const subject = requireShopSubject(request);
+      const { orderId } = request.params as { orderId: string };
+      const body = request.body as { successUrl: string; cancelUrl: string };
+      const session = await deps.acceptDeliveryQuote({
+        subject,
+        orderId,
+        successUrl: body.successUrl,
+        cancelUrl: body.cancelUrl,
+      });
       return presentCheckoutSession(session);
     },
   );

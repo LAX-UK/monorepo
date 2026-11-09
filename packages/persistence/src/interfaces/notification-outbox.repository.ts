@@ -38,6 +38,8 @@ export type NotificationPayload = {
     audience?: "buyer" | "seller" | "staff" | "underbidder";
     /** Which payment reminder this is, for the reminder email. */
     reminderStep?: "before_due" | "due_day" | "overdue";
+    /** The reminder is for a private sale deal, so the email calls the item a work, not a lot. */
+    privateSale?: boolean;
     /** The invoice cannot be paid yet; the reminder says what to do instead. */
     heldReason?: "identity_verification_required" | "organisation_under_review";
     /** How a buyer default ended for the lot, for the notice's email. */

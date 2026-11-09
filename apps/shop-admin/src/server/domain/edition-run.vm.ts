@@ -4,14 +4,19 @@ import type {
   AdminEditionRunDetail,
   AdminEditionRunSpec,
   AdminProofType,
+  AdminRunPrint,
 } from "@auction/shop-contracts";
 import {
+  type EditionRunSpec,
   OPEN_EDITION_LOW_STOCK_AT,
+  type SetApartPrint,
   allocationNumbering,
+  describeEditionRun,
   isOpenStockLow,
   runAllocation,
+  setApartPrintFor,
 } from "@auction/shop-domain";
-import type { StatItem } from "@auction/staff-ui";
+import type { StaffStatusTone, StatItem } from "@auction/staff-ui";
 
 /*
  * How a run reads for staff in LAX Admin: its short list label, its one-line summary, the open
@@ -25,7 +30,7 @@ const PROOF_PLURAL: Record<AdminProofType, string> = {
   hc: "Hors commerce proofs",
 };
 
-type MainSpec = Exclude<AdminEditionRunSpec, { type: "proof" | "companion" }>;
+type MainSpec = Exclude<AdminEditionRunSpec, { type: "proof" | "companion" | "set_apart" }>;
 
 function mainLabel(spec: MainSpec): string {
   switch (spec.type) {
@@ -42,6 +47,7 @@ function mainLabel(spec: MainSpec): string {
 export function runListLabel(spec: AdminEditionRunSpec): string {
   if (spec.type === "proof") return `${PROOF_SHORT[spec.proofType]} ${spec.size}`;
   if (spec.type === "companion") return `Companion · ${mainLabel(spec.run)}`;
+  if (spec.type === "set_apart") return "Set apart";
   return mainLabel(spec);
 }
 
@@ -76,6 +82,9 @@ export function runSummaryText(spec: AdminEditionRunSpec): string {
     return `${PROOF_PLURAL[spec.proofType]}, ${spec.size} · owned by ${owner}`;
   }
   if (spec.type === "companion") return `Companion listing · ${mainSummary(spec.run)}`;
+  if (spec.type === "set_apart") {
+    return `One print sold on its own · owned by ${spec.owner === "artist" ? "the artist" : "LAX"}`;
+  }
   return mainSummary(spec);
 }
 
@@ -87,7 +96,9 @@ export function mainRunLine(main: { title: string; spec: AdminEditionRunSpec }):
       ? "open edition"
       : spec.type === "proof"
         ? "proof listing"
-        : `limited edition of ${spec.type === "lax_standard" ? 24 : spec.size}`;
+        : spec.type === "set_apart"
+          ? "print sold on its own"
+          : `limited edition of ${spec.type === "lax_standard" ? 24 : spec.size}`;
   return `${main.title}, ${kind}`;
 }
 
@@ -113,6 +124,7 @@ export function linkedListingLabel(spec: AdminEditionRunSpec): string {
       ? "Companion, open edition"
       : `Companion, limited edition of ${spec.run.type === "lax_standard" ? 24 : spec.run.size}`;
   }
+  if (spec.type === "set_apart") return "One print sold on its own";
   return runSummaryText(spec);
 }
 
@@ -122,7 +134,50 @@ export function isOpenSpec(spec: AdminEditionRunSpec): boolean {
 
 /** Proof and companion listings are made from a main run only. */
 export function canHaveLinkedListings(spec: AdminEditionRunSpec): boolean {
-  return spec.type !== "proof" && spec.type !== "companion";
+  return spec.type !== "proof" && spec.type !== "companion" && spec.type !== "set_apart";
+}
+
+const PRINT_STATUS: Record<AdminRunPrint["status"], { label: string; tone: StaffStatusTone }> = {
+  not_on_sale: { label: "Not on sale", tone: "neutral" },
+  on_sale: { label: "On sale", tone: "success" },
+  in_basket: { label: "In a basket", tone: "info" },
+  held: { label: "Held", tone: "warning" },
+  sold: { label: "Sold", tone: "neutral" },
+  withdrawn: { label: "Withdrawn", tone: "neutral" },
+  set_apart: { label: "Sold on its own", tone: "accepted" },
+};
+
+/** The badge for a print in the Prints table. */
+export function printStatus(status: AdminRunPrint["status"]): {
+  label: string;
+  tone: StaffStatusTone;
+} {
+  return PRINT_STATUS[status];
+}
+
+const PRINT_OWNER: Record<AdminRunPrint["owner"], string> = {
+  artist: "Artist",
+  lax: "LAX",
+  buyer: "Buyer entitlement",
+};
+
+export function printOwnerLabel(owner: AdminRunPrint["owner"]): string {
+  return PRINT_OWNER[owner];
+}
+
+/** The run's own sentence for the dialog: "Limited edition of 30". */
+export function runEditionLine(spec: AdminEditionRunSpec): string {
+  return describeEditionRun(spec as EditionRunSpec).edition;
+}
+
+/** Which print of its run a row is, for the wording shoppers will read; null when it has no number. */
+export function printIdentity(
+  spec: AdminEditionRunSpec,
+  print: AdminRunPrint,
+): SetApartPrint | null {
+  const number = Number.parseInt(print.label.replace(/\D+/g, ""), 10);
+  if (!Number.isInteger(number)) return null;
+  return setApartPrintFor(spec as EditionRunSpec, { editionNumber: number, proofNumber: number });
 }
 
 type Stock = NonNullable<AdminEditionRunDetail["stock"]>;

@@ -62,3 +62,16 @@ export function deliveryQuoteActionsFor(
     (action) => deliveryQuoteTransition(current, action, actor).allowed,
   );
 }
+
+/**
+ * The Shop's gallery team can also turn a request down: it cannot deliver there. This is a step
+ * beside the saleroom's four, not one of them, so Bid's own transitions and the steps it offers
+ * are untouched. It is open to staff while a quote is requested or quoted, and always ends the
+ * quote as withdrawn; an accepted quote is final.
+ */
+export function deliveryQuoteDecline(current: DeliveryQuoteStatus | null): DeliveryQuoteDecision {
+  if (current !== "requested" && current !== "quoted") {
+    return { allowed: false, reason: "quote_step_not_allowed" };
+  }
+  return { allowed: true, next: "withdrawn" };
+}

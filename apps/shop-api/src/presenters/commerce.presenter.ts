@@ -1,4 +1,5 @@
 import type { BasketView, CheckoutSession, OrderSummary } from "@auction/shop-contracts";
+import type { DeliveryQuoteRequestResult } from "@auction/shop-contracts";
 import {
   basketLineMaxQuantity,
   carrierTrackingUrl,
@@ -6,6 +7,7 @@ import {
   orderProblemWindow,
   pence,
 } from "@auction/shop-domain";
+import type { DeliveryQuoteRequestOutcome } from "../application/delivery-quote-request/delivery-quote-request.service.js";
 import { orderRecordVat } from "../application/order-vat.js";
 import type {
   BasketRecord,
@@ -23,10 +25,16 @@ export function presentBasket(
       quantity: line.quantity,
     })),
   );
+  // Framing is charged for each print on a line, and only while its option can still be bought.
+  const framingSubtotalPence = record.lines.reduce(
+    (sum, line) => (line.framing?.available ? sum + line.framing.pricePence * line.quantity : sum),
+    0,
+  );
   return {
     basketId: record.basketId,
     expiresAt: record.expiresAt.toISOString(),
     merchandiseSubtotalPence,
+    ...(framingSubtotalPence > 0 ? { framingSubtotalPence } : {}),
     lines: record.lines.map((line) => ({
       lineId: line.lineId,
       artworkSlug: line.artworkSlug,
@@ -50,8 +58,29 @@ export function presentBasket(
         orderLimit: line.artworkId ? options.editionOrderLimit : null,
         sellableCount: line.sellableCount,
       }),
+      ...(line.framing ? { framing: line.framing } : {}),
     })),
   };
+}
+
+/** What the buyer is told when they ask for a delivery quote, as the storefront reads it. */
+export function presentDeliveryQuoteOutcome(
+  outcome: DeliveryQuoteRequestOutcome,
+): DeliveryQuoteRequestResult {
+  switch (outcome.kind) {
+    case "quote_requested":
+      return {
+        outcome: "quote_requested",
+        orderReference: outcome.request.orderReference,
+        holdUntil: outcome.request.holdUntil.toISOString(),
+        regionId: outcome.request.regionId,
+        country: outcome.request.country,
+      };
+    case "pay_now":
+      return { outcome: "pay_now", checkoutUrl: outcome.session.checkoutUrl };
+    case "not_delivered":
+      return { outcome: "not_delivered", country: outcome.country };
+  }
 }
 
 export function presentCheckoutSession(result: CheckoutOrderResult): CheckoutSession {
@@ -124,6 +153,20 @@ export function presentOrder(record: OrderRecord, now: Date = new Date()): Order
     invoiceAvailable: record.paidAt !== null && record.invoiceNumber !== null,
     invoiceNumber: record.invoiceNumber,
     problemReports: record.problemReports.map((at) => ({ reportedAt: at.toISOString() })),
+    ...(record.status === "pending_payment" && record.deliveryQuote
+      ? {
+          deliveryQuote: {
+            status: record.deliveryQuote.status,
+            country: record.deliveryQuote.country,
+            pricePence: record.deliveryQuote.pricePence,
+            carrier: record.deliveryQuote.carrier,
+            service: record.deliveryQuote.service,
+            leadTimeNote: record.deliveryQuote.leadTimeNote,
+            holdUntil: record.deliveryQuote.holdUntil.toISOString(),
+            paymentOpen: record.deliveryQuote.paymentOpen,
+          },
+        }
+      : {}),
     lines: record.lines.map((line) => ({
       orderLineId: line.orderLineId,
       artworkSlug: line.artworkSlug,

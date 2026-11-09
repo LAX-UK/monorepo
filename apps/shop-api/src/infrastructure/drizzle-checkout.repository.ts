@@ -1,9 +1,9 @@
 import type { Database } from "@auction/db";
-import { shopBasket, shopOrder } from "@auction/db/schema";
+import { shopBasket, shopDeliveryQuote, shopOrder } from "@auction/db/schema";
 import { SHOP_API_ERROR_CODES } from "@auction/shop-contracts";
 import {
   type VatPolicy,
-  computeMerchandiseSubtotal,
+  addPence,
   computeOrderTotal,
   fulfilmentSurchargePence,
   isOnlineCheckoutFulfilment,
@@ -22,12 +22,9 @@ import { ShopApiError } from "../errors/shop-api-error.js";
 import { isPgUniqueViolation, pgUniqueViolationConstraint } from "../lib/pg-errors.js";
 import { cancelShopCheckoutSession } from "./drizzle-payment-event.processor.js";
 import { resolveShopUserEmail } from "./resolve-shop-user-email.js";
-import {
-  assertBasketStock,
-  assertStorefrontRedirectUrl,
-  loadBasketRecord,
-  repriceBasketLinesIfNeeded,
-} from "./shop-basket.persistence.js";
+import { assertStorefrontRedirectUrl } from "./shop-basket.persistence.js";
+import { expandBasketLines, loadCheckoutBasket } from "./shop-checkout-basket.js";
+import { extendCheckoutHold, sessionEndFor } from "./shop-checkout-hold.js";
 import {
   type ReplayedCheckout,
   checkoutDeliveryDetails,
@@ -43,6 +40,15 @@ import { resolveOrCreateStripeCheckoutSession } from "./shop-checkout-stripe-ses
 import { createShopDomainEventPublisher } from "./shop-domain-event-publisher.js";
 
 const CHECKOUT_SESSION_TTL_MS = 30 * 60 * 1000;
+
+/** Payment outside the UK is not open: the refusal every outside-UK payment path shares. */
+export function exportPaymentClosed(): ShopApiError {
+  return new ShopApiError(
+    SHOP_API_ERROR_CODES.CONFLICT,
+    "Payment for delivery outside the UK is not open yet",
+    409,
+  );
+}
 
 /** A signed-in order needs the shopper's basket; a guest order the browser's anonymous one. */
 function ownsBasket(owner: BasketOwner, input: CheckoutOrderInput): boolean {
@@ -60,9 +66,15 @@ export function createDrizzleCheckoutRepository(
     domainEventMode: "off" | "observe" | "enforce";
     vatPolicy?: VatPolicy | null;
     merchandiseEnabled?: boolean;
+    /**
+     * Whether delivery outside the UK may be paid for. Off until the accountant confirms how VAT
+     * applies to exports: with it off, no outside-UK order opens a payment, however it was made.
+     */
+    exportPaymentEnabled?: boolean;
   },
 ): CheckoutWriter {
   const merchandiseEnabled = options.merchandiseEnabled ?? false;
+  const exportPaymentEnabled = options.exportPaymentEnabled ?? false;
   const domainEvents = createShopDomainEventPublisher(options.domainEventMode);
 
   /** The payment session for a pending order: the open one, or a new one when it needs one. */
@@ -99,12 +111,28 @@ export function createDrizzleCheckoutRepository(
   return {
     async createCheckoutOrder(input) {
       let deliveryAddress = input.deliveryAddress;
-      if (!isOnlineCheckoutFulfilment(input.fulfilment)) {
+      // Outside the UK is payable here only at a region's fixed rate, which the caller has
+      // already assessed; a quoted destination goes through the delivery quote request instead.
+      const outsideUk = input.outsideUk;
+      if (!isOnlineCheckoutFulfilment(input.fulfilment) && !outsideUk) {
         throw new ShopApiError(
           SHOP_API_ERROR_CODES.VALIDATION,
           "Fulfilment not supported online",
           400,
         );
+      }
+      if (outsideUk) {
+        if (!exportPaymentEnabled) throw exportPaymentClosed();
+        if (input.fulfilment !== "international_quotation") {
+          throw new ShopApiError(SHOP_API_ERROR_CODES.VALIDATION, "Fulfilment mismatch", 400);
+        }
+        if (deliveryAddress?.country.trim().toUpperCase() !== outsideUk.country) {
+          throw new ShopApiError(
+            SHOP_API_ERROR_CODES.VALIDATION,
+            "Delivery country does not match the delivery rate",
+            400,
+          );
+        }
       }
       if (input.fulfilment === "uk_insured_delivery") {
         const address = deliveryAddress;
@@ -162,38 +190,21 @@ export function createDrizzleCheckoutRepository(
         return openPaymentSession(input, await replay(earlier));
       }
 
-      const basket = await loadBasketRecord(db, input.basketId);
-      if (!ownsBasket(basket.owner, input)) {
-        throw new ShopApiError(SHOP_API_ERROR_CODES.FORBIDDEN, "Basket ownership mismatch", 403);
-      }
-      if (basket.lines.length === 0) {
-        throw new ShopApiError(SHOP_API_ERROR_CODES.VALIDATION, "Basket is empty", 400);
-      }
-      if (!merchandiseEnabled && basket.lines.some((line) => line.productVariantId != null)) {
-        throw new ShopApiError(
-          SHOP_API_ERROR_CODES.FEATURE_DISABLED,
-          "Merchandise is disabled",
-          404,
-        );
-      }
-      const repriced = await repriceBasketLinesIfNeeded(db, input.basketId);
-      if (repriced) {
-        throw new ShopApiError(SHOP_API_ERROR_CODES.PRICE_CHANGED, "Basket price changed", 409);
-      }
-      await assertBasketStock(db, input.basketId);
-      const freshBasket = await loadBasketRecord(db, input.basketId);
-
-      const merchandiseSubtotal = computeMerchandiseSubtotal(
-        freshBasket.lines.map((line) => ({
-          unitPricePence: pence(line.unitPricePence),
-          quantity: line.quantity,
-        })),
+      const { lines: basketLines, merchandiseSubtotal } = await loadCheckoutBasket(
+        db,
+        { basketId: input.basketId, ownedBy: (owner) => ownsBasket(owner, input) },
+        { merchandiseEnabled },
       );
-      const fulfilmentSurcharge = pence(fulfilmentSurchargePence(input.fulfilment));
-      const total = computeOrderTotal({
-        merchandiseSubtotalPence: merchandiseSubtotal,
-        fulfilment: input.fulfilment,
-      });
+
+      const fulfilmentSurcharge = pence(
+        outsideUk ? outsideUk.pricePence : fulfilmentSurchargePence(input.fulfilment),
+      );
+      const total = outsideUk
+        ? addPence(merchandiseSubtotal, fulfilmentSurcharge)
+        : computeOrderTotal({
+            merchandiseSubtotalPence: merchandiseSubtotal,
+            fulfilment: input.fulfilment,
+          });
       const checkoutExpiresAt = new Date(Date.now() + CHECKOUT_SESSION_TTL_MS);
       const reservedUntil = reservedUntilFromCheckoutExpiry(checkoutExpiresAt);
 
@@ -233,24 +244,8 @@ export function createDrizzleCheckoutRepository(
             throw new ShopApiError(SHOP_API_ERROR_CODES.INTERNAL, "Failed to create order", 500);
           }
 
-          const expandedEditionLines: Array<{ artworkId: string; unitPricePence: number }> = [];
-          const expandedVariantLines: Array<{ productVariantId: string; unitPricePence: number }> =
-            [];
-          for (const line of freshBasket.lines) {
-            for (let i = 0; i < line.quantity; i++) {
-              if (line.productVariantId) {
-                expandedVariantLines.push({
-                  productVariantId: line.productVariantId,
-                  unitPricePence: line.unitPricePence,
-                });
-              } else if (line.artworkId) {
-                expandedEditionLines.push({
-                  artworkId: line.artworkId,
-                  unitPricePence: line.unitPricePence,
-                });
-              }
-            }
-          }
+          const { editionLines: expandedEditionLines, variantLines: expandedVariantLines } =
+            expandBasketLines(basketLines);
 
           await reserveProductVariantsForCheckoutOrder(tx as Database, {
             orderId: order.id,
@@ -334,6 +329,39 @@ export function createDrizzleCheckoutRepository(
       if (order.checkoutExpiresAt && order.checkoutExpiresAt < new Date()) {
         throw new ShopApiError(SHOP_API_ERROR_CODES.CONFLICT, "Checkout session expired", 409);
       }
+      if (order.fulfilment === "international_quotation") {
+        // Payment outside the UK is closed until VAT on exports is confirmed, for every order.
+        if (!exportPaymentEnabled) throw exportPaymentClosed();
+        const [quote] = await db
+          .select({
+            status: shopDeliveryQuote.status,
+            quotedPricePence: shopDeliveryQuote.quotedPricePence,
+          })
+          .from(shopDeliveryQuote)
+          .where(eq(shopDeliveryQuote.orderId, order.id))
+          .limit(1);
+        // No quote row means a fixed-rate order, paid like any other. A quote that has not been
+        // accepted has no delivery price yet, so there is nothing to pay.
+        if (quote && (quote.status !== "accepted" || quote.quotedPricePence === null)) {
+          throw new ShopApiError(
+            SHOP_API_ERROR_CODES.CONFLICT,
+            "This order is waiting for a delivery quote",
+            409,
+          );
+        }
+        // What is about to be paid must be exactly the goods plus the delivery that was priced.
+        const priced = quote?.quotedPricePence ?? order.fulfilmentSurchargePence;
+        if (
+          order.fulfilmentSurchargePence !== priced ||
+          order.totalPence !== order.merchandiseSubtotalPence + priced
+        ) {
+          throw new ShopApiError(
+            SHOP_API_ERROR_CODES.CONFLICT,
+            "The order total does not match its delivery price",
+            409,
+          );
+        }
+      }
       assertStorefrontRedirectUrl(input.successUrl, options.storefrontUrl);
       assertStorefrontRedirectUrl(input.cancelUrl, options.storefrontUrl);
 
@@ -342,14 +370,26 @@ export function createDrizzleCheckoutRepository(
         resolveShopUserEmail(db, input.subject),
       ]);
 
+      // A new session must last at least as long as Stripe allows, so the hold and the
+      // reservation are moved to match it first and the reaper never ends it early.
+      const now = new Date();
+      let checkoutExpiresAt =
+        order.checkoutExpiresAt ?? new Date(now.getTime() + CHECKOUT_SESSION_TTL_MS);
+      if (!order.stripeCheckoutSessionId) {
+        const sessionEnd = sessionEndFor(checkoutExpiresAt, now);
+        if (sessionEnd > checkoutExpiresAt) {
+          await extendCheckoutHold(db, order.id, sessionEnd);
+          checkoutExpiresAt = sessionEnd;
+        }
+      }
+
       return resolveOrCreateStripeCheckoutSession(db, paymentGateway, {
         orderId: order.id,
         orderReference: order.reference,
         totalPence: order.totalPence,
         successUrl: input.successUrl,
         cancelUrl: input.cancelUrl,
-        checkoutExpiresAt:
-          order.checkoutExpiresAt ?? new Date(Date.now() + CHECKOUT_SESSION_TTL_MS),
+        checkoutExpiresAt,
         needsStripeSession: !order.stripeCheckoutSessionId,
         existingSessionId: order.stripeCheckoutSessionId,
         existingCheckoutExpiresAt: order.checkoutExpiresAt,

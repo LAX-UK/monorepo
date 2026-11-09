@@ -31,6 +31,23 @@ describe("payment-reminder", () => {
     expect(email.html).toContain("https://lax.bid/purchases/checkout/lot-1");
   });
 
+  it("calls the item a lot on a lot's reminder and a work on a private sale's", async () => {
+    const vars = {
+      ...base,
+      step: "due_day" as const,
+      amount: "£1,200.00",
+      dueDate: "10 November 2026",
+      payUrl: "https://lax.bid/purchases",
+    };
+    const lot = await renderEmail("payment-reminder", vars);
+    expect(lot.html).toMatch(/>Lot</);
+    const deal = await renderEmail("payment-reminder", { ...vars, itemLabel: "Work" });
+    expect(deal.html).toMatch(/>Work</);
+    expect(deal.html).not.toMatch(/>Lot</);
+    expect(deal.text).not.toMatch(/\blot\b/i);
+    expect(deal.text).toContain("Harbour at dusk");
+  });
+
   it("a held invoice asks the buyer to verify their identity, with that link instead of Pay now", async () => {
     const email = await renderEmail("payment-reminder", {
       ...base,

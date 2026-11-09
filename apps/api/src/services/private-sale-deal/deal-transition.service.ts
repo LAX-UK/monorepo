@@ -33,6 +33,8 @@ export type DealTransitionOutcome =
 export type DealTransitionOptions = {
   actorUserId: string | null;
   cancelReason?: string;
+  /** How the work was handed over, kept with a release. */
+  releaseNote?: string;
   /** Set by the refund flow once a paid deal's money has been returned. */
   refundRecorded?: boolean;
   /** The version the person was looking at; the move is refused as a conflict if the deal has moved on. */
@@ -127,6 +129,7 @@ export class DealTransitionService {
           ? { seller: false, buyer: false }
           : termsAcceptance(deal, deal.documents, policy.termsVersion),
       ...(options.cancelReason !== undefined ? { cancelReason: options.cancelReason } : {}),
+      ...(options.releaseNote !== undefined ? { releaseNote: options.releaseNote } : {}),
       ...(options.refundRecorded !== undefined ? { refundRecorded: options.refundRecorded } : {}),
     };
   }

@@ -10,6 +10,7 @@ const lines = [
   "SHOP_THIRD_PARTY_ENABLED=false",
   "SHOP_ORIGINALS_ENABLED=false",
   "SHOP_MERCHANDISE_ENABLED=false",
+  "SHOP_FRAMING_ENABLED=false",
   "# TEST placeholders (never copy to production without legal/finance sign-off)",
   "SHOP_VAT_STANDARD_RATE_BP=2000",
   "SHOP_CANCELLATION_DAYS_AFTER_POSSESSION=14",

@@ -13,6 +13,7 @@ Phased delivery uses feature flags on `shop-api` (and related deployables). Do n
 | `SHOP_THIRD_PARTY_ENABLED` | 3 | Holds, third-party sales, fees; broker assignment enforcement |
 | `SHOP_ORIGINALS_ENABLED` | 4 | Original sale admin workflow |
 | `SHOP_MERCHANDISE_ENABLED` | 4 | Merchandise catalogue, basket/checkout for variants, admin stock adjust |
+| `SHOP_FRAMING_ENABLED` | after 4 | Framing options on edition pages and in the basket (shop-api and the storefront). Keep off until orders price framing: checkout refuses a basket holding a framed print |
 | `SHOP_ZOHO_CATALOGUE_SYNC_ENABLED` (worker) | 1 | `shop.artwork.created` → Zoho Products |
 
 ## Phase 1 deploy (migrations)

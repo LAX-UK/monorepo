@@ -61,6 +61,11 @@ export const canMoveDealPayment = (
 export const dealPaymentIsLive = (status: PrivateSalePaymentStatus): boolean =>
   status === "open" || status === "processing" || status === "paid";
 
+/** What of the buyer's payment can still be returned: the amount paid less what has gone back. */
+export const dealRefundableMinor = (
+  payment: Pick<PrivateSaleDealPayment, "amountMinor" | "refundedMinor">,
+): number => Math.max(0, payment.amountMinor - payment.refundedMinor);
+
 /** A paid deal may be cancelled only once all of the buyer's money has gone back. */
 export const dealRefundRecorded = (
   payment: Pick<PrivateSaleDealPayment, "status" | "amountMinor" | "refundedMinor"> | null,

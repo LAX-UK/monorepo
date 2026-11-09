@@ -1,0 +1,25 @@
+name: Seed lint binaries cache
+
+# Pull requests and merge-queue runs can only restore caches that were saved on main, and CI does
+# not run on pushes to main. This saves the gitleaks and actionlint binaries there, under the same
+# key CI uses, so those runs restore them instead of downloading from GitHub releases. The weekly
+# run keeps the cache from being evicted for lack of use.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+  schedule:
+    - cron: "17 4 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  seed:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: .github/actions
+      - uses: ./.github/actions/setup-lint-binaries
