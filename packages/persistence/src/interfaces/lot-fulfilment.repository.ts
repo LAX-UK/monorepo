@@ -55,8 +55,10 @@ export type UpdateLotFulfilmentInput = Partial<{
   fulfilmentMethod: LotFulfilmentRow["fulfilmentMethod"];
   shippingCarrier: string;
   trackingNumber: string;
-  collectedBy: string;
-  collectedAt: Date;
+  collectedBy: string | null;
+  /** The staff member who handed the work over. */
+  collectedByUserId: string | null;
+  collectedAt: Date | null;
   updatedAt: Date;
 }>;
 

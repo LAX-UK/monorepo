@@ -252,9 +252,16 @@ export type UndoOutcome =
 
 /** What happens at the desk. */
 export interface ICollectionOutcomeWriter {
-  recordHandOver(input: RecordHandOver): Promise<HandOverOutcome>;
-  markNotCollected(input: MarkNotCollected): Promise<NotCollectedOutcome>;
-  undoHandOver(input: UndoHandOver): Promise<UndoOutcome>;
+  /** `within` runs in the same transaction once the change has succeeded: the audit event goes there. */
+  recordHandOver(
+    input: RecordHandOver,
+    within?: WithinBookingTransaction,
+  ): Promise<HandOverOutcome>;
+  markNotCollected(
+    input: MarkNotCollected,
+    within?: WithinBookingTransaction,
+  ): Promise<NotCollectedOutcome>;
+  undoHandOver(input: UndoHandOver, within?: WithinBookingTransaction): Promise<UndoOutcome>;
 }
 
 /** Reading bookings. */
@@ -265,12 +272,17 @@ export interface ICollectionBookingReader {
   findByReference(reference: string): Promise<CollectionBookingRecord | null>;
   /** The account's bookings, newest visit first. */
   listForAccount(legalEntityId: string, limit: number): Promise<CollectionBookingRecord[]>;
-  /** Bookings whose visit starts in [from, to), earliest first, with every status. */
-  /** Visits starting in the range; inside `tx` when the caller is holding a transaction open. */
+  /** Bookings whose visit starts in [from, to), earliest first, with every status; inside `tx` when the caller is holding a transaction open. */
   listInRange(
     venueId: string,
     range: { from: Date; to: Date },
     tx?: DbTransaction,
+  ): Promise<CollectionBookingRecord[]>;
+  /** The place's bookings in these statuses, newest visit first, up to `limit`. */
+  listByStatus(
+    venueId: string,
+    statuses: readonly CollectionBookingStatus[],
+    limit: number,
   ): Promise<CollectionBookingRecord[]>;
   /**
    * The live booking holding each of these lots, if any. Keyed by lot id; a lot in no live booking

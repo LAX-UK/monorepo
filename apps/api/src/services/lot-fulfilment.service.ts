@@ -77,4 +77,12 @@ export class LotFulfilmentService implements ILotFulfilmentService {
   markCollected(...args: Parameters<LotFulfilmentAdminService["markCollected"]>) {
     return this.admin.markCollected(...args);
   }
+
+  handOverForCollection(...args: Parameters<LotFulfilmentAdminService["handOverForCollection"]>) {
+    return this.admin.handOverForCollection(...args);
+  }
+
+  undoCollectionHandOver(...args: Parameters<LotFulfilmentAdminService["undoCollectionHandOver"]>) {
+    return this.admin.undoCollectionHandOver(...args);
+  }
 }

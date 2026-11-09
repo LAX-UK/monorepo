@@ -22,6 +22,7 @@ import type { AdminHono, AdminStaffMutationGuards } from "./admin/_shared.js";
 import { attachAdminAtgRoutes } from "./admin/atg.routes.js";
 import { attachAdminAuditRoutes } from "./admin/audit.routes.js";
 import { attachAdminCatalogRoutes } from "./admin/catalog.routes.js";
+import { attachAdminCollectionDeskRoutes } from "./admin/collection-desk.routes.js";
 import { attachAdminCollectionSettingsRoutes } from "./admin/collection-settings.routes.js";
 import { attachAdminComplianceRoutes } from "./admin/compliance.routes.js";
 import { attachAdminConditionReportsRoutes } from "./admin/condition-reports.routes.js";
@@ -173,6 +174,7 @@ export function createAdminRoutes(
   attachAdminDataRequestsRoutes(platform, container);
 
   attachAdminCollectionSettingsRoutes(platform, container);
+  attachAdminCollectionDeskRoutes(platform, container, guards);
 
   attachAdminMarketingEnquiryRoutes(platform, container);
 
