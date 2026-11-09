@@ -61,6 +61,13 @@ describe("FormErrorSummary", () => {
     expect(screen.getByRole("alert")).toHaveFocus();
   });
 
+  it("hides the bullets without list-style none, which Safari's VoiceOver reads as no list", () => {
+    render(<Form shown={errors} />);
+    const list = screen.getByRole("list");
+    expect(list).not.toHaveClass("list-none");
+    expect(list.className).toContain("list-['']");
+  });
+
   it("sets each bullet apart from its link, so a message that wraps keeps it on the first line", () => {
     render(<Form shown={errors} />);
     const items = screen.getAllByRole("listitem");
