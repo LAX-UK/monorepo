@@ -7,6 +7,7 @@ import { LotMedia } from "@/components/lot-page/lot-media/lot-media";
 import { LotPageViewProvider } from "@/components/lot-page/lot-page-view-context";
 import { LotPriceBlock } from "@/components/lot-page/lot-price-block";
 import { LotSecondaryActions } from "@/components/lot-page/lot-secondary-actions";
+import { LotTimeEffects } from "@/components/lot-page/lot-time-effects";
 import type { LotTemplateData } from "@/lib/lot-page/lot-template-props";
 import { LaxDensityProvider, TooltipProvider, laxDensityAttributes } from "@auction/ui/lax";
 import type { ReactNode } from "react";
@@ -57,6 +58,7 @@ export function LotTemplate({
         <div {...laxDensityAttributes("client")} className="font-lax text-lax-fg">
           <LotPageViewProvider source={source}>
             <LotAnnouncerProvider>
+              <LotTimeEffects />
               {banner ? <div className="mb-4">{banner}</div> : null}
               <div className="grid gap-6 pb-6 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] lg:items-start lg:gap-14">
                 <LotMedia

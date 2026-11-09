@@ -281,3 +281,65 @@ describe("buildLotPageView bidder states", () => {
     );
   });
 });
+
+describe("the time row counts", () => {
+  const NOW = new Date("2026-11-09T12:00:00Z");
+  const base = {
+    now: NOW,
+    startsAt: "2026-11-08T18:00:00Z",
+    endsAt: "2026-11-09T12:42:00Z",
+    amounts: { starting: "4200.00", current: "7000.00", hammer: null, soldForWithPremium: null },
+    estimate: null,
+    bidCount: 3,
+    reserve: "none" as const,
+    nextBid: "7250.00",
+    extendedByMs: null,
+    saleroom: null,
+    signedIn: true,
+    viewer: NO_LOT_VIEWER,
+  };
+
+  it("a live lot's row carries what the countdown leaf counts to", () => {
+    const view = buildLotPageView({ ...base, lifecycle: "live", msLeft: 42 * 60_000 });
+    const row = view.rows.find((r) => r.countdown);
+    expect(row?.countdown).toMatchObject({
+      targetMs: Date.parse("2026-11-09T12:42:00Z"),
+      kind: "closes",
+      extended: false,
+    });
+    expect(row?.countdown?.date.label).toBe("Closes");
+  });
+
+  it("an extended lot says what the late bid added and when it closes", () => {
+    const view = buildLotPageView({
+      ...base,
+      lifecycle: "extended",
+      msLeft: 90_000,
+      extendedByMs: 30_000,
+      extensions: 2,
+    });
+    const row = view.rows.find((r) => r.countdown);
+    expect(row?.label).toBe("Extended");
+    expect(row?.sub).toBe("A late bid added 30 seconds · closes 12:42 GMT");
+    expect(row?.countdown).toMatchObject({ extended: true, extensions: 2 });
+  });
+
+  it("a closing lot reads Closing… with the result to follow, and no count", () => {
+    const view = buildLotPageView({ ...base, lifecycle: "closing", msLeft: 0 });
+    const row = view.rows.find((r) => r.clock);
+    expect(row).toMatchObject({
+      label: "Time left",
+      value: "Closing…",
+      sub: "The result follows in a moment",
+      tone: "final",
+    });
+    expect(row?.countdown).toBeUndefined();
+    expect(view.badge.label).toBe("Closing");
+    expect(view.action).toBe("bid_disabled");
+  });
+
+  it("a lot at the moment it opens reads Opening…", () => {
+    const view = buildLotPageView({ ...base, lifecycle: "scheduled", msLeft: 0 });
+    expect(view.rows.find((r) => r.clock)?.value).toBe("Opening…");
+  });
+});

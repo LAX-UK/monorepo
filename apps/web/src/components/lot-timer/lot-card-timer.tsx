@@ -1,6 +1,7 @@
 "use client";
 
 import { useCountdownTick } from "@/lib/time/use-clock";
+import { useRef } from "react";
 import { type LotTimerInputs, classifyLotTimerState, lotTimerMoments } from "./classify";
 import { timerText } from "./format";
 import { LotTimerPill, type LotTimerPillVariant } from "./lot-timer-pill";
@@ -23,7 +24,9 @@ export function LotCardTimer({
   layout = "overlay",
   ...inputs
 }: LotCardTimerProps) {
-  const now = useCountdownTick(lotTimerMoments(inputs), { surface: "card" });
+  const rootRef = useRef<HTMLOutputElement>(null);
+  // Off screen, the pill stops counting and catches up when it comes back.
+  const now = useCountdownTick(lotTimerMoments(inputs), { surface: "card", inViewRef: rootRef });
   const state = classifyLotTimerState(inputs, now);
   const surface = pillSurfaceClassName ? { surfaceClassName: pillSurfaceClassName } : {};
   const variantProp = variant && variant !== "default" ? { variant } : {};
@@ -35,6 +38,7 @@ export function LotCardTimer({
       <LotTimerPill
         state={state}
         timer={timerText(state.msLeft, now)}
+        rootRef={rootRef}
         {...surface}
         {...variantProp}
         {...overlayProp}
@@ -44,6 +48,13 @@ export function LotCardTimer({
   }
 
   return (
-    <LotTimerPill state={state} {...surface} {...variantProp} {...overlayProp} {...layoutProp} />
+    <LotTimerPill
+      state={state}
+      rootRef={rootRef}
+      {...surface}
+      {...variantProp}
+      {...overlayProp}
+      {...layoutProp}
+    />
   );
 }

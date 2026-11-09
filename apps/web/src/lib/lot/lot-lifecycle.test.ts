@@ -79,6 +79,45 @@ describe("classifyLotLifecycle", () => {
     expect(r.msLeft).toBeGreaterThan(0);
   });
 
+  describe("when the clock reaches zero", () => {
+    const t = Date.now();
+    const pastEnd = lotBase("active", {
+      startTime: new Date(t - 2 * hour),
+      endTime: new Date(t - 1000),
+    });
+
+    it("the lot page waits for the server: closing, never a result from the device clock", () => {
+      expect(classifyLotLifecycle(pastEnd, onlineSale, t, { confirmClose: true })).toEqual({
+        kind: "closing",
+        msLeft: 0,
+      });
+    });
+
+    it("every other surface still reads the end time, as before", () => {
+      expect(classifyLotLifecycle(pastEnd, onlineSale, t).kind).toBe("endedNoSale");
+    });
+
+    it("an extension that moves the close forward brings the lot straight back", () => {
+      const extended = lotBase("active", {
+        startTime: new Date(t - 2 * hour),
+        endTime: new Date(t + 30_000),
+      });
+      expect(
+        classifyLotLifecycle(extended, onlineSale, t, {
+          confirmClose: true,
+          recentlyExtended: true,
+        }).kind,
+      ).toBe("extended");
+    });
+
+    it("the server's word wins: an ended lot is ended, not closing", () => {
+      const ended = lotBase("ended", { winnerId: "u1", endTime: new Date(t - 1000) });
+      expect(classifyLotLifecycle(ended, onlineSale, t, { confirmClose: true }).kind).toBe(
+        "endedSold",
+      );
+    });
+  });
+
   it("returns extended when recentlyExtended opt is true", () => {
     const t = Date.now();
     const l = lotBase("active", {
