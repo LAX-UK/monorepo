@@ -40,7 +40,14 @@ export type IdentityLifecycleEvent =
       userId: string;
       changeType?: "create" | "update";
     }
-  | { type: "user.sign_in_method_unlinked"; userId: string; provider: "google" | "apple" };
+  | { type: "user.sign_in_method_unlinked"; userId: string; provider: "google" | "apple" }
+  | { type: "user.unconfirmed_password_removed"; userId: string; provider: "google" | "apple" }
+  | {
+      type: "user.social_link_refused_staff";
+      userId: string;
+      provider: "google" | "apple";
+      attempt: "link" | "sign_in";
+    };
 
 export type IdentityEventPublisher = {
   publish(

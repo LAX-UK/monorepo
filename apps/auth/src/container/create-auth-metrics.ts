@@ -42,6 +42,11 @@ export function createAuthMetrics() {
       "OIDC back-channel logout delivery outcomes.",
       ["outcome"],
     ),
+    socialPolicyReadFailures: counter(
+      "auction_auth_social_policy_read_failures_total",
+      "Reads of the staff, two-step or email facts a Google or Apple sign-in depends on that failed. The sign-in is stopped, so a rise means Google and Apple sign-in is failing for everyone.",
+      [],
+    ),
     authAtRestPending: new Gauge({
       name: "auction_auth_at_rest_pending",
       help: "1 when legacy plaintext auth material remains in the database; 0 when complete.",

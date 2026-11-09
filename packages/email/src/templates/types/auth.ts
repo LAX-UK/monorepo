@@ -17,6 +17,7 @@ const names = [
   "phone-verified",
   "phone-removed",
   "sign-in-method-removed",
+  "unconfirmed-password-removed",
   "social-account-linked",
   "social-account-unlinked",
   "new-device-login",
@@ -108,6 +109,10 @@ type AuthTemplateVarsBase = {
   };
   "sign-in-method-removed": SecurityNoticeVars & {
     /** The provider that was removed, already in display form: "Google" or "Apple". */
+    providerName: string;
+  };
+  "unconfirmed-password-removed": SecurityNoticeVars & {
+    /** The provider that proved the email, already in display form: "Google" or "Apple". */
     providerName: string;
   };
   "social-account-linked": {
@@ -226,6 +231,7 @@ export const authTemplates = {
     "phone-verified": "live",
     "phone-removed": "live",
     "sign-in-method-removed": "live",
+    "unconfirmed-password-removed": "live",
     "social-account-linked": "live",
     "social-account-unlinked": "live",
     "new-device-login": "live",

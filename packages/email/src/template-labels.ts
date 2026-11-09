@@ -27,6 +27,7 @@ export const EMAIL_TEMPLATE_LABELS: Readonly<Record<TemplateName, string>> = {
   "phone-verified": "Phone number verified",
   "phone-removed": "Phone number removed",
   "sign-in-method-removed": "Sign-in method removed",
+  "unconfirmed-password-removed": "Unconfirmed password removed",
   "social-account-linked": "Social sign-in linked",
   "social-account-unlinked": "Social sign-in unlinked",
   "new-device-login": "New device sign-in",

@@ -43,20 +43,19 @@ export function resolveTwoFactorRequirement(input: {
 }
 
 /**
- * Decides the authorize-time step. A Silver request always needs TOTP/backup-code
- * completion; a policy requirement is also satisfied by a social sign-in.
+ * Decides the authorize-time step. A Silver request always needs TOTP/backup-code completion,
+ * and so does a staff or organisation policy requirement. How the person signed in does not
+ * change that: a Google or Apple session proves who they are, not a second step, so it never
+ * satisfies a requirement on its own.
  */
 export function decideAuthorizeTwoFactorStep(input: {
   requestsSilver: boolean;
   requiredByPolicy: boolean;
   mfaCompletedAt: Date | null | undefined;
-  socialAuthAt: Date | null | undefined;
   twoFactorEnabled: boolean;
   canEnrolTotp: boolean;
 }): SilverAcrStep {
   if (input.mfaCompletedAt) return "pass";
-  if (!input.requestsSilver) {
-    if (!input.requiredByPolicy || input.socialAuthAt) return "pass";
-  }
+  if (!input.requestsSilver && !input.requiredByPolicy) return "pass";
   return decideSilverAcrStep(input);
 }

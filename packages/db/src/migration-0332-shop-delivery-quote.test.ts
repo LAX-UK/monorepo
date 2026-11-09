@@ -20,7 +20,7 @@ describe("migration 0332 shop delivery quote", () => {
     const entry = journal.entries[index];
     const previous = journal.entries[index - 1];
     expect(entry?.idx).toBe((previous?.idx ?? 0) + 1);
-    expect(previous?.tag).toBe("0330_shop_print_facts");
+    expect(previous?.tag).toBe("0331_shop_framing_catalogue");
     expect(entry?.when).toBe((previous?.when ?? 0) + 24 * 60 * 60 * 1000);
   });
 

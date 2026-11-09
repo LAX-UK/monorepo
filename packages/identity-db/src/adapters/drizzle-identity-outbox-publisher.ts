@@ -45,7 +45,14 @@ export type IdentityOutboxLifecycleEvent =
       userId: string;
       changeType?: "create" | "update";
     }
-  | { type: "user.sign_in_method_unlinked"; userId: string; provider: "google" | "apple" };
+  | { type: "user.sign_in_method_unlinked"; userId: string; provider: "google" | "apple" }
+  | { type: "user.unconfirmed_password_removed"; userId: string; provider: "google" | "apple" }
+  | {
+      type: "user.social_link_refused_staff";
+      userId: string;
+      provider: "google" | "apple";
+      attempt: "link" | "sign_in";
+    };
 
 export type IdentityOutboxPublisher = {
   publish(
@@ -282,6 +289,37 @@ function buildOutboxRow(
           subjectId: event.userId,
           provider: event.provider,
           unlinkedAt: new Date().toISOString(),
+        },
+      };
+    case "user.unconfirmed_password_removed":
+      return {
+        aggregateType: "user",
+        aggregateId: event.userId,
+        eventType: IDENTITY_EVENT_TYPES.UNCONFIRMED_PASSWORD_REMOVED,
+        producer,
+        actorUserId: null,
+        schemaVersion: IDENTITY_EVENT_SCHEMA_VERSION,
+        payload: {
+          schemaVersion: IDENTITY_EVENT_SCHEMA_VERSION,
+          subjectId: event.userId,
+          provider: event.provider,
+          removedAt: new Date().toISOString(),
+        },
+      };
+    case "user.social_link_refused_staff":
+      return {
+        aggregateType: "user",
+        aggregateId: event.userId,
+        eventType: IDENTITY_EVENT_TYPES.SOCIAL_LINK_REFUSED_STAFF,
+        producer,
+        actorUserId: null,
+        schemaVersion: IDENTITY_EVENT_SCHEMA_VERSION,
+        payload: {
+          schemaVersion: IDENTITY_EVENT_SCHEMA_VERSION,
+          subjectId: event.userId,
+          provider: event.provider,
+          attempt: event.attempt,
+          refusedAt: new Date().toISOString(),
         },
       };
     case "user.credential_changed":

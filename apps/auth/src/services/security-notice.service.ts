@@ -179,6 +179,11 @@ export class SecurityNoticeService implements SecurityNoticePublisher, SecurityN
           providerName: event.provider === "google" ? "Google" : "Apple",
         });
         return;
+      case "unconfirmed_password_removed":
+        await enqueue("unconfirmed-password-removed", subject.email, {
+          providerName: event.provider === "google" ? "Google" : "Apple",
+        });
+        return;
       case "phone_verified":
         await enqueue("phone-verified", subject.email, { maskedPhone: maskPhoneE164(event.phone) });
         return;

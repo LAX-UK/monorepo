@@ -29,6 +29,7 @@ const DOMAINS: [LaxStatusDomain, readonly string[]][] = [
   ["artist", ["active", "archived"]],
   ["edition", ["not_authorised", "authorised", "reserved", "held", "sold", "withdrawn"]],
   ["merchandise", ["active", "archived"]],
+  ["framing", ["draft", "active", "paused"]],
   ["editorial", ["draft", "published"]],
   ["help", ["draft", "published"]],
   ["enquiry", ENQUIRY_STATUSES],
