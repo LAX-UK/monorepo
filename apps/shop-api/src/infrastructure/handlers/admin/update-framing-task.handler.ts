@@ -4,6 +4,7 @@ import {
   type FramingTaskStatus,
   canMoveFramingTask,
   framingStageStamp,
+  parseFramingTaskStatus,
 } from "@auction/shop-domain";
 import { and, eq, ne } from "drizzle-orm";
 import { withAdminIdempotency } from "../../../application/admin/with-admin-idempotency.js";
@@ -49,7 +50,7 @@ export function createUpdateFramingTaskHandler(deps: { uow: ShopUnitOfWorkFactor
           if (task.version !== command.expectedVersion) {
             throw new StaleVersionError("This framing task", String(task.version));
           }
-          const from = task.status as FramingTaskStatus;
+          const from = parseFramingTaskStatus(task.status);
           if (!canMoveFramingTask(from, command.status)) {
             throw new ShopApiError(
               SHOP_API_ERROR_CODES.CONFLICT,
@@ -86,7 +87,7 @@ export function createUpdateFramingTaskHandler(deps: { uow: ShopUnitOfWorkFactor
           return {
             taskId: updated.id,
             orderLineId: updated.orderLineId,
-            status: updated.status as FramingTaskStatus,
+            status: parseFramingTaskStatus(updated.status),
             dueAt: updated.dueAt.toISOString(),
             version: updated.version,
           };

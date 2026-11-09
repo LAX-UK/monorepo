@@ -6,6 +6,8 @@ import {
   cancelAfterPossessionDescription,
   cancelledLineBadge,
   failedRefunds,
+  framingCanMove,
+  framingDueLabel,
   fulfilmentNextOptions,
   lineCancellation,
   lineCancellationRefund,
@@ -441,5 +443,95 @@ describe("refundFailureMessage", () => {
   it("has a sentence when there is no reason at all", () => {
     expect(refundFailureMessage(null)).toBe("Stripe could not process the refund");
     expect(refundFailureMessage("  ")).toBe("Stripe could not process the refund");
+  });
+});
+
+describe("a framed print", () => {
+  const FRAME = "33333333-0000-4000-8000-000000000003";
+  const framed = (overrides: Partial<AdminOrderDetail> = {}) => {
+    const base = order();
+    return order({
+      totalPence: 121_000,
+      lines: [
+        ...base.lines,
+        {
+          orderLineId: FRAME,
+          artworkId: null,
+          artworkTitle: null,
+          productTitle: null,
+          sku: null,
+          editionId: null,
+          editionNumber: null,
+          unitPricePence: 21_000,
+          sellerPartyId: null,
+          production: null,
+          kind: "framing",
+          framing: {
+            name: "Natural oak frame",
+            forLineId: LINE_A,
+            task: {
+              taskId: "44444444-0000-4000-8000-000000000004",
+              status: "queued",
+              dueAt: "2026-11-30T00:00:00.000Z",
+              version: 1,
+            },
+          },
+        },
+      ],
+      ...overrides,
+    });
+  };
+  const frameLine = (detail: AdminOrderDetail) => {
+    const line = detail.lines.find((candidate) => candidate.orderLineId === FRAME);
+    if (!line) throw new Error("fixture has a frame");
+    return line;
+  };
+  const refund = (status: string, amountPence = 21_000) => ({
+    refundId: "r9",
+    orderLineId: FRAME,
+    amountPence,
+    status,
+    source: "admin",
+    createdAt: "2026-10-15T00:00:00Z",
+  });
+
+  it("is named as 'Framing: <option>'", () => {
+    expect(orderLineLabel(frameLine(framed()))).toBe("Framing: Natural oak frame");
+  });
+
+  it("can be moved on while the order is paid and the frame is not refunded", () => {
+    const detail = framed();
+    expect(framingCanMove(detail, frameLine(detail))).toBe(true);
+  });
+
+  it("cannot be moved on once refunded, or while a refund is pending, or on an unpaid order", () => {
+    for (const status of ["succeeded", "pending"]) {
+      const detail = framed({ refunds: [refund(status)] });
+      expect(framingCanMove(detail, frameLine(detail))).toBe(false);
+    }
+    const unpaid = framed({ status: "refunded" });
+    expect(framingCanMove(unpaid, frameLine(unpaid))).toBe(false);
+  });
+
+  it("still can be moved on after a failed refund or a part refund", () => {
+    for (const row of [refund("failed"), refund("succeeded", 5_000)]) {
+      const detail = framed({ refunds: [row] });
+      expect(framingCanMove(detail, frameLine(detail))).toBe(true);
+    }
+  });
+
+  it("says when the frame is due", () => {
+    expect(framingDueLabel("2026-11-30T00:00:00.000Z")).toMatch(/^Due .*30/);
+  });
+
+  it("cancelling the print states the frame's refund and the total", () => {
+    const detail = framed();
+    const line = detail.lines.find((candidate) => candidate.orderLineId === LINE_A);
+    if (!line) throw new Error("fixture has a print");
+    const cancellation = lineCancellation(detail, line);
+    expect(cancellation).toMatchObject({ refundPence: 60_000, framePence: 21_000 });
+    const copy = cancelAfterPossessionDescription(60_000, "await_return", 21_000);
+    expect(copy).toContain("£600.00 for this item and £210.00 for its frame, £810.00 in all");
+    expect(copy).toContain("The frame is not made.");
   });
 });

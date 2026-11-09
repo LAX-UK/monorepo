@@ -1,4 +1,5 @@
 import { type Static, Type } from "@sinclair/typebox";
+import { FramingTaskStatusSchema } from "./framing-task-admin.js";
 
 export const AdminClientPartySchema = Type.Object({
   partyId: Type.String({ format: "uuid" }),
@@ -159,7 +160,7 @@ export const AdminOrderLineDetailSchema = Type.Object({
         task: Type.Union([
           Type.Object({
             taskId: Type.String({ format: "uuid" }),
-            status: Type.String(),
+            status: FramingTaskStatusSchema,
             dueAt: Type.String({ format: "date-time" }),
             version: Type.Integer(),
           }),

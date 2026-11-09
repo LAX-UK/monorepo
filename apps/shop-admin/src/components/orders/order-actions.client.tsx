@@ -13,6 +13,7 @@ import {
 import { GUEST_ERASURE_COPY, guestErasureMenuReason } from "@/server/domain/guest-erasure.vm";
 import {
   cancelAfterPossessionDescription,
+  framingDueLabel,
   orderLineLabel,
   presentFramingTaskStatus,
 } from "@/server/domain/order-detail.vm";
@@ -20,6 +21,7 @@ import type { AdminGuestErasureState, AdminOrderDetail } from "@auction/shop-con
 import {
   type CancellationStockOutcome,
   type FramingTaskStatus,
+  framingTaskFinished,
   framingTaskNextSteps,
 } from "@auction/shop-domain";
 import {
@@ -187,15 +189,22 @@ const FRAMING_STEP_LABEL: Partial<Record<FramingTaskStatus, string>> = {
  * A frame's work: where it stands and the one step that moves it on. Cancelling the framing is
  * not offered here; it goes with a refund of the frame.
  */
-export function FramingTaskControl({ line }: { line: Line }) {
+export function FramingTaskControl({ line, canMove }: { line: Line; canMove: boolean }) {
   const mutation = useAdminMutation();
   const task = line.framing?.task;
   if (!task) return null;
-  const status = task.status as FramingTaskStatus;
-  const next = framingTaskNextSteps(status).find((step) => FRAMING_STEP_LABEL[step]);
+  const status = task.status;
+  const next = canMove
+    ? framingTaskNextSteps(status).find((step) => FRAMING_STEP_LABEL[step])
+    : undefined;
   const presented = presentFramingTaskStatus(status);
   return (
     <span className="flex items-center gap-2">
+      {!framingTaskFinished(status) ? (
+        <span className="text-staff-xs text-staff-muted tabular-nums">
+          {framingDueLabel(task.dueAt)}
+        </span>
+      ) : null}
       <StatusBadge tone={presented.tone}>{presented.label}</StatusBadge>
       {next ? (
         <StaffButton

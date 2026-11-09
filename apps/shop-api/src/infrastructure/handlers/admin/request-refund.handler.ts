@@ -1,8 +1,8 @@
 import { shopFramingTask, shopOrder, shopOrderLine, shopRefund } from "@auction/db/schema";
 import { type AdminRefundReason, SHOP_API_ERROR_CODES } from "@auction/shop-contracts";
 import {
-  type FramingTaskStatus,
   framingRefundBlock,
+  parseFramingTaskStatus,
   remainingRefundablePence,
 } from "@auction/shop-domain";
 import { and, eq } from "drizzle-orm";
@@ -94,7 +94,7 @@ export function createRequestRefundHandler(deps: {
                 .where(eq(shopFramingTask.orderLineId, line.id))
                 .for("update")
                 .limit(1);
-              if (task && framingRefundBlock(task.status as FramingTaskStatus)) {
+              if (task && framingRefundBlock(parseFramingTaskStatus(task.status))) {
                 throw new ShopApiError(
                   SHOP_API_ERROR_CODES.CONFLICT,
                   "This frame is already being made, so it cannot be refunded as unused",

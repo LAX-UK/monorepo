@@ -1,7 +1,7 @@
 import { shopFramingTask, shopOrderLine, shopRefund } from "@auction/db/schema";
 import {
-  type FramingTaskStatus,
   framingTaskFinished,
+  parseFramingTaskStatus,
   remainingRefundablePence,
 } from "@auction/shop-domain";
 import { and, eq, inArray } from "drizzle-orm";
@@ -31,7 +31,7 @@ async function cancelTasks(
 ): Promise<void> {
   const db = shopPhaseDbSession(tx);
   for (const task of taskRows) {
-    const from = task.status as FramingTaskStatus;
+    const from = parseFramingTaskStatus(task.status);
     if (framingTaskFinished(from)) continue;
     await db
       .update(shopFramingTask)

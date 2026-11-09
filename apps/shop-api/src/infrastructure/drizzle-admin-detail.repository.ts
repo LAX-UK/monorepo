@@ -25,7 +25,7 @@ import type {
   AdminClientDetail,
   AdminOrderDetail,
 } from "@auction/shop-contracts";
-import { parseFramingOrderSnapshot } from "@auction/shop-domain";
+import { parseFramingOrderSnapshot, parseFramingTaskStatus } from "@auction/shop-domain";
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { PORTAL_ME_LIST_LIMIT } from "../domain/portal-me-list-limit.js";
 import { notFound } from "../errors/shop-api-error.js";
@@ -489,7 +489,7 @@ export function createDrizzleAdminDetailReaders(db: Database) {
                     return task
                       ? {
                           taskId: task.id,
-                          status: task.status,
+                          status: parseFramingTaskStatus(task.status),
                           dueAt: task.dueAt.toISOString(),
                           version: task.version,
                         }

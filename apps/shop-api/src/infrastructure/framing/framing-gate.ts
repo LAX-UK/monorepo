@@ -1,6 +1,6 @@
 import type { Database } from "@auction/db";
 import { shopFramingTask, shopOrderLine } from "@auction/db/schema";
-import { type FramingTaskStatus, framingTaskFinished } from "@auction/shop-domain";
+import { framingTaskFinished, parseFramingTaskStatus } from "@auction/shop-domain";
 import { and, eq } from "drizzle-orm";
 
 /*
@@ -17,7 +17,7 @@ export async function printHasOpenFrame(db: Database, printLineId: string): Prom
     .from(shopFramingTask)
     .innerJoin(shopOrderLine, eq(shopFramingTask.orderLineId, shopOrderLine.id))
     .where(eq(shopOrderLine.framingForLineId, printLineId));
-  return rows.some((row) => !framingTaskFinished(row.status as FramingTaskStatus));
+  return rows.some((row) => !framingTaskFinished(parseFramingTaskStatus(row.status)));
 }
 
 /** Whether any frame on the order still has work to do. */
@@ -27,5 +27,5 @@ export async function orderHasOpenFrame(db: Database, orderId: string): Promise<
     .from(shopFramingTask)
     .innerJoin(shopOrderLine, eq(shopFramingTask.orderLineId, shopOrderLine.id))
     .where(and(eq(shopOrderLine.orderId, orderId), eq(shopOrderLine.kind, "framing")));
-  return rows.some((row) => !framingTaskFinished(row.status as FramingTaskStatus));
+  return rows.some((row) => !framingTaskFinished(parseFramingTaskStatus(row.status)));
 }

@@ -20,6 +20,7 @@ import {
   type StatusPresentation,
   type TimelineEvent,
   formatGbp,
+  formatStaffDate,
   formatStaffDateTime,
   humanizeStatus,
 } from "@auction/staff-ui";
@@ -171,6 +172,28 @@ const CANCELLATION_STOCK_COPY: Record<CancellationStockOutcome, string> = {
   await_return:
     "The print is with the customer, so a return is opened under Returns. It goes back on sale when you receive it.",
 };
+
+/**
+ * Whether work on a frame can still be moved forward: the order is paid and the frame has not
+ * been refunded (or has no refund waiting). A refunded frame shows its state and offers nothing.
+ */
+export function framingCanMove(detail: AdminOrderDetail, line: OrderLine): boolean {
+  if (detail.status !== "paid" && detail.status !== "partially_refunded") return false;
+  const refunded = detail.refunds
+    .filter(
+      (refund) =>
+        refund.orderLineId === line.orderLineId &&
+        refund.status !== "failed" &&
+        refund.status !== "cancelled",
+    )
+    .reduce((sum, refund) => sum + refund.amountPence, 0);
+  return !(line.unitPricePence > 0 && refunded >= line.unitPricePence);
+}
+
+/** "Due Mon 30 Nov": when the frame is due, in the staff date style. */
+export function framingDueLabel(dueAt: string): string {
+  return `Due ${formatStaffDate(dueAt)}`;
+}
 
 /** The dialog text for cancelling an item: what the system does, so staff never repeat it. */
 export function cancelAfterPossessionDescription(

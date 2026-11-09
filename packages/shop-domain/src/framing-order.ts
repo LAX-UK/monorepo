@@ -46,6 +46,13 @@ const NEXT_STEPS: Record<FramingTaskStatus, readonly FramingTaskStatus[]> = {
   cancelled: [],
 };
 
+/** A status read from storage, checked against the known steps. */
+export function parseFramingTaskStatus(value: string): FramingTaskStatus {
+  const known = FRAMING_TASK_STATUSES.find((status) => status === value);
+  if (!known) throw new Error(`Unknown framing task status: ${value}`);
+  return known;
+}
+
 export function framingTaskNextSteps(status: FramingTaskStatus): readonly FramingTaskStatus[] {
   return NEXT_STEPS[status];
 }

@@ -8,9 +8,11 @@ import {
   framingDueAt,
   framingLineVat,
   framingRefundBlock,
+  framingStageStamp,
   framingTaskFinished,
   framingTaskNextSteps,
   framingTaskStarted,
+  parseFramingOrderSnapshot,
 } from "./framing-order.js";
 import { pence } from "./money.js";
 
@@ -107,5 +109,48 @@ describe("an order total with framing", () => {
         fulfilment: "uk_insured_delivery",
       }),
     ).toBe(19500);
+  });
+});
+
+describe("parseFramingOrderSnapshot", () => {
+  const whole = {
+    optionId: "opt-1",
+    name: "Natural oak frame",
+    frame: "natural_oak",
+    mount: "window_conservation",
+    glazing: "uv_acrylic",
+    hanging: "d_rings_cord",
+    leadTimeMinDays: 10,
+    leadTimeMaxDays: 15,
+    pricePence: 21_000,
+  };
+
+  it("reads a whole snapshot", () => {
+    expect(parseFramingOrderSnapshot(whole)).toEqual(whole);
+  });
+
+  it("fails loudly on a missing lead time rather than defaulting it", () => {
+    const { leadTimeMaxDays: _gone, ...partial } = whole;
+    expect(() => parseFramingOrderSnapshot(partial)).toThrowError("missing leadTimeMaxDays");
+    expect(() => parseFramingOrderSnapshot(null)).toThrowError("no snapshot");
+    expect(() => parseFramingOrderSnapshot({ ...whole, name: "" })).toThrowError("missing name");
+    expect(() => parseFramingOrderSnapshot({ ...whole, pricePence: 1.5 })).toThrowError(
+      "missing pricePence",
+    );
+  });
+});
+
+describe("framingStageStamp", () => {
+  const now = new Date("2026-11-10T09:00:00.000Z");
+
+  it("records when each step began", () => {
+    expect(framingStageStamp("framing", now)).toEqual({ framingStartedAt: now });
+    expect(framingStageStamp("framed", now)).toEqual({ framedAt: now });
+    expect(framingStageStamp("completed", now)).toEqual({ completedAt: now });
+  });
+
+  it("stamps nothing for queued or cancelled", () => {
+    expect(framingStageStamp("queued", now)).toEqual({});
+    expect(framingStageStamp("cancelled", now)).toEqual({});
   });
 });

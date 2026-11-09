@@ -15,6 +15,7 @@ import {
   canRefundOrder,
   cancelledLineBadge,
   failedRefunds,
+  framingCanMove,
   lineCancellation,
   lineCancellationRefund,
   orderLineLabel,
@@ -178,7 +179,7 @@ export function OrderDetailView({
                     <div className="flex shrink-0 items-center gap-2">
                       {line.kind === "framing" ? (
                         permissions.production ? (
-                          <FramingTaskControl line={line} />
+                          <FramingTaskControl line={line} canMove={framingCanMove(detail, line)} />
                         ) : line.framing?.task ? (
                           <StatusBadge
                             tone={presentFramingTaskStatus(line.framing.task.status).tone}
