@@ -111,6 +111,7 @@ describe.skipIf(!HAS_DB)("collection lot facts (integration)", () => {
         openChecks: [],
         organisationStatus: "approved",
         disputeOpen: false,
+        refunded: false,
         refundOpen: false,
         fulfilment: "none",
         activeBookingId: null,

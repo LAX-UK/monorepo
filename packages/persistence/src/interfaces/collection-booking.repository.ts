@@ -260,6 +260,8 @@ export interface ICollectionBookingReader {
   findByReference(reference: string): Promise<CollectionBookingRecord | null>;
   /** The account's bookings, newest visit first. */
   listForAccount(legalEntityId: string, limit: number): Promise<CollectionBookingRecord[]>;
+  /** How many visits the account has booked and not yet had, cancelled or missed. */
+  countBooked(legalEntityId: string): Promise<number>;
   /** Bookings whose visit starts in [from, to), earliest first, with every status. */
   listInRange(venueId: string, range: { from: Date; to: Date }): Promise<CollectionBookingRecord[]>;
   /**

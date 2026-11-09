@@ -40,6 +40,7 @@ function saveBody(
     windowDays: s.windowDays,
     closeOnSaleDays: s.closeOnSaleDays,
     undoHandOverMinutes: s.undoHandOverMinutes,
+    maxActiveVisits: s.maxActiveVisits,
     freeStorageDays: s.freeStorageDays,
     bookingEmail: s.bookingEmail,
     hours: store.hours.map((h) => ({ ...h })),

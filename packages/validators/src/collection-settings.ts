@@ -31,6 +31,7 @@ export const saveCollectionSettingsBodySchema = z
     windowDays: z.number().int(),
     closeOnSaleDays: z.boolean(),
     undoHandOverMinutes: z.number().int(),
+    maxActiveVisits: z.number().int(),
     freeStorageDays: z.number().int().min(0).max(365).nullable(),
     bookingEmail: z.string().trim().email().max(254).nullable(),
     hours: z

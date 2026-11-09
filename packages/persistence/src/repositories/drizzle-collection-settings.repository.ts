@@ -46,6 +46,7 @@ function toSettings(row: PlaceRow): CollectionPlaceSettings {
     windowDays: row.windowDays,
     closeOnSaleDays: row.closeOnSaleDays,
     undoHandOverMinutes: row.undoHandOverMinutes,
+    maxActiveVisits: row.maxActiveVisits,
     freeStorageDays: row.freeStorageDays,
     bookingEmail: row.bookingEmail,
     updatedAt: row.updatedAt,
@@ -90,6 +91,7 @@ function changedFields(
   check("window_days", before.windowDays, input.rules.windowDays);
   check("close_on_sale_days", before.closeOnSaleDays, input.rules.closeOnSaleDays);
   check("undo_hand_over_minutes", before.undoHandOverMinutes, input.rules.undoHandOverMinutes);
+  check("max_active_visits", before.maxActiveVisits, input.rules.maxActiveVisits);
   check("free_storage_days", before.freeStorageDays, input.freeStorageDays);
   check("booking_email", before.bookingEmail, input.bookingEmail);
   if (!sameHours(beforeHours, input.hours)) changed.push("weekly_hours");
@@ -235,6 +237,7 @@ export class DrizzleCollectionSettingsRepository
           windowDays: input.rules.windowDays,
           closeOnSaleDays: input.rules.closeOnSaleDays,
           undoHandOverMinutes: input.rules.undoHandOverMinutes,
+          maxActiveVisits: input.rules.maxActiveVisits,
           freeStorageDays: input.freeStorageDays,
           bookingEmail: input.bookingEmail,
           updatedByUserId: input.updatedByUserId,

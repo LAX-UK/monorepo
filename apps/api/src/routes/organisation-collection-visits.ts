@@ -9,6 +9,7 @@ import { type Context, Hono, type MiddlewareHandler } from "hono";
 import type { Result } from "neverthrow";
 import type { ContainerOrganisationBuyingRoutesSlice } from "../container.js";
 import { zValidator } from "../lib/z-validator.js";
+import { createCollectionWriteRateLimit } from "../middleware/collection-write-rate-limit.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
 import { requireBuyerRole } from "../middleware/require-buyer-role.js";
 import type { LegalEntityContext } from "../middleware/require-legal-entity-context.js";
@@ -69,6 +70,7 @@ export function createOrganisationCollectionVisitRoutes(
   });
   const requireContext = container.requireLegalEntityContext;
   const { collectionVisits } = container.organisationBuying;
+  const limitWrites = createCollectionWriteRateLimit(container.rateLimitStore);
   const r = new Hono<{ Variables: Variables }>();
 
   r.get(
@@ -94,6 +96,7 @@ export function createOrganisationCollectionVisitRoutes(
     requireAccountOnboarding,
     requireBuyerRole,
     requireContext,
+    limitWrites,
     zValidator("json", bookCollectionBodySchema),
     async (c) => {
       c.header("Cache-Control", "no-store");
@@ -111,6 +114,7 @@ export function createOrganisationCollectionVisitRoutes(
     requireAccountOnboarding,
     requireBuyerRole,
     requireContext,
+    limitWrites,
     zValidator("param", collectionBookingIdParamSchema),
     zValidator("json", changeCollectionBodySchema),
     async (c) => {
@@ -131,6 +135,7 @@ export function createOrganisationCollectionVisitRoutes(
     requireAuth,
     requireBuyerRole,
     requireContext,
+    limitWrites,
     zValidator("param", collectionBookingIdParamSchema),
     zValidator("json", cancelCollectionBodySchema),
     async (c) => {

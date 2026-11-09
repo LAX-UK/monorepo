@@ -220,6 +220,21 @@ export function HoursRulesForm({ settings, canChange }: Props) {
             />
           </Field>
         </FieldRow>
+        <Field
+          label="Visits an account can hold"
+          description="Booked visits at once, per account, from 1 to 20"
+          id={field("max_active_visits")}
+          error={shown.rules.max_active_visits}
+          disabled={locked}
+        >
+          <TextInput
+            inputMode="numeric"
+            className="max-w-40"
+            value={draft.maxActiveVisits}
+            maxLength={2}
+            onChange={(event) => set("maxActiveVisits", event.target.value)}
+          />
+        </Field>
       </FormSection>
 
       <FormSection

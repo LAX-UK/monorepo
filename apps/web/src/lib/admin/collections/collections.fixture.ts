@@ -13,6 +13,7 @@ export const SETTINGS: StaffCollectionSettings = {
   windowDays: 28,
   closeOnSaleDays: true,
   undoHandOverMinutes: 15,
+  maxActiveVisits: 5,
   freeStorageDays: null,
   hours: [1, 2, 3, 4, 5].map((weekday) => ({ weekday, opensLocal: "10:00", closesLocal: "19:00" })),
   exceptions: [],

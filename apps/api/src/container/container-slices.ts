@@ -727,7 +727,7 @@ export type ContainerOrganisationSellingRoutesSlice = Pick<
 /** Registrations, purchases, courier quotes and collection booking for the acting account. */
 export type ContainerOrganisationBuyingRoutesSlice = Pick<
   Container,
-  "userSuspensionChecker" | "requireLegalEntityContext" | "organisationBuying"
+  "userSuspensionChecker" | "requireLegalEntityContext" | "organisationBuying" | "rateLimitStore"
 >;
 
 /** Record search (and other cross-module reads) for the acting account. */

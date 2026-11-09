@@ -97,6 +97,7 @@ export class InMemoryCollectionSettings
     check("window_days", before.windowDays, input.rules.windowDays);
     check("close_on_sale_days", before.closeOnSaleDays, input.rules.closeOnSaleDays);
     check("undo_hand_over_minutes", before.undoHandOverMinutes, input.rules.undoHandOverMinutes);
+    check("max_active_visits", before.maxActiveVisits, input.rules.maxActiveVisits);
     check("free_storage_days", before.freeStorageDays, input.freeStorageDays);
     check("booking_email", before.bookingEmail, input.bookingEmail);
     const week = normaliseWeeklyHours(input.hours);
@@ -171,6 +172,10 @@ export class InMemorySettingsBookings
   }
   async listForAccount(legalEntityId: string, limit: number) {
     return this.bookings.filter((b) => b.legalEntityId === legalEntityId).slice(0, limit);
+  }
+  async countBooked(legalEntityId: string) {
+    return this.bookings.filter((b) => b.legalEntityId === legalEntityId && b.status === "booked")
+      .length;
   }
   async listInRange(venueId: string, range: { from: Date; to: Date }) {
     return this.bookings.filter(

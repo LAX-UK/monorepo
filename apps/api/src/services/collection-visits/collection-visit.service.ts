@@ -275,6 +275,9 @@ export class CollectionVisitService implements ICollectionVisitService {
         visitError("online_booking_off", { bookingEmail: settings?.bookingEmail ?? null }),
       );
     }
+    if ((await this.deps.bookings.countBooked(actor.legalEntityId)) >= settings.maxActiveVisits) {
+      return err(visitError("too_many_visits"));
+    }
     const blocked = lines.find((line) => !line.collectable);
     if (blocked) {
       return err(

@@ -17,6 +17,8 @@ export type CollectionLotFacts = {
   /** The buying organisation's status; `null` for a personal account. */
   organisationStatus: LegalEntityStatus | null;
   disputeOpen: boolean;
+  /** The payment was refunded in full: the purchase is over and there is nothing to collect. */
+  refunded: boolean;
   refundOpen: boolean;
   fulfilment: CollectionFulfilment;
   /** The booking already holding this lot, if any. A lot is in at most one active booking. */
@@ -32,6 +34,7 @@ export type CollectionBlockReason =
   | "dispute_open"
   | "refund_open"
   | "lot_cancelled"
+  | "refunded"
   | "lot_collected"
   | "lot_delivery_arranged"
   | "already_booked";
@@ -56,6 +59,11 @@ const BLOCK_RULES: readonly BlockRule[] = [
     reason: "lot_cancelled",
     message: "This sale was cancelled, so there is nothing to collect.",
     blocks: (f) => f.fulfilment === "cancelled",
+  },
+  {
+    reason: "refunded",
+    message: "This purchase was refunded, so there is nothing to collect.",
+    blocks: (f) => f.refunded,
   },
   {
     reason: "lot_collected",

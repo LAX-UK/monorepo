@@ -68,6 +68,7 @@ export type SettingsField =
   | "window_days"
   | "close_on_sale_days"
   | "undo_hand_over_minutes"
+  | "max_active_visits"
   | "free_storage_days"
   | "booking_email"
   | "weekly_hours";
