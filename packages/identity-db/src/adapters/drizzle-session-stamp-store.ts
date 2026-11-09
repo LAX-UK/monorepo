@@ -23,6 +23,16 @@ export function createDrizzleSessionStampStore(db: IdentityDatabase) {
         .set({ mfaCompletedAt: at, updatedAt: at })
         .where(eq(session.token, sessionToken));
     },
+    /**
+     * A passkey sign-in. The device checked the person (the issuer refuses a passkey without
+     * that), so the passkey is both factors in one: the session counts as two-step verified.
+     */
+    async stampPasskeyAuth(sessionToken: string, at: Date) {
+      await db
+        .update(session)
+        .set({ mfaCompletedAt: at, updatedAt: at, amr: withMethod("passkey") })
+        .where(eq(session.token, sessionToken));
+    },
     /** A Google or Apple callback, which records that the session was signed in by a provider. */
     async stampSocialAuth(sessionToken: string, at: Date) {
       await db

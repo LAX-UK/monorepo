@@ -14,11 +14,13 @@ import {
   ACCOUNT_SIGN_IN_METHOD_RETURN_ERRORS,
   ACCOUNT_SIGN_IN_METHOD_RETURN_PARAM,
   PASSKEY_LIMIT,
+  PASSKEY_NAME_INPUT_MAX_LENGTH,
   SESSION_SIGN_IN_METHODS,
   SIGN_IN_METHOD_KINDS,
   accountActionIntentSchema,
   accountPasskeySchema,
   accountSignInMethodsSchema,
+  isValidPasskeyName,
   socialSignInProviderSchema,
 } from "./account-sign-in-methods.js";
 
@@ -150,4 +152,46 @@ describe("account sign-in methods contract", () => {
       ]),
     );
   });
+});
+
+describe("isValidPasskeyName", () => {
+  it("accepts a short line of ordinary text, accented and non-Latin letters and emoji included", () => {
+    for (const name of [
+      "Work laptop",
+      "  iCloud Keychain  ",
+      "Portable de José",
+      "我的笔记本",
+      "Phone 📱",
+    ]) {
+      expect(isValidPasskeyName(name)).toBe(true);
+    }
+    expect(isValidPasskeyName("x".repeat(PASSKEY_NAME_INPUT_MAX_LENGTH))).toBe(true);
+  });
+
+  it("refuses an empty name, spaces only, and one over the limit", () => {
+    expect(isValidPasskeyName("")).toBe(false);
+    expect(isValidPasskeyName("    ")).toBe(false);
+    expect(isValidPasskeyName("x".repeat(PASSKEY_NAME_INPUT_MAX_LENGTH + 1))).toBe(false);
+  });
+
+  it.each([
+    ["a newline", "one\ntwo"],
+    ["a carriage return", "one\rtwo"],
+    ["a tab", "one\ttwo"],
+    ["a null", "one\u0000two"],
+    ["a zero-width space", "one\u200Btwo"],
+    ["a zero-width joiner", "one\u200Dtwo"],
+    ["a left-to-right mark", "one\u200Etwo"],
+    ["a right-to-left override", "one\u202Etwo"],
+    ["a bidi isolate", "one\u2066two"],
+    ["a byte order mark", "one\uFEFFtwo"],
+    ["a soft hyphen", "one\u00ADtwo"],
+    ["a line separator", "one\u2028two"],
+    ["a paragraph separator", "one\u2029two"],
+  ])(
+    "refuses a name with %s, which could hide or reorder what is shown around it",
+    (_label, name) => {
+      expect(isValidPasskeyName(name)).toBe(false);
+    },
+  );
 });

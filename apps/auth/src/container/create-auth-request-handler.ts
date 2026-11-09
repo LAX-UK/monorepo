@@ -26,6 +26,7 @@ import {
   readResponseSetCookies,
   withSessionDataClearedOnLogout,
 } from "./better-auth-session-cookies.js";
+import { type PasskeyRequestPorts, createPasskeyRequestPolicy } from "./passkey-request-policy.js";
 
 export { SECURITY_EFFECT_RETRY_DELAYS_MS };
 
@@ -52,7 +53,15 @@ export function createAuthRequestHandler(options: {
   readTwoFactorRequirement: TwoFactorRequirementReader;
   auth: ReturnType<typeof createAuth>;
   oidcSessions: Pick<OidcSessionCoordinator, "runTokenRequest" | "captureAuthorizationSession">;
+  /** Passkeys, when this environment offers them; see `createPasskeyRequestPolicy`. */
+  passkeys?: PasskeyRequestPorts;
 }): AuthRequestHandler {
+  const passkeyPolicy = createPasskeyRequestPolicy({
+    log: options.log,
+    auth: options.auth,
+    sessionStampStore: options.sessionStampStore,
+    passkeys: options.passkeys,
+  });
   return async (request, authorizationCode = null) => {
     const path = new URL(request.url).pathname;
     const logoutSensitive =
@@ -90,8 +99,13 @@ export function createAuthRequestHandler(options: {
         return temporarilyUnavailableResponse();
       }
     }
+    // The passkey rules run before the plugin does: the gate for making one, what to look at.
+    const passkeyBefore = await passkeyPolicy.before(request, path);
+    if (passkeyBefore?.kind === "answer") return passkeyBefore.response;
+    const forwarded = passkeyBefore?.request ?? request;
+    const enrolment = passkeyBefore?.enrolment ?? null;
     let response = await options.oidcSessions.runTokenRequest(authorizationCode, () =>
-      options.auth.handler(request),
+      options.auth.handler(forwarded),
     );
     response = withSessionDataClearedOnLogout(response, path);
     const priorSubjectId = priorSession?.user?.id;
@@ -153,6 +167,7 @@ export function createAuthRequestHandler(options: {
         stampMfaCompletedFromResponse(options.sessionStampStore, response),
       );
     }
+    response = await passkeyPolicy.after({ request, response, path, enrolment });
     if (response.status < 400 && isSocialSignInPath(path)) {
       await settleSecurityEffect(options.log, { path, effect: "stamp_social_auth" }, () =>
         stampSocialAuthFromResponse(options.sessionStampStore, response),

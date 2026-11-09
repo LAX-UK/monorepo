@@ -59,4 +59,19 @@ describe("auth issuer security headers", () => {
     const response = await app.request("http://localhost/health/live");
     expect(response.headers.get("strict-transport-security")).toBeNull();
   });
+
+  it("lets hosted pages make and use passkeys for themselves only, and keeps the API closed", async () => {
+    const app = new Hono();
+    app.use("*", createSecurityHeadersMiddleware());
+    app.get("/login", (c) => c.html("<html><body>Sign in</body></html>"));
+    app.get("/api/thing", (c) => c.json({ ok: true }));
+    const page = await app.request("https://auth.example.com/login");
+    const policy = page.headers.get("permissions-policy") ?? "";
+    expect(policy).toContain("publickey-credentials-create=(self)");
+    expect(policy).toContain("publickey-credentials-get=(self)");
+    expect(policy).toContain("camera=()");
+    expect(page.headers.get("content-security-policy")).toContain("frame-ancestors 'none'");
+    const api = await app.request("https://auth.example.com/api/thing");
+    expect(api.headers.get("permissions-policy")).not.toContain("publickey-credentials");
+  });
 });

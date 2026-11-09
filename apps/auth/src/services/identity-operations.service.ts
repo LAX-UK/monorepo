@@ -16,7 +16,13 @@ import type {
   IdentitySubjectRecord,
 } from "./identity-operations.ports.js";
 import { publishIdentityProfileUpdated } from "./publish-identity-profile-updated.js";
-import { type SignInMethods, decideUnlink, describeSignInMethods } from "./sign-in-method-rules.js";
+import {
+  type PasskeyRow,
+  type SignInMethods,
+  decideRemovePasskey,
+  decideUnlink,
+  describeSignInMethods,
+} from "./sign-in-method-rules.js";
 
 export type IdentityOperationErrorCode =
   | "already_set"
@@ -330,6 +336,59 @@ export class IdentityOperationsService {
       }
     });
     return { revokedSessionIds };
+  }
+
+  /**
+   * Removes one of the person's passkeys. Locks are taken in one order by every writer: the
+   * account rows, then the passkey rows, so two removals cannot deadlock and the last-method
+   * check counts exactly what will be left. It also ends every other sign-in (`keepSessionId`
+   * survives), because whoever else held the account through that passkey, a lost or sold device,
+   * must not keep access, and records the removal and each ended session. Relying-party tokens are
+   * ended by the caller once this has committed.
+   */
+  async removePasskey(
+    subjectId: string,
+    passkeyId: string,
+    keepSessionId: string,
+  ): Promise<{ revokedSessionIds: string[]; name: string | null }> {
+    let revokedSessionIds: string[] = [];
+    let name: string | null = null;
+    await this.repositories.unitOfWork.transaction(async (transaction) => {
+      const rows = await this.repositories.credentials.lockSignInAccounts(transaction, subjectId);
+      const held = await this.repositories.credentials.lockPasskeys(transaction, subjectId);
+      const removed = await this.repositories.credentials.deletePasskey(
+        transaction,
+        subjectId,
+        passkeyId,
+      );
+      if (!removed) throw new IdentityOperationError("not_linked");
+      // Throwing here rolls the delete back with the rest of the transaction.
+      if (decideRemovePasskey(rows, held) !== "allowed") {
+        throw new IdentityOperationError("last_sign_in_method");
+      }
+      name = removed.name;
+      await this.identityEventPublisher.publish(
+        { type: "user.sign_in_method_removed", userId: subjectId, method: "passkey" },
+        { transaction },
+      );
+      revokedSessionIds = await this.repositories.sessions.deleteOtherSessions(
+        transaction,
+        subjectId,
+        keepSessionId,
+      );
+      for (const sessionId of revokedSessionIds) {
+        await this.identityEventPublisher.publish(
+          { type: "user.session_revoked", userId: subjectId, sessionId },
+          { transaction },
+        );
+      }
+    });
+    return { revokedSessionIds, name };
+  }
+
+  /** Names one of the person's passkeys; null when the person has none by that id. */
+  renamePasskey(subjectId: string, passkeyId: string, name: string): Promise<PasskeyRow | null> {
+    return this.repositories.credentials.renamePasskey(subjectId, passkeyId, name);
   }
 
   listSessions(subjectId: string, currentSessionToken?: string): Promise<IdentitySession[]> {

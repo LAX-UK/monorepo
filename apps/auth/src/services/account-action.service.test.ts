@@ -67,9 +67,11 @@ function setup(
   const readSubject = vi.fn(
     options.readSubject ?? (async () => ({ isStaff: options.staff === true })),
   );
+  const grants = { grant: vi.fn(async () => undefined) };
   const service = new AccountActionService(
     {
       tickets: store,
+      grants,
       operations: operations as never,
       readSubject,
       available: options.available ?? { google: true, apple: true, passkey: false },
@@ -79,6 +81,7 @@ function setup(
   );
   return {
     service,
+    grants,
     held,
     operations,
     readSubject,
@@ -208,6 +211,34 @@ describe("AccountActionService.redeem: the browser arrives", () => {
     });
   });
 
+  it("gives the session permission to make a passkey when a passkey ticket is spent, and a provider ticket does not", async () => {
+    const passkeys = setup({ available: { google: true, apple: true, passkey: true } });
+    const secret = await started(passkeys, "passkey");
+    expect(await passkeys.service.redeem(secret, browser)).toMatchObject({
+      ok: true,
+      action: "passkey",
+    });
+    expect(passkeys.grants.grant).toHaveBeenCalledWith("sid-1", SUBJECT);
+
+    const google = setup();
+    await google.service.redeem(await started(google), browser);
+    expect(google.grants.grant).not.toHaveBeenCalled();
+  });
+
+  it("gives no permission when the browser is in another session, the ticket is spent or the sign-in is stale", async () => {
+    const context = setup({ available: { google: true, apple: true, passkey: true } });
+    const secret = await started(context, "passkey");
+    await context.service.redeem(secret, { id: "sid-2", userId: SUBJECT });
+    await context.service.redeem(secret, browser);
+    expect(context.grants.grant).not.toHaveBeenCalled();
+
+    const stale = setup({ available: { google: true, apple: true, passkey: true } });
+    const staleSecret = await started(stale, "passkey");
+    stale.advance(301);
+    await stale.service.redeem(staleSecret, browser);
+    expect(stale.grants.grant).not.toHaveBeenCalled();
+  });
+
   it("works once: the same address a second time is expired (replay)", async () => {
     const context = setup();
     const secret = await started(context);
@@ -293,6 +324,7 @@ describe("AccountActionService.redeem: the browser arrives", () => {
     // A second service sees the same ticket with the method now off.
     const off = new AccountActionService(
       {
+        grants: { grant: vi.fn(async () => undefined) },
         tickets: {
           issue: async () => "",
           consume: async () => ({

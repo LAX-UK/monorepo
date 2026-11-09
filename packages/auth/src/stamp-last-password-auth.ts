@@ -50,3 +50,16 @@ export async function stampSocialAuthFromResponse(
   if (!token) return;
   await store.stampSocialAuth(token, new Date());
 }
+
+/**
+ * Records a completed passkey sign-in against the exact new browser session: the device checked
+ * the person, so it counts as two-step verification, which no other sign-in method does.
+ */
+export async function stampPasskeyAuthFromResponse(
+  store: SessionStampStore,
+  res: Response,
+): Promise<void> {
+  const token = readSessionToken(res);
+  if (!token) return;
+  await store.stampPasskeyAuth(token, new Date());
+}

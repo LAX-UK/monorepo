@@ -101,10 +101,10 @@ describe("GET /account-action", () => {
     expect(response.headers.get("location")).toBe(back("apple_linked"));
   });
 
-  it("has no passkey page yet", async () => {
+  it("sends a spent passkey ticket to the issuer's own passkey page, starting no provider", async () => {
     const { app, startLink } = setup({ redeem: { ok: true, action: "passkey", subjectId: "u1" } });
     const response = await app.request(`/account-action?ticket=${SECRET}`);
-    expect(response.headers.get("location")).toBe(back("provider_unavailable"));
+    expect(response.headers.get("location")).toBe("/account-action/passkey");
     expect(startLink).not.toHaveBeenCalled();
   });
 
