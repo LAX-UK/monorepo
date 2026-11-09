@@ -148,6 +148,16 @@ export const OrderLineSchema = Type.Object(
      */
     editionSummary: Type.Optional(Type.Union([Type.String({ minLength: 1 }), Type.Null()])),
     artistName: Type.Optional(Type.Union([Type.String({ minLength: 1 }), Type.Null()])),
+    /** 'framing' for a frame sold with a print; absent from older responses, meaning goods. */
+    kind: Type.Optional(Type.Union([Type.Literal("goods"), Type.Literal("framing")])),
+    /** The frame's name as sold, for a framing line. */
+    framingName: Type.Optional(Type.Union([Type.String({ minLength: 1 }), Type.Null()])),
+    /** The print line a frame goes with; the frame is shown under it. */
+    framingForLineId: Type.Optional(Type.Union([Type.String({ format: "uuid" }), Type.Null()])),
+    /** The print a frame goes with: "Tide line, no. 7". */
+    framingFor: Type.Optional(Type.Union([Type.String({ minLength: 1 }), Type.Null()])),
+    /** What the frame is made of: "Window mount, white conservation board · UV-filtering acrylic". */
+    framingDetail: Type.Optional(Type.Union([Type.String({ minLength: 1 }), Type.Null()])),
   },
   { additionalProperties: false },
 );
@@ -286,6 +296,8 @@ export const OrderSummarySchema = Type.Object(
     status: OrderStatusSchema,
     fulfilment: ShopFulfilmentOptionSchema,
     merchandiseSubtotalPence: Type.Integer({ minimum: 0 }),
+    /** The framing sold with the prints, apart from the items; absent from older responses. */
+    framingSubtotalPence: Type.Optional(Type.Integer({ minimum: 0 })),
     fulfilmentSurchargePence: Type.Integer({ minimum: 0 }),
     totalPence: Type.Integer({ minimum: 0 }),
     /** Money already returned to the customer; absent from older responses, meaning none. */

@@ -7,7 +7,7 @@ import {
   shopOrder,
   shopOrderLine,
 } from "@auction/db/schema";
-import { reservedUntilFromCheckoutExpiry } from "@auction/shop-domain";
+import { parseFramingOrderSnapshot, reservedUntilFromCheckoutExpiry } from "@auction/shop-domain";
 import { and, asc, count, desc, eq, inArray } from "drizzle-orm";
 import { countryNameOf } from "../../application/country-name.js";
 import type {
@@ -42,7 +42,8 @@ const columns = {
   city: shopOrder.deliveryCity,
   postcode: shopOrder.deliveryPostcode,
   phone: shopOrder.deliveryPhone,
-  merchandisePence: shopOrder.merchandiseSubtotalPence,
+  goodsPence: shopOrder.merchandiseSubtotalPence,
+  framingPence: shopOrder.framingSubtotalPence,
   requestedAt: shopDeliveryQuote.requestedAt,
   holdUntil: shopDeliveryQuote.holdUntil,
   quotedPricePence: shopDeliveryQuote.quotedPricePence,
@@ -73,12 +74,21 @@ async function itemTitles(
   const titles = new Map<string, string[]>();
   if (orderIds.length === 0) return titles;
   const lines = await db
-    .select({ orderId: shopOrderLine.orderId, title: shopArtwork.title })
+    .select({
+      orderId: shopOrderLine.orderId,
+      title: shopArtwork.title,
+      kind: shopOrderLine.kind,
+      framingSnapshot: shopOrderLine.framingSnapshot,
+    })
     .from(shopOrderLine)
     .leftJoin(shopArtwork, eq(shopOrderLine.artworkId, shopArtwork.id))
     .where(inArray(shopOrderLine.orderId, [...orderIds]));
   for (const line of lines) {
-    titles.set(line.orderId, [...(titles.get(line.orderId) ?? []), line.title ?? "Item"]);
+    const title =
+      line.kind === "framing"
+        ? `Framing: ${parseFramingOrderSnapshot(line.framingSnapshot).name}`
+        : (line.title ?? "Item");
+    titles.set(line.orderId, [...(titles.get(line.orderId) ?? []), title]);
   }
   return titles;
 }
@@ -102,7 +112,8 @@ function toRow(record: QuoteRecord, items: string[]): DeliveryQuoteStaffRow {
     ].filter((line): line is string => Boolean(line)),
     phone: record.phone,
     items,
-    merchandisePence: record.merchandisePence as number,
+    // What is being bought before delivery: the goods and the framing sold with them.
+    beforeDeliveryPence: (record.goodsPence as number) + (record.framingPence as number),
     requestedAt: record.requestedAt as Date,
     holdUntil: record.holdUntil as Date,
     quote: quoted

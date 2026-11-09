@@ -78,7 +78,7 @@ export function DeliveryQuotesView({
           </Link>
           <span className="whitespace-normal break-words text-staff-xs text-staff-muted">
             {row.items.join(", ")} ·{" "}
-            <span className="tabular-nums">{quotePrice(row.merchandisePence)}</span>
+            <span className="tabular-nums">{quotePrice(row.beforeDeliveryPence)}</span>
           </span>
         </span>
       ),

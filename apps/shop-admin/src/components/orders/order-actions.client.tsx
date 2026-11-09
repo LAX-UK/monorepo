@@ -8,15 +8,27 @@ import {
   cancelOrderAfterPossession,
   createProductionTask,
   retryOrderRefund,
+  updateFramingTask,
 } from "@/server/application/admin-operations-actions.server";
 import { GUEST_ERASURE_COPY, guestErasureMenuReason } from "@/server/domain/guest-erasure.vm";
-import { cancelAfterPossessionDescription, orderLineLabel } from "@/server/domain/order-detail.vm";
+import {
+  cancelAfterPossessionDescription,
+  framingDueLabel,
+  orderLineLabel,
+  presentFramingTaskStatus,
+} from "@/server/domain/order-detail.vm";
 import type { AdminGuestErasureState, AdminOrderDetail } from "@auction/shop-contracts";
-import type { CancellationStockOutcome } from "@auction/shop-domain";
+import {
+  type CancellationStockOutcome,
+  type FramingTaskStatus,
+  framingTaskFinished,
+  framingTaskNextSteps,
+} from "@auction/shop-domain";
 import {
   ConfirmActionDialog,
   OverflowMenu,
   StaffButton,
+  StatusBadge,
   formatGbp,
   toast,
 } from "@auction/staff-ui";
@@ -167,6 +179,99 @@ export function SendToProductionButton({ line }: { line: Line }) {
   );
 }
 
+const FRAMING_STEP_LABEL: Partial<Record<FramingTaskStatus, string>> = {
+  framing: "Start framing",
+  framed: "Mark framed",
+  completed: "Mark done",
+};
+
+/**
+ * The one step that moves a frame's work on (start, framed, done), with the version staff saw so
+ * a change made meanwhile is refused. Shown nowhere once the work cannot move.
+ */
+export function FramingStepButton({
+  task,
+  label,
+  canMove,
+}: {
+  task: { taskId: string; status: FramingTaskStatus; version: number };
+  /** What the toast names: "Framing: Natural oak frame". */
+  label: string;
+  canMove: boolean;
+}) {
+  const mutation = useAdminMutation();
+  const next = canMove
+    ? framingTaskNextSteps(task.status).find((step) => FRAMING_STEP_LABEL[step])
+    : undefined;
+  if (!next) return null;
+  return (
+    <StaffButton
+      size="sm"
+      variant="secondary"
+      requires="production.write"
+      loading={mutation.pending}
+      onClick={() =>
+        mutation.run(
+          () =>
+            updateFramingTask({
+              taskId: task.taskId,
+              status: next,
+              expectedVersion: task.version,
+              idempotencyKey: mutation.idempotencyKey,
+            }),
+          `${label}: ${presentFramingTaskStatus(next).label.toLowerCase()}`,
+        )
+      }
+    >
+      {FRAMING_STEP_LABEL[next]}
+    </StaffButton>
+  );
+}
+
+/**
+ * A frame's work on the order page: when it is due, where it stands and the step that moves it
+ * on. Cancelling the framing is not offered here; it goes with a refund of the frame.
+ */
+export function FramingTaskControl({
+  line,
+  canMove,
+  refund,
+}: {
+  line: Line;
+  canMove: boolean;
+  /** The frame's own refund, which replaces the work state: nothing is made for a refunded frame. */
+  refund: "refunded" | "refund_pending" | null;
+}) {
+  const task = line.framing?.task;
+  if (!task) return null;
+  if (refund) {
+    return (
+      <StatusBadge tone={refund === "refunded" ? "success" : "warning"}>
+        {refund === "refunded" ? "Refunded" : "Refund pending"}
+      </StatusBadge>
+    );
+  }
+  const presented = presentFramingTaskStatus(task.status);
+  const waitsForPrint = task.status === "queued" && !line.framing?.printStarted;
+  return (
+    <span className="flex flex-wrap items-center gap-2">
+      {!framingTaskFinished(task.status) ? (
+        <span className="whitespace-nowrap text-staff-xs text-staff-muted tabular-nums">
+          {framingDueLabel(task.dueAt)}
+        </span>
+      ) : null}
+      <StatusBadge tone={presented.tone}>{presented.label}</StatusBadge>
+      {waitsForPrint && canMove ? (
+        <span className="whitespace-nowrap text-staff-xs text-staff-muted">
+          Start the print first
+        </span>
+      ) : (
+        <FramingStepButton task={task} label={orderLineLabel(line)} canMove={canMove} />
+      )}
+    </span>
+  );
+}
+
 /**
  * Puts a failed refund back in the queue to be sent to the customer's card. The same refund is
  * reused, so retrying twice never refunds twice.
@@ -253,12 +358,17 @@ export function OrderLineMenu({
 }: {
   line: Line;
   /** What cancelling does; null when the line cannot be cancelled. */
-  cancellation: { refundPence: number; stock: CancellationStockOutcome } | null;
+  cancellation: {
+    refundPence: number;
+    framePence: number;
+    frameMade: boolean;
+    stock: CancellationStockOutcome;
+  } | null;
 }) {
   const mutation = useAdminMutation();
   const [confirming, setConfirming] = useState(false);
   if (cancellation === null || !line.editionId) return null;
-  const { refundPence, stock } = cancellation;
+  const { refundPence, framePence, frameMade, stock } = cancellation;
   const editionId = line.editionId;
   return (
     <>
@@ -280,8 +390,8 @@ export function OrderLineMenu({
         open={confirming}
         onOpenChange={setConfirming}
         title={`Cancel ${orderLineLabel(line)}?`}
-        description={cancelAfterPossessionDescription(refundPence, stock)}
-        confirmLabel={`Cancel and refund ${formatGbp(refundPence)}`}
+        description={cancelAfterPossessionDescription(refundPence, stock, framePence, frameMade)}
+        confirmLabel={`Cancel and refund ${formatGbp(refundPence + framePence)}`}
         tone="danger"
         loading={mutation.pending}
         onConfirm={async () => {

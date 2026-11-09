@@ -42,7 +42,7 @@ async function buildApp(role: ShopStaffRole, quotes: Record<string, unknown> = {
           address: ["Friedrichstrasse 12", "Berlin 10117", "Germany"],
           phone: "+49 30 1234567",
           items: ["Warm Basket"],
-          merchandisePence: 42000,
+          beforeDeliveryPence: 42000,
           requestedAt: new Date("2026-11-10T09:00:00Z"),
           holdUntil: new Date("2026-11-13T09:00:00Z"),
           quote: null,

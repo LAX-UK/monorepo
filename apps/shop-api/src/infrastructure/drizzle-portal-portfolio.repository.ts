@@ -30,10 +30,10 @@ import { resolvePortalPartyIds } from "./portal-party-ids.js";
 
 const ORIGINAL_SALE_STATUSES = ["deposit_due", "invoiced", "paid", "assigned"] as const;
 
-/** True for the first line of an order, which carries the order's delivery charge. */
+/** True for the first goods line of an order (a frame is never one), which carries the order's delivery charge. */
 const isFirstLineOfOrder = sql<boolean>`${shopOrderLine.id} = (
   SELECT first_line.id FROM shop_order_line first_line
-  WHERE first_line.order_id = ${shopOrderLine.orderId}
+  WHERE first_line.order_id = ${shopOrderLine.orderId} AND first_line.kind = 'goods'
   ORDER BY first_line.created_at, first_line.id
   LIMIT 1
 )`;
