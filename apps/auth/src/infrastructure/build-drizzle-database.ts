@@ -2,6 +2,7 @@ import {
   type EnvelopeCrypto,
   wrapAuthDatabaseAdapter,
   wrapOAuthConsentUpsertAdapter,
+  wrapPasskeyLimitAdapter,
 } from "@auction/auth";
 import type { IdentityDatabase } from "@auction/identity-db";
 import { createDrizzleConsentStore } from "@auction/identity-db";
@@ -10,6 +11,7 @@ import {
   oauthAccessToken,
   oauthApplication,
   oauthConsent,
+  passkey,
   session,
   twoFactor as twoFactorTable,
   user,
@@ -33,13 +35,16 @@ export function buildDrizzleDatabase(
       oauthAccessToken,
       oauthConsent,
       twoFactor: twoFactorTable,
+      passkey,
     },
   });
   type DrizzleAdapterOptions = Parameters<typeof inner>[0];
+  // The consent upsert and the passkey limit both wrap the same adapter: the first routes consent
+  // inserts through one atomic store, the second names the database's ten-passkey refusal.
   const withConsentUpsert = ((options: DrizzleAdapterOptions) =>
-    wrapOAuthConsentUpsertAdapter(inner(options) as never, consentStore)) as unknown as ReturnType<
-    typeof drizzleAdapter
-  >;
+    wrapPasskeyLimitAdapter(
+      wrapOAuthConsentUpsertAdapter(inner(options) as never, consentStore) as never,
+    )) as unknown as ReturnType<typeof drizzleAdapter>;
   if (!envelope) return withConsentUpsert;
   return ((options: DrizzleAdapterOptions) =>
     wrapAuthDatabaseAdapter(

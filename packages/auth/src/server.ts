@@ -29,6 +29,7 @@ import { buildDatabaseHooks } from "./auth-hooks/database-hooks.js";
 import { AUTH_TIMINGS, DEFAULT_JWT_AUDIENCE } from "./auth-timings.js";
 import { AUTH_IP_ADDRESS_HEADERS } from "./client-ip-headers.js";
 import { type AuthLifecycleCallbacks, DISABLED_AUTH_ENDPOINT_PATHS } from "./contracts.js";
+import { type PasskeyConfig, type PasskeyPorts, buildPasskeyPlugin } from "./passkey-plugin.js";
 import type { AuthDatabase } from "./phone-number-plugin.js";
 import type { AuthPorts } from "./ports/index.js";
 import {
@@ -63,6 +64,11 @@ export type AuthEnv = {
   totpIssuer?: string | undefined;
   /** URL for the sessions settings page linked from password-reset emails. */
   sessionsSettingsUrl?: string | undefined;
+  /**
+   * Passkeys, when this environment offers them: the issuer's host and origin, and what the
+   * plugin writes back. Absent, no passkey endpoint exists at all.
+   */
+  passkey?: { config: PasskeyConfig; ports: PasskeyPorts } | undefined;
   /** Called when the facts a Google or Apple sign-in depends on cannot be read; the sign-in fails closed. */
   onSocialPolicyReadFailed?: ((error: unknown) => void) | undefined;
   /** Called after password reset succeeds — revoke all other sessions; returns count of revoked rows (optional; wired in apps/api). */
@@ -304,6 +310,7 @@ export function createAuth(env: AuthEnv): Auth {
       },
     },
     plugins: [
+      ...(env.passkey ? [buildPasskeyPlugin(env.passkey.config, env.passkey.ports)] : []),
       buildSocialSignInPolicyPlugin(hookDeps),
       ...buildJwtAndOidcPlugins({
         jwksStore: ports.jwksStore,

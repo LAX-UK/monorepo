@@ -22,6 +22,7 @@ describe("stampMfaCompletedFromResponse", () => {
       stampMfaCompleted,
       stampPasswordAuth: vi.fn(),
       stampSocialAuth: vi.fn(),
+      stampPasskeyAuth: vi.fn(),
     } satisfies SessionStampStore;
 
     await stampMfaCompletedFromResponse(store, responseWithSessionCookie("rotated-session-token"));
@@ -37,6 +38,7 @@ describe("stampMfaCompletedFromResponse", () => {
       stampMfaCompleted,
       stampPasswordAuth: vi.fn(),
       stampSocialAuth: vi.fn(),
+      stampPasskeyAuth: vi.fn(),
     } satisfies SessionStampStore;
 
     await stampMfaCompletedFromResponse(store, new Response(null, { status: 200 }));
@@ -52,6 +54,7 @@ describe("stampLastPasswordAuthFromSignInResponse", () => {
       stampPasswordAuth,
       stampMfaCompleted: vi.fn(),
       stampSocialAuth: vi.fn(),
+      stampPasskeyAuth: vi.fn(),
     } satisfies SessionStampStore;
 
     await stampLastPasswordAuthFromSignInResponse(

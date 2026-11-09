@@ -84,6 +84,7 @@ async function harness(options: {
       stampPasswordAuth: vi.fn(async () => undefined),
       stampMfaCompleted: vi.fn(async () => undefined),
       stampSocialAuth: vi.fn(async () => undefined),
+      stampPasskeyAuth: vi.fn(async () => undefined),
     },
     subjectStatusReader: { isDisabledOrMerged: vi.fn(async () => false) },
     accountLinkReader: {

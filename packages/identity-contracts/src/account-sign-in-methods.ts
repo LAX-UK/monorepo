@@ -17,6 +17,8 @@ export const ACCOUNT_SIGN_IN_METHODS_PASSKEY_REMOVE_PATH =
  */
 export const ACCOUNT_ACTION_PATH = "/account-action";
 export const ACCOUNT_ACTION_DONE_PATH = "/account-action/done";
+/** The issuer's own page for making a passkey, where `/account-action` sends a spent passkey ticket. */
+export const ACCOUNT_ACTION_PASSKEY_PATH = "/account-action/passkey";
 /** How long a one-time ticket lives. It is spent the first time it is used. */
 export const ACCOUNT_ACTION_TICKET_TTL_SECONDS = 120;
 /** The query parameter LAX Account's Security page reads the outcome from: a fixed word, never text. */
@@ -49,8 +51,10 @@ export type AccountActionIntentResponse = z.infer<typeof accountActionIntentSche
 
 /** The most passkeys one person can hold; the database enforces it too. */
 export const PASSKEY_LIMIT = 10;
-/** The longest name a passkey can be given. */
+/** The longest name stored for a passkey. */
 export const PASSKEY_NAME_MAX_LENGTH = 60;
+/** The longest name a person can give one: short enough to read in a list. */
+export const PASSKEY_NAME_INPUT_MAX_LENGTH = 40;
 
 /** A passkey as the person sees it: named and dated. The key material never leaves the issuer. */
 export const accountPasskeySchema = z.object({
@@ -92,6 +96,15 @@ export const accountSignInMethodsSchema = z.object({
   available: z
     .object({ google: z.boolean(), apple: z.boolean(), passkey: z.boolean() })
     .default({ google: false, apple: false, passkey: false }),
+});
+
+/** Renaming a passkey answers with the passkey as the person now sees it. */
+export const accountPasskeyRenamedSchema = z.object({ passkey: accountPasskeySchema });
+
+/** Removing a passkey: other sign-ins ended because it was removed; the one making the request stays. */
+export const accountPasskeyRemovedSchema = z.object({
+  removed: z.literal(true),
+  revokedSessions: z.number().int().nonnegative(),
 });
 
 export const accountSignInMethodUnlinkedSchema = z.object({
@@ -152,5 +165,7 @@ export type AccountSignInMethodError = (typeof ACCOUNT_SIGN_IN_METHOD_ERRORS)[nu
 export type AccountSignInMethodReturnCode = (typeof ACCOUNT_SIGN_IN_METHOD_RETURN_CODES)[number];
 export type AccountSignInMethodReturnError = (typeof ACCOUNT_SIGN_IN_METHOD_RETURN_ERRORS)[number];
 export type AccountPasskey = z.infer<typeof accountPasskeySchema>;
+export type AccountPasskeyRenamedResponse = z.infer<typeof accountPasskeyRenamedSchema>;
+export type AccountPasskeyRemovedResponse = z.infer<typeof accountPasskeyRemovedSchema>;
 export type AccountSignInMethodsResponse = z.infer<typeof accountSignInMethodsSchema>;
 export type AccountSignInMethodUnlinkedResponse = z.infer<typeof accountSignInMethodUnlinkedSchema>;
