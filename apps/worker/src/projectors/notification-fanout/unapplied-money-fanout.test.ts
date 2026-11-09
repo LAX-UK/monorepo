@@ -100,9 +100,18 @@ describe("unapplied money alert", () => {
       },
       emailService: { enqueue } as never,
       eventId: 9,
+      webOrigin: "https://bid.example",
+      shopAdminOrigin: "https://shop-admin.example/",
       alert,
     });
-    const vars = enqueue.mock.calls[0]?.[0].vars as { situation: string; reference: string };
+    const vars = enqueue.mock.calls[0]?.[0].vars as {
+      situation: string;
+      reference: string;
+      reviewUrl: string;
+    };
+    // The Shop order in LAX Admin, not the Bid admin payments list.
+    expect(vars.reviewUrl).toBe("https://shop-admin.example/orders/order-1");
+    expect(vars.situation).toContain("LAX Admin");
     expect(vars.situation).toContain("paid after their order had closed");
     expect(vars.situation).toContain("Nothing was refunded");
     expect(vars.reference).toBe("LAX-S-10482");

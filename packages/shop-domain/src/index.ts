@@ -433,6 +433,15 @@ export {
 } from "./production-task-state.js";
 export { isPayeeConnectReady, type PayeeConnectReadinessInput } from "./payee-connect-readiness.js";
 export { RESERVATION_GRACE_MS, reservedUntilFromCheckoutExpiry } from "./reservation-timing.js";
+export {
+  CHECKOUT_HOLD_MS,
+  MAX_HOLD_EXTENSION_MS,
+  SESSION_SAFETY_MARGIN_MS,
+  STRIPE_SESSION_MIN_LIFETIME_MS,
+  type SessionHoldPlan,
+  newCheckoutHoldEnd,
+  planSessionHold,
+} from "./checkout-hold.js";
 export { isUkPostcode, normalizeUkPostcode } from "./uk-postcode.js";
 export {
   computeLineVat,

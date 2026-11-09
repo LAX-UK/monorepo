@@ -10,7 +10,12 @@ import {
   pence,
   reservedUntilFromCheckoutExpiry,
 } from "@auction/shop-domain";
-import { isUkPostcode, normalizeUkPostcode, vatIncludedIn } from "@auction/shop-domain";
+import {
+  isUkPostcode,
+  newCheckoutHoldEnd,
+  normalizeUkPostcode,
+  vatIncludedIn,
+} from "@auction/shop-domain";
 import { eq } from "drizzle-orm";
 import type {
   BasketOwner,
@@ -24,7 +29,7 @@ import { cancelShopCheckoutSession } from "./drizzle-payment-event.processor.js"
 import { resolveShopUserEmail } from "./resolve-shop-user-email.js";
 import { assertStorefrontRedirectUrl } from "./shop-basket.persistence.js";
 import { expandBasketLines, loadCheckoutBasket } from "./shop-checkout-basket.js";
-import { holdForNewSession, newCheckoutHoldEnd } from "./shop-checkout-hold.js";
+import { holdForNewSession } from "./shop-checkout-hold.js";
 import {
   type ReplayedCheckout,
   checkoutDeliveryDetails,
@@ -100,7 +105,11 @@ export function createDrizzleCheckoutRepository(
           ? await holdForNewSession(
               db,
               { id: orderRow.id, checkoutExpiresAt: pending.checkoutExpiresAt },
-              { began: orderRow.createdAt, now: new Date() },
+              {
+                began: orderRow.createdAt,
+                now: new Date(),
+                isQuote: orderRow.fulfilment === "international_quotation",
+              },
             )
           : pending.checkoutExpiresAt,
       needsStripeSession: pending.needsStripeSession,
@@ -331,7 +340,9 @@ export function createDrizzleCheckoutRepository(
           409,
         );
       }
-      if (order.checkoutExpiresAt && order.checkoutExpiresAt < new Date()) {
+      // A pending order always has a hold; one without it, or past it, can no longer be paid.
+      const holdEndsAt = order.checkoutExpiresAt;
+      if (!holdEndsAt || holdEndsAt < new Date()) {
         throw new ShopApiError(SHOP_API_ERROR_CODES.CONFLICT, "Checkout session expired", 409);
       }
       // When the hold began for the two-hour ceiling: the buyer accepting a quote, else the order.
@@ -382,11 +393,16 @@ export function createDrizzleCheckoutRepository(
       // A new session must last at least as long as Stripe allows, so the hold and the
       // reservation are moved to match it first and the reaper never ends it early.
       const checkoutExpiresAt = order.stripeCheckoutSessionId
-        ? (order.checkoutExpiresAt ?? newCheckoutHoldEnd(new Date()))
-        : await holdForNewSession(db, order, {
-            began: acceptedAt ?? order.createdAt,
-            now: new Date(),
-          });
+        ? holdEndsAt
+        : await holdForNewSession(
+            db,
+            { id: order.id, checkoutExpiresAt: holdEndsAt },
+            {
+              began: acceptedAt ?? order.createdAt,
+              now: new Date(),
+              isQuote: order.fulfilment === "international_quotation",
+            },
+          );
 
       return resolveOrCreateStripeCheckoutSession(db, paymentGateway, {
         orderId: order.id,

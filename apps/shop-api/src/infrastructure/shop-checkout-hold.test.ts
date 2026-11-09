@@ -1,90 +1,91 @@
 import { describe, expect, it, vi } from "vitest";
-import {
-  MAX_HOLD_EXTENSION_MS,
-  STRIPE_SESSION_MIN_LIFETIME_MS,
-  holdForNewSession,
-  newCheckoutHoldEnd,
-  sessionEndFor,
-} from "./shop-checkout-hold.js";
+import { holdForNewSession } from "./shop-checkout-hold.js";
 
 const NOW = new Date("2026-11-12T10:00:00Z");
+const at = (minutes: number, from = NOW) => new Date(from.getTime() + minutes * 60_000);
 
-describe("sessionEndFor", () => {
-  it("keeps a hold that already lasts long enough", () => {
-    const hold = new Date(NOW.getTime() + 60 * 60_000);
-    expect(sessionEndFor(hold, NOW)).toBe(hold);
-  });
+function dbWith(options: { moves?: boolean } = {}) {
+  const updates: unknown[] = [];
+  const tx = {
+    update: vi.fn(() => ({
+      set: vi.fn((values: unknown) => {
+        updates.push(values);
+        return {
+          where: vi.fn(() => ({
+            returning: vi.fn(async () => (options.moves === false ? [] : [{ id: "order-1" }])),
+          })),
+        };
+      }),
+    })),
+  };
+  return {
+    updates,
+    db: { transaction: vi.fn(async (fn: (inner: typeof tx) => Promise<unknown>) => fn(tx)) },
+  };
+}
 
-  it("stretches a shorter hold to Stripe's minimum with a minute to spare", () => {
-    const hold = new Date(NOW.getTime() + 10 * 60_000);
-    expect(sessionEndFor(hold, NOW).getTime()).toBe(NOW.getTime() + 31 * 60_000);
-    expect(STRIPE_SESSION_MIN_LIFETIME_MS).toBeGreaterThan(30 * 60_000);
-  });
-
-  it("stretches a hold that is exactly 30 minutes, which Stripe would refuse", () => {
-    const hold = new Date(NOW.getTime() + 30 * 60_000);
-    expect(sessionEndFor(hold, NOW).getTime()).toBe(NOW.getTime() + 31 * 60_000);
-  });
-});
-
-describe("newCheckoutHoldEnd", () => {
-  it("holds a new checkout for Stripe's minimum with a minute spare, so UK sessions are never refused", () => {
-    expect(newCheckoutHoldEnd(NOW).getTime()).toBe(NOW.getTime() + 31 * 60_000);
-    expect(newCheckoutHoldEnd(NOW).getTime() - NOW.getTime()).toBeGreaterThan(30 * 60_000);
-  });
-});
+const order = (minutesLeft: number) => ({ id: "order-1", checkoutExpiresAt: at(minutesLeft) });
+const ordinary = { began: NOW, now: NOW, isQuote: false };
 
 describe("holdForNewSession", () => {
-  const dbWith = () => {
-    const updates: unknown[] = [];
-    const tx = {
-      update: vi.fn(() => ({
-        set: vi.fn((values: unknown) => {
-          updates.push(values);
-          return { where: vi.fn(() => ({ returning: vi.fn(async () => [{ id: "order-1" }]) })) };
-        }),
-      })),
-    };
-    return {
-      updates,
-      db: { transaction: vi.fn(async (fn: (inner: typeof tx) => Promise<unknown>) => fn(tx)) },
-    };
-  };
-  const order = (minutesLeft: number) => ({
-    id: "order-1",
-    checkoutExpiresAt: new Date(NOW.getTime() + minutesLeft * 60_000),
+  it("leaves a hold that is long enough alone, writing nothing", async () => {
+    const { db, updates } = dbWith();
+    const hold = await holdForNewSession(db as never, order(45), ordinary);
+    expect(hold).toEqual(at(45));
+    expect(updates).toEqual([]);
+    expect(db.transaction).not.toHaveBeenCalled();
   });
 
-  it("leaves a hold that is long enough alone", async () => {
-    const { db, updates } = dbWith();
-    const hold = await holdForNewSession(db as never, order(45), { began: NOW, now: NOW });
-    expect(hold.getTime()).toBe(NOW.getTime() + 45 * 60_000);
-    expect(updates).toEqual([]);
+  it("writes nothing for a fresh order, whose hold was set a moment ago", async () => {
+    const { db } = dbWith();
+    const created = NOW;
+    const hold = await holdForNewSession(
+      db as never,
+      { id: "order-1", checkoutExpiresAt: at(31, created) },
+      { began: created, now: new Date(created.getTime() + 1_500), isQuote: false },
+    );
+    expect(hold).toEqual(at(31, created));
+    expect(db.transaction).not.toHaveBeenCalled();
   });
 
   it("stretches a short hold, moving the order and the reservation together", async () => {
     const { db, updates } = dbWith();
-    const hold = await holdForNewSession(db as never, order(10), { began: NOW, now: NOW });
-    expect(hold.getTime()).toBe(NOW.getTime() + 31 * 60_000);
+    const hold = await holdForNewSession(db as never, order(10), ordinary);
+    expect(hold).toEqual(at(31));
     // The order's hold, then the editions' reservation (the hold plus the one-minute grace).
     expect(updates).toHaveLength(2);
     expect(updates[0]).toMatchObject({ checkoutExpiresAt: hold });
     expect(updates[1]).toMatchObject({ reservedUntil: new Date(hold.getTime() + 60_000) });
   });
 
-  it("refuses to stretch a hold beyond two hours after it began, and changes nothing", async () => {
+  it("refuses a stretch past two hours, changing nothing, and says what happens next", async () => {
     const { db, updates } = dbWith();
-    const began = new Date(NOW.getTime() - MAX_HOLD_EXTENSION_MS);
+    const began = at(-120);
     await expect(
-      holdForNewSession(db as never, order(5), { began, now: NOW }),
-    ).rejects.toMatchObject({ statusCode: 409 });
+      holdForNewSession(db as never, order(5), { began, now: NOW, isQuote: false }),
+    ).rejects.toMatchObject({
+      statusCode: 409,
+      message: expect.stringContaining("basket restored"),
+    });
     expect(updates).toEqual([]);
   });
 
-  it("allows a stretch that ends exactly at the ceiling", async () => {
+  it("tells a quote buyer to ask for a new delivery quote rather than go to an empty basket", async () => {
     const { db } = dbWith();
-    const began = new Date(NOW.getTime() + 31 * 60_000 - MAX_HOLD_EXTENSION_MS);
-    const hold = await holdForNewSession(db as never, order(5), { began, now: NOW });
-    expect(hold.getTime()).toBe(began.getTime() + MAX_HOLD_EXTENSION_MS);
+    await expect(
+      holdForNewSession(db as never, order(5), { began: at(-120), now: NOW, isQuote: true }),
+    ).rejects.toMatchObject({
+      statusCode: 409,
+      message: expect.stringContaining("new delivery quote"),
+    });
+  });
+
+  it("refuses when the hold had already ended, writing no reservation", async () => {
+    const { db, updates } = dbWith({ moves: false });
+    await expect(holdForNewSession(db as never, order(10), ordinary)).rejects.toMatchObject({
+      statusCode: 409,
+    });
+    // Only the order was tried; the reservation is not touched when the order did not move.
+    expect(updates).toHaveLength(1);
   });
 });

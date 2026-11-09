@@ -40,6 +40,7 @@ export async function reapStaleShopCheckouts(
           eventId: reaperEventIdForOrder(row.id),
           orderId: row.id,
           source: SHOP_CHECKOUT_REAPER_EVENT_SOURCE,
+          holdMustHaveEndedBy: now,
         },
         paymentGateway ? { paymentGateway } : {},
       );

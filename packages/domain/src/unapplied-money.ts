@@ -116,6 +116,21 @@ export function unappliedMoneyDedupeKey(money: UnappliedMoney): string {
   return `${money.reason}:${reference}`;
 }
 
+/**
+ * The aggregate a task's events are recorded against, so the "received" event and the "resolved"
+ * event that closes it sit on one audit trail: the payment, else the payment group, else the
+ * task's own key (money that belongs to neither, such as a Shop order's).
+ */
+export function unappliedMoneyAggregate(
+  money: Pick<UnappliedMoney, "paymentId" | "paymentGroupId">,
+  dedupeKey: string,
+): { aggregateType: "payment" | "payment_group"; aggregateId: string } {
+  return {
+    aggregateType: money.paymentId ? "payment" : "payment_group",
+    aggregateId: money.paymentId ?? money.paymentGroupId ?? dedupeKey,
+  };
+}
+
 export function unappliedMoneyPayload(money: UnappliedMoney): UnappliedMoneyPayload {
   return {
     ...money,

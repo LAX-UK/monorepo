@@ -118,6 +118,16 @@ export type AdminRoutePattern = (typeof ADMIN_ROUTE_TABLE)[number]["pattern"];
 
 const seg = (id: string): string => encodeURIComponent(id);
 
+/**
+ * Link targets in LAX Admin (the Shop and lax.art staff app), which has its own origin. These are
+ * paths on that origin, not on Bid admin's.
+ */
+export const laxAdminRoutes = {
+  orders: {
+    order: (orderId: string) => `/orders/${seg(orderId)}`,
+  },
+} as const;
+
 /** One builder per link target. Ids are encoded; query strings are part of the builder. */
 export const adminRoutes = {
   privateSales: {
