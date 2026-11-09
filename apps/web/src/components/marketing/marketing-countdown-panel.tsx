@@ -17,7 +17,7 @@ import {
 import { liveUrgencyPulseClass } from "@/lib/presenters/status-presentation";
 import { useActiveSaleCountdownEndIso } from "@/lib/sale/use-active-sale-countdown-end-iso";
 import { opensLine } from "@/lib/time/opens-line";
-import { useClientClock } from "@/lib/time/use-client-clock";
+import { useCountdownTick } from "@/lib/time/use-clock";
 import type { SaleDeliveryMode } from "@auction/types";
 import { LabelCaps, LiveDot, cn } from "@auction/ui";
 import { isSaleroomDeliveryMode, toDisplayDate } from "@auction/validators";
@@ -87,8 +87,6 @@ export function MarketingCountdownPanel({
   endTime,
 }: Props) {
   const reduced = useReducedMotion();
-  const nowMs = useClientClock(1000);
-
   const isActiveSaleroomCountdown =
     status === "active" && deliveryMode != null && isSaleroomDeliveryMode(deliveryMode);
 
@@ -106,6 +104,8 @@ export function MarketingCountdownPanel({
     const d = toDisplayDate(effectiveEndIso);
     return Number.isNaN(d.getTime()) ? Number.NaN : d.getTime();
   }, [effectiveEndIso]);
+
+  const nowMs = useCountdownTick([endMs], { surface: "saleHero" });
 
   const msLeft = useMemo(() => {
     if (nowMs == null || !Number.isFinite(endMs)) return null;

@@ -10,8 +10,10 @@ vi.mock("next/image", () => ({
   }) => <img alt={props.alt} data-testid="next-image" data-crossorigin={props.crossOrigin ?? ""} />,
 }));
 
-vi.mock("@/lib/time/use-client-clock", () => ({
-  useClientClock: vi.fn(() => Date.parse("2026-06-01T12:00:00.000Z")),
+vi.mock("@/lib/time/use-clock", () => ({
+  useClockNow: () => Date.parse("2026-06-01T12:00:00.000Z"),
+  useCountdownTick: () => Date.parse("2026-06-01T12:00:00.000Z"),
+  useCountdown: () => null,
 }));
 
 beforeEach(() => {

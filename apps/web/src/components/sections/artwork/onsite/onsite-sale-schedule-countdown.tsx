@@ -18,7 +18,7 @@ import {
 } from "@/lib/presenters/countdown-tone";
 import { liveUrgencyPulseClass } from "@/lib/presenters/status-presentation";
 import { opensLine } from "@/lib/time/opens-line";
-import { useClientClock } from "@/lib/time/use-client-clock";
+import { useCountdownTick } from "@/lib/time/use-clock";
 import type { Sale } from "@auction/types";
 import { LiveDot, cn } from "@auction/ui";
 import {
@@ -86,10 +86,9 @@ function SegmentChip({ value, unit, phase, tone, placeholder }: SegmentChipProps
 /** Countdown to sale start, then to sale end, then ended (onsite marketing hero). */
 export function OnsiteSaleScheduleCountdown({ sale, className, variant = "default" }: Props) {
   const reduced = useReducedMotion();
-  const now = useClientClock(1000);
-
   const startMs = parseNormalizedIsoMs(normalizeAuctionTime(sale.startTime)) ?? Number.NaN;
   const endMs = parseNormalizedIsoMs(normalizeAuctionTime(sale.endTime)) ?? Number.NaN;
+  const now = useCountdownTick([startMs, endMs], { surface: "saleHero" });
 
   const phase = useMemo((): Phase => {
     if (!Number.isFinite(startMs) || !Number.isFinite(endMs)) return "ended";

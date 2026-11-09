@@ -1,11 +1,17 @@
 "use client";
 
 import { timerText } from "@/components/lot-timer/format";
-import { useNow } from "@/hooks/use-now";
 import type { LotCardLineModel } from "@/lib/lot-card/lot-card-line";
+import { useCountdownTick } from "@/lib/time/use-clock";
 import { cn } from "@auction/ui";
 
 type Clock = { words: string; compact: string };
+
+function isoMs(iso: string | null): number | null {
+  if (iso === null) return null;
+  const ms = new Date(iso).getTime();
+  return Number.isFinite(ms) ? ms : null;
+}
 
 function untilMs(iso: string | null, now: number): number | null {
   if (iso === null) return null;
@@ -39,7 +45,10 @@ function clockOf(model: LotCardLineModel, now: number | null): Clock | null {
  * they do not.
  */
 export function LotCardLine({ model, className }: { model: LotCardLineModel; className?: string }) {
-  const now = useNow(1000);
+  const now = useCountdownTick(
+    [model.time === "opens" ? isoMs(model.startsAt) : isoMs(model.endsAt)],
+    { surface: "card" },
+  );
   const clock = clockOf(model, now);
   return (
     <div

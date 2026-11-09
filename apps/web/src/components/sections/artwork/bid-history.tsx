@@ -1,7 +1,7 @@
 "use client";
 
 import { formatMoney } from "@/lib/format-currency";
-import { useClientClock } from "@/lib/time/use-client-clock";
+import { useClockNow } from "@/lib/time/use-clock";
 
 import type { BidHistoryEntry } from "@/lib/bid/bid-history-entry";
 
@@ -30,7 +30,7 @@ function formatRelative(at: number, nowMs: number): string {
 
 export function BidHistory({ entries, hideHeading = false, compact = false }: Props) {
   // `null` during SSR + first client render so relative-time text matches; ticks after mount.
-  const nowMs = useClientClock(30_000);
+  const nowMs = useClockNow(30_000);
   return (
     <div className={compact ? "" : "mt-10 border-t border-border-hairline pt-10"}>
       {hideHeading ? null : (

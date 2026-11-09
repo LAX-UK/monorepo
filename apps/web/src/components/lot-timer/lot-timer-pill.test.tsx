@@ -3,8 +3,10 @@ import { describe, expect, it, vi } from "vitest";
 import { LotCardTimer } from "./lot-card-timer";
 import { LotTimerPill } from "./lot-timer-pill";
 
-vi.mock("@/hooks/use-now", () => ({
-  useNow: () => Date.parse("2026-01-01T12:00:00.000Z"),
+vi.mock("@/lib/time/use-clock", () => ({
+  useClockNow: () => Date.parse("2026-01-01T12:00:00.000Z"),
+  useCountdownTick: () => Date.parse("2026-01-01T12:00:00.000Z"),
+  useCountdown: () => null,
 }));
 
 describe("LotTimerPill layout", () => {
