@@ -801,6 +801,15 @@ export {
   type FramingStatusValue,
 } from "./framing-admin.js";
 export {
+  FRAMING_TASK_STATUS_VALUES,
+  FramingTaskParamsSchema,
+  FramingTaskSchema,
+  FramingTaskStatusSchema,
+  FramingTaskUpdateBodySchema,
+  type FramingTask,
+  type FramingTaskUpdateBody,
+} from "./framing-task-admin.js";
+export {
   ADMIN_EDITION_FRAMING_ISSUE_REASONS,
   AdminEditionFramingIssueSchema,
   AdminEditionFramingOptionSchema,

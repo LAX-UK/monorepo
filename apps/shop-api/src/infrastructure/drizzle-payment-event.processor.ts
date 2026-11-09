@@ -2,6 +2,7 @@ import type { Database } from "@auction/db";
 import {
   shopArtwork,
   shopEdition,
+  shopFramingTask,
   shopFulfilment,
   shopOrder,
   shopOrderLine,
@@ -11,7 +12,12 @@ import {
   shopProduct,
   shopProductVariant,
 } from "@auction/db/schema";
-import { computePayoutDueAt, isGuestOrderSubject, orderVatBreakdown } from "@auction/shop-domain";
+import {
+  computePayoutDueAt,
+  framingDueAt,
+  isGuestOrderSubject,
+  orderVatBreakdown,
+} from "@auction/shop-domain";
 import { and, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 import { describeReceiptEdition } from "../application/order-line-edition.js";
 import type { BasketOwner, PaymentCheckoutGateway } from "../application/ports/commerce.ports.js";
@@ -386,6 +392,7 @@ export async function completeShopCheckoutSession(
     }
 
     await keepEditionSnapshots(tx as Database, editionLines);
+    await queueFramingTasks(tx as Database, lines, input.paidAt);
 
     /** Placeholder until possession sets cancellation end; far-future avoids misleading near-term due dates. */
     const payoutDueAt = computePayoutDueAt(
@@ -439,7 +446,9 @@ export async function completeShopCheckoutSession(
         identitySubjectId: order.identitySubjectId,
         totalPence: order.totalPence,
         paidAt: input.paidAt.toISOString(),
-        lineCount: lines.length,
+        // The works and products only: a frame is not another work, and this count names the deal.
+        lineCount: lines.filter((line) => line.kind === "goods").length,
+        framingLineCount: lines.filter((line) => line.kind === "framing").length,
       },
     });
 
@@ -466,6 +475,8 @@ export async function completeShopCheckoutSession(
           productTitle: shopProduct.title,
           productSlug: shopProduct.slug,
           variantSku: shopProductVariant.sku,
+          kind: shopOrderLine.kind,
+          framingSnapshot: shopOrderLine.framingSnapshot,
           editionNumber: shopOrderLine.editionNumber,
           editionSnapshot: shopOrderLine.editionFactsSnapshot,
           proofNumber: shopEdition.proofNumber,
@@ -487,21 +498,36 @@ export async function completeShopCheckoutSession(
         totalPence: order.totalPence,
       });
 
-      const receiptLines = lineDetails.map((line) => ({
-        artworkTitle: line.productVariantId
-          ? (line.productTitle ?? "Merchandise")
-          : (line.artworkTitle ?? "Artwork"),
-        artworkSlug: line.productVariantId ? (line.productSlug ?? "") : (line.artworkSlug ?? ""),
-        // The order is paid and holds its prints, so the number is the buyer's to be told.
-        editionDetail: describeReceiptEdition({
-          snapshot: line.editionSnapshot,
-          live: undefined,
-          holdsPrint: true,
-          editionNumber: line.editionNumber,
-          proofNumber: line.proofNumber,
-        }),
-        unitPricePence: line.unitPricePence,
-      }));
+      const receiptLines = lineDetails.map((line) =>
+        line.kind === "framing"
+          ? {
+              // A frame is told as its own line, by the name it was sold under.
+              artworkTitle:
+                typeof line.framingSnapshot?.name === "string"
+                  ? line.framingSnapshot.name
+                  : "Framing",
+              artworkSlug: "",
+              editionDetail: "Framing",
+              unitPricePence: line.unitPricePence,
+            }
+          : {
+              artworkTitle: line.productVariantId
+                ? (line.productTitle ?? "Merchandise")
+                : (line.artworkTitle ?? "Artwork"),
+              artworkSlug: line.productVariantId
+                ? (line.productSlug ?? "")
+                : (line.artworkSlug ?? ""),
+              // The order is paid and holds its prints, so the number is the buyer's to be told.
+              editionDetail: describeReceiptEdition({
+                snapshot: line.editionSnapshot,
+                live: undefined,
+                holdsPrint: true,
+                editionNumber: line.editionNumber,
+                proofNumber: line.proofNumber,
+              }),
+              unitPricePence: line.unitPricePence,
+            },
+      );
 
       await options.notifications.queueOrderReceipt(tx, {
         idempotencyKey: `order-receipt:${order.id}`,
@@ -524,6 +550,27 @@ export async function completeShopCheckoutSession(
 
     return "processed";
   });
+}
+
+/**
+ * Opens the work on each frame the order sold: one task per framing line, due after the option's
+ * longest lead time (from the snapshot taken at checkout) counted from payment.
+ */
+async function queueFramingTasks(
+  tx: Database,
+  lines: ReadonlyArray<typeof shopOrderLine.$inferSelect>,
+  paidAt: Date,
+): Promise<void> {
+  const frames = lines.filter((line) => line.kind === "framing");
+  if (frames.length === 0) return;
+  await tx.insert(shopFramingTask).values(
+    frames.map((line) => ({
+      orderLineId: line.id,
+      dueAt: framingDueAt(paidAt, {
+        leadTimeMaxDays: Number(line.framingSnapshot?.leadTimeMaxDays ?? 0),
+      }),
+    })),
+  );
 }
 
 const REAPER_ASYNC_PAYMENT_BACKOFF_MS = 15 * 60 * 1000;

@@ -172,6 +172,7 @@ import { createRecordPossessionHandler } from "./infrastructure/handlers/admin/r
 import { createRejectSaleAuthorityRequestHandler } from "./infrastructure/handlers/admin/reject-sale-authority-request.handler.js";
 import { createRequestRefundHandler } from "./infrastructure/handlers/admin/request-refund.handler.js";
 import { createRetryRefundHandler } from "./infrastructure/handlers/admin/retry-refund.handler.js";
+import { createUpdateFramingTaskHandler } from "./infrastructure/handlers/admin/update-framing-task.handler.js";
 import { createUpdateFulfilmentHandler } from "./infrastructure/handlers/admin/update-fulfilment.handler.js";
 import { createSyncConnectAccountHandler } from "./infrastructure/handlers/webhooks/sync-connect-account.handler.js";
 import { createDrizzleHomeFeatureListReader } from "./infrastructure/home-features/drizzle-home-feature.reader.js";
@@ -393,6 +394,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
   const shopUow = createDrizzleShopUnitOfWork(db, env.DOMAIN_EVENT_PUBLISH_VALIDATE);
   const cancellationPolicy = loadShopCancellationPolicy(env);
   const createProductionTask = createCreateProductionTaskHandler({ uow: shopUow });
+  const updateFramingTask = createUpdateFramingTaskHandler({ uow: shopUow });
   const requestRefund = createRequestRefundHandler({ uow: shopUow });
   const retryRefund = createRetryRefundHandler({ uow: shopUow });
   const markRefundSettledOutside = createMarkRefundSettledOutsideHandler({ uow: shopUow });
@@ -732,6 +734,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
         savedViews: createSavedViewService({ repository: createDrizzleSavedViewRepository(db) }),
         staffReader,
         createProductionTask,
+        updateFramingTask,
         updateFulfilment,
         recordPossession,
         cancelAfterPossession,

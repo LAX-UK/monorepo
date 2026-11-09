@@ -4,6 +4,7 @@ import {
   shopArtist,
   shopArtwork,
   shopEdition,
+  shopFramingTask,
   shopFulfilment,
   shopGuestCustomer,
   shopOrder,
@@ -342,6 +343,9 @@ export function createDrizzleAdminDetailReaders(db: Database) {
           editionNumber: shopOrderLine.editionNumber,
           unitPricePence: shopOrderLine.unitPricePence,
           sellerPartyId: shopOrderLine.sellerPartyId,
+          kind: shopOrderLine.kind,
+          framingSnapshot: shopOrderLine.framingSnapshot,
+          framingForLineId: shopOrderLine.framingForLineId,
         })
         .from(shopOrderLine)
         .leftJoin(shopArtwork, eq(shopOrderLine.artworkId, shopArtwork.id))
@@ -397,6 +401,13 @@ export function createDrizzleAdminDetailReaders(db: Database) {
             .where(inArray(shopProductionTask.orderLineId, lineIds))
             .orderBy(desc(shopProductionTask.createdAt))
         : [];
+      const framingTasks = lineIds.length
+        ? await db
+            .select()
+            .from(shopFramingTask)
+            .where(inArray(shopFramingTask.orderLineId, lineIds))
+        : [];
+      const framingTaskByLine = new Map(framingTasks.map((task) => [task.orderLineId, task]));
       const latestTaskByLine = new Map<string, { taskId: string; status: string }>();
       for (const task of tasks) {
         if (!latestTaskByLine.has(task.orderLineId)) {
@@ -411,6 +422,7 @@ export function createDrizzleAdminDetailReaders(db: Database) {
         ...refunds.map((row) => row.id),
         ...returns.map((row) => row.id),
         ...tasks.map((task) => task.taskId),
+        ...framingTasks.map((task) => task.id),
         ...(fulfilmentRecord ? [fulfilmentRecord.id] : []),
       ];
       const activity = await db
@@ -465,6 +477,28 @@ export function createDrizzleAdminDetailReaders(db: Database) {
           sellerPartyId: row.sellerPartyId,
           editionId: row.editionId,
           production: latestTaskByLine.get(row.orderLineId) ?? null,
+          kind: row.kind,
+          framing:
+            row.kind === "framing" && row.framingForLineId
+              ? {
+                  name:
+                    typeof row.framingSnapshot?.name === "string"
+                      ? row.framingSnapshot.name
+                      : "Framing",
+                  forLineId: row.framingForLineId,
+                  task: (() => {
+                    const task = framingTaskByLine.get(row.orderLineId);
+                    return task
+                      ? {
+                          taskId: task.id,
+                          status: task.status,
+                          dueAt: task.dueAt.toISOString(),
+                          version: task.version,
+                        }
+                      : null;
+                  })(),
+                }
+              : null,
         })),
         fulfilmentRecord: fulfilmentRecord
           ? {

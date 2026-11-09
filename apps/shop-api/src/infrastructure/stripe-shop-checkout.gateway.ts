@@ -31,7 +31,7 @@ function stripeImageUrl(imageUrl: string | null | undefined): string[] | undefin
   }
 }
 
-function buildStripeLineItems(input: {
+export function buildStripeLineItems(input: {
   lines: HostedCheckoutLineItem[];
   fulfilmentSurchargePence: number;
   totalPence: number;

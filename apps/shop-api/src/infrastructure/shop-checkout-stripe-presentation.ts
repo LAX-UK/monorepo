@@ -7,7 +7,7 @@ import {
   shopProduct,
   shopProductVariant,
 } from "@auction/db/schema";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 
 export type CheckoutStripeLine = {
   title: string;
@@ -84,6 +84,38 @@ export function groupCheckoutEditionLines(
   });
 }
 
+export type CheckoutFramingRow = {
+  /** The option's name as sold, from the line's snapshot. */
+  name: string;
+  unitPricePence: number;
+};
+
+/**
+ * The payment page's lines for the order's framing: one per option and price, so the frames the
+ * order charges for are shown and the lines still add up to the order total.
+ */
+export function groupCheckoutFramingLines(
+  rows: readonly CheckoutFramingRow[],
+): CheckoutStripeLine[] {
+  const grouped = new Map<string, CheckoutStripeLine>();
+  for (const row of rows) {
+    const key = `${row.name}:${row.unitPricePence}`;
+    const existing = grouped.get(key);
+    if (existing) {
+      existing.quantity += 1;
+    } else {
+      grouped.set(key, {
+        title: row.name,
+        description: "Framing",
+        quantity: 1,
+        unitAmountPence: row.unitPricePence,
+        imageUrl: null,
+      });
+    }
+  }
+  return [...grouped.values()];
+}
+
 export async function loadCheckoutStripePresentation(
   db: Database,
   orderId: string,
@@ -114,6 +146,22 @@ export async function loadCheckoutStripePresentation(
     .innerJoin(shopProductVariant, eq(shopOrderLine.productVariantId, shopProductVariant.id))
     .innerJoin(shopProduct, eq(shopProductVariant.productId, shopProduct.id))
     .where(eq(shopOrderLine.orderId, orderId));
+
+  // Framing lines have no artwork or variant, so the two reads above never see them; without
+  // this read the payment lines would fall short of the order total.
+  const framingRows = await db
+    .select({
+      snapshot: shopOrderLine.framingSnapshot,
+      unitPricePence: shopOrderLine.unitPricePence,
+    })
+    .from(shopOrderLine)
+    .where(and(eq(shopOrderLine.orderId, orderId), eq(shopOrderLine.kind, "framing")));
+  const framingLines = groupCheckoutFramingLines(
+    framingRows.map((row) => ({
+      name: typeof row.snapshot?.name === "string" ? row.snapshot.name : "Framing",
+      unitPricePence: row.unitPricePence,
+    })),
+  );
 
   const editionLines = groupCheckoutEditionLines(editionRows);
 
@@ -152,5 +200,5 @@ export async function loadCheckoutStripePresentation(
     imageUrl: null,
   }));
 
-  return [...editionLines, ...variantLines];
+  return [...editionLines, ...variantLines, ...framingLines];
 }

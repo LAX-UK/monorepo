@@ -148,6 +148,27 @@ export const AdminOrderLineDetailSchema = Type.Object({
     Type.Object({ taskId: Type.String({ format: "uuid" }), status: Type.String() }),
     Type.Null(),
   ]),
+  /** 'goods' (a print or a product) or 'framing'; absent from an older shop-api, meaning goods. */
+  kind: Type.Optional(Type.Union([Type.Literal("goods"), Type.Literal("framing")])),
+  /** For a framing line: the frame as sold, the print it belongs to and the work on it. */
+  framing: Type.Optional(
+    Type.Union([
+      Type.Object({
+        name: Type.String(),
+        forLineId: Type.String({ format: "uuid" }),
+        task: Type.Union([
+          Type.Object({
+            taskId: Type.String({ format: "uuid" }),
+            status: Type.String(),
+            dueAt: Type.String({ format: "date-time" }),
+            version: Type.Integer(),
+          }),
+          Type.Null(),
+        ]),
+      }),
+      Type.Null(),
+    ]),
+  ),
 });
 
 export const AdminOrderFulfilmentDetailSchema = Type.Object({

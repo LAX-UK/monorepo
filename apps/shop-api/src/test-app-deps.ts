@@ -446,6 +446,9 @@ export function createMinimalShopApiTestDeps(
         findActiveByIdentitySubject: async () => null,
         brokerCanAccessClientParty: async () => false,
       },
+      updateFramingTask: async () => {
+        throw new Error("not implemented");
+      },
       createProductionTask: async () => ({
         taskId: "00000000-0000-4000-8000-000000000010",
         status: "queued" as const,

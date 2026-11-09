@@ -64,6 +64,7 @@ import type { createRecordPossessionHandler } from "./infrastructure/handlers/ad
 import type { createRejectSaleAuthorityRequestHandler } from "./infrastructure/handlers/admin/reject-sale-authority-request.handler.js";
 import type { createRequestRefundHandler } from "./infrastructure/handlers/admin/request-refund.handler.js";
 import type { createRetryRefundHandler } from "./infrastructure/handlers/admin/retry-refund.handler.js";
+import type { createUpdateFramingTaskHandler } from "./infrastructure/handlers/admin/update-framing-task.handler.js";
 import type { createUpdateFulfilmentHandler } from "./infrastructure/handlers/admin/update-fulfilment.handler.js";
 import type { AdminIdempotency } from "./infrastructure/idempotent-admin-command.js";
 import type { HealthDeps } from "./routes/health.routes.js";
@@ -114,6 +115,8 @@ export type AdminRoutesDeps = {
   savedViews: SavedViewService;
   staffReader: ShopStaffMemberReader;
   createProductionTask: ReturnType<typeof createCreateProductionTaskHandler>;
+  /** Moves the work on a frame sold with a print to its next step. */
+  updateFramingTask: ReturnType<typeof createUpdateFramingTaskHandler>;
   updateFulfilment: ReturnType<typeof createUpdateFulfilmentHandler>;
   recordPossession: ReturnType<typeof createRecordPossessionHandler>;
   cancelAfterPossession: ReturnType<typeof createCancelAfterPossessionHandler>;
