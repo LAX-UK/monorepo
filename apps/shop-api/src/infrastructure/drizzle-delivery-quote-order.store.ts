@@ -5,6 +5,7 @@ import {
   MAX_OPEN_QUOTE_REQUESTS_PER_BASKET_TOKEN,
   MAX_OPEN_QUOTE_REQUESTS_PER_BUYER,
   MAX_OPEN_QUOTE_REQUESTS_PER_GUEST_IP,
+  addPence,
   reservedUntilFromCheckoutExpiry,
 } from "@auction/shop-domain";
 import { and, count, eq, inArray } from "drizzle-orm";
@@ -55,10 +56,12 @@ export function createDrizzleDeliveryQuoteOrderStore(
     domainEventMode: "off" | "observe" | "enforce";
     vatPolicy?: import("@auction/shop-domain").VatPolicy | null;
     merchandiseEnabled?: boolean;
+    framingEnabled?: boolean;
     notifications: Pick<ShopNotificationPublisher, "queueDeliveryQuoteRequested">;
   },
 ): DeliveryQuoteOrderStore {
   const merchandiseEnabled = options.merchandiseEnabled ?? false;
+  const framingEnabled = options.framingEnabled ?? false;
   const domainEvents = createShopDomainEventPublisher(options.domainEventMode);
 
   async function replayOf(idempotencyKey: string): Promise<CreatedQuoteOrder | null> {
@@ -114,7 +117,7 @@ export function createDrizzleDeliveryQuoteOrderStore(
       const basket = await loadCheckoutBasket(
         db,
         { basketId: input.basketId, ownedBy: (owner) => ownsBasket(owner, input) },
-        { merchandiseEnabled },
+        { merchandiseEnabled, framingEnabled },
       );
 
       const [open] = await db
@@ -156,10 +159,11 @@ export function createDrizzleDeliveryQuoteOrderStore(
               guestCustomerId: input.guest?.guestCustomerId ?? null,
               fulfilment: "international_quotation",
               merchandiseSubtotalPence: basket.merchandiseSubtotal,
+              framingSubtotalPence: basket.framingSubtotal,
               // The delivery price is not known until staff quote it; the total grows with it.
               fulfilmentSurchargePence: 0,
               fulfilmentVatPence: null,
-              totalPence: basket.merchandiseSubtotal,
+              totalPence: addPence(basket.merchandiseSubtotal, basket.framingSubtotal),
               idempotencyKey: input.idempotencyKey,
               checkoutExpiresAt: input.holdUntil,
               ...deliveryColumns(details),

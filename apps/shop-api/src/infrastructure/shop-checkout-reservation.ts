@@ -1,7 +1,12 @@
 import type { Database } from "@auction/db";
 import { shopEdition, shopOrderLine, shopProduct, shopProductVariant } from "@auction/db/schema";
 import { SHOP_API_ERROR_CODES } from "@auction/shop-contracts";
-import { type VatPolicy, computeLineVat } from "@auction/shop-domain";
+import {
+  type FramingOrderSnapshot,
+  type VatPolicy,
+  computeLineVat,
+  framingLineVat,
+} from "@auction/shop-domain";
 import { and, eq, isNotNull, isNull, notExists, sql } from "drizzle-orm";
 import { ShopApiError } from "../errors/shop-api-error.js";
 import { isPgDeadlockDetected } from "../lib/pg-errors.js";
@@ -13,7 +18,12 @@ export async function reserveEditionsForCheckoutOrder(
   input: {
     orderId: string;
     reservedUntil: Date;
-    expandedLines: Array<{ artworkId: string; unitPricePence: number }>;
+    expandedLines: Array<{
+      artworkId: string;
+      unitPricePence: number;
+      /** The frame sold with this print; it becomes a line of its own. */
+      framing?: FramingOrderSnapshot;
+    }>;
     vatPolicy?: VatPolicy | null;
   },
   events: ReturnType<typeof createShopDomainEventPublisher>,
@@ -46,21 +56,47 @@ export async function reserveEditionsForCheckoutOrder(
       })
       .where(eq(shopEdition.id, edition.id));
     const vat = computeLineVat(input.vatPolicy ?? null, { unitPricePence: line.unitPricePence });
-    await tx.insert(shopOrderLine).values({
-      orderId: input.orderId,
-      editionId: edition.id,
-      artworkId: line.artworkId,
-      sellerPartyId: edition.ownerPartyId,
-      editionNumber: edition.editionNumber,
-      unitPricePence: line.unitPricePence,
-      ...(vat.ok
-        ? {
-            vatTreatment: vat.vatTreatment,
-            vatRateBp: vat.vatRateBp,
-            vatPence: vat.vatPence,
-          }
-        : {}),
-    });
+    const [printLine] = await tx
+      .insert(shopOrderLine)
+      .values({
+        orderId: input.orderId,
+        editionId: edition.id,
+        artworkId: line.artworkId,
+        sellerPartyId: edition.ownerPartyId,
+        editionNumber: edition.editionNumber,
+        unitPricePence: line.unitPricePence,
+        ...(vat.ok
+          ? {
+              vatTreatment: vat.vatTreatment,
+              vatRateBp: vat.vatRateBp,
+              vatPence: vat.vatPence,
+            }
+          : {}),
+      })
+      .returning({ id: shopOrderLine.id });
+    if (line.framing) {
+      if (!printLine) {
+        throw new ShopApiError(SHOP_API_ERROR_CODES.INTERNAL, "Failed to create order line", 500);
+      }
+      // The frame is its own line at the standard rate. It has no edition, artwork or seller, so
+      // nothing that pays an artist or an owner can see it.
+      const frameVat = framingLineVat(input.vatPolicy ?? null, line.framing.pricePence);
+      await tx.insert(shopOrderLine).values({
+        orderId: input.orderId,
+        kind: "framing",
+        framingForLineId: printLine.id,
+        framingOptionId: line.framing.optionId,
+        framingSnapshot: { ...line.framing },
+        unitPricePence: line.framing.pricePence,
+        ...(frameVat.ok
+          ? {
+              vatTreatment: frameVat.vatTreatment,
+              vatRateBp: frameVat.vatRateBp,
+              vatPence: frameVat.vatPence,
+            }
+          : {}),
+      });
+    }
     await events.insertInTransaction(tx, {
       aggregateType: "shop_edition",
       aggregateId: edition.id,

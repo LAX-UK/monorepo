@@ -56,7 +56,7 @@ function createQuoteMail(
         service: input.service,
         leadTimeNote: input.leadTimeNote,
         deliveryPrice: pounds(input.pricePence),
-        totalPrice: pounds(row.merchandisePence + input.pricePence),
+        totalPrice: pounds(row.beforeDeliveryPence + input.pricePence),
         validUntilOn: dayFormat.format(input.holdUntil),
         orderUrl: await orderUrl(row.orderId, input.quote.identitySubjectId),
       });

@@ -4,7 +4,11 @@ import {
   UNASSIGNED,
   useProductionTaskActions,
 } from "@/components/production/use-production-task-actions.client";
-import { presentProductionStatus } from "@/server/domain/order-detail.vm";
+import {
+  framingDueLabel,
+  presentFramingTaskStatus,
+  presentProductionStatus,
+} from "@/server/domain/order-detail.vm";
 import { orderNumber } from "@/server/domain/order-list.vm";
 import {
   PRODUCTION_LIST_PATH,
@@ -13,6 +17,7 @@ import {
   productionTaskTitle,
 } from "@/server/domain/production-queue.vm";
 import type { AdminProductionTaskDetail, ProductionTaskStaff } from "@auction/shop-contracts";
+import { framingTaskFinished } from "@auction/shop-domain";
 import {
   DetailPage,
   EnumSelect,
@@ -107,6 +112,23 @@ export function ProductionTaskPage({
           </Section>
         }
       >
+        {task.framing ? (
+          <Section title="Framing">
+            <p className="text-staff-sm font-medium text-staff-fg">Framing: {task.framing.name}</p>
+            <p className="text-staff-sm text-staff-muted">{task.framing.spec}</p>
+            <p className="mt-1 flex items-center gap-2 text-staff-xs text-staff-muted">
+              <MappedStatusBadge status={task.framing.status} present={presentFramingTaskStatus} />
+              {framingTaskFinished(task.framing.status) ? null : (
+                <span className="tabular-nums">{framingDueLabel(task.framing.dueAt)}</span>
+              )}
+            </p>
+            {framingTaskFinished(task.framing.status) ? null : (
+              <p className="mt-2 text-staff-xs text-staff-muted">
+                This print cannot pass quality check until the frame is done.
+              </p>
+            )}
+          </Section>
+        ) : null}
         <Section title="History">
           <Timeline
             label={`History of ${title}`}

@@ -9,9 +9,10 @@ import {
   shopProductVariant,
 } from "@auction/db/schema";
 import { SHOP_API_ERROR_CODES } from "@auction/shop-contracts";
-import { and, eq, isNull, sql } from "drizzle-orm";
+import { and, eq, isNotNull, isNull, sql } from "drizzle-orm";
 import { basketEditions } from "../application/edition-runs/basket-edition.js";
 import { presentBasketFraming } from "../application/framing/edition-framing.view.js";
+import { framingPriceDrift } from "../application/framing/framing-order-guard.js";
 import type { BasketOwner, BasketRecord } from "../application/ports/commerce.ports.js";
 import { ShopApiError } from "../errors/shop-api-error.js";
 import { isPgUniqueViolation } from "../lib/pg-errors.js";
@@ -38,6 +39,33 @@ export function assertStorefrontRedirectUrl(url: string, storefrontUrl: string):
       400,
     );
   }
+}
+
+/**
+ * Keeps the price the shopper was shown for each frame. A frame whose price has not been stamped
+ * yet takes today's (it was just chosen, or the line predates stamping). A stamped frame whose
+ * price has moved is brought to today's price and reported, so checkout stops and shows the new
+ * price rather than charging one the shopper has not seen. A frame no longer on offer is left to
+ * the framing check.
+ */
+export async function reconcileFramingPrices(db: Database, basketId: string): Promise<boolean> {
+  const basket = await loadBasketRecord(db, basketId);
+  const { stamps, moved } = framingPriceDrift(basket.lines);
+  for (const stamp of stamps) {
+    await db
+      .update(shopBasketLine)
+      .set({ framingPricePence: stamp.pricePence, updatedAt: new Date() })
+      .where(eq(shopBasketLine.id, stamp.lineId));
+  }
+  return moved;
+}
+
+/** Takes every frame out of a basket (framing is switched off): the shopper reads it unframed. */
+export async function clearFramingFromBasket(db: Database, basketId: string): Promise<void> {
+  await db
+    .update(shopBasketLine)
+    .set({ framingOptionId: null, framingPricePence: null, updatedAt: new Date() })
+    .where(and(eq(shopBasketLine.basketId, basketId), isNotNull(shopBasketLine.framingOptionId)));
 }
 
 export async function repriceBasketLinesIfNeeded(db: Database, basketId: string): Promise<boolean> {
@@ -67,7 +95,8 @@ export async function repriceBasketLinesIfNeeded(db: Database, basketId: string)
     typeof variantUpdated === "object" && variantUpdated !== null && "rowCount" in variantUpdated
       ? Number(variantUpdated.rowCount)
       : 0;
-  return artworkRows + variantRows > 0;
+  const framingMoved = await reconcileFramingPrices(db, basketId);
+  return artworkRows + variantRows > 0 || framingMoved;
 }
 
 export async function assertBasketStock(db: Database, basketId: string): Promise<void> {
@@ -118,6 +147,7 @@ export async function loadBasketRecord(db: Database, basketId: string): Promise<
       liveVariantPricePence: shopProductVariant.pricePence,
       quantity: shopBasketLine.quantity,
       framingOptionId: shopBasketLine.framingOptionId,
+      framingPricePence: shopBasketLine.framingPricePence,
     })
     .from(shopBasketLine)
     .leftJoin(shopArtwork, eq(shopBasketLine.artworkId, shopArtwork.id))
@@ -174,6 +204,7 @@ export async function loadBasketRecord(db: Database, basketId: string): Promise<
         editionLine: edition?.line ?? null,
         framingOptionId: line.framingOptionId,
         framing: facts && option ? presentBasketFraming(facts, option) : null,
+        framingPricePence: line.framingPricePence,
       };
     }
     const variantId = line.productVariantId;
