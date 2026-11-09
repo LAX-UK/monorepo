@@ -751,9 +751,9 @@ describe.skipIf(!HAS_DB)("collection booking (integration)", () => {
       const saleId = randomUUID();
       const lotId = randomUUID();
       await db.execute(sql`
-        insert into sale (id, title, start_time, end_time, venue_id)
+        insert into sale (id, title, start_time, end_time, venue_id, created_by_legal_entity_id)
         values (${saleId}, 'Collection IT sale', now() - interval '30 days',
-           now() - interval '20 days', ${venueId})`);
+           now() - interval '20 days', ${venueId}, ${entityId})`);
       await db.execute(sql`
         insert into lot (id, seller_legal_entity_id, sale_id, title, auction_type, starting_price,
            current_price, start_time, end_time, status)
