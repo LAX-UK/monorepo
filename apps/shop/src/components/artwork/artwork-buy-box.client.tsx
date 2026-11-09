@@ -35,6 +35,8 @@ type Props = {
   deliveryLine: string;
   /** The delivery policy page, when it is live. */
   deliveryHref: string | null;
+  /** "Delivery at a glance" on the delivery page, for a buyer outside the UK; null with the page. */
+  outsideUkHref?: string | null;
   /** The edition as the basket confirmation describes it, from the facts. */
   editionLine: string | null;
 };
@@ -63,6 +65,7 @@ export function ArtworkBuyBox({
   signInHref,
   deliveryLine,
   deliveryHref,
+  outsideUkHref = null,
   editionLine,
 }: Props) {
   const router = useRouter();
@@ -240,6 +243,13 @@ export function ArtworkBuyBox({
           deliveryLine
         )}
       </p>
+      {outsideUkHref ? (
+        <p className="shop-buy__delivery">
+          <Link href={outsideUkHref} className="shop-inline-link shop-focus-ring">
+            Outside the UK? We quote delivery
+          </Link>
+        </p>
+      ) : null}
 
       <output className="sr-only" aria-live="polite">
         {announcement}
