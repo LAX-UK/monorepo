@@ -32,6 +32,18 @@ type Props = {
 const frostedNavArrowClasses =
   "pointer-events-auto top-1/2 hidden size-10 -translate-y-1/2 rounded-full border-[color:var(--overlay-border)] bg-[color:var(--overlay-bg)] text-[color:var(--overlay-fg)] opacity-0 shadow-md backdrop-blur-sm transition-opacity hover:opacity-100 group-hover:opacity-100 motion-reduce:transition-none md:flex disabled:pointer-events-none disabled:opacity-0";
 
+/**
+ * The slides either side of the current one, wrapping because the carousel loops. Embla clips
+ * its slides, so the browser never lazy-loads them as they come into view: they are loaded
+ * eagerly (without the priority hint, which belongs to the current slide only), so a swipe lands
+ * on a picture and not on the loading mat.
+ */
+export function isNeighbour(slide: number, current: number, count: number): boolean {
+  if (count < 2 || slide === current) return false;
+  const distance = Math.abs(slide - current);
+  return distance === 1 || distance === count - 1;
+}
+
 function galleryImageMediaProps(img: GalleryImage, priority: boolean) {
   const props: {
     blurDataURL?: string;
@@ -85,6 +97,7 @@ export function GalleryHero({ setCarouselApi, className }: Props) {
                   alt={img.alt ?? ""}
                   label={GALLERY_MEDIA_PLACEHOLDER_LABEL}
                   priority={i === index}
+                  {...(isNeighbour(i, index, images.length) ? { loading: "eager" as const } : {})}
                   {...galleryImageMediaProps(img, i === index)}
                   imgClassName="cursor-zoom-in bg-surface-container-low object-contain transition-transform duration-1000 motion-safe:group-hover:scale-105 motion-reduce:transition-none motion-reduce:group-hover:scale-100"
                   sizes="(min-width: 1024px) 58vw, 100vw"
