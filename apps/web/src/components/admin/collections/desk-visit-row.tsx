@@ -43,7 +43,7 @@ export function DeskVisitRow({
 
   return (
     <li
-      className="grid gap-3 py-4 first:pt-0 last:pb-0 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)_minmax(0,1.4fr)_auto] lg:items-center lg:gap-6"
+      className="grid gap-3 py-4 first:pt-0 last:pb-0 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)_minmax(0,1.4fr)_19rem] lg:items-center lg:gap-6"
       data-booking={booking.reference}
     >
       <div className="min-w-0">
