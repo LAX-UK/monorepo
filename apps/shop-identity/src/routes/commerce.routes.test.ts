@@ -538,6 +538,7 @@ describe("checkout email verification", () => {
   it.each([
     ["/commerce/checkout", checkoutBody],
     ["/commerce/orders/11111111-1111-4111-8111-111111111111/resume-checkout", {}],
+    ["/commerce/orders/11111111-1111-4111-8111-111111111111/accept-delivery-quote", {}],
   ])("rejects %s for unverified email without calling shop-api", async (path, body) => {
     const shopApiFetch = vi.fn();
     const unverified = idTokenWithClaims({ email_verified: false });

@@ -21,6 +21,7 @@ export function createDrizzleCommerceRepository(
     domainEventMode: "off" | "observe" | "enforce";
     vatPolicy?: import("@auction/shop-domain").VatPolicy | null;
     merchandiseEnabled?: boolean;
+    exportPaymentEnabled?: boolean;
     /** Copies of one edition an order may hold; null or absent leaves only the stock. */
     editionOrderLimit?: number | null;
   },
@@ -30,6 +31,8 @@ export function createDrizzleCommerceRepository(
     editionOrderLimit: options.editionOrderLimit ?? null,
   });
   const checkout = createDrizzleCheckoutRepository(db, paymentGateway, options);
-  const orders = createDrizzleOrderRepository(db);
+  const orders = createDrizzleOrderRepository(db, {
+    exportPaymentEnabled: options.exportPaymentEnabled ?? false,
+  });
   return { ...basket, ...checkout, ...orders };
 }

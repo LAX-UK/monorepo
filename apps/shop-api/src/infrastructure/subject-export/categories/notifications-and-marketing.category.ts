@@ -27,6 +27,8 @@ export const CUSTOMER_EMAIL_TEMPLATES: Readonly<Record<string, string>> = {
   "shop-order-receipt": "Order confirmation",
   "shop-production-started": "Production started",
   "shop-delivery-quote-requested": "Delivery quote request",
+  "shop-delivery-quote-ready": "Delivery quote",
+  "shop-delivery-quote-declined": "Delivery quote declined",
   "shop-print-swapped": "Print number changed",
   "shop-dispatch-notice": "Dispatch notice",
   "shop-cancellation-confirmed": "Cancellation confirmation",

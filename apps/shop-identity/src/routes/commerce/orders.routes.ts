@@ -57,6 +57,18 @@ export function registerCommerceOrdersRoutes(app: Hono, deps: CommerceRoutesDeps
     });
   });
 
+  /** Accept the gallery's delivery quote for this order, then go to secure payment. */
+  app.post("/commerce/orders/:orderId/accept-delivery-quote", async (c) => {
+    const orderId = c.req.param("orderId");
+    return proxyAuthenticatedCommerce(c, deps, {
+      method: "POST",
+      path: `/v1/orders/${encodeURIComponent(orderId)}/accept-delivery-quote`,
+      scopes: "shop.write",
+      requireCsrf: true,
+      requireVerifiedEmail: true,
+    });
+  });
+
   app.post("/commerce/orders/:orderId/cancel", async (c) => {
     const orderId = c.req.param("orderId");
     return proxyAuthenticatedCommerce(c, deps, {

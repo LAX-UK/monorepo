@@ -1,4 +1,5 @@
 import { ShopAccountShell } from "@/components/account/shop-account-shell";
+import { ShopDeliveryQuote } from "@/components/account/shop-delivery-quote.client";
 import { ShopEditionAlertList } from "@/components/account/shop-edition-alert-list";
 import { ShopFinishPaying } from "@/components/account/shop-finish-paying.client";
 import { ShopOrderList } from "@/components/account/shop-order-list";
@@ -81,6 +82,7 @@ export default async function AccountOrdersPage() {
         />
       ) : (
         <>
+          {list.deliveryQuote ? <ShopDeliveryQuote quote={list.deliveryQuote} /> : null}
           {list.finishPaying ? <ShopFinishPaying order={list.finishPaying} /> : null}
           {list.rows.length === 0 ? (
             <ShopStatusState
