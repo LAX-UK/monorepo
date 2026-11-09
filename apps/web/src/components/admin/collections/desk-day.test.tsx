@@ -55,7 +55,8 @@ describe("the day at the desk", () => {
   it("offers the actions the server allows, and none to someone who may only look", () => {
     const { unmount } = render(<DeskDay day={deskDay()} canChange today="2026-11-12" />);
     expect(screen.getAllByRole("button", { name: "Hand over" }).length).toBe(2);
-    expect(screen.getAllByRole("button", { name: "Not collected" }).length).toBe(2);
+    // The visits are still to come, so the API does not offer "not collected" on them.
+    expect(screen.queryByRole("button", { name: "Not collected" })).toBeNull();
     unmount();
     render(<DeskDay day={deskDay()} canChange={false} today="2026-11-12" />);
     expect(screen.queryByRole("button", { name: "Hand over" })).toBeNull();
@@ -69,8 +70,27 @@ describe("the day at the desk", () => {
     ).toBeTruthy();
   });
 
+  const started = () => {
+    const day = deskDay();
+    return {
+      ...day,
+      groups: day.groups.map((group) => ({
+        ...group,
+        bookings: group.bookings.map((b) => ({
+          ...b,
+          actions: [...b.actions, "not_collected" as const],
+        })),
+      })),
+    };
+  };
+
+  it("offers Not collected once the API does, on a visit that has started", () => {
+    render(<DeskDay day={started()} canChange today="2026-11-12" />);
+    expect(screen.getAllByRole("button", { name: "Not collected" }).length).toBe(2);
+  });
+
   it("confirms before marking a visit not collected, and says what the buyer is told", () => {
-    render(<DeskDay day={deskDay()} canChange today="2026-11-12" />);
+    render(<DeskDay day={started()} canChange today="2026-11-12" />);
     fireEvent.click(screen.getAllByRole("button", { name: "Not collected" })[0] as HTMLElement);
     expect(
       screen.getByRole("heading", { name: "Mark Hayes Collection's collection as not collected?" }),

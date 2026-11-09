@@ -490,6 +490,23 @@ describe("a client's lots", () => {
   });
 });
 
+describe("Not collected is offered only once the visit has started", () => {
+  it("is not offered before the start, is offered from it, and the command agrees", async () => {
+    const s = setup();
+    const b = await booking(s);
+    const before = (await s.service.day(VENUE, "2026-11-10"))._unsafeUnwrap().groups[0]
+      ?.bookings[0];
+    expect(before?.actions).not.toContain("not_collected");
+    expect((await s.service.markNotCollected(STAFF, b.id))._unsafeUnwrapErr().code).toBe(
+      "too_early",
+    );
+    s.clock.now = new Date(TUESDAY_10);
+    const after = (await s.service.day(VENUE, "2026-11-10"))._unsafeUnwrap().groups[0]?.bookings[0];
+    expect(after?.actions).toContain("not_collected");
+    expect((await s.service.markNotCollected(STAFF, b.id)).isOk()).toBe(true);
+  });
+});
+
 describe("the day", () => {
   it("groups visits by time with places taken against capacity", async () => {
     const s = setup();

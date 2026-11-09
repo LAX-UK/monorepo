@@ -128,7 +128,7 @@ export function DeskVisitRow({
         <StatusBadge tone={badge.tone}>{badge.label}</StatusBadge>
       </div>
 
-      <div className="flex flex-wrap gap-2 lg:justify-end">
+      <div className="flex flex-wrap gap-2">
         {can("hand_over") ? (
           <StaffButton variant="primary" size="sm" onClick={() => handlers.onHandOver(booking)}>
             Hand over

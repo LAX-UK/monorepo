@@ -36,7 +36,8 @@ export function deskBooking(over: Partial<DeskBookingView> = {}): DeskBookingVie
     idCheckType: null,
     handedOverAt: null,
     undoUntil: null,
-    actions: ["hand_over", "not_collected", "rebook"],
+    // A visit still to come: the API offers "not collected" only once the visit has started.
+    actions: ["hand_over", "rebook"],
     handOverBlocked: null,
     ...over,
   };
