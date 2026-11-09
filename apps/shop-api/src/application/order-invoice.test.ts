@@ -173,3 +173,24 @@ describe("invoice file name", () => {
     expect(model.fileName).toBe("Paid Invoice — Léger — LAX-S-10482 — 2026-10-01.pdf");
   });
 });
+
+describe("delivery country on the invoice", () => {
+  it("prints the country's name for an address outside the UK", () => {
+    const model = buildOrderInvoiceModel({
+      order: sampleOrderRecord({
+        deliveryAddress: {
+          recipientName: "Anna Weber",
+          line1: "Friedrichstrasse 12",
+          city: "Berlin",
+          postcode: "10117",
+          country: "DE",
+        },
+      }),
+      customer,
+      supplier,
+      vatNumber: null,
+    });
+    expect(model.deliverTo).toContain("Germany");
+    expect(model.deliverTo).not.toContain("DE");
+  });
+});

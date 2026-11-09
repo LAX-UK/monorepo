@@ -27,6 +27,7 @@ import {
   expireHostedCheckoutSession,
   isAsyncCheckoutPaymentPending,
 } from "./shop-checkout-stripe-expiry.js";
+import { closeDeliveryQuoteForOrder } from "./shop-delivery-quote-close.js";
 import {
   type ShopDomainEventPublisherMode,
   createShopDomainEventPublisher,
@@ -612,6 +613,7 @@ export async function cancelShopCheckoutSession(
       .update(shopOrder)
       .set({ status: "cancelled", updatedAt: new Date() })
       .where(eq(shopOrder.id, input.orderId));
+    await closeDeliveryQuoteForOrder(tx as Database, input.orderId, "cancelled_by_buyer");
     await releaseReservedEditionsForOrder(tx as Database, input.orderId, events);
     await restoreBasketLinesFromOrder(tx as Database, order, input.orderId, input.restoreTo);
     return "processed";
@@ -660,6 +662,7 @@ export async function expireShopCheckoutSession(
       .update(shopOrder)
       .set({ status: "expired", updatedAt: new Date() })
       .where(eq(shopOrder.id, input.orderId));
+    await closeDeliveryQuoteForOrder(tx as Database, input.orderId, "expired");
     await releaseReservedEditionsForOrder(tx as Database, input.orderId, events);
     await restoreBasketLinesFromOrder(tx as Database, order, input.orderId);
     return "expired";

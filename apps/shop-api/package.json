@@ -33,6 +33,7 @@
     "@auction/branding": "workspace:*",
     "@auction/connect": "workspace:*",
     "@auction/db": "workspace:*",
+    "@auction/domain": "workspace:*",
     "@auction/email": "workspace:*",
     "@auction/identity-contracts": "workspace:*",
     "@auction/lax-ecosystem": "workspace:*",

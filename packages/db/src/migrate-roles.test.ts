@@ -418,7 +418,11 @@ describe("migrate-roles invariants", () => {
   });
 
   it("keeps the Shop's delivery regions to shop_app, denied to the Bid API and the worker", () => {
-    for (const table of ["shop_delivery_region", "shop_delivery_restricted_country"]) {
+    for (const table of [
+      "shop_delivery_region",
+      "shop_delivery_restricted_country",
+      "shop_delivery_quote",
+    ]) {
       expect([...SHOP_COMMERCE_TABLES]).toContain(table);
       expect([...API_DENY_TABLES]).toContain(table);
       expect([...WORKER_DENY_TABLES]).toContain(table);
