@@ -21,7 +21,31 @@ export type PhoneBarLine = {
   compact: string;
   tone: PhoneBarTone;
   clock: boolean;
+  /** Present when the line counts: the bar's countdown leaf reads the clock and prints the rest. */
+  countdown?: PhoneBarCountdown;
 };
+
+/** What the bar's countdown leaf needs to count to a moment. */
+export type PhoneBarCountdown = {
+  targetMs: number;
+  kind: "closes" | "opens";
+  extended: boolean;
+  /** What the line says beyond a week: "Closes Tue 10 Nov". */
+  dateText: string;
+};
+
+/** The countdown the lot's time row counts, which the bar counts too. */
+function countdownOf(view: LotPageView): PhoneBarCountdown | undefined {
+  const row = view.rows.find((r) => r.countdown !== undefined);
+  const c = row?.countdown;
+  if (!c) return undefined;
+  return {
+    targetMs: c.targetMs,
+    kind: c.kind,
+    extended: c.extended,
+    dateText: `${c.date.label} ${c.date.value}`,
+  };
+}
 
 export type PhoneBarSummary = {
   /** "Current bid" or "Starting bid" from the domain, or where the viewer stands on the lot. */
@@ -46,25 +70,35 @@ function dated(prefix: string, date: string): PhoneBarLine {
 const closing: LineBuilder = (view, nowMs) => {
   if (view.msLeft === null) return null;
   const timer = timerText(view.msLeft, nowMs);
-  if (timer.date) return dated("Closes", timer.date);
+  const countdown = countdownOf(view);
+  const extra = countdown ? { countdown } : {};
+  if (timer.date) return { ...dated("Closes", timer.date), ...extra };
   const { tone } = timeLeftView(view.msLeft, { extended: view.lifecycle === "extended" });
   return {
     words: `${timer.words} left`,
     compact: `${timer.compact} left`,
     tone,
     clock: true,
+    ...extra,
   };
 };
+
+/** Zero reached and the server has not said how the lot ended. */
+const closingNow: LineBuilder = () => ({ ...plain("Closing…", true), tone: "final" });
 
 const opening: LineBuilder = (view, nowMs) => {
   if (view.msLeft === null) return null;
   const timer = timerText(view.msLeft, nowMs);
-  if (timer.date) return dated("Opens", timer.date);
+  const countdown = countdownOf(view);
+  const extra = countdown ? { countdown } : {};
+  if (view.msLeft <= 0) return { ...plain("Opening…", true), ...extra };
+  if (timer.date) return { ...dated("Opens", timer.date), ...extra };
   return {
     words: `Opens in ${timer.words}`,
     compact: `Opens in ${timer.compact}`,
     tone: "calm",
     clock: true,
+    ...extra,
   };
 };
 
@@ -73,6 +107,7 @@ const LINE_BY_LIFECYCLE: Readonly<Partial<Record<LotLifecycleKind, LineBuilder>>
   scheduled: opening,
   live: closing,
   extended: closing,
+  closing: closingNow,
   liveSaleroom: () => plain("In the room"),
   saleroomPaused: () => plain("Sale paused"),
 };

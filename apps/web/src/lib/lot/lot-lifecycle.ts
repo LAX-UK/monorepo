@@ -53,6 +53,11 @@ export function classifyLotLifecycle(
     isOnBlock?: boolean;
     /** When true, treat active lots as saleroom-gated even before Go Live. */
     saleroomGated?: boolean;
+    /**
+     * When true, a lot whose clock has run out but that the server has not closed is "closing",
+     * not ended: the page never declares a result from the device clock.
+     */
+    confirmClose?: boolean;
   },
 ): LotLifecycle {
   if (lot.status === "voided") {
@@ -118,6 +123,9 @@ export function classifyLotLifecycle(
     return { kind: "live", msLeft: timer.msLeft };
   }
   if (timer.kind === "closed") {
+    if (opts?.confirmClose && lot.status === "active") {
+      return { kind: "closing", msLeft: 0 };
+    }
     if (lot.winnerId) {
       return { kind: "endedSold", msLeft: null, winnerId: lot.winnerId };
     }
@@ -150,6 +158,8 @@ export function lifecycleBadge(lifecycle: LotLifecycle): LifecycleBadgeVM {
       return { label: "Live now", tone: "live", pulse: true };
     case "extended":
       return { label: "Extended", tone: "warn", pulse: true };
+    case "closing":
+      return { label: "Closing", tone: "warn", pulse: false };
     case "liveSaleroom":
       return { label: "Live in saleroom", tone: "live", pulse: true };
     case "saleroomPaused":

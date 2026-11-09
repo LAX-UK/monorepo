@@ -18,6 +18,7 @@ export const LOT_SECTIONS: Readonly<Record<LotLifecycleKind, LotSections>> = {
   scheduled: { watchShare: true, history: false },
   live: { watchShare: true, history: true },
   extended: { watchShare: true, history: true },
+  closing: { watchShare: true, history: true },
   liveSaleroom: { watchShare: true, history: true },
   saleroomPaused: { watchShare: true, history: true },
   endedSold: { watchShare: true, history: true },

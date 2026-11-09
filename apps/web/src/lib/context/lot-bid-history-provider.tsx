@@ -24,6 +24,8 @@ import {
   lotBidKeys,
 } from "@/lib/data/queries/lot-bid";
 import { useQueryCacheState } from "@/lib/query/use-query-cache-state";
+import { extensionAddedMs, parseLotExtension } from "@/lib/realtime/lot-extension";
+import { browserClockSync } from "@/lib/time/browser-clock-sync.client";
 import type { BidUpdateEvent, LotEndedEvent } from "@auction/types";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -259,6 +261,25 @@ export function LotBidHistoryProvider({
           status: "ended",
           winnerId: ev.winnerId ?? null,
         },
+      }));
+    },
+    onLotExtended: (payload) => {
+      const extension = parseLotExtension(payload);
+      if (!extension) return;
+      if (extension.serverNowMs !== null) {
+        browserClockSync().observeServerNow(extension.serverNowMs);
+      }
+      const currentEndMs =
+        onlineLifecycle?.liveEndTimeMs ?? new Date(hydrateData.snapshot.endTime).getTime();
+      // A close that did not move later is one already applied (the event arrives under two names).
+      if (!(extension.endTimeMs > currentEndMs)) return;
+      onlineLifecycle?.applyExtension({
+        endTimeMs: extension.endTimeMs,
+        addedMs: extensionAddedMs(currentEndMs, extension),
+      });
+      patchHydrateCache((prev) => ({
+        ...prev,
+        snapshot: { ...prev.snapshot, endTime: new Date(extension.endTimeMs) },
       }));
     },
     onReconnect: () => {

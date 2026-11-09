@@ -2,6 +2,7 @@
 
 import { useLotPageViewContext } from "@/components/lot-page/lot-page-view-context";
 import { buildLotHistoryView } from "@/lib/lot-page/lot-history-rows";
+import { useClockNow } from "@/lib/time/use-clock";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/lax";
 import { ChevronDown, ChevronUp } from "lucide-react";
@@ -13,7 +14,9 @@ import { useId, useState } from "react";
  * paddle is ever named.
  */
 export function LotBidHistory() {
-  const { view, history, nowMs } = useLotPageViewContext();
+  const { view, history, nowMs: pageNowMs } = useLotPageViewContext();
+  // "2 minutes ago" moves on its own clock, not the page's, so the list redraws only when it can change.
+  const nowMs = useClockNow(30_000) ?? pageNowMs;
   const [open, setOpen] = useState(false);
   const [showAll, setShowAll] = useState(false);
   const listId = useId();

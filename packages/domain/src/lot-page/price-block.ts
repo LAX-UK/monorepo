@@ -206,6 +206,8 @@ function headlineOf(input: PriceBlockInput): Headline {
       return headlineWithAmount(openLabel, openAmount, openSubLine(input), format);
     case "extended":
       return headlineWithAmount(openLabel, openAmount, extendedSubLine(input), format);
+    case "closing":
+      return headlineWithAmount(openLabel, openAmount, null, format);
     case "liveSaleroom":
       return headlineWithAmount(openLabel, openAmount, saleroomSubLine(input), format);
     case "saleroomPaused":

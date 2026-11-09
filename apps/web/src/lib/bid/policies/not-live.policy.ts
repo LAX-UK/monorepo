@@ -52,6 +52,13 @@ function lifecycleBlockPresentation(kind: LotLifecycleKind): BidBlockerPresentat
         detail: "Bidding is closed for this lot.",
         action: { kind: "status", label: "Withdrawn" },
       };
+    case "closing":
+      return {
+        tone: "warning",
+        title: "Closing",
+        detail: "Bids that reached us before the close still count.",
+        action: { kind: "status", label: "Closing" },
+      };
     case "saleroomPaused":
       return {
         tone: "warning",

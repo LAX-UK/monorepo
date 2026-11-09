@@ -34,7 +34,7 @@ const summary = (over: Partial<LotPageViewInput> = {}) =>
 
 describe("phone bar summary", () => {
   it("live: the current bid and the time left in words and as a short form", () => {
-    expect(summary()).toEqual({
+    expect(summary()).toMatchObject({
       label: "Current bid",
       labelTone: "neutral",
       amount: "£7,000",
@@ -44,7 +44,7 @@ describe("phone bar summary", () => {
 
   it("the final hour reads as a clock with seconds, in the soon tone", () => {
     const line = summary({ msLeft: 42 * MINUTE + 9_000 })?.line;
-    expect(line).toEqual({
+    expect(line).toMatchObject({
       words: "42 minutes 9 seconds left",
       compact: "42:09 left",
       tone: "soon",

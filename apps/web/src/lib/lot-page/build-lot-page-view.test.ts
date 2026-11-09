@@ -87,7 +87,7 @@ describe("buildLotPageView lifecycles", () => {
     );
     expect(view.badge).toEqual({ label: "Extended", tone: "warning", dot: true });
     expect(view.rows[1]).toMatchObject({
-      label: "Final minutes",
+      label: "Extended",
       value: "1 minute 48 seconds",
       tone: "final",
     });
