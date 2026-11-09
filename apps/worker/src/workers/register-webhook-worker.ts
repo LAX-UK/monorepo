@@ -23,7 +23,11 @@ import {
   ZOHO_LISTING_NIGHTLY_JOB_NAME,
   ZOHO_LISTING_NIGHTLY_PATTERN,
   ZOHO_LISTING_NIGHTLY_TIME_ZONE,
+  ZOHO_LISTING_SALE_START_JOB_NAME,
+  ZOHO_LISTING_SALE_START_MONITOR_KEY,
+  ZOHO_LISTING_SALE_START_PATTERN,
 } from "../jobs/zoho-listing-reconcile.job.js";
+import { withSentryCronMonitor } from "../lib/sentry-cron.js";
 import type { WorkerBootstrapDeps, WorkerErrorHandlerEntry } from "./types.js";
 import { closeAll } from "./worker-utils.js";
 
@@ -38,6 +42,8 @@ export type RegisterWebhookWorkerInput = WorkerBootstrapDeps & {
   runZohoArtworkNightlyCheck?: () => Promise<void>;
   /** Set when the LAX listing on Zoho is on; schedules its nightly pass on this queue. */
   runZohoListingNightlyCheck?: () => Promise<void>;
+  /** Set when the LAX listing on Zoho is on; schedules its sale-start pass on this queue. */
+  runZohoListingSaleStartCheck?: () => Promise<void>;
   /** Set when the Zoho Campaigns suppression sync is on; schedules its daily pass here. */
   runZohoCampaignsSuppressionSync?: () => Promise<void>;
 };
@@ -50,7 +56,9 @@ export function registerWebhookWorker(input: RegisterWebhookWorkerInput): Webhoo
     webhookProcessorDeps,
     runZohoArtworkNightlyCheck,
     runZohoListingNightlyCheck,
+    runZohoListingSaleStartCheck,
     runZohoCampaignsSuppressionSync,
+    sentryMonitorSlugs,
     queueOpts,
     log,
   } = input;
@@ -90,6 +98,18 @@ export function registerWebhookWorker(input: RegisterWebhookWorkerInput): Webhoo
         if (!runZohoListingNightlyCheck)
           throw new Error("zoho listing nightly check not configured");
         await runZohoListingNightlyCheck();
+        await heartbeat("webhook-events");
+        return;
+      }
+
+      if (job.name === ZOHO_LISTING_SALE_START_JOB_NAME) {
+        if (!runZohoListingSaleStartCheck)
+          throw new Error("zoho listing sale start check not configured");
+        await withSentryCronMonitor(
+          ZOHO_LISTING_SALE_START_MONITOR_KEY,
+          sentryMonitorSlugs,
+          runZohoListingSaleStartCheck,
+        );
         await heartbeat("webhook-events");
         return;
       }
@@ -156,6 +176,18 @@ export function registerWebhookWorker(input: RegisterWebhookWorkerInput): Webhoo
       {
         jobId: ZOHO_LISTING_NIGHTLY_JOB_NAME,
         repeat: { pattern: ZOHO_LISTING_NIGHTLY_PATTERN, tz: ZOHO_LISTING_NIGHTLY_TIME_ZONE },
+        removeOnComplete: 30,
+      },
+    );
+  }
+
+  if (runZohoListingSaleStartCheck) {
+    void webhookQueue.add(
+      ZOHO_LISTING_SALE_START_JOB_NAME,
+      { eventKey: ZOHO_LISTING_SALE_START_JOB_NAME },
+      {
+        jobId: ZOHO_LISTING_SALE_START_JOB_NAME,
+        repeat: { pattern: ZOHO_LISTING_SALE_START_PATTERN },
         removeOnComplete: 30,
       },
     );

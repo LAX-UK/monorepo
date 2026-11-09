@@ -19,6 +19,7 @@ import type { ZohoProductWriter } from "../zoho-product-writer.js";
 import { ListingLinks } from "./listing-links.js";
 import type { ZohoListingState } from "./zoho-listing-fields.js";
 import type { ZohoListingProducts } from "./zoho-listing-products.js";
+import { ZohoListingSaleStartPass } from "./zoho-listing-sale-start.js";
 import { ZohoListingSync } from "./zoho-listing-sync.js";
 import { ZohoListingWriteback } from "./zoho-listing-writeback.js";
 
@@ -77,23 +78,26 @@ describe.skipIf(!url)("LAX listing on Zoho (Postgres)", { timeout: 30_000 }, () 
   };
   const log = { info: vi.fn(), warn: vi.fn() } as unknown as Logger;
 
-  const listing = new ZohoListingWriteback({
-    sync: new ZohoListingSync({
-      mode: "live",
-      sources,
-      laxArt: { find: async () => [] },
-      products: zoho.listingProducts,
-      lock: new DrizzleZohoListingLock(db),
-      links: new ListingLinks({
-        artPublicUrl: "https://lax.art",
-        laxAdminUrl: "https://admin.lax.art",
-        bidPublicUrl: "https://lax.bid",
-      }),
-      log,
-      now,
-    }),
-    sources,
+  const listingSync = new ZohoListingSync({
     mode: "live",
+    sources,
+    laxArt: { find: async () => [] },
+    products: zoho.listingProducts,
+    lock: new DrizzleZohoListingLock(db),
+    links: new ListingLinks({
+      artPublicUrl: "https://lax.art",
+      laxAdminUrl: "https://admin.lax.art",
+      bidPublicUrl: "https://lax.bid",
+    }),
+    log,
+    now,
+  });
+  const listing = new ZohoListingWriteback({ sync: listingSync, sources, mode: "live" });
+  const saleStartPass = new ZohoListingSaleStartPass({
+    sync: listingSync,
+    sources,
+    log,
+    now,
   });
   const status = new ZohoArtworkWritebackService({
     mode: "live",
@@ -190,7 +194,26 @@ describe.skipIf(!url)("LAX listing on Zoho (Postgres)", { timeout: 30_000 }, () 
     });
   });
 
-  it("changes to live now when a lot of the sale goes on the block", async () => {
+  it("finds the sale's artwork only in the window its start time falls in", async () => {
+    const start = new Date("2026-11-12T18:00:00Z");
+    const find = (from: Date, to: Date) =>
+      sources.registerIdsForSalesStartedBetween({ from, to }, null, 200);
+    const before = new Date(start.getTime() - 1);
+    expect(await find(new Date(start.getTime() - 60_000), before)).not.toContain(registerId);
+    expect(await find(new Date(start.getTime() - 60_000), start)).toContain(registerId);
+    expect(await find(start, new Date(start.getTime() + 60_000))).not.toContain(registerId);
+  });
+
+  it("the sale-start pass shows live now when a scheduled sale starts on its own time", async () => {
+    clock = new Date("2026-11-12T18:05:00Z");
+    await saleStartPass.run();
+    expect(zoho.fields.LAX_Listing).toBe("In a LAX Bid sale — live now");
+    const before = zoho.counter.writes;
+    await saleStartPass.run();
+    expect(zoho.counter.writes).toBe(before);
+  });
+
+  it("stays live now when a lot of the sale then goes on the block", async () => {
     tick();
     await db.update(lot).set({ status: "active" }).where(eq(lot.id, lotId));
     const result = await listing.deliver({
@@ -198,7 +221,7 @@ describe.skipIf(!url)("LAX listing on Zoho (Postgres)", { timeout: 30_000 }, () 
       aggregateId: lotId,
       payload: { saleId, activatedAt: clock.toISOString() },
     });
-    expect(result).toMatchObject({ outcome: "success" });
+    expect(result).toEqual({ outcome: "skipped", reason: "listing_already_in_sync" });
     expect(zoho.fields.LAX_Listing).toBe("In a LAX Bid sale — live now");
   });
 
@@ -222,7 +245,7 @@ describe.skipIf(!url)("LAX listing on Zoho (Postgres)", { timeout: 30_000 }, () 
     expect(zoho.fields).toMatchObject({
       Status: "Sold",
       LAX_Listing: "Sold in LAX Bid",
-      LAX_Listing_Detail: "Autumn Modern · Lot 12 · sold 5 Nov 2026",
+      LAX_Listing_Detail: "Autumn Modern · Lot 12 · sold 12 Nov 2026",
     });
   });
 });

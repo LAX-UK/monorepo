@@ -17,7 +17,7 @@ const where = (state: OfferState, ref: OfferRef | null = null, drafts = {}) =>
 
 describe("deriveBidSalePhase", () => {
   const phase = (lotStatus: BidLotStatus, saleStatus: BidSaleStatus | null) =>
-    deriveBidSalePhase({ lotStatus, saleStatus });
+    deriveBidSalePhase({ lotStatus, saleStatus, saleStartTime: null, now: NOW });
 
   it("is upcoming until the sale opens", () => {
     expect(phase("scheduled", "scheduled")).toBe("upcoming");
@@ -52,6 +52,22 @@ describe("deriveBidSalePhase", () => {
     it("is live now once the sale has started, with no active lot", () => {
       expect(at("scheduled", "2026-11-05T11:00:00Z")).toBe("live_now");
       expect(at("scheduled", "2026-11-05T12:00:00Z")).toBe("live_now");
+    });
+
+    it("flips exactly at the start time", () => {
+      expect(at("scheduled", "2026-11-05T12:00:00.001Z")).toBe("upcoming");
+      expect(at("scheduled", "2026-11-05T11:59:59.999Z")).toBe("live_now");
+    });
+
+    it("is upcoming for a scheduled sale with no start time given", () => {
+      expect(
+        deriveBidSalePhase({
+          lotStatus: "scheduled",
+          saleStatus: "scheduled",
+          saleStartTime: null,
+          now: NOW,
+        }),
+      ).toBe("upcoming");
     });
 
     it("is ended for an ended sale, whatever its start time", () => {

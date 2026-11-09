@@ -46,6 +46,15 @@ export interface IZohoListingSourceReader {
   registerIdsForLot(lotId: string): Promise<string[]>;
   /** Every record offered by a lot of this sale. */
   registerIdsForSale(saleId: string): Promise<string[]>;
+  /**
+   * Records offered by a lot of a still-`scheduled` sale whose start time is after `from` and no
+   * later than `to`: sales that have just started on their own time. In id order after the cursor.
+   */
+  registerIdsForSalesStartedBetween(
+    window: { from: Date; to: Date },
+    after: string | null,
+    limit: number,
+  ): Promise<string[]>;
   /** The record a lax.art listing was made from or is offered through. */
   registerIdsForLaxArtListing(artworkId: string): Promise<string[]>;
   /** Originals in id order after the cursor: the nightly pass walks the whole register. */
