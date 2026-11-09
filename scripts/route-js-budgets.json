@@ -1,0 +1,77 @@
+{
+  "enforce": false,
+  "apps": {
+    "apps/web": {
+      "fallback": "public",
+      "ignore": ["^/admin", "^/dev/", "^/display/"],
+      "groups": {
+        "public": {
+          "budgetKb": 648,
+          "match": []
+        },
+        "lot": {
+          "budgetKb": 785,
+          "match": ["^/\\(marketing\\)/(lot|artist)/"]
+        },
+        "checkout": {
+          "budgetKb": 326,
+          "match": ["^/\\(client\\)/purchases/(checkout|pay|collect)"]
+        },
+        "account": {
+          "budgetKb": 532,
+          "match": ["^/\\((client|task)\\)/"]
+        }
+      }
+    },
+    "apps/shop": {
+      "fallback": "public",
+      "ignore": [],
+      "groups": {
+        "public": {
+          "budgetKb": 528,
+          "match": []
+        },
+        "product": {
+          "budgetKb": 564,
+          "match": ["^/(artworks|merchandise)/\\[slug\\]$"]
+        },
+        "checkout": {
+          "budgetKb": 567,
+          "match": ["^/(basket|checkout)"]
+        },
+        "account": {
+          "budgetKb": 530,
+          "match": ["^/(account|login|register|signed-out|session-expired|sign-in-error)"]
+        }
+      }
+    },
+    "apps/art": {
+      "fallback": "public",
+      "ignore": [],
+      "groups": {
+        "public": {
+          "budgetKb": 536,
+          "match": []
+        },
+        "product": {
+          "budgetKb": 494,
+          "match": ["^/(artworks|artists)/\\[slug\\]$"]
+        },
+        "account": {
+          "budgetKb": 482,
+          "match": ["^/(account|login|register|signed-out|session-expired|sign-in-error)"]
+        }
+      }
+    },
+    "apps/account": {
+      "fallback": "account",
+      "ignore": [],
+      "groups": {
+        "account": {
+          "budgetKb": 362,
+          "match": []
+        }
+      }
+    }
+  }
+}
