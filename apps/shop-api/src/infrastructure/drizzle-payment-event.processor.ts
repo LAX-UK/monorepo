@@ -40,6 +40,7 @@ import {
   createShopDomainEventPublisher,
 } from "./shop-domain-event-publisher.js";
 import { resolveListingStatusAfterReservationRelease } from "./shop-edition-listing-on-release.js";
+import { type UnappliedMoneyLookup, recordPaidOnClosedOrder } from "./shop-paid-on-closed-order.js";
 import { findOrCreateBuyerParty } from "./shop-party.js";
 import { judgePayment } from "./shop-payment-verdict.js";
 import { restoreBasketLinesFromOrder } from "./shop-restore-basket-from-order.js";
