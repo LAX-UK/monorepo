@@ -49,7 +49,7 @@ Each step is idempotent: running the erasure again changes nothing.
 
 The worker's daily `purge-collection-handover` job clears the kept name (to "Deleted collector")
 and the ID type on hand-overs whose account has been erased and whose hand-over is older than
-`COLLECTION_HANDOVER_RETENTION_YEARS` (default 6, minimum 1, maximum 30). It never touches the
+`COLLECTION_HANDOVER_RETENTION_YEARS` (default 6, minimum 3, maximum 30). It never touches the
 hand-over record of someone whose account is open.
 
 | Variable | Default | Meaning |

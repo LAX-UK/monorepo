@@ -361,7 +361,7 @@ describe.skipIf(!HAS_DB)("anonymising collection bookings (integration)", () => 
       });
       await purgeCollectionHandoverRecords({
         transactionRunner: runner,
-        retentionYears: 1,
+        retentionYears: 3,
         log,
         now,
       });
@@ -376,14 +376,14 @@ describe.skipIf(!HAS_DB)("anonymising collection bookings (integration)", () => 
       const missed = await erasedHandOver("2020-01-01T00:00:00Z", { status: "not_collected" });
       const second = await purgeCollectionHandoverRecords({
         transactionRunner: runner,
-        retentionYears: 1,
+        retentionYears: 3,
         log,
         now,
       });
       expect(await read(missed)).toMatchObject({ collectorName: "Kept Name" });
       const third = await purgeCollectionHandoverRecords({
         transactionRunner: runner,
-        retentionYears: 1,
+        retentionYears: 3,
         log,
         now,
       });

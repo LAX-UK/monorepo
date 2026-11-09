@@ -51,3 +51,4 @@ export * from "./admin-dispute-desk.js";
 export * from "./press.js";
 export * from "./atg.js";
 export * from "./sale-cover.js";
+export * from "./collection-booking.js";

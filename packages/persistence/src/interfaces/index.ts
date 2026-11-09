@@ -1345,5 +1345,10 @@ export type {
   RecordHandOver,
   UndoHandOver,
   UndoOutcome,
+  WithinBookingTransaction,
 } from "./collection-booking.repository.js";
+export type {
+  CollectionLotRecord,
+  ICollectionLotFactsReader,
+} from "./collection-lot-facts.reader.js";
 export type { IPartyDealRecordReader } from "./party-deal-record.reader.js";

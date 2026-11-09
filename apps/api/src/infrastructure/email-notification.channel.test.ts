@@ -258,6 +258,28 @@ describe("EmailNotificationChannel payment reminders to the billing email", () =
   });
 });
 
+describe("EmailNotificationChannel payment reminder item label", () => {
+  const reminder = (meta: Record<string, unknown>): NotificationPayload => ({
+    type: "payment_reminder",
+    legalEntityId: null,
+    title: "Payment due today",
+    message: "Payment due today",
+    meta: { paymentId: "pay-1", amount: "1250.00", dueDate: "8 November 2026", ...meta },
+  });
+
+  it("calls the item a work for a private sale deal, with no lot behind it", async () => {
+    const { channel, enqueued } = setup();
+    await channel.send(USER_ID, reminder({ reminderStep: "due_day", privateSale: true }));
+    expect(enqueued[0]?.vars).toMatchObject({ itemLabel: "Work" });
+  });
+
+  it("leaves a lot's reminder as it was", async () => {
+    const { channel, enqueued } = setup();
+    await channel.send(USER_ID, reminder({ reminderStep: "due_day" }));
+    expect(enqueued[0]?.vars).not.toHaveProperty("itemLabel");
+  });
+});
+
 describe("EmailNotificationChannel watched-lot reminder", () => {
   it("prints the person's note and the close, with an unsubscribe for this switch only", async () => {
     const { channel, enqueued } = setup();

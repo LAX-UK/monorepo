@@ -15,6 +15,8 @@ import {
   DrizzleAccountPurchaseFactsReader,
   DrizzleAccountRegistrationsReader,
   DrizzleChargeableDeliveryReader,
+  DrizzleCollectionBookingRepository,
+  DrizzleCollectionLotFactsReader,
   DrizzleCollectionPlaceRepository,
   DrizzleDeliveryQuoteRepository,
   DrizzlePaySeveralInvoiceFlagsReader,
@@ -27,7 +29,10 @@ import type {
   ISettlementComplianceAssessor,
   ISettlementCompliancePolicy,
 } from "../services/aml/settlement-compliance.policy.js";
+import { CollectionLotGuard } from "../services/collection-visits/collection-lot-guard.js";
+import { CollectionVisitService } from "../services/collection-visits/collection-visit.service.js";
 import type { IDomainEventSink } from "../services/domain-event-sink.js";
+import type { ICollectionVisitService } from "../services/interfaces/collection-visit-service.js";
 import type { INotificationFactory } from "../services/interfaces/notification-factory.js";
 import type {
   IAccountPurchasesService,
@@ -76,6 +81,7 @@ export type OrganisationBuyingServices = {
   payProgress: IPayProgressReadService;
   deliveryQuotes: IDeliveryQuoteService;
   collection: ICollectionBookingService;
+  collectionVisits: ICollectionVisitService;
   problems: IPurchaseProblemService;
 };
 
@@ -130,6 +136,8 @@ export function createOrganisationBuyingServices(input: CreateOrganisationBuying
     flags: new DrizzlePaySeveralInvoiceFlagsReader(input.db),
     now: () => new Date(),
   });
+  const lotFacts = new DrizzleCollectionLotFactsReader(input.db);
+  const collectionPlaces = new DrizzleCollectionPlaceRepository(input.db);
   const bid = legalEntityFor("bid");
   const progress = new PayProgressResolver(input.payments.groupGateway);
   const payPlan = new PayPlanService({
@@ -202,9 +210,17 @@ export function createOrganisationBuyingServices(input: CreateOrganisationBuying
           hours: input.env.COLLECTION_HOURS ?? null,
           bookingEmail: input.env.COLLECTION_BOOKING_EMAIL ?? SITE_CONTACT_EMAIL,
         },
-        collectionPlaces: new DrizzleCollectionPlaceRepository(input.db),
+        collectionPlaces,
         purchases,
         places: lookups,
+      }),
+      collectionVisits: new CollectionVisitService({
+        lots: new CollectionLotGuard(lotFacts),
+        facts: lotFacts,
+        places: collectionPlaces,
+        bookings: new DrizzleCollectionBookingRepository(input.db),
+        events: input.events,
+        now: () => new Date(),
       }),
     },
     staffDeliveryQuotes: new StaffDeliveryQuoteService({
