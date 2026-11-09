@@ -73,8 +73,8 @@ describe.skipIf(!HAS_DB)("collection lot facts (integration)", () => {
       insert into venue (id, legal_entity_id, name, address_line1, city, postcode, country)
       values (${venueId}, ${orgEntity}, 'Facts gallery', '1 Test Street', 'London', 'W1W 6YW', 'GB')`);
     await db.execute(sql`
-      insert into sale (id, title, start_time, end_time, venue_id)
-      values (${saleId}, 'Facts sale', now() - interval '30 days', now() - interval '20 days', ${venueId})`);
+      insert into sale (id, title, start_time, end_time, venue_id, created_by_legal_entity_id)
+      values (${saleId}, 'Facts sale', now() - interval '30 days', now() - interval '20 days', ${venueId}, ${orgEntity})`);
     await db.execute(sql`
       insert into bid_user_profile (user_id, aml_hold_status)
       values (${heldWinner}, 'hold')`);
