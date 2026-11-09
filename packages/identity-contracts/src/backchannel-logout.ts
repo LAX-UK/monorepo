@@ -1,5 +1,6 @@
-import { type JWTPayload, createRemoteJWKSet, jwtVerify } from "jose";
+import { type JWTPayload, jwtVerify } from "jose";
 import { normalizeIssuerUrl } from "./discovery.js";
+import { jwksFor } from "./jwks-holder.js";
 
 export const BACKCHANNEL_LOGOUT_EVENT =
   "http://schemas.openid.net/event/backchannel-logout" as const;
@@ -12,19 +13,6 @@ export type ValidatedBackchannelLogoutClaims = {
   sub?: string;
   expiresAt: Date;
 };
-
-const jwksCache = new Map<string, ReturnType<typeof createRemoteJWKSet>>();
-
-function getJwks(url: string) {
-  const cached = jwksCache.get(url);
-  if (cached) return cached;
-  const jwks = createRemoteJWKSet(new URL(url), {
-    cacheMaxAge: 10 * 60 * 1000,
-    cooldownDuration: 30_000,
-  });
-  jwksCache.set(url, jwks);
-  return jwks;
-}
 
 export function validateBackchannelLogoutClaims(
   claims: JWTPayload,
@@ -94,7 +82,7 @@ export async function verifyBackchannelLogoutToken(options: {
   const issuer = normalizeIssuerUrl(options.issuer);
   const maxAgeSeconds = options.maxAgeSeconds ?? BACKCHANNEL_LOGOUT_MAX_AGE_SECONDS;
   try {
-    const { payload } = await jwtVerify(token, getJwks(options.jwksUrl), {
+    const { payload } = await jwtVerify(token, jwksFor(options.jwksUrl), {
       issuer,
       audience: options.audience,
       algorithms: ["RS256"],

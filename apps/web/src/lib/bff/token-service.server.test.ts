@@ -213,4 +213,31 @@ describe("BidBffTokenService", () => {
     expect(result.token).toBe("token-from-new-key");
     expect(result.session.resourceTokens["lax-bid-api"]?.token).toBe("token-from-new-key");
   });
+
+  it("does not exchange again for a token signed by a key newer than the last key set fetch", async () => {
+    const sessions = new DeterministicSessionStore({
+      kind: "authenticated",
+      subject: "user-1",
+      sid: "sid-1",
+      idToken: "id-token",
+      accessToken: "access-token",
+      refreshToken: "refresh-token",
+      accessTokenExpiresAt: Date.now() + 120_000,
+      resourceTokens: {},
+    });
+    oidc.exchangeResourceToken.mockResolvedValue({
+      token: "token-from-newer-key",
+      expiresAt: Date.now() + 120_000,
+      scopes: "bid.read",
+    });
+    // The key check keeps a token whose key it cannot yet judge retired.
+    const isKeyCurrent = vi.fn(async () => true);
+    const service = new BidBffTokenService(sessions as never, isKeyCurrent);
+
+    await service.resourceToken("session-id", "lax-bid-api", "bid.read");
+    await service.resourceToken("session-id", "lax-bid-api", "bid.read");
+    await service.resourceToken("session-id", "lax-bid-api", "bid.read");
+
+    expect(oidc.exchangeResourceToken).toHaveBeenCalledTimes(1);
+  });
 });

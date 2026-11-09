@@ -47,9 +47,9 @@ export function createAuthMetrics() {
       "Reads of the staff, two-step or email facts a Google or Apple sign-in depends on that failed. The sign-in is stopped, so a rise means Google and Apple sign-in is failing for everyone.",
       [],
     ),
-    signingKeyAgeSeconds: new Gauge({
-      name: "auction_auth_signing_key_age_seconds",
-      help: "Seconds since the active auth signing key was created, by key id. Alert when it exceeds the rotation window.",
+    signingKeyCreatedTimestampSeconds: new Gauge({
+      name: "auction_auth_signing_key_created_timestamp_seconds",
+      help: "Unix time the active auth signing key was created, by key id. Compute the age in PromQL as time() minus this value and alert when it exceeds the rotation window.",
       labelNames: ["kid"],
       registers: [registry],
     }),

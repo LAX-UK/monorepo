@@ -35,19 +35,21 @@ export type SigningKeyCheck = (token: string) => Promise<boolean>;
  * A cached token is reused only while it is unexpired, covers the scopes and was signed by a
  * key the issuer still publishes, so a rotated-out key never outlives the rotation.
  */
-async function cachedResourceTokenStillValid(
+async function reusableResourceToken(
   cached: CachedResourceToken | undefined,
   scopes: string,
   forceExchange: boolean,
   isKeyCurrent: SigningKeyCheck,
-): Promise<boolean> {
-  return (
-    !forceExchange &&
-    cached !== undefined &&
-    scopesSatisfy(cached.scopes, scopes) &&
-    cached.expiresAt > Date.now() + EXPIRY_SKEW_MS &&
-    (await isKeyCurrent(cached.token))
-  );
+): Promise<CachedResourceToken | null> {
+  if (
+    forceExchange ||
+    cached === undefined ||
+    !scopesSatisfy(cached.scopes, scopes) ||
+    cached.expiresAt <= Date.now() + EXPIRY_SKEW_MS
+  ) {
+    return null;
+  }
+  return (await isKeyCurrent(cached.token)) ? cached : null;
 }
 
 export class BidBffSessionRequiredError extends Error {
@@ -94,27 +96,23 @@ export class BidBffTokenService {
     const session = await this.readAuthenticated(sessionId);
     if (!session) throw new BidBffSessionRequiredError();
     const cached = session.resourceTokens[audience as keyof typeof session.resourceTokens];
-    if (
-      cached &&
-      (await cachedResourceTokenStillValid(cached, scopes, forceExchange, this.isKeyCurrent))
-    ) {
-      return { token: cached.token, session };
+    const reusable = await reusableResourceToken(cached, scopes, forceExchange, this.isKeyCurrent);
+    if (reusable) {
+      return { token: reusable.token, session };
     }
 
     return this.sessions.withRefreshLock(sessionId, async (lock) => {
       let current = await this.readAuthenticated(sessionId);
       if (!current) throw new BidBffSessionRequiredError();
       const currentCached = current.resourceTokens[audience as keyof typeof current.resourceTokens];
-      if (
-        currentCached &&
-        (await cachedResourceTokenStillValid(
-          currentCached,
-          scopes,
-          forceExchange,
-          this.isKeyCurrent,
-        ))
-      ) {
-        return { token: currentCached.token, session: current };
+      const reusableCurrent = await reusableResourceToken(
+        currentCached,
+        scopes,
+        forceExchange,
+        this.isKeyCurrent,
+      );
+      if (reusableCurrent) {
+        return { token: reusableCurrent.token, session: current };
       }
       if (current.accessTokenExpiresAt <= Date.now() + EXPIRY_SKEW_MS) {
         try {

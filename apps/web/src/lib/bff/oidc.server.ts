@@ -2,9 +2,9 @@ import "server-only";
 
 import { randomBytes } from "node:crypto";
 import {
-  JWKS_PATH,
   LAX_RESOURCES,
   type LaxResourceId,
+  issuerJwksUrl,
   normalizeIssuerUrl,
 } from "@auction/identity-contracts";
 import { isSigningKeyCurrent, verifyIdentityToken } from "@auction/identity-contracts/verify";
@@ -102,7 +102,7 @@ export async function exchangeAuthorizationCode(input: {
     throw new Error("Identity authorization response omitted required tokens");
   }
   const issuer = normalizeIssuerUrl(config.issuer);
-  const jwksUrl = `${config.internalIssuer.replace(/\/+$/, "")}${JWKS_PATH}`;
+  const jwksUrl = issuerJwksUrl(config.internalIssuer);
   const verified = await verifyIdentityToken({
     token: token.id_token,
     jwksUrl,
@@ -204,6 +204,6 @@ export function buildEndSessionUrl(idToken: string): URL {
 export function isResourceTokenKeyCurrent(token: string): Promise<boolean> {
   return isSigningKeyCurrent({
     token,
-    jwksUrl: `${bffConfig().internalIssuer}${JWKS_PATH}`,
+    jwksUrl: issuerJwksUrl(bffConfig().internalIssuer),
   });
 }

@@ -1,5 +1,6 @@
-import { type JWTPayload, createRemoteJWKSet, jwtVerify } from "jose";
+import { type JWTPayload, jwtVerify } from "jose";
 import { z } from "zod";
+import { jwksFor } from "./jwks-holder.js";
 
 export const SSF_PUSH_DELIVERY_METHOD = "urn:ietf:rfc:8935" as const;
 export const SSF_VERIFICATION_EVENT =
@@ -140,7 +141,7 @@ export async function verifyAndConsumeSet(
   let payload: JWTPayload;
   let typ: string | undefined;
   try {
-    const verified = await jwtVerify(options.token, createRemoteJWKSet(new URL(options.jwksUrl)), {
+    const verified = await jwtVerify(options.token, jwksFor(String(options.jwksUrl)), {
       algorithms: ["RS256"],
       issuer: options.issuer,
       audience: options.audience,
