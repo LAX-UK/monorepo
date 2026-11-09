@@ -297,6 +297,13 @@ describe("bid entry", () => {
     );
   });
 
+  it("a lot at zero says bids that reached us before the close still count", () => {
+    expect(
+      buildBidEntry({ ...base, action: "bid_disabled", lifecycle: "closing" }).primary
+        ?.disabledReason,
+    ).toBe("Bids that reached us before the close still count.");
+  });
+
   it("disables the bid and offers to ask an admin when an agent's limit cannot cover it", () => {
     const entry = buildBidEntry({ ...base, agentLimitLeft: "5000.00" });
     expect(entry.primary?.disabledReason).toBe("Ask an organisation admin to raise your limit.");
