@@ -18,6 +18,7 @@ export const PAYMENT_REFUND_SOURCES = [
   "group_webhook",
   "staff",
   "blocked_capture",
+  "payout_topup",
 ] as const;
 export type PaymentRefundSource = (typeof PAYMENT_REFUND_SOURCES)[number];
 
@@ -52,7 +53,7 @@ export const paymentRefund = pgTable(
     check("payment_refund_currency_ck", sql`${table.currency} ~ '^[A-Z]{3}$'`),
     check(
       "payment_refund_source_ck",
-      sql`${table.source} IN ('card_webhook', 'group_webhook', 'staff', 'blocked_capture')`,
+      sql`${table.source} IN ('card_webhook', 'group_webhook', 'staff', 'blocked_capture', 'payout_topup')`,
     ),
   ],
 );

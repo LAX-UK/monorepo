@@ -84,7 +84,7 @@ sum(increase(auction_api_money_path_events_total{event=~"invoice_pdf_refund_curr
 
 There is no admin tool for this yet (a follow-up: an audited finance action that writes the row). Until then a database admin adds the row by hand, with a second person confirming the figures:
 
-1. Re-run the backfill first; it adds every refund the payout ledger holds and nothing else, and is safe to repeat: `SELECT payment_refund_backfill_from_payout_lines();`. Read the payment's rows again; if there is one now, stop.
+1. Re-run the backfill first; for each payment it adds one `payout_topup` row for the amount by which its refund payout lines exceed its `payment_refund` rows, and nothing else (nothing where the buyer side is already the higher). It is safe to repeat and to run beside live refunds: `SELECT payment_refund_backfill_from_payout_lines();`. Read the payment's rows again; if there is one now, stop.
 2. In the Stripe dashboard (read only) open the payment's charge (`payment.stripe_charge_id`) and note each refund: its id (`re_...`), amount and currency. For a "Pay several" charge only the refunds whose metadata names this payment count. A payment staff marked paid has no charge and so no card refund to find: the amount is what finance repaid, from the bank record.
 3. Add one row per refund as the database owner, in one transaction, taking the payment's lock first so a refund arriving at the same moment is measured against it:
 

@@ -143,6 +143,15 @@ describe.skipIf(!WORKER_URL)("worker_app role contract", { timeout: 60_000 }, ()
     });
   });
 
+  it("may run the buyer refund top-up function", async () => {
+    await withWorkerClient(async (client) => {
+      const result = await client.query<{ run: boolean }>(
+        `select has_function_privilege(current_user, 'public.payment_refund_backfill_from_payout_lines(uuid)', 'EXECUTE') as run`,
+      );
+      expect(result.rows[0]).toEqual({ run: true });
+    });
+  });
+
   it("reads the Shop order columns the Deal name needs, and no other column of those tables", async () => {
     await withWorkerClient(async (client) => {
       for (const [table, columns] of WORKER_SHOP_ORDER_READ_COLUMNS) {

@@ -35,6 +35,12 @@ const DUPLICATE: PaymentWebhookResult = {
   reason: "duplicate_event",
 };
 
+const GROUP_NOT_FOUND: PaymentWebhookResult = {
+  processed: false,
+  action: "skipped",
+  reason: "payment_group_not_found",
+};
+
 const paymentIntentIdOf = (pi: string | { id: string } | null | undefined) =>
   typeof pi === "string" ? pi : (pi?.id ?? null);
 
@@ -69,7 +75,7 @@ export class PaymentGroupChargeEvents {
       // The group, then its invoices in id order: a staff refund of one invoice waits here, and
       // every sum below is taken while no other refund of these invoices can be recorded.
       const locked = await this.deps.groups.lockInTransaction(tx, group.id);
-      if (!locked) return DUPLICATE;
+      if (!locked) return GROUP_NOT_FOUND;
       const members = [...locked.members].sort((a, b) => a.paymentId.localeCompare(b.paymentId));
       const attribution = attributeGroupRefunds(
         members.map((m) => ({ paymentId: m.paymentId })),

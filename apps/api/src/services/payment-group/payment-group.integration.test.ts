@@ -608,13 +608,13 @@ describe.skipIf(!HAS_DB)("pay several: one payment for several invoices (integra
     const gap = await webhooks.handleChargeRefunded(eventOf("charge.refunded", charge), charge);
     expect(gap).toMatchObject({ action: "skipped", reason: "no_new_refund_amount" });
     expect(await payouts.sumRefundLineCentsForPayment(ids.a)).toBe(2_500);
-    // The buyer's record now holds that refund once, under the key its payout line has.
+    // The buyer's record now holds that refund once, as a top-up from the payout ledger.
     expect((await paymentRefunds.sumRefundedPence(ids.a)).pence).toBe(2_500);
     const keys = await db
       .select({ key: paymentRefund.idempotencyKey })
       .from(paymentRefund)
       .where(eq(paymentRefund.paymentId, ids.a));
-    expect(keys).toEqual([{ key: oldKey }]);
+    expect(keys).toEqual([{ key: `payout_ledger_topup:${ids.a}:2500` }]);
 
     // The data step run after the release changes nothing.
     await db.execute(sql`SELECT payment_refund_backfill_from_payout_lines()`);

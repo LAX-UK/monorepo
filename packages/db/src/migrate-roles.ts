@@ -449,6 +449,10 @@ export const LIFT_ZOHO_CAMPAIGNS_OPT_OUT_FUNCTION =
   "lift_zoho_campaigns_opt_out(text, timestamptz, boolean)";
 /** Roles that may call it: the Bid API (confirm link) and the worker (Shop event, sync, newsletter). */
 export const LIFT_ZOHO_CAMPAIGNS_OPT_OUT_ROLES = ["api_app", "worker_app"] as const;
+/** Migration 0344's top-up of the buyer refund record from the payout ledger. */
+export const PAYMENT_REFUND_BACKFILL_FUNCTION = "payment_refund_backfill_from_payout_lines(uuid)";
+/** Roles that may call it: the API (refund webhooks, staff refunds) and the worker. Not shop_app. */
+export const PAYMENT_REFUND_BACKFILL_ROLES = ["api_app", "worker_app"] as const;
 export const WORKER_ZOHO_ARTWORK_SYNC_TABLES = [
   "zoho_artwork_sync_state",
   "zoho_artwork_sync_outcome",
@@ -1082,6 +1086,9 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
         }
         for (const role of LIFT_ZOHO_CAMPAIGNS_OPT_OUT_ROLES) {
           await grantExecuteIfFunctionExists(client, role, LIFT_ZOHO_CAMPAIGNS_OPT_OUT_FUNCTION);
+        }
+        for (const role of PAYMENT_REFUND_BACKFILL_ROLES) {
+          await grantExecuteIfFunctionExists(client, role, PAYMENT_REFUND_BACKFILL_FUNCTION);
         }
         for (const tableName of WORKER_ZOHO_ARTWORK_SYNC_TABLES) {
           await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT, UPDATE");

@@ -6,6 +6,8 @@ import { describe, expect, it } from "vitest";
 import {
   API_DENY_TABLES,
   API_PAYMENT_REFUND_TABLES,
+  PAYMENT_REFUND_BACKFILL_FUNCTION,
+  PAYMENT_REFUND_BACKFILL_ROLES,
   SHOP_COMMERCE_TABLES,
   WORKER_PAYMENT_REFUND_TABLES,
 } from "./migrate-roles.js";
@@ -43,7 +45,7 @@ describe("migration 0344 payment refund", () => {
     expect(migration).toContain('CHECK ("amount_pence" > 0)');
     expect(migration).toContain(`CHECK ("currency" ~ '^[A-Z]{3}$')`);
     expect(migration).toContain(
-      `CHECK ("source" IN ('card_webhook', 'group_webhook', 'staff', 'blocked_capture'))`,
+      `CHECK ("source" IN ('card_webhook', 'group_webhook', 'staff', 'blocked_capture', 'payout_topup'))`,
     );
     for (const source of PAYMENT_REFUND_SOURCES) expect(migration).toContain(`'${source}'`);
   });
@@ -68,25 +70,35 @@ describe("migration 0344 payment refund", () => {
       );
     });
 
-    it("copies only refund lines that name a payment, in pence", () => {
+    it("sums the refund lines of a payment, in pence, and never matches on a line's event id", () => {
       expect(step).toContain(`l."kind" = 'refund'`);
       expect(step).toContain('l."payment_id" IS NOT NULL');
-      expect(step).toContain('round(abs(l."amount") * 100)::integer');
-      expect(step).toContain('round(abs(l."amount") * 100) > 0');
+      expect(step).toContain('SUM(round(abs(l."amount") * 100))');
+      expect(step).toContain('GROUP BY l."payment_id"');
+      expect(step).not.toContain("source_event_id");
+      expect(step).not.toContain("NOT EXISTS");
     });
 
-    it("keys each row by its line's source_event_id and skips a key already recorded", () => {
-      expect(step).toContain(`COALESCE(l."source_event_id", 'payout_line:' || l."id")`);
-      expect(step).toContain("NOT EXISTS (");
-      expect(step).toContain('r."idempotency_key" = COALESCE(l."source_event_id"');
+    it("adds only what the payment's refund lines hold above its recorded refunds", () => {
+      expect(step).toContain('SUM(r."amount_pence")');
+      expect(step).toContain(`r."currency" = 'GBP'`);
+      expect(step).toContain('t."line_pence" - t."recorded_pence" > 0');
+      expect(step).toContain(`'payout_topup'`);
+    });
+
+    it("keys the top-up by payment and refund line total, so a re-run or a race adds it once", () => {
+      expect(step).toContain(`'payout_ledger_topup:' || t."payment_id" || ':' || t."line_pence"`);
       expect(step).toContain('ON CONFLICT ("idempotency_key") DO NOTHING');
-      expect(step).not.toContain("backfill:");
     });
 
-    it("reads the source from the event id the line was written for", () => {
-      expect(step).toContain(`LIKE 'evt\\_%:%' THEN 'group_webhook'`);
-      expect(step).toContain(`LIKE 'evt\\_%' THEN 'card_webhook'`);
-      expect(step).toContain("ELSE 'staff'");
+    it("can be called by the roles that need it only", () => {
+      expect(migration).toContain(
+        "REVOKE ALL ON FUNCTION payment_refund_backfill_from_payout_lines(uuid) FROM PUBLIC",
+      );
+      expect([...PAYMENT_REFUND_BACKFILL_ROLES]).toEqual(["api_app", "worker_app"]);
+      expect(PAYMENT_REFUND_BACKFILL_FUNCTION).toBe(
+        "payment_refund_backfill_from_payout_lines(uuid)",
+      );
     });
 
     it("never changes the ledger it copies from", () => {

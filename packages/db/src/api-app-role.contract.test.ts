@@ -44,6 +44,15 @@ describe.skipIf(!API_URL)("api_app role contract", { timeout: 60_000 }, () => {
     });
   });
 
+  it("may run the buyer refund top-up function", async () => {
+    await withApiClient(async (client) => {
+      const result = await client.query<{ run: boolean }>(
+        `select has_function_privilege(current_user, 'public.payment_refund_backfill_from_payout_lines(uuid)', 'EXECUTE') as run`,
+      );
+      expect(result.rows[0]).toEqual({ run: true });
+    });
+  });
+
   it("can provision product profiles but cannot delete them", async () => {
     await withApiClient(async (client) => {
       for (const table of API_PRODUCT_PROFILE_TABLES) {

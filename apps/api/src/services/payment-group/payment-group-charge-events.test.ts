@@ -31,18 +31,19 @@ function setup(
   const applyRefunded = vi.fn().mockResolvedValue(true);
   const publish = vi.fn().mockResolvedValue(undefined);
   let current = refunds;
+  const groups = {
+    findByStripeRefs: vi.fn().mockResolvedValue(GROUP),
+    lockInTransaction: vi.fn().mockImplementation(async () => ({
+      group: GROUP,
+      members: [...members].reverse(),
+      deliveries: [],
+    })),
+  };
   const events = new PaymentGroupChargeEvents({
     transactionRunner: {
       runInTransaction: async <T>(fn: (tx: never) => Promise<T>) => fn({} as never),
     },
-    groups: {
-      findByStripeRefs: vi.fn().mockResolvedValue(GROUP),
-      lockInTransaction: vi.fn().mockImplementation(async () => ({
-        group: GROUP,
-        members: [...members].reverse(),
-        deliveries: [],
-      })),
-    } as never,
+    groups: groups as never,
     gateway: { listChargeRefunds: vi.fn(async () => current) },
     payments: { applyRefundedInTransaction: applyRefunded },
     payoutAdjustments: { addPaymentLineToOpenPayoutOrCreateClawback: addLine },
@@ -54,6 +55,7 @@ function setup(
   return {
     events,
     paymentRefunds,
+    groups,
     sellerLedger,
     addLine,
     applyRefunded,
@@ -115,6 +117,16 @@ describe("PaymentGroupChargeEvents.chargeRefunded", () => {
       reason: "duplicate_event",
     });
     expect(duplicate.paymentRefunds.entries).toEqual([]);
+  });
+
+  it("reports a group that is gone under the lock as not found, not as a duplicate", async () => {
+    const { events, paymentRefunds, groups } = setup([{ paymentId: "pay-a", amountPence: 2_500 }]);
+    groups.lockInTransaction.mockResolvedValueOnce(null);
+    expect(await events.chargeRefunded(event("evt_1"), charge)).toMatchObject({
+      processed: false,
+      reason: "payment_group_not_found",
+    });
+    expect(paymentRefunds.entries).toEqual([]);
   });
 
   it("measures the invoices in id order, each summed before it is recorded", async () => {

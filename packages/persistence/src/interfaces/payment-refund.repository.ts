@@ -1,7 +1,12 @@
 import type { Database } from "@auction/db";
 
 /** Where a buyer-side refund was reported from. */
-export type PaymentRefundSource = "card_webhook" | "group_webhook" | "staff" | "blocked_capture";
+export type PaymentRefundSource =
+  | "card_webhook"
+  | "group_webhook"
+  | "staff"
+  | "blocked_capture"
+  | "payout_topup";
 
 export type PaymentRefundEntry = {
   paymentId: string;
