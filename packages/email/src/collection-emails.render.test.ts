@@ -50,6 +50,59 @@ describe("collection booked email", () => {
   });
 });
 
+describe("collection handed over email", () => {
+  const base = {
+    userName: "Maya",
+    reference: "COL-4821",
+    dayLabel: "Thu 12 Nov",
+    collectorName: "Charlotte Hayes",
+    collectedLots: ["Lowland Storm", "Coastal Notation"],
+    leftLots: [],
+    bookUrl: "https://lax.bid/purchases",
+  };
+
+  it("thanks them, names the lots in the subject and who took them", async () => {
+    const rendered = await renderEmail("collection-collected", base);
+    expect(rendered.subject).toBe("Collected: Lowland Storm and Coastal Notation");
+    expect(rendered.html).toContain("Thank you for collecting");
+    expect(rendered.text).toContain(
+      "Charlotte Hayes collected Lowland Storm and Coastal Notation on Thu 12 Nov.",
+    );
+    expect(rendered.text).not.toContain("Book a collection time");
+    expect(`${rendered.subject} ${rendered.text}`).not.toMatch(PRICE);
+  });
+
+  it("says what stayed with us, and offers a new time, when some works were left", async () => {
+    const rendered = await renderEmail("collection-collected", {
+      ...base,
+      collectedLots: ["Lowland Storm"],
+      leftLots: ["Coastal Notation"],
+    });
+    expect(rendered.text).toContain(
+      "Coastal Notation stayed with us, paid and safe, until you book another time.",
+    );
+    expect(rendered.html).toContain("Book a collection time");
+  });
+});
+
+describe("collection missed email", () => {
+  it("says we missed them, keeps the lots safe and links to book another time", async () => {
+    const rendered = await renderEmail("collection-missed", {
+      userName: "Maya",
+      reference: "COL-4821",
+      whenLabel: "Thu 12 Nov, 14:00–14:30 GMT",
+      placeName: "London Art Exchange",
+      lots: ["Lowland Storm"],
+      bookUrl: "https://lax.bid/purchases",
+    });
+    expect(rendered.subject).toBe("We missed you today");
+    expect(rendered.html).toContain("Book another time to collect");
+    expect(rendered.text).toContain("Your lots stay with us, paid and safe");
+    expect(rendered.html).toContain("https://lax.bid/purchases");
+    expect(`${rendered.subject} ${rendered.text}`).not.toMatch(PRICE);
+  });
+});
+
 describe("who the emails come from", () => {
   it("name LAX Bid's company in the footer, and the gallery only as the place of the visit", async () => {
     const rendered = await renderEmail("collection-booked", visit);
@@ -195,6 +248,8 @@ describe("collection emails are transactional", () => {
       "collection-cancelled",
       "collection-reminder",
       "collection-collector-notice",
+      "collection-collected",
+      "collection-missed",
     ]) {
       expect(OPTIONAL_EMAIL_TEMPLATES).not.toContain(name);
     }

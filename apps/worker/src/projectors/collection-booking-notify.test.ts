@@ -56,7 +56,26 @@ function setup(rows: Row[], read: (id: string) => Promise<CollectionNoticeVisit 
 }
 
 describe("collection booking emails from audit events", () => {
-  it("asks only for the booked, changed and cancelled events, after its own cursor", async () => {
+  it("emails the buyer when the desk hands works over, and when it marks the visit not collected", async () => {
+    const s = setup(
+      [
+        { id: 6, eventType: "collection.booking.handed_over", payload: { bookingId: "b-1" } },
+        { id: 7, eventType: "collection.booking.not_collected", payload: { bookingId: "b-1" } },
+      ],
+      async () => ({
+        ...visit,
+        lots: [{ title: "Lowland Storm", lotNumber: 12, active: false, outcome: "collected" }],
+      }),
+    );
+    await s.run();
+    expect(s.enqueue.mock.calls.map(([email]) => email.template)).toEqual([
+      "collection-collected",
+      "collection-missed",
+    ]);
+    expect(s.advanceCursor).toHaveBeenCalledWith("collection_booking_notify", 7);
+  });
+
+  it("asks only for the collection booking events it emails, after its own cursor", async () => {
     const s = setup([], async () => visit);
     await s.run();
     expect(s.listAfterCursor).toHaveBeenCalledWith(5, {
@@ -64,6 +83,8 @@ describe("collection booking emails from audit events", () => {
         "collection.booking.created",
         "collection.booking.changed",
         "collection.booking.cancelled",
+        "collection.booking.handed_over",
+        "collection.booking.not_collected",
       ],
       limit: 50,
     });

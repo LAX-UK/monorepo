@@ -40,6 +40,10 @@ function changeOf(eventType: string, eventId: number, payload: Payload): Collect
           }
         : null;
     }
+    case "collection.booking.handed_over":
+      return { kind: "collected", eventId };
+    case "collection.booking.not_collected":
+      return { kind: "missed", eventId };
     case "collection.booking.cancelled":
       return {
         kind: "cancelled",
@@ -53,7 +57,7 @@ function changeOf(eventType: string, eventId: number, payload: Payload): Collect
 }
 
 /**
- * Sends the emails for collection bookings made, changed and cancelled, from the audit events
+ * Sends the emails for collection bookings made, changed, cancelled, handed over and missed, from the audit events
  * written in the same transaction as the booking. So a booking and its email can never disagree:
  * if the booking is stored its event is, and the email follows, once. A cancellation by the
  * buyer, by staff (hours or a closure changed) or by Bid when the booker erased their account all
@@ -76,6 +80,8 @@ export async function processCollectionBookingNotify(options: {
       "collection.booking.created",
       "collection.booking.changed",
       "collection.booking.cancelled",
+      "collection.booking.handed_over",
+      "collection.booking.not_collected",
     ],
     limit: 50,
   });

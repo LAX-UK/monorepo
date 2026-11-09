@@ -56,6 +56,8 @@ export const EMAIL_TEMPLATE_LABELS: Readonly<Record<TemplateName, string>> = {
   "collection-cancelled": "Collection cancelled",
   "collection-reminder": "Collection reminder",
   "collection-collector-notice": "Collection details for the person collecting",
+  "collection-collected": "Collection handed over",
+  "collection-missed": "Collection missed",
   "proxy-cancelled-notice": "Maximum bid cancelled",
   "lot-voided-notice": "Lot voided",
   "lot-withdrawal-declined-notice": "Withdrawal request declined",

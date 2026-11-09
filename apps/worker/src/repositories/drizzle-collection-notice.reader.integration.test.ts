@@ -106,8 +106,8 @@ describe.skipIf(!HAS_DB)("collection notice reader (integration)", () => {
       collector: { kind: "third_party", name: "Sam Okoro", email: "sam@example.com" },
       place: { name: "Notice gallery", address: "156 New Cavendish Street, London, W1W 6YW" },
       lots: [
-        { title: "Lowland Storm", lotNumber: 12, active: false },
-        { title: "Coastal Notation", lotNumber: 14, active: true },
+        { title: "Lowland Storm", lotNumber: 12, active: false, outcome: null },
+        { title: "Coastal Notation", lotNumber: 14, active: true, outcome: null },
       ],
       account: { kind: "organisation", name: "Northbank Gallery" },
       booker: { userId: booker, email: `${booker}@integration.test`, name: "Maya Okafor" },

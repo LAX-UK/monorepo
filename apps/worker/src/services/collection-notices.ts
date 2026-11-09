@@ -26,7 +26,13 @@ export type CollectionNoticeVisit = {
   bookedVia: "client" | "staff";
   collector: { kind: "self" | "member" | "third_party"; name: string; email: string | null };
   place: { name: string; address: string };
-  lots: { title: string; lotNumber: number | null; active: boolean }[];
+  lots: {
+    title: string;
+    lotNumber: number | null;
+    active: boolean;
+    /** What the desk did with the lot at hand-over; null until then. */
+    outcome?: "collected" | "left" | null;
+  }[];
   /** The account the visit was booked for: an organisation, or a person's own. */
   account: { kind: "organisation" | "personal"; name: string };
   /** Who booked it, when they still have an account. */
@@ -49,6 +55,8 @@ export type CollectionChange =
       cancelledVia: CollectionCancelledVia;
       reason?: CollectionCancelReason | undefined;
     }
+  | { kind: "collected"; eventId: number | string }
+  | { kind: "missed"; eventId: number | string }
   | { kind: "reminder" };
 
 export type CollectionNoticeConfig = {
@@ -250,6 +258,33 @@ export function collectionEmailsFor(
           } satisfies TemplateVarsByName["collection-reminder"],
         });
         break;
+      case "collected":
+        add(person.email, person.userId, {
+          template: "collection-collected",
+          vars: {
+            userName: person.firstName,
+            reference: visit.reference,
+            dayLabel,
+            collectorName: visit.collector.name,
+            collectedLots: visit.lots.filter((l) => l.outcome === "collected").map((l) => l.title),
+            leftLots: visit.lots.filter((l) => l.outcome === "left").map((l) => l.title),
+            bookUrl: bookingUrl,
+          } satisfies TemplateVarsByName["collection-collected"],
+        });
+        break;
+      case "missed":
+        add(person.email, person.userId, {
+          template: "collection-missed",
+          vars: {
+            userName: person.firstName,
+            reference: visit.reference,
+            whenLabel,
+            placeName: visit.place.name,
+            lots: visit.lots.map((l) => l.title),
+            bookUrl: bookingUrl,
+          } satisfies TemplateVarsByName["collection-missed"],
+        });
+        break;
       case "cancelled": {
         const cancelledBy =
           change.reason === "account_erased"
@@ -277,7 +312,9 @@ export function collectionEmailsFor(
 
   // Someone named to collect hears too, with their own calendar entry and nothing about money.
   const collectorEmail = visit.collector.email;
-  if (visit.collector.kind === "third_party" && collectorEmail && change.kind !== "reminder") {
+  const toCollector =
+    change.kind === "created" || change.kind === "changed" || change.kind === "cancelled";
+  if (visit.collector.kind === "third_party" && collectorEmail && toCollector) {
     const { onBehalfOf, bookedBy } = authorisation(visit);
     const calendar = (method: "REQUEST" | "CANCEL") =>
       calendarFor(

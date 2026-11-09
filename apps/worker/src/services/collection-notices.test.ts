@@ -309,6 +309,100 @@ describe("a booking cancelled", () => {
   });
 });
 
+describe("works handed over at the desk", () => {
+  const handedOver = { kind: "collected", eventId: 21 } as const;
+  const afterHandOver = (outcomes: Array<"collected" | "left">) =>
+    visit({
+      lots: [
+        { title: "Lowland Storm", lotNumber: 12, active: false, outcome: outcomes[0] ?? null },
+        {
+          title: "Coastal Notation",
+          lotNumber: 14,
+          active: outcomes[1] === "left",
+          outcome: outcomes[1] ?? null,
+        },
+      ],
+    });
+
+  it("tells the buyer what was collected and by whom, with no calendar entry and no price", () => {
+    const emails = collectionEmailsFor(
+      handedOver,
+      afterHandOver(["collected", "collected"]),
+      CONFIG,
+    );
+    expect(emails).toHaveLength(1);
+    expect(emails[0]).toMatchObject({
+      template: "collection-collected",
+      to: "maya@example.com",
+      idempotencyKey: "collection-collected:21:maya@example.com",
+    });
+    expect(emails[0]?.vars).toMatchObject({
+      collectorName: "Maya Okafor",
+      dayLabel: "Thu 12 Nov",
+      collectedLots: ["Lowland Storm", "Coastal Notation"],
+      leftLots: [],
+    });
+    expect(JSON.stringify(emails)).not.toMatch(/£|price|hammer/i);
+  });
+
+  it("says which works stayed with us when only some were taken", () => {
+    const [email] = collectionEmailsFor(handedOver, afterHandOver(["collected", "left"]), CONFIG);
+    expect(email?.vars).toMatchObject({
+      collectedLots: ["Lowland Storm"],
+      leftLots: ["Coastal Notation"],
+    });
+  });
+
+  it("goes to the account's owners when the desk booked the visit, never to the staff member", () => {
+    const emails = collectionEmailsFor(
+      handedOver,
+      { ...afterHandOver(["collected", "collected"]), bookedVia: "staff" },
+      CONFIG,
+    );
+    expect(emails.map((e) => e.to)).toEqual(["owner@northbank.example"]);
+  });
+
+  it("does not email a person named to collect", () => {
+    const emails = collectionEmailsFor(
+      handedOver,
+      {
+        ...afterHandOver(["collected", "collected"]),
+        collector: { kind: "third_party", name: "Sam Okoro", email: "sam@example.com" },
+      },
+      CONFIG,
+    );
+    expect(emails.map((e) => e.to)).toEqual(["maya@example.com"]);
+  });
+});
+
+describe("a visit marked not collected", () => {
+  it("tells the buyer we missed them and where to book another time", () => {
+    const [email, ...rest] = collectionEmailsFor({ kind: "missed", eventId: 33 }, visit(), CONFIG);
+    expect(rest).toEqual([]);
+    expect(email).toMatchObject({
+      template: "collection-missed",
+      to: "maya@example.com",
+      idempotencyKey: "collection-missed:33:maya@example.com",
+    });
+    expect(email?.vars).toMatchObject({
+      reference: "COL-4821",
+      whenLabel: "Thu 12 Nov, 14:00–14:30 GMT",
+      placeName: "London Art Exchange",
+      lots: ["Lowland Storm", "Coastal Notation"],
+      bookUrl: "https://lax.bid/purchases",
+    });
+  });
+
+  it("does not email a person named to collect", () => {
+    const emails = collectionEmailsFor(
+      { kind: "missed", eventId: 33 },
+      visit({ collector: { kind: "third_party", name: "Sam Okoro", email: "sam@example.com" } }),
+      CONFIG,
+    );
+    expect(emails.map((e) => e.to)).toEqual(["maya@example.com"]);
+  });
+});
+
 describe("the day-before reminder", () => {
   it("goes to the buyer, keyed by the visit and its time so a moved visit is reminded again", () => {
     const [email, ...rest] = collectionEmailsFor({ kind: "reminder" }, visit(), CONFIG);

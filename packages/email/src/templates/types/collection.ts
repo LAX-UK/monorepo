@@ -6,6 +6,8 @@ const names = [
   "collection-cancelled",
   "collection-reminder",
   "collection-collector-notice",
+  "collection-collected",
+  "collection-missed",
 ] as const;
 
 type CollectionTemplateName = (typeof names)[number];
@@ -91,6 +93,33 @@ type CollectionTemplateVars = {
     lots: string[];
     calendar?: CollectionCalendarAttachment | null;
   };
+  /** After the desk hands works over: what was collected, by whom, and what stayed. */
+  "collection-collected": {
+    userName?: string | null;
+    reference: string;
+    /** The day of the visit: "Thu 12 Nov". */
+    dayLabel: string;
+    /** Who took the works. */
+    collectorName: string;
+    /** Titles only: "Lowland Storm". */
+    collectedLots: string[];
+    /** Works that stayed with us because they were left behind at the desk. */
+    leftLots: string[];
+    /** Where to book another time for what stayed. */
+    bookUrl: string;
+  };
+  /** After the desk marks a visit not collected: the lots stay safe and a new time can be booked. */
+  "collection-missed": {
+    userName?: string | null;
+    reference: string;
+    /** The visit that was missed, in the one date style. */
+    whenLabel: string;
+    placeName: string;
+    /** Titles only. */
+    lots: string[];
+    /** Where to book another time. */
+    bookUrl: string;
+  };
 };
 
 export const collectionTemplates = {
@@ -103,6 +132,8 @@ export const collectionTemplates = {
     "collection-reminder": "live",
     // The collector may have no account: the address is the one the buyer typed.
     "collection-collector-notice": "snapshot",
+    "collection-collected": "live",
+    "collection-missed": "live",
   },
 } satisfies TemplateDomainSlice<CollectionTemplateName, CollectionTemplateVars>;
 

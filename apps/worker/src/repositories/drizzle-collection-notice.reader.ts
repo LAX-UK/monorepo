@@ -46,6 +46,7 @@ export class DrizzleCollectionNoticeReader implements ICollectionNoticeReader {
         title: lot.title,
         lotNumber: lot.lotNumber,
         active: collectionBookingLot.active,
+        outcome: collectionBookingLot.outcome,
       })
       .from(collectionBookingLot)
       .innerJoin(lot, eq(lot.id, collectionBookingLot.lotId))
@@ -78,7 +79,10 @@ export class DrizzleCollectionNoticeReader implements ICollectionNoticeReader {
           .filter((part): part is string => Boolean(part?.trim()))
           .join(", "),
       },
-      lots,
+      lots: lots.map((row) => ({
+        ...row,
+        outcome: row.outcome === "collected" || row.outcome === "left" ? row.outcome : null,
+      })),
       account: {
         kind: account?.kind === "organisation" ? "organisation" : "personal",
         name: account?.displayName ?? "",

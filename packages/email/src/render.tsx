@@ -81,9 +81,15 @@ import CollectionCancelledEmail, {
 import CollectionChangedEmail, {
   subject as collectionChangedSubject,
 } from "./templates/collection-changed.js";
+import CollectionCollectedEmail, {
+  subject as collectionCollectedSubject,
+} from "./templates/collection-collected.js";
 import CollectionCollectorNoticeEmail, {
   subject as collectionCollectorNoticeSubject,
 } from "./templates/collection-collector-notice.js";
+import CollectionMissedEmail, {
+  subject as collectionMissedSubject,
+} from "./templates/collection-missed.js";
 import CollectionReminderEmail, {
   subject as collectionReminderSubject,
 } from "./templates/collection-reminder.js";
@@ -515,6 +521,14 @@ const renderers: { [T in TemplateName]: TemplateRenderer<T> } = {
   "collection-collector-notice": {
     subject: collectionCollectorNoticeSubject,
     component: (vars) => <CollectionCollectorNoticeEmail {...vars} />,
+  },
+  "collection-collected": {
+    subject: collectionCollectedSubject,
+    component: (vars) => <CollectionCollectedEmail {...vars} />,
+  },
+  "collection-missed": {
+    subject: collectionMissedSubject,
+    component: (vars) => <CollectionMissedEmail {...vars} />,
   },
   "lot-fulfilment-update": {
     subject: lotFulfilmentUpdateSubject,
