@@ -492,6 +492,10 @@ describe("migrate-roles invariants", () => {
     }
   });
 
+  it("lets the worker read lot categories, which every lot read loads", () => {
+    expect([...WORKER_READ_TABLES]).toContain("lot_categories");
+  });
+
   it("keeps the printers and publishers list to shop_app, denied to the Bid API and the worker", () => {
     expect([...SHOP_COMMERCE_TABLES]).toContain("shop_print_party");
     expect([...API_DENY_TABLES]).toContain("shop_print_party");

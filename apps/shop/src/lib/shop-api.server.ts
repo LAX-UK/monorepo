@@ -10,6 +10,7 @@ import {
   type PublicCategoryList,
   type PublicCategorySummary,
   type PublicDeliveryRegions,
+  type PublicEditionFraming,
   type PublicMerchandiseProductDetail,
   type PublicMerchandiseProductList,
   ShopContractParseError,
@@ -21,6 +22,7 @@ import {
   parsePublicCategoryList,
   parsePublicCategorySummary,
   parsePublicDeliveryRegions,
+  parsePublicEditionFraming,
   parsePublicMerchandiseProductDetail,
   parsePublicMerchandiseProductList,
 } from "@auction/shop-contracts";
@@ -177,6 +179,29 @@ export async function fetchPublicArtworkBySlug(
     throw new ShopApiBffError("upstream", `Shop artwork request failed (${response.status})`);
   }
   return readValidatedJson(response, parsePublicArtworkDetail, "artwork detail");
+}
+
+/**
+ * What a buyer can choose for framing on an edition. Framing is an addition: if it cannot be read
+ * the page is shown as it was, with no framing, rather than failing.
+ */
+export async function fetchPublicEditionFraming(slug: string): Promise<PublicEditionFraming> {
+  const none: PublicEditionFraming = {
+    kind: "none",
+    required: false,
+    description: null,
+    options: [],
+  };
+  try {
+    const response = await shopApiFetch(
+      `/v1/artworks/${encodeURIComponent(slug)}/framing`,
+      SLUG_LOOKUP,
+    );
+    if (!response.ok) return none;
+    return await readValidatedJson(response, parsePublicEditionFraming, "edition framing");
+  } catch {
+    return none;
+  }
 }
 
 export async function fetchPublicCategories(input?: {

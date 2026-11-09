@@ -17,7 +17,7 @@ describe("migration 0340 shop delivery quote carrier", () => {
     expect(index).toBeGreaterThan(0);
     const entry = journal.entries[index];
     const previous = journal.entries[index - 1];
-    expect(previous?.tag).toBe("0336_private_sale_deal_party_history_entities");
+    expect(previous?.tag).toBe("0338_shop_framing_on_editions");
     expect(entry?.idx).toBe((previous?.idx ?? 0) + 1);
     expect(entry?.when).toBe((previous?.when ?? 0) + 24 * 60 * 60 * 1000);
   });
