@@ -119,7 +119,7 @@ describe("HoursRulesForm", () => {
     fireEvent.click(saveButton());
     expect(await screen.findByText("2 booked visits would be affected")).toBeTruthy();
     expect(screen.getByText("COL-1001")).toBeTruthy();
-    expect(screen.getByText(/Fri 13 Nov, 17:30 GMT to 18:00/)).toBeTruthy();
+    expect(screen.getByText(/Fri 13 Nov, 17:30–18:00 GMT/)).toBeTruthy();
     expect(screen.getAllByText("Outside the opening hours")).toHaveLength(2);
     expect(mocks.refresh).not.toHaveBeenCalled();
   });

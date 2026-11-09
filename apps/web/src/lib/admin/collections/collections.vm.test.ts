@@ -72,10 +72,10 @@ describe("collections view model", () => {
 
   it("writes a visit in London time, winter and summer", () => {
     expect(formatVisitSlot("2026-11-13T17:30:00Z", "2026-11-13T18:00:00Z", NOW)).toBe(
-      "Fri 13 Nov, 17:30 GMT to 18:00",
+      "Fri 13 Nov, 17:30–18:00 GMT",
     );
     expect(formatVisitSlot("2026-07-10T09:00:00Z", "2026-07-10T09:30:00Z", NOW)).toBe(
-      "Fri 10 Jul, 10:00 BST to 10:30",
+      "Fri 10 Jul, 10:00–10:30 BST",
     );
   });
 });

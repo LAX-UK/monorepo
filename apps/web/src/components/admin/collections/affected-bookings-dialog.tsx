@@ -15,8 +15,10 @@ import { useId, useRef, useState } from "react";
 
 type Props = {
   open: boolean;
-  /** What is being changed, as a short phrase: "these opening hours", "this closure". */
-  change: string;
+  /** Where the bookings fall: "outside the new hours", "inside this closure". */
+  where: string;
+  /** The button that goes ahead with each choice. */
+  confirmLabels: { keep: string; cancel: (count: number) => string };
   bookings: readonly StaffAffectedBooking[];
   busy: boolean;
   onConfirm: (choice: AffectedBookingsChoice) => void;
@@ -24,14 +26,15 @@ type Props = {
 };
 
 /**
- * Shown before a change that leaves booked visits outside what the place offers. It lists the
- * visits first, then asks what to do with them: keep them booked (staff look after them), or
- * cancel them and ask the clients to book again. Nothing has been saved at this point; closing
+ * Shown before a change that leaves bookings outside what the place offers. It lists the
+ * bookings first, then asks what to do with them: keep them (staff look after them), or cancel
+ * them and ask the clients to book again. Nothing has been saved at this point; closing
  * the dialog leaves everything as it was.
  */
 export function AffectedBookingsDialog({
   open,
-  change,
+  where,
+  confirmLabels,
   bookings,
   busy,
   onConfirm,
@@ -41,7 +44,6 @@ export function AffectedBookingsDialog({
   const cancelRef = useRef<HTMLButtonElement>(null);
   const [choice, setChoice] = useState<AffectedBookingsChoice>("keep");
   const count = bookings.length;
-  const noun = count === 1 ? "visit" : "visits";
 
   return (
     <StaffDialog
@@ -51,8 +53,8 @@ export function AffectedBookingsDialog({
       }}
       size="md"
       initialFocusRef={cancelRef}
-      title={`${count} booked ${noun} would be affected`}
-      description={`Saving ${change} leaves ${count === 1 ? "this visit" : "these visits"} outside what the gallery now offers. Nothing is saved until you choose.`}
+      title={`${count} ${count === 1 ? "booking falls" : "bookings fall"} ${where}`}
+      description="Nothing has been saved. Choose what happens to them."
       footer={
         <>
           <StaffButton ref={cancelRef} variant="secondary" disabled={busy} onClick={onCancel}>
@@ -63,9 +65,7 @@ export function AffectedBookingsDialog({
             loading={busy}
             onClick={() => onConfirm(choice)}
           >
-            {choice === "cancel_and_rebook"
-              ? `Save and cancel ${count} ${noun}`
-              : "Save and keep them booked"}
+            {choice === "cancel_and_rebook" ? confirmLabels.cancel(count) : confirmLabels.keep}
           </StaffButton>
         </>
       }
@@ -98,15 +98,15 @@ export function AffectedBookingsDialog({
           >
             <ChoiceRow
               htmlFor={`${ids}-keep`}
-              label="Keep them booked"
-              description="The visits stay as they are. You'll need to look after them yourself."
+              label="Keep them"
+              description="They stay booked as they are. You look after them yourself."
               disabled={busy}
               control={<StaffRadio id={`${ids}-keep`} value="keep" />}
             />
             <ChoiceRow
               htmlFor={`${ids}-cancel`}
-              label="Cancel them so the clients can book again"
-              description="Each visit is cancelled and recorded in the audit log."
+              label="Cancel and ask to rebook"
+              description="Each booking is cancelled and recorded in the audit log, and the client is asked to book again."
               disabled={busy}
               control={<StaffRadio id={`${ids}-cancel`} value="cancel_and_rebook" />}
             />

@@ -1,4 +1,4 @@
-import { formatStaffDate, formatStaffDateTime, formatStaffTime } from "@auction/staff-ui";
+import { formatStaffDate, formatStaffTime } from "@auction/staff-ui";
 import type {
   StaffAffectedBooking,
   StaffCollectionException,
@@ -74,9 +74,9 @@ export const EXCEPTION_SOURCE_LABELS: Record<StaffCollectionException["source"],
 /** A London day key as a date to format; noon keeps it on the same day in any zone. */
 const dayDate = (day: string): Date => new Date(`${day}T12:00:00Z`);
 
-/** "Fri 13 Nov, 17:30 GMT to 18:00" for a visit, in the one date style. */
+/** "Fri 13 Nov, 17:30–18:00 GMT" for a visit, in the one date style. */
 export function formatVisitSlot(startIso: string, endIso: string, now: Date = new Date()): string {
-  return `${formatStaffDateTime(startIso, now)} to ${formatStaffTime(endIso)}`;
+  return `${formatStaffDate(startIso, now)}, ${formatStaffTime(startIso)}–${formatStaffTime(endIso, { zoneLabel: true })}`;
 }
 
 /** The days a closure or opening covers: "Fri 25 Dec" or "Fri 25 Dec to Sun 27 Dec". */

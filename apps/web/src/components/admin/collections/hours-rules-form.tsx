@@ -176,7 +176,7 @@ export function HoursRulesForm({ settings, canChange }: Props) {
       </FormSection>
 
       <FormSection
-        title="Opening hours"
+        title="Weekly hours"
         description="When visits can be booked each week, in London time. Closures and bank holidays are on the Closures tab."
       >
         <HoursEditor
@@ -274,8 +274,8 @@ export function HoursRulesForm({ settings, canChange }: Props) {
       </FormSection>
 
       <FormSection
-        title="Sale days and storage"
-        description="How collections work around sales and storage."
+        title="Sale days"
+        description="Whether a sale at this place closes collections for its days."
       >
         <ChoiceRow
           htmlFor={field("close_on_sale_days")}
@@ -291,10 +291,16 @@ export function HoursRulesForm({ settings, canChange }: Props) {
             />
           }
         />
+      </FormSection>
+
+      <FormSection
+        title="Storage and hand-over"
+        description="How long a purchased work is stored for free, and how long a hand-over can be undone."
+      >
         <FieldRow>
           <Field
             label="Free storage"
-            description="Days after a sale; empty for no limit"
+            description="Days after payment clears; empty if there is no limit yet"
             id={field("free_storage_days")}
             error={shown.rules.free_storage_days}
             optional
@@ -353,7 +359,11 @@ export function HoursRulesForm({ settings, canChange }: Props) {
 
       <AffectedBookingsDialog
         open={change.affected !== null}
-        change="these settings"
+        where="outside the new hours"
+        confirmLabels={{
+          keep: "Save and keep them",
+          cancel: (count) => `Save and cancel ${count}`,
+        }}
         bookings={change.affected ?? []}
         busy={change.busy}
         onConfirm={(choice) => void change.confirm(choice)}

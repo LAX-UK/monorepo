@@ -3,7 +3,6 @@
 import { addCollectionExceptionAction } from "@/lib/actions/admin/admin-collections";
 import {
   type ExceptionDraft,
-  emptyExceptionDraft,
   exceptionBody,
   validateExceptionDraft,
 } from "@/lib/admin/collections/collection-forms";
@@ -11,7 +10,6 @@ import { EXCEPTION_ISSUE_MESSAGES } from "@/lib/admin/collections/collections.vm
 import { notify } from "@/lib/ui/notify";
 import type { ExceptionIssueCode } from "@auction/domain";
 import {
-  ChoiceFieldset,
   ChoiceRow,
   DateInput,
   Field,
@@ -20,8 +18,6 @@ import {
   Notice,
   StaffButton,
   StaffDialog,
-  StaffRadio,
-  StaffRadioGroup,
   StaffSwitch,
   TextArea,
   TextInput,
@@ -35,6 +31,8 @@ type Props = {
   onOpenChange: (open: boolean) => void;
   venueId: string;
   today: string;
+  /** What the form starts with: its kind is fixed by the button that opened it. */
+  initial: ExceptionDraft;
 };
 
 const ISSUE_FIELD: Record<ExceptionIssueCode, "start" | "end" | "opens" | "closes"> = {
@@ -51,11 +49,11 @@ const ISSUE_FIELD: Record<ExceptionIssueCode, "start" | "end" | "opens" | "close
  * closed, or on a sale day) for a day, a run of days, or part of a day. If visits are already
  * booked in what it closes, they are listed first and staff choose what happens to them.
  */
-export function AddExceptionDialog({ open, onOpenChange, venueId, today }: Props) {
+export function AddExceptionDialog({ open, onOpenChange, venueId, today, initial }: Props) {
   const ids = useId();
   const formId = `${ids}-form`;
   const cancelRef = useRef<HTMLButtonElement>(null);
-  const [draft, setDraft] = useState<ExceptionDraft>(() => emptyExceptionDraft(today));
+  const [draft, setDraft] = useState<ExceptionDraft>(initial);
   const [attempted, setAttempted] = useState(false);
   const [failedSubmits, setFailedSubmits] = useState(0);
 
@@ -81,7 +79,7 @@ export function AddExceptionDialog({ open, onOpenChange, venueId, today }: Props
   );
   const change = useCollectionChange(send, (result) => {
     onOpenChange(false);
-    setDraft(emptyExceptionDraft(today));
+    setDraft(initial);
     setAttempted(false);
     notify.success(
       result.cancelled > 0
@@ -114,7 +112,7 @@ export function AddExceptionDialog({ open, onOpenChange, venueId, today }: Props
         }}
         size="md"
         initialFocusRef={cancelRef}
-        title={isClosure ? "Add a closure" : "Add an extra opening"}
+        title={isClosure ? "Add closure" : "Add extra opening"}
         description={
           isClosure
             ? "Clients can't book visits on these days or times."
@@ -131,7 +129,7 @@ export function AddExceptionDialog({ open, onOpenChange, venueId, today }: Props
               Cancel
             </StaffButton>
             <StaffButton type="submit" form={formId} variant="primary" loading={change.busy}>
-              {isClosure ? "Add closure" : "Add opening"}
+              {isClosure ? "Add closure" : "Add extra opening"}
             </StaffButton>
           </>
         }
@@ -152,28 +150,6 @@ export function AddExceptionDialog({ open, onOpenChange, venueId, today }: Props
               {change.failure.message}
             </Notice>
           ) : null}
-          <ChoiceFieldset legend="What is it?" disabled={change.busy}>
-            <StaffRadioGroup
-              value={draft.kind}
-              disabled={change.busy}
-              onValueChange={(next) => set("kind", next as ExceptionDraft["kind"])}
-            >
-              <ChoiceRow
-                htmlFor={fieldId("closure")}
-                label="Closure"
-                description="The gallery is shut."
-                disabled={change.busy}
-                control={<StaffRadio id={fieldId("closure")} value="closure" />}
-              />
-              <ChoiceRow
-                htmlFor={fieldId("opening")}
-                label="Extra opening"
-                description="Open when it normally wouldn't be, such as a Saturday or a sale day."
-                disabled={change.busy}
-                control={<StaffRadio id={fieldId("opening")} value="extra_opening" />}
-              />
-            </StaffRadioGroup>
-          </ChoiceFieldset>
           <FieldRow>
             <Field
               label="First day"
@@ -274,7 +250,11 @@ export function AddExceptionDialog({ open, onOpenChange, venueId, today }: Props
       </StaffDialog>
       <AffectedBookingsDialog
         open={open && change.affected !== null}
-        change={isClosure ? "this closure" : "this opening"}
+        where={isClosure ? "inside this closure" : "outside the regular hours"}
+        confirmLabels={{
+          keep: isClosure ? "Close and keep them" : "Add and keep them",
+          cancel: (count) => `Close and email ${count} ${count === 1 ? "client" : "clients"}`,
+        }}
         bookings={change.affected ?? []}
         busy={change.busy}
         onConfirm={(choice) => void change.confirm(choice)}
