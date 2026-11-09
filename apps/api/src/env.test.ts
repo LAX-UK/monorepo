@@ -197,3 +197,31 @@ describe("envSchema PRIVATE_SALE_RECORD_RETENTION_YEARS", () => {
     expect(parsed.success && parsed.data.PRIVATE_SALE_RECORD_RETENTION_YEARS).toBe(5);
   });
 });
+
+describe("envSchema private sale deadlines", () => {
+  const parse = (extra: Record<string, unknown> = {}) =>
+    envSchema.safeParse(productionEnvBase(extra));
+
+  it("suggests 7 days to pay and 14 to collect until the owner decides", () => {
+    const parsed = parse();
+    expect(parsed.success && parsed.data.PRIVATE_SALE_PAYMENT_DUE_DAYS).toBe(7);
+    expect(parsed.success && parsed.data.PRIVATE_SALE_COLLECTION_DUE_DAYS).toBe(14);
+    const blank = parse({
+      PRIVATE_SALE_PAYMENT_DUE_DAYS: "",
+      PRIVATE_SALE_COLLECTION_DUE_DAYS: "",
+    });
+    expect(blank.success && blank.data.PRIVATE_SALE_PAYMENT_DUE_DAYS).toBe(7);
+    expect(blank.success && blank.data.PRIVATE_SALE_COLLECTION_DUE_DAYS).toBe(14);
+  });
+
+  it("takes the owner's answer when it is set, and refuses nonsense", () => {
+    const set = parse({
+      PRIVATE_SALE_PAYMENT_DUE_DAYS: "10",
+      PRIVATE_SALE_COLLECTION_DUE_DAYS: "21",
+    });
+    expect(set.success && set.data.PRIVATE_SALE_PAYMENT_DUE_DAYS).toBe(10);
+    expect(set.success && set.data.PRIVATE_SALE_COLLECTION_DUE_DAYS).toBe(21);
+    expect(parse({ PRIVATE_SALE_PAYMENT_DUE_DAYS: "0" }).success).toBe(false);
+    expect(parse({ PRIVATE_SALE_COLLECTION_DUE_DAYS: "400" }).success).toBe(false);
+  });
+});

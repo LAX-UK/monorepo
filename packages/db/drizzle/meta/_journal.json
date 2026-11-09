@@ -2297,6 +2297,20 @@
       "when": 1803888000000,
       "tag": "0334_collection_booking",
       "breakpoints": true
+    },
+    {
+      "idx": 329,
+      "version": "7",
+      "when": 1803974400000,
+      "tag": "0337_shop_print_exception",
+      "breakpoints": true
+    },
+    {
+      "idx": 330,
+      "version": "7",
+      "when": 1804060800000,
+      "tag": "0335_private_sale_deal_follow_ups",
+      "breakpoints": true
     }
   ]
 }

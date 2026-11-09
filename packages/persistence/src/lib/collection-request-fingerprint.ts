@@ -1,18 +1,8 @@
 import { createHash } from "node:crypto";
-import type { NewCollectionBooking } from "../interfaces/collection-booking.repository.js";
-
-/** What makes two booking requests the same request. */
-type FingerprintedRequest = Pick<
-  NewCollectionBooking,
-  | "legalEntityId"
-  | "venueId"
-  | "slotStart"
-  | "lotIds"
-  | "collector"
-  | "bookedVia"
-  | "bookedByUserId"
-  | "overCapacityReason"
->;
+import {
+  type FingerprintedRequest,
+  collectionRequestCanonical,
+} from "./collection-request-canonical.js";
 
 /**
  * A digest of the request a booking was made with, stored beside its idempotency key. A repeat of
@@ -25,20 +15,6 @@ type FingerprintedRequest = Pick<
  * version, the capacity) because those can differ between two sends of the same request.
  */
 export function collectionRequestFingerprint(request: FingerprintedRequest): string {
-  const canonical = JSON.stringify([
-    request.legalEntityId,
-    request.venueId,
-    request.slotStart.toISOString(),
-    [...new Set(request.lotIds)].sort(),
-    request.collector.kind,
-    request.collector.name,
-    request.collector.email,
-    request.collector.company,
-    request.collector.userId,
-    request.collector.authorisedByUserId,
-    request.bookedVia,
-    request.bookedByUserId,
-    request.overCapacityReason,
-  ]);
+  const canonical = collectionRequestCanonical(request);
   return createHash("sha256").update(canonical).digest("hex");
 }

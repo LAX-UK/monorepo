@@ -7,7 +7,7 @@ import {
   shopOrderLine,
   shopSaleAuthorityGrant,
 } from "@auction/db/schema";
-import { ShopDomainError } from "@auction/shop-domain";
+import { type EditionListingStatus, ShopDomainError } from "@auction/shop-domain";
 import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import type { EditionPrintStore } from "../../application/edition-runs/edition-run.ports.js";
 import { notFound } from "../../errors/shop-api-error.js";
@@ -45,6 +45,30 @@ export async function readRunUsage(db: Database, artworkId: string) {
     printsAuthorised: Number(prints?.authorised ?? 0),
     paidOrders: Number(orders?.paid ?? 0) + Number(prints?.soldOutsideOrders ?? 0),
   };
+}
+
+/** The authority recorded for what an owner has on sale in an artwork, as it stands now. */
+async function recordCurrentAuthority(
+  db: Database,
+  input: { artworkId: string; ownerPartyId: string; actorSubjectId: string; note: string },
+) {
+  const [onSale] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(shopEdition)
+    .where(
+      and(
+        eq(shopEdition.artworkId, input.artworkId),
+        eq(shopEdition.ownerPartyId, input.ownerPartyId),
+        eq(shopEdition.listingStatus, "authorised"),
+      ),
+    );
+  await db.insert(shopSaleAuthorityGrant).values({
+    artworkId: input.artworkId,
+    ownerPartyId: input.ownerPartyId,
+    authorisedCount: Number(onSale?.count ?? 0),
+    recordedBySubjectId: input.actorSubjectId,
+    evidenceNote: input.note,
+  });
 }
 
 export function createDrizzleEditionPrintStore(db: Database): EditionPrintStore {
@@ -147,6 +171,79 @@ export function createDrizzleEditionPrintStore(db: Database): EditionPrintStore 
           ),
         );
       return Number(row?.listed ?? 0);
+    },
+
+    async loadPrint(editionId) {
+      const [row] = await db
+        .select({
+          id: shopEdition.id,
+          artworkId: shopEdition.artworkId,
+          editionNumber: shopEdition.editionNumber,
+          proofNumber: shopEdition.proofNumber,
+          stockRef: shopEdition.stockRef,
+          allocation: shopEdition.allocation,
+          ownerPartyId: shopEdition.ownerPartyId,
+          custodyStatus: shopEdition.custodyStatus,
+          listingStatus: shopEdition.listingStatus,
+          reservedUntil: shopEdition.reservedUntil,
+          pendingOrder: sql<boolean>`exists (
+            select 1 from ${shopOrder}
+            where ${shopOrder.id} = ${shopEdition.reservedByOrderId}
+              and ${shopOrder.status} = 'pending_payment'
+          )`,
+        })
+        .from(shopEdition)
+        .where(eq(shopEdition.id, editionId))
+        .for("update", { of: shopEdition })
+        .limit(1);
+      if (!row) return null;
+      const owner =
+        row.allocation === "original_buyer_entitlement" ? ("buyer" as const) : row.allocation;
+      return {
+        editionId: row.id,
+        artworkId: row.artworkId,
+        editionNumber: row.editionNumber,
+        proofNumber: row.proofNumber,
+        stockRef: row.stockRef,
+        owner,
+        listingStatus: row.listingStatus as EditionListingStatus,
+        reservedUntil: row.reservedUntil,
+        reservedByPendingOrder: row.pendingOrder === true,
+        forSale:
+          row.ownerPartyId !== null &&
+          owner !== "buyer" &&
+          row.custodyStatus !== "with_owner" &&
+          row.custodyStatus !== "returned",
+      };
+    },
+
+    async movePrint({ editionId, toArtworkId, actorSubjectId, authorityNote }) {
+      const [moved] = await db
+        .update(shopEdition)
+        .set({ artworkId: toArtworkId })
+        .where(eq(shopEdition.id, editionId))
+        .returning({
+          ownerPartyId: shopEdition.ownerPartyId,
+          listingStatus: shopEdition.listingStatus,
+        });
+      if (!moved) throw notFound("Print not found");
+      if (moved.listingStatus === "authorised" && moved.ownerPartyId) {
+        await recordCurrentAuthority(db, {
+          artworkId: toArtworkId,
+          ownerPartyId: moved.ownerPartyId,
+          actorSubjectId,
+          note: authorityNote,
+        });
+      }
+    },
+
+    async retireListing(artworkId) {
+      const [row] = await db
+        .update(shopArtwork)
+        .set({ archivedAt: new Date(), publishedAt: null, updatedAt: new Date() })
+        .where(eq(shopArtwork.id, artworkId))
+        .returning({ id: shopArtwork.id });
+      if (!row) throw notFound("Artwork not found");
     },
 
     async touch(artworkId) {

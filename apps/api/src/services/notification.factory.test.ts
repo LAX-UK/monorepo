@@ -153,3 +153,62 @@ describe("NotificationFactory money wording", () => {
     expect(row.message).toContain("hammer price of £110,000.00.");
   });
 });
+
+describe("NotificationFactory private sale deal reminders", () => {
+  it("reminds of a deal payment without a lot, keyed per person and step", () => {
+    const row = factory.createPaymentReminder({
+      userId: "user-1",
+      legalEntityId: "org-1",
+      lotId: null,
+      lotTitle: "Harbour at dusk",
+      paymentId: "deal-1",
+      amount: "48000.00",
+      dueDate: "20 November 2026",
+      step: "due_day",
+    });
+    expect(row.type).toBe("payment_reminder");
+    expect(row).not.toHaveProperty("lotId");
+    expect(row.meta).toMatchObject({
+      lotTitle: "Harbour at dusk",
+      reminderStep: "due_day",
+      emailIdempotencyKey: "payment-reminder:deal-1:due_day:user-1",
+    });
+  });
+
+  it("reminds a paid buyer to collect, in words that fit how close the date is", () => {
+    const input = {
+      userId: "user-1",
+      legalEntityId: "org-1",
+      dealId: "deal-1",
+      workTitle: "Harbour at dusk",
+      dueDate: "20 November 2026",
+    } as const;
+    const before = factory.createDealCollectionReminder({ ...input, step: "before_due" });
+    const day = factory.createDealCollectionReminder({ ...input, step: "due_day" });
+    const late = factory.createDealCollectionReminder({ ...input, step: "overdue" });
+    expect(before.type).toBe("lot_ready_for_collection");
+    expect(before).not.toHaveProperty("lotId");
+    expect(before.message).toContain("collect it by 20 November 2026");
+    expect(day.title).toBe("Collect your work today");
+    expect(late.message).toContain("was due for collection on 20 November 2026");
+    expect(new Set([before, day, late].map((row) => row.meta?.emailIdempotencyKey)).size).toBe(3);
+  });
+});
+
+describe("NotificationFactory private sale wording", () => {
+  it("never says lot or auction in what a private sale buyer is told", () => {
+    const steps = ["before_due", "due_day", "overdue"] as const;
+    for (const step of steps) {
+      const row = factory.createDealCollectionReminder({
+        userId: "user-1",
+        legalEntityId: null,
+        dealId: "deal-1",
+        workTitle: "Harbour at dusk",
+        dueDate: "20 November 2026",
+        step,
+      });
+      expect(`${row.title} ${row.message}`).not.toMatch(/\blots?\b|auction|bid/i);
+      expect(row.message).toContain("Harbour at dusk");
+    }
+  });
+});

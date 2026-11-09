@@ -103,6 +103,8 @@ describe("Shoppers will see", () => {
       printedBy: null,
       publishedBy: null,
       proofs: "The artist also kept 3 artist's proofs, outside the edition of 24.",
+      // No print in this run is set apart, so there is nothing to tell a shopper.
+      differences: [],
     });
     expect(preview.description.cardLine).toBe("Limited edition of 24 · Hand-signed");
     expect(preview.orderLine).toBe("No. 7 of 24 · Hand-signed · Certificate from the artist");

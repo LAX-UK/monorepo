@@ -1186,6 +1186,10 @@ export type {
   PrivateSaleDealStageCount,
 } from "./private-sale-deal-query.repository.js";
 export type {
+  DealReminderCandidate,
+  IPrivateSaleDealReminderStore,
+} from "./private-sale-deal-reminder.store.js";
+export type {
   ClaimDealPaymentResult,
   IPrivateSaleDealFinanceStore,
   IPrivateSaleDealPaymentReader,

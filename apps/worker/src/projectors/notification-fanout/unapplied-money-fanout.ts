@@ -22,6 +22,10 @@ const SITUATION: Record<UnappliedMoneyReason, string> = {
   customer_balance_unapplied:
     "Money is left in a buyer's Stripe balance with no open invoice to pay. The amount shown is the balance now, not necessarily what the latest transfer added.",
   paid_not_recorded: "Stripe shows an invoice paid, but the payment has not been recorded here.",
+  private_sale_payment_not_applied:
+    "Money arrived for a private sale deal that could not take it: its checkout had been ended, or the deal was already paid another way. Return it or apply it.",
+  private_sale_refund_after_payout:
+    "Money went back to a private sale buyer after the seller's payout included the deal. The seller's payout may need adjusting.",
 };
 
 /** What one alert says: the money, the situation and where to look. */
@@ -30,6 +34,8 @@ export type UnappliedMoneyAlert = {
   /** A hedged pointer to a payment the money might belong to; absent when none is certain enough. */
   possibleSource: string | null;
   paymentId: string | null;
+  /** The private sale deal the money belongs to (PS-0012), when it is a deal's. */
+  dealReference: string | null;
   reference: string;
   amountCents: number;
   currency: string;
@@ -40,7 +46,9 @@ export function alertFromUnappliedMoney(payload: UnappliedMoneyPayload): Unappli
     situation: payload.reason,
     possibleSource: possibleSourceText(payload.possibleGroup ?? null),
     paymentId: payload.paymentId,
+    dealReference: payload.privateSaleDealReference ?? null,
     reference:
+      payload.privateSaleDealReference ??
       payload.stripePaymentIntentId ??
       payload.stripeChargeId ??
       payload.stripeCustomerId ??
@@ -60,9 +68,11 @@ export async function fanoutUnappliedMoney(options: {
 }): Promise<void> {
   const { alert } = options;
   const base = options.webOrigin?.replace(/\/$/, "") ?? "";
-  const path = alert.paymentId
-    ? adminRoutes.payments.panel(alert.paymentId)
-    : adminRoutes.payments.list();
+  const path = alert.dealReference
+    ? adminRoutes.privateSales.deal(alert.dealReference)
+    : alert.paymentId
+      ? adminRoutes.payments.panel(alert.paymentId)
+      : adminRoutes.payments.list();
   const amount =
     formatMoneyMajor(centsToAmount(alert.amountCents), alert.currency) ??
     `${alert.currency} ${centsToAmount(alert.amountCents)}`;

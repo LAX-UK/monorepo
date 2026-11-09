@@ -15,8 +15,11 @@ import {
   AdminPrintsFromOriginalResponseSchema,
   type AdminProofListingBody,
   AdminProofListingBodySchema,
+  AdminReturnPrintResponseSchema,
   type AdminRunUpdateBody,
   AdminRunUpdateBodySchema,
+  type AdminSetPrintApartBody,
+  AdminSetPrintApartBodySchema,
   type AdminStockBatchBody,
   AdminStockBatchBodySchema,
   AdminStockBatchResponseSchema,
@@ -39,6 +42,10 @@ import {
 } from "../../../plugins/shop-admin-auth.js";
 
 const ArtworkParams = Type.Object({ id: Type.String({ format: "uuid" }) });
+const PrintParams = Type.Object({
+  id: Type.String({ format: "uuid" }),
+  editionId: Type.String({ format: "uuid" }),
+});
 
 const WRITE_ERRORS = {
   400: ShopApiErrorBodySchema,
@@ -73,7 +80,7 @@ export async function registerAdminEditionRunRoutes(
   app: FastifyInstance,
   deps: Pick<AdminRoutesDeps, "editionRuns">,
 ) {
-  const { runs, facts, stock, listings, printsFromOriginal } = deps.editionRuns;
+  const { runs, facts, stock, listings, printsFromOriginal, setApart } = deps.editionRuns;
 
   app.put(
     "/artworks/:id/run",
@@ -246,6 +253,47 @@ export async function registerAdminEditionRunRoutes(
         printPricePence: body.printPricePence ?? null,
         canSetPrice: staffCan(auth, "artwork_price.write"),
       });
+    },
+  );
+
+  app.post(
+    "/artworks/:id/prints/:editionId/set-apart",
+    {
+      schema: {
+        tags: ["shop-admin"],
+        params: PrintParams,
+        body: AdminSetPrintApartBodySchema,
+        response: { 200: AdminLinkedListingResponseSchema, ...WRITE_ERRORS },
+      },
+    },
+    async (request) => {
+      const { auth, ...actor } = catalogueWriter(request);
+      const params = request.params as Static<typeof PrintParams>;
+      const body = request.body as AdminSetPrintApartBody;
+      return setApart.setApart({
+        ...actor,
+        runArtworkId: params.id,
+        editionId: params.editionId,
+        differences: body.differences,
+        printPricePence: body.printPricePence,
+        canSetPrice: staffCan(auth, "artwork_price.write"),
+      });
+    },
+  );
+
+  // The listing of a print sold on its own; the print goes back to the run it came from.
+  app.post(
+    "/artworks/:id/return-print",
+    {
+      schema: {
+        tags: ["shop-admin"],
+        params: ArtworkParams,
+        response: { 200: AdminReturnPrintResponseSchema, ...WRITE_ERRORS },
+      },
+    },
+    async (request) => {
+      const { auth: _auth, ...actor } = catalogueWriter(request);
+      return setApart.returnToRun({ ...actor, listingArtworkId: artworkId(request) });
     },
   );
 

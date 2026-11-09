@@ -507,6 +507,17 @@ export function createMinimalShopApiTestDeps(
         }),
       },
       editionRuns: {
+        setApart: {
+          setApart: async () => ({
+            artworkId: "00000000-0000-4000-8000-000000000002",
+            slug: "print-no-3",
+            version: "2026-01-01T00:00:00.000Z",
+          }),
+          returnToRun: async () => ({
+            artworkId: "00000000-0000-4000-8000-000000000001",
+            version: "2026-01-01T00:00:00.000Z",
+          }),
+        },
         printsFromOriginal: {
           recordIn: async () => ({
             artworkId: "00000000-0000-4000-8000-000000000001",

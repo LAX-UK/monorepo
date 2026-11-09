@@ -20,6 +20,7 @@ export type DealBlockerCode =
   | "payment_due_days_not_configured"
   | "same_person_agreed_and_invoiced"
   | "cancel_reason_required"
+  | "release_note_required"
   | "refund_not_recorded";
 
 export type DealBlocker = {
@@ -73,6 +74,8 @@ export function describeDealBlocker(blocker: DealBlocker): string {
       return "The person who recorded the agreement cannot issue the invoice.";
     case "cancel_reason_required":
       return "Give a reason for cancelling.";
+    case "release_note_required":
+      return "Say how the work was handed over: collected, or shipped with a reference.";
     case "refund_not_recorded":
       return "Refund the buyer before cancelling a paid deal.";
   }

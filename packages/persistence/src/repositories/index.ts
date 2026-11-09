@@ -314,6 +314,7 @@ export {
   DrizzleDealWorkStore,
   DrizzlePrivateSaleDealQueryRepository,
 } from "./drizzle-private-sale-deal-query.repository.js";
+export { DrizzlePrivateSaleDealReminderStore } from "./drizzle-private-sale-deal-reminder.store.js";
 export {
   DrizzlePrivateSaleDealFinanceStore,
   DrizzlePrivateSaleDealPaymentRepository,

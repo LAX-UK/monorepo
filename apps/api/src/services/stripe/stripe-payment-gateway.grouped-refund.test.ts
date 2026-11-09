@@ -30,3 +30,34 @@ describe("StripePaymentGateway refunds on a charge shared by several invoices", 
     ]);
   });
 });
+
+describe("StripePaymentGateway part refunds of one payment", () => {
+  it("makes two part refunds of the same amount two refunds, and keeps a lot's key unchanged", async () => {
+    const create = vi.fn().mockResolvedValue({ id: "re_1" });
+    const stripe = { refunds: { create } } as unknown as Stripe;
+    const gateway = new StripePaymentGateway(
+      { STRIPE_SECRET_KEY: "sk_test" },
+      { get: () => stripe, require: () => stripe },
+    );
+
+    await gateway.createRefund({
+      chargeId: "ch_1",
+      amount: 5_000,
+      paymentId: "pay-a",
+      sequence: 0,
+    });
+    await gateway.createRefund({
+      chargeId: "ch_1",
+      amount: 5_000,
+      paymentId: "pay-a",
+      sequence: 5_000,
+    });
+    await gateway.createRefund({ chargeId: "ch_2", amount: 5_000, paymentId: "pay-b" });
+
+    expect(create.mock.calls.map(([, options]) => options)).toEqual([
+      { idempotencyKey: "refund:ch_1:pay-a:5000:0" },
+      { idempotencyKey: "refund:ch_1:pay-a:5000:5000" },
+      { idempotencyKey: "refund:ch_2:pay-b:5000" },
+    ]);
+  });
+});

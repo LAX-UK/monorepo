@@ -484,6 +484,14 @@ describe("migrate-roles invariants", () => {
     }
   });
 
+  it("gives shop_app the print-facts tables, and keeps them from api_app and the worker", () => {
+    for (const table of ["shop_edition_facts", "shop_print_exception"]) {
+      expect([...SHOP_COMMERCE_TABLES]).toContain(table);
+      expect([...API_DENY_TABLES]).toContain(table);
+      expect([...WORKER_DENY_TABLES]).toContain(table);
+    }
+  });
+
   it("keeps the printers and publishers list to shop_app, denied to the Bid API and the worker", () => {
     expect([...SHOP_COMMERCE_TABLES]).toContain("shop_print_party");
     expect([...API_DENY_TABLES]).toContain("shop_print_party");
