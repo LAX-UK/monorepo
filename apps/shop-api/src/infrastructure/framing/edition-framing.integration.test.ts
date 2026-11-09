@@ -229,7 +229,7 @@ describe.skipIf(!hasShopIntegrationDb)("Framing on an edition against the databa
     expect(ok.lines[0]?.framing?.optionId).toBe(oak);
   });
 
-  it("marks a line unavailable when its option is paused afterwards, and refuses to keep adding it", async () => {
+  it("marks a line unavailable when its option is paused afterwards, and still takes a quantity change", async () => {
     const { framing, basket } = services();
     const edition = await sellableEdition("edfr-paused");
     const oak = await addOption("Natural oak frame");
@@ -257,8 +257,22 @@ describe.skipIf(!hasShopIntegrationDb)("Framing on an edition against the databa
       name: "Natural oak frame",
       available: false,
     });
+    // A quantity change keeps the saved choice and stays flagged; it is not refused.
+    const bumped = await basket.addOrUpdateLine({
+      owner: who,
+      artworkSlug: edition.slug,
+      quantity: 2,
+    });
+    expect(bumped.lines[0]?.quantity).toBe(2);
+    expect(bumped.lines[0]?.framing).toMatchObject({ optionId: oak, available: false });
+    // Choosing that frame again is refused.
     await expect(
-      basket.addOrUpdateLine({ owner: who, artworkSlug: edition.slug, quantity: 2 }),
+      basket.addOrUpdateLine({
+        owner: who,
+        artworkSlug: edition.slug,
+        quantity: 2,
+        framingOptionId: oak,
+      }),
     ).rejects.toThrow(/not available right now/);
     // Going unframed is always possible.
     const unframed = await basket.setLineFraming({

@@ -5,9 +5,11 @@ import { adminMutationErrorMessage } from "@/lib/admin-mutation-message";
 import {
   type EditionFramingFormValues,
   FRAMING_MODE_CHOICES,
+  UNREADABLE_SHEET_SIZE,
   editionFramingFormValues,
   isEditionFramingDirty,
   optionUnavailableReason,
+  sheetSizeProblem,
   shoppersWillSee,
   sizeBandSentence,
   validateEditionFramingForm,
@@ -78,6 +80,7 @@ export function EditionFramingCard({
   const dirty = isEditionFramingDirty(values, baseline);
   const preview = shoppersWillSee(saved, values, printPricePence);
   const byArtist = values.mode === "framed_by_artist";
+  const sizeProblem = sheetSizeProblem(saved);
 
   function change(next: EditionFramingFormValues) {
     setValues(next);
@@ -158,11 +161,16 @@ export function EditionFramingCard({
             You can see how this edition is sold but not change it.
           </Notice>
         ) : null}
-        {saved.band === null && !byArtist ? (
-          <Notice tone="info" title="No size band yet">
-            {saved.sheetSize
-              ? "Framing is quoted for sheets larger than 80 × 100 cm, so no options can be offered."
-              : "Add the sheet size, for example 50 × 70 cm, on the Edition card to offer framing options."}
+        {sizeProblem && !byArtist ? (
+          <Notice
+            tone={sizeProblem === "unreadable" ? "warning" : "info"}
+            title={sizeProblem === "unreadable" ? "Sheet size not read" : "No size band yet"}
+          >
+            {sizeProblem === "unreadable"
+              ? UNREADABLE_SHEET_SIZE
+              : sizeProblem === "too_large"
+                ? "Framing is quoted for sheets larger than 80 × 100 cm, so no options can be offered."
+                : "Add the sheet size, for example 50 × 70 cm, on the Edition card to offer framing options."}
           </Notice>
         ) : null}
 

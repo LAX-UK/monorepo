@@ -17,7 +17,11 @@ export function basketCheckoutEntry(
   return viewerKind === "guest" || viewerKind === "authenticated" ? "checkout" : "sign_in";
 }
 
-export type BasketCheckoutBlockReason = "price_changed" | "out_of_stock" | "framing_unavailable";
+export type BasketCheckoutBlockReason =
+  | "price_changed"
+  | "out_of_stock"
+  | "framing_unavailable"
+  | "framing_not_orderable";
 
 export function basketCheckoutBlockReasons(basket: BasketView): BasketCheckoutBlockReason[] {
   const reasons = new Set<BasketCheckoutBlockReason>();
@@ -26,6 +30,10 @@ export function basketCheckoutBlockReasons(basket: BasketView): BasketCheckoutBl
     if (line.outOfStock) reasons.add("out_of_stock");
     // A frame that is no longer offered must be chosen again, or the print taken unframed.
     if (line.framing && !line.framing.available) reasons.add("framing_unavailable");
+    // Orders do not carry framing yet, and shop-api refuses a framed print at checkout. Say so
+    // here, so a shopper is told in the basket instead of meeting a raw refusal. Remove with that
+    // guard once orders price framing.
+    if (line.framing) reasons.add("framing_not_orderable");
   }
   return [...reasons];
 }
@@ -35,6 +43,9 @@ export function canProceedToCheckout(basket: BasketView): boolean {
 }
 
 export function basketCheckoutBlockMessage(reasons: BasketCheckoutBlockReason[]): string {
+  if (reasons.includes("framing_not_orderable")) {
+    return "Framing can't be ordered yet. Choose unframed for the prints that have a frame, then check out.";
+  }
   if (reasons.includes("framing_unavailable") && reasons.length === 1) {
     return "A frame in your basket is no longer offered. Choose another framing or unframed before checkout.";
   }

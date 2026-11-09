@@ -109,19 +109,27 @@ describe("checkout eligibility with framing", () => {
     expiresAt: "2030-01-01T00:00:00.000Z",
   });
 
-  it("lets a basket with an offered frame through", () => {
-    expect(canProceedToCheckout(basket([line]))).toBe(true);
+  it("lets a basket without framing through", () => {
+    expect(canProceedToCheckout(basket([{ ...line, framing: null }]))).toBe(true);
   });
 
-  it("stops a basket whose frame is no longer offered, and says what to do", () => {
+  it("stops a basket holding a frame while orders cannot carry one, and says so plainly", () => {
+    const stopped = basket([line]);
+    expect(canProceedToCheckout(stopped)).toBe(false);
+    expect(basketCheckoutBlockReasons(stopped)).toEqual(["framing_not_orderable"]);
+    expect(basketCheckoutBlockMessage(["framing_not_orderable"])).toBe(
+      "Framing can't be ordered yet. Choose unframed for the prints that have a frame, then check out.",
+    );
+  });
+
+  it("also flags a frame that is no longer offered", () => {
     const stopped = basket([
       { ...line, framing: line.framing ? { ...line.framing, available: false } : null },
     ]);
-    expect(canProceedToCheckout(stopped)).toBe(false);
-    expect(basketCheckoutBlockReasons(stopped)).toEqual(["framing_unavailable"]);
-    expect(basketCheckoutBlockMessage(["framing_unavailable"])).toBe(
-      "A frame in your basket is no longer offered. Choose another framing or unframed before checkout.",
-    );
+    expect(basketCheckoutBlockReasons(stopped)).toEqual([
+      "framing_unavailable",
+      "framing_not_orderable",
+    ]);
   });
 });
 

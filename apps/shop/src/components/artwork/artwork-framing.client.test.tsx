@@ -153,7 +153,7 @@ describe("the framing choice on the edition page", () => {
 
     expect(screen.getAllByText("£390").length).toBeGreaterThan(0);
     expect(screen.getByText("With natural oak frame · includes VAT")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Add to basket · £390" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Add to basket" })).toBeTruthy();
     expect(screen.getByText(/arrives 19 to 30 Nov/)).toBeTruthy();
     expect(container.querySelector(".shop-gallery__mat[data-frame='natural_oak']")).not.toBeNull();
     expect(screen.getByText("Shown framed. Illustration of the frame, not to scale.")).toBeTruthy();
@@ -175,7 +175,7 @@ describe("the framing choice on the edition page", () => {
     addMock.mockClear();
     renderEdition(choose());
     fireEvent.click(screen.getByRole("radio", { name: /Black wood frame/ }));
-    fireEvent.click(screen.getByRole("button", { name: "Add to basket · £375" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add to basket" }));
     await waitFor(() => expect(addMock).toHaveBeenCalledTimes(1));
     expect(addMock).toHaveBeenLastCalledWith("tide-line", 1, BLACK);
   });
@@ -184,26 +184,37 @@ describe("the framing choice on the edition page", () => {
     addMock.mockResolvedValue({ ok: true });
     renderEdition(choose());
     fireEvent.click(screen.getByRole("radio", { name: /Natural oak frame/ }));
-    fireEvent.click(screen.getByRole("button", { name: "Add to basket · £390" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add to basket" }));
     expect(await screen.findByText("With natural oak frame")).toBeTruthy();
   });
 
-  it("has no default and a disabled button when sold framed only, and says why", () => {
+  it("has no default when sold framed only; the button stays enabled and, pressed, takes the shopper to the choice", async () => {
     renderEdition(choose(true));
     expect(
       screen.getAllByRole("radio").every((r) => r.getAttribute("aria-checked") === "false"),
     ).toBe(true);
     expect(screen.queryByRole("radio", { name: /Unframed/ })).toBeNull();
     const button = screen.getByRole("button", { name: "Add to basket" });
-    expect((button as HTMLButtonElement).disabled).toBe(true);
-    expect(
-      screen.getAllByText("This edition is sold framed. Choose a frame.").length,
-    ).toBeGreaterThan(0);
+    expect((button as HTMLButtonElement).disabled).toBe(false);
+    // The hint is not there until Add is pressed.
+    expect(screen.queryByRole("alert")).toBeNull();
 
+    fireEvent.click(button);
+
+    expect(addMock).not.toHaveBeenCalled();
+    expect(await screen.findByRole("alert")).toHaveProperty(
+      "textContent",
+      "This edition is sold framed. Choose a frame.",
+    );
+    expect(document.activeElement?.getAttribute("role")).toBe("radio");
+    expect(document.activeElement?.closest(".shop-framing")).not.toBeNull();
+
+    // Choosing a frame clears the hint and the button adds it.
+    addMock.mockResolvedValue({ ok: true });
     fireEvent.click(screen.getByRole("radio", { name: /Natural oak frame/ }));
-    expect(
-      (screen.getByRole("button", { name: "Add to basket · £390" }) as HTMLButtonElement).disabled,
-    ).toBe(false);
+    expect(screen.queryByRole("alert")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Add to basket" }));
+    await waitFor(() => expect(addMock).toHaveBeenCalledWith("tide-line", 1, OAK));
   });
 
   it("opens the framing details with what each frame is made of", () => {
@@ -228,6 +239,14 @@ describe("the framing choice on the edition page", () => {
     expect(screen.queryByRole("radiogroup")).toBeNull();
     expect(screen.getByText(/Oak frame made by the artist/)).toBeTruthy();
     expect(screen.getByRole("button", { name: "Add to basket" })).toBeTruthy();
+  });
+
+  it("keeps the button label plain, whatever the frame costs", () => {
+    renderEdition(choose());
+    fireEvent.click(screen.getByRole("radio", { name: /Natural oak frame/ }));
+    const button = screen.getByRole("button", { name: "Add to basket" });
+    expect(button.textContent).toBe("Add to basket");
+    expect(screen.getAllByText("£390").length).toBeGreaterThan(0);
   });
 
   it("cannot be ordered when sold framed only and no frame is on offer", () => {

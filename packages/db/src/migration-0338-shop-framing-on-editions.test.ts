@@ -44,6 +44,19 @@ describe("migration 0338 shop framing on editions", () => {
     );
   });
 
+  it("turns existing frame descriptions into 'comes framed by the artist', once and never over staff's own", () => {
+    expect(migration).toContain('INSERT INTO "shop_edition_framing"');
+    expect(migration).toContain(`'framed_by_artist', btrim(a."print_frame")`);
+    expect(migration).toContain(`btrim(a."print_frame") <> ''`);
+    expect(migration).toContain('ON CONFLICT ("artwork_id") DO NOTHING');
+  });
+
+  it("leaves the old column alone, going and coming back", () => {
+    expect(migration).not.toMatch(/ALTER TABLE "shop_artwork"/);
+    expect(migration).not.toMatch(/UPDATE "shop_artwork"/);
+    expect(rollback).not.toMatch(/ALTER TABLE "shop_artwork"|DROP COLUMN[^;]*print_frame/);
+  });
+
   it("is mirrored by the schema", () => {
     expect(getTableName(shopEditionFraming)).toBe("shop_edition_framing");
     expect(getTableColumns(shopBasketLine).framingOptionId.notNull).toBe(false);

@@ -5,7 +5,10 @@
 --   shop_basket_line.framing_option_id the framing option chosen for a print in the basket, null for
 --                                     unframed. Its price is worked out from the catalogue each time
 --                                     the basket is read and is never taken from the buyer.
--- Additive: a new table and a nullable column; the running release neither reads nor writes them.
+-- The free-text frame description an edition already had (shop_artwork.print_frame) becomes
+-- "comes framed by the artist", with that text as the description. The old column is left as it
+-- is. Additive: a new table, a nullable column and a copy of existing text; the running release
+-- neither reads nor writes them.
 SET LOCAL lock_timeout = '5s';
 --> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "shop_edition_framing" (
@@ -37,3 +40,10 @@ ALTER TABLE "shop_basket_line" DROP CONSTRAINT IF EXISTS "shop_basket_line_frami
 ALTER TABLE "shop_basket_line"
   ADD CONSTRAINT "shop_basket_line_framing_on_print_ck"
   CHECK ("framing_option_id" IS NULL OR "artwork_id" IS NOT NULL);
+--> statement-breakpoint
+-- Existing frame descriptions: one row per edition that has text, never over a row staff have set.
+INSERT INTO "shop_edition_framing" ("artwork_id", "mode", "framed_by_artist")
+SELECT a."id", 'framed_by_artist', btrim(a."print_frame")
+FROM "shop_artwork" a
+WHERE a."print_frame" IS NOT NULL AND btrim(a."print_frame") <> ''
+ON CONFLICT ("artwork_id") DO NOTHING;

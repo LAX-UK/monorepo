@@ -245,11 +245,14 @@ async function upsertArtworkLine(
     if (input.quantity > sellable) {
       throw new ShopApiError(SHOP_API_ERROR_CODES.OUT_OF_STOCK, "Insufficient stock", 409);
     }
-    // Without a choice in the request the line keeps the framing it has.
+    // Without a choice in the request the line keeps the framing it has, checked or not: a frame
+    // paused since is flagged in the basket and the shopper chooses again there, so a quantity
+    // change is never refused for it. Only a choice the request makes, or a new line, is checked.
     let framingOptionId: string | null = null;
     if (input.framingEnabled) {
       if (chosen !== undefined) {
         framingOptionId = chosen;
+        await assertFramingChoice(tx as Database, artwork.id, framingOptionId);
       } else {
         const [existing] = await tx
           .select({ framingOptionId: shopBasketLine.framingOptionId })
@@ -259,8 +262,9 @@ async function upsertArtworkLine(
           )
           .limit(1);
         framingOptionId = existing?.framingOptionId ?? null;
+        // A new line must satisfy the edition's rule (a framed-only edition needs a frame).
+        if (!existing) await assertFramingChoice(tx as Database, artwork.id, null);
       }
-      await assertFramingChoice(tx as Database, artwork.id, framingOptionId);
     }
     await tx
       .insert(shopBasketLine)

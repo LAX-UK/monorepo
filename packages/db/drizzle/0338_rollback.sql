@@ -1,5 +1,6 @@
 -- Rollback for 0338_shop_framing_on_editions. Roll back the application release first. Baskets
 -- keep their prints but lose the framing chosen for them; editions go back to selling unframed.
+-- shop_artwork.print_frame was never changed, so the old descriptions are still there.
 BEGIN;
 
 SET LOCAL lock_timeout = '5s';

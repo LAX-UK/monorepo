@@ -183,6 +183,33 @@ describe("basket framing routes", () => {
     await app.close();
   });
 
+  it("takes a quantity change on a line whose frame was paused, and keeps it flagged", async () => {
+    const paused = framedBasket(3);
+    const line = paused.lines[0];
+    if (line?.framing) line.framing = { ...line.framing, available: false };
+    const upsertBasketLine = vi.fn(async (_input: UpsertBasketLineInput) => paused);
+    const app = await appWith({ upsertBasketLine, framingEnabled: true });
+    const response = await app.inject({
+      method: "PUT",
+      url: "/v1/basket/lines",
+      headers,
+      payload: { artworkSlug: "tide-line", quantity: 3 },
+    });
+    expect(response.statusCode).toBe(200);
+    // The request does not touch the framing, so it is left as saved.
+    expect(upsertBasketLine.mock.calls[0]?.[0]).not.toHaveProperty("framingOptionId");
+    const body = response.json() as {
+      framingSubtotalPence?: number;
+      lines: { quantity: number; framing?: { available: boolean; name: string } }[];
+    };
+    expect(body.lines[0]).toMatchObject({
+      quantity: 3,
+      framing: { name: "Natural oak frame", available: false },
+    });
+    expect(body.framingSubtotalPence).toBeUndefined();
+    await app.close();
+  });
+
   it("changes the framing on a line", async () => {
     const setBasketLineFraming = vi.fn(async () => framedBasket());
     const app = await appWith({ setBasketLineFraming, framingEnabled: true });

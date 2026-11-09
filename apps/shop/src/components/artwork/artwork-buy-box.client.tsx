@@ -90,6 +90,8 @@ export function ArtworkBuyBox({
   const [error, setError] = useState<{ message: string; signIn: boolean } | null>(null);
   const [announcement, setAnnouncement] = useState("");
   const [panelOpen, setPanelOpen] = useState(false);
+  /** The shopper pressed Add on a framed-only edition without choosing a frame. */
+  const [needsChoice, setNeedsChoice] = useState(false);
   /** What went into the basket, kept for the confirmation after the page switches to "in basket". */
   const [added, setAdded] = useState<{ priceLabel: string; framingName: string | null } | null>(
     null,
@@ -151,6 +153,14 @@ export function ArtworkBuyBox({
 
   async function add(placement: Placement) {
     if (phase === "adding") return;
+    // A framed-only edition needs a frame first. The button stays enabled so it can say so: it
+    // takes the shopper to the choice and shows the hint, here and in the phone bar.
+    if (mustChoose) {
+      setNeedsChoice(true);
+      setAnnouncement(FRAMING_COPY.requiredIntro);
+      document.querySelector<HTMLElement>(".shop-framing [role='radio']")?.focus();
+      return;
+    }
     addedFrom.current = placement;
     setError(null);
     setAnnouncement("");
@@ -194,6 +204,14 @@ export function ArtworkBuyBox({
     });
   }
 
+  // Shown after Add is pressed without a frame, until one is chosen.
+  const choiceHint =
+    needsChoice && mustChoose && !inBasket ? (
+      <p className="shop-buy__hint" role="alert">
+        {FRAMING_COPY.requiredIntro}
+      </p>
+    ) : null;
+
   function actionButton(placement: Placement) {
     const className = cn("shop-buy__button", placement === "bar" && "shop-buy__button--bar");
     if (phase === "added") {
@@ -218,13 +236,12 @@ export function ArtworkBuyBox({
         </p>
       );
     }
-    const blocked = mustChoose || cannotOrder;
     return (
       <ShopCommerceButton
         type="button"
         className={className}
         aria-busy={phase === "adding"}
-        disabled={phase === "adding" || blocked}
+        disabled={phase === "adding" || cannotOrder}
         onClick={() => void add(placement)}
       >
         {phase === "adding" ? (
@@ -232,8 +249,6 @@ export function ArtworkBuyBox({
             <MarketingSpinnerIcon />
             Adding…
           </>
-        ) : chosen?.id ? (
-          `${EDITION_PAGE_COPY.addToBasket} · ${chosen.totalLabel}`
         ) : (
           EDITION_PAGE_COPY.addToBasket
         )}
@@ -263,9 +278,7 @@ export function ArtworkBuyBox({
 
       <div ref={actionRef} className="shop-buy__action">
         {actionButton("main")}
-        {mustChoose && !inBasket ? (
-          <p className="shop-buy__hint">{FRAMING_COPY.requiredIntro}</p>
-        ) : null}
+        {choiceHint}
         {inBasket && phase !== "added" ? (
           <p className="shop-buy__in-basket">
             <Button
@@ -319,6 +332,7 @@ export function ArtworkBuyBox({
           </div>
           <div ref={barRef} className="shop-buy-bar__action">
             {actionButton("bar")}
+            {choiceHint}
           </div>
         </MarketingStickyActionBar>
       ) : null}

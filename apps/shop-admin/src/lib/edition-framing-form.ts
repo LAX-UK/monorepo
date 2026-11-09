@@ -8,9 +8,11 @@ import {
   FRAMED_BY_ARTIST_MAX_LENGTH,
   FRAMING_MODE_LABELS,
   FRAMING_PRICE_MAX_PENCE,
+  type FramingBandCode,
   type FramingMode,
   editionFramingIssues,
   framingBandLabel,
+  parseSheetSizeCm,
 } from "@auction/shop-domain";
 import { formatStaffMoney } from "@auction/staff-ui";
 import type { FieldErrors } from "./form-validation";
@@ -149,7 +151,13 @@ export function validateEditionFramingForm(
   );
   if (issues.length === 0) return { ok: true, body };
   const errors: FieldErrors = {};
-  for (const issue of issues) errors[issue.field] ??= editionFramingIssueMessage(issue);
+  const unreadable = sheetSizeProblem(framing) === "unreadable";
+  for (const issue of issues) {
+    errors[issue.field] ??=
+      issue.reason === "no_size_band" && unreadable
+        ? UNREADABLE_SHEET_SIZE
+        : editionFramingIssueMessage(issue);
+  }
   return { ok: false, errors };
 }
 
@@ -163,15 +171,37 @@ export function optionUnavailableReason(option: AdminEditionFramingOption): stri
   return "Not offered in the catalogue";
 }
 
-/** "Up to 60 × 80 cm, from the 50 × 70 cm sheet", or the instruction to add a sheet size. */
+/** Why an edition has no size band, so the card can say the right thing. */
+export type SheetSizeProblem = "none" | "unreadable" | "too_large";
+
+export function sheetSizeProblem(
+  framing: Pick<AdminEditionFraming, "band" | "sheetSize">,
+): SheetSizeProblem | null {
+  if (framing.band) return null;
+  if (!framing.sheetSize) return "none";
+  return parseSheetSizeCm(framing.sheetSize) ? "too_large" : "unreadable";
+}
+
+/** True when the sheet size was typed without a unit and is read as centimetres. */
+export function sheetSizeReadAsCm(sheetSize: string | null): boolean {
+  return sheetSize !== null && parseSheetSizeCm(sheetSize) !== null && !/cm|centi/i.test(sheetSize);
+}
+
+export const UNREADABLE_SHEET_SIZE =
+  "We could not read the sheet size. Write it as 50 × 70 cm on the Edition card.";
+
+/** "Up to 60 × 80 cm, from the 50 × 70 cm sheet", or what is wrong with the sheet size. */
 export function sizeBandSentence(framing: Pick<AdminEditionFraming, "band" | "sheetSize">): string {
-  if (framing.band && framing.sheetSize) {
-    return `Size band: ${framingBandLabel(framing.band).toLowerCase()}, from the ${framing.sheetSize} sheet`;
+  const problem = sheetSizeProblem(framing);
+  if (problem === "none") {
+    return "No sheet size yet: add it on the Edition card, for example 50 × 70 cm";
   }
-  if (framing.sheetSize) {
-    return `The ${framing.sheetSize} sheet is larger than 80 × 100 cm, or its size could not be read: framing is quoted`;
+  if (problem === "unreadable") return UNREADABLE_SHEET_SIZE;
+  if (problem === "too_large") {
+    return `The ${framing.sheetSize} sheet is larger than 80 × 100 cm: framing is quoted`;
   }
-  return "No sheet size yet: add it on the Edition card, for example 50 × 70 cm";
+  const base = `Size band: ${framingBandLabel(framing.band as FramingBandCode).toLowerCase()}, from the ${framing.sheetSize} sheet`;
+  return sheetSizeReadAsCm(framing.sheetSize) ? `${base}. Read as cm` : base;
 }
 
 /** The price a shopper pays for an option here: the edition's own, else the catalogue's. */

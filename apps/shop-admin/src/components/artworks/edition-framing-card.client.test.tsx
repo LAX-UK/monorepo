@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import type { AdminEditionFraming, AdminEditionFramingOption } from "@auction/shop-contracts";
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type * as React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -225,6 +225,27 @@ describe("the edition Framing card", () => {
     expect(
       (await within(form).findAllByText(/Add the sheet size, up to 80 × 100 cm/)).length,
     ).toBeGreaterThan(0);
+  });
+
+  it("says a sheet size that could not be read apart from one that is too large", () => {
+    const unreadable = renderCard({ band: null, sheetSize: "A2" });
+    expect(within(unreadable).getByText("Sheet size not read")).toBeInTheDocument();
+    expect(
+      within(unreadable).getAllByText(
+        "We could not read the sheet size. Write it as 50 × 70 cm on the Edition card.",
+      ).length,
+    ).toBeGreaterThan(0);
+    cleanup();
+    const tooLarge = renderCard({ band: null, sheetSize: "90 × 120 cm" });
+    expect(within(tooLarge).getByText("No size band yet")).toBeInTheDocument();
+    expect(
+      within(tooLarge).getByText(/larger than 80 × 100 cm, so no options can be offered/),
+    ).toBeInTheDocument();
+  });
+
+  it("says a size with no unit is read as cm", () => {
+    const form = renderCard({ sheetSize: "50 × 70" });
+    expect(within(form).getByText(/Read as cm/)).toBeInTheDocument();
   });
 
   it("stays as it was and says so when someone else saved first", async () => {

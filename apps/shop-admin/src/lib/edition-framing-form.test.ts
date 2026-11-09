@@ -5,6 +5,8 @@ import {
   editionFramingFormValues,
   isEditionFramingDirty,
   optionUnavailableReason,
+  sheetSizeProblem,
+  sheetSizeReadAsCm,
   shoppersWillSee,
   sizeBandSentence,
   validateEditionFramingForm,
@@ -184,7 +186,41 @@ describe("the words on the card", () => {
       "Size band: up to 60 × 80 cm, from the 50 × 70 cm sheet",
     );
     expect(sizeBandSentence({ band: null, sheetSize: null })).toMatch(/^No sheet size yet/);
-    expect(sizeBandSentence({ band: null, sheetSize: "90 × 120 cm" })).toMatch(/is larger than/);
+    expect(sizeBandSentence({ band: null, sheetSize: "90 × 120 cm" })).toBe(
+      "The 90 × 120 cm sheet is larger than 80 × 100 cm: framing is quoted",
+    );
+  });
+
+  it("says a size typed without a unit is read as centimetres", () => {
+    expect(sizeBandSentence({ ...framing, sheetSize: "50 × 70" })).toBe(
+      "Size band: up to 60 × 80 cm, from the 50 × 70 sheet. Read as cm",
+    );
+    expect(sheetSizeReadAsCm("50 × 70")).toBe(true);
+    expect(sheetSizeReadAsCm("50 × 70 cm")).toBe(false);
+    expect(sheetSizeReadAsCm("A2")).toBe(false);
+    expect(sheetSizeReadAsCm(null)).toBe(false);
+  });
+
+  it("keeps a size that cannot be read apart from one that is too large", () => {
+    const unreadable = { band: null, sheetSize: "A2" } as const;
+    expect(sheetSizeProblem(unreadable)).toBe("unreadable");
+    expect(sizeBandSentence(unreadable)).toBe(
+      "We could not read the sheet size. Write it as 50 × 70 cm on the Edition card.",
+    );
+    expect(sheetSizeProblem({ band: null, sheetSize: "90 × 120 cm" })).toBe("too_large");
+    expect(sheetSizeProblem({ band: null, sheetSize: null })).toBe("none");
+    expect(sheetSizeProblem(framing)).toBeNull();
+  });
+
+  it("gives the same reading advice when an offer cannot be saved for an unreadable size", () => {
+    const values = editionFramingFormValues(framing);
+    const result = validateEditionFramingForm(values, { ...framing, band: null, sheetSize: "A2" });
+    expect(result).toEqual({
+      ok: false,
+      errors: {
+        offers: "We could not read the sheet size. Write it as 50 × 70 cm on the Edition card.",
+      },
+    });
   });
 
   it("previews what shoppers will see: unframed first, then each option with its price", () => {
