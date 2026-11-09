@@ -3,10 +3,8 @@ import { shopOrder } from "@auction/db/schema";
 import { and, asc, eq, isNotNull, lt } from "drizzle-orm";
 import type pino from "pino";
 import type { PaymentCheckoutGateway } from "../application/ports/commerce.ports.js";
-import {
-  deferCheckoutReaperForFailedExpiry,
-  expireShopCheckoutSession,
-} from "./drizzle-payment-event.processor.js";
+import { expireShopCheckoutSession } from "./drizzle-payment-event.processor.js";
+import { deferCheckoutHold } from "./shop-checkout-hold.js";
 
 const REAPER_BATCH_SIZE = 25;
 export const SHOP_CHECKOUT_REAPER_EVENT_SOURCE = "shop-api-reaper";
@@ -65,7 +63,8 @@ export async function reapStaleShopCheckouts(
 
 /**
  * An order the reaper cannot end (Stripe refuses, or the order is in a state it cannot expire) is
- * pushed back, so it stops holding a place in the oldest-first batch and the orders behind it
+ * pushed back (its hold and its prints' reservation together, up to the same ceiling as a payment
+ * being confirmed), so it stops holding a place in the oldest-first batch and the orders behind it
  * are still expired. It comes round again later.
  */
 async function deferReaperForFailedOrder(
@@ -75,7 +74,7 @@ async function deferReaperForFailedOrder(
   log?: pino.Logger,
 ): Promise<void> {
   try {
-    await deferCheckoutReaperForFailedExpiry(db, orderId, now);
+    await deferCheckoutHold(db, orderId, now);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     if (log) {

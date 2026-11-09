@@ -28,6 +28,7 @@ import {
 import { liveEditionSnapshots } from "./edition-snapshot-source.js";
 import { recordGuestOrderPaid } from "./guest-checkout/guest-lead-events.js";
 import { guestOrderLinkUrl, issueGuestOrderLink } from "./guest-checkout/guest-order-link-token.js";
+import { deferCheckoutHold } from "./shop-checkout-hold.js";
 import {
   assertCheckoutNotAlreadyPaid,
   assertCheckoutNotAsyncPending,
@@ -737,37 +738,7 @@ async function applyShopPayment(
   });
 }
 
-const REAPER_ASYNC_PAYMENT_BACKOFF_MS = 15 * 60 * 1000;
-
-/**
- * Pushes an order the reaper failed to end back by the same interval as an async payment, so one
- * order that cannot be ended never keeps the sweep from the ones behind it.
- */
-export async function deferCheckoutReaperForFailedExpiry(
-  db: Database,
-  orderId: string,
-  now: Date,
-): Promise<void> {
-  await db
-    .update(shopOrder)
-    .set({
-      checkoutExpiresAt: new Date(now.getTime() + REAPER_ASYNC_PAYMENT_BACKOFF_MS),
-      updatedAt: new Date(),
-    })
-    .where(and(eq(shopOrder.id, orderId), eq(shopOrder.status, "pending_payment")));
-}
-
 export type ShopCheckoutExpireOutcome = "expired" | "duplicate" | "unchanged" | "deferred_async";
-
-async function deferCheckoutReaperForAsyncPayment(db: Database, orderId: string): Promise<void> {
-  await db
-    .update(shopOrder)
-    .set({
-      checkoutExpiresAt: new Date(Date.now() + REAPER_ASYNC_PAYMENT_BACKOFF_MS),
-      updatedAt: new Date(),
-    })
-    .where(and(eq(shopOrder.id, orderId), eq(shopOrder.status, "pending_payment")));
-}
 
 export async function recordShopCheckoutCurrencyViolation(
   db: Database,
@@ -892,8 +863,11 @@ export async function expireShopCheckoutSession(
     "expire",
   );
   if (stripeGate === "skip_async") {
-    await deferCheckoutReaperForAsyncPayment(db, input.orderId);
-    return "deferred_async";
+    // The debit is still being confirmed: wait, up to the ceiling. Past it the payment is treated
+    // as not made, and one that lands later is recorded for finance as money for a closed order.
+    const deferral = await deferCheckoutHold(db, input.orderId, new Date());
+    if (deferral === "deferred") return "deferred_async";
+    if (deferral === "not_pending") return "unchanged";
   }
   return db.transaction(async (tx) => {
     if (input.holdMustHaveEndedBy) {

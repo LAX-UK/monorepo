@@ -215,6 +215,44 @@ describe.skipIf(!hasShopIntegrationDb)(
       expect((await order(created.orderId)).status).toBe("expired");
     });
 
+    it("defers an order whose payment is still being confirmed, moving the hold and the reservation together, up to a ceiling", async () => {
+      const { db, checkout, order, holder } = await setup("async-defer");
+      const created = await checkout("buyer");
+      const pending: PaymentCheckoutGateway = {
+        ...gateway,
+        async expireHostedCheckout() {
+          return { kind: "async_pending" };
+        },
+      };
+      const sweep = () =>
+        expireShopCheckoutSession(
+          db,
+          {
+            eventId: `${reaperEventIdForOrder(created.orderId)}:${Math.random()}`,
+            orderId: created.orderId,
+            source: SHOP_CHECKOUT_REAPER_EVENT_SOURCE,
+          },
+          { paymentGateway: pending },
+        );
+
+      expect(await sweep()).toBe("deferred_async");
+      const first = await order(created.orderId);
+      const held = await holder();
+      expect(first.checkoutExpiresAt?.getTime()).toBeGreaterThan(Date.now());
+      // The reservation moved with the hold, not left to lapse under a payment still coming.
+      expect(held.reservedUntil?.getTime()).toBeGreaterThanOrEqual(
+        (first.checkoutExpiresAt as Date).getTime(),
+      );
+
+      // An order that began more than the ceiling ago gets no further deferral and is ended.
+      await db
+        .update(shopOrder)
+        .set({ createdAt: new Date(Date.now() - 22 * 24 * 60 * 60_000) })
+        .where(eq(shopOrder.id, created.orderId));
+      expect(await sweep()).toBe("expired");
+      expect((await order(created.orderId)).status).toBe("expired");
+    });
+
     it("will not stretch a hold that has already ended", async () => {
       const { db, checkout, order, holder, pastHold } = await setup("no-revive");
       const created = await checkout("buyer");

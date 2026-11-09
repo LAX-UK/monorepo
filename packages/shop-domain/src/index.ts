@@ -454,11 +454,15 @@ export { isPayeeConnectReady, type PayeeConnectReadinessInput } from "./payee-co
 export { RESERVATION_GRACE_MS, reservedUntilFromCheckoutExpiry } from "./reservation-timing.js";
 export {
   CHECKOUT_HOLD_MS,
+  HOLD_RECHECK_MS,
+  type HoldDeferralPlan,
+  MAX_ASYNC_PAYMENT_HOLD_MS,
   MAX_HOLD_EXTENSION_MS,
   SESSION_SAFETY_MARGIN_MS,
   STRIPE_SESSION_MIN_LIFETIME_MS,
   type SessionHoldPlan,
   newCheckoutHoldEnd,
+  planHoldDeferral,
   planSessionHold,
 } from "./checkout-hold.js";
 export { isUkPostcode, normalizeUkPostcode } from "./uk-postcode.js";
