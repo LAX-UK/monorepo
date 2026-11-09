@@ -269,6 +269,8 @@ async function fetchLinesByOrderIds(
           : null,
       framingFor: framingForLineId ? framingFor(parents.get(framingForLineId)) : null,
       framingDetail: kind === "framing" ? framingDetail(framingSnapshot) : null,
+      // A frame is shown with the print it goes with, so the list reads as one piece.
+      ...(framingForLineId ? { imageUrl: parents.get(framingForLineId)?.imageUrl ?? null } : {}),
       artistName: line.artistName?.trim() || null,
       editionSize: line.editionSize === null ? null : Number(line.editionSize),
       editionBasis: {

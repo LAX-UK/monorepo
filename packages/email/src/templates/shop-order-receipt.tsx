@@ -25,7 +25,9 @@ export default function ShopOrderReceiptEmail({
           ? `We received your payment of ${totalAmount} (including ${vatAmount} VAT).`
           : `We received your payment of ${totalAmount}.`}
       </TextBlock>
-      <TextBlock>{lineSummary}</TextBlock>
+      {lineSummary.split("\n").map((line) => (
+        <TextBlock key={line}>{line}</TextBlock>
+      ))}
       <TextBlock>
         {guest
           ? "Your order page shows its progress and the invoice. This link opens it without an account for 30 days."
