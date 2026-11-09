@@ -5,6 +5,7 @@ import { resolveSentryOrg } from "@auction/observability";
 import { withSentryConfig } from "@sentry/nextjs";
 import type { NextConfig } from "next";
 import { laxAccountOrigin } from "./src/lib/lax-account-url";
+import { LAX_MEDIA_HOSTS } from "./src/lib/media/bid-image-hosts";
 import {
   LEGACY_DASHBOARD_REDIRECTS,
   identitySettingsRedirects,
@@ -91,16 +92,12 @@ const nextConfig: NextConfig = {
         hostname: "images.unsplash.com",
         pathname: "/**",
       },
-      {
-        protocol: "https",
-        hostname: "*.digitaloceanspaces.com",
+      // LAX's own Spaces (production and test), never every Space. Fixed in code on purpose.
+      ...LAX_MEDIA_HOSTS.map((hostname) => ({
+        protocol: "https" as const,
+        hostname,
         pathname: "/**",
-      },
-      {
-        protocol: "https",
-        hostname: "lax-media.lon1.cdn.digitaloceanspaces.com",
-        pathname: "/**",
-      },
+      })),
       {
         protocol: "https",
         hostname: "media.lax.bid",

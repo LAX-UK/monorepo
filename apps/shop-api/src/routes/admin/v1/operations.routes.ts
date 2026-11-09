@@ -24,6 +24,8 @@ import {
 const IdResponseSchema = Type.Object({
   id: Type.String({ format: "uuid" }),
   status: Type.String(),
+  /** For a refund or a cancellation: what was refunded for the frame sold with the print. */
+  framingRefundPence: Type.Optional(Type.Integer({ minimum: 0 })),
 });
 
 const CreateProductionTaskBodySchema = Type.Object({
@@ -210,7 +212,11 @@ export async function registerAdminOperationsRoutes(app: FastifyInstance, deps: 
         actorSubjectId: subject,
         idempotencyKey,
       });
-      return { id: result.returnId ?? result.refundId, status: result.status };
+      return {
+        id: result.returnId ?? result.refundId,
+        status: result.status,
+        framingRefundPence: result.framingRefundPence,
+      };
     },
   );
 
@@ -248,7 +254,11 @@ export async function registerAdminOperationsRoutes(app: FastifyInstance, deps: 
         ...(body.reason !== undefined ? { reason: body.reason } : {}),
         ...(body.note?.trim() ? { note: body.note.trim() } : {}),
       });
-      return { id: result.refundId, status: result.status };
+      return {
+        id: result.refundId,
+        status: result.status,
+        framingRefundPence: result.framingRefundPence,
+      };
     },
   );
 

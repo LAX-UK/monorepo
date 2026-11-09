@@ -66,6 +66,35 @@ The `collections` category lists the bookings a person made, authorised or is na
 with the collector details they typed in. It never includes another member's bookings, and a
 booking made by another member shows only that it was made by "another member", not who.
 
+## Hours, closures and bank holidays
+
+Staff set a place's hours, rules and closures in Bid admin under Collections (the Fulfilment role
+changes them; every change asks for a recent sign-in and is written to the audit log).
+
+- **Bank holidays** for England and Wales are worked out by rule in
+  `packages/domain/src/working-hours.ts` (`englandAndWalesBankHolidays`) and stored per place as
+  closures for the current year and the next two, the first time the place is read in a new year.
+  Staff can remove one; a removed holiday is not added back. The rules cover the regular holidays
+  and substitute days only. **One-off holidays (a coronation, a jubilee) are not known in advance:**
+  when the government announces one, add a closure for it by hand, or add it to the working
+  calendar's `extraHolidays`. Check the next two years against gov.uk/bank-holidays each
+  November. Replacing the rule table with a gov.uk import is a possible later change.
+- **Sale days** are worked out from the sales at the place each time the screen or the booking
+  page is read; nothing is stored. Staff open a sale day with an extra opening ("Open anyway").
+- A change to the hours or a closure that leaves booked visits outside what is offered lists them
+  and waits for staff to choose: keep them, or cancel them. Nothing is cancelled without that
+  choice, and the choice names the visits staff were shown (`affectedBookings: { choice,
+  bookingIds }`). If a visit was booked in the meantime the API answers 409 `bookings_affected`
+  again with the new list, whichever choice was sent.
+- The change, the cancellations and their audit events are written in one transaction. Under a
+  per-place advisory lock (taken by booking, changing and every staff change to a place) the
+  affected visits are read once more before anything is written, so a visit booked while staff were
+  deciding cannot be missed or cancelled unseen. The place's audit event records "n affected, m
+  cancelled". Removing a closure is a `POST .../exceptions/:id/remove`, because it carries the
+  choice. A cancelled visit records `collection.booking.cancelled` with the reason
+  `hours_changed`, `closure_added` or `opening_removed`; the rebooking email is sent from that
+  event by the emails work.
+
 ## Rolling back
 
 `0334_rollback.sql` drops the tables and `lot_fulfilment.collected_by_user_id`. It refuses while

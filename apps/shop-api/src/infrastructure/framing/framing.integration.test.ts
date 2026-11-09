@@ -257,6 +257,68 @@ describe.skipIf(!hasShopIntegrationDb)("The framing catalogue against the databa
     ).rejects.toThrow(/shop_framing_option_placeholder_not_offered_ck/);
   });
 
+  async function draftOption() {
+    const { service } = serviceOn();
+    return service.create({
+      ...actor(),
+      body: {
+        name: `Race ${integrationSuffix("framing")}`,
+        frame: "black_wood",
+        mount: "window_conservation",
+        glazing: "uv_acrylic",
+        hanging: "d_rings_cord",
+        leadTimeMinDays: 10,
+        leadTimeMaxDays: 15,
+        pricesPence: { up_to_40x50: 12000, up_to_60x80: 19500, up_to_80x100: 26000 },
+        offered: false,
+      },
+    });
+  }
+
+  const MAKE_PLACEHOLDER =
+    "update shop_framing_option_price set is_placeholder = true where option_id = $1 and band = 'up_to_60x80'";
+  const GO_LIVE = "update shop_framing_option set status = 'active' where id = $1";
+
+  /** Runs `second` while `first` is open: it must wait, then fail the placeholder rule. */
+  async function secondWaitsThenFails(optionId: string, first: string, second: string) {
+    const one = await ownerPool.connect();
+    const two = await ownerPool.connect();
+    try {
+      await one.query("begin");
+      await one.query(first, [optionId]);
+      let settled = false;
+      const outcome = two.query(second, [optionId]).then(
+        () => ({ failed: false, message: "" }),
+        (error: Error) => ({ failed: true, message: error.message }),
+      );
+      void outcome.finally(() => {
+        settled = true;
+      });
+      await new Promise((resolve) => setTimeout(resolve, 400));
+      expect(settled).toBe(false);
+      await one.query("commit");
+      const result = await outcome;
+      expect(result.failed).toBe(true);
+      expect(result.message).toMatch(/shop_framing_option_placeholder_not_offered_ck/);
+    } finally {
+      await one.query("rollback").catch(() => undefined);
+      one.release();
+      two.release();
+    }
+  }
+
+  it("makes the option going live wait for a price becoming a placeholder, then refuses it", async () => {
+    const draft = await draftOption();
+    await secondWaitsThenFails(draft.id, MAKE_PLACEHOLDER, GO_LIVE);
+    expect(await shopPoolCheck(draft.id)).toBe("draft");
+  });
+
+  it("makes a price becoming a placeholder wait for the option going live, then refuses it", async () => {
+    const draft = await draftOption();
+    await secondWaitsThenFails(draft.id, GO_LIVE, MAKE_PLACEHOLDER);
+    expect(await shopPoolCheck(draft.id)).toBe("active");
+  });
+
   it("offers an option with placeholder prices only once every band is changed or confirmed", async () => {
     const { service } = serviceOn();
     // A copy of a seeded option, so the launch options themselves are left as they were.

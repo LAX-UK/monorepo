@@ -29,7 +29,8 @@ export const AdminDeliveryQuoteSchema = Type.Object({
   phone: Type.Union([Type.String(), Type.Null()]),
   /** One line per print: "Warm Basket". */
   items: Type.Array(Type.String()),
-  merchandisePence: Type.Integer({ minimum: 0 }),
+  /** What is being bought before delivery: the goods and the framing sold with them. */
+  beforeDeliveryPence: Type.Integer({ minimum: 0 }),
   requestedAt: Type.String({ format: "date-time" }),
   /** When the held prints are released if the quote is not paid. */
   holdUntil: Type.String({ format: "date-time" }),

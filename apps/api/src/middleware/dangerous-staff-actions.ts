@@ -24,7 +24,8 @@ export type DangerousActionCategory =
   | "sign_in_protection"
   | "destructive_catalogue"
   | "personal_data_export"
-  | "goods_release";
+  | "goods_release"
+  | "collection_settings";
 
 export type DangerousStaffAction = {
   id: string;
@@ -135,6 +136,20 @@ export const DANGEROUS_STAFF_ACTIONS: readonly DangerousStaffAction[] = [
     "security.staff-two-factor-policy",
     "PUT",
     "/admin/security/staff-two-factor",
+  ),
+  // Collection hours, rules and closures: a change can cancel booked visits
+  a("collection_settings", "collection.place.update", "PUT", "/admin/collections/:venueId"),
+  a(
+    "collection_settings",
+    "collection.exception.add",
+    "POST",
+    "/admin/collections/:venueId/exceptions",
+  ),
+  a(
+    "collection_settings",
+    "collection.exception.remove",
+    "POST",
+    "/admin/collections/:venueId/exceptions/:exceptionId/remove",
   ),
   // Erasure and data-subject requests
   a(

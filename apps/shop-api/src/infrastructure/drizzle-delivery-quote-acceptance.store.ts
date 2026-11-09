@@ -4,6 +4,7 @@ import { deliveryQuoteTransition } from "@auction/domain";
 import { SHOP_API_ERROR_CODES } from "@auction/shop-contracts";
 import {
   type VatPolicy,
+  orderTotalWithDelivery,
   reservedUntilFromCheckoutExpiry,
   vatIncludedIn,
 } from "@auction/shop-domain";
@@ -67,7 +68,12 @@ export function createDrizzleDeliveryQuoteAcceptanceStore(
             fulfilmentVatPence: options.vatPolicy
               ? vatIncludedIn(price, options.vatPolicy.standardRateBp)
               : null,
-            totalPence: order.merchandiseSubtotalPence + price,
+            // The goods, the framing sold with them and the delivery that was priced.
+            totalPence: orderTotalWithDelivery({
+              merchandiseSubtotalPence: order.merchandiseSubtotalPence,
+              framingSubtotalPence: order.framingSubtotalPence,
+              deliveryPence: price,
+            }),
             checkoutExpiresAt: input.paymentEndsAt,
             updatedAt: input.now,
           })

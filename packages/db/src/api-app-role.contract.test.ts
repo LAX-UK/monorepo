@@ -7,7 +7,10 @@ import {
   API_READ_TABLES,
   API_SSF_RECEIVER_TABLES,
 } from "./migrate-roles.js";
-import { expectTablePrivileges, readTablePrivileges } from "./role-contract/table-privileges.js";
+import {
+  expectTablePrivileges,
+  readTablePrivileges,
+} from "./role-contract/table-privileges.test-helpers.js";
 import { buildPgConnectionConfig } from "./ssl.js";
 
 const API_URL = process.env.DATABASE_URL_API ?? process.env.API_APP_DATABASE_URL;

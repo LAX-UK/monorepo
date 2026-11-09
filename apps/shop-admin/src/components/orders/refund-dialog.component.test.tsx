@@ -15,6 +15,8 @@ vi.mock("@/server/domain/order-detail.vm", () => ({
   REFUND_REASON_OPTIONS: [{ value: "goodwill", label: "Goodwill" }],
   refundTargetOptions: () => [{ id: "", label: "Whole order" }],
   refundableRemainingPence: () => 10000,
+  frameRefundWithPrint: () => ({ framePence: 0, frameMade: false }),
+  refundSuccessMessage: (amount: number) => `Refund of ${amount} requested`,
 }));
 
 const { RefundDialog } = await import("./refund-dialog.client");

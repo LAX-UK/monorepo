@@ -2,11 +2,14 @@ import type { OrderStatus, OrderSummary } from "@auction/shop-contracts";
 import { describe, expect, it } from "vitest";
 import {
   buildShopOrderDetailVm,
+  buildShopOrderLines,
   buildShopOrderListVm,
   buildShopOrderTimeline,
   buildShopOrderTotals,
   isPlacedShopOrder,
+  shopDeliveryQuote,
   shopOrderProgressStatus,
+  shopOrderTitle,
 } from "./shop-orders.vm";
 
 const NOW = new Date("2026-10-20T09:10:00.000Z");
@@ -398,6 +401,98 @@ describe("buildShopOrderTotals", () => {
     );
     expect(totals.rows[1]).toEqual({ label: "Collect from our London gallery", value: "Free" });
     expect(totals.vatLine).toBeNull();
+  });
+});
+
+describe("a framed order", () => {
+  const framed = () => {
+    const base = order("paid");
+    const [print] = base.lines;
+    if (!print) throw new Error("fixture has a line");
+    return {
+      ...base,
+      framingSubtotalPence: 21_000,
+      totalPence: 121_000,
+      lines: [
+        print,
+        {
+          ...print,
+          orderLineId: "00000000-0000-4000-8000-0000000000f1",
+          kind: "framing" as const,
+          framingName: "Natural oak frame",
+          framingFor: "Harbor Print, no. 3",
+          framingForLineId: print.orderLineId,
+          framingDetail: "Window mount, white conservation board · UV-filtering acrylic",
+          artworkTitle: null,
+          artworkSlug: null,
+          artistName: null,
+          editionNumber: null,
+          editionSummary: null,
+          unitPricePence: 21_000,
+        },
+      ],
+    };
+  };
+
+  it("shows the frame under its print as 'Framing: <name>', at its own price", () => {
+    const rows = buildShopOrderLines(framed());
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.framing).toEqual({
+      label: "Framing: Natural oak frame",
+      detail: "Window mount, white conservation board · UV-filtering acrylic",
+      priceLabel: "£210.00",
+    });
+  });
+
+  it("keeps a frame whose print is not in the list as a row of its own", () => {
+    const placed = framed();
+    const rows = buildShopOrderLines({ ...placed, lines: placed.lines.slice(1) });
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ title: "Framing: Natural oak frame", href: null });
+  });
+
+  it("totals the framing on its own row between items and delivery", () => {
+    expect(buildShopOrderTotals(framed()).rows.map((row) => row.label)).toEqual([
+      "Items",
+      "Framing",
+      "UK insured delivery",
+      "Total",
+    ]);
+  });
+
+  it("is still titled by the print, not 'and 1 more'", () => {
+    expect(shopOrderTitle(framed())).not.toContain("more");
+  });
+});
+
+describe("the delivery quote on a framed order", () => {
+  const NOW_QUOTE = new Date("2026-10-14T22:00:00.000Z");
+  const quoted = (framingSubtotalPence?: number) =>
+    order("pending_payment", {
+      merchandiseSubtotalPence: 36_000,
+      ...(framingSubtotalPence === undefined ? {} : { framingSubtotalPence }),
+      checkoutExpiresAt: "2026-10-15T22:00:00.000Z",
+      deliveryQuote: {
+        status: "quoted",
+        country: "US",
+        pricePence: 8_500,
+        carrier: "DHL Express",
+        service: "Express insured",
+        leadTimeNote: null,
+        holdUntil: "2026-10-15T22:00:00.000Z",
+        paymentOpen: true,
+      },
+    });
+
+  it("totals the goods, the framing and the quoted delivery: what will be paid", () => {
+    const quote = shopDeliveryQuote([quoted(21_000)], NOW_QUOTE);
+    expect(quote?.price?.totalLabel).toBe("£655.00");
+    expect(quote?.price?.deliveryLabel).toBe("£85.00");
+  });
+
+  it("is the goods and the delivery when nothing is framed, or an older response has no framing", () => {
+    expect(shopDeliveryQuote([quoted(0)], NOW_QUOTE)?.price?.totalLabel).toBe("£445.00");
+    expect(shopDeliveryQuote([quoted()], NOW_QUOTE)?.price?.totalLabel).toBe("£445.00");
   });
 });
 

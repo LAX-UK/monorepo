@@ -15,7 +15,7 @@ import {
   expectTablePrivileges,
   expectUniformTablePrivileges,
   readTablePrivileges,
-} from "./role-contract/table-privileges.js";
+} from "./role-contract/table-privileges.test-helpers.js";
 import {
   absenteeBid,
   bid,

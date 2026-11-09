@@ -119,6 +119,7 @@ export async function replayCheckoutOrder(
   const surcharge = fulfilmentSurchargePence(input.details.fulfilment);
   const total = computeOrderTotal({
     merchandiseSubtotalPence: pence(existing.merchandiseSubtotalPence),
+    framingSubtotalPence: pence(existing.framingSubtotalPence),
     fulfilment: input.details.fulfilment,
   });
 

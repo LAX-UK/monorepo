@@ -8,6 +8,7 @@ import {
   FRAMING_MOUNT_VALUES,
   FRAMING_NAME_MAX,
   FRAMING_STATUS_VALUES,
+  FRAMING_TASK_STATUS_VALUES,
 } from "@auction/shop-contracts";
 import {
   FRAMING_BAND_CODES,
@@ -17,12 +18,17 @@ import {
   FRAMING_MOUNTS,
   FRAMING_NAME_MAX_LENGTH,
   FRAMING_STATUSES,
+  FRAMING_TASK_STATUSES,
   type FramingIssue,
   framingOptionIssues,
 } from "@auction/shop-domain";
 import { describe, expect, it } from "vitest";
 
 describe("the framing contract and the domain rules", () => {
+  it("list the same framing task statuses", () => {
+    expect([...FRAMING_TASK_STATUS_VALUES]).toEqual([...FRAMING_TASK_STATUSES]);
+  });
+
   it("list the same bands, frames, mounts, glazings, hangings and statuses", () => {
     expect([...FRAMING_BAND_VALUES]).toEqual([...FRAMING_BAND_CODES]);
     expect([...FRAMING_FRAME_VALUES]).toEqual([...FRAMING_FRAMES]);

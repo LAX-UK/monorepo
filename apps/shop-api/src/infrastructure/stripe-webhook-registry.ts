@@ -1,4 +1,5 @@
 import type Stripe from "stripe";
+import type { CompleteCheckoutOutcome } from "../application/ports/payment-event.processor.js";
 import type { StripeMoneyWebhookOutcome } from "../application/ports/stripe-money-webhook.types.js";
 import {
   parseCheckoutSessionAsyncPaymentFailed,
@@ -16,7 +17,9 @@ export type StripeCheckoutWebhookHandlers = {
     paymentIntentId?: string | null;
     paidAt: Date;
     customerEmail?: string | null;
-  }): Promise<"processed" | "duplicate" | "terminal_acknowledged">;
+    /** Whether Stripe sent it from live mode. */
+    livemode?: boolean;
+  }): Promise<CompleteCheckoutOutcome>;
   expireCheckout(input: {
     eventId: string;
     orderId: string;
@@ -65,6 +68,7 @@ export async function dispatchStripeWebhookEvent(
       paidAt: completed.paidAt,
       customerEmail: completed.customerEmail ?? null,
       paymentIntentId: completed.paymentIntentId ?? null,
+      livemode: completed.livemode === true,
     });
     return { kind: "checkout", outcome };
   }
