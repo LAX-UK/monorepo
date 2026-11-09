@@ -98,6 +98,7 @@ export function DeskSlotChooser({
           <p className="text-staff-sm text-staff-muted">No times that day.</p>
         ) : (
           <StaffRadioGroup
+            className="sm:grid-cols-2 lg:grid-cols-3"
             aria-label="Time"
             value={value ?? ""}
             onValueChange={(start) => {

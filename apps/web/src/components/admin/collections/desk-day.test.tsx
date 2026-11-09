@@ -93,7 +93,7 @@ describe("the day at the desk", () => {
     );
   });
 
-  it("says how many times are open on an empty day", () => {
+  it("says how many times are open on an empty day, once, in the summary", () => {
     render(
       <DeskDay
         day={deskDay({ groups: [], toHandOver: 0, openTimes: 18 })}
@@ -102,7 +102,7 @@ describe("the day at the desk", () => {
       />,
     );
     expect(screen.getByText("No visits booked", { selector: "h2,h3,p,div" })).toBeTruthy();
-    expect(screen.getByText("18 times are still open on this day.")).toBeTruthy();
+    expect(screen.getAllByText(/18 times/)).toHaveLength(1);
   });
 
   it("says why a closed day is closed, and offers to open a sale day anyway", async () => {

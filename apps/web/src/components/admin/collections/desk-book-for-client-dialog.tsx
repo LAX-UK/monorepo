@@ -72,7 +72,7 @@ export function DeskBookForClientDialog({
       }}
       title="Book for a client"
       description="For a client who phoned or called in. The same rules as the booking page apply."
-      size="md"
+      size="lg"
     >
       {open ? <BookForm venueId={venueId} today={today} onClose={onClose} /> : null}
     </StaffDialog>

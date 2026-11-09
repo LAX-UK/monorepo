@@ -91,7 +91,15 @@ export function deskList(
 ): DeskListView {
   const items =
     status === "not_collected"
-      ? [deskBooking({ status: "not_collected", actions: ["rebook"] })]
+      ? [
+          // A visit that has already passed (the fixtures' today is 9 Nov).
+          deskBooking({
+            status: "not_collected",
+            actions: ["rebook"],
+            start: "2026-11-05T14:00:00.000Z",
+            end: "2026-11-05T14:30:00.000Z",
+          }),
+        ]
       : [deskBooking()];
   return {
     venueId: DESK_VENUE,

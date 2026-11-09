@@ -146,7 +146,7 @@ export function DeskDay({
         <EmptyState
           size="compact"
           title="No visits booked"
-          description={`${day.openTimes} ${day.openTimes === 1 ? "time is" : "times are"} still open on this day.`}
+          description="Bookings appear here as clients make them."
         />
       ) : (
         <ul className="flex flex-col gap-4">

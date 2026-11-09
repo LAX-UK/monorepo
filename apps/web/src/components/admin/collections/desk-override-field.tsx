@@ -5,7 +5,7 @@ import { ChoiceRow, Field, StaffCheckbox, TextArea } from "@auction/staff-ui";
 /**
  * Staff may book a time that is full or too soon for a client they have spoken to. The tick says
  * so and a reason is then required; it is kept with their name and never shown to the client. A
- * time the rules already refuse keeps the tick on, because it cannot be booked without it.
+ * time the rules already refuse shows the tick on, because it cannot be booked without it.
  */
 export function DeskOverrideField({
   id,
@@ -34,7 +34,6 @@ export function DeskOverrideField({
           <StaffCheckbox
             id={`${id}-override`}
             checked={on}
-            disabled={required}
             onCheckedChange={(next) => onCheckedChange(next === true)}
           />
         }
