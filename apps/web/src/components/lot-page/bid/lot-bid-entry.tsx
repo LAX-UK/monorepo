@@ -2,7 +2,7 @@
 
 import { BidGate } from "@/components/bid/bid-gate";
 import { useBiddingAccountFreshness } from "@/components/bid/use-bidding-account-freshness";
-import { LotBidDialog } from "@/components/lot-page/bid/bid-dialog";
+import { LazyLotBidDialog } from "@/components/lot-page/bid/bid-dialog.lazy";
 import {
   BidControlButton,
   BidEntryControls,
@@ -248,8 +248,8 @@ export function LotBidEntry({ auction: lot, artistName, gate, buyersPremium }: L
           )
         }
       </BidGate>
-      {nextBid ? (
-        <LotBidDialog
+      {nextBid && dialog.session > 0 ? (
+        <LazyLotBidDialog
           open={dialog.open}
           session={dialog.session}
           start={dialog.start}
