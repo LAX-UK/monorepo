@@ -141,9 +141,10 @@ export function createServerClockSync(options: ServerClockSyncOptions): ServerCl
         if (sleptSinceLastLook()) void sync.resync("wake");
       });
       const stopInterval = env.setInterval(() => {
-        if (!env.isVisible()) return;
+        if (!env.isVisible() || !env.isNeeded()) return;
+        // With nothing counting, the jump is kept for the next look (a page opened later).
         sleptSinceLastLook();
-        if (env.isNeeded()) void sync.resync("interval");
+        void sync.resync("interval");
       }, resyncIntervalMs);
       return () => {
         stopVisibility();
