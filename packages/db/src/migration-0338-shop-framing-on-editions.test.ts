@@ -44,11 +44,50 @@ describe("migration 0338 shop framing on editions", () => {
     );
   });
 
-  it("turns existing frame descriptions into 'comes framed by the artist', once and never over staff's own", () => {
-    expect(migration).toContain('INSERT INTO "shop_edition_framing"');
-    expect(migration).toContain(`'framed_by_artist', btrim(a."print_frame")`);
-    expect(migration).toContain(`btrim(a."print_frame") <> ''`);
-    expect(migration).toContain('ON CONFLICT ("artwork_id") DO NOTHING');
+  describe("the data step for existing frame descriptions", () => {
+    const step = migration.slice(migration.indexOf('INSERT INTO "shop_edition_framing"'));
+
+    it("copies a description as 'comes framed by the artist', once and never over staff's own", () => {
+      expect(step).toContain(`'framed_by_artist', left(btrim(a."print_frame"), 500)`);
+      expect(step).toContain(`btrim(a."print_frame") <> ''`);
+      expect(step).toContain('ON CONFLICT ("artwork_id") DO NOTHING');
+    });
+
+    it("cuts a long description to the 500 characters a description may hold", () => {
+      expect(step).toContain('left(btrim(a."print_frame"), 500)');
+    });
+
+    it("skips text that says the opposite, in any case", () => {
+      const pattern = step.match(/!~\* '([^']+)'/)?.[1];
+      expect(pattern).toBeDefined();
+      const regex = new RegExp(
+        (pattern ?? "").replaceAll("\\m", "\\b").replaceAll("\\M", "\\b"),
+        "i",
+      );
+      for (const opposite of [
+        "Unframed",
+        "UNFRAMED",
+        "No frame",
+        "not framed",
+        "Frame available",
+        "Framing on request",
+        "Optional",
+      ]) {
+        expect(regex.test(opposite), opposite).toBe(true);
+      }
+      for (const frame of [
+        "Oak frame by the artist",
+        "Framed in black wood",
+        "Walnut, white mount",
+      ]) {
+        expect(regex.test(frame), frame).toBe(false);
+      }
+    });
+
+    it("skips editions that already offer framing options", () => {
+      expect(step).toContain('FROM "shop_framing_edition_offer" o WHERE o."artwork_id" = a."id"');
+      expect(step).toMatch(/AND NOT EXISTS/);
+    });
   });
 
   it("leaves the old column alone, going and coming back", () => {

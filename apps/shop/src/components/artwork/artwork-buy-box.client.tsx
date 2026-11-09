@@ -20,7 +20,7 @@ import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useId, useRef, useState, useTransition } from "react";
 
 /** How long the button says "Added" before it becomes "View basket". */
 const ADDED_FLASH_MS = 2000;
@@ -85,6 +85,7 @@ export function ArtworkBuyBox({
 }: Props) {
   const router = useRouter();
   const framingChoice = useFramingChoice();
+  const hintBaseId = useId();
   const [phase, setPhase] = useState<Phase>("idle");
   const [inBasket, setInBasket] = useState(initialInBasket);
   const [error, setError] = useState<{ message: string; signIn: boolean } | null>(null);
@@ -205,9 +206,13 @@ export function ArtworkBuyBox({
   }
 
   // Shown after Add is pressed without a frame, until one is chosen.
-  const choiceHint =
-    needsChoice && mustChoose && !inBasket ? (
-      <p className="shop-buy__hint" role="alert">
+  // Announced once, by the live region below; the visible text is plain and each Add button is
+  // described by the copy beside it.
+  const hintShown = needsChoice && mustChoose && !inBasket;
+  const hintId = (placement: Placement) => `${hintBaseId}-${placement}`;
+  const choiceHint = (placement: Placement) =>
+    hintShown ? (
+      <p id={hintId(placement)} className="shop-buy__hint">
         {FRAMING_COPY.requiredIntro}
       </p>
     ) : null;
@@ -241,6 +246,7 @@ export function ArtworkBuyBox({
         type="button"
         className={className}
         aria-busy={phase === "adding"}
+        {...(hintShown ? { "aria-describedby": hintId(placement) } : {})}
         disabled={phase === "adding" || cannotOrder}
         onClick={() => void add(placement)}
       >
@@ -278,7 +284,7 @@ export function ArtworkBuyBox({
 
       <div ref={actionRef} className="shop-buy__action">
         {actionButton("main")}
-        {choiceHint}
+        {choiceHint("main")}
         {inBasket && phase !== "added" ? (
           <p className="shop-buy__in-basket">
             <Button
@@ -332,7 +338,7 @@ export function ArtworkBuyBox({
           </div>
           <div ref={barRef} className="shop-buy-bar__action">
             {actionButton("bar")}
-            {choiceHint}
+            {choiceHint("bar")}
           </div>
         </MarketingStickyActionBar>
       ) : null}

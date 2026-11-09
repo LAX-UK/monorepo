@@ -41,9 +41,18 @@ ALTER TABLE "shop_basket_line"
   ADD CONSTRAINT "shop_basket_line_framing_on_print_ck"
   CHECK ("framing_option_id" IS NULL OR "artwork_id" IS NOT NULL);
 --> statement-breakpoint
--- Existing frame descriptions: one row per edition that has text, never over a row staff have set.
+-- Existing frame descriptions become "comes framed by the artist", with the text as the description.
+-- Only text that describes a frame is copied: a value that says the opposite ("unframed", "no
+-- frame", "frame available", "on request", "optional") is skipped, as is an edition that already
+-- offers framing options. Text is cut to the 500 characters a description may hold. One row per
+-- edition, never over a row staff have set, so running it again changes nothing.
 INSERT INTO "shop_edition_framing" ("artwork_id", "mode", "framed_by_artist")
-SELECT a."id", 'framed_by_artist', btrim(a."print_frame")
+SELECT a."id", 'framed_by_artist', left(btrim(a."print_frame"), 500)
 FROM "shop_artwork" a
-WHERE a."print_frame" IS NOT NULL AND btrim(a."print_frame") <> ''
+WHERE a."print_frame" IS NOT NULL
+  AND btrim(a."print_frame") <> ''
+  AND a."print_frame" !~* '\m(unframed|no frame|not framed|frame available|on request|optional)\M'
+  AND NOT EXISTS (
+    SELECT 1 FROM "shop_framing_edition_offer" o WHERE o."artwork_id" = a."id"
+  )
 ON CONFLICT ("artwork_id") DO NOTHING;

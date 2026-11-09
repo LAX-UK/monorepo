@@ -197,22 +197,40 @@ describe("the framing choice on the edition page", () => {
     const button = screen.getByRole("button", { name: "Add to basket" });
     expect((button as HTMLButtonElement).disabled).toBe(false);
     // The hint is not there until Add is pressed.
-    expect(screen.queryByRole("alert")).toBeNull();
+    expect(
+      screen.queryByText("This edition is sold framed. Choose a frame.", {
+        selector: "p.shop-buy__hint",
+      }),
+    ).toBeNull();
 
     fireEvent.click(button);
 
     expect(addMock).not.toHaveBeenCalled();
-    expect(await screen.findByRole("alert")).toHaveProperty(
-      "textContent",
-      "This edition is sold framed. Choose a frame.",
-    );
+    const hint = await screen.findByText("This edition is sold framed. Choose a frame.", {
+      selector: "p.shop-buy__hint",
+    });
+    // The visible hint is plain text that describes the button; the live region says it once.
+    expect(hint.getAttribute("role")).toBeNull();
+    expect(button.getAttribute("aria-describedby")).toBe(hint.id);
+    expect(screen.queryAllByRole("alert")).toHaveLength(0);
+    const announced = screen
+      .getAllByRole("status")
+      .filter((node) => node.textContent === "This edition is sold framed. Choose a frame.");
+    expect(announced).toHaveLength(1);
     expect(document.activeElement?.getAttribute("role")).toBe("radio");
     expect(document.activeElement?.closest(".shop-framing")).not.toBeNull();
 
     // Choosing a frame clears the hint and the button adds it.
     addMock.mockResolvedValue({ ok: true });
     fireEvent.click(screen.getByRole("radio", { name: /Natural oak frame/ }));
-    expect(screen.queryByRole("alert")).toBeNull();
+    expect(
+      screen.queryByText("This edition is sold framed. Choose a frame.", {
+        selector: "p.shop-buy__hint",
+      }),
+    ).toBeNull();
+    expect(
+      screen.getByRole("button", { name: "Add to basket" }).getAttribute("aria-describedby"),
+    ).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Add to basket" }));
     await waitFor(() => expect(addMock).toHaveBeenCalledWith("tide-line", 1, OAK));
   });
