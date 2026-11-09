@@ -1189,6 +1189,7 @@ export {
   UNAPPLIED_MONEY_REASONS,
   UNAPPLIED_MONEY_RESOLVED_EVENT,
   possibleSourceText,
+  unappliedMoneyAggregate,
   unappliedMoneyDedupeKey,
   unappliedMoneyPayload,
   type UnappliedMoney,

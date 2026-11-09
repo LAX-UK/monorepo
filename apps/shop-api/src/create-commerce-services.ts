@@ -34,6 +34,7 @@ import { createDrizzleShopNotificationPublisher } from "./infrastructure/drizzle
 import { createDrizzleStripeMoneyWebhookProcessor } from "./infrastructure/drizzle-stripe-money-webhook.processor.js";
 import { createHttpIdentityAddressBook } from "./infrastructure/http-identity-address-book.js";
 import { createIdentityMachineClient } from "./infrastructure/identity-machine-client.js";
+import type { UnappliedMoneyLookup } from "./infrastructure/shop-paid-on-closed-order.js";
 import { loadShopVatPolicy } from "./infrastructure/shop-vat-policy.js";
 import { createStripePaymentIntentMetadataFetcher } from "./infrastructure/stripe-refund-metadata.js";
 import { createStripeShopCheckoutGateway } from "./infrastructure/stripe-shop-checkout.gateway.js";
@@ -51,7 +52,12 @@ import type { OriginalOfferRegister } from "./application/ports/original-offer-r
 export function createCommerceServices(
   db: Database,
   env: ShopApiEnv,
-  options: { rateLimitCounter: FixedWindowCounter; originalOffers: OriginalOfferRegister },
+  options: {
+    rateLimitCounter: FixedWindowCounter;
+    originalOffers: OriginalOfferRegister;
+    /** The finance task store: money that arrives for a closed order is recorded there. */
+    unappliedMoney: UnappliedMoneyLookup;
+  },
 ): { commerce: CommerceRoutesDeps; stripeWebhook: StripeWebhookDeps } {
   const paymentGateway = createStripeShopCheckoutGateway({
     secretKey: env.STRIPE_SECRET_KEY,
@@ -127,6 +133,7 @@ export function createCommerceServices(
     storefrontUrl: env.SHOP_STOREFRONT_URL,
     paymentGateway,
     domainEventMode,
+    unappliedMoney: options.unappliedMoney,
   });
 
   const fetchPaymentIntentMetadata = createStripePaymentIntentMetadataFetcher({

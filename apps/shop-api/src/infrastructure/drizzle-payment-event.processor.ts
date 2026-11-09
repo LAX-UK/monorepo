@@ -33,6 +33,7 @@ import {
   createShopDomainEventPublisher,
 } from "./shop-domain-event-publisher.js";
 import { resolveListingStatusAfterReservationRelease } from "./shop-edition-listing-on-release.js";
+import { type UnappliedMoneyLookup, recordPaidOnClosedOrder } from "./shop-paid-on-closed-order.js";
 import { findOrCreateBuyerParty } from "./shop-party.js";
 import { restoreBasketLinesFromOrder } from "./shop-restore-basket-from-order.js";
 
@@ -43,6 +44,11 @@ type CheckoutTransitionOptions = {
   fallbackCustomerEmail?: string | null;
   paymentGateway?: PaymentCheckoutGateway;
   domainEventMode?: ShopDomainEventPublisherMode;
+  /**
+   * The finance task store, for money that arrives for an order already closed. Without it that
+   * money cannot be recorded, so the webhook fails and Stripe sends it again: it is never dropped.
+   */
+  unappliedMoney?: UnappliedMoneyLookup;
 };
 
 /**
@@ -291,6 +297,7 @@ export async function completeShopCheckoutSession(
     amountTotalPence: number;
     paidAt: Date;
     customerEmail?: string | null;
+    paymentIntentId?: string | null;
   },
   options: CheckoutTransitionOptions = {},
 ): Promise<"processed" | "duplicate" | "terminal_acknowledged"> {
@@ -318,6 +325,16 @@ export async function completeShopCheckoutSession(
     }
     if (order.status === "paid") return "processed";
     if (order.status !== "pending_payment") {
+      // Money was taken for an order that is closed and whose prints were released. Finance must
+      // always hear of it, so the task and the log line do not depend on an email being set up.
+      if (!options.unappliedMoney) throw new Error("unapplied_money_reader_not_configured");
+      await recordPaidOnClosedOrder(tx as Database, events, options.unappliedMoney, {
+        order: { id: order.id, reference: order.reference, status: order.status },
+        sessionId: input.sessionId,
+        paymentIntentId: input.paymentIntentId ?? null,
+        amountPence: input.amountTotalPence,
+        eventId: input.eventId,
+      });
       await queueCheckoutOpsAlertInTx(tx as Database, options, {
         idempotencyKey: `terminal-paid:${input.eventId}`,
         alertKind: "Paid webhook for terminal order",
@@ -620,13 +637,42 @@ export async function cancelShopCheckoutSession(
   });
 }
 
+/** Whether the order's hold has not ended by `endedBy`, so a sweep must leave it alone. */
+function holdStillRunning(
+  order: { checkoutExpiresAt: Date | null },
+  endedBy: Date | undefined,
+): boolean {
+  return Boolean(endedBy && order.checkoutExpiresAt && order.checkoutExpiresAt >= endedBy);
+}
+
+/**
+ * Expires an order whose checkout ended: the buyer let it run out, Stripe said so, or the reaper
+ * found its hold past. The reaper passes `holdMustHaveEndedBy` (its sweep time): an order whose
+ * hold was stretched after the sweep chose it (a buyer opening payment) is left alone, both
+ * before Stripe's session is ended and again under the order's row lock. That check comes before
+ * the event is claimed, so an order that was spared is found again by a later sweep.
+ */
 export async function expireShopCheckoutSession(
   db: Database,
-  input: { eventId: string; orderId: string; source?: string; sessionId?: string },
+  input: {
+    eventId: string;
+    orderId: string;
+    source?: string;
+    sessionId?: string;
+    holdMustHaveEndedBy?: Date;
+  },
   options: CheckoutTransitionOptions = {},
 ): Promise<ShopCheckoutExpireOutcome> {
   const source = input.source ?? "stripe";
   const events = createShopDomainEventPublisher(options.domainEventMode ?? "off");
+  if (input.holdMustHaveEndedBy) {
+    const [current] = await db
+      .select({ checkoutExpiresAt: shopOrder.checkoutExpiresAt })
+      .from(shopOrder)
+      .where(eq(shopOrder.id, input.orderId))
+      .limit(1);
+    if (current && holdStillRunning(current, input.holdMustHaveEndedBy)) return "unchanged";
+  }
   const stripeGate = await expireStripeBeforeLocalTransition(
     db,
     input.orderId,
@@ -638,6 +684,25 @@ export async function expireShopCheckoutSession(
     return "deferred_async";
   }
   return db.transaction(async (tx) => {
+    if (input.holdMustHaveEndedBy) {
+      const [current] = await tx
+        .select({
+          status: shopOrder.status,
+          checkoutExpiresAt: shopOrder.checkoutExpiresAt,
+        })
+        .from(shopOrder)
+        .where(eq(shopOrder.id, input.orderId))
+        .for("update")
+        .limit(1);
+      // Before the claim, so a spared order's event id is not used up and the next sweep can end it.
+      if (
+        !current ||
+        current.status !== "pending_payment" ||
+        holdStillRunning(current, input.holdMustHaveEndedBy)
+      ) {
+        return "unchanged";
+      }
+    }
     const [claim] = await tx
       .insert(shopProcessedPaymentEvent)
       .values({ eventId: input.eventId, source })

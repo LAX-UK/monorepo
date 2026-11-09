@@ -110,6 +110,7 @@ export type StripeWebhookDeps = {
     amountTotalPence: number;
     paidAt: Date;
     customerEmail?: string | null;
+    paymentIntentId?: string | null;
   }): Promise<"processed" | "duplicate" | "terminal_acknowledged">;
   expireCheckout(input: {
     eventId: string;

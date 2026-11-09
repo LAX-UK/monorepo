@@ -5,6 +5,7 @@ import { type Database, closeDb, createDb } from "@auction/db";
 import {
   DrizzleArtworkRegisterQueueReader,
   DrizzleArtworkRegisterRepository,
+  DrizzleUnappliedMoneyReader,
   DrizzleZohoArtworkSyncStore,
   DrizzleZohoListingRunStore,
   createShopAlertRetentionStore,
@@ -316,6 +317,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
   const { commerce, stripeWebhook } = createCommerceServices(db, env, {
     rateLimitCounter,
     originalOffers,
+    unappliedMoney: new DrizzleUnappliedMoneyReader(db),
   });
   const readiness = createDrizzleShopReadinessAdapter(db);
   const storefrontOrigins = resolveStorefrontOrigins({
