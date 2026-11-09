@@ -2,7 +2,6 @@
 
 import { GalleryProvider } from "@/components/gallery/context/gallery-context";
 import { useGalleryCarouselApi } from "@/components/gallery/engine/use-gallery-carousel";
-import { useNeighborPreload } from "@/components/gallery/hooks/use-neighbor-preload";
 import { Filmstrip } from "@/components/gallery/parts/filmstrip";
 import { GalleryHero } from "@/components/gallery/parts/gallery-hero";
 import { GalleryLightboxSlot } from "@/components/gallery/parts/gallery-lightbox-slot";
@@ -25,18 +24,9 @@ function LotGalleryRoot({ title, images, imageAssets, imageAlts }: LotGalleryPro
   const galleryImages = toGalleryImages(images, imageAlts, title, imageAssets);
   const [carouselApi, setCarouselApi] = useState<CarouselApi>();
   const carousel = useGalleryCarouselApi(carouselApi);
-  const priorityIndices = useNeighborPreload(
-    carousel.index,
-    carousel.count || galleryImages.length,
-  );
 
   return (
-    <GalleryProvider
-      title={title}
-      images={galleryImages}
-      carousel={carousel}
-      priorityIndices={priorityIndices}
-    >
+    <GalleryProvider title={title} images={galleryImages} carousel={carousel}>
       <div className="flex h-full min-h-0 flex-col">
         <div className="relative min-h-0 flex-1">
           <GalleryHero setCarouselApi={setCarouselApi} className="absolute inset-0" />

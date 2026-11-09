@@ -3,6 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "sideEffects": ["**/*.css"],
   "description": "The LAX staff design system: tokens, shell, tables, panels and forms shared by LAX Admin and Bid admin.",
   "exports": {
     ".": {
