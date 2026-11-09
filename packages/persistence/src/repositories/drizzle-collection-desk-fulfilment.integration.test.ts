@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { createDb } from "@auction/db";
-import { collectionBooking, collectionBookingLot, lotFulfilment } from "@auction/db/schema";
+import { collectionBooking, collectionBookingLot, lot, lotFulfilment } from "@auction/db/schema";
 import { eq, inArray, sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type {
@@ -152,7 +152,7 @@ describe.skipIf(!HAS_DB)("collection desk hand-over (integration)", () => {
     }
     await db.delete(lotFulfilment).where(inArray(lotFulfilment.lotId, lotIds));
     await db.execute(sql`delete from collection_place where venue_id = ${venueId}`);
-    await db.execute(sql`delete from lot where id = any(${lotIds})`);
+    await db.delete(lot).where(inArray(lot.id, lotIds));
     await db.execute(sql`delete from venue where id = ${venueId}`);
     await db.execute(sql`delete from legal_entity where id = ${entityId}`);
     await db.execute(sql`delete from "user" where id in (${staffId}, ${buyerId})`);
