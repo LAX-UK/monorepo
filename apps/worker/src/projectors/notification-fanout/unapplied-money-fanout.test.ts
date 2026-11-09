@@ -75,6 +75,39 @@ describe("unapplied money alert", () => {
     expect(situation).not.toMatch(/overpa|sent more/i);
   });
 
+  it("tells finance a Shop buyer paid after their order closed, naming the order the buyer quotes", async () => {
+    const enqueue = vi.fn().mockResolvedValue(undefined);
+    const alert = alertFromUnappliedMoney({
+      reason: "shop_order_paid_after_close",
+      paymentId: null,
+      paymentGroupId: null,
+      stripePaymentIntentId: "pi_1",
+      stripeChargeId: null,
+      stripeCustomerId: null,
+      shopOrderId: "order-1",
+      shopOrderReference: "LAX-S-10482",
+      shopCheckoutSessionId: "cs_1",
+      amountCents: 50500,
+      currency: "GBP",
+      dedupeKey: "shop_order_paid_after_close:pi_1",
+    });
+    expect(alert.reference).toBe("LAX-S-10482");
+    await fanoutUnappliedMoney({
+      staffOpsRecipientReader: {
+        listRecipients: vi
+          .fn()
+          .mockResolvedValue([{ id: "staff-1", email: "f@lax.test", firstName: "Fran" }]),
+      },
+      emailService: { enqueue } as never,
+      eventId: 9,
+      alert,
+    });
+    const vars = enqueue.mock.calls[0]?.[0].vars as { situation: string; reference: string };
+    expect(vars.situation).toContain("paid after their order had closed");
+    expect(vars.situation).toContain("Nothing was refunded");
+    expect(vars.reference).toBe("LAX-S-10482");
+  });
+
   it("words the suggestion by the payment's state, and says nothing without one", () => {
     const paid = { id: "abcdef12-0000", status: "paid" as const };
     expect(possibleSourceText(paid)).toBe(

@@ -24,6 +24,8 @@ const SITUATION: Record<UnappliedMoneyReason, string> = {
   paid_not_recorded: "Stripe shows an invoice paid, but the payment has not been recorded here.",
   private_sale_payment_not_applied:
     "Money arrived for a private sale deal that could not take it: its checkout had been ended, or the deal was already paid another way. Return it or apply it.",
+  shop_order_paid_after_close:
+    "A Shop buyer paid after their order had closed and its prints were released. Nothing was refunded. Open the order in LAX Admin, then refund the buyer or reinstate the order.",
   private_sale_refund_after_payout:
     "Money went back to a private sale buyer after the seller's payout included the deal. The seller's payout may need adjusting.",
 };
@@ -49,6 +51,7 @@ export function alertFromUnappliedMoney(payload: UnappliedMoneyPayload): Unappli
     dealReference: payload.privateSaleDealReference ?? null,
     reference:
       payload.privateSaleDealReference ??
+      payload.shopOrderReference ??
       payload.stripePaymentIntentId ??
       payload.stripeChargeId ??
       payload.stripeCustomerId ??

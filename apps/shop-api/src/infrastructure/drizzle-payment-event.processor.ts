@@ -33,6 +33,7 @@ import {
   createShopDomainEventPublisher,
 } from "./shop-domain-event-publisher.js";
 import { resolveListingStatusAfterReservationRelease } from "./shop-edition-listing-on-release.js";
+import { recordPaidOnClosedOrder } from "./shop-paid-on-closed-order.js";
 import { findOrCreateBuyerParty } from "./shop-party.js";
 import { restoreBasketLinesFromOrder } from "./shop-restore-basket-from-order.js";
 
@@ -291,6 +292,7 @@ export async function completeShopCheckoutSession(
     amountTotalPence: number;
     paidAt: Date;
     customerEmail?: string | null;
+    paymentIntentId?: string | null;
   },
   options: CheckoutTransitionOptions = {},
 ): Promise<"processed" | "duplicate" | "terminal_acknowledged"> {
@@ -318,6 +320,15 @@ export async function completeShopCheckoutSession(
     }
     if (order.status === "paid") return "processed";
     if (order.status !== "pending_payment") {
+      // Money was taken for an order that is closed and whose prints were released. Finance must
+      // always hear of it, so the task and the log line do not depend on an email being set up.
+      await recordPaidOnClosedOrder(tx as Database, events, {
+        order: { id: order.id, reference: order.reference, status: order.status },
+        sessionId: input.sessionId,
+        paymentIntentId: input.paymentIntentId ?? null,
+        amountPence: input.amountTotalPence,
+        eventId: input.eventId,
+      });
       await queueCheckoutOpsAlertInTx(tx as Database, options, {
         idempotencyKey: `terminal-paid:${input.eventId}`,
         alertKind: "Paid webhook for terminal order",

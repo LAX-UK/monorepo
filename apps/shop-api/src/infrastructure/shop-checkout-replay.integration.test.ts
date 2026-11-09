@@ -1,4 +1,4 @@
-import { shopOrder } from "@auction/db/schema";
+import { shopEdition, shopOrder } from "@auction/db/schema";
 import { eq } from "drizzle-orm";
 import type pg from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -23,11 +23,13 @@ import { completeShopCheckoutSession } from "./drizzle-payment-event.processor.j
 /** A payment provider double: a unique session per call, and a record of expired sessions. */
 function recordingGateway() {
   const created: string[] = [];
+  const expiries: Date[] = [];
   const expired: string[] = [];
   const gateway: PaymentCheckoutGateway = {
     async createHostedCheckout(input) {
       const sessionId = `cs_test_${input.orderId}_${created.length + 1}`;
       created.push(sessionId);
+      expiries.push(input.expiresAt);
       return {
         sessionId,
         paymentIntentId: null,
@@ -42,7 +44,7 @@ function recordingGateway() {
       return { kind: "expired" };
     },
   };
-  return { gateway, created, expired };
+  return { gateway, created, expiries, expired };
 }
 
 /** The same request for collection: no address or phone. */
@@ -108,6 +110,21 @@ describe.skipIf(!hasShopIntegrationDb)("checkout retries with changed delivery d
       db.select({ id: shopOrder.id }).from(shopOrder).where(eq(shopOrder.idempotencyKey, key));
     return { db, repo, recording, request, order, ordersForKey, suffix };
   }
+
+  it("holds a UK checkout and opens its payment session for at least 31 minutes, the reservation agreeing", async () => {
+    const { db, repo, recording, request, order } = await setup("uk-session-length");
+    const before = Date.now();
+    const created = await repo.createCheckoutOrder(request());
+    const [expiry] = recording.expiries;
+    const row = await order(created.orderId);
+    const held = await db
+      .select()
+      .from(shopEdition)
+      .where(eq(shopEdition.reservedByOrderId, created.orderId));
+    expect(expiry?.getTime()).toBeGreaterThanOrEqual(before + 31 * 60_000 - 1000);
+    expect(row.checkoutExpiresAt?.getTime()).toBe(expiry?.getTime());
+    expect(held[0]?.reservedUntil?.getTime()).toBeGreaterThanOrEqual(expiry?.getTime() ?? 0);
+  });
 
   it("reuses the same order for an unchanged retry, even two at once", async () => {
     const { repo, recording, request, ordersForKey } = await setup("replay-same");
