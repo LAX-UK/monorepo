@@ -840,6 +840,33 @@ export {
 } from "./collection-booking.js";
 export { summariseWeeklyHours } from "./collection-hours-summary.js";
 export {
+  COLLECTION_PLACE_EVENT_AGGREGATE,
+  collectionExceptionChanged,
+  collectionPlaceUpdated,
+  type AffectedHandling,
+  type CollectionSettingsEvent,
+} from "./collection-settings-events.js";
+export {
+  MAX_EXCEPTION_DAYS,
+  MAX_RANGES_PER_WEEKDAY,
+  bankHolidayYears,
+  bookingsAffectedBy,
+  exceptionDraftIssues,
+  normaliseWeeklyHours,
+  saleDayClosures,
+  weeklyHoursIssues,
+  type AffectedBooking,
+  type AffectedReason,
+  type CollectionConfiguration,
+  type ExceptionDraft,
+  type ExceptionIssueCode,
+  type HoursIssue,
+  type HoursIssueCode,
+  type LiveBooking,
+  type SaleDayClosure,
+  type SaleForClosure,
+} from "./collection-settings.js";
+export {
   bankHolidayClosures,
   createCollectionCalendar,
   noticeDeadline,

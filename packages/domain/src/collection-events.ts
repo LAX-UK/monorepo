@@ -14,8 +14,13 @@ type BookingRef = { bookingId: string; reference: string; legalEntityId: string 
 /** Who cancelled a visit; "system" is Bid cancelling on its own, always with a reason. */
 export type CollectionCancelledVia = "client" | "staff" | "system";
 
-/** Why Bid cancelled a visit without being asked. */
-export const COLLECTION_CANCEL_REASONS = ["account_erased"] as const;
+/** Why a visit was cancelled by Bid, or by staff because of a change to the place's settings. */
+export const COLLECTION_CANCEL_REASONS = [
+  "account_erased",
+  "hours_changed",
+  "closure_added",
+  "opening_removed",
+] as const;
 export type CollectionCancelReason = (typeof COLLECTION_CANCEL_REASONS)[number];
 
 type VisitFields = {

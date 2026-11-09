@@ -5,6 +5,7 @@ import type { CollectionBookingStatus, CollectionIdType, CollectorKind } from "@
 import { and, asc, count, desc, eq, gte, inArray, lt, ne, sql } from "drizzle-orm";
 import type { NodePgQueryResultHKT } from "drizzle-orm/node-postgres";
 import type { PgDatabase } from "drizzle-orm/pg-core";
+import type { DbTransaction } from "../interfaces/artist-delete.repository.js";
 import type {
   BookingOutcome,
   CancelCollectionBooking,
@@ -27,6 +28,7 @@ import type {
 } from "../interfaces/collection-booking.repository.js";
 import { collectionRequestFingerprint } from "../lib/collection-request-fingerprint.js";
 import { pgUniqueViolationConstraint } from "../lib/pg-unique-violation.js";
+import { lockCollectionPlace } from "./collection-place-lock.js";
 
 /** A database or a transaction on it: both run the same queries. */
 type Conn = PgDatabase<NodePgQueryResultHKT, typeof schema>;
@@ -200,8 +202,10 @@ export class DrizzleCollectionBookingRepository
   async listInRange(
     venueId: string,
     range: { from: Date; to: Date },
+    tx?: DbTransaction,
   ): Promise<CollectionBookingRecord[]> {
-    const rows = await this.db
+    const conn = tx ?? this.db;
+    const rows = await conn
       .select({ id: collectionBooking.id })
       .from(collectionBooking)
       .where(
@@ -213,7 +217,7 @@ export class DrizzleCollectionBookingRepository
       )
       .orderBy(asc(collectionBooking.slotStart), asc(collectionBooking.seat));
     return loadRecords(
-      this.db,
+      conn,
       rows.map((row) => row.id),
     );
   }
@@ -251,6 +255,7 @@ export class DrizzleCollectionBookingRepository
     const fingerprint = collectionRequestFingerprint(input);
     try {
       return await this.db.transaction(async (tx): Promise<BookingOutcome> => {
+        await lockCollectionPlace(tx, input.venueId);
         const prior = await this.priorAnswer(
           tx,
           input.legalEntityId,
@@ -294,6 +299,13 @@ export class DrizzleCollectionBookingRepository
     const lotIds = unique(input.lotIds);
     try {
       return await this.db.transaction(async (tx): Promise<ChangeOutcome> => {
+        // The place's lock comes before the booking's row lock, as everywhere else.
+        const [venue] = await tx
+          .select({ venueId: collectionBooking.venueId })
+          .from(collectionBooking)
+          .where(eq(collectionBooking.id, input.bookingId))
+          .limit(1);
+        if (venue) await lockCollectionPlace(tx, venue.venueId);
         const [row] = await tx
           .select()
           .from(collectionBooking)
@@ -343,8 +355,10 @@ export class DrizzleCollectionBookingRepository
   async cancel(
     input: CancelCollectionBooking,
     within?: WithinBookingTransaction,
+    tx?: DbTransaction,
   ): Promise<CancelOutcome> {
-    return this.db.transaction(async (tx): Promise<CancelOutcome> => {
+    // Inside a transaction already (staff cancelling with a change to the hours), this is a savepoint.
+    return (tx ?? this.db).transaction(async (tx): Promise<CancelOutcome> => {
       const row = await lockBooking(tx, input.bookingId);
       if (!row) return { outcome: "not_found" };
       if (row.status !== "booked" || row.icsSequence !== input.expectedSequence) {
