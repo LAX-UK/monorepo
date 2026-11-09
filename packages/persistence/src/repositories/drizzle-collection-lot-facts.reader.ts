@@ -19,7 +19,7 @@ import {
   type CollectionLotFacts,
   decisivePayment,
 } from "@auction/domain";
-import { and, asc, desc, eq, inArray, isNull } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNotNull, isNull, notExists, or } from "drizzle-orm";
 import type {
   CollectionLotRecord,
   ICollectionLotFactsReader,
@@ -44,6 +44,9 @@ export class DrizzleCollectionLotFactsReader implements ICollectionLotFactsReade
   constructor(private readonly db: Database) {}
 
   async lotIdsForBuyer(legalEntityId: string, venueId: string, limit: number): Promise<string[]> {
+    // Only real candidates are asked for, so the limit never cuts one off: lots already handed
+    // over, ended, on their way by courier or in a live booking are left out in the query, and the
+    // newest lots come first.
     const rows = await this.db
       .select({ id: lot.id })
       .from(lot)
@@ -52,10 +55,33 @@ export class DrizzleCollectionLotFactsReader implements ICollectionLotFactsReade
         and(
           eq(lot.buyerLegalEntityId, legalEntityId),
           eq(lot.status, "ended"),
+          isNotNull(lot.winnerId),
           eq(sale.venueId, venueId),
+          notExists(
+            this.db
+              .select({ one: lotFulfilment.lotId })
+              .from(lotFulfilment)
+              .where(
+                and(
+                  eq(lotFulfilment.lotId, lot.id),
+                  or(
+                    inArray(lotFulfilment.status, ["delivered", "cancelled", "in_transit"]),
+                    eq(lotFulfilment.fulfilmentMethod, "shipping"),
+                  ),
+                ),
+              ),
+          ),
+          notExists(
+            this.db
+              .select({ one: collectionBookingLot.lotId })
+              .from(collectionBookingLot)
+              .where(
+                and(eq(collectionBookingLot.lotId, lot.id), eq(collectionBookingLot.active, true)),
+              ),
+          ),
         ),
       )
-      .orderBy(asc(lot.lotNumber), asc(lot.id))
+      .orderBy(desc(lot.endTime), asc(lot.lotNumber), asc(lot.id))
       .limit(limit);
     return rows.map((row) => row.id);
   }
