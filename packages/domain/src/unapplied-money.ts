@@ -51,6 +51,11 @@ export const UNAPPLIED_MONEY_REASONS = [
   "shop_order_paid_twice",
   /** A Shop buyer paid for an order that does not exist here (live mode only). */
   "shop_order_not_found",
+  /**
+   * Stripe shows a Shop buyer's checkout as paid, but the payment could not be read or confirmed
+   * by the time the order's hold had run its longest, so it was not applied and the order closed.
+   */
+  "shop_order_paid_not_confirmed",
 ] as const;
 
 export type UnappliedMoneyReason = (typeof UNAPPLIED_MONEY_REASONS)[number];

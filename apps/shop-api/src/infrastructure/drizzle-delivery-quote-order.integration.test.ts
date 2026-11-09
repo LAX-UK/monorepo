@@ -48,6 +48,7 @@ function recordingGateway() {
     async resolveHostedCheckout(input) {
       return { checkoutUrl: `https://pay.example.test/${input.sessionId}` };
     },
+    retrievePaidCheckout: async () => null,
     async expireHostedCheckout() {
       return { kind: "expired" };
     },

@@ -25,6 +25,7 @@ const money: UnappliedMoney = {
 function reader(existing: string[] = []) {
   return {
     exists: vi.fn(async (key: string) => existing.includes(key)),
+    existsForShopPayment: vi.fn().mockResolvedValue(false),
     listOpenByChargeId: vi.fn().mockResolvedValue([]),
     listOpen: vi.fn().mockResolvedValue([]),
     findOpen: vi.fn().mockResolvedValue(null),

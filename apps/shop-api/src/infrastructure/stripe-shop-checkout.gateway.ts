@@ -91,7 +91,14 @@ export function createStripeShopCheckoutGateway(options: {
   storefrontUrl: string;
   fakeCheckoutEnabled: boolean;
 }): PaymentCheckoutGateway {
-  const stripe = options.secretKey ? new Stripe(options.secretKey, { typescript: true }) : null;
+  const stripe = options.secretKey
+    ? new Stripe(options.secretKey, {
+        typescript: true,
+        // A slow or failing Stripe must not hold the checkout sweep (or a buyer) for ever.
+        timeout: 15_000,
+        maxNetworkRetries: 2,
+      })
+    : null;
 
   return {
     async createHostedCheckout(input) {
@@ -186,6 +193,32 @@ export function createStripeShopCheckoutGateway(options: {
         "Checkout session is no longer available",
         409,
       );
+    },
+    async retrievePaidCheckout(input) {
+      if (!stripe || input.sessionId.startsWith("fake_")) return null;
+      const session = await stripe.checkout.sessions.retrieve(input.sessionId, {
+        expand: ["payment_intent.latest_charge"],
+      });
+      if (
+        session.status !== "complete" ||
+        !isStripeCheckoutSessionPaid(session) ||
+        session.currency !== "gbp" ||
+        session.amount_total === null
+      ) {
+        return null;
+      }
+      const intent = typeof session.payment_intent === "string" ? null : session.payment_intent;
+      const charge = typeof intent?.latest_charge === "string" ? null : intent?.latest_charge;
+      return {
+        amountTotalPence: session.amount_total,
+        paymentIntentId:
+          typeof session.payment_intent === "string"
+            ? session.payment_intent
+            : (intent?.id ?? null),
+        livemode: session.livemode,
+        // When the money was taken: the charge's time, else the session's, never "now".
+        paidAt: new Date((charge?.created ?? session.created) * 1000),
+      };
     },
     async expireHostedCheckout(input) {
       if (!stripe || input.sessionId.startsWith("fake_")) {

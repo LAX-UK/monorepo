@@ -1,8 +1,14 @@
-import { domainEvent, shopEdition, shopOrder, shopProcessedPaymentEvent } from "@auction/db/schema";
+import {
+  domainEvent,
+  shopDeliveryQuote,
+  shopEdition,
+  shopOrder,
+  shopProcessedPaymentEvent,
+} from "@auction/db/schema";
 import { DrizzleUnappliedMoneyReader } from "@auction/persistence/repositories";
 import { and, eq, sql } from "drizzle-orm";
 import type pg from "pg";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import type {
   CheckoutOrderInput,
   PaymentCheckoutGateway,
@@ -42,6 +48,7 @@ const gateway: PaymentCheckoutGateway = {
   async resolveHostedCheckout(input) {
     return { checkoutUrl: `https://pay.example.test/${input.sessionId}` };
   },
+  retrievePaidCheckout: async () => null,
   async expireHostedCheckout() {
     return { kind: "expired" };
   },
@@ -221,6 +228,300 @@ describe.skipIf(!hasShopIntegrationDb)(
       expect((await order(created.orderId)).status).toBe("expired");
     });
 
+    it("defers an order whose payment is still being confirmed, moving the hold and the reservation together, up to a ceiling", async () => {
+      const { db, checkout, order, holder } = await setup("async-defer");
+      const created = await checkout("buyer");
+      const pending: PaymentCheckoutGateway = {
+        ...gateway,
+        async expireHostedCheckout() {
+          return { kind: "async_pending" };
+        },
+      };
+      const sweep = () =>
+        expireShopCheckoutSession(
+          db,
+          {
+            eventId: `${reaperEventIdForOrder(created.orderId)}:${Math.random()}`,
+            orderId: created.orderId,
+            source: SHOP_CHECKOUT_REAPER_EVENT_SOURCE,
+          },
+          { paymentGateway: pending },
+        );
+
+      expect(await sweep()).toBe("deferred_async");
+      const first = await order(created.orderId);
+      const held = await holder();
+      expect(first.checkoutExpiresAt?.getTime()).toBeGreaterThan(Date.now());
+      // The reservation moved with the hold, not left to lapse under a payment still coming.
+      expect(held.reservedUntil?.getTime()).toBeGreaterThanOrEqual(
+        (first.checkoutExpiresAt as Date).getTime(),
+      );
+
+      // An order that began more than the ceiling ago gets no further deferral and is ended.
+      await db
+        .update(shopOrder)
+        .set({ createdAt: new Date(Date.now() - 22 * 24 * 60 * 60_000) })
+        .where(eq(shopOrder.id, created.orderId));
+      expect(await sweep()).toBe("expired");
+      expect((await order(created.orderId)).status).toBe("expired");
+    });
+
+    describe("a session Stripe shows paid whose payment event never reached us", () => {
+      async function stuckPaid(
+        label: string,
+        readable: Awaited<ReturnType<typeof paidSession>> | null,
+      ) {
+        const harness = await setup(label);
+        const created = await harness.checkout("buyer");
+        const before = await harness.order(created.orderId);
+        const gate: PaymentCheckoutGateway = {
+          ...gateway,
+          async expireHostedCheckout() {
+            return { kind: "already_complete" };
+          },
+          async retrievePaidCheckout() {
+            return readable
+              ? { ...readable, amountTotalPence: before.totalPence + readable.amountTotalPence }
+              : null;
+          },
+        };
+        const queueCheckoutOpsAlert = vi.fn(async () => undefined);
+        const options = {
+          paymentGateway: gate,
+          unappliedMoney: new DrizzleUnappliedMoneyReader(harness.db),
+          domainEventMode: "enforce" as const,
+          opsAlertEmail: "ops@example.test",
+          notifications: { queueCheckoutOpsAlert } as never,
+        };
+        const sweep = () =>
+          expireShopCheckoutSession(
+            harness.db,
+            {
+              eventId: `${reaperEventIdForOrder(created.orderId)}:${Math.random()}`,
+              orderId: created.orderId,
+              source: SHOP_CHECKOUT_REAPER_EVENT_SOURCE,
+            },
+            options,
+          );
+        return { ...harness, created, before, options, sweep, queueCheckoutOpsAlert };
+      }
+      const paidSession = async (extraPence: number) => ({
+        amountTotalPence: extraPence,
+        paymentIntentId: `pi_${Math.random()}`,
+        livemode: false,
+        paidAt: new Date(),
+      });
+
+      it("applies it when it is paid and matches the order, instead of deferring for ever", async () => {
+        const { sweep, order, created } = await stuckPaid("reconcile-ok", await paidSession(0));
+        expect(await sweep()).toBe("reconciled");
+        expect((await order(created.orderId)).status).toBe("paid");
+      });
+
+      it("records a finance task and closes the order when the amount is not the order's", async () => {
+        const { db, sweep, order, holder, created } = await stuckPaid(
+          "reconcile-mismatch",
+          await paidSession(-1),
+        );
+        expect(await sweep()).toBe("reconciled");
+        expect((await order(created.orderId)).status).toBe("payment_failed");
+        expect((await holder()).reservedByOrderId).toBeNull();
+        const tasks = await db
+          .select()
+          .from(domainEvent)
+          .where(
+            and(
+              eq(domainEvent.eventType, "payment.unapplied_money_received"),
+              sql`${domainEvent.payload}->>'shopOrderId' = ${created.orderId}`,
+            ),
+          );
+        expect(tasks).toHaveLength(1);
+      });
+
+      it("opens one task, not two, when the webhook for the same payment arrives after the sweep recorded it", async () => {
+        const { db, sweep, created, before, options } = await stuckPaid(
+          "reconcile-then-webhook",
+          await paidSession(-1),
+        );
+        expect(await sweep()).toBe("reconciled");
+        const tasks = () =>
+          db
+            .select()
+            .from(domainEvent)
+            .where(
+              and(
+                eq(domainEvent.eventType, "payment.unapplied_money_received"),
+                sql`${domainEvent.payload}->>'shopOrderId' = ${created.orderId}`,
+              ),
+            );
+        const [first] = await tasks();
+        const intent = (first?.payload as { stripePaymentIntentId: string }).stripePaymentIntentId;
+        const webhook = {
+          eventId: `evt_late_${created.orderId}`,
+          orderId: created.orderId,
+          sessionId: `cs_test_${created.orderId}`,
+          amountTotalPence: before.totalPence - 1,
+          paidAt: new Date(),
+          paymentIntentId: intent,
+        };
+        // The order is closed by now, so the late event is money for a closed order: a second
+        // reason, but the same payment.
+        expect(await completeShopCheckoutSession(db, webhook, options)).toBe(
+          "terminal_acknowledged",
+        );
+        expect(
+          await completeShopCheckoutSession(
+            db,
+            { ...webhook, eventId: `${webhook.eventId}_b`, paymentIntentId: null },
+            options,
+          ),
+        ).toBe("terminal_acknowledged");
+        expect(await tasks()).toHaveLength(1);
+      });
+
+      it("defers an order it cannot read, moving hold and reservation together, and tells ops on the third time", async () => {
+        const { sweep, order, holder, created, queueCheckoutOpsAlert } = await stuckPaid(
+          "reconcile-unreadable",
+          null,
+        );
+        for (let attempt = 1; attempt <= 3; attempt++) {
+          expect(await sweep()).toBe("deferred_async");
+          expect(queueCheckoutOpsAlert).toHaveBeenCalledTimes(attempt === 3 ? 1 : 0);
+          await new Promise((resolve) => setTimeout(resolve, 5));
+        }
+        const left = await order(created.orderId);
+        expect(left.status).toBe("pending_payment");
+        expect((await holder()).reservedUntil?.getTime()).toBeGreaterThanOrEqual(
+          (left.checkoutExpiresAt as Date).getTime(),
+        );
+      });
+    });
+
+    it("measures the ceiling from the quote being accepted, so a quote accepted on day 20 is still deferred", async () => {
+      const { db, checkout, order } = await setup("async-defer-quote");
+      const created = await checkout("buyer");
+      const day = 24 * 60 * 60_000;
+      await db
+        .update(shopOrder)
+        .set({ createdAt: new Date(Date.now() - 25 * day) })
+        .where(eq(shopOrder.id, created.orderId));
+      await db.insert(shopDeliveryQuote).values({
+        orderId: created.orderId,
+        status: "accepted",
+        destinationCountry: "FR",
+        holdUntil: new Date(Date.now() + day),
+        quotedPricePence: 1_000,
+        quotedCarrier: "DHL Express",
+        decidedAt: new Date(Date.now() - day),
+      });
+      const pending: PaymentCheckoutGateway = {
+        ...gateway,
+        async expireHostedCheckout() {
+          return { kind: "async_pending" };
+        },
+      };
+      const outcome = await expireShopCheckoutSession(
+        db,
+        {
+          eventId: `quote-day-20:${created.orderId}`,
+          orderId: created.orderId,
+          source: SHOP_CHECKOUT_REAPER_EVENT_SOURCE,
+        },
+        { paymentGateway: pending },
+      );
+      expect(outcome).toBe("deferred_async");
+      const left = await order(created.orderId);
+      expect(left.status).toBe("pending_payment");
+      expect(left.reaperDeferrals).toBe(1);
+    });
+
+    it("closes an order past the ceiling that keeps failing, with a task, and still ends the others", async () => {
+      const stuck = await setup("ceiling-stuck");
+      const healthy = await setup("ceiling-healthy");
+      const stuckOrder = await stuck.checkout("buyer");
+      const healthyOrder = await healthy.checkout("buyer");
+      const day = 24 * 60 * 60_000;
+      await stuck.db
+        .update(shopOrder)
+        .set({
+          createdAt: new Date(Date.now() - 22 * day),
+          checkoutExpiresAt: new Date("2000-01-01T00:00:00Z"),
+        })
+        .where(eq(shopOrder.id, stuckOrder.orderId));
+      await healthy.db
+        .update(shopOrder)
+        .set({ checkoutExpiresAt: new Date("2000-01-02T00:00:00Z") })
+        .where(eq(shopOrder.id, healthyOrder.orderId));
+      const stuckSession = (await stuck.order(stuckOrder.orderId)).stripeCheckoutSessionId;
+      // Stripe cannot be read for the stuck order, however often it is asked.
+      const stripe: PaymentCheckoutGateway = {
+        ...gateway,
+        async expireHostedCheckout(input) {
+          if (input.sessionId === stuckSession) throw new Error("stripe unavailable");
+          return { kind: "expired" };
+        },
+        async retrievePaidCheckout() {
+          throw new Error("stripe unavailable");
+        },
+      };
+      await reapStaleShopCheckouts(stuck.db, new Date(), {
+        paymentGateway: stripe,
+        unappliedMoney: new DrizzleUnappliedMoneyReader(stuck.db),
+        domainEventMode: "enforce",
+      });
+
+      expect((await healthy.order(healthyOrder.orderId)).status).toBe("expired");
+      expect((await stuck.order(stuckOrder.orderId)).status).toBe("payment_failed");
+      const tasks = await stuck.db
+        .select()
+        .from(domainEvent)
+        .where(
+          and(
+            eq(domainEvent.eventType, "payment.unapplied_money_received"),
+            sql`${domainEvent.payload}->>'shopOrderId' = ${stuckOrder.orderId}`,
+          ),
+        );
+      expect(tasks).toHaveLength(1);
+      expect(tasks[0]?.payload).toMatchObject({ reason: "shop_order_paid_not_confirmed" });
+    });
+
+    it("takes an order out of the sweep, with one ops alert, when settling it past the ceiling fails", async () => {
+      const { db, checkout, order } = await setup("ceiling-settle-fails");
+      const created = await checkout("buyer");
+      await db
+        .update(shopOrder)
+        .set({
+          createdAt: new Date(Date.now() - 22 * 24 * 60 * 60_000),
+          checkoutExpiresAt: new Date("2000-01-01T00:00:00Z"),
+        })
+        .where(eq(shopOrder.id, created.orderId));
+      const stripe: PaymentCheckoutGateway = {
+        ...gateway,
+        async expireHostedCheckout() {
+          throw new Error("stripe unavailable");
+        },
+        async retrievePaidCheckout() {
+          throw new Error("stripe unavailable");
+        },
+      };
+      const queueCheckoutOpsAlert = vi.fn(async () => undefined);
+      // No finance store is wired, so closing the order with a task fails: the settle throws.
+      const options = {
+        paymentGateway: stripe,
+        opsAlertEmail: "ops@example.test",
+        notifications: { queueCheckoutOpsAlert } as never,
+      };
+      await reapStaleShopCheckouts(db, new Date(), options);
+
+      const left = await order(created.orderId);
+      expect(left.status).toBe("pending_payment");
+      expect(left.checkoutExpiresAt).toBeNull();
+      expect(queueCheckoutOpsAlert).toHaveBeenCalledTimes(1);
+      // It is no longer in the sweep, so a second sweep does not touch it or alert again.
+      await reapStaleShopCheckouts(db, new Date(), options);
+      expect(queueCheckoutOpsAlert).toHaveBeenCalledTimes(1);
+    });
+
     it("will not stretch a hold that has already ended", async () => {
       const { db, checkout, order, holder, pastHold } = await setup("no-revive");
       const created = await checkout("buyer");
@@ -330,7 +631,7 @@ describe.skipIf(!hasShopIntegrationDb)(
           },
         };
         const now = new Date();
-        await reapStaleShopCheckouts(stuck.db, now, stripe);
+        await reapStaleShopCheckouts(stuck.db, now, { paymentGateway: stripe });
 
         expect((await healthy.order(healthyOrder.orderId)).status).toBe("expired");
         const left = await stuck.order(stuckOrder.orderId);

@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
   CHECKOUT_HOLD_MS,
+  HOLD_RECHECK_MS,
+  MAX_ASYNC_PAYMENT_HOLD_MS,
   MAX_HOLD_EXTENSION_MS,
   STRIPE_SESSION_MIN_LIFETIME_MS,
   newCheckoutHoldEnd,
+  planHoldDeferral,
   planSessionHold,
 } from "./checkout-hold.js";
 
@@ -68,5 +71,29 @@ describe("planSessionHold", () => {
   it("never refuses a hold that is long enough, however old the order", () => {
     const began = new Date(NOW.getTime() - 10 * MAX_HOLD_EXTENSION_MS);
     expect(planSessionHold({ holdEndsAt: at(45), began, now: NOW }).kind).toBe("keep");
+  });
+});
+
+describe("planHoldDeferral", () => {
+  it("looks again after the recheck interval", () => {
+    expect(planHoldDeferral({ began: NOW, now: at(40) })).toEqual({
+      kind: "defer",
+      endsAt: new Date(at(40).getTime() + HOLD_RECHECK_MS),
+    });
+  });
+
+  it("allows a payment to be confirmed for days, but not past 21 days from the start", () => {
+    const threeDays = new Date(NOW.getTime() + 3 * 24 * 60 * 60_000);
+    expect(planHoldDeferral({ began: NOW, now: threeDays }).kind).toBe("defer");
+    const cap = new Date(NOW.getTime() + MAX_ASYNC_PAYMENT_HOLD_MS);
+    expect(planHoldDeferral({ began: NOW, now: cap })).toEqual({ kind: "at_cap" });
+  });
+
+  it("never defers past the ceiling, even by part of an interval", () => {
+    const nearCap = new Date(NOW.getTime() + MAX_ASYNC_PAYMENT_HOLD_MS - 5 * 60_000);
+    expect(planHoldDeferral({ began: NOW, now: nearCap })).toEqual({
+      kind: "defer",
+      endsAt: new Date(NOW.getTime() + MAX_ASYNC_PAYMENT_HOLD_MS),
+    });
   });
 });
