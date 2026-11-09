@@ -1,10 +1,14 @@
 "use client";
 
 import { addArtworkToBasket, removeBasketLine } from "@/app/actions/basket.actions";
+import { useFramingChoice } from "@/components/artwork/artwork-framing-context.client";
+import { ArtworkFramingGroup } from "@/components/artwork/artwork-framing-group.client";
 import { BasketAddedPanel } from "@/components/artwork/basket-added-panel.client";
 import { ShopCommerceButton } from "@/components/shop-commerce-button";
 import { EDITION_PAGE_COPY } from "@/content/artwork-edition-copy";
+import { FRAMING_COPY } from "@/content/framing-copy";
 import { addToBasketErrorMessage } from "@/lib/artwork/add-to-basket-error";
+import { type ArtworkFramingVm, choiceById } from "@/lib/artwork/artwork-framing.vm";
 import type { ArtworkPurchaseVm } from "@/lib/presenters/artwork-purchase.presenter";
 import {
   MarketingCheckIcon,
@@ -37,9 +41,21 @@ type Props = {
   deliveryHref: string | null;
   /** The edition as the basket confirmation describes it, from the facts. */
   editionLine: string | null;
+  /**
+   * Framing that needs no choice: a print that comes framed, or one that cannot be ordered right
+   * now. The choice itself comes from the framing context around the buy box.
+   */
+  framing?: Extract<ArtworkFramingVm, { kind: "framed_by_artist" | "unavailable" }> | null;
+  /** The returns policy page when it is live, for the framing details. */
+  returnsHref?: string | null;
 };
 
 type Phase = "idle" | "adding" | "added";
+
+/** "Includes VAT" read in the middle of a sentence: "includes VAT". */
+function lowerFirst(text: string): string {
+  return text.charAt(0).toLowerCase() + text.slice(1);
+}
 type Placement = "main" | "bar";
 
 function focusFirstControl(container: HTMLElement | null) {
@@ -64,13 +80,20 @@ export function ArtworkBuyBox({
   deliveryLine,
   deliveryHref,
   editionLine,
+  framing = null,
+  returnsHref = null,
 }: Props) {
   const router = useRouter();
+  const framingChoice = useFramingChoice();
   const [phase, setPhase] = useState<Phase>("idle");
   const [inBasket, setInBasket] = useState(initialInBasket);
   const [error, setError] = useState<{ message: string; signIn: boolean } | null>(null);
   const [announcement, setAnnouncement] = useState("");
   const [panelOpen, setPanelOpen] = useState(false);
+  /** What went into the basket, kept for the confirmation after the page switches to "in basket". */
+  const [added, setAdded] = useState<{ priceLabel: string; framingName: string | null } | null>(
+    null,
+  );
   const [barVisible, setBarVisible] = useState(false);
   // The buy bar takes the bottom of the screen; the tab bar steps aside while it shows.
   useClaimBottomSlot("shop-buy-bar", barVisible);
@@ -112,13 +135,31 @@ export function ArtworkBuyBox({
     return () => window.clearTimeout(timer);
   }, [phase]);
 
+  // Once it is in the basket, the basket holds the framing; this page shows the print itself.
+  const chosen =
+    framingChoice && !inBasket ? choiceById(framingChoice.vm, framingChoice.selectedId) : null;
+  // A framed-only edition has no default: the shopper picks a frame before the button works.
+  const mustChoose = framingChoice !== null && framingChoice.selectedId === undefined;
+  const cannotOrder = framing?.kind === "unavailable";
+  const priceLabel = chosen ? chosen.totalLabel : purchase.priceLabel;
+  const vatNote = chosen
+    ? chosen.id === null
+      ? `${FRAMING_COPY.unframed} · ${lowerFirst(purchase.vatNote)}`
+      : `With ${chosen.name.toLowerCase()} · ${lowerFirst(purchase.vatNote)}`
+    : purchase.vatNote;
+  const shownDeliveryLine = chosen ? chosen.deliveryLine : deliveryLine;
+
   async function add(placement: Placement) {
     if (phase === "adding") return;
     addedFrom.current = placement;
     setError(null);
     setAnnouncement("");
     setPhase("adding");
-    const result = await addArtworkToBasket(slug, 1);
+    const snapshot = { priceLabel, framingName: chosen?.id ? chosen.name : null };
+    // Where the edition offers a choice, the choice goes with it: an option id, or null for unframed.
+    const result = framingChoice
+      ? await addArtworkToBasket(slug, 1, framingChoice.selectedId ?? null)
+      : await addArtworkToBasket(slug, 1);
     if (!result.ok) {
       setPhase("idle");
       const message = addToBasketErrorMessage(result.error);
@@ -127,8 +168,13 @@ export function ArtworkBuyBox({
       return;
     }
     setPhase("added");
+    setAdded(snapshot);
     setInBasket(true);
-    setAnnouncement(`${title} added to your basket.`);
+    setAnnouncement(
+      chosen?.id
+        ? `${title} with ${chosen.name} added to your basket.`
+        : `${title} added to your basket.`,
+    );
     setPanelOpen(true);
     router.refresh();
   }
@@ -172,12 +218,13 @@ export function ArtworkBuyBox({
         </p>
       );
     }
+    const blocked = mustChoose || cannotOrder;
     return (
       <ShopCommerceButton
         type="button"
         className={className}
         aria-busy={phase === "adding"}
-        disabled={phase === "adding"}
+        disabled={phase === "adding" || blocked}
         onClick={() => void add(placement)}
       >
         {phase === "adding" ? (
@@ -185,6 +232,8 @@ export function ArtworkBuyBox({
             <MarketingSpinnerIcon />
             Adding…
           </>
+        ) : chosen?.id ? (
+          `${EDITION_PAGE_COPY.addToBasket} · ${chosen.totalLabel}`
         ) : (
           EDITION_PAGE_COPY.addToBasket
         )}
@@ -195,12 +244,28 @@ export function ArtworkBuyBox({
   return (
     <div className="shop-buy">
       <div className="shop-buy__price">
-        <p className="shop-buy__amount">{purchase.priceLabel}</p>
-        <p className="shop-buy__vat">{purchase.vatNote}</p>
+        <p className="shop-buy__amount">{priceLabel}</p>
+        <p className="shop-buy__vat">{vatNote}</p>
       </div>
+
+      {framingChoice && !inBasket ? <ArtworkFramingGroup returnsHref={returnsHref} /> : null}
+      {framing?.kind === "framed_by_artist" ? (
+        <p className="shop-buy__framed">
+          <span className="shop-buy__framed-label">{FRAMING_COPY.framedByArtistHeading}</span>{" "}
+          {framing.description}
+        </p>
+      ) : null}
+      {cannotOrder ? (
+        <output className="shop-buy__hint">
+          <strong>{FRAMING_COPY.unavailable}.</strong> {FRAMING_COPY.unavailableDetail}
+        </output>
+      ) : null}
 
       <div ref={actionRef} className="shop-buy__action">
         {actionButton("main")}
+        {mustChoose && !inBasket ? (
+          <p className="shop-buy__hint">{FRAMING_COPY.requiredIntro}</p>
+        ) : null}
         {inBasket && phase !== "added" ? (
           <p className="shop-buy__in-basket">
             <Button
@@ -234,10 +299,10 @@ export function ArtworkBuyBox({
       <p className="shop-buy__delivery">
         {deliveryHref ? (
           <Link href={deliveryHref} className="shop-inline-link shop-focus-ring">
-            {deliveryLine}
+            {shownDeliveryLine}
           </Link>
         ) : (
-          deliveryLine
+          shownDeliveryLine
         )}
       </p>
 
@@ -249,7 +314,7 @@ export function ArtworkBuyBox({
         <MarketingStickyActionBar ariaLabel="Buy this edition" className="shop-buy-bar">
           <div className="shop-buy-bar__price">
             <p className="shop-buy-bar__amount">
-              {purchase.priceLabel} <span className="shop-buy-bar__vat">incl. VAT</span>
+              {priceLabel} <span className="shop-buy-bar__vat">incl. VAT</span>
             </p>
           </div>
           <div ref={barRef} className="shop-buy-bar__action">
@@ -271,7 +336,8 @@ export function ArtworkBuyBox({
           artistName,
           imageUrl,
           editionLine,
-          priceLabel: purchase.priceLabel,
+          priceLabel: added?.priceLabel ?? priceLabel,
+          framingName: added ? added.framingName : null,
         }}
       />
     </div>

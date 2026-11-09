@@ -8,6 +8,7 @@ import {
   ReadOnlyMedia,
   ReadOnlySearchListing,
 } from "@/components/artworks/artwork-read-only-sections";
+import { EditionFramingCard } from "@/components/artworks/edition-framing-card.client";
 import { CreatePrintsDialog } from "@/components/artworks/edition-runs/create-prints-dialog.client";
 import { EditionFactsCard } from "@/components/artworks/edition-runs/edition-facts-card.client";
 import { EditionRunCard } from "@/components/artworks/edition-runs/edition-run-card.client";
@@ -103,6 +104,7 @@ import {
   ADMIN_ARTWORK_SALE_STATES,
   type AdminArtworkDetail,
   type AdminArtworkVisibilityAction,
+  type AdminEditionFraming,
   type AdminEditionRunSpec,
   type AdminNewRunInput,
   SEO_DESCRIPTION_MAX_LENGTH,
@@ -224,8 +226,14 @@ export function ArtworkEditor({
   arrivedFromZoho = false,
   zohoUrl = null,
   bidAdminUrl = null,
+  framing = null,
+  framingFailed = false,
 }: {
   detail: AdminArtworkDetail | null;
+  /** How this edition is sold with respect to framing; null for an original or if it did not load. */
+  framing?: AdminEditionFraming | null;
+  /** The framing could not be loaded, so its card says so instead of a stale form. */
+  framingFailed?: boolean;
   /** For a new artwork started from an artist's page. */
   initialArtist?: { id: string; name: string } | null;
   /** For a new companion listing started from its main run. */
@@ -1381,6 +1389,20 @@ export function ArtworkEditor({
               run={run}
               permissions={{ write: permissions.write, correct: permissions.correctFacts }}
             />
+            {framing ? (
+              <EditionFramingCard
+                key={framing.version ?? "unsaved"}
+                artworkId={record.artworkId}
+                title={record.title}
+                framing={framing}
+                printPricePence={record.printPricePence}
+                permissions={{ write: permissions.write, setPrice: permissions.setPrice }}
+              />
+            ) : framingFailed ? (
+              <Notice tone="danger" title="Framing did not load">
+                Something went wrong on our side. Reload the page to try again.
+              </Notice>
+            ) : null}
             {run.horsCommerce ? (
               <HorsCommerceApprovalCard
                 artworkId={record.artworkId}

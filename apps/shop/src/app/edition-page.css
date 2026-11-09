@@ -353,3 +353,166 @@
   text-decoration: underline;
   text-underline-offset: 0.25em;
 }
+
+/* ---- Framing: the choice under the price, the frame drawn round the picture, the details sheet. ---- */
+
+/* Frame finishes are materials, not theme colours, so they look the same in light and dark. */
+:root {
+  --shop-frame-black_wood: #1d1d1d;
+  --shop-frame-white_wood: #f6f5f1;
+  --shop-frame-natural_oak: #b48b5a;
+}
+
+.shop-framing {
+  display: flex;
+  flex-direction: column;
+  gap: var(--shop-space-3);
+  margin-block: var(--shop-space-6);
+}
+
+.shop-framing__heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--shop-space-3);
+}
+
+.shop-framing__title {
+  font-family: var(--font-label, inherit);
+  font-size: var(--shop-text-md);
+  font-weight: 600;
+  color: var(--color-on-surface);
+}
+
+.shop-framing__details-link {
+  min-height: 2.75rem;
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  font-size: var(--shop-text-sm);
+  cursor: pointer;
+}
+
+.shop-framing__intro {
+  font-size: var(--shop-text-sm);
+  color: var(--color-on-surface-variant);
+}
+
+.shop-framing__swatch {
+  display: inline-block;
+  width: 1rem;
+  height: 1rem;
+  margin-right: 0.625rem;
+  border-radius: 0.25rem;
+  vertical-align: -0.1875rem;
+  background-color: var(--shop-frame-natural_oak);
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.15);
+}
+
+.shop-framing__swatch[data-frame="black_wood"] {
+  background-color: var(--shop-frame-black_wood);
+}
+
+.shop-framing__swatch[data-frame="white_wood"] {
+  background-color: var(--shop-frame-white_wood);
+}
+
+.shop-framing__swatch[data-frame="natural_oak"] {
+  background-color: var(--shop-frame-natural_oak);
+}
+
+.shop-buy__hint,
+.shop-buy__framed {
+  font-size: var(--shop-text-sm);
+  line-height: 1.25rem;
+  color: var(--color-on-surface-variant);
+}
+
+.shop-buy__framed-label {
+  font-weight: 600;
+  color: var(--color-on-surface);
+}
+
+.shop-buy__action .shop-buy__hint {
+  margin-top: var(--shop-space-2);
+}
+
+/* The frame drawn round the whole view: a moulding, then a white mount, then the print. It is an
+   illustration, so it takes no more of the stage than the plain mat does. */
+.shop-page--edition .shop-gallery__mat[data-frame] {
+  inset: 3%;
+  background: #fff;
+  border: clamp(0.5rem, 2.2vw, 0.875rem) solid var(--shop-frame-natural_oak);
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.14), 0 0.5rem 1.25rem rgb(0 0 0 / 0.18);
+}
+
+.shop-page--edition .shop-gallery__mat[data-frame="black_wood"] {
+  border-color: var(--shop-frame-black_wood);
+}
+
+.shop-page--edition .shop-gallery__mat[data-frame="white_wood"] {
+  border-color: var(--shop-frame-white_wood);
+}
+
+.shop-page--edition .shop-gallery__mat[data-frame="natural_oak"] {
+  border-color: var(--shop-frame-natural_oak);
+}
+
+/* The print sits inside the white mount. */
+.shop-page--edition .shop-gallery__mat[data-frame] > * {
+  inset: 9%;
+  width: auto;
+  height: auto;
+}
+
+.shop-gallery__framed-note {
+  margin-top: var(--shop-space-2);
+  font-size: var(--shop-text-sm);
+  color: var(--color-on-surface-variant);
+}
+
+.shop-framing-details__title {
+  font-family: var(--font-headline, inherit);
+  font-size: var(--shop-text-lg);
+  font-weight: 600;
+  color: var(--color-on-surface);
+}
+
+.shop-framing-details__intro,
+.shop-framing-details__note {
+  font-size: var(--shop-text-sm);
+  line-height: 1.25rem;
+  color: var(--color-on-surface-variant);
+}
+
+.shop-framing-details__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--shop-space-6);
+  margin-block: var(--shop-space-6);
+}
+
+.shop-framing-details__name {
+  margin-bottom: var(--shop-space-2);
+  font-size: var(--shop-text-md);
+  font-weight: 600;
+  color: var(--color-on-surface);
+}
+
+.shop-framing-details__row {
+  display: grid;
+  grid-template-columns: 8rem 1fr;
+  gap: var(--shop-space-3);
+  padding-block: var(--shop-space-2);
+  border-top: 1px solid var(--color-border-hairline);
+  font-size: var(--shop-text-sm);
+}
+
+.shop-framing-details__row dt {
+  color: var(--color-on-surface-variant);
+}
+
+.shop-framing-details__row dd {
+  color: var(--color-on-surface);
+}

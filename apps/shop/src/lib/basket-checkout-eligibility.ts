@@ -17,13 +17,15 @@ export function basketCheckoutEntry(
   return viewerKind === "guest" || viewerKind === "authenticated" ? "checkout" : "sign_in";
 }
 
-export type BasketCheckoutBlockReason = "price_changed" | "out_of_stock";
+export type BasketCheckoutBlockReason = "price_changed" | "out_of_stock" | "framing_unavailable";
 
 export function basketCheckoutBlockReasons(basket: BasketView): BasketCheckoutBlockReason[] {
   const reasons = new Set<BasketCheckoutBlockReason>();
   for (const line of basket.lines) {
     if (line.priceChanged) reasons.add("price_changed");
     if (line.outOfStock) reasons.add("out_of_stock");
+    // A frame that is no longer offered must be chosen again, or the print taken unframed.
+    if (line.framing && !line.framing.available) reasons.add("framing_unavailable");
   }
   return [...reasons];
 }
@@ -33,6 +35,9 @@ export function canProceedToCheckout(basket: BasketView): boolean {
 }
 
 export function basketCheckoutBlockMessage(reasons: BasketCheckoutBlockReason[]): string {
+  if (reasons.includes("framing_unavailable") && reasons.length === 1) {
+    return "A frame in your basket is no longer offered. Choose another framing or unframed before checkout.";
+  }
   if (reasons.includes("price_changed") && reasons.includes("out_of_stock")) {
     return "Some lines are out of stock and others have price changes. Update your basket before checkout.";
   }

@@ -949,6 +949,7 @@ export {
   parsePublicArtworkFacetCounts,
   parsePublicArtworkList,
   parsePublicArtworkObjectTypeFacets,
+  parsePublicEditionFraming,
   parsePublicCategoryList,
   parsePublicCategorySummary,
   parsePublicMerchandiseProductDetail,
