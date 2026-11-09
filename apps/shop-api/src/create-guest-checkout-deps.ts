@@ -1,6 +1,7 @@
 import { createHmac } from "node:crypto";
 import type { LegalEntity } from "@auction/branding";
 import type { Database } from "@auction/db";
+import type { DeliveryQuoteAcceptanceService } from "./application/delivery-quote-acceptance/delivery-quote-acceptance.service.js";
 import type { DeliveryQuoteRequestService } from "./application/delivery-quote-request/delivery-quote-request.service.js";
 import { createGuestCheckoutRateLimiters } from "./application/enquiry-rate-limit.js";
 import { createGuestCheckoutService } from "./application/guest-checkout/guest-checkout.service.js";
@@ -25,6 +26,7 @@ export function createGuestCheckoutDeps(
     identity: IdentityMachineClient;
     checkout: Pick<CheckoutWriter, "createCheckoutOrder" | "resumeCheckoutOrder">;
     quotes?: Pick<DeliveryQuoteRequestService, "request">;
+    acceptance: Pick<DeliveryQuoteAcceptanceService, "acceptAndPay">;
     orders: Pick<OrderReader, "getOrder" | "getCustomerProfile">;
     notifications: ShopNotificationPublisher;
     paymentGateway: PaymentCheckoutGateway;
@@ -56,6 +58,7 @@ export function createGuestCheckoutDeps(
     }),
     links,
     resumeCheckout: (order) => input.checkout.resumeCheckoutOrder(order),
+    acceptDeliveryQuote: (order) => input.acceptance.acceptAndPay(order),
     linkRateLimiter: limiters.orderLinks,
     getCustomerProfile: (subject) => input.orders.getCustomerProfile(subject),
     invoiceIssuer: input.invoiceIssuer,

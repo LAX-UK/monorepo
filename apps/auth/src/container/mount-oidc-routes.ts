@@ -336,6 +336,12 @@ export function mountOidcRoutes(app: Hono, options: OidcRouteMountOptions): void
         operations: options.identityOperations,
         durable: options.durableSecurityEffects,
         notices: options.securityNotices,
+        available: {
+          google: Boolean(options.env.GOOGLE_CLIENT_ID && options.env.GOOGLE_CLIENT_SECRET),
+          apple: Boolean(options.env.APPLE_CLIENT_ID && options.env.APPLE_CLIENT_SECRET),
+          // Passkeys are switched on when the issuer can create and check them.
+          passkey: false,
+        },
       }),
       readRateLimit: accountRateLimit("account-sign-in-methods-read", 120),
       writeRateLimit: accountRateLimit("account-sign-in-methods-write", 10),

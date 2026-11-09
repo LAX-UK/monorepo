@@ -37,6 +37,11 @@ const FORBIDDEN_COLUMNS = [
   "account.scope",
   "twoFactor.secret",
   "twoFactor.backupCodes",
+  "passkey.publicKey", // the key a passkey signs in with
+  "passkey.credentialId", // identifies the credential to the authenticator
+  "passkey.counter",
+  "passkey.aaguid", // the authenticator model
+  "passkey.transports",
   "session.token",
   "session.lastPasswordAuthAt",
   "session.mfaCompletedAt",

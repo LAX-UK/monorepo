@@ -117,7 +117,8 @@ type PaymentTemplateVars = {
     /** The Stripe payment or balance reference finance looks the money up by. */
     reference: string;
     lotTitle?: string | null;
-    reviewUrl: string;
+    /** Where to look at it; absent when the place to look has no address configured. */
+    reviewUrl?: string;
   };
   "dispute-opened-notice": {
     recipientFirstName?: string | null;

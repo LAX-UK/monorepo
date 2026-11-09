@@ -2318,6 +2318,27 @@
       "when": 1804147200000,
       "tag": "0336_private_sale_deal_party_history_entities",
       "breakpoints": true
+    },
+    {
+      "idx": 332,
+      "version": "7",
+      "when": 1804233600000,
+      "tag": "0338_shop_framing_on_editions",
+      "breakpoints": true
+    },
+    {
+      "idx": 333,
+      "version": "7",
+      "when": 1804320000000,
+      "tag": "0340_shop_delivery_quote_carrier",
+      "breakpoints": true
+    },
+    {
+      "idx": 334,
+      "version": "7",
+      "when": 1804406400000,
+      "tag": "0339_sign_in_methods_data",
+      "breakpoints": true
     }
   ]
 }

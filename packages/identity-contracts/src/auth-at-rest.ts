@@ -35,6 +35,27 @@ export function isEnvelopeSealed(value: string): boolean {
   return value.startsWith(AUTH_AT_REST_ENVELOPE_PREFIX);
 }
 
+/**
+ * The address a provider reported, ready to show. It is stored sealed; this is the one place it is
+ * opened. A value that is sealed but cannot be opened (no key configured, a key that no longer
+ * fits, a damaged value) reads as null, never as the sealed text. A value that was never sealed
+ * is returned as written.
+ */
+export function openProviderEmail(
+  stored: string | null | undefined,
+  crypto: Pick<EnvelopeCrypto, "open"> | null,
+): string | null {
+  if (!stored) return null;
+  if (!isEnvelopeSealed(stored)) return stored;
+  if (!crypto) return null;
+  try {
+    const opened = crypto.open(stored);
+    return opened || null;
+  } catch {
+    return null;
+  }
+}
+
 export function isOpaqueTokenFingerprint(value: string): boolean {
   return value.startsWith(AUTH_AT_REST_TOKEN_HASH_PREFIX);
 }

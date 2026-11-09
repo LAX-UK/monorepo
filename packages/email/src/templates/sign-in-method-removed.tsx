@@ -5,19 +5,26 @@ import type { TemplateVarsByName } from "../types.js";
 
 export const subject = emailSubjects.signInMethodRemoved;
 
-export default function SignInMethodRemovedEmail({
-  providerName,
-  ...vars
-}: TemplateVarsByName["sign-in-method-removed"]) {
+const FALLBACK_LABEL = "A sign-in method";
+
+export default function SignInMethodRemovedEmail(
+  vars: TemplateVarsByName["sign-in-method-removed"],
+) {
+  // An email queued before passkeys named the provider as `providerName`.
+  const { methodLabel, detail, providerName, ...notice } = vars as typeof vars & {
+    providerName?: string;
+  };
+  const label = methodLabel ?? providerName ?? FALLBACK_LABEL;
+  const named = detail ? `${label} (${detail})` : label;
   return (
     <SecurityNotice
-      {...vars}
-      preview={`${providerName} sign-in was removed from your LAX Account.`}
-      title={`${providerName} sign-in removed`}
+      {...notice}
+      preview={`${named} was removed as a way to sign in to your LAX Account.`}
+      title="A way to sign in was removed"
     >
       <TextBlock>
-        Signing in with {providerName} was removed from your LAX Account. Every other device was
-        signed out. You can still sign in with the methods that remain on your account.
+        {named} was removed from your LAX Account. Every other device was signed out. You can still
+        sign in with the methods that remain on your account.
       </TextBlock>
     </SecurityNotice>
   );

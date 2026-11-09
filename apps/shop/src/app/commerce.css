@@ -1339,3 +1339,68 @@ a.shop-checkout-steps__link:hover .shop-checkout-steps__label {
     transition: none;
   }
 }
+
+/* ---- Framing on a print in the basket: a sub-line under the edition, with Change framing. ---- */
+
+.shop-basket__framing {
+  display: flex;
+  flex-direction: column;
+  gap: var(--shop-space-1);
+  margin-top: var(--shop-space-3);
+  padding: var(--shop-space-3) var(--shop-space-4);
+  border: 1px solid var(--color-border-hairline);
+  border-radius: var(--radius-control);
+  background: var(--color-surface-container-low);
+}
+
+.shop-basket__framing[data-available="false"] {
+  border-color: var(--color-warning, var(--color-border-hairline));
+}
+
+.shop-basket__framing-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--shop-space-3);
+}
+
+.shop-basket__framing-name {
+  font-size: var(--shop-text-sm);
+  font-weight: 600;
+  color: var(--color-on-surface);
+}
+
+.shop-basket__framing-price {
+  font-size: var(--shop-text-sm);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-on-surface);
+}
+
+.shop-basket__framing-detail {
+  font-size: var(--shop-text-sm);
+  line-height: 1.25rem;
+  color: var(--color-on-surface-variant);
+}
+
+.shop-basket__change-framing {
+  align-self: flex-start;
+  min-height: 2.75rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: var(--shop-text-sm);
+  cursor: pointer;
+}
+
+.shop-basket__change-framing:disabled {
+  cursor: not-allowed;
+  color: var(--color-on-surface-variant);
+}
+
+.shop-framing-details__actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--shop-space-3);
+  margin-top: var(--shop-space-6);
+}

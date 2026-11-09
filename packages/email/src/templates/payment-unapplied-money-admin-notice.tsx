@@ -35,11 +35,13 @@ export default function PaymentUnappliedMoneyAdminNoticeEmail(
           { label: "Reference", value: reference, mono: true },
         ]}
       />
-      <TextBlock>
-        <Link href={reviewUrl} style={{ color: COLORS.link, textDecoration: "underline" }}>
-          Open it in payments
-        </Link>
-      </TextBlock>
+      {reviewUrl ? (
+        <TextBlock>
+          <Link href={reviewUrl} style={{ color: COLORS.link, textDecoration: "underline" }}>
+            Open it
+          </Link>
+        </TextBlock>
+      ) : null}
     </Layout>
   );
 }

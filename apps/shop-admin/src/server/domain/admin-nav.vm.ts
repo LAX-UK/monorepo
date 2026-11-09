@@ -60,6 +60,8 @@ export type AdminSessionNavInput = {
   enquiryAttentionCount?: number;
   /** Artist applications nobody has picked up; 0 when unknown or the role cannot review. */
   applicationAttentionCount?: number;
+  /** Delivery quote requests waiting for a price; 0 when unknown or the role cannot read orders. */
+  deliveryQuoteWaitingCount?: number;
 };
 
 function hasCapability(
@@ -181,6 +183,15 @@ export function buildAdminNavGroups(input: AdminSessionNavInput): AdminNavGroup[
           capability: "catalogue.read" as const,
         },
         { href: "/orders", icon: "orders" as const, label: "Orders", capability: "order.read" },
+        {
+          href: "/orders/delivery-quotes",
+          icon: "requests" as const,
+          label: "Delivery quotes",
+          capability: "order.read" as const,
+          ...(input.deliveryQuoteWaitingCount
+            ? { attentionCount: input.deliveryQuoteWaitingCount }
+            : {}),
+        },
         ...(input.features.payouts
           ? [
               {

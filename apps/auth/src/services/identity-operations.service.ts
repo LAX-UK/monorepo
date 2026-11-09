@@ -287,7 +287,11 @@ export class IdentityOperationsService {
 
   /** The password and linked Google or Apple accounts the person can sign in with. */
   async readSignInMethods(subjectId: string): Promise<SignInMethods> {
-    return describeSignInMethods(await this.repositories.credentials.listSignInAccounts(subjectId));
+    const [accounts, passkeys] = await Promise.all([
+      this.repositories.credentials.listSignInAccounts(subjectId),
+      this.repositories.credentials.listPasskeys(subjectId),
+    ]);
+    return describeSignInMethods(accounts, passkeys);
   }
 
   /**
@@ -309,7 +313,7 @@ export class IdentityOperationsService {
       if (decision !== "allowed") throw new IdentityOperationError(decision);
       await this.repositories.credentials.deleteSocialAccount(transaction, subjectId, provider);
       await this.identityEventPublisher.publish(
-        { type: "user.sign_in_method_unlinked", userId: subjectId, provider },
+        { type: "user.sign_in_method_removed", userId: subjectId, method: provider },
         { transaction },
       );
       revokedSessionIds = await this.repositories.sessions.deleteOtherSessions(

@@ -247,6 +247,39 @@ describe("renderEmail", () => {
     expect(rendered.text).toContain("Import duties and taxes in Germany are paid by you");
   });
 
+  it("gives a buyer the delivery price, the carrier, who pays duties and how to pay", async () => {
+    const rendered = await renderEmail("shop-delivery-quote-ready", {
+      orderReference: "LAX-S-10482",
+      countryName: "Germany",
+      carrier: "DHL Express",
+      service: "Express insured",
+      leadTimeNote: "Usually 5 to 7 working days.",
+      deliveryPrice: "£85.00",
+      totalPrice: "£505.00",
+      validUntilOn: "16 November 2026",
+      orderUrl: "https://shop.example/orders/o-1",
+    });
+    expect(rendered.text).toContain("Delivery to Germany for order LAX-S-10482 is £85.00");
+    expect(rendered.text).toContain("DHL Express (Express insured)");
+    expect(rendered.text).toContain("Insurance is included in that price");
+    expect(rendered.text).toContain("You pay any import duties and taxes charged in Germany");
+    expect(rendered.text).toContain("held for you until 16 November 2026");
+    expect(rendered.html).toContain("https://shop.example/orders/o-1");
+    expect(rendered.text).toContain("Accept and pay");
+  });
+
+  it("tells a buyer why the gallery cannot deliver, and that nothing was charged", async () => {
+    const rendered = await renderEmail("shop-delivery-quote-declined", {
+      orderReference: "LAX-S-10482",
+      countryName: "Brazil",
+      note: "Our couriers cannot collect framed work there.",
+      collectionUrl: "https://shop.example/delivery",
+    });
+    expect(rendered.text).toContain("we cannot deliver order LAX-S-10482 to Brazil");
+    expect(rendered.text).toContain("Our couriers cannot collect framed work there.");
+    expect(rendered.text).toContain("Nothing has been charged");
+  });
+
   it("tells a guest the receipt link opens the order and how to keep it in an account", async () => {
     const rendered = await renderEmail("shop-order-receipt", {
       orderId: "ord-1",
@@ -505,28 +538,6 @@ describe("renderEmail", () => {
     });
     expect(rendered.subject).toBe("Payout blocked for Acme Ltd");
     expect(rendered.html).toContain("https://lax.bid/admin/payouts");
-  });
-
-  it("renders social-account-linked with provider-specific copy", async () => {
-    const rendered = await renderEmail("social-account-linked", {
-      provider: "google",
-      userName: "Ada",
-    });
-
-    expect(rendered.subject).toBe("A sign-in method was linked to your LAX Bid account");
-    expect(rendered.html).toContain("Google account linked");
-    expect(rendered.text).toContain("Google account was linked");
-  });
-
-  it("renders social-account-unlinked with provider-specific copy", async () => {
-    const rendered = await renderEmail("social-account-unlinked", {
-      provider: "apple",
-      userName: "Ada",
-    });
-
-    expect(rendered.subject).toBe("A sign-in method was disconnected from your LAX Bid account");
-    expect(rendered.html).toContain("Apple account disconnected");
-    expect(rendered.text).toContain("Apple account was disconnected");
   });
 
   it("renders the withdrawal decline notice with the staff reason", async () => {

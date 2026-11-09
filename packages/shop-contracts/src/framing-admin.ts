@@ -150,3 +150,91 @@ export const FramingRejectedBodySchema = Type.Object({
   issues: Type.Optional(Type.Array(FramingIssueSchema)),
 });
 export type FramingRejectedBody = Static<typeof FramingRejectedBodySchema>;
+
+// ---- Framing on an edition ---------------------------------------------------------------
+
+export const FRAMING_MODE_VALUES = [
+  "unframed_or_framed",
+  "framed_only",
+  "framed_by_artist",
+] as const;
+export const FramingModeSchema = literals(FRAMING_MODE_VALUES);
+export type FramingModeValue = Static<typeof FramingModeSchema>;
+
+export const FRAMED_BY_ARTIST_MAX = 500;
+
+/** One catalogue option as an edition's Framing card shows it. */
+export const AdminEditionFramingOptionSchema = Type.Object({
+  optionId: Type.String({ format: "uuid" }),
+  name: Type.String(),
+  frame: FramingFrameSchema,
+  mount: FramingMountSchema,
+  glazing: FramingGlazingSchema,
+  hanging: FramingHangingSchema,
+  leadTimeMinDays: Type.Integer({ minimum: 1 }),
+  leadTimeMaxDays: Type.Integer({ minimum: 1 }),
+  catalogueStatus: FramingStatusSchema,
+  placeholderBands: Type.Array(FramingBandSchema),
+  /** The catalogue price for this edition's size band, null while the band is unknown. */
+  cataloguePricePence: Type.Union([Type.Integer(), Type.Null()]),
+  /** The edition offers this option now. */
+  offered: Type.Boolean(),
+  /** The edition's own price in place of the catalogue's, null when it uses the catalogue's. */
+  overridePence: Type.Union([Type.Integer(), Type.Null()]),
+  /** Buyers can see it: offered in the catalogue with every price the framer's. */
+  offerable: Type.Boolean(),
+});
+export type AdminEditionFramingOption = Static<typeof AdminEditionFramingOptionSchema>;
+
+export const AdminEditionFramingSchema = Type.Object({
+  artworkId: Type.String({ format: "uuid" }),
+  mode: FramingModeSchema,
+  /** The artist's frame in words; empty unless the edition comes framed by the artist. */
+  framedByArtist: Type.String(),
+  /** The sheet size as catalogued, which sets the size band. */
+  sheetSize: Type.Union([Type.String(), Type.Null()]),
+  band: Type.Union([FramingBandSchema, Type.Null()]),
+  options: Type.Array(AdminEditionFramingOptionSchema),
+  /** The saved settings' version; null while the edition has none. Sent back on save. */
+  version: Type.Union([Type.String({ format: "date-time", maxLength: 40 }), Type.Null()]),
+});
+export type AdminEditionFraming = Static<typeof AdminEditionFramingSchema>;
+
+export const AdminEditionFramingSaveBodySchema = Type.Object({
+  mode: FramingModeSchema,
+  framedByArtist: Type.String({ maxLength: 2000 }),
+  offers: Type.Array(
+    Type.Object({
+      optionId: Type.String({ format: "uuid" }),
+      overridePence: Type.Union([Type.Null(), Type.Integer()]),
+    }),
+    { maxItems: 50 },
+  ),
+  expectedVersion: Type.Union([Type.Null(), Type.String({ format: "date-time", maxLength: 40 })]),
+});
+export type AdminEditionFramingSaveBody = Static<typeof AdminEditionFramingSaveBodySchema>;
+
+export const ADMIN_EDITION_FRAMING_ISSUE_REASONS = [
+  "framed_only_needs_option",
+  "description_required",
+  "description_too_long",
+  "offers_not_allowed",
+  "no_size_band",
+  "option_not_offerable",
+  "option_listed_twice",
+  "override_invalid",
+] as const;
+
+export const AdminEditionFramingIssueSchema = Type.Object({
+  /** "offers", "framedByArtist" or "option:<id>". */
+  field: Type.String(),
+  reason: literals(ADMIN_EDITION_FRAMING_ISSUE_REASONS),
+});
+export type AdminEditionFramingIssue = Static<typeof AdminEditionFramingIssueSchema>;
+
+export const AdminEditionFramingRejectedBodySchema = Type.Object({
+  code: Type.String(),
+  message: Type.String(),
+  requestId: Type.Optional(Type.String()),
+  issues: Type.Optional(Type.Array(AdminEditionFramingIssueSchema)),
+});
