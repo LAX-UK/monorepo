@@ -1,5 +1,6 @@
 "use client";
 
+import { preloadBidDialog } from "@/components/lot-page/bid/bid-dialog.lazy";
 import type { BidEntry, BidEntryControl, BidEntryDestination, BidMode } from "@auction/domain";
 import { Button, ButtonLink } from "@auction/ui/lax";
 import { Info } from "lucide-react";
@@ -28,6 +29,11 @@ const WIDTH = {
   barSecondary: BAR_WIDTH,
 } as const;
 
+/** Starts fetching the bid dialog; a failure is dealt with when it is actually opened. */
+function warmBidDialog() {
+  preloadBidDialog().catch(() => {});
+}
+
 export function BidControlButton({
   control,
   emphasis,
@@ -55,6 +61,10 @@ export function BidControlButton({
     <Button
       {...common}
       onClick={() => onOpen(control.start)}
+      // Fetch the dialog as soon as the control is approached, so it opens at once when pressed.
+      onPointerEnter={warmBidDialog}
+      onFocus={warmBidDialog}
+      onPointerDown={warmBidDialog}
       {...(disabledReason ? { disabledReason, "aria-describedby": describedBy } : {})}
     >
       {control.label}

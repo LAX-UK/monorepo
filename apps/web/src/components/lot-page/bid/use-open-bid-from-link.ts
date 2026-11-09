@@ -1,5 +1,6 @@
 "use client";
 
+import { preloadBidDialog } from "@/components/lot-page/bid/bid-dialog.lazy";
 import type { BidEntryControl, BidMode } from "@auction/domain";
 import { useEffect, useRef } from "react";
 
@@ -31,6 +32,7 @@ export function useOpenBidFromLink(
     handled.current = true;
     if (!takeOpenBidRequest()) return;
     if (primary?.control.kind === "open_dialog" && !primary.disabledReason) {
+      preloadBidDialog().catch(() => {});
       onOpen(primary.control.start);
     }
   }, [primary, onOpen]);

@@ -2,6 +2,11 @@ import { useOpenBidFromLink } from "@/components/lot-page/bid/use-open-bid-from-
 import { renderHook } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+const preloadBidDialog = vi.fn().mockResolvedValue({});
+vi.mock("@/components/lot-page/bid/bid-dialog.lazy", () => ({
+  preloadBidDialog: () => preloadBidDialog(),
+}));
+
 type Primary = Parameters<typeof useOpenBidFromLink>[0];
 const openButton: Primary = {
   control: { kind: "open_dialog", start: "next", label: "Bid £10" },
@@ -23,6 +28,17 @@ describe("useOpenBidFromLink", () => {
     expect(onOpen).toHaveBeenCalledTimes(1);
     expect(onOpen).toHaveBeenCalledWith("next");
     expect(window.location.search).toBe("?sale=s1");
+  });
+
+  it("starts fetching the bid dialog before it asks for it to open", () => {
+    visit("?bid=open");
+    const order: string[] = [];
+    preloadBidDialog.mockImplementationOnce(() => {
+      order.push("preload");
+      return Promise.resolve({});
+    });
+    renderHook(() => useOpenBidFromLink(openButton, () => order.push("open")));
+    expect(order).toEqual(["preload", "open"]);
   });
 
   it("does nothing without the request", () => {

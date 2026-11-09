@@ -10,7 +10,7 @@
           "match": []
         },
         "lot": {
-          "budgetKb": 587,
+          "budgetKb": 567,
           "match": ["^/\\(marketing\\)/(lot|artist)/"]
         },
         "checkout": {
