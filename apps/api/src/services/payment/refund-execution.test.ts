@@ -1,6 +1,7 @@
 import type { IPaymentWriteRepository, PaymentRecord } from "@auction/persistence/interfaces";
 import { describe, expect, it, vi } from "vitest";
 import { mockDomainEventSink } from "../../test/domain-event-sink-mock.js";
+import { InMemoryPaymentRefunds } from "../../test/in-memory-payment-refunds.js";
 import type { IDomainEventSink } from "../domain-event-sink.js";
 import type { IPayoutAdjustmentService } from "../interfaces/payout-adjustment.js";
 import type { PaymentRefundReconcileService } from "./payment-refund-reconcile.service.js";
@@ -27,6 +28,7 @@ function baseDeps(overrides: Partial<RefundLedgerDeps> = {}): RefundLedgerDeps {
     payments: {
       applyRefundedInTransaction: vi.fn().mockResolvedValue(true),
     } as unknown as IPaymentWriteRepository,
+    paymentRefunds: new InMemoryPaymentRefunds(),
     transactionRunner: {
       runInTransaction: vi.fn(async (fn: (t: never) => Promise<void>) => fn(tx)),
     } as never,
@@ -37,6 +39,9 @@ function baseDeps(overrides: Partial<RefundLedgerDeps> = {}): RefundLedgerDeps {
     ...overrides,
   };
 }
+
+/** The in-memory record baseDeps wires in. */
+const refundsOf = (deps: RefundLedgerDeps) => deps.paymentRefunds as InMemoryPaymentRefunds;
 
 describe("executePaymentRefundLedger", () => {
   it("publishes admin_manual refund event without reason key", async () => {
@@ -226,5 +231,99 @@ describe("executePaymentRefundLedger", () => {
 
     expect(result.isOk()).toBe(true);
     expect(publish).not.toHaveBeenCalled();
+  });
+
+  describe("the buyer-side refund record", () => {
+    const input = (over: Partial<Parameters<typeof executePaymentRefundLedger>[1]> = {}) => ({
+      payment,
+      adminUserId: "admin-1",
+      stripeRefundId: "re_1" as string | null,
+      via: "admin_manual" as const,
+      sourceEventId: "admin_refund:pay-1",
+      clawbackNote: "Admin refund: pay-1",
+      logViaField: false,
+      ...over,
+    });
+
+    it("records the whole payment as refunded, keyed by the Stripe refund id", async () => {
+      const deps = baseDeps();
+      await executePaymentRefundLedger(deps, input());
+      expect(refundsOf(deps).entries).toEqual([
+        {
+          paymentId: "pay-1",
+          idempotencyKey: "re_1",
+          amountPence: 10_000,
+          currency: "GBP",
+          source: "staff",
+        },
+      ]);
+    });
+
+    it("keys the record by the source event id when Stripe gave no refund id", async () => {
+      const deps = baseDeps();
+      await executePaymentRefundLedger(deps, input({ stripeRefundId: null }));
+      expect(refundsOf(deps).entries.map((e) => e.idempotencyKey)).toEqual(["admin_refund:pay-1"]);
+    });
+
+    it("records the refund of a payment with no seller, which has no payout line to reverse", async () => {
+      const addLine = vi.fn();
+      const deps = baseDeps({
+        payoutAdjustments: {
+          addPaymentLineToOpenPayoutOrCreateClawback: addLine,
+        } as unknown as IPayoutAdjustmentService,
+      });
+      const noSeller = { ...payment, sellerLegalEntityId: null } as unknown as PaymentRecord;
+      const result = await executePaymentRefundLedger(deps, input({ payment: noSeller }));
+      expect(result.isOk()).toBe(true);
+      expect(addLine).not.toHaveBeenCalled();
+      expect(await refundsOf(deps).sumRefundedPence("pay-1")).toEqual({
+        pence: 10_000,
+        otherCurrencies: [],
+      });
+    });
+
+    it("records the refund when there is no payout adjustment service at all", async () => {
+      const deps = baseDeps({ payoutAdjustments: null });
+      await executePaymentRefundLedger(deps, input());
+      expect((await refundsOf(deps).sumRefundedPence("pay-1")).pence).toBe(10_000);
+    });
+
+    it("records a refund once when the same one is reported again", async () => {
+      const deps = baseDeps();
+      await executePaymentRefundLedger(deps, input());
+      await executePaymentRefundLedger(deps, input());
+      expect(refundsOf(deps).entries).toHaveLength(1);
+      expect((await refundsOf(deps).sumRefundedPence("pay-1")).pence).toBe(10_000);
+    });
+
+    it("records nothing for a payment that was already refunded", async () => {
+      const deps = baseDeps({
+        payments: {
+          applyRefundedInTransaction: vi.fn().mockResolvedValue(false),
+        } as unknown as IPaymentWriteRepository,
+      });
+      await executePaymentRefundLedger(deps, input());
+      expect(refundsOf(deps).entries).toEqual([]);
+    });
+
+    it("records it in the transaction that publishes the event", async () => {
+      const order: string[] = [];
+      const deps = baseDeps({
+        paymentRefunds: {
+          recordInTransaction: vi.fn(async () => {
+            order.push("record");
+            return true;
+          }),
+          sumRefundedPenceInTransaction: vi.fn(),
+        },
+        domainEventSink: mockDomainEventSink(
+          vi.fn(async () => {
+            order.push("publish");
+          }),
+        ) as unknown as IDomainEventSink,
+      });
+      await executePaymentRefundLedger(deps, input());
+      expect(order).toEqual(["record", "publish"]);
+    });
   });
 });

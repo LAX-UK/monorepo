@@ -1,4 +1,5 @@
 import type {
+  IPaymentRefundLedger,
   IPaymentRefundReconcileRepository,
   ITransactionRunner,
   PaymentRefundReconcilePayload,
@@ -15,6 +16,7 @@ export class PaymentRefundReconcileService {
     private readonly payoutAdjustments: IPayoutAdjustmentPort | null,
     private readonly publisher: IDomainEventSinkPort,
     private readonly repo: IPaymentRefundReconcileRepository,
+    private readonly paymentRefunds: IPaymentRefundLedger,
   ) {}
 
   async enqueue(input: {
@@ -39,6 +41,14 @@ export class PaymentRefundReconcileService {
             row.stripeRefundId,
           );
           if (!applied) return;
+          // The same key as the first attempt, which rolled back with the failure being retried.
+          await this.paymentRefunds.recordInTransaction(tx, {
+            paymentId: row.paymentId,
+            idempotencyKey: row.stripeRefundId ?? `admin_refund_reconcile:${row.paymentId}`,
+            amountPence: gbpAmountToPence(row.payload.amount),
+            currency: "GBP",
+            source: "staff",
+          });
           if (this.payoutAdjustments && row.payload.sellerLegalEntityId) {
             const negativeAmount = (-gbpAmountToPence(row.payload.amount) / 100).toFixed(2);
             await this.payoutAdjustments.addPaymentLineToOpenPayoutOrCreateClawback({

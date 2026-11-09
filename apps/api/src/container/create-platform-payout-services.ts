@@ -116,6 +116,7 @@ export function createPlatformPayoutServices(
     payoutAdjustmentService,
     domainEventSink,
     paymentRefundReconcileRepository,
+    repos.paymentRefundRepository,
   );
   const invoiceAddressingService = new InvoiceAddressingService(
     paymentRepo,

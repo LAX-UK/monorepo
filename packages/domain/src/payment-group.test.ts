@@ -127,10 +127,7 @@ describe("decidePaymentGroupSettlement", () => {
 describe("attributeGroupRefunds", () => {
   it("adds refunds up per invoice and never spreads one it cannot place", () => {
     const result = attributeGroupRefunds(
-      [
-        { paymentId: "a", amountPence: 1000 },
-        { paymentId: "b", amountPence: 1000 },
-      ],
+      [{ paymentId: "a" }, { paymentId: "b" }],
       [
         { paymentId: "a", amountPence: 500 },
         { paymentId: "a", amountPence: 250 },
@@ -142,12 +139,9 @@ describe("attributeGroupRefunds", () => {
     expect(result.unattributedPence).toBe(140);
   });
 
-  it("caps each invoice at its own amount and reports the excess as unattributed", () => {
+  it("attributes an invoice every refund that names it, even above what it was", () => {
     const result = attributeGroupRefunds(
-      [
-        { paymentId: "a", amountPence: 1000 },
-        { paymentId: "b", amountPence: 500 },
-      ],
+      [{ paymentId: "a" }, { paymentId: "b" }],
       [
         { paymentId: "a", amountPence: 800 },
         { paymentId: "a", amountPence: 800 },
@@ -157,10 +151,10 @@ describe("attributeGroupRefunds", () => {
     );
     expect(result.refundedPenceByPayment).toEqual(
       new Map([
-        ["a", 1000],
-        ["b", 500],
+        ["a", 1600],
+        ["b", 501],
       ]),
     );
-    expect(result.unattributedPence).toBe(601);
+    expect(result.unattributedPence).toBe(0);
   });
 });

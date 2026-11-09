@@ -8,6 +8,7 @@ import type Stripe from "stripe";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { tryClaimProcessedStripeEvent } from "../lib/stripe-processed-event.js";
 import { mockDomainEventSink } from "../test/domain-event-sink-mock.js";
+import { InMemoryPaymentRefunds } from "../test/in-memory-payment-refunds.js";
 import type { IDisputeWebhookRecorder } from "./disputes/dispute-case-recorder.js";
 import type { IDomainEventSink } from "./domain-event-sink.js";
 import type { IPaymentCaptureService } from "./interfaces/payment-capture.js";
@@ -79,6 +80,7 @@ function createWebhookService(deps: {
   disputes?: IDisputeWebhookRecorder;
   unappliedMoney?: IUnappliedMoneyRecorder;
   paymentEligibility?: IPaymentEligibilityGate;
+  paymentRefunds?: InMemoryPaymentRefunds;
 }) {
   const payoutAdjustments = {
     addPaymentLineToOpenPayoutOrCreateClawback: vi.fn().mockResolvedValue(undefined),
@@ -92,6 +94,7 @@ function createWebhookService(deps: {
     sumRefundLineCentsForPayment: vi.fn().mockResolvedValue(0),
     ...deps.payoutRepository,
   } as IPayoutRepository;
+  const paymentRefunds = deps.paymentRefunds ?? new InMemoryPaymentRefunds();
   const publisher = deps.publisher ?? mockDomainEventSink();
   const unappliedMoney = deps.unappliedMoney ?? {
     record: vi.fn().mockResolvedValue(undefined),
@@ -149,8 +152,37 @@ function createWebhookService(deps: {
     unappliedMoney,
     null,
     deps.paymentEligibility ?? null,
+    paymentRefunds,
   );
-  return { svc, payoutAdjustments, paymentCapture, payoutRepository, publisher, unappliedMoney };
+  return {
+    svc,
+    payoutAdjustments,
+    paymentCapture,
+    payoutRepository,
+    publisher,
+    unappliedMoney,
+    paymentRefunds,
+  };
+}
+
+/** A refund already on record for a payment, as an earlier event or staff would have left it. */
+async function recorded(
+  paymentId: string,
+  amountPence: number,
+  source: "card_webhook" | "staff" = "card_webhook",
+) {
+  const refunds = new InMemoryPaymentRefunds();
+  await refunds.recordInTransaction(
+    {},
+    {
+      paymentId,
+      idempotencyKey: `earlier:${paymentId}:${amountPence}`,
+      amountPence,
+      currency: "GBP",
+      source,
+    },
+  );
+  return refunds;
 }
 
 describe("StripePaymentWebhookService dispute webhooks", () => {
@@ -235,9 +267,10 @@ describe("StripePaymentWebhookService.handleChargeRefunded — partial refunds",
       status: "captured",
       amount: "100.00",
     });
+    const paymentRefunds = await recorded("pay_1", 3000);
     const { svc, payoutAdjustments } = createWebhookService({
       db,
-      payoutRepository: { sumRefundLineCentsForPayment: vi.fn().mockResolvedValue(3000) },
+      paymentRefunds,
       payoutAdjustments: { addPaymentLineToOpenPayoutOrCreateClawback: addLine },
     });
     const event = { id: "evt_refund_partial_2", type: "charge.refunded" } as Stripe.Event;
@@ -302,9 +335,10 @@ describe("StripePaymentWebhookService.handleChargeRefunded — partial refunds",
       status: "captured",
       amount: "100.00",
     });
+    const paymentRefunds = await recorded("pay_1", 5000);
     const { svc, payoutAdjustments } = createWebhookService({
       db,
-      payoutRepository: { sumRefundLineCentsForPayment: vi.fn().mockResolvedValue(5000) },
+      paymentRefunds,
       payoutAdjustments: { addPaymentLineToOpenPayoutOrCreateClawback: addLine },
     });
     const event = { id: "evt_refund_stale", type: "charge.refunded" } as Stripe.Event;
@@ -319,6 +353,117 @@ describe("StripePaymentWebhookService.handleChargeRefunded — partial refunds",
 
     expect(result.action).toBe("skipped");
     expect(payoutAdjustments.addPaymentLineToOpenPayoutOrCreateClawback).not.toHaveBeenCalled();
+  });
+});
+
+describe("StripePaymentWebhookService.handleChargeRefunded — the buyer's refund record", () => {
+  beforeEach(() => {
+    vi.mocked(tryClaimProcessedStripeEvent).mockReset();
+    vi.mocked(tryClaimProcessedStripeEvent).mockResolvedValue({ claimed: true });
+  });
+
+  const row = {
+    id: "pay_1",
+    sellerLegalEntityId: "00000000-0000-4000-8000-000000000001",
+    status: "captured",
+    amount: "100.00",
+  };
+  const charge = (amountRefunded: number) =>
+    ({
+      id: "ch_rec",
+      amount: 10000,
+      amount_refunded: amountRefunded,
+      currency: "gbp",
+    }) as Stripe.Charge;
+  const event = (id: string) => ({ id, type: "charge.refunded" }) as Stripe.Event;
+
+  it("records the refund by event id, in the currency of the charge", async () => {
+    const { svc, paymentRefunds } = createWebhookService({ db: mockDbWithPayment(row) });
+    await svc.handleChargeRefunded(event("evt_1"), charge(4000));
+    expect(paymentRefunds.entries).toEqual([
+      {
+        paymentId: "pay_1",
+        idempotencyKey: "evt_1",
+        amountPence: 4000,
+        currency: "GBP",
+        source: "card_webhook",
+      },
+    ]);
+  });
+
+  it("records only the part of each later refund that is new", async () => {
+    const { svc, paymentRefunds } = createWebhookService({ db: mockDbWithPayment(row) });
+    await svc.handleChargeRefunded(event("evt_1"), charge(4000));
+    await svc.handleChargeRefunded(event("evt_2"), charge(7500));
+    expect(paymentRefunds.entries.map((e) => e.amountPence)).toEqual([4000, 3500]);
+    expect((await paymentRefunds.sumRefundedPence("pay_1")).pence).toBe(7500);
+  });
+
+  it("records nothing again when another event reports the same total", async () => {
+    const { svc, paymentRefunds } = createWebhookService({ db: mockDbWithPayment(row) });
+    await svc.handleChargeRefunded(event("evt_1"), charge(4000));
+    const replay = await svc.handleChargeRefunded(event("evt_replayed"), charge(4000));
+    expect(replay).toMatchObject({ action: "skipped", reason: "no_new_refund_amount" });
+    expect(paymentRefunds.entries).toHaveLength(1);
+  });
+
+  it("does not count again a refund staff already recorded for the same money", async () => {
+    const paymentRefunds = await recorded("pay_1", 10000, "staff");
+    const addLine = vi.fn();
+    const { svc } = createWebhookService({
+      db: mockDbWithPayment(row),
+      paymentRefunds,
+      payoutAdjustments: { addPaymentLineToOpenPayoutOrCreateClawback: addLine },
+    });
+    const result = await svc.handleChargeRefunded(event("evt_after_staff"), charge(10000));
+    expect(result).toMatchObject({ action: "skipped", reason: "no_new_refund_amount" });
+    expect(paymentRefunds.entries).toHaveLength(1);
+    expect(addLine).not.toHaveBeenCalled();
+  });
+
+  it("records the refund with the payout line and the event, in one transaction", async () => {
+    const order: string[] = [];
+    const paymentRefunds = new InMemoryPaymentRefunds();
+    const record = paymentRefunds.recordInTransaction.bind(paymentRefunds);
+    paymentRefunds.recordInTransaction = async (tx, entry) => {
+      order.push("record");
+      return record(tx, entry);
+    };
+    const publish = vi.fn(async () => {
+      order.push("publish");
+    });
+    const { svc } = createWebhookService({
+      db: mockDbWithPayment(row),
+      paymentRefunds,
+      publisher: mockDomainEventSink(publish),
+      payoutAdjustments: {
+        addPaymentLineToOpenPayoutOrCreateClawback: vi.fn(async () => {
+          order.push("payout_line");
+        }),
+      },
+    });
+    await svc.handleChargeRefunded(event("evt_1"), charge(10000));
+    expect(order).toEqual(["record", "payout_line", "publish"]);
+  });
+
+  it("fails, to be retried, when the refund record is not wired", async () => {
+    const unwired = new StripePaymentWebhookService(
+      {
+        runInTransaction: async (fn: (tx: never) => Promise<unknown>) => fn({} as never),
+      } as never,
+      {
+        findPaymentRow: async () => ({ ...row, sellerLegalEntityId: row.sellerLegalEntityId }),
+      } as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      mockDomainEventSink(),
+      { record: vi.fn() },
+    );
+    await expect(unwired.handleChargeRefunded(event("evt_1"), charge(4000))).rejects.toThrow(
+      "Payment refunds are not wired",
+    );
   });
 });
 

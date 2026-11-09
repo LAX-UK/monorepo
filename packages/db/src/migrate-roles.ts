@@ -210,6 +210,12 @@ export const API_READ_TABLES = [
 /** Product-local profile tables owned by apps/api (Bid). */
 export const API_PRODUCT_PROFILE_TABLES = ["bid_user_profile"] as const;
 export const API_SSF_RECEIVER_TABLES = ["bid_ssf_replay"] as const;
+/**
+ * What buyers were refunded for a payment: written beside each `payment.refunded` event and read
+ * for the invoice document. Append-only, so api_app gets INSERT and SELECT only; shop_app has no
+ * access.
+ */
+export const API_PAYMENT_REFUND_TABLES = ["payment_refund"] as const;
 /** Shop Identity owns only its local Identity projection. */
 export const SHOP_PRODUCT_PROFILE_TABLES = [
   "shop_user_profile",
@@ -490,6 +496,11 @@ export const WORKER_INVOICE_RAISE_INSERT_TABLES = [
   "bid_invoice",
   "bid_invoice_line",
 ] as const;
+/**
+ * The refund reconcile job re-applies a staff refund whose ledger update failed, and records the
+ * buyer-side refund with it (reading what is recorded first). Never changed or deleted.
+ */
+export const WORKER_PAYMENT_REFUND_TABLES = ["payment_refund"] as const;
 export const WORKER_INVOICE_RAISE_FULFILMENT_TABLES = ["lot_fulfilment"] as const;
 
 /** Worker-local finance cron: Xero OAuth, external refs, webhook replay, refund reconcile. */
@@ -911,6 +922,10 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
             await grantIfExists(client, "api_app", tableName, "INSERT, SELECT, DELETE");
             continue;
           }
+          if ((API_PAYMENT_REFUND_TABLES as readonly string[]).includes(tableName)) {
+            await grantIfExists(client, "api_app", tableName, "INSERT, SELECT");
+            continue;
+          }
           await grantIfExists(client, "api_app", tableName, "ALL PRIVILEGES");
         }
         for (const tableName of WORKER_READ_TABLES) {
@@ -1082,6 +1097,9 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
           await grantIfExists(client, "worker_app", tableName, "SELECT, UPDATE");
         }
         for (const tableName of WORKER_INVOICE_RAISE_INSERT_TABLES) {
+          await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT");
+        }
+        for (const tableName of WORKER_PAYMENT_REFUND_TABLES) {
           await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT");
         }
         for (const tableName of WORKER_INVOICE_RAISE_FULFILMENT_TABLES) {

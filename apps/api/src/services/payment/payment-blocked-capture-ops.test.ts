@@ -1,5 +1,6 @@
 import type { BlockedCapture, PaymentRecord } from "@auction/persistence/interfaces";
 import { describe, expect, it, vi } from "vitest";
+import { InMemoryPaymentRefunds } from "../../test/in-memory-payment-refunds.js";
 import { refundBlockedCapture, reinstateBlockedCapture } from "./payment-blocked-capture-ops.js";
 
 const FINANCE = ["finance"] as never;
@@ -45,14 +46,16 @@ function setup(
     isConfigured: () => true,
     createRefund: vi.fn().mockResolvedValue({ kind: "created", refundId: "re_1" }),
   };
+  const paymentRefunds = new InMemoryPaymentRefunds();
   const deps = {
     payments,
+    paymentRefunds,
     paymentCapture,
     stripePayments,
     transactionRunner: { runInTransaction: vi.fn((fn: (tx: unknown) => unknown) => fn({})) },
     domainEventSink: { withTx: () => ({ publish }) },
   } as never;
-  return { deps, payments, paymentCapture, stripePayments, publish };
+  return { deps, payments, paymentCapture, stripePayments, publish, paymentRefunds };
 }
 
 describe("reinstateBlockedCapture", () => {
@@ -179,6 +182,62 @@ describe("refundBlockedCapture", () => {
         }),
       }),
     );
+  });
+
+  it("records the refund of what Stripe took, keyed by the Stripe refund id", async () => {
+    const { deps, paymentRefunds } = setup();
+    await refundBlockedCapture(deps, "admin-1", "staff", "pay-1", FINANCE, "x");
+    expect(paymentRefunds.entries).toEqual([
+      {
+        paymentId: "pay-1",
+        idempotencyKey: "re_1",
+        amountPence: 125_000,
+        currency: "GBP",
+        source: "blocked_capture",
+      },
+    ]);
+  });
+
+  it("keys the record by the payment when Stripe gave no refund id, and records it once", async () => {
+    const { deps, stripePayments, paymentRefunds } = setup();
+    stripePayments.createRefund.mockResolvedValue({ kind: "already_refunded" });
+    await refundBlockedCapture(deps, "admin-1", "staff", "pay-1", FINANCE, "x");
+    await refundBlockedCapture(deps, "admin-1", "staff", "pay-1", FINANCE, "x");
+    expect(paymentRefunds.entries.map((e) => e.idempotencyKey)).toEqual([
+      "blocked_capture_refund:pay-1",
+    ]);
+  });
+
+  it("records the payment amount when the blocked capture holds none", async () => {
+    const { deps, stripePayments, paymentRefunds } = setup({
+      blocked: { ...blocked, amountCents: 0 },
+    });
+    await refundBlockedCapture(deps, "admin-1", "staff", "pay-1", FINANCE, "x");
+    expect(stripePayments.createRefund).toHaveBeenCalledWith(
+      expect.objectContaining({ amount: 125_000 }),
+    );
+    expect(paymentRefunds.entries[0]?.amountPence).toBe(125_000);
+  });
+
+  it("records nothing when the payment was no longer closed in the transaction", async () => {
+    const { deps, payments, paymentRefunds } = setup();
+    payments.applyRefundedFromCancelledInTransaction.mockResolvedValue(false);
+    await refundBlockedCapture(deps, "admin-1", "staff", "pay-1", FINANCE, "x");
+    expect(paymentRefunds.entries).toEqual([]);
+  });
+
+  it("refuses before asking Stripe when the refund record is not wired", async () => {
+    const { deps, stripePayments } = setup();
+    const result = await refundBlockedCapture(
+      { ...(deps as object), paymentRefunds: null } as never,
+      "admin-1",
+      "staff",
+      "pay-1",
+      FINANCE,
+      "x",
+    );
+    expect(result._unsafeUnwrapErr().status).toBe(500);
+    expect(stripePayments.createRefund).not.toHaveBeenCalled();
   });
 
   it("does not refund twice", async () => {

@@ -105,6 +105,7 @@ export * from "./legal-entity-documents.js";
 export * from "./legal-entity-onboarding-progress.js";
 export * from "./payouts.js";
 export * from "./payment-refund-reconcile.js";
+export * from "./payment-refund.js";
 export * from "./kyc.js";
 export * from "./kyc-retention-tombstone.js";
 export * from "./visitor-sale-alerts.js";

@@ -1,6 +1,5 @@
 import type Stripe from "stripe";
 import { tryClaimProcessedStripeEvent } from "../../lib/stripe-processed-event.js";
-import { payoutRepoForTx } from "../payout/payout-helpers.js";
 import { type StripePaymentWebhookDeps, findPaymentRow } from "./payment-webhook-lookup.js";
 import {
   PAYMENT_WEBHOOK_EVENT_SOURCE,
@@ -62,9 +61,12 @@ export async function handleChargeRefunded(
       return { processed: true, action: "skipped", reason: "refund_of_money_not_applied" };
     }
 
-    const payoutRepo = payoutRepoForTx(deps.payoutRepository, tx);
     const cumulativeRefundedCents = charge.amount_refunded ?? charge.amount ?? 0;
-    const priorRefundedCents = await payoutRepo.sumRefundLineCentsForPayment(paymentRow.id);
+    // What is already recorded, whoever recorded it (an earlier event, or staff refunding it).
+    const { pence: priorRefundedCents } = await deps.paymentRefunds.sumRefundedPenceInTransaction(
+      tx,
+      paymentRow.id,
+    );
     const deltaCents = cumulativeRefundedCents - priorRefundedCents;
 
     if (deltaCents <= 0) {
@@ -75,6 +77,14 @@ export async function handleChargeRefunded(
     if (isFullRefund) {
       await deps.payments.applyRefundedInTransaction(tx, paymentRow.id, null);
     }
+
+    await deps.paymentRefunds.recordInTransaction(tx, {
+      paymentId: paymentRow.id,
+      idempotencyKey: event.id,
+      amountPence: deltaCents,
+      currency: charge.currency,
+      source: "card_webhook",
+    });
 
     const negativeAmount = (-deltaCents / 100).toFixed(2);
     await deps.payoutAdjustments.addPaymentLineToOpenPayoutOrCreateClawback({

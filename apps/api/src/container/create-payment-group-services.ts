@@ -2,8 +2,8 @@ import type { Database } from "@auction/db";
 import type { IPaymentEligibilityGate } from "@auction/finance-runtime";
 import type {
   ILotRepository,
+  IPaymentRefundLedger,
   IPaymentWriteRepository,
-  IPayoutRepository,
   ITransactionRunner,
   IUserRepository,
 } from "@auction/persistence/interfaces";
@@ -36,7 +36,6 @@ import {
 import { revokeOpenStripeCheckoutForPayment } from "../services/payment/checkout-orchestrator.js";
 import { ensureXeroInvoiceForPayment } from "../services/payment/ensure-xero-invoice.js";
 import type { IUnappliedMoneyRecorder } from "../services/payment/unapplied-money.recorder.js";
-import { payoutRepoForTx } from "../services/payout/payout-helpers.js";
 import type { PaymentGroupWebhookDeps } from "../services/stripe-webhook/create-payment-webhook-handlers.js";
 import { PAYMENT_WEBHOOK_EVENT_SOURCE } from "../services/stripe-webhook/payment-webhook-types.js";
 import type { IStripePaymentGateway } from "../services/stripe/stripe-payment-gateway.js";
@@ -54,7 +53,8 @@ export type CreatePaymentGroupServicesInput = {
   stripeClientFactory: IStripeClientFactory;
   transactionRunner: ITransactionRunner;
   payments: IPaymentWriteRepository;
-  payouts: IPayoutRepository;
+  /** What buyers were refunded, which each refund on a group's charge is measured against. */
+  paymentRefunds: IPaymentRefundLedger;
   payoutAdjustments: IPayoutAdjustmentService;
   capture: IPaymentCaptureInTransaction;
   events: IDomainEventSink;
@@ -142,8 +142,7 @@ export function createPaymentGroupServices(
     gateway,
     payments: input.payments,
     payoutAdjustments: input.payoutAdjustments,
-    refundedCentsSoFar: (tx, paymentId) =>
-      payoutRepoForTx(input.payouts, tx).sumRefundLineCentsForPayment(paymentId),
+    paymentRefunds: input.paymentRefunds,
     events: input.events,
     claims,
   });
