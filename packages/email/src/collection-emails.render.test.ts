@@ -50,6 +50,16 @@ describe("collection booked email", () => {
   });
 });
 
+describe("who the emails come from", () => {
+  it("name LAX Bid's company in the footer, and the gallery only as the place of the visit", async () => {
+    const rendered = await renderEmail("collection-booked", visit);
+    expect(rendered.text).toContain("London Auction Xchange");
+    expect(rendered.text).not.toMatch(/London Art Exchange Ltd/);
+    // The visit itself is at the gallery.
+    expect(rendered.text).toContain("London Art Exchange, 156 New Cavendish Street");
+  });
+});
+
 describe("collection changed email", () => {
   it("says what it moved from and to", async () => {
     const rendered = await renderEmail("collection-changed", {
