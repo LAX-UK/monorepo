@@ -236,7 +236,15 @@ async function harness(options: {
   async function linkFromSecurity(
     email: string,
     claims: Record<string, unknown>,
-    options: { sub?: string; password?: string; formPost?: boolean } = {},
+    options: {
+      sub?: string;
+      password?: string;
+      formPost?: boolean;
+      /** A link started some other way than the issuer's hand-off. */
+      withoutMarker?: boolean;
+      /** What the mark says; the hand-off sends `true`. */
+      marker?: unknown;
+    } = {},
   ) {
     const signedIn = await auth.handler(
       new Request(`${BASE}/api/auth/sign-in/email`, {
@@ -255,6 +263,9 @@ async function harness(options: {
         callbackURL: `${BASE}/account-action/done?provider=google`,
         errorCallbackURL: `${BASE}/account-action/done?provider=google`,
         disableRedirect: true,
+        ...(options.withoutMarker
+          ? {}
+          : { additionalData: { accountAction: options.marker ?? true } }),
       },
       asResponse: true,
     });
@@ -810,6 +821,29 @@ describe("SM3: linking from Security", () => {
       providerEmail: "abc@privaterelay.appleid.com",
       providerEmailHidden: true,
     });
+  });
+
+  it("refuses a link that did not come through the hand-off, even from the person's own session", async () => {
+    const response = await h.linkFromSecurity(
+      "ada@example.com",
+      { email: "attacker@evil.example" },
+      { withoutMarker: true },
+    );
+    expect(response.status).toBe(403);
+    expect(await response.text()).toContain("link_not_started_from_account");
+    expect(providerAccounts(h)).toHaveLength(0);
+    expect(h.notices.filter((notice) => notice.kind === "sign_in_method_added")).toEqual([]);
+    expect(h.events.filter((event) => event.type === "user.sign_in_method_added")).toEqual([]);
+  });
+
+  it("refuses a marked link whose mark is not exactly true", async () => {
+    const response = await h.linkFromSecurity(
+      "ada@example.com",
+      { email: "ada.work@corp.example" },
+      { marker: "true" },
+    );
+    expect(response.status).toBe(403);
+    expect(providerAccounts(h)).toHaveLength(0);
   });
 
   it("refuses a provider account already linked to someone else, and links nothing", async () => {

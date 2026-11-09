@@ -20,6 +20,8 @@ export const SOCIAL_SIGN_IN_ERROR_CODES = {
   accountNotLinked: "account_not_linked",
   /** The account is a staff account; staff sign in with a password and two-step verification. */
   staffNotAllowed: "staff_social_sign_in_not_allowed",
+  /** A link was attempted without the issuer's account-action hand-off, so it was refused. */
+  linkNotStartedFromAccount: "link_not_started_from_account",
   /** The facts the decision needs could not be read, so the sign-in was stopped. */
   unavailable: "social_sign_in_unavailable",
 } as const;

@@ -137,6 +137,8 @@ export type Auth = {
         callbackURL: string;
         errorCallbackURL: string;
         disableRedirect: true;
+        /** Kept in the link's state; `{ accountAction: true }` marks the issuer's hand-off. */
+        additionalData?: Record<string, unknown>;
       };
       asResponse: true;
     }): Promise<Response>;

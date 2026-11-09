@@ -370,6 +370,8 @@ export function mountOidcRoutes(app: Hono, options: OidcRouteMountOptions): void
             callbackURL: done,
             errorCallbackURL: done,
             disableRedirect: true,
+            // The mark the link policy looks for: a link without it did not come from here.
+            additionalData: { accountAction: true },
           },
           asResponse: true,
         });

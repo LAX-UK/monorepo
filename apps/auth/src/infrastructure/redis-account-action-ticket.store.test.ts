@@ -57,7 +57,9 @@ describe("RedisAccountActionTicketStore", () => {
   it("keeps a ticket for the time asked and never keeps the secret itself", async () => {
     const { redis, data } = fakeRedis();
     const secret = await new RedisAccountActionTicketStore(redis).issue(TICKET, 120);
-    const [[key, entry]] = [...data.entries()];
+    const stored = [...data.entries()][0];
+    if (!stored) throw new Error("nothing was stored");
+    const [key, entry] = stored;
     expect(entry.ttl).toBe(120);
     expect(key).toBe(`auth:account-action:${ticketKey(secret)}`);
     expect(key).not.toContain(secret);

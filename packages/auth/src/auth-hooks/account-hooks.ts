@@ -31,6 +31,7 @@ function rawAdapter(context: EndpointContext) {
 const NOT_LINKED_MESSAGE =
   "There is already a LAX Account for this email. Sign in the way you usually do.";
 const STAFF_MESSAGE = "Staff accounts cannot sign in with Google or Apple.";
+const LINK_NOT_FROM_ACCOUNT_MESSAGE = "Add Google or Apple from LAX Account, under Security.";
 
 export function buildAccountDatabaseHooks(deps: AuthHookDeps) {
   /**
@@ -44,6 +45,18 @@ export function buildAccountDatabaseHooks(deps: AuthHookDeps) {
     if (!isSocialProviderId(acct.providerId)) return;
     const flow = socialFlow(context);
     if (flow.newUser) return; // a first sign-up creates its own account; nothing to join
+    // A link made on the person's say-so (state.link) is only ever started by the issuer's
+    // account-action hand-off, which marks it. A link without the mark did not come through the
+    // ticket, the recent sign-in or the one email, so it is refused here too: with different
+    // addresses allowed, the library's own link endpoint being switched off must not be the only
+    // thing standing between a live session and a new way in.
+    const state = await getOAuthState().catch(() => null);
+    if (state?.link && (state as { accountAction?: unknown }).accountAction !== true) {
+      throw new APIError("FORBIDDEN", {
+        message: LINK_NOT_FROM_ACCOUNT_MESSAGE,
+        code: SOCIAL_SIGN_IN_ERROR_CODES.linkNotStartedFromAccount,
+      });
+    }
     const subject = await readSocialSubjectReporting(deps, acct.userId);
     if (!mayUseSocialSignIn(subject)) {
       flow.blockedLink = "staff";
@@ -59,7 +72,6 @@ export function buildAccountDatabaseHooks(deps: AuthHookDeps) {
     }
     // A link the person started themselves from Security, after confirming it is them, is
     // theirs to make; only the staff rule above applies to it.
-    const state = await getOAuthState().catch(() => null);
     if (state?.link) return;
     const decision = decideImplicitLink(subject);
     if (decision.kind === "block") {
