@@ -6,7 +6,8 @@
 /**
  * `open` (checkout issued) -> `processing` (bank transfer on its way) -> `paid`; `open` or
  * `processing` -> `cancelled` when the checkout is cancelled, expires or fails; `paid` ->
- * `refunded` once the money has gone back to the buyer.
+ * `refunded` once all of the money has gone back to the buyer. A part refund leaves it `paid`
+ * with the amount returned so far in `refundedMinor`.
  */
 export const PRIVATE_SALE_PAYMENT_STATUSES = [
   "open",
@@ -34,7 +35,11 @@ export type PrivateSaleDealPayment = {
   stripeCheckoutSessionId: string | null;
   stripePaymentIntentId: string | null;
   stripeChargeId: string | null;
-  /** Set once the money has been returned. */
+  /** Set when finance recorded a bank transfer that landed outside the checkout. */
+  recordedByUserId: string | null;
+  /** The bank's reference for a recorded transfer. */
+  bankReference: string | null;
+  /** The total returned so far; the payment is `refunded` once it equals the amount. */
   refundedMinor: number;
   stripeRefundId: string | null;
   paidAt: Date | null;

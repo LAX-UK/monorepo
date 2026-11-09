@@ -47,6 +47,7 @@ function setup(
       isConfigured: () => over.configured ?? true,
       createCheckout,
       expireCheckout: async () => undefined,
+      checkoutStatus: async () => "expired" as const,
     },
     stripeCustomers: { isConfigured: () => true, findOrCreateForLegalEntity: async () => "cus_1" },
     users: { findById: async () => ({ email: "buyer@test.dev", name: "Buyer" }) } as never,
