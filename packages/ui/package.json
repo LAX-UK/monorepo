@@ -3,6 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "sideEffects": ["**/*.css"],
   "description": "Shared UI primitives for Auction apps (shadcn/Radix-friendly).",
   "exports": {
     ".": {
