@@ -177,7 +177,10 @@ function HandOverForm({ booking, onClose }: { booking: DeskBookingView; onClose:
             const readiness = lotReadiness(lot);
             const id = `desk-lot-${lot.lotId}`;
             return (
-              <li key={lot.lotId} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
+              <li
+                key={lot.lotId}
+                className="flex flex-wrap items-center gap-x-3 gap-y-2 py-3 first:pt-0 last:pb-0"
+              >
                 <StaffCheckbox
                   id={id}
                   checked={ticked.includes(lot.lotId)}
@@ -190,7 +193,7 @@ function HandOverForm({ booking, onClose }: { booking: DeskBookingView; onClose:
                   }
                 />
                 <RecordThumbnail src={lot.image} title={lot.title} className="size-10" />
-                <label htmlFor={id} className="min-w-0 flex-1 text-staff-sm text-staff-fg">
+                <label htmlFor={id} className="min-w-0 flex-1 basis-40 text-staff-sm text-staff-fg">
                   {lotLabel(lot)}
                 </label>
                 <StatusBadge tone={readiness.tone}>{readiness.label}</StatusBadge>
