@@ -3,7 +3,10 @@ import { shopOrder } from "@auction/db/schema";
 import { and, asc, eq, isNotNull, lt } from "drizzle-orm";
 import type pino from "pino";
 import type { PaymentCheckoutGateway } from "../application/ports/commerce.ports.js";
-import { expireShopCheckoutSession } from "./drizzle-payment-event.processor.js";
+import {
+  deferCheckoutReaperForFailedExpiry,
+  expireShopCheckoutSession,
+} from "./drizzle-payment-event.processor.js";
 
 const REAPER_BATCH_SIZE = 25;
 export const SHOP_CHECKOUT_REAPER_EVENT_SOURCE = "shop-api-reaper";
@@ -49,6 +52,7 @@ export async function reapStaleShopCheckouts(
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
+      await deferReaperForFailedOrder(db, row.id, now, log);
       if (log) {
         log.error({ orderId: row.id, err: message }, "shop checkout reaper failed for order");
       } else {
@@ -57,4 +61,27 @@ export async function reapStaleShopCheckouts(
     }
   }
   return expired;
+}
+
+/**
+ * An order the reaper cannot end (Stripe refuses, or the order is in a state it cannot expire) is
+ * pushed back, so it stops holding a place in the oldest-first batch and the orders behind it
+ * are still expired. It comes round again later.
+ */
+async function deferReaperForFailedOrder(
+  db: Database,
+  orderId: string,
+  now: Date,
+  log?: pino.Logger,
+): Promise<void> {
+  try {
+    await deferCheckoutReaperForFailedExpiry(db, orderId, now);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    if (log) {
+      log.error({ orderId, err: message }, "shop checkout reaper could not defer order");
+    } else {
+      console.error(`shop checkout reaper could not defer order ${orderId}: ${message}`);
+    }
+  }
 }

@@ -20,7 +20,11 @@ import type {
   PaymentEventProcessor,
 } from "../application/ports/payment-event.processor.js";
 import type { ShopNotificationPublisher } from "../application/ports/shop-notification.publisher.js";
-import { ShopPaymentWebhookError } from "../errors/shop-payment-webhook.error.js";
+import {
+  ShopPaymentWebhookError,
+  type UnappliedPaymentFailure,
+  isUnappliedPaymentFailure,
+} from "../errors/shop-payment-webhook.error.js";
 import { liveEditionSnapshots } from "./edition-snapshot-source.js";
 import { recordGuestOrderPaid } from "./guest-checkout/guest-lead-events.js";
 import { guestOrderLinkUrl, issueGuestOrderLink } from "./guest-checkout/guest-order-link-token.js";
@@ -37,11 +41,13 @@ import {
 } from "./shop-domain-event-publisher.js";
 import { resolveListingStatusAfterReservationRelease } from "./shop-edition-listing-on-release.js";
 import { findOrCreateBuyerParty } from "./shop-party.js";
+import { judgePayment } from "./shop-payment-verdict.js";
 import { restoreBasketLinesFromOrder } from "./shop-restore-basket-from-order.js";
 import {
   SHOP_PAYMENT_FAILURE_REASONS,
+  type ShopUnappliedReason,
   type UnappliedMoneyLookup,
-  isShopPaymentFailure,
+  closesOrder,
   recordUnappliedShopPayment,
 } from "./shop-unapplied-payment.js";
 
@@ -304,17 +310,20 @@ type PaidEvent = {
   paidAt: Date;
   customerEmail?: string | null;
   paymentIntentId?: string | null;
+  /** Whether Stripe sent it from live mode; only live money for an unknown order is recorded. */
+  livemode?: boolean;
 };
 
 /**
  * Applies a paid Stripe Checkout Session to its order, or keeps the money from being lost.
  *
  * A payment that cannot be applied and that Stripe cannot cure by sending it again (the amount
- * is not the order's, the session is not the order's, the print is no longer held for it, or the
- * order was already paid in another session) used to answer 400, and Stripe gave up after a few
- * days with no one told. Now the failed attempt is rolled back whole, so the order and its stock
- * are untouched, and the money is recorded as a finance task in its own transaction. Stripe is
- * answered only once that is stored: if recording fails the webhook fails and is sent again.
+ * is not the order's, the session is not the order's, the print is no longer held for it, the
+ * order was already paid in another session, or it was closed) used to answer 400, and Stripe
+ * gave up after a few days with no one told. Now the failed attempt is rolled back whole, and the
+ * money is recorded as a finance task in its own transaction, which also closes an order that
+ * can no longer be paid. Stripe is answered only once that is stored: if recording fails the
+ * webhook fails and is sent again.
  */
 export async function completeShopCheckoutSession(
   db: Database,
@@ -324,61 +333,185 @@ export async function completeShopCheckoutSession(
   try {
     return await applyShopPayment(db, input, options);
   } catch (error) {
-    if (
-      !(error instanceof ShopPaymentWebhookError) ||
-      error.retryable ||
-      !isShopPaymentFailure(error.message)
-    ) {
-      throw error;
+    if (!(error instanceof ShopPaymentWebhookError) || error.retryable) throw error;
+    if (isUnappliedPaymentFailure(error.code)) {
+      return recordUnappliedPayment(db, input, options, error.code);
     }
-    return recordUnappliedPayment(db, input, options, error.message);
+    if (error.code === "payment_not_found") {
+      return recordPaymentForUnknownOrder(db, input, options, error);
+    }
+    throw error;
   }
 }
 
-/** Records the money of a payment that could not be applied, in its own transaction. */
+type PaymentRecord = {
+  reason: ShopUnappliedReason;
+  /** The order the money was paid for; null when none exists here. */
+  order: { id: string; reference: string | null; status: string } | null;
+  /** The order was closed by this payment, so its prints are free and its basket is back. */
+  orderClosed: boolean;
+};
+
+/**
+ * Records the money that could not be applied: the finance task, and an ops alert as an extra.
+ * The one place both are made, so every reason reads the same way to finance and to ops.
+ */
+async function recordPaymentForFinance(
+  tx: Database,
+  events: ReturnType<typeof createShopDomainEventPublisher>,
+  options: CheckoutTransitionOptions,
+  input: PaidEvent,
+  record: PaymentRecord,
+): Promise<void> {
+  const unappliedMoney = options.unappliedMoney;
+  if (!unappliedMoney) throw new Error("unapplied_money_reader_not_configured");
+  await recordUnappliedShopPayment(tx, events, unappliedMoney, {
+    reason: record.reason,
+    order: record.order,
+    sessionId: input.sessionId,
+    paymentIntentId: input.paymentIntentId ?? null,
+    amountPence: input.amountTotalPence,
+    eventId: input.eventId,
+  });
+  await queueCheckoutOpsAlertInTx(tx, options, {
+    ...unappliedPaymentAlert(input, record),
+    orderId: input.orderId,
+  });
+}
+
+function unappliedPaymentAlert(
+  input: PaidEvent,
+  record: PaymentRecord,
+): { idempotencyKey: string; alertKind: string; detail: string } {
+  const paid = `Stripe session ${input.sessionId} paid ${input.amountTotalPence} pence`;
+  if (record.reason === "shop_order_paid_after_close") {
+    return {
+      idempotencyKey: `terminal-paid:${input.eventId}`,
+      alertKind: "Paid webhook for terminal order",
+      detail: `${paid} while order status is ${record.order?.status}. Manual refund review may be required.`,
+    };
+  }
+  if (record.reason === "shop_order_not_found") {
+    return {
+      idempotencyKey: `unapplied-payment:${input.eventId}`,
+      alertKind: "Shop payment for an unknown order",
+      detail: `${paid} for order ${input.orderId}, which does not exist. Finance has a task.`,
+    };
+  }
+  return {
+    idempotencyKey: `unapplied-payment:${input.eventId}`,
+    alertKind: "Shop payment that could not be applied",
+    detail: `${paid}, which could not be applied to the order (${record.reason}). ${
+      record.orderClosed
+        ? "The order was closed, its prints released and its basket restored."
+        : "Nothing was changed."
+    } Finance has a task.`,
+  };
+}
+
+/** Ends an order that can no longer be paid: its own session is spent, so nothing would ever close it. */
+async function closeOrderForUnappliedPayment(
+  tx: Database,
+  order: typeof shopOrder.$inferSelect,
+  events: ReturnType<typeof createShopDomainEventPublisher>,
+): Promise<void> {
+  await tx
+    .update(shopOrder)
+    .set({ status: "payment_failed", updatedAt: new Date() })
+    .where(eq(shopOrder.id, order.id));
+  await closeDeliveryQuoteForOrder(tx, order.id, "expired");
+  await releaseReservedEditionsForOrder(tx, order.id, events);
+  await restoreBasketLinesFromOrder(tx, order, order.id);
+}
+
+/**
+ * Records the money of a payment that could not be applied, in its own transaction. The order is
+ * read again under its lock, so the reason is the order's state now and not what it was when the
+ * first attempt failed.
+ */
 async function recordUnappliedPayment(
   db: Database,
   input: PaidEvent,
   options: CheckoutTransitionOptions,
-  failure: keyof typeof SHOP_PAYMENT_FAILURE_REASONS,
+  attempted: UnappliedPaymentFailure,
 ): Promise<CompleteCheckoutOutcome> {
-  const unappliedMoney = options.unappliedMoney;
-  if (!unappliedMoney) throw new Error("unapplied_money_reader_not_configured");
   const events = createShopDomainEventPublisher(options.domainEventMode ?? "off");
   return db.transaction(async (tx) => {
-    const [claim] = await tx
-      .insert(shopProcessedPaymentEvent)
-      .values({ eventId: input.eventId, source: "stripe" })
-      .onConflictDoNothing()
-      .returning({ eventId: shopProcessedPaymentEvent.eventId });
-    if (!claim) return "duplicate";
-    const [order] = await tx
-      .select({
-        id: shopOrder.id,
-        reference: shopOrder.reference,
-        status: shopOrder.status,
-      })
+    const database = tx as Database;
+    if (!(await claimPaymentEvent(database, input.eventId))) return "duplicate";
+    const [order] = await database
+      .select()
       .from(shopOrder)
       .where(eq(shopOrder.id, input.orderId))
       .for("update")
       .limit(1);
     if (!order) throw new ShopPaymentWebhookError("payment_not_found", { retryable: false });
-    await recordUnappliedShopPayment(tx as Database, events, unappliedMoney, {
+    const verdict = judgePayment(order, input);
+    if (verdict.kind === "already_applied") return "processed";
+    // A print that was no longer held is found only by applying the payment: keep that finding.
+    const failure = verdict.kind === "unapplied" ? verdict.failure : attempted;
+    const orderClosed = closesOrder(failure) && order.status === "pending_payment";
+    if (orderClosed) await closeOrderForUnappliedPayment(database, order, events);
+    await recordPaymentForFinance(database, events, options, input, {
       reason: SHOP_PAYMENT_FAILURE_REASONS[failure],
-      order,
-      sessionId: input.sessionId,
-      paymentIntentId: input.paymentIntentId ?? null,
-      amountPence: input.amountTotalPence,
-      eventId: input.eventId,
+      order: { id: order.id, reference: order.reference, status: order.status },
+      orderClosed,
     });
-    await queueCheckoutOpsAlertInTx(tx as Database, options, {
-      idempotencyKey: `unapplied-payment:${input.eventId}`,
-      alertKind: "Shop payment that could not be applied",
-      orderId: input.orderId,
-      detail: `Stripe session ${input.sessionId} paid ${input.amountTotalPence} pence, which could not be applied to the order (${failure}). Nothing was changed; finance has a task.`,
+    return failure === "paid_after_close" ? "terminal_acknowledged" : "unapplied_recorded";
+  });
+}
+
+/**
+ * A payment for an order that does not exist here. In live mode it is real money and becomes a
+ * finance task with no order. In test mode it is a stray event: it is logged and ops are told,
+ * and the webhook still answers 400.
+ */
+async function recordPaymentForUnknownOrder(
+  db: Database,
+  input: PaidEvent,
+  options: CheckoutTransitionOptions,
+  notFound: ShopPaymentWebhookError,
+): Promise<CompleteCheckoutOutcome> {
+  const events = createShopDomainEventPublisher(options.domainEventMode ?? "off");
+  if (!input.livemode) {
+    console.error(
+      JSON.stringify({
+        msg: "shop_payment_unknown_order_test_mode",
+        orderId: input.orderId,
+        sessionId: input.sessionId,
+        paymentIntentId: input.paymentIntentId ?? null,
+        amountPence: input.amountTotalPence,
+      }),
+    );
+    await db.transaction((tx) =>
+      queueCheckoutOpsAlertInTx(tx as Database, options, {
+        idempotencyKey: `unknown-order-test:${input.eventId}`,
+        alertKind: "Test-mode payment for an unknown order",
+        orderId: input.orderId,
+        detail: `Stripe session ${input.sessionId} was paid in test mode for order ${input.orderId}, which does not exist.`,
+      }),
+    );
+    throw notFound;
+  }
+  return db.transaction(async (tx) => {
+    if (!(await claimPaymentEvent(tx as Database, input.eventId))) return "duplicate";
+    await recordPaymentForFinance(tx as Database, events, options, input, {
+      reason: "shop_order_not_found",
+      order: null,
+      orderClosed: false,
     });
     return "unapplied_recorded";
   });
+}
+
+/** Marks a Stripe event as handled; false when it already was, so a replay does nothing. */
+async function claimPaymentEvent(tx: Database, eventId: string): Promise<boolean> {
+  const [claim] = await tx
+    .insert(shopProcessedPaymentEvent)
+    .values({ eventId, source: "stripe" })
+    .onConflictDoNothing()
+    .returning({ eventId: shopProcessedPaymentEvent.eventId });
+  return Boolean(claim);
 }
 
 async function applyShopPayment(
@@ -388,12 +521,7 @@ async function applyShopPayment(
 ): Promise<CompleteCheckoutOutcome> {
   const events = createShopDomainEventPublisher(options.domainEventMode ?? "off");
   return db.transaction(async (tx) => {
-    const [claim] = await tx
-      .insert(shopProcessedPaymentEvent)
-      .values({ eventId: input.eventId, source: "stripe" })
-      .onConflictDoNothing()
-      .returning({ eventId: shopProcessedPaymentEvent.eventId });
-    if (!claim) return "duplicate";
+    if (!(await claimPaymentEvent(tx as Database, input.eventId))) return "duplicate";
 
     const locked = await tx
       .select()
@@ -405,40 +533,11 @@ async function applyShopPayment(
     if (!order) {
       throw new ShopPaymentWebhookError("payment_not_found", { retryable: false });
     }
-    if (order.status === "paid") {
-      // The same session again (another event for one payment) is nothing new. A payment in a
-      // different session is a second payment for an order already paid: money to give back.
-      if (!order.stripeCheckoutSessionId || order.stripeCheckoutSessionId === input.sessionId) {
-        return "processed";
-      }
-      throw new ShopPaymentWebhookError("paid_twice", { retryable: false });
+    const verdict = judgePayment(order, input);
+    if (verdict.kind === "already_applied") return "processed";
+    if (verdict.kind === "unapplied") {
+      throw new ShopPaymentWebhookError(verdict.failure, { retryable: false });
     }
-    if (order.status !== "pending_payment") {
-      // Money was taken for an order that is closed and whose prints were released, for whatever
-      // amount: it is recorded as paid, before the amount is compared with a total that no longer
-      // applies. Finance must always hear of it, so the task and the log line do not depend on an
-      // email being set up.
-      if (!options.unappliedMoney) throw new Error("unapplied_money_reader_not_configured");
-      await recordUnappliedShopPayment(tx as Database, events, options.unappliedMoney, {
-        reason: "shop_order_paid_after_close",
-        order: { id: order.id, reference: order.reference, status: order.status },
-        sessionId: input.sessionId,
-        paymentIntentId: input.paymentIntentId ?? null,
-        amountPence: input.amountTotalPence,
-        eventId: input.eventId,
-      });
-      await queueCheckoutOpsAlertInTx(tx as Database, options, {
-        idempotencyKey: `terminal-paid:${input.eventId}`,
-        alertKind: "Paid webhook for terminal order",
-        orderId: input.orderId,
-        detail: `Stripe session ${input.sessionId} paid while order status is ${order.status}. Manual refund review may be required.`,
-      });
-      return "terminal_acknowledged";
-    }
-    if (order.totalPence !== input.amountTotalPence) {
-      throw new ShopPaymentWebhookError("amount_mismatch", { retryable: false });
-    }
-    assertStripeSessionMatchesOrder(order, input.sessionId);
 
     const buyerPartyId = await findOrCreateBuyerParty(
       tx as Database,
@@ -639,6 +738,24 @@ async function applyShopPayment(
 }
 
 const REAPER_ASYNC_PAYMENT_BACKOFF_MS = 15 * 60 * 1000;
+
+/**
+ * Pushes an order the reaper failed to end back by the same interval as an async payment, so one
+ * order that cannot be ended never keeps the sweep from the ones behind it.
+ */
+export async function deferCheckoutReaperForFailedExpiry(
+  db: Database,
+  orderId: string,
+  now: Date,
+): Promise<void> {
+  await db
+    .update(shopOrder)
+    .set({
+      checkoutExpiresAt: new Date(now.getTime() + REAPER_ASYNC_PAYMENT_BACKOFF_MS),
+      updatedAt: new Date(),
+    })
+    .where(and(eq(shopOrder.id, orderId), eq(shopOrder.status, "pending_payment")));
+}
 
 export type ShopCheckoutExpireOutcome = "expired" | "duplicate" | "unchanged" | "deferred_async";
 

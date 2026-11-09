@@ -17,6 +17,8 @@ export type StripeCheckoutWebhookHandlers = {
     paymentIntentId?: string | null;
     paidAt: Date;
     customerEmail?: string | null;
+    /** Whether Stripe sent it from live mode. */
+    livemode?: boolean;
   }): Promise<CompleteCheckoutOutcome>;
   expireCheckout(input: {
     eventId: string;
@@ -66,6 +68,7 @@ export async function dispatchStripeWebhookEvent(
       paidAt: completed.paidAt,
       customerEmail: completed.customerEmail ?? null,
       paymentIntentId: completed.paymentIntentId ?? null,
+      livemode: completed.livemode === true,
     });
     return { kind: "checkout", outcome };
   }

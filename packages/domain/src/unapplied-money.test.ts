@@ -40,6 +40,21 @@ describe("unappliedMoneyDedupeKey", () => {
     ).toBe("customer_balance_unapplied:evt_1:gbp");
   });
 
+  it("keys Shop money with no intent by its payment session, then by the Stripe event", () => {
+    const shop = {
+      ...base,
+      reason: "shop_order_paid_after_close" as const,
+      paymentId: null,
+      stripePaymentIntentId: null,
+      stripeChargeId: null,
+      stripeEventId: "evt_1",
+    };
+    expect(unappliedMoneyDedupeKey({ ...shop, shopCheckoutSessionId: "cs_1" })).toBe(
+      "shop_order_paid_after_close:cs_1",
+    );
+    expect(unappliedMoneyDedupeKey(shop)).toBe("shop_order_paid_after_close:evt_1");
+  });
+
   it("the same money for a different reason is a different task", () => {
     expect(unappliedMoneyDedupeKey({ ...base, reason: "amount_mismatch" })).not.toBe(
       unappliedMoneyDedupeKey(base),

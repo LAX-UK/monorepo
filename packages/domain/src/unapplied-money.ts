@@ -41,7 +41,7 @@ export const UNAPPLIED_MONEY_REASONS = [
    * failed) and its prints released. Nothing is refunded automatically: finance decides.
    */
   "shop_order_paid_after_close",
-  /** A Shop buyer paid an amount that is not their order's total. Nothing was applied. */
+  /** A Shop buyer paid an amount that is not their order's total. Nothing was applied and the order was closed. */
   "shop_order_amount_mismatch",
   /** A Shop buyer paid in a payment session that is not the one their order was opened with. */
   "shop_order_session_mismatch",
@@ -49,6 +49,8 @@ export const UNAPPLIED_MONEY_REASONS = [
   "shop_order_edition_state_invalid",
   /** A Shop order that was already paid received a second payment, in another session. */
   "shop_order_paid_twice",
+  /** A Shop buyer paid for an order that does not exist here (live mode only). */
+  "shop_order_not_found",
 ] as const;
 
 export type UnappliedMoneyReason = (typeof UNAPPLIED_MONEY_REASONS)[number];
@@ -117,6 +119,7 @@ export function unappliedMoneyDedupeKey(money: UnappliedMoney): string {
   const reference =
     money.stripePaymentIntentId ??
     money.stripeChargeId ??
+    money.shopCheckoutSessionId ??
     money.stripeEventId ??
     money.paymentGroupId ??
     money.paymentId ??

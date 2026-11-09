@@ -7,6 +7,7 @@ import {
   unappliedMoneyPayload,
 } from "@auction/domain";
 import type { IUnappliedMoneyReader } from "@auction/persistence/interfaces";
+import type { UnappliedPaymentFailure } from "../errors/shop-payment-webhook.error.js";
 import type { createShopDomainEventPublisher } from "./shop-domain-event-publisher.js";
 
 /** What the Shop needs of the finance task store: serialise one piece of money, and see if it is known. */
@@ -17,24 +18,30 @@ export type ShopUnappliedReason = Extract<UnappliedMoneyReason, `shop_order_${st
 
 /**
  * The failures of applying a payment that Stripe cannot cure by sending it again, each with the
- * finance task it opens. Anything else (an order that does not exist, a database error) is not in
+ * finance task it opens. Anything else (a database error, a refund that did not persist) is not in
  * here: it stays an error and the webhook answers as before.
  */
 export const SHOP_PAYMENT_FAILURE_REASONS = {
-  /** What was paid is not the order's total. */
   amount_mismatch: "shop_order_amount_mismatch",
-  /** Paid in a payment session that is not the one the order was opened with. */
   session_mismatch: "shop_order_session_mismatch",
-  /** The print held for the order was no longer reserved for it when the payment arrived. */
   edition_state_invalid: "shop_order_edition_state_invalid",
-  /** The order was already paid, in another payment session. */
   paid_twice: "shop_order_paid_twice",
-} as const satisfies Record<string, ShopUnappliedReason>;
+  paid_after_close: "shop_order_paid_after_close",
+} as const satisfies Record<UnappliedPaymentFailure, ShopUnappliedReason>;
 
-export type ShopPaymentFailure = keyof typeof SHOP_PAYMENT_FAILURE_REASONS;
+/**
+ * The failures that arrive on the order's own payment session while it still waits for payment.
+ * That session is now spent, so nothing can ever pay the order: it is closed, its prints released
+ * and its basket restored, and the money is finance's task. A payment in some other session
+ * leaves the order waiting, because its own session can still be paid.
+ */
+const FAILURES_THAT_CLOSE_THE_ORDER: ReadonlySet<UnappliedPaymentFailure> = new Set([
+  "amount_mismatch",
+  "edition_state_invalid",
+]);
 
-export function isShopPaymentFailure(code: string): code is ShopPaymentFailure {
-  return Object.hasOwn(SHOP_PAYMENT_FAILURE_REASONS, code);
+export function closesOrder(failure: UnappliedPaymentFailure): boolean {
+  return FAILURES_THAT_CLOSE_THE_ORDER.has(failure);
 }
 
 /** The name this event goes by in logs and alerts: money taken for an order that was closed. */
@@ -64,7 +71,8 @@ export async function recordUnappliedShopPayment(
   unappliedMoney: UnappliedMoneyLookup,
   input: {
     reason: ShopUnappliedReason;
-    order: { id: string; reference: string | null; status: string };
+    /** The order the money was paid for; null when no such order exists here. */
+    order: { id: string; reference: string | null; status: string } | null;
     sessionId: string;
     paymentIntentId: string | null;
     /** What was actually paid, which is what finance must return or apply. */
@@ -79,10 +87,10 @@ export async function recordUnappliedShopPayment(
     stripePaymentIntentId: input.paymentIntentId,
     stripeChargeId: null,
     stripeCustomerId: null,
-    // Without an intent the task is still keyed, by the Stripe event that reported the money.
+    // Without an intent the task is keyed by the session, then by the Stripe event.
     stripeEventId: input.eventId,
-    shopOrderId: input.order.id,
-    shopOrderReference: input.order.reference,
+    shopOrderId: input.order?.id ?? null,
+    shopOrderReference: input.order?.reference ?? null,
     shopCheckoutSessionId: input.sessionId,
     amountCents: input.amountPence,
     currency: "GBP",
@@ -97,8 +105,8 @@ export async function recordUnappliedShopPayment(
           ? SHOP_PAID_TERMINAL_ORDER
           : SHOP_UNAPPLIED_PAYMENT,
       reason: input.reason,
-      orderId: input.order.id,
-      orderStatus: input.order.status,
+      orderId: input.order?.id ?? null,
+      orderStatus: input.order?.status ?? null,
       sessionId: input.sessionId,
       paymentIntentId: input.paymentIntentId,
       amountPence: input.amountPence,

@@ -198,6 +198,39 @@ describe("unapplied money alert", () => {
     },
   );
 
+  it("tells finance about a payment for an order that does not exist, with no link to open", async () => {
+    const enqueue = vi.fn().mockResolvedValue(undefined);
+    await fanoutUnappliedMoney({
+      staffOpsRecipientReader: {
+        listRecipients: vi
+          .fn()
+          .mockResolvedValue([{ id: "staff-1", email: "f@lax.test", firstName: "Fran" }]),
+      },
+      emailService: { enqueue } as never,
+      eventId: 12,
+      webOrigin: "https://bid.example",
+      laxAdminUrl: "https://admin.lax.art",
+      alert: alertFromUnappliedMoney({
+        reason: "shop_order_not_found",
+        paymentId: null,
+        paymentGroupId: null,
+        stripePaymentIntentId: "pi_9",
+        stripeChargeId: null,
+        stripeCustomerId: null,
+        shopOrderId: null,
+        shopOrderReference: null,
+        shopCheckoutSessionId: "cs_9",
+        amountCents: 1200,
+        currency: "GBP",
+        dedupeKey: "shop_order_not_found:pi_9",
+      }),
+    });
+    const vars = enqueue.mock.calls[0]?.[0].vars as Record<string, unknown>;
+    expect(vars.situation).toContain("does not exist here");
+    expect(vars.reference).toBe("pi_9");
+    expect(vars).not.toHaveProperty("reviewUrl");
+  });
+
   it("words the suggestion by the payment's state, and says nothing without one", () => {
     const paid = { id: "abcdef12-0000", status: "paid" as const };
     expect(possibleSourceText(paid)).toBe(

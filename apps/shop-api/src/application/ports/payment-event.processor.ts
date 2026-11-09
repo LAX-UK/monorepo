@@ -22,6 +22,8 @@ export type PaymentEventProcessor = {
     paidAt: Date;
     customerEmail?: string | null;
     paymentIntentId?: string | null;
+    /** Whether Stripe sent it from live mode. */
+    livemode?: boolean;
   }): Promise<CompleteCheckoutOutcome>;
   expireCheckout(input: {
     eventId: string;

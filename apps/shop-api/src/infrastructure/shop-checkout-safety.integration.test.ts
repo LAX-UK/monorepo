@@ -26,6 +26,7 @@ import {
 import { extendCheckoutHold } from "./shop-checkout-hold.js";
 import {
   SHOP_CHECKOUT_REAPER_EVENT_SOURCE,
+  reapStaleShopCheckouts,
   reaperEventIdForOrder,
 } from "./shop-checkout-reaper.js";
 
@@ -265,9 +266,10 @@ describe.skipIf(!hasShopIntegrationDb)(
         return { ...harness, first, before, heldBefore, options, paid, tasks };
       }
 
-      it("for the wrong amount: tracks what was paid, leaves the order pending and the print reserved", async () => {
+      it("for the wrong amount on the order's own session: tracks what was paid and closes the order, freeing the print", async () => {
         const { db, order, holder, first, before, heldBefore, options, paid, tasks } =
           await trackedPayment("amount");
+        expect(heldBefore.reservedByOrderId).toBe(first.orderId);
         const event = paid({ amountTotalPence: before.totalPence - 1 });
         expect(await completeShopCheckoutSession(db, event, options)).toBe("unapplied_recorded");
         expect(await tasks()).toHaveLength(1);
@@ -275,8 +277,9 @@ describe.skipIf(!hasShopIntegrationDb)(
           reason: "shop_order_amount_mismatch",
           amountCents: before.totalPence - 1,
         });
-        expect((await order(first.orderId)).status).toBe("pending_payment");
-        expect((await holder()).reservedByOrderId).toBe(heldBefore.reservedByOrderId);
+        // The session is spent, so nothing could ever pay or expire the order: it is closed.
+        expect((await order(first.orderId)).status).toBe("payment_failed");
+        expect((await holder()).reservedByOrderId).toBeNull();
         expect(await completeShopCheckoutSession(db, event, options)).toBe("duplicate");
         expect(await tasks()).toHaveLength(1);
       });
@@ -294,6 +297,39 @@ describe.skipIf(!hasShopIntegrationDb)(
         expect((await holder()).reservedByOrderId).toBe(heldBefore.reservedByOrderId);
         expect(await completeShopCheckoutSession(db, event, options)).toBe("duplicate");
         expect(await tasks()).toHaveLength(1);
+      });
+
+      it("a reaper sweep with an order it cannot end still ends the others, and puts that order back", async () => {
+        const stuck = await setup("reaper-stuck");
+        const healthy = await setup("reaper-healthy");
+        const stuckOrder = await stuck.checkout("buyer");
+        const healthyOrder = await healthy.checkout("buyer");
+        const stuckSession = (await stuck.order(stuckOrder.orderId)).stripeCheckoutSessionId;
+        // Both are long past their hold, the stuck one first in the oldest-first batch.
+        await stuck.db
+          .update(shopOrder)
+          .set({ checkoutExpiresAt: new Date("2000-01-01T00:00:00Z") })
+          .where(eq(shopOrder.id, stuckOrder.orderId));
+        await healthy.db
+          .update(shopOrder)
+          .set({ checkoutExpiresAt: new Date("2000-01-02T00:00:00Z") })
+          .where(eq(shopOrder.id, healthyOrder.orderId));
+        // Stripe says the stuck order's session is already complete, which blocks its expiry.
+        const stripe: PaymentCheckoutGateway = {
+          ...gateway,
+          async expireHostedCheckout(input) {
+            return input.sessionId === stuckSession
+              ? { kind: "already_complete" }
+              : { kind: "expired" };
+          },
+        };
+        const now = new Date();
+        await reapStaleShopCheckouts(stuck.db, now, stripe);
+
+        expect((await healthy.order(healthyOrder.orderId)).status).toBe("expired");
+        const left = await stuck.order(stuckOrder.orderId);
+        expect(left.status).toBe("pending_payment");
+        expect(left.checkoutExpiresAt?.getTime()).toBeGreaterThan(now.getTime());
       });
 
       it("for a second payment on an order already paid: tracks it and keeps the sale", async () => {
