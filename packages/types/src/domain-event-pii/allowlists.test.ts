@@ -33,3 +33,14 @@ describe("redacting an array the event lists", () => {
     expect(redacted.notes).toEqual(["[REDACTED]"]);
   });
 });
+
+describe("sale.rescheduled", () => {
+  it("keeps its ids and instants when redacting", () => {
+    const payload = {
+      saleId: "11111111-1111-4111-8111-111111111111",
+      previousStartAt: "2026-11-10T10:00:00.000Z",
+      newStartAt: "2026-11-12T10:00:00.000Z",
+    };
+    expect(redactDomainEventPayload("sale.rescheduled", payload)).toEqual(payload);
+  });
+});

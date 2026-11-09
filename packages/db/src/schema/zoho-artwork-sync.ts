@@ -53,7 +53,8 @@ export const zohoArtworkSyncOutcome = pgTable(
   ],
 );
 
-export type ZohoListingRunFailureRow = { registerId: string; stockCode: string; code: string };
+/** `stockCode` is absent when a whole page failed before its records could be read. */
+export type ZohoListingRunFailureRow = { registerId: string; stockCode?: string; code: string };
 
 /**
  * One row per nightly pass of the LAX listing on Zoho Products: how many artworks it checked,

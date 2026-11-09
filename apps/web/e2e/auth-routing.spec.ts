@@ -1,9 +1,15 @@
 import { expect, test } from "@playwright/test";
+import { flushAuthRateLimits } from "./helpers/auth";
 
 const enabled = process.env.PLAYWRIGHT_E2E === "1";
 const skipReason = "Set PLAYWRIGHT_E2E=1, PLAYWRIGHT_BASE_URL, and start apps/web (pnpm dev).";
 
 test.describe("marketing auth routing @smoke", () => {
+  // These go to the hosted sign-in page, which the issuer rate-limits per address.
+  test.beforeEach(() => {
+    if (enabled) flushAuthRateLimits();
+  });
+
   test("login entry reaches hosted identity chrome", async ({ page }) => {
     test.skip(!enabled, skipReason);
     const res = await page.goto("/login");

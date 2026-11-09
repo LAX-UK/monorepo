@@ -92,6 +92,19 @@ export class DrizzleIdentityCredentialRepository implements IIdentityCredentialR
     return rows.map((row) => this.toSignInAccountRow(row));
   }
 
+  async lockPasskeys(
+    transaction: IdentityOperationTransaction,
+    subjectId: string,
+  ): Promise<number> {
+    const rows = await identityOperationDb(this.db, transaction)
+      .select({ id: passkey.id })
+      .from(passkey)
+      .where(eq(passkey.userId, subjectId))
+      .orderBy(asc(passkey.id))
+      .for("update");
+    return rows.length;
+  }
+
   async deleteSocialAccount(
     transaction: IdentityOperationTransaction,
     subjectId: string,

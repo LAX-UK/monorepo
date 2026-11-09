@@ -169,7 +169,7 @@ export const AdminRegisterLastCheckSchema = Type.Object({
         failures: Type.Array(
           Type.Object({
             registerId: Type.String(),
-            stockCode: Type.String(),
+            stockCode: Type.Optional(Type.String()),
             code: Type.String(),
           }),
         ),
