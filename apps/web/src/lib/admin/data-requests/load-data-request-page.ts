@@ -2,7 +2,9 @@ import "server-only";
 
 import {
   type DataRequestRead,
+  type DealHold,
   getAdminDataRequest,
+  getAdminDataRequestHolds,
   getAdminDataRequests,
 } from "@/lib/data/http/admin-data-requests.reader";
 import { londonToday } from "@auction/staff-ui";
@@ -32,6 +34,8 @@ export type DataRequestPageModel =
       /** The list it came from, for the breadcrumb. */
       listHref: string;
       pager: DataRequestPager | null;
+      /** The private sale deals keeping this person's records; none for most people. */
+      holds: DealHold[];
     }
   | { kind: "not_found" }
   | { kind: "forbidden" }
@@ -61,9 +65,10 @@ export async function loadAdminDataRequestPage(
   sp: DataRequestsSearch,
 ): Promise<DataRequestPageModel> {
   const list = listSearchFromRecordSearch(sp);
-  const [read, pager] = await Promise.all([
+  const [read, pager, holds] = await Promise.all([
     getAdminDataRequest(reference),
     list ? pagerFor(reference.toUpperCase(), list) : Promise.resolve(null),
+    getAdminDataRequestHolds(reference),
   ]);
   if (!read.ok) return { kind: read.reason };
   return {
@@ -72,5 +77,6 @@ export async function loadAdminDataRequestPage(
     today: londonToday(),
     listHref: list ? dataRequestsListHref(list) : DATA_REQUESTS_PATH,
     pager,
+    holds,
   };
 }

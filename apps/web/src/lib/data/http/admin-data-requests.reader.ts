@@ -10,8 +10,18 @@ import {
   dataRequestRecordSchema,
   dataRequestSummarySchema,
 } from "@auction/identity-contracts/data-requests";
+import { z } from "zod";
 
 const PATH = "/admin/data-requests";
+
+/** A private sale deal keeping a person's records, with when the hold ends. */
+export const dealHoldSchema = z.object({
+  dealReference: z.string(),
+  status: z.enum(["open", "running", "end_unknown"]),
+  heldUntil: z.string().nullable(),
+});
+export type DealHold = z.infer<typeof dealHoldSchema>;
+const dealHoldsSchema = z.object({ holds: z.array(dealHoldSchema) });
 
 /** One page of the merged list, emails masked; throws `forbidden` when the person may not look. */
 export async function getAdminDataRequests(query: URLSearchParams): Promise<DataRequestList> {
@@ -50,5 +60,25 @@ export async function getAdminDataRequest(reference: string): Promise<DataReques
     return record ? { ok: true, record } : { ok: false, reason: "unavailable" };
   } catch {
     return { ok: false, reason: "unavailable" };
+  }
+}
+
+/**
+ * The private sale deals keeping this person's records, or none when they cannot be read: the page
+ * still opens, and erasure itself says what it held.
+ */
+export async function getAdminDataRequestHolds(reference: string): Promise<DealHold[]> {
+  const res = await authedServerFetch(`${PATH}/${encodeURIComponent(reference)}/holds`).catch(
+    () => null,
+  );
+  if (!res) return [];
+  try {
+    const read = await safeReadData(res, dealHoldsSchema, {
+      context: "GET /admin/data-requests/:reference/holds",
+      nullStatuses: [],
+    });
+    return read?.holds ?? [];
+  } catch {
+    return [];
   }
 }

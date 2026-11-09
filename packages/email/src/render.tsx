@@ -97,6 +97,9 @@ import KycDeclinedEmail, { subject as kycDeclinedSubject } from "./templates/kyc
 import KycResubmissionRequiredEmail, {
   subject as kycResubmissionRequiredSubject,
 } from "./templates/kyc-resubmission-required.js";
+import KycRetentionHoldNoticeEmail, {
+  subject as kycRetentionHoldNoticeSubject,
+} from "./templates/kyc-retention-hold-notice.js";
 import LegalEntityArchivedNoticeEmail, {
   subject as legalEntityArchivedNoticeSubject,
 } from "./templates/legal-entity-archived-notice.js";
@@ -628,6 +631,10 @@ const renderers: { [T in TemplateName]: TemplateRenderer<T> } = {
   "aml-compliance-review-notice": {
     subject: amlComplianceReviewNoticeSubject,
     component: (vars) => <AmlComplianceReviewNoticeEmail {...vars} />,
+  },
+  "kyc-retention-hold-notice": {
+    subject: kycRetentionHoldNoticeSubject,
+    component: (vars) => <KycRetentionHoldNoticeEmail {...vars} />,
   },
   "submission-approved": {
     subject: submissionApprovedSubject,
