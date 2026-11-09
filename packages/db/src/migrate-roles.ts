@@ -131,6 +131,8 @@ export const SHOP_COMMERCE_TABLES = [
   "shop_artist_application_work",
   /** What staff confirm about each print run: numbering, signature and certificate. */
   "shop_edition_facts",
+  /** A print sold on its own, apart from its run: where it came from and what differs. */
+  "shop_print_exception",
   /** Printers and publishers staff pick from when recording a run's facts. */
   "shop_print_party",
   /** Guest checkout: the guest and lead behind guest orders, and their emailed order links. */
