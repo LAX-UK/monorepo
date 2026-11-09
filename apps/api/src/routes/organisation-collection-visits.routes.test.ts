@@ -2,6 +2,7 @@ import type { LegalEntityMemberRole } from "@auction/types";
 import { Hono } from "hono";
 import { describe, expect, it, vi } from "vitest";
 import type { ContainerOrganisationBuyingRoutesSlice } from "../container.js";
+import { createCollectionWriteRateLimit } from "../middleware/collection-write-rate-limit.js";
 import { createRequireAccountOnboarding } from "../middleware/require-account-onboarding.js";
 import type { LegalEntityContext } from "../middleware/require-legal-entity-context.js";
 import { CollectionLotGuard } from "../services/collection-visits/collection-lot-guard.js";
@@ -45,18 +46,18 @@ function mount(
     ...(opts.impersonating ? { isImpersonation: true } : {}),
   };
   let counted = 0;
-  const container = {
-    rateLimitStore: {
-      increment: async () => {
-        if (opts.counterDown) throw new Error("redis down");
-        counted += 1;
-        return {
-          allowed: counted <= (opts.writesAllowed ?? 1_000),
-          remaining: 0,
-          retryAfterSec: 900,
-        };
-      },
+  const rateLimitStore = {
+    increment: async () => {
+      if (opts.counterDown) throw new Error("redis down");
+      counted += 1;
+      return {
+        allowed: counted <= (opts.writesAllowed ?? 1_000),
+        remaining: 0,
+        retryAfterSec: 900,
+      };
     },
+  };
+  const container = {
     userSuspensionChecker: { isSuspended: vi.fn().mockResolvedValue(opts.suspended ?? false) },
     requireLegalEntityContext: async (
       c: { set: (key: string, value: LegalEntityContext) => void },
@@ -93,7 +94,12 @@ function mount(
   });
   app.route(
     "/legal-entities",
-    createOrganisationCollectionVisitRoutes(container, authenticator, onboarding),
+    createOrganisationCollectionVisitRoutes(
+      container,
+      authenticator,
+      onboarding,
+      createCollectionWriteRateLimit(rateLimitStore),
+    ),
   );
   return { app, store, events };
 }

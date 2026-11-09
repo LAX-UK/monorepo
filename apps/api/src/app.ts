@@ -15,6 +15,7 @@ import { connectionOptionsFromRedisUrl } from "./lib/redis-url.js";
 import { buildTrustedWebOrigins } from "./lib/trusted-web-origins.js";
 import { createAuditAccessMiddleware } from "./middleware/audit-access.js";
 import { createClientIpMiddleware } from "./middleware/client-ip.js";
+import { createCollectionWriteRateLimit } from "./middleware/collection-write-rate-limit.js";
 import { createMarketingClientContextMiddleware } from "./middleware/marketing-client-context.js";
 import { createMarketingConsentMiddleware } from "./middleware/marketing-consent.js";
 import { createMetricsMiddleware, renderMetrics } from "./middleware/metrics.js";
@@ -281,7 +282,12 @@ export function createApp(container: Container, env: Env, authenticator: IAuthen
     )
     .route(
       "/legal-entities",
-      createOrganisationCollectionVisitRoutes(container, authenticator, requireAccountOnboarding),
+      createOrganisationCollectionVisitRoutes(
+        container,
+        authenticator,
+        requireAccountOnboarding,
+        createCollectionWriteRateLimit(container.rateLimitStore),
+      ),
     )
     .route("/legal-entities", createOrganisationSellingRoutes(container, authenticator))
     .route("/legal-entities", createOrganisationAccessRequestRoutes(container, authenticator))

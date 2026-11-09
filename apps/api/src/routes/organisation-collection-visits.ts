@@ -9,7 +9,6 @@ import { type Context, Hono, type MiddlewareHandler } from "hono";
 import type { Result } from "neverthrow";
 import type { ContainerOrganisationBuyingRoutesSlice } from "../container.js";
 import { zValidator } from "../lib/z-validator.js";
-import { createCollectionWriteRateLimit } from "../middleware/collection-write-rate-limit.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
 import { requireBuyerRole } from "../middleware/require-buyer-role.js";
 import type { LegalEntityContext } from "../middleware/require-legal-entity-context.js";
@@ -64,13 +63,13 @@ export function createOrganisationCollectionVisitRoutes(
   container: ContainerOrganisationBuyingRoutesSlice,
   authenticator: IAuthenticator,
   requireAccountOnboarding: MiddlewareHandler,
+  limitWrites: MiddlewareHandler,
 ) {
   const requireAuth = createRequireAuth(authenticator, {
     isSuspended: (id) => container.userSuspensionChecker.isSuspended(id),
   });
   const requireContext = container.requireLegalEntityContext;
   const { collectionVisits } = container.organisationBuying;
-  const limitWrites = createCollectionWriteRateLimit(container.rateLimitStore);
   const r = new Hono<{ Variables: Variables }>();
 
   r.get(
