@@ -206,8 +206,8 @@ describe.skipIf(!HAS_DB)("collection lot facts (integration)", () => {
     await setFulfilment(ready.lotId, "ready_for_collection", "collection");
     const quoted = await lot();
     await db.execute(sql`
-      insert into delivery_quote (lot_id, buyer_legal_entity_id, status, destination)
-      values (${quoted.lotId}, ${orgEntity}, 'accepted', '12 Gallery Row')`);
+      insert into delivery_quote (lot_id, buyer_legal_entity_id, status, destination, amount)
+      values (${quoted.lotId}, ${orgEntity}, 'accepted', '12 Gallery Row', 85)`);
 
     expect((await factsOf(cancelled.lotId))?.facts.fulfilment).toBe("cancelled");
     expect((await factsOf(collected.lotId))?.facts.fulfilment).toBe("collected");
