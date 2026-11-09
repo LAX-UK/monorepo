@@ -4,6 +4,7 @@ import type { ArtistApplicationReviewService } from "./application/artist-applic
 import type { ArtworkRegisterReviewService } from "./application/artwork-register/artwork-register-review.service.js";
 import type { OfferOnLaxArtService } from "./application/artwork-register/offer-on-lax-art.service.js";
 import type { ZohoLinkService } from "./application/artwork-register/zoho-link.service.js";
+import type { DeliveryQuoteStaffService } from "./application/delivery-quote-staff/delivery-quote-staff.service.js";
 import type { DeliveryRegionsService } from "./application/delivery-regions/delivery-regions.service.js";
 import type { EditionRunServices } from "./application/edition-runs/edition-run-services.js";
 import type { EnquiryInboxService } from "./application/enquiry-inbox.service.js";
@@ -159,6 +160,10 @@ export type AdminRoutesDeps = {
   editionFraming: EditionFramingService;
   /** Where the Shop delivers: regions, lead times, fixed prices and countries not delivered to. */
   deliveryRegions: DeliveryRegionsService;
+  /** LAX Admin › Orders › Delivery quotes: send a price and carrier, or turn a request down. */
+  deliveryQuotes: DeliveryQuoteStaffService;
+  /** Whether buyers can pay for delivery outside the UK yet; staff are told when they cannot. */
+  exportPaymentEnabled: boolean;
   thirdPartySales: {
     recordSale(
       command: RecordThirdPartySaleCommand,

@@ -2,6 +2,7 @@ import type { Database } from "@auction/db";
 import {
   shopArtist,
   shopArtwork,
+  shopDeliveryQuote,
   shopEdition,
   shopFulfilment,
   shopGeneralEnquiry,
@@ -23,6 +24,7 @@ import { and, desc, eq, inArray, lt, or, sql } from "drizzle-orm";
 import { describeOrderLineEdition } from "../application/order-line-edition.js";
 import type {
   ListOrdersResult,
+  OrderDeliveryQuoteRecord,
   OrderLineRecord,
   OrderProgressRecord,
   OrderReader,
@@ -99,6 +101,7 @@ export type OrderExtras = {
   refunds: Array<OrderRefundRecord & { orderLineId: string | null }>;
   progress: OrderProgressRecord | null;
   problemReports: Date[];
+  deliveryQuote: OrderDeliveryQuoteRecord | null;
 };
 
 /**
@@ -165,6 +168,7 @@ function orderRowToRecord(order: typeof shopOrder.$inferSelect, extras: OrderExt
     progress: extras.progress,
     refunds,
     problemReports: extras.problemReports,
+    deliveryQuote: extras.deliveryQuote,
   };
 }
 
@@ -345,28 +349,72 @@ async function fetchProblemReports(
   return byReference;
 }
 
+/** The delivery quotes still in play on these orders, for the buyer's order page. */
+async function fetchDeliveryQuotes(
+  db: Database,
+  orders: Array<typeof shopOrder.$inferSelect>,
+  paymentOpen: boolean,
+): Promise<Map<string, OrderDeliveryQuoteRecord>> {
+  const ids = orders
+    .filter((order) => order.fulfilment === "international_quotation")
+    .map((order) => order.id);
+  if (ids.length === 0) return new Map();
+  const rows = await db
+    .select()
+    .from(shopDeliveryQuote)
+    .where(
+      and(
+        inArray(shopDeliveryQuote.orderId, ids),
+        inArray(shopDeliveryQuote.status, ["requested", "quoted", "accepted"]),
+      ),
+    );
+  return new Map(
+    rows.map((row) => [
+      row.orderId,
+      {
+        status: row.status as OrderDeliveryQuoteRecord["status"],
+        country: row.destinationCountry,
+        pricePence: row.quotedPricePence,
+        carrier: row.quotedCarrier,
+        service: row.quotedService,
+        leadTimeNote: row.quotedLeadTimeNote,
+        holdUntil: row.holdUntil,
+        paymentOpen,
+      },
+    ]),
+  );
+}
+
 async function hydrateOrders(
   db: Database,
   orders: Array<typeof shopOrder.$inferSelect>,
+  paymentOpen: boolean,
 ): Promise<OrderRecord[]> {
   const ids = orders.map((order) => order.id);
-  const [linesByOrder, refundsByOrder, progressByOrder, reportsByReference] = await Promise.all([
-    fetchLinesByOrderIds(db, ids),
-    fetchRefundsByOrderIds(db, ids),
-    fetchProgressByOrderIds(db, ids),
-    fetchProblemReports(db, orders),
-  ]);
+  const [linesByOrder, refundsByOrder, progressByOrder, reportsByReference, quotesByOrder] =
+    await Promise.all([
+      fetchLinesByOrderIds(db, ids),
+      fetchRefundsByOrderIds(db, ids),
+      fetchProgressByOrderIds(db, ids),
+      fetchProblemReports(db, orders),
+      fetchDeliveryQuotes(db, orders, paymentOpen),
+    ]);
   return orders.map((order) =>
     orderRowToRecord(order, {
       lines: linesByOrder.get(order.id) ?? [],
       refunds: refundsByOrder.get(order.id) ?? [],
       progress: progressByOrder.get(order.id) ?? null,
       problemReports: reportsByReference.get(order.reference) ?? [],
+      deliveryQuote: quotesByOrder.get(order.id) ?? null,
     }),
   );
 }
 
-export function createDrizzleOrderRepository(db: Database): OrderReader {
+export function createDrizzleOrderRepository(
+  db: Database,
+  options: { exportPaymentEnabled?: boolean } = {},
+): OrderReader {
+  const paymentOpen = options.exportPaymentEnabled ?? false;
   return {
     async listOrders(subject, input): Promise<ListOrdersResult> {
       const limit = Math.min(Math.max(input.limit, 1), MAX_ORDER_LIST_LIMIT);
@@ -393,7 +441,7 @@ export function createDrizzleOrderRepository(db: Database): OrderReader {
       const page = hasMore ? orders.slice(0, limit) : orders;
       if (page.length === 0) return { items: [] };
 
-      const items = await hydrateOrders(db, page);
+      const items = await hydrateOrders(db, page, paymentOpen);
       const last = page.at(-1);
       if (hasMore && last) {
         return {
@@ -411,7 +459,7 @@ export function createDrizzleOrderRepository(db: Database): OrderReader {
         .where(and(eq(shopOrder.id, orderId), eq(shopOrder.identitySubjectId, subject)))
         .limit(1);
       if (!order) return null;
-      const [record] = await hydrateOrders(db, [order]);
+      const [record] = await hydrateOrders(db, [order], paymentOpen);
       return record ?? null;
     },
 

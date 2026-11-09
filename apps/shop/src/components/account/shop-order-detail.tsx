@@ -1,3 +1,4 @@
+import { ShopDeliveryQuote } from "@/components/account/shop-delivery-quote.client";
 import { ShopFinishPaying } from "@/components/account/shop-finish-paying.client";
 import { ShopOrderLines, ShopOrderTotals } from "@/components/account/shop-order-lines";
 import { ShopOrderTimeline } from "@/components/account/shop-order-timeline";
@@ -81,6 +82,7 @@ export function ShopOrderDetail({ order }: { order: ShopOrderDetailVm }) {
         <span>{order.placedLabel}</span>
       </div>
 
+      {order.deliveryQuote ? <ShopDeliveryQuote quote={order.deliveryQuote} /> : null}
       {order.finishPaying ? <ShopFinishPaying order={order.finishPaying} /> : null}
 
       <div className="shop-order-page__grid">

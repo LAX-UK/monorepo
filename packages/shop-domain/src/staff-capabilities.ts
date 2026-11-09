@@ -28,6 +28,12 @@ export const SHOP_STAFF_CAPABILITIES = [
   "enquiry.read",
   "enquiry.write",
   "order.read",
+  /**
+   * Changing an order: today, quoting delivery outside the UK and turning a request down. Held by
+   * the people who run orders (Administrators, operations and account managers); finance sees
+   * orders and refunds them, but does not quote.
+   */
+  "order.write",
   /** Reviewing artists' applications to join the gallery, and accepting or declining them. */
   "artist_application.review",
   /**
@@ -103,6 +109,7 @@ export const READ_IMPLIED_BY_WRITE = {
   "catalogue.write": "catalogue.read",
   "editorial.write": "editorial.read",
   "artwork_register.review": "artwork_register.read",
+  "order.write": "order.read",
 } as const satisfies Partial<Record<ShopStaffCapability, ShopStaffCapability>>;
 
 function withImpliedReads(granted: readonly ShopStaffCapability[]): readonly ShopStaffCapability[] {
@@ -123,6 +130,7 @@ const GRANTED_CAPABILITIES: Record<ShopStaffRole, readonly ShopStaffCapability[]
     "enquiry.read",
     "enquiry.write",
     "order.read",
+    "order.write",
     "lead.read",
   ],
   broker: [
@@ -136,6 +144,7 @@ const GRANTED_CAPABILITIES: Record<ShopStaffRole, readonly ShopStaffCapability[]
     "fulfilment.write",
     "third_party_sale.write",
     "order.read",
+    "order.write",
     "enquiry.read",
   ],
   finance: [

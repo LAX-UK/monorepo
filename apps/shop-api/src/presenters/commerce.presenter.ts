@@ -153,6 +153,20 @@ export function presentOrder(record: OrderRecord, now: Date = new Date()): Order
     invoiceAvailable: record.paidAt !== null && record.invoiceNumber !== null,
     invoiceNumber: record.invoiceNumber,
     problemReports: record.problemReports.map((at) => ({ reportedAt: at.toISOString() })),
+    ...(record.status === "pending_payment" && record.deliveryQuote
+      ? {
+          deliveryQuote: {
+            status: record.deliveryQuote.status,
+            country: record.deliveryQuote.country,
+            pricePence: record.deliveryQuote.pricePence,
+            carrier: record.deliveryQuote.carrier,
+            service: record.deliveryQuote.service,
+            leadTimeNote: record.deliveryQuote.leadTimeNote,
+            holdUntil: record.deliveryQuote.holdUntil.toISOString(),
+            paymentOpen: record.deliveryQuote.paymentOpen,
+          },
+        }
+      : {}),
     lines: record.lines.map((line) => ({
       orderLineId: line.orderLineId,
       artworkSlug: line.artworkSlug,

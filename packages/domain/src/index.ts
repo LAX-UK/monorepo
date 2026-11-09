@@ -744,6 +744,7 @@ export {
 export {
   DELIVERY_QUOTE_STATUSES,
   deliveryQuoteActionsFor,
+  deliveryQuoteDecline,
   deliveryQuoteTransition,
   type DeliveryQuoteAction,
   type DeliveryQuoteActor,
