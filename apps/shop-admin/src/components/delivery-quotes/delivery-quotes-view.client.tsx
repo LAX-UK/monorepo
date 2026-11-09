@@ -76,7 +76,10 @@ export function DeliveryQuotesView({
           >
             {row.orderReference}
           </Link>
-          <span className="text-staff-xs text-staff-muted">{row.items.join(", ")}</span>
+          <span className="whitespace-normal break-words text-staff-xs text-staff-muted">
+            {row.items.join(", ")} ·{" "}
+            <span className="tabular-nums">{quotePrice(row.merchandisePence)}</span>
+          </span>
         </span>
       ),
     },
@@ -90,18 +93,11 @@ export function DeliveryQuotesView({
           <span>
             {row.recipientName ? `${row.recipientName}, ${row.countryName}` : row.countryName}
           </span>
-          <span className="text-staff-xs text-staff-muted">
+          <span className="whitespace-normal break-words text-staff-xs text-staff-muted">
             {row.address.slice(0, -1).join(", ")}
           </span>
         </span>
       ),
-    },
-    {
-      id: "goods",
-      header: "Print",
-      mobile: "hidden",
-      truncate: false,
-      cell: (row) => <span className="tabular-nums">{quotePrice(row.merchandisePence)}</span>,
     },
     {
       id: "state",
@@ -117,7 +113,9 @@ export function DeliveryQuotesView({
             </span>
           ) : null}
           {row.declineNote ? (
-            <span className="text-staff-xs text-staff-muted">{row.declineNote}</span>
+            <span className="whitespace-normal break-words text-staff-xs text-staff-muted">
+              {row.declineNote}
+            </span>
           ) : null}
         </span>
       ),
@@ -138,7 +136,7 @@ export function DeliveryQuotesView({
       mobile: "actions",
       cell: (row) =>
         canWrite && (row.status === "requested" || row.status === "quoted") ? (
-          <span className="flex items-center gap-1">
+          <span className="flex flex-col items-stretch gap-1 md:flex-row md:items-center">
             <StaffButton
               variant="secondary"
               size="sm"
@@ -155,7 +153,7 @@ export function DeliveryQuotesView({
               aria-label={`Turn down ${row.orderReference}`}
               onClick={() => setDeclining(row)}
             >
-              Can't deliver
+              <span className="whitespace-nowrap">Can't deliver</span>
             </StaffButton>
           </span>
         ) : null,
