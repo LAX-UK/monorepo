@@ -124,7 +124,7 @@ export const collectionException = pgTable(
     check(
       "collection_exception_hours_check",
       sql.raw(
-        `("opens_local" IS NULL AND "closes_local" IS NULL) OR ("opens_local" ~ ${LOCAL_TIME} AND "closes_local" ~ ${LOCAL_TIME} AND "closes_local" > "opens_local")`,
+        `("opens_local" IS NULL AND "closes_local" IS NULL) OR ("opens_local" IS NOT NULL AND "closes_local" IS NOT NULL AND "opens_local" ~ ${LOCAL_TIME} AND "closes_local" ~ ${LOCAL_TIME} AND "closes_local" > "opens_local")`,
       ),
     ),
     check(

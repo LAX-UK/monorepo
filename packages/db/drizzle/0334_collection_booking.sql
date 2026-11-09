@@ -88,7 +88,9 @@ CREATE TABLE IF NOT EXISTS "collection_exception" (
   CONSTRAINT "collection_exception_hours_check" CHECK (
     ("opens_local" IS NULL AND "closes_local" IS NULL)
     OR (
-      "opens_local" ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$'
+      "opens_local" IS NOT NULL
+      AND "closes_local" IS NOT NULL
+      AND "opens_local" ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$'
       AND "closes_local" ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$'
       AND "closes_local" > "opens_local"
     )
