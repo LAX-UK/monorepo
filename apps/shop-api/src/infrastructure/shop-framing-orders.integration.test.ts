@@ -68,22 +68,14 @@ describe.skipIf(!hasShopIntegrationDb)("framing in orders integration", () => {
   const uow = () => createDrizzleShopUnitOfWork(db, "off");
   const actor = "framing-orders-subject";
 
-  async function framingOption(suffix: string) {
-    const [option] = await db
-      .insert(shopFramingOption)
-      .values({
-        code: `oak-${suffix}`,
-        name: "Natural oak frame",
-        frame: "natural_oak",
-        mount: "window_conservation",
-        glazing: "uv_acrylic",
-        hanging: "d_rings_cord",
-        leadTimeMinDays: 10,
-        leadTimeMaxDays: 15,
-        status: "active",
-      })
-      .returning({ id: shopFramingOption.id });
-    return requireDefined(option?.id, "framing option");
+  /**
+   * An option from the launch catalogue, which the migration seeds. Orders only need the option to
+   * exist (their snapshot is kept as sold), and adding options here would change what the
+   * catalogue tests, which share this database, read.
+   */
+  async function framingOption() {
+    const [option] = await db.select({ id: shopFramingOption.id }).from(shopFramingOption).limit(1);
+    return requireDefined(option?.id, "a seeded framing option");
   }
 
   function snapshotOf(optionId: string): FramingOrderSnapshot {
@@ -108,7 +100,7 @@ describe.skipIf(!hasShopIntegrationDb)("framing in orders integration", () => {
     const suffix = integrationSuffix(label);
     const imported = await importTestArtwork(db, label, { printPricePence: PRINT_PENCE });
     await grantLaxSaleAuthority(db, imported.artworkId, 1);
-    const optionId = await framingOption(suffix);
+    const optionId = await framingOption();
     const edition = await selectLaxEdition(db, imported.artworkId);
     const stripeSessionId = `cs_test_${suffix}`;
     const [orderRow] = await db
