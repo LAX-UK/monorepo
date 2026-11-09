@@ -1,4 +1,10 @@
-import { emailOutbox, shopDeliveryQuote, shopEdition, shopOrder } from "@auction/db/schema";
+import {
+  emailOutbox,
+  shopDeliveryQuote,
+  shopEdition,
+  shopOrder,
+  shopUserProfile,
+} from "@auction/db/schema";
 import { DEFAULT_DELIVERY_REGIONS } from "@auction/shop-domain";
 import { eq } from "drizzle-orm";
 import type pg from "pg";
@@ -111,6 +117,9 @@ describe.skipIf(!hasShopIntegrationDb)("quoting and paying a delivery quote", ()
       exportPaymentEnabled,
     });
     const subject = `subject-${suffix}`;
+    await db
+      .insert(shopUserProfile)
+      .values({ identitySubjectId: subject, email: `${suffix}@example.test`, name: "Quote Buyer" });
     const requested = async () => {
       const basket = await repo.addOrUpdateLine({
         owner: { kind: "subject", identitySubjectId: subject },
