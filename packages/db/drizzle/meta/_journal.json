@@ -2330,6 +2330,13 @@
       "idx": 333,
       "version": "7",
       "when": 1804320000000,
+      "tag": "0340_shop_delivery_quote_carrier",
+      "breakpoints": true
+    },
+    {
+      "idx": 334,
+      "version": "7",
+      "when": 1804406400000,
       "tag": "0342_shop_framing_orders",
       "breakpoints": true
     }

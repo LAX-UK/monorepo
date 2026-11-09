@@ -1,7 +1,11 @@
 import { loadShopViewerState } from "@/lib/shop-viewer-state.server";
 
 /** What can be done to one order from the storefront. */
-export type OrderCommerceAction = "cancel" | "problem-reports" | "resume-checkout";
+export type OrderCommerceAction =
+  | "cancel"
+  | "problem-reports"
+  | "resume-checkout"
+  | "accept-delivery-quote";
 
 /**
  * Where an order action goes. A signed-in shopper acts on the order by id; a guest has no account,

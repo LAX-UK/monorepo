@@ -19,7 +19,11 @@ import type {
   createListSavedDeliveryAddressesHandler,
   createSaveDeliveryAddressHandler,
 } from "./application/handlers/delivery-address-book.handler.js";
-import type { CheckoutWriter, OrderReader } from "./application/ports/commerce.ports.js";
+import type {
+  CheckoutOrderResult,
+  CheckoutWriter,
+  OrderReader,
+} from "./application/ports/commerce.ports.js";
 import type { GuestOrderLinks } from "./application/ports/guest-checkout.ports.js";
 import type { OrderProblemReportWriter } from "./application/ports/order-problem-report.port.js";
 import type { StripeMoneyWebhookOutcome } from "./application/ports/stripe-money-webhook.types.js";
@@ -48,6 +52,13 @@ export type CommerceRoutesDeps = {
   checkoutOrder: ReturnType<typeof createCheckoutOrderHandler>;
   resumeCheckoutOrder: ReturnType<typeof createResumeCheckoutOrderHandler>;
   cancelCheckoutOrder: ReturnType<typeof createCancelCheckoutOrderHandler>;
+  /** The buyer's "accept and pay" on a delivery quote: prices the order, then opens payment. */
+  acceptDeliveryQuote: (input: {
+    subject: string;
+    orderId: string;
+    successUrl: string;
+    cancelUrl: string;
+  }) => Promise<CheckoutOrderResult>;
   /** Checkout for an address outside the UK: a quote request, a fixed-rate order, or a refusal. */
   requestDeliveryQuote: (input: DeliveryQuoteRequestInput) => Promise<DeliveryQuoteRequestOutcome>;
   listOrders: ReturnType<typeof createListOrdersHandler>;
@@ -73,6 +84,8 @@ export type GuestCheckoutRoutesDeps = {
   /** Asking for a new order link; kept apart from the checkout allowance. */
   /** Back to secure payment for an unpaid guest order that is still held. */
   resumeCheckout: CheckoutWriter["resumeCheckoutOrder"];
+  /** A guest's "accept and pay" on the delivery quote for their order. */
+  acceptDeliveryQuote: CommerceRoutesDeps["acceptDeliveryQuote"];
   linkRateLimiter: EnquiryRateLimiter;
   getCustomerProfile: OrderReader["getCustomerProfile"];
   invoiceIssuer: { supplier: LegalEntity; vatNumber: string | null };

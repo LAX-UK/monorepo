@@ -218,6 +218,7 @@ export {
   type FramingSizeBand,
   type FramingStatus,
 } from "./framing.js";
+export { orderTotalWithDelivery } from "./basket-totals.js";
 export {
   FRAMING_TASK_STATUSES,
   ORDER_LINE_KINDS,
@@ -656,6 +657,7 @@ export {
   MAX_OPEN_QUOTE_REQUESTS_PER_BUYER,
   MAX_OPEN_QUOTE_REQUESTS_PER_GUEST_IP,
   QUOTE_HOLD_WORKING_DAYS,
+  QUOTE_PAYMENT_WINDOW_MS,
   addWorkingDays,
   assessOutsideUkDelivery,
   outsideUkAddressIssues,
@@ -666,3 +668,16 @@ export {
   type OutsideUkAddressIssue,
   type OutsideUkAssessment,
 } from "./outside-uk-delivery.js";
+export {
+  DELIVERY_QUOTES_WRITE_CAPABILITY,
+  QUOTE_CARRIER_MAX_LENGTH,
+  QUOTE_DECLINE_NOTE_MAX_LENGTH,
+  QUOTE_LEAD_TIME_NOTE_MAX_LENGTH,
+  QUOTE_PRICE_MAX_PENCE,
+  QUOTE_SERVICE_MAX_LENGTH,
+  declineNoteIssue,
+  deliveryQuoteInputIssues,
+  type DeliveryQuoteInput,
+  type DeliveryQuoteInputField,
+  type DeliveryQuoteInputIssue,
+} from "./delivery-quote-staff.js";

@@ -6,6 +6,7 @@ import { ShopAdminShell } from "@/components/shop-admin-shell.client";
 import { loadAdminSession } from "@/lib/admin-data.server";
 import { resolveStaffLayoutRedirect, staffSignInHref } from "@/lib/staff-layout-redirect";
 import { loadArtistApplicationSummary } from "@/server/application/load-artist-application-summary";
+import { loadDeliveryQuoteSummary } from "@/server/application/load-delivery-quote-summary";
 import { loadEnquirySummary } from "@/server/application/load-enquiry-summary";
 import { loadStaffIdentity } from "@/server/application/load-staff-identity";
 import { loadStaffProducts } from "@/server/application/load-staff-products";
@@ -42,18 +43,21 @@ export default async function StaffLayout({ children }: { children: ReactNode })
   }
 
   const session = sessionResult.data;
-  const [enquirySummary, applicationSummary, identity, products, jar] = await Promise.all([
-    loadEnquirySummary(session.capabilities),
-    loadArtistApplicationSummary(session.capabilities),
-    loadStaffIdentity(),
-    loadStaffProducts(),
-    cookies(),
-  ]);
+  const [enquirySummary, applicationSummary, quoteSummary, identity, products, jar] =
+    await Promise.all([
+      loadEnquirySummary(session.capabilities),
+      loadArtistApplicationSummary(session.capabilities),
+      loadDeliveryQuoteSummary(session.capabilities),
+      loadStaffIdentity(),
+      loadStaffProducts(),
+      cookies(),
+    ]);
   const navGroups = buildAdminNavGroups({
     capabilities: session.capabilities,
     features: session.features,
     enquiryAttentionCount: enquirySummary?.needsAttentionCount ?? 0,
     applicationAttentionCount: applicationSummary?.newCount ?? 0,
+    deliveryQuoteWaitingCount: quoteSummary?.waitingCount ?? 0,
   });
   const roleLabel = staffRolesLabel(session.roles?.length ? session.roles : [session.role]);
   const { shopStorefrontUrl, artPublicUrl } = getShopAdminContainer().config;

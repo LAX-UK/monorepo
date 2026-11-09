@@ -67,3 +67,15 @@ export function assertQuantityWithinSellable(quantity: number, sellableCount: nu
     throw new ShopDomainError("Requested quantity exceeds sellable stock");
   }
 }
+
+/**
+ * What an order comes to once a quoted delivery price is known: the goods, the framing sold with
+ * them and the delivery. Used wherever a total is set from a price that is not a fixed option's.
+ */
+export function orderTotalWithDelivery(input: {
+  merchandiseSubtotalPence: number;
+  framingSubtotalPence: number;
+  deliveryPence: number;
+}): number {
+  return input.merchandiseSubtotalPence + input.framingSubtotalPence + input.deliveryPence;
+}

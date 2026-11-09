@@ -7,6 +7,7 @@ import { createArtistApplicantService } from "./application/artist-applications/
 import { createArtistApplicationRateLimiters } from "./application/artist-applications/artist-application-rate-limits.js";
 import { createArtistApplicationReviewService } from "./application/artist-applications/artist-application-review.service.js";
 import { ArtworkRegisterReviewService } from "./application/artwork-register/artwork-register-review.service.js";
+import { createDeliveryQuoteStaffService } from "./application/delivery-quote-staff/delivery-quote-staff.service.js";
 import type { DeliveryRegionsState } from "./application/delivery-regions/delivery-regions.ports.js";
 import { createDeliveryRegionsService } from "./application/delivery-regions/delivery-regions.service.js";
 import { createEnquiryInboxService } from "./application/enquiry-inbox.service.js";
@@ -152,6 +153,9 @@ export function createMinimalShopApiTestDeps(
         throw new Error("not implemented");
       },
       cancelCheckoutOrder: async () => undefined,
+      acceptDeliveryQuote: async () => {
+        throw new Error("not implemented");
+      },
       requestDeliveryQuote: async () => {
         throw new Error("not implemented");
       },
@@ -645,6 +649,13 @@ export function createMinimalShopApiTestDeps(
         reader: { read: async () => testDeliveryRegionsState() },
         clock: { now: () => new Date() },
       }),
+      deliveryQuotes: createDeliveryQuoteStaffService({
+        uow: { run: () => Promise.reject(new Error("No delivery quote store in this test")) },
+        reader: { list: async () => [], waitingCount: async () => 0 },
+        orders: { release: async () => {} },
+        clock: { now: () => new Date() },
+      }),
+      exportPaymentEnabled: false,
       homeFeatures: createHomeFeaturesService({
         uow: { run: () => Promise.reject(new Error("No featured lists store in this test")) },
         lists: {

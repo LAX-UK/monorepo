@@ -14,6 +14,7 @@ import {
   DrizzleUnsoldLotChoiceRepository,
   DrizzleUnsoldLotFollowUpRepository,
 } from "@auction/persistence/repositories";
+import type { AppLogger } from "../lib/logger.js";
 import { ConsignmentAfterSaleHttpApplicationService } from "../services/consignment-after-sale/consignment-after-sale-http-application.service.js";
 import { ConsignmentMoveService } from "../services/consignment-after-sale/consignment-move.service.js";
 import { ConsignmentUpdateNotifier } from "../services/consignment-after-sale/consignment-update-notifier.js";
@@ -45,6 +46,7 @@ export type CreateConsignmentAfterSaleServicesInput = {
   sellerIdentity: ISellerIdentityReader;
   sellerApi: IItemSubmissionSellerApi;
   lotService: Pick<ILotService, "requestWithdrawal">;
+  log: AppLogger;
 };
 
 /** The after-sale use cases for consignments and their HTTP adapter. */
@@ -55,7 +57,7 @@ export function createConsignmentAfterSaleServices(
   const followUps = new DrizzleUnsoldLotFollowUpRepository(input.db);
   const unsold = new UnsoldLotChoiceService({
     choices: new DrizzleUnsoldLotChoiceRepository(input.db),
-    deadlines: new UnsoldChoiceDeadlines(),
+    deadlines: new UnsoldChoiceDeadlines(input.log.child({ component: "unsold_choice_deadlines" })),
     storedDeadlines: new DrizzleUnsoldChoiceDeadlineStore(input.db),
     followUps,
     submissions: input.submissions,

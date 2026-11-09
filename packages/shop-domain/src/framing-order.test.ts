@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { computeOrderTotal } from "./basket-totals.js";
+import { computeOrderTotal, orderTotalWithDelivery } from "./basket-totals.js";
 import {
   FRAMING_TASK_STATUSES,
   type FramingTaskStatus,
@@ -167,5 +167,24 @@ describe("printReadyForFraming", () => {
     for (const status of [null, "queued", "cancelled"]) {
       expect(printReadyForFraming(status)).toBe(false);
     }
+  });
+});
+
+describe("orderTotalWithDelivery", () => {
+  it("adds the framing to the goods and the quoted delivery, so a quoted order is not undercharged", () => {
+    expect(
+      orderTotalWithDelivery({
+        merchandiseSubtotalPence: 30_000,
+        framingSubtotalPence: 21_000,
+        deliveryPence: 8_500,
+      }),
+    ).toBe(59_500);
+    expect(
+      orderTotalWithDelivery({
+        merchandiseSubtotalPence: 30_000,
+        framingSubtotalPence: 0,
+        deliveryPence: 8_500,
+      }),
+    ).toBe(38_500);
   });
 });

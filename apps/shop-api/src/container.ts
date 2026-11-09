@@ -25,6 +25,7 @@ import {
 import { OfferOnLaxArtService } from "./application/artwork-register/offer-on-lax-art.service.js";
 import { ZohoLinkService } from "./application/artwork-register/zoho-link.service.js";
 import { createShopDeletionEligibilityService } from "./application/deletion-eligibility.service.js";
+import { createDeliveryQuoteStaffService } from "./application/delivery-quote-staff/delivery-quote-staff.service.js";
 import { createDeliveryRegionsService } from "./application/delivery-regions/delivery-regions.service.js";
 import { createEditionRunServices } from "./application/edition-runs/edition-run-services.js";
 import { createEditorialLinksService } from "./application/editorial-links.service.js";
@@ -88,6 +89,11 @@ import type {
 import { createShopAlertRuntime } from "./infrastructure/alerts/create-shop-alert-runtime.js";
 import { ShopAlertSubscriberEraser } from "./infrastructure/alerts/drizzle-shop-alert-subscriber-erasure.js";
 import { createArtistApplicationServices } from "./infrastructure/artist-applications/create-artist-application-services.js";
+import { createDrizzleDeliveryQuoteStaffReader } from "./infrastructure/delivery-quote-staff/drizzle-delivery-quote-staff.store.js";
+import {
+  createDrizzleDeliveryQuoteOrderReleaser,
+  createDrizzleDeliveryQuoteStaffUnitOfWork,
+} from "./infrastructure/delivery-quote-staff/drizzle-delivery-quote-staff.unit-of-work.js";
 import { readDeliveryRegions } from "./infrastructure/delivery-regions/drizzle-delivery-regions.store.js";
 import { createDrizzleDeliveryRegionsUnitOfWork } from "./infrastructure/delivery-regions/drizzle-delivery-regions.unit-of-work.js";
 import { createDrizzleAdminReadRepository } from "./infrastructure/drizzle-admin-read.repository.js";
@@ -538,6 +544,15 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
     reader: deliveryRegionsReader,
     clock: { now: () => new Date() },
   });
+  const deliveryQuotes = createDeliveryQuoteStaffService({
+    uow: createDrizzleDeliveryQuoteStaffUnitOfWork(shopUow, {
+      notifications,
+      storefrontUrl: env.SHOP_STOREFRONT_URL,
+    }),
+    reader: createDrizzleDeliveryQuoteStaffReader(db),
+    orders: createDrizzleDeliveryQuoteOrderReleaser(db),
+    clock: { now: () => new Date() },
+  });
   const editionFraming = createEditionFramingService({
     uow: createDrizzleEditionFramingUnitOfWork(shopUow),
   });
@@ -761,6 +776,8 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
         framing,
         editionFraming,
         deliveryRegions,
+        deliveryQuotes,
+        exportPaymentEnabled: env.SHOP_EXPORT_PAYMENT_ENABLED,
         thirdPartySales,
         originalSales: adminOriginalSales,
         linkArtistIdentity,

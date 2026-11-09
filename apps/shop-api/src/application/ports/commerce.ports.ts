@@ -147,6 +147,21 @@ export type OrderRefundRecord = {
   refundedAt: Date | null;
 };
 
+/** The delivery quote on an order for an address outside the UK. */
+export type OrderDeliveryQuoteRecord = {
+  status: "requested" | "quoted" | "accepted";
+  /** ISO 3166-1 alpha-2. */
+  country: string;
+  pricePence: number | null;
+  carrier: string | null;
+  service: string | null;
+  leadTimeNote: string | null;
+  /** Until when the print is held for this quote. */
+  holdUntil: Date;
+  /** Whether the buyer can pay outside the UK yet. */
+  paymentOpen: boolean;
+};
+
 export type OrderRecord = {
   orderId: string;
   /** "LAX-S-10482". */
@@ -176,6 +191,8 @@ export type OrderRecord = {
   refunds: OrderRefundRecord[];
   /** When the shopper reported a problem on this order, oldest first. */
   problemReports: Date[];
+  /** Set on an order whose delivery is being quoted; absent otherwise. */
+  deliveryQuote?: OrderDeliveryQuoteRecord | null;
 };
 
 export const DEFAULT_ORDER_LIST_LIMIT = 50;

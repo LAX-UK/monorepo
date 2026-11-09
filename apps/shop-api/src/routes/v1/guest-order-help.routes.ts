@@ -158,4 +158,35 @@ export async function registerGuestOrderHelpRoutes(
       return presentCheckoutSession(session);
     },
   );
+
+  app.post(
+    "/v1/guest-orders/accept-delivery-quote",
+    {
+      schema: {
+        tags: ["commerce"],
+        body: Type.Object({
+          token: TokenSchema,
+          successUrl: Type.String({ minLength: 1 }),
+          cancelUrl: Type.String({ minLength: 1 }),
+        }),
+        response: {
+          200: CheckoutSessionSchema,
+          404: ShopApiErrorBodySchema,
+          409: ShopApiErrorBodySchema,
+        },
+      },
+    },
+    async (request) => {
+      requireStorefront(request);
+      const body = request.body as { token: string; successUrl: string; cancelUrl: string };
+      const { deps, order, subject } = await validGuestOrder(guestDeps, body.token);
+      const session = await deps.acceptDeliveryQuote({
+        subject,
+        orderId: order.orderId,
+        successUrl: body.successUrl,
+        cancelUrl: body.cancelUrl,
+      });
+      return presentCheckoutSession(session);
+    },
+  );
 }
