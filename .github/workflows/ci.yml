@@ -53,6 +53,12 @@ jobs:
       - name: Biome root check
         run: pnpm exec biome check .
 
+      # The gitleaks and actionlint binaries come from the actions cache (seeded from main by
+      # seed-lint-binaries-cache.yml), so a GitHub release outage cannot drop a pull request from
+      # the merge queue. The versions and checksums are pinned in the action.
+      - name: Set up lint binaries
+        uses: ./.github/actions/setup-lint-binaries
+
       - name: Queue registry lint
         run: node scripts/lint-queue-registry.mjs
 
@@ -64,13 +70,6 @@ jobs:
           PUSH_BEFORE_SHA: ${{ github.event.before }}
         run: |
           set -euo pipefail
-          GITLEAKS_VERSION=8.30.1
-          # Download to a file first (with retries) so a dropped or rate-limited response is retried
-          # instead of reaching tar as a broken stream.
-          curl -sSLf --retry 5 --retry-delay 5 --retry-all-errors -o gitleaks.tar.gz \
-            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
-          tar -xzf gitleaks.tar.gz gitleaks
-          rm -f gitleaks.tar.gz
           if [[ "$GITHUB_EVENT_NAME" == "pull_request" ]]; then
             log_opts="${PR_BASE_SHA}..${PR_HEAD_SHA}"
           elif [[ -z "$PUSH_BEFORE_SHA" || "$PUSH_BEFORE_SHA" =~ ^0+$ ]]; then
@@ -78,7 +77,7 @@ jobs:
           else
             log_opts="${PUSH_BEFORE_SHA}..${GITHUB_SHA}"
           fi
-          ./gitleaks detect --source . --log-opts="$log_opts" --verbose --redact
+          "$HOME/.cache/lint-bin/gitleaks" detect --source . --log-opts="$log_opts" --verbose --redact
 
       - name: UI guardrails
         run: pnpm lint:ui-guardrails
@@ -156,17 +155,7 @@ jobs:
 
       - name: Actionlint workflow contracts
         run: |
-          # 1.7.12+ aligns with GitHub's 25-input workflow_dispatch limit (see changelog 2025-12-04).
-          # The release download fails now and then (rate limits); try a few times before failing.
-          for attempt in 1 2 3 4; do
-            if curl -sSLf --retry 3 --retry-delay 5 https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash | bash -s -- 1.7.12 && [ -x ./actionlint ]; then
-              break
-            fi
-            echo "actionlint download failed (attempt $attempt); retrying"
-            rm -f ./actionlint
-            sleep $((attempt * 10))
-          done
-          ./actionlint -shellcheck=""
+          "$HOME/.cache/lint-bin/actionlint" -shellcheck=""
 
       - name: Identity lockfile determinism contracts
         run: node --test scripts/identity/identity-lockfile.test.mjs
