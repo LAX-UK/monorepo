@@ -18,6 +18,10 @@ they are brought down. When a page is slimmed, lower its group's budget to the n
 (`--suggest`), so the gain cannot be lost again. A group is on target when its budget is at or below
 300 KB, and the ratchet is finished when the Bid public group gets there.
 
+Sizes here are in KB of 1024 bytes. `next build` prints its "First Load JS" column in kB of 1000
+bytes, so multiply by 1.024 to compare: in the Bid app, the lot page prints 729 kB, which is 712.8 KB
+here, and the home page prints 462 kB against 451.8 KB here.
+
 ## Running it
 
 ```sh
