@@ -1,6 +1,7 @@
 import type { Database } from "@auction/db";
 import { SHOP_API_ERROR_CODES } from "@auction/shop-contracts";
 import { type MoneyPence, computeMerchandiseSubtotal, pence } from "@auction/shop-domain";
+import { assertNoFramingInOrder } from "../application/framing/framing-checkout-guard.js";
 import type { BasketOwner } from "../application/ports/commerce.ports.js";
 import { ShopApiError } from "../errors/shop-api-error.js";
 import {
@@ -35,6 +36,8 @@ export async function loadCheckoutBasket(
   if (!options.merchandiseEnabled && basket.lines.some((line) => line.productVariantId != null)) {
     throw new ShopApiError(SHOP_API_ERROR_CODES.FEATURE_DISABLED, "Merchandise is disabled", 404);
   }
+  // Orders do not carry framing yet, so a framed print cannot be paid for.
+  assertNoFramingInOrder(basket.lines);
   const repriced = await repriceBasketLinesIfNeeded(db, input.basketId);
   if (repriced) {
     throw new ShopApiError(SHOP_API_ERROR_CODES.PRICE_CHANGED, "Basket price changed", 409);

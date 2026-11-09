@@ -1,4 +1,5 @@
 import { type Static, Type } from "@sinclair/typebox";
+import { BasketLineFramingSchema } from "./framing-public.js";
 
 export const ShopFulfilmentOptionSchema = Type.Union([
   Type.Literal("uk_insured_delivery"),
@@ -91,6 +92,8 @@ export const BasketLineSchema = Type.Object(
      * cap for the stepper, not a stock figure, and is never shown as a number of copies left.
      */
     maxQuantity: Type.Optional(Type.Integer({ minimum: 1 })),
+    /** The framing chosen for this print, priced by shop-api; absent or null when unframed. */
+    framing: Type.Optional(Type.Union([BasketLineFramingSchema, Type.Null()])),
   },
   { additionalProperties: false },
 );
@@ -110,6 +113,8 @@ export const BasketViewSchema = Type.Object(
     basketId: Type.String({ format: "uuid" }),
     lines: Type.Array(BasketLineSchema),
     merchandiseSubtotalPence: Type.Integer({ minimum: 0 }),
+    /** Framing on available lines, for each line's quantity; absent when there is none. */
+    framingSubtotalPence: Type.Optional(Type.Integer({ minimum: 0 })),
     expiresAt: Type.String({ format: "date-time" }),
   },
   { additionalProperties: false },

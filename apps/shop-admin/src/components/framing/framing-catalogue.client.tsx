@@ -1,11 +1,11 @@
 "use client";
 
+import { FrameSwatch } from "@/components/framing/frame-swatch";
 import { FramingOptionDialog } from "@/components/framing/framing-option-dialog.client";
 import { useAdminAction } from "@/components/use-admin-action.client";
 import { setFramingOptionOffered } from "@/server/application/framing-actions.server";
 import {
   type FramingRowAction,
-  frameSwatchColour,
   framingDetails,
   framingLeadTime,
   framingRowActions,
@@ -147,11 +147,7 @@ export function FramingCatalogue({
         mobile: "title",
         cell: (row) => (
           <PrimaryCell secondary={framingDetails(row)}>
-            <span
-              aria-hidden
-              className="mr-2.5 inline-block size-4 rounded-staff-xs align-[-3px] shadow-[inset_0_0_0_1px_rgb(0_0_0/0.15)]"
-              style={{ backgroundColor: frameSwatchColour(row.frame) }}
-            />
+            <FrameSwatch frame={row.frame} />
             {row.name}
           </PrimaryCell>
         ),

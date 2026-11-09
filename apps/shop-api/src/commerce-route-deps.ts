@@ -13,6 +13,7 @@ import type { createListOrdersHandler } from "./application/handlers/commerce-ha
 import type { createMergeBasketsHandler } from "./application/handlers/commerce-handlers.js";
 import type { createRemoveBasketLineHandler } from "./application/handlers/commerce-handlers.js";
 import type { createResumeCheckoutOrderHandler } from "./application/handlers/commerce-handlers.js";
+import type { createSetBasketLineFramingHandler } from "./application/handlers/commerce-handlers.js";
 import type { createUpsertBasketLineHandler } from "./application/handlers/commerce-handlers.js";
 import type {
   createListSavedDeliveryAddressesHandler,
@@ -35,11 +36,14 @@ export type StripeWebhookDispatchResult =
 
 export type CommerceRoutesDeps = {
   merchandiseEnabled: boolean;
+  /** SHOP_FRAMING_ENABLED: while off, a basket line takes no framing. */
+  framingEnabled: boolean;
   /** Copies of one edition an order may hold; null leaves only the stock. */
   editionOrderLimit: number | null;
   getBasket: ReturnType<typeof createGetBasketHandler>;
   upsertBasketLine: ReturnType<typeof createUpsertBasketLineHandler>;
   removeBasketLine: ReturnType<typeof createRemoveBasketLineHandler>;
+  setBasketLineFraming: ReturnType<typeof createSetBasketLineFramingHandler>;
   mergeBaskets: ReturnType<typeof createMergeBasketsHandler>;
   checkoutOrder: ReturnType<typeof createCheckoutOrderHandler>;
   resumeCheckoutOrder: ReturnType<typeof createResumeCheckoutOrderHandler>;

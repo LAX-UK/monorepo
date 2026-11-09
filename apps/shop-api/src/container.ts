@@ -34,6 +34,7 @@ import {
   createEnquiryRateLimiter,
   createReleaseAlertRateLimiter,
 } from "./application/enquiry-rate-limit.js";
+import { createEditionFramingService } from "./application/framing/edition-framing.service.js";
 import { createFramingService } from "./application/framing/framing.service.js";
 import { GuestErasureService } from "./application/guest-erasure/guest-erasure.service.js";
 import { createAccountEmailAlertHandlers } from "./application/handlers/account-email-alerts.handler.js";
@@ -79,6 +80,7 @@ import { createCommerceServices } from "./create-commerce-services.js";
 import { resolveStorefrontOrigins } from "./domain/storefront-origins.js";
 import type { EditorialRoutesDeps } from "./editorial-route-deps.js";
 import type { ShopApiEnv } from "./env.js";
+import type { PublicFramingRoutesDeps } from "./framing-route-deps.js";
 import type {
   IdentityDeletionRouteDeps,
   IdentitySubjectExportRouteDeps,
@@ -148,6 +150,8 @@ import {
 } from "./infrastructure/drizzle-zoho-link.js";
 import { createDrizzleEditionRunUnitOfWork } from "./infrastructure/edition-runs/drizzle-edition-run.unit-of-work.js";
 import { createEnquiryFollowUp } from "./infrastructure/enquiry-follow-up.js";
+import { createDrizzleEditionFramingReader } from "./infrastructure/framing/drizzle-edition-framing.store.js";
+import { createDrizzleEditionFramingUnitOfWork } from "./infrastructure/framing/drizzle-edition-framing.unit-of-work.js";
 import { createDrizzleFramingListReader } from "./infrastructure/framing/drizzle-framing.store.js";
 import { createDrizzleFramingUnitOfWork } from "./infrastructure/framing/drizzle-framing.unit-of-work.js";
 import { grantShopStaffRole } from "./infrastructure/grant-staff-role.js";
@@ -218,6 +222,8 @@ export type ShopApiAppDeps = {
   };
   catalogue: CatalogueRoutesDeps;
   merchandise: MerchandiseRoutesDeps;
+  /** What a buyer can choose for framing on an edition. */
+  framing: PublicFramingRoutesDeps;
   interest: InterestRoutesDeps;
   /** The signed-in artist's own application to join the gallery. */
   artistApplicant: ArtistApplicantService;
@@ -529,6 +535,9 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
     reader: deliveryRegionsReader,
     clock: { now: () => new Date() },
   });
+  const editionFraming = createEditionFramingService({
+    uow: createDrizzleEditionFramingUnitOfWork(shopUow),
+  });
   const artCache =
     env.ART_REVALIDATE_URL && env.ART_REVALIDATE_SECRET
       ? createHttpArtCacheInvalidator({
@@ -745,6 +754,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
         artCache,
         homeFeatures,
         framing,
+        editionFraming,
         deliveryRegions,
         thirdPartySales,
         originalSales: adminOriginalSales,
@@ -810,6 +820,10 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
         getPublicCategory: createGetPublicCategoryHandler(categoryReader),
         listPublicArtists: createListPublicArtistsHandler(artistReader),
         getPublicArtist: createGetPublicArtistHandler(artistReader),
+      },
+      framing: {
+        framingEnabled: env.SHOP_FRAMING_ENABLED,
+        reader: createDrizzleEditionFramingReader(db),
       },
       merchandise: {
         listPublicMerchandiseProducts:

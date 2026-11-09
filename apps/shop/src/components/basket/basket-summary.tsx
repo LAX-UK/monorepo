@@ -40,7 +40,9 @@ export function BasketSummary({
   lines,
   actions,
 }: {
-  lines: ReadonlyArray<Pick<BasketLine, "unitPricePence" | "quantity">>;
+  lines: ReadonlyArray<
+    Pick<BasketLine, "unitPricePence" | "quantity"> & { framingUnitPence?: number }
+  >;
   actions: ReactNode;
 }) {
   const summary = presentBasketSummary(lines);

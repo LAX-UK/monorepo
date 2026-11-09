@@ -3,6 +3,7 @@ import { ArtworkArtistSummary } from "@/components/artwork/artwork-artist-summar
 import { ArtworkBuyBox } from "@/components/artwork/artwork-buy-box.client";
 import { ArtworkBuyColumn, ArtworkPriceBlock } from "@/components/artwork/artwork-buy-column";
 import { ArtworkEditionFacts } from "@/components/artwork/artwork-edition-facts";
+import { ArtworkFramingProvider } from "@/components/artwork/artwork-framing-context.client";
 import { ArtworkGallery } from "@/components/artwork/artwork-gallery.client";
 import { ArtworkMoreAbout } from "@/components/artwork/artwork-more-about.client";
 import { ArtworkMoreBy } from "@/components/artwork/artwork-more-by";
@@ -11,6 +12,7 @@ import { ShopGalleryTeamBand } from "@/components/gallery-team/shop-gallery-team
 import { ShopJsonLd } from "@/components/seo/shop-json-ld";
 import { ShopCommercePageShell } from "@/components/shop-commerce-page-shell";
 import { SHOP_POLICY_PATHS, type ShopPolicySlug } from "@/content/policies/shop-policy-status";
+import { presentArtworkFraming } from "@/lib/artwork/artwork-framing.vm";
 import { buildArtworkProductPage } from "@/lib/artwork/artwork-product-page.vm";
 import { loadCheckoutDeliveryTimes } from "@/lib/checkout/checkout-delivery.server";
 import { DELIVERY_GLANCE_ID } from "@/lib/delivery/delivery-glance";
@@ -31,14 +33,32 @@ import {
   fetchPublicArtistBySlug,
   fetchPublicArtworkBySlug,
   fetchPublicArtworks,
+  fetchPublicEditionFraming,
 } from "@/lib/shop-api.server";
 import { fetchArtworkInterestStatus } from "@/lib/shop-artwork-interest.server";
 import { fetchShopBasket } from "@/lib/shop-commerce.server";
+import { isShopFramingEnabled } from "@/lib/shop-runtime-flags";
 import { shopStorefrontLoginHref } from "@/lib/shop-viewer-state";
 import { loadShopViewerState } from "@/lib/shop-viewer-state.server";
 import { MarketingDetailShell } from "@auction/marketing-ui";
 import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
+import type { ReactNode } from "react";
+
+/** The framing choice shared by the picture and the buy box; nothing around an edition without one. */
+function FramingScope({
+  framing,
+  children,
+}: {
+  framing: ReturnType<typeof presentArtworkFraming>;
+  children: ReactNode;
+}) {
+  return framing.kind === "choose" ? (
+    <ArtworkFramingProvider vm={framing}>{children}</ArtworkFramingProvider>
+  ) : (
+    children
+  );
+}
 
 type ArtworkPageProps = {
   params: Promise<{ slug: string }>;
@@ -110,10 +130,20 @@ export default async function ArtworkDetailPage({ params }: ArtworkPageProps) {
     artistDetail,
     artBaseUrl: loadShopArtBaseUrl(),
   });
-  const deliveryLine = presentDeliveryLine({
-    now: new Date(),
-    times: loadCheckoutDeliveryTimes(),
-  });
+  const now = new Date();
+  const deliveryTimes = loadCheckoutDeliveryTimes();
+  const deliveryLine = presentDeliveryLine({ now, times: deliveryTimes });
+  // Framing is a separate read and an addition: with the flag off, or on any failure, the page is
+  // exactly what it was.
+  const framing =
+    purchasable && vm.purchase && artwork.printPricePence !== null && isShopFramingEnabled()
+      ? presentArtworkFraming({
+          framing: await fetchPublicEditionFraming(slug),
+          printPricePence: artwork.printPricePence,
+          now,
+          times: deliveryTimes,
+        })
+      : ({ kind: "none" } as const);
   const linkablePolicies = loadLinkableShopPolicies();
   const deliveryPolicyHref = policyHref(linkablePolicies, "delivery");
   const outsideUkHref = deliveryPolicyHref ? `${deliveryPolicyHref}#${DELIVERY_GLANCE_ID}` : null;
@@ -136,45 +166,53 @@ export default async function ArtworkDetailPage({ params }: ArtworkPageProps) {
         contentClassName="shop-detail-route"
       >
         <article className="shop-edition">
-          <div className="shop-edition__stage">
-            <ArtworkGallery title={vm.title} gallery={vm.gallery} />
-          </div>
+          <FramingScope framing={framing}>
+            <div className="shop-edition__stage">
+              <ArtworkGallery title={vm.title} gallery={vm.gallery} />
+            </div>
 
-          <div className="shop-edition__buy">
-            <ArtworkBuyColumn vm={vm}>
-              {purchasable && vm.purchase ? (
-                <ArtworkBuyBox
-                  slug={vm.slug}
-                  title={vm.title}
-                  artistName={vm.artistName}
-                  imageUrl={primaryImageUrl}
-                  purchase={vm.purchase}
-                  inBasket={Boolean(basketLine)}
-                  basketLineId={basketLine?.lineId ?? null}
-                  signInHref={shopStorefrontLoginHref(returnTo)}
-                  deliveryLine={deliveryLine}
-                  deliveryHref={policyHref(linkablePolicies, "delivery")}
-                  outsideUkHref={outsideUkHref}
-                  editionLine={vm.basketLine}
-                />
-              ) : unavailableReason ? (
-                <div className="shop-buy shop-buy--sold-out">
-                  {vm.purchase ? (
-                    <ArtworkPriceBlock
-                      priceLabel={vm.purchase.priceLabel}
-                      vatNote={vm.purchase.vatNote}
-                    />
-                  ) : null}
-                  <ArtworkUnavailablePanel
-                    viewer={viewer}
-                    artworkSlug={artwork.slug}
-                    reason={unavailableReason}
-                    interestRead={interestRead}
+            <div className="shop-edition__buy">
+              <ArtworkBuyColumn vm={vm}>
+                {purchasable && vm.purchase ? (
+                  <ArtworkBuyBox
+                    slug={vm.slug}
+                    title={vm.title}
+                    artistName={vm.artistName}
+                    imageUrl={primaryImageUrl}
+                    purchase={vm.purchase}
+                    inBasket={Boolean(basketLine)}
+                    basketLineId={basketLine?.lineId ?? null}
+                    signInHref={shopStorefrontLoginHref(returnTo)}
+                    deliveryLine={deliveryLine}
+                    deliveryHref={policyHref(linkablePolicies, "delivery")}
+                    editionLine={vm.basketLine}
+                    outsideUkHref={outsideUkHref}
+                    returnsHref={policyHref(linkablePolicies, "returns")}
+                    framing={
+                      framing.kind === "framed_by_artist" || framing.kind === "unavailable"
+                        ? framing
+                        : null
+                    }
                   />
-                </div>
-              ) : null}
-            </ArtworkBuyColumn>
-          </div>
+                ) : unavailableReason ? (
+                  <div className="shop-buy shop-buy--sold-out">
+                    {vm.purchase ? (
+                      <ArtworkPriceBlock
+                        priceLabel={vm.purchase.priceLabel}
+                        vatNote={vm.purchase.vatNote}
+                      />
+                    ) : null}
+                    <ArtworkUnavailablePanel
+                      viewer={viewer}
+                      artworkSlug={artwork.slug}
+                      reason={unavailableReason}
+                      interestRead={interestRead}
+                    />
+                  </div>
+                ) : null}
+              </ArtworkBuyColumn>
+            </div>
+          </FramingScope>
 
           <div className="shop-edition__details">
             {vm.facts ? <ArtworkEditionFacts facts={vm.facts} /> : null}

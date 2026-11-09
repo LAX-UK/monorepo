@@ -7,6 +7,7 @@ import type { ZohoLinkService } from "./application/artwork-register/zoho-link.s
 import type { DeliveryRegionsService } from "./application/delivery-regions/delivery-regions.service.js";
 import type { EditionRunServices } from "./application/edition-runs/edition-run-services.js";
 import type { EnquiryInboxService } from "./application/enquiry-inbox.service.js";
+import type { EditionFramingService } from "./application/framing/edition-framing.service.js";
 import type { FramingService } from "./application/framing/framing.service.js";
 import type { GuestErasureService } from "./application/guest-erasure/guest-erasure.service.js";
 import type { ShopMediaUploadHandlers } from "./application/handlers/shop-media-upload.handler.js";
@@ -154,6 +155,8 @@ export type AdminRoutesDeps = {
   homeFeatures: HomeFeaturesService;
   /** The framing catalogue: options, their prices per size band and lead times. */
   framing: FramingService;
+  /** Framing on an edition: how it is sold, its offered options and their own prices. */
+  editionFraming: EditionFramingService;
   /** Where the Shop delivers: regions, lead times, fixed prices and countries not delivered to. */
   deliveryRegions: DeliveryRegionsService;
   thirdPartySales: {
