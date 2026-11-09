@@ -1,10 +1,6 @@
 import { accountPurchaseScope } from "@auction/domain";
 import { type BidInvoiceDocument, InvoiceTotalMismatchError } from "@auction/exports/documents";
-import type {
-  IBidInvoiceReader,
-  ILegalEntityRepository,
-  IPayoutRepository,
-} from "@auction/persistence/interfaces";
+import type { IBidInvoiceReader, ILegalEntityRepository } from "@auction/persistence/interfaces";
 import { err, ok } from "neverthrow";
 import type {
   BuyingResult,
@@ -15,20 +11,30 @@ import type { OrganisationMemberActor } from "../interfaces/organisation-members
 import type { PurchaseCandidateReader } from "./purchase-candidate.reader.js";
 import { buyingError, entityActorOf, memberIsPayer } from "./purchase-view.js";
 
+/** What the buyer has been given back for a payment, from the payment provider's refunds. */
+export interface IBuyerRefundsReader {
+  /** Everything refunded to the buyer for the payment so far, in whole pence. */
+  refundedPence(paymentId: string): Promise<number>;
+}
+
 export type PurchaseInvoicePdfDeps = {
   candidates: Pick<PurchaseCandidateReader, "read">;
   invoices: Pick<IBidInvoiceReader, "findByPaymentIds">;
   accounts: Pick<ILegalEntityRepository, "findById">;
   /** Renders the document; it refuses lines that do not add up to the invoice total. */
   render: (document: BidInvoiceDocument) => Promise<Buffer>;
-  /** What has been refunded for a payment so far, from the refund records, in whole pence. */
-  refunds: Pick<IPayoutRepository, "sumRefundLineCentsForPayment">;
+  /** What the buyer has been refunded for a payment (buyer-side, not the seller's payout ledger). */
+  refunds: IBuyerRefundsReader;
   /** Tells finance when a stored invoice cannot be shown (an alert, not a page error). */
   metrics: { record(event: string): void };
+  /** Carries the ids and amounts behind a money-path alert; never personal data. */
+  log: { warn(fields: Record<string, unknown>, message: string): void };
 };
 
 /** The money-path event finance's alert watches (see the monitoring runbook). */
 export const INVOICE_PDF_TOTAL_MISMATCH_EVENT = "invoice_pdf_total_mismatch";
+/** Recorded refunds add up to more than the invoice total; the document shows the total at most. */
+export const INVOICE_PDF_REFUND_EXCEEDS_TOTAL_EVENT = "invoice_pdf_refund_exceeds_total";
 
 /**
  * The invoice of a won lot as a PDF, for the member who pays it. The figures are the stored
@@ -60,8 +66,23 @@ export class PurchaseInvoicePdfService implements IPurchaseInvoicePdfService {
     // A part refund leaves the payment captured, so what was given back comes from the records.
     const refundedPence =
       status === "captured" || status === "refunded"
-        ? await this.deps.refunds.sumRefundLineCentsForPayment(paymentId)
+        ? await this.deps.refunds.refundedPence(paymentId)
         : 0;
+    // The document never shows more than the total (it clamps); finance is told the records do.
+    if (refundedPence > invoice.totalPence) {
+      this.deps.metrics.record(INVOICE_PDF_REFUND_EXCEEDS_TOTAL_EVENT);
+      this.deps.log.warn(
+        {
+          event: INVOICE_PDF_REFUND_EXCEEDS_TOTAL_EVENT,
+          paymentId,
+          lotId,
+          invoiceId: invoice.id,
+          totalPence: invoice.totalPence,
+          refundedPence,
+        },
+        "Recorded refunds exceed the invoice total; the PDF shows the total",
+      );
+    }
     try {
       const pdf = await this.deps.render({
         number: invoice.number,

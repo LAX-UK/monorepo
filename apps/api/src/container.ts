@@ -14,6 +14,7 @@ import {
   DrizzleOrganisationBiddingLimitRepository,
   DrizzlePartyDealRecordReader,
   DrizzlePaymentGroupFactsReader,
+  DrizzlePaymentRepository,
   DrizzleRecordPeopleReader,
   DrizzleStaffAccessReviewReader,
   DrizzleStaffNoticeRecipientReader,
@@ -97,6 +98,7 @@ import { StaffStepUpService } from "./services/staff-step-up.service.js";
 import { LaxAdminRolesService } from "./services/staff/lax-admin-roles.service.js";
 import { StaffRoleAssignmentService } from "./services/staff/staff-role-assignment.service.js";
 import { StaffRolesAdminService } from "./services/staff/staff-roles-admin.service.js";
+import { StripeBuyerRefundsReader } from "./services/stripe/stripe-buyer-refunds.reader.js";
 import { SubmissionAccessGuard } from "./services/submission/submission-access-guard.js";
 import { createBidSubjectExportService } from "./subject-export/create-bid-subject-export-categories.js";
 import { SubjectExportFileSigner } from "./subject-export/subject-export-file-signer.js";
@@ -425,6 +427,7 @@ export function createContainer(env: Env): Container {
   const organisationHome = createOrganisationHomeServices({ db });
   const organisationBuying = createOrganisationBuyingServices({
     db,
+    log: createBaseLogger(env),
     env,
     lots: repos.lotRepo,
     sales: repos.saleRepo,
@@ -441,7 +444,10 @@ export function createContainer(env: Env): Container {
       groupCheckout: payments.paymentGroupCheckout,
       groupGateway: payments.paymentGroupGateway,
       invoices: payments.bidInvoices,
-      refunds: repos.payoutRepository,
+      refunds: new StripeBuyerRefundsReader(
+        new DrizzlePaymentRepository(db),
+        payments.paymentGroupGateway,
+      ),
       pricing: payments.invoiceRaiser,
       invoiceInitiation: payments.lotInvoiceInitiationService,
     },

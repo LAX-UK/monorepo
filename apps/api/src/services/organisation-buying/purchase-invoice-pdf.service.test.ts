@@ -3,6 +3,7 @@ import type { BidInvoiceRecord } from "@auction/persistence/interfaces";
 import { describe, expect, it, vi } from "vitest";
 import type { OrganisationMemberActor } from "../interfaces/organisation-membership-service.js";
 import {
+  INVOICE_PDF_REFUND_EXCEEDS_TOTAL_EVENT,
   INVOICE_PDF_TOTAL_MISMATCH_EVENT,
   PurchaseInvoicePdfService,
   invoiceFilename,
@@ -70,6 +71,7 @@ function setup(over: Setup = {}) {
     winners: new Map(),
   }));
   const record = vi.fn();
+  const warn = vi.fn();
   const refundedCents = vi.fn(async (_paymentId: string) => over.refundedCents ?? 0);
   const service = new PurchaseInvoicePdfService({
     candidates: { read: read as never },
@@ -85,10 +87,11 @@ function setup(over: Setup = {}) {
           : over.account) as never,
     },
     render,
-    refunds: { sumRefundLineCentsForPayment: refundedCents },
+    refunds: { refundedPence: refundedCents },
     metrics: { record },
+    log: { warn },
   });
-  return { service, render, read, findByPaymentIds, record, refundedCents };
+  return { service, render, read, findByPaymentIds, record, warn, refundedCents };
 }
 
 describe("PurchaseInvoicePdfService", () => {
@@ -197,6 +200,61 @@ describe("PurchaseInvoicePdfService", () => {
     await service.render(actor("owner"), LOT);
     expect(refundedCents).toHaveBeenCalledWith(PAYMENT);
     expect(render.mock.calls[0]?.[0]).toMatchObject({ status: "paid", refundedPence: 15_000 });
+  });
+
+  const capturedRow = (status: string) => ({
+    lotId: LOT,
+    lotTitle: "Harbour",
+    lotNumber: 4,
+    saleTitle: null,
+    payment: { id: PAYMENT, status },
+  });
+
+  it.each([
+    ["no refunds", 0, 0],
+    ["a partial refund", 10_000, 10_000],
+    ["a full refund", 60_010, 60_010],
+  ])("shows %s as recorded and raises no alert", async (_name, recorded, shown) => {
+    const { service, render, record, warn } = setup({
+      row: capturedRow("captured"),
+      refundedCents: recorded,
+    });
+    await service.render(actor("owner"), LOT);
+    expect(render.mock.calls[0]?.[0].refundedPence).toBe(shown);
+    expect(record).not.toHaveBeenCalled();
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it("asks the buyer-side refunds once, for the payment, whatever number of refunds make up the sum", async () => {
+    const { service, render, refundedCents } = setup({
+      row: capturedRow("captured"),
+      refundedCents: 10_000 + 25_000,
+    });
+    await service.render(actor("owner"), LOT);
+    expect(refundedCents).toHaveBeenCalledExactlyOnceWith(PAYMENT);
+    expect(render.mock.calls[0]?.[0].refundedPence).toBe(35_000);
+  });
+
+  it("tells finance once, with ids and amounts only, when refunds exceed the total", async () => {
+    const { service, render, record, warn } = setup({
+      row: capturedRow("captured"),
+      refundedCents: 70_000,
+    });
+    const result = await service.render(actor("owner"), LOT);
+    expect(result.isOk()).toBe(true);
+    expect(render).toHaveBeenCalledOnce();
+    expect(record).toHaveBeenCalledExactlyOnceWith(INVOICE_PDF_REFUND_EXCEEDS_TOTAL_EVENT);
+    expect(warn).toHaveBeenCalledExactlyOnceWith(
+      {
+        event: INVOICE_PDF_REFUND_EXCEEDS_TOTAL_EVENT,
+        paymentId: PAYMENT,
+        lotId: LOT,
+        invoiceId: "inv-2",
+        totalPence: 60_010,
+        refundedPence: 70_000,
+      },
+      expect.any(String),
+    );
   });
 
   it("does not look for refunds on an invoice that was never paid", async () => {

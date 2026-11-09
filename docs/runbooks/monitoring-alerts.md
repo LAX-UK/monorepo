@@ -68,6 +68,12 @@ sum(increase(auction_api_money_path_events_total{event="invoice_pdf_total_mismat
 
 `invoice_pdf_total_mismatch`: a stored Bid invoice's lines do not add up to its total, so its PDF was refused (the member sees "we can't show this invoice just now"). Open the invoice in admin, find which line or total is wrong and correct it through finance; the PDF works again once the record is consistent.
 
+```promql
+sum(increase(auction_api_money_path_events_total{event="invoice_pdf_refund_exceeds_total"}[1h])) > 0
+```
+
+`invoice_pdf_refund_exceeds_total`: the refunds Stripe holds for a payment add up to more than its invoice total. The PDF shows the total as refunded, never more, so the member sees a plausible figure. The API log line with the same `event` carries `paymentId`, `lotId`, `invoiceId`, `totalPence` and `refundedPence`; compare them with the refunds on the charge in Stripe and correct the extra refund or the invoice through finance.
+
 Wire each to PagerDuty / email per your observability stack.
 
 ---

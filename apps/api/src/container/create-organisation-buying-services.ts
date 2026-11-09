@@ -7,7 +7,6 @@ import type {
   IBidInvoiceReader,
   ILegalEntityRepository,
   ILotRepository,
-  IPayoutRepository,
   ISaleRepository,
   ITransactionRunner,
 } from "@auction/persistence/interfaces";
@@ -24,6 +23,7 @@ import {
   DrizzlePurchaseProblemRepository,
 } from "@auction/persistence/repositories";
 import type { Env } from "../env.js";
+import type { AppLogger } from "../lib/logger.js";
 import { recordMoneyPathEvent } from "../middleware/metrics.js";
 import type {
   ISettlementComplianceAssessor,
@@ -62,7 +62,10 @@ import { PayProgressResolver } from "../services/organisation-buying/pay-progres
 import { PaySeveralService } from "../services/organisation-buying/pay-several.service.js";
 import { PayTransferService } from "../services/organisation-buying/pay-transfer.service.js";
 import { PurchaseCandidateReader } from "../services/organisation-buying/purchase-candidate.reader.js";
-import { PurchaseInvoicePdfService } from "../services/organisation-buying/purchase-invoice-pdf.service.js";
+import {
+  type IBuyerRefundsReader,
+  PurchaseInvoicePdfService,
+} from "../services/organisation-buying/purchase-invoice-pdf.service.js";
 import { PurchaseProblemService } from "../services/organisation-buying/purchase-problem.service.js";
 import { WonLotLookups } from "../services/organisation-buying/won-lot-lookups.js";
 import type { PaymentGroupCheckoutService } from "../services/payment-group/payment-group-checkout.service.js";
@@ -87,6 +90,8 @@ export type OrganisationBuyingServices = {
 
 export type CreateOrganisationBuyingInput = {
   db: Database;
+  /** Where money-path alerts leave their ids and amounts. */
+  log: Pick<AppLogger, "warn">;
   env: Pick<
     Env,
     | "COLLECTION_SELF_SERVE_ENABLED"
@@ -115,8 +120,8 @@ export type CreateOrganisationBuyingInput = {
     /** Asks the payment provider how a combined checkout stands, and for transfer details. */
     groupGateway: Pick<IPaymentGroupGateway, "checkoutStatus" | "bankTransferInstructions">;
     invoices: IBidInvoiceReader;
-    /** What has been refunded for a payment so far, for the invoice document. */
-    refunds: Pick<IPayoutRepository, "sumRefundLineCentsForPayment">;
+    /** What the buyer has been refunded for a payment, for the invoice document. */
+    refunds: IBuyerRefundsReader;
     /** Prices a lot not invoiced yet with the calculator that raises invoices. */
     pricing: Pick<InvoiceRaiser, "price">;
     /** Raises the invoice of a won lot that has none yet, as lot end does. */
@@ -189,6 +194,7 @@ export function createOrganisationBuyingServices(input: CreateOrganisationBuying
         render: renderBidInvoicePdf,
         refunds: input.payments.refunds,
         metrics: { record: recordMoneyPathEvent },
+        log: input.log,
       }),
       payTransfer: new PayTransferService({
         candidates,
