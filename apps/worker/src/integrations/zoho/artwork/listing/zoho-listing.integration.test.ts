@@ -225,10 +225,12 @@ describe.skipIf(!url)("LAX listing on Zoho (Postgres)", { timeout: 30_000 }, () 
 
   it("picks up a start moved into the window, and not one moved out of it", async () => {
     const original = new Date("2026-11-12T18:00:00Z");
-    const [{ endTime: originalEnd }] = await db
+    const [saleRow] = await db
       .select({ endTime: sale.endTime })
       .from(sale)
       .where(eq(sale.id, saleId));
+    if (!saleRow) throw new Error("sale fixture missing");
+    const originalEnd = saleRow.endTime;
     // The pass ran at 18:05; the next one, 40 minutes late, covers everything since.
     clock = new Date("2026-11-12T18:45:00Z");
     const window = saleStartWindow(clock, await runs.lastCoveredTo());
