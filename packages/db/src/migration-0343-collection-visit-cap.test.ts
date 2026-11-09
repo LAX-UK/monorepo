@@ -16,7 +16,8 @@ describe("migration 0343 collection visit cap", () => {
     const index = journal.entries.findIndex((e) => e.tag === "0343_collection_visit_cap");
     const entry = journal.entries[index];
     const previous = journal.entries[index - 1];
-    expect(previous?.tag).toBe("0335_private_sale_deal_follow_ups");
+    // Whatever is last on main when this lands; only that it is an earlier migration.
+    expect(Number(previous?.tag.slice(0, 4))).toBeLessThan(343);
     expect(entry?.idx).toBe((previous?.idx ?? 0) + 1);
     expect(entry?.when).toBe((previous?.when ?? 0) + 24 * 60 * 60 * 1000);
   });
