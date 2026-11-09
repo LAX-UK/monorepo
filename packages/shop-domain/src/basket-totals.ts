@@ -41,15 +41,20 @@ export function computeMerchandiseSubtotal(lines: readonly BasketLineInput[]): M
   return sumPence(lines.map((line) => multiplyPence(line.unitPricePence, line.quantity)));
 }
 
+/**
+ * What the order costs: the goods, the framing sold with them (kept apart from the goods, which
+ * artists and owners are paid on), and the delivery charge.
+ */
 export function computeOrderTotal(input: {
   merchandiseSubtotalPence: MoneyPence;
+  framingSubtotalPence?: MoneyPence;
   fulfilment: ShopFulfilmentOption;
 }): MoneyPence {
   if (!isOnlineCheckoutFulfilment(input.fulfilment)) {
     throw new ShopDomainError("International quotation fulfilment cannot be checked out online");
   }
   return addPence(
-    input.merchandiseSubtotalPence,
+    addPence(input.merchandiseSubtotalPence, input.framingSubtotalPence ?? pence(0)),
     pence(fulfilmentSurchargePence(input.fulfilment)),
   );
 }

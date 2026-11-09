@@ -2325,6 +2325,13 @@
       "when": 1804233600000,
       "tag": "0338_shop_framing_on_editions",
       "breakpoints": true
+    },
+    {
+      "idx": 333,
+      "version": "7",
+      "when": 1804320000000,
+      "tag": "0342_shop_framing_orders",
+      "breakpoints": true
     }
   ]
 }

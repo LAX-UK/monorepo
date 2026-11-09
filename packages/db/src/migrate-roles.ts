@@ -66,6 +66,8 @@ export const SHOP_COMMERCE_TABLES = [
   "shop_framing_edition_offer",
   /** How each edition is sold with respect to framing. */
   "shop_edition_framing",
+  /** The work on each frame sold with a print. */
+  "shop_framing_task",
   "shop_party",
   "shop_artist",
   "shop_artwork",

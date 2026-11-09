@@ -10,7 +10,7 @@ import {
   timestamp,
   uuid,
 } from "drizzle-orm/pg-core";
-import { shopArtwork } from "./shop-commerce.js";
+import { shopArtwork, shopOrderLine } from "./shop-commerce.js";
 
 /**
  * The framing catalogue: ready-made framing options LAX Shop can offer on editions. The allowed
@@ -136,5 +136,37 @@ export const shopEditionFraming = pgTable(
       "shop_edition_framing_artist_text_ck",
       sql`(${table.mode} = 'framed_by_artist') = (${table.framedByArtist} IS NOT NULL)`,
     ),
+  ],
+);
+
+/**
+ * The work on one frame sold with a print, from queued to finished, with the date it is due. One
+ * task per framing order line; it belongs to the line, not to an edition. The statuses mirror
+ * `FRAMING_TASK_STATUSES` in `@auction/shop-domain`.
+ */
+export const shopFramingTask = pgTable(
+  "shop_framing_task",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    orderLineId: uuid("order_line_id")
+      .notNull()
+      .unique("shop_framing_task_order_line_uid")
+      .references(() => shopOrderLine.id, { onDelete: "restrict" }),
+    status: text("status").notNull().default("queued"),
+    dueAt: timestamp("due_at", { mode: "date", withTimezone: true }).notNull(),
+    assignedToSubjectId: text("assigned_to_subject_id"),
+    framingStartedAt: timestamp("framing_started_at", { mode: "date", withTimezone: true }),
+    framedAt: timestamp("framed_at", { mode: "date", withTimezone: true }),
+    completedAt: timestamp("completed_at", { mode: "date", withTimezone: true }),
+    version: integer("version").notNull().default(1),
+    createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    check(
+      "shop_framing_task_status_ck",
+      sql`${table.status} IN ('queued', 'framing', 'framed', 'completed', 'cancelled')`,
+    ),
+    index("shop_framing_task_status_due_idx").on(table.status, table.dueAt),
   ],
 );
