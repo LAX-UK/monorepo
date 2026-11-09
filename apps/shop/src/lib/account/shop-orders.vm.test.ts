@@ -336,6 +336,7 @@ describe("a framed order", () => {
           orderLineId: "00000000-0000-4000-8000-0000000000f1",
           kind: "framing" as const,
           framingName: "Natural oak frame",
+          framingFor: "Harbor Print, no. 3",
           artworkTitle: null,
           artworkSlug: null,
           artistName: null,
@@ -353,7 +354,7 @@ describe("a framed order", () => {
     expect(rows[1]).toMatchObject({
       title: "Natural oak frame",
       href: null,
-      edition: "Framing",
+      edition: "Framing for Harbor Print, no. 3",
       priceLabel: "£210.00",
     });
   });

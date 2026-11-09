@@ -90,8 +90,8 @@ export function buildOrderInvoiceModel(input: {
     if (line.kind === "framing") {
       // A frame is its own line at the standard rate, apart from the work it frames.
       return {
-        description: line.framingName ?? "Framing",
-        detail: "Framing",
+        description: line.framingFor ? `Framing for ${line.framingFor}` : "Framing",
+        detail: [line.framingName, line.framingDetail].filter(Boolean).join(" · ") || null,
         vatRate: lineRate(line.vatRateBp),
         amount: money(line.unitPricePence),
       };

@@ -110,6 +110,10 @@ export type OrderLineRecord = {
   kind: "goods" | "framing";
   /** The frame's name as sold, for a framing line; null otherwise. */
   framingName: string | null;
+  /** The print a frame goes with ("Tide line, no. 7"); null otherwise. */
+  framingFor: string | null;
+  /** The frame's mount and glazing as sold; null otherwise. */
+  framingDetail: string | null;
   unitPricePence: number;
   /** The rate recorded when the line was sold; null when no VAT policy was configured. */
   vatRateBp: number | null;

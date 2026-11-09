@@ -391,7 +391,12 @@ export function buildShopOrderLines(order: OrderSummary): ShopOrderLineVm[] {
     title: lineTitle(line),
     href: lineHref(line),
     artist: line.artistName ?? null,
-    edition: line.kind === "framing" ? "Framing" : shopOrderLineEdition(line, order.status),
+    edition:
+      line.kind === "framing"
+        ? line.framingFor
+          ? `Framing for ${line.framingFor}`
+          : "Framing"
+        : shopOrderLineEdition(line, order.status),
     priceLabel: formatGbpPence(line.unitPricePence),
     thumbnailUrl: line.imageUrl ?? null,
   }));

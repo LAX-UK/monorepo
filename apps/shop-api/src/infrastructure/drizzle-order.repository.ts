@@ -14,6 +14,10 @@ import {
 } from "@auction/db/schema";
 import {
   type EditionFactsSnapshot,
+  FRAMING_GLAZING_LABELS,
+  FRAMING_MOUNT_LABELS,
+  type FramingGlazing,
+  type FramingMount,
   SHOP_FULFILMENT_STATUSES,
   SHOP_ORDER_STATUSES,
   type ShopFulfilmentStatus,
@@ -173,6 +177,27 @@ const editionSize = sql<number | null>`(
   select nullif(count(*), 0)::int from ${shopEdition} where ${shopEdition.artworkId} = ${shopOrderLine.artworkId}
 )`;
 
+/** "Tide line, no. 7": the print a frame goes with. */
+function framingFor(
+  parent: { artworkTitle: string | null; editionNumber: number | null } | undefined,
+): string | null {
+  if (!parent?.artworkTitle) return null;
+  return parent.editionNumber === null
+    ? parent.artworkTitle
+    : `${parent.artworkTitle}, no. ${parent.editionNumber}`;
+}
+
+/** What the frame is made of, from the options kept when it was sold. */
+function framingDetail(snapshot: unknown): string | null {
+  if (!snapshot || typeof snapshot !== "object") return null;
+  const { mount, glazing } = snapshot as Record<string, unknown>;
+  const parts = [
+    typeof mount === "string" ? FRAMING_MOUNT_LABELS[mount as FramingMount] : undefined,
+    typeof glazing === "string" ? FRAMING_GLAZING_LABELS[glazing as FramingGlazing] : undefined,
+  ].filter((part): part is string => Boolean(part));
+  return parts.length > 0 ? parts.join(" · ") : null;
+}
+
 async function fetchLinesByOrderIds(
   db: Database,
   orderIds: string[],
@@ -197,6 +222,7 @@ async function fetchLinesByOrderIds(
       unitPricePence: shopOrderLine.unitPricePence,
       kind: shopOrderLine.kind,
       framingSnapshot: shopOrderLine.framingSnapshot,
+      framingForLineId: shopOrderLine.framingForLineId,
       vatRateBp: shopOrderLine.vatRateBp,
       vatPence: shopOrderLine.vatPence,
       imageUrl: shopArtwork.primaryImageUrl,
@@ -221,6 +247,7 @@ async function fetchLinesByOrderIds(
         : [],
     ),
   );
+  const parents = new Map(lineRows.map((row) => [row.orderLineId, row]));
   const linesByOrder = new Map<string, LineRow[]>();
   for (const {
     createdAt: _created,
@@ -228,6 +255,7 @@ async function fetchLinesByOrderIds(
     editionSnapshot,
     proofNumber,
     framingSnapshot,
+    framingForLineId,
     kind,
     ...line
   } of lineRows) {
@@ -239,6 +267,8 @@ async function fetchLinesByOrderIds(
         kind === "framing" && typeof framingSnapshot?.name === "string"
           ? framingSnapshot.name
           : null,
+      framingFor: framingForLineId ? framingFor(parents.get(framingForLineId)) : null,
+      framingDetail: kind === "framing" ? framingDetail(framingSnapshot) : null,
       artistName: line.artistName?.trim() || null,
       editionSize: line.editionSize === null ? null : Number(line.editionSize),
       editionBasis: {

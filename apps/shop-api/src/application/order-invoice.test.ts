@@ -208,6 +208,8 @@ describe("buildOrderInvoiceModel: framing", () => {
             orderLineId: "550e8400-e29b-41d4-a716-846655440003",
             kind: "framing",
             framingName: "Natural oak frame",
+            framingFor: "Warm Basket, no. 3",
+            framingDetail: "Window mount, white conservation board · UV-filtering acrylic",
             artworkTitle: null,
             artworkSlug: null,
             artistName: null,
@@ -224,7 +226,11 @@ describe("buildOrderInvoiceModel: framing", () => {
     });
     expect(model.rows.map((row) => [row.description, row.detail, row.amount])).toEqual([
       ["Warm Basket", expect.stringContaining("Edition 3 of 24"), "£120.00"],
-      ["Natural oak frame", "Framing", "£210.00"],
+      [
+        "Framing for Warm Basket, no. 3",
+        "Natural oak frame · Window mount, white conservation board · UV-filtering acrylic",
+        "£210.00",
+      ],
       ["UK insured delivery", null, "£15.00"],
     ]);
   });
