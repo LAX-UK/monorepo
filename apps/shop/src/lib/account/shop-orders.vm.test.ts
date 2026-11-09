@@ -7,6 +7,7 @@ import {
   buildShopOrderTimeline,
   buildShopOrderTotals,
   isPlacedShopOrder,
+  shopDeliveryQuote,
   shopOrderProgressStatus,
   shopOrderTitle,
 } from "./shop-orders.vm";
@@ -461,6 +462,37 @@ describe("a framed order", () => {
 
   it("is still titled by the print, not 'and 1 more'", () => {
     expect(shopOrderTitle(framed())).not.toContain("more");
+  });
+});
+
+describe("the delivery quote on a framed order", () => {
+  const NOW_QUOTE = new Date("2026-10-14T22:00:00.000Z");
+  const quoted = (framingSubtotalPence?: number) =>
+    order("pending_payment", {
+      merchandiseSubtotalPence: 36_000,
+      ...(framingSubtotalPence === undefined ? {} : { framingSubtotalPence }),
+      checkoutExpiresAt: "2026-10-15T22:00:00.000Z",
+      deliveryQuote: {
+        status: "quoted",
+        country: "US",
+        pricePence: 8_500,
+        carrier: "DHL Express",
+        service: "Express insured",
+        leadTimeNote: null,
+        holdUntil: "2026-10-15T22:00:00.000Z",
+        paymentOpen: true,
+      },
+    });
+
+  it("totals the goods, the framing and the quoted delivery: what will be paid", () => {
+    const quote = shopDeliveryQuote([quoted(21_000)], NOW_QUOTE);
+    expect(quote?.price?.totalLabel).toBe("£655.00");
+    expect(quote?.price?.deliveryLabel).toBe("£85.00");
+  });
+
+  it("is the goods and the delivery when nothing is framed, or an older response has no framing", () => {
+    expect(shopDeliveryQuote([quoted(0)], NOW_QUOTE)?.price?.totalLabel).toBe("£445.00");
+    expect(shopDeliveryQuote([quoted()], NOW_QUOTE)?.price?.totalLabel).toBe("£445.00");
   });
 });
 

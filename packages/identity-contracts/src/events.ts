@@ -14,8 +14,15 @@ export const IDENTITY_EVENT_TYPES = {
   IDENTITY_DELETED: "user.identity_deleted",
   SESSION_REVOKED: "user.session_revoked",
   CREDENTIAL_CHANGED: "user.credential_changed",
-  /** A social sign-in (Google or Apple) was removed from the account by the person. */
+  /**
+   * A social sign-in (Google or Apple) was removed from the account by the person. Replaced by
+   * SIGN_IN_METHOD_REMOVED, which also covers passkeys; kept so events already recorded still read.
+   */
   SIGN_IN_METHOD_UNLINKED: "user.sign_in_method_unlinked",
+  /** The person added a way to sign in: Google, Apple or a passkey. */
+  SIGN_IN_METHOD_ADDED: "user.sign_in_method_added",
+  /** The person removed a way to sign in: Google, Apple or a passkey. */
+  SIGN_IN_METHOD_REMOVED: "user.sign_in_method_removed",
   /** A password set before the email was confirmed was removed when Google or Apple proved it. */
   UNCONFIRMED_PASSWORD_REMOVED: "user.unconfirmed_password_removed",
   /** A Google or Apple sign-in or link was refused because the account is a staff account. */
@@ -93,6 +100,17 @@ export const userSignInMethodUnlinkedPayloadSchemaV1 = identityEventBaseSchemaV1
   unlinkedAt: rfc3339Timestamp,
 });
 
+/** Which method, and when. No name, address or key: a passkey's name is the person's own. */
+export const userSignInMethodAddedPayloadSchemaV1 = identityEventBaseSchemaV1.extend({
+  method: z.enum(["google", "apple", "passkey"]),
+  addedAt: rfc3339Timestamp,
+});
+
+export const userSignInMethodRemovedPayloadSchemaV1 = identityEventBaseSchemaV1.extend({
+  method: z.enum(["google", "apple", "passkey"]),
+  removedAt: rfc3339Timestamp,
+});
+
 export const userUnconfirmedPasswordRemovedPayloadSchemaV1 = identityEventBaseSchemaV1.extend({
   /** The provider whose proof of the email caused the removal. */
   provider: z.enum(["google", "apple"]),
@@ -129,6 +147,10 @@ export type UserCredentialChangedPayloadV1 = z.infer<typeof userCredentialChange
 export type UserSignInMethodUnlinkedPayloadV1 = z.infer<
   typeof userSignInMethodUnlinkedPayloadSchemaV1
 >;
+export type UserSignInMethodAddedPayloadV1 = z.infer<typeof userSignInMethodAddedPayloadSchemaV1>;
+export type UserSignInMethodRemovedPayloadV1 = z.infer<
+  typeof userSignInMethodRemovedPayloadSchemaV1
+>;
 export type UserUnconfirmedPasswordRemovedPayloadV1 = z.infer<
   typeof userUnconfirmedPasswordRemovedPayloadSchemaV1
 >;
@@ -148,6 +170,8 @@ export type IdentityEventPayloadV1 =
   | UserSessionRevokedPayloadV1
   | UserCredentialChangedPayloadV1
   | UserSignInMethodUnlinkedPayloadV1
+  | UserSignInMethodAddedPayloadV1
+  | UserSignInMethodRemovedPayloadV1
   | UserUnconfirmedPasswordRemovedPayloadV1
   | UserSocialLinkRefusedStaffPayloadV1
   | UserIdentityDeletedPayloadV1
@@ -164,6 +188,8 @@ export const identityEventPayloadSchemasV1 = {
   [IDENTITY_EVENT_TYPES.SESSION_REVOKED]: userSessionRevokedPayloadSchemaV1,
   [IDENTITY_EVENT_TYPES.CREDENTIAL_CHANGED]: userCredentialChangedPayloadSchemaV1,
   [IDENTITY_EVENT_TYPES.SIGN_IN_METHOD_UNLINKED]: userSignInMethodUnlinkedPayloadSchemaV1,
+  [IDENTITY_EVENT_TYPES.SIGN_IN_METHOD_ADDED]: userSignInMethodAddedPayloadSchemaV1,
+  [IDENTITY_EVENT_TYPES.SIGN_IN_METHOD_REMOVED]: userSignInMethodRemovedPayloadSchemaV1,
   [IDENTITY_EVENT_TYPES.UNCONFIRMED_PASSWORD_REMOVED]:
     userUnconfirmedPasswordRemovedPayloadSchemaV1,
   [IDENTITY_EVENT_TYPES.SOCIAL_LINK_REFUSED_STAFF]: userSocialLinkRefusedStaffPayloadSchemaV1,

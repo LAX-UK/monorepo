@@ -1,8 +1,8 @@
+import { BidResponsiveImg } from "@/components/media/bid-responsive-img";
 import type { HomeCardImage, HomeComingUpLayout, HomeComingUpRow } from "@/lib/home-sections/types";
 import { FOCUS_RING } from "@/lib/marketing/chrome";
 import { bidCardSrcSet } from "@/lib/media/bid-image-src-set";
-import { reportImageFallback } from "@/lib/observability/report-image-fallback";
-import { CoverTimeLine, ResponsiveImg } from "@auction/marketing-ui";
+import { CoverTimeLine } from "@auction/marketing-ui";
 import { cn } from "@auction/ui";
 import { ButtonLink } from "@auction/ui/lax";
 import Link from "next/link";
@@ -30,10 +30,9 @@ function Picture({
   variant,
 }: { image: HomeCardImage; className: string; variant: HomeComingUpLayout }) {
   return (
-    <ResponsiveImg
+    <BidResponsiveImg
       src={image.src}
       srcSet={bidCardSrcSet(image.src)}
-      onFallback={reportImageFallback}
       sizes={PICTURE_SIZES[variant]}
       alt=""
       loading="lazy"
