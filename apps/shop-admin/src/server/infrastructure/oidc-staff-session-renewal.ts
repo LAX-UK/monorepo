@@ -1,4 +1,4 @@
-import { JWKS_PATH, normalizeIssuerUrl } from "@auction/identity-contracts";
+import { issuerJwksUrl, normalizeIssuerUrl } from "@auction/identity-contracts";
 import { verifyIdentityToken } from "@auction/identity-contracts/verify";
 import { createFetchTokenEndpoint } from "@auction/identity-rp";
 import { exchangeForShopApiToken } from "../application/exchange-shop-api-token";
@@ -13,7 +13,7 @@ export function createOidcStaffSessionRenewal(config: ShopAdminConfig): StaffSes
     timeoutMs: 15_000,
   });
   const issuer = normalizeIssuerUrl(config.oidcIssuer);
-  const jwksUrl = `${config.oidcInternalIssuer.replace(/\/+$/, "")}${JWKS_PATH}`;
+  const jwksUrl = issuerJwksUrl(config.oidcInternalIssuer);
   return {
     refresh: (refreshToken) =>
       tokenEndpoint.requestToken(

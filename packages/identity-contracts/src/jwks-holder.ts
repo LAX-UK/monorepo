@@ -13,6 +13,13 @@ export const JWKS_MAX_STALE_MS = 10 * 60 * 1000;
 /** After a failed fetch, no new fetch starts until this long has passed. */
 export const JWKS_FAILURE_COOLDOWN_MS = 30 * 1000;
 
+/**
+ * A set older than the refresh interval but younger than this is served as is while a refresh runs
+ * in the background; an older set is refreshed before use, so an idle verifier never trusts a set
+ * much older than two refresh intervals without checking.
+ */
+export const JWKS_STALE_WHILE_REVALIDATE_MS = 2 * DISCOVERY_CACHE_TTL_MS;
+
 /** An unknown `kid` triggers at most one refetch per this interval. */
 export const JWKS_MISS_REFETCH_INTERVAL_MS = 30 * 1000;
 
@@ -27,6 +34,13 @@ export class JwksUnavailableError extends Error {
 }
 
 type Clock = () => number;
+
+/** Told when a fetch of the key set fails, so an outage shows up in logs or metrics. */
+export type JwksFetchFailureReporter = (failure: { url: string; reason: string }) => void;
+
+const defaultFailureReporter: JwksFetchFailureReporter = (failure) => {
+  console.warn("jwks_fetch_failed", failure);
+};
 
 /** Resolves the key for a token header; assignable to the resolver `jwtVerify` takes. */
 export type ResolveKey = (header: Parameters<JWTVerifyGetKey>[0]) => ReturnType<JWTVerifyGetKey>;
@@ -49,7 +63,8 @@ export type JwksHolder = {
  * Holds the issuer's published signing keys for a verifier.
  *
  * - The set is refreshed about every {@link DISCOVERY_CACHE_TTL_MS}. Concurrent callers share one
- *   fetch.
+ *   fetch. A set up to {@link JWKS_STALE_WHILE_REVALIDATE_MS} old is served while the refresh runs
+ *   behind the request, so no caller waits on the issuer for a routine refresh.
  * - If a refresh fails, the last good set keeps serving for up to {@link JWKS_MAX_STALE_MS}, so a
  *   brief issuer outage does not log everyone out. The failed fetch is not retried for
  *   {@link JWKS_FAILURE_COOLDOWN_MS}, so an outage does not become a retry storm. A failed fetch
@@ -67,6 +82,7 @@ export function createJwksHolder(options: {
   url: string;
   fetchImpl?: typeof fetch;
   now?: Clock;
+  onFetchFailure?: JwksFetchFailureReporter;
 }): JwksHolder {
   const now = options.now ?? Date.now;
   const seen = new Set<string>();
@@ -79,6 +95,9 @@ export function createJwksHolder(options: {
     const doFetch = options.fetchImpl ?? fetch;
     const response = await doFetch(options.url, {
       headers: { accept: "application/json" },
+      // The key set is served from a fixed address; a redirect would send the fetch somewhere
+      // nobody configured, so it counts as a failure.
+      redirect: "manual",
       signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
     });
     if (!response.ok) throw new JwksUnavailableError(`Key set request failed (${response.status})`);
@@ -100,8 +119,16 @@ export function createJwksHolder(options: {
       .then((next) => {
         current = next;
       })
-      .catch(() => {
+      .catch((error: unknown) => {
         lastFailureAt = now();
+        try {
+          (options.onFetchFailure ?? defaultFailureReporter)({
+            url: options.url,
+            reason: error instanceof Error ? error.message : "unknown",
+          });
+        } catch {
+          // Reporting must never change what verification does.
+        }
       })
       .finally(() => {
         inflight = null;
@@ -118,8 +145,13 @@ export function createJwksHolder(options: {
 
   const ensureFresh = async (): Promise<KeySet> => {
     const set = usable();
-    const stale = !set || now() - set.fetchedAt >= DISCOVERY_CACHE_TTL_MS;
-    if (stale && (inflight || !inFailureCooldown())) await refetch();
+    const age = set ? now() - set.fetchedAt : Number.POSITIVE_INFINITY;
+    if (set && age >= DISCOVERY_CACHE_TTL_MS && age < JWKS_STALE_WHILE_REVALIDATE_MS) {
+      // Stale while revalidate: answer from the set in hand and refresh behind the request.
+      if (inflight || !inFailureCooldown()) void refetch();
+      return set;
+    }
+    if (age >= DISCOVERY_CACHE_TTL_MS && (inflight || !inFailureCooldown())) await refetch();
     const next = usable();
     if (!next) throw new JwksUnavailableError();
     return next;

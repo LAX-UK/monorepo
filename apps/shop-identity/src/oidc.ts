@@ -1,6 +1,6 @@
 import {
-  JWKS_PATH,
   buildOidcDiscoveryDocument,
+  issuerJwksUrl,
   normalizeIssuerUrl,
   validateBackchannelLogoutClaims,
   verifyBackchannelLogoutToken,
@@ -66,7 +66,7 @@ export function resolveOidcDiscovery(issuerUrl: string): OidcDiscovery {
 
 export function resolveJwksUrl(issuerUrl: string): string {
   const issuer = normalizeIssuerUrl(issuerUrl);
-  return `${issuer}${JWKS_PATH}`;
+  return issuerJwksUrl(issuer);
 }
 
 export async function checkIdentityProvider(
