@@ -70,9 +70,9 @@
     "@types/node": "^22.10.5",
     "@types/pdfkit": "^0.13.9",
     "@types/pg": "^8.15.4",
+    "jose": "^6.2.3",
     "tsx": "^4.19.2",
     "typescript": "^5.7.3",
-    "vitest": "^3.0.5",
-    "jose": "^6.2.3"
+    "vitest": "^3.0.5"
   }
 }

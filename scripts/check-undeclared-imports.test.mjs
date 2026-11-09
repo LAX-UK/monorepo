@@ -17,12 +17,16 @@ const manifest = {
   devDependencies: { vitest: "1" },
   peerDependencies: { react: "19" },
 };
-const app = { manifest, isApp: true, isTest: false, aliasPatterns: ["@/*"] };
+const app = { manifest, isTest: false, aliasPatterns: ["@/*"] };
 
 test("findUndeclaredImports fails an import the workspace does not declare", () => {
   const violations = findUndeclaredImports(FIXTURE_ROOT);
-  assert.equal(violations.length, 1);
+  assert.equal(violations.length, 2);
   assert.match(violations[0], /apps\/demo\/src\/page\.tsx: "radix-ui" - radix-ui is not declared/);
+  assert.match(
+    violations[1],
+    /apps\/demo\/sentry\.server\.config\.ts: "@sentry\/nextjs" - .* not declared/,
+  );
 });
 
 test("packageNameOf keeps the scope and drops subpaths", () => {
@@ -60,7 +64,6 @@ test("undeclaredImportProblem keeps devDependencies out of app source but allows
   assert.match(undeclaredImportProblem("vitest", app) ?? "", /devDependency/);
   assert.equal(undeclaredImportProblem("vitest", { ...app, isTest: true }), null);
   assert.equal(undeclaredImportProblem("vitest", { ...app, typeOnly: true }), null);
-  assert.equal(undeclaredImportProblem("vitest", { ...app, isApp: false }), null);
 });
 
 test("isTestFile covers tests and the support files only tests load", () => {
@@ -70,13 +73,19 @@ test("isTestFile covers tests and the support files only tests load", () => {
     "a/b.integration.test.ts",
     "test/setup.ts",
     "lib/testing/fake.ts",
-    "a/b.mock.ts",
     "a/crm-test-doubles.ts",
     "a/x.test-helpers.ts",
   ]) {
     assert.equal(isTestFile(file), true, file);
   }
-  for (const file of ["a/b.ts", "lib/latest/thing.ts", "a/contest.ts"]) {
+  for (const file of [
+    "a/b.ts",
+    "lib/latest/thing.ts",
+    "a/contest.ts",
+    "a/payout-helpers.ts",
+    "a/admin-kpi-trend.helpers.ts",
+    "a/legacy.fixture.ts",
+  ]) {
     assert.equal(isTestFile(file), false, file);
   }
 });

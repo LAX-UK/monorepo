@@ -3,10 +3,11 @@
  * that workspace's own package.json. pnpm hoisting lets an undeclared import resolve in the
  * monorepo while the Docker build, which installs only the app's own dependencies, fails.
  *
- * Test files (tests, plus the helpers, mocks and fixtures only tests load) may also use
- * devDependencies. Source files of an app ship in a Docker image, so a
- * value import there needs `dependencies` (or `peerDependencies`); a type-only import is erased
- * at build time and may use `devDependencies`.
+ * Test files (tests, plus the `.test-helpers.` and `-test-doubles.` files and the test directories
+ * only tests load) may also use devDependencies. Every other file ships: apps in a Docker image,
+ * packages in the production install of the apps that consume them. A value import there needs
+ * `dependencies` (or `peerDependencies`); a type-only import is erased at build time and may use
+ * `devDependencies`.
  */
 import { builtinModules } from "node:module";
 import ts from "typescript";
@@ -14,11 +15,10 @@ import ts from "typescript";
 const BUILTINS = new Set(builtinModules);
 const TEST_FILE_RE = /\.(?:test|spec)\.[cm]?[jt]sx?$/;
 const TEST_DIRECTORY_RE = /(?:^|\/)(?:__tests__|__mocks__|__fixtures__|test|testing)\//;
-const TEST_SUPPORT_FILE_RE =
-  /(?:^|[.-])(?:test-helpers|test-doubles|helpers|mock|fixture)\.[cm]?[jt]sx?$/;
+const TEST_SUPPORT_FILE_RE = /[.-](?:test-helpers|test-doubles)\.[cm]?[jt]sx?$/;
 const RUNTIME_DEPENDENCY_FIELDS = ["dependencies", "optionalDependencies", "peerDependencies"];
 
-/** Tests and the helpers, mocks and fixtures that only tests load. */
+/** Tests, and the helper and test-double files and directories that only tests load. */
 export function isTestFile(relativePath) {
   return (
     TEST_FILE_RE.test(relativePath) ||
@@ -61,10 +61,10 @@ function needsNoDeclaration(specifier, { aliasPatterns, packageName }) {
  * Problems for one imported specifier, or null when it is allowed.
  *
  * @param {string} specifier
- * @param {{ manifest: object; isApp: boolean; isTest: boolean; typeOnly?: boolean; aliasPatterns: string[] }} context
+ * @param {{ manifest: object; isTest: boolean; typeOnly?: boolean; aliasPatterns: string[] }} context
  */
 export function undeclaredImportProblem(specifier, context) {
-  const { manifest, isApp, isTest, aliasPatterns, typeOnly = false } = context;
+  const { manifest, isTest, aliasPatterns, typeOnly = false } = context;
   if (needsNoDeclaration(specifier, { aliasPatterns, packageName: manifest.name })) return null;
 
   const name = packageNameOf(specifier);
@@ -72,9 +72,9 @@ export function undeclaredImportProblem(specifier, context) {
   if (declaredAtRuntime) return null;
 
   const declaredAsDev = Boolean(manifest.devDependencies?.[name]);
-  if (declaredAsDev && (isTest || !isApp || typeOnly)) return null;
+  if (declaredAsDev && (isTest || typeOnly)) return null;
   if (declaredAsDev) {
-    return `${name} is a devDependency but app source ships in the Docker image: move it to dependencies`;
+    return `${name} is a devDependency but this file ships with the workspace: move it to dependencies`;
   }
   return `${name} is not declared in package.json`;
 }

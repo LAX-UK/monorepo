@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /**
- * Undeclared-import guard: every bare import in apps/*\/src and packages/*\/src must resolve to a
- * package the workspace lists in its own package.json. Hoisting hides a missing declaration in the
+ * Undeclared-import guard: every bare import in apps/*\/src, packages/*\/src and the top-level
+ * entry files an app ships (instrumentation, Sentry and Next configs, .mjs scripts) must resolve to
+ * a package the workspace lists in its own package.json. Hoisting hides a missing declaration in the
  * monorepo; the Docker build, which installs one app's dependencies only, then fails. The rule
  * itself lives in undeclared-imports-rule.mjs.
  */
@@ -17,6 +18,10 @@ import {
 
 const ROOT = path.resolve(import.meta.dirname, "..");
 const WORKSPACE_ROOTS = ["apps", "packages"];
+/** Files at a workspace root that ship with it. Tool configs (vitest, playwright, ...) do not. */
+const ENTRY_FILE_RE =
+  /^(?:instrumentation[\w.-]*\.ts|sentry\.[\w.-]+\.config\.ts|next\.config\.ts|[\w.-]+\.mjs)$/;
+const TOOL_CONFIG_RE = /^(?:vitest|playwright|eslint|postcss|tailwind)[\w.-]*\.(?:ts|mjs)$/;
 
 function readJson(file) {
   return JSON.parse(readFileSync(file, "utf8"));
@@ -27,12 +32,22 @@ function listWorkspaces(root) {
   return WORKSPACE_ROOTS.filter((group) => existsSync(path.join(root, group))).flatMap((group) =>
     readdirSync(path.join(root, group), { withFileTypes: true })
       .filter((entry) => entry.isDirectory())
-      .map((entry) => ({ group, dir: path.join(root, group, entry.name) }))
+      .map((entry) => ({ dir: path.join(root, group, entry.name) }))
       .filter(
         ({ dir }) =>
           existsSync(path.join(dir, "package.json")) && existsSync(path.join(dir, "src")),
       ),
   );
+}
+
+/** The shipped entry files that sit next to a workspace's package.json. */
+function listEntryFiles(dir) {
+  return readdirSync(dir, { withFileTypes: true })
+    .filter(
+      (entry) =>
+        entry.isFile() && ENTRY_FILE_RE.test(entry.name) && !TOOL_CONFIG_RE.test(entry.name),
+    )
+    .map((entry) => path.join(dir, entry.name));
 }
 
 /** tsconfig `paths` keys, e.g. `@/*`, which resolve inside the workspace and need no package. */
@@ -45,13 +60,13 @@ function readAliasPatterns(dir) {
 
 export function findUndeclaredImports(root = ROOT) {
   const violations = [];
-  for (const { group, dir } of listWorkspaces(root)) {
+  for (const { dir } of listWorkspaces(root)) {
     const context = {
       manifest: readJson(path.join(dir, "package.json")),
-      isApp: group === "apps",
       aliasPatterns: readAliasPatterns(dir),
     };
-    for (const file of listSourceFiles(path.join(dir, "src"))) {
+    const files = [...listSourceFiles(path.join(dir, "src")), ...listEntryFiles(dir)];
+    for (const file of files) {
       const relative = path.relative(dir, file).split(path.sep).join("/");
       const isTest = isTestFile(relative);
       for (const { specifier, typeOnly } of importedModules(file, readFileSync(file, "utf8"))) {
