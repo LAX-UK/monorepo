@@ -110,6 +110,12 @@ export {
 } from "./deletion-eligibility.js";
 export * from "./auth-at-rest.js";
 export {
+  DISCOVERY_CACHE_TTL_MS,
+  JWKS_FAILURE_COOLDOWN_MS,
+  JWKS_MAX_STALE_MS,
+  JWKS_MISS_REFETCH_INTERVAL_MS,
+} from "./jwks-holder.js";
+export {
   AUTH_ROUTE_PATH,
   JWKS_PATH,
   OAUTH_INTROSPECTION_PATH,
@@ -117,6 +123,7 @@ export {
   OIDC_DISCOVERY_PATH,
   OIDC_END_SESSION_PATH,
   buildOidcDiscoveryDocument,
+  issuerJwksUrl,
   normalizeIssuerUrl,
   type OidcDiscoveryDocument,
 } from "./discovery.js";

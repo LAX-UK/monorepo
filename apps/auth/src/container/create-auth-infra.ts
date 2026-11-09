@@ -14,7 +14,7 @@ import type { AuthAppEnv } from "../env.js";
 import { HttpEmailSender } from "../infrastructure/http-email-sender.js";
 import { HttpProductDeletionEligibilityProbe } from "../infrastructure/http-product-deletion-eligibility-probe.js";
 import { HttpProductSubjectUsageProbe } from "../infrastructure/http-product-subject-usage-probe.js";
-import type { JwksProvider } from "../infrastructure/jwks-provider.js";
+import type { JwksProvider, SigningKeyInfoReader } from "../infrastructure/jwks-provider.js";
 import { selectPhoneVerification } from "../infrastructure/phone-verification/select-phone-verification.js";
 import type { ProductDeletionEligibilityProbe } from "../services/account-deletion.ports.js";
 
@@ -26,7 +26,7 @@ export type AuthInfra = {
   productDeletionEligibility: ProductDeletionEligibilityProbe;
   webOrigins: string[];
   envelope: { seal(plaintext: string): string; open(sealed: string): string } | undefined;
-  jwks: JwksProvider;
+  jwks: JwksProvider & SigningKeyInfoReader;
   phoneVerification: SmsSender;
 };
 

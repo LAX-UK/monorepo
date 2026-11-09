@@ -155,3 +155,8 @@ export function buildOidcDiscoveryDocument(issuerUrl: string): OidcDiscoveryDocu
     prompt_values_supported: ["none", "login", "consent", "create", "select_account"],
   };
 }
+
+/** The key set URL for an issuer base URL, whether or not the base ends with a slash. */
+export function issuerJwksUrl(issuer: string): string {
+  return `${issuer.replace(/\/+$/, "")}${JWKS_PATH}`;
+}

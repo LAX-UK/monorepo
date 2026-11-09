@@ -25,6 +25,7 @@ import {
   createSecurityNoticeService,
 } from "./container/create-security-services.js";
 import { createSubjectExportService } from "./container/create-subject-export.js";
+import { reconcileSigningKeyMetric } from "./container/signing-key-metric.js";
 import { loadAuthEnv } from "./env.js";
 import { withAlertingLog } from "./infrastructure/alerting-log.js";
 import { createAccountSubjectExportRegistry } from "./infrastructure/subject-export/create-account-subject-export-categories.js";
@@ -257,6 +258,8 @@ const schedules = await createAuthSchedules({
   },
   reconcileAuthAtRest: () =>
     reconcileAuthAtRestMetric(db, (pending) => metrics.authAtRestPending.set(pending)),
+  reconcileSigningKeyMetric: () =>
+    reconcileSigningKeyMetric(infra.jwks, metrics.signingKeyCreatedTimestampSeconds),
 });
 const internal =
   env.IDENTITY_MACHINE_CLIENT_ID && env.IDENTITY_MACHINE_CLIENT_SECRET

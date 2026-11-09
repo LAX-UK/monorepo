@@ -7,6 +7,7 @@ import {
   OIDC_DISCOVERY_PATH,
   OIDC_END_SESSION_PATH,
   buildOidcDiscoveryDocument,
+  issuerJwksUrl,
   normalizeIssuerUrl,
 } from "./discovery.js";
 
@@ -90,5 +91,12 @@ describe("OIDC discovery contracts", () => {
       code_challenge_methods_supported: ["S256"],
       prompt_values_supported: ["none", "login", "consent", "create", "select_account"],
     });
+  });
+});
+
+describe("issuerJwksUrl", () => {
+  it("joins the key set path whether or not the issuer ends with a slash", () => {
+    expect(issuerJwksUrl("https://auth.test")).toBe("https://auth.test/.well-known/jwks.json");
+    expect(issuerJwksUrl("https://auth.test///")).toBe("https://auth.test/.well-known/jwks.json");
   });
 });
