@@ -7,10 +7,13 @@ import {
   setBasketLineQuantity,
   setMerchandiseBasketLineQuantity,
 } from "@/app/actions/basket.actions";
+import { FramingSwatch } from "@/components/artwork/artwork-framing-group.client";
+import { BasketChangeFramingSheet } from "@/components/basket/basket-change-framing-sheet.client";
 import { BasketSummary } from "@/components/basket/basket-summary";
 import { ShopQuantityStepper } from "@/components/commerce/shop-quantity-stepper";
 import { ShopCommerceButton } from "@/components/shop-commerce-button";
 import { ShopNotice } from "@/components/shop-notice";
+import { FRAMING_COPY } from "@/content/framing-copy";
 import {
   type BasketLineVm,
   basketLineStepperHint,
@@ -140,7 +143,11 @@ export function BasketLinesClient({ lines, summaryActions, emptyState }: Props) 
       const result =
         restore.kind === "merchandise"
           ? await addMerchandiseVariantToBasket(restore.variantId, vm.quantity)
-          : await addArtworkToBasket(restore.artworkSlug, vm.quantity);
+          : await addArtworkToBasket(
+              restore.artworkSlug,
+              vm.quantity,
+              restore.framingOptionId ?? undefined,
+            );
       forgetRemoved(vm.lineId);
       if (!result.ok) {
         setMessage(
@@ -221,6 +228,7 @@ export function BasketLinesClient({ lines, summaryActions, emptyState }: Props) 
                 lines={vms.map((vm) => ({
                   unitPricePence: vm.unitPricePence,
                   quantity: quantities[vm.lineId] ?? vm.quantity,
+                  framingUnitPence: vm.framing?.unitPence ?? 0,
                 }))}
                 actions={summaryActions}
               />
@@ -249,6 +257,10 @@ function BasketLineRow({
   onRemove: () => void;
 }) {
   const router = useRouter();
+  const [changingFraming, setChangingFraming] = useState(false);
+  const framing = vm.framing;
+  const printTotal = formatGbpPence(vm.unitPricePence * quantity);
+  const lineTotal = formatGbpPence((vm.unitPricePence + (framing?.unitPence ?? 0)) * quantity);
   return (
     <li className={cn("shop-basket__line", line?.soldOut && "shop-basket__line--sold-out")}>
       <BasketLineThumbnail vm={vm} />
@@ -278,14 +290,58 @@ function BasketLineRow({
             {vm.detail ? <p className="shop-basket__line-meta">{vm.detail}</p> : null}
           </div>
           <p className="shop-basket__line-price">
-            <span className="shop-basket__line-total">
-              {formatGbpPence(vm.unitPricePence * quantity)}
-            </span>
-            {quantity > 1 ? (
+            <span className="shop-basket__line-total">{lineTotal}</span>
+            {framing?.available ? (
+              <span className="shop-basket__line-unit">
+                {printTotal} + {formatGbpPence(framing.linePence)} framing
+              </span>
+            ) : quantity > 1 ? (
               <span className="shop-basket__line-unit">{vm.unitPrice} each</span>
             ) : null}
           </p>
         </div>
+        {framing ? (
+          <div className="shop-basket__framing" data-available={framing.available}>
+            <div className="shop-basket__framing-head">
+              <p className="shop-basket__framing-name">
+                <FramingSwatch frame={framing.frame} />
+                {framing.name}
+              </p>
+              {framing.available ? (
+                <p className="shop-basket__framing-price">{framing.priceLabel}</p>
+              ) : null}
+            </div>
+            <p className="shop-basket__framing-detail">{framing.detail}</p>
+            {framing.unavailableMessage ? (
+              <ShopNotice tone="warning" title="Framing no longer offered">
+                <p>{framing.unavailableMessage}</p>
+              </ShopNotice>
+            ) : null}
+            {vm.restore?.kind === "edition" ? (
+              <>
+                <button
+                  type="button"
+                  className="shop-basket__change-framing shop-inline-link shop-focus-ring"
+                  disabled={pending}
+                  aria-haspopup="dialog"
+                  aria-label={`Change framing for ${vm.title}`}
+                  onClick={() => setChangingFraming(true)}
+                >
+                  {FRAMING_COPY.changeFraming}
+                </button>
+                <BasketChangeFramingSheet
+                  open={changingFraming}
+                  onOpenChange={setChangingFraming}
+                  lineId={vm.lineId}
+                  artworkSlug={vm.restore.artworkSlug}
+                  title={vm.title}
+                  currentOptionId={framing.optionId}
+                  onSaved={() => router.refresh()}
+                />
+              </>
+            ) : null}
+          </div>
+        ) : null}
         {line?.priceChanged ? (
           <ShopNotice tone="warning" title="The price has changed">
             <p>Update the basket to see the new price before checkout.</p>

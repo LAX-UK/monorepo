@@ -1,3 +1,4 @@
+import type { BasketLineFraming } from "@auction/shop-contracts";
 import type {
   ShopFulfilmentOption,
   ShopFulfilmentStatus,
@@ -29,6 +30,10 @@ export type BasketLineRecord = {
   editionSize: number | null;
   /** The shared contract's wording for the print ("Limited edition of 24 · Hand-signed"); null for merchandise. */
   editionLine: string | null;
+  /** The framing option chosen for this print, null for unframed. */
+  framingOptionId?: string | null;
+  /** That option as the shopper sees it, priced; null for unframed. */
+  framing?: BasketLineFraming | null;
 };
 
 export type BasketRecord = {
@@ -190,13 +195,25 @@ export type ListOrdersResult = {
 };
 
 export type UpsertBasketLineInput =
-  | { owner: BasketOwner; artworkSlug: string; quantity: number }
+  | {
+      owner: BasketOwner;
+      artworkSlug: string;
+      quantity: number;
+      /** A framing option to choose, null to go unframed; left out, the line keeps its framing. */
+      framingOptionId?: string | null | undefined;
+    }
   | { owner: BasketOwner; productVariantId: string; quantity: number };
 
 export interface BasketRepository {
   getBasket(owner: BasketOwner): Promise<BasketRecord | null>;
   addOrUpdateLine(input: UpsertBasketLineInput): Promise<BasketRecord>;
   removeLine(input: { owner: BasketOwner; lineId: string }): Promise<BasketRecord>;
+  /** Chooses, changes or clears the framing on a print in the basket. */
+  setLineFraming(input: {
+    owner: BasketOwner;
+    lineId: string;
+    framingOptionId: string | null;
+  }): Promise<BasketRecord>;
   /** A line in both baskets keeps the larger quantity, so signing in never doubles a limited edition. */
   mergeBaskets(input: {
     from: BasketOwner;

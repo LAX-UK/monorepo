@@ -15,6 +15,10 @@ export function createUpsertBasketLineHandler(repo: BasketRepository) {
   return (input: UpsertBasketLineInput) => repo.addOrUpdateLine(input);
 }
 
+export function createSetBasketLineFramingHandler(repo: BasketRepository) {
+  return (input: Parameters<BasketRepository["setLineFraming"]>[0]) => repo.setLineFraming(input);
+}
+
 export function createRemoveBasketLineHandler(repo: BasketRepository) {
   return (input: { owner: BasketOwner; lineId: string }) => repo.removeLine(input);
 }
