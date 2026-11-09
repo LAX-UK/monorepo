@@ -1,0 +1,3 @@
+import { TZDate } from "@date-fns/tz";
+
+export const at = (iso: string) => new TZDate(iso, "Europe/London");

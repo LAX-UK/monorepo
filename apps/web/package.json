@@ -30,6 +30,7 @@
     "@auction/auth": "workspace:*",
     "@auction/branding": "workspace:*",
     "@auction/connect": "workspace:*",
+    "@auction/datetime": "workspace:*",
     "@auction/domain": "workspace:*",
     "@auction/exports": "workspace:*",
     "@auction/http-headers": "workspace:*",
