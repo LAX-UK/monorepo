@@ -12,7 +12,7 @@ import type {
 } from "@auction/shop-contracts";
 import {
   type DataColumn,
-  DataTable,
+  ListPage,
   Notice,
   StaffButton,
   StaffDate,
@@ -161,31 +161,44 @@ export function DeliveryQuotesView({
   ];
 
   return (
-    <div className="flex flex-col gap-4">
-      <TabNav
-        items={tabs}
-        activeId={view}
-        label="Delivery quote views"
+    <>
+      <ListPage<AdminDeliveryQuote>
+        title="Delivery quotes"
+        description="Buyers asking for delivery outside the UK. Send a price and carrier, or say we can't deliver there. The print is held while you decide."
         Link={Link}
-        overflow="scroll"
+        listKey="lax-admin.delivery-quotes"
+        access={canWrite ? "full" : "read-only"}
+        views={
+          <TabNav
+            items={tabs}
+            activeId={view}
+            label="Delivery quote views"
+            Link={Link}
+            overflow="scroll"
+          />
+        }
+        notice={
+          data.paymentOpen ? undefined : (
+            <Notice
+              tone="warning"
+              title="Buyers can't pay for delivery outside the UK yet. You can still send quotes: buyers see the price and are told payment is not open, and nothing is charged until it is."
+            />
+          )
+        }
+        filtered={false}
+        empty={{
+          illustration: "parcel",
+          title: EMPTY_COPY[view],
+        }}
+        noResults={{ noun: "requests" }}
+        table={{
+          label: "Delivery quote requests",
+          columns,
+          data: data.items,
+          getRowId: (row) => row.id,
+          defaultDensity: "comfortable",
+        }}
       />
-      {data.paymentOpen ? null : (
-        <Notice
-          tone="warning"
-          title="Buyers can't pay for delivery outside the UK yet. You can still send quotes: buyers see the price and are told payment is not open, and nothing is charged until it is."
-        />
-      )}
-      {data.items.length === 0 ? (
-        <p className="py-10 text-center text-staff-sm text-staff-muted">{EMPTY_COPY[view]}</p>
-      ) : (
-        <DataTable
-          label="Delivery quote requests"
-          columns={columns}
-          data={data.items}
-          getRowId={(row) => row.id}
-          stickyHeader={false}
-        />
-      )}
       {quoting ? (
         <SendQuoteDialog
           key={quoting.id}
@@ -209,6 +222,6 @@ export function DeliveryQuotesView({
           decline={actions.decline}
         />
       ) : null}
-    </div>
+    </>
   );
 }
