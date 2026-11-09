@@ -125,6 +125,23 @@ export type Auth = {
       user?: { id?: string; twoFactorEnabled?: boolean | null } | null;
     } | null>;
     revokeOtherSessions(input: { headers: Headers }): Promise<unknown>;
+    /**
+     * Server-only: the HTTP route `/link-social` is switched off (see DISABLED_AUTH_ENDPOINT_PATHS).
+     * The issuer's account-action hand-off calls this for the person whose session `headers` carry,
+     * and answers with the response so the round trip's cookies can be passed on.
+     */
+    linkSocialAccount(input: {
+      headers: Headers;
+      body: {
+        provider: "google" | "apple";
+        callbackURL: string;
+        errorCallbackURL: string;
+        disableRedirect: true;
+        /** Kept in the link's state; `{ accountAction: true }` marks the issuer's hand-off. */
+        additionalData?: Record<string, unknown>;
+      };
+      asResponse: true;
+    }): Promise<Response>;
     /** Server-only (no HTTP route): decrypts the stored backup codes for a user. */
     viewBackupCodes(input: { body: { userId: string } }): Promise<{ backupCodes: string[] }>;
     /**
@@ -229,6 +246,24 @@ export function createAuth(env: AuthEnv): Auth {
          * only gate for that case; the provider's own email must still be verified.
          */
         requireLocalEmailVerified: false,
+        /**
+         * SM3: a link the person starts from Security, after confirming it is them, may use a
+         * different address (Apple's "Hide my email", or a Google address that is not the LAX
+         * one). It affects only those links: Better Auth's own link endpoints are switched off,
+         * so the issuer's hand-off is the one way in, and sign-in never joins by a different
+         * address (that is decided by the policy in `account.create.before`).
+         */
+        allowDifferentEmails: true,
+      },
+      additionalFields: {
+        /** The address the provider reported, sealed at rest by the database adapter. */
+        providerEmail: { type: "string", required: false, input: false },
+        providerEmailHidden: {
+          type: "boolean",
+          required: false,
+          defaultValue: false,
+          input: false,
+        },
       },
     },
     user: {

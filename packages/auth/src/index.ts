@@ -163,6 +163,11 @@ export {
   type SlidingWindowRedis,
 } from "./sliding-window-rate-limit.js";
 export { wrapAuthDatabaseAdapter } from "./adapter-at-rest.js";
+export { readProviderAddress, type ProviderAddress } from "./provider-address.js";
+export {
+  readSocialSubject,
+  type SocialSubjectPorts,
+} from "./auth-hooks/social-flow.js";
 export { wrapOAuthConsentUpsertAdapter } from "./oauth-consent-upsert.js";
 export {
   SOCIAL_PROVIDER_IDS,

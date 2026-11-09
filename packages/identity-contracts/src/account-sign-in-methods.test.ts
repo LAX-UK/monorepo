@@ -1,16 +1,22 @@
 import { describe, expect, it } from "vitest";
 import {
+  ACCOUNT_ACTION_DONE_PATH,
+  ACCOUNT_ACTION_PATH,
+  ACCOUNT_ACTION_TICKET_TTL_SECONDS,
   ACCOUNT_SIGN_IN_METHODS_INTENT_PATH,
   ACCOUNT_SIGN_IN_METHODS_PASSKEY_REMOVE_PATH,
   ACCOUNT_SIGN_IN_METHODS_PASSKEY_RENAME_PATH,
   ACCOUNT_SIGN_IN_METHODS_PATH,
   ACCOUNT_SIGN_IN_METHODS_UNLINK_PATH,
   ACCOUNT_SIGN_IN_METHOD_ERRORS,
+  ACCOUNT_SIGN_IN_METHOD_RETURNS,
   ACCOUNT_SIGN_IN_METHOD_RETURN_CODES,
   ACCOUNT_SIGN_IN_METHOD_RETURN_ERRORS,
+  ACCOUNT_SIGN_IN_METHOD_RETURN_PARAM,
   PASSKEY_LIMIT,
   SESSION_SIGN_IN_METHODS,
   SIGN_IN_METHOD_KINDS,
+  accountActionIntentSchema,
   accountPasskeySchema,
   accountSignInMethodsSchema,
   socialSignInProviderSchema,
@@ -100,6 +106,24 @@ describe("account sign-in methods contract", () => {
 
   it("records a session as signed in with a password, a provider, a passkey or a link", () => {
     expect(SESSION_SIGN_IN_METHODS).toEqual(["password", "provider", "passkey", "link"]);
+  });
+
+  it("sends the browser to the issuer's action pages and keeps the ticket short-lived", () => {
+    expect(ACCOUNT_ACTION_PATH).toBe("/account-action");
+    expect(ACCOUNT_ACTION_DONE_PATH).toBe("/account-action/done");
+    expect(ACCOUNT_ACTION_TICKET_TTL_SECONDS).toBe(120);
+    expect(
+      accountActionIntentSchema.safeParse({ url: "https://auth.lax.bid/account-action?t=1" })
+        .success,
+    ).toBe(true);
+    expect(accountActionIntentSchema.safeParse({ url: "not a url" }).success).toBe(false);
+  });
+
+  it("returns to Security with one fixed word, drawn from a single list with no repeats", () => {
+    expect(ACCOUNT_SIGN_IN_METHOD_RETURN_PARAM).toBe("signInMethod");
+    expect(new Set(ACCOUNT_SIGN_IN_METHOD_RETURNS).size).toBe(
+      ACCOUNT_SIGN_IN_METHOD_RETURNS.length,
+    );
   });
 
   it("lists each refusal once, including the new ones", () => {

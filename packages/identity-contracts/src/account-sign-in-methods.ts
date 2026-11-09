@@ -10,6 +10,18 @@ export const ACCOUNT_SIGN_IN_METHODS_PASSKEY_RENAME_PATH =
 export const ACCOUNT_SIGN_IN_METHODS_PASSKEY_REMOVE_PATH =
   "/lax/account-sign-in-methods/passkeys/remove";
 
+/**
+ * The issuer's own pages for adding a method. Account sends the browser to
+ * `ACCOUNT_ACTION_PATH?ticket=…`; the issuer runs the provider round trip there and comes back
+ * through `ACCOUNT_ACTION_DONE_PATH`, which returns only to LAX Account's Security page.
+ */
+export const ACCOUNT_ACTION_PATH = "/account-action";
+export const ACCOUNT_ACTION_DONE_PATH = "/account-action/done";
+/** How long a one-time ticket lives. It is spent the first time it is used. */
+export const ACCOUNT_ACTION_TICKET_TTL_SECONDS = 120;
+/** The query parameter LAX Account's Security page reads the outcome from: a fixed word, never text. */
+export const ACCOUNT_SIGN_IN_METHOD_RETURN_PARAM = "signInMethod";
+
 /** The social sign-ins a person can have linked. */
 export const SOCIAL_SIGN_IN_PROVIDERS = ["google", "apple"] as const;
 export const socialSignInProviderSchema = z.enum(SOCIAL_SIGN_IN_PROVIDERS);
@@ -27,6 +39,13 @@ export type SignInMethodKind = z.infer<typeof signInMethodKindSchema>;
 export const SESSION_SIGN_IN_METHODS = ["password", "provider", "passkey", "link"] as const;
 export const sessionSignInMethodSchema = z.enum(SESSION_SIGN_IN_METHODS);
 export type SessionSignInMethod = z.infer<typeof sessionSignInMethodSchema>;
+
+/** What LAX Account asks the issuer to start: the same hand-off serves every way to add a method. */
+export const accountActionIntentSchema = z.object({
+  /** Where to send the browser: the issuer's `/account-action` page with the one-time ticket. */
+  url: z.string().url(),
+});
+export type AccountActionIntentResponse = z.infer<typeof accountActionIntentSchema>;
 
 /** The most passkeys one person can hold; the database enforces it too. */
 export const PASSKEY_LIMIT = 10;
@@ -88,7 +107,8 @@ export const accountSignInMethodUnlinkedSchema = z.object({
  *  - `rate_limited`: too many attempts (429);
  *  - `passkey_limit`: the person already holds the most passkeys allowed (422);
  *  - `not_available`: that method is not offered in this environment (404);
- *  - `staff_not_allowed`: staff accounts cannot sign in with Google or Apple (403).
+ *  - `staff_not_allowed`: staff accounts cannot sign in with Google or Apple (403);
+ *  - `already_linked`: that provider is already linked to this account (409).
  */
 export const ACCOUNT_SIGN_IN_METHOD_ERRORS = [
   "last_sign_in_method",
@@ -97,6 +117,7 @@ export const ACCOUNT_SIGN_IN_METHOD_ERRORS = [
   "passkey_limit",
   "not_available",
   "staff_not_allowed",
+  "already_linked",
 ] as const;
 
 /**
@@ -119,6 +140,13 @@ export const ACCOUNT_SIGN_IN_METHOD_RETURN_ERRORS = [
   "passkey_limit",
   "staff_not_allowed",
 ] as const;
+
+/** Everything the Security page may be sent back with, in one list: a success or an error word. */
+export const ACCOUNT_SIGN_IN_METHOD_RETURNS = [
+  ...ACCOUNT_SIGN_IN_METHOD_RETURN_CODES,
+  ...ACCOUNT_SIGN_IN_METHOD_RETURN_ERRORS,
+] as const;
+export type AccountSignInMethodReturn = (typeof ACCOUNT_SIGN_IN_METHOD_RETURNS)[number];
 
 export type AccountSignInMethodError = (typeof ACCOUNT_SIGN_IN_METHOD_ERRORS)[number];
 export type AccountSignInMethodReturnCode = (typeof ACCOUNT_SIGN_IN_METHOD_RETURN_CODES)[number];

@@ -28,6 +28,7 @@ import { createSubjectExportService } from "./container/create-subject-export.js
 import { loadAuthEnv } from "./env.js";
 import { withAlertingLog } from "./infrastructure/alerting-log.js";
 import { createAccountSubjectExportRegistry } from "./infrastructure/subject-export/create-account-subject-export-categories.js";
+import { DEFAULT_LAX_ACCOUNT_ORIGIN } from "./lax-account-origin.js";
 import { createInternalIdentityRoutes } from "./routes/internal-identity.routes.js";
 import { createAccountAccessClaimsResolver } from "./services/account-access-claims.js";
 import { AccountDeletionService } from "./services/account-deletion.service.js";
@@ -38,7 +39,6 @@ import { createTwoFactorRequirementReader } from "./services/two-factor-requirem
 import { SubjectExportReader } from "./subject-export/subject-export-reader.service.js";
 
 /** LAX Account's production origin, used for the security-notice link when `LAX_ACCOUNT_ORIGIN` is unset. */
-const DEFAULT_LAX_ACCOUNT_ORIGIN = "https://account.lax.bid";
 
 const env = loadAuthEnv();
 if (env.SENTRY_DSN_AUTH) {
@@ -384,6 +384,10 @@ const app = createAuthApp({
     },
     services,
     identityOperations,
+    socialSubjectPorts: {
+      accountLinkReader: identityPorts.accountLinkReader,
+      twoFactorPolicyStore: identityPorts.twoFactorPolicyStore,
+    },
     emailChange,
     accountDeletion,
     subjectExports,
