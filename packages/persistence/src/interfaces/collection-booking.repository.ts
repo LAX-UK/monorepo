@@ -289,6 +289,8 @@ export interface ICollectionBookingReader {
    * of their lots in a live booking since. A count, so a tab can show it without reading the list.
    */
   countOpenNotCollected(venueId: string): Promise<number>;
+  /** How many bookings, at any place, are still booked for a visit starting in [from, to). */
+  countBookedInRange(range: { from: Date; to: Date }): Promise<number>;
   /**
    * The live booking holding each of these lots, if any. Keyed by lot id; a lot in no live booking
    * is absent.

@@ -17,6 +17,7 @@ import {
 import type { StaffCollectionSettings, StaffCollectionVenue } from "@auction/types";
 import Link from "next/link";
 import { ClosuresPanel } from "./closures-panel";
+import { DeskBookForClientButton } from "./desk-book-for-client-button";
 import { DeskDay } from "./desk-day";
 import { DeskList } from "./desk-list";
 import { HoursRulesForm } from "./hours-rules-form";
@@ -79,6 +80,11 @@ export function CollectionsPage({
       title="Collections"
       description="Who is coming to collect, and when. Hand over after checking photo ID."
       tabs={tabs}
+      {...(canChange && settings && DESK_TABS.includes(tab)
+        ? {
+            primaryAction: <DeskBookForClientButton venueId={settings.venueId} today={today} />,
+          }
+        : {})}
       notice={
         !canChange && settings ? (
           <div className="flex items-center gap-3">

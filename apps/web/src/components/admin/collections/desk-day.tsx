@@ -24,8 +24,7 @@ import type { DeskDayView } from "@auction/types";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { DeskBookForClientDialog } from "./desk-book-for-client-dialog";
-import { DeskVisitRow } from "./desk-visit-row";
+import { DeskColumnHeaders, DeskVisitRow } from "./desk-visit-row";
 import { useDeskDialogs } from "./use-desk-dialogs";
 
 /**
@@ -42,8 +41,11 @@ export function DeskDay({
   today: string;
 }) {
   const router = useRouter();
-  const { handlers, dialogs } = useDeskDialogs({ venueId: day.venueId, today });
-  const [booking, setBooking] = useState(false);
+  const { handlers, dialogs } = useDeskDialogs({
+    venueId: day.venueId,
+    today,
+    bookings: day.groups.flatMap((group) => group.bookings),
+  });
   const [opening, setOpening] = useState(false);
   const [openFailure, setOpenFailure] = useState<string | null>(null);
   const href = (date: string) => collectionsHref("day", day.venueId, date);
@@ -98,11 +100,6 @@ export function DeskDay({
             </StaffButtonLink>
           )}
         </div>
-        {canChange ? (
-          <StaffButton variant="primary" onClick={() => setBooking(true)}>
-            Book for a client
-          </StaffButton>
-        ) : null}
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
@@ -153,6 +150,7 @@ export function DeskDay({
         />
       ) : (
         <ul className="flex flex-col gap-4">
+          <DeskColumnHeaders />
           {day.groups
             .filter((group) => group.bookings.length > 0)
             .map((group) => (
@@ -185,13 +183,6 @@ export function DeskDay({
             ))}
         </ul>
       )}
-
-      <DeskBookForClientDialog
-        open={booking}
-        venueId={day.venueId}
-        today={today}
-        onClose={() => setBooking(false)}
-      />
     </div>
   );
 }

@@ -1,9 +1,10 @@
-import type { DeskBookingView, DeskDayView, DeskLotView } from "@auction/types";
+import type { DeskBookingView, DeskDayView, DeskListView, DeskLotView } from "@auction/types";
 
 export const DESK_VENUE = "d0000000-0000-4000-8000-0000000000aa";
 export const DESK_BOOKING = "d0000000-0000-4000-8000-0000000000b1";
 export const DESK_LOT_A = "d0000000-0000-4000-8000-0000000000c1";
 export const DESK_LOT_B = "d0000000-0000-4000-8000-0000000000c2";
+export const DESK_LOT_C = "d0000000-0000-4000-8000-0000000000c3";
 
 export function deskLot(over: Partial<DeskLotView> = {}): DeskLotView {
   return {
@@ -63,7 +64,15 @@ export function deskDay(over: Partial<DeskDayView> = {}): DeskDayView {
             reference: "COL-1043",
             buyer: { id: "e2", name: "Okafor Trust" },
             collector: { kind: "third_party", name: "Sam Shipper", company: "Fast Freight Ltd" },
-            lots: [deskLot({ released: false, fulfilmentStatus: "awaiting_release" })],
+            lots: [
+              deskLot({
+                lotId: DESK_LOT_C,
+                title: "Harbour at First Light",
+                lotNumber: 2,
+                released: false,
+                fulfilmentStatus: "awaiting_release",
+              }),
+            ],
             handOverBlocked: "not_released",
           }),
         ],
@@ -71,6 +80,25 @@ export function deskDay(over: Partial<DeskDayView> = {}): DeskDayView {
     ],
     toHandOver: 2,
     notCollected: 1,
+    ...over,
+  };
+}
+
+/** The visits to come, or the missed ones, as the list tabs show them. */
+export function deskList(
+  status: DeskListView["status"] = "upcoming",
+  over: Partial<DeskListView> = {},
+): DeskListView {
+  const items =
+    status === "not_collected"
+      ? [deskBooking({ status: "not_collected", actions: ["rebook"] })]
+      : [deskBooking()];
+  return {
+    venueId: DESK_VENUE,
+    status,
+    items,
+    more: false,
+    notCollected: status === "not_collected" ? items.length : 0,
     ...over,
   };
 }

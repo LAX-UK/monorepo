@@ -1,4 +1,4 @@
-import { DESK_VENUE, deskBooking, deskDay } from "@/lib/admin/collections/desk.fixture";
+import { DESK_VENUE, deskBooking, deskDay, deskList } from "@/lib/admin/collections/desk.fixture";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -44,11 +44,11 @@ describe("the day at the desk", () => {
     expect(screen.getByText("2 visits · 2 to hand over · 16 times still open")).toBeTruthy();
   });
 
-  it("warns Release first on a visit with an unreleased lot, and Ready on the rest", () => {
+  it("warns Release first on a visit with an unreleased lot, and All released on the rest", () => {
     render(<DeskDay day={deskDay()} canChange today="2026-11-12" />);
     const first = screen.getByText("COL-1042").closest("li") as HTMLElement;
     const second = screen.getByText("COL-1043").closest("li") as HTMLElement;
-    expect(within(first).getByText("Ready")).toBeTruthy();
+    expect(within(first).getByText("All released")).toBeTruthy();
     expect(within(second).getByText("Release first")).toBeTruthy();
   });
 
@@ -56,11 +56,9 @@ describe("the day at the desk", () => {
     const { unmount } = render(<DeskDay day={deskDay()} canChange today="2026-11-12" />);
     expect(screen.getAllByRole("button", { name: "Hand over" }).length).toBe(2);
     expect(screen.getAllByRole("button", { name: "Not collected" }).length).toBe(2);
-    expect(screen.getByRole("button", { name: "Book for a client" })).toBeTruthy();
     unmount();
     render(<DeskDay day={deskDay()} canChange={false} today="2026-11-12" />);
     expect(screen.queryByRole("button", { name: "Hand over" })).toBeNull();
-    expect(screen.queryByRole("button", { name: "Book for a client" })).toBeNull();
   });
 
   it("opens the hand-over panel for the visit", async () => {
@@ -74,8 +72,12 @@ describe("the day at the desk", () => {
   it("confirms before marking a visit not collected, and says what the buyer is told", () => {
     render(<DeskDay day={deskDay()} canChange today="2026-11-12" />);
     fireEvent.click(screen.getAllByRole("button", { name: "Not collected" })[0] as HTMLElement);
-    expect(screen.getByRole("heading", { name: "Mark COL-1042 as not collected?" })).toBeTruthy();
-    expect(screen.getByText(/There's no fee/)).toBeTruthy();
+    expect(
+      screen.getByRole("heading", { name: "Mark Hayes Collection's collection as not collected?" }),
+    ).toBeTruthy();
+    expect(
+      screen.getByText(/We email Charlotte Hayes that we missed them, with a link to book again/),
+    ).toBeTruthy();
   });
 
   it("moves between days with links", () => {
@@ -169,11 +171,8 @@ describe("the day at the desk", () => {
 });
 
 describe("the lists", () => {
-  const list = (status: "upcoming" | "not_collected", items = [deskBooking()]) => ({
-    venueId: DESK_VENUE,
-    status,
-    items,
-  });
+  const list = (status: "upcoming" | "not_collected", items = [deskBooking()]) =>
+    deskList(status, { items, notCollected: status === "not_collected" ? items.length : 0 });
 
   it("lists upcoming visits a day at a time, with the time in each row", () => {
     render(<DeskList list={list("upcoming")} canChange today="2026-11-09" />);
@@ -181,7 +180,7 @@ describe("the lists", () => {
     expect(screen.getByText(/COL-1042 · 14:00–14:30/)).toBeTruthy();
   });
 
-  it("offers Book again on a missed visit", () => {
+  it("offers Rebook on a missed visit", () => {
     render(
       <DeskList
         list={list("not_collected", [
@@ -192,7 +191,14 @@ describe("the lists", () => {
       />,
     );
     expect(screen.getByText("1 visit to follow up")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Book again" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Rebook" })).toBeTruthy();
+  });
+
+  it("says when more missed visits wait than are shown", () => {
+    render(
+      <DeskList list={deskList("not_collected", { more: true })} canChange today="2026-11-13" />,
+    );
+    expect(screen.getByText("Showing the first 1")).toBeTruthy();
   });
 
   it("says when there is nothing to follow up", () => {

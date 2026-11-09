@@ -197,6 +197,9 @@ export class InMemorySettingsBookings
   async countOpenNotCollected() {
     return 0;
   }
+  async countBookedInRange() {
+    return 0;
+  }
   async findLiveByLots() {
     return new Map<string, CollectionBookingRecord>();
   }

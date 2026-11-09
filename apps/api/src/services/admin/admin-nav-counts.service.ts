@@ -5,6 +5,8 @@ export type AdminNavCounts = {
   manualReviewCount: number;
   onboardingIssuesTotal: number;
   lotFulfilmentPending: number;
+  /** Collections booked for today that staff have yet to hand over. */
+  collectionsToHandOver: number;
   withdrawalsPending: number;
   disputesOpen: number;
   payoutsFailed: number;
@@ -25,6 +27,7 @@ export type AdminNavCountsDeps = {
   getManualReviewCount: () => Promise<number>;
   getOnboardingIssuesTotal: () => Promise<number>;
   getLotFulfilmentPending: () => Promise<number>;
+  getCollectionsToHandOver: () => Promise<number>;
   getWithdrawalsPending: () => Promise<number>;
   getDisputesOpen: () => Promise<number>;
   getPayoutsFailed: () => Promise<number>;
@@ -38,7 +41,7 @@ export type AdminNavCountsDeps = {
   getLegalEntityStripeRequirements: () => Promise<number>;
 };
 
-const NAV_COUNTS_CACHE_KEY = "admin:nav-counts:v1";
+const NAV_COUNTS_CACHE_KEY = "admin:nav-counts:v2";
 
 /**
  * Nav badge counts for the admin sidebar.
@@ -110,6 +113,7 @@ export class AdminNavCountsService {
       manualReviewCount,
       onboardingIssuesTotal,
       lotFulfilmentPending,
+      collectionsToHandOver,
       withdrawalsPending,
       disputesOpen,
       payoutsFailed,
@@ -128,6 +132,7 @@ export class AdminNavCountsService {
       wrapWithLogging("manualReviewCount", this.deps.getManualReviewCount),
       wrapWithLogging("onboardingIssuesTotal", this.deps.getOnboardingIssuesTotal),
       wrapWithLogging("lotFulfilmentPending", this.deps.getLotFulfilmentPending),
+      wrapWithLogging("collectionsToHandOver", this.deps.getCollectionsToHandOver),
       wrapWithLogging("withdrawalsPending", this.deps.getWithdrawalsPending),
       wrapWithLogging("disputesOpen", this.deps.getDisputesOpen),
       wrapWithLogging("payoutsFailed", this.deps.getPayoutsFailed),
@@ -151,6 +156,7 @@ export class AdminNavCountsService {
       manualReviewCount,
       onboardingIssuesTotal,
       lotFulfilmentPending,
+      collectionsToHandOver,
       withdrawalsPending,
       disputesOpen,
       payoutsFailed,

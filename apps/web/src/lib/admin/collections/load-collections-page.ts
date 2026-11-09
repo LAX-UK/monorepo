@@ -45,11 +45,7 @@ async function loadDesk(tab: CollectionTab, venueId: string, date: string): Prom
       return { date, day, list: null, missedCount: day.notCollected, error: null };
     }
     const list = await getDeskList(venueId, tab === "upcoming" ? "upcoming" : "not_collected");
-    const missedCount =
-      tab === "not_collected"
-        ? list.items.length
-        : (await getDeskList(venueId, "not_collected")).items.length;
-    return { date, day: null, list, missedCount, error: null };
+    return { date, day: null, list, missedCount: list.notCollected, error: null };
   } catch {
     return {
       date,

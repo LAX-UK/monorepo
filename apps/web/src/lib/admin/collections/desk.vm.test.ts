@@ -5,6 +5,8 @@ import {
   deskRefusalMessage,
   handOverBlock,
   idTypeLabel,
+  instantDayLabel,
+  joinNames,
   lotLabel,
   lotReadiness,
   markCollectedLabel,
@@ -12,6 +14,7 @@ import {
   placesLabel,
   previousDay,
   timeRange,
+  visitWhen,
 } from "./desk.vm";
 
 describe("the desk view model", () => {
@@ -61,17 +64,30 @@ describe("the desk view model", () => {
 
   it("says why a hand-over cannot be done yet, in the order staff fix it", () => {
     const waiting = deskLot({ released: false, fulfilmentStatus: "awaiting_release" });
-    expect(handOverBlock({ ticked: [], idChecked: true })).toBe("Tick at least one lot.");
-    expect(handOverBlock({ ticked: [waiting], idChecked: false })).toBe(
-      "Release Coastal Notation first.",
+    expect(handOverBlock({ ticked: [] })).toBe("Tick at least one lot.");
+    expect(handOverBlock({ ticked: [waiting] })).toBe("Release the lot first");
+    expect(handOverBlock({ ticked: [waiting, { ...waiting, lotId: "x" }] })).toBe(
+      "Release the lots first",
     );
-    expect(handOverBlock({ ticked: [waiting, { ...waiting, lotId: "x" }], idChecked: true })).toBe(
-      "Release 2 lots first.",
+    expect(handOverBlock({ ticked: [deskLot()] })).toBeNull();
+  });
+
+  it("names lots in a sentence", () => {
+    expect(joinNames(["Lowland Storm"])).toBe("Lowland Storm");
+    expect(joinNames(["Lowland Storm", "Coastal Notation"])).toBe(
+      "Lowland Storm and Coastal Notation",
     );
-    expect(handOverBlock({ ticked: [deskLot()], idChecked: false })).toBe(
-      "Confirm the photo ID check first.",
+    expect(joinNames(["A", "B", "C"])).toBe("A, B and C");
+  });
+
+  it("dates a visit by its London day, never the UTC day", () => {
+    // 00:30 BST on 12 Jun is still 11 Jun in UTC.
+    expect(instantDayLabel("2026-06-11T23:30:00.000Z", new Date("2026-06-01T00:00:00Z"))).toBe(
+      "Fri 12 Jun",
     );
-    expect(handOverBlock({ ticked: [deskLot()], idChecked: true })).toBeNull();
+    expect(visitWhen({ start: "2026-11-12T14:00:00.000Z", end: "2026-11-12T14:30:00.000Z" })).toBe(
+      "Thu 12 Nov, 14:00–14:30 GMT",
+    );
   });
 
   it("names the ID types and never offers a number", () => {
@@ -86,7 +102,7 @@ describe("the desk view model", () => {
       "undo_window_passed",
       "too_early",
       "booking_changed",
-      "fulfilment_failed",
+      "lot_changed",
       "slot_full",
       "notice_passed",
     ]) {

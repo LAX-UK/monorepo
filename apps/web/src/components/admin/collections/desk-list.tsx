@@ -1,14 +1,15 @@
 "use client";
 
 import { deskDayLabel } from "@/lib/admin/collections/desk.vm";
-import { EmptyState } from "@auction/staff-ui";
+import { londonDateKey } from "@auction/domain";
+import { EmptyState, Notice } from "@auction/staff-ui";
 import type { DeskListView } from "@auction/types";
-import { DeskVisitRow } from "./desk-visit-row";
+import { DeskColumnHeaders, DeskVisitRow } from "./desk-visit-row";
 import { useDeskDialogs } from "./use-desk-dialogs";
 
 /**
  * Visits to come, or missed ones nobody has followed up, a day at a time. A missed visit offers
- * "Book again" through the same picker; once it is rebooked it leaves this list.
+ * "Rebook" through the same picker; once it is rebooked it leaves this list.
  */
 export function DeskList({
   list,
@@ -19,7 +20,11 @@ export function DeskList({
   canChange: boolean;
   today: string;
 }) {
-  const { handlers, dialogs } = useDeskDialogs({ venueId: list.venueId, today });
+  const { handlers, dialogs } = useDeskDialogs({
+    venueId: list.venueId,
+    today,
+    bookings: list.items,
+  });
   if (list.items.length === 0) {
     return list.status === "upcoming" ? (
       <EmptyState
@@ -37,7 +42,7 @@ export function DeskList({
   }
   const days = new Map<string, DeskListView["items"]>();
   for (const item of list.items) {
-    const key = item.start.slice(0, 10);
+    const key = londonDateKey(new Date(item.start));
     days.set(key, [...(days.get(key) ?? []), item]);
   }
   return (
@@ -47,6 +52,12 @@ export function DeskList({
         {list.items.length} {list.items.length === 1 ? "visit" : "visits"}
         {list.status === "not_collected" ? " to follow up" : " to come"}
       </p>
+      {list.more ? (
+        <Notice tone="info" title={`Showing the first ${list.items.length}`}>
+          More are waiting. They appear here as these are followed up.
+        </Notice>
+      ) : null}
+      <DeskColumnHeaders />
       {[...days.entries()].map(([day, items]) => (
         <section
           key={day}

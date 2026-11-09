@@ -67,7 +67,7 @@ describe("rebooking at the desk", () => {
   it("asks for a time before sending anything", async () => {
     draw();
     await screen.findByRole("radio", { name: /10:00–10:30/ });
-    fireEvent.click(screen.getByRole("button", { name: "Move booking" }));
+    fireEvent.click(screen.getByRole("button", { name: /^Rebook/ }));
     expect(await screen.findByText("Choose a time.")).toBeTruthy();
     expect(rebook).not.toHaveBeenCalled();
   });
@@ -76,7 +76,7 @@ describe("rebooking at the desk", () => {
     rebook.mockResolvedValue({ ok: true, data: deskBooking() });
     const onClose = draw(deskBooking({ version: 3 }));
     fireEvent.click(await screen.findByRole("radio", { name: /10:00–10:30/ }));
-    fireEvent.click(screen.getByRole("button", { name: "Move booking" }));
+    fireEvent.click(screen.getByRole("button", { name: /^Rebook/ }));
     await waitFor(() => expect(rebook).toHaveBeenCalledTimes(1));
     expect(rebook).toHaveBeenCalledWith(DESK_BOOKING, {
       version: 3,
@@ -91,15 +91,34 @@ describe("rebooking at the desk", () => {
     draw();
     fireEvent.click(await screen.findByRole("radio", { name: /11:00–11:30/ }));
     const reason = await screen.findByRole("textbox", { name: /Reason/ });
-    fireEvent.click(screen.getByRole("button", { name: "Move booking" }));
+    fireEvent.click(screen.getByRole("button", { name: /^Rebook/ }));
     expect(await screen.findByText(/Give a reason/)).toBeTruthy();
     expect(rebook).not.toHaveBeenCalled();
     fireEvent.change(reason, { target: { value: "Client flying out Thursday" } });
-    fireEvent.click(screen.getByRole("button", { name: "Move booking" }));
+    fireEvent.click(screen.getByRole("button", { name: /^Rebook/ }));
     await waitFor(() => expect(rebook).toHaveBeenCalledTimes(1));
     expect(rebook.mock.calls[0]?.[1]).toMatchObject({
       slotStart: FULL.start,
       override: { reason: "Client flying out Thursday" },
+    });
+  });
+
+  it("offers the override as a tick that asks for a reason, and names the time on the button", async () => {
+    rebook.mockResolvedValue({ ok: true, data: deskBooking() });
+    draw();
+    fireEvent.click(await screen.findByRole("radio", { name: /10:00–10:30/ }));
+    expect(screen.getByRole("button", { name: "Rebook for Fri 13 Nov, 10:00" })).toBeTruthy();
+    expect(screen.queryByRole("textbox", { name: /Reason/ })).toBeNull();
+    fireEvent.click(
+      screen.getByRole("checkbox", { name: /Book even if the time is full or too soon/ }),
+    );
+    fireEvent.change(await screen.findByRole("textbox", { name: /Reason/ }), {
+      target: { value: "Spoke to the client" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /^Rebook for/ }));
+    await waitFor(() => expect(rebook).toHaveBeenCalledTimes(1));
+    expect(rebook.mock.calls[0]?.[1]).toMatchObject({
+      override: { reason: "Spoke to the client" },
     });
   });
 
@@ -112,7 +131,7 @@ describe("rebooking at the desk", () => {
     });
     draw();
     fireEvent.click(await screen.findByRole("radio", { name: /10:00–10:30/ }));
-    fireEvent.click(screen.getByRole("button", { name: "Move booking" }));
+    fireEvent.click(screen.getByRole("button", { name: /^Rebook/ }));
     expect(await screen.findByRole("textbox", { name: /Reason/ })).toBeTruthy();
     expect(
       screen.getByText(/needs a reason|Add a reason/i, { selector: "[id$=-error]" }),
@@ -121,8 +140,8 @@ describe("rebooking at the desk", () => {
 
   it("books a new time after a missed visit", async () => {
     draw(deskBooking({ status: "not_collected", actions: ["rebook"] }));
-    expect(await screen.findByRole("heading", { name: "Book a new time" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Book this time" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "Rebook Hayes Collection" })).toBeTruthy();
+    expect(screen.getByText(/^Missed Thu 12 Nov, 14:00–14:30 GMT/)).toBeTruthy();
   });
 
   it("offers a retry when the times cannot be loaded", async () => {

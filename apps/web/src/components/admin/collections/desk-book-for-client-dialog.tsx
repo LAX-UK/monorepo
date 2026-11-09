@@ -4,7 +4,11 @@ import {
   bookForClientAction,
   loadDeskClientLotsAction,
 } from "@/lib/actions/admin/admin-collection-desk";
-import { deskDayLabel, deskRefusalMessage, newAttemptKey } from "@/lib/admin/collections/desk.vm";
+import {
+  deskRefusalMessage,
+  instantDayLabel,
+  newAttemptKey,
+} from "@/lib/admin/collections/desk.vm";
 import { searchLegalEntityOptions } from "@/lib/admin/pickers/staff-entity-search";
 import { handleStaffStepUp } from "@/lib/auth/step-up/staff-step-up.client";
 import {
@@ -19,16 +23,21 @@ import {
   StaffDialog,
   StaffRadio,
   StaffRadioGroup,
-  TextArea,
   TextInput,
   toast,
 } from "@auction/staff-ui";
 import type { DeskClientLot } from "@auction/types";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
+import { DeskOverrideField } from "./desk-override-field";
 import { type ChosenSlot, DeskSlotChooser } from "./desk-slot-chooser";
 
 type Errors = { fieldId: string; message: string }[];
+
+type CollectorKind = "self" | "member" | "third_party";
+
+const collectorKind = (value: string): CollectorKind =>
+  value === "third_party" || value === "member" ? value : "self";
 
 const F = {
   client: "book-client",
@@ -85,11 +94,12 @@ function BookForm({
   const [lotsFailed, setLotsFailed] = useState(false);
   const [ticked, setTicked] = useState<readonly string[]>([]);
   const [slot, setSlot] = useState<ChosenSlot>(null);
-  const [kind, setKind] = useState<"self" | "third_party">("self");
+  const [kind, setKind] = useState<CollectorKind>("self");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [company, setCompany] = useState("");
   const [authorised, setAuthorised] = useState(false);
+  const [override, setOverride] = useState(false);
   const [reason, setReason] = useState("");
   const [needsReason, setNeedsReason] = useState(false);
   const [errors, setErrors] = useState<Errors>([]);
@@ -97,7 +107,8 @@ function BookForm({
   const [failure, setFailure] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const key = useRef(newAttemptKey());
-  const asked = needsReason || slot?.full === true;
+  const required = needsReason || slot?.full === true;
+  const asked = override || required;
   const errorOf = (id: string) => errors.find((e) => e.fieldId === id)?.message;
   const clear = (id: string) => setErrors((list) => list.filter((e) => e.fieldId !== id));
 
@@ -159,7 +170,7 @@ function BookForm({
     });
     setBusy(false);
     if (result.ok) {
-      toast.success(`Booked for ${deskDayLabel(slot.start.slice(0, 10))}`);
+      toast.success(`Booked for ${instantDayLabel(slot.start)}`);
       onClose();
       router.refresh();
       return;
@@ -269,12 +280,18 @@ function BookForm({
         <StaffRadioGroup
           aria-label="Who collects"
           value={kind}
-          onValueChange={(value) => setKind(value === "third_party" ? "third_party" : "self")}
+          onValueChange={(value) => setKind(collectorKind(value))}
         >
           <ChoiceRow
             htmlFor="book-kind-self"
             control={<StaffRadio id="book-kind-self" value="self" />}
             label="The client"
+          />
+          <ChoiceRow
+            htmlFor="book-kind-member"
+            control={<StaffRadio id="book-kind-member" value="member" />}
+            label="A named member"
+            description="Someone who belongs to the client's organisation."
           />
           <ChoiceRow
             htmlFor="book-kind-third"
@@ -336,30 +353,25 @@ function BookForm({
         ) : null}
       </fieldset>
 
-      {asked ? (
-        <Field
-          id={F.reason}
-          label="Reason"
-          description="For going over capacity or inside the notice period. Kept with your name; never shown to the client."
-          error={errorOf(F.reason)}
-        >
-          <TextArea
-            value={reason}
-            onChange={(event) => {
-              setReason(event.target.value);
-              clear(F.reason);
-            }}
-            rows={3}
-          />
-        </Field>
-      ) : null}
+      <DeskOverrideField
+        id={F.reason}
+        checked={override}
+        required={required}
+        onCheckedChange={setOverride}
+        reason={reason}
+        onReasonChange={(next) => {
+          setReason(next);
+          clear(F.reason);
+        }}
+        error={errorOf(F.reason)}
+      />
 
       <div className="flex flex-wrap justify-end gap-2">
         <StaffButton variant="secondary" onClick={onClose} disabled={busy}>
           Cancel
         </StaffButton>
         <StaffButton variant="primary" onClick={submit} loading={busy}>
-          Book for client
+          Book for a client
         </StaffButton>
       </div>
     </div>

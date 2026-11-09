@@ -17,10 +17,42 @@ export type DeskRowHandlers = {
   onUndo: (booking: DeskBookingView) => void;
 };
 
+/** The row's columns from a wide screen; the header above the rows uses the same ones. */
+const ROW_COLUMNS =
+  "lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1.1fr)_minmax(0,0.9fr)_minmax(0,0.8fr)_minmax(0,0.8fr)_19rem]";
+
+/** Column headings for a wide screen; on a phone the rows stack and need none. */
+export function DeskColumnHeaders() {
+  return (
+    <div
+      aria-hidden="true"
+      className={`hidden gap-6 px-4 pb-2 text-staff-xs font-medium text-staff-muted lg:grid ${ROW_COLUMNS}`}
+    >
+      <span>Buyer</span>
+      <span>Collector</span>
+      <span>Lots</span>
+      <span>Work</span>
+      <span>Booking</span>
+      <span />
+    </div>
+  );
+}
+
+const collectorKind = (booking: DeskBookingView): string => {
+  switch (booking.collector.kind) {
+    case "third_party":
+      return `Third party${booking.collector.company ? ` · ${booking.collector.company}` : ""}`;
+    case "member":
+      return "Named member";
+    case "self":
+      return "Account holder";
+  }
+};
+
 /**
- * One visit: who it is for, who collects, the works and whether each is ready, and what staff can
- * do. On a phone the parts stack, so the desk can use it standing up. A visit staff made, or one
- * taken over capacity, says so; the person who made a client's booking is never named here.
+ * One visit: who it is for, who collects, the works and whether each is released, and what staff
+ * can do. On a phone the parts stack, so the desk can use it standing up. A visit staff made, or
+ * one taken over capacity, says so; the person who made a client's booking is never named here.
  */
 export function DeskVisitRow({
   booking,
@@ -36,14 +68,14 @@ export function DeskVisitRow({
 }) {
   const badge = BOOKING_BADGES[booking.status];
   const lots = booking.lots.filter((lot) => lot.active || lot.outcome !== null);
-  const readiness = booking.status === "booked" ? lots.map((lot) => lotReadiness(lot)) : [];
-  const waiting = readiness.some((r) => r.label === "Release first");
+  const waiting =
+    booking.status === "booked" && lots.some((lot) => lotReadiness(lot).label === "Release first");
   const can = (action: DeskBookingView["actions"][number]) =>
     canChange && booking.actions.includes(action);
 
   return (
     <li
-      className="grid gap-3 py-4 first:pt-0 last:pb-0 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)_minmax(0,1.4fr)_19rem] lg:items-center lg:gap-6"
+      className={`grid gap-3 py-4 first:pt-0 last:pb-0 lg:items-center lg:gap-6 ${ROW_COLUMNS}`}
       data-booking={booking.reference}
     >
       <div className="min-w-0">
@@ -59,11 +91,7 @@ export function DeskVisitRow({
       <div className="min-w-0">
         <p className="truncate text-staff-sm text-staff-fg">{booking.collector.name}</p>
         <p className="text-staff-xs text-staff-muted">
-          {booking.collector.kind === "third_party"
-            ? `Third party${booking.collector.company ? ` · ${booking.collector.company}` : ""}`
-            : booking.collector.kind === "member"
-              ? "Colleague"
-              : "Account holder"}
+          {collectorKind(booking)}
           {booking.idCheckType ? ` · ${idTypeLabel(booking.idCheckType)} checked` : ""}
         </p>
       </div>
@@ -81,19 +109,23 @@ export function DeskVisitRow({
             </li>
           ))}
         </ul>
-        <div className="flex flex-wrap items-center gap-2">
-          <StatusBadge tone={badge.tone}>{badge.label}</StatusBadge>
-          {booking.status === "booked" ? (
-            waiting ? (
-              <StatusBadge tone="warning">Release first</StatusBadge>
-            ) : (
-              <StatusBadge tone="success">Ready</StatusBadge>
-            )
-          ) : null}
-          <span className="text-staff-xs text-staff-muted">
-            {lots.length === 1 && lots[0] ? lotLabel(lots[0]) : `${lots.length} lots`}
-          </span>
-        </div>
+        <span className="text-staff-xs text-staff-muted">
+          {lots.length === 1 && lots[0] ? lotLabel(lots[0]) : `${lots.length} lots`}
+        </span>
+      </div>
+
+      <div>
+        {booking.status === "booked" ? (
+          waiting ? (
+            <StatusBadge tone="warning">Release first</StatusBadge>
+          ) : (
+            <StatusBadge tone="success">All released</StatusBadge>
+          )
+        ) : null}
+      </div>
+
+      <div>
+        <StatusBadge tone={badge.tone}>{badge.label}</StatusBadge>
       </div>
 
       <div className="flex flex-wrap gap-2 lg:justify-end">
@@ -109,7 +141,7 @@ export function DeskVisitRow({
         ) : null}
         {can("rebook") ? (
           <StaffButton variant="secondary" size="sm" onClick={() => handlers.onRebook(booking)}>
-            {booking.status === "not_collected" ? "Book again" : "Rebook"}
+            Rebook
           </StaffButton>
         ) : null}
         {can("not_collected") ? (

@@ -506,7 +506,13 @@ export {
   type SettlementPeriodRefusal,
   type SettlementPeriodResult,
 } from "./settlement-period.js";
-export { BUSINESS_TIME_ZONE, londonCalendarYear, type CalendarYear } from "./calendar-year.js";
+export {
+  BUSINESS_TIME_ZONE,
+  londonCalendarYear,
+  londonDateOf,
+  londonMidnight,
+  type CalendarYear,
+} from "./calendar-year.js";
 export {
   formatPayoutReference,
   parsePayoutReference,

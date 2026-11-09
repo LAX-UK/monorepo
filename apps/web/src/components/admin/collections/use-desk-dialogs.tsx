@@ -4,7 +4,7 @@ import {
   markNotCollectedAction,
   undoHandOverCollectionAction,
 } from "@/lib/actions/admin/admin-collection-desk";
-import { deskRefusalMessage, newAttemptKey, timeRange } from "@/lib/admin/collections/desk.vm";
+import { deskRefusalMessage, newAttemptKey, visitWhen } from "@/lib/admin/collections/desk.vm";
 import { handleStaffStepUp } from "@/lib/auth/step-up/staff-step-up.client";
 import { ConfirmActionDialog, Notice, toast } from "@auction/staff-ui";
 import type { DeskBookingView } from "@auction/types";
@@ -17,16 +17,35 @@ import type { DeskRowHandlers } from "./desk-visit-row";
 /**
  * The panel and dialogs the visit rows open, kept in one place so the day and the lists behave
  * the same: hand over (a side panel), rebook, mark not collected and undo (confirmations).
+ *
+ * Only the id of the visit being worked on is kept. The visit itself is looked up in the
+ * `bookings` the page last loaded, so a change made from inside a panel (releasing a lot) shows
+ * in it as soon as the page reloads, instead of the panel holding a stale copy.
  */
-export function useDeskDialogs({ venueId, today }: { venueId: string; today: string }) {
+export function useDeskDialogs({
+  venueId,
+  today,
+  bookings,
+}: {
+  venueId: string;
+  today: string;
+  bookings: readonly DeskBookingView[];
+}) {
   const router = useRouter();
-  const [handing, setHanding] = useState<DeskBookingView | null>(null);
-  const [rebooking, setRebooking] = useState<DeskBookingView | null>(null);
-  const [missing, setMissing] = useState<DeskBookingView | null>(null);
-  const [undoing, setUndoing] = useState<DeskBookingView | null>(null);
+  const [handingId, setHandingId] = useState<string | null>(null);
+  const [rebookingId, setRebookingId] = useState<string | null>(null);
+  const [missingId, setMissingId] = useState<string | null>(null);
+  const [undoingId, setUndoingId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
   const key = useRef(newAttemptKey());
+
+  const find = (id: string | null): DeskBookingView | null =>
+    id === null ? null : (bookings.find((booking) => booking.id === id) ?? null);
+  const handing = find(handingId);
+  const rebooking = find(rebookingId);
+  const missing = find(missingId);
+  const undoing = find(undoingId);
 
   async function run(
     action: (key: string) => Promise<Awaited<ReturnType<typeof markNotCollectedAction>>>,
@@ -48,14 +67,14 @@ export function useDeskDialogs({ venueId, today }: { venueId: string; today: str
     key.current = newAttemptKey();
     close();
     setFailure(deskRefusalMessage(result.errorCode, result.error));
-    if (result.errorCode === "booking_changed") router.refresh();
+    router.refresh();
   }
 
   const handlers: DeskRowHandlers = {
-    onHandOver: setHanding,
-    onRebook: setRebooking,
-    onNotCollected: setMissing,
-    onUndo: setUndoing,
+    onHandOver: (booking) => setHandingId(booking.id),
+    onRebook: (booking) => setRebookingId(booking.id),
+    onNotCollected: (booking) => setMissingId(booking.id),
+    onUndo: (booking) => setUndoingId(booking.id),
   };
 
   const dialogs = (
@@ -65,25 +84,27 @@ export function useDeskDialogs({ venueId, today }: { venueId: string; today: str
           {null}
         </Notice>
       ) : null}
-      <DeskHandOverPanel booking={handing} onClose={() => setHanding(null)} />
+      <DeskHandOverPanel booking={handing} onClose={() => setHandingId(null)} />
       <DeskRebookDialog
         booking={rebooking}
         venueId={venueId}
         today={today}
-        onClose={() => setRebooking(null)}
+        onClose={() => setRebookingId(null)}
       />
       <ConfirmActionDialog
         open={missing !== null}
         onOpenChange={(open) => {
-          if (!open) setMissing(null);
+          if (!open) setMissingId(null);
         }}
-        title={missing ? `Mark ${missing.reference} as not collected?` : "Mark as not collected?"}
+        title={
+          missing
+            ? `Mark ${missing.buyer.name}'s collection as not collected?`
+            : "Mark as not collected?"
+        }
         description={
-          <>
-            {missing ? `${missing.buyer.name} didn't come for ${timeRange(missing)}. ` : ""}
-            The lots stay with us, and the buyer is emailed "We missed you" with a way to book
-            again. There's no fee. It appears under Not collected so someone can follow up.
-          </>
+          missing
+            ? `${visitWhen(missing)}. We email ${missing.collector.name} that we missed them, with a link to book again. The lots stay here.`
+            : undefined
         }
         confirmLabel="Mark not collected"
         loading={busy}
@@ -92,18 +113,18 @@ export function useDeskDialogs({ venueId, today }: { venueId: string; today: str
           const target = missing;
           void run(
             (k) => markNotCollectedAction(target.id, k),
-            `${target.reference} marked not collected`,
-            () => setMissing(null),
+            `${target.buyer.name}'s collection marked not collected`,
+            () => setMissingId(null),
           );
         }}
       />
       <ConfirmActionDialog
         open={undoing !== null}
         onOpenChange={(open) => {
-          if (!open) setUndoing(null);
+          if (!open) setUndoingId(null);
         }}
-        title={undoing ? `Undo the hand-over of ${undoing.reference}?` : "Undo the hand-over?"}
-        description="The visit goes back to booked and its lots to still to collect. This is only possible for a few minutes after a hand-over."
+        title={undoing ? `Undo the hand-over to ${undoing.collector.name}?` : "Undo the hand-over?"}
+        description="The visit goes back to booked and its lots to where they were. This is only possible for a few minutes after a hand-over."
         confirmLabel="Undo hand-over"
         tone="danger"
         loading={busy}
@@ -112,8 +133,8 @@ export function useDeskDialogs({ venueId, today }: { venueId: string; today: str
           const target = undoing;
           void run(
             (k) => undoHandOverCollectionAction(target.id, k),
-            `Hand-over of ${target.reference} undone`,
-            () => setUndoing(null),
+            `Hand-over to ${target.collector.name} undone`,
+            () => setUndoingId(null),
           );
         }}
       />

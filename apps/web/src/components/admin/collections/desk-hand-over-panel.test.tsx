@@ -25,6 +25,17 @@ vi.mock("@/lib/auth/step-up/staff-step-up.client", () => ({
   handleStaffStepUp: (failure: { errorCode?: string }) => failure.errorCode === "step_up_required",
 }));
 
+const toastUndo = vi.fn();
+const toastError = vi.fn();
+vi.mock("@auction/staff-ui", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@auction/staff-ui")>();
+  return {
+    ...actual,
+    toastUndo: (...a: unknown[]) => toastUndo(...a),
+    toast: { ...actual.toast, error: (...a: unknown[]) => toastError(...a) },
+  };
+});
+
 const { DeskHandOverPanel } = await import("./desk-hand-over-panel");
 
 const draw = (booking = deskBooking(), onClose = vi.fn()) => {
@@ -93,7 +104,9 @@ describe("the hand-over panel", () => {
     fireEvent.click(confirm());
     const summary = await screen.findByRole("alert");
     expect(summary.textContent).toContain("Check 2 things before handing over");
-    expect(screen.getAllByText("Tick that you checked the photo ID.").length).toBeGreaterThan(1);
+    expect(screen.getAllByText("Tick this once you've checked their ID.").length).toBeGreaterThan(
+      1,
+    );
     expect(screen.getAllByText("Choose the type of ID.").length).toBeGreaterThan(1);
     expect(handOver).not.toHaveBeenCalled();
   });
@@ -114,6 +127,62 @@ describe("the hand-over panel", () => {
     expect(key.length).toBeGreaterThanOrEqual(8);
     await waitFor(() => expect(onClose).toHaveBeenCalled());
     expect(refresh).toHaveBeenCalled();
+  });
+
+  it("names the lots and who collected them in the toast", async () => {
+    handOver.mockResolvedValue({ ok: true, data: deskBooking({ status: "collected" }) });
+    draw();
+    fireEvent.click(screen.getByRole("checkbox", { name: /I checked photo ID/ }));
+    await chooseIdType("Passport");
+    fireEvent.click(confirm());
+    await waitFor(() => expect(toastUndo).toHaveBeenCalledTimes(1));
+    expect(toastUndo.mock.calls[0]?.[0]).toMatchObject({
+      title: "Coastal Notation and Lowland Storm collected by Charlotte Hayes",
+    });
+  });
+
+  it("shows a toast, not a hidden message, when the undo from the toast is refused", async () => {
+    handOver.mockResolvedValue({ ok: true, data: deskBooking({ status: "collected" }) });
+    undo.mockResolvedValue({
+      ok: false,
+      error: "late",
+      errorCode: "undo_window_passed",
+      status: 409,
+    });
+    draw();
+    fireEvent.click(screen.getByRole("checkbox", { name: /I checked photo ID/ }));
+    await chooseIdType("Passport");
+    fireEvent.click(confirm());
+    await waitFor(() => expect(toastUndo).toHaveBeenCalled());
+    (toastUndo.mock.calls[0]?.[0] as { onUndo: () => void }).onUndo();
+    await waitFor(() =>
+      expect(toastError).toHaveBeenCalledWith("It's too late to undo this hand-over."),
+    );
+  });
+
+  it("sees a lot released from inside the panel, and then hands both over", async () => {
+    release.mockResolvedValue({ ok: true });
+    handOver.mockResolvedValue({ ok: true, data: deskBooking({ status: "collected" }) });
+    const waiting = deskBooking({
+      lots: [
+        deskLot({ released: false, fulfilmentStatus: "awaiting_release" }),
+        deskLot({ lotId: DESK_LOT_B, title: "Lowland Storm", lotNumber: 9 }),
+      ],
+    });
+    const onClose = vi.fn();
+    const { rerender } = render(<DeskHandOverPanel booking={waiting} onClose={onClose} />);
+    expect(confirm().getAttribute("aria-disabled")).toBe("true");
+    fireEvent.click(screen.getByRole("button", { name: "Release" }));
+    await waitFor(() => expect(release).toHaveBeenCalledWith(DESK_LOT_A, {}));
+    // The page reloads after the release: the same visit comes back with the lot released.
+    rerender(<DeskHandOverPanel booking={deskBooking()} onClose={onClose} />);
+    expect(confirm().getAttribute("aria-disabled")).toBeNull();
+    expect(screen.queryByText("Release first")).toBeNull();
+    fireEvent.click(screen.getByRole("checkbox", { name: /I checked photo ID/ }));
+    await chooseIdType("Passport");
+    fireEvent.click(confirm());
+    await waitFor(() => expect(handOver).toHaveBeenCalledTimes(1));
+    expect(handOver.mock.calls[0]?.[1]).toMatchObject({ lotIds: [DESK_LOT_A, DESK_LOT_B] });
   });
 
   it("shows the refusal when a check opened after the booking, and stays open", async () => {

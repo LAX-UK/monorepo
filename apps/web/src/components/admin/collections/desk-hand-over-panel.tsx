@@ -9,11 +9,12 @@ import {
   ID_TYPE_OPTIONS,
   deskRefusalMessage,
   handOverBlock,
+  joinNames,
   lotLabel,
   lotReadiness,
   markCollectedLabel,
   newAttemptKey,
-  timeRange,
+  visitWhen,
 } from "@/lib/admin/collections/desk.vm";
 import { handleStaffStepUp } from "@/lib/auth/step-up/staff-step-up.client";
 import {
@@ -27,6 +28,7 @@ import {
   StaffButton,
   StaffCheckbox,
   StatusBadge,
+  toast,
   toastUndo,
 } from "@auction/staff-ui";
 import type { DeskBookingView, DeskIdType } from "@auction/types";
@@ -60,21 +62,7 @@ export function DeskHandOverPanel({
         if (!next) onClose();
       }}
       title={shown ? `Hand over to ${shown.collector.name}` : "Hand over"}
-      description={shown ? `${shown.buyer.name} · ${shown.reference}` : undefined}
-      {...(shown
-        ? {
-            meta: [
-              { label: "Time", value: timeRange(shown) },
-              {
-                label: "Collector",
-                value:
-                  shown.collector.kind === "third_party"
-                    ? `${shown.collector.name} (third party)`
-                    : shown.collector.name,
-              },
-            ],
-          }
-        : {})}
+      description={shown ? `${visitWhen(shown)} · ${shown.reference}` : undefined}
     >
       {shown ? (
         <HandOverForm key={shown.id + shown.version} booking={shown} onClose={onClose} />
@@ -99,7 +87,7 @@ function HandOverForm({ booking, onClose }: { booking: DeskBookingView; onClose:
   const key = useRef(newAttemptKey());
 
   const chosen = active.filter((lot) => ticked.includes(lot.lotId));
-  const blocked = handOverBlock({ ticked: chosen, idChecked });
+  const blocked = handOverBlock({ ticked: chosen });
   const thirdParty = booking.collector.kind === "third_party";
 
   async function release(lotId: string) {
@@ -113,7 +101,7 @@ function HandOverForm({ booking, onClose }: { booking: DeskBookingView; onClose:
   async function submit() {
     const found: Errors = [];
     if (!idChecked) {
-      found.push({ fieldId: ID_FIELD, message: "Tick that you checked the photo ID." });
+      found.push({ fieldId: ID_FIELD, message: "Tick this once you've checked their ID." });
     }
     if (!idType) found.push({ fieldId: ID_TYPE_FIELD, message: "Choose the type of ID." });
     if (found.length > 0 || !idType) {
@@ -134,8 +122,7 @@ function HandOverForm({ booking, onClose }: { booking: DeskBookingView; onClose:
       onClose();
       router.refresh();
       toastUndo({
-        title: `${chosen.length === 1 && chosen[0] ? chosen[0].title : `${chosen.length} lots`} collected`,
-        description: `${booking.reference} handed over to ${booking.collector.name}`,
+        title: `${joinNames(chosen.map((lot) => lot.title))} collected by ${booking.collector.name}`,
         onUndo: () => void undo(),
       });
       return;
@@ -144,15 +131,20 @@ function HandOverForm({ booking, onClose }: { booking: DeskBookingView; onClose:
     // A new attempt after a refusal is a new request: the key it was sent with is spent.
     key.current = newAttemptKey();
     setFailure(deskRefusalMessage(result.errorCode, result.error, result.meta));
-    if (result.errorCode === "booking_changed") router.refresh();
+    // The visit or a lot has changed under staff: show it as it is now.
+    router.refresh();
   }
 
+  /** The panel has closed by the time Undo is pressed, so a refusal can only be a toast. */
   async function undo() {
     const result = await undoHandOverCollectionAction(booking.id, newAttemptKey());
-    if (result.ok) router.refresh();
-    else if (!handleStaffStepUp(result)) {
-      setFailure(deskRefusalMessage(result.errorCode, result.error));
+    if (result.ok) {
+      router.refresh();
+      return;
     }
+    if (handleStaffStepUp(result)) return;
+    toast.error(deskRefusalMessage(result.errorCode, result.error));
+    router.refresh();
   }
 
   return (
@@ -272,9 +264,7 @@ function HandOverForm({ booking, onClose }: { booking: DeskBookingView; onClose:
           variant="primary"
           loading={busy}
           onClick={submit}
-          {...(blocked && blocked !== "Confirm the photo ID check first."
-            ? { disabledReason: blocked }
-            : {})}
+          {...(blocked ? { disabledReason: blocked } : {})}
         >
           {markCollectedLabel(chosen)}
         </StaffButton>

@@ -264,6 +264,20 @@ export class DrizzleCollectionBookingRepository
     return Number(row?.n ?? 0);
   }
 
+  async countBookedInRange(range: { from: Date; to: Date }): Promise<number> {
+    const [row] = await this.db
+      .select({ n: count() })
+      .from(collectionBooking)
+      .where(
+        and(
+          eq(collectionBooking.status, "booked"),
+          gte(collectionBooking.slotStart, range.from),
+          lt(collectionBooking.slotStart, range.to),
+        ),
+      );
+    return Number(row?.n ?? 0);
+  }
+
   async findLiveByLots(lotIds: readonly string[]): Promise<Map<string, CollectionBookingRecord>> {
     return liveBookingsByLot(this.db, lotIds);
   }

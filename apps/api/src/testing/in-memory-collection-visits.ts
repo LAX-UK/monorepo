@@ -240,6 +240,11 @@ export class InMemoryCollectionBookings
     const live = await this.findLiveByLots(missed.flatMap((b) => b.lots.map((l) => l.lotId)));
     return missed.filter((b) => !b.lots.some((l) => live.has(l.lotId))).length;
   }
+  async countBookedInRange(range: { from: Date; to: Date }) {
+    return this.bookings.filter(
+      (b) => b.status === "booked" && b.slotStart >= range.from && b.slotStart < range.to,
+    ).length;
+  }
   async findLiveByLots(lotIds: readonly string[]) {
     const found = new Map<string, CollectionBookingRecord>();
     for (const booking of this.bookings.filter((b) => b.status === "booked")) {

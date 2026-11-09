@@ -1,5 +1,5 @@
 import { SETTINGS } from "@/lib/admin/collections/collections.fixture";
-import { deskBooking, deskDay } from "@/lib/admin/collections/desk.fixture";
+import { deskDay, deskList } from "@/lib/admin/collections/desk.fixture";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
@@ -133,6 +133,27 @@ describe("CollectionsPage", () => {
     expect(screen.getByText("Hayes Collection")).toBeTruthy();
   });
 
+  it("puts Book for a client in the page header on every desk tab, and not on the settings tabs", () => {
+    const desk = { date: "2026-11-12", day: deskDay(), list: null, missedCount: 0, error: null };
+    const { unmount } = render(<CollectionsPage {...base} tab="day" desk={desk} />);
+    expect(screen.getByRole("button", { name: "Book for a client" })).toBeTruthy();
+    unmount();
+    const { unmount: again } = render(
+      <CollectionsPage
+        {...base}
+        tab="upcoming"
+        desk={{ ...desk, day: null, list: deskList("upcoming") }}
+      />,
+    );
+    expect(screen.getByRole("button", { name: "Book for a client" })).toBeTruthy();
+    again();
+    const { unmount: third } = render(<CollectionsPage {...base} tab="hours" />);
+    expect(screen.queryByRole("button", { name: "Book for a client" })).toBeNull();
+    third();
+    render(<CollectionsPage {...base} tab="day" desk={desk} canChange={false} />);
+    expect(screen.queryByRole("button", { name: "Book for a client" })).toBeNull();
+  });
+
   it("shows the missed visits on the Not collected tab", () => {
     render(
       <CollectionsPage
@@ -141,17 +162,13 @@ describe("CollectionsPage", () => {
         desk={{
           date: "2026-11-12",
           day: null,
-          list: {
-            venueId: SETTINGS.venueId,
-            status: "not_collected",
-            items: [deskBooking({ status: "not_collected", actions: ["rebook"] })],
-          },
+          list: deskList("not_collected", { venueId: SETTINGS.venueId }),
           missedCount: 1,
           error: null,
         }}
       />,
     );
-    expect(screen.getByRole("button", { name: "Book again" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Rebook" })).toBeTruthy();
   });
 
   it("says the visits did not load, with a way to try again", () => {

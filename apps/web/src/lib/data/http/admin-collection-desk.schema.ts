@@ -79,6 +79,8 @@ export const deskListSchema = z.object({
   venueId: z.string(),
   status: z.enum(["upcoming", "not_collected"]),
   items: z.array(deskBookingSchema),
+  more: z.boolean(),
+  notCollected: z.number().int(),
 }) satisfies z.ZodType<DeskListView>;
 
 export const deskClientLotsSchema = z.object({

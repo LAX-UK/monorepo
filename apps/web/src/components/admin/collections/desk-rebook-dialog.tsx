@@ -1,12 +1,14 @@
 "use client";
 
 import { rebookCollectionAction } from "@/lib/actions/admin/admin-collection-desk";
-import { deskDayLabel, deskRefusalMessage, timeRange } from "@/lib/admin/collections/desk.vm";
+import { deskRefusalMessage, instantDayLabel, visitWhen } from "@/lib/admin/collections/desk.vm";
 import { handleStaffStepUp } from "@/lib/auth/step-up/staff-step-up.client";
-import { Field, Notice, StaffButton, StaffDialog, TextArea, toast } from "@auction/staff-ui";
+import { londonDateKey } from "@auction/domain";
+import { Notice, StaffButton, StaffDialog, formatStaffTime, toast } from "@auction/staff-ui";
 import type { DeskBookingView } from "@auction/types";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { DeskOverrideField } from "./desk-override-field";
 import { type ChosenSlot, DeskSlotChooser } from "./desk-slot-chooser";
 
 /**
@@ -33,9 +35,13 @@ export function DeskRebookDialog({
       onOpenChange={(open) => {
         if (!open) onClose();
       }}
-      title={shown?.status === "not_collected" ? "Book a new time" : "Rebook"}
+      title={shown ? `Rebook ${shown.buyer.name}` : "Rebook"}
       description={
-        shown ? `${shown.buyer.name} · ${shown.reference} · now ${timeRange(shown)}` : undefined
+        shown
+          ? shown.status === "not_collected"
+            ? `Missed ${visitWhen(shown)}. We email the new time and a calendar invite.`
+            : `Now ${visitWhen(shown)}. We email the new time and an updated calendar invite.`
+          : undefined
       }
       size="md"
     >
@@ -65,13 +71,15 @@ function RebookForm({
 }) {
   const router = useRouter();
   const [slot, setSlot] = useState<ChosenSlot>(null);
+  const [override, setOverride] = useState(false);
   const [reason, setReason] = useState("");
   const [needsReason, setNeedsReason] = useState(false);
   const [slotError, setSlotError] = useState<string | undefined>();
   const [reasonError, setReasonError] = useState<string | undefined>();
   const [failure, setFailure] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const asked = needsReason || slot?.full === true;
+  const required = needsReason || slot?.full === true;
+  const asked = override || required;
 
   async function submit() {
     setFailure(null);
@@ -91,7 +99,7 @@ function RebookForm({
     });
     setBusy(false);
     if (result.ok) {
-      toast.success(`${booking.reference} booked for ${deskDayLabel(slot.start.slice(0, 10))}`);
+      toast.success(`${booking.buyer.name} booked for ${instantDayLabel(slot.start)}`);
       onClose();
       router.refresh();
       return;
@@ -103,7 +111,9 @@ function RebookForm({
       return;
     }
     setFailure(deskRefusalMessage(result.errorCode, result.error, result.meta));
-    if (result.errorCode === "booking_changed") router.refresh();
+    if (result.errorCode === "booking_changed" || result.errorCode === "lot_not_collectable") {
+      router.refresh();
+    }
   }
 
   return (
@@ -115,7 +125,7 @@ function RebookForm({
       ) : null}
       <DeskSlotChooser
         venueId={venueId}
-        initialDate={booking.status === "booked" ? booking.start.slice(0, 10) : today}
+        initialDate={booking.status === "booked" ? londonDateKey(new Date(booking.start)) : today}
         value={slot?.start ?? null}
         error={slotError}
         onChange={(next) => {
@@ -123,28 +133,26 @@ function RebookForm({
           setSlotError(undefined);
         }}
       />
-      {asked ? (
-        <Field
-          label="Reason"
-          description="For going over capacity or inside the notice period. Kept with your name; never shown to the client."
-          error={reasonError}
-        >
-          <TextArea
-            value={reason}
-            onChange={(event) => {
-              setReason(event.target.value);
-              setReasonError(undefined);
-            }}
-            rows={3}
-          />
-        </Field>
-      ) : null}
+      <DeskOverrideField
+        id="rebook-reason"
+        checked={override}
+        required={required}
+        onCheckedChange={setOverride}
+        reason={reason}
+        onReasonChange={(next) => {
+          setReason(next);
+          setReasonError(undefined);
+        }}
+        error={reasonError}
+      />
       <div className="flex flex-wrap justify-end gap-2">
         <StaffButton variant="secondary" onClick={onClose} disabled={busy}>
           Cancel
         </StaffButton>
         <StaffButton variant="primary" onClick={submit} loading={busy}>
-          {booking.status === "booked" ? "Move booking" : "Book this time"}
+          {slot
+            ? `Rebook for ${instantDayLabel(slot.start)}, ${formatStaffTime(slot.start)}`
+            : "Rebook"}
         </StaffButton>
       </div>
     </div>
