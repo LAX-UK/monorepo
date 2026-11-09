@@ -37,6 +37,7 @@ export async function createAuthSchedules(options: {
   ssfMaxAttempts: number;
   onSsfOutcome: (outcome: "delivered" | "retry_scheduled" | "failed", id: string) => void;
   reconcileAuthAtRest?: () => Promise<void>;
+  reconcileSigningKeyAge?: () => Promise<void>;
 }) {
   let provisioning: Promise<void>;
   try {
@@ -173,10 +174,23 @@ export async function createAuthSchedules(options: {
     : null;
   atRestReconciliation?.unref();
 
+  const reconcileSigningKeyAge = () => {
+    void options.reconcileSigningKeyAge?.().catch((err) => {
+      options.log.error({ err }, "signing_key_age_reconciliation_failed");
+      Sentry.captureException(err);
+    });
+  };
+  if (options.reconcileSigningKeyAge) reconcileSigningKeyAge();
+  const signingKeyAgeReconciliation = options.reconcileSigningKeyAge
+    ? setInterval(reconcileSigningKeyAge, 60 * 1_000)
+    : null;
+  signingKeyAgeReconciliation?.unref();
+
   return {
     stop: async () => {
       retirement.stop();
       clearInterval(verification);
+      if (signingKeyAgeReconciliation) clearInterval(signingKeyAgeReconciliation);
       clearInterval(emailChanges);
       if (atRestReconciliation) clearInterval(atRestReconciliation);
       if (ssf) clearInterval(ssf);

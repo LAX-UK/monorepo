@@ -7,7 +7,7 @@ import {
   type LaxResourceId,
   normalizeIssuerUrl,
 } from "@auction/identity-contracts";
-import { verifyIdentityToken } from "@auction/identity-contracts/verify";
+import { isSigningKeyCurrent, verifyIdentityToken } from "@auction/identity-contracts/verify";
 import {
   IdentityRejectedError,
   IdentityUnavailableError,
@@ -198,4 +198,12 @@ export function buildEndSessionUrl(idToken: string): URL {
     state: randomBytes(24).toString("base64url"),
   });
   return new URL(href);
+}
+
+/** False when the issuer has retired the key that signed this cached resource token. */
+export function isResourceTokenKeyCurrent(token: string): Promise<boolean> {
+  return isSigningKeyCurrent({
+    token,
+    jwksUrl: `${bffConfig().internalIssuer}${JWKS_PATH}`,
+  });
 }

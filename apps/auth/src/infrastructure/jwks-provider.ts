@@ -3,6 +3,7 @@ export type StoredSigningJwk = {
   publicKey: string;
   privateKey: string;
   alg?: string | undefined;
+  createdAt?: Date | undefined;
 };
 
 /** Read-only JWKS access for verification and signing adapter wiring. */

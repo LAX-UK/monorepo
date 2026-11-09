@@ -54,7 +54,7 @@ describe("verifyIdentityToken", () => {
     expect(createRemoteJWKSet).toHaveBeenCalledWith(
       new URL("https://auth.test/.well-known/jwks.json"),
       {
-        cacheMaxAge: 10 * 60 * 1000,
+        cacheMaxAge: 30_000,
         cooldownDuration: 30_000,
       },
     );
