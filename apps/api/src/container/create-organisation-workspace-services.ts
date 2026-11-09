@@ -5,6 +5,7 @@ import {
   DrizzleNeedsYouFactsReader,
   DrizzleUnsoldLotChoiceRepository,
 } from "@auction/persistence/repositories";
+import type { AppLogger } from "../lib/logger.js";
 import type { IMyBuyerAgentAuthorisationsService } from "../services/buyer-agents/my-buyer-agent-authorisations.service.js";
 import { UnsoldChoiceDeadlines } from "../services/consignment-after-sale/unsold-choice-deadlines.js";
 import type { IAccountRecordSearchService } from "../services/interfaces/account-record-search-service.js";
@@ -31,6 +32,7 @@ export function createOrganisationWorkspaceServices(input: {
   /** Whether payouts must be set up before a seller's lots go live (Stripe Connect configured). */
   connectEnforced: () => boolean;
   buyerAgentAuthorisations: IMyBuyerAgentAuthorisationsService;
+  log: AppLogger;
 }): OrganisationWorkspaceServices {
   const needsYou = new NeedsYouService({
     facts: new DrizzleNeedsYouFactsReader(input.db),
@@ -39,7 +41,7 @@ export function createOrganisationWorkspaceServices(input: {
       connectEnforced: input.connectEnforced,
     }),
     unsold: new DrizzleUnsoldLotChoiceRepository(input.db),
-    deadlines: new UnsoldChoiceDeadlines(),
+    deadlines: new UnsoldChoiceDeadlines(input.log.child({ component: "unsold_choice_deadlines" })),
     authorisations: input.buyerAgentAuthorisations,
   });
   return {

@@ -497,6 +497,7 @@ export function createContainer(env: Env): Container {
     legalEntities: repos.legalEntityRepository,
     connectEnforced: () => platform.stripeConnectService.isConfigured(),
     buyerAgentAuthorisations: buyerAgents.mine,
+    log: createBaseLogger(env),
   });
   const organisationTeam = createOrganisationTeamServices({
     db,
