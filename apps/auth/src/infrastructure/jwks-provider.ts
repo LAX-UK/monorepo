@@ -10,3 +10,8 @@ export type JwksProvider = {
   getJwks(): Promise<StoredSigningJwk[]>;
   getActiveSigningJwk(): Promise<StoredSigningJwk | null>;
 };
+
+/** Reads which key is active and when it was created, without touching key material. */
+export type SigningKeyInfoReader = {
+  getActiveSigningKeyInfo(): Promise<{ kid: string; createdAt: Date } | null>;
+};

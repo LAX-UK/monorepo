@@ -874,6 +874,8 @@ export const shopOrder = pgTable(
     refundPeriodEndsAt: timestamp("refund_period_ends_at", { mode: "date", withTimezone: true }),
     paidAt: timestamp("paid_at", { mode: "date", withTimezone: true }),
     checkoutExpiresAt: timestamp("checkout_expires_at", { mode: "date", withTimezone: true }),
+    /** How many times the checkout sweep has left this order alone. */
+    reaperDeferrals: integer("reaper_deferrals").notNull().default(0),
     deliveryLine1: text("delivery_line1"),
     deliveryLine2: text("delivery_line2"),
     deliveryCity: text("delivery_city"),

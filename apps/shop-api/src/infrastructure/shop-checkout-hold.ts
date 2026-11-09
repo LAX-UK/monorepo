@@ -1,8 +1,12 @@
 import type { Database } from "@auction/db";
-import { shopEdition, shopOrder } from "@auction/db/schema";
+import { shopDeliveryQuote, shopEdition, shopOrder } from "@auction/db/schema";
 import { SHOP_API_ERROR_CODES } from "@auction/shop-contracts";
-import { planSessionHold, reservedUntilFromCheckoutExpiry } from "@auction/shop-domain";
-import { and, eq, gt, isNull } from "drizzle-orm";
+import {
+  planHoldDeferral,
+  planSessionHold,
+  reservedUntilFromCheckoutExpiry,
+} from "@auction/shop-domain";
+import { and, eq, gt, isNull, sql } from "drizzle-orm";
 import { ShopApiError } from "../errors/shop-api-error.js";
 
 const HOLD_TOO_OLD_TO_EXTEND =
@@ -76,4 +80,64 @@ export async function holdForNewSession(
   }
   await extendCheckoutHold(db, order.id, plan.endsAt, input.now);
   return plan.endsAt;
+}
+
+/** How many times the reaper leaves an order alone before ops are told. */
+export const DEFERRALS_BEFORE_OPS_ALERT = 3;
+
+export type HoldDeferral =
+  | {
+      kind: "deferred" /** How many times this order has now been left alone. */;
+      deferrals: number;
+    }
+  | { kind: "at_cap" }
+  | { kind: "not_pending" };
+
+/**
+ * Leaves an order the reaper must not end yet (its payment is still being confirmed, or Stripe
+ * would not let it be ended) alone for a while. The order's hold and the prints' reservation move
+ * together, so the two never disagree, and never past the domain's ceiling from when the order
+ * began (or the quote was accepted). Each deferral is counted on the order, so a caller can tell
+ * ops when one order keeps coming back. At the
+ * ceiling nothing moves and the caller decides what to do with an order that has had all the time
+ * there is.
+ */
+export async function deferCheckoutHold(
+  db: Database,
+  orderId: string,
+  now: Date,
+): Promise<HoldDeferral> {
+  return db.transaction(async (tx) => {
+    const [order] = await tx
+      .select({ status: shopOrder.status, createdAt: shopOrder.createdAt })
+      .from(shopOrder)
+      .where(eq(shopOrder.id, orderId))
+      .for("update")
+      .limit(1);
+    if (!order || order.status !== "pending_payment") return { kind: "not_pending" };
+    // The ceiling counts from when payment began: the buyer accepting a quote, else the order.
+    const [quote] = await tx
+      .select({ decidedAt: shopDeliveryQuote.decidedAt })
+      .from(shopDeliveryQuote)
+      .where(eq(shopDeliveryQuote.orderId, orderId))
+      .limit(1);
+    const plan = planHoldDeferral({ began: quote?.decidedAt ?? order.createdAt, now });
+    if (plan.kind === "at_cap") return { kind: "at_cap" };
+    const [moved] = await tx
+      .update(shopOrder)
+      .set({
+        checkoutExpiresAt: plan.endsAt,
+        reaperDeferrals: sql`${shopOrder.reaperDeferrals} + 1`,
+        updatedAt: now,
+      })
+      .where(eq(shopOrder.id, orderId))
+      .returning({ deferrals: shopOrder.reaperDeferrals });
+    await tx
+      .update(shopEdition)
+      .set({ reservedUntil: reservedUntilFromCheckoutExpiry(plan.endsAt) })
+      .where(
+        and(eq(shopEdition.reservedByOrderId, orderId), eq(shopEdition.listingStatus, "reserved")),
+      );
+    return { kind: "deferred", deferrals: moved?.deferrals ?? 1 };
+  });
 }

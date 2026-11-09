@@ -41,6 +41,28 @@ export class DrizzleUnappliedMoneyReader implements IUnappliedMoneyReader {
     return Boolean(row);
   }
 
+  async existsForShopPayment(
+    payment: { paymentIntentId: string | null; sessionId: string },
+    tx?: Database,
+  ): Promise<boolean> {
+    const [row] = await (tx ?? this.db)
+      .select({ id: domainEvent.id })
+      .from(domainEvent)
+      .where(
+        and(
+          eq(domainEvent.eventType, UNAPPLIED_MONEY_EVENT),
+          or(
+            sql`${field("shopCheckoutSessionId")} = ${payment.sessionId}`,
+            payment.paymentIntentId
+              ? sql`${field("stripePaymentIntentId")} = ${payment.paymentIntentId}`
+              : undefined,
+          ),
+        ),
+      )
+      .limit(1);
+    return Boolean(row);
+  }
+
   async listOpenByChargeId(chargeId: string): Promise<OpenUnappliedMoney[]> {
     return this.listOpen({ chargeId, limit: 10 });
   }

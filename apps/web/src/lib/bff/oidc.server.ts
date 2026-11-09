@@ -2,12 +2,12 @@ import "server-only";
 
 import { randomBytes } from "node:crypto";
 import {
-  JWKS_PATH,
   LAX_RESOURCES,
   type LaxResourceId,
+  issuerJwksUrl,
   normalizeIssuerUrl,
 } from "@auction/identity-contracts";
-import { verifyIdentityToken } from "@auction/identity-contracts/verify";
+import { isSigningKeyCurrent, verifyIdentityToken } from "@auction/identity-contracts/verify";
 import {
   IdentityRejectedError,
   IdentityUnavailableError,
@@ -102,7 +102,7 @@ export async function exchangeAuthorizationCode(input: {
     throw new Error("Identity authorization response omitted required tokens");
   }
   const issuer = normalizeIssuerUrl(config.issuer);
-  const jwksUrl = `${config.internalIssuer.replace(/\/+$/, "")}${JWKS_PATH}`;
+  const jwksUrl = issuerJwksUrl(config.internalIssuer);
   const verified = await verifyIdentityToken({
     token: token.id_token,
     jwksUrl,
@@ -198,4 +198,12 @@ export function buildEndSessionUrl(idToken: string): URL {
     state: randomBytes(24).toString("base64url"),
   });
   return new URL(href);
+}
+
+/** False when the issuer has retired the key that signed this cached resource token. */
+export function isResourceTokenKeyCurrent(token: string): Promise<boolean> {
+  return isSigningKeyCurrent({
+    token,
+    jwksUrl: issuerJwksUrl(bffConfig().internalIssuer),
+  });
 }

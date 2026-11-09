@@ -21,6 +21,15 @@ export type OpenUnappliedMoneyFilter = {
 export interface IUnappliedMoneyReader {
   /** Whether this money was already reported (any state), so it is never reported twice. */
   exists(dedupeKey: string, tx?: Database): Promise<boolean>;
+  /**
+   * Whether any task, of any reason, was already opened for this Shop payment: by its
+   * PaymentIntent, or by its Checkout Session when it has none. One payment is one task, however
+   * many ways it is found.
+   */
+  existsForShopPayment(
+    payment: { paymentIntentId: string | null; sessionId: string },
+    tx?: Database,
+  ): Promise<boolean>;
   /** Open tasks for one Stripe charge, so a full refund of that charge can close them. */
   listOpenByChargeId(chargeId: string): Promise<OpenUnappliedMoney[]>;
   /** One open task, by its key (what staff close by hand). */
