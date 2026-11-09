@@ -96,6 +96,7 @@ export function createCommerceServices(
   const quoteRequests = createDeliveryQuoteRequestService({
     regions: { read: () => readDeliveryRegions(db) },
     orders: createDrizzleDeliveryQuoteOrderStore(db, {
+      framingEnabled: env.SHOP_FRAMING_ENABLED,
       domainEventMode,
       vatPolicy: loadShopVatPolicy(env),
       merchandiseEnabled: env.SHOP_MERCHANDISE_ENABLED,

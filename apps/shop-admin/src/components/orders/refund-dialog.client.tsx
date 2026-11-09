@@ -5,6 +5,8 @@ import { useAdminMutation } from "@/components/use-admin-mutation";
 import { requestOrderRefund } from "@/server/application/admin-operations-actions.server";
 import {
   REFUND_REASON_OPTIONS,
+  frameRefundWithPrint,
+  refundSuccessMessage,
   refundTargetOptions,
   refundableRemainingPence,
 } from "@/server/domain/order-detail.vm";
@@ -20,6 +22,7 @@ import {
   Field,
   FormErrorSummary,
   MoneyInput,
+  Notice,
   StaffButton,
   StaffDialog,
   TextArea,
@@ -51,6 +54,28 @@ export function validateRefund(input: {
 }
 
 /**
+ * Says what a print's refund really sends before it is confirmed: the item, its frame and the
+ * total, so the amount the customer gets is never a surprise.
+ */
+export function RefundWithFrameNote({
+  itemPence,
+  framePence,
+  frameMade,
+}: {
+  itemPence: number;
+  framePence: number;
+  frameMade: boolean;
+}) {
+  return (
+    <Notice tone="info" title="This also refunds the frame">
+      {`${formatGbp(itemPence)} for this item and ${formatGbp(framePence)} for its frame, ${formatGbp(
+        itemPence + framePence,
+      )} in all. ${frameMade ? "The frame has already been made; it goes back with the print." : "The frame is not made."}`}
+    </Notice>
+  );
+}
+
+/**
  * Refund in pounds, with a reason. Pick the whole order or one item; the most that can still be
  * refunded is shown and checked as you type. The button repeats the amount, and the payment
  * provider is only asked once the form is valid.
@@ -77,6 +102,15 @@ export function RefundDialog({
 
   const lineId = target || null;
   const remaining = refundableRemainingPence(detail, lineId);
+  const printLine = lineId
+    ? detail.lines.find((candidate) => candidate.orderLineId === lineId)
+    : undefined;
+  // A print refunded in full takes the frame sold with it; the dialog says so before it is sent.
+  const withFrame =
+    printLine && amountPence !== null
+      ? frameRefundWithPrint(detail, printLine, amountPence)
+      : { framePence: 0, frameMade: false };
+  const refundTotal = (amountPence ?? 0) + withFrame.framePence;
   const live = submitted
     ? validateRefund({ amountPence, amountText: amountTyped, reason, remainingPence: remaining })
     : errors;
@@ -111,7 +145,7 @@ export function RefundDialog({
           ...(note.trim() ? { note: note.trim() } : {}),
           idempotencyKey: mutation.idempotencyKey,
         }),
-      `Refund of ${formatGbp(amountPence)} requested`,
+      (data) => refundSuccessMessage(amountPence, data.framingRefundPence ?? 0),
     );
     if (ok) {
       reset();
@@ -148,7 +182,7 @@ export function RefundDialog({
             Cancel
           </StaffButton>
           <StaffButton variant="danger" type="submit" form="refund-form" loading={mutation.pending}>
-            {amountPence ? `Refund ${formatGbp(amountPence)}` : "Refund"}
+            {amountPence ? `Refund ${formatGbp(refundTotal)}` : "Refund"}
           </StaffButton>
         </>
       }
@@ -203,6 +237,13 @@ export function RefundDialog({
             </StaffButton>
           </div>
         </Field>
+        {withFrame.framePence > 0 && amountPence !== null ? (
+          <RefundWithFrameNote
+            itemPence={amountPence}
+            framePence={withFrame.framePence}
+            frameMade={withFrame.frameMade}
+          />
+        ) : null}
         <Field id="refund-reason" label="Reason" error={live.reason}>
           <EnumSelect
             value={reason}

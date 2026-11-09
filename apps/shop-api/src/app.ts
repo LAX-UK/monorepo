@@ -36,6 +36,7 @@ import { registerAdminDeliveryQuoteRoutes } from "./routes/admin/v1/delivery-quo
 import { registerAdminDeliveryRegionRoutes } from "./routes/admin/v1/delivery-regions.routes.js";
 import { registerAdminEditionFramingRoutes } from "./routes/admin/v1/edition-framing.routes.js";
 import { registerAdminEditionRunRoutes } from "./routes/admin/v1/edition-runs.routes.js";
+import { registerAdminFramingTaskRoutes } from "./routes/admin/v1/framing-tasks.routes.js";
 import { registerAdminFramingRoutes } from "./routes/admin/v1/framing.routes.js";
 import { registerAdminHealthRoutes } from "./routes/admin/v1/health.routes.js";
 import { registerAdminHomeFeatureRoutes } from "./routes/admin/v1/home-features.routes.js";
@@ -228,6 +229,7 @@ export function createShopApiApp(options: CreateShopApiAppOptions) {
         void registerAdminHomeFeatureRoutes(adminScope, options.deps.admin);
         void registerAdminFramingRoutes(adminScope, options.deps.admin);
         void registerAdminEditionFramingRoutes(adminScope, options.deps.admin);
+        void registerAdminFramingTaskRoutes(adminScope, options.deps.admin);
         void registerAdminDeliveryRegionRoutes(adminScope, options.deps.admin);
         void registerAdminDeliveryQuoteRoutes(adminScope, options.deps.admin);
         void registerAdminMediaRoutes(adminScope, options.deps.admin);

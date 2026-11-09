@@ -7,7 +7,7 @@ import type { ILotLifecycleNotifications } from "@auction/lot-lifecycle-app";
 import type { IBidRepository, ILotRepository } from "@auction/persistence/interfaces";
 import { describe, expect, it, vi } from "vitest";
 import { createWorkerLifecycleExecutor } from "./create-worker-lifecycle-executor.js";
-import { baseLot, bid, createFactory } from "./worker-lifecycle-parity.helpers.js";
+import { baseLot, bid, createFactory } from "./worker-lifecycle-parity.test-helpers.js";
 
 const noopNotifications: ILotLifecycleNotifications = {
   notifyWatchlistStarting: vi.fn(),

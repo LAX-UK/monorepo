@@ -15,13 +15,19 @@ import {
 } from "@auction/db/schema";
 import {
   type EditionFactsSnapshot,
+  FRAMING_GLAZING_LABELS,
+  FRAMING_MOUNT_LABELS,
+  type FramingGlazing,
+  type FramingMount,
   SHOP_FULFILMENT_STATUSES,
   SHOP_ORDER_STATUSES,
   type ShopFulfilmentStatus,
   type ShopOrderStatus,
+  parseFramingOrderSnapshot,
 } from "@auction/shop-domain";
 import { and, desc, eq, inArray, lt, or, sql } from "drizzle-orm";
 import { describeOrderLineEdition } from "../application/order-line-edition.js";
+import { printThenFrame } from "../application/order-line-order.js";
 import type {
   ListOrdersResult,
   OrderDeliveryQuoteRecord,
@@ -88,10 +94,12 @@ export type LineEditionBasis = {
 
 export type LineRow = Omit<
   OrderLineRecord,
-  "editionNumber" | "editionSummary" | "editionInvoiceDetail"
+  "editionNumber" | "editionSummary" | "editionInvoiceDetail" | "framingFor" | "framingForLineId"
 > & {
   orderId: string;
   editionNumber: number | null;
+  /** For a frame, the print it goes with; the buyer is told its number only while they hold it. */
+  framingParent: { lineId: string; title: string; editionNumber: number | null } | null;
   releasedAt: Date | null;
   editionBasis: LineEditionBasis;
 };
@@ -139,6 +147,7 @@ function orderRowToRecord(order: typeof shopOrder.$inferSelect, extras: OrderExt
     status,
     fulfilment: order.fulfilment,
     merchandiseSubtotalPence: order.merchandiseSubtotalPence,
+    framingSubtotalPence: order.framingSubtotalPence,
     fulfilmentSurchargePence: order.fulfilmentSurchargePence,
     fulfilmentVatPence: order.fulfilmentVatPence,
     totalPence: order.totalPence,
@@ -146,8 +155,19 @@ function orderRowToRecord(order: typeof shopOrder.$inferSelect, extras: OrderExt
       .filter((refund) => refund.status === "succeeded")
       .reduce((sum, refund) => sum + refund.amountPence, 0),
     lines: extras.lines.map((line) => {
-      const { orderId: _order, releasedAt: _released, editionBasis, ...record } = line;
+      const {
+        orderId: _order,
+        releasedAt: _released,
+        editionBasis,
+        framingParent,
+        ...record
+      } = line;
       const holds = holdsPrint(status, line, extras.refunds);
+      const parentLine = framingParent
+        ? extras.lines.find((candidate) => candidate.orderLineId === framingParent.lineId)
+        : undefined;
+      // "Tide line, no. 7": the number follows the same rule as the print's own line.
+      const parentHeld = parentLine ? holdsPrint(status, parentLine, extras.refunds) : false;
       const described = describeOrderLineEdition({
         ...editionBasis,
         holdsPrint: holds,
@@ -158,6 +178,13 @@ function orderRowToRecord(order: typeof shopOrder.$inferSelect, extras: OrderExt
         editionNumber: holds ? line.editionNumber : null,
         editionSummary: described?.summary ?? null,
         editionInvoiceDetail: described?.invoiceDetail ?? null,
+        framingForLineId: framingParent?.lineId ?? null,
+        framingFor: framingParent
+          ? framingFor({
+              artworkTitle: framingParent.title,
+              editionNumber: parentHeld ? framingParent.editionNumber : null,
+            })
+          : null,
       };
     }),
     createdAt: order.createdAt,
@@ -175,6 +202,35 @@ function orderRowToRecord(order: typeof shopOrder.$inferSelect, extras: OrderExt
 const editionSize = sql<number | null>`(
   select nullif(count(*), 0)::int from ${shopEdition} where ${shopEdition.artworkId} = ${shopOrderLine.artworkId}
 )`;
+
+function framingParent(
+  parentLineId: string | null,
+  parents: ReadonlyMap<string, { artworkTitle: string | null; editionNumber: number | null }>,
+): LineRow["framingParent"] {
+  const parent = parentLineId ? parents.get(parentLineId) : undefined;
+  if (!parentLineId || !parent?.artworkTitle) return null;
+  return { lineId: parentLineId, title: parent.artworkTitle, editionNumber: parent.editionNumber };
+}
+
+/** "Tide line, no. 7": the print a frame goes with. */
+function framingFor(
+  parent: { artworkTitle: string | null; editionNumber: number | null } | undefined,
+): string | null {
+  if (!parent?.artworkTitle) return null;
+  return parent.editionNumber === null
+    ? parent.artworkTitle
+    : `${parent.artworkTitle}, no. ${parent.editionNumber}`;
+}
+
+/** What the frame is made of, from the options kept when it was sold. */
+function framingDetail(snapshot: unknown): string | null {
+  const { mount, glazing } = parseFramingOrderSnapshot(snapshot);
+  const parts = [
+    FRAMING_MOUNT_LABELS[mount as FramingMount],
+    FRAMING_GLAZING_LABELS[glazing as FramingGlazing],
+  ].filter((part): part is string => Boolean(part));
+  return parts.length > 0 ? parts.join(" · ") : null;
+}
 
 async function fetchLinesByOrderIds(
   db: Database,
@@ -198,6 +254,9 @@ async function fetchLinesByOrderIds(
       editionSnapshot: shopOrderLine.editionFactsSnapshot,
       proofNumber: shopEdition.proofNumber,
       unitPricePence: shopOrderLine.unitPricePence,
+      kind: shopOrderLine.kind,
+      framingSnapshot: shopOrderLine.framingSnapshot,
+      framingForLineId: shopOrderLine.framingForLineId,
       vatRateBp: shopOrderLine.vatRateBp,
       vatPence: shopOrderLine.vatPence,
       imageUrl: shopArtwork.primaryImageUrl,
@@ -222,17 +281,32 @@ async function fetchLinesByOrderIds(
         : [],
     ),
   );
+  const parents = new Map(lineRows.map((row) => [row.orderLineId, row]));
+  const ordered = printThenFrame(lineRows, (row) => ({
+    id: row.orderLineId,
+    createdAt: row.createdAt,
+    framingForLineId: row.framingForLineId,
+  }));
   const linesByOrder = new Map<string, LineRow[]>();
   for (const {
     createdAt: _created,
     artworkId,
     editionSnapshot,
     proofNumber,
+    framingSnapshot,
+    framingForLineId,
+    kind,
     ...line
-  } of lineRows) {
+  } of ordered) {
     const bucket = linesByOrder.get(line.orderId) ?? [];
     bucket.push({
       ...line,
+      kind: kind === "framing" ? "framing" : "goods",
+      framingName: kind === "framing" ? parseFramingOrderSnapshot(framingSnapshot).name : null,
+      framingParent: framingParent(framingForLineId, parents),
+      framingDetail: kind === "framing" ? framingDetail(framingSnapshot) : null,
+      // A frame is shown with the print it goes with, so the list reads as one piece.
+      ...(framingForLineId ? { imageUrl: parents.get(framingForLineId)?.imageUrl ?? null } : {}),
       artistName: line.artistName?.trim() || null,
       editionSize: line.editionSize === null ? null : Number(line.editionSize),
       editionBasis: {

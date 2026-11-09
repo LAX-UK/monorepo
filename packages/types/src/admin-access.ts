@@ -173,6 +173,13 @@ export const LOT_FULFILMENT_ACCESS: CapabilityRequirement = {
 };
 
 /**
+ * Collections: the hours and rules for collecting works, closures, and the day's visits. It is the
+ * Fulfilment role's work, as lot fulfilment is; read-only staff see it without the actions.
+ */
+export const COLLECTIONS_ACCESS: CapabilityRequirement = LOT_FULFILMENT_ACCESS;
+export const COLLECTIONS_READ_ACCESS: CapabilityRequirement = readOrWrite(COLLECTIONS_ACCESS);
+
+/**
  * Record a buyer default: void an unpaid sale and decide where the lot goes. It cancels a sale
  * and releases the lot, so it belongs to the sales managers who run the lot and to finance, who
  * own the invoice. The administrator holds both.

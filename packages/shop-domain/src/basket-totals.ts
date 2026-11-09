@@ -41,15 +41,20 @@ export function computeMerchandiseSubtotal(lines: readonly BasketLineInput[]): M
   return sumPence(lines.map((line) => multiplyPence(line.unitPricePence, line.quantity)));
 }
 
+/**
+ * What the order costs: the goods, the framing sold with them (kept apart from the goods, which
+ * artists and owners are paid on), and the delivery charge.
+ */
 export function computeOrderTotal(input: {
   merchandiseSubtotalPence: MoneyPence;
+  framingSubtotalPence?: MoneyPence;
   fulfilment: ShopFulfilmentOption;
 }): MoneyPence {
   if (!isOnlineCheckoutFulfilment(input.fulfilment)) {
     throw new ShopDomainError("International quotation fulfilment cannot be checked out online");
   }
   return addPence(
-    input.merchandiseSubtotalPence,
+    addPence(input.merchandiseSubtotalPence, input.framingSubtotalPence ?? pence(0)),
     pence(fulfilmentSurchargePence(input.fulfilment)),
   );
 }
@@ -61,4 +66,16 @@ export function assertQuantityWithinSellable(quantity: number, sellableCount: nu
   if (quantity > sellableCount) {
     throw new ShopDomainError("Requested quantity exceeds sellable stock");
   }
+}
+
+/**
+ * What an order comes to once a quoted delivery price is known: the goods, the framing sold with
+ * them and the delivery. Used wherever a total is set from a price that is not a fixed option's.
+ */
+export function orderTotalWithDelivery(input: {
+  merchandiseSubtotalPence: number;
+  framingSubtotalPence: number;
+  deliveryPence: number;
+}): number {
+  return input.merchandiseSubtotalPence + input.framingSubtotalPence + input.deliveryPence;
 }

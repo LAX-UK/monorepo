@@ -7,6 +7,7 @@ import type {
   BookingOutcome,
   NewCollectionBooking,
 } from "../interfaces/collection-booking.repository.js";
+import { lockCollectionPlace } from "./collection-place-lock.js";
 import { DrizzleCollectionBookingRepository } from "./drizzle-collection-booking.repository.js";
 import { DrizzleCollectionPlaceRepository } from "./drizzle-collection-place.repository.js";
 
@@ -749,6 +750,63 @@ describe.skipIf(!HAS_DB)("collection booking (integration)", () => {
     });
   });
 
+  describe("cancelling as part of a larger change", () => {
+    it("is undone with the transaction it ran in", async () => {
+      class Abort extends Error {}
+      const made = booked(await bookings.book(request()));
+      await expect(
+        db.transaction(async (tx) => {
+          const outcome = await bookings.cancel(
+            {
+              bookingId: made.id,
+              expectedSequence: made.icsSequence,
+              cancelledByUserId: staffId,
+              at: new Date(),
+            },
+            undefined,
+            tx,
+          );
+          expect(outcome.outcome).toBe("cancelled");
+          throw new Abort();
+        }),
+      ).rejects.toBeInstanceOf(Abort);
+      expect((await bookings.findById(made.id))?.status).toBe("booked");
+    });
+
+    it("stands when the transaction commits, and a booking waits for a held place lock", async () => {
+      const made = booked(await bookings.book(request()));
+      await db.transaction(async (tx) => {
+        await bookings.cancel(
+          {
+            bookingId: made.id,
+            expectedSequence: made.icsSequence,
+            cancelledByUserId: staffId,
+            at: new Date(),
+          },
+          undefined,
+          tx,
+        );
+      });
+      expect((await bookings.findById(made.id))?.status).toBe("cancelled");
+
+      // A change holding the place's lock makes a booking wait until it commits.
+      const events: string[] = [];
+      const holding = db.transaction(async (tx) => {
+        await lockCollectionPlace(tx, venueId);
+        events.push("lock held");
+        await new Promise((resolve) => setTimeout(resolve, 300));
+        events.push("lock released");
+      });
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      const waiting = bookings.book(request()).then((outcome) => {
+        events.push("booked");
+        return outcome;
+      });
+      await Promise.all([holding, waiting]);
+      expect(events).toEqual(["lock held", "lock released", "booked"]);
+    });
+  });
+
   describe("settings", () => {
     it("creates a place with the gallery's hours once, however many ask at the same time", async () => {
       const fresh = randomUUID();
@@ -759,18 +817,23 @@ describe.skipIf(!HAS_DB)("collection booking (integration)", () => {
         const results = await Promise.all(Array.from({ length: 8 }, () => places.ensure(fresh)));
         expect(results.every((r) => r.visitMinutes === 30 && r.placesPerSlot === 2)).toBe(true);
         expect(results.every((r) => r.onlineBookingEnabled === false)).toBe(true);
-        const facts = await places.readCalendarFacts(fresh, {
-          from: "2031-01-01",
-          to: "2031-12-31",
-        });
+        // Reading a place also brings in England and Wales bank holidays for the year and the next two.
+        const facts = await places.readCalendarFacts(
+          fresh,
+          { from: "2031-01-01", to: "2031-12-31" },
+          new Date("2031-03-10T12:00:00Z"),
+        );
         expect(facts.hours).toHaveLength(5);
         expect(facts.hours.map((h) => h.weekday)).toEqual([1, 2, 3, 4, 5]);
         expect(
           facts.hours.every((h) => h.opensLocal === "10:00" && h.closesLocal === "19:00"),
         ).toBe(true);
-        expect(facts.exceptions).toEqual([]);
+        expect(facts.exceptions.length).toBeGreaterThan(0);
+        expect(facts.exceptions.every((e) => e.source === "bank_holiday")).toBe(true);
+        expect(facts.exceptions.map((e) => e.startsOn)).toContain("2031-12-25");
         expect(await places.find(randomUUID())).toBeNull();
       } finally {
+        await db.execute(sql`delete from collection_exception where venue_id = ${fresh}`);
         await db.execute(sql`delete from collection_weekly_hours where venue_id = ${fresh}`);
         await db.execute(sql`delete from collection_place where venue_id = ${fresh}`);
         await db.execute(sql`delete from venue where id = ${fresh}`);

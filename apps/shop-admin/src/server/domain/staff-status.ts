@@ -29,6 +29,7 @@ export type LaxStatusDomain =
   | "edition"
   | "merchandise"
   | "framing"
+  | "framingTask"
   | "editorial"
   | "help"
   | "enquiry"
@@ -107,6 +108,13 @@ const LAX_STATUS: Record<LaxStatusDomain, Readonly<Record<string, StatusPresenta
     qc_passed: { label: "Quality check passed", tone: "success" },
     completed: { label: "Completed", tone: "success" },
     cancelled: { label: "Cancelled", tone: "neutral" },
+  },
+  framingTask: {
+    queued: { label: "Waiting to be framed", tone: "neutral" },
+    framing: { label: "Being framed", tone: "info" },
+    framed: { label: "Framed", tone: "info" },
+    completed: { label: "Framing done", tone: "success" },
+    cancelled: { label: "Framing cancelled", tone: "neutral" },
   },
   certificate: {
     none: { label: "No certificate", tone: "neutral" },

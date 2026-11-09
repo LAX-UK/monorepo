@@ -7,12 +7,11 @@ import {
   sale,
   venue,
 } from "@auction/db/schema";
-import {
-  type CollectionException,
-  type CollectionExceptionSource,
-  type CollectionWeeklyHours,
-  DEFAULT_COLLECTION_WEEKLY_HOURS,
-  type DateKey,
+import type {
+  CollectionException,
+  CollectionExceptionSource,
+  CollectionWeeklyHours,
+  DateKey,
 } from "@auction/domain";
 import { and, asc, eq, gte, isNull, lte } from "drizzle-orm";
 import type {
@@ -20,6 +19,8 @@ import type {
   CollectionPlaceSettings,
   ICollectionPlaceRepository,
 } from "../interfaces/collection-booking.repository.js";
+import { ensureBankHolidays, saleDaysAt } from "./drizzle-collection-closures.js";
+import { ensureCollectionPlace } from "./drizzle-collection-place-setup.js";
 
 type PlaceRow = typeof collectionPlace.$inferSelect;
 type ExceptionRow = typeof collectionException.$inferSelect;
@@ -112,23 +113,7 @@ export class DrizzleCollectionPlaceRepository implements ICollectionPlaceReposit
   }
 
   async ensure(venueId: string): Promise<CollectionPlaceSettings> {
-    // A second caller racing the first waits on the primary key, finds the row and adds nothing.
-    await this.db.transaction(async (tx) => {
-      const [created] = await tx
-        .insert(collectionPlace)
-        .values({ venueId })
-        .onConflictDoNothing()
-        .returning({ venueId: collectionPlace.venueId });
-      if (!created) return;
-      await tx.insert(collectionWeeklyHours).values(
-        DEFAULT_COLLECTION_WEEKLY_HOURS.map((hours) => ({
-          venueId,
-          weekday: hours.weekday,
-          opensLocal: hours.opensLocal,
-          closesLocal: hours.closesLocal,
-        })),
-      );
-    });
+    await ensureCollectionPlace(this.db, venueId);
     const settings = await this.find(venueId);
     if (!settings) throw new Error(`Collection place ${venueId} was not created`);
     return settings;
@@ -137,8 +122,10 @@ export class DrizzleCollectionPlaceRepository implements ICollectionPlaceReposit
   async readCalendarFacts(
     venueId: string,
     range: { from: DateKey; to: DateKey },
+    now: Date = new Date(),
   ): Promise<CollectionCalendarFacts> {
     const settings = await this.ensure(venueId);
+    await ensureBankHolidays(this.db, venueId, now);
     const hours = await this.weeklyHours(venueId);
     const exceptions = await this.db
       .select()
@@ -152,6 +139,7 @@ export class DrizzleCollectionPlaceRepository implements ICollectionPlaceReposit
         ),
       )
       .orderBy(asc(collectionException.startsOn), asc(collectionException.id));
-    return { settings, hours, exceptions: exceptions.map(toException) };
+    const saleDays = await saleDaysAt(this.db, venueId, range);
+    return { settings, hours, exceptions: [...exceptions.map(toException), ...saleDays] };
   }
 }

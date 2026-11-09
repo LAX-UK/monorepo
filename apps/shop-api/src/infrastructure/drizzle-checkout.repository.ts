@@ -7,6 +7,7 @@ import {
   computeOrderTotal,
   fulfilmentSurchargePence,
   isOnlineCheckoutFulfilment,
+  orderTotalWithDelivery,
   pence,
   reservedUntilFromCheckoutExpiry,
 } from "@auction/shop-domain";
@@ -69,6 +70,8 @@ export function createDrizzleCheckoutRepository(
     domainEventMode: "off" | "observe" | "enforce";
     vatPolicy?: VatPolicy | null;
     merchandiseEnabled?: boolean;
+    /** SHOP_FRAMING_ENABLED: while off, a framed basket is refused at checkout. */
+    framingEnabled?: boolean;
     /**
      * Whether delivery outside the UK may be paid for. Off until the accountant confirms how VAT
      * applies to exports: with it off, no outside-UK order opens a payment, however it was made.
@@ -77,6 +80,7 @@ export function createDrizzleCheckoutRepository(
   },
 ): CheckoutWriter {
   const merchandiseEnabled = options.merchandiseEnabled ?? false;
+  const framingEnabled = options.framingEnabled ?? false;
   const exportPaymentEnabled = options.exportPaymentEnabled ?? false;
   const domainEvents = createShopDomainEventPublisher(options.domainEventMode);
 
@@ -204,19 +208,24 @@ export function createDrizzleCheckoutRepository(
         return openPaymentSession(input, await replay(earlier));
       }
 
-      const { lines: basketLines, merchandiseSubtotal } = await loadCheckoutBasket(
+      const {
+        lines: basketLines,
+        merchandiseSubtotal,
+        framingSubtotal,
+      } = await loadCheckoutBasket(
         db,
         { basketId: input.basketId, ownedBy: (owner) => ownsBasket(owner, input) },
-        { merchandiseEnabled },
+        { merchandiseEnabled, framingEnabled },
       );
 
       const fulfilmentSurcharge = pence(
         outsideUk ? outsideUk.pricePence : fulfilmentSurchargePence(input.fulfilment),
       );
       const total = outsideUk
-        ? addPence(merchandiseSubtotal, fulfilmentSurcharge)
+        ? addPence(addPence(merchandiseSubtotal, framingSubtotal), fulfilmentSurcharge)
         : computeOrderTotal({
             merchandiseSubtotalPence: merchandiseSubtotal,
+            framingSubtotalPence: framingSubtotal,
             fulfilment: input.fulfilment,
           });
       const checkoutExpiresAt = newCheckoutHoldEnd(new Date());
@@ -243,6 +252,7 @@ export function createDrizzleCheckoutRepository(
               guestCustomerId: input.guest?.guestCustomerId ?? null,
               fulfilment: input.fulfilment,
               merchandiseSubtotalPence: merchandiseSubtotal,
+              framingSubtotalPence: framingSubtotal,
               fulfilmentSurchargePence: fulfilmentSurcharge,
               // Delivery is charged at the goods' rate; without a VAT policy no VAT is recorded.
               fulfilmentVatPence: options.vatPolicy
@@ -369,11 +379,16 @@ export function createDrizzleCheckoutRepository(
             409,
           );
         }
-        // What is about to be paid must be exactly the goods plus the delivery that was priced.
+        // What is about to be paid must be exactly the goods, their framing and the delivery that was priced.
         const priced = quote?.quotedPricePence ?? order.fulfilmentSurchargePence;
         if (
           order.fulfilmentSurchargePence !== priced ||
-          order.totalPence !== order.merchandiseSubtotalPence + priced
+          order.totalPence !==
+            orderTotalWithDelivery({
+              merchandiseSubtotalPence: order.merchandiseSubtotalPence,
+              framingSubtotalPence: order.framingSubtotalPence,
+              deliveryPence: priced,
+            })
         ) {
           throw new ShopApiError(
             SHOP_API_ERROR_CODES.CONFLICT,

@@ -9,6 +9,8 @@ import {
   CLIENT_ACTIVITY_ACCESS,
   CLIENT_BIDS_ACCESS,
   CLIENT_KYC_ACCESS,
+  COLLECTIONS_ACCESS,
+  COLLECTIONS_READ_ACCESS,
   DATA_REQUESTS_MANAGE_ACCESS,
   EMAIL_ADMIN_ACCESS,
   EMAIL_OBSERVABILITY_ACCESS,
@@ -45,6 +47,21 @@ describe("data requests access", () => {
 
   it("is not reached through admin.read or the screening permissions alone", () => {
     expect(userHasAccessTo("staff", [], DATA_REQUESTS_MANAGE_ACCESS)).toBe(false);
+  });
+});
+
+describe("collections access", () => {
+  it("is changed by Fulfilment and Administrator, and seen by Read-only as well", () => {
+    expect(userStaffRoles.filter((role) => has(role, COLLECTIONS_ACCESS))).toEqual([
+      "administrator",
+      "fulfilment",
+    ]);
+    expect(userStaffRoles.filter((role) => has(role, COLLECTIONS_READ_ACCESS))).toEqual([
+      "administrator",
+      "fulfilment",
+      "read_only",
+    ]);
+    expect(has("finance", COLLECTIONS_READ_ACCESS)).toBe(false);
   });
 });
 
