@@ -124,7 +124,7 @@ describe("createStripeShopCheckoutGateway", () => {
       payment_intent: null,
     });
     const gateway = createStripeShopCheckoutGateway({
-      secretKey: "sk_test_placeholder",
+      secretKey: "sk_test_mock",
       storefrontUrl: "http://localhost:3020",
       fakeCheckoutEnabled: false,
     });
