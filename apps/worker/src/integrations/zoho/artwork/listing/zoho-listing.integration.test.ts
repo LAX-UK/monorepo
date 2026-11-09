@@ -234,7 +234,10 @@ describe.skipIf(!url)("LAX listing on Zoho (Postgres)", { timeout: 30_000 }, () 
     // Moved out: later than now, so it has not started.
     await db
       .update(sale)
-      .set({ startTime: new Date("2026-11-20T18:00:00Z") })
+      .set({
+        startTime: new Date("2026-11-20T18:00:00Z"),
+        endTime: new Date("2026-11-27T18:00:00Z"),
+      })
       .where(eq(sale.id, saleId));
     expect(await find()).not.toContain(registerId);
 
