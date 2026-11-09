@@ -2,9 +2,11 @@ import type { Database } from "@auction/db";
 import { shopOrder } from "@auction/db/schema";
 import { and, asc, eq, isNotNull, lt } from "drizzle-orm";
 import type pino from "pino";
-import type { PaymentCheckoutGateway } from "../application/ports/commerce.ports.js";
-import { expireShopCheckoutSession } from "./drizzle-payment-event.processor.js";
-import { deferCheckoutHold } from "./shop-checkout-hold.js";
+import {
+  type CheckoutTransitionOptions,
+  deferCheckoutWithAlert,
+  expireShopCheckoutSession,
+} from "./drizzle-payment-event.processor.js";
 
 const REAPER_BATCH_SIZE = 25;
 export const SHOP_CHECKOUT_REAPER_EVENT_SOURCE = "shop-api-reaper";
@@ -16,7 +18,7 @@ export function reaperEventIdForOrder(orderId: string): string {
 export async function reapStaleShopCheckouts(
   db: Database,
   now: Date,
-  paymentGateway?: PaymentCheckoutGateway,
+  options: CheckoutTransitionOptions = {},
   log?: pino.Logger,
 ): Promise<number> {
   const stale = await db
@@ -43,14 +45,14 @@ export async function reapStaleShopCheckouts(
           source: SHOP_CHECKOUT_REAPER_EVENT_SOURCE,
           holdMustHaveEndedBy: now,
         },
-        paymentGateway ? { paymentGateway } : {},
+        options,
       );
       if (outcome === "expired") {
         expired += 1;
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      await deferReaperForFailedOrder(db, row.id, now, log);
+      await deferReaperForFailedOrder(db, row.id, now, options, log);
       if (log) {
         log.error({ orderId: row.id, err: message }, "shop checkout reaper failed for order");
       } else {
@@ -71,10 +73,11 @@ async function deferReaperForFailedOrder(
   db: Database,
   orderId: string,
   now: Date,
+  options: CheckoutTransitionOptions,
   log?: pino.Logger,
 ): Promise<void> {
   try {
-    await deferCheckoutHold(db, orderId, now);
+    await deferCheckoutWithAlert(db, orderId, now, options, "the sweep failed to end it");
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     if (log) {

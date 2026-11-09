@@ -2,7 +2,7 @@ import { domainEvent, shopEdition, shopOrder, shopProcessedPaymentEvent } from "
 import { DrizzleUnappliedMoneyReader } from "@auction/persistence/repositories";
 import { and, eq, sql } from "drizzle-orm";
 import type pg from "pg";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import type {
   CheckoutOrderInput,
   PaymentCheckoutGateway,
@@ -42,6 +42,7 @@ const gateway: PaymentCheckoutGateway = {
   async resolveHostedCheckout(input) {
     return { checkoutUrl: `https://pay.example.test/${input.sessionId}` };
   },
+  retrievePaidCheckout: async () => null,
   async expireHostedCheckout() {
     return { kind: "expired" };
   },
@@ -253,6 +254,96 @@ describe.skipIf(!hasShopIntegrationDb)(
       expect((await order(created.orderId)).status).toBe("expired");
     });
 
+    describe("a session Stripe shows paid whose payment event never reached us", () => {
+      async function stuckPaid(
+        label: string,
+        readable: Awaited<ReturnType<typeof paidSession>> | null,
+      ) {
+        const harness = await setup(label);
+        const created = await harness.checkout("buyer");
+        const before = await harness.order(created.orderId);
+        const gate: PaymentCheckoutGateway = {
+          ...gateway,
+          async expireHostedCheckout() {
+            return { kind: "already_complete" };
+          },
+          async retrievePaidCheckout() {
+            return readable
+              ? { ...readable, amountTotalPence: before.totalPence + readable.amountTotalPence }
+              : null;
+          },
+        };
+        const queueCheckoutOpsAlert = vi.fn(async () => undefined);
+        const options = {
+          paymentGateway: gate,
+          unappliedMoney: new DrizzleUnappliedMoneyReader(harness.db),
+          domainEventMode: "enforce" as const,
+          opsAlertEmail: "ops@example.test",
+          notifications: { queueCheckoutOpsAlert } as never,
+        };
+        const sweep = () =>
+          expireShopCheckoutSession(
+            harness.db,
+            {
+              eventId: `${reaperEventIdForOrder(created.orderId)}:${Math.random()}`,
+              orderId: created.orderId,
+              source: SHOP_CHECKOUT_REAPER_EVENT_SOURCE,
+            },
+            options,
+          );
+        return { ...harness, created, sweep, queueCheckoutOpsAlert };
+      }
+      const paidSession = async (extraPence: number) => ({
+        amountTotalPence: extraPence,
+        paymentIntentId: `pi_${Math.random()}`,
+        livemode: false,
+        paidAt: new Date(),
+      });
+
+      it("applies it when it is paid and matches the order, instead of deferring for ever", async () => {
+        const { sweep, order, created } = await stuckPaid("reconcile-ok", await paidSession(0));
+        expect(await sweep()).toBe("reconciled");
+        expect((await order(created.orderId)).status).toBe("paid");
+      });
+
+      it("records a finance task and closes the order when the amount is not the order's", async () => {
+        const { db, sweep, order, holder, created } = await stuckPaid(
+          "reconcile-mismatch",
+          await paidSession(-1),
+        );
+        expect(await sweep()).toBe("reconciled");
+        expect((await order(created.orderId)).status).toBe("payment_failed");
+        expect((await holder()).reservedByOrderId).toBeNull();
+        const tasks = await db
+          .select()
+          .from(domainEvent)
+          .where(
+            and(
+              eq(domainEvent.eventType, "payment.unapplied_money_received"),
+              sql`${domainEvent.payload}->>'shopOrderId' = ${created.orderId}`,
+            ),
+          );
+        expect(tasks).toHaveLength(1);
+      });
+
+      it("defers an order it cannot read, moving hold and reservation together, and tells ops on the third time", async () => {
+        const { sweep, order, holder, created, queueCheckoutOpsAlert } = await stuckPaid(
+          "reconcile-unreadable",
+          null,
+        );
+        for (let attempt = 1; attempt <= 3; attempt++) {
+          expect(await sweep()).toBe("deferred_async");
+          expect(queueCheckoutOpsAlert).toHaveBeenCalledTimes(attempt === 3 ? 1 : 0);
+          await new Promise((resolve) => setTimeout(resolve, 5));
+        }
+        const left = await order(created.orderId);
+        expect(left.status).toBe("pending_payment");
+        expect((await holder()).reservedUntil?.getTime()).toBeGreaterThanOrEqual(
+          (left.checkoutExpiresAt as Date).getTime(),
+        );
+      });
+    });
+
     it("will not stretch a hold that has already ended", async () => {
       const { db, checkout, order, holder, pastHold } = await setup("no-revive");
       const created = await checkout("buyer");
@@ -362,7 +453,7 @@ describe.skipIf(!hasShopIntegrationDb)(
           },
         };
         const now = new Date();
-        await reapStaleShopCheckouts(stuck.db, now, stripe);
+        await reapStaleShopCheckouts(stuck.db, now, { paymentGateway: stripe });
 
         expect((await healthy.order(healthyOrder.orderId)).status).toBe("expired");
         const left = await stuck.order(stuckOrder.orderId);

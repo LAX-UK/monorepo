@@ -16,6 +16,7 @@ import {
 import { createDrizzleRegisterMediaAssetStore } from "./infrastructure/scheduler/drizzle-register-media-asset.store.js";
 import { createSharpImageProbe } from "./infrastructure/sharp-image-probe.js";
 import { resolveShopMediaStorage } from "./infrastructure/shop-media-storage.js";
+import type { UnappliedMoneyLookup } from "./infrastructure/shop-unapplied-payment.js";
 import { createStripePaymentRefundGateway } from "./infrastructure/stripe-payment-refund.gateway.js";
 import { createStripeShopCheckoutGateway } from "./infrastructure/stripe-shop-checkout.gateway.js";
 import { createStripeShopConnectGateway } from "./infrastructure/stripe-shop-connect.gateway.js";
@@ -65,6 +66,8 @@ export function buildShopApiSchedulerTasks(input: {
   env: ShopApiEnv;
   log: FastifyBaseLogger;
   alertRetention: AlertRetentionStore;
+  /** The finance task store, for a payment the sweep finds that never reached us. */
+  unappliedMoney: UnappliedMoneyLookup;
 }): ShopSchedulerTask[] {
   const notifications = createDrizzleShopNotificationPublisher();
   const paymentGateway = createStripeShopCheckoutGateway({
@@ -106,7 +109,13 @@ export function buildShopApiSchedulerTasks(input: {
         error: (fields, message) => input.log.error(fields, message),
       },
     }),
-    createStaleCheckoutReaperTask(input.db, paymentGateway),
+    createStaleCheckoutReaperTask(input.db, {
+      paymentGateway,
+      notifications,
+      opsAlertEmail,
+      domainEventMode: input.env.DOMAIN_EVENT_PUBLISH_VALIDATE,
+      unappliedMoney: input.unappliedMoney,
+    }),
     createIdentityMergeTask(input.db, opsAlertEmail),
     createGuestOrderClaimTask(input.db, input.env),
     createPersonalDataAnonymisationTask(input.db, input.env),
@@ -157,6 +166,7 @@ export function createShopApiScheduler(input: {
   env: ShopApiEnv;
   log: FastifyBaseLogger;
   alertRetention: AlertRetentionStore;
+  unappliedMoney: UnappliedMoneyLookup;
 }): ShopSchedulerHandle | null {
   if (!input.env.SHOP_SCHEDULER_ENABLED) {
     return null;

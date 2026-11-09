@@ -187,6 +187,25 @@ export function createStripeShopCheckoutGateway(options: {
         409,
       );
     },
+    async retrievePaidCheckout(input) {
+      if (!stripe || input.sessionId.startsWith("fake_")) return null;
+      const session = await stripe.checkout.sessions.retrieve(input.sessionId);
+      if (
+        session.status !== "complete" ||
+        !isStripeCheckoutSessionPaid(session) ||
+        session.currency !== "gbp" ||
+        session.amount_total === null
+      ) {
+        return null;
+      }
+      const intent = session.payment_intent;
+      return {
+        amountTotalPence: session.amount_total,
+        paymentIntentId: typeof intent === "string" ? intent : (intent?.id ?? null),
+        livemode: session.livemode,
+        paidAt: new Date(),
+      };
+    },
     async expireHostedCheckout(input) {
       if (!stripe || input.sessionId.startsWith("fake_")) {
         return { kind: "not_expirable" as const };

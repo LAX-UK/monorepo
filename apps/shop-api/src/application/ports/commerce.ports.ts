@@ -268,6 +268,17 @@ export interface PaymentCheckoutGateway {
     orderId: string;
     sessionId: string;
   }): Promise<{ checkoutUrl: string }>;
+  /**
+   * What a Checkout Session was paid, when Stripe shows it paid in pounds; null when it was not
+   * paid, is not Stripe's to read, or cannot be read. Used to settle a session whose payment
+   * event never reached us.
+   */
+  retrievePaidCheckout(input: { orderId: string; sessionId: string }): Promise<{
+    amountTotalPence: number;
+    paymentIntentId: string | null;
+    livemode: boolean;
+    paidAt: Date;
+  } | null>;
   expireHostedCheckout(input: {
     orderId: string;
     sessionId: string;

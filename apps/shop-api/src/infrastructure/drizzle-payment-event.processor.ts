@@ -28,7 +28,11 @@ import {
 import { liveEditionSnapshots } from "./edition-snapshot-source.js";
 import { recordGuestOrderPaid } from "./guest-checkout/guest-lead-events.js";
 import { guestOrderLinkUrl, issueGuestOrderLink } from "./guest-checkout/guest-order-link-token.js";
-import { deferCheckoutHold } from "./shop-checkout-hold.js";
+import {
+  DEFERRALS_BEFORE_OPS_ALERT,
+  type HoldDeferral,
+  deferCheckoutHold,
+} from "./shop-checkout-hold.js";
 import {
   assertCheckoutNotAlreadyPaid,
   assertCheckoutNotAsyncPending,
@@ -52,7 +56,7 @@ import {
   recordUnappliedShopPayment,
 } from "./shop-unapplied-payment.js";
 
-type CheckoutTransitionOptions = {
+export type CheckoutTransitionOptions = {
   notifications?: ShopNotificationPublisher;
   opsAlertEmail?: string | null;
   storefrontUrl?: string;
@@ -124,7 +128,8 @@ async function expireStripeBeforeLocalTransition(
   orderId: string,
   paymentGateway: PaymentCheckoutGateway | undefined,
   mode: "buyer_cancel" | "expire",
-): Promise<"proceed" | "skip_async"> {
+  options: CheckoutTransitionOptions = {},
+): Promise<"proceed" | "skip_async" | "reconciled" | "unconfirmed"> {
   if (!paymentGateway) {
     return "proceed";
   }
@@ -149,8 +154,74 @@ async function expireStripeBeforeLocalTransition(
     }
     return "skip_async";
   }
+  if (mode === "expire" && outcome.kind === "already_complete") {
+    return reconcileCompletedSession(
+      db,
+      orderId,
+      preview.stripeCheckoutSessionId,
+      paymentGateway,
+      options,
+    );
+  }
   assertCheckoutNotAlreadyPaid(outcome);
   return "proceed";
+}
+
+/**
+ * Stripe says the order's session is paid but the order is still waiting, so the payment event
+ * did not reach us. The session is read from Stripe and put through the same path as the event:
+ * applied if it is paid and matches the order, otherwise recorded as a finance task. Deferring
+ * and hoping would leave paid money unrecorded.
+ */
+async function reconcileCompletedSession(
+  db: Database,
+  orderId: string,
+  sessionId: string | null,
+  paymentGateway: PaymentCheckoutGateway,
+  options: CheckoutTransitionOptions,
+): Promise<"reconciled" | "unconfirmed"> {
+  if (!sessionId) return "unconfirmed";
+  const paid = await paymentGateway.retrievePaidCheckout({ orderId, sessionId });
+  if (!paid) return "unconfirmed";
+  await completeShopCheckoutSession(
+    db,
+    {
+      eventId: `reaper-reconcile:${sessionId}`,
+      orderId,
+      sessionId,
+      amountTotalPence: paid.amountTotalPence,
+      paidAt: paid.paidAt,
+      paymentIntentId: paid.paymentIntentId,
+      livemode: paid.livemode,
+    },
+    options,
+  );
+  return "reconciled";
+}
+
+/**
+ * Leaves an order alone for a while (see {@link deferCheckoutHold}) and tells ops, once, when the
+ * same order has been left alone {@link DEFERRALS_BEFORE_OPS_ALERT} times.
+ */
+export async function deferCheckoutWithAlert(
+  db: Database,
+  orderId: string,
+  now: Date,
+  options: CheckoutTransitionOptions,
+  why: string,
+): Promise<HoldDeferral> {
+  const deferral = await deferCheckoutHold(db, orderId, now);
+  if (deferral.kind === "deferred" && deferral.deferrals === DEFERRALS_BEFORE_OPS_ALERT) {
+    await db.transaction((tx) =>
+      queueCheckoutOpsAlertInTx(tx as Database, options, {
+        idempotencyKey: `checkout-deferred:${orderId}`,
+        alertKind: "Shop checkout held open",
+        orderId,
+        detail: `Order ${orderId} has been left open ${deferral.deferrals} times by the checkout sweep (${why}). Check its payment in Stripe.`,
+      }),
+    );
+  }
+  return deferral;
 }
 
 export function createDrizzlePaymentEventProcessor(
@@ -744,7 +815,12 @@ async function applyShopPayment(
   });
 }
 
-export type ShopCheckoutExpireOutcome = "expired" | "duplicate" | "unchanged" | "deferred_async";
+export type ShopCheckoutExpireOutcome =
+  | "expired"
+  | "duplicate"
+  | "unchanged"
+  | "deferred_async"
+  | "reconciled";
 
 export async function recordShopCheckoutCurrencyViolation(
   db: Database,
@@ -867,13 +943,31 @@ export async function expireShopCheckoutSession(
     input.orderId,
     options.paymentGateway,
     "expire",
+    options,
   );
+  if (stripeGate === "reconciled") return "reconciled";
+  if (stripeGate === "unconfirmed") {
+    const deferral = await deferCheckoutWithAlert(
+      db,
+      input.orderId,
+      new Date(),
+      options,
+      "Stripe shows its session paid but the payment could not be read",
+    );
+    return deferral.kind === "deferred" ? "deferred_async" : "unchanged";
+  }
   if (stripeGate === "skip_async") {
     // The debit is still being confirmed: wait, up to the ceiling. Past it the payment is treated
     // as not made, and one that lands later is recorded for finance as money for a closed order.
-    const deferral = await deferCheckoutHold(db, input.orderId, new Date());
-    if (deferral === "deferred") return "deferred_async";
-    if (deferral === "not_pending") return "unchanged";
+    const deferral = await deferCheckoutWithAlert(
+      db,
+      input.orderId,
+      new Date(),
+      options,
+      "its payment is still being confirmed",
+    );
+    if (deferral.kind === "deferred") return "deferred_async";
+    if (deferral.kind === "not_pending") return "unchanged";
   }
   return db.transaction(async (tx) => {
     if (input.holdMustHaveEndedBy) {
