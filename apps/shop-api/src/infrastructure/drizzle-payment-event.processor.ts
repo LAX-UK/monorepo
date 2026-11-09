@@ -323,10 +323,13 @@ export type DeferOrSettleOutcome =
   | "closed_unconfirmed"
   | "settle_failed";
 
+/** The name of the log line written when an order past the ceiling could not be settled. */
+export const SHOP_CHECKOUT_SETTLE_FAILED = "shop_checkout_settle_failed";
+
 /**
  * Takes an order out of the sweep when settling it failed, and tells ops once. Its hold is cleared
  * (the sweep only reads orders with one), so a settle that keeps failing can never jam the batch;
- * the order is left as it is for staff to deal with.
+ * the order is left as it is, with its prints reserved, for engineering to deal with.
  */
 async function takeOrderOutOfSweep(
   db: Database,
@@ -335,6 +338,15 @@ async function takeOrderOutOfSweep(
   error: unknown,
 ): Promise<void> {
   const reason = error instanceof Error ? error.message : String(error);
+  // Always logged, so log alerting sees it even when no ops email is configured. No personal data.
+  const sessionId = await db
+    .select({ sessionId: shopOrder.stripeCheckoutSessionId })
+    .from(shopOrder)
+    .where(eq(shopOrder.id, orderId))
+    .limit(1)
+    .then((rows) => rows[0]?.sessionId ?? null)
+    .catch(() => null);
+  console.error(JSON.stringify({ msg: SHOP_CHECKOUT_SETTLE_FAILED, orderId, sessionId, reason }));
   await db.transaction(async (tx) => {
     await tx
       .update(shopOrder)
@@ -344,7 +356,7 @@ async function takeOrderOutOfSweep(
       idempotencyKey: `checkout-settle-failed:${orderId}`,
       alertKind: "Shop checkout could not be settled",
       orderId,
-      detail: `Order ${orderId} is past the longest hold and could not be settled (${reason}). It has been taken out of the checkout sweep and is still waiting for payment: check its payment in Stripe and close it by hand.`,
+      detail: `Order ${orderId} is past the longest hold and could not be settled (${reason}). Check the payment in Stripe and tell engineering; the order is held out of the clean-up so its prints stay reserved.`,
     });
   });
 }

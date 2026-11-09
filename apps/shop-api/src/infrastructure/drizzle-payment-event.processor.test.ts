@@ -7,9 +7,16 @@ vi.mock("./shop-restore-basket-from-order.js", () => ({
 }));
 
 import {
+  SHOP_CHECKOUT_SETTLE_FAILED,
   completeShopCheckoutSession,
+  deferOrSettleCheckout,
   failShopCheckoutSession,
 } from "./drizzle-payment-event.processor.js";
+vi.mock("./shop-checkout-hold.js", () => ({
+  DEFERRALS_BEFORE_OPS_ALERT: 3,
+  deferCheckoutHold: vi.fn(async () => ({ kind: "at_cap" })),
+}));
+
 import { restoreBasketLinesFromOrder } from "./shop-restore-basket-from-order.js";
 
 type MockOrder = {
@@ -578,5 +585,60 @@ describe("a payment that cannot be applied to its order is tracked, not dropped"
         ),
       ).toBe(true);
     });
+  });
+});
+
+describe("an order past the ceiling that cannot be settled", () => {
+  it("leaves the sweep with a structured log line and one plain ops alert, with no ops email needed for the log", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const queueCheckoutOpsAlert = vi.fn(async () => undefined);
+    const update = vi.fn(() => ({ set: vi.fn(() => ({ where: vi.fn(async () => []) })) }));
+    const pendingOrder = [{ status: "pending_payment", sessionId: "cs_stuck" }];
+    let transactions = 0;
+    const db = {
+      select: vi.fn(() => ({
+        from: vi.fn(() => ({ where: vi.fn(() => ({ limit: vi.fn(async () => pendingOrder) })) })),
+      })),
+      // The first transaction is the settle, which fails; the second takes the order out.
+      transaction: vi.fn(async (fn: (tx: { update: typeof update }) => Promise<unknown>) => {
+        transactions += 1;
+        if (transactions === 1) throw new Error("finance store down");
+        return fn({ update });
+      }),
+    };
+    const gateway = {
+      retrievePaidCheckout: vi.fn(async () => Promise.reject(new Error("stripe down"))),
+    };
+
+    const outcome = await deferOrSettleCheckout(
+      db as never,
+      "order-9",
+      new Date(),
+      {
+        paymentGateway: gateway as never,
+        opsAlertEmail: "ops@example.test",
+        notifications: { queueCheckoutOpsAlert } as never,
+      },
+      { reason: "test", stripeShowsPaid: false },
+    );
+
+    expect(outcome).toBe("settle_failed");
+    const line = log.mock.calls
+      .map(([text]) => String(text))
+      .find((text) => text.includes(SHOP_CHECKOUT_SETTLE_FAILED));
+    expect(JSON.parse(line ?? "{}")).toEqual({
+      msg: SHOP_CHECKOUT_SETTLE_FAILED,
+      orderId: "order-9",
+      sessionId: "cs_stuck",
+      reason: "finance store down",
+    });
+    expect(queueCheckoutOpsAlert).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        idempotencyKey: "checkout-settle-failed:order-9",
+        detail: expect.stringContaining("Check the payment in Stripe and tell engineering"),
+      }),
+    );
+    log.mockRestore();
   });
 });
