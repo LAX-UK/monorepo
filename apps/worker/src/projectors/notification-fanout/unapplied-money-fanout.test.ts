@@ -101,7 +101,7 @@ describe("unapplied money alert", () => {
       emailService: { enqueue } as never,
       eventId: 9,
       webOrigin: "https://bid.example",
-      shopAdminOrigin: "https://shop-admin.example/",
+      laxAdminUrl: "https://admin.lax.art/",
       alert,
     });
     const vars = enqueue.mock.calls[0]?.[0].vars as {
@@ -110,10 +110,41 @@ describe("unapplied money alert", () => {
       reviewUrl: string;
     };
     // The Shop order in LAX Admin, not the Bid admin payments list.
-    expect(vars.reviewUrl).toBe("https://shop-admin.example/orders/order-1");
+    expect(vars.reviewUrl).toBe("https://admin.lax.art/orders/order-1");
     expect(vars.situation).toContain("LAX Admin");
     expect(vars.situation).toContain("paid after their order had closed");
     expect(vars.situation).toContain("Nothing was refunded");
+    expect(vars.reference).toBe("LAX-S-10482");
+  });
+
+  it("names LAX Admin and the order but carries no link, never localhost or Bid admin, when LAX Admin has no address set", async () => {
+    const enqueue = vi.fn().mockResolvedValue(undefined);
+    await fanoutUnappliedMoney({
+      staffOpsRecipientReader: {
+        listRecipients: vi
+          .fn()
+          .mockResolvedValue([{ id: "staff-1", email: "f@lax.test", firstName: "Fran" }]),
+      },
+      emailService: { enqueue } as never,
+      eventId: 10,
+      webOrigin: "https://bid.example",
+      alert: alertFromUnappliedMoney({
+        reason: "shop_order_paid_after_close",
+        paymentId: null,
+        paymentGroupId: null,
+        stripePaymentIntentId: "pi_1",
+        stripeChargeId: null,
+        stripeCustomerId: null,
+        shopOrderId: "order-1",
+        shopOrderReference: "LAX-S-10482",
+        amountCents: 50500,
+        currency: "GBP",
+        dedupeKey: "shop_order_paid_after_close:pi_1",
+      }),
+    });
+    const vars = enqueue.mock.calls[0]?.[0].vars as Record<string, unknown>;
+    expect(vars).not.toHaveProperty("reviewUrl");
+    expect(vars.situation).toContain("LAX Admin");
     expect(vars.reference).toBe("LAX-S-10482");
   });
 

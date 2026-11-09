@@ -69,15 +69,18 @@ export async function fanoutUnappliedMoney(options: {
   emailService: IEmailService;
   adminEmailAddress?: string | undefined;
   webOrigin?: string | undefined;
-  /** LAX Admin's origin: a Shop order's task links there, never to Bid admin. */
-  shopAdminOrigin?: string | undefined;
+  /**
+   * LAX Admin's public address: a Shop order's task links to its page there, never to Bid admin.
+   * Without it the alert still names LAX Admin and the order, and carries no link.
+   */
+  laxAdminUrl?: string | undefined;
   eventId: number;
   alert: UnappliedMoneyAlert;
 }): Promise<void> {
   const { alert } = options;
   const origin = (value: string | undefined) => value?.replace(/\/$/, "") ?? "";
   // A Shop order's task is handled in LAX Admin, on its own origin, never in Bid admin.
-  const base = alert.shopOrderId ? origin(options.shopAdminOrigin) : origin(options.webOrigin);
+  const base = alert.shopOrderId ? origin(options.laxAdminUrl) : origin(options.webOrigin);
   const path = alert.shopOrderId
     ? laxAdminRoutes.orders.order(alert.shopOrderId)
     : alert.dealReference
@@ -103,7 +106,8 @@ export async function fanoutUnappliedMoney(options: {
         situation: [SITUATION[alert.situation], alert.possibleSource].filter(Boolean).join(" "),
         amount,
         reference: alert.reference,
-        reviewUrl: `${base}${path}`,
+        // A Shop order with no LAX Admin address configured has no link to give.
+        ...(alert.shopOrderId && !base ? {} : { reviewUrl: `${base}${path}` }),
       },
       category: "transactional",
       idempotencyKey: `payment-unapplied-money-admin-notice:${options.eventId}:${target.keySuffix}`,

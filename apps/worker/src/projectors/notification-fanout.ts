@@ -226,7 +226,7 @@ export async function processNotificationFanout(options: {
           emailService,
           adminEmailAddress: ctx.adminEmailAddress,
           webOrigin: ctx.webOrigin,
-          shopAdminOrigin: ctx.shopAdminOrigin,
+          laxAdminUrl: ctx.laxAdminUrl,
           eventId: row.id,
           alert: alertFromUnappliedMoney(row.payload as UnappliedMoneyPayload),
         });
