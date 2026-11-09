@@ -7,7 +7,7 @@ import {
 
 const NOW = new Date("2026-11-09T11:20:00Z");
 const CONFIG: CollectionNoticeConfig = {
-  organizer: { email: "collections@lax.bid", name: "London Art Exchange" },
+  organizer: { email: "collections@lax.bid", name: "LAX Bid" },
   webOrigin: "https://lax.bid",
   now: NOW,
 };
@@ -71,9 +71,7 @@ describe("a booking made", () => {
     expect(calendar.method).toBe("REQUEST");
     expect(calendar.filename).toBe("collection-COL-4821.ics");
     expect(calendar.content).toContain("METHOD:REQUEST");
-    expect(calendar.content).toContain(
-      'ORGANIZER;CN="London Art Exchange":mailto:collections@lax.bid',
-    );
+    expect(calendar.content).toContain('ORGANIZER;CN="LAX Bid":mailto:collections@lax.bid');
     expect(calendar.content).toContain("mailto:maya@example.com");
     expect(calendar.content).toContain("UID:COL-4821@lax.bid");
   });

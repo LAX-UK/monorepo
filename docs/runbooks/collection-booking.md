@@ -102,7 +102,7 @@ event and the address).
 | Cancelled | Cancelled, worded by who ended it: the buyer, the gallery (hours or a closure changed, with its reason), or the account (the booker erased it). A collector is told they need not come | `CANCEL` |
 
 The calendar invites come from `COLLECTION_ORGANIZER_EMAIL` / `COLLECTION_ORGANIZER_NAME` (default
-`collections@lax.bid`, "London Art Exchange"). Both have safe defaults, so nothing has to be set
+`collections@lax.bid`, "LAX Bid", the product's name). Both have safe defaults, so nothing has to be set
 for invites to work; changing them in an environment is an infrastructure change. Mail clients need
 an organizer to update or remove an entry, so keep it an address that exists.
 
