@@ -56,9 +56,11 @@ export function createDrizzleCheckoutRepository(
     domainEventMode: "off" | "observe" | "enforce";
     vatPolicy?: VatPolicy | null;
     merchandiseEnabled?: boolean;
+    framingEnabled?: boolean;
   },
 ): CheckoutWriter {
   const merchandiseEnabled = options.merchandiseEnabled ?? false;
+  const framingEnabled = options.framingEnabled ?? false;
   const domainEvents = createShopDomainEventPublisher(options.domainEventMode);
 
   /** The payment session for a pending order: the open one, or a new one when it needs one. */
@@ -173,19 +175,24 @@ export function createDrizzleCheckoutRepository(
         return openPaymentSession(input, await replay(earlier));
       }
 
-      const { lines: basketLines, merchandiseSubtotal } = await loadCheckoutBasket(
+      const {
+        lines: basketLines,
+        merchandiseSubtotal,
+        framingSubtotal,
+      } = await loadCheckoutBasket(
         db,
         { basketId: input.basketId, ownedBy: (owner) => ownsBasket(owner, input) },
-        { merchandiseEnabled },
+        { merchandiseEnabled, framingEnabled },
       );
 
       const fulfilmentSurcharge = pence(
         outsideUk ? outsideUk.pricePence : fulfilmentSurchargePence(input.fulfilment),
       );
       const total = outsideUk
-        ? addPence(merchandiseSubtotal, fulfilmentSurcharge)
+        ? addPence(addPence(merchandiseSubtotal, framingSubtotal), fulfilmentSurcharge)
         : computeOrderTotal({
             merchandiseSubtotalPence: merchandiseSubtotal,
+            framingSubtotalPence: framingSubtotal,
             fulfilment: input.fulfilment,
           });
       const checkoutExpiresAt = new Date(Date.now() + CHECKOUT_SESSION_TTL_MS);
@@ -212,6 +219,7 @@ export function createDrizzleCheckoutRepository(
               guestCustomerId: input.guest?.guestCustomerId ?? null,
               fulfilment: input.fulfilment,
               merchandiseSubtotalPence: merchandiseSubtotal,
+              framingSubtotalPence: framingSubtotal,
               fulfilmentSurchargePence: fulfilmentSurcharge,
               // Delivery is charged at the goods' rate; without a VAT policy no VAT is recorded.
               fulfilmentVatPence: options.vatPolicy
