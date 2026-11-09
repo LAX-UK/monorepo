@@ -184,13 +184,14 @@ describe("refundBlockedCapture", () => {
     );
   });
 
-  it("records the refund of what Stripe took, keyed by the Stripe refund id", async () => {
+  it("records the refund of what Stripe took, keyed like its payout line, with the Stripe refund id kept", async () => {
     const { deps, paymentRefunds } = setup();
     await refundBlockedCapture(deps, "admin-1", "staff", "pay-1", FINANCE, "x");
     expect(paymentRefunds.entries).toEqual([
       {
         paymentId: "pay-1",
-        idempotencyKey: "re_1",
+        idempotencyKey: "blocked_capture_refund:pay-1",
+        stripeRefundId: "re_1",
         amountPence: 125_000,
         currency: "GBP",
         source: "blocked_capture",

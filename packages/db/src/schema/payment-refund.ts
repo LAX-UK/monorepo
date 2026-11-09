@@ -33,8 +33,13 @@ export const paymentRefund = pgTable(
     paymentId: uuid("payment_id")
       .notNull()
       .references(() => payment.id, { onDelete: "restrict" }),
-    /** The Stripe refund id when known, otherwise the id of the event that reported the refund. */
+    /**
+     * The `source_event_id` of the payout line the same refund writes: the Stripe event id,
+     * `<event id>:<payment id>` for a Pay several charge, or the staff refund's own id.
+     */
     idempotencyKey: text("idempotency_key").notNull(),
+    /** The Stripe refund id, when one is known. */
+    stripeRefundId: text("stripe_refund_id"),
     amountPence: integer("amount_pence").notNull(),
     currency: char("currency", { length: 3 }).notNull(),
     source: text("source").notNull(),

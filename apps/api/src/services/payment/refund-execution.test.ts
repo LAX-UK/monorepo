@@ -245,13 +245,14 @@ describe("executePaymentRefundLedger", () => {
       ...over,
     });
 
-    it("records the whole payment as refunded, keyed by the Stripe refund id", async () => {
+    it("records the whole payment as refunded, keyed like its payout line, with the Stripe refund id kept", async () => {
       const deps = baseDeps();
       await executePaymentRefundLedger(deps, input());
       expect(refundsOf(deps).entries).toEqual([
         {
           paymentId: "pay-1",
-          idempotencyKey: "re_1",
+          idempotencyKey: "admin_refund:pay-1",
+          stripeRefundId: "re_1",
           amountPence: 10_000,
           currency: "GBP",
           source: "staff",
@@ -296,6 +297,12 @@ describe("executePaymentRefundLedger", () => {
       expect((await refundsOf(deps).sumRefundedPence("pay-1")).pence).toBe(10_000);
     });
 
+    it("locks the payment before it applies the refund and records it", async () => {
+      const deps = baseDeps();
+      await executePaymentRefundLedger(deps, input());
+      expect(refundsOf(deps).calls).toEqual(["lock:pay-1", "record:pay-1"]);
+    });
+
     it("records nothing for a payment that was already refunded", async () => {
       const deps = baseDeps({
         payments: {
@@ -314,6 +321,10 @@ describe("executePaymentRefundLedger", () => {
             order.push("record");
             return true;
           }),
+          lockPaymentInTransaction: vi.fn(async () => {
+            order.push("lock");
+            return true;
+          }),
           sumRefundedPenceInTransaction: vi.fn(),
         },
         domainEventSink: mockDomainEventSink(
@@ -323,7 +334,7 @@ describe("executePaymentRefundLedger", () => {
         ) as unknown as IDomainEventSink,
       });
       await executePaymentRefundLedger(deps, input());
-      expect(order).toEqual(["record", "publish"]);
+      expect(order).toEqual(["lock", "record", "publish"]);
     });
   });
 });

@@ -4,6 +4,7 @@
 BEGIN;
 
 SET LOCAL lock_timeout = '5s';
+DROP FUNCTION IF EXISTS payment_refund_backfill_from_payout_lines(uuid);
 DROP TABLE IF EXISTS "payment_refund";
 
 COMMIT;

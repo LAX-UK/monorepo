@@ -35,16 +35,19 @@ export class PaymentRefundReconcileService {
       const attempts = row.attempts + 1;
       try {
         await this.transactionRunner.runInTransaction(async (tx) => {
+          await this.paymentRefunds.lockPaymentInTransaction(tx, row.paymentId);
           const applied = await this.payments.applyRefundedInTransaction(
             tx,
             row.paymentId,
             row.stripeRefundId,
           );
           if (!applied) return;
-          // The same key as the first attempt, which rolled back with the failure being retried.
+          // Keyed like the payout line below. The first attempt, whose transaction rolled back
+          // (that is why this row is queued), recorded nothing under any key.
           await this.paymentRefunds.recordInTransaction(tx, {
             paymentId: row.paymentId,
-            idempotencyKey: row.stripeRefundId ?? `admin_refund_reconcile:${row.paymentId}`,
+            idempotencyKey: `admin_refund_reconcile:${row.paymentId}`,
+            stripeRefundId: row.stripeRefundId,
             amountPence: gbpAmountToPence(row.payload.amount),
             currency: "GBP",
             source: "staff",

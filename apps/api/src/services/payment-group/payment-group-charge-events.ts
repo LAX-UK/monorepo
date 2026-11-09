@@ -1,3 +1,4 @@
+import type { Database } from "@auction/db";
 import { attributeGroupRefunds } from "@auction/domain";
 import type {
   IPaymentGroupRepository,
@@ -16,12 +17,14 @@ import type { IProviderEventClaim } from "./payment-group-settlement.service.js"
 
 export type PaymentGroupChargeEventsDeps = {
   transactionRunner: ITransactionRunner;
-  groups: Pick<IPaymentGroupRepository, "findByStripeRefs" | "listMembers">;
+  groups: Pick<IPaymentGroupRepository, "findByStripeRefs" | "lockInTransaction">;
   gateway: Pick<IPaymentGroupGateway, "listChargeRefunds">;
   payments: Pick<IPaymentLifecycleRepository, "applyRefundedInTransaction">;
   payoutAdjustments: Pick<IPayoutAdjustmentService, "addPaymentLineToOpenPayoutOrCreateClawback">;
   /** What the buyer was refunded for each invoice so far, and where each new refund is kept. */
   paymentRefunds: IPaymentRefundLedger;
+  /** What the seller's ledger already holds as refunded for the payment, in pence. */
+  sellerRefundedCents: (tx: Database, paymentId: string) => Promise<number>;
   events: IDomainEventSink;
   claims: IProviderEventClaim;
 };
@@ -57,57 +60,70 @@ export class PaymentGroupChargeEvents {
       paymentIntentId: paymentIntentIdOf(charge.payment_intent),
     });
     if (!group) return null;
-    const [members, refunds] = await Promise.all([
-      this.deps.groups.listMembers(group.id),
-      this.deps.gateway.listChargeRefunds(charge.id),
-    ]);
-    const attribution = attributeGroupRefunds(
-      members.map((m) => ({ paymentId: m.paymentId })),
-      refunds,
-    );
+    // Stripe is asked before the transaction, so no lock is held across the network call. What
+    // is measured against it (what is already recorded) is read under the lock below.
+    const refunds = await this.deps.gateway.listChargeRefunds(charge.id);
 
     return this.deps.transactionRunner.runInTransaction(async (tx) => {
       if (!(await this.deps.claims.claim(tx, event.id))) return DUPLICATE;
+      // The group, then its invoices in id order: a staff refund of one invoice waits here, and
+      // every sum below is taken while no other refund of these invoices can be recorded.
+      const locked = await this.deps.groups.lockInTransaction(tx, group.id);
+      if (!locked) return DUPLICATE;
+      const members = [...locked.members].sort((a, b) => a.paymentId.localeCompare(b.paymentId));
+      const attribution = attributeGroupRefunds(
+        members.map((m) => ({ paymentId: m.paymentId })),
+        refunds,
+      );
       let applied = 0;
       for (const member of members) {
         const refundedPence = attribution.refundedPenceByPayment.get(member.paymentId) ?? 0;
         const invoicePence = gbpAmountToPence(member.amount);
-        const { pence: recordedPence } =
+        // Already held through the group; this also brings the record up to the payout lines.
+        await this.deps.paymentRefunds.lockPaymentInTransaction(tx, member.paymentId);
+        // The buyer's record and the seller's ledger are measured separately: a refund the
+        // previous release processed has a payout line but no buyer row until the backfill is
+        // run again, and the seller must not be charged back for it twice.
+        const { pence: recordedBuyerPence } =
           await this.deps.paymentRefunds.sumRefundedPenceInTransaction(tx, member.paymentId);
-        const deltaCents = refundedPence - recordedPence;
-        if (deltaCents <= 0) continue;
-        applied += 1;
+        const recordedSellerPence = await this.deps.sellerRefundedCents(tx, member.paymentId);
+        const buyerDeltaCents = refundedPence - recordedBuyerPence;
+        const sellerDeltaCents =
+          Math.min(refundedPence, invoicePence) - Math.min(recordedSellerPence, invoicePence);
+        if (buyerDeltaCents <= 0 && sellerDeltaCents <= 0) continue;
         if (refundedPence >= invoicePence) {
           await this.deps.payments.applyRefundedInTransaction(tx, member.paymentId, null);
         }
         const sourceEventId = `${event.id}:${member.paymentId}`;
-        await this.deps.paymentRefunds.recordInTransaction(tx, {
-          paymentId: member.paymentId,
-          idempotencyKey: sourceEventId,
-          amountPence: deltaCents,
-          currency: charge.currency,
-          source: "group_webhook",
-        });
-        const sellerDeltaCents =
-          Math.min(refundedPence, invoicePence) - Math.min(recordedPence, invoicePence);
-        if (sellerDeltaCents > 0) {
-          await this.deps.payoutAdjustments.addPaymentLineToOpenPayoutOrCreateClawback({
-            legalEntityId: member.sellerLegalEntityId,
+        if (buyerDeltaCents > 0) {
+          await this.deps.paymentRefunds.recordInTransaction(tx, {
             paymentId: member.paymentId,
-            amount: (-sellerDeltaCents / 100).toFixed(2),
-            kind: "refund",
-            sourceEventId,
-            note: `Refund: ${charge.id}`,
-            tx,
+            idempotencyKey: sourceEventId,
+            amountPence: buyerDeltaCents,
+            currency: charge.currency,
+            source: "group_webhook",
           });
         }
+        // Only the buyer's record was behind: the seller was charged back, and the refund
+        // announced, when the previous release handled it.
+        if (sellerDeltaCents <= 0) continue;
+        applied += 1;
+        await this.deps.payoutAdjustments.addPaymentLineToOpenPayoutOrCreateClawback({
+          legalEntityId: member.sellerLegalEntityId,
+          paymentId: member.paymentId,
+          amount: (-sellerDeltaCents / 100).toFixed(2),
+          kind: "refund",
+          sourceEventId,
+          note: `Refund: ${charge.id}`,
+          tx,
+        });
         await this.deps.events.withTx(tx).publish({
           aggregateType: "payment",
           aggregateId: member.paymentId,
           eventType: "payment.refunded",
           payload: {
             stripeChargeId: charge.id,
-            amountCents: deltaCents,
+            amountCents: sellerDeltaCents,
             cumulativeRefundedCents: refundedPence,
             currency: charge.currency,
             sellerLegalEntityId: member.sellerLegalEntityId,

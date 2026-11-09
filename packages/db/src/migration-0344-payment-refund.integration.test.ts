@@ -1,6 +1,4 @@
 import { randomUUID } from "node:crypto";
-import { readFile } from "node:fs/promises";
-import { resolve } from "node:path";
 import type pg from "pg";
 import { describe, expect, it } from "vitest";
 import {
@@ -109,17 +107,17 @@ describe.skipIf(!migrationUrl)("migration 0344 payment refund", { timeout: 120_0
       const group = await f.payment();
       const staff = await f.payment();
       const untouched = await f.payment();
-      const cardLine = await f.payoutLine({
+      await f.payoutLine({
         paymentId: card,
         amount: "-250.50",
         sourceEventId: "evt_1Nabc",
       });
-      const groupLine = await f.payoutLine({
+      await f.payoutLine({
         paymentId: group,
         amount: "-100.00",
         sourceEventId: `evt_1Ndef:${group}`,
       });
-      const staffLine = await f.payoutLine({
+      await f.payoutLine({
         paymentId: staff,
         amount: "-600.10",
         sourceEventId: `admin_refund:${staff}`,
@@ -145,28 +143,28 @@ describe.skipIf(!migrationUrl)("migration 0344 payment refund", { timeout: 120_0
       expect(rows.rows).toEqual([
         {
           payment_id: staff,
-          idempotency_key: `backfill:payout_line:${staffLine}`,
+          idempotency_key: `admin_refund:${staff}`,
           amount_pence: 60_010,
           currency: "GBP",
           source: "staff",
         },
         {
           payment_id: card,
-          idempotency_key: `backfill:payout_line:${cardLine}`,
+          idempotency_key: "evt_1Nabc",
           amount_pence: 25_050,
           currency: "GBP",
           source: "card_webhook",
         },
         {
           payment_id: group,
-          idempotency_key: `backfill:payout_line:${groupLine}`,
+          idempotency_key: `evt_1Ndef:${group}`,
           amount_pence: 10_000,
           currency: "GBP",
           source: "group_webhook",
         },
         {
           payment_id: staff,
-          idempotency_key: `backfill:payout_line:${noEventLine}`,
+          idempotency_key: `payout_line:${noEventLine}`,
           amount_pence: 1,
           currency: "GBP",
           source: "staff",
@@ -175,21 +173,49 @@ describe.skipIf(!migrationUrl)("migration 0344 payment refund", { timeout: 120_0
     });
   });
 
-  it("changes nothing when its data step runs again", async () => {
+  it("adds only the missing refunds when its data step runs again, never a duplicate", async () => {
     await withTemporaryDatabase(async (pool) => {
       await runMigrationsPerTransactionThrough(pool, BEFORE_0344_FOLDER_MILLIS);
       const f = await fixture(pool);
       const paymentId = await f.payment();
       await f.payoutLine({ paymentId, amount: "-50.00", sourceEventId: "evt_again" });
       await runMigrationsPerTransaction(pool);
+      const count = async () =>
+        (await pool.query("select count(*)::int as n from payment_refund")).rows[0];
+      expect(await count()).toEqual({ n: 1 });
 
-      const sql = await readFile(
-        resolve(import.meta.dirname, "../drizzle/0344_payment_refund.sql"),
-        "utf8",
+      // The release that is live after the migration records a refund under the same key its
+      // payout line uses, and the previous release (still running during the rollout) writes a
+      // payout line with no buyer row.
+      await f.payoutLine({ paymentId, amount: "-20.00", sourceEventId: "evt_new_code" });
+      await pool.query(
+        `insert into payment_refund (payment_id, idempotency_key, amount_pence, currency, source)
+         values ($1, 'evt_new_code', 2000, 'GBP', 'card_webhook')`,
+        [paymentId],
       );
-      await pool.query(sql.replaceAll("--> statement-breakpoint", ""));
-      const count = await pool.query("select count(*)::int as n from payment_refund");
-      expect(count.rows[0]).toEqual({ n: 1 });
+      await f.payoutLine({ paymentId, amount: "-10.00", sourceEventId: "evt_gap" });
+
+      const added = await pool.query<{ added: number }>(
+        "select payment_refund_backfill_from_payout_lines() as added",
+      );
+      expect(added.rows[0]).toEqual({ added: 1 });
+      const again = await pool.query<{ added: number }>(
+        "select payment_refund_backfill_from_payout_lines() as added",
+      );
+      expect(again.rows[0]).toEqual({ added: 0 });
+      const rows = await pool.query<{
+        idempotency_key: string;
+        amount_pence: number;
+        source: string;
+      }>(
+        "select idempotency_key, amount_pence, source from payment_refund order by idempotency_key",
+      );
+      expect(rows.rows).toEqual([
+        { idempotency_key: "evt_again", amount_pence: 5000, source: "card_webhook" },
+        { idempotency_key: "evt_gap", amount_pence: 1000, source: "card_webhook" },
+        // Written by the new code, so the copy left it alone (and its source is the new code's).
+        { idempotency_key: "evt_new_code", amount_pence: 2000, source: "card_webhook" },
+      ]);
     });
   });
 

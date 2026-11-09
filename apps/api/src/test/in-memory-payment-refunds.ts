@@ -10,6 +10,7 @@ export class InMemoryPaymentRefunds implements IPaymentRefundLedger, IPaymentRef
   readonly entries: PaymentRefundEntry[] = [];
 
   async recordInTransaction(_tx: unknown, entry: PaymentRefundEntry): Promise<boolean> {
+    this.calls.push(`record:${entry.paymentId}`);
     if (!Number.isSafeInteger(entry.amountPence) || entry.amountPence <= 0) {
       throw new RangeError(`bad refund amount ${entry.amountPence}`);
     }
@@ -18,7 +19,16 @@ export class InMemoryPaymentRefunds implements IPaymentRefundLedger, IPaymentRef
     return true;
   }
 
+  /** Calls made to lock a payment, in order, so a test can check the lock comes before the sum. */
+  readonly calls: string[] = [];
+
+  async lockPaymentInTransaction(_tx: unknown, paymentId: string): Promise<boolean> {
+    this.calls.push(`lock:${paymentId}`);
+    return true;
+  }
+
   sumRefundedPenceInTransaction(_tx: unknown, paymentId: string): Promise<PaymentRefundTotal> {
+    this.calls.push(`sum:${paymentId}`);
     return this.sumRefundedPence(paymentId);
   }
 

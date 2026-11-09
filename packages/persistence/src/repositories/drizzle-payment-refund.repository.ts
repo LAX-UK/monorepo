@@ -1,5 +1,5 @@
 import type { Database } from "@auction/db";
-import { paymentRefund } from "@auction/db/schema";
+import { payment, paymentRefund } from "@auction/db/schema";
 import { eq, sql } from "drizzle-orm";
 import type {
   IPaymentRefundLedger,
@@ -17,6 +17,19 @@ export class DrizzlePaymentRefundRepository implements IPaymentRefundReader, IPa
     return this.sum(this.db, paymentId);
   }
 
+  async lockPaymentInTransaction(tx: Database, paymentId: string): Promise<boolean> {
+    const rows = await tx
+      .select({ id: payment.id })
+      .from(payment)
+      .where(eq(payment.id, paymentId))
+      .for("update");
+    if (rows.length === 0) return false;
+    // A refund the previous release handled has a payout line and no row here until the backfill
+    // is run again. Copied now, under the lock, it is part of the sum that follows.
+    await tx.execute(sql`SELECT payment_refund_backfill_from_payout_lines(${paymentId}::uuid)`);
+    return true;
+  }
+
   sumRefundedPenceInTransaction(tx: Database, paymentId: string): Promise<PaymentRefundTotal> {
     return this.sum(tx, paymentId);
   }
@@ -32,6 +45,7 @@ export class DrizzlePaymentRefundRepository implements IPaymentRefundReader, IPa
       .values({
         paymentId: entry.paymentId,
         idempotencyKey: entry.idempotencyKey,
+        stripeRefundId: entry.stripeRefundId ?? null,
         amountPence: entry.amountPence,
         currency: entry.currency.toUpperCase(),
         source: entry.source,

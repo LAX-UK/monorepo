@@ -141,6 +141,8 @@ describe.skipIf(!HAS_DB)("pay several: one payment for several invoices (integra
     payments,
     payoutAdjustments,
     paymentRefunds,
+    sellerRefundedCents: (tx, paymentId) =>
+      new DrizzlePayoutRepository(tx).sumRefundLineCentsForPayment(paymentId),
     events,
     claims,
   });
@@ -571,6 +573,61 @@ describe.skipIf(!HAS_DB)("pay several: one payment for several invoices (integra
     expect(publish).toHaveBeenCalledWith(
       expect.objectContaining({ eventType: "payment_group.refund_unattributed" }),
     );
+  });
+
+  it("does not charge the seller back again for a refund the previous release handled", async () => {
+    const groupId = await startOk([ids.a, ids.b]);
+    const pi = succeeded(groupId);
+    await webhooks.handlePaymentIntentSucceeded(eventOf("payment_intent.succeeded", pi), pi);
+    // The previous release, still running during the rollout, handled the first refund (25.00):
+    // it wrote the seller's refund line and nothing in the buyer's record.
+    const oldKey = `evt_old_${run}:${ids.a}`;
+    await runner.runInTransaction((tx) =>
+      payoutAdjustments.addPaymentLineToOpenPayoutOrCreateClawback({
+        legalEntityId: sellerId,
+        paymentId: ids.a,
+        amount: "-25.00",
+        kind: "refund",
+        sourceEventId: oldKey,
+        note: "Refund: previous release",
+        tx,
+      }),
+    );
+    expect((await paymentRefunds.sumRefundedPence(ids.a)).pence).toBe(0);
+    const charge = {
+      id: pi.latest_charge as string,
+      payment_intent: pi.id,
+      amount: 20_000,
+      amount_refunded: 2_500,
+      currency: "gbp",
+      metadata: {},
+    } as unknown as Stripe.Charge;
+
+    // The new release sees the same refund again (another event): nothing new for the seller.
+    chargeRefunds = [{ paymentId: ids.a, amountPence: 2_500 }];
+    const gap = await webhooks.handleChargeRefunded(eventOf("charge.refunded", charge), charge);
+    expect(gap).toMatchObject({ action: "skipped", reason: "no_new_refund_amount" });
+    expect(await payouts.sumRefundLineCentsForPayment(ids.a)).toBe(2_500);
+    // The buyer's record now holds that refund once, under the key its payout line has.
+    expect((await paymentRefunds.sumRefundedPence(ids.a)).pence).toBe(2_500);
+    const keys = await db
+      .select({ key: paymentRefund.idempotencyKey })
+      .from(paymentRefund)
+      .where(eq(paymentRefund.paymentId, ids.a));
+    expect(keys).toEqual([{ key: oldKey }]);
+
+    // The data step run after the release changes nothing.
+    await db.execute(sql`SELECT payment_refund_backfill_from_payout_lines()`);
+    expect((await paymentRefunds.sumRefundedPence(ids.a)).pence).toBe(2_500);
+
+    // A later refund moves both by what is new only.
+    chargeRefunds = [
+      { paymentId: ids.a, amountPence: 2_500 },
+      { paymentId: ids.a, amountPence: 7_500 },
+    ];
+    await webhooks.handleChargeRefunded(eventOf("charge.refunded", charge), charge);
+    expect(await payouts.sumRefundLineCentsForPayment(ids.a)).toBe(10_000);
+    expect((await paymentRefunds.sumRefundedPence(ids.a)).pence).toBe(10_000);
   });
 
   it("keeps a refund above the invoice on the buyer's record while the seller is reversed no more than the invoice", async () => {

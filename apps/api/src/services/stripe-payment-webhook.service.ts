@@ -38,6 +38,7 @@ import type { IPaymentEligibilityGate } from "@auction/finance-runtime";
 /** Without the refund record no refund can be measured or kept, so the webhook fails and is retried. */
 const UNWIRED_PAYMENT_REFUNDS: IPaymentRefundLedger = {
   recordInTransaction: () => Promise.reject(new Error("Payment refunds are not wired")),
+  lockPaymentInTransaction: () => Promise.reject(new Error("Payment refunds are not wired")),
   sumRefundedPenceInTransaction: () => Promise.reject(new Error("Payment refunds are not wired")),
 };
 

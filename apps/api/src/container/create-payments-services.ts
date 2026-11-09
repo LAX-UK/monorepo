@@ -402,6 +402,7 @@ export function createPaymentsServices(
     transactionRunner: platform.transactionRunner,
     payments: paymentRepo,
     paymentRefunds: repos.paymentRefundRepository,
+    payouts: payoutRepository,
     payoutAdjustments: payoutAdjustmentService,
     capture: paymentCaptureService,
     events: domainEventSink,

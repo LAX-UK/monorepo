@@ -164,6 +164,7 @@ export async function refundBlockedCapture(
 
   try {
     await transactionRunner.runInTransaction(async (tx) => {
+      await paymentRefunds.lockPaymentInTransaction(tx, paymentId);
       const refunded = await deps.payments.applyRefundedFromCancelledInTransaction(
         tx,
         paymentId,
@@ -172,7 +173,9 @@ export async function refundBlockedCapture(
       if (!refunded) return;
       await paymentRefunds.recordInTransaction(tx, {
         paymentId,
-        idempotencyKey: stripeRefundId ?? `blocked_capture_refund:${paymentId}`,
+        // No payout line exists for a closed payment, so this is the refund's only key.
+        idempotencyKey: `blocked_capture_refund:${paymentId}`,
+        stripeRefundId,
         amountPence: refundedPence,
         currency: "GBP",
         source: "blocked_capture",

@@ -49,12 +49,45 @@ describe("PaymentRefundReconcileService", () => {
     expect(paymentRefunds.entries).toEqual([
       {
         paymentId: "pay-1",
-        idempotencyKey: "re_1",
+        idempotencyKey: "admin_refund_reconcile:pay-1",
+        stripeRefundId: "re_1",
         amountPence: 10_000,
         currency: "GBP",
         source: "staff",
       },
     ]);
+  });
+
+  it("locks the payment first and keeps the Stripe refund id beside the payout line's key", async () => {
+    const paymentRefunds = new InMemoryPaymentRefunds();
+    const svc = new PaymentRefundReconcileService(
+      transactionRunnerFromDb({
+        transaction: vi.fn(async (fn: (tx: Database) => Promise<void>) => fn({} as Database)),
+      } as unknown as Database),
+      {
+        applyRefundedInTransaction: vi.fn().mockResolvedValue(true),
+        findById: vi.fn().mockResolvedValue({ id: "pay-1", status: "refunded" }),
+      } as unknown as IPaymentWriteRepository,
+      null,
+      mockDomainEventSink(vi.fn()),
+      {
+        listPending: vi.fn().mockResolvedValue([
+          {
+            paymentId: "pay-1",
+            stripeRefundId: "re_9",
+            adminUserId: "a",
+            attempts: 0,
+            payload: { sellerLegalEntityId: null, amount: "10.00", via: "admin_manual" },
+          },
+        ]),
+        markReconciled: vi.fn(),
+        markFailed: vi.fn(),
+      } as unknown as IPaymentRefundReconcileRepository,
+      paymentRefunds,
+    );
+    await svc.replayPending(5);
+    expect(paymentRefunds.calls).toEqual(["lock:pay-1", "record:pay-1"]);
+    expect(paymentRefunds.entries[0]).toMatchObject({ stripeRefundId: "re_9" });
   });
 
   it("records the buyer's refund when the payment has no seller and no payout line is written", async () => {

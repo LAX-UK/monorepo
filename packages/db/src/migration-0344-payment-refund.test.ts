@@ -30,7 +30,7 @@ describe("migration 0344 payment refund", () => {
     expect(entry?.when).toBe((previous?.when ?? 0) + 86_400_000);
   });
 
-  it("only adds a table and its indexes, with a short lock timeout", () => {
+  it("only adds a table, its indexes and the backfill function, with a short lock timeout", () => {
     expect(migration).not.toMatch(
       /\bDROP (TABLE|COLUMN)\b|\bALTER TABLE\b|^UPDATE\b|\bDELETE FROM\b/m,
     );
@@ -55,7 +55,18 @@ describe("migration 0344 payment refund", () => {
   });
 
   describe("the backfill from refund payout lines", () => {
-    const step = migration.slice(migration.indexOf('INSERT INTO "payment_refund"'));
+    const step = migration.slice(migration.indexOf("CREATE OR REPLACE FUNCTION"));
+
+    it("is a function a later migration can call again, and runs once here", () => {
+      expect(migration).toContain(
+        "CREATE OR REPLACE FUNCTION payment_refund_backfill_from_payout_lines(only_payment_id uuid DEFAULT NULL) RETURNS integer",
+      );
+      expect(migration).toContain('only_payment_id IS NULL OR l."payment_id" = only_payment_id');
+      expect(migration).toMatch(/^SELECT payment_refund_backfill_from_payout_lines\(\);$/m);
+      expect(rollback).toContain(
+        "DROP FUNCTION IF EXISTS payment_refund_backfill_from_payout_lines(uuid)",
+      );
+    });
 
     it("copies only refund lines that name a payment, in pence", () => {
       expect(step).toContain(`l."kind" = 'refund'`);
@@ -64,9 +75,12 @@ describe("migration 0344 payment refund", () => {
       expect(step).toContain('round(abs(l."amount") * 100) > 0');
     });
 
-    it("keys each row by its line, so running it again changes nothing", () => {
-      expect(step).toContain(`'backfill:payout_line:' || l."id"`);
+    it("keys each row by its line's source_event_id and skips a key already recorded", () => {
+      expect(step).toContain(`COALESCE(l."source_event_id", 'payout_line:' || l."id")`);
+      expect(step).toContain("NOT EXISTS (");
+      expect(step).toContain('r."idempotency_key" = COALESCE(l."source_event_id"');
       expect(step).toContain('ON CONFLICT ("idempotency_key") DO NOTHING');
+      expect(step).not.toContain("backfill:");
     });
 
     it("reads the source from the event id the line was written for", () => {
@@ -92,9 +106,12 @@ describe("migration 0344 payment refund", () => {
         "idempotencyKey",
         "paymentId",
         "source",
+        "stripeRefundId",
       ].sort(),
     );
-    for (const column of Object.values(columns)) expect(column.notNull).toBe(true);
+    for (const [name, column] of Object.entries(columns)) {
+      expect(column.notNull).toBe(name !== "stripeRefundId");
+    }
   });
 
   it("is open to the Bid API and the refund reconcile job for insert and read, and to Shop for nothing", () => {
@@ -109,5 +126,6 @@ describe("migration 0344 payment refund", () => {
     expect(rollback).toMatch(/COMMIT;/);
     expect(rollback).toMatch(/lock_timeout = '5s'/);
     expect(rollback).toContain('DROP TABLE IF EXISTS "payment_refund"');
+    expect(migration).toContain('"stripe_refund_id" text,');
   });
 });

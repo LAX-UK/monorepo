@@ -57,6 +57,8 @@ export async function executePaymentRefundLedger(
 
   try {
     await deps.transactionRunner.runInTransaction(async (tx) => {
+      // The same row a card refund event locks, so the two never record side by side.
+      await deps.paymentRefunds.lockPaymentInTransaction(tx, paymentId);
       const refunded = await deps.payments.applyRefundedInTransaction(
         tx,
         paymentId,
@@ -69,7 +71,9 @@ export async function executePaymentRefundLedger(
       // reverse (no seller, or no adjustment service) was still refunded.
       await deps.paymentRefunds.recordInTransaction(tx, {
         paymentId,
-        idempotencyKey: stripeRefundId ?? sourceEventId,
+        // The key of the payout line below, so a backfill from payout lines knows this refund.
+        idempotencyKey: sourceEventId,
+        stripeRefundId,
         amountPence: gbpAmountToPence(payment.amount),
         currency: "GBP",
         source: "staff",

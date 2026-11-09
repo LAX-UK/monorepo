@@ -14,10 +14,20 @@ const event = (id: string) => ({ id, type: "charge.refunded" }) as Stripe.Event;
 
 function setup(
   refunds: { paymentId: string | null; amountPence: number }[],
-  opts: { claimed?: boolean; paymentRefunds?: InMemoryPaymentRefunds } = {},
+  opts: {
+    claimed?: boolean;
+    paymentRefunds?: InMemoryPaymentRefunds;
+    /** Pence the seller's ledger already holds as refunded, per payment (a refund the previous release handled). */
+    sellerLedger?: Map<string, number>;
+  } = {},
 ) {
   const paymentRefunds = opts.paymentRefunds ?? new InMemoryPaymentRefunds();
-  const addLine = vi.fn().mockResolvedValue(undefined);
+  const sellerLedger = opts.sellerLedger ?? new Map<string, number>();
+  // A clawback line lands in the seller's ledger, as it does in the payout lines table.
+  const addLine = vi.fn(async (line: { paymentId: string; amount: string }) => {
+    const pence = Math.round(Math.abs(Number(line.amount)) * 100);
+    sellerLedger.set(line.paymentId, (sellerLedger.get(line.paymentId) ?? 0) + pence);
+  });
   const applyRefunded = vi.fn().mockResolvedValue(true);
   const publish = vi.fn().mockResolvedValue(undefined);
   let current = refunds;
@@ -27,18 +37,24 @@ function setup(
     },
     groups: {
       findByStripeRefs: vi.fn().mockResolvedValue(GROUP),
-      listMembers: vi.fn().mockResolvedValue(members),
+      lockInTransaction: vi.fn().mockImplementation(async () => ({
+        group: GROUP,
+        members: [...members].reverse(),
+        deliveries: [],
+      })),
     } as never,
     gateway: { listChargeRefunds: vi.fn(async () => current) },
     payments: { applyRefundedInTransaction: applyRefunded },
     payoutAdjustments: { addPaymentLineToOpenPayoutOrCreateClawback: addLine },
     paymentRefunds,
+    sellerRefundedCents: async (_tx, paymentId) => sellerLedger.get(paymentId) ?? 0,
     events: { withTx: () => ({ publish }) } as never,
     claims: { claim: vi.fn().mockResolvedValue(opts.claimed ?? true) },
   });
   return {
     events,
     paymentRefunds,
+    sellerLedger,
     addLine,
     applyRefunded,
     publish,
@@ -101,6 +117,52 @@ describe("PaymentGroupChargeEvents.chargeRefunded", () => {
     expect(duplicate.paymentRefunds.entries).toEqual([]);
   });
 
+  it("measures the invoices in id order, each summed before it is recorded", async () => {
+    const { events, paymentRefunds } = setup([
+      { paymentId: "pay-a", amountPence: 2_500 },
+      { paymentId: "pay-b", amountPence: 1_000 },
+    ]);
+    await events.chargeRefunded(event("evt_1"), charge);
+    // Members are taken in id order, whatever order the group returned them in.
+    expect(paymentRefunds.calls).toEqual([
+      "lock:pay-a",
+      "sum:pay-a",
+      "record:pay-a",
+      "lock:pay-b",
+      "sum:pay-b",
+      "record:pay-b",
+    ]);
+  });
+
+  it("records a refund the previous release handled without charging the seller back again", async () => {
+    const sellerLedger = new Map([["pay-a", 2_500]]);
+    const { events, paymentRefunds, addLine, publish } = setup(
+      [{ paymentId: "pay-a", amountPence: 2_500 }],
+      { sellerLedger },
+    );
+    const result = await events.chargeRefunded(event("evt_gap"), charge);
+    expect(result).toMatchObject({ action: "skipped", reason: "no_new_refund_amount" });
+    expect(paymentRefunds.entries).toMatchObject([
+      { idempotencyKey: "evt_gap:pay-a", amountPence: 2_500 },
+    ]);
+    expect(addLine).not.toHaveBeenCalled();
+    expect(publish).not.toHaveBeenCalled();
+  });
+
+  it("charges the seller back only for what is new after a refund in the rollout gap", async () => {
+    const sellerLedger = new Map([["pay-a", 2_500]]);
+    const { events, paymentRefunds, addLine } = setup(
+      [{ paymentId: "pay-a", amountPence: 10_000 }],
+      {
+        sellerLedger,
+      },
+    );
+    await events.chargeRefunded(event("evt_next"), charge);
+    expect(paymentRefunds.entries.map((e) => e.amountPence)).toEqual([10_000]);
+    expect(addLine).toHaveBeenCalledTimes(1);
+    expect(addLine).toHaveBeenCalledWith(expect.objectContaining({ amount: "-75.00" }));
+  });
+
   it("does not count again a refund staff already recorded", async () => {
     const paymentRefunds = new InMemoryPaymentRefunds();
     await paymentRefunds.recordInTransaction(
@@ -115,6 +177,7 @@ describe("PaymentGroupChargeEvents.chargeRefunded", () => {
     );
     const { events, addLine } = setup([{ paymentId: "pay-a", amountPence: 10_000 }], {
       paymentRefunds,
+      sellerLedger: new Map([["pay-a", 10_000]]),
     });
     const result = await events.chargeRefunded(event("evt_after_staff"), charge);
     expect(result).toMatchObject({ action: "skipped", reason: "no_new_refund_amount" });
