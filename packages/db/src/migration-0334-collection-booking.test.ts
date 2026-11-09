@@ -98,7 +98,7 @@ describe("migration 0334 collection booking", () => {
   });
 
   it("is mirrored by the Drizzle tables, column for column", () => {
-    // 0335 adds the per-account visit cap to the place after this migration created it.
+    // 0343 adds the per-account visit cap to the place after this migration created it.
     expect(columnNames(collectionPlace)).toEqual(
       [...declaredColumns(migration, "collection_place"), "max_active_visits"].sort(),
     );

@@ -1,4 +1,4 @@
--- Rollback for 0335_collection_visit_cap. Roll back the application release first: the previous
+-- Rollback for 0343_collection_visit_cap. Roll back the application release first: the previous
 -- release does not read the cap, so visits are then limited only by the places in each time.
 BEGIN;
 

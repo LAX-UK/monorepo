@@ -5,15 +5,15 @@ import { describe, expect, it } from "vitest";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const read = (name: string) => readFileSync(join(__dirname, "../drizzle", name), "utf8");
-const migration = read("0335_collection_visit_cap.sql");
-const rollback = read("0335_rollback.sql");
+const migration = read("0343_collection_visit_cap.sql");
+const rollback = read("0343_rollback.sql");
 const journal = JSON.parse(read("meta/_journal.json")) as {
   entries: { idx: number; tag: string; when: number }[];
 };
 
-describe("migration 0335 collection visit cap", () => {
+describe("migration 0343 collection visit cap", () => {
   it("follows 0334 in the journal, one day later", () => {
-    const index = journal.entries.findIndex((e) => e.tag === "0335_collection_visit_cap");
+    const index = journal.entries.findIndex((e) => e.tag === "0343_collection_visit_cap");
     const entry = journal.entries[index];
     const previous = journal.entries[index - 1];
     expect(previous?.tag).toBe("0334_collection_booking");
