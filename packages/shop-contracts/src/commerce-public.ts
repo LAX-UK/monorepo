@@ -1,4 +1,5 @@
 import { type Static, Type } from "@sinclair/typebox";
+import { BasketLineFramingSchema } from "./framing-public.js";
 
 export const ShopFulfilmentOptionSchema = Type.Union([
   Type.Literal("uk_insured_delivery"),
@@ -91,6 +92,8 @@ export const BasketLineSchema = Type.Object(
      * cap for the stepper, not a stock figure, and is never shown as a number of copies left.
      */
     maxQuantity: Type.Optional(Type.Integer({ minimum: 1 })),
+    /** The framing chosen for this print, priced by shop-api; absent or null when unframed. */
+    framing: Type.Optional(Type.Union([BasketLineFramingSchema, Type.Null()])),
   },
   { additionalProperties: false },
 );
@@ -110,6 +113,8 @@ export const BasketViewSchema = Type.Object(
     basketId: Type.String({ format: "uuid" }),
     lines: Type.Array(BasketLineSchema),
     merchandiseSubtotalPence: Type.Integer({ minimum: 0 }),
+    /** Framing on available lines, for each line's quantity; absent when there is none. */
+    framingSubtotalPence: Type.Optional(Type.Integer({ minimum: 0 })),
     expiresAt: Type.String({ format: "date-time" }),
   },
   { additionalProperties: false },
@@ -254,6 +259,27 @@ export const OrderStatusSchema = Type.Union([
   Type.Literal("refunded"),
 ]);
 
+/** The delivery quote on an unpaid order for an address outside the UK. */
+export const OrderDeliveryQuoteSchema = Type.Object(
+  {
+    status: Type.Union([
+      Type.Literal("requested"),
+      Type.Literal("quoted"),
+      Type.Literal("accepted"),
+    ]),
+    country: Type.String({ minLength: 2, maxLength: 2 }),
+    /** Delivery with insurance included; null until staff have quoted. */
+    pricePence: Type.Union([Type.Integer({ minimum: 1 }), Type.Null()]),
+    carrier: Type.Union([Type.String(), Type.Null()]),
+    service: Type.Union([Type.String(), Type.Null()]),
+    leadTimeNote: Type.Union([Type.String(), Type.Null()]),
+    holdUntil: Type.String({ format: "date-time" }),
+    /** False while payment outside the UK is not open yet. */
+    paymentOpen: Type.Boolean(),
+  },
+  { additionalProperties: false },
+);
+
 export const OrderSummarySchema = Type.Object(
   {
     orderId: Type.String({ format: "uuid" }),
@@ -284,6 +310,8 @@ export const OrderSummarySchema = Type.Object(
     invoiceAvailable: Type.Optional(Type.Boolean()),
     /** "LAX-INV-000124", issued when the order is paid; null before. */
     invoiceNumber: Type.Optional(Type.Union([Type.String({ minLength: 1 }), Type.Null()])),
+    /** Present while the delivery to an address outside the UK is being quoted. */
+    deliveryQuote: Type.Optional(OrderDeliveryQuoteSchema),
     /** Problems the shopper reported on this order, oldest first. */
     problemReports: Type.Optional(
       Type.Array(
@@ -320,5 +348,6 @@ export type BasketResponse = typeof BasketResponseSchema.static;
 export type BasketLine = typeof BasketLineSchema.static;
 export type OrderStatus = typeof OrderStatusSchema.static;
 export type OrderSummary = typeof OrderSummarySchema.static;
+export type OrderDeliveryQuote = typeof OrderDeliveryQuoteSchema.static;
 export type OrderList = typeof OrderListSchema.static;
 export type CheckoutSession = typeof CheckoutSessionSchema.static;

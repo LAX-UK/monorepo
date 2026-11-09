@@ -42,6 +42,50 @@ describe("identity outbox publisher: data export requested", () => {
     );
   });
 
+  it.each(["google", "apple", "passkey"] as const)(
+    "records %s being added, in the caller's transaction, naming only the method",
+    async (method) => {
+      const values = vi.fn(() => ({ onConflictDoNothing: vi.fn() }));
+      const transaction = { insert: vi.fn(() => ({ values })) } as unknown as IdentityDatabase;
+      await createDrizzleIdentityOutboxPublisher({
+        insert: vi.fn(),
+      } as unknown as IdentityDatabase).publish(
+        { type: "user.sign_in_method_added", userId: "u1", method },
+        { transaction },
+      );
+      expect(values).toHaveBeenCalledWith(
+        expect.objectContaining({
+          aggregateType: "user",
+          aggregateId: "u1",
+          eventType: "user.sign_in_method_added",
+          payload: expect.objectContaining({ subjectId: "u1", method }),
+        }),
+      );
+    },
+  );
+
+  it.each(["google", "apple", "passkey"] as const)(
+    "records %s being removed with no name, address or key",
+    async (method) => {
+      const values = vi.fn(() => ({ onConflictDoNothing: vi.fn() }));
+      const transaction = { insert: vi.fn(() => ({ values })) } as unknown as IdentityDatabase;
+      await createDrizzleIdentityOutboxPublisher({
+        insert: vi.fn(),
+      } as unknown as IdentityDatabase).publish(
+        { type: "user.sign_in_method_removed", userId: "u1", method },
+        { transaction },
+      );
+      const call = values.mock.calls[0] as unknown as [{ payload: Record<string, unknown> }];
+      expect(Object.keys(call[0].payload).sort()).toEqual([
+        "method",
+        "removedAt",
+        "schemaVersion",
+        "subjectId",
+      ]);
+      expect(call[0].payload.method).toBe(method);
+    },
+  );
+
   it("records a removed unconfirmed password, naming only the provider that proved the email", async () => {
     const values = vi.fn(() => ({ onConflictDoNothing: vi.fn() }));
     const transaction = { insert: vi.fn(() => ({ values })) } as unknown as IdentityDatabase;

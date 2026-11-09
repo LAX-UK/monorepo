@@ -60,6 +60,8 @@ const DAY_MS = 24 * 60 * 60_000;
 /** How far back the working days before a visit are looked up, as the notice rule counts them. */
 const NOTICE_LOOKBACK_DAYS = 61;
 const LIST_LIMIT = 200;
+/** The most lots one visit holds. */
+const MAX_LOTS = 20;
 /** What staff and the page call the person who answers a collection question. */
 const CLIENT_ACTIONS: readonly CollectionVisitAction[] = ["change", "cancel"];
 
@@ -85,7 +87,7 @@ export class CollectionVisitService implements ICollectionVisitService {
 
   async availability(
     actor: OrganisationMemberActor,
-    query: { lots: readonly string[]; booking?: string | undefined },
+    query: { lots: readonly string[]; booking?: string | undefined; account?: boolean | undefined },
   ): Promise<CollectionVisitResult<CollectionAvailability>> {
     let ownBooking: CollectionBookingRecord | null = null;
     if (query.booking) {
@@ -100,7 +102,11 @@ export class CollectionVisitService implements ICollectionVisitService {
       write: false,
     });
     if (resolved.isErr()) return err(resolved.error);
-    const { venueId, lines } = resolved.value;
+    const { venueId } = resolved.value;
+    const others = query.account
+      ? await this.deps.lots.othersAtPlace(actor, venueId, query.lots, MAX_LOTS - query.lots.length)
+      : [];
+    const lines = [...resolved.value.lines, ...others];
 
     const settings = await this.deps.places.find(venueId);
     if (!settings) return err(visitError("online_booking_off", { bookingEmail: null }));

@@ -55,6 +55,7 @@ function createRepositories(): IdentityOperationsRepositories {
     credentials: {
       listProviders: vi.fn().mockResolvedValue([]),
       listSignInAccounts: vi.fn().mockResolvedValue([]),
+      listPasskeys: vi.fn().mockResolvedValue([]),
       lockSignInAccounts: vi.fn().mockResolvedValue([]),
       deleteSocialAccount: vi.fn().mockResolvedValue(true),
       findCredential: vi.fn().mockResolvedValue(null),
@@ -391,7 +392,7 @@ describe("IdentityOperationsService", () => {
         "current",
       );
       expect(identityEventPublisher.publish).toHaveBeenCalledWith(
-        { type: "user.sign_in_method_unlinked", userId: "subject", provider: "google" },
+        { type: "user.sign_in_method_removed", userId: "subject", method: "google" },
         { transaction },
       );
       for (const sessionId of ["other-1", "other-2"]) {

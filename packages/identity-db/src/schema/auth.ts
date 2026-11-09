@@ -129,6 +129,8 @@ export const session = pgTable(
       mode: "date",
       withTimezone: true,
     }),
+    /** How this session was signed in: any of `SESSION_SIGN_IN_METHODS`. Empty when unknown. */
+    amr: text("amr").array().notNull().default(sql`'{}'::text[]`),
     userId: text("user_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
@@ -158,12 +160,48 @@ export const account = pgTable(
     }),
     scope: text("scope"),
     password: text("password"),
+    /**
+     * The address a linked provider reported, sealed at rest like the provider tokens. Null for
+     * the password account and for links made before it was recorded.
+     */
+    providerEmail: text("provider_email"),
+    /** The provider reported a private relay address rather than the person's own. */
+    providerEmailHidden: boolean("provider_email_hidden").notNull().default(false),
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull(),
     updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).notNull(),
   },
   (table) => [
     index("account_user_id_idx").on(table.userId),
     uniqueIndex("account_user_id_provider_id_uidx").on(table.userId, table.providerId),
+  ],
+);
+
+/**
+ * A passkey: Better Auth's passkey plugin table (model `passkey`) plus `last_used_at`. At most 10
+ * per person, enforced by a trigger. The public key and credential id stay inside the issuer;
+ * only the name, the kind and the dates are ever shown or exported.
+ */
+export const passkey = pgTable(
+  "passkey",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    name: text("name"),
+    publicKey: text("public_key").notNull(),
+    credentialId: text("credential_id").notNull(),
+    counter: integer("counter").notNull().default(0),
+    deviceType: text("device_type").$type<"singleDevice" | "multiDevice">().notNull(),
+    backedUp: boolean("backed_up").notNull(),
+    transports: text("transports"),
+    aaguid: text("aaguid"),
+    createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
+    lastUsedAt: timestamp("last_used_at", { mode: "date", withTimezone: true }),
+  },
+  (table) => [
+    uniqueIndex("passkey_credential_id_uidx").on(table.credentialId),
+    index("passkey_user_id_idx").on(table.userId),
   ],
 );
 

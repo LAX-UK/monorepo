@@ -77,6 +77,8 @@ type PaymentTemplateVars = {
     held?: "identity_verification_required" | "organisation_under_review" | null;
     /** Where the held step is done (identity verification). */
     actionUrl?: string | null;
+    /** What the item is called on the card: a lot (the default) or, for a private sale, a work. */
+    itemLabel?: "Lot" | "Work";
   };
   /** After a buyer default: told to the buyer, the seller or the next bidder. */
   "buyer-default-notice": {
@@ -115,7 +117,8 @@ type PaymentTemplateVars = {
     /** The Stripe payment or balance reference finance looks the money up by. */
     reference: string;
     lotTitle?: string | null;
-    reviewUrl: string;
+    /** Where to look at it; absent when the place to look has no address configured. */
+    reviewUrl?: string;
   };
   "dispute-opened-notice": {
     recipientFirstName?: string | null;

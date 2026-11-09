@@ -90,6 +90,8 @@ export class DealReminderService {
               amount: minorUnitsToMoneyString(BigInt(candidate.amountDueMinor ?? 0)),
               dueDate,
               step,
+              // The email calls what is owed a work, not a lot.
+              privateSale: true,
               held,
             })
           : this.deps.factory.createDealCollectionReminder({

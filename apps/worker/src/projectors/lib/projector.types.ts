@@ -72,6 +72,8 @@ export type ProjectorRunContext = {
   adminPayoutsUrl?: string | undefined;
   adminEmailAddress?: string | undefined;
   webOrigin?: string | undefined;
+  /** LAX Admin's public address, for alerts about Shop orders; without it they carry no link. */
+  laxAdminUrl?: string | undefined;
   staffOpsRecipientReader: IStaffOpsRecipientReader;
   complianceRecipientReader: IComplianceRecipientReader;
   syncXeroPayoutBill?: ((payoutId: string) => Promise<boolean>) | undefined;

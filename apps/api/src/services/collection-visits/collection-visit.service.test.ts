@@ -69,6 +69,65 @@ async function booked(s: ReturnType<typeof setup>, over: Partial<BookCollectionB
   return result._unsafeUnwrap().visit;
 }
 
+describe("availability, with the account's other lots", () => {
+  it("lists the lots asked about first, then the account's other lots at that place that can be booked", async () => {
+    const s = setup();
+    const result = (
+      await s.service.availability(actor(), { lots: [COLLECTION_LOTS.two], account: true })
+    )._unsafeUnwrap();
+    const ids = result.lots.map((lot) => lot.lotId);
+    expect(ids[0]).toBe(COLLECTION_LOTS.two);
+    expect(ids).toContain(COLLECTION_LOTS.one);
+    expect(ids).toContain(COLLECTION_LOTS.three);
+    expect(result.lots.every((lot) => lot.collectable)).toBe(true);
+  });
+
+  it("leaves out lots that cannot be booked, other accounts' lots and other places", async () => {
+    const s = setup();
+    const ids = (
+      await s.service.availability(actor(), { lots: [COLLECTION_LOTS.one], account: true })
+    )
+      ._unsafeUnwrap()
+      .lots.map((lot) => lot.lotId);
+    expect(ids).not.toContain(COLLECTION_LOTS.unpaid);
+    expect(ids).not.toContain(COLLECTION_LOTS.otherAccount);
+    expect(ids).not.toContain(COLLECTION_LOTS.otherPlace);
+  });
+
+  it("keeps a lot already in a booking out of the offer", async () => {
+    const s = setup();
+    const three = s.facts.records.find((r) => r.lotId === COLLECTION_LOTS.three);
+    if (three) three.facts = { ...three.facts, activeBookingId: "some-booking" };
+    const ids = (
+      await s.service.availability(actor(), { lots: [COLLECTION_LOTS.one], account: true })
+    )
+      ._unsafeUnwrap()
+      .lots.map((lot) => lot.lotId);
+    expect(ids).not.toContain(COLLECTION_LOTS.three);
+  });
+
+  it("offers a buyer agent only the lots they won", async () => {
+    const s = setup();
+    const ids = (
+      await s.service.availability(actor("buyer_agent"), {
+        lots: [COLLECTION_LOTS.agentWin],
+        account: true,
+      })
+    )
+      ._unsafeUnwrap()
+      .lots.map((lot) => lot.lotId);
+    expect(ids).toEqual([COLLECTION_LOTS.agentWin]);
+  });
+
+  it("does not add anything unless asked", async () => {
+    const s = setup();
+    const result = (
+      await s.service.availability(actor(), { lots: [COLLECTION_LOTS.one] })
+    )._unsafeUnwrap();
+    expect(result.lots).toHaveLength(1);
+  });
+});
+
 describe("availability", () => {
   it("lists the next four weeks from today, with the first bookable time", async () => {
     const s = setup();

@@ -38,7 +38,8 @@ describe("migration 0329 private sale deal party history", () => {
     expect(migration).toMatch(/"acting_user_id" text NOT NULL,/);
     expect(migration).not.toMatch(/"acting_user_id"[^,]*REFERENCES/);
     const columns = getTableColumns(privateSaleDealPartyHistory);
-    expect(columns.actingUserId.notNull).toBe(true);
+    // Nullable since 0336, which lets an organisation be named on its own.
+    expect(columns.actingUserId.notNull).toBe(false);
     expect(columns.actingUserId.name).toBe("acting_user_id");
   });
 

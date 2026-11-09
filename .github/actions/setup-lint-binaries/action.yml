@@ -1,0 +1,69 @@
+name: Set up lint binaries
+description: >
+  Puts the pinned gitleaks and actionlint binaries in ~/.cache/lint-bin. They are restored from the
+  actions cache by version and architecture, and downloaded (with retries, checked against a pinned
+  SHA-256) only on a miss. GitHub's release downloads fail now and then and drop pull requests from
+  the merge queue, so a hit keeps them out of the path.
+runs:
+  using: composite
+  steps:
+    # The pins live in one place. To upgrade a tool, change its version and the SHA-256 from the
+    # official release checksums file (gitleaks_<v>_checksums.txt, actionlint_<v>_checksums.txt).
+    - name: Pin the lint binaries
+      id: pins
+      shell: bash
+      run: |
+        {
+          echo "gitleaks_version=8.30.1"
+          echo "gitleaks_sha256=551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb"
+          # 1.7.12+ aligns with GitHub's 25-input workflow_dispatch limit (see changelog 2025-12-04).
+          echo "actionlint_version=1.7.12"
+          echo "actionlint_sha256=8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8"
+        } >> "$GITHUB_OUTPUT"
+
+    - name: Cache lint binaries
+      id: cache
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/lint-bin
+        key: lint-bin-${{ runner.os }}-${{ runner.arch }}-gitleaks-${{ steps.pins.outputs.gitleaks_version }}-actionlint-${{ steps.pins.outputs.actionlint_version }}
+
+    - name: Download lint binaries
+      if: steps.cache.outputs.cache-hit != 'true'
+      shell: bash
+      env:
+        GITLEAKS_VERSION: ${{ steps.pins.outputs.gitleaks_version }}
+        GITLEAKS_SHA256: ${{ steps.pins.outputs.gitleaks_sha256 }}
+        ACTIONLINT_VERSION: ${{ steps.pins.outputs.actionlint_version }}
+        ACTIONLINT_SHA256: ${{ steps.pins.outputs.actionlint_sha256 }}
+      run: |
+        set -euo pipefail
+        bin="$HOME/.cache/lint-bin"
+        work="$(mktemp -d)"
+        mkdir -p "$bin"
+
+        # Download to a file (with retries) so a dropped or rate-limited response is retried
+        # instead of reaching tar as a broken stream, then check it against the pinned SHA-256
+        # before anything is extracted.
+        fetch() {
+          local url="$1" file="$2" sha="$3" attempt
+          for attempt in 1 2 3 4; do
+            if curl -sSLf --retry 3 --retry-delay 5 --retry-all-errors -o "$file" "$url" \
+              && echo "$sha  $file" | sha256sum -c -; then
+              return 0
+            fi
+            echo "download of $url failed or did not match its checksum (attempt $attempt); retrying"
+            rm -f "$file"
+            sleep $((attempt * 10))
+          done
+          return 1
+        }
+
+        cd "$work"
+        fetch "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" \
+          gitleaks.tar.gz "$GITLEAKS_SHA256"
+        fetch "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz" \
+          actionlint.tar.gz "$ACTIONLINT_SHA256"
+        tar -xzf gitleaks.tar.gz -C "$bin" gitleaks
+        tar -xzf actionlint.tar.gz -C "$bin" actionlint
+        test -x "$bin/gitleaks" && test -x "$bin/actionlint"

@@ -26,6 +26,8 @@ describe.skipIf(!HAS_DB)("collection lot facts (integration)", () => {
     entity?: string;
     status?: string;
     withSale?: boolean;
+    /** How many days ago the lot ended; the default is 20. */
+    endedDaysAgo?: number;
     payment?: { status: string; createdAt?: string } | null;
   };
 
@@ -41,7 +43,7 @@ describe.skipIf(!HAS_DB)("collection lot facts (integration)", () => {
          starting_price, current_price, start_time, end_time, status, winner_id, buyer_legal_entity_id)
       values (${lotId}, ${personalEntity}, ${options.withSale === false ? null : saleId},
          ${`Facts lot ${lotId.slice(0, 6)}`}, ${options.withSale === false ? null : lotNumber}, 'english', 100, 100,
-         now() - interval '30 days', now() - interval '20 days', ${options.status ?? "ended"},
+         now() - interval '40 days', now() - make_interval(days => ${options.endedDaysAgo ?? 20}), ${options.status ?? "ended"},
          ${winnerId}, ${entity})`);
     let paymentId: string | null = null;
     if (options.payment !== null) {
@@ -94,6 +96,39 @@ describe.skipIf(!HAS_DB)("collection lot facts (integration)", () => {
     );
     await db.execute(sql`delete from legal_entity where id in (${personalEntity}, ${orgEntity})`);
     await db.execute(sql`delete from "user" where id in (${winner}, ${heldWinner}, ${sofWinner})`);
+  });
+
+  it("lists an account's ended lots at a place, and no other account's", async () => {
+    const mine = await lot();
+    const other = await lot({ entity: personalEntity });
+    const noSale = await lot({ withSale: false });
+    const ids = await reader.lotIdsForBuyer(orgEntity, venueId, 200);
+    expect(ids).toContain(mine.lotId);
+    expect(ids).not.toContain(other.lotId);
+    expect(ids).not.toContain(noSale.lotId);
+    expect(await reader.lotIdsForBuyer(orgEntity, randomUUID(), 200)).toEqual([]);
+    expect(await reader.lotIdsForBuyer(orgEntity, venueId, 1)).toHaveLength(1);
+  });
+
+  it("leaves out lots already handed over, going by courier or in a live booking", async () => {
+    const delivered = await lot();
+    const shipping = await lot();
+    await db.execute(sql`
+      insert into lot_fulfilment (lot_id, status, fulfilment_method)
+      values (${delivered.lotId}, 'delivered'::lot_fulfilment_status, 'collection'::lot_fulfilment_method),
+             (${shipping.lotId}, 'released'::lot_fulfilment_status, 'shipping'::lot_fulfilment_method)`);
+    const ids = await reader.lotIdsForBuyer(orgEntity, venueId, 1000);
+    expect(ids).not.toContain(delivered.lotId);
+    expect(ids).not.toContain(shipping.lotId);
+  });
+
+  it("offers a new lot even when the account has more than the limit of old ones", async () => {
+    // Old lots first, newest last: the oldest were bought long ago and fill the limit.
+    for (let i = 0; i < 205; i += 1) await lot({ endedDaysAgo: 30 });
+    const fresh = await lot({ endedDaysAgo: 1 });
+    const ids = await reader.lotIdsForBuyer(orgEntity, venueId, 200);
+    expect(ids).toHaveLength(200);
+    expect(ids[0]).toBe(fresh.lotId);
   });
 
   it("reads a paid, clear lot: the buyer, the place and nothing in the way", async () => {

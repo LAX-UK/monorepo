@@ -1,6 +1,7 @@
 import { APIError } from "better-auth/api";
 import type { AccountLinkReader } from "./ports/account-link-reader.js";
-import type { EmailSender } from "./ports/email-sender.js";
+import type { IdentityEventPublisher } from "./ports/identity-event-publisher.js";
+import type { SecurityNoticePublisher } from "./ports/security-notice.js";
 
 type SocialLinkProvider = "google" | "apple";
 
@@ -53,25 +54,37 @@ export async function assertCanUnlinkAccount(options: {
   }
 }
 
-export async function notifySocialAccountChange(options: {
-  accounts: AccountLinkReader;
-  email?: EmailSender | undefined;
+/**
+ * Records that a Google or Apple sign-in was added to or removed from an account: one audit event
+ * and the one security email ("a way to sign in was added or removed"). Neither can undo or block
+ * the change, so a failure to record or send either is swallowed.
+ */
+export async function recordSignInMethodChange(options: {
+  notices?: SecurityNoticePublisher | undefined;
+  events?: IdentityEventPublisher | undefined;
   userId: string;
   providerId: string;
-  template: "social-account-linked" | "social-account-unlinked";
+  change: "added" | "removed";
+  at?: Date;
+  /** The address the provider reported, when it is known. */
+  providerEmail?: string | null;
 }) {
-  const { accounts, email, userId, providerId, template } = options;
-  if (!email || !isSocialLinkProvider(providerId)) return;
-  const userRow = await accounts.findUserEmailProfile(userId);
-  if (!userRow) return;
-  await email.enqueue({
-    template,
-    to: userRow.email,
+  const { notices, events, userId, providerId, change } = options;
+  if (!isSocialLinkProvider(providerId)) return;
+  try {
+    await events?.publish({
+      type: change === "added" ? "user.sign_in_method_added" : "user.sign_in_method_removed",
+      userId,
+      method: providerId,
+    });
+  } catch {
+    // The change stands whether or not its record could be written.
+  }
+  await notices?.notify({
+    kind: change === "added" ? "sign_in_method_added" : "sign_in_method_removed",
     userId,
-    category: "auth",
-    vars: {
-      userName: userRow.name,
-      providerName: providerId === "google" ? "Google" : "Apple",
-    },
+    at: options.at ?? new Date(),
+    method: providerId,
+    detail: options.providerEmail ?? null,
   });
 }

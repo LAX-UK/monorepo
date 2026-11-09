@@ -1,9 +1,9 @@
+import { BidResponsiveImg } from "@/components/media/bid-responsive-img";
 import type { HomeAlertThumbnail } from "@/lib/home-sections/types";
 import { HOME_ALERTS_ANCHOR } from "@/lib/marketing-cover/cover-alerts-outcome";
 import { MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
 import { bidThumbSrcSet } from "@/lib/media/bid-image-src-set";
-import { reportImageFallback } from "@/lib/observability/report-image-fallback";
-import { MarketingSplitFeature, ResponsiveImg } from "@auction/marketing-ui";
+import { MarketingSplitFeature } from "@auction/marketing-ui";
 import type { ReactNode } from "react";
 
 type Props = {
@@ -23,10 +23,9 @@ function Thumbnails({ items }: { items: readonly HomeAlertThumbnail[] }) {
           key={item.src}
           className="h-14 w-11 overflow-hidden rounded-lax-control bg-surface-container md:h-[72px] md:w-14"
         >
-          <ResponsiveImg
+          <BidResponsiveImg
             src={item.src}
             srcSet={bidThumbSrcSet(item.src)}
-            onFallback={reportImageFallback}
             sizes="(min-width: 768px) 56px, 44px"
             alt=""
             loading="lazy"

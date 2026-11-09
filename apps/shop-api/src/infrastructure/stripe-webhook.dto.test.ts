@@ -33,7 +33,31 @@ describe("stripe webhook DTO", () => {
       sessionId: "cs_test_completed",
       amountTotalPence: 4200,
       customerEmail: null,
+      paymentIntentId: null,
     });
+  });
+
+  it("carries the PaymentIntent, whether Stripe sends its id or the object", () => {
+    const base = {
+      id: "evt_pi",
+      type: "checkout.session.completed",
+      created: 1_700_000_000,
+    };
+    const session = {
+      id: "cs_test_pi",
+      metadata: { app: "shop", orderId: "11111111-1111-4111-8111-111111111111" },
+      amount_total: 4200,
+      currency: "gbp",
+      payment_status: "paid",
+    };
+    const byId = { ...base, data: { object: { ...session, payment_intent: "pi_1" } } };
+    const byObject = { ...base, data: { object: { ...session, payment_intent: { id: "pi_2" } } } };
+    expect(parseCheckoutSessionCompleted(byId as unknown as Stripe.Event)?.paymentIntentId).toBe(
+      "pi_1",
+    );
+    expect(
+      parseCheckoutSessionCompleted(byObject as unknown as Stripe.Event)?.paymentIntentId,
+    ).toBe("pi_2");
   });
 
   it("parses checkout.session.async_payment_succeeded", () => {

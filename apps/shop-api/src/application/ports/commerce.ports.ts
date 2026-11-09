@@ -1,3 +1,4 @@
+import type { BasketLineFraming } from "@auction/shop-contracts";
 import type {
   ShopFulfilmentOption,
   ShopFulfilmentStatus,
@@ -29,6 +30,10 @@ export type BasketLineRecord = {
   editionSize: number | null;
   /** The shared contract's wording for the print ("Limited edition of 24 · Hand-signed"); null for merchandise. */
   editionLine: string | null;
+  /** The framing option chosen for this print, null for unframed. */
+  framingOptionId?: string | null;
+  /** That option as the shopper sees it, priced; null for unframed. */
+  framing?: BasketLineFraming | null;
 };
 
 export type BasketRecord = {
@@ -130,6 +135,21 @@ export type OrderRefundRecord = {
   refundedAt: Date | null;
 };
 
+/** The delivery quote on an order for an address outside the UK. */
+export type OrderDeliveryQuoteRecord = {
+  status: "requested" | "quoted" | "accepted";
+  /** ISO 3166-1 alpha-2. */
+  country: string;
+  pricePence: number | null;
+  carrier: string | null;
+  service: string | null;
+  leadTimeNote: string | null;
+  /** Until when the print is held for this quote. */
+  holdUntil: Date;
+  /** Whether the buyer can pay outside the UK yet. */
+  paymentOpen: boolean;
+};
+
 export type OrderRecord = {
   orderId: string;
   /** "LAX-S-10482". */
@@ -157,6 +177,8 @@ export type OrderRecord = {
   refunds: OrderRefundRecord[];
   /** When the shopper reported a problem on this order, oldest first. */
   problemReports: Date[];
+  /** Set on an order whose delivery is being quoted; absent otherwise. */
+  deliveryQuote?: OrderDeliveryQuoteRecord | null;
 };
 
 export const DEFAULT_ORDER_LIST_LIMIT = 50;
@@ -173,13 +195,25 @@ export type ListOrdersResult = {
 };
 
 export type UpsertBasketLineInput =
-  | { owner: BasketOwner; artworkSlug: string; quantity: number }
+  | {
+      owner: BasketOwner;
+      artworkSlug: string;
+      quantity: number;
+      /** A framing option to choose, null to go unframed; left out, the line keeps its framing. */
+      framingOptionId?: string | null | undefined;
+    }
   | { owner: BasketOwner; productVariantId: string; quantity: number };
 
 export interface BasketRepository {
   getBasket(owner: BasketOwner): Promise<BasketRecord | null>;
   addOrUpdateLine(input: UpsertBasketLineInput): Promise<BasketRecord>;
   removeLine(input: { owner: BasketOwner; lineId: string }): Promise<BasketRecord>;
+  /** Chooses, changes or clears the framing on a print in the basket. */
+  setLineFraming(input: {
+    owner: BasketOwner;
+    lineId: string;
+    framingOptionId: string | null;
+  }): Promise<BasketRecord>;
   /** A line in both baskets keeps the larger quantity, so signing in never doubles a limited edition. */
   mergeBaskets(input: {
     from: BasketOwner;

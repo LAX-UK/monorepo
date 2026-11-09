@@ -744,6 +744,7 @@ export {
 export {
   DELIVERY_QUOTE_STATUSES,
   deliveryQuoteActionsFor,
+  deliveryQuoteDecline,
   deliveryQuoteTransition,
   type DeliveryQuoteAction,
   type DeliveryQuoteActor,
@@ -1221,6 +1222,7 @@ export {
   UNAPPLIED_MONEY_REASONS,
   UNAPPLIED_MONEY_RESOLVED_EVENT,
   possibleSourceText,
+  unappliedMoneyAggregate,
   unappliedMoneyDedupeKey,
   unappliedMoneyPayload,
   type UnappliedMoney,

@@ -86,6 +86,13 @@ export function seedCollectionLots(): CollectionLotRecord[] {
 export class InMemoryCollectionLotFacts implements ICollectionLotFactsReader {
   constructor(readonly records: CollectionLotRecord[] = seedCollectionLots()) {}
 
+  async lotIdsForBuyer(legalEntityId: string, venueId: string, limit: number): Promise<string[]> {
+    return this.records
+      .filter((r) => r.buyerLegalEntityId === legalEntityId && r.venueId === venueId)
+      .slice(0, limit)
+      .map((r) => r.lotId);
+  }
+
   async read(lotIds: readonly string[]): Promise<Map<string, CollectionLotRecord>> {
     return new Map(
       this.records.filter((r) => lotIds.includes(r.lotId)).map((record) => [record.lotId, record]),

@@ -89,6 +89,7 @@ describe.skipIf(!hasShopIntegrationDb)("delivery quote requests", () => {
     const repo = createDrizzleCommerceRepository(db, recording.gateway, {
       storefrontUrl: "http://localhost:3020",
       domainEventMode: "off",
+      exportPaymentEnabled,
     });
     const subject = `subject-${suffix}`;
     const addBasket = () =>

@@ -45,6 +45,15 @@ describe("staff capabilities matrix", () => {
     expect(can("operations", "third_party_sale.write")).toBe(true);
   });
 
+  it("order.write is held by the people who run orders, and implies the order list", () => {
+    expect(rolesGranting("order.write")).toEqual(["shop_admin", "account_manager", "operations"]);
+    for (const role of ["finance", "broker", "editor", "catalogue_editor", "read_only"] as const) {
+      expect(can(role, "order.write")).toBe(false);
+    }
+    expect(READ_IMPLIED_BY_WRITE["order.write"]).toBe("order.read");
+    expect(can("operations", "order.read")).toBe(true);
+  });
+
   it("stock_hold.override is limited to managers and admins", () => {
     expect(rolesGranting("stock_hold.override")).toEqual(["shop_admin", "account_manager"]);
   });

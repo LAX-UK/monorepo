@@ -42,6 +42,8 @@ Approved defaults live in code: source of funds from £9,000 (`SOF_THRESHOLD_AMO
 | `finance.platform.write` | Set the buyer's fee, the commission and the VAT treatment, issue the invoice, record a bank transfer, refund the buyer (all or part), record a refund made at the bank |
 | `operations.fulfilment` | Release the work |
 
+The deal pages are in the shared admin area, so someone who holds only the Finance role can open them (from the finance alerts that name a deal, for example) as well as the other roles that can read deals. What each person sees and does on a deal is still decided by their capabilities.
+
 Issuing the invoice, recording a bank transfer, refunding and recording a bank refund need a recent sign-in and an idempotency key. The person who
 recorded the agreement cannot issue the invoice for the same deal.
 
@@ -139,6 +141,23 @@ The KYC retention purge (`KYC_RETENTION_PURGE_ENABLED`) deletes a closed account
 - always, if a deal's end is not recorded.
 
 The evidence is deleted only when both clocks have run out: their own five years and every deal's retention. The same holds for an organisation or personal account that is a party. The purge's log and summary count the subjects kept for this reason (`heldForDeals`), including in a dry run, and the purge reads the worker's `PRIVATE_SALE_RECORD_RETENTION_YEARS` (never under 5). Someone who was never on a deal is purged exactly as before.
+
+### Holds that need a person
+
+Most holds end by themselves when the deal's retention runs out. Two do not, so the summary counts them separately and compliance is emailed (the compliance recipients, or the admin address if there are none; at most once a week for the same deals, whether or not the purge is switched on):
+
+- **`heldWithoutEnd`:** a deal that has ended but has no end date recorded. A settled deal is dated by the stage history's settle row, and by the deal's last update if there is none, so this should be rare; when it happens the evidence is kept indefinitely until the deal's end is recorded.
+- **`heldByStaleDeal`:** an open deal that has not changed stage for longer than the retention period. Finish it, cancel it or explain it; until then its parties' evidence stays.
+
+The email names the deals (references only, never a person's details). Enable the purge in production only when these two counts are understood.
+
+### Who counts as a party
+
+Anyone ever named on a deal counts, whether a person or an organisation. The party history keeps an organisation named before anyone acted for it (no person on the row), so its documents are held like anyone else's. A check counts as this deal's own clearance when evidence was created for the person between the enquiry arriving and the deal ending; evidence from before the enquiry, or from long after the deal ended, is not taken for the deal. There is no link from a screening or a source-of-funds case to a particular deal, so this window is the closest the data allows.
+
+### On a data request
+
+A request's record page shows a "Kept for a private sale" section when the person is on a deal: each deal's reference and when the hold ends (or that it runs until the deal ends, or that its end is not recorded and compliance has been asked to look). It reads the same rule as the erasure and the purge, so what staff tell the person is what will happen.
 
 ## Rolling back
 

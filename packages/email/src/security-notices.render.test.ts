@@ -79,15 +79,85 @@ describe("LAX Account security emails", () => {
     expectSharedParts(rendered);
   });
 
-  it("renders a removed sign-in method with the provider and says other devices were signed out", async () => {
+  it("renders a removed sign-in method with the method and says other devices were signed out", async () => {
     const rendered = await renderEmail("sign-in-method-removed", {
       ...BASE,
-      providerName: "Google",
+      methodLabel: "Google",
+      detail: "ada@example.com",
     });
-    expect(rendered.subject).toBe("A sign-in method was removed from your LAX Account");
-    expect(rendered.text).toContain("Google");
+    expect(rendered.subject).toBe("A way to sign in was removed from your LAX Account");
+    expect(rendered.text).toContain("Google (ada@example.com) was removed");
     expect(rendered.text).toContain("signed out");
     expectSharedParts(rendered);
+  });
+
+  describe("emails queued before the change still render", () => {
+    it("renders a legacy sign-in-method-removed payload (providerName, no methodLabel)", async () => {
+      const rendered = await renderEmail("sign-in-method-removed", {
+        ...BASE,
+        providerName: "Apple",
+      } as never);
+      expect(rendered.subject).toBe("A way to sign in was removed from your LAX Account");
+      expect(rendered.text).toContain("Apple was removed");
+      expect(rendered.text).not.toContain("undefined");
+      expectSharedParts(rendered);
+    });
+
+    it("renders a sign-in-method-removed payload with neither a label nor a provider", async () => {
+      const rendered = await renderEmail("sign-in-method-removed", { ...BASE } as never);
+      expect(rendered.text).toContain("A sign-in method was removed");
+    });
+
+    it("renders a queued social-account-linked as the added email", async () => {
+      const rendered = await renderEmail("social-account-linked", {
+        provider: "google",
+        userName: "Ada",
+      });
+      expect(rendered.subject).toBe("A way to sign in was added to your LAX Account");
+      expect(rendered.text).toContain("Hi Ada");
+      expect(rendered.text).toContain("Google was added");
+      expect(rendered.text).not.toContain("undefined");
+    });
+
+    it("renders a queued social-account-unlinked as the removed email", async () => {
+      const rendered = await renderEmail("social-account-unlinked", {
+        provider: "apple",
+        userName: null,
+      });
+      expect(rendered.subject).toBe("A way to sign in was removed from your LAX Account");
+      expect(rendered.text).toContain("Hi there");
+      expect(rendered.text).toContain("Apple was removed");
+      expect(rendered.text).not.toContain("undefined");
+    });
+
+    it("says where to look when a queued email has no link, instead of showing an empty button", async () => {
+      const rendered = await renderEmail("social-account-linked", { provider: "apple" });
+      expect(rendered.text).toContain("open Security");
+      expect(rendered.html).not.toContain('href=""');
+    });
+  });
+
+  it("renders a removed passkey by its name", async () => {
+    const rendered = await renderEmail("sign-in-method-removed", {
+      ...BASE,
+      methodLabel: "A passkey",
+      detail: "Sarah's MacBook",
+    });
+    expect(rendered.text).toContain("A passkey (Sarah's MacBook) was removed");
+    expectSharedParts(rendered);
+  });
+
+  it("renders an added sign-in method naming the method, the address or name, and when", async () => {
+    const rendered = await renderEmail("sign-in-method-added", {
+      ...BASE,
+      methodLabel: "Apple",
+      detail: "relay@privaterelay.appleid.com",
+    });
+    expect(rendered.subject).toBe("A way to sign in was added to your LAX Account");
+    expect(rendered.text).toContain("Apple (relay@privaterelay.appleid.com) was added");
+    expectSharedParts(rendered);
+    const bare = await renderEmail("sign-in-method-added", { ...BASE, methodLabel: "A passkey" });
+    expect(bare.text).toContain("A passkey was added");
   });
 
   it("renders the removed unconfirmed password: what happened, that devices were signed out, and the way back", async () => {

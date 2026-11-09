@@ -1,5 +1,5 @@
 import type { SocialSignInProvider } from "@auction/identity-contracts";
-import type { SignInAccountRow } from "./sign-in-method-rules.js";
+import type { PasskeyRow, SignInAccountRow } from "./sign-in-method-rules.js";
 
 export type IdentityOperationTransaction = unknown;
 
@@ -107,6 +107,8 @@ export interface IIdentityCredentialRepository {
   listProviders(subjectId: string): Promise<Array<{ providerId: string; hasPassword: boolean }>>;
   /** Every account row that can sign the person in, with when it was added. */
   listSignInAccounts(subjectId: string): Promise<SignInAccountRow[]>;
+  /** The person's passkeys, oldest first. Never the key or the credential id. */
+  listPasskeys(subjectId: string): Promise<PasskeyRow[]>;
   /** The same rows, locked until the transaction ends, so two removals cannot both pass the last-method check. */
   lockSignInAccounts(
     transaction: IdentityOperationTransaction,

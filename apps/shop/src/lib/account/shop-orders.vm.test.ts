@@ -96,7 +96,7 @@ describe("buildShopOrderListVm", () => {
         [order("expired", { paidAt: null }), order("cancelled", { paidAt: null })],
         NOW,
       ),
-    ).toEqual({ finishPaying: null, rows: [] });
+    ).toEqual({ deliveryQuote: null, finishPaying: null, rows: [] });
   });
 
   it("lists paid orders newest first with their reference, date, total and where they are", () => {
@@ -136,6 +136,89 @@ describe("buildShopOrderListVm", () => {
       reservedLabel: "Your editions are reserved until 10:30.",
     });
     expect(buildShopOrderListVm([lapsed], NOW).finishPaying).toBeNull();
+  });
+
+  describe("a delivery quote outside the UK", () => {
+    const quoteOrder = (
+      deliveryQuote: NonNullable<OrderSummary["deliveryQuote"]>,
+      overrides: Partial<OrderSummary> = {},
+    ) =>
+      order("pending_payment", {
+        fulfilment: "international_quotation",
+        fulfilmentSurchargePence: 0,
+        merchandiseSubtotalPence: 8500,
+        totalPence: 8500,
+        createdAt: "2026-10-20T09:00:00.000Z",
+        checkoutExpiresAt: "2026-10-23T09:00:00.000Z",
+        deliveryQuote,
+        ...overrides,
+      });
+    const waiting = {
+      status: "requested" as const,
+      country: "DE",
+      pricePence: null,
+      carrier: null,
+      service: null,
+      leadTimeNote: null,
+      holdUntil: "2026-10-23T09:00:00.000Z",
+      paymentOpen: true,
+    };
+    const priced = {
+      ...waiting,
+      status: "quoted" as const,
+      pricePence: 8500,
+      carrier: "DHL Express",
+      service: "Express insured",
+      leadTimeNote: "Usually 5 to 7 working days.",
+    };
+
+    it("says it is pricing the delivery, and offers no way to pay yet", () => {
+      const vm = buildShopOrderListVm([quoteOrder(waiting)], NOW);
+      expect(vm.deliveryQuote).toMatchObject({
+        stage: "waiting",
+        place: "Germany",
+        heldUntilLabel: "23 October 2026",
+        price: null,
+      });
+      expect(vm.finishPaying).toBeNull();
+    });
+
+    it("shows the price, the courier and the total with the print once quoted", () => {
+      const vm = buildShopOrderListVm([quoteOrder(priced)], NOW);
+      expect(vm.deliveryQuote).toMatchObject({
+        stage: "ready",
+        canPay: true,
+        price: {
+          deliveryLabel: "£85.00",
+          totalLabel: "£170.00",
+          carrierLabel: "DHL Express (Express insured)",
+          leadTimeNote: "Usually 5 to 7 working days.",
+        },
+      });
+      expect(vm.finishPaying).toBeNull();
+    });
+
+    it("carries whether payment is open, so the page can say it is not yet", () => {
+      const vm = buildShopOrderListVm([quoteOrder({ ...priced, paymentOpen: false })], NOW);
+      expect(vm.deliveryQuote?.canPay).toBe(false);
+    });
+
+    it("pays an accepted quote like any unpaid order", () => {
+      const vm = buildShopOrderListVm([quoteOrder({ ...priced, status: "accepted" })], NOW);
+      expect(vm.deliveryQuote).toBeNull();
+      expect(vm.finishPaying).not.toBeNull();
+    });
+
+    it("drops the quote once the hold has run out", () => {
+      const lapsed = quoteOrder(priced, { checkoutExpiresAt: "2026-10-20T09:00:00.000Z" });
+      expect(buildShopOrderListVm([lapsed], NOW).deliveryQuote).toBeNull();
+    });
+
+    it("leads the order page with the quote and no 'not paid' notice", () => {
+      const vm = buildShopOrderDetailVm(quoteOrder(priced), NOW);
+      expect(vm.deliveryQuote?.stage).toBe("ready");
+      expect(vm.notice).toBeNull();
+    });
   });
 
   it("summarises multi-item orders and shows refunds", () => {
