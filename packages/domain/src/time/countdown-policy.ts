@@ -3,6 +3,7 @@ import {
   type TimeLeftTone,
   formatTimeLeft,
   timeLeftBand,
+  wholeSecondsLeft,
 } from "../lot-page/time-left.js";
 import {
   type CountdownTile,
@@ -10,6 +11,7 @@ import {
   formatCountdownClock,
   formatCountdownCompact,
   formatCountdownSpoken,
+  formatCountdownUnits,
 } from "./countdown-format.js";
 
 const SECOND_MS = 1000;
@@ -21,7 +23,7 @@ const DAY_MS = 24 * HOUR_MS;
 export type CountdownSurface = "lot" | "lotBar" | "card" | "chip" | "saleHero" | "cover";
 
 /** The wording a surface prints. */
-export type CountdownShape = "words" | "compact" | "tiles" | "clock";
+export type CountdownShape = "units" | "words" | "compact" | "tiles" | "clock";
 
 type SurfaceRule = {
   /** The time left below which the surface counts seconds; above it, it changes by the minute or more. */
@@ -37,12 +39,22 @@ type SurfaceRule = {
 };
 
 /**
- * One row per surface. The lot page rows still follow the card rule; the lot page switches to
- * counting seconds under seven days by changing its two rows here and nowhere else.
+ * One row per surface. The lot page and its phone bar count seconds for the whole week; every
+ * other surface counts by the minute until the final hour. Changing a surface is changing its row.
  */
 export const COUNTDOWN_SURFACES: Readonly<Record<CountdownSurface, SurfaceRule>> = {
-  lot: { secondsBelowMs: HOUR_MS, shape: "words", dateBeyondMs: TIME_LEFT_DATE_BEYOND_MS },
-  lotBar: { secondsBelowMs: HOUR_MS, shape: "words", dateBeyondMs: TIME_LEFT_DATE_BEYOND_MS },
+  // Seconds from the moment counting starts (seven days exactly) down, so the limit is one second
+  // past the date threshold.
+  lot: {
+    secondsBelowMs: TIME_LEFT_DATE_BEYOND_MS + SECOND_MS,
+    shape: "units",
+    dateBeyondMs: TIME_LEFT_DATE_BEYOND_MS,
+  },
+  lotBar: {
+    secondsBelowMs: TIME_LEFT_DATE_BEYOND_MS + SECOND_MS,
+    shape: "units",
+    dateBeyondMs: TIME_LEFT_DATE_BEYOND_MS,
+  },
   card: { secondsBelowMs: HOUR_MS, shape: "words", dateBeyondMs: TIME_LEFT_DATE_BEYOND_MS },
   chip: { secondsBelowMs: HOUR_MS, shape: "compact", dateBeyondMs: TIME_LEFT_DATE_BEYOND_MS },
   saleHero: { secondsBelowMs: HOUR_MS, shape: "tiles", dateBeyondMs: TIME_LEFT_DATE_BEYOND_MS },
@@ -55,15 +67,18 @@ export const COUNTDOWN_SURFACES: Readonly<Record<CountdownSurface, SurfaceRule>>
 };
 
 export type CountdownContext = {
-  /** The lot is in a soft-close extension: always the tightest tone. */
+  /** The lot is in a soft-close extension: always the tightest tone, labelled "Extended". */
   extended?: boolean;
-  /** The visitor asked for less motion. Not acted on yet; the lot page rows use it later. */
+  /**
+   * The visitor asked for less motion: the lot page changes once a minute until the final hour,
+   * then counts seconds. Other surfaces already do.
+   */
   reducedMotion?: boolean;
 };
 
 export type CountingDisplay = {
   kind: "counting";
-  /** The surface's own wording: words, the compact form, the clock, or the first tile's pair. */
+  /** The surface's own wording: units, words, the compact form, the clock, or the tiles' pair. */
   text: string;
   /** The least-width form ("2d 14h", "42:09"), for a surface that picks by width. */
   compact: string;
@@ -72,7 +87,7 @@ export type CountingDisplay = {
   /** The time to the minute in words, for screen readers. */
   spoken: string;
   tone: TimeLeftTone;
-  /** "Time left", "Closing soon" or "Final minutes". */
+  /** "Time left", "Closing soon", "Final minutes" or "Extended". */
   label: string;
   /** Milliseconds until `text`, `tone` or `label` can change. Always at least 1. */
   nextChangeInMs: number;
@@ -89,24 +104,42 @@ export type CountdownDisplay =
   /** No usable time (not a number). */
   | { kind: "none" };
 
-/** How often the printed words can change, by shape and time left. */
-function granularityMs(shape: CountdownShape, msLeft: number, secondsBelowMs: number): number {
-  if (shape === "clock") return SECOND_MS;
-  if (msLeft < secondsBelowMs) return SECOND_MS;
-  if (msLeft >= DAY_MS) return HOUR_MS;
+/** The row for a surface, with reduced motion taken into account. */
+function ruleFor(surface: CountdownSurface, ctx: CountdownContext): SurfaceRule {
+  const rule = COUNTDOWN_SURFACES[surface];
+  if (ctx.reducedMotion && rule.secondsBelowMs > HOUR_MS) {
+    return { ...rule, secondsBelowMs: HOUR_MS };
+  }
+  return rule;
+}
+
+/** The step, in whole seconds, between changes of the printed words. */
+function stepSeconds(shape: CountdownShape, totalSeconds: number, secondsBelowMs: number): number {
+  if (shape === "clock") return 1;
+  if (totalSeconds * SECOND_MS < secondsBelowMs) return 1;
+  if (shape === "units") return 60;
+  if (totalSeconds >= DAY_MS / SECOND_MS) return HOUR_MS / SECOND_MS;
   // Hours and minutes (or minutes alone) change by the minute; a chip's hour form too.
-  return MINUTE_MS;
+  return MINUTE_MS / SECOND_MS;
 }
 
-/** Milliseconds until the whole-second figure drops into the next step of size `stepMs`. */
-function untilNextStep(msLeft: number, stepMs: number): number {
-  const floor = Math.floor(msLeft / stepMs) * stepMs;
-  return Math.max(1, msLeft - floor + 1);
+/**
+ * Milliseconds until the rounded-up whole second drops to the step boundary below the current
+ * step (the moment the printed words change).
+ */
+function untilNextStep(msLeft: number, stepSec: number): number {
+  const total = wholeSecondsLeft(msLeft);
+  const boundary = Math.floor(total / stepSec) * stepSec;
+  return Math.max(1, msLeft - (boundary - 1) * SECOND_MS);
 }
 
-/** Milliseconds until the time left falls below `thresholdMs`, or null if it already has. */
-function untilBelow(msLeft: number, thresholdMs: number): number | null {
-  return msLeft >= thresholdMs ? msLeft - thresholdMs + 1 : null;
+/**
+ * Milliseconds until the rounded-up second reaches `limitSeconds`, or null if it is already at or
+ * below it. Used for the thresholds that change the tone or the shape.
+ */
+function untilSecondsAtOrBelow(msLeft: number, limitSeconds: number): number | null {
+  const limitMs = limitSeconds * SECOND_MS;
+  return msLeft > limitMs ? msLeft - limitMs : null;
 }
 
 function earliest(...candidates: (number | null)[]): number {
@@ -117,6 +150,8 @@ function earliest(...candidates: (number | null)[]): number {
 
 function textFor(shape: CountdownShape, msLeft: number, showSeconds: boolean): string {
   switch (shape) {
+    case "units":
+      return formatCountdownUnits(msLeft, { seconds: showSeconds });
     case "words":
       return formatTimeLeft(msLeft, { showSeconds });
     case "compact":
@@ -133,7 +168,8 @@ function textFor(shape: CountdownShape, msLeft: number, showSeconds: boolean): s
 /**
  * What a surface shows for the time left: a date, its own static text, a count, or "closing". A
  * pure function of the surface, the time left and the context; the shared clock calls it and
- * wakes again after `nextChangeInMs`.
+ * wakes again after `nextChangeInMs`. Time is read in whole seconds, rounded up, so the text, the
+ * tone and the wake time always agree about which second it is.
  */
 export function countdownDisplay(
   surface: CountdownSurface,
@@ -142,30 +178,39 @@ export function countdownDisplay(
 ): CountdownDisplay {
   if (!Number.isFinite(msLeft)) return { kind: "none" };
   if (msLeft <= 0) return { kind: "closing" };
-  const rule = COUNTDOWN_SURFACES[surface];
+  const rule = ruleFor(surface, ctx);
+  const total = wholeSecondsLeft(msLeft);
+  const roundedMs = total * SECOND_MS;
 
-  if (rule.dateBeyondMs !== null && msLeft > rule.dateBeyondMs) {
-    return { kind: "date", nextChangeInMs: earliest(msLeft - rule.dateBeyondMs) };
+  if (rule.dateBeyondMs !== null && roundedMs > rule.dateBeyondMs) {
+    return {
+      kind: "date",
+      nextChangeInMs: earliest(untilSecondsAtOrBelow(msLeft, rule.dateBeyondMs / SECOND_MS)),
+    };
   }
-  if (rule.countsOnlyWithSeconds && msLeft >= rule.secondsBelowMs) {
-    return { kind: "static", nextChangeInMs: earliest(untilBelow(msLeft, rule.secondsBelowMs)) };
+  if (rule.countsOnlyWithSeconds && roundedMs >= rule.secondsBelowMs) {
+    return {
+      kind: "static",
+      nextChangeInMs: earliest(untilSecondsAtOrBelow(msLeft, rule.secondsBelowMs / SECOND_MS - 1)),
+    };
   }
 
-  const showSeconds = msLeft < rule.secondsBelowMs;
+  const showSeconds = roundedMs < rule.secondsBelowMs;
   const band = timeLeftBand(msLeft, ctx.extended === undefined ? {} : { extended: ctx.extended });
   const text = textFor(rule.shape, msLeft, showSeconds);
-  const step = granularityMs(rule.shape, msLeft, rule.secondsBelowMs);
+  const step = stepSeconds(rule.shape, total, rule.secondsBelowMs);
   const nextChangeInMs = earliest(
     untilNextStep(msLeft, step),
-    untilBelow(msLeft, rule.secondsBelowMs),
-    untilBelow(msLeft, HOUR_MS),
-    untilBelow(msLeft, 2 * MINUTE_MS),
+    // Seconds start (or stop) when the rounded second reaches the surface's threshold.
+    untilSecondsAtOrBelow(msLeft, rule.secondsBelowMs / SECOND_MS - 1),
+    untilSecondsAtOrBelow(msLeft, HOUR_MS / SECOND_MS - 1),
+    untilSecondsAtOrBelow(msLeft, (2 * MINUTE_MS) / SECOND_MS - 1),
   );
 
   const display: CountingDisplay = {
     kind: "counting",
     text,
-    compact: formatCountdownCompact(msLeft),
+    compact: rule.shape === "units" ? text : formatCountdownCompact(msLeft),
     spoken: formatCountdownSpoken(msLeft),
     tone: band.tone,
     label: band.label,

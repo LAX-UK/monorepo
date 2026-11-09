@@ -1257,6 +1257,7 @@ export {
   formatCountdownCompact,
   formatCountdownShort,
   formatCountdownSpoken,
+  formatCountdownUnits,
   parseCountdownSegments,
   type CountdownSegments,
   type CountdownTile,

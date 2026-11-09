@@ -15,6 +15,22 @@ export type TimeLeftBand = {
   showSeconds: boolean;
 };
 
+/**
+ * The time left in whole seconds, rounded up, so a clock reads "1s" until the true close and
+ * reaches zero exactly then, and every surface shows the same second. Zero when there is none.
+ */
+export function wholeSecondsLeft(msLeft: number): number {
+  return Number.isFinite(msLeft) && msLeft > 0 ? Math.ceil(msLeft / 1000) : 0;
+}
+
+const EXTENDED_BAND: TimeLeftBand = {
+  tone: "final",
+  belowMs: null,
+  label: "Extended",
+  statusTone: "danger",
+  showSeconds: true,
+};
+
 const FINAL_BAND: TimeLeftBand = {
   tone: "final",
   belowMs: 2 * MINUTE_MS,
@@ -51,10 +67,13 @@ export function timeLeftShowsSeconds(msLeft: number): boolean {
   return timeLeftBand(msLeft).showSeconds;
 }
 
-/** The band for `msLeft`. An extended lot is always in the final band. */
+/**
+ * The band for `msLeft`, read from the same rounded-up second the text shows, so the tone and the
+ * words never disagree. An extended lot is always in the tightest band and says "Extended".
+ */
 export function timeLeftBand(msLeft: number, opts: { extended?: boolean } = {}): TimeLeftBand {
-  if (opts.extended) return FINAL_BAND;
-  const ms = Number.isFinite(msLeft) ? Math.max(0, msLeft) : 0;
+  if (opts.extended) return EXTENDED_BAND;
+  const ms = wholeSecondsLeft(msLeft) * 1000;
   return TIME_LEFT_BANDS.find((band) => band.belowMs !== null && ms < band.belowMs) ?? CALM_BAND;
 }
 
@@ -73,7 +92,7 @@ function pair(larger: number, largerWord: string, smaller: number, smallerWord: 
  * minutes and seconds. Seconds appear only when asked for (the final band).
  */
 export function formatTimeLeft(msLeft: number, opts: { showSeconds?: boolean } = {}): string {
-  const total = Math.max(0, Math.floor((Number.isFinite(msLeft) ? msLeft : 0) / 1000));
+  const total = wholeSecondsLeft(msLeft);
   const days = Math.floor(total / 86_400);
   const hours = Math.floor((total % 86_400) / 3_600);
   const minutes = Math.floor((total % 3_600) / 60);
@@ -106,11 +125,18 @@ export function timeLeftView(msLeft: number, opts: { extended?: boolean } = {}):
 
 /** Time marks a screen reader hears once each, tightest last. */
 export const TIME_LEFT_MARKS: readonly { ms: number; announcement: string }[] = [
+  { ms: HOUR_MS, announcement: "1 hour left" },
+  { ms: 10 * MINUTE_MS, announcement: "10 minutes left" },
   { ms: 5 * MINUTE_MS, announcement: "5 minutes left" },
+  { ms: 2 * MINUTE_MS, announcement: "2 minutes left" },
   { ms: MINUTE_MS, announcement: "1 minute left" },
 ];
 
-/** The mark the clock passed between two readings, or `null`. The tightest mark wins. */
+/**
+ * The mark the clock passed between two readings, or `null`. The tightest mark crossed wins. A
+ * reading that moves back over a mark (an extension) crosses nothing, so a mark is never said
+ * twice by the clock alone; the caller keeps the marks it has said.
+ */
 export function timeMarkCrossed(previousMs: number, currentMs: number): string | null {
   if (!(currentMs < previousMs)) return null;
   const crossed = TIME_LEFT_MARKS.filter((mark) => previousMs > mark.ms && currentMs <= mark.ms);
