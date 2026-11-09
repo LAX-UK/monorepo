@@ -9,7 +9,8 @@ import {
   sourceOfFundsDocumentReview,
   uploadObject,
 } from "@auction/db/schema";
-import type { EnquiryDealRecord } from "@auction/domain";
+import type { PartyDealRecord } from "@auction/domain";
+import type { IPartyDealRecordReader } from "@auction/persistence/interfaces";
 import { and, count, eq, inArray, or, sql } from "drizzle-orm";
 import type {
   IKycRetentionSubjectStore,
@@ -19,7 +20,6 @@ import type {
   RetentionHolding,
 } from "../interfaces/kyc-retention-subject.store.js";
 import { KYC_RETENTION_BASIS } from "../retention/kyc-retention-policy.js";
-import { type RetentionDealRow, dealRecordsFromRows } from "./kyc-retention-deal-records.js";
 
 const COMPLIANCE_TASK_KINDS = ["aml_screening_review", "source_of_funds_review"] as const;
 
@@ -40,7 +40,10 @@ function toDate(value: Date | string): Date {
 export class DrizzleKycRetentionPersonStore implements IKycRetentionSubjectStore {
   readonly kind = "person" as const;
 
-  constructor(private readonly db: Database) {}
+  constructor(
+    private readonly db: Database,
+    private readonly deals: IPartyDealRecordReader,
+  ) {}
 
   async listCandidates(input: {
     closedBefore: Date;
@@ -95,32 +98,9 @@ export class DrizzleKycRetentionPersonStore implements IKycRetentionSubjectStore
     }));
   }
 
-  async dealRecords(subjectId: string): Promise<EnquiryDealRecord[]> {
-    // Every deal the person is on now or was ever named on: the party history keeps a buyer who
-    // was replaced before agreement.
-    const deals = await this.db.execute<RetentionDealRow>(sql`
-      SELECT d."stage", d."agreed_at", d."cancelled_at",
-        (SELECT MAX(h."created_at") FROM "private_sale_deal_stage_history" h
-          WHERE h."deal_id" = d."id" AND h."to_stage" = 'settled') AS settled_at,
-        COALESCE(e."created_at", d."created_at") AS since
-      FROM "private_sale_deal" d
-      LEFT JOIN "marketing_enquiry" e ON e."id" = d."source_enquiry_id"
-      WHERE d."id" IN (
-        SELECT "deal_id" FROM "private_sale_deal_party" WHERE "acting_user_id" = ${subjectId}
-        UNION
-        SELECT "deal_id" FROM "private_sale_deal_party_history" WHERE "acting_user_id" = ${subjectId}
-      )
-    `);
-    if (deals.rows.length === 0) return [];
-    const latest = await this.db.execute<{ latest: Date | string | null }>(sql`
-      SELECT GREATEST(
-        (SELECT MAX("created_at") FROM "kyc_verification" WHERE "user_id" = ${subjectId}),
-        (SELECT MAX("created_at") FROM "kyc_watchlist_screening" WHERE "user_id" = ${subjectId}),
-        (SELECT MAX("created_at") FROM "source_of_funds" WHERE "user_id" = ${subjectId})
-      ) AS latest
-    `);
-    const at = latest.rows[0]?.latest;
-    return dealRecordsFromRows(deals.rows, at ? toDate(at) : null);
+  async dealRecords(subjectId: string): Promise<PartyDealRecord[]> {
+    // Every deal the person is on now or was ever named on, from the party history.
+    return this.deals.forUser(subjectId);
   }
 
   async describeHolding(subjectId: string): Promise<RetentionHolding> {

@@ -1,7 +1,7 @@
 import { APIError, getOAuthState } from "better-auth/api";
 import {
   assertCanUnlinkAccount,
-  notifySocialAccountChange,
+  recordSignInMethodChange,
   shouldNotifySocialAccountLinked,
 } from "../account-linking.js";
 import {
@@ -119,12 +119,13 @@ export function buildAccountDatabaseHooks(deps: AuthHookDeps) {
         ) {
           return;
         }
-        await notifySocialAccountChange({
-          accounts: deps.ports.accountLinkReader,
-          email: deps.ports.email,
+        await recordSignInMethodChange({
+          notices: deps.ports.securityNotices,
+          events: deps.ports.events,
           userId: acct.userId,
           providerId: acct.providerId,
-          template: "social-account-linked",
+          change: "added",
+          at: new Date(acct.createdAt),
         });
       },
     },
@@ -137,12 +138,12 @@ export function buildAccountDatabaseHooks(deps: AuthHookDeps) {
       },
       after: async (acct: { userId: string; providerId: string }) => {
         if (acct.providerId === "credential") return;
-        await notifySocialAccountChange({
-          accounts: deps.ports.accountLinkReader,
-          email: deps.ports.email,
+        await recordSignInMethodChange({
+          notices: deps.ports.securityNotices,
+          events: deps.ports.events,
           userId: acct.userId,
           providerId: acct.providerId,
-          template: "social-account-unlinked",
+          change: "removed",
         });
       },
     },

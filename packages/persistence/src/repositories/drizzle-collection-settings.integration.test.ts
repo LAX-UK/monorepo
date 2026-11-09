@@ -183,6 +183,66 @@ describe.skipIf(!HAS_DB)("collection settings (integration)", () => {
     expect((await current()).settings.bookingEmail).not.toBe("lost@example.test");
   });
 
+  it("stops a change whose guard refuses, before it writes anything", async () => {
+    const record = await current();
+    let guarded = false;
+    const outcome = await settings.save(
+      save(record, { bookingEmail: "refused@example.test" }),
+      undefined,
+      async () => {
+        guarded = true;
+        return false;
+      },
+    );
+    expect(guarded).toBe(true);
+    expect(outcome.outcome).toBe("affected_changed");
+    expect((await current()).settings.bookingEmail).not.toBe("refused@example.test");
+
+    const added = await settings.addException(
+      {
+        venueId,
+        draft: {
+          kind: "closure",
+          startsOn: "2031-10-01",
+          endsOn: "2031-10-01",
+          opensLocal: null,
+          closesLocal: null,
+        },
+        reasonInternal: null,
+        createdByUserId: staffId,
+      },
+      undefined,
+      async () => false,
+    );
+    expect(added.outcome).toBe("affected_changed");
+    expect((await current()).exceptions.some((e) => e.startsOn === "2031-10-01")).toBe(false);
+  });
+
+  it("holds the place's lock for the whole change: a second change waits for the first", async () => {
+    const record = await current();
+    const order: string[] = [];
+    const first = settings.save(
+      save(record, { bookingEmail: "first-lock@example.test" }),
+      async () => {
+        order.push("first writes");
+        await new Promise((resolve) => setTimeout(resolve, 300));
+        order.push("first done");
+      },
+    );
+    // Starts while the first holds the lock; it is refused as stale only after the first finishes.
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    const second = settings.save(
+      save(record, { bookingEmail: "second-lock@example.test" }),
+      async () => {
+        order.push("second writes");
+      },
+    );
+    const [a, b] = await Promise.all([first, second]);
+    expect(a.outcome).toBe("saved");
+    expect(b.outcome).toBe("stale");
+    expect(order).toEqual(["first writes", "first done"]);
+  });
+
   it("adds a closure, shows it, and removes it again without erasing it", async () => {
     const added = await settings.addException({
       venueId,

@@ -1,6 +1,11 @@
 "use server";
 
-import type { FramingOption, FramingOptionBody } from "@auction/shop-contracts";
+import type {
+  AdminEditionFraming,
+  AdminEditionFramingSaveBody,
+  FramingOption,
+  FramingOptionBody,
+} from "@auction/shop-contracts";
 import type { AdminMutationResult } from "./admin-mutation-result";
 import { forwardAdminJsonMutation } from "./forward-admin-mutation";
 
@@ -56,6 +61,21 @@ export async function setFramingOptionOffered(input: {
     bffPath: `framing-options/${input.optionId}/offered`,
     method: "PUT",
     jsonBody: { offered: input.offered, expectedVersion: input.expectedVersion },
+    idempotencyKey: input.idempotencyKey,
+  });
+}
+
+/** Saves how an edition is sold with respect to framing, whole: the mode, the options and prices. */
+export async function saveEditionFraming(input: {
+  artworkId: string;
+  body: AdminEditionFramingSaveBody;
+  idempotencyKey: string;
+}): Promise<AdminMutationResult<AdminEditionFraming>> {
+  if (!UUID.test(input.artworkId)) return invalidInput;
+  return forwardAdminJsonMutation<AdminEditionFraming>({
+    bffPath: `artworks/${input.artworkId}/framing`,
+    method: "PUT",
+    jsonBody: input.body,
     idempotencyKey: input.idempotencyKey,
   });
 }

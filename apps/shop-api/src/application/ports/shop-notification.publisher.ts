@@ -214,6 +214,44 @@ export type ShopNotificationPublisher = {
     },
   ): Promise<void>;
 
+  /** The buyer's delivery quote: the price, the carrier, and the link to accept it and pay. */
+  queueDeliveryQuoteReady(
+    tx: ShopNotificationTx,
+    input: {
+      idempotencyKey: string;
+      identitySubjectId: string;
+      fallbackEmail: string | null;
+      orderReference: string;
+      countryName: string;
+      carrier: string;
+      service: string | null;
+      leadTimeNote: string | null;
+      /** "£85.00": delivery, with insurance included. */
+      deliveryPrice: string;
+      /** "£505.00": the prints and the delivery together. */
+      totalPrice: string;
+      /** When the held print is released if the quote is not paid: "12 November 2026". */
+      validUntilOn: string;
+      /** Where the buyer opens the order to accept the quote and pay. */
+      orderUrl: string;
+    },
+  ): Promise<void>;
+
+  /** The buyer's notice that the gallery cannot deliver there, and the print is released. */
+  queueDeliveryQuoteDeclined(
+    tx: ShopNotificationTx,
+    input: {
+      idempotencyKey: string;
+      identitySubjectId: string;
+      fallbackEmail: string | null;
+      orderReference: string;
+      countryName: string;
+      note: string;
+      /** Where collection is explained. */
+      collectionUrl: string;
+    },
+  ): Promise<void>;
+
   /** The buyer's notice that the numbered print they were told about has been replaced. */
   queuePrintSwapped(
     tx: ShopNotificationTx,

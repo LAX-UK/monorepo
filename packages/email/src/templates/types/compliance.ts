@@ -5,6 +5,7 @@ const names = [
   "kyc-approved",
   "kyc-declined",
   "aml-compliance-review-notice",
+  "kyc-retention-hold-notice",
   "source-of-funds-buyer-notice",
   "source-of-funds-documents-requested",
   "source-of-funds-approved",
@@ -48,6 +49,18 @@ type ComplianceTemplateVars = {
     adminReviewUrl: string;
     supportContactEmail: string;
   };
+  /**
+   * Staff alert: KYC evidence is being kept for a private sale deal whose hold nothing will release
+   * by itself. Deal references and short reasons only, never a person's details.
+   */
+  "kyc-retention-hold-notice": {
+    recipientFirstName?: string | null;
+    /** One line per deal: its reference and what needs a look. */
+    lines: string[];
+    /** How many deals the alert is about, which may be more than the lines shown. */
+    count: number;
+    supportContactEmail: string;
+  };
   "source-of-funds-buyer-notice": {
     userName?: string | null;
     supportContactEmail: string;
@@ -83,6 +96,7 @@ export const complianceTemplates = {
     "kyc-approved": "live",
     "kyc-declined": "live",
     "aml-compliance-review-notice": "live",
+    "kyc-retention-hold-notice": "live",
     "source-of-funds-buyer-notice": "live",
     "source-of-funds-documents-requested": "live",
     "source-of-funds-approved": "live",

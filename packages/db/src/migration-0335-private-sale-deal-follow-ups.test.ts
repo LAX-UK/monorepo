@@ -14,7 +14,7 @@ const journal = JSON.parse(read("meta/_journal.json")) as {
 };
 
 describe("migration 0335 private sale deal follow-ups", () => {
-  it("is the last journal entry, one day after the one before it", () => {
+  it("follows 0337 in the journal, one day later", () => {
     const index = journal.entries.findIndex((e) => e.tag === "0335_private_sale_deal_follow_ups");
     expect(index).toBeGreaterThan(0);
     const entry = journal.entries[index];
@@ -22,7 +22,6 @@ describe("migration 0335 private sale deal follow-ups", () => {
     expect(previous?.tag).toBe("0337_shop_print_exception");
     expect(entry?.idx).toBe((previous?.idx ?? 0) + 1);
     expect(entry?.when).toBe((previous?.when ?? 0) + 24 * 60 * 60 * 1000);
-    expect(index).toBe(journal.entries.length - 1);
   });
 
   it("only adds nullable columns, a table and a validated check, with a short lock timeout", () => {

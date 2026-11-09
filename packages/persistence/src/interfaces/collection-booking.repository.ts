@@ -199,7 +199,12 @@ export interface ICollectionBookingWriter {
    * the old one is released by the same statement, so a failed change keeps the old time.
    */
   change(input: ChangeCollectionBooking, within?: WithinBookingTransaction): Promise<ChangeOutcome>;
-  cancel(input: CancelCollectionBooking, within?: WithinBookingTransaction): Promise<CancelOutcome>;
+  /** Inside `tx` when staff cancel as part of a larger change; otherwise in its own transaction. */
+  cancel(
+    input: CancelCollectionBooking,
+    within?: WithinBookingTransaction,
+    tx?: DbTransaction,
+  ): Promise<CancelOutcome>;
 }
 
 export type RecordHandOver = {
@@ -267,8 +272,12 @@ export interface ICollectionBookingReader {
   findByReference(reference: string): Promise<CollectionBookingRecord | null>;
   /** The account's bookings, newest visit first. */
   listForAccount(legalEntityId: string, limit: number): Promise<CollectionBookingRecord[]>;
-  /** Bookings whose visit starts in [from, to), earliest first, with every status. */
-  listInRange(venueId: string, range: { from: Date; to: Date }): Promise<CollectionBookingRecord[]>;
+  /** Bookings whose visit starts in [from, to), earliest first, with every status; inside `tx` when the caller is holding a transaction open. */
+  listInRange(
+    venueId: string,
+    range: { from: Date; to: Date },
+    tx?: DbTransaction,
+  ): Promise<CollectionBookingRecord[]>;
   /** The place's bookings in these statuses, newest visit first, up to `limit`. */
   listByStatus(
     venueId: string,

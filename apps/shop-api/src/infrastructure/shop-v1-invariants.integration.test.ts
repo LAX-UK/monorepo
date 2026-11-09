@@ -6,6 +6,7 @@ import {
   shopOrderLine,
   shopSaleAuthorityGrant,
 } from "@auction/db/schema";
+import { DrizzleUnappliedMoneyReader } from "@auction/persistence/repositories";
 import { SHOP_API_ERROR_CODES } from "@auction/shop-contracts";
 import { and, eq, sql } from "drizzle-orm";
 import type pg from "pg";
@@ -191,7 +192,12 @@ describe.skipIf(!hasShopIntegrationDb)("shop v1 phase 1 invariants", () => {
         amountTotalPence: pending.totalPence,
         paidAt: new Date(),
       },
-      { domainEventMode: "off", notifications, opsAlertEmail: "ops@example.com" },
+      {
+        domainEventMode: "off",
+        notifications,
+        opsAlertEmail: "ops@example.com",
+        unappliedMoney: new DrizzleUnappliedMoneyReader(db),
+      },
     );
     expect(outcome).toBe("terminal_acknowledged");
     const [order] = await db

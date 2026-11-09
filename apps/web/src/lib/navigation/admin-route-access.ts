@@ -34,6 +34,9 @@ export const ADMIN_ROUTE_AREAS: Readonly<Record<string, Exclude<AdminRouteArea, 
   finance: "finance",
   integrations: "finance",
   audit: "shared",
+  // Read by everyone who has a part in a deal, Finance included, so the alert links to a deal that
+  // finance staff are sent open for them. What each person sees and does is decided by the page.
+  "private-sales": "shared",
   "failed-jobs": "shared",
   kit: "shared",
   "no-access": "shared",

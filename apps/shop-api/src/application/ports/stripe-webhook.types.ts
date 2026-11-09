@@ -5,6 +5,8 @@ export type StripeCheckoutCompletedDto = {
   sessionId: string;
   amountTotalPence: number;
   customerEmail?: string | null;
+  /** The PaymentIntent that took the money; kept for finance when the order is closed. */
+  paymentIntentId?: string | null;
 };
 
 export type StripeCheckoutExpiredDto = {

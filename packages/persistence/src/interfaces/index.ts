@@ -1369,4 +1369,6 @@ export type {
   StaffExceptionRecord,
   StaffSettingsRecord,
   WithinSettingsTransaction,
+  GuardSettingsTransaction,
 } from "./collection-settings.repository.js";
+export type { IPartyDealRecordReader } from "./party-deal-record.reader.js";

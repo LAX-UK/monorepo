@@ -22,6 +22,7 @@ import {
   TextArea,
   TextInput,
 } from "@auction/staff-ui";
+import type { AffectedBookingsChoice } from "@auction/validators";
 import { useCallback, useId, useRef, useState } from "react";
 import { AffectedBookingsDialog } from "./affected-bookings-dialog";
 import { useCollectionChange } from "./use-collection-change";
@@ -70,7 +71,7 @@ export function AddExceptionDialog({ open, onOpenChange, venueId, today, initial
   }));
 
   const send = useCallback(
-    (choice: "keep" | "cancel_and_rebook" | undefined) =>
+    (choice: AffectedBookingsChoice | undefined) =>
       addCollectionExceptionAction(venueId, {
         ...exceptionBody(draft),
         ...(choice ? { affectedBookings: choice } : {}),

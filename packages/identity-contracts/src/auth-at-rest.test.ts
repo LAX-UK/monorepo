@@ -6,6 +6,7 @@ import {
   isEnvelopeSealed,
   isOpaqueTokenFingerprint,
   oauthAccessTokenNeedsUpdate,
+  openProviderEmail,
   parseAuthDekKey,
   transformAccountTokens,
   transformJwksPrivateJwk,
@@ -109,5 +110,35 @@ describe("auth at-rest transforms", () => {
     expect(() => transformTwoFactor({ secret: sealed, backupCodes: sealed }, otherCrypto)).toThrow(
       "auth_at_rest_malformed_envelope",
     );
+  });
+});
+
+describe("openProviderEmail: the address a provider reported, ready to show", () => {
+  const sealed = crypto.seal("ada@example.com");
+  const otherKey = createEnvelopeCrypto(parseAuthDekKey("11".repeat(32)));
+
+  it("opens a sealed address", () => {
+    expect(openProviderEmail(sealed, crypto)).toBe("ada@example.com");
+  });
+
+  it("is null when the address is sealed and there is no key, never the sealed text", () => {
+    expect(openProviderEmail(sealed, null)).toBeNull();
+  });
+
+  it("is null when the key no longer fits or the value is damaged", () => {
+    expect(openProviderEmail(sealed, otherKey)).toBeNull();
+    expect(openProviderEmail(`${sealed.slice(0, -4)}AAAA`, crypto)).toBeNull();
+    expect(openProviderEmail("v1:not-an-envelope", crypto)).toBeNull();
+  });
+
+  it("returns an address that was never sealed as written, with or without a key", () => {
+    expect(openProviderEmail("ada@example.com", crypto)).toBe("ada@example.com");
+    expect(openProviderEmail("ada@example.com", null)).toBe("ada@example.com");
+  });
+
+  it("is null when there is no address", () => {
+    expect(openProviderEmail(null, crypto)).toBeNull();
+    expect(openProviderEmail(undefined, crypto)).toBeNull();
+    expect(openProviderEmail("", crypto)).toBeNull();
   });
 });

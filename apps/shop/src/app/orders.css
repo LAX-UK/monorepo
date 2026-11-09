@@ -407,6 +407,47 @@ a.shop-order-lines__title:hover {
   }
 }
 
+/* A delivery quote on an unpaid order outside the UK: no thumbnail, a short list of facts. */
+.shop-finish-paying--quote {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.shop-finish-paying__facts {
+  display: grid;
+  margin: 0;
+  gap: var(--shop-space-1);
+}
+
+.shop-finish-paying__facts > div {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--shop-space-1) var(--shop-space-4);
+}
+
+.shop-finish-paying__facts dt {
+  color: var(--color-on-surface-variant);
+  font-size: var(--shop-text-sm);
+}
+
+.shop-finish-paying__facts dd {
+  margin: 0;
+  color: var(--color-on-surface);
+  font-size: var(--shop-text-md);
+  font-variant-numeric: tabular-nums;
+}
+
+.shop-finish-paying__facts > div:last-child dd {
+  font-weight: 600;
+}
+
+@media (min-width: 48rem) {
+  .shop-finish-paying--quote {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+}
+
 /* Report a problem. */
 .shop-problem-page {
   width: 100%;

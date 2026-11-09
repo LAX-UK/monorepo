@@ -17,6 +17,7 @@ import {
   DrizzleLaxStaffAccessRepository,
   DrizzleLotViewerFactsReader,
   DrizzleOrganisationBiddingLimitRepository,
+  DrizzlePartyDealRecordReader,
   DrizzlePaymentGroupFactsReader,
   DrizzleRecordPeopleReader,
   DrizzleStaffAccessReviewReader,
@@ -25,6 +26,7 @@ import {
   DrizzleStaffRoster,
   DrizzleWatchlistReminderRepository,
 } from "@auction/persistence/repositories";
+import { PartyDealRetentionHolds } from "./container/adapters/drizzle-data-request-deal-holds.js";
 import { DrizzleDataRequestErasureHistory } from "./container/adapters/drizzle-data-request-erasure-history.js";
 import type { Container, ContainerComposedSlices } from "./container/container-slices.js";
 import { createAdminServices } from "./container/create-admin-services.js";
@@ -502,6 +504,7 @@ export function createContainer(env: Env): Container {
     legalEntities: repos.legalEntityRepository,
     connectEnforced: () => platform.stripeConnectService.isConfigured(),
     buyerAgentAuthorisations: buyerAgents.mine,
+    log: createBaseLogger(env),
   });
   const organisationTeam = createOrganisationTeamServices({
     db,
@@ -843,6 +846,10 @@ export function createContainer(env: Env): Container {
         audit: new DomainEventDataRequestAuditTrail(platform.domainEventSink),
         enquiryErasure: marketingEnquiries.erasure,
         erasureHistory: new DrizzleDataRequestErasureHistory(db),
+        dealHolds: new PartyDealRetentionHolds(
+          new DrizzlePartyDealRecordReader(db),
+          env.PRIVATE_SALE_RECORD_RETENTION_YEARS,
+        ),
         accounts: {
           findByEmail: async (email) => {
             const subject = await identityIssuer.findSubjectByEmail(email);

@@ -127,8 +127,8 @@ describe("collection settings actions", () => {
     const result = await removeCollectionExceptionAction(VENUE, EXCEPTION, {});
     expect(result).toMatchObject({ ok: false, errorCode: "step_up_required" });
     expect(mocks.fetch).toHaveBeenCalledWith(
-      `/admin/collections/${VENUE}/exceptions/${EXCEPTION}`,
-      expect.objectContaining({ method: "DELETE" }),
+      `/admin/collections/${VENUE}/exceptions/${EXCEPTION}/remove`,
+      expect.objectContaining({ method: "POST" }),
     );
   });
 

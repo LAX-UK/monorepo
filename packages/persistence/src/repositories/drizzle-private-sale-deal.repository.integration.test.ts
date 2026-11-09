@@ -4,6 +4,7 @@ import {
   itemSubmission,
   legalEntity,
   privateSaleDeal,
+  privateSaleDealPartyHistory,
   privateSaleDealStageHistory,
   user,
 } from "@auction/db/schema";
@@ -102,6 +103,50 @@ describe.skipIf(!HAS_DB)("private sale deals (integration)", () => {
       ]);
       expect((await repo.findByReference(deal.reference))?.id).toBe(deal.id);
       expect(await repo.findById("00000000-0000-4000-8000-000000000000")).toBeNull();
+    });
+  });
+
+  it("keeps every naming in the party history, including an organisation named without a person", async () => {
+    await inRollback(async (db, submissionId) => {
+      const repo = new DrizzlePrivateSaleDealRepository(db);
+      const deal = await repo.create(
+        newDeal(submissionId, {
+          buyer: { legalEntityId: buyerEntityId, actingUserId: null },
+        }),
+      );
+      const named = async () =>
+        (
+          await db
+            .select()
+            .from(privateSaleDealPartyHistory)
+            .where(eq(privateSaleDealPartyHistory.dealId, deal.id))
+        )
+          .map((row) => `${row.role}:${row.legalEntityId}:${row.actingUserId}`)
+          .sort();
+      // The seller (with a person) and the buyer organisation (with none) are both on record.
+      expect(await named()).toEqual(
+        [`buyer:${buyerEntityId}:null`, `seller:${sellerEntityId}:${sellerUserId}`].sort(),
+      );
+      // Naming the same organisation again adds nothing; naming a person for it adds that person.
+      const first = await repo.setParty(deal.id, deal.version, {
+        role: "buyer",
+        legalEntityId: buyerEntityId,
+        actingUserId: null,
+      });
+      expect(first.kind).toBe("ok");
+      const version = first.kind === "ok" ? first.deal.version : 0;
+      await repo.setParty(deal.id, version, {
+        role: "buyer",
+        legalEntityId: buyerEntityId,
+        actingUserId: buyerUserId,
+      });
+      expect(await named()).toEqual(
+        [
+          `buyer:${buyerEntityId}:null`,
+          `buyer:${buyerEntityId}:${buyerUserId}`,
+          `seller:${sellerEntityId}:${sellerUserId}`,
+        ].sort(),
+      );
     });
   });
 

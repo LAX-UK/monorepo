@@ -149,8 +149,8 @@ export const DANGEROUS_STAFF_ACTIONS: readonly DangerousStaffAction[] = [
   a(
     "collection_settings",
     "collection.exception.remove",
-    "DELETE",
-    "/admin/collections/:venueId/exceptions/:exceptionId",
+    "POST",
+    "/admin/collections/:venueId/exceptions/:exceptionId/remove",
   ),
   // Handing works over at the desk, undoing it, and marking a visit missed
   a(

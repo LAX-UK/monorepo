@@ -321,3 +321,4 @@ export {
   DrizzlePrivateSaleDealPaymentRepository,
   DrizzlePrivateSaleDealPayoutStore,
 } from "./drizzle-private-sale-deal-payment.repository.js";
+export { DrizzlePartyDealRecordReader } from "./drizzle-party-deal-record.reader.js";

@@ -17,6 +17,7 @@ import {
 } from "@auction/staff-ui";
 import { Plus, Trash2 } from "@auction/staff-ui/icons";
 import type { StaffCollectionException, StaffCollectionSettings } from "@auction/types";
+import type { AffectedBookingsChoice } from "@auction/validators";
 import { useCallback, useState } from "react";
 import { AddExceptionDialog } from "./add-exception-dialog";
 import { AffectedBookingsDialog } from "./affected-bookings-dialog";
@@ -189,7 +190,7 @@ function RemoveExceptionFlow({
   onClose: () => void;
 }) {
   const send = useCallback(
-    (choice: "keep" | "cancel_and_rebook" | undefined) =>
+    (choice: AffectedBookingsChoice | undefined) =>
       removeCollectionExceptionAction(venueId, exception.id ?? "", {
         ...(choice ? { affectedBookings: choice } : {}),
       }),

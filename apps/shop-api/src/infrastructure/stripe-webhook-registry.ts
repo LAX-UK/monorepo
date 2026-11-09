@@ -13,6 +13,7 @@ export type StripeCheckoutWebhookHandlers = {
     orderId: string;
     sessionId: string;
     amountTotalPence: number;
+    paymentIntentId?: string | null;
     paidAt: Date;
     customerEmail?: string | null;
   }): Promise<"processed" | "duplicate" | "terminal_acknowledged">;
@@ -63,6 +64,7 @@ export async function dispatchStripeWebhookEvent(
       amountTotalPence: completed.amountTotalPence,
       paidAt: completed.paidAt,
       customerEmail: completed.customerEmail ?? null,
+      paymentIntentId: completed.paymentIntentId ?? null,
     });
     return { kind: "checkout", outcome };
   }

@@ -86,6 +86,8 @@ export const shopDeliveryQuote = pgTable(
       .notNull(),
     /** Set when staff quote: the delivery price the buyer pays with the prints. */
     quotedPricePence: integer("quoted_price_pence"),
+    /** Who carries it, as staff name them: "DHL Express". Required once a price is set. */
+    quotedCarrier: text("quoted_carrier"),
     quotedService: text("quoted_service"),
     quotedLeadTimeNote: text("quoted_lead_time_note"),
     quotedAt: timestamp("quoted_at", { mode: "date", withTimezone: true }),
@@ -93,6 +95,8 @@ export const shopDeliveryQuote = pgTable(
     decidedAt: timestamp("decided_at", { mode: "date", withTimezone: true }),
     /** Why a withdrawn quote ended: cancelled_by_buyer, cannot_deliver or expired. */
     endReason: text("end_reason"),
+    /** Why staff turned a request down, for the buyer's email and the order's record. */
+    declineNote: text("decline_note"),
     /**
      * For a guest's request only: keyed hashes of the client IP and of the browser's basket
      * token, so open holds can be capped per IP and per browser without storing either. Never
@@ -128,6 +132,10 @@ export const shopDeliveryQuote = pgTable(
     check(
       "shop_delivery_quote_end_reason_check",
       sql`(${table.status} = 'withdrawn') = (${table.endReason} IS NOT NULL) AND (${table.endReason} IS NULL OR ${table.endReason} IN ('cancelled_by_buyer', 'cannot_deliver', 'expired'))`,
+    ),
+    check(
+      "shop_delivery_quote_carrier_check",
+      sql`${table.status} NOT IN ('quoted', 'accepted') OR length(btrim(${table.quotedCarrier})) > 0`,
     ),
     check(
       "shop_delivery_quote_price_check",

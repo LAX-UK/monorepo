@@ -12,6 +12,7 @@ import { mapDataDownload, mapDeletionRequests } from "./requests.category.js";
 import {
   mapKnownDevice,
   mapNewDeviceNotice,
+  mapPasskeyMethod,
   mapPasswordMethod,
   mapSecurityEvent,
   mapSession,
@@ -40,6 +41,10 @@ const forbidden = {
   refreshToken: LEAK,
   idToken: LEAK,
   publicKey: LEAK,
+  credentialId: LEAK,
+  counter: LEAK,
+  aaguid: LEAK,
+  transports: LEAK,
   privateJwk: LEAK,
   clientSecret: LEAK,
   identityDisabledReason: LEAK,
@@ -114,6 +119,16 @@ const cases: Record<string, Case> = {
   social: {
     category: "sign-in-and-security",
     record: mapSocialMethod({ id: "acc1", providerId: "google", createdAt: AT, ...forbidden }),
+  },
+  passkey: {
+    category: "sign-in-and-security",
+    record: mapPasskeyMethod({
+      id: "pk1",
+      name: "Sarah's MacBook",
+      createdAt: AT,
+      lastUsedAt: LATER,
+      ...forbidden,
+    } as never),
   },
   twoStep: { category: "sign-in-and-security", record: mapTwoStep(true) },
   session: {

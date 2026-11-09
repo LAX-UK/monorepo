@@ -6,6 +6,7 @@ import {
   RecordedEvents,
   SETTINGS_NOW,
   SETTINGS_VENUE,
+  visitId,
   visitOn,
 } from "../../testing/in-memory-collection-settings.js";
 import { CollectionSettingsAdminService } from "./collection-settings.service.js";
@@ -49,6 +50,12 @@ function saveBody(
 
 const hours = (closes: string) =>
   [1, 2, 3, 4, 5].map((weekday) => ({ weekday, opensLocal: "10:00", closesLocal: closes }));
+
+/** The choice staff make, bound to the visits they were shown (by short id). */
+const choose = (choice: "keep" | "cancel_and_rebook", ...shown: string[]) => ({
+  choice,
+  bookingIds: shown.map(visitId),
+});
 
 const failed = <T>(result: { _unsafeUnwrapErr(): T }) => result._unsafeUnwrapErr();
 
@@ -233,7 +240,10 @@ describe("a change that touches bookings", () => {
       await service.save(
         STAFF,
         SETTINGS_VENUE,
-        saveBody(store, { hours: hours("17:00"), affectedBookings: "keep" }),
+        saveBody(store, {
+          hours: hours("17:00"),
+          affectedBookings: choose("keep", "1001", "1002"),
+        }),
       )
     )._unsafeUnwrap();
     expect(result.cancelled).toBe(0);
@@ -242,6 +252,7 @@ describe("a change that touches bookings", () => {
     expect(store.hours.every((h) => h.closesLocal === "17:00")).toBe(true);
     expect(events.events[0]?.payload).toMatchObject({
       affectedBookings: 2,
+      cancelledBookings: 0,
       affectedHandling: "keep",
     });
   });
@@ -252,7 +263,10 @@ describe("a change that touches bookings", () => {
       await service.save(
         STAFF,
         SETTINGS_VENUE,
-        saveBody(store, { hours: hours("17:00"), affectedBookings: "cancel_and_rebook" }),
+        saveBody(store, {
+          hours: hours("17:00"),
+          affectedBookings: choose("cancel_and_rebook", "1001", "1002"),
+        }),
       )
     )._unsafeUnwrap();
     expect(result.cancelled).toBe(2);
@@ -273,7 +287,7 @@ describe("a change that touches bookings", () => {
       cancelledVia: "staff",
       reason: "hours_changed",
     });
-    expect(events.events.at(0)?.payload).toMatchObject({
+    expect(events.events.at(-1)?.payload).toMatchObject({
       affectedHandling: "cancel_and_rebook",
       affectedBookings: 2,
     });
@@ -304,6 +318,108 @@ describe("a change that touches bookings", () => {
     expect(error.affected?.[0]).toMatchObject({ reference: "COL-3001", reason: "over_capacity" });
   });
 
+  it("sends the list back when a visit has been booked since staff saw it, and applies nothing", async () => {
+    const { service, store, events, bookings } = withLateBookings();
+    // Staff saw 1001 and 1002; 1004 was booked after that and is also outside the new hours.
+    bookings.bookings.push(friday("1004", "18:30"));
+    for (const choice of ["keep", "cancel_and_rebook"] as const) {
+      const error = failed(
+        await service.save(
+          STAFF,
+          SETTINGS_VENUE,
+          saveBody(store, {
+            hours: hours("17:00"),
+            affectedBookings: choose(choice, "1001", "1002"),
+          }),
+        ),
+      );
+      expect(error).toMatchObject({ code: "bookings_affected", status: 409 });
+      expect(error.affected?.map((a) => a.reference)).toEqual(["COL-1001", "COL-1002", "COL-1004"]);
+    }
+    expect(store.hours.every((h) => h.closesLocal === "19:00")).toBe(true);
+    expect(bookings.bookings.every((b) => b.status === "booked")).toBe(true);
+    expect(events.events).toHaveLength(0);
+  });
+
+  it("goes ahead when staff were shown every visit, even if a listed one is no longer affected", async () => {
+    const { service, store, bookings } = withLateBookings();
+    // 1002 was cancelled by its client after staff saw the list: the rest of the list still holds.
+    const second = bookings.bookings[1];
+    if (second) bookings.bookings[1] = { ...second, status: "cancelled" };
+    const result = (
+      await service.save(
+        STAFF,
+        SETTINGS_VENUE,
+        saveBody(store, {
+          hours: hours("17:00"),
+          affectedBookings: choose("cancel_and_rebook", "1001", "1002"),
+        }),
+      )
+    )._unsafeUnwrap();
+    expect(result.cancelled).toBe(1);
+  });
+
+  it("checks again inside the saving step, and refuses when a visit was booked in between", async () => {
+    const { service, store, events, bookings } = withLateBookings();
+    // A buyer books a visit after the list was checked but before the change is applied.
+    store.beforeGuard = async () => {
+      bookings.bookings.push(friday("1009", "17:45"));
+    };
+    const error = failed(
+      await service.save(
+        STAFF,
+        SETTINGS_VENUE,
+        saveBody(store, {
+          hours: hours("17:00"),
+          affectedBookings: choose("cancel_and_rebook", "1001", "1002"),
+        }),
+      ),
+    );
+    expect(error).toMatchObject({ code: "bookings_affected", status: 409 });
+    expect(error.affected?.map((a) => a.reference)).toEqual(["COL-1001", "COL-1002", "COL-1009"]);
+    expect(store.hours.every((h) => h.closesLocal === "19:00")).toBe(true);
+    expect(bookings.bookings.every((b) => b.status === "booked")).toBe(true);
+    expect(events.events).toHaveLength(0);
+  });
+
+  it("cancels in the same step as the change, and the audit says how many were asked and cancelled", async () => {
+    const { service, store, events } = withLateBookings();
+    (
+      await service.save(
+        STAFF,
+        SETTINGS_VENUE,
+        saveBody(store, {
+          hours: hours("17:00"),
+          affectedBookings: choose("cancel_and_rebook", "1001", "1002"),
+        }),
+      )
+    )._unsafeUnwrap();
+    expect(events.events.map((e) => e.eventType)).toEqual([
+      "collection.booking.cancelled",
+      "collection.booking.cancelled",
+      "collection.place.updated",
+    ]);
+    expect(events.events.at(-1)?.payload).toMatchObject({
+      affectedBookings: 2,
+      cancelledBookings: 2,
+      affectedHandling: "cancel_and_rebook",
+    });
+  });
+
+  it("needs no choice when nothing is affected, whatever is sent", async () => {
+    const { service, store } = withLateBookings();
+    const result = await service.save(
+      STAFF,
+      SETTINGS_VENUE,
+      saveBody(store, {
+        hours: hours("19:00"),
+        onlineBookingEnabled: true,
+        affectedBookings: choose("cancel_and_rebook"),
+      }),
+    );
+    expect(result._unsafeUnwrap().cancelled).toBe(0);
+  });
+
   it("leaves a booking made after the cut-off for the change alone when it cancels the rest", async () => {
     const bookings = new InMemorySettingsBookings([
       friday("1001", "17:30"),
@@ -317,7 +433,10 @@ describe("a change that touches bookings", () => {
       await service.save(
         STAFF,
         SETTINGS_VENUE,
-        saveBody(store, { hours: hours("17:00"), affectedBookings: "cancel_and_rebook" }),
+        saveBody(store, {
+          hours: hours("17:00"),
+          affectedBookings: choose("cancel_and_rebook", "1001", "1002"),
+        }),
       )
     )._unsafeUnwrap();
     expect(result.cancelled).toBe(2);
@@ -428,7 +547,7 @@ describe("closures and extra openings", () => {
       await service.addException(
         STAFF,
         SETTINGS_VENUE,
-        closure({ affectedBookings: "cancel_and_rebook" }),
+        closure({ affectedBookings: choose("cancel_and_rebook", "4001") }),
       )
     )._unsafeUnwrap();
     expect(done.cancelled).toBe(1);

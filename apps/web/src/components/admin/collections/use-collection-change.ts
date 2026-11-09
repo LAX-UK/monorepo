@@ -3,7 +3,7 @@
 import { handleStaffStepUp } from "@/lib/auth/step-up/staff-step-up.client";
 import type { ActionResult } from "@/lib/forms/form-result";
 import type { StaffAffectedBooking, StaffCollectionChangeResult } from "@auction/types";
-import type { AffectedBookingsChoice } from "@auction/validators";
+import type { AffectedBookingsChoice, AffectedBookingsChoiceValue } from "@auction/validators";
 import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
 
@@ -66,7 +66,9 @@ export function useCollectionChange(
     affected,
     failure,
     submit: () => attempt(undefined),
-    confirm: (choice: AffectedBookingsChoice) => attempt(choice),
+    // The choice is bound to the visits on the list the person is looking at.
+    confirm: (choice: AffectedBookingsChoiceValue) =>
+      attempt({ choice, bookingIds: (affected ?? []).map((booking) => booking.bookingId) }),
     dismissAffected: () => setAffected(null),
     clearFailure: () => setFailure(null),
     reload: () => router.refresh(),
