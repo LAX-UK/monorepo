@@ -22,4 +22,9 @@ export type CollectionLotRecord = {
  */
 export interface ICollectionLotFactsReader {
   read(lotIds: readonly string[]): Promise<Map<string, CollectionLotRecord>>;
+  /**
+   * The ids of the lots an account bought that are collected from this place, in lot-number order,
+   * for offering the rest of an account's works beside the ones asked about.
+   */
+  lotIdsForBuyer(legalEntityId: string, venueId: string, limit: number): Promise<string[]>;
 }
