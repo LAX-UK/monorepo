@@ -5,6 +5,7 @@ export * from "./deal-reminder.js";
 export * from "./events.js";
 export * from "./invoice.js";
 export * from "./money.js";
+export * from "./party-record-hold.js";
 export * from "./payment-rules.js";
 export * from "./policy.js";
 export * from "./settlement-amounts.js";

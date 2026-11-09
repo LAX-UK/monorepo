@@ -142,7 +142,12 @@ export function createEditionRunService(deps: {
               assertValidEditionPlan(plan, next);
               const stored = await tx.facts.get(command.artworkId);
               if (stored) {
-                assertEditionFacts(next, { ...stored.facts, confirmed: null });
+                // Facts stored before the authority was recorded stay as they are until re-confirmed.
+                assertEditionFacts(
+                  next,
+                  { ...stored.facts, confirmed: null },
+                  { requireAuthority: false },
+                );
                 await tx.facts.save(command.artworkId, { ...stored.facts, confirmed: null });
               }
               await tx.prints.clearPrints(command.artworkId);

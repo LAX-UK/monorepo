@@ -221,32 +221,6 @@ describe("admin print fulfilment routes", () => {
     await finance.close();
   });
 
-  it("records the artist's written authority for catalogue staff only", async () => {
-    const recordAuthority = vi.fn(async () => ({ recordedAt: "2026-11-04T10:00:00.000Z" }));
-    const editor = await buildApp("catalogue_editor", { certificates: { recordAuthority } });
-    const ok = await editor.inject({
-      method: "PUT",
-      url: `/admin/v1/artworks/${ARTWORK}/certificate-authority`,
-      headers,
-      payload: { reference: "Letter of 3 October 2026" },
-    });
-    expect(ok.statusCode).toBe(200);
-    expect(recordAuthority).toHaveBeenCalledWith(
-      expect.objectContaining({ artworkId: ARTWORK, reference: "Letter of 3 October 2026" }),
-    );
-    await editor.close();
-
-    const operations = await buildApp("operations");
-    const refused = await operations.inject({
-      method: "PUT",
-      url: `/admin/v1/artworks/${ARTWORK}/certificate-authority`,
-      headers,
-      payload: { reference: "Letter" },
-    });
-    expect(refused.statusCode).toBe(403);
-    await operations.close();
-  });
-
   it("leaves approving a hors commerce proof to shop admins", async () => {
     const approveHorsCommerce = vi.fn(async () => ({
       approvedAt: "2026-11-04T10:00:00.000Z",

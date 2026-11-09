@@ -175,6 +175,13 @@ const PublicCertificateSchema = Type.Union([
         ),
       ]),
       numberedToMatch: Type.Boolean(),
+      /** Who gave the written authority behind a London Art Exchange certificate; nothing more. */
+      authority: Type.Optional(
+        Type.Object(
+          { givenBy: Type.Union([Type.Literal("artist"), Type.Literal("estate")]) },
+          { additionalProperties: false },
+        ),
+      ),
     },
     { additionalProperties: false },
   ),
@@ -190,11 +197,93 @@ export const PublicEditionFactsSchema = Type.Object(
     ]),
     signature: PublicSignatureSchema,
     certificate: PublicCertificateSchema,
+    stamp: Type.Optional(
+      Type.Union([
+        Type.Literal("none"),
+        Type.Literal("publisher_blind"),
+        Type.Literal("printer_blind"),
+        Type.Literal("estate_back"),
+      ]),
+    ),
+    printedBy: Type.Optional(Type.Union([Type.String({ maxLength: 80 }), Type.Null()])),
+    publishedBy: Type.Optional(
+      Type.Union([
+        Type.Object({ kind: Type.Literal("artist") }, { additionalProperties: false }),
+        Type.Object({ kind: Type.Literal("lax") }, { additionalProperties: false }),
+        Type.Object(
+          { kind: Type.Literal("named"), name: Type.String({ minLength: 1, maxLength: 80 }) },
+          { additionalProperties: false },
+        ),
+        Type.Null(),
+      ]),
+    ),
   },
   { additionalProperties: false },
 );
 
 /** Another run of the same image, listed beside this one: a proof, an open run or a companion. */
+/** What differs about a print sold on its own, from the fixed choices. */
+const PublicPrintExceptionSchema = Type.Object(
+  {
+    remarque: Type.Optional(
+      Type.Object(
+        {
+          medium: Type.Union([
+            Type.Literal("pencil"),
+            Type.Literal("ink"),
+            Type.Literal("coloured_pencil"),
+          ]),
+          place: Type.Union([
+            Type.Literal("lower_margin"),
+            Type.Literal("upper_margin"),
+            Type.Literal("side_margin"),
+          ]),
+        },
+        { additionalProperties: false },
+      ),
+    ),
+    dedicated: Type.Optional(Type.Literal(true)),
+    signature: Type.Optional(PublicSignatureSchema),
+    condition: Type.Optional(
+      Type.Union([
+        Type.Literal("light_handling_marks"),
+        Type.Literal("margin_toning"),
+        Type.Literal("small_crease_in_margin"),
+      ]),
+    ),
+  },
+  { additionalProperties: false },
+);
+
+/** One print of a run that is sold on its own: which print, and what differs about it. */
+export const PublicSetApartSchema = Type.Object(
+  {
+    print: Type.Object(
+      {
+        editionNumber: Type.Union([Type.Integer({ minimum: 1 }), Type.Null()]),
+        proofNumber: Type.Union([Type.Integer({ minimum: 1 }), Type.Null()]),
+        of: Type.Union([
+          Type.Object(
+            { kind: Type.Literal("limited"), size: Type.Integer({ minimum: 1 }) },
+            { additionalProperties: false },
+          ),
+          Type.Object(
+            {
+              kind: Type.Literal("proof"),
+              label: Type.String({ minLength: 1, maxLength: 4 }),
+              size: Type.Integer({ minimum: 1 }),
+            },
+            { additionalProperties: false },
+          ),
+        ]),
+      },
+      { additionalProperties: false },
+    ),
+    exception: PublicPrintExceptionSchema,
+  },
+  { additionalProperties: false },
+);
+
 export const PublicOtherRunSchema = Type.Object(
   {
     slug: Type.String({ minLength: 1 }),
@@ -202,6 +291,8 @@ export const PublicOtherRunSchema = Type.Object(
     facts: Type.Union([PublicEditionFactsSchema, Type.Null()]),
     printPricePence: Type.Union([Type.Integer({ minimum: 0 }), Type.Null()]),
     availability: PublicAvailabilityStateSchema,
+    /** Set when this listing is one print of the run sold on its own. */
+    setApart: Type.Optional(Type.Union([PublicSetApartSchema, Type.Null()])),
   },
   { additionalProperties: false },
 );
@@ -225,6 +316,10 @@ export const PublicArtworkEditionSchema = Type.Object(
       Type.Null(),
     ]),
     otherRuns: Type.Array(PublicOtherRunSchema),
+    /** Set when this page is one print of a run sold on its own. */
+    setApart: Type.Optional(Type.Union([PublicSetApartSchema, Type.Null()])),
+    /** The title of the run a print sold on its own came from; the page heading uses it. */
+    runTitle: Type.Optional(Type.String({ minLength: 1 })),
   },
   { additionalProperties: false },
 );
@@ -355,6 +450,7 @@ export type PublicArtworkSummary = typeof PublicArtworkSummarySchema.static;
 export type PublicArtworkList = typeof PublicArtworkListSchema.static;
 export type PublicArtworkEdition = typeof PublicArtworkEditionSchema.static;
 export type PublicOtherRun = typeof PublicOtherRunSchema.static;
+export type PublicSetApart = typeof PublicSetApartSchema.static;
 export type PublicArtworkDetail = typeof PublicArtworkDetailSchema.static;
 export type PublicArtworkObjectTypeFacet = typeof PublicArtworkObjectTypeFacetSchema.static;
 export type PublicArtworkObjectTypeFacetList = typeof PublicArtworkObjectTypeFacetListSchema.static;

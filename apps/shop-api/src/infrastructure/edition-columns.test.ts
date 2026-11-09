@@ -270,8 +270,59 @@ const facts: Array<[string, EditionFacts]> = [
 ];
 
 describe("facts columns", () => {
+  // Facts that state no stamp or parties read back as saying nothing.
+  const SAYS_NOTHING = { stamp: "none", printedBy: null, publishedBy: null } as const;
+
   it.each(facts)("round-trips %s", (_name, value) => {
-    expect(factsFromColumns(factsToColumns(value))).toEqual(value);
+    expect(factsFromColumns(factsToColumns(value))).toEqual({ ...SAYS_NOTHING, ...value });
+  });
+
+  it("round-trips the stamp, the printer, a named publisher and a LAX certificate's authority", () => {
+    const stated: EditionFacts = {
+      numbering: "on_print",
+      signature: { kind: "hand_signed", medium: "pencil", place: "front_lower_margin" },
+      certificate: {
+        kind: "included",
+        issuer: "lax",
+        form: "paper",
+        arrives: { kind: "with_print" },
+        numberedToMatch: true,
+        authority: { givenBy: "estate", datedOn: "2026-09-12", reference: "Letter in the file" },
+      },
+      stamp: "estate_back",
+      printedBy: "Coriander Studio, London",
+      publishedBy: { kind: "named", name: "Kestrel Editions" },
+      confirmed: null,
+    };
+    const columns = factsToColumns(stated);
+    expect(columns).toMatchObject({
+      stamp: "estate_back",
+      printedBy: "Coriander Studio, London",
+      publishedByKind: "named",
+      publishedByName: "Kestrel Editions",
+      certificateAuthorityGivenBy: "estate",
+      certificateAuthorityDatedOn: "2026-09-12",
+    });
+    // The letter's reference is stored with who recorded it, so it is not one of these columns.
+    expect(columns).not.toHaveProperty("certificateAuthorityReference");
+    expect(
+      factsFromColumns({ ...columns, certificateAuthorityReference: "Letter in the file" }),
+    ).toEqual(stated);
+  });
+
+  it("stores the artist and London Art Exchange as publishers without a name", () => {
+    for (const kind of ["artist", "lax"] as const) {
+      const columns = factsToColumns({ ...UNSIGNED_FACTS, publishedBy: { kind } });
+      expect(columns).toMatchObject({ publishedByKind: kind, publishedByName: null });
+      expect(factsFromColumns(columns).publishedBy).toEqual({ kind });
+    }
+  });
+
+  it("clears the authority columns when the certificate is not London Art Exchange's", () => {
+    expect(factsToColumns(HAND_SIGNED_FACTS)).toMatchObject({
+      certificateAuthorityGivenBy: null,
+      certificateAuthorityDatedOn: null,
+    });
   });
 
   it("leaves unused signature and certificate columns empty", () => {

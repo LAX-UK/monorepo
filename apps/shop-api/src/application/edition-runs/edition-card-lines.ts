@@ -19,6 +19,7 @@ export async function editionCardLines(
   const lines = new Map<string, string>();
   if (artworkIds.length === 0) return lines;
   for (const { artworkId, run, facts } of await reader.runsWithFacts([...new Set(artworkIds)])) {
+    // A print sold on its own reads as its run on a card: the card says what the run is.
     if (!facts.confirmed) continue;
     lines.set(artworkId, describeEditionFacts(run, facts).cardLine);
   }

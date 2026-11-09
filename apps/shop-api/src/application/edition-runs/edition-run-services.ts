@@ -10,16 +10,23 @@ import {
 import { mainRunSpec, newRunCommand } from "./edition-run-input.js";
 import type { Clock, EditionRunUnitOfWork } from "./edition-run.ports.js";
 import { createSaveEditionFactsService } from "./save-edition-facts.service.js";
+import { createSetPrintApartService } from "./set-print-apart.service.js";
 
 /** The edition run use cases, wired to one unit of work. */
-export function createEditionRunServices(deps: { uow: EditionRunUnitOfWork; clock: Clock }) {
+export function createEditionRunServices(deps: {
+  uow: EditionRunUnitOfWork;
+  clock: Clock;
+  laxCertificatesEnabled?: () => boolean;
+}) {
   const facts = createSaveEditionFactsService(deps);
   const stock = createAddOpenEditionStockService(deps);
   const runs = createEditionRunService({ uow: deps.uow, facts, stock });
   const listings = createLinkedListingService({ uow: deps.uow, runs, facts });
   const printsFromOriginal = createPrintsFromOriginalService({ uow: deps.uow, runs });
+  const setApart = createSetPrintApartService(deps);
   return {
     runs,
+    setApart,
     printsFromOriginal,
     facts,
     stock,

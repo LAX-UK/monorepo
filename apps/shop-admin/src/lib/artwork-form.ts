@@ -424,3 +424,24 @@ export function appendImages(
 }
 
 export type { FieldErrors };
+
+/**
+ * Problems the API names against a field in a 400 (`issues: [{ field, message }]`), for the fields
+ * this form has. Text that makes a claim about the print is the one case today.
+ */
+export function artworkFieldErrorsFromIssues(
+  issues: readonly unknown[] | undefined,
+): Partial<Record<ArtworkFormField, string>> {
+  const errors: Partial<Record<ArtworkFormField, string>> = {};
+  for (const issue of issues ?? []) {
+    const { field, message } = (issue ?? {}) as { field?: unknown; message?: unknown };
+    if (
+      typeof field === "string" &&
+      typeof message === "string" &&
+      (ARTWORK_FORM_FIELDS as readonly string[]).includes(field)
+    ) {
+      errors[field as ArtworkFormField] = message;
+    }
+  }
+  return errors;
+}

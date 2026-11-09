@@ -64,6 +64,8 @@ export function createAuthIssuer(options: {
   accountAccessClaims: (input: { subjectId: string; clientId: string }) => Promise<OidcClaims>;
   identityEventPublisher: IdentityEventPublisher;
   securityNotices: SecurityNoticePublisher;
+  /** Called when a Google or Apple sign-in could not read the facts it depends on. */
+  onSocialPolicyReadFailed?: (error: unknown) => void;
 }): ReturnType<typeof createAuth> {
   const lifecycle = createAuthLifecycleCallbacks({
     markUserForOAuthAttribution: (userId) =>
@@ -162,6 +164,9 @@ export function createAuthIssuer(options: {
       ? `${env.LAX_ACCOUNT_ORIGIN.replace(/\/$/, "")}/account/security`
       : `${env.WEB_ORIGIN.replace(/\/$/, "")}/dashboard/settings/sessions`,
     revokeAllSessions: createPasswordResetSessionRevoker(options),
+    ...(options.onSocialPolicyReadFailed
+      ? { onSocialPolicyReadFailed: options.onSocialPolicyReadFailed }
+      : {}),
     ...lifecycle,
     onUserUpdated: (user) =>
       publishIdentityProfileUpdated(options.identityEventPublisher, {

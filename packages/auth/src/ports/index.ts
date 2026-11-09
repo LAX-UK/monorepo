@@ -43,6 +43,8 @@ export type {
 } from "./breached-password-checker.js";
 
 export type AuthPorts = {
+  /** Staff and organisation markers and two-step state: what the Google and Apple rules read. */
+  twoFactorPolicyStore: import("./two-factor-policy-store.js").TwoFactorPolicyStore;
   consentStore: import("./consent-store.js").ConsentStore;
   jwksStore: import("./jwks-store.js").JwksStore;
   sessionStampStore: import("./session-stamp-store.js").SessionStampStore;

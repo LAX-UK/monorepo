@@ -3,8 +3,13 @@ import {
   type CollectionBookingSettings,
   accountPurchaseScope,
   collectionBookingOffer,
+  collectionSettingsFromPlace,
+  summariseWeeklyHours,
 } from "@auction/domain";
-import type { IAccountPurchaseFactsReader } from "@auction/persistence/interfaces";
+import type {
+  IAccountPurchaseFactsReader,
+  ICollectionPlaceRepository,
+} from "@auction/persistence/interfaces";
 import { err, ok } from "neverthrow";
 import type {
   BuyingResult,
@@ -20,13 +25,16 @@ export interface ICollectionPlaceLookup {
 
 /**
  * How to book a collection for a purchase the member can see. The booking route itself is a
- * domain rule over the saleroom's settings, so self-serve slots open only once operations switch
- * them on with confirmed hours and capacity.
+ * domain rule over the place's settings, so self-serve slots open only once staff switch them on.
+ * A place set up in Bid admin decides for itself (its switch, capacity and hours); a place that
+ * has not been set up keeps using the environment settings.
  */
 export class CollectionBookingService implements ICollectionBookingService {
   constructor(
     private readonly deps: {
+      /** The environment's settings: the fallback for a place that has not been set up. */
       settings: CollectionBookingSettings;
+      collectionPlaces: Pick<ICollectionPlaceRepository, "findForLot">;
       purchases: IAccountPurchaseFactsReader;
       places: ICollectionPlaceLookup;
     },
@@ -44,7 +52,20 @@ export class CollectionBookingService implements ICollectionBookingService {
     });
     if (!row) return err(buyingError("purchase_not_found"));
     return ok(
-      collectionBookingOffer(this.deps.settings, await this.deps.places.placeForLot(lotId)),
+      collectionBookingOffer(
+        await this.settingsFor(lotId),
+        await this.deps.places.placeForLot(lotId),
+      ),
+    );
+  }
+
+  private async settingsFor(lotId: string): Promise<CollectionBookingSettings> {
+    const place = await this.deps.collectionPlaces.findForLot(lotId);
+    if (!place) return this.deps.settings;
+    return collectionSettingsFromPlace(
+      place.settings,
+      summariseWeeklyHours(place.hours),
+      this.deps.settings,
     );
   }
 }

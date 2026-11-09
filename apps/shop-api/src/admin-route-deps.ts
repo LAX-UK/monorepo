@@ -7,6 +7,7 @@ import type { ZohoLinkService } from "./application/artwork-register/zoho-link.s
 import type { DeliveryRegionsService } from "./application/delivery-regions/delivery-regions.service.js";
 import type { EditionRunServices } from "./application/edition-runs/edition-run-services.js";
 import type { EnquiryInboxService } from "./application/enquiry-inbox.service.js";
+import type { FramingService } from "./application/framing/framing.service.js";
 import type { GuestErasureService } from "./application/guest-erasure/guest-erasure.service.js";
 import type { ShopMediaUploadHandlers } from "./application/handlers/shop-media-upload.handler.js";
 import type { HomeFeaturesService } from "./application/home-features/home-features.service.js";
@@ -27,6 +28,7 @@ import type {
   CreateOriginalSaleCommand,
   OriginalSaleWriter,
 } from "./application/ports/original-sale.writer.js";
+import type { PrintPartyStore } from "./application/ports/print-party.store.js";
 import type {
   GrantSaleAuthorityCommand,
   SaleAuthorityWriter,
@@ -104,6 +106,8 @@ export type AdminRoutesDeps = {
   >;
   /** Release alert subscriber counts. */
   releaseAlertSummary: ReleaseAlertSummaryReader;
+  /** The printers and publishers list in Settings. */
+  printParties: PrintPartyStore;
   artistApplicationReview: ArtistApplicationReviewService;
   productionTasks: ProductionTaskService;
   savedViews: SavedViewService;
@@ -148,6 +152,8 @@ export type AdminRoutesDeps = {
   artCache: ArtCacheInvalidator;
   /** Featured on home: the prints, artists and categories the home pages feature. */
   homeFeatures: HomeFeaturesService;
+  /** The framing catalogue: options, their prices per size band and lead times. */
+  framing: FramingService;
   /** Where the Shop delivers: regions, lead times, fixed prices and countries not delivered to. */
   deliveryRegions: DeliveryRegionsService;
   thirdPartySales: {

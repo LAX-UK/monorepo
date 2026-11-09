@@ -8,7 +8,6 @@ import { type Static, Type } from "@sinclair/typebox";
 
 export const PRINT_SCAN_MAX_LENGTH = 64;
 export const SWAP_REASON_FIELD_MAX = 300;
-export const AUTHORITY_REFERENCE_FIELD_MAX = 200;
 
 export const AdminCertificateStatusSchema = Type.Union([
   /** The run has no certificate. */
@@ -132,15 +131,6 @@ export const AdminCertificatesToSendSchema = Type.Object({
   items: Type.Array(AdminCertificateToSendSchema),
 });
 export type AdminCertificatesToSend = Static<typeof AdminCertificatesToSendSchema>;
-
-export const AdminCertificateAuthorityBodySchema = Type.Object(
-  {
-    /** Where the artist's written authority is kept: a document name, date or filing reference. */
-    reference: Type.String({ minLength: 1, maxLength: AUTHORITY_REFERENCE_FIELD_MAX }),
-  },
-  { additionalProperties: false },
-);
-export type AdminCertificateAuthorityBody = Static<typeof AdminCertificateAuthorityBodySchema>;
 
 export const AdminHorsCommerceApprovalResponseSchema = Type.Object({
   approvedAt: Type.String({ format: "date-time" }),

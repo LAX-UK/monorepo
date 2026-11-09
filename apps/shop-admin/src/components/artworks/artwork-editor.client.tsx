@@ -8,10 +8,6 @@ import {
   ReadOnlyMedia,
   ReadOnlySearchListing,
 } from "@/components/artworks/artwork-read-only-sections";
-import {
-  CertificateAuthorityCard,
-  laxIssuesCertificate,
-} from "@/components/artworks/edition-runs/certificate-authority-card.client";
 import { CreatePrintsDialog } from "@/components/artworks/edition-runs/create-prints-dialog.client";
 import { EditionFactsCard } from "@/components/artworks/edition-runs/edition-facts-card.client";
 import { EditionRunCard } from "@/components/artworks/edition-runs/edition-run-card.client";
@@ -26,6 +22,8 @@ import {
   PrintsRunSection,
 } from "@/components/artworks/edition-runs/prints-create-sections.client";
 import { ProofListingDialog } from "@/components/artworks/edition-runs/proof-listing-dialog.client";
+import { RunPrintsCard } from "@/components/artworks/edition-runs/run-prints-card.client";
+import { SetApartCard } from "@/components/artworks/edition-runs/set-apart-card.client";
 import { OfferAtAuctionDialog } from "@/components/artworks/offer-at-auction-dialog.client";
 import { OriginalArtworkPicker } from "@/components/artworks/original-artwork-picker.client";
 import { ZohoOwnedDetails, ZohoOwnedMedia } from "@/components/artworks/zoho-owned-details";
@@ -38,6 +36,7 @@ import {
   type ArtworkFormValues,
   artworkConflictField,
   artworkErrorSummary,
+  artworkFieldErrorsFromIssues,
   artworkFieldId,
   artworkFormValues,
   buildArtworkCreateBody,
@@ -139,6 +138,7 @@ import {
   TextInput,
   UnsavedChangesDialog,
   formatStaffDateTime,
+  formatStaffMoney,
   parsePoundsToPence,
   toast,
   useStaffAccess,
@@ -410,8 +410,13 @@ export function ArtworkEditor({
       setSaving(false);
       if (!result.ok) {
         const field = result.kind === "conflict" ? artworkConflictField(result.message) : null;
+        const named =
+          result.kind === "validation" ? artworkFieldErrorsFromIssues(result.issues) : {};
         if (result.kind === "conflict" && field) {
           setServerErrors({ [field]: result.message });
+          setFailedSubmits((count) => count + 1);
+        } else if (Object.keys(named).length > 0) {
+          setServerErrors(named);
           setFailedSubmits((count) => count + 1);
         } else setFormError(adminMutationErrorMessage(result));
         toast.error(wantsPrints ? "Nothing was created" : "The artwork was not created");
@@ -448,8 +453,12 @@ export function ArtworkEditor({
     setSaving(false);
     if (!result.ok) {
       setBaseline(previous);
+      const named = result.kind === "validation" ? artworkFieldErrorsFromIssues(result.issues) : {};
       if (result.kind === "conflict" && result.currentVersion) {
         setConflict({ currentVersion: result.currentVersion });
+      } else if (Object.keys(named).length > 0) {
+        setServerErrors(named);
+        setFailedSubmits((count) => count + 1);
       } else {
         setFormError(adminMutationErrorMessage(result));
       }
@@ -1361,25 +1370,41 @@ export function ArtworkEditor({
 
         {record && run ? (
           <>
-            <EditionRunCard
-              artworkId={record.artworkId}
-              run={run}
-              version={version ?? record.version}
-              linkedToOriginal={values.sourceOriginalId !== null}
-              canWrite={permissions.write}
-              onSaved={setVersion}
-            />
-            <EditionFactsCard
-              artworkId={record.artworkId}
-              title={record.title}
-              run={run}
-              permissions={{ write: permissions.write, correct: permissions.correctFacts }}
-            />
-            {laxIssuesCertificate(run) ? (
-              <CertificateAuthorityCard
+            {run.setApart ? (
+              <SetApartCard
                 artworkId={record.artworkId}
-                authority={run.certificateAuthority}
+                setApart={run.setApart}
                 canWrite={permissions.write}
+              />
+            ) : (
+              <>
+                <EditionRunCard
+                  artworkId={record.artworkId}
+                  run={run}
+                  version={version ?? record.version}
+                  linkedToOriginal={values.sourceOriginalId !== null}
+                  canWrite={permissions.write}
+                  onSaved={setVersion}
+                />
+                <EditionFactsCard
+                  artworkId={record.artworkId}
+                  title={record.title}
+                  run={run}
+                  permissions={{ write: permissions.write, correct: permissions.correctFacts }}
+                />
+              </>
+            )}
+            {run.prints ? (
+              <RunPrintsCard
+                artworkId={record.artworkId}
+                title={record.title}
+                spec={run.spec}
+                runPrice={
+                  record.printPricePence === null ? null : formatStaffMoney(record.printPricePence)
+                }
+                runSignature={run.factsConfirmed && run.facts ? run.facts.signature : null}
+                prints={run.prints}
+                permissions={{ write: permissions.write, setPrice: permissions.setPrice }}
               />
             ) : null}
             {run.horsCommerce ? (

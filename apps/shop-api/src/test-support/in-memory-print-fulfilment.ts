@@ -216,11 +216,6 @@ export function createInMemoryPrintFulfilment(options?: {
             createdAt: new Date("2026-11-01T00:00:00Z"),
           }));
       },
-      async recordAuthority({ reference, at }) {
-        if (state.facts === null) return false;
-        state.authority = { reference, recordedAt: at };
-        return true;
-      },
     },
     events: { append: async (event) => void events.push(event) },
     domainEvents: { append: async (event) => void domainEvents.push(event) },

@@ -1,6 +1,8 @@
 import {
   type EditionFactRows,
   type EditionFacts,
+  type Publisher,
+  type Stamp,
   describeAlsoAvailable,
   describeEditionFacts,
   describeEditionRun,
@@ -12,6 +14,7 @@ import {
   isOpenRun,
   runSize,
 } from "./edition-run.js";
+import { type PrintException, type SetApartPrint, setApartPrintOf } from "./print-exception.js";
 
 /**
  * The part of a run a storefront may know: its kind and size. Allocation, splits and owners stay
@@ -23,7 +26,11 @@ export type PublicEditionRun =
   | { kind: "proof"; proofType: ProofType; size: number };
 
 /** The confirmed facts as a storefront receives them: who confirmed them stays inside. */
-export type PublicEditionFacts = Pick<EditionFacts, "numbering" | "signature" | "certificate">;
+export type PublicEditionFacts = Pick<EditionFacts, "numbering" | "signature" | "certificate"> & {
+  stamp?: Stamp;
+  printedBy?: string | null;
+  publishedBy?: Publisher | null;
+};
 
 /** Proofs a main run kept, without the BAT proof, which is never listed or mentioned. */
 export type PublicProofsKept = Pick<ProofsKept, "ap" | "pp" | "hc">;
@@ -63,10 +70,13 @@ function toFacts(facts: PublicEditionFacts | null): EditionFacts | null {
   return facts ? { ...facts, confirmed: null } : null;
 }
 
+/** What a storefront may know about a print sold on its own: which print, and what differs. */
+export type PublicSetApart = { print: SetApartPrint; exception: PrintException };
+
 export type PublicEditionDescription = {
   /** "Limited edition print", "Open edition print" or "Artist's proof". */
   eyebrow: string;
-  /** Edition, Signature, Number, Certificate, Proofs: null until staff confirm the facts. */
+  /** Edition, Signature, Number, Certificate, Stamp, Printed by, Published by, Proofs: null until staff confirm the facts. */
   rows: EditionFactRows | null;
   /** The edition row alone, which needs no confirmed facts. */
   edition: string;
@@ -84,14 +94,26 @@ export function describePublicEdition(input: {
   run: PublicEditionRun;
   facts: PublicEditionFacts | null;
   proofsKept?: PublicProofsKept | null;
+  setApart?: PublicSetApart | null;
 }): PublicEditionDescription {
   const spec = editionRunFromPublic(input.run);
   const facts = toFacts(input.facts);
   const base = describeEditionRun(spec);
   const proofsKept = input.proofsKept ? { ...input.proofsKept, bat: 0 } : undefined;
-  const full = facts ? describeEditionFacts(spec, facts, proofsKept ? { proofsKept } : {}) : null;
+  const setApart = input.setApart ?? undefined;
+  const full = facts
+    ? describeEditionFacts(spec, facts, {
+        ...(proofsKept ? { proofsKept } : {}),
+        ...(setApart ? { setApart } : {}),
+      })
+    : null;
+  const printOf = setApart ? setApartPrintOf(setApart.print) : null;
   return {
-    eyebrow: base.eyebrow,
+    eyebrow:
+      full?.eyebrow ??
+      (printOf
+        ? `${base.eyebrow}, ${printOf.charAt(0).toLowerCase()}${printOf.slice(1)}`
+        : base.eyebrow),
     edition: base.edition,
     rows: full?.rows ?? null,
     basketLine: full?.basketLine ?? null,
