@@ -3,6 +3,7 @@ import {
   type AccountPasskey,
   type AccountSignInMethodError,
   type AccountSignInMethodsResponse,
+  PASSKEY_NAME_INPUT_MAX_LENGTH,
   PASSKEY_NAME_MAX_LENGTH,
   type SocialSignInProvider,
 } from "@auction/identity-contracts";
@@ -64,7 +65,7 @@ export function presentPasskey(row: PasskeyRow): AccountPasskey {
 export type AccountSignInMethodsPorts = {
   operations: Pick<
     IdentityOperationsService,
-    "listSessions" | "readSignInMethods" | "unlinkSocialSignIn"
+    "listSessions" | "readSignInMethods" | "unlinkSocialSignIn" | "removePasskey" | "renamePasskey"
   >;
   /** Ends relying-party sessions and tokens, retrying from the durable outbox if that fails. */
   durable: Pick<DurableSecurityEffects, "settle">;
@@ -73,6 +74,15 @@ export type AccountSignInMethodsPorts = {
   /** What this environment offers. Nothing is offered unless it is named here. */
   available?: SignInMethodsAvailability;
 };
+
+export type RenamePasskeyResult =
+  | { ok: true; passkey: AccountPasskey }
+  | { ok: false; kind: "not_linked" | "invalid_name" };
+
+export type RemovePasskeyResult =
+  | { ok: true; revokedSessions: number }
+  | ReauthRequired
+  | { ok: false; kind: AccountSignInMethodRefusal };
 
 export type UnlinkSignInMethodResult =
   | { ok: true; unlinked: SocialSignInProvider; revokedSessions: number }
@@ -111,6 +121,65 @@ export class AccountSignInMethodsService {
       passkeys: methods.passkeys.map(presentPasskey),
       available: this.ports.available ?? { google: false, apple: false, passkey: false },
     };
+  }
+
+  /**
+   * Gives one of the person's passkeys a name they can tell it by. A name is a short line of
+   * text: trimmed, at least one character, at most {@link PASSKEY_NAME_INPUT_MAX_LENGTH}. Another
+   * person's passkey answers as not linked. No recent sign-in is needed: a name changes nothing
+   * about how anyone signs in.
+   */
+  async renamePasskey(
+    subjectId: string,
+    passkeyId: string,
+    rawName: string,
+  ): Promise<RenamePasskeyResult> {
+    const name = rawName.trim();
+    if (name.length < 1 || name.length > PASSKEY_NAME_INPUT_MAX_LENGTH) {
+      return { ok: false, kind: "invalid_name" };
+    }
+    const renamed = await this.ports.operations.renamePasskey(subjectId, passkeyId, name);
+    return renamed
+      ? { ok: true, passkey: presentPasskey(renamed) }
+      : { ok: false, kind: "not_linked" };
+  }
+
+  /**
+   * Removes one of the person's passkeys. It needs a recent sign-in, is refused when it would
+   * leave no password, provider or other passkey (SM7), and, exactly as removing Google, ends
+   * every other sign-in and the products' tokens (the usual reason is a lost or sold device) and
+   * emails the person, naming the passkey and the browser.
+   */
+  async removePasskey(
+    subjectId: string,
+    currentSessionId: string,
+    passkeyId: string,
+  ): Promise<RemovePasskeyResult> {
+    const current = await this.sessions.findRecent(subjectId, currentSessionId);
+    if (!current) return { ok: false, reason: "reauth_required" };
+    let outcome: { revokedSessionIds: string[]; name: string | null };
+    try {
+      outcome = await this.ports.operations.removePasskey(subjectId, passkeyId, currentSessionId);
+    } catch (error) {
+      if (error instanceof IdentityOperationError && REFUSALS.has(error.code)) {
+        return { ok: false, kind: error.code as AccountSignInMethodRefusal };
+      }
+      throw error;
+    }
+    await this.ports.durable.settle(ACCOUNT_SIGN_IN_METHODS_PATH, {
+      kind: "revoke_tokens_except_session",
+      userId: subjectId,
+      keepSessionId: currentSessionId,
+    });
+    void this.ports.notices.notify({
+      kind: "sign_in_method_removed",
+      userId: subjectId,
+      at: this.now(),
+      method: "passkey",
+      detail: outcome.name,
+      userAgent: current.userAgent,
+    });
+    return { ok: true, revokedSessions: outcome.revokedSessionIds.length };
   }
 
   async unlink(

@@ -1,9 +1,13 @@
 import {
   ACCOUNT_REAUTH_REQUIRED,
   ACCOUNT_SIGN_IN_METHODS_INTENT_PATH,
+  ACCOUNT_SIGN_IN_METHODS_PASSKEY_REMOVE_PATH,
+  ACCOUNT_SIGN_IN_METHODS_PASSKEY_RENAME_PATH,
   ACCOUNT_SIGN_IN_METHODS_PATH,
   ACCOUNT_SIGN_IN_METHODS_UNLINK_PATH,
   type AccountActionIntentResponse,
+  type AccountPasskeyRemovedResponse,
+  type AccountPasskeyRenamedResponse,
   type AccountSignInMethodsResponse,
   signInMethodKindSchema,
   socialSignInProviderSchema,
@@ -17,7 +21,7 @@ import type {
 import { type AccountCallerDeps, authenticateAccountCaller } from "./account-caller.js";
 
 export type AccountSignInMethodsRouteDeps = Omit<AccountCallerDeps, "rateLimit"> & {
-  methods: Pick<AccountSignInMethodsService, "read" | "unlink">;
+  methods: Pick<AccountSignInMethodsService, "read" | "unlink" | "renamePasskey" | "removePasskey">;
   /** Starts the one-time hand-off for adding a way to sign in. */
   actions: Pick<AccountActionService, "start">;
   /** Budget for reads. */
@@ -81,6 +85,51 @@ export function createAccountSignInMethodsRoutes(deps: AccountSignInMethodsRoute
       return "reason" in result
         ? c.json({ error: ACCOUNT_REAUTH_REQUIRED }, 403)
         : c.json({ error: result.kind }, INTENT_REFUSAL_STATUS[result.kind]);
+    } catch (error) {
+      deps.onFailure?.(error);
+      return c.json({ error: "temporarily_unavailable" }, 503);
+    }
+  });
+
+  app.post(ACCOUNT_SIGN_IN_METHODS_PASSKEY_RENAME_PATH, async (c) => {
+    const caller = await authenticateAccountCaller(c, { ...deps, rateLimit: deps.writeRateLimit });
+    if (caller instanceof Response) return caller;
+    const passkeyId = caller.params.get("passkeyId");
+    const name = caller.params.get("name");
+    if (!passkeyId || name === null) return c.json({ error: "invalid_request" }, 400);
+    try {
+      const result = await deps.methods.renamePasskey(caller.subjectId, passkeyId, name);
+      if (result.ok) {
+        const body: AccountPasskeyRenamedResponse = { passkey: result.passkey };
+        return c.json(body);
+      }
+      return result.kind === "invalid_name"
+        ? c.json({ error: "invalid_request" }, 400)
+        : c.json({ error: result.kind }, REFUSAL_STATUS[result.kind]);
+    } catch (error) {
+      deps.onFailure?.(error);
+      return c.json({ error: "temporarily_unavailable" }, 503);
+    }
+  });
+
+  app.post(ACCOUNT_SIGN_IN_METHODS_PASSKEY_REMOVE_PATH, async (c) => {
+    const caller = await authenticateAccountCaller(c, { ...deps, rateLimit: deps.writeRateLimit });
+    if (caller instanceof Response) return caller;
+    const sid = caller.params.get("sid");
+    const passkeyId = caller.params.get("passkeyId");
+    if (!sid || !passkeyId) return c.json({ error: "invalid_request" }, 400);
+    try {
+      const result = await deps.methods.removePasskey(caller.subjectId, sid, passkeyId);
+      if (result.ok) {
+        const body: AccountPasskeyRemovedResponse = {
+          removed: true,
+          revokedSessions: result.revokedSessions,
+        };
+        return c.json(body);
+      }
+      return "reason" in result
+        ? c.json({ error: ACCOUNT_REAUTH_REQUIRED }, 403)
+        : c.json({ error: result.kind }, REFUSAL_STATUS[result.kind]);
     } catch (error) {
       deps.onFailure?.(error);
       return c.json({ error: "temporarily_unavailable" }, 503);

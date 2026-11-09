@@ -72,6 +72,7 @@ import { AccountSignInMethodsService } from "../services/account-sign-in-methods
 import type { DurableSecurityEffects } from "../services/durable-security-effects.js";
 import type { EmailChangeService } from "../services/email-change.service.js";
 import type { IdentityOperationsService } from "../services/identity-operations.service.js";
+import type { PasskeyEnrolmentGrants } from "../services/passkey-enrolment-grant.js";
 import { RecentSessionGuard } from "../services/recent-session-guard.js";
 import type { IRefreshTokenFamilyRepository } from "../services/refresh-token-family.ports.js";
 import type { RefreshedIdTokenService } from "../services/refreshed-id-token.service.js";
@@ -101,6 +102,8 @@ export type OidcRouteMountOptions = {
   clientIp: ClientIpResolver;
   services: AuthRouteServicesSlice;
   identityOperations: IdentityOperationsService;
+  /** Permission to make a passkey, given when the hand-off for adding one is spent. */
+  passkeyGrants: Pick<PasskeyEnrolmentGrants, "grant">;
   /** What the Google and Apple rules read about a person: staff markers and two-step. */
   socialSubjectPorts: SocialSubjectPorts;
   emailChange: EmailChangeService;
@@ -339,11 +342,12 @@ export function mountOidcRoutes(app: Hono, options: OidcRouteMountOptions): void
   const signInMethodsAvailable = {
     google: Boolean(options.env.GOOGLE_CLIENT_ID && options.env.GOOGLE_CLIENT_SECRET),
     apple: Boolean(options.env.APPLE_CLIENT_ID && options.env.APPLE_CLIENT_SECRET),
-    // Passkeys are switched on when the issuer can create and check them.
-    passkey: false,
+    // Passkeys are on when the environment turns them on: the issuer can then create and check them.
+    passkey: options.env.PASSKEYS_ENABLED,
   };
   const accountActions = new AccountActionService({
     tickets: new RedisAccountActionTicketStore(options.redis),
+    grants: options.passkeyGrants,
     operations: options.identityOperations,
     readSubject: async (subjectId) => ({
       isStaff: (await readSocialSubject(options.socialSubjectPorts, subjectId)).isStaff,

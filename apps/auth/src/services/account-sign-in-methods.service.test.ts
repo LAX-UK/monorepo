@@ -37,6 +37,20 @@ function setup(sessions: IdentitySession[], unlink?: () => Promise<unknown>) {
       passkeys: [],
     }),
     unlinkSocialSignIn: vi.fn(unlink ?? (async () => ({ revokedSessionIds: ["other-1"] }))),
+    removePasskey: vi.fn(async () => ({ revokedSessionIds: ["other-1"], name: "iCloud Keychain" })),
+    renamePasskey: vi.fn(async (_subject: string, id: string, name: string) =>
+      id === "pk-1"
+        ? {
+            id: "pk-1",
+            name,
+            deviceType: "multiDevice" as const,
+            backedUp: true,
+            transports: "internal",
+            createdAt: new Date("2026-10-02T09:00:00Z"),
+            lastUsedAt: null,
+          }
+        : null,
+    ),
   };
   const durable = { settle: vi.fn(async () => undefined) };
   const notices = { notify: vi.fn(async () => undefined) };
@@ -240,5 +254,101 @@ describe("AccountSignInMethodsService.unlink", () => {
       throw new Error("database down");
     });
     await expect(service.unlink(SUBJECT, "current", "google")).rejects.toThrow("database down");
+  });
+});
+
+describe("AccountSignInMethodsService.renamePasskey", () => {
+  it("names the person's own passkey, trimmed, and shows it as the person sees it", async () => {
+    const { service, operations } = setup([fresh]);
+    const result = await service.renamePasskey(SUBJECT, "pk-1", "  Work laptop ");
+    expect(operations.renamePasskey).toHaveBeenCalledWith(SUBJECT, "pk-1", "Work laptop");
+    expect(result).toMatchObject({
+      ok: true,
+      passkey: { id: "pk-1", name: "Work laptop", synced: true },
+    });
+  });
+
+  it("refuses an empty name and one over 40 characters, changing nothing", async () => {
+    const { service, operations } = setup([fresh]);
+    expect(await service.renamePasskey(SUBJECT, "pk-1", "   ")).toEqual({
+      ok: false,
+      kind: "invalid_name",
+    });
+    expect(await service.renamePasskey(SUBJECT, "pk-1", "x".repeat(41))).toEqual({
+      ok: false,
+      kind: "invalid_name",
+    });
+    expect((await service.renamePasskey(SUBJECT, "pk-1", "x".repeat(40))).ok).toBe(true);
+    expect(operations.renamePasskey).toHaveBeenCalledTimes(1);
+  });
+
+  it("answers not linked for a passkey that is not the person's", async () => {
+    const { service } = setup([fresh]);
+    expect(await service.renamePasskey(SUBJECT, "pk-of-someone-else", "Mine")).toEqual({
+      ok: false,
+      kind: "not_linked",
+    });
+  });
+});
+
+describe("AccountSignInMethodsService.removePasskey", () => {
+  it("removes the passkey, ends every other sign-in and the products' tokens, and emails the person", async () => {
+    const { service, operations, durable, notices } = setup([fresh]);
+    const result = await service.removePasskey(SUBJECT, "current", "pk-1");
+    expect(result).toEqual({ ok: true, revokedSessions: 1 });
+    expect(operations.removePasskey).toHaveBeenCalledWith(SUBJECT, "pk-1", "current");
+    expect(durable.settle).toHaveBeenCalledWith(
+      "account-sign-in-methods",
+      expect.objectContaining({ kind: "revoke_tokens_except_session", keepSessionId: "current" }),
+    );
+    expect(notices.notify).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: "sign_in_method_removed",
+        method: "passkey",
+        detail: "iCloud Keychain",
+        userAgent: "Mozilla/5.0 (Macintosh) Chrome/130.0",
+      }),
+    );
+  });
+
+  it("needs a recent sign-in, and removes, ends and emails nothing without one", async () => {
+    const { service, operations, durable, notices } = setup([stale]);
+    expect(await service.removePasskey(SUBJECT, "current", "pk-1")).toEqual({
+      ok: false,
+      reason: "reauth_required",
+    });
+    expect(operations.removePasskey).not.toHaveBeenCalled();
+    expect(durable.settle).not.toHaveBeenCalled();
+    expect(notices.notify).not.toHaveBeenCalled();
+  });
+
+  it("refuses the last method, ending nothing and telling nobody", async () => {
+    const { service, operations, durable, notices } = setup([fresh]);
+    operations.removePasskey.mockRejectedValueOnce(
+      new IdentityOperationError("last_sign_in_method"),
+    );
+    expect(await service.removePasskey(SUBJECT, "current", "pk-1")).toEqual({
+      ok: false,
+      kind: "last_sign_in_method",
+    });
+    expect(durable.settle).not.toHaveBeenCalled();
+    expect(notices.notify).not.toHaveBeenCalled();
+  });
+
+  it("answers not linked for a passkey that is not the person's", async () => {
+    const { service, operations } = setup([fresh]);
+    operations.removePasskey.mockRejectedValueOnce(new IdentityOperationError("not_linked"));
+    expect(await service.removePasskey(SUBJECT, "current", "pk-9")).toEqual({
+      ok: false,
+      kind: "not_linked",
+    });
+  });
+
+  it("lets an unexpected failure through", async () => {
+    const { service, operations } = setup([fresh]);
+    operations.removePasskey.mockRejectedValueOnce(new Error("database down"));
+    await expect(service.removePasskey(SUBJECT, "current", "pk-1")).rejects.toThrow(
+      "database down",
+    );
   });
 });
