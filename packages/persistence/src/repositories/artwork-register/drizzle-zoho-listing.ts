@@ -9,7 +9,7 @@ import {
   sale,
   zohoListingSyncRun,
 } from "@auction/db/schema";
-import { and, asc, desc, eq, gt, inArray, isNull, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, inArray, isNull, lte, or, sql } from "drizzle-orm";
 import type {
   IZohoListingLock,
   IZohoListingRunReader,
@@ -117,6 +117,31 @@ export class DrizzleZohoListingSourceReader implements IZohoListingSourceReader 
       .selectDistinct({ registerId: lot.artworkRegisterId })
       .from(lot)
       .where(and(eq(lot.saleId, saleId), sql`${lot.artworkRegisterId} IS NOT NULL`));
+    return rows.flatMap((row) => (row.registerId ? [row.registerId] : []));
+  }
+
+  async registerIdsForSalesStartedBetween(
+    window: { from: Date; to: Date },
+    after: string | null,
+    limit: number,
+  ): Promise<string[]> {
+    const rows = await this.db
+      .selectDistinct({ registerId: lot.artworkRegisterId })
+      .from(lot)
+      .innerJoin(sale, eq(sale.id, lot.saleId))
+      .where(
+        and(
+          eq(sale.status, "scheduled"),
+          isNull(sale.deletedAt),
+          isNull(lot.deletedAt),
+          gt(sale.startTime, window.from),
+          lte(sale.startTime, window.to),
+          sql`${lot.artworkRegisterId} IS NOT NULL`,
+          after ? gt(lot.artworkRegisterId, after) : sql`TRUE`,
+        ),
+      )
+      .orderBy(asc(lot.artworkRegisterId))
+      .limit(limit);
     return rows.flatMap((row) => (row.registerId ? [row.registerId] : []));
   }
 

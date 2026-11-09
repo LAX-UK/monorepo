@@ -390,6 +390,9 @@ export function createWorkerContainer(): WorkerContainer {
           runZohoListingNightlyCheck: async () => {
             await zohoArtworkListing.reconcile.run();
           },
+          runZohoListingSaleStartCheck: async () => {
+            await zohoArtworkListing.saleStart.run();
+          },
         }
       : {}),
   });

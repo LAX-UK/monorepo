@@ -11,6 +11,7 @@ import { ShopApiLaxArtListings } from "../integrations/zoho/artwork/listing/lax-
 import { ListingLinks } from "../integrations/zoho/artwork/listing/listing-links.js";
 import { CrmZohoListingProducts } from "../integrations/zoho/artwork/listing/zoho-listing-products.js";
 import { ZohoListingReconcile } from "../integrations/zoho/artwork/listing/zoho-listing-reconcile.js";
+import { ZohoListingSaleStartPass } from "../integrations/zoho/artwork/listing/zoho-listing-sale-start.js";
 import { ZohoListingSync } from "../integrations/zoho/artwork/listing/zoho-listing-sync.js";
 import { ZohoListingWriteback } from "../integrations/zoho/artwork/listing/zoho-listing-writeback.js";
 import { createZohoCrmBatchStack } from "../integrations/zoho/create-zoho-crm-gateway.js";
@@ -19,6 +20,8 @@ export type ZohoArtworkListingRuntime = {
   writeback: ZohoListingWriteback;
   /** The nightly pass that corrects drift. */
   reconcile: ZohoListingReconcile;
+  /** The frequent pass for sales that have just started on their own time. */
+  saleStart: ZohoListingSaleStartPass;
 };
 
 /**
@@ -65,5 +68,6 @@ export function createZohoArtworkListing(deps: {
       runs: new DrizzleZohoListingRunStore(db),
       log,
     }),
+    saleStart: new ZohoListingSaleStartPass({ sync, sources, log }),
   };
 }
