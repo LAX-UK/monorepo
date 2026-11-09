@@ -62,25 +62,57 @@ export async function handleChargeRefunded(
       return { processed: true, action: "skipped", reason: "refund_of_money_not_applied" };
     }
 
-    const payoutRepo = payoutRepoForTx(deps.payoutRepository, tx);
-    const cumulativeRefundedCents = charge.amount_refunded ?? charge.amount ?? 0;
-    const priorRefundedCents = await payoutRepo.sumRefundLineCentsForPayment(paymentRow.id);
-    const deltaCents = cumulativeRefundedCents - priorRefundedCents;
+    // One refund of this payment at a time (a staff refund, another event): what is recorded can
+    // only be summed correctly while the row is held, and the lookup above ran outside this
+    // transaction. Nothing below is read before the lock.
+    if (!(await deps.paymentRefunds.lockPaymentInTransaction(tx, paymentRow.id))) {
+      return { processed: true, action: "skipped", reason: "no_matching_payment" };
+    }
 
-    if (deltaCents <= 0) {
+    const cumulativeRefundedCents = charge.amount_refunded ?? charge.amount ?? 0;
+    // The buyer's record and the seller's ledger are measured separately. A refund the previous
+    // release processed has a payout line but no buyer row until the backfill is run again, and
+    // the seller must not be charged back for it a second time.
+    const { pence: recordedBuyerCents } = await deps.paymentRefunds.sumRefundedPenceInTransaction(
+      tx,
+      paymentRow.id,
+    );
+    const recordedSellerCents = await payoutRepoForTx(
+      deps.payoutRepository,
+      tx,
+    ).sumRefundLineCentsForPayment(paymentRow.id);
+    const buyerDeltaCents = cumulativeRefundedCents - recordedBuyerCents;
+    const sellerDeltaCents = cumulativeRefundedCents - recordedSellerCents;
+
+    if (buyerDeltaCents <= 0 && sellerDeltaCents <= 0) {
       return { processed: true, action: "skipped", reason: "no_new_refund_amount" };
     }
 
     const isFullRefund = cumulativeRefundedCents >= (charge.amount ?? cumulativeRefundedCents);
     if (isFullRefund) {
+      // False when staff refunded it first; the amounts above already account for that refund.
       await deps.payments.applyRefundedInTransaction(tx, paymentRow.id, null);
     }
 
-    const negativeAmount = (-deltaCents / 100).toFixed(2);
+    if (buyerDeltaCents > 0) {
+      await deps.paymentRefunds.recordInTransaction(tx, {
+        paymentId: paymentRow.id,
+        idempotencyKey: event.id,
+        amountPence: buyerDeltaCents,
+        currency: charge.currency,
+        source: "card_webhook",
+      });
+    }
+    if (sellerDeltaCents <= 0) {
+      // Only the buyer's record was behind: the seller was charged back when the previous release
+      // handled this refund, and was announced then.
+      return { processed: true, action: "skipped", reason: "refund_already_in_seller_ledger" };
+    }
+
     await deps.payoutAdjustments.addPaymentLineToOpenPayoutOrCreateClawback({
       legalEntityId: paymentRow.sellerLegalEntityId,
       paymentId: paymentRow.id,
-      amount: negativeAmount,
+      amount: (-sellerDeltaCents / 100).toFixed(2),
       kind: "refund",
       sourceEventId: event.id,
       note: `Refund: ${charge.id}`,
@@ -93,7 +125,7 @@ export async function handleChargeRefunded(
       eventType: "payment.refunded",
       payload: {
         stripeChargeId: charge.id,
-        amountCents: deltaCents,
+        amountCents: sellerDeltaCents,
         cumulativeRefundedCents,
         currency: charge.currency,
         sellerLegalEntityId: paymentRow.sellerLegalEntityId,

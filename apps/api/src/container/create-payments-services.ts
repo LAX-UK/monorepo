@@ -356,6 +356,7 @@ export function createPaymentsServices(
     heldCheckouts,
     bidInvoiceRepo,
     new InvoiceDueDateExtender(bidInvoiceRepo),
+    repos.paymentRefundRepository,
   );
 
   const invoiceRaiser = new InvoiceRaiser({ invoices: bidInvoiceRepo, sales: saleRepo });
@@ -400,6 +401,7 @@ export function createPaymentsServices(
     stripeClientFactory,
     transactionRunner: platform.transactionRunner,
     payments: paymentRepo,
+    paymentRefunds: repos.paymentRefundRepository,
     payouts: payoutRepository,
     payoutAdjustments: payoutAdjustmentService,
     capture: paymentCaptureService,
@@ -458,6 +460,7 @@ export function createPaymentsServices(
             recorder: unappliedMoney,
           }),
           paymentEligibility,
+          repos.paymentRefundRepository,
         )
       : null;
 

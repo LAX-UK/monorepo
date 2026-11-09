@@ -8,6 +8,7 @@ import type Stripe from "stripe";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { tryClaimProcessedStripeEvent } from "../lib/stripe-processed-event.js";
 import { mockDomainEventSink } from "../test/domain-event-sink-mock.js";
+import { InMemoryPaymentRefunds } from "../test/in-memory-payment-refunds.js";
 import type { IDisputeWebhookRecorder } from "./disputes/dispute-case-recorder.js";
 import type { IDomainEventSink } from "./domain-event-sink.js";
 import type { IPaymentCaptureService } from "./interfaces/payment-capture.js";
@@ -79,19 +80,27 @@ function createWebhookService(deps: {
   disputes?: IDisputeWebhookRecorder;
   unappliedMoney?: IUnappliedMoneyRecorder;
   paymentEligibility?: IPaymentEligibilityGate;
+  paymentRefunds?: InMemoryPaymentRefunds;
+  /** Pence of refund lines the seller's ledger already holds for the payment. */
+  sellerRefundedCents?: number;
 }) {
+  // The seller's ledger, which every clawback line lands in, as it does in the payout lines table.
+  let sellerCents = deps.sellerRefundedCents ?? 0;
   const payoutAdjustments = {
-    addPaymentLineToOpenPayoutOrCreateClawback: vi.fn().mockResolvedValue(undefined),
-    ...deps.payoutAdjustments,
-  } as IPayoutAdjustmentService;
+    addPaymentLineToOpenPayoutOrCreateClawback: vi.fn(async (line: { amount: string }) => {
+      sellerCents += Math.round(Math.abs(Number(line.amount)) * 100);
+      await deps.payoutAdjustments?.addPaymentLineToOpenPayoutOrCreateClawback?.(line as never);
+    }),
+  } as unknown as IPayoutAdjustmentService;
   const paymentCapture = {
     capture: vi.fn().mockResolvedValue({ captured: true }),
     ...deps.paymentCapture,
   } as IPaymentCaptureService;
   const payoutRepository = {
-    sumRefundLineCentsForPayment: vi.fn().mockResolvedValue(0),
+    sumRefundLineCentsForPayment: vi.fn(async () => sellerCents),
     ...deps.payoutRepository,
   } as IPayoutRepository;
+  const paymentRefunds = deps.paymentRefunds ?? new InMemoryPaymentRefunds();
   const publisher = deps.publisher ?? mockDomainEventSink();
   const unappliedMoney = deps.unappliedMoney ?? {
     record: vi.fn().mockResolvedValue(undefined),
@@ -149,8 +158,37 @@ function createWebhookService(deps: {
     unappliedMoney,
     null,
     deps.paymentEligibility ?? null,
+    paymentRefunds,
   );
-  return { svc, payoutAdjustments, paymentCapture, payoutRepository, publisher, unappliedMoney };
+  return {
+    svc,
+    payoutAdjustments,
+    paymentCapture,
+    payoutRepository,
+    publisher,
+    unappliedMoney,
+    paymentRefunds,
+  };
+}
+
+/** A refund already on record for a payment, as an earlier event or staff would have left it. */
+async function recorded(
+  paymentId: string,
+  amountPence: number,
+  source: "card_webhook" | "staff" = "card_webhook",
+) {
+  const refunds = new InMemoryPaymentRefunds();
+  await refunds.recordInTransaction(
+    {},
+    {
+      paymentId,
+      idempotencyKey: `earlier:${paymentId}:${amountPence}`,
+      amountPence,
+      currency: "GBP",
+      source,
+    },
+  );
+  return refunds;
 }
 
 describe("StripePaymentWebhookService dispute webhooks", () => {
@@ -235,9 +273,11 @@ describe("StripePaymentWebhookService.handleChargeRefunded — partial refunds",
       status: "captured",
       amount: "100.00",
     });
+    const paymentRefunds = await recorded("pay_1", 3000);
     const { svc, payoutAdjustments } = createWebhookService({
       db,
-      payoutRepository: { sumRefundLineCentsForPayment: vi.fn().mockResolvedValue(3000) },
+      paymentRefunds,
+      sellerRefundedCents: 3000,
       payoutAdjustments: { addPaymentLineToOpenPayoutOrCreateClawback: addLine },
     });
     const event = { id: "evt_refund_partial_2", type: "charge.refunded" } as Stripe.Event;
@@ -302,9 +342,11 @@ describe("StripePaymentWebhookService.handleChargeRefunded — partial refunds",
       status: "captured",
       amount: "100.00",
     });
+    const paymentRefunds = await recorded("pay_1", 5000);
     const { svc, payoutAdjustments } = createWebhookService({
       db,
-      payoutRepository: { sumRefundLineCentsForPayment: vi.fn().mockResolvedValue(5000) },
+      paymentRefunds,
+      sellerRefundedCents: 5000,
       payoutAdjustments: { addPaymentLineToOpenPayoutOrCreateClawback: addLine },
     });
     const event = { id: "evt_refund_stale", type: "charge.refunded" } as Stripe.Event;
@@ -319,6 +361,179 @@ describe("StripePaymentWebhookService.handleChargeRefunded — partial refunds",
 
     expect(result.action).toBe("skipped");
     expect(payoutAdjustments.addPaymentLineToOpenPayoutOrCreateClawback).not.toHaveBeenCalled();
+  });
+});
+
+describe("StripePaymentWebhookService.handleChargeRefunded — the buyer's refund record", () => {
+  beforeEach(() => {
+    vi.mocked(tryClaimProcessedStripeEvent).mockReset();
+    vi.mocked(tryClaimProcessedStripeEvent).mockResolvedValue({ claimed: true });
+  });
+
+  const row = {
+    id: "pay_1",
+    sellerLegalEntityId: "00000000-0000-4000-8000-000000000001",
+    status: "captured",
+    amount: "100.00",
+  };
+  const charge = (amountRefunded: number) =>
+    ({
+      id: "ch_rec",
+      amount: 10000,
+      amount_refunded: amountRefunded,
+      currency: "gbp",
+    }) as Stripe.Charge;
+  const event = (id: string) => ({ id, type: "charge.refunded" }) as Stripe.Event;
+
+  it("records the refund by event id, in the currency of the charge", async () => {
+    const { svc, paymentRefunds } = createWebhookService({ db: mockDbWithPayment(row) });
+    await svc.handleChargeRefunded(event("evt_1"), charge(4000));
+    expect(paymentRefunds.entries).toEqual([
+      {
+        paymentId: "pay_1",
+        idempotencyKey: "evt_1",
+        amountPence: 4000,
+        currency: "GBP",
+        source: "card_webhook",
+      },
+    ]);
+  });
+
+  it("records only the part of each later refund that is new", async () => {
+    const { svc, paymentRefunds } = createWebhookService({ db: mockDbWithPayment(row) });
+    await svc.handleChargeRefunded(event("evt_1"), charge(4000));
+    await svc.handleChargeRefunded(event("evt_2"), charge(7500));
+    expect(paymentRefunds.entries.map((e) => e.amountPence)).toEqual([4000, 3500]);
+    expect((await paymentRefunds.sumRefundedPence("pay_1")).pence).toBe(7500);
+  });
+
+  it("records nothing again when another event reports the same total", async () => {
+    const { svc, paymentRefunds } = createWebhookService({ db: mockDbWithPayment(row) });
+    await svc.handleChargeRefunded(event("evt_1"), charge(4000));
+    const replay = await svc.handleChargeRefunded(event("evt_replayed"), charge(4000));
+    expect(replay).toMatchObject({ action: "skipped", reason: "no_new_refund_amount" });
+    expect(paymentRefunds.entries).toHaveLength(1);
+  });
+
+  it("handles refund events that arrive out of order without recording or charging back twice", async () => {
+    const addLine = vi.fn();
+    const { svc, paymentRefunds } = createWebhookService({
+      db: mockDbWithPayment(row),
+      payoutAdjustments: { addPaymentLineToOpenPayoutOrCreateClawback: addLine },
+    });
+    // The later refund (total 75.00) is delivered before the earlier one (total 40.00).
+    const later = await svc.handleChargeRefunded(event("evt_2"), charge(7500));
+    const earlier = await svc.handleChargeRefunded(event("evt_1"), charge(4000));
+    expect(later).toEqual({ processed: true, action: "refund_received" });
+    expect(earlier).toMatchObject({ action: "skipped", reason: "no_new_refund_amount" });
+    expect(paymentRefunds.entries.map((e) => [e.idempotencyKey, e.amountPence])).toEqual([
+      ["evt_2", 7500],
+    ]);
+    expect(addLine).toHaveBeenCalledTimes(1);
+    expect(addLine).toHaveBeenCalledWith(expect.objectContaining({ amount: "-75.00" }));
+    // A final event for the whole charge adds only what is still missing.
+    await svc.handleChargeRefunded(event("evt_3"), charge(10000));
+    expect(paymentRefunds.entries.map((e) => e.amountPence)).toEqual([7500, 2500]);
+    expect(addLine).toHaveBeenLastCalledWith(expect.objectContaining({ amount: "-25.00" }));
+  });
+
+  it("locks the payment before it sums what is recorded, and records after", async () => {
+    const { svc, paymentRefunds } = createWebhookService({ db: mockDbWithPayment(row) });
+    await svc.handleChargeRefunded(event("evt_1"), charge(4000));
+    expect(paymentRefunds.calls).toEqual(["lock:pay_1", "sum:pay_1", "record:pay_1"]);
+  });
+
+  it("records a refund the previous release handled without charging the seller back again", async () => {
+    // The previous release wrote the seller's refund line (100.00) and no buyer row.
+    const addLine = vi.fn();
+    const publish = vi.fn();
+    const { svc, paymentRefunds } = createWebhookService({
+      db: mockDbWithPayment(row),
+      sellerRefundedCents: 10000,
+      publisher: mockDomainEventSink(publish),
+      payoutAdjustments: { addPaymentLineToOpenPayoutOrCreateClawback: addLine },
+    });
+    const result = await svc.handleChargeRefunded(event("evt_gap"), charge(10000));
+    expect(result).toMatchObject({ action: "skipped", reason: "refund_already_in_seller_ledger" });
+    expect(paymentRefunds.entries).toMatchObject([
+      { idempotencyKey: "evt_gap", amountPence: 10000 },
+    ]);
+    expect(addLine).not.toHaveBeenCalled();
+    expect(publish).not.toHaveBeenCalled();
+  });
+
+  it("charges the seller back only for what is new after a refund in the rollout gap", async () => {
+    const addLine = vi.fn();
+    const { svc, paymentRefunds } = createWebhookService({
+      db: mockDbWithPayment(row),
+      sellerRefundedCents: 4000,
+      payoutAdjustments: { addPaymentLineToOpenPayoutOrCreateClawback: addLine },
+    });
+    await svc.handleChargeRefunded(event("evt_next"), charge(7500));
+    // The buyer's record is behind by the whole 75.00; the seller's ledger only by 35.00.
+    expect(paymentRefunds.entries.map((e) => e.amountPence)).toEqual([7500]);
+    expect(addLine).toHaveBeenCalledTimes(1);
+    expect(addLine).toHaveBeenCalledWith(expect.objectContaining({ amount: "-35.00" }));
+  });
+
+  it("does not count again a refund staff already recorded for the same money", async () => {
+    const paymentRefunds = await recorded("pay_1", 10000, "staff");
+    const addLine = vi.fn();
+    const { svc } = createWebhookService({
+      db: mockDbWithPayment(row),
+      paymentRefunds,
+      sellerRefundedCents: 10000,
+      payoutAdjustments: { addPaymentLineToOpenPayoutOrCreateClawback: addLine },
+    });
+    const result = await svc.handleChargeRefunded(event("evt_after_staff"), charge(10000));
+    expect(result).toMatchObject({ action: "skipped", reason: "no_new_refund_amount" });
+    expect(paymentRefunds.entries).toHaveLength(1);
+    expect(addLine).not.toHaveBeenCalled();
+  });
+
+  it("records the refund with the payout line and the event, in one transaction", async () => {
+    const order: string[] = [];
+    const paymentRefunds = new InMemoryPaymentRefunds();
+    const record = paymentRefunds.recordInTransaction.bind(paymentRefunds);
+    paymentRefunds.recordInTransaction = async (tx, entry) => {
+      order.push("record");
+      return record(tx, entry);
+    };
+    const publish = vi.fn(async () => {
+      order.push("publish");
+    });
+    const { svc } = createWebhookService({
+      db: mockDbWithPayment(row),
+      paymentRefunds,
+      publisher: mockDomainEventSink(publish),
+      payoutAdjustments: {
+        addPaymentLineToOpenPayoutOrCreateClawback: vi.fn(async () => {
+          order.push("payout_line");
+        }),
+      },
+    });
+    await svc.handleChargeRefunded(event("evt_1"), charge(10000));
+    expect(order).toEqual(["record", "payout_line", "publish"]);
+  });
+
+  it("fails, to be retried, when the refund record is not wired", async () => {
+    const unwired = new StripePaymentWebhookService(
+      {
+        runInTransaction: async (fn: (tx: never) => Promise<unknown>) => fn({} as never),
+      } as never,
+      {
+        findPaymentRow: async () => ({ ...row, sellerLegalEntityId: row.sellerLegalEntityId }),
+      } as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      mockDomainEventSink(),
+      { record: vi.fn() },
+    );
+    await expect(unwired.handleChargeRefunded(event("evt_1"), charge(4000))).rejects.toThrow(
+      "Payment refunds are not wired",
+    );
   });
 });
 

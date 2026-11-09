@@ -16,6 +16,7 @@ import {
   DrizzleConnectTransferRepository,
   DrizzlePaymentExternalRefRepository,
   DrizzlePaymentRefundReconcileRepository,
+  DrizzlePaymentRefundRepository,
   DrizzlePaymentRepository,
   DrizzlePaymentWebhookLookupReader,
   DrizzlePayoutRepository,
@@ -31,6 +32,8 @@ export type PaymentsRepositories = {
   connectTransferRepository: IConnectTransferRepository;
   paymentRepo: IPaymentWriteRepository;
   paymentRefundReconcileRepository: IPaymentRefundReconcileRepository;
+  /** What buyers were refunded: written with each refund event, read for the invoice document. */
+  paymentRefundRepository: DrizzlePaymentRefundRepository;
   paymentExtRepo: IPaymentExternalRefRepository;
   paymentWebhookLookupReader: IPaymentWebhookLookupReader;
   xeroConnRepo: IXeroConnectionRepository;
@@ -56,6 +59,7 @@ export function createPaymentsRepositories(db: Database): PaymentsRepositories {
     connectTransferRepository,
     paymentRepo,
     paymentRefundReconcileRepository,
+    paymentRefundRepository: new DrizzlePaymentRefundRepository(db),
     paymentExtRepo,
     paymentWebhookLookupReader,
     xeroConnRepo,

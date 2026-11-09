@@ -1,4 +1,5 @@
 import type {
+  IPaymentRefundLedger,
   IPaymentRefundReconcileRepository,
   ITransactionRunner,
   PaymentRefundReconcilePayload,
@@ -15,6 +16,7 @@ export class PaymentRefundReconcileService {
     private readonly payoutAdjustments: IPayoutAdjustmentPort | null,
     private readonly publisher: IDomainEventSinkPort,
     private readonly repo: IPaymentRefundReconcileRepository,
+    private readonly paymentRefunds: IPaymentRefundLedger,
   ) {}
 
   async enqueue(input: {
@@ -33,12 +35,23 @@ export class PaymentRefundReconcileService {
       const attempts = row.attempts + 1;
       try {
         await this.transactionRunner.runInTransaction(async (tx) => {
+          await this.paymentRefunds.lockPaymentInTransaction(tx, row.paymentId);
           const applied = await this.payments.applyRefundedInTransaction(
             tx,
             row.paymentId,
             row.stripeRefundId,
           );
           if (!applied) return;
+          // Keyed like the payout line below. The first attempt, whose transaction rolled back
+          // (that is why this row is queued), recorded nothing under any key.
+          await this.paymentRefunds.recordInTransaction(tx, {
+            paymentId: row.paymentId,
+            idempotencyKey: `admin_refund_reconcile:${row.paymentId}`,
+            stripeRefundId: row.stripeRefundId,
+            amountPence: gbpAmountToPence(row.payload.amount),
+            currency: "GBP",
+            source: "staff",
+          });
           if (this.payoutAdjustments && row.payload.sellerLegalEntityId) {
             const negativeAmount = (-gbpAmountToPence(row.payload.amount) / 100).toFixed(2);
             await this.payoutAdjustments.addPaymentLineToOpenPayoutOrCreateClawback({

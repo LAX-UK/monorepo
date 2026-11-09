@@ -2,6 +2,7 @@ import type { Database } from "@auction/db";
 import type { IPaymentEligibilityGate } from "@auction/finance-runtime";
 import type {
   ILotRepository,
+  IPaymentRefundLedger,
   IPaymentWriteRepository,
   IPayoutRepository,
   ITransactionRunner,
@@ -54,6 +55,9 @@ export type CreatePaymentGroupServicesInput = {
   stripeClientFactory: IStripeClientFactory;
   transactionRunner: ITransactionRunner;
   payments: IPaymentWriteRepository;
+  /** What buyers were refunded, which each refund on a group's charge is measured against. */
+  paymentRefunds: IPaymentRefundLedger;
+  /** The seller's ledger, which a seller's clawback is measured against. */
   payouts: IPayoutRepository;
   payoutAdjustments: IPayoutAdjustmentService;
   capture: IPaymentCaptureInTransaction;
@@ -142,7 +146,8 @@ export function createPaymentGroupServices(
     gateway,
     payments: input.payments,
     payoutAdjustments: input.payoutAdjustments,
-    refundedCentsSoFar: (tx, paymentId) =>
+    paymentRefunds: input.paymentRefunds,
+    sellerRefundedCents: (tx, paymentId) =>
       payoutRepoForTx(input.payouts, tx).sumRefundLineCentsForPayment(paymentId),
     events: input.events,
     claims,

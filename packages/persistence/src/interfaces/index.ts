@@ -385,6 +385,14 @@ export type {
   PaymentRefundReconcileRow,
 } from "./payment-refund-reconcile.repository.js";
 
+export type {
+  IPaymentRefundLedger,
+  IPaymentRefundReader,
+  PaymentRefundEntry,
+  PaymentRefundSource,
+  PaymentRefundTotal,
+} from "./payment-refund.repository.js";
+
 export type { IQrCodeAnalyticsReader } from "./qr-code-analytics.reader.js";
 
 export type {

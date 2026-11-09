@@ -5,12 +5,14 @@ import {
   legalEntity,
   lot,
   payment,
+  paymentRefund,
   payout,
   payoutLine,
   processedStripeEvents,
 } from "@auction/db/schema";
 import { FinanceTaskLatePaymentRecorder } from "@auction/finance-runtime";
 import {
+  DrizzlePaymentRefundRepository,
   DrizzlePaymentRepository,
   DrizzlePaymentWebhookLookupReader,
   DrizzlePayoutRepository,
@@ -67,6 +69,7 @@ describe.skipIf(!HAS_DB)("refunds of unapplied money (integration)", () => {
     payouts,
     (_root, tx) => new DrizzlePayoutRepository(tx),
   );
+  const refundRecords = new DrizzlePaymentRefundRepository(db);
   const webhooks = new StripePaymentWebhookService(
     runner,
     new DrizzlePaymentWebhookLookupReader(db),
@@ -80,6 +83,8 @@ describe.skipIf(!HAS_DB)("refunds of unapplied money (integration)", () => {
     null,
     recorder,
     new UnappliedMoneyRefundHandler({ transactionRunner: runner, reader, recorder }),
+    null,
+    refundRecords,
   );
 
   const run = randomUUID().slice(0, 8);
@@ -161,6 +166,7 @@ describe.skipIf(!HAS_DB)("refunds of unapplied money (integration)", () => {
       await db.select({ id: payment.id }).from(payment).where(eq(payment.lotId, lotId))
     ).map((r) => r.id);
     if (old.length) {
+      await db.delete(paymentRefund).where(inArray(paymentRefund.paymentId, old));
       await db.delete(payoutLine).where(inArray(payoutLine.paymentId, old));
       await db.delete(domainEvent).where(inArray(domainEvent.aggregateId, old));
     }
@@ -280,5 +286,62 @@ describe.skipIf(!HAS_DB)("refunds of unapplied money (integration)", () => {
     expect(refund).toMatchObject({ processed: true, action: "unapplied_money_refunded" });
     expect((await payments.findById(paymentId))?.status).toBe("captured");
     expect(await refundLines()).toEqual([]);
+  });
+
+  it("concurrent partial refund events record the charge's total once, whichever is handled first", async () => {
+    const { pi, ch } = money();
+    await webhooks.handlePaymentIntentSucceeded(
+      eventOf("payment_intent.succeeded", succeeded(pi, ch)),
+      succeeded(pi, ch),
+    );
+    const upTo = (refundedPence: number) =>
+      ({ ...refunded(pi, ch), amount_refunded: refundedPence }) as Stripe.Charge;
+    // Each event reports a running total (40.00, then 75.00). Without the payment lock both read
+    // nothing recorded, and the buyer and the seller would be given 115.00 between them.
+    const results = await Promise.all([
+      webhooks.handleChargeRefunded(eventOf("charge.refunded", upTo(4_000)), upTo(4_000)),
+      webhooks.handleChargeRefunded(eventOf("charge.refunded", upTo(7_500)), upTo(7_500)),
+    ]);
+    expect(results.map((r) => r.processed)).toEqual([true, true]);
+    expect((await refundRecords.sumRefundedPence(paymentId)).pence).toBe(7_500);
+    const lines = await refundLines();
+    expect(lines.reduce((sum, l) => sum + Math.abs(Number(l.amount)), 0)).toBeCloseTo(75, 2);
+  });
+
+  it("a staff refund and a card refund event for the same money are recorded once", async () => {
+    const { pi, ch } = money();
+    await webhooks.handlePaymentIntentSucceeded(
+      eventOf("payment_intent.succeeded", succeeded(pi, ch)),
+      succeeded(pi, ch),
+    );
+    const staffRefund = runner.runInTransaction(async (tx) => {
+      await refundRecords.lockPaymentInTransaction(tx, paymentId);
+      if (!(await payments.applyRefundedInTransaction(tx, paymentId, `re_um_${run}`))) return;
+      await refundRecords.recordInTransaction(tx, {
+        paymentId,
+        idempotencyKey: `admin_refund:${paymentId}`,
+        stripeRefundId: `re_um_${run}`,
+        amountPence: 10_000,
+        currency: "GBP",
+        source: "staff",
+      });
+      await payoutAdjustments.addPaymentLineToOpenPayoutOrCreateClawback({
+        legalEntityId: sellerId,
+        paymentId,
+        amount: "-100.00",
+        kind: "refund",
+        sourceEventId: `admin_refund:${paymentId}`,
+        note: "Admin refund",
+        tx,
+      });
+    });
+    const cardEvent = webhooks.handleChargeRefunded(
+      eventOf("charge.refunded", refunded(pi, ch)),
+      refunded(pi, ch),
+    );
+    await Promise.all([staffRefund, cardEvent]);
+    expect((await refundRecords.sumRefundedPence(paymentId)).pence).toBe(10_000);
+    const lines = await refundLines();
+    expect(lines.reduce((sum, l) => sum + Math.abs(Number(l.amount)), 0)).toBeCloseTo(100, 2);
   });
 });
