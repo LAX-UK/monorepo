@@ -143,10 +143,37 @@ describe("HoursRulesForm", () => {
     fireEvent.click(screen.getByRole("radio", { name: /Cancel and ask to rebook/ }));
     fireEvent.click(screen.getByRole("button", { name: "Save and cancel 2" }));
     await waitFor(() => expect(mocks.save).toHaveBeenCalledTimes(2));
-    expect((mocks.save.mock.calls[1]?.[1] as Record<string, unknown>).affectedBookings).toBe(
-      "cancel_and_rebook",
-    );
+    expect((mocks.save.mock.calls[1]?.[1] as Record<string, unknown>).affectedBookings).toEqual({
+      choice: "cancel_and_rebook",
+      bookingIds: ["b1", "b2"],
+    });
     await waitFor(() => expect(mocks.success).toHaveBeenCalledWith("Saved. 2 visits cancelled."));
+  });
+
+  it("shows the new list when more visits are affected than staff were shown, and sends nothing applied", async () => {
+    const third = { ...BOOKINGS[0], bookingId: "b3", reference: "COL-1003" };
+    mocks.save
+      .mockResolvedValueOnce({
+        ok: false,
+        error: "x",
+        errorCode: "bookings_affected",
+        meta: { affected: BOOKINGS },
+      })
+      .mockResolvedValueOnce({
+        ok: false,
+        error: "x",
+        errorCode: "bookings_affected",
+        meta: { affected: [...BOOKINGS, third] },
+      });
+    renderForm();
+    fireEvent.change(closesOnMonday(), { target: { value: "17:00" } });
+    fireEvent.click(saveButton());
+    await screen.findByText("2 bookings fall outside the new hours");
+    fireEvent.click(screen.getByRole("button", { name: "Save and keep them" }));
+    expect(await screen.findByText("3 bookings fall outside the new hours")).toBeTruthy();
+    expect(screen.getByText("COL-1003")).toBeTruthy();
+    expect(mocks.refresh).not.toHaveBeenCalled();
+    expect(mocks.success).not.toHaveBeenCalled();
   });
 
   it("keeps the bookings by default, and going back changes nothing", async () => {

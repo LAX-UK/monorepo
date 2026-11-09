@@ -10,7 +10,7 @@ import {
   StaffRadioGroup,
 } from "@auction/staff-ui";
 import type { StaffAffectedBooking } from "@auction/types";
-import type { AffectedBookingsChoice } from "@auction/validators";
+import type { AffectedBookingsChoiceValue } from "@auction/validators";
 import { useId, useRef, useState } from "react";
 
 type Props = {
@@ -21,7 +21,7 @@ type Props = {
   confirmLabels: { keep: string; cancel: (count: number) => string };
   bookings: readonly StaffAffectedBooking[];
   busy: boolean;
-  onConfirm: (choice: AffectedBookingsChoice) => void;
+  onConfirm: (choice: AffectedBookingsChoiceValue) => void;
   onCancel: () => void;
 };
 
@@ -42,7 +42,7 @@ export function AffectedBookingsDialog({
 }: Props) {
   const ids = useId();
   const cancelRef = useRef<HTMLButtonElement>(null);
-  const [choice, setChoice] = useState<AffectedBookingsChoice>("keep");
+  const [choice, setChoice] = useState<AffectedBookingsChoiceValue>("keep");
   const count = bookings.length;
 
   return (
@@ -94,7 +94,7 @@ export function AffectedBookingsDialog({
           <StaffRadioGroup
             value={choice}
             disabled={busy}
-            onValueChange={(next) => setChoice(next as AffectedBookingsChoice)}
+            onValueChange={(next) => setChoice(next as AffectedBookingsChoiceValue)}
           >
             <ChoiceRow
               htmlFor={`${ids}-keep`}

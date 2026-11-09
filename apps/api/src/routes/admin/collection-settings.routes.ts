@@ -73,8 +73,9 @@ export function attachAdminCollectionSettingsRoutes(
       ),
   );
 
-  platform.delete(
-    "/collections/:venueId/exceptions/:exceptionId",
+  // A POST, not a DELETE: the body carries the choice about the visits it affects.
+  platform.post(
+    "/collections/:venueId/exceptions/:exceptionId/remove",
     requireOperationsFulfilment,
     zValidator("param", collectionExceptionParamSchema),
     zValidator("json", removeCollectionExceptionBodySchema),

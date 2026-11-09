@@ -7,6 +7,7 @@ import type {
   BookingOutcome,
   NewCollectionBooking,
 } from "../interfaces/collection-booking.repository.js";
+import { lockCollectionPlace } from "./collection-place-lock.js";
 import { DrizzleCollectionBookingRepository } from "./drizzle-collection-booking.repository.js";
 import { DrizzleCollectionPlaceRepository } from "./drizzle-collection-place.repository.js";
 
@@ -746,6 +747,63 @@ describe.skipIf(!HAS_DB)("collection booking (integration)", () => {
       });
       const ids = range.map((b) => b.id);
       expect(ids.indexOf(earlier.id)).toBeLessThan(ids.indexOf(later.id));
+    });
+  });
+
+  describe("cancelling as part of a larger change", () => {
+    it("is undone with the transaction it ran in", async () => {
+      class Abort extends Error {}
+      const made = booked(await bookings.book(request()));
+      await expect(
+        db.transaction(async (tx) => {
+          const outcome = await bookings.cancel(
+            {
+              bookingId: made.id,
+              expectedSequence: made.icsSequence,
+              cancelledByUserId: staffId,
+              at: new Date(),
+            },
+            undefined,
+            tx,
+          );
+          expect(outcome.outcome).toBe("cancelled");
+          throw new Abort();
+        }),
+      ).rejects.toBeInstanceOf(Abort);
+      expect((await bookings.findById(made.id))?.status).toBe("booked");
+    });
+
+    it("stands when the transaction commits, and a booking waits for a held place lock", async () => {
+      const made = booked(await bookings.book(request()));
+      await db.transaction(async (tx) => {
+        await bookings.cancel(
+          {
+            bookingId: made.id,
+            expectedSequence: made.icsSequence,
+            cancelledByUserId: staffId,
+            at: new Date(),
+          },
+          undefined,
+          tx,
+        );
+      });
+      expect((await bookings.findById(made.id))?.status).toBe("cancelled");
+
+      // A change holding the place's lock makes a booking wait until it commits.
+      const events: string[] = [];
+      const holding = db.transaction(async (tx) => {
+        await lockCollectionPlace(tx, venueId);
+        events.push("lock held");
+        await new Promise((resolve) => setTimeout(resolve, 300));
+        events.push("lock released");
+      });
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      const waiting = bookings.book(request()).then((outcome) => {
+        events.push("booked");
+        return outcome;
+      });
+      await Promise.all([holding, waiting]);
+      expect(events).toEqual(["lock held", "lock released", "booked"]);
     });
   });
 

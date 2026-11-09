@@ -12,6 +12,7 @@ import type {
   CollectionBookingRecord,
   CollectionPlaceSettings,
   CollectionVenueChoice,
+  GuardSettingsTransaction,
   ICollectionBookingReader,
   ICollectionBookingWriter,
   ICollectionSettingsReader,
@@ -47,6 +48,8 @@ export class InMemoryCollectionSettings
   stored: StaffExceptionRecord[] = [];
   saleDays: StaffExceptionRecord[] = [];
   private nextId = 1;
+  /** A hook that runs inside each change just before its guard: a test books a visit here. */
+  beforeGuard: (() => Promise<void>) | null = null;
 
   async venues(): Promise<CollectionVenueChoice[]> {
     return [
@@ -79,11 +82,14 @@ export class InMemoryCollectionSettings
   async save(
     input: SaveCollectionSettings,
     within?: WithinSettingsTransaction<Extract<SaveSettingsOutcome, { outcome: "saved" }>>,
+    guard?: GuardSettingsTransaction,
   ): Promise<SaveSettingsOutcome> {
     if (input.venueId !== SETTINGS_VENUE) return { outcome: "venue_not_found" };
     if (input.expectedUpdatedAt.getTime() !== this.settings.updatedAt.getTime()) {
       return { outcome: "stale" };
     }
+    await this.beforeGuard?.();
+    if (guard && !(await guard({} as never))) return { outcome: "affected_changed" };
     const before = this.settings;
     const changed: SettingsField[] = [];
     const check = (field: SettingsField, was: unknown, now: unknown) => {
@@ -121,8 +127,11 @@ export class InMemoryCollectionSettings
   async addException(
     input: AddCollectionException,
     within?: WithinSettingsTransaction<StaffExceptionRecord>,
+    guard?: GuardSettingsTransaction,
   ): Promise<AddExceptionOutcome> {
     if (input.venueId !== SETTINGS_VENUE) return { outcome: "venue_not_found" };
+    await this.beforeGuard?.();
+    if (guard && !(await guard({} as never))) return { outcome: "affected_changed" };
     const exception: StaffExceptionRecord = {
       id: `d0000000-0000-4000-8000-${String(this.nextId++).padStart(12, "0")}`,
       kind: input.draft.kind,
@@ -145,7 +154,10 @@ export class InMemoryCollectionSettings
   async removeException(
     input: RemoveCollectionException,
     within?: WithinSettingsTransaction<StaffExceptionRecord>,
+    guard?: GuardSettingsTransaction,
   ): Promise<RemoveExceptionOutcome> {
+    await this.beforeGuard?.();
+    if (guard && !(await guard({} as never))) return { outcome: "affected_changed" };
     const found = this.stored.find((e) => e.id === input.exceptionId);
     if (!found) return { outcome: "not_found" };
     await within?.({} as never, found);
@@ -207,6 +219,9 @@ export class InMemorySettingsBookings
   }
 }
 
+/** The id `visitOn` gives the visit with this short id. */
+export const visitId = (id: string): string => `d1000000-0000-4000-8000-${id.padStart(12, "0")}`;
+
 export function visitOn(
   id: string,
   start: string,
@@ -214,7 +229,7 @@ export function visitOn(
 ): CollectionBookingRecord {
   const slotStart = new Date(start);
   return {
-    id: `d1000000-0000-4000-8000-${id.padStart(12, "0")}`,
+    id: visitId(id),
     reference: `COL-${id}`,
     legalEntityId: "d2000000-0000-4000-8000-000000000001",
     venueId: SETTINGS_VENUE,

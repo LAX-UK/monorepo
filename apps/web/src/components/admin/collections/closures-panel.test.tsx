@@ -216,9 +216,10 @@ describe("ClosuresPanel", () => {
     fireEvent.click(screen.getByRole("radio", { name: /Cancel and ask to rebook/ }));
     fireEvent.click(screen.getByRole("button", { name: "Close and email 1 client" }));
     await waitFor(() => expect(mocks.add).toHaveBeenCalledTimes(2));
-    expect((mocks.add.mock.calls[1]?.[1] as Record<string, unknown>).affectedBookings).toBe(
-      "cancel_and_rebook",
-    );
+    expect((mocks.add.mock.calls[1]?.[1] as Record<string, unknown>).affectedBookings).toEqual({
+      choice: "cancel_and_rebook",
+      bookingIds: ["b1"],
+    });
     await waitFor(() => expect(mocks.success).toHaveBeenCalledWith("Added. 1 visit cancelled."));
   });
 

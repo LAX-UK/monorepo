@@ -33,7 +33,7 @@ type Refusal = {
 
 async function send(
   name: string,
-  method: "PUT" | "POST" | "DELETE",
+  method: "PUT" | "POST",
   path: string,
   body: unknown,
   schema: z.ZodType,
@@ -98,8 +98,8 @@ export async function removeCollectionExceptionAction(
 ) {
   return send(
     "removeCollectionExceptionAction",
-    "DELETE",
-    `${venue(venueId)}/exceptions/${encodeURIComponent(exceptionId)}`,
+    "POST",
+    `${venue(venueId)}/exceptions/${encodeURIComponent(exceptionId)}/remove`,
     input,
     removeCollectionExceptionBodySchema,
   );

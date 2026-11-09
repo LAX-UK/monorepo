@@ -83,6 +83,14 @@ changes them; every change asks for a recent sign-in and is written to the audit
   page is read; nothing is stored. Staff open a sale day with an extra opening ("Open anyway").
 - A change to the hours or a closure that leaves booked visits outside what is offered lists them
   and waits for staff to choose: keep them, or cancel them. Nothing is cancelled without that
+  choice, and the choice names the visits staff were shown (`affectedBookings: { choice,
+  bookingIds }`). If a visit was booked in the meantime the API answers 409 `bookings_affected`
+  again with the new list, whichever choice was sent.
+- The change, the cancellations and their audit events are written in one transaction. Under a
+  per-place advisory lock (taken by booking, changing and every staff change to a place) the
+  affected visits are read once more before anything is written, so a visit booked while staff were
+  deciding cannot be missed or cancelled unseen. The place's audit event records "n affected, m
+  cancelled". Removing a closure is a `POST .../exceptions/:id/remove`, because it carries the
   choice. A cancelled visit records `collection.booking.cancelled` with the reason
   `hours_changed`, `closure_added` or `opening_removed`; the rebooking email is sent from that
   event by the emails work.
