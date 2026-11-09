@@ -326,6 +326,86 @@ describe("About this edition", () => {
     ]);
   });
 
+  describe("a print sold on its own", () => {
+    const remarque = { remarque: { medium: "pencil", place: "lower_margin" } } as const;
+    const ofRun = { kind: "limited", size: 24 } as const;
+
+    it("names its number in the eyebrow and says what is different in its own row", () => {
+      const vm = page(
+        detail({
+          edition: limited({
+            setApart: {
+              print: { editionNumber: 3, proofNumber: null, of: ofRun },
+              exception: remarque,
+            },
+          }),
+        }),
+      );
+      expect(vm.eyebrow).toBe("Limited edition print, no. 3 of 24");
+      expect(vm.facts?.rows.at(-1)).toEqual({
+        label: "Remarque",
+        value: "An original drawing added by the artist in pencil, lower margin",
+      });
+      expect(vm.basketLine).toBe(
+        "Limited edition of 24 · Hand-signed · Numbered · With certificate · No. 3 · With a remarque",
+      );
+    });
+
+    it("heads the page with its run's title, keeping the listing's own for the breadcrumb", () => {
+      const vm = page(
+        detail({
+          title: "Warm Basket (no. 3, with a remarque)",
+          edition: limited({
+            runTitle: "Warm Basket",
+            setApart: {
+              print: { editionNumber: 3, proofNumber: null, of: ofRun },
+              exception: remarque,
+            },
+          }),
+        }),
+      );
+      expect(vm.heading).toBe("Warm Basket");
+      expect(vm.title).toBe("Warm Basket (no. 3, with a remarque)");
+      expect(page(detail({ edition: limited() })).heading).toBe("Warm Basket");
+    });
+
+    it("is named beside the run it came from, with its own price", () => {
+      const facts = page(
+        detail({
+          edition: limited({
+            otherRuns: [
+              {
+                slug: "warm-basket-no-3",
+                run: ofRun,
+                facts: handSigned,
+                printPricePence: 42_000,
+                availability: "available",
+                setApart: {
+                  print: { editionNumber: 3, proofNumber: null, of: ofRun },
+                  exception: remarque,
+                },
+              },
+            ],
+          }),
+        }),
+      ).facts;
+      expect(facts?.alsoAvailable).toEqual([
+        {
+          slug: "warm-basket-no-3",
+          href: "/artworks/warm-basket-no-3",
+          label: "No. 3, with a remarque",
+          trailing: "£420",
+        },
+      ]);
+    });
+
+    it("leaves every other page as it was", () => {
+      const vm = page(detail({ edition: limited() }));
+      expect(vm.eyebrow).toBe("Limited edition print");
+      expect(vm.facts?.rows.map((row) => row.label)).not.toContain("Remarque");
+    });
+  });
+
   it("links the original on lax.art only when there is a source original to link to", () => {
     const linked = page(
       detail({ edition: limited(), sourceOriginalSlug: "warm-basket-original" }),

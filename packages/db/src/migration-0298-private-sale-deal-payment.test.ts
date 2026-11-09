@@ -29,8 +29,12 @@ describe("migration 0298 private sale deal payment", () => {
     expect(migration).toMatch(/ADD COLUMN IF NOT EXISTS "private_sale_deal_id"/);
   });
 
-  it("creates every column the schema declares", () => {
+  /** Columns a later migration added to the payment table, which 0298 rightly does not create. */
+  const ADDED_LATER = ["recorded_by_user_id", "bank_reference"];
+
+  it("creates every column the schema declares, except those a later migration added", () => {
     for (const column of Object.values(getTableColumns(privateSaleDealPayment))) {
+      if (ADDED_LATER.includes(column.name)) continue;
       expect(migration, column.name).toContain(`"${column.name}"`);
     }
     expect(migration).toContain(`"${getTableColumns(privateSaleDeal).invoiceReference.name}"`);

@@ -108,6 +108,11 @@ export function createSaveEditionFactsService(deps: {
     if (!artwork) throw notFound("Artwork not found");
     const run = await tx.runs.getRun(artworkId);
     if (!run) throw new ShopDomainError("An original has no edition facts");
+    if (run.spec.type === "set_apart") {
+      throw new ShopDomainError(
+        "A print sold on its own follows the facts of its run. Change them on the run",
+      );
+    }
     return { artwork, run };
   }
 

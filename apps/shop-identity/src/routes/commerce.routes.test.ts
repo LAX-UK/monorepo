@@ -538,6 +538,7 @@ describe("checkout email verification", () => {
   it.each([
     ["/commerce/checkout", checkoutBody],
     ["/commerce/orders/11111111-1111-4111-8111-111111111111/resume-checkout", {}],
+    ["/commerce/orders/11111111-1111-4111-8111-111111111111/accept-delivery-quote", {}],
   ])("rejects %s for unverified email without calling shop-api", async (path, body) => {
     const shopApiFetch = vi.fn();
     const unverified = idTokenWithClaims({ email_verified: false });
@@ -571,6 +572,80 @@ describe("checkout email verification", () => {
 
     expect(response.status).toBe(200);
     expect(shopApiFetch).toHaveBeenCalledOnce();
+  });
+});
+
+const quoteRequestBody = {
+  basketId: "11111111-1111-4111-8111-111111111111",
+  idempotencyKey: "delivery-quote:basket-1",
+  deliveryAddress: {
+    recipientName: "Anna Weber",
+    line1: "Friedrichstrasse 12",
+    city: "Berlin",
+    postcode: "10117",
+    country: "DE",
+  },
+  deliveryPhone: "+49 30 1234567",
+  successUrl: "http://localhost:3020/checkout/confirmation",
+  cancelUrl: "http://localhost:3020/checkout",
+};
+
+describe("delivery quote request", () => {
+  it("proxies a request to the shop API with the write scope", async () => {
+    const shopApiFetch = vi.fn(async () =>
+      Response.json({ outcome: "not_delivered", country: "RU" }),
+    );
+    const { app } = createCommerceApp(shopApiFetch, {
+      resolveIdToken: vi.fn(async () => idTokenWithClaims({ email_verified: true })),
+    });
+    const response = await app.request("/commerce/delivery-quote-request", {
+      method: "POST",
+      headers: await authedCsrfHeaders(app),
+      body: JSON.stringify(quoteRequestBody),
+    });
+    expect(response.status).toBe(200);
+    expect(shopApiFetch).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        path: "/v1/orders/delivery-quote-request",
+        method: "POST",
+        scopes: "shop.write",
+      }),
+    );
+  });
+
+  it("refuses an unverified email without calling the shop API", async () => {
+    const shopApiFetch = vi.fn();
+    const { app } = createCommerceApp(shopApiFetch, {
+      resolveIdToken: vi.fn(async () => idTokenWithClaims({ email_verified: false })),
+    });
+    const response = await app.request("/commerce/delivery-quote-request", {
+      method: "POST",
+      headers: await authedCsrfHeaders(app),
+      body: JSON.stringify(quoteRequestBody),
+    });
+    expect(response.status).toBe(403);
+    expect(shopApiFetch).not.toHaveBeenCalled();
+  });
+
+  it("refuses a request that leaves the storefront, or lacks the CSRF token", async () => {
+    const shopApiFetch = vi.fn();
+    const { app } = createCommerceApp(shopApiFetch, {
+      resolveIdToken: vi.fn(async () => idTokenWithClaims({ email_verified: true })),
+    });
+    const offSite = await app.request("/commerce/delivery-quote-request", {
+      method: "POST",
+      headers: await authedCsrfHeaders(app),
+      body: JSON.stringify({ ...quoteRequestBody, successUrl: "https://evil.example/done" }),
+    });
+    expect(offSite.status).toBe(400);
+    const noCsrf = await app.request("/commerce/delivery-quote-request", {
+      method: "POST",
+      headers: { "content-type": "application/json", cookie: AUTH_COOKIE },
+      body: JSON.stringify(quoteRequestBody),
+    });
+    expect(noCsrf.status).toBe(403);
+    expect(shopApiFetch).not.toHaveBeenCalled();
   });
 });
 

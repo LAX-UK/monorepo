@@ -4,6 +4,11 @@ import {
   isPlausibleGuestEmail,
   normaliseGuestEmail,
 } from "@auction/shop-domain";
+import type {
+  DeliveryQuoteRequestInput,
+  DeliveryQuoteRequestOutcome,
+  DeliveryQuoteRequestService,
+} from "../delivery-quote-request/delivery-quote-request.service.js";
 import type { EnquiryRateLimiter } from "../enquiry-rate-limit.js";
 import type {
   CheckoutOrderInput,
@@ -49,12 +54,38 @@ export type GuestOrderResult =
     }
   | GuestCheckoutRefusal;
 
+export type GuestQuoteRequestInput = Omit<
+  DeliveryQuoteRequestInput,
+  "subject" | "guest" | "fallbackEmail"
+> & {
+  email: string;
+  name: string;
+  marketingConsent: boolean;
+  basketTokenHash: string;
+  clientIp: string | null;
+};
+
+export type GuestQuoteRequestResult =
+  | {
+      kind: "answered";
+      outcome: DeliveryQuoteRequestOutcome;
+      /** Opens the order without an account; absent when no order was made. */
+      access: { token: string; expiresAt: Date } | null;
+    }
+  | GuestCheckoutRefusal;
+
 export type GuestCheckoutDeps = {
   accounts: LaxAccountDirectory;
   guests: GuestCustomerStore;
   checkout: Pick<CheckoutWriter, "createCheckoutOrder">;
+  /** Asking for a delivery quote outside the UK; absent where the Shop does not offer it. */
+  quotes?: Pick<DeliveryQuoteRequestService, "request">;
   links: Pick<GuestOrderLinks, "issue">;
   rateLimiter: EnquiryRateLimiter;
+  /** The lower allowance for delivery quote requests, which hold stock; falls back to the checkout one. */
+  quoteRateLimiter?: EnquiryRateLimiter;
+  /** A keyed, one-way hash of a client IP, so holds can be capped per IP without storing it. */
+  hashClientIp?: (ip: string) => string;
   /** Called when the limiter cannot be reached; checks then continue rather than block a sale. */
   onRateLimitUnavailable?: (error: unknown) => void;
   now?: () => Date;
@@ -76,11 +107,12 @@ export function createGuestCheckoutService(deps: GuestCheckoutDeps) {
   async function admit(
     email: string,
     clientIp: string | null,
+    rateLimiter: EnquiryRateLimiter = deps.rateLimiter,
   ): Promise<GuestCheckoutRefusal | { kind: "admitted"; email: string }> {
     if (!isPlausibleGuestEmail(email)) return { kind: "invalid_email" };
     const normalised = normaliseGuestEmail(email);
     try {
-      const decision = await deps.rateLimiter.consume({
+      const decision = await rateLimiter.consume({
         clientIp,
         senderKey: `email:${normalised}`,
       });
@@ -153,6 +185,50 @@ export function createGuestCheckoutService(deps: GuestCheckoutDeps) {
       });
       const access = await deps.links.issue(session.orderId, now());
       return { kind: "created", session, access };
+    },
+
+    /** A guest's delivery quote request: the same email check and lead, then the request. */
+    async requestDeliveryQuote(input: GuestQuoteRequestInput): Promise<GuestQuoteRequestResult> {
+      const quotes = deps.quotes;
+      if (!quotes) return { kind: "unavailable" };
+      const admission = await admit(
+        input.email,
+        input.clientIp,
+        deps.quoteRateLimiter ?? deps.rateLimiter,
+      );
+      if (admission.kind !== "admitted") return admission;
+      const {
+        email: _email,
+        name,
+        marketingConsent,
+        basketTokenHash,
+        clientIp,
+        ...request
+      } = input;
+      const { guestCustomerId } = await deps.guests.record(
+        {
+          email: admission.email,
+          name: name.trim(),
+          phone: input.deliveryPhone.trim(),
+          marketingConsent,
+        },
+        now(),
+      );
+      const outcome = await quotes.request({
+        ...request,
+        subject: guestOrderSubject(guestCustomerId),
+        guest: { guestCustomerId, basketTokenHash },
+        fallbackEmail: admission.email,
+        guestIpHash: clientIp && deps.hashClientIp ? deps.hashClientIp(clientIp) : null,
+      });
+      const orderId =
+        outcome.kind === "quote_requested"
+          ? outcome.request.orderId
+          : outcome.kind === "pay_now"
+            ? outcome.session.orderId
+            : null;
+      const access = orderId ? await deps.links.issue(orderId, now()) : null;
+      return { kind: "answered", outcome, access };
     },
   };
 }

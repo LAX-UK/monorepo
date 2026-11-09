@@ -5,6 +5,7 @@ import type { EditionRunsReader } from "../../application/edition-runs/basket-ed
 import type { EditionCardFactsReader } from "../../application/edition-runs/edition-card-lines.js";
 import { factsFromColumns } from "../edition-facts-columns.js";
 import { proofsKeptFromColumns, runFromColumns } from "../edition-run-columns.js";
+import { resolveSetApartListings } from "../set-apart-source.js";
 
 /** The runs of a page of artworks, with their facts where stored: one query, plus one for the main runs of proofs. */
 export function createDrizzleEditionRunsReader(db: Database): EditionRunsReader {
@@ -28,7 +29,24 @@ export function createDrizzleEditionRunsReader(db: Database): EditionRunsReader 
           ? []
           : await db.select().from(shopArtwork).where(inArray(shopArtwork.id, mainIds));
       const mainById = new Map(mains.map((main) => [main.id, main]));
+      const apart = await resolveSetApartListings(
+        db,
+        rows.map(({ artwork }) => artwork),
+      );
       return rows.flatMap(({ artwork, facts }) => {
+        if (artwork.runRole === "set_apart") {
+          const origin = apart.get(artwork.id);
+          return origin
+            ? [
+                {
+                  artworkId: artwork.id,
+                  run: origin.run,
+                  facts: origin.facts,
+                  setApart: { print: origin.print, exception: origin.exception },
+                },
+              ]
+            : [];
+        }
         const main = artwork.mainRunArtworkId ? mainById.get(artwork.mainRunArtworkId) : undefined;
         const stored = runFromColumns(artwork, main ? proofsKeptFromColumns(main) : null);
         return stored

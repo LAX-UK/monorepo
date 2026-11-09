@@ -13,6 +13,7 @@ import { createDrizzleEditionFactsStore } from "./drizzle-edition-facts.store.js
 import { createDrizzleEditionPrintStore } from "./drizzle-edition-print.store.js";
 import { createDrizzleLinkedListingWriter } from "./drizzle-linked-listing.writer.js";
 import { createDrizzleOriginalPrintsWriter } from "./drizzle-original-prints.writer.js";
+import { createDrizzlePrintExceptionStore } from "./drizzle-print-exception.store.js";
 
 function bind(effects: ShopTransactionEffects): EditionRunTx {
   const db = shopPhaseDbSession(effects) as Database;
@@ -20,6 +21,7 @@ function bind(effects: ShopTransactionEffects): EditionRunTx {
     runs: createDrizzleEditionRunRepository(db),
     prints: createDrizzleEditionPrintStore(db),
     facts: createDrizzleEditionFactsStore(db),
+    exceptions: createDrizzlePrintExceptionStore(db),
     listings: createDrizzleLinkedListingWriter(db, effects.events),
     originalPrints: createDrizzleOriginalPrintsWriter(db),
     events: effects.events,

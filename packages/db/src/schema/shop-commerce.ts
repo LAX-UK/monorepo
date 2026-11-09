@@ -362,7 +362,7 @@ export const shopArtwork = pgTable(
      * who holds the prints. See packages/shop-domain edition-run.ts for the rules.
      */
     runKind: text("run_kind").$type<"limited" | "open">(),
-    runRole: text("run_role").$type<"main" | "proof" | "companion">(),
+    runRole: text("run_role").$type<"main" | "proof" | "companion" | "set_apart">(),
     runTemplate: text("run_template").$type<"lax_standard" | "custom">(),
     runSize: integer("run_size"),
     allocBuyer: integer("alloc_buyer"),
@@ -417,7 +417,7 @@ export const shopArtwork = pgTable(
     // only where drizzle-kit needs them to keep the schema and the database in step.
     check(
       "shop_artwork_run_size_ck",
-      sql`${table.runKind} IS DISTINCT FROM 'limited' OR (${table.runSize} IS NOT NULL AND ${table.runSize} BETWEEN CASE WHEN ${table.runRole} = 'proof' THEN 1 ELSE 2 END AND 500)`,
+      sql`${table.runKind} IS DISTINCT FROM 'limited' OR (${table.runSize} IS NOT NULL AND ${table.runSize} BETWEEN CASE WHEN ${table.runRole} IN ('proof', 'set_apart') THEN 1 ELSE 2 END AND 500)`,
     ),
     check(
       "shop_artwork_hors_commerce_approval_ck",
@@ -639,6 +639,52 @@ export const shopPrintParty = pgTable(
   (table) => [uniqueIndex("shop_print_party_name_uid").on(sql`lower(${table.name})`)],
 );
 
+/**
+ * A print of a numbered run or proof listing that differs from the rest and is sold on its own.
+ * The print itself moves to a listing of its own (`listingArtworkId`); this row keeps where it
+ * came from and what differs, so it can go back to the run while it is unsold. A row with
+ * `returnedAt` set is history.
+ */
+export const shopPrintException = pgTable(
+  "shop_print_exception",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    editionId: uuid("edition_id")
+      .notNull()
+      .references(() => shopEdition.id, { onDelete: "restrict" }),
+    runArtworkId: uuid("run_artwork_id")
+      .notNull()
+      .references(() => shopArtwork.id, { onDelete: "restrict" }),
+    listingArtworkId: uuid("listing_artwork_id")
+      .notNull()
+      .references(() => shopArtwork.id, { onDelete: "restrict" }),
+    remarqueMedium: text("remarque_medium").$type<"pencil" | "ink" | "coloured_pencil">(),
+    remarquePlace: text("remarque_place").$type<"lower_margin" | "upper_margin" | "side_margin">(),
+    dedicated: boolean("dedicated").default(false).notNull(),
+    signatureKind: text("signature_kind").$type<
+      "hand_signed" | "plate_signed" | "estate_stamped" | "estate_signed" | "unsigned"
+    >(),
+    signatureMedium: text("signature_medium").$type<"pencil" | "ink">(),
+    signaturePlace: text("signature_place").$type<"front_lower_margin" | "back">(),
+    conditionNote: text("condition_note").$type<
+      "light_handling_marks" | "margin_toning" | "small_crease_in_margin"
+    >(),
+    setApartBySubjectId: text("set_apart_by_subject_id").notNull(),
+    setApartAt: timestamp("set_apart_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    returnedBySubjectId: text("returned_by_subject_id"),
+    returnedAt: timestamp("returned_at", { mode: "date", withTimezone: true }),
+  },
+  (table) => [
+    uniqueIndex("shop_print_exception_open_edition_uid")
+      .on(table.editionId)
+      .where(sql`${table.returnedAt} IS NULL`),
+    uniqueIndex("shop_print_exception_listing_uid").on(table.listingArtworkId),
+    index("shop_print_exception_run_idx").on(table.runArtworkId),
+  ],
+);
+
 /** One addition of unnumbered prints to an open edition, with the owner split it used. */
 export const shopEditionStockBatch = pgTable(
   "shop_edition_stock_batch",
@@ -745,10 +791,21 @@ export const shopBasketLine = pgTable(
     }),
     unitPricePence: integer("unit_price_pence").notNull(),
     quantity: integer("quantity").notNull(),
+    /**
+     * The framing option chosen for this print, null for unframed. Its price is worked out from the
+     * catalogue whenever the basket is read; the buyer only ever names the option. The foreign key
+     * to shop_framing_option is in migration 0338, not declared here, because shop-framing.ts
+     * already imports this file.
+     */
+    framingOptionId: uuid("framing_option_id"),
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [
+    check(
+      "shop_basket_line_framing_on_print_ck",
+      sql`${table.framingOptionId} IS NULL OR ${table.artworkId} IS NOT NULL`,
+    ),
     uniqueIndex("shop_basket_line_basket_artwork_uid")
       .on(table.basketId, table.artworkId)
       .where(sql`${table.artworkId} IS NOT NULL`),

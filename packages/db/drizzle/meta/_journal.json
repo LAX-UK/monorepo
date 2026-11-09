@@ -2288,6 +2288,55 @@
       "idx": 327,
       "version": "7",
       "when": 1803801600000,
+      "tag": "0332_shop_delivery_quote",
+      "breakpoints": true
+    },
+    {
+      "idx": 328,
+      "version": "7",
+      "when": 1803888000000,
+      "tag": "0334_collection_booking",
+      "breakpoints": true
+    },
+    {
+      "idx": 329,
+      "version": "7",
+      "when": 1803974400000,
+      "tag": "0337_shop_print_exception",
+      "breakpoints": true
+    },
+    {
+      "idx": 330,
+      "version": "7",
+      "when": 1804060800000,
+      "tag": "0335_private_sale_deal_follow_ups",
+      "breakpoints": true
+    },
+    {
+      "idx": 331,
+      "version": "7",
+      "when": 1804147200000,
+      "tag": "0336_private_sale_deal_party_history_entities",
+      "breakpoints": true
+    },
+    {
+      "idx": 332,
+      "version": "7",
+      "when": 1804233600000,
+      "tag": "0338_shop_framing_on_editions",
+      "breakpoints": true
+    },
+    {
+      "idx": 333,
+      "version": "7",
+      "when": 1804320000000,
+      "tag": "0340_shop_delivery_quote_carrier",
+      "breakpoints": true
+    },
+    {
+      "idx": 334,
+      "version": "7",
+      "when": 1804406400000,
       "tag": "0339_sign_in_methods_data",
       "breakpoints": true
     }

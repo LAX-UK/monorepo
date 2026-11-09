@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { deliveryQuoteActionsFor, deliveryQuoteTransition } from "./delivery-quote.js";
+import {
+  deliveryQuoteActionsFor,
+  deliveryQuoteDecline,
+  deliveryQuoteTransition,
+} from "./delivery-quote.js";
 
 describe("deliveryQuoteTransition", () => {
   it("lets the buyer ask for a quote when none exists", () => {
@@ -67,5 +71,27 @@ describe("deliveryQuoteActionsFor", () => {
     expect(deliveryQuoteActionsFor("quoted", "buyer")).toEqual(["accept", "withdraw"]);
     expect(deliveryQuoteActionsFor("requested", "staff")).toEqual(["quote"]);
     expect(deliveryQuoteActionsFor("accepted", "staff")).toEqual([]);
+  });
+});
+
+describe("deliveryQuoteDecline", () => {
+  it("lets staff turn down a requested or a quoted request, ending it as withdrawn", () => {
+    expect(deliveryQuoteDecline("requested")).toEqual({ allowed: true, next: "withdrawn" });
+    expect(deliveryQuoteDecline("quoted")).toEqual({ allowed: true, next: "withdrawn" });
+  });
+
+  it("does not touch an accepted, withdrawn or missing quote", () => {
+    for (const current of ["accepted", "withdrawn", null] as const) {
+      expect(deliveryQuoteDecline(current)).toEqual({
+        allowed: false,
+        reason: "quote_step_not_allowed",
+      });
+    }
+  });
+
+  it("leaves what Bid offers exactly as it was", () => {
+    expect(deliveryQuoteActionsFor("requested", "staff")).toEqual(["quote"]);
+    expect(deliveryQuoteActionsFor("quoted", "staff")).toEqual(["quote"]);
+    expect(deliveryQuoteActionsFor("quoted", "buyer")).toEqual(["accept", "withdraw"]);
   });
 });

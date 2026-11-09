@@ -26,6 +26,16 @@ export const UNAPPLIED_MONEY_REASONS = [
   "customer_balance_unapplied",
   /** Stripe shows the invoice paid, but this process cannot record the payment itself. */
   "paid_not_recorded",
+  /**
+   * Money arrived for a private sale deal's payment that could no longer take it: its checkout had
+   * been ended, or the deal was already paid another way (a transfer finance recorded).
+   */
+  "private_sale_payment_not_applied",
+  /**
+   * Money went back to a private sale buyer after the seller's payout included the deal, so the
+   * payout may need adjusting. The amount is what went back in this report.
+   */
+  "private_sale_refund_after_payout",
 ] as const;
 
 export type UnappliedMoneyReason = (typeof UNAPPLIED_MONEY_REASONS)[number];
@@ -56,6 +66,11 @@ export type UnappliedMoney = {
   possibleGroup?: { id: string; status: "open" | "processing" | "paid" } | null;
   /** The Stripe event that reported money with no intent or charge (a balance credit). */
   stripeEventId?: string | null;
+  /** The private sale deal and its payment the money belongs to, when it is a deal's. */
+  privateSaleDealId?: string | null;
+  /** What staff quote for that deal (PS-0012), so the alert says which deal. */
+  privateSaleDealReference?: string | null;
+  privateSaleDealPaymentId?: string | null;
   amountCents: number;
   currency: string;
 };

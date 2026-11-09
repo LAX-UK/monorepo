@@ -232,7 +232,33 @@ export const shopApiEnvSchema = z.object({
     .enum(["true", "false"])
     .default("false")
     .transform((value) => value === "true"),
+  /**
+   * Charging delivery outside the UK at a region's fixed rate. Off until the accountant confirms
+   * how VAT applies to exports (zero-rating): with it off, a fixed-rate region is asked for as a
+   * delivery quote like any other, and nothing outside the UK is paid for at checkout. Delivery
+   * quote requests, which charge nothing, are always on. Leave it off in production.
+   */
+  SHOP_EXPORT_PAYMENT_ENABLED: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((value) => value === "true"),
+  /** Working days a guest's quote request holds the print, within 1 to 3 (a signed-in buyer's is 3). */
+  SHOP_GUEST_QUOTE_HOLD_WORKING_DAYS: z
+    .string()
+    .default("1")
+    .refine((value) => /^[1-3]$/.test(value), {
+      message: "SHOP_GUEST_QUOTE_HOLD_WORKING_DAYS must be 1, 2 or 3",
+    })
+    .transform((value) => Number(value)),
   SHOP_MERCHANDISE_ENABLED: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((value) => value === "true"),
+  /**
+   * Framing on editions: the options an edition offers appear on its page and in the basket. Off
+   * until orders price framing; with it off, no edition shows framing and no basket takes it.
+   */
+  SHOP_FRAMING_ENABLED: z
     .enum(["true", "false"])
     .default("false")
     .transform((value) => value === "true"),

@@ -6,7 +6,7 @@ import { DEAL_ACTION_COPY } from "@/lib/admin/private-sales/private-sales.vm";
 import { handleStaffStepUp } from "@/lib/auth/step-up/staff-step-up.client";
 import type { DealBlocker, DealRecord } from "@/lib/data/http/admin-private-sales.schema";
 import type { ActionResult } from "@/lib/forms/form-result";
-import { Field, Notice, StaffButton, StaffDialog, TextArea } from "@auction/staff-ui";
+import { Field, MoneyInput, Notice, StaffButton, StaffDialog, TextArea } from "@auction/staff-ui";
 import type { StaffDealAction } from "@auction/validators";
 import { useEffect, useId, useRef, useState } from "react";
 
@@ -52,6 +52,7 @@ export function DealActionDialog({
   const cancelRef = useRef<HTMLButtonElement>(null);
   const key = useRef(crypto.randomUUID());
   const [reason, setReason] = useState("");
+  const [amountMinor, setAmountMinor] = useState<number | null>(null);
   const [attempted, setAttempted] = useState(false);
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<Failure | null>(null);
@@ -60,21 +61,26 @@ export function DealActionDialog({
     if (!open) return;
     key.current = crypto.randomUUID();
     setReason("");
+    setAmountMinor(null);
     setAttempted(false);
     setFailure(null);
   }, [open]);
 
   const reasonMissing = copy.reason?.required === true && reason.trim() === "";
-  const reasonError = attempted && reasonMissing ? "Give a reason for cancelling." : undefined;
+  const reasonError = attempted && reasonMissing ? copy.reason?.missing : undefined;
+  const amount = "amount" in copy ? copy.amount : undefined;
+  const amountMissing = amount?.required === true && (amountMinor === null || amountMinor <= 0);
+  const amountError = attempted && amountMissing ? amount?.missing : undefined;
 
   async function proceed() {
     setAttempted(true);
-    if (reasonMissing) return;
+    if (reasonMissing || amountMissing) return;
     setFailure(null);
     setBusy(true);
     const result = await move(deal.reference, action, {
       version: deal.version,
       ...(reason.trim() ? { reason: reason.trim() } : {}),
+      ...(amountMinor !== null && amountMinor > 0 ? { amountMinor } : {}),
       idempotencyKey: key.current,
     });
     setBusy(false);
@@ -111,7 +117,11 @@ export function DealActionDialog({
           <StaffButton
             type="submit"
             form={`${ids}-form`}
-            variant={action === "cancel" || action === "refund" ? "danger" : "primary"}
+            variant={
+              action === "cancel" || action === "refund" || action === "record_bank_refund"
+                ? "danger"
+                : "primary"
+            }
             loading={busy}
           >
             {copy.confirm}
@@ -135,6 +145,18 @@ export function DealActionDialog({
             title={`${copy.label} didn't go through`}
             onReload={onReload}
           />
+        ) : null}
+        {amount ? (
+          <Field
+            label={amount.label}
+            id={`${ids}-amount`}
+            description={amount.hint}
+            error={amountError}
+            optional={!amount.required}
+            disabled={busy}
+          >
+            <MoneyInput value={amountMinor} onValueChange={setAmountMinor} />
+          </Field>
         ) : null}
         {copy.reason ? (
           <Field

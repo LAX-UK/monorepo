@@ -25,6 +25,7 @@ import {
 import { OfferOnLaxArtService } from "./application/artwork-register/offer-on-lax-art.service.js";
 import { ZohoLinkService } from "./application/artwork-register/zoho-link.service.js";
 import { createShopDeletionEligibilityService } from "./application/deletion-eligibility.service.js";
+import { createDeliveryQuoteStaffService } from "./application/delivery-quote-staff/delivery-quote-staff.service.js";
 import { createDeliveryRegionsService } from "./application/delivery-regions/delivery-regions.service.js";
 import { createEditionRunServices } from "./application/edition-runs/edition-run-services.js";
 import { createEditorialLinksService } from "./application/editorial-links.service.js";
@@ -34,6 +35,7 @@ import {
   createEnquiryRateLimiter,
   createReleaseAlertRateLimiter,
 } from "./application/enquiry-rate-limit.js";
+import { createEditionFramingService } from "./application/framing/edition-framing.service.js";
 import { createFramingService } from "./application/framing/framing.service.js";
 import { GuestErasureService } from "./application/guest-erasure/guest-erasure.service.js";
 import { createAccountEmailAlertHandlers } from "./application/handlers/account-email-alerts.handler.js";
@@ -79,6 +81,7 @@ import { createCommerceServices } from "./create-commerce-services.js";
 import { resolveStorefrontOrigins } from "./domain/storefront-origins.js";
 import type { EditorialRoutesDeps } from "./editorial-route-deps.js";
 import type { ShopApiEnv } from "./env.js";
+import type { PublicFramingRoutesDeps } from "./framing-route-deps.js";
 import type {
   IdentityDeletionRouteDeps,
   IdentitySubjectExportRouteDeps,
@@ -86,6 +89,11 @@ import type {
 import { createShopAlertRuntime } from "./infrastructure/alerts/create-shop-alert-runtime.js";
 import { ShopAlertSubscriberEraser } from "./infrastructure/alerts/drizzle-shop-alert-subscriber-erasure.js";
 import { createArtistApplicationServices } from "./infrastructure/artist-applications/create-artist-application-services.js";
+import { createDrizzleDeliveryQuoteStaffReader } from "./infrastructure/delivery-quote-staff/drizzle-delivery-quote-staff.store.js";
+import {
+  createDrizzleDeliveryQuoteOrderReleaser,
+  createDrizzleDeliveryQuoteStaffUnitOfWork,
+} from "./infrastructure/delivery-quote-staff/drizzle-delivery-quote-staff.unit-of-work.js";
 import { readDeliveryRegions } from "./infrastructure/delivery-regions/drizzle-delivery-regions.store.js";
 import { createDrizzleDeliveryRegionsUnitOfWork } from "./infrastructure/delivery-regions/drizzle-delivery-regions.unit-of-work.js";
 import { createDrizzleAdminReadRepository } from "./infrastructure/drizzle-admin-read.repository.js";
@@ -148,6 +156,8 @@ import {
 } from "./infrastructure/drizzle-zoho-link.js";
 import { createDrizzleEditionRunUnitOfWork } from "./infrastructure/edition-runs/drizzle-edition-run.unit-of-work.js";
 import { createEnquiryFollowUp } from "./infrastructure/enquiry-follow-up.js";
+import { createDrizzleEditionFramingReader } from "./infrastructure/framing/drizzle-edition-framing.store.js";
+import { createDrizzleEditionFramingUnitOfWork } from "./infrastructure/framing/drizzle-edition-framing.unit-of-work.js";
 import { createDrizzleFramingListReader } from "./infrastructure/framing/drizzle-framing.store.js";
 import { createDrizzleFramingUnitOfWork } from "./infrastructure/framing/drizzle-framing.unit-of-work.js";
 import { grantShopStaffRole } from "./infrastructure/grant-staff-role.js";
@@ -218,6 +228,8 @@ export type ShopApiAppDeps = {
   };
   catalogue: CatalogueRoutesDeps;
   merchandise: MerchandiseRoutesDeps;
+  /** What a buyer can choose for framing on an edition. */
+  framing: PublicFramingRoutesDeps;
   interest: InterestRoutesDeps;
   /** The signed-in artist's own application to join the gallery. */
   artistApplicant: ArtistApplicantService;
@@ -529,6 +541,18 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
     reader: deliveryRegionsReader,
     clock: { now: () => new Date() },
   });
+  const deliveryQuotes = createDeliveryQuoteStaffService({
+    uow: createDrizzleDeliveryQuoteStaffUnitOfWork(shopUow, {
+      notifications,
+      storefrontUrl: env.SHOP_STOREFRONT_URL,
+    }),
+    reader: createDrizzleDeliveryQuoteStaffReader(db),
+    orders: createDrizzleDeliveryQuoteOrderReleaser(db),
+    clock: { now: () => new Date() },
+  });
+  const editionFraming = createEditionFramingService({
+    uow: createDrizzleEditionFramingUnitOfWork(shopUow),
+  });
   const artCache =
     env.ART_REVALIDATE_URL && env.ART_REVALIDATE_SECRET
       ? createHttpArtCacheInvalidator({
@@ -745,7 +769,10 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
         artCache,
         homeFeatures,
         framing,
+        editionFraming,
         deliveryRegions,
+        deliveryQuotes,
+        exportPaymentEnabled: env.SHOP_EXPORT_PAYMENT_ENABLED,
         thirdPartySales,
         originalSales: adminOriginalSales,
         linkArtistIdentity,
@@ -810,6 +837,10 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
         getPublicCategory: createGetPublicCategoryHandler(categoryReader),
         listPublicArtists: createListPublicArtistsHandler(artistReader),
         getPublicArtist: createGetPublicArtistHandler(artistReader),
+      },
+      framing: {
+        framingEnabled: env.SHOP_FRAMING_ENABLED,
+        reader: createDrizzleEditionFramingReader(db),
       },
       merchandise: {
         listPublicMerchandiseProducts:
