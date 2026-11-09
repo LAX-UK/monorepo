@@ -397,6 +397,8 @@ export function mountOidcRoutes(app: Hono, options: OidcRouteMountOptions): void
         durable: options.durableSecurityEffects,
         notices: options.securityNotices,
         available: signInMethodsAvailable,
+        isStaff: async (subjectId) =>
+          (await readSocialSubject(options.socialSubjectPorts, subjectId)).isStaff,
       }),
       actions: accountActions,
       readRateLimit: accountRateLimit("account-sign-in-methods-read", 120),
