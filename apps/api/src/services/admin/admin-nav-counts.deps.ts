@@ -1,4 +1,8 @@
-import type { ILotFulfilmentRepository } from "@auction/persistence/interfaces";
+import { londonDateOf, londonMidnight } from "@auction/domain";
+import type {
+  ICollectionBookingReader,
+  ILotFulfilmentRepository,
+} from "@auction/persistence/interfaces";
 import type { ISaleroomLiveSessionCounter } from "@auction/persistence/interfaces";
 import type { IRepositoryFactory } from "@auction/persistence/interfaces";
 import type { Sale } from "@auction/types";
@@ -21,6 +25,8 @@ export type CreateAdminNavCountsDepsInput = {
   amlService: AmlService;
   sourceOfFundsService: SourceOfFundsService;
   telephoneBidBookingService: ITelephoneBidBookingQueryService;
+  collectionBookings: Pick<ICollectionBookingReader, "countBookedInRange">;
+  now: () => Date;
 };
 
 function saleNeedsSetup(saleRow: Sale, lotCount: number): boolean {
@@ -70,6 +76,13 @@ export function createAdminNavCountsDeps(input: CreateAdminNavCountsDepsInput): 
         (sum, [status, count]) => sum + (actionableFulfilment.has(status) ? count : 0),
         0,
       );
+    },
+    getCollectionsToHandOver: () => {
+      const { year, month, day } = londonDateOf(input.now());
+      return input.collectionBookings.countBookedInRange({
+        from: londonMidnight(year, month, day),
+        to: londonMidnight(year, month, day + 1),
+      });
     },
     getWithdrawalsPending: () => authority.countPendingAdminReviewTasks("lot_withdrawal_request"),
     getDisputesOpen: () => authority.countOpenDisputeCases(),

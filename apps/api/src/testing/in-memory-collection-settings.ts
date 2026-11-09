@@ -197,6 +197,17 @@ export class InMemorySettingsBookings
       (b) => b.venueId === venueId && b.slotStart >= range.from && b.slotStart < range.to,
     );
   }
+  async listByStatus(venueId: string, statuses: readonly string[], limit: number) {
+    return this.bookings
+      .filter((b) => b.venueId === venueId && statuses.includes(b.status))
+      .slice(0, limit);
+  }
+  async countOpenNotCollected() {
+    return 0;
+  }
+  async countBookedInRange() {
+    return 0;
+  }
   async findLiveByLots() {
     return new Map<string, CollectionBookingRecord>();
   }

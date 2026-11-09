@@ -92,6 +92,19 @@ export class DrizzleLotFulfilmentRepository implements ILotFulfilmentRepository 
     await this.db.update(lotFulfilment).set(patch).where(eq(lotFulfilment.lotId, lotId));
   }
 
+  async updateIfStatus(
+    lotId: string,
+    fromStatuses: readonly LotFulfilmentRow["status"][],
+    patch: UpdateLotFulfilmentInput,
+  ) {
+    const moved = await this.db
+      .update(lotFulfilment)
+      .set(patch)
+      .where(and(eq(lotFulfilment.lotId, lotId), inArray(lotFulfilment.status, [...fromStatuses])))
+      .returning({ lotId: lotFulfilment.lotId });
+    return moved.length === 1;
+  }
+
   async countMatching(filter: AdminLotFulfilmentListFilter) {
     const whereClause = buildListWhereClause(filter);
     const countBase = this.db

@@ -93,6 +93,7 @@ export * from "./onsite-event.js";
 export * from "./press.js";
 export * from "./workspace-buying.js";
 export * from "./collection-booking.js";
+export * from "./collection-desk.js";
 export * from "./collection-settings.js";
 export * from "./account-search.js";
 export * from "./organisation-team.js";

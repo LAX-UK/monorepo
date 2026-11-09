@@ -1,8 +1,10 @@
 import {
   COLLECTIONS_PATH,
   type CollectionTab,
+  DESK_TABS,
   collectionsHref,
 } from "@/lib/admin/collections/collections.vm";
+import type { DeskModel } from "@/lib/admin/collections/load-collections-page";
 import {
   EmptyState,
   ErrorState,
@@ -15,12 +17,16 @@ import {
 import type { StaffCollectionSettings, StaffCollectionVenue } from "@auction/types";
 import Link from "next/link";
 import { ClosuresPanel } from "./closures-panel";
+import { DeskBookForClientButton } from "./desk-book-for-client-button";
+import { DeskDay } from "./desk-day";
+import { DeskList } from "./desk-list";
 import { HoursRulesForm } from "./hours-rules-form";
 
 type Props = {
   tab: CollectionTab;
   venues: StaffCollectionVenue[];
   settings: StaffCollectionSettings | null;
+  desk?: DeskModel | null;
   loadError: string | null;
   canChange: boolean;
   /** The London day. */
@@ -28,17 +34,32 @@ type Props = {
 };
 
 /**
- * Collections: the hours and rules for collecting purchased works, and the days the gallery is
- * closed. Two tabs, "Hours and rules" and "Closures"; the day's visits arrive with the next
- * release of this page.
+ * Collections: who is coming to collect and when (Day, Upcoming, Not collected), and the hours,
+ * rules and closures that decide when they can (Hours and rules, Closures).
  */
-export function CollectionsPage({ tab, venues, settings, loadError, canChange, today }: Props) {
+export function CollectionsPage({
+  tab,
+  venues,
+  settings,
+  desk,
+  loadError,
+  canChange,
+  today,
+}: Props) {
   const venueId = settings?.venueId ?? null;
   const tabs = (
     <TabNav
       label="Collections sections"
       Link={Link}
       items={[
+        { id: "day", label: "Day", href: collectionsHref("day", venueId) },
+        { id: "upcoming", label: "Upcoming", href: collectionsHref("upcoming", venueId) },
+        {
+          id: "not_collected",
+          label: "Not collected",
+          href: collectionsHref("not_collected", venueId),
+          ...(desk?.missedCount ? { count: desk.missedCount } : {}),
+        },
         {
           id: "hours",
           label: "Hours and rules",
@@ -57,8 +78,13 @@ export function CollectionsPage({ tab, venues, settings, loadError, canChange, t
   return (
     <FormPage
       title="Collections"
-      description="When clients can collect their purchased works, how many at a time, and the days the gallery is closed."
+      description="Who is coming to collect, and when. Hand over after checking photo ID."
       tabs={tabs}
+      {...(canChange && settings && DESK_TABS.includes(tab)
+        ? {
+            primaryAction: <DeskBookForClientButton venueId={settings.venueId} today={today} />,
+          }
+        : {})}
       notice={
         !canChange && settings ? (
           <div className="flex items-center gap-3">
@@ -90,13 +116,33 @@ export function CollectionsPage({ tab, venues, settings, loadError, canChange, t
           {venues.length > 1 ? (
             <VenueLinks venues={venues} current={settings.venueId} tab={tab} />
           ) : null}
-          {settings.onlineBookingEnabled ? null : (
+          {settings.onlineBookingEnabled || DESK_TABS.includes(tab) ? null : (
             <Notice tone="info" title="Online booking is off">
               Clients can't book collections yet. Turn it on under Online booking when the hours are
               right.
             </Notice>
           )}
-          {tab === "closures" ? (
+          {DESK_TABS.includes(tab) ? (
+            desk?.error ? (
+              <ErrorState
+                title="The visits didn't load"
+                description={desk.error}
+                action={
+                  <StaffButtonLink
+                    href={collectionsHref(tab, venueId)}
+                    variant="secondary"
+                    Link={Link}
+                  >
+                    Try again
+                  </StaffButtonLink>
+                }
+              />
+            ) : desk?.day ? (
+              <DeskDay day={desk.day} canChange={canChange} today={today} />
+            ) : desk?.list ? (
+              <DeskList list={desk.list} canChange={canChange} today={today} />
+            ) : null
+          ) : tab === "closures" ? (
             <ClosuresPanel
               key={settings.version}
               settings={settings}

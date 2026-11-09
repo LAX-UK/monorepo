@@ -23,6 +23,7 @@ import type { LaxAdminRolesService } from "../../staff/lax-admin-roles.service.j
 import type { StaffRolesAdminService } from "../../staff/staff-roles-admin.service.js";
 import type { IAtgAdminService } from "../atg-admin-service.js";
 import type { IBuyerAgentAuthorisationService } from "../buyer-agent-authorisation-service.js";
+import type { ICollectionDeskService } from "../collection-desk-service.js";
 import type { ICollectionSettingsAdminService } from "../collection-settings-service.js";
 import type { IIdempotencyStore } from "../idempotency-store.js";
 import type { IEnquiryRouting, IMarketingEnquiryDesk } from "../marketing-enquiry-service.js";
@@ -129,6 +130,8 @@ export type AdminIntegrationRouteServices = {
   inventoryMoves: InventoryMoveServices;
   /** A place's collection hours, rules and closures. */
   collectionSettings: ICollectionSettingsAdminService;
+  /** The day's visits, hand-over, missed visits and booking for a client. */
+  collectionDesk: ICollectionDeskService;
 };
 
 /** Wired in the container root because the policy client lives outside the admin graph. */

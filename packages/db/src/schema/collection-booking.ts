@@ -269,6 +269,11 @@ export const collectionBookingLot = pgTable(
       .references(() => lot.id, { onDelete: "restrict" }),
     active: boolean("active").notNull().default(true),
     outcome: text("outcome"),
+    /**
+     * The lot's fulfilment status just before it was handed over at the desk, so an undo puts the
+     * lot back exactly where it was. Null until a hand-over, and cleared by an undo.
+     */
+    previousFulfilmentStatus: text("previous_fulfilment_status"),
   },
   (table) => [
     primaryKey({ name: "collection_booking_lot_pkey", columns: [table.bookingId, table.lotId] }),

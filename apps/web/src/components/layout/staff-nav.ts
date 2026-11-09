@@ -267,6 +267,7 @@ function buildStaffNavGroupSpecs(
           icon: CalendarClock,
           match: (pathname) => pathname.startsWith("/admin/collections"),
           requirement: COLLECTIONS_READ_ACCESS,
+          ...navBadge(navCounts.collectionsToHandOver, "warning"),
         },
         {
           id: "onboarding-issues",
