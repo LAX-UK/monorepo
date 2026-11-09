@@ -133,6 +133,7 @@ export class CollectionSettingsAdminService implements ICollectionSettingsAdminS
         onlineBookingEnabled: body.onlineBookingEnabled,
         bookingEmail: body.bookingEmail,
         freeStorageDays: body.freeStorageDays,
+        storageChargePence: body.storageChargePence,
         hours: body.hours,
         updatedByUserId: actor.userId,
         at: this.deps.now(),
@@ -547,6 +548,7 @@ export function toSettingsView(record: StaffSettingsRecord): StaffCollectionSett
     undoHandOverMinutes: settings.undoHandOverMinutes,
     maxActiveVisits: settings.maxActiveVisits,
     freeStorageDays: settings.freeStorageDays,
+    storageChargePence: settings.storageChargePence,
     hours: record.hours.map((h) => ({ ...h })),
     exceptions: record.exceptions.map(toExceptionView),
     nextSaleDay: record.nextSaleDay

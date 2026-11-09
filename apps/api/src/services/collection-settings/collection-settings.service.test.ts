@@ -43,6 +43,7 @@ function saveBody(
     undoHandOverMinutes: s.undoHandOverMinutes,
     maxActiveVisits: s.maxActiveVisits,
     freeStorageDays: s.freeStorageDays,
+    storageChargePence: s.storageChargePence,
     bookingEmail: s.bookingEmail,
     hours: store.hours.map((h) => ({ ...h })),
     ...over,
@@ -151,6 +152,20 @@ describe("saving", () => {
       affectedHandling: "none",
     });
     expect(JSON.stringify(events.events[0]?.payload)).not.toContain("collections@lax.example");
+  });
+
+  it("records a storage charge as a change, and keeps it for the next read", async () => {
+    const { service, store, events } = setup();
+    const saved = await service.save(
+      STAFF,
+      SETTINGS_VENUE,
+      saveBody(store, { freeStorageDays: 30, storageChargePence: 2500 }),
+    );
+    expect(saved.isOk()).toBe(true);
+    expect(events.events[0]?.payload).toMatchObject({
+      changed: ["free_storage_days", "storage_charge"],
+    });
+    expect(store.settings.storageChargePence).toBe(2500);
   });
 
   it("changes nothing and records a save that changes nothing as no change", async () => {

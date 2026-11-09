@@ -43,11 +43,14 @@ export type InsertLotFulfilmentInput = {
   paymentId: string;
   status: LotFulfilmentRow["status"];
   addressSnapshot?: LotFulfilmentAddressSnapshot | null;
+  /** When the payment cleared, so "please collect by" counts from it. */
+  paymentClearedAt?: Date;
 };
 
 export type UpdateLotFulfilmentInput = Partial<{
   paymentId: string;
   status: LotFulfilmentRow["status"];
+  paymentClearedAt: Date;
   addressSnapshot: LotFulfilmentAddressSnapshot | null;
   releaseApprovedByUserId: string;
   releaseApprovedAt: Date;

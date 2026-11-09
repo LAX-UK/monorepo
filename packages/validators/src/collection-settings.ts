@@ -46,6 +46,7 @@ export const saveCollectionSettingsBodySchema = z
     undoHandOverMinutes: z.number().int(),
     maxActiveVisits: z.number().int(),
     freeStorageDays: z.number().int().min(0).max(365).nullable(),
+    storageChargePence: z.number().int().min(0).max(1_000_000).nullable(),
     bookingEmail: z.string().trim().email().max(254).nullable(),
     hours: z
       .array(z.object({ weekday: z.number().int(), opensLocal: time, closesLocal: time }).strict())

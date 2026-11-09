@@ -15,6 +15,8 @@ export type CollectionPlaceSettings = CollectionRules & {
   onlineBookingEnabled: boolean;
   /** Days a bought work is stored free; `null` until the storage terms are set. */
   freeStorageDays: number | null;
+  /** Pence per lot per week after the free period; recorded for Finance, never charged automatically. */
+  storageChargePence: number | null;
   bookingEmail: string | null;
   updatedAt: Date;
 };

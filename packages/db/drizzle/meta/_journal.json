@@ -2374,6 +2374,13 @@
       "when": 1804838400000,
       "tag": "0344_payment_refund",
       "breakpoints": true
+    },
+    {
+      "idx": 340,
+      "version": "7",
+      "when": 1804924800000,
+      "tag": "0347_collection_storage_reminders",
+      "breakpoints": true
     }
   ]
 }

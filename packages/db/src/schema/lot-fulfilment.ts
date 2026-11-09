@@ -40,6 +40,8 @@ export const lotFulfilment = pgTable(
     }),
     collectedAt: timestamp("collected_at", { mode: "date", withTimezone: true }),
     addressSnapshot: jsonb("address_snapshot").$type<Record<string, unknown>>(),
+    /** When the payment cleared, so "please collect by" counts from it. Null for lots cleared before this was recorded. */
+    paymentClearedAt: timestamp("payment_cleared_at", { mode: "date", withTimezone: true }),
     notes: text("notes"),
     updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),

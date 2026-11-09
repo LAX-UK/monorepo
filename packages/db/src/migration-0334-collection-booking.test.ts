@@ -98,9 +98,13 @@ describe("migration 0334 collection booking", () => {
   });
 
   it("is mirrored by the Drizzle tables, column for column", () => {
-    // 0335 adds the per-account visit cap to the place after this migration created it.
+    // Later migrations add columns to the place: the per-account visit cap and the storage charge.
     expect(columnNames(collectionPlace)).toEqual(
-      [...declaredColumns(migration, "collection_place"), "max_active_visits"].sort(),
+      [
+        ...declaredColumns(migration, "collection_place"),
+        "max_active_visits",
+        "storage_charge_pence",
+      ].sort(),
     );
     expect(columnNames(collectionWeeklyHours)).toEqual(
       declaredColumns(migration, "collection_weekly_hours"),
