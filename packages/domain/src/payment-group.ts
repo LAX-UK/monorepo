@@ -125,26 +125,26 @@ export type GroupRefundAttribution = {
  * Which invoice each refund of a group's payment belongs to. Refunds are made per invoice and
  * carry the invoice's payment id, so a partial refund of one invoice never touches the others.
  * A refund that names no invoice of the group (for example one made outside the platform) is
- * reported rather than spread across invoices.
+ * reported rather than spread across invoices. A refund is attributed as it was made, even when
+ * the invoice has been refunded more than it was: that excess must be visible to whoever checks
+ * the invoice, so it is never trimmed here.
  */
 export function attributeGroupRefunds(
-  members: readonly { paymentId: string; amountPence: number }[],
+  members: readonly { paymentId: string }[],
   refunds: readonly GroupRefund[],
 ): GroupRefundAttribution {
-  const capacity = new Map(members.map((m) => [m.paymentId, m.amountPence]));
+  const memberIds = new Set(members.map((m) => m.paymentId));
   const refundedPenceByPayment = new Map<string, number>();
   let unattributedPence = 0;
   for (const refund of refunds) {
-    const room = refund.paymentId ? capacity.get(refund.paymentId) : undefined;
-    if (!refund.paymentId || room === undefined) {
+    if (!refund.paymentId || !memberIds.has(refund.paymentId)) {
       unattributedPence += refund.amountPence;
       continue;
     }
-    // An invoice is never refunded more than it was: the excess is reported, not attributed.
-    const already = refundedPenceByPayment.get(refund.paymentId) ?? 0;
-    const placed = Math.max(0, Math.min(refund.amountPence, room - already));
-    if (placed > 0) refundedPenceByPayment.set(refund.paymentId, already + placed);
-    unattributedPence += refund.amountPence - placed;
+    refundedPenceByPayment.set(
+      refund.paymentId,
+      (refundedPenceByPayment.get(refund.paymentId) ?? 0) + refund.amountPence,
+    );
   }
   return { refundedPenceByPayment, unattributedPence };
 }

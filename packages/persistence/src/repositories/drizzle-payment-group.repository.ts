@@ -292,6 +292,7 @@ export class DrizzlePaymentGroupRepository implements IPaymentGroupRepository {
       .select({ id: payment.id })
       .from(payment)
       .where(eq(payment.paymentGroupId, groupId))
+      .orderBy(asc(payment.id))
       .for("update");
     return {
       group: mapGroup(row),

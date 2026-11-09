@@ -15,7 +15,12 @@ import type { PaymentServiceDeps } from "./payment-service-types.js";
 
 type BlockedCaptureDeps = Pick<
   PaymentServiceDeps,
-  "payments" | "paymentCapture" | "stripePayments" | "transactionRunner" | "domainEventSink"
+  | "payments"
+  | "paymentCapture"
+  | "stripePayments"
+  | "transactionRunner"
+  | "domainEventSink"
+  | "paymentRefunds"
 >;
 
 type Outcome = Result<void, AuthzError | PaymentProviderError>;
@@ -137,16 +142,18 @@ export async function refundBlockedCapture(
   if (!deps.stripePayments?.isConfigured()) {
     return err(new PaymentProviderError("Stripe is not configured for this environment", 503));
   }
-  if (!deps.transactionRunner || !deps.domainEventSink) {
+  if (!deps.transactionRunner || !deps.domainEventSink || !deps.paymentRefunds) {
     return err(new PaymentProviderError("Payment refund persistence is not configured", 500));
   }
-  const { transactionRunner, domainEventSink } = deps;
+  const { transactionRunner, domainEventSink, paymentRefunds } = deps;
+  const refundedPence =
+    blocked.amountCents > 0 ? blocked.amountCents : gbpAmountToPence(payment.amount);
 
   let stripeRefundId: string | null = null;
   try {
     const outcome = await deps.stripePayments.createRefund({
       chargeId,
-      amount: blocked.amountCents > 0 ? blocked.amountCents : gbpAmountToPence(payment.amount),
+      amount: refundedPence,
       reason: "requested_by_customer",
       paymentId,
     });
@@ -157,12 +164,22 @@ export async function refundBlockedCapture(
 
   try {
     await transactionRunner.runInTransaction(async (tx) => {
+      await paymentRefunds.lockPaymentInTransaction(tx, paymentId);
       const refunded = await deps.payments.applyRefundedFromCancelledInTransaction(
         tx,
         paymentId,
         stripeRefundId,
       );
       if (!refunded) return;
+      await paymentRefunds.recordInTransaction(tx, {
+        paymentId,
+        // No payout line exists for a closed payment, so this is the refund's only key.
+        idempotencyKey: `blocked_capture_refund:${paymentId}`,
+        stripeRefundId,
+        amountPence: refundedPence,
+        currency: "GBP",
+        source: "blocked_capture",
+      });
       await domainEventSink.withTx(tx).publish({
         aggregateType: "payment",
         aggregateId: paymentId,

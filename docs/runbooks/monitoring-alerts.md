@@ -68,6 +68,38 @@ sum(increase(auction_api_money_path_events_total{event="invoice_pdf_total_mismat
 
 `invoice_pdf_total_mismatch`: a stored Bid invoice's lines do not add up to its total, so its PDF was refused (the member sees "we can't show this invoice just now"). Open the invoice in admin, find which line or total is wrong and correct it through finance; the PDF works again once the record is consistent.
 
+```promql
+sum(increase(auction_api_money_path_events_total{event="invoice_pdf_refund_exceeds_total"}[1h])) > 0
+```
+
+`invoice_pdf_refund_exceeds_total`: the refunds recorded for a payment (Bid's `payment_refund` table, written in the same transaction as each `payment.refunded` event) add up to more than its invoice total. The sum is the raw one; nothing trims it before the alert. The PDF shows the total as refunded, never more, so the member sees a plausible figure. The API log line with the same `event` carries `paymentId`, `lotId`, `invoiceId`, `totalPence` and `refundedPence`; read the payment's rows in `payment_refund` (`source` says which path wrote each one), compare them with the refunds on the charge in Stripe, and correct the extra refund or the invoice through finance. For a "Pay several" charge the refunds are the ones naming this invoice.
+
+```promql
+sum(increase(auction_api_money_path_events_total{event=~"invoice_pdf_refund_currency|invoice_pdf_refund_missing"}[1h])) > 0
+```
+
+`invoice_pdf_refund_currency`: a refund is recorded for the payment in a currency other than GBP. The PDF is refused (the member sees "we can't show this invoice just now") rather than add pence of another currency to pounds. The log line carries the `currencies`; check the refund in Stripe and the payment's rows in `payment_refund`.
+
+`invoice_pdf_refund_missing`: the payment is marked refunded but `payment_refund` holds nothing for it. It was refunded before refunds were recorded and the payout ledger had no refund line to copy (no seller to claw back from), or a refund the previous release processed has not been copied yet (see the backfill below). The PDF shows it as refunded with no amount.
+
+There is no admin tool for this yet (a follow-up: an audited finance action that writes the row). Until then a database admin adds the row by hand, with a second person confirming the figures:
+
+1. Re-run the backfill first; for each payment it adds one `payout_topup` row for the amount by which its refund payout lines exceed its `payment_refund` rows, and nothing else (nothing where the buyer side is already the higher). It is safe to repeat and to run beside live refunds: `SELECT payment_refund_backfill_from_payout_lines();`. Read the payment's rows again; if there is one now, stop.
+2. In the Stripe dashboard (read only) open the payment's charge (`payment.stripe_charge_id`) and note each refund: its id (`re_...`), amount and currency. For a "Pay several" charge only the refunds whose metadata names this payment count. A payment staff marked paid has no charge and so no card refund to find: the amount is what finance repaid, from the bank record.
+3. Add one row per refund as the database owner, in one transaction, taking the payment's lock first so a refund arriving at the same moment is measured against it:
+
+```sql
+BEGIN;
+SELECT id FROM payment WHERE id = '<payment id>' FOR UPDATE;
+INSERT INTO payment_refund (payment_id, idempotency_key, stripe_refund_id, amount_pence, currency, source)
+VALUES ('<payment id>', 'manual:<payment id>:<re_... or a finance reference>', '<re_... or NULL>', <pence>, 'GBP', 'staff')
+ON CONFLICT (idempotency_key) DO NOTHING;
+COMMIT;
+```
+
+   The key makes the statement safe to repeat. Use `staff` as the source. Do not edit `payout_line` or `payment`: this row repairs the invoice record only, it never moves seller money.
+4. Check the invoice PDF now shows the amount, and note the payment id, the row and who confirmed it on the incident.
+
 Wire each to PagerDuty / email per your observability stack.
 
 ---

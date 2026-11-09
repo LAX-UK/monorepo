@@ -1,5 +1,8 @@
 import { payment } from "@auction/db/schema";
-import type { IPaymentWebhookLookupReader } from "@auction/persistence/interfaces";
+import type {
+  IPaymentRefundLedger,
+  IPaymentWebhookLookupReader,
+} from "@auction/persistence/interfaces";
 import type { ITransactionRunner } from "@auction/persistence/interfaces";
 import type { IPaymentWriteRepository } from "@auction/persistence/interfaces";
 import type { IPayoutRepository } from "@auction/persistence/interfaces";
@@ -16,6 +19,8 @@ export type StripePaymentWebhookDeps = {
   paymentWebhookLookup: IPaymentWebhookLookupReader;
   payments: IPaymentWriteRepository;
   payoutRepository: IPayoutRepository;
+  /** What the buyer was refunded: where a refund's delta is measured from, and recorded to. */
+  paymentRefunds: IPaymentRefundLedger;
   payoutAdjustments: IPayoutAdjustmentService;
   paymentCapture: IPaymentCaptureService;
   domainEventSink: IDomainEventSink;

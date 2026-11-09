@@ -117,7 +117,10 @@ export interface IPaymentGroupRepository {
     groupId: string,
     checkout: { sessionId: string; paymentIntentId: string | null },
   ): Promise<boolean>;
-  /** Locks the group and its invoices' payments (`FOR UPDATE`) inside `tx`. */
+  /**
+   * Locks the group, then its invoices' payments in id order (`FOR UPDATE`), inside `tx`, so two
+   * callers can never hold the payments in opposite order.
+   */
   lockInTransaction(tx: Database, groupId: string): Promise<LockedPaymentGroup | null>;
   /**
    * Moves the group from one of `from` to `to` inside `tx`; `false` when it was not in `from`.
