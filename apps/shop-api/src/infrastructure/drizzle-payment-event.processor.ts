@@ -312,7 +312,34 @@ export type DeferOrSettleOutcome =
   | "not_pending"
   | "reconciled"
   | "expired"
-  | "closed_unconfirmed";
+  | "closed_unconfirmed"
+  | "settle_failed";
+
+/**
+ * Takes an order out of the sweep when settling it failed, and tells ops once. Its hold is cleared
+ * (the sweep only reads orders with one), so a settle that keeps failing can never jam the batch;
+ * the order is left as it is for staff to deal with.
+ */
+async function takeOrderOutOfSweep(
+  db: Database,
+  orderId: string,
+  options: CheckoutTransitionOptions,
+  error: unknown,
+): Promise<void> {
+  const reason = error instanceof Error ? error.message : String(error);
+  await db.transaction(async (tx) => {
+    await tx
+      .update(shopOrder)
+      .set({ checkoutExpiresAt: null, updatedAt: new Date() })
+      .where(and(eq(shopOrder.id, orderId), eq(shopOrder.status, "pending_payment")));
+    await queueCheckoutOpsAlertInTx(tx as Database, options, {
+      idempotencyKey: `checkout-settle-failed:${orderId}`,
+      alertKind: "Shop checkout could not be settled",
+      orderId,
+      detail: `Order ${orderId} is past the longest hold and could not be settled (${reason}). It has been taken out of the checkout sweep and is still waiting for payment: check its payment in Stripe and close it by hand.`,
+    });
+  });
+}
 
 /**
  * Leaves an order alone for a while (see {@link deferCheckoutHold}), telling ops once when the
@@ -330,7 +357,12 @@ export async function deferOrSettleCheckout(
   const deferral: HoldDeferral = await deferCheckoutHold(db, orderId, now);
   if (deferral.kind === "not_pending") return "not_pending";
   if (deferral.kind === "at_cap") {
-    return settleOrderPastCeiling(db, orderId, options, why.stripeShowsPaid);
+    try {
+      return await settleOrderPastCeiling(db, orderId, options, why.stripeShowsPaid);
+    } catch (error) {
+      await takeOrderOutOfSweep(db, orderId, options, error);
+      return "settle_failed";
+    }
   }
   if (deferral.deferrals === DEFERRALS_BEFORE_OPS_ALERT) {
     await db.transaction((tx) =>
@@ -350,6 +382,7 @@ function expireOutcomeOf(outcome: DeferOrSettleOutcome): ShopCheckoutExpireOutco
     case "deferred":
       return "deferred_async";
     case "not_pending":
+    case "settle_failed":
       return "unchanged";
     case "reconciled":
       return "reconciled";

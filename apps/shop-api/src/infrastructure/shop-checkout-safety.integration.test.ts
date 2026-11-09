@@ -479,6 +479,43 @@ describe.skipIf(!hasShopIntegrationDb)(
       expect(tasks[0]?.payload).toMatchObject({ reason: "shop_order_paid_not_confirmed" });
     });
 
+    it("takes an order out of the sweep, with one ops alert, when settling it past the ceiling fails", async () => {
+      const { db, checkout, order } = await setup("ceiling-settle-fails");
+      const created = await checkout("buyer");
+      await db
+        .update(shopOrder)
+        .set({
+          createdAt: new Date(Date.now() - 22 * 24 * 60 * 60_000),
+          checkoutExpiresAt: new Date("2000-01-01T00:00:00Z"),
+        })
+        .where(eq(shopOrder.id, created.orderId));
+      const stripe: PaymentCheckoutGateway = {
+        ...gateway,
+        async expireHostedCheckout() {
+          throw new Error("stripe unavailable");
+        },
+        async retrievePaidCheckout() {
+          throw new Error("stripe unavailable");
+        },
+      };
+      const queueCheckoutOpsAlert = vi.fn(async () => undefined);
+      // No finance store is wired, so closing the order with a task fails: the settle throws.
+      const options = {
+        paymentGateway: stripe,
+        opsAlertEmail: "ops@example.test",
+        notifications: { queueCheckoutOpsAlert } as never,
+      };
+      await reapStaleShopCheckouts(db, new Date(), options);
+
+      const left = await order(created.orderId);
+      expect(left.status).toBe("pending_payment");
+      expect(left.checkoutExpiresAt).toBeNull();
+      expect(queueCheckoutOpsAlert).toHaveBeenCalledTimes(1);
+      // It is no longer in the sweep, so a second sweep does not touch it or alert again.
+      await reapStaleShopCheckouts(db, new Date(), options);
+      expect(queueCheckoutOpsAlert).toHaveBeenCalledTimes(1);
+    });
+
     it("will not stretch a hold that has already ended", async () => {
       const { db, checkout, order, holder, pastHold } = await setup("no-revive");
       const created = await checkout("buyer");
