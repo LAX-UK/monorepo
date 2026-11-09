@@ -72,11 +72,22 @@ export type SecurityNoticeEvent =
       userAgent?: string | null;
     }
   | {
-      /** A Google or Apple sign-in was removed from the account. */
+      /** The person added a way to sign in: Google, Apple or a passkey. */
+      kind: "sign_in_method_added";
+      userId: string;
+      at: Date;
+      method: "google" | "apple" | "passkey";
+      /** The address the provider reported, or the passkey's name; null when there is none. */
+      detail: string | null;
+      userAgent?: string | null;
+    }
+  | {
+      /** The person removed a way to sign in: Google, Apple or a passkey. */
       kind: "sign_in_method_removed";
       userId: string;
       at: Date;
-      provider: "google" | "apple";
+      method: "google" | "apple" | "passkey";
+      detail: string | null;
       userAgent?: string | null;
     }
   | {

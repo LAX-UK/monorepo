@@ -1,3 +1,4 @@
+import type { AccountSignInMethodsResponse } from "@auction/identity-contracts";
 import { describe, expect, it } from "vitest";
 import {
   ONLY_METHOD_REASON,
@@ -7,10 +8,28 @@ import {
   signInMethodRejectionMessage,
 } from "./account-sign-in-methods.vm";
 
-const google = { provider: "google", linkedAt: "2026-10-01T09:00:00.000Z" } as const;
-const apple = { provider: "apple", linkedAt: "2026-10-05T09:00:00.000Z" } as const;
+const google = {
+  provider: "google",
+  linkedAt: "2026-10-01T09:00:00.000Z",
+  providerEmail: null,
+  hidden: false,
+} as const;
+const apple = {
+  provider: "apple",
+  linkedAt: "2026-10-05T09:00:00.000Z",
+  providerEmail: null,
+  hidden: false,
+} as const;
 const ok = (hasPassword: boolean, social: (typeof google | typeof apple)[]) =>
-  ({ status: "ok", value: { hasPassword, social } }) as const;
+  ({
+    status: "ok",
+    value: {
+      hasPassword,
+      social,
+      passkeys: [] as AccountSignInMethodsResponse["passkeys"],
+      available: { google: true, apple: true, passkey: false },
+    },
+  }) as const;
 
 describe("buildSignInMethodsSection", () => {
   it("shows a password-only account with no social rows", () => {
@@ -83,5 +102,22 @@ describe("refusal copy", () => {
     expect(signInMethodRejectionMessage("last_sign_in_method")).toBe(ONLY_METHOD_REASON);
     expect(isSignInMethodRejection("not_linked")).toBe(true);
     expect(isSignInMethodRejection("invalid_phone")).toBe(false);
+  });
+
+  it("has a sentence for every refusal the issuer can return", () => {
+    for (const reason of [
+      "last_sign_in_method",
+      "not_linked",
+      "rate_limited",
+      "passkey_limit",
+      "not_available",
+      "staff_not_allowed",
+    ] as const) {
+      expect(isSignInMethodRejection(reason)).toBe(true);
+      expect(signInMethodRejectionMessage(reason).length).toBeGreaterThan(10);
+    }
+    expect(signInMethodRejectionMessage("staff_not_allowed")).toBe(
+      "Staff accounts can't sign in with Google or Apple. Add a passkey instead.",
+    );
   });
 });
