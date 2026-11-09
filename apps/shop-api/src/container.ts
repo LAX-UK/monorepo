@@ -34,6 +34,7 @@ import {
   createEnquiryRateLimiter,
   createReleaseAlertRateLimiter,
 } from "./application/enquiry-rate-limit.js";
+import { createFramingService } from "./application/framing/framing.service.js";
 import { GuestErasureService } from "./application/guest-erasure/guest-erasure.service.js";
 import { createAccountEmailAlertHandlers } from "./application/handlers/account-email-alerts.handler.js";
 import { createCountArtworkFacetsHandler } from "./application/handlers/count-artwork-facets.handler.js";
@@ -120,6 +121,7 @@ import { createDrizzlePortalFavoritesRepository } from "./infrastructure/drizzle
 import { createDrizzlePortalOwnershipRepository } from "./infrastructure/drizzle-portal-ownership.repository.js";
 import { createDrizzlePortalPortfolioRepository } from "./infrastructure/drizzle-portal-portfolio.repository.js";
 import { createDrizzlePortalSalesRepository } from "./infrastructure/drizzle-portal-sales.repository.js";
+import { createDrizzlePrintPartyStore } from "./infrastructure/drizzle-print-party.store.js";
 import { createDrizzleProductionTaskRepository } from "./infrastructure/drizzle-production-task.repository.js";
 import { createDrizzleRegisterOverviewReader } from "./infrastructure/drizzle-register-overview.js";
 import { createDrizzleSaleAuthorityWriter } from "./infrastructure/drizzle-sale-authority.writer.js";
@@ -146,6 +148,8 @@ import {
 } from "./infrastructure/drizzle-zoho-link.js";
 import { createDrizzleEditionRunUnitOfWork } from "./infrastructure/edition-runs/drizzle-edition-run.unit-of-work.js";
 import { createEnquiryFollowUp } from "./infrastructure/enquiry-follow-up.js";
+import { createDrizzleFramingListReader } from "./infrastructure/framing/drizzle-framing.store.js";
+import { createDrizzleFramingUnitOfWork } from "./infrastructure/framing/drizzle-framing.unit-of-work.js";
 import { grantShopStaffRole } from "./infrastructure/grant-staff-role.js";
 import { createDrizzleGuestErasureStore } from "./infrastructure/guest-checkout/drizzle-guest-erasure.store.js";
 import { createAdjustMerchandiseStockHandler } from "./infrastructure/handlers/admin/adjust-merchandise-stock.handler.js";
@@ -464,6 +468,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
   const editionRuns = createEditionRunServices({
     uow: createDrizzleEditionRunUnitOfWork(shopUow),
     clock: { now: () => new Date() },
+    laxCertificatesEnabled: () => env.SHOP_LAX_CERTIFICATES_ENABLED,
   });
   const printFulfilment = createPrintFulfilmentServices({
     uow: createDrizzlePrintFulfilmentUnitOfWork(shopUow),
@@ -513,6 +518,10 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
     uow: createDrizzleHomeFeaturesUnitOfWork(shopUow, { resolveMediaUrl }),
     lists: createDrizzleHomeFeatureListReader(db, { resolveMediaUrl }),
     clock: { now: () => new Date() },
+  });
+  const framing = createFramingService({
+    uow: createDrizzleFramingUnitOfWork(shopUow),
+    lists: createDrizzleFramingListReader(db),
   });
   const deliveryRegionsReader = { read: () => readDeliveryRegions(db) };
   const deliveryRegions = createDeliveryRegionsService({
@@ -700,6 +709,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
           settings: createDrizzleZohoLinkSettings(db),
         }),
         releaseAlertSummary: shopAlerts.summary,
+        printParties: createDrizzlePrintPartyStore(db),
         guestErasure: new GuestErasureService(
           createDrizzleGuestErasureStore(db, {
             domainEventMode: env.DOMAIN_EVENT_PUBLISH_VALIDATE,
@@ -734,6 +744,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
         artistCatalogue,
         artCache,
         homeFeatures,
+        framing,
         deliveryRegions,
         thirdPartySales,
         originalSales: adminOriginalSales,

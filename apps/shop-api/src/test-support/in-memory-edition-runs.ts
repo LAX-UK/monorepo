@@ -1,5 +1,6 @@
 import {
   type EditionAllocationKind,
+  type EditionListingStatus,
   type EditionRunSpec,
   type RunUsage,
   ShopDomainError,
@@ -11,6 +12,7 @@ import type {
   EditionRunUnitOfWork,
   RunArtwork,
   StoredFacts,
+  StoredPrintException,
 } from "../application/edition-runs/edition-run.ports.js";
 import type {
   EditionRunConfig,
@@ -20,13 +22,16 @@ import type { ShopAdminAuditRecord } from "../application/ports/shop-admin-audit
 import type { ShopDomainEventRecord } from "../application/ports/shop-domain-event.writer.js";
 
 export type MemoryPrint = {
+  editionId: string;
   artworkId: string;
   stockRef: number;
   editionNumber: number | null;
   proofNumber: number | null;
   allocation: EditionAllocationKind;
-  listingStatus: "not_authorised" | "authorised";
+  listingStatus: EditionListingStatus;
   custodyStatus: "unprinted" | "stored";
+  reservedUntil: Date | null;
+  reservedByPendingOrder: boolean;
 };
 
 /**
@@ -44,6 +49,8 @@ export function createInMemoryEditionRuns() {
   const events: ShopDomainEventRecord[] = [];
   const paidOrders = new Map<string, { orderId: string; reference: string; paidAt: Date }[]>();
   const snapshots = new Map<string, Record<string, unknown>>();
+  const exceptions: (StoredPrintException & { returnedBy: string | null })[] = [];
+  const retired = new Set<string>();
   let factsSaves = 0;
   let serial = 0;
 
@@ -92,6 +99,7 @@ export function createInMemoryEditionRuns() {
         });
         for (const row of plan) {
           prints.push({
+            editionId: `print-${++serial}`,
             artworkId: command.artworkId,
             stockRef: row.stockRef,
             editionNumber: null,
@@ -99,6 +107,8 @@ export function createInMemoryEditionRuns() {
             allocation: row.allocation,
             listingStatus: "not_authorised",
             custodyStatus: command.custodyStatus,
+            reservedUntil: null,
+            reservedByPendingOrder: false,
           });
         }
         const batch: EditionStockBatch = {
@@ -127,6 +137,7 @@ export function createInMemoryEditionRuns() {
       async createPrints({ artworkId, plan }) {
         for (const row of plan) {
           prints.push({
+            editionId: `print-${++serial}`,
             artworkId,
             stockRef: row.stockRef,
             editionNumber: row.editionNumber,
@@ -134,6 +145,8 @@ export function createInMemoryEditionRuns() {
             allocation: row.allocation,
             listingStatus: "not_authorised",
             custodyStatus: "unprinted",
+            reservedUntil: null,
+            reservedByPendingOrder: false,
           });
         }
         return plan.length;
@@ -179,12 +192,60 @@ export function createInMemoryEditionRuns() {
       async recordHorsCommerceApproval(artworkId) {
         if (!artworks.has(artworkId)) throw new Error("missing artwork");
       },
+      async loadPrint(editionId) {
+        const print = prints.find((row) => row.editionId === editionId);
+        if (!print) return null;
+        return {
+          editionId: print.editionId,
+          artworkId: print.artworkId,
+          editionNumber: print.editionNumber,
+          proofNumber: print.proofNumber,
+          stockRef: print.stockRef,
+          owner: print.allocation === "original_buyer_entitlement" ? "buyer" : print.allocation,
+          listingStatus: print.listingStatus,
+          reservedUntil: print.reservedUntil,
+          reservedByPendingOrder: print.reservedByPendingOrder,
+          forSale: print.allocation !== "original_buyer_entitlement",
+        };
+      },
+      async movePrint({ editionId, toArtworkId }) {
+        const print = prints.find((row) => row.editionId === editionId);
+        if (!print) throw new Error("missing print");
+        print.artworkId = toArtworkId;
+      },
+      async retireListing(artworkId) {
+        retired.add(artworkId);
+      },
+    },
+    exceptions: {
+      async insert({ editionId, runArtworkId, listingArtworkId, differences, actorSubjectId }) {
+        exceptions.push({
+          id: `exception-${++serial}`,
+          editionId,
+          runArtworkId,
+          listingArtworkId,
+          differences: structuredClone(differences),
+          setApartBySubjectId: actorSubjectId,
+          setApartAt: new Date(),
+          returnedBy: null,
+        });
+      },
+      async openForListing(listingArtworkId) {
+        return (
+          exceptions.find((row) => row.listingArtworkId === listingArtworkId && !row.returnedBy) ??
+          null
+        );
+      },
+      async markReturned(id, actorSubjectId) {
+        const row = exceptions.find((entry) => entry.id === id);
+        if (row) row.returnedBy = actorSubjectId;
+      },
     },
     facts: {
       async get(artworkId) {
         return facts.get(artworkId) ?? null;
       },
-      async save(artworkId, value) {
+      async save(artworkId, value, _recorded) {
         factsSaves += 1;
         const version = new Date(Date.UTC(2026, 9, 1, 12, 0, factsSaves)).toISOString();
         facts.set(artworkId, { facts: structuredClone(value), version });
@@ -279,6 +340,8 @@ export function createInMemoryEditionRuns() {
     events,
     paidOrders,
     snapshots,
+    exceptions,
+    retired,
     addArtwork,
     printsOf: (artworkId: string) => prints.filter((print) => print.artworkId === artworkId),
     specOf: (artworkId: string): EditionRunSpec | undefined => runs.get(artworkId)?.spec,

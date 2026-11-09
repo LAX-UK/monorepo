@@ -1,3 +1,4 @@
+import { assertAuthorityReference } from "./authority-reference.js";
 import {
   type EditionRunSpec,
   type ProofType,
@@ -6,7 +7,20 @@ import {
   proofLabel,
   runSize,
 } from "./edition-run.js";
+import {
+  type PrintException,
+  type SetApartPrint,
+  describePrintException,
+  setApartPrintOf,
+  setApartPrintText,
+} from "./print-exception.js";
 import { ShopDomainError } from "./shop-domain-error.js";
+import {
+  SIGNATURE_MEDIA,
+  SIGNATURE_PLACES,
+  type Signature,
+  type SignaturePlace,
+} from "./signature.js";
 
 /**
  * What staff confirm about a run: how its prints are numbered and signed and what certificate
@@ -16,20 +30,38 @@ import { ShopDomainError } from "./shop-domain-error.js";
 
 export type Numbering = "on_print" | "on_certificate" | "none";
 
-export const SIGNATURE_MEDIA = ["pencil", "ink"] as const;
-export type SignatureMedium = (typeof SIGNATURE_MEDIA)[number];
+export {
+  SIGNATURE_MEDIA,
+  SIGNATURE_PLACES,
+  type Signature,
+  type SignatureMedium,
+  type SignaturePlace,
+} from "./signature.js";
 
-export const SIGNATURE_PLACES = ["front_lower_margin", "back"] as const;
-export type SignaturePlace = (typeof SIGNATURE_PLACES)[number];
+export const STAMPS = ["none", "publisher_blind", "printer_blind", "estate_back"] as const;
+export type Stamp = (typeof STAMPS)[number];
 
-export type Signature =
-  | { kind: "hand_signed"; medium: SignatureMedium; place: SignaturePlace }
-  | { kind: "plate_signed" }
-  | { kind: "estate_stamped" }
-  | { kind: "estate_signed"; place: SignaturePlace }
-  | { kind: "unsigned" };
+/** Who published the run: the artist, London Art Exchange, or another publisher from the list. */
+export type Publisher = { kind: "artist" } | { kind: "lax" } | { kind: "named"; name: string };
+
+export const PARTY_NAME_MAX = 80 as const;
 
 export type CertificateIssuer = "artist" | "publisher" | "lax";
+
+export const AUTHORITY_GIVERS = ["artist", "estate"] as const;
+export type AuthorityGiver = (typeof AUTHORITY_GIVERS)[number];
+
+/**
+ * The written authority a certificate London Art Exchange issues stands on: who gave it, the date
+ * of their letter and where the signed letter is kept. A saved authority has all three; a
+ * storefront is told only who gave it, and an older sale's record may hold fewer.
+ */
+export type CertificateAuthority = {
+  givenBy: AuthorityGiver;
+  datedOn?: string | undefined;
+  /** Where the signed letter is kept. Staff only; never shown to shoppers. */
+  reference?: string | undefined;
+};
 export type CertificateForm = "paper" | "digital" | "both";
 export type CertificateArrival =
   | { kind: "with_print" }
@@ -45,12 +77,20 @@ export type Certificate =
       numberedToMatch: boolean;
       /** Why a numbered run's certificate is not numbered to match (rule 7). */
       numberedToMatchReason?: string | undefined;
+      /** Required when London Art Exchange is the issuer, and only then. */
+      authority?: CertificateAuthority;
     };
 
 export type EditionFacts = {
   numbering: Numbering;
   signature: Signature;
   certificate: Certificate;
+  /** A blind stamp on the print; absent or "none" says nothing. */
+  stamp?: Stamp | undefined;
+  /** The studio that printed the run, as spelled in the Settings list; absent says nothing. */
+  printedBy?: string | null | undefined;
+  /** Who published the run; absent says nothing. */
+  publishedBy?: Publisher | null | undefined;
   confirmed: { by: string; at: Date } | null;
 };
 
@@ -84,8 +124,68 @@ function assertSignature(signature: Signature): void {
   }
 }
 
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+function isRealDate(value: string): boolean {
+  if (!ISO_DATE.test(value)) return false;
+  const parsed = new Date(`${value}T00:00:00Z`);
+  return !Number.isNaN(parsed.getTime()) && parsed.toISOString().startsWith(value);
+}
+
+function assertPartyName(name: unknown, what: string): void {
+  if (typeof name !== "string" || name.trim().length === 0 || name.trim() !== name) {
+    throw new ShopDomainError(`${what} needs a name from the list`);
+  }
+  if (name.length > PARTY_NAME_MAX) {
+    throw new ShopDomainError(`${what} must be at most ${PARTY_NAME_MAX} characters`);
+  }
+}
+
+/** The London Art Exchange guardrail: it certifies only on the written authority of the artist or estate. */
+function assertCertificateAuthority(certificate: Certificate, requireAuthority: boolean): void {
+  if (certificate.kind !== "included") return;
+  const { authority } = certificate;
+  if (certificate.issuer === "lax" && !authority && !requireAuthority) return;
+  if (certificate.issuer !== "lax") {
+    if (authority)
+      throw new ShopDomainError("Only a certificate London Art Exchange issues has an authority");
+    return;
+  }
+  if (!authority) {
+    throw new ShopDomainError(
+      "A certificate London Art Exchange issues needs the artist's or estate's written authority",
+    );
+  }
+  if (!(AUTHORITY_GIVERS as readonly string[]).includes(authority.givenBy)) {
+    throw new ShopDomainError("Say whether the artist or their estate gave the authority");
+  }
+  if (!requireAuthority && authority.datedOn === undefined) return;
+  if (authority.datedOn === undefined || !isRealDate(authority.datedOn)) {
+    throw new ShopDomainError("The authority needs the date of the letter");
+  }
+  if (requireAuthority) assertAuthorityReference(authority.reference);
+}
+
+function assertPrintParties(facts: EditionFacts): void {
+  if (facts.stamp !== undefined && !(STAMPS as readonly string[]).includes(facts.stamp)) {
+    throw new ShopDomainError("Choose one of the stamps listed");
+  }
+  if (facts.printedBy != null) assertPartyName(facts.printedBy, "Printed by");
+  const published = facts.publishedBy;
+  if (published?.kind === "named") assertPartyName(published.name, "Published by");
+}
+
 /** Rules 5 to 8: whether the facts are consistent with each other and with the run they describe. */
-export function assertEditionFacts(run: EditionRunSpec, facts: EditionFacts): void {
+export function assertEditionFacts(
+  run: EditionRunSpec,
+  facts: EditionFacts,
+  options: {
+    /** False for facts stored before the authority was recorded, which are read but never saved. */
+    requireAuthority?: boolean;
+  } = {},
+): void {
+  assertCertificateAuthority(facts.certificate, options.requireAuthority ?? true);
+  assertPrintParties(facts);
   if (isOpenRun(run) && facts.numbering !== "none") {
     throw new ShopDomainError("An open edition is never numbered");
   }
@@ -131,8 +231,16 @@ export type EditionFactRows = {
   signature: string;
   number: string;
   certificate: string;
+  /** Only when a stamp is stated. */
+  stamp: string | null;
+  /** Only when the printer is stated. */
+  printedBy: string | null;
+  /** Only when the publisher is stated. */
+  publishedBy: string | null;
   /** Only when proofs were kept outside a limited edition. */
   proofs: string | null;
+  /** What differs about a print sold on its own; empty for every other print. */
+  differences: readonly string[];
 };
 
 export type EditionFactsDescription = {
@@ -161,10 +269,26 @@ const ISSUER_NAMES: Record<CertificateIssuer, string> = {
   lax: "London Art Exchange",
 };
 
+const STAMP_ROWS: Record<Exclude<Stamp, "none">, string> = {
+  publisher_blind: "Blind stamp of the publisher",
+  printer_blind: "Blind stamp of the printer",
+  estate_back: "Estate stamp on the back",
+};
+
+/** The legal name the certificate row gives, since it is the company that issues it. */
+const LAX_ISSUER_NAME = "London Art Exchange Ltd";
+
 const PLACE_PHRASES: Record<SignaturePlace, string> = {
   front_lower_margin: "front lower margin",
   back: "on the back",
 };
+
+/** A print sold on its own: which print it is and what differs about it. */
+export type SetApartDescribed = { print: SetApartPrint; exception: PrintException };
+
+function lowerFirst(text: string): string {
+  return text.charAt(0).toLowerCase() + text.slice(1);
+}
 
 function capitalise(text: string): string {
   return text.charAt(0).toUpperCase() + text.slice(1);
@@ -245,8 +369,18 @@ function signatureForInvoice(signature: Signature): string {
   }
 }
 
-function numberRow(run: EditionRunSpec, numbering: Numbering): string {
+/** A print sold on its own is described by its own number, which is known before purchase. */
+function setApartNumberRow(print: SetApartPrint, numbering: Numbering): string {
+  const of = setApartPrintOf(print);
+  if (numbering === "on_certificate") return `${of}, numbered on the certificate`;
+  return print.of.kind === "proof"
+    ? `${of}, marked by hand on the print`
+    : `${of}, numbered by hand on the print`;
+}
+
+function numberRow(run: EditionRunSpec, numbering: Numbering, apart?: SetApartDescribed): string {
   if (numbering === "none" || isOpenRun(run)) return "Not numbered";
+  if (apart) return setApartNumberRow(apart.print, numbering);
   if (numbering === "on_certificate") {
     return "Numbered on the certificate. Your number appears in your order once payment is confirmed.";
   }
@@ -273,8 +407,29 @@ function certificateDelivery(certificate: Extract<Certificate, { kind: "included
   return certificate.form === "both" ? `${paper}, with a digital copy in your LAX Account` : paper;
 }
 
+function stampRow(stamp: Stamp | undefined): string | null {
+  return stamp && stamp !== "none" ? STAMP_ROWS[stamp] : null;
+}
+
+function publishedByRow(published: Publisher | null | undefined): string | null {
+  if (!published) return null;
+  if (published.kind === "artist") return "The artist";
+  return published.kind === "lax" ? LAX_ISSUER_NAME : published.name;
+}
+
+/** The sentence for a certificate that stands on a recorded authority; older rows keep the plain one. */
+function authorityCertificateRow(
+  certificate: Extract<Certificate, { kind: "included" }>,
+): string | null {
+  if (certificate.issuer !== "lax" || !certificate.authority) return null;
+  const giver = certificate.authority.givenBy === "estate" ? "the estate's" : "the artist's";
+  return `${certificateName(certificate.form)} of authenticity issued by ${LAX_ISSUER_NAME} on ${giver} written authority, ${certificateDelivery(certificate)}`;
+}
+
 function certificateRow(certificate: Certificate): string {
   if (certificate.kind === "none") return "No certificate of authenticity";
+  const onAuthority = authorityCertificateRow(certificate);
+  if (onAuthority) return onAuthority;
   return `${certificateName(certificate.form)} of authenticity from ${ISSUER_NAMES[certificate.issuer]}, ${certificateDelivery(certificate)}`;
 }
 
@@ -342,7 +497,7 @@ export function describeAlsoAvailable(run: EditionRunSpec, facts: EditionFacts |
 export function describeEditionFacts(
   run: EditionRunSpec,
   facts: EditionFacts,
-  options: { proofsKept?: ProofsKept } = {},
+  options: { proofsKept?: ProofsKept; setApart?: SetApartDescribed } = {},
 ): EditionFactsDescription {
   const { numbering, signature, certificate } = facts;
   const name = runName(run);
@@ -350,14 +505,21 @@ export function describeEditionFacts(
   const open = isOpenRun(run);
   const certificateText = certificateShort(certificate);
   const horsCommerce = run.type === "proof" && run.proofType === "hc";
+  const apart = options.setApart;
+  const differences = apart ? describePrintException(apart.exception) : null;
+  const apartText = apart ? setApartPrintText(apart.print) : null;
   return {
-    eyebrow: eyebrow(run),
+    eyebrow: apart ? `${eyebrow(run)}, ${lowerFirst(setApartPrintOf(apart.print))}` : eyebrow(run),
     rows: {
       edition: editionRow(run),
       signature: signatureRow(signature),
-      number: numberRow(run, numbering),
+      number: numberRow(run, numbering, apart),
       certificate: certificateRow(certificate),
+      stamp: stampRow(facts.stamp),
+      printedBy: facts.printedBy?.trim() || null,
+      publishedBy: publishedByRow(facts.publishedBy),
       proofs: proofsRow(run, options.proofsKept),
+      differences: differences?.rows ?? [],
     },
     cardLine: `${name} · ${signed}`,
     basketLine: [
@@ -365,6 +527,7 @@ export function describeEditionFacts(
       signed,
       ...(numbering !== "none" && !open ? ["Numbered"] : []),
       ...(certificate.kind === "included" ? ["With certificate"] : []),
+      ...(apartText && differences ? [apartText, ...differences.basketParts] : []),
     ].join(" · "),
     orderLine: (print) => {
       const numbered = numberedPrintText(run, numbering, print);
@@ -374,6 +537,7 @@ export function describeEditionFacts(
         signed,
         ...(numbering === "none" && !open ? ["Not numbered"] : []),
         ...(certificateText ? [certificateText] : []),
+        ...(differences?.basketParts ?? []),
       ].join(" · ");
     },
     invoiceDetail: (print) => {
@@ -384,6 +548,8 @@ export function describeEditionFacts(
         ...(numbered && run.type === "proof" ? [numbered.invoice] : []),
         signatureForInvoice(signature),
         ...(certificate.kind === "included" ? ["with certificate of authenticity"] : []),
+        ...(facts.printedBy?.trim() ? [`printed by ${facts.printedBy.trim()}`] : []),
+        ...(differences?.invoiceParts ?? []),
       ].join(", ");
     },
   };

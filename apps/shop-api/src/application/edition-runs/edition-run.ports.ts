@@ -1,4 +1,11 @@
-import type { EditionFacts, PlannedEdition, ProofType, RunUsage } from "@auction/shop-domain";
+import type {
+  EditionFacts,
+  EditionListingStatus,
+  PlannedEdition,
+  PrintException,
+  ProofType,
+  RunUsage,
+} from "@auction/shop-domain";
 import type { EditionRunRepository } from "../ports/edition-run.repository.js";
 import type { ShopAdminAuditWriter } from "../ports/shop-admin-audit.writer.js";
 import type { ShopAdminCommandWriter } from "../ports/shop-admin-command.writer.js";
@@ -19,6 +26,24 @@ export type RunArtwork = {
   archived: boolean;
   /** The artwork's version, as the editor holds it. */
   updatedAt: Date;
+};
+
+/** One print of a run, locked for the length of the transaction, with what decides whether it can be set apart. */
+export type StoredPrint = {
+  editionId: string;
+  /** The artwork whose run the print belongs to. */
+  artworkId: string;
+  editionNumber: number | null;
+  proofNumber: number | null;
+  stockRef: number;
+  /** Who holds the print: the artist, LAX, or a buyer who is entitled to one. */
+  owner: "artist" | "lax" | "buyer";
+  listingStatus: EditionListingStatus;
+  reservedUntil: Date | null;
+  /** An unpaid order still holds the print, whatever the reservation says. */
+  reservedByPendingOrder: boolean;
+  /** Owned by the artist or LAX and in a place it can be sold from. */
+  forSale: boolean;
 };
 
 /**
@@ -49,6 +74,44 @@ export interface EditionPrintStore {
   touch(artworkId: string): Promise<string>;
   /** Records the shop admin's approval to sell a hors commerce proof listing. */
   recordHorsCommerceApproval(artworkId: string, actorSubjectId: string): Promise<void>;
+  /** Locks one print and reads its state; null when there is no such print. */
+  loadPrint(editionId: string): Promise<StoredPrint | null>;
+  /**
+   * Moves a print to another artwork's listing, keeping its number, owner and sale authority. A
+   * print that is on sale arrives with a recorded authority, like every print on sale.
+   */
+  movePrint(input: {
+    editionId: string;
+    toArtworkId: string;
+    actorSubjectId: string;
+    authorityNote: string;
+  }): Promise<void>;
+  /** Takes a listing off the shop for good: archived and unpublished. */
+  retireListing(artworkId: string): Promise<void>;
+}
+
+/** A print set apart from its run, with what differs about it. */
+export type StoredPrintException = {
+  id: string;
+  editionId: string;
+  runArtworkId: string;
+  listingArtworkId: string;
+  differences: PrintException;
+  setApartBySubjectId: string;
+  setApartAt: Date;
+};
+
+export interface PrintExceptionStore {
+  insert(input: {
+    editionId: string;
+    runArtworkId: string;
+    listingArtworkId: string;
+    differences: PrintException;
+    actorSubjectId: string;
+  }): Promise<void>;
+  /** The record of the print a listing sells, while it is set apart; null once returned. */
+  openForListing(listingArtworkId: string): Promise<StoredPrintException | null>;
+  markReturned(id: string, actorSubjectId: string): Promise<void>;
 }
 
 export type StoredFacts = {
@@ -62,8 +125,16 @@ export type PaidOrderRef = { orderId: string; reference: string; paidAt: Date | 
 
 export interface EditionFactsStore {
   get(artworkId: string): Promise<StoredFacts | null>;
-  /** Replaces the facts and returns the new version. The database refuses forbidden combinations. */
-  save(artworkId: string, facts: EditionFacts): Promise<string>;
+  /**
+   * Replaces the facts and returns the new version. The database refuses forbidden combinations.
+   * `recorded` is who saved them and when: given, it is kept with the certificate authority's
+   * letter reference; left out, the stored record of that reference is not touched.
+   */
+  save(
+    artworkId: string,
+    facts: EditionFacts,
+    recorded?: { by: string; at: Date },
+  ): Promise<string>;
   paidOrders(artworkId: string): Promise<PaidOrderRef[]>;
   /**
    * Records `snapshot` on the run's paid order lines that do not have one yet, so a correction
@@ -98,6 +169,7 @@ export type EditionRunTx = {
   runs: EditionRunRepository;
   prints: EditionPrintStore;
   facts: EditionFactsStore;
+  exceptions: PrintExceptionStore;
   listings: LinkedListingWriter;
   originalPrints: OriginalPrintsWriter;
   events: ShopDomainEventWriter;

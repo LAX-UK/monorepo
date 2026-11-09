@@ -287,6 +287,22 @@ describe("SecurityNoticeService", () => {
     expect(input?.vars.secureAccountUrl).toBeTruthy();
   });
 
+  it("tells a person their unconfirmed password was removed when Google proved the email", async () => {
+    const { service, email } = setup();
+
+    await service.notify({
+      kind: "unconfirmed_password_removed",
+      userId: USER,
+      at: AT,
+      provider: "google",
+    });
+
+    const input = email.enqueue.mock.calls[0]?.[0];
+    expect(input?.template).toBe("unconfirmed-password-removed");
+    expect(input?.vars.providerName).toBe("Google");
+    expect(input?.vars.secureAccountUrl).toBeTruthy();
+  });
+
   it("tells both the old and the new address about an email change", async () => {
     const { service, email } = setup();
 

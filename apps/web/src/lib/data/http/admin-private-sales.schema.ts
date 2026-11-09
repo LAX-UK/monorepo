@@ -117,6 +117,8 @@ export const dealRecordSchema = z.object({
       rail: z.string(),
       amountMinor: z.number(),
       paidAt: z.string().nullable(),
+      refundedMinor: z.number(),
+      recordedTransfer: z.boolean(),
     })
     .nullable(),
   timeline: z.array(

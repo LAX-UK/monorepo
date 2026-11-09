@@ -1,6 +1,6 @@
 import { createHMAC } from "@better-auth/utils/hmac";
 import type { BetterAuthPlugin } from "better-auth";
-import { createAuthMiddleware } from "better-auth/api";
+import { createAuthMiddleware, getOAuthState } from "better-auth/api";
 import { deleteSessionCookie, expireCookie } from "better-auth/cookies";
 import { generateRandomString } from "better-auth/crypto";
 import { appendOidcAuthorizeParams } from "./hosted-auth/flow-context.js";
@@ -22,17 +22,16 @@ const TRUST_DEVICE_MAX_AGE_SEC = 30 * 24 * 60 * 60;
  * - Credential sign-ins: Better Auth's two-factor plugin already gates these natively
  *   (returns `twoFactorRedirect` instead of a session).
  * - `/two-factor/*`: the session created here IS the post-TOTP session.
- * - OAuth/social (`/sign-in/social`, `/callback/*`, `/oauth2/*`): policy decision — the
- *   identity provider is treated as a sufficient factor, and enforcing TOTP here would
- *   dead-end social-only 2FA users who have no password to complete the challenge with.
+ * - `/oauth2/*`: the OIDC provider's own endpoints (authorize, token, consent); they create no
+ *   sign-in session. A Google or Apple sign-in (`/sign-in/social`, `/callback/*`) is NOT exempt:
+ *   a person who turned on two-step verification is asked for the code after the provider too.
+ *   Only someone with a password can turn it on, so nobody is left without a way to answer.
  */
 const EXEMPT_PATH_PREFIXES = [
   "/sign-in/email",
   "/sign-in/username",
   "/sign-in/phone-number",
-  "/sign-in/social",
   "/two-factor",
-  "/callback",
   "/oauth2",
 ] as const;
 
@@ -192,6 +191,26 @@ async function isTrustedDeviceForUser(ctx: AuthHookContext, userId: string): Pro
   return true;
 }
 
+/**
+ * Where the person was heading. A magic link or email verification carries it in the query; a
+ * Google or Apple callback keeps it in the provider round trip's state.
+ */
+async function callbackUrlOf(ctx: AuthHookContext): Promise<string | null> {
+  return resolveCallbackUrl(
+    ctx.query as Record<string, unknown> | undefined,
+    await getOAuthState().catch(() => null),
+  );
+}
+
+export function resolveCallbackUrl(
+  query: Record<string, unknown> | undefined,
+  oauthState: { callbackURL?: unknown } | null | undefined,
+): string | null {
+  const fromQuery = query?.callbackURL;
+  if (typeof fromQuery === "string") return fromQuery;
+  return typeof oauthState?.callbackURL === "string" ? oauthState.callbackURL : null;
+}
+
 export function buildTwoFactorEnforcementAfterHook(options: { authOrigin?: string | undefined }) {
   const authOrigin = options.authOrigin ?? "https://auth.lax.bid";
 
@@ -201,10 +220,7 @@ export function buildTwoFactorEnforcementAfterHook(options: { authOrigin?: strin
       const data = ctx.context.newSession;
       if (!data) return;
       const user = data.user as AuthUser | undefined;
-      const callbackURL =
-        typeof (ctx.query as Record<string, unknown> | undefined)?.callbackURL === "string"
-          ? ((ctx.query as Record<string, string>).callbackURL as string)
-          : null;
+      const callbackURL = await callbackUrlOf(ctx);
       await enforceTwoFactorOnNewSession({
         user,
         sessionToken: data.session?.token,

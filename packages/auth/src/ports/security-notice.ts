@@ -79,6 +79,17 @@ export type SecurityNoticeEvent =
       provider: "google" | "apple";
       userAgent?: string | null;
     }
+  | {
+      /**
+       * A password set before the email was confirmed was removed because Google or Apple proved
+       * the address, and every other device was signed out.
+       */
+      kind: "unconfirmed_password_removed";
+      userId: string;
+      at: Date;
+      provider: "google" | "apple";
+      userAgent?: string | null;
+    }
   | { kind: "phone_verified"; userId: string; at: Date; phone: string; userAgent?: string | null }
   | { kind: "phone_removed"; userId: string; at: Date; phone: string; userAgent?: string | null }
   | {

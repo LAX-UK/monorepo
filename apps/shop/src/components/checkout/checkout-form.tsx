@@ -1,33 +1,43 @@
 "use client";
 
 import { startCheckout } from "@/app/actions/checkout.actions";
+import {
+  requestDeliveryQuote,
+  requestGuestDeliveryQuote,
+} from "@/app/actions/delivery-quote.actions";
 import { startGuestCheckout } from "@/app/actions/guest-checkout.actions";
 import {
   CheckoutOrderSummary,
   CheckoutSummaryDisclosure,
 } from "@/components/checkout/checkout-order-summary";
+import { DeliveryQuoteSent } from "@/components/checkout/delivery-quote-sent";
 import { ShopCommerceButton } from "@/components/shop-commerce-button";
-import { SHOP_POLICY_PATHS } from "@/content/policies/shop-policy-status";
 import {
   type CheckoutDeliveryChoice,
   type CheckoutDeliveryOptionVm,
   isCheckoutDeliveryChoice,
   isPayableDeliveryChoice,
+  isQuoteDeliveryChoice,
 } from "@/lib/checkout/checkout-delivery";
 import {
   CHECKOUT_FIELD_IDS,
   type CheckoutDetails,
   type CheckoutField,
+  type CheckoutFieldErrors,
   checkoutDeliveryPayload,
   initialCheckoutAddress,
   isDeliverableSavedAddress,
   orderedCheckoutErrors,
+  outsideUkDeliveryPayload,
   validateCheckoutDetails,
 } from "@/lib/checkout/checkout-details";
+import type { DeliveryQuoteStartResult } from "@/lib/checkout/delivery-quote-request";
+import { countryName, outsideUkCountryOptions } from "@/lib/checkout/outside-uk";
 import { MarketingFormErrorSummary, MarketingFormField } from "@auction/marketing-ui";
 import type { BasketView, SavedDeliveryAddress } from "@auction/shop-contracts";
 import { Checkbox, Input, RadioCardGroup } from "@auction/ui";
-import { type ReactNode, useState, useTransition } from "react";
+import { NativeSelect } from "@auction/ui/lax";
+import { type ReactNode, useMemo, useState, useTransition } from "react";
 
 type Props = {
   basket: BasketView;
@@ -75,7 +85,7 @@ function savedAddressOptions(saved: readonly SavedDeliveryAddress[], disabled: b
         ...(address.isDefaultShipping ? { meta: "Default" } : {}),
         description: deliverable
           ? addressLines(address)
-          : `${addressLines(address)}. Delivery outside the UK is not available online yet.`,
+          : `${addressLines(address)}. Not a UK address, so UK delivery cannot use it.`,
         disabled: disabled || !deliverable,
       };
     }),
@@ -112,6 +122,7 @@ export function CheckoutForm({
     line2: "",
     city: "",
     postcode: "",
+    country: "",
     phone: initialPhone,
     saveAddress: true,
   });
@@ -124,17 +135,30 @@ export function CheckoutForm({
   const [submitCount, setSubmitCount] = useState(0);
   const [failedSubmits, setFailedSubmits] = useState(0);
   const [serverError, setServerError] = useState<string | null>(null);
+  // Problems the shop API named after a delivery quote request, shown against each field.
+  const [serverFieldErrors, setServerFieldErrors] = useState<CheckoutFieldErrors>({});
+  // How a delivery quote request ended, when it did not go to payment.
+  const [quoteOutcome, setQuoteOutcome] = useState<Extract<
+    DeliveryQuoteStartResult,
+    { kind: "quote_requested" | "not_delivered" }
+  > | null>(null);
   const [pending, startTransition] = useTransition();
   const [redirecting, setRedirecting] = useState(false);
   const busy = pending || redirecting;
 
-  const errors =
-    submitCount > 0 ? validateCheckoutDetails(details, savedAddresses, validationOptions) : {};
+  const errors: CheckoutFieldErrors = {
+    ...(submitCount > 0 ? validateCheckoutDetails(details, savedAddresses, validationOptions) : {}),
+    ...serverFieldErrors,
+  };
   const summaryErrors = orderedCheckoutErrors(errors);
   const payable = isPayableDeliveryChoice(details.choice);
+  const quoting = isQuoteDeliveryChoice(details.choice);
+  const countryOptions = useMemo(() => outsideUkCountryOptions(), []);
 
   const update = (patch: Partial<CheckoutDetails>) => {
     setServerError(null);
+    setServerFieldErrors({});
+    setQuoteOutcome((current) => (current?.kind === "not_delivered" ? null : current));
     setDetails((current) => ({ ...current, ...patch }));
   };
 
@@ -181,12 +205,46 @@ export function CheckoutForm({
 
   const onSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (busy || !payable) return;
+    if (busy || !(payable || quoting)) return;
     setSubmitCount((count) => count + 1);
     setServerError(null);
     const found = validateCheckoutDetails(details, savedAddresses, validationOptions);
     if (Object.keys(found).length > 0) {
       setFailedSubmits((count) => count + 1);
+      return;
+    }
+    if (quoting) {
+      const quote = outsideUkDeliveryPayload(details);
+      startTransition(async () => {
+        const result = guest
+          ? await requestGuestDeliveryQuote({
+              basketId: basket.basketId,
+              email: guest.email,
+              name: details.contactName,
+              marketingConsent: guest.marketingConsent,
+              ...quote,
+            })
+          : await requestDeliveryQuote({ basketId: basket.basketId, ...quote });
+        if (result.kind === "sign_in_required") {
+          guest?.onSignInRequired();
+          return;
+        }
+        if (result.kind === "error") {
+          setServerError(result.message);
+          return;
+        }
+        if (result.kind === "fields") {
+          setServerFieldErrors(result.errors);
+          setFailedSubmits((count) => count + 1);
+          return;
+        }
+        if (result.kind === "pay") {
+          setRedirecting(true);
+          window.location.href = result.checkoutUrl;
+          return;
+        }
+        setQuoteOutcome(result);
+      });
       return;
     }
     const delivery = checkoutDeliveryPayload(details, savedAddresses);
@@ -227,6 +285,16 @@ export function CheckoutForm({
     : pending
       ? "Starting payment…"
       : "Continue to secure payment";
+
+  if (quoteOutcome?.kind === "quote_requested") {
+    return (
+      <DeliveryQuoteSent
+        orderReference={quoteOutcome.orderReference}
+        country={quoteOutcome.country}
+        holdUntil={quoteOutcome.holdUntil}
+      />
+    );
+  }
 
   return (
     <div className="shop-checkout__layout">
@@ -437,25 +505,110 @@ export function CheckoutForm({
           </p>
         ) : null}
 
-        {details.choice === "international_quotation" ? (
+        {quoting ? (
           <section
-            className="shop-checkout__international"
+            className="shop-checkout__section"
             aria-labelledby="checkout-international-heading"
           >
-            <h2 id="checkout-international-heading" className="shop-checkout__international-title">
-              Delivery outside the UK is not available online yet
+            <h2 id="checkout-international-heading" className="shop-checkout__section-title">
+              Delivery address outside the UK
             </h2>
-            <p>
-              Tell us your country and what is in your basket. We will let you know whether we can
-              deliver there and what it would cost. Your basket stays saved.
+            <p className="shop-checkout__note">
+              We quote delivery for each order and email you the price within one working day. Your
+              print is held for you for 3 working days. You pay for the print and delivery together,
+              and you pay any import duties and taxes where you live. Insurance is in the quote.
             </p>
-            <ShopCommerceButton
-              href={`${SHOP_POLICY_PATHS.help}#contact-us`}
-              variant="outline"
-              className="shop-checkout__international-action"
-            >
-              Contact us about delivery
-            </ShopCommerceButton>
+            <div className="shop-checkout__field-grid">
+              {field(
+                "recipientName",
+                "Full name",
+                { autoComplete: "shipping name" },
+                {
+                  hint: "The person receiving the delivery",
+                  className: "shop-checkout__field--full",
+                },
+              )}
+              {field(
+                "line1",
+                "Address line 1",
+                { autoComplete: "shipping address-line1" },
+                { className: "shop-checkout__field--full" },
+              )}
+              {showLine2 || details.line2 ? (
+                field(
+                  "line2",
+                  "Address line 2",
+                  { autoComplete: "shipping address-line2" },
+                  { optional: true, className: "shop-checkout__field--full" },
+                )
+              ) : (
+                <button
+                  type="button"
+                  className="shop-checkout__add-line shop-focus-ring"
+                  disabled={busy}
+                  onClick={() => {
+                    setShowLine2(true);
+                    requestAnimationFrame(() =>
+                      document.getElementById(CHECKOUT_FIELD_IDS.line2)?.focus(),
+                    );
+                  }}
+                >
+                  Add another address line
+                </button>
+              )}
+              {field("city", "Town or city", { autoComplete: "shipping address-level2" })}
+              {field(
+                "postcode",
+                "Postal code",
+                { autoComplete: "shipping postal-code" },
+                { className: "shop-checkout__field--postcode" },
+              )}
+              <MarketingFormField
+                id={CHECKOUT_FIELD_IDS.country}
+                label="Country"
+                error={errors.country ?? null}
+                className="shop-checkout__field--full"
+              >
+                {(control) => (
+                  <NativeSelect
+                    {...control}
+                    name="country"
+                    autoComplete="shipping country"
+                    disabled={busy}
+                    value={details.country}
+                    onValueChange={(country) => update({ country })}
+                    options={countryOptions}
+                  />
+                )}
+              </MarketingFormField>
+              {field(
+                "phone",
+                "Phone number",
+                { autoComplete: "shipping tel", type: "tel", inputMode: "tel" },
+                {
+                  hint: "With the country code. Our courier uses it only to arrange delivery.",
+                  className: "shop-checkout__field--full",
+                },
+              )}
+            </div>
+            {quoteOutcome?.kind === "not_delivered" ? (
+              <div className="shop-checkout__refusal" role="alert">
+                <h3 className="shop-checkout__refusal-title">
+                  We cannot deliver to {countryName(quoteOutcome.country)}
+                </h3>
+                <p>
+                  Export rules mean we do not ship there. You can still collect your print from our
+                  London gallery, or someone you trust can collect it for you.
+                </p>
+                <ShopCommerceButton
+                  type="button"
+                  variant="outline"
+                  onClick={() => update({ choice: "collect_new_cavendish" })}
+                >
+                  Collect from our London gallery instead
+                </ShopCommerceButton>
+              </div>
+            ) : null}
           </section>
         ) : null}
       </form>
@@ -483,6 +636,30 @@ export function CheckoutForm({
               </ShopCommerceButton>
               <p className="shop-checkout__submit-note">
                 You pay on our secure payment page, then come back here.
+              </p>
+            </>
+          ) : quoting ? (
+            <>
+              {serverError ? (
+                <div className="shop-checkout__server-error" role="alert">
+                  <p className="shop-checkout__server-error-title">Your request was not sent</p>
+                  <p>{serverError}</p>
+                </div>
+              ) : null}
+              <ShopCommerceButton
+                type="submit"
+                form={FORM_ID}
+                disabled={busy}
+                className="shop-checkout__submit"
+              >
+                {redirecting
+                  ? "Opening secure payment…"
+                  : pending
+                    ? "Sending your request…"
+                    : "Ask for a delivery quote"}
+              </ShopCommerceButton>
+              <p className="shop-checkout__submit-note">
+                Nothing is charged now. We email you the delivery price, and you decide then.
               </p>
             </>
           ) : null

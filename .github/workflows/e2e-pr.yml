@@ -255,6 +255,9 @@ jobs:
           --filter=@auction/web
           --filter=@auction/shop-api
           --filter=@auction/shop
+      - name: Route JavaScript budget (Bid public pages)
+        # Warns while the budget settles; set BUDGET_ENFORCE=1 to make it fail.
+        run: node scripts/route-js-budget.mjs
       - name: Start stack
         run: |
           mkdir -p /tmp/e2e-logs

@@ -1,3 +1,4 @@
+import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { resolveSentryOrg } from "@auction/observability";
@@ -154,4 +155,25 @@ const sentryBuildOptions = {
   ...(process.env.SENTRY_AUTH_TOKEN ? { authToken: process.env.SENTRY_AUTH_TOKEN } : {}),
 };
 
-export default hasSentry ? withSentryConfig(nextConfig, sentryBuildOptions) : nextConfig;
+const finalConfig = hasSentry ? withSentryConfig(nextConfig, sentryBuildOptions) : nextConfig;
+
+/**
+ * `ANALYZE=true next build` writes the bundle report (`ANALYZE_MODE=json` for stats, otherwise
+ * the interactive treemap). The analyzer is required only then, so a normal build and every
+ * runtime never load it, and the config stays a plain object that tests can read.
+ */
+function withBundleAnalyzer(config: NextConfig): NextConfig {
+  if (process.env.ANALYZE !== "true") return config;
+  const analyzer = createRequire(import.meta.url)("@next/bundle-analyzer") as (options: {
+    enabled: boolean;
+    analyzerMode: "json" | "static";
+    openAnalyzer: boolean;
+  }) => (config: NextConfig) => NextConfig;
+  return analyzer({
+    enabled: true,
+    analyzerMode: process.env.ANALYZE_MODE === "json" ? "json" : "static",
+    openAnalyzer: false,
+  })(config);
+}
+
+export default withBundleAnalyzer(finalConfig);

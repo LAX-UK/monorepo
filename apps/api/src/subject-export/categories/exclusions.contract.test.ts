@@ -6,6 +6,7 @@ import {
 import { describe, expect, it } from "vitest";
 import { mapBidderProfile } from "./bidder-profile.category.js";
 import { mapAbsenteeBid, mapBid } from "./bids.category.js";
+import { mapCollection } from "./collections.category.js";
 import { mapConsignment, mapPayout } from "./consignments.category.js";
 import { mapInvoice } from "./invoices.category.js";
 import { mapAttribution, mapInterest } from "./marketing.category.js";
@@ -217,6 +218,35 @@ const cases: Case[] = [
         ],
         ...forbidden,
       } as never,
+      WEB,
+    ),
+  },
+  {
+    category: "collections",
+    record: mapCollection(
+      {
+        id: "c1",
+        reference: "COL-1042",
+        status: "partly_collected",
+        slotStart: AT,
+        slotEnd: AT,
+        bookedVia: "client",
+        collectorKind: "third_party",
+        collectorName: "Sam Okoro",
+        collectorEmail: "sam@example.com",
+        collectorCompany: "Okoro Shipping",
+        bookedByUserId: SUBJECT,
+        authorisedByUserId: SUBJECT,
+        collectorUserId: null,
+        authorisedAt: AT,
+        idCheckType: "passport",
+        outcomeAt: AT,
+        cancelledAt: null,
+        createdAt: AT,
+        lots: [{ outcome: "collected", lot: LOT }],
+        ...forbidden,
+      } as never,
+      SUBJECT,
       WEB,
     ),
   },
@@ -480,6 +510,7 @@ describe("Bid subject export: what each category may contain", () => {
       "registrations",
       "bids",
       "purchases",
+      "collections",
       "invoices",
       "payments",
       "consignments",
@@ -558,6 +589,72 @@ describe("Bid subject export: what each category may contain", () => {
     });
     expect(staff.staffFirstName).toBe("Alex");
     expect(JSON.stringify(staff)).not.toContain("Smith");
+  });
+
+  it("gives a collection's roles and the details the person typed in, and nothing staff-only", () => {
+    const base = {
+      id: "c1",
+      reference: "COL-1042",
+      status: "booked",
+      slotStart: AT,
+      slotEnd: AT,
+      bookedVia: "staff",
+      collectorKind: "self",
+      collectorName: "Sarah Whitfield",
+      collectorEmail: null,
+      collectorCompany: null,
+      bookedByUserId: "staff-1",
+      authorisedByUserId: null,
+      collectorUserId: SUBJECT,
+      authorisedAt: null,
+      idCheckType: null,
+      outcomeAt: null,
+      cancelledAt: null,
+      createdAt: AT,
+      lots: [],
+    };
+    const record = mapCollection(base, SUBJECT, WEB);
+    expect(record.yourRoles).toEqual(["collector"]);
+    expect(record.bookedBy).toBe("gallery_team");
+    expect(record.origin).toBe("made_by_us");
+    expect(JSON.stringify(record)).not.toContain("staff-1");
+    expect(
+      mapCollection({ ...base, bookedVia: "client", bookedByUserId: SUBJECT }, SUBJECT, WEB),
+    ).toMatchObject({ yourRoles: ["booker", "collector"], bookedBy: "you", origin: "provided" });
+  });
+
+  it("never names another member who booked, and keeps the collector details the person typed", () => {
+    const base = {
+      id: "c2",
+      reference: "COL-1043",
+      status: "booked",
+      slotStart: AT,
+      slotEnd: AT,
+      bookedVia: "client",
+      collectorKind: "member",
+      collectorName: "Sarah Whitfield",
+      collectorEmail: "sarah@example.com",
+      collectorCompany: null,
+      bookedByUserId: "colleague-7",
+      authorisedByUserId: null,
+      collectorUserId: SUBJECT,
+      authorisedAt: null,
+      idCheckType: null,
+      outcomeAt: null,
+      cancelledAt: null,
+      createdAt: AT,
+      lots: [],
+    };
+    // Named as the collector by a colleague: sees their own details, and that "another member" booked.
+    const named = mapCollection(base, SUBJECT, WEB);
+    expect(named.bookedBy).toBe("another_member");
+    expect(named.collector).toMatchObject({ name: "Sarah Whitfield", email: "sarah@example.com" });
+    expect(JSON.stringify(named)).not.toContain("colleague-7");
+    // The colleague, asking for their own data, is the booker.
+    expect(mapCollection(base, "colleague-7", WEB)).toMatchObject({
+      bookedBy: "you",
+      yourRoles: ["booker"],
+    });
   });
 
   it("shows a held-for-review invoice as open, with no hint of the review", () => {

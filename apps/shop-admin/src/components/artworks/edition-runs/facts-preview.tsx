@@ -36,6 +36,15 @@ export function FactsPreview({ preview }: { preview: FactsPreviewModel }) {
                 { label: "Signature", value: preview.description.rows.signature },
                 { label: "Number", value: preview.description.rows.number },
                 { label: "Certificate", value: preview.description.rows.certificate },
+                ...(preview.description.rows.stamp
+                  ? [{ label: "Stamp", value: preview.description.rows.stamp }]
+                  : []),
+                ...(preview.description.rows.printedBy
+                  ? [{ label: "Printed by", value: preview.description.rows.printedBy }]
+                  : []),
+                ...(preview.description.rows.publishedBy
+                  ? [{ label: "Published by", value: preview.description.rows.publishedBy }]
+                  : []),
                 ...(preview.description.rows.proofs
                   ? [{ label: "Proofs", value: preview.description.rows.proofs }]
                   : []),

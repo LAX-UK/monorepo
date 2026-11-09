@@ -499,7 +499,11 @@ describe.skipIf(!hasShopIntegrationDb)("drizzle enquiry inbox repository", () =>
       .from(shopAdminAudit)
       .where(and(eq(shopAdminAudit.actorSubjectId, ACTOR), eq(shopAdminAudit.targetId, id)));
     expect(audit.map((row) => row.action)).toEqual(["enquiry.note.add", "enquiry.note.add"]);
-    expect(JSON.parse(audit[0]?.afterJson ?? "{}")).toEqual({ noteId: first?.id });
+    // The audit rows are read without an order, so compare the notes they name as a set.
+    const audited = audit.map(
+      (row) => (JSON.parse(row.afterJson ?? "{}") as { noteId?: string }).noteId,
+    );
+    expect(audited.sort()).toEqual([first?.id, second?.id].sort());
 
     await expect(
       shopPool.query(`update shop_enquiry_note set body = 'edited' where id = $1`, [second?.id]),

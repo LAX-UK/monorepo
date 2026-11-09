@@ -50,6 +50,7 @@ const laxDigital: Certificate = {
   form: "digital",
   arrives: { kind: "with_print" },
   numberedToMatch: true,
+  authority: { givenBy: "artist", datedOn: "2026-09-12", reference: "Letter in the artist file" },
 };
 
 const pencil: Signature = { kind: "hand_signed", medium: "pencil", place: "front_lower_margin" };
@@ -209,7 +210,11 @@ describe("describeEditionFacts: the facts block", () => {
       number:
         "Numbered by hand on the print. Your number appears in your order once payment is confirmed.",
       certificate: "Certificate of authenticity from the artist, sent with your print",
+      stamp: null,
+      printedBy: null,
+      publishedBy: null,
       proofs: "The artist also kept 3 artist's proofs, outside the edition of 24.",
+      differences: [],
     });
   });
 
@@ -240,7 +245,7 @@ describe("describeEditionFacts: the facts block", () => {
     ],
     [
       laxDigital,
-      "Digital certificate of authenticity from London Art Exchange, in your LAX Account",
+      "Digital certificate of authenticity issued by London Art Exchange Ltd on the artist's written authority, in your LAX Account",
     ],
     [
       { ...publisherLater, arrives: { kind: "separately", withinWeeks: 1 } },

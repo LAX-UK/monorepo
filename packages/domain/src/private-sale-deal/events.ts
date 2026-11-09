@@ -28,6 +28,31 @@ export type PrivateSaleDealEvent =
       payload: { dealId: string; reference: string; fields: string[] };
     }
   | {
+      eventType: "private_sale_deal.bank_transfer_recorded";
+      payload: { dealId: string; reference: string; paymentId: string; amountMinor: number };
+    }
+  | {
+      eventType: "private_sale_deal.bank_refund_recorded";
+      payload: {
+        dealId: string;
+        reference: string;
+        paymentId: string;
+        amountMinor: number;
+        refundedMinor: number;
+        bankReference: string;
+      };
+    }
+  | {
+      eventType: "private_sale_deal.payment_partly_refunded";
+      payload: {
+        dealId: string;
+        reference: string;
+        paymentId: string;
+        amountMinor: number;
+        refundedMinor: number;
+      };
+    }
+  | {
       eventType: "private_sale_deal.party_named";
       payload: {
         dealId: string;
@@ -175,6 +200,55 @@ export function dealPaymentRefundedEvent(
       paymentId: payment.id,
       amountMinor: payment.amountMinor,
     },
+  };
+}
+
+/** Finance saw a bank transfer land and recorded it; the bank's reference stays on the payment. */
+export function dealBankTransferRecordedEvent(
+  deal: DealRef,
+  payment: { id: string; amountMinor: number },
+): PrivateSaleDealEvent {
+  return {
+    eventType: "private_sale_deal.bank_transfer_recorded",
+    payload: {
+      dealId: deal.id,
+      reference: deal.reference,
+      paymentId: payment.id,
+      amountMinor: payment.amountMinor,
+    },
+  };
+}
+
+/** Part of the buyer's payment went back; `refundedMinor` is the total returned so far. */
+export function dealPaymentPartlyRefundedEvent(
+  deal: DealRef,
+  payment: { id: string; amountMinor: number; refundedMinor: number },
+): PrivateSaleDealEvent {
+  return {
+    eventType: "private_sale_deal.payment_partly_refunded",
+    payload: {
+      dealId: deal.id,
+      reference: deal.reference,
+      paymentId: payment.id,
+      amountMinor: payment.amountMinor,
+      refundedMinor: payment.refundedMinor,
+    },
+  };
+}
+
+/** Finance returned money by bank for a transfer they had recorded; `refundedMinor` is the total so far. */
+export function dealBankRefundRecordedEvent(
+  deal: DealRef,
+  refund: {
+    paymentId: string;
+    amountMinor: number;
+    refundedMinor: number;
+    bankReference: string;
+  },
+): PrivateSaleDealEvent {
+  return {
+    eventType: "private_sale_deal.bank_refund_recorded",
+    payload: { dealId: deal.id, reference: deal.reference, ...refund },
   };
 }
 

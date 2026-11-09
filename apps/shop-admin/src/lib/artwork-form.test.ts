@@ -12,6 +12,7 @@ import {
   appendImages,
   artworkConflictField,
   artworkErrorSummary,
+  artworkFieldErrorsFromIssues,
   artworkFormValues,
   buildArtworkCreateBody,
   buildArtworkUpdateBody,
@@ -64,6 +65,8 @@ const detail: AdminArtworkDetail = {
     mainRun: null,
     linkedListings: [],
     stock: null,
+    prints: null,
+    setApart: null,
     certificateAuthority: null,
     horsCommerce: null,
   },
@@ -328,5 +331,23 @@ describe("artist form", () => {
       displayName: "Enter the artist's name.",
       slug: "Use lower case letters, numbers and single hyphens, such as ada-lovelace.",
     });
+  });
+});
+
+describe("artworkFieldErrorsFromIssues", () => {
+  it("keys the API's named problems by the form fields that exist", () => {
+    expect(
+      artworkFieldErrorsFromIssues([
+        { field: "description", message: "Shop descriptions can't make claims about the print." },
+        { field: "seoTitle", message: "Not a claim here" },
+        { field: "unknownField", message: "Ignored" },
+        { field: 3, message: "Ignored" },
+        null,
+      ]),
+    ).toEqual({
+      description: "Shop descriptions can't make claims about the print.",
+      seoTitle: "Not a claim here",
+    });
+    expect(artworkFieldErrorsFromIssues(undefined)).toEqual({});
   });
 });

@@ -1186,6 +1186,10 @@ export type {
   PrivateSaleDealStageCount,
 } from "./private-sale-deal-query.repository.js";
 export type {
+  DealReminderCandidate,
+  IPrivateSaleDealReminderStore,
+} from "./private-sale-deal-reminder.store.js";
+export type {
   ClaimDealPaymentResult,
   IPrivateSaleDealFinanceStore,
   IPrivateSaleDealPaymentReader,
@@ -1318,3 +1322,27 @@ export type {
   PrivateSaleDealTermsPatch,
   PrivateSaleDealWriteResult,
 } from "./private-sale-deal.repository.js";
+export type {
+  BookingOutcome,
+  CancelCollectionBooking,
+  CancelOutcome,
+  ChangeCollectionBooking,
+  ChangeOutcome,
+  CollectionBookingLotRecord,
+  CollectionBookingRecord,
+  CollectionCalendarFacts,
+  CollectionCollectorInput,
+  CollectionCollectorRecord,
+  CollectionPlaceSettings,
+  HandOverOutcome,
+  ICollectionBookingReader,
+  ICollectionBookingWriter,
+  ICollectionOutcomeWriter,
+  ICollectionPlaceRepository,
+  MarkNotCollected,
+  NewCollectionBooking,
+  NotCollectedOutcome,
+  RecordHandOver,
+  UndoHandOver,
+  UndoOutcome,
+} from "./collection-booking.repository.js";

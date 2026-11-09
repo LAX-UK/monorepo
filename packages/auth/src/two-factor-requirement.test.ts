@@ -68,7 +68,6 @@ describe("decideAuthorizeTwoFactorStep", () => {
     requestsSilver: false,
     requiredByPolicy: false,
     mfaCompletedAt: null,
-    socialAuthAt: null,
     twoFactorEnabled: false,
     canEnrolTotp: true,
   };
@@ -85,25 +84,21 @@ describe("decideAuthorizeTwoFactorStep", () => {
     ).toBe("verify");
   });
 
-  it("accepts a social sign-in for a policy requirement", () => {
+  it("does not accept a social sign-in for a policy requirement", () => {
+    // Staff or organisation rule, a person who can answer a code: the code is asked for.
+    expect(decideAuthorizeTwoFactorStep({ ...base, requiredByPolicy: true })).toBe("setup");
     expect(
-      decideAuthorizeTwoFactorStep({
-        ...base,
-        requiredByPolicy: true,
-        canEnrolTotp: false,
-        socialAuthAt: new Date(),
-      }),
-    ).toBe("pass");
+      decideAuthorizeTwoFactorStep({ ...base, requiredByPolicy: true, twoFactorEnabled: true }),
+    ).toBe("verify");
+    // Nothing to enrol with (no password yet): the requirement is unmet, never passed.
+    expect(
+      decideAuthorizeTwoFactorStep({ ...base, requiredByPolicy: true, canEnrolTotp: false }),
+    ).toBe("unmet");
   });
 
-  it("keeps Silver requests strict even after a social sign-in", () => {
+  it("keeps Silver requests strict for a person who signed in with Google or Apple", () => {
     expect(
-      decideAuthorizeTwoFactorStep({
-        ...base,
-        requestsSilver: true,
-        canEnrolTotp: false,
-        socialAuthAt: new Date(),
-      }),
+      decideAuthorizeTwoFactorStep({ ...base, requestsSilver: true, canEnrolTotp: false }),
     ).toBe("unmet");
   });
 

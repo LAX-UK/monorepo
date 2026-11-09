@@ -23,6 +23,13 @@ vi.mock("@/lib/auth/use-app-session", () => ({
   useAppSession: () => mocks.session,
 }));
 
+// The dialog is loaded on demand in the app; these tests are about when a prompt is due, so the
+// loader resolves at once to the (mocked) dialog below.
+vi.mock("next/dynamic", async () => {
+  const { MarketingPromptDialog } = await import("./marketing-prompt-dialog");
+  return { default: () => MarketingPromptDialog };
+});
+
 vi.mock("./marketing-prompt-dialog", () => ({
   MarketingPromptDialog: ({
     variant,

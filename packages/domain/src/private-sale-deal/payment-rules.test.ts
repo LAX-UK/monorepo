@@ -7,6 +7,7 @@ import {
   dealPaymentIsLive,
   dealPayoutBlockers,
   dealRefundRecorded,
+  dealRefundableMinor,
 } from "./payment-rules.js";
 import { dealPaymentDueMinor, dealPayoutAmounts } from "./settlement-amounts.js";
 
@@ -173,5 +174,12 @@ describe("deal payment status", () => {
     expect(dealRefundRecorded({ status: "refunded", amountMinor: 100, refundedMinor: 100 })).toBe(
       true,
     );
+  });
+
+  it("leaves what has not gone back as still refundable", () => {
+    expect(dealRefundableMinor({ amountMinor: 100, refundedMinor: 0 })).toBe(100);
+    expect(dealRefundableMinor({ amountMinor: 100, refundedMinor: 40 })).toBe(60);
+    expect(dealRefundableMinor({ amountMinor: 100, refundedMinor: 100 })).toBe(0);
+    expect(dealRefundableMinor({ amountMinor: 100, refundedMinor: 150 })).toBe(0);
   });
 });

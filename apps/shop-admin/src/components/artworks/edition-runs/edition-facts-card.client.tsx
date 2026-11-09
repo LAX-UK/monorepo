@@ -184,7 +184,7 @@ export function EditionFactsCard({
                   onCheckedChange={(checked) => update({ confirmed: checked === true })}
                 />
               }
-              label="I have checked these facts against the print or the publisher's records"
+              label="I have checked these facts against the prints, or against the artist's or publisher's written statement."
               description="Publishing waits until the facts are confirmed."
             />
           )}

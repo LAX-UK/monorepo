@@ -205,6 +205,7 @@ function mount(
           hours: null,
           bookingEmail: "info@lax.bid",
         },
+        collectionPlaces: { findForLot: async () => null },
         purchases,
         places: { placeForLot: async () => null },
       }),

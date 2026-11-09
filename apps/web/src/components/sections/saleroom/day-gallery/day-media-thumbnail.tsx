@@ -15,6 +15,8 @@ export type DayMediaThumbnailProps = {
   total: number;
   saleTitle: string;
   variant?: DayMediaThumbnailVariant;
+  /** Pointer or focus arrives: a chance to fetch what opening will need. */
+  onIntent?: () => void;
   onClick: () => void;
 };
 
@@ -42,6 +44,7 @@ export function DayMediaThumbnail({
   total,
   saleTitle,
   variant = "inline",
+  onIntent,
   onClick,
 }: DayMediaThumbnailProps) {
   const isVideo = item.mediaType === "video";
@@ -59,6 +62,7 @@ export function DayMediaThumbnail({
       )}
       aria-label={thumbnailLabel(item, index, total, saleTitle)}
       onClick={onClick}
+      {...(onIntent ? { onPointerEnter: onIntent, onFocus: onIntent } : {})}
     >
       <div className="aspect-square w-full overflow-hidden">
         {isVideo ? (

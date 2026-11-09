@@ -42,10 +42,17 @@ const ACTION_ACCESS: Record<StaffDealAction, CapabilityRequirement> = {
   cancel: PRIVATE_SALE_DEALS_MANAGE_ACCESS,
   issue_invoice: PRIVATE_SALE_DEALS_FINANCE_ACCESS,
   refund: PRIVATE_SALE_DEALS_FINANCE_ACCESS,
+  record_bank_transfer: PRIVATE_SALE_DEALS_FINANCE_ACCESS,
+  record_bank_refund: PRIVATE_SALE_DEALS_FINANCE_ACCESS,
   release: PRIVATE_SALE_DEALS_RELEASE_ACCESS,
 };
 
-const MONEY_ACTIONS: ReadonlySet<StaffDealAction> = new Set(["issue_invoice", "refund"]);
+const MONEY_ACTIONS: ReadonlySet<StaffDealAction> = new Set([
+  "issue_invoice",
+  "refund",
+  "record_bank_transfer",
+  "record_bank_refund",
+]);
 
 function idempotencyHeader(key: string | undefined): Record<string, string> {
   const supplied = key?.trim() ?? "";
@@ -142,7 +149,7 @@ export async function nameDealBuyerAction(
 export async function dealMoveAction(
   ref: string,
   action: StaffDealAction,
-  input: { version: number; reason?: string; idempotencyKey?: string },
+  input: { version: number; reason?: string; amountMinor?: number; idempotencyKey?: string },
 ): Promise<ActionResult<DealRecord>> {
   return instrumentServerAction("dealMoveAction", async () => {
     const denied = await denyUnlessAdminCapability(
@@ -153,6 +160,7 @@ export async function dealMoveAction(
     const body = adminDealActionSchema.safeParse({
       version: input.version,
       reason: input.reason || undefined,
+      amountMinor: input.amountMinor || undefined,
     });
     if (!reference.success || !body.success) {
       return actionFailure(body.error?.issues[0]?.message ?? "Check the details.", undefined, 400);

@@ -216,6 +216,9 @@ import ShopCancellationConfirmedEmail, {
 import ShopCheckoutOpsAlertEmail, {
   subject as shopCheckoutOpsAlertSubject,
 } from "./templates/shop-checkout-ops-alert.js";
+import ShopDeliveryQuoteRequestedEmail, {
+  subject as shopDeliveryQuoteRequestedSubject,
+} from "./templates/shop-delivery-quote-requested.js";
 import ShopDispatchNoticeEmail, {
   subject as shopDispatchNoticeSubject,
 } from "./templates/shop-dispatch-notice.js";
@@ -301,6 +304,9 @@ import SubmissionDraftReminderEmail, {
 import SubmissionRejectedEmail, {
   subject as submissionRejectedSubject,
 } from "./templates/submission-rejected.js";
+import UnconfirmedPasswordRemovedEmail, {
+  subject as unconfirmedPasswordRemovedSubject,
+} from "./templates/unconfirmed-password-removed.js";
 import VerifyEmail, { subject as verifyEmailSubject } from "./templates/verify-email.js";
 import WatchedLotReminderEmail, {
   subject as watchedLotReminderSubject,
@@ -391,6 +397,10 @@ const renderers: { [T in TemplateName]: TemplateRenderer<T> } = {
   "sign-in-method-removed": {
     subject: signInMethodRemovedSubject,
     component: (vars) => <SignInMethodRemovedEmail {...vars} />,
+  },
+  "unconfirmed-password-removed": {
+    subject: unconfirmedPasswordRemovedSubject,
+    component: (vars) => <UnconfirmedPasswordRemovedEmail {...vars} />,
   },
   "phone-removed": {
     subject: phoneRemovedSubject,
@@ -726,6 +736,10 @@ const renderers: { [T in TemplateName]: TemplateRenderer<T> } = {
   "shop-zoho-dead-letter-notice": {
     subject: shopZohoDeadLetterNoticeSubject,
     component: (vars) => <ShopZohoDeadLetterNoticeEmail {...vars} />,
+  },
+  "shop-delivery-quote-requested": {
+    subject: shopDeliveryQuoteRequestedSubject,
+    component: (vars) => <ShopDeliveryQuoteRequestedEmail {...vars} />,
   },
   "shop-production-started": {
     subject: shopProductionStartedSubject,
