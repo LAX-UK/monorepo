@@ -39,6 +39,7 @@ export default async function AdminDataRequestPage({ params, searchParams }: Pro
       today={page.today}
       listHref={page.listHref}
       pager={page.pager}
+      holds={page.holds}
       initialAction={ACTIONS.find((candidate) => candidate === action) ?? null}
     />
   );

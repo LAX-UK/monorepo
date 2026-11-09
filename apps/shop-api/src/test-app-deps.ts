@@ -55,6 +55,8 @@ export function createMinimalShopApiTestDeps(
       PORT: 3011,
       DATABASE_URL_SHOP: "postgresql://shop:shop@localhost:5432/auction",
       SHOP_EDITION_ORDER_LIMIT: 2,
+      SHOP_EXPORT_PAYMENT_ENABLED: false,
+      SHOP_GUEST_QUOTE_HOLD_WORKING_DAYS: 1,
       LOG_LEVEL: "error",
       SHOP_API_PUBLIC_BASE_URL: "http://localhost:3011",
       SHOP_STOREFRONT_URL: "http://localhost:3020",
@@ -150,6 +152,9 @@ export function createMinimalShopApiTestDeps(
         throw new Error("not implemented");
       },
       cancelCheckoutOrder: async () => undefined,
+      requestDeliveryQuote: async () => {
+        throw new Error("not implemented");
+      },
       listOrders: async () => ({ items: [] }),
       getOrder: async () => null,
       getCustomerProfile: async () => ({ name: null, email: null }),
@@ -516,6 +521,17 @@ export function createMinimalShopApiTestDeps(
         }),
       },
       editionRuns: {
+        setApart: {
+          setApart: async () => ({
+            artworkId: "00000000-0000-4000-8000-000000000002",
+            slug: "print-no-3",
+            version: "2026-01-01T00:00:00.000Z",
+          }),
+          returnToRun: async () => ({
+            artworkId: "00000000-0000-4000-8000-000000000001",
+            version: "2026-01-01T00:00:00.000Z",
+          }),
+        },
         printsFromOriginal: {
           recordIn: async () => ({
             artworkId: "00000000-0000-4000-8000-000000000001",

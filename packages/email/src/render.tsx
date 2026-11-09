@@ -97,6 +97,9 @@ import KycDeclinedEmail, { subject as kycDeclinedSubject } from "./templates/kyc
 import KycResubmissionRequiredEmail, {
   subject as kycResubmissionRequiredSubject,
 } from "./templates/kyc-resubmission-required.js";
+import KycRetentionHoldNoticeEmail, {
+  subject as kycRetentionHoldNoticeSubject,
+} from "./templates/kyc-retention-hold-notice.js";
 import LegalEntityArchivedNoticeEmail, {
   subject as legalEntityArchivedNoticeSubject,
 } from "./templates/legal-entity-archived-notice.js";
@@ -216,6 +219,9 @@ import ShopCancellationConfirmedEmail, {
 import ShopCheckoutOpsAlertEmail, {
   subject as shopCheckoutOpsAlertSubject,
 } from "./templates/shop-checkout-ops-alert.js";
+import ShopDeliveryQuoteRequestedEmail, {
+  subject as shopDeliveryQuoteRequestedSubject,
+} from "./templates/shop-delivery-quote-requested.js";
 import ShopDispatchNoticeEmail, {
   subject as shopDispatchNoticeSubject,
 } from "./templates/shop-dispatch-notice.js";
@@ -626,6 +632,10 @@ const renderers: { [T in TemplateName]: TemplateRenderer<T> } = {
     subject: amlComplianceReviewNoticeSubject,
     component: (vars) => <AmlComplianceReviewNoticeEmail {...vars} />,
   },
+  "kyc-retention-hold-notice": {
+    subject: kycRetentionHoldNoticeSubject,
+    component: (vars) => <KycRetentionHoldNoticeEmail {...vars} />,
+  },
   "submission-approved": {
     subject: submissionApprovedSubject,
     component: (vars) => <SubmissionApprovedEmail {...vars} />,
@@ -733,6 +743,10 @@ const renderers: { [T in TemplateName]: TemplateRenderer<T> } = {
   "shop-zoho-dead-letter-notice": {
     subject: shopZohoDeadLetterNoticeSubject,
     component: (vars) => <ShopZohoDeadLetterNoticeEmail {...vars} />,
+  },
+  "shop-delivery-quote-requested": {
+    subject: shopDeliveryQuoteRequestedSubject,
+    component: (vars) => <ShopDeliveryQuoteRequestedEmail {...vars} />,
   },
   "shop-production-started": {
     subject: shopProductionStartedSubject,

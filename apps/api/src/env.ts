@@ -343,15 +343,21 @@ const envSchema = z
     ),
     /** The accountant's VAT treatments, as `code:Label` pairs separated by semicolons. */
     PRIVATE_SALE_VAT_TREATMENTS: z.preprocess(emptyToUndefined, z.string().optional()),
-    /** Days from the invoice to payment due. */
+    /**
+     * Days from the invoice to payment due. 7 is the suggested default until the owner decides;
+     * the buyer is reminded before, on and after this deadline.
+     */
     PRIVATE_SALE_PAYMENT_DUE_DAYS: z.preprocess(
       emptyToUndefined,
-      z.coerce.number().int().min(1).max(365).optional(),
+      z.coerce.number().int().min(1).max(365).default(7),
     ),
-    /** Days from payment to collection due. */
+    /**
+     * Days from payment to collection due. 14 is the suggested default until the owner decides;
+     * the buyer is reminded before, on and after this deadline.
+     */
     PRIVATE_SALE_COLLECTION_DUE_DAYS: z.preprocess(
       emptyToUndefined,
-      z.coerce.number().int().min(1).max(365).optional(),
+      z.coerce.number().int().min(1).max(365).default(14),
     ),
     /** The private sale terms version both sides accept. */
     PRIVATE_SALE_TERMS_VERSION: z.preprocess(emptyToUndefined, z.string().max(40).optional()),

@@ -208,6 +208,7 @@ describe("CollectionBookingService", () => {
       hours: "Monday to Friday, 10:00 to 17:00",
       bookingEmail: "info@lax.bid",
     },
+    collectionPlaces: { findForLot: async () => null },
     purchases: new InMemoryPurchaseFacts(),
     places: { placeForLot: async () => "LAX Saleroom, London" },
   });
@@ -218,6 +219,69 @@ describe("CollectionBookingService", () => {
       email: "info@lax.bid",
       hours: "Monday to Friday, 10:00 to 17:00",
       place: "LAX Saleroom, London",
+    });
+  });
+
+  describe("a place set up in Bid admin", () => {
+    const placeService = (over: { onlineBookingEnabled: boolean; bookingEmail?: string | null }) =>
+      new CollectionBookingService({
+        settings: {
+          selfServeEnabled: false,
+          slotCapacityPerHour: null,
+          hours: "Weekdays from the environment",
+          bookingEmail: "info@lax.bid",
+        },
+        collectionPlaces: {
+          findForLot: async () => ({
+            settings: {
+              venueId: "venue-1",
+              onlineBookingEnabled: over.onlineBookingEnabled,
+              visitMinutes: 30,
+              placesPerSlot: 2,
+              noticeCutoffLocal: "16:00",
+              noticeWorkingDays: 1,
+              windowDays: 28,
+              closeOnSaleDays: true,
+              undoHandOverMinutes: 10,
+              freeStorageDays: null,
+              bookingEmail: over.bookingEmail ?? null,
+              updatedAt: NOW,
+            },
+            hours: [1, 2, 3, 4, 5].map((weekday) => ({
+              weekday,
+              opensLocal: "10:00",
+              closesLocal: "19:00",
+            })),
+          }),
+        },
+        purchases: new InMemoryPurchaseFacts(),
+        places: { placeForLot: async () => "156 New Cavendish Street, London" },
+      });
+
+    it("offers self-serve booking once staff switch it on, whatever the environment says", async () => {
+      const offer = (
+        await placeService({ onlineBookingEnabled: true }).offer(actor("finance"), LOTS.paid)
+      )._unsafeUnwrap();
+      expect(offer).toEqual({
+        kind: "self_serve",
+        hours: "Monday to Friday, 10:00 to 19:00",
+        place: "156 New Cavendish Street, London",
+      });
+    });
+
+    it("stays on email while the switch is off, with the place's own hours and address", async () => {
+      const offer = (
+        await placeService({
+          onlineBookingEnabled: false,
+          bookingEmail: "collections@lax.bid",
+        }).offer(actor("finance"), LOTS.paid)
+      )._unsafeUnwrap();
+      expect(offer).toEqual({
+        kind: "email",
+        email: "collections@lax.bid",
+        hours: "Monday to Friday, 10:00 to 19:00",
+        place: "156 New Cavendish Street, London",
+      });
     });
   });
 

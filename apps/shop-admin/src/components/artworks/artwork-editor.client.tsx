@@ -23,6 +23,8 @@ import {
   PrintsRunSection,
 } from "@/components/artworks/edition-runs/prints-create-sections.client";
 import { ProofListingDialog } from "@/components/artworks/edition-runs/proof-listing-dialog.client";
+import { RunPrintsCard } from "@/components/artworks/edition-runs/run-prints-card.client";
+import { SetApartCard } from "@/components/artworks/edition-runs/set-apart-card.client";
 import { OfferAtAuctionDialog } from "@/components/artworks/offer-at-auction-dialog.client";
 import { OriginalArtworkPicker } from "@/components/artworks/original-artwork-picker.client";
 import { ZohoOwnedDetails, ZohoOwnedMedia } from "@/components/artworks/zoho-owned-details";
@@ -138,6 +140,7 @@ import {
   TextInput,
   UnsavedChangesDialog,
   formatStaffDateTime,
+  formatStaffMoney,
   parsePoundsToPence,
   toast,
   useStaffAccess,
@@ -1375,20 +1378,30 @@ export function ArtworkEditor({
 
         {record && run ? (
           <>
-            <EditionRunCard
-              artworkId={record.artworkId}
-              run={run}
-              version={version ?? record.version}
-              linkedToOriginal={values.sourceOriginalId !== null}
-              canWrite={permissions.write}
-              onSaved={setVersion}
-            />
-            <EditionFactsCard
-              artworkId={record.artworkId}
-              title={record.title}
-              run={run}
-              permissions={{ write: permissions.write, correct: permissions.correctFacts }}
-            />
+            {run.setApart ? (
+              <SetApartCard
+                artworkId={record.artworkId}
+                setApart={run.setApart}
+                canWrite={permissions.write}
+              />
+            ) : (
+              <>
+                <EditionRunCard
+                  artworkId={record.artworkId}
+                  run={run}
+                  version={version ?? record.version}
+                  linkedToOriginal={values.sourceOriginalId !== null}
+                  canWrite={permissions.write}
+                  onSaved={setVersion}
+                />
+                <EditionFactsCard
+                  artworkId={record.artworkId}
+                  title={record.title}
+                  run={run}
+                  permissions={{ write: permissions.write, correct: permissions.correctFacts }}
+                />
+              </>
+            )}
             {framing ? (
               <EditionFramingCard
                 key={framing.version ?? "unsaved"}
@@ -1402,6 +1415,19 @@ export function ArtworkEditor({
               <Notice tone="danger" title="Framing did not load">
                 Something went wrong on our side. Reload the page to try again.
               </Notice>
+            ) : null}
+            {run.prints ? (
+              <RunPrintsCard
+                artworkId={record.artworkId}
+                title={record.title}
+                spec={run.spec}
+                runPrice={
+                  record.printPricePence === null ? null : formatStaffMoney(record.printPricePence)
+                }
+                runSignature={run.factsConfirmed && run.facts ? run.facts.signature : null}
+                prints={run.prints}
+                permissions={{ write: permissions.write, setPrice: permissions.setPrice }}
+              />
             ) : null}
             {run.horsCommerce ? (
               <HorsCommerceApprovalCard

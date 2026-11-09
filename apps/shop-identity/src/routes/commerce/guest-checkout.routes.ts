@@ -2,7 +2,9 @@ import type { Context, Hono } from "hono";
 import { readBasketToken, rotateBasketToken } from "../../basket-cookie.js";
 import {
   createGuestCheckoutBodySchema,
+  createGuestDeliveryQuoteRequestBodySchema,
   guestCheckoutSessionSchema,
+  guestDeliveryQuoteResponseSchema,
   guestEmailCheckBodySchema,
   guestOrderLinkResendBodySchema,
   guestOrderViewStateSchema,
@@ -28,6 +30,7 @@ export function registerCommerceGuestCheckoutRoutes(
   storefrontOrigin: string,
 ): void {
   const guestCheckoutBodySchema = createGuestCheckoutBodySchema(storefrontOrigin);
+  const guestQuoteBodySchema = createGuestDeliveryQuoteRequestBodySchema(storefrontOrigin);
 
   async function asStorefront(
     c: Context,
@@ -106,6 +109,32 @@ export function registerCommerceGuestCheckoutRoutes(
       checkoutUrl: session.checkoutUrl,
       expiresAt: session.expiresAt,
     });
+  });
+
+  app.post("/commerce/guest-checkout/delivery-quote-requests", async (c) => {
+    const refused = csrfFailed(c);
+    if (refused) return refused;
+    const basketToken = readBasketToken(c);
+    if (!basketToken) return c.json({ error: "basket_not_found" }, 404);
+    const parsed = guestQuoteBodySchema.safeParse(await c.req.json().catch(() => ({})));
+    if (!parsed.success) return c.json({ error: "validation_failed" }, 400);
+    const response = await asStorefront(c, {
+      path: "/v1/guest-checkout/delivery-quote-requests",
+      scopes: "shop.write",
+      body: parsed.data,
+      basketToken,
+    });
+    if (!response.ok) return proxyJson(c, response);
+    const answer = guestDeliveryQuoteResponseSchema.safeParse(
+      await response.json().catch(() => null),
+    );
+    if (!answer.success) return c.json({ error: "invalid_upstream" }, 502);
+    const { result, orderAccessToken, orderAccessExpiresAt } = answer.data;
+    if (orderAccessToken && orderAccessExpiresAt) {
+      writeGuestOrderToken(c, orderAccessToken, new Date(orderAccessExpiresAt), deps.secureCookies);
+    }
+    // The browser never sees the token itself.
+    return c.json(result);
   });
 
   app.get("/commerce/guest-orders/current", async (c) => {

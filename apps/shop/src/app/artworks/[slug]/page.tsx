@@ -15,6 +15,7 @@ import { SHOP_POLICY_PATHS, type ShopPolicySlug } from "@/content/policies/shop-
 import { presentArtworkFraming } from "@/lib/artwork/artwork-framing.vm";
 import { buildArtworkProductPage } from "@/lib/artwork/artwork-product-page.vm";
 import { loadCheckoutDeliveryTimes } from "@/lib/checkout/checkout-delivery.server";
+import { DELIVERY_GLANCE_ID } from "@/lib/delivery/delivery-glance";
 import {
   loadShopArtBaseUrl,
   loadShopStorefrontBaseUrl,
@@ -144,6 +145,8 @@ export default async function ArtworkDetailPage({ params }: ArtworkPageProps) {
         })
       : ({ kind: "none" } as const);
   const linkablePolicies = loadLinkableShopPolicies();
+  const deliveryPolicyHref = policyHref(linkablePolicies, "delivery");
+  const outsideUkHref = deliveryPolicyHref ? `${deliveryPolicyHref}#${DELIVERY_GLANCE_ID}` : null;
   const returnTo = `/artworks/${encodeURIComponent(artwork.slug)}`;
   const primaryImageUrl = vm.gallery.images[0]?.url ?? null;
 
@@ -183,6 +186,7 @@ export default async function ArtworkDetailPage({ params }: ArtworkPageProps) {
                     deliveryLine={deliveryLine}
                     deliveryHref={policyHref(linkablePolicies, "delivery")}
                     editionLine={vm.basketLine}
+                    outsideUkHref={outsideUkHref}
                     returnsHref={policyHref(linkablePolicies, "returns")}
                     framing={
                       framing.kind === "framed_by_artist" || framing.kind === "unavailable"

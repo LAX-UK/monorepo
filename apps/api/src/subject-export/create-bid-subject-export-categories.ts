@@ -1,5 +1,6 @@
 import { BidderProfileCategory } from "./categories/bidder-profile.category.js";
 import { BidsCategory } from "./categories/bids.category.js";
+import { CollectionsCategory } from "./categories/collections.category.js";
 import { ConsignmentsCategory } from "./categories/consignments.category.js";
 import { InvoicesCategory } from "./categories/invoices.category.js";
 import { MarketingCategory } from "./categories/marketing.category.js";
@@ -22,6 +23,7 @@ export function createBidSubjectExportRegistry(deps: SubjectExportDeps): Subject
     new RegistrationsCategory(deps),
     new BidsCategory(deps),
     new PurchasesCategory(deps),
+    new CollectionsCategory(deps),
     new InvoicesCategory(deps),
     new PaymentsCategory(deps),
     new ConsignmentsCategory(deps),

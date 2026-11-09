@@ -1,9 +1,13 @@
 import { createHash } from "node:crypto";
 import { attachmentContentDisposition } from "@auction/artwork-register-contracts";
 import {
+  DeliveryQuoteRequestRejectedBodySchema,
   type GuestCheckoutRequest,
   GuestCheckoutRequestSchema,
   GuestCheckoutSessionSchema,
+  type GuestDeliveryQuoteRequestBody,
+  GuestDeliveryQuoteRequestBodySchema,
+  GuestDeliveryQuoteRequestResponseSchema,
   type GuestEmailCheckRequest,
   GuestEmailCheckRequestSchema,
   GuestEmailCheckResponseSchema,
@@ -22,7 +26,11 @@ import { buildOrderInvoiceModel, renderOrderInvoicePdf } from "../../application
 import type { GuestCheckoutRoutesDeps } from "../../commerce-route-deps.js";
 import { ShopApiError, notFound } from "../../errors/shop-api-error.js";
 import { requireShopScope } from "../../plugins/shop-auth.js";
-import { presentCheckoutSession, presentOrder } from "../../presenters/commerce.presenter.js";
+import {
+  presentCheckoutSession,
+  presentDeliveryQuoteOutcome,
+  presentOrder,
+} from "../../presenters/commerce.presenter.js";
 import { admissionClientIp } from "./enquiry-admission.js";
 
 const BASKET_TOKEN_HEADER = "x-shop-basket-token";
@@ -124,6 +132,59 @@ export async function registerGuestCheckoutRoutes(
         return { outcome: result.kind };
       }
       return throwRefusal(reply, result);
+    },
+  );
+
+  app.post(
+    "/v1/guest-checkout/delivery-quote-requests",
+    {
+      schema: {
+        tags: ["commerce"],
+        body: GuestDeliveryQuoteRequestBodySchema,
+        response: {
+          200: GuestDeliveryQuoteRequestResponseSchema,
+          400: DeliveryQuoteRequestRejectedBodySchema,
+          403: ShopApiErrorBodySchema,
+          404: ShopApiErrorBodySchema,
+          409: ShopApiErrorBodySchema,
+          429: ShopApiErrorBodySchema,
+          503: ShopApiErrorBodySchema,
+        },
+      },
+    },
+    async (request, reply) => {
+      requireStorefront(request, "shop.write");
+      const deps = requireGuestCheckout(guestDeps);
+      const body = request.body as GuestDeliveryQuoteRequestBody;
+      const name = body.name.trim();
+      if (!name) throw new ShopApiError(SHOP_API_ERROR_CODES.VALIDATION, "Enter your name", 400);
+      const result = await deps.service.requestDeliveryQuote({
+        basketId: body.basketId,
+        idempotencyKey: body.idempotencyKey,
+        successUrl: body.successUrl,
+        cancelUrl: body.cancelUrl,
+        deliveryAddress: body.deliveryAddress,
+        deliveryPhone: body.deliveryPhone.trim(),
+        email: body.email,
+        name,
+        marketingConsent: body.marketingConsent === true,
+        basketTokenHash: basketTokenHash(request),
+        clientIp: admissionClientIp(request),
+      });
+      request.log.info(
+        { emailKey: emailLogKey(body.email), outcome: result.kind },
+        "guest_delivery_quote_request",
+      );
+      if (result.kind !== "answered") return throwRefusal(reply, result);
+      return {
+        result: presentDeliveryQuoteOutcome(result.outcome),
+        ...(result.access
+          ? {
+              orderAccessToken: result.access.token,
+              orderAccessExpiresAt: result.access.expiresAt.toISOString(),
+            }
+          : {}),
+      };
     },
   );
 

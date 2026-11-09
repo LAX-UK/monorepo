@@ -20,6 +20,11 @@ export type StripeRefundInput = {
    * refunds on two invoices of one charge stay distinct.
    */
   paymentId?: string;
+  /**
+   * Which of several part refunds of one payment this is (the amount already returned), so two
+   * part refunds of the same amount are two refunds, not one repeated.
+   */
+  sequence?: number;
 };
 
 export type StripeRefundGatewayResult =
@@ -110,9 +115,10 @@ export class StripePaymentGateway implements IStripePaymentGateway {
     if (!stripe) {
       throw new Error("StripePaymentGateway: refund called while not configured");
     }
+    const step = input.sequence === undefined ? "" : `:${input.sequence}`;
     const idempotencyKey = input.paymentId
-      ? `refund:${input.chargeId}:${input.paymentId}:${input.amount ?? "full"}`
-      : `refund:${input.chargeId}:${input.amount ?? "full"}`;
+      ? `refund:${input.chargeId}:${input.paymentId}:${input.amount ?? "full"}${step}`
+      : `refund:${input.chargeId}:${input.amount ?? "full"}${step}`;
     return executeWithStripeRetries(async () => {
       try {
         const params: Stripe.RefundCreateParams = {

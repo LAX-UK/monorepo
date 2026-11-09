@@ -1,4 +1,5 @@
 import type { BasketView, CheckoutSession, OrderSummary } from "@auction/shop-contracts";
+import type { DeliveryQuoteRequestResult } from "@auction/shop-contracts";
 import {
   basketLineMaxQuantity,
   carrierTrackingUrl,
@@ -6,6 +7,7 @@ import {
   orderProblemWindow,
   pence,
 } from "@auction/shop-domain";
+import type { DeliveryQuoteRequestOutcome } from "../application/delivery-quote-request/delivery-quote-request.service.js";
 import { orderRecordVat } from "../application/order-vat.js";
 import type {
   BasketRecord,
@@ -59,6 +61,26 @@ export function presentBasket(
       ...(line.framing ? { framing: line.framing } : {}),
     })),
   };
+}
+
+/** What the buyer is told when they ask for a delivery quote, as the storefront reads it. */
+export function presentDeliveryQuoteOutcome(
+  outcome: DeliveryQuoteRequestOutcome,
+): DeliveryQuoteRequestResult {
+  switch (outcome.kind) {
+    case "quote_requested":
+      return {
+        outcome: "quote_requested",
+        orderReference: outcome.request.orderReference,
+        holdUntil: outcome.request.holdUntil.toISOString(),
+        regionId: outcome.request.regionId,
+        country: outcome.request.country,
+      };
+    case "pay_now":
+      return { outcome: "pay_now", checkoutUrl: outcome.session.checkoutUrl };
+    case "not_delivered":
+      return { outcome: "not_delivered", country: outcome.country };
+  }
 }
 
 export function presentCheckoutSession(result: CheckoutOrderResult): CheckoutSession {

@@ -16,12 +16,13 @@ const journal = JSON.parse(read("meta/_journal.json")) as {
 };
 
 describe("migration 0338 shop framing on editions", () => {
-  it("follows the framing catalogue in the journal, with the next index and a later time", () => {
+  it("follows an earlier migration in the journal, with the next index and a later time", () => {
     const index = journal.entries.findIndex((e) => e.tag === "0338_shop_framing_on_editions");
     expect(index).toBeGreaterThan(0);
     const entry = journal.entries[index];
     const previous = journal.entries[index - 1];
-    expect(previous?.tag).toBe("0331_shop_framing_catalogue");
+    // Re-chained after whatever was last on main when it merged; it only has to follow it.
+    expect(Number(previous?.tag.slice(0, 4))).toBeLessThan(338);
     expect(entry?.idx).toBe((previous?.idx ?? 0) + 1);
     expect(entry?.when).toBeGreaterThan(previous?.when ?? 0);
   });

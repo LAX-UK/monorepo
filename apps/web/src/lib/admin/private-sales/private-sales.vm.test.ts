@@ -32,11 +32,43 @@ describe("vocabularies", () => {
     expect(DEAL_ACTION_COPY.agree.money).toBe(false);
   });
 
-  it("asks for a reason only when cancelling", () => {
-    expect(DEAL_ACTION_COPY.cancel.reason?.required).toBe(true);
-    for (const action of STAFF_DEAL_ACTIONS.filter((a) => a !== "cancel")) {
+  it("asks for a reason only to cancel, to release the work and to record a bank transfer", () => {
+    const asked = ["cancel", "release", "record_bank_transfer", "record_bank_refund"];
+    for (const action of asked) {
+      expect(DEAL_ACTION_COPY[action as keyof typeof DEAL_ACTION_COPY].reason?.required).toBe(true);
+    }
+    for (const action of STAFF_DEAL_ACTIONS.filter((a) => !asked.includes(a))) {
       expect(DEAL_ACTION_COPY[action].reason).toBeNull();
     }
+  });
+
+  it("asks for an amount only to refund (optional) and to record a bank transfer or refund (required)", () => {
+    expect(DEAL_ACTION_COPY.refund.amount.required).toBe(false);
+    expect(DEAL_ACTION_COPY.record_bank_transfer.amount.required).toBe(true);
+    expect(DEAL_ACTION_COPY.record_bank_transfer.money).toBe(true);
+    expect(DEAL_ACTION_COPY.record_bank_refund.amount.required).toBe(true);
+    expect(DEAL_ACTION_COPY.record_bank_refund.money).toBe(true);
+    const asksAmount = ["refund", "record_bank_transfer", "record_bank_refund"];
+    for (const action of STAFF_DEAL_ACTIONS.filter((a) => !asksAmount.includes(a))) {
+      expect("amount" in DEAL_ACTION_COPY[action]).toBe(false);
+    }
+  });
+
+  it("says how much of a part-refunded payment is left to return", () => {
+    const effect = DEAL_ACTION_COPY.refund.effect(
+      dealRecord({
+        payment: {
+          status: "paid",
+          rail: "card",
+          amountMinor: 4_800_000,
+          paidAt: null,
+          refundedMinor: 1_000_000,
+          recordedTransfer: false,
+        },
+      }),
+    );
+    expect(effect).toMatch(/£38,000\.00/);
+    expect(effect).toMatch(/£10,000\.00 has already gone back/);
   });
 
   it("warns that cancelling a paid deal needs the refund first", () => {

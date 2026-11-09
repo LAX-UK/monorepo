@@ -11,6 +11,8 @@ export const CLIENT_ROUTES = {
   purchases: "/purchases",
   /** One payment for one invoice or several: `/purchases/pay?lots=a,b`. */
   pay: "/purchases/pay",
+  /** Book a time to collect paid lots, or see and change the booked visits: `/purchases/collect?lots=a,b`. */
+  collect: "/purchases/collect",
   watching: "/watching",
   /** Saved searches and their alerts, a view of Watching. */
   watchingSearches: "/watching?tab=searches",

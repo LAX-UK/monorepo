@@ -42,6 +42,7 @@ import {
   type SavedDeliveryAddressList,
   SavedDeliveryAddressListSchema,
 } from "./commerce-public.js";
+import { type PublicDeliveryRegions, PublicDeliveryRegionsSchema } from "./delivery-regions.js";
 import {
   type GeneralEnquiryRow,
   PortalGeneralEnquiriesResponseSchema,
@@ -136,6 +137,13 @@ export function parsePublicArtworkFacetCounts(value: unknown): PublicArtworkFace
 export function parsePublicCategoryList(value: unknown): PublicCategoryList {
   if (!Value.Check(PublicCategoryListSchema, value)) {
     throw new ShopContractParseError("Invalid public category list payload");
+  }
+  return value;
+}
+
+export function parsePublicDeliveryRegions(value: unknown): PublicDeliveryRegions {
+  if (!Value.Check(PublicDeliveryRegionsSchema, value)) {
+    throw new ShopContractParseError("Invalid public delivery regions payload");
   }
   return value;
 }

@@ -50,7 +50,13 @@ export type MainRunSpec = LaxStandardRun | CustomLimitedRun | OpenRun;
 /** Another main run of the same image with its own facts, linked to the first run. */
 export type CompanionRun = { type: "companion"; mainRunId: string; run: MainRunSpec };
 
-export type EditionRunSpec = MainRunSpec | ProofRun | CompanionRun;
+/**
+ * One print of a numbered run or proof listing that differs from the rest and is sold on its own
+ * (see print-exception.ts). The listing holds that one print; the run it came from is `mainRunId`.
+ */
+export type SetApartRun = { type: "set_apart"; mainRunId: string; owner: "artist" | "lax" };
+
+export type EditionRunSpec = MainRunSpec | ProofRun | CompanionRun | SetApartRun;
 
 export const LAX_STANDARD_RUN: LaxStandardRun = { type: "lax_standard" };
 
@@ -77,7 +83,7 @@ export type PrintIdentity = {
 };
 
 function mainRunOf(spec: EditionRunSpec): MainRunSpec | null {
-  if (spec.type === "proof") return null;
+  if (spec.type === "proof" || spec.type === "set_apart") return null;
   return spec.type === "companion" ? spec.run : spec;
 }
 
@@ -88,6 +94,7 @@ export function isOpenRun(spec: EditionRunSpec): boolean {
 /** The number of prints in a limited run; null for an open run. Proofs are never part of it. */
 export function runSize(spec: EditionRunSpec): number | null {
   if (spec.type === "proof") return spec.size;
+  if (spec.type === "set_apart") return 1;
   const main = mainRunOf(spec);
   if (!main || main.type === "open") return null;
   return main.type === "lax_standard" ? SHOP_EDITION_COUNT : main.size;
@@ -100,6 +107,13 @@ export function runAllocation(spec: EditionRunSpec): RunAllocation | null {
       buyer: 0,
       artist: spec.owner === "artist" ? spec.size : 0,
       lax: spec.owner === "lax" ? spec.size : 0,
+    };
+  }
+  if (spec.type === "set_apart") {
+    return {
+      buyer: 0,
+      artist: spec.owner === "artist" ? 1 : 0,
+      lax: spec.owner === "lax" ? 1 : 0,
     };
   }
   const main = mainRunOf(spec);
@@ -118,6 +132,12 @@ function isWholeNumber(value: number): boolean {
 /** Rules 1 to 5 and 9: whether the spec describes a run the shop can sell. */
 export function assertValidRunSpec(spec: EditionRunSpec): void {
   if (spec.type === "lax_standard") return;
+  if (spec.type === "set_apart") {
+    if (spec.owner !== "artist" && spec.owner !== "lax") {
+      throw new ShopDomainError("A print set apart belongs to the artist or to LAX");
+    }
+    return;
+  }
   if (spec.type === "companion") {
     assertValidRunSpec(spec.run);
     return;
@@ -227,6 +247,9 @@ function planNumbered(allocation: RunAllocation): PlannedEdition[] {
  */
 export function planEditionRun(spec: EditionRunSpec): PlannedEdition[] {
   assertValidRunSpec(spec);
+  if (spec.type === "set_apart") {
+    throw new ShopDomainError("A print set apart is moved from its run, not planned");
+  }
   if (spec.type === "proof") {
     return Array.from({ length: spec.size }, (_, index) => ({
       editionNumber: null,
@@ -348,10 +371,14 @@ export function printLabel(print: PrintIdentity, run: EditionRunSpec): string {
 /** Rule 10: a proof or companion links to a main run by the same artist and of the same image. */
 export function assertLinkableToMainRun(
   listing: { artistId: string; imageKey: string | null },
-  main: { role: "main" | "proof" | "companion"; artistId: string; imageKey: string | null },
+  main: {
+    role: "main" | "proof" | "companion" | "set_apart";
+    artistId: string;
+    imageKey: string | null;
+  },
 ): void {
-  if (main.role === "proof") {
-    throw new ShopDomainError("A listing cannot be linked to a proof");
+  if (main.role === "proof" || main.role === "set_apart") {
+    throw new ShopDomainError("A listing cannot be linked to a proof or to a print set apart");
   }
   if (main.artistId !== listing.artistId) {
     throw new ShopDomainError("A linked listing must be by the same artist as its main run");

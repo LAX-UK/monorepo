@@ -6,8 +6,8 @@ import { formatGbpPence } from "@auction/shop-portal/vm";
 /**
  * What checkout offers, in the order shown. Collection is from the gallery on New Cavendish
  * Street only. The other fulfilment values shop-api still accepts (a second collection point and
- * storage) are staff arrangements, not choices a shopper makes online. Outside the UK is listed so
- * the shopper learns it is not available online yet, instead of finding no option at all.
+ * storage) are staff arrangements, not choices a shopper makes online. Outside the UK is asked
+ * for rather than paid for: the shopper sends a delivery quote request and the print is held.
  */
 export const CHECKOUT_DELIVERY_CHOICES = [
   "uk_insured_delivery",
@@ -21,11 +21,18 @@ export function isCheckoutDeliveryChoice(value: string): value is CheckoutDelive
   return (CHECKOUT_DELIVERY_CHOICES as readonly string[]).includes(value);
 }
 
-/** The choices that can be paid for online; outside the UK cannot yet. */
+/** The choices that go to payment at once; outside the UK goes through a quote request first. */
 export function isPayableDeliveryChoice(
   choice: CheckoutDeliveryChoice,
 ): choice is Exclude<CheckoutDeliveryChoice, "international_quotation"> {
   return choice !== "international_quotation";
+}
+
+/** Outside the UK: the shopper asks for a delivery quote, and the print is held while we reply. */
+export function isQuoteDeliveryChoice(
+  choice: CheckoutDeliveryChoice,
+): choice is "international_quotation" {
+  return choice === "international_quotation";
 }
 
 /** A span of working days, such as 3 to 5. Configured per deployment; see `parseWorkingDayWindow`. */
@@ -143,7 +150,7 @@ export function presentCheckoutDeliveryOptions(input: {
       value: "international_quotation",
       label: "Delivery outside the UK",
       price: null,
-      description: "Not available online yet",
+      description: "We quote the delivery within one working day and hold your print for you",
       timing: null,
     },
   ];
@@ -164,7 +171,7 @@ export function checkoutDeliverySummaryRow(choice: ShopFulfilmentOption): {
         pence: fulfilmentSurchargePence(choice),
       };
     case "international_quotation":
-      return { label: "Delivery outside the UK", value: "Not available online", pence: 0 };
+      return { label: "Delivery outside the UK", value: "Quoted separately", pence: 0 };
     case "lax_storage":
       return {
         label: "Storage with LAX",

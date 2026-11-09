@@ -43,6 +43,22 @@ export interface IPrivateSaleDealPaymentWriter {
     paid: { chargeId: string | null; paymentIntentId: string | null; at: Date },
   ): Promise<PrivateSaleDealPayment | null>;
   markCancelled(id: string): Promise<PrivateSaleDealPayment | null>;
+  /**
+   * Finance saw a bank transfer land: an open payment becomes paid with who recorded it and the
+   * bank's reference. Returns `null` unless the payment was open.
+   */
+  markPaidByTransfer(
+    id: string,
+    transfer: { recordedByUserId: string; bankReference: string; at: Date },
+  ): Promise<PrivateSaleDealPayment | null>;
+  /**
+   * Part of a paid payment went back. The payment stays paid; the total returned only ever goes
+   * up, so a repeated or out-of-order report changes nothing. Returns `null` when it does not.
+   */
+  markPartlyRefunded(
+    id: string,
+    refund: { refundedMinor: number; at: Date },
+  ): Promise<PrivateSaleDealPayment | null>;
   markRefunded(
     id: string,
     refund: { refundedMinor: number; refundId: string | null; at: Date },

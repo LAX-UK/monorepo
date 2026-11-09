@@ -27,7 +27,23 @@ import type { DealStaffViewer } from "../private-sale-deal/deal-staff-permission
 
 /** Why a move is off right now: a code a screen can key on, and the reason in plain words. */
 export type DealActionBlocker = {
-  code: DealBlockerCode | "no_payment_to_refund" | "payout_queued" | "refund_unavailable";
+  code:
+    | DealBlockerCode
+    | "no_payment_to_refund"
+    | "payout_queued"
+    | "refund_unavailable"
+    | "refund_amount_invalid"
+    | "transfer_details_required"
+    | "bank_refund_details_required"
+    | "bank_transfer_payment"
+    | "not_a_recorded_transfer"
+    | "checkout_completed"
+    | "checkout_not_ended"
+    | "transfer_amount_mismatch"
+    | "transfer_in_flight"
+    | "deal_not_found"
+    | "deal_not_invoiced"
+    | "already_paid";
   message: string;
   party?: PrivateSalePartyRole;
 };
@@ -55,6 +71,10 @@ export type DealRecordPayment = {
   rail: string;
   amountMinor: number;
   paidAt: Date | null;
+  /** How much of the payment has gone back to the buyer so far. */
+  refundedMinor: number;
+  /** Finance recorded the bank transfer by hand rather than the buyer paying at the checkout. */
+  recordedTransfer: boolean;
 };
 
 export type DealStaffRecord = {
@@ -158,7 +178,7 @@ export interface IPrivateSaleDealCommands {
     viewer: DealStaffViewer,
     ref: string,
     action: StaffDealAction,
-    input: { version: number; reason?: string | undefined },
+    input: { version: number; reason?: string | undefined; amountMinor?: number | undefined },
   ): Promise<DealWriteResult>;
 }
 
