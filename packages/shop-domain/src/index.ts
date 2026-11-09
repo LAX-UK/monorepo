@@ -610,3 +610,20 @@ export {
   type SetApartPrint,
 } from "./print-exception.js";
 export type { SetApartDescribed } from "./edition-facts.js";
+export {
+  DELIVERY_QUOTE_END_REASONS,
+  GUEST_QUOTE_HOLD_WORKING_DAYS_DEFAULT,
+  MAX_OPEN_QUOTE_REQUESTS_PER_BASKET_TOKEN,
+  MAX_OPEN_QUOTE_REQUESTS_PER_BUYER,
+  MAX_OPEN_QUOTE_REQUESTS_PER_GUEST_IP,
+  QUOTE_HOLD_WORKING_DAYS,
+  addWorkingDays,
+  assessOutsideUkDelivery,
+  outsideUkAddressIssues,
+  quoteHoldUntil,
+  type DeliveryQuoteEndReason,
+  type OutsideUkAddress,
+  type OutsideUkAddressField,
+  type OutsideUkAddressIssue,
+  type OutsideUkAssessment,
+} from "./outside-uk-delivery.js";

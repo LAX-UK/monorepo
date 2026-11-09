@@ -21,6 +21,7 @@ import { anonymiseEnquiries, eraseAlertSubscribers } from "@auction/persistence/
 import { inArray } from "drizzle-orm";
 import type { AnyPgColumn, PgTable } from "drizzle-orm/pg-core";
 import type { ProjectorDbConnection } from "../interfaces/worker-db.types.js";
+import { eraseCollectionBookings } from "./collection-booking-erasure.js";
 
 /**
  * What Bid does with a person's data when Identity purges their account. This file is the single
@@ -132,6 +133,20 @@ const enquiryRule: BidAnonymisationRule = {
   },
 };
 
+/**
+ * Collection bookings keep the record of a visit, but the collector's details are personal data:
+ * the person's own, or a third party they named. A live visit is cancelled first (with an
+ * `account_erased` cancellation event); ended visits lose the collector's email and company, and
+ * the name too unless works were handed over, in which case the name and ID type are kept for
+ * `COLLECTION_HANDOVER_RETENTION_YEARS` and cleared by the retention purge.
+ */
+const collectionBookingRule: BidAnonymisationRule = {
+  table: "collection_booking",
+  treatment: "scrub",
+  fields: ["collector_name", "collector_email", "collector_company"],
+  apply: (tx, scope) => eraseCollectionBookings(tx, scope),
+};
+
 const alertSubscribersRule: BidAnonymisationRule = {
   table: "bid_alert_subscriber",
   treatment: "delete",
@@ -241,6 +256,7 @@ export const BID_ANONYMISATION_RULES: readonly BidAnonymisationRule[] = [
   ),
   deleteBySubject(marketingClickIds, "marketing_click_ids", marketingClickIds.userId),
   deleteBySubject(userUiPreference, "user_ui_preference", userUiPreference.userId),
+  collectionBookingRule,
   enquiryRule,
   alertSubscribersRule,
 ];

@@ -57,6 +57,30 @@ describe("loadShopApiEnv SHOP_EDITION_ORDER_LIMIT", () => {
   });
 });
 
+describe("loadShopApiEnv delivery outside the UK", () => {
+  it("does not charge export delivery until it is switched on, even in production", () => {
+    const env = loadShopApiEnv(productionNodeBase());
+    expect(env.SHOP_EXPORT_PAYMENT_ENABLED).toBe(false);
+    expect(
+      loadShopApiEnv(productionNodeBase({ SHOP_EXPORT_PAYMENT_ENABLED: "true" }))
+        .SHOP_EXPORT_PAYMENT_ENABLED,
+    ).toBe(true);
+  });
+
+  it("holds a guest's print for one working day unless set, within one to three", () => {
+    expect(loadShopApiEnv(productionNodeBase()).SHOP_GUEST_QUOTE_HOLD_WORKING_DAYS).toBe(1);
+    expect(
+      loadShopApiEnv(productionNodeBase({ SHOP_GUEST_QUOTE_HOLD_WORKING_DAYS: "3" }))
+        .SHOP_GUEST_QUOTE_HOLD_WORKING_DAYS,
+    ).toBe(3);
+    for (const value of ["0", "4", "one", "1.5"]) {
+      expect(() =>
+        loadShopApiEnv(productionNodeBase({ SHOP_GUEST_QUOTE_HOLD_WORKING_DAYS: value })),
+      ).toThrow();
+    }
+  });
+});
+
 describe("loadShopApiEnv lax.art revalidation", () => {
   const secret = "r".repeat(32);
 

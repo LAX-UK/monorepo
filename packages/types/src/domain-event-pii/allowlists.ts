@@ -495,6 +495,63 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
     "paymentId",
     "amountMinor",
   ]),
+  /**
+   * Identifiers, times and codes only. The collector's name, email and company are never in an
+   * event: they stay on the booking, where they can be erased.
+   */
+  "collection.booking.created": new Set([
+    "bookingId",
+    "reference",
+    "legalEntityId",
+    "venueId",
+    "slotStart",
+    "slotEnd",
+    "lotIds",
+    "collectorKind",
+    "authorised",
+    "bookedVia",
+    "overCapacity",
+  ]),
+  "collection.booking.changed": new Set([
+    "bookingId",
+    "reference",
+    "legalEntityId",
+    "venueId",
+    "previousSlotStart",
+    "slotStart",
+    "slotEnd",
+    "lotIds",
+    "collectorKind",
+    "authorised",
+    "bookedVia",
+    "overCapacity",
+    "icsSequence",
+  ]),
+  "collection.booking.cancelled": new Set([
+    "bookingId",
+    "reference",
+    "legalEntityId",
+    "venueId",
+    "slotStart",
+    "cancelledVia",
+    "reason",
+  ]),
+  "collection.booking.handed_over": new Set([
+    "bookingId",
+    "reference",
+    "legalEntityId",
+    "handedOverLotIds",
+    "leftLotIds",
+    "idCheckType",
+    "status",
+  ]),
+  "collection.booking.hand_over_undone": new Set(["bookingId", "reference", "legalEntityId"]),
+  "collection.booking.not_collected": new Set([
+    "bookingId",
+    "reference",
+    "legalEntityId",
+    "slotStart",
+  ]),
   "private_sale_deal.payout_queued": new Set([
     "dealId",
     "reference",
@@ -513,7 +570,14 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
 
 export function isExceptionPath(eventType: string, path: string): boolean {
   const set = EXCEPTION_PATHS[eventType];
-  return set ? set.has(path) : false;
+  if (!set) return false;
+  if (set.has(path)) return true;
+  // The elements of a listed array ("lotIds.0", "lotIds.1") are covered by the array's own path.
+  const withoutIndexes = path
+    .split(".")
+    .filter((segment) => !/^\d+$/.test(segment))
+    .join(".");
+  return withoutIndexes !== path && set.has(withoutIndexes);
 }
 
 export function isSafeLeaf(eventType: string, path: string, segment: string): boolean {

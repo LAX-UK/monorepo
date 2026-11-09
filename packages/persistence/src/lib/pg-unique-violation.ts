@@ -13,3 +13,18 @@ export function isPgUniqueViolation(err: unknown): boolean {
   }
   return false;
 }
+
+/**
+ * The name of the unique index or constraint a violation (23505) hit, or `null` for any other
+ * error. It lets a caller tell "this key was used before" from "this lot is already booked".
+ */
+export function pgUniqueViolationConstraint(err: unknown): string | null {
+  let current: unknown = err;
+  for (let depth = 0; depth < MAX_CAUSE_DEPTH; depth += 1) {
+    if (typeof current !== "object" || current === null) return null;
+    const { code, constraint } = current as { code?: unknown; constraint?: unknown };
+    if (code === "23505") return typeof constraint === "string" ? constraint : null;
+    current = (current as { cause?: unknown }).cause;
+  }
+  return null;
+}
