@@ -51,6 +51,8 @@ export const LISTING_TRIGGERS: Readonly<Record<string, Resolve>> = {
   "lot.returned_to_inventory": ofLot,
   "lot.activated": ofLotsSale,
   "sale.published": ofSale,
+  /** The start time moved: the sale's lots read upcoming or live from it. */
+  "sale.rescheduled": ofSale,
   "sale.unpublished": ofSale,
   "sale.ended": ofSale,
   "sale.cancelled": ofSale,

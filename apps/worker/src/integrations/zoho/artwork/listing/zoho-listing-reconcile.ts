@@ -5,18 +5,15 @@ import type {
   ZohoListingRunFailure,
 } from "@auction/persistence/interfaces";
 import type { Logger } from "pino";
-import { crmErrorOutcome } from "../../../crm/classify-crm-error.js";
-import {
-  EMPTY_REPORT,
-  type ListingSyncReport,
-  type ZohoListingSync,
-  type ZohoListingSyncMode,
-  addReports,
+import { syncPages } from "./sync-pages.js";
+import type {
+  ListingSyncReport,
+  ZohoListingSync,
+  ZohoListingSyncMode,
 } from "./zoho-listing-sync.js";
 
 /** Enough failures for staff to act on; the count holds the rest. */
 export const RECONCILE_FAILURES_KEPT = 20;
-const PAGE_SIZE = 200;
 
 /**
  * The nightly pass: every original's listing is checked against Zoho and corrected where they
@@ -43,38 +40,24 @@ export class ZohoListingReconcile {
   async run(): Promise<ListingSyncReport> {
     const startedAt = this.now();
     const runId = `listing:${startedAt.toISOString()}:${randomUUID().slice(0, 8)}`;
-    let report = EMPTY_REPORT;
-    let after: string | null = null;
-    for (;;) {
-      const ids = await this.deps.sources.pageOriginals(after, PAGE_SIZE);
-      if (ids.length === 0) break;
-      try {
-        report = addReports(report, await this.deps.sync.sync(ids));
-      } catch (err) {
-        const { error } = crmErrorOutcome(err);
-        this.deps.log.warn(
-          { runId, after, code: error.code },
-          "zoho_listing_reconcile_page_failed",
-        );
-        report = addReports(report, {
-          ...EMPTY_REPORT,
-          checked: ids.length,
-          failures: ids.map((registerId) => ({
-            registerId,
-            stockCode: "",
-            code: error.code,
-            retryable: error.retryable,
-          })),
-        });
-      }
-      after = ids[ids.length - 1] ?? null;
-      if (ids.length < PAGE_SIZE) break;
-    }
+    const { report } = await syncPages(
+      {
+        sync: this.deps.sync,
+        log: this.deps.log,
+        failedPageEvent: "zoho_listing_reconcile_page_failed",
+        logContext: { runId },
+      },
+      (after, limit) => this.deps.sources.pageOriginals(after, limit),
+    );
 
     const failed = report.failures.length;
     const failures: ZohoListingRunFailure[] = report.failures
       .slice(0, RECONCILE_FAILURES_KEPT)
-      .map(({ registerId, stockCode, code }) => ({ registerId, stockCode, code }));
+      .map(({ registerId, stockCode, code }) => ({
+        registerId,
+        ...(stockCode === undefined ? {} : { stockCode }),
+        code,
+      }));
     await this.deps.runs.record({
       runId,
       mode: this.deps.mode,

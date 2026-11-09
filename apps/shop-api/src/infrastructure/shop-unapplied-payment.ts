@@ -11,7 +11,7 @@ import type { UnappliedPaymentFailure } from "../errors/shop-payment-webhook.err
 import type { createShopDomainEventPublisher } from "./shop-domain-event-publisher.js";
 
 /** What the Shop needs of the finance task store: serialise one piece of money, and see if it is known. */
-export type UnappliedMoneyLookup = Pick<IUnappliedMoneyReader, "lockKey" | "exists">;
+export type UnappliedMoneyLookup = Pick<IUnappliedMoneyReader, "lockKey" | "existsForShopPayment">;
 
 /** Why a Shop payment could not be applied to its order. */
 export type ShopUnappliedReason = Extract<UnappliedMoneyReason, `shop_order_${string}`>;
@@ -61,9 +61,9 @@ export const SHOP_UNAPPLIED_PAYMENT = "shop_unapplied_payment";
  *    work inbox and is alerted to;
  *  - a structured log line, for the money-path dashboards.
  *
- * One task per piece of money: the same PaymentIntent reported again, by a replayed event or a
- * second event for the same payment, finds its task under the same lock the finance recorder
- * takes and opens nothing new. The event sits on the same audit trail as the one that closes it.
+ * One task per payment: the same PaymentIntent or Checkout Session reported again, by a replayed
+ * event, a second event or the checkout sweep, and for whatever reason, finds its task under one
+ * lock and opens nothing new. The event sits on the same audit trail as the one that closes it.
  */
 export async function recordUnappliedShopPayment(
   tx: Database,
@@ -96,8 +96,17 @@ export async function recordUnappliedShopPayment(
     currency: "GBP",
   };
   const payload = unappliedMoneyPayload(money);
-  await unappliedMoney.lockKey(tx, payload.dedupeKey);
-  if (await unappliedMoney.exists(payload.dedupeKey, tx)) return;
+  // Keyed by the session, which every way of finding this payment (the webhook, the sweep) knows,
+  // and checked across reasons: the same money found a second way opens no second task.
+  await unappliedMoney.lockKey(tx, `shop-session:${input.sessionId}`);
+  if (
+    await unappliedMoney.existsForShopPayment(
+      { paymentIntentId: input.paymentIntentId, sessionId: input.sessionId },
+      tx,
+    )
+  ) {
+    return;
+  }
   console.error(
     JSON.stringify({
       msg:

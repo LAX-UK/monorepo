@@ -4,6 +4,7 @@ import {
   recordSignInMethodChange,
   shouldNotifySocialAccountLinked,
 } from "../account-linking.js";
+import { readProviderAddress } from "../provider-address.js";
 import {
   SOCIAL_SIGN_IN_ERROR_CODES,
   decideImplicitLink,
@@ -13,7 +14,13 @@ import {
 import type { AuthHookDeps } from "./auth-hook-deps.js";
 import { readSocialSubjectReporting, recordStaffRefusal, socialFlow } from "./social-flow.js";
 
-type EndpointContext = { context?: { adapter?: unknown } | undefined } | null | undefined;
+type EndpointContext =
+  | { path?: string | undefined; context?: { adapter?: unknown } | undefined }
+  | null
+  | undefined;
+
+/** The library's own link endpoint, which also links by ID token without any redirect. */
+const LINK_SOCIAL_PATH = "/link-social";
 
 /** The raw adapter of this request: it skips the sign-in-method guard on removing an account. */
 function rawAdapter(context: EndpointContext) {
@@ -30,6 +37,7 @@ function rawAdapter(context: EndpointContext) {
 const NOT_LINKED_MESSAGE =
   "There is already a LAX Account for this email. Sign in the way you usually do.";
 const STAFF_MESSAGE = "Staff accounts cannot sign in with Google or Apple.";
+const LINK_NOT_FROM_ACCOUNT_MESSAGE = "Add Google or Apple from LAX Account, under Security.";
 
 export function buildAccountDatabaseHooks(deps: AuthHookDeps) {
   /**
@@ -41,8 +49,29 @@ export function buildAccountDatabaseHooks(deps: AuthHookDeps) {
     context: EndpointContext,
   ): Promise<void> {
     if (!isSocialProviderId(acct.providerId)) return;
+    // The ID-token form of the library's link endpoint writes the account row inside that
+    // request, with no provider redirect and so no hand-off mark. The route is switched off over
+    // HTTP; this is the second guard, for any server-side call that still reaches it.
+    if (context?.path === LINK_SOCIAL_PATH) {
+      throw new APIError("FORBIDDEN", {
+        message: LINK_NOT_FROM_ACCOUNT_MESSAGE,
+        code: SOCIAL_SIGN_IN_ERROR_CODES.linkNotStartedFromAccount,
+      });
+    }
     const flow = socialFlow(context);
     if (flow.newUser) return; // a first sign-up creates its own account; nothing to join
+    // A link made on the person's say-so (state.link) is only ever started by the issuer's
+    // account-action hand-off, which marks it. A link without the mark did not come through the
+    // ticket, the recent sign-in or the one email, so it is refused here too: with different
+    // addresses allowed, the library's own link endpoint being switched off must not be the only
+    // thing standing between a live session and a new way in.
+    const state = await getOAuthState().catch(() => null);
+    if (state?.link && (state as { accountAction?: unknown }).accountAction !== true) {
+      throw new APIError("FORBIDDEN", {
+        message: LINK_NOT_FROM_ACCOUNT_MESSAGE,
+        code: SOCIAL_SIGN_IN_ERROR_CODES.linkNotStartedFromAccount,
+      });
+    }
     const subject = await readSocialSubjectReporting(deps, acct.userId);
     if (!mayUseSocialSignIn(subject)) {
       flow.blockedLink = "staff";
@@ -58,7 +87,6 @@ export function buildAccountDatabaseHooks(deps: AuthHookDeps) {
     }
     // A link the person started themselves from Security, after confirming it is them, is
     // theirs to make; only the staff rule above applies to it.
-    const state = await getOAuthState().catch(() => null);
     if (state?.link) return;
     const decision = decideImplicitLink(subject);
     if (decision.kind === "block") {
@@ -96,11 +124,24 @@ export function buildAccountDatabaseHooks(deps: AuthHookDeps) {
 
   return {
     create: {
-      before: applySocialLinkPolicy,
+      before: async (
+        acct: { userId: string; providerId: string; idToken?: string | null | undefined },
+        context: EndpointContext,
+      ) => {
+        await applySocialLinkPolicy(acct, context);
+        if (!isSocialProviderId(acct.providerId)) return;
+        // SM3: keep the address the provider reported (and whether Apple hid it) with the link, so
+        // the row can say which Google or Apple account this is. The LAX email never changes.
+        const address = readProviderAddress(acct.idToken);
+        return {
+          data: { ...acct, providerEmail: address.email, providerEmailHidden: address.hidden },
+        };
+      },
       after: async (acct: {
         userId: string;
         providerId: string;
         createdAt: Date;
+        providerEmail?: string | null | undefined;
       }) => {
         if (deps.onAccountCreated) {
           await deps.onAccountCreated({
@@ -126,6 +167,7 @@ export function buildAccountDatabaseHooks(deps: AuthHookDeps) {
           providerId: acct.providerId,
           change: "added",
           at: new Date(acct.createdAt),
+          providerEmail: acct.providerEmail ?? null,
         });
       },
     },

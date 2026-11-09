@@ -6,6 +6,8 @@ export type IdentitySessionClaimSource = {
   createdAt: Date;
   lastPasswordAuthAt: Date | null;
   mfaCompletedAt: Date | null;
+  /** How the session was signed in (`passkey`, `password`, `provider`, `link`); empty when not recorded. */
+  amr?: readonly string[] | undefined;
 };
 
 export type OidcSessionClaims = {
@@ -21,11 +23,15 @@ export type OidcSessionClaims = {
  * always describe the same sign-in the same way.
  */
 export function oidcSessionClaims(session: IdentitySessionClaimSource): OidcSessionClaims {
-  const amr = session.mfaCompletedAt
-    ? ["pwd", "otp"]
-    : session.lastPasswordAuthAt
-      ? ["pwd"]
-      : undefined;
+  // A passkey is both factors in one, so a passkey session is not described as password and code:
+  // a hardware-held key, user presence, and so more than one factor (RFC 8176).
+  const amr = session.amr?.includes("passkey")
+    ? ["hwk", "user", "mfa"]
+    : session.mfaCompletedAt
+      ? ["pwd", "otp"]
+      : session.lastPasswordAuthAt
+        ? ["pwd"]
+        : undefined;
   return {
     sid: session.id,
     auth_time: Math.floor(session.createdAt.getTime() / 1_000),

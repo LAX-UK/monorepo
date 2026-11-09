@@ -14,3 +14,11 @@ bed42353f0dd79931718678c393c414761ff90b0:apps/api/src/lib/visitor-alert-token.te
 bed42353f0dd79931718678c393c414761ff90b0:apps/api/src/services/visitor-sale-alert.service.test.ts:generic-api-key:10
 f86a307c2bf23be4b059903c430463f4b05c5515:packages/auth/src/auth-hooks/legal-acceptance.sign-up.test.ts:generic-api-key:111
 115b50b5a74640175a6204a77568ce94751fee6a:packages/auth/src/auth-hooks/legal-acceptance.sign-up.test.ts:generic-api-key:146
+
+# Public passkey authenticator AAGUIDs (not secrets); approved by the owner 9 Nov 2026
+b8950190020fa80ce31b45ad1763fb47ea467977:packages/auth/src/passkey-names.ts:generic-api-key:10
+b8950190020fa80ce31b45ad1763fb47ea467977:packages/auth/src/passkey-names.ts:generic-api-key:11
+b8950190020fa80ce31b45ad1763fb47ea467977:packages/auth/src/passkey-names.ts:generic-api-key:12
+b8950190020fa80ce31b45ad1763fb47ea467977:packages/auth/src/passkey-names.ts:generic-api-key:16
+b8950190020fa80ce31b45ad1763fb47ea467977:packages/auth/src/passkey-names.ts:generic-api-key:18
+b8950190020fa80ce31b45ad1763fb47ea467977:packages/auth/src/passkey-names.ts:generic-api-key:19

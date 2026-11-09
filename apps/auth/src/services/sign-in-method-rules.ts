@@ -33,6 +33,8 @@ export type SignInMethods = {
   passkeys: PasskeyRow[];
 };
 
+export type RemovePasskeyDecision = "allowed" | "last_sign_in_method";
+
 export type UnlinkDecision = "allowed" | "not_linked" | "last_sign_in_method";
 
 const PROVIDERS: ReadonlySet<string> = new Set(SOCIAL_SIGN_IN_PROVIDERS);
@@ -63,16 +65,34 @@ export function describeSignInMethods(
 
 /**
  * A social sign-in may go only if something else still signs the person in afterwards: a
- * password, or another linked provider. The emailed sign-in link is deliberately not counted.
+ * password, another linked provider or a passkey (SM7). The emailed sign-in link is deliberately
+ * not counted.
  * It is a way back in, not a method the person set up, so removing the only visible method
  * must send them to add a password first rather than rely on their inbox.
  */
 export function decideUnlink(
   rows: readonly SignInAccountRow[],
   provider: SocialSignInProvider,
+  /** How many passkeys the person holds, read under the same lock as `rows`. */
+  passkeyCount = 0,
 ): UnlinkDecision {
   const methods = describeSignInMethods(rows);
   if (!methods.social.some((method) => method.provider === provider)) return "not_linked";
-  const remaining = (methods.hasPassword ? 1 : 0) + methods.social.length - 1;
+  const remaining = (methods.hasPassword ? 1 : 0) + methods.social.length - 1 + passkeyCount;
+  return remaining > 0 ? "allowed" : "last_sign_in_method";
+}
+
+/**
+ * A passkey may go only if something else still signs the person in afterwards: a password, a
+ * linked provider or another passkey (SM7). `passkeyCount` is how many passkeys they hold now,
+ * the one being removed included, read under the same lock as `rows`. The emailed sign-in link is
+ * not counted, for the same reason as when a provider goes.
+ */
+export function decideRemovePasskey(
+  rows: readonly SignInAccountRow[],
+  passkeyCount: number,
+): RemovePasskeyDecision {
+  const methods = describeSignInMethods(rows);
+  const remaining = (methods.hasPassword ? 1 : 0) + methods.social.length + (passkeyCount - 1);
   return remaining > 0 ? "allowed" : "last_sign_in_method";
 }

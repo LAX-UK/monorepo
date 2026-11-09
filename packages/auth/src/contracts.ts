@@ -5,6 +5,22 @@ export const DISABLED_AUTH_ENDPOINT_PATHS = [
   "/phone-number/request-password-reset",
   "/phone-number/reset-password",
   "/sign-in/phone-number",
+  /**
+   * Adding and removing a Google or Apple sign-in goes only through LAX Account's one-time hand-off
+   * (a ticket, a recent sign-in, one security email). Better Auth's own endpoints would let any
+   * live session link a provider account with a different email, or an ID token, with none of
+   * that. The issuer's hand-off calls the same code directly, which these paths do not block.
+   */
+  "/link-social",
+  "/unlink-account",
+  /**
+   * A passkey is listed, named and removed only through LAX Account's own routes, which keep the
+   * last-method rule, end other sessions on removal and send the one security email. The plugin's
+   * endpoints would skip all of that. (Creating and signing in are the plugin's own.)
+   */
+  "/passkey/list-user-passkeys",
+  "/passkey/update-passkey",
+  "/passkey/delete-passkey",
 ] as const;
 export const JWKS_PATH = "/.well-known/jwks.json";
 export const OIDC_DISCOVERY_PATH = "/.well-known/openid-configuration";
@@ -29,6 +45,15 @@ export const AUTH_RATE_LIMIT_POLICY = {
   accountRouteMax: 600,
   signInWindowSec: 15 * 60,
   signInMax: 30,
+  /** Asking for a passkey challenge (to create one or to sign in), per client address. */
+  passkeyOptionsWindowSec: 15 * 60,
+  passkeyOptionsMax: 30,
+  /** Submitting a passkey response, per client address. */
+  passkeyVerifyIpWindowSec: 15 * 60,
+  passkeyVerifyIpMax: 10,
+  /** Submitting a response for one passkey (one credential), however many addresses it comes from. */
+  passkeyVerifyCredentialWindowSec: 60 * 60,
+  passkeyVerifyCredentialMax: 20,
   signInEmailWindowSec: 15 * 60,
   signInEmailMax: 5,
   forgotIpWindowSec: 60,

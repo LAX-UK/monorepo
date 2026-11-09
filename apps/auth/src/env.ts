@@ -168,6 +168,13 @@ const envSchema = z
     IDENTITY_MERGE_ENABLED: z
       .preprocess((value) => value === "true" || value === true, z.boolean())
       .default(false),
+    /**
+     * Passkeys on the issuer (sign in with a passkey, and add one from Security). Off until the
+     * hosted pages for them ship; the relying party is always the issuer's own host.
+     */
+    PASSKEYS_ENABLED: z
+      .preprocess((value) => value === "true" || value === true, z.boolean())
+      .default(false),
     /** First-party SSF streams and delivery worker are opt-in in every environment. */
     SSF_DELIVERY_ENABLED: z
       .preprocess((value) => value === "true" || value === true, z.boolean())

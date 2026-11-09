@@ -37,6 +37,7 @@ export async function createAuthSchedules(options: {
   ssfMaxAttempts: number;
   onSsfOutcome: (outcome: "delivered" | "retry_scheduled" | "failed", id: string) => void;
   reconcileAuthAtRest?: () => Promise<void>;
+  reconcileSigningKeyMetric?: () => Promise<void>;
 }) {
   let provisioning: Promise<void>;
   try {
@@ -173,10 +174,23 @@ export async function createAuthSchedules(options: {
     : null;
   atRestReconciliation?.unref();
 
+  const reconcileSigningKeyMetric = () => {
+    void options.reconcileSigningKeyMetric?.().catch((err) => {
+      options.log.error({ err }, "signing_key_metric_reconciliation_failed");
+      Sentry.captureException(err);
+    });
+  };
+  if (options.reconcileSigningKeyMetric) reconcileSigningKeyMetric();
+  const signingKeyMetricReconciliation = options.reconcileSigningKeyMetric
+    ? setInterval(reconcileSigningKeyMetric, 60 * 1_000)
+    : null;
+  signingKeyMetricReconciliation?.unref();
+
   return {
     stop: async () => {
       retirement.stop();
       clearInterval(verification);
+      if (signingKeyMetricReconciliation) clearInterval(signingKeyMetricReconciliation);
       clearInterval(emailChanges);
       if (atRestReconciliation) clearInterval(atRestReconciliation);
       if (ssf) clearInterval(ssf);

@@ -14,7 +14,7 @@ const journal = JSON.parse(read("meta/_journal.json")) as {
 };
 
 describe("migration 0335 private sale deal follow-ups", () => {
-  it("follows 0337 in the journal, one day later", () => {
+  it("follows the one before it in the journal, one day later", () => {
     const index = journal.entries.findIndex((e) => e.tag === "0335_private_sale_deal_follow_ups");
     expect(index).toBeGreaterThan(0);
     const entry = journal.entries[index];

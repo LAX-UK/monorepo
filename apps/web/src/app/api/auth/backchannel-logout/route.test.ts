@@ -5,7 +5,8 @@ const reserveReplay = vi.fn();
 const invalidateBySidOrSubject = vi.fn();
 const publish = vi.fn();
 
-vi.mock("@auction/identity-contracts", () => ({
+vi.mock("@auction/identity-contracts", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@auction/identity-contracts")>()),
   BACKCHANNEL_LOGOUT_MAX_AGE_SECONDS: 300,
   SOCKET_REVOCATION_CHANNEL_V1: "identity:socket-revocation:v1",
   verifyBackchannelLogoutToken,

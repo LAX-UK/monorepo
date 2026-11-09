@@ -457,6 +457,29 @@ describe("book", () => {
     });
   });
 
+  it("stops an account holding more visits than the place allows, and counts only live ones", async () => {
+    const s = setup();
+    s.places.settings = { ...s.places.settings, maxActiveVisits: 1 };
+    const first = await booked(s);
+    const error = failed(
+      await s.service.book(
+        actor(),
+        body({ lotIds: [COLLECTION_LOTS.two], slotStart: TUESDAY_1030 }),
+      ),
+    );
+    expect(error).toMatchObject({ code: "too_many_visits", status: 409 });
+    expect(s.bookings.bookings).toHaveLength(1);
+
+    // A cancelled visit no longer counts.
+    (await s.service.cancel(actor(), first.id, { version: first.version }))._unsafeUnwrap();
+    (
+      await s.service.book(
+        actor(),
+        body({ lotIds: [COLLECTION_LOTS.two], slotStart: TUESDAY_1030 }),
+      )
+    )._unsafeUnwrap();
+  });
+
   it("turns a lost race for a lot into a lot that cannot be booked", async () => {
     const s = setup();
     await booked(s, { lotIds: [COLLECTION_LOTS.one] });

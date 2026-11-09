@@ -14,6 +14,7 @@ describe("shop checkout stripe expiry", () => {
     const gateway: PaymentCheckoutGateway = {
       createHostedCheckout: vi.fn(),
       resolveHostedCheckout: vi.fn(),
+      retrievePaidCheckout: async () => null,
       expireHostedCheckout: vi.fn(async () => ({ kind: "async_pending" as const })),
     };
     await expect(

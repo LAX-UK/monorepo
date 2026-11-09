@@ -51,6 +51,7 @@ export const RULE_ISSUE_MESSAGES = {
   notice_working_days: "Enter a whole number from 1 to 5.",
   window_days: "Enter a whole number from 7 to 90.",
   undo_hand_over_minutes: "Enter a whole number from 1 to 60.",
+  max_active_visits: "Enter a whole number from 1 to 20.",
 } as const;
 
 export const EXCEPTION_ISSUE_MESSAGES = {

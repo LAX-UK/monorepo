@@ -46,6 +46,15 @@ export interface IZohoListingSourceReader {
   registerIdsForLot(lotId: string): Promise<string[]>;
   /** Every record offered by a lot of this sale. */
   registerIdsForSale(saleId: string): Promise<string[]>;
+  /**
+   * Records offered by a lot of a still-`scheduled` sale whose start time is after `from` and no
+   * later than `to`: sales that have just started on their own time. In id order after the cursor.
+   */
+  registerIdsForSalesStartedBetween(
+    window: { from: Date; to: Date },
+    after: string | null,
+    limit: number,
+  ): Promise<string[]>;
   /** The record a lax.art listing was made from or is offered through. */
   registerIdsForLaxArtListing(artworkId: string): Promise<string[]>;
   /** Originals in id order after the cursor: the nightly pass walks the whole register. */
@@ -65,7 +74,8 @@ export type ZohoListingRunMode = "dry_run" | "live";
 /** One record the nightly pass could not bring into line, as staff see it. */
 export type ZohoListingRunFailure = {
   registerId: string;
-  stockCode: string;
+  /** Absent when a whole page failed before its records could be read. */
+  stockCode?: string;
   code: string;
 };
 
@@ -86,6 +96,17 @@ export type ZohoListingRun = {
 /** The nightly listing pass keeps its result for LAX Admin's "Last check". */
 export interface IZohoListingRunStore {
   record(run: ZohoListingRun): Promise<void>;
+}
+
+/**
+ * How far the frequent sale-start pass has fully covered: the `to` of its last successful run. The
+ * next run starts from here, so a delayed or failed run leaves no gap.
+ */
+export interface IZohoListingSaleStartMark {
+  /** The last fully covered instant, or null before the first successful run. */
+  lastCoveredTo(): Promise<Date | null>;
+  /** Moves the mark forward to `to`; never backwards. */
+  markCoveredTo(to: Date): Promise<void>;
 }
 
 /** What LAX Admin reads about the listing sync. */

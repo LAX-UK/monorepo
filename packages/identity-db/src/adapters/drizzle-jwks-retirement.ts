@@ -1,10 +1,8 @@
-import { ACCESS_TOKEN_TTL_SECONDS } from "@auction/identity-contracts";
+import { ACCESS_TOKEN_TTL_SECONDS, DISCOVERY_CACHE_TTL_MS } from "@auction/identity-contracts";
 import { and, eq, lt, sql } from "drizzle-orm";
 import { jwksKey } from "../schema/jwks-key.js";
 import type { IdentityDatabase } from "./drizzle-consent-store.js";
 
-/** How long consumers may cache `/.well-known/jwks.json`. */
-const DISCOVERY_CACHE_TTL_MS = 60 * 1000;
 const SAFETY_MARGIN_MS = 15 * 60 * 1000;
 
 /**

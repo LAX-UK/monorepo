@@ -198,6 +198,7 @@ export class DrizzleCollectionLotFactsReader implements ICollectionLotFactsReade
           openChecks: checks,
           organisationStatus: row.buyerKind === "organisation" ? (row.buyerStatus ?? null) : null,
           disputeOpen: deciding ? disputedPayments.has(deciding.id) : false,
+          refunded: deciding?.status === "refunded",
           refundOpen: deciding ? refundingPayments.has(deciding.id) : false,
           fulfilment: fulfilmentOf(fulfilmentByLot.get(row.id), quoted.has(row.id)),
           activeBookingId: bookingByLot.get(row.id) ?? null,
