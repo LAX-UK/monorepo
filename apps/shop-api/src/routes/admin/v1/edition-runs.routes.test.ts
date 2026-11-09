@@ -57,6 +57,7 @@ async function buildApp(
           stock: { ...runs.stock, ...overrides.stock },
           listings: { ...runs.listings, ...overrides.listings },
           printsFromOriginal: { ...runs.printsFromOriginal, ...overrides.printsFromOriginal },
+          setApart: { ...runs.setApart, ...overrides.setApart },
         },
       },
     }),
@@ -229,5 +230,84 @@ describe("admin edition run routes", () => {
     });
     expect(malformed.statusCode).toBe(400);
     await app.close();
+  });
+
+  describe("setting a print apart", () => {
+    const EDITION = "22222222-2222-4222-8222-222222222222";
+    const url = `/admin/v1/artworks/${ARTWORK}/prints/${EDITION}/set-apart`;
+    const payload = {
+      differences: { remarque: { medium: "pencil", place: "lower_margin" } },
+      printPricePence: 42000,
+    };
+    const result = { artworkId: ARTWORK, slug: "tide-line-no-3", version: "v1" };
+
+    it("hands the print, what differs and the price to the use case, with the actor and key", async () => {
+      const setApart = vi.fn(async () => result);
+      const app = await buildApp("shop_admin", { setApart: { setApart } });
+      const response = await app.inject({ method: "POST", url, headers, payload });
+      expect(response.statusCode).toBe(200);
+      expect(setApart).toHaveBeenCalledWith(
+        expect.objectContaining({
+          runArtworkId: ARTWORK,
+          editionId: EDITION,
+          differences: payload.differences,
+          printPricePence: 42000,
+          canSetPrice: true,
+          actorSubjectId: "shop_admin-subject",
+          idempotencyKey: headers["idempotency-key"],
+        }),
+      );
+      await app.close();
+    });
+
+    it("tells the use case when the editor cannot set a price", async () => {
+      const setApart = vi.fn(async () => result);
+      const app = await buildApp("catalogue_editor", { setApart: { setApart } });
+      await app.inject({ method: "POST", url, headers, payload });
+      expect(setApart).toHaveBeenCalledWith(expect.objectContaining({ canSetPrice: false }));
+      await app.close();
+    });
+
+    it("refuses a request with no price, a price of nothing or a choice off the list", async () => {
+      const setApart = vi.fn(async () => result);
+      const app = await buildApp("shop_admin", { setApart: { setApart } });
+      for (const body of [
+        { differences: payload.differences },
+        { ...payload, differences: { remarque: { medium: "crayon", place: "lower_margin" } } },
+        { ...payload, printPricePence: 0 },
+      ]) {
+        const response = await app.inject({ method: "POST", url, headers, payload: body });
+        expect(response.statusCode).toBe(400);
+      }
+      expect(setApart).not.toHaveBeenCalled();
+      await app.close();
+    });
+
+    it("returns a print to its run from the listing", async () => {
+      const returnToRun = vi.fn(async () => ({ artworkId: ARTWORK, version: "v2" }));
+      const app = await buildApp("catalogue_editor", { setApart: { returnToRun } });
+      const response = await app.inject({
+        method: "POST",
+        url: `/admin/v1/artworks/${ARTWORK}/return-print`,
+        headers,
+      });
+      expect(response.statusCode).toBe(200);
+      expect(returnToRun).toHaveBeenCalledWith(
+        expect.objectContaining({
+          listingArtworkId: ARTWORK,
+          actorSubjectId: "catalogue_editor-subject",
+        }),
+      );
+      await app.close();
+    });
+
+    it("keeps the use case away from roles that cannot write the catalogue", async () => {
+      const setApart = vi.fn(async () => result);
+      const app = await buildApp("read_only", { setApart: { setApart } });
+      const response = await app.inject({ method: "POST", url, headers, payload });
+      expect(response.statusCode).toBe(403);
+      expect(setApart).not.toHaveBeenCalled();
+      await app.close();
+    });
   });
 });

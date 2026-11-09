@@ -214,6 +214,7 @@ describe("describeEditionFacts: the facts block", () => {
       printedBy: null,
       publishedBy: null,
       proofs: "The artist also kept 3 artist's proofs, outside the edition of 24.",
+      differences: [],
     });
   });
 

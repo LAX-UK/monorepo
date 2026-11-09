@@ -19,7 +19,10 @@ import type {
 import {
   type PublicEditionRun,
   describeOtherRun,
+  describePrintException,
   describePublicEdition,
+  describeSetApartAvailable,
+  setApartPrintText,
 } from "@auction/shop-domain";
 import { formatGbpPenceForDisplay } from "@auction/shop-portal/vm";
 
@@ -187,10 +190,12 @@ function buildFacts(
 ): { eyebrow: string | null; basketLine: string | null; facts: ArtworkFactsVm | null } {
   const run = editionRun(artwork);
   if (!run) return { eyebrow: null, basketLine: null, facts: null };
+  const setApart = artwork.edition?.setApart ?? null;
   const edition = describePublicEdition({
     run,
     facts: artwork.edition?.facts ?? null,
     proofsKept: artwork.edition?.proofsKept ?? null,
+    setApart,
   });
   const labels = EDITION_PAGE_COPY.factLabels;
   const rows: ArtworkSpecItem[] = edition.rows
@@ -208,6 +213,8 @@ function buildFacts(
           ? [{ label: labels.publishedBy, value: edition.rows.publishedBy }]
           : []),
         ...(edition.rows.proofs ? [{ label: labels.proofs, value: edition.rows.proofs }] : []),
+        // A print sold on its own says what is different about it, before it is bought.
+        ...(setApart ? describePrintException(setApart.exception).items : []),
       ]
     : [{ label: labels.edition, value: edition.edition }];
   const alsoAvailable =
@@ -215,7 +222,12 @@ function buildFacts(
       ? (artwork.edition?.otherRuns ?? []).map((other) => ({
           slug: other.slug,
           href: `/artworks/${encodeURIComponent(other.slug)}`,
-          label: describeOtherRun(other.run, other.facts),
+          label: other.setApart
+            ? describeSetApartAvailable(
+                setApartPrintText(other.setApart.print),
+                other.setApart.exception,
+              )
+            : describeOtherRun(other.run, other.facts),
           trailing:
             other.availability === "sold_out"
               ? EDITION_PAGE_COPY.soldOut

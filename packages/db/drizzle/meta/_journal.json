@@ -2276,6 +2276,13 @@
       "when": 1803628800000,
       "tag": "0330_shop_print_facts",
       "breakpoints": true
+    },
+    {
+      "idx": 326,
+      "version": "7",
+      "when": 1803715200000,
+      "tag": "0337_shop_print_exception",
+      "breakpoints": true
     }
   ]
 }

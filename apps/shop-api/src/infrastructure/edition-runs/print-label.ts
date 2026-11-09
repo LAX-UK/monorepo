@@ -43,6 +43,12 @@ const NO_PROOFS_KEPT: ProofsKept = { ap: 0, pp: 0, hc: 0, bat: 0 };
  */
 export function printLabelOf(row: PrintLabelRow): string {
   const run = runFromColumns({ ...row, id: row.artworkId }, NO_PROOFS_KEPT);
+  if (run?.spec.type === "set_apart") {
+    // The listing holds one print; its run's size is not known here, so name the print itself.
+    return row.proofNumber === null
+      ? `No. ${row.editionNumber ?? row.stockRef} (set apart)`
+      : `Proof ${row.proofNumber} (set apart)`;
+  }
   return printLabel(
     { editionNumber: row.editionNumber, proofNumber: row.proofNumber, stockRef: row.stockRef },
     run?.spec ?? LAX_STANDARD_RUN,

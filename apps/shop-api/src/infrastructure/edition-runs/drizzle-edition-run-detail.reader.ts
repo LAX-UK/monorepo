@@ -4,13 +4,34 @@ import {
   shopEdition,
   shopEditionFacts,
   shopEditionStockBatch,
+  shopOrder,
+  shopPrintException,
   shopUserProfile,
 } from "@auction/db/schema";
-import type { AdminEditionFacts, AdminEditionRunDetail } from "@auction/shop-contracts";
-import { type EditionFacts, runLocks, summariseOpenStock } from "@auction/shop-domain";
+import type {
+  AdminEditionFacts,
+  AdminEditionRunDetail,
+  AdminPrintBlock,
+  AdminRunPrint,
+  AdminSetApartInfo,
+} from "@auction/shop-contracts";
+import {
+  type EditionFacts,
+  type EditionListingStatus,
+  type EditionRunSpec,
+  type SetApartBlock,
+  describePrintException,
+  returnBlock,
+  runLocks,
+  setApartBlock,
+  setApartPrintFor,
+  setApartPrintOf,
+  summariseOpenStock,
+} from "@auction/shop-domain";
 import { and, asc, eq, isNull, sql } from "drizzle-orm";
 import { factsFromColumns } from "../edition-facts-columns.js";
 import { proofsKeptFromColumns, runFromColumns } from "../edition-run-columns.js";
+import { exceptionFromColumns } from "../print-exception-columns.js";
 import { createDrizzleEditionFactsStore } from "./drizzle-edition-facts.store.js";
 import { readRunUsage } from "./drizzle-edition-print.store.js";
 
@@ -102,6 +123,185 @@ async function readStock(db: Database, artworkId: string) {
   };
 }
 
+function blockOf(block: SetApartBlock | null): AdminPrintBlock | null {
+  if (!block) return null;
+  return {
+    kind: block.kind,
+    until: block.kind === "in_basket" ? (block.until?.toISOString() ?? null) : null,
+  };
+}
+
+type PrintRow = {
+  editionId: string;
+  editionNumber: number | null;
+  proofNumber: number | null;
+  stockRef: number;
+  allocation: "original_buyer_entitlement" | "artist" | "lax";
+  ownerPartyId: string | null;
+  custodyStatus: string;
+  listingStatus: EditionListingStatus;
+  reservedUntil: Date | null;
+  pendingOrder: boolean;
+};
+
+function printLabelOf(row: PrintRow, run: EditionRunSpec): string {
+  const identity = setApartPrintFor(run, row);
+  if (!identity) return String(row.stockRef);
+  return identity.of.kind === "proof"
+    ? `${identity.of.label} ${identity.proofNumber ?? row.stockRef}`
+    : String(identity.editionNumber ?? row.stockRef);
+}
+
+function statusOf(row: PrintRow, now: Date): AdminRunPrint["status"] {
+  switch (row.listingStatus) {
+    case "authorised":
+      return "on_sale";
+    case "sold":
+      return "sold";
+    case "held":
+      return "held";
+    case "withdrawn":
+      return "withdrawn";
+    case "not_authorised":
+      return "not_on_sale";
+    case "reserved":
+      return row.pendingOrder || (row.reservedUntil !== null && row.reservedUntil >= now)
+        ? "in_basket"
+        : "on_sale";
+  }
+}
+
+const printColumns = {
+  editionId: shopEdition.id,
+  editionNumber: shopEdition.editionNumber,
+  proofNumber: shopEdition.proofNumber,
+  stockRef: shopEdition.stockRef,
+  allocation: shopEdition.allocation,
+  ownerPartyId: shopEdition.ownerPartyId,
+  custodyStatus: shopEdition.custodyStatus,
+  listingStatus: shopEdition.listingStatus,
+  reservedUntil: shopEdition.reservedUntil,
+  pendingOrder: sql<boolean>`exists (
+    select 1 from ${shopOrder}
+    where ${shopOrder.id} = ${shopEdition.reservedByOrderId}
+      and ${shopOrder.status} = 'pending_payment'
+  )`,
+};
+
+/** Each print of a numbered run or proof listing, with what stops it being set apart. */
+async function readRunPrints(
+  db: Database,
+  artwork: ArtworkRow,
+  spec: EditionRunSpec,
+  now: Date,
+): Promise<AdminRunPrint[]> {
+  const [own, apart] = await Promise.all([
+    db
+      .select(printColumns)
+      .from(shopEdition)
+      .where(eq(shopEdition.artworkId, artwork.id))
+      .orderBy(asc(shopEdition.stockRef)),
+    db
+      .select({
+        exception: shopPrintException,
+        listingTitle: shopArtwork.title,
+        ...printColumns,
+      })
+      .from(shopPrintException)
+      .innerJoin(shopEdition, eq(shopEdition.id, shopPrintException.editionId))
+      .innerJoin(shopArtwork, eq(shopArtwork.id, shopPrintException.listingArtworkId))
+      .where(
+        and(eq(shopPrintException.runArtworkId, artwork.id), isNull(shopPrintException.returnedAt)),
+      ),
+  ]);
+  const rows: AdminRunPrint[] = own.map((row) => {
+    const forSale =
+      row.ownerPartyId !== null &&
+      row.allocation !== "original_buyer_entitlement" &&
+      row.custodyStatus !== "with_owner" &&
+      row.custodyStatus !== "returned";
+    return {
+      editionId: row.editionId,
+      label: printLabelOf(row, spec),
+      owner: row.allocation === "original_buyer_entitlement" ? "buyer" : row.allocation,
+      status: statusOf(row, now),
+      block: blockOf(
+        setApartBlock(
+          {
+            listingStatus: row.listingStatus,
+            reservedUntil: row.reservedUntil,
+            reservedByPendingOrder: row.pendingOrder,
+            forSale,
+            alreadySetApart: false,
+          },
+          now,
+        ),
+      ),
+      setApart: null,
+    };
+  });
+  for (const row of apart) {
+    rows.push({
+      editionId: row.editionId,
+      label: printLabelOf(row, spec),
+      owner: row.allocation === "original_buyer_entitlement" ? "buyer" : row.allocation,
+      status: "set_apart",
+      block: { kind: "already_apart", until: null },
+      setApart: {
+        listingArtworkId: row.exception.listingArtworkId,
+        title: row.listingTitle,
+        differences: describePrintException(exceptionFromColumns(row.exception)).rows,
+      },
+    });
+  }
+  const order = (row: AdminRunPrint) => Number.parseInt(row.label.replace(/\D+/g, ""), 10) || 0;
+  return rows.sort((a, b) => order(a) - order(b));
+}
+
+/** For a listing of one print sold on its own: where it came from and whether it can go back. */
+async function readSetApartInfo(
+  db: Database,
+  listing: ArtworkRow,
+  now: Date,
+): Promise<AdminSetApartInfo | null> {
+  const [record] = await db
+    .select({ exception: shopPrintException, runTitle: shopArtwork.title, ...printColumns })
+    .from(shopPrintException)
+    .innerJoin(shopEdition, eq(shopEdition.id, shopPrintException.editionId))
+    .innerJoin(shopArtwork, eq(shopArtwork.id, shopPrintException.runArtworkId))
+    .where(
+      and(
+        eq(shopPrintException.listingArtworkId, listing.id),
+        isNull(shopPrintException.returnedAt),
+      ),
+    )
+    .limit(1);
+  if (!record) return null;
+  const run = await loadRow(db, record.exception.runArtworkId);
+  const runMain = run?.mainRunArtworkId ? await loadRow(db, run.mainRunArtworkId) : null;
+  const stored = run ? specOf(run, runMain) : null;
+  if (!stored) return null;
+  const identity = setApartPrintFor(stored.spec, record);
+  if (!identity) return null;
+  return {
+    runArtworkId: record.exception.runArtworkId,
+    runTitle: record.runTitle,
+    label: printLabelOf(record, stored.spec),
+    printOf: setApartPrintOf(identity),
+    differences: describePrintException(exceptionFromColumns(record.exception)).rows,
+    returnBlock: blockOf(
+      returnBlock(
+        {
+          listingStatus: record.listingStatus,
+          reservedUntil: record.reservedUntil,
+          reservedByPendingOrder: record.pendingOrder,
+        },
+        now,
+      ),
+    ),
+  };
+}
+
 /**
  * Everything the editor shows about a run: its shape and locks, the facts with who confirmed
  * them, the orders a correction would affect, the run it belongs to or its linked listings, and
@@ -165,6 +365,12 @@ export async function readEditionRunDetail(
       return linked ? [{ artworkId: row.id, title: row.title, spec: linked.spec }] : [];
     }),
     stock: isOpen ? await readStock(db, artwork.id) : null,
+    prints:
+      !isOpen && stored.spec.type !== "set_apart"
+        ? await readRunPrints(db, artwork, stored.spec, new Date())
+        : null,
+    setApart:
+      stored.spec.type === "set_apart" ? await readSetApartInfo(db, artwork, new Date()) : null,
     certificateAuthority:
       factsRow?.facts.certificateAuthorityReference && factsRow.facts.certificateAuthorityRecordedAt
         ? {

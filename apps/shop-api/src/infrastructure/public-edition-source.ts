@@ -1,7 +1,9 @@
 import type { Database } from "@auction/db";
 import { shopArtwork, shopEditionFacts } from "@auction/db/schema";
 import {
+  type EditionFacts,
   type PublicEditionFacts,
+  type PublicSetApart,
   ShopDomainError,
   publicEditionAvailability,
   publicEditionRun,
@@ -12,6 +14,7 @@ import { publicArtworkVisible } from "./artwork-visibility-sql.js";
 import { factsFromColumns } from "./edition-facts-columns.js";
 import { proofsKeptFromColumns, runFromColumns } from "./edition-run-columns.js";
 import { editionCountsByArtworkId } from "./public-artwork-rows.js";
+import { type ResolvedSetApart, resolveSetApartListings } from "./set-apart-source.js";
 
 type ArtworkRow = typeof shopArtwork.$inferSelect;
 type FactsRow = typeof shopEditionFacts.$inferSelect;
@@ -21,8 +24,10 @@ type FactsRow = typeof shopEditionFacts.$inferSelect;
  * numbered run's certificate is not numbered to match.
  */
 function publicFacts(row: FactsRow | undefined): PublicEditionFacts | null {
-  if (!row) return null;
-  const facts = factsFromColumns(row);
+  return row ? publicFactsOf(factsFromColumns(row)) : null;
+}
+
+function publicFactsOf(facts: EditionFacts): PublicEditionFacts {
   const { certificate } = facts;
   return {
     numbering: facts.numbering,
@@ -45,6 +50,10 @@ function publicFacts(row: FactsRow | undefined): PublicEditionFacts | null {
     ...(facts.printedBy ? { printedBy: facts.printedBy } : {}),
     ...(facts.publishedBy ? { publishedBy: facts.publishedBy } : {}),
   };
+}
+
+function publicSetApart(resolved: ResolvedSetApart): PublicSetApart {
+  return { print: resolved.print, exception: resolved.exception };
 }
 
 /**
@@ -80,6 +89,7 @@ async function buildEdition(
   const mainKept = root ? proofsKeptFromColumns(root) : null;
   const others = related.filter((row) => row.id !== self.id && row.runKind !== null);
   const ids = [self.id, ...others.map((row) => row.id)];
+  const apart = await resolveSetApartListings(db, [self, ...others]);
   const [factsRows, counts] = await Promise.all([
     db.select().from(shopEditionFacts).where(inArray(shopEditionFacts.artworkId, ids)),
     editionCountsByArtworkId(
@@ -89,20 +99,29 @@ async function buildEdition(
   ]);
   const factsById = new Map(factsRows.map((row) => [row.artworkId, row]));
   try {
-    const run = runFromColumns(self, mainKept);
+    const ownApart = apart.get(self.id);
+    if (self.runRole === "set_apart" && !ownApart) return null;
+    const run = ownApart
+      ? { spec: ownApart.run, proofsKept: ownApart.proofsKept }
+      : runFromColumns(self, mainKept);
     if (!run) return null;
     const otherRuns: ArtworkEditionReadModel["otherRuns"] = [];
     for (const row of others) {
       // The main run is read for its proofs even if unlisted; only listed runs are offered.
       if (!row.publishedAt || row.archivedAt) continue;
       try {
-        const other = runFromColumns(row, mainKept);
+        const otherApart = apart.get(row.id);
+        if (row.runRole === "set_apart" && !otherApart) continue;
+        const other = otherApart ? { spec: otherApart.run } : runFromColumns(row, mainKept);
         if (!other) continue;
         const rowCounts = counts.get(row.id) ?? { total: 0, available: 0 };
         otherRuns.push({
           slug: row.slug,
           run: publicEditionRun(other.spec),
-          facts: publicFacts(factsById.get(row.id)),
+          facts: otherApart?.facts
+            ? publicFactsOf(otherApart.facts)
+            : publicFacts(factsById.get(row.id)),
+          ...(otherApart ? { setApart: publicSetApart(otherApart) } : {}),
           printPricePence: row.printPricePence,
           availability:
             row.saleState === "sold"
@@ -118,12 +137,17 @@ async function buildEdition(
       }
     }
     const isProof = run.spec.type === "proof";
-    const ownKept = mainKept ?? proofsKeptFromColumns(self);
+    const ownKept = ownApart?.proofsKept ?? mainKept ?? proofsKeptFromColumns(self);
     return {
       run: publicEditionRun(run.spec),
-      facts: publicFacts(factsById.get(self.id)),
-      proofsKept: isProof ? null : { ap: ownKept.ap, pp: ownKept.pp, hc: ownKept.hc },
+      facts: ownApart
+        ? ownApart.facts
+          ? publicFactsOf(ownApart.facts)
+          : null
+        : publicFacts(factsById.get(self.id)),
+      proofsKept: isProof || ownApart ? null : { ap: ownKept.ap, pp: ownKept.pp, hc: ownKept.hc },
       otherRuns,
+      ...(ownApart ? { setApart: publicSetApart(ownApart) } : {}),
     };
   } catch (error) {
     if (error instanceof ShopDomainError) return null;

@@ -19,7 +19,10 @@ export type FactsColumns = Omit<
   | "certificateAuthorityRecordedAt"
 >;
 
-type SignatureColumns = Pick<FactsColumns, "signatureKind" | "signatureMedium" | "signaturePlace">;
+export type SignatureColumns = Pick<
+  FactsColumns,
+  "signatureKind" | "signatureMedium" | "signaturePlace"
+>;
 type PartyColumns = Pick<
   FactsColumns,
   "stamp" | "printedBy" | "publishedByKind" | "publishedByName"
@@ -29,7 +32,7 @@ type CertificateColumns = Omit<
   keyof SignatureColumns | keyof PartyColumns | "numbering" | "confirmedBySubjectId" | "confirmedAt"
 >;
 
-function signatureToColumns(signature: Signature): SignatureColumns {
+export function signatureToColumns(signature: Signature): SignatureColumns {
   switch (signature.kind) {
     case "hand_signed":
       return {
@@ -97,7 +100,7 @@ export function factsToColumns(facts: EditionFacts): FactsColumns {
   };
 }
 
-function signatureFromColumns(row: FactsColumns): Signature {
+export function signatureFromColumns(row: SignatureColumns): Signature {
   switch (row.signatureKind) {
     case "hand_signed":
       if (!row.signatureMedium || !row.signaturePlace) break;

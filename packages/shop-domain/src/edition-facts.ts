@@ -7,7 +7,20 @@ import {
   proofLabel,
   runSize,
 } from "./edition-run.js";
+import {
+  type PrintException,
+  type SetApartPrint,
+  describePrintException,
+  setApartPrintOf,
+  setApartPrintText,
+} from "./print-exception.js";
 import { ShopDomainError } from "./shop-domain-error.js";
+import {
+  SIGNATURE_MEDIA,
+  SIGNATURE_PLACES,
+  type Signature,
+  type SignaturePlace,
+} from "./signature.js";
 
 /**
  * What staff confirm about a run: how its prints are numbered and signed and what certificate
@@ -17,18 +30,13 @@ import { ShopDomainError } from "./shop-domain-error.js";
 
 export type Numbering = "on_print" | "on_certificate" | "none";
 
-export const SIGNATURE_MEDIA = ["pencil", "ink"] as const;
-export type SignatureMedium = (typeof SIGNATURE_MEDIA)[number];
-
-export const SIGNATURE_PLACES = ["front_lower_margin", "back"] as const;
-export type SignaturePlace = (typeof SIGNATURE_PLACES)[number];
-
-export type Signature =
-  | { kind: "hand_signed"; medium: SignatureMedium; place: SignaturePlace }
-  | { kind: "plate_signed" }
-  | { kind: "estate_stamped" }
-  | { kind: "estate_signed"; place: SignaturePlace }
-  | { kind: "unsigned" };
+export {
+  SIGNATURE_MEDIA,
+  SIGNATURE_PLACES,
+  type Signature,
+  type SignatureMedium,
+  type SignaturePlace,
+} from "./signature.js";
 
 export const STAMPS = ["none", "publisher_blind", "printer_blind", "estate_back"] as const;
 export type Stamp = (typeof STAMPS)[number];
@@ -231,6 +239,8 @@ export type EditionFactRows = {
   publishedBy: string | null;
   /** Only when proofs were kept outside a limited edition. */
   proofs: string | null;
+  /** What differs about a print sold on its own; empty for every other print. */
+  differences: readonly string[];
 };
 
 export type EditionFactsDescription = {
@@ -272,6 +282,13 @@ const PLACE_PHRASES: Record<SignaturePlace, string> = {
   front_lower_margin: "front lower margin",
   back: "on the back",
 };
+
+/** A print sold on its own: which print it is and what differs about it. */
+export type SetApartDescribed = { print: SetApartPrint; exception: PrintException };
+
+function lowerFirst(text: string): string {
+  return text.charAt(0).toLowerCase() + text.slice(1);
+}
 
 function capitalise(text: string): string {
   return text.charAt(0).toUpperCase() + text.slice(1);
@@ -470,7 +487,7 @@ export function describeAlsoAvailable(run: EditionRunSpec, facts: EditionFacts |
 export function describeEditionFacts(
   run: EditionRunSpec,
   facts: EditionFacts,
-  options: { proofsKept?: ProofsKept } = {},
+  options: { proofsKept?: ProofsKept; setApart?: SetApartDescribed } = {},
 ): EditionFactsDescription {
   const { numbering, signature, certificate } = facts;
   const name = runName(run);
@@ -478,8 +495,11 @@ export function describeEditionFacts(
   const open = isOpenRun(run);
   const certificateText = certificateShort(certificate);
   const horsCommerce = run.type === "proof" && run.proofType === "hc";
+  const apart = options.setApart;
+  const differences = apart ? describePrintException(apart.exception) : null;
+  const apartText = apart ? setApartPrintText(apart.print) : null;
   return {
-    eyebrow: eyebrow(run),
+    eyebrow: apart ? `${eyebrow(run)}, ${lowerFirst(setApartPrintOf(apart.print))}` : eyebrow(run),
     rows: {
       edition: editionRow(run),
       signature: signatureRow(signature),
@@ -489,6 +509,7 @@ export function describeEditionFacts(
       printedBy: facts.printedBy?.trim() || null,
       publishedBy: publishedByRow(facts.publishedBy),
       proofs: proofsRow(run, options.proofsKept),
+      differences: differences?.rows ?? [],
     },
     cardLine: `${name} · ${signed}`,
     basketLine: [
@@ -496,6 +517,7 @@ export function describeEditionFacts(
       signed,
       ...(numbering !== "none" && !open ? ["Numbered"] : []),
       ...(certificate.kind === "included" ? ["With certificate"] : []),
+      ...(apartText && differences ? [apartText, ...differences.basketParts] : []),
     ].join(" · "),
     orderLine: (print) => {
       const numbered = numberedPrintText(run, numbering, print);
@@ -505,6 +527,7 @@ export function describeEditionFacts(
         signed,
         ...(numbering === "none" && !open ? ["Not numbered"] : []),
         ...(certificateText ? [certificateText] : []),
+        ...(differences?.basketParts ?? []),
       ].join(" · ");
     },
     invoiceDetail: (print) => {
@@ -516,6 +539,7 @@ export function describeEditionFacts(
         signatureForInvoice(signature),
         ...(certificate.kind === "included" ? ["with certificate of authenticity"] : []),
         ...(facts.printedBy?.trim() ? [`printed by ${facts.printedBy.trim()}`] : []),
+        ...(differences?.invoiceParts ?? []),
       ].join(", ");
     },
   };

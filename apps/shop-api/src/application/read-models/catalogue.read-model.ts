@@ -1,4 +1,9 @@
-import type { PublicEditionFacts, PublicEditionRun, PublicProofsKept } from "@auction/shop-domain";
+import type {
+  PublicEditionFacts,
+  PublicEditionRun,
+  PublicProofsKept,
+  PublicSetApart,
+} from "@auction/shop-domain";
 
 export type ArtworkSaleState = "for_sale" | "price_on_application" | "sold";
 
@@ -87,7 +92,11 @@ export type ArtworkEditionReadModel = {
     facts: PublicEditionFacts | null;
     printPricePence: number | null;
     availability: "available" | "sold_out";
+    /** Set when the listing is one print of the run sold on its own. */
+    setApart?: PublicSetApart;
   }>;
+  /** Set when this page is one print of a run sold on its own. */
+  setApart?: PublicSetApart;
 };
 
 export type ArtworkDetailReadModel = ArtworkSummaryReadModel & {
