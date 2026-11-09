@@ -369,8 +369,18 @@ function signatureForInvoice(signature: Signature): string {
   }
 }
 
-function numberRow(run: EditionRunSpec, numbering: Numbering): string {
+/** A print sold on its own is described by its own number, which is known before purchase. */
+function setApartNumberRow(print: SetApartPrint, numbering: Numbering): string {
+  const of = setApartPrintOf(print);
+  if (numbering === "on_certificate") return `${of}, numbered on the certificate`;
+  return print.of.kind === "proof"
+    ? `${of}, marked by hand on the print`
+    : `${of}, numbered by hand on the print`;
+}
+
+function numberRow(run: EditionRunSpec, numbering: Numbering, apart?: SetApartDescribed): string {
   if (numbering === "none" || isOpenRun(run)) return "Not numbered";
+  if (apart) return setApartNumberRow(apart.print, numbering);
   if (numbering === "on_certificate") {
     return "Numbered on the certificate. Your number appears in your order once payment is confirmed.";
   }
@@ -503,7 +513,7 @@ export function describeEditionFacts(
     rows: {
       edition: editionRow(run),
       signature: signatureRow(signature),
-      number: numberRow(run, numbering),
+      number: numberRow(run, numbering, apart),
       certificate: certificateRow(certificate),
       stamp: stampRow(facts.stamp),
       printedBy: facts.printedBy?.trim() || null,

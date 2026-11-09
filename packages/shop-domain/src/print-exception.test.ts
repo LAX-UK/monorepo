@@ -11,6 +11,7 @@ import {
   type PrintState,
   assertPrintException,
   assertRunHasNumberedPrints,
+  describeDifferencePhrase,
   describePrintException,
   describeReturnBlock,
   describeSetApartAvailable,
@@ -243,7 +244,7 @@ describe("describePrintException", () => {
         },
       ],
       basketParts: ["With a remarque"],
-      invoiceParts: ["with a remarque in pencil, lower margin"],
+      invoiceParts: ["with a remarque (pencil, lower margin)"],
     });
   });
 
@@ -269,6 +270,35 @@ describe("naming the listing", () => {
     );
     expect(setApartListingSlug("tide-line", "No. 3")).toBe("tide-line-no-3");
     expect(describeSetApartAvailable("No. 3", REMARQUE)).toBe("No. 3, with a remarque");
+  });
+
+  it("joins what differs: a list of what the print has, then a different signature", () => {
+    const two: PrintException = { dedicated: true, condition: "margin_toning" };
+    expect(describeSetApartAvailable("No. 17", two)).toBe(
+      "No. 17, with a dedication and a condition note",
+    );
+    const signed: PrintException = { ...REMARQUE, condition: "margin_toning", signature: INK };
+    expect(describeSetApartAvailable("No. 13", signed)).toBe(
+      "No. 13, with a remarque and a condition note, signed differently",
+    );
+    const three: PrintException = { ...REMARQUE, dedicated: true, condition: "margin_toning" };
+    expect(setApartListingTitle("Tide line", "no. 13", three)).toBe(
+      "Tide line (no. 13, with a remarque, a dedication and a condition note)",
+    );
+    expect(describeDifferencePhrase({ signature: INK })).toBe("signed differently");
+  });
+
+  it("joins the same way on the invoice", () => {
+    const text = describePrintException({
+      ...REMARQUE,
+      dedicated: true,
+      condition: "margin_toning",
+      signature: INK,
+    });
+    expect(text.invoiceParts).toEqual([
+      "with a remarque (pencil, lower margin), a dedication and a condition note (toning in the margin)",
+      "signed differently from the edition (signed by hand)",
+    ]);
   });
 
   it("names a numbered print and a proof", () => {
@@ -311,6 +341,46 @@ describe("a set-apart print on the page, in the basket and on the invoice", () =
     ]);
   });
 
+  it("words the number row from the print itself, not from the run's promise", () => {
+    expect(described.rows.number).toBe("No. 3 of 24, numbered by hand on the print");
+    expect(described.rows.number).not.toContain("Your number appears");
+    const proof = setApartPrintFor(
+      {
+        type: "proof",
+        proofType: "ap",
+        size: 3,
+        owner: "artist",
+        mainRunId: "m",
+        proofsKeptOnMain: 3,
+      },
+      { proofNumber: 1 },
+    );
+    if (!proof) throw new Error("expected a proof");
+    const proofRows = describeEditionFacts(
+      {
+        type: "proof",
+        proofType: "ap",
+        size: 3,
+        owner: "artist",
+        mainRunId: "m",
+        proofsKeptOnMain: 3,
+      },
+      facts,
+      { setApart: { print: proof, exception: REMARQUE } },
+    ).rows;
+    expect(proofRows.number).toBe("AP 1/3, marked by hand on the print");
+    const onCertificate = describeEditionFacts(
+      LAX_STANDARD_RUN,
+      { ...facts, numbering: "on_certificate" },
+      { setApart: { print, exception: REMARQUE } },
+    );
+    expect(onCertificate.rows.number).toBe("No. 3 of 24, numbered on the certificate");
+    // Every other print keeps the run's wording.
+    expect(describeEditionFacts(LAX_STANDARD_RUN, facts).rows.number).toContain(
+      "Your number appears in your order",
+    );
+  });
+
   it("adds the number and the difference to the basket line", () => {
     expect(described.basketLine).toBe(
       "Limited edition of 24 · Hand-signed · Numbered · With certificate · No. 3 · With a remarque",
@@ -326,7 +396,7 @@ describe("a set-apart print on the page, in the basket and on the invoice", () =
 
   it("describes the invoice and the order line with the difference", () => {
     expect(described.invoiceDetail({ editionNumber: 3 })).toContain(
-      "with a remarque in pencil, lower margin",
+      "with a remarque (pencil, lower margin)",
     );
     expect(described.orderLine({ editionNumber: 3 })).toContain("With a remarque");
   });

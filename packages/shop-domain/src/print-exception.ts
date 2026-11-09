@@ -301,7 +301,8 @@ export function describePrintException(exception: PrintException): ExceptionDesc
   const rows: string[] = [];
   const items: { label: string; value: string }[] = [];
   const basketParts: string[] = [];
-  const invoiceParts: string[] = [];
+  const invoiceNouns: string[] = [];
+  let signedDifferently: string | null = null;
   if (exception.remarque) {
     const where = `${MEDIUM_PHRASES[exception.remarque.medium]}, ${PLACE_PHRASES[exception.remarque.place]}`;
     rows.push(`Remarque: an original drawing added by the artist in ${where}`);
@@ -310,21 +311,19 @@ export function describePrintException(exception: PrintException): ExceptionDesc
       value: `An original drawing added by the artist in ${where}`,
     });
     basketParts.push("With a remarque");
-    invoiceParts.push(`with a remarque in ${where}`);
+    invoiceNouns.push(`a remarque (${where})`);
   }
   if (exception.dedicated) {
     rows.push("Dedicated to a named person");
     items.push({ label: "Dedication", value: "Dedicated to a named person" });
     basketParts.push("With a dedication");
-    invoiceParts.push("with a dedication");
+    invoiceNouns.push("a dedication");
   }
   if (exception.signature) {
     rows.push("Signed differently from the rest of the edition");
     items.push({ label: "Signed", value: "Differently from the rest of the edition" });
     basketParts.push("Signed differently");
-    invoiceParts.push(
-      `signed differently from the edition (${SIGNATURE_SENTENCES[exception.signature.kind]})`,
-    );
+    signedDifferently = `signed differently from the edition (${SIGNATURE_SENTENCES[exception.signature.kind]})`;
   }
   if (exception.condition) {
     rows.push(`Condition: ${CONDITION_PHRASES[exception.condition]}`);
@@ -333,8 +332,12 @@ export function describePrintException(exception: PrintException): ExceptionDesc
       value: CONDITION_PHRASES[exception.condition].replace(/^./, (letter) => letter.toUpperCase()),
     });
     basketParts.push("With a condition note");
-    invoiceParts.push(`condition: ${CONDITION_PHRASES[exception.condition]}`);
+    invoiceNouns.push(`a condition note (${CONDITION_PHRASES[exception.condition]})`);
   }
+  const invoiceParts = [
+    ...(invoiceNouns.length > 0 ? [`with ${joinList(invoiceNouns)}`] : []),
+    ...(signedDifferently ? [signedDifferently] : []),
+  ];
   return { rows, items, basketParts, invoiceParts };
 }
 
@@ -356,14 +359,32 @@ export function setApartListingSlug(mainSlug: string, printText: string): string
   return `${mainSlug}-${suffix}`;
 }
 
-/** "No. 3, with a remarque": the number, then what differs, as a phrase inside a sentence. */
-function lowerParts(printText: string, exception: PrintException): string {
-  const parts = describePrintException(exception).basketParts.map(lowerFirst);
-  return [printText, ...parts].join(", ");
+/** "a", "a and b", "a, b and c". */
+function joinList(items: readonly string[]): string {
+  if (items.length <= 1) return items.join("");
+  return `${items.slice(0, -1).join(", ")} and ${items.at(-1)}`;
 }
 
-function lowerFirst(text: string): string {
-  return text.charAt(0).toLowerCase() + text.slice(1);
+/**
+ * What differs, as one phrase: "with a remarque and a condition note, signed differently". The
+ * things the print has are joined as a list; a different signature follows.
+ */
+export function describeDifferencePhrase(exception: PrintException): string {
+  const has = [
+    ...(exception.remarque ? ["a remarque"] : []),
+    ...(exception.dedicated ? ["a dedication"] : []),
+    ...(exception.condition ? ["a condition note"] : []),
+  ];
+  const parts = [
+    ...(has.length > 0 ? [`with ${joinList(has)}`] : []),
+    ...(exception.signature ? ["signed differently"] : []),
+  ];
+  return parts.join(", ");
+}
+
+/** "No. 3, with a remarque": the number, then what differs, as a phrase inside a sentence. */
+function lowerParts(printText: string, exception: PrintException): string {
+  return [printText, describeDifferencePhrase(exception)].filter(Boolean).join(", ");
 }
 
 /** "No. 3, with a remarque": how a main page names a print set apart beside "Also available". */

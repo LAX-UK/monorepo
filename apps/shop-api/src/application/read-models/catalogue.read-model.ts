@@ -97,6 +97,8 @@ export type ArtworkEditionReadModel = {
   }>;
   /** Set when this page is one print of a run sold on its own. */
   setApart?: PublicSetApart;
+  /** The title of the run that print came from. */
+  runTitle?: string;
 };
 
 export type ArtworkDetailReadModel = ArtworkSummaryReadModel & {

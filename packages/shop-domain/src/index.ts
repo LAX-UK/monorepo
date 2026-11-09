@@ -544,6 +544,7 @@ export {
   REMARQUE_PLACES,
   assertPrintException,
   assertRunHasNumberedPrints,
+  describeDifferencePhrase,
   describePrintException,
   describeReturnBlock,
   describeSetApartAvailable,

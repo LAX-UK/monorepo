@@ -83,7 +83,13 @@ export type ArtworkMoreByVm = {
 
 export type ArtworkProductPageVm = {
   slug: string;
+  /** The listing's own title: breadcrumb, search and the page title. */
   title: string;
+  /**
+   * The heading on the page. A print sold on its own uses its run's title, because its number and
+   * what differs are already in the eyebrow and the facts.
+   */
+  heading: string;
   year: number | null;
   artistName: string;
   /** The artist's page on Shop: their editions. */
@@ -291,6 +297,9 @@ export function buildArtworkProductPage(input: {
   return {
     slug: artwork.slug,
     title: artwork.title,
+    heading: artwork.edition?.setApart
+      ? (artwork.edition.runTitle ?? artwork.title)
+      : artwork.title,
     year: artwork.yearCreated,
     artistName: artwork.artistName,
     artistHref,

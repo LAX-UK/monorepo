@@ -31,6 +31,7 @@ export type ResolvedSetApart = {
   exception: PrintException;
   /** The run the print came from. */
   runArtworkId: string;
+  runTitle: string;
 };
 
 /** The artwork rows that are listings of a print sold on its own. */
@@ -100,6 +101,7 @@ export async function resolveSetApartListings(
         print,
         exception: differences,
         runArtworkId: runRow.id,
+        runTitle: runRow.title,
       });
     } catch (error) {
       if (!(error instanceof ShopDomainError)) throw error;

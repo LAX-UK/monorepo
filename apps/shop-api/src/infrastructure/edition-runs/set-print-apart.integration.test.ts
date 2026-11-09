@@ -231,6 +231,49 @@ describe.skipIf(!hasShopIntegrationDb)(
       await cleanUp(orderIds, [runId, listing.artworkId]);
     });
 
+    it("never hands a print to a buyer of the run once it is set apart, whichever lands first", async () => {
+      const { services } = setup();
+      for (const [index, editionNumber] of [12, 13, 14].entries()) {
+        const runId = await liveRun(`race-${index}`);
+        const print = await printNumbered(runId, editionNumber);
+        const [checkouts, setApart] = await Promise.all([
+          reserveFromRun(runId, 10),
+          services.setApart
+            .setApart({
+              actorSubjectId: ACTOR,
+              idempotencyKey: key(),
+              runArtworkId: runId,
+              editionId: print.id,
+              differences: REMARQUE,
+              printPricePence: 42_000,
+              canSetPrice: true,
+            })
+            .then(
+              (listing) => ({ listing }),
+              (error: unknown) => ({ error }),
+            ),
+        ]);
+        const after = await printNumbered(runId, editionNumber).catch(() => null);
+        if ("listing" in setApart) {
+          // Set apart first: the run's buyers got every other print, and never this one.
+          expect(checkouts.taken).not.toContain(editionNumber);
+          expect(checkouts.taken).toHaveLength(9);
+          const [held] = await db
+            .select({ artworkId: shopEdition.artworkId })
+            .from(shopEdition)
+            .where(eq(shopEdition.id, print.id));
+          expect(held?.artworkId).toBe(setApart.listing.artworkId);
+          expect(after).toBeNull();
+        } else {
+          // A basket got it first: setting apart is refused, and the print stays in the run.
+          expect(String((setApart.error as Error).message)).toMatch(/basket|reserved/);
+          expect(after?.artworkId).toBe(runId);
+          expect(checkouts.taken).toContain(editionNumber);
+        }
+        await cleanUp(checkouts.orderIds, [runId]);
+      }
+    });
+
     it("reads back for staff: the run's Prints table and the listing's origin", async () => {
       const { services } = setup();
       const runId = await liveRun("read");

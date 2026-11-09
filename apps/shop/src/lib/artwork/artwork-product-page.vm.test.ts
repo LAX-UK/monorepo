@@ -351,6 +351,24 @@ describe("About this edition", () => {
       );
     });
 
+    it("heads the page with its run's title, keeping the listing's own for the breadcrumb", () => {
+      const vm = page(
+        detail({
+          title: "Warm Basket (no. 3, with a remarque)",
+          edition: limited({
+            runTitle: "Warm Basket",
+            setApart: {
+              print: { editionNumber: 3, proofNumber: null, of: ofRun },
+              exception: remarque,
+            },
+          }),
+        }),
+      );
+      expect(vm.heading).toBe("Warm Basket");
+      expect(vm.title).toBe("Warm Basket (no. 3, with a remarque)");
+      expect(page(detail({ edition: limited() })).heading).toBe("Warm Basket");
+    });
+
     it("is named beside the run it came from, with its own price", () => {
       const facts = page(
         detail({

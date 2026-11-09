@@ -318,6 +318,8 @@ export const PublicArtworkEditionSchema = Type.Object(
     otherRuns: Type.Array(PublicOtherRunSchema),
     /** Set when this page is one print of a run sold on its own. */
     setApart: Type.Optional(Type.Union([PublicSetApartSchema, Type.Null()])),
+    /** The title of the run a print sold on its own came from; the page heading uses it. */
+    runTitle: Type.Optional(Type.String({ minLength: 1 })),
   },
   { additionalProperties: false },
 );

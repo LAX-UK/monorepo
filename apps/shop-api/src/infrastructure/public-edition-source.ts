@@ -147,7 +147,7 @@ async function buildEdition(
         : publicFacts(factsById.get(self.id)),
       proofsKept: isProof || ownApart ? null : { ap: ownKept.ap, pp: ownKept.pp, hc: ownKept.hc },
       otherRuns,
-      ...(ownApart ? { setApart: publicSetApart(ownApart) } : {}),
+      ...(ownApart ? { setApart: publicSetApart(ownApart), runTitle: ownApart.runTitle } : {}),
     };
   } catch (error) {
     if (error instanceof ShopDomainError) return null;

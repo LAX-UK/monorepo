@@ -76,6 +76,28 @@ describe("basketEditions", () => {
     expect(editions.get("a4")).toEqual({ size: null, line: "Artist's proof, one of 3" });
   });
 
+  it("names the print and what differs for a print sold on its own, and only for that print", async () => {
+    const editions = await basketEditions(
+      readerOf([
+        {
+          artworkId: "apart",
+          run: LAX_STANDARD_RUN,
+          facts: handSigned,
+          setApart: {
+            print: { editionNumber: 13, proofNumber: null, of: { kind: "limited", size: 24 } },
+            exception: { remarque: { medium: "pencil", place: "lower_margin" } },
+          },
+        },
+        { artworkId: "run", run: LAX_STANDARD_RUN, facts: handSigned },
+      ]),
+      ["apart", "run"],
+    );
+    expect(editions.get("apart")?.line).toBe(
+      "Limited edition of 24 · Hand-signed · Numbered · No. 13 · With a remarque",
+    );
+    expect(editions.get("run")?.line).toBe("Limited edition of 24 · Hand-signed · Numbered");
+  });
+
   it("reads each run once for the whole basket and leaves out an original", async () => {
     const reader = readerOf([{ artworkId: "a1", run: LAX_STANDARD_RUN, facts: null }]);
     const editions = await basketEditions(reader, ["a1", "a1", "original"]);
