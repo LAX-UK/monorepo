@@ -282,6 +282,17 @@ describe("AccountSignInMethodsService.renamePasskey", () => {
     expect(operations.renamePasskey).toHaveBeenCalledTimes(1);
   });
 
+  it("refuses a name with a newline, a zero-width space or a bidi override, changing nothing", async () => {
+    const { service, operations } = setup([fresh]);
+    for (const name of ["a\nb", "a\u200Bb", "a \u202Eknab", "a\tb"]) {
+      expect(await service.renamePasskey(SUBJECT, "pk-1", name)).toEqual({
+        ok: false,
+        kind: "invalid_name",
+      });
+    }
+    expect(operations.renamePasskey).not.toHaveBeenCalled();
+  });
+
   it("answers not linked for a passkey that is not the person's", async () => {
     const { service } = setup([fresh]);
     expect(await service.renamePasskey(SUBJECT, "pk-of-someone-else", "Mine")).toEqual({

@@ -1,5 +1,6 @@
 import {
   type EnvelopeCrypto,
+  type IdentityEventPublisher,
   wrapAuthDatabaseAdapter,
   wrapOAuthConsentUpsertAdapter,
   wrapPasskeyLimitAdapter,
@@ -18,10 +19,13 @@ import {
   verification,
 } from "@auction/identity-db/schema";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { wrapPasskeyAddedAdapter } from "./passkey-added-adapter.js";
 
 export function buildDrizzleDatabase(
   db: IdentityDatabase,
   envelope?: EnvelopeCrypto,
+  /** Where a new passkey's "added" event is stored, in the passkey's own transaction. */
+  events?: IdentityEventPublisher,
 ): ReturnType<typeof drizzleAdapter> {
   const consentStore = createDrizzleConsentStore(db);
   const inner = drizzleAdapter(db, {
@@ -39,12 +43,13 @@ export function buildDrizzleDatabase(
     },
   });
   type DrizzleAdapterOptions = Parameters<typeof inner>[0];
-  // The consent upsert and the passkey limit both wrap the same adapter: the first routes consent
-  // inserts through one atomic store, the second names the database's ten-passkey refusal.
-  const withConsentUpsert = ((options: DrizzleAdapterOptions) =>
-    wrapPasskeyLimitAdapter(
-      wrapOAuthConsentUpsertAdapter(inner(options) as never, consentStore) as never,
-    )) as unknown as ReturnType<typeof drizzleAdapter>;
+  // Each wrapper changes one model's inserts: consent goes through one atomic store, a passkey is
+  // stored with its "added" event in one transaction, and the database's ten-passkey refusal is named.
+  const withConsentUpsert = ((options: DrizzleAdapterOptions) => {
+    const consent = wrapOAuthConsentUpsertAdapter(inner(options) as never, consentStore) as never;
+    const stored = events ? wrapPasskeyAddedAdapter(consent, { db, events }) : consent;
+    return wrapPasskeyLimitAdapter(stored as never);
+  }) as unknown as ReturnType<typeof drizzleAdapter>;
   if (!envelope) return withConsentUpsert;
   return ((options: DrizzleAdapterOptions) =>
     wrapAuthDatabaseAdapter(

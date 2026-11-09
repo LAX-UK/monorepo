@@ -56,6 +56,21 @@ export const PASSKEY_NAME_MAX_LENGTH = 60;
 /** The longest name a person can give one: short enough to read in a list. */
 export const PASSKEY_NAME_INPUT_MAX_LENGTH = 40;
 
+/**
+ * Whether `value` is a name a passkey can be given: one line of at least one and at most
+ * {@link PASSKEY_NAME_INPUT_MAX_LENGTH} characters once trimmed, with no control character (a tab,
+ * a newline), no format character (a zero-width space, a right-to-left override) and no line or
+ * paragraph separator, so a name can never reorder, hide or break what is shown around it.
+ */
+export function isValidPasskeyName(value: string): boolean {
+  const name = value.trim();
+  return (
+    name.length >= 1 &&
+    name.length <= PASSKEY_NAME_INPUT_MAX_LENGTH &&
+    !/[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/u.test(name)
+  );
+}
+
 /** A passkey as the person sees it: named and dated. The key material never leaves the issuer. */
 export const accountPasskeySchema = z.object({
   id: z.string().min(1),

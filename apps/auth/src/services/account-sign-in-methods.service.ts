@@ -3,9 +3,9 @@ import {
   type AccountPasskey,
   type AccountSignInMethodError,
   type AccountSignInMethodsResponse,
-  PASSKEY_NAME_INPUT_MAX_LENGTH,
   PASSKEY_NAME_MAX_LENGTH,
   type SocialSignInProvider,
+  isValidPasskeyName,
 } from "@auction/identity-contracts";
 import type { ReauthRequired } from "./account-contact.service.js";
 import type { DurableSecurityEffects } from "./durable-security-effects.js";
@@ -125,7 +125,8 @@ export class AccountSignInMethodsService {
 
   /**
    * Gives one of the person's passkeys a name they can tell it by. A name is a short line of
-   * text: trimmed, at least one character, at most {@link PASSKEY_NAME_INPUT_MAX_LENGTH}. Another
+   * text: trimmed, one to forty characters, with no control or format characters (see
+   * `isValidPasskeyName`). Another
    * person's passkey answers as not linked. No recent sign-in is needed: a name changes nothing
    * about how anyone signs in.
    */
@@ -135,9 +136,7 @@ export class AccountSignInMethodsService {
     rawName: string,
   ): Promise<RenamePasskeyResult> {
     const name = rawName.trim();
-    if (name.length < 1 || name.length > PASSKEY_NAME_INPUT_MAX_LENGTH) {
-      return { ok: false, kind: "invalid_name" };
-    }
+    if (!isValidPasskeyName(name)) return { ok: false, kind: "invalid_name" };
     const renamed = await this.ports.operations.renamePasskey(subjectId, passkeyId, name);
     return renamed
       ? { ok: true, passkey: presentPasskey(renamed) }

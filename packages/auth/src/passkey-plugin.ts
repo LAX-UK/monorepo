@@ -1,6 +1,6 @@
 import { passkey } from "@better-auth/passkey";
 import type { BetterAuthPlugin } from "better-auth";
-import { APIError } from "better-auth/api";
+import { APIError, getSessionFromCtx } from "better-auth/api";
 import { suggestPasskeyName } from "./passkey-names.js";
 
 /**
@@ -24,6 +24,9 @@ export type PasskeyPorts = {
   markUsed(credentialId: string): Promise<void>;
 };
 
+/** Said when a browser that is signed in as one person is given another person's passkey. */
+export const PASSKEY_WRONG_PERSON = "passkey_wrong_person";
+
 /** Said to the hosted page and LAX Account when a device did not check the person. */
 export const PASSKEY_USER_VERIFICATION_REQUIRED = "passkey_user_verification_required";
 
@@ -31,6 +34,13 @@ export const PASSKEY_USER_VERIFICATION_REQUIRED = "passkey_user_verification_req
 export function passkeyConfigForIssuer(issuerUrl: string, rpName = "LAX"): PasskeyConfig {
   const url = new URL(issuerUrl);
   return { rpID: url.hostname, origin: url.origin, rpName };
+}
+
+function refuseWrongPerson(): never {
+  throw new APIError("FORBIDDEN", {
+    message: "That passkey belongs to a different account from the one you are signed in to.",
+    code: PASSKEY_WRONG_PERSON,
+  });
 }
 
 function refuseUnverified(): never {
@@ -49,7 +59,8 @@ function refuseUnverified(): never {
  *    creation, and because the plugin itself verifies with `requireUserVerification: false`, a
  *    response whose user-verified flag is not set is refused in the after-verification hooks, in
  *    both creation (before the passkey is stored) and sign-in (before a session exists);
- *  - the credential is a discoverable one, so signing in needs no email first.
+ *  - the credential is a discoverable one, so signing in needs no email first;
+ *  - a browser that is signed in as one person is refused another person's passkey.
  *
  * Better Auth's list, rename and delete endpoints are switched off (see
  * `DISABLED_AUTH_ENDPOINT_PATHS`): naming and removal go through LAX Account's own routes, which
@@ -80,8 +91,19 @@ export function buildPasskeyPlugin(config: PasskeyConfig, ports: PasskeyPorts): 
       },
     },
     authentication: {
-      afterVerification: async ({ verification, clientData }) => {
+      afterVerification: async ({ ctx, verification, clientData }) => {
         if (verification.authenticationInfo?.userVerified !== true) refuseUnverified();
+        // A browser that is already signed in is confirming it is that person (a "Confirm it's
+        // you" sign-in): a passkey that belongs to someone else must not pass for them, and must
+        // not quietly sign the browser in as that other person.
+        const current = await getSessionFromCtx(ctx);
+        if (current?.user?.id) {
+          const owner = await ctx.context.adapter.findOne<{ userId: string }>({
+            model: "passkey",
+            where: [{ field: "credentialID", value: clientData.id }],
+          });
+          if (owner && owner.userId !== current.user.id) refuseWrongPerson();
+        }
         await ports.markUsed(clientData.id);
       },
     },

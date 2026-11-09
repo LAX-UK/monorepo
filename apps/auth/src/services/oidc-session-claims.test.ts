@@ -32,7 +32,7 @@ describe("oidcSessionClaims", () => {
     ).toMatchObject({ acr: OIDC_ACR_SILVER, amr: ["pwd", "otp"] });
   });
 
-  it("describes a passkey sign-in as silver and as a passkey, not as a password and a code", () => {
+  it("describes a passkey sign-in as silver and as a hardware key with user presence and several factors (RFC 8176), not as a password and a code", () => {
     expect(
       oidcSessionClaims({
         id: "sid-4",
@@ -45,7 +45,7 @@ describe("oidcSessionClaims", () => {
       sid: "sid-4",
       auth_time: Math.floor(createdAt.getTime() / 1000),
       acr: OIDC_ACR_SILVER,
-      amr: ["passkey"],
+      amr: ["hwk", "user", "mfa"],
     });
   });
 

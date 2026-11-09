@@ -146,7 +146,7 @@ export function createAuthIssuer(options: {
     legalAcceptance: new DrizzleLegalAcceptanceRecorder(options.db),
   };
   return createAuth({
-    database: buildDrizzleDatabase(options.db, envelope),
+    database: buildDrizzleDatabase(options.db, envelope, options.identityEventPublisher),
     ...(env.PASSKEYS_ENABLED
       ? {
           passkey: {

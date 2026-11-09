@@ -54,7 +54,19 @@ export class SoftwareAuthenticator {
   private readonly publicJwk: { x: string; y: string };
   private counter = 0;
 
-  constructor(private readonly options: { synced?: boolean; aaguid?: Buffer } = {}) {
+  constructor(
+    private readonly options: {
+      synced?: boolean;
+      aaguid?: Buffer;
+      /**
+       * `increment` counts each sign-in, as a device-bound key does. `zero` always says zero, as
+       * synced passkeys do (the counter cannot be kept in step across devices).
+       */
+      counter?: "increment" | "zero";
+      /** The user handle the device returns when it signs in (the account it was made for). */
+      userHandle?: string;
+    } = {},
+  ) {
     const { privateKey, publicKey } = generateKeyPairSync("ec", { namedCurve: "P-256" });
     this.privateKey = privateKey;
     this.publicJwk = publicKey.export({ format: "jwk" }) as { x: string; y: string };
@@ -129,9 +141,14 @@ export class SoftwareAuthenticator {
     };
   }
 
+  /** A clone of this authenticator's key that has fallen behind: it answers with `counter` next. */
+  rewindTo(counter: number): void {
+    this.counter = counter - 1;
+  }
+
   /** The browser's answer to a sign-in challenge. */
   assert(challenge: string, ceremony: CeremonyOptions) {
-    this.counter += 1;
+    if (this.options.counter !== "zero") this.counter += 1;
     const clientDataJSON = Buffer.from(
       JSON.stringify({
         type: "webauthn.get",
@@ -158,7 +175,7 @@ export class SoftwareAuthenticator {
         clientDataJSON: b64url(clientDataJSON),
         authenticatorData: b64url(authData),
         signature: b64url(signature),
-        userHandle: null,
+        userHandle: this.options.userHandle ? b64url(Buffer.from(this.options.userHandle)) : null,
       },
       clientExtensionResults: {},
     };

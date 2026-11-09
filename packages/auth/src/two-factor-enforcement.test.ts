@@ -9,6 +9,16 @@ import {
 } from "./two-factor-enforcement.js";
 
 describe("isTwoFactorExemptPath", () => {
+  it("does not challenge a passkey sign-in for a code, which is both factors in one", () => {
+    expect(isTwoFactorExemptPath("/passkey/verify-authentication")).toBe(true);
+  });
+
+  it("still challenges every other way of getting a session, passkey creation aside", () => {
+    expect(isTwoFactorExemptPath("/passkey/generate-authenticate-options")).toBe(false);
+    expect(isTwoFactorExemptPath("/magic-link/verify")).toBe(false);
+    expect(isTwoFactorExemptPath("/callback/google")).toBe(false);
+  });
+
   it("exempts credential sign-in paths (gated natively by Better Auth)", () => {
     expect(isTwoFactorExemptPath("/sign-in/email")).toBe(true);
     expect(isTwoFactorExemptPath("/sign-in/username")).toBe(true);

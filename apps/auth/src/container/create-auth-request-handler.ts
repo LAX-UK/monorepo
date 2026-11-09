@@ -2,12 +2,9 @@ import {
   type SecurityNoticePublisher,
   type SessionStampStore,
   stampMfaCompletedFromResponse,
-  stampPasskeyAuthFromResponse,
   stampSocialAuthFromResponse,
 } from "@auction/auth";
 import type { createAuth } from "@auction/auth";
-import { PASSKEY_NAME_INPUT_MAX_LENGTH } from "@auction/identity-contracts";
-import { normaliseRequestPath } from "../lib/normalise-request-path.js";
 import type {
   DurableSecurityEffects,
   SecurityEffectJob,
@@ -17,7 +14,6 @@ import {
   createAuthorizationServerErrorResponse,
   readAuthorizationCodeFromResponse,
 } from "../services/oidc-session-coordinator.js";
-import type { PasskeyEnrolmentGrants } from "../services/passkey-enrolment-grant.js";
 import {
   SECURITY_EFFECT_RETRY_DELAYS_MS,
   type SecurityEffectLogger,
@@ -30,6 +26,7 @@ import {
   readResponseSetCookies,
   withSessionDataClearedOnLogout,
 } from "./better-auth-session-cookies.js";
+import { type PasskeyRequestPorts, createPasskeyRequestPolicy } from "./passkey-request-policy.js";
 
 export { SECURITY_EFFECT_RETRY_DELAYS_MS };
 
@@ -56,20 +53,15 @@ export function createAuthRequestHandler(options: {
   readTwoFactorRequirement: TwoFactorRequirementReader;
   auth: ReturnType<typeof createAuth>;
   oidcSessions: Pick<OidcSessionCoordinator, "runTokenRequest" | "captureAuthorizationSession">;
-  /**
-   * Passkeys, when this environment offers them. Making one needs the permission the hand-off
-   * gives (see `PasskeyEnrolmentGrants`), and signing in with one is stamped as two-step.
-   */
-  passkeys?: {
-    grants: Pick<PasskeyEnrolmentGrants, "holds" | "spend">;
-    /** Runs once a passkey has been made: the audit event and the one security email. */
-    onRegistered(input: {
-      userId: string;
-      name: string | null;
-      userAgent: string | null;
-    }): Promise<void>;
-  };
+  /** Passkeys, when this environment offers them; see `createPasskeyRequestPolicy`. */
+  passkeys?: PasskeyRequestPorts;
 }): AuthRequestHandler {
+  const passkeyPolicy = createPasskeyRequestPolicy({
+    log: options.log,
+    auth: options.auth,
+    sessionStampStore: options.sessionStampStore,
+    passkeys: options.passkeys,
+  });
   return async (request, authorizationCode = null) => {
     const path = new URL(request.url).pathname;
     const logoutSensitive =
@@ -107,15 +99,13 @@ export function createAuthRequestHandler(options: {
         return temporarilyUnavailableResponse();
       }
     }
-    // Making a passkey is allowed only to the session the one-time hand-off gave permission to.
-    let enrolment: { userId: string; sessionId: string } | null = null;
-    if (isPasskeyCreationPath(normaliseRequestPath(path))) {
-      const gate = await gatePasskeyCreation(options, request, normaliseRequestPath(path));
-      if (gate instanceof Response) return gate;
-      enrolment = gate;
-    }
+    // The passkey rules run before the plugin does: the gate for making one, what to look at.
+    const passkeyBefore = await passkeyPolicy.before(request, path);
+    if (passkeyBefore?.kind === "answer") return passkeyBefore.response;
+    const forwarded = passkeyBefore?.request ?? request;
+    const enrolment = passkeyBefore?.enrolment ?? null;
     let response = await options.oidcSessions.runTokenRequest(authorizationCode, () =>
-      options.auth.handler(request),
+      options.auth.handler(forwarded),
     );
     response = withSessionDataClearedOnLogout(response, path);
     const priorSubjectId = priorSession?.user?.id;
@@ -177,33 +167,7 @@ export function createAuthRequestHandler(options: {
         stampMfaCompletedFromResponse(options.sessionStampStore, response),
       );
     }
-    if (
-      enrolment &&
-      response.ok &&
-      normaliseRequestPath(path).endsWith("/passkey/verify-registration")
-    ) {
-      const made = enrolment;
-      await settleSecurityEffect(
-        options.log,
-        { path, effect: "passkey_registered", userId: made.userId },
-        async () => {
-          // The permission is for one passkey: it is used up as soon as one is made.
-          await options.passkeys?.grants.spend(made.sessionId, made.userId);
-          await options.passkeys?.onRegistered({
-            userId: made.userId,
-            name: await readPasskeyName(response),
-            userAgent: request.headers.get("user-agent"),
-          });
-        },
-      );
-    }
-    if (response.ok && normaliseRequestPath(path).endsWith("/passkey/verify-authentication")) {
-      // The device checked the person (the issuer refuses a passkey that did not), so the session
-      // counts as two-step. Fails safe: an unstamped session reads as password-only.
-      await settleSecurityEffect(options.log, { path, effect: "stamp_passkey_auth" }, () =>
-        stampPasskeyAuthFromResponse(options.sessionStampStore, response),
-      );
-    }
+    response = await passkeyPolicy.after({ request, response, path, enrolment });
     if (response.status < 400 && isSocialSignInPath(path)) {
       await settleSecurityEffect(options.log, { path, effect: "stamp_social_auth" }, () =>
         stampSocialAuthFromResponse(options.sessionStampStore, response),
@@ -230,73 +194,6 @@ export function createAuthRequestHandler(options: {
 }
 
 export const TWO_FACTOR_REQUIRED_BY_POLICY = "TWO_FACTOR_REQUIRED_BY_POLICY";
-
-/** The calls that make a passkey: the challenge for it, and the device's answer. */
-function isPasskeyCreationPath(path: string): boolean {
-  return (
-    path.endsWith("/passkey/generate-register-options") ||
-    path.endsWith("/passkey/verify-registration")
-  );
-}
-
-export const PASSKEY_NOT_ALLOWED = "passkey_enrolment_not_allowed";
-export const PASSKEY_NAME_INVALID = "passkey_name_invalid";
-
-/**
- * Lets a passkey be made only by a signed-in browser whose session holds the hand-off's
- * permission, and refuses a name the list could not show. Fails closed: when the session or the
- * permission cannot be read, nothing is made.
- */
-async function gatePasskeyCreation(
-  options: {
-    log: AuthRequestLogger;
-    auth: ReturnType<typeof createAuth>;
-    passkeys?: { grants: Pick<PasskeyEnrolmentGrants, "holds"> };
-  },
-  request: Request,
-  path: string,
-): Promise<Response | { userId: string; sessionId: string }> {
-  if (!options.passkeys) return Response.json({ code: "NOT_FOUND" }, { status: 404 });
-  try {
-    const found = await options.auth.api.getSession({ headers: request.headers });
-    const userId = found?.user?.id;
-    const sessionId = found?.session?.id;
-    if (!userId || !sessionId) return Response.json({ code: "UNAUTHORIZED" }, { status: 401 });
-    if (!(await options.passkeys.grants.holds(sessionId, userId))) {
-      return Response.json({ code: PASSKEY_NOT_ALLOWED }, { status: 403 });
-    }
-    if (path.endsWith("/passkey/verify-registration") && !(await hasValidPasskeyName(request))) {
-      return Response.json({ code: PASSKEY_NAME_INVALID }, { status: 400 });
-    }
-    return { userId, sessionId };
-  } catch (error) {
-    options.log.error({ ...describeError(error), path }, "auth_passkey_gate_failed");
-    return temporarilyUnavailableResponse();
-  }
-}
-
-/** A name is optional (the issuer suggests one); when given it is a short, non-empty line. */
-async function hasValidPasskeyName(request: Request): Promise<boolean> {
-  try {
-    const body = (await request.clone().json()) as { name?: unknown };
-    if (body.name === undefined) return true;
-    if (typeof body.name !== "string") return false;
-    const name = body.name.trim();
-    return name.length >= 1 && name.length <= PASSKEY_NAME_INPUT_MAX_LENGTH;
-  } catch {
-    return false;
-  }
-}
-
-/** The name the new passkey was stored with, read from the plugin's own answer. */
-async function readPasskeyName(response: Response): Promise<string | null> {
-  try {
-    const body = (await response.clone().json()) as { name?: unknown };
-    return typeof body.name === "string" && body.name.trim() ? body.name : null;
-  } catch {
-    return null;
-  }
-}
 
 function temporarilyUnavailableResponse(): Response {
   return Response.json(

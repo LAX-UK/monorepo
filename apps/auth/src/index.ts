@@ -27,6 +27,7 @@ import {
 import { createSubjectExportService } from "./container/create-subject-export.js";
 import { loadAuthEnv } from "./env.js";
 import { withAlertingLog } from "./infrastructure/alerting-log.js";
+import { createPasskeyCounterReader } from "./infrastructure/drizzle-passkey-usage.js";
 import { RedisPasskeyEnrolmentGrants } from "./infrastructure/redis-passkey-enrolment-grants.js";
 import { createAccountSubjectExportRegistry } from "./infrastructure/subject-export/create-account-subject-export-categories.js";
 import { DEFAULT_LAX_ACCOUNT_ORIGIN } from "./lax-account-origin.js";
@@ -220,10 +221,8 @@ const authHandler = createAuthRequestHandler({
         passkeys: {
           grants: passkeyGrants,
           onRegistered: (input) =>
-            new PasskeyEnrolmentEffects({
-              operations: identityOperations,
-              notices: securityNotices,
-            }).registered(input),
+            new PasskeyEnrolmentEffects({ notices: securityNotices }).registered(input),
+          counters: createPasskeyCounterReader(db),
         },
       }
     : {}),

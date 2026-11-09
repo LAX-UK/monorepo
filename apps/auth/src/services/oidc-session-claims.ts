@@ -23,9 +23,10 @@ export type OidcSessionClaims = {
  * always describe the same sign-in the same way.
  */
 export function oidcSessionClaims(session: IdentitySessionClaimSource): OidcSessionClaims {
-  // A passkey is both factors in one, so a passkey session is not described as password and code.
+  // A passkey is both factors in one, so a passkey session is not described as password and code:
+  // a hardware-held key, user presence, and so more than one factor (RFC 8176).
   const amr = session.amr?.includes("passkey")
-    ? ["passkey"]
+    ? ["hwk", "user", "mfa"]
     : session.mfaCompletedAt
       ? ["pwd", "otp"]
       : session.lastPasswordAuthAt

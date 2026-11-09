@@ -391,15 +391,6 @@ export class IdentityOperationsService {
     return this.repositories.credentials.renamePasskey(subjectId, passkeyId, name);
   }
 
-  /** Records that the person added a passkey: the audit trail's "added" event. */
-  async recordPasskeyAdded(subjectId: string): Promise<void> {
-    await this.identityEventPublisher.publish({
-      type: "user.sign_in_method_added",
-      userId: subjectId,
-      method: "passkey",
-    });
-  }
-
   listSessions(subjectId: string, currentSessionToken?: string): Promise<IdentitySession[]> {
     return this.repositories.sessions.listForSubject(subjectId, currentSessionToken);
   }

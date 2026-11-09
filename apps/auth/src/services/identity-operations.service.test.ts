@@ -475,7 +475,7 @@ describe("IdentityOperationsService", () => {
     });
   });
 
-  describe("renamePasskey and recordPasskeyAdded", () => {
+  describe("renamePasskey", () => {
     it("names the person's own passkey, and answers null for one that is not theirs", async () => {
       const repositories = createRepositories();
       const { service } = createService(repositories);
@@ -486,16 +486,6 @@ describe("IdentityOperationsService", () => {
         "Work laptop",
       );
       expect(await service.renamePasskey("subject", "pk-9", "x")).toBeNull();
-    });
-
-    it("records that a passkey was added", async () => {
-      const { service, identityEventPublisher } = createService();
-      await service.recordPasskeyAdded("subject");
-      expect(identityEventPublisher.publish).toHaveBeenCalledWith({
-        type: "user.sign_in_method_added",
-        userId: "subject",
-        method: "passkey",
-      });
     });
   });
 
