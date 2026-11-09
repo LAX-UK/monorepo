@@ -87,4 +87,16 @@ describe("decideUnlink (last-method guard)", () => {
   it("says not linked for a provider the account does not have", () => {
     expect(decideUnlink([credential, google], "apple")).toBe("not_linked");
   });
+
+  it("counts a passkey as a way in: the only provider may go when a passkey remains (SM7)", () => {
+    expect(decideUnlink([google], "google", 1)).toBe("allowed");
+    expect(decideUnlink([google, apple], "apple", 0)).toBe("allowed");
+    expect(decideUnlink([google], "google", 0)).toBe("last_sign_in_method");
+  });
+
+  it("still counts only what the person set up, not the emailed link", () => {
+    const empty = { providerId: "credential", hasPassword: false, createdAt: at(1) };
+    expect(decideUnlink([empty, google], "google", 0)).toBe("last_sign_in_method");
+    expect(decideUnlink([empty, google], "google", 2)).toBe("allowed");
+  });
 });

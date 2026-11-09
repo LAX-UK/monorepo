@@ -5,6 +5,14 @@ export const DISABLED_AUTH_ENDPOINT_PATHS = [
   "/phone-number/request-password-reset",
   "/phone-number/reset-password",
   "/sign-in/phone-number",
+  /**
+   * Adding and removing a Google or Apple sign-in goes only through LAX Account's one-time hand-off
+   * (a ticket, a recent sign-in, one security email). Better Auth's own endpoints would let any
+   * live session link a provider account with a different email, or an ID token, with none of
+   * that. The issuer's hand-off calls the same code directly, which these paths do not block.
+   */
+  "/link-social",
+  "/unlink-account",
 ] as const;
 export const JWKS_PATH = "/.well-known/jwks.json";
 export const OIDC_DISCOVERY_PATH = "/.well-known/openid-configuration";

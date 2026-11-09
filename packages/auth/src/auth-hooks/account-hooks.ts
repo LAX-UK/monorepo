@@ -4,6 +4,7 @@ import {
   recordSignInMethodChange,
   shouldNotifySocialAccountLinked,
 } from "../account-linking.js";
+import { readProviderAddress } from "../provider-address.js";
 import {
   SOCIAL_SIGN_IN_ERROR_CODES,
   decideImplicitLink,
@@ -96,11 +97,24 @@ export function buildAccountDatabaseHooks(deps: AuthHookDeps) {
 
   return {
     create: {
-      before: applySocialLinkPolicy,
+      before: async (
+        acct: { userId: string; providerId: string; idToken?: string | null | undefined },
+        context: EndpointContext,
+      ) => {
+        await applySocialLinkPolicy(acct, context);
+        if (!isSocialProviderId(acct.providerId)) return;
+        // SM3: keep the address the provider reported (and whether Apple hid it) with the link, so
+        // the row can say which Google or Apple account this is. The LAX email never changes.
+        const address = readProviderAddress(acct.idToken);
+        return {
+          data: { ...acct, providerEmail: address.email, providerEmailHidden: address.hidden },
+        };
+      },
       after: async (acct: {
         userId: string;
         providerId: string;
         createdAt: Date;
+        providerEmail?: string | null | undefined;
       }) => {
         if (deps.onAccountCreated) {
           await deps.onAccountCreated({
@@ -126,6 +140,7 @@ export function buildAccountDatabaseHooks(deps: AuthHookDeps) {
           providerId: acct.providerId,
           change: "added",
           at: new Date(acct.createdAt),
+          providerEmail: acct.providerEmail ?? null,
         });
       },
     },

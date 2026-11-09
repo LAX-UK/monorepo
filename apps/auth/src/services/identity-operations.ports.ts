@@ -114,6 +114,12 @@ export interface IIdentityCredentialRepository {
     transaction: IdentityOperationTransaction,
     subjectId: string,
   ): Promise<SignInAccountRow[]>;
+  /**
+   * Locks the person's passkey rows until the transaction ends and returns how many there are, so
+   * a passkey cannot be removed while the last-method check counts it. Always taken after
+   * `lockSignInAccounts`, in that order, by every writer, so two removals cannot deadlock.
+   */
+  lockPasskeys(transaction: IdentityOperationTransaction, subjectId: string): Promise<number>;
   /** Removes one linked social account; false when there was none. */
   deleteSocialAccount(
     transaction: IdentityOperationTransaction,

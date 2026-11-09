@@ -309,7 +309,8 @@ export class IdentityOperationsService {
     let revokedSessionIds: string[] = [];
     await this.repositories.unitOfWork.transaction(async (transaction) => {
       const rows = await this.repositories.credentials.lockSignInAccounts(transaction, subjectId);
-      const decision = decideUnlink(rows, provider);
+      const passkeys = await this.repositories.credentials.lockPasskeys(transaction, subjectId);
+      const decision = decideUnlink(rows, provider, passkeys);
       if (decision !== "allowed") throw new IdentityOperationError(decision);
       await this.repositories.credentials.deleteSocialAccount(transaction, subjectId, provider);
       await this.identityEventPublisher.publish(

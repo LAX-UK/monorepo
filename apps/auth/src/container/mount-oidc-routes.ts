@@ -4,12 +4,15 @@ import {
   type SecurityNoticePublisher,
   type SessionStampStore,
   type SmsSender,
+  type SocialSubjectPorts,
   type createAuth,
   createAuthNoStoreMiddleware,
+  readSocialSubject,
   runSignInTurnstileGate,
   stampLastPasswordAuthFromSignInResponse,
 } from "@auction/auth";
 import {
+  ACCOUNT_ACTION_DONE_PATH,
   FIRST_PARTY_SSF_EVENT_TYPES,
   buildOidcDiscoveryDocument,
 } from "@auction/identity-contracts";
@@ -23,7 +26,9 @@ import { withAlertingLog } from "../infrastructure/alerting-log.js";
 import type { ClientIpResolver } from "../infrastructure/client-ip.js";
 import { readAccountSecurityBaseFacts } from "../infrastructure/drizzle-account-security-facts.reader.js";
 import { DrizzleOidcRpSessionRepository } from "../infrastructure/oidc-session-adapters.js";
+import { RedisAccountActionTicketStore } from "../infrastructure/redis-account-action-ticket.store.js";
 import { createTwoFactorAuthorizeGateMiddleware } from "../infrastructure/two-factor-authorize-gate.middleware.js";
+import { DEFAULT_LAX_ACCOUNT_ORIGIN } from "../lax-account-origin.js";
 import {
   createAuthIssuerRateLimitMiddleware,
   createMagicLinkIssuerRateLimitMiddleware,
@@ -41,6 +46,7 @@ import {
   createRefreshReplayGateMiddleware,
 } from "../middleware/refresh-replay-gate.js";
 import { createResilientSlidingWindowStore } from "../middleware/resilient-sliding-window-store.js";
+import { createAccountActionRoutes } from "../routes/account-action.routes.js";
 import { createAccountAddressRoutes } from "../routes/account-addresses.routes.js";
 import { createAccountBackupCodesRoutes } from "../routes/account-backup-codes.routes.js";
 import { createAccountContactRoutes } from "../routes/account-contact.routes.js";
@@ -54,6 +60,7 @@ import { createOauthTokenManagementRoutes } from "../routes/oauth-token-manageme
 import { createRpInitiatedLogoutRoutes } from "../routes/rp-initiated-logout.routes.js";
 import { createSsfRoutes } from "../routes/ssf.routes.js";
 import { createTokenExchangeRoutes } from "../routes/token-exchange.routes.js";
+import { AccountActionService } from "../services/account-action.service.js";
 import { AccountBackupCodesService } from "../services/account-backup-codes.service.js";
 import { AccountContactService } from "../services/account-contact.service.js";
 import type { AccountDeletionService } from "../services/account-deletion.service.js";
@@ -94,6 +101,8 @@ export type OidcRouteMountOptions = {
   clientIp: ClientIpResolver;
   services: AuthRouteServicesSlice;
   identityOperations: IdentityOperationsService;
+  /** What the Google and Apple rules read about a person: staff markers and two-step. */
+  socialSubjectPorts: SocialSubjectPorts;
   emailChange: EmailChangeService;
   accountDeletion: AccountDeletionService;
   subjectExports: SubjectExportService;
@@ -327,6 +336,55 @@ export function mountOidcRoutes(app: Hono, options: OidcRouteMountOptions): void
       onFailure: (error) => options.log.error({ err: error }, "account_password_change_failed"),
     }),
   );
+  const signInMethodsAvailable = {
+    google: Boolean(options.env.GOOGLE_CLIENT_ID && options.env.GOOGLE_CLIENT_SECRET),
+    apple: Boolean(options.env.APPLE_CLIENT_ID && options.env.APPLE_CLIENT_SECRET),
+    // Passkeys are switched on when the issuer can create and check them.
+    passkey: false,
+  };
+  const accountActions = new AccountActionService({
+    tickets: new RedisAccountActionTicketStore(options.redis),
+    operations: options.identityOperations,
+    readSubject: async (subjectId) => ({
+      isStaff: (await readSocialSubject(options.socialSubjectPorts, subjectId)).isStaff,
+    }),
+    available: signInMethodsAvailable,
+    issuerOrigin: issuer,
+  });
+  app.route(
+    "/",
+    createAccountActionRoutes({
+      actions: accountActions,
+      getSession: async (headers) => {
+        const found = await options.auth.api.getSession({ headers });
+        const sessionId = found?.session?.id;
+        const userId = found?.user?.id;
+        return sessionId && userId ? { session: { id: sessionId }, user: { id: userId } } : null;
+      },
+      startLink: async (provider, headers) => {
+        const done = `${issuer}${ACCOUNT_ACTION_DONE_PATH}?provider=${provider}`;
+        const response = await options.auth.api.linkSocialAccount({
+          headers,
+          body: {
+            provider,
+            callbackURL: done,
+            errorCallbackURL: done,
+            disableRedirect: true,
+          },
+          asResponse: true,
+        });
+        if (!response.ok) throw new Error(`link_social_failed_${response.status}`);
+        const { url } = (await response.json()) as { url?: string };
+        if (!url) throw new Error("link_social_no_url");
+        return { url, cookies: response.headers.getSetCookie() };
+      },
+      accountOrigin: (env.LAX_ACCOUNT_ORIGIN ?? DEFAULT_LAX_ACCOUNT_ORIGIN).replace(/\/+$/, ""),
+      // The ticket is single-use and the people it serves are signed in: this only bounds floods.
+      rateLimit: accountRateLimit("account-action", 30),
+      clientKey: (c) => options.clientIp(c) ?? "unknown",
+      onFailure: (error) => options.log.error({ err: error }, "account_action_failed"),
+    }),
+  );
   app.route(
     "/api/auth",
     createAccountSignInMethodsRoutes({
@@ -336,13 +394,9 @@ export function mountOidcRoutes(app: Hono, options: OidcRouteMountOptions): void
         operations: options.identityOperations,
         durable: options.durableSecurityEffects,
         notices: options.securityNotices,
-        available: {
-          google: Boolean(options.env.GOOGLE_CLIENT_ID && options.env.GOOGLE_CLIENT_SECRET),
-          apple: Boolean(options.env.APPLE_CLIENT_ID && options.env.APPLE_CLIENT_SECRET),
-          // Passkeys are switched on when the issuer can create and check them.
-          passkey: false,
-        },
+        available: signInMethodsAvailable,
       }),
+      actions: accountActions,
       readRateLimit: accountRateLimit("account-sign-in-methods-read", 120),
       writeRateLimit: accountRateLimit("account-sign-in-methods-write", 10),
       onFailure: (error) =>

@@ -57,6 +57,7 @@ function createRepositories(): IdentityOperationsRepositories {
       listSignInAccounts: vi.fn().mockResolvedValue([]),
       listPasskeys: vi.fn().mockResolvedValue([]),
       lockSignInAccounts: vi.fn().mockResolvedValue([]),
+      lockPasskeys: vi.fn().mockResolvedValue(0),
       deleteSocialAccount: vi.fn().mockResolvedValue(true),
       findCredential: vi.fn().mockResolvedValue(null),
       insertCredential: vi.fn().mockResolvedValue("inserted"),
@@ -414,6 +415,45 @@ describe("IdentityOperationsService", () => {
       expect(repositories.credentials.deleteSocialAccount).not.toHaveBeenCalled();
       expect(repositories.sessions.deleteOtherSessions).not.toHaveBeenCalled();
       expect(identityEventPublisher.publish).not.toHaveBeenCalled();
+    });
+
+    it("locks the account rows and then the passkey rows, in that order, under one transaction", async () => {
+      const repositories = createRepositories();
+      vi.mocked(repositories.credentials.lockSignInAccounts).mockResolvedValue([
+        row("credential", true),
+        row("google"),
+      ]);
+      const { service } = createService(repositories);
+
+      await service.unlinkSocialSignIn("subject", "google", "current");
+
+      const [accountsCall] = vi.mocked(repositories.credentials.lockSignInAccounts).mock
+        .invocationCallOrder;
+      const [passkeysCall] = vi.mocked(repositories.credentials.lockPasskeys).mock
+        .invocationCallOrder;
+      const [deleteCall] = vi.mocked(repositories.credentials.deleteSocialAccount).mock
+        .invocationCallOrder;
+      expect(accountsCall).toBeLessThan(passkeysCall ?? 0);
+      expect(passkeysCall).toBeLessThan(deleteCall ?? 0);
+      const accountsTx = vi.mocked(repositories.credentials.lockSignInAccounts).mock.calls[0]?.[0];
+      expect(vi.mocked(repositories.credentials.lockPasskeys).mock.calls[0]?.[0]).toBe(accountsTx);
+    });
+
+    it("lets the only provider go when a passkey remains, and refuses it when none does", async () => {
+      const kept = createRepositories();
+      vi.mocked(kept.credentials.lockSignInAccounts).mockResolvedValue([row("google")]);
+      vi.mocked(kept.credentials.lockPasskeys).mockResolvedValue(1);
+      await expect(
+        createService(kept).service.unlinkSocialSignIn("subject", "google", "current"),
+      ).resolves.toBeDefined();
+      expect(kept.credentials.deleteSocialAccount).toHaveBeenCalled();
+
+      const none = createRepositories();
+      vi.mocked(none.credentials.lockSignInAccounts).mockResolvedValue([row("google")]);
+      vi.mocked(none.credentials.lockPasskeys).mockResolvedValue(0);
+      await expect(
+        createService(none).service.unlinkSocialSignIn("subject", "google", "current"),
+      ).rejects.toMatchObject({ code: "last_sign_in_method" });
     });
 
     it("refuses a provider that is not linked", async () => {
