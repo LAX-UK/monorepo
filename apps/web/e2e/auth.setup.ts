@@ -1,6 +1,3 @@
-import { spawnSync } from "node:child_process";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { test as setup } from "@playwright/test";
 import {
   buyerLogin,
@@ -8,6 +5,7 @@ import {
   clientLogin,
   e2eEnabled,
   financeLogin,
+  flushAuthRateLimits,
   hasBuyerCredentials,
   hasCatalogueManagerCredentials,
   hasClientCredentials,
@@ -27,18 +25,6 @@ import {
   zeroLotLogin,
 } from "./helpers/auth";
 import { roleAuthState } from "./helpers/auth-state";
-
-const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
-
-function flushAuthRateLimits(): void {
-  const result = spawnSync("node", [path.join(repoRoot, "scripts/ci/flush-auth-rate-limits.mjs")], {
-    stdio: "inherit",
-    env: process.env,
-  });
-  if (result.status !== 0) {
-    throw new Error("failed to flush auth rate-limit keys while minting staff sessions");
-  }
-}
 
 setup.describe.configure({ mode: "serial" });
 setup.setTimeout(90_000);
