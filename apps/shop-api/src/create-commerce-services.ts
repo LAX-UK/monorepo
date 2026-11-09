@@ -107,6 +107,7 @@ export function createCommerceServices(
         identity: createIdentityMachineClient(identityConfig),
         checkout: repository,
         quotes: quoteRequests,
+        acceptance: quoteAcceptance,
         orders: repository,
         notifications,
         paymentGateway,

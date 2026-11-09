@@ -80,6 +80,8 @@ export type GuestCheckoutRoutesDeps = {
   /** Asking for a new order link; kept apart from the checkout allowance. */
   /** Back to secure payment for an unpaid guest order that is still held. */
   resumeCheckout: CheckoutWriter["resumeCheckoutOrder"];
+  /** A guest's "accept and pay" on the delivery quote for their order. */
+  acceptDeliveryQuote: CommerceRoutesDeps["acceptDeliveryQuote"];
   linkRateLimiter: EnquiryRateLimiter;
   getCustomerProfile: OrderReader["getCustomerProfile"];
   invoiceIssuer: { supplier: LegalEntity; vatNumber: string | null };

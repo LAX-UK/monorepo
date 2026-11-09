@@ -50,6 +50,11 @@ function guestDeps(
       checkoutUrl: "https://pay.example/again",
       expiresAt: new Date("2026-10-30T12:30:00Z"),
     })),
+    acceptDeliveryQuote: vi.fn(async () => ({
+      orderId: "8f0a1c2e-3b4d-4e5f-8a6b-7c8d9e0f1a2b",
+      checkoutUrl: "https://pay.example/quote",
+      expiresAt: new Date("2026-10-30T12:30:00Z"),
+    })),
     linkRateLimiter: { consume: vi.fn(async () => ({ allowed: true as const })) },
     getCustomerProfile: vi.fn(async () => ({ name: null, email: null })),
     invoiceIssuer: { supplier: {} as never, vatNumber: null },
@@ -272,6 +277,35 @@ describe("guest checkout routes", () => {
       url: "/v1/guest-orders/resume-checkout",
       headers: bffHeaders,
       payload: { token: "x".repeat(43), successUrl: "http://a/b", cancelUrl: "http://a/c" },
+    });
+    expect(refused.statusCode).toBe(404);
+  });
+
+  it("accepts a delivery quote for a guest's order through its token, and refuses an unknown one", async () => {
+    const deps = guestDeps({}, validLink);
+    const app = await buildApp(deps);
+    const body = {
+      token: "t".repeat(43),
+      successUrl: "http://localhost:3020/checkout/confirmation",
+      cancelUrl: "http://localhost:3020/checkout/cancel",
+    };
+    const response = await app.inject({
+      method: "POST",
+      url: "/v1/guest-orders/accept-delivery-quote",
+      headers: bffHeaders,
+      payload: body,
+    });
+    expect(response.statusCode).toBe(200);
+    expect(deps.acceptDeliveryQuote).toHaveBeenCalledWith(
+      expect.objectContaining({ subject: "guest:g-1", orderId: paidOrder.orderId }),
+    );
+
+    const unknown = await buildApp(guestDeps());
+    const refused = await unknown.inject({
+      method: "POST",
+      url: "/v1/guest-orders/accept-delivery-quote",
+      headers: bffHeaders,
+      payload: { ...body, token: "x".repeat(43) },
     });
     expect(refused.statusCode).toBe(404);
   });

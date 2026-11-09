@@ -31,6 +31,8 @@ export function createDrizzleCommerceRepository(
     editionOrderLimit: options.editionOrderLimit ?? null,
   });
   const checkout = createDrizzleCheckoutRepository(db, paymentGateway, options);
-  const orders = createDrizzleOrderRepository(db);
+  const orders = createDrizzleOrderRepository(db, {
+    exportPaymentEnabled: options.exportPaymentEnabled ?? false,
+  });
   return { ...basket, ...checkout, ...orders };
 }

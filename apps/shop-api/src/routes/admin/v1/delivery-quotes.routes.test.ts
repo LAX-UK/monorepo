@@ -52,6 +52,7 @@ async function buildApp(role: ShopStaffRole, quotes: Record<string, unknown> = {
       ],
       waitingCount: 1,
     })),
+    waitingCount: vi.fn(async () => 3),
     sendQuote: vi.fn(async () => undefined),
     decline: vi.fn(async () => undefined),
     ...quotes,
@@ -105,6 +106,18 @@ describe("admin delivery quote routes", () => {
       status: "requested",
       items: ["Warm Basket"],
     });
+    await app.close();
+  });
+
+  it("gives the nav its count of requests waiting", async () => {
+    const { app } = await buildApp("operations");
+    const response = await app.inject({
+      method: "GET",
+      url: "/admin/v1/orders/delivery-quotes/summary",
+      headers,
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({ waitingCount: 3 });
     await app.close();
   });
 

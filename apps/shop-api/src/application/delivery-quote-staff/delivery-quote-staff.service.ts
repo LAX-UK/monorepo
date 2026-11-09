@@ -76,6 +76,11 @@ export function createDeliveryQuoteStaffService(deps: {
       return { items, waitingCount };
     },
 
+    /** Requests waiting for a price: the count beside the nav entry. */
+    waitingCount(): Promise<number> {
+      return deps.reader.waitingCount();
+    },
+
     sendQuote(command: SendQuoteCommand): Promise<void> {
       return deps.uow.run((tx) =>
         withAdminIdempotency({

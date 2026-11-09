@@ -88,6 +88,23 @@ export async function registerAdminDeliveryQuoteRoutes(
     },
   );
 
+  app.get(
+    "/orders/delivery-quotes/summary",
+    {
+      schema: {
+        tags: ["shop-admin"],
+        response: {
+          200: Type.Object({ waitingCount: Type.Integer({ minimum: 0 }) }),
+          403: ShopApiErrorBodySchema,
+        },
+      },
+    },
+    async (request) => {
+      requireShopStaffCapability(request, "order.read");
+      return { waitingCount: await deps.deliveryQuotes.waitingCount() };
+    },
+  );
+
   app.put(
     "/orders/delivery-quotes/:quoteId/quote",
     {
