@@ -114,7 +114,7 @@ jobs:
 
       - name: Brand name
         run: pnpm lint:brand-name
-      - name: Route JavaScript budget script
+      - name: Route JavaScript budget rule
         run: pnpm lint:route-js-budget
 
       - name: Legal names (from branding source only)
@@ -905,6 +905,11 @@ jobs:
 
       - name: Build
         run: pnpm turbo run build --affected
+
+      # Reads the .next output the Build step just produced; it never rebuilds. Apps the affected
+      # build skipped are reported and left out. Warns only until `enforce` is set in the config.
+      - name: Route JavaScript budgets
+        run: pnpm check:route-js-budget
 
   docker-images:
     runs-on: ubuntu-latest
