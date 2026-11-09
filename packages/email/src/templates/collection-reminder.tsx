@@ -19,7 +19,6 @@ export default function CollectionReminderEmail({
   collectorName,
   collectorIsOther,
   bookingUrl,
-  changeUntilLabel,
 }: Vars) {
   return (
     <Layout
@@ -43,9 +42,6 @@ export default function CollectionReminderEmail({
           ? `${collectorName} is collecting and needs photo ID in their name.`
           : PHOTO_ID_RULE}
       </TextBlock>
-      {changeUntilLabel ? (
-        <TextBlock>Change or cancel online until {changeUntilLabel}.</TextBlock>
-      ) : null}
       <Button href={bookingUrl}>View your collection</Button>
     </Layout>
   );

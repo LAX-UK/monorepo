@@ -285,6 +285,15 @@ export const envSchema = z
         .max(30)
         .default(DEFAULT_COLLECTION_HANDOVER_RETENTION_YEARS),
     ),
+    /** The sender of collection calendar invites: mail clients need an organizer to update or remove the entry. */
+    COLLECTION_ORGANIZER_EMAIL: z.preprocess(
+      emptyToUndefined,
+      z.string().email().default("collections@lax.bid"),
+    ),
+    COLLECTION_ORGANIZER_NAME: z.preprocess(
+      emptyToUndefined,
+      z.string().trim().min(1).max(100).default("London Art Exchange"),
+    ),
     DISABLE_PAYOUT_SETTLEMENT: z
       .preprocess((val) => val === "true" || val === true, z.boolean())
       .default(false),

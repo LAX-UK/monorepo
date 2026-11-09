@@ -15,6 +15,10 @@ import {
   processBidProfileProvisioning,
 } from "./bid-profile-provisioning.js";
 import { processClearArtistBlocks } from "./clear-artist-blocks.js";
+import {
+  COLLECTION_BOOKING_NOTIFY_PROJECTOR,
+  processCollectionBookingNotify,
+} from "./collection-booking-notify.js";
 import { processLegalEntityProvisioning } from "./legal-entity-provisioning.js";
 import type { Projector, ProjectorRunContext } from "./lib/projector.types.js";
 import {
@@ -316,6 +320,31 @@ export function createDefaultProjectorRegistry(): ProjectorRegistry {
       async run(ctx) {
         await ctx.projectorStateRepo.ensureCursor(ZOHO_CAMPAIGNS_OPT_OUT_LIFT_PROJECTOR);
         await processZohoCampaignsOptOutLift({ ctx, log: ctx.log });
+      },
+    },
+    {
+      name: COLLECTION_BOOKING_NOTIFY_PROJECTOR,
+      isEnabled(ctx) {
+        return Boolean(
+          ctx.emailService &&
+            ctx.webOrigin &&
+            ctx.collectionNoticeReader &&
+            ctx.collectionOrganizer,
+        );
+      },
+      async run(ctx) {
+        await ctx.projectorStateRepo.ensureCursor(COLLECTION_BOOKING_NOTIFY_PROJECTOR);
+        await processCollectionBookingNotify({
+          ctx,
+          log: ctx.log,
+          emailService: ctx.emailService as NonNullable<ProjectorRunContext["emailService"]>,
+          config: {
+            organizer: ctx.collectionOrganizer as NonNullable<
+              ProjectorRunContext["collectionOrganizer"]
+            >,
+            webOrigin: ctx.webOrigin as string,
+          },
+        });
       },
     },
   ];

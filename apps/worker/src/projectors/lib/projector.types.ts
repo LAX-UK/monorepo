@@ -17,6 +17,7 @@ import type { ZohoFulfilmentMirror } from "../../integrations/zoho/fulfilment/zo
 import type { IAdminImpersonationNotifyReader } from "../../interfaces/admin-impersonation-notify.reader.js";
 import type { IAdminReviewTaskProjectorRepository } from "../../interfaces/admin-review-task-projector.repository.js";
 import type { IClearArtistBlocksRepository } from "../../interfaces/clear-artist-blocks.repository.js";
+import type { ICollectionNoticeReader } from "../../interfaces/collection-notice.reader.js";
 import type { IComplianceRecipientReader } from "../../interfaces/compliance-recipient.reader.js";
 import type { IDomainEventProjectorReader } from "../../interfaces/domain-event-projector.reader.js";
 import type { ILotNotifyReader } from "../../interfaces/lot-notify.reader.js";
@@ -61,6 +62,10 @@ export type ProjectorRunContext = {
   sourceOfFundsDocumentReviewRepo: ISourceOfFundsDocumentReviewRepository;
   sourceOfFundsReviewResolutionRepo: ISourceOfFundsReviewResolutionRepository;
   lotNotifyReader: ILotNotifyReader;
+  /** Reads the visit behind a collection email; present where the emails are on. */
+  collectionNoticeReader?: ICollectionNoticeReader | undefined;
+  /** Who collection calendar invites come from. */
+  collectionOrganizer?: { email: string; name: string } | undefined;
   log: pino.Logger;
   emailService?: IEmailService | undefined;
   supportContactEmail?: string | undefined;

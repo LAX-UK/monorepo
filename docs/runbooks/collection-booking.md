@@ -34,8 +34,9 @@ authorised or is named to collect at, and every booking on their personal accoun
 
 1. **A live (`booked`) visit is cancelled first**, never scrubbed. Its lots are released and a
    `collection.booking.cancelled` event is recorded with `cancelledVia: "system"` and
-   `reason: "account_erased"`. The erased person cannot be told; the notice to the account's other
-   people (or the gallery) is sent from that event by the notification work in the emails PR.
+   `reason: "account_erased"`. The erased person cannot be told. The worker's collection email
+   projector sends the cancellation notice from that event to the owners and admins of an
+   organisation account; a personal account has nobody left to tell.
 2. **A visit that ended with nothing handed over** (`cancelled`, `not_collected`) loses the
    collector's name (replaced by "Deleted user XXXX" for the person's own, "Deleted collector" for
    a third party), email and company at once.
@@ -85,7 +86,35 @@ changes them; every change asks for a recent sign-in and is written to the audit
   and waits for staff to choose: keep them, or cancel them. Nothing is cancelled without that
   choice. A cancelled visit records `collection.booking.cancelled` with the reason
   `hours_changed`, `closure_added` or `opening_removed`; the rebooking email is sent from that
-  event by the emails work.
+  event.
+
+## Emails
+
+The worker's `collection_booking_notify` projector reads the audit events that are written in the
+same transaction as a booking (`created`, `changed`, `cancelled`) and sends the email for each, so a
+booking and its email cannot disagree and a retry sends nothing twice (the outbox key names the
+event and the address).
+
+| Event | Email | Calendar entry |
+| --- | --- | --- |
+| Booked | Booked, to the person who booked (to the account's owners and admins if the desk booked it, or the booker has gone). A named collector with an address also gets "You're collecting for ..." with no prices and no link into the account | `REQUEST`, one per recipient |
+| Changed | Changed, with the time it moved from | `REQUEST`, same UID, next `SEQUENCE` |
+| Cancelled | Cancelled, worded by who ended it: the buyer, the gallery (hours or a closure changed, with its reason), or the account (the booker erased it). A collector is told they need not come | `CANCEL` |
+
+The calendar invites come from `COLLECTION_ORGANIZER_EMAIL` / `COLLECTION_ORGANIZER_NAME` (default
+`collections@lax.bid`, "London Art Exchange"). Mail clients need an organizer to update or remove an
+entry, so set it to an address that exists.
+
+**Day-before reminder.** A repeat job (`collection-reminders`, every 15 minutes) emails the buyer
+about tomorrow's visits from 09:00 London time. A visit booked after that morning's 09:00 gets none
+(its confirmation has just gone); a visit that moves is reminded for its new time. The key is the
+visit and its start, so any number of sweeps sends one. If reminders stop, check the queue's
+heartbeat (`collection-reminders`) before anything else.
+
+**Limits.** An account can book, change and cancel 20 times an hour in total (HTTP 429 with
+`Retry-After`), and hold at most the place's "visits an account can hold" at once (default 5; Bid
+admin, Collections, Hours and rules). If the counter (Redis) is unreachable the limit is skipped
+and booking carries on.
 
 ## Rolling back
 
