@@ -36,6 +36,8 @@ const SITUATION: Record<UnappliedMoneyReason, string> = {
     "A Shop order that was already paid received a second payment, in a different payment session. Nothing was applied to the order. Open the order in LAX Admin and refund the second payment.",
   shop_order_not_found:
     "A Shop payment arrived for an order that does not exist here. There is no order to open: find the buyer from the Stripe payment shown, then refund them.",
+  shop_order_paid_not_confirmed:
+    "Stripe shows a Shop buyer's checkout as paid, but the payment could not be read or confirmed, so it was not applied. The order was closed and its prints released. The amount shown is the order's total, not necessarily what Stripe took. Open the order in LAX Admin, check the payment in Stripe, then refund the buyer or reinstate the order.",
   private_sale_refund_after_payout:
     "Money went back to a private sale buyer after the seller's payout included the deal. The seller's payout may need adjusting.",
 };

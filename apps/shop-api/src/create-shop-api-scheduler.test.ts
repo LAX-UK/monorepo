@@ -20,7 +20,7 @@ function taskNames(env: Record<string, unknown>): string[] {
     env: env as never,
     log: {} as never,
     alertRetention: { name: "shop", prune: async () => ({}) as never },
-    unappliedMoney: { lockKey: async () => undefined, exists: async () => false },
+    unappliedMoney: { lockKey: async () => undefined, existsForShopPayment: async () => false },
   }).map((task) => task.name);
 }
 

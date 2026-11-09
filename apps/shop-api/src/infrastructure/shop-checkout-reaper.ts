@@ -4,7 +4,7 @@ import { and, asc, eq, isNotNull, lt } from "drizzle-orm";
 import type pino from "pino";
 import {
   type CheckoutTransitionOptions,
-  deferCheckoutWithAlert,
+  deferOrSettleCheckout,
   expireShopCheckoutSession,
 } from "./drizzle-payment-event.processor.js";
 
@@ -67,7 +67,8 @@ export async function reapStaleShopCheckouts(
  * An order the reaper cannot end (Stripe refuses, or the order is in a state it cannot expire) is
  * pushed back (its hold and its prints' reservation together, up to the same ceiling as a payment
  * being confirmed), so it stops holding a place in the oldest-first batch and the orders behind it
- * are still expired. It comes round again later.
+ * are still expired. It comes round again later; past the ceiling it is settled instead (closed
+ * with a finance task if Stripe cannot confirm it), so it never blocks the batch for good.
  */
 async function deferReaperForFailedOrder(
   db: Database,
@@ -77,7 +78,10 @@ async function deferReaperForFailedOrder(
   log?: pino.Logger,
 ): Promise<void> {
   try {
-    await deferCheckoutWithAlert(db, orderId, now, options, "the sweep failed to end it");
+    await deferOrSettleCheckout(db, orderId, now, options, {
+      reason: "the sweep failed to end it",
+      stripeShowsPaid: false,
+    });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     if (log) {

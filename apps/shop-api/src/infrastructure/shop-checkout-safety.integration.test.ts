@@ -1,4 +1,10 @@
-import { domainEvent, shopEdition, shopOrder, shopProcessedPaymentEvent } from "@auction/db/schema";
+import {
+  domainEvent,
+  shopDeliveryQuote,
+  shopEdition,
+  shopOrder,
+  shopProcessedPaymentEvent,
+} from "@auction/db/schema";
 import { DrizzleUnappliedMoneyReader } from "@auction/persistence/repositories";
 import { and, eq, sql } from "drizzle-orm";
 import type pg from "pg";
@@ -291,7 +297,7 @@ describe.skipIf(!hasShopIntegrationDb)(
             },
             options,
           );
-        return { ...harness, created, sweep, queueCheckoutOpsAlert };
+        return { ...harness, created, before, options, sweep, queueCheckoutOpsAlert };
       }
       const paidSession = async (extraPence: number) => ({
         amountTotalPence: extraPence,
@@ -326,6 +332,47 @@ describe.skipIf(!hasShopIntegrationDb)(
         expect(tasks).toHaveLength(1);
       });
 
+      it("opens one task, not two, when the webhook for the same payment arrives after the sweep recorded it", async () => {
+        const { db, sweep, created, before, options } = await stuckPaid(
+          "reconcile-then-webhook",
+          await paidSession(-1),
+        );
+        expect(await sweep()).toBe("reconciled");
+        const tasks = () =>
+          db
+            .select()
+            .from(domainEvent)
+            .where(
+              and(
+                eq(domainEvent.eventType, "payment.unapplied_money_received"),
+                sql`${domainEvent.payload}->>'shopOrderId' = ${created.orderId}`,
+              ),
+            );
+        const [first] = await tasks();
+        const intent = (first?.payload as { stripePaymentIntentId: string }).stripePaymentIntentId;
+        const webhook = {
+          eventId: `evt_late_${created.orderId}`,
+          orderId: created.orderId,
+          sessionId: `cs_test_${created.orderId}`,
+          amountTotalPence: before.totalPence - 1,
+          paidAt: new Date(),
+          paymentIntentId: intent,
+        };
+        // The order is closed by now, so the late event is money for a closed order: a second
+        // reason, but the same payment.
+        expect(await completeShopCheckoutSession(db, webhook, options)).toBe(
+          "terminal_acknowledged",
+        );
+        expect(
+          await completeShopCheckoutSession(
+            db,
+            { ...webhook, eventId: `${webhook.eventId}_b`, paymentIntentId: null },
+            options,
+          ),
+        ).toBe("terminal_acknowledged");
+        expect(await tasks()).toHaveLength(1);
+      });
+
       it("defers an order it cannot read, moving hold and reservation together, and tells ops on the third time", async () => {
         const { sweep, order, holder, created, queueCheckoutOpsAlert } = await stuckPaid(
           "reconcile-unreadable",
@@ -342,6 +389,94 @@ describe.skipIf(!hasShopIntegrationDb)(
           (left.checkoutExpiresAt as Date).getTime(),
         );
       });
+    });
+
+    it("measures the ceiling from the quote being accepted, so a quote accepted on day 20 is still deferred", async () => {
+      const { db, checkout, order } = await setup("async-defer-quote");
+      const created = await checkout("buyer");
+      const day = 24 * 60 * 60_000;
+      await db
+        .update(shopOrder)
+        .set({ createdAt: new Date(Date.now() - 25 * day) })
+        .where(eq(shopOrder.id, created.orderId));
+      await db.insert(shopDeliveryQuote).values({
+        orderId: created.orderId,
+        status: "accepted",
+        destinationCountry: "FR",
+        holdUntil: new Date(Date.now() + day),
+        quotedPricePence: 1_000,
+        quotedCarrier: "DHL Express",
+        decidedAt: new Date(Date.now() - day),
+      });
+      const pending: PaymentCheckoutGateway = {
+        ...gateway,
+        async expireHostedCheckout() {
+          return { kind: "async_pending" };
+        },
+      };
+      const outcome = await expireShopCheckoutSession(
+        db,
+        {
+          eventId: `quote-day-20:${created.orderId}`,
+          orderId: created.orderId,
+          source: SHOP_CHECKOUT_REAPER_EVENT_SOURCE,
+        },
+        { paymentGateway: pending },
+      );
+      expect(outcome).toBe("deferred_async");
+      const left = await order(created.orderId);
+      expect(left.status).toBe("pending_payment");
+      expect(left.reaperDeferrals).toBe(1);
+    });
+
+    it("closes an order past the ceiling that keeps failing, with a task, and still ends the others", async () => {
+      const stuck = await setup("ceiling-stuck");
+      const healthy = await setup("ceiling-healthy");
+      const stuckOrder = await stuck.checkout("buyer");
+      const healthyOrder = await healthy.checkout("buyer");
+      const day = 24 * 60 * 60_000;
+      await stuck.db
+        .update(shopOrder)
+        .set({
+          createdAt: new Date(Date.now() - 22 * day),
+          checkoutExpiresAt: new Date("2000-01-01T00:00:00Z"),
+        })
+        .where(eq(shopOrder.id, stuckOrder.orderId));
+      await healthy.db
+        .update(shopOrder)
+        .set({ checkoutExpiresAt: new Date("2000-01-02T00:00:00Z") })
+        .where(eq(shopOrder.id, healthyOrder.orderId));
+      const stuckSession = (await stuck.order(stuckOrder.orderId)).stripeCheckoutSessionId;
+      // Stripe cannot be read for the stuck order, however often it is asked.
+      const stripe: PaymentCheckoutGateway = {
+        ...gateway,
+        async expireHostedCheckout(input) {
+          if (input.sessionId === stuckSession) throw new Error("stripe unavailable");
+          return { kind: "expired" };
+        },
+        async retrievePaidCheckout() {
+          throw new Error("stripe unavailable");
+        },
+      };
+      await reapStaleShopCheckouts(stuck.db, new Date(), {
+        paymentGateway: stripe,
+        unappliedMoney: new DrizzleUnappliedMoneyReader(stuck.db),
+        domainEventMode: "enforce",
+      });
+
+      expect((await healthy.order(healthyOrder.orderId)).status).toBe("expired");
+      expect((await stuck.order(stuckOrder.orderId)).status).toBe("payment_failed");
+      const tasks = await stuck.db
+        .select()
+        .from(domainEvent)
+        .where(
+          and(
+            eq(domainEvent.eventType, "payment.unapplied_money_received"),
+            sql`${domainEvent.payload}->>'shopOrderId' = ${stuckOrder.orderId}`,
+          ),
+        );
+      expect(tasks).toHaveLength(1);
+      expect(tasks[0]?.payload).toMatchObject({ reason: "shop_order_paid_not_confirmed" });
     });
 
     it("will not stretch a hold that has already ended", async () => {

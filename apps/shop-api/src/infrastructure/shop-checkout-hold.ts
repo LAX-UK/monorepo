@@ -1,12 +1,12 @@
 import type { Database } from "@auction/db";
-import { shopEdition, shopOrder, shopProcessedPaymentEvent } from "@auction/db/schema";
+import { shopDeliveryQuote, shopEdition, shopOrder } from "@auction/db/schema";
 import { SHOP_API_ERROR_CODES } from "@auction/shop-contracts";
 import {
   planHoldDeferral,
   planSessionHold,
   reservedUntilFromCheckoutExpiry,
 } from "@auction/shop-domain";
-import { and, eq, gt, isNull, like, sql } from "drizzle-orm";
+import { and, eq, gt, isNull, sql } from "drizzle-orm";
 import { ShopApiError } from "../errors/shop-api-error.js";
 
 const HOLD_TOO_OLD_TO_EXTEND =
@@ -97,7 +97,8 @@ export type HoldDeferral =
  * Leaves an order the reaper must not end yet (its payment is still being confirmed, or Stripe
  * would not let it be ended) alone for a while. The order's hold and the prints' reservation move
  * together, so the two never disagree, and never past the domain's ceiling from when the order
- * began. Each deferral is noted, so a caller can tell ops when one order keeps coming back. At the
+ * began (or the quote was accepted). Each deferral is counted on the order, so a caller can tell
+ * ops when one order keeps coming back. At the
  * ceiling nothing moves and the caller decides what to do with an order that has had all the time
  * there is.
  */
@@ -114,29 +115,29 @@ export async function deferCheckoutHold(
       .for("update")
       .limit(1);
     if (!order || order.status !== "pending_payment") return { kind: "not_pending" };
-    const plan = planHoldDeferral({ began: order.createdAt, now });
+    // The ceiling counts from when payment began: the buyer accepting a quote, else the order.
+    const [quote] = await tx
+      .select({ decidedAt: shopDeliveryQuote.decidedAt })
+      .from(shopDeliveryQuote)
+      .where(eq(shopDeliveryQuote.orderId, orderId))
+      .limit(1);
+    const plan = planHoldDeferral({ began: quote?.decidedAt ?? order.createdAt, now });
     if (plan.kind === "at_cap") return { kind: "at_cap" };
-    await tx
+    const [moved] = await tx
       .update(shopOrder)
-      .set({ checkoutExpiresAt: plan.endsAt, updatedAt: now })
-      .where(eq(shopOrder.id, orderId));
+      .set({
+        checkoutExpiresAt: plan.endsAt,
+        reaperDeferrals: sql`${shopOrder.reaperDeferrals} + 1`,
+        updatedAt: now,
+      })
+      .where(eq(shopOrder.id, orderId))
+      .returning({ deferrals: shopOrder.reaperDeferrals });
     await tx
       .update(shopEdition)
       .set({ reservedUntil: reservedUntilFromCheckoutExpiry(plan.endsAt) })
       .where(
         and(eq(shopEdition.reservedByOrderId, orderId), eq(shopEdition.listingStatus, "reserved")),
       );
-    await tx
-      .insert(shopProcessedPaymentEvent)
-      .values({
-        eventId: `reaper-defer:${orderId}:${now.getTime()}`,
-        source: "shop-api-reaper-defer",
-      })
-      .onConflictDoNothing();
-    const [counted] = await tx
-      .select({ n: sql<number>`count(*)::int` })
-      .from(shopProcessedPaymentEvent)
-      .where(like(shopProcessedPaymentEvent.eventId, `reaper-defer:${orderId}:%`));
-    return { kind: "deferred", deferrals: counted?.n ?? 1 };
+    return { kind: "deferred", deferrals: moved?.deferrals ?? 1 };
   });
 }

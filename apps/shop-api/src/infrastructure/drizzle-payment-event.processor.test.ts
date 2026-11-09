@@ -64,7 +64,7 @@ function createDbMock(options: { claim: boolean; order: MockOrder | null }) {
 
 /** The finance task store: serialises one piece of money, and says whether it is already known. */
 function knownMoney(exists: boolean) {
-  return { lockKey: vi.fn(async () => undefined), exists: vi.fn(async () => exists) };
+  return { lockKey: vi.fn(async () => undefined), existsForShopPayment: vi.fn(async () => exists) };
 }
 
 describe("completeShopCheckoutSession", () => {
@@ -204,10 +204,7 @@ describe("completeShopCheckoutSession", () => {
       await expect(
         completeShopCheckoutSession(db as never, paid, { unappliedMoney: money }),
       ).resolves.toBe("terminal_acknowledged");
-      expect(money.lockKey).toHaveBeenCalledWith(
-        expect.anything(),
-        "shop_order_paid_after_close:pi_123",
-      );
+      expect(money.lockKey).toHaveBeenCalledWith(expect.anything(), "shop-session:cs_test");
       expect(
         db.inserted.some(
           (row) => (row as { eventType?: string }).eventType === "payment.unapplied_money_received",
@@ -385,10 +382,7 @@ describe("a payment that cannot be applied to its order is tracked, not dropped"
       { unappliedMoney: money },
     );
     expect(outcome).toBe("unapplied_recorded");
-    expect(money.lockKey).toHaveBeenCalledWith(
-      expect.anything(),
-      "shop_order_amount_mismatch:pi_123",
-    );
+    expect(money.lockKey).toHaveBeenCalledWith(expect.anything(), "shop-session:cs_test");
     expect(task(db)).toBeUndefined();
   });
 
@@ -435,7 +429,7 @@ describe("a payment that cannot be applied to its order is tracked, not dropped"
       lockKey: vi.fn(async () => {
         throw new Error("database down");
       }),
-      exists: vi.fn(async () => false),
+      existsForShopPayment: vi.fn(async () => false),
     };
     await expect(
       completeShopCheckoutSession(

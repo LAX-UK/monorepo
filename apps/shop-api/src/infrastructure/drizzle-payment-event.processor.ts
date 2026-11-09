@@ -183,6 +183,20 @@ async function reconcileCompletedSession(
   if (!sessionId) return "unconfirmed";
   const paid = await paymentGateway.retrievePaidCheckout({ orderId, sessionId });
   if (!paid) return "unconfirmed";
+  await applyPaidSession(db, orderId, sessionId, paid, options);
+  return "reconciled";
+}
+
+type PaidSession = NonNullable<Awaited<ReturnType<PaymentCheckoutGateway["retrievePaidCheckout"]>>>;
+
+/** Puts a paid session read from Stripe through the same path as its payment event. */
+async function applyPaidSession(
+  db: Database,
+  orderId: string,
+  sessionId: string,
+  paid: PaidSession,
+  options: CheckoutTransitionOptions,
+): Promise<void> {
   await completeShopCheckoutSession(
     db,
     {
@@ -196,32 +210,152 @@ async function reconcileCompletedSession(
     },
     options,
   );
-  return "reconciled";
 }
 
+const SHOP_CHECKOUT_CEILING_SOURCE = "shop-api-reaper-ceiling";
+
 /**
- * Leaves an order alone for a while (see {@link deferCheckoutHold}) and tells ops, once, when the
- * same order has been left alone {@link DEFERRALS_BEFORE_OPS_ALERT} times.
+ * An order that has had all the hold there is must not be left in the sweep. Stripe is asked once
+ * more: a paid session is applied (or recorded) like its event; one that is not paid, or that
+ * Stripe has shown paid but cannot be read, is not guessed at. If Stripe showed it paid, or could
+ * not be read at all, the order is closed and finance gets a task to check the payment in Stripe;
+ * otherwise it is expired as any unpaid order is.
  */
-export async function deferCheckoutWithAlert(
+async function settleOrderPastCeiling(
+  db: Database,
+  orderId: string,
+  options: CheckoutTransitionOptions,
+  stripeShowsPaid: boolean,
+): Promise<"reconciled" | "expired" | "closed_unconfirmed" | "not_pending"> {
+  const [order] = await db
+    .select({ status: shopOrder.status, sessionId: shopOrder.stripeCheckoutSessionId })
+    .from(shopOrder)
+    .where(eq(shopOrder.id, orderId))
+    .limit(1);
+  if (!order || order.status !== "pending_payment") return "not_pending";
+  let readable = true;
+  let paid: PaidSession | null = null;
+  if (options.paymentGateway && order.sessionId) {
+    try {
+      paid = await options.paymentGateway.retrievePaidCheckout({
+        orderId,
+        sessionId: order.sessionId,
+      });
+    } catch {
+      readable = false;
+    }
+  }
+  if (paid && order.sessionId) {
+    await applyPaidSession(db, orderId, order.sessionId, paid, options);
+    return "reconciled";
+  }
+  if (order.sessionId && (stripeShowsPaid || !readable)) {
+    await closeOrderPaidNotConfirmed(db, orderId, order.sessionId, options);
+    return "closed_unconfirmed";
+  }
+  await expireShopCheckoutSession(
+    db,
+    {
+      eventId: `reaper-ceiling:${orderId}`,
+      orderId,
+      source: SHOP_CHECKOUT_CEILING_SOURCE,
+      skipStripe: true,
+    },
+    options,
+  );
+  return "expired";
+}
+
+/** Closes an order Stripe shows paid but that could not be confirmed, with a finance task. */
+async function closeOrderPaidNotConfirmed(
+  db: Database,
+  orderId: string,
+  sessionId: string,
+  options: CheckoutTransitionOptions,
+): Promise<void> {
+  const events = createShopDomainEventPublisher(options.domainEventMode ?? "off");
+  await db.transaction(async (tx) => {
+    const database = tx as Database;
+    const [order] = await database
+      .select()
+      .from(shopOrder)
+      .where(eq(shopOrder.id, orderId))
+      .for("update")
+      .limit(1);
+    if (!order || order.status !== "pending_payment") return;
+    const eventId = `reaper-unconfirmed:${sessionId}`;
+    if (!(await claimPaymentEvent(database, eventId))) return;
+    await closeOrderForUnappliedPayment(database, order, sessionId, events);
+    await recordPaymentForFinance(
+      database,
+      events,
+      options,
+      {
+        eventId,
+        orderId,
+        sessionId,
+        // What Stripe took could not be read, so the order's total stands in for it.
+        amountTotalPence: order.totalPence,
+        paidAt: new Date(),
+      },
+      {
+        reason: "shop_order_paid_not_confirmed",
+        order: { id: order.id, reference: order.reference, status: "payment_failed" },
+        orderClosed: true,
+      },
+    );
+  });
+}
+
+export type DeferOrSettleOutcome =
+  | "deferred"
+  | "not_pending"
+  | "reconciled"
+  | "expired"
+  | "closed_unconfirmed";
+
+/**
+ * Leaves an order alone for a while (see {@link deferCheckoutHold}), telling ops once when the
+ * same order has been left alone {@link DEFERRALS_BEFORE_OPS_ALERT} times. At the ceiling it is
+ * not left alone again: it is settled (see {@link settleOrderPastCeiling}), so no order stays in
+ * the sweep for ever.
+ */
+export async function deferOrSettleCheckout(
   db: Database,
   orderId: string,
   now: Date,
   options: CheckoutTransitionOptions,
-  why: string,
-): Promise<HoldDeferral> {
-  const deferral = await deferCheckoutHold(db, orderId, now);
-  if (deferral.kind === "deferred" && deferral.deferrals === DEFERRALS_BEFORE_OPS_ALERT) {
+  why: { reason: string; stripeShowsPaid: boolean },
+): Promise<DeferOrSettleOutcome> {
+  const deferral: HoldDeferral = await deferCheckoutHold(db, orderId, now);
+  if (deferral.kind === "not_pending") return "not_pending";
+  if (deferral.kind === "at_cap") {
+    return settleOrderPastCeiling(db, orderId, options, why.stripeShowsPaid);
+  }
+  if (deferral.deferrals === DEFERRALS_BEFORE_OPS_ALERT) {
     await db.transaction((tx) =>
       queueCheckoutOpsAlertInTx(tx as Database, options, {
         idempotencyKey: `checkout-deferred:${orderId}`,
         alertKind: "Shop checkout held open",
         orderId,
-        detail: `Order ${orderId} has been left open ${deferral.deferrals} times by the checkout sweep (${why}). Check its payment in Stripe.`,
+        detail: `Order ${orderId} has been left open ${deferral.deferrals} times by the checkout sweep (${why.reason}). Check its payment in Stripe.`,
       }),
     );
   }
-  return deferral;
+  return "deferred";
+}
+
+function expireOutcomeOf(outcome: DeferOrSettleOutcome): ShopCheckoutExpireOutcome {
+  switch (outcome) {
+    case "deferred":
+      return "deferred_async";
+    case "not_pending":
+      return "unchanged";
+    case "reconciled":
+      return "reconciled";
+    default:
+      return "expired";
+  }
 }
 
 export function createDrizzlePaymentEventProcessor(
@@ -485,11 +619,17 @@ function unappliedPaymentAlert(
 async function closeOrderForUnappliedPayment(
   tx: Database,
   order: typeof shopOrder.$inferSelect,
+  sessionId: string,
   events: ReturnType<typeof createShopDomainEventPublisher>,
 ): Promise<void> {
   await tx
     .update(shopOrder)
-    .set({ status: "payment_failed", updatedAt: new Date() })
+    .set({
+      status: "payment_failed",
+      // The session that paid it, so the payment is recognised whichever way it is found next.
+      stripeCheckoutSessionId: order.stripeCheckoutSessionId ?? sessionId,
+      updatedAt: new Date(),
+    })
     .where(eq(shopOrder.id, order.id));
   await closeDeliveryQuoteForOrder(tx, order.id, "expired");
   await releaseReservedEditionsForOrder(tx, order.id, events);
@@ -527,7 +667,7 @@ async function recordUnappliedPayment(
     }
     const failure = verdict.kind === "unapplied" ? verdict.failure : attempted;
     const orderClosed = closesOrder(failure) && order.status === "pending_payment";
-    if (orderClosed) await closeOrderForUnappliedPayment(database, order, events);
+    if (orderClosed) await closeOrderForUnappliedPayment(database, order, input.sessionId, events);
     await recordPaymentForFinance(database, events, options, input, {
       reason: SHOP_PAYMENT_FAILURE_REASONS[failure],
       order: { id: order.id, reference: order.reference, status: order.status },
@@ -925,6 +1065,8 @@ export async function expireShopCheckoutSession(
     source?: string;
     sessionId?: string;
     holdMustHaveEndedBy?: Date;
+    /** Do not ask Stripe: it has been asked already (the order is being settled past its ceiling). */
+    skipStripe?: boolean;
   },
   options: CheckoutTransitionOptions = {},
 ): Promise<ShopCheckoutExpireOutcome> {
@@ -941,33 +1083,29 @@ export async function expireShopCheckoutSession(
   const stripeGate = await expireStripeBeforeLocalTransition(
     db,
     input.orderId,
-    options.paymentGateway,
+    input.skipStripe ? undefined : options.paymentGateway,
     "expire",
     options,
   );
   if (stripeGate === "reconciled") return "reconciled";
   if (stripeGate === "unconfirmed") {
-    const deferral = await deferCheckoutWithAlert(
-      db,
-      input.orderId,
-      new Date(),
-      options,
-      "Stripe shows its session paid but the payment could not be read",
+    return expireOutcomeOf(
+      await deferOrSettleCheckout(db, input.orderId, new Date(), options, {
+        reason: "Stripe shows its session paid but the payment could not be read",
+        stripeShowsPaid: true,
+      }),
     );
-    return deferral.kind === "deferred" ? "deferred_async" : "unchanged";
   }
   if (stripeGate === "skip_async") {
-    // The debit is still being confirmed: wait, up to the ceiling. Past it the payment is treated
-    // as not made, and one that lands later is recorded for finance as money for a closed order.
-    const deferral = await deferCheckoutWithAlert(
-      db,
-      input.orderId,
-      new Date(),
-      options,
-      "its payment is still being confirmed",
+    // The debit is still being confirmed: wait, up to the ceiling. Past it the order is settled
+    // like any other: a payment that landed is applied, otherwise it expires, and one that lands
+    // later is recorded for finance as money for a closed order.
+    return expireOutcomeOf(
+      await deferOrSettleCheckout(db, input.orderId, new Date(), options, {
+        reason: "its payment is still being confirmed",
+        stripeShowsPaid: false,
+      }),
     );
-    if (deferral.kind === "deferred") return "deferred_async";
-    if (deferral.kind === "not_pending") return "unchanged";
   }
   return db.transaction(async (tx) => {
     if (input.holdMustHaveEndedBy) {
