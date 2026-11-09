@@ -25,7 +25,7 @@ const SITUATION: Record<UnappliedMoneyReason, string> = {
   private_sale_payment_not_applied:
     "Money arrived for a private sale deal that could not take it: its checkout had been ended, or the deal was already paid another way. Return it or apply it.",
   shop_order_paid_after_close:
-    "A Shop buyer paid after their order had closed and its prints were released. Nothing was refunded. Open the order in LAX Admin, then refund the buyer or reinstate the order. The link is to the Shop order in LAX Admin, not to Bid admin.",
+    "A Shop buyer paid after their order had closed and its prints were released. Nothing was refunded. Open the order in LAX Admin, then refund the buyer or reinstate the order.",
   private_sale_refund_after_payout:
     "Money went back to a private sale buyer after the seller's payout included the deal. The seller's payout may need adjusting.",
 };
