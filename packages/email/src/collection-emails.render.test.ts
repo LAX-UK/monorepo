@@ -103,6 +103,36 @@ describe("collection missed email", () => {
   });
 });
 
+describe("collect by email", () => {
+  const base = {
+    userName: "Maya",
+    when: "lead" as const,
+    collectByLabel: "Wed 9 Dec",
+    placeName: "London Art Exchange",
+    address: "156 New Cavendish Street, London W1W 6YW",
+    lots: ["Lot 12 · Lowland Storm"],
+    bookUrl: "https://lax.bid/purchases",
+  };
+
+  it("asks them to collect by the day, says charges may apply, and links to book", async () => {
+    const rendered = await renderEmail("collection-collect-by", base);
+    expect(rendered.subject).toBe("Please collect by Wed 9 Dec");
+    expect(rendered.html).toContain("Please collect within a week");
+    expect(rendered.text).toContain(
+      "Please collect by Wed 9 Dec. After that, storage charges may apply",
+    );
+    expect(rendered.text).toContain("Lowland Storm");
+    expect(rendered.html).toContain("https://lax.bid/purchases");
+    expect(`${rendered.subject} ${rendered.text}`).not.toMatch(PRICE);
+  });
+
+  it("says it is today on the day itself", async () => {
+    const rendered = await renderEmail("collection-collect-by", { ...base, when: "day" });
+    expect(rendered.subject).toBe("Please collect today");
+    expect(rendered.html).toContain("Today is the day to collect");
+  });
+});
+
 describe("who the emails come from", () => {
   it("name LAX Bid's company in the footer, and the gallery only as the place of the visit", async () => {
     const rendered = await renderEmail("collection-booked", visit);
@@ -250,6 +280,7 @@ describe("collection emails are transactional", () => {
       "collection-collector-notice",
       "collection-collected",
       "collection-missed",
+      "collection-collect-by",
     ]) {
       expect(OPTIONAL_EMAIL_TEMPLATES).not.toContain(name);
     }

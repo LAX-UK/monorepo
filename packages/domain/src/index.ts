@@ -950,6 +950,9 @@ export {
 } from "./collection-handover.js";
 export {
   DEFAULT_COLLECT_BY_POLICY,
+  collectByRemindersDue,
+  type CollectByReminderDue,
+  type CollectByReminderKind,
   collectBy,
   type CollectBy,
   type CollectByPolicy,

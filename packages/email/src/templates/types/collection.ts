@@ -8,6 +8,7 @@ const names = [
   "collection-collector-notice",
   "collection-collected",
   "collection-missed",
+  "collection-collect-by",
 ] as const;
 
 type CollectionTemplateName = (typeof names)[number];
@@ -120,6 +121,21 @@ type CollectionTemplateVars = {
     /** Where to book another time. */
     bookUrl: string;
   };
+  /** A reminder of the "please collect by" day, to a buyer who has neither booked nor collected. */
+  "collection-collect-by": {
+    userName?: string | null;
+    /** A week before the day ("lead"), or the day itself ("day"). */
+    when: "lead" | "day";
+    /** The deadline in the one date style: "Tue 8 Dec". */
+    collectByLabel: string;
+    placeName: string;
+    /** The gallery's address, one line. */
+    address: string;
+    /** One line per lot: "Lot 12 · Lowland Storm". */
+    lots: string[];
+    /** Where to book a time. */
+    bookUrl: string;
+  };
 };
 
 export const collectionTemplates = {
@@ -134,6 +150,7 @@ export const collectionTemplates = {
     "collection-collector-notice": "snapshot",
     "collection-collected": "live",
     "collection-missed": "live",
+    "collection-collect-by": "live",
   },
 } satisfies TemplateDomainSlice<CollectionTemplateName, CollectionTemplateVars>;
 

@@ -28,3 +28,40 @@ export function collectBy(
   const date = addDaysToKey(londonDateKey(clearedAt), policy.freeStorageDays);
   return { date, reminderDates: [addDaysToKey(date, -policy.reminderLeadDays), date] };
 }
+
+export type CollectByReminderKind = "lead" | "day";
+
+/** A storage reminder that goes today, and for which purchases. */
+export type CollectByReminderDue = {
+  kind: CollectByReminderKind;
+  /** The London day payment must have cleared on for this reminder to be today's. */
+  clearedOn: DateKey;
+  /** The "please collect by" day those purchases share. */
+  collectBy: DateKey;
+};
+
+/**
+ * The storage reminders that go on `today` (a London day): the one a week before the deadline and
+ * the one on the day. Each is for the purchases that cleared on one particular day, so a lot is
+ * reminded once for each, however often the sweep runs. A free period no longer than the lead has
+ * no early reminder, because it would fall on or before the day payment cleared.
+ */
+export function collectByRemindersDue(
+  today: DateKey,
+  policy: CollectByPolicy = DEFAULT_COLLECT_BY_POLICY,
+): CollectByReminderDue[] {
+  const due: CollectByReminderDue[] = [];
+  if (policy.freeStorageDays > policy.reminderLeadDays) {
+    due.push({
+      kind: "lead",
+      clearedOn: addDaysToKey(today, -(policy.freeStorageDays - policy.reminderLeadDays)),
+      collectBy: addDaysToKey(today, policy.reminderLeadDays),
+    });
+  }
+  due.push({
+    kind: "day",
+    clearedOn: addDaysToKey(today, -policy.freeStorageDays),
+    collectBy: today,
+  });
+  return due;
+}

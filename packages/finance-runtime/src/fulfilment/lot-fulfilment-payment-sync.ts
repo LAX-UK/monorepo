@@ -12,7 +12,10 @@ type FulfilmentStore = Pick<ILotFulfilmentRepository, "findByLotId" | "insert" |
  * raised at lot end has the same fulfilment record as one raised at checkout.
  */
 export class LotFulfilmentPaymentSync implements ILotFulfilmentPaymentHook {
-  constructor(private readonly fulfilment: FulfilmentStore) {}
+  constructor(
+    private readonly fulfilment: FulfilmentStore,
+    private readonly now: () => Date = () => new Date(),
+  ) {}
 
   /** Called when a pending payment exists for the lot (create or reuse). */
   async ensureAwaitingPayment(
@@ -48,6 +51,7 @@ export class LotFulfilmentPaymentSync implements ILotFulfilmentPaymentHook {
         lotId,
         paymentId,
         status: "awaiting_release",
+        paymentClearedAt: this.now(),
       });
       return;
     }
@@ -55,7 +59,9 @@ export class LotFulfilmentPaymentSync implements ILotFulfilmentPaymentHook {
       await this.fulfilment.updateByLotId(lotId, {
         paymentId,
         status: "awaiting_release",
-        updatedAt: new Date(),
+        // The first time it cleared is the one "please collect by" counts from.
+        ...(row.paymentClearedAt ? {} : { paymentClearedAt: this.now() }),
+        updatedAt: this.now(),
       });
     }
   }
