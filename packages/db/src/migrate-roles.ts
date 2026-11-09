@@ -62,6 +62,10 @@ export const AUTH_DENY_TABLES = [
 /** Shop commerce catalogue tables owned by apps/shop-api under shop_app. */
 export const SHOP_COMMERCE_TABLES = [
   "shop_catalogue_setting",
+  /** The framing catalogue: options, their prices per size band, and the editions offering them. */
+  "shop_framing_option",
+  "shop_framing_option_price",
+  "shop_framing_edition_offer",
   "shop_party",
   "shop_artist",
   "shop_artwork",

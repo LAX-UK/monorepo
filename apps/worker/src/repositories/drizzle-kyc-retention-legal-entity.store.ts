@@ -1,5 +1,6 @@
 import type { Database } from "@auction/db";
 import { kycRetentionTombstone, legalEntityDocument, uploadObject } from "@auction/db/schema";
+import type { EnquiryDealRecord } from "@auction/domain";
 import { eq, inArray, sql } from "drizzle-orm";
 import type {
   IKycRetentionSubjectStore,
@@ -9,6 +10,7 @@ import type {
   RetentionHolding,
 } from "../interfaces/kyc-retention-subject.store.js";
 import { KYC_RETENTION_BASIS } from "../retention/kyc-retention-policy.js";
+import { type RetentionDealRow, dealRecordsFromRows } from "./kyc-retention-deal-records.js";
 
 type CandidateRow = {
   subject_id: string;
@@ -60,6 +62,30 @@ export class DrizzleKycRetentionLegalEntityStore implements IKycRetentionSubject
       closedAt: toDate(row.closed_at),
       lastActivityAt: row.last_activity_at ? toDate(row.last_activity_at) : null,
     }));
+  }
+
+  async dealRecords(subjectId: string): Promise<EnquiryDealRecord[]> {
+    // An organisation or personal account that is, or was ever named as, a party to a deal.
+    const deals = await this.db.execute<RetentionDealRow>(sql`
+      SELECT d."stage", d."agreed_at", d."cancelled_at",
+        (SELECT MAX(h."created_at") FROM "private_sale_deal_stage_history" h
+          WHERE h."deal_id" = d."id" AND h."to_stage" = 'settled') AS settled_at,
+        COALESCE(e."created_at", d."created_at") AS since
+      FROM "private_sale_deal" d
+      LEFT JOIN "marketing_enquiry" e ON e."id" = d."source_enquiry_id"
+      WHERE d."id" IN (
+        SELECT "deal_id" FROM "private_sale_deal_party" WHERE "legal_entity_id" = ${subjectId}
+        UNION
+        SELECT "deal_id" FROM "private_sale_deal_party_history" WHERE "legal_entity_id" = ${subjectId}
+      )
+    `);
+    if (deals.rows.length === 0) return [];
+    const latest = await this.db.execute<{ latest: Date | string | null }>(sql`
+      SELECT MAX(GREATEST("uploaded_at", "reviewed_at")) AS latest FROM "legal_entity_document"
+      WHERE "legal_entity_id" = ${subjectId}
+    `);
+    const at = latest.rows[0]?.latest;
+    return dealRecordsFromRows(deals.rows, at ? toDate(at) : null);
   }
 
   async describeHolding(subjectId: string): Promise<RetentionHolding> {

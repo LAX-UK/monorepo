@@ -83,6 +83,17 @@ Screenings and source-of-funds files are themselves purged five years after an a
 
 A deal cancelled before anyone agreed a price, with no such check for anyone named on it, is not a transaction: its enquiry is erased like any other. Once the period has passed, a later erasure request or retention run erases the enquiry. The setting applies to the Bid API and the worker; the owner's answer on deal record retention replaces the default.
 
+## KYC evidence of the parties
+
+The KYC retention purge (`KYC_RETENTION_PURGE_ENABLED`) deletes a closed account's identity checks, screenings and source-of-funds files five years after the relationship ends. A deal's record is kept for `PRIVATE_SALE_RECORD_RETENTION_YEARS` after the deal ends, which can be longer, and the evidence of the checks on its parties is part of that record. So the purge keeps the evidence of anyone who is, or was ever named as, a party to a deal (read from the deal's parties and its party history, so a buyer replaced before agreement counts) for as long as any of those deals' records is retained, by the same rule that holds the deal's enquiry from erasure:
+
+- while the deal is open;
+- after it settles, or is cancelled after agreement, until the retention has run from its end;
+- after a deal cancelled before agreement, only if a check was opened for them since the enquiry arrived;
+- always, if a deal's end is not recorded.
+
+The evidence is deleted only when both clocks have run out: their own five years and every deal's retention. The same holds for an organisation or personal account that is a party. The purge's log and summary count the subjects kept for this reason (`heldForDeals`), including in a dry run, and the purge reads the worker's `PRIVATE_SALE_RECORD_RETENTION_YEARS` (never under 5). Someone who was never on a deal is purged exactly as before.
+
 ## Rolling back
 
 `0323_rollback.sql` returns `private_sale_deal.artwork_register_id` to text and keeps its values.

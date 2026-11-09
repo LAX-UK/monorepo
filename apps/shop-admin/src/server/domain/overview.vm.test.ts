@@ -193,7 +193,7 @@ describe("buildWelcomeSections", () => {
         features: FEATURES,
       }),
     );
-    expect(sections.map((section) => section.title)).toEqual(["Gallery"]);
+    expect(sections.map((section) => section.title)).toEqual(["Gallery", "Shop"]);
     expect(sections[0]?.items.map((item) => item.href)).toContain("/artworks");
   });
 });
