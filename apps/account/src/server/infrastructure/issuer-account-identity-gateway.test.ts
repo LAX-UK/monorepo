@@ -98,13 +98,47 @@ describe("createIssuerAccountIdentityGateway", () => {
     it("reads the methods with only the access token in the body", async () => {
       const methods = {
         hasPassword: false,
-        social: [{ provider: "google", linkedAt: "2026-10-01T09:00:00.000Z" }],
+        social: [
+          {
+            provider: "google",
+            linkedAt: "2026-10-01T09:00:00.000Z",
+            providerEmail: "ada@example.com",
+            hidden: false,
+          },
+        ],
+        passkeys: [],
+        available: { google: true, apple: false, passkey: false },
       };
       const { fetchImpl, gateway: g } = gateway(async () => Response.json(methods));
       expect(await g.readSignInMethods(actor)).toEqual({ status: "ok", value: methods });
       const { url, body } = lastRequest(fetchImpl);
       expect(url).toBe("https://auth.internal/api/auth/lax/account-sign-in-methods");
       expect(Object.fromEntries(body)).toEqual({ token: "access-token" });
+    });
+
+    it("reads a response from an issuer that has not been updated: the new fields default", async () => {
+      const { gateway: g } = gateway(async () =>
+        Response.json({
+          hasPassword: true,
+          social: [{ provider: "apple", linkedAt: "2026-10-01T09:00:00.000Z" }],
+        }),
+      );
+      expect(await g.readSignInMethods(actor)).toEqual({
+        status: "ok",
+        value: {
+          hasPassword: true,
+          social: [
+            {
+              provider: "apple",
+              linkedAt: "2026-10-01T09:00:00.000Z",
+              providerEmail: null,
+              hidden: false,
+            },
+          ],
+          passkeys: [],
+          available: { google: true, apple: true, passkey: false },
+        },
+      });
     });
 
     it("removes a provider with the access token, sign-in and provider in the body", async () => {

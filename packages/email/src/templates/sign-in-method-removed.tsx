@@ -6,18 +6,20 @@ import type { TemplateVarsByName } from "../types.js";
 export const subject = emailSubjects.signInMethodRemoved;
 
 export default function SignInMethodRemovedEmail({
-  providerName,
+  methodLabel,
+  detail,
   ...vars
 }: TemplateVarsByName["sign-in-method-removed"]) {
+  const named = detail ? `${methodLabel} (${detail})` : methodLabel;
   return (
     <SecurityNotice
       {...vars}
-      preview={`${providerName} sign-in was removed from your LAX Account.`}
-      title={`${providerName} sign-in removed`}
+      preview={`${named} was removed as a way to sign in to your LAX Account.`}
+      title="A way to sign in was removed"
     >
       <TextBlock>
-        Signing in with {providerName} was removed from your LAX Account. Every other device was
-        signed out. You can still sign in with the methods that remain on your account.
+        {named} was removed from your LAX Account. Every other device was signed out. You can still
+        sign in with the methods that remain on your account.
       </TextBlock>
     </SecurityNotice>
   );

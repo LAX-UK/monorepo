@@ -79,15 +79,39 @@ describe("LAX Account security emails", () => {
     expectSharedParts(rendered);
   });
 
-  it("renders a removed sign-in method with the provider and says other devices were signed out", async () => {
+  it("renders a removed sign-in method with the method and says other devices were signed out", async () => {
     const rendered = await renderEmail("sign-in-method-removed", {
       ...BASE,
-      providerName: "Google",
+      methodLabel: "Google",
+      detail: "ada@example.com",
     });
-    expect(rendered.subject).toBe("A sign-in method was removed from your LAX Account");
-    expect(rendered.text).toContain("Google");
+    expect(rendered.subject).toBe("A way to sign in was removed from your LAX Account");
+    expect(rendered.text).toContain("Google (ada@example.com) was removed");
     expect(rendered.text).toContain("signed out");
     expectSharedParts(rendered);
+  });
+
+  it("renders a removed passkey by its name", async () => {
+    const rendered = await renderEmail("sign-in-method-removed", {
+      ...BASE,
+      methodLabel: "A passkey",
+      detail: "Sarah's MacBook",
+    });
+    expect(rendered.text).toContain("A passkey (Sarah's MacBook) was removed");
+    expectSharedParts(rendered);
+  });
+
+  it("renders an added sign-in method naming the method, the address or name, and when", async () => {
+    const rendered = await renderEmail("sign-in-method-added", {
+      ...BASE,
+      methodLabel: "Apple",
+      detail: "relay@privaterelay.appleid.com",
+    });
+    expect(rendered.subject).toBe("A way to sign in was added to your LAX Account");
+    expect(rendered.text).toContain("Apple (relay@privaterelay.appleid.com) was added");
+    expectSharedParts(rendered);
+    const bare = await renderEmail("sign-in-method-added", { ...BASE, methodLabel: "A passkey" });
+    expect(bare.text).toContain("A passkey was added");
   });
 
   it("renders the removed unconfirmed password: what happened, that devices were signed out, and the way back", async () => {

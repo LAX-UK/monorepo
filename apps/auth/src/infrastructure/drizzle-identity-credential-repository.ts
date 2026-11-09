@@ -1,34 +1,74 @@
 import type { SocialSignInProvider } from "@auction/identity-contracts";
 import type { IdentityDatabase } from "@auction/identity-db";
-import { account } from "@auction/identity-db/schema";
-import { and, eq } from "drizzle-orm";
+import { account, passkey } from "@auction/identity-db/schema";
+import { and, asc, eq } from "drizzle-orm";
 import type {
   IIdentityCredentialRepository,
   IdentityOperationTransaction,
 } from "../services/identity-operations.ports.js";
-import type { SignInAccountRow } from "../services/sign-in-method-rules.js";
+import type { PasskeyRow, SignInAccountRow } from "../services/sign-in-method-rules.js";
 import { identityOperationDb } from "./drizzle-identity-unit-of-work.js";
 
 const SIGN_IN_ACCOUNT_COLUMNS = {
   providerId: account.providerId,
   password: account.password,
   createdAt: account.createdAt,
+  providerEmail: account.providerEmail,
+  providerEmailHidden: account.providerEmailHidden,
 };
 
-function toSignInAccountRow(row: {
-  providerId: string;
-  password: string | null;
-  createdAt: Date;
-}): SignInAccountRow {
-  return {
-    providerId: row.providerId,
-    hasPassword: Boolean(row.password),
-    createdAt: row.createdAt,
-  };
-}
+/** Opens sealed values; the address a provider reported is stored sealed like its tokens. */
+export type AddressOpener = { open(sealed: string): string };
 
 export class DrizzleIdentityCredentialRepository implements IIdentityCredentialRepository {
-  constructor(private readonly db: IdentityDatabase) {}
+  constructor(
+    private readonly db: IdentityDatabase,
+    private readonly crypto: AddressOpener | null = null,
+  ) {}
+
+  /** The address as written, or null when it was never kept or can no longer be opened. */
+  private readProviderEmail(value: string | null): string | null {
+    if (!value) return null;
+    if (!this.crypto) return value;
+    try {
+      return this.crypto.open(value);
+    } catch {
+      return null;
+    }
+  }
+
+  private toSignInAccountRow(row: {
+    providerId: string;
+    password: string | null;
+    createdAt: Date;
+    providerEmail: string | null;
+    providerEmailHidden: boolean;
+  }): SignInAccountRow {
+    return {
+      providerId: row.providerId,
+      hasPassword: Boolean(row.password),
+      createdAt: row.createdAt,
+      providerEmail: this.readProviderEmail(row.providerEmail),
+      providerEmailHidden: row.providerEmailHidden,
+    };
+  }
+
+  async listPasskeys(subjectId: string): Promise<PasskeyRow[]> {
+    const rows = await this.db
+      .select({
+        id: passkey.id,
+        name: passkey.name,
+        deviceType: passkey.deviceType,
+        backedUp: passkey.backedUp,
+        transports: passkey.transports,
+        createdAt: passkey.createdAt,
+        lastUsedAt: passkey.lastUsedAt,
+      })
+      .from(passkey)
+      .where(eq(passkey.userId, subjectId))
+      .orderBy(asc(passkey.createdAt), asc(passkey.id));
+    return rows;
+  }
 
   async listProviders(
     subjectId: string,
@@ -48,7 +88,7 @@ export class DrizzleIdentityCredentialRepository implements IIdentityCredentialR
       .select(SIGN_IN_ACCOUNT_COLUMNS)
       .from(account)
       .where(eq(account.userId, subjectId));
-    return rows.map(toSignInAccountRow);
+    return rows.map((row) => this.toSignInAccountRow(row));
   }
 
   async lockSignInAccounts(
@@ -60,7 +100,7 @@ export class DrizzleIdentityCredentialRepository implements IIdentityCredentialR
       .from(account)
       .where(eq(account.userId, subjectId))
       .for("update");
-    return rows.map(toSignInAccountRow);
+    return rows.map((row) => this.toSignInAccountRow(row));
   }
 
   async deleteSocialAccount(

@@ -24,6 +24,8 @@ export const AUTH_FULL_TABLES = [
   "auth_security_effect_outbox",
   /** `twoFactor` plugin backing table used only by the canonical auth issuer. */
   "two_factor",
+  /** Passkeys, used only by the canonical auth issuer. The public key never leaves it. */
+  "passkey",
 ] as const;
 /** Append-only Identity side effects emitted by apps/auth. */
 export const AUTH_INSERT_SELECT_TABLES = ["identity_lifecycle_outbox"] as const;
@@ -159,6 +161,7 @@ export const API_DENY_TABLES = [
   "account",
   "verification",
   "two_factor",
+  "passkey",
   "jwks_key",
   "oauth_application",
   "oauth_access_token",

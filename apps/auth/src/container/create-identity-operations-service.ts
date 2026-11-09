@@ -20,6 +20,8 @@ export function createIdentityOperationsService(options: {
   notices: SecurityNoticePublisher;
   productSubjectUsage: ProductSubjectUsageProbe;
   identityEventPublisher: IdentityEventPublisher;
+  /** Opens the address a provider reported, which is stored sealed. Null when sealing is off. */
+  envelope?: { open(sealed: string): string } | null | undefined;
   logout?: Pick<BackchannelLogoutService, "revokeIdentitySessions" | "revokeSubject">;
 }) {
   const db = options.db;
@@ -27,7 +29,7 @@ export function createIdentityOperationsService(options: {
     {
       unitOfWork: new DrizzleIdentityUnitOfWork(db),
       subjects: new DrizzleIdentitySubjectRepository(db),
-      credentials: new DrizzleIdentityCredentialRepository(db),
+      credentials: new DrizzleIdentityCredentialRepository(db, options.envelope ?? null),
       sessions: new DrizzleIdentitySessionRepository(db),
       emailChanges: new DrizzleIdentityEmailChangeRepository(db),
       verifications: new DrizzleIdentityVerificationPurger(db),

@@ -4,6 +4,7 @@ import {
   account,
   authKnownDevice,
   identityLifecycleOutbox,
+  passkey,
   session,
   user,
 } from "@auction/identity-db/schema";
@@ -41,15 +42,44 @@ export function mapPasswordMethod(row: { passwordSet: boolean; changedAt: Date |
   };
 }
 
-/** A social sign-in: the provider and when it was linked. The provider's tokens are never read. */
-export function mapSocialMethod(row: { id: string; providerId: string; createdAt: Date }) {
+/**
+ * A social sign-in: the provider, the address it reported when there is one, and when it was
+ * linked. The provider's tokens and its own identifier for the person are never read.
+ */
+export function mapSocialMethod(row: {
+  id: string;
+  providerId: string;
+  createdAt: Date;
+  providerEmail?: string | null;
+}) {
   return {
     id: row.id,
     origin: "observed" as const,
     kind: "sign_in_method",
     method: row.providerId,
-    methodName: row.providerId,
+    methodName: row.providerEmail ? `${row.providerId} (${row.providerEmail})` : row.providerId,
     changedAt: isoRequired(row.createdAt),
+  };
+}
+
+/**
+ * A passkey: the name the person gave it and the dates. The public key, credential identifier,
+ * counter and authenticator model are never selected, so none can reach the file.
+ */
+export function mapPasskeyMethod(row: {
+  id: string;
+  name: string | null;
+  createdAt: Date;
+  lastUsedAt: Date | null;
+}) {
+  return {
+    id: `passkey-${row.id}`,
+    origin: "observed" as const,
+    kind: "sign_in_method",
+    method: "passkey",
+    methodName: row.name?.trim() || "Passkey",
+    changedAt: isoRequired(row.createdAt),
+    lastUsedAt: iso(row.lastUsedAt),
   };
 }
 
@@ -60,6 +90,7 @@ export function mapSession(
     ipAddress: string | null;
     createdAt: Date;
     expiresAt: Date;
+    amr?: readonly string[] | null;
   },
   now: Date,
 ) {
@@ -68,6 +99,7 @@ export function mapSession(
     origin: "observed" as const,
     kind: "session",
     device: formatDeviceLabel(row.userAgent),
+    signedInWith: [...(row.amr ?? [])],
     ipAddress: row.ipAddress,
     // No place is derived from the address when a session starts, so none is held.
     approximateLocation: null,
@@ -130,8 +162,22 @@ export class SignInAndSecurityExportCategory extends SourcedExportCategory {
   readonly id = "sign-in-and-security";
   protected readonly sources: readonly ExportSource[];
 
-  constructor(db: IdentityDatabase, now: () => Date = () => new Date()) {
+  constructor(
+    db: IdentityDatabase,
+    now: () => Date = () => new Date(),
+    /** Opens the address a provider reported, which is stored sealed. */
+    crypto: { open(sealed: string): string } | null = null,
+  ) {
     super();
+    const readAddress = (value: string | null): string | null => {
+      if (!value) return null;
+      if (!crypto) return value;
+      try {
+        return crypto.open(value);
+      } catch {
+        return null;
+      }
+    };
     this.sources = [
       inMemorySource(async (subjectId) => {
         const [row] = await db
@@ -166,6 +212,7 @@ export class SignInAndSecurityExportCategory extends SourcedExportCategory {
               id: account.id,
               providerId: account.providerId,
               createdAt: account.createdAt,
+              providerEmail: account.providerEmail,
             })
             .from(account)
             .where(
@@ -177,7 +224,27 @@ export class SignInAndSecurityExportCategory extends SourcedExportCategory {
             )
             .orderBy(asc(account.id))
             .limit(limit);
-          return rows.map((row) => ({ key: row.id, record: mapSocialMethod(row) }));
+          return rows.map((row) => ({
+            key: row.id,
+            record: mapSocialMethod({ ...row, providerEmail: readAddress(row.providerEmail) }),
+          }));
+        },
+      },
+      {
+        count: (subjectId) => countWhere(db, passkey, eq(passkey.userId, subjectId)),
+        page: async (subjectId, key, limit) => {
+          const rows = await db
+            .select({
+              id: passkey.id,
+              name: passkey.name,
+              createdAt: passkey.createdAt,
+              lastUsedAt: passkey.lastUsedAt,
+            })
+            .from(passkey)
+            .where(and(eq(passkey.userId, subjectId), afterKey(passkey.id, key)))
+            .orderBy(asc(passkey.id))
+            .limit(limit);
+          return rows.map((row) => ({ key: row.id, record: mapPasskeyMethod(row) }));
         },
       },
       {
@@ -190,6 +257,7 @@ export class SignInAndSecurityExportCategory extends SourcedExportCategory {
               ipAddress: session.ipAddress,
               createdAt: session.createdAt,
               expiresAt: session.expiresAt,
+              amr: session.amr,
             })
             .from(session)
             .where(and(eq(session.userId, subjectId), afterKey(session.id, key)))

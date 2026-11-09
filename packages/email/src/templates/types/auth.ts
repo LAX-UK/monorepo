@@ -16,10 +16,9 @@ const names = [
   "email-changed",
   "phone-verified",
   "phone-removed",
+  "sign-in-method-added",
   "sign-in-method-removed",
   "unconfirmed-password-removed",
-  "social-account-linked",
-  "social-account-unlinked",
   "new-device-login",
   "password-changed-elsewhere",
   "password-changed-sessions-not-revoked",
@@ -46,6 +45,14 @@ type SecurityNoticeVars = {
   /** Browser and system label; absent when the request carried no user agent. */
   deviceLabel?: string | null;
   secureAccountUrl: string;
+};
+
+/** Which way to sign in changed. */
+type SignInMethodNoticeVars = {
+  /** Already in display form: "Google", "Apple" or "A passkey". */
+  methodLabel: string;
+  /** The passkey's name or the address the provider reported; left out when there is none. */
+  detail?: string | null;
 };
 
 type AuthTemplateVarsBase = {
@@ -107,21 +114,11 @@ type AuthTemplateVarsBase = {
     /** Already masked, for example "+44 •••• 1234". */
     maskedPhone: string;
   };
-  "sign-in-method-removed": SecurityNoticeVars & {
-    /** The provider that was removed, already in display form: "Google" or "Apple". */
-    providerName: string;
-  };
+  "sign-in-method-added": SecurityNoticeVars & SignInMethodNoticeVars;
+  "sign-in-method-removed": SecurityNoticeVars & SignInMethodNoticeVars;
   "unconfirmed-password-removed": SecurityNoticeVars & {
     /** The provider that proved the email, already in display form: "Google" or "Apple". */
     providerName: string;
-  };
-  "social-account-linked": {
-    provider: "google" | "apple";
-    userName?: string | null;
-  };
-  "social-account-unlinked": {
-    provider: "google" | "apple";
-    userName?: string | null;
   };
   "new-device-login": SecurityNoticeVars;
   "password-changed-elsewhere": {
@@ -230,10 +227,9 @@ export const authTemplates = {
     "email-changed": "snapshot",
     "phone-verified": "live",
     "phone-removed": "live",
+    "sign-in-method-added": "live",
     "sign-in-method-removed": "live",
     "unconfirmed-password-removed": "live",
-    "social-account-linked": "live",
-    "social-account-unlinked": "live",
     "new-device-login": "live",
     "password-changed-elsewhere": "live",
     "password-changed-sessions-not-revoked": "live",

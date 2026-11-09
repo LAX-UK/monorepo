@@ -46,6 +46,8 @@ export type IdentityOutboxLifecycleEvent =
       changeType?: "create" | "update";
     }
   | { type: "user.sign_in_method_unlinked"; userId: string; provider: "google" | "apple" }
+  | { type: "user.sign_in_method_added"; userId: string; method: "google" | "apple" | "passkey" }
+  | { type: "user.sign_in_method_removed"; userId: string; method: "google" | "apple" | "passkey" }
   | { type: "user.unconfirmed_password_removed"; userId: string; provider: "google" | "apple" }
   | {
       type: "user.social_link_refused_staff";
@@ -289,6 +291,36 @@ function buildOutboxRow(
           subjectId: event.userId,
           provider: event.provider,
           unlinkedAt: new Date().toISOString(),
+        },
+      };
+    case "user.sign_in_method_added":
+      return {
+        aggregateType: "user",
+        aggregateId: event.userId,
+        eventType: IDENTITY_EVENT_TYPES.SIGN_IN_METHOD_ADDED,
+        producer,
+        actorUserId: null,
+        schemaVersion: IDENTITY_EVENT_SCHEMA_VERSION,
+        payload: {
+          schemaVersion: IDENTITY_EVENT_SCHEMA_VERSION,
+          subjectId: event.userId,
+          method: event.method,
+          addedAt: new Date().toISOString(),
+        },
+      };
+    case "user.sign_in_method_removed":
+      return {
+        aggregateType: "user",
+        aggregateId: event.userId,
+        eventType: IDENTITY_EVENT_TYPES.SIGN_IN_METHOD_REMOVED,
+        producer,
+        actorUserId: null,
+        schemaVersion: IDENTITY_EVENT_SCHEMA_VERSION,
+        payload: {
+          schemaVersion: IDENTITY_EVENT_SCHEMA_VERSION,
+          subjectId: event.userId,
+          method: event.method,
+          removedAt: new Date().toISOString(),
         },
       };
     case "user.unconfirmed_password_removed":

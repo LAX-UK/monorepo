@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { AccountSignInMethodsService } from "./account-sign-in-methods.service.js";
+import { AccountSignInMethodsService, presentPasskey } from "./account-sign-in-methods.service.js";
 import { IdentityOperationError, type IdentitySession } from "./identity-operations.service.js";
 
 const NOW = new Date("2026-11-03T12:00:00.000Z");
@@ -26,7 +26,15 @@ function setup(sessions: IdentitySession[], unlink?: () => Promise<unknown>) {
     listSessions: vi.fn().mockResolvedValue(sessions),
     readSignInMethods: vi.fn().mockResolvedValue({
       hasPassword: false,
-      social: [{ provider: "google", linkedAt: new Date("2026-10-01T09:00:00Z") }],
+      social: [
+        {
+          provider: "google",
+          linkedAt: new Date("2026-10-01T09:00:00Z"),
+          providerEmail: "ada@example.com",
+          hidden: false,
+        },
+      ],
+      passkeys: [],
     }),
     unlinkSocialSignIn: vi.fn(unlink ?? (async () => ({ revokedSessionIds: ["other-1"] }))),
   };
@@ -44,8 +52,117 @@ describe("AccountSignInMethodsService.read", () => {
     const { service } = setup([fresh]);
     expect(await service.read(SUBJECT)).toEqual({
       hasPassword: false,
-      social: [{ provider: "google", linkedAt: "2026-10-01T09:00:00.000Z" }],
+      social: [
+        {
+          provider: "google",
+          linkedAt: "2026-10-01T09:00:00.000Z",
+          providerEmail: "ada@example.com",
+          hidden: false,
+        },
+      ],
+      passkeys: [],
+      available: { google: true, apple: true, passkey: false },
     });
+  });
+
+  it("says which methods this environment offers", async () => {
+    const operations = {
+      listSessions: vi.fn(),
+      readSignInMethods: vi.fn().mockResolvedValue({ hasPassword: true, social: [], passkeys: [] }),
+      unlinkSocialSignIn: vi.fn(),
+    };
+    const service = new AccountSignInMethodsService({
+      operations: operations as never,
+      durable: { settle: vi.fn() },
+      notices: { notify: vi.fn() },
+      available: { google: true, apple: false, passkey: false },
+    });
+    expect((await service.read(SUBJECT)).available).toEqual({
+      google: true,
+      apple: false,
+      passkey: false,
+    });
+  });
+
+  it("lists passkeys by name, kind and date, never by key", async () => {
+    const operations = {
+      listSessions: vi.fn(),
+      readSignInMethods: vi.fn().mockResolvedValue({
+        hasPassword: true,
+        social: [],
+        passkeys: [
+          {
+            id: "pk-1",
+            name: "Sarah's MacBook",
+            deviceType: "multiDevice",
+            backedUp: true,
+            transports: "internal,hybrid",
+            createdAt: new Date("2026-10-02T09:00:00Z"),
+            lastUsedAt: new Date("2026-11-01T09:00:00Z"),
+          },
+        ],
+      }),
+      unlinkSocialSignIn: vi.fn(),
+    };
+    const service = new AccountSignInMethodsService({
+      operations: operations as never,
+      durable: { settle: vi.fn() },
+      notices: { notify: vi.fn() },
+    });
+    const { passkeys } = await service.read(SUBJECT);
+    expect(passkeys).toEqual([
+      {
+        id: "pk-1",
+        name: "Sarah's MacBook",
+        synced: true,
+        kind: "platform",
+        createdAt: "2026-10-02T09:00:00.000Z",
+        lastUsedAt: "2026-11-01T09:00:00.000Z",
+      },
+    ]);
+    expect(Object.keys(passkeys[0] ?? {}).sort()).toEqual([
+      "createdAt",
+      "id",
+      "kind",
+      "lastUsedAt",
+      "name",
+      "synced",
+    ]);
+  });
+});
+
+describe("presentPasskey", () => {
+  const base = {
+    id: "pk",
+    name: "Key",
+    deviceType: "singleDevice" as const,
+    backedUp: false,
+    transports: null,
+    createdAt: new Date("2026-10-01T00:00:00Z"),
+    lastUsedAt: null,
+  };
+
+  it("calls a passkey synced only when it is backed up to the person's other devices", () => {
+    expect(presentPasskey(base).synced).toBe(false);
+    expect(presentPasskey({ ...base, deviceType: "multiDevice", backedUp: true }).synced).toBe(
+      true,
+    );
+    expect(presentPasskey({ ...base, deviceType: "multiDevice", backedUp: false }).synced).toBe(
+      false,
+    );
+  });
+
+  it("calls a passkey a security key when it can only be reached over USB, NFC or Bluetooth", () => {
+    expect(presentPasskey({ ...base, transports: "usb,nfc" }).kind).toBe("security_key");
+    expect(presentPasskey({ ...base, transports: "internal" }).kind).toBe("platform");
+    expect(presentPasskey({ ...base, transports: "usb,internal" }).kind).toBe("platform");
+    expect(presentPasskey(base).kind).toBe("platform");
+  });
+
+  it("gives an unnamed passkey a plain name and keeps a long name within the limit", () => {
+    expect(presentPasskey({ ...base, name: null }).name).toBe("Passkey");
+    expect(presentPasskey({ ...base, name: "   " }).name).toBe("Passkey");
+    expect(presentPasskey({ ...base, name: "x".repeat(200) }).name).toHaveLength(60);
   });
 });
 
@@ -75,7 +192,8 @@ describe("AccountSignInMethodsService.unlink", () => {
       kind: "sign_in_method_removed",
       userId: SUBJECT,
       at: NOW,
-      provider: "google",
+      method: "google",
+      detail: "ada@example.com",
       userAgent: "Mozilla/5.0 (Macintosh) Chrome/130.0",
     });
   });
