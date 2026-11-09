@@ -39,6 +39,8 @@ export interface INotificationFactory {
     amount: string;
     dueDate: string;
     step: PaymentReminderStepKey;
+    /** The reminder is for a private sale deal: the email calls the item a work, not a lot. */
+    privateSale?: boolean;
     /** The invoice cannot be paid yet: the reminder says what to do instead. */
     held?: PaymentReminderHoldKey | null;
   }): CreateNotificationRow;
