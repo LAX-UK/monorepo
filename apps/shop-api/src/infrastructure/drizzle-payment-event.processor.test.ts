@@ -1,8 +1,16 @@
 import { describe, expect, it, vi } from "vitest";
+
+// Ending a quote and putting the basket back are tested on their own; here only that they are asked.
+vi.mock("./shop-delivery-quote-close.js", () => ({ closeDeliveryQuoteForOrder: vi.fn() }));
+vi.mock("./shop-restore-basket-from-order.js", () => ({
+  restoreBasketLinesFromOrder: vi.fn(),
+}));
+
 import {
   completeShopCheckoutSession,
   failShopCheckoutSession,
 } from "./drizzle-payment-event.processor.js";
+import { restoreBasketLinesFromOrder } from "./shop-restore-basket-from-order.js";
 
 type MockOrder = {
   id: string;
@@ -15,6 +23,7 @@ type MockOrder = {
 
 function createDbMock(options: { claim: boolean; order: MockOrder | null }) {
   const inserted: unknown[] = [];
+  const updated: unknown[] = [];
   const tx = {
     insert: vi.fn(() => ({
       values: vi.fn((row: unknown) => {
@@ -28,17 +37,27 @@ function createDbMock(options: { claim: boolean; order: MockOrder | null }) {
     })),
     select: vi.fn(() => ({
       from: vi.fn(() => ({
-        where: vi.fn(() => ({
-          for: vi.fn(() => ({
-            limit: vi.fn(async () => (options.order ? [options.order] : [])),
-          })),
-        })),
+        // Locked and read as one row, or awaited directly as an order with no lines.
+        where: vi.fn(() =>
+          Object.assign(Promise.resolve([]), {
+            for: vi.fn(() => ({
+              limit: vi.fn(async () => (options.order ? [options.order] : [])),
+            })),
+          }),
+        ),
       })),
+    })),
+    update: vi.fn(() => ({
+      set: vi.fn((row: unknown) => {
+        updated.push(row);
+        return { where: vi.fn(async () => []) };
+      }),
     })),
   };
 
   return {
     inserted,
+    updated,
     transaction: vi.fn(async (fn: (inner: typeof tx) => Promise<unknown>) => fn(tx)),
   };
 }
@@ -69,31 +88,6 @@ describe("completeShopCheckoutSession", () => {
         paidAt: new Date(),
       }),
     ).resolves.toBe("duplicate");
-  });
-
-  it("rejects amount mismatches as non-retryable", async () => {
-    const db = createDbMock({
-      claim: true,
-      order: {
-        id: "order-1",
-        totalPence: 1000,
-        status: "pending_payment",
-        identitySubjectId: "sub-1",
-      },
-    });
-
-    await expect(
-      completeShopCheckoutSession(db as never, {
-        eventId: "evt-1",
-        orderId: "order-1",
-        sessionId: "cs_test",
-        amountTotalPence: 999,
-        paidAt: new Date(),
-      }),
-    ).rejects.toMatchObject({
-      message: "amount_mismatch",
-      retryable: false,
-    });
   });
 
   it("acknowledges paid webhook for terminal order status without mutating", async () => {
@@ -189,7 +183,7 @@ describe("completeShopCheckoutSession", () => {
       ).toBe(true);
     });
 
-    it("keys the task by the Stripe event when no PaymentIntent was reported", async () => {
+    it("keys the task by the payment session when no PaymentIntent was reported", async () => {
       vi.spyOn(console, "error").mockImplementation(() => undefined);
       const db = createDbMock({ claim: true, order: closedOrder });
       await completeShopCheckoutSession(
@@ -200,7 +194,7 @@ describe("completeShopCheckoutSession", () => {
       const task = db.inserted.find(
         (row) => (row as { eventType?: string }).eventType === "payment.unapplied_money_received",
       ) as { payload: { dedupeKey: string } };
-      expect(task.payload.dedupeKey).toBe("shop_order_paid_after_close:evt-1");
+      expect(task.payload.dedupeKey).toBe("shop_order_paid_after_close:cs_test");
     });
 
     it("takes the money's lock and opens no second task when the same PaymentIntent is already known", async () => {
@@ -245,7 +239,10 @@ describe("completeShopCheckoutSession", () => {
 
     it("records nothing for an order that is still waiting or already paid", async () => {
       vi.spyOn(console, "error").mockImplementation(() => undefined);
-      const db = createDbMock({ claim: true, order: { ...closedOrder, status: "paid" } });
+      const db = createDbMock({
+        claim: true,
+        order: { ...closedOrder, status: "paid", stripeCheckoutSessionId: "cs_test" },
+      });
       await expect(completeShopCheckoutSession(db as never, paid)).resolves.toBe("processed");
       expect(
         db.inserted.some(
@@ -275,5 +272,317 @@ describe("failShopCheckoutSession", () => {
         sessionId: "cs_test",
       }),
     ).resolves.toBe("processed");
+  });
+});
+
+describe("a payment that cannot be applied to its order is tracked, not dropped", () => {
+  const order: MockOrder = {
+    id: "order-1",
+    reference: "LAX-S-10482",
+    totalPence: 1000,
+    status: "pending_payment",
+    identitySubjectId: "sub-1",
+    stripeCheckoutSessionId: "cs_test",
+  };
+  const paid = {
+    eventId: "evt-1",
+    orderId: "order-1",
+    sessionId: "cs_test",
+    amountTotalPence: 1000,
+    paidAt: new Date(),
+    paymentIntentId: "pi_123",
+  };
+  const task = (db: ReturnType<typeof createDbMock>) =>
+    db.inserted.find(
+      (row) => (row as { eventType?: string }).eventType === "payment.unapplied_money_received",
+    ) as { payload: Record<string, unknown> } | undefined;
+  const quiet = () => vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+  it("records the amount actually paid for the wrong amount, and acknowledges once it is recorded", async () => {
+    quiet();
+    const db = createDbMock({ claim: true, order });
+    const outcome = await completeShopCheckoutSession(
+      db as never,
+      { ...paid, amountTotalPence: 999 },
+      { unappliedMoney: knownMoney(false) },
+    );
+    expect(outcome).toBe("unapplied_recorded");
+    expect(task(db)?.payload).toMatchObject({
+      reason: "shop_order_amount_mismatch",
+      shopOrderId: "order-1",
+      shopOrderReference: "LAX-S-10482",
+      shopCheckoutSessionId: "cs_test",
+      stripePaymentIntentId: "pi_123",
+      amountCents: 999,
+      currency: "GBP",
+      dedupeKey: "shop_order_amount_mismatch:pi_123",
+    });
+  });
+
+  it("records a payment made in another session than the order's", async () => {
+    quiet();
+    const db = createDbMock({ claim: true, order });
+    const outcome = await completeShopCheckoutSession(
+      db as never,
+      { ...paid, sessionId: "cs_other" },
+      { unappliedMoney: knownMoney(false) },
+    );
+    expect(outcome).toBe("unapplied_recorded");
+    expect(task(db)?.payload).toMatchObject({
+      reason: "shop_order_session_mismatch",
+      shopCheckoutSessionId: "cs_other",
+      amountCents: 1000,
+    });
+  });
+
+  it("records a second payment, in another session, for an order already paid", async () => {
+    quiet();
+    const db = createDbMock({ claim: true, order: { ...order, status: "paid" } });
+    const outcome = await completeShopCheckoutSession(
+      db as never,
+      { ...paid, sessionId: "cs_second" },
+      { unappliedMoney: knownMoney(false) },
+    );
+    expect(outcome).toBe("unapplied_recorded");
+    expect(task(db)?.payload).toMatchObject({
+      reason: "shop_order_paid_twice",
+      shopCheckoutSessionId: "cs_second",
+    });
+  });
+
+  it("treats the same session again on a paid order as nothing new", async () => {
+    const db = createDbMock({ claim: true, order: { ...order, status: "paid" } });
+    const money = knownMoney(false);
+    await expect(
+      completeShopCheckoutSession(db as never, paid, { unappliedMoney: money }),
+    ).resolves.toBe("processed");
+    expect(task(db)).toBeUndefined();
+    expect(money.lockKey).not.toHaveBeenCalled();
+  });
+
+  it("records a payment on a closed order with the amount actually paid, even when it is not the total", async () => {
+    quiet();
+    const db = createDbMock({ claim: true, order: { ...order, status: "expired" } });
+    const outcome = await completeShopCheckoutSession(
+      db as never,
+      { ...paid, amountTotalPence: 555 },
+      { unappliedMoney: knownMoney(false) },
+    );
+    expect(outcome).toBe("terminal_acknowledged");
+    expect(task(db)?.payload).toMatchObject({
+      reason: "shop_order_paid_after_close",
+      amountCents: 555,
+    });
+  });
+
+  it("takes the lock and opens no second task when the same PaymentIntent is already tracked", async () => {
+    quiet();
+    const db = createDbMock({ claim: true, order });
+    const money = knownMoney(true);
+    const outcome = await completeShopCheckoutSession(
+      db as never,
+      { ...paid, amountTotalPence: 999 },
+      { unappliedMoney: money },
+    );
+    expect(outcome).toBe("unapplied_recorded");
+    expect(money.lockKey).toHaveBeenCalledWith(
+      expect.anything(),
+      "shop_order_amount_mismatch:pi_123",
+    );
+    expect(task(db)).toBeUndefined();
+  });
+
+  it("answers a replay of the same event as a duplicate, once it was tracked", async () => {
+    quiet();
+    // The first attempt applies and fails; the recording transaction then finds the claim taken.
+    const db = createDbMock({ claim: true, order });
+    const first = await completeShopCheckoutSession(
+      db as never,
+      { ...paid, amountTotalPence: 999 },
+      { unappliedMoney: knownMoney(false) },
+    );
+    expect(first).toBe("unapplied_recorded");
+    const replay = createDbMock({ claim: false, order });
+    await expect(
+      completeShopCheckoutSession(
+        replay as never,
+        { ...paid, amountTotalPence: 999 },
+        { unappliedMoney: knownMoney(false) },
+      ),
+    ).resolves.toBe("duplicate");
+  });
+
+  it("sends the ops email as an extra, naming the failure", async () => {
+    quiet();
+    const queueCheckoutOpsAlert = vi.fn(async () => undefined);
+    const db = createDbMock({ claim: true, order });
+    await completeShopCheckoutSession(
+      db as never,
+      { ...paid, amountTotalPence: 999 },
+      {
+        unappliedMoney: knownMoney(false),
+        opsAlertEmail: "ops@example.test",
+        notifications: { queueCheckoutOpsAlert } as never,
+      },
+    );
+    expect(queueCheckoutOpsAlert).toHaveBeenCalledOnce();
+  });
+
+  it("fails, so Stripe sends it again, when the money cannot be recorded", async () => {
+    quiet();
+    const db = createDbMock({ claim: true, order });
+    const money = {
+      lockKey: vi.fn(async () => {
+        throw new Error("database down");
+      }),
+      exists: vi.fn(async () => false),
+    };
+    await expect(
+      completeShopCheckoutSession(
+        db as never,
+        { ...paid, amountTotalPence: 999 },
+        { unappliedMoney: money },
+      ),
+    ).rejects.toThrow("database down");
+  });
+
+  it("fails rather than drop the money when no finance store is wired", async () => {
+    quiet();
+    const db = createDbMock({ claim: true, order });
+    await expect(
+      completeShopCheckoutSession(db as never, { ...paid, amountTotalPence: 999 }),
+    ).rejects.toThrow("unapplied_money_reader_not_configured");
+  });
+
+  it("closes an order paid on its own session but not applied, so nothing is left waiting for it", async () => {
+    quiet();
+    vi.mocked(restoreBasketLinesFromOrder).mockClear();
+    const db = createDbMock({ claim: true, order });
+    await completeShopCheckoutSession(
+      db as never,
+      { ...paid, amountTotalPence: 999 },
+      { unappliedMoney: knownMoney(false) },
+    );
+    expect(db.updated).toContainEqual(expect.objectContaining({ status: "payment_failed" }));
+    expect(restoreBasketLinesFromOrder).toHaveBeenCalled();
+  });
+
+  it("leaves an order waiting when the money came in another session, which does not spend its own", async () => {
+    quiet();
+    const db = createDbMock({ claim: true, order });
+    await completeShopCheckoutSession(
+      db as never,
+      { ...paid, sessionId: "cs_other", amountTotalPence: 999 },
+      { unappliedMoney: knownMoney(false) },
+    );
+    expect(db.updated).toEqual([]);
+  });
+
+  it("labels a stale session as the session, even when the amount is also wrong", async () => {
+    quiet();
+    const db = createDbMock({ claim: true, order });
+    await completeShopCheckoutSession(
+      db as never,
+      { ...paid, sessionId: "cs_stale", amountTotalPence: 999 },
+      { unappliedMoney: knownMoney(false) },
+    );
+    expect(task(db)?.payload).toMatchObject({ reason: "shop_order_session_mismatch" });
+  });
+
+  it("says in the ops alert that the order was closed", async () => {
+    quiet();
+    const queueCheckoutOpsAlert = vi.fn(async () => undefined);
+    const db = createDbMock({ claim: true, order });
+    await completeShopCheckoutSession(
+      db as never,
+      { ...paid, amountTotalPence: 999 },
+      {
+        unappliedMoney: knownMoney(false),
+        opsAlertEmail: "ops@example.test",
+        notifications: { queueCheckoutOpsAlert } as never,
+      },
+    );
+    expect(queueCheckoutOpsAlert).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ detail: expect.stringContaining("The order was closed") }),
+    );
+  });
+
+  it("treats a paid order with no session, paid again in a Checkout session, as a second payment", async () => {
+    quiet();
+    const db = createDbMock({
+      claim: true,
+      order: { ...order, status: "paid", stripeCheckoutSessionId: null },
+    });
+    const outcome = await completeShopCheckoutSession(db as never, paid, {
+      unappliedMoney: knownMoney(false),
+    });
+    expect(outcome).toBe("unapplied_recorded");
+    expect(task(db)?.payload).toMatchObject({ reason: "shop_order_paid_twice" });
+  });
+
+  describe("an order already reached through payment", () => {
+    it.each(["paid", "refunded", "partially_refunded"])(
+      "treats the same session again on a %s order as nothing new",
+      async (status) => {
+        const db = createDbMock({ claim: true, order: { ...order, status } });
+        await expect(
+          completeShopCheckoutSession(db as never, paid, { unappliedMoney: knownMoney(false) }),
+        ).resolves.toBe("processed");
+        expect(task(db)).toBeUndefined();
+      },
+    );
+
+    it("records a payment in another session on a refunded order as money for a closed order", async () => {
+      quiet();
+      const db = createDbMock({ claim: true, order: { ...order, status: "refunded" } });
+      const outcome = await completeShopCheckoutSession(
+        db as never,
+        { ...paid, sessionId: "cs_other" },
+        { unappliedMoney: knownMoney(false) },
+      );
+      expect(outcome).toBe("terminal_acknowledged");
+      expect(task(db)?.payload).toMatchObject({ reason: "shop_order_paid_after_close" });
+    });
+  });
+
+  describe("a payment for an order that does not exist", () => {
+    it("in live mode records a finance task with no order, and acknowledges it", async () => {
+      quiet();
+      const db = createDbMock({ claim: true, order: null });
+      const outcome = await completeShopCheckoutSession(
+        db as never,
+        { ...paid, livemode: true },
+        { unappliedMoney: knownMoney(false) },
+      );
+      expect(outcome).toBe("unapplied_recorded");
+      expect(task(db)?.payload).toMatchObject({
+        reason: "shop_order_not_found",
+        shopOrderId: null,
+        shopCheckoutSessionId: "cs_test",
+        stripePaymentIntentId: "pi_123",
+        amountCents: 1000,
+      });
+    });
+
+    it("in test mode logs it, tells ops and still answers with an error", async () => {
+      const log = quiet();
+      const queueCheckoutOpsAlert = vi.fn(async () => undefined);
+      const db = createDbMock({ claim: true, order: null });
+      await expect(
+        completeShopCheckoutSession(db as never, paid, {
+          unappliedMoney: knownMoney(false),
+          opsAlertEmail: "ops@example.test",
+          notifications: { queueCheckoutOpsAlert } as never,
+        }),
+      ).rejects.toMatchObject({ code: "payment_not_found", retryable: false });
+      expect(task(db)).toBeUndefined();
+      expect(queueCheckoutOpsAlert).toHaveBeenCalledOnce();
+      expect(
+        log.mock.calls.some(([text]) =>
+          String(text).includes("shop_payment_unknown_order_test_mode"),
+        ),
+      ).toBe(true);
+    });
   });
 });

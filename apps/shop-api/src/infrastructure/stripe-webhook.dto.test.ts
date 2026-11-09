@@ -34,6 +34,7 @@ describe("stripe webhook DTO", () => {
       amountTotalPence: 4200,
       customerEmail: null,
       paymentIntentId: null,
+      livemode: false,
     });
   });
 

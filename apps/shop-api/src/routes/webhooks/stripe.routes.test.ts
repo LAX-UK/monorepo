@@ -90,4 +90,50 @@ describe("POST /webhooks/stripe", () => {
     expect(JSON.parse(response.body)).toEqual({ received: true, ignored: true });
     await app.close();
   });
+
+  describe("a paid event that could not be applied", () => {
+    const appFor = (outcome: "unapplied_recorded" | "terminal_acknowledged") =>
+      createShopApiApp({
+        deps: createMinimalShopApiTestDeps({
+          stripeWebhook: {
+            webhookSecret: "whsec_test",
+            verifyWebhook: () => ({ id: "evt_1", type: "checkout.session.completed" }),
+            parseCheckoutSessionCompleted: () => null,
+            parseCheckoutSessionExpired: () => null,
+            parseCheckoutSessionAsyncPaymentFailed: () => null,
+            completeCheckout: async () => outcome,
+            expireCheckout: async () => "processed" as const,
+            failCheckout: async () => "processed" as const,
+            recordCurrencyViolation: async () => "processed" as const,
+            dispatchWebhook: async () => ({ kind: "checkout" as const, outcome }),
+          },
+        }),
+        logger: false,
+      });
+    const post = (app: ReturnType<typeof appFor>) =>
+      app.inject({
+        method: "POST",
+        url: "/webhooks/stripe",
+        payload: Buffer.from("{}"),
+        headers: { "content-type": "application/json", "stripe-signature": "sig" },
+      });
+
+    it("answers 200 once the money is tracked, so Stripe stops sending it", async () => {
+      const app = appFor("unapplied_recorded");
+      await app.ready();
+      const response = await post(app);
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toEqual({ received: true, tracked: true });
+      await app.close();
+    });
+
+    it("answers 200 for a payment on a closed order, as before", async () => {
+      const app = appFor("terminal_acknowledged");
+      await app.ready();
+      const response = await post(app);
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toEqual({ received: true, terminal: true });
+      await app.close();
+    });
+  });
 });

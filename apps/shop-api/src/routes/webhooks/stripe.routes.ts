@@ -53,6 +53,13 @@ export async function registerStripeWebhookRoutes(
               request.log.error("stripe paid webhook for terminal shop order");
               return reply.status(200).send({ received: true, terminal: true });
             }
+            if (result.outcome === "unapplied_recorded") {
+              // The money is tracked for finance, so Stripe can stop sending it.
+              request.log.error(
+                "stripe paid webhook that could not be applied, recorded for finance",
+              );
+              return reply.status(200).send({ received: true, tracked: true });
+            }
             return reply.status(200).send({ received: true });
           }
           if (result.kind === "money") {

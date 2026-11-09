@@ -138,7 +138,8 @@ export const FormErrorSummary = React.forwardRef<HTMLDivElement, FormErrorSummar
             {title}
           </p>
           {/* The bullet is its own element, so a message that wraps keeps it on the first line. */}
-          <ul className="mt-1 list-none">
+          {/* An empty marker, not list-none: Safari's VoiceOver drops the list role from list-style none. */}
+          <ul className="mt-1 list-['']">
             {errors.map((error) => (
               <li key={error.fieldId} className="flex gap-2 leading-6">
                 <span aria-hidden className="w-2 shrink-0 text-center">

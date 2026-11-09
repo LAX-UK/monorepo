@@ -7,6 +7,8 @@ export type StripeCheckoutCompletedDto = {
   customerEmail?: string | null;
   /** The PaymentIntent that took the money; kept for finance when the order is closed. */
   paymentIntentId?: string | null;
+  /** Whether Stripe sent the event from live mode. */
+  livemode?: boolean;
 };
 
 export type StripeCheckoutExpiredDto = {
