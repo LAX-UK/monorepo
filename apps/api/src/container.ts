@@ -293,7 +293,7 @@ export function createContainer(env: Env): Container {
     webOrigin: env.WEB_ORIGIN,
     watchlistReminders,
     consignmentThreadSweep: consignmentMessages.sweep,
-    paymentReminders: buyerDefault.paymentReminderService,
+    paymentReminders: buyerDefault.paymentReminders,
   });
   const catalogRoutes = createCatalogRouteServices({
     saleService: catalog.saleService,

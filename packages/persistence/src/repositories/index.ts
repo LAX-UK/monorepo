@@ -124,6 +124,8 @@ export {
 export { DrizzleLaxAdminRolesRepository } from "./drizzle-lax-admin-roles.repository.js";
 export { DrizzlePaymentRepository } from "./drizzle-payment.repository.js";
 export { DrizzleBidInvoiceRepository } from "./drizzle-bid-invoice.repository.js";
+export { DrizzleCollectionBookingRepository } from "./drizzle-collection-booking.repository.js";
+export { DrizzleCollectionPlaceRepository } from "./drizzle-collection-place.repository.js";
 export { DrizzlePayoutRepository } from "./drizzle-payout.repository.js";
 export { DrizzlePaymentExternalRefRepository } from "./drizzle-payment-external-ref.repository.js";
 export { DrizzleXeroConnectionRepository } from "./drizzle-xero-connection.repository.js";
@@ -310,6 +312,7 @@ export {
   DrizzleDealWorkStore,
   DrizzlePrivateSaleDealQueryRepository,
 } from "./drizzle-private-sale-deal-query.repository.js";
+export { DrizzlePrivateSaleDealReminderStore } from "./drizzle-private-sale-deal-reminder.store.js";
 export {
   DrizzlePrivateSaleDealFinanceStore,
   DrizzlePrivateSaleDealPaymentRepository,

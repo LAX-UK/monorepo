@@ -96,4 +96,12 @@ describe("Bid anonymisation policy", () => {
       ]),
     );
   });
+
+  it("scrubs the collector's name, email and company on collection bookings", () => {
+    const rule = BID_ANONYMISATION_RULES.find((r) => r.table === "collection_booking");
+    expect(rule).toMatchObject({
+      treatment: "scrub",
+      fields: ["collector_name", "collector_email", "collector_company"],
+    });
+  });
 });

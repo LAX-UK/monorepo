@@ -3,12 +3,14 @@ import {
   DrizzleBuyerDefaultReader,
   DrizzleBuyerDefaultRepository,
   DrizzlePaymentReminderStore,
+  DrizzlePrivateSaleDealReminderStore,
   createDrizzleLotTransitionRepository,
 } from "@auction/persistence/repositories";
 import type { Env } from "../env.js";
 import { BuyerDefaultService } from "../services/buyer-default/buyer-default.service.js";
 import { PaymentReminderService } from "../services/buyer-default/payment-reminder.service.js";
 import { revokeOpenStripeCheckoutForPayment } from "../services/payment/checkout-orchestrator.js";
+import { DealReminderService } from "../services/private-sale-deal/deal-reminder.service.js";
 import { DrizzleAdminUserSuspender } from "./adapters/drizzle-admin-user-suspender.js";
 import type { ContainerCatalogServices } from "./create-catalog-services.js";
 import type { ContainerInfra } from "./create-infra.js";
@@ -19,6 +21,8 @@ import type { ContainerRepositories } from "./create-repositories.js";
 export type ContainerBuyerDefaultServices = {
   buyerDefaultService: BuyerDefaultService;
   paymentReminderService: PaymentReminderService;
+  /** The lot and deal reminders the internal cron sends. */
+  paymentReminders: Pick<PaymentReminderService, "sendDueReminders">;
 };
 
 /**
@@ -68,5 +72,25 @@ export function createBuyerDefaultServices(input: {
     eligibility: payments.paymentEligibility,
   });
 
-  return { buyerDefaultService, paymentReminderService };
+  const dealReminderService = new DealReminderService({
+    store: new DrizzlePrivateSaleDealReminderStore(db),
+    compliance: payments.settlementCompliancePolicy,
+    outbox: platform.notificationOutboxService,
+    factory: platform.notificationFactory,
+    recipients: payments.invoiceRecipients,
+    eligibility: payments.paymentEligibility,
+  });
+
+  return {
+    buyerDefaultService,
+    paymentReminderService,
+    // One hourly job reminds buyers of unpaid lot invoices and of a deal's deadlines.
+    paymentReminders: {
+      async sendDueReminders() {
+        const lots = await paymentReminderService.sendDueReminders();
+        const deals = await dealReminderService.sendDueReminders();
+        return { reminded: lots.reminded + deals.reminded };
+      },
+    },
+  };
 }

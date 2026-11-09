@@ -268,6 +268,14 @@ export const envSchema = z
       (value) => (value === "" ? undefined : value),
       z.coerce.number().int().min(5).max(30).default(5),
     ),
+    /**
+     * Years the record of who collected works (the collector's name and the kind of ID checked) is
+     * kept after a hand-over when the person's account has been erased; never under 1.
+     */
+    COLLECTION_HANDOVER_RETENTION_YEARS: z.preprocess(
+      (value) => (value === "" ? undefined : value),
+      z.coerce.number().int().min(1).max(30).default(6),
+    ),
     DISABLE_PAYOUT_SETTLEMENT: z
       .preprocess((val) => val === "true" || val === true, z.boolean())
       .default(false),

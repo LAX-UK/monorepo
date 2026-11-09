@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_COLLECTION_RULES, collectionRulesIssues } from "./collection-rules.js";
+import {
+  DEFAULT_COLLECTION_RULES,
+  DEFAULT_COLLECTION_WEEKLY_HOURS,
+  collectionRulesIssues,
+} from "./collection-rules.js";
 
 const rules = (over: Partial<typeof DEFAULT_COLLECTION_RULES>) => ({
   ...DEFAULT_COLLECTION_RULES,
@@ -18,6 +22,15 @@ describe("collection rules", () => {
       undoHandOverMinutes: 10,
     });
     expect(collectionRulesIssues(DEFAULT_COLLECTION_RULES)).toEqual([]);
+  });
+
+  it("opens Monday to Friday, 10:00 to 19:00, until staff change the hours", () => {
+    expect(DEFAULT_COLLECTION_WEEKLY_HOURS.map((h) => h.weekday)).toEqual([1, 2, 3, 4, 5]);
+    expect(
+      DEFAULT_COLLECTION_WEEKLY_HOURS.every(
+        (h) => h.opensLocal === "10:00" && h.closesLocal === "19:00",
+      ),
+    ).toBe(true);
   });
 
   it("accepts the visit lengths and place counts staff can choose", () => {

@@ -296,6 +296,12 @@ export const privateSaleDealPayment = pgTable(
     stripeCheckoutSessionId: text("stripe_checkout_session_id"),
     stripePaymentIntentId: text("stripe_payment_intent_id"),
     stripeChargeId: text("stripe_charge_id"),
+    /** Set when finance recorded a bank transfer that landed outside the checkout. */
+    recordedByUserId: text("recorded_by_user_id").references(() => user.id, {
+      onDelete: "set null",
+    }),
+    /** The bank's reference for a recorded transfer; null for a payment through the checkout. */
+    bankReference: text("bank_reference"),
     refundedMinor: bigint("refunded_minor", { mode: "number" }).notNull().default(0),
     stripeRefundId: text("stripe_refund_id"),
     paidAt: timestamp("paid_at", { mode: "date", withTimezone: true }),
@@ -318,6 +324,10 @@ export const privateSaleDealPayment = pgTable(
       .where(sql`${table.stripeChargeId} IS NOT NULL`),
     check("private_sale_deal_payment_status_check", sql.raw(`"status" IN (${PAYMENT_STATUSES})`)),
     check(
+      "private_sale_deal_payment_recorded_check",
+      sql`("recorded_by_user_id" IS NULL AND "bank_reference" IS NULL) OR ("rail" = 'gb_bank_transfer' AND "bank_reference" IS NOT NULL AND "bank_reference" <> '')`,
+    ),
+    check(
       "private_sale_deal_payment_rail_check",
       sql`${table.rail} IN ('card', 'gb_bank_transfer')`,
     ),
@@ -330,6 +340,31 @@ export const privateSaleDealPayment = pgTable(
     check(
       "private_sale_deal_payment_paid_check",
       sql`${table.status} NOT IN ('paid', 'refunded') OR ${table.paidAt} IS NOT NULL`,
+    ),
+  ],
+);
+
+/**
+ * The deadline reminders already sent for a deal, one row per deadline and step. Claiming a step
+ * is inserting its row, so a repeated or parallel run sends each reminder once.
+ */
+export const privateSaleDealReminder = pgTable(
+  "private_sale_deal_reminder",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    dealId: uuid("deal_id")
+      .notNull()
+      .references(() => privateSaleDeal.id, { onDelete: "cascade" }),
+    kind: text("kind").notNull(),
+    step: text("step").notNull(),
+    sentAt: timestamp("sent_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("private_sale_deal_reminder_step_uidx").on(table.dealId, table.kind, table.step),
+    check("private_sale_deal_reminder_kind_check", sql`${table.kind} IN ('payment', 'collection')`),
+    check(
+      "private_sale_deal_reminder_step_check",
+      sql`${table.step} IN ('before_due', 'due_day', 'overdue')`,
     ),
   ],
 );

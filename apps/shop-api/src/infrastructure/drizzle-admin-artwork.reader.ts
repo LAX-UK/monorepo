@@ -44,10 +44,16 @@ import { readEditionRunDetail } from "./edition-runs/drizzle-edition-run-detail.
 
 const mainRun = alias(shopArtwork, "main_run");
 
-/** The run's facts are recorded and confirmed, which publishing needs. */
+/**
+ * The run's facts are recorded and confirmed, which publishing needs. A print sold on its own
+ * follows the facts of the run it came from.
+ */
 const factsConfirmedSql = sql<boolean>`exists (
   select 1 from ${shopEditionFacts}
-  where ${shopEditionFacts.artworkId} = ${shopArtwork.id}
+  where ${shopEditionFacts.artworkId} = case
+      when ${shopArtwork.runRole} = 'set_apart' then ${shopArtwork.mainRunArtworkId}
+      else ${shopArtwork.id}
+    end
     and ${shopEditionFacts.confirmedAt} is not null
 )`;
 

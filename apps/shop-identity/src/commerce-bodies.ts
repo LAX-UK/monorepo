@@ -179,6 +179,63 @@ export function storefrontRedirectsBodySchema(storefrontOrigin: string) {
   return z.object({ successUrl: onStorefront, cancelUrl: onStorefront }).strict();
 }
 
+/** Asking for a delivery quote on an order outside the UK: the basket, an address and where payment returns. */
+const deliveryQuoteRequestShape = (storefrontOrigin: string) => {
+  const onStorefront = z
+    .string()
+    .url()
+    .refine((value) => new URL(value).origin === storefrontOrigin, "Must stay on the storefront");
+  return {
+    basketId: z.string().uuid(),
+    idempotencyKey: z.string().trim().min(8).max(200),
+    deliveryAddress: z
+      .object({
+        recipientName: z.string().trim().min(1).max(200),
+        line1: z.string().trim().min(1).max(200),
+        line2: z.string().trim().max(200).optional(),
+        city: z.string().trim().min(1).max(120),
+        postcode: z.string().trim().min(1).max(20),
+        country: z.string().trim().length(2),
+      })
+      .strict(),
+    deliveryPhone: z.string().trim().min(1).max(30),
+    successUrl: onStorefront,
+    cancelUrl: onStorefront,
+  };
+};
+
+export function createDeliveryQuoteRequestBodySchema(storefrontOrigin: string) {
+  return z.object(deliveryQuoteRequestShape(storefrontOrigin)).strict();
+}
+
+export function createGuestDeliveryQuoteRequestBodySchema(storefrontOrigin: string) {
+  return z
+    .object({
+      ...deliveryQuoteRequestShape(storefrontOrigin),
+      email: z.string().trim().min(3).max(254).email(),
+      name: z.string().trim().min(1).max(200),
+      marketingConsent: z.boolean().optional(),
+    })
+    .strict();
+}
+
+/** The shop API's answer to a guest's quote request: the result, and the order token when one was made. */
+export const guestDeliveryQuoteResponseSchema = z.object({
+  result: z.discriminatedUnion("outcome", [
+    z.object({
+      outcome: z.literal("quote_requested"),
+      orderReference: z.string(),
+      holdUntil: z.string(),
+      regionId: z.enum(["eu", "north_america", "asia_pacific"]).nullable(),
+      country: z.string().length(2),
+    }),
+    z.object({ outcome: z.literal("pay_now"), checkoutUrl: z.string().min(1) }),
+    z.object({ outcome: z.literal("not_delivered"), country: z.string().length(2) }),
+  ]),
+  orderAccessToken: guestOrderTokenSchema.optional(),
+  orderAccessExpiresAt: z.string().datetime({ offset: true }).optional(),
+});
+
 export const checkoutBodySchema = createCheckoutBodySchema("http://localhost:3020");
 
 const ENQUIRY_NAME_MAX_LENGTH = 120;

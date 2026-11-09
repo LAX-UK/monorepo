@@ -49,7 +49,7 @@ export const AUDIT_LOG_VIEW_PREFIXES: Readonly<Record<AuditLogView, readonly str
     "shop.user_anonymised",
     "data_request.",
   ],
-  operations: ["failed_job.", "marketing_enquiry.", "enquiry_routing."],
+  operations: ["failed_job.", "marketing_enquiry.", "enquiry_routing.", "collection."],
 };
 
 export function isAuditLogView(value: string): value is AuditLogView {

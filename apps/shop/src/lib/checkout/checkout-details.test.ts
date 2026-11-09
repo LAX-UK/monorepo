@@ -5,6 +5,7 @@ import {
   checkoutDeliveryPayload,
   initialCheckoutAddress,
   orderedCheckoutErrors,
+  outsideUkDeliveryPayload,
   validateCheckoutDetails,
 } from "./checkout-details";
 
@@ -31,6 +32,7 @@ const blank: CheckoutDetails = {
   line2: "",
   city: "",
   postcode: "",
+  country: "",
   phone: "",
   saveAddress: true,
 };
@@ -136,5 +138,84 @@ describe("checkoutDeliveryPayload", () => {
 
   it("sends no address for collection", () => {
     expect(checkoutDeliveryPayload({ ...blank, choice: "collect_new_cavendish" }, [])).toBeNull();
+  });
+});
+
+describe("delivery outside the UK", () => {
+  const abroad: CheckoutDetails = {
+    ...blank,
+    choice: "international_quotation",
+    recipientName: "Anna Weber",
+    line1: "Friedrichstrasse 12",
+    city: "Berlin",
+    postcode: "10117",
+    country: "DE",
+    phone: "+49 30 1234567",
+  };
+
+  it("accepts a complete address, with a postal code in any country's format", () => {
+    expect(validateCheckoutDetails(abroad, [])).toEqual({});
+    expect(validateCheckoutDetails({ ...abroad, postcode: "K1A 0B1" }, [])).toEqual({});
+  });
+
+  it("names each missing part, in page order", () => {
+    const errors = validateCheckoutDetails({ ...blank, choice: "international_quotation" }, []);
+    expect(Object.keys(errors)).toEqual([
+      "recipientName",
+      "line1",
+      "city",
+      "postcode",
+      "country",
+      "phone",
+    ]);
+    expect(orderedCheckoutErrors(errors).map((e) => e.fieldId)).toEqual([
+      "checkout-recipient-name",
+      "checkout-line1",
+      "checkout-city",
+      "checkout-postcode",
+      "checkout-country",
+      "checkout-phone",
+    ]);
+    expect(errors.postcode).toBe("Enter a postal code");
+  });
+
+  it("sends a UK country to UK delivery, and asks a guest for their name too", () => {
+    expect(validateCheckoutDetails({ ...abroad, country: "GB" }, []).country).toMatch(
+      /UK insured delivery/,
+    );
+    expect(validateCheckoutDetails(abroad, [], { requireContactName: true }).contactName).toBe(
+      "Enter your full name",
+    );
+  });
+
+  it("asks for a phone with a country code a courier could ring", () => {
+    expect(validateCheckoutDetails({ ...abroad, phone: "call me" }, []).phone).toMatch(
+      /country code/,
+    );
+  });
+
+  it("builds the request address with the country upper-cased and blank lines left out", () => {
+    expect(outsideUkDeliveryPayload({ ...abroad, country: "de", line2: "  " })).toEqual({
+      deliveryAddress: {
+        recipientName: "Anna Weber",
+        line1: "Friedrichstrasse 12",
+        city: "Berlin",
+        postcode: "10117",
+        country: "DE",
+      },
+      deliveryPhone: "+49 30 1234567",
+    });
+  });
+
+  it("leaves the UK rules as they were: a UK delivery with no country still validates", () => {
+    const uk = {
+      ...blank,
+      recipientName: "Ada",
+      line1: "1 High St",
+      city: "London",
+      postcode: "SW1A 1AA",
+      phone: "07700 900123",
+    };
+    expect(validateCheckoutDetails(uk, [])).toEqual({});
   });
 });

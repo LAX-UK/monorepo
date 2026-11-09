@@ -65,6 +65,8 @@ const detail: AdminArtworkDetail = {
     mainRun: null,
     linkedListings: [],
     stock: null,
+    prints: null,
+    setApart: null,
     certificateAuthority: null,
     horsCommerce: null,
   },

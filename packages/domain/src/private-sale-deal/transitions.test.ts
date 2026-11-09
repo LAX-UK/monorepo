@@ -43,6 +43,7 @@ describe("deal stages", () => {
         context({
           clearance: { ...CLEAR_SNAPSHOT, buyerSourceOfFunds: "approved" },
           ...(command === "agree" ? { actorUserId: "u-agreer" } : {}),
+          ...(command === "release" ? { releaseNote: "Collected by courier, ref ABC123" } : {}),
           ...(ctx ?? {}),
         }),
       );
@@ -480,5 +481,33 @@ describe("terms locked by agreement", () => {
     expect(codes(dealBlockers(cleared, "issue_invoice", noTerms))).toContain(
       "terms_version_not_configured",
     );
+  });
+});
+
+describe("releasing a paid work", () => {
+  const paid = deal({ stage: "paid", buyer: BUYER, priceMinor: 4_800_000 });
+
+  it("needs a note on how the work was handed over", () => {
+    for (const releaseNote of [undefined, "", "   "]) {
+      const result = transitionDeal(
+        paid,
+        "release",
+        context(releaseNote === undefined ? {} : { releaseNote }),
+      );
+      expect(result).toEqual({ ok: false, blockers: [{ code: "release_note_required" }] });
+    }
+  });
+
+  it("keeps the note with the release in the history", () => {
+    const result = transitionDeal(
+      paid,
+      "release",
+      context({ releaseNote: "  Collected by Ada  " }),
+    );
+    expect(result.ok && result.change).toMatchObject({
+      from: "paid",
+      to: "released",
+      reason: "Collected by Ada",
+    });
   });
 });

@@ -21,7 +21,7 @@ describe("migration 0336 party history for organisations named on their own", ()
     expect(index).toBeGreaterThan(0);
     const entry = journal.entries[index];
     const previous = journal.entries[index - 1];
-    expect(previous?.tag).toBe("0331_shop_framing_catalogue");
+    expect(previous?.tag).toBe("0335_private_sale_deal_follow_ups");
     expect(entry?.idx).toBe((previous?.idx ?? 0) + 1);
     expect(entry?.when).toBe((previous?.when ?? 0) + 24 * 60 * 60 * 1000);
   });
