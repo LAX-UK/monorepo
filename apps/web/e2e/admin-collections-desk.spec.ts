@@ -62,7 +62,7 @@ test.describe("collections desk journey @journey @roles", () => {
     await test.step("hands over after the photo ID is checked, then the visit reads collected", async () => {
       await row(page, refs.toHandOver).getByRole("button", { name: "Hand over" }).click();
       const panel = page.getByRole("dialog");
-      await expect(panel.getByText(COLLECTION_JOURNEY_NAMES.lots.toHandOver)).toBeVisible();
+      await expect(panel.getByText(COLLECTION_JOURNEY_NAMES.lots.toHandOver).first()).toBeVisible();
 
       // Without the check, it says what is missing.
       await panel.getByRole("button", { name: /^Mark .* collected$/ }).click();
