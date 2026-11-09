@@ -6,7 +6,7 @@ describe("collectionHandoverCutoff", () => {
 
   it("is the retention period before now, to the moment", () => {
     expect(collectionHandoverCutoff(now, 6).toISOString()).toBe("2032-01-01T12:00:00.000Z");
-    expect(collectionHandoverCutoff(now, 1).toISOString()).toBe("2037-01-01T12:00:00.000Z");
+    expect(collectionHandoverCutoff(now, 3).toISOString()).toBe("2035-01-01T12:00:00.000Z");
     expect(collectionHandoverCutoff(now, 30).toISOString()).toBe("2008-01-01T12:00:00.000Z");
   });
 
@@ -17,13 +17,13 @@ describe("collectionHandoverCutoff", () => {
   });
 
   it("lands on 1 March when 29 February has no counterpart", () => {
-    expect(collectionHandoverCutoff(new Date("2032-02-29T00:00:00Z"), 1).toISOString()).toBe(
-      "2031-03-01T00:00:00.000Z",
+    expect(collectionHandoverCutoff(new Date("2032-02-29T00:00:00Z"), 3).toISOString()).toBe(
+      "2029-03-01T00:00:00.000Z",
     );
   });
 
-  it("refuses a retention under one year, or one that is not a whole number", () => {
-    for (const years of [0, -1, 0.5, Number.NaN]) {
+  it("refuses a retention under three years, or one that is not a whole number", () => {
+    for (const years of [0, 1, 2, -1, 2.5, Number.NaN]) {
       expect(() => collectionHandoverCutoff(now, years)).toThrow(RangeError);
     }
   });
