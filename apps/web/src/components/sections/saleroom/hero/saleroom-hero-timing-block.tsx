@@ -5,7 +5,7 @@ import { resolveHeroCountdownEnd } from "@/components/sections/saleroom/hero/sal
 import type { SaleHeroVM } from "@/components/sections/saleroom/view-models";
 import { formatLondonWhen } from "@/lib/datetime/london-time";
 import { opensLine } from "@/lib/time/opens-line";
-import { useClientClock } from "@/lib/time/use-client-clock";
+import { useCountdownTick } from "@/lib/time/use-clock";
 
 type Props = {
   hero: SaleHeroVM;
@@ -13,8 +13,8 @@ type Props = {
 
 /** When the preview opens, by the time rule; the date until the clock is known. */
 function PreviewLine({ iso }: { iso: string }) {
-  const nowMs = useClientClock(60_000);
   const target = new Date(iso);
+  const nowMs = useCountdownTick([target.getTime()], { surface: "card" });
   const line =
     nowMs != null
       ? opensLine(target, new Date(nowMs), "Preview opens")

@@ -1,3 +1,4 @@
+import { createClockSource, createClockStore, replaceDefaultClockStore } from "@auction/ui/clock";
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import {
@@ -253,9 +254,19 @@ describe("between seasons", () => {
   });
 });
 
+/** A clock that follows the test's fake time, in place of the tab's real one. */
+function useFakeTimeClock() {
+  replaceDefaultClockStore(
+    createClockStore({
+      source: createClockSource({ wallNow: () => Date.now(), monotonicNow: () => Date.now() }),
+    }),
+  );
+}
+
 describe("the final-hour clock", () => {
   it("counts every second from the visitor's clock, replacing the text in place", () => {
     vi.useFakeTimers();
+    useFakeTimeClock();
     try {
       vi.setSystemTime(new Date("2026-11-01T20:17:42Z"));
       const hour = fixture(BID_COVER_FIXTURES, "hour").slides[0];
@@ -278,12 +289,14 @@ describe("the final-hour clock", () => {
         screen.getByText("Lots close from 21:00 GMT · 42:15 to the first close"),
       ).toBeInTheDocument();
     } finally {
+      replaceDefaultClockStore(null);
       vi.useRealTimers();
     }
   });
 
   it("stops at zero and is not a live region", () => {
     vi.useFakeTimers();
+    useFakeTimeClock();
     try {
       vi.setSystemTime(new Date("2026-11-01T20:59:58Z"));
       const hour = fixture(BID_COVER_FIXTURES, "hour").slides[0];
@@ -299,6 +312,7 @@ describe("the final-hour clock", () => {
       expect(screen.getByText("Closing 00:00")).toBeInTheDocument();
       expect(container.querySelector("[aria-live] .tabular-nums")).toBeNull();
     } finally {
+      replaceDefaultClockStore(null);
       vi.useRealTimers();
     }
   });

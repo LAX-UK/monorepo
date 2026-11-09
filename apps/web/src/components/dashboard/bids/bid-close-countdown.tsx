@@ -1,12 +1,12 @@
 "use client";
 
-import { useNow } from "@/hooks/use-now";
 import {
   type CountdownTier,
   countdownTier,
   formatCountdownShort,
   formatCountdownSpoken,
 } from "@/lib/format-countdown";
+import { useCountdownTick } from "@/lib/time/use-clock";
 import { cn } from "@auction/ui";
 
 /**
@@ -34,8 +34,8 @@ const CLOSING_TIME = new Intl.DateTimeFormat("en-GB", {
  * which get a calm sentence instead of a number that changes every second.
  */
 export function BidCloseCountdown({ endsAt, className }: { endsAt: string; className?: string }) {
-  const now = useNow(1000);
   const end = Date.parse(endsAt);
+  const now = useCountdownTick([end], { surface: "card" });
   if (Number.isNaN(end)) return null;
   // Before the first tick (and on the server) the closing time is shown instead: it does not
   // depend on the clock, so the server and the browser render the same text.

@@ -3,9 +3,9 @@
 import { timerText } from "@/components/lot-timer/format";
 import { LotTimerPill } from "@/components/lot-timer/lot-timer-pill";
 import type { SaleLotCardVM } from "@/components/sections/saleroom/view-models";
-import { useNow } from "@/hooks/use-now";
 import { useSaleroomLive } from "@/lib/context/saleroom-live-provider";
 import { resolveCatalogLotOverlay } from "@/lib/lot/catalog-lot-overlay";
+import { useClockNow } from "@/lib/time/use-clock";
 import type { Sale } from "@auction/types";
 import { StatusBadge, cn } from "@auction/ui";
 import { useMemo } from "react";
@@ -73,7 +73,7 @@ export function SaleroomLotCatalogOverlay({
   useOverlayChrome = false,
   showTimer = true,
 }: Props) {
-  const now = useNow(1000);
+  const now = useClockNow(1000);
   const saleroomLive = useSaleroomLive();
   const isOnBlock = lot.isOnBlock ?? saleroomLive?.isLotOnBlock(lot.id) ?? false;
   const isUpNext = lot.isUpNext ?? saleroomLive?.isLotUpNext(lot.id) ?? false;

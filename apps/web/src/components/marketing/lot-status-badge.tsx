@@ -7,14 +7,18 @@ import { LotCardTimer, type LotCardTimerProps } from "@/components/lot-timer";
  *
  * @see docs/marketing-design-language.md
  */
-import { type LotTimerInputs, classifyLotTimerState } from "@/components/lot-timer/classify";
+import {
+  type LotTimerInputs,
+  classifyLotTimerState,
+  lotTimerMoments,
+} from "@/components/lot-timer/classify";
 import { timerText } from "@/components/lot-timer/format";
-import { useNow } from "@/hooks/use-now";
 import { toPublicStatusBadgeProps } from "@/lib/presenters/public-status-badge";
 import {
   liveStatusCountdownClassName,
   resolveLotStatusPresentation,
 } from "@/lib/presenters/status-presentation";
+import { useCountdownTick } from "@/lib/time/use-clock";
 import { LiveBadge, StatusBadge } from "@auction/ui";
 
 export { LotCardTimer as LotStatusTimer, LotCardTimer, type LotCardTimerProps };
@@ -28,7 +32,7 @@ type LotStatusBadgeProps = LotTimerInputs & {
 
 /** Compact inline lot status — live / opens soon / API status + optional countdown. */
 export function LotStatusBadge({ winnerId, hasWinner, ...inputs }: LotStatusBadgeProps) {
-  const now = useNow(1000);
+  const now = useCountdownTick(lotTimerMoments(inputs), { surface: "card" });
   const state = classifyLotTimerState(inputs, now);
 
   if (state.kind === "live" && now != null) {

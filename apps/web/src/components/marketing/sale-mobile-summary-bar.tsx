@@ -15,7 +15,7 @@ import {
   resolveSaleroomMobileSummaryBarMode,
 } from "@/lib/saleroom/saleroom-mobile-chrome";
 import { closingChipText, opensLine } from "@/lib/time/opens-line";
-import { useClientClock } from "@/lib/time/use-client-clock";
+import { useCountdownTick } from "@/lib/time/use-clock";
 import type { Sale, SaleDeliveryMode } from "@auction/types";
 import { Countdown, LiveDot } from "@auction/ui";
 import { Button } from "@auction/ui/lax";
@@ -23,7 +23,7 @@ import Link from "next/link";
 
 /** When a sale opens, by the time rule: the date beyond a week, then days, hours and minutes. */
 function OpensText({ start }: { start: Date }) {
-  const nowMs = useClientClock(60_000);
+  const nowMs = useCountdownTick([start.getTime()], { surface: "card" });
   const line =
     nowMs != null
       ? opensLine(start, new Date(nowMs))

@@ -23,6 +23,7 @@ const APPROVED_ROOTS = new Set([
   "sales",
   "stripe-connect",
   "submissions",
+  "time",
   "telephone-bookings",
   "uploads",
   "users",

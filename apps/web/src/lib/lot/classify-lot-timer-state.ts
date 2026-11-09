@@ -19,6 +19,11 @@ function parseMs(s: string | null): number | null {
   return Number.isFinite(t) ? t : null;
 }
 
+/** The times a lot opens and closes, in epoch milliseconds, for the clock to wake on. */
+export function lotTimerMoments(i: LotTimerInputs): [number | null, number | null] {
+  return [parseMs(i.startTime), parseMs(i.endTime)];
+}
+
 /** Pure classifier: maps lot timing inputs + wall clock to a display state.
  * When `now` is null (SSR / first paint), only status-derived states are returned — no `msLeft`.
  */
