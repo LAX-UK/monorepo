@@ -11,10 +11,45 @@ describe("describeSignInMethods", () => {
     expect(describeSignInMethods([apple, credential, google])).toEqual({
       hasPassword: true,
       social: [
-        { provider: "google", linkedAt: at(2) },
-        { provider: "apple", linkedAt: at(3) },
+        { provider: "google", linkedAt: at(2), providerEmail: null, hidden: false },
+        { provider: "apple", linkedAt: at(3), providerEmail: null, hidden: false },
       ],
+      passkeys: [],
     });
+  });
+
+  it("carries the address a provider reported and whether it is a private relay", () => {
+    const relay = {
+      ...apple,
+      providerEmail: "relay@privaterelay.appleid.com",
+      providerEmailHidden: true,
+    };
+    const own = { ...google, providerEmail: "ada@example.com", providerEmailHidden: false };
+    expect(describeSignInMethods([relay, own]).social).toEqual([
+      { provider: "google", linkedAt: at(2), providerEmail: "ada@example.com", hidden: false },
+      {
+        provider: "apple",
+        linkedAt: at(3),
+        providerEmail: "relay@privaterelay.appleid.com",
+        hidden: true,
+      },
+    ]);
+  });
+
+  it("lists passkeys oldest first, beside the other methods", () => {
+    const newer = {
+      id: "pk-2",
+      name: "Phone",
+      deviceType: "multiDevice" as const,
+      backedUp: true,
+      transports: "internal",
+      createdAt: at(9),
+      lastUsedAt: null,
+    };
+    const older = { ...newer, id: "pk-1", name: "Laptop", createdAt: at(4) };
+    expect(
+      describeSignInMethods([credential], [newer, older]).passkeys.map((key) => key.id),
+    ).toEqual(["pk-1", "pk-2"]);
   });
 
   it("does not count a credential row that has no password", () => {
@@ -27,7 +62,7 @@ describe("describeSignInMethods", () => {
   it("ignores providers that are not offered for linking", () => {
     expect(
       describeSignInMethods([{ providerId: "github", hasPassword: false, createdAt: at(1) }]),
-    ).toEqual({ hasPassword: false, social: [] });
+    ).toEqual({ hasPassword: false, social: [], passkeys: [] });
   });
 });
 

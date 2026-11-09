@@ -375,6 +375,9 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
   "subject.data_export_requested": new Set(),
   /** Which provider was removed; nothing personal. */
   "user.sign_in_method_unlinked": new Set(["provider"]),
+  /** Which method was added or removed (google, apple or passkey); never its name or address. */
+  "user.sign_in_method_added": new Set(["method"]),
+  "user.sign_in_method_removed": new Set(["method"]),
   /** Which provider proved the email; nothing personal. */
   "user.unconfirmed_password_removed": new Set(["provider"]),
   /** Which provider was refused and whether it was a link or a sign-in; nothing personal. */

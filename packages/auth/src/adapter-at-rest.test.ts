@@ -52,3 +52,53 @@ describe("auth adapter at-rest protection", () => {
     expect(create.mock.calls[1]?.[0].data.accessToken).toMatch(/^v1:/);
   });
 });
+
+describe("the address a provider reported", () => {
+  function setup() {
+    const stored: Record<string, unknown>[] = [];
+    const base = {
+      create: vi.fn(async (args: { data: Record<string, unknown> }) => {
+        stored.push(args.data);
+        return args.data;
+      }),
+      findOne: vi.fn(async () => stored[0] ?? null),
+      findMany: vi.fn(async () => stored),
+      update: vi.fn(async (args: { update: Record<string, unknown> }) => args.update),
+      updateMany: vi.fn(async () => 0),
+      delete: vi.fn(async () => undefined),
+      deleteMany: vi.fn(async () => 0),
+      transaction: async (callback: (tx: unknown) => Promise<unknown>) => callback({}),
+    };
+    const adapter = wrapAuthDatabaseAdapter(
+      base as never,
+      createEnvelopeCrypto(Buffer.alloc(32, 9)),
+    );
+    return { adapter, stored, base };
+  }
+
+  it("is sealed when the account row is written, and read back as written", async () => {
+    const { adapter, stored } = setup();
+    const created = await adapter.create({
+      model: "account",
+      data: { providerId: "google", providerEmail: "ada@example.com" },
+    });
+    expect(stored[0]?.providerEmail).toMatch(/^v1:/);
+    expect(JSON.stringify(stored)).not.toContain("ada@example.com");
+    expect(created).toMatchObject({ providerEmail: "ada@example.com" });
+    expect(await adapter.findOne({ model: "account", where: [] })).toMatchObject({
+      providerEmail: "ada@example.com",
+    });
+  });
+
+  it("is sealed when it is changed, and left alone on other models", async () => {
+    const { adapter, base } = setup();
+    await adapter.update({
+      model: "account",
+      where: [],
+      update: { providerEmail: "relay@privaterelay.appleid.com" },
+    });
+    expect(base.update.mock.calls[0]?.[0].update.providerEmail).toMatch(/^v1:/);
+    await adapter.create({ model: "user", data: { providerEmail: "plain" } });
+    expect(base.create.mock.calls.at(-1)?.[0].data.providerEmail).toBe("plain");
+  });
+});

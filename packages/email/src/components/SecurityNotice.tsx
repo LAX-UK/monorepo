@@ -12,14 +12,17 @@ export type SecurityNoticeProps = {
   userName?: string | null | undefined;
   /** What happened, in plain sentences. */
   children: ReactNode;
-  /** Europe/London time, already formatted by the sender. */
-  whenDisplay: string;
+  /** Europe/London time, already formatted by the sender. Left out for an email queued without one. */
+  whenDisplay?: string | null | undefined;
   /** Browser and system label such as "Chrome on macOS"; omitted when the request had no user agent. */
   deviceLabel?: string | null | undefined;
   /** Rows shown above "When" and "Device", for example the old and new email address. */
   details?: FactCardRow[];
-  /** LAX Account security page, where the person can sign out everywhere and change their password. */
-  secureAccountUrl: string;
+  /**
+   * LAX Account security page, where the person can sign out everywhere and change their
+   * password. Left out for an email queued without one, which then says where to look instead.
+   */
+  secureAccountUrl?: string | null | undefined;
 };
 
 /**
@@ -49,11 +52,20 @@ export function SecurityNotice({
         ]}
       />
       <Text style={subheading}>If this wasn't you</Text>
-      <TextBlock>
-        Secure your account straight away. You can sign out everywhere and change your password from
-        your LAX Account security page.
-      </TextBlock>
-      <Button href={secureAccountUrl}>Secure your account</Button>
+      {secureAccountUrl ? (
+        <>
+          <TextBlock>
+            Secure your account straight away. You can sign out everywhere and change your password
+            from your LAX Account security page.
+          </TextBlock>
+          <Button href={secureAccountUrl}>Secure your account</Button>
+        </>
+      ) : (
+        <TextBlock>
+          Secure your account straight away. Sign in to your LAX Account, open Security, then sign
+          out everywhere and change your password.
+        </TextBlock>
+      )}
       <TextBlock>If this was you, there's nothing more to do.</TextBlock>
     </Layout>
   );

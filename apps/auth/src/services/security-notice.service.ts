@@ -25,6 +25,13 @@ import { type SecurityEffectLogger, describeError } from "./settle-security-effe
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+/** How each way to sign in reads in the one "added or removed" email. */
+const SIGN_IN_METHOD_LABELS = {
+  google: "Google",
+  apple: "Apple",
+  passkey: "A passkey",
+} as const;
+
 export type SecurityNoticeDeps = {
   /** Read straight from the repository, not the operations service, which itself sends notices. */
   subjects: Pick<IIdentitySubjectRepository, "findById">;
@@ -174,9 +181,16 @@ export class SecurityNoticeService implements SecurityNoticePublisher, SecurityN
           },
         });
         return;
+      case "sign_in_method_added":
+        await enqueue("sign-in-method-added", subject.email, {
+          methodLabel: SIGN_IN_METHOD_LABELS[event.method],
+          detail: event.detail,
+        });
+        return;
       case "sign_in_method_removed":
         await enqueue("sign-in-method-removed", subject.email, {
-          providerName: event.provider === "google" ? "Google" : "Apple",
+          methodLabel: SIGN_IN_METHOD_LABELS[event.method],
+          detail: event.detail,
         });
         return;
       case "unconfirmed_password_removed":

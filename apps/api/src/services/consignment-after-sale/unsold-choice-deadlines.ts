@@ -7,19 +7,20 @@ export type UnsoldOutcomeDates = { lotId: string; endedAt: Date; chooseBy: Date 
  * The date each unsold choice is due by. The worker stores it when the lot ends unsold (the
  * `unsold_choice_deadline` projector), from the window rule `unsoldChoiceDueBy`; reads only read.
  * An outcome with no stored date yet (the projector has not run) gets the same rule's date, so the
- * seller sees the date that will be stored, and the gap is logged.
+ * seller sees the date that will be stored, and the gap is logged at debug level.
  */
 export interface IUnsoldChoiceDeadlines {
   /** The due date per lot id. */
   chooseByFor(outcomes: readonly UnsoldOutcomeDates[]): Map<string, Date>;
 }
 
+/** The slice of the structured logger this reads with (fields first, then the message). */
+export type UnsoldChoiceDeadlinesLog = {
+  debug(fields: { lotIds: string[]; count: number }, message: string): void;
+};
+
 export class UnsoldChoiceDeadlines implements IUnsoldChoiceDeadlines {
-  constructor(
-    private readonly log: { warn(message: string, meta: Record<string, unknown>): void } = {
-      warn: (message, meta) => console.warn(message, meta),
-    },
-  ) {}
+  constructor(private readonly log: UnsoldChoiceDeadlinesLog) {}
 
   chooseByFor(outcomes: readonly UnsoldOutcomeDates[]): Map<string, Date> {
     const dates = new Map<string, Date>();
@@ -32,9 +33,11 @@ export class UnsoldChoiceDeadlines implements IUnsoldChoiceDeadlines {
       }
     }
     if (missing.length > 0) {
-      this.log.warn("[unsold-choice-deadlines] no stored date yet; using the window rule", {
-        lotIds: missing,
-      });
+      // Expected for lots that ended before the projector ran, so it is a debug line, once per call.
+      this.log.debug(
+        { lotIds: missing, count: missing.length },
+        "unsold_choice_deadline_window_rule_fallback",
+      );
     }
     return dates;
   }

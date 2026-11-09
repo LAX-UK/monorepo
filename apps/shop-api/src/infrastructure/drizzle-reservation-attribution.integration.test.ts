@@ -160,7 +160,8 @@ describe.skipIf(!ownerUrl || !shopUrl)("edition reservation attribution", () => 
       .where(eq(shopEdition.id, reservedEdition.id));
 
     // The print is now order B's. Order A's payment cannot be applied, so it is tracked for
-    // finance instead of failing for good: nothing about either order or the print changes.
+    // finance instead of failing for good, and order A, whose session is spent, is closed. Order
+    // B's hold on the print is not touched.
     const paid = {
       eventId: `evt-a-${suffix}`,
       orderId: orderA.id,
@@ -191,8 +192,8 @@ describe.skipIf(!ownerUrl || !shopUrl)("edition reservation attribution", () => 
       amountCents: 5_000,
       stripePaymentIntentId: `pi_attrib_${suffix}`,
     });
-    const [stillPending] = await db.select().from(shopOrder).where(eq(shopOrder.id, orderA.id));
-    expect(stillPending?.status).toBe("pending_payment");
+    const [closedA] = await db.select().from(shopOrder).where(eq(shopOrder.id, orderA.id));
+    expect(closedA?.status).toBe("payment_failed");
     const [held] = await db
       .select()
       .from(shopEdition)

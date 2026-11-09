@@ -119,6 +119,20 @@ export const userSignInMethodUnlinkedPayloadSchemaV1 = z.object({
   unlinkedAt: rfc3339Timestamp,
 });
 
+export const userSignInMethodAddedPayloadSchemaV1 = z.object({
+  schemaVersion: z.literal(1),
+  subjectId: z.string(),
+  method: z.enum(["google", "apple", "passkey"]),
+  addedAt: rfc3339Timestamp,
+});
+
+export const userSignInMethodRemovedPayloadSchemaV1 = z.object({
+  schemaVersion: z.literal(1),
+  subjectId: z.string(),
+  method: z.enum(["google", "apple", "passkey"]),
+  removedAt: rfc3339Timestamp,
+});
+
 export const userUnconfirmedPasswordRemovedPayloadSchemaV1 = z.object({
   schemaVersion: z.literal(1),
   subjectId: z.string(),

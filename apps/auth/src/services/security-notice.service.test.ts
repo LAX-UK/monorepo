@@ -278,13 +278,42 @@ describe("SecurityNoticeService", () => {
       kind: "sign_in_method_removed",
       userId: USER,
       at: AT,
-      provider: "apple",
+      method: "apple",
+      detail: "relay@privaterelay.appleid.com",
     });
 
     const input = email.enqueue.mock.calls[0]?.[0];
     expect(input?.template).toBe("sign-in-method-removed");
-    expect(input?.vars.providerName).toBe("Apple");
+    expect(input?.vars.methodLabel).toBe("Apple");
+    expect(input?.vars.detail).toBe("relay@privaterelay.appleid.com");
     expect(input?.vars.secureAccountUrl).toBeTruthy();
+  });
+
+  it("sends one email for a method added, whatever the method, naming it by its name or address", async () => {
+    const { service, email } = setup();
+
+    await service.notify({
+      kind: "sign_in_method_added",
+      userId: USER,
+      at: AT,
+      method: "passkey",
+      detail: "Sarah's MacBook",
+    });
+    await service.notify({
+      kind: "sign_in_method_added",
+      userId: USER,
+      at: AT,
+      method: "google",
+      detail: null,
+    });
+
+    expect(email.enqueue).toHaveBeenCalledTimes(2);
+    const [passkey, google] = email.enqueue.mock.calls.map((call) => call[0]);
+    expect(passkey?.template).toBe("sign-in-method-added");
+    expect(passkey?.vars.methodLabel).toBe("A passkey");
+    expect(passkey?.vars.detail).toBe("Sarah's MacBook");
+    expect(google?.vars.methodLabel).toBe("Google");
+    expect(google?.vars.detail).toBeNull();
   });
 
   it("tells a person their unconfirmed password was removed when Google proved the email", async () => {
