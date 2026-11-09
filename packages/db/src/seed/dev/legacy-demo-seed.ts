@@ -446,6 +446,7 @@ async function clearAll(db: ReturnType<typeof drizzle<typeof schema>>) {
   await db.delete(payout);
   await db.delete(legalEntityPayoutMethod);
   await db.delete(paymentExternalRef);
+  await db.delete(schema.paymentRefund);
   await db.delete(payment);
   await db.delete(schema.bidInvoice);
   await db.delete(xeroConnection);

@@ -19,6 +19,7 @@ import {
   DrizzleNotificationOutboxRepository,
   DrizzlePaymentExternalRefRepository,
   DrizzlePaymentRefundReconcileRepository,
+  DrizzlePaymentRefundRepository,
   DrizzlePaymentRepository,
   DrizzlePayoutRepository,
   DrizzleProfileRepository,
@@ -137,6 +138,7 @@ export function createWorkerFinanceServices(
     payoutSettlement.runtime.payoutAdjustments,
     workerFinanceDomainEventSinkPort(domainEventSink),
     new DrizzlePaymentRefundReconcileRepository(db),
+    new DrizzlePaymentRefundRepository(db),
   );
 
   const paymentMaintenanceCronService = new PaymentMaintenanceCronService(

@@ -428,6 +428,7 @@ export function createContainer(env: Env): Container {
   const organisationHome = createOrganisationHomeServices({ db });
   const organisationBuying = createOrganisationBuyingServices({
     db,
+    log: createBaseLogger(env),
     env,
     lots: repos.lotRepo,
     sales: repos.saleRepo,
@@ -444,7 +445,7 @@ export function createContainer(env: Env): Container {
       groupCheckout: payments.paymentGroupCheckout,
       groupGateway: payments.paymentGroupGateway,
       invoices: payments.bidInvoices,
-      refunds: repos.payoutRepository,
+      refunds: repos.paymentRefundRepository,
       pricing: payments.invoiceRaiser,
       invoiceInitiation: payments.lotInvoiceInitiationService,
     },

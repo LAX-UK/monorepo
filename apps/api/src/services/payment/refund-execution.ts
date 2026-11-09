@@ -1,4 +1,8 @@
-import type { IPaymentWriteRepository, PaymentRecord } from "@auction/persistence/interfaces";
+import type {
+  IPaymentRefundLedger,
+  IPaymentWriteRepository,
+  PaymentRecord,
+} from "@auction/persistence/interfaces";
 import { type Result, err, ok } from "neverthrow";
 import { gbpAmountToPence } from "../../lib/decimal-money.js";
 import { PaymentProviderError } from "../../lib/errors.js";
@@ -10,6 +14,8 @@ import type { PaymentRefundReconcileService } from "./payment-refund-reconcile.s
 
 export type RefundLedgerDeps = {
   payments: IPaymentWriteRepository;
+  /** What the buyer was refunded, written with the `payment.refunded` event. */
+  paymentRefunds: IPaymentRefundLedger;
   transactionRunner: import("@auction/persistence/interfaces").ITransactionRunner;
   domainEventSink: IDomainEventSink;
   payoutAdjustments: IPayoutAdjustmentService | null;
@@ -51,6 +57,8 @@ export async function executePaymentRefundLedger(
 
   try {
     await deps.transactionRunner.runInTransaction(async (tx) => {
+      // The same row a card refund event locks, so the two never record side by side.
+      await deps.paymentRefunds.lockPaymentInTransaction(tx, paymentId);
       const refunded = await deps.payments.applyRefundedInTransaction(
         tx,
         paymentId,
@@ -59,6 +67,17 @@ export async function executePaymentRefundLedger(
       if (!refunded) {
         return;
       }
+      // The buyer's record does not depend on the seller: a payment with no payout line to
+      // reverse (no seller, or no adjustment service) was still refunded.
+      await deps.paymentRefunds.recordInTransaction(tx, {
+        paymentId,
+        // The key of the payout line below, so a backfill from payout lines knows this refund.
+        idempotencyKey: sourceEventId,
+        stripeRefundId,
+        amountPence: gbpAmountToPence(payment.amount),
+        currency: "GBP",
+        source: "staff",
+      });
       if (deps.payoutAdjustments && payment.sellerLegalEntityId) {
         const negativeAmount = (-gbpAmountToPence(payment.amount) / 100).toFixed(2);
         await deps.payoutAdjustments.addPaymentLineToOpenPayoutOrCreateClawback({

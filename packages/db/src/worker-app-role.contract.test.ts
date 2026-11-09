@@ -46,6 +46,17 @@ async function withWorkerClient<T>(fn: (client: pg.Client) => Promise<T>): Promi
 
 /** Cutover gate: worker_app can perform delivery, payment maintenance, and lifecycle writes. */
 describe.skipIf(!WORKER_URL)("worker_app role contract", { timeout: 60_000 }, () => {
+  it("adds to buyer refunds and reads them, never changing or removing one", async () => {
+    await withWorkerClient(async (client) => {
+      const rows = await readTablePrivileges(
+        client,
+        ["payment_refund"],
+        ["SELECT", "INSERT", "UPDATE", "DELETE"],
+      );
+      expectTablePrivileges(rows, (row) => ["SELECT", "INSERT"].includes(row.privilege));
+    });
+  });
+
   it("has no DML privileges on Identity and receiver-local tables", async () => {
     const cutover = await readUserReadCutoverFromEnv();
     await withWorkerClient(async (client) => {
@@ -129,6 +140,15 @@ describe.skipIf(!WORKER_URL)("worker_app role contract", { timeout: 60_000 }, ()
                  or has_table_privilege(current_user, 'public.zoho_campaigns_optout_lift', 'UPDATE')) as write`,
       );
       expect(result.rows[0]).toEqual({ run: true, select: true, write: false });
+    });
+  });
+
+  it("may run the buyer refund top-up function", async () => {
+    await withWorkerClient(async (client) => {
+      const result = await client.query<{ run: boolean }>(
+        `select has_function_privilege(current_user, 'public.payment_refund_backfill_from_payout_lines(uuid)', 'EXECUTE') as run`,
+      );
+      expect(result.rows[0]).toEqual({ run: true });
     });
   });
 

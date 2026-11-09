@@ -66,6 +66,7 @@ export { DrizzleAdminDisputeDeskReader } from "./drizzle-admin-dispute-desk.read
 export { DrizzleAdminDisputeCaseEnrichmentReader } from "./drizzle-admin-dispute-case-enrichment.reader.js";
 export { DrizzleAdminMarketingEventOutboxRepository } from "./drizzle-admin-marketing-event-outbox.repository.js";
 export { DrizzleAdminSaleOperationsSnapshotReader } from "./drizzle-admin-sale-operations-snapshot.reader.js";
+export { DrizzlePaymentRefundRepository } from "./drizzle-payment-refund.repository.js";
 export { DrizzleConnectTransferRepository } from "./drizzle-connect-transfer.repository.js";
 export {
   DrizzlePaymentRefundReconcileRepository,

@@ -3,7 +3,7 @@ import { type BidInvoiceDocument, InvoiceTotalMismatchError } from "@auction/exp
 import type {
   IBidInvoiceReader,
   ILegalEntityRepository,
-  IPayoutRepository,
+  IPaymentRefundReader,
 } from "@auction/persistence/interfaces";
 import { err, ok } from "neverthrow";
 import type {
@@ -21,14 +21,22 @@ export type PurchaseInvoicePdfDeps = {
   accounts: Pick<ILegalEntityRepository, "findById">;
   /** Renders the document; it refuses lines that do not add up to the invoice total. */
   render: (document: BidInvoiceDocument) => Promise<Buffer>;
-  /** What has been refunded for a payment so far, from the refund records, in whole pence. */
-  refunds: Pick<IPayoutRepository, "sumRefundLineCentsForPayment">;
+  /** What the buyer has been refunded for a payment: Bid's own record, never the seller's payout ledger. */
+  refunds: IPaymentRefundReader;
   /** Tells finance when a stored invoice cannot be shown (an alert, not a page error). */
   metrics: { record(event: string): void };
+  /** Carries the ids and amounts behind a money-path alert; never personal data. */
+  log: { warn(fields: Record<string, unknown>, message: string): void };
 };
 
 /** The money-path event finance's alert watches (see the monitoring runbook). */
 export const INVOICE_PDF_TOTAL_MISMATCH_EVENT = "invoice_pdf_total_mismatch";
+/** Recorded refunds add up to more than the invoice total; the document shows the total at most. */
+export const INVOICE_PDF_REFUND_EXCEEDS_TOTAL_EVENT = "invoice_pdf_refund_exceeds_total";
+/** A refund was recorded in a currency other than GBP, so the invoice is refused. */
+export const INVOICE_PDF_REFUND_CURRENCY_EVENT = "invoice_pdf_refund_currency";
+/** The payment is marked refunded but no refund is recorded for it. */
+export const INVOICE_PDF_REFUND_MISSING_EVENT = "invoice_pdf_refund_missing";
 
 /**
  * The invoice of a won lot as a PDF, for the member who pays it. The figures are the stored
@@ -57,11 +65,49 @@ export class PurchaseInvoicePdfService implements IPurchaseInvoicePdfService {
     if (!account) return err(buyingError("invoice_not_ready"));
 
     const status = entry.row.payment?.status;
-    // A part refund leaves the payment captured, so what was given back comes from the records.
-    const refundedPence =
+    const recorded =
       status === "captured" || status === "refunded"
-        ? await this.deps.refunds.sumRefundLineCentsForPayment(paymentId)
-        : 0;
+        ? await this.deps.refunds.sumRefundedPence(paymentId)
+        : NO_REFUNDS;
+    if (recorded.otherCurrencies.length > 0) {
+      // Pence of another currency are not pounds: the figure is not shown, and finance is told.
+      this.deps.metrics.record(INVOICE_PDF_REFUND_CURRENCY_EVENT);
+      this.deps.log.warn(
+        {
+          event: INVOICE_PDF_REFUND_CURRENCY_EVENT,
+          paymentId,
+          lotId,
+          invoiceId: invoice.id,
+          currencies: recorded.otherCurrencies,
+        },
+        "A refund is recorded in a currency other than GBP; the PDF is refused",
+      );
+      return err(buyingError("invoice_total_mismatch"));
+    }
+    const refundedPence = recorded.pence;
+    // The document never shows more than the total; finance is told when the records do.
+    if (refundedPence > invoice.totalPence) {
+      this.deps.metrics.record(INVOICE_PDF_REFUND_EXCEEDS_TOTAL_EVENT);
+      this.deps.log.warn(
+        {
+          event: INVOICE_PDF_REFUND_EXCEEDS_TOTAL_EVENT,
+          paymentId,
+          lotId,
+          invoiceId: invoice.id,
+          totalPence: invoice.totalPence,
+          refundedPence,
+        },
+        "Recorded refunds exceed the invoice total; the PDF shows the total",
+      );
+    }
+    if (status === "refunded" && refundedPence === 0) {
+      // Refunded before refunds were recorded, and the ledger had nothing to copy.
+      this.deps.metrics.record(INVOICE_PDF_REFUND_MISSING_EVENT);
+      this.deps.log.warn(
+        { event: INVOICE_PDF_REFUND_MISSING_EVENT, paymentId, lotId, invoiceId: invoice.id },
+        "The payment is refunded but no refund is recorded; the PDF shows it as refunded",
+      );
+    }
     try {
       const pdf = await this.deps.render({
         number: invoice.number,
@@ -76,7 +122,7 @@ export class PurchaseInvoicePdfService implements IPurchaseInvoicePdfService {
         lines: invoice.lines,
         totalPence: invoice.totalPence,
         status: documentStatusOf(status),
-        refundedPence,
+        refundedPence: Math.min(refundedPence, invoice.totalPence),
       });
       return ok({ pdf, filename: invoiceFilename(invoice.number, lotId) });
     } catch (error) {
@@ -87,6 +133,8 @@ export class PurchaseInvoicePdfService implements IPurchaseInvoicePdfService {
     }
   }
 }
+
+const NO_REFUNDS = { pence: 0, otherCurrencies: [] as readonly string[] };
 
 /** How the document describes the payment: a refund is never shown as awaiting payment. */
 function documentStatusOf(status: string | undefined): BidInvoiceDocument["status"] {
