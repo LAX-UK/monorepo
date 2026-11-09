@@ -106,26 +106,72 @@ export function createCountdownHook<S extends string, D extends TimedDisplay, C 
   };
 }
 
+export type UseClockTickOptions = {
+  /** Resubscribe when what `wake` depends on changes (for example a lot's end time). */
+  key: string | number;
+  inViewRef?: RefObject<Element | null> | undefined;
+};
+
 /**
- * The server-aligned time, rounded down to `resolutionMs`, for callers that decide something
- * from the time itself (a lot opening) rather than print a countdown. `null` on the server
- * and for the first client render. Re-renders once per step.
+ * The server-aligned time as of the last moment the caller asked to be woken, for components that
+ * work out their own text from the time. `wake` says how many milliseconds until that text next
+ * changes (`null` when it never will); the component re-renders then, and only then. Returns
+ * `null` on the server and for the first client render.
+ *
+ * @param wake Called with the clock time; may be a fresh closure on every render.
+ */
+export function useClockTick(
+  wake: (nowMs: number) => number | null,
+  options: UseClockTickOptions,
+  getStore: () => ClockStore = defaultClockStore,
+): number | null {
+  const { key, inViewRef } = options;
+  const inView = useInView(inViewRef);
+  const wakeRef = useRef(wake);
+  useEffect(() => {
+    wakeRef.current = wake;
+  });
+  const tick = useRef<{ key: string | number; at: number } | null>(null);
+
+  const subscribe = useCallback(
+    (onChange: () => void) => {
+      if (!inView) return () => undefined;
+      return getStore().subscribe({
+        nextChangeAt(now) {
+          const wait = wakeRef.current(now);
+          return wait === null ? null : now + wait;
+        },
+        notify() {
+          tick.current = { key, at: getStore().now() };
+          onChange();
+        },
+      });
+    },
+    [inView, key, getStore],
+  );
+  const read = useCallback((): number => {
+    // A changed key reads the time afresh; otherwise the time of the last wake stands.
+    if (tick.current?.key !== key) tick.current = { key, at: getStore().now() };
+    return tick.current.at;
+  }, [key, getStore]);
+
+  return useSyncExternalStore(subscribe, read, () => null);
+}
+
+/**
+ * The server-aligned time as of the latest step of `resolutionMs`, for callers that decide
+ * something from the time itself (a lot opening) rather than print a countdown. The value is the
+ * time at the step (just after it), not rounded, so a countdown worked out from it reads the true
+ * whole second. `null` on the server and for the first client render.
  */
 export function useClockNow(
   resolutionMs = 1000,
+  options: { inViewRef?: RefObject<Element | null> | undefined } = {},
   getStore: () => ClockStore = defaultClockStore,
 ): number | null {
-  const subscribe = useCallback(
-    (onChange: () => void) =>
-      getStore().subscribe({
-        nextChangeAt: (now) => (Math.floor(now / resolutionMs) + 1) * resolutionMs,
-        notify: onChange,
-      }),
-    [resolutionMs, getStore],
+  return useClockTick(
+    (now) => resolutionMs - (now % resolutionMs) + 1,
+    { key: resolutionMs, inViewRef: options.inViewRef },
+    getStore,
   );
-  const read = useCallback(
-    () => Math.floor(getStore().now() / resolutionMs) * resolutionMs,
-    [resolutionMs, getStore],
-  );
-  return useSyncExternalStore(subscribe, read, () => null);
 }

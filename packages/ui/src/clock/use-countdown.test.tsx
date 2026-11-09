@@ -125,17 +125,58 @@ describe("useCountdown", () => {
 });
 
 describe("useClockNow", () => {
-  it("steps once per resolution and is null on the server", () => {
+  it("steps once per resolution, just after the step, and is null on the server", () => {
     function Probe() {
-      return <span>{String(useClockNow(1000, () => store))}</span>;
+      return <span>{String(useClockNow(1000, {}, () => store))}</span>;
     }
     expect(renderToString(<Probe />)).toContain("null");
-    const { result } = renderHook(() => useClockNow(1000, () => store));
+    const { result } = renderHook(() => useClockNow(1000, {}, () => store));
     const first = result.current;
-    expect(first).toBe(Math.floor(START / 1000) * 1000);
+    expect(first).toBe(START);
     act(() => {
       vi.advanceTimersByTime(1000);
     });
-    expect(result.current).toBe((first ?? 0) + 1000);
+    // 400 ms into the second, the next step is at 13.001 s (one millisecond after the boundary).
+    expect((result.current ?? 0) % 1000).toBe(1);
+    expect(result.current).toBeGreaterThan(first ?? 0);
+  });
+});
+
+describe("useClockTick", () => {
+  it("re-renders only when the caller's own text is due to change", async () => {
+    const { useClockTick } = await import("./use-countdown.js");
+    let renders = 0;
+    const { result } = renderHook(() => {
+      renders++;
+      return useClockTick(
+        (now) => 60_000 - (now % 60_000) + 1,
+        { key: "a" },
+        () => store,
+      );
+    });
+    const first = renders;
+    const before = result.current;
+    act(() => {
+      vi.advanceTimersByTime(30_000);
+    });
+    expect(renders).toBe(first);
+    expect(result.current).toBe(before);
+    act(() => {
+      vi.advanceTimersByTime(40_000);
+    });
+    expect(renders).toBeGreaterThan(first);
+    expect((result.current ?? 0) - (before ?? 0)).toBeGreaterThanOrEqual(60_000 - 400);
+  });
+
+  it("stops timing when the caller says nothing more will change", async () => {
+    const { useClockTick } = await import("./use-countdown.js");
+    renderHook(() =>
+      useClockTick(
+        () => null,
+        { key: "a" },
+        () => store,
+      ),
+    );
+    expect(vi.getTimerCount()).toBe(0);
   });
 });

@@ -15,8 +15,10 @@ export { defaultClockStore } from "./default-clock.js";
 export {
   type CountdownPolicy,
   type TimedDisplay,
+  type UseClockTickOptions,
   type UseCountdownOptions,
   createCountdownHook,
   useClockNow,
+  useClockTick,
   useInView,
 } from "./use-countdown.js";
