@@ -106,6 +106,10 @@ export type OrderLineRecord = {
   editionSummary: string | null;
   /** The same print as one invoice detail: "Limited edition of 24, no. 7, signed by hand". */
   editionInvoiceDetail: string | null;
+  /** A frame sold with a print is its own line; everything else is goods. */
+  kind: "goods" | "framing";
+  /** The frame's name as sold, for a framing line; null otherwise. */
+  framingName: string | null;
   unitPricePence: number;
   /** The rate recorded when the line was sold; null when no VAT policy was configured. */
   vatRateBp: number | null;
@@ -144,6 +148,8 @@ export type OrderRecord = {
   status: ShopOrderStatus;
   fulfilment: ShopFulfilmentOption;
   merchandiseSubtotalPence: number;
+  /** The framing sold with the prints; part of the total, apart from the items. */
+  framingSubtotalPence: number;
   fulfilmentSurchargePence: number;
   /** VAT included in the delivery charge, as stored; null when no VAT was recorded. */
   fulfilmentVatPence: number | null;

@@ -2,11 +2,13 @@ import type { OrderStatus, OrderSummary } from "@auction/shop-contracts";
 import { describe, expect, it } from "vitest";
 import {
   buildShopOrderDetailVm,
+  buildShopOrderLines,
   buildShopOrderListVm,
   buildShopOrderTimeline,
   buildShopOrderTotals,
   isPlacedShopOrder,
   shopOrderProgressStatus,
+  shopOrderTitle,
 } from "./shop-orders.vm";
 
 const NOW = new Date("2026-10-20T09:10:00.000Z");
@@ -315,6 +317,58 @@ describe("buildShopOrderTotals", () => {
     );
     expect(totals.rows[1]).toEqual({ label: "Collect from our London gallery", value: "Free" });
     expect(totals.vatLine).toBeNull();
+  });
+});
+
+describe("a framed order", () => {
+  const framed = () => {
+    const base = order("paid");
+    const [print] = base.lines;
+    if (!print) throw new Error("fixture has a line");
+    return {
+      ...base,
+      framingSubtotalPence: 21_000,
+      totalPence: 121_000,
+      lines: [
+        print,
+        {
+          ...print,
+          orderLineId: "00000000-0000-4000-8000-0000000000f1",
+          kind: "framing" as const,
+          framingName: "Natural oak frame",
+          artworkTitle: null,
+          artworkSlug: null,
+          artistName: null,
+          editionNumber: null,
+          editionSummary: null,
+          unitPricePence: 21_000,
+        },
+      ],
+    };
+  };
+
+  it("lists the frame as its own row, with no link and the label Framing", () => {
+    const rows = buildShopOrderLines(framed());
+    expect(rows).toHaveLength(2);
+    expect(rows[1]).toMatchObject({
+      title: "Natural oak frame",
+      href: null,
+      edition: "Framing",
+      priceLabel: "£210.00",
+    });
+  });
+
+  it("totals the framing on its own row between items and delivery", () => {
+    expect(buildShopOrderTotals(framed()).rows.map((row) => row.label)).toEqual([
+      "Items",
+      "Framing",
+      "UK insured delivery",
+      "Total",
+    ]);
+  });
+
+  it("is still titled by the print, not 'and 1 more'", () => {
+    expect(shopOrderTitle(framed())).not.toContain("more");
   });
 });
 

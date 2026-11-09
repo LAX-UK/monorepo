@@ -38,6 +38,7 @@ export function shopOrderName(order: Pick<OrderSummary, "reference" | "createdAt
 }
 
 function lineTitle(line: OrderLine): string {
+  if (line.kind === "framing") return line.framingName ?? "Framing";
   return line.productTitle ?? line.artworkTitle ?? "Item";
 }
 
@@ -49,7 +50,8 @@ function lineHref(line: OrderLine): string | null {
 
 /** "Harbor Print", or "Harbor Print and 2 more" for a multi-item order. */
 export function shopOrderTitle(order: Pick<OrderSummary, "lines">): string {
-  const [first, ...rest] = order.lines;
+  // A frame is part of the print it came with, not another item.
+  const [first, ...rest] = order.lines.filter((line) => line.kind !== "framing");
   if (!first) return "Order";
   return rest.length > 0 ? `${lineTitle(first)} and ${rest.length} more` : lineTitle(first);
 }
@@ -389,7 +391,7 @@ export function buildShopOrderLines(order: OrderSummary): ShopOrderLineVm[] {
     title: lineTitle(line),
     href: lineHref(line),
     artist: line.artistName ?? null,
-    edition: shopOrderLineEdition(line, order.status),
+    edition: line.kind === "framing" ? "Framing" : shopOrderLineEdition(line, order.status),
     priceLabel: formatGbpPence(line.unitPricePence),
     thumbnailUrl: line.imageUrl ?? null,
   }));
@@ -399,6 +401,9 @@ export function buildShopOrderTotals(order: OrderSummary): ShopOrderTotalsVm {
   const delivery = order.fulfilmentSurchargePence;
   const rows: ShopOrderTotalsVm["rows"] = [
     { label: "Items", value: formatGbpPence(order.merchandiseSubtotalPence) },
+    ...(order.framingSubtotalPence
+      ? [{ label: "Framing", value: formatGbpPence(order.framingSubtotalPence) }]
+      : []),
     {
       label: resolveShopFulfilmentLabel(order.fulfilment),
       value: delivery === 0 ? "Free" : formatGbpPence(delivery),

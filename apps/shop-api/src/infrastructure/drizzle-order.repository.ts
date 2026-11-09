@@ -136,6 +136,7 @@ function orderRowToRecord(order: typeof shopOrder.$inferSelect, extras: OrderExt
     status,
     fulfilment: order.fulfilment,
     merchandiseSubtotalPence: order.merchandiseSubtotalPence,
+    framingSubtotalPence: order.framingSubtotalPence,
     fulfilmentSurchargePence: order.fulfilmentSurchargePence,
     fulfilmentVatPence: order.fulfilmentVatPence,
     totalPence: order.totalPence,
@@ -194,6 +195,8 @@ async function fetchLinesByOrderIds(
       editionSnapshot: shopOrderLine.editionFactsSnapshot,
       proofNumber: shopEdition.proofNumber,
       unitPricePence: shopOrderLine.unitPricePence,
+      kind: shopOrderLine.kind,
+      framingSnapshot: shopOrderLine.framingSnapshot,
       vatRateBp: shopOrderLine.vatRateBp,
       vatPence: shopOrderLine.vatPence,
       imageUrl: shopArtwork.primaryImageUrl,
@@ -224,11 +227,18 @@ async function fetchLinesByOrderIds(
     artworkId,
     editionSnapshot,
     proofNumber,
+    framingSnapshot,
+    kind,
     ...line
   } of lineRows) {
     const bucket = linesByOrder.get(line.orderId) ?? [];
     bucket.push({
       ...line,
+      kind: kind === "framing" ? "framing" : "goods",
+      framingName:
+        kind === "framing" && typeof framingSnapshot?.name === "string"
+          ? framingSnapshot.name
+          : null,
       artistName: line.artistName?.trim() || null,
       editionSize: line.editionSize === null ? null : Number(line.editionSize),
       editionBasis: {

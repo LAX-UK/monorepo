@@ -1,6 +1,10 @@
-import { shopOrder, shopOrderLine, shopRefund } from "@auction/db/schema";
+import { shopFramingTask, shopOrder, shopOrderLine, shopRefund } from "@auction/db/schema";
 import { type AdminRefundReason, SHOP_API_ERROR_CODES } from "@auction/shop-contracts";
-import { remainingRefundablePence } from "@auction/shop-domain";
+import {
+  type FramingTaskStatus,
+  framingRefundBlock,
+  remainingRefundablePence,
+} from "@auction/shop-domain";
 import { and, eq } from "drizzle-orm";
 import { operatorContextAuditFields } from "../../../application/admin/operator-context.js";
 import { withAdminIdempotency } from "../../../application/admin/with-admin-idempotency.js";
@@ -53,7 +57,11 @@ export function createRequestRefundHandler(deps: {
           }
           if (command.orderLineId) {
             const [line] = await shopPhaseDbSession(tx)
-              .select({ id: shopOrderLine.id, unitPricePence: shopOrderLine.unitPricePence })
+              .select({
+                id: shopOrderLine.id,
+                unitPricePence: shopOrderLine.unitPricePence,
+                kind: shopOrderLine.kind,
+              })
               .from(shopOrderLine)
               .where(
                 and(
@@ -68,6 +76,21 @@ export function createRequestRefundHandler(deps: {
                 "Order line does not belong to order",
                 400,
               );
+            }
+            if (line.kind === "framing") {
+              // A frame already being made is not refunded as an unused item.
+              const [task] = await shopPhaseDbSession(tx)
+                .select({ status: shopFramingTask.status })
+                .from(shopFramingTask)
+                .where(eq(shopFramingTask.orderLineId, line.id))
+                .limit(1);
+              if (task && framingRefundBlock(task.status as FramingTaskStatus)) {
+                throw new ShopApiError(
+                  SHOP_API_ERROR_CODES.CONFLICT,
+                  "This frame is already being made, so it cannot be refunded as unused",
+                  409,
+                );
+              }
             }
           }
           const orderLines = await shopPhaseDbSession(tx)

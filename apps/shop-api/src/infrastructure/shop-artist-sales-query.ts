@@ -48,7 +48,12 @@ export async function listArtistSalesForArtworkIds(
     .innerJoin(shopArtwork, eq(shopOrderLine.artworkId, shopArtwork.id))
     .leftJoin(shopParty, eq(shopOrderLine.sellerPartyId, shopParty.id))
     .where(
-      and(inArray(shopArtwork.id, artworkIds), inArray(shopOrder.status, [...PAID_ORDER_STATUSES])),
+      and(
+        inArray(shopArtwork.id, artworkIds),
+        // A frame sold with a print is not the artist's sale; only goods lines are.
+        eq(shopOrderLine.kind, "goods"),
+        inArray(shopOrder.status, [...PAID_ORDER_STATUSES]),
+      ),
     );
 
   const thirdPartyRows = await db
