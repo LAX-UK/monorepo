@@ -18,6 +18,7 @@ import {
 } from "@/lib/admin/data-requests/data-requests.vm";
 import { enquiryErasureState } from "@/lib/admin/data-requests/enquiry-erasure";
 import { erasureOutcome } from "@/lib/admin/data-requests/enquiry-erasure";
+import type { DealHold } from "@/lib/data/http/admin-data-requests.reader";
 import { DATA_REQUESTS_MANAGE_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { copyToClipboard } from "@/lib/ui/copy-to-clipboard";
 import { notify } from "@/lib/ui/notify";
@@ -53,6 +54,7 @@ import {
   ProductsSection,
   RequestSection,
 } from "./data-request-sections";
+import { DealHoldsSection } from "./deal-holds-section";
 import { EraseEnquiriesDialog } from "./erase-enquiries-dialog";
 import { ExtendDataRequestDialog } from "./extend-data-request-dialog";
 import { IdReceivedDialog } from "./id-received-dialog";
@@ -72,6 +74,8 @@ export type DataRequestViewProps = {
     previousHref: string | null;
     nextHref: string | null;
   } | null;
+  /** The private sale deals keeping this person's records. */
+  holds?: readonly DealHold[];
   /** A dialog the list's row menu asked for. */
   initialAction: "extend" | "close" | "continue" | null;
 };
@@ -181,6 +185,7 @@ export function DataRequestView({
   today,
   listHref,
   pager,
+  holds = [],
   initialAction,
 }: DataRequestViewProps) {
   const router = useRouter();
@@ -396,6 +401,7 @@ export function DataRequestView({
           busyProduct={busyProduct}
           onGather={(product, done) => void gather(product, done)}
         />
+        <DealHoldsSection holds={holds} />
         {request.kind === "manual" ? (
           <NotesSection
             notes={record.notes}

@@ -47,6 +47,11 @@ export const collectionAvailabilityQuerySchema = z.object({
     .pipe(z.array(z.string().uuid()).max(MAX_LOTS)),
   /** The booking being moved, so its own place does not make its slot read as full. */
   booking: z.string().uuid().optional(),
+  /** `1`: list, after the lots asked about, the account's other lots at the same place that can be booked. */
+  account: z
+    .enum(["1"])
+    .optional()
+    .transform((value) => value === "1"),
 });
 export type CollectionAvailabilityQuery = z.infer<typeof collectionAvailabilityQuerySchema>;
 

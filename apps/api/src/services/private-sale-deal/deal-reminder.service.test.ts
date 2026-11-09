@@ -70,6 +70,7 @@ describe("DealReminderService", () => {
         amount: "48000.00",
         dueDate: "20 November 2026",
         step: "due_day",
+        privateSale: true,
         held: null,
       }),
     );

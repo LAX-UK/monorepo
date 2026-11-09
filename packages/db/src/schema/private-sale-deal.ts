@@ -163,7 +163,8 @@ export const privateSaleDealPartyHistory = pgTable(
     legalEntityId: uuid("legal_entity_id").references(() => legalEntity.id, {
       onDelete: "restrict",
     }),
-    actingUserId: text("acting_user_id").notNull(),
+    /** The member named; null for an organisation named on its own. */
+    actingUserId: text("acting_user_id"),
     namedAt: timestamp("named_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
@@ -173,6 +174,14 @@ export const privateSaleDealPartyHistory = pgTable(
       table.actingUserId,
     ),
     index("private_sale_deal_party_history_user_idx").on(table.actingUserId),
+    uniqueIndex("private_sale_deal_party_history_entity_uidx")
+      .on(table.dealId, table.role, table.legalEntityId)
+      .where(sql`${table.actingUserId} IS NULL AND ${table.legalEntityId} IS NOT NULL`),
+    index("private_sale_deal_party_history_entity_idx").on(table.legalEntityId),
+    check(
+      "private_sale_deal_party_history_who_check",
+      sql`${table.actingUserId} IS NOT NULL OR ${table.legalEntityId} IS NOT NULL`,
+    ),
     check("private_sale_deal_party_history_role_check", sql`${table.role} IN ('seller', 'buyer')`),
   ],
 );
