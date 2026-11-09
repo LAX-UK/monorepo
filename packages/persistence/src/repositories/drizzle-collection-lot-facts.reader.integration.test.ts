@@ -76,8 +76,8 @@ describe.skipIf(!HAS_DB)("collection lot facts (integration)", () => {
       insert into sale (id, title, start_time, end_time, venue_id, created_by_legal_entity_id)
       values (${saleId}, 'Facts sale', now() - interval '30 days', now() - interval '20 days', ${venueId}, ${orgEntity})`);
     await db.execute(sql`
-      insert into bid_user_profile (user_id, aml_hold_status)
-      values (${heldWinner}, 'hold')`);
+      insert into bid_user_profile (user_id, aml_hold_status, created_at, updated_at)
+      values (${heldWinner}, 'hold', now(), now())`);
     await db.execute(sql`
       insert into source_of_funds (user_id, status, trigger, threshold_amount, exposure_amount)
       values (${sofWinner}, 'pending', 'manual', 1000, 2000)`);
