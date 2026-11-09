@@ -184,7 +184,7 @@ export function createInMemoryEditionRuns() {
       async get(artworkId) {
         return facts.get(artworkId) ?? null;
       },
-      async save(artworkId, value) {
+      async save(artworkId, value, _recorded) {
         factsSaves += 1;
         const version = new Date(Date.UTC(2026, 9, 1, 12, 0, factsSaves)).toISOString();
         facts.set(artworkId, { facts: structuredClone(value), version });

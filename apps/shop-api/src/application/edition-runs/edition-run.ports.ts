@@ -62,8 +62,16 @@ export type PaidOrderRef = { orderId: string; reference: string; paidAt: Date | 
 
 export interface EditionFactsStore {
   get(artworkId: string): Promise<StoredFacts | null>;
-  /** Replaces the facts and returns the new version. The database refuses forbidden combinations. */
-  save(artworkId: string, facts: EditionFacts): Promise<string>;
+  /**
+   * Replaces the facts and returns the new version. The database refuses forbidden combinations.
+   * `recorded` is who saved them and when: given, it is kept with the certificate authority's
+   * letter reference; left out, the stored record of that reference is not touched.
+   */
+  save(
+    artworkId: string,
+    facts: EditionFacts,
+    recorded?: { by: string; at: Date },
+  ): Promise<string>;
   paidOrders(artworkId: string): Promise<PaidOrderRef[]>;
   /**
    * Records `snapshot` on the run's paid order lines that do not have one yet, so a correction

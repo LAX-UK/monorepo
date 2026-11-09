@@ -1,6 +1,5 @@
 "use client";
 
-import { MediaLightbox } from "@/components/gallery/engine/media-lightbox";
 import { MarketingCatalogGrid } from "@/components/marketing/marketing-catalog-grid";
 import {
   DAY_GALLERY_INLINE_PREVIEW,
@@ -18,6 +17,7 @@ import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import type { SaleDayMedia } from "@auction/types";
 import { cn } from "@auction/ui";
 import { useState } from "react";
+import { LazyMediaLightbox, preloadMediaLightbox } from "./media-lightbox.lazy";
 
 type Props = {
   vm: DayGalleryVM;
@@ -33,6 +33,8 @@ function previewBackgroundSrc(items: SaleDayMedia[]): string | null {
 
 export function SaleroomDayGallery({ vm, className }: Props) {
   const [lightboxIndex, setLightboxIndex] = useState<number>(-1);
+  // The viewer mounts on the first open and stays, so its closing motion plays and focus returns.
+  const [viewerMounted, setViewerMounted] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
   const reduceMotion = useReducedMotion();
 
@@ -43,6 +45,7 @@ export function SaleroomDayGallery({ vm, className }: Props) {
 
   const openLightboxAt = (index: number) => {
     setSheetOpen(false);
+    setViewerMounted(true);
     setLightboxIndex(index);
   };
 
@@ -69,7 +72,8 @@ export function SaleroomDayGallery({ vm, className }: Props) {
               total={total}
               saleTitle={vm.saleTitle}
               variant="inline"
-              onClick={() => setLightboxIndex(index)}
+              onIntent={() => void preloadMediaLightbox()}
+              onClick={() => openLightboxAt(index)}
             />
           ))}
           {overflowCount > 0 ? (
@@ -92,14 +96,16 @@ export function SaleroomDayGallery({ vm, className }: Props) {
         onSelectIndex={openLightboxAt}
       />
 
-      <MediaLightbox
-        items={vm.items}
-        open={lightboxIndex >= 0}
-        index={lightboxIndex}
-        onClose={() => setLightboxIndex(-1)}
-        onIndexChange={setLightboxIndex}
-        animation={animation}
-      />
+      {viewerMounted ? (
+        <LazyMediaLightbox
+          items={vm.items}
+          open={lightboxIndex >= 0}
+          index={Math.max(lightboxIndex, 0)}
+          onClose={() => setLightboxIndex(-1)}
+          onIndexChange={setLightboxIndex}
+          animation={animation}
+        />
+      ) : null}
     </>
   );
 }

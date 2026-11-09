@@ -27,6 +27,7 @@ import type {
   CreateOriginalSaleCommand,
   OriginalSaleWriter,
 } from "./application/ports/original-sale.writer.js";
+import type { PrintPartyStore } from "./application/ports/print-party.store.js";
 import type {
   GrantSaleAuthorityCommand,
   SaleAuthorityWriter,
@@ -104,6 +105,8 @@ export type AdminRoutesDeps = {
   >;
   /** Release alert subscriber counts. */
   releaseAlertSummary: ReleaseAlertSummaryReader;
+  /** The printers and publishers list in Settings. */
+  printParties: PrintPartyStore;
   artistApplicationReview: ArtistApplicationReviewService;
   productionTasks: ProductionTaskService;
   savedViews: SavedViewService;

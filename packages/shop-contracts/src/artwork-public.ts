@@ -175,6 +175,13 @@ const PublicCertificateSchema = Type.Union([
         ),
       ]),
       numberedToMatch: Type.Boolean(),
+      /** Who gave the written authority behind a London Art Exchange certificate; nothing more. */
+      authority: Type.Optional(
+        Type.Object(
+          { givenBy: Type.Union([Type.Literal("artist"), Type.Literal("estate")]) },
+          { additionalProperties: false },
+        ),
+      ),
     },
     { additionalProperties: false },
   ),
@@ -190,6 +197,26 @@ export const PublicEditionFactsSchema = Type.Object(
     ]),
     signature: PublicSignatureSchema,
     certificate: PublicCertificateSchema,
+    stamp: Type.Optional(
+      Type.Union([
+        Type.Literal("none"),
+        Type.Literal("publisher_blind"),
+        Type.Literal("printer_blind"),
+        Type.Literal("estate_back"),
+      ]),
+    ),
+    printedBy: Type.Optional(Type.Union([Type.String({ maxLength: 80 }), Type.Null()])),
+    publishedBy: Type.Optional(
+      Type.Union([
+        Type.Object({ kind: Type.Literal("artist") }, { additionalProperties: false }),
+        Type.Object({ kind: Type.Literal("lax") }, { additionalProperties: false }),
+        Type.Object(
+          { kind: Type.Literal("named"), name: Type.String({ minLength: 1, maxLength: 80 }) },
+          { additionalProperties: false },
+        ),
+        Type.Null(),
+      ]),
+    ),
   },
   { additionalProperties: false },
 );

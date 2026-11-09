@@ -1,5 +1,6 @@
 import type { CertificateForm, CertificateIssuer, EditionFacts } from "./edition-facts.js";
 import type { ExpectedPrint, PackCandidate, PackConfirmation } from "./print-confirmation.js";
+export { AUTHORITY_REFERENCE_MAX_LENGTH, assertAuthorityReference } from "./authority-reference.js";
 import { ShopDomainError } from "./shop-domain-error.js";
 
 /**
@@ -191,18 +192,4 @@ export function assertHorsCommerceSellable(input: {
       "A hors commerce proof can be offered for sale only after a shop admin approves it",
     );
   }
-}
-
-export const AUTHORITY_REFERENCE_MAX_LENGTH = 200;
-
-/** The reference to the artist's written authority: a document name, date or filing reference. */
-export function assertAuthorityReference(reference: string | null | undefined): string {
-  const trimmed = reference?.trim() ?? "";
-  if (!trimmed) throw new ShopDomainError("Say where the artist's written authority is kept");
-  if (trimmed.length > AUTHORITY_REFERENCE_MAX_LENGTH) {
-    throw new ShopDomainError(
-      `Keep the reference to ${AUTHORITY_REFERENCE_MAX_LENGTH} characters or fewer`,
-    );
-  }
-  return trimmed;
 }

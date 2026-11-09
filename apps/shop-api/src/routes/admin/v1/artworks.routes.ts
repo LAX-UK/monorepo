@@ -208,9 +208,12 @@ export async function registerAdminArtworkRoutes(app: FastifyInstance, deps: Adm
       const actor = catalogueWriter(request);
       const { id } = request.params as Static<typeof ArtworkParams>;
       const body = request.body as AdminArtworkUpdateBody;
+      // "Certified" is true once the run states a certificate, so it is allowed then.
+      const detail = await deps.adminRead.artworks.getArtwork(id);
+      const certificateStated = detail?.run?.facts?.certificate.kind === "included";
       const result = await deps.artworkCatalogue.updateArtwork({
         ...actor,
-        ...cleanArtworkFields(body),
+        ...cleanArtworkFields(body, { certificateStated }),
         artworkId: id,
         expectedVersion: body.expectedVersion,
       });

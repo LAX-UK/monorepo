@@ -115,6 +115,8 @@ jobs:
 
       - name: Brand name
         run: pnpm lint:brand-name
+      - name: Route JavaScript budget script
+        run: pnpm lint:route-js-budget
 
       - name: Legal names (from branding source only)
         run: pnpm lint:legal-names

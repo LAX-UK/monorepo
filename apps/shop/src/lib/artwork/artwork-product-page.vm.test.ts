@@ -197,6 +197,56 @@ describe("About this edition", () => {
     );
   });
 
+  it("adds the stamp, printer and publisher rows only when they are stated, in this order", () => {
+    const stated = page(
+      detail({
+        edition: limited({
+          facts: {
+            ...handSigned,
+            stamp: "printer_blind",
+            printedBy: "Coriander Studio, London",
+            publishedBy: { kind: "named", name: "Kestrel Editions" },
+          },
+        }),
+      }),
+    ).facts;
+    expect(stated?.rows.slice(4)).toEqual([
+      { label: "Stamp", value: "Blind stamp of the printer" },
+      { label: "Printed by", value: "Coriander Studio, London" },
+      { label: "Published by", value: "Kestrel Editions" },
+    ]);
+    const plain = page(detail({ edition: limited({ facts: { ...handSigned, stamp: "none" } }) }));
+    expect(plain.facts?.rows.map((row) => row.label)).toEqual([
+      "Edition",
+      "Signature",
+      "Number",
+      "Certificate",
+    ]);
+  });
+
+  it("words a London Art Exchange certificate on the authority it stands on", () => {
+    const facts = page(
+      detail({
+        edition: limited({
+          facts: {
+            ...handSigned,
+            certificate: {
+              kind: "included",
+              issuer: "lax",
+              form: "paper",
+              arrives: { kind: "with_print" },
+              numberedToMatch: true,
+              authority: { givenBy: "artist" },
+            },
+          },
+        }),
+      }),
+    ).facts;
+    expect(facts?.rows.find((row) => row.label === "Certificate")?.value).toBe(
+      "Certificate of authenticity issued by London Art Exchange Ltd on the artist's written authority, sent with your print",
+    );
+  });
+
   it("adds the proofs row only when proofs were kept, never a remaining count", () => {
     const kept = page(detail({ edition: limited({ proofsKept: { ap: 2, pp: 0, hc: 0 } }) })).facts;
     expect(kept?.rows.at(-1)).toEqual({

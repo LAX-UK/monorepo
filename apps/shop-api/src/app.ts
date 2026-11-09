@@ -24,6 +24,7 @@ import { registerAdminMediaRoutes } from "./routes/admin/v1/admin-media.routes.j
 import { registerAdminMerchandiseRoutes } from "./routes/admin/v1/admin-merchandise.routes.js";
 import { registerAdminOfferOnLaxArtRoutes } from "./routes/admin/v1/admin-offer-on-lax-art.routes.js";
 import { registerAdminPeopleRoutes } from "./routes/admin/v1/admin-people.routes.js";
+import { registerAdminPrintPartyRoutes } from "./routes/admin/v1/admin-print-parties.routes.js";
 import { registerAdminProductionRoutes } from "./routes/admin/v1/admin-production.routes.js";
 import { registerAdminReadRoutes } from "./routes/admin/v1/admin-read.routes.js";
 import { registerAdminReleaseAlertRoutes } from "./routes/admin/v1/admin-release-alerts.routes.js";
@@ -208,6 +209,7 @@ export function createShopApiApp(options: CreateShopApiAppOptions) {
         void registerAdminOfferOnLaxArtRoutes(adminScope, options.deps.admin);
         void registerAdminZohoLinkRoutes(adminScope, options.deps.admin);
         void registerAdminReleaseAlertRoutes(adminScope, options.deps.admin.releaseAlertSummary);
+        void registerAdminPrintPartyRoutes(adminScope, options.deps.admin.printParties);
         void registerAdminArtistApplicationRoutes(
           adminScope,
           options.deps.admin.artistApplicationReview,

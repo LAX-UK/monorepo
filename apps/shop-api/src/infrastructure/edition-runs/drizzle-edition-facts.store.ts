@@ -1,8 +1,30 @@
 import type { Database } from "@auction/db";
 import { shopEditionFacts, shopOrder, shopOrderLine } from "@auction/db/schema";
+import type { EditionFacts } from "@auction/shop-domain";
 import { and, asc, eq, isNull, sql } from "drizzle-orm";
 import type { EditionFactsStore } from "../../application/edition-runs/edition-run.ports.js";
 import { factsFromColumns, factsToColumns } from "../edition-facts-columns.js";
+
+/**
+ * The letter reference with who recorded it and when, written together as the table requires.
+ * Without `recorded` the stored record is left alone.
+ */
+function authorityRecord(facts: EditionFacts, recorded: { by: string; at: Date } | undefined) {
+  if (!recorded) return {};
+  const certificate = facts.certificate;
+  const reference = certificate.kind === "included" ? certificate.authority?.reference?.trim() : "";
+  return reference
+    ? {
+        certificateAuthorityReference: reference,
+        certificateAuthorityRecordedBy: recorded.by,
+        certificateAuthorityRecordedAt: recorded.at,
+      }
+    : {
+        certificateAuthorityReference: null,
+        certificateAuthorityRecordedBy: null,
+        certificateAuthorityRecordedAt: null,
+      };
+}
 
 /** The facts of a run with their version, and the paid orders a correction would affect. */
 export function createDrizzleEditionFactsStore(db: Database): EditionFactsStore {
@@ -16,8 +38,8 @@ export function createDrizzleEditionFactsStore(db: Database): EditionFactsStore 
       return row ? { facts: factsFromColumns(row), version: row.updatedAt.toISOString() } : null;
     },
 
-    async save(artworkId, facts) {
-      const columns = factsToColumns(facts);
+    async save(artworkId, facts, recorded) {
+      const columns = { ...factsToColumns(facts), ...authorityRecord(facts, recorded) };
       // clock_timestamp, not now(): two saves in one transaction still get distinct versions.
       const [row] = await db
         .insert(shopEditionFacts)

@@ -54,9 +54,10 @@ const FACTS_FOR_EXISTING: ReadonlyArray<{ slug: string; facts: EditionFacts }> =
     facts: confirmed({
       numbering: "on_certificate",
       signature: { kind: "plate_signed" },
+      // A publisher's certificate: a London Art Exchange one needs a recorded authority and the flag.
       certificate: {
         kind: "included",
-        issuer: "lax",
+        issuer: "publisher",
         form: "digital",
         arrives: { kind: "with_print" },
         numberedToMatch: true,

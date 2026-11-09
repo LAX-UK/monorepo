@@ -4,7 +4,6 @@ import {
   shopCertificate,
   shopEdition,
   shopEditionEvent,
-  shopEditionFacts,
   shopOrder,
   shopOrderLine,
 } from "@auction/db/schema";
@@ -100,19 +99,6 @@ export function createDrizzleCertificateStore(db: Database): CertificateStore {
         .where(isNull(shopCertificate.issuedAt))
         .orderBy(asc(shopCertificate.createdAt), asc(shopCertificate.id));
       return rows.map((row) => ({ ...row, printLabel: row.printLabel ?? "" }));
-    },
-
-    async recordAuthority(input) {
-      const updated = await db
-        .update(shopEditionFacts)
-        .set({
-          certificateAuthorityReference: input.reference,
-          certificateAuthorityRecordedBy: input.actorSubjectId,
-          certificateAuthorityRecordedAt: input.at,
-        })
-        .where(eq(shopEditionFacts.artworkId, input.artworkId))
-        .returning({ id: shopEditionFacts.artworkId });
-      return updated.length === 1;
     },
   };
 }

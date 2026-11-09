@@ -24,6 +24,32 @@ export type SignatureChoice = AdminEditionFacts["signature"]["kind"];
 export type NumberingChoice = AdminEditionFacts["numbering"];
 type Included = Extract<AdminEditionFacts["certificate"], { kind: "included" }>;
 
+export type StampChoice = NonNullable<AdminEditionFacts["stamp"]>;
+export type AuthorityGiverChoice = "artist" | "estate";
+
+/** The "Published by" select: no value says nothing; the others are the artist, LAX or a listed name. */
+export const PUBLISHED_BY_ARTIST = "@artist";
+export const PUBLISHED_BY_LAX = "@lax";
+const PUBLISHED_BY_NAMED = "name:";
+
+export function publishedByValue(published: AdminEditionFacts["publishedBy"]): string {
+  if (!published) return "";
+  if (published.kind === "artist") return PUBLISHED_BY_ARTIST;
+  return published.kind === "lax" ? PUBLISHED_BY_LAX : `${PUBLISHED_BY_NAMED}${published.name}`;
+}
+
+function publishedByInput(value: string): NonNullable<AdminEditionFacts["publishedBy"]> | null {
+  if (value === PUBLISHED_BY_ARTIST) return { kind: "artist" };
+  if (value === PUBLISHED_BY_LAX) return { kind: "lax" };
+  return value.startsWith(PUBLISHED_BY_NAMED)
+    ? { kind: "named", name: value.slice(PUBLISHED_BY_NAMED.length) }
+    : null;
+}
+
+export function publishedByNamedValue(name: string): string {
+  return `${PUBLISHED_BY_NAMED}${name}`;
+}
+
 export type FactsFormValues = {
   signature: SignatureChoice | null;
   medium: "pencil" | "ink" | null;
@@ -37,6 +63,18 @@ export type FactsFormValues = {
   /** Ticked by default once a certificate is chosen for a numbered run (rule 7). */
   numberedToMatch: boolean;
   numberedToMatchReason: string;
+  /** The written authority behind a certificate London Art Exchange issues. */
+  authorityGivenBy: AuthorityGiverChoice | null;
+  /** The date of the letter, YYYY-MM-DD. */
+  authorityDatedOn: string;
+  /** Where the signed letter is kept. */
+  authorityReference: string;
+  /** "No stamp" says nothing. */
+  stamp: StampChoice;
+  /** A name from Settings; empty says nothing. */
+  printedBy: string;
+  /** See publishedByValue; empty says nothing. */
+  publishedBy: string;
   /** "I have checked these facts against the print or the publisher's records". */
   confirmed: boolean;
 };
@@ -52,6 +90,9 @@ export const FACTS_FORM_FIELDS = [
   "arrives",
   "withinWeeks",
   "numberedToMatchReason",
+  "authorityGivenBy",
+  "authorityDatedOn",
+  "authorityReference",
 ] as const;
 export type FactsFormField = (typeof FACTS_FORM_FIELDS)[number];
 
@@ -72,6 +113,12 @@ export function emptyFactsForm(): FactsFormValues {
     withinWeeksText: "",
     numberedToMatch: true,
     numberedToMatchReason: "",
+    authorityGivenBy: null,
+    authorityDatedOn: "",
+    authorityReference: "",
+    stamp: "none",
+    printedBy: "",
+    publishedBy: "",
     confirmed: false,
   };
 }
@@ -102,6 +149,14 @@ export function factsFormValues(
     numberedToMatch: certificate.kind === "included" ? certificate.numberedToMatch : true,
     numberedToMatchReason:
       certificate.kind === "included" ? (certificate.numberedToMatchReason ?? "") : "",
+    authorityGivenBy:
+      certificate.kind === "included" ? (certificate.authority?.givenBy ?? null) : null,
+    authorityDatedOn: certificate.kind === "included" ? (certificate.authority?.datedOn ?? "") : "",
+    authorityReference:
+      certificate.kind === "included" ? (certificate.authority?.reference ?? "") : "",
+    stamp: facts.stamp ?? "none",
+    printedBy: facts.printedBy ?? "",
+    publishedBy: publishedByValue(facts.publishedBy),
     confirmed,
   };
 }
@@ -121,6 +176,11 @@ const NUMBERED_SIGNATURE_PLACE = new Set<SignatureChoice>(["hand_signed", "estat
 
 export function signatureNeedsPlace(signature: SignatureChoice | null): boolean {
   return signature !== null && NUMBERED_SIGNATURE_PLACE.has(signature);
+}
+
+/** London Art Exchange issues this certificate, so it needs the written authority behind it. */
+export function certificateNeedsAuthority(values: FactsFormValues): boolean {
+  return values.certificate === "included" && values.issuer === "lax";
 }
 
 /** A digital certificate is issued to LAX Account, so when it arrives is not asked. */
@@ -168,6 +228,17 @@ export function validateFactsForm(
       }
     }
   }
+  if (certificateNeedsAuthority(values)) {
+    if (!values.authorityGivenBy) {
+      errors.authorityGivenBy = "Say whether the artist or their estate gave the authority";
+    }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(values.authorityDatedOn)) {
+      errors.authorityDatedOn = "Enter the date of the letter";
+    }
+    if (!values.authorityReference.trim()) {
+      errors.authorityReference = "Say where the signed letter is kept";
+    }
+  }
   const numbered = values.numbering === "on_print" || values.numbering === "on_certificate";
   if (
     values.numbering === "on_certificate" &&
@@ -208,10 +279,29 @@ export function factsInput(values: FactsFormValues): AdminEditionFacts | null {
   } else {
     signatureInput = { kind: signature };
   }
+  const published = publishedByInput(values.publishedBy);
+  const stated = {
+    ...(values.stamp !== "none" ? { stamp: values.stamp } : {}),
+    ...(values.printedBy.trim() ? { printedBy: values.printedBy.trim() } : {}),
+    ...(published ? { publishedBy: published } : {}),
+  } satisfies Partial<AdminEditionFacts>;
   if (certificate === "none") {
-    return { numbering, signature: signatureInput, certificate: { kind: "none" } };
+    return { numbering, signature: signatureInput, certificate: { kind: "none" }, ...stated };
   }
   if (!values.issuer || !values.form) return null;
+  const authority =
+    values.issuer === "lax"
+      ? values.authorityGivenBy && values.authorityDatedOn && values.authorityReference.trim()
+        ? {
+            authority: {
+              givenBy: values.authorityGivenBy,
+              datedOn: values.authorityDatedOn,
+              reference: values.authorityReference.trim(),
+            },
+          }
+        : null
+      : {};
+  if (!authority) return null;
   const separately = certificateNeedsArrival(values) && values.arrives === "separately";
   if (certificateNeedsArrival(values) && !values.arrives) return null;
   const withinWeeks = weeks(values.withinWeeksText);
@@ -232,7 +322,9 @@ export function factsInput(values: FactsFormValues): AdminEditionFacts | null {
       // An unnumbered run has no number to match; the certificate never claims one.
       numberedToMatch: numbered ? values.numberedToMatch : false,
       ...(numbered && !values.numberedToMatch && reason ? { numberedToMatchReason: reason } : {}),
+      ...authority,
     },
+    ...stated,
   };
 }
 

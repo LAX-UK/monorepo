@@ -14,13 +14,14 @@ const journal = JSON.parse(read("meta/_journal.json")) as {
 };
 
 describe("migration 0332 shop delivery quote", () => {
-  it("follows the migration before it in the journal, later in time", () => {
+  it("follows the migration before it in the journal, one day later", () => {
     const index = journal.entries.findIndex((e) => e.tag === "0332_shop_delivery_quote");
     expect(index).toBeGreaterThan(0);
     const entry = journal.entries[index];
     const previous = journal.entries[index - 1];
     expect(entry?.idx).toBe((previous?.idx ?? 0) + 1);
-    expect(entry?.when).toBeGreaterThan(previous?.when ?? Number.POSITIVE_INFINITY);
+    expect(previous?.tag).toBe("0330_shop_print_facts");
+    expect(entry?.when).toBe((previous?.when ?? 0) + 24 * 60 * 60 * 1000);
   });
 
   it("only adds one table and its indexes, with a short lock timeout", () => {

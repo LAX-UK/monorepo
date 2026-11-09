@@ -370,6 +370,9 @@ describe.skipIf(!hasShopIntegrationDb)("edition run and facts repositories", () 
         arrives: { kind: "with_print" },
         numberedToMatch: true,
       },
+      stamp: "none",
+      printedBy: null,
+      publishedBy: null,
       confirmed: { by: "staff-1", at: new Date("2026-10-28T09:00:00Z") },
     };
 
@@ -383,6 +386,9 @@ describe.skipIf(!hasShopIntegrationDb)("edition run and facts repositories", () 
         numbering: "none",
         signature: { kind: "unsigned" },
         certificate: { kind: "none" },
+        stamp: "none",
+        printedBy: null,
+        publishedBy: null,
         confirmed: null,
       };
       await facts.saveFacts(artworkId, unsigned);
