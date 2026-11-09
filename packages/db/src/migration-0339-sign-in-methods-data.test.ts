@@ -62,6 +62,8 @@ describe("migration 0339 sign-in methods data", () => {
     );
     expect(migration).toMatch(/>= 10 THEN\s+RAISE EXCEPTION 'passkey_limit'/);
     expect(migration).toMatch(/BEFORE INSERT ON "passkey"/);
+    // The limit holds only under READ COMMITTED; the migration says so where it matters.
+    expect(migration).toMatch(/relies on READ COMMITTED/);
   });
 
   it("limits how a session was signed in to the fixed list", () => {

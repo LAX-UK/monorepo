@@ -55,7 +55,7 @@ describe("account sign-in methods contract", () => {
     const parsed = accountSignInMethodsSchema.parse({ hasPassword: true, social: [LINKED] });
     expect(parsed.social[0]).toEqual({ ...LINKED, providerEmail: null, hidden: false });
     expect(parsed.passkeys).toEqual([]);
-    expect(parsed.available).toEqual({ google: true, apple: true, passkey: false });
+    expect(parsed.available).toEqual({ google: false, apple: false, passkey: false });
   });
 
   it("carries the address a provider reported and whether it is a private relay", () => {

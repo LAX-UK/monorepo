@@ -1,4 +1,4 @@
-import type { SocialSignInProvider } from "@auction/identity-contracts";
+import { type SocialSignInProvider, openProviderEmail } from "@auction/identity-contracts";
 import type { IdentityDatabase } from "@auction/identity-db";
 import { account, passkey } from "@auction/identity-db/schema";
 import { and, asc, eq } from "drizzle-orm";
@@ -26,17 +26,6 @@ export class DrizzleIdentityCredentialRepository implements IIdentityCredentialR
     private readonly crypto: AddressOpener | null = null,
   ) {}
 
-  /** The address as written, or null when it was never kept or can no longer be opened. */
-  private readProviderEmail(value: string | null): string | null {
-    if (!value) return null;
-    if (!this.crypto) return value;
-    try {
-      return this.crypto.open(value);
-    } catch {
-      return null;
-    }
-  }
-
   private toSignInAccountRow(row: {
     providerId: string;
     password: string | null;
@@ -48,7 +37,7 @@ export class DrizzleIdentityCredentialRepository implements IIdentityCredentialR
       providerId: row.providerId,
       hasPassword: Boolean(row.password),
       createdAt: row.createdAt,
-      providerEmail: this.readProviderEmail(row.providerEmail),
+      providerEmail: openProviderEmail(row.providerEmail, this.crypto),
       providerEmailHidden: row.providerEmailHidden,
     };
   }

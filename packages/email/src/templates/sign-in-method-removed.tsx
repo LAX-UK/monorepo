@@ -5,15 +5,20 @@ import type { TemplateVarsByName } from "../types.js";
 
 export const subject = emailSubjects.signInMethodRemoved;
 
-export default function SignInMethodRemovedEmail({
-  methodLabel,
-  detail,
-  ...vars
-}: TemplateVarsByName["sign-in-method-removed"]) {
-  const named = detail ? `${methodLabel} (${detail})` : methodLabel;
+const FALLBACK_LABEL = "A sign-in method";
+
+export default function SignInMethodRemovedEmail(
+  vars: TemplateVarsByName["sign-in-method-removed"],
+) {
+  // An email queued before passkeys named the provider as `providerName`.
+  const { methodLabel, detail, providerName, ...notice } = vars as typeof vars & {
+    providerName?: string;
+  };
+  const label = methodLabel ?? providerName ?? FALLBACK_LABEL;
+  const named = detail ? `${label} (${detail})` : label;
   return (
     <SecurityNotice
-      {...vars}
+      {...notice}
       preview={`${named} was removed as a way to sign in to your LAX Account.`}
       title="A way to sign in was removed"
     >

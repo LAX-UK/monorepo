@@ -630,6 +630,51 @@ describe.skipIf(!migrationUrl)("main-to-Identity migration upgrade", { timeout: 
     });
   });
 
+  it("lets only one of two passkeys added at the same moment take the tenth place", async () => {
+    await withTemporaryDatabase(async (pool) => {
+      await runMigrationsPerTransaction(pool);
+      await pool.query(
+        `INSERT INTO public."user" ("id", "name", "email", "created_at", "updated_at")
+         VALUES ('racer', 'Real Name', 'racer@example.test', now(), now())`,
+      );
+      const insert = (db: pg.Pool | pg.PoolClient, n: number) =>
+        db.query(
+          `INSERT INTO public.passkey
+            ("id", "user_id", "public_key", "credential_id", "device_type", "backed_up")
+           VALUES ($1, 'racer', 'key', $2, 'multiDevice', true)`,
+          [`race-${n}`, `race-cred-${n}`],
+        );
+      for (let n = 1; n <= 9; n += 1) await insert(pool, n);
+
+      const first = await pool.connect();
+      const second = await pool.connect();
+      try {
+        await first.query("BEGIN");
+        await second.query("BEGIN");
+        // The first takes the tenth place and holds the person's lock until it commits.
+        await insert(first, 10);
+        const racing = insert(second, 11).then(
+          () => "inserted" as const,
+          (error: { code?: string; message?: string }) => error,
+        );
+        // Give the second time to reach the lock and wait on it.
+        await new Promise((done) => setTimeout(done, 300));
+        await first.query("COMMIT");
+        const outcome = await racing;
+        expect(outcome).toMatchObject({ code: "23514" });
+        expect(String((outcome as { message?: string }).message)).toContain("passkey_limit");
+        await second.query("ROLLBACK");
+      } finally {
+        first.release();
+        second.release();
+      }
+      const total = await pool.query(
+        `SELECT count(*)::int AS n FROM public.passkey WHERE user_id = 'racer'`,
+      );
+      expect(total.rows[0]?.n).toBe(10);
+    });
+  });
+
   it("creates each tool's saved views table with one view name per person and list, and rolls back", async () => {
     await withTemporaryDatabase(async (pool) => {
       await runMigrationsPerTransaction(pool);

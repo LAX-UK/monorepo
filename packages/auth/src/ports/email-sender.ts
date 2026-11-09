@@ -18,6 +18,8 @@ export const IDENTITY_EMAIL_TEMPLATE_NAMES = [
   "phone-removed",
   "sign-in-method-added",
   "sign-in-method-removed",
+  "social-account-linked",
+  "social-account-unlinked",
   "unconfirmed-password-removed",
   "new-device-login",
   "password-changed-elsewhere",

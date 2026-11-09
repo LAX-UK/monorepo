@@ -28,6 +28,8 @@ export const EMAIL_TEMPLATE_LABELS: Readonly<Record<TemplateName, string>> = {
   "phone-removed": "Phone number removed",
   "sign-in-method-added": "Sign-in method added",
   "sign-in-method-removed": "Sign-in method removed",
+  "social-account-linked": "Social sign-in linked (retired)",
+  "social-account-unlinked": "Social sign-in unlinked (retired)",
   "unconfirmed-password-removed": "Unconfirmed password removed",
   "new-device-login": "New device sign-in",
   "password-changed-elsewhere": "Password changed on another LAX site",

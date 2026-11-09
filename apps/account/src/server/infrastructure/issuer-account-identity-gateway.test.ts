@@ -136,7 +136,7 @@ describe("createIssuerAccountIdentityGateway", () => {
             },
           ],
           passkeys: [],
-          available: { google: true, apple: true, passkey: false },
+          available: { google: false, apple: false, passkey: false },
         },
       });
     });

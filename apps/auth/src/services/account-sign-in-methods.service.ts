@@ -70,7 +70,7 @@ export type AccountSignInMethodsPorts = {
   durable: Pick<DurableSecurityEffects, "settle">;
   /** Tells the account's email about the change; it never throws and never undoes the change. */
   notices: SecurityNoticePublisher;
-  /** What this environment offers. Passkeys stay off until the issuer can create them. */
+  /** What this environment offers. Nothing is offered unless it is named here. */
   available?: SignInMethodsAvailability;
 };
 
@@ -109,7 +109,7 @@ export class AccountSignInMethodsService {
         hidden: method.hidden,
       })),
       passkeys: methods.passkeys.map(presentPasskey),
-      available: this.ports.available ?? { google: true, apple: true, passkey: false },
+      available: this.ports.available ?? { google: false, apple: false, passkey: false },
     };
   }
 

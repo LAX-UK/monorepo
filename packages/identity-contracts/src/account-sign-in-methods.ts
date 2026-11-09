@@ -66,10 +66,13 @@ export const accountSignInMethodsSchema = z.object({
     }),
   ),
   passkeys: z.array(accountPasskeySchema).default([]),
-  /** What this environment offers, so a row for a method that cannot be added is never shown. */
+  /**
+   * What this environment offers, so a row for a method that cannot be added is never shown.
+   * Nothing is offered unless the issuer says so, including when an older issuer says nothing.
+   */
   available: z
     .object({ google: z.boolean(), apple: z.boolean(), passkey: z.boolean() })
-    .default({ google: true, apple: true, passkey: false }),
+    .default({ google: false, apple: false, passkey: false }),
 });
 
 export const accountSignInMethodUnlinkedSchema = z.object({

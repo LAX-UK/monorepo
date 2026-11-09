@@ -392,6 +392,29 @@ const renderers: { [T in TemplateName]: TemplateRenderer<T> } = {
     subject: signInMethodAddedSubject,
     component: (vars) => <SignInMethodAddedEmail {...vars} />,
   },
+  // Retired emails still in the queue render as the two above.
+  "social-account-linked": {
+    subject: signInMethodAddedSubject,
+    component: ({ provider, userName }) => (
+      <SignInMethodAddedEmail
+        methodLabel={provider === "google" ? "Google" : "Apple"}
+        whenDisplay=""
+        secureAccountUrl=""
+        userName={userName ?? null}
+      />
+    ),
+  },
+  "social-account-unlinked": {
+    subject: signInMethodRemovedSubject,
+    component: ({ provider, userName }) => (
+      <SignInMethodRemovedEmail
+        methodLabel={provider === "google" ? "Google" : "Apple"}
+        whenDisplay=""
+        secureAccountUrl=""
+        userName={userName ?? null}
+      />
+    ),
+  },
   "sign-in-method-removed": {
     subject: signInMethodRemovedSubject,
     component: (vars) => <SignInMethodRemovedEmail {...vars} />,

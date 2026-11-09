@@ -1,4 +1,4 @@
-import { formatDeviceLabel } from "@auction/identity-contracts";
+import { formatDeviceLabel, openProviderEmail } from "@auction/identity-contracts";
 import type { IdentityDatabase } from "@auction/identity-db";
 import {
   account,
@@ -169,15 +169,7 @@ export class SignInAndSecurityExportCategory extends SourcedExportCategory {
     crypto: { open(sealed: string): string } | null = null,
   ) {
     super();
-    const readAddress = (value: string | null): string | null => {
-      if (!value) return null;
-      if (!crypto) return value;
-      try {
-        return crypto.open(value);
-      } catch {
-        return null;
-      }
-    };
+    const readAddress = (value: string | null) => openProviderEmail(value, crypto);
     this.sources = [
       inMemorySource(async (subjectId) => {
         const [row] = await db

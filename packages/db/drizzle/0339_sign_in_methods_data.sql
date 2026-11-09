@@ -41,6 +41,11 @@ LANGUAGE plpgsql
 AS $$
 BEGIN
   -- Two passkeys added at once by the same person queue behind each other, so the count is exact.
+  --
+  -- This relies on READ COMMITTED, the default and what every issuer transaction runs at: the
+  -- count below is a new statement taken after the lock is held, so it sees the previous
+  -- inserter's committed row. Under REPEATABLE READ or SERIALIZABLE the snapshot would predate the
+  -- lock and two inserts could both pass at nine; do not run passkey inserts at those levels.
   PERFORM pg_advisory_xact_lock(hashtextextended('passkey:' || NEW.user_id, 0));
   IF (SELECT count(*) FROM public."passkey" WHERE user_id = NEW.user_id) >= 10 THEN
     RAISE EXCEPTION 'passkey_limit' USING ERRCODE = '23514';

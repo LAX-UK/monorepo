@@ -18,6 +18,10 @@ const names = [
   "phone-removed",
   "sign-in-method-added",
   "sign-in-method-removed",
+  // Retired: nothing sends these now. They stay renderable, as aliases of the two above, until
+  // every email queued under them has gone out. Remove them in the next release.
+  "social-account-linked",
+  "social-account-unlinked",
   "unconfirmed-password-removed",
   "new-device-login",
   "password-changed-elsewhere",
@@ -45,6 +49,11 @@ type SecurityNoticeVars = {
   /** Browser and system label; absent when the request carried no user agent. */
   deviceLabel?: string | null;
   secureAccountUrl: string;
+};
+
+type LegacySocialNoticeVars = {
+  provider: "google" | "apple";
+  userName?: string | null;
 };
 
 /** Which way to sign in changed. */
@@ -115,7 +124,18 @@ type AuthTemplateVarsBase = {
     maskedPhone: string;
   };
   "sign-in-method-added": SecurityNoticeVars & SignInMethodNoticeVars;
-  "sign-in-method-removed": SecurityNoticeVars & SignInMethodNoticeVars;
+  /**
+   * Also accepts the old `providerName` ("Google") when `methodLabel` is missing, so an email
+   * queued before the change still renders.
+   */
+  "sign-in-method-removed": SecurityNoticeVars &
+    (
+      | SignInMethodNoticeVars
+      | { methodLabel?: undefined; detail?: undefined; providerName: string }
+    );
+  /** The retired emails as they were queued: a provider and a name, with no time or link. */
+  "social-account-linked": LegacySocialNoticeVars;
+  "social-account-unlinked": LegacySocialNoticeVars;
   "unconfirmed-password-removed": SecurityNoticeVars & {
     /** The provider that proved the email, already in display form: "Google" or "Apple". */
     providerName: string;
@@ -229,6 +249,8 @@ export const authTemplates = {
     "phone-removed": "live",
     "sign-in-method-added": "live",
     "sign-in-method-removed": "live",
+    "social-account-linked": "live",
+    "social-account-unlinked": "live",
     "unconfirmed-password-removed": "live",
     "new-device-login": "live",
     "password-changed-elsewhere": "live",
