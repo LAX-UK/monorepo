@@ -18,6 +18,8 @@ export type UnappliedPaymentFailure = (typeof UNAPPLIED_PAYMENT_FAILURES)[number
 export type ShopPaymentWebhookCode =
   | UnappliedPaymentFailure
   | "payment_not_found"
+  /** The order changed between the failed attempt and recording it: try the event again. */
+  | "payment_state_changed"
   | "refund_persist_failed";
 
 export function isUnappliedPaymentFailure(
