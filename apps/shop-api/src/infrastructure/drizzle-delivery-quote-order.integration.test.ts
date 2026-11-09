@@ -392,19 +392,28 @@ describe.skipIf(!hasShopIntegrationDb)("delivery quote requests", () => {
   });
 
   it("caps open holds per network, whatever browser or email", async () => {
-    const { guestRequest, newGuest, guestBasket } = await setup(
-      "guest-ip-cap",
+    // A run holds at most 4 prints, so the network's holds are spread over two works.
+    const first = await setup(
+      "guest-ip-cap-a",
       DEFAULT_DELIVERY_REGIONS.map((r) => ({ ...r })),
-      MAX_OPEN_QUOTE_REQUESTS_PER_GUEST_IP + 1,
+      3,
     );
-    for (let i = 0; i < MAX_OPEN_QUOTE_REQUESTS_PER_GUEST_IP; i++) {
-      const guest = await newGuest(`token-${i}`, "shared-ip");
-      const basket = await guestBasket(guest.token);
-      expect((await guestRequest(basket.basketId, guest)).kind).toBe("quote_requested");
+    const second = await setup(
+      "guest-ip-cap-b",
+      DEFAULT_DELIVERY_REGIONS.map((r) => ({ ...r })),
+      3,
+    );
+    const network = `shared-ip-${first.suffix}`;
+    const holds = [first, first, first, second];
+    expect(holds).toHaveLength(MAX_OPEN_QUOTE_REQUESTS_PER_GUEST_IP);
+    for (const [i, shop] of holds.entries()) {
+      const guest = await shop.newGuest(`token-${first.suffix}-${i}`, network);
+      const basket = await shop.guestBasket(guest.token);
+      expect((await shop.guestRequest(basket.basketId, guest)).kind).toBe("quote_requested");
     }
-    const another = await newGuest("token-fresh", "shared-ip");
-    const basket = await guestBasket(another.token);
-    await expect(guestRequest(basket.basketId, another)).rejects.toMatchObject({
+    const another = await second.newGuest(`token-${first.suffix}-fresh`, network);
+    const basket = await second.guestBasket(another.token);
+    await expect(second.guestRequest(basket.basketId, another)).rejects.toMatchObject({
       statusCode: 409,
     });
   });
