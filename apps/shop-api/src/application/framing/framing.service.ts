@@ -221,7 +221,9 @@ export function createFramingService(deps: { uow: FramingUnitOfWork; lists: Fram
               targetType: TARGET_TYPE,
               targetId: command.optionId,
               beforeJson: summaryOf(before),
-              afterJson: summaryOf(fields),
+              // The bands staff confirmed as they are in this save, so a price kept at its placeholder
+              // value is on record as a decision and not left to be inferred from the result.
+              afterJson: { ...summaryOf(fields), confirmedBands: body.confirmedBands ?? [] },
             });
             return tx.framing.get(command.optionId);
           },

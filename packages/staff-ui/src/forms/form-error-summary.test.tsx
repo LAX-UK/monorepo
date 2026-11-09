@@ -61,6 +61,11 @@ describe("FormErrorSummary", () => {
     expect(screen.getByRole("alert")).toHaveFocus();
   });
 
+  it("is still a list to a screen reader once the bullets are removed", () => {
+    render(<Form shown={errors} />);
+    expect(screen.getByRole("list")).toBeInTheDocument();
+  });
+
   it("sets each bullet apart from its link, so a message that wraps keeps it on the first line", () => {
     render(<Form shown={errors} />);
     const items = screen.getAllByRole("listitem");

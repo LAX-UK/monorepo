@@ -257,6 +257,57 @@ describe.skipIf(!hasShopIntegrationDb)("The framing catalogue against the databa
     ).rejects.toThrow(/shop_framing_option_placeholder_not_offered_ck/);
   });
 
+  it("serialises a price becoming a placeholder with the option going live, so both cannot pass", async () => {
+    const { service } = serviceOn();
+    const draft = await service.create({
+      ...actor(),
+      body: {
+        name: `Race ${integrationSuffix("framing")}`,
+        frame: "black_wood",
+        mount: "window_conservation",
+        glazing: "uv_acrylic",
+        hanging: "d_rings_cord",
+        leadTimeMinDays: 10,
+        leadTimeMaxDays: 15,
+        pricesPence: { up_to_40x50: 12000, up_to_60x80: 19500, up_to_80x100: 26000 },
+        offered: false,
+      },
+    });
+    const first = await ownerPool.connect();
+    const second = await ownerPool.connect();
+    try {
+      await first.query("begin");
+      await first.query(
+        "update shop_framing_option_price set is_placeholder = true where option_id = $1 and band = 'up_to_60x80'",
+        [draft.id],
+      );
+      // The option goes live while the first change is still open: it has to wait for it.
+      let secondSettled = false;
+      const goLive = second
+        .query("update shop_framing_option set status = 'active' where id = $1", [draft.id])
+        .then(
+          () => ({ failed: false }),
+          (error: Error) => ({ failed: true, message: error.message }),
+        )
+        .finally(() => {
+          secondSettled = true;
+        });
+      await new Promise((resolve) => setTimeout(resolve, 400));
+      expect(secondSettled).toBe(false);
+      await first.query("commit");
+      const outcome = await goLive;
+      expect(outcome.failed).toBe(true);
+      expect(outcome).toMatchObject({
+        message: expect.stringMatching(/shop_framing_option_placeholder_not_offered_ck/),
+      });
+      expect(await shopPoolCheck(draft.id)).toBe("draft");
+    } finally {
+      await first.query("rollback").catch(() => undefined);
+      first.release();
+      second.release();
+    }
+  });
+
   it("offers an option with placeholder prices only once every band is changed or confirmed", async () => {
     const { service } = serviceOn();
     // A copy of a seeded option, so the launch options themselves are left as they were.
