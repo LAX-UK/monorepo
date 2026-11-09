@@ -117,7 +117,7 @@ function RebookForm({
   }
 
   return (
-    <div className="flex flex-col gap-4 px-5 pb-5">
+    <div className="flex flex-col gap-4">
       {failure ? (
         <Notice tone="danger" title={failure} alert>
           {null}
