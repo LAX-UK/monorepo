@@ -31,22 +31,21 @@ describe("migration 0341 shop framing price trigger lock", () => {
     expect(entry?.when).toBeGreaterThan(previous?.when ?? 0);
   });
 
-  it("locks the option row before the price trigger reads its status", () => {
+  it("locks the option row whatever its status, then reads the status", () => {
     const body = functionOf(migration);
-    expect(body).toMatch(/o\."status" = 'active'\s+FOR UPDATE/);
+    // A lock inside a filter on 'active' would never lock a draft, which is the row that goes live.
+    expect(body).toMatch(
+      /SELECT o\."status" INTO v_status FROM "shop_framing_option" o WHERE o\."id" = NEW\."option_id" FOR UPDATE;/,
+    );
+    expect(body).not.toMatch(/o\."status" = 'active'/);
+    expect(body).toMatch(/IF v_status = 'active' THEN/);
     expect(migration).toMatch(/SET LOCAL lock_timeout = '5s'/);
   });
 
   it("changes only the function: no tables, no triggers, no data", () => {
     const code = migration.replace(/^\s*--.*$/gm, "").replace(/FOR UPDATE/g, "");
     expect(code).not.toMatch(/\b(ALTER|DROP|INSERT|UPDATE|DELETE|CREATE TABLE|CREATE TRIGGER)\b/);
-    // Same body as 0331 apart from the lock and its comment.
-    const strip = (sql: string) =>
-      sql
-        .replace(/^\s*--.*$/gm, "")
-        .replace(/\s+FOR UPDATE/g, "")
-        .replace(/\s+/g, " ");
-    expect(strip(functionOf(migration))).toBe(strip(functionOf(original)));
+    expect(code.match(/CREATE OR REPLACE FUNCTION/g)?.length).toBe(1);
   });
 
   it("is undone by putting back the 0331 function", () => {

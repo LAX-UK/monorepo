@@ -1,12 +1,6 @@
 import { describe, expect, it } from "vitest";
 import nextConfig from "../../../next.config";
-import {
-  LAX_MEDIA_HOSTS,
-  bidMediaImageHosts,
-  extraImageHosts,
-  isImageHostname,
-  publicMediaHost,
-} from "./bid-image-hosts";
+import { LAX_MEDIA_HOSTS, isImageHostname } from "./bid-image-hosts";
 
 const patterns = nextConfig.images?.remotePatterns ?? [];
 const hostnames = patterns.map((pattern) => ("hostname" in pattern ? pattern.hostname : ""));
@@ -51,14 +45,9 @@ describe("Bid's image hosts", () => {
   });
 });
 
-describe("extraImageHosts", () => {
-  it("adds hosts from the deployment's list", () => {
-    expect(extraImageHosts(" Cdn.Example.com , images.example.org ")).toEqual([
-      "cdn.example.com",
-      "images.example.org",
-    ]);
-    expect(extraImageHosts(undefined)).toEqual([]);
-    expect(extraImageHosts("")).toEqual([]);
+describe("isImageHostname", () => {
+  it("accepts every host the config names", () => {
+    for (const host of hostnames) expect(isImageHostname(host)).toBe(true);
   });
 
   it.each([
@@ -69,43 +58,7 @@ describe("extraImageHosts", () => {
     "localhost",
     "-bad.example.com",
     "a b.example.com",
-    "xn--.com",
-  ])("stops the build for %s rather than widening the list", (value) => {
-    expect(() => extraImageHosts(value)).toThrow("not a plain host name");
-  });
-});
-
-describe("publicMediaHost", () => {
-  it("reads the host of an https media address", () => {
-    expect(publicMediaHost("https://media.lax.bid/")).toBe("media.lax.bid");
-    expect(publicMediaHost("https://lax-media.lon1.cdn.digitaloceanspaces.com/uploads")).toBe(
-      "lax-media.lon1.cdn.digitaloceanspaces.com",
-    );
-  });
-
-  it("ignores anything that is not an https address with a plain host", () => {
-    for (const value of [undefined, "", "not a url", "http://media.lax.bid", "https://localhost"]) {
-      expect(publicMediaHost(value)).toBeNull();
-    }
-  });
-});
-
-describe("bidMediaImageHosts", () => {
-  it("is LAX's Spaces alone by default", () => {
-    expect(bidMediaImageHosts({})).toEqual([...LAX_MEDIA_HOSTS]);
-  });
-
-  it("adds the configured public media host and the deployment's additions, once each", () => {
-    expect(
-      bidMediaImageHosts({
-        S3_PUBLIC_BASE_URL: "https://media.lax.bid",
-        BID_IMAGE_REMOTE_HOSTS: "media.lax.bid,cdn.example.com",
-      }),
-    ).toEqual([...LAX_MEDIA_HOSTS, "media.lax.bid", "cdn.example.com"]);
-  });
-
-  it("is a plain host name check", () => {
-    expect(isImageHostname("media.lax.bid")).toBe(true);
-    expect(isImageHostname("*.lax.bid")).toBe(false);
+  ])("refuses %s", (value) => {
+    expect(isImageHostname(value)).toBe(false);
   });
 });

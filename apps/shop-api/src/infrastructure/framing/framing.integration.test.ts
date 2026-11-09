@@ -257,9 +257,9 @@ describe.skipIf(!hasShopIntegrationDb)("The framing catalogue against the databa
     ).rejects.toThrow(/shop_framing_option_placeholder_not_offered_ck/);
   });
 
-  it("serialises a price becoming a placeholder with the option going live, so both cannot pass", async () => {
+  async function draftOption() {
     const { service } = serviceOn();
-    const draft = await service.create({
+    return service.create({
       ...actor(),
       body: {
         name: `Race ${integrationSuffix("framing")}`,
@@ -273,39 +273,50 @@ describe.skipIf(!hasShopIntegrationDb)("The framing catalogue against the databa
         offered: false,
       },
     });
-    const first = await ownerPool.connect();
-    const second = await ownerPool.connect();
+  }
+
+  const MAKE_PLACEHOLDER =
+    "update shop_framing_option_price set is_placeholder = true where option_id = $1 and band = 'up_to_60x80'";
+  const GO_LIVE = "update shop_framing_option set status = 'active' where id = $1";
+
+  /** Runs `second` while `first` is open: it must wait, then fail the placeholder rule. */
+  async function secondWaitsThenFails(optionId: string, first: string, second: string) {
+    const one = await ownerPool.connect();
+    const two = await ownerPool.connect();
     try {
-      await first.query("begin");
-      await first.query(
-        "update shop_framing_option_price set is_placeholder = true where option_id = $1 and band = 'up_to_60x80'",
-        [draft.id],
+      await one.query("begin");
+      await one.query(first, [optionId]);
+      let settled = false;
+      const outcome = two.query(second, [optionId]).then(
+        () => ({ failed: false, message: "" }),
+        (error: Error) => ({ failed: true, message: error.message }),
       );
-      // The option goes live while the first change is still open: it has to wait for it.
-      let secondSettled = false;
-      const goLive = second
-        .query("update shop_framing_option set status = 'active' where id = $1", [draft.id])
-        .then(
-          () => ({ failed: false }),
-          (error: Error) => ({ failed: true, message: error.message }),
-        )
-        .finally(() => {
-          secondSettled = true;
-        });
-      await new Promise((resolve) => setTimeout(resolve, 400));
-      expect(secondSettled).toBe(false);
-      await first.query("commit");
-      const outcome = await goLive;
-      expect(outcome.failed).toBe(true);
-      expect(outcome).toMatchObject({
-        message: expect.stringMatching(/shop_framing_option_placeholder_not_offered_ck/),
+      void outcome.finally(() => {
+        settled = true;
       });
-      expect(await shopPoolCheck(draft.id)).toBe("draft");
+      await new Promise((resolve) => setTimeout(resolve, 400));
+      expect(settled).toBe(false);
+      await one.query("commit");
+      const result = await outcome;
+      expect(result.failed).toBe(true);
+      expect(result.message).toMatch(/shop_framing_option_placeholder_not_offered_ck/);
     } finally {
-      await first.query("rollback").catch(() => undefined);
-      first.release();
-      second.release();
+      await one.query("rollback").catch(() => undefined);
+      one.release();
+      two.release();
     }
+  }
+
+  it("makes the option going live wait for a price becoming a placeholder, then refuses it", async () => {
+    const draft = await draftOption();
+    await secondWaitsThenFails(draft.id, MAKE_PLACEHOLDER, GO_LIVE);
+    expect(await shopPoolCheck(draft.id)).toBe("draft");
+  });
+
+  it("makes a price becoming a placeholder wait for the option going live, then refuses it", async () => {
+    const draft = await draftOption();
+    await secondWaitsThenFails(draft.id, GO_LIVE, MAKE_PLACEHOLDER);
+    expect(await shopPoolCheck(draft.id)).toBe("active");
   });
 
   it("offers an option with placeholder prices only once every band is changed or confirmed", async () => {
