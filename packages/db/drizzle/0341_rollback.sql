@@ -1,4 +1,4 @@
--- Rollback for 0332_shop_framing_price_trigger_lock: puts back the 0331 trigger function, which
+-- Rollback for 0341_shop_framing_price_trigger_lock: puts back the 0331 trigger function, which
 -- reads the option's status without locking it. Safe at any time; no data changes.
 BEGIN;
 

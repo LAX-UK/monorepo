@@ -5,8 +5,8 @@ import { describe, expect, it } from "vitest";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const read = (name: string) => readFileSync(join(__dirname, "../drizzle", name), "utf8");
-const migration = read("0332_shop_framing_price_trigger_lock.sql");
-const rollback = read("0332_rollback.sql");
+const migration = read("0341_shop_framing_price_trigger_lock.sql");
+const rollback = read("0341_rollback.sql");
 const original = read("0331_shop_framing_catalogue.sql");
 const journal = JSON.parse(read("meta/_journal.json")) as {
   entries: { idx: number; tag: string; when: number }[];
@@ -18,10 +18,10 @@ const functionOf = (sql: string) =>
     sql.indexOf("$$;", sql.indexOf("RETURNS trigger")) + 3,
   );
 
-describe("migration 0332 shop framing price trigger lock", () => {
+describe("migration 0341 shop framing price trigger lock", () => {
   it("follows 0331 in the journal, with the next index and a later time", () => {
     const index = journal.entries.findIndex(
-      (e) => e.tag === "0332_shop_framing_price_trigger_lock",
+      (e) => e.tag === "0341_shop_framing_price_trigger_lock",
     );
     expect(index).toBeGreaterThan(0);
     const entry = journal.entries[index];
