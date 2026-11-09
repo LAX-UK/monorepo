@@ -473,11 +473,21 @@ describe("migrate-roles invariants", () => {
   });
 
   it("keeps the Shop's delivery regions to shop_app, denied to the Bid API and the worker", () => {
-    for (const table of ["shop_delivery_region", "shop_delivery_restricted_country"]) {
+    for (const table of [
+      "shop_delivery_region",
+      "shop_delivery_restricted_country",
+      "shop_delivery_quote",
+    ]) {
       expect([...SHOP_COMMERCE_TABLES]).toContain(table);
       expect([...API_DENY_TABLES]).toContain(table);
       expect([...WORKER_DENY_TABLES]).toContain(table);
     }
+  });
+
+  it("keeps the printers and publishers list to shop_app, denied to the Bid API and the worker", () => {
+    expect([...SHOP_COMMERCE_TABLES]).toContain("shop_print_party");
+    expect([...API_DENY_TABLES]).toContain("shop_print_party");
+    expect([...WORKER_DENY_TABLES]).toContain("shop_print_party");
   });
 
   it("keeps each tool's saved views to its own role", () => {

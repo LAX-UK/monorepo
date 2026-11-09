@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   artworkInterestBodySchema,
   createCheckoutBodySchema,
+  createDeliveryQuoteRequestBodySchema,
+  createGuestDeliveryQuoteRequestBodySchema,
   generalEnquiryBodySchema,
 } from "./commerce-bodies.js";
 
@@ -112,5 +114,42 @@ describe("enquiry body schemas", () => {
       website: "https://spam.example",
     });
     expect(parsed.website).toBe("https://spam.example");
+  });
+});
+
+describe("delivery quote request bodies", () => {
+  const origin = "http://localhost:3020";
+  const body = {
+    basketId: "00000000-0000-4000-8000-000000000001",
+    idempotencyKey: "delivery-quote:basket-1",
+    deliveryAddress: {
+      recipientName: "Anna Weber",
+      line1: "Friedrichstrasse 12",
+      city: "Berlin",
+      postcode: "10117",
+      country: "DE",
+    },
+    deliveryPhone: "+49 30 1234567",
+    successUrl: "http://localhost:3020/checkout/confirmation",
+    cancelUrl: "http://localhost:3020/checkout",
+  };
+
+  it("accepts a complete request and keeps the country code as sent", () => {
+    const result = createDeliveryQuoteRequestBodySchema(origin).safeParse(body);
+    expect(result.success).toBe(true);
+  });
+
+  it("refuses redirects that leave the storefront and fields it does not know", () => {
+    const schema = createDeliveryQuoteRequestBodySchema(origin);
+    expect(schema.safeParse({ ...body, cancelUrl: "https://evil.example/x" }).success).toBe(false);
+    expect(schema.safeParse({ ...body, fulfilment: "uk_insured_delivery" }).success).toBe(false);
+  });
+
+  it("needs the guest's email and name for a guest", () => {
+    const schema = createGuestDeliveryQuoteRequestBodySchema(origin);
+    expect(schema.safeParse(body).success).toBe(false);
+    expect(
+      schema.safeParse({ ...body, email: "anna@example.com", name: "Anna Weber" }).success,
+    ).toBe(true);
   });
 });

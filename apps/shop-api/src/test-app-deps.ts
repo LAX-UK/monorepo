@@ -15,6 +15,7 @@ import {
   createEnquiryRateLimiter,
   createReleaseAlertRateLimiter,
 } from "./application/enquiry-rate-limit.js";
+import { createFramingService } from "./application/framing/framing.service.js";
 import { GuestErasureService } from "./application/guest-erasure/guest-erasure.service.js";
 import { createHomeFeaturesService } from "./application/home-features/home-features.service.js";
 import { LeadsService } from "./application/leads/leads.service.js";
@@ -53,6 +54,8 @@ export function createMinimalShopApiTestDeps(
       PORT: 3011,
       DATABASE_URL_SHOP: "postgresql://shop:shop@localhost:5432/auction",
       SHOP_EDITION_ORDER_LIMIT: 2,
+      SHOP_EXPORT_PAYMENT_ENABLED: false,
+      SHOP_GUEST_QUOTE_HOLD_WORKING_DAYS: 1,
       LOG_LEVEL: "error",
       SHOP_API_PUBLIC_BASE_URL: "http://localhost:3011",
       SHOP_STOREFRONT_URL: "http://localhost:3020",
@@ -143,6 +146,9 @@ export function createMinimalShopApiTestDeps(
         throw new Error("not implemented");
       },
       cancelCheckoutOrder: async () => undefined,
+      requestDeliveryQuote: async () => {
+        throw new Error("not implemented");
+      },
       listOrders: async () => ({ items: [] }),
       getOrder: async () => null,
       getCustomerProfile: async () => ({ name: null, email: null }),
@@ -620,6 +626,10 @@ export function createMinimalShopApiTestDeps(
           searchCandidates: async () => [],
         },
         clock: { now: () => new Date() },
+      }),
+      framing: createFramingService({
+        uow: { run: () => Promise.reject(new Error("No framing catalogue store in this test")) },
+        lists: { list: async () => ({ items: [] }) },
       }),
       requestRefund: async () => ({
         refundId: "00000000-0000-4000-8000-000000000012",

@@ -24,6 +24,7 @@
  */
 
 import { betterAuth } from "better-auth";
+import type { AuthHookDeps } from "./auth-hooks/auth-hook-deps.js";
 import { buildDatabaseHooks } from "./auth-hooks/database-hooks.js";
 import { AUTH_TIMINGS, DEFAULT_JWT_AUDIENCE } from "./auth-timings.js";
 import { AUTH_IP_ADDRESS_HEADERS } from "./client-ip-headers.js";
@@ -35,6 +36,7 @@ import {
   buildEmailVerificationBlock,
   buildJwtAndOidcPlugins,
 } from "./server-plugins.js";
+import { buildSocialSignInPolicyPlugin } from "./social-sign-in-plugin.js";
 
 export type AuthEnv = {
   /** Better Auth database adapter from `buildDrizzleDatabase` in apps/auth. */
@@ -61,6 +63,8 @@ export type AuthEnv = {
   totpIssuer?: string | undefined;
   /** URL for the sessions settings page linked from password-reset emails. */
   sessionsSettingsUrl?: string | undefined;
+  /** Called when the facts a Google or Apple sign-in depends on cannot be read; the sign-in fails closed. */
+  onSocialPolicyReadFailed?: ((error: unknown) => void) | undefined;
   /** Called after password reset succeeds — revoke all other sessions; returns count of revoked rows (optional; wired in apps/api). */
   revokeAllSessions?: ((userId: string) => Promise<number>) | undefined;
   /** Invoked from `databaseHooks.user.create.after` for every new auth user (email + OAuth).
@@ -179,6 +183,25 @@ export function createAuth(env: AuthEnv): Auth {
     env.sessionsSettingsUrl ??
     `${(env.webOrigin ?? "https://lax.bid").replace(/\/$/, "")}/dashboard/settings/sessions`;
   const { ports } = env;
+  const hookDeps: AuthHookDeps = {
+    ports: {
+      subjectStatusReader: ports.subjectStatusReader,
+      accountLinkReader: ports.accountLinkReader,
+      phoneNumberStore: ports.phoneNumberStore,
+      email: ports.email,
+      securityNotices: ports.securityNotices,
+      legalAcceptance: ports.legalAcceptance,
+      twoFactorPolicyStore: ports.twoFactorPolicyStore,
+      events: ports.events,
+    },
+    onUserCreated: env.onUserCreated,
+    onAccountCreated: env.onAccountCreated,
+    onUserUpdated: env.onUserUpdated,
+    enableNewDeviceLoginEmail: env.enableNewDeviceLoginEmail,
+    blockNewUserRegistration: env.blockNewUserRegistration,
+    revokeAllSessions: env.revokeAllSessions,
+    onSocialPolicyReadFailed: env.onSocialPolicyReadFailed,
+  };
 
   return betterAuth({
     secret: env.secret,
@@ -200,6 +223,12 @@ export function createAuth(env: AuthEnv): Auth {
         trustedProviders: [],
         /** Better Auth only counts account rows; we enforce the full sign-in pool in delete.before. */
         allowUnlinkingAll: true,
+        /**
+         * An existing account whose own email was never confirmed reaches our link policy
+         * instead of being refused before it (SM5). The policy in `account.create.before` is the
+         * only gate for that case; the provider's own email must still be verified.
+         */
+        requireLocalEmailVerified: false,
       },
     },
     user: {
@@ -230,21 +259,7 @@ export function createAuth(env: AuthEnv): Auth {
       credentialEmail: ports.credentialEmail,
       onEmailVerified: env.onEmailVerified,
     }),
-    databaseHooks: buildDatabaseHooks({
-      ports: {
-        subjectStatusReader: ports.subjectStatusReader,
-        accountLinkReader: ports.accountLinkReader,
-        phoneNumberStore: ports.phoneNumberStore,
-        email: ports.email,
-        securityNotices: ports.securityNotices,
-        legalAcceptance: ports.legalAcceptance,
-      },
-      onUserCreated: env.onUserCreated,
-      onAccountCreated: env.onAccountCreated,
-      onUserUpdated: env.onUserUpdated,
-      enableNewDeviceLoginEmail: env.enableNewDeviceLoginEmail,
-      blockNewUserRegistration: env.blockNewUserRegistration,
-    }),
+    databaseHooks: buildDatabaseHooks(hookDeps),
     session: {
       expiresIn: AUTH_TIMINGS.sessionExpiresSec,
       updateAge: AUTH_TIMINGS.sessionUpdateAgeSec,
@@ -253,21 +268,24 @@ export function createAuth(env: AuthEnv): Auth {
         maxAge: 300,
       },
     },
-    plugins: buildJwtAndOidcPlugins({
-      jwksStore: ports.jwksStore,
-      accountLinkReader: ports.accountLinkReader,
-      phoneNumberStore: ports.phoneNumberStore,
-      issuer,
-      webOrigin: env.webOrigin,
-      jwtAudience,
-      totpIssuer,
-      credentialEmail: ports.credentialEmail,
-      securityNotices: ports.securityNotices,
-      phoneVerification: ports.sms,
-      onEmailVerified: env.onEmailVerified,
-      resolveOidcIdTokenClaims: env.resolveOidcIdTokenClaims,
-      breachedPasswordChecker: env.breachedPasswordChecker,
-    }),
+    plugins: [
+      buildSocialSignInPolicyPlugin(hookDeps),
+      ...buildJwtAndOidcPlugins({
+        jwksStore: ports.jwksStore,
+        accountLinkReader: ports.accountLinkReader,
+        phoneNumberStore: ports.phoneNumberStore,
+        issuer,
+        webOrigin: env.webOrigin,
+        jwtAudience,
+        totpIssuer,
+        credentialEmail: ports.credentialEmail,
+        securityNotices: ports.securityNotices,
+        phoneVerification: ports.sms,
+        onEmailVerified: env.onEmailVerified,
+        resolveOidcIdTokenClaims: env.resolveOidcIdTokenClaims,
+        breachedPasswordChecker: env.breachedPasswordChecker,
+      }),
+    ],
     advanced: {
       useSecureCookies: env.allowInsecureCookies ? false : undefined,
       ipAddress: {

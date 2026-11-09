@@ -119,6 +119,21 @@ export const userSignInMethodUnlinkedPayloadSchemaV1 = z.object({
   unlinkedAt: rfc3339Timestamp,
 });
 
+export const userUnconfirmedPasswordRemovedPayloadSchemaV1 = z.object({
+  schemaVersion: z.literal(1),
+  subjectId: z.string(),
+  provider: z.enum(["google", "apple"]),
+  removedAt: rfc3339Timestamp,
+});
+
+export const userSocialLinkRefusedStaffPayloadSchemaV1 = z.object({
+  schemaVersion: z.literal(1),
+  subjectId: z.string(),
+  provider: z.enum(["google", "apple"]),
+  attempt: z.enum(["link", "sign_in"]),
+  refusedAt: rfc3339Timestamp,
+});
+
 export const userEmailVerifiedPayloadSchemaV1 = z.object({
   userId: z.string(),
   email: z.string(),

@@ -1,5 +1,8 @@
 import type { Hono } from "hono";
-import { createCheckoutBodySchema } from "../../commerce-bodies.js";
+import {
+  createCheckoutBodySchema,
+  createDeliveryQuoteRequestBodySchema,
+} from "../../commerce-bodies.js";
 import { assertCommerceCsrf } from "../../commerce-csrf.js";
 import { resolveAuthenticatedCommerceContext } from "../../commerce-session.js";
 import { hasVerifiedEmail } from "../../verified-email.js";
@@ -12,6 +15,7 @@ export function registerCommerceCheckoutRoutes(
   storefrontOrigin: string,
 ): void {
   const checkoutBodySchema = createCheckoutBodySchema(storefrontOrigin);
+  const quoteRequestBodySchema = createDeliveryQuoteRequestBodySchema(storefrontOrigin);
 
   app.post("/commerce/checkout", async (c) => {
     try {
@@ -38,6 +42,35 @@ export function registerCommerceCheckoutRoutes(
       path: "/v1/orders/checkout",
       method: "POST",
       body,
+    });
+    return proxyJson(c, response);
+  });
+
+  /** Checkout for an address outside the UK: a delivery quote request, or payment at a fixed rate. */
+  app.post("/commerce/delivery-quote-request", async (c) => {
+    try {
+      assertCommerceCsrf(c, storefrontOrigin);
+    } catch {
+      return c.json({ error: "csrf_failed" }, 403);
+    }
+    const auth = await resolveAuthenticatedCommerceContext(c, deps);
+    if (!auth) {
+      return c.json({ error: "sign_in_required" }, 401);
+    }
+    if (!(await hasVerifiedEmail(deps.tokenService, auth.sessionId, auth.idToken))) {
+      return c.json({ error: "email_not_verified" }, 403);
+    }
+    const parsed = quoteRequestBodySchema.safeParse(await c.req.json().catch(() => ({})));
+    if (!parsed.success) {
+      return c.json({ error: "validation_failed" }, 400);
+    }
+    const response = await deps.shopApiFetch(deps.shopApi, {
+      sessionId: auth.sessionId,
+      idToken: auth.idToken,
+      scopes: "shop.write",
+      path: "/v1/orders/delivery-quote-request",
+      method: "POST",
+      body: parsed.data,
     });
     return proxyJson(c, response);
   });

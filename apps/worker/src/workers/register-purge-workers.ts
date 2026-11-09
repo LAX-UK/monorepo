@@ -80,6 +80,7 @@ export function registerPurgeWorkers(deps: WorkerBootstrapDeps): PurgeWorkersHan
           storage: uploadStorage,
           log,
           dryRun: !env.KYC_RETENTION_PURGE_ENABLED,
+          privateSaleRetentionYears: env.PRIVATE_SALE_RECORD_RETENTION_YEARS,
         });
       });
     },

@@ -197,6 +197,23 @@ export type ShopNotificationPublisher = {
     },
   ): Promise<void>;
 
+  /** The buyer's confirmation that their delivery quote request is in and the print is held. */
+  queueDeliveryQuoteRequested(
+    tx: ShopNotificationTx,
+    input: {
+      idempotencyKey: string;
+      identitySubjectId: string;
+      fallbackEmail: string | null;
+      orderReference: string;
+      /** "Germany", as the buyer reads it. */
+      countryName: string;
+      /** When the held print is released if the quote is not paid: "12 November 2026". */
+      holdUntilOn: string;
+      /** One line per print, worded as the receipt words them. */
+      itemsSummary: string;
+    },
+  ): Promise<void>;
+
   /** The buyer's notice that the numbered print they were told about has been replaced. */
   queuePrintSwapped(
     tx: ShopNotificationTx,

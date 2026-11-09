@@ -60,6 +60,10 @@ export const AUTH_DENY_TABLES = [
 /** Shop commerce catalogue tables owned by apps/shop-api under shop_app. */
 export const SHOP_COMMERCE_TABLES = [
   "shop_catalogue_setting",
+  /** The framing catalogue: options, their prices per size band, and the editions offering them. */
+  "shop_framing_option",
+  "shop_framing_option_price",
+  "shop_framing_edition_offer",
   "shop_party",
   "shop_artist",
   "shop_artwork",
@@ -127,6 +131,8 @@ export const SHOP_COMMERCE_TABLES = [
   "shop_artist_application_work",
   /** What staff confirm about each print run: numbering, signature and certificate. */
   "shop_edition_facts",
+  /** Printers and publishers staff pick from when recording a run's facts. */
+  "shop_print_party",
   /** Guest checkout: the guest and lead behind guest orders, and their emailed order links. */
   "shop_guest_customer",
   "shop_guest_order_link",
@@ -141,6 +147,7 @@ export const SHOP_COMMERCE_TABLES = [
   /** Where the Shop delivers: regions with lead times and optional fixed prices, and the countries it does not deliver to. */
   "shop_delivery_region",
   "shop_delivery_restricted_country",
+  "shop_delivery_quote",
 ] as const;
 
 /** Append-only Shop tables: shop_app may INSERT and SELECT only. */

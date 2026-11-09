@@ -90,6 +90,19 @@ describe("LAX Account security emails", () => {
     expectSharedParts(rendered);
   });
 
+  it("renders the removed unconfirmed password: what happened, that devices were signed out, and the way back", async () => {
+    const rendered = await renderEmail("unconfirmed-password-removed", {
+      ...BASE,
+      providerName: "Google",
+    });
+    expect(rendered.subject).toBe("We secured your LAX Account");
+    expect(rendered.text).toContain("You signed in with Google and confirmed your email");
+    expect(rendered.text).toContain("set on this account without the email being confirmed");
+    expect(rendered.text).toContain("signed out every other device");
+    expect(rendered.text).toContain("Set a new password in Security");
+    expectSharedParts(rendered);
+  });
+
   it("renders email changed with both addresses, and different copy for each inbox", async () => {
     const vars = { ...BASE, previousEmail: "old@example.com", newEmail: "new@example.com" };
     const previous = await renderEmail("email-changed", { ...vars, recipient: "previous" });

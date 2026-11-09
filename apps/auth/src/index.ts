@@ -125,6 +125,13 @@ const auth = createAuthIssuer({
   accountAccessClaims,
   identityEventPublisher: repositories.identityEventPublisher,
   securityNotices,
+  onSocialPolicyReadFailed: (error) => {
+    metrics.socialPolicyReadFailures.inc();
+    log.error(
+      { error: error instanceof Error ? error.message : String(error) },
+      "social_policy_read_failed",
+    );
+  },
 });
 const identityOperations = createIdentityOperationsService({
   db,

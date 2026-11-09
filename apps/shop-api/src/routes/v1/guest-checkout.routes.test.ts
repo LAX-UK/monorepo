@@ -35,6 +35,7 @@ function guestDeps(
         },
         access: { token: "t".repeat(43), expiresAt: new Date("2026-11-29T12:00:00Z") },
       })),
+      requestDeliveryQuote: vi.fn(async () => ({ kind: "unavailable" as const })),
       ...service,
     },
     links: {

@@ -1,3 +1,4 @@
+import { kycEvidenceHeldForDeals } from "@auction/domain";
 import type {
   IKycRetentionSubjectStore,
   RecordCounts,
@@ -21,6 +22,8 @@ export type KycRetentionPurgeSummary = {
   dryRun: boolean;
   /** Subjects whose retention has expired and that still hold records. */
   due: number;
+  /** Subjects whose evidence is kept because a private sale deal's record is still retained. */
+  heldForDeals: number;
   /** Subjects purged this run; always 0 in a dry run. */
   purged: number;
   failed: number;
@@ -28,7 +31,9 @@ export type KycRetentionPurgeSummary = {
 
 /**
  * Purges KYC, AML and source-of-funds records whose five-year retention has expired (see
- * `kyc-retention-policy.ts`). Idempotent: a purged subject holds nothing, so a rerun skips it. It
+ * `kyc-retention-policy.ts`) and that no retained private sale deal still needs: someone who is,
+ * or was ever named as, a party to a deal keeps their evidence until the deal's record has run its
+ * own retention too. Idempotent: a purged subject holds nothing, so a rerun skips it. It
  * purges at most `batchSize` subjects a run and deletes nothing unless `dryRun` is false.
  *
  * Files go first. A failed file delete leaves the rows, so the next run retries; the reverse order
@@ -39,13 +44,21 @@ export async function purgeKycRetentionJob(input: {
   storage: Pick<UploadStorage, "deleteObject">;
   log: Logger;
   dryRun: boolean;
+  /** Years a private sale's record is kept after the deal ends; its parties' evidence is kept as long. */
+  privateSaleRetentionYears: number;
   batchSize?: number;
   now?: Date;
 }): Promise<KycRetentionPurgeSummary> {
   const now = input.now ?? new Date();
   const batchSize = input.batchSize ?? DEFAULT_BATCH_SIZE;
   const closedBefore = latestClosureThatCanBeDue(now);
-  const summary: KycRetentionPurgeSummary = { dryRun: input.dryRun, due: 0, purged: 0, failed: 0 };
+  const summary: KycRetentionPurgeSummary = {
+    dryRun: input.dryRun,
+    due: 0,
+    heldForDeals: 0,
+    purged: 0,
+    failed: 0,
+  };
 
   for (const store of input.stores) {
     let afterId: string | null = null;
@@ -59,6 +72,18 @@ export async function purgeKycRetentionJob(input: {
         if (summary.purged >= batchSize) break;
         const endedAt = relationshipEndedAt(candidate);
         if (!isRetentionExpired(endedAt, now)) continue;
+
+        // The evidence goes only when both clocks have run out: the subject's own five years
+        // (above) and the retention of every private sale deal they were named on.
+        const deals = await store.dealRecords(candidate.subjectId);
+        if (kycEvidenceHeldForDeals(deals, now, input.privateSaleRetentionYears)) {
+          summary.heldForDeals += 1;
+          input.log.info(
+            { subjectKind: store.kind, subjectId: candidate.subjectId },
+            "kyc_retention_purge_held_for_private_sale_deal",
+          );
+          continue;
+        }
 
         const holding = await store.describeHolding(candidate.subjectId);
         if (Object.keys(holding.records).length === 0) continue;

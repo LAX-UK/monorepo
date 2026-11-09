@@ -285,6 +285,25 @@ export function createDrizzleShopNotificationPublisher(): ShopNotificationPublis
       });
     },
 
+    async queueDeliveryQuoteRequested(tx, input) {
+      const db = asDb(tx);
+      const to =
+        (await resolveShopUserEmail(db, input.identitySubjectId)) ?? input.fallbackEmail?.trim();
+      if (!to || !to.includes("@")) return;
+
+      await insertShopEmailOutbox(db, {
+        idempotencyKey: input.idempotencyKey,
+        to,
+        template: "shop-delivery-quote-requested",
+        vars: {
+          orderReference: input.orderReference,
+          countryName: input.countryName,
+          holdUntilOn: input.holdUntilOn,
+          itemsSummary: input.itemsSummary,
+        },
+      });
+    },
+
     async queuePrintSwapped(tx, input) {
       const db = asDb(tx);
       const to =
