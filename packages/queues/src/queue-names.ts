@@ -17,6 +17,8 @@ export const QR_CODE_SCAN_QUEUE_NAME = "qr-code-scan" as const;
 export const PURGE_QR_CODE_SCANS_QUEUE_NAME = "purge-qr-code-scans" as const;
 export const PURGE_KYC_RETENTION_QUEUE_NAME = "purge-kyc-retention" as const;
 export const PURGE_ALERT_RETENTION_QUEUE_NAME = "purge-alert-retention" as const;
+/** Clears the kept record of who collected works once its retention has passed. */
+export const PURGE_COLLECTION_HANDOVER_QUEUE_NAME = "purge-collection-handover" as const;
 export const WEBHOOK_EVENTS_QUEUE_NAME = "webhook-events" as const;
 export const GC_PENDING_UPLOADS_QUEUE_NAME = "gc-pending-uploads" as const;
 export const IMPERSONATION_SWEEPER_QUEUE_NAME = "impersonation-sweeper" as const;
