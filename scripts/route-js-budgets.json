@@ -41,7 +41,9 @@
         },
         "account": {
           "budgetKb": 530,
-          "match": ["^/(account|login|register|signed-out|session-expired|sign-in-error)"]
+          "match": [
+            "^/(account|login|register|signed-out|session-expired|sign-in-error|orders/guest)"
+          ]
         }
       }
     },

@@ -6,6 +6,7 @@ import {
   groupOf,
   overBudgetTable,
   pageRoutes,
+  routePath,
   suggestBudgetKb,
   summaryTable,
   verdict,
@@ -72,6 +73,18 @@ test("only page routes are audited", () => {
   ]);
 });
 
+test("a route's path is its key without the /page suffix", () => {
+  assert.equal(routePath("/(marketing)/lot/[slug]/[id]/page"), "/(marketing)/lot/[slug]/[id]");
+  assert.equal(routePath("/page"), "/");
+});
+
+test("verdict messages show one decimal place", () => {
+  const rows = [
+    { app: "apps/web", route: "/x/page", group: "public", gzipKb: 200.46, budgetKb: 200 },
+  ];
+  assert.match(verdict(rows, { enforce: true }).lines[0], /loads 200\.5 KB of JavaScript/);
+});
+
 test("routes join the first matching group, else the fallback", () => {
   assert.equal(groupOf(appConfig, "/(marketing)/lot/[slug]/[id]/page"), "lot");
   assert.equal(groupOf(appConfig, "/(client)/purchases/pay/page"), "checkout");
@@ -103,12 +116,12 @@ test("over-budget routes are warning annotations and do not fail until enforce i
   assert.equal(warned.lines.length, 3);
   assert.match(
     warned.lines[0],
-    /^::warning title=Route JS budget::apps\/web \/\(client\)\/settings\/page loads 180 KB of JavaScript \(gzip\); the account budget is 170 KB$/,
+    /^::warning title=Route JS budget::apps\/web \/\(client\)\/settings\/page loads 180.0 KB of JavaScript \(gzip\); the account budget is 170 KB$/,
   );
 
   const enforced = verdict(rows, { enforce: true });
   assert.equal(enforced.failed, true);
-  assert.match(enforced.lines[0], /^error: apps\/web \/\(client\)\/settings\/page loads 180 KB/);
+  assert.match(enforced.lines[0], /^error: apps\/web \/\(client\)\/settings\/page loads 180.0 KB/);
 });
 
 test("a build within budget says nothing and passes under enforcement", () => {
@@ -118,10 +131,10 @@ test("a build within budget says nothing and passes under enforcement", () => {
 
 test("the tables show the group summary and the over-budget routes", () => {
   const rows = audit();
-  assert.match(summaryTable(rows), /apps\/web\s+lot\s+1\s+350 KB\s+300 KB\s+1 over/);
-  assert.match(summaryTable(rows), /apps\/web\s+public\s+1\s+190 KB\s+200 KB\s+ok/);
+  assert.match(summaryTable(rows), /apps\/web\s+lot\s+1\s+350.0 KB\s+300 KB\s+1 over/);
+  assert.match(summaryTable(rows), /apps\/web\s+public\s+1\s+190.0 KB\s+200 KB\s+ok/);
   const over = overBudgetTable(rows);
-  assert.match(over, /lot\s+350 KB\s+300 KB\s+50 KB/);
+  assert.match(over, /lot\s+350.0 KB\s+300 KB\s+50.0 KB/);
   assert.doesNotMatch(over, /home/);
 });
 
@@ -137,4 +150,15 @@ test("the checked-in config has a boolean enforce flag and a fallback group per 
       assert.ok(group.budgetKb > 0, `${app} ${name} has a budget`);
     }
   }
+});
+
+test("Shop guest order pages belong to the account group", async () => {
+  const { readFileSync } = await import("node:fs");
+  const config = JSON.parse(
+    readFileSync(new URL("./route-js-budgets.json", import.meta.url), "utf8"),
+  );
+  const shop = config.apps["apps/shop"];
+  assert.equal(groupOf(shop, "/orders/guest/page"), "account");
+  assert.equal(groupOf(shop, "/orders/guest/report-a-problem/page"), "account");
+  assert.equal(groupOf(shop, "/account/orders/page"), "account");
 });

@@ -6,9 +6,17 @@ main files plus the entries in `app-build-manifest.json`. Code fetched later by 
 not counted.
 
 Budgets live in one file, `scripts/route-js-budgets.json`, per app and route group (public pages,
-lot or product pages, checkout, account). A group's budget applies to every route in it. Each was set
-to the largest route in the group plus 10% when the check was added. The staff admin area and dev
-pages are not audited.
+lot or product pages, checkout, account). A group's budget applies to every route in it. The staff
+admin area and dev pages are not audited.
+
+## The budgets are a ratchet, not the goal
+
+The approved checkout-design target for Bid public pages is **300 KB gzip first-load JavaScript**.
+The numbers in the JSON file are not that target. Each is the largest route in its group at the time
+the check was added, plus 10%: a ratchet at today's size that stops the pages getting heavier while
+they are brought down. When a page is slimmed, lower its group's budget to the new size plus 10%
+(`--suggest`), so the gain cannot be lost again. A group is on target when its budget is at or below
+300 KB, and the ratchet is finished when the Bid public group gets there.
 
 ## Running it
 
@@ -17,6 +25,7 @@ pnpm --filter @auction/web build          # any app you want to audit
 pnpm check:route-js-budget                # summary, plus the over-budget routes
 node scripts/check-route-js-budget.mjs --all --app apps/web   # every route
 node scripts/check-route-js-budget.mjs --suggest              # largest route + 10% per group
+node scripts/check-route-js-budget.mjs --enforce              # fail on over-budget routes
 ```
 
 An app without a build is skipped. CI runs the check in the `build` job straight after the build, so
@@ -25,7 +34,10 @@ it reuses that output.
 ## Warn now, fail later
 
 While `"enforce": false` in the config, a route over budget prints a table and a GitHub warning
-annotation, and the job passes. Set `"enforce": true` to make the same routes fail the job.
+annotation, and the job passes. Set `"enforce": true` to make the same routes fail the job. For a
+single run, pass `--enforce` or set `BUDGET_ENFORCE=1`; either turns enforcement on even when the
+config says false. Exit codes: 0 pass or warnings only, 1 over budget under enforcement, 2 bad usage
+or config.
 
 ## Raising a budget on purpose
 

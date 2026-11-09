@@ -24,9 +24,14 @@ export function pageRoutes(appManifest) {
   return Object.keys(appManifest.pages ?? {}).filter((key) => key.endsWith(PAGE_SUFFIX));
 }
 
+/** The URL-style path a route key is matched on: the key without its `/page` suffix. */
+export function routePath(routeKey) {
+  return routeKey.slice(0, -PAGE_SUFFIX.length) || "/";
+}
+
 /** The group a route belongs to: the first group whose pattern matches, else the fallback. */
 export function groupOf(appConfig, routeKey) {
-  const path = routeKey.slice(0, -PAGE_SUFFIX.length) || "/";
+  const path = routePath(routeKey);
   for (const [name, group] of Object.entries(appConfig.groups)) {
     if ((group.match ?? []).some((pattern) => new RegExp(pattern).test(path))) return name;
   }
@@ -35,7 +40,7 @@ export function groupOf(appConfig, routeKey) {
 
 /** True for a route the config excludes from the audit (for example the staff admin area). */
 export function isIgnored(appConfig, routeKey) {
-  const path = routeKey.slice(0, -PAGE_SUFFIX.length) || "/";
+  const path = routePath(routeKey);
   return (appConfig.ignore ?? []).some((pattern) => new RegExp(pattern).test(path));
 }
 
@@ -69,7 +74,7 @@ export function suggestBudgetKb(rows) {
 export function verdict(rows, { enforce }) {
   const over = rows.filter((row) => row.gzipKb > row.budgetKb);
   const lines = over.map((row) => {
-    const message = `${row.app} ${row.route} loads ${row.gzipKb.toFixed(0)} KB of JavaScript (gzip); the ${row.group} budget is ${row.budgetKb} KB`;
+    const message = `${row.app} ${row.route} loads ${row.gzipKb.toFixed(1)} KB of JavaScript (gzip); the ${row.group} budget is ${row.budgetKb} KB`;
     return enforce ? `error: ${message}` : `::warning title=Route JS budget::${message}`;
   });
   return { lines, over, failed: enforce && over.length > 0 };
@@ -87,7 +92,7 @@ export function summaryTable(rows) {
       app,
       group,
       String(members.length),
-      `${largest.gzipKb.toFixed(0)} KB`,
+      `${largest.gzipKb.toFixed(1)} KB`,
       `${largest.budgetKb} KB`,
       over === 0 ? "ok" : `${over} over`,
       largest.route,
@@ -109,9 +114,9 @@ export function overBudgetTable(rows) {
     over.map((row) => [
       row.app,
       row.group,
-      `${row.gzipKb.toFixed(0)} KB`,
+      `${row.gzipKb.toFixed(1)} KB`,
       `${row.budgetKb} KB`,
-      `${(row.gzipKb - row.budgetKb).toFixed(0)} KB`,
+      `${(row.gzipKb - row.budgetKb).toFixed(1)} KB`,
       row.route,
     ]),
   );
