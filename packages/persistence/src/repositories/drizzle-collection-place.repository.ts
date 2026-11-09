@@ -36,6 +36,7 @@ function toSettings(row: PlaceRow): CollectionPlaceSettings {
     windowDays: row.windowDays,
     closeOnSaleDays: row.closeOnSaleDays,
     undoHandOverMinutes: row.undoHandOverMinutes,
+    maxActiveVisits: row.maxActiveVisits,
     freeStorageDays: row.freeStorageDays,
     bookingEmail: row.bookingEmail,
     updatedAt: row.updatedAt,

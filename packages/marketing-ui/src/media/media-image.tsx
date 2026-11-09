@@ -29,6 +29,8 @@ export type MediaImageProps = {
   className?: string | undefined;
   imgClassName?: string | undefined;
   priority?: boolean | undefined;
+  /** `eager` loads the picture now without making it the page's priority image. */
+  loading?: "eager" | "lazy" | undefined;
   onClick?: (() => void) | undefined;
   placeholderClassName?: string | undefined;
   imgRef?: Ref<HTMLImageElement>;
@@ -53,6 +55,7 @@ export function MediaImage({
   className,
   imgClassName,
   priority = false,
+  loading,
   onClick,
   placeholderClassName,
   imgRef,
@@ -116,6 +119,10 @@ export function MediaImage({
           unoptimized={isRewrittenMediaSrc(src, normalizedSrc)}
           sizes={sizes}
           priority={priority}
+          {...(loading && !priority ? { loading } : {})}
+          // Next preloads a priority image but leaves the request's own priority at auto; the
+          // hint is what moves the largest image ahead of scripts and below-the-fold pictures.
+          {...(priority ? { fetchPriority: "high" as const } : {})}
           {...(useBlurPlaceholder && blurDataURL
             ? { placeholder: "blur" as const, blurDataURL }
             : {})}

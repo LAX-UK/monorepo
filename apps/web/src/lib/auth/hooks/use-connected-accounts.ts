@@ -62,15 +62,13 @@ type UseConnectedAccountsReturn = {
    * page's `emailVerified` flag, as done in `SecurityAccountMethods`.
    */
   canUnlink: (providerId: LinkableProvider) => boolean;
-  linkSocial: (provider: LinkableProvider) => Promise<MutationResult>;
-  unlinkAccount: (providerId: LinkableProvider) => Promise<MutationResult>;
   setupPassword: (password: string) => Promise<MutationResult>;
 };
 
 /** Narrow surface for presentational components that consume account state. */
 export type ConnectedAccountsActions = Pick<
   UseConnectedAccountsReturn,
-  "state" | "loading" | "error" | "canUnlink" | "linkSocial" | "unlinkAccount" | "setupPassword"
+  "state" | "loading" | "error" | "canUnlink" | "setupPassword"
 >;
 
 /** Type-narrowing helper for Better Auth client responses, whose shape
@@ -143,31 +141,6 @@ export function useConnectedAccounts(): UseConnectedAccountsReturn {
     [state.totalMethods, state.google, state.apple],
   );
 
-  const linkSocial = useCallback<UseConnectedAccountsReturn["linkSocial"]>(async (provider) => {
-    const callbackURL = `${window.location.origin}/settings?tab=security&linked=${provider}`;
-    try {
-      const { error: err } = await authClient.linkSocial({ provider, callbackURL });
-      if (err) return { ok: false, error: readMessage(err, "Could not start linking.") };
-      return { ok: true, value: undefined };
-    } catch (e) {
-      return { ok: false, error: e instanceof Error ? e.message : "Could not start linking." };
-    }
-  }, []);
-
-  const unlinkAccount = useCallback<UseConnectedAccountsReturn["unlinkAccount"]>(
-    async (providerId) => {
-      try {
-        const { error: err } = await authClient.unlinkAccount({ providerId });
-        if (err) return { ok: false, error: readMessage(err, "Could not disconnect.") };
-        await refresh();
-        return { ok: true, value: undefined };
-      } catch (e) {
-        return { ok: false, error: e instanceof Error ? e.message : "Could not disconnect." };
-      }
-    },
-    [refresh],
-  );
-
   const setupPassword = useCallback<UseConnectedAccountsReturn["setupPassword"]>(
     async (password) => {
       const result = await setupPasswordOnServer(password);
@@ -188,20 +161,8 @@ export function useConnectedAccounts(): UseConnectedAccountsReturn {
       error,
       refresh,
       canUnlink,
-      linkSocial,
-      unlinkAccount,
       setupPassword,
     }),
-    [
-      state,
-      loading,
-      refreshing,
-      error,
-      refresh,
-      canUnlink,
-      linkSocial,
-      unlinkAccount,
-      setupPassword,
-    ],
+    [state, loading, refreshing, error, refresh, canUnlink, setupPassword],
   );
 }

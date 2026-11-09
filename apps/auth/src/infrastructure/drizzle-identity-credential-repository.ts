@@ -92,6 +92,52 @@ export class DrizzleIdentityCredentialRepository implements IIdentityCredentialR
     return rows.map((row) => this.toSignInAccountRow(row));
   }
 
+  async lockPasskeys(
+    transaction: IdentityOperationTransaction,
+    subjectId: string,
+  ): Promise<number> {
+    const rows = await identityOperationDb(this.db, transaction)
+      .select({ id: passkey.id })
+      .from(passkey)
+      .where(eq(passkey.userId, subjectId))
+      .orderBy(asc(passkey.id))
+      .for("update");
+    return rows.length;
+  }
+
+  async deletePasskey(
+    transaction: IdentityOperationTransaction,
+    subjectId: string,
+    passkeyId: string,
+  ): Promise<{ name: string | null } | null> {
+    const [removed] = await identityOperationDb(this.db, transaction)
+      .delete(passkey)
+      .where(and(eq(passkey.id, passkeyId), eq(passkey.userId, subjectId)))
+      .returning({ name: passkey.name });
+    return removed ?? null;
+  }
+
+  async renamePasskey(
+    subjectId: string,
+    passkeyId: string,
+    name: string,
+  ): Promise<PasskeyRow | null> {
+    const [renamed] = await this.db
+      .update(passkey)
+      .set({ name })
+      .where(and(eq(passkey.id, passkeyId), eq(passkey.userId, subjectId)))
+      .returning({
+        id: passkey.id,
+        name: passkey.name,
+        deviceType: passkey.deviceType,
+        backedUp: passkey.backedUp,
+        transports: passkey.transports,
+        createdAt: passkey.createdAt,
+        lastUsedAt: passkey.lastUsedAt,
+      });
+    return renamed ?? null;
+  }
+
   async deleteSocialAccount(
     transaction: IdentityOperationTransaction,
     subjectId: string,

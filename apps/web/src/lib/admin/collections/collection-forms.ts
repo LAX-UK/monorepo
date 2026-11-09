@@ -30,6 +30,7 @@ export type SettingsDraft = {
   windowDays: string;
   closeOnSaleDays: boolean;
   undoHandOverMinutes: string;
+  maxActiveVisits: string;
   /** Empty: collections are never charged for storage. */
   freeStorageDays: string;
   bookingEmail: string;
@@ -49,6 +50,7 @@ export function draftFromSettings(settings: StaffCollectionSettings): SettingsDr
     windowDays: String(settings.windowDays),
     closeOnSaleDays: settings.closeOnSaleDays,
     undoHandOverMinutes: String(settings.undoHandOverMinutes),
+    maxActiveVisits: String(settings.maxActiveVisits),
     freeStorageDays: settings.freeStorageDays === null ? "" : String(settings.freeStorageDays),
     bookingEmail: settings.bookingEmail ?? "",
     // Keys are stable between server and browser; only rows added in the browser take a counter.
@@ -72,6 +74,7 @@ export function bodyFromDraft(draft: SettingsDraft, version: string) {
     windowDays: whole(draft.windowDays),
     closeOnSaleDays: draft.closeOnSaleDays,
     undoHandOverMinutes: whole(draft.undoHandOverMinutes),
+    maxActiveVisits: whole(draft.maxActiveVisits),
     freeStorageDays: storage === "" ? null : whole(storage),
     bookingEmail: draft.bookingEmail.trim() === "" ? null : draft.bookingEmail.trim(),
     hours: draft.hours.map(({ weekday, opensLocal, closesLocal }) => ({
@@ -106,6 +109,7 @@ export function validateSettingsDraft(draft: SettingsDraft): SettingsErrors {
     windowDays: body.windowDays,
     closeOnSaleDays: body.closeOnSaleDays,
     undoHandOverMinutes: body.undoHandOverMinutes,
+    maxActiveVisits: body.maxActiveVisits,
   })) {
     out.rules[issue] = RULE_ISSUE_MESSAGES[issue];
   }

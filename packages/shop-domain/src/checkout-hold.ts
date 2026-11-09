@@ -53,3 +53,29 @@ export function planSessionHold(input: {
   if (endsAt.getTime() > input.began.getTime() + MAX_HOLD_EXTENSION_MS) return { kind: "refuse" };
   return { kind: "extend", endsAt };
 }
+
+/** How long the reaper leaves an order alone before it looks at it again. */
+export const HOLD_RECHECK_MS = 15 * 60 * 1000;
+/**
+ * The longest an order whose payment is still being confirmed, or that the reaper cannot yet end,
+ * may keep its prints, counted from when the hold began. A bank debit can be confirmed or fail days
+ * after the buyer paid: the longest window Stripe documents for the debits it offers is 14 business
+ * days (SEPA Direct Debit; Bacs and ACH are shorter), which is 21 calendar days with weekends. Past
+ * that, a payment that has still not been confirmed is treated as not made.
+ */
+export const MAX_ASYNC_PAYMENT_HOLD_MS = 21 * 24 * 60 * 60 * 1000;
+
+export type HoldDeferralPlan =
+  /** Look again at this moment: the order's hold and the prints' reservation both move to it. */
+  | { kind: "defer"; endsAt: Date }
+  /** The ceiling is reached: nothing more is deferred. */
+  | { kind: "at_cap" };
+
+/** The next look at an order the reaper must leave for now, never past {@link MAX_ASYNC_PAYMENT_HOLD_MS}. */
+export function planHoldDeferral(input: { began: Date; now: Date }): HoldDeferralPlan {
+  const cap = input.began.getTime() + MAX_ASYNC_PAYMENT_HOLD_MS;
+  const endsAt = Math.min(input.now.getTime() + HOLD_RECHECK_MS, cap);
+  return endsAt > input.now.getTime()
+    ? { kind: "defer", endsAt: new Date(endsAt) }
+    : { kind: "at_cap" };
+}

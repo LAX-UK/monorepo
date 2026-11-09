@@ -34,8 +34,9 @@ authorised or is named to collect at, and every booking on their personal accoun
 
 1. **A live (`booked`) visit is cancelled first**, never scrubbed. Its lots are released and a
    `collection.booking.cancelled` event is recorded with `cancelledVia: "system"` and
-   `reason: "account_erased"`. The erased person cannot be told; the notice to the account's other
-   people (or the gallery) is sent from that event by the notification work in the emails PR.
+   `reason: "account_erased"`. The erased person cannot be told. The worker's collection email
+   projector sends the cancellation notice from that event to the owners and admins of an
+   organisation account; a personal account has nobody left to tell.
 2. **A visit that ended with nothing handed over** (`cancelled`, `not_collected`) loses the
    collector's name (replaced by "Deleted user XXXX" for the person's own, "Deleted collector" for
    a third party), email and company at once.
@@ -93,7 +94,43 @@ changes them; every change asks for a recent sign-in and is written to the audit
   cancelled". Removing a closure is a `POST .../exceptions/:id/remove`, because it carries the
   choice. A cancelled visit records `collection.booking.cancelled` with the reason
   `hours_changed`, `closure_added` or `opening_removed`; the rebooking email is sent from that
-  event by the emails work.
+  event.
+
+## Emails
+
+The worker's `collection_booking_notify` projector reads the audit events that are written in the
+same transaction as a booking (`created`, `changed`, `cancelled`) and sends the email for each, so a
+booking and its email cannot disagree and a retry sends nothing twice (the outbox key names the
+event and the address).
+
+| Event | Email | Calendar entry |
+| --- | --- | --- |
+| Booked | Booked, to the person who booked (to the account's owners and admins if the desk booked it, or the booker has gone). A named collector with an address also gets "You're collecting for ..." with no prices and no link into the account | `REQUEST`, one per recipient |
+| Changed | Changed, with the time it moved from | `REQUEST`, same UID, next `SEQUENCE` |
+| Cancelled | Cancelled, worded by who ended it: the buyer, the gallery (hours or a closure changed, with its reason), or the account (the booker erased it). A collector is told they need not come | `CANCEL` |
+
+The calendar invites come from `COLLECTION_ORGANIZER_EMAIL` / `COLLECTION_ORGANIZER_NAME` (default
+`collections@lax.bid`, "LAX Bid", the product's name). Both have safe defaults, so nothing has to be set
+for invites to work; changing them in an environment is an infrastructure change. Mail clients need
+an organizer to update or remove an entry, so keep it an address that exists.
+
+**Named collectors.** The collector email names the organisation that authorised them and the
+member who booked ("Authorised by Northbank Ltd, booked by Jane Hart"), or just the person for a
+personal booking. The buyer types the collector's address, so each address is sent at most 5
+collection emails (the notice and the cancellation) in 24 hours; beyond that they are skipped and
+logged as `collection_collector_email_capped` (by the address's hash). The count comes from the
+email outbox, so it holds even if the booking rate limit is unavailable.
+
+**Day-before reminder.** A repeat job (`collection-reminders`, every 15 minutes) emails the buyer
+about tomorrow's visits from 09:00 London time. A visit booked or moved after that morning's 09:00 gets none
+(its confirmation or change email has just gone); a visit that moves earlier in the day is reminded for its new time. The key is the
+visit and its start, so any number of sweeps sends one. If reminders stop, check the queue's
+heartbeat (`collection-reminders`) before anything else.
+
+**Limits.** An account can book, change and cancel 20 times an hour in total (HTTP 429 with
+`Retry-After`), and hold at most the place's "visits an account can hold" at once (default 5; Bid
+admin, Collections, Hours and rules). If the counter (Redis) is unreachable the limit is skipped
+and booking carries on.
 
 ## Rolling back
 

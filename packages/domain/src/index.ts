@@ -846,6 +846,11 @@ export {
 } from "./collection-booking.js";
 export { summariseWeeklyHours } from "./collection-hours-summary.js";
 export {
+  COLLECTION_REMINDER_MINUTE,
+  reminderWindow,
+  type ReminderWindow,
+} from "./collection-reminders.js";
+export {
   COLLECTION_PLACE_EVENT_AGGREGATE,
   collectionExceptionChanged,
   collectionPlaceUpdated,
@@ -905,6 +910,7 @@ export {
   DEFAULT_COLLECTION_HANDOVER_RETENTION_YEARS,
   MIN_COLLECTION_HANDOVER_RETENTION_YEARS,
   MAX_LOTS_PER_COLLECTION,
+  COLLECTOR_EMAILS_PER_ADDRESS_PER_DAY,
   MAX_NOTICE_WORKING_DAYS,
   MAX_PLACES_PER_SLOT,
   MAX_WINDOW_DAYS,

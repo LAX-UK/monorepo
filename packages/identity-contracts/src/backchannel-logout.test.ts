@@ -1,10 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const jwtVerify = vi.fn();
-vi.mock("jose", () => ({
-  createRemoteJWKSet: vi.fn(() => "jwks"),
-  jwtVerify,
-}));
+vi.mock("jose", () => ({ jwtVerify }));
+vi.mock("./jwks-holder.js", () => ({ jwksFor: vi.fn(() => "jwks") }));
 
 const { BACKCHANNEL_LOGOUT_EVENT, validateBackchannelLogoutClaims, verifyBackchannelLogoutToken } =
   await import("./backchannel-logout.js");

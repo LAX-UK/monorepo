@@ -1,6 +1,7 @@
 import { lotNotDeleted } from "@auction/db";
 import { lot } from "@auction/db/schema";
 import { BROWSER_API_CUSTOM_HEADERS } from "@auction/http-headers";
+import { issuerJwksUrl } from "@auction/identity-contracts";
 import { and, eq, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { compress } from "hono/compress";
@@ -15,6 +16,7 @@ import { connectionOptionsFromRedisUrl } from "./lib/redis-url.js";
 import { buildTrustedWebOrigins } from "./lib/trusted-web-origins.js";
 import { createAuditAccessMiddleware } from "./middleware/audit-access.js";
 import { createClientIpMiddleware } from "./middleware/client-ip.js";
+import { createCollectionWriteRateLimit } from "./middleware/collection-write-rate-limit.js";
 import { createMarketingClientContextMiddleware } from "./middleware/marketing-client-context.js";
 import { createMarketingConsentMiddleware } from "./middleware/marketing-consent.js";
 import { createMetricsMiddleware, renderMetrics } from "./middleware/metrics.js";
@@ -129,10 +131,7 @@ export function createApp(container: Container, env: Env, authenticator: IAuthen
     createBidSsfEventsRoute({
       replayStore: createBidSsfReplayStore(container.db),
       issuer: env.OIDC_ISSUER_URL,
-      jwksUrl: `${(env.OIDC_INTERNAL_BASE_URL ?? env.OIDC_ISSUER_URL).replace(
-        /\/+$/,
-        "",
-      )}/.well-known/jwks.json`,
+      jwksUrl: issuerJwksUrl(env.OIDC_INTERNAL_BASE_URL ?? env.OIDC_ISSUER_URL),
       publish: (channel, message) => container.redis.publish(channel, message),
     }),
   );
@@ -281,7 +280,12 @@ export function createApp(container: Container, env: Env, authenticator: IAuthen
     )
     .route(
       "/legal-entities",
-      createOrganisationCollectionVisitRoutes(container, authenticator, requireAccountOnboarding),
+      createOrganisationCollectionVisitRoutes(
+        container,
+        authenticator,
+        requireAccountOnboarding,
+        createCollectionWriteRateLimit(container.rateLimitStore),
+      ),
     )
     .route("/legal-entities", createOrganisationSellingRoutes(container, authenticator))
     .route("/legal-entities", createOrganisationAccessRequestRoutes(container, authenticator))

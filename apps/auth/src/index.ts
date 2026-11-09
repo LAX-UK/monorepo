@@ -25,20 +25,24 @@ import {
   createSecurityNoticeService,
 } from "./container/create-security-services.js";
 import { createSubjectExportService } from "./container/create-subject-export.js";
+import { reconcileSigningKeyMetric } from "./container/signing-key-metric.js";
 import { loadAuthEnv } from "./env.js";
 import { withAlertingLog } from "./infrastructure/alerting-log.js";
+import { createPasskeyCounterReader } from "./infrastructure/drizzle-passkey-usage.js";
+import { RedisPasskeyEnrolmentGrants } from "./infrastructure/redis-passkey-enrolment-grants.js";
 import { createAccountSubjectExportRegistry } from "./infrastructure/subject-export/create-account-subject-export-categories.js";
+import { DEFAULT_LAX_ACCOUNT_ORIGIN } from "./lax-account-origin.js";
 import { createInternalIdentityRoutes } from "./routes/internal-identity.routes.js";
 import { createAccountAccessClaimsResolver } from "./services/account-access-claims.js";
 import { AccountDeletionService } from "./services/account-deletion.service.js";
 import { EmailChangeService } from "./services/email-change.service.js";
+import { PasskeyEnrolmentEffects } from "./services/passkey-enrolment-effects.js";
 import { StaffEmailChangeService } from "./services/staff-email-change.service.js";
 import { createSubjectReadRateLimiter } from "./services/subject-read-rate-limiter.js";
 import { createTwoFactorRequirementReader } from "./services/two-factor-requirement.service.js";
 import { SubjectExportReader } from "./subject-export/subject-export-reader.service.js";
 
 /** LAX Account's production origin, used for the security-notice link when `LAX_ACCOUNT_ORIGIN` is unset. */
-const DEFAULT_LAX_ACCOUNT_ORIGIN = "https://account.lax.bid";
 
 const env = loadAuthEnv();
 if (env.SENTRY_DSN_AUTH) {
@@ -202,6 +206,9 @@ const identityLifecycle = createIdentityLifecycleService({
   identityEventPublisher: repositories.identityEventPublisher,
   logout: services.oidc.logout,
 });
+// One store of permissions to make a passkey, shared by the hand-off that gives them and the
+// request handler that asks for them. Passkeys are offered only when the environment turns them on.
+const passkeyGrants = new RedisPasskeyEnrolmentGrants(redis);
 const authHandler = createAuthRequestHandler({
   log,
   durable: durableSecurityEffects,
@@ -210,6 +217,16 @@ const authHandler = createAuthRequestHandler({
   readTwoFactorRequirement,
   auth,
   oidcSessions: services.oidc.sessions,
+  ...(env.PASSKEYS_ENABLED
+    ? {
+        passkeys: {
+          grants: passkeyGrants,
+          onRegistered: (input) =>
+            new PasskeyEnrolmentEffects({ notices: securityNotices }).registered(input),
+          counters: createPasskeyCounterReader(db),
+        },
+      }
+    : {}),
 });
 const deletionPurge = createIdentityDeletionPurgeService({
   db,
@@ -257,6 +274,8 @@ const schedules = await createAuthSchedules({
   },
   reconcileAuthAtRest: () =>
     reconcileAuthAtRestMetric(db, (pending) => metrics.authAtRestPending.set(pending)),
+  reconcileSigningKeyMetric: () =>
+    reconcileSigningKeyMetric(infra.jwks, metrics.signingKeyCreatedTimestampSeconds),
 });
 const internal =
   env.IDENTITY_MACHINE_CLIENT_ID && env.IDENTITY_MACHINE_CLIENT_SECRET
@@ -384,6 +403,11 @@ const app = createAuthApp({
     },
     services,
     identityOperations,
+    passkeyGrants,
+    socialSubjectPorts: {
+      accountLinkReader: identityPorts.accountLinkReader,
+      twoFactorPolicyStore: identityPorts.twoFactorPolicyStore,
+    },
     emailChange,
     accountDeletion,
     subjectExports,

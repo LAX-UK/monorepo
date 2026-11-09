@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   createAuthIssuerRateLimitMiddleware,
   createMachineTokenRateLimitMiddleware,
+  createPasskeyIssuerRateLimitMiddleware,
   createSendVerificationIssuerRateLimitMiddleware,
 } from "./auth-rate-limit.js";
 import {
@@ -517,5 +518,77 @@ describe("Redis outage", () => {
     const store = createResilientSlidingWindowStore(redis as never, { warn: vi.fn() });
     const results = await store.multi().zadd("k", 1, "m").zcard("k").exec();
     expect(results?.[1]?.[1]).toBe(1);
+  });
+});
+
+describe("createPasskeyIssuerRateLimitMiddleware", () => {
+  const RL = AUTH_RATE_LIMIT_POLICY;
+
+  function passkeyApp(counts: number[]) {
+    const redis = buildFakeRedis(counts);
+    const app = new Hono();
+    app.use("/api/auth/*", createPasskeyIssuerRateLimitMiddleware(redis as never, clientIp));
+    app.all("/api/auth/*", (c) => c.json({ ok: true }));
+    return { app, redis };
+  }
+
+  const verify = (app: Hono, credential = "cred-1") =>
+    app.request("/api/auth/passkey/verify-authentication", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ response: { id: credential } }),
+    });
+
+  it("allows a challenge within 30 per address per 15 minutes, and refuses the 31st", async () => {
+    expect(RL.passkeyOptionsMax).toBe(30);
+    expect(RL.passkeyOptionsWindowSec).toBe(15 * 60);
+    const within = passkeyApp([RL.passkeyOptionsMax]);
+    expect(
+      (await within.app.request("/api/auth/passkey/generate-authenticate-options")).status,
+    ).toBe(200);
+    const over = passkeyApp([RL.passkeyOptionsMax + 1]);
+    const refused = await over.app.request("/api/auth/passkey/generate-register-options");
+    expect(refused.status).toBe(429);
+    expect(refused.headers.get("retry-after")).not.toBeNull();
+  });
+
+  it("allows 10 answers per address per 15 minutes, and refuses the 11th", async () => {
+    expect(RL.passkeyVerifyIpMax).toBe(10);
+    expect(RL.passkeyVerifyIpWindowSec).toBe(15 * 60);
+    // The address counts first, then the passkey's own.
+    expect((await verify(passkeyApp([10, 1]).app)).status).toBe(200);
+    expect((await verify(passkeyApp([11, 1]).app)).status).toBe(429);
+  });
+
+  it("allows 20 answers per passkey per hour, however many addresses they come from", async () => {
+    expect(RL.passkeyVerifyCredentialMax).toBe(20);
+    expect(RL.passkeyVerifyCredentialWindowSec).toBe(60 * 60);
+    expect((await verify(passkeyApp([1, 20]).app)).status).toBe(200);
+    expect((await verify(passkeyApp([1, 21]).app)).status).toBe(429);
+  });
+
+  it("keys the passkey's budget by a hash, never the credential id", async () => {
+    const { app, redis } = passkeyApp([1, 1]);
+    await verify(app, "very-secret-credential-id");
+    const keys = redis.multi.mock.results.flatMap((r) =>
+      r.value.zadd.mock.calls.map((c: unknown[]) => c[0]),
+    );
+    expect(keys.some((key: string) => key.includes("very-secret-credential-id"))).toBe(false);
+    expect(
+      keys.some((key: string) => key.startsWith("rl:auth-issuer:passkey-verify-credential:")),
+    ).toBe(true);
+  });
+
+  it("counts nothing for other calls, and for a submission with no readable credential still counts the address", async () => {
+    const other = passkeyApp([99]);
+    expect((await other.app.request("/api/auth/get-session")).status).toBe(200);
+    expect(other.redis.multi).not.toHaveBeenCalled();
+    const { app, redis } = passkeyApp([1]);
+    const response = await app.request("/api/auth/passkey/verify-registration", {
+      method: "POST",
+      body: "not json",
+    });
+    expect(response.status).toBe(200);
+    expect(redis.multi).toHaveBeenCalledTimes(1);
   });
 });

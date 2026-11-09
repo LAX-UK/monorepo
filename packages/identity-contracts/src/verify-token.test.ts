@@ -1,19 +1,20 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const jwtVerify = vi.fn();
-const createRemoteJWKSet = vi.fn(() => "mock-jwks");
+const jwksFor = vi.fn(() => "mock-jwks");
 
-vi.mock("jose", () => ({
-  createRemoteJWKSet,
+vi.mock("jose", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("jose")>()),
   jwtVerify,
 }));
+vi.mock("./jwks-holder.js", () => ({ jwksFor, jwksHolderFor: vi.fn() }));
 
 const { verifyIdentityToken } = await import("./verify-token.js");
 
 describe("verifyIdentityToken", () => {
   beforeEach(() => {
     jwtVerify.mockReset();
-    createRemoteJWKSet.mockClear();
+    jwksFor.mockClear();
   });
 
   it("returns null when token is empty", async () => {
@@ -51,13 +52,7 @@ describe("verifyIdentityToken", () => {
       },
     });
 
-    expect(createRemoteJWKSet).toHaveBeenCalledWith(
-      new URL("https://auth.test/.well-known/jwks.json"),
-      {
-        cacheMaxAge: 10 * 60 * 1000,
-        cooldownDuration: 30_000,
-      },
-    );
+    expect(jwksFor).toHaveBeenCalledWith("https://auth.test/.well-known/jwks.json");
     expect(jwtVerify).toHaveBeenCalledWith("valid.jwt", "mock-jwks", {
       issuer: "https://auth.test",
       audience: "lax-bid-api",

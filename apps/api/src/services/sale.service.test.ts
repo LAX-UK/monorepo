@@ -5,7 +5,7 @@ import type {
   ISaleChannelReader,
   ISaleRepository,
 } from "@auction/persistence/interfaces";
-import type { IRepositoryFactory } from "@auction/persistence/interfaces";
+import type { IRepositoryFactory, ITransactionRunner } from "@auction/persistence/interfaces";
 import type { IVenueRepository } from "@auction/persistence/interfaces";
 import type {
   AtgLotChannelState,
@@ -1978,6 +1978,101 @@ describe("SaleService venue assignment", () => {
         locationName: "Renamed Hall",
       }),
     );
+  });
+
+  describe("moving a draft sale's start time", () => {
+    const newStart = new Date("2026-12-01T10:00:00.000Z");
+
+    function setup(withTransaction: boolean) {
+      const sale = baseSale({ status: "draft" });
+      const saleRepo = {
+        findById: vi.fn().mockResolvedValue(sale),
+        update: vi.fn().mockImplementation(async (_id: string, patch: Partial<Sale>) => ({
+          ...sale,
+          ...patch,
+        })),
+      } as unknown as ISaleRepository;
+      const lotRepo = { findBySaleId: vi.fn().mockResolvedValue([]) } as unknown as ILotRepository;
+      const txPublish = vi.fn().mockResolvedValue(undefined);
+      const publish = vi.fn().mockResolvedValue(undefined);
+      const tx = { token: "tx" };
+      const runInTransaction = vi.fn(async (fn: (t: unknown) => Promise<unknown>) => fn(tx));
+      const withTx = vi.fn().mockReturnValue({ publish: txPublish });
+      const svc = new SaleService(
+        saleServiceOpts({
+          saleRepo,
+          lotRepo,
+          jobScheduler: null,
+          domainEventSink: { publish, withTx } as unknown as IDomainEventSink,
+          ...(withTransaction
+            ? { transactionRunner: { runInTransaction } as unknown as ITransactionRunner }
+            : {}),
+        }),
+      );
+      return { sale, svc, publish, txPublish, withTx, tx, runInTransaction };
+    }
+
+    it("records sale.rescheduled in the same transaction as the update", async () => {
+      const { sale, svc, publish, txPublish, withTx, tx } = setup(true);
+
+      const result = await svc.updateDraft(
+        "staff",
+        sale.id,
+        { startTime: newStart, endTime: new Date("2026-12-02T10:00:00.000Z") },
+        ["administrator"],
+        "staff-1",
+      );
+
+      expect(result.isOk()).toBe(true);
+      expect(withTx).toHaveBeenCalledWith(tx);
+      expect(publish).not.toHaveBeenCalled();
+      expect(txPublish).toHaveBeenCalledWith({
+        aggregateType: "sale",
+        aggregateId: sale.id,
+        eventType: "sale.rescheduled",
+        payload: {
+          saleId: sale.id,
+          previousStartAt: sale.startTime.toISOString(),
+          newStartAt: newStart.toISOString(),
+        },
+        actorUserId: "staff-1",
+      });
+    });
+
+    it("records it after the update when no transaction is wired", async () => {
+      const { sale, svc, publish } = setup(false);
+
+      await svc.updateDraft(
+        "staff",
+        sale.id,
+        { startTime: newStart, endTime: new Date("2026-12-02T10:00:00.000Z") },
+        ["administrator"],
+        "staff-1",
+      );
+
+      expect(publish).toHaveBeenCalledWith(
+        expect.objectContaining({
+          eventType: "sale.rescheduled",
+          payload: expect.objectContaining({ newStartAt: newStart.toISOString() }),
+        }),
+      );
+    });
+
+    it("records nothing when the start time is saved unchanged", async () => {
+      const { sale, svc, publish, txPublish } = setup(true);
+
+      const result = await svc.updateDraft(
+        "staff",
+        sale.id,
+        { startTime: sale.startTime, title: "Renamed" },
+        ["administrator"],
+        "staff-1",
+      );
+
+      expect(result.isOk()).toBe(true);
+      expect(publish).not.toHaveBeenCalled();
+      expect(txPublish).not.toHaveBeenCalled();
+    });
   });
 
   describe("test sale flag", () => {

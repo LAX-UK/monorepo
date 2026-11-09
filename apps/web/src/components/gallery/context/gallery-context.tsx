@@ -17,7 +17,6 @@ export type GalleryContextValue = {
   setViewAllOpen: (open: boolean) => void;
   openLightbox: () => void;
   openViewAll: () => void;
-  priorityIndices: Set<number>;
 };
 
 const GalleryContext = createContext<GalleryContextValue | null>(null);
@@ -34,17 +33,10 @@ type ProviderProps = {
   title: string;
   images: GalleryImage[];
   carousel: GalleryCarouselApi;
-  priorityIndices: Set<number>;
   children: ReactNode;
 };
 
-export function GalleryProvider({
-  title,
-  images,
-  carousel,
-  priorityIndices,
-  children,
-}: ProviderProps) {
+export function GalleryProvider({ title, images, carousel, children }: ProviderProps) {
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [viewAllOpen, setViewAllOpen] = useState(false);
   const { capture } = useGalleryFocusReturn(lightboxOpen);
@@ -75,19 +67,8 @@ export function GalleryProvider({
       setViewAllOpen,
       openLightbox,
       openViewAll,
-      priorityIndices,
     }),
-    [
-      title,
-      images,
-      carousel,
-      setIndex,
-      lightboxOpen,
-      viewAllOpen,
-      openLightbox,
-      openViewAll,
-      priorityIndices,
-    ],
+    [title, images, carousel, setIndex, lightboxOpen, viewAllOpen, openLightbox, openViewAll],
   );
 
   return <GalleryContext.Provider value={value}>{children}</GalleryContext.Provider>;

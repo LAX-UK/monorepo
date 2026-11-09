@@ -69,6 +69,16 @@ export function createDrizzleJwksStore(db: IdentityDatabase, envelope?: Envelope
         alg: row.algorithm as Jwk["alg"],
       };
     },
+    /** The active key's id and creation time only: no key material is read or decrypted. */
+    async getActiveSigningKeyInfo(): Promise<{ kid: string; createdAt: Date } | null> {
+      const [row] = await db
+        .select({ kid: jwksKey.kid, createdAt: jwksKey.createdAt })
+        .from(jwksKey)
+        .where(eq(jwksKey.status, "active"))
+        .orderBy(desc(jwksKey.createdAt))
+        .limit(1);
+      return row ?? null;
+    },
     async createJwk(data: Omit<Jwk, "id">): Promise<Jwk> {
       const kid = crypto.randomUUID();
       const privateForDb = sealPrivateForDb(data, envelope);

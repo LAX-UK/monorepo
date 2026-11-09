@@ -2,9 +2,9 @@ import type { Database } from "@auction/db";
 import { shopOrder } from "@auction/db/schema";
 import { and, asc, eq, isNotNull, lt } from "drizzle-orm";
 import type pino from "pino";
-import type { PaymentCheckoutGateway } from "../application/ports/commerce.ports.js";
 import {
-  deferCheckoutReaperForFailedExpiry,
+  type CheckoutTransitionOptions,
+  deferOrSettleCheckout,
   expireShopCheckoutSession,
 } from "./drizzle-payment-event.processor.js";
 
@@ -18,7 +18,7 @@ export function reaperEventIdForOrder(orderId: string): string {
 export async function reapStaleShopCheckouts(
   db: Database,
   now: Date,
-  paymentGateway?: PaymentCheckoutGateway,
+  options: CheckoutTransitionOptions = {},
   log?: pino.Logger,
 ): Promise<number> {
   const stale = await db
@@ -45,14 +45,14 @@ export async function reapStaleShopCheckouts(
           source: SHOP_CHECKOUT_REAPER_EVENT_SOURCE,
           holdMustHaveEndedBy: now,
         },
-        paymentGateway ? { paymentGateway } : {},
+        options,
       );
       if (outcome === "expired") {
         expired += 1;
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      await deferReaperForFailedOrder(db, row.id, now, log);
+      await deferReaperForFailedOrder(db, row.id, now, options, log);
       if (log) {
         log.error({ orderId: row.id, err: message }, "shop checkout reaper failed for order");
       } else {
@@ -65,17 +65,23 @@ export async function reapStaleShopCheckouts(
 
 /**
  * An order the reaper cannot end (Stripe refuses, or the order is in a state it cannot expire) is
- * pushed back, so it stops holding a place in the oldest-first batch and the orders behind it
- * are still expired. It comes round again later.
+ * pushed back (its hold and its prints' reservation together, up to the same ceiling as a payment
+ * being confirmed), so it stops holding a place in the oldest-first batch and the orders behind it
+ * are still expired. It comes round again later; past the ceiling it is settled instead (closed
+ * with a finance task if Stripe cannot confirm it), so it never blocks the batch for good.
  */
 async function deferReaperForFailedOrder(
   db: Database,
   orderId: string,
   now: Date,
+  options: CheckoutTransitionOptions,
   log?: pino.Logger,
 ): Promise<void> {
   try {
-    await deferCheckoutReaperForFailedExpiry(db, orderId, now);
+    await deferOrSettleCheckout(db, orderId, now, options, {
+      reason: "the sweep failed to end it",
+      stripeShowsPaid: false,
+    });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     if (log) {

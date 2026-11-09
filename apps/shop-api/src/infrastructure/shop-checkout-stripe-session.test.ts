@@ -14,6 +14,7 @@ describe("resolveOrCreateStripeCheckoutSession", () => {
         checkoutUrl: "https://checkout.stripe.test/cs_orphan",
       })),
       expireHostedCheckout,
+      retrievePaidCheckout: vi.fn(async () => null),
     };
     const db = {
       update: () => ({

@@ -1,4 +1,5 @@
 import { memoryAdapter } from "better-auth/adapters/memory";
+import { SignJWT, exportJWK, generateKeyPair } from "jose";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AuthDatabase } from "./phone-number-plugin.js";
 import type {
@@ -84,6 +85,7 @@ async function harness(options: {
       stampPasswordAuth: vi.fn(async () => undefined),
       stampMfaCompleted: vi.fn(async () => undefined),
       stampSocialAuth: vi.fn(async () => undefined),
+      stampPasskeyAuth: vi.fn(async () => undefined),
     },
     subjectStatusReader: { isDisabledOrMerged: vi.fn(async () => false) },
     accountLinkReader: {
@@ -229,6 +231,101 @@ async function harness(options: {
     }
   }
 
+  /**
+   * The hand-off the issuer runs for a person on Security: the link request with their own
+   * session (the code path `/account-action` calls), then the provider's answer as `claims`.
+   */
+  async function linkFromSecurity(
+    email: string,
+    claims: Record<string, unknown>,
+    options: {
+      sub?: string;
+      password?: string;
+      formPost?: boolean;
+      /** A link started some other way than the issuer's hand-off. */
+      withoutMarker?: boolean;
+      /** What the mark says; the hand-off sends `true`. */
+      marker?: unknown;
+    } = {},
+  ) {
+    const signedIn = await auth.handler(
+      new Request(`${BASE}/api/auth/sign-in/email`, {
+        method: "POST",
+        headers: { "content-type": "application/json", origin: BASE },
+        body: JSON.stringify({ email, password: options.password ?? "a-password-123" }),
+      }),
+    );
+    const cookieOf = (response: Response) =>
+      (response.headers.getSetCookie?.() ?? []).map((value) => value.split(";")[0]).join("; ");
+    const sessionCookie = cookieOf(signedIn);
+    const start = await auth.api.linkSocialAccount({
+      headers: new Headers({ cookie: sessionCookie, origin: BASE }),
+      body: {
+        provider: "google",
+        callbackURL: `${BASE}/account-action/done?provider=google`,
+        errorCallbackURL: `${BASE}/account-action/done?provider=google`,
+        disableRedirect: true,
+        ...(options.withoutMarker
+          ? {}
+          : { additionalData: { accountAction: options.marker ?? true } }),
+      },
+      asResponse: true,
+    });
+    const { url } = (await start.json()) as { url: string };
+    const state = new URL(url).searchParams.get("state") ?? "";
+    const cookie = [sessionCookie, cookieOf(start)].filter(Boolean).join("; ");
+    const idToken = unsignedJwt({
+      iss: "https://accounts.google.com",
+      aud: "google-client",
+      sub: options.sub ?? GOOGLE_SUB,
+      email_verified: true,
+      name: "Google Person",
+      ...claims,
+    });
+    const realFetch = globalThis.fetch;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const target = String(
+          typeof input === "string" || input instanceof URL ? input : input.url,
+        );
+        if (target.startsWith("https://oauth2.googleapis.com/token")) {
+          return Response.json({
+            access_token: "access",
+            id_token: idToken,
+            token_type: "Bearer",
+            expires_in: 3600,
+          });
+        }
+        return realFetch(input, init);
+      }),
+    );
+    const callback = `${BASE}/api/auth/callback/google?code=abc&state=${encodeURIComponent(state)}`;
+    try {
+      if (options.formPost) {
+        // Apple answers with a cross-site form POST. The library turns it into a GET on the same
+        // address, which the browser follows with the cookies it already holds.
+        const posted = await auth.handler(
+          new Request(`${BASE}/api/auth/callback/google`, {
+            method: "POST",
+            headers: { "content-type": "application/x-www-form-urlencoded", origin: BASE },
+            body: new URLSearchParams({ code: "abc", state }).toString(),
+          }),
+        );
+        formPostRedirect = posted;
+        const next = posted.headers.get("location");
+        if (!next) return posted;
+        return await auth.handler(
+          new Request(new URL(next, BASE), { method: "GET", headers: { cookie } }),
+        );
+      }
+      return await auth.handler(new Request(callback, { method: "GET", headers: { cookie } }));
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  }
+  let formPostRedirect: Response | null = null;
+
   return {
     auth,
     context,
@@ -240,6 +337,8 @@ async function harness(options: {
     createAccount,
     sessionFor,
     continueWithGoogle,
+    linkFromSecurity,
+    formPostRedirect: () => formPostRedirect,
     ports,
   };
 }
@@ -653,6 +752,199 @@ describe("Google sign-in against an existing LAX account", () => {
       expect(h.rows.session).toHaveLength(1);
     });
   });
+});
+
+describe("SM3: linking from Security", () => {
+  beforeEach(async () => {
+    h = await harness({});
+    await h.createAccount({ id: "u1", email: "ada@example.com", emailVerified: true });
+  });
+
+  it("links a Google account with a different address, keeps that address and leaves the LAX email alone", async () => {
+    const response = await h.linkFromSecurity("ada@example.com", {
+      email: "ada.work@corp.example",
+    });
+    expect(location(response).pathname).toBe("/account-action/done");
+    expect(location(response).searchParams.get("error")).toBeNull();
+    const [linked] = providerAccounts(h);
+    expect(linked).toMatchObject({
+      userId: "u1",
+      providerEmail: "ada.work@corp.example",
+      providerEmailHidden: false,
+    });
+    expect(h.rows.user?.[0]).toMatchObject({ email: "ada@example.com", emailVerified: true });
+  });
+
+  it("marks Apple's private relay address as hidden", async () => {
+    await h.linkFromSecurity("ada@example.com", {
+      email: "abc123@privaterelay.appleid.com",
+      is_private_email: "true",
+    });
+    expect(providerAccounts(h)[0]).toMatchObject({
+      providerEmail: "abc123@privaterelay.appleid.com",
+      providerEmailHidden: true,
+    });
+  });
+
+  it("sends the one 'added' email and records one 'added' event, naming the method and address", async () => {
+    // The row is written within seconds of the user's own, so age the user first: a link made
+    // long after sign-up is what gets announced.
+    const user = h.rows.user?.[0];
+    if (user) user.createdAt = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    await h.linkFromSecurity("ada@example.com", { email: "ada.work@corp.example" });
+    expect(h.notices.filter((notice) => notice.kind === "sign_in_method_added")).toEqual([
+      expect.objectContaining({
+        kind: "sign_in_method_added",
+        userId: "u1",
+        method: "google",
+        detail: "ada.work@corp.example",
+      }),
+    ]);
+    expect(h.events.filter((event) => event.type === "user.sign_in_method_added")).toEqual([
+      { type: "user.sign_in_method_added", userId: "u1", method: "google" },
+    ]);
+  });
+
+  it("links through a form POST callback, as Apple answers, with the same result", async () => {
+    const response = await h.linkFromSecurity(
+      "ada@example.com",
+      { email: "abc@privaterelay.appleid.com", is_private_email: "true" },
+      { formPost: true },
+    );
+    const posted = h.formPostRedirect();
+    expect(posted?.status).toBe(302);
+    expect(new URL(posted?.headers.get("location") ?? "", BASE).pathname).toBe(
+      "/api/auth/callback/google",
+    );
+    expect(location(response).pathname).toBe("/account-action/done");
+    expect(location(response).searchParams.get("error")).toBeNull();
+    expect(providerAccounts(h)[0]).toMatchObject({
+      userId: "u1",
+      providerEmail: "abc@privaterelay.appleid.com",
+      providerEmailHidden: true,
+    });
+  });
+
+  it("refuses a link that did not come through the hand-off, even from the person's own session", async () => {
+    const response = await h.linkFromSecurity(
+      "ada@example.com",
+      { email: "attacker@evil.example" },
+      { withoutMarker: true },
+    );
+    expect(response.status).toBe(403);
+    expect(await response.text()).toContain("link_not_started_from_account");
+    expect(providerAccounts(h)).toHaveLength(0);
+    expect(h.notices.filter((notice) => notice.kind === "sign_in_method_added")).toEqual([]);
+    expect(h.events.filter((event) => event.type === "user.sign_in_method_added")).toEqual([]);
+  });
+
+  it("refuses a marked link whose mark is not exactly true", async () => {
+    const response = await h.linkFromSecurity(
+      "ada@example.com",
+      { email: "ada.work@corp.example" },
+      { marker: "true" },
+    );
+    expect(response.status).toBe(403);
+    expect(providerAccounts(h)).toHaveLength(0);
+  });
+
+  it("refuses a provider account already linked to someone else, and links nothing", async () => {
+    await h.createAccount({ id: "u2", email: "bo@example.com", emailVerified: true });
+    await h.linkFromSecurity("bo@example.com", { email: "bo@example.com" });
+    const again = await h.linkFromSecurity("ada@example.com", { email: "ada@example.com" });
+    expect(location(again).searchParams.get("error")).toBe(
+      "account_already_linked_to_different_user",
+    );
+    expect(providerAccounts(h).map((row) => row.userId)).toEqual(["u2"]);
+  });
+
+  it("still never joins a different address at sign-in: only a link the person started may differ", async () => {
+    const response = await h.continueWithGoogle("someone.else@example.com");
+    expect(location(response).searchParams.get("error")).toBeNull();
+    // A new Google sign-up makes its own account; it is not joined to ada's.
+    expect(h.rows.user).toHaveLength(2);
+    expect(providerAccounts(h).every((row) => row.userId !== "u1")).toBe(true);
+  });
+
+  it("refuses to link a provider account whose address the provider has not verified", async () => {
+    const response = await h.linkFromSecurity("ada@example.com", {
+      email: "ada.work@corp.example",
+      email_verified: false,
+    });
+    expect(location(response).searchParams.get("error")).toBe("unable_to_link_account");
+    expect(providerAccounts(h)).toHaveLength(0);
+  });
+});
+
+describe("Linking by ID token through the library's link endpoint", () => {
+  it("is refused even when called on the server, and writes no provider account", async () => {
+    h = await harness({});
+    await h.createAccount({ id: "u1", email: "ada@example.com", emailVerified: true });
+    const signedIn = await h.auth.handler(
+      new Request(`${BASE}/api/auth/sign-in/email`, {
+        method: "POST",
+        headers: { "content-type": "application/json", origin: BASE },
+        body: JSON.stringify({ email: "ada@example.com", password: "a-password-123" }),
+      }),
+    );
+    const cookie = (signedIn.headers.getSetCookie?.() ?? []).map((v) => v.split(";")[0]).join("; ");
+
+    // A token Google would really have signed, so the library accepts it and the refusal below
+    // comes from the link policy rather than from the token check.
+    const { publicKey, privateKey } = await generateKeyPair("RS256");
+    const kid = "google-test-key";
+    const idToken = await new SignJWT({
+      email: "ada@example.com",
+      email_verified: true,
+      sub: GOOGLE_SUB,
+    })
+      .setProtectedHeader({ alg: "RS256", kid })
+      .setIssuer("https://accounts.google.com")
+      .setAudience("google-client")
+      .setIssuedAt()
+      .setExpirationTime("5m")
+      .sign(privateKey);
+    const jwk = { ...(await exportJWK(publicKey)), kid, alg: "RS256", use: "sig" };
+    const realFetch = globalThis.fetch;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const target = String(
+          typeof input === "string" || input instanceof URL ? input : input.url,
+        );
+        return target.startsWith("https://www.googleapis.com/oauth2/v3/certs")
+          ? Response.json({ keys: [jwk] })
+          : realFetch(input, init);
+      }),
+    );
+
+    await expect(
+      h.auth.api.linkSocialAccount({
+        headers: new Headers({ cookie, origin: BASE }),
+        body: { provider: "google", idToken: { token: idToken } },
+      }),
+    ).rejects.toMatchObject({ body: { code: "LINKING_FAILED" } });
+    // The library reports any refusal from the account hook as a failed link. Without the guard
+    // this call succeeds and writes the provider account.
+    expect(providerAccounts(h)).toHaveLength(0);
+  });
+});
+
+describe("Better Auth's own link and unlink endpoints are not reachable", () => {
+  it.each(["/api/auth/link-social", "/api/auth/unlink-account"])(
+    "answers %s with not found",
+    async (path) => {
+      h = await harness({});
+      const response = await h.auth.handler(
+        new Request(`${BASE}${path}`, {
+          method: "POST",
+          headers: { "content-type": "application/json", origin: BASE },
+          body: JSON.stringify({ provider: "google", providerId: "google" }),
+        }),
+      );
+      expect(response.status).toBe(404);
+    },
+  );
 });
 
 afterEach(() => {

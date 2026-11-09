@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import type { AlertRetentionStore } from "@auction/alerts";
 import { ArtworkOfferLock } from "@auction/artwork-register-contracts";
 import { type Database, closeDb, createDb } from "@auction/db";
+import { issuerJwksUrl } from "@auction/identity-contracts";
 import {
   DrizzleArtworkRegisterQueueReader,
   DrizzleArtworkRegisterRepository,
@@ -207,6 +208,7 @@ import { loadShopCancellationPolicy } from "./infrastructure/shop-cancellation-p
 import { resolveShopDocumentStorageConfig } from "./infrastructure/shop-document-storage-config.js";
 import { createShopFeatureFlagsReader } from "./infrastructure/shop-feature-flags-env.js";
 import { resolveShopMediaStorage } from "./infrastructure/shop-media-storage.js";
+import type { UnappliedMoneyLookup } from "./infrastructure/shop-unapplied-payment.js";
 import { assertShopVatPolicyWhenPayoutsEnabled } from "./infrastructure/shop-vat-policy.js";
 import { createStripeShopConnectGateway } from "./infrastructure/stripe-shop-connect.gateway.js";
 import { createStripeShopInvoiceGateway } from "./infrastructure/stripe-shop-invoice.gateway.js";
@@ -258,6 +260,8 @@ export type ShopApiContainer = {
   db: Database;
   /** Prunes stale alert sign-ups and old alert logs; run by the scheduler. */
   alertRetention: AlertRetentionStore;
+  /** The finance task store, shared with the scheduler's checkout sweep. */
+  unappliedMoney: UnappliedMoneyLookup;
   app: ShopApiAppDeps;
   importArtwork: ReturnType<typeof createImportArtworkHandler>;
   grantStaffRole(input: {
@@ -316,10 +320,11 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
   const rateLimitCounter = rateLimitRedis
     ? createRedisFixedWindowCounter(rateLimitRedis)
     : createInMemoryFixedWindowCounter();
+  const unappliedMoney = new DrizzleUnappliedMoneyReader(db);
   const { commerce, stripeWebhook } = createCommerceServices(db, env, {
     rateLimitCounter,
     originalOffers,
-    unappliedMoney: new DrizzleUnappliedMoneyReader(db),
+    unappliedMoney,
   });
   const readiness = createDrizzleShopReadinessAdapter(db);
   const storefrontOrigins = resolveStorefrontOrigins({
@@ -357,7 +362,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
   });
   const releaseAlerts = shopAlerts.handlers;
   const internalBase = env.OIDC_INTERNAL_BASE_URL ?? env.OIDC_ISSUER_URL;
-  const jwksUrl = `${internalBase.replace(/\/+$/, "")}/.well-known/jwks.json`;
+  const jwksUrl = issuerJwksUrl(internalBase);
   const staffReader = createDrizzleShopStaffMemberReader(db);
   const saleAuthorityWriter = createDrizzleSaleAuthorityWriter(
     db,
@@ -667,6 +672,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
   return {
     db,
     alertRetention: createShopAlertRetentionStore(db),
+    unappliedMoney,
     app: {
       env,
       auth: {

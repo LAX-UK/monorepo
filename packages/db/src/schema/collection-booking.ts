@@ -39,6 +39,7 @@ export const collectionPlace = pgTable(
     windowDays: smallint("window_days").notNull().default(28),
     closeOnSaleDays: boolean("close_on_sale_days").notNull().default(true),
     undoHandOverMinutes: smallint("undo_hand_over_minutes").notNull().default(10),
+    maxActiveVisits: smallint("max_active_visits").notNull().default(5),
     /** Days a bought work is stored free; null until the storage terms are set. */
     freeStorageDays: smallint("free_storage_days"),
     bookingEmail: text("booking_email"),
@@ -57,6 +58,7 @@ export const collectionPlace = pgTable(
     check("collection_place_notice_days_check", sql`${table.noticeWorkingDays} BETWEEN 1 AND 5`),
     check("collection_place_window_check", sql`${table.windowDays} BETWEEN 7 AND 90`),
     check("collection_place_undo_check", sql`${table.undoHandOverMinutes} BETWEEN 1 AND 60`),
+    check("collection_place_visit_cap_check", sql`${table.maxActiveVisits} BETWEEN 1 AND 20`),
     check(
       "collection_place_storage_check",
       sql`${table.freeStorageDays} IS NULL OR ${table.freeStorageDays} BETWEEN 0 AND 365`,

@@ -127,7 +127,12 @@ const nextConfig: NextConfig = {
     ],
   },
   experimental: {
-    optimizePackageImports: ["lucide-react", "@auction/ui"],
+    optimizePackageImports: [
+      "lucide-react",
+      "@auction/ui",
+      "@auction/marketing-ui",
+      "@auction/staff-ui",
+    ],
   },
   async redirects() {
     return [

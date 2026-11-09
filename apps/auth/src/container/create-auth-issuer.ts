@@ -8,6 +8,7 @@ import {
   createAuthLifecycleCallbacks,
   createEnvelopeCrypto,
   parseAuthDekKey,
+  passkeyConfigForIssuer,
 } from "@auction/auth";
 import type { IdentityEventPublisher, SecurityNoticePublisher } from "@auction/auth";
 import { type IdentityDatabase, createIdentityAuthPorts } from "@auction/identity-db";
@@ -18,6 +19,7 @@ import type pino from "pino";
 import type { AuthAppEnv } from "../env.js";
 import { buildDrizzleDatabase } from "../infrastructure/build-drizzle-database.js";
 import { DrizzleLegalAcceptanceRecorder } from "../infrastructure/drizzle-legal-acceptance.recorder.js";
+import { createPasskeyUsageRecorder } from "../infrastructure/drizzle-passkey-usage.js";
 import { HibpRangeBreachedPasswordChecker } from "../infrastructure/hibp-range-breached-password-checker.js";
 import {
   type OidcClaims,
@@ -144,7 +146,15 @@ export function createAuthIssuer(options: {
     legalAcceptance: new DrizzleLegalAcceptanceRecorder(options.db),
   };
   return createAuth({
-    database: buildDrizzleDatabase(options.db, envelope),
+    database: buildDrizzleDatabase(options.db, envelope, options.identityEventPublisher),
+    ...(env.PASSKEYS_ENABLED
+      ? {
+          passkey: {
+            config: passkeyConfigForIssuer(env.OIDC_ISSUER_URL),
+            ports: createPasskeyUsageRecorder(options.db),
+          },
+        }
+      : {}),
     ports,
     secret: env.BETTER_AUTH_SECRET,
     baseURL: env.OIDC_ISSUER_URL,

@@ -1,9 +1,7 @@
 import type { LotStatus, PaymentStatus } from "@auction/types";
-import { londonDateOf, londonMidnight } from "./calendar-year.js";
+import { londonDateOf, londonWallClock } from "./calendar-year.js";
 import { storedDueAt } from "./purchase-invoice-state.js";
 import { purchaseEnding } from "./purchase-state.js";
-
-const HOUR_MS = 3_600_000;
 
 /** The reminders a buyer gets for an unpaid invoice, in the order they are sent. */
 export const PAYMENT_REMINDER_STEPS = ["before_due", "due_day", "overdue"] as const;
@@ -17,13 +15,17 @@ const STEP_OFFSET_DAYS: Record<PaymentReminderStep, number> = {
 };
 
 /** Reminders go out at 09:00 London on their day, not at the end-of-day due moment. */
-const SEND_HOUR_LONDON = 9;
+const PAYMENT_REMINDER_SEND_HOUR_LONDON = 9;
 
 /** When a step is sent: 09:00 London on the due day, or that many London days before or after. */
 export function reminderDueAt(step: PaymentReminderStep, dueAt: Date): Date {
   const { year, month, day } = londonDateOf(dueAt);
-  const midnight = londonMidnight(year, month, day + STEP_OFFSET_DAYS[step]);
-  return new Date(midnight.getTime() + SEND_HOUR_LONDON * HOUR_MS);
+  return londonWallClock(
+    year,
+    month,
+    day + STEP_OFFSET_DAYS[step],
+    PAYMENT_REMINDER_SEND_HOUR_LONDON,
+  );
 }
 
 export type PaymentReminderFacts = {
