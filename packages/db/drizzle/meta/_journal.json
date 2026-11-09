@@ -2292,9 +2292,9 @@
       "breakpoints": true
     },
     {
-      "idx": 327,
+      "idx": 328,
       "version": "7",
-      "when": 1803801600000,
+      "when": 1803888000000,
       "tag": "0340_shop_delivery_quote_carrier",
       "breakpoints": true
     }
