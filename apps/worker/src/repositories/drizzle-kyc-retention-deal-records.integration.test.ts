@@ -9,7 +9,10 @@ import {
   privateSaleDealStageHistory,
   user,
 } from "@auction/db/schema";
-import { DrizzlePrivateSaleDealRepository } from "@auction/persistence/repositories";
+import {
+  DrizzlePartyDealRecordReader,
+  DrizzlePrivateSaleDealRepository,
+} from "@auction/persistence/repositories";
 import { eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { DrizzleKycRetentionLegalEntityStore } from "./drizzle-kyc-retention-legal-entity.store.js";
@@ -117,10 +120,16 @@ describe.skipIf(!HAS_DB)("the deals a KYC retention subject is a party to (integ
 
   it("lists the deals a person is on, as open records", async () => {
     await withDeal(async ({ tx, sellerId, buyerId }) => {
-      const store = new DrizzleKycRetentionPersonStore(tx);
+      const store = new DrizzleKycRetentionPersonStore(tx, new DrizzlePartyDealRecordReader(tx));
       for (const id of [sellerId, buyerId]) {
-        expect(await store.dealRecords(id)).toEqual([
-          { stage: "proposed", agreedAt: null, endedAt: null, hasComplianceCase: false },
+        expect(await store.dealRecords(id)).toMatchObject([
+          {
+            reference: expect.stringMatching(/^PS-\d{4,}$/),
+            stage: "proposed",
+            agreedAt: null,
+            endedAt: null,
+            hasComplianceCase: false,
+          },
         ]);
       }
     });
@@ -135,7 +144,7 @@ describe.skipIf(!HAS_DB)("the deals a KYC retention subject is a party to (integ
         legalEntityId: buyerEntityId,
         actingUserId: secondBuyerId,
       });
-      const store = new DrizzleKycRetentionPersonStore(tx);
+      const store = new DrizzleKycRetentionPersonStore(tx, new DrizzlePartyDealRecordReader(tx));
       // The replaced buyer is no longer a current party, but was named on the deal.
       expect(await store.dealRecords(buyerId)).toHaveLength(1);
       expect(await store.dealRecords(secondBuyerId)).toHaveLength(1);
@@ -144,7 +153,12 @@ describe.skipIf(!HAS_DB)("the deals a KYC retention subject is a party to (integ
 
   it("lists nothing for someone who was never on a deal", async () => {
     await withDeal(async ({ tx }) => {
-      expect(await new DrizzleKycRetentionPersonStore(tx).dealRecords("kd-nobody")).toEqual([]);
+      expect(
+        await new DrizzleKycRetentionPersonStore(
+          tx,
+          new DrizzlePartyDealRecordReader(tx),
+        ).dealRecords("kd-nobody"),
+      ).toEqual([]);
     });
   });
 
@@ -154,7 +168,7 @@ describe.skipIf(!HAS_DB)("the deals a KYC retention subject is a party to (integ
         .update(privateSaleDeal)
         .set({ stage: "cancelled", cancelReason: "Withdrawn", cancelledAt: new Date() })
         .where(eq(privateSaleDeal.id, dealId));
-      const store = new DrizzleKycRetentionPersonStore(tx);
+      const store = new DrizzleKycRetentionPersonStore(tx, new DrizzlePartyDealRecordReader(tx));
       expect(await store.dealRecords(buyerId)).toMatchObject([
         { stage: "cancelled", agreedAt: null, hasComplianceCase: false },
       ]);
@@ -191,15 +205,87 @@ describe.skipIf(!HAS_DB)("the deals a KYC retention subject is a party to (integ
         toStage: "settled",
         createdAt: settledAt,
       });
-      expect(await new DrizzleKycRetentionPersonStore(tx).dealRecords(buyerId)).toMatchObject([
-        { stage: "settled", endedAt: settledAt, agreedAt: settledAt },
-      ]);
+      expect(
+        await new DrizzleKycRetentionPersonStore(
+          tx,
+          new DrizzlePartyDealRecordReader(tx),
+        ).dealRecords(buyerId),
+      ).toMatchObject([{ stage: "settled", endedAt: settledAt, agreedAt: settledAt }]);
+    });
+  });
+
+  it("dates a settled deal by its last update when no history row says when it settled", async () => {
+    await withDeal(async ({ tx, buyerId, dealId }) => {
+      const at = new Date("2026-05-01T00:00:00Z");
+      await tx
+        .update(privateSaleDeal)
+        .set({
+          stage: "settled",
+          priceMinor: 100,
+          agreedAt: at,
+          vatTreatment: "margin_scheme",
+          sellerCommissionBps: 1500,
+          paymentDueAt: at,
+          updatedAt: at,
+        })
+        .where(eq(privateSaleDeal.id, dealId));
+      const [record] = await new DrizzleKycRetentionPersonStore(
+        tx,
+        new DrizzlePartyDealRecordReader(tx),
+      ).dealRecords(buyerId);
+      expect(record?.stage).toBe("settled");
+      expect(record?.endedAt).toEqual(at);
+    });
+  });
+
+  it("does not take evidence created after the deal ended for the deal's own clearance", async () => {
+    await withDeal(async ({ tx, buyerId, dealId }) => {
+      const cancelledAt = new Date("2026-10-02T00:00:00Z");
+      await tx
+        .update(privateSaleDeal)
+        .set({ stage: "cancelled", cancelReason: "Withdrawn", cancelledAt })
+        .where(eq(privateSaleDeal.id, dealId));
+      await tx.insert(kycWatchlistScreening).values({
+        userId: buyerId,
+        providerSessionId: `late-${buyerId}`,
+        matchStatus: "no_match",
+        decisionOutcome: "clear",
+        screenedAt: new Date("2030-01-01T00:00:00Z"),
+        createdAt: new Date("2030-01-01T00:00:00Z"),
+      } as never);
+      expect(
+        await new DrizzleKycRetentionPersonStore(
+          tx,
+          new DrizzlePartyDealRecordReader(tx),
+        ).dealRecords(buyerId),
+      ).toMatchObject([{ stage: "cancelled", hasComplianceCase: false }]);
+    });
+  });
+
+  it("finds an organisation named on its own, before any person acts for it", async () => {
+    await withDeal(async ({ tx, dealId, buyerEntityId }) => {
+      const deals = new DrizzlePrivateSaleDealRepository(tx as never);
+      const current = await deals.findById(dealId);
+      // The buyer is now an organisation with no person; the earlier buyer person is replaced.
+      await deals.setParty(dealId, current?.version as number, {
+        role: "buyer",
+        legalEntityId: buyerEntityId,
+        actingUserId: null,
+      });
+      const store = new DrizzleKycRetentionLegalEntityStore(
+        tx,
+        new DrizzlePartyDealRecordReader(tx),
+      );
+      expect(await store.dealRecords(buyerEntityId)).toHaveLength(1);
     });
   });
 
   it("lists the deals an organisation is a party to", async () => {
     await withDeal(async ({ tx, sellerEntityId, buyerEntityId }) => {
-      const store = new DrizzleKycRetentionLegalEntityStore(tx);
+      const store = new DrizzleKycRetentionLegalEntityStore(
+        tx,
+        new DrizzlePartyDealRecordReader(tx),
+      );
       expect(await store.dealRecords(sellerEntityId)).toHaveLength(1);
       expect(await store.dealRecords(buyerEntityId)).toHaveLength(1);
       expect(await store.dealRecords(randomUUID())).toEqual([]);

@@ -20,6 +20,7 @@ function createApp(staffRoles: StaffRoles | undefined) {
     close: vi.fn().mockResolvedValue(ok),
     continueDownload: vi.fn().mockResolvedValue(ok),
     eraseEnquiries: vi.fn().mockResolvedValue({ ok: true, value: { enquiries: 2, held: 1 } }),
+    dealHolds: vi.fn().mockResolvedValue({ ok: true, value: { holds: [] } }),
   };
   const container = { env: { LOG_LEVEL: "silent", NODE_ENV: "test" }, admin: { dataRequests } };
   const app = new Hono<{
@@ -57,6 +58,7 @@ describe("data requests access", () => {
     ["GET", "/data-requests/summary"],
     ["GET", "/data-requests/account?email=lena%40north.com"],
     ["GET", "/data-requests/DR-0001"],
+    ["GET", "/data-requests/DR-0001/holds"],
     ["POST", "/data-requests", NEW_REQUEST],
     ["PATCH", "/data-requests/DR-0001", { version: 1, notes: "x" }],
     ["POST", "/data-requests/DR-0001/close", { version: 1, outcome: "sent" }],
@@ -138,6 +140,21 @@ describe("data requests routes", () => {
     expect(res.status).toBe(200);
     expect(res.headers.get("cache-control")).toBe("no-store");
     expect(dataRequests.record).toHaveBeenCalledWith("DR-0001", "staff-1");
+  });
+
+  it("lists the deals holding a person's records, for the signed-in staff member", async () => {
+    const { app, dataRequests } = compliance();
+    dataRequests.dealHolds.mockResolvedValueOnce({
+      ok: true,
+      value: { holds: [{ dealReference: "PS-0012", status: "open", heldUntil: null }] },
+    });
+    const res = await app.request("http://test/data-requests/dr-0001/holds");
+    expect(res.status).toBe(200);
+    expect(res.headers.get("cache-control")).toBe("no-store");
+    expect(await res.json()).toEqual({
+      data: { holds: [{ dealReference: "PS-0012", status: "open", heldUntil: null }] },
+    });
+    expect(dataRequests.dealHolds).toHaveBeenCalledWith("DR-0001", "staff-1");
   });
 
   it("refuses something that is not a reference", async () => {

@@ -1318,3 +1318,4 @@ export type {
   PrivateSaleDealTermsPatch,
   PrivateSaleDealWriteResult,
 } from "./private-sale-deal.repository.js";
+export type { IPartyDealRecordReader } from "./party-deal-record.reader.js";

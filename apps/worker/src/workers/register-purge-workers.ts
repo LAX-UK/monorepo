@@ -8,6 +8,7 @@ import { Queue, Worker } from "bullmq";
 import { purgeKycRetentionJob } from "../jobs/purge-kyc-retention.js";
 import { purgeQrCodeScans } from "../jobs/purge-qr-code-scans.js";
 import { withSentryCronMonitor } from "../lib/sentry-cron.js";
+import type { IRetentionHoldAlerts } from "../retention/kyc-retention-hold-alert.js";
 import type { WorkerBootstrapDeps, WorkerErrorHandlerEntry } from "./types.js";
 import { closeAll } from "./worker-utils.js";
 
@@ -16,7 +17,10 @@ export type PurgeWorkersHandle = {
   close: () => Promise<void>;
 };
 
-export function registerPurgeWorkers(deps: WorkerBootstrapDeps): PurgeWorkersHandle {
+export function registerPurgeWorkers(
+  deps: WorkerBootstrapDeps,
+  options: { retentionHoldAlerts: IRetentionHoldAlerts },
+): PurgeWorkersHandle {
   const {
     env,
     log,
@@ -78,6 +82,7 @@ export function registerPurgeWorkers(deps: WorkerBootstrapDeps): PurgeWorkersHan
           log,
           dryRun: !env.KYC_RETENTION_PURGE_ENABLED,
           privateSaleRetentionYears: env.PRIVATE_SALE_RECORD_RETENTION_YEARS,
+          alerts: options.retentionHoldAlerts,
         });
       });
     },

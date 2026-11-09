@@ -94,6 +94,13 @@ export function attachAdminDataRequestsRoutes(
     ),
   );
 
+  /** GET /admin/data-requests/:reference/holds — the deals keeping this person's records. */
+  platform.get("/data-requests/:reference/holds", zValidator("param", referenceParamSchema), (c) =>
+    respond(c, async () =>
+      answer(c, await service.dealHolds(c.req.valid("param").reference, actorId(c))),
+    ),
+  );
+
   /** POST /admin/data-requests — log a manual request. */
   platform.post("/data-requests", zValidator("json", createDataRequestBodySchema), (c) =>
     respond(c, async () => answer(c, await service.create(c.req.valid("json"), actorId(c)), 201)),

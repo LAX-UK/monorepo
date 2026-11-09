@@ -16,6 +16,7 @@ import {
   checkEnquiryErasureInput,
 } from "../../marketing-enquiry/enquiry-erasure.service.js";
 import type { DataRequestAuditAction, IDataRequestAuditTrail } from "./data-request-audit-trail.js";
+import type { DataRequestDealHold, IDataRequestDealHolds } from "./data-request-deal-holds.js";
 import type { IDataRequestErasureHistory } from "./data-request-erasure-history.js";
 
 type Body<T> = Omit<T, "actorSubjectId">;
@@ -35,6 +36,8 @@ export type AdminDataRequestsDeps = {
   enquiryErasure: IEnquiryErasure;
   /** Bid's record of erasures done for a request; completes Identity's timeline. */
   erasureHistory: IDataRequestErasureHistory;
+  /** The private sale deals that keep the person's records, for the record page. */
+  dealHolds: IDataRequestDealHolds;
 };
 
 /** What an erasure answers with: the counts the erasure service reports. */
@@ -69,6 +72,26 @@ export class AdminDataRequestsService {
   async record(reference: string, actorUserId: string) {
     await this.audit("viewed", reference, actorUserId);
     return this.withErasures(await this.deps.identity.record(reference, actorUserId));
+  }
+
+  /**
+   * The private sale deals keeping this person's enquiries and KYC evidence, each with its
+   * reference and when the hold ends. Empty for a person with no account or on no deal. The
+   * record itself is read from Identity as for any other action, so no contact detail leaves here.
+   */
+  async dealHolds(
+    reference: string,
+    actorUserId: string,
+  ): Promise<DataRequestOutcome<{ holds: DataRequestDealHold[] }>> {
+    const found = await this.deps.identity.record(reference, actorUserId);
+    if (!found.ok) return found;
+    const email = found.value.person.email;
+    const account =
+      found.value.person.hasAccount && email
+        ? await this.deps.accounts.findByEmail(email.trim().toLowerCase())
+        : null;
+    if (!account) return { ok: true, value: { holds: [] } };
+    return { ok: true, value: { holds: await this.deps.dealHolds.forAccount(account.subjectId) } };
   }
 
   /**
