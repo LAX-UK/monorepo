@@ -8,17 +8,24 @@ import {
 } from "@auction/db/schema";
 import { SHOP_API_ERROR_CODES } from "@auction/shop-contracts";
 import { and, eq, gt, isNull, sql } from "drizzle-orm";
+import {
+  FRAMING_CHOICE_MESSAGES,
+  framingChoiceProblem,
+} from "../application/framing/edition-framing.view.js";
 import type {
   BasketRepository,
   UpsertBasketLineInput,
 } from "../application/ports/commerce.ports.js";
 import { ShopApiError } from "../errors/shop-api-error.js";
 import { publicArtworkVisible } from "./artwork-visibility-sql.js";
+import { createDrizzleEditionFramingReader } from "./framing/drizzle-edition-framing.store.js";
 import {
   assertBasketStock,
+  clearFramingFromBasket,
   ensureOpenBasket,
   loadBasketRecord,
   ownerWhere,
+  reconcileFramingPrices,
   repriceBasketLinesIfNeeded,
 } from "./shop-basket.persistence.js";
 import { sellableCountsByArtworkIds } from "./shop-edition-availability.js";
@@ -30,6 +37,8 @@ export function createDrizzleBasketRepository(
     merchandiseEnabled: boolean;
     /** Copies of one edition an order may hold; null or absent leaves only the stock. */
     editionOrderLimit?: number | null;
+    /** SHOP_FRAMING_ENABLED: while off, no framing is taken and none is asked for. */
+    framingEnabled?: boolean;
   },
 ): BasketRepository {
   return {
@@ -40,6 +49,10 @@ export function createDrizzleBasketRepository(
         .where(ownerWhere(owner))
         .limit(1);
       if (!row[0]) return null;
+      // Framing switched off with frames still in a basket: they are taken out as the shopper
+      // opens it, so what they see and check out matches what is on sale. (The checkout loader
+      // only reads and refuses; it never changes a basket.)
+      if (!options.framingEnabled) await clearFramingFromBasket(db, row[0].id);
       return loadBasketRecord(db, row[0].id);
     },
 
@@ -51,6 +64,7 @@ export function createDrizzleBasketRepository(
         return upsertArtworkLine(db, {
           ...input,
           editionOrderLimit: options.editionOrderLimit ?? null,
+          framingEnabled: options.framingEnabled ?? false,
         });
       }
       if (!options.merchandiseEnabled) {
@@ -76,6 +90,41 @@ export function createDrizzleBasketRepository(
         .delete(shopBasketLine)
         .where(and(eq(shopBasketLine.basketId, row[0].id), eq(shopBasketLine.id, lineId)));
       return loadBasketRecord(db, row[0].id);
+    },
+
+    async setLineFraming({ owner, lineId, framingOptionId }) {
+      if (!options.framingEnabled) {
+        throw new ShopApiError(
+          SHOP_API_ERROR_CODES.FEATURE_DISABLED,
+          "Framing is not available",
+          404,
+        );
+      }
+      const basket = await db
+        .select({ id: shopBasket.id })
+        .from(shopBasket)
+        .where(ownerWhere(owner))
+        .limit(1);
+      if (!basket[0]) {
+        throw new ShopApiError(SHOP_API_ERROR_CODES.NOT_FOUND, "Basket not found", 404);
+      }
+      const basketId = basket[0].id;
+      const [line] = await db
+        .select({ artworkId: shopBasketLine.artworkId })
+        .from(shopBasketLine)
+        .where(and(eq(shopBasketLine.basketId, basketId), eq(shopBasketLine.id, lineId)))
+        .limit(1);
+      if (!line?.artworkId) {
+        throw new ShopApiError(SHOP_API_ERROR_CODES.NOT_FOUND, "Basket line not found", 404);
+      }
+      await assertFramingChoice(db, line.artworkId, framingOptionId);
+      await db
+        .update(shopBasketLine)
+        // A new choice is shown at today's price, which is stamped on the line.
+        .set({ framingOptionId, framingPricePence: null, updatedAt: new Date() })
+        .where(and(eq(shopBasketLine.basketId, basketId), eq(shopBasketLine.id, lineId)));
+      await reconcileFramingPrices(db, basketId);
+      return loadBasketRecord(db, basketId);
     },
 
     async mergeBaskets({ from, to }) {
@@ -112,12 +161,17 @@ export function createDrizzleBasketRepository(
                 artworkId: line.artworkId,
                 unitPricePence: line.unitPricePence,
                 quantity: line.quantity,
+                framingOptionId: line.framingOptionId,
+                framingPricePence: line.framingPricePence,
               })
               .onConflictDoUpdate({
                 target: [shopBasketLine.basketId, shopBasketLine.artworkId],
                 targetWhere: sql`${shopBasketLine.artworkId} IS NOT NULL`,
                 set: {
                   quantity: sql`GREATEST(${shopBasketLine.quantity}, ${line.quantity})`,
+                  // The signed-in basket's own choice wins; otherwise the one made as a guest.
+                  framingOptionId: sql`COALESCE(${shopBasketLine.framingOptionId}, ${line.framingOptionId})`,
+                  framingPricePence: sql`CASE WHEN ${shopBasketLine.framingOptionId} IS NULL THEN ${line.framingPricePence} ELSE ${shopBasketLine.framingPricePence} END`,
                   updatedAt: new Date(),
                 },
               });
@@ -162,6 +216,8 @@ async function upsertArtworkLine(
     artworkSlug: string;
     quantity: number;
     editionOrderLimit: number | null;
+    framingOptionId?: string | null | undefined;
+    framingEnabled: boolean;
   },
 ) {
   const [artwork] = await db
@@ -187,6 +243,10 @@ async function upsertArtworkLine(
     );
   }
   const unitPricePence = artwork.printPricePence;
+  const chosen = input.framingOptionId;
+  if (chosen != null && !input.framingEnabled) {
+    throw new ShopApiError(SHOP_API_ERROR_CODES.FEATURE_DISABLED, "Framing is not available", 404);
+  }
   return db.transaction(async (tx) => {
     const basketId = await ensureOpenBasket(tx as Database, input.owner);
     await tx.select().from(shopBasket).where(eq(shopBasket.id, basketId)).for("update");
@@ -195,6 +255,27 @@ async function upsertArtworkLine(
     if (input.quantity > sellable) {
       throw new ShopApiError(SHOP_API_ERROR_CODES.OUT_OF_STOCK, "Insufficient stock", 409);
     }
+    // Without a choice in the request the line keeps the framing it has, checked or not: a frame
+    // paused since is flagged in the basket and the shopper chooses again there, so a quantity
+    // change is never refused for it. Only a choice the request makes, or a new line, is checked.
+    let framingOptionId: string | null = null;
+    if (input.framingEnabled) {
+      if (chosen !== undefined) {
+        framingOptionId = chosen;
+        await assertFramingChoice(tx as Database, artwork.id, framingOptionId);
+      } else {
+        const [existing] = await tx
+          .select({ framingOptionId: shopBasketLine.framingOptionId })
+          .from(shopBasketLine)
+          .where(
+            and(eq(shopBasketLine.basketId, basketId), eq(shopBasketLine.artworkId, artwork.id)),
+          )
+          .limit(1);
+        framingOptionId = existing?.framingOptionId ?? null;
+        // A new line must satisfy the edition's rule (a framed-only edition needs a frame).
+        if (!existing) await assertFramingChoice(tx as Database, artwork.id, null);
+      }
+    }
     await tx
       .insert(shopBasketLine)
       .values({
@@ -202,14 +283,43 @@ async function upsertArtworkLine(
         artworkId: artwork.id,
         unitPricePence,
         quantity: input.quantity,
+        framingOptionId,
+        framingPricePence: null,
       })
       .onConflictDoUpdate({
         target: [shopBasketLine.basketId, shopBasketLine.artworkId],
         targetWhere: sql`${shopBasketLine.artworkId} IS NOT NULL`,
-        set: { quantity: input.quantity, unitPricePence, updatedAt: new Date() },
+        set: {
+          quantity: input.quantity,
+          unitPricePence,
+          ...(input.framingEnabled ? { framingOptionId } : {}),
+          // A choice made in this request is stamped at today's price; a kept one keeps its stamp.
+          ...(input.framingEnabled && chosen !== undefined ? { framingPricePence: null } : {}),
+          updatedAt: new Date(),
+        },
       });
+    if (input.framingEnabled) await reconcileFramingPrices(tx as Database, basketId);
     return loadBasketRecord(tx as Database, basketId);
   });
+}
+
+/**
+ * Refuses a framing choice the shopper could not have made on the edition's page: an option that
+ * is not shown, or no option at all on an edition sold framed only.
+ */
+async function assertFramingChoice(
+  db: Database,
+  artworkId: string,
+  framingOptionId: string | null,
+): Promise<void> {
+  const facts = (await createDrizzleEditionFramingReader(db).read([artworkId])).get(artworkId);
+  if (!facts) {
+    throw new ShopApiError(SHOP_API_ERROR_CODES.NOT_FOUND, "Artwork not purchasable", 404);
+  }
+  const problem = framingChoiceProblem(facts, framingOptionId);
+  if (problem) {
+    throw new ShopApiError(SHOP_API_ERROR_CODES.VALIDATION, FRAMING_CHOICE_MESSAGES[problem], 400);
+  }
 }
 
 async function upsertVariantLine(

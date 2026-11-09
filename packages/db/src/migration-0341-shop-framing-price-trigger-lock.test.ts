@@ -19,14 +19,14 @@ const functionOf = (sql: string) =>
   );
 
 describe("migration 0341 shop framing price trigger lock", () => {
-  it("follows 0336 in the journal, with the next index and a later time", () => {
+  it("follows 0342 in the journal, with the next index and a later time", () => {
     const index = journal.entries.findIndex(
       (e) => e.tag === "0341_shop_framing_price_trigger_lock",
     );
     expect(index).toBeGreaterThan(0);
     const entry = journal.entries[index];
     const previous = journal.entries[index - 1];
-    expect(previous?.tag).toMatch(/^0336_/);
+    expect(previous?.tag).toMatch(/^0342_/);
     expect(entry?.idx).toBe((previous?.idx ?? 0) + 1);
     expect(entry?.when).toBeGreaterThan(previous?.when ?? 0);
   });

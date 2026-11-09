@@ -219,6 +219,12 @@ import ShopCancellationConfirmedEmail, {
 import ShopCheckoutOpsAlertEmail, {
   subject as shopCheckoutOpsAlertSubject,
 } from "./templates/shop-checkout-ops-alert.js";
+import ShopDeliveryQuoteDeclinedEmail, {
+  subject as shopDeliveryQuoteDeclinedSubject,
+} from "./templates/shop-delivery-quote-declined.js";
+import ShopDeliveryQuoteReadyEmail, {
+  subject as shopDeliveryQuoteReadySubject,
+} from "./templates/shop-delivery-quote-ready.js";
 import ShopDeliveryQuoteRequestedEmail, {
   subject as shopDeliveryQuoteRequestedSubject,
 } from "./templates/shop-delivery-quote-requested.js";
@@ -256,15 +262,12 @@ import ShopZohoDeadLetterNoticeEmail, {
   subject as shopZohoDeadLetterNoticeSubject,
 } from "./templates/shop-zoho-dead-letter-notice.js";
 import SignInLink, { subject as signInLinkSubject } from "./templates/sign-in-link.js";
+import SignInMethodAddedEmail, {
+  subject as signInMethodAddedSubject,
+} from "./templates/sign-in-method-added.js";
 import SignInMethodRemovedEmail, {
   subject as signInMethodRemovedSubject,
 } from "./templates/sign-in-method-removed.js";
-import SocialAccountLinkedEmail, {
-  subject as socialAccountLinkedSubject,
-} from "./templates/social-account-linked.js";
-import SocialAccountUnlinkedEmail, {
-  subject as socialAccountUnlinkedSubject,
-} from "./templates/social-account-unlinked.js";
 import SourceOfFundsApprovedEmail, {
   subject as sourceOfFundsApprovedSubject,
 } from "./templates/source-of-funds-approved.js";
@@ -397,6 +400,33 @@ const renderers: { [T in TemplateName]: TemplateRenderer<T> } = {
     subject: emailChangedSubject,
     component: (vars) => <EmailChangedEmail {...vars} />,
   },
+  "sign-in-method-added": {
+    subject: signInMethodAddedSubject,
+    component: (vars) => <SignInMethodAddedEmail {...vars} />,
+  },
+  // Retired emails still in the queue render as the two above.
+  "social-account-linked": {
+    subject: signInMethodAddedSubject,
+    component: ({ provider, userName }) => (
+      <SignInMethodAddedEmail
+        methodLabel={provider === "google" ? "Google" : "Apple"}
+        whenDisplay=""
+        secureAccountUrl=""
+        userName={userName ?? null}
+      />
+    ),
+  },
+  "social-account-unlinked": {
+    subject: signInMethodRemovedSubject,
+    component: ({ provider, userName }) => (
+      <SignInMethodRemovedEmail
+        methodLabel={provider === "google" ? "Google" : "Apple"}
+        whenDisplay=""
+        secureAccountUrl=""
+        userName={userName ?? null}
+      />
+    ),
+  },
   "sign-in-method-removed": {
     subject: signInMethodRemovedSubject,
     component: (vars) => <SignInMethodRemovedEmail {...vars} />,
@@ -412,14 +442,6 @@ const renderers: { [T in TemplateName]: TemplateRenderer<T> } = {
   "phone-verified": {
     subject: phoneVerifiedSubject,
     component: (vars) => <PhoneVerifiedEmail {...vars} />,
-  },
-  "social-account-linked": {
-    subject: socialAccountLinkedSubject,
-    component: (vars) => <SocialAccountLinkedEmail {...vars} />,
-  },
-  "social-account-unlinked": {
-    subject: socialAccountUnlinkedSubject,
-    component: (vars) => <SocialAccountUnlinkedEmail {...vars} />,
   },
   "new-device-login": {
     subject: newDeviceLoginSubject,
@@ -743,6 +765,14 @@ const renderers: { [T in TemplateName]: TemplateRenderer<T> } = {
   "shop-zoho-dead-letter-notice": {
     subject: shopZohoDeadLetterNoticeSubject,
     component: (vars) => <ShopZohoDeadLetterNoticeEmail {...vars} />,
+  },
+  "shop-delivery-quote-ready": {
+    subject: shopDeliveryQuoteReadySubject,
+    component: (vars) => <ShopDeliveryQuoteReadyEmail {...vars} />,
+  },
+  "shop-delivery-quote-declined": {
+    subject: shopDeliveryQuoteDeclinedSubject,
+    component: (vars) => <ShopDeliveryQuoteDeclinedEmail {...vars} />,
   },
   "shop-delivery-quote-requested": {
     subject: shopDeliveryQuoteRequestedSubject,

@@ -32,8 +32,11 @@ import { registerAdminSavedViewRoutes } from "./routes/admin/v1/admin-saved-view
 import { registerAdminZohoLinkRoutes } from "./routes/admin/v1/admin-zoho-link.routes.js";
 import { registerArtCacheInvalidation } from "./routes/admin/v1/art-cache-invalidation.js";
 import { registerAdminArtworkRoutes } from "./routes/admin/v1/artworks.routes.js";
+import { registerAdminDeliveryQuoteRoutes } from "./routes/admin/v1/delivery-quotes.routes.js";
 import { registerAdminDeliveryRegionRoutes } from "./routes/admin/v1/delivery-regions.routes.js";
+import { registerAdminEditionFramingRoutes } from "./routes/admin/v1/edition-framing.routes.js";
 import { registerAdminEditionRunRoutes } from "./routes/admin/v1/edition-runs.routes.js";
+import { registerAdminFramingTaskRoutes } from "./routes/admin/v1/framing-tasks.routes.js";
 import { registerAdminFramingRoutes } from "./routes/admin/v1/framing.routes.js";
 import { registerAdminHealthRoutes } from "./routes/admin/v1/health.routes.js";
 import { registerAdminHomeFeatureRoutes } from "./routes/admin/v1/home-features.routes.js";
@@ -58,6 +61,7 @@ import { registerCategoryRoutes } from "./routes/v1/categories.routes.js";
 import { registerDeliveryRegionRoutes } from "./routes/v1/delivery-regions.routes.js";
 import { registerEditionAlertRoutes } from "./routes/v1/edition-alerts.routes.js";
 import { registerEditorialRoutes } from "./routes/v1/editorial.routes.js";
+import { registerPublicFramingRoutes } from "./routes/v1/framing.routes.js";
 import { registerGuestCheckoutRoutes } from "./routes/v1/guest-checkout.routes.js";
 import { registerGuestOrderHelpRoutes } from "./routes/v1/guest-order-help.routes.js";
 import { registerHelpRoutes } from "./routes/v1/help.routes.js";
@@ -172,6 +176,7 @@ export function createShopApiApp(options: CreateShopApiAppOptions) {
     options.deps.commerce.guestCheckout,
     options.deps.commerce.orderProblems,
   );
+  void registerPublicFramingRoutes(app, options.deps.framing);
   void registerCategoryRoutes(app, options.deps.catalogue);
   void registerDeliveryRegionRoutes(app, options.deps.catalogue);
   void registerArtistRoutes(app, options.deps.catalogue);
@@ -223,7 +228,10 @@ export function createShopApiApp(options: CreateShopApiAppOptions) {
         void registerAdminPrintFulfilmentRoutes(adminScope, options.deps.admin);
         void registerAdminHomeFeatureRoutes(adminScope, options.deps.admin);
         void registerAdminFramingRoutes(adminScope, options.deps.admin);
+        void registerAdminEditionFramingRoutes(adminScope, options.deps.admin);
+        void registerAdminFramingTaskRoutes(adminScope, options.deps.admin);
         void registerAdminDeliveryRegionRoutes(adminScope, options.deps.admin);
+        void registerAdminDeliveryQuoteRoutes(adminScope, options.deps.admin);
         void registerAdminMediaRoutes(adminScope, options.deps.admin);
         if (options.deps.env.SHOP_EDITORIAL_ENABLED && options.deps.editorial) {
           const editorialDeps = options.deps.editorial;

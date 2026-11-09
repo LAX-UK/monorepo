@@ -566,6 +566,7 @@ export function createWorkerContainer(): WorkerContainer {
       adminPayoutsUrl,
       adminEmailAddress,
       webOrigin: env.WEB_ORIGIN,
+      laxAdminUrl: env.LAX_ADMIN_PUBLIC_URL,
       staffOpsRecipientReader: repositories.staffOpsRecipientReader,
       complianceRecipientReader: repositories.complianceRecipientReader,
       shopIdentityProjection,

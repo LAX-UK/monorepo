@@ -17,10 +17,14 @@ import type { AnyPgColumn } from "drizzle-orm/pg-core";
 /** The newest orders and enquiries a client page lists; "View all" opens the rest. */
 export const CLIENT_RECENT_LIMIT = 10;
 
-/** Lines on the order in the same row: the select list of a one-table query prints no table name. */
+/**
+ * Items on the order in the same row: the select list of a one-table query prints no table name.
+ * A frame sold with a print is part of that print, not another item.
+ */
 export const orderLineCountSql = sql<number>`(
   select count(*)::int from ${shopOrderLine}
   where ${shopOrderLine.orderId} = ${qualifiedColumn(shopOrder.id)}
+    and ${shopOrderLine.kind} = 'goods'
 )`;
 
 type Party = Pick<typeof shopParty.$inferSelect, "id" | "identitySubjectId">;

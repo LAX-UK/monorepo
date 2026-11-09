@@ -97,7 +97,7 @@ export function createDrizzleCrmDealNamingReader(db: Database): CrmDealNamingRea
       const [firstLine] = await db
         .select({ artworkId: shopOrderLine.artworkId })
         .from(shopOrderLine)
-        .where(eq(shopOrderLine.orderId, orderId))
+        .where(and(eq(shopOrderLine.orderId, orderId), eq(shopOrderLine.kind, "goods")))
         .orderBy(asc(shopOrderLine.createdAt), asc(shopOrderLine.id))
         .limit(1);
       const entry = firstLine?.artworkId

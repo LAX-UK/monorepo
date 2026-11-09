@@ -2,11 +2,14 @@ import type { OrderStatus, OrderSummary } from "@auction/shop-contracts";
 import { describe, expect, it } from "vitest";
 import {
   buildShopOrderDetailVm,
+  buildShopOrderLines,
   buildShopOrderListVm,
   buildShopOrderTimeline,
   buildShopOrderTotals,
   isPlacedShopOrder,
+  shopDeliveryQuote,
   shopOrderProgressStatus,
+  shopOrderTitle,
 } from "./shop-orders.vm";
 
 const NOW = new Date("2026-10-20T09:10:00.000Z");
@@ -96,7 +99,7 @@ describe("buildShopOrderListVm", () => {
         [order("expired", { paidAt: null }), order("cancelled", { paidAt: null })],
         NOW,
       ),
-    ).toEqual({ finishPaying: null, rows: [] });
+    ).toEqual({ deliveryQuote: null, finishPaying: null, rows: [] });
   });
 
   it("lists paid orders newest first with their reference, date, total and where they are", () => {
@@ -136,6 +139,89 @@ describe("buildShopOrderListVm", () => {
       reservedLabel: "Your editions are reserved until 10:30.",
     });
     expect(buildShopOrderListVm([lapsed], NOW).finishPaying).toBeNull();
+  });
+
+  describe("a delivery quote outside the UK", () => {
+    const quoteOrder = (
+      deliveryQuote: NonNullable<OrderSummary["deliveryQuote"]>,
+      overrides: Partial<OrderSummary> = {},
+    ) =>
+      order("pending_payment", {
+        fulfilment: "international_quotation",
+        fulfilmentSurchargePence: 0,
+        merchandiseSubtotalPence: 8500,
+        totalPence: 8500,
+        createdAt: "2026-10-20T09:00:00.000Z",
+        checkoutExpiresAt: "2026-10-23T09:00:00.000Z",
+        deliveryQuote,
+        ...overrides,
+      });
+    const waiting = {
+      status: "requested" as const,
+      country: "DE",
+      pricePence: null,
+      carrier: null,
+      service: null,
+      leadTimeNote: null,
+      holdUntil: "2026-10-23T09:00:00.000Z",
+      paymentOpen: true,
+    };
+    const priced = {
+      ...waiting,
+      status: "quoted" as const,
+      pricePence: 8500,
+      carrier: "DHL Express",
+      service: "Express insured",
+      leadTimeNote: "Usually 5 to 7 working days.",
+    };
+
+    it("says it is pricing the delivery, and offers no way to pay yet", () => {
+      const vm = buildShopOrderListVm([quoteOrder(waiting)], NOW);
+      expect(vm.deliveryQuote).toMatchObject({
+        stage: "waiting",
+        place: "Germany",
+        heldUntilLabel: "23 October 2026",
+        price: null,
+      });
+      expect(vm.finishPaying).toBeNull();
+    });
+
+    it("shows the price, the courier and the total with the print once quoted", () => {
+      const vm = buildShopOrderListVm([quoteOrder(priced)], NOW);
+      expect(vm.deliveryQuote).toMatchObject({
+        stage: "ready",
+        canPay: true,
+        price: {
+          deliveryLabel: "£85.00",
+          totalLabel: "£170.00",
+          carrierLabel: "DHL Express (Express insured)",
+          leadTimeNote: "Usually 5 to 7 working days.",
+        },
+      });
+      expect(vm.finishPaying).toBeNull();
+    });
+
+    it("carries whether payment is open, so the page can say it is not yet", () => {
+      const vm = buildShopOrderListVm([quoteOrder({ ...priced, paymentOpen: false })], NOW);
+      expect(vm.deliveryQuote?.canPay).toBe(false);
+    });
+
+    it("pays an accepted quote like any unpaid order", () => {
+      const vm = buildShopOrderListVm([quoteOrder({ ...priced, status: "accepted" })], NOW);
+      expect(vm.deliveryQuote).toBeNull();
+      expect(vm.finishPaying).not.toBeNull();
+    });
+
+    it("drops the quote once the hold has run out", () => {
+      const lapsed = quoteOrder(priced, { checkoutExpiresAt: "2026-10-20T09:00:00.000Z" });
+      expect(buildShopOrderListVm([lapsed], NOW).deliveryQuote).toBeNull();
+    });
+
+    it("leads the order page with the quote and no 'not paid' notice", () => {
+      const vm = buildShopOrderDetailVm(quoteOrder(priced), NOW);
+      expect(vm.deliveryQuote?.stage).toBe("ready");
+      expect(vm.notice).toBeNull();
+    });
   });
 
   it("summarises multi-item orders and shows refunds", () => {
@@ -315,6 +401,98 @@ describe("buildShopOrderTotals", () => {
     );
     expect(totals.rows[1]).toEqual({ label: "Collect from our London gallery", value: "Free" });
     expect(totals.vatLine).toBeNull();
+  });
+});
+
+describe("a framed order", () => {
+  const framed = () => {
+    const base = order("paid");
+    const [print] = base.lines;
+    if (!print) throw new Error("fixture has a line");
+    return {
+      ...base,
+      framingSubtotalPence: 21_000,
+      totalPence: 121_000,
+      lines: [
+        print,
+        {
+          ...print,
+          orderLineId: "00000000-0000-4000-8000-0000000000f1",
+          kind: "framing" as const,
+          framingName: "Natural oak frame",
+          framingFor: "Harbor Print, no. 3",
+          framingForLineId: print.orderLineId,
+          framingDetail: "Window mount, white conservation board · UV-filtering acrylic",
+          artworkTitle: null,
+          artworkSlug: null,
+          artistName: null,
+          editionNumber: null,
+          editionSummary: null,
+          unitPricePence: 21_000,
+        },
+      ],
+    };
+  };
+
+  it("shows the frame under its print as 'Framing: <name>', at its own price", () => {
+    const rows = buildShopOrderLines(framed());
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.framing).toEqual({
+      label: "Framing: Natural oak frame",
+      detail: "Window mount, white conservation board · UV-filtering acrylic",
+      priceLabel: "£210.00",
+    });
+  });
+
+  it("keeps a frame whose print is not in the list as a row of its own", () => {
+    const placed = framed();
+    const rows = buildShopOrderLines({ ...placed, lines: placed.lines.slice(1) });
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ title: "Framing: Natural oak frame", href: null });
+  });
+
+  it("totals the framing on its own row between items and delivery", () => {
+    expect(buildShopOrderTotals(framed()).rows.map((row) => row.label)).toEqual([
+      "Items",
+      "Framing",
+      "UK insured delivery",
+      "Total",
+    ]);
+  });
+
+  it("is still titled by the print, not 'and 1 more'", () => {
+    expect(shopOrderTitle(framed())).not.toContain("more");
+  });
+});
+
+describe("the delivery quote on a framed order", () => {
+  const NOW_QUOTE = new Date("2026-10-14T22:00:00.000Z");
+  const quoted = (framingSubtotalPence?: number) =>
+    order("pending_payment", {
+      merchandiseSubtotalPence: 36_000,
+      ...(framingSubtotalPence === undefined ? {} : { framingSubtotalPence }),
+      checkoutExpiresAt: "2026-10-15T22:00:00.000Z",
+      deliveryQuote: {
+        status: "quoted",
+        country: "US",
+        pricePence: 8_500,
+        carrier: "DHL Express",
+        service: "Express insured",
+        leadTimeNote: null,
+        holdUntil: "2026-10-15T22:00:00.000Z",
+        paymentOpen: true,
+      },
+    });
+
+  it("totals the goods, the framing and the quoted delivery: what will be paid", () => {
+    const quote = shopDeliveryQuote([quoted(21_000)], NOW_QUOTE);
+    expect(quote?.price?.totalLabel).toBe("£655.00");
+    expect(quote?.price?.deliveryLabel).toBe("£85.00");
+  });
+
+  it("is the goods and the delivery when nothing is framed, or an older response has no framing", () => {
+    expect(shopDeliveryQuote([quoted(0)], NOW_QUOTE)?.price?.totalLabel).toBe("£445.00");
+    expect(shopDeliveryQuote([quoted()], NOW_QUOTE)?.price?.totalLabel).toBe("£445.00");
   });
 });
 

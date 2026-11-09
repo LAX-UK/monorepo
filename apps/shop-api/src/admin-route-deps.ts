@@ -1,12 +1,15 @@
+import type { AdminFramingDueList } from "@auction/shop-contracts";
 import type { OriginalMoveService } from "./application/admin/original-move.service.js";
 import type { ReleaseAlertSummaryReader } from "./application/alerts/alert-ports.js";
 import type { ArtistApplicationReviewService } from "./application/artist-applications/artist-application-review.service.js";
 import type { ArtworkRegisterReviewService } from "./application/artwork-register/artwork-register-review.service.js";
 import type { OfferOnLaxArtService } from "./application/artwork-register/offer-on-lax-art.service.js";
 import type { ZohoLinkService } from "./application/artwork-register/zoho-link.service.js";
+import type { DeliveryQuoteStaffService } from "./application/delivery-quote-staff/delivery-quote-staff.service.js";
 import type { DeliveryRegionsService } from "./application/delivery-regions/delivery-regions.service.js";
 import type { EditionRunServices } from "./application/edition-runs/edition-run-services.js";
 import type { EnquiryInboxService } from "./application/enquiry-inbox.service.js";
+import type { EditionFramingService } from "./application/framing/edition-framing.service.js";
 import type { FramingService } from "./application/framing/framing.service.js";
 import type { GuestErasureService } from "./application/guest-erasure/guest-erasure.service.js";
 import type { ShopMediaUploadHandlers } from "./application/handlers/shop-media-upload.handler.js";
@@ -63,6 +66,7 @@ import type { createRecordPossessionHandler } from "./infrastructure/handlers/ad
 import type { createRejectSaleAuthorityRequestHandler } from "./infrastructure/handlers/admin/reject-sale-authority-request.handler.js";
 import type { createRequestRefundHandler } from "./infrastructure/handlers/admin/request-refund.handler.js";
 import type { createRetryRefundHandler } from "./infrastructure/handlers/admin/retry-refund.handler.js";
+import type { createUpdateFramingTaskHandler } from "./infrastructure/handlers/admin/update-framing-task.handler.js";
 import type { createUpdateFulfilmentHandler } from "./infrastructure/handlers/admin/update-fulfilment.handler.js";
 import type { AdminIdempotency } from "./infrastructure/idempotent-admin-command.js";
 import type { HealthDeps } from "./routes/health.routes.js";
@@ -113,6 +117,10 @@ export type AdminRoutesDeps = {
   savedViews: SavedViewService;
   staffReader: ShopStaffMemberReader;
   createProductionTask: ReturnType<typeof createCreateProductionTaskHandler>;
+  /** Moves the work on a frame sold with a print to its next step. */
+  updateFramingTask: ReturnType<typeof createUpdateFramingTaskHandler>;
+  /** The frames still to make, soonest due first. */
+  listFramingDue: () => Promise<AdminFramingDueList>;
   updateFulfilment: ReturnType<typeof createUpdateFulfilmentHandler>;
   recordPossession: ReturnType<typeof createRecordPossessionHandler>;
   cancelAfterPossession: ReturnType<typeof createCancelAfterPossessionHandler>;
@@ -154,8 +162,14 @@ export type AdminRoutesDeps = {
   homeFeatures: HomeFeaturesService;
   /** The framing catalogue: options, their prices per size band and lead times. */
   framing: FramingService;
+  /** Framing on an edition: how it is sold, its offered options and their own prices. */
+  editionFraming: EditionFramingService;
   /** Where the Shop delivers: regions, lead times, fixed prices and countries not delivered to. */
   deliveryRegions: DeliveryRegionsService;
+  /** LAX Admin › Orders › Delivery quotes: send a price and carrier, or turn a request down. */
+  deliveryQuotes: DeliveryQuoteStaffService;
+  /** Whether buyers can pay for delivery outside the UK yet; staff are told when they cannot. */
+  exportPaymentEnabled: boolean;
   thirdPartySales: {
     recordSale(
       command: RecordThirdPartySaleCommand,

@@ -25,10 +25,16 @@ export function presentBasket(
       quantity: line.quantity,
     })),
   );
+  // Framing is charged for each print on a line, and only while its option can still be bought.
+  const framingSubtotalPence = record.lines.reduce(
+    (sum, line) => (line.framing?.available ? sum + line.framing.pricePence * line.quantity : sum),
+    0,
+  );
   return {
     basketId: record.basketId,
     expiresAt: record.expiresAt.toISOString(),
     merchandiseSubtotalPence,
+    ...(framingSubtotalPence > 0 ? { framingSubtotalPence } : {}),
     lines: record.lines.map((line) => ({
       lineId: line.lineId,
       artworkSlug: line.artworkSlug,
@@ -52,6 +58,7 @@ export function presentBasket(
         orderLimit: line.artworkId ? options.editionOrderLimit : null,
         sellableCount: line.sellableCount,
       }),
+      ...(line.framing ? { framing: line.framing } : {}),
     })),
   };
 }
@@ -102,6 +109,7 @@ export function presentOrder(record: OrderRecord, now: Date = new Date()): Order
     status: record.status,
     fulfilment: record.fulfilment,
     merchandiseSubtotalPence: record.merchandiseSubtotalPence,
+    framingSubtotalPence: record.framingSubtotalPence,
     fulfilmentSurchargePence: record.fulfilmentSurchargePence,
     totalPence: record.totalPence,
     refundedPence: record.refundedPence,
@@ -146,6 +154,20 @@ export function presentOrder(record: OrderRecord, now: Date = new Date()): Order
     invoiceAvailable: record.paidAt !== null && record.invoiceNumber !== null,
     invoiceNumber: record.invoiceNumber,
     problemReports: record.problemReports.map((at) => ({ reportedAt: at.toISOString() })),
+    ...(record.status === "pending_payment" && record.deliveryQuote
+      ? {
+          deliveryQuote: {
+            status: record.deliveryQuote.status,
+            country: record.deliveryQuote.country,
+            pricePence: record.deliveryQuote.pricePence,
+            carrier: record.deliveryQuote.carrier,
+            service: record.deliveryQuote.service,
+            leadTimeNote: record.deliveryQuote.leadTimeNote,
+            holdUntil: record.deliveryQuote.holdUntil.toISOString(),
+            paymentOpen: record.deliveryQuote.paymentOpen,
+          },
+        }
+      : {}),
     lines: record.lines.map((line) => ({
       orderLineId: line.orderLineId,
       artworkSlug: line.artworkSlug,
@@ -157,6 +179,11 @@ export function presentOrder(record: OrderRecord, now: Date = new Date()): Order
       editionNumber: line.editionNumber,
       editionSize: line.editionSize,
       editionSummary: line.editionSummary,
+      kind: line.kind,
+      framingName: line.framingName,
+      framingForLineId: line.framingForLineId,
+      framingFor: line.framingFor,
+      framingDetail: line.framingDetail,
       artistName: line.artistName,
       unitPricePence: line.unitPricePence,
       imageUrl: line.imageUrl,

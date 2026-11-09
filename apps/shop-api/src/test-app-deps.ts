@@ -7,6 +7,7 @@ import { createArtistApplicantService } from "./application/artist-applications/
 import { createArtistApplicationRateLimiters } from "./application/artist-applications/artist-application-rate-limits.js";
 import { createArtistApplicationReviewService } from "./application/artist-applications/artist-application-review.service.js";
 import { ArtworkRegisterReviewService } from "./application/artwork-register/artwork-register-review.service.js";
+import { createDeliveryQuoteStaffService } from "./application/delivery-quote-staff/delivery-quote-staff.service.js";
 import type { DeliveryRegionsState } from "./application/delivery-regions/delivery-regions.ports.js";
 import { createDeliveryRegionsService } from "./application/delivery-regions/delivery-regions.service.js";
 import { createEnquiryInboxService } from "./application/enquiry-inbox.service.js";
@@ -15,6 +16,7 @@ import {
   createEnquiryRateLimiter,
   createReleaseAlertRateLimiter,
 } from "./application/enquiry-rate-limit.js";
+import { createEditionFramingService } from "./application/framing/edition-framing.service.js";
 import { createFramingService } from "./application/framing/framing.service.js";
 import { GuestErasureService } from "./application/guest-erasure/guest-erasure.service.js";
 import { createHomeFeaturesService } from "./application/home-features/home-features.service.js";
@@ -76,6 +78,7 @@ export function createMinimalShopApiTestDeps(
       SHOP_THIRD_PARTY_ENABLED: false,
       SHOP_ORIGINALS_ENABLED: false,
       SHOP_MERCHANDISE_ENABLED: false,
+      SHOP_FRAMING_ENABLED: false,
       SHOP_LAX_CERTIFICATES_ENABLED: false,
       SHOP_EDITORIAL_ENABLED: false,
       SHOP_PERSONALISED_GOODS_CANCELLATION_EXEMPT: false,
@@ -128,12 +131,16 @@ export function createMinimalShopApiTestDeps(
     },
     commerce: {
       merchandiseEnabled: false,
+      framingEnabled: false,
       editionOrderLimit: 2,
       getBasket: async () => null,
       upsertBasketLine: async () => {
         throw new Error("not implemented");
       },
       removeBasketLine: async () => {
+        throw new Error("not implemented");
+      },
+      setBasketLineFraming: async () => {
         throw new Error("not implemented");
       },
       mergeBaskets: async () => {
@@ -146,6 +153,9 @@ export function createMinimalShopApiTestDeps(
         throw new Error("not implemented");
       },
       cancelCheckoutOrder: async () => undefined,
+      acceptDeliveryQuote: async () => {
+        throw new Error("not implemented");
+      },
       requestDeliveryQuote: async () => {
         throw new Error("not implemented");
       },
@@ -177,6 +187,14 @@ export function createMinimalShopApiTestDeps(
       getPublicCategory: async () => null,
       listPublicArtists: async () => ({ items: [] }),
       getPublicArtist: async () => null,
+    },
+    framing: {
+      framingEnabled: false,
+      reader: {
+        read: async () => new Map(),
+        readBySlug: async () => null,
+        options: async () => new Map(),
+      },
     },
     merchandise: {
       listPublicMerchandiseProducts: async () => ({ items: [] }),
@@ -432,6 +450,10 @@ export function createMinimalShopApiTestDeps(
         findActiveByIdentitySubject: async () => null,
         brokerCanAccessClientParty: async () => false,
       },
+      listFramingDue: async () => ({ items: [] }),
+      updateFramingTask: async () => {
+        throw new Error("not implemented");
+      },
       createProductionTask: async () => ({
         taskId: "00000000-0000-4000-8000-000000000010",
         status: "queued" as const,
@@ -445,6 +467,7 @@ export function createMinimalShopApiTestDeps(
         status: "delivered",
       }),
       cancelAfterPossession: async () => ({
+        framingRefundPence: 0,
         returnId: "00000000-0000-4000-8000-000000000013",
         refundId: "00000000-0000-4000-8000-000000000014",
         status: "requested" as const,
@@ -626,6 +649,13 @@ export function createMinimalShopApiTestDeps(
         reader: { read: async () => testDeliveryRegionsState() },
         clock: { now: () => new Date() },
       }),
+      deliveryQuotes: createDeliveryQuoteStaffService({
+        uow: { run: () => Promise.reject(new Error("No delivery quote store in this test")) },
+        reader: { list: async () => [], waitingCount: async () => 0 },
+        orders: { release: async () => {} },
+        clock: { now: () => new Date() },
+      }),
+      exportPaymentEnabled: false,
       homeFeatures: createHomeFeaturesService({
         uow: { run: () => Promise.reject(new Error("No featured lists store in this test")) },
         lists: {
@@ -638,12 +668,16 @@ export function createMinimalShopApiTestDeps(
         },
         clock: { now: () => new Date() },
       }),
+      editionFraming: createEditionFramingService({
+        uow: { run: () => Promise.reject(new Error("No edition framing store in this test")) },
+      }),
       framing: createFramingService({
         uow: { run: () => Promise.reject(new Error("No framing catalogue store in this test")) },
         lists: { list: async () => ({ items: [] }) },
       }),
       requestRefund: async () => ({
         refundId: "00000000-0000-4000-8000-000000000012",
+        framingRefundPence: 0,
         status: "pending" as const,
       }),
       retryRefund: async () => ({

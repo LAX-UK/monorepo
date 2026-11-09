@@ -1,5 +1,6 @@
 import { SHOP_HELP_CONTACT } from "@/content/policies/help";
 import { shopOrderHref } from "@/lib/account/shop-account-routes";
+import { countryName, holdUntilLabel } from "@/lib/checkout/outside-uk";
 import {
   isShopCollectionFulfilment,
   resolveShopFulfilmentLabel,
@@ -49,7 +50,8 @@ function lineHref(line: OrderLine): string | null {
 
 /** "Harbor Print", or "Harbor Print and 2 more" for a multi-item order. */
 export function shopOrderTitle(order: Pick<OrderSummary, "lines">): string {
-  const [first, ...rest] = order.lines;
+  // A frame is part of the print it came with, not another item.
+  const [first, ...rest] = order.lines.filter((line) => line.kind !== "framing");
   if (!first) return "Order";
   return rest.length > 0 ? `${lineTitle(first)} and ${rest.length} more` : lineTitle(first);
 }
@@ -133,7 +135,30 @@ export type ShopFinishPayingVm = {
   reservedLabel: string;
 };
 
+/**
+ * The delivery quote on an unpaid order for an address outside the UK: waiting for the gallery's
+ * price, or the price itself with the way to accept it and pay.
+ */
+export type ShopDeliveryQuoteVm = {
+  orderId: string;
+  stage: "waiting" | "ready";
+  place: string;
+  /** "12 November 2026": when the held print is released. */
+  heldUntilLabel: string;
+  heldUntil: string;
+  /** Present once priced. */
+  price: {
+    deliveryLabel: string;
+    totalLabel: string;
+    carrierLabel: string;
+    leadTimeNote: string | null;
+  } | null;
+  /** False while payment outside the UK is not open yet. */
+  canPay: boolean;
+};
+
 export type ShopOrderListVm = {
+  deliveryQuote: ShopDeliveryQuoteVm | null;
   finishPaying: ShopFinishPayingVm | null;
   rows: ShopOrderRowVm[];
 };
@@ -151,18 +176,64 @@ function reservedLabel(expiresAt: string, now: Date): string {
     : `Your editions are reserved until ${formatShopDateTime(expiresAt)}.`;
 }
 
+function isOpenUnpaid(
+  order: OrderSummary,
+  now: Date,
+): order is OrderSummary & {
+  checkoutExpiresAt: string;
+} {
+  return (
+    order.status === "pending_payment" &&
+    Boolean(order.checkoutExpiresAt) &&
+    Date.parse(order.checkoutExpiresAt as string) > now.getTime()
+  );
+}
+
+/** A quote still being priced or waiting to be accepted; once accepted it is paid like any order. */
+function isQuoteInPlay(order: OrderSummary): boolean {
+  return order.deliveryQuote?.status === "requested" || order.deliveryQuote?.status === "quoted";
+}
+
+/** The newest delivery quote that is waiting on the gallery or on the shopper, if any. */
+export function shopDeliveryQuote(
+  orders: readonly OrderSummary[],
+  now: Date,
+): ShopDeliveryQuoteVm | null {
+  const open = orders
+    .filter((order) => isOpenUnpaid(order, now) && isQuoteInPlay(order))
+    .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))[0];
+  const quote = open?.deliveryQuote;
+  if (!open || !quote) return null;
+  const priced =
+    quote.status === "quoted" && quote.pricePence !== null && quote.carrier !== null
+      ? {
+          deliveryLabel: formatGbpPence(quote.pricePence),
+          // The goods, the framing sold with them and the quoted delivery: what will be paid.
+          totalLabel: formatGbpPence(
+            open.merchandiseSubtotalPence + (open.framingSubtotalPence ?? 0) + quote.pricePence,
+          ),
+          carrierLabel: quote.service ? `${quote.carrier} (${quote.service})` : quote.carrier,
+          leadTimeNote: quote.leadTimeNote,
+        }
+      : null;
+  return {
+    orderId: open.orderId,
+    stage: priced ? "ready" : "waiting",
+    place: countryName(quote.country),
+    heldUntilLabel: holdUntilLabel(quote.holdUntil),
+    heldUntil: quote.holdUntil,
+    price: priced,
+    canPay: quote.paymentOpen,
+  };
+}
+
 /** The newest unpaid checkout whose reservation has not run out, if any. */
 export function shopFinishPaying(
   orders: readonly OrderSummary[],
   now: Date,
 ): ShopFinishPayingVm | null {
   const open = orders
-    .filter(
-      (order) =>
-        order.status === "pending_payment" &&
-        order.checkoutExpiresAt &&
-        Date.parse(order.checkoutExpiresAt) > now.getTime(),
-    )
+    .filter((order) => isOpenUnpaid(order, now) && !isQuoteInPlay(order))
     .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))[0];
   if (!open?.checkoutExpiresAt) return null;
   return {
@@ -191,7 +262,11 @@ export function buildShopOrderListVm(orders: readonly OrderSummary[], now: Date)
       status: shopOrderProgressStatus(order),
       thumbnailUrl: order.lines[0]?.imageUrl ?? null,
     }));
-  return { finishPaying: shopFinishPaying(orders, now), rows };
+  return {
+    deliveryQuote: shopDeliveryQuote(orders, now),
+    finishPaying: shopFinishPaying(orders, now),
+    rows,
+  };
 }
 
 export type ShopOrderTimelineStep = {
@@ -375,6 +450,8 @@ export type ShopOrderLineVm = {
   edition: string | null;
   priceLabel: string;
   thumbnailUrl: string | null;
+  /** The frame sold with this print, shown under it: "Framing: Natural oak frame". */
+  framing: { label: string; detail: string | null; priceLabel: string } | null;
 };
 
 export type ShopOrderTotalsVm = {
@@ -383,22 +460,55 @@ export type ShopOrderTotalsVm = {
   vatLine: string | null;
 };
 
-export function buildShopOrderLines(order: OrderSummary): ShopOrderLineVm[] {
-  return order.lines.map((line) => ({
-    id: line.orderLineId,
-    title: lineTitle(line),
-    href: lineHref(line),
-    artist: line.artistName ?? null,
-    edition: shopOrderLineEdition(line, order.status),
+function lineFraming(line: OrderLine): NonNullable<ShopOrderLineVm["framing"]> {
+  return {
+    label: `Framing: ${line.framingName ?? "frame"}`,
+    detail: line.framingDetail ?? null,
     priceLabel: formatGbpPence(line.unitPricePence),
-    thumbnailUrl: line.imageUrl ?? null,
-  }));
+  };
+}
+
+/**
+ * One row for each print or product. A frame is shown under the print it goes with, at its own
+ * price, as one wording ("Framing: Natural oak frame"); a frame whose print is not in the list
+ * (an older response) is shown as a row of its own rather than dropped.
+ */
+export function buildShopOrderLines(order: OrderSummary): ShopOrderLineVm[] {
+  const printIds = new Set(
+    order.lines.filter((line) => line.kind !== "framing").map((line) => line.orderLineId),
+  );
+  const frameFor = new Map(
+    order.lines
+      .filter((line) => line.kind === "framing" && line.framingForLineId)
+      .filter((line) => printIds.has(line.framingForLineId ?? ""))
+      .map((line) => [line.framingForLineId, line] as const),
+  );
+  const attached = new Set([...frameFor.values()].map((line) => line.orderLineId));
+  return order.lines
+    .filter((line) => !attached.has(line.orderLineId))
+    .map((line) => {
+      const frame = frameFor.get(line.orderLineId);
+      const isFrame = line.kind === "framing";
+      return {
+        id: line.orderLineId,
+        title: isFrame ? `Framing: ${line.framingName ?? "frame"}` : lineTitle(line),
+        href: lineHref(line),
+        artist: line.artistName ?? null,
+        edition: isFrame ? null : shopOrderLineEdition(line, order.status),
+        priceLabel: formatGbpPence(line.unitPricePence),
+        thumbnailUrl: line.imageUrl ?? null,
+        framing: frame ? lineFraming(frame) : null,
+      };
+    });
 }
 
 export function buildShopOrderTotals(order: OrderSummary): ShopOrderTotalsVm {
   const delivery = order.fulfilmentSurchargePence;
   const rows: ShopOrderTotalsVm["rows"] = [
     { label: "Items", value: formatGbpPence(order.merchandiseSubtotalPence) },
+    ...(order.framingSubtotalPence
+      ? [{ label: "Framing", value: formatGbpPence(order.framingSubtotalPence) }]
+      : []),
     {
       label: resolveShopFulfilmentLabel(order.fulfilment),
       value: delivery === 0 ? "Free" : formatGbpPence(delivery),
@@ -483,25 +593,31 @@ export type ShopOrderDetailVm = {
   problem: ShopOrderProblemVm;
   /** An unpaid checkout that can still be paid. */
   finishPaying: ShopFinishPayingVm | null;
+  /** A delivery quote waiting on the gallery or on the shopper. */
+  deliveryQuote: ShopDeliveryQuoteVm | null;
 };
 
 export function buildShopOrderDetailVm(order: OrderSummary, now: Date): ShopOrderDetailVm {
   const placed = isPlacedShopOrder(order);
   const status = shopOrderProgressStatus(order);
   const finishPaying = shopFinishPaying([order], now);
+  const deliveryQuote = shopDeliveryQuote([order], now);
   return {
     orderId: order.orderId,
     title: shopOrderName(order),
     placedLabel: `Placed ${formatShopDate(order.createdAt)}`,
     status,
     finishPaying,
+    deliveryQuote,
     notice: placed
       ? null
-      : finishPaying
-        ? `${finishPaying.reservedLabel} Pay before then to keep them.`
-        : order.status === "pending_payment"
-          ? "The time to pay for this order has run out."
-          : (resolveShopOrderStatusPresentation(order.status).hint ?? null),
+      : deliveryQuote
+        ? null
+        : finishPaying
+          ? `${finishPaying.reservedLabel} Pay before then to keep them.`
+          : order.status === "pending_payment"
+            ? "The time to pay for this order has run out."
+            : (resolveShopOrderStatusPresentation(order.status).hint ?? null),
     timeline: buildShopOrderTimeline(order),
     lines: buildShopOrderLines(order),
     totals: buildShopOrderTotals(order),

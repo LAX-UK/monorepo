@@ -1,5 +1,6 @@
 import { legalEntityFor } from "@auction/branding";
 import type { Database } from "@auction/db";
+import { createDeliveryQuoteAcceptanceService } from "./application/delivery-quote-acceptance/delivery-quote-acceptance.service.js";
 import { createDeliveryQuoteRequestService } from "./application/delivery-quote-request/delivery-quote-request.service.js";
 import { guardAgainstPendingDeletion } from "./application/guard-against-pending-deletion.js";
 import {
@@ -11,6 +12,7 @@ import {
   createMergeBasketsHandler,
   createRemoveBasketLineHandler,
   createResumeCheckoutOrderHandler,
+  createSetBasketLineFramingHandler,
   createUpsertBasketLineHandler,
 } from "./application/handlers/commerce-handlers.js";
 import {
@@ -24,6 +26,7 @@ import { createGuestCheckoutDeps } from "./create-guest-checkout-deps.js";
 import type { ShopApiEnv } from "./env.js";
 import { readDeliveryRegions } from "./infrastructure/delivery-regions/drizzle-delivery-regions.store.js";
 import { createDrizzleCommerceRepository } from "./infrastructure/drizzle-commerce.repository.js";
+import { createDrizzleDeliveryQuoteAcceptanceStore } from "./infrastructure/drizzle-delivery-quote-acceptance.store.js";
 import { createDrizzleDeliveryQuoteOrderStore } from "./infrastructure/drizzle-delivery-quote-order.store.js";
 import { createDrizzlePaymentEventProcessor } from "./infrastructure/drizzle-payment-event.processor.js";
 import { createDrizzlePendingDeletionReader } from "./infrastructure/drizzle-pending-deletion.reader.js";
@@ -31,6 +34,7 @@ import { createDrizzleShopNotificationPublisher } from "./infrastructure/drizzle
 import { createDrizzleStripeMoneyWebhookProcessor } from "./infrastructure/drizzle-stripe-money-webhook.processor.js";
 import { createHttpIdentityAddressBook } from "./infrastructure/http-identity-address-book.js";
 import { createIdentityMachineClient } from "./infrastructure/identity-machine-client.js";
+import type { UnappliedMoneyLookup } from "./infrastructure/shop-paid-on-closed-order.js";
 import { loadShopVatPolicy } from "./infrastructure/shop-vat-policy.js";
 import { createStripePaymentIntentMetadataFetcher } from "./infrastructure/stripe-refund-metadata.js";
 import { createStripeShopCheckoutGateway } from "./infrastructure/stripe-shop-checkout.gateway.js";
@@ -48,7 +52,12 @@ import type { OriginalOfferRegister } from "./application/ports/original-offer-r
 export function createCommerceServices(
   db: Database,
   env: ShopApiEnv,
-  options: { rateLimitCounter: FixedWindowCounter; originalOffers: OriginalOfferRegister },
+  options: {
+    rateLimitCounter: FixedWindowCounter;
+    originalOffers: OriginalOfferRegister;
+    /** The finance task store: money that arrives for a closed order is recorded there. */
+    unappliedMoney: UnappliedMoneyLookup;
+  },
 ): { commerce: CommerceRoutesDeps; stripeWebhook: StripeWebhookDeps } {
   const paymentGateway = createStripeShopCheckoutGateway({
     secretKey: env.STRIPE_SECRET_KEY,
@@ -61,6 +70,8 @@ export function createCommerceServices(
     domainEventMode,
     vatPolicy: loadShopVatPolicy(env),
     merchandiseEnabled: env.SHOP_MERCHANDISE_ENABLED,
+    exportPaymentEnabled: env.SHOP_EXPORT_PAYMENT_ENABLED,
+    framingEnabled: env.SHOP_FRAMING_ENABLED,
     editionOrderLimit: env.SHOP_EDITION_ORDER_LIMIT,
   });
 
@@ -85,6 +96,7 @@ export function createCommerceServices(
   const quoteRequests = createDeliveryQuoteRequestService({
     regions: { read: () => readDeliveryRegions(db) },
     orders: createDrizzleDeliveryQuoteOrderStore(db, {
+      framingEnabled: env.SHOP_FRAMING_ENABLED,
       domainEventMode,
       vatPolicy: loadShopVatPolicy(env),
       merchandiseEnabled: env.SHOP_MERCHANDISE_ENABLED,
@@ -94,11 +106,17 @@ export function createCommerceServices(
     exportPaymentEnabled: env.SHOP_EXPORT_PAYMENT_ENABLED,
     guestHoldWorkingDays: env.SHOP_GUEST_QUOTE_HOLD_WORKING_DAYS,
   });
+  const quoteAcceptance = createDeliveryQuoteAcceptanceService({
+    store: createDrizzleDeliveryQuoteAcceptanceStore(db, { vatPolicy: loadShopVatPolicy(env) }),
+    checkout: repository,
+    exportPaymentEnabled: env.SHOP_EXPORT_PAYMENT_ENABLED,
+  });
   const guestCheckout = identityConfig
     ? createGuestCheckoutDeps(db, {
         identity: createIdentityMachineClient(identityConfig),
         checkout: repository,
         quotes: quoteRequests,
+        acceptance: quoteAcceptance,
         orders: repository,
         notifications,
         paymentGateway,
@@ -116,6 +134,7 @@ export function createCommerceServices(
     storefrontUrl: env.SHOP_STOREFRONT_URL,
     paymentGateway,
     domainEventMode,
+    unappliedMoney: options.unappliedMoney,
   });
 
   const fetchPaymentIntentMetadata = createStripePaymentIntentMetadataFetcher({
@@ -132,10 +151,12 @@ export function createCommerceServices(
   return {
     commerce: {
       merchandiseEnabled: env.SHOP_MERCHANDISE_ENABLED,
+      framingEnabled: env.SHOP_FRAMING_ENABLED,
       editionOrderLimit: env.SHOP_EDITION_ORDER_LIMIT,
       getBasket: createGetBasketHandler(repository),
       upsertBasketLine: createUpsertBasketLineHandler(repository),
       removeBasketLine: createRemoveBasketLineHandler(repository),
+      setBasketLineFraming: createSetBasketLineFramingHandler(repository),
       mergeBaskets: createMergeBasketsHandler(repository),
       checkoutOrder: guardAgainstPendingDeletion(
         pendingDeletion,
@@ -146,6 +167,9 @@ export function createCommerceServices(
         createResumeCheckoutOrderHandler(repository),
       ),
       cancelCheckoutOrder: createCancelCheckoutOrderHandler(repository),
+      acceptDeliveryQuote: guardAgainstPendingDeletion(pendingDeletion, (input) =>
+        quoteAcceptance.acceptAndPay(input),
+      ),
       requestDeliveryQuote: guardAgainstPendingDeletion(pendingDeletion, (input) =>
         quoteRequests.request(input),
       ),

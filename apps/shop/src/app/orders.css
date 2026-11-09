@@ -232,6 +232,30 @@ a.shop-order-lines__title:hover {
   line-height: 1.25rem;
 }
 
+/* A frame sits under its print, lined up with the print's text and at its own price. */
+.shop-order-lines__framing {
+  display: grid;
+  grid-column: 2 / -1;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: var(--shop-space-4);
+}
+
+.shop-order-lines__framing-title {
+  color: var(--color-on-surface);
+  font-size: var(--shop-text-sm);
+  font-weight: 600;
+  line-height: 1.25rem;
+}
+
+.shop-order-lines__framing-price {
+  color: var(--color-on-surface);
+  font-size: var(--shop-text-sm);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.25rem;
+  white-space: nowrap;
+}
+
 .shop-order-lines__price {
   color: var(--color-on-surface);
   font-size: var(--shop-text-md);
@@ -404,6 +428,47 @@ a.shop-order-lines__title:hover {
     grid-column: auto;
     width: auto;
     min-width: 15rem;
+  }
+}
+
+/* A delivery quote on an unpaid order outside the UK: no thumbnail, a short list of facts. */
+.shop-finish-paying--quote {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.shop-finish-paying__facts {
+  display: grid;
+  margin: 0;
+  gap: var(--shop-space-1);
+}
+
+.shop-finish-paying__facts > div {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--shop-space-1) var(--shop-space-4);
+}
+
+.shop-finish-paying__facts dt {
+  color: var(--color-on-surface-variant);
+  font-size: var(--shop-text-sm);
+}
+
+.shop-finish-paying__facts dd {
+  margin: 0;
+  color: var(--color-on-surface);
+  font-size: var(--shop-text-md);
+  font-variant-numeric: tabular-nums;
+}
+
+.shop-finish-paying__facts > div:last-child dd {
+  font-weight: 600;
+}
+
+@media (min-width: 48rem) {
+  .shop-finish-paying--quote {
+    grid-template-columns: minmax(0, 1fr) auto;
   }
 }
 

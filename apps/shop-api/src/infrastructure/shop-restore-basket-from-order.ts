@@ -1,6 +1,7 @@
 import type { Database } from "@auction/db";
 import { shopBasketLine, shopOrderLine } from "@auction/db/schema";
 import { and, eq } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import type { BasketOwner } from "../application/ports/commerce.ports.js";
 import { ensureOpenBasket } from "./shop-basket.persistence.js";
 import { sellableCountsByArtworkIds } from "./shop-edition-availability.js";
@@ -29,6 +30,24 @@ export async function restoreBasketLinesFromOrder(
 
   if (lines.length === 0) {
     return;
+  }
+
+  // A frame is its own line pointing at its print, so it never counts as an item to restore.
+  // It is restored as the choice on the print's basket line, when every copy had the same one.
+  const print = alias(shopOrderLine, "print");
+  const frames = await tx
+    .select({ artworkId: print.artworkId, optionId: shopOrderLine.framingOptionId })
+    .from(shopOrderLine)
+    .innerJoin(print, eq(shopOrderLine.framingForLineId, print.id))
+    .where(and(eq(shopOrderLine.orderId, orderId), eq(shopOrderLine.kind, "framing")));
+  const framingByArtwork = new Map<string, string | null>();
+  for (const frame of frames) {
+    if (!frame.artworkId || !frame.optionId) continue;
+    const known = framingByArtwork.get(frame.artworkId);
+    framingByArtwork.set(
+      frame.artworkId,
+      known === undefined || known === frame.optionId ? frame.optionId : null,
+    );
   }
 
   const quantityByArtwork = new Map<string, { quantity: number; unitPricePence: number }>();
@@ -96,11 +115,18 @@ export async function restoreBasketLinesFromOrder(
         })
         .where(and(eq(shopBasketLine.basketId, basketId), eq(shopBasketLine.artworkId, artworkId)));
     } else {
+      // Copies framed differently, or only some of them, come back unframed: a basket line
+      // holds one choice, and the buyer can choose again.
+      const copies = lines.filter((line) => line.artworkId === artworkId).length;
+      const framedCopies = frames.filter((frame) => frame.artworkId === artworkId).length;
       await tx.insert(shopBasketLine).values({
         basketId,
         artworkId,
         unitPricePence,
         quantity: mergedQuantity,
+        ...(framedCopies === copies && framingByArtwork.get(artworkId)
+          ? { framingOptionId: framingByArtwork.get(artworkId) ?? null }
+          : {}),
       });
     }
   }

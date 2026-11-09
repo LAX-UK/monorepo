@@ -1,7 +1,26 @@
+import { FRAMING_COPY, framingLeadLabel, framingOptionSummary } from "@/content/framing-copy";
 import { checkoutDeliverySummaryRow } from "@/lib/checkout/checkout-delivery";
 import type { BasketLine, ShopFulfilmentOption } from "@auction/shop-contracts";
 import { FULFILMENT_SURCHARGE_PENCE, SHOP_BASKET_LINE_QUANTITY_MAX } from "@auction/shop-domain";
 import { formatGbpPence } from "@auction/shop-portal/vm";
+
+/** The framing on a print in the basket, ready to show: what it is, what it adds, and whether it still can be. */
+export type BasketLineFramingVm = {
+  optionId: string;
+  name: string;
+  frame: "black_wood" | "white_wood" | "natural_oak";
+  /** "White conservation mount, UV-filtering acrylic · adds 10 to 15 working days". */
+  detail: string;
+  /** What it adds for one print, "£210". */
+  priceLabel: string;
+  /** What it adds for the whole line, in pence, while it can still be bought; 0 when it cannot. */
+  linePence: number;
+  /** For one print, in pence, while it can be bought. */
+  unitPence: number;
+  available: boolean;
+  /** Said when the option is no longer offered: the shopper must choose again. */
+  unavailableMessage: string | null;
+};
 
 export type BasketLineVm = {
   lineId: string;
@@ -28,10 +47,29 @@ export type BasketLineVm = {
   kind: "edition" | "merchandise";
   /** What to send to put the line back after Remove. */
   restore:
-    | { kind: "edition"; artworkSlug: string }
+    | { kind: "edition"; artworkSlug: string; framingOptionId: string | null }
     | { kind: "merchandise"; variantId: string }
     | null;
+  /** The framing chosen for this print; null when unframed. */
+  framing: BasketLineFramingVm | null;
 };
+
+function presentLineFraming(line: BasketLine): BasketLineFramingVm | null {
+  const framing = line.framing;
+  if (!framing) return null;
+  const unitPence = framing.available ? framing.pricePence : 0;
+  return {
+    optionId: framing.optionId,
+    name: framing.name,
+    frame: framing.frame,
+    detail: `${framingOptionSummary(framing)} · ${framingLeadLabel(framing.leadTimeMinDays, framing.leadTimeMaxDays).toLowerCase()}`,
+    priceLabel: formatGbpPence(framing.pricePence),
+    linePence: unitPence * line.quantity,
+    unitPence,
+    available: framing.available,
+    unavailableMessage: framing.available ? null : FRAMING_COPY.noLongerOffered(framing.name),
+  };
+}
 
 export function basketLineMaxQuantity(line: BasketLine): number {
   // An older shop-api sends no ceiling; the server still refuses what it cannot supply.
@@ -81,8 +119,13 @@ export function presentBasketLine(line: BasketLine): BasketLineVm {
     restore: line.productVariantId
       ? { kind: "merchandise", variantId: line.productVariantId }
       : line.artworkSlug
-        ? { kind: "edition", artworkSlug: line.artworkSlug }
+        ? {
+            kind: "edition",
+            artworkSlug: line.artworkSlug,
+            framingOptionId: line.framing?.optionId ?? null,
+          }
         : null,
+    framing: presentLineFraming(line),
   };
 }
 
@@ -104,13 +147,18 @@ export type BasketSummaryVm = {
  * charges, so the total in the basket is the total at checkout.
  */
 export function presentBasketSummary(
-  lines: ReadonlyArray<Pick<BasketLine, "unitPricePence" | "quantity">>,
+  lines: ReadonlyArray<
+    Pick<BasketLine, "unitPricePence" | "quantity"> & {
+      /** What framing adds for one print, while it can be bought; absent when unframed. */
+      framingUnitPence?: number;
+    }
+  >,
   fulfilment: ShopFulfilmentOption = "uk_insured_delivery",
 ): BasketSummaryVm {
   const items = lines.reduce((total, line) => total + line.quantity, 0);
   // The sum of the line totals, as shop-api computes it.
   const subtotalPence = lines.reduce(
-    (total, line) => total + line.unitPricePence * line.quantity,
+    (total, line) => total + (line.unitPricePence + (line.framingUnitPence ?? 0)) * line.quantity,
     0,
   );
   const delivery = checkoutDeliverySummaryRow(fulfilment);

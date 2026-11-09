@@ -24,11 +24,15 @@ export function useAdminMutation() {
   );
 
   const run = useCallback(
-    async (action: () => Promise<AdminMutationResult<unknown>>, successMessage: string) => {
+    async <T = unknown>(
+      action: () => Promise<AdminMutationResult<T>>,
+      /** A message, or one made from what the server answered (a refund that took a frame too). */
+      successMessage: string | ((data: T) => string),
+    ) => {
       setPending(true);
       setMessage(null);
       setStepUpRequired(false);
-      let result: AdminMutationResult<unknown>;
+      let result: AdminMutationResult<T>;
       try {
         result = await action();
       } catch {
@@ -42,7 +46,9 @@ export function useAdminMutation() {
         return false;
       }
       setIdempotencyKey(crypto.randomUUID());
-      toast.success(successMessage);
+      toast.success(
+        typeof successMessage === "function" ? successMessage(result.data) : successMessage,
+      );
       router.refresh();
       return true;
     },

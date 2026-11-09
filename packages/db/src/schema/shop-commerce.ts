@@ -791,10 +791,30 @@ export const shopBasketLine = pgTable(
     }),
     unitPricePence: integer("unit_price_pence").notNull(),
     quantity: integer("quantity").notNull(),
+    /**
+     * The framing option chosen for this print, null for unframed. Its price is worked out from the
+     * catalogue whenever the basket is read; the buyer only ever names the option. The foreign key
+     * to shop_framing_option is in migration 0338, not declared here, because shop-framing.ts
+     * already imports this file.
+     */
+    framingOptionId: uuid("framing_option_id"),
+    /**
+     * The frame's price the shopper was shown when they chose it (null until stamped). Checkout
+     * compares it with today's price and refuses, as a price change, when they differ.
+     */
+    framingPricePence: integer("framing_price_pence"),
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [
+    check(
+      "shop_basket_line_framing_price_ck",
+      sql`${table.framingPricePence} IS NULL OR ${table.framingPricePence} >= 0`,
+    ),
+    check(
+      "shop_basket_line_framing_on_print_ck",
+      sql`${table.framingOptionId} IS NULL OR ${table.artworkId} IS NOT NULL`,
+    ),
     uniqueIndex("shop_basket_line_basket_artwork_uid")
       .on(table.basketId, table.artworkId)
       .where(sql`${table.artworkId} IS NOT NULL`),
@@ -839,6 +859,11 @@ export const shopOrder = pgTable(
     status: shopOrderStatusEnum("status").default("pending_payment").notNull(),
     fulfilment: shopFulfilmentOptionEnum("fulfilment").notNull(),
     merchandiseSubtotalPence: integer("merchandise_subtotal_pence").notNull(),
+    /**
+     * The framing on the order, apart from the goods: merchandiseSubtotalPence stays the value of
+     * the works and products alone, which artists, owners and the CRM read it as.
+     */
+    framingSubtotalPence: integer("framing_subtotal_pence").notNull().default(0),
     fulfilmentSurchargePence: integer("fulfilment_surcharge_pence").notNull(),
     /** VAT included in the delivery charge, at the goods' rate; null when no VAT was recorded. */
     fulfilmentVatPence: integer("fulfilment_vat_pence"),
@@ -1030,10 +1055,26 @@ export const shopOrderLine = pgTable(
       onDelete: "restrict",
     }),
     unitPricePence: integer("unit_price_pence").notNull(),
+    /**
+     * 'goods' (a print or a product) or 'framing'. A framing line has no edition, product,
+     * artwork or seller; it points at the print line it frames and carries the option as sold.
+     */
+    kind: text("kind").$type<"goods" | "framing">().notNull().default("goods"),
+    framingForLineId: uuid("framing_for_line_id").references((): AnyPgColumn => shopOrderLine.id, {
+      onDelete: "restrict",
+    }),
+    /** Foreign key to shop_framing_option is in migration 0342, as shop-framing.ts imports this file. */
+    framingOptionId: uuid("framing_option_id"),
+    /** The option as sold; fixed once written (a trigger in migration 0342 holds it). */
+    framingSnapshot: jsonb("framing_snapshot").$type<Record<string, unknown>>(),
     releasedAt: timestamp("released_at", { mode: "date", withTimezone: true }),
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [
+    uniqueIndex("shop_order_line_framing_parent_uid")
+      .on(table.framingForLineId)
+      .where(sql`${table.framingForLineId} IS NOT NULL`),
+    check("shop_order_line_kind_ck", sql`${table.kind} IN ('goods', 'framing')`),
     uniqueIndex("shop_order_line_edition_active_uid")
       .on(table.editionId)
       .where(sql`${table.releasedAt} is null`),
@@ -1045,7 +1086,18 @@ export const shopOrderLine = pgTable(
     ),
     check(
       "shop_order_line_target_xor",
-      sql`((${table.editionId} IS NOT NULL)::int + (${table.productVariantId} IS NOT NULL)::int) = 1`,
+      sql`(
+        ${table.kind} = 'goods'
+        AND ((${table.editionId} IS NOT NULL)::int + (${table.productVariantId} IS NOT NULL)::int) = 1
+        AND ${table.framingForLineId} IS NULL AND ${table.framingOptionId} IS NULL
+        AND ${table.framingSnapshot} IS NULL
+      ) OR (
+        ${table.kind} = 'framing'
+        AND ${table.editionId} IS NULL AND ${table.productVariantId} IS NULL
+        AND ${table.artworkId} IS NULL AND ${table.sellerPartyId} IS NULL
+        AND ${table.framingForLineId} IS NOT NULL AND ${table.framingOptionId} IS NOT NULL
+        AND ${table.framingSnapshot} IS NOT NULL
+      )`,
     ),
   ],
 );

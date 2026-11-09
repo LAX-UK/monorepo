@@ -24,7 +24,12 @@ export interface ICollectionVisitService {
   /** The days and times open for the lots, and which lots can be ticked. */
   availability(
     actor: OrganisationMemberActor,
-    query: { lots: readonly string[]; booking?: string | undefined },
+    query: {
+      lots: readonly string[];
+      booking?: string | undefined;
+      /** Also offer the account's other lots at the same place that can be booked. */
+      account?: boolean | undefined;
+    },
   ): Promise<CollectionVisitResult<CollectionAvailability>>;
   /** The account's visits the member may see, newest first. */
   list(actor: OrganisationMemberActor): Promise<CollectionVisitResult<CollectionVisitView[]>>;

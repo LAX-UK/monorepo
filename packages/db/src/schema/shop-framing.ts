@@ -10,7 +10,7 @@ import {
   timestamp,
   uuid,
 } from "drizzle-orm/pg-core";
-import { shopArtwork } from "./shop-commerce.js";
+import { shopArtwork, shopOrderLine } from "./shop-commerce.js";
 
 /**
  * The framing catalogue: ready-made framing options LAX Shop can offer on editions. The allowed
@@ -108,5 +108,65 @@ export const shopFramingEditionOffer = pgTable(
       sql`${table.priceOverridePence} IS NULL OR ${table.priceOverridePence} > 0`,
     ),
     index("shop_framing_edition_offer_artwork_idx").on(table.artworkId),
+  ],
+);
+
+/**
+ * How an edition is sold with respect to framing: unframed with framing to choose, framed only, or
+ * framed by the artist (with the frame in words). An edition without a row sells as before. The
+ * allowed modes mirror `FRAMING_MODES` in `@auction/shop-domain`.
+ */
+export const shopEditionFraming = pgTable(
+  "shop_edition_framing",
+  {
+    artworkId: uuid("artwork_id")
+      .primaryKey()
+      .references(() => shopArtwork.id, { onDelete: "cascade" }),
+    mode: text("mode").notNull(),
+    /** The artist's frame in words; set only for "framed_by_artist". */
+    framedByArtist: text("framed_by_artist"),
+    updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    check(
+      "shop_edition_framing_mode_ck",
+      sql`${table.mode} IN ('unframed_or_framed', 'framed_only', 'framed_by_artist')`,
+    ),
+    check(
+      "shop_edition_framing_artist_text_ck",
+      sql`(${table.mode} = 'framed_by_artist') = (${table.framedByArtist} IS NOT NULL)`,
+    ),
+  ],
+);
+
+/**
+ * The work on one frame sold with a print, from queued to finished, with the date it is due. One
+ * task per framing order line; it belongs to the line, not to an edition. The statuses mirror
+ * `FRAMING_TASK_STATUSES` in `@auction/shop-domain`.
+ */
+export const shopFramingTask = pgTable(
+  "shop_framing_task",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    orderLineId: uuid("order_line_id")
+      .notNull()
+      .unique("shop_framing_task_order_line_uid")
+      .references(() => shopOrderLine.id, { onDelete: "restrict" }),
+    status: text("status").notNull().default("queued"),
+    dueAt: timestamp("due_at", { mode: "date", withTimezone: true }).notNull(),
+    assignedToSubjectId: text("assigned_to_subject_id"),
+    framingStartedAt: timestamp("framing_started_at", { mode: "date", withTimezone: true }),
+    framedAt: timestamp("framed_at", { mode: "date", withTimezone: true }),
+    completedAt: timestamp("completed_at", { mode: "date", withTimezone: true }),
+    version: integer("version").notNull().default(1),
+    createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    check(
+      "shop_framing_task_status_ck",
+      sql`${table.status} IN ('queued', 'framing', 'framed', 'completed', 'cancelled')`,
+    ),
+    index("shop_framing_task_status_due_idx").on(table.status, table.dueAt),
   ],
 );

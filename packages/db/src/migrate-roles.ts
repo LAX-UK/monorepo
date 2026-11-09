@@ -24,6 +24,8 @@ export const AUTH_FULL_TABLES = [
   "auth_security_effect_outbox",
   /** `twoFactor` plugin backing table used only by the canonical auth issuer. */
   "two_factor",
+  /** Passkeys, used only by the canonical auth issuer. The public key never leaves it. */
+  "passkey",
 ] as const;
 /** Append-only Identity side effects emitted by apps/auth. */
 export const AUTH_INSERT_SELECT_TABLES = ["identity_lifecycle_outbox"] as const;
@@ -64,6 +66,10 @@ export const SHOP_COMMERCE_TABLES = [
   "shop_framing_option",
   "shop_framing_option_price",
   "shop_framing_edition_offer",
+  /** How each edition is sold with respect to framing. */
+  "shop_edition_framing",
+  /** The work on each frame sold with a print. */
+  "shop_framing_task",
   "shop_party",
   "shop_artist",
   "shop_artwork",
@@ -168,6 +174,7 @@ export const API_DENY_TABLES = [
   "account",
   "verification",
   "two_factor",
+  "passkey",
   "jwks_key",
   "oauth_application",
   "oauth_access_token",
@@ -298,6 +305,8 @@ export const WORKER_READ_TABLES = [
   "private_sale_enquiry_detail",
   /** The follow-up projector reads the confirmed choice it opens work for. */
   "unsold_lot_choice",
+  /** Lot reads (invoice initiation and other projectors) load each lot's categories. */
+  "lot_categories",
   /** The payout statement names the private sale a payout line settles by its PS reference. */
   "private_sale_deal",
   /** The payment expiry job closes each invoice's open Checkout sessions before cancelling it. */

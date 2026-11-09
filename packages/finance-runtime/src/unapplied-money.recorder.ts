@@ -4,6 +4,7 @@ import {
   UNAPPLIED_MONEY_EVENT,
   UNAPPLIED_MONEY_RESOLVED_EVENT,
   type UnappliedMoney,
+  unappliedMoneyAggregate,
   unappliedMoneyPayload,
 } from "@auction/domain";
 import type { IUnappliedMoneyReader, OpenUnappliedMoney } from "@auction/persistence/interfaces";
@@ -80,8 +81,7 @@ export class UnappliedMoneyRecorder implements IUnappliedMoneyRecorder {
     this.metrics.record(`unapplied_money_${money.reason}`);
     console.error(JSON.stringify({ msg: "unapplied_money_received", ...payload }));
     await this.events.withTx(tx).publish({
-      aggregateType: money.paymentId ? "payment" : "payment_group",
-      aggregateId: money.paymentId ?? money.paymentGroupId ?? payload.dedupeKey,
+      ...unappliedMoneyAggregate(money, payload.dedupeKey),
       eventType: UNAPPLIED_MONEY_EVENT,
       payload,
       actorUserId: null,
@@ -116,8 +116,7 @@ export class UnappliedMoneyRecorder implements IUnappliedMoneyRecorder {
   ): Promise<void> {
     for (const money of open) {
       await this.events.withTx(tx).publish({
-        aggregateType: money.paymentId ? "payment" : "payment_group",
-        aggregateId: money.paymentId ?? money.paymentGroupId ?? money.dedupeKey,
+        ...unappliedMoneyAggregate(money, money.dedupeKey),
         eventType: UNAPPLIED_MONEY_RESOLVED_EVENT,
         payload: {
           dedupeKey: money.dedupeKey,

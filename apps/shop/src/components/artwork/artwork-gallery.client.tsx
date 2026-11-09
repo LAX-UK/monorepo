@@ -1,8 +1,10 @@
 "use client";
 
+import { useFramedPreview } from "@/components/artwork/artwork-framing-context.client";
 import { ArtworkImageViewer } from "@/components/artwork/artwork-image-viewer.client";
 import { ArtworkScaleFigure } from "@/components/artwork/artwork-scale-figure";
 import { ShopMediaImage } from "@/components/media/shop-media-image";
+import { FRAMING_COPY } from "@/content/framing-copy";
 import type { ArtworkGalleryVm } from "@/lib/artwork/artwork-product-page.vm";
 import { SHOP_MEDIA_LABELS } from "@/lib/media/shop-media-labels";
 import {
@@ -42,6 +44,7 @@ export function ArtworkGallery({ title, gallery }: { title: string; gallery: Art
   const thumbRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const swipe = useRef<{ x: number; y: number } | null>(null);
   const slide = slides[active] ?? slides[0];
+  const framedFrame = useFramedPreview();
   const count = slides.length;
   const primaryImageUrl = gallery.images[0]?.url ?? null;
 
@@ -97,6 +100,8 @@ export function ArtworkGallery({ title, gallery }: { title: string; gallery: Art
   }
 
   const activeImage = slide.kind === "image" ? gallery.images[slide.imageIndex] : undefined;
+  // The frame is drawn round the whole view only; detail photographs show the print itself.
+  const framedWhole = slide.kind === "image" && slide.imageIndex === 0;
   const slideLabel = (item: Slide) => {
     if (item.kind === "scale") return VIEW_LABELS.scale;
     if (item.kind === "missing") return VIEW_LABELS.whole;
@@ -118,7 +123,10 @@ export function ArtworkGallery({ title, gallery }: { title: string; gallery: Art
         }}
       >
         {activeImage ? (
-          <div className="shop-gallery__mat">
+          <div
+            className="shop-gallery__mat"
+            {...(framedWhole && framedFrame ? { "data-frame": framedFrame } : {})}
+          >
             <ShopMediaImage
               key={activeImage.url}
               src={activeImage.url}
@@ -177,6 +185,10 @@ export function ArtworkGallery({ title, gallery }: { title: string; gallery: Art
           </div>
         ) : null}
       </div>
+
+      {framedWhole && framedFrame ? (
+        <p className="shop-gallery__framed-note">{FRAMING_COPY.previewCaption}</p>
+      ) : null}
 
       {count > 1 ? (
         <ul className="shop-gallery__thumbs" aria-label="Choose an image">

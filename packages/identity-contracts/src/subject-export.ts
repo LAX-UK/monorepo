@@ -274,12 +274,17 @@ const ACCOUNT_CATEGORIES = [
       f("endedAt", "When the session ended, or null if it is still active."),
       f("method", "The sign-in method: password, passkey or a social provider."),
       f(
+        "signedInWith",
+        "How a session was signed in: password, provider, passkey or link. Empty when it was not recorded.",
+      ),
+      f("lastUsedAt", "When you last signed in with a passkey, or null if you have not."),
+      f(
         "passwordSet",
         "Whether a password is set on your account; the password itself is never included.",
       ),
       f(
         "methodName",
-        "The name you gave a passkey, or the provider and email of a social sign-in.",
+        "The name you gave a passkey, or the provider and the address it reported for a social sign-in. A passkey's key and identifier are never included.",
       ),
       f("twoStepEnabled", "Whether two-step verification is on."),
       f("changedAt", "When the method or setting last changed."),

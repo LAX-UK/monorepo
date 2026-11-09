@@ -12,6 +12,8 @@ export type BasketAddedItem = {
   imageUrl: string | null;
   editionLine: string | null;
   priceLabel: string;
+  /** The framing chosen with it, when there is one. */
+  framingName?: string | null;
 };
 
 /**
@@ -63,6 +65,9 @@ export function BasketAddedPanel({
             <p className="shop-added-panel__item-title">{item.title}</p>
             <p className="shop-added-panel__meta">{item.artistName}</p>
             {item.editionLine ? <p className="shop-added-panel__meta">{item.editionLine}</p> : null}
+            {item.framingName ? (
+              <p className="shop-added-panel__meta">With {item.framingName.toLowerCase()}</p>
+            ) : null}
           </div>
           <p className="shop-added-panel__price">{item.priceLabel}</p>
         </div>
