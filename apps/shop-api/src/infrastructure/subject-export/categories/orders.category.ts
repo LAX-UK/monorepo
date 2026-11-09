@@ -55,6 +55,10 @@ export type OrderLineRow = {
   artworkChannel: Channel | null;
   productId: string | null;
   productTitle: string | null;
+  /** 'framing' for a frame sold with a print; absent from rows read before framing existed. */
+  kind?: string;
+  /** The frame's name as sold, for a framing line. */
+  framingName?: string | null;
 };
 
 export type FulfilmentRow = {
@@ -81,17 +85,20 @@ export type ReturnRow = {
 type Origins = SubjectExportDeps["origins"];
 
 function mapLine(row: OrderLineRow, origins: Origins) {
-  const work = row.artworkId
-    ? workRef(
-        {
-          id: row.artworkId,
-          title: row.artworkTitle ?? "",
-          slug: row.artworkSlug,
-          salesChannel: row.artworkChannel,
-        },
-        origins,
-      )
-    : { id: row.productId ?? row.id, title: row.productTitle ?? "", url: null };
+  const work =
+    row.kind === "framing"
+      ? { id: row.id, title: `Framing: ${row.framingName ?? "frame"}`, url: null }
+      : row.artworkId
+        ? workRef(
+            {
+              id: row.artworkId,
+              title: row.artworkTitle ?? "",
+              slug: row.artworkSlug,
+              salesChannel: row.artworkChannel,
+            },
+            origins,
+          )
+        : { id: row.productId ?? row.id, title: row.productTitle ?? "", url: null };
   return {
     id: row.id,
     work,
@@ -284,6 +291,8 @@ export class OrdersCategory extends SourcedExportCategory {
                 artworkChannel: shopArtwork.salesChannel,
                 productId: shopProduct.id,
                 productTitle: shopProduct.title,
+                kind: shopOrderLine.kind,
+                framingName: sql<string | null>`${shopOrderLine.framingSnapshot} ->> 'name'`,
               })
               .from(shopOrderLine)
               .leftJoin(shopEdition, eq(shopEdition.id, shopOrderLine.editionId))

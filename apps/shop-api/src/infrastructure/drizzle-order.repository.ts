@@ -91,10 +91,12 @@ export type LineEditionBasis = {
 
 export type LineRow = Omit<
   OrderLineRecord,
-  "editionNumber" | "editionSummary" | "editionInvoiceDetail"
+  "editionNumber" | "editionSummary" | "editionInvoiceDetail" | "framingFor"
 > & {
   orderId: string;
   editionNumber: number | null;
+  /** For a frame, the print it goes with; the buyer is told its number only while they hold it. */
+  framingParent: { lineId: string; title: string; editionNumber: number | null } | null;
   releasedAt: Date | null;
   editionBasis: LineEditionBasis;
 };
@@ -149,8 +151,19 @@ function orderRowToRecord(order: typeof shopOrder.$inferSelect, extras: OrderExt
       .filter((refund) => refund.status === "succeeded")
       .reduce((sum, refund) => sum + refund.amountPence, 0),
     lines: extras.lines.map((line) => {
-      const { orderId: _order, releasedAt: _released, editionBasis, ...record } = line;
+      const {
+        orderId: _order,
+        releasedAt: _released,
+        editionBasis,
+        framingParent,
+        ...record
+      } = line;
       const holds = holdsPrint(status, line, extras.refunds);
+      const parentLine = framingParent
+        ? extras.lines.find((candidate) => candidate.orderLineId === framingParent.lineId)
+        : undefined;
+      // "Tide line, no. 7": the number follows the same rule as the print's own line.
+      const parentHeld = parentLine ? holdsPrint(status, parentLine, extras.refunds) : false;
       const described = describeOrderLineEdition({
         ...editionBasis,
         holdsPrint: holds,
@@ -161,6 +174,12 @@ function orderRowToRecord(order: typeof shopOrder.$inferSelect, extras: OrderExt
         editionNumber: holds ? line.editionNumber : null,
         editionSummary: described?.summary ?? null,
         editionInvoiceDetail: described?.invoiceDetail ?? null,
+        framingFor: framingParent
+          ? framingFor({
+              artworkTitle: framingParent.title,
+              editionNumber: parentHeld ? framingParent.editionNumber : null,
+            })
+          : null,
       };
     }),
     createdAt: order.createdAt,
@@ -177,6 +196,15 @@ function orderRowToRecord(order: typeof shopOrder.$inferSelect, extras: OrderExt
 const editionSize = sql<number | null>`(
   select nullif(count(*), 0)::int from ${shopEdition} where ${shopEdition.artworkId} = ${shopOrderLine.artworkId}
 )`;
+
+function framingParent(
+  parentLineId: string | null,
+  parents: ReadonlyMap<string, { artworkTitle: string | null; editionNumber: number | null }>,
+): LineRow["framingParent"] {
+  const parent = parentLineId ? parents.get(parentLineId) : undefined;
+  if (!parentLineId || !parent?.artworkTitle) return null;
+  return { lineId: parentLineId, title: parent.artworkTitle, editionNumber: parent.editionNumber };
+}
 
 /** "Tide line, no. 7": the print a frame goes with. */
 function framingFor(
@@ -248,6 +276,13 @@ async function fetchLinesByOrderIds(
     ),
   );
   const parents = new Map(lineRows.map((row) => [row.orderLineId, row]));
+  // A frame follows its print. Lines made together share a created_at, so the database order
+  // alone would place them at random.
+  const position = (row: (typeof lineRows)[number]) => {
+    const anchor = (row.framingForLineId && parents.get(row.framingForLineId)) || row;
+    return `${anchor.createdAt.toISOString()}|${anchor.orderLineId}|${row.framingForLineId ? 1 : 0}`;
+  };
+  lineRows.sort((a, b) => position(a).localeCompare(position(b)));
   const linesByOrder = new Map<string, LineRow[]>();
   for (const {
     createdAt: _created,
@@ -264,7 +299,7 @@ async function fetchLinesByOrderIds(
       ...line,
       kind: kind === "framing" ? "framing" : "goods",
       framingName: kind === "framing" ? parseFramingOrderSnapshot(framingSnapshot).name : null,
-      framingFor: framingForLineId ? framingFor(parents.get(framingForLineId)) : null,
+      framingParent: framingParent(framingForLineId, parents),
       framingDetail: kind === "framing" ? framingDetail(framingSnapshot) : null,
       // A frame is shown with the print it goes with, so the list reads as one piece.
       ...(framingForLineId ? { imageUrl: parents.get(framingForLineId)?.imageUrl ?? null } : {}),
