@@ -3,6 +3,7 @@ import {
   shopAdminAudit,
   shopArtwork,
   shopEdition,
+  shopFramingTask,
   shopOrder,
   shopOrderLine,
   shopProductionTask,
@@ -15,6 +16,7 @@ import type {
   ProductionTaskStatus,
 } from "@auction/shop-contracts";
 import { SHOP_API_ERROR_CODES } from "@auction/shop-contracts";
+import { parseFramingOrderSnapshot, parseFramingTaskStatus } from "@auction/shop-domain";
 import { type SQL, and, asc, count, eq, isNull, or, sql } from "drizzle-orm";
 import type {
   ProductionTaskFilters,
@@ -23,6 +25,7 @@ import type {
 import { ShopApiError } from "../errors/shop-api-error.js";
 import { keysetAfter, orderByMsTimestampId } from "./admin-created-at-keyset.js";
 import { containsPattern } from "./drizzle-editorial-search.reader.js";
+import { describeFramingSpec } from "./drizzle-framing-due.reader.js";
 import { printHasOpenFrame } from "./framing/framing-gate.js";
 import { insertShopAdminAudit } from "./shop-admin-audit.js";
 import { listStaffHoldingCapability } from "./shop-staff-active-roles.sql.js";
@@ -131,6 +134,28 @@ function parseSnapshot(value: string | null): AuditSnapshot | null {
   } catch {
     return null;
   }
+}
+
+/** The frame sold with a print and where its work stands, for the print's production page. */
+async function frameForPrint(db: Database, printLineId: string) {
+  const [frame] = await db
+    .select({
+      snapshot: shopOrderLine.framingSnapshot,
+      status: shopFramingTask.status,
+      dueAt: shopFramingTask.dueAt,
+    })
+    .from(shopOrderLine)
+    .innerJoin(shopFramingTask, eq(shopFramingTask.orderLineId, shopOrderLine.id))
+    .where(eq(shopOrderLine.framingForLineId, printLineId))
+    .limit(1);
+  if (!frame) return null;
+  const snapshot = parseFramingOrderSnapshot(frame.snapshot);
+  return {
+    name: snapshot.name,
+    spec: describeFramingSpec(snapshot),
+    status: parseFramingTaskStatus(frame.status),
+    dueAt: frame.dueAt.toISOString(),
+  };
 }
 
 export function createDrizzleProductionTaskRepository(db: Database): ProductionTaskRepository {
@@ -272,7 +297,11 @@ export function createDrizzleProductionTaskRepository(db: Database): ProductionT
         };
       });
 
-      return { ...toListItem(row), history };
+      return {
+        ...toListItem(row),
+        history,
+        framing: await frameForPrint(db, row.task.orderLineId),
+      };
     },
 
     async update(input) {

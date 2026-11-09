@@ -16,11 +16,26 @@ import {
   type FramingGlazing,
   type FramingHanging,
   type FramingMount,
+  type FramingOrderSnapshot,
   parseFramingOrderSnapshot,
   parseFramingTaskStatus,
 } from "@auction/shop-domain";
 import { and, asc, eq, inArray, ne } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
+
+/** What a frame is made of, as sold: "Natural oak, 20 mm · Window mount, ... · UV-filtering acrylic · D-rings and cord". */
+export function describeFramingSpec(
+  snapshot: Pick<FramingOrderSnapshot, "frame" | "mount" | "glazing" | "hanging">,
+): string {
+  return [
+    FRAMING_FRAME_LABELS[snapshot.frame as FramingFrame],
+    FRAMING_MOUNT_LABELS[snapshot.mount as FramingMount],
+    FRAMING_GLAZING_LABELS[snapshot.glazing as FramingGlazing],
+    FRAMING_HANGING_LABELS[snapshot.hanging as FramingHanging],
+  ]
+    .filter(Boolean)
+    .join(" · ");
+}
 
 /** The most frames the list shows at once; the work in hand is far fewer. */
 const FRAMING_DUE_LIMIT = 200;
@@ -100,14 +115,7 @@ export async function listFramingDue(db: Database): Promise<AdminFramingDueList>
           printTitle: row.printTitle ?? "Print",
           editionNumber: row.editionNumber,
           name: snapshot.name,
-          spec: [
-            FRAMING_FRAME_LABELS[snapshot.frame as FramingFrame],
-            FRAMING_MOUNT_LABELS[snapshot.mount as FramingMount],
-            FRAMING_GLAZING_LABELS[snapshot.glazing as FramingGlazing],
-            FRAMING_HANGING_LABELS[snapshot.hanging as FramingHanging],
-          ]
-            .filter(Boolean)
-            .join(" · "),
+          spec: describeFramingSpec(snapshot),
         };
       }),
   };

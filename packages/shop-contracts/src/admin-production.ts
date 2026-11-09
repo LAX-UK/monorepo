@@ -1,4 +1,5 @@
 import { type Static, Type } from "@sinclair/typebox";
+import { FramingTaskStatusSchema } from "./framing-task-admin.js";
 
 /**
  * Mirrors the `shop_production_task_status` enum. The allowed moves between them live in
@@ -127,7 +128,24 @@ export type AdminProductionTaskHistoryEntry = Static<typeof AdminProductionTaskH
 
 export const AdminProductionTaskDetailSchema = Type.Composite([
   AdminProductionTaskListItemSchema,
-  Type.Object({ history: Type.Array(AdminProductionTaskHistoryEntrySchema) }),
+  Type.Object({
+    history: Type.Array(AdminProductionTaskHistoryEntrySchema),
+    /**
+     * The frame sold with this print, so the people making it see what it is. Quality check does
+     * not pass while it is open. Absent from an older shop-api; null for a print with no frame.
+     */
+    framing: Type.Optional(
+      Type.Union([
+        Type.Object({
+          name: Type.String(),
+          spec: Type.String(),
+          status: FramingTaskStatusSchema,
+          dueAt: Type.String({ format: "date-time" }),
+        }),
+        Type.Null(),
+      ]),
+    ),
+  }),
 ]);
 export type AdminProductionTaskDetail = Static<typeof AdminProductionTaskDetailSchema>;
 
