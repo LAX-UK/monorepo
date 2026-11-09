@@ -5,6 +5,7 @@ import ts from "typescript";
 import { beforeAll, describe, expect, it } from "vitest";
 import {
   API_DENY_TABLES,
+  API_PAYMENT_REFUND_TABLES,
   API_READ_TABLES,
   AUTH_ADDRESS_TABLES,
   AUTH_EXPORT_AUDIT_TABLES,
@@ -41,6 +42,7 @@ import {
   WORKER_LIFECYCLE_READ_TABLES,
   WORKER_NOTIFICATION_OUTBOX_TABLES,
   WORKER_PAYMENT_MAINTENANCE_TABLES,
+  WORKER_PAYMENT_REFUND_TABLES,
   WORKER_PRODUCT_PROFILE_TABLES,
   WORKER_PROVISIONING_TABLES,
   WORKER_QR_CODE_SCAN_TABLES,
@@ -762,6 +764,17 @@ describe("migrate-roles invariants", () => {
       "bid_invoice_line",
     ]);
     expect([...WORKER_INVOICE_RAISE_FULFILMENT_TABLES]).toEqual(["lot_fulfilment"]);
+  });
+
+  it("keeps buyer refunds append-only for the Bid API and the reconcile job, and away from Shop", () => {
+    expect([...API_PAYMENT_REFUND_TABLES]).toEqual(["payment_refund"]);
+    expect([...WORKER_PAYMENT_REFUND_TABLES]).toEqual(["payment_refund"]);
+    expect([...API_DENY_TABLES]).not.toContain("payment_refund");
+    expect([...WORKER_DENY_TABLES]).not.toContain("payment_refund");
+    expect([...WORKER_FULL_TABLES]).not.toContain("payment_refund");
+    expect([...SHOP_COMMERCE_TABLES, ...SHOP_COMMERCE_APPEND_ONLY_TABLES]).not.toContain(
+      "payment_refund",
+    );
   });
 
   it("WORKER_PAYMENT_MAINTENANCE_TABLES includes payment (expire-stale-payments)", () => {

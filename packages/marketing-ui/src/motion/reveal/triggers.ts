@@ -3,6 +3,12 @@ export type RevealTrigger = {
   bind(el: HTMLElement, onReveal: () => void): () => void;
   /** True when the element should keep its server-rendered paint instead of being hidden and animated. */
   isSatisfiedOnArm?(el: HTMLElement): boolean;
+  /**
+   * When the element is hidden ready to animate in. `mount` (the default) is as soon as the page
+   * hydrates; `reader-moves` is when the reader first scrolls, so a page that is captured,
+   * printed or previewed without scrolling is never left with blank gaps.
+   */
+  readonly armWhen?: "mount" | "reader-moves";
 };
 
 export const eagerTrigger: RevealTrigger = {
@@ -27,6 +33,7 @@ function isElementInViewport(el: HTMLElement): boolean {
 export function inViewTrigger(options?: IntersectionObserverInit): RevealTrigger {
   return {
     id: "in-view",
+    armWhen: "reader-moves",
     isSatisfiedOnArm: isElementInViewport,
     bind: (el, onReveal) => {
       if (typeof IntersectionObserver === "undefined") {

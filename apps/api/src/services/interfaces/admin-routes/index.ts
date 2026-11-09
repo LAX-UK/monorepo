@@ -143,6 +143,7 @@ export type {
 
 export type {
   AdminAuditRoutesContainer,
+  AdminCollectionDeskRoutesContainer,
   AdminCollectionSettingsRoutesContainer,
   AdminEmailRoutesContainer,
   AdminCatalogBrowseRoutesContainer,

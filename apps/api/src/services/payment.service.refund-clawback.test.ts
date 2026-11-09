@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { mockDomainEventSink } from "../test/domain-event-sink-mock.js";
+import { InMemoryPaymentRefunds } from "../test/in-memory-payment-refunds.js";
 import { transactionRunnerFromDb } from "../test/transaction-runner-from-db.js";
 import type { IPaymentCaptureService } from "./interfaces/payment-capture.js";
 import type { IPayoutAdjustmentService } from "./interfaces/payout-adjustment.js";
@@ -72,6 +73,20 @@ describe("PaymentService.refundPayment admin clawback", () => {
       null as unknown as IPaymentCaptureService,
       null,
       payoutAdjustments,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      new InMemoryPaymentRefunds(),
     );
 
     const result = await service.refundPayment("admin-1", "staff", pay.id, undefined, [
@@ -148,6 +163,20 @@ describe("PaymentService.refundManualReviewPayment admin clawback", () => {
       null as unknown as IPaymentCaptureService,
       null,
       payoutAdjustments,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      new InMemoryPaymentRefunds(),
     );
 
     const result = await service.refundManualReviewPayment("admin-1", "staff", pay.id, [

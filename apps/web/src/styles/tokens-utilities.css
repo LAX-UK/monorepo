@@ -196,3 +196,15 @@
   content-visibility: auto;
   contain-intrinsic-size: auto 3rem;
 }
+
+/*
+ * The two lists above are in this file, which is not in a cascade layer, so their switch-off for
+ * print and reduced motion has to be here too, after them: a rule in a layer (the base layer
+ * holds tokens-motion.css) would lose to them whatever its order.
+ */
+@media print, (prefers-reduced-motion: reduce) {
+  .catalog-virtualized-list > li,
+  .admin-data-table-virtualized tbody tr {
+    content-visibility: visible;
+  }
+}

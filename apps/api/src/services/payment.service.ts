@@ -11,7 +11,11 @@ import type {
 import type { IPaymentDomainEventsRepository } from "@auction/persistence/interfaces";
 import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
 import type { ILotFulfilmentPaymentHook } from "@auction/persistence/interfaces";
-import type { IPaymentWriteRepository, PaymentRecord } from "@auction/persistence/interfaces";
+import type {
+  IPaymentRefundLedger,
+  IPaymentWriteRepository,
+  PaymentRecord,
+} from "@auction/persistence/interfaces";
 import type { IAddressRepository } from "@auction/persistence/interfaces";
 import type {
   ILotRepository,
@@ -146,6 +150,7 @@ export class PaymentService
     heldCheckouts: Pick<IHeldInvoiceCheckouts, "close"> | null = null,
     invoices: (IBidInvoiceReader & IBidInvoiceRaiseRepository) | null = null,
     invoiceDueDates: InvoiceDueDateExtender | null = null,
+    paymentRefunds: IPaymentRefundLedger | null = null,
   ) {
     const invoiceStore = invoices ?? UNWIRED_INVOICES;
     const checkoutOrchestratorDeps: CheckoutOrchestratorDeps = {
@@ -185,6 +190,7 @@ export class PaymentService
       stripeCheckout,
       payoutAdjustments,
       paymentRefundReconcile,
+      paymentRefunds,
       xeroPaymentRecorder,
       addresses,
       settlementCompliance,

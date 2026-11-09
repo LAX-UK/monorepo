@@ -1,5 +1,6 @@
 "use client";
 
+import { preloadConditionReportRequestForm } from "@/components/sections/artwork/redesign/condition-report-request-form.lazy";
 import { LotConditionReportStatePanel } from "@/components/sections/artwork/redesign/lot-condition-report-state-panel";
 import type { ConditionReportCardState } from "@/lib/condition-report/derive-condition-report-card-state";
 import { cn } from "@auction/ui";
@@ -28,6 +29,11 @@ function CardShell({
       {children}
     </div>
   );
+}
+
+/** Starts fetching the request form when its panel's trigger is approached or focused. */
+function warmRequestForm() {
+  preloadConditionReportRequestForm().catch(() => {});
 }
 
 export function LotConditionReportRestoreLink({ onRestore }: { onRestore: () => void }) {
@@ -74,6 +80,9 @@ export function LotConditionReportCard({
 }) {
   const [expanded, setExpanded] = useState(false);
   const panelId = useId();
+  // Only these states show the request form, so only these fetch it.
+  const offersRequestForm =
+    state.kind === "canRequest" || state.kind === "submitting" || state.kind === "submitError";
 
   if (isDismissed) {
     return <LotConditionReportRestoreLink onRestore={onRestore} />;
@@ -92,6 +101,8 @@ export function LotConditionReportCard({
           aria-expanded={expanded}
           aria-controls={panelId}
           onClick={() => setExpanded((e) => !e)}
+          onPointerEnter={offersRequestForm ? warmRequestForm : undefined}
+          onFocus={offersRequestForm ? warmRequestForm : undefined}
         >
           <span className="min-w-0 flex-1">{headerSummary(state)}</span>
           <ChevronDown

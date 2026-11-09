@@ -1,6 +1,7 @@
 import type { Database } from "@auction/db";
 import {
   DrizzleAdminSubmissionsSummaryReader,
+  DrizzleCollectionBookingRepository,
   DrizzleDomainEventDeliveryRepository,
   DrizzleEmailBlockRepository,
   DrizzleExportJobRepository,
@@ -320,6 +321,8 @@ export function createAdminServices(input: CreateAdminServicesInput): ContainerA
       amlService,
       sourceOfFundsService,
       telephoneBidBookingService,
+      collectionBookings: new DrizzleCollectionBookingRepository(db),
+      now: () => new Date(),
     }),
     cache,
     30,

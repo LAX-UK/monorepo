@@ -8,6 +8,10 @@ import {
   SHOP_SSF_RECEIVER_TABLES,
   SHOP_SUBJECT_EXPORT_READ_TABLES,
 } from "./migrate-roles.js";
+import {
+  expectTablePrivileges,
+  readTablePrivileges,
+} from "./role-contract/table-privileges.test-helpers.js";
 import { buildPgConnectionConfig } from "./ssl.js";
 
 const SHOP_URL = process.env.DATABASE_URL_SHOP;
@@ -44,6 +48,26 @@ describe.skipIf(!SHOP_URL)("shop_app role contract", { timeout: 60_000 }, () => 
           table !== "shop_user_profile",
         );
       }
+    });
+  });
+
+  it("is denied the buyer refund top-up function", async () => {
+    await withShopClient(async (client) => {
+      const result = await client.query<{ run: boolean }>(
+        `select has_function_privilege(current_user, 'public.payment_refund_backfill_from_payout_lines(uuid)', 'EXECUTE') as run`,
+      );
+      expect(result.rows[0]).toEqual({ run: false });
+    });
+  });
+
+  it("has no access to buyer refunds", async () => {
+    await withShopClient(async (client) => {
+      const rows = await readTablePrivileges(
+        client,
+        ["payment_refund"],
+        ["SELECT", "INSERT", "UPDATE", "DELETE"],
+      );
+      expectTablePrivileges(rows, () => false);
     });
   });
 

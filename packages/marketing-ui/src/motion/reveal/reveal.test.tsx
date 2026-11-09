@@ -1,6 +1,7 @@
 import { act, render, screen, waitFor } from "@testing-library/react";
 import { renderToString } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { resetReaderIntentForTests } from "./reader-intent.js";
 import { Reveal, RevealInView, RevealOnMount, RevealStagger } from "./reveal.js";
 import type { RevealTrigger } from "./triggers.js";
 
@@ -58,9 +59,11 @@ describe("RevealInView", () => {
       </RevealInView>,
     );
 
+    // Nothing is waiting to hide it, so it simply stays as drawn.
     await waitFor(() => {
-      expect(container.querySelector("[data-revealed='true']")).not.toBeNull();
+      expect(container.querySelector("[data-reveal-static='true']")).not.toBeNull();
     });
+    expect(container.querySelector("[data-reveal-init]")).toBeNull();
 
     globalThis.IntersectionObserver = originalIO;
   });
@@ -150,5 +153,98 @@ describe("rise variant", () => {
       </RevealOnMount>,
     );
     expect(container.querySelector(".reveal--rise")).not.toBeNull();
+  });
+});
+
+describe("a page nobody scrolls", () => {
+  afterEach(() => {
+    resetReaderIntentForTests();
+    vi.unstubAllGlobals();
+  });
+
+  const belowTheFold = () => {
+    vi.stubGlobal(
+      "IntersectionObserver",
+      class {
+        observe() {}
+        unobserve() {}
+        disconnect() {}
+      },
+    );
+    Object.defineProperty(window, "innerHeight", { configurable: true, value: 800 });
+    const original = HTMLElement.prototype.getBoundingClientRect;
+    HTMLElement.prototype.getBoundingClientRect = () =>
+      ({ top: 2400, bottom: 2800, left: 0, right: 100, width: 100, height: 400 }) as DOMRect;
+    return () => {
+      HTMLElement.prototype.getBoundingClientRect = original;
+    };
+  };
+
+  it("is never hidden below the fold, so a capture, a print or a preview sees all of it", () => {
+    const restore = belowTheFold();
+    const { container } = render(
+      <RevealInView variant="rise">
+        <span>lot grid</span>
+      </RevealInView>,
+    );
+    expect(container.querySelector(".reveal")?.hasAttribute("data-reveal-init")).toBe(false);
+    restore();
+  });
+
+  it("is hidden ready to animate in once the reader starts to scroll", () => {
+    const restore = belowTheFold();
+    const { container } = render(
+      <RevealInView variant="rise">
+        <span>lot grid</span>
+      </RevealInView>,
+    );
+    act(() => {
+      window.dispatchEvent(new Event("scroll"));
+    });
+    expect(container.querySelector(".reveal")?.getAttribute("data-reveal-init")).toBe("true");
+    restore();
+  });
+
+  it("leaves an element that came into view before it was hidden exactly as drawn", () => {
+    const restore = belowTheFold();
+    const trigger: RevealTrigger = {
+      id: "seen-early",
+      armWhen: "reader-moves",
+      bind(_el, onReveal) {
+        onReveal();
+        return () => {};
+      },
+    };
+    const { container } = render(
+      <Reveal trigger={trigger} variant="rise">
+        <span>already visible</span>
+      </Reveal>,
+    );
+    const el = container.querySelector(".reveal");
+    expect(el?.getAttribute("data-reveal-static")).toBe("true");
+    expect(el?.hasAttribute("data-revealed")).toBe(false);
+
+    act(() => {
+      window.dispatchEvent(new Event("scroll"));
+    });
+    expect(el?.hasAttribute("data-reveal-init")).toBe(false);
+    restore();
+  });
+
+  it("does not hide what was already shown", () => {
+    const original = globalThis.IntersectionObserver;
+    // @ts-expect-error test shim: without an observer a reveal is immediate
+    globalThis.IntersectionObserver = undefined;
+    const { container } = render(
+      <RevealInView>
+        <span>shown</span>
+      </RevealInView>,
+    );
+    act(() => {
+      window.dispatchEvent(new Event("scroll"));
+    });
+    expect(container.querySelector(".reveal")?.getAttribute("data-reveal-static")).toBe("true");
+    expect(container.querySelector(".reveal")?.hasAttribute("data-reveal-init")).toBe(false);
+    globalThis.IntersectionObserver = original;
   });
 });

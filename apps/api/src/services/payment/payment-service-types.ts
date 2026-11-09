@@ -4,7 +4,7 @@ import type {
   InvoiceDueDateExtender,
   InvoiceRaiser,
 } from "@auction/finance-runtime";
-import type { IBidInvoiceReader } from "@auction/persistence/interfaces";
+import type { IBidInvoiceReader, IPaymentRefundLedger } from "@auction/persistence/interfaces";
 import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
 import type { ILotFulfilmentPaymentHook } from "@auction/persistence/interfaces";
 import type { IPaymentWriteRepository } from "@auction/persistence/interfaces";
@@ -70,6 +70,8 @@ export type PaymentServiceDeps = {
   stripeCheckout: IStripeCheckoutService | null;
   payoutAdjustments: IPayoutAdjustmentService | null;
   paymentRefundReconcile: PaymentRefundReconcileService | null;
+  /** The buyer-side refund record; a refund is not made without it. */
+  paymentRefunds: IPaymentRefundLedger | null;
   xeroPaymentRecorder: IXeroPaymentRecorder | null;
   addresses: IAddressRepository | null;
   settlementCompliance: ISettlementCompliancePolicy | null;

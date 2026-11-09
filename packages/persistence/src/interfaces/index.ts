@@ -385,6 +385,14 @@ export type {
   PaymentRefundReconcileRow,
 } from "./payment-refund-reconcile.repository.js";
 
+export type {
+  IPaymentRefundLedger,
+  IPaymentRefundReader,
+  PaymentRefundEntry,
+  PaymentRefundSource,
+  PaymentRefundTotal,
+} from "./payment-refund.repository.js";
+
 export type { IQrCodeAnalyticsReader } from "./qr-code-analytics.reader.js";
 
 export type {
@@ -1348,6 +1356,15 @@ export type {
   UndoOutcome,
   WithinBookingTransaction,
 } from "./collection-booking.repository.js";
+export type {
+  DeskFulfilmentMoveResult,
+  DeskHandOverMove,
+  ICollectionDeskFulfilment,
+} from "./collection-desk-fulfilment.js";
+export type {
+  CollectionDeskLot,
+  ICollectionDeskReader,
+} from "./collection-desk.reader.js";
 export type {
   CollectionLotRecord,
   ICollectionLotFactsReader,

@@ -6,6 +6,11 @@ import type { LotPosition } from "@auction/domain";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
+const preloadBidDialog = vi.fn().mockResolvedValue({});
+vi.mock("@/components/lot-page/bid/bid-dialog.lazy", () => ({
+  preloadBidDialog: () => preloadBidDialog(),
+}));
+
 vi.mock("next/link", () => ({
   default: ({ href, children, ...rest }: { href: string; children: React.ReactNode }) => (
     <a href={href} {...rest}>
@@ -39,6 +44,26 @@ function draw(over: Partial<BidEntryInput> = {}) {
   );
   return onOpen;
 }
+
+describe("BidEntryControls, warming the dialog", () => {
+  it.each([
+    ["approached", (el: HTMLElement) => fireEvent.pointerEnter(el)],
+    ["focused", (el: HTMLElement) => fireEvent.focus(el)],
+    ["pressed", (el: HTMLElement) => fireEvent.pointerDown(el)],
+  ])("starts fetching the bid dialog when the bid button is %s", (_, act) => {
+    preloadBidDialog.mockClear();
+    draw();
+    act(screen.getByRole("button", { name: "Bid £7,250" }));
+    expect(preloadBidDialog).toHaveBeenCalled();
+  });
+
+  it("does not fetch it for a link that goes elsewhere", () => {
+    preloadBidDialog.mockClear();
+    draw({ action: "bid", position: "none", nextBid: null });
+    for (const link of screen.queryAllByRole("link")) fireEvent.pointerEnter(link);
+    expect(preloadBidDialog).not.toHaveBeenCalled();
+  });
+});
 
 describe("BidEntryControls", () => {
   it("eligible: the bid button opens the dialog on the next bid, a link opens it on a maximum", () => {
