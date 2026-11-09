@@ -63,6 +63,13 @@ describe("MediaImage", () => {
     expect(screen.getByAltText("Second")).not.toHaveAttribute("fetchpriority");
   });
 
+  it("loads a picture eagerly, without the priority hint, when asked to", () => {
+    render(<MediaImage src="/near.jpg" alt="Near" label="Cover" loading="eager" />);
+
+    expect(screen.getByAltText("Near")).toHaveAttribute("loading", "eager");
+    expect(screen.getByAltText("Near")).not.toHaveAttribute("fetchpriority");
+  });
+
   it("applies resolveSrc before rendering", () => {
     render(
       <MediaImage

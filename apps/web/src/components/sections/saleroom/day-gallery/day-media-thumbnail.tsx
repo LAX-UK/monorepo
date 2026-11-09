@@ -93,7 +93,6 @@ export function DayMediaThumbnail({
             {...(item.width ? { width: item.width } : {})}
             {...(item.height ? { height: item.height } : {})}
             {...(item.blurDataURL ? { blurDataURL: item.blurDataURL } : {})}
-            priority={!isSheet && index === 0}
           />
         )}
       </div>
