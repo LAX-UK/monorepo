@@ -12,11 +12,11 @@ import { DELIVERY_QUOTES_WRITE_CAPABILITY } from "@auction/shop-domain";
 import { Type } from "@sinclair/typebox";
 import type { FastifyInstance } from "fastify";
 import type { AdminRoutesDeps } from "../../../admin-route-deps.js";
+import { countryNameOf } from "../../../application/country-name.js";
 import type {
   DeliveryQuoteStaffRow,
   DeliveryQuoteView,
 } from "../../../application/delivery-quote-staff/delivery-quote-staff.ports.js";
-import { countryNameOf } from "../../../infrastructure/delivery-quote-staff/drizzle-delivery-quote-staff.store.js";
 import { requireIdempotencyKey } from "../../../plugins/require-idempotency-key.js";
 import {
   requireShopAdminSubject,

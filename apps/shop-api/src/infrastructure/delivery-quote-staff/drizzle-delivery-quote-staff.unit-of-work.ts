@@ -1,5 +1,6 @@
 import type { Database } from "@auction/db";
 import { isGuestOrderSubject } from "@auction/shop-domain";
+import { countryNameOf } from "../../application/country-name.js";
 import type {
   DeliveryQuoteOrderReleaser,
   DeliveryQuoteStaffMail,
@@ -14,10 +15,7 @@ import {
   guestOrderLinkUrl,
   issueGuestOrderLink,
 } from "../guest-checkout/guest-order-link-token.js";
-import {
-  countryNameOf,
-  createDrizzleDeliveryQuoteStaffStore,
-} from "./drizzle-delivery-quote-staff.store.js";
+import { createDrizzleDeliveryQuoteStaffStore } from "./drizzle-delivery-quote-staff.store.js";
 
 const dayFormat = new Intl.DateTimeFormat("en-GB", {
   timeZone: "Europe/London",

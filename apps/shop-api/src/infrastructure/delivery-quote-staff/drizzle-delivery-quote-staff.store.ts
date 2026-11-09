@@ -9,6 +9,7 @@ import {
 } from "@auction/db/schema";
 import { reservedUntilFromCheckoutExpiry } from "@auction/shop-domain";
 import { and, asc, count, desc, eq, inArray } from "drizzle-orm";
+import { countryNameOf } from "../../application/country-name.js";
 import type {
   DeliveryQuoteForUpdate,
   DeliveryQuoteStaffReader,
@@ -16,9 +17,6 @@ import type {
   DeliveryQuoteStaffStore,
   DeliveryQuoteView,
 } from "../../application/delivery-quote-staff/delivery-quote-staff.ports.js";
-
-const regionNames = new Intl.DisplayNames(["en-GB"], { type: "region" });
-export const countryNameOf = (code: string) => regionNames.of(code) ?? code;
 
 const VIEW_STATUSES: Record<DeliveryQuoteView, readonly string[]> = {
   waiting: ["requested"],
