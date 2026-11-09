@@ -759,18 +759,23 @@ describe.skipIf(!HAS_DB)("collection booking (integration)", () => {
         const results = await Promise.all(Array.from({ length: 8 }, () => places.ensure(fresh)));
         expect(results.every((r) => r.visitMinutes === 30 && r.placesPerSlot === 2)).toBe(true);
         expect(results.every((r) => r.onlineBookingEnabled === false)).toBe(true);
-        const facts = await places.readCalendarFacts(fresh, {
-          from: "2031-01-01",
-          to: "2031-12-31",
-        });
+        // Reading a place also brings in England and Wales bank holidays for the year and the next two.
+        const facts = await places.readCalendarFacts(
+          fresh,
+          { from: "2031-01-01", to: "2031-12-31" },
+          new Date("2031-03-10T12:00:00Z"),
+        );
         expect(facts.hours).toHaveLength(5);
         expect(facts.hours.map((h) => h.weekday)).toEqual([1, 2, 3, 4, 5]);
         expect(
           facts.hours.every((h) => h.opensLocal === "10:00" && h.closesLocal === "19:00"),
         ).toBe(true);
-        expect(facts.exceptions).toEqual([]);
+        expect(facts.exceptions.length).toBeGreaterThan(0);
+        expect(facts.exceptions.every((e) => e.source === "bank_holiday")).toBe(true);
+        expect(facts.exceptions.map((e) => e.startsOn)).toContain("2031-12-25");
         expect(await places.find(randomUUID())).toBeNull();
       } finally {
+        await db.execute(sql`delete from collection_exception where venue_id = ${fresh}`);
         await db.execute(sql`delete from collection_weekly_hours where venue_id = ${fresh}`);
         await db.execute(sql`delete from collection_place where venue_id = ${fresh}`);
         await db.execute(sql`delete from venue where id = ${fresh}`);
