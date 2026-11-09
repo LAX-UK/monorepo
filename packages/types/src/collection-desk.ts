@@ -104,3 +104,13 @@ export type DeskListView = {
   status: "upcoming" | "not_collected";
   items: DeskBookingView[];
 };
+
+/** A client's lot at this place, as staff see it when booking for them. */
+export type DeskClientLot = {
+  lotId: string;
+  title: string;
+  lotNumber: number | null;
+  collectable: boolean;
+  /** Why not, as a sentence; `null` when collectable. */
+  blockedMessage: string | null;
+};

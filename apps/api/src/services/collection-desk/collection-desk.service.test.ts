@@ -428,6 +428,31 @@ describe("booking for a client", () => {
   });
 });
 
+describe("a client's lots", () => {
+  it("lists the account's works at the place with whether each can be booked, and why not", async () => {
+    const s = setup();
+    const lots = (await s.service.clientLots(VENUE, COLLECTION_ACCOUNT))._unsafeUnwrap();
+    const byId = new Map(lots.map((l) => [l.lotId, l]));
+    expect(byId.get(COLLECTION_LOTS.one)).toMatchObject({
+      collectable: true,
+      blockedMessage: null,
+    });
+    expect(byId.get(COLLECTION_LOTS.unpaid)).toMatchObject({ collectable: false });
+    expect(byId.get(COLLECTION_LOTS.unpaid)?.blockedMessage).toMatch(/payment/i);
+    expect(byId.has(COLLECTION_LOTS.otherAccount)).toBe(false);
+    expect(byId.has(COLLECTION_LOTS.otherPlace)).toBe(false);
+  });
+
+  it("refuses an unknown place", async () => {
+    const s = setup();
+    const result = await s.service.clientLots(
+      "c0000000-0000-4000-8000-0000000000cc",
+      COLLECTION_ACCOUNT,
+    );
+    expect(result._unsafeUnwrapErr().code).toBe("place_not_set_up");
+  });
+});
+
 describe("the day", () => {
   it("groups visits by time with places taken against capacity", async () => {
     const s = setup();

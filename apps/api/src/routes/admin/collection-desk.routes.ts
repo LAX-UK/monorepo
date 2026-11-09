@@ -1,6 +1,7 @@
 import {
   collectionDeskBookForClientBodySchema,
   collectionDeskBookingParamSchema,
+  collectionDeskClientLotsQuerySchema,
   collectionDeskDayQuerySchema,
   collectionDeskHandOverBodySchema,
   collectionDeskListQuerySchema,
@@ -69,6 +70,18 @@ export function attachAdminCollectionDeskRoutes(
     zValidator("query", collectionDeskListQuerySchema),
     async (c) =>
       answer(c, await service.list(c.req.valid("param").venueId, c.req.valid("query").status)),
+  );
+
+  platform.get(
+    "/collection-desk/:venueId/client-lots",
+    requireCollectionsRead,
+    zValidator("param", collectionDeskVenueParamSchema),
+    zValidator("query", collectionDeskClientLotsQuerySchema),
+    async (c) =>
+      answer(
+        c,
+        await service.clientLots(c.req.valid("param").venueId, c.req.valid("query").legalEntityId),
+      ),
   );
 
   platform.post(

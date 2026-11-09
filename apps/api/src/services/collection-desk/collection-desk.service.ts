@@ -7,6 +7,7 @@ import {
   type TransitionContext,
   addDaysToKey,
   allowedBookingActions,
+  collectionBlockMessage,
   collectionBookingChanged,
   collectionBookingCreated,
   collectionBookingHandOverUndone,
@@ -37,6 +38,7 @@ import type {
 import type {
   DeskAction,
   DeskBookingView,
+  DeskClientLot,
   DeskDayView,
   DeskFulfilmentStatus,
   DeskGroupView,
@@ -65,7 +67,7 @@ export type CollectionDeskDeps = {
   places: Pick<ICollectionPlaceRepository, "find" | "readCalendarFacts">;
   bookings: ICollectionBookingReader & ICollectionBookingWriter & ICollectionOutcomeWriter;
   desk: ICollectionDeskReader;
-  facts: Pick<ICollectionLotFactsReader, "read">;
+  facts: Pick<ICollectionLotFactsReader, "read" | "lotIdsForBuyer">;
   fulfilment: Pick<ILotFulfilmentAdminService, "handOverForCollection" | "undoCollectionHandOver">;
   events: IDomainEventSink;
   now: () => Date;
@@ -158,6 +160,29 @@ export class CollectionDeskService implements ICollectionDeskService {
       })
     ).filter((booking) => booking.status === "booked");
     return ok({ venueId, status, items: await this.views(upcoming, facts.settings, facts, now) });
+  }
+
+  async clientLots(
+    venueId: string,
+    legalEntityId: string,
+  ): Promise<CollectionDeskResult<DeskClientLot[]>> {
+    if (!(await this.deps.places.find(venueId))) return err(deskError("place_not_set_up"));
+    const ids = await this.deps.facts.lotIdsForBuyer(legalEntityId, venueId, 100);
+    const found = await this.deps.facts.read(ids);
+    const lines: DeskClientLot[] = [];
+    for (const lotId of ids) {
+      const record = found.get(lotId);
+      if (!record) continue;
+      const decision = collectionEligibility(record.facts);
+      lines.push({
+        lotId,
+        title: record.title,
+        lotNumber: record.lotNumber,
+        collectable: decision.eligible,
+        blockedMessage: decision.eligible ? null : collectionBlockMessage(decision.reason),
+      });
+    }
+    return ok(lines);
   }
 
   // ---- the desk -----------------------------------------------------------------------------

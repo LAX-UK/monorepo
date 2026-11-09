@@ -1,4 +1,4 @@
-import type { DeskBookingView, DeskDayView, DeskListView } from "@auction/types";
+import type { DeskBookingView, DeskClientLot, DeskDayView, DeskListView } from "@auction/types";
 import type {
   CollectionDeskBookForClientBody,
   CollectionDeskHandOverBody,
@@ -16,6 +16,11 @@ export interface ICollectionDeskService {
     venueId: string,
     status: "upcoming" | "not_collected",
   ): Promise<CollectionDeskResult<DeskListView>>;
+  /** A client's works collected from this place, for booking a visit on their behalf. */
+  clientLots(
+    venueId: string,
+    legalEntityId: string,
+  ): Promise<CollectionDeskResult<DeskClientLot[]>>;
   handOver(
     staff: DeskStaff,
     bookingId: string,
