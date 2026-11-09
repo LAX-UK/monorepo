@@ -1,4 +1,5 @@
 import {
+  COLLECTION_REMINDERS_QUEUE_NAME,
   CONSIGNMENT_AGREEMENT_REMINDERS_QUEUE_NAME,
   CONSIGNMENT_THREAD_SWEEP_QUEUE_NAME,
   LOT_LIFECYCLE_TICK_QUEUE_NAME,
@@ -121,6 +122,25 @@ export const PLATFORM_CRON_QUEUE_REGISTRY = {
       removeOnFail: 50,
     },
     description: "Send the reminders people set on lots they watch, when each is due",
+  },
+  [COLLECTION_REMINDERS_QUEUE_NAME]: {
+    producers: ["worker"],
+    consumer: "worker",
+    criticality: "background",
+    pauseOrder: null,
+    heartbeatKey: "collection-reminders",
+    dlq: false,
+    showInUi: false,
+    allowUiRetries: false,
+    repeatable: true,
+    defaultJobOptions: {
+      attempts: 3,
+      backoff: { type: "exponential", delay: 60_000 },
+      removeOnComplete: 50,
+      removeOnFail: 50,
+    },
+    description:
+      "Email buyers the day before their collection, from 09:00 London time (every 15 minutes, each reminder once)",
   },
   [STAFF_ROLE_EXPIRY_QUEUE_NAME]: {
     producers: ["worker"],

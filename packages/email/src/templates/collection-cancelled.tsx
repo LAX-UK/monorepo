@@ -11,7 +11,14 @@ export const subject = ({ dayLabel }: Vars) => `Collection cancelled: ${dayLabel
 const capitalised = (text: string) => `${text.charAt(0).toUpperCase()}${text.slice(1)}`;
 
 /** Why the visit ended, in a sentence to the person reading. */
-function whyItEnded({ cancelledBy, reasonText }: Pick<Vars, "cancelledBy" | "reasonText">): string {
+function whyItEnded({
+  cancelledBy,
+  reasonText,
+  forCollector,
+}: Pick<Vars, "cancelledBy" | "reasonText" | "forCollector">): string {
+  if (forCollector) {
+    return `${forCollector.bookerName}'s collection has been cancelled, so you don't need to come. The calendar entry is removed if your calendar supports it.`;
+  }
   if (cancelledBy === "buyer") {
     return "The time has been released for someone else. Your lots stay with us, paid and safe, until you book again.";
   }
@@ -40,7 +47,7 @@ export default function CollectionCancelledEmail(vars: Vars) {
           { label: "Reference", value: reference, mono: true },
         ]}
       />
-      <Button href={bookUrl}>Book another time</Button>
+      {vars.forCollector ? null : <Button href={bookUrl}>Book another time</Button>}
     </Layout>
   );
 }

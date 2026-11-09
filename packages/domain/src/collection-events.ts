@@ -33,6 +33,8 @@ type VisitFields = {
   authorised: boolean;
   bookedVia: "client" | "staff";
   overCapacity: boolean;
+  /** The last moment the buyer can change or cancel online (ISO), when the place has one. */
+  noticeDeadline?: string;
 };
 
 export type CollectionBookingEvent =
@@ -90,7 +92,7 @@ const ref = (
   legalEntityId: booking.legalEntityId,
 });
 
-const visit = (booking: CollectionBookingFacts): VisitFields => ({
+const visit = (booking: CollectionBookingFacts, noticeDeadline: Date | null): VisitFields => ({
   venueId: booking.venueId,
   slotStart: booking.slotStart.toISOString(),
   slotEnd: booking.slotEnd.toISOString(),
@@ -99,23 +101,26 @@ const visit = (booking: CollectionBookingFacts): VisitFields => ({
   authorised: booking.collector.kind === "third_party",
   bookedVia: booking.bookedVia,
   overCapacity: booking.overCapacity,
+  ...(noticeDeadline ? { noticeDeadline: noticeDeadline.toISOString() } : {}),
 });
 
 export const collectionBookingCreated = (
   booking: CollectionBookingFacts,
+  noticeDeadline: Date | null = null,
 ): CollectionBookingEvent => ({
   eventType: "collection.booking.created",
-  payload: { ...ref(booking), ...visit(booking) },
+  payload: { ...ref(booking), ...visit(booking, noticeDeadline) },
 });
 
 export const collectionBookingChanged = (
   booking: CollectionBookingFacts,
   previousSlotStart: Date,
+  noticeDeadline: Date | null = null,
 ): CollectionBookingEvent => ({
   eventType: "collection.booking.changed",
   payload: {
     ...ref(booking),
-    ...visit(booking),
+    ...visit(booking, noticeDeadline),
     previousSlotStart: previousSlotStart.toISOString(),
     icsSequence: booking.icsSequence,
   },

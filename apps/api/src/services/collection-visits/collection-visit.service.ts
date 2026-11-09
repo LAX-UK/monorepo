@@ -297,7 +297,14 @@ export class CollectionVisitService implements ICollectionVisitService {
     if (!slot) return err(visitError("slot_unknown"));
 
     const outcome = await this.deps.bookings.book(request(slot.end), (tx, booking) =>
-      this.record(tx, actor, collectionBookingCreated(booking)),
+      this.record(
+        tx,
+        actor,
+        collectionBookingCreated(
+          booking,
+          noticeDeadline(booking.slotStart, snapshot.settings, snapshot.calendar),
+        ),
+      ),
     );
 
     switch (outcome.outcome) {
@@ -377,7 +384,16 @@ export class CollectionVisitService implements ICollectionVisitService {
         lotIds: body.lotIds,
         collector: collector.value,
       },
-      (tx, changed) => this.record(tx, actor, collectionBookingChanged(changed, booking.slotStart)),
+      (tx, changed) =>
+        this.record(
+          tx,
+          actor,
+          collectionBookingChanged(
+            changed,
+            booking.slotStart,
+            noticeDeadline(changed.slotStart, snapshot.settings, snapshot.calendar),
+          ),
+        ),
     );
     switch (outcome.outcome) {
       case "changed":

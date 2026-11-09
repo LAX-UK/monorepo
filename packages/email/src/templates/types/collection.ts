@@ -51,6 +51,8 @@ type CollectionTemplateVars = {
   };
   "collection-cancelled": {
     userName?: string | null;
+    /** Set when the email is for the person collecting, not the buyer. */
+    forCollector?: { bookerName: string } | null;
     reference: string;
     /** The day that was booked: "Thu 12 Nov". */
     dayLabel: string;
@@ -69,7 +71,6 @@ type CollectionTemplateVars = {
   "collection-reminder": VisitVars & {
     /** "14:00 GMT". */
     timeLabel: string;
-    changeUntilLabel?: string | null;
   };
   /** To the person named to collect: the time, the place and the ID rule. */
   "collection-collector-notice": {

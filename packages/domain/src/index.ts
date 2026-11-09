@@ -839,6 +839,11 @@ export {
 } from "./collection-booking.js";
 export { summariseWeeklyHours } from "./collection-hours-summary.js";
 export {
+  COLLECTION_REMINDER_MINUTE,
+  reminderWindow,
+  type ReminderWindow,
+} from "./collection-reminders.js";
+export {
   COLLECTION_PLACE_EVENT_AGGREGATE,
   collectionExceptionChanged,
   collectionPlaceUpdated,
