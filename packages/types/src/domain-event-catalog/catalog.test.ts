@@ -122,4 +122,21 @@ describe("DOMAIN_EVENT_REGISTRY", () => {
       expect(result.error).toContain("Unsupported schema version 99");
     }
   });
+
+  it("freezes sale.rescheduled as ids and instants, routed to the listing", () => {
+    const payload = {
+      saleId: "11111111-1111-4111-8111-111111111111",
+      previousStartAt: "2026-11-10T10:00:00.000Z",
+      newStartAt: "2026-11-12T10:00:00.000Z",
+    };
+    expect(parseDomainEventPayload("sale.rescheduled", 1, payload)).toEqual({
+      ok: true,
+      data: payload,
+    });
+    expect(
+      parseDomainEventPayload("sale.rescheduled", 1, { ...payload, newStartAt: "tomorrow" }).ok,
+    ).toBe(false);
+    expect(DOMAIN_EVENT_REGISTRY["sale.rescheduled"].consumers).toContain("zoho_artwork_listing");
+    expect(DOMAIN_EVENT_REGISTRY["sale.rescheduled"].piiClassification).toBe("none");
+  });
 });

@@ -1286,6 +1286,7 @@ export type {
   IZohoListingLock,
   IZohoListingRunReader,
   IZohoListingRunStore,
+  IZohoListingSaleStartMark,
   IZohoListingSourceReader,
   ListingLot,
   ListingMove,

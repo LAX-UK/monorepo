@@ -72,7 +72,6 @@ describe("ZohoListingReconcile", () => {
     expect(run?.failures).toHaveLength(RECONCILE_FAILURES_KEPT);
     expect(run?.failures[0]).toEqual({
       registerId: "id-0000",
-      stockCode: "",
       code: "TOO_MANY_REQUESTS",
     });
   });

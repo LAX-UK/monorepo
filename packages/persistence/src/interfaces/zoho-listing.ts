@@ -74,7 +74,8 @@ export type ZohoListingRunMode = "dry_run" | "live";
 /** One record the nightly pass could not bring into line, as staff see it. */
 export type ZohoListingRunFailure = {
   registerId: string;
-  stockCode: string;
+  /** Absent when a whole page failed before its records could be read. */
+  stockCode?: string;
   code: string;
 };
 
@@ -95,6 +96,17 @@ export type ZohoListingRun = {
 /** The nightly listing pass keeps its result for LAX Admin's "Last check". */
 export interface IZohoListingRunStore {
   record(run: ZohoListingRun): Promise<void>;
+}
+
+/**
+ * How far the frequent sale-start pass has fully covered: the `to` of its last successful run. The
+ * next run starts from here, so a delayed or failed run leaves no gap.
+ */
+export interface IZohoListingSaleStartMark {
+  /** The last fully covered instant, or null before the first successful run. */
+  lastCoveredTo(): Promise<Date | null>;
+  /** Moves the mark forward to `to`; never backwards. */
+  markCoveredTo(to: Date): Promise<void>;
 }
 
 /** What LAX Admin reads about the listing sync. */

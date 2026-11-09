@@ -78,6 +78,7 @@ import { registerPayoutWorkers } from "../workers/register-payout-workers.js";
 import { registerPurgeWorkers } from "../workers/register-purge-workers.js";
 import { registerSubjectExportWorker } from "../workers/register-subject-export-worker.js";
 import { registerWebhookWorker } from "../workers/register-webhook-worker.js";
+import { registerZohoListingWorker } from "../workers/register-zoho-listing-worker.js";
 import type { WorkerBootstrapDeps, WorkerDb } from "../workers/types.js";
 import {
   createReportWorkerJobFailure,
@@ -114,6 +115,7 @@ export type WorkerContainer = {
   atgSyncWorkers: ReturnType<typeof registerAtgSyncWorker>;
   subjectExportWorkers: ReturnType<typeof registerSubjectExportWorker>;
   cronWorkers: ReturnType<typeof registerCronWorkers>;
+  zohoListingWorkers: ReturnType<typeof registerZohoListingWorker>;
   deadLetterQueue: Queue;
   projectorRunner: ReturnType<typeof createProjectorRunner>;
   lotLifecycleConsumer: ReturnType<typeof registerWorkerLotLifecycleConsumer> | null;
@@ -390,9 +392,6 @@ export function createWorkerContainer(): WorkerContainer {
           runZohoListingNightlyCheck: async () => {
             await zohoArtworkListing.reconcile.run();
           },
-          runZohoListingSaleStartCheck: async () => {
-            await zohoArtworkListing.saleStart.run();
-          },
         }
       : {}),
   });
@@ -419,6 +418,14 @@ export function createWorkerContainer(): WorkerContainer {
   });
   const alertWorkers = registerAlertWorkers(deps, bidAlerts);
   const cronWorkers = registerCronWorkers(deps);
+  const zohoListingWorkers = registerZohoListingWorker(
+    deps,
+    zohoArtworkListing
+      ? async () => {
+          await zohoArtworkListing.saleStart.run();
+        }
+      : null,
+  );
   const subjectExportWorkers = registerSubjectExportWorker(deps);
   const atgSyncWorkers = registerAtgSyncWorker(
     deps,
@@ -450,6 +457,7 @@ export function createWorkerContainer(): WorkerContainer {
       ...purgeWorkers.errorHandlers,
       ...alertWorkers.errorHandlers,
       ...cronWorkers.errorHandlers,
+      ...zohoListingWorkers.errorHandlers,
       ...atgSyncWorkers.errorHandlers,
       ...subjectExportWorkers.errorHandlers,
     ],
@@ -621,6 +629,7 @@ export function createWorkerContainer(): WorkerContainer {
     purgeWorkers,
     alertWorkers,
     cronWorkers,
+    zohoListingWorkers,
     atgSyncWorkers,
     subjectExportWorkers,
     deadLetterQueue,
@@ -655,6 +664,7 @@ export async function shutdownWorkerContainer(
         container.purgeWorkers.close(),
         container.alertWorkers.close(),
         container.cronWorkers.close(),
+        container.zohoListingWorkers.close(),
         container.atgSyncWorkers.close(),
         container.subjectExportWorkers.close(),
         container.lotLifecycleConsumer?.close(),

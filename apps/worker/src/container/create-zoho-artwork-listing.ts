@@ -59,15 +59,16 @@ export function createZohoArtworkListing(deps: {
     links: new ListingLinks({ artPublicUrl, laxAdminUrl, bidPublicUrl: env.WEB_ORIGIN }),
     log,
   });
+  const runs = new DrizzleZohoListingRunStore(db);
   return {
     writeback: new ZohoListingWriteback({ sync, sources, mode }),
     reconcile: new ZohoListingReconcile({
       mode,
       sync,
       sources,
-      runs: new DrizzleZohoListingRunStore(db),
+      runs,
       log,
     }),
-    saleStart: new ZohoListingSaleStartPass({ sync, sources, log }),
+    saleStart: new ZohoListingSaleStartPass({ sync, sources, mark: runs, log }),
   };
 }

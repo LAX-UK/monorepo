@@ -268,6 +268,7 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
   "sale.created": new Set(["from_status", "to_status", "deliveryMode", "lotCount", "isTest"]),
   "sale.published": new Set(["from_status", "to_status", "lotCount", "deliveryMode"]),
   "sale.unpublished": new Set(["from_status", "to_status"]),
+  "sale.rescheduled": new Set(["saleId", "previousStartAt", "newStartAt"]),
   "sale.test_flag_changed": new Set(["isTest", "status"]),
   "sale.cancelled": new Set(["from_status", "to_status", "lotCount", "cancelledLotIds"]),
   "sale.soft_deleted": new Set(["title", "from_status", "lotCount", "deleted_at"]),

@@ -41,7 +41,7 @@ export class ZohoListingWriteback {
     if (failed) {
       const error = new CrmGatewayError({
         code: failed.code,
-        message: `LAX listing not written for ${failed.stockCode}`,
+        message: `LAX listing not written for ${failed.stockCode ?? failed.registerId}`,
         status: retry ? 503 : 400,
         retryable: Boolean(retry),
       });

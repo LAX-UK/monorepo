@@ -8,6 +8,7 @@ import {
   STAFF_ROLE_EXPIRY_QUEUE_NAME,
   STALE_SUBMISSION_DRAFT_REMINDERS_QUEUE_NAME,
   WATCHED_LOT_REMINDERS_QUEUE_NAME,
+  ZOHO_LISTING_SALE_START_QUEUE_NAME,
 } from "../queue-names-platform-cron.js";
 import type { QueueDefinition } from "../types.js";
 
@@ -176,5 +177,24 @@ export const PLATFORM_CRON_QUEUE_REGISTRY = {
       removeOnFail: 50,
     },
     description: "Compare shop editions to Zoho catalogue projection",
+  },
+  [ZOHO_LISTING_SALE_START_QUEUE_NAME]: {
+    producers: ["worker"],
+    consumer: "worker",
+    criticality: "background",
+    pauseOrder: null,
+    heartbeatKey: "zoho-listing-sale-start",
+    dlq: false,
+    showInUi: false,
+    allowUiRetries: false,
+    repeatable: true,
+    defaultJobOptions: {
+      attempts: 1,
+      backoff: { type: "exponential", delay: 60_000 },
+      removeOnComplete: 50,
+      removeOnFail: 50,
+    },
+    description:
+      "Refresh the Zoho listing of lots whose sale has just started; a failed run is made up for by the next",
   },
 } as const satisfies Record<string, QueueDefinition>;
