@@ -1,0 +1,133 @@
+import { randomUUID } from "node:crypto";
+import { createDb } from "@auction/db";
+import { collectionPlace } from "@auction/db/schema";
+import { eq, sql } from "drizzle-orm";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { DrizzleCollectByReader } from "./drizzle-collect-by.reader.js";
+
+const HAS_DB = Boolean(process.env.DATABASE_URL);
+
+/** Which purchased lots are still waiting at a place that collects, and when they cleared. */
+describe.skipIf(!HAS_DB)("collect-by reader (integration)", () => {
+  const run = randomUUID().slice(0, 8);
+  const buyer = `col-by-buyer-${run}`;
+  const buyerEntity = randomUUID();
+  const sellerEntity = randomUUID();
+  const venueId = randomUUID();
+  const otherVenueId = randomUUID();
+  const saleId = randomUUID();
+  const otherSaleId = randomUUID();
+  // biome-ignore lint/style/noNonNullAssertion: gated by HAS_DB
+  const db = createDb(process.env.DATABASE_URL!);
+  const reader = new DrizzleCollectByReader(db);
+  const clearedAt = new Date("2031-03-01T10:00:00Z");
+  const since = new Date("2031-02-01T00:00:00Z");
+
+  let lotNumber = 0;
+  async function storedLot(
+    over: {
+      status?: string;
+      method?: string | null;
+      sale?: string;
+      cleared?: Date | null;
+      buyerEntity?: string | null;
+    } = {},
+  ): Promise<string> {
+    const lotId = randomUUID();
+    lotNumber += 1;
+    const buyerId = over.buyerEntity === undefined ? buyerEntity : over.buyerEntity;
+    await db.execute(sql`
+      insert into lot (id, seller_legal_entity_id, sale_id, title, lot_number, auction_type,
+         starting_price, current_price, start_time, end_time, status, winner_id, buyer_legal_entity_id)
+      values (${lotId}, ${sellerEntity}, ${over.sale ?? saleId}, ${`Collect-by lot ${lotNumber}`},
+         ${lotNumber}, 'english', 100, 100, now() - interval '40 days', now() - interval '20 days',
+         'ended', ${buyer}, ${buyerId})`);
+    const cleared = over.cleared === undefined ? clearedAt : over.cleared;
+    await db.execute(sql`
+      insert into lot_fulfilment (lot_id, status, fulfilment_method, payment_cleared_at)
+      values (${lotId}, ${over.status ?? "awaiting_release"}::lot_fulfilment_status,
+         ${over.method ?? null}::lot_fulfilment_method, ${cleared})`);
+    return lotId;
+  }
+
+  beforeAll(async () => {
+    const now = new Date();
+    await db.execute(sql`
+      insert into "user" (id, name, email, email_verified, created_at, updated_at)
+      values (${buyer}, 'Buyer', ${`${buyer}@integration.test`}, true, ${now}, ${now})`);
+    await db.execute(sql`
+      insert into legal_entity (id, display_name, kind, subkind, created_by_user_id, status)
+      values (${buyerEntity}, 'Collect-by buyer', 'individual', 'private_collector', ${buyer}, 'approved'),
+             (${sellerEntity}, 'Collect-by seller', 'organisation', 'gallery', ${buyer}, 'approved')`);
+    await db.execute(sql`
+      insert into venue (id, legal_entity_id, name, address_line1, city, postcode, country)
+      values (${venueId}, ${sellerEntity}, 'Collect-by gallery', '156 New Cavendish Street', 'London', 'W1W 6YW', 'GB'),
+             (${otherVenueId}, ${sellerEntity}, 'No collections here', '1 Test Street', 'London', 'W1W 6YW', 'GB')`);
+    await db.execute(sql`
+      insert into sale (id, title, start_time, end_time, venue_id, created_by_legal_entity_id)
+      values (${saleId}, 'Collect-by sale', now() - interval '30 days', now() - interval '20 days', ${venueId}, ${sellerEntity}),
+             (${otherSaleId}, 'Elsewhere sale', now() - interval '30 days', now() - interval '20 days', ${otherVenueId}, ${sellerEntity})`);
+    await db.execute(sql`
+      insert into collection_place (venue_id, free_storage_days) values (${venueId}, 14)`);
+  });
+
+  afterAll(async () => {
+    await db.execute(sql`
+      delete from lot_fulfilment where lot_id in (select id from lot where seller_legal_entity_id = ${sellerEntity})`);
+    await db.execute(sql`delete from lot where seller_legal_entity_id = ${sellerEntity}`);
+    await db.execute(sql`delete from sale where id in (${saleId}, ${otherSaleId})`);
+    await db.delete(collectionPlace).where(eq(collectionPlace.venueId, venueId));
+    await db.execute(sql`delete from venue where id in (${venueId}, ${otherVenueId})`);
+    await db.execute(sql`delete from legal_entity where id in (${buyerEntity}, ${sellerEntity})`);
+    await db.execute(sql`delete from "user" where id = ${buyer}`);
+  });
+
+  it("reads a lot waiting at a collection place, with its buyer, place, clearance day and free period", async () => {
+    const lotId = await storedLot();
+    const found = (await reader.storedLotsClearedSince(since)).find((row) => row.lotId === lotId);
+    expect(found).toMatchObject({
+      legalEntityId: buyerEntity,
+      clearedAt,
+      freeStorageDays: 14,
+      place: { name: "Collect-by gallery", address: "156 New Cavendish Street, London, W1W 6YW" },
+    });
+  });
+
+  it("leaves out what is handed over, cancelled, on its way, going by courier, or not paid yet", async () => {
+    const skipped = [
+      await storedLot({ status: "delivered", method: "collection" }),
+      await storedLot({ status: "cancelled" }),
+      await storedLot({ status: "in_transit" }),
+      await storedLot({ status: "released", method: "shipping" }),
+      await storedLot({ status: "awaiting_payment" }),
+    ];
+    const ids = (await reader.storedLotsClearedSince(since)).map((row) => row.lotId);
+    for (const lotId of skipped) expect(ids).not.toContain(lotId);
+  });
+
+  it("leaves out a lot that cleared before the look-back, one with no clearance date, and a place that does not collect", async () => {
+    const old = await storedLot({ cleared: new Date("2031-01-01T10:00:00Z") });
+    const undated = await storedLot({ cleared: null });
+    const elsewhere = await storedLot({ sale: otherSaleId });
+    const ids = (await reader.storedLotsClearedSince(since)).map((row) => row.lotId);
+    expect(ids).not.toContain(old);
+    expect(ids).not.toContain(undated);
+    expect(ids).not.toContain(elsewhere);
+  });
+
+  it("leaves out a lot already in a live booking", async () => {
+    const booked = await storedLot();
+    const bookingId = randomUUID();
+    await db.execute(sql`
+      insert into collection_booking (id, legal_entity_id, venue_id, slot_start, slot_end,
+         seat, status, collector_kind, collector_name, booked_by_user_id, idempotency_key, request_fingerprint)
+      values (${bookingId}, ${buyerEntity}, ${venueId}, '2031-03-10T10:00:00Z',
+         '2031-03-10T10:30:00Z', 1, 'booked', 'self', 'Buyer', ${buyer}, ${randomUUID()}, ${randomUUID()})`);
+    await db.execute(sql`
+      insert into collection_booking_lot (booking_id, lot_id, active) values (${bookingId}, ${booked}, true)`);
+    const ids = (await reader.storedLotsClearedSince(since)).map((row) => row.lotId);
+    expect(ids).not.toContain(booked);
+    await db.execute(sql`delete from collection_booking_lot where booking_id = ${bookingId}`);
+    await db.execute(sql`delete from collection_booking where id = ${bookingId}`);
+  });
+});

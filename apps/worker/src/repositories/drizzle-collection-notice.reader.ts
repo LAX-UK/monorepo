@@ -127,6 +127,19 @@ export class DrizzleCollectionNoticeReader implements ICollectionNoticeReader {
     return Number(row?.total ?? 0);
   }
 
+  async accountRecipients(legalEntityId: string): Promise<NoticeRecipient[]> {
+    const people = await this.accountPeople(legalEntityId);
+    if (people.length > 0) return people;
+    // A personal account has no members to speak of: the person who made it is the buyer.
+    const [account] = await this.db
+      .select({ createdBy: legalEntity.createdByUserId })
+      .from(legalEntity)
+      .where(eq(legalEntity.id, legalEntityId))
+      .limit(1);
+    const person = account?.createdBy ? await this.person(account.createdBy) : null;
+    return person ? [person] : [];
+  }
+
   /** A person with an account still open: their address, first name and full name. */
   private async person(userId: string): Promise<(NoticeRecipient & { name: string }) | null> {
     const [row] = await this.db
