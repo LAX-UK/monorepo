@@ -298,6 +298,8 @@ export const WORKER_READ_TABLES = [
   "private_sale_enquiry_detail",
   /** The follow-up projector reads the confirmed choice it opens work for. */
   "unsold_lot_choice",
+  /** Lot reads (invoice initiation and other projectors) load each lot's categories. */
+  "lot_categories",
   /** The payout statement names the private sale a payout line settles by its PS reference. */
   "private_sale_deal",
   /** The payment expiry job closes each invoice's open Checkout sessions before cancelling it. */
