@@ -140,7 +140,7 @@ export type ListingRunSummary = {
   changed: number;
   unchanged: number;
   failed: number;
-  failures: { registerId: string; stockCode: string; code: string }[];
+  failures: { registerId: string; stockCode?: string; code: string }[];
 };
 
 /** The LAX listing on Zoho Products: the newest nightly pass and the writes that gave up. */
