@@ -32,6 +32,7 @@ import { DEFAULT_LAX_ACCOUNT_ORIGIN } from "../lax-account-origin.js";
 import {
   createAuthIssuerRateLimitMiddleware,
   createMagicLinkIssuerRateLimitMiddleware,
+  createPasskeyIssuerRateLimitMiddleware,
   createSendVerificationIssuerRateLimitMiddleware,
 } from "../middleware/auth-rate-limit.js";
 import { createAuthRouteCorsMiddleware } from "../middleware/auth-route-cors.js";
@@ -179,6 +180,7 @@ export function mountOidcRoutes(app: Hono, options: OidcRouteMountOptions): void
     "/api/auth/*",
     createMagicLinkIssuerRateLimitMiddleware(rateLimitStore, options.clientIp),
   );
+  app.use("/api/auth/*", createPasskeyIssuerRateLimitMiddleware(rateLimitStore, options.clientIp));
   app.get("/.well-known/jwks.json", async (c) => {
     c.header("Cache-Control", "public, max-age=60");
     return c.json(await options.auth.api.getJwks());

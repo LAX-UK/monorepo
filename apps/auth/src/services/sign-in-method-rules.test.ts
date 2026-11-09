@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { decideUnlink, describeSignInMethods } from "./sign-in-method-rules.js";
+import {
+  decideRemovePasskey,
+  decideUnlink,
+  describeSignInMethods,
+} from "./sign-in-method-rules.js";
 
 const at = (day: number) => new Date(`2026-10-${String(day).padStart(2, "0")}T09:00:00Z`);
 const credential = { providerId: "credential", hasPassword: true, createdAt: at(1) };
@@ -98,5 +102,32 @@ describe("decideUnlink (last-method guard)", () => {
     const empty = { providerId: "credential", hasPassword: false, createdAt: at(1) };
     expect(decideUnlink([empty, google], "google", 0)).toBe("last_sign_in_method");
     expect(decideUnlink([empty, google], "google", 2)).toBe("allowed");
+  });
+});
+
+describe("decideRemovePasskey", () => {
+  const row = (providerId: string, hasPassword = false) => ({
+    providerId,
+    hasPassword,
+    createdAt: new Date("2026-10-01T09:00:00Z"),
+  });
+
+  it("refuses the only way to sign in", () => {
+    expect(decideRemovePasskey([], 1)).toBe("last_sign_in_method");
+  });
+
+  it("allows it while a password, a provider or another passkey remains", () => {
+    expect(decideRemovePasskey([row("credential", true)], 1)).toBe("allowed");
+    expect(decideRemovePasskey([row("google")], 1)).toBe("allowed");
+    expect(decideRemovePasskey([], 2)).toBe("allowed");
+  });
+
+  it("does not count a credential row with no password (an account made by a social sign-in)", () => {
+    expect(decideRemovePasskey([row("credential", false)], 1)).toBe("last_sign_in_method");
+  });
+
+  it("does not count the emailed sign-in link, which is no method the person set up", () => {
+    // Nothing in the account rows stands for the email link, so it can never save the last passkey.
+    expect(decideRemovePasskey([row("magic-link")], 1)).toBe("last_sign_in_method");
   });
 });

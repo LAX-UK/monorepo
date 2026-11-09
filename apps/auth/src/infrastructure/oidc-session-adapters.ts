@@ -46,6 +46,7 @@ export class DrizzleOidcRpSessionRepository implements OidcRpSessionRepository {
         mfaCompletedAt: session.mfaCompletedAt,
         socialAuthAt: session.socialAuthAt,
         lastStepUpAt: session.lastStepUpAt,
+        amr: session.amr,
       })
       .from(session)
       .where(eq(session.id, identitySessionId))
@@ -62,6 +63,7 @@ export class DrizzleOidcRpSessionRepository implements OidcRpSessionRepository {
         createdAt: session.createdAt,
         lastPasswordAuthAt: session.lastPasswordAuthAt,
         mfaCompletedAt: session.mfaCompletedAt,
+        amr: session.amr,
       })
       .from(session)
       .where(and(eq(session.id, identitySessionId), gt(session.expiresAt, now)))

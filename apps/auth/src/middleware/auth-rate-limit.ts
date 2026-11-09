@@ -514,3 +514,74 @@ export function createMachineTokenRateLimitMiddleware(
     await next();
   });
 }
+
+/** The challenge calls, which hand out a fresh challenge each time. */
+const PASSKEY_OPTIONS_PATH = /\/passkey\/generate-(?:authenticate|register)-options$/;
+/** The calls that submit a device's answer. */
+const PASSKEY_VERIFY_PATH = /\/passkey\/verify-(?:authentication|registration)$/;
+
+/** A passkey's id from the submitted response, hashed so the limiter never stores it. */
+async function passkeyCredentialKey(req: Request): Promise<string | null> {
+  try {
+    const body = (await req.clone().json()) as { response?: { id?: unknown } };
+    const id = body.response?.id;
+    return typeof id === "string" && id.length > 0 && id.length <= 1_024
+      ? createHash("sha256").update(id).digest("hex")
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Budgets for passkey sign-in and creation, which carry no email or password to budget by:
+ * challenges per client address, answers per client address, and answers for one passkey however
+ * many addresses they come from. Turnstile is not used: there is nothing to stuff.
+ */
+export function createPasskeyIssuerRateLimitMiddleware(
+  redis: SlidingWindowStore,
+  clientIp: ClientIpResolver,
+) {
+  return createMiddleware(async (c, next) => {
+    const path = c.req.path;
+    const asksForChallenge = c.req.method === "GET" && PASSKEY_OPTIONS_PATH.test(path);
+    const submitsAnswer = c.req.method === "POST" && PASSKEY_VERIFY_PATH.test(path);
+    if (!asksForChallenge && !submitsAnswer) {
+      await next();
+      return;
+    }
+    const ip = clientIp(c);
+    if (asksForChallenge) {
+      const limited = await enforceSlidingLimit(
+        c,
+        redis,
+        `rl:auth-issuer:passkey-options-ip:${ip}`,
+        RL.passkeyOptionsWindowSec,
+        RL.passkeyOptionsMax,
+      );
+      if (limited) return limited;
+      await next();
+      return;
+    }
+    const byAddress = await enforceSlidingLimit(
+      c,
+      redis,
+      `rl:auth-issuer:passkey-verify-ip:${ip}`,
+      RL.passkeyVerifyIpWindowSec,
+      RL.passkeyVerifyIpMax,
+    );
+    if (byAddress) return byAddress;
+    const credential = await passkeyCredentialKey(c.req.raw);
+    if (credential) {
+      const byPasskey = await enforceSlidingLimit(
+        c,
+        redis,
+        `rl:auth-issuer:passkey-verify-credential:${credential}`,
+        RL.passkeyVerifyCredentialWindowSec,
+        RL.passkeyVerifyCredentialMax,
+      );
+      if (byPasskey) return byPasskey;
+    }
+    await next();
+  });
+}

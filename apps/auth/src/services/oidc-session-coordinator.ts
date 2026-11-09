@@ -28,6 +28,7 @@ export type OidcIdentitySessionEvidence = {
   mfaCompletedAt: Date | null;
   socialAuthAt: Date | null;
   lastStepUpAt: Date | null;
+  amr?: readonly string[] | undefined;
 };
 
 export type OidcCodeCorrelationStore = {

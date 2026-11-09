@@ -32,6 +32,35 @@ describe("oidcSessionClaims", () => {
     ).toMatchObject({ acr: OIDC_ACR_SILVER, amr: ["pwd", "otp"] });
   });
 
+  it("describes a passkey sign-in as silver and as a passkey, not as a password and a code", () => {
+    expect(
+      oidcSessionClaims({
+        id: "sid-4",
+        createdAt,
+        lastPasswordAuthAt: null,
+        mfaCompletedAt: createdAt,
+        amr: ["passkey"],
+      }),
+    ).toEqual({
+      sid: "sid-4",
+      auth_time: Math.floor(createdAt.getTime() / 1000),
+      acr: OIDC_ACR_SILVER,
+      amr: ["passkey"],
+    });
+  });
+
+  it("keeps describing a password-and-code session as such, whatever else the session recorded", () => {
+    expect(
+      oidcSessionClaims({
+        id: "sid-5",
+        createdAt,
+        lastPasswordAuthAt: createdAt,
+        mfaCompletedAt: createdAt,
+        amr: ["password"],
+      }),
+    ).toMatchObject({ acr: OIDC_ACR_SILVER, amr: ["pwd", "otp"] });
+  });
+
   it("leaves amr out when the session has no password or two-step proof", () => {
     const claims = oidcSessionClaims({
       id: "sid-3",
