@@ -18,6 +18,7 @@ import {
 import type { LotCancelledPayload } from "../domain/lot-events.js";
 import type { Env } from "../env.js";
 import { LotJobScheduler } from "../jobs/lot-job-scheduler.js";
+import { createBaseLogger } from "../lib/logger.js";
 import {
   type PlatformCatalogLegalEntityIdProvider,
   createPlatformCatalogLegalEntityIdProvider,
@@ -398,6 +399,7 @@ export function createLotCatalogServices(
     sellerIdentity,
     sellerApi: itemSubmissionService,
     lotService,
+    log: createBaseLogger(env),
   });
 
   const categoryService = new CategoryService(categoryRepo, domainEventSink);
