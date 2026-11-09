@@ -45,13 +45,17 @@ describe("migration 0336 party history for organisations named on their own", ()
     expect(columns.legalEntityId.notNull).toBe(false);
   });
 
-  it("is undone by removing the organisation-only rows past the append-only trigger, then restoring it", () => {
+  it("is undone, in one transaction, by removing the organisation-only rows past the append-only trigger, then restoring it", () => {
     expect(rollback).toMatch(/DISABLE TRIGGER "private_sale_deal_party_history_append_only"/);
     expect(rollback).toMatch(
       /DELETE FROM "private_sale_deal_party_history" WHERE "acting_user_id" IS NULL/,
     );
     expect(rollback.indexOf("ENABLE TRIGGER")).toBeGreaterThan(rollback.indexOf("DELETE FROM"));
     expect(rollback).toMatch(/ALTER COLUMN "acting_user_id" SET NOT NULL/);
-    expect(rollback).not.toMatch(/^(BEGIN|COMMIT);/m);
+    // One transaction, so a failure after the trigger is lifted leaves it in place.
+    expect(rollback).toMatch(/^BEGIN;/m);
+    expect(rollback).toMatch(/^COMMIT;/m);
+    expect(rollback.indexOf("BEGIN;")).toBeLessThan(rollback.indexOf("DISABLE TRIGGER"));
+    expect(rollback.indexOf("COMMIT;")).toBeGreaterThan(rollback.indexOf("SET NOT NULL"));
   });
 });

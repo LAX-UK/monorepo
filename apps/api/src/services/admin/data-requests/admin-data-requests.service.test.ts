@@ -454,6 +454,25 @@ describe("DomainEventDataRequestAuditTrail", () => {
       });
     });
 
+    it("audits the read before it looks at the person, like opening the record", async () => {
+      const { service, identity, audit, calls } = setup();
+      identity.record.mockResolvedValueOnce({ ok: true as const, value: personRecord() });
+      await service.dealHolds("DR-0007", "staff-1");
+      expect(audit.record).toHaveBeenCalledWith({
+        action: "viewed",
+        reference: "DR-0007",
+        actorUserId: "staff-1",
+      });
+      expect(calls.slice(0, 1)).toEqual(["audit"]);
+    });
+
+    it("shows nothing when the audit cannot be written", async () => {
+      const { service, identity, audit } = setup();
+      audit.record.mockRejectedValueOnce(new Error("db down"));
+      await expect(service.dealHolds("DR-0007", "staff-1")).rejects.toThrow("db down");
+      expect(identity.record).not.toHaveBeenCalled();
+    });
+
     it("shows deal references only, never contact details", async () => {
       const { service, identity } = setup();
       identity.record.mockResolvedValueOnce({ ok: true as const, value: personRecord() });

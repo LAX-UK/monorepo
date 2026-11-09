@@ -77,12 +77,14 @@ export class AdminDataRequestsService {
   /**
    * The private sale deals keeping this person's enquiries and KYC evidence, each with its
    * reference and when the hold ends. Empty for a person with no account or on no deal. The
-   * record itself is read from Identity as for any other action, so no contact detail leaves here.
+   * record itself is read from Identity as for any other action, so no contact detail leaves here, and the read is audited.
    */
   async dealHolds(
     reference: string,
     actorUserId: string,
   ): Promise<DataRequestOutcome<{ holds: DataRequestDealHold[] }>> {
+    // Reading the person to find their deals is looking at their record, so it is audited like it.
+    await this.audit("viewed", reference, actorUserId);
     const found = await this.deps.identity.record(reference, actorUserId);
     if (!found.ok) return found;
     const email = found.value.person.email;
