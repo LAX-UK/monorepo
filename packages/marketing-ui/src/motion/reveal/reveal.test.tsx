@@ -1,6 +1,7 @@
 import { act, render, screen, waitFor } from "@testing-library/react";
 import { renderToString } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { resetReaderIntentForTests } from "./reader-intent.js";
 import { Reveal, RevealInView, RevealOnMount, RevealStagger } from "./reveal.js";
 import type { RevealTrigger } from "./triggers.js";
 
@@ -150,5 +151,72 @@ describe("rise variant", () => {
       </RevealOnMount>,
     );
     expect(container.querySelector(".reveal--rise")).not.toBeNull();
+  });
+});
+
+describe("a page nobody scrolls", () => {
+  afterEach(() => {
+    resetReaderIntentForTests();
+    vi.unstubAllGlobals();
+  });
+
+  const belowTheFold = () => {
+    vi.stubGlobal(
+      "IntersectionObserver",
+      class {
+        observe() {}
+        unobserve() {}
+        disconnect() {}
+      },
+    );
+    Object.defineProperty(window, "innerHeight", { configurable: true, value: 800 });
+    const original = HTMLElement.prototype.getBoundingClientRect;
+    HTMLElement.prototype.getBoundingClientRect = () =>
+      ({ top: 2400, bottom: 2800, left: 0, right: 100, width: 100, height: 400 }) as DOMRect;
+    return () => {
+      HTMLElement.prototype.getBoundingClientRect = original;
+    };
+  };
+
+  it("is never hidden below the fold, so a capture, a print or a preview sees all of it", () => {
+    const restore = belowTheFold();
+    const { container } = render(
+      <RevealInView variant="rise">
+        <span>lot grid</span>
+      </RevealInView>,
+    );
+    expect(container.querySelector(".reveal")?.hasAttribute("data-reveal-init")).toBe(false);
+    restore();
+  });
+
+  it("is hidden ready to animate in once the reader starts to scroll", () => {
+    const restore = belowTheFold();
+    const { container } = render(
+      <RevealInView variant="rise">
+        <span>lot grid</span>
+      </RevealInView>,
+    );
+    act(() => {
+      window.dispatchEvent(new Event("scroll"));
+    });
+    expect(container.querySelector(".reveal")?.getAttribute("data-reveal-init")).toBe("true");
+    restore();
+  });
+
+  it("does not hide what was already revealed", () => {
+    const original = globalThis.IntersectionObserver;
+    // @ts-expect-error test shim: without an observer a reveal is immediate
+    globalThis.IntersectionObserver = undefined;
+    const { container } = render(
+      <RevealInView>
+        <span>shown</span>
+      </RevealInView>,
+    );
+    act(() => {
+      window.dispatchEvent(new Event("scroll"));
+    });
+    expect(container.querySelector(".reveal")?.getAttribute("data-revealed")).toBe("true");
+    expect(container.querySelector(".reveal")?.hasAttribute("data-reveal-init")).toBe(false);
+    globalThis.IntersectionObserver = original;
   });
 });

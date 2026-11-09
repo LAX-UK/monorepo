@@ -1,9 +1,19 @@
-/* F10 — content-visibility helper for off-screen sections. Browsers skip
-   layout/paint for content outside the viewport, large LCP win on long pages.
-   Apply via `className="cv-auto"` on home sections below the fold. */
+/* Content-visibility helper for off-screen sections: the browser skips layout and paint for
+   content outside the viewport. Nothing uses it today. If a section does, give it its measured
+   height here (`auto <height>`: the browser then remembers the real size once it has drawn the
+   section), never apply it to the first two screens, and note that a capture, a print and a link
+   preview draw the placeholder size, which is why print and reduced motion switch it off. */
 .cv-auto {
   content-visibility: auto;
-  contain-intrinsic-size: 1px 800px;
+  contain-intrinsic-size: auto 800px;
+}
+
+@media print, (prefers-reduced-motion: reduce) {
+  .cv-auto,
+  .catalog-virtualized-list > li,
+  .admin-data-table-virtualized tbody tr {
+    content-visibility: visible;
+  }
 }
 
 /* Focusable skip link — off-screen until focused */

@@ -124,6 +124,21 @@
   animation-delay: var(--reveal-delay, 0ms);
 }
 
+/* A printed page shows everything: nothing waits for a scroll that will never happen. */
+@media print {
+  .reveal[data-reveal-init="true"]:not([data-revealed="true"]),
+  .reveal--fadeUp[data-reveal-init="true"]:not([data-revealed="true"]),
+  .reveal--rise[data-reveal-init="true"]:not([data-revealed="true"]) {
+    clip-path: none;
+    opacity: 1;
+    transform: none;
+  }
+
+  .reveal[data-reveal-init="true"]:not([data-revealed="true"]) > .reveal__inner {
+    transform: none;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .reveal[data-reveal-init="true"]:not([data-revealed="true"]) {
     clip-path: none;

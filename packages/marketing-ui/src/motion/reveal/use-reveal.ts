@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef } from "react";
+import { whenReaderMoves } from "./reader-intent.js";
 import type { RevealTrigger } from "./triggers.js";
 
 const useIsoLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
@@ -16,7 +17,11 @@ export function useReveal<T extends HTMLElement>(trigger: RevealTrigger) {
       staticRef.current = true;
       return;
     }
-    el.setAttribute("data-reveal-init", "true");
+    const arm = () => {
+      if (!el.hasAttribute("data-revealed")) el.setAttribute("data-reveal-init", "true");
+    };
+    if (trigger.armWhen === "reader-moves") return whenReaderMoves(arm);
+    arm();
   }, []);
 
   useEffect(() => {
