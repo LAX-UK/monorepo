@@ -39,7 +39,7 @@ export type EnquiryDealRecord = {
   hasComplianceCase: boolean;
 };
 
-function addYears(from: Date, years: number): Date {
+export function addYears(from: Date, years: number): Date {
   const to = new Date(from);
   to.setUTCFullYear(to.getUTCFullYear() + years);
   return to;

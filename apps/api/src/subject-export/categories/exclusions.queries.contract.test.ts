@@ -64,6 +64,16 @@ const FORBIDDEN_COLUMNS = [
   "consignmentAgreement.commissionPercent",
   "unsoldLotChoice.staffNote",
   "lotFulfilment.notes",
+  // staff-only facts on a collection booking: why it went over capacity, who handed over or cancelled
+  "collectionBooking.overCapacityReason",
+  "collectionBooking.outcomeByUserId",
+  "collectionBooking.cancelledByUserId",
+  "collectionBooking.idempotencyKey",
+  "collectionBooking.policyVersion",
+  "collectionBooking.requestFingerprint",
+  "collectionBooking.handoverRecordClearedAt",
+  "collectionBooking.personalDetailsErasedAt",
+  "collectionBooking.legalEntityId", // the account is never named: another member's bookings share it
   "lotFulfilment.releaseApprovedByUserId",
   "conditionReportRequest.fulfilledByUserId",
   // staff-only thread content and thread handling

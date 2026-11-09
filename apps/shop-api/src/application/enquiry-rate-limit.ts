@@ -80,6 +80,15 @@ export const GUEST_CHECKOUT_RATE_LIMITS = {
   perSender: { max: 10, windowSeconds: 3600 },
 } as const satisfies RateLimits;
 
+/**
+ * A guest's delivery quote request holds stock for a day, so its allowance is lower than
+ * checkout's: a few requests an hour from one address or one network.
+ */
+export const GUEST_QUOTE_REQUEST_RATE_LIMITS = {
+  perClientIp: { max: 6, windowSeconds: 3600 },
+  perSender: { max: 3, windowSeconds: 3600 },
+} as const satisfies RateLimits;
+
 /** Asking for a new guest order link sends an email, so the allowance is small. */
 export const GUEST_ORDER_LINK_RATE_LIMITS = {
   perClientIp: { max: 10, windowSeconds: 3600 },
@@ -88,12 +97,17 @@ export const GUEST_ORDER_LINK_RATE_LIMITS = {
 
 export function createGuestCheckoutRateLimiters(counter: FixedWindowCounter): {
   checkout: EnquiryRateLimiter;
+  quoteRequests: EnquiryRateLimiter;
   orderLinks: EnquiryRateLimiter;
 } {
   return {
     checkout: createEnquiryRateLimiter(counter, {
       keyPrefix: "guest-checkout",
       limits: GUEST_CHECKOUT_RATE_LIMITS,
+    }),
+    quoteRequests: createEnquiryRateLimiter(counter, {
+      keyPrefix: "guest-delivery-quote",
+      limits: GUEST_QUOTE_REQUEST_RATE_LIMITS,
     }),
     orderLinks: createEnquiryRateLimiter(counter, {
       keyPrefix: "guest-order-link",

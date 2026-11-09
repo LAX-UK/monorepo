@@ -59,6 +59,11 @@ export type CheckoutOrderInput = {
   cancelUrl: string;
   deliveryAddress?: ShopDeliveryAddress;
   deliveryPhone?: string;
+  /**
+   * Delivery outside the UK at a region's fixed rate, as assessed from the delivery regions: the
+   * country it was assessed for and the rate to charge. Absent for every other order.
+   */
+  outsideUk?: { country: string; regionId: string; pricePence: number };
 };
 
 export type CheckoutOrderResult = {

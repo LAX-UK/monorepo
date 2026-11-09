@@ -145,4 +145,5 @@ export {
 export * from "./like-pattern.js";
 export { anonymiseEnquiries } from "./anonymise-enquiries.js";
 export { eraseAlertSubscribers } from "./erase-alert-subscribers.js";
-export { isPgUniqueViolation } from "./pg-unique-violation.js";
+export { isPgUniqueViolation, pgUniqueViolationConstraint } from "./pg-unique-violation.js";
+export { collectionRequestCanonical } from "./collection-request-canonical.js";

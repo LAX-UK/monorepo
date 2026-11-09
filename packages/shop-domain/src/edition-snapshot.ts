@@ -10,6 +10,13 @@ import {
   describeEditionFacts,
 } from "./edition-facts.js";
 import { type EditionRunSpec, type ProofsKept, assertValidRunSpec } from "./edition-run.js";
+import {
+  CONDITION_NOTES,
+  type PrintException,
+  REMARQUE_MEDIA,
+  REMARQUE_PLACES,
+  setApartPrintFor,
+} from "./print-exception.js";
 import { ShopDomainError } from "./shop-domain-error.js";
 
 /**
@@ -36,6 +43,8 @@ export type EditionFactsSnapshot = {
   run: EditionRunSpec;
   proofsKept: ProofsKept | null;
   facts: PlainEditionFacts | null;
+  /** What differs about a print sold on its own; left out for every other print. */
+  exception?: PrintException;
 };
 
 /** A snapshot read back and checked: dates restored and the facts known to fit the run. */
@@ -43,6 +52,8 @@ export type ReadEditionSnapshot = {
   run: EditionRunSpec;
   proofsKept: ProofsKept | null;
   facts: EditionFacts | null;
+  /** What differed about a print sold on its own; absent or null for every other print. */
+  exception?: PrintException | null;
 };
 
 /** Where the signed letter is kept stays with staff, so it is not kept on an order. */
@@ -71,17 +82,42 @@ export function createEditionSnapshot(input: {
   run: EditionRunSpec;
   proofsKept: ProofsKept | null;
   facts: EditionFacts | null;
+  exception?: PrintException | null;
 }): EditionFactsSnapshot {
   return {
     schemaVersion: EDITION_SNAPSHOT_VERSION,
     run: input.run,
     proofsKept: input.proofsKept,
     facts: editionFactsToPlain(input.facts),
+    ...(input.exception ? { exception: input.exception } : {}),
   };
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function oneOf<T extends string>(values: readonly T[], value: unknown): T | null {
+  return typeof value === "string" && (values as readonly string[]).includes(value)
+    ? (value as T)
+    : null;
+}
+
+/** Reads what differed about a print; anything that is not a valid difference is dropped. */
+function readException(raw: unknown): PrintException | null {
+  if (!isRecord(raw)) return null;
+  const remarque = isRecord(raw.remarque) ? raw.remarque : null;
+  const medium = remarque ? oneOf(REMARQUE_MEDIA, remarque.medium) : null;
+  const place = remarque ? oneOf(REMARQUE_PLACES, remarque.place) : null;
+  const condition = oneOf(CONDITION_NOTES, raw.condition);
+  const signature = isRecord(raw.signature) && typeof raw.signature.kind === "string";
+  const exception: PrintException = {
+    ...(medium && place ? { remarque: { medium, place } } : {}),
+    ...(raw.dedicated === true ? { dedicated: true as const } : {}),
+    ...(signature ? { signature: raw.signature as unknown as Signature } : {}),
+    ...(condition ? { condition } : {}),
+  };
+  return Object.keys(exception).length > 0 ? exception : null;
 }
 
 function readFacts(run: EditionRunSpec, raw: unknown): EditionFacts | null {
@@ -129,6 +165,7 @@ export function readEditionSnapshot(raw: unknown): ReadEditionSnapshot | null {
     run,
     proofsKept: isRecord(raw.proofsKept) ? (raw.proofsKept as unknown as ProofsKept) : null,
     facts: readFacts(run, raw.facts),
+    exception: readException(raw.exception),
   };
 }
 
@@ -149,8 +186,12 @@ export function describeSnapshotPrint(
   print?: DescribedPrint,
 ): PrintDescription | null {
   if (!snapshot.facts) return null;
+  const setApart = snapshot.exception && print ? setApartPrintFor(snapshot.run, print) : null;
   const description = describeEditionFacts(snapshot.run, snapshot.facts, {
     ...(snapshot.proofsKept ? { proofsKept: snapshot.proofsKept } : {}),
+    ...(setApart && snapshot.exception
+      ? { setApart: { print: setApart, exception: snapshot.exception } }
+      : {}),
   });
   return {
     summary: description.orderLine(print),

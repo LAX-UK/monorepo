@@ -25,6 +25,7 @@ import {
   DrizzleQrCodeScanPersister,
   DrizzleStaffRoleAssignmentReader,
 } from "@auction/persistence/repositories";
+import { DrizzlePartyDealRecordReader } from "@auction/persistence/repositories";
 import type { IAdminImpersonationNotifyReader } from "../interfaces/admin-impersonation-notify.reader.js";
 import type { IAdminReviewTaskProjectorRepository } from "../interfaces/admin-review-task-projector.repository.js";
 import type { IClearArtistBlocksRepository } from "../interfaces/clear-artist-blocks.repository.js";
@@ -165,6 +166,7 @@ export function createWorkerRepositories(
   env: Pick<WorkerEnv, "DOMAIN_EVENT_PUBLISH_VALIDATE">,
 ): WorkerRepositories {
   const projectorStateRepo = new DrizzleProjectorStateRepository(db);
+  const partyDeals = new DrizzlePartyDealRecordReader(db);
   const domainEventPublisher = new WorkerDomainEventPublisher({
     publishValidateMode: env.DOMAIN_EVENT_PUBLISH_VALIDATE,
   });
@@ -179,8 +181,8 @@ export function createWorkerRepositories(
     staffRoleReader: new DrizzleStaffRoleAssignmentReader(db),
     newsletterSignupSyncRepo: new DrizzleNewsletterSignupSyncRepository(db),
     kycRetentionStores: [
-      new DrizzleKycRetentionPersonStore(db),
-      new DrizzleKycRetentionLegalEntityStore(db),
+      new DrizzleKycRetentionPersonStore(db, partyDeals),
+      new DrizzleKycRetentionLegalEntityStore(db, partyDeals),
     ],
     alertRetentionStores: createBidAlertRetentionStores(db),
     staffOpsRecipientReader: new DrizzleStaffOpsRecipientReader(db),

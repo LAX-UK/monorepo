@@ -15,7 +15,7 @@ export function ArtworkBuyColumn({
 }: {
   vm: Pick<
     ArtworkProductPageVm,
-    "eyebrow" | "title" | "year" | "artistName" | "artistHref" | "metaLine"
+    "eyebrow" | "heading" | "year" | "artistName" | "artistHref" | "metaLine"
   >;
   children: ReactNode;
 }) {
@@ -24,7 +24,7 @@ export function ArtworkBuyColumn({
       <header className="shop-edition-buy__heading">
         {vm.eyebrow ? <p className="shop-product__eyebrow">{vm.eyebrow}</p> : null}
         <h1 className="shop-product__title">
-          {vm.title}
+          {vm.heading}
           {vm.year != null ? <span className="shop-edition-buy__year">, {vm.year}</span> : null}
         </h1>
         <p className="shop-product__artist">

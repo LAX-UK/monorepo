@@ -4,6 +4,7 @@ import {
   IMAGE_CLEANUP_QUEUE_NAME,
   IMPERSONATION_SWEEPER_QUEUE_NAME,
   PURGE_ALERT_RETENTION_QUEUE_NAME,
+  PURGE_COLLECTION_HANDOVER_QUEUE_NAME,
   PURGE_KYC_RETENTION_QUEUE_NAME,
   PURGE_QR_CODE_SCANS_QUEUE_NAME,
 } from "../queue-names.js";
@@ -81,6 +82,24 @@ export const MAINTENANCE_QUEUE_REGISTRY = {
       removeOnFail: 50,
     },
     description: "Daily prune of stale Bid alert sign-ups and old alert logs",
+  },
+  [PURGE_COLLECTION_HANDOVER_QUEUE_NAME]: {
+    producers: ["worker"],
+    consumer: "worker",
+    criticality: "background",
+    pauseOrder: null,
+    heartbeatKey: null,
+    dlq: false,
+    showInUi: true,
+    allowUiRetries: false,
+    repeatable: true,
+    defaultJobOptions: {
+      attempts: 3,
+      backoff: { type: "exponential", delay: 60_000 },
+      removeOnComplete: 10,
+      removeOnFail: 50,
+    },
+    description: "Daily clearing of kept hand-over records after their retention period",
   },
   [GC_PENDING_UPLOADS_QUEUE_NAME]: {
     producers: ["worker"],

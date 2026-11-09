@@ -9,6 +9,7 @@ import {
   type PublicArtworkList,
   type PublicCategoryList,
   type PublicCategorySummary,
+  type PublicDeliveryRegions,
   type PublicMerchandiseProductDetail,
   type PublicMerchandiseProductList,
   ShopContractParseError,
@@ -19,6 +20,7 @@ import {
   parsePublicArtworkList,
   parsePublicCategoryList,
   parsePublicCategorySummary,
+  parsePublicDeliveryRegions,
   parsePublicMerchandiseProductDetail,
   parsePublicMerchandiseProductList,
 } from "@auction/shop-contracts";
@@ -191,6 +193,18 @@ export async function fetchPublicCategories(input?: {
     throw new ShopApiBffError("upstream", `Shop categories request failed (${response.status})`);
   }
   return readValidatedJson(response, parsePublicCategoryList, "category list");
+}
+
+/**
+ * Where the Shop delivers and how long it takes, as staff keep it. Read on every request: the API
+ * never caches it, so a change in LAX Admin shows at once.
+ */
+export async function fetchPublicDeliveryRegions(): Promise<PublicDeliveryRegions> {
+  const response = await shopApiFetch("/v1/delivery-regions", SLUG_LOOKUP);
+  if (!response.ok) {
+    throw new ShopApiBffError("upstream", `Delivery regions request failed (${response.status})`);
+  }
+  return readValidatedJson(response, parsePublicDeliveryRegions, "delivery regions");
 }
 
 export async function fetchPublicCategoryBySlug(

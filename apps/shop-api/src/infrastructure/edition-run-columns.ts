@@ -88,6 +88,20 @@ function shapeColumns(spec: EditionRunSpec): RunShapeColumns {
       proofType: spec.proofType,
     };
   }
+  if (spec.type === "set_apart") {
+    return {
+      runKind: "limited",
+      runRole: "set_apart",
+      runTemplate: null,
+      runSize: 1,
+      allocBuyer: 0,
+      allocArtist: spec.owner === "artist" ? 1 : 0,
+      allocLax: spec.owner === "lax" ? 1 : 0,
+      openDefaultArtistPct: null,
+      mainRunArtworkId: spec.mainRunId,
+      proofType: null,
+    };
+  }
   if (spec.type === "companion") {
     return {
       ...mainRunColumns(spec.run),
@@ -175,6 +189,18 @@ export function runFromColumns(
         owner: (row.allocArtist ?? 0) > 0 ? "artist" : "lax",
         mainRunId: row.mainRunArtworkId,
         proofsKeptOnMain: mainProofsKept[type],
+      },
+    };
+  }
+  if (row.runRole === "set_apart") {
+    if (!row.mainRunArtworkId) throw corrupt(row.id, "a print set apart has no run");
+    return {
+      artworkId: row.id,
+      proofsKept,
+      spec: {
+        type: "set_apart",
+        mainRunId: row.mainRunArtworkId,
+        owner: (row.allocArtist ?? 0) > 0 ? "artist" : "lax",
       },
     };
   }

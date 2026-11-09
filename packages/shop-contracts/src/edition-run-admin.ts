@@ -336,6 +336,115 @@ export const AdminPrintsFromOriginalResponseSchema = Type.Object({
 });
 export type AdminPrintsFromOriginalResponse = Static<typeof AdminPrintsFromOriginalResponseSchema>;
 
+/** What differs about one print, from the fixed choices; at least one is needed. */
+export const AdminPrintExceptionSchema = Type.Object(
+  {
+    remarque: Type.Optional(
+      Type.Object(
+        {
+          medium: Type.Union([
+            Type.Literal("pencil"),
+            Type.Literal("ink"),
+            Type.Literal("coloured_pencil"),
+          ]),
+          place: Type.Union([
+            Type.Literal("lower_margin"),
+            Type.Literal("upper_margin"),
+            Type.Literal("side_margin"),
+          ]),
+        },
+        { additionalProperties: false },
+      ),
+    ),
+    dedicated: Type.Optional(Type.Literal(true)),
+    signature: Type.Optional(AdminSignatureSchema),
+    condition: Type.Optional(
+      Type.Union([
+        Type.Literal("light_handling_marks"),
+        Type.Literal("margin_toning"),
+        Type.Literal("small_crease_in_margin"),
+      ]),
+    ),
+  },
+  { additionalProperties: false },
+);
+export type AdminPrintException = Static<typeof AdminPrintExceptionSchema>;
+
+/** Sell one print of a numbered run or proof listing on its own, at its own price. */
+export const AdminSetPrintApartBodySchema = Type.Object(
+  {
+    differences: AdminPrintExceptionSchema,
+    printPricePence: Type.Integer({ minimum: 1, maximum: 10_000_000 }),
+  },
+  { additionalProperties: false },
+);
+export type AdminSetPrintApartBody = Static<typeof AdminSetPrintApartBodySchema>;
+
+export const AdminReturnPrintResponseSchema = Type.Object({
+  /** The run the print went back to. */
+  artworkId: Type.String({ format: "uuid" }),
+  version: Type.String(),
+});
+export type AdminReturnPrintResponse = Static<typeof AdminReturnPrintResponseSchema>;
+
+/** Why a print cannot be set apart (or returned) right now. */
+export const AdminPrintBlockSchema = Type.Object({
+  kind: Type.Union([
+    Type.Literal("sold"),
+    Type.Literal("in_basket"),
+    Type.Literal("held"),
+    Type.Literal("withdrawn"),
+    Type.Literal("not_for_sale"),
+    Type.Literal("already_apart"),
+  ]),
+  /** When a basket's reservation ends. */
+  until: Type.Union([Type.String({ format: "date-time" }), Type.Null()]),
+});
+export type AdminPrintBlock = Static<typeof AdminPrintBlockSchema>;
+
+/** One print of a numbered run or proof listing, for the Prints table. */
+export const AdminRunPrintSchema = Type.Object({
+  editionId: Type.String({ format: "uuid" }),
+  /** The number as it reads on the print: "3" or "AP 1". */
+  label: Type.String(),
+  owner: Type.Union([Type.Literal("artist"), Type.Literal("lax"), Type.Literal("buyer")]),
+  status: Type.Union([
+    Type.Literal("not_on_sale"),
+    Type.Literal("on_sale"),
+    Type.Literal("in_basket"),
+    Type.Literal("held"),
+    Type.Literal("sold"),
+    Type.Literal("withdrawn"),
+    Type.Literal("set_apart"),
+  ]),
+  /** Why it cannot be set apart now; null when it can. */
+  block: Type.Union([AdminPrintBlockSchema, Type.Null()]),
+  /** The listing a print set apart is sold from. */
+  setApart: Type.Union([
+    Type.Object({
+      listingArtworkId: Type.String({ format: "uuid" }),
+      title: Type.String(),
+      differences: Type.Array(Type.String()),
+    }),
+    Type.Null(),
+  ]),
+});
+export type AdminRunPrint = Static<typeof AdminRunPrintSchema>;
+
+/** For the listing of a print set apart: where it came from and whether it can go back. */
+export const AdminSetApartInfoSchema = Type.Object({
+  runArtworkId: Type.String({ format: "uuid" }),
+  runTitle: Type.String(),
+  /** "3" or "AP 1". */
+  label: Type.String(),
+  /** "No. 3 of 30" or "AP 1/3". */
+  printOf: Type.String(),
+  differences: Type.Array(Type.String()),
+  /** Why it cannot go back to the run now (sold, in a basket); null when it can. */
+  returnBlock: Type.Union([AdminPrintBlockSchema, Type.Null()]),
+});
+export type AdminSetApartInfo = Static<typeof AdminSetApartInfoSchema>;
+
 export const AdminLinkedListingResponseSchema = Type.Object({
   artworkId: Type.String({ format: "uuid" }),
   slug: Type.String(),
@@ -375,6 +484,11 @@ export const AdminEditionRunSpecSchema = Type.Union([
     type: Type.Literal("companion"),
     mainRunId: Type.String({ format: "uuid" }),
     run: MainSpecSchema,
+  }),
+  Type.Object({
+    type: Type.Literal("set_apart"),
+    mainRunId: Type.String({ format: "uuid" }),
+    owner: Type.Union([Type.Literal("artist"), Type.Literal("lax")]),
   }),
 ]);
 export type AdminEditionRunSpec = Static<typeof AdminEditionRunSpecSchema>;
@@ -444,6 +558,10 @@ export const AdminEditionRunDetailSchema = Type.Object({
   linkedListings: Type.Array(LinkedRunSchema),
   /** Open editions only. */
   stock: Type.Union([AdminOpenStockSchema, Type.Null()]),
+  /** Numbered runs and proof listings: each print, for the Prints table. Null for the rest. */
+  prints: Type.Union([Type.Array(AdminRunPrintSchema), Type.Null()]),
+  /** A listing of a print set apart: where it came from. Null for every other listing. */
+  setApart: Type.Union([AdminSetApartInfoSchema, Type.Null()]),
   /** The artist's written authority for certificates LAX issues, once recorded. */
   certificateAuthority: Type.Union([
     Type.Object({

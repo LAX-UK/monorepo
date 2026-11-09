@@ -40,6 +40,8 @@ export type DealTransitionContext = {
   clearance: DealClearanceSnapshot;
   termsAcceptance: TermsAcceptance;
   cancelReason?: string;
+  /** How the work was handed over, kept with the release. */
+  releaseNote?: string;
   /** Set by the refund flow once a paid deal's money has been returned. */
   refundRecorded?: boolean;
 };
@@ -136,6 +138,10 @@ const paidDealRefunded: Guard = (deal, ctx) =>
     ? [{ code: "refund_not_recorded" }]
     : [];
 
+/** The release is recorded: who collected the work, or how it was shipped. */
+const releaseNoted: Guard = (_deal, ctx) =>
+  (ctx.releaseNote ?? "").trim() === "" ? [{ code: "release_note_required" }] : [];
+
 const addDays = (from: Date, days: number): Date => new Date(from.getTime() + days * 86_400_000);
 
 /**
@@ -184,7 +190,7 @@ export const DEAL_TRANSITIONS: Readonly<Record<DealCommand, TransitionRow>> = {
         ? {}
         : { collectionDueAt: addDays(ctx.now, ctx.policy.collectionDueDays) },
   },
-  release: { from: ["paid"], to: "released", guards: [] },
+  release: { from: ["paid"], to: "released", guards: [releaseNoted] },
   settle: { from: ["released"], to: "settled", guards: [] },
   cancel: {
     from: ["proposed", "offer", "agreed", "cleared", "invoiced", "paid", "released"],
@@ -212,6 +218,13 @@ export function dealBlockers(
   return row.guards.flatMap((guard) => guard(deal, ctx));
 }
 
+/** What is kept with a move in the history: the cancel reason, or how the work was released. */
+function reasonOf(command: DealCommand, ctx: DealTransitionContext): string | null {
+  if (command === "cancel") return (ctx.cancelReason ?? "").trim();
+  if (command === "release") return (ctx.releaseNote ?? "").trim();
+  return null;
+}
+
 /** Makes a move if the deal may make it. A pure function: it writes nothing and reads no records. */
 export function transitionDeal(
   deal: DealSnapshot,
@@ -227,7 +240,7 @@ export function transitionDeal(
       from: deal.stage,
       to: row.to,
       actorUserId: ctx.actorUserId,
-      reason: command === "cancel" ? (ctx.cancelReason ?? "").trim() : null,
+      reason: reasonOf(command, ctx),
       changes: row.changes?.(deal, ctx) ?? {},
     },
   };

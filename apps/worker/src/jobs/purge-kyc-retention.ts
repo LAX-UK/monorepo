@@ -1,9 +1,13 @@
-import { kycEvidenceHeldForDeals } from "@auction/domain";
+import { partyEvidenceHold } from "@auction/domain";
 import type {
   IKycRetentionSubjectStore,
   RecordCounts,
 } from "../interfaces/kyc-retention-subject.store.js";
 import type { UploadStorage } from "../lib/upload-storage.js";
+import type {
+  IRetentionHoldAlerts,
+  RetentionHoldAttention,
+} from "../retention/kyc-retention-hold-alert.js";
 import {
   isRetentionExpired,
   latestClosureThatCanBeDue,
@@ -24,6 +28,10 @@ export type KycRetentionPurgeSummary = {
   due: number;
   /** Subjects whose evidence is kept because a private sale deal's record is still retained. */
   heldForDeals: number;
+  /** Of those, subjects held by a deal that has no end date, which nothing will release by itself. */
+  heldWithoutEnd: number;
+  /** Of those, subjects held by an open deal that has not changed stage for longer than the retention. */
+  heldByStaleDeal: number;
   /** Subjects purged this run; always 0 in a dry run. */
   purged: number;
   failed: number;
@@ -46,16 +54,21 @@ export async function purgeKycRetentionJob(input: {
   dryRun: boolean;
   /** Years a private sale's record is kept after the deal ends; its parties' evidence is kept as long. */
   privateSaleRetentionYears: number;
+  /** Told when a hold needs a person to look at it; absent where nobody is to be told. */
+  alerts?: IRetentionHoldAlerts;
   batchSize?: number;
   now?: Date;
 }): Promise<KycRetentionPurgeSummary> {
   const now = input.now ?? new Date();
   const batchSize = input.batchSize ?? DEFAULT_BATCH_SIZE;
   const closedBefore = latestClosureThatCanBeDue(now);
+  const attention: RetentionHoldAttention[] = [];
   const summary: KycRetentionPurgeSummary = {
     dryRun: input.dryRun,
     due: 0,
     heldForDeals: 0,
+    heldWithoutEnd: 0,
+    heldByStaleDeal: 0,
     purged: 0,
     failed: 0,
   };
@@ -76,10 +89,29 @@ export async function purgeKycRetentionJob(input: {
         // The evidence goes only when both clocks have run out: the subject's own five years
         // (above) and the retention of every private sale deal they were named on.
         const deals = await store.dealRecords(candidate.subjectId);
-        if (kycEvidenceHeldForDeals(deals, now, input.privateSaleRetentionYears)) {
+        const hold = partyEvidenceHold(deals, now, input.privateSaleRetentionYears);
+        if (hold.held) {
           summary.heldForDeals += 1;
+          if (hold.withoutEnd) summary.heldWithoutEnd += 1;
+          if (hold.stale) summary.heldByStaleDeal += 1;
+          for (const reason of hold.reasons) {
+            if (reason.kind === "end_unknown") {
+              attention.push({ reference: reason.reference, kind: "no_end" });
+            } else if (reason.stale) {
+              attention.push({ reference: reason.reference, kind: "stale" });
+            }
+          }
           input.log.info(
-            { subjectKind: store.kind, subjectId: candidate.subjectId },
+            {
+              subjectKind: store.kind,
+              subjectId: candidate.subjectId,
+              holds: hold.reasons.map((reason) => ({
+                deal: reason.reference,
+                kind: reason.kind,
+                heldUntil: reason.heldUntil?.toISOString() ?? null,
+                stale: reason.stale,
+              })),
+            },
             "kyc_retention_purge_held_for_private_sale_deal",
           );
           continue;
@@ -117,9 +149,34 @@ export async function purgeKycRetentionJob(input: {
     }
   }
 
+  await alertAboutHolds(input.alerts, attention, input.log);
   input.log.info({ ...summary }, "kyc_retention_purge_done");
   if (summary.failed > 0) {
     throw new Error(`KYC retention purge failed for ${summary.failed} subject(s); will retry`);
   }
   return summary;
+}
+
+/**
+ * Tells compliance about holds that need a person, once per deal however many people it holds. A
+ * failure to tell is logged and never stops the purge: the holds still hold.
+ */
+async function alertAboutHolds(
+  alerts: IRetentionHoldAlerts | undefined,
+  attention: readonly RetentionHoldAttention[],
+  log: Logger,
+): Promise<void> {
+  if (!alerts || attention.length === 0) return;
+  const seen = new Set<string>();
+  const unique = attention.filter((hold) => {
+    const key = `${hold.reference}:${hold.kind}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+  try {
+    await alerts.needAttention(unique);
+  } catch (error) {
+    log.error({ error }, "kyc_retention_hold_alert_failed");
+  }
 }
