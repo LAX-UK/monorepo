@@ -1,8 +1,30 @@
+import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { isSafeNextPath } from "@/lib/auth/safe-next-path";
 import AxeBuilder from "@axe-core/playwright";
 import { type BrowserContext, type Page, type Response, expect } from "@playwright/test";
 import { roleAuthState } from "./auth-state";
+
+const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../..");
+
+/**
+ * Clears the test Redis rate-limit keys. The issuer allows one address 30 requests a minute on
+ * its general routes, and a run of signed-in specs spends most of that on the web app's own calls
+ * to it. A spec that then sends a person to the hosted sign-in page (which asks the issuer to
+ * authorize) can be answered with "Too many attempts", depending only on how fast the run was. Such
+ * a spec clears the keys first, so it tests the page and not the clock.
+ */
+export function flushAuthRateLimits(): void {
+  const result = spawnSync("node", [path.join(repoRoot, "scripts/ci/flush-auth-rate-limits.mjs")], {
+    stdio: "inherit",
+    env: process.env,
+  });
+  if (result.status !== 0) {
+    throw new Error("failed to flush the auth rate-limit keys");
+  }
+}
 
 export const e2eEnabled = process.env.PLAYWRIGHT_E2E === "1";
 export const e2eSkipReason = "Set PLAYWRIGHT_E2E=1 and start apps/web with seeded credentials.";
