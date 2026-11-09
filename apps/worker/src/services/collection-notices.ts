@@ -27,6 +27,8 @@ export type CollectionNoticeVisit = {
   collector: { kind: "self" | "member" | "third_party"; name: string; email: string | null };
   place: { name: string; address: string };
   lots: { title: string; lotNumber: number | null; active: boolean }[];
+  /** The account the visit was booked for: an organisation, or a person's own. */
+  account: { kind: "organisation" | "personal"; name: string };
   /** Who booked it, when they still have an account. */
   booker: (NoticeRecipient & { name: string }) | null;
   /** The account's owners and admins: who hears when the booker cannot. */
@@ -127,6 +129,30 @@ function buyerRecipients(visit: CollectionNoticeVisit): NoticeRecipient[] {
   // A visit the desk booked is for the client, never for the staff member who typed it in.
   if (visit.bookedVia === "staff") return visit.accountPeople;
   return visit.booker ? [visit.booker] : visit.accountPeople;
+}
+
+/**
+ * Who a named collector is collecting for, and who authorised them: the organisation for an
+ * organisation's booking, with the member who booked it; the person for a personal one.
+ */
+function authorisation(visit: CollectionNoticeVisit): {
+  onBehalfOf: string;
+  bookedBy: string | null;
+} {
+  const person = visit.booker?.name ?? visit.booker?.firstName ?? null;
+  if (visit.account.kind === "organisation" && visit.account.name) {
+    return { onBehalfOf: visit.account.name, bookedBy: person };
+  }
+  return { onBehalfOf: person ?? visit.account.name ?? "the buyer", bookedBy: null };
+}
+
+/** Whether an email is to the person named to collect, not to the buyer. */
+export function isCollectorEmail(email: Enqueue): boolean {
+  if (email.template === "collection-collector-notice") return true;
+  return (
+    email.template === "collection-cancelled" &&
+    Boolean((email.vars as TemplateVarsByName["collection-cancelled"]).forCollector)
+  );
 }
 
 /**
@@ -252,7 +278,7 @@ export function collectionEmailsFor(
   // Someone named to collect hears too, with their own calendar entry and nothing about money.
   const collectorEmail = visit.collector.email;
   if (visit.collector.kind === "third_party" && collectorEmail && change.kind !== "reminder") {
-    const bookerName = visit.booker?.name ?? visit.booker?.firstName ?? "the buyer";
+    const { onBehalfOf, bookedBy } = authorisation(visit);
     const calendar = (method: "REQUEST" | "CANCEL") =>
       calendarFor(
         method,
@@ -267,7 +293,7 @@ export function collectionEmailsFor(
         recipientResolution: "snapshot",
         vars: {
           userName: visit.collector.name,
-          forCollector: { bookerName },
+          forCollector: { onBehalfOf },
           reference: visit.reference,
           dayLabel,
           lots: lotsFor(visit, true).map((line) => line.replace(/^Lot \d+ · /, "")),
@@ -282,7 +308,8 @@ export function collectionEmailsFor(
         recipientResolution: "snapshot",
         vars: {
           collectorName: visit.collector.name,
-          bookerName,
+          onBehalfOf,
+          bookedBy,
           reference: visit.reference,
           whenLabel,
           dayLabel,

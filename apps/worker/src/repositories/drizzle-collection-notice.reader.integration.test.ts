@@ -109,6 +109,7 @@ describe.skipIf(!HAS_DB)("collection notice reader (integration)", () => {
         { title: "Lowland Storm", lotNumber: 12, active: false },
         { title: "Coastal Notation", lotNumber: 14, active: true },
       ],
+      account: { kind: "organisation", name: "Northbank Gallery" },
       booker: { userId: booker, email: `${booker}@integration.test`, name: "Maya Okafor" },
     });
     expect(read?.accountPeople.map((p) => p.userId)).toEqual([owner]);
@@ -117,6 +118,25 @@ describe.skipIf(!HAS_DB)("collection notice reader (integration)", () => {
   it("has no booker once that person's account has gone", async () => {
     const id = await visit({ bookedByUserId: gone });
     expect((await reader.visit(id))?.booker).toBeNull();
+  });
+
+  it("counts the collection emails queued to an address in the window, and only those", async () => {
+    const hash = `col-note-hash-${run}`;
+    const row = (key: string, template: string, createdAt: string) => sql`
+      insert into email_outbox (idempotency_key, to_email_hash, template, vars, category, created_at)
+      values (${`${hash}:${key}`}, ${hash}, ${template}, '{}'::jsonb, 'transactional', ${createdAt}::timestamptz)`;
+    try {
+      await db.execute(row("a", "collection-collector-notice", "2034-06-01T09:00:00Z"));
+      await db.execute(row("b", "collection-cancelled", "2034-06-01T10:00:00Z"));
+      await db.execute(row("c", "collection-booked", "2034-06-01T10:30:00Z"));
+      await db.execute(row("d", "collection-collector-notice", "2034-05-30T09:00:00Z"));
+      expect(await reader.collectorEmailsSince(hash, new Date("2034-05-31T12:00:00Z"))).toBe(2);
+      expect(
+        await reader.collectorEmailsSince("another-hash", new Date("2034-05-31T12:00:00Z")),
+      ).toBe(0);
+    } finally {
+      await db.execute(sql`delete from email_outbox where to_email_hash = ${hash}`);
+    }
   });
 
   it("answers null for a visit that does not exist", async () => {
@@ -138,7 +158,7 @@ describe.skipIf(!HAS_DB)("collection notice reader (integration)", () => {
     await visit({
       slotStart: new Date(early.getTime() + 7_200_000),
       slotEnd: new Date(early.getTime() + 9_000_000),
-      createdAt: new Date(Date.UTC(2034, 5, 1, 12, 0)),
+      updatedAt: new Date(Date.UTC(2034, 5, 1, 12, 0)),
     });
     await visit({
       slotStart: new Date(early.getTime() + 2 * 86_400_000),
@@ -147,7 +167,7 @@ describe.skipIf(!HAS_DB)("collection notice reader (integration)", () => {
     const due = await reader.dueReminders({
       from: new Date(Date.UTC(2034, 5, 1, 0, 0)),
       to: new Date(Date.UTC(2034, 5, 2, 0, 0)),
-      bookedBefore: new Date(Date.UTC(2034, 5, 1, 10, 0)),
+      changedBefore: new Date(Date.UTC(2034, 5, 1, 10, 0)),
     });
     expect(due).toEqual([{ bookingId: inWindow }]);
   });

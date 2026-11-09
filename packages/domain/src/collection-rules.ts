@@ -47,6 +47,13 @@ export const DEFAULT_COLLECTION_WEEKLY_HOURS: readonly {
 export const DEFAULT_COLLECTION_HANDOVER_RETENTION_YEARS = 6;
 export const MIN_COLLECTION_HANDOVER_RETENTION_YEARS = 3;
 
+/**
+ * The most collection emails one address can be sent in 24 hours as a named collector (the notice,
+ * and the cancellation that follows it). A buyer types the address, and an address that is not
+ * theirs must not become a place to send mail to by booking and changing over and over.
+ */
+export const COLLECTOR_EMAILS_PER_ADDRESS_PER_DAY = 5;
+
 /** The most lots one booking can hold. */
 export const MAX_LOTS_PER_COLLECTION = 20;
 

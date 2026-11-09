@@ -6,6 +6,7 @@ import {
   type CollectionNoticeConfig,
   collectionEmailsFor,
 } from "../services/collection-notices.js";
+import { enqueueCollectionEmails } from "../services/send-collection-emails.js";
 import type { ProjectorRunContext } from "./lib/projector.types.js";
 
 export const COLLECTION_BOOKING_NOTIFY_PROJECTOR = "collection_booking_notify";
@@ -92,9 +93,14 @@ export async function processCollectionBookingNotify(options: {
     try {
       const visit = await collectionNoticeReader.visit(payload.bookingId);
       if (visit) {
-        for (const email of collectionEmailsFor(change, visit, { ...config, now: now() })) {
-          await emailService.enqueue(email);
-        }
+        const at = now();
+        await enqueueCollectionEmails({
+          emails: collectionEmailsFor(change, visit, { ...config, now: at }),
+          reader: collectionNoticeReader,
+          emailService,
+          log,
+          now: at,
+        });
       }
       maxId = row.id;
     } catch (err) {

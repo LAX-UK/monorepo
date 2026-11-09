@@ -114,9 +114,16 @@ The calendar invites come from `COLLECTION_ORGANIZER_EMAIL` / `COLLECTION_ORGANI
 for invites to work; changing them in an environment is an infrastructure change. Mail clients need
 an organizer to update or remove an entry, so keep it an address that exists.
 
+**Named collectors.** The collector email names the organisation that authorised them and the
+member who booked ("Authorised by Northbank Ltd, booked by Jane Hart"), or just the person for a
+personal booking. The buyer types the collector's address, so each address is sent at most 5
+collection emails (the notice and the cancellation) in 24 hours; beyond that they are skipped and
+logged as `collection_collector_email_capped` (by the address's hash). The count comes from the
+email outbox, so it holds even if the booking rate limit is unavailable.
+
 **Day-before reminder.** A repeat job (`collection-reminders`, every 15 minutes) emails the buyer
-about tomorrow's visits from 09:00 London time. A visit booked after that morning's 09:00 gets none
-(its confirmation has just gone); a visit that moves is reminded for its new time. The key is the
+about tomorrow's visits from 09:00 London time. A visit booked or moved after that morning's 09:00 gets none
+(its confirmation or change email has just gone); a visit that moves earlier in the day is reminded for its new time. The key is the
 visit and its start, so any number of sweeps sends one. If reminders stop, check the queue's
 heartbeat (`collection-reminders`) before anything else.
 

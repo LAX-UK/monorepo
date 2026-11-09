@@ -120,7 +120,8 @@ describe("collection reminder email", () => {
 describe("collection collector email", () => {
   const notice = {
     collectorName: "Sam Okoro",
-    bookerName: "Maya Okafor",
+    onBehalfOf: "Maya Okafor",
+    bookedBy: null,
     reference: "COL-4821",
     whenLabel: "Thu 12 Nov, 14:00–14:30 GMT",
     dayLabel: "Thu 12 Nov",
@@ -136,6 +137,23 @@ describe("collection collector email", () => {
     expect(rendered.text).toContain("Bring photo ID");
     expect(`${rendered.subject} ${rendered.text}`).not.toMatch(PRICE);
     expect(rendered.html).not.toContain('href="https://lax.bid');
+  });
+
+  it("names the organisation that authorised the collector and the member who booked", async () => {
+    const rendered = await renderEmail("collection-collector-notice", {
+      ...notice,
+      onBehalfOf: "Northbank Ltd",
+      bookedBy: "Jane Hart",
+    });
+    expect(rendered.subject).toBe("You're collecting for Northbank Ltd");
+    expect(rendered.text).toContain("Authorised by Northbank Ltd, booked by Jane Hart.");
+    expect(rendered.text).toContain("please contact Jane Hart");
+  });
+
+  it("names just the person for a personal booking", async () => {
+    const rendered = await renderEmail("collection-collector-notice", notice);
+    expect(rendered.text).toContain("Authorised by Maya Okafor.");
+    expect(rendered.text).not.toContain("booked by");
   });
 
   it("counts the lots when there are several", async () => {

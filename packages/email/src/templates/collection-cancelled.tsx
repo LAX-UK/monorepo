@@ -17,7 +17,7 @@ function whyItEnded({
   forCollector,
 }: Pick<Vars, "cancelledBy" | "reasonText" | "forCollector">): string {
   if (forCollector) {
-    return `${forCollector.bookerName}'s collection has been cancelled, so you don't need to come. The calendar entry is removed if your calendar supports it.`;
+    return `${forCollector.onBehalfOf}'s collection has been cancelled, so you don't need to come. The calendar entry is removed if your calendar supports it.`;
   }
   if (cancelledBy === "buyer") {
     return "The time has been released for someone else. Your lots stay with us, paid and safe, until you book again.";

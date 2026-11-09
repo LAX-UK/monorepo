@@ -4,11 +4,13 @@ import {
   bidUserProfile,
   collectionBooking,
   collectionBookingLot,
+  emailOutbox,
+  legalEntity,
   legalEntityMember,
   lot,
   venue,
 } from "@auction/db/schema";
-import { and, asc, eq, gte, inArray, isNotNull, isNull, lt, or, sql } from "drizzle-orm";
+import { and, asc, count, eq, gte, inArray, isNotNull, isNull, lt, or, sql } from "drizzle-orm";
 import type {
   ICollectionNoticeReader,
   RemindableVisit,
@@ -50,6 +52,11 @@ export class DrizzleCollectionNoticeReader implements ICollectionNoticeReader {
       .where(eq(collectionBookingLot.bookingId, bookingId))
       .orderBy(asc(lot.lotNumber), asc(lot.title));
 
+    const [account] = await this.db
+      .select({ kind: legalEntity.kind, displayName: legalEntity.displayName })
+      .from(legalEntity)
+      .where(eq(legalEntity.id, booking.legalEntityId))
+      .limit(1);
     const booker = booking.bookedByUserId ? await this.person(booking.bookedByUserId) : null;
     const people = await this.accountPeople(booking.legalEntityId);
 
@@ -72,6 +79,10 @@ export class DrizzleCollectionNoticeReader implements ICollectionNoticeReader {
           .join(", "),
       },
       lots,
+      account: {
+        kind: account?.kind === "organisation" ? "organisation" : "personal",
+        name: account?.displayName ?? "",
+      },
       booker: booker ? { ...booker, name: booker.name } : null,
       accountPeople: people,
     };
@@ -80,7 +91,7 @@ export class DrizzleCollectionNoticeReader implements ICollectionNoticeReader {
   async dueReminders(window: {
     from: Date;
     to: Date;
-    bookedBefore: Date;
+    changedBefore: Date;
   }): Promise<RemindableVisit[]> {
     const rows = await this.db
       .select({ bookingId: collectionBooking.id })
@@ -90,11 +101,26 @@ export class DrizzleCollectionNoticeReader implements ICollectionNoticeReader {
           eq(collectionBooking.status, "booked"),
           gte(collectionBooking.slotStart, window.from),
           lt(collectionBooking.slotStart, window.to),
-          lt(collectionBooking.createdAt, window.bookedBefore),
+          // Last changed, not first booked: a visit moved after 09:00 has just had its change email.
+          lt(collectionBooking.updatedAt, window.changedBefore),
         ),
       )
       .orderBy(asc(collectionBooking.slotStart), asc(collectionBooking.id));
     return rows;
+  }
+
+  async collectorEmailsSince(addressHash: string, since: Date): Promise<number> {
+    const [row] = await this.db
+      .select({ total: count() })
+      .from(emailOutbox)
+      .where(
+        and(
+          eq(emailOutbox.toEmailHash, addressHash),
+          inArray(emailOutbox.template, ["collection-collector-notice", "collection-cancelled"]),
+          gte(emailOutbox.createdAt, since),
+        ),
+      );
+    return Number(row?.total ?? 0);
   }
 
   /** A person with an account still open: their address, first name and full name. */

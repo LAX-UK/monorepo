@@ -8,11 +8,11 @@ describe("which visits are due a reminder", () => {
     expect(reminderWindow(new Date("2026-11-09T08:59:00Z"))).toBeNull();
   });
 
-  it("is tomorrow's visits from 09:00, and visits booked before that morning", () => {
+  it("is tomorrow's visits from 09:00, and visits last changed before that morning", () => {
     const window = reminderWindow(new Date("2026-11-09T09:00:00Z"));
     expect(iso(window?.from)).toBe("2026-11-10T00:00:00.000Z");
     expect(iso(window?.to)).toBe("2026-11-11T00:00:00.000Z");
-    expect(iso(window?.bookedBefore)).toBe("2026-11-09T09:00:00.000Z");
+    expect(iso(window?.changedBefore)).toBe("2026-11-09T09:00:00.000Z");
   });
 
   it("is the same answer all day, so the sweep can run as often as it likes", () => {
@@ -26,7 +26,7 @@ describe("which visits are due a reminder", () => {
     const window = reminderWindow(new Date("2026-07-09T08:00:00Z"));
     expect(iso(window?.from)).toBe("2026-07-09T23:00:00.000Z");
     expect(iso(window?.to)).toBe("2026-07-10T23:00:00.000Z");
-    expect(iso(window?.bookedBefore)).toBe("2026-07-09T08:00:00.000Z");
+    expect(iso(window?.changedBefore)).toBe("2026-07-09T08:00:00.000Z");
   });
 
   it("treats a late evening in UTC as the next London day around midnight in summer", () => {

@@ -5,9 +5,9 @@ import type { TemplateVarsByName } from "../types.js";
 
 type Vars = TemplateVarsByName["collection-collector-notice"];
 
-export const subject = ({ lots, dayLabel, bookerName }: Vars) =>
+export const subject = ({ lots, dayLabel, onBehalfOf }: Vars) =>
   lots.length === 1
-    ? `You're collecting for ${bookerName}`
+    ? `You're collecting for ${onBehalfOf}`
     : `You're collecting ${lots.length} lots on ${dayLabel}`;
 
 /**
@@ -16,7 +16,8 @@ export const subject = ({ lots, dayLabel, bookerName }: Vars) =>
  */
 export default function CollectionCollectorNoticeEmail({
   collectorName,
-  bookerName,
+  onBehalfOf,
+  bookedBy,
   reference,
   whenLabel,
   placeName,
@@ -28,12 +29,17 @@ export default function CollectionCollectorNoticeEmail({
     <Layout
       category="auction"
       eyebrow="Collection"
-      preview={`${bookerName} has asked you to collect ${what}.`}
-      title={`You're collecting for ${bookerName}`}
+      preview={`${onBehalfOf} has asked you to collect ${what}.`}
+      title={`You're collecting for ${onBehalfOf}`}
     >
       <TextBlock>Hi {collectorName},</TextBlock>
       <TextBlock>
-        {bookerName} has asked you to collect {what} on their behalf. A calendar invite is attached.
+        {onBehalfOf} has asked you to collect {what} on their behalf. A calendar invite is attached.
+      </TextBlock>
+      <TextBlock>
+        {bookedBy
+          ? `Authorised by ${onBehalfOf}, booked by ${bookedBy}.`
+          : `Authorised by ${onBehalfOf}.`}
       </TextBlock>
       <CollectionVisitFacts
         reference={reference}
@@ -44,8 +50,8 @@ export default function CollectionCollectorNoticeEmail({
       />
       <TextBlock>{PHOTO_ID_RULE}</TextBlock>
       <TextBlock>
-        If this isn't right, or the time no longer works, please contact {bookerName}: they can
-        change the booking.
+        If this isn't right, or the time no longer works, please contact {bookedBy ?? onBehalfOf}:
+        they can change the booking.
       </TextBlock>
     </Layout>
   );

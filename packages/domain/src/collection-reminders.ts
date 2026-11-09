@@ -11,10 +11,10 @@ export type ReminderWindow = {
   /** ...up to, not including, this one (the start of the day after). */
   to: Date;
   /**
-   * Only visits booked before this instant get a reminder: a visit booked after this morning's
-   * 09:00 for tomorrow has just had its confirmation.
+   * Only visits last changed before this instant get a reminder: a visit booked or moved after
+   * this morning's 09:00 for tomorrow has just had its confirmation or change email.
    */
-  bookedBefore: Date;
+  changedBefore: Date;
 };
 
 const startOfLondonDay = (key: string): Date =>
@@ -38,6 +38,6 @@ export function reminderWindow(now: Date): ReminderWindow | null {
   return {
     from: startOfLondonDay(tomorrow),
     to: startOfLondonDay(addDaysToKey(tomorrow, 1)),
-    bookedBefore: nineToday,
+    changedBefore: nineToday,
   };
 }

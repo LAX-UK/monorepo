@@ -20,6 +20,7 @@ const visit: CollectionNoticeVisit = {
   collector: { kind: "self", name: "Maya Okafor", email: null },
   place: { name: "London Art Exchange", address: "156 New Cavendish Street" },
   lots: [{ title: "Lowland Storm", lotNumber: 12, active: true }],
+  account: { kind: "personal", name: "Maya Okafor" },
   booker: { userId: "u1", email: "maya@example.com", firstName: "Maya", name: "Maya Okafor" },
   accountPeople: [],
 };
@@ -32,7 +33,7 @@ function setup(
   const dueReminders = vi.fn().mockResolvedValue(due);
   const run = (now: string) =>
     runCollectionRemindersJob({
-      reader: { visit: read, dueReminders },
+      reader: { visit: read, dueReminders, collectorEmailsSince: vi.fn().mockResolvedValue(0) },
       emailService: { enqueue } as unknown as IEmailService,
       config: CONFIG,
       log,
@@ -55,7 +56,7 @@ describe("the collection reminder sweep", () => {
     expect(s.dueReminders).toHaveBeenCalledWith({
       from: new Date("2026-11-10T00:00:00Z"),
       to: new Date("2026-11-11T00:00:00Z"),
-      bookedBefore: new Date("2026-11-09T09:00:00Z"),
+      changedBefore: new Date("2026-11-09T09:00:00Z"),
     });
     expect(s.enqueue.mock.calls[0]?.[0]).toMatchObject({
       template: "collection-reminder",

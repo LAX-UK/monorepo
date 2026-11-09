@@ -34,6 +34,7 @@ function visit(over: Partial<CollectionNoticeVisit> = {}): CollectionNoticeVisit
       { title: "Lowland Storm", lotNumber: 12, active: true },
       { title: "Coastal Notation", lotNumber: 14, active: true },
     ],
+    account: { kind: "personal", name: "Maya Okafor" },
     booker: maya,
     accountPeople: [owner],
     ...over,
@@ -111,12 +112,54 @@ describe("a booking made", () => {
     const vars = notice?.vars as Record<string, unknown>;
     expect(vars).toMatchObject({
       collectorName: "Sam Okoro",
-      bookerName: "Maya Okafor",
+      onBehalfOf: "Maya Okafor",
+      bookedBy: null,
       lots: ["Lowland Storm", "Coastal Notation"],
     });
     expect(JSON.stringify(vars)).not.toContain("bookingUrl");
     expect((vars.calendar as { content: string }).content).toContain("mailto:sam@example.com");
     expect(emails[0]?.vars).toMatchObject({ collectorIsOther: true, collectorName: "Sam Okoro" });
+  });
+
+  it("names the organisation that authorised a collector, and the member who booked, for an organisation's booking", () => {
+    const emails = collectionEmailsFor(
+      created,
+      visit({
+        account: { kind: "organisation", name: "Northbank Ltd" },
+        booker: { ...maya, name: "Jane Hart", firstName: "Jane" },
+        collector: { kind: "third_party", name: "Sam Okoro", email: "sam@example.com" },
+      }),
+      CONFIG,
+    );
+    expect(emails[1]?.vars).toMatchObject({ onBehalfOf: "Northbank Ltd", bookedBy: "Jane Hart" });
+  });
+
+  it("names only the organisation when the member who booked has left", () => {
+    const emails = collectionEmailsFor(
+      {
+        kind: "changed",
+        eventId: 9,
+        previousSlotStart: new Date("2026-11-10T10:00:00Z"),
+        noticeDeadline: null,
+      },
+      visit({
+        account: { kind: "organisation", name: "Northbank Ltd" },
+        booker: null,
+        collector: { kind: "third_party", name: "Sam Okoro", email: "sam@example.com" },
+      }),
+      CONFIG,
+    );
+    const notice = emails.find((e) => e.to === "sam@example.com");
+    expect(notice?.vars).toMatchObject({ onBehalfOf: "Northbank Ltd", bookedBy: null });
+  });
+
+  it("names the person for a personal booking", () => {
+    const [, notice] = collectionEmailsFor(
+      created,
+      visit({ collector: { kind: "third_party", name: "Sam Okoro", email: "sam@example.com" } }),
+      CONFIG,
+    );
+    expect(notice?.vars).toMatchObject({ onBehalfOf: "Maya Okafor", bookedBy: null });
   });
 
   it("sends a collector with no address nothing, and one email only if they share the buyer's", () => {
@@ -260,7 +303,7 @@ describe("a booking cancelled", () => {
     const forCollector = emails.find((e) => e.to === "sam@example.com");
     expect(forCollector).toMatchObject({ template: "collection-cancelled" });
     expect(forCollector?.vars).toMatchObject({
-      forCollector: { bookerName: "Maya Okafor" },
+      forCollector: { onBehalfOf: "Maya Okafor" },
       lots: ["Lowland Storm", "Coastal Notation"],
     });
   });

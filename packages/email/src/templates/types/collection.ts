@@ -52,7 +52,7 @@ type CollectionTemplateVars = {
   "collection-cancelled": {
     userName?: string | null;
     /** Set when the email is for the person collecting, not the buyer. */
-    forCollector?: { bookerName: string } | null;
+    forCollector?: { onBehalfOf: string } | null;
     reference: string;
     /** The day that was booked: "Thu 12 Nov". */
     dayLabel: string;
@@ -75,7 +75,13 @@ type CollectionTemplateVars = {
   /** To the person named to collect: the time, the place and the ID rule. */
   "collection-collector-notice": {
     collectorName: string;
-    bookerName: string;
+    /**
+     * Who the collector is collecting for and who authorised them: the organisation for an
+     * organisation's booking, the person for a personal one.
+     */
+    onBehalfOf: string;
+    /** For an organisation's booking, the member who booked it; null for a personal booking. */
+    bookedBy: string | null;
     reference: string;
     whenLabel: string;
     dayLabel: string;

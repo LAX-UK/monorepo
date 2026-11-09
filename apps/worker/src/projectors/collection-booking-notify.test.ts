@@ -21,6 +21,7 @@ const visit: CollectionNoticeVisit = {
   collector: { kind: "self", name: "Maya Okafor", email: null },
   place: { name: "London Art Exchange", address: "156 New Cavendish Street" },
   lots: [{ title: "Lowland Storm", lotNumber: 12, active: true }],
+  account: { kind: "personal", name: "Maya Okafor" },
   booker: { userId: "u1", email: "maya@example.com", firstName: "Maya", name: "Maya Okafor" },
   accountPeople: [],
 };
@@ -34,7 +35,11 @@ function setup(rows: Row[], read: (id: string) => Promise<CollectionNoticeVisit 
   const ctx = {
     projectorStateRepo: { getCursor: vi.fn().mockResolvedValue(5), advanceCursor },
     domainEventReader: { listAfterCursor },
-    collectionNoticeReader: { visit: read, dueReminders: vi.fn() },
+    collectionNoticeReader: {
+      visit: read,
+      dueReminders: vi.fn(),
+      collectorEmailsSince: vi.fn().mockResolvedValue(0),
+    },
   } as unknown as ProjectorRunContext;
   const run = () =>
     processCollectionBookingNotify({
