@@ -71,6 +71,8 @@ export function makePayment(
     stripeCheckoutSessionId: null,
     stripePaymentIntentId: null,
     stripeChargeId: null,
+    recordedByUserId: null,
+    bankReference: null,
     refundedMinor: 0,
     stripeRefundId: null,
     paidAt: null,
@@ -145,6 +147,23 @@ export class InMemoryDealPayments
   async markCancelled(id: string) {
     return this.patch(id, ["open", "processing"], { status: "cancelled" });
   }
+  async markPaidByTransfer(
+    id: string,
+    t: { recordedByUserId: string; bankReference: string; at: Date },
+  ) {
+    return this.patch(id, ["open"], {
+      status: "paid",
+      paidAt: t.at,
+      recordedByUserId: t.recordedByUserId,
+      bankReference: t.bankReference,
+    });
+  }
+  async markPartlyRefunded(id: string, r: { refundedMinor: number; at: Date }) {
+    const row = this.rows.find((p) => p.id === id);
+    if (!row || row.status !== "paid" || r.refundedMinor <= row.refundedMinor) return null;
+    if (r.refundedMinor >= row.amountMinor) return null;
+    return this.patch(id, ["paid"], { refundedMinor: r.refundedMinor, refundedAt: r.at });
+  }
   async markRefunded(id: string, r: { refundedMinor: number; refundId: string | null; at: Date }) {
     return this.patch(id, ["paid"], {
       status: "refunded",
@@ -170,12 +189,22 @@ export class InMemoryDealPayments
 
 export type RecordedEvent = { eventType: string; payload: Record<string, unknown> };
 
-export function recordingSink(): IDomainEventSink & { events: RecordedEvent[] } {
+export function recordingSink(): IDomainEventSink & {
+  events: RecordedEvent[];
+  /** The actor of each event, in the same order as `events`. */
+  actors: (string | null | undefined)[];
+} {
   const events: RecordedEvent[] = [];
-  const sink: IDomainEventSink & { events: RecordedEvent[] } = {
+  const actors: (string | null | undefined)[] = [];
+  const sink: IDomainEventSink & {
+    events: RecordedEvent[];
+    actors: (string | null | undefined)[];
+  } = {
     events,
+    actors,
     publish: async (e) => {
       events.push({ eventType: e.eventType, payload: e.payload });
+      actors.push(e.actorUserId);
     },
     withTx: () => sink,
   };

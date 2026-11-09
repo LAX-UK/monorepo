@@ -9,7 +9,9 @@ import type {
   AdminOriginalPrints,
   AdminPrintsFromOriginalResponse,
   AdminProofListingBody,
+  AdminReturnPrintResponse,
   AdminRunUpdateBody,
+  AdminSetPrintApartBody,
   AdminStockBatchBody,
 } from "@auction/shop-contracts";
 import type { AdminMutationResult } from "./admin-mutation-result";
@@ -131,6 +133,41 @@ export async function createCompanionListing(
     bffPath: path,
     method: "POST",
     jsonBody: input.body,
+    idempotencyKey: input.idempotencyKey,
+  });
+}
+
+/** Sell one print of a run on its own, as a listing of its own with its own price. */
+export async function setPrintApart(input: {
+  /** The run the print belongs to. */
+  artworkId: string;
+  editionId: string;
+  body: AdminSetPrintApartBody;
+  idempotencyKey: string;
+}): Promise<ListingResult> {
+  if (!UUID.test(input.editionId)) return invalidInput;
+  const path = artworkPath(input.artworkId, `prints/${input.editionId}/set-apart`);
+  if (!path) return invalidInput;
+  return forwardAdminJsonMutation({
+    bffPath: path,
+    method: "POST",
+    jsonBody: input.body,
+    idempotencyKey: input.idempotencyKey,
+  });
+}
+
+/** Put a print sold on its own back in its run, while it is unsold. */
+export async function returnPrintToRun(input: {
+  /** The listing the print is sold from. */
+  artworkId: string;
+  idempotencyKey: string;
+}): Promise<AdminMutationResult<AdminReturnPrintResponse>> {
+  const path = artworkPath(input.artworkId, "return-print");
+  if (!path) return invalidInput;
+  return forwardAdminJsonMutation({
+    bffPath: path,
+    method: "POST",
+    jsonBody: {},
     idempotencyKey: input.idempotencyKey,
   });
 }

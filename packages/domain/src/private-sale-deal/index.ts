@@ -1,6 +1,7 @@
 export * from "./anonymity.js";
 export * from "./blockers.js";
 export * from "./clearance.js";
+export * from "./deal-reminder.js";
 export * from "./events.js";
 export * from "./invoice.js";
 export * from "./money.js";

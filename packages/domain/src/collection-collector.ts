@@ -29,6 +29,13 @@ export type CollectorResult =
   | { ok: true; collector: Collector }
   | { ok: false; issues: CollectorIssue[] };
 
+/**
+ * The version of the collection policy a third party's authorisation is recorded against. It
+ * changes when the authorisation wording on the booking page does, so every authorisation says
+ * which words the account holder agreed to.
+ */
+export const COLLECTION_AUTHORISATION_POLICY_VERSION = "2026-11";
+
 const MIN_NAME_LENGTH = 2;
 const MAX_NAME_LENGTH = 120;
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;

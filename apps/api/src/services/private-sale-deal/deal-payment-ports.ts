@@ -29,4 +29,8 @@ export interface IDealCheckoutGateway {
   createCheckout(input: CreateDealCheckoutInput): Promise<DealCheckoutSession>;
   /** Expires the checkout so it can no longer be paid; a finished one is left as it is. */
   expireCheckout(sessionId: string): Promise<void>;
+  /** Whether the buyer is still on the checkout, finished it (card taken, transfer chosen), or it ran out. */
+  checkoutStatus(sessionId: string): Promise<DealCheckoutStatus>;
 }
+
+export type DealCheckoutStatus = "open" | "complete" | "expired";

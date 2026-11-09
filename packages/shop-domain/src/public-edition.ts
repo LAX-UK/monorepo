@@ -14,6 +14,7 @@ import {
   isOpenRun,
   runSize,
 } from "./edition-run.js";
+import { type PrintException, type SetApartPrint, setApartPrintOf } from "./print-exception.js";
 
 /**
  * The part of a run a storefront may know: its kind and size. Allocation, splits and owners stay
@@ -69,6 +70,9 @@ function toFacts(facts: PublicEditionFacts | null): EditionFacts | null {
   return facts ? { ...facts, confirmed: null } : null;
 }
 
+/** What a storefront may know about a print sold on its own: which print, and what differs. */
+export type PublicSetApart = { print: SetApartPrint; exception: PrintException };
+
 export type PublicEditionDescription = {
   /** "Limited edition print", "Open edition print" or "Artist's proof". */
   eyebrow: string;
@@ -90,14 +94,26 @@ export function describePublicEdition(input: {
   run: PublicEditionRun;
   facts: PublicEditionFacts | null;
   proofsKept?: PublicProofsKept | null;
+  setApart?: PublicSetApart | null;
 }): PublicEditionDescription {
   const spec = editionRunFromPublic(input.run);
   const facts = toFacts(input.facts);
   const base = describeEditionRun(spec);
   const proofsKept = input.proofsKept ? { ...input.proofsKept, bat: 0 } : undefined;
-  const full = facts ? describeEditionFacts(spec, facts, proofsKept ? { proofsKept } : {}) : null;
+  const setApart = input.setApart ?? undefined;
+  const full = facts
+    ? describeEditionFacts(spec, facts, {
+        ...(proofsKept ? { proofsKept } : {}),
+        ...(setApart ? { setApart } : {}),
+      })
+    : null;
+  const printOf = setApart ? setApartPrintOf(setApart.print) : null;
   return {
-    eyebrow: base.eyebrow,
+    eyebrow:
+      full?.eyebrow ??
+      (printOf
+        ? `${base.eyebrow}, ${printOf.charAt(0).toLowerCase()}${printOf.slice(1)}`
+        : base.eyebrow),
     edition: base.edition,
     rows: full?.rows ?? null,
     basketLine: full?.basketLine ?? null,

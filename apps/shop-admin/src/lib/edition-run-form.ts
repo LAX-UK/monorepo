@@ -104,6 +104,7 @@ export function runFormValues(spec: AdminEditionRunSpec, kept: AdminProofsKept):
     case "open":
       return { ...base, template: "open", openArtistPctText: text(main.defaultSplit.artistPct) };
     case "proof":
+    case "set_apart":
       return base;
   }
 }

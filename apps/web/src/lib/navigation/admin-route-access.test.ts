@@ -1,6 +1,12 @@
 import { readdirSync } from "node:fs";
 import { join } from "node:path";
-import { FINANCE_ACCESS, LEGAL_ENTITY_BROWSE_ACCESS, LOTS_ACCESS } from "@auction/types";
+import {
+  FINANCE_ACCESS,
+  LEGAL_ENTITY_BROWSE_ACCESS,
+  LOTS_ACCESS,
+  PRIVATE_SALE_DEALS_READ_ACCESS,
+  adminRoutes,
+} from "@auction/types";
 import { describe, expect, it } from "vitest";
 import {
   ADMIN_ROUTE_AREAS,
@@ -77,5 +83,32 @@ describe("adminDenialDestination", () => {
 
   it("never loops back to the admin home when that is the role's overview", () => {
     expect(adminDenialDestination("staff", ["read_only"], "/admin")).not.toBe("/admin");
+  });
+});
+
+describe("private sale deal pages", () => {
+  const deal = adminRoutes.privateSales.deal("PS-0012");
+
+  it("sit in the shared route group, with the list, so Finance-only staff can open them", () => {
+    expect(adminRouteArea(deal)).toBe("shared");
+    expect(adminRouteArea("/admin/private-sales")).toBe("shared");
+  });
+
+  it("open for Finance-only staff from the unapplied money and payout alert links", () => {
+    // Both alerts link to the deal through this one builder.
+    expect(canOpenAdminRoute("staff", ["finance"], deal, PRIVATE_SALE_DEALS_READ_ACCESS)).toBe(
+      true,
+    );
+  });
+
+  it("open for the others who have a part in a deal, and for nobody else", () => {
+    const opens = (roles: string[]) =>
+      canOpenAdminRoute("staff", roles as never, deal, PRIVATE_SALE_DEALS_READ_ACCESS);
+    expect(opens(["administrator"])).toBe(true);
+    expect(opens(["compliance"])).toBe(true);
+    expect(opens(["fulfilment"])).toBe(true);
+    expect(opens(["cataloguer"])).toBe(false);
+    expect(opens(["read_only"])).toBe(false);
+    expect(canOpenAdminRoute("client", [], deal, PRIVATE_SALE_DEALS_READ_ACCESS)).toBe(false);
   });
 });

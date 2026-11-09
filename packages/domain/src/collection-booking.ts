@@ -35,3 +35,30 @@ export function collectionBookingOffer(
   }
   return { kind: "email", email: bookingEmail, hours, place };
 }
+
+/** The rules of a place that the offer needs: the online-booking switch and its capacity. */
+export type CollectionPlaceForOffer = {
+  onlineBookingEnabled: boolean;
+  visitMinutes: number;
+  placesPerSlot: number;
+  bookingEmail: string | null;
+};
+
+/**
+ * The offer's settings once a place has been set up in Bid admin: its switch, capacity and hours
+ * replace the environment's. Capacity is stated per hour, so 30-minute visits at 2 places are 4
+ * an hour. A place with no email of its own keeps the fallback's. Before a place is set up the
+ * environment settings stand, so nothing changes until staff switch booking on.
+ */
+export function collectionSettingsFromPlace(
+  place: CollectionPlaceForOffer,
+  hours: string | null,
+  fallback: CollectionBookingSettings,
+): CollectionBookingSettings {
+  return {
+    selfServeEnabled: place.onlineBookingEnabled,
+    slotCapacityPerHour: place.placesPerSlot * Math.floor(60 / place.visitMinutes),
+    hours,
+    bookingEmail: place.bookingEmail ?? fallback.bookingEmail,
+  };
+}

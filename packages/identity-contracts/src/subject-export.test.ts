@@ -87,7 +87,7 @@ describe("export categories", () => {
       "consents",
       "requests",
     ]);
-    expect(subjectExportCategoryIds("bid")).toHaveLength(13);
+    expect(subjectExportCategoryIds("bid")).toHaveLength(14);
     expect(subjectExportCategoryIds("shop")).toEqual([
       "shop-profile",
       "orders",

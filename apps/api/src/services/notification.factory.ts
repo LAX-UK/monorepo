@@ -199,13 +199,16 @@ export class NotificationFactory implements INotificationFactory {
   createPaymentReminder(input: {
     userId: string;
     legalEntityId: string | null;
-    lotId: string;
+    /** Null for a private sale deal, which has no lot. */
+    lotId: string | null;
     lotTitle: string;
     paymentId: string;
     amount: string;
     /** The due date in words ("10 November 2026"). */
     dueDate: string;
     step: PaymentReminderStepKey;
+    /** The reminder is for a private sale deal: the email calls the item a work, not a lot. */
+    privateSale?: boolean;
     /** The invoice cannot be paid yet: the reminder says what to do instead. */
     held?: PaymentReminderHoldKey | null;
   }): CreateNotificationRow {
@@ -221,7 +224,7 @@ export class NotificationFactory implements INotificationFactory {
       type: "payment_reminder",
       title: copy.title,
       message: copy.paragraphs[0] ?? copy.heading,
-      lotId: input.lotId,
+      ...(input.lotId ? { lotId: input.lotId } : {}),
       legalEntityId: input.legalEntityId,
       meta: {
         paymentId: input.paymentId,
@@ -230,9 +233,36 @@ export class NotificationFactory implements INotificationFactory {
         lotTitle: input.lotTitle,
         reminderStep: input.step,
         ...(input.held ? { heldReason: input.held } : {}),
+        ...(input.privateSale ? { privateSale: true } : {}),
         audience: "buyer",
         // One email per person per step: an organisation's payers are each reminded.
         emailIdempotencyKey: `payment-reminder:${input.paymentId}:${input.step}:${input.userId}`,
+      },
+    };
+  }
+
+  createDealCollectionReminder(input: {
+    userId: string;
+    legalEntityId: string | null;
+    dealId: string;
+    workTitle: string;
+    dueDate: string;
+    step: PaymentReminderStepKey;
+  }): CreateNotificationRow {
+    const copy = dealCollectionReminderCopy(input.step, input.workTitle, input.dueDate);
+    return {
+      userId: input.userId,
+      type: "lot_ready_for_collection",
+      title: copy.title,
+      message: copy.message,
+      legalEntityId: input.legalEntityId,
+      meta: {
+        lotTitle: input.workTitle,
+        dueDate: input.dueDate,
+        reminderStep: input.step,
+        audience: "buyer",
+        // One email per person per step.
+        emailIdempotencyKey: `private-sale-collection-reminder:${input.dealId}:${input.step}:${input.userId}`,
       },
     };
   }
@@ -460,4 +490,29 @@ function roleWords(role: LegalEntityMemberRole): string {
 /** What an access request asked for, in a sentence: "the buyer agent role", "more access". */
 function requestedWords(request: Pick<AccessRequestRow, "requestedRole">): string {
   return request.requestedRole ? `the ${roleWords(request.requestedRole)} role` : "more access";
+}
+
+/** What a buyer is told about collecting a work they have paid for, by how close the deadline is. */
+function dealCollectionReminderCopy(
+  step: PaymentReminderStepKey,
+  workTitle: string,
+  dueDate: string,
+): { title: string; message: string } {
+  switch (step) {
+    case "before_due":
+      return {
+        title: "Collect your work soon",
+        message: `"${workTitle}" is ready for you to collect. Please collect it by ${dueDate}.`,
+      };
+    case "due_day":
+      return {
+        title: "Collect your work today",
+        message: `Today is the last day to collect "${workTitle}" (${dueDate}). Contact us if you need more time.`,
+      };
+    case "overdue":
+      return {
+        title: "Your work is waiting to be collected",
+        message: `"${workTitle}" was due for collection on ${dueDate}. Please contact us to arrange it.`,
+      };
+  }
 }

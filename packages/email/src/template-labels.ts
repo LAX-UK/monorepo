@@ -88,6 +88,7 @@ export const EMAIL_TEMPLATE_LABELS: Readonly<Record<TemplateName, string>> = {
   "consignment-update": "Consignment update",
   "kyc-resubmission-required": "Identity check needs resubmitting",
   "aml-compliance-review-notice": "Compliance review",
+  "kyc-retention-hold-notice": "KYC retention hold needs a look",
   "source-of-funds-buyer-notice": "Source of funds notice",
   "source-of-funds-documents-requested": "Source of funds documents requested",
   "source-of-funds-approved": "Source of funds approved",

@@ -65,6 +65,7 @@ import { BidOfferLockRecorder } from "../projectors/artwork-offer-lock.js";
 import { createProjectorRunner } from "../projectors/runner.js";
 import { UnsoldChoiceDeadlineRecorder } from "../projectors/unsold-choice-deadline.js";
 import { UnsoldFollowUpOpener } from "../projectors/unsold-follow-up.js";
+import { RetentionHoldAlerts } from "../retention/kyc-retention-hold-alert.js";
 import { ShopIdentityProjectionService } from "../services/shop-identity-projection.service.js";
 import { registerAlertWorkers } from "../workers/register-alert-workers.js";
 import { registerAtgSyncWorker } from "../workers/register-atg-sync-worker.js";
@@ -399,7 +400,14 @@ export function createWorkerContainer(): WorkerContainer {
   const complianceWorkers = registerComplianceWorkers(deps, {
     emailOutboxService: emailWorkers.emailOutboxService,
   });
-  const purgeWorkers = registerPurgeWorkers(deps);
+  const purgeWorkers = registerPurgeWorkers(deps, {
+    retentionHoldAlerts: new RetentionHoldAlerts({
+      emailService: emailWorkers.emailOutboxService,
+      complianceRecipients: repositories.complianceRecipientReader,
+      adminEmailAddress: env.ADMIN_EMAIL_ADDRESS ?? "admin@lax.bid",
+      supportContactEmail: env.EMAIL_REPLY_TO ?? "support@lax.bid",
+    }),
+  });
   const bidAlerts = createBidAlertRuntime({
     env,
     db,

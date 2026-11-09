@@ -83,6 +83,7 @@ export function getRouteLabel(
   if (pathname.includes("/new")) return "New";
   if (pathname.includes("/edit")) return "Edit";
   if (pathname === "/purchases/pay") return "Pay";
+  if (pathname === "/purchases/collect") return "Collection";
   return "Detail";
 }
 

@@ -88,3 +88,51 @@ describe("unapplied money alert", () => {
     expect(possibleSourceText(null)).toBeNull();
   });
 });
+
+describe("unapplied money alert for a private sale deal", () => {
+  const deal = {
+    reason: "private_sale_refund_after_payout" as const,
+    paymentId: null,
+    paymentGroupId: null,
+    stripePaymentIntentId: null,
+    stripeChargeId: null,
+    stripeCustomerId: null,
+    stripeEventId: "evt_9",
+    privateSaleDealId: "deal-1",
+    privateSaleDealReference: "PS-0012",
+    privateSaleDealPaymentId: "dp-1",
+    amountCents: 100000,
+    currency: "GBP",
+    dedupeKey: "private_sale_refund_after_payout:evt_9",
+  };
+
+  it("names the deal and opens it, and says the seller's payout may need adjusting", async () => {
+    const enqueue = vi.fn().mockResolvedValue(undefined);
+    await fanoutUnappliedMoney({
+      staffOpsRecipientReader: {
+        listRecipients: vi
+          .fn()
+          .mockResolvedValue([{ id: "staff-1", email: "f@lax.test", firstName: "Fran" }]),
+      },
+      emailService: { enqueue } as never,
+      webOrigin: "https://lax.bid/",
+      eventId: 7,
+      alert: alertFromUnappliedMoney(deal),
+    });
+    expect(enqueue).toHaveBeenCalledWith(
+      expect.objectContaining({
+        vars: expect.objectContaining({
+          reference: "PS-0012",
+          reviewUrl: "https://lax.bid/admin/private-sales/PS-0012",
+          situation: expect.stringContaining("payout may need adjusting"),
+        }),
+      }),
+    );
+  });
+
+  it("says money that a deal could not take is for finance to return or apply", () => {
+    const alert = alertFromUnappliedMoney({ ...deal, reason: "private_sale_payment_not_applied" });
+    expect(alert.situation).toBe("private_sale_payment_not_applied");
+    expect(alert.dealReference).toBe("PS-0012");
+  });
+});
