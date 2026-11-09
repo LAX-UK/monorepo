@@ -450,6 +450,10 @@ export function createMinimalShopApiTestDeps(
         findActiveByIdentitySubject: async () => null,
         brokerCanAccessClientParty: async () => false,
       },
+      listFramingDue: async () => ({ items: [] }),
+      updateFramingTask: async () => {
+        throw new Error("not implemented");
+      },
       createProductionTask: async () => ({
         taskId: "00000000-0000-4000-8000-000000000010",
         status: "queued" as const,
@@ -463,6 +467,7 @@ export function createMinimalShopApiTestDeps(
         status: "delivered",
       }),
       cancelAfterPossession: async () => ({
+        framingRefundPence: 0,
         returnId: "00000000-0000-4000-8000-000000000013",
         refundId: "00000000-0000-4000-8000-000000000014",
         status: "requested" as const,
@@ -672,6 +677,7 @@ export function createMinimalShopApiTestDeps(
       }),
       requestRefund: async () => ({
         refundId: "00000000-0000-4000-8000-000000000012",
+        framingRefundPence: 0,
         status: "pending" as const,
       }),
       retryRefund: async () => ({

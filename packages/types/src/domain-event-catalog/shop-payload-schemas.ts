@@ -8,7 +8,10 @@ export const shopOrderPaidPayloadSchemaV1 = z.object({
   identitySubjectId: z.string(),
   totalPence: z.number().int().nonnegative(),
   paidAt: rfc3339Timestamp,
+  /** The works and products on the order; a frame sold with a print is not counted here. */
   lineCount: z.number().int().nonnegative(),
+  /** The frames sold with prints; absent from orders paid before framing existed. */
+  framingLineCount: z.number().int().nonnegative().optional(),
 });
 
 export const shopArtworkCreatedPayloadSchemaV1 = z.object({

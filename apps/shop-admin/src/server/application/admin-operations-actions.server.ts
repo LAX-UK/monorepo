@@ -17,6 +17,21 @@ export async function createProductionTask(input: {
   });
 }
 
+/** Moves the work on a frame sold with a print to its next step. */
+export async function updateFramingTask(input: {
+  taskId: string;
+  status: string;
+  expectedVersion: number;
+  idempotencyKey?: string;
+}) {
+  return forwardAdminJsonMutation<{ taskId: string; status: string; version: number }>({
+    bffPath: `framing-tasks/${encodeURIComponent(input.taskId)}`,
+    method: "PUT",
+    jsonBody: { status: input.status, expectedVersion: input.expectedVersion },
+    ...(input.idempotencyKey ? { idempotencyKey: input.idempotencyKey } : {}),
+  });
+}
+
 export async function updateFulfilment(input: {
   fulfilmentId: string;
   status: string;
@@ -60,7 +75,7 @@ export async function cancelOrderAfterPossession(input: {
   editionId: string;
   idempotencyKey?: string;
 }) {
-  return forwardAdminJsonMutation<{ id: string; status: string }>({
+  return forwardAdminJsonMutation<{ id: string; status: string; framingRefundPence?: number }>({
     bffPath: "cancellations",
     method: "POST",
     jsonBody: { orderLineId: input.orderLineId, editionId: input.editionId },
@@ -76,7 +91,7 @@ export async function requestOrderRefund(input: {
   note?: string;
   idempotencyKey?: string;
 }) {
-  return forwardAdminJsonMutation<{ id: string; status: string }>({
+  return forwardAdminJsonMutation<{ id: string; status: string; framingRefundPence?: number }>({
     bffPath: "refunds",
     method: "POST",
     jsonBody: {

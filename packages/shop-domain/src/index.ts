@@ -218,6 +218,27 @@ export {
   type FramingSizeBand,
   type FramingStatus,
 } from "./framing.js";
+export { orderTotalWithDelivery } from "./basket-totals.js";
+export {
+  FRAMING_TASK_STATUSES,
+  ORDER_LINE_KINDS,
+  addWorkingDaysUtc,
+  canMoveFramingTask,
+  framingDueAt,
+  framingLineVat,
+  framingRefundBlock,
+  framingStageStamp,
+  framingTaskFinished,
+  framingTaskNextSteps,
+  framingTaskStarted,
+  parseFramingOrderSnapshot,
+  parseFramingTaskStatus,
+  printReadyForFraming,
+  type FramingOrderSnapshot,
+  type FramingRefundBlock,
+  type FramingTaskStatus,
+  type OrderLineKind,
+} from "./framing-order.js";
 export {
   FRAMED_BY_ARTIST_MAX_LENGTH,
   FRAMING_MODES,

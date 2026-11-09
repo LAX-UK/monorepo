@@ -87,6 +87,15 @@ export function buildOrderInvoiceModel(input: {
   const lineRate = (rateBp: number | null) => (rateBp ? percent(rateBp) : "—");
 
   const rows: InvoiceRow[] = order.lines.map((line) => {
+    if (line.kind === "framing") {
+      // A frame is its own line at the standard rate, apart from the work it frames.
+      return {
+        description: `Framing: ${line.framingName ?? "frame"}`,
+        detail: line.framingDetail,
+        vatRate: lineRate(line.vatRateBp),
+        amount: money(line.unitPricePence),
+      };
+    }
     const title = line.productTitle ?? line.artworkTitle ?? "Item";
     const edition = invoiceEditionDetail(line);
     const detail = [line.artistName, edition].filter(Boolean).join(" · ") || null;

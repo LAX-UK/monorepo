@@ -42,7 +42,7 @@ function present(row: DeliveryQuoteStaffRow): AdminDeliveryQuote {
     address: row.address,
     phone: row.phone,
     items: row.items,
-    merchandisePence: row.merchandisePence,
+    beforeDeliveryPence: row.beforeDeliveryPence,
     requestedAt: row.requestedAt.toISOString(),
     holdUntil: row.holdUntil.toISOString(),
     quote: row.quote

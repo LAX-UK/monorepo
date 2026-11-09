@@ -10,6 +10,7 @@ import {
   type ShopFulfilmentStatus,
   cancellationStockOutcome,
   cancelledLineIds,
+  framingTaskFinished,
   isShopFulfilmentStatus,
   nextFulfilmentStatuses,
   remainingRefundablePence,
@@ -20,6 +21,7 @@ import {
   type StatusPresentation,
   type TimelineEvent,
   formatGbp,
+  formatStaffDate,
   formatStaffDateTime,
   humanizeStatus,
 } from "@auction/staff-ui";
@@ -41,6 +43,7 @@ export const FULFILMENT_STATUS_LABELS = Object.fromEntries(
 export const presentFulfilmentStatus = presentStatus("fulfilment");
 export const presentRefundStatus = presentStatus("refund");
 export const presentProductionStatus = presentStatus("production");
+export const presentFramingTaskStatus = presentStatus("framingTask");
 
 const FULFILMENT_OPTION_LABELS: Record<string, string> = {
   uk_insured_delivery: "UK insured delivery",
@@ -71,6 +74,7 @@ type OrderLine = AdminOrderDetail["lines"][number];
 
 /** A line as staff know it: the artwork or product, and the edition. */
 export function orderLineLabel(line: OrderLine): string {
+  if (line.kind === "framing") return `Framing: ${line.framing?.name ?? "frame"}`;
   const title = line.artworkTitle ?? line.productTitle ?? line.sku ?? "Item";
   return line.editionNumber == null ? title : `${title}, edition ${line.editionNumber}`;
 }
@@ -145,7 +149,12 @@ export function refundableRemainingPence(detail: AdminOrderDetail, orderLineId: 
 export function lineCancellation(
   detail: AdminOrderDetail,
   line: OrderLine,
-): { refundPence: number; stock: CancellationStockOutcome } | null {
+): {
+  refundPence: number;
+  framePence: number;
+  frameMade: boolean;
+  stock: CancellationStockOutcome;
+} | null {
   if (detail.status !== "paid" && detail.status !== "partially_refunded") return null;
   const refundPence = refundableRemainingPence(detail, line.orderLineId);
   if (refundPence <= 0) return null;
@@ -155,7 +164,9 @@ export function lineCancellation(
     fulfilment && isShopFulfilmentStatus(fulfilment)
       ? cancellationStockOutcome(fulfilment)
       : "await_return";
-  return { refundPence, stock };
+  // The frame sold with the print goes back with it, for what is left of it.
+  const withFrame = frameRefundWithPrint(detail, line, refundPence);
+  return { refundPence, framePence: withFrame.framePence, frameMade: withFrame.frameMade, stock };
 }
 
 const CANCELLATION_STOCK_COPY: Record<CancellationStockOutcome, string> = {
@@ -164,14 +175,128 @@ const CANCELLATION_STOCK_COPY: Record<CancellationStockOutcome, string> = {
     "The print is with the customer, so a return is opened under Returns. It goes back on sale when you receive it.",
 };
 
+/**
+ * Whether work on a frame can still be moved forward: the order is paid and the frame has not
+ * been refunded (or has no refund waiting). A refunded frame shows its state and offers nothing.
+ */
+export function framingCanMove(detail: AdminOrderDetail, line: OrderLine): boolean {
+  if (detail.status !== "paid" && detail.status !== "partially_refunded") return false;
+  const refunded = detail.refunds
+    .filter(
+      (refund) =>
+        refund.orderLineId === line.orderLineId &&
+        refund.status !== "failed" &&
+        refund.status !== "cancelled",
+    )
+    .reduce((sum, refund) => sum + refund.amountPence, 0);
+  return !(line.unitPricePence > 0 && refunded >= line.unitPricePence);
+}
+
+/**
+ * What refunding `amountPence` on a print also takes. A print refunded in full takes the frame sold
+ * with it, for what is left of the frame, and never more than is left on the whole order: the same
+ * cap the server applies. Nothing for any other refund.
+ */
+export function frameRefundWithPrint(
+  detail: AdminOrderDetail,
+  printLine: OrderLine,
+  amountPence: number,
+): { framePence: number; frameMade: boolean } {
+  const none = { framePence: 0, frameMade: false };
+  if (printLine.kind === "framing" || !printLine.editionId) return none;
+  const frame = detail.lines.find(
+    (candidate) =>
+      candidate.kind === "framing" && candidate.framing?.forLineId === printLine.orderLineId,
+  );
+  if (!frame) return none;
+  if (amountPence < refundableRemainingPence(detail, printLine.orderLineId)) return none;
+  const orderLeft = Math.max(0, refundableRemainingPence(detail, null) - amountPence);
+  const framePence = Math.min(refundableRemainingPence(detail, frame.orderLineId), orderLeft);
+  const status = frame.framing?.task?.status;
+  return { framePence, frameMade: status === "framed" || status === "completed" };
+}
+
+/** The toast after a refund: the total the customer gets, with the frame named when it was taken. */
+export function refundSuccessMessage(amountPence: number, framePence = 0): string {
+  return framePence > 0
+    ? `Refund of ${formatGbp(amountPence + framePence)} requested: ${formatGbp(amountPence)} for the item and ${formatGbp(framePence)} for its frame`
+    : `Refund of ${formatGbp(amountPence)} requested`;
+}
+
+/** Where a frame's own refund stands: none, waiting to be sent, or sent. */
+export function framingRefundState(
+  detail: AdminOrderDetail,
+  line: OrderLine,
+): "refunded" | "refund_pending" | null {
+  if (line.unitPricePence <= 0) return null;
+  const own = detail.refunds.filter(
+    (refund) =>
+      refund.orderLineId === line.orderLineId &&
+      refund.status !== "failed" &&
+      refund.status !== "cancelled",
+  );
+  const sum = (rows: typeof own) => rows.reduce((total, refund) => total + refund.amountPence, 0);
+  if (sum(own) < line.unitPricePence) return null;
+  return sum(own.filter((refund) => refund.status === "succeeded")) >= line.unitPricePence
+    ? "refunded"
+    : "refund_pending";
+}
+
+/** "Tide line, edition 4": the print a frame goes with, so identical frames can be told apart. */
+export function framedPrintLabel(detail: AdminOrderDetail, line: OrderLine): string | null {
+  if (line.kind !== "framing" || !line.framing) return null;
+  const forLineId = line.framing.forLineId;
+  const print = detail.lines.find((candidate) => candidate.orderLineId === forLineId);
+  return print ? orderLineLabel(print) : null;
+}
+
+/** "4 items · 4 frames": prints and products are the items; frames are counted apart. */
+export function orderItemCountLabel(detail: AdminOrderDetail): string {
+  const frames = detail.lines.filter((line) => line.kind === "framing").length;
+  const items = detail.lines.length - frames;
+  const part = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`;
+  return frames > 0
+    ? `${part(items, "item", "items")} · ${part(frames, "frame", "frames")}`
+    : `${part(items, "item", "items")} on this order`;
+}
+
+/** Frames that still have to be finished before the order can be made ready to dispatch. */
+export function framesHoldingDispatch(detail: AdminOrderDetail): number {
+  if (detail.status !== "paid" && detail.status !== "partially_refunded") return 0;
+  return detail.lines.filter(
+    (line) =>
+      line.kind === "framing" &&
+      line.framing?.task &&
+      !framingTaskFinished(line.framing.task.status) &&
+      framingRefundState(detail, line) === null,
+  ).length;
+}
+
+/** "Due Mon 30 Nov": when the frame is due, in the staff date style. */
+export function framingDueLabel(dueAt: string): string {
+  return `Due ${formatStaffDate(dueAt)}`;
+}
+
 /** The dialog text for cancelling an item: what the system does, so staff never repeat it. */
 export function cancelAfterPossessionDescription(
   refundPence: number,
   stock: CancellationStockOutcome,
+  framePence = 0,
+  frameMade = false,
 ): string {
-  return `Use this when the customer cancels an item they already have. This refunds ${formatGbp(
-    refundPence,
-  )} for this item to the customer's card, and holds the artist's payout for it. ${CANCELLATION_STOCK_COPY[stock]} Do not refund the item again.`;
+  const refunds =
+    framePence > 0
+      ? `${formatGbp(refundPence)} for this item and ${formatGbp(framePence)} for its frame, ${formatGbp(
+          refundPence + framePence,
+        )} in all,`
+      : `${formatGbp(refundPence)} for this item`;
+  const frameNote =
+    framePence > 0
+      ? frameMade
+        ? " The frame has already been made; it is refunded with the print."
+        : " The frame is not made."
+      : "";
+  return `Use this when the customer cancels an item they already have. This refunds ${refunds} to the customer's card, and holds the artist's payout for it.${frameNote} ${CANCELLATION_STOCK_COPY[stock]} Do not refund the item again.`;
 }
 
 type Refund = AdminOrderDetail["refunds"][number];
@@ -238,15 +363,20 @@ export function failedRefunds(detail: AdminOrderDetail): Refund[] {
 }
 
 /** The Refunds list's second line: what was refunded, why it exists and when. */
-export function refundRowContext(refund: Refund, line: OrderLine | undefined): string {
+export function refundRowContext(
+  refund: Refund,
+  line: OrderLine | undefined,
+  printLabel: string | null = null,
+): string {
   const origin = refund.settledOutside
     ? "Refunded outside LAX"
     : refund.source === "cancellation"
       ? "Cancelled after possession"
       : humanizeStatus(refund.source);
-  return `${line ? orderLineLabel(line) : "Whole order"} · ${origin} · ${formatStaffDateTime(
-    refund.createdAt,
-  )}`;
+  const subject = line
+    ? [orderLineLabel(line), printLabel].filter(Boolean).join(" for ")
+    : "Whole order";
+  return `${subject} · ${origin} · ${formatStaffDateTime(refund.createdAt)}`;
 }
 
 /** Only orders the customer paid for can be refunded. */

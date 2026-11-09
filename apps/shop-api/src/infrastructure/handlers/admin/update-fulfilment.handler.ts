@@ -10,6 +10,7 @@ import { eq } from "drizzle-orm";
 import type { ShopUnitOfWorkFactory } from "../../../application/ports/shop-unit-of-work.js";
 import { ShopApiError, notFound } from "../../../errors/shop-api-error.js";
 import { shopPhaseDbSession } from "../../drizzle-shop-transaction-effects.js";
+import { orderHasOpenFrame } from "../../framing/framing-gate.js";
 import { fulfilmentStageStamp } from "../../fulfilment-stage-stamp.js";
 import { linesAwaitingPackConfirmation } from "../../print-fulfilment/packing-gate.js";
 
@@ -77,6 +78,13 @@ export function createUpdateFulfilmentHandler(deps: {
             );
           }
           if (nextStatus === "awaiting_dispatch") {
+            if (await orderHasOpenFrame(shopPhaseDbSession(tx), existing.orderId)) {
+              throw new ShopApiError(
+                SHOP_API_ERROR_CODES.CONFLICT,
+                "Finish the framing for this order before it is ready to dispatch",
+                409,
+              );
+            }
             const unpacked = await linesAwaitingPackConfirmation(
               shopPhaseDbSession(tx),
               existing.orderId,

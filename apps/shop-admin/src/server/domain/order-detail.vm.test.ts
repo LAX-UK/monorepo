@@ -6,15 +6,23 @@ import {
   cancelAfterPossessionDescription,
   cancelledLineBadge,
   failedRefunds,
+  frameRefundWithPrint,
+  framedPrintLabel,
+  framesHoldingDispatch,
+  framingCanMove,
+  framingDueLabel,
+  framingRefundState,
   fulfilmentNextOptions,
   lineCancellation,
   lineCancellationRefund,
+  orderItemCountLabel,
   orderLineLabel,
   presentFulfilmentStatus,
   presentOrderStatus,
   productionCandidateLines,
   refundFailureMessage,
   refundRowContext,
+  refundSuccessMessage,
   refundTargetOptions,
   refundableRemainingPence,
   settledOutsideNote,
@@ -441,5 +449,202 @@ describe("refundFailureMessage", () => {
   it("has a sentence when there is no reason at all", () => {
     expect(refundFailureMessage(null)).toBe("Stripe could not process the refund");
     expect(refundFailureMessage("  ")).toBe("Stripe could not process the refund");
+  });
+});
+
+describe("a framed print", () => {
+  const FRAME = "33333333-0000-4000-8000-000000000003";
+  const framed = (overrides: Partial<AdminOrderDetail> = {}) => {
+    const base = order();
+    return order({
+      totalPence: 121_000,
+      lines: [
+        ...base.lines,
+        {
+          orderLineId: FRAME,
+          artworkId: null,
+          artworkTitle: null,
+          productTitle: null,
+          sku: null,
+          editionId: null,
+          editionNumber: null,
+          unitPricePence: 21_000,
+          sellerPartyId: null,
+          production: null,
+          kind: "framing",
+          framing: {
+            name: "Natural oak frame",
+            forLineId: LINE_A,
+            printStarted: true,
+            task: {
+              taskId: "44444444-0000-4000-8000-000000000004",
+              status: "queued",
+              dueAt: "2026-11-30T00:00:00.000Z",
+              version: 1,
+            },
+          },
+        },
+      ],
+      ...overrides,
+    });
+  };
+  const frameLine = (detail: AdminOrderDetail) => {
+    const line = detail.lines.find((candidate) => candidate.orderLineId === FRAME);
+    if (!line) throw new Error("fixture has a frame");
+    return line;
+  };
+  const refund = (status: string, amountPence = 21_000) => ({
+    refundId: "r9",
+    orderLineId: FRAME,
+    amountPence,
+    status,
+    source: "admin",
+    createdAt: "2026-10-15T00:00:00Z",
+  });
+
+  it("is named as 'Framing: <option>'", () => {
+    expect(orderLineLabel(frameLine(framed()))).toBe("Framing: Natural oak frame");
+  });
+
+  it("can be moved on while the order is paid and the frame is not refunded", () => {
+    const detail = framed();
+    expect(framingCanMove(detail, frameLine(detail))).toBe(true);
+  });
+
+  it("cannot be moved on once refunded, or while a refund is pending, or on an unpaid order", () => {
+    for (const status of ["succeeded", "pending"]) {
+      const detail = framed({ refunds: [refund(status)] });
+      expect(framingCanMove(detail, frameLine(detail))).toBe(false);
+    }
+    const unpaid = framed({ status: "refunded" });
+    expect(framingCanMove(unpaid, frameLine(unpaid))).toBe(false);
+  });
+
+  it("still can be moved on after a failed refund or a part refund", () => {
+    for (const row of [refund("failed"), refund("succeeded", 5_000)]) {
+      const detail = framed({ refunds: [row] });
+      expect(framingCanMove(detail, frameLine(detail))).toBe(true);
+    }
+  });
+
+  it("says when the frame is due", () => {
+    expect(framingDueLabel("2026-11-30T00:00:00.000Z")).toMatch(/^Due .*30/);
+  });
+
+  it("cancelling the print states the frame's refund and the total", () => {
+    const detail = framed();
+    const line = detail.lines.find((candidate) => candidate.orderLineId === LINE_A);
+    if (!line) throw new Error("fixture has a print");
+    const cancellation = lineCancellation(detail, line);
+    expect(cancellation).toMatchObject({ refundPence: 60_000, framePence: 21_000 });
+    const copy = cancelAfterPossessionDescription(60_000, "await_return", 21_000);
+    expect(copy).toContain("£600.00 for this item and £210.00 for its frame, £810.00 in all");
+    expect(copy).toContain("The frame is not made.");
+  });
+
+  it("tells a refunded frame from one waiting for its refund, and from one never refunded", () => {
+    const none = framed();
+    expect(framingRefundState(none, frameLine(none))).toBeNull();
+    const done = framed({ refunds: [refund("succeeded")] });
+    expect(framingRefundState(done, frameLine(done))).toBe("refunded");
+    const waiting = framed({ refunds: [refund("pending")] });
+    expect(framingRefundState(waiting, frameLine(waiting))).toBe("refund_pending");
+    const part = framed({ refunds: [refund("succeeded", 5_000)] });
+    expect(framingRefundState(part, frameLine(part))).toBeNull();
+  });
+
+  it("names the print a frame goes with, so identical frames can be told apart", () => {
+    const detail = framed();
+    expect(framedPrintLabel(detail, frameLine(detail))).toBe("Marylebone at dusk, edition 12");
+    expect(framedPrintLabel(detail, detail.lines[0] as (typeof detail.lines)[number])).toBeNull();
+  });
+
+  it("counts items and frames apart", () => {
+    expect(orderItemCountLabel(framed())).toBe("2 items · 1 frame");
+    expect(orderItemCountLabel(order())).toBe("2 items on this order");
+  });
+
+  it("counts the frames still holding the order back from dispatch", () => {
+    expect(framesHoldingDispatch(framed())).toBe(1);
+    expect(framesHoldingDispatch(framed({ refunds: [refund("succeeded")] }))).toBe(0);
+    expect(framesHoldingDispatch(framed({ status: "refunded" }))).toBe(0);
+  });
+
+  it("names the print in a frame's refund row", () => {
+    const detail = framed({ refunds: [refund("succeeded")] });
+    const row = detail.refunds[0];
+    if (!row) throw new Error("fixture has a refund");
+    expect(refundRowContext(row, frameLine(detail), "Marylebone at dusk, edition 12")).toContain(
+      "Framing: Natural oak frame for Marylebone at dusk, edition 12",
+    );
+  });
+
+  it("states what refunding a print in full also sends: its frame, capped as the server caps it", () => {
+    const detail = framed();
+    const print = detail.lines.find((candidate) => candidate.orderLineId === LINE_A);
+    if (!print) throw new Error("fixture has a print");
+    expect(frameRefundWithPrint(detail, print, 60_000)).toEqual({
+      framePence: 21_000,
+      frameMade: false,
+    });
+    // A part refund of the print takes no frame.
+    expect(frameRefundWithPrint(detail, print, 10_000)).toEqual({
+      framePence: 0,
+      frameMade: false,
+    });
+  });
+
+  it("never states more for the frame than is left on the whole order", () => {
+    const detail = framed({
+      // 70.00 of the 1,210.00 order is already refunded elsewhere; the print line is 600.00.
+      totalPence: 80_000,
+      refunds: [
+        {
+          refundId: "r7",
+          orderLineId: null,
+          amountPence: 10_000,
+          status: "succeeded",
+          source: "admin",
+          createdAt: "2026-10-15T00:00:00Z",
+        },
+      ],
+    });
+    const print = detail.lines.find((candidate) => candidate.orderLineId === LINE_A);
+    if (!print) throw new Error("fixture has a print");
+    const remaining = 60_000;
+    const withFrame = frameRefundWithPrint(detail, print, remaining);
+    // 80,000 total less 10,000 refunded less the 60,000 print refund leaves 10,000 for the frame.
+    expect(withFrame.framePence).toBe(10_000);
+  });
+
+  it("knows a frame that has already been made", () => {
+    const base = framed();
+    const detail = {
+      ...base,
+      lines: base.lines.map((line) =>
+        line.orderLineId === FRAME && line.framing?.task
+          ? {
+              ...line,
+              framing: {
+                ...line.framing,
+                task: { ...line.framing.task, status: "completed" as const },
+              },
+            }
+          : line,
+      ),
+    };
+    const print = detail.lines.find((candidate) => candidate.orderLineId === LINE_A);
+    if (!print) throw new Error("fixture has a print");
+    expect(frameRefundWithPrint(detail, print, 60_000).frameMade).toBe(true);
+    expect(cancelAfterPossessionDescription(60_000, "await_return", 21_000, true)).toContain(
+      "The frame has already been made",
+    );
+  });
+
+  it("names the frame in the refund toast, with the total the customer gets", () => {
+    expect(refundSuccessMessage(30_000, 21_000)).toBe(
+      "Refund of £510.00 requested: £300.00 for the item and £210.00 for its frame",
+    );
+    expect(refundSuccessMessage(30_000)).toBe("Refund of £300.00 requested");
   });
 });

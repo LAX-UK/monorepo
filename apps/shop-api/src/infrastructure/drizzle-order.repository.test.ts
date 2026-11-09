@@ -32,12 +32,15 @@ describe("visibleEditionNumber", () => {
   const {
     editionSummary: _summary,
     editionInvoiceDetail: _detail,
+    framingFor: _for,
+    framingForLineId: _forId,
     ...record
   } = sampleOrderLine({ editionNumber: 21 });
   const line: LineRow = {
     ...record,
     orderId: "550e8400-e29b-41d4-a716-846655440001",
     releasedAt: null,
+    framingParent: null,
     editionBasis: { snapshot: null, live: undefined, proofNumber: null },
   };
 
