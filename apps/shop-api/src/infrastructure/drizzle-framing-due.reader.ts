@@ -4,6 +4,7 @@ import {
   shopFramingTask,
   shopOrder,
   shopOrderLine,
+  shopProductionTask,
   shopRefund,
 } from "@auction/db/schema";
 import type { AdminFramingDueList } from "@auction/shop-contracts";
@@ -19,6 +20,7 @@ import {
   type FramingOrderSnapshot,
   parseFramingOrderSnapshot,
   parseFramingTaskStatus,
+  printReadyForFraming,
 } from "@auction/shop-domain";
 import { and, asc, eq, inArray, ne } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
@@ -62,6 +64,7 @@ export async function listFramingDue(db: Database): Promise<AdminFramingDueList>
       orderReference: shopOrder.reference,
       printTitle: shopArtwork.title,
       editionNumber: print.editionNumber,
+      printId: print.id,
     })
     .from(shopFramingTask)
     .innerJoin(shopOrderLine, eq(shopFramingTask.orderLineId, shopOrderLine.id))
@@ -77,6 +80,24 @@ export async function listFramingDue(db: Database): Promise<AdminFramingDueList>
     .orderBy(asc(shopFramingTask.dueAt), asc(shopFramingTask.id))
     .limit(FRAMING_DUE_LIMIT);
   if (rows.length === 0) return { items: [] };
+
+  const productionRows = await db
+    .select({
+      orderLineId: shopProductionTask.orderLineId,
+      status: shopProductionTask.status,
+    })
+    .from(shopProductionTask)
+    .where(
+      inArray(
+        shopProductionTask.orderLineId,
+        rows.map((row) => row.printId),
+      ),
+    );
+  const startedPrints = new Set(
+    productionRows
+      .filter((task) => printReadyForFraming(task.status))
+      .map((task) => task.orderLineId),
+  );
 
   const refunds = await db
     .select({ orderLineId: shopRefund.orderLineId, amountPence: shopRefund.amountPence })
@@ -114,6 +135,7 @@ export async function listFramingDue(db: Database): Promise<AdminFramingDueList>
           orderReference: row.orderReference,
           printTitle: row.printTitle ?? "Print",
           editionNumber: row.editionNumber,
+          printStarted: startedPrints.has(row.printId),
           name: snapshot.name,
           spec: describeFramingSpec(snapshot),
         };

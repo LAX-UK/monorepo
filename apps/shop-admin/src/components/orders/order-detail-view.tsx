@@ -15,9 +15,13 @@ import {
   canRefundOrder,
   cancelledLineBadge,
   failedRefunds,
+  framedPrintLabel,
+  framesHoldingDispatch,
   framingCanMove,
+  framingRefundState,
   lineCancellation,
   lineCancellationRefund,
+  orderItemCountLabel,
   orderLineLabel,
   presentFramingTaskStatus,
   presentOrderStatus,
@@ -148,11 +152,7 @@ export function OrderDetailView({
 
       <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
         <div className="flex min-w-0 flex-col gap-6">
-          <Section
-            title="Items"
-            description={`${detail.lines.length} on this order`}
-            bodyClassName="p-0"
-          >
+          <Section title="Items" description={orderItemCountLabel(detail)} bodyClassName="p-0">
             <ul className="divide-y divide-staff-line-subtle">
               {detail.lines.map((line) => {
                 const cancellationRefund = lineCancellationRefund(detail, line.orderLineId);
@@ -174,12 +174,19 @@ export function OrderDetailView({
                       <p className="text-staff-xs text-staff-muted tabular-nums">
                         {formatGbp(line.unitPricePence)}
                         {line.sku ? ` · ${line.sku}` : ""}
+                        {framedPrintLabel(detail, line)
+                          ? ` · for ${framedPrintLabel(detail, line)}`
+                          : ""}
                       </p>
                     </div>
                     <div className="flex shrink-0 items-center gap-2">
                       {line.kind === "framing" ? (
                         permissions.production ? (
-                          <FramingTaskControl line={line} canMove={framingCanMove(detail, line)} />
+                          <FramingTaskControl
+                            line={line}
+                            canMove={framingCanMove(detail, line)}
+                            refund={framingRefundState(detail, line)}
+                          />
                         ) : line.framing?.task ? (
                           <StatusBadge
                             tone={presentFramingTaskStatus(line.framing.task.status).tone}
@@ -244,6 +251,17 @@ export function OrderDetailView({
 
           <ReturnsPanel rows={returnRows} canWrite={permissions.fulfilment} />
 
+          {framesHoldingDispatch(detail) > 0 ? (
+            <Notice
+              tone="info"
+              title={`Ready to dispatch waits for ${framesHoldingDispatch(detail)} ${
+                framesHoldingDispatch(detail) === 1 ? "frame" : "frames"
+              } to be finished`}
+            >
+              Finish the framing from the item list or the Production page.
+            </Notice>
+          ) : null}
+
           <FulfilmentSection
             fulfilment={detail.fulfilmentRecord}
             fallbackOption={detail.fulfilment}
@@ -276,7 +294,11 @@ export function OrderDetailView({
                           {formatGbp(refund.amountPence)}
                         </p>
                         <p className="text-staff-xs text-staff-muted">
-                          {refundRowContext(refund, line)}
+                          {refundRowContext(
+                            refund,
+                            line,
+                            line ? framedPrintLabel(detail, line) : null,
+                          )}
                         </p>
                         {refund.status === "failed" && refund.failureReason ? (
                           <p className="text-staff-xs text-staff-danger">

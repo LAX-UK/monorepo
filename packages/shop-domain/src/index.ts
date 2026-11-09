@@ -232,6 +232,7 @@ export {
   framingTaskStarted,
   parseFramingOrderSnapshot,
   parseFramingTaskStatus,
+  printReadyForFraming,
   type FramingOrderSnapshot,
   type FramingRefundBlock,
   type FramingTaskStatus,

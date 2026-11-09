@@ -232,10 +232,27 @@ export function FramingStepButton({
  * A frame's work on the order page: when it is due, where it stands and the step that moves it
  * on. Cancelling the framing is not offered here; it goes with a refund of the frame.
  */
-export function FramingTaskControl({ line, canMove }: { line: Line; canMove: boolean }) {
+export function FramingTaskControl({
+  line,
+  canMove,
+  refund,
+}: {
+  line: Line;
+  canMove: boolean;
+  /** The frame's own refund, which replaces the work state: nothing is made for a refunded frame. */
+  refund: "refunded" | "refund_pending" | null;
+}) {
   const task = line.framing?.task;
   if (!task) return null;
+  if (refund) {
+    return (
+      <StatusBadge tone={refund === "refunded" ? "success" : "warning"}>
+        {refund === "refunded" ? "Refunded" : "Refund pending"}
+      </StatusBadge>
+    );
+  }
   const presented = presentFramingTaskStatus(task.status);
+  const waitsForPrint = task.status === "queued" && !line.framing?.printStarted;
   return (
     <span className="flex flex-wrap items-center gap-2">
       {!framingTaskFinished(task.status) ? (
@@ -244,7 +261,13 @@ export function FramingTaskControl({ line, canMove }: { line: Line; canMove: boo
         </span>
       ) : null}
       <StatusBadge tone={presented.tone}>{presented.label}</StatusBadge>
-      <FramingStepButton task={task} label={orderLineLabel(line)} canMove={canMove} />
+      {waitsForPrint && canMove ? (
+        <span className="whitespace-nowrap text-staff-xs text-staff-muted">
+          Start the print first
+        </span>
+      ) : (
+        <FramingStepButton task={task} label={orderLineLabel(line)} canMove={canMove} />
+      )}
     </span>
   );
 }

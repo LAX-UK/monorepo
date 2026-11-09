@@ -53,6 +53,7 @@ export function ProductionQueue({
   assignees,
   currentSubject,
   loadFailed = false,
+  framing = null,
 }: {
   state: WorkListState<"assignee">;
   /** Counts are left out when the list did not load. */
@@ -60,6 +61,8 @@ export function ProductionQueue({
   assignees: ProductionTaskStaff[];
   currentSubject: string;
   loadFailed?: boolean;
+  /** Frames due, shown under the page header: the other work production has in hand. */
+  framing?: React.ReactNode;
 }) {
   const list = useWorkList({
     list: productionList,
@@ -136,6 +139,7 @@ export function ProductionQueue({
     <>
       <ListPage<Task>
         title="Production"
+        notice={framing}
         description="Made-to-order work for editions that have been sold but not yet produced. Send an item to production from its order."
         Link={list.Link}
         listKey="lax-admin.production"

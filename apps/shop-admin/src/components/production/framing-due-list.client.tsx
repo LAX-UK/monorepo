@@ -54,7 +54,13 @@ export function FramingDueList({ items }: { items: readonly AdminFramingDueItem[
                   {framingDueLabel(item.dueAt)}
                 </span>
                 <StatusBadge tone={presented.tone}>{presented.label}</StatusBadge>
-                <FramingStepButton task={item} label={`Framing: ${item.name}`} canMove />
+                {item.status === "queued" && !item.printStarted ? (
+                  <span className="whitespace-nowrap text-staff-xs text-staff-muted">
+                    Start the print first
+                  </span>
+                ) : (
+                  <FramingStepButton task={item} label={`Framing: ${item.name}`} canMove />
+                )}
               </div>
             </li>
           );

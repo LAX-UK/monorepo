@@ -1,12 +1,20 @@
-import { shopFramingTask, shopOrder, shopOrderLine, shopRefund } from "@auction/db/schema";
+import {
+  shopFramingTask,
+  shopOrder,
+  shopOrderLine,
+  shopProductionTask,
+  shopRefund,
+} from "@auction/db/schema";
 import { type FramingTask, SHOP_API_ERROR_CODES } from "@auction/shop-contracts";
 import {
   type FramingTaskStatus,
   canMoveFramingTask,
   framingStageStamp,
   parseFramingTaskStatus,
+  printReadyForFraming,
 } from "@auction/shop-domain";
-import { and, eq, ne } from "drizzle-orm";
+import { and, desc, eq, ne } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import { withAdminIdempotency } from "../../../application/admin/with-admin-idempotency.js";
 import type { ShopUnitOfWorkFactory } from "../../../application/ports/shop-unit-of-work.js";
 import { ShopApiError, notFound } from "../../../errors/shop-api-error.js";
@@ -61,6 +69,9 @@ export function createUpdateFramingTaskHandler(deps: { uow: ShopUnitOfWorkFactor
           if (command.status !== "cancelled") {
             await assertFrameStillSold(db, task.orderLineId);
           }
+          if (command.status === "framing") {
+            await assertPrintInProduction(db, task.orderLineId);
+          }
           const now = new Date();
           const [updated] = await db
             .update(shopFramingTask)
@@ -94,6 +105,29 @@ export function createUpdateFramingTaskHandler(deps: { uow: ShopUnitOfWorkFactor
         },
       }),
     );
+}
+
+/** Framing starts after the print is picked: its production task must have been started. */
+async function assertPrintInProduction(
+  db: ReturnType<typeof shopPhaseDbSession>,
+  frameLineId: string,
+): Promise<void> {
+  const print = alias(shopOrderLine, "print");
+  const [row] = await db
+    .select({ status: shopProductionTask.status })
+    .from(shopOrderLine)
+    .innerJoin(print, eq(shopOrderLine.framingForLineId, print.id))
+    .leftJoin(shopProductionTask, eq(shopProductionTask.orderLineId, print.id))
+    .where(eq(shopOrderLine.id, frameLineId))
+    .orderBy(desc(shopProductionTask.createdAt))
+    .limit(1);
+  if (!printReadyForFraming(row?.status ?? null)) {
+    throw new ShopApiError(
+      SHOP_API_ERROR_CODES.CONFLICT,
+      "Start the print in production before framing it",
+      409,
+    );
+  }
 }
 
 /** The order is paid and nothing has been refunded (or is waiting to be) on the frame's line. */

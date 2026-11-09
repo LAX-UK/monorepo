@@ -158,3 +158,21 @@ export function framingStageStamp(
       return {};
   }
 }
+
+/** The print's production states in which it has been picked and is being made or checked. */
+const PRINT_STARTED_STATUSES = new Set([
+  "printing",
+  "qc_pending",
+  "qc_failed",
+  "qc_passed",
+  "completed",
+]);
+
+/**
+ * Framing sits between picking and quality check, so a frame is not started before its print is
+ * in production: the print needs a production task that has been started. A print with no task,
+ * or one still queued or cancelled, is not ready to be framed.
+ */
+export function printReadyForFraming(printProductionStatus: string | null): boolean {
+  return printProductionStatus !== null && PRINT_STARTED_STATUSES.has(printProductionStatus);
+}

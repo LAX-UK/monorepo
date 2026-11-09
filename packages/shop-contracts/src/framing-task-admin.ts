@@ -41,6 +41,8 @@ export const AdminFramingDueItemSchema = Type.Object({
   orderReference: Type.String(),
   printTitle: Type.String(),
   editionNumber: Type.Union([Type.Integer(), Type.Null()]),
+  /** Whether the print is in production; framing starts only after that. */
+  printStarted: Type.Boolean(),
   /** The option's name as sold. */
   name: Type.String(),
   /** What it is made of, as sold: frame, mount, glazing and hanging. */

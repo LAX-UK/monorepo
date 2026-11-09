@@ -45,15 +45,13 @@ export default async function ShopAdminProductionPage({
   if (session.status !== "ok") return <AdminFailedPage title="Production" status="failed" />;
 
   return (
-    <>
-      {framing.status === "ok" ? <FramingDueList items={framing.data.items} /> : null}
-      <ProductionQueue
-        state={state}
-        page={tasks.status === "ok" ? tasks.data : EMPTY}
-        loadFailed={tasks.status === "failed" || assignees.status !== "ok"}
-        assignees={assignees.status === "ok" ? assignees.data.items : []}
-        currentSubject={session.data.subject}
-      />
-    </>
+    <ProductionQueue
+      state={state}
+      page={tasks.status === "ok" ? tasks.data : EMPTY}
+      loadFailed={tasks.status === "failed" || assignees.status !== "ok"}
+      assignees={assignees.status === "ok" ? assignees.data.items : []}
+      currentSubject={session.data.subject}
+      framing={framing.status === "ok" ? <FramingDueList items={framing.data.items} /> : null}
+    />
   );
 }

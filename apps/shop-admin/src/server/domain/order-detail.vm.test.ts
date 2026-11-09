@@ -6,11 +6,15 @@ import {
   cancelAfterPossessionDescription,
   cancelledLineBadge,
   failedRefunds,
+  framedPrintLabel,
+  framesHoldingDispatch,
   framingCanMove,
   framingDueLabel,
+  framingRefundState,
   fulfilmentNextOptions,
   lineCancellation,
   lineCancellationRefund,
+  orderItemCountLabel,
   orderLineLabel,
   presentFulfilmentStatus,
   presentOrderStatus,
@@ -469,6 +473,7 @@ describe("a framed print", () => {
           framing: {
             name: "Natural oak frame",
             forLineId: LINE_A,
+            printStarted: true,
             task: {
               taskId: "44444444-0000-4000-8000-000000000004",
               status: "queued",
@@ -533,5 +538,42 @@ describe("a framed print", () => {
     const copy = cancelAfterPossessionDescription(60_000, "await_return", 21_000);
     expect(copy).toContain("£600.00 for this item and £210.00 for its frame, £810.00 in all");
     expect(copy).toContain("The frame is not made.");
+  });
+
+  it("tells a refunded frame from one waiting for its refund, and from one never refunded", () => {
+    const none = framed();
+    expect(framingRefundState(none, frameLine(none))).toBeNull();
+    const done = framed({ refunds: [refund("succeeded")] });
+    expect(framingRefundState(done, frameLine(done))).toBe("refunded");
+    const waiting = framed({ refunds: [refund("pending")] });
+    expect(framingRefundState(waiting, frameLine(waiting))).toBe("refund_pending");
+    const part = framed({ refunds: [refund("succeeded", 5_000)] });
+    expect(framingRefundState(part, frameLine(part))).toBeNull();
+  });
+
+  it("names the print a frame goes with, so identical frames can be told apart", () => {
+    const detail = framed();
+    expect(framedPrintLabel(detail, frameLine(detail))).toBe("Marylebone at dusk, edition 12");
+    expect(framedPrintLabel(detail, detail.lines[0] as (typeof detail.lines)[number])).toBeNull();
+  });
+
+  it("counts items and frames apart", () => {
+    expect(orderItemCountLabel(framed())).toBe("2 items · 1 frame");
+    expect(orderItemCountLabel(order())).toBe("2 items on this order");
+  });
+
+  it("counts the frames still holding the order back from dispatch", () => {
+    expect(framesHoldingDispatch(framed())).toBe(1);
+    expect(framesHoldingDispatch(framed({ refunds: [refund("succeeded")] }))).toBe(0);
+    expect(framesHoldingDispatch(framed({ status: "refunded" }))).toBe(0);
+  });
+
+  it("names the print in a frame's refund row", () => {
+    const detail = framed({ refunds: [refund("succeeded")] });
+    const row = detail.refunds[0];
+    if (!row) throw new Error("fixture has a refund");
+    expect(refundRowContext(row, frameLine(detail), "Marylebone at dusk, edition 12")).toContain(
+      "Framing: Natural oak frame for Marylebone at dusk, edition 12",
+    );
   });
 });

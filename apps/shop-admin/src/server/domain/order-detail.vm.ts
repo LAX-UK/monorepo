@@ -10,6 +10,7 @@ import {
   type ShopFulfilmentStatus,
   cancellationStockOutcome,
   cancelledLineIds,
+  framingTaskFinished,
   isShopFulfilmentStatus,
   nextFulfilmentStatuses,
   remainingRefundablePence,
@@ -190,6 +191,55 @@ export function framingCanMove(detail: AdminOrderDetail, line: OrderLine): boole
   return !(line.unitPricePence > 0 && refunded >= line.unitPricePence);
 }
 
+/** Where a frame's own refund stands: none, waiting to be sent, or sent. */
+export function framingRefundState(
+  detail: AdminOrderDetail,
+  line: OrderLine,
+): "refunded" | "refund_pending" | null {
+  if (line.unitPricePence <= 0) return null;
+  const own = detail.refunds.filter(
+    (refund) =>
+      refund.orderLineId === line.orderLineId &&
+      refund.status !== "failed" &&
+      refund.status !== "cancelled",
+  );
+  const sum = (rows: typeof own) => rows.reduce((total, refund) => total + refund.amountPence, 0);
+  if (sum(own) < line.unitPricePence) return null;
+  return sum(own.filter((refund) => refund.status === "succeeded")) >= line.unitPricePence
+    ? "refunded"
+    : "refund_pending";
+}
+
+/** "Tide line, edition 4": the print a frame goes with, so identical frames can be told apart. */
+export function framedPrintLabel(detail: AdminOrderDetail, line: OrderLine): string | null {
+  if (line.kind !== "framing" || !line.framing) return null;
+  const forLineId = line.framing.forLineId;
+  const print = detail.lines.find((candidate) => candidate.orderLineId === forLineId);
+  return print ? orderLineLabel(print) : null;
+}
+
+/** "4 items · 4 frames": prints and products are the items; frames are counted apart. */
+export function orderItemCountLabel(detail: AdminOrderDetail): string {
+  const frames = detail.lines.filter((line) => line.kind === "framing").length;
+  const items = detail.lines.length - frames;
+  const part = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`;
+  return frames > 0
+    ? `${part(items, "item", "items")} · ${part(frames, "frame", "frames")}`
+    : `${part(items, "item", "items")} on this order`;
+}
+
+/** Frames that still have to be finished before the order can be made ready to dispatch. */
+export function framesHoldingDispatch(detail: AdminOrderDetail): number {
+  if (detail.status !== "paid" && detail.status !== "partially_refunded") return 0;
+  return detail.lines.filter(
+    (line) =>
+      line.kind === "framing" &&
+      line.framing?.task &&
+      !framingTaskFinished(line.framing.task.status) &&
+      framingRefundState(detail, line) === null,
+  ).length;
+}
+
 /** "Due Mon 30 Nov": when the frame is due, in the staff date style. */
 export function framingDueLabel(dueAt: string): string {
   return `Due ${formatStaffDate(dueAt)}`;
@@ -275,15 +325,20 @@ export function failedRefunds(detail: AdminOrderDetail): Refund[] {
 }
 
 /** The Refunds list's second line: what was refunded, why it exists and when. */
-export function refundRowContext(refund: Refund, line: OrderLine | undefined): string {
+export function refundRowContext(
+  refund: Refund,
+  line: OrderLine | undefined,
+  printLabel: string | null = null,
+): string {
   const origin = refund.settledOutside
     ? "Refunded outside LAX"
     : refund.source === "cancellation"
       ? "Cancelled after possession"
       : humanizeStatus(refund.source);
-  return `${line ? orderLineLabel(line) : "Whole order"} · ${origin} · ${formatStaffDateTime(
-    refund.createdAt,
-  )}`;
+  const subject = line
+    ? [orderLineLabel(line), printLabel].filter(Boolean).join(" for ")
+    : "Whole order";
+  return `${subject} · ${origin} · ${formatStaffDateTime(refund.createdAt)}`;
 }
 
 /** Only orders the customer paid for can be refunded. */

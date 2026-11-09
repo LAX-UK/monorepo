@@ -13,6 +13,7 @@ import {
   framingTaskNextSteps,
   framingTaskStarted,
   parseFramingOrderSnapshot,
+  printReadyForFraming,
 } from "./framing-order.js";
 import { pence } from "./money.js";
 
@@ -152,5 +153,19 @@ describe("framingStageStamp", () => {
   it("stamps nothing for queued or cancelled", () => {
     expect(framingStageStamp("queued", now)).toEqual({});
     expect(framingStageStamp("cancelled", now)).toEqual({});
+  });
+});
+
+describe("printReadyForFraming", () => {
+  it("is true once the print is being made or checked", () => {
+    for (const status of ["printing", "qc_pending", "qc_failed", "qc_passed", "completed"]) {
+      expect(printReadyForFraming(status)).toBe(true);
+    }
+  });
+
+  it("is false for a print with no production task, or one queued or cancelled", () => {
+    for (const status of [null, "queued", "cancelled"]) {
+      expect(printReadyForFraming(status)).toBe(false);
+    }
   });
 });

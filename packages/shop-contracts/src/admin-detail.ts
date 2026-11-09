@@ -157,6 +157,8 @@ export const AdminOrderLineDetailSchema = Type.Object({
       Type.Object({
         name: Type.String(),
         forLineId: Type.String({ format: "uuid" }),
+        /** Whether the print is in production; framing starts only after that. */
+        printStarted: Type.Boolean(),
         task: Type.Union([
           Type.Object({
             taskId: Type.String({ format: "uuid" }),

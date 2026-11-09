@@ -220,6 +220,25 @@ describe.skipIf(!hasShopIntegrationDb)("framing in orders integration", () => {
     await applyPayoutEffectsForRefund(db, orderId, ORDER_PENCE, succeededTotal);
   }
 
+  /** Sends the print to production and starts it: framing starts after the print is picked. */
+  async function startPrint(order: Awaited<ReturnType<typeof paidFramedOrder>>) {
+    const created = await createCreateProductionTaskHandler({ uow: uow() })({
+      orderLineId: order.print.id,
+      editionId: order.editionId,
+      actorSubjectId: actor,
+      idempotencyKey: `print-${order.suffix}`,
+    });
+    const outcome = await createDrizzleProductionTaskRepository(db).update({
+      id: created.taskId,
+      expectedVersion: 1,
+      status: "printing",
+      actorSubjectId: actor,
+      canMove: canTransitionProductionTask,
+    });
+    expect(outcome.status).toBe("updated");
+    return created.taskId;
+  }
+
   const requestRefund = () => createRequestRefundHandler({ uow: uow() });
 
   describe("what checkout and payment create", () => {
@@ -327,6 +346,7 @@ describe.skipIf(!hasShopIntegrationDb)("framing in orders integration", () => {
     it("refunding the whole order cancels the task, even when the frame is being made", async () => {
       const order = await paidFramedOrder("whole-order");
       const task = requireDefined(order.task, "task");
+      await startPrint(order);
       await createUpdateFramingTaskHandler({ uow: uow() })({
         taskId: task.id,
         status: "framing",
@@ -346,6 +366,7 @@ describe.skipIf(!hasShopIntegrationDb)("framing in orders integration", () => {
     it("refuses to refund a frame on its own once it is being made", async () => {
       const order = await paidFramedOrder("started");
       const task = requireDefined(order.task, "task");
+      await startPrint(order);
       await createUpdateFramingTaskHandler({ uow: uow() })({
         taskId: task.id,
         status: "framing",
@@ -402,6 +423,7 @@ describe.skipIf(!hasShopIntegrationDb)("framing in orders integration", () => {
     it("moves one step at a time, and refuses a stale version or a skipped step", async () => {
       const order = await paidFramedOrder("steps");
       const task = requireDefined(order.task, "task");
+      await startPrint(order);
       const update = createUpdateFramingTaskHandler({ uow: uow() });
       const step = (status: "framing" | "framed" | "completed", version: number, key: string) =>
         update({
@@ -420,9 +442,33 @@ describe.skipIf(!hasShopIntegrationDb)("framing in orders integration", () => {
       expect((await step("framed", started.version, "c")).status).toBe("framed");
     });
 
+    it("refuses to start a frame before its print is in production", async () => {
+      const order = await paidFramedOrder("print-first");
+      const task = requireDefined(order.task, "task");
+      const refused = await createUpdateFramingTaskHandler({ uow: uow() })({
+        taskId: task.id,
+        status: "framing",
+        expectedVersion: task.version,
+        actorSubjectId: actor,
+        idempotencyKey: `early-${order.suffix}`,
+      }).catch((error: unknown) => error);
+      expect(refused).toBeInstanceOf(ShopApiError);
+      expect((refused as ShopApiError).code).toBe(SHOP_API_ERROR_CODES.CONFLICT);
+      await startPrint(order);
+      const started = await createUpdateFramingTaskHandler({ uow: uow() })({
+        taskId: task.id,
+        status: "framing",
+        expectedVersion: task.version,
+        actorSubjectId: actor,
+        idempotencyKey: `late-${order.suffix}`,
+      });
+      expect(started.status).toBe("framing");
+    });
+
     it("replays the same step with the same key without moving it twice", async () => {
       const order = await paidFramedOrder("replay");
       const task = requireDefined(order.task, "task");
+      await startPrint(order);
       const update = createUpdateFramingTaskHandler({ uow: uow() });
       const command = {
         taskId: task.id,
@@ -463,6 +509,7 @@ describe.skipIf(!hasShopIntegrationDb)("framing in orders integration", () => {
     it("holds the order back from ready-to-dispatch until the frame is finished", async () => {
       const order = await paidFramedOrder("dispatch-gate");
       const task = requireDefined(order.task, "task");
+      await startPrint(order);
       const [fulfilment] = await db
         .select({ id: shopFulfilment.id })
         .from(shopFulfilment)
