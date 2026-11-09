@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  PAYMENT_REMINDER_SEND_HOUR_LONDON,
   PAYMENT_REMINDER_STEPS,
   type PaymentReminderFacts,
   paymentReminderToSend,
@@ -121,5 +122,46 @@ describe("paymentReminderToSend", () => {
     expect(paymentReminderToSend({ ...owed, payment: null }, at(0))).toBeNull();
     expect(paymentReminderToSend({ ...owed, lotStatus: "draft" }, at(0))).toBeNull();
     expect(paymentReminderToSend({ ...owed, winnerId: "someone-else" }, at(0))).toBeNull();
+  });
+});
+
+describe("due-day reminder at the fixed morning hour", () => {
+  const dueDay = (
+    dueAtIso: string,
+    nowIso: string,
+    sentSteps: PaymentReminderFacts["sentSteps"] = [],
+  ) =>
+    paymentReminderToSend(
+      { ...owed, payment: { status: "pending", raisedAt, dueAt: new Date(dueAtIso) }, sentSteps },
+      new Date(nowIso),
+    );
+
+  it("names the hour as 09:00", () => {
+    expect(PAYMENT_REMINDER_SEND_HOUR_LONDON).toBe(9);
+  });
+
+  it("waits until 09:00 London on a GMT day, whatever time the due date falls", () => {
+    const due = "2026-12-10T10:00:00Z";
+    expect(reminderDueAt("due_day", new Date(due))).toEqual(new Date("2026-12-10T09:00:00Z"));
+    expect(dueDay(due, "2026-12-10T08:59:59Z", ["before_due"])).toBeNull();
+    expect(dueDay(due, "2026-12-10T09:00:00Z", ["before_due"])).toBe("due_day");
+  });
+
+  it("waits until 09:00 London on a BST day (08:00 UTC)", () => {
+    const due = "2026-07-10T15:00:00Z";
+    expect(reminderDueAt("due_day", new Date(due))).toEqual(new Date("2026-07-10T08:00:00Z"));
+    expect(dueDay(due, "2026-07-10T07:59:59Z", ["before_due"])).toBeNull();
+    expect(dueDay(due, "2026-07-10T08:00:00Z", ["before_due"])).toBe("due_day");
+  });
+
+  it("sends at once when 09:00 has already passed (sale ends 10:00, due the same day)", () => {
+    const due = "2026-12-10T10:00:00Z";
+    expect(dueDay(due, "2026-12-10T10:00:01Z")).toBe("due_day");
+  });
+
+  it("never sends the due-day reminder twice", () => {
+    const due = "2026-12-10T10:00:00Z";
+    expect(dueDay(due, "2026-12-10T10:05:00Z", ["due_day"])).toBeNull();
+    expect(dueDay(due, "2026-12-10T23:00:00Z", ["due_day"])).toBeNull();
   });
 });

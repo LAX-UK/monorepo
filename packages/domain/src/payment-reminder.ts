@@ -17,13 +17,13 @@ const STEP_OFFSET_DAYS: Record<PaymentReminderStep, number> = {
 };
 
 /** Reminders go out at 09:00 London on their day, not at the end-of-day due moment. */
-const SEND_HOUR_LONDON = 9;
+export const PAYMENT_REMINDER_SEND_HOUR_LONDON = 9;
 
 /** When a step is sent: 09:00 London on the due day, or that many London days before or after. */
 export function reminderDueAt(step: PaymentReminderStep, dueAt: Date): Date {
   const { year, month, day } = londonDateOf(dueAt);
   const midnight = londonMidnight(year, month, day + STEP_OFFSET_DAYS[step]);
-  return new Date(midnight.getTime() + SEND_HOUR_LONDON * HOUR_MS);
+  return new Date(midnight.getTime() + PAYMENT_REMINDER_SEND_HOUR_LONDON * HOUR_MS);
 }
 
 export type PaymentReminderFacts = {
