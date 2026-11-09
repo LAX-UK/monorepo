@@ -1,4 +1,5 @@
 import { memoryAdapter } from "better-auth/adapters/memory";
+import { SignJWT, exportJWK, generateKeyPair } from "jose";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AuthDatabase } from "./phone-number-plugin.js";
 import type {
@@ -870,6 +871,60 @@ describe("SM3: linking from Security", () => {
       email_verified: false,
     });
     expect(location(response).searchParams.get("error")).toBe("unable_to_link_account");
+    expect(providerAccounts(h)).toHaveLength(0);
+  });
+});
+
+describe("Linking by ID token through the library's link endpoint", () => {
+  it("is refused even when called on the server, and writes no provider account", async () => {
+    h = await harness({});
+    await h.createAccount({ id: "u1", email: "ada@example.com", emailVerified: true });
+    const signedIn = await h.auth.handler(
+      new Request(`${BASE}/api/auth/sign-in/email`, {
+        method: "POST",
+        headers: { "content-type": "application/json", origin: BASE },
+        body: JSON.stringify({ email: "ada@example.com", password: "a-password-123" }),
+      }),
+    );
+    const cookie = (signedIn.headers.getSetCookie?.() ?? []).map((v) => v.split(";")[0]).join("; ");
+
+    // A token Google would really have signed, so the library accepts it and the refusal below
+    // comes from the link policy rather than from the token check.
+    const { publicKey, privateKey } = await generateKeyPair("RS256");
+    const kid = "google-test-key";
+    const idToken = await new SignJWT({
+      email: "ada@example.com",
+      email_verified: true,
+      sub: GOOGLE_SUB,
+    })
+      .setProtectedHeader({ alg: "RS256", kid })
+      .setIssuer("https://accounts.google.com")
+      .setAudience("google-client")
+      .setIssuedAt()
+      .setExpirationTime("5m")
+      .sign(privateKey);
+    const jwk = { ...(await exportJWK(publicKey)), kid, alg: "RS256", use: "sig" };
+    const realFetch = globalThis.fetch;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const target = String(
+          typeof input === "string" || input instanceof URL ? input : input.url,
+        );
+        return target.startsWith("https://www.googleapis.com/oauth2/v3/certs")
+          ? Response.json({ keys: [jwk] })
+          : realFetch(input, init);
+      }),
+    );
+
+    await expect(
+      h.auth.api.linkSocialAccount({
+        headers: new Headers({ cookie, origin: BASE }),
+        body: { provider: "google", idToken: { token: idToken } },
+      }),
+    ).rejects.toMatchObject({ body: { code: "LINKING_FAILED" } });
+    // The library reports any refusal from the account hook as a failed link. Without the guard
+    // this call succeeds and writes the provider account.
     expect(providerAccounts(h)).toHaveLength(0);
   });
 });
