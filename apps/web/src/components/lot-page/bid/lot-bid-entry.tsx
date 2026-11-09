@@ -2,7 +2,10 @@
 
 import { BidGate } from "@/components/bid/bid-gate";
 import { useBiddingAccountFreshness } from "@/components/bid/use-bidding-account-freshness";
-import { LazyLotBidDialog } from "@/components/lot-page/bid/bid-dialog.lazy";
+import {
+  LazyLotBidDialog,
+  usePreloadBidDialogWhenIdle,
+} from "@/components/lot-page/bid/bid-dialog.lazy";
 import {
   BidControlButton,
   BidEntryControls,
@@ -121,6 +124,7 @@ export function LotBidEntry({ auction: lot, artistName, gate, buyersPremium }: L
   const entryRef = useRef<HTMLDivElement | null>(null);
   const [dialog, setDialog] = useState({ open: false, session: 0, start: "next" as BidMode });
   useBiddingAccountFreshness(gate.sessionUser ? gate.actingLegalEntityId : null);
+  usePreloadBidDialogWhenIdle();
   useViewerAnnouncements({
     position: viewer.position,
     lotTitle: lot.title,

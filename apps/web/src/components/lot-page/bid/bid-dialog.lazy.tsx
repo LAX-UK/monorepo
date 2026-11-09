@@ -1,7 +1,9 @@
 "use client";
 
 import type { LotBidDialogProps } from "@/components/lot-page/bid/bid-dialog";
+import { runWhenIdle } from "@/lib/ui/run-when-idle";
 import dynamic from "next/dynamic";
+import { useEffect } from "react";
 
 /**
  * Starts fetching the bid dialog. It is not part of the lot page's first load: nobody sees it
@@ -10,6 +12,11 @@ import dynamic from "next/dynamic";
  */
 export function preloadBidDialog() {
   return import("@/components/lot-page/bid/bid-dialog");
+}
+
+/** Fetches the bid dialog once the page is idle, so pressing a bid button opens it at once. */
+export function usePreloadBidDialogWhenIdle(): void {
+  useEffect(() => runWhenIdle(() => void preloadBidDialog()), []);
 }
 
 export const LazyLotBidDialog = dynamic<LotBidDialogProps>(

@@ -1,7 +1,7 @@
 "use client";
 
 import { SendVerificationEmailButton } from "@/components/auth/send-verification-email-button";
-import { ConditionReportRequestForm } from "@/components/sections/artwork/redesign/condition-report-request-form";
+import { LazyConditionReportRequestForm } from "@/components/sections/artwork/redesign/condition-report-request-form.lazy";
 import { buildHostedLoginStartHref } from "@/lib/auth/hosted-login-start-href";
 import type { ConditionReportCardState } from "@/lib/condition-report/derive-condition-report-card-state";
 import { contextualIdentityOnboardingHref } from "@/lib/kyc/identity-onboarding";
@@ -94,7 +94,7 @@ export function LotConditionReportRequestFormPanel({
   apiErrorMessage: string | null;
 }) {
   return (
-    <ConditionReportRequestForm
+    <LazyConditionReportRequestForm
       onSubmitRequest={onSubmitRequest}
       submitting={submitting}
       apiErrorMessage={apiErrorMessage}

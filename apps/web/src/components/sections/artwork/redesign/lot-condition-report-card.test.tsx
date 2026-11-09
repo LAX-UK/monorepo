@@ -62,13 +62,13 @@ describe("LotConditionReportCard", () => {
     expect(screen.getByRole("button", { name: /show condition report/i })).toBeInTheDocument();
   });
 
-  it("expands panel and exposes request form", () => {
+  it("expands panel and exposes request form, fetched when the panel opens", async () => {
     render(<LotConditionReportCard {...baseProps} state={{ kind: "canRequest" }} />);
     const trigger = screen.getByRole("button", { name: /request a specialist/i });
     expect(trigger).toHaveAttribute("aria-expanded", "false");
     fireEvent.click(trigger);
     expect(trigger).toHaveAttribute("aria-expanded", "true");
-    expect(screen.getByLabelText(/note for specialists/i)).toBeInTheDocument();
+    expect(await screen.findByLabelText(/note for specialists/i)).toBeInTheDocument();
   });
 });
 
