@@ -135,12 +135,27 @@ async function assertLinkableOriginal(
   assertSourceOriginal({ ...artwork, source });
 }
 
-/** Whether the run's edition facts are recorded and confirmed, which publishing needs. */
+/**
+ * Whether the run's edition facts are recorded and confirmed, which publishing needs. A print
+ * sold on its own follows the facts of the run it came from.
+ */
 async function editionFactsConfirmed(tx: ShopTransactionEffects, artworkId: string) {
-  const [row] = await shopPhaseDbSession(tx)
+  const db = shopPhaseDbSession(tx);
+  const [artwork] = await db
+    .select({ runRole: shopArtwork.runRole, mainRunArtworkId: shopArtwork.mainRunArtworkId })
+    .from(shopArtwork)
+    .where(eq(shopArtwork.id, artworkId))
+    .limit(1);
+  const factsArtworkId =
+    artwork?.runRole === "set_apart" && artwork.mainRunArtworkId
+      ? artwork.mainRunArtworkId
+      : artworkId;
+  const [row] = await db
     .select({ artworkId: shopEditionFacts.artworkId })
     .from(shopEditionFacts)
-    .where(and(eq(shopEditionFacts.artworkId, artworkId), isNotNull(shopEditionFacts.confirmedAt)))
+    .where(
+      and(eq(shopEditionFacts.artworkId, factsArtworkId), isNotNull(shopEditionFacts.confirmedAt)),
+    )
     .limit(1);
   return row !== undefined;
 }

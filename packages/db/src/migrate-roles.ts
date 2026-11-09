@@ -133,6 +133,10 @@ export const SHOP_COMMERCE_TABLES = [
   "shop_artist_application_work",
   /** What staff confirm about each print run: numbering, signature and certificate. */
   "shop_edition_facts",
+  /** A print sold on its own, apart from its run: where it came from and what differs. */
+  "shop_print_exception",
+  /** Printers and publishers staff pick from when recording a run's facts. */
+  "shop_print_party",
   /** Guest checkout: the guest and lead behind guest orders, and their emailed order links. */
   "shop_guest_customer",
   "shop_guest_order_link",
@@ -147,6 +151,7 @@ export const SHOP_COMMERCE_TABLES = [
   /** Where the Shop delivers: regions with lead times and optional fixed prices, and the countries it does not deliver to. */
   "shop_delivery_region",
   "shop_delivery_restricted_country",
+  "shop_delivery_quote",
 ] as const;
 
 /** Append-only Shop tables: shop_app may INSERT and SELECT only. */
@@ -300,6 +305,12 @@ export const WORKER_READ_TABLES = [
   "private_sale_deal",
   /** The payment expiry job closes each invoice's open Checkout sessions before cancelling it. */
   "payment_checkout_session",
+  /** The collection reminder sweep reads the next day's visits, their lots and the place's rules. */
+  "collection_place",
+  "collection_weekly_hours",
+  "collection_exception",
+  "collection_booking",
+  "collection_booking_lot",
 ];
 // Postgres requires UPDATE on the target table for `select ... for update` row locks even
 // when no rows are mutated. The projector runner pulls events with FOR UPDATE SKIP LOCKED,
@@ -390,6 +401,28 @@ export const WORKER_ARTWORK_REGISTER_APPEND_ONLY_TABLES = ["artwork_register_eve
  * columns on a conflict and nothing else (the address hash is the key and is never changed).
  */
 export const WORKER_EMAIL_SUPPRESSION_UPDATE_COLUMNS = ["reason", "source", "created_at"] as const;
+/**
+ * Erasing a purged person's account touches collection bookings in three ways, and the worker may
+ * change only these columns:
+ * - a live visit is cancelled (status, who and when it was cancelled, the calendar sequence);
+ * - an ended visit loses the collector's email and company, and the name unless it is a hand-over
+ *   record that is kept for its retention period;
+ * - after that period the retained name and ID type are cleared.
+ */
+export const WORKER_COLLECTION_BOOKING_ERASURE_COLUMNS = [
+  "status",
+  "cancelled_at",
+  "ics_sequence",
+  "updated_at",
+  "collector_name",
+  "collector_email",
+  "collector_company",
+  "id_check_type",
+  "personal_details_erased_at",
+  "handover_record_cleared_at",
+] as const;
+/** Cancelling a live visit gives its lots back. */
+export const WORKER_COLLECTION_LOT_RELEASE_COLUMNS = ["active"] as const;
 export const WORKER_ZOHO_CAMPAIGNS_SUPPRESSION_TABLES = [
   "zoho_campaigns_suppression_state",
 ] as const;
@@ -957,6 +990,20 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
           "public",
           // `source` arrives with migration 0323; roles may be applied before it runs.
           true,
+        );
+        /** Erasure cancels a purged person's live visits and scrubs the collector's details, and
+         * the retention purge clears the kept hand-over record, column by column. */
+        await grantColumnUpdateIfExists(
+          client,
+          "worker_app",
+          "collection_booking",
+          WORKER_COLLECTION_BOOKING_ERASURE_COLUMNS,
+        );
+        await grantColumnUpdateIfExists(
+          client,
+          "worker_app",
+          "collection_booking_lot",
+          WORKER_COLLECTION_LOT_RELEASE_COLUMNS,
         );
         /** worker enqueues mail from notification-fanout projectors (INSERT) and the send-email
          * job updates rows to sent/failed/sending (SELECT, UPDATE). DELETE remains denied so the

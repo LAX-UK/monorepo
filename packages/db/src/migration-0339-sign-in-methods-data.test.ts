@@ -14,12 +14,12 @@ const journal = JSON.parse(read("meta/_journal.json")) as {
 };
 
 describe("migration 0339 sign-in methods data", () => {
-  it("follows 0331 in the journal, one day later", () => {
+  it("follows 0337 in the journal, one day later", () => {
     const index = journal.entries.findIndex((e) => e.tag === "0339_sign_in_methods_data");
     expect(index).toBeGreaterThan(0);
     const entry = journal.entries[index];
     const previous = journal.entries[index - 1];
-    expect(previous?.tag).toBe("0331_shop_framing_catalogue");
+    expect(previous?.tag).toBe("0337_shop_print_exception");
     expect(entry?.idx).toBe((previous?.idx ?? 0) + 1);
     expect(entry?.when).toBe((previous?.when ?? 0) + 24 * 60 * 60 * 1000);
   });

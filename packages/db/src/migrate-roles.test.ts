@@ -27,6 +27,8 @@ import {
   WORKER_ARTWORK_REGISTER_TABLES,
   WORKER_BID_ALERT_PRUNE_DELETE_TABLES,
   WORKER_BID_ALERT_TABLES,
+  WORKER_COLLECTION_BOOKING_ERASURE_COLUMNS,
+  WORKER_COLLECTION_LOT_RELEASE_COLUMNS,
   WORKER_DATA_EXPORT_TABLES,
   WORKER_DENY_TABLES,
   WORKER_DOMAIN_EVENT_DELIVERY_TABLES,
@@ -411,6 +413,59 @@ describe("migrate-roles invariants", () => {
     expect([...WORKER_READ_TABLES]).toContain("identity_lifecycle_outbox");
   });
 
+  it("the worker reads collection hours, rules and bookings but never writes them", () => {
+    const tables = [
+      "collection_place",
+      "collection_weekly_hours",
+      "collection_exception",
+      "collection_booking",
+      "collection_booking_lot",
+    ];
+    for (const table of tables) {
+      expect([...WORKER_READ_TABLES]).toContain(table);
+      expect([...WORKER_FULL_TABLES]).not.toContain(table);
+      expect([...API_DENY_TABLES]).not.toContain(table);
+      expect([...API_READ_TABLES]).not.toContain(table);
+    }
+  });
+
+  it("lets the worker change only the columns erasure needs on a booking and its lots", async () => {
+    const source = await readFile(join(__dirname, "migrate-roles.ts"), "utf8");
+    expect([...WORKER_COLLECTION_BOOKING_ERASURE_COLUMNS].sort()).toEqual(
+      [
+        "status",
+        "cancelled_at",
+        "ics_sequence",
+        "updated_at",
+        "collector_name",
+        "collector_email",
+        "collector_company",
+        "id_check_type",
+        "personal_details_erased_at",
+        "handover_record_cleared_at",
+      ].sort(),
+    );
+    // Never the place, the time, the lots chosen, who booked, or the idempotency record.
+    for (const column of [
+      "slot_start",
+      "seat",
+      "legal_entity_id",
+      "booked_by_user_id",
+      "idempotency_key",
+      "request_fingerprint",
+      "reference",
+    ]) {
+      expect([...WORKER_COLLECTION_BOOKING_ERASURE_COLUMNS]).not.toContain(column);
+    }
+    expect([...WORKER_COLLECTION_LOT_RELEASE_COLUMNS]).toEqual(["active"]);
+    expect(source).toContain(
+      '"collection_booking",\n          WORKER_COLLECTION_BOOKING_ERASURE_COLUMNS,',
+    );
+    expect(source).toContain(
+      '"collection_booking_lot",\n          WORKER_COLLECTION_LOT_RELEASE_COLUMNS,',
+    );
+  });
+
   it("denies api_app and worker_app on shop append-only commerce tables", () => {
     for (const table of SHOP_COMMERCE_APPEND_ONLY_TABLES) {
       expect([...API_DENY_TABLES]).toContain(table);
@@ -424,11 +479,29 @@ describe("migrate-roles invariants", () => {
   });
 
   it("keeps the Shop's delivery regions to shop_app, denied to the Bid API and the worker", () => {
-    for (const table of ["shop_delivery_region", "shop_delivery_restricted_country"]) {
+    for (const table of [
+      "shop_delivery_region",
+      "shop_delivery_restricted_country",
+      "shop_delivery_quote",
+    ]) {
       expect([...SHOP_COMMERCE_TABLES]).toContain(table);
       expect([...API_DENY_TABLES]).toContain(table);
       expect([...WORKER_DENY_TABLES]).toContain(table);
     }
+  });
+
+  it("gives shop_app the print-facts tables, and keeps them from api_app and the worker", () => {
+    for (const table of ["shop_edition_facts", "shop_print_exception"]) {
+      expect([...SHOP_COMMERCE_TABLES]).toContain(table);
+      expect([...API_DENY_TABLES]).toContain(table);
+      expect([...WORKER_DENY_TABLES]).toContain(table);
+    }
+  });
+
+  it("keeps the printers and publishers list to shop_app, denied to the Bid API and the worker", () => {
+    expect([...SHOP_COMMERCE_TABLES]).toContain("shop_print_party");
+    expect([...API_DENY_TABLES]).toContain("shop_print_party");
+    expect([...WORKER_DENY_TABLES]).toContain("shop_print_party");
   });
 
   it("keeps each tool's saved views to its own role", () => {

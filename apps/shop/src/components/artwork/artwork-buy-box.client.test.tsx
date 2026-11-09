@@ -72,6 +72,19 @@ describe("ArtworkBuyBox", () => {
     expect(screen.getByRole("link", { name: DELIVERY }).getAttribute("href")).toBe("/delivery");
   });
 
+  it("offers an outside-the-UK link beside the delivery line, and only when given one", () => {
+    const view = renderBuyBox({
+      deliveryHref: "/delivery",
+      outsideUkHref: "/delivery#delivery-at-a-glance",
+    });
+    expect(
+      screen.getByRole("link", { name: "Outside the UK? We quote delivery" }).getAttribute("href"),
+    ).toBe("/delivery#delivery-at-a-glance");
+    view.unmount();
+    renderBuyBox({ deliveryHref: null });
+    expect(screen.queryByRole("link", { name: /Outside the UK/ })).toBeNull();
+  });
+
   it("adds one edition: loading, then added, the confirmation, an announcement and a header refresh", async () => {
     const pending = deferred<{ ok: true }>();
     addMock.mockReturnValue(pending.promise as never);

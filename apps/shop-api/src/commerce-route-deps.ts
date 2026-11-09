@@ -1,4 +1,8 @@
 import type { LegalEntity } from "@auction/branding";
+import type {
+  DeliveryQuoteRequestInput,
+  DeliveryQuoteRequestOutcome,
+} from "./application/delivery-quote-request/delivery-quote-request.service.js";
 import type { EnquiryRateLimiter } from "./application/enquiry-rate-limit.js";
 import type { GuestCheckoutService } from "./application/guest-checkout/guest-checkout.service.js";
 import type { createCancelCheckoutOrderHandler } from "./application/handlers/commerce-handlers.js";
@@ -40,6 +44,8 @@ export type CommerceRoutesDeps = {
   checkoutOrder: ReturnType<typeof createCheckoutOrderHandler>;
   resumeCheckoutOrder: ReturnType<typeof createResumeCheckoutOrderHandler>;
   cancelCheckoutOrder: ReturnType<typeof createCancelCheckoutOrderHandler>;
+  /** Checkout for an address outside the UK: a quote request, a fixed-rate order, or a refusal. */
+  requestDeliveryQuote: (input: DeliveryQuoteRequestInput) => Promise<DeliveryQuoteRequestOutcome>;
   listOrders: ReturnType<typeof createListOrdersHandler>;
   getOrder: ReturnType<typeof createGetOrderHandler>;
   /** The buyer's name and email for the invoice. */

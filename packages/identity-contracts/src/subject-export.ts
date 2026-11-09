@@ -388,6 +388,35 @@ const BID_CATEGORIES = [
     ],
   ),
   category(
+    "collections",
+    "Collections",
+    ["provided", "made_by_us"],
+    "The collection times you booked or are named to collect at, with the lots, who collects and what you told us about them.",
+    [
+      f("reference", "The collection reference, such as COL-1042."),
+      f("status", "Booked, collected, partly collected, not collected or cancelled."),
+      f("visit", "The start and end of the booked time."),
+      f(
+        "yourRoles",
+        "Whether you booked it, authorised the person collecting, or are the person collecting.",
+      ),
+      f(
+        "bookedBy",
+        "Whether you, another member of your organisation or the gallery's team made the booking.",
+      ),
+      f("lots", "The lots in the visit, each with whether it was collected or left."),
+      f(
+        "collector",
+        "Who collects: your own name, a colleague or a named third party, with the email and company you gave.",
+      ),
+      f("authorisedAt", "When the authorisation for a third party was recorded, or null."),
+      f("idCheckType", "The kind of photo ID checked at hand-over, never its number, or null."),
+      f("bookedAt", "When the booking was made."),
+      f("handedOverAt", "When the works were handed over or the visit was marked missed, or null."),
+      f("cancelledAt", "When the booking was cancelled, or null."),
+    ],
+  ),
+  category(
     "invoices",
     "Invoices",
     ["observed"],

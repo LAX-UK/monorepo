@@ -234,6 +234,19 @@ describe("renderEmail", () => {
     );
   });
 
+  it("tells a buyer their delivery quote request is held, and who pays duties", async () => {
+    const rendered = await renderEmail("shop-delivery-quote-requested", {
+      orderReference: "LAX-S-10482",
+      countryName: "Germany",
+      holdUntilOn: "12 November 2026",
+      itemsSummary: "Warm Basket (Edition 3) — £420.00",
+    });
+    expect(rendered.subject).toBe("We have your delivery quote request");
+    expect(rendered.text).toContain("quote delivery to Germany for order LAX-S-10482");
+    expect(rendered.text).toContain("held for you until 12 November 2026");
+    expect(rendered.text).toContain("Import duties and taxes in Germany are paid by you");
+  });
+
   it("tells a guest the receipt link opens the order and how to keep it in an account", async () => {
     const rendered = await renderEmail("shop-order-receipt", {
       orderId: "ord-1",

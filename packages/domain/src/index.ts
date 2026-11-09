@@ -832,9 +832,12 @@ export {
 } from "./artist-alert-criteria.js";
 export {
   collectionBookingOffer,
+  collectionSettingsFromPlace,
   type CollectionBookingOffer,
   type CollectionBookingSettings,
+  type CollectionPlaceForOffer,
 } from "./collection-booking.js";
+export { summariseWeeklyHours } from "./collection-hours-summary.js";
 export {
   bankHolidayClosures,
   createCollectionCalendar,
@@ -864,6 +867,7 @@ export {
 export {
   COLLECTION_VISIT_MINUTES,
   DEFAULT_COLLECTION_RULES,
+  DEFAULT_COLLECTION_WEEKLY_HOURS,
   MAX_LOTS_PER_COLLECTION,
   MAX_NOTICE_WORKING_DAYS,
   MAX_PLACES_PER_SLOT,
@@ -937,6 +941,20 @@ export {
   type CollectionIcsInput,
   type CollectionIcsParty,
 } from "./collection-ics.js";
+export {
+  COLLECTION_BOOKING_EVENT_AGGREGATE,
+  COLLECTION_CANCEL_REASONS,
+  type CollectionCancelReason,
+  type CollectionCancelledVia,
+  collectionBookingCancelled,
+  collectionBookingChanged,
+  collectionBookingCreated,
+  collectionBookingHandOverUndone,
+  collectionBookingHandedOver,
+  collectionBookingNotCollected,
+  type CollectionBookingEvent,
+  type CollectionBookingFacts,
+} from "./collection-events.js";
 export {
   formatCollectionReference,
   parseCollectionReference,

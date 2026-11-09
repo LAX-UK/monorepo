@@ -1,13 +1,20 @@
 import {
   type EditionFacts,
   type EditionRunSpec,
+  type SetApartDescribed,
   describeEditionFacts,
   describeEditionRun,
   runSize,
 } from "@auction/shop-domain";
 
 /** An edition run with its facts, if any are stored. */
-export type RunOfArtwork = { artworkId: string; run: EditionRunSpec; facts: EditionFacts | null };
+export type RunOfArtwork = {
+  artworkId: string;
+  run: EditionRunSpec;
+  facts: EditionFacts | null;
+  /** Set for a print sold on its own: `run` and `facts` are then those of the run it came from. */
+  setApart?: SetApartDescribed;
+};
 
 /** Reads the runs of many artworks at once; originals are left out. */
 export type EditionRunsReader = {
@@ -33,11 +40,11 @@ export async function basketEditions(
 ): Promise<Map<string, BasketEdition>> {
   const editions = new Map<string, BasketEdition>();
   if (artworkIds.length === 0) return editions;
-  for (const { artworkId, run, facts } of await reader.runsOf([...new Set(artworkIds)])) {
+  for (const { artworkId, run, facts, setApart } of await reader.runsOf([...new Set(artworkIds)])) {
     editions.set(artworkId, {
       size: run.type === "proof" ? null : runSize(run),
       line: facts?.confirmed
-        ? describeEditionFacts(run, facts).basketLine
+        ? describeEditionFacts(run, facts, setApart ? { setApart } : {}).basketLine
         : describeEditionRun(run).edition,
     });
   }
