@@ -67,7 +67,7 @@ const reads: [string, string][] = [
 const writes: [string, string, unknown][] = [
   ["PUT", `/collections/${VENUE}`, SAVE],
   ["POST", `/collections/${VENUE}/exceptions`, CLOSURE],
-  ["DELETE", `/collections/${VENUE}/exceptions/${EXCEPTION}`, {}],
+  ["POST", `/collections/${VENUE}/exceptions/${EXCEPTION}/remove`, {}],
 ];
 
 describe("collection settings access", () => {
@@ -153,15 +153,15 @@ describe("collection settings routes", () => {
   it("removes a closure by its id", async () => {
     const { app, collectionSettings } = createApp(["fulfilment"]);
     const res = await app.request(
-      `http://test/collections/${VENUE}/exceptions/${EXCEPTION}`,
-      send("DELETE", { affectedBookings: "keep" }),
+      `http://test/collections/${VENUE}/exceptions/${EXCEPTION}/remove`,
+      send("POST", { affectedBookings: { choice: "keep", bookingIds: [] } }),
     );
     expect(res.status).toBe(200);
     expect(collectionSettings.removeException).toHaveBeenCalledWith(
       { userId: "staff-1" },
       VENUE,
       EXCEPTION,
-      { affectedBookings: "keep" },
+      { affectedBookings: { choice: "keep", bookingIds: [] } },
     );
   });
 });

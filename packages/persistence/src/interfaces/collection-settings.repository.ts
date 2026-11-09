@@ -95,6 +95,8 @@ export type SaveSettingsOutcome =
     }
   /** Someone else saved since staff read the settings. */
   | { outcome: "stale" }
+  /** The guard refused: the visits the change affects are not the ones staff were shown. */
+  | { outcome: "affected_changed" }
   | { outcome: "venue_not_found" };
 
 export type AddCollectionException = {
@@ -106,6 +108,7 @@ export type AddCollectionException = {
 
 export type AddExceptionOutcome =
   | { outcome: "added"; exception: StaffExceptionRecord }
+  | { outcome: "affected_changed" }
   | { outcome: "venue_not_found" };
 
 export type RemoveCollectionException = {
@@ -116,22 +119,34 @@ export type RemoveCollectionException = {
 
 export type RemoveExceptionOutcome =
   | { outcome: "removed"; exception: StaffExceptionRecord }
+  | { outcome: "affected_changed" }
   | { outcome: "not_found" };
 
 /** Work done inside the transaction of a change, such as writing the audit event. */
 export type WithinSettingsTransaction<T> = (tx: DbTransaction, result: T) => Promise<void>;
 
+/**
+ * Checked inside the transaction of a change, after the place is locked and before anything is
+ * written: true to go ahead, false to stop with `affected_changed`. Staff changes use it to check
+ * again that the visits they would affect are the ones staff were shown, under the lock that
+ * stops a booking being made in the meantime.
+ */
+export type GuardSettingsTransaction = (tx: DbTransaction) => Promise<boolean>;
+
 export interface ICollectionSettingsWriter {
   save(
     input: SaveCollectionSettings,
     within?: WithinSettingsTransaction<Extract<SaveSettingsOutcome, { outcome: "saved" }>>,
+    guard?: GuardSettingsTransaction,
   ): Promise<SaveSettingsOutcome>;
   addException(
     input: AddCollectionException,
     within?: WithinSettingsTransaction<StaffExceptionRecord>,
+    guard?: GuardSettingsTransaction,
   ): Promise<AddExceptionOutcome>;
   removeException(
     input: RemoveCollectionException,
     within?: WithinSettingsTransaction<StaffExceptionRecord>,
+    guard?: GuardSettingsTransaction,
   ): Promise<RemoveExceptionOutcome>;
 }

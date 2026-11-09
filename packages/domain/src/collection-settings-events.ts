@@ -17,6 +17,8 @@ export type CollectionSettingsEvent =
         changed: string[];
         /** Bookings the change put outside what the place now offers. */
         affectedBookings: number;
+        /** How many of them were cancelled, of those asked to be ("n requested, m cancelled"). */
+        cancelledBookings: number;
         /** What staff chose for them: "keep", or "cancel_and_rebook". `none` when none were affected. */
         affectedHandling: "none" | "keep" | "cancel_and_rebook";
       };
@@ -33,6 +35,7 @@ export type CollectionSettingsEvent =
         /** Whether it covers only part of each day. */
         partDay: boolean;
         affectedBookings: number;
+        cancelledBookings: number;
         affectedHandling: "none" | "keep" | "cancel_and_rebook";
       };
     };
@@ -43,6 +46,7 @@ export const collectionPlaceUpdated = (input: {
   venueId: string;
   changed: readonly string[];
   affectedBookings: number;
+  cancelledBookings: number;
   affectedHandling: AffectedHandling;
 }): CollectionSettingsEvent => ({
   eventType: "collection.place.updated",
@@ -61,6 +65,7 @@ export const collectionExceptionChanged = (
     opensLocal: string | null;
     closesLocal: string | null;
     affectedBookings: number;
+    cancelledBookings: number;
     affectedHandling: AffectedHandling;
   },
 ): CollectionSettingsEvent => ({
@@ -74,6 +79,7 @@ export const collectionExceptionChanged = (
     endsOn: input.endsOn,
     partDay: input.opensLocal !== null,
     affectedBookings: input.affectedBookings,
+    cancelledBookings: input.cancelledBookings,
     affectedHandling: input.affectedHandling,
   },
 });

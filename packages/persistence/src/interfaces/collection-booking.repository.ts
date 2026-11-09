@@ -199,7 +199,12 @@ export interface ICollectionBookingWriter {
    * the old one is released by the same statement, so a failed change keeps the old time.
    */
   change(input: ChangeCollectionBooking, within?: WithinBookingTransaction): Promise<ChangeOutcome>;
-  cancel(input: CancelCollectionBooking, within?: WithinBookingTransaction): Promise<CancelOutcome>;
+  /** Inside `tx` when staff cancel as part of a larger change; otherwise in its own transaction. */
+  cancel(
+    input: CancelCollectionBooking,
+    within?: WithinBookingTransaction,
+    tx?: DbTransaction,
+  ): Promise<CancelOutcome>;
 }
 
 export type RecordHandOver = {
@@ -263,7 +268,12 @@ export interface ICollectionBookingReader {
   /** How many visits the account has booked and not yet had, cancelled or missed. */
   countBooked(legalEntityId: string): Promise<number>;
   /** Bookings whose visit starts in [from, to), earliest first, with every status. */
-  listInRange(venueId: string, range: { from: Date; to: Date }): Promise<CollectionBookingRecord[]>;
+  /** Visits starting in the range; inside `tx` when the caller is holding a transaction open. */
+  listInRange(
+    venueId: string,
+    range: { from: Date; to: Date },
+    tx?: DbTransaction,
+  ): Promise<CollectionBookingRecord[]>;
   /**
    * The live booking holding each of these lots, if any. Keyed by lot id; a lot in no live booking
    * is absent.

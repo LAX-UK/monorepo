@@ -578,6 +578,7 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
     "venueId",
     "changed",
     "affectedBookings",
+    "cancelledBookings",
     "affectedHandling",
   ]),
   "collection.exception.added": new Set([
@@ -589,6 +590,7 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
     "endsOn",
     "partDay",
     "affectedBookings",
+    "cancelledBookings",
     "affectedHandling",
   ]),
   "collection.exception.removed": new Set([
@@ -600,6 +602,7 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
     "endsOn",
     "partDay",
     "affectedBookings",
+    "cancelledBookings",
     "affectedHandling",
   ]),
   "collection.booking.hand_over_undone": new Set(["bookingId", "reference", "legalEntityId"]),

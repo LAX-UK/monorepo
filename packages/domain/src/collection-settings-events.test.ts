@@ -15,6 +15,7 @@ describe("collection settings events", () => {
       venueId: VENUE,
       changed: ["weekly_hours", "visit_minutes"],
       affectedBookings: 3,
+      cancelledBookings: 2,
       affectedHandling: "cancel_and_rebook",
     });
     expect(COLLECTION_PLACE_EVENT_AGGREGATE).toBe("collection_place");
@@ -24,6 +25,7 @@ describe("collection settings events", () => {
         venueId: VENUE,
         changed: ["weekly_hours", "visit_minutes"],
         affectedBookings: 3,
+        cancelledBookings: 2,
         affectedHandling: "cancel_and_rebook",
       },
     });
@@ -40,6 +42,7 @@ describe("collection settings events", () => {
       opensLocal: "13:00",
       closesLocal: "14:00",
       affectedBookings: 0,
+      cancelledBookings: 0,
       affectedHandling: "none",
     });
     expect(event.payload).toEqual({
@@ -51,6 +54,7 @@ describe("collection settings events", () => {
       endsOn: "2026-12-24",
       partDay: true,
       affectedBookings: 0,
+      cancelledBookings: 0,
       affectedHandling: "none",
     });
     expect(JSON.stringify(event.payload)).not.toMatch(/reason|note|13:00/i);
@@ -67,6 +71,7 @@ describe("collection settings events", () => {
       opensLocal: null,
       closesLocal: null,
       affectedBookings: 1,
+      cancelledBookings: 0,
       affectedHandling: "keep",
     });
     expect(whole.eventType).toBe("collection.exception.removed");
@@ -79,6 +84,7 @@ describe("collection settings events", () => {
         venueId: VENUE,
         changed: ["weekly_hours"],
         affectedBookings: 0,
+        cancelledBookings: 0,
         affectedHandling: "none",
       }),
       collectionExceptionChanged("collection.exception.added", {
@@ -91,6 +97,7 @@ describe("collection settings events", () => {
         opensLocal: null,
         closesLocal: null,
         affectedBookings: 2,
+        cancelledBookings: 0,
         affectedHandling: "keep",
       }),
       collectionExceptionChanged("collection.exception.removed", {
@@ -103,6 +110,7 @@ describe("collection settings events", () => {
         opensLocal: null,
         closesLocal: null,
         affectedBookings: 0,
+        cancelledBookings: 0,
         affectedHandling: "none",
       }),
     ];

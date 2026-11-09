@@ -26,6 +26,7 @@ import {
   UnsavedChangesGuard,
 } from "@auction/staff-ui";
 import type { StaffCollectionSettings } from "@auction/types";
+import type { AffectedBookingsChoice } from "@auction/validators";
 import { useCallback, useId, useMemo, useState } from "react";
 import { AffectedBookingsDialog } from "./affected-bookings-dialog";
 import { HoursEditor } from "./hours-editor";
@@ -58,7 +59,7 @@ export function HoursRulesForm({ settings, canChange }: Props) {
   const dirty = isDirty(draft, saved);
 
   const send = useCallback(
-    (choice: "keep" | "cancel_and_rebook" | undefined) =>
+    (choice: AffectedBookingsChoice | undefined) =>
       saveCollectionSettingsAction(settings.venueId, {
         ...bodyFromDraft(draft, saved.version),
         ...(choice ? { affectedBookings: choice } : {}),

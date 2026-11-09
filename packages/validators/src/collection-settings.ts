@@ -11,7 +11,20 @@ const day = z.string().max(10);
 
 /** What staff chose to happen to the bookings a change leaves outside the place's offer. */
 export const affectedBookingsChoiceSchema = z.enum(["keep", "cancel_and_rebook"]);
-export type AffectedBookingsChoice = z.infer<typeof affectedBookingsChoiceSchema>;
+export type AffectedBookingsChoiceValue = z.infer<typeof affectedBookingsChoiceSchema>;
+
+/**
+ * The choice, bound to the bookings staff were shown when they made it: if anything has changed
+ * since (a visit was booked in the meantime), the server answers with the new list instead of
+ * applying a choice to bookings staff have not seen.
+ */
+export const affectedBookingsSchema = z
+  .object({
+    choice: affectedBookingsChoiceSchema,
+    bookingIds: z.array(z.string().uuid()).max(500),
+  })
+  .strict();
+export type AffectedBookingsChoice = z.infer<typeof affectedBookingsSchema>;
 
 export const collectionVenueParamSchema = z.object({ venueId: z.string().uuid() });
 export const collectionExceptionParamSchema = z.object({
@@ -37,7 +50,7 @@ export const saveCollectionSettingsBodySchema = z
     hours: z
       .array(z.object({ weekday: z.number().int(), opensLocal: time, closesLocal: time }).strict())
       .max(7 * 8),
-    affectedBookings: affectedBookingsChoiceSchema.optional(),
+    affectedBookings: affectedBookingsSchema.optional(),
   })
   .strict();
 export type SaveCollectionSettingsBody = z.infer<typeof saveCollectionSettingsBodySchema>;
@@ -51,12 +64,12 @@ export const addCollectionExceptionBodySchema = z
     closesLocal: time.nullable(),
     /** Staff's own note; never shown to clients. */
     reason: z.string().trim().max(200).nullish(),
-    affectedBookings: affectedBookingsChoiceSchema.optional(),
+    affectedBookings: affectedBookingsSchema.optional(),
   })
   .strict();
 export type AddCollectionExceptionBody = z.infer<typeof addCollectionExceptionBodySchema>;
 
 export const removeCollectionExceptionBodySchema = z
-  .object({ affectedBookings: affectedBookingsChoiceSchema.optional() })
+  .object({ affectedBookings: affectedBookingsSchema.optional() })
   .strict();
 export type RemoveCollectionExceptionBody = z.infer<typeof removeCollectionExceptionBodySchema>;

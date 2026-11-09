@@ -19,6 +19,8 @@ import {
 } from "@auction/domain";
 import type {
   CollectionBookingRecord,
+  DbTransaction,
+  GuardSettingsTransaction,
   ICollectionBookingReader,
   ICollectionBookingWriter,
   ICollectionSettingsReader,
@@ -45,7 +47,11 @@ import type {
   CollectionSettingsActor,
   ICollectionSettingsAdminService,
 } from "../interfaces/collection-settings-service.js";
-import { type CollectionSettingsResult, settingsError } from "./collection-settings.errors.js";
+import {
+  type CollectionSettingsError,
+  type CollectionSettingsResult,
+  settingsError,
+} from "./collection-settings.errors.js";
 
 /** How far ahead closures and bookings are read: past the longest booking window. */
 const HORIZON_DAYS = 400;
@@ -106,20 +112,18 @@ export class CollectionSettingsAdminService implements ICollectionSettingsAdminS
       return err(settingsError("settings_changed"));
     }
 
-    const now = this.deps.now();
-    const live = await this.liveBookings(venueId, now);
-    const before = bookingsAffectedBy(live.map(liveOf), configurationOf(current));
-    const after = bookingsAffectedBy(
-      live.map(liveOf),
+    const planned = await this.plan(
+      venueId,
+      configurationOf(current),
       configurationOf(current, {
         hours: body.hours,
         rules: { closeOnSaleDays: body.closeOnSaleDays, placesPerSlot: body.placesPerSlot },
       }),
+      body.affectedBookings,
     );
-    const newly = newlyAffected(before, after);
-    const refusal = this.needsChoice(newly, live, body.affectedBookings);
-    if (refusal) return err(refusal);
-    const handling = handlingOf(newly, body.affectedBookings);
+    if (planned.isErr()) return err(planned.error);
+    const plan = planned.value;
+    const run: Run = { live: plan.live, cancelled: 0 };
 
     const outcome = await this.deps.settings.save(
       {
@@ -131,10 +135,11 @@ export class CollectionSettingsAdminService implements ICollectionSettingsAdminS
         freeStorageDays: body.freeStorageDays,
         hours: body.hours,
         updatedByUserId: actor.userId,
-        at: now,
+        at: this.deps.now(),
       },
-      (tx, saved) =>
-        this.record(
+      async (tx, saved) => {
+        run.cancelled = await this.enact(tx, actor, plan, run, "hours_changed");
+        await this.record(
           tx,
           actor,
           COLLECTION_PLACE_EVENT_AGGREGATE,
@@ -142,19 +147,18 @@ export class CollectionSettingsAdminService implements ICollectionSettingsAdminS
           collectionPlaceUpdated({
             venueId,
             changed: saved.changed,
-            affectedBookings: newly.length,
-            affectedHandling: handling,
+            affectedBookings: plan.newly.length,
+            cancelledBookings: run.cancelled,
+            affectedHandling: plan.handling,
           }),
-        ),
+        );
+      },
+      this.guard(venueId, plan, run),
     );
     if (outcome.outcome === "venue_not_found") return err(settingsError("venue_not_found"));
     if (outcome.outcome === "stale") return err(settingsError("settings_changed"));
-
-    const cancelled =
-      handling === "cancel_and_rebook"
-        ? await this.cancelAffected(actor, newly, live, "hours_changed", now)
-        : 0;
-    return ok(await this.result(venueId, newly, live, cancelled));
+    if (outcome.outcome === "affected_changed") return err(await this.shownAgain(venueId, plan));
+    return ok(await this.result(venueId, plan, run));
   }
 
   async addException(
@@ -178,35 +182,33 @@ export class CollectionSettingsAdminService implements ICollectionSettingsAdminS
     const current = await this.read(venueId);
     if (!current) return err(settingsError("venue_not_found"));
 
-    const live = await this.liveBookings(venueId, now);
-    const before = bookingsAffectedBy(live.map(liveOf), configurationOf(current));
-    const after = bookingsAffectedBy(
-      live.map(liveOf),
+    const planned = await this.plan(
+      venueId,
+      configurationOf(current),
       configurationOf(current, { extraException: { ...draft, source: "staff" } }),
+      body.affectedBookings,
     );
-    const newly = newlyAffected(before, after);
-    const refusal = this.needsChoice(newly, live, body.affectedBookings);
-    if (refusal) return err(refusal);
-    const handling = handlingOf(newly, body.affectedBookings);
+    if (planned.isErr()) return err(planned.error);
+    const plan = planned.value;
+    const run: Run = { live: plan.live, cancelled: 0 };
 
     const outcome = await this.deps.settings.addException(
       { venueId, draft, reasonInternal: body.reason ?? null, createdByUserId: actor.userId },
-      (tx, added) =>
-        this.record(
+      async (tx, added) => {
+        run.cancelled = await this.enact(tx, actor, plan, run, "closure_added");
+        await this.record(
           tx,
           actor,
           COLLECTION_PLACE_EVENT_AGGREGATE,
           venueId,
-          exceptionEvent("collection.exception.added", venueId, added, newly.length, handling),
-        ),
+          exceptionEvent("collection.exception.added", venueId, added, plan, run.cancelled),
+        );
+      },
+      this.guard(venueId, plan, run),
     );
     if (outcome.outcome === "venue_not_found") return err(settingsError("venue_not_found"));
-
-    const cancelled =
-      handling === "cancel_and_rebook"
-        ? await this.cancelAffected(actor, newly, live, "closure_added", now)
-        : 0;
-    return ok(await this.result(venueId, newly, live, cancelled));
+    if (outcome.outcome === "affected_changed") return err(await this.shownAgain(venueId, plan));
+    return ok(await this.result(venueId, plan, run));
   }
 
   async removeException(
@@ -220,36 +222,33 @@ export class CollectionSettingsAdminService implements ICollectionSettingsAdminS
     const target = current.exceptions.find((e) => e.id === exceptionId);
     if (!target) return err(settingsError("exception_not_found"));
 
-    const now = this.deps.now();
-    const live = await this.liveBookings(venueId, now);
-    const before = bookingsAffectedBy(live.map(liveOf), configurationOf(current));
-    const after = bookingsAffectedBy(
-      live.map(liveOf),
+    const planned = await this.plan(
+      venueId,
+      configurationOf(current),
       configurationOf(current, { without: exceptionId }),
+      body.affectedBookings,
     );
-    const newly = newlyAffected(before, after);
-    const refusal = this.needsChoice(newly, live, body.affectedBookings);
-    if (refusal) return err(refusal);
-    const handling = handlingOf(newly, body.affectedBookings);
+    if (planned.isErr()) return err(planned.error);
+    const plan = planned.value;
+    const run: Run = { live: plan.live, cancelled: 0 };
 
     const outcome = await this.deps.settings.removeException(
-      { venueId, exceptionId, at: now },
-      (tx, removed) =>
-        this.record(
+      { venueId, exceptionId, at: this.deps.now() },
+      async (tx, removed) => {
+        run.cancelled = await this.enact(tx, actor, plan, run, "opening_removed");
+        await this.record(
           tx,
           actor,
           COLLECTION_PLACE_EVENT_AGGREGATE,
           venueId,
-          exceptionEvent("collection.exception.removed", venueId, removed, newly.length, handling),
-        ),
+          exceptionEvent("collection.exception.removed", venueId, removed, plan, run.cancelled),
+        );
+      },
+      this.guard(venueId, plan, run),
     );
     if (outcome.outcome === "not_found") return err(settingsError("exception_not_found"));
-
-    const cancelled =
-      handling === "cancel_and_rebook"
-        ? await this.cancelAffected(actor, newly, live, "opening_removed", now)
-        : 0;
-    return ok(await this.result(venueId, newly, live, cancelled));
+    if (outcome.outcome === "affected_changed") return err(await this.shownAgain(venueId, plan));
+    return ok(await this.result(venueId, plan, run));
   }
 
   // ---- internals ----------------------------------------------------------------------------
@@ -264,52 +263,103 @@ export class CollectionSettingsAdminService implements ICollectionSettingsAdminS
     );
   }
 
-  private async liveBookings(venueId: string, now: Date): Promise<CollectionBookingRecord[]> {
-    const bookings = await this.deps.bookings.listInRange(venueId, {
-      from: now,
-      to: new Date(now.getTime() + HORIZON_DAYS * DAY_MS),
-    });
+  private async liveBookings(
+    venueId: string,
+    tx?: DbTransaction,
+  ): Promise<CollectionBookingRecord[]> {
+    const now = this.deps.now();
+    const bookings = await this.deps.bookings.listInRange(
+      venueId,
+      { from: now, to: new Date(now.getTime() + HORIZON_DAYS * DAY_MS) },
+      tx,
+    );
     return bookings.filter((booking) => booking.status === "booked");
   }
 
-  /** The refusal to send when a change leaves bookings outside the offer and staff have not chosen. */
-  private needsChoice(
-    newly: readonly AffectedBooking[],
-    live: readonly CollectionBookingRecord[],
+  /**
+   * What a change does to the bookings that are live now, checked against what staff were shown.
+   * A change that touches none goes ahead whatever was sent. One that touches some needs a choice
+   * that names every one of them: a booking that is affected but was not on the list staff saw
+   * (made since) sends the list back instead.
+   */
+  private async plan(
+    venueId: string,
+    before: CollectionConfiguration,
+    after: CollectionConfiguration,
     choice: AffectedBookingsChoice | undefined,
-  ) {
-    if (newly.length === 0 || choice !== undefined) return null;
-    return settingsError("bookings_affected", { affected: affectedViews(newly, live) });
+  ): Promise<CollectionSettingsResult<Plan>> {
+    const live = await this.liveBookings(venueId);
+    const newly = affectedBy(live, before, after);
+    if (newly.length > 0) {
+      const shown = new Set(choice?.bookingIds ?? []);
+      if (!choice || newly.some((booking) => !shown.has(booking.bookingId))) {
+        return err(settingsError("bookings_affected", { affected: affectedViews(newly, live) }));
+      }
+    }
+    return ok({
+      before,
+      after,
+      live,
+      newly,
+      handling: newly.length === 0 || !choice ? "none" : choice.choice,
+    });
   }
 
-  private async cancelAffected(
+  /**
+   * Run inside the saving transaction, once the place is locked: the visits the change affects
+   * must still be the ones staff chose about. A booking cannot be made while the lock is held, so
+   * what is read here is what the change is applied to.
+   */
+  private guard(venueId: string, plan: Plan, run: Run): GuardSettingsTransaction {
+    return async (tx) => {
+      run.live = await this.liveBookings(venueId, tx);
+      return sameBookings(affectedBy(run.live, plan.before, plan.after), plan.newly);
+    };
+  }
+
+  /** The refusal for a change that went stale between the list and the save: the list as it is now. */
+  private async shownAgain(venueId: string, plan: Plan): Promise<CollectionSettingsError> {
+    const live = await this.liveBookings(venueId);
+    const newly = affectedBy(live, plan.before, plan.after);
+    return newly.length > 0
+      ? settingsError("bookings_affected", { affected: affectedViews(newly, live) })
+      : settingsError("settings_changed");
+  }
+
+  /**
+   * Cancels, in the transaction of the change itself, the visits staff chose to cancel, and says
+   * how many were cancelled. A visit that is no longer live is left as it is. Every visit in the
+   * plan was shown to staff and is still affected: the guard has just checked.
+   */
+  private async enact(
+    tx: DbTransaction,
     actor: CollectionSettingsActor,
-    affected: readonly AffectedBooking[],
-    live: readonly CollectionBookingRecord[],
+    plan: Plan,
+    run: Run,
     why: Why,
-    at: Date,
   ): Promise<number> {
+    if (plan.handling !== "cancel_and_rebook") return 0;
     let cancelled = 0;
-    for (const item of affected) {
-      const booking = live.find((b) => b.id === item.bookingId);
+    for (const item of plan.newly) {
+      const booking = run.live.find((b) => b.id === item.bookingId);
       if (!booking) continue;
       const outcome = await this.deps.bookings.cancel(
         {
           bookingId: booking.id,
           expectedSequence: booking.icsSequence,
           cancelledByUserId: actor.userId,
-          at,
+          at: this.deps.now(),
         },
-        (tx, done) =>
+        (inner, done) =>
           this.record(
-            tx,
+            inner,
             actor,
             COLLECTION_BOOKING_EVENT_AGGREGATE,
             done.id,
             collectionBookingCancelled(done, "staff", why),
           ),
+        tx,
       );
-      // A booking someone changed or cancelled a moment ago is left as it now stands.
       if (outcome.outcome === "cancelled") cancelled += 1;
     }
     return cancelled;
@@ -333,15 +383,30 @@ export class CollectionSettingsAdminService implements ICollectionSettingsAdminS
 
   private async result(
     venueId: string,
-    newly: readonly AffectedBooking[],
-    live: readonly CollectionBookingRecord[],
-    cancelled: number,
+    plan: Plan,
+    run: Run,
   ): Promise<StaffCollectionChangeResult> {
     const fresh = await this.read(venueId);
     if (!fresh) throw new Error(`Collection place ${venueId} disappeared after a change`);
-    return { settings: toSettingsView(fresh), affected: affectedViews(newly, live), cancelled };
+    return {
+      settings: toSettingsView(fresh),
+      affected: affectedViews(plan.newly, run.live),
+      cancelled: run.cancelled,
+    };
   }
 }
+
+/** What a change would do to the live visits, and what staff chose to do about them. */
+type Plan = {
+  before: CollectionConfiguration;
+  after: CollectionConfiguration;
+  live: CollectionBookingRecord[];
+  newly: AffectedBooking[];
+  handling: AffectedHandling;
+};
+
+/** The live visits as the saving transaction read them, and how many it cancelled. */
+type Run = { live: CollectionBookingRecord[]; cancelled: number };
 
 // ---- pure helpers ---------------------------------------------------------------------------
 
@@ -396,12 +461,18 @@ function newlyAffected(
   return after.filter((b) => !already.has(b.bookingId));
 }
 
-function handlingOf(
-  newly: readonly AffectedBooking[],
-  choice: AffectedBookingsChoice | undefined,
-): AffectedHandling {
-  return newly.length === 0 || choice === undefined ? "none" : choice;
+/** The bookings a change newly puts outside the offer, for the live visits given. */
+function affectedBy(
+  live: readonly CollectionBookingRecord[],
+  before: CollectionConfiguration,
+  after: CollectionConfiguration,
+): AffectedBooking[] {
+  const visits = live.map(liveOf);
+  return newlyAffected(bookingsAffectedBy(visits, before), bookingsAffectedBy(visits, after));
 }
+
+const sameBookings = (a: readonly AffectedBooking[], b: readonly AffectedBooking[]): boolean =>
+  a.length === b.length && a.every((item) => b.some((other) => other.bookingId === item.bookingId));
 
 function affectedViews(
   affected: readonly AffectedBooking[],
@@ -427,8 +498,8 @@ function exceptionEvent(
   eventType: "collection.exception.added" | "collection.exception.removed",
   venueId: string,
   exception: StaffExceptionRecord,
-  affectedBookings: number,
-  affectedHandling: AffectedHandling,
+  plan: Plan,
+  cancelledBookings: number,
 ): CollectionSettingsEvent {
   return collectionExceptionChanged(eventType, {
     venueId,
@@ -439,8 +510,9 @@ function exceptionEvent(
     endsOn: exception.endsOn,
     opensLocal: exception.opensLocal,
     closesLocal: exception.closesLocal,
-    affectedBookings,
-    affectedHandling,
+    affectedBookings: plan.newly.length,
+    cancelledBookings,
+    affectedHandling: plan.handling,
   });
 }
 

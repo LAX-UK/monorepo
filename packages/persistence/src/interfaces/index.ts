@@ -1365,4 +1365,5 @@ export type {
   StaffExceptionRecord,
   StaffSettingsRecord,
   WithinSettingsTransaction,
+  GuardSettingsTransaction,
 } from "./collection-settings.repository.js";

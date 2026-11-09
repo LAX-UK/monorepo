@@ -18,6 +18,7 @@ import type {
   AddCollectionException,
   AddExceptionOutcome,
   CollectionVenueChoice,
+  GuardSettingsTransaction,
   ICollectionSettingsReader,
   ICollectionSettingsWriter,
   RemoveCollectionException,
@@ -29,6 +30,7 @@ import type {
   StaffSettingsRecord,
   WithinSettingsTransaction,
 } from "../interfaces/collection-settings.repository.js";
+import { lockCollectionPlace } from "./collection-place-lock.js";
 import { ensureBankHolidays, saleDaysAt } from "./drizzle-collection-closures.js";
 import { ensureCollectionPlace } from "./drizzle-collection-place-setup.js";
 
@@ -192,6 +194,7 @@ export class DrizzleCollectionSettingsRepository
   async save(
     input: SaveCollectionSettings,
     within?: WithinSettingsTransaction<Extract<SaveSettingsOutcome, { outcome: "saved" }>>,
+    guard?: GuardSettingsTransaction,
   ): Promise<SaveSettingsOutcome> {
     const [known] = await this.db
       .select({ id: venue.id })
@@ -202,6 +205,7 @@ export class DrizzleCollectionSettingsRepository
     await ensureCollectionPlace(this.db, input.venueId);
 
     return this.db.transaction(async (tx): Promise<SaveSettingsOutcome> => {
+      await lockCollectionPlace(tx, input.venueId);
       const [row] = await tx
         .select()
         .from(collectionPlace)
@@ -212,6 +216,7 @@ export class DrizzleCollectionSettingsRepository
       if (row.updatedAt.getTime() !== input.expectedUpdatedAt.getTime()) {
         return { outcome: "stale" };
       }
+      if (guard && !(await guard(tx))) return { outcome: "affected_changed" };
       const beforeHours = await tx
         .select()
         .from(collectionWeeklyHours)
@@ -277,6 +282,7 @@ export class DrizzleCollectionSettingsRepository
   async addException(
     input: AddCollectionException,
     within?: WithinSettingsTransaction<StaffExceptionRecord>,
+    guard?: GuardSettingsTransaction,
   ): Promise<AddExceptionOutcome> {
     const [known] = await this.db
       .select({ id: venue.id })
@@ -284,7 +290,9 @@ export class DrizzleCollectionSettingsRepository
       .where(and(eq(venue.id, input.venueId), isNull(venue.deletedAt)))
       .limit(1);
     if (!known) return { outcome: "venue_not_found" };
-    return this.db.transaction(async (tx) => {
+    return this.db.transaction(async (tx): Promise<AddExceptionOutcome> => {
+      await lockCollectionPlace(tx, input.venueId);
+      if (guard && !(await guard(tx))) return { outcome: "affected_changed" };
       const [row] = await tx
         .insert(collectionException)
         .values({
@@ -309,8 +317,11 @@ export class DrizzleCollectionSettingsRepository
   async removeException(
     input: RemoveCollectionException,
     within?: WithinSettingsTransaction<StaffExceptionRecord>,
+    guard?: GuardSettingsTransaction,
   ): Promise<RemoveExceptionOutcome> {
     return this.db.transaction(async (tx): Promise<RemoveExceptionOutcome> => {
+      await lockCollectionPlace(tx, input.venueId);
+      if (guard && !(await guard(tx))) return { outcome: "affected_changed" };
       const [row] = await tx
         .update(collectionException)
         .set({ deletedAt: input.at })

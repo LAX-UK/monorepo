@@ -148,8 +148,8 @@ export const DANGEROUS_STAFF_ACTIONS: readonly DangerousStaffAction[] = [
   a(
     "collection_settings",
     "collection.exception.remove",
-    "DELETE",
-    "/admin/collections/:venueId/exceptions/:exceptionId",
+    "POST",
+    "/admin/collections/:venueId/exceptions/:exceptionId/remove",
   ),
   // Erasure and data-subject requests
   a(
