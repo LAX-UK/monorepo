@@ -403,6 +403,12 @@ describe("migrate-roles invariants", () => {
     expect([...AUTH_FULL_TABLES]).toContain("two_factor");
   });
 
+  it("keeps passkeys with the issuer alone: auth_app has them, api_app and worker_app do not", () => {
+    expect([...AUTH_FULL_TABLES]).toContain("passkey");
+    expect([...API_DENY_TABLES]).toContain("passkey");
+    expect([...WORKER_DENY_TABLES]).toContain("passkey");
+  });
+
   it("WORKER_READ_TABLES includes identity_lifecycle_outbox (outbox relay job)", () => {
     expect([...WORKER_READ_TABLES]).toContain("identity_lifecycle_outbox");
   });

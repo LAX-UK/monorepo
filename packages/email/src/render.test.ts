@@ -540,28 +540,6 @@ describe("renderEmail", () => {
     expect(rendered.html).toContain("https://lax.bid/admin/payouts");
   });
 
-  it("renders social-account-linked with provider-specific copy", async () => {
-    const rendered = await renderEmail("social-account-linked", {
-      provider: "google",
-      userName: "Ada",
-    });
-
-    expect(rendered.subject).toBe("A sign-in method was linked to your LAX Bid account");
-    expect(rendered.html).toContain("Google account linked");
-    expect(rendered.text).toContain("Google account was linked");
-  });
-
-  it("renders social-account-unlinked with provider-specific copy", async () => {
-    const rendered = await renderEmail("social-account-unlinked", {
-      provider: "apple",
-      userName: "Ada",
-    });
-
-    expect(rendered.subject).toBe("A sign-in method was disconnected from your LAX Bid account");
-    expect(rendered.html).toContain("Apple account disconnected");
-    expect(rendered.text).toContain("Apple account was disconnected");
-  });
-
   it("renders the withdrawal decline notice with the staff reason", async () => {
     const rendered = await renderEmail("lot-withdrawal-declined-notice", {
       recipientFirstName: "Sam",

@@ -41,6 +41,8 @@ export type IdentityLifecycleEvent =
       changeType?: "create" | "update";
     }
   | { type: "user.sign_in_method_unlinked"; userId: string; provider: "google" | "apple" }
+  | { type: "user.sign_in_method_added"; userId: string; method: "google" | "apple" | "passkey" }
+  | { type: "user.sign_in_method_removed"; userId: string; method: "google" | "apple" | "passkey" }
   | { type: "user.unconfirmed_password_removed"; userId: string; provider: "google" | "apple" }
   | {
       type: "user.social_link_refused_staff";

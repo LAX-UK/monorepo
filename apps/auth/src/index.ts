@@ -138,6 +138,7 @@ const identityOperations = createIdentityOperationsService({
   notices: securityNotices,
   productSubjectUsage,
   identityEventPublisher: repositories.identityEventPublisher,
+  envelope,
   logout: services.oidc.logout,
 });
 const durableSecurityEffects = createDurableSecurityEffects({
@@ -277,7 +278,7 @@ const internal =
             ? {
                 subjectExport: {
                   exports: subjectExports,
-                  reader: new SubjectExportReader(createAccountSubjectExportRegistry(db)),
+                  reader: new SubjectExportReader(createAccountSubjectExportRegistry(db, envelope)),
                   redis,
                   clientId: env.SUBJECT_EXPORT_MACHINE_CLIENT_ID,
                   clientSecret: env.SUBJECT_EXPORT_MACHINE_CLIENT_SECRET,

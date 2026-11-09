@@ -41,7 +41,12 @@ export function createAccountSignInMethodsRoutes(deps: AccountSignInMethodsRoute
     if (caller instanceof Response) return caller;
     try {
       const methods: AccountSignInMethodsResponse = await deps.methods.read(caller.subjectId);
-      return c.json({ hasPassword: methods.hasPassword, social: methods.social });
+      return c.json({
+        hasPassword: methods.hasPassword,
+        social: methods.social,
+        passkeys: methods.passkeys,
+        available: methods.available,
+      });
     } catch (error) {
       deps.onFailure?.(error);
       return c.json({ error: "temporarily_unavailable" }, 503);

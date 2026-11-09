@@ -270,6 +270,8 @@ const LABELS: Record<string, string> = {
   "user.profile_updated": "Profile updated",
   "user.credential_changed": "Sign-in method changed",
   "user.sign_in_method_unlinked": "Social sign-in removed",
+  "user.sign_in_method_added": "Sign-in method added",
+  "user.sign_in_method_removed": "Sign-in method removed",
   "user.unconfirmed_password_removed": "Unconfirmed password removed",
   "user.social_link_refused_staff": "Google or Apple sign-in refused for staff",
   "user.session_revoked": "Session signed out",
