@@ -30,3 +30,25 @@ export const FramingTaskSchema = Type.Object({
   version: Type.Integer({ minimum: 1 }),
 });
 export type FramingTask = Static<typeof FramingTaskSchema>;
+
+/** A frame still to make, for the list staff work from: soonest due first. */
+export const AdminFramingDueItemSchema = Type.Object({
+  taskId: Type.String({ format: "uuid" }),
+  status: FramingTaskStatusSchema,
+  dueAt: Type.String({ format: "date-time" }),
+  version: Type.Integer({ minimum: 1 }),
+  orderId: Type.String({ format: "uuid" }),
+  orderReference: Type.String(),
+  printTitle: Type.String(),
+  editionNumber: Type.Union([Type.Integer(), Type.Null()]),
+  /** The option's name as sold. */
+  name: Type.String(),
+  /** What it is made of, as sold: frame, mount, glazing and hanging. */
+  spec: Type.String(),
+});
+
+export const AdminFramingDueListSchema = Type.Object({
+  items: Type.Array(AdminFramingDueItemSchema),
+});
+export type AdminFramingDueItem = Static<typeof AdminFramingDueItemSchema>;
+export type AdminFramingDueList = Static<typeof AdminFramingDueListSchema>;

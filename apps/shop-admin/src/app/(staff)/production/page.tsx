@@ -1,9 +1,11 @@
 import { AdminFailedPage } from "@/components/admin-fetch-state";
+import { FramingDueList } from "@/components/production/framing-due-list.client";
 import { ProductionQueue } from "@/components/production/production-queue.client";
 import { adminListPath } from "@/server/application/admin-list-path";
 import { fetchAdminJson, loadAdminSession } from "@/server/application/load-admin-data";
 import { productionList } from "@/server/domain/sales-lists.vm";
 import type {
+  AdminFramingDueList,
   AdminProductionAssigneesResponse,
   AdminProductionTaskList,
 } from "@auction/shop-contracts";
@@ -19,7 +21,7 @@ export default async function ShopAdminProductionPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const state = productionList.parse(await searchParams);
-  const [tasks, assignees, session] = await Promise.all([
+  const [tasks, assignees, session, framing] = await Promise.all([
     fetchAdminJson<AdminProductionTaskList>(
       adminListPath("production/tasks", {
         cursor: state.cursor,
@@ -28,6 +30,7 @@ export default async function ShopAdminProductionPage({
     ),
     fetchAdminJson<AdminProductionAssigneesResponse>("production/assignees"),
     loadAdminSession(),
+    fetchAdminJson<AdminFramingDueList>("framing-tasks"),
   ]);
   if (
     tasks.status === "unauthorized" ||
@@ -42,12 +45,15 @@ export default async function ShopAdminProductionPage({
   if (session.status !== "ok") return <AdminFailedPage title="Production" status="failed" />;
 
   return (
-    <ProductionQueue
-      state={state}
-      page={tasks.status === "ok" ? tasks.data : EMPTY}
-      loadFailed={tasks.status === "failed" || assignees.status !== "ok"}
-      assignees={assignees.status === "ok" ? assignees.data.items : []}
-      currentSubject={session.data.subject}
-    />
+    <>
+      {framing.status === "ok" ? <FramingDueList items={framing.data.items} /> : null}
+      <ProductionQueue
+        state={state}
+        page={tasks.status === "ok" ? tasks.data : EMPTY}
+        loadFailed={tasks.status === "failed" || assignees.status !== "ok"}
+        assignees={assignees.status === "ok" ? assignees.data.items : []}
+        currentSubject={session.data.subject}
+      />
+    </>
   );
 }

@@ -1,3 +1,4 @@
+import type { AdminFramingDueList } from "@auction/shop-contracts";
 import type { OriginalMoveService } from "./application/admin/original-move.service.js";
 import type { ReleaseAlertSummaryReader } from "./application/alerts/alert-ports.js";
 import type { ArtistApplicationReviewService } from "./application/artist-applications/artist-application-review.service.js";
@@ -117,6 +118,8 @@ export type AdminRoutesDeps = {
   createProductionTask: ReturnType<typeof createCreateProductionTaskHandler>;
   /** Moves the work on a frame sold with a print to its next step. */
   updateFramingTask: ReturnType<typeof createUpdateFramingTaskHandler>;
+  /** The frames still to make, soonest due first. */
+  listFramingDue: () => Promise<AdminFramingDueList>;
   updateFulfilment: ReturnType<typeof createUpdateFulfilmentHandler>;
   recordPossession: ReturnType<typeof createRecordPossessionHandler>;
   cancelAfterPossession: ReturnType<typeof createCancelAfterPossessionHandler>;

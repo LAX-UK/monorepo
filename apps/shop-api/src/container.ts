@@ -106,6 +106,7 @@ import { createDrizzleEditorialLinksRepository } from "./infrastructure/drizzle-
 import { createDrizzleEditorialSearchReader } from "./infrastructure/drizzle-editorial-search.reader.js";
 import { createDrizzleEditorialRepository } from "./infrastructure/drizzle-editorial.repository.js";
 import { createDrizzleEnquiryInboxRepository } from "./infrastructure/drizzle-enquiry-inbox.repository.js";
+import { listFramingDue } from "./infrastructure/drizzle-framing-due.reader.js";
 import { createDrizzleHelpRepository } from "./infrastructure/drizzle-help.repository.js";
 import {
   createDrizzleLaxArtArtistDirectory,
@@ -735,6 +736,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
         staffReader,
         createProductionTask,
         updateFramingTask,
+        listFramingDue: () => listFramingDue(db),
         updateFulfilment,
         recordPossession,
         cancelAfterPossession,

@@ -802,6 +802,10 @@ export {
 } from "./framing-admin.js";
 export {
   FRAMING_TASK_STATUS_VALUES,
+  AdminFramingDueItemSchema,
+  AdminFramingDueListSchema,
+  type AdminFramingDueItem,
+  type AdminFramingDueList,
   FramingTaskParamsSchema,
   FramingTaskSchema,
   FramingTaskStatusSchema,

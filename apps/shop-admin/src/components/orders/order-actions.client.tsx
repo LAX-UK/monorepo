@@ -186,48 +186,65 @@ const FRAMING_STEP_LABEL: Partial<Record<FramingTaskStatus, string>> = {
 };
 
 /**
- * A frame's work: where it stands and the one step that moves it on. Cancelling the framing is
- * not offered here; it goes with a refund of the frame.
+ * The one step that moves a frame's work on (start, framed, done), with the version staff saw so
+ * a change made meanwhile is refused. Shown nowhere once the work cannot move.
+ */
+export function FramingStepButton({
+  task,
+  label,
+  canMove,
+}: {
+  task: { taskId: string; status: FramingTaskStatus; version: number };
+  /** What the toast names: "Framing: Natural oak frame". */
+  label: string;
+  canMove: boolean;
+}) {
+  const mutation = useAdminMutation();
+  const next = canMove
+    ? framingTaskNextSteps(task.status).find((step) => FRAMING_STEP_LABEL[step])
+    : undefined;
+  if (!next) return null;
+  return (
+    <StaffButton
+      size="sm"
+      variant="secondary"
+      requires="production.write"
+      loading={mutation.pending}
+      onClick={() =>
+        mutation.run(
+          () =>
+            updateFramingTask({
+              taskId: task.taskId,
+              status: next,
+              expectedVersion: task.version,
+              idempotencyKey: mutation.idempotencyKey,
+            }),
+          `${label}: ${presentFramingTaskStatus(next).label.toLowerCase()}`,
+        )
+      }
+    >
+      {FRAMING_STEP_LABEL[next]}
+    </StaffButton>
+  );
+}
+
+/**
+ * A frame's work on the order page: when it is due, where it stands and the step that moves it
+ * on. Cancelling the framing is not offered here; it goes with a refund of the frame.
  */
 export function FramingTaskControl({ line, canMove }: { line: Line; canMove: boolean }) {
-  const mutation = useAdminMutation();
   const task = line.framing?.task;
   if (!task) return null;
-  const status = task.status;
-  const next = canMove
-    ? framingTaskNextSteps(status).find((step) => FRAMING_STEP_LABEL[step])
-    : undefined;
-  const presented = presentFramingTaskStatus(status);
+  const presented = presentFramingTaskStatus(task.status);
   return (
     <span className="flex items-center gap-2">
-      {!framingTaskFinished(status) ? (
+      {!framingTaskFinished(task.status) ? (
         <span className="text-staff-xs text-staff-muted tabular-nums">
           {framingDueLabel(task.dueAt)}
         </span>
       ) : null}
       <StatusBadge tone={presented.tone}>{presented.label}</StatusBadge>
-      {next ? (
-        <StaffButton
-          size="sm"
-          variant="secondary"
-          requires="production.write"
-          loading={mutation.pending}
-          onClick={() =>
-            mutation.run(
-              () =>
-                updateFramingTask({
-                  taskId: task.taskId,
-                  status: next,
-                  expectedVersion: task.version,
-                  idempotencyKey: mutation.idempotencyKey,
-                }),
-              `${orderLineLabel(line)}: ${presentFramingTaskStatus(next).label.toLowerCase()}`,
-            )
-          }
-        >
-          {FRAMING_STEP_LABEL[next]}
-        </StaffButton>
-      ) : null}
+      <FramingStepButton task={task} label={orderLineLabel(line)} canMove={canMove} />
     </span>
   );
 }

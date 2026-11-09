@@ -446,6 +446,7 @@ export function createMinimalShopApiTestDeps(
         findActiveByIdentitySubject: async () => null,
         brokerCanAccessClientParty: async () => false,
       },
+      listFramingDue: async () => ({ items: [] }),
       updateFramingTask: async () => {
         throw new Error("not implemented");
       },

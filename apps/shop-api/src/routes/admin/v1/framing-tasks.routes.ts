@@ -1,4 +1,5 @@
 import {
+  AdminFramingDueListSchema,
   FramingTaskParamsSchema,
   FramingTaskSchema,
   type FramingTaskUpdateBody,
@@ -19,8 +20,22 @@ import {
  */
 export async function registerAdminFramingTaskRoutes(
   app: FastifyInstance,
-  deps: Pick<AdminRoutesDeps, "updateFramingTask">,
+  deps: Pick<AdminRoutesDeps, "updateFramingTask" | "listFramingDue">,
 ) {
+  app.get(
+    "/framing-tasks",
+    {
+      schema: {
+        tags: ["shop-admin"],
+        response: { 200: AdminFramingDueListSchema, 403: ShopApiErrorBodySchema },
+      },
+    },
+    async (request) => {
+      requireShopStaffCapability(request, "production.write");
+      return deps.listFramingDue();
+    },
+  );
+
   app.put(
     "/framing-tasks/:taskId",
     {
