@@ -225,6 +225,17 @@ describe("editing a framing option", () => {
       afterJson: { placeholderBands: ["up_to_40x50", "up_to_80x100"] },
     });
   });
+
+  it("records the bands staff confirmed in the save, and none when there were none", async () => {
+    const { service, audit } = seeded();
+    const current = (await service.list()).items[0] as { version: string };
+    const first = await service.update(
+      edit(current, { pricesPence: OAK_PRICES, confirmedBands: ["up_to_60x80"] }),
+    );
+    expect(audit[0]?.afterJson).toMatchObject({ confirmedBands: ["up_to_60x80"] });
+    await service.update(edit(first, { pricesPence: OAK_PRICES, name: "Natural oak frame" }));
+    expect(audit[1]?.afterJson).toMatchObject({ confirmedBands: [] });
+  });
 });
 
 describe("offering and pausing an option", () => {
