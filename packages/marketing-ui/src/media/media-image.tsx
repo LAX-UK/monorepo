@@ -116,6 +116,9 @@ export function MediaImage({
           unoptimized={isRewrittenMediaSrc(src, normalizedSrc)}
           sizes={sizes}
           priority={priority}
+          // Next preloads a priority image but leaves the request's own priority at auto; the
+          // hint is what moves the largest image ahead of scripts and below-the-fold pictures.
+          {...(priority ? { fetchPriority: "high" as const } : {})}
           {...(useBlurPlaceholder && blurDataURL
             ? { placeholder: "blur" as const, blurDataURL }
             : {})}

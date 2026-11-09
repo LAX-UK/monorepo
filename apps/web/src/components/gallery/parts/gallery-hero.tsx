@@ -46,7 +46,7 @@ function galleryImageMediaProps(img: GalleryImage, priority: boolean) {
 
 /** Full-bleed Embla hero with expand control. */
 export function GalleryHero({ setCarouselApi, className }: Props) {
-  const { images, index, openLightbox, openViewAll, priorityIndices } = useGalleryContext();
+  const { images, index, openLightbox, openViewAll } = useGalleryContext();
   const hasMany = images.length > 1;
   const current = images[index] ?? images[0];
 
@@ -84,8 +84,8 @@ export function GalleryHero({ setCarouselApi, className }: Props) {
                   src={img.src}
                   alt={img.alt ?? ""}
                   label={GALLERY_MEDIA_PLACEHOLDER_LABEL}
-                  priority={priorityIndices.has(i)}
-                  {...galleryImageMediaProps(img, priorityIndices.has(i))}
+                  priority={i === index}
+                  {...galleryImageMediaProps(img, i === index)}
                   imgClassName="cursor-zoom-in bg-surface-container-low object-contain transition-transform duration-1000 motion-safe:group-hover:scale-105 motion-reduce:transition-none motion-reduce:group-hover:scale-100"
                   sizes="(min-width: 1024px) 58vw, 100vw"
                   onClick={openLightbox}

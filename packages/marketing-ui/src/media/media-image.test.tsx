@@ -51,6 +51,18 @@ describe("MediaImage", () => {
     expect(screen.getByAltText("Artwork")).toHaveAttribute("data-crossorigin", "anonymous");
   });
 
+  it("asks for the largest image first only when it is the priority image", () => {
+    render(
+      <>
+        <MediaImage src="/first.jpg" alt="First" label="Cover" priority />
+        <MediaImage src="/second.jpg" alt="Second" label="Cover" />
+      </>,
+    );
+
+    expect(screen.getByAltText("First")).toHaveAttribute("fetchpriority", "high");
+    expect(screen.getByAltText("Second")).not.toHaveAttribute("fetchpriority");
+  });
+
   it("applies resolveSrc before rendering", () => {
     render(
       <MediaImage
