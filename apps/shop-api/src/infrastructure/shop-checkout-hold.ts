@@ -11,6 +11,18 @@ import { ShopApiError } from "../errors/shop-api-error.js";
  */
 export const STRIPE_SESSION_MIN_LIFETIME_MS = 31 * 60 * 1000;
 
+/** How long a new checkout holds the prints before payment: Stripe's minimum with a minute spare. */
+export function newCheckoutHoldEnd(now: Date): Date {
+  return new Date(now.getTime() + STRIPE_SESSION_MIN_LIFETIME_MS);
+}
+
+/**
+ * The longest a hold may be stretched past the moment it began (the order's creation, or the
+ * buyer accepting a delivery quote). A buyer who keeps asking to pay cannot keep prints held
+ * beyond it; they start again.
+ */
+export const MAX_HOLD_EXTENSION_MS = 2 * 60 * 60 * 1000;
+
 /** When a payment session opened at `now` may end: the order's hold, or the minimum if sooner. */
 export function sessionEndFor(holdEndsAt: Date, now: Date): Date {
   const earliest = new Date(now.getTime() + STRIPE_SESSION_MIN_LIFETIME_MS);
@@ -53,4 +65,28 @@ export async function extendCheckoutHold(
         and(eq(shopEdition.reservedByOrderId, orderId), eq(shopEdition.listingStatus, "reserved")),
       );
   });
+}
+
+/**
+ * The hold a payment session about to be created can last: the order's own when it is long
+ * enough, otherwise stretched to Stripe's minimum with the order and reservation moved to match,
+ * but never beyond `began` plus two hours.
+ */
+export async function holdForNewSession(
+  db: Database,
+  order: { id: string; checkoutExpiresAt: Date | null },
+  input: { began: Date; now: Date },
+): Promise<Date> {
+  const hold = order.checkoutExpiresAt ?? newCheckoutHoldEnd(input.now);
+  const end = sessionEndFor(hold, input.now);
+  if (end <= hold) return hold;
+  if (end.getTime() > input.began.getTime() + MAX_HOLD_EXTENSION_MS) {
+    throw new ShopApiError(
+      SHOP_API_ERROR_CODES.CONFLICT,
+      "This checkout has been open too long to extend. Start again from your basket.",
+      409,
+    );
+  }
+  await extendCheckoutHold(db, order.id, end);
+  return end;
 }

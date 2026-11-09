@@ -38,6 +38,12 @@ function customerEmailFromSession(session: Stripe.Checkout.Session): string | nu
   return email?.includes("@") ? email : null;
 }
 
+function paymentIntentIdFromSession(session: Stripe.Checkout.Session): string | null {
+  const intent = session.payment_intent;
+  const id = typeof intent === "string" ? intent : intent?.id;
+  return id?.trim() || null;
+}
+
 function isPaidCheckoutSession(session: Stripe.Checkout.Session): boolean {
   return session.payment_status === "paid" || session.payment_status === "no_payment_required";
 }
@@ -65,6 +71,7 @@ export function parseCheckoutSessionCompleted(
     sessionId: session.id,
     amountTotalPence: amountTotal,
     customerEmail: customerEmailFromSession(session),
+    paymentIntentId: paymentIntentIdFromSession(session),
   };
 }
 
