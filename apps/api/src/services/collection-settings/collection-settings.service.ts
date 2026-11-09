@@ -91,6 +91,7 @@ export class CollectionSettingsAdminService implements ICollectionSettingsAdminS
       windowDays: body.windowDays,
       closeOnSaleDays: body.closeOnSaleDays,
       undoHandOverMinutes: body.undoHandOverMinutes,
+      maxActiveVisits: body.maxActiveVisits,
     };
     const hoursIssues = weeklyHoursIssues(body.hours);
     const rulesIssues = collectionRulesIssues(rules);
@@ -544,6 +545,7 @@ export function toSettingsView(record: StaffSettingsRecord): StaffCollectionSett
     windowDays: settings.windowDays,
     closeOnSaleDays: settings.closeOnSaleDays,
     undoHandOverMinutes: settings.undoHandOverMinutes,
+    maxActiveVisits: settings.maxActiveVisits,
     freeStorageDays: settings.freeStorageDays,
     hours: record.hours.map((h) => ({ ...h })),
     exceptions: record.exceptions.map(toExceptionView),

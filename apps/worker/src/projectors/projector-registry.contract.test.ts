@@ -5,6 +5,7 @@ import { ARTWORK_OFFER_LOCK_PROJECTOR } from "./artwork-offer-lock.js";
 import { BID_ALERT_MATCHING_PROJECTOR } from "./bid-alert-matching.js";
 import { BID_IDENTITY_DIRECTORY_PROJECTOR } from "./bid-identity-directory.js";
 import { BID_PERSONAL_DATA_ANONYMISATION_PROJECTOR } from "./bid-personal-data-anonymisation.js";
+import { COLLECTION_BOOKING_NOTIFY_PROJECTOR } from "./collection-booking-notify.js";
 import type { ProjectorRunContext } from "./lib/projector.types.js";
 import { LOT_INVOICE_INITIATION_PROJECTOR } from "./lot-invoice-initiation.js";
 import { NOTIFICATION_FANOUT_PROJECTOR } from "./notification-fanout.js";
@@ -51,6 +52,7 @@ const EXPECTED_PROJECTOR_ORDER = [
   ZOHO_ARTWORK_LISTING_PROJECTOR,
   ZOHO_FULFILMENT_PROJECTOR,
   ZOHO_CAMPAIGNS_OPT_OUT_LIFT_PROJECTOR,
+  COLLECTION_BOOKING_NOTIFY_PROJECTOR,
 ] as const;
 
 function baseCtx(overrides: Partial<ProjectorRunContext> = {}): ProjectorRunContext {

@@ -49,6 +49,7 @@ describe.skipIf(!HAS_DB)("collection settings (integration)", () => {
         windowDays: s.windowDays,
         closeOnSaleDays: s.closeOnSaleDays,
         undoHandOverMinutes: s.undoHandOverMinutes,
+        maxActiveVisits: s.maxActiveVisits,
       },
       onlineBookingEnabled: s.onlineBookingEnabled,
       bookingEmail: s.bookingEmail,

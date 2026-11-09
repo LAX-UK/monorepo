@@ -2,6 +2,7 @@ import type { LegalEntityMemberRole } from "@auction/types";
 import { Hono } from "hono";
 import { describe, expect, it, vi } from "vitest";
 import type { ContainerOrganisationBuyingRoutesSlice } from "../container.js";
+import { createCollectionWriteRateLimit } from "../middleware/collection-write-rate-limit.js";
 import { createRequireAccountOnboarding } from "../middleware/require-account-onboarding.js";
 import type { LegalEntityContext } from "../middleware/require-legal-entity-context.js";
 import { CollectionLotGuard } from "../services/collection-visits/collection-lot-guard.js";
@@ -24,6 +25,9 @@ type Options = {
   suspended?: boolean;
   signedOut?: boolean;
   impersonating?: boolean;
+  /** How many writes the counter allows before refusing; unlimited by default. */
+  writesAllowed?: number;
+  counterDown?: boolean;
 };
 
 function mount(
@@ -40,6 +44,18 @@ function mount(
     role,
     isPrimaryAdmin: role === "owner",
     ...(opts.impersonating ? { isImpersonation: true } : {}),
+  };
+  let counted = 0;
+  const rateLimitStore = {
+    increment: async () => {
+      if (opts.counterDown) throw new Error("redis down");
+      counted += 1;
+      return {
+        allowed: counted <= (opts.writesAllowed ?? 1_000),
+        remaining: 0,
+        retryAfterSec: 900,
+      };
+    },
   };
   const container = {
     userSuspensionChecker: { isSuspended: vi.fn().mockResolvedValue(opts.suspended ?? false) },
@@ -78,7 +94,12 @@ function mount(
   });
   app.route(
     "/legal-entities",
-    createOrganisationCollectionVisitRoutes(container, authenticator, onboarding),
+    createOrganisationCollectionVisitRoutes(
+      container,
+      authenticator,
+      onboarding,
+      createCollectionWriteRateLimit(rateLimitStore),
+    ),
   );
   return { app, store, events };
 }
@@ -414,5 +435,32 @@ describe("my visits and the calendar file", () => {
     expect(response.headers.get("cache-control")).toBe("no-store");
     expect(response.headers.get("x-content-type-options")).toBe("nosniff");
     expect(await response.text()).toContain("BEGIN:VCALENDAR");
+  });
+});
+
+describe("how often an account may change its collections", () => {
+  it("refuses a booking, a change and a cancel once the hour's budget is used, with a retry time", async () => {
+    const { app, store } = mount("owner", { writesAllowed: 1 });
+    expect((await send(app, "POST", "/collection/bookings", bookingBody())).status).toBe(201);
+    const stored = store.bookings.length;
+
+    const book = await send(app, "POST", "/collection/bookings", bookingBody());
+    expect(book.status).toBe(429);
+    expect(book.headers.get("retry-after")).toBe("900");
+    expect(await book.json()).toMatchObject({ error: "rate_limit_exceeded" });
+    const id = store.bookings[0]?.id as string;
+    expect((await send(app, "PATCH", `/collection/bookings/${id}`, {})).status).toBe(429);
+    expect((await send(app, "POST", `/collection/bookings/${id}/cancel`, {})).status).toBe(429);
+    expect(store.bookings).toHaveLength(stored);
+  });
+
+  it("never limits reading", async () => {
+    const { app } = mount("owner", { writesAllowed: 0 });
+    expect((await send(app, "GET", "/collection/bookings")).status).toBe(200);
+  });
+
+  it("lets a write through when the counter is unreachable", async () => {
+    const { app } = mount("owner", { counterDown: true });
+    expect((await send(app, "POST", "/collection/bookings", bookingBody())).status).toBe(201);
   });
 });

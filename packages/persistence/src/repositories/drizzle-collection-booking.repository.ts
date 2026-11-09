@@ -199,6 +199,19 @@ export class DrizzleCollectionBookingRepository
     );
   }
 
+  async countBooked(legalEntityId: string): Promise<number> {
+    const [row] = await this.db
+      .select({ total: count() })
+      .from(collectionBooking)
+      .where(
+        and(
+          eq(collectionBooking.legalEntityId, legalEntityId),
+          eq(collectionBooking.status, "booked"),
+        ),
+      );
+    return Number(row?.total ?? 0);
+  }
+
   async listInRange(
     venueId: string,
     range: { from: Date; to: Date },

@@ -69,6 +69,7 @@ import { RetentionHoldAlerts } from "../retention/kyc-retention-hold-alert.js";
 import { ShopIdentityProjectionService } from "../services/shop-identity-projection.service.js";
 import { registerAlertWorkers } from "../workers/register-alert-workers.js";
 import { registerAtgSyncWorker } from "../workers/register-atg-sync-worker.js";
+import { registerCollectionWorkers } from "../workers/register-collection-workers.js";
 import { registerComplianceWorkers } from "../workers/register-compliance-workers.js";
 import { registerCronWorkers } from "../workers/register-cron-workers.js";
 import { registerEmailWorker } from "../workers/register-email-worker.js";
@@ -110,6 +111,7 @@ export type WorkerContainer = {
   marketingWorkers: ReturnType<typeof registerMarketingWorkers>;
   payoutWorkers: ReturnType<typeof registerPayoutWorkers>;
   complianceWorkers: ReturnType<typeof registerComplianceWorkers>;
+  collectionWorkers: ReturnType<typeof registerCollectionWorkers>;
   purgeWorkers: ReturnType<typeof registerPurgeWorkers>;
   alertWorkers: ReturnType<typeof registerAlertWorkers>;
   atgSyncWorkers: ReturnType<typeof registerAtgSyncWorker>;
@@ -402,6 +404,10 @@ export function createWorkerContainer(): WorkerContainer {
   const complianceWorkers = registerComplianceWorkers(deps, {
     emailOutboxService: emailWorkers.emailOutboxService,
   });
+  const collectionWorkers = registerCollectionWorkers(deps, {
+    emailService: emailWorkers.emailOutboxService,
+    reader: repositories.collectionNoticeReader,
+  });
   const purgeWorkers = registerPurgeWorkers(deps, {
     retentionHoldAlerts: new RetentionHoldAlerts({
       emailService: emailWorkers.emailOutboxService,
@@ -454,6 +460,7 @@ export function createWorkerContainer(): WorkerContainer {
       ...marketingWorkers.errorHandlers,
       ...payoutWorkers.errorHandlers,
       ...complianceWorkers.errorHandlers,
+      ...collectionWorkers.errorHandlers,
       ...purgeWorkers.errorHandlers,
       ...alertWorkers.errorHandlers,
       ...cronWorkers.errorHandlers,
@@ -494,6 +501,7 @@ export function createWorkerContainer(): WorkerContainer {
     ...(lotLifecycleConsumer ? [heartbeat("lot-lifecycle")] : []),
     heartbeat("marketing-sync"),
     ...(isMarketingEventsEnabled(env) ? [heartbeat("marketing-events")] : []),
+    heartbeat("collection-reminders"),
     heartbeat("payout-statements"),
     heartbeat("legal-entity-archive"),
     heartbeat("impersonation-sweeper"),
@@ -544,6 +552,11 @@ export function createWorkerContainer(): WorkerContainer {
       notificationFanoutReader: repositories.notificationFanoutReader,
       adminImpersonationNotifyReader: repositories.adminImpersonationNotifyReader,
       paymentRefundNotifyReader: repositories.paymentRefundNotifyReader,
+      collectionNoticeReader: repositories.collectionNoticeReader,
+      collectionOrganizer: {
+        email: env.COLLECTION_ORGANIZER_EMAIL,
+        name: env.COLLECTION_ORGANIZER_NAME,
+      },
       payoutTransferFailedNotifyReader: repositories.payoutTransferFailedNotifyReader,
       clearArtistBlocksRepo: repositories.clearArtistBlocksRepo,
       zohoCampaignsOptOutLiftRepo: repositories.zohoCampaignsOptOutLiftRepo,
@@ -627,6 +640,7 @@ export function createWorkerContainer(): WorkerContainer {
     marketingWorkers,
     payoutWorkers,
     complianceWorkers,
+    collectionWorkers,
     purgeWorkers,
     alertWorkers,
     cronWorkers,
@@ -662,6 +676,7 @@ export async function shutdownWorkerContainer(
         marketingWorkers.close(),
         container.payoutWorkers.close(),
         container.complianceWorkers.close(),
+        container.collectionWorkers.close(),
         container.purgeWorkers.close(),
         container.alertWorkers.close(),
         container.cronWorkers.close(),
