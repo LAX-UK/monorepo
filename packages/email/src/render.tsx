@@ -301,6 +301,9 @@ import SubmissionDraftReminderEmail, {
 import SubmissionRejectedEmail, {
   subject as submissionRejectedSubject,
 } from "./templates/submission-rejected.js";
+import UnconfirmedPasswordRemovedEmail, {
+  subject as unconfirmedPasswordRemovedSubject,
+} from "./templates/unconfirmed-password-removed.js";
 import VerifyEmail, { subject as verifyEmailSubject } from "./templates/verify-email.js";
 import WatchedLotReminderEmail, {
   subject as watchedLotReminderSubject,
@@ -391,6 +394,10 @@ const renderers: { [T in TemplateName]: TemplateRenderer<T> } = {
   "sign-in-method-removed": {
     subject: signInMethodRemovedSubject,
     component: (vars) => <SignInMethodRemovedEmail {...vars} />,
+  },
+  "unconfirmed-password-removed": {
+    subject: unconfirmedPasswordRemovedSubject,
+    component: (vars) => <UnconfirmedPasswordRemovedEmail {...vars} />,
   },
   "phone-removed": {
     subject: phoneRemovedSubject,

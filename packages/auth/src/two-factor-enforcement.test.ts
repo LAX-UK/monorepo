@@ -5,6 +5,7 @@ import {
   enforceTwoFactorOnNewSession,
   extractNextFromCallbackUrl,
   isTwoFactorExemptPath,
+  resolveCallbackUrl,
 } from "./two-factor-enforcement.js";
 
 describe("isTwoFactorExemptPath", () => {
@@ -19,11 +20,16 @@ describe("isTwoFactorExemptPath", () => {
     expect(isTwoFactorExemptPath("/two-factor/verify-backup-code")).toBe(true);
   });
 
-  it("exempts OAuth/social surfaces by policy", () => {
-    expect(isTwoFactorExemptPath("/sign-in/social")).toBe(true);
-    expect(isTwoFactorExemptPath("/callback/google")).toBe(true);
-    expect(isTwoFactorExemptPath("/callback/apple")).toBe(true);
-    expect(isTwoFactorExemptPath("/oauth2/callback/x")).toBe(true);
+  it("does not exempt a Google or Apple sign-in: the code is asked for after the provider too", () => {
+    expect(isTwoFactorExemptPath("/sign-in/social")).toBe(false);
+    expect(isTwoFactorExemptPath("/callback/google")).toBe(false);
+    expect(isTwoFactorExemptPath("/callback/apple")).toBe(false);
+    expect(isTwoFactorExemptPath("/callback/:id")).toBe(false);
+  });
+
+  it("exempts the OIDC provider's own endpoints, which create no sign-in session", () => {
+    expect(isTwoFactorExemptPath("/oauth2/authorize")).toBe(true);
+    expect(isTwoFactorExemptPath("/oauth2/token")).toBe(true);
   });
 
   it("does not exempt passwordless session-creating paths", () => {
@@ -94,6 +100,53 @@ describe("buildTwoFactorChallengeUrl destination", () => {
   });
 });
 
+describe("resolveCallbackUrl", () => {
+  it("uses the query's callback URL for a magic link or an email verification", () => {
+    expect(resolveCallbackUrl({ callbackURL: "https://lax.bid/cb" }, null)).toBe(
+      "https://lax.bid/cb",
+    );
+    expect(
+      resolveCallbackUrl({ callbackURL: "https://lax.bid/cb" }, { callbackURL: "https://other/" }),
+    ).toBe("https://lax.bid/cb");
+  });
+
+  it("falls back to the provider round trip's state for a Google or Apple callback", () => {
+    expect(
+      resolveCallbackUrl(
+        { code: "abc", state: "xyz" },
+        { callbackURL: "https://auth.lax.bid/login?client_id=lax-shop-web" },
+      ),
+    ).toBe("https://auth.lax.bid/login?client_id=lax-shop-web");
+  });
+
+  it("is null when neither knows where the person was heading", () => {
+    expect(resolveCallbackUrl(undefined, null)).toBeNull();
+    expect(resolveCallbackUrl({}, {})).toBeNull();
+    expect(resolveCallbackUrl({ callbackURL: 3 }, { callbackURL: 4 })).toBeNull();
+  });
+});
+
+describe("a Google or Apple session for a person with two-step on", () => {
+  it("is revoked and sent to the code page, with the product's own destination kept", async () => {
+    const callbackURL = "https://auth.lax.bid/login?client_id=lax-shop-web&next=%2Fbasket";
+    const deps = baseDeps({
+      user: { id: "u1", email: "a@b.com", name: "A", twoFactorEnabled: true },
+      challengeUrl: buildTwoFactorChallengeUrl("https://auth.lax.bid", callbackURL),
+    });
+    await expect(enforceTwoFactorOnNewSession(deps)).rejects.toThrow(
+      /^redirect:https:\/\/auth\.lax\.bid\/two-factor\?next=%2Fbasket&callbackURL=/,
+    );
+    expect(deps.deleteSession).toHaveBeenCalledWith("tok");
+    expect(deps.createPendingChallenge).toHaveBeenCalledTimes(1);
+  });
+
+  it("is kept when the person has no two-step to answer", async () => {
+    const deps = baseDeps();
+    await enforceTwoFactorOnNewSession(deps);
+    expect(deps.deleteSession).not.toHaveBeenCalled();
+  });
+});
+
 describe("buildTwoFactorEnforcementAfterHook", () => {
   it("matches non-exempt paths only", () => {
     const hook = buildTwoFactorEnforcementAfterHook({ authOrigin: "https://auth.lax.bid" });
@@ -101,7 +154,9 @@ describe("buildTwoFactorEnforcementAfterHook", () => {
     expect(hook.matcher({ path: "/verify-email" })).toBe(true);
     expect(hook.matcher({ path: "/sign-in/email" })).toBe(false);
     expect(hook.matcher({ path: "/two-factor/verify-totp" })).toBe(false);
-    expect(hook.matcher({ path: "/callback/google" })).toBe(false);
+    expect(hook.matcher({ path: "/callback/google" })).toBe(true);
+    expect(hook.matcher({ path: "/callback/:id" })).toBe(true);
+    expect(hook.matcher({ path: "/sign-in/social" })).toBe(true);
     expect(hook.matcher({})).toBe(true);
   });
 });

@@ -111,12 +111,113 @@ describe("two-factor authorize gate", () => {
     expect(new URL(response.headers.get("location") ?? "").pathname).toBe("/two-factor");
   });
 
-  it("accepts a social sign-in for a policy requirement", async () => {
+  it("does not accept a social sign-in for a policy requirement: a person who can enrol is sent to set up", async () => {
+    const { app } = setup({ requirement: STAFF_REQUIRED, socialAuthAt: new Date() });
+
+    const response = await app.request(authorize());
+
+    expect(response.status).toBe(302);
+    expect(new URL(response.headers.get("location") ?? "").pathname).toBe("/two-factor/setup");
+  });
+
+  it("asks a person who signed in with Google and has two-step on for the code", async () => {
+    const { app } = setup({
+      requirement: STAFF_REQUIRED,
+      socialAuthAt: new Date(),
+      twoFactorEnabled: true,
+    });
+
+    const response = await app.request(authorize());
+
+    expect(new URL(response.headers.get("location") ?? "").pathname).toBe("/two-factor");
+  });
+
+  it("sends a social-only staff member to the set-password page, never to a bare error", async () => {
     const { app } = setup({
       requirement: STAFF_REQUIRED,
       socialAuthAt: new Date(),
       hasPassword: false,
     });
+
+    const response = await app.request(authorize());
+
+    expect(response.status).toBe(302);
+    const location = new URL(response.headers.get("location") ?? "");
+    expect(location.origin + location.pathname).toBe(`${ISSUER}/two-factor/password`);
+    expect(location.searchParams.get("required_by")).toBe("staff");
+    expect(location.searchParams.get("client_id")).toBe("lax-shop-admin");
+    expect(location.searchParams.get("error")).toBeNull();
+  });
+
+  describe("a social-only member of an organisation that requires two-step verification", () => {
+    const ORG_REQUIRED: TwoFactorRequirement = {
+      required: true,
+      sources: [{ scope: "org", legalEntityId: "00000000-0000-4000-8000-00000000000a" }],
+    };
+
+    it("is sent to the set-password page by every product", async () => {
+      for (const clientId of ["lax-bid-web", "lax-shop-web", "lax-art-web", "lax-shop-admin"]) {
+        const { app } = setup({ requirement: ORG_REQUIRED, hasPassword: false });
+        const response = await app.request(authorize({ client_id: clientId }));
+        const location = new URL(response.headers.get("location") ?? "");
+        expect(location.origin + location.pathname, clientId).toBe(`${ISSUER}/two-factor/password`);
+        expect(location.searchParams.get("required_by"), clientId).toBe("org");
+        expect(location.searchParams.get("client_id"), clientId).toBe(clientId);
+      }
+    });
+
+    it("keeps LAX Account reachable, so Security is where they set a password and an authenticator", async () => {
+      const { app } = setup({ requirement: ORG_REQUIRED, hasPassword: false });
+
+      const response = await app.request(authorize({ client_id: "lax-account-web" }));
+
+      expect(await response.text()).toBe("authorized");
+    });
+
+    it("does not exempt LAX Account from a staff requirement", async () => {
+      const { app } = setup({ requirement: STAFF_REQUIRED, hasPassword: false });
+
+      const response = await app.request(authorize({ client_id: "lax-account-web" }));
+
+      expect(new URL(response.headers.get("location") ?? "").pathname).toBe("/two-factor/password");
+    });
+
+    it("does not exempt LAX Account when a staff requirement applies beside the organisation's", async () => {
+      const { app } = setup({
+        requirement: {
+          required: true,
+          sources: [{ scope: "staff" }, ...ORG_REQUIRED.sources],
+        },
+        hasPassword: false,
+      });
+
+      const response = await app.request(authorize({ client_id: "lax-account-web" }));
+
+      expect(new URL(response.headers.get("location") ?? "").pathname).toBe("/two-factor/password");
+    });
+
+    it("still sets up an organisation member who has a password, in LAX Account too", async () => {
+      const { app } = setup({ requirement: ORG_REQUIRED, hasPassword: true });
+
+      const other = await app.request(authorize({ client_id: "lax-shop-web" }));
+      expect(new URL(other.headers.get("location") ?? "").pathname).toBe("/two-factor/setup");
+      const account = await app.request(authorize({ client_id: "lax-account-web" }));
+      expect(await account.text()).toBe("authorized");
+    });
+
+    it("answers a silent request with interaction_required, not the page", async () => {
+      const { app } = setup({ requirement: ORG_REQUIRED, hasPassword: false });
+
+      const response = await app.request(authorize({ client_id: "lax-shop-web", prompt: "none" }));
+
+      expect(new URL(response.headers.get("location") ?? "").searchParams.get("error")).toBe(
+        "interaction_required",
+      );
+    });
+  });
+
+  it("still passes a social sign-in when no requirement applies", async () => {
+    const { app } = setup({ socialAuthAt: new Date(), hasPassword: false });
 
     const response = await app.request(authorize());
 

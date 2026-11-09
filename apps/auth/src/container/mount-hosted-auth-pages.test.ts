@@ -67,6 +67,52 @@ describe("hosted two-factor setup page", () => {
   });
 });
 
+const passwordPath = "/two-factor/password?client_id=lax-shop-web&required_by=org";
+
+describe("hosted set-a-password page (a policy asks for two-step and there is no password)", () => {
+  const session = { user: { id: "u1", email: "collector@example.com", name: "Collector" } };
+
+  it("sends visitors without an issuer session to sign in for the same product", async () => {
+    const response = await appWithSession(null).request(passwordPath);
+    expect(response.status).toBe(302);
+    expect(response.headers.get("location")).toBe("/login?client_id=lax-shop-web");
+  });
+
+  it("says what is asked and offers the link, naming the address only in part", async () => {
+    const response = await appWithSession(session).request(passwordPath);
+    const html = await response.text();
+    expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(html).toContain("Set a password to continue");
+    expect(html).toContain(
+      "Your organisation asks for two-step verification. Set a password (we&#39;ll email you a link), then add an authenticator app.",
+    );
+    expect(html).toContain("Email me a link");
+    expect(html).toContain("c***@example.com");
+    expect(html).toContain("/hosted-two-factor-password.js");
+  });
+
+  it("does not mention passkeys, which do not exist yet", async () => {
+    const html = await (await appWithSession(session).request(passwordPath)).text();
+    expect(html.toLowerCase()).not.toContain("passkey");
+  });
+
+  it("speaks for LAX when it is a staff requirement", async () => {
+    const html = await (
+      await appWithSession(session).request(
+        "/two-factor/password?client_id=lax-shop-admin&required_by=staff",
+      )
+    ).text();
+    expect(html).toContain("LAX asks staff for two-step verification.");
+    expect(html).not.toContain("Your organisation asks");
+  });
+
+  it("is served with its script", async () => {
+    const response = await appWithSession(session).request(passwordPath);
+    expect(await response.text()).toContain("hosted-two-factor-password.js");
+  });
+});
+
 const managePath = "/two-factor/manage?client_id=lax-account-web";
 
 describe("hosted two-factor manage page", () => {
