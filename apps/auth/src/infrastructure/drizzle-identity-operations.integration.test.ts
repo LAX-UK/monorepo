@@ -1,5 +1,5 @@
 import { createIdentityDb } from "@auction/identity-db";
-import { account, session, user, verification } from "@auction/identity-db/schema";
+import { account, passkey, session, user, verification } from "@auction/identity-db/schema";
 import { eq, inArray } from "drizzle-orm";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { DrizzleIdentityCredentialRepository } from "./drizzle-identity-credential-repository.js";
@@ -42,6 +42,7 @@ describe.skipIf(!DATABASE_URL)("drizzle identity operations adapters", () => {
 
   async function clearState(): Promise<void> {
     if (!db) return;
+    await db.delete(passkey).where(inArray(passkey.userId, [...subjectIds]));
     await db.delete(verification).where(inArray(verification.id, [...verificationIds]));
     await db.delete(session).where(inArray(session.id, [...sessionIds]));
     await db.delete(account).where(inArray(account.id, [...accountIds]));
@@ -152,6 +153,75 @@ describe.skipIf(!DATABASE_URL)("drizzle identity operations adapters", () => {
       .from(account)
       .where(inArray(account.id, [...accountIds]));
     expect(left.map((row) => row.id).sort()).toEqual([accountIds[0], accountIds[2]].sort());
+  });
+
+  describe("passkeys", () => {
+    const passkeyRow = (n: number, userId: string = subjectId) => ({
+      id: `identity-operations-passkey-${userId.slice(-3)}-${n}`,
+      userId,
+      name: `Passkey ${n}`,
+      publicKey: `public-key-${userId.slice(-3)}-${n}`,
+      credentialId: `credential-${userId.slice(-3)}-${n}`,
+      deviceType: "multiDevice" as const,
+      backedUp: true,
+      transports: "internal",
+      createdAt: new Date(NOW.getTime() + n * 1_000),
+    });
+
+    it("renames and removes only the person's own passkey, answering null for anyone else's", async () => {
+      if (!db || !unitOfWork || !credentials) return;
+      await db.insert(passkey).values([passkeyRow(1), passkeyRow(1, otherSubjectId)]);
+      const mine = passkeyRow(1);
+      const theirs = passkeyRow(1, otherSubjectId);
+
+      expect(await credentials.renamePasskey(subjectId, theirs.id, "Taken over")).toBeNull();
+      expect(await credentials.renamePasskey(subjectId, mine.id, "Work laptop")).toMatchObject({
+        id: mine.id,
+        name: "Work laptop",
+      });
+
+      let removedTheirs: unknown = "unset";
+      let removedMine: unknown = "unset";
+      await unitOfWork.transaction(async (transaction) => {
+        removedTheirs = await credentials.deletePasskey(transaction, subjectId, theirs.id);
+        removedMine = await credentials.deletePasskey(transaction, subjectId, mine.id);
+      });
+      expect(removedTheirs).toBeNull();
+      expect(removedMine).toEqual({ name: "Work laptop" });
+      const left = await db
+        .select({ id: passkey.id })
+        .from(passkey)
+        .where(inArray(passkey.userId, [...subjectIds]));
+      expect(left.map((row) => row.id)).toEqual([theirs.id]);
+    });
+
+    it("locks the passkey rows after the account rows, counting exactly the person's own", async () => {
+      if (!db || !unitOfWork || !credentials) return;
+      await db
+        .insert(passkey)
+        .values([passkeyRow(1), passkeyRow(2), passkeyRow(1, otherSubjectId)]);
+      let held = -1;
+      await unitOfWork.transaction(async (transaction) => {
+        await credentials.lockSignInAccounts(transaction, subjectId);
+        held = await credentials.lockPasskeys(transaction, subjectId);
+      });
+      expect(held).toBe(2);
+    });
+
+    it("refuses an eleventh passkey with SQLSTATE 23514 and the passkey_limit message, from the database itself", async () => {
+      if (!db) return;
+      const ten = Array.from({ length: 10 }, (_, index) => passkeyRow(index + 1));
+      await db.insert(passkey).values(ten);
+      const attempt = db.insert(passkey).values(passkeyRow(11));
+      await expect(attempt).rejects.toSatisfy((error: unknown) => {
+        const found = error as { code?: string; cause?: { code?: string; message?: string } };
+        const code = found.code ?? found.cause?.code;
+        const message = String((error as Error).message) + String(found.cause?.message ?? "");
+        return code === "23514" && message.includes("passkey_limit");
+      });
+      // Another person is unaffected by the first person's ten.
+      await db.insert(passkey).values(passkeyRow(1, otherSubjectId));
+    });
   });
 
   it("deletes all sessions except the explicitly retained token", async () => {

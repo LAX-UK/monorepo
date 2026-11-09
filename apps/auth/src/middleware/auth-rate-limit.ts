@@ -7,6 +7,7 @@ import {
 import type { Context } from "hono";
 import { createMiddleware } from "hono/factory";
 import type { ClientIpResolver } from "../infrastructure/client-ip.js";
+import { normaliseRequestPath } from "../lib/normalise-request-path.js";
 import type { SlidingWindowStore } from "./resilient-sliding-window-store.js";
 
 /** Sliding-window thresholds mirroring apps/api to protect the auth issuer from distributed attacks. */
@@ -543,7 +544,7 @@ export function createPasskeyIssuerRateLimitMiddleware(
   clientIp: ClientIpResolver,
 ) {
   return createMiddleware(async (c, next) => {
-    const path = c.req.path;
+    const path = normaliseRequestPath(c.req.path);
     const asksForChallenge = c.req.method === "GET" && PASSKEY_OPTIONS_PATH.test(path);
     const submitsAnswer = c.req.method === "POST" && PASSKEY_VERIFY_PATH.test(path);
     if (!asksForChallenge && !submitsAnswer) {

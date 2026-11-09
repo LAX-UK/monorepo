@@ -7,6 +7,7 @@ import {
 } from "@auction/auth";
 import type { createAuth } from "@auction/auth";
 import { PASSKEY_NAME_INPUT_MAX_LENGTH } from "@auction/identity-contracts";
+import { normaliseRequestPath } from "../lib/normalise-request-path.js";
 import type {
   DurableSecurityEffects,
   SecurityEffectJob,
@@ -108,8 +109,8 @@ export function createAuthRequestHandler(options: {
     }
     // Making a passkey is allowed only to the session the one-time hand-off gave permission to.
     let enrolment: { userId: string; sessionId: string } | null = null;
-    if (isPasskeyCreationPath(path)) {
-      const gate = await gatePasskeyCreation(options, request, path);
+    if (isPasskeyCreationPath(normaliseRequestPath(path))) {
+      const gate = await gatePasskeyCreation(options, request, normaliseRequestPath(path));
       if (gate instanceof Response) return gate;
       enrolment = gate;
     }
@@ -176,7 +177,11 @@ export function createAuthRequestHandler(options: {
         stampMfaCompletedFromResponse(options.sessionStampStore, response),
       );
     }
-    if (enrolment && response.ok && path.endsWith("/passkey/verify-registration")) {
+    if (
+      enrolment &&
+      response.ok &&
+      normaliseRequestPath(path).endsWith("/passkey/verify-registration")
+    ) {
       const made = enrolment;
       await settleSecurityEffect(
         options.log,
@@ -192,7 +197,7 @@ export function createAuthRequestHandler(options: {
         },
       );
     }
-    if (response.ok && path.endsWith("/passkey/verify-authentication")) {
+    if (response.ok && normaliseRequestPath(path).endsWith("/passkey/verify-authentication")) {
       // The device checked the person (the issuer refuses a passkey that did not), so the session
       // counts as two-step. Fails safe: an unstamped session reads as password-only.
       await settleSecurityEffect(options.log, { path, effect: "stamp_passkey_auth" }, () =>
