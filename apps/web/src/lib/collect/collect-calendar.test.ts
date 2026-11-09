@@ -1,6 +1,12 @@
 import type { CollectionDayView } from "@auction/types";
 import { describe, expect, it } from "vitest";
-import { calendarCells, dayOfSlot, firstOpenDay, windowHeading } from "./collect-calendar";
+import {
+  calendarCells,
+  dayOfSlot,
+  firstOpenDay,
+  weekSummary,
+  windowHeading,
+} from "./collect-calendar";
 
 const NOW = new Date("2026-11-09T10:00:00.000Z");
 
@@ -33,6 +39,21 @@ describe("calendarCells", () => {
     expect(days.map((d) => d.selectable)).toEqual([true, false, false]);
   });
 
+  it("has short captions for a phone, with the full words kept in the label", () => {
+    const { days } = calendarCells(
+      [
+        day("2026-11-12", "open", 7),
+        day("2026-11-13", "full"),
+        day("2026-11-14", "closed"),
+        day("2026-11-15", "sale_day"),
+        day("2026-11-16", "too_soon"),
+      ],
+      NOW,
+    );
+    expect(days.map((d) => d.shortCaption)).toEqual(["7", "Full", "Shut", "Sale", "Soon"]);
+    expect(days[2]?.label).toContain("Closed");
+  });
+
   it("says 1 time, not 1 times", () => {
     expect(calendarCells([day("2026-11-16", "open", 1)], NOW).days[0]?.caption).toBe("1 time");
   });
@@ -63,5 +84,31 @@ describe("window helpers", () => {
     expect(windowHeading([day("2026-12-30", "open"), day("2027-01-04", "open")])).toBe(
       "December 2026 – January 2027",
     );
+  });
+});
+
+describe("weekSummary", () => {
+  it("counts the days with times in the first week", () => {
+    // Thursday 12th to Sunday 15th: the first week has four days.
+    expect(
+      weekSummary([
+        day("2026-11-12", "open", 3),
+        day("2026-11-13", "full"),
+        day("2026-11-14", "closed"),
+        day("2026-11-15", "closed"),
+        day("2026-11-16", "open", 3),
+      ]),
+    ).toBe("1 day has times this week.");
+    expect(
+      weekSummary([
+        day("2026-11-09", "open", 3),
+        day("2026-11-10", "open", 3),
+        day("2026-11-11", "open", 2),
+        day("2026-11-12", "open", 2),
+        day("2026-11-13", "full"),
+      ]),
+    ).toBe("4 days have times this week.");
+    expect(weekSummary([day("2026-11-12", "full")])).toBe("No days have times this week.");
+    expect(weekSummary([])).toBe("");
   });
 });

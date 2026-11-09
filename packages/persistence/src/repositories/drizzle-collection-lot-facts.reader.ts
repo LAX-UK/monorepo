@@ -19,7 +19,7 @@ import {
   type CollectionLotFacts,
   decisivePayment,
 } from "@auction/domain";
-import { and, desc, eq, inArray, isNull } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNull } from "drizzle-orm";
 import type {
   CollectionLotRecord,
   ICollectionLotFactsReader,
@@ -42,6 +42,23 @@ function fulfilmentOf(
 
 export class DrizzleCollectionLotFactsReader implements ICollectionLotFactsReader {
   constructor(private readonly db: Database) {}
+
+  async lotIdsForBuyer(legalEntityId: string, venueId: string, limit: number): Promise<string[]> {
+    const rows = await this.db
+      .select({ id: lot.id })
+      .from(lot)
+      .innerJoin(sale, eq(sale.id, lot.saleId))
+      .where(
+        and(
+          eq(lot.buyerLegalEntityId, legalEntityId),
+          eq(lot.status, "ended"),
+          eq(sale.venueId, venueId),
+        ),
+      )
+      .orderBy(asc(lot.lotNumber), asc(lot.id))
+      .limit(limit);
+    return rows.map((row) => row.id);
+  }
 
   async read(lotIds: readonly string[]): Promise<Map<string, CollectionLotRecord>> {
     const ids = unique(lotIds);

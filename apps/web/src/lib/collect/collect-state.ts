@@ -45,17 +45,15 @@ function openSlotStarts(availability: CollectionAvailability): Set<string> {
  */
 export function initialCollectState(input: {
   availability: CollectionAvailability;
-  lotIds: readonly string[];
   visit: CollectionVisitView | null;
   myName: string;
 }): CollectState {
   const { availability, visit } = input;
-  const collectable = new Set(
-    availability.lots.filter((lot) => lot.collectable).map((lot) => lot.lotId),
-  );
+  // A new booking starts with every lot that can be collected ticked: the ones asked for first,
+  // then the account's others, in the order the server sent them.
   const ticked = visit
     ? visit.lots.filter((lot) => lot.active).map((lot) => lot.lotId)
-    : input.lotIds.filter((id) => collectable.has(id));
+    : availability.lots.filter((lot) => lot.collectable).map((lot) => lot.lotId);
   const slot = visit ? visit.start : null;
   const day = (slot ? dayOfSlot(availability.days, slot) : null) ?? firstOpenDay(availability.days);
   const kind = visit?.collector.kind ?? "self";

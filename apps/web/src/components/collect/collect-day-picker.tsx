@@ -1,6 +1,11 @@
 "use client";
 
-import { WEEKDAY_HEADINGS, calendarCells, windowHeading } from "@/lib/collect/collect-calendar";
+import {
+  WEEKDAY_HEADINGS,
+  calendarCells,
+  weekSummary,
+  windowHeading,
+} from "@/lib/collect/collect-calendar";
 import { COLLECT_COPY } from "@/lib/collect/collect-copy";
 import type { CollectionDayView } from "@auction/types";
 import { cn } from "@auction/ui";
@@ -46,13 +51,17 @@ export function CollectDayPicker({
     content: (
       <>
         <span className="text-lax-16 font-semibold tabular-nums">{day.number}</span>
-        <span className="text-lax-12 leading-4">{day.caption}</span>
+        <span className="text-lax-12 leading-4 sm:hidden">{day.shortCaption}</span>
+        <span className="hidden text-lax-12 leading-4 sm:inline">{day.caption}</span>
       </>
     ),
   }));
   return (
     <div className="flex flex-col gap-3">
-      <p className="text-lax-14 font-medium text-lax-fg">{windowHeading(days)}</p>
+      <div>
+        <p className="text-lax-14 font-medium text-lax-fg">{windowHeading(days)}</p>
+        <p className="text-lax-13 text-lax-muted">{weekSummary(days)}</p>
+      </div>
       <div>
         <div aria-hidden className="mb-1 grid grid-cols-7 gap-1.5 sm:gap-2">
           {WEEKDAY_HEADINGS.map((heading) => (

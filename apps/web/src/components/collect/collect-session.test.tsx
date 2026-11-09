@@ -9,11 +9,13 @@ vi.mock("@/lib/shell/shell-chrome-context", () => ({ HideBottomTabBarWhileMounte
 const book = vi.fn();
 const change = vi.fn();
 const refreshTimes = vi.fn();
+const readVisit = vi.fn();
 vi.mock("@/lib/collect/collect.actions", () => ({
   bookCollectionAction: (...a: unknown[]) => book(...a),
   changeCollectionAction: (...a: unknown[]) => change(...a),
   refreshAvailabilityAction: (...a: unknown[]) => refreshTimes(...a),
   cancelCollectionAction: vi.fn(),
+  readCollectionVisitAction: (...a: unknown[]) => readVisit(...a),
 }));
 
 import { CollectSession } from "./collect-session";
@@ -86,7 +88,6 @@ const draw = (over: Partial<Parameters<typeof CollectSession>[0]> = {}) =>
   render(
     <CollectSession
       availability={availability()}
-      lotIds={[LOT_A, LOT_B]}
       visit={null}
       myName="Ada Lovelace"
       organisation={null}
@@ -194,15 +195,28 @@ describe("the collection booking page", () => {
   it("lets someone viewing the account see it but not book", () => {
     draw({ viewOnly: true });
     expect(screen.getByText("You're viewing this account")).toBeInTheDocument();
-    expect(confirmButton("Confirm booking")).toBeDisabled();
+    expect(confirmButton("Confirm booking")).toHaveAttribute("aria-disabled", "true");
   });
 
   it("changes a visit with its version and keeps its time until a new one is taken", async () => {
     change.mockResolvedValue({ ok: true, value: { ...visit, version: 4 } });
-    draw({ visit, lotIds: [LOT_A] });
+    draw({ visit });
     fireEvent.click(confirmButton("Move booking"));
     await waitFor(() => expect(change).toHaveBeenCalledTimes(1));
     expect(change.mock.calls[0]?.[0]).toMatchObject({ bookingId: visit.id, version: 3 });
+    expect(await screen.findByText(/Collection moved to/)).toBeInTheDocument();
+  });
+
+  it("shows Booked when a change refused as out of date did take effect", async () => {
+    change.mockResolvedValue({
+      ok: false,
+      failure: { kind: "changed", message: "This booking changed." },
+    });
+    readVisit.mockResolvedValue({ ok: true, value: { ...visit, version: 4 } });
+    draw({ visit });
+    // The visit's own time is kept, so asking for it again is what the re-read matches.
+    fireEvent.click(screen.getAllByRole("radio", { name: /14:00|15:00/ })[0] as HTMLElement);
+    fireEvent.click(confirmButton("Move booking"));
     expect(await screen.findByText(/Collection moved to/)).toBeInTheDocument();
   });
 });

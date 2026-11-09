@@ -26,6 +26,14 @@ export const COLLECT_COPY = {
     full: "Full",
     saleDay: "Sale day",
     tooSoon: "Too soon",
+    saleShort: "Sale",
+    tooSoonShort: "Soon",
+    closedShort: "Shut",
+  },
+  week: {
+    none: "No days have times this week.",
+    one: "1 day has times this week.",
+    many: (count: number) => `${count} days have times this week.`,
   },
   time: {
     noDay: "Choose a day to see the times.",
@@ -125,6 +133,7 @@ export const COLLECT_COPY = {
     email: "Email us to book",
   },
   viewOnly: {
+    reason: "You're viewing this account, so you can't book for it.",
     title: "You're viewing this account",
     body: "Collections can be booked by the account itself. You can see them here but not change them.",
   },

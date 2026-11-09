@@ -96,6 +96,18 @@ describe.skipIf(!HAS_DB)("collection lot facts (integration)", () => {
     await db.execute(sql`delete from "user" where id in (${winner}, ${heldWinner}, ${sofWinner})`);
   });
 
+  it("lists an account's ended lots at a place in lot-number order, and no other account's", async () => {
+    const mine = await lot();
+    const other = await lot({ entity: personalEntity });
+    const noSale = await lot({ withSale: false });
+    const ids = await reader.lotIdsForBuyer(orgEntity, venueId, 200);
+    expect(ids).toContain(mine.lotId);
+    expect(ids).not.toContain(other.lotId);
+    expect(ids).not.toContain(noSale.lotId);
+    expect(await reader.lotIdsForBuyer(orgEntity, randomUUID(), 200)).toEqual([]);
+    expect(await reader.lotIdsForBuyer(orgEntity, venueId, 1)).toHaveLength(1);
+  });
+
   it("reads a paid, clear lot: the buyer, the place and nothing in the way", async () => {
     const { lotId } = await lot();
     const record = await factsOf(lotId);

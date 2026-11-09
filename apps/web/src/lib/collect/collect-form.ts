@@ -107,3 +107,26 @@ export function authorisationText(name: string): string {
   const who = name.trim() === "" ? "them" : name.trim();
   return `I authorise ${who} to collect these lots for me. This is the written authorisation our collection policy asks for.`;
 }
+
+/**
+ * Whether a visit, read again, is what the person asked for: the same time, the same lots and the
+ * same collector. A change that was refused as out of date but did take effect (a double tap, a
+ * slow answer) reads as booked, not as a failure.
+ */
+export function visitMatchesRequest(
+  visit: {
+    start: string;
+    lots: readonly { lotId: string; active: boolean }[];
+    collector: { name: string };
+  },
+  body: CollectRequestBody,
+): boolean {
+  const active = visit.lots.filter((lot) => lot.active).map((lot) => lot.lotId);
+  const asked = new Set(body.lotIds);
+  return (
+    new Date(visit.start).getTime() === new Date(body.slotStart).getTime() &&
+    active.length === asked.size &&
+    active.every((id) => asked.has(id)) &&
+    visit.collector.name.trim().toLowerCase() === body.collector.name.trim().toLowerCase()
+  );
+}

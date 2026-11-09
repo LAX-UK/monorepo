@@ -1,18 +1,31 @@
 "use client";
 
 import { WorkspacePanel } from "@/components/dashboard/primitives/workspace-panel";
+import { CookieDockSlot } from "@/components/marketing/consent/cookie-dock";
 import { COLLECT_COPY, collectBookingEmail } from "@/lib/collect/collect-copy";
-import { COLLECT_FIELD_IDS, validateCollectForm } from "@/lib/collect/collect-form";
+import {
+  COLLECT_FIELD_IDS,
+  validateCollectForm,
+  visitMatchesRequest,
+} from "@/lib/collect/collect-form";
 import { collectReducer, initialCollectState } from "@/lib/collect/collect-state";
 import {
   bookCollectionAction,
   changeCollectionAction,
+  readCollectionVisitAction,
   refreshAvailabilityAction,
 } from "@/lib/collect/collect.actions";
-import { HideBottomTabBarWhileMounted } from "@/lib/shell/shell-chrome-context";
 import { formatCollectionWhen } from "@auction/domain";
+import { useClaimBottomSlot } from "@auction/marketing-ui";
 import type { CollectionAvailability, CollectionVisitView } from "@auction/types";
-import { Button, ButtonLink, ErrorSummary, FieldError, Notice } from "@auction/ui/lax";
+import {
+  Button,
+  ButtonLink,
+  ErrorSummary,
+  FieldError,
+  Notice,
+  laxDensityAttributes,
+} from "@auction/ui/lax";
 import { useRouter } from "next/navigation";
 import { useMemo, useReducer, useRef, useState } from "react";
 import { BookedResult } from "./booked-result";
@@ -23,7 +36,6 @@ import { CollectTimePicker } from "./collect-time-picker";
 
 export type CollectSessionProps = {
   availability: CollectionAvailability;
-  lotIds: readonly string[];
   /** The visit being moved, or `null` when booking a new one. */
   visit: CollectionVisitView | null;
   /** The signed-in person's name: who "Me" brings photo ID as. */
@@ -52,12 +64,13 @@ export function CollectSession(props: CollectSessionProps) {
   const now = useMemo(() => new Date(props.nowIso), [props.nowIso]);
   const [state, dispatch] = useReducer(
     collectReducer,
-    { availability, lotIds: props.lotIds, visit, myName: props.myName },
+    { availability, visit, myName: props.myName },
     initialCollectState,
   );
   const [booked, setBooked] = useState<{ visit: CollectionVisitView; moved: boolean } | null>(null);
   const keyRef = useRef<{ fingerprint: string; key: string } | null>(null);
   const [timesFailed, setTimesFailed] = useState(false);
+  useClaimBottomSlot("collect-phone-bar", booked === null && availability.onlineBookingEnabled);
   const submitting = state.phase === "submitting";
   const refreshing = state.phase === "refreshing";
 
@@ -135,7 +148,15 @@ export function CollectSession(props: CollectSessionProps) {
     }
     dispatch({ type: "failed", failure: result.failure });
     if (result.failure.kind === "slot_taken" || result.failure.kind === "too_late") await refresh();
-    if (result.failure.kind === "changed") router.refresh();
+    if (result.failure.kind === "changed") {
+      router.refresh();
+      if (visit) {
+        const reread = await readCollectionVisitAction({ bookingId: visit.id });
+        if (reread.ok && visitMatchesRequest(reread.value, checked.body)) {
+          setBooked({ visit: reread.value, moved: true });
+        }
+      }
+    }
   }
 
   const blocked = viewOnly;
@@ -157,7 +178,7 @@ export function CollectSession(props: CollectSessionProps) {
       variant="primary"
       onClick={submit}
       loading={submitting}
-      disabled={blocked}
+      {...(blocked ? { disabledReason: COLLECT_COPY.viewOnly.reason } : {})}
       className="w-full"
     >
       {confirmLabel}
@@ -166,7 +187,6 @@ export function CollectSession(props: CollectSessionProps) {
 
   return (
     <>
-      <HideBottomTabBarWhileMounted />
       <div className="flex flex-col gap-6 max-lg:pb-28">
         {props.organisation ? (
           <p className="text-lax-13 text-lax-muted">
@@ -285,12 +305,18 @@ export function CollectSession(props: CollectSessionProps) {
           </div>
         </div>
       </div>
-      <div className="fixed inset-x-0 bottom-0 z-30 flex items-center gap-3 border-t border-lax-line bg-lax-surface px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] lg:hidden">
-        <p className="min-w-0 flex-1 text-lax-13 text-lax-muted">
-          {slotLabel ?? COLLECT_COPY.confirm.chooseTime}
-        </p>
-        <div className="shrink-0">{action}</div>
-      </div>
+      <CookieDockSlot>
+        <section
+          aria-label="Confirm collection"
+          {...laxDensityAttributes("client")}
+          className="flex items-center gap-3 border-t border-lax-line bg-lax-raised px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] font-lax text-lax-fg shadow-[0_-8px_24px_-12px_rgb(0_0_0/0.18)] lg:hidden"
+        >
+          <p className="min-w-0 flex-1 text-lax-13 text-lax-muted">
+            {slotLabel ?? COLLECT_COPY.confirm.chooseTime}
+          </p>
+          <div className="shrink-0">{action}</div>
+        </section>
+      </CookieDockSlot>
     </>
   );
 }

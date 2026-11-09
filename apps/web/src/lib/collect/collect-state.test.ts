@@ -58,17 +58,39 @@ function availability(overrides: Partial<CollectionAvailability> = {}): Collecti
 const start = () =>
   initialCollectState({
     availability: availability(),
-    lotIds: ["a", "b"],
     visit: null,
     myName: "Ada",
   });
 
 describe("collectReducer", () => {
-  it("opens with only the lots that can be booked ticked and the first open day chosen", () => {
+  it("opens with every lot that can be booked ticked, the ones asked for first, and the first open day chosen", () => {
     const state = start();
     expect(state.lotIds).toEqual(["a"]);
     expect(state.day).toBe("2026-11-12");
     expect(state.slotStart).toBeNull();
+  });
+
+  it("ticks the account's other collectable lots after the ones asked for", () => {
+    const base = availability();
+    const state = initialCollectState({
+      availability: {
+        ...base,
+        lots: [
+          ...base.lots,
+          {
+            lotId: "c",
+            title: "C",
+            lotNumber: 3,
+            collectable: true,
+            blockedReason: null,
+            blockedMessage: null,
+          },
+        ],
+      },
+      visit: null,
+      myName: "Ada",
+    });
+    expect(state.lotIds).toEqual(["a", "c"]);
   });
 
   it("drops a chosen time when the person picks another day", () => {

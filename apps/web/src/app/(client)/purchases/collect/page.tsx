@@ -164,7 +164,7 @@ export default async function CollectRoute({ searchParams }: PageProps) {
     lotIds = link.ids;
   }
 
-  const availability = await loadAvailability(lotIds, visit?.id ?? null);
+  const availability = await loadAvailability(lotIds, visit?.id ?? null, visit === null);
   if (!availability.ok) {
     if (availability.failure.kind === "forbidden" || availability.failure.kind === "lot") {
       return (
@@ -181,7 +181,6 @@ export default async function CollectRoute({ searchParams }: PageProps) {
     >
       <CollectSession
         availability={availability.value}
-        lotIds={lotIds}
         visit={visit}
         myName={user.name}
         organisation={organisation}

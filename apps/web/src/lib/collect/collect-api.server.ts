@@ -66,10 +66,13 @@ async function guarded<T>(run: () => Promise<CollectRead<T>>): Promise<CollectRe
 export function loadAvailability(
   lotIds: readonly string[],
   bookingId: string | null = null,
+  /** Also list the account's other lots at the same place that can be booked, after these. */
+  includeAccount = false,
 ): Promise<CollectRead<CollectionAvailability>> {
   const query = [
     `lots=${lotIds.map(encodeURIComponent).join(",")}`,
     bookingId ? `booking=${encodeURIComponent(bookingId)}` : null,
+    includeAccount ? "account=1" : null,
   ]
     .filter(Boolean)
     .join("&");

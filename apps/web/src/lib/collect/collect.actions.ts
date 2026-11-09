@@ -5,7 +5,13 @@ import { instrumentServerAction } from "@/lib/observability/instrument-server-ac
 import type { CollectionAvailability, CollectionVisitView } from "@auction/types";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { loadAvailability, patchBooking, postBooking, postCancel } from "./collect-api.server";
+import {
+  loadAvailability,
+  loadVisits,
+  patchBooking,
+  postBooking,
+  postCancel,
+} from "./collect-api.server";
 import { type CollectFailure, collectFailure } from "./collect-errors";
 
 /** What every collection action answers: the visit (or times), or a refusal the page shows. */
@@ -103,5 +109,21 @@ export async function refreshAvailabilityAction(input: {
     const id = input.bookingId === null ? null : uuid.safeParse(input.bookingId);
     if (!lots.success || (id && !id.success)) return invalid();
     return loadAvailability(lots.data, id?.success ? id.data : null);
+  });
+}
+
+/** One visit, read again: after a change that was refused as out of date, to see what stands now. */
+export async function readCollectionVisitAction(input: {
+  bookingId: string;
+}): Promise<CollectActionResult<CollectionVisitView>> {
+  return instrumentServerAction("readCollectionVisitAction", async () => {
+    const id = uuid.safeParse(input.bookingId);
+    if (!id.success) return invalid();
+    const visits = await loadVisits();
+    if (!visits.ok) return visits;
+    const found = visits.value.find((visit) => visit.id === id.data);
+    return found
+      ? { ok: true, value: found }
+      : { ok: false, failure: collectFailure(404, null, null) };
   });
 }

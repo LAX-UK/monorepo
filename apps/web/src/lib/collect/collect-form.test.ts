@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { COLLECT_COPY } from "./collect-copy";
-import { type CollectFormState, validateCollectForm } from "./collect-form";
+import { type CollectFormState, validateCollectForm, visitMatchesRequest } from "./collect-form";
 
 const base: CollectFormState = {
   lotIds: ["lot-1"],
@@ -64,5 +64,35 @@ describe("validateCollectForm", () => {
     );
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.errors[0]?.message).toBe(COLLECT_COPY.errors.email);
+  });
+});
+
+describe("visitMatchesRequest", () => {
+  const visit = {
+    start: "2026-11-12T14:00:00.000Z",
+    lots: [
+      { lotId: "lot-1", active: true },
+      { lotId: "lot-2", active: false },
+    ],
+    collector: { name: "Ada Lovelace" },
+  };
+  const body = {
+    lotIds: ["lot-1"],
+    slotStart: "2026-11-12T14:00:00.000Z",
+    collector: { kind: "self" as const, name: "ada lovelace" },
+  };
+
+  it("is true when the visit has the time, lots and collector that were asked for", () => {
+    expect(visitMatchesRequest(visit, body)).toBe(true);
+  });
+
+  it("is false when any of them differs", () => {
+    expect(visitMatchesRequest(visit, { ...body, slotStart: "2026-11-13T14:00:00.000Z" })).toBe(
+      false,
+    );
+    expect(visitMatchesRequest(visit, { ...body, lotIds: ["lot-1", "lot-3"] })).toBe(false);
+    expect(
+      visitMatchesRequest(visit, { ...body, collector: { kind: "self", name: "Someone Else" } }),
+    ).toBe(false);
   });
 });
