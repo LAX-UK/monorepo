@@ -1,4 +1,5 @@
 import { shopEdition, shopOrder } from "@auction/db/schema";
+import { DrizzleUnappliedMoneyReader } from "@auction/persistence/repositories";
 import { eq } from "drizzle-orm";
 import type pg from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -199,8 +200,10 @@ describe.skipIf(!hasShopIntegrationDb)("checkout retries with changed delivery d
     });
     expect(updated.stripeCheckoutSessionId).not.toBe(oldSession);
 
-    await expect(
-      completeShopCheckoutSession(
+    // A payment that still arrives in the old session cannot pay the repriced order. It is not
+    // applied, and not lost: finance has a task for the 9,500 the buyer actually paid.
+    expect(
+      await completeShopCheckoutSession(
         db,
         {
           eventId: `evt-old-${suffix}`,
@@ -208,10 +211,11 @@ describe.skipIf(!hasShopIntegrationDb)("checkout retries with changed delivery d
           sessionId: oldSession,
           amountTotalPence: 9_500,
           paidAt: new Date(),
+          paymentIntentId: `pi_old_${suffix}`,
         },
-        { domainEventMode: "off" },
+        { domainEventMode: "off", unappliedMoney: new DrizzleUnappliedMoneyReader(db) },
       ),
-    ).rejects.toThrow();
+    ).toBe("unapplied_recorded");
     expect((await order(first.orderId)).status).toBe("pending_payment");
 
     await completeShopCheckoutSession(

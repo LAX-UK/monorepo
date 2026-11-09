@@ -233,5 +233,128 @@ describe.skipIf(!hasShopIntegrationDb)(
       expect((await order(created.orderId)).checkoutExpiresAt).toEqual(before.checkoutExpiresAt);
       expect((await holder()).reservedUntil).toEqual(reserved.reservedUntil);
     });
+
+    describe("a payment that cannot be applied leaves one finance task and changes nothing", () => {
+      async function trackedPayment(label: string) {
+        const harness = await setup(label);
+        const { db, checkout, order, holder } = harness;
+        const first = await checkout("buyer");
+        const before = await order(first.orderId);
+        const heldBefore = await holder();
+        const unappliedMoney = new DrizzleUnappliedMoneyReader(db);
+        const options = { domainEventMode: "enforce" as const, unappliedMoney };
+        const paid = (overrides: Record<string, unknown> = {}) => ({
+          eventId: `evt_${label}_${first.orderId}`,
+          orderId: first.orderId,
+          sessionId: `cs_test_${first.orderId}`,
+          amountTotalPence: before.totalPence,
+          paidAt: new Date(),
+          paymentIntentId: `pi_${label}_${first.orderId}`,
+          ...overrides,
+        });
+        const tasks = () =>
+          db
+            .select()
+            .from(domainEvent)
+            .where(
+              and(
+                eq(domainEvent.eventType, "payment.unapplied_money_received"),
+                sql`${domainEvent.payload}->>'shopOrderId' = ${first.orderId}`,
+              ),
+            );
+        return { ...harness, first, before, heldBefore, options, paid, tasks };
+      }
+
+      it("for the wrong amount: tracks what was paid, leaves the order pending and the print reserved", async () => {
+        const { db, order, holder, first, before, heldBefore, options, paid, tasks } =
+          await trackedPayment("amount");
+        const event = paid({ amountTotalPence: before.totalPence - 1 });
+        expect(await completeShopCheckoutSession(db, event, options)).toBe("unapplied_recorded");
+        expect(await tasks()).toHaveLength(1);
+        expect((await tasks())[0]?.payload).toMatchObject({
+          reason: "shop_order_amount_mismatch",
+          amountCents: before.totalPence - 1,
+        });
+        expect((await order(first.orderId)).status).toBe("pending_payment");
+        expect((await holder()).reservedByOrderId).toBe(heldBefore.reservedByOrderId);
+        expect(await completeShopCheckoutSession(db, event, options)).toBe("duplicate");
+        expect(await tasks()).toHaveLength(1);
+      });
+
+      it("for another payment session: tracks it, leaves the order pending and the print reserved", async () => {
+        const { db, order, holder, first, heldBefore, options, paid, tasks } =
+          await trackedPayment("session");
+        const event = paid({ sessionId: "cs_test_not_this_order" });
+        expect(await completeShopCheckoutSession(db, event, options)).toBe("unapplied_recorded");
+        expect((await tasks())[0]?.payload).toMatchObject({
+          reason: "shop_order_session_mismatch",
+          shopCheckoutSessionId: "cs_test_not_this_order",
+        });
+        expect((await order(first.orderId)).status).toBe("pending_payment");
+        expect((await holder()).reservedByOrderId).toBe(heldBefore.reservedByOrderId);
+        expect(await completeShopCheckoutSession(db, event, options)).toBe("duplicate");
+        expect(await tasks()).toHaveLength(1);
+      });
+
+      it("for a second payment on an order already paid: tracks it and keeps the sale", async () => {
+        const { db, order, holder, first, options, paid, tasks } = await trackedPayment("twice");
+        expect(await completeShopCheckoutSession(db, paid(), options)).toBe("processed");
+        expect((await order(first.orderId)).status).toBe("paid");
+        const soldTo = (await holder()).ownerPartyId;
+
+        const again = paid({
+          eventId: `evt_twice_second_${first.orderId}`,
+          sessionId: "cs_test_second_payment",
+          paymentIntentId: `pi_second_${first.orderId}`,
+        });
+        expect(await completeShopCheckoutSession(db, again, options)).toBe("unapplied_recorded");
+        expect((await tasks())[0]?.payload).toMatchObject({ reason: "shop_order_paid_twice" });
+        expect((await order(first.orderId)).status).toBe("paid");
+        expect((await holder()).ownerPartyId).toBe(soldTo);
+        expect(await completeShopCheckoutSession(db, again, options)).toBe("duplicate");
+        // A different event for the same payment finds the task and opens nothing new.
+        expect(
+          await completeShopCheckoutSession(
+            db,
+            { ...again, eventId: `${again.eventId}_b` },
+            options,
+          ),
+        ).toBe("unapplied_recorded");
+        expect(await tasks()).toHaveLength(1);
+      });
+
+      it("for the same session again on a paid order: nothing new, no task", async () => {
+        const { db, options, paid, tasks } = await trackedPayment("same-session");
+        await completeShopCheckoutSession(db, paid(), options);
+        expect(
+          await completeShopCheckoutSession(
+            db,
+            paid({ eventId: "evt_same_session_second_event" }),
+            options,
+          ),
+        ).toBe("processed");
+        expect(await tasks()).toHaveLength(0);
+      });
+
+      it("for a closed order, tracks what was actually paid even when it is not the total", async () => {
+        const { db, order, first, before, options, paid, tasks, pastHold } =
+          await trackedPayment("closed");
+        await pastHold(first.orderId);
+        await expireShopCheckoutSession(db, {
+          eventId: reaperEventIdForOrder(first.orderId),
+          orderId: first.orderId,
+          source: SHOP_CHECKOUT_REAPER_EVENT_SOURCE,
+        });
+        const event = paid({ amountTotalPence: before.totalPence - 500 });
+        expect(await completeShopCheckoutSession(db, event, options)).toBe("terminal_acknowledged");
+        expect((await tasks())[0]?.payload).toMatchObject({
+          reason: "shop_order_paid_after_close",
+          amountCents: before.totalPence - 500,
+        });
+        expect((await order(first.orderId)).status).toBe("expired");
+        expect(await completeShopCheckoutSession(db, event, options)).toBe("duplicate");
+        expect(await tasks()).toHaveLength(1);
+      });
+    });
   },
 );

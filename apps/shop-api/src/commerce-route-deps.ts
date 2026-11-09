@@ -26,6 +26,7 @@ import type {
 } from "./application/ports/commerce.ports.js";
 import type { GuestOrderLinks } from "./application/ports/guest-checkout.ports.js";
 import type { OrderProblemReportWriter } from "./application/ports/order-problem-report.port.js";
+import type { CompleteCheckoutOutcome } from "./application/ports/payment-event.processor.js";
 import type { StripeMoneyWebhookOutcome } from "./application/ports/stripe-money-webhook.types.js";
 import type {
   StripeCheckoutAsyncFailedDto,
@@ -111,7 +112,7 @@ export type StripeWebhookDeps = {
     paidAt: Date;
     customerEmail?: string | null;
     paymentIntentId?: string | null;
-  }): Promise<"processed" | "duplicate" | "terminal_acknowledged">;
+  }): Promise<CompleteCheckoutOutcome>;
   expireCheckout(input: {
     eventId: string;
     orderId: string;
