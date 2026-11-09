@@ -2,7 +2,7 @@
 
 import { defaultClockStore } from "@auction/ui/clock";
 import { createServerClockSync } from "./server-clock-sync";
-import { createBidApiTimeSource } from "./server-time-source";
+import { createBidApiTimeSource } from "./server-time-source.client";
 
 let sync: ReturnType<typeof createServerClockSync> | null = null;
 let stop: (() => void) | null = null;

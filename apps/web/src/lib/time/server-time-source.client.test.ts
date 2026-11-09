@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { createBidApiTimeSource } from "./server-time-source";
+import { createBidApiTimeSource } from "./server-time-source.client";
 
 describe("createBidApiTimeSource", () => {
   it("reads the server time without cookies or caching", async () => {

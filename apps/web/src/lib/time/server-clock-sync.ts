@@ -1,4 +1,4 @@
-import type { ServerTimeSource } from "./server-time-source";
+import type { ServerTimeSource } from "./server-time-source.client";
 
 /** The part of the shared clock the sync feeds. */
 export type SyncedClock = {

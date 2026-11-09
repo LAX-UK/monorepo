@@ -11,7 +11,7 @@ export {
   type VisibilityPort,
   createClockStore,
 } from "./clock-store.js";
-export { defaultClockStore } from "./default-clock.js";
+export { defaultClockStore, replaceDefaultClockStore } from "./default-clock.js";
 export {
   type CountdownPolicy,
   type TimedDisplay,

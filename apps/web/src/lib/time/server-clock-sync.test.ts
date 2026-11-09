@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { type SyncEnvironment, createServerClockSync } from "./server-clock-sync";
-import type { ServerTimeSource } from "./server-time-source";
+import type { ServerTimeSource } from "./server-time-source.client";
 
 /** A server answer after `roundTripMs` on a monotonic clock the test owns. */
 function setup(answers: { serverMs: number; roundTripMs: number | "fail" }[], startMono = 1_000) {
