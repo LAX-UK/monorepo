@@ -34,7 +34,7 @@ import { createDrizzleShopNotificationPublisher } from "./infrastructure/drizzle
 import { createDrizzleStripeMoneyWebhookProcessor } from "./infrastructure/drizzle-stripe-money-webhook.processor.js";
 import { createHttpIdentityAddressBook } from "./infrastructure/http-identity-address-book.js";
 import { createIdentityMachineClient } from "./infrastructure/identity-machine-client.js";
-import type { UnappliedMoneyLookup } from "./infrastructure/shop-paid-on-closed-order.js";
+import type { UnappliedMoneyLookup } from "./infrastructure/shop-unapplied-payment.js";
 import { loadShopVatPolicy } from "./infrastructure/shop-vat-policy.js";
 import { createStripePaymentIntentMetadataFetcher } from "./infrastructure/stripe-refund-metadata.js";
 import { createStripeShopCheckoutGateway } from "./infrastructure/stripe-shop-checkout.gateway.js";

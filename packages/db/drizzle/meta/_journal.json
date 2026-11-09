@@ -2351,6 +2351,13 @@
       "idx": 336,
       "version": "7",
       "when": 1804579200000,
+      "tag": "0341_shop_framing_price_trigger_lock",
+      "breakpoints": true
+    },
+    {
+      "idx": 337,
+      "version": "7",
+      "when": 1804665600000,
       "tag": "0343_collection_visit_cap",
       "breakpoints": true
     }

@@ -1,9 +1,12 @@
 import { HomeCover } from "@/components/sections/home/home-cover";
 import { bidHeroPresence } from "@/lib/layout/bid-hero-presence";
+import { resetImageFallbackReports } from "@/lib/observability/report-image-fallback";
 import { BID_COVER_FIXTURES } from "@auction/marketing-ui/cover-fixtures";
-import { render, renderHook, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import * as Sentry from "@sentry/nextjs";
+import { fireEvent, render, renderHook, screen } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
+vi.mock("@sentry/nextjs", () => ({ captureMessage: vi.fn() }));
 vi.mock("@/lib/marketing-cover/cover-viewer.client", () => ({
   fetchCoverViewer: vi.fn(async () => "anonymous"),
 }));
@@ -35,5 +38,20 @@ describe("HomeCover and the header", () => {
       expect(presence.result.current).toBe(false);
       view.unmount();
     }
+  });
+});
+
+describe("HomeCover and a refused resized picture", () => {
+  beforeEach(() => {
+    resetImageFallbackReports();
+    vi.mocked(Sentry.captureMessage).mockClear();
+  });
+
+  it("reports the fallback to the original, once", () => {
+    const { container } = mount("live");
+    fireEvent.error(container.querySelector("img") as HTMLImageElement);
+    expect(Sentry.captureMessage).toHaveBeenCalledTimes(1);
+    fireEvent.error(container.querySelector("img") as HTMLImageElement);
+    expect(Sentry.captureMessage).toHaveBeenCalledTimes(1);
   });
 });
