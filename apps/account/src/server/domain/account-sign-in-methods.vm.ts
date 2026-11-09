@@ -1,8 +1,12 @@
 import { formatDate } from "@/lib/format-date";
 import {
   ACCOUNT_SIGN_IN_METHOD_ERRORS,
+  ACCOUNT_SIGN_IN_METHOD_RETURNS,
   type AccountSignInMethodError,
+  type AccountSignInMethodReturn,
   type AccountSignInMethodsResponse,
+  PASSKEY_LIMIT,
+  SOCIAL_SIGN_IN_PROVIDERS,
   type SocialSignInProvider,
 } from "@auction/identity-contracts/account";
 import type { IdentityCallResult } from "../ports/account-identity-gateway";
@@ -26,13 +30,27 @@ export type SocialRowVm = {
   kind: "social";
   provider: SocialSignInProvider;
   title: string;
-  /** The account's address and when the provider was linked. */
+  /** The address the provider gave (or that it hid) and when the provider was linked. */
   detail: string;
   /** Null when it can be removed; otherwise the sentence that says why not. */
   blockedReason: string | null;
 };
 
-export type SignInMethodRowVm = PasswordRowVm | SocialRowVm;
+/** A provider the person has not linked and this environment offers: a row with a Link button. */
+export type LinkRowVm = {
+  kind: "link";
+  provider: SocialSignInProvider;
+  title: string;
+  /** "Not linked.", all that fits beside the button on a phone. */
+  detail: string;
+  /** What the row adds from the small-tablet width up: "Sign in with your Google Account." */
+  detailMore: string;
+  actionLabel: string;
+  /** The button's label while the browser is being handed to the issuer. */
+  busyLabel: string;
+};
+
+export type SignInMethodRowVm = PasswordRowVm | SocialRowVm | LinkRowVm;
 
 /**
  * What the "Sign-in methods" section shows. The two ways the list can be missing need different
@@ -47,18 +65,56 @@ export type SignInMethodsSectionVm =
 
 export const ONLY_METHOD_REASON =
   "This is the only way you can sign in. Add a password first, then you can remove it.";
+const ONLY_METHOD_REASON_WITH_PASSKEY =
+  "This is the only way you can sign in. Add a passkey or a password first, then you can remove it.";
+
+/** What a linked provider's row says: the address it gave, or that Apple kept it back. */
+function linkedDetail(method: AccountSignInMethodsResponse["social"][number]): string {
+  const label = PROVIDER_LABEL[method.provider];
+  const address = method.hidden ? `Address hidden by ${label}` : method.providerEmail;
+  return [address, `Linked ${formatDate(method.linkedAt)}`].filter(Boolean).join(" · ");
+}
 
 export function buildSignInMethodsSection(
   result: IdentityCallResult<AccountSignInMethodsResponse> | null,
-  email: string | null,
 ): SignInMethodsSectionVm {
   // Listing has no refusal the person can act on, so a refusal reads as "could not answer".
   if (!result || result.status === "unavailable" || result.status === "rejected") {
     return { status: "unavailable" };
   }
   if (result.status === "reauth_required") return { status: "reauth_required" };
-  const { hasPassword, social } = result.value;
-  const isLastMethod = !hasPassword && social.length === 1;
+  const { hasPassword, social, passkeys, available } = result.value;
+  // Every kind counts: the emailed sign-in link does not, as it is not a way to sign in on its own.
+  const isLastMethod = (hasPassword ? 1 : 0) + social.length + passkeys.length === 1;
+  const onlyMethod = available.passkey ? ONLY_METHOD_REASON_WITH_PASSKEY : ONLY_METHOD_REASON;
+  const providerRows = SOCIAL_SIGN_IN_PROVIDERS.flatMap((provider): SignInMethodRowVm[] => {
+    const linked = social.find((method) => method.provider === provider);
+    const label = PROVIDER_LABEL[provider];
+    if (linked) {
+      return [
+        {
+          kind: "social",
+          provider,
+          title: label,
+          detail: linkedDetail(linked),
+          blockedReason: isLastMethod ? onlyMethod : null,
+        },
+      ];
+    }
+    // A provider this environment does not offer has no row; staff are offered none.
+    if (!available[provider]) return [];
+    return [
+      {
+        kind: "link",
+        provider,
+        title: label,
+        detail: "Not linked.",
+        detailMore: `Sign in with your ${label} Account.`,
+        actionLabel: `Link ${label}`,
+        busyLabel: `Opening ${label}…`,
+      },
+    ];
+  });
   const rows: SignInMethodRowVm[] = [
     {
       kind: "password",
@@ -70,22 +126,16 @@ export function buildSignInMethodsSection(
         : "Add one to sign in with your email as well.",
       actionLabel: hasPassword ? "Change" : "Add a password",
     },
-    ...social.map(
-      (method): SocialRowVm => ({
-        kind: "social",
-        provider: method.provider,
-        title: PROVIDER_LABEL[method.provider],
-        detail: [email, `Linked ${formatDate(method.linkedAt)}`].filter(Boolean).join(" · "),
-        blockedReason: isLastMethod ? ONLY_METHOD_REASON : null,
-      }),
-    ),
+    ...providerRows,
   ];
   return {
     status: "list",
     rows,
-    hint: isLastMethod
-      ? "You sign in with one method only. Add a password so you can still get in if you lose access to it."
-      : null,
+    // Only for a person whose one way in is not a password: a password-only account is as it was.
+    hint:
+      !hasPassword && isLastMethod
+        ? "You sign in with one method only. Add a password so you can still get in if you lose access to it."
+        : null,
   };
 }
 
@@ -125,4 +175,90 @@ export function signInMethodRejectionMessage(reason: AccountSignInMethodError): 
 /** Narrows the issuer's refusal reasons to the ones that are about sign-in methods. */
 export function isSignInMethodRejection(reason: string): reason is AccountSignInMethodError {
   return (ACCOUNT_SIGN_IN_METHOD_ERRORS as readonly string[]).includes(reason);
+}
+
+export type SignInMethodFlashTone = "success" | "neutral" | "warning" | "error";
+
+/** What the Security page says when the issuer sends the person back, in its own words. */
+export type SignInMethodFlashVm = {
+  tone: SignInMethodFlashTone;
+  title: string;
+  body: string;
+  /** Offers "Sign in again", for the one outcome that is fixed by a fresh sign-in. */
+  reauth: boolean;
+};
+
+type FlashCopy = Omit<SignInMethodFlashVm, "reauth"> & { reauth?: true };
+
+const FLASH: Record<AccountSignInMethodReturn, FlashCopy> = {
+  google_linked: {
+    tone: "success",
+    title: "Google is linked",
+    body: "You can now sign in with it.",
+  },
+  apple_linked: {
+    tone: "success",
+    title: "Apple is linked",
+    body: "You can now sign in with it.",
+  },
+  passkey_added: {
+    tone: "success",
+    title: "Passkey added",
+    body: "You can sign in with it next time.",
+  },
+  cancelled: {
+    tone: "neutral",
+    title: "Linking was cancelled",
+    body: "Nothing changed. You can try again whenever you like.",
+  },
+  already_linked_elsewhere: {
+    tone: "error",
+    title: "That account is already linked to another LAX Account",
+    body: "Each Google or Apple account can sign in to one LAX Account. Sign in to the other account and remove it there, or link a different one.",
+  },
+  provider_unavailable: {
+    tone: "error",
+    title: "We couldn't finish linking",
+    body: "Nothing changed. Try again in a moment.",
+  },
+  expired: {
+    tone: "warning",
+    title: "That took too long",
+    body: "Nothing changed. Choose the button again to start over.",
+  },
+  reauth_required: {
+    tone: "warning",
+    title: "Sign in again to add a way in",
+    body: "For your security we need a recent sign-in before adding a way in.",
+    reauth: true,
+  },
+  rate_limited: {
+    tone: "error",
+    title: "Too many attempts",
+    body: "Wait a few minutes and try again.",
+  },
+  passkey_limit: {
+    tone: "error",
+    title: `You have ${PASSKEY_LIMIT} passkeys, the most an account can have`,
+    body: "Remove one to add another.",
+  },
+  staff_not_allowed: {
+    tone: "error",
+    title: "Staff accounts can't sign in with Google or Apple",
+    body: "Add a passkey instead.",
+  },
+};
+
+/**
+ * The notice for the `?signInMethod=` word the issuer sent the person back with. Only the issuer's
+ * fixed words are understood; anything else (a mistyped or edited address) shows nothing, and no
+ * part of the parameter is ever shown.
+ */
+export function buildSignInMethodFlash(
+  raw: string | string[] | undefined,
+): SignInMethodFlashVm | null {
+  const word = Array.isArray(raw) ? raw[0] : raw;
+  if (!word || !(ACCOUNT_SIGN_IN_METHOD_RETURNS as readonly string[]).includes(word)) return null;
+  const { reauth, ...copy } = FLASH[word as AccountSignInMethodReturn];
+  return { ...copy, reauth: reauth === true };
 }

@@ -1,4 +1,5 @@
 import type {
+  AccountActionIntentResponse,
   AccountAddress,
   AccountAddressDefaultKind,
   AccountAddressError,
@@ -14,6 +15,7 @@ import type {
   AccountSignInMethodError,
   AccountSignInMethodUnlinkedResponse,
   AccountSignInMethodsResponse,
+  SignInMethodKind,
   SocialSignInProvider,
 } from "@auction/identity-contracts";
 
@@ -124,6 +126,15 @@ export type AccountIdentityGateway = {
   readSignInMethods(
     actor: IdentityActor,
   ): Promise<IdentityCallResult<AccountSignInMethodsResponse>>;
+  /**
+   * Asks the issuer for the one-time address that adds a method (the issuer's own page, which runs
+   * the round trip to Google or Apple and returns to Security). Needs a recent sign-in. The
+   * address is checked to be the issuer's before it is returned.
+   */
+  startSignInMethodAction(
+    actor: IdentityActor,
+    action: SignInMethodKind,
+  ): Promise<IdentityCallResult<AccountActionIntentResponse>>;
   /**
    * Removes a linked Google or Apple sign-in. Needs a recent sign-in, and is refused when it is the
    * person's last method. Every other device is signed out; this one stays.

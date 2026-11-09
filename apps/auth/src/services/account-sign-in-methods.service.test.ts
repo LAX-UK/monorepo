@@ -84,6 +84,32 @@ describe("AccountSignInMethodsService.read", () => {
     });
   });
 
+  it("offers a staff account no Google or Apple link, and still offers a passkey", async () => {
+    const operations = {
+      listSessions: vi.fn(),
+      readSignInMethods: vi.fn().mockResolvedValue({ hasPassword: true, social: [], passkeys: [] }),
+      unlinkSocialSignIn: vi.fn(),
+    };
+    const build = (isStaff: boolean) =>
+      new AccountSignInMethodsService({
+        operations: operations as never,
+        durable: { settle: vi.fn() },
+        notices: { notify: vi.fn() },
+        available: { google: true, apple: true, passkey: true },
+        isStaff: async () => isStaff,
+      });
+    expect((await build(true).read(SUBJECT)).available).toEqual({
+      google: false,
+      apple: false,
+      passkey: true,
+    });
+    expect((await build(false).read(SUBJECT)).available).toEqual({
+      google: true,
+      apple: true,
+      passkey: true,
+    });
+  });
+
   it("lists passkeys by name, kind and date, never by key", async () => {
     const operations = {
       listSessions: vi.fn(),
