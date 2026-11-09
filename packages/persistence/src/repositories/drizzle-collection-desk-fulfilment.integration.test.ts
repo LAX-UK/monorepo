@@ -151,6 +151,8 @@ describe.skipIf(!HAS_DB)("collection desk hand-over (integration)", () => {
       await db.delete(collectionBooking).where(inArray(collectionBooking.id, bookingIds));
     }
     await db.delete(lotFulfilment).where(inArray(lotFulfilment.lotId, lotIds));
+    await db.execute(sql`delete from collection_weekly_hours where venue_id = ${venueId}`);
+    await db.execute(sql`delete from collection_exception where venue_id = ${venueId}`);
     await db.execute(sql`delete from collection_place where venue_id = ${venueId}`);
     await db.delete(lot).where(inArray(lot.id, lotIds));
     await db.execute(sql`delete from venue where id = ${venueId}`);
