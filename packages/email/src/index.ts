@@ -13,6 +13,7 @@ export {
   type PaymentReminderStepKey,
 } from "./buyer-default-copy.js";
 export { renderEmail } from "./render.js";
+export { emailAttachments, type EmailAttachment } from "./attachments.js";
 export {
   MARKETING_OPT_OUT_EMAIL_TEMPLATES,
   OPTIONAL_EMAIL_TEMPLATES,
