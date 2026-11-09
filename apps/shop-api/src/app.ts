@@ -32,6 +32,7 @@ import { registerAdminSavedViewRoutes } from "./routes/admin/v1/admin-saved-view
 import { registerAdminZohoLinkRoutes } from "./routes/admin/v1/admin-zoho-link.routes.js";
 import { registerArtCacheInvalidation } from "./routes/admin/v1/art-cache-invalidation.js";
 import { registerAdminArtworkRoutes } from "./routes/admin/v1/artworks.routes.js";
+import { registerAdminDeliveryQuoteRoutes } from "./routes/admin/v1/delivery-quotes.routes.js";
 import { registerAdminDeliveryRegionRoutes } from "./routes/admin/v1/delivery-regions.routes.js";
 import { registerAdminEditionRunRoutes } from "./routes/admin/v1/edition-runs.routes.js";
 import { registerAdminFramingRoutes } from "./routes/admin/v1/framing.routes.js";
@@ -224,6 +225,7 @@ export function createShopApiApp(options: CreateShopApiAppOptions) {
         void registerAdminHomeFeatureRoutes(adminScope, options.deps.admin);
         void registerAdminFramingRoutes(adminScope, options.deps.admin);
         void registerAdminDeliveryRegionRoutes(adminScope, options.deps.admin);
+        void registerAdminDeliveryQuoteRoutes(adminScope, options.deps.admin);
         void registerAdminMediaRoutes(adminScope, options.deps.admin);
         if (options.deps.env.SHOP_EDITORIAL_ENABLED && options.deps.editorial) {
           const editorialDeps = options.deps.editorial;

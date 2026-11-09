@@ -21,6 +21,7 @@ export function createDrizzleCommerceRepository(
     domainEventMode: "off" | "observe" | "enforce";
     vatPolicy?: import("@auction/shop-domain").VatPolicy | null;
     merchandiseEnabled?: boolean;
+    exportPaymentEnabled?: boolean;
     /** Copies of one edition an order may hold; null or absent leaves only the stock. */
     editionOrderLimit?: number | null;
   },

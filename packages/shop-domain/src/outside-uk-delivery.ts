@@ -53,6 +53,12 @@ export function quoteHoldUntil(now: Date, workingDays: number = QUOTE_HOLD_WORKI
   return addWorkingDays(now, workingDays);
 }
 
+/**
+ * How long a buyer has to pay once they accept a quote: the same window an ordinary checkout
+ * gives, so the hold and the payment session end together.
+ */
+export const QUOTE_PAYMENT_WINDOW_MS = 30 * 60 * 1000;
+
 /** Why a quote request ended without being paid; the buyer is told which. */
 export const DELIVERY_QUOTE_END_REASONS = [
   "cancelled_by_buyer",

@@ -102,6 +102,8 @@ export const EMAIL_TEMPLATE_LABELS: Readonly<Record<TemplateName, string>> = {
   "shop-zoho-dead-letter-notice": "CRM sync failure (staff)",
   "shop-production-started": "Shop order in production",
   "shop-delivery-quote-requested": "Shop delivery quote request",
+  "shop-delivery-quote-ready": "Shop delivery quote",
+  "shop-delivery-quote-declined": "Shop delivery quote declined",
   "shop-print-swapped": "Shop print number changed",
   "shop-dispatch-notice": "Shop order dispatched",
   "shop-checkout-ops-alert": "Shop checkout alert (staff)",

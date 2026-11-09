@@ -40,6 +40,15 @@ import { createShopDomainEventPublisher } from "./shop-domain-event-publisher.js
 
 const CHECKOUT_SESSION_TTL_MS = 30 * 60 * 1000;
 
+/** Payment outside the UK is not open: the refusal every outside-UK payment path shares. */
+export function exportPaymentClosed(): ShopApiError {
+  return new ShopApiError(
+    SHOP_API_ERROR_CODES.CONFLICT,
+    "Payment for delivery outside the UK is not open yet",
+    409,
+  );
+}
+
 /** A signed-in order needs the shopper's basket; a guest order the browser's anonymous one. */
 function ownsBasket(owner: BasketOwner, input: CheckoutOrderInput): boolean {
   if (input.guest) {
@@ -56,9 +65,15 @@ export function createDrizzleCheckoutRepository(
     domainEventMode: "off" | "observe" | "enforce";
     vatPolicy?: VatPolicy | null;
     merchandiseEnabled?: boolean;
+    /**
+     * Whether delivery outside the UK may be paid for. Off until the accountant confirms how VAT
+     * applies to exports: with it off, no outside-UK order opens a payment, however it was made.
+     */
+    exportPaymentEnabled?: boolean;
   },
 ): CheckoutWriter {
   const merchandiseEnabled = options.merchandiseEnabled ?? false;
+  const exportPaymentEnabled = options.exportPaymentEnabled ?? false;
   const domainEvents = createShopDomainEventPublisher(options.domainEventMode);
 
   /** The payment session for a pending order: the open one, or a new one when it needs one. */
@@ -106,6 +121,7 @@ export function createDrizzleCheckoutRepository(
         );
       }
       if (outsideUk) {
+        if (!exportPaymentEnabled) throw exportPaymentClosed();
         if (input.fulfilment !== "international_quotation") {
           throw new ShopApiError(SHOP_API_ERROR_CODES.VALIDATION, "Fulfilment mismatch", 400);
         }
@@ -313,17 +329,34 @@ export function createDrizzleCheckoutRepository(
         throw new ShopApiError(SHOP_API_ERROR_CODES.CONFLICT, "Checkout session expired", 409);
       }
       if (order.fulfilment === "international_quotation") {
+        // Payment outside the UK is closed until VAT on exports is confirmed, for every order.
+        if (!exportPaymentEnabled) throw exportPaymentClosed();
         const [quote] = await db
-          .select({ status: shopDeliveryQuote.status })
+          .select({
+            status: shopDeliveryQuote.status,
+            quotedPricePence: shopDeliveryQuote.quotedPricePence,
+          })
           .from(shopDeliveryQuote)
           .where(eq(shopDeliveryQuote.orderId, order.id))
           .limit(1);
         // No quote row means a fixed-rate order, paid like any other. A quote that has not been
         // accepted has no delivery price yet, so there is nothing to pay.
-        if (quote && quote.status !== "accepted") {
+        if (quote && (quote.status !== "accepted" || quote.quotedPricePence === null)) {
           throw new ShopApiError(
             SHOP_API_ERROR_CODES.CONFLICT,
             "This order is waiting for a delivery quote",
+            409,
+          );
+        }
+        // What is about to be paid must be exactly the goods plus the delivery that was priced.
+        const priced = quote?.quotedPricePence ?? order.fulfilmentSurchargePence;
+        if (
+          order.fulfilmentSurchargePence !== priced ||
+          order.totalPence !== order.merchandiseSubtotalPence + priced
+        ) {
+          throw new ShopApiError(
+            SHOP_API_ERROR_CODES.CONFLICT,
+            "The order total does not match its delivery price",
             409,
           );
         }

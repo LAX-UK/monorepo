@@ -247,6 +247,38 @@ describe("renderEmail", () => {
     expect(rendered.text).toContain("Import duties and taxes in Germany are paid by you");
   });
 
+  it("gives a buyer the delivery price, the carrier, who pays duties and how to pay", async () => {
+    const rendered = await renderEmail("shop-delivery-quote-ready", {
+      orderReference: "LAX-S-10482",
+      countryName: "Germany",
+      carrier: "DHL Express",
+      service: "Express insured",
+      leadTimeNote: "Usually 5 to 7 working days.",
+      deliveryPrice: "£85.00",
+      totalPrice: "£505.00",
+      validUntilOn: "16 November 2026",
+      orderUrl: "https://shop.example/orders/o-1",
+    });
+    expect(rendered.text).toContain("Delivery to Germany for order LAX-S-10482 is £85.00");
+    expect(rendered.text).toContain("DHL Express (Express insured)");
+    expect(rendered.text).toContain("Insurance is included in that price");
+    expect(rendered.text).toContain("You pay any import duties and taxes charged in Germany");
+    expect(rendered.text).toContain("held for you until 16 November 2026");
+    expect(rendered.text).toContain("https://shop.example/orders/o-1");
+  });
+
+  it("tells a buyer why the gallery cannot deliver, and that nothing was charged", async () => {
+    const rendered = await renderEmail("shop-delivery-quote-declined", {
+      orderReference: "LAX-S-10482",
+      countryName: "Brazil",
+      note: "Our couriers cannot collect framed work there.",
+      collectionUrl: "https://shop.example/delivery",
+    });
+    expect(rendered.text).toContain("we cannot deliver order LAX-S-10482 to Brazil");
+    expect(rendered.text).toContain("Our couriers cannot collect framed work there.");
+    expect(rendered.text).toContain("Nothing has been charged");
+  });
+
   it("tells a guest the receipt link opens the order and how to keep it in an account", async () => {
     const rendered = await renderEmail("shop-order-receipt", {
       orderId: "ord-1",

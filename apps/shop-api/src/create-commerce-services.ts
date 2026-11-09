@@ -1,5 +1,6 @@
 import { legalEntityFor } from "@auction/branding";
 import type { Database } from "@auction/db";
+import { createDeliveryQuoteAcceptanceService } from "./application/delivery-quote-acceptance/delivery-quote-acceptance.service.js";
 import { createDeliveryQuoteRequestService } from "./application/delivery-quote-request/delivery-quote-request.service.js";
 import { guardAgainstPendingDeletion } from "./application/guard-against-pending-deletion.js";
 import {
@@ -24,6 +25,7 @@ import { createGuestCheckoutDeps } from "./create-guest-checkout-deps.js";
 import type { ShopApiEnv } from "./env.js";
 import { readDeliveryRegions } from "./infrastructure/delivery-regions/drizzle-delivery-regions.store.js";
 import { createDrizzleCommerceRepository } from "./infrastructure/drizzle-commerce.repository.js";
+import { createDrizzleDeliveryQuoteAcceptanceStore } from "./infrastructure/drizzle-delivery-quote-acceptance.store.js";
 import { createDrizzleDeliveryQuoteOrderStore } from "./infrastructure/drizzle-delivery-quote-order.store.js";
 import { createDrizzlePaymentEventProcessor } from "./infrastructure/drizzle-payment-event.processor.js";
 import { createDrizzlePendingDeletionReader } from "./infrastructure/drizzle-pending-deletion.reader.js";
@@ -61,6 +63,7 @@ export function createCommerceServices(
     domainEventMode,
     vatPolicy: loadShopVatPolicy(env),
     merchandiseEnabled: env.SHOP_MERCHANDISE_ENABLED,
+    exportPaymentEnabled: env.SHOP_EXPORT_PAYMENT_ENABLED,
     editionOrderLimit: env.SHOP_EDITION_ORDER_LIMIT,
   });
 
@@ -93,6 +96,11 @@ export function createCommerceServices(
     checkout: repository,
     exportPaymentEnabled: env.SHOP_EXPORT_PAYMENT_ENABLED,
     guestHoldWorkingDays: env.SHOP_GUEST_QUOTE_HOLD_WORKING_DAYS,
+  });
+  const quoteAcceptance = createDeliveryQuoteAcceptanceService({
+    store: createDrizzleDeliveryQuoteAcceptanceStore(db, { vatPolicy: loadShopVatPolicy(env) }),
+    checkout: repository,
+    exportPaymentEnabled: env.SHOP_EXPORT_PAYMENT_ENABLED,
   });
   const guestCheckout = identityConfig
     ? createGuestCheckoutDeps(db, {
@@ -146,6 +154,9 @@ export function createCommerceServices(
         createResumeCheckoutOrderHandler(repository),
       ),
       cancelCheckoutOrder: createCancelCheckoutOrderHandler(repository),
+      acceptDeliveryQuote: guardAgainstPendingDeletion(pendingDeletion, (input) =>
+        quoteAcceptance.acceptAndPay(input),
+      ),
       requestDeliveryQuote: guardAgainstPendingDeletion(pendingDeletion, (input) =>
         quoteRequests.request(input),
       ),

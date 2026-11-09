@@ -216,6 +216,12 @@ import ShopCancellationConfirmedEmail, {
 import ShopCheckoutOpsAlertEmail, {
   subject as shopCheckoutOpsAlertSubject,
 } from "./templates/shop-checkout-ops-alert.js";
+import ShopDeliveryQuoteDeclinedEmail, {
+  subject as shopDeliveryQuoteDeclinedSubject,
+} from "./templates/shop-delivery-quote-declined.js";
+import ShopDeliveryQuoteReadyEmail, {
+  subject as shopDeliveryQuoteReadySubject,
+} from "./templates/shop-delivery-quote-ready.js";
 import ShopDeliveryQuoteRequestedEmail, {
   subject as shopDeliveryQuoteRequestedSubject,
 } from "./templates/shop-delivery-quote-requested.js";
@@ -736,6 +742,14 @@ const renderers: { [T in TemplateName]: TemplateRenderer<T> } = {
   "shop-zoho-dead-letter-notice": {
     subject: shopZohoDeadLetterNoticeSubject,
     component: (vars) => <ShopZohoDeadLetterNoticeEmail {...vars} />,
+  },
+  "shop-delivery-quote-ready": {
+    subject: shopDeliveryQuoteReadySubject,
+    component: (vars) => <ShopDeliveryQuoteReadyEmail {...vars} />,
+  },
+  "shop-delivery-quote-declined": {
+    subject: shopDeliveryQuoteDeclinedSubject,
+    component: (vars) => <ShopDeliveryQuoteDeclinedEmail {...vars} />,
   },
   "shop-delivery-quote-requested": {
     subject: shopDeliveryQuoteRequestedSubject,
