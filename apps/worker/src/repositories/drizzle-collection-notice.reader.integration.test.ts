@@ -51,9 +51,9 @@ describe.skipIf(!HAS_DB)("collection notice reader (integration)", () => {
              (${owner}, 'Olu Bello', ${`${owner}@integration.test`}, true, ${now}, ${now}),
              (${gone}, 'Gone Person', ${`${gone}@integration.test`}, true, ${now}, ${now})`);
     await db.execute(sql`
-      insert into bid_identity_directory (subject_id, email, name, email_verified)
-      values (${booker}, ${`${booker}@integration.test`}, 'Maya Okafor', true),
-             (${owner}, ${`${owner}@integration.test`}, 'Olu Bello', true)`);
+      insert into bid_identity_directory (subject_id, email, name, email_verified, identity_created_at)
+      values (${booker}, ${`${booker}@integration.test`}, 'Maya Okafor', true, now()),
+             (${owner}, ${`${owner}@integration.test`}, 'Olu Bello', true, now())`);
     await db.execute(sql`
       insert into legal_entity (id, display_name, kind, subkind, created_by_user_id, status)
       values (${entityId}, 'Northbank Gallery', 'organisation', 'gallery', ${owner}, 'approved')`);
