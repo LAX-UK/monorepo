@@ -237,9 +237,9 @@ export function FramingTaskControl({ line, canMove }: { line: Line; canMove: boo
   if (!task) return null;
   const presented = presentFramingTaskStatus(task.status);
   return (
-    <span className="flex items-center gap-2">
+    <span className="flex flex-wrap items-center gap-2">
       {!framingTaskFinished(task.status) ? (
-        <span className="text-staff-xs text-staff-muted tabular-nums">
+        <span className="whitespace-nowrap text-staff-xs text-staff-muted tabular-nums">
           {framingDueLabel(task.dueAt)}
         </span>
       ) : null}

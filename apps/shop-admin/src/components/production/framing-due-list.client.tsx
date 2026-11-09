@@ -49,8 +49,8 @@ export function FramingDueList({ items }: { items: readonly AdminFramingDueItem[
                 </p>
                 <p className="text-staff-xs text-staff-muted">{item.spec}</p>
               </div>
-              <div className="flex shrink-0 items-center gap-2">
-                <span className="text-staff-xs text-staff-muted tabular-nums">
+              <div className="flex shrink-0 flex-wrap items-center gap-2">
+                <span className="whitespace-nowrap text-staff-xs text-staff-muted tabular-nums">
                   {framingDueLabel(item.dueAt)}
                 </span>
                 <StatusBadge tone={presented.tone}>{presented.label}</StatusBadge>
