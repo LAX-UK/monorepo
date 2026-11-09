@@ -8,6 +8,10 @@ import {
   SHOP_SSF_RECEIVER_TABLES,
   SHOP_SUBJECT_EXPORT_READ_TABLES,
 } from "./migrate-roles.js";
+import {
+  expectTablePrivileges,
+  readTablePrivileges,
+} from "./role-contract/table-privileges.test-helpers.js";
 import { buildPgConnectionConfig } from "./ssl.js";
 
 const SHOP_URL = process.env.DATABASE_URL_SHOP;
