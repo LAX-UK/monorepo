@@ -8,6 +8,20 @@ export const COLLECTION_ID_TYPES = [
 ] as const;
 export type CollectionIdType = (typeof COLLECTION_ID_TYPES)[number];
 
+/**
+ * The fulfilment statuses a lot can be handed over from: staff have released the work, and it is
+ * either still released or already marked ready for collection. One list, used by the desk and by
+ * Lot fulfilment, so the two cannot disagree about what may be handed over.
+ */
+export const HAND_OVER_FROM_STATUSES = ["released", "ready_for_collection"] as const;
+export type HandOverFromStatus = (typeof HAND_OVER_FROM_STATUSES)[number];
+
+export function isHandOverFromStatus(
+  status: string | null | undefined,
+): status is HandOverFromStatus {
+  return HAND_OVER_FROM_STATUSES.some((known) => known === status);
+}
+
 export type HandOverLot = { lotId: string; released: boolean };
 
 export type HandOverRefusal =

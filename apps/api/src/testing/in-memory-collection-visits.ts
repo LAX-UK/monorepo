@@ -4,6 +4,7 @@ import {
   type CollectionWeeklyHours,
   DEFAULT_COLLECTION_RULES,
   DEFAULT_COLLECTION_WEEKLY_HOURS,
+  isHandOverFromStatus,
 } from "@auction/domain";
 import type {
   BookingOutcome,
@@ -18,6 +19,7 @@ import type {
   HandOverOutcome,
   ICollectionBookingReader,
   ICollectionBookingWriter,
+  ICollectionDeskFulfilment,
   ICollectionLotFactsReader,
   ICollectionOutcomeWriter,
   ICollectionPlaceRepository,
@@ -156,6 +158,46 @@ export class RecordingEvents implements IDomainEventSink {
  * booking in a slot, a lot in one live booking, a key that stands for one request, and a change
  * that is refused on a stale copy. The audit hook runs where the transaction would be.
  */
+/**
+ * The desk's fulfilment moves, in memory: a lot is handed over only from a status it can be
+ * handed over from, and an undo restores the status it was in.
+ */
+export class InMemoryDeskFulfilment implements ICollectionDeskFulfilment {
+  readonly statuses = new Map<string, string>();
+  readonly previous = new Map<string, string>();
+  readonly collectedBy = new Map<string, string>();
+
+  constructor(initial: Record<string, string> = {}) {
+    for (const [lotId, status] of Object.entries(initial)) this.statuses.set(lotId, status);
+  }
+
+  status(lotId: string): string {
+    return this.statuses.get(lotId) ?? "released";
+  }
+
+  async handOver(_tx: unknown, move: { lotIds: readonly string[]; collectedBy: string }) {
+    for (const lotId of move.lotIds) {
+      if (!isHandOverFromStatus(this.status(lotId))) return { ok: false as const, lotId };
+    }
+    for (const lotId of move.lotIds) {
+      this.previous.set(lotId, this.status(lotId));
+      this.statuses.set(lotId, "delivered");
+      this.collectedBy.set(lotId, move.collectedBy);
+    }
+    return { ok: true as const };
+  }
+
+  async undoHandOver(_tx: unknown, _bookingId: string) {
+    for (const [lotId, previous] of this.previous) {
+      if (this.status(lotId) !== "delivered") return { ok: false as const, lotId };
+      this.statuses.set(lotId, previous);
+      this.collectedBy.delete(lotId);
+    }
+    this.previous.clear();
+    return { ok: true as const };
+  }
+}
+
 export class InMemoryCollectionBookings
   implements ICollectionBookingReader, ICollectionBookingWriter, ICollectionOutcomeWriter
 {
@@ -190,6 +232,13 @@ export class InMemoryCollectionBookings
       .filter((b) => b.venueId === venueId && statuses.includes(b.status))
       .sort((a, b) => b.slotStart.getTime() - a.slotStart.getTime())
       .slice(0, limit);
+  }
+  async countOpenNotCollected(venueId: string) {
+    const missed = this.bookings.filter(
+      (b) => b.venueId === venueId && b.status === "not_collected",
+    );
+    const live = await this.findLiveByLots(missed.flatMap((b) => b.lots.map((l) => l.lotId)));
+    return missed.filter((b) => !b.lots.some((l) => live.has(l.lotId))).length;
   }
   async findLiveByLots(lotIds: readonly string[]) {
     const found = new Map<string, CollectionBookingRecord>();

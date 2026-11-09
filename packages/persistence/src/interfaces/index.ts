@@ -1348,6 +1348,11 @@ export type {
   WithinBookingTransaction,
 } from "./collection-booking.repository.js";
 export type {
+  DeskFulfilmentMoveResult,
+  DeskHandOverMove,
+  ICollectionDeskFulfilment,
+} from "./collection-desk-fulfilment.js";
+export type {
   CollectionDeskLot,
   ICollectionDeskReader,
 } from "./collection-desk.reader.js";

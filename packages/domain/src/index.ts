@@ -937,7 +937,10 @@ export {
 } from "./collection-collector.js";
 export {
   COLLECTION_ID_TYPES,
+  HAND_OVER_FROM_STATUSES,
+  type HandOverFromStatus,
   handOverRefusal,
+  isHandOverFromStatus,
   type CollectionIdType,
   type HandOverLot,
   type HandOverRefusal,

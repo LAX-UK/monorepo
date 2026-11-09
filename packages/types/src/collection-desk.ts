@@ -103,6 +103,10 @@ export type DeskListView = {
   venueId: string;
   status: "upcoming" | "not_collected";
   items: DeskBookingView[];
+  /** There are more visits than the list shows (it shows the most recent). */
+  more: boolean;
+  /** Visits marked not collected that nobody has rebooked, for the tab's count. */
+  notCollected: number;
 };
 
 /** A client's lot at this place, as staff see it when booking for them. */

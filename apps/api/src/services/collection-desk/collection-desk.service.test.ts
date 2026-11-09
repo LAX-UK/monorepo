@@ -1,6 +1,5 @@
 import type { CollectionDeskLot } from "@auction/persistence/interfaces";
-import { err, ok } from "neverthrow";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
   COLLECTION_ACCOUNT,
   COLLECTION_LOTS,
@@ -8,9 +7,11 @@ import {
   InMemoryCollectionBookings,
   InMemoryCollectionLotFacts,
   InMemoryCollectionPlaces,
+  InMemoryDeskFulfilment,
   OTHER_COLLECTION_ACCOUNT,
   RecordingEvents,
 } from "../../testing/in-memory-collection-visits.js";
+import { transitionRefusal } from "./collection-desk.errors.js";
 import { CollectionDeskService } from "./collection-desk.service.js";
 
 const STAFF = { userId: "staff-1" };
@@ -27,20 +28,7 @@ function setup(statuses: Record<string, string> = {}) {
   const places = new InMemoryCollectionPlaces();
   const bookings = new InMemoryCollectionBookings();
   const events = new RecordingEvents();
-  const status = (lotId: string) => statuses[lotId] ?? "released";
-  const handedOver: string[] = [];
-  const undone: string[] = [];
-  const fulfilment = {
-    handOverForCollection: vi.fn(async (input: { lotId: string }) => {
-      if (status(input.lotId) === "fail") return err({ message: "no", status: 400 });
-      handedOver.push(input.lotId);
-      return ok({} as never);
-    }),
-    undoCollectionHandOver: vi.fn(async (input: { lotId: string }) => {
-      undone.push(input.lotId);
-      return ok({} as never);
-    }),
-  };
+  const fulfilment = new InMemoryDeskFulfilment(statuses);
   const desk = {
     lots: async (ids: readonly string[]) =>
       new Map<string, CollectionDeskLot>(
@@ -51,7 +39,7 @@ function setup(statuses: Record<string, string> = {}) {
             title: `Lot ${lotId.slice(-1)}`,
             lotNumber: Number(lotId.slice(-1)),
             image: null,
-            fulfilmentStatus: status(lotId) === "fail" ? "released" : status(lotId),
+            fulfilmentStatus: fulfilment.status(lotId),
           },
         ]),
       ),
@@ -67,7 +55,7 @@ function setup(statuses: Record<string, string> = {}) {
     events,
     now: () => clock.now,
   });
-  return { service, clock, facts, places, bookings, events, fulfilment, handedOver, undone };
+  return { service, clock, facts, places, bookings, events, fulfilment };
 }
 
 async function booking(
@@ -111,12 +99,11 @@ describe("handing over", () => {
     const view = result._unsafeUnwrap();
     expect(view.status).toBe("collected");
     expect(view.idCheckType).toBe("passport");
-    expect(s.handedOver).toEqual([LOTS[0], LOTS[1]]);
-    expect(s.fulfilment.handOverForCollection).toHaveBeenCalledWith({
-      lotId: LOTS[0],
-      actorUserId: "staff-1",
-      collectedBy: "Charlotte Hayes",
-    });
+    expect([LOTS[0], LOTS[1]].map((lotId) => s.fulfilment.status(lotId))).toEqual([
+      "delivered",
+      "delivered",
+    ]);
+    expect(s.fulfilment.collectedBy.get(LOTS[0])).toBe("Charlotte Hayes");
     const event = s.events.events.at(-1);
     expect(event).toMatchObject({
       eventType: "collection.booking.handed_over",
@@ -135,7 +122,8 @@ describe("handing over", () => {
     )._unsafeUnwrap();
     expect(view.status).toBe("partly_collected");
     expect(view.lots.find((l) => l.lotId === LOTS[1])?.outcome).toBe("left");
-    expect(s.handedOver).toEqual([LOTS[0]]);
+    expect(s.fulfilment.status(LOTS[0])).toBe("delivered");
+    expect(s.fulfilment.status(LOTS[1])).toBe("released");
   });
 
   it("works from a lot marked ready for collection as well as a released one", async () => {
@@ -182,7 +170,7 @@ describe("handing over", () => {
       reason: "source_of_funds_check_open",
     });
     expect((await s.bookings.findById(b.id))?.status).toBe("booked");
-    expect(s.handedOver).toEqual([]);
+    expect(s.fulfilment.status(LOTS[0])).toBe("released");
   });
 
   it("refuses a lot that is not in the booking", async () => {
@@ -205,15 +193,42 @@ describe("handing over", () => {
     expect(again._unsafeUnwrapErr().code).toBe("booking_closed");
   });
 
-  it("puts the booking back if a lot's fulfilment will not move, so the two agree", async () => {
-    const s = setup({ [LOTS[1]]: "fail" });
+  it("refuses the whole hand-over when a lot's fulfilment has moved since it was read, changing nothing", async () => {
+    const s = setup();
     const b = await booking(s);
+    // Lot fulfilment marks the second lot collected between the desk reading it and committing.
+    const original = s.fulfilment.handOver.bind(s.fulfilment);
+    s.fulfilment.handOver = async (tx, move) => {
+      s.fulfilment.statuses.set(LOTS[1], "delivered");
+      return original(tx, move);
+    };
     const error = (
       await s.service.handOver(STAFF, b.id, { lotIds: [LOTS[0], LOTS[1]], idCheck })
     )._unsafeUnwrapErr();
-    expect(error.code).toBe("fulfilment_failed");
+    expect(error).toMatchObject({ code: "lot_changed", status: 409, lotId: LOTS[1] });
     expect((await s.bookings.findById(b.id))?.status).toBe("booked");
-    expect(s.undone).toEqual([LOTS[0]]);
+    expect(s.fulfilment.status(LOTS[0])).toBe("released");
+    expect(s.events.events.some((e) => e.eventType === "collection.booking.handed_over")).toBe(
+      false,
+    );
+  });
+
+  it("writes the event last, after each lot's fulfilment has moved", async () => {
+    const s = setup();
+    const b = await booking(s);
+    const seen: string[] = [];
+    const original = s.fulfilment.handOver.bind(s.fulfilment);
+    s.fulfilment.handOver = async (tx, move) => {
+      seen.push("fulfilment");
+      return original(tx, move);
+    };
+    const publish = s.events.events.push.bind(s.events.events);
+    s.events.events.push = (...items) => {
+      seen.push("event");
+      return publish(...items);
+    };
+    await s.service.handOver(STAFF, b.id, { lotIds: [LOTS[0], LOTS[1]], idCheck });
+    expect(seen.indexOf("fulfilment")).toBeLessThan(seen.lastIndexOf("event"));
   });
 });
 
@@ -225,8 +240,30 @@ describe("undoing a hand-over", () => {
     s.clock.now = new Date(COLLECTION_NOW.getTime() + 5 * 60_000);
     const view = (await s.service.undoHandOver(STAFF, b.id))._unsafeUnwrap();
     expect(view.status).toBe("booked");
-    expect(s.undone.sort()).toEqual([LOTS[0], LOTS[1]].sort());
+    expect([LOTS[0], LOTS[1]].map((lotId) => s.fulfilment.status(lotId))).toEqual([
+      "released",
+      "released",
+    ]);
     expect(s.events.events.at(-1)?.eventType).toBe("collection.booking.hand_over_undone");
+  });
+
+  it("puts each lot back to exactly the status it was in, not always one of them", async () => {
+    const s = setup({ [LOTS[0]]: "released", [LOTS[1]]: "ready_for_collection" });
+    const b = await booking(s);
+    await s.service.handOver(STAFF, b.id, { lotIds: [LOTS[0], LOTS[1]], idCheck });
+    await s.service.undoHandOver(STAFF, b.id);
+    expect(s.fulfilment.status(LOTS[0])).toBe("released");
+    expect(s.fulfilment.status(LOTS[1])).toBe("ready_for_collection");
+  });
+
+  it("is refused, changing nothing, when a lot is no longer delivered", async () => {
+    const s = setup();
+    const b = await booking(s);
+    await s.service.handOver(STAFF, b.id, { lotIds: [LOTS[0], LOTS[1]], idCheck });
+    s.fulfilment.statuses.set(LOTS[1], "released");
+    const error = (await s.service.undoHandOver(STAFF, b.id))._unsafeUnwrapErr();
+    expect(error).toMatchObject({ code: "lot_changed" });
+    expect((await s.bookings.findById(b.id))?.status).toBe("collected");
   });
 
   it("is refused once the window has passed", async () => {
@@ -513,10 +550,74 @@ describe("the day", () => {
     ).toBe("place_not_set_up");
   });
 
-  it("lists upcoming visits to come", async () => {
+  it("lists upcoming visits to come, with the count of missed visits for the tab", async () => {
     const s = setup();
     const b = await booking(s);
     const list = (await s.service.list(VENUE, "upcoming"))._unsafeUnwrap();
     expect(list.items.map((i) => i.id)).toEqual([b.id]);
+    expect(list).toMatchObject({ more: false, notCollected: 0 });
+  });
+
+  it("counts only the times still on offer: a place left, and not yet started", async () => {
+    const s = setup();
+    await booking(s);
+    const before = (await s.service.day(VENUE, "2026-11-10"))._unsafeUnwrap();
+    // A quarter of an hour into the first time: it has started, so it is no longer on offer.
+    s.clock.now = new Date("2026-11-10T10:15:00.000Z");
+    const later = (await s.service.day(VENUE, "2026-11-10"))._unsafeUnwrap();
+    const started = later.groups.filter((g) => new Date(g.start) <= s.clock.now).length;
+    expect(later.openTimes).toBe(
+      later.groups.filter((g) => g.taken < g.capacity && new Date(g.start) > s.clock.now).length,
+    );
+    expect(started).toBeGreaterThan(0);
+    expect(later.openTimes).toBeLessThan(before.openTimes);
+  });
+
+  it("counts the missed visits nobody has followed up, with a count query", async () => {
+    const s = setup();
+    const b = await booking(s);
+    s.clock.now = new Date(TUESDAY_10);
+    await s.service.markNotCollected(STAFF, b.id);
+    const day = (await s.service.day(VENUE, "2026-11-10"))._unsafeUnwrap();
+    expect(day.notCollected).toBe(1);
+    const list = (await s.service.list(VENUE, "not_collected"))._unsafeUnwrap();
+    expect(list).toMatchObject({ notCollected: 1, more: false });
+    await s.service.rebook(STAFF, b.id, { version: b.icsSequence, slotStart: WEDNESDAY_10 });
+    expect((await s.service.day(VENUE, "2026-11-10"))._unsafeUnwrap().notCollected).toBe(0);
+  });
+});
+
+describe("rebooking a missed visit", () => {
+  it("looks at the lots again: a check opened since the first booking stops it", async () => {
+    const s = setup();
+    const b = await booking(s);
+    s.clock.now = new Date(TUESDAY_10);
+    await s.service.markNotCollected(STAFF, b.id);
+    const record = s.facts.records.find((r) => r.lotId === LOTS[0]);
+    if (record) record.facts = { ...record.facts, openChecks: ["source_of_funds"] };
+    const error = (
+      await s.service.rebook(STAFF, b.id, { version: b.icsSequence, slotStart: WEDNESDAY_10 })
+    )._unsafeUnwrapErr();
+    expect(error).toMatchObject({ code: "lot_not_collectable", lotId: LOTS[0] });
+    expect(s.bookings.bookings.filter((x) => x.status === "booked")).toHaveLength(0);
+  });
+});
+
+describe("refusals from the booking's state machine", () => {
+  it("every reason has an answer of its own", () => {
+    const reasons = [
+      "booking_closed",
+      "actor_not_allowed",
+      "cutoff_passed",
+      "too_early",
+      "undo_window_passed",
+    ] as const;
+    expect(reasons.map((reason) => transitionRefusal(reason).code)).toEqual([
+      "booking_closed",
+      "actor_not_allowed",
+      "cutoff_passed",
+      "too_early",
+      "undo_window_passed",
+    ]);
   });
 });

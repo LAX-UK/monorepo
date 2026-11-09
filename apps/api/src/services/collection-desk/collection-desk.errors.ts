@@ -1,4 +1,4 @@
-import type { CollectorIssue } from "@auction/domain";
+import type { CollectorIssue, TransitionRefusal } from "@auction/domain";
 import type { Result } from "neverthrow";
 
 /**
@@ -16,10 +16,16 @@ const REFUSALS = {
   /** A check opened after the booking was made (identity, source of funds, finance, refund, dispute). */
   hold_open: [409, "A check has opened on this purchase, so it can't be handed over yet."],
   booking_closed: [409, "This collection can't be changed any more."],
+  /** Only staff act at the desk; a client's own limits (their cut-off) are not the desk's. */
+  actor_not_allowed: [403, "You can't do that at the desk."],
+  /** A client's cut-off; the desk is not bound by it, so reaching it here is a mistake to report. */
+  cutoff_passed: [409, "The time to change this collection has passed."],
   undo_window_passed: [409, "It's too late to undo this hand-over."],
   too_early: [409, "A visit can be marked not collected once its time has started."],
   /** The booking changed since staff read it, or is no longer live. */
   booking_changed: [409, "This collection has changed. Reload it and try again."],
+  /** A lot's fulfilment moved (another desk, or Lot fulfilment) while this was being done. */
+  lot_changed: [409, "A lot's fulfilment has changed since you opened this. Reload and try again."],
   idempotency_key_reused: [409, "That booking attempt was already used for a different request."],
   slot_unknown: [422, "That time isn't offered."],
   /** Every place is taken: staff may go over capacity with a reason. */
@@ -32,15 +38,13 @@ const REFUSALS = {
   duplicate_lots: [400, "A lot was chosen twice."],
   mixed_places: [422, "Those lots are collected from different places. Book them separately."],
   collector_invalid: [422, "Check who is collecting."],
-  /** The booking was recorded but a lot's fulfilment could not be moved; the hand-over was undone. */
-  fulfilment_failed: [502, "We couldn't update a lot's fulfilment, so nothing was handed over."],
 } as const;
 
 export type CollectionDeskErrorCode = keyof typeof REFUSALS;
 
 export type CollectionDeskError = {
   code: CollectionDeskErrorCode;
-  status: 400 | 404 | 409 | 422 | 502;
+  status: 400 | 403 | 404 | 409 | 422;
   message: string;
   lotId?: string;
   lotIds?: string[];
@@ -56,4 +60,23 @@ export function deskError(
 ): CollectionDeskError {
   const [status, message] = REFUSALS[code];
   return { code, status, message, ...extra };
+}
+
+/**
+ * The desk's refusal for a booking-state transition that was not allowed. Every reason the state
+ * machine can give has an answer here; a new reason will not compile until it is given one.
+ */
+export function transitionRefusal(reason: TransitionRefusal): CollectionDeskError {
+  switch (reason) {
+    case "booking_closed":
+      return deskError("booking_closed");
+    case "actor_not_allowed":
+      return deskError("actor_not_allowed");
+    case "cutoff_passed":
+      return deskError("cutoff_passed");
+    case "too_early":
+      return deskError("too_early");
+    case "undo_window_passed":
+      return deskError("undo_window_passed");
+  }
 }

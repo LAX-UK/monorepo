@@ -245,6 +245,25 @@ export class DrizzleCollectionBookingRepository
     );
   }
 
+  async countOpenNotCollected(venueId: string): Promise<number> {
+    const [row] = await this.db
+      .select({ n: count() })
+      .from(collectionBooking)
+      .where(
+        and(
+          eq(collectionBooking.venueId, venueId),
+          eq(collectionBooking.status, "not_collected"),
+          // Followed up once any of its lots is held by a booking that is live again.
+          sql`NOT EXISTS (
+            SELECT 1 FROM collection_booking_lot own
+            JOIN collection_booking_lot other ON other.lot_id = own.lot_id AND other.active
+            WHERE own.booking_id = ${collectionBooking.id}
+          )`,
+        ),
+      );
+    return Number(row?.n ?? 0);
+  }
+
   async findLiveByLots(lotIds: readonly string[]): Promise<Map<string, CollectionBookingRecord>> {
     return liveBookingsByLot(this.db, lotIds);
   }

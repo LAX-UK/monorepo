@@ -2346,6 +2346,13 @@
       "when": 1804492800000,
       "tag": "0342_shop_framing_orders",
       "breakpoints": true
+    },
+    {
+      "idx": 336,
+      "version": "7",
+      "when": 1804579200000,
+      "tag": "0344_collection_lot_previous_status",
+      "breakpoints": true
     }
   ]
 }

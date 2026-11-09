@@ -285,6 +285,11 @@ export interface ICollectionBookingReader {
     limit: number,
   ): Promise<CollectionBookingRecord[]>;
   /**
+   * How many missed visits at this place nobody has followed up: marked not collected, and none
+   * of their lots in a live booking since. A count, so a tab can show it without reading the list.
+   */
+  countOpenNotCollected(venueId: string): Promise<number>;
+  /**
    * The live booking holding each of these lots, if any. Keyed by lot id; a lot in no live booking
    * is absent.
    */

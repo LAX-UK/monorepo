@@ -4,6 +4,7 @@ import {
   DrizzleBiddingExposureReader,
   DrizzleBuyerAgentAuthorisationRepository,
   DrizzleCollectionBookingRepository,
+  DrizzleCollectionDeskFulfilment,
   DrizzleCollectionDeskReader,
   DrizzleCollectionLotFactsReader,
   DrizzleCollectionPlaceRepository,
@@ -532,7 +533,7 @@ export function createContainer(env: Env): Container {
     bookings: collectionBookings,
     desk: new DrizzleCollectionDeskReader(db),
     facts: new DrizzleCollectionLotFactsReader(db),
-    fulfilment: payments.lotFulfilmentService,
+    fulfilment: new DrizzleCollectionDeskFulfilment(),
     events: platform.domainEventSink,
     now: () => new Date(),
   });

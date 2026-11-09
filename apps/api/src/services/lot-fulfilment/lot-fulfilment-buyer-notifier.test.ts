@@ -18,6 +18,13 @@ function setup(opts: { status: Status; dispatchFails?: boolean; sale?: object | 
     updateByLotId: vi.fn(async (_id: string, patch: Record<string, unknown>) => {
       row = { ...row, ...patch };
     }),
+    updateIfStatus: vi.fn(
+      async (_id: string, from: readonly string[], patch: Record<string, unknown>) => {
+        if (!from.includes(row.status as string)) return false;
+        row = { ...row, ...patch };
+        return true;
+      },
+    ),
   } as unknown as ILotFulfilmentRepository;
   const dispatch = vi.fn(async (_userId: string, _payload: unknown) => {
     if (opts.dispatchFails) throw new Error("channel down");

@@ -24,6 +24,16 @@ function setup(status: LotFulfilmentRow["status"]) {
     updateByLotId: async (_id: string, patch: UpdateLotFulfilmentInput) => {
       row = { ...row, ...patch } as LotFulfilmentRow;
     },
+    // One conditional update: it moves the lot only while it is still in a status asked for.
+    updateIfStatus: async (
+      _id: string,
+      from: readonly LotFulfilmentRow["status"][],
+      patch: UpdateLotFulfilmentInput,
+    ) => {
+      if (!from.includes(row.status)) return false;
+      row = { ...row, ...patch } as LotFulfilmentRow;
+      return true;
+    },
   } as unknown as ILotFulfilmentRepository;
   const notify = vi.fn(async () => undefined);
   const service = new LotFulfilmentAdminService({
@@ -33,62 +43,6 @@ function setup(status: LotFulfilmentRow["status"]) {
   });
   return { service, notify, row: () => row };
 }
-
-describe("handing a work over at the desk", () => {
-  it.each(["released", "ready_for_collection"] as const)(
-    "hands over a lot that is %s, recording who collected and which staff member handed it over",
-    async (status) => {
-      const s = setup(status);
-      const result = await s.service.handOverForCollection({
-        lotId: LOT,
-        actorUserId: "staff-1",
-        collectedBy: "Charlotte Hayes",
-      });
-      expect(result.isOk()).toBe(true);
-      expect(s.row()).toMatchObject({
-        status: "delivered",
-        fulfilmentMethod: "collection",
-        collectedBy: "Charlotte Hayes",
-        collectedByUserId: "staff-1",
-      });
-      expect(s.row().collectedAt).toBeInstanceOf(Date);
-      // The booking's own message tells the buyer, not the fulfilment one.
-      expect(s.notify).not.toHaveBeenCalled();
-    },
-  );
-
-  it.each(["awaiting_payment", "awaiting_release", "in_transit", "delivered"] as const)(
-    "refuses a lot that is %s",
-    async (status) => {
-      const s = setup(status);
-      const result = await s.service.handOverForCollection({
-        lotId: LOT,
-        actorUserId: "staff-1",
-        collectedBy: "X",
-      });
-      expect(result._unsafeUnwrapErr()).toMatchObject({ code: "invalid_status", status: 400 });
-      expect(s.row().status).toBe(status);
-    },
-  );
-
-  it("puts a handed-over lot back to ready for collection and clears who collected it", async () => {
-    const s = setup("released");
-    await s.service.handOverForCollection({ lotId: LOT, actorUserId: "staff-1", collectedBy: "X" });
-    const undone = await s.service.undoCollectionHandOver({ lotId: LOT });
-    expect(undone.isOk()).toBe(true);
-    expect(s.row()).toMatchObject({
-      status: "ready_for_collection",
-      collectedBy: null,
-      collectedByUserId: null,
-      collectedAt: null,
-    });
-  });
-
-  it("cannot undo a lot that was never handed over", async () => {
-    const s = setup("released");
-    expect((await s.service.undoCollectionHandOver({ lotId: LOT })).isErr()).toBe(true);
-  });
-});
 
 describe("the existing Mark collected", () => {
   it("still needs ready for collection, and now records the staff member", async () => {
@@ -108,5 +62,42 @@ describe("the existing Mark collected", () => {
     expect(result.isOk()).toBe(true);
     expect(ready.row()).toMatchObject({ collectedBy: "Ada", collectedByUserId: "staff-1" });
     expect(ready.notify).toHaveBeenCalledOnce();
+  });
+});
+
+describe("two actions on the same lot", () => {
+  it("lets only the first succeed: the second finds the status already changed", async () => {
+    const s = setup("ready_for_collection");
+    const first = await s.service.markCollected({
+      lotId: LOT,
+      actorUserId: "staff-1",
+      collectedBy: "Charlotte Hayes",
+    });
+    const second = await s.service.markCollected({
+      lotId: LOT,
+      actorUserId: "staff-2",
+      collectedBy: "Someone else",
+    });
+    expect(first.isOk()).toBe(true);
+    expect(second._unsafeUnwrapErr()).toMatchObject({ code: "invalid_status", status: 400 });
+    expect(s.row().collectedBy).toBe("Charlotte Hayes");
+    expect(s.notify).toHaveBeenCalledTimes(1);
+  });
+
+  it("reports a lot with no fulfilment as missing", async () => {
+    const s = setup("ready_for_collection");
+    const service = new LotFulfilmentAdminService({
+      fulfilmentRepo: {
+        findByLotId: async () => null,
+        updateIfStatus: async () => false,
+      } as unknown as ILotFulfilmentRepository,
+      lotRepo: {} as ILotRepository,
+      buyerNotifier: { notify: s.notify },
+    });
+    expect(
+      (
+        await service.markCollected({ lotId: LOT, actorUserId: "staff-1", collectedBy: "X" })
+      )._unsafeUnwrapErr(),
+    ).toMatchObject({ code: "no_fulfilment", status: 404 });
   });
 });

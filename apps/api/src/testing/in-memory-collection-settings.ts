@@ -194,6 +194,9 @@ export class InMemorySettingsBookings
       .filter((b) => b.venueId === venueId && statuses.includes(b.status))
       .slice(0, limit);
   }
+  async countOpenNotCollected() {
+    return 0;
+  }
   async findLiveByLots() {
     return new Map<string, CollectionBookingRecord>();
   }
