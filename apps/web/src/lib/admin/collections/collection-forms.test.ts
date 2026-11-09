@@ -46,6 +46,7 @@ describe("the settings form", () => {
       placesPerSlot: "many",
       noticeCutoffLocal: "4pm",
       windowDays: "3",
+      maxActiveVisits: "0",
       freeStorageDays: "400",
       bookingEmail: "not an email",
     };
@@ -53,13 +54,14 @@ describe("the settings form", () => {
     expect(Object.keys(rules).sort()).toEqual([
       "booking_email",
       "free_storage_days",
+      "max_active_visits",
       "notice_cutoff",
       "places_per_slot",
       "visit_minutes",
       "window_days",
     ]);
     expect(rules.visit_minutes).toBe("Choose one of the visit lengths.");
-    expect(count).toBe(6);
+    expect(count).toBe(7);
   });
 
   it("marks the opening-hours row at fault, not the day", () => {

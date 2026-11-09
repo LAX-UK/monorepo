@@ -47,6 +47,7 @@ const READY: CollectionLotFacts = {
   openChecks: [],
   organisationStatus: "approved",
   disputeOpen: false,
+  refunded: false,
   refundOpen: false,
   fulfilment: "none",
   activeBookingId: null,
@@ -165,6 +166,10 @@ export class InMemoryCollectionBookings
       .filter((b) => b.legalEntityId === legalEntityId)
       .sort((a, b) => b.slotStart.getTime() - a.slotStart.getTime())
       .slice(0, limit);
+  }
+  async countBooked(legalEntityId: string) {
+    return this.bookings.filter((b) => b.legalEntityId === legalEntityId && b.status === "booked")
+      .length;
   }
   async listInRange(venueId: string, range: { from: Date; to: Date }) {
     return this.bookings.filter(

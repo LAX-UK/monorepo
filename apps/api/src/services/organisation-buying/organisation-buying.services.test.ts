@@ -243,6 +243,7 @@ describe("CollectionBookingService", () => {
               windowDays: 28,
               closeOnSaleDays: true,
               undoHandOverMinutes: 10,
+              maxActiveVisits: 5,
               freeStorageDays: null,
               bookingEmail: over.bookingEmail ?? null,
               updatedAt: NOW,
