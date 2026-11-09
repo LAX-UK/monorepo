@@ -72,6 +72,7 @@ export function parseCheckoutSessionCompleted(
     amountTotalPence: amountTotal,
     customerEmail: customerEmailFromSession(session),
     paymentIntentId: paymentIntentIdFromSession(session),
+    livemode: event.livemode === true,
   };
 }
 

@@ -26,6 +26,16 @@ const SITUATION: Record<UnappliedMoneyReason, string> = {
     "Money arrived for a private sale deal that could not take it: its checkout had been ended, or the deal was already paid another way. Return it or apply it.",
   shop_order_paid_after_close:
     "A Shop buyer paid after their order had closed and its prints were released. Nothing was refunded. Open the order in LAX Admin, then refund the buyer or reinstate the order.",
+  shop_order_amount_mismatch:
+    "A Shop buyer paid an amount that is not their order's total. Nothing was applied: the order was closed, its prints released and its basket restored. Open the order in LAX Admin, then refund the buyer or put the order right.",
+  shop_order_session_mismatch:
+    "A Shop buyer paid in a payment session that is not the one their order was opened with. Nothing was applied: the order is still waiting for payment and no stock changed. Open the order in LAX Admin, then refund the buyer or put the order right.",
+  shop_order_edition_state_invalid:
+    "A Shop buyer paid, but the print held for their order was no longer reserved for it (it may have gone to another order). Nothing was applied: the order was closed and its basket restored. Open the order in LAX Admin, then refund the buyer or find them the print.",
+  shop_order_paid_twice:
+    "A Shop order that was already paid received a second payment, in a different payment session. Nothing was applied to the order. Open the order in LAX Admin and refund the second payment.",
+  shop_order_not_found:
+    "A Shop payment arrived for an order that does not exist here. There is no order to open: find the buyer from the Stripe payment shown, then refund them.",
   private_sale_refund_after_payout:
     "Money went back to a private sale buyer after the seller's payout included the deal. The seller's payout may need adjusting.",
 };
@@ -95,6 +105,10 @@ export async function fanoutUnappliedMoney(options: {
     { listRecipients: () => options.staffOpsRecipientReader.listRecipients(FINANCE_ACCESS) },
     options.adminEmailAddress,
   );
+  // A Shop order with no LAX Admin address has no link to give, and a payment for an order that
+  // does not exist has no page to open at all.
+  const hasNoPageToOpen =
+    alert.situation === "shop_order_not_found" || (alert.shopOrderId !== null && !base);
   for (const target of targets) {
     await options.emailService.enqueue({
       template: "payment-unapplied-money-admin-notice",
@@ -106,8 +120,7 @@ export async function fanoutUnappliedMoney(options: {
         situation: [SITUATION[alert.situation], alert.possibleSource].filter(Boolean).join(" "),
         amount,
         reference: alert.reference,
-        // A Shop order with no LAX Admin address configured has no link to give.
-        ...(alert.shopOrderId && !base ? {} : { reviewUrl: `${base}${path}` }),
+        ...(hasNoPageToOpen ? {} : { reviewUrl: `${base}${path}` }),
       },
       category: "transactional",
       idempotencyKey: `payment-unapplied-money-admin-notice:${options.eventId}:${target.keySuffix}`,

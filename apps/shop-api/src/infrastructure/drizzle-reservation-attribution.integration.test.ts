@@ -1,8 +1,9 @@
 import { createDbFromPool } from "@auction/db";
 import { applyApplicationRoleGrants } from "@auction/db/migrate-roles";
-import { shopEdition, shopOrder, shopOrderLine } from "@auction/db/schema";
+import { domainEvent, shopEdition, shopOrder, shopOrderLine } from "@auction/db/schema";
+import { DrizzleUnappliedMoneyReader } from "@auction/persistence/repositories";
 import { LAX_ALLOCATION_COUNT } from "@auction/shop-domain";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import pg from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { grantLaxSaleAuthority } from "../test-support/shop-fixtures.js";
@@ -158,18 +159,51 @@ describe.skipIf(!ownerUrl || !shopUrl)("edition reservation attribution", () => 
       })
       .where(eq(shopEdition.id, reservedEdition.id));
 
-    await expect(
-      completeShopCheckoutSession(db, {
-        eventId: `evt-a-${suffix}`,
-        orderId: orderA.id,
-        sessionId: "cs_test_attribution",
-        amountTotalPence: 5_000,
-        paidAt: new Date(),
-      }),
-    ).rejects.toMatchObject({
-      message: "edition_state_invalid",
-      retryable: false,
+    // The print is now order B's. Order A's payment cannot be applied, so it is tracked for
+    // finance instead of failing for good, and order A, whose session is spent, is closed. Order
+    // B's hold on the print is not touched.
+    const paid = {
+      eventId: `evt-a-${suffix}`,
+      orderId: orderA.id,
+      sessionId: "cs_test_attribution",
+      amountTotalPence: 5_000,
+      paidAt: new Date(),
+      paymentIntentId: `pi_attrib_${suffix}`,
+    };
+    const options = {
+      domainEventMode: "enforce" as const,
+      unappliedMoney: new DrizzleUnappliedMoneyReader(db),
+    };
+    const tasks = () =>
+      db
+        .select()
+        .from(domainEvent)
+        .where(
+          and(
+            eq(domainEvent.eventType, "payment.unapplied_money_received"),
+            sql`${domainEvent.payload}->>'shopOrderId' = ${orderA.id}`,
+          ),
+        );
+
+    expect(await completeShopCheckoutSession(db, paid, options)).toBe("unapplied_recorded");
+    expect(await tasks()).toHaveLength(1);
+    expect((await tasks())[0]?.payload).toMatchObject({
+      reason: "shop_order_edition_state_invalid",
+      amountCents: 5_000,
+      stripePaymentIntentId: `pi_attrib_${suffix}`,
     });
+    const [closedA] = await db.select().from(shopOrder).where(eq(shopOrder.id, orderA.id));
+    expect(closedA?.status).toBe("payment_failed");
+    const [held] = await db
+      .select()
+      .from(shopEdition)
+      .where(eq(shopEdition.id, reservedEdition.id));
+    expect(held?.reservedByOrderId).toBe(orderB.id);
+    expect(held?.listingStatus).toBe("reserved");
+
+    // Stripe sends it again: the event is a duplicate, and nothing new is opened.
+    expect(await completeShopCheckoutSession(db, paid, options)).toBe("duplicate");
+    expect(await tasks()).toHaveLength(1);
   });
 
   it("does not release an edition on expire when reserved for another order", async () => {
