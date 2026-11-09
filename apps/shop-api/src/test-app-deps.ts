@@ -15,6 +15,7 @@ import {
   createEnquiryRateLimiter,
   createReleaseAlertRateLimiter,
 } from "./application/enquiry-rate-limit.js";
+import { createFramingService } from "./application/framing/framing.service.js";
 import { GuestErasureService } from "./application/guest-erasure/guest-erasure.service.js";
 import { createHomeFeaturesService } from "./application/home-features/home-features.service.js";
 import { LeadsService } from "./application/leads/leads.service.js";
@@ -631,6 +632,10 @@ export function createMinimalShopApiTestDeps(
           searchCandidates: async () => [],
         },
         clock: { now: () => new Date() },
+      }),
+      framing: createFramingService({
+        uow: { run: () => Promise.reject(new Error("No framing catalogue store in this test")) },
+        lists: { list: async () => ({ items: [] }) },
       }),
       requestRefund: async () => ({
         refundId: "00000000-0000-4000-8000-000000000012",

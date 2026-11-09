@@ -178,6 +178,14 @@ After the web vitals metrics + auth resend error-handling deploy is live, bulk-r
 
 Filter tip: `message:web-vitals.` selects all six web-vitals issues at once.
 
+## Identity sign-in (`auction_auth_*`, scraped from the issuer)
+
+```promql
+sum(increase(auction_auth_social_policy_read_failures_total[10m])) > 0
+```
+
+`auction_auth_social_policy_read_failures_total`: the issuer could not read the staff, two-step or email facts a Google or Apple sign-in depends on (the identity database is unavailable or slow). The sign-in is stopped on purpose, so while this rises **Google and Apple sign-in fails for everyone**; password and email-link sign-in are unaffected. People see "Sign-in with Google or Apple isn't available just now" on the hosted sign-in page. Check the identity database first (`social_policy_read_failed` in the issuer log carries the reason), then the issuer's database pool.
+
 ## Related
 
 - [Scale monitoring](./scale-monitoring.md)

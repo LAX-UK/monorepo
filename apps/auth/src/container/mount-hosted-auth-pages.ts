@@ -12,6 +12,7 @@ import {
   buildHostedTwoFactorHelpHtml,
   buildHostedTwoFactorHtml,
   buildHostedTwoFactorManageHtml,
+  buildHostedTwoFactorPasswordHtml,
   buildHostedTwoFactorSetupHtml,
   buildHostedVerifyEmailHtml,
   continuationHref,
@@ -203,6 +204,25 @@ export function mountHostedAuthPages(app: Hono, capabilities: HostedAuthPageMoun
     // Enabling again would immediately replace the working authenticator secret.
     if (sessionHasTwoFactor(session)) return c.redirect(manageUrl(c.req.url), 302);
     return hostedAuthHtml(c, buildHostedTwoFactorSetupHtml(view, requiredBy));
+  });
+  app.get("/two-factor/password", async (c) => {
+    const view = viewFromRequest(c.req.url, capabilities);
+    c.header("Cache-Control", "no-store");
+    let session: unknown = null;
+    try {
+      session = capabilities.getSession ? await capabilities.getSession(c.req.raw.headers) : null;
+    } catch {
+      session = null;
+    }
+    const identity = sessionIdentity(session);
+    if (!identity) return c.redirect(view.flow.loginPath, 302);
+    const requiredBy = parseTwoFactorSetupRequiredBy(
+      new URL(c.req.url).searchParams.get("required_by"),
+    );
+    return hostedAuthHtml(
+      c,
+      buildHostedTwoFactorPasswordHtml(view, { email: identity.email }, requiredBy),
+    );
   });
   app.get("/two-factor/manage", async (c) => {
     const view = viewFromRequest(c.req.url, capabilities);

@@ -16,8 +16,14 @@ import type {
 } from "@/lib/marketing/prompts/types";
 import { useMarketingPromptDwell } from "@/lib/marketing/prompts/use-marketing-prompt-dwell";
 import { useMarketingPromptSession } from "@/lib/marketing/prompts/use-marketing-prompt-session";
+import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
-import { MarketingPromptDialog } from "./marketing-prompt-dialog";
+
+// The dialog is only needed when a prompt is due, well after the page is interactive.
+const MarketingPromptDialog = dynamic(
+  () => import("./marketing-prompt-dialog").then((module) => module.MarketingPromptDialog),
+  { ssr: false },
+);
 
 function isSuppressed(variant: MarketingPromptVariant): boolean {
   try {

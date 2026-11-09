@@ -21,6 +21,7 @@ const entries = {
   "hosted-two-factor": join(src, "two-factor.entry.ts"),
   "hosted-two-factor-setup": join(src, "two-factor-setup.entry.ts"),
   "hosted-two-factor-manage": join(src, "two-factor-manage.entry.ts"),
+  "hosted-two-factor-password": join(src, "two-factor-password.entry.ts"),
   "hosted-verify-email": join(src, "verify-email.entry.ts"),
   "hosted-resend-verification": join(src, "resend-verification.entry.ts"),
   "hosted-magic-link": join(src, "magic-link.entry.ts"),

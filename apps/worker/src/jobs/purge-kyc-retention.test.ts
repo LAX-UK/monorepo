@@ -1,3 +1,4 @@
+import type { EnquiryDealRecord } from "@auction/domain";
 import { describe, expect, it, vi } from "vitest";
 import type {
   IKycRetentionSubjectStore,
@@ -16,7 +17,11 @@ const closedDaysFromBoundary = (days: number) => {
   return new Date(d.getTime() + days * DAY);
 };
 
-function createStore(candidates: RetentionCandidate[], keys: string[] = ["sof/a.pdf"]) {
+function createStore(
+  candidates: RetentionCandidate[],
+  keys: string[] = ["sof/a.pdf"],
+  deals: Record<string, EnquiryDealRecord[]> = {},
+) {
   const held = new Set(candidates.map((c) => c.subjectId));
   const erase = vi.fn(async (subjectId: string): Promise<RecordCounts> => {
     held.delete(subjectId);
@@ -30,6 +35,9 @@ function createStore(candidates: RetentionCandidate[], keys: string[] = ["sof/a.
         .filter((c) => afterId === null || c.subjectId > afterId)
         .sort((a, b) => a.subjectId.localeCompare(b.subjectId))
         .slice(0, limit);
+    },
+    async dealRecords(subjectId) {
+      return deals[subjectId] ?? [];
     },
     async describeHolding(subjectId): Promise<RetentionHolding> {
       return held.has(subjectId)
@@ -57,6 +65,7 @@ describe("purgeKycRetentionJob", () => {
       storage,
       log: log(),
       dryRun: false,
+      privateSaleRetentionYears: 5,
       now: NOW,
     });
     expect(result).toMatchObject({ due: 0, purged: 0 });
@@ -77,6 +86,7 @@ describe("purgeKycRetentionJob", () => {
       storage,
       log: log(),
       dryRun: false,
+      privateSaleRetentionYears: 5,
       now: NOW,
     });
     expect(result).toMatchObject({ due: 1, purged: 1, failed: 0 });
@@ -96,6 +106,7 @@ describe("purgeKycRetentionJob", () => {
       storage: { deleteObject: vi.fn() },
       log: log(),
       dryRun: false,
+      privateSaleRetentionYears: 5,
       now: NOW,
     });
     expect(result.purged).toBe(0);
@@ -111,9 +122,16 @@ describe("purgeKycRetentionJob", () => {
       storage,
       log: logger,
       dryRun: true,
+      privateSaleRetentionYears: 5,
       now: NOW,
     });
-    expect(result).toEqual({ dryRun: true, due: 1, purged: 0, failed: 0 });
+    expect(result).toEqual({
+      dryRun: true,
+      due: 1,
+      heldForDeals: 0,
+      purged: 0,
+      failed: 0,
+    });
     expect(erase).not.toHaveBeenCalled();
     expect(storage.deleteObject).not.toHaveBeenCalled();
     expect(logger.info).toHaveBeenCalledWith(
@@ -126,7 +144,14 @@ describe("purgeKycRetentionJob", () => {
     const { store, erase } = createStore([person("u1", closedDaysFromBoundary(-1))]);
     const storage = { deleteObject: vi.fn() };
     const run = () =>
-      purgeKycRetentionJob({ stores: [store], storage, log: log(), dryRun: false, now: NOW });
+      purgeKycRetentionJob({
+        stores: [store],
+        storage,
+        log: log(),
+        dryRun: false,
+        privateSaleRetentionYears: 5,
+        now: NOW,
+      });
     expect((await run()).purged).toBe(1);
     expect(await run()).toMatchObject({ due: 0, purged: 0 });
     expect(erase).toHaveBeenCalledTimes(1);
@@ -143,6 +168,7 @@ describe("purgeKycRetentionJob", () => {
         storage: { deleteObject: vi.fn() },
         log: log(),
         dryRun: false,
+        privateSaleRetentionYears: 5,
         batchSize: 2,
         now: NOW,
       });
@@ -163,7 +189,14 @@ describe("purgeKycRetentionJob", () => {
         .mockResolvedValue(undefined),
     };
     await expect(
-      purgeKycRetentionJob({ stores: [store], storage, log: log(), dryRun: false, now: NOW }),
+      purgeKycRetentionJob({
+        stores: [store],
+        storage,
+        log: log(),
+        dryRun: false,
+        privateSaleRetentionYears: 5,
+        now: NOW,
+      }),
     ).rejects.toThrow("failed for 1 subject");
     expect(erase).toHaveBeenCalledTimes(1);
     expect(erase).toHaveBeenCalledWith("b", expect.anything());
@@ -177,9 +210,130 @@ describe("purgeKycRetentionJob", () => {
       storage: { deleteObject: vi.fn() },
       log: log(),
       dryRun: false,
+      privateSaleRetentionYears: 5,
       now: NOW,
     });
     expect(result.due).toBe(0);
+    expect(erase).not.toHaveBeenCalled();
+  });
+});
+
+describe("purgeKycRetentionJob and private sale deals", () => {
+  /** The person closed six years ago, so their own five years have run out. */
+  const expired = (id: string) => person(id, closedDaysFromBoundary(-365));
+  const yearsBefore = (years: number, days = 0) => {
+    const d = new Date(NOW);
+    d.setUTCFullYear(d.getUTCFullYear() - years);
+    return new Date(d.getTime() + days * DAY);
+  };
+  const settledDeal = (endedAt: Date | null): EnquiryDealRecord => ({
+    stage: "settled",
+    agreedAt: yearsBefore(8),
+    endedAt,
+    hasComplianceCase: true,
+  });
+  const run = (
+    store: IKycRetentionSubjectStore,
+    over: { dryRun?: boolean; privateSaleRetentionYears?: number } = {},
+  ) =>
+    purgeKycRetentionJob({
+      stores: [store],
+      storage: { deleteObject: vi.fn() },
+      log: log(),
+      dryRun: false,
+      privateSaleRetentionYears: 5,
+      now: NOW,
+      ...over,
+    });
+
+  it("keeps the evidence of a party while the deal is open, however old their own relationship", async () => {
+    const open: EnquiryDealRecord = {
+      stage: "paid",
+      agreedAt: yearsBefore(7),
+      endedAt: null,
+      hasComplianceCase: true,
+    };
+    const { store, erase } = createStore([expired("u1")], ["sof/a.pdf"], { u1: [open] });
+    const result = await run(store);
+    expect(result).toMatchObject({ due: 0, heldForDeals: 1, purged: 0 });
+    expect(erase).not.toHaveBeenCalled();
+  });
+
+  it("keeps the evidence until the deal's retention has run from its end", async () => {
+    const { store, erase } = createStore([expired("u1")], ["sof/a.pdf"], {
+      u1: [settledDeal(yearsBefore(5, 1))],
+    });
+    expect(await run(store)).toMatchObject({ heldForDeals: 1, purged: 0 });
+    expect(erase).not.toHaveBeenCalled();
+  });
+
+  it("purges once both the person's five years and the deal's retention have ended", async () => {
+    const { store, erase } = createStore([expired("u1")], ["sof/a.pdf"], {
+      u1: [settledDeal(yearsBefore(5, -1))],
+    });
+    expect(await run(store)).toMatchObject({ due: 1, heldForDeals: 0, purged: 1 });
+    expect(erase).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps the evidence of a buyer who was named and replaced, as long as the deal's record", async () => {
+    // The store reads the party history, so a replaced buyer's deals are listed like any other.
+    const { store, erase } = createStore([expired("replaced-buyer")], ["sof/a.pdf"], {
+      "replaced-buyer": [
+        { stage: "offer", agreedAt: null, endedAt: null, hasComplianceCase: true },
+      ],
+    });
+    expect(await run(store)).toMatchObject({ heldForDeals: 1, purged: 0 });
+    expect(erase).not.toHaveBeenCalled();
+  });
+
+  it("follows a longer configured retention", async () => {
+    const deals = { u1: [settledDeal(yearsBefore(6))] };
+    const short = createStore([expired("u1")], ["sof/a.pdf"], deals);
+    expect(await run(short.store, { privateSaleRetentionYears: 5 })).toMatchObject({ purged: 1 });
+    const long = createStore([expired("u1")], ["sof/a.pdf"], deals);
+    expect(await run(long.store, { privateSaleRetentionYears: 10 })).toMatchObject({
+      heldForDeals: 1,
+      purged: 0,
+    });
+  });
+
+  it("is unaffected for someone on no deal, or only on a deal withdrawn before agreement with no check", async () => {
+    const withdrawn: EnquiryDealRecord = {
+      stage: "cancelled",
+      agreedAt: null,
+      endedAt: yearsBefore(1),
+      hasComplianceCase: false,
+    };
+    const { store, erase } = createStore([expired("plain"), expired("withdrawn")], ["sof/a.pdf"], {
+      withdrawn: [withdrawn],
+    });
+    expect(await run(store)).toMatchObject({ due: 2, heldForDeals: 0, purged: 2 });
+    expect(erase).toHaveBeenCalledTimes(2);
+  });
+
+  it("purges the person who is not held while holding the one who is, in one run", async () => {
+    const open: EnquiryDealRecord = {
+      stage: "invoiced",
+      agreedAt: yearsBefore(7),
+      endedAt: null,
+      hasComplianceCase: true,
+    };
+    const { store, erase } = createStore([expired("held"), expired("free")], ["sof/a.pdf"], {
+      held: [open],
+    });
+    expect(await run(store)).toMatchObject({ due: 1, heldForDeals: 1, purged: 1 });
+    expect(erase).toHaveBeenCalledWith("free", expect.anything());
+  });
+
+  it("holds in a dry run too, so the log shows what would really be purged", async () => {
+    const open: EnquiryDealRecord = {
+      stage: "paid",
+      agreedAt: yearsBefore(7),
+      endedAt: null,
+      hasComplianceCase: true,
+    };
+    const { store, erase } = createStore([expired("u1")], ["sof/a.pdf"], { u1: [open] });
+    expect(await run(store, { dryRun: true })).toMatchObject({ due: 0, heldForDeals: 1 });
     expect(erase).not.toHaveBeenCalled();
   });
 });

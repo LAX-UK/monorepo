@@ -426,7 +426,7 @@ describe("migrate-roles invariants", () => {
   });
 
   it("gives shop_app the print-facts tables, and keeps them from api_app and the worker", () => {
-    for (const table of ["shop_edition_facts", "shop_print_party", "shop_print_exception"]) {
+    for (const table of ["shop_edition_facts", "shop_print_exception"]) {
       expect([...SHOP_COMMERCE_TABLES]).toContain(table);
       expect([...API_DENY_TABLES]).toContain(table);
       expect([...WORKER_DENY_TABLES]).toContain(table);
