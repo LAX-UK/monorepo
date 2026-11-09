@@ -2,6 +2,7 @@
 
 import { BidGate } from "@/components/bid/bid-gate";
 import { useBiddingAccountFreshness } from "@/components/bid/use-bidding-account-freshness";
+import { BidDialogBoundary } from "@/components/lot-page/bid/bid-dialog-boundary";
 import {
   LazyLotBidDialog,
   usePreloadBidDialogWhenIdle,
@@ -124,7 +125,6 @@ export function LotBidEntry({ auction: lot, artistName, gate, buyersPremium }: L
   const entryRef = useRef<HTMLDivElement | null>(null);
   const [dialog, setDialog] = useState({ open: false, session: 0, start: "next" as BidMode });
   useBiddingAccountFreshness(gate.sessionUser ? gate.actingLegalEntityId : null);
-  usePreloadBidDialogWhenIdle();
   useViewerAnnouncements({
     position: viewer.position,
     lotTitle: lot.title,
@@ -167,6 +167,8 @@ export function LotBidEntry({ auction: lot, artistName, gate, buyersPremium }: L
       buyersPremium && nextBid ? bidSummary(buyersPremium, nextBid).percentLabel : null,
     format,
   });
+
+  usePreloadBidDialogWhenIdle(Boolean(nextBid && entry.primary));
 
   const phoneBar = buildPhoneBarSummary(view, nowMs, viewer.position);
   // The bar carries the one control that matters: the main button, or the quieter one for a
@@ -253,32 +255,34 @@ export function LotBidEntry({ auction: lot, artistName, gate, buyersPremium }: L
         }
       </BidGate>
       {nextBid && dialog.session > 0 ? (
-        <LazyLotBidDialog
-          open={dialog.open}
-          session={dialog.session}
-          start={dialog.start}
-          onOpenChange={(next) => setDialog((current) => ({ ...current, open: next }))}
-          onPlaced={onPlaced}
-          registerHref={gate.saleRegistrationPath}
-          returnFocusFallback={() => entryRef.current}
-          modes={modes}
-          lot={livePricedLot}
-          display={{
-            lotNumber: lot.lotNumber,
-            title: lot.title,
-            artistName,
-          }}
-          terms={buyersPremium}
-          agentLimitLeft={viewer.agentLimitLeft}
-          estimateHigh={lot.marketingDetails.estimate?.high ?? null}
-          accountName={
-            gate.biddingAccount?.kind === "organisation" ? gate.biddingAccount.name : null
-          }
-          scheduled={scheduled}
-          legalEntityId={gate.actingLegalEntityId}
-          submitter={submitter}
-          format={format}
-        />
+        <BidDialogBoundary onDismiss={() => setDialog((current) => ({ ...current, open: false }))}>
+          <LazyLotBidDialog
+            open={dialog.open}
+            session={dialog.session}
+            start={dialog.start}
+            onOpenChange={(next) => setDialog((current) => ({ ...current, open: next }))}
+            onPlaced={onPlaced}
+            registerHref={gate.saleRegistrationPath}
+            returnFocusFallback={() => entryRef.current}
+            modes={modes}
+            lot={livePricedLot}
+            display={{
+              lotNumber: lot.lotNumber,
+              title: lot.title,
+              artistName,
+            }}
+            terms={buyersPremium}
+            agentLimitLeft={viewer.agentLimitLeft}
+            estimateHigh={lot.marketingDetails.estimate?.high ?? null}
+            accountName={
+              gate.biddingAccount?.kind === "organisation" ? gate.biddingAccount.name : null
+            }
+            scheduled={scheduled}
+            legalEntityId={gate.actingLegalEntityId}
+            submitter={submitter}
+            format={format}
+          />
+        </BidDialogBoundary>
       ) : null}
     </div>
   );

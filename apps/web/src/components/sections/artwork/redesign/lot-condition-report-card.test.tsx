@@ -4,6 +4,24 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 
+const preloadForm = vi.fn();
+vi.mock(
+  "@/components/sections/artwork/redesign/condition-report-request-form.lazy",
+  async (importOriginal) => {
+    const original =
+      await importOriginal<
+        typeof import("@/components/sections/artwork/redesign/condition-report-request-form.lazy")
+      >();
+    return {
+      ...original,
+      preloadConditionReportRequestForm: () => {
+        preloadForm();
+        return original.preloadConditionReportRequestForm();
+      },
+    };
+  },
+);
+
 vi.mock("next/link", () => ({
   default: ({
     children,
@@ -60,6 +78,23 @@ describe("LotConditionReportCard", () => {
   it("shows restore link when dismissed", () => {
     render(<LotConditionReportCard {...baseProps} state={{ kind: "canRequest" }} isDismissed />);
     expect(screen.getByRole("button", { name: /show condition report/i })).toBeInTheDocument();
+  });
+
+  it("starts fetching the request form when the trigger is approached or focused", () => {
+    preloadForm.mockClear();
+    render(<LotConditionReportCard {...baseProps} state={{ kind: "canRequest" }} />);
+    const trigger = screen.getByRole("button", { name: /request a specialist/i });
+    fireEvent.pointerEnter(trigger);
+    expect(preloadForm).toHaveBeenCalledTimes(1);
+    fireEvent.focus(trigger);
+    expect(preloadForm).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not fetch the form for a state that never shows it", () => {
+    preloadForm.mockClear();
+    render(<LotConditionReportCard {...baseProps} state={{ kind: "notSignedIn" } as never} />);
+    for (const button of screen.getAllByRole("button")) fireEvent.pointerEnter(button);
+    expect(preloadForm).not.toHaveBeenCalled();
   });
 
   it("expands panel and exposes request form, fetched when the panel opens", async () => {
