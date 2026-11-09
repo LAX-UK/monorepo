@@ -18,7 +18,7 @@ describe("RefundWithFrameNote", () => {
 
   it("states the item, its frame and the total before the refund is confirmed", () => {
     render(<RefundWithFrameNote itemPence={30_000} framePence={21_000} frameMade={false} />);
-    expect(screen.getByText("£510.00 will be refunded in all")).toBeInTheDocument();
+    expect(screen.getByText("This also refunds the frame")).toBeInTheDocument();
     expect(
       screen.getByText(/£300\.00 for this item and £210\.00 for its frame, £510\.00 in all\./),
     ).toBeInTheDocument();

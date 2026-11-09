@@ -67,7 +67,7 @@ export function RefundWithFrameNote({
   frameMade: boolean;
 }) {
   return (
-    <Notice tone="info" title={`${formatGbp(itemPence + framePence)} will be refunded in all`}>
+    <Notice tone="info" title="This also refunds the frame">
       {`${formatGbp(itemPence)} for this item and ${formatGbp(framePence)} for its frame, ${formatGbp(
         itemPence + framePence,
       )} in all. ${frameMade ? "The frame has already been made; it goes back with the print." : "The frame is not made."}`}
