@@ -9,11 +9,18 @@ const regions = vi.hoisted(() => ({
   calls: 0,
   read: (async () => ({})) as () => Promise<unknown>,
 }));
-vi.mock("@/lib/shop-api.server", () => ({
-  fetchPublicDeliveryRegions: () => {
+vi.mock("@/lib/delivery/delivery-regions.server", () => ({
+  readDeliveryRegions: async () => {
     regions.calls += 1;
-    return regions.read();
+    try {
+      return await regions.read();
+    } catch {
+      return null;
+    }
   },
+}));
+vi.mock("@/lib/checkout/checkout-delivery.server", () => ({
+  loadCheckoutDeliveryTimes: () => ({ ukDelivery: { min: 3, max: 5 }, collection: null }),
 }));
 vi.mock("@/lib/policies/shop-policy-publication.server", () => ({
   loadShopPolicyVisibility: () => "published",
@@ -57,7 +64,9 @@ describe("ShopPolicyRoute", () => {
     expect(screen.getAllByRole("heading", { level: 2 })[0]?.textContent).toContain(
       "Delivery at a glance",
     );
-    expect(screen.getByText(/We can't show delivery times just now/)).toBeTruthy();
+    expect(
+      screen.getByText(/We can't show delivery times for other regions just now/),
+    ).toBeTruthy();
     expect(screen.queryByText("European Union")).toBeNull();
   });
 

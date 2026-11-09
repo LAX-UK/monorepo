@@ -8,7 +8,9 @@ import {
   buildShopHelpDocument,
 } from "@/content/policies";
 import { SHOP_ORDERS_HREF } from "@/lib/account/shop-account-routes";
+import { loadCheckoutDeliveryTimes } from "@/lib/checkout/checkout-delivery.server";
 import { buildDeliveryGlance } from "@/lib/delivery/delivery-glance";
+import { readDeliveryRegions } from "@/lib/delivery/delivery-regions.server";
 import { loadShopArtBaseUrl } from "@/lib/ecosystem/product-directory.server";
 import { laxAccountUrl } from "@/lib/lax-account-url";
 import {
@@ -16,7 +18,7 @@ import {
   loadShopPolicyVisibility,
 } from "@/lib/policies/shop-policy-publication.server";
 import { NOINDEX_ROBOTS } from "@/lib/seo/shop-indexing";
-import { fetchPublicDeliveryRegions } from "@/lib/shop-api.server";
+import { isShopFramingEnabled } from "@/lib/shop-runtime-flags";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
@@ -43,14 +45,19 @@ export function shopPolicyMetadata(slug: ShopPolicySlug): Metadata {
 }
 
 /**
- * The delivery policy opens with "Delivery at a glance", built from the live delivery regions. If
- * they cannot be read the section still shows, without times, instead of the page failing.
+ * The delivery policy opens with "Delivery at a glance": the UK from what checkout charges and
+ * shows, the other regions from the live delivery regions. If those cannot be read the section
+ * still shows, without their times, instead of the page failing.
  */
 async function documentWithGlance(slug: ShopPolicySlug) {
   const document = documentFor(slug);
   if (slug !== "delivery") return document;
-  const regions = await fetchPublicDeliveryRegions().catch(() => null);
-  return { ...document, sections: [buildDeliveryGlance(regions), ...document.sections] };
+  const glance = buildDeliveryGlance({
+    regions: await readDeliveryRegions(),
+    ukDelivery: loadCheckoutDeliveryTimes().ukDelivery,
+    framingEnabled: isShopFramingEnabled(),
+  });
+  return { ...document, sections: [glance, ...document.sections] };
 }
 
 /** Renders a policy page, or 404s when it is still a draft on production. */
