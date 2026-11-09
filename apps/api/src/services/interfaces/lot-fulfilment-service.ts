@@ -51,6 +51,21 @@ export interface ILotFulfilmentAdminService {
     actorUserId: string;
     collectedBy: string;
   }): Promise<Result<LotFulfilmentRow, LotFulfilmentServiceError>>;
+  /**
+   * Hands a work over at the desk for a booked visit. Unlike `markCollected` it starts from a
+   * released lot as well as one marked ready for collection, because a booking does not wait for
+   * "ready for collection". Records who collected it and which staff member handed it over. The
+   * buyer is told by the collection booking's own message, not the fulfilment one.
+   */
+  handOverForCollection(input: {
+    lotId: string;
+    actorUserId: string;
+    collectedBy: string;
+  }): Promise<Result<LotFulfilmentRow, LotFulfilmentServiceError>>;
+  /** Puts a work handed over at the desk back to "ready for collection" (an undo within minutes). */
+  undoCollectionHandOver(input: {
+    lotId: string;
+  }): Promise<Result<LotFulfilmentRow, LotFulfilmentServiceError>>;
 }
 
 export interface ILotFulfilmentPaymentSyncService {

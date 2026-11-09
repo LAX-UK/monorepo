@@ -113,7 +113,6 @@ export class LotFulfilmentAdminService implements ILotFulfilmentAdminService {
     actorUserId: string;
     collectedBy: string;
   }): Promise<Result<LotFulfilmentRow, LotFulfilmentServiceError>> {
-    void input.actorUserId;
     return this.transition(
       input.lotId,
       "ready_for_collection",
@@ -121,6 +120,7 @@ export class LotFulfilmentAdminService implements ILotFulfilmentAdminService {
         await this.ctx.fulfilmentRepo.updateByLotId(input.lotId, {
           status: "delivered",
           collectedBy: input.collectedBy,
+          collectedByUserId: input.actorUserId,
           collectedAt: new Date(),
           updatedAt: new Date(),
         });
@@ -129,9 +129,40 @@ export class LotFulfilmentAdminService implements ILotFulfilmentAdminService {
     );
   }
 
+  async handOverForCollection(input: {
+    lotId: string;
+    actorUserId: string;
+    collectedBy: string;
+  }): Promise<Result<LotFulfilmentRow, LotFulfilmentServiceError>> {
+    return this.transition(input.lotId, ["released", "ready_for_collection"], async () => {
+      await this.ctx.fulfilmentRepo.updateByLotId(input.lotId, {
+        status: "delivered",
+        fulfilmentMethod: "collection",
+        collectedBy: input.collectedBy,
+        collectedByUserId: input.actorUserId,
+        collectedAt: new Date(),
+        updatedAt: new Date(),
+      });
+    });
+  }
+
+  async undoCollectionHandOver(input: {
+    lotId: string;
+  }): Promise<Result<LotFulfilmentRow, LotFulfilmentServiceError>> {
+    return this.transition(input.lotId, "delivered", async () => {
+      await this.ctx.fulfilmentRepo.updateByLotId(input.lotId, {
+        status: "ready_for_collection",
+        collectedBy: null,
+        collectedByUserId: null,
+        collectedAt: null,
+        updatedAt: new Date(),
+      });
+    });
+  }
+
   private async transition(
     lotId: string,
-    requiredStatus: LotFulfilmentRow["status"],
+    requiredStatus: LotFulfilmentRow["status"] | readonly LotFulfilmentRow["status"][],
     patch: () => Promise<void>,
     notice?: LotFulfilmentStep,
   ): Promise<Result<LotFulfilmentRow, LotFulfilmentServiceError>> {
@@ -143,9 +174,10 @@ export class LotFulfilmentAdminService implements ILotFulfilmentAdminService {
         code: "no_fulfilment",
       });
     }
-    if (row.status !== requiredStatus) {
+    const allowed = typeof requiredStatus === "string" ? [requiredStatus] : requiredStatus;
+    if (!allowed.includes(row.status)) {
       return err({
-        message: `Lot must be in status "${requiredStatus}" (currently "${row.status}")`,
+        message: `Lot must be in status "${allowed.join('" or "')}" (currently "${row.status}")`,
         status: 400,
         code: "invalid_status",
       });

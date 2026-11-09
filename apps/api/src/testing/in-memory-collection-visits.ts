@@ -15,11 +15,18 @@ import type {
   CollectionCalendarFacts,
   CollectionLotRecord,
   CollectionPlaceSettings,
+  HandOverOutcome,
   ICollectionBookingReader,
   ICollectionBookingWriter,
   ICollectionLotFactsReader,
+  ICollectionOutcomeWriter,
   ICollectionPlaceRepository,
+  MarkNotCollected,
   NewCollectionBooking,
+  NotCollectedOutcome,
+  RecordHandOver,
+  UndoHandOver,
+  UndoOutcome,
   WithinBookingTransaction,
 } from "@auction/persistence/interfaces";
 import { collectionRequestCanonical } from "@auction/persistence/lib";
@@ -143,7 +150,7 @@ export class RecordingEvents implements IDomainEventSink {
  * that is refused on a stale copy. The audit hook runs where the transaction would be.
  */
 export class InMemoryCollectionBookings
-  implements ICollectionBookingReader, ICollectionBookingWriter
+  implements ICollectionBookingReader, ICollectionBookingWriter, ICollectionOutcomeWriter
 {
   readonly bookings: CollectionBookingRecord[] = [];
   private readonly keys = new Map<string, { id: string; fingerprint: string }>();
@@ -170,6 +177,12 @@ export class InMemoryCollectionBookings
     return this.bookings.filter(
       (b) => b.venueId === venueId && b.slotStart >= range.from && b.slotStart < range.to,
     );
+  }
+  async listByStatus(venueId: string, statuses: readonly string[], limit: number) {
+    return this.bookings
+      .filter((b) => b.venueId === venueId && statuses.includes(b.status))
+      .sort((a, b) => b.slotStart.getTime() - a.slotStart.getTime())
+      .slice(0, limit);
   }
   async findLiveByLots(lotIds: readonly string[]) {
     const found = new Map<string, CollectionBookingRecord>();
@@ -229,7 +242,9 @@ export class InMemoryCollectionBookings
       };
     }
     const held = this.heldElsewhere(input.lotIds, null);
-    const seat = this.freeSeat(input.venueId, input.slotStart, input.placesPerSlot, null);
+    let seat = this.freeSeat(input.venueId, input.slotStart, input.placesPerSlot, null);
+    const over = seat === null && input.overCapacityReason !== null;
+    if (over) seat = this.freeSeat(input.venueId, input.slotStart, 99, null);
     if (seat === null) return { outcome: "slot_full" };
     if (held.length > 0) return { outcome: "lot_taken", lotIds: held };
     this.sequence += 1;
@@ -244,8 +259,8 @@ export class InMemoryCollectionBookings
       status: "booked",
       bookedByUserId: input.bookedByUserId,
       bookedVia: input.bookedVia,
-      overCapacity: false,
-      overCapacityReason: null,
+      overCapacity: over,
+      overCapacityReason: over ? input.overCapacityReason : null,
       collector: {
         kind: input.collector.kind,
         name: input.collector.name,
@@ -289,15 +304,19 @@ export class InMemoryCollectionBookings
     const held = this.heldElsewhere(input.lotIds, booking.id);
     if (held.length > 0) return { outcome: "lot_taken", lotIds: held };
     const sameSlot = booking.slotStart.getTime() === input.slotStart.getTime();
-    const seat = sameSlot
+    let seat = sameSlot
       ? booking.seat
       : this.freeSeat(booking.venueId, input.slotStart, input.placesPerSlot, booking.id);
+    const over = seat === null && input.overCapacityReason !== null;
+    if (over) seat = this.freeSeat(booking.venueId, input.slotStart, 99, booking.id);
     if (seat === null) return { outcome: "slot_full" };
     const changed: CollectionBookingRecord = {
       ...booking,
       slotStart: input.slotStart,
       slotEnd: input.slotEnd,
       seat,
+      overCapacity: over || booking.overCapacity,
+      overCapacityReason: over ? input.overCapacityReason : booking.overCapacityReason,
       collector: {
         kind: input.collector.kind,
         name: input.collector.name,
@@ -343,5 +362,92 @@ export class InMemoryCollectionBookings
     await within?.({} as never, cancelled);
     this.bookings[this.bookings.indexOf(booking)] = cancelled;
     return { outcome: "cancelled", booking: cancelled };
+  }
+
+  // ---- the desk ---------------------------------------------------------------------------
+
+  async recordHandOver(
+    input: RecordHandOver,
+    within?: WithinBookingTransaction,
+  ): Promise<HandOverOutcome> {
+    const booking = this.bookings.find((b) => b.id === input.bookingId);
+    if (!booking) return { outcome: "not_found" };
+    if (booking.status !== "booked") return { outcome: "stale" };
+    const live = booking.lots.filter((l) => l.active).map((l) => l.lotId);
+    const strangers = input.handedOverLotIds.filter((id) => !live.includes(id));
+    if (strangers.length > 0) return { outcome: "lot_not_in_booking", lotIds: strangers };
+    const left = live.filter((id) => !input.handedOverLotIds.includes(id));
+    const handed: CollectionBookingRecord = {
+      ...booking,
+      status: left.length === 0 ? "collected" : "partly_collected",
+      idCheckType: input.idCheckType,
+      outcomeByUserId: input.staffUserId,
+      outcomeAt: input.at,
+      lots: booking.lots.map((l) =>
+        !l.active
+          ? l
+          : {
+              ...l,
+              active: false,
+              outcome: input.handedOverLotIds.includes(l.lotId)
+                ? ("collected" as const)
+                : ("left" as const),
+            },
+      ),
+    };
+    if (this.failWithin) throw this.failWithin;
+    await within?.({} as never, handed);
+    this.bookings[this.bookings.indexOf(booking)] = handed;
+    return {
+      outcome: "handed_over",
+      booking: handed,
+      handedOverLotIds: [...input.handedOverLotIds],
+      leftLotIds: left,
+    };
+  }
+
+  async markNotCollected(
+    input: MarkNotCollected,
+    within?: WithinBookingTransaction,
+  ): Promise<NotCollectedOutcome> {
+    const booking = this.bookings.find((b) => b.id === input.bookingId);
+    if (!booking) return { outcome: "not_found" };
+    if (booking.status !== "booked") return { outcome: "stale" };
+    const marked: CollectionBookingRecord = {
+      ...booking,
+      status: "not_collected",
+      outcomeByUserId: input.staffUserId,
+      outcomeAt: input.at,
+      lots: booking.lots.map((l) =>
+        l.active ? { ...l, active: false, outcome: "left" as const } : l,
+      ),
+    };
+    if (this.failWithin) throw this.failWithin;
+    await within?.({} as never, marked);
+    this.bookings[this.bookings.indexOf(booking)] = marked;
+    return { outcome: "marked", booking: marked };
+  }
+
+  async undoHandOver(input: UndoHandOver, within?: WithinBookingTransaction): Promise<UndoOutcome> {
+    const booking = this.bookings.find((b) => b.id === input.bookingId);
+    if (!booking) return { outcome: "not_found" };
+    if (booking.status !== "collected" && booking.status !== "partly_collected") {
+      return { outcome: "stale" };
+    }
+    const closed = booking.lots.filter((l) => l.outcome !== null).map((l) => l.lotId);
+    const held = this.heldElsewhere(closed, booking.id);
+    if (held.length > 0) return { outcome: "lot_taken", lotIds: held };
+    const undone: CollectionBookingRecord = {
+      ...booking,
+      status: "booked",
+      idCheckType: null,
+      outcomeByUserId: null,
+      outcomeAt: null,
+      lots: booking.lots.map((l) => (l.outcome ? { ...l, active: true, outcome: null } : l)),
+    };
+    if (this.failWithin) throw this.failWithin;
+    await within?.({} as never, undone);
+    this.bookings[this.bookings.indexOf(booking)] = undone;
+    return { outcome: "undone", booking: undone };
   }
 }

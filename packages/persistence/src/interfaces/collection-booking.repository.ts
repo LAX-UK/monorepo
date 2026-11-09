@@ -247,9 +247,16 @@ export type UndoOutcome =
 
 /** What happens at the desk. */
 export interface ICollectionOutcomeWriter {
-  recordHandOver(input: RecordHandOver): Promise<HandOverOutcome>;
-  markNotCollected(input: MarkNotCollected): Promise<NotCollectedOutcome>;
-  undoHandOver(input: UndoHandOver): Promise<UndoOutcome>;
+  /** `within` runs in the same transaction once the change has succeeded: the audit event goes there. */
+  recordHandOver(
+    input: RecordHandOver,
+    within?: WithinBookingTransaction,
+  ): Promise<HandOverOutcome>;
+  markNotCollected(
+    input: MarkNotCollected,
+    within?: WithinBookingTransaction,
+  ): Promise<NotCollectedOutcome>;
+  undoHandOver(input: UndoHandOver, within?: WithinBookingTransaction): Promise<UndoOutcome>;
 }
 
 /** Reading bookings. */
@@ -262,6 +269,12 @@ export interface ICollectionBookingReader {
   listForAccount(legalEntityId: string, limit: number): Promise<CollectionBookingRecord[]>;
   /** Bookings whose visit starts in [from, to), earliest first, with every status. */
   listInRange(venueId: string, range: { from: Date; to: Date }): Promise<CollectionBookingRecord[]>;
+  /** The place's bookings in these statuses, newest visit first, up to `limit`. */
+  listByStatus(
+    venueId: string,
+    statuses: readonly CollectionBookingStatus[],
+    limit: number,
+  ): Promise<CollectionBookingRecord[]>;
   /**
    * The live booking holding each of these lots, if any. Keyed by lot id; a lot in no live booking
    * is absent.

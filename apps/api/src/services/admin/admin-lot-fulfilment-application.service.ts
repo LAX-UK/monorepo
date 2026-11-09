@@ -49,4 +49,14 @@ export class AdminLotFulfilmentApplicationService implements IAdminLotFulfilment
   markCollected(...args: Parameters<ILotFulfilmentAdminService["markCollected"]>) {
     return this.fulfilment.markCollected(...args);
   }
+
+  handOverForCollection(...args: Parameters<ILotFulfilmentAdminService["handOverForCollection"]>) {
+    return this.fulfilment.handOverForCollection(...args);
+  }
+
+  undoCollectionHandOver(
+    ...args: Parameters<ILotFulfilmentAdminService["undoCollectionHandOver"]>
+  ) {
+    return this.fulfilment.undoCollectionHandOver(...args);
+  }
 }

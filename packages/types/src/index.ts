@@ -52,4 +52,5 @@ export * from "./press.js";
 export * from "./atg.js";
 export * from "./sale-cover.js";
 export * from "./collection-booking.js";
+export * from "./collection-desk.js";
 export * from "./collection-settings.js";
