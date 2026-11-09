@@ -1,0 +1,5 @@
+import { formatWhen } from "@auction/datetime";
+
+// Do not call new Intl.DateTimeFormat or toLocaleString( here; the module does that.
+/* Nor import from "@date-fns/tz". */
+export const label = (date: Date, now: Date) => formatWhen(date, "Europe/London", now);

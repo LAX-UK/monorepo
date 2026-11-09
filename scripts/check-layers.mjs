@@ -73,6 +73,16 @@ const rules = [
     ],
   },
   {
+    dir: "packages/datetime",
+    label: "packages/datetime must stay pure: no apps, no other workspace package, no framework",
+    forbiddenSpecifiers: [
+      /^@auction\/(?!datetime(\/|$))/,
+      /(^|\/)apps\//,
+      /^drizzle-orm(\/|$)/,
+      /^(hono|fastify|next|react|react-dom)(\/|$)/,
+    ],
+  },
+  {
     dir: "packages/shop-contracts",
     label: "packages/shop-contracts must not import from apps/**",
     forbiddenSpecifiers: [/^@auction\/(api|web|worker|ws|auth-app|event)$/, /(^|\/)apps\//],
@@ -608,6 +618,7 @@ const SHOP_FORBIDDEN_IMPORT_RE =
   /^@auction\/(api|web|worker|ws|auth-app|event|db|persistence|domain|bidding-runtime)(\/|$)/;
 const SHOP_ALLOWED_AUCTION_IMPORTS = new Set([
   "@auction/config-ts",
+  "@auction/datetime",
   "@auction/http-headers",
   "@auction/identity-rp",
   "@auction/identity-contracts",
