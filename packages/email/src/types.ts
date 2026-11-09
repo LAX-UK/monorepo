@@ -4,6 +4,8 @@ import type { AuthTemplateVars } from "./templates/types/auth.js";
 import { authTemplates } from "./templates/types/auth.js";
 import type { BiddingTemplateVars } from "./templates/types/bidding.js";
 import { biddingTemplates } from "./templates/types/bidding.js";
+import type { CollectionTemplateVars } from "./templates/types/collection.js";
+import { collectionTemplates } from "./templates/types/collection.js";
 import type { ComplianceTemplateVars } from "./templates/types/compliance.js";
 import { complianceTemplates } from "./templates/types/compliance.js";
 import type { EnquiryTemplateVars } from "./templates/types/enquiry.js";
@@ -39,6 +41,7 @@ export const templateNames = [
   ...enquiryTemplates.names,
   ...shopTemplates.names,
   ...saleAlertTemplates.names,
+  ...collectionTemplates.names,
 ] as const;
 
 export type TemplateName = (typeof templateNames)[number];
@@ -54,7 +57,8 @@ export type TemplateVarsByName = AuthTemplateVars &
   AdminTemplateVars &
   EnquiryTemplateVars &
   ShopTemplateVars &
-  AlertTemplateVars;
+  AlertTemplateVars &
+  CollectionTemplateVars;
 
 export const RECIPIENT_RESOLUTION: Record<TemplateName, RecipientResolution> = {
   ...authTemplates.recipientResolution,
@@ -69,4 +73,5 @@ export const RECIPIENT_RESOLUTION: Record<TemplateName, RecipientResolution> = {
   ...enquiryTemplates.recipientResolution,
   ...shopTemplates.recipientResolution,
   ...saleAlertTemplates.recipientResolution,
+  ...collectionTemplates.recipientResolution,
 };
