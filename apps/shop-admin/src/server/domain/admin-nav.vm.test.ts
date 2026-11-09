@@ -48,6 +48,7 @@ describe("buildAdminNavGroups", () => {
       "/artists",
       "/from-zoho",
       "/artist-applications",
+      "/framing",
     ]);
     expect(navHrefsFor("editor")).toEqual(["/overview", ...EDITORIAL_HREFS]);
   });
@@ -76,7 +77,17 @@ describe("buildAdminNavGroups", () => {
       "/from-zoho",
       "/artist-applications",
       ...EDITORIAL_HREFS,
+      "/framing",
     ]);
+  });
+
+  it("shows Framing to staff who can open the catalogue, and to nobody else", () => {
+    for (const role of ["shop_admin", "catalogue_editor", "read_only"] as const) {
+      expect(navHrefsFor(role), role).toContain("/framing");
+    }
+    for (const role of ["account_manager", "broker", "operations", "finance"] as const) {
+      expect(navHrefsFor(role), role).not.toContain("/framing");
+    }
   });
 
   it("shows Read-only staff the lists they may read and nothing else", () => {
@@ -191,7 +202,7 @@ describe("buildAdminNavGroups", () => {
           "Enquiries",
         ],
       ],
-      ["Shop", ["Products", "Orders", "Production", "Fulfilment", "Stock holds"]],
+      ["Shop", ["Products", "Framing", "Orders", "Production", "Fulfilment", "Stock holds"]],
       ["Sales", ["Original sales", "Third-party sales", "Sale limit requests"]],
       ["Clients", ["Clients", "Leads"]],
       ["Finance", ["Payouts", "Disputes"]],
@@ -204,7 +215,7 @@ describe("buildAdminNavGroups", () => {
       capabilities: capabilitiesForRole("catalogue_editor"),
       features: ALL_FEATURES,
     }).map((group) => group.title);
-    expect(titles).toEqual(["Overview", "Gallery"]);
+    expect(titles).toEqual(["Overview", "Gallery", "Shop"]);
   });
 
   it("shows only the overview without capabilities", () => {

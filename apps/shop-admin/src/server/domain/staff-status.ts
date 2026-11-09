@@ -28,6 +28,7 @@ export type LaxStatusDomain =
   | "artist"
   | "edition"
   | "merchandise"
+  | "framing"
   | "editorial"
   | "help"
   | "enquiry"
@@ -147,6 +148,11 @@ const LAX_STATUS: Record<LaxStatusDomain, Readonly<Record<string, StatusPresenta
   merchandise: {
     active: { label: "On sale", tone: "success" },
     archived: { label: "Archived", tone: "neutral" },
+  },
+  framing: {
+    draft: { label: "Draft", tone: "neutral" },
+    active: { label: "Offered", tone: "success" },
+    paused: { label: "Paused", tone: "neutral" },
   },
   editorial: {
     draft: { label: "Draft", tone: "info" },

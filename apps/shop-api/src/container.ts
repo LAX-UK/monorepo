@@ -34,6 +34,7 @@ import {
   createEnquiryRateLimiter,
   createReleaseAlertRateLimiter,
 } from "./application/enquiry-rate-limit.js";
+import { createFramingService } from "./application/framing/framing.service.js";
 import { GuestErasureService } from "./application/guest-erasure/guest-erasure.service.js";
 import { createAccountEmailAlertHandlers } from "./application/handlers/account-email-alerts.handler.js";
 import { createCountArtworkFacetsHandler } from "./application/handlers/count-artwork-facets.handler.js";
@@ -147,6 +148,8 @@ import {
 } from "./infrastructure/drizzle-zoho-link.js";
 import { createDrizzleEditionRunUnitOfWork } from "./infrastructure/edition-runs/drizzle-edition-run.unit-of-work.js";
 import { createEnquiryFollowUp } from "./infrastructure/enquiry-follow-up.js";
+import { createDrizzleFramingListReader } from "./infrastructure/framing/drizzle-framing.store.js";
+import { createDrizzleFramingUnitOfWork } from "./infrastructure/framing/drizzle-framing.unit-of-work.js";
 import { grantShopStaffRole } from "./infrastructure/grant-staff-role.js";
 import { createDrizzleGuestErasureStore } from "./infrastructure/guest-checkout/drizzle-guest-erasure.store.js";
 import { createAdjustMerchandiseStockHandler } from "./infrastructure/handlers/admin/adjust-merchandise-stock.handler.js";
@@ -516,6 +519,10 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
     lists: createDrizzleHomeFeatureListReader(db, { resolveMediaUrl }),
     clock: { now: () => new Date() },
   });
+  const framing = createFramingService({
+    uow: createDrizzleFramingUnitOfWork(shopUow),
+    lists: createDrizzleFramingListReader(db),
+  });
   const deliveryRegionsReader = { read: () => readDeliveryRegions(db) };
   const deliveryRegions = createDeliveryRegionsService({
     uow: createDrizzleDeliveryRegionsUnitOfWork(shopUow),
@@ -737,6 +744,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
         artistCatalogue,
         artCache,
         homeFeatures,
+        framing,
         deliveryRegions,
         thirdPartySales,
         originalSales: adminOriginalSales,
