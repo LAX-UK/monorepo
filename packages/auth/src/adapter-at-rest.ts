@@ -24,7 +24,8 @@ function isAlreadyWrapped(a: AuthDbAdapter): boolean {
   return Object.getOwnPropertyDescriptor(a, wrappedSym)?.value === true;
 }
 
-const ACCOUNT_FIELDS = ["accessToken", "refreshToken", "idToken"] as const;
+/** The provider tokens, and the address the provider reported: all sealed at rest. */
+const ACCOUNT_FIELDS = ["accessToken", "refreshToken", "idToken", "providerEmail"] as const;
 const TWO_FACTOR_FIELDS = ["secret", "backupCodes"] as const;
 const OAUTH_TOKEN_FIELDS = ["accessToken", "refreshToken"] as const;
 function isSealed(value: unknown): value is string {

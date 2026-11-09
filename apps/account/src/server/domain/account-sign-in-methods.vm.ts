@@ -112,6 +112,9 @@ const REJECTIONS: Record<AccountSignInMethodError, string> = {
   last_sign_in_method: ONLY_METHOD_REASON,
   not_linked: "That sign-in isn't linked to your account any more.",
   rate_limited: "Too many attempts. Wait a few minutes and try again.",
+  passkey_limit: "You've reached the most passkeys you can have. Remove one to add another.",
+  not_available: "That way to sign in isn't available right now.",
+  staff_not_allowed: "Staff accounts can't sign in with Google or Apple. Add a passkey instead.",
 };
 
 export function signInMethodRejectionMessage(reason: AccountSignInMethodError): string {

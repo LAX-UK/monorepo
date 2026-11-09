@@ -100,10 +100,16 @@ describe.skipIf(!hasShopIntegrationDb)(
           (await db.select().from(shopOrder).where(eq(shopOrder.id, orderId)).limit(1))[0],
           "order",
         );
+      // The print on sale: the edition an order holds if one does, else the first. The run may
+      // have more than one edition, and the rows do not come back in a fixed order unless asked.
       const holder = async () =>
         requireDefined(
           (
-            await db.select().from(shopEdition).where(eq(shopEdition.artworkId, imported.artworkId))
+            await db
+              .select()
+              .from(shopEdition)
+              .where(eq(shopEdition.artworkId, imported.artworkId))
+              .orderBy(sql`${shopEdition.reservedByOrderId} is null`, shopEdition.editionNumber)
           )[0],
           "edition",
         );

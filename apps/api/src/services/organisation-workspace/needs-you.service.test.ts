@@ -112,7 +112,7 @@ function setup(
     facts,
     organisations: { standing: vi.fn(async () => standing) },
     unsold,
-    deadlines: new UnsoldChoiceDeadlines({ warn: () => {} }),
+    deadlines: new UnsoldChoiceDeadlines({ debug: () => {} }),
     authorisations,
     now: () => NOW,
   });

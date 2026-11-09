@@ -155,7 +155,7 @@ function setup(options: Setup = {}) {
       people: { findById: vi.fn().mockResolvedValue({ name: "Jane Smith" }) },
       accounts: { findById: vi.fn(async (id: string) => entities.get(id) ?? null) },
       notifier,
-      deadlines: new UnsoldChoiceDeadlines({ warn: () => {} }),
+      deadlines: new UnsoldChoiceDeadlines({ debug: () => {} }),
       storedDeadlines: { kept: async () => [] },
       followUps,
       events,

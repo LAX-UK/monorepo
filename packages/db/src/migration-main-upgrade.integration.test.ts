@@ -23,7 +23,7 @@ const DIRECTORY_0159_FOLDER_MILLIS = 1788000035000;
 const WORKER_CUTOVER_0160_FOLDER_MILLIS = 1788000036000;
 const BEFORE_ADDRESS_BOOK_FOLDER_MILLIS = 1794643200000;
 const DECLINE_REASON_0232_FOLDER_MILLIS = 1795420800000;
-const FINAL_FOLDER_MILLIS = 1804320000000;
+const FINAL_FOLDER_MILLIS = 1804406400000;
 const ATG_SYNC_LINKS_FOLDER_MILLIS = 1788000007500;
 
 async function executeMigrationSql(pool: pg.Pool, fileName: string): Promise<void> {
@@ -537,6 +537,141 @@ describe.skipIf(!migrationUrl)("main-to-Identity migration upgrade", { timeout: 
       await executeMigrationSql(pool, "0226_rollback.sql");
       await pool.query("SELECT public.user_pii_purge($1)", [bystander]);
       expect(await countFor("session", bystander)).toBe(1);
+    });
+  });
+
+  it("holds passkeys, provider addresses and session sign-in methods, and erases them with the person", async () => {
+    await withTemporaryDatabase(async (pool) => {
+      await runMigrationsPerTransaction(pool);
+      const insertUser = (id: string, email: string) =>
+        pool.query(
+          `INSERT INTO public."user" ("id", "name", "email", "created_at", "updated_at")
+           VALUES ($1, 'Real Name', $2, now(), now())`,
+          [id, email],
+        );
+      const insertPasskey = (userId: string, n: number) =>
+        pool.query(
+          `INSERT INTO public.passkey
+            ("id", "user_id", "name", "public_key", "credential_id", "device_type", "backed_up")
+           VALUES ($1, $2, 'Laptop', 'key', $3, 'multiDevice', true)`,
+          [`pk-${userId}-${n}`, userId, `cred-${userId}-${n}`],
+        );
+      await insertUser("passkey-ann", "ann@example.test");
+      await insertUser("passkey-ben", "ben@example.test");
+
+      // Ten passkeys are allowed, the eleventh is refused by the database, and another person's
+      // count is separate.
+      for (let n = 1; n <= 10; n += 1) await insertPasskey("passkey-ann", n);
+      await expect(insertPasskey("passkey-ann", 11)).rejects.toMatchObject({
+        code: "23514",
+        message: expect.stringContaining("passkey_limit"),
+      });
+      await insertPasskey("passkey-ben", 1);
+      // A credential id belongs to one passkey.
+      await expect(
+        pool.query(
+          `INSERT INTO public.passkey
+            ("id", "user_id", "public_key", "credential_id", "device_type", "backed_up")
+           VALUES ('dup', 'passkey-ben', 'key', 'cred-passkey-ann-1', 'singleDevice', false)`,
+        ),
+      ).rejects.toMatchObject({ code: "23505" });
+      // A passkey name is trimmed and at most 60 characters.
+      await expect(
+        pool.query(`UPDATE public.passkey SET name = ' padded ' WHERE id = 'pk-passkey-ben-1'`),
+      ).rejects.toMatchObject({ code: "23514" });
+
+      // A session records how it was signed in, from a fixed list.
+      await pool.query(
+        `INSERT INTO public.session ("id", "expires_at", "token", "created_at", "updated_at", "user_id")
+         VALUES ('amr-session', now() + interval '1 day', 'amr-token', now(), now(), 'passkey-ben')`,
+      );
+      const fresh = await pool.query(`SELECT amr FROM public.session WHERE id = 'amr-session'`);
+      expect(fresh.rows[0]?.amr).toEqual([]);
+      await pool.query(
+        `UPDATE public.session SET amr = ARRAY['password', 'link'] WHERE id = 'amr-session'`,
+      );
+      await expect(
+        pool.query(
+          `UPDATE public.session SET amr = ARRAY['carrier-pigeon'] WHERE id = 'amr-session'`,
+        ),
+      ).rejects.toMatchObject({ code: "23514" });
+
+      // A provider's address and whether it is a private relay sit on the account row.
+      await pool.query(
+        `INSERT INTO public.account
+          ("id", "account_id", "provider_id", "user_id", "provider_email", "provider_email_hidden",
+           "created_at", "updated_at")
+         VALUES ('acct-apple', 'apple-sub', 'apple', 'passkey-ben', 'v1:sealed', true, now(), now())`,
+      );
+      const linked = await pool.query(
+        `SELECT provider_email, provider_email_hidden FROM public.account WHERE id = 'acct-apple'`,
+      );
+      expect(linked.rows).toEqual([{ provider_email: "v1:sealed", provider_email_hidden: true }]);
+
+      // Erasing a person removes their passkeys and leaves everyone else's.
+      await pool.query("SELECT public.user_pii_purge($1)", ["passkey-ann"]);
+      const left = await pool.query(
+        "SELECT user_id, count(*)::int AS n FROM public.passkey GROUP BY user_id ORDER BY user_id",
+      );
+      expect(left.rows).toEqual([{ user_id: "passkey-ben", n: 1 }]);
+
+      // The rollback restores the earlier scrub and removes what this migration added.
+      await pool.query(`DELETE FROM public.session WHERE id = 'amr-session'`);
+      await executeMigrationSql(pool, "0339_rollback.sql");
+      const gone = await pool.query(
+        `SELECT
+           to_regclass('public.passkey') AS passkey,
+           (SELECT count(*)::int FROM information_schema.columns
+             WHERE table_name = 'account' AND column_name IN ('provider_email', 'provider_email_hidden')) AS account_columns,
+           (SELECT count(*)::int FROM information_schema.columns
+             WHERE table_name = 'session' AND column_name = 'amr') AS amr`,
+      );
+      expect(gone.rows[0]).toEqual({ passkey: null, account_columns: 0, amr: 0 });
+    });
+  });
+
+  it("lets only one of two passkeys added at the same moment take the tenth place", async () => {
+    await withTemporaryDatabase(async (pool) => {
+      await runMigrationsPerTransaction(pool);
+      await pool.query(
+        `INSERT INTO public."user" ("id", "name", "email", "created_at", "updated_at")
+         VALUES ('racer', 'Real Name', 'racer@example.test', now(), now())`,
+      );
+      const insert = (db: pg.Pool | pg.PoolClient, n: number) =>
+        db.query(
+          `INSERT INTO public.passkey
+            ("id", "user_id", "public_key", "credential_id", "device_type", "backed_up")
+           VALUES ($1, 'racer', 'key', $2, 'multiDevice', true)`,
+          [`race-${n}`, `race-cred-${n}`],
+        );
+      for (let n = 1; n <= 9; n += 1) await insert(pool, n);
+
+      const first = await pool.connect();
+      const second = await pool.connect();
+      try {
+        await first.query("BEGIN");
+        await second.query("BEGIN");
+        // The first takes the tenth place and holds the person's lock until it commits.
+        await insert(first, 10);
+        const racing = insert(second, 11).then(
+          () => "inserted" as const,
+          (error: { code?: string; message?: string }) => error,
+        );
+        // Give the second time to reach the lock and wait on it.
+        await new Promise((done) => setTimeout(done, 300));
+        await first.query("COMMIT");
+        const outcome = await racing;
+        expect(outcome).toMatchObject({ code: "23514" });
+        expect(String((outcome as { message?: string }).message)).toContain("passkey_limit");
+        await second.query("ROLLBACK");
+      } finally {
+        first.release();
+        second.release();
+      }
+      const total = await pool.query(
+        `SELECT count(*)::int AS n FROM public.passkey WHERE user_id = 'racer'`,
+      );
+      expect(total.rows[0]?.n).toBe(10);
     });
   });
 
