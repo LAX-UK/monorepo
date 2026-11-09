@@ -68,7 +68,7 @@ export const ADMIN_ROUTE_TABLE = [
   { pattern: "/admin/enquiries/[reference]", area: "platform", requirement: ENQUIRIES_ACCESS },
   {
     pattern: "/admin/private-sales/[reference]",
-    area: "platform",
+    area: "shared",
     requirement: PRIVATE_SALE_DEALS_READ_ACCESS,
   },
   { pattern: "/admin/purchase-problems", area: "platform", requirement: PURCHASE_PROBLEMS_ACCESS },

@@ -42,6 +42,8 @@ Approved defaults live in code: source of funds from £9,000 (`SOF_THRESHOLD_AMO
 | `finance.platform.write` | Set the buyer's fee, the commission and the VAT treatment, issue the invoice, record a bank transfer, refund the buyer (all or part), record a refund made at the bank |
 | `operations.fulfilment` | Release the work |
 
+The deal pages are in the shared admin area, so someone who holds only the Finance role can open them (from the finance alerts that name a deal, for example) as well as the other roles that can read deals. What each person sees and does on a deal is still decided by their capabilities.
+
 Issuing the invoice, recording a bank transfer, refunding and recording a bank refund need a recent sign-in and an idempotency key. The person who
 recorded the agreement cannot issue the invoice for the same deal.
 
