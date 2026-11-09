@@ -208,7 +208,10 @@ export function shopDeliveryQuote(
     quote.status === "quoted" && quote.pricePence !== null && quote.carrier !== null
       ? {
           deliveryLabel: formatGbpPence(quote.pricePence),
-          totalLabel: formatGbpPence(open.merchandiseSubtotalPence + quote.pricePence),
+          // The goods, the framing sold with them and the quoted delivery: what will be paid.
+          totalLabel: formatGbpPence(
+            open.merchandiseSubtotalPence + (open.framingSubtotalPence ?? 0) + quote.pricePence,
+          ),
           carrierLabel: quote.service ? `${quote.carrier} (${quote.service})` : quote.carrier,
           leadTimeNote: quote.leadTimeNote,
         }

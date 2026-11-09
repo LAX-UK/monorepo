@@ -42,7 +42,7 @@ const columns = {
   city: shopOrder.deliveryCity,
   postcode: shopOrder.deliveryPostcode,
   phone: shopOrder.deliveryPhone,
-  merchandisePence: shopOrder.merchandiseSubtotalPence,
+  goodsPence: shopOrder.merchandiseSubtotalPence,
   framingPence: shopOrder.framingSubtotalPence,
   requestedAt: shopDeliveryQuote.requestedAt,
   holdUntil: shopDeliveryQuote.holdUntil,
@@ -113,7 +113,7 @@ function toRow(record: QuoteRecord, items: string[]): DeliveryQuoteStaffRow {
     phone: record.phone,
     items,
     // What is being bought before delivery: the goods and the framing sold with them.
-    merchandisePence: (record.merchandisePence as number) + (record.framingPence as number),
+    beforeDeliveryPence: (record.goodsPence as number) + (record.framingPence as number),
     requestedAt: record.requestedAt as Date,
     holdUntil: record.holdUntil as Date,
     quote: quoted

@@ -16,7 +16,7 @@ export type DeliveryQuoteStaffRow = {
   address: string[];
   phone: string | null;
   items: string[];
-  merchandisePence: number;
+  beforeDeliveryPence: number;
   requestedAt: Date;
   holdUntil: Date;
   quote: {
