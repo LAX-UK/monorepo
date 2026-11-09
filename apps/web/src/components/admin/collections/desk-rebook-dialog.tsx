@@ -43,7 +43,7 @@ export function DeskRebookDialog({
             : `Now ${visitWhen(shown)}. We email the new time and an updated calendar invite.`
           : undefined
       }
-      size="lg"
+      size="md"
     >
       {shown ? (
         <RebookForm
