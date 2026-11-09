@@ -1,7 +1,11 @@
-import { shopFramingTask } from "@auction/db/schema";
+import { shopFramingTask, shopOrder, shopOrderLine, shopRefund } from "@auction/db/schema";
 import { type FramingTask, SHOP_API_ERROR_CODES } from "@auction/shop-contracts";
-import { type FramingTaskStatus, canMoveFramingTask } from "@auction/shop-domain";
-import { eq } from "drizzle-orm";
+import {
+  type FramingTaskStatus,
+  canMoveFramingTask,
+  framingStageStamp,
+} from "@auction/shop-domain";
+import { and, eq, ne } from "drizzle-orm";
 import { withAdminIdempotency } from "../../../application/admin/with-admin-idempotency.js";
 import type { ShopUnitOfWorkFactory } from "../../../application/ports/shop-unit-of-work.js";
 import { ShopApiError, notFound } from "../../../errors/shop-api-error.js";
@@ -16,23 +20,13 @@ export type UpdateFramingTaskCommand = {
   idempotencyKey: string;
 };
 
-/** The column that records when a step began, for the steps that have one. */
-function stageStamp(status: FramingTaskStatus, now: Date) {
-  switch (status) {
-    case "framing":
-      return { framingStartedAt: now };
-    case "framed":
-      return { framedAt: now };
-    case "completed":
-      return { completedAt: now };
-    default:
-      return {};
-  }
-}
+const REFUNDABLE_ORDER_STATUSES = ["paid", "partially_refunded"];
 
 /**
- * Moves the work on a frame to its next step. Each step is audited; a change made
- * from an older version is refused, and a step that skips or goes back is refused by the domain.
+ * Moves the work on a frame to its next step. Each step is audited; a change made from an older
+ * version is refused, and a step that skips or goes back is refused by the domain. Work only moves
+ * forward while the order is paid and the frame has not been refunded: the order and the frame's
+ * line are locked and read here, so a refund that lands at the same moment is seen, not raced.
  */
 export function createUpdateFramingTaskHandler(deps: { uow: ShopUnitOfWorkFactory }) {
   return async (command: UpdateFramingTaskCommand): Promise<FramingTask> =>
@@ -63,12 +57,15 @@ export function createUpdateFramingTaskHandler(deps: { uow: ShopUnitOfWorkFactor
               409,
             );
           }
+          if (command.status !== "cancelled") {
+            await assertFrameStillSold(db, task.orderLineId);
+          }
           const now = new Date();
           const [updated] = await db
             .update(shopFramingTask)
             .set({
               status: command.status,
-              ...stageStamp(command.status, now),
+              ...framingStageStamp(command.status, now),
               version: task.version + 1,
               updatedAt: now,
             })
@@ -96,4 +93,52 @@ export function createUpdateFramingTaskHandler(deps: { uow: ShopUnitOfWorkFactor
         },
       }),
     );
+}
+
+/** The order is paid and nothing has been refunded (or is waiting to be) on the frame's line. */
+async function assertFrameStillSold(
+  db: ReturnType<typeof shopPhaseDbSession>,
+  frameLineId: string,
+): Promise<void> {
+  const [line] = await db
+    .select({
+      orderId: shopOrderLine.orderId,
+      unitPricePence: shopOrderLine.unitPricePence,
+    })
+    .from(shopOrderLine)
+    .where(eq(shopOrderLine.id, frameLineId))
+    .for("update")
+    .limit(1);
+  if (!line) throw notFound("Order line");
+  const [order] = await db
+    .select({ status: shopOrder.status })
+    .from(shopOrder)
+    .where(eq(shopOrder.id, line.orderId))
+    .for("update")
+    .limit(1);
+  if (!order || !REFUNDABLE_ORDER_STATUSES.includes(order.status)) {
+    throw new ShopApiError(
+      SHOP_API_ERROR_CODES.CONFLICT,
+      "This order is not paid, so the frame is not made",
+      409,
+    );
+  }
+  const refunds = await db
+    .select({ amountPence: shopRefund.amountPence })
+    .from(shopRefund)
+    .where(
+      and(
+        eq(shopRefund.orderLineId, frameLineId),
+        ne(shopRefund.status, "failed"),
+        ne(shopRefund.status, "cancelled"),
+      ),
+    );
+  const refunded = refunds.reduce((sum, refund) => sum + refund.amountPence, 0);
+  if (refunded >= line.unitPricePence && line.unitPricePence > 0) {
+    throw new ShopApiError(
+      SHOP_API_ERROR_CODES.CONFLICT,
+      "This frame has been refunded, so it is not made",
+      409,
+    );
+  }
 }

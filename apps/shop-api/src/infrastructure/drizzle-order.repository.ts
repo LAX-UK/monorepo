@@ -22,6 +22,7 @@ import {
   SHOP_ORDER_STATUSES,
   type ShopFulfilmentStatus,
   type ShopOrderStatus,
+  parseFramingOrderSnapshot,
 } from "@auction/shop-domain";
 import { and, desc, eq, inArray, lt, or, sql } from "drizzle-orm";
 import { describeOrderLineEdition } from "../application/order-line-edition.js";
@@ -189,11 +190,10 @@ function framingFor(
 
 /** What the frame is made of, from the options kept when it was sold. */
 function framingDetail(snapshot: unknown): string | null {
-  if (!snapshot || typeof snapshot !== "object") return null;
-  const { mount, glazing } = snapshot as Record<string, unknown>;
+  const { mount, glazing } = parseFramingOrderSnapshot(snapshot);
   const parts = [
-    typeof mount === "string" ? FRAMING_MOUNT_LABELS[mount as FramingMount] : undefined,
-    typeof glazing === "string" ? FRAMING_GLAZING_LABELS[glazing as FramingGlazing] : undefined,
+    FRAMING_MOUNT_LABELS[mount as FramingMount],
+    FRAMING_GLAZING_LABELS[glazing as FramingGlazing],
   ].filter((part): part is string => Boolean(part));
   return parts.length > 0 ? parts.join(" · ") : null;
 }
@@ -263,10 +263,7 @@ async function fetchLinesByOrderIds(
     bucket.push({
       ...line,
       kind: kind === "framing" ? "framing" : "goods",
-      framingName:
-        kind === "framing" && typeof framingSnapshot?.name === "string"
-          ? framingSnapshot.name
-          : null,
+      framingName: kind === "framing" ? parseFramingOrderSnapshot(framingSnapshot).name : null,
       framingFor: framingForLineId ? framingFor(parents.get(framingForLineId)) : null,
       framingDetail: kind === "framing" ? framingDetail(framingSnapshot) : null,
       // A frame is shown with the print it goes with, so the list reads as one piece.

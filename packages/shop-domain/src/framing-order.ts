@@ -98,3 +98,56 @@ export function framingDueAt(
 ) {
   return addWorkingDaysUtc(paidAt, snapshot.leadTimeMaxDays);
 }
+
+const SNAPSHOT_TEXT_KEYS = ["optionId", "name", "frame", "mount", "glazing", "hanging"] as const;
+const SNAPSHOT_NUMBER_KEYS = ["leadTimeMinDays", "leadTimeMaxDays", "pricePence"] as const;
+
+/**
+ * Reads the frame as it was kept on a framing line. A record that is not whole is an error, not a
+ * default: a missing lead time must never become a due date of "today".
+ */
+export function parseFramingOrderSnapshot(value: unknown): FramingOrderSnapshot {
+  if (typeof value !== "object" || value === null) {
+    throw new Error("Framing line has no snapshot");
+  }
+  const record = value as Record<string, unknown>;
+  for (const key of SNAPSHOT_TEXT_KEYS) {
+    if (typeof record[key] !== "string" || record[key] === "") {
+      throw new Error(`Framing snapshot is missing ${key}`);
+    }
+  }
+  for (const key of SNAPSHOT_NUMBER_KEYS) {
+    const field = record[key];
+    if (typeof field !== "number" || !Number.isInteger(field) || field < 0) {
+      throw new Error(`Framing snapshot is missing ${key}`);
+    }
+  }
+  return {
+    optionId: String(record.optionId),
+    name: String(record.name),
+    frame: String(record.frame),
+    mount: String(record.mount),
+    glazing: String(record.glazing),
+    hanging: String(record.hanging),
+    leadTimeMinDays: Number(record.leadTimeMinDays),
+    leadTimeMaxDays: Number(record.leadTimeMaxDays),
+    pricePence: Number(record.pricePence),
+  };
+}
+
+/** The columns that record when a step began, for the steps that have one. */
+export function framingStageStamp(
+  status: FramingTaskStatus,
+  now: Date,
+): { framingStartedAt?: Date; framedAt?: Date; completedAt?: Date } {
+  switch (status) {
+    case "framing":
+      return { framingStartedAt: now };
+    case "framed":
+      return { framedAt: now };
+    case "completed":
+      return { completedAt: now };
+    default:
+      return {};
+  }
+}

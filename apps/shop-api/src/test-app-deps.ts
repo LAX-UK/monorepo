@@ -462,6 +462,7 @@ export function createMinimalShopApiTestDeps(
         status: "delivered",
       }),
       cancelAfterPossession: async () => ({
+        framingRefundPence: 0,
         returnId: "00000000-0000-4000-8000-000000000013",
         refundId: "00000000-0000-4000-8000-000000000014",
         status: "requested" as const,

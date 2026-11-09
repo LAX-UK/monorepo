@@ -25,6 +25,7 @@ import type {
   AdminClientDetail,
   AdminOrderDetail,
 } from "@auction/shop-contracts";
+import { parseFramingOrderSnapshot } from "@auction/shop-domain";
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { PORTAL_ME_LIST_LIMIT } from "../domain/portal-me-list-limit.js";
 import { notFound } from "../errors/shop-api-error.js";
@@ -481,10 +482,7 @@ export function createDrizzleAdminDetailReaders(db: Database) {
           framing:
             row.kind === "framing" && row.framingForLineId
               ? {
-                  name:
-                    typeof row.framingSnapshot?.name === "string"
-                      ? row.framingSnapshot.name
-                      : "Framing",
+                  name: parseFramingOrderSnapshot(row.framingSnapshot).name,
                   forLineId: row.framingForLineId,
                   task: (() => {
                     const task = framingTaskByLine.get(row.orderLineId);

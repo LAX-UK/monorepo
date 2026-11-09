@@ -1,10 +1,4 @@
-import {
-  shopArtwork,
-  shopFramingTask,
-  shopFulfilment,
-  shopOrder,
-  shopOrderLine,
-} from "@auction/db/schema";
+import { shopArtwork, shopFulfilment, shopOrder, shopOrderLine } from "@auction/db/schema";
 import { SHOP_API_ERROR_CODES } from "@auction/shop-contracts";
 import {
   SHOP_FULFILMENT_STATUSES,
@@ -12,10 +6,11 @@ import {
   canTransitionFulfilmentStatus,
   carrierTrackingUrl,
 } from "@auction/shop-domain";
-import { and, eq, inArray } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import type { ShopUnitOfWorkFactory } from "../../../application/ports/shop-unit-of-work.js";
 import { ShopApiError, notFound } from "../../../errors/shop-api-error.js";
 import { shopPhaseDbSession } from "../../drizzle-shop-transaction-effects.js";
+import { orderHasOpenFrame } from "../../framing/framing-gate.js";
 import { fulfilmentStageStamp } from "../../fulfilment-stage-stamp.js";
 import { linesAwaitingPackConfirmation } from "../../print-fulfilment/packing-gate.js";
 
@@ -35,25 +30,6 @@ export type UpdateFulfilmentCommand = {
   carrier?: string;
   trackingNumber?: string;
 };
-
-/** Whether a frame on the order is still waiting or being made, so the order cannot go out yet. */
-async function framingStillOpen(
-  db: ReturnType<typeof shopPhaseDbSession>,
-  orderId: string,
-): Promise<boolean> {
-  const open = await db
-    .select({ id: shopFramingTask.id })
-    .from(shopFramingTask)
-    .innerJoin(shopOrderLine, eq(shopFramingTask.orderLineId, shopOrderLine.id))
-    .where(
-      and(
-        eq(shopOrderLine.orderId, orderId),
-        inArray(shopFramingTask.status, ["queued", "framing", "framed"]),
-      ),
-    )
-    .limit(1);
-  return open.length > 0;
-}
 
 function fulfilmentSummary(
   status: string,
@@ -102,7 +78,7 @@ export function createUpdateFulfilmentHandler(deps: {
             );
           }
           if (nextStatus === "awaiting_dispatch") {
-            if (await framingStillOpen(shopPhaseDbSession(tx), existing.orderId)) {
+            if (await orderHasOpenFrame(shopPhaseDbSession(tx), existing.orderId)) {
               throw new ShopApiError(
                 SHOP_API_ERROR_CODES.CONFLICT,
                 "Finish the framing for this order before it is ready to dispatch",

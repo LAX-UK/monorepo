@@ -147,7 +147,7 @@ export function refundableRemainingPence(detail: AdminOrderDetail, orderLineId: 
 export function lineCancellation(
   detail: AdminOrderDetail,
   line: OrderLine,
-): { refundPence: number; stock: CancellationStockOutcome } | null {
+): { refundPence: number; framePence: number; stock: CancellationStockOutcome } | null {
   if (detail.status !== "paid" && detail.status !== "partially_refunded") return null;
   const refundPence = refundableRemainingPence(detail, line.orderLineId);
   if (refundPence <= 0) return null;
@@ -157,7 +157,13 @@ export function lineCancellation(
     fulfilment && isShopFulfilmentStatus(fulfilment)
       ? cancellationStockOutcome(fulfilment)
       : "await_return";
-  return { refundPence, stock };
+  // The frame sold with the print goes back with it, for what is left of it.
+  const frame = detail.lines.find(
+    (candidate) =>
+      candidate.kind === "framing" && candidate.framing?.forLineId === line.orderLineId,
+  );
+  const framePence = frame ? refundableRemainingPence(detail, frame.orderLineId) : 0;
+  return { refundPence, framePence, stock };
 }
 
 const CANCELLATION_STOCK_COPY: Record<CancellationStockOutcome, string> = {
@@ -170,10 +176,16 @@ const CANCELLATION_STOCK_COPY: Record<CancellationStockOutcome, string> = {
 export function cancelAfterPossessionDescription(
   refundPence: number,
   stock: CancellationStockOutcome,
+  framePence = 0,
 ): string {
-  return `Use this when the customer cancels an item they already have. This refunds ${formatGbp(
-    refundPence,
-  )} for this item to the customer's card, and holds the artist's payout for it. ${CANCELLATION_STOCK_COPY[stock]} Do not refund the item again.`;
+  const refunds =
+    framePence > 0
+      ? `${formatGbp(refundPence)} for this item and ${formatGbp(framePence)} for its frame, ${formatGbp(
+          refundPence + framePence,
+        )} in all,`
+      : `${formatGbp(refundPence)} for this item`;
+  const frameNote = framePence > 0 ? " The frame is not made." : "";
+  return `Use this when the customer cancels an item they already have. This refunds ${refunds} to the customer's card, and holds the artist's payout for it.${frameNote} ${CANCELLATION_STOCK_COPY[stock]} Do not refund the item again.`;
 }
 
 type Refund = AdminOrderDetail["refunds"][number];

@@ -11,6 +11,11 @@ import { withAdminIdempotency } from "../../../application/admin/with-admin-idem
 import type { ShopUnitOfWorkFactory } from "../../../application/ports/shop-unit-of-work.js";
 import { ShopApiError, notFound } from "../../../errors/shop-api-error.js";
 import { shopPhaseDbSession } from "../../drizzle-shop-transaction-effects.js";
+import {
+  cancelFramingTasksForLines,
+  framingLineIdsOfOrder,
+  refundFrameWithPrint,
+} from "./framing-refund.js";
 import { loadOrderRefunds } from "./load-order-refunds.js";
 
 export type RequestRefundCommand = {
@@ -55,12 +60,16 @@ export function createRequestRefundHandler(deps: {
           if (order.status !== "paid" && order.status !== "partially_refunded") {
             throw new ShopApiError(SHOP_API_ERROR_CODES.CONFLICT, "Order is not refundable", 409);
           }
+          let line:
+            | { id: string; unitPricePence: number; kind: string; editionId: string | null }
+            | undefined;
           if (command.orderLineId) {
-            const [line] = await shopPhaseDbSession(tx)
+            [line] = await shopPhaseDbSession(tx)
               .select({
                 id: shopOrderLine.id,
                 unitPricePence: shopOrderLine.unitPricePence,
                 kind: shopOrderLine.kind,
+                editionId: shopOrderLine.editionId,
               })
               .from(shopOrderLine)
               .where(
@@ -83,6 +92,7 @@ export function createRequestRefundHandler(deps: {
                 .select({ status: shopFramingTask.status })
                 .from(shopFramingTask)
                 .where(eq(shopFramingTask.orderLineId, line.id))
+                .for("update")
                 .limit(1);
               if (task && framingRefundBlock(task.status as FramingTaskStatus)) {
                 throw new ShopApiError(
@@ -129,6 +139,33 @@ export function createRequestRefundHandler(deps: {
           if (!refund) {
             throw new Error("Failed to record refund");
           }
+          // The work on a frame ends with the refund that takes it back: the frame's own refund in
+          // full, its print's refund in full (which takes the frame with it), or the whole order.
+          // An order-level refund is not held back by a frame being made: it is a decision about
+          // the sale, not about an unused item.
+          let frameRefund: Awaited<ReturnType<typeof refundFrameWithPrint>> = null;
+          if (line?.kind === "framing" && command.amountPence >= remaining) {
+            await cancelFramingTasksForLines(tx, {
+              frameLineIds: [line.id],
+              actorSubjectId: command.actorSubjectId,
+              reason: "frame_refunded",
+            });
+          } else if (line?.kind === "goods" && line.editionId && command.amountPence >= remaining) {
+            frameRefund = await refundFrameWithPrint(tx, {
+              orderId: command.orderId,
+              orderTotalPence: order.totalPence,
+              printLineId: line.id,
+              source: "admin",
+              idempotencyKey: command.idempotencyKey,
+              actorSubjectId: command.actorSubjectId,
+            });
+          } else if (!line && command.amountPence >= remaining) {
+            await cancelFramingTasksForLines(tx, {
+              frameLineIds: await framingLineIdsOfOrder(shopPhaseDbSession(tx), command.orderId),
+              actorSubjectId: command.actorSubjectId,
+              reason: "order_refunded",
+            });
+          }
           await tx.audit.append({
             actorSubjectId: command.actorSubjectId,
             capability: "refund.write",
@@ -139,6 +176,7 @@ export function createRequestRefundHandler(deps: {
               orderId: command.orderId,
               amountPence: command.amountPence,
               ...(command.orderLineId ? { orderLineId: command.orderLineId } : {}),
+              ...(frameRefund ? { frameRefundId: frameRefund.refundId } : {}),
               ...(command.reason ? { reason: command.reason } : {}),
               ...(command.note ? { note: command.note } : {}),
               ...operatorContextAuditFields(command.operatorContext),

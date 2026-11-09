@@ -7,6 +7,7 @@ import {
   shopProduct,
   shopProductVariant,
 } from "@auction/db/schema";
+import { parseFramingOrderSnapshot } from "@auction/shop-domain";
 import { and, eq } from "drizzle-orm";
 
 export type CheckoutStripeLine = {
@@ -158,7 +159,7 @@ export async function loadCheckoutStripePresentation(
     .where(and(eq(shopOrderLine.orderId, orderId), eq(shopOrderLine.kind, "framing")));
   const framingLines = groupCheckoutFramingLines(
     framingRows.map((row) => ({
-      name: typeof row.snapshot?.name === "string" ? row.snapshot.name : "Framing",
+      name: parseFramingOrderSnapshot(row.snapshot).name,
       unitPricePence: row.unitPricePence,
     })),
   );

@@ -17,6 +17,7 @@ import {
   framingDueAt,
   isGuestOrderSubject,
   orderVatBreakdown,
+  parseFramingOrderSnapshot,
 } from "@auction/shop-domain";
 import { and, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 import { describeReceiptEdition } from "../application/order-line-edition.js";
@@ -502,10 +503,7 @@ export async function completeShopCheckoutSession(
         line.kind === "framing"
           ? {
               // A frame is told as its own line, by the name it was sold under.
-              artworkTitle:
-                typeof line.framingSnapshot?.name === "string"
-                  ? line.framingSnapshot.name
-                  : "Framing",
+              artworkTitle: parseFramingOrderSnapshot(line.framingSnapshot).name,
               artworkSlug: "",
               editionDetail: "Framing",
               unitPricePence: line.unitPricePence,
@@ -566,9 +564,9 @@ async function queueFramingTasks(
   await tx.insert(shopFramingTask).values(
     frames.map((line) => ({
       orderLineId: line.id,
-      dueAt: framingDueAt(paidAt, {
-        leadTimeMaxDays: Number(line.framingSnapshot?.leadTimeMaxDays ?? 0),
-      }),
+      // A frame with no readable snapshot fails the payment event loudly (and it is retried)
+      // rather than being given a due date of today.
+      dueAt: framingDueAt(paidAt, parseFramingOrderSnapshot(line.framingSnapshot)),
     })),
   );
 }

@@ -14,13 +14,16 @@ import type {
   ProductionTaskStaff,
   ProductionTaskStatus,
 } from "@auction/shop-contracts";
+import { SHOP_API_ERROR_CODES } from "@auction/shop-contracts";
 import { type SQL, and, asc, count, eq, isNull, or, sql } from "drizzle-orm";
 import type {
   ProductionTaskFilters,
   ProductionTaskRepository,
 } from "../application/ports/production-task.repository.js";
+import { ShopApiError } from "../errors/shop-api-error.js";
 import { keysetAfter, orderByMsTimestampId } from "./admin-created-at-keyset.js";
 import { containsPattern } from "./drizzle-editorial-search.reader.js";
+import { printHasOpenFrame } from "./framing/framing-gate.js";
 import { insertShopAdminAudit } from "./shop-admin-audit.js";
 import { listStaffHoldingCapability } from "./shop-staff-active-roles.sql.js";
 
@@ -291,6 +294,17 @@ export function createDrizzleProductionTaskRepository(db: Database): ProductionT
         const statusChanged = nextStatus !== current.status;
         if (statusChanged && !input.canMove(current.status, nextStatus)) {
           return { status: "not_allowed", currentVersion: current.version, from: current.status };
+        }
+        if (
+          statusChanged &&
+          nextStatus === "qc_passed" &&
+          (await printHasOpenFrame(tx as Database, current.orderLineId))
+        ) {
+          throw new ShopApiError(
+            SHOP_API_ERROR_CODES.CONFLICT,
+            "Finish the framing for this print before it passes quality check",
+            409,
+          );
         }
         if (!statusChanged && nextAssignee === current.assignedToSubjectId) {
           return { status: "updated", version: current.version, taskStatus: current.status };

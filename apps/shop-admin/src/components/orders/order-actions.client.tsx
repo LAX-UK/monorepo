@@ -309,12 +309,16 @@ export function OrderLineMenu({
 }: {
   line: Line;
   /** What cancelling does; null when the line cannot be cancelled. */
-  cancellation: { refundPence: number; stock: CancellationStockOutcome } | null;
+  cancellation: {
+    refundPence: number;
+    framePence: number;
+    stock: CancellationStockOutcome;
+  } | null;
 }) {
   const mutation = useAdminMutation();
   const [confirming, setConfirming] = useState(false);
   if (cancellation === null || !line.editionId) return null;
-  const { refundPence, stock } = cancellation;
+  const { refundPence, framePence, stock } = cancellation;
   const editionId = line.editionId;
   return (
     <>
@@ -336,8 +340,8 @@ export function OrderLineMenu({
         open={confirming}
         onOpenChange={setConfirming}
         title={`Cancel ${orderLineLabel(line)}?`}
-        description={cancelAfterPossessionDescription(refundPence, stock)}
-        confirmLabel={`Cancel and refund ${formatGbp(refundPence)}`}
+        description={cancelAfterPossessionDescription(refundPence, stock, framePence)}
+        confirmLabel={`Cancel and refund ${formatGbp(refundPence + framePence)}`}
         tone="danger"
         loading={mutation.pending}
         onConfirm={async () => {
