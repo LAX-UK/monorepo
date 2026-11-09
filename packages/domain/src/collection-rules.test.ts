@@ -22,6 +22,7 @@ describe("collection rules", () => {
       windowDays: 28,
       closeOnSaleDays: true,
       undoHandOverMinutes: 10,
+      maxActiveVisits: 5,
     });
     expect(collectionRulesIssues(DEFAULT_COLLECTION_RULES)).toEqual([]);
   });
