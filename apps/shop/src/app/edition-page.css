@@ -358,9 +358,9 @@
 
 /* Frame finishes are materials, not theme colours, so they look the same in light and dark. */
 :root {
-  --shop-frame-black_wood: #1d1d1d;
-  --shop-frame-white_wood: #f6f5f1;
-  --shop-frame-natural_oak: #b48b5a;
+  --shop-frame-black_wood: #1d1d1d; /* THEME_FIXED_CONTRAST: frame and mount are physical materials */
+  --shop-frame-white_wood: #f6f5f1; /* THEME_FIXED_CONTRAST: frame and mount are physical materials */
+  --shop-frame-natural_oak: #b48b5a; /* THEME_FIXED_CONTRAST: frame and mount are physical materials */
 }
 
 .shop-framing {
@@ -407,7 +407,7 @@
   border-radius: 0.25rem;
   vertical-align: -0.1875rem;
   background-color: var(--shop-frame-natural_oak);
-  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.15);
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.15); /* THEME_FIXED_CONTRAST: frame and mount are physical materials */
 }
 
 .shop-framing__swatch[data-frame="black_wood"] {
@@ -442,9 +442,9 @@
    illustration, so it takes no more of the stage than the plain mat does. */
 .shop-page--edition .shop-gallery__mat[data-frame] {
   inset: 3%;
-  background: #fff;
+  background: #fff; /* THEME_FIXED_CONTRAST: frame and mount are physical materials */
   border: clamp(0.5rem, 2.2vw, 0.875rem) solid var(--shop-frame-natural_oak);
-  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.14), 0 0.5rem 1.25rem rgb(0 0 0 / 0.18);
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.14), 0 0.5rem 1.25rem rgb(0 0 0 / 0.18); /* THEME_FIXED_CONTRAST: frame and mount are physical materials */
 }
 
 .shop-page--edition .shop-gallery__mat[data-frame="black_wood"] {
