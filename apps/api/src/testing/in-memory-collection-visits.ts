@@ -22,7 +22,7 @@ import type {
   NewCollectionBooking,
   WithinBookingTransaction,
 } from "@auction/persistence/interfaces";
-import { collectionRequestFingerprint } from "@auction/persistence/lib";
+import { collectionRequestFingerprint } from "@auction/persistence/repositories";
 import type { IDomainEventSink } from "../services/domain-event-sink.js";
 
 export const COLLECTION_ACCOUNT = "c0000000-0000-4000-8000-000000000001";
