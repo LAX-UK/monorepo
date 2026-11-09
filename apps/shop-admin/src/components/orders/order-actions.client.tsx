@@ -8,15 +8,25 @@ import {
   cancelOrderAfterPossession,
   createProductionTask,
   retryOrderRefund,
+  updateFramingTask,
 } from "@/server/application/admin-operations-actions.server";
 import { GUEST_ERASURE_COPY, guestErasureMenuReason } from "@/server/domain/guest-erasure.vm";
-import { cancelAfterPossessionDescription, orderLineLabel } from "@/server/domain/order-detail.vm";
+import {
+  cancelAfterPossessionDescription,
+  orderLineLabel,
+  presentFramingTaskStatus,
+} from "@/server/domain/order-detail.vm";
 import type { AdminGuestErasureState, AdminOrderDetail } from "@auction/shop-contracts";
-import type { CancellationStockOutcome } from "@auction/shop-domain";
+import {
+  type CancellationStockOutcome,
+  type FramingTaskStatus,
+  framingTaskNextSteps,
+} from "@auction/shop-domain";
 import {
   ConfirmActionDialog,
   OverflowMenu,
   StaffButton,
+  StatusBadge,
   formatGbp,
   toast,
 } from "@auction/staff-ui";
@@ -164,6 +174,52 @@ export function SendToProductionButton({ line }: { line: Line }) {
     >
       Send to production
     </StaffButton>
+  );
+}
+
+const FRAMING_STEP_LABEL: Partial<Record<FramingTaskStatus, string>> = {
+  framing: "Start framing",
+  framed: "Mark framed",
+  completed: "Mark done",
+};
+
+/**
+ * A frame's work: where it stands and the one step that moves it on. Cancelling the framing is
+ * not offered here; it goes with a refund of the frame.
+ */
+export function FramingTaskControl({ line }: { line: Line }) {
+  const mutation = useAdminMutation();
+  const task = line.framing?.task;
+  if (!task) return null;
+  const status = task.status as FramingTaskStatus;
+  const next = framingTaskNextSteps(status).find((step) => FRAMING_STEP_LABEL[step]);
+  const presented = presentFramingTaskStatus(status);
+  return (
+    <span className="flex items-center gap-2">
+      <StatusBadge tone={presented.tone}>{presented.label}</StatusBadge>
+      {next ? (
+        <StaffButton
+          size="sm"
+          variant="secondary"
+          requires="production.write"
+          loading={mutation.pending}
+          onClick={() =>
+            mutation.run(
+              () =>
+                updateFramingTask({
+                  taskId: task.taskId,
+                  status: next,
+                  expectedVersion: task.version,
+                  idempotencyKey: mutation.idempotencyKey,
+                }),
+              `${orderLineLabel(line)}: ${presentFramingTaskStatus(next).label.toLowerCase()}`,
+            )
+          }
+        >
+          {FRAMING_STEP_LABEL[next]}
+        </StaffButton>
+      ) : null}
+    </span>
   );
 }
 

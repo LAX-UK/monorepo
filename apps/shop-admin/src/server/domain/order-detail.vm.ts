@@ -41,6 +41,7 @@ export const FULFILMENT_STATUS_LABELS = Object.fromEntries(
 export const presentFulfilmentStatus = presentStatus("fulfilment");
 export const presentRefundStatus = presentStatus("refund");
 export const presentProductionStatus = presentStatus("production");
+export const presentFramingTaskStatus = presentStatus("framingTask");
 
 const FULFILMENT_OPTION_LABELS: Record<string, string> = {
   uk_insured_delivery: "UK insured delivery",
@@ -71,6 +72,7 @@ type OrderLine = AdminOrderDetail["lines"][number];
 
 /** A line as staff know it: the artwork or product, and the edition. */
 export function orderLineLabel(line: OrderLine): string {
+  if (line.kind === "framing") return `${line.framing?.name ?? "Frame"} (framing)`;
   const title = line.artworkTitle ?? line.productTitle ?? line.sku ?? "Item";
   return line.editionNumber == null ? title : `${title}, edition ${line.editionNumber}`;
 }

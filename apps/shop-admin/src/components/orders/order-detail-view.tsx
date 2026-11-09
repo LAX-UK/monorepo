@@ -2,6 +2,7 @@ import { AdminBreadcrumbs } from "@/components/admin-breadcrumbs";
 import { FulfilmentSection } from "@/components/orders/fulfilment-section.client";
 import {
   FailedRefundActions,
+  FramingTaskControl,
   OrderHeaderActions,
   OrderLineMenu,
   SendToProductionButton,
@@ -17,6 +18,7 @@ import {
   lineCancellation,
   lineCancellationRefund,
   orderLineLabel,
+  presentFramingTaskStatus,
   presentOrderStatus,
   presentProductionStatus,
   presentRefundStatus,
@@ -174,7 +176,17 @@ export function OrderDetailView({
                       </p>
                     </div>
                     <div className="flex shrink-0 items-center gap-2">
-                      {line.production ? (
+                      {line.kind === "framing" ? (
+                        permissions.production ? (
+                          <FramingTaskControl line={line} />
+                        ) : line.framing?.task ? (
+                          <StatusBadge
+                            tone={presentFramingTaskStatus(line.framing.task.status).tone}
+                          >
+                            {presentFramingTaskStatus(line.framing.task.status).label}
+                          </StatusBadge>
+                        ) : null
+                      ) : line.production ? (
                         <span className="flex items-center gap-2 text-staff-xs text-staff-muted">
                           Production
                           {permissions.production ? (
