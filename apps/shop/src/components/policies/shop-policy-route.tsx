@@ -8,6 +8,7 @@ import {
   buildShopHelpDocument,
 } from "@/content/policies";
 import { SHOP_ORDERS_HREF } from "@/lib/account/shop-account-routes";
+import { buildDeliveryGlance } from "@/lib/delivery/delivery-glance";
 import { loadShopArtBaseUrl } from "@/lib/ecosystem/product-directory.server";
 import { laxAccountUrl } from "@/lib/lax-account-url";
 import {
@@ -15,6 +16,7 @@ import {
   loadShopPolicyVisibility,
 } from "@/lib/policies/shop-policy-publication.server";
 import { NOINDEX_ROBOTS } from "@/lib/seo/shop-indexing";
+import { fetchPublicDeliveryRegions } from "@/lib/shop-api.server";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
@@ -40,8 +42,19 @@ export function shopPolicyMetadata(slug: ShopPolicySlug): Metadata {
   };
 }
 
+/**
+ * The delivery policy opens with "Delivery at a glance", built from the live delivery regions. If
+ * they cannot be read the section still shows, without times, instead of the page failing.
+ */
+async function documentWithGlance(slug: ShopPolicySlug) {
+  const document = documentFor(slug);
+  if (slug !== "delivery") return document;
+  const regions = await fetchPublicDeliveryRegions().catch(() => null);
+  return { ...document, sections: [buildDeliveryGlance(regions), ...document.sections] };
+}
+
 /** Renders a policy page, or 404s when it is still a draft on production. */
-export function ShopPolicyRoute({ slug }: { slug: ShopPolicySlug }) {
+export async function ShopPolicyRoute({ slug }: { slug: ShopPolicySlug }) {
   const visibility = loadShopPolicyVisibility(slug);
   if (visibility === "hidden") notFound();
   // Like the footer, the policy list leaves out drafts that 404 on production.
@@ -52,7 +65,7 @@ export function ShopPolicyRoute({ slug }: { slug: ShopPolicySlug }) {
   });
   return (
     <ShopPolicyPage
-      document={documentFor(slug)}
+      document={await documentWithGlance(slug)}
       release={SHOP_POLICY_RELEASES[slug]}
       draft={visibility === "draft-preview"}
       hubLinks={hubLinks}

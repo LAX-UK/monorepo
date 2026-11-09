@@ -13,6 +13,7 @@ import { ShopCommercePageShell } from "@/components/shop-commerce-page-shell";
 import { SHOP_POLICY_PATHS, type ShopPolicySlug } from "@/content/policies/shop-policy-status";
 import { buildArtworkProductPage } from "@/lib/artwork/artwork-product-page.vm";
 import { loadCheckoutDeliveryTimes } from "@/lib/checkout/checkout-delivery.server";
+import { DELIVERY_GLANCE_ID } from "@/lib/delivery/delivery-glance";
 import {
   loadShopArtBaseUrl,
   loadShopStorefrontBaseUrl,
@@ -114,6 +115,8 @@ export default async function ArtworkDetailPage({ params }: ArtworkPageProps) {
     times: loadCheckoutDeliveryTimes(),
   });
   const linkablePolicies = loadLinkableShopPolicies();
+  const deliveryPolicyHref = policyHref(linkablePolicies, "delivery");
+  const outsideUkHref = deliveryPolicyHref ? `${deliveryPolicyHref}#${DELIVERY_GLANCE_ID}` : null;
   const returnTo = `/artworks/${encodeURIComponent(artwork.slug)}`;
   const primaryImageUrl = vm.gallery.images[0]?.url ?? null;
 
@@ -151,6 +154,7 @@ export default async function ArtworkDetailPage({ params }: ArtworkPageProps) {
                   signInHref={shopStorefrontLoginHref(returnTo)}
                   deliveryLine={deliveryLine}
                   deliveryHref={policyHref(linkablePolicies, "delivery")}
+                  outsideUkHref={outsideUkHref}
                   editionLine={vm.basketLine}
                 />
               ) : unavailableReason ? (
