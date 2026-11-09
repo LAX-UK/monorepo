@@ -2358,7 +2358,7 @@
       "idx": 337,
       "version": "7",
       "when": 1804665600000,
-      "tag": "0344_collection_lot_previous_status",
+      "tag": "0346_collection_lot_previous_status",
       "breakpoints": true
     }
   ]

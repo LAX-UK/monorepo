@@ -108,7 +108,7 @@ describe("migration 0334 collection booking", () => {
     expect(columnNames(collectionBooking)).toEqual(
       declaredColumns(migration, "collection_booking"),
     );
-    // 0344 added `previous_fulfilment_status` to the lots of a booking, after this migration.
+    // 0346 added `previous_fulfilment_status` to the lots of a booking, after this migration.
     expect(columnNames(collectionBookingLot)).toEqual([
       ...declaredColumns(migration, "collection_booking_lot"),
       "previous_fulfilment_status",
