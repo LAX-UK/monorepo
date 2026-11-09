@@ -9,9 +9,7 @@
 }
 
 @media print, (prefers-reduced-motion: reduce) {
-  .cv-auto,
-  .catalog-virtualized-list > li,
-  .admin-data-table-virtualized tbody tr {
+  .cv-auto {
     content-visibility: visible;
   }
 }

@@ -59,9 +59,11 @@ describe("RevealInView", () => {
       </RevealInView>,
     );
 
+    // Nothing is waiting to hide it, so it simply stays as drawn.
     await waitFor(() => {
-      expect(container.querySelector("[data-revealed='true']")).not.toBeNull();
+      expect(container.querySelector("[data-reveal-static='true']")).not.toBeNull();
     });
+    expect(container.querySelector("[data-reveal-init]")).toBeNull();
 
     globalThis.IntersectionObserver = originalIO;
   });
@@ -203,7 +205,33 @@ describe("a page nobody scrolls", () => {
     restore();
   });
 
-  it("does not hide what was already revealed", () => {
+  it("leaves an element that came into view before it was hidden exactly as drawn", () => {
+    const restore = belowTheFold();
+    const trigger: RevealTrigger = {
+      id: "seen-early",
+      armWhen: "reader-moves",
+      bind(_el, onReveal) {
+        onReveal();
+        return () => {};
+      },
+    };
+    const { container } = render(
+      <Reveal trigger={trigger} variant="rise">
+        <span>already visible</span>
+      </Reveal>,
+    );
+    const el = container.querySelector(".reveal");
+    expect(el?.getAttribute("data-reveal-static")).toBe("true");
+    expect(el?.hasAttribute("data-revealed")).toBe(false);
+
+    act(() => {
+      window.dispatchEvent(new Event("scroll"));
+    });
+    expect(el?.hasAttribute("data-reveal-init")).toBe(false);
+    restore();
+  });
+
+  it("does not hide what was already shown", () => {
     const original = globalThis.IntersectionObserver;
     // @ts-expect-error test shim: without an observer a reveal is immediate
     globalThis.IntersectionObserver = undefined;
@@ -215,7 +243,7 @@ describe("a page nobody scrolls", () => {
     act(() => {
       window.dispatchEvent(new Event("scroll"));
     });
-    expect(container.querySelector(".reveal")?.getAttribute("data-revealed")).toBe("true");
+    expect(container.querySelector(".reveal")?.getAttribute("data-reveal-static")).toBe("true");
     expect(container.querySelector(".reveal")?.hasAttribute("data-reveal-init")).toBe(false);
     globalThis.IntersectionObserver = original;
   });

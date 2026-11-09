@@ -1,10 +1,27 @@
 /**
  * Whether anyone is reading the page by moving through it. A capture, a print, a link preview or
  * a reader that never scrolls sees the page exactly as the server sent it; only a person who
- * starts to scroll (or press a paging key) is shown the reveal animations. Until then nothing
- * below the first screens is held back.
+ * starts to scroll, or presses a navigation key (paging, space, the arrows, Home, End or Tab), is
+ * shown the reveal animations. Until then nothing below the first screens is held back, and
+ * typing into a field does not count.
  */
-const MOVE_EVENTS = ["scroll", "wheel", "touchmove", "keydown"] as const;
+const MOVE_EVENTS = ["scroll", "wheel", "touchmove"] as const;
+
+const NAVIGATION_KEYS = new Set([
+  "PageUp",
+  "PageDown",
+  " ",
+  "Spacebar",
+  "ArrowUp",
+  "ArrowDown",
+  "Home",
+  "End",
+  "Tab",
+]);
+
+function onKey(event: KeyboardEvent) {
+  if (NAVIGATION_KEYS.has(event.key)) onMove();
+}
 
 const waiting = new Set<() => void>();
 let moved = false;
@@ -22,12 +39,14 @@ function startListening() {
   if (listening) return;
   listening = true;
   for (const type of MOVE_EVENTS) window.addEventListener(type, onMove, { passive: true });
+  window.addEventListener("keydown", onKey);
 }
 
 function stopListening() {
   if (!listening) return;
   listening = false;
   for (const type of MOVE_EVENTS) window.removeEventListener(type, onMove);
+  window.removeEventListener("keydown", onKey);
 }
 
 /**

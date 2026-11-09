@@ -24,11 +24,23 @@ describe("whenReaderMoves", () => {
     expect(callback).toHaveBeenCalledOnce();
   });
 
-  it("counts a paging key as the reader moving", () => {
+  it.each(["PageDown", "PageUp", " ", "ArrowDown", "ArrowUp", "Home", "End", "Tab"])(
+    "counts the %j key as the reader moving",
+    (key) => {
+      const callback = vi.fn();
+      whenReaderMoves(callback);
+      window.dispatchEvent(new KeyboardEvent("keydown", { key }));
+      expect(callback).toHaveBeenCalledOnce();
+    },
+  );
+
+  it("does not count typing as the reader moving", () => {
     const callback = vi.fn();
     whenReaderMoves(callback);
-    window.dispatchEvent(new KeyboardEvent("keydown", { key: "PageDown" }));
-    expect(callback).toHaveBeenCalledOnce();
+    for (const key of ["a", "Enter", "Shift", "Backspace", "7"]) {
+      window.dispatchEvent(new KeyboardEvent("keydown", { key }));
+    }
+    expect(callback).not.toHaveBeenCalled();
   });
 
   it("calls back at once when the page opened part-way down", () => {

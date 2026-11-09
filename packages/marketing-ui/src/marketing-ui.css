@@ -124,6 +124,15 @@
   animation-delay: var(--reveal-delay, 0ms);
 }
 
+/* Seen before it was ever hidden: it stays as drawn and plays no entrance. */
+.reveal[data-reveal-static="true"],
+.reveal[data-reveal-static="true"] > .reveal__inner {
+  animation: none;
+  clip-path: none;
+  opacity: 1;
+  transform: none;
+}
+
 /* A printed page shows everything: nothing waits for a scroll that will never happen. */
 @media print {
   .reveal[data-reveal-init="true"]:not([data-revealed="true"]),
