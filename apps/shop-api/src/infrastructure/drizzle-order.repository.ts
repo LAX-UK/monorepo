@@ -26,6 +26,7 @@ import {
 } from "@auction/shop-domain";
 import { and, desc, eq, inArray, lt, or, sql } from "drizzle-orm";
 import { describeOrderLineEdition } from "../application/order-line-edition.js";
+import { printThenFrame } from "../application/order-line-order.js";
 import type {
   ListOrdersResult,
   OrderLineRecord,
@@ -91,7 +92,7 @@ export type LineEditionBasis = {
 
 export type LineRow = Omit<
   OrderLineRecord,
-  "editionNumber" | "editionSummary" | "editionInvoiceDetail" | "framingFor"
+  "editionNumber" | "editionSummary" | "editionInvoiceDetail" | "framingFor" | "framingForLineId"
 > & {
   orderId: string;
   editionNumber: number | null;
@@ -174,6 +175,7 @@ function orderRowToRecord(order: typeof shopOrder.$inferSelect, extras: OrderExt
         editionNumber: holds ? line.editionNumber : null,
         editionSummary: described?.summary ?? null,
         editionInvoiceDetail: described?.invoiceDetail ?? null,
+        framingForLineId: framingParent?.lineId ?? null,
         framingFor: framingParent
           ? framingFor({
               artworkTitle: framingParent.title,
@@ -276,13 +278,11 @@ async function fetchLinesByOrderIds(
     ),
   );
   const parents = new Map(lineRows.map((row) => [row.orderLineId, row]));
-  // A frame follows its print. Lines made together share a created_at, so the database order
-  // alone would place them at random.
-  const position = (row: (typeof lineRows)[number]) => {
-    const anchor = (row.framingForLineId && parents.get(row.framingForLineId)) || row;
-    return `${anchor.createdAt.toISOString()}|${anchor.orderLineId}|${row.framingForLineId ? 1 : 0}`;
-  };
-  lineRows.sort((a, b) => position(a).localeCompare(position(b)));
+  const ordered = printThenFrame(lineRows, (row) => ({
+    id: row.orderLineId,
+    createdAt: row.createdAt,
+    framingForLineId: row.framingForLineId,
+  }));
   const linesByOrder = new Map<string, LineRow[]>();
   for (const {
     createdAt: _created,
@@ -293,7 +293,7 @@ async function fetchLinesByOrderIds(
     framingForLineId,
     kind,
     ...line
-  } of lineRows) {
+  } of ordered) {
     const bucket = linesByOrder.get(line.orderId) ?? [];
     bucket.push({
       ...line,

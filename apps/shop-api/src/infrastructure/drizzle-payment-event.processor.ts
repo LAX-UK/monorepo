@@ -21,6 +21,7 @@ import {
 } from "@auction/shop-domain";
 import { and, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 import { describeReceiptEdition } from "../application/order-line-edition.js";
+import { printThenFrame } from "../application/order-line-order.js";
 import type { BasketOwner, PaymentCheckoutGateway } from "../application/ports/commerce.ports.js";
 import type { PaymentEventProcessor } from "../application/ports/payment-event.processor.js";
 import type { ShopNotificationPublisher } from "../application/ports/shop-notification.publisher.js";
@@ -478,6 +479,9 @@ export async function completeShopCheckoutSession(
           variantSku: shopProductVariant.sku,
           kind: shopOrderLine.kind,
           framingSnapshot: shopOrderLine.framingSnapshot,
+          lineId: shopOrderLine.id,
+          framingForLineId: shopOrderLine.framingForLineId,
+          createdAt: shopOrderLine.createdAt,
           editionNumber: shopOrderLine.editionNumber,
           editionSnapshot: shopOrderLine.editionFactsSnapshot,
           proofNumber: shopEdition.proofNumber,
@@ -499,13 +503,17 @@ export async function completeShopCheckoutSession(
         totalPence: order.totalPence,
       });
 
-      const receiptLines = lineDetails.map((line) =>
+      const receiptLines = printThenFrame(lineDetails, (line) => ({
+        id: line.lineId,
+        createdAt: line.createdAt,
+        framingForLineId: line.framingForLineId,
+      })).map((line) =>
         line.kind === "framing"
           ? {
               // A frame is told as its own line, by the name it was sold under.
-              artworkTitle: parseFramingOrderSnapshot(line.framingSnapshot).name,
+              artworkTitle: `Framing: ${parseFramingOrderSnapshot(line.framingSnapshot).name}`,
               artworkSlug: "",
-              editionDetail: "Framing",
+              editionDetail: null,
               unitPricePence: line.unitPricePence,
             }
           : {

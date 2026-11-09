@@ -798,10 +798,19 @@ export const shopBasketLine = pgTable(
      * already imports this file.
      */
     framingOptionId: uuid("framing_option_id"),
+    /**
+     * The frame's price the shopper was shown when they chose it (null until stamped). Checkout
+     * compares it with today's price and refuses, as a price change, when they differ.
+     */
+    framingPricePence: integer("framing_price_pence"),
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [
+    check(
+      "shop_basket_line_framing_price_ck",
+      sql`${table.framingPricePence} IS NULL OR ${table.framingPricePence} >= 0`,
+    ),
     check(
       "shop_basket_line_framing_on_print_ck",
       sql`${table.framingOptionId} IS NULL OR ${table.artworkId} IS NOT NULL`,

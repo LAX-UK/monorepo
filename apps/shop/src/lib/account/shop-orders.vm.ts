@@ -38,7 +38,6 @@ export function shopOrderName(order: Pick<OrderSummary, "reference" | "createdAt
 }
 
 function lineTitle(line: OrderLine): string {
-  if (line.kind === "framing") return line.framingName ?? "Framing";
   return line.productTitle ?? line.artworkTitle ?? "Item";
 }
 
@@ -377,6 +376,8 @@ export type ShopOrderLineVm = {
   edition: string | null;
   priceLabel: string;
   thumbnailUrl: string | null;
+  /** The frame sold with this print, shown under it: "Framing: Natural oak frame". */
+  framing: { label: string; detail: string | null; priceLabel: string } | null;
 };
 
 export type ShopOrderTotalsVm = {
@@ -385,21 +386,46 @@ export type ShopOrderTotalsVm = {
   vatLine: string | null;
 };
 
-export function buildShopOrderLines(order: OrderSummary): ShopOrderLineVm[] {
-  return order.lines.map((line) => ({
-    id: line.orderLineId,
-    title: lineTitle(line),
-    href: lineHref(line),
-    artist: line.artistName ?? null,
-    edition:
-      line.kind === "framing"
-        ? line.framingFor
-          ? `Framing for ${line.framingFor}`
-          : "Framing"
-        : shopOrderLineEdition(line, order.status),
+function lineFraming(line: OrderLine): NonNullable<ShopOrderLineVm["framing"]> {
+  return {
+    label: `Framing: ${line.framingName ?? "frame"}`,
+    detail: line.framingDetail ?? null,
     priceLabel: formatGbpPence(line.unitPricePence),
-    thumbnailUrl: line.imageUrl ?? null,
-  }));
+  };
+}
+
+/**
+ * One row for each print or product. A frame is shown under the print it goes with, at its own
+ * price, as one wording ("Framing: Natural oak frame"); a frame whose print is not in the list
+ * (an older response) is shown as a row of its own rather than dropped.
+ */
+export function buildShopOrderLines(order: OrderSummary): ShopOrderLineVm[] {
+  const printIds = new Set(
+    order.lines.filter((line) => line.kind !== "framing").map((line) => line.orderLineId),
+  );
+  const frameFor = new Map(
+    order.lines
+      .filter((line) => line.kind === "framing" && line.framingForLineId)
+      .filter((line) => printIds.has(line.framingForLineId ?? ""))
+      .map((line) => [line.framingForLineId, line] as const),
+  );
+  const attached = new Set([...frameFor.values()].map((line) => line.orderLineId));
+  return order.lines
+    .filter((line) => !attached.has(line.orderLineId))
+    .map((line) => {
+      const frame = frameFor.get(line.orderLineId);
+      const isFrame = line.kind === "framing";
+      return {
+        id: line.orderLineId,
+        title: isFrame ? `Framing: ${line.framingName ?? "frame"}` : lineTitle(line),
+        href: lineHref(line),
+        artist: line.artistName ?? null,
+        edition: isFrame ? null : shopOrderLineEdition(line, order.status),
+        priceLabel: formatGbpPence(line.unitPricePence),
+        thumbnailUrl: line.imageUrl ?? null,
+        framing: frame ? lineFraming(frame) : null,
+      };
+    });
 }
 
 export function buildShopOrderTotals(order: OrderSummary): ShopOrderTotalsVm {

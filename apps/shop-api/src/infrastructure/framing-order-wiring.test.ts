@@ -104,14 +104,17 @@ describe("loadCheckoutBasket", () => {
     expect(loadBasketRecord).toHaveBeenCalledTimes(2);
   });
 
-  it("refuses any frame while framing is switched off", async () => {
+  it("takes frames out of the basket and says so while framing is switched off", async () => {
     await expect(
       loadCheckoutBasket(
         emptyDb(),
         { basketId: "b", ownedBy: () => true },
         { merchandiseEnabled: false, framingEnabled: false },
       ),
-    ).rejects.toMatchObject({ statusCode: 404, message: "Framing is not available" });
+    ).rejects.toMatchObject({
+      statusCode: 409,
+      message: expect.stringContaining("frames were removed from your basket"),
+    });
   });
 
   it("returns the goods and the framing apart when the frame is on offer", async () => {

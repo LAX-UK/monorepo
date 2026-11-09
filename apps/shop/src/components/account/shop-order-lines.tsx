@@ -22,6 +22,17 @@ export function ShopOrderLines({ lines }: { lines: readonly ShopOrderLineVm[] })
             {line.edition ? <span className="shop-order-lines__meta">{line.edition}</span> : null}
           </div>
           <span className="shop-order-lines__price">{line.priceLabel}</span>
+          {line.framing ? (
+            <div className="shop-order-lines__framing">
+              <div className="shop-order-lines__copy">
+                <span className="shop-order-lines__framing-title">{line.framing.label}</span>
+                {line.framing.detail ? (
+                  <span className="shop-order-lines__meta">{line.framing.detail}</span>
+                ) : null}
+              </div>
+              <span className="shop-order-lines__framing-price">{line.framing.priceLabel}</span>
+            </div>
+          ) : null}
         </li>
       ))}
     </ul>

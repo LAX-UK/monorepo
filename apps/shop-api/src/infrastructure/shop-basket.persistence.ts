@@ -40,6 +40,29 @@ export function assertStorefrontRedirectUrl(url: string, storefrontUrl: string):
   }
 }
 
+/**
+ * Keeps the price the shopper was shown for each frame. A frame whose price has not been stamped
+ * yet takes today's (it was just chosen, or the line predates stamping). A stamped frame whose
+ * price has moved is brought to today's price and reported, so checkout stops and shows the new
+ * price rather than charging one the shopper has not seen. A frame no longer on offer is left to
+ * the framing check.
+ */
+export async function reconcileFramingPrices(db: Database, basketId: string): Promise<boolean> {
+  const basket = await loadBasketRecord(db, basketId);
+  let changed = false;
+  for (const line of basket.lines) {
+    if (!line.framingOptionId || !line.framing?.available) continue;
+    const live = line.framing.pricePence;
+    if (line.framingPricePence === live) continue;
+    await db
+      .update(shopBasketLine)
+      .set({ framingPricePence: live, updatedAt: new Date() })
+      .where(eq(shopBasketLine.id, line.lineId));
+    if (line.framingPricePence != null) changed = true;
+  }
+  return changed;
+}
+
 export async function repriceBasketLinesIfNeeded(db: Database, basketId: string): Promise<boolean> {
   const now = new Date();
   const artworkUpdated = await db.execute(sql`
@@ -67,7 +90,8 @@ export async function repriceBasketLinesIfNeeded(db: Database, basketId: string)
     typeof variantUpdated === "object" && variantUpdated !== null && "rowCount" in variantUpdated
       ? Number(variantUpdated.rowCount)
       : 0;
-  return artworkRows + variantRows > 0;
+  const framingMoved = await reconcileFramingPrices(db, basketId);
+  return artworkRows + variantRows > 0 || framingMoved;
 }
 
 export async function assertBasketStock(db: Database, basketId: string): Promise<void> {
@@ -118,6 +142,7 @@ export async function loadBasketRecord(db: Database, basketId: string): Promise<
       liveVariantPricePence: shopProductVariant.pricePence,
       quantity: shopBasketLine.quantity,
       framingOptionId: shopBasketLine.framingOptionId,
+      framingPricePence: shopBasketLine.framingPricePence,
     })
     .from(shopBasketLine)
     .leftJoin(shopArtwork, eq(shopBasketLine.artworkId, shopArtwork.id))
@@ -174,6 +199,7 @@ export async function loadBasketRecord(db: Database, basketId: string): Promise<
         editionLine: edition?.line ?? null,
         framingOptionId: line.framingOptionId,
         framing: facts && option ? presentBasketFraming(facts, option) : null,
+        framingPricePence: line.framingPricePence,
       };
     }
     const variantId = line.productVariantId;

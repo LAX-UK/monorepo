@@ -16,6 +16,7 @@ export function sampleOrderLine(overrides: Partial<OrderLineRecord> = {}): Order
     editionInvoiceDetail: null,
     kind: "goods",
     framingName: null,
+    framingForLineId: null,
     framingFor: null,
     framingDetail: null,
     unitPricePence: 12_000,

@@ -337,6 +337,8 @@ describe("a framed order", () => {
           kind: "framing" as const,
           framingName: "Natural oak frame",
           framingFor: "Harbor Print, no. 3",
+          framingForLineId: print.orderLineId,
+          framingDetail: "Window mount, white conservation board · UV-filtering acrylic",
           artworkTitle: null,
           artworkSlug: null,
           artistName: null,
@@ -348,15 +350,21 @@ describe("a framed order", () => {
     };
   };
 
-  it("lists the frame as its own row, with no link and the label Framing", () => {
+  it("shows the frame under its print as 'Framing: <name>', at its own price", () => {
     const rows = buildShopOrderLines(framed());
-    expect(rows).toHaveLength(2);
-    expect(rows[1]).toMatchObject({
-      title: "Natural oak frame",
-      href: null,
-      edition: "Framing for Harbor Print, no. 3",
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.framing).toEqual({
+      label: "Framing: Natural oak frame",
+      detail: "Window mount, white conservation board · UV-filtering acrylic",
       priceLabel: "£210.00",
     });
+  });
+
+  it("keeps a frame whose print is not in the list as a row of its own", () => {
+    const placed = framed();
+    const rows = buildShopOrderLines({ ...placed, lines: placed.lines.slice(1) });
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ title: "Framing: Natural oak frame", href: null });
   });
 
   it("totals the framing on its own row between items and delivery", () => {

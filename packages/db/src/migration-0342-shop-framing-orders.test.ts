@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import { getTableColumns, getTableName } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { SHOP_COMMERCE_TABLES } from "./migrate-roles.js";
-import { shopOrder, shopOrderLine } from "./schema/shop-commerce.js";
+import { shopBasketLine, shopOrder, shopOrderLine } from "./schema/shop-commerce.js";
 import { shopFramingTask } from "./schema/shop-framing.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -55,7 +55,7 @@ describe("migration 0342 shop framing orders", () => {
     );
   });
 
-  it("adds the replacement check without locking the table to scan it", () => {
+  it("adds the replacement check NOT VALID, then validates it", () => {
     expect(migration).toMatch(/\) NOT VALID;/);
     expect(migration).toContain('VALIDATE CONSTRAINT "shop_order_line_target_xor"');
   });
@@ -66,17 +66,36 @@ describe("migration 0342 shop framing orders", () => {
     );
   });
 
-  it("holds a framing line as sold: the option, price and snapshot cannot change", () => {
+  it("holds a framing line as sold: option, price, tax and snapshot cannot change", () => {
     expect(migration).toContain('CREATE OR REPLACE FUNCTION "shop_order_line_framing_fixed"()');
     for (const column of [
+      "kind",
       "framing_snapshot",
       "framing_option_id",
       "framing_for_line_id",
       "unit_price_pence",
+      "vat_treatment",
+      "vat_rate_bp",
+      "vat_pence",
+      "order_id",
     ]) {
       expect(migration).toContain(`NEW."${column}" IS DISTINCT FROM OLD."${column}"`);
     }
-    expect(migration).toContain('BEFORE UPDATE ON "shop_order_line"');
+  });
+
+  it("also guards a line becoming a framing line, deleting one, and a parent that is not goods", () => {
+    expect(migration).toContain('BEFORE INSERT OR UPDATE OR DELETE ON "shop_order_line"');
+    expect(migration).toContain(`(OLD."kind" = 'framing' OR NEW."kind" = 'framing')`);
+    expect(migration).toContain("a framing line cannot be deleted");
+    expect(migration).toContain(`p."kind" = 'goods' AND p."order_id" = NEW."order_id"`);
+  });
+
+  it("keeps the price the shopper was shown on the basket line, and drops it on rollback", () => {
+    expect(migration).toContain(
+      'ALTER TABLE "shop_basket_line" ADD COLUMN IF NOT EXISTS "framing_price_pence" integer',
+    );
+    expect(rollback).toContain('DROP COLUMN IF EXISTS "framing_price_pence"');
+    expect(getTableColumns(shopBasketLine).framingPricePence.notNull).toBe(false);
   });
 
   it("gives each framing line one task of its own, tied to the line and not to an edition", () => {

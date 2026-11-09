@@ -152,6 +152,8 @@ export const OrderLineSchema = Type.Object(
     kind: Type.Optional(Type.Union([Type.Literal("goods"), Type.Literal("framing")])),
     /** The frame's name as sold, for a framing line. */
     framingName: Type.Optional(Type.Union([Type.String({ minLength: 1 }), Type.Null()])),
+    /** The print line a frame goes with; the frame is shown under it. */
+    framingForLineId: Type.Optional(Type.Union([Type.String({ format: "uuid" }), Type.Null()])),
     /** The print a frame goes with: "Tide line, no. 7". */
     framingFor: Type.Optional(Type.Union([Type.String({ minLength: 1 }), Type.Null()])),
     /** What the frame is made of: "Window mount, white conservation board · UV-filtering acrylic". */

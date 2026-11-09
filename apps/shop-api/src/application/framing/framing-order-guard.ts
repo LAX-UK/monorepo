@@ -19,9 +19,9 @@ export type FramingOrderProblem = { status: number; code: ShopApiErrorCode; mess
 
 const PROBLEMS = {
   disabled: {
-    status: 404,
-    code: SHOP_API_ERROR_CODES.FEATURE_DISABLED,
-    message: "Framing is not available",
+    status: 409,
+    code: SHOP_API_ERROR_CODES.BASKET_CONFLICT,
+    message: "Framing is no longer available. Remove the frame from your basket to continue.",
   },
   unavailable: {
     status: 409,

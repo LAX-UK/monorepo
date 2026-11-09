@@ -167,6 +167,7 @@ export function presentOrder(record: OrderRecord, now: Date = new Date()): Order
       editionSummary: line.editionSummary,
       kind: line.kind,
       framingName: line.framingName,
+      framingForLineId: line.framingForLineId,
       framingFor: line.framingFor,
       framingDetail: line.framingDetail,
       artistName: line.artistName,

@@ -227,8 +227,8 @@ describe("buildOrderInvoiceModel: framing", () => {
     expect(model.rows.map((row) => [row.description, row.detail, row.amount])).toEqual([
       ["Warm Basket", expect.stringContaining("Edition 3 of 24"), "£120.00"],
       [
-        "Framing for Warm Basket, no. 3",
-        "Natural oak frame · Window mount, white conservation board · UV-filtering acrylic",
+        "Framing: Natural oak frame",
+        "Window mount, white conservation board · UV-filtering acrylic",
         "£210.00",
       ],
       ["UK insured delivery", null, "£15.00"],

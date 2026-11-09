@@ -29,6 +29,8 @@ ALTER TABLE "shop_order_line"
   DROP COLUMN IF EXISTS "framing_option_id",
   DROP COLUMN IF EXISTS "framing_for_line_id",
   DROP COLUMN IF EXISTS "kind";
+ALTER TABLE "shop_basket_line" DROP CONSTRAINT IF EXISTS "shop_basket_line_framing_price_ck";
+ALTER TABLE "shop_basket_line" DROP COLUMN IF EXISTS "framing_price_pence";
 ALTER TABLE "shop_order" DROP CONSTRAINT IF EXISTS "shop_order_framing_subtotal_nonnegative";
 ALTER TABLE "shop_order" DROP COLUMN IF EXISTS "framing_subtotal_pence";
 

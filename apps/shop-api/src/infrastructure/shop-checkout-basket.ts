@@ -1,4 +1,5 @@
 import type { Database } from "@auction/db";
+import { shopBasketLine } from "@auction/db/schema";
 import { SHOP_API_ERROR_CODES } from "@auction/shop-contracts";
 import {
   type FramingOrderSnapshot,
@@ -6,6 +7,7 @@ import {
   computeMerchandiseSubtotal,
   pence,
 } from "@auction/shop-domain";
+import { and, eq, isNotNull } from "drizzle-orm";
 import {
   assertFramingOrderable,
   framingSubtotalPence,
@@ -54,6 +56,21 @@ export async function loadCheckoutBasket(
   }
   await assertBasketStock(db, input.basketId);
   const fresh = await loadBasketRecord(db, input.basketId);
+  if (!options.framingEnabled && fresh.lines.some((line) => line.framingOptionId != null)) {
+    // Framing was switched off with frames still in the basket. They are taken out, and the
+    // shopper is told, rather than left at a dead end they cannot clear from the page.
+    await db
+      .update(shopBasketLine)
+      .set({ framingOptionId: null, framingPricePence: null, updatedAt: new Date() })
+      .where(
+        and(eq(shopBasketLine.basketId, input.basketId), isNotNull(shopBasketLine.framingOptionId)),
+      );
+    throw new ShopApiError(
+      SHOP_API_ERROR_CODES.BASKET_CONFLICT,
+      "Framing is no longer available, so the frames were removed from your basket. Check it and try again.",
+      409,
+    );
+  }
   // Framing is checked on the lines the order is built from and priced on, not on the first read.
   const artworkIds = fresh.lines.flatMap((line) => (line.artworkId ? [line.artworkId] : []));
   await assertFramingOrderable({

@@ -24,6 +24,7 @@ import {
   ensureOpenBasket,
   loadBasketRecord,
   ownerWhere,
+  reconcileFramingPrices,
   repriceBasketLinesIfNeeded,
 } from "./shop-basket.persistence.js";
 import { sellableCountsByArtworkIds } from "./shop-edition-availability.js";
@@ -114,8 +115,10 @@ export function createDrizzleBasketRepository(
       await assertFramingChoice(db, line.artworkId, framingOptionId);
       await db
         .update(shopBasketLine)
-        .set({ framingOptionId, updatedAt: new Date() })
+        // A new choice is shown at today's price, which is stamped on the line.
+        .set({ framingOptionId, framingPricePence: null, updatedAt: new Date() })
         .where(and(eq(shopBasketLine.basketId, basketId), eq(shopBasketLine.id, lineId)));
+      await reconcileFramingPrices(db, basketId);
       return loadBasketRecord(db, basketId);
     },
 
@@ -154,6 +157,7 @@ export function createDrizzleBasketRepository(
                 unitPricePence: line.unitPricePence,
                 quantity: line.quantity,
                 framingOptionId: line.framingOptionId,
+                framingPricePence: line.framingPricePence,
               })
               .onConflictDoUpdate({
                 target: [shopBasketLine.basketId, shopBasketLine.artworkId],
@@ -162,6 +166,7 @@ export function createDrizzleBasketRepository(
                   quantity: sql`GREATEST(${shopBasketLine.quantity}, ${line.quantity})`,
                   // The signed-in basket's own choice wins; otherwise the one made as a guest.
                   framingOptionId: sql`COALESCE(${shopBasketLine.framingOptionId}, ${line.framingOptionId})`,
+                  framingPricePence: sql`CASE WHEN ${shopBasketLine.framingOptionId} IS NULL THEN ${line.framingPricePence} ELSE ${shopBasketLine.framingPricePence} END`,
                   updatedAt: new Date(),
                 },
               });
@@ -274,6 +279,7 @@ async function upsertArtworkLine(
         unitPricePence,
         quantity: input.quantity,
         framingOptionId,
+        framingPricePence: null,
       })
       .onConflictDoUpdate({
         target: [shopBasketLine.basketId, shopBasketLine.artworkId],
@@ -282,9 +288,12 @@ async function upsertArtworkLine(
           quantity: input.quantity,
           unitPricePence,
           ...(input.framingEnabled ? { framingOptionId } : {}),
+          // A choice made in this request is stamped at today's price; a kept one keeps its stamp.
+          ...(input.framingEnabled && chosen !== undefined ? { framingPricePence: null } : {}),
           updatedAt: new Date(),
         },
       });
+    if (input.framingEnabled) await reconcileFramingPrices(tx as Database, basketId);
     return loadBasketRecord(tx as Database, basketId);
   });
 }

@@ -67,7 +67,7 @@ describe("framingOrderProblem", () => {
   it("refuses any frame while framing is off", () => {
     expect(
       framingOrderProblem({ lines: [framed()], framingEnabled: false, factsByArtwork: new Map() }),
-    ).toMatchObject({ status: 404, code: "shop.feature_disabled" });
+    ).toMatchObject({ status: 409, code: "shop.basket_conflict" });
   });
 
   it("refuses a frame that is no longer on offer, however the basket looked before", () => {
@@ -114,7 +114,7 @@ describe("framingOrderProblem", () => {
         framingEnabled: false,
         factsByArtwork: new Map(),
       }),
-    ).toThrowError("Framing is not available");
+    ).toThrowError("Framing is no longer available");
   });
 });
 

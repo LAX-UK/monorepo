@@ -232,6 +232,30 @@ a.shop-order-lines__title:hover {
   line-height: 1.25rem;
 }
 
+/* A frame sits under its print, lined up with the print's text and at its own price. */
+.shop-order-lines__framing {
+  display: grid;
+  grid-column: 2 / -1;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: var(--shop-space-4);
+}
+
+.shop-order-lines__framing-title {
+  color: var(--color-on-surface);
+  font-size: var(--shop-text-sm);
+  font-weight: 600;
+  line-height: 1.25rem;
+}
+
+.shop-order-lines__framing-price {
+  color: var(--color-on-surface);
+  font-size: var(--shop-text-sm);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.25rem;
+  white-space: nowrap;
+}
+
 .shop-order-lines__price {
   color: var(--color-on-surface);
   font-size: var(--shop-text-md);

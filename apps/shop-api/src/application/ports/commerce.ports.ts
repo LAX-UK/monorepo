@@ -34,6 +34,8 @@ export type BasketLineRecord = {
   framingOptionId?: string | null;
   /** That option as the shopper sees it, priced; null for unframed. */
   framing?: BasketLineFraming | null;
+  /** The frame's price the shopper was shown; null until stamped. Checkout compares it with today's. */
+  framingPricePence?: number | null;
 };
 
 export type BasketRecord = {
@@ -110,6 +112,8 @@ export type OrderLineRecord = {
   kind: "goods" | "framing";
   /** The frame's name as sold, for a framing line; null otherwise. */
   framingName: string | null;
+  /** The print line a frame goes with; null for goods. */
+  framingForLineId: string | null;
   /** The print a frame goes with ("Tide line, no. 7"); null otherwise. */
   framingFor: string | null;
   /** The frame's mount and glazing as sold; null otherwise. */
