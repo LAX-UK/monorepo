@@ -77,7 +77,7 @@ describe("BidBffTokenService", () => {
         },
       },
     });
-    const service = new BidBffTokenService(sessions as never);
+    const service = new BidBffTokenService(sessions as never, async () => true);
 
     const result = await service.resourceToken("session-id", "lax-bid-api", "bid.read");
 
@@ -112,7 +112,7 @@ describe("BidBffTokenService", () => {
         scopes: "bid.read",
       };
     });
-    const service = new BidBffTokenService(sessions as never);
+    const service = new BidBffTokenService(sessions as never, async () => true);
 
     const results = await Promise.all(
       Array.from({ length: 8 }, () =>
@@ -148,7 +148,7 @@ describe("BidBffTokenService", () => {
       resourceTokens: {},
     });
     oidc.refreshIdentityTokens.mockRejectedValue(new IdentityRejectedError(401, "invalid_grant"));
-    const service = new BidBffTokenService(sessions as never);
+    const service = new BidBffTokenService(sessions as never, async () => true);
 
     await expect(
       service.resourceToken("session-id", "lax-bid-api", "bid.read"),
@@ -172,12 +172,45 @@ describe("BidBffTokenService", () => {
     oidc.refreshIdentityTokens.mockRejectedValue(
       new IdentityUnavailableError("Identity token endpoint is unavailable"),
     );
-    const service = new BidBffTokenService(sessions as never);
+    const service = new BidBffTokenService(sessions as never, async () => true);
 
     await expect(
       service.resourceToken("session-id", "lax-bid-api", "bid.read"),
     ).rejects.toMatchObject({
       name: "BidBffIdentityUnavailableError",
     });
+  });
+
+  it("exchanges again when the cached token's signing key was retired", async () => {
+    const sessions = new DeterministicSessionStore({
+      kind: "authenticated",
+      subject: "user-1",
+      sid: "sid-1",
+      idToken: "id-token",
+      accessToken: "access-token",
+      refreshToken: "refresh-token",
+      accessTokenExpiresAt: Date.now() + 120_000,
+      resourceTokens: {
+        "lax-bid-api": {
+          token: "token-from-retired-key",
+          expiresAt: Date.now() + 120_000,
+          scopes: "bid.read",
+        },
+      },
+    });
+    oidc.exchangeResourceToken.mockResolvedValue({
+      token: "token-from-new-key",
+      expiresAt: Date.now() + 120_000,
+      scopes: "bid.read",
+    });
+    const isKeyCurrent = vi.fn(async (token: string) => token !== "token-from-retired-key");
+    const service = new BidBffTokenService(sessions as never, isKeyCurrent);
+
+    const result = await service.resourceToken("session-id", "lax-bid-api", "bid.read");
+
+    expect(isKeyCurrent).toHaveBeenCalledWith("token-from-retired-key");
+    expect(oidc.exchangeResourceToken).toHaveBeenCalledTimes(1);
+    expect(result.token).toBe("token-from-new-key");
+    expect(result.session.resourceTokens["lax-bid-api"]?.token).toBe("token-from-new-key");
   });
 });

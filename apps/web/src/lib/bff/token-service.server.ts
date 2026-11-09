@@ -5,6 +5,7 @@ import {
   exchangeResourceToken,
   isIdentityRejected,
   isIdentityUnavailable,
+  isResourceTokenKeyCurrent,
   refreshIdentityTokens,
 } from "./oidc.server";
 import { getBffRedis } from "./redis.server";
@@ -25,16 +26,27 @@ function scopesSatisfy(cachedScopes: string, requestedScopes: string): boolean {
   return true;
 }
 
-function cachedResourceTokenStillValid(
-  cached: { scopes: string; expiresAt: number } | undefined,
+type CachedResourceToken = { scopes: string; expiresAt: number; token: string };
+
+/** Whether the issuer still publishes the key that signed a cached token. */
+export type SigningKeyCheck = (token: string) => Promise<boolean>;
+
+/**
+ * A cached token is reused only while it is unexpired, covers the scopes and was signed by a
+ * key the issuer still publishes, so a rotated-out key never outlives the rotation.
+ */
+async function cachedResourceTokenStillValid(
+  cached: CachedResourceToken | undefined,
   scopes: string,
   forceExchange: boolean,
-): cached is { scopes: string; expiresAt: number; token: string } {
+  isKeyCurrent: SigningKeyCheck,
+): Promise<boolean> {
   return (
     !forceExchange &&
     cached !== undefined &&
     scopesSatisfy(cached.scopes, scopes) &&
-    cached.expiresAt > Date.now() + EXPIRY_SKEW_MS
+    cached.expiresAt > Date.now() + EXPIRY_SKEW_MS &&
+    (await isKeyCurrent(cached.token))
   );
 }
 
@@ -63,7 +75,10 @@ function mapIssuerFailure(error: unknown): never {
 }
 
 export class BidBffTokenService {
-  constructor(private readonly sessions = new BidBffSessionStore(getBffRedis())) {}
+  constructor(
+    private readonly sessions = new BidBffSessionStore(getBffRedis()),
+    private readonly isKeyCurrent: SigningKeyCheck = isResourceTokenKeyCurrent,
+  ) {}
 
   async readAuthenticated(sessionId: string): Promise<AuthenticatedBidSession | null> {
     const session = await this.sessions.read(sessionId);
@@ -79,7 +94,10 @@ export class BidBffTokenService {
     const session = await this.readAuthenticated(sessionId);
     if (!session) throw new BidBffSessionRequiredError();
     const cached = session.resourceTokens[audience as keyof typeof session.resourceTokens];
-    if (cachedResourceTokenStillValid(cached, scopes, forceExchange)) {
+    if (
+      cached &&
+      (await cachedResourceTokenStillValid(cached, scopes, forceExchange, this.isKeyCurrent))
+    ) {
       return { token: cached.token, session };
     }
 
@@ -87,7 +105,15 @@ export class BidBffTokenService {
       let current = await this.readAuthenticated(sessionId);
       if (!current) throw new BidBffSessionRequiredError();
       const currentCached = current.resourceTokens[audience as keyof typeof current.resourceTokens];
-      if (cachedResourceTokenStillValid(currentCached, scopes, forceExchange)) {
+      if (
+        currentCached &&
+        (await cachedResourceTokenStillValid(
+          currentCached,
+          scopes,
+          forceExchange,
+          this.isKeyCurrent,
+        ))
+      ) {
         return { token: currentCached.token, session: current };
       }
       if (current.accessTokenExpiresAt <= Date.now() + EXPIRY_SKEW_MS) {
