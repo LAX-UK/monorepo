@@ -10,7 +10,7 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = metadataForPrivate(
   "Collections",
-  "When clients can collect their works, how many at a time, and the days the gallery is closed.",
+  "Who is coming to collect, and when. Hand over after checking photo ID.",
 );
 
 export default async function AdminCollectionsPage({
@@ -20,6 +20,7 @@ export default async function AdminCollectionsPage({
 }) {
   const user = await requireAdminCapability(COLLECTIONS_READ_ACCESS, "/admin/collections");
   const canChange = userHasAccessTo(user.role as UserRole, user.staffRoles, COLLECTIONS_ACCESS);
-  const model = await loadCollectionsPage(await searchParams);
-  return <CollectionsPage {...model} canChange={canChange} today={londonToday()} />;
+  const today = londonToday();
+  const model = await loadCollectionsPage(await searchParams, today);
+  return <CollectionsPage {...model} canChange={canChange} today={today} />;
 }

@@ -1,4 +1,5 @@
 import { SETTINGS } from "@/lib/admin/collections/collections.fixture";
+import { deskDay, deskList } from "@/lib/admin/collections/desk.fixture";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
@@ -7,6 +8,20 @@ vi.mock("@/lib/actions/admin/admin-collections", () => ({
   addCollectionExceptionAction: vi.fn(),
   removeCollectionExceptionAction: vi.fn(),
 }));
+vi.mock("@/lib/actions/admin/admin-collection-desk", () => ({
+  handOverCollectionAction: vi.fn(),
+  undoHandOverCollectionAction: vi.fn(),
+  markNotCollectedAction: vi.fn(),
+  rebookCollectionAction: vi.fn(),
+  bookForClientAction: vi.fn(),
+  loadDeskDayAction: vi.fn(),
+  loadDeskClientLotsAction: vi.fn(),
+}));
+vi.mock("@/lib/actions/admin/admin-lot-fulfilment", () => ({
+  adminLotFulfilmentReleaseResultAction: vi.fn(),
+}));
+vi.mock("@/lib/admin/pickers/staff-entity-search", () => ({ searchLegalEntityOptions: vi.fn() }));
+vi.mock("@/lib/auth/step-up/staff-step-up.client", () => ({ handleStaffStepUp: () => false }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 
 const { CollectionsPage } = await import("./collections-page");
@@ -92,5 +107,91 @@ describe("CollectionsPage", () => {
   it("says there is no place when there are no venues", () => {
     render(<CollectionsPage {...base} settings={null} venues={[]} />);
     expect(screen.getByText("No place to collect from")).toBeTruthy();
+  });
+
+  it("opens on the Day tab with the five tabs, and the count of visits to follow up", () => {
+    render(
+      <CollectionsPage
+        {...base}
+        tab="day"
+        desk={{ date: "2026-11-12", day: deskDay(), list: null, missedCount: 3, error: null }}
+      />,
+    );
+    const names = screen
+      .getAllByRole("link")
+      .map((link) => link.textContent)
+      .filter((text) => /Day|Upcoming|Not collected|Hours and rules|Closures/.test(text ?? ""));
+    expect(names.map((n) => n?.replace(/\d+$/, ""))).toEqual([
+      "Day",
+      "Upcoming",
+      "Not collected",
+      "Hours and rules",
+      "Closures",
+    ]);
+    expect(screen.getByRole("link", { name: /Not collected/ }).textContent).toContain("3");
+    expect(screen.getByRole("link", { name: "Day" }).getAttribute("aria-current")).toBe("page");
+    expect(screen.getByText("Hayes Collection")).toBeTruthy();
+  });
+
+  it("puts Book for a client in the page header on every desk tab, and not on the settings tabs", () => {
+    const desk = { date: "2026-11-12", day: deskDay(), list: null, missedCount: 0, error: null };
+    const { unmount } = render(<CollectionsPage {...base} tab="day" desk={desk} />);
+    expect(screen.getByRole("button", { name: "Book for a client" })).toBeTruthy();
+    unmount();
+    const { unmount: again } = render(
+      <CollectionsPage
+        {...base}
+        tab="upcoming"
+        desk={{ ...desk, day: null, list: deskList("upcoming") }}
+      />,
+    );
+    expect(screen.getByRole("button", { name: "Book for a client" })).toBeTruthy();
+    again();
+    const { unmount: third } = render(<CollectionsPage {...base} tab="hours" />);
+    expect(screen.queryByRole("button", { name: "Book for a client" })).toBeNull();
+    third();
+    render(<CollectionsPage {...base} tab="day" desk={desk} canChange={false} />);
+    expect(screen.queryByRole("button", { name: "Book for a client" })).toBeNull();
+  });
+
+  it("shows the missed visits on the Not collected tab", () => {
+    render(
+      <CollectionsPage
+        {...base}
+        tab="not_collected"
+        desk={{
+          date: "2026-11-12",
+          day: null,
+          list: deskList("not_collected", { venueId: SETTINGS.venueId }),
+          missedCount: 1,
+          error: null,
+        }}
+      />,
+    );
+    expect(screen.getByRole("button", { name: "Rebook" })).toBeTruthy();
+  });
+
+  it("says the visits did not load, with a way to try again", () => {
+    render(
+      <CollectionsPage
+        {...base}
+        tab="day"
+        desk={{ date: "2026-11-12", day: null, list: null, missedCount: null, error: "Try later" }}
+      />,
+    );
+    expect(screen.getByText("The visits didn't load")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Try again" })).toBeTruthy();
+  });
+
+  it("does not tell the Day tab that online booking is off", () => {
+    render(
+      <CollectionsPage
+        {...base}
+        tab="day"
+        settings={{ ...SETTINGS, onlineBookingEnabled: false }}
+        desk={{ date: "2026-11-12", day: deskDay(), list: null, missedCount: 0, error: null }}
+      />,
+    );
+    expect(screen.queryByText("Online booking is off")).toBeNull();
   });
 });

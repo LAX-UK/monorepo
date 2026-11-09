@@ -7,17 +7,27 @@ import type {
 
 export const COLLECTIONS_PATH = "/admin/collections";
 
-export const COLLECTION_TABS = ["hours", "closures"] as const;
+export const COLLECTION_TABS = ["day", "upcoming", "not_collected", "hours", "closures"] as const;
 export type CollectionTab = (typeof COLLECTION_TABS)[number];
 
+/** The desk tabs show visits; the others set the place up. */
+export const DESK_TABS: readonly CollectionTab[] = ["day", "upcoming", "not_collected"];
+
+/** The day is the page's first screen: who is coming to collect, and when. */
 export function parseCollectionTab(value: string | string[] | undefined): CollectionTab {
-  return value === "closures" ? "closures" : "hours";
+  const wanted = Array.isArray(value) ? value[0] : value;
+  return COLLECTION_TABS.find((tab) => tab === wanted) ?? "day";
 }
 
-export function collectionsHref(tab: CollectionTab, venueId?: string | null): string {
+export function collectionsHref(
+  tab: CollectionTab,
+  venueId?: string | null,
+  date?: string | null,
+): string {
   const query = new URLSearchParams();
-  if (tab !== "hours") query.set("tab", tab);
+  if (tab !== "day") query.set("tab", tab);
   if (venueId) query.set("venue", venueId);
+  if (tab === "day" && date) query.set("date", date);
   const text = query.toString();
   return text ? `${COLLECTIONS_PATH}?${text}` : COLLECTIONS_PATH;
 }

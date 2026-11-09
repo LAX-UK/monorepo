@@ -25,12 +25,17 @@ const closure = (over: Partial<StaffCollectionException> = {}): StaffCollectionE
 });
 
 describe("collections view model", () => {
-  it("reads the tab from the address, defaulting to hours", () => {
+  it("reads the tab from the address, defaulting to the day", () => {
     expect(parseCollectionTab("closures")).toBe("closures");
-    expect(parseCollectionTab("anything")).toBe("hours");
-    expect(parseCollectionTab(undefined)).toBe("hours");
-    expect(collectionsHref("hours")).toBe("/admin/collections");
-    expect(collectionsHref("hours", "v1")).toBe("/admin/collections?venue=v1");
+    expect(parseCollectionTab("hours")).toBe("hours");
+    expect(parseCollectionTab("not_collected")).toBe("not_collected");
+    expect(parseCollectionTab("anything")).toBe("day");
+    expect(parseCollectionTab(undefined)).toBe("day");
+    expect(collectionsHref("day")).toBe("/admin/collections");
+    expect(collectionsHref("day", "v1", "2026-11-12")).toBe(
+      "/admin/collections?venue=v1&date=2026-11-12",
+    );
+    expect(collectionsHref("hours", "v1")).toBe("/admin/collections?tab=hours&venue=v1");
     expect(collectionsHref("closures", "v1")).toBe("/admin/collections?tab=closures&venue=v1");
   });
 

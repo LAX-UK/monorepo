@@ -5,6 +5,8 @@ export type AdminNavCounts = {
   manualReviewCount: number;
   onboardingIssuesTotal: number;
   lotFulfilmentPending: number;
+  /** Collections booked for today that staff have yet to hand over. */
+  collectionsToHandOver: number;
   withdrawalsPending: number;
   disputesOpen: number;
   payoutsFailed: number;
@@ -33,6 +35,7 @@ export const EMPTY_ADMIN_NAV_COUNTS: AdminNavCounts = {
   manualReviewCount: 0,
   onboardingIssuesTotal: 0,
   lotFulfilmentPending: 0,
+  collectionsToHandOver: 0,
   withdrawalsPending: 0,
   disputesOpen: 0,
   payoutsFailed: 0,

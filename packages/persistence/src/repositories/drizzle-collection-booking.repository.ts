@@ -235,6 +235,62 @@ export class DrizzleCollectionBookingRepository
     );
   }
 
+  async listByStatus(
+    venueId: string,
+    statuses: readonly CollectionBookingStatus[],
+    limit: number,
+  ): Promise<CollectionBookingRecord[]> {
+    if (statuses.length === 0) return [];
+    const rows = await this.db
+      .select({ id: collectionBooking.id })
+      .from(collectionBooking)
+      .where(
+        and(
+          eq(collectionBooking.venueId, venueId),
+          inArray(collectionBooking.status, [...statuses]),
+        ),
+      )
+      .orderBy(desc(collectionBooking.slotStart), asc(collectionBooking.id))
+      .limit(limit);
+    return loadRecords(
+      this.db,
+      rows.map((row) => row.id),
+    );
+  }
+
+  async countOpenNotCollected(venueId: string): Promise<number> {
+    const [row] = await this.db
+      .select({ n: count() })
+      .from(collectionBooking)
+      .where(
+        and(
+          eq(collectionBooking.venueId, venueId),
+          eq(collectionBooking.status, "not_collected"),
+          // Followed up once any of its lots is held by a booking that is live again.
+          sql`NOT EXISTS (
+            SELECT 1 FROM collection_booking_lot own
+            JOIN collection_booking_lot other ON other.lot_id = own.lot_id AND other.active
+            WHERE own.booking_id = ${collectionBooking.id}
+          )`,
+        ),
+      );
+    return Number(row?.n ?? 0);
+  }
+
+  async countBookedInRange(range: { from: Date; to: Date }): Promise<number> {
+    const [row] = await this.db
+      .select({ n: count() })
+      .from(collectionBooking)
+      .where(
+        and(
+          eq(collectionBooking.status, "booked"),
+          gte(collectionBooking.slotStart, range.from),
+          lt(collectionBooking.slotStart, range.to),
+        ),
+      );
+    return Number(row?.n ?? 0);
+  }
+
   async findLiveByLots(lotIds: readonly string[]): Promise<Map<string, CollectionBookingRecord>> {
     return liveBookingsByLot(this.db, lotIds);
   }
@@ -399,7 +455,10 @@ export class DrizzleCollectionBookingRepository
 
   // ---- the desk ---------------------------------------------------------------------------
 
-  async recordHandOver(input: RecordHandOver): Promise<HandOverOutcome> {
+  async recordHandOver(
+    input: RecordHandOver,
+    within?: WithinBookingTransaction,
+  ): Promise<HandOverOutcome> {
     const handed = unique(input.handedOverLotIds);
     if (handed.length === 0) throw new RangeError("A hand-over needs at least one lot");
     return this.db.transaction(async (tx): Promise<HandOverOutcome> => {
@@ -423,16 +482,21 @@ export class DrizzleCollectionBookingRepository
         .where(eq(collectionBooking.id, input.bookingId));
       await this.closeLots(tx, input.bookingId, "collected", handed);
       await this.closeLots(tx, input.bookingId, "left", left);
+      const booking = await loadRecord(tx, input.bookingId);
+      await within?.(tx, booking);
       return {
         outcome: "handed_over",
-        booking: await loadRecord(tx, input.bookingId),
+        booking,
         handedOverLotIds: handed,
         leftLotIds: left,
       };
     });
   }
 
-  async markNotCollected(input: MarkNotCollected): Promise<NotCollectedOutcome> {
+  async markNotCollected(
+    input: MarkNotCollected,
+    within?: WithinBookingTransaction,
+  ): Promise<NotCollectedOutcome> {
     return this.db.transaction(async (tx): Promise<NotCollectedOutcome> => {
       const row = await lockBooking(tx, input.bookingId);
       if (!row) return { outcome: "not_found" };
@@ -448,11 +512,13 @@ export class DrizzleCollectionBookingRepository
         .where(eq(collectionBooking.id, input.bookingId));
       const live = (await activeLots(tx, input.bookingId)).map((lot) => lot.lotId);
       await this.closeLots(tx, input.bookingId, "left", live);
-      return { outcome: "marked", booking: await loadRecord(tx, input.bookingId) };
+      const booking = await loadRecord(tx, input.bookingId);
+      await within?.(tx, booking);
+      return { outcome: "marked", booking };
     });
   }
 
-  async undoHandOver(input: UndoHandOver): Promise<UndoOutcome> {
+  async undoHandOver(input: UndoHandOver, within?: WithinBookingTransaction): Promise<UndoOutcome> {
     try {
       return await this.db.transaction(async (tx): Promise<UndoOutcome> => {
         const row = await lockBooking(tx, input.bookingId);
@@ -486,7 +552,9 @@ export class DrizzleCollectionBookingRepository
           }),
         );
         if (seat === null) throw new Error("No place free for an undone hand-over");
-        return { outcome: "undone", booking: await loadRecord(tx, input.bookingId) };
+        const booking = await loadRecord(tx, input.bookingId);
+        await within?.(tx, booking);
+        return { outcome: "undone", booking };
       });
     } catch (error) {
       const constraint = pgUniqueViolationConstraint(error);

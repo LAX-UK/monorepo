@@ -25,7 +25,8 @@ export type DangerousActionCategory =
   | "destructive_catalogue"
   | "personal_data_export"
   | "goods_release"
-  | "collection_settings";
+  | "collection_settings"
+  | "collection_handover";
 
 export type DangerousStaffAction = {
   id: string;
@@ -150,6 +151,25 @@ export const DANGEROUS_STAFF_ACTIONS: readonly DangerousStaffAction[] = [
     "collection.exception.remove",
     "POST",
     "/admin/collections/:venueId/exceptions/:exceptionId/remove",
+  ),
+  // Handing works over at the desk, undoing it, and marking a visit missed
+  a(
+    "collection_handover",
+    "collection.hand-over",
+    "POST",
+    "/admin/collection-desk/bookings/:bookingId/hand-over",
+  ),
+  a(
+    "collection_handover",
+    "collection.hand-over-undo",
+    "POST",
+    "/admin/collection-desk/bookings/:bookingId/undo-hand-over",
+  ),
+  a(
+    "collection_handover",
+    "collection.not-collected",
+    "POST",
+    "/admin/collection-desk/bookings/:bookingId/not-collected",
   ),
   // Erasure and data-subject requests
   a(

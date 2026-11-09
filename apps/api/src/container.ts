@@ -4,6 +4,10 @@ import {
   DrizzleBiddingExposureReader,
   DrizzleBuyerAgentAuthorisationRepository,
   DrizzleCollectionBookingRepository,
+  DrizzleCollectionDeskFulfilment,
+  DrizzleCollectionDeskReader,
+  DrizzleCollectionLotFactsReader,
+  DrizzleCollectionPlaceRepository,
   DrizzleCollectionSettingsRepository,
   DrizzleConsignmentInboxReader,
   DrizzleConsignmentMessageRepository,
@@ -91,6 +95,7 @@ import {
   BuyerAgentAuthorisationService,
 } from "./services/buyer-agents/buyer-agent-authorisation.service.js";
 import { MyBuyerAgentAuthorisationsService } from "./services/buyer-agents/my-buyer-agent-authorisations.service.js";
+import { CollectionDeskService } from "./services/collection-desk/collection-desk.service.js";
 import { CollectionSettingsAdminService } from "./services/collection-settings/collection-settings.service.js";
 import { EnsurePersonalLegalEntityService } from "./services/legal-entity/ensure-personal-legal-entity.service.js";
 import { NotificationAccountMuteService } from "./services/notifications/notification-account-mute.service.js";
@@ -523,6 +528,17 @@ export function createContainer(env: Env): Container {
     now: () => new Date(),
   });
 
+  const collectionBookings = new DrizzleCollectionBookingRepository(db);
+  const collectionDesk = new CollectionDeskService({
+    places: new DrizzleCollectionPlaceRepository(db),
+    bookings: collectionBookings,
+    desk: new DrizzleCollectionDeskReader(db),
+    facts: new DrizzleCollectionLotFactsReader(db),
+    fulfilment: new DrizzleCollectionDeskFulfilment(),
+    events: platform.domainEventSink,
+    now: () => new Date(),
+  });
+
   const atg = new AtgAdminService(
     repos.atgLinkReader,
     repos.atgSaleSettingsWriter,
@@ -803,6 +819,7 @@ export function createContainer(env: Env): Container {
       ...admin.admin,
       inventoryMoves,
       collectionSettings,
+      collectionDesk,
       staffTwoFactorPolicy: twoFactorPolicy,
       twoFactorReset,
       staffEmailChange,

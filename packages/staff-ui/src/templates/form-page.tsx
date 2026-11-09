@@ -11,6 +11,8 @@ export type FormPageProps = {
   description?: React.ReactNode;
   /** TabNav when the record is edited in separate sections, each saved on its own. */
   tabs?: React.ReactNode;
+  /** The one primary action of a page that is not a single form (e.g. "Book for a client"). */
+  primaryAction?: React.ReactNode;
   /** A Notice about the whole form (e.g. a record synced elsewhere). */
   notice?: React.ReactNode;
   /** The form: FormSections, then its FormActions. */
@@ -27,6 +29,7 @@ export function FormPage({
   title,
   description,
   tabs,
+  primaryAction,
   notice,
   children,
 }: FormPageProps) {
@@ -37,6 +40,7 @@ export function FormPage({
         {...(breadcrumbs ? { breadcrumbs } : {})}
         {...(description ? { description } : {})}
         {...(tabs ? { tabs } : {})}
+        {...(primaryAction ? { primaryAction } : {})}
       />
       {notice}
       <div className="flex w-full max-w-[1040px] min-w-0 flex-col gap-6">{children}</div>

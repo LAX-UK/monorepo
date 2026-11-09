@@ -20,6 +20,10 @@ export type AdminCollectionSettingsRoutesContainer = {
   admin: Pick<AdminIntegrationRouteServices, "collectionSettings">;
 };
 
+export type AdminCollectionDeskRoutesContainer = {
+  admin: Pick<AdminIntegrationRouteServices, "collectionDesk">;
+};
+
 export type AdminInventoryRoutesContainer = {
   admin: Pick<AdminIntegrationRouteServices, "inventoryMoves">;
 };
