@@ -148,6 +148,10 @@ export const ACCOUNT_LOAD_ERROR = {
     title: "We couldn't load this payment",
     description: "This is on our side. Nothing was charged, and your invoices are safe.",
   },
+  collect: {
+    title: "We couldn't load collections",
+    description: "This is on our side. Your lots are safe and any booked time still stands.",
+  },
   purchase: {
     title: "We couldn't load this purchase",
     description: "This is on our side. Your purchase, payment and invoice are safe.",
