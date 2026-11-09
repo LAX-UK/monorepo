@@ -12,12 +12,12 @@ const journal = JSON.parse(read("meta/_journal.json")) as {
 };
 
 describe("migration 0345 shop order reaper deferrals", () => {
-  it("follows 0340 in the journal, one day later", () => {
+  it("follows 0341 in the journal, one day later", () => {
     const index = journal.entries.findIndex((e) => e.tag === "0345_shop_order_reaper_deferrals");
     expect(index).toBeGreaterThan(0);
     const entry = journal.entries[index];
     const previous = journal.entries[index - 1];
-    expect(previous?.tag).toBe("0340_shop_delivery_quote_carrier");
+    expect(previous?.tag).toBe("0341_shop_framing_price_trigger_lock");
     expect(entry?.idx).toBe((previous?.idx ?? 0) + 1);
     expect(entry?.when).toBe((previous?.when ?? 0) + 24 * 60 * 60 * 1000);
   });

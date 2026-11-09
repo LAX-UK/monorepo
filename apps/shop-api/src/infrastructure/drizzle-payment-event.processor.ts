@@ -1020,6 +1020,27 @@ async function applyShopPayment(
   });
 }
 
+/**
+ * Opens the work on each frame the order sold: one task per framing line, due after the option's
+ * longest lead time (from the snapshot taken at checkout) counted from payment.
+ */
+async function queueFramingTasks(
+  tx: Database,
+  lines: ReadonlyArray<typeof shopOrderLine.$inferSelect>,
+  paidAt: Date,
+): Promise<void> {
+  const frames = lines.filter((line) => line.kind === "framing");
+  if (frames.length === 0) return;
+  await tx.insert(shopFramingTask).values(
+    frames.map((line) => ({
+      orderLineId: line.id,
+      // A frame with no readable snapshot fails the payment event loudly (and it is retried)
+      // rather than being given a due date of today.
+      dueAt: framingDueAt(paidAt, parseFramingOrderSnapshot(line.framingSnapshot)),
+    })),
+  );
+}
+
 export type ShopCheckoutExpireOutcome =
   | "expired"
   | "duplicate"
