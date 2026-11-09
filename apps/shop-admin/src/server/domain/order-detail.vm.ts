@@ -149,7 +149,12 @@ export function refundableRemainingPence(detail: AdminOrderDetail, orderLineId: 
 export function lineCancellation(
   detail: AdminOrderDetail,
   line: OrderLine,
-): { refundPence: number; framePence: number; stock: CancellationStockOutcome } | null {
+): {
+  refundPence: number;
+  framePence: number;
+  frameMade: boolean;
+  stock: CancellationStockOutcome;
+} | null {
   if (detail.status !== "paid" && detail.status !== "partially_refunded") return null;
   const refundPence = refundableRemainingPence(detail, line.orderLineId);
   if (refundPence <= 0) return null;
@@ -160,12 +165,8 @@ export function lineCancellation(
       ? cancellationStockOutcome(fulfilment)
       : "await_return";
   // The frame sold with the print goes back with it, for what is left of it.
-  const frame = detail.lines.find(
-    (candidate) =>
-      candidate.kind === "framing" && candidate.framing?.forLineId === line.orderLineId,
-  );
-  const framePence = frame ? refundableRemainingPence(detail, frame.orderLineId) : 0;
-  return { refundPence, framePence, stock };
+  const withFrame = frameRefundWithPrint(detail, line, refundPence);
+  return { refundPence, framePence: withFrame.framePence, frameMade: withFrame.frameMade, stock };
 }
 
 const CANCELLATION_STOCK_COPY: Record<CancellationStockOutcome, string> = {
@@ -189,6 +190,37 @@ export function framingCanMove(detail: AdminOrderDetail, line: OrderLine): boole
     )
     .reduce((sum, refund) => sum + refund.amountPence, 0);
   return !(line.unitPricePence > 0 && refunded >= line.unitPricePence);
+}
+
+/**
+ * What refunding `amountPence` on a print also takes. A print refunded in full takes the frame sold
+ * with it, for what is left of the frame, and never more than is left on the whole order: the same
+ * cap the server applies. Nothing for any other refund.
+ */
+export function frameRefundWithPrint(
+  detail: AdminOrderDetail,
+  printLine: OrderLine,
+  amountPence: number,
+): { framePence: number; frameMade: boolean } {
+  const none = { framePence: 0, frameMade: false };
+  if (printLine.kind === "framing" || !printLine.editionId) return none;
+  const frame = detail.lines.find(
+    (candidate) =>
+      candidate.kind === "framing" && candidate.framing?.forLineId === printLine.orderLineId,
+  );
+  if (!frame) return none;
+  if (amountPence < refundableRemainingPence(detail, printLine.orderLineId)) return none;
+  const orderLeft = Math.max(0, refundableRemainingPence(detail, null) - amountPence);
+  const framePence = Math.min(refundableRemainingPence(detail, frame.orderLineId), orderLeft);
+  const status = frame.framing?.task?.status;
+  return { framePence, frameMade: status === "framed" || status === "completed" };
+}
+
+/** The toast after a refund: the total the customer gets, with the frame named when it was taken. */
+export function refundSuccessMessage(amountPence: number, framePence = 0): string {
+  return framePence > 0
+    ? `Refund of ${formatGbp(amountPence + framePence)} requested: ${formatGbp(amountPence)} for the item and ${formatGbp(framePence)} for its frame`
+    : `Refund of ${formatGbp(amountPence)} requested`;
 }
 
 /** Where a frame's own refund stands: none, waiting to be sent, or sent. */
@@ -250,6 +282,7 @@ export function cancelAfterPossessionDescription(
   refundPence: number,
   stock: CancellationStockOutcome,
   framePence = 0,
+  frameMade = false,
 ): string {
   const refunds =
     framePence > 0
@@ -257,7 +290,12 @@ export function cancelAfterPossessionDescription(
           refundPence + framePence,
         )} in all,`
       : `${formatGbp(refundPence)} for this item`;
-  const frameNote = framePence > 0 ? " The frame is not made." : "";
+  const frameNote =
+    framePence > 0
+      ? frameMade
+        ? " The frame has already been made; it is refunded with the print."
+        : " The frame is not made."
+      : "";
   return `Use this when the customer cancels an item they already have. This refunds ${refunds} to the customer's card, and holds the artist's payout for it.${frameNote} ${CANCELLATION_STOCK_COPY[stock]} Do not refund the item again.`;
 }
 

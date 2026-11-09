@@ -30,7 +30,12 @@ export type RequestRefundCommand = {
   operatorContext?: import("../../../application/admin/operator-context.js").ShopOperatorContext;
 };
 
-export type RequestRefundResult = { refundId: string; status: "pending" };
+export type RequestRefundResult = {
+  refundId: string;
+  status: "pending";
+  /** What was refunded for the frame sold with the print, in pence; 0 when the refund took none. */
+  framingRefundPence: number;
+};
 
 export function createRequestRefundHandler(deps: {
   uow: ShopUnitOfWorkFactory;
@@ -193,7 +198,11 @@ export function createRequestRefundHandler(deps: {
               amountPence: command.amountPence,
             },
           });
-          return { refundId: refund.id, status: "pending" as const };
+          return {
+            refundId: refund.id,
+            status: "pending" as const,
+            framingRefundPence: frameRefund?.amountPence ?? 0,
+          };
         },
       }),
     );

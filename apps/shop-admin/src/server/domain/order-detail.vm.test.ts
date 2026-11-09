@@ -6,6 +6,7 @@ import {
   cancelAfterPossessionDescription,
   cancelledLineBadge,
   failedRefunds,
+  frameRefundWithPrint,
   framedPrintLabel,
   framesHoldingDispatch,
   framingCanMove,
@@ -21,6 +22,7 @@ import {
   productionCandidateLines,
   refundFailureMessage,
   refundRowContext,
+  refundSuccessMessage,
   refundTargetOptions,
   refundableRemainingPence,
   settledOutsideNote,
@@ -575,5 +577,74 @@ describe("a framed print", () => {
     expect(refundRowContext(row, frameLine(detail), "Marylebone at dusk, edition 12")).toContain(
       "Framing: Natural oak frame for Marylebone at dusk, edition 12",
     );
+  });
+
+  it("states what refunding a print in full also sends: its frame, capped as the server caps it", () => {
+    const detail = framed();
+    const print = detail.lines.find((candidate) => candidate.orderLineId === LINE_A);
+    if (!print) throw new Error("fixture has a print");
+    expect(frameRefundWithPrint(detail, print, 60_000)).toEqual({
+      framePence: 21_000,
+      frameMade: false,
+    });
+    // A part refund of the print takes no frame.
+    expect(frameRefundWithPrint(detail, print, 10_000)).toEqual({
+      framePence: 0,
+      frameMade: false,
+    });
+  });
+
+  it("never states more for the frame than is left on the whole order", () => {
+    const detail = framed({
+      // 70.00 of the 1,210.00 order is already refunded elsewhere; the print line is 600.00.
+      totalPence: 80_000,
+      refunds: [
+        {
+          refundId: "r7",
+          orderLineId: null,
+          amountPence: 10_000,
+          status: "succeeded",
+          source: "admin",
+          createdAt: "2026-10-15T00:00:00Z",
+        },
+      ],
+    });
+    const print = detail.lines.find((candidate) => candidate.orderLineId === LINE_A);
+    if (!print) throw new Error("fixture has a print");
+    const remaining = 60_000;
+    const withFrame = frameRefundWithPrint(detail, print, remaining);
+    // 80,000 total less 10,000 refunded less the 60,000 print refund leaves 10,000 for the frame.
+    expect(withFrame.framePence).toBe(10_000);
+  });
+
+  it("knows a frame that has already been made", () => {
+    const base = framed();
+    const detail = {
+      ...base,
+      lines: base.lines.map((line) =>
+        line.orderLineId === FRAME && line.framing?.task
+          ? {
+              ...line,
+              framing: {
+                ...line.framing,
+                task: { ...line.framing.task, status: "completed" as const },
+              },
+            }
+          : line,
+      ),
+    };
+    const print = detail.lines.find((candidate) => candidate.orderLineId === LINE_A);
+    if (!print) throw new Error("fixture has a print");
+    expect(frameRefundWithPrint(detail, print, 60_000).frameMade).toBe(true);
+    expect(cancelAfterPossessionDescription(60_000, "await_return", 21_000, true)).toContain(
+      "The frame has already been made",
+    );
+  });
+
+  it("names the frame in the refund toast, with the total the customer gets", () => {
+    expect(refundSuccessMessage(30_000, 21_000)).toBe(
+      "Refund of £510.00 requested: £300.00 for the item and £210.00 for its frame",
+    );
+    expect(refundSuccessMessage(30_000)).toBe("Refund of £300.00 requested");
   });
 });

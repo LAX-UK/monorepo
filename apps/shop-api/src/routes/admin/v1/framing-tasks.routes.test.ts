@@ -113,6 +113,24 @@ describe("admin framing task route", () => {
     },
   );
 
+  it("lets production staff read the frames due", async () => {
+    const { app } = await buildApp("operations");
+    const response = await app.inject({ method: "GET", url: "/admin/v1/framing-tasks", headers });
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({ items: [] });
+    await app.close();
+  });
+
+  it.each(["read_only", "catalogue_editor", "finance"] as const)(
+    "refuses %s the list of frames due",
+    async (role) => {
+      const { app } = await buildApp(role);
+      const response = await app.inject({ method: "GET", url: "/admin/v1/framing-tasks", headers });
+      expect(response.statusCode).toBe(403);
+      await app.close();
+    },
+  );
+
   it("refuses a status that is not a framing step", async () => {
     const { app } = await buildApp("operations");
     const response = await app.inject({

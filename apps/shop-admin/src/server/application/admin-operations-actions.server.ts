@@ -75,7 +75,7 @@ export async function cancelOrderAfterPossession(input: {
   editionId: string;
   idempotencyKey?: string;
 }) {
-  return forwardAdminJsonMutation<{ id: string; status: string }>({
+  return forwardAdminJsonMutation<{ id: string; status: string; framingRefundPence?: number }>({
     bffPath: "cancellations",
     method: "POST",
     jsonBody: { orderLineId: input.orderLineId, editionId: input.editionId },
@@ -91,7 +91,7 @@ export async function requestOrderRefund(input: {
   note?: string;
   idempotencyKey?: string;
 }) {
-  return forwardAdminJsonMutation<{ id: string; status: string }>({
+  return forwardAdminJsonMutation<{ id: string; status: string; framingRefundPence?: number }>({
     bffPath: "refunds",
     method: "POST",
     jsonBody: {

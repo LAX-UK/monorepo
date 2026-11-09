@@ -21,6 +21,7 @@ import { publicArtworkVisible } from "./artwork-visibility-sql.js";
 import { createDrizzleEditionFramingReader } from "./framing/drizzle-edition-framing.store.js";
 import {
   assertBasketStock,
+  clearFramingFromBasket,
   ensureOpenBasket,
   loadBasketRecord,
   ownerWhere,
@@ -48,6 +49,10 @@ export function createDrizzleBasketRepository(
         .where(ownerWhere(owner))
         .limit(1);
       if (!row[0]) return null;
+      // Framing switched off with frames still in a basket: they are taken out as the shopper
+      // opens it, so what they see and check out matches what is on sale. (The checkout loader
+      // only reads and refuses; it never changes a basket.)
+      if (!options.framingEnabled) await clearFramingFromBasket(db, row[0].id);
       return loadBasketRecord(db, row[0].id);
     },
 

@@ -9,9 +9,10 @@ import {
   shopProductVariant,
 } from "@auction/db/schema";
 import { SHOP_API_ERROR_CODES } from "@auction/shop-contracts";
-import { and, eq, isNull, sql } from "drizzle-orm";
+import { and, eq, isNotNull, isNull, sql } from "drizzle-orm";
 import { basketEditions } from "../application/edition-runs/basket-edition.js";
 import { presentBasketFraming } from "../application/framing/edition-framing.view.js";
+import { framingPriceDrift } from "../application/framing/framing-order-guard.js";
 import type { BasketOwner, BasketRecord } from "../application/ports/commerce.ports.js";
 import { ShopApiError } from "../errors/shop-api-error.js";
 import { isPgUniqueViolation } from "../lib/pg-errors.js";
@@ -49,18 +50,22 @@ export function assertStorefrontRedirectUrl(url: string, storefrontUrl: string):
  */
 export async function reconcileFramingPrices(db: Database, basketId: string): Promise<boolean> {
   const basket = await loadBasketRecord(db, basketId);
-  let changed = false;
-  for (const line of basket.lines) {
-    if (!line.framingOptionId || !line.framing?.available) continue;
-    const live = line.framing.pricePence;
-    if (line.framingPricePence === live) continue;
+  const { stamps, moved } = framingPriceDrift(basket.lines);
+  for (const stamp of stamps) {
     await db
       .update(shopBasketLine)
-      .set({ framingPricePence: live, updatedAt: new Date() })
-      .where(eq(shopBasketLine.id, line.lineId));
-    if (line.framingPricePence != null) changed = true;
+      .set({ framingPricePence: stamp.pricePence, updatedAt: new Date() })
+      .where(eq(shopBasketLine.id, stamp.lineId));
   }
-  return changed;
+  return moved;
+}
+
+/** Takes every frame out of a basket (framing is switched off): the shopper reads it unframed. */
+export async function clearFramingFromBasket(db: Database, basketId: string): Promise<void> {
+  await db
+    .update(shopBasketLine)
+    .set({ framingOptionId: null, framingPricePence: null, updatedAt: new Date() })
+    .where(and(eq(shopBasketLine.basketId, basketId), isNotNull(shopBasketLine.framingOptionId)));
 }
 
 export async function repriceBasketLinesIfNeeded(db: Database, basketId: string): Promise<boolean> {

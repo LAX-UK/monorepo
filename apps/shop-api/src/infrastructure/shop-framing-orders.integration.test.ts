@@ -1,5 +1,7 @@
 import type { Database } from "@auction/db";
 import {
+  shopAdminAudit,
+  shopBasket,
   shopBasketLine,
   shopEdition,
   shopFramingOption,
@@ -33,6 +35,7 @@ import {
   hasShopIntegrationDb,
   setupShopIntegrationPools,
 } from "../test-support/shop-integration-setup.js";
+import { createDrizzleBasketRepository } from "./drizzle-basket.repository.js";
 import { createDrizzleProductionTaskRepository } from "./drizzle-production-task.repository.js";
 import { createDrizzleShopUnitOfWork } from "./drizzle-shop-transaction-effects.js";
 import { createCancelAfterPossessionHandler } from "./handlers/admin/cancel-after-possession.handler.js";
@@ -42,6 +45,7 @@ import { createUpdateFramingTaskHandler } from "./handlers/admin/update-framing-
 import { createUpdateFulfilmentHandler } from "./handlers/admin/update-fulfilment.handler.js";
 import { applyPayoutEffectsForRefund, recomputeOrderRefundStatus } from "./refund-settlement.js";
 import { listArtistSalesForArtworkIds } from "./shop-artist-sales-query.js";
+import { ensureOpenBasket } from "./shop-basket.persistence.js";
 import { reserveEditionsForCheckoutOrder } from "./shop-checkout-reservation.js";
 import { createShopDomainEventPublisher } from "./shop-domain-event-publisher.js";
 import { restoreBasketLinesFromOrder } from "./shop-restore-basket-from-order.js";
@@ -306,13 +310,14 @@ describe.skipIf(!hasShopIntegrationDb)("framing in orders integration", () => {
     it("refunding the print in full refunds its frame too, and cancels the task", async () => {
       const order = await paidFramedOrder("print-cascade");
       await giveTheArtistAPayout(order);
-      await requestRefund()({
+      const result = await requestRefund()({
         orderId: order.orderId,
         orderLineId: order.print.id,
         amountPence: PRINT_PENCE,
         actorSubjectId: actor,
         idempotencyKey: `refund-${order.suffix}`,
       });
+      expect(result.framingRefundPence).toBe(FRAME_PENCE);
       const refunds = await db
         .select()
         .from(shopRefund)
@@ -416,6 +421,27 @@ describe.skipIf(!hasShopIntegrationDb)("framing in orders integration", () => {
       expect(await payoutRows(order.print.id)).toMatchObject([
         { status: "cancelled", blockedReason: "refund" },
       ]);
+    });
+  });
+
+  describe("a refund reported from outside LAX", () => {
+    it("cancels the frame's task and records that in the audit", async () => {
+      const order = await paidFramedOrder("external-refund");
+      await succeed(order.orderId, FRAME_PENCE, order.frame.id);
+      const task = await taskOf(order.frame.id);
+      expect(task.status).toBe("cancelled");
+      expect(task.version).toBe(2);
+      const audit = await db
+        .select()
+        .from(shopAdminAudit)
+        .where(
+          and(
+            eq(shopAdminAudit.targetId, task.id),
+            eq(shopAdminAudit.action, "cancel_framing_task"),
+          ),
+        );
+      expect(audit).toHaveLength(1);
+      expect(audit[0]?.actorSubjectId).toBe("system:refund-settlement");
     });
   });
 
@@ -666,6 +692,78 @@ describe.skipIf(!hasShopIntegrationDb)("framing in orders integration", () => {
           ),
         );
       expect(restored.length).toBeGreaterThanOrEqual(1);
+    });
+  });
+
+  describe("baskets with a frame", () => {
+    const basketRepo = (framingEnabled: boolean) =>
+      createDrizzleBasketRepository(db, { merchandiseEnabled: false, framingEnabled });
+
+    async function framedBasketLine(label: string, price: number | null) {
+      const suffix = integrationSuffix(label);
+      const imported = await importTestArtwork(db, label, { printPricePence: PRINT_PENCE });
+      await grantLaxSaleAuthority(db, imported.artworkId, 1);
+      const optionId = await framingOption();
+      const owner = { kind: "subject" as const, identitySubjectId: `subject-${suffix}` };
+      const basketId = await ensureOpenBasket(db, owner);
+      await db.insert(shopBasketLine).values({
+        basketId,
+        artworkId: imported.artworkId,
+        unitPricePence: PRINT_PENCE,
+        quantity: 1,
+        framingOptionId: optionId,
+        framingPricePence: price,
+      });
+      return { owner, basketId, optionId, artworkId: imported.artworkId, suffix };
+    }
+
+    it("takes frames out of a basket as it is read while framing is switched off", async () => {
+      const basket = await framedBasketLine("framing-off", FRAME_PENCE);
+      const record = await basketRepo(false).getBasket(basket.owner);
+      expect(record?.lines[0]?.framingOptionId ?? null).toBeNull();
+      const [line] = await db
+        .select()
+        .from(shopBasketLine)
+        .where(eq(shopBasketLine.basketId, basket.basketId));
+      expect(line?.framingOptionId).toBeNull();
+      expect(line?.framingPricePence).toBeNull();
+    });
+
+    it("keeps the frame choice and its shown price when a guest basket is merged in", async () => {
+      const suffix = integrationSuffix("merge-framing");
+      const imported = await importTestArtwork(db, "merge-framing", {
+        printPricePence: PRINT_PENCE,
+      });
+      await grantLaxSaleAuthority(db, imported.artworkId, 1);
+      const optionId = await framingOption();
+      const subject = { kind: "subject" as const, identitySubjectId: `subject-${suffix}` };
+      const guest = { kind: "anonymous" as const, tokenHash: `guest-${suffix}` };
+      const subjectBasket = await ensureOpenBasket(db, subject);
+      const guestBasket = await ensureOpenBasket(db, guest);
+      // The signed-in basket holds the print with no frame; the guest basket framed it.
+      await db.insert(shopBasketLine).values({
+        basketId: subjectBasket,
+        artworkId: imported.artworkId,
+        unitPricePence: PRINT_PENCE,
+        quantity: 1,
+      });
+      await db.insert(shopBasketLine).values({
+        basketId: guestBasket,
+        artworkId: imported.artworkId,
+        unitPricePence: PRINT_PENCE,
+        quantity: 1,
+        framingOptionId: optionId,
+        framingPricePence: FRAME_PENCE,
+      });
+      await basketRepo(true).mergeBaskets({ from: guest, to: subject });
+      const [merged] = await db
+        .select()
+        .from(shopBasketLine)
+        .where(eq(shopBasketLine.basketId, subjectBasket));
+      expect(merged?.framingOptionId).toBe(optionId);
+      expect(merged?.framingPricePence).toBe(FRAME_PENCE);
+      const [guestRow] = await db.select().from(shopBasket).where(eq(shopBasket.id, guestBasket));
+      expect(guestRow?.retiredAt).not.toBeNull();
     });
   });
 });

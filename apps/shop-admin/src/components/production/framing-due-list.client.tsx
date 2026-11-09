@@ -4,7 +4,7 @@ import { FramingStepButton } from "@/components/orders/order-actions.client";
 import { framingDueLabel, presentFramingTaskStatus } from "@/server/domain/order-detail.vm";
 import { orderNumber } from "@/server/domain/order-list.vm";
 import type { AdminFramingDueItem } from "@auction/shop-contracts";
-import { Section, StatusBadge } from "@auction/staff-ui";
+import { Notice, Section, StatusBadge } from "@auction/staff-ui";
 import Link from "next/link";
 
 /** "Tide line, no. 7": the print a frame goes with. */
@@ -18,7 +18,21 @@ function printLabel(item: AdminFramingDueItem): string {
  * The frames still to make, soonest due first: what each is (as sold), the print it goes with, the
  * order, when it is due and the step that moves it on. One place to see what to frame and when.
  */
-export function FramingDueList({ items }: { items: readonly AdminFramingDueItem[] }) {
+export function FramingDueList({
+  items,
+  failed = false,
+}: {
+  items: readonly AdminFramingDueItem[];
+  /** The list could not be loaded; say so rather than show nothing as if no frames were due. */
+  failed?: boolean;
+}) {
+  if (failed) {
+    return (
+      <Notice tone="danger" alert title="Frames due could not be loaded">
+        The frames still to make are not shown. Reload the page to try again.
+      </Notice>
+    );
+  }
   if (items.length === 0) return null;
   return (
     <Section

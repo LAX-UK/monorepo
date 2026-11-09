@@ -7,6 +7,7 @@ import {
   shopRefund,
 } from "@auction/db/schema";
 import { and, eq, inArray, sql } from "drizzle-orm";
+import { insertShopAdminAudit } from "./shop-admin-audit.js";
 
 /*
  * What a refund that has really reached the customer does to the order and the artist's payout.
@@ -14,6 +15,9 @@ import { and, eq, inArray, sql } from "drizzle-orm";
  * the two can never disagree. A refund never changes the edition's stock: only a returned item
  * going back on sale does that.
  */
+
+/** Who the audit names when a refund the payment provider reports cancels a frame's task. */
+const SETTLEMENT_ACTOR = "system:refund-settlement";
 
 /**
  * Splits order-level succeeded refunds across lines by weight, in proportion to each line's
@@ -140,7 +144,7 @@ export async function applyPayoutEffectsForRefund(
     )
     .map((line) => line.id);
   if (refundedFrameLineIds.length > 0) {
-    await tx
+    const cancelled = await tx
       .update(shopFramingTask)
       .set({
         status: "cancelled",
@@ -152,7 +156,18 @@ export async function applyPayoutEffectsForRefund(
           inArray(shopFramingTask.orderLineId, refundedFrameLineIds),
           inArray(shopFramingTask.status, ["queued", "framing", "framed"]),
         ),
-      );
+      )
+      .returning({ id: shopFramingTask.id });
+    for (const task of cancelled) {
+      await insertShopAdminAudit(tx, {
+        actorSubjectId: SETTLEMENT_ACTOR,
+        capability: "refund.write",
+        action: "cancel_framing_task",
+        targetType: "shop_framing_task",
+        targetId: task.id,
+        afterJson: { status: "cancelled", reason: "refund_settled" },
+      });
+    }
   }
 
   for (const line of lines) {

@@ -104,7 +104,7 @@ describe("loadCheckoutBasket", () => {
     expect(loadBasketRecord).toHaveBeenCalledTimes(2);
   });
 
-  it("takes frames out of the basket and says so while framing is switched off", async () => {
+  it("refuses a framed basket while framing is switched off, without changing it", async () => {
     await expect(
       loadCheckoutBasket(
         emptyDb(),
@@ -113,7 +113,7 @@ describe("loadCheckoutBasket", () => {
       ),
     ).rejects.toMatchObject({
       statusCode: 409,
-      message: expect.stringContaining("frames were removed from your basket"),
+      message: expect.stringContaining("Framing is no longer available"),
     });
   });
 

@@ -51,7 +51,13 @@ export default async function ShopAdminProductionPage({
       loadFailed={tasks.status === "failed" || assignees.status !== "ok"}
       assignees={assignees.status === "ok" ? assignees.data.items : []}
       currentSubject={session.data.subject}
-      framing={framing.status === "ok" ? <FramingDueList items={framing.data.items} /> : null}
+      framing={
+        framing.status === "ok" ? (
+          <FramingDueList items={framing.data.items} />
+        ) : framing.status === "failed" ? (
+          <FramingDueList items={[]} failed />
+        ) : null
+      }
     />
   );
 }

@@ -666,6 +666,7 @@ export function createMinimalShopApiTestDeps(
       }),
       requestRefund: async () => ({
         refundId: "00000000-0000-4000-8000-000000000012",
+        framingRefundPence: 0,
         status: "pending" as const,
       }),
       retryRefund: async () => ({

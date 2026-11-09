@@ -9,6 +9,7 @@ import {
 import {
   assertFramingOrderable,
   framingOrderProblem,
+  framingPriceDrift,
   framingSubtotalPence,
 } from "./framing-order-guard.js";
 
@@ -124,5 +125,38 @@ describe("framingSubtotalPence", () => {
       2 * 21000 + 19500,
     );
     expect(framingSubtotalPence([plain])).toBe(0);
+  });
+});
+
+describe("framingPriceDrift", () => {
+  const line = (framingPricePence: number | null, live = 21000, available = true) => ({
+    lineId: "line-1",
+    framingOptionId: OAK,
+    framingPricePence,
+    framing: framing({ pricePence: live, available }),
+  });
+
+  it("reports a stamped frame whose price has moved, and brings it to today's price", () => {
+    expect(framingPriceDrift([line(19500)])).toEqual({
+      stamps: [{ lineId: "line-1", pricePence: 21000 }],
+      moved: true,
+    });
+  });
+
+  it("stamps a frame with no stamp yet without calling it a change", () => {
+    expect(framingPriceDrift([line(null)])).toEqual({
+      stamps: [{ lineId: "line-1", pricePence: 21000 }],
+      moved: false,
+    });
+  });
+
+  it("leaves an unchanged price, a line with no frame and a frame no longer on offer alone", () => {
+    expect(framingPriceDrift([line(21000)])).toEqual({ stamps: [], moved: false });
+    expect(
+      framingPriceDrift([
+        { lineId: "p", framingOptionId: null, framing: null, framingPricePence: null },
+      ]),
+    ).toEqual({ stamps: [], moved: false });
+    expect(framingPriceDrift([line(19500, 21000, false)])).toEqual({ stamps: [], moved: false });
   });
 });

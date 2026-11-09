@@ -48,6 +48,15 @@ export function createUpdateFramingTaskHandler(deps: { uow: ShopUnitOfWorkFactor
         requestPayload: command,
         run: async () => {
           const db = shopPhaseDbSession(tx);
+          // Every path that touches a frame locks the order, then its line, then the task. The
+          // task is found first without a lock only to learn which order and line to lock.
+          const [peek] = await db
+            .select({ orderLineId: shopFramingTask.orderLineId })
+            .from(shopFramingTask)
+            .where(eq(shopFramingTask.id, command.taskId))
+            .limit(1);
+          if (!peek) throw notFound("Framing task");
+          const frame = await lockFrameLine(db, peek.orderLineId);
           const [task] = await db
             .select()
             .from(shopFramingTask)
@@ -67,7 +76,7 @@ export function createUpdateFramingTaskHandler(deps: { uow: ShopUnitOfWorkFactor
             );
           }
           if (command.status !== "cancelled") {
-            await assertFrameStillSold(db, task.orderLineId);
+            await assertFrameStillSold(db, task.orderLineId, frame);
           }
           if (command.status === "framing") {
             await assertPrintInProduction(db, task.orderLineId);
@@ -130,28 +139,40 @@ async function assertPrintInProduction(
   }
 }
 
-/** The order is paid and nothing has been refunded (or is waiting to be) on the frame's line. */
-async function assertFrameStillSold(
+/** The frame's line and its order, locked in that order: order first, then line. */
+async function lockFrameLine(
   db: ReturnType<typeof shopPhaseDbSession>,
   frameLineId: string,
-): Promise<void> {
+): Promise<{ unitPricePence: number; orderStatus: string }> {
+  const [unlocked] = await db
+    .select({ orderId: shopOrderLine.orderId })
+    .from(shopOrderLine)
+    .where(eq(shopOrderLine.id, frameLineId))
+    .limit(1);
+  if (!unlocked) throw notFound("Order line");
+  const [order] = await db
+    .select({ status: shopOrder.status })
+    .from(shopOrder)
+    .where(eq(shopOrder.id, unlocked.orderId))
+    .for("update")
+    .limit(1);
   const [line] = await db
-    .select({
-      orderId: shopOrderLine.orderId,
-      unitPricePence: shopOrderLine.unitPricePence,
-    })
+    .select({ unitPricePence: shopOrderLine.unitPricePence })
     .from(shopOrderLine)
     .where(eq(shopOrderLine.id, frameLineId))
     .for("update")
     .limit(1);
-  if (!line) throw notFound("Order line");
-  const [order] = await db
-    .select({ status: shopOrder.status })
-    .from(shopOrder)
-    .where(eq(shopOrder.id, line.orderId))
-    .for("update")
-    .limit(1);
-  if (!order || !REFUNDABLE_ORDER_STATUSES.includes(order.status)) {
+  if (!order || !line) throw notFound("Order line");
+  return { unitPricePence: line.unitPricePence, orderStatus: order.status };
+}
+
+/** The order is paid and nothing has been refunded (or is waiting to be) on the frame's line. */
+async function assertFrameStillSold(
+  db: ReturnType<typeof shopPhaseDbSession>,
+  frameLineId: string,
+  frame: { unitPricePence: number; orderStatus: string },
+): Promise<void> {
+  if (!REFUNDABLE_ORDER_STATUSES.includes(frame.orderStatus)) {
     throw new ShopApiError(
       SHOP_API_ERROR_CODES.CONFLICT,
       "This order is not paid, so the frame is not made",
@@ -169,7 +190,7 @@ async function assertFrameStillSold(
       ),
     );
   const refunded = refunds.reduce((sum, refund) => sum + refund.amountPence, 0);
-  if (refunded >= line.unitPricePence && line.unitPricePence > 0) {
+  if (refunded >= frame.unitPricePence && frame.unitPricePence > 0) {
     throw new ShopApiError(
       SHOP_API_ERROR_CODES.CONFLICT,
       "This frame has been refunded, so it is not made",

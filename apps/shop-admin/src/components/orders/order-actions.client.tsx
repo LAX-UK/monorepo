@@ -361,13 +361,14 @@ export function OrderLineMenu({
   cancellation: {
     refundPence: number;
     framePence: number;
+    frameMade: boolean;
     stock: CancellationStockOutcome;
   } | null;
 }) {
   const mutation = useAdminMutation();
   const [confirming, setConfirming] = useState(false);
   if (cancellation === null || !line.editionId) return null;
-  const { refundPence, framePence, stock } = cancellation;
+  const { refundPence, framePence, frameMade, stock } = cancellation;
   const editionId = line.editionId;
   return (
     <>
@@ -389,7 +390,7 @@ export function OrderLineMenu({
         open={confirming}
         onOpenChange={setConfirming}
         title={`Cancel ${orderLineLabel(line)}?`}
-        description={cancelAfterPossessionDescription(refundPence, stock, framePence)}
+        description={cancelAfterPossessionDescription(refundPence, stock, framePence, frameMade)}
         confirmLabel={`Cancel and refund ${formatGbp(refundPence + framePence)}`}
         tone="danger"
         loading={mutation.pending}

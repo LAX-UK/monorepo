@@ -21,7 +21,8 @@ const PROBLEMS = {
   disabled: {
     status: 409,
     code: SHOP_API_ERROR_CODES.BASKET_CONFLICT,
-    message: "Framing is no longer available. Remove the frame from your basket to continue.",
+    message:
+      "Framing is no longer available. Open your basket, where it now shows without framing, and check out from there.",
   },
   unavailable: {
     status: 409,
@@ -83,4 +84,35 @@ export function framingSubtotalPence(lines: readonly FramingOrderLine[]): number
     (sum, line) => (line.framing ? sum + line.framing.pricePence * line.quantity : sum),
     0,
   );
+}
+
+type FramingPriceLine = {
+  lineId: string;
+  framingOptionId?: string | null | undefined;
+  framing?: BasketLineFraming | null | undefined;
+  /** The frame's price the shopper was shown; null until stamped. */
+  framingPricePence?: number | null | undefined;
+};
+
+/**
+ * Compares the frame price each line was shown with today's. A frame not yet stamped takes today's
+ * price without comment (it was just chosen, or the line predates stamping). A stamped frame whose
+ * price has moved is brought to today's and reported as `moved`, so checkout stops and shows the
+ * new price instead of charging one the shopper has not seen. A frame no longer on offer is left to
+ * the framing check.
+ */
+export function framingPriceDrift(lines: readonly FramingPriceLine[]): {
+  stamps: Array<{ lineId: string; pricePence: number }>;
+  moved: boolean;
+} {
+  const stamps: Array<{ lineId: string; pricePence: number }> = [];
+  let moved = false;
+  for (const line of lines) {
+    if (!line.framingOptionId || !line.framing?.available) continue;
+    const live = line.framing.pricePence;
+    if (line.framingPricePence === live) continue;
+    stamps.push({ lineId: line.lineId, pricePence: live });
+    if (line.framingPricePence != null) moved = true;
+  }
+  return { stamps, moved };
 }
