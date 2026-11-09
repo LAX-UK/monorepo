@@ -23,9 +23,14 @@ const REACHED_THROUGH_PAYMENT: ReadonlySet<string> = new Set([
   "partially_refunded",
 ]);
 
-/** Whether the payment was made in the session the order was opened with (or it has none yet). */
+/**
+ * Whether the payment was made in the session the order was opened with. An order still waiting
+ * for payment may have no session yet; an order reached through payment must name the session
+ * that paid it, exactly, or a payment in any other session is a second one.
+ */
 export function isOrdersOwnSession(order: OrderForPayment, sessionId: string): boolean {
-  return !order.stripeCheckoutSessionId || order.stripeCheckoutSessionId === sessionId;
+  if (order.status === "pending_payment" && !order.stripeCheckoutSessionId) return true;
+  return order.stripeCheckoutSessionId === sessionId;
 }
 
 /**

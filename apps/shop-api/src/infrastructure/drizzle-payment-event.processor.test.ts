@@ -239,7 +239,10 @@ describe("completeShopCheckoutSession", () => {
 
     it("records nothing for an order that is still waiting or already paid", async () => {
       vi.spyOn(console, "error").mockImplementation(() => undefined);
-      const db = createDbMock({ claim: true, order: { ...closedOrder, status: "paid" } });
+      const db = createDbMock({
+        claim: true,
+        order: { ...closedOrder, status: "paid", stripeCheckoutSessionId: "cs_test" },
+      });
       await expect(completeShopCheckoutSession(db as never, paid)).resolves.toBe("processed");
       expect(
         db.inserted.some(
@@ -503,6 +506,19 @@ describe("a payment that cannot be applied to its order is tracked, not dropped"
       expect.anything(),
       expect.objectContaining({ detail: expect.stringContaining("The order was closed") }),
     );
+  });
+
+  it("treats a paid order with no session, paid again in a Checkout session, as a second payment", async () => {
+    quiet();
+    const db = createDbMock({
+      claim: true,
+      order: { ...order, status: "paid", stripeCheckoutSessionId: null },
+    });
+    const outcome = await completeShopCheckoutSession(db as never, paid, {
+      unappliedMoney: knownMoney(false),
+    });
+    expect(outcome).toBe("unapplied_recorded");
+    expect(task(db)?.payload).toMatchObject({ reason: "shop_order_paid_twice" });
   });
 
   describe("an order already reached through payment", () => {

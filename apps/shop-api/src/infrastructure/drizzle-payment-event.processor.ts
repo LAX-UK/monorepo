@@ -450,6 +450,10 @@ async function recordUnappliedPayment(
     const verdict = judgePayment(order, input);
     if (verdict.kind === "already_applied") return "processed";
     // A print that was no longer held is found only by applying the payment: keep that finding.
+    // Any other failure that no longer holds means the order changed under us: apply it again.
+    if (verdict.kind === "apply" && attempted !== "edition_state_invalid") {
+      throw new ShopPaymentWebhookError("payment_state_changed", { retryable: true });
+    }
     const failure = verdict.kind === "unapplied" ? verdict.failure : attempted;
     const orderClosed = closesOrder(failure) && order.status === "pending_payment";
     if (orderClosed) await closeOrderForUnappliedPayment(database, order, events);
@@ -551,6 +555,8 @@ async function applyShopPayment(
       .set({
         status: "paid",
         paidAt: input.paidAt,
+        // The session that paid it, so another event for the same payment is recognised later.
+        stripeCheckoutSessionId: input.sessionId,
         buyerPartyId,
         refundPeriodEndsAt: null,
         updatedAt: new Date(),
