@@ -63,6 +63,7 @@ export function createOrganisationCollectionVisitRoutes(
   container: ContainerOrganisationBuyingRoutesSlice,
   authenticator: IAuthenticator,
   requireAccountOnboarding: MiddlewareHandler,
+  limitWrites: MiddlewareHandler,
 ) {
   const requireAuth = createRequireAuth(authenticator, {
     isSuspended: (id) => container.userSuspensionChecker.isSuspended(id),
@@ -94,6 +95,7 @@ export function createOrganisationCollectionVisitRoutes(
     requireAccountOnboarding,
     requireBuyerRole,
     requireContext,
+    limitWrites,
     zValidator("json", bookCollectionBodySchema),
     async (c) => {
       c.header("Cache-Control", "no-store");
@@ -111,6 +113,7 @@ export function createOrganisationCollectionVisitRoutes(
     requireAccountOnboarding,
     requireBuyerRole,
     requireContext,
+    limitWrites,
     zValidator("param", collectionBookingIdParamSchema),
     zValidator("json", changeCollectionBodySchema),
     async (c) => {
@@ -131,6 +134,7 @@ export function createOrganisationCollectionVisitRoutes(
     requireAuth,
     requireBuyerRole,
     requireContext,
+    limitWrites,
     zValidator("param", collectionBookingIdParamSchema),
     zValidator("json", cancelCollectionBodySchema),
     async (c) => {

@@ -31,6 +31,12 @@ const EXEMPT_PATH_PREFIXES = [
   "/sign-in/email",
   "/sign-in/username",
   "/sign-in/phone-number",
+  /**
+   * A passkey sign-in is both factors in one: the device checked the person and holds the key
+   * (SM17), and the session is stamped as two-step. Asking for a code as well would be a second
+   * prompt for something already proved.
+   */
+  "/passkey/verify-authentication",
   "/two-factor",
   "/oauth2",
 ] as const;

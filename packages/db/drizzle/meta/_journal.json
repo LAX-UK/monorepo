@@ -2360,6 +2360,13 @@
       "when": 1804665600000,
       "tag": "0345_shop_order_reaper_deferrals",
       "breakpoints": true
+    },
+    {
+      "idx": 338,
+      "version": "7",
+      "when": 1804752000000,
+      "tag": "0343_collection_visit_cap",
+      "breakpoints": true
     }
   ]
 }

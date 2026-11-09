@@ -1,4 +1,5 @@
 import { createServer } from "node:http";
+import { issuerJwksUrl } from "@auction/identity-contracts";
 import { initNodeSentry } from "@auction/observability";
 import pino from "pino";
 import { Counter, Histogram, Registry, collectDefaultMetrics } from "prom-client";
@@ -120,7 +121,7 @@ io.use(async (socket, next) => {
           : undefined;
     if (authToken) {
       const internalIssuer = env.OIDC_INTERNAL_BASE_URL ?? env.OIDC_ISSUER_URL;
-      const jwksUrl = `${internalIssuer.replace(/\/+$/, "")}/.well-known/jwks.json`;
+      const jwksUrl = issuerJwksUrl(internalIssuer);
       const principal = await verifyWsResourceToken({
         token: authToken,
         issuer: env.OIDC_ISSUER_URL,

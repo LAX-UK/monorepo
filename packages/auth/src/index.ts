@@ -96,6 +96,20 @@ export {
 } from "./hosted-auth/index.js";
 export { isSafeHostedReturnPath, resolveHostedReturnUrl } from "./safe-return-url.js";
 export * from "./contracts.js";
+export {
+  type PasskeyConfig,
+  type PasskeyPorts,
+  PASSKEY_USER_VERIFICATION_REQUIRED,
+  buildPasskeyPlugin,
+  passkeyConfigForIssuer,
+} from "./passkey-plugin.js";
+export { SUGGESTED_PASSKEY_NAME_MAX_LENGTH, suggestPasskeyName } from "./passkey-names.js";
+export {
+  PASSKEY_LIMIT_ERROR_CODE,
+  isPasskeyLimitError,
+  wrapPasskeyLimitAdapter,
+} from "./passkey-limit-adapter.js";
+
 export type { AuthDatabase } from "./phone-number-plugin.js";
 export {
   InvalidPhoneNumberError,
@@ -149,6 +163,7 @@ export {
   stampLastPasswordAuthFromSignInResponse,
   stampMfaCompletedFromResponse,
   stampSocialAuthFromResponse,
+  stampPasskeyAuthFromResponse,
 } from "./stamp-last-password-auth.js";
 export { hasSessionCredential } from "./session-credential.js";
 export {

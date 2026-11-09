@@ -14,6 +14,7 @@ const ready: CollectionLotFacts = {
   openChecks: [],
   organisationStatus: null,
   disputeOpen: false,
+  refunded: false,
   refundOpen: false,
   fulfilment: "none",
   activeBookingId: null,
@@ -79,6 +80,16 @@ describe("collectionEligibility", () => {
       eligible: false,
       reason: "refund_open",
     });
+  });
+
+  it("gives a refunded purchase its own reason and wording, ahead of 'not paid'", () => {
+    expect(collectionEligibility(facts({ refunded: true, paymentCleared: false }))).toEqual({
+      eligible: false,
+      reason: "refunded",
+    });
+    expect(collectionBlockMessage("refunded")).toBe(
+      "This purchase was refunded, so there is nothing to collect.",
+    );
   });
 
   it("refuses a lot that is cancelled, collected, or being delivered", () => {

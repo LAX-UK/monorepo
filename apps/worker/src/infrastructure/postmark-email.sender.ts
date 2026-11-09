@@ -2,6 +2,7 @@ import {
   type IEmailSender,
   type TemplateName,
   type TemplateVarsByName,
+  emailAttachments,
   emailProductFor,
   renderEmail,
 } from "@auction/email";
@@ -58,6 +59,15 @@ export class PostmarkEmailSender implements IEmailSender {
         ...(unsubscribeToken ? { unsubscribe_token: unsubscribeToken } : {}),
       },
     };
+    const attachments = emailAttachments(payload.template, payload.vars);
+    if (attachments.length > 0) {
+      message.Attachments = attachments.map((file) => ({
+        Name: file.name,
+        Content: file.contentBase64,
+        ContentType: file.contentType,
+        ContentID: null,
+      }));
+    }
     if (this.opts.replyTo) message.ReplyTo = this.opts.replyTo;
     // The address a mail client POSTs to for one-click unsubscribe; by default the link in the body.
     const oneClickUrl = stringVar(payload.vars, "listUnsubscribeUrl") ?? unsubscribeUrl;

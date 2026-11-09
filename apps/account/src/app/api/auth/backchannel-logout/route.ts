@@ -1,6 +1,7 @@
 import { getLaxAccountContainer } from "@/server/container";
 import {
   BACKCHANNEL_LOGOUT_MAX_AGE_SECONDS,
+  issuerJwksUrl,
   verifyBackchannelLogoutToken,
 } from "@auction/identity-contracts";
 import { NextResponse } from "next/server";
@@ -19,7 +20,7 @@ export async function POST(request: Request): Promise<Response> {
   const container = getLaxAccountContainer();
   const claims = await verifyBackchannelLogoutToken({
     token,
-    jwksUrl: `${container.config.oidcInternalIssuer}/.well-known/jwks.json`,
+    jwksUrl: issuerJwksUrl(container.config.oidcInternalIssuer),
     issuer: container.config.oidcIssuer,
     audience: container.config.oidcClientId,
   }).catch(() => null);

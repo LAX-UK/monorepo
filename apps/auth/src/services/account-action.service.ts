@@ -9,10 +9,13 @@ import {
 import type { AccountActionTicketStore } from "./account-action-ticket.js";
 import type { SignInMethodsAvailability } from "./account-sign-in-methods.service.js";
 import type { IdentityOperationsService } from "./identity-operations.service.js";
+import type { PasskeyEnrolmentGrants } from "./passkey-enrolment-grant.js";
 import { RecentSessionGuard } from "./recent-session-guard.js";
 
 export type AccountActionPorts = {
   tickets: AccountActionTicketStore;
+  /** Where a spent passkey ticket leaves permission to make the passkey. */
+  grants: Pick<PasskeyEnrolmentGrants, "grant">;
   operations: Pick<IdentityOperationsService, "listSessions" | "readSignInMethods">;
   /**
    * Whether the person is a staff account (a Google or Apple link is never made for staff). A
@@ -110,6 +113,9 @@ export class AccountActionService {
     if (refusal === "already_linked" && isProvider(ticket.action)) {
       return { ok: false, code: "already_done", provider: ticket.action };
     }
+    // The ticket is the proof: this browser, in this session, just confirmed it is the person.
+    if (ticket.action === "passkey")
+      await this.ports.grants.grant(ticket.sessionId, ticket.subjectId);
     return { ok: true, action: ticket.action, subjectId: ticket.subjectId };
   }
 

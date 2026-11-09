@@ -1,7 +1,7 @@
 import { randomBytes } from "node:crypto";
 import {
   ACCOUNT_STEP_UP_MAX_AGE_SECONDS,
-  JWKS_PATH,
+  issuerJwksUrl,
   normalizeIssuerUrl,
 } from "@auction/identity-contracts";
 import { verifyIdentityToken } from "@auction/identity-contracts/verify";
@@ -34,7 +34,7 @@ export async function completeAccountLogin(input: {
     throw new Error("Identity token response incomplete");
   }
   const issuer = normalizeIssuerUrl(input.config.oidcIssuer);
-  const jwksUrl = `${input.config.oidcInternalIssuer.replace(/\/+$/, "")}${JWKS_PATH}`;
+  const jwksUrl = issuerJwksUrl(input.config.oidcInternalIssuer);
   const verified = await verifyIdentityToken({
     token: token.id_token,
     jwksUrl,

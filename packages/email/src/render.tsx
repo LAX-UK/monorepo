@@ -72,6 +72,27 @@ import BuyerDefaultNoticeEmail, {
   subject as buyerDefaultNoticeSubject,
 } from "./templates/buyer-default-notice.js";
 import ChangeEmail, { subject as changeEmailSubject } from "./templates/change-email.js";
+import CollectionBookedEmail, {
+  subject as collectionBookedSubject,
+} from "./templates/collection-booked.js";
+import CollectionCancelledEmail, {
+  subject as collectionCancelledSubject,
+} from "./templates/collection-cancelled.js";
+import CollectionChangedEmail, {
+  subject as collectionChangedSubject,
+} from "./templates/collection-changed.js";
+import CollectionCollectedEmail, {
+  subject as collectionCollectedSubject,
+} from "./templates/collection-collected.js";
+import CollectionCollectorNoticeEmail, {
+  subject as collectionCollectorNoticeSubject,
+} from "./templates/collection-collector-notice.js";
+import CollectionMissedEmail, {
+  subject as collectionMissedSubject,
+} from "./templates/collection-missed.js";
+import CollectionReminderEmail, {
+  subject as collectionReminderSubject,
+} from "./templates/collection-reminder.js";
 import ConsignmentAgreementReminderEmail, {
   subject as consignmentAgreementReminderSubject,
 } from "./templates/consignment-agreement-reminder.js";
@@ -480,6 +501,34 @@ const renderers: { [T in TemplateName]: TemplateRenderer<T> } = {
   "watched-lot-reminder": {
     subject: watchedLotReminderSubject,
     component: (vars) => <WatchedLotReminderEmail {...vars} />,
+  },
+  "collection-booked": {
+    subject: collectionBookedSubject,
+    component: (vars) => <CollectionBookedEmail {...vars} />,
+  },
+  "collection-changed": {
+    subject: collectionChangedSubject,
+    component: (vars) => <CollectionChangedEmail {...vars} />,
+  },
+  "collection-cancelled": {
+    subject: collectionCancelledSubject,
+    component: (vars) => <CollectionCancelledEmail {...vars} />,
+  },
+  "collection-reminder": {
+    subject: collectionReminderSubject,
+    component: (vars) => <CollectionReminderEmail {...vars} />,
+  },
+  "collection-collector-notice": {
+    subject: collectionCollectorNoticeSubject,
+    component: (vars) => <CollectionCollectorNoticeEmail {...vars} />,
+  },
+  "collection-collected": {
+    subject: collectionCollectedSubject,
+    component: (vars) => <CollectionCollectedEmail {...vars} />,
+  },
+  "collection-missed": {
+    subject: collectionMissedSubject,
+    component: (vars) => <CollectionMissedEmail {...vars} />,
   },
   "lot-fulfilment-update": {
     subject: lotFulfilmentUpdateSubject,

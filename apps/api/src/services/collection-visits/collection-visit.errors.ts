@@ -22,6 +22,10 @@ const REFUSALS = {
   lot_without_place: [409, "This lot has no collection place, so it can't be booked online."],
   lot_not_collectable: [422, "One of those lots can't be booked for collection."],
   online_booking_off: [409, "Online booking isn't open yet. Email us and we'll find a time."],
+  too_many_visits: [
+    409,
+    "You already have the most collections we can hold for one account. Cancel one, or get in touch.",
+  ],
   collector_invalid: [422, "Check who is collecting."],
   slot_unknown: [422, "That time isn't offered."],
   notice_passed: [422, "It's too late to book that time online."],

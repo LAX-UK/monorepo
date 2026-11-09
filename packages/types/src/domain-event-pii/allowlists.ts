@@ -544,6 +544,7 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
     "authorised",
     "bookedVia",
     "overCapacity",
+    "noticeDeadline",
   ]),
   "collection.booking.changed": new Set([
     "bookingId",
@@ -559,6 +560,7 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
     "bookedVia",
     "overCapacity",
     "icsSequence",
+    "noticeDeadline",
   ]),
   "collection.booking.cancelled": new Set([
     "bookingId",

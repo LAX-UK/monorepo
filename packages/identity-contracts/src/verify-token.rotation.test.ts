@@ -19,10 +19,10 @@ async function newKey(kid: string) {
 
 type TestKey = Awaited<ReturnType<typeof newKey>>;
 
-function sign(key: TestKey) {
+function sign(key: TestKey, issuedAt?: Date) {
   return new SignJWT({})
     .setProtectedHeader({ alg: "RS256", kid: key.kid })
-    .setIssuedAt()
+    .setIssuedAt(issuedAt)
     .setSubject("user-1")
     .setIssuer(ISSUER)
     .setAudience("lax-bid-api")
@@ -193,6 +193,20 @@ describe("JWKS holder under load and outage", () => {
   });
 });
 
+describe("isSigningKeyCurrent clock margin", () => {
+  it("keeps a token issued within five seconds before the fetch, and drops one issued earlier", async () => {
+    const active = await newKey("active");
+    const other = await newKey("other");
+    published = [active];
+    const justBefore = await sign(other, new Date(START.getTime() - 2_000));
+    expect(await isSigningKeyCurrent({ token: justBefore, jwksUrl })).toBe(true);
+
+    const earlier = await sign(other, new Date(START.getTime() - 10_000));
+    vi.setSystemTime(Date.now() + COOLDOWN_MS + 1);
+    expect(await isSigningKeyCurrent({ token: earlier, jwksUrl })).toBe(false);
+  });
+});
+
 describe("isSigningKeyCurrent with a newer key", () => {
   it("keeps a token signed by a key published after the last fetch, without refetching again", async () => {
     const old = await newKey("old");
@@ -228,7 +242,11 @@ describe("isSigningKeyCurrent", () => {
     published = [active];
     vi.setSystemTime(Date.now() + COOLDOWN_MS + 1);
     expect(await isSigningKeyCurrent({ token, jwksUrl })).toBe(true);
+    // After the refresh interval the old set is still served while a refresh runs behind the
+    // request; the next check sees the new set.
     vi.setSystemTime(Date.now() + REFRESH_MS);
+    expect(await isSigningKeyCurrent({ token, jwksUrl })).toBe(true);
+    await new Promise((resolve) => setTimeout(resolve, 0));
     expect(await isSigningKeyCurrent({ token, jwksUrl })).toBe(false);
   });
 
@@ -236,7 +254,8 @@ describe("isSigningKeyCurrent", () => {
     const retired = await newKey("retired");
     const active = await newKey("active");
     published = [active];
-    const token = await sign(retired);
+    // Issued well before the key set was fetched, so the key cannot be one we have yet to see.
+    const token = await sign(retired, new Date(START.getTime() - 60_000));
 
     for (let i = 0; i < 4; i++) expect(await isSigningKeyCurrent({ token, jwksUrl })).toBe(false);
     expect(fetches).toBe(1);

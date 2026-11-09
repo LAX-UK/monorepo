@@ -18,6 +18,8 @@ export type CollectionRules = {
   closeOnSaleDays: boolean;
   /** Minutes after a hand-over that staff can still undo it (the toast's Undo). */
   undoHandOverMinutes: number;
+  /** Visits one account may have booked at once, so no account can hold the diary. */
+  maxActiveVisits: number;
 };
 
 export const DEFAULT_COLLECTION_RULES: CollectionRules = {
@@ -28,6 +30,7 @@ export const DEFAULT_COLLECTION_RULES: CollectionRules = {
   windowDays: 28,
   closeOnSaleDays: true,
   undoHandOverMinutes: 10,
+  maxActiveVisits: 5,
 };
 
 /** The gallery's hours until staff change them: Monday to Friday, 10:00 to 19:00 (London time). */
@@ -44,6 +47,13 @@ export const DEFAULT_COLLECTION_WEEKLY_HOURS: readonly {
 export const DEFAULT_COLLECTION_HANDOVER_RETENTION_YEARS = 6;
 export const MIN_COLLECTION_HANDOVER_RETENTION_YEARS = 3;
 
+/**
+ * The most collection emails one address can be sent in 24 hours as a named collector (the notice,
+ * and the cancellation that follows it). A buyer types the address, and an address that is not
+ * theirs must not become a place to send mail to by booking and changing over and over.
+ */
+export const COLLECTOR_EMAILS_PER_ADDRESS_PER_DAY = 5;
+
 /** The most lots one booking can hold. */
 export const MAX_LOTS_PER_COLLECTION = 20;
 
@@ -57,6 +67,8 @@ export const MIN_WINDOW_DAYS = 7;
 export const MAX_WINDOW_DAYS = 90;
 export const MIN_UNDO_HAND_OVER_MINUTES = 1;
 export const MAX_UNDO_HAND_OVER_MINUTES = 60;
+export const MIN_ACTIVE_VISITS = 1;
+export const MAX_ACTIVE_VISITS = 20;
 
 export type CollectionRulesIssue =
   | "visit_minutes"
@@ -64,7 +76,8 @@ export type CollectionRulesIssue =
   | "notice_cutoff"
   | "notice_working_days"
   | "window_days"
-  | "undo_hand_over_minutes";
+  | "undo_hand_over_minutes"
+  | "max_active_visits";
 
 const CUTOFF = /^([01]\d|2[0-3]):[0-5]\d$/;
 
@@ -87,6 +100,9 @@ export function collectionRulesIssues(rules: CollectionRules): CollectionRulesIs
   if (!within(rules.windowDays, MIN_WINDOW_DAYS, MAX_WINDOW_DAYS)) issues.push("window_days");
   if (!within(rules.undoHandOverMinutes, MIN_UNDO_HAND_OVER_MINUTES, MAX_UNDO_HAND_OVER_MINUTES)) {
     issues.push("undo_hand_over_minutes");
+  }
+  if (!within(rules.maxActiveVisits, MIN_ACTIVE_VISITS, MAX_ACTIVE_VISITS)) {
+    issues.push("max_active_visits");
   }
   return issues;
 }

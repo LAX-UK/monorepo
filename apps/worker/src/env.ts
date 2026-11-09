@@ -1,4 +1,5 @@
 import { DEV_ALERT_LINK_SECRET, isUsableAlertLinkSecret } from "@auction/alerts";
+import { LAX_PRODUCT_NAMES } from "@auction/branding";
 import {
   DEFAULT_COLLECTION_HANDOVER_RETENTION_YEARS,
   MIN_COLLECTION_HANDOVER_RETENTION_YEARS,
@@ -284,6 +285,18 @@ export const envSchema = z
         .min(MIN_COLLECTION_HANDOVER_RETENTION_YEARS)
         .max(30)
         .default(DEFAULT_COLLECTION_HANDOVER_RETENTION_YEARS),
+    ),
+    /**
+     * The sender of collection calendar invites: mail clients need an organizer to update or remove
+     * the entry. Collection booking is a LAX Bid service, so the name defaults to Bid's.
+     */
+    COLLECTION_ORGANIZER_EMAIL: z.preprocess(
+      emptyToUndefined,
+      z.string().email().default("collections@lax.bid"),
+    ),
+    COLLECTION_ORGANIZER_NAME: z.preprocess(
+      emptyToUndefined,
+      z.string().trim().min(1).max(100).default(LAX_PRODUCT_NAMES.bid),
     ),
     DISABLE_PAYOUT_SETTLEMENT: z
       .preprocess((val) => val === "true" || val === true, z.boolean())

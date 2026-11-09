@@ -4,6 +4,8 @@ import { createAccountSignInMethodsRoutes } from "./account-sign-in-methods.rout
 const READ = "/lax/account-sign-in-methods";
 const UNLINK = "/lax/account-sign-in-methods/unlink";
 const INTENT = "/lax/account-sign-in-methods/intent";
+const PASSKEY_RENAME = "/lax/account-sign-in-methods/passkeys/rename";
+const PASSKEY_REMOVE = "/lax/account-sign-in-methods/passkeys/remove";
 const SUBJECT = "11111111-1111-4111-8111-111111111111";
 
 function basic(clientId: string): string {
@@ -17,6 +19,8 @@ function setup(
     writeRateLimit?: number | null;
     unlink?: unknown;
     start?: unknown;
+    rename?: unknown;
+    removePasskey?: unknown;
   } = {},
 ) {
   const methods = {
@@ -36,6 +40,22 @@ function setup(
     unlink: vi
       .fn()
       .mockResolvedValue(overrides.unlink ?? { ok: true, unlinked: "google", revokedSessions: 2 }),
+    renamePasskey: vi.fn().mockResolvedValue(
+      overrides.rename ?? {
+        ok: true,
+        passkey: {
+          id: "pk-1",
+          name: "Work laptop",
+          synced: true,
+          kind: "platform",
+          createdAt: "2026-10-02T09:00:00.000Z",
+          lastUsedAt: null,
+        },
+      },
+    ),
+    removePasskey: vi
+      .fn()
+      .mockResolvedValue(overrides.removePasskey ?? { ok: true, revokedSessions: 3 }),
   };
   const actions = {
     start: vi
@@ -223,5 +243,72 @@ describe("account sign-in methods routes", () => {
     const response = await call(UNLINK, "token=t&sid=current&provider=google");
     expect(response.status).toBe(503);
     expect(onFailure).toHaveBeenCalled();
+  });
+
+  describe("passkeys", () => {
+    it("renames a passkey for the signed-in person", async () => {
+      const { call, methods } = setup();
+      const response = await call(PASSKEY_RENAME, "token=t&passkeyId=pk-1&name=Work%20laptop");
+      expect(response.status).toBe(200);
+      expect(await response.json()).toMatchObject({ passkey: { id: "pk-1", name: "Work laptop" } });
+      expect(methods.renamePasskey).toHaveBeenCalledWith(SUBJECT, "pk-1", "Work laptop");
+    });
+
+    it("answers 400 for a name that is not allowed, and 404 for a passkey that is not theirs", async () => {
+      const bad = setup({ rename: { ok: false, kind: "invalid_name" } });
+      expect((await bad.call(PASSKEY_RENAME, "token=t&passkeyId=pk-1&name=")).status).toBe(400);
+      const missing = setup({ rename: { ok: false, kind: "not_linked" } });
+      expect((await missing.call(PASSKEY_RENAME, "token=t&passkeyId=pk-9&name=x")).status).toBe(
+        404,
+      );
+      const nothing = setup();
+      expect((await nothing.call(PASSKEY_RENAME, "token=t&name=x")).status).toBe(400);
+    });
+
+    it("removes a passkey for the signed-in person, with their session", async () => {
+      const { call, methods } = setup();
+      const response = await call(PASSKEY_REMOVE, "token=t&sid=current&passkeyId=pk-1");
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual({ removed: true, revokedSessions: 3 });
+      expect(methods.removePasskey).toHaveBeenCalledWith(SUBJECT, "current", "pk-1");
+    });
+
+    it("answers 403 reauth_required without a recent sign-in, 422 for the last method, 404 for another person's passkey", async () => {
+      const stale = setup({ removePasskey: { ok: false, reason: "reauth_required" } });
+      const staleResponse = await stale.call(PASSKEY_REMOVE, "token=t&sid=current&passkeyId=pk-1");
+      expect(staleResponse.status).toBe(403);
+      expect(await staleResponse.json()).toEqual({ error: "reauth_required" });
+      const last = setup({ removePasskey: { ok: false, kind: "last_sign_in_method" } });
+      const lastResponse = await last.call(PASSKEY_REMOVE, "token=t&sid=current&passkeyId=pk-1");
+      expect(lastResponse.status).toBe(422);
+      expect(await lastResponse.json()).toEqual({ error: "last_sign_in_method" });
+      const other = setup({ removePasskey: { ok: false, kind: "not_linked" } });
+      expect((await other.call(PASSKEY_REMOVE, "token=t&sid=current&passkeyId=pk-9")).status).toBe(
+        404,
+      );
+    });
+
+    it("needs the session and the passkey, refuses every client but LAX Account, and is rate limited", async () => {
+      const { call, methods } = setup();
+      expect((await call(PASSKEY_REMOVE, "token=t&passkeyId=pk-1")).status).toBe(400);
+      expect((await call(PASSKEY_REMOVE, "token=t&sid=current")).status).toBe(400);
+      const other = setup({ client: "lax-bid-web" });
+      expect((await other.call(PASSKEY_REMOVE, "token=t&sid=current&passkeyId=pk-1")).status).toBe(
+        403,
+      );
+      const limited = setup({ writeRateLimit: 30 });
+      expect((await limited.call(PASSKEY_RENAME, "token=t&passkeyId=pk-1&name=x")).status).toBe(
+        429,
+      );
+      expect(methods.removePasskey).not.toHaveBeenCalled();
+    });
+
+    it("answers 503 and reports it when the issuer cannot do the change", async () => {
+      const { call, methods, onFailure } = setup();
+      methods.removePasskey.mockRejectedValueOnce(new Error("database down"));
+      const response = await call(PASSKEY_REMOVE, "token=t&sid=current&passkeyId=pk-1");
+      expect(response.status).toBe(503);
+      expect(onFailure).toHaveBeenCalled();
+    });
   });
 });

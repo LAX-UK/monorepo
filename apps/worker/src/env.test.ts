@@ -74,3 +74,20 @@ describe("worker PRIVATE_SALE_RECORD_RETENTION_YEARS", () => {
     expect(parsed.success && parsed.data.PRIVATE_SALE_RECORD_RETENTION_YEARS).toBe(5);
   });
 });
+
+describe("worker collection calendar organizer", () => {
+  const parse = (extra: Record<string, unknown> = {}) =>
+    envSchema.safeParse({ DATABASE_URL: "postgres://localhost/test", ...extra });
+
+  it("defaults to LAX Bid's own name and a Bid address, so nothing has to be set", () => {
+    const parsed = parse();
+    expect(parsed.success && parsed.data.COLLECTION_ORGANIZER_NAME).toBe("LAX Bid");
+    expect(parsed.success && parsed.data.COLLECTION_ORGANIZER_EMAIL).toBe("collections@lax.bid");
+  });
+
+  it("treats a blank value as unset, and refuses an address that is not one", () => {
+    const blank = parse({ COLLECTION_ORGANIZER_EMAIL: "", COLLECTION_ORGANIZER_NAME: "" });
+    expect(blank.success && blank.data.COLLECTION_ORGANIZER_NAME).toBe("LAX Bid");
+    expect(parse({ COLLECTION_ORGANIZER_EMAIL: "not-an-address" }).success).toBe(false);
+  });
+});

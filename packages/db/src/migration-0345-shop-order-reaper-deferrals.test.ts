@@ -22,8 +22,11 @@ describe("migration 0345 shop order reaper deferrals", () => {
     expect(entry?.when).toBe((previous?.when ?? 0) + 24 * 60 * 60 * 1000);
   });
 
-  it("is the last entry, so nothing sits after it", () => {
-    expect(journal.entries.at(-1)?.tag).toBe("0345_shop_order_reaper_deferrals");
+  it("is in the journal, one day after the entry before it", () => {
+    const index = journal.entries.findIndex((e) => e.tag === "0345_shop_order_reaper_deferrals");
+    expect(index).toBeGreaterThan(0);
+    // Later migrations chain after it, so only its own place is checked.
+    expect(journal.entries[index]?.idx).toBe((journal.entries[index - 1]?.idx ?? 0) + 1);
   });
 
   it("only adds one column with a constant default, with a short lock timeout", () => {

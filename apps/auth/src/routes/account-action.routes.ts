@@ -1,5 +1,6 @@
 import {
   ACCOUNT_ACTION_DONE_PATH,
+  ACCOUNT_ACTION_PASSKEY_PATH,
   ACCOUNT_ACTION_PATH,
   ACCOUNT_SIGN_IN_METHOD_RETURN_PARAM,
   type AccountSignInMethodReturn,
@@ -93,7 +94,8 @@ export function createAccountActionRoutes(deps: AccountActionRouteDeps) {
         }
         return back(c, result.code);
       }
-      if (result.action === "passkey") return back(c, "provider_unavailable");
+      // A passkey is made on the issuer's own page, with permission the redeem just gave.
+      if (result.action === "passkey") return c.redirect(ACCOUNT_ACTION_PASSKEY_PATH, 302);
       const { url, cookies } = await deps.startLink(result.action, c.req.raw.headers);
       for (const cookie of cookies) c.header("Set-Cookie", cookie, { append: true });
       return c.redirect(url, 302);

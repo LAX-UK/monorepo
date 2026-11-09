@@ -50,6 +50,14 @@ export function hostedHtmlCsp(turnstileEnabled: boolean, cspNonce?: string): str
   return scriptSrcWithNonce(base, cspNonce);
 }
 
+const API_PERMISSIONS_POLICY = "camera=(), microphone=(), geolocation=()";
+
+/**
+ * Hosted pages may create and use passkeys, and only for themselves: the page can ask for its own
+ * passkeys, and no embedded document can. (The pages also refuse to be framed.)
+ */
+export const HOSTED_HTML_PERMISSIONS_POLICY = `${API_PERMISSIONS_POLICY}, publickey-credentials-create=(self), publickey-credentials-get=(self)`;
+
 /** Baseline security headers for the auth issuer. */
 export function createSecurityHeadersMiddleware(options?: { turnstileEnabled?: boolean }) {
   return createMiddleware(async (c, next) => {
@@ -65,7 +73,10 @@ export function createSecurityHeadersMiddleware(options?: { turnstileEnabled?: b
       isHtml ? hostedHtmlCsp(Boolean(options?.turnstileEnabled), cspNonce) : AUTH_API_CSP,
     );
     c.header("Referrer-Policy", "strict-origin-when-cross-origin");
-    c.header("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+    c.header(
+      "Permissions-Policy",
+      isHtml ? HOSTED_HTML_PERMISSIONS_POLICY : API_PERMISSIONS_POLICY,
+    );
     if (c.req.header("x-forwarded-proto") === "https" || c.req.url.startsWith("https:")) {
       c.header("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload");
     }

@@ -2,6 +2,12 @@ import { type JWTPayload, decodeJwt, decodeProtectedHeader, errors, jwtVerify } 
 import { DEFAULT_JWT_AUDIENCE } from "./claims.js";
 import { jwksFor, jwksHolderFor } from "./jwks-holder.js";
 
+/**
+ * Clock slack between the issuer and this verifier: a key set fetched less than this after a token
+ * was issued may still predate the key that signed it.
+ */
+const IAT_MARGIN_MS = 5_000;
+
 export type VerifiedIdentityToken = {
   payload: JWTPayload;
   subject: string;
@@ -71,6 +77,6 @@ export async function isSigningKeyCurrent(options: {
     if (!(error instanceof errors.JWKSNoMatchingKey)) return true;
     if (holder.hasSeen(header.kid)) return false;
     const fetchedAt = holder.fetchedAt();
-    return !(fetchedAt !== null && issuedAtMs !== null && fetchedAt > issuedAtMs);
+    return !(fetchedAt !== null && issuedAtMs !== null && fetchedAt > issuedAtMs + IAT_MARGIN_MS);
   }
 }

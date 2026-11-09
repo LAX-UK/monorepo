@@ -120,6 +120,18 @@ export interface IIdentityCredentialRepository {
    * `lockSignInAccounts`, in that order, by every writer, so two removals cannot deadlock.
    */
   lockPasskeys(transaction: IdentityOperationTransaction, subjectId: string): Promise<number>;
+  /**
+   * Removes one of the person's passkeys, and says what it was called for the email; null when
+   * the person has no such passkey (another person's passkey is the same answer). Taken after
+   * `lockSignInAccounts` and `lockPasskeys`.
+   */
+  deletePasskey(
+    transaction: IdentityOperationTransaction,
+    subjectId: string,
+    passkeyId: string,
+  ): Promise<{ name: string | null } | null>;
+  /** Names one of the person's passkeys; null when the person has no such passkey. */
+  renamePasskey(subjectId: string, passkeyId: string, name: string): Promise<PasskeyRow | null>;
   /** Removes one linked social account; false when there was none. */
   deleteSocialAccount(
     transaction: IdentityOperationTransaction,

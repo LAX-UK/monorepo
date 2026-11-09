@@ -43,6 +43,7 @@ function setup(
     stampPasswordAuth: vi.fn(async () => undefined),
     stampMfaCompleted: vi.fn(async () => undefined),
     stampSocialAuth: vi.fn(async () => undefined),
+    stampPasskeyAuth: vi.fn(async () => undefined),
   };
   const outbox = new InMemorySecurityEffectOutbox();
   const operations = { removeOtherSessions: vi.fn(async () => ["other"]) };
