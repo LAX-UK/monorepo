@@ -1,5 +1,6 @@
 import type { ConnectionStatus, RealtimeHealthPort } from "@/lib/realtime/contracts";
 import { getSocket } from "@/lib/socket";
+import { browserClockSync } from "@/lib/time/browser-clock-sync.client";
 
 const RTT_EMA_ALPHA = 0.3;
 const DEFAULT_PROBE_MS = 5000;
@@ -83,6 +84,8 @@ function createSocketHealthAdapterImpl(): RealtimeHealthPort {
         if (serverNow != null) {
           const midpointClientWall = clientSentAt + rttMs / 2;
           clientAheadMs = midpointClientWall - serverNow;
+          // The shared countdown clock checks itself against any server time we hear.
+          browserClockSync().observeServerNow(serverNow + rttMs / 2);
         }
 
         setState({

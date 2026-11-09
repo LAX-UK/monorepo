@@ -11,8 +11,16 @@ import {
 import type { ClockStore } from "./clock-store.js";
 import { defaultClockStore } from "./default-clock.js";
 
-/** What a policy's answer must carry for the clock to know when to wake. */
-export type TimedDisplay = { nextChangeInMs?: number };
+/**
+ * A policy's answer. When it carries `nextChangeInMs` the clock wakes the component then; an
+ * answer without one (closed, no time) never changes by itself.
+ */
+export type TimedDisplay = object;
+
+function nextChangeOf(display: TimedDisplay): number | null {
+  const value = (display as { nextChangeInMs?: unknown }).nextChangeInMs;
+  return typeof value === "number" ? value : null;
+}
 
 /** A pure function from the surface and the time left to what to show. */
 export type CountdownPolicy<S extends string, D extends TimedDisplay, C> = (
@@ -85,8 +93,8 @@ export function createCountdownHook<S extends string, D extends TimedDisplay, C 
         if (!inView || !Number.isFinite(targetMs)) return () => undefined;
         return getStore().subscribe({
           nextChangeAt(now) {
-            const next = policy(surface, targetMs - now, ctx);
-            return typeof next.nextChangeInMs === "number" ? now + next.nextChangeInMs : null;
+            const wait = nextChangeOf(policy(surface, targetMs - now, ctx));
+            return wait === null ? null : now + wait;
           },
           notify: onChange,
         });
