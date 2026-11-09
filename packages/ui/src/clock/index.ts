@@ -5,6 +5,7 @@ export {
   createClockSource,
 } from "./clock-source.js";
 export {
+  MAX_SLEEP_MS,
   type ClockStore,
   type ClockSubscriber,
   type TimerPort,

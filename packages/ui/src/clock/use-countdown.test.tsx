@@ -180,3 +180,39 @@ describe("useClockTick", () => {
     expect(vi.getTimerCount()).toBe(0);
   });
 });
+
+describe("useClockTick when the element comes back on screen", () => {
+  it("reads the time afresh so stale text is brought up to date", async () => {
+    const { useClockTick } = await import("./use-countdown.js");
+    let callback: (entries: Partial<IntersectionObserverEntry>[]) => void = () => undefined;
+    vi.stubGlobal(
+      "IntersectionObserver",
+      class {
+        constructor(cb: typeof callback) {
+          callback = cb;
+        }
+        observe() {}
+        disconnect() {}
+      },
+    );
+    const ref = { current: document.createElement("div") };
+    const { result } = renderHook(() =>
+      useClockTick(
+        (now) => 60_000 - (now % 60_000) + 1,
+        { key: "a", inViewRef: ref },
+        () => store,
+      ),
+    );
+    const first = result.current ?? 0;
+    act(() => callback([{ isIntersecting: false }]));
+    act(() => {
+      vi.advanceTimersByTime(5 * 60_000);
+    });
+    expect(result.current).toBe(first);
+    act(() => callback([{ isIntersecting: true }]));
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect((result.current ?? 0) - first).toBeGreaterThanOrEqual(5 * 60_000);
+  });
+});

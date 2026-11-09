@@ -6,7 +6,7 @@ export type SyncedClock = {
   applyMeasurement(serverMs: number, monotonicMs: number): void;
 };
 
-export type SyncTrigger = "start" | "visible" | "interval" | "reconnect" | "live-event";
+export type SyncTrigger = "start" | "visible" | "wake" | "interval" | "reconnect" | "live-event";
 
 export type ServerClockSyncOptions = {
   source: ServerTimeSource;
@@ -45,7 +45,16 @@ export type SyncEnvironment = {
   setInterval(callback: () => void, ms: number): () => void;
   /** Time the tab went hidden is read from here. */
   monotonicNow(): number;
+  /** The device's wall clock, whose gap from the monotonic clock shows the device was asleep. */
+  wallNow(): number;
+  /** The page came back (shown again, restored from the back-forward cache, or online). */
+  onResume(callback: () => void): () => void;
+  /** Whether any countdown is on screen; with none, the periodic resync is skipped. */
+  isNeeded(): boolean;
 };
+
+/** A jump in the wall clock against the monotonic clock larger than this means the device slept. */
+const SLEEP_GAP_MS = 1_000;
 
 /**
  * Measures how far the shared clock is from the Bid API's clock, the one that accepts or rejects a
@@ -108,6 +117,15 @@ export function createServerClockSync(options: ServerClockSyncOptions): ServerCl
     start(env) {
       void sync.resync("start");
       let hiddenAt: number | null = env.isVisible() ? null : env.monotonicNow();
+      // The monotonic clock can pause while the device sleeps; the wall clock does not. When the
+      // two drift apart the device slept, and the clock is behind by that long.
+      let wallMinusMonotonic = env.wallNow() - env.monotonicNow();
+      const sleptSinceLastLook = () => {
+        const now = env.wallNow() - env.monotonicNow();
+        const jumped = Math.abs(now - wallMinusMonotonic) > SLEEP_GAP_MS;
+        wallMinusMonotonic = now;
+        return jumped;
+      };
       const stopVisibility = env.onVisibilityChange(() => {
         if (!env.isVisible()) {
           hiddenAt = env.monotonicNow();
@@ -115,13 +133,21 @@ export function createServerClockSync(options: ServerClockSyncOptions): ServerCl
         }
         const wasHiddenFor = hiddenAt === null ? 0 : env.monotonicNow() - hiddenAt;
         hiddenAt = null;
-        if (wasHiddenFor > hiddenResyncAfterMs) void sync.resync("visible");
+        if (sleptSinceLastLook() || wasHiddenFor > hiddenResyncAfterMs) {
+          void sync.resync("visible");
+        }
+      });
+      const stopResume = env.onResume(() => {
+        if (sleptSinceLastLook()) void sync.resync("wake");
       });
       const stopInterval = env.setInterval(() => {
-        if (env.isVisible()) void sync.resync("interval");
+        if (!env.isVisible()) return;
+        sleptSinceLastLook();
+        if (env.isNeeded()) void sync.resync("interval");
       }, resyncIntervalMs);
       return () => {
         stopVisibility();
+        stopResume();
         stopInterval();
       };
     },

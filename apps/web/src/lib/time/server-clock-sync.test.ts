@@ -132,7 +132,16 @@ describe("start", () => {
     let intervalCallback: () => void = () => undefined;
     let intervalMs = 0;
     let mono = 0;
+    let wallExtra = 0;
+    let needed = true;
+    let resumeCallback: () => void = () => undefined;
     const env: SyncEnvironment = {
+      wallNow: () => 1_000_000 + mono + wallExtra,
+      onResume(cb) {
+        resumeCallback = cb;
+        return () => undefined;
+      },
+      isNeeded: () => needed,
       isVisible: () => visible,
       onVisibilityChange(cb) {
         visibilityCallback = cb;
@@ -155,6 +164,14 @@ describe("start", () => {
       intervalMs: () => intervalMs,
       advance(ms: number) {
         mono += ms;
+      },
+      /** The device sleeps: the wall clock moves on while the monotonic clock does not. */
+      sleep(ms: number) {
+        wallExtra += ms;
+      },
+      resume: () => resumeCallback(),
+      setNeeded(value: boolean) {
+        needed = value;
       },
     };
   }
@@ -188,6 +205,35 @@ describe("start", () => {
     e.setVisible(false);
     e.advance(61_000);
     e.setVisible(true);
+    await vi.waitFor(() => expect(t.applied).toHaveLength(2));
+  });
+
+  it("resyncs after the device sleeps, even though the monotonic clock did not move", async () => {
+    const t = setup([{ serverMs: 50_000, roundTripMs: 10 }]);
+    const e = environment();
+    t.sync.start(e.env);
+    await vi.waitFor(() => expect(t.applied).toHaveLength(1));
+
+    e.resume();
+    await Promise.resolve();
+    expect(t.applied).toHaveLength(1);
+
+    e.sleep(2 * 60 * 60_000);
+    e.resume();
+    await vi.waitFor(() => expect(t.applied).toHaveLength(2));
+  });
+
+  it("skips the ten-minute resync when no countdown is on screen", async () => {
+    const t = setup([{ serverMs: 50_000, roundTripMs: 10 }]);
+    const e = environment();
+    t.sync.start(e.env);
+    await vi.waitFor(() => expect(t.applied).toHaveLength(1));
+    e.setNeeded(false);
+    e.tick();
+    await Promise.resolve();
+    expect(t.applied).toHaveLength(1);
+    e.setNeeded(true);
+    e.tick();
     await vi.waitFor(() => expect(t.applied).toHaveLength(2));
   });
 });

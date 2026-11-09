@@ -1,12 +1,19 @@
 /** Smallest correction worth applying; anything under this is ignored so the clock never visibly steps. */
 export const CLOCK_CORRECTION_THRESHOLD_MS = 250;
 
+/**
+ * A correction that moves the clock back by up to this much holds it still until the server
+ * catches up, so a countdown never counts up. A larger one steps the clock back once: a clock
+ * that stalls for minutes is worse than one that skips.
+ */
+export const CLOCK_HOLD_BACK_LIMIT_MS = 2_000;
+
 export type ClockSource = {
   /** The server's time in milliseconds as best we know it. Never goes backwards. */
   now(): number;
   /**
    * Starts the clock from a server reading taken at page render. Used until the first
-   * measurement lands; ignored afterwards.
+   * measurement lands (a new reading replaces an older one); ignored afterwards.
    */
   seedProvisional(serverMs: number): void;
   /**
@@ -39,7 +46,7 @@ export function createClockSource(readers: ClockReaders = browserReaders): Clock
   // serverTime = monotonic + anchor
   let anchor = readers.wallNow() - readers.monotonicNow();
   let measured = false;
-  let seeded = false;
+  let lastSeedMs: number | null = null;
   let last = Number.NEGATIVE_INFINITY;
 
   const read = () => {
@@ -52,9 +59,13 @@ export function createClockSource(readers: ClockReaders = browserReaders): Clock
   return {
     now: read,
     seedProvisional(serverMs) {
-      if (measured || seeded || !Number.isFinite(serverMs)) return;
-      seeded = true;
-      anchor = serverMs - readers.monotonicNow();
+      // A reading already used, or any reading once measured, changes nothing.
+      if (measured || !Number.isFinite(serverMs) || serverMs === lastSeedMs) return;
+      lastSeedMs = serverMs;
+      const nextAnchor = serverMs - readers.monotonicNow();
+      if (readers.monotonicNow() + nextAnchor < last - CLOCK_HOLD_BACK_LIMIT_MS)
+        last = Number.NEGATIVE_INFINITY;
+      anchor = nextAnchor;
     },
     applyMeasurement(serverMs, monotonicMs) {
       if (!Number.isFinite(serverMs) || !Number.isFinite(monotonicMs)) return;
@@ -63,6 +74,8 @@ export function createClockSource(readers: ClockReaders = browserReaders): Clock
       measured = true;
       if (Math.abs(correction) < CLOCK_CORRECTION_THRESHOLD_MS) return;
       anchor = nextAnchor;
+      // A big step back is taken at once; a small one is held (see CLOCK_HOLD_BACK_LIMIT_MS).
+      if (correction < -CLOCK_HOLD_BACK_LIMIT_MS) last = Number.NEGATIVE_INFINITY;
     },
     isMeasured: () => measured,
   };

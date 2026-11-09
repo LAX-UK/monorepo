@@ -19,7 +19,16 @@ export type VisibilityPort = {
   onChange(callback: () => void): () => void;
 };
 
+/**
+ * The longest one sleep lasts. Timers longer than about 24.8 days overflow and fire at once, and
+ * the operating system can pause timers while the device sleeps, so the clock wakes at least this
+ * often and works out again what is due.
+ */
+export const MAX_SLEEP_MS = 60 * 60 * 1000;
+
 export type ClockStore = {
+  /** How many countdowns are listening right now. */
+  subscriberCount(): number;
   /** The server-aligned time in milliseconds. */
   now(): number;
   subscribe(subscriber: ClockSubscriber): () => void;
@@ -78,7 +87,7 @@ export function createClockStore(options: {
     }
     if (!Number.isFinite(soonest)) return;
     wakeAt = soonest;
-    handle = timers.set(wake, Math.max(1, soonest - now));
+    handle = timers.set(wake, Math.min(MAX_SLEEP_MS, Math.max(1, soonest - now)));
   }
 
   function wake() {
@@ -104,6 +113,7 @@ export function createClockStore(options: {
   return {
     source,
     now: () => source.now(),
+    subscriberCount: () => due.size,
     subscribe(subscriber) {
       if (due.size === 0) stopVisibility = visibility.onChange(onVisibilityChange);
       due.set(subscriber, Number.POSITIVE_INFINITY);
@@ -114,11 +124,15 @@ export function createClockStore(options: {
         if (at !== null && at < wakeAt) schedule();
       }
       return () => {
+        const removedAt = due.get(subscriber);
         due.delete(subscriber);
         if (due.size === 0) {
           clearTimer();
           stopVisibility?.();
           stopVisibility = null;
+        } else if (removedAt !== undefined && removedAt <= wakeAt) {
+          // The one that set the sleep is gone: sleep until the next soonest instead.
+          schedule();
         }
       };
     },

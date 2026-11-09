@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { CLOCK_CORRECTION_THRESHOLD_MS, createClockSource } from "./clock-source.js";
+import {
+  CLOCK_CORRECTION_THRESHOLD_MS,
+  CLOCK_HOLD_BACK_LIMIT_MS,
+  createClockSource,
+} from "./clock-source.js";
 
 function readers(wall: number, mono: number) {
   const state = { wall, mono };
@@ -47,17 +51,42 @@ describe("createClockSource", () => {
     expect(source.now()).toBe(1_003_000);
   });
 
-  it("never goes backwards: a correction behind holds the clock until time catches up", () => {
+  it("never goes backwards: a small correction behind holds the clock until time catches up", () => {
     const r = readers(1_000_000, 0);
     const source = createClockSource(r);
     r.state.mono = 10_000;
     expect(source.now()).toBe(1_010_000);
-    // the device was 4 s ahead of the server
-    source.applyMeasurement(1_006_000, 10_000);
+    // the device was 1.5 s ahead of the server
+    source.applyMeasurement(1_008_500, 10_000);
+    expect(source.now()).toBe(1_010_000);
+    r.state.mono = 10_500;
     expect(source.now()).toBe(1_010_000);
     r.state.mono = 12_000;
-    expect(source.now()).toBe(1_010_000);
-    r.state.mono = 14_500;
     expect(source.now()).toBe(1_010_500);
+  });
+
+  it("a large correction behind steps the clock back at once instead of stalling it", () => {
+    const r = readers(1_000_000, 0);
+    const source = createClockSource(r);
+    r.state.mono = 10_000;
+    expect(source.now()).toBe(1_010_000);
+    // the device was three minutes fast
+    source.applyMeasurement(1_010_000 - 180_000, 10_000);
+    expect(source.now()).toBe(1_010_000 - 180_000);
+    r.state.mono = 11_000;
+    expect(source.now()).toBe(1_010_000 - 180_000 + 1_000);
+    expect(180_000).toBeGreaterThan(CLOCK_HOLD_BACK_LIMIT_MS);
+  });
+
+  it("a new provisional reading replaces an older one until a measurement lands", () => {
+    const r = readers(1_000_000, 0);
+    const source = createClockSource(r);
+    source.seedProvisional(5_000_000);
+    expect(source.now()).toBe(5_000_000);
+    r.state.mono = 3_000;
+    source.seedProvisional(5_000_000);
+    expect(source.now()).toBe(5_003_000);
+    source.seedProvisional(9_000_000);
+    expect(source.now()).toBe(9_000_000 + 0);
   });
 });

@@ -5,6 +5,8 @@ import { clientIpOf } from "./client-ip.js";
 /** A page needs three calls to measure the clock and one every ten minutes after that. */
 const REQUESTS_PER_MINUTE = 30;
 const WINDOW_SEC = 60;
+/** One warning a minute is enough to see a counter outage without flooding the logs. */
+const WARN_EVERY_MS = 60_000;
 
 /**
  * Lightly limits the public server-time endpoint per client address. It lets requests through
@@ -15,6 +17,7 @@ export function createServerTimeRateLimitMiddleware(
   store: IRateLimitStore,
   maxPerMinute: number = REQUESTS_PER_MINUTE,
 ) {
+  let lastWarnAt = Number.NEGATIVE_INFINITY;
   return createMiddleware(async (c, next) => {
     try {
       const result = await store.increment(
@@ -29,9 +32,12 @@ export function createServerTimeRateLimitMiddleware(
         return c.json({ error: "Too many requests", code: "rate_limited" }, 429);
       }
     } catch (err) {
-      console.warn("[server-time] rate limit store unavailable; allowing request", {
-        err: err instanceof Error ? err.message : String(err),
-      });
+      if (Date.now() - lastWarnAt >= WARN_EVERY_MS) {
+        lastWarnAt = Date.now();
+        console.warn("[server-time] rate limit store unavailable; allowing request", {
+          err: err instanceof Error ? err.message : String(err),
+        });
+      }
     }
     await next();
   });

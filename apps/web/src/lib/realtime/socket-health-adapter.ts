@@ -17,6 +17,8 @@ function parseProbeIntervalMs(): number {
 
 function createSocketHealthAdapterImpl(): RealtimeHealthPort {
   const socket = getSocket();
+  // The connection came back after a break: measure the server's clock again.
+  socket.io.on("reconnect", () => browserClockSync().notifyReconnected());
   const listeners = new Set<(s: ConnectionStatus) => void>();
 
   let status: ConnectionStatus = {

@@ -4,6 +4,7 @@ import { timerText } from "@/components/lot-timer/format";
 import type { LotCardLineModel } from "@/lib/lot-card/lot-card-line";
 import { useCountdownTick } from "@/lib/time/use-clock";
 import { cn } from "@auction/ui";
+import { useRef } from "react";
 
 type Clock = { words: string; compact: string };
 
@@ -45,13 +46,15 @@ function clockOf(model: LotCardLineModel, now: number | null): Clock | null {
  * they do not.
  */
 export function LotCardLine({ model, className }: { model: LotCardLineModel; className?: string }) {
+  const rootRef = useRef<HTMLDivElement>(null);
   const now = useCountdownTick(
     [model.time === "opens" ? isoMs(model.startsAt) : isoMs(model.endsAt)],
-    { surface: "card" },
+    { surface: "card", inViewRef: rootRef },
   );
   const clock = clockOf(model, now);
   return (
     <div
+      ref={rootRef}
       className={cn(
         "@container flex min-w-0 flex-col gap-0.5 font-body text-sm leading-5 text-on-surface",
         className,

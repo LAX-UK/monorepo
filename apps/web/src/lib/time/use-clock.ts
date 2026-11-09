@@ -15,11 +15,15 @@ import {
 import { type RefObject, useEffect } from "react";
 import { ensureServerClockSync } from "./browser-clock-sync.client";
 
-/** Starts measuring the server's clock the first time a countdown mounts. */
-function useServerClockSync(): void {
-  useEffect(() => {
-    ensureServerClockSync();
-  }, []);
+/** A wake this close means seconds are on screen, where a clock a second out shows. */
+const SECONDS_ON_SCREEN_MS = 1_500;
+
+/**
+ * Starts measuring the server's clock the first time seconds are on screen. A page that only
+ * shows days and hours never calls the Bid API for the time.
+ */
+function ensureSyncForWake(waitMs: number | null): void {
+  if (waitMs !== null && waitMs <= SECONDS_ON_SCREEN_MS) ensureServerClockSync();
 }
 
 const useSharedCountdown = createCountdownHook<
@@ -38,8 +42,15 @@ export function useCountdown(
   surface: CountdownSurface,
   options?: UseCountdownOptions<CountdownContext>,
 ): CountdownDisplay | null {
-  useServerClockSync();
-  return useSharedCountdown(targetMs, surface, options);
+  const display = useSharedCountdown(targetMs, surface, options);
+  const wait =
+    display && "nextChangeInMs" in display && typeof display.nextChangeInMs === "number"
+      ? display.nextChangeInMs
+      : null;
+  useEffect(() => {
+    ensureSyncForWake(wait);
+  }, [wait]);
+  return display;
 }
 
 /**
@@ -50,7 +61,9 @@ export function useClockNow(
   resolutionMs = 1000,
   options: { inViewRef?: RefObject<Element | null> | undefined } = {},
 ): number | null {
-  useServerClockSync();
+  useEffect(() => {
+    ensureSyncForWake(resolutionMs);
+  }, [resolutionMs]);
   return useSharedClockNow(resolutionMs, options);
 }
 
@@ -74,7 +87,6 @@ export function useCountdownTick(
     inViewRef?: RefObject<Element | null> | undefined;
   },
 ): number | null {
-  useServerClockSync();
   return useClockTick(
     (now) => {
       let soonest: number | null = null;
@@ -83,6 +95,7 @@ export function useCountdownTick(
         const wait = wakeForCountdown(options.surface, moment - now);
         if (wait !== null && (soonest === null || wait < soonest)) soonest = wait;
       }
+      ensureSyncForWake(soonest);
       return soonest;
     },
     {

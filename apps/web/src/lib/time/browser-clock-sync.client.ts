@@ -34,6 +34,16 @@ export function ensureServerClockSync(): void {
       return () => window.clearInterval(id);
     },
     monotonicNow: () => performance.now(),
+    wallNow: () => Date.now(),
+    onResume(callback) {
+      window.addEventListener("pageshow", callback);
+      window.addEventListener("focus", callback);
+      return () => {
+        window.removeEventListener("pageshow", callback);
+        window.removeEventListener("focus", callback);
+      };
+    },
+    isNeeded: () => defaultClockStore().subscriberCount() > 0,
   });
   // A device that comes back online has most likely been away from the server.
   window.addEventListener("online", () => browserClockSync().notifyReconnected());

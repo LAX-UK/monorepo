@@ -106,6 +106,9 @@ export function createCountdownHook<S extends string, D extends TimedDisplay, C 
   };
 }
 
+/** A tick older than this when the component starts listening again is read afresh. */
+const STALE_TICK_MS = 500;
+
 export type UseClockTickOptions = {
   /** Resubscribe when what `wake` depends on changes (for example a lot's end time). */
   key: string | number;
@@ -136,6 +139,13 @@ export function useClockTick(
   const subscribe = useCallback(
     (onChange: () => void) => {
       if (!inView) return () => undefined;
+      // Coming back (or starting again) reads the time afresh, so text left stale while off
+      // screen is brought up to date.
+      const now = getStore().now();
+      if (tick.current && now - tick.current.at > STALE_TICK_MS) {
+        tick.current = { key, at: now };
+        queueMicrotask(onChange);
+      }
       return getStore().subscribe({
         nextChangeAt(now) {
           const wait = wakeRef.current(now);

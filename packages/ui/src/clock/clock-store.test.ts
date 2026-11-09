@@ -1,6 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
 import { createClockSource } from "./clock-source.js";
-import { type ClockSubscriber, type TimerPort, createClockStore } from "./clock-store.js";
+import {
+  type ClockSubscriber,
+  MAX_SLEEP_MS,
+  type TimerPort,
+  createClockStore,
+} from "./clock-store.js";
 
 /** A clock and timer the test moves by hand. */
 function world(startMs = 1_000_012_400) {
@@ -162,15 +167,54 @@ describe("createClockStore", () => {
     expect(sub.notify).not.toHaveBeenCalled();
   });
 
-  it("applies a larger correction and never counts the clock backwards", () => {
+  it("applies a correction and never counts the clock backwards", () => {
     const w = world(1_000_000_000);
     w.advance(10_000);
     const before = w.store.now();
-    w.store.source.applyMeasurement(before - 4_000, before);
+    w.store.source.applyMeasurement(before - 1_500, before);
     expect(w.store.now()).toBe(before);
-    w.advance(2_000);
+    w.advance(1_000);
     expect(w.store.now()).toBe(before);
-    w.advance(3_000);
-    expect(w.store.now()).toBe(before + 1_000);
+    w.advance(1_000);
+    expect(w.store.now()).toBe(before + 500);
+  });
+
+  it("never sleeps longer than an hour, so a moment 40 days out does not spin the timer", () => {
+    const w = world(1_000_000_000);
+    const fortyDays = 40 * 24 * 3_600_000;
+    const far: ClockSubscriber & { notify: ReturnType<typeof vi.fn> } = {
+      nextChangeAt: (now) => now + fortyDays,
+      notify: vi.fn(),
+    };
+    w.store.subscribe(far);
+    expect(w.pendingCount()).toBe(1);
+    const before = w.timers.sets;
+    w.advance(MAX_SLEEP_MS);
+    // One wake an hour later, one new timer, nobody told: nothing was due.
+    expect(w.timers.sets - before).toBe(1);
+    expect(far.notify).not.toHaveBeenCalled();
+    w.advance(MAX_SLEEP_MS * 5);
+    expect(w.timers.sets - before).toBe(6);
+  });
+
+  it("sleeps until the next soonest when the subscriber that set the sleep leaves", () => {
+    const w = world(1_000_000_000);
+    const soon = everyStep(1000);
+    const later = everyStep(60_000);
+    const stopSoon = w.store.subscribe(soon);
+    w.store.subscribe(later);
+    stopSoon();
+    w.advance(1_500);
+    expect(soon.notify).not.toHaveBeenCalled();
+    w.advance(60_000);
+    expect(later.notify).toHaveBeenCalledTimes(1);
+  });
+
+  it("reports how many countdowns are listening", () => {
+    const w = world();
+    const stop = w.store.subscribe(everyStep(1000));
+    expect(w.store.subscriberCount()).toBe(1);
+    stop();
+    expect(w.store.subscriberCount()).toBe(0);
   });
 });
