@@ -74,9 +74,9 @@ describe.skipIf(!HAS_DB)("collection settings (integration)", () => {
              (${otherVenueId}, ${entityId}, 'Collection settings IT annexe', '2 Test Street', 'London', 'W1W 6YW', 'GB')`);
     // An onsite sale on 12 and 13 May 2031 (London), at the first place only.
     await db.execute(sql`
-      insert into sale (id, title, start_time, end_time, venue_id, delivery_mode, status)
+      insert into sale (id, title, start_time, end_time, venue_id, delivery_mode, status, created_by_legal_entity_id)
       values (${saleId}, 'Collection settings IT sale', '2031-05-12T09:00:00Z', '2031-05-13T16:00:00Z',
-         ${venueId}, 'onsite', 'scheduled')`);
+         ${venueId}, 'onsite', 'scheduled', ${entityId})`);
   });
 
   afterAll(async () => {
