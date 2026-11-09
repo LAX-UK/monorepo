@@ -1,16 +1,11 @@
 import { renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { listAccounts, linkSocial } = vi.hoisted(() => ({
-  listAccounts: vi.fn(),
-  linkSocial: vi.fn(),
-}));
+const { listAccounts } = vi.hoisted(() => ({ listAccounts: vi.fn() }));
 
 vi.mock("@/lib/auth-client", () => ({
   authClient: {
     listAccounts,
-    linkSocial,
-    unlinkAccount: vi.fn(),
   },
 }));
 
@@ -23,7 +18,6 @@ import { useConnectedAccounts } from "./use-connected-accounts";
 describe("useConnectedAccounts", () => {
   beforeEach(() => {
     listAccounts.mockReset();
-    linkSocial.mockReset();
     listAccounts.mockResolvedValue({
       data: [
         {
@@ -39,24 +33,17 @@ describe("useConnectedAccounts", () => {
     });
   });
 
-  it("includes the linked provider in the OAuth callback URL", async () => {
-    linkSocial.mockResolvedValue({ error: null });
-    Object.defineProperty(window, "location", {
-      configurable: true,
-      value: { origin: "https://lax.bid" },
-    });
-
+  it("lists the linked providers and offers no way to link or unlink from here", async () => {
     const { result } = renderHook(() => useConnectedAccounts());
 
     await waitFor(() => {
       expect(result.current.loading).toBe(false);
     });
 
-    await result.current.linkSocial("google");
-
-    expect(linkSocial).toHaveBeenCalledWith({
-      provider: "google",
-      callbackURL: "https://lax.bid/settings?tab=security&linked=google",
-    });
+    expect(result.current.state.google?.providerId).toBe("google");
+    expect(result.current.state.apple).toBeNull();
+    // Linking and removing go through LAX Account's Security page and the issuer's hand-off.
+    expect(result.current).not.toHaveProperty("linkSocial");
+    expect(result.current).not.toHaveProperty("unlinkAccount");
   });
 });

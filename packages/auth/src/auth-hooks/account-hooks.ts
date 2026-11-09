@@ -14,7 +14,13 @@ import {
 import type { AuthHookDeps } from "./auth-hook-deps.js";
 import { readSocialSubjectReporting, recordStaffRefusal, socialFlow } from "./social-flow.js";
 
-type EndpointContext = { context?: { adapter?: unknown } | undefined } | null | undefined;
+type EndpointContext =
+  | { path?: string | undefined; context?: { adapter?: unknown } | undefined }
+  | null
+  | undefined;
+
+/** The library's own link endpoint, which also links by ID token without any redirect. */
+const LINK_SOCIAL_PATH = "/link-social";
 
 /** The raw adapter of this request: it skips the sign-in-method guard on removing an account. */
 function rawAdapter(context: EndpointContext) {
@@ -43,6 +49,15 @@ export function buildAccountDatabaseHooks(deps: AuthHookDeps) {
     context: EndpointContext,
   ): Promise<void> {
     if (!isSocialProviderId(acct.providerId)) return;
+    // The ID-token form of the library's link endpoint writes the account row inside that
+    // request, with no provider redirect and so no hand-off mark. The route is switched off over
+    // HTTP; this is the second guard, for any server-side call that still reaches it.
+    if (context?.path === LINK_SOCIAL_PATH) {
+      throw new APIError("FORBIDDEN", {
+        message: LINK_NOT_FROM_ACCOUNT_MESSAGE,
+        code: SOCIAL_SIGN_IN_ERROR_CODES.linkNotStartedFromAccount,
+      });
+    }
     const flow = socialFlow(context);
     if (flow.newUser) return; // a first sign-up creates its own account; nothing to join
     // A link made on the person's say-so (state.link) is only ever started by the issuer's
