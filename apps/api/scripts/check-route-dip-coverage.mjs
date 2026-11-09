@@ -121,6 +121,7 @@ const EXPLICIT_ALLOWLIST = new Set([
   "src/routes/marketing-enquiries.ts",
   "src/routes/onsite-events.ts",
   "src/routes/qr.ts",
+  "src/routes/server-time.ts",
   "src/routes/webhooks/index.ts",
   "src/routes/webhooks/stripe-payment-event-registry.ts",
 ]);
