@@ -1,7 +1,7 @@
 import { SETTINGS } from "@/lib/admin/collections/collections.fixture";
 import type { StaffCollectionException, StaffCollectionSettings } from "@auction/types";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   add: vi.fn(),
@@ -56,7 +56,14 @@ const AFFECTED = [
   },
 ];
 
-beforeEach(() => vi.clearAllMocks());
+beforeEach(() => {
+  vi.clearAllMocks();
+  // Only the clock is pinned, so dates read the same whenever the tests run.
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date("2026-11-09T12:00:00Z"));
+});
+
+afterEach(() => vi.useRealTimers());
 
 describe("ClosuresPanel", () => {
   it("says so when nothing is coming up", () => {
@@ -95,7 +102,7 @@ describe("ClosuresPanel", () => {
       />,
     );
     expect(screen.getByText("3 days or runs of days coming up")).toBeTruthy();
-    expect(screen.queryByText("1 Nov 2026 to 2 Nov 2026")).toBeNull();
+    expect(screen.queryByText("Sun 1 Nov to Mon 2 Nov")).toBeNull();
     expect(screen.getByText("Bank holiday")).toBeTruthy();
     expect(screen.getByText("Sale day")).toBeTruthy();
     expect(screen.getByText(/Winter Works on Paper: Live/)).toBeTruthy();
@@ -122,7 +129,7 @@ describe("ClosuresPanel", () => {
     render(
       <ClosuresPanel settings={withExceptions([exception({})])} canChange={false} today={TODAY} />,
     );
-    expect(screen.getByText("25 Dec 2026")).toBeTruthy();
+    expect(screen.getByText("Fri 25 Dec")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Add closure or opening" })).toBeNull();
     expect(screen.queryByRole("button", { name: /^Remove / })).toBeNull();
   });
@@ -198,8 +205,8 @@ describe("ClosuresPanel", () => {
   it("confirms before removing, and then removes it", async () => {
     mocks.remove.mockResolvedValue(done(withExceptions([])));
     render(<ClosuresPanel settings={withExceptions([exception({})])} canChange today={TODAY} />);
-    fireEvent.click(screen.getByRole("button", { name: "Remove 25 Dec 2026" }));
-    expect(await screen.findByText("Remove the closure on 25 Dec 2026?")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Remove Fri 25 Dec" }));
+    expect(await screen.findByText("Remove the closure on Fri 25 Dec?")).toBeTruthy();
     expect(mocks.remove).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "Remove" }));
     await waitFor(() => expect(mocks.remove).toHaveBeenCalledTimes(1));
@@ -221,7 +228,7 @@ describe("ClosuresPanel", () => {
         today={TODAY}
       />,
     );
-    fireEvent.click(screen.getByRole("button", { name: "Remove 25 Dec 2026" }));
+    fireEvent.click(screen.getByRole("button", { name: "Remove Fri 25 Dec" }));
     fireEvent.click(await screen.findByRole("button", { name: "Remove" }));
     expect(await screen.findByText("1 booked visit would be affected")).toBeTruthy();
     expect(mocks.refresh).not.toHaveBeenCalled();

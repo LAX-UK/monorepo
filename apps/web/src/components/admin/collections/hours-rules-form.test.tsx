@@ -1,6 +1,6 @@
 import { SETTINGS } from "@/lib/admin/collections/collections.fixture";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   save: vi.fn(),
@@ -56,7 +56,13 @@ function renderForm(canChange = true) {
 const closesOnMonday = () => screen.getByLabelText("Monday closes") as HTMLInputElement;
 const saveButton = () => screen.getByRole("button", { name: "Save changes" }) as HTMLButtonElement;
 
-beforeEach(() => vi.clearAllMocks());
+beforeEach(() => {
+  vi.clearAllMocks();
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date("2026-11-09T12:00:00Z"));
+});
+
+afterEach(() => vi.useRealTimers());
 
 describe("HoursRulesForm", () => {
   it("shows the saved hours and rules, and nothing to save yet", () => {
@@ -113,7 +119,7 @@ describe("HoursRulesForm", () => {
     fireEvent.click(saveButton());
     expect(await screen.findByText("2 booked visits would be affected")).toBeTruthy();
     expect(screen.getByText("COL-1001")).toBeTruthy();
-    expect(screen.getByText(/13 Nov 2026, 17:30 to 18:00/)).toBeTruthy();
+    expect(screen.getByText(/Fri 13 Nov, 17:30 GMT to 18:00/)).toBeTruthy();
     expect(screen.getAllByText("Outside the opening hours")).toHaveLength(2);
     expect(mocks.refresh).not.toHaveBeenCalled();
   });

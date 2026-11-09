@@ -88,6 +88,11 @@ export const ADMIN_ROUTE_TABLE = [
     requirement: LEGAL_ENTITY_BROWSE_ACCESS,
   },
   { pattern: "/admin/collections", area: "platform", requirement: COLLECTIONS_READ_ACCESS },
+  {
+    pattern: "/admin/collections/[venueId]",
+    area: "platform",
+    requirement: COLLECTIONS_READ_ACCESS,
+  },
   { pattern: "/admin/lot-fulfilment", area: "platform", requirement: LOT_FULFILMENT_ACCESS },
   { pattern: "/admin/lots", area: "platform", requirement: LOTS_READ_ACCESS },
   { pattern: "/admin/lots/[id]", area: "platform", requirement: LOTS_READ_ACCESS },
@@ -142,9 +147,12 @@ export const adminRoutes = {
   client: (id: string) => `/admin/clients/${seg(id)}`,
   conditionReports: { list: () => "/admin/condition-reports" },
   lotFulfilment: { list: () => "/admin/lot-fulfilment" },
+  /** The collection hours and rules, and the closures, of one place (the first when omitted). */
   collections: {
-    hours: () => "/admin/collections",
-    closures: () => "/admin/collections?tab=closures",
+    hours: (venueId?: string) =>
+      venueId ? `/admin/collections/${seg(venueId)}` : "/admin/collections",
+    closures: (venueId?: string) =>
+      `${venueId ? `/admin/collections/${seg(venueId)}` : "/admin/collections"}?tab=closures`,
   },
   legalEntity: (id: string) => `/admin/legal-entities/${seg(id)}`,
   lots: { list: () => "/admin/lots" },

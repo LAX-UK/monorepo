@@ -13,13 +13,19 @@ export const metadata: Metadata = metadataForPrivate(
   "When clients can collect their works, how many at a time, and the days the gallery is closed.",
 );
 
+/**
+ * `/admin/collections` opens the first place; `/admin/collections/<venue id>` opens a given one.
+ * The page is a settings form, not a list, so the place is part of the address.
+ */
 export default async function AdminCollectionsPage({
+  params,
   searchParams,
 }: {
+  params: Promise<{ venue?: string[] }>;
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const user = await requireAdminCapability(COLLECTIONS_READ_ACCESS, "/admin/collections");
   const canChange = userHasAccessTo(user.role as UserRole, user.staffRoles, COLLECTIONS_ACCESS);
-  const model = await loadCollectionsPage(await searchParams);
+  const model = await loadCollectionsPage((await params).venue?.[0], await searchParams);
   return <CollectionsPage {...model} canChange={canChange} today={londonToday()} />;
 }

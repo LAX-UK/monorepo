@@ -34,7 +34,7 @@ describe("CollectionsPage", () => {
     const current = screen.getByRole("link", { name: "Hours and rules" });
     expect(current.getAttribute("aria-current")).toBe("page");
     expect(screen.getByRole("link", { name: "Closures" }).getAttribute("href")).toBe(
-      `/admin/collections?tab=closures&venue=${SETTINGS.venueId}`,
+      `/admin/collections/${SETTINGS.venueId}?tab=closures`,
     );
     expect(screen.getByRole("form", { name: "Hours and rules" })).toBeTruthy();
   });

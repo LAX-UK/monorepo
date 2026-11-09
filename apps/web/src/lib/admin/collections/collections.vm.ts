@@ -1,4 +1,4 @@
-import { formatStaffDay, formatStaffTime } from "@auction/staff-ui";
+import { formatStaffDate, formatStaffDateTime, formatStaffTime } from "@auction/staff-ui";
 import type {
   StaffAffectedBooking,
   StaffCollectionException,
@@ -15,11 +15,8 @@ export function parseCollectionTab(value: string | string[] | undefined): Collec
 }
 
 export function collectionsHref(tab: CollectionTab, venueId?: string | null): string {
-  const query = new URLSearchParams();
-  if (tab !== "hours") query.set("tab", tab);
-  if (venueId) query.set("venue", venueId);
-  const text = query.toString();
-  return text ? `${COLLECTIONS_PATH}?${text}` : COLLECTIONS_PATH;
+  const path = venueId ? `${COLLECTIONS_PATH}/${encodeURIComponent(venueId)}` : COLLECTIONS_PATH;
+  return tab === "hours" ? path : `${path}?tab=${tab}`;
 }
 
 /** Monday first, as the week is read at the gallery. */
@@ -74,24 +71,23 @@ export const EXCEPTION_SOURCE_LABELS: Record<StaffCollectionException["source"],
   sale: "Sale day",
 };
 
-const dayOf = (iso: string) => iso.slice(0, 10);
+/** A London day key as a date to format; noon keeps it on the same day in any zone. */
+const dayDate = (day: string): Date => new Date(`${day}T12:00:00Z`);
 
-/** "13 Nov 2026, 17:30 to 18:00" for a visit. */
-export function formatVisitSlot(startIso: string, endIso: string): string {
-  const start = new Date(startIso);
-  const date = formatStaffDay(
-    new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/London" }).format(start),
-  );
-  return `${date}, ${formatStaffTime(start)} to ${formatStaffTime(new Date(endIso))}`;
+/** "Fri 13 Nov, 17:30 GMT to 18:00" for a visit, in the one date style. */
+export function formatVisitSlot(startIso: string, endIso: string, now: Date = new Date()): string {
+  return `${formatStaffDateTime(startIso, now)} to ${formatStaffTime(endIso)}`;
 }
 
-/** The days a closure or opening covers: "24 Dec 2026" or "24 Dec 2026 to 26 Dec 2026". */
+/** The days a closure or opening covers: "Fri 25 Dec" or "Fri 25 Dec to Sun 27 Dec". */
 export function formatExceptionDays(
   exception: Pick<StaffCollectionException, "startsOn" | "endsOn">,
-) {
+  now: Date = new Date(),
+): string {
+  const first = formatStaffDate(dayDate(exception.startsOn), now);
   return exception.startsOn === exception.endsOn
-    ? formatStaffDay(exception.startsOn)
-    : `${formatStaffDay(exception.startsOn)} to ${formatStaffDay(exception.endsOn)}`;
+    ? first
+    : `${first} to ${formatStaffDate(dayDate(exception.endsOn), now)}`;
 }
 
 /** What an exception does: "Closed all day", "Closed 13:00 to 14:00", "Open 10:00 to 16:00". */
@@ -107,5 +103,3 @@ export function hoursOfDay(hours: readonly StaffCollectionHours[], weekday: numb
     .filter((range) => range.weekday === weekday)
     .sort((a, b) => a.opensLocal.localeCompare(b.opensLocal));
 }
-
-export { dayOf };
