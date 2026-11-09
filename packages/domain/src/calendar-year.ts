@@ -67,3 +67,12 @@ export function londonMidnight(year: number, month: number, day: number): Date {
   const utcMidnight = new Date(Date.UTC(year, month - 1, day));
   return new Date(utcMidnight.getTime() - londonOffsetMinutes(utcMidnight) * 60_000);
 }
+
+/** The instant at `hour`:00 London wall-clock time on the given day, correct across clock changes. */
+export function londonWallClock(year: number, month: number, day: number, hour: number): Date {
+  const asUtc = new Date(Date.UTC(year, month - 1, day, hour));
+  // The offset in force at the target moment is the one at the instant itself, so read it there
+  // (one step from the UTC reading; clock changes happen at 01:00 UTC, never near 09:00).
+  const guess = new Date(asUtc.getTime() - londonOffsetMinutes(asUtc) * 60_000);
+  return new Date(asUtc.getTime() - londonOffsetMinutes(guess) * 60_000);
+}
