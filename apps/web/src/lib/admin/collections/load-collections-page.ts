@@ -15,15 +15,17 @@ export type CollectionsPageModel = {
   loadError: string | null;
 };
 
-/** The places, and the one being looked at (the one in the address, else the first) with its settings. */
+const first = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value);
+
+/** The places, and the one being looked at (`?venue=`, else the first) with its settings. */
 export async function loadCollectionsPage(
-  venueId: string | undefined,
   search: Record<string, string | string[] | undefined>,
 ): Promise<CollectionsPageModel> {
   const tab = parseCollectionTab(search.tab);
   try {
     const venues = await getCollectionVenues();
-    const venue = venues.find((v) => v.venueId === venueId) ?? venues[0];
+    const wanted = first(search.venue);
+    const venue = venues.find((v) => v.venueId === wanted) ?? venues[0];
     const settings = venue ? await getCollectionSettings(venue.venueId) : null;
     return { tab, venues, settings, loadError: null };
   } catch {

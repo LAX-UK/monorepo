@@ -30,8 +30,8 @@ describe("collections view model", () => {
     expect(parseCollectionTab("anything")).toBe("hours");
     expect(parseCollectionTab(undefined)).toBe("hours");
     expect(collectionsHref("hours")).toBe("/admin/collections");
-    expect(collectionsHref("hours", "v1")).toBe("/admin/collections/v1");
-    expect(collectionsHref("closures", "v1")).toBe("/admin/collections/v1?tab=closures");
+    expect(collectionsHref("hours", "v1")).toBe("/admin/collections?venue=v1");
+    expect(collectionsHref("closures", "v1")).toBe("/admin/collections?tab=closures&venue=v1");
   });
 
   it("names weekdays and orders a day's ranges", () => {

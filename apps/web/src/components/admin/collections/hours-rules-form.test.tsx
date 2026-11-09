@@ -117,7 +117,7 @@ describe("HoursRulesForm", () => {
     renderForm();
     fireEvent.change(closesOnMonday(), { target: { value: "17:00" } });
     fireEvent.click(saveButton());
-    expect(await screen.findByText("2 booked visits would be affected")).toBeTruthy();
+    expect(await screen.findByText("2 bookings fall outside the new hours")).toBeTruthy();
     expect(screen.getByText("COL-1001")).toBeTruthy();
     expect(screen.getByText(/Fri 13 Nov, 17:30–18:00 GMT/)).toBeTruthy();
     expect(screen.getAllByText("Outside the opening hours")).toHaveLength(2);
@@ -139,11 +139,9 @@ describe("HoursRulesForm", () => {
     renderForm();
     fireEvent.change(closesOnMonday(), { target: { value: "17:00" } });
     fireEvent.click(saveButton());
-    await screen.findByText("2 booked visits would be affected");
-    fireEvent.click(
-      screen.getByRole("radio", { name: /Cancel them so the clients can book again/ }),
-    );
-    fireEvent.click(screen.getByRole("button", { name: "Save and cancel 2 visits" }));
+    await screen.findByText("2 bookings fall outside the new hours");
+    fireEvent.click(screen.getByRole("radio", { name: /Cancel and ask to rebook/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Save and cancel 2" }));
     await waitFor(() => expect(mocks.save).toHaveBeenCalledTimes(2));
     expect((mocks.save.mock.calls[1]?.[1] as Record<string, unknown>).affectedBookings).toBe(
       "cancel_and_rebook",
@@ -161,10 +159,12 @@ describe("HoursRulesForm", () => {
     renderForm();
     fireEvent.change(closesOnMonday(), { target: { value: "17:00" } });
     fireEvent.click(saveButton());
-    await screen.findByText("1 booked visit would be affected");
-    expect(screen.getByRole("button", { name: "Save and keep them booked" })).toBeTruthy();
+    await screen.findByText("1 booking falls outside the new hours");
+    expect(screen.getByRole("button", { name: "Save and keep them" })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Go back" }));
-    await waitFor(() => expect(screen.queryByText("1 booked visit would be affected")).toBeNull());
+    await waitFor(() =>
+      expect(screen.queryByText("1 booking falls outside the new hours")).toBeNull(),
+    );
     expect(mocks.save).toHaveBeenCalledTimes(1);
     expect(closesOnMonday().value).toBe("17:00");
   });

@@ -69,7 +69,7 @@ describe("ClosuresPanel", () => {
   it("says so when nothing is coming up", () => {
     render(<ClosuresPanel settings={withExceptions([])} canChange today={TODAY} />);
     expect(screen.getByText("No closures or extra openings")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Add closure or opening" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Add closure" })).toBeTruthy();
   });
 
   it("lists bank holidays, sale days and staff entries, and hides days already gone", () => {
@@ -130,14 +130,49 @@ describe("ClosuresPanel", () => {
       <ClosuresPanel settings={withExceptions([exception({})])} canChange={false} today={TODAY} />,
     );
     expect(screen.getByText("Fri 25 Dec")).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Add closure or opening" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Add closure" })).toBeNull();
     expect(screen.queryByRole("button", { name: /^Remove / })).toBeNull();
+  });
+
+  it("opens a sale day anyway, with the sale's days filled in", async () => {
+    mocks.add.mockResolvedValue(done(withExceptions([])));
+    render(
+      <ClosuresPanel
+        settings={withExceptions([
+          exception({
+            id: null,
+            source: "sale",
+            startsOn: "2026-11-26",
+            endsOn: "2026-11-27",
+            saleTitle: "Winter Works on Paper: Live",
+            canRemove: false,
+          }),
+        ])}
+        canChange
+        today={TODAY}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Open anyway" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Add extra opening" }));
+    await waitFor(() => expect(mocks.add).toHaveBeenCalledTimes(1));
+    expect(mocks.add.mock.calls[0]?.[1]).toMatchObject({
+      kind: "extra_opening",
+      startsOn: "2026-11-26",
+      endsOn: "2026-11-27",
+      opensLocal: null,
+    });
+  });
+
+  it("adds an extra opening from its own button", async () => {
+    render(<ClosuresPanel settings={withExceptions([])} canChange today={TODAY} />);
+    fireEvent.click(screen.getByRole("button", { name: "Add extra opening" }));
+    expect(await screen.findByText("Add extra opening", { selector: "h2" })).toBeTruthy();
   });
 
   it("adds a closure for a day and says so", async () => {
     mocks.add.mockResolvedValue(done(withExceptions([exception({ source: "staff" })])));
     render(<ClosuresPanel settings={withExceptions([])} canChange today={TODAY} />);
-    fireEvent.click(screen.getByRole("button", { name: "Add closure or opening" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add closure" }));
     fireEvent.change(await screen.findByLabelText(/Note/), { target: { value: "Staff party" } });
     fireEvent.click(screen.getByRole("button", { name: "Add closure" }));
     await waitFor(() => expect(mocks.add).toHaveBeenCalledTimes(1));
@@ -157,7 +192,7 @@ describe("ClosuresPanel", () => {
 
   it("asks for both times when only part of a day is closed", async () => {
     render(<ClosuresPanel settings={withExceptions([])} canChange today={TODAY} />);
-    fireEvent.click(screen.getByRole("button", { name: "Add closure or opening" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add closure" }));
     fireEvent.click(await screen.findByRole("switch", { name: /Only part of each day/ }));
     fireEvent.click(screen.getByRole("button", { name: "Add closure" }));
     expect((await screen.findAllByText("Enter a time such as 13:00.")).length).toBeGreaterThan(0);
@@ -174,14 +209,12 @@ describe("ClosuresPanel", () => {
       })
       .mockResolvedValueOnce(done(withExceptions([exception({ source: "staff" })]), 1));
     render(<ClosuresPanel settings={withExceptions([])} canChange today={TODAY} />);
-    fireEvent.click(screen.getByRole("button", { name: "Add closure or opening" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add closure" }));
     fireEvent.click(await screen.findByRole("button", { name: "Add closure" }));
-    expect(await screen.findByText("1 booked visit would be affected")).toBeTruthy();
+    expect(await screen.findByText("1 booking falls inside this closure")).toBeTruthy();
     expect(screen.getByText("Closed that day")).toBeTruthy();
-    fireEvent.click(
-      screen.getByRole("radio", { name: /Cancel them so the clients can book again/ }),
-    );
-    fireEvent.click(screen.getByRole("button", { name: "Save and cancel 1 visit" }));
+    fireEvent.click(screen.getByRole("radio", { name: /Cancel and ask to rebook/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Close and email 1 client" }));
     await waitFor(() => expect(mocks.add).toHaveBeenCalledTimes(2));
     expect((mocks.add.mock.calls[1]?.[1] as Record<string, unknown>).affectedBookings).toBe(
       "cancel_and_rebook",
@@ -196,7 +229,7 @@ describe("ClosuresPanel", () => {
       status: 503,
     });
     render(<ClosuresPanel settings={withExceptions([])} canChange today={TODAY} />);
-    fireEvent.click(screen.getByRole("button", { name: "Add closure or opening" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add closure" }));
     fireEvent.click(await screen.findByRole("button", { name: "Add closure" }));
     expect(await screen.findByText("It couldn't be added")).toBeTruthy();
     expect(screen.getByText("We couldn't reach the settings.")).toBeTruthy();
@@ -230,7 +263,7 @@ describe("ClosuresPanel", () => {
     );
     fireEvent.click(screen.getByRole("button", { name: "Remove Fri 25 Dec" }));
     fireEvent.click(await screen.findByRole("button", { name: "Remove" }));
-    expect(await screen.findByText("1 booked visit would be affected")).toBeTruthy();
+    expect(await screen.findByText("1 booking falls outside the regular hours")).toBeTruthy();
     expect(mocks.refresh).not.toHaveBeenCalled();
   });
 });

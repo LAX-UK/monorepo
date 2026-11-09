@@ -15,8 +15,11 @@ export function parseCollectionTab(value: string | string[] | undefined): Collec
 }
 
 export function collectionsHref(tab: CollectionTab, venueId?: string | null): string {
-  const path = venueId ? `${COLLECTIONS_PATH}/${encodeURIComponent(venueId)}` : COLLECTIONS_PATH;
-  return tab === "hours" ? path : `${path}?tab=${tab}`;
+  const query = new URLSearchParams();
+  if (tab !== "hours") query.set("tab", tab);
+  if (venueId) query.set("venue", venueId);
+  const text = query.toString();
+  return text ? `${COLLECTIONS_PATH}?${text}` : COLLECTIONS_PATH;
 }
 
 /** Monday first, as the week is read at the gallery. */

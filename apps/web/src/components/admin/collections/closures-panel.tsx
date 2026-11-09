@@ -1,6 +1,7 @@
 "use client";
 
 import { removeCollectionExceptionAction } from "@/lib/actions/admin/admin-collections";
+import { type ExceptionDraft, emptyExceptionDraft } from "@/lib/admin/collections/collection-forms";
 import {
   EXCEPTION_SOURCE_LABELS,
   describeException,
@@ -34,7 +35,8 @@ type Props = {
  * by adding an extra opening for it.
  */
 export function ClosuresPanel({ settings, canChange, today }: Props) {
-  const [adding, setAdding] = useState(false);
+  /** The form being filled in, or null when no dialog is open. */
+  const [adding, setAdding] = useState<ExceptionDraft | null>(null);
   const [removing, setRemoving] = useState<StaffCollectionException | null>(null);
   const upcoming = settings.exceptions.filter((e) => e.endsOn >= today);
 
@@ -42,8 +44,8 @@ export function ClosuresPanel({ settings, canChange, today }: Props) {
     <div className="flex flex-col gap-4">
       {settings.closeOnSaleDays && settings.nextSaleDay ? (
         <Notice tone="info" title="Sale days close collections">
-          {settings.nextSaleDay.saleTitle} is the next sale here. To collect on a sale day, add an
-          extra opening for it.
+          {settings.nextSaleDay.saleTitle} is the next sale here. To collect on a sale day, choose
+          Open anyway on its row.
         </Notice>
       ) : null}
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -53,13 +55,21 @@ export function ClosuresPanel({ settings, canChange, today }: Props) {
             : `${upcoming.length} ${upcoming.length === 1 ? "day or run of days" : "days or runs of days"} coming up`}
         </p>
         {canChange ? (
-          <StaffButton
-            variant="primary"
-            icon={<Plus aria-hidden />}
-            onClick={() => setAdding(true)}
-          >
-            Add closure or opening
-          </StaffButton>
+          <div className="flex flex-wrap items-center gap-2">
+            <StaffButton
+              variant="secondary"
+              onClick={() => setAdding({ ...emptyExceptionDraft(today), kind: "extra_opening" })}
+            >
+              Add extra opening
+            </StaffButton>
+            <StaffButton
+              variant="primary"
+              icon={<Plus aria-hidden />}
+              onClick={() => setAdding(emptyExceptionDraft(today))}
+            >
+              Add closure
+            </StaffButton>
+          </div>
         ) : null}
       </div>
 
@@ -80,17 +90,32 @@ export function ClosuresPanel({ settings, canChange, today }: Props) {
               exception={exception}
               canRemove={canChange && exception.canRemove}
               onRemove={() => setRemoving(exception)}
+              onOpenAnyway={
+                canChange && exception.source === "sale"
+                  ? () =>
+                      setAdding({
+                        ...emptyExceptionDraft(today),
+                        kind: "extra_opening",
+                        startsOn: exception.startsOn < today ? today : exception.startsOn,
+                        endsOn: exception.endsOn,
+                      })
+                  : undefined
+              }
             />
           ))}
         </ul>
       )}
 
-      {canChange ? (
+      {canChange && adding ? (
         <AddExceptionDialog
-          open={adding}
-          onOpenChange={setAdding}
+          key={`${adding.kind}-${adding.startsOn}-${adding.endsOn}`}
+          open
+          onOpenChange={(next) => {
+            if (!next) setAdding(null);
+          }}
           venueId={settings.venueId}
           today={today}
+          initial={adding}
         />
       ) : null}
       {removing ? (
@@ -108,10 +133,13 @@ function ExceptionRow({
   exception,
   canRemove,
   onRemove,
+  onOpenAnyway,
 }: {
   exception: StaffCollectionException;
   canRemove: boolean;
   onRemove: () => void;
+  /** For a sale day: add an extra opening for it. */
+  onOpenAnyway: (() => void) | undefined;
 }) {
   const days = formatExceptionDays(exception);
   return (
@@ -131,6 +159,11 @@ function ExceptionRow({
         <span className="text-staff-xs text-staff-muted">
           {EXCEPTION_SOURCE_LABELS[exception.source]}
         </span>
+        {onOpenAnyway ? (
+          <StaffButton size="sm" variant="secondary" onClick={onOpenAnyway}>
+            Open anyway
+          </StaffButton>
+        ) : null}
         {canRemove ? (
           <StaffButton
             size="icon-sm"
@@ -203,7 +236,11 @@ function RemoveExceptionFlow({
       </ConfirmActionDialog>
       <AffectedBookingsDialog
         open={change.affected !== null}
-        change={`the removal of ${days}`}
+        where="outside the regular hours"
+        confirmLabels={{
+          keep: "Remove and keep them",
+          cancel: (count) => `Remove and email ${count} ${count === 1 ? "client" : "clients"}`,
+        }}
         bookings={change.affected ?? []}
         busy={change.busy}
         onConfirm={(choice) => void change.confirm(choice)}
