@@ -421,6 +421,7 @@ a.shop-order-lines__title:hover {
 .shop-finish-paying__facts > div {
   display: flex;
   flex-wrap: wrap;
+  align-items: baseline;
   justify-content: space-between;
   gap: var(--shop-space-1) var(--shop-space-4);
 }
@@ -435,6 +436,10 @@ a.shop-order-lines__title:hover {
   color: var(--color-on-surface);
   font-size: var(--shop-text-md);
   font-variant-numeric: tabular-nums;
+}
+
+.shop-finish-paying__facts > div:last-child dd {
+  font-weight: 600;
 }
 
 @media (min-width: 48rem) {

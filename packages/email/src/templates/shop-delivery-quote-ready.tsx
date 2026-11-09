@@ -1,3 +1,4 @@
+import { Button } from "../components/Button.js";
 import { Layout } from "../components/Layout.js";
 import { TextBlock } from "../components/TextBlock.js";
 import type { TemplateVarsByName } from "../types.js";
@@ -34,8 +35,9 @@ export default function ShopDeliveryQuoteReadyEmail({
       </TextBlock>
       <TextBlock>
         Your print is held for you until {validUntilOn}. To accept the quote and pay for the print
-        and delivery together, open your order: {orderUrl}
+        and delivery together, open your order.
       </TextBlock>
+      <Button href={orderUrl}>Accept and pay</Button>
     </Layout>
   );
 }

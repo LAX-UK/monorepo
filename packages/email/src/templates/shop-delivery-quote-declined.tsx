@@ -1,3 +1,4 @@
+import { Button } from "../components/Button.js";
 import { Layout } from "../components/Layout.js";
 import { TextBlock } from "../components/TextBlock.js";
 import type { TemplateVarsByName } from "../types.js";
@@ -22,8 +23,9 @@ export default function ShopDeliveryQuoteDeclinedEmail({
       </TextBlock>
       <TextBlock>
         Nothing has been charged, and your print has been released. Your basket is back as it was,
-        and you can collect from our London gallery instead: {collectionUrl}
+        and you can collect from our London gallery instead.
       </TextBlock>
+      <Button href={collectionUrl}>See collection</Button>
     </Layout>
   );
 }

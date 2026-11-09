@@ -264,7 +264,8 @@ describe("renderEmail", () => {
     expect(rendered.text).toContain("Insurance is included in that price");
     expect(rendered.text).toContain("You pay any import duties and taxes charged in Germany");
     expect(rendered.text).toContain("held for you until 16 November 2026");
-    expect(rendered.text).toContain("https://shop.example/orders/o-1");
+    expect(rendered.html).toContain("https://shop.example/orders/o-1");
+    expect(rendered.text).toContain("Accept and pay");
   });
 
   it("tells a buyer why the gallery cannot deliver, and that nothing was charged", async () => {
