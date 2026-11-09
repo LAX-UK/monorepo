@@ -50,8 +50,6 @@ export async function loadCheckoutBasket(
   if (!options.merchandiseEnabled && basket.lines.some((line) => line.productVariantId != null)) {
     throw new ShopApiError(SHOP_API_ERROR_CODES.FEATURE_DISABLED, "Merchandise is disabled", 404);
   }
-  // Orders do not carry framing yet, so a framed print cannot be paid for.
-  assertNoFramingInOrder(basket.lines);
   const repriced = await repriceBasketLinesIfNeeded(db, input.basketId);
   if (repriced) {
     throw new ShopApiError(SHOP_API_ERROR_CODES.PRICE_CHANGED, "Basket price changed", 409);
