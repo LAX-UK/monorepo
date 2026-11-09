@@ -5,6 +5,7 @@ import {
   BACKCHANNEL_LOGOUT_MAX_AGE_SECONDS,
   SOCKET_REVOCATION_CHANNEL_V1,
   type SocketRevocationPayloadV1,
+  issuerJwksUrl,
   verifyBackchannelLogoutToken,
 } from "@auction/identity-contracts";
 import { NextResponse } from "next/server";
@@ -25,7 +26,7 @@ export async function POST(request: Request) {
   try {
     const claims = await verifyBackchannelLogoutToken({
       token,
-      jwksUrl: `${config.internalIssuer}/.well-known/jwks.json`,
+      jwksUrl: issuerJwksUrl(config.internalIssuer),
       issuer: config.issuer,
       audience: config.clientId,
     });

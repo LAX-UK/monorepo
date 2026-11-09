@@ -78,6 +78,48 @@ describe("createJwksHolder", () => {
     expect(h.hasSeen("b")).toBe(false);
   });
 
+  it("serves a set up to two intervals old while refreshing behind the request", async () => {
+    const h = holder();
+    await h.getKey({ alg: "RS256", kid: "a" });
+    clock += DISCOVERY_CACHE_TTL_MS + 1;
+    published = ["a", "b"];
+    await h.getKey({ alg: "RS256", kid: "a" });
+    expect(fetchCalls).toBe(2); // the refresh started
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(h.hasSeen("b")).toBe(true);
+  });
+
+  it("does not follow a redirect for the key set", async () => {
+    const seen: RequestInit[] = [];
+    const h = createJwksHolder({
+      url: "https://auth.test/jwks",
+      now: () => clock,
+      fetchImpl: (async (_url: unknown, init: RequestInit) => {
+        seen.push(init);
+        return new Response(null, { status: 302, headers: { location: "https://elsewhere.test" } });
+      }) as unknown as typeof fetch,
+      onFetchFailure: () => undefined,
+    });
+    await expect(h.getKey({ alg: "RS256", kid: "a" })).rejects.toThrow();
+    expect(seen[0]?.redirect).toBe("manual");
+  });
+
+  it("reports a failed fetch", async () => {
+    healthy = false;
+    const onFetchFailure = vi.fn();
+    const h = createJwksHolder({
+      url: "https://auth.test/jwks",
+      fetchImpl,
+      now: () => clock,
+      onFetchFailure,
+    });
+    await expect(h.getKey({ alg: "RS256", kid: "a" })).rejects.toThrow();
+    expect(onFetchFailure).toHaveBeenCalledWith({
+      url: "https://auth.test/jwks",
+      reason: expect.stringContaining("503"),
+    });
+  });
+
   it("shares one holder per URL", () => {
     expect(jwksHolderFor("https://auth.test/x")).toBe(jwksHolderFor("https://auth.test/x"));
   });

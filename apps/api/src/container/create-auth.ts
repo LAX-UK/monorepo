@@ -1,4 +1,5 @@
 import type { Database } from "@auction/db";
+import { issuerJwksUrl } from "@auction/identity-contracts";
 import { DrizzleStaffRoleAssignmentReader } from "@auction/persistence/repositories";
 import type { Env } from "../env.js";
 import {
@@ -21,7 +22,7 @@ export function createContainerAuthenticator(input: CreateAuthenticatorInput): I
   const internalBaseUrl = env.OIDC_INTERNAL_BASE_URL ?? issuer;
   const identityResolver = new JwtAuthenticator({
     issuer,
-    jwksUrl: `${internalBaseUrl.replace(/\/$/, "")}/.well-known/jwks.json`,
+    jwksUrl: issuerJwksUrl(internalBaseUrl),
     audience: env.JWT_AUDIENCE,
     allowLegacyLaxApiAudience: env.ALLOW_LEGACY_LAX_API_AUDIENCE,
     onLegacyAudienceAccepted: () => {

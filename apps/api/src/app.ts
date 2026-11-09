@@ -1,6 +1,7 @@
 import { lotNotDeleted } from "@auction/db";
 import { lot } from "@auction/db/schema";
 import { BROWSER_API_CUSTOM_HEADERS } from "@auction/http-headers";
+import { issuerJwksUrl } from "@auction/identity-contracts";
 import { and, eq, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { compress } from "hono/compress";
@@ -129,10 +130,7 @@ export function createApp(container: Container, env: Env, authenticator: IAuthen
     createBidSsfEventsRoute({
       replayStore: createBidSsfReplayStore(container.db),
       issuer: env.OIDC_ISSUER_URL,
-      jwksUrl: `${(env.OIDC_INTERNAL_BASE_URL ?? env.OIDC_ISSUER_URL).replace(
-        /\/+$/,
-        "",
-      )}/.well-known/jwks.json`,
+      jwksUrl: issuerJwksUrl(env.OIDC_INTERNAL_BASE_URL ?? env.OIDC_ISSUER_URL),
       publish: (channel, message) => container.redis.publish(channel, message),
     }),
   );

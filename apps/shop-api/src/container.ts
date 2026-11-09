@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import type { AlertRetentionStore } from "@auction/alerts";
 import { ArtworkOfferLock } from "@auction/artwork-register-contracts";
 import { type Database, closeDb, createDb } from "@auction/db";
+import { issuerJwksUrl } from "@auction/identity-contracts";
 import {
   DrizzleArtworkRegisterQueueReader,
   DrizzleArtworkRegisterRepository,
@@ -361,7 +362,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
   });
   const releaseAlerts = shopAlerts.handlers;
   const internalBase = env.OIDC_INTERNAL_BASE_URL ?? env.OIDC_ISSUER_URL;
-  const jwksUrl = `${internalBase.replace(/\/+$/, "")}/.well-known/jwks.json`;
+  const jwksUrl = issuerJwksUrl(internalBase);
   const staffReader = createDrizzleShopStaffMemberReader(db);
   const saleAuthorityWriter = createDrizzleSaleAuthorityWriter(
     db,

@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { JWKS_PATH, normalizeIssuerUrl } from "@auction/identity-contracts";
+import { issuerJwksUrl, normalizeIssuerUrl } from "@auction/identity-contracts";
 import { verifyIdentityToken } from "@auction/identity-contracts/verify";
 import { createFetchTokenEndpoint, validateOAuthStateTimingSafe } from "@auction/identity-rp";
 import type { ShopAdminConfig } from "../config";
@@ -40,7 +40,7 @@ export async function completeStaffLogin(input: {
     throw new StaffLoginError("token_exchange_failed", "Identity token response incomplete");
   }
   const issuer = normalizeIssuerUrl(input.config.oidcIssuer);
-  const jwksUrl = `${input.config.oidcInternalIssuer.replace(/\/+$/, "")}${JWKS_PATH}`;
+  const jwksUrl = issuerJwksUrl(input.config.oidcInternalIssuer);
   const verified = await verifyIdentityToken({
     token: token.id_token,
     jwksUrl,
