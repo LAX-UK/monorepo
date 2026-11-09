@@ -4,7 +4,7 @@ import { AUTH_DENY_TABLES, AUTH_FULL_TABLES, AUTH_INSERT_SELECT_TABLES } from ".
 import {
   expectUniformTablePrivileges,
   readTablePrivileges,
-} from "./role-contract/table-privileges.js";
+} from "./role-contract/table-privileges.test-helpers.js";
 import { buildPgConnectionConfig } from "./ssl.js";
 
 const AUTH_URL = process.env.DATABASE_URL_AUTH ?? process.env.AUTH_APP_DATABASE_URL;
