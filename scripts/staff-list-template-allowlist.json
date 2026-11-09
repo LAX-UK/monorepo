@@ -16,6 +16,10 @@
     },
     { "page": "bid-admin:(platform)/impersonation/page.tsx", "reason": "Support tool" },
     { "page": "bid-admin:(platform)/saleroom/page.tsx", "reason": "Live sale console" },
+    {
+      "page": "bid-admin:(platform)/collections/page.tsx",
+      "reason": "Settings: weekly hours, rules and closures for collecting works"
+    },
     { "page": "bid-admin:(platform)/settings/security/page.tsx", "reason": "Settings" },
     { "page": "lax-admin:page.tsx", "reason": "Redirects to Overview" },
     { "page": "lax-admin:overview/page.tsx", "reason": "Overview: work inbox" },

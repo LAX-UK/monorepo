@@ -218,6 +218,27 @@ export {
   type FramingSizeBand,
   type FramingStatus,
 } from "./framing.js";
+export { orderTotalWithDelivery } from "./basket-totals.js";
+export {
+  FRAMING_TASK_STATUSES,
+  ORDER_LINE_KINDS,
+  addWorkingDaysUtc,
+  canMoveFramingTask,
+  framingDueAt,
+  framingLineVat,
+  framingRefundBlock,
+  framingStageStamp,
+  framingTaskFinished,
+  framingTaskNextSteps,
+  framingTaskStarted,
+  parseFramingOrderSnapshot,
+  parseFramingTaskStatus,
+  printReadyForFraming,
+  type FramingOrderSnapshot,
+  type FramingRefundBlock,
+  type FramingTaskStatus,
+  type OrderLineKind,
+} from "./framing-order.js";
 export {
   FRAMED_BY_ARTIST_MAX_LENGTH,
   FRAMING_MODES,
@@ -452,6 +473,15 @@ export {
 } from "./production-task-state.js";
 export { isPayeeConnectReady, type PayeeConnectReadinessInput } from "./payee-connect-readiness.js";
 export { RESERVATION_GRACE_MS, reservedUntilFromCheckoutExpiry } from "./reservation-timing.js";
+export {
+  CHECKOUT_HOLD_MS,
+  MAX_HOLD_EXTENSION_MS,
+  SESSION_SAFETY_MARGIN_MS,
+  STRIPE_SESSION_MIN_LIFETIME_MS,
+  type SessionHoldPlan,
+  newCheckoutHoldEnd,
+  planSessionHold,
+} from "./checkout-hold.js";
 export { isUkPostcode, normalizeUkPostcode } from "./uk-postcode.js";
 export {
   computeLineVat,

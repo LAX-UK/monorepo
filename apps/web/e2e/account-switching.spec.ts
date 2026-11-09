@@ -4,6 +4,7 @@ import {
   dismissCookieConsentIfVisible,
   e2eEnabled,
   e2eSkipReason,
+  flushAuthRateLimits,
 } from "./helpers/auth";
 
 /**
@@ -81,6 +82,11 @@ async function clickAccountMenuItem(page: Page, name: RegExp) {
 test.describe("account switching on the production build @roles", () => {
   test.skip(!e2eEnabled, e2eSkipReason);
   test.describe.configure({ timeout: 180_000 });
+
+  // Every test here signs in through the hosted page, which the issuer rate-limits per address.
+  test.beforeEach(() => {
+    flushAuthRateLimits();
+  });
 
   test("a fresh browser signs in to a page that renders, in its account, with no restore hop", async ({
     page,

@@ -1,4 +1,5 @@
-import { shopOrder } from "@auction/db/schema";
+import { shopEdition, shopOrder } from "@auction/db/schema";
+import { DrizzleUnappliedMoneyReader } from "@auction/persistence/repositories";
 import { eq } from "drizzle-orm";
 import type pg from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -23,11 +24,13 @@ import { completeShopCheckoutSession } from "./drizzle-payment-event.processor.j
 /** A payment provider double: a unique session per call, and a record of expired sessions. */
 function recordingGateway() {
   const created: string[] = [];
+  const expiries: Date[] = [];
   const expired: string[] = [];
   const gateway: PaymentCheckoutGateway = {
     async createHostedCheckout(input) {
       const sessionId = `cs_test_${input.orderId}_${created.length + 1}`;
       created.push(sessionId);
+      expiries.push(input.expiresAt);
       return {
         sessionId,
         paymentIntentId: null,
@@ -42,7 +45,7 @@ function recordingGateway() {
       return { kind: "expired" };
     },
   };
-  return { gateway, created, expired };
+  return { gateway, created, expiries, expired };
 }
 
 /** The same request for collection: no address or phone. */
@@ -108,6 +111,21 @@ describe.skipIf(!hasShopIntegrationDb)("checkout retries with changed delivery d
       db.select({ id: shopOrder.id }).from(shopOrder).where(eq(shopOrder.idempotencyKey, key));
     return { db, repo, recording, request, order, ordersForKey, suffix };
   }
+
+  it("holds a UK checkout and opens its payment session for at least 31 minutes, the reservation agreeing", async () => {
+    const { db, repo, recording, request, order } = await setup("uk-session-length");
+    const before = Date.now();
+    const created = await repo.createCheckoutOrder(request());
+    const [expiry] = recording.expiries;
+    const row = await order(created.orderId);
+    const held = await db
+      .select()
+      .from(shopEdition)
+      .where(eq(shopEdition.reservedByOrderId, created.orderId));
+    expect(expiry?.getTime()).toBeGreaterThanOrEqual(before + 31 * 60_000 - 1000);
+    expect(row.checkoutExpiresAt?.getTime()).toBe(expiry?.getTime());
+    expect(held[0]?.reservedUntil?.getTime()).toBeGreaterThanOrEqual(expiry?.getTime() ?? 0);
+  });
 
   it("reuses the same order for an unchanged retry, even two at once", async () => {
     const { repo, recording, request, ordersForKey } = await setup("replay-same");
@@ -182,8 +200,10 @@ describe.skipIf(!hasShopIntegrationDb)("checkout retries with changed delivery d
     });
     expect(updated.stripeCheckoutSessionId).not.toBe(oldSession);
 
-    await expect(
-      completeShopCheckoutSession(
+    // A payment that still arrives in the old session cannot pay the repriced order. It is not
+    // applied, and not lost: finance has a task for the 9,500 the buyer actually paid.
+    expect(
+      await completeShopCheckoutSession(
         db,
         {
           eventId: `evt-old-${suffix}`,
@@ -191,10 +211,11 @@ describe.skipIf(!hasShopIntegrationDb)("checkout retries with changed delivery d
           sessionId: oldSession,
           amountTotalPence: 9_500,
           paidAt: new Date(),
+          paymentIntentId: `pi_old_${suffix}`,
         },
-        { domainEventMode: "off" },
+        { domainEventMode: "off", unappliedMoney: new DrizzleUnappliedMoneyReader(db) },
       ),
-    ).rejects.toThrow();
+    ).toBe("unapplied_recorded");
     expect((await order(first.orderId)).status).toBe("pending_payment");
 
     await completeShopCheckoutSession(

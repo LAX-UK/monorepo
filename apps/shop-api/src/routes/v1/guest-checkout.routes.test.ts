@@ -201,6 +201,7 @@ describe("guest checkout routes", () => {
     status: "paid" as const,
     fulfilment: "collect_new_cavendish" as const,
     merchandiseSubtotalPence: 12000,
+    framingSubtotalPence: 0,
     fulfilmentSurchargePence: 0,
     fulfilmentVatPence: null,
     totalPence: 12000,

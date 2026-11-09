@@ -2339,6 +2339,20 @@
       "when": 1804406400000,
       "tag": "0339_sign_in_methods_data",
       "breakpoints": true
+    },
+    {
+      "idx": 335,
+      "version": "7",
+      "when": 1804492800000,
+      "tag": "0342_shop_framing_orders",
+      "breakpoints": true
+    },
+    {
+      "idx": 336,
+      "version": "7",
+      "when": 1804579200000,
+      "tag": "0341_shop_framing_price_trigger_lock",
+      "breakpoints": true
     }
   ]
 }

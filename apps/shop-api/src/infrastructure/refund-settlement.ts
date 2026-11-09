@@ -1,6 +1,13 @@
 import type { Database } from "@auction/db";
-import { shopOrder, shopOrderLine, shopPayoutLedger, shopRefund } from "@auction/db/schema";
-import { and, eq, inArray } from "drizzle-orm";
+import {
+  shopFramingTask,
+  shopOrder,
+  shopOrderLine,
+  shopPayoutLedger,
+  shopRefund,
+} from "@auction/db/schema";
+import { and, eq, inArray, sql } from "drizzle-orm";
+import { insertShopAdminAudit } from "./shop-admin-audit.js";
 
 /*
  * What a refund that has really reached the customer does to the order and the artist's payout.
@@ -9,7 +16,14 @@ import { and, eq, inArray } from "drizzle-orm";
  * going back on sale does that.
  */
 
-/** Splits order-level succeeded refunds across lines by unit price (last line gets rounding remainder). */
+/** Who the audit names when a refund the payment provider reports cancels a frame's task. */
+const SETTLEMENT_ACTOR = "system:refund-settlement";
+
+/**
+ * Splits order-level succeeded refunds across lines by weight, in proportion to each line's
+ * `unitPricePence` (last line with a weight gets the rounding remainder). A line with no weight
+ * takes no share.
+ */
 export function allocateOrderLevelRefundsToLines(
   orderLevelSucceededPence: number,
   lines: Array<{ id: string; unitPricePence: number }>,
@@ -18,16 +32,17 @@ export function allocateOrderLevelRefundsToLines(
   if (orderLevelSucceededPence <= 0 || lines.length === 0) {
     return allocated;
   }
-  const orderTotal = lines.reduce((sum, line) => sum + line.unitPricePence, 0);
+  const weighted = lines.filter((line) => line.unitPricePence > 0);
+  const orderTotal = weighted.reduce((sum, line) => sum + line.unitPricePence, 0);
   if (orderTotal <= 0) {
     return allocated;
   }
   let assigned = 0;
-  for (let index = 0; index < lines.length; index++) {
-    const line = lines[index];
+  for (let index = 0; index < weighted.length; index++) {
+    const line = weighted[index];
     if (!line) continue;
     const share =
-      index === lines.length - 1
+      index === weighted.length - 1
         ? orderLevelSucceededPence - assigned
         : Math.floor((orderLevelSucceededPence * line.unitPricePence) / orderTotal);
     allocated.set(line.id, share);
@@ -49,7 +64,15 @@ export function computeEffectiveLineRefundedPence(
       orderLevelSucceeded += row.amountPence;
     }
   }
-  const orderLevelShare = allocateOrderLevelRefundsToLines(orderLevelSucceeded, lines);
+  // An order-level refund is shared over what each line has left, so a line already refunded on
+  // its own (a print and its frame refunded together, say) is never credited a second time.
+  const orderLevelShare = allocateOrderLevelRefundsToLines(
+    orderLevelSucceeded,
+    lines.map((line) => ({
+      id: line.id,
+      unitPricePence: Math.max(0, line.unitPricePence - (directByLine.get(line.id) ?? 0)),
+    })),
+  );
   const effective = new Map<string, number>();
   for (const line of lines) {
     effective.set(line.id, (directByLine.get(line.id) ?? 0) + (orderLevelShare.get(line.id) ?? 0));
@@ -93,6 +116,7 @@ export async function applyPayoutEffectsForRefund(
     .select({
       id: shopOrderLine.id,
       unitPricePence: shopOrderLine.unitPricePence,
+      kind: shopOrderLine.kind,
     })
     .from(shopOrderLine)
     .where(eq(shopOrderLine.orderId, orderId));
@@ -108,6 +132,43 @@ export async function applyPayoutEffectsForRefund(
 
   const effectiveByLine = computeEffectiveLineRefundedPence(lines, refundRows);
   const orderFullyRefunded = succeededTotal >= orderTotalPence;
+
+  // A frame that has been refunded in full, alone or with its order, is not made. Refunds made
+  // through LAX already cancel the task when they are requested; this covers one the payment
+  // provider reports from outside.
+  const refundedFrameLineIds = lines
+    .filter(
+      (line) =>
+        line.kind === "framing" &&
+        (orderFullyRefunded || (effectiveByLine.get(line.id) ?? 0) >= line.unitPricePence),
+    )
+    .map((line) => line.id);
+  if (refundedFrameLineIds.length > 0) {
+    const cancelled = await tx
+      .update(shopFramingTask)
+      .set({
+        status: "cancelled",
+        version: sql`${shopFramingTask.version} + 1`,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          inArray(shopFramingTask.orderLineId, refundedFrameLineIds),
+          inArray(shopFramingTask.status, ["queued", "framing", "framed"]),
+        ),
+      )
+      .returning({ id: shopFramingTask.id });
+    for (const task of cancelled) {
+      await insertShopAdminAudit(tx, {
+        actorSubjectId: SETTLEMENT_ACTOR,
+        capability: "refund.write",
+        action: "cancel_framing_task",
+        targetType: "shop_framing_task",
+        targetId: task.id,
+        afterJson: { status: "cancelled", reason: "refund_settled" },
+      });
+    }
+  }
 
   for (const line of lines) {
     const lineRefunded = effectiveByLine.get(line.id) ?? 0;

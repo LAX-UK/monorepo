@@ -47,6 +47,7 @@ import {
   userSocialLinkRefusedStaffPayloadSchemaV1,
   userUnconfirmedPasswordRemovedPayloadSchemaV1,
 } from "./payload-schemas.js";
+import { SaleEventSchemas } from "./sale-payload-schemas.js";
 import {
   shopArtworkCreatedPayloadSchemaV1,
   shopArtworkInterestRegisteredPayloadSchemaV1,
@@ -217,6 +218,9 @@ export const ALL_LIVE_DOMAIN_EVENT_TYPES = [
   "collection.booking.handed_over",
   "collection.booking.hand_over_undone",
   "collection.booking.not_collected",
+  "collection.place.updated",
+  "collection.exception.added",
+  "collection.exception.removed",
   "marketing_enquiry.assigned",
   "marketing_enquiry.converted",
   "marketing_enquiry.erased",
@@ -260,6 +264,7 @@ export const ALL_LIVE_DOMAIN_EVENT_TYPES = [
   "sale.created",
   "sale.ended",
   "sale.published",
+  "sale.rescheduled",
   "sale.soft_deleted",
   "sale.test_flag_changed",
   "sale.unpublished",
@@ -920,6 +925,24 @@ const REGISTRY_OVERRIDES: Partial<Record<LiveDomainEventType, RegistryOverride>>
     idempotencyPolicy: "none",
     piiClassification: "none",
   },
+  "collection.place.updated": {
+    producers: ["apps/api"],
+    consumers: [],
+    idempotencyPolicy: "none",
+    piiClassification: "none",
+  },
+  "collection.exception.added": {
+    producers: ["apps/api"],
+    consumers: [],
+    idempotencyPolicy: "none",
+    piiClassification: "none",
+  },
+  "collection.exception.removed": {
+    producers: ["apps/api"],
+    consumers: [],
+    idempotencyPolicy: "none",
+    piiClassification: "none",
+  },
   "failed_job.restored": {
     producers: ["apps/api"],
     consumers: [],
@@ -1158,6 +1181,13 @@ const REGISTRY_OVERRIDES: Partial<Record<LiveDomainEventType, RegistryOverride>>
     piiClassification: "none",
   },
   "sale.published": { consumers: ["zoho_artwork_listing"] },
+  "sale.rescheduled": {
+    schema: SaleEventSchemas["sale.rescheduled"],
+    producers: ["apps/api"],
+    consumers: ["zoho_artwork_listing"],
+    idempotencyPolicy: "none",
+    piiClassification: "none",
+  },
   "sale.unpublished": { consumers: ["zoho_artwork_listing"] },
   "sale.ended": { consumers: ["zoho_artwork_listing"] },
   "artwork_register.offer_changed": {

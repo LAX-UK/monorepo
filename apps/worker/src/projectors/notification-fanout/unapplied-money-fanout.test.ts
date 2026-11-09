@@ -75,6 +75,162 @@ describe("unapplied money alert", () => {
     expect(situation).not.toMatch(/overpa|sent more/i);
   });
 
+  it("tells finance a Shop buyer paid after their order closed, naming the order the buyer quotes", async () => {
+    const enqueue = vi.fn().mockResolvedValue(undefined);
+    const alert = alertFromUnappliedMoney({
+      reason: "shop_order_paid_after_close",
+      paymentId: null,
+      paymentGroupId: null,
+      stripePaymentIntentId: "pi_1",
+      stripeChargeId: null,
+      stripeCustomerId: null,
+      shopOrderId: "order-1",
+      shopOrderReference: "LAX-S-10482",
+      shopCheckoutSessionId: "cs_1",
+      amountCents: 50500,
+      currency: "GBP",
+      dedupeKey: "shop_order_paid_after_close:pi_1",
+    });
+    expect(alert.reference).toBe("LAX-S-10482");
+    await fanoutUnappliedMoney({
+      staffOpsRecipientReader: {
+        listRecipients: vi
+          .fn()
+          .mockResolvedValue([{ id: "staff-1", email: "f@lax.test", firstName: "Fran" }]),
+      },
+      emailService: { enqueue } as never,
+      eventId: 9,
+      webOrigin: "https://bid.example",
+      laxAdminUrl: "https://admin.lax.art/",
+      alert,
+    });
+    const vars = enqueue.mock.calls[0]?.[0].vars as {
+      situation: string;
+      reference: string;
+      reviewUrl: string;
+    };
+    // The Shop order in LAX Admin, not the Bid admin payments list.
+    expect(vars.reviewUrl).toBe("https://admin.lax.art/orders/order-1");
+    expect(vars.situation).toContain("LAX Admin");
+    expect(vars.situation).toContain("paid after their order had closed");
+    expect(vars.situation).toContain("Nothing was refunded");
+    expect(vars.reference).toBe("LAX-S-10482");
+  });
+
+  it("names LAX Admin and the order but carries no link, never localhost or Bid admin, when LAX Admin has no address set", async () => {
+    const enqueue = vi.fn().mockResolvedValue(undefined);
+    await fanoutUnappliedMoney({
+      staffOpsRecipientReader: {
+        listRecipients: vi
+          .fn()
+          .mockResolvedValue([{ id: "staff-1", email: "f@lax.test", firstName: "Fran" }]),
+      },
+      emailService: { enqueue } as never,
+      eventId: 10,
+      webOrigin: "https://bid.example",
+      alert: alertFromUnappliedMoney({
+        reason: "shop_order_paid_after_close",
+        paymentId: null,
+        paymentGroupId: null,
+        stripePaymentIntentId: "pi_1",
+        stripeChargeId: null,
+        stripeCustomerId: null,
+        shopOrderId: "order-1",
+        shopOrderReference: "LAX-S-10482",
+        amountCents: 50500,
+        currency: "GBP",
+        dedupeKey: "shop_order_paid_after_close:pi_1",
+      }),
+    });
+    const vars = enqueue.mock.calls[0]?.[0].vars as Record<string, unknown>;
+    expect(vars).not.toHaveProperty("reviewUrl");
+    expect(vars.situation).toContain("LAX Admin");
+    expect(vars.reference).toBe("LAX-S-10482");
+  });
+
+  it.each([
+    ["shop_order_amount_mismatch", "not their order's total"],
+    ["shop_order_session_mismatch", "not the one their order was opened with"],
+    ["shop_order_edition_state_invalid", "no longer reserved for it"],
+    ["shop_order_paid_twice", "already paid received a second payment"],
+  ] as const)(
+    "tells finance about a Shop payment that could not be applied (%s), linking the order in LAX Admin",
+    async (reason, words) => {
+      const enqueue = vi.fn().mockResolvedValue(undefined);
+      await fanoutUnappliedMoney({
+        staffOpsRecipientReader: {
+          listRecipients: vi
+            .fn()
+            .mockResolvedValue([{ id: "staff-1", email: "f@lax.test", firstName: "Fran" }]),
+        },
+        emailService: { enqueue } as never,
+        eventId: 11,
+        webOrigin: "https://bid.example",
+        laxAdminUrl: "https://admin.lax.art",
+        alert: alertFromUnappliedMoney({
+          reason,
+          paymentId: null,
+          paymentGroupId: null,
+          stripePaymentIntentId: "pi_1",
+          stripeChargeId: null,
+          stripeCustomerId: null,
+          shopOrderId: "order-9",
+          shopOrderReference: "LAX-S-10482",
+          shopCheckoutSessionId: "cs_1",
+          amountCents: 999,
+          currency: "GBP",
+          dedupeKey: `${reason}:pi_1`,
+        }),
+      });
+      const vars = enqueue.mock.calls[0]?.[0].vars as {
+        situation: string;
+        reference: string;
+        reviewUrl: string;
+        amount: string;
+      };
+      expect(vars.situation).toContain(words);
+      expect(vars.situation).toContain("Nothing was applied");
+      expect(vars.situation).toContain("LAX Admin");
+      expect(vars.reference).toBe("LAX-S-10482");
+      expect(vars.amount).toContain("9.99");
+      // The order in LAX Admin, never Bid admin's payments list.
+      expect(vars.reviewUrl).toBe("https://admin.lax.art/orders/order-9");
+    },
+  );
+
+  it("tells finance about a payment for an order that does not exist, with no link to open", async () => {
+    const enqueue = vi.fn().mockResolvedValue(undefined);
+    await fanoutUnappliedMoney({
+      staffOpsRecipientReader: {
+        listRecipients: vi
+          .fn()
+          .mockResolvedValue([{ id: "staff-1", email: "f@lax.test", firstName: "Fran" }]),
+      },
+      emailService: { enqueue } as never,
+      eventId: 12,
+      webOrigin: "https://bid.example",
+      laxAdminUrl: "https://admin.lax.art",
+      alert: alertFromUnappliedMoney({
+        reason: "shop_order_not_found",
+        paymentId: null,
+        paymentGroupId: null,
+        stripePaymentIntentId: "pi_9",
+        stripeChargeId: null,
+        stripeCustomerId: null,
+        shopOrderId: null,
+        shopOrderReference: null,
+        shopCheckoutSessionId: "cs_9",
+        amountCents: 1200,
+        currency: "GBP",
+        dedupeKey: "shop_order_not_found:pi_9",
+      }),
+    });
+    const vars = enqueue.mock.calls[0]?.[0].vars as Record<string, unknown>;
+    expect(vars.situation).toContain("does not exist here");
+    expect(vars.reference).toBe("pi_9");
+    expect(vars).not.toHaveProperty("reviewUrl");
+  });
+
   it("words the suggestion by the payment's state, and says nothing without one", () => {
     const paid = { id: "abcdef12-0000", status: "paid" as const };
     expect(possibleSourceText(paid)).toBe(

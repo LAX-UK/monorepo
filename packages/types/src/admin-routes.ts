@@ -1,5 +1,6 @@
 import {
   AML_REVIEW_ACCESS,
+  COLLECTIONS_READ_ACCESS,
   CONDITION_REPORTS_READ_ACCESS,
   ENQUIRIES_ACCESS,
   FINANCE_ACCESS,
@@ -92,6 +93,7 @@ export const ADMIN_ROUTE_TABLE = [
     area: "platform",
     requirement: LEGAL_ENTITY_BROWSE_ACCESS,
   },
+  { pattern: "/admin/collections", area: "platform", requirement: COLLECTIONS_READ_ACCESS },
   { pattern: "/admin/lot-fulfilment", area: "platform", requirement: LOT_FULFILMENT_ACCESS },
   { pattern: "/admin/lots", area: "platform", requirement: LOTS_READ_ACCESS },
   { pattern: "/admin/lots/[id]", area: "platform", requirement: LOTS_READ_ACCESS },
@@ -117,6 +119,16 @@ export const ADMIN_ROUTE_TABLE = [
 export type AdminRoutePattern = (typeof ADMIN_ROUTE_TABLE)[number]["pattern"];
 
 const seg = (id: string): string => encodeURIComponent(id);
+
+/**
+ * Link targets in LAX Admin (the Shop and lax.art staff app), which has its own origin. These are
+ * paths on that origin, not on Bid admin's.
+ */
+export const laxAdminRoutes = {
+  orders: {
+    order: (orderId: string) => `/orders/${seg(orderId)}`,
+  },
+} as const;
 
 /** One builder per link target. Ids are encoded; query strings are part of the builder. */
 export const adminRoutes = {
@@ -149,6 +161,13 @@ export const adminRoutes = {
   client: (id: string) => `/admin/clients/${seg(id)}`,
   conditionReports: { list: () => "/admin/condition-reports" },
   lotFulfilment: { list: () => "/admin/lot-fulfilment" },
+  /** The collection hours and rules, and the closures, of one place (the first when omitted). */
+  collections: {
+    hours: (venueId?: string) =>
+      venueId ? `/admin/collections?venue=${encodeURIComponent(venueId)}` : "/admin/collections",
+    closures: (venueId?: string) =>
+      `/admin/collections?tab=closures${venueId ? `&venue=${encodeURIComponent(venueId)}` : ""}`,
+  },
   legalEntity: (id: string) => `/admin/legal-entities/${seg(id)}`,
   lots: { list: () => "/admin/lots" },
   lot: (id: string) => `/admin/lots/${seg(id)}`,

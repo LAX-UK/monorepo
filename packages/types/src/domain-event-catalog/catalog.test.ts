@@ -110,6 +110,23 @@ describe("DOMAIN_EVENT_REGISTRY", () => {
     }
   });
 
+  it("accepts a shop.order.paid payload with or without a framing line count", () => {
+    const base = {
+      schemaVersion: 1,
+      orderId: "33333333-3333-4333-8333-333333333333",
+      identitySubjectId: "user_1",
+      totalPence: 40500,
+      paidAt: "2026-11-09T09:05:00.000Z",
+      lineCount: 1,
+    };
+    expect(parseDomainEventPayload("shop.order.paid", 1, base).ok).toBe(true);
+    const framed = parseDomainEventPayload("shop.order.paid", 1, { ...base, framingLineCount: 1 });
+    expect(framed.ok).toBe(true);
+    expect(
+      parseDomainEventPayload("shop.order.paid", 1, { ...base, framingLineCount: -1 }).ok,
+    ).toBe(false);
+  });
+
   it("fails safely for unknown schema versions", () => {
     const result = parseDomainEventPayload("bid.outbid", 99, {
       previousBidId: "33333333-3333-4333-8333-333333333333",
@@ -121,5 +138,22 @@ describe("DOMAIN_EVENT_REGISTRY", () => {
     if (!result.ok) {
       expect(result.error).toContain("Unsupported schema version 99");
     }
+  });
+
+  it("freezes sale.rescheduled as ids and instants, routed to the listing", () => {
+    const payload = {
+      saleId: "11111111-1111-4111-8111-111111111111",
+      previousStartAt: "2026-11-10T10:00:00.000Z",
+      newStartAt: "2026-11-12T10:00:00.000Z",
+    };
+    expect(parseDomainEventPayload("sale.rescheduled", 1, payload)).toEqual({
+      ok: true,
+      data: payload,
+    });
+    expect(
+      parseDomainEventPayload("sale.rescheduled", 1, { ...payload, newStartAt: "tomorrow" }).ok,
+    ).toBe(false);
+    expect(DOMAIN_EVENT_REGISTRY["sale.rescheduled"].consumers).toContain("zoho_artwork_listing");
+    expect(DOMAIN_EVENT_REGISTRY["sale.rescheduled"].piiClassification).toBe("none");
   });
 });

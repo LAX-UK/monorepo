@@ -1,0 +1,5 @@
+{
+  "name": "@fixture/clean",
+  "dependencies": { "next": "1.0.0" },
+  "devDependencies": { "vitest": "1.0.0" }
+}

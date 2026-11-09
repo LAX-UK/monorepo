@@ -9,11 +9,12 @@ import {
   sale,
   zohoListingSyncRun,
 } from "@auction/db/schema";
-import { and, asc, desc, eq, gt, inArray, isNull, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, inArray, isNull, lt, lte, ne, or, sql } from "drizzle-orm";
 import type {
   IZohoListingLock,
   IZohoListingRunReader,
   IZohoListingRunStore,
+  IZohoListingSaleStartMark,
   IZohoListingSourceReader,
   ListingLot,
   ListingMove,
@@ -117,6 +118,31 @@ export class DrizzleZohoListingSourceReader implements IZohoListingSourceReader 
       .selectDistinct({ registerId: lot.artworkRegisterId })
       .from(lot)
       .where(and(eq(lot.saleId, saleId), sql`${lot.artworkRegisterId} IS NOT NULL`));
+    return rows.flatMap((row) => (row.registerId ? [row.registerId] : []));
+  }
+
+  async registerIdsForSalesStartedBetween(
+    window: { from: Date; to: Date },
+    after: string | null,
+    limit: number,
+  ): Promise<string[]> {
+    const rows = await this.db
+      .selectDistinct({ registerId: lot.artworkRegisterId })
+      .from(lot)
+      .innerJoin(sale, eq(sale.id, lot.saleId))
+      .where(
+        and(
+          eq(sale.status, "scheduled"),
+          isNull(sale.deletedAt),
+          isNull(lot.deletedAt),
+          gt(sale.startTime, window.from),
+          lte(sale.startTime, window.to),
+          sql`${lot.artworkRegisterId} IS NOT NULL`,
+          after ? gt(lot.artworkRegisterId, after) : sql`TRUE`,
+        ),
+      )
+      .orderBy(asc(lot.artworkRegisterId))
+      .limit(limit);
     return rows.flatMap((row) => (row.registerId ? [row.registerId] : []));
   }
 
@@ -267,7 +293,15 @@ export class DrizzleZohoListingLock implements IZohoListingLock {
 }
 
 /** The nightly listing pass's summaries, and what LAX Admin reads of them. */
-export class DrizzleZohoListingRunStore implements IZohoListingRunStore, IZohoListingRunReader {
+/**
+ * The sale-start pass keeps its high-water mark in one row of the run table, so it needs no table
+ * of its own. The row is never a run: `latestRun` skips it.
+ */
+export const SALE_START_MARK_RUN_ID = "sale-start:high-water-mark";
+
+export class DrizzleZohoListingRunStore
+  implements IZohoListingRunStore, IZohoListingRunReader, IZohoListingSaleStartMark
+{
   constructor(private readonly db: Database) {}
 
   async record(run: ZohoListingRun): Promise<void> {
@@ -291,9 +325,41 @@ export class DrizzleZohoListingRunStore implements IZohoListingRunStore, IZohoLi
     const [row] = await this.db
       .select()
       .from(zohoListingSyncRun)
+      .where(ne(zohoListingSyncRun.runId, SALE_START_MARK_RUN_ID))
       .orderBy(desc(zohoListingSyncRun.finishedAt))
       .limit(1);
     return row ?? null;
+  }
+
+  async lastCoveredTo(): Promise<Date | null> {
+    const [row] = await this.db
+      .select({ at: zohoListingSyncRun.finishedAt })
+      .from(zohoListingSyncRun)
+      .where(eq(zohoListingSyncRun.runId, SALE_START_MARK_RUN_ID))
+      .limit(1);
+    return row?.at ?? null;
+  }
+
+  async markCoveredTo(to: Date): Promise<void> {
+    const values = {
+      mode: "live" as const,
+      startedAt: to,
+      finishedAt: to,
+      checked: 0,
+      changed: 0,
+      unchanged: 0,
+      failed: 0,
+      failures: [],
+    };
+    await this.db
+      .insert(zohoListingSyncRun)
+      .values({ runId: SALE_START_MARK_RUN_ID, ...values })
+      .onConflictDoUpdate({
+        target: zohoListingSyncRun.runId,
+        set: values,
+        // Never backwards, even if two runs ever overlapped.
+        setWhere: lt(zohoListingSyncRun.finishedAt, to),
+      });
   }
 
   async countFailedDeliveries(): Promise<number> {

@@ -34,7 +34,7 @@ const request: AdminDeliveryQuote = {
   address: ["Friedrichstrasse 12", "Berlin 10117", "Germany"],
   phone: "+49 30 1234567",
   items: ["Warm Basket"],
-  merchandisePence: 42000,
+  beforeDeliveryPence: 42000,
   requestedAt: "2026-11-10T09:00:00.000Z",
   holdUntil: "2026-11-13T09:00:00.000Z",
   quote: null,

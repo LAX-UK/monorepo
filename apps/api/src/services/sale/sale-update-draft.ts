@@ -1,5 +1,11 @@
 import type { ILotRepository } from "@auction/persistence/interfaces";
-import type { CreateSaleInput, Sale, StaffRoles, UserRole } from "@auction/types";
+import type {
+  CreateSaleInput,
+  Sale,
+  SaleRescheduledPayload,
+  StaffRoles,
+  UserRole,
+} from "@auction/types";
 import {
   HERO_VIDEO_URL_REQUIRED,
   applyHeroPresentationPatch,
@@ -31,6 +37,64 @@ async function recordTestFlagChange(
     isTest: after.isTest === true,
     status: after.status,
   });
+}
+
+type RescheduleEvent = {
+  aggregateType: "sale";
+  aggregateId: string;
+  eventType: "sale.rescheduled";
+  payload: SaleRescheduledPayload;
+  actorUserId: string;
+};
+
+/** The event for a start time that moved, or null when it did not. */
+function rescheduleEvent(
+  actorUserId: string | undefined,
+  before: Sale,
+  after: Sale,
+): RescheduleEvent | null {
+  if (!actorUserId || before.startTime.getTime() === after.startTime.getTime()) return null;
+  return {
+    aggregateType: "sale",
+    aggregateId: after.id,
+    eventType: "sale.rescheduled",
+    payload: {
+      saleId: after.id,
+      previousStartAt: before.startTime.toISOString(),
+      newStartAt: after.startTime.toISOString(),
+    },
+    actorUserId,
+  };
+}
+
+/**
+ * Saves a draft sale's edit. A moved start time is recorded as `sale.rescheduled` in the same
+ * transaction as the update, so the event exists exactly when the new time does. Without a
+ * transaction runner (unit wiring) the event follows the update.
+ */
+async function saveSaleEdit(
+  deps: SaleServiceDeps,
+  actorUserId: string | undefined,
+  before: Sale,
+  patch: Partial<CreateSaleInput>,
+  syncDraftLots: ((lotRepo: ILotRepository) => Promise<void>) | undefined,
+): Promise<Sale> {
+  if (deps.transactionRunner && deps.repoFactory) {
+    const sink = deps.domainEventSink;
+    return deps.transactionRunner.runInTransaction(async (tx) => {
+      const repos = txRepos(deps, tx);
+      await syncDraftLots?.(repos.lot);
+      const updated = await repos.sale.update(before.id, patch);
+      const event = rescheduleEvent(actorUserId, before, updated);
+      if (event && sink) await sink.withTx(tx).publish(event);
+      return updated;
+    });
+  }
+  await syncDraftLots?.(deps.lotRepo);
+  const updated = await deps.saleRepo.update(before.id, patch);
+  const event = rescheduleEvent(actorUserId, before, updated);
+  if (event && deps.domainEventSink) await deps.domainEventSink.publish(event);
+  return updated;
 }
 
 export async function updateDraftSale(
@@ -177,29 +241,16 @@ export async function updateDraftSale(
     if (snapshot.isErr()) return err(snapshot.error);
     normalized = snapshot.value;
   }
+  let syncDraftLots: ((lotRepo: ILotRepository) => Promise<void>) | undefined;
   if (caps.inheritsLotTiming) {
     const lots = await deps.lotRepo.findBySaleId(saleId);
-    const syncDraftLots = async (lotRepo: ILotRepository) => {
+    syncDraftLots = async (lotRepo) => {
       for (const l of lots) {
         if (l.status === "draft") {
           await lotRepo.update(l.id, { startTime: nextStart, endTime: nextEnd });
         }
       }
     };
-    if (deps.transactionRunner && deps.repoFactory) {
-      const updated = await deps.transactionRunner.runInTransaction(async (tx) => {
-        const lotRepo = txRepos(deps, tx).lot;
-        const saleRepo = txRepos(deps, tx).sale;
-        await syncDraftLots(lotRepo);
-        return saleRepo.update(saleId, normalized);
-      });
-      if (patch.coverImages !== undefined) {
-        await deps.imageCleanup?.enqueueRemovedMany(sale.coverImages, patch.coverImages);
-      }
-      await recordTestFlagChange(deps, actorUserId, sale, updated);
-      return ok(updated);
-    }
-    await syncDraftLots(deps.lotRepo);
   } else if (patch.startTime !== undefined || patch.endTime !== undefined) {
     const lots = await deps.lotRepo.findBySaleId(saleId);
     const nextSale = {
@@ -219,7 +270,7 @@ export async function updateDraftSale(
       return err(new LotError(violations.join("; "), 400));
     }
   }
-  const updated = await deps.saleRepo.update(saleId, normalized);
+  const updated = await saveSaleEdit(deps, actorUserId, sale, normalized, syncDraftLots);
   await recordTestFlagChange(deps, actorUserId, sale, updated);
   if (patch.coverImages !== undefined) {
     await deps.imageCleanup?.enqueueRemovedMany(sale.coverImages, patch.coverImages);

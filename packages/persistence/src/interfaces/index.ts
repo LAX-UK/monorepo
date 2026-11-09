@@ -1286,6 +1286,7 @@ export type {
   IZohoListingLock,
   IZohoListingRunReader,
   IZohoListingRunStore,
+  IZohoListingSaleStartMark,
   IZohoListingSourceReader,
   ListingLot,
   ListingMove,
@@ -1351,4 +1352,20 @@ export type {
   CollectionLotRecord,
   ICollectionLotFactsReader,
 } from "./collection-lot-facts.reader.js";
+export type {
+  AddCollectionException,
+  AddExceptionOutcome,
+  CollectionVenueChoice,
+  ICollectionSettingsReader,
+  ICollectionSettingsWriter,
+  RemoveCollectionException,
+  RemoveExceptionOutcome,
+  SaveCollectionSettings,
+  SaveSettingsOutcome,
+  SettingsField,
+  StaffExceptionRecord,
+  StaffSettingsRecord,
+  WithinSettingsTransaction,
+  GuardSettingsTransaction,
+} from "./collection-settings.repository.js";
 export type { IPartyDealRecordReader } from "./party-deal-record.reader.js";

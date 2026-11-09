@@ -36,6 +36,21 @@ export const UNAPPLIED_MONEY_REASONS = [
    * payout may need adjusting. The amount is what went back in this report.
    */
   "private_sale_refund_after_payout",
+  /**
+   * A Shop buyer's payment arrived after their order had been closed (expired, cancelled or
+   * failed) and its prints released. Nothing is refunded automatically: finance decides.
+   */
+  "shop_order_paid_after_close",
+  /** A Shop buyer paid an amount that is not their order's total. Nothing was applied and the order was closed. */
+  "shop_order_amount_mismatch",
+  /** A Shop buyer paid in a payment session that is not the one their order was opened with. */
+  "shop_order_session_mismatch",
+  /** A Shop buyer paid, but the print held for their order was no longer reserved for it. */
+  "shop_order_edition_state_invalid",
+  /** A Shop order that was already paid received a second payment, in another session. */
+  "shop_order_paid_twice",
+  /** A Shop buyer paid for an order that does not exist here (live mode only). */
+  "shop_order_not_found",
 ] as const;
 
 export type UnappliedMoneyReason = (typeof UNAPPLIED_MONEY_REASONS)[number];
@@ -71,6 +86,11 @@ export type UnappliedMoney = {
   /** What staff quote for that deal (PS-0012), so the alert says which deal. */
   privateSaleDealReference?: string | null;
   privateSaleDealPaymentId?: string | null;
+  /** The Shop order the money was paid for (its id and the reference the buyer quotes). */
+  shopOrderId?: string | null;
+  shopOrderReference?: string | null;
+  /** The Checkout Session the buyer paid in. */
+  shopCheckoutSessionId?: string | null;
   amountCents: number;
   currency: string;
 };
@@ -99,11 +119,27 @@ export function unappliedMoneyDedupeKey(money: UnappliedMoney): string {
   const reference =
     money.stripePaymentIntentId ??
     money.stripeChargeId ??
+    money.shopCheckoutSessionId ??
     money.stripeEventId ??
     money.paymentGroupId ??
     money.paymentId ??
     "unknown";
   return `${money.reason}:${reference}`;
+}
+
+/**
+ * The aggregate a task's events are recorded against, so the "received" event and the "resolved"
+ * event that closes it sit on one audit trail: the payment, else the payment group, else the
+ * task's own key (money that belongs to neither, such as a Shop order's).
+ */
+export function unappliedMoneyAggregate(
+  money: Pick<UnappliedMoney, "paymentId" | "paymentGroupId">,
+  dedupeKey: string,
+): { aggregateType: "payment" | "payment_group"; aggregateId: string } {
+  return {
+    aggregateType: money.paymentId ? "payment" : "payment_group",
+    aggregateId: money.paymentId ?? money.paymentGroupId ?? dedupeKey,
+  };
 }
 
 export function unappliedMoneyPayload(money: UnappliedMoney): UnappliedMoneyPayload {

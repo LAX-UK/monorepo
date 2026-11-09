@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   type UnappliedMoney,
   possibleSourceText,
+  unappliedMoneyAggregate,
   unappliedMoneyDedupeKey,
   unappliedMoneyPayload,
 } from "./unapplied-money.js";
@@ -39,6 +40,21 @@ describe("unappliedMoneyDedupeKey", () => {
     ).toBe("customer_balance_unapplied:evt_1:gbp");
   });
 
+  it("keys Shop money with no intent by its payment session, then by the Stripe event", () => {
+    const shop = {
+      ...base,
+      reason: "shop_order_paid_after_close" as const,
+      paymentId: null,
+      stripePaymentIntentId: null,
+      stripeChargeId: null,
+      stripeEventId: "evt_1",
+    };
+    expect(unappliedMoneyDedupeKey({ ...shop, shopCheckoutSessionId: "cs_1" })).toBe(
+      "shop_order_paid_after_close:cs_1",
+    );
+    expect(unappliedMoneyDedupeKey(shop)).toBe("shop_order_paid_after_close:evt_1");
+  });
+
   it("the same money for a different reason is a different task", () => {
     expect(unappliedMoneyDedupeKey({ ...base, reason: "amount_mismatch" })).not.toBe(
       unappliedMoneyDedupeKey(base),
@@ -69,5 +85,30 @@ describe("possibleSourceText", () => {
 
   it("says nothing without a suggestion", () => {
     expect(possibleSourceText(null)).toBeNull();
+  });
+});
+
+describe("unappliedMoneyAggregate", () => {
+  it("records a payment's money on the payment, and a group's on the group", () => {
+    expect(unappliedMoneyAggregate(base, "key")).toEqual({
+      aggregateType: "payment",
+      aggregateId: "pay-1",
+    });
+    expect(unappliedMoneyAggregate({ paymentId: null, paymentGroupId: "grp-1" }, "key")).toEqual({
+      aggregateType: "payment_group",
+      aggregateId: "grp-1",
+    });
+  });
+
+  it("records money that belongs to neither, such as a Shop order's, on its own key, so the event that closes it joins the same trail", () => {
+    expect(
+      unappliedMoneyAggregate(
+        { paymentId: null, paymentGroupId: null },
+        "shop_order_paid_after_close:pi_1",
+      ),
+    ).toEqual({
+      aggregateType: "payment_group",
+      aggregateId: "shop_order_paid_after_close:pi_1",
+    });
   });
 });

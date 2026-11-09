@@ -20,6 +20,7 @@ import { withAdminIdempotency } from "../../../application/admin/with-admin-idem
 import type { ShopUnitOfWorkFactory } from "../../../application/ports/shop-unit-of-work.js";
 import { ShopApiError, notFound } from "../../../errors/shop-api-error.js";
 import { shopPhaseDbSession } from "../../drizzle-shop-transaction-effects.js";
+import { refundFrameWithPrint } from "./framing-refund.js";
 import { loadOrderRefunds } from "./load-order-refunds.js";
 import { applyReturnedEditionStock } from "./returned-edition-stock.js";
 
@@ -27,6 +28,8 @@ export type CancelAfterPossessionResult = {
   /** The tracked return, when the item has to come back; null when it never left the gallery. */
   returnId: string | null;
   refundId: string;
+  /** What was refunded for the frame sold with the print, in pence; 0 when it had none. */
+  framingRefundPence: number;
   /** "restocked" when the item never left the gallery and is back on sale. */
   status: "requested" | "restocked";
 };
@@ -170,6 +173,17 @@ export function createCancelAfterPossessionHandler(deps: { uow: ShopUnitOfWorkFa
             throw new Error("Failed to record cancellation refund");
           }
 
+          // The frame goes back with its print: its own refund for what is left of it, and its
+          // task cancelled in the same transaction.
+          const frameRefund = await refundFrameWithPrint(tx, {
+            orderId: order.id,
+            orderTotalPence: order.totalPence,
+            printLineId: command.orderLineId,
+            source: "cancellation",
+            idempotencyKey: `cancellation:${command.idempotencyKey}`,
+            actorSubjectId: command.actorSubjectId,
+          });
+
           await db
             .update(shopPayoutLedger)
             .set({ blockedReason: "cancellation" })
@@ -191,6 +205,9 @@ export function createCancelAfterPossessionHandler(deps: { uow: ShopUnitOfWorkFa
               editionId: command.editionId,
               refundId: refund.id,
               amountPence: remaining,
+              ...(frameRefund
+                ? { frameRefundId: frameRefund.refundId, frameAmountPence: frameRefund.amountPence }
+                : {}),
               stock: stockOutcome === "restock_now" ? "restocked" : "awaiting_return",
             },
           });
@@ -259,12 +276,13 @@ export function createCancelAfterPossessionHandler(deps: { uow: ShopUnitOfWorkFa
             orderId: order.id,
             orderReference: order.reference,
             artworkTitle: artwork?.title ?? "Your item",
-            amountPence: remaining,
+            amountPence: remaining + (frameRefund?.amountPence ?? 0),
           });
 
           return {
             returnId: returnRow?.id ?? null,
             refundId: refund.id,
+            framingRefundPence: frameRefund?.amountPence ?? 0,
             status: restocked ? ("restocked" as const) : ("requested" as const),
           };
         },
