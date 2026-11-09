@@ -301,6 +301,7 @@ export class EmailNotificationChannel implements INotificationChannel {
           userName,
           step: m?.reminderStep ?? "overdue",
           lotTitle,
+          ...(m?.privateSale ? { itemLabel: "Work" as const } : {}),
           amount: formatMoneyMajor(m?.amount, m?.currency) ?? payload.message,
           dueDate: m?.dueDate ?? "",
           payUrl: payload.lotId

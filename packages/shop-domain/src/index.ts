@@ -219,6 +219,25 @@ export {
   type FramingStatus,
 } from "./framing.js";
 export {
+  FRAMED_BY_ARTIST_MAX_LENGTH,
+  FRAMING_MODES,
+  FRAMING_MODE_LABELS,
+  buyerFramingChoice,
+  editionFramingIssues,
+  editionOptionPricePence,
+  framingBandForSheetText,
+  framingLeadWindow,
+  isBuyerOffered,
+  parseSheetSizeCm,
+  type BuyerFramingChoice,
+  type EditionFramingInput,
+  type EditionFramingIssue,
+  type EditionFramingIssueReason,
+  type FramingLeadWindow,
+  type FramingMode,
+  type FramingOptionFacts,
+} from "./framing-edition.js";
+export {
   DEFAULT_DELIVERY_REGIONS,
   DEFAULT_EXPORT_RESTRICTED_COUNTRIES,
   DELIVERY_REGIONS_EDIT_CAPABILITY,
@@ -617,6 +636,7 @@ export {
   MAX_OPEN_QUOTE_REQUESTS_PER_BUYER,
   MAX_OPEN_QUOTE_REQUESTS_PER_GUEST_IP,
   QUOTE_HOLD_WORKING_DAYS,
+  QUOTE_PAYMENT_WINDOW_MS,
   addWorkingDays,
   assessOutsideUkDelivery,
   outsideUkAddressIssues,
@@ -627,3 +647,16 @@ export {
   type OutsideUkAddressIssue,
   type OutsideUkAssessment,
 } from "./outside-uk-delivery.js";
+export {
+  DELIVERY_QUOTES_WRITE_CAPABILITY,
+  QUOTE_CARRIER_MAX_LENGTH,
+  QUOTE_DECLINE_NOTE_MAX_LENGTH,
+  QUOTE_LEAD_TIME_NOTE_MAX_LENGTH,
+  QUOTE_PRICE_MAX_PENCE,
+  QUOTE_SERVICE_MAX_LENGTH,
+  declineNoteIssue,
+  deliveryQuoteInputIssues,
+  type DeliveryQuoteInput,
+  type DeliveryQuoteInputField,
+  type DeliveryQuoteInputIssue,
+} from "./delivery-quote-staff.js";

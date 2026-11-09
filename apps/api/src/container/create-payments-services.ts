@@ -429,6 +429,8 @@ export function createPaymentsServices(
     amlHolds: amlHoldStore,
     screenings: repos.amlScreeningRepository,
     sourceOfFunds: repos.sourceOfFundsRepository,
+    notificationDispatcher,
+    unappliedMoney,
   });
 
   const stripePaymentWebhookService: StripePaymentWebhookService | null =

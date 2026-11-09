@@ -236,6 +236,26 @@ export function registerCommerceGuestCheckoutRoutes(
     );
   });
 
+  /** The guest accepts the gallery's delivery quote for their order, then goes to payment. */
+  app.post("/commerce/guest-orders/current/accept-delivery-quote", async (c) => {
+    const refused = csrfFailed(c);
+    if (refused) return refused;
+    const token = readGuestOrderToken(c);
+    if (!token) return c.json({ error: "not_found" }, 404);
+    const parsed = storefrontRedirectsBodySchema(storefrontOrigin).safeParse(
+      await c.req.json().catch(() => ({})),
+    );
+    if (!parsed.success) return c.json({ error: "validation_failed" }, 400);
+    return proxyJson(
+      c,
+      await asStorefront(c, {
+        path: "/v1/guest-orders/accept-delivery-quote",
+        scopes: "shop.write",
+        body: { token, ...parsed.data },
+      }),
+    );
+  });
+
   app.post("/commerce/guest-orders/links", async (c) => {
     const refused = csrfFailed(c);
     if (refused) return refused;

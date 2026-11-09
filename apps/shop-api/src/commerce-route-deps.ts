@@ -13,12 +13,17 @@ import type { createListOrdersHandler } from "./application/handlers/commerce-ha
 import type { createMergeBasketsHandler } from "./application/handlers/commerce-handlers.js";
 import type { createRemoveBasketLineHandler } from "./application/handlers/commerce-handlers.js";
 import type { createResumeCheckoutOrderHandler } from "./application/handlers/commerce-handlers.js";
+import type { createSetBasketLineFramingHandler } from "./application/handlers/commerce-handlers.js";
 import type { createUpsertBasketLineHandler } from "./application/handlers/commerce-handlers.js";
 import type {
   createListSavedDeliveryAddressesHandler,
   createSaveDeliveryAddressHandler,
 } from "./application/handlers/delivery-address-book.handler.js";
-import type { CheckoutWriter, OrderReader } from "./application/ports/commerce.ports.js";
+import type {
+  CheckoutOrderResult,
+  CheckoutWriter,
+  OrderReader,
+} from "./application/ports/commerce.ports.js";
 import type { GuestOrderLinks } from "./application/ports/guest-checkout.ports.js";
 import type { OrderProblemReportWriter } from "./application/ports/order-problem-report.port.js";
 import type { StripeMoneyWebhookOutcome } from "./application/ports/stripe-money-webhook.types.js";
@@ -35,15 +40,25 @@ export type StripeWebhookDispatchResult =
 
 export type CommerceRoutesDeps = {
   merchandiseEnabled: boolean;
+  /** SHOP_FRAMING_ENABLED: while off, a basket line takes no framing. */
+  framingEnabled: boolean;
   /** Copies of one edition an order may hold; null leaves only the stock. */
   editionOrderLimit: number | null;
   getBasket: ReturnType<typeof createGetBasketHandler>;
   upsertBasketLine: ReturnType<typeof createUpsertBasketLineHandler>;
   removeBasketLine: ReturnType<typeof createRemoveBasketLineHandler>;
+  setBasketLineFraming: ReturnType<typeof createSetBasketLineFramingHandler>;
   mergeBaskets: ReturnType<typeof createMergeBasketsHandler>;
   checkoutOrder: ReturnType<typeof createCheckoutOrderHandler>;
   resumeCheckoutOrder: ReturnType<typeof createResumeCheckoutOrderHandler>;
   cancelCheckoutOrder: ReturnType<typeof createCancelCheckoutOrderHandler>;
+  /** The buyer's "accept and pay" on a delivery quote: prices the order, then opens payment. */
+  acceptDeliveryQuote: (input: {
+    subject: string;
+    orderId: string;
+    successUrl: string;
+    cancelUrl: string;
+  }) => Promise<CheckoutOrderResult>;
   /** Checkout for an address outside the UK: a quote request, a fixed-rate order, or a refusal. */
   requestDeliveryQuote: (input: DeliveryQuoteRequestInput) => Promise<DeliveryQuoteRequestOutcome>;
   listOrders: ReturnType<typeof createListOrdersHandler>;
@@ -69,6 +84,8 @@ export type GuestCheckoutRoutesDeps = {
   /** Asking for a new order link; kept apart from the checkout allowance. */
   /** Back to secure payment for an unpaid guest order that is still held. */
   resumeCheckout: CheckoutWriter["resumeCheckoutOrder"];
+  /** A guest's "accept and pay" on the delivery quote for their order. */
+  acceptDeliveryQuote: CommerceRoutesDeps["acceptDeliveryQuote"];
   linkRateLimiter: EnquiryRateLimiter;
   getCustomerProfile: OrderReader["getCustomerProfile"];
   invoiceIssuer: { supplier: LegalEntity; vatNumber: string | null };

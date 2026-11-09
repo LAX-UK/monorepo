@@ -65,13 +65,24 @@ function setup() {
         [] as Array<{ at: Date; actorName: string | null; enquiries: number }>,
     ),
   };
+  const dealHolds = {
+    forAccount: vi.fn(async (_subjectId: string) => [
+      {
+        dealReference: "PS-0012",
+        status: "running" as const,
+        heldUntil: "2031-11-03T00:00:00.000Z",
+      },
+    ]),
+  };
   return {
+    dealHolds,
     service: new AdminDataRequestsService({
       identity,
       audit,
       accounts,
       enquiryErasure: enquiryErasure as never,
       erasureHistory,
+      dealHolds,
     }),
     erasureHistory,
     identity,
@@ -391,6 +402,82 @@ describe("DomainEventDataRequestAuditTrail", () => {
       payload: { reference: "DR-0007" },
       producer: "apps/api",
       actorUserId: "staff-1",
+    });
+  });
+
+  describe("dealHolds", () => {
+    const personRecord = (over: Record<string, unknown> = {}) =>
+      ({
+        request: { reference: "DR-0007" },
+        person: { email: " Lena@North.com ", hasAccount: true, ...over },
+      }) as never;
+
+    it("names the deals keeping the person's records, found through their account", async () => {
+      const { service, identity, accounts, dealHolds } = setup();
+      identity.record.mockResolvedValueOnce({ ok: true as const, value: personRecord() });
+      const result = await service.dealHolds("DR-0007", "staff-1");
+      expect(accounts.findByEmail).toHaveBeenCalledWith("lena@north.com");
+      expect(dealHolds.forAccount).toHaveBeenCalledWith("user-9");
+      expect(result).toEqual({
+        ok: true,
+        value: {
+          holds: [
+            { dealReference: "PS-0012", status: "running", heldUntil: "2031-11-03T00:00:00.000Z" },
+          ],
+        },
+      });
+    });
+
+    it("has no holds to show for a person with no account, or no email", async () => {
+      for (const person of [{ hasAccount: false }, { email: null }]) {
+        const { service, identity, dealHolds } = setup();
+        identity.record.mockResolvedValueOnce({ ok: true as const, value: personRecord(person) });
+        expect(await service.dealHolds("DR-0007", "staff-1")).toEqual({
+          ok: true,
+          value: { holds: [] },
+        });
+        expect(dealHolds.forAccount).not.toHaveBeenCalled();
+      }
+    });
+
+    it("passes on a refusal from Identity", async () => {
+      const { service, identity } = setup();
+      identity.record.mockResolvedValueOnce({
+        ok: false,
+        status: 404,
+        error: "not_found",
+      } as never);
+      expect(await service.dealHolds("DR-0099", "staff-1")).toEqual({
+        ok: false,
+        status: 404,
+        error: "not_found",
+      });
+    });
+
+    it("audits the read before it looks at the person, like opening the record", async () => {
+      const { service, identity, audit, calls } = setup();
+      identity.record.mockResolvedValueOnce({ ok: true as const, value: personRecord() });
+      await service.dealHolds("DR-0007", "staff-1");
+      expect(audit.record).toHaveBeenCalledWith({
+        action: "viewed",
+        reference: "DR-0007",
+        actorUserId: "staff-1",
+      });
+      expect(calls.slice(0, 1)).toEqual(["audit"]);
+    });
+
+    it("shows nothing when the audit cannot be written", async () => {
+      const { service, identity, audit } = setup();
+      audit.record.mockRejectedValueOnce(new Error("db down"));
+      await expect(service.dealHolds("DR-0007", "staff-1")).rejects.toThrow("db down");
+      expect(identity.record).not.toHaveBeenCalled();
+    });
+
+    it("shows deal references only, never contact details", async () => {
+      const { service, identity } = setup();
+      identity.record.mockResolvedValueOnce({ ok: true as const, value: personRecord() });
+      const text = JSON.stringify(await service.dealHolds("DR-0007", "staff-1"));
+      expect(text).not.toContain("north.com");
     });
   });
 });

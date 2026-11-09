@@ -37,6 +37,13 @@ export const DEFAULT_COLLECTION_WEEKLY_HOURS: readonly {
   closesLocal: string;
 }[] = [1, 2, 3, 4, 5].map((weekday) => ({ weekday, opensLocal: "10:00", closesLocal: "19:00" }));
 
+/**
+ * Years the record of who collected works (the collector's name and ID type) is kept after a
+ * hand-over, once the person's account has been erased. It is never set under the minimum.
+ */
+export const DEFAULT_COLLECTION_HANDOVER_RETENTION_YEARS = 6;
+export const MIN_COLLECTION_HANDOVER_RETENTION_YEARS = 3;
+
 /** The most lots one booking can hold. */
 export const MAX_LOTS_PER_COLLECTION = 20;
 

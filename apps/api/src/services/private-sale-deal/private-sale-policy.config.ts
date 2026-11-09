@@ -11,11 +11,13 @@ export type PrivateSalePolicyEnv = Pick<
   | "PRIVATE_SALE_COMMISSION_BPS"
   | "PRIVATE_SALE_BUYER_FEE_BPS"
   | "PRIVATE_SALE_VAT_TREATMENTS"
-  | "PRIVATE_SALE_PAYMENT_DUE_DAYS"
-  | "PRIVATE_SALE_COLLECTION_DUE_DAYS"
   | "PRIVATE_SALE_TERMS_VERSION"
   | "SOF_THRESHOLD_AMOUNT"
->;
+> & {
+  /** The environment suggests 7 and 14 days; the policy still reads them as optional values. */
+  PRIVATE_SALE_PAYMENT_DUE_DAYS: number | undefined;
+  PRIVATE_SALE_COLLECTION_DUE_DAYS: number | undefined;
+};
 
 /**
  * Reads `code:Label` pairs separated by semicolons. A label may contain commas and colons after

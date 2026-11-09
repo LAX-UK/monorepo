@@ -5,6 +5,7 @@ import { buildStripeCheckoutCustomText } from "../payment/stripe-checkout-produc
 import type {
   CreateDealCheckoutInput,
   DealCheckoutSession,
+  DealCheckoutStatus,
   IDealCheckoutGateway,
 } from "../private-sale-deal/deal-payment-ports.js";
 
@@ -77,6 +78,18 @@ export class StripeDealCheckoutGateway implements IDealCheckoutGateway {
         ? session.payment_intent
         : (session.payment_intent?.id ?? null);
     return { sessionId: session.id, url: session.url, paymentIntentId };
+  }
+
+  async checkoutStatus(sessionId: string): Promise<DealCheckoutStatus> {
+    const stripe = this.stripeFactory.require();
+    const session = await executeWithStripeRetries(() =>
+      stripe.checkout.sessions.retrieve(sessionId),
+    );
+    if (session.status === "complete") return "complete";
+    if (session.status === "expired") return "expired";
+    // A session past its own expiry is over even before the provider marks it.
+    const lapsed = session.expires_at != null && session.expires_at * 1000 <= Date.now();
+    return lapsed ? "expired" : "open";
   }
 
   async expireCheckout(sessionId: string): Promise<void> {

@@ -235,6 +235,20 @@ export function MoneySection({ deal }: { deal: DealRecord }) {
               ...(payment.paidAt
                 ? [{ label: "Paid", value: formatStaffDateTime(payment.paidAt) }]
                 : []),
+              ...(payment.recordedTransfer
+                ? [{ label: "Recorded by", value: "Finance, from the bank statement" }]
+                : []),
+              ...(payment.refundedMinor > 0
+                ? [
+                    {
+                      label: "Returned to the buyer",
+                      value:
+                        payment.status === "refunded"
+                          ? formatStaffMoney(payment.refundedMinor)
+                          : `${formatStaffMoney(payment.refundedMinor)} of ${formatStaffMoney(payment.amountMinor)}`,
+                    },
+                  ]
+                : []),
             ]}
           />
         </div>

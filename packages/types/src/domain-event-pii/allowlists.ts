@@ -191,6 +191,9 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
     "stripeChargeId",
     "stripeCustomerId",
     "stripeEventId",
+    "privateSaleDealId",
+    "privateSaleDealReference",
+    "privateSaleDealPaymentId",
     "possibleGroup.id",
     "possibleGroup.status",
   ]),
@@ -492,6 +495,29 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
   ]),
   "private_sale_deal.payment_paid": new Set(["dealId", "reference", "paymentId", "amountMinor"]),
   "private_sale_deal.payment_cancelled": new Set(["dealId", "reference", "paymentId", "reason"]),
+  /** The bank's reference and who recorded the transfer stay on the payment, not in the event. */
+  "private_sale_deal.bank_transfer_recorded": new Set([
+    "dealId",
+    "reference",
+    "paymentId",
+    "amountMinor",
+  ]),
+  /** Finance returned money by bank for a transfer they had recorded; the bank's reference is kept. */
+  "private_sale_deal.bank_refund_recorded": new Set([
+    "dealId",
+    "reference",
+    "paymentId",
+    "amountMinor",
+    "refundedMinor",
+    "bankReference",
+  ]),
+  "private_sale_deal.payment_partly_refunded": new Set([
+    "dealId",
+    "reference",
+    "paymentId",
+    "amountMinor",
+    "refundedMinor",
+  ]),
   "private_sale_deal.payment_refunded": new Set([
     "dealId",
     "reference",

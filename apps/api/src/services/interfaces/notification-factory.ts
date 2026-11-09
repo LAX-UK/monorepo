@@ -32,14 +32,28 @@ export interface INotificationFactory {
   createPaymentReminder(input: {
     userId: string;
     legalEntityId: string | null;
-    lotId: string;
+    /** Null for a private sale deal, which has no lot. */
+    lotId: string | null;
     lotTitle: string;
     paymentId: string;
     amount: string;
     dueDate: string;
     step: PaymentReminderStepKey;
+    /** The reminder is for a private sale deal: the email calls the item a work, not a lot. */
+    privateSale?: boolean;
     /** The invoice cannot be paid yet: the reminder says what to do instead. */
     held?: PaymentReminderHoldKey | null;
+  }): CreateNotificationRow;
+
+  /** A private sale buyer is reminded to collect the work they have paid for. */
+  createDealCollectionReminder(input: {
+    userId: string;
+    legalEntityId: string | null;
+    dealId: string;
+    workTitle: string;
+    /** The deadline in words ("10 November 2026"). */
+    dueDate: string;
+    step: PaymentReminderStepKey;
   }): CreateNotificationRow;
 
   createBuyerDefaultNotice(input: {

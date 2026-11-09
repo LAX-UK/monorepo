@@ -11,10 +11,12 @@ import {
 import { SHOP_API_ERROR_CODES } from "@auction/shop-contracts";
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { basketEditions } from "../application/edition-runs/basket-edition.js";
+import { presentBasketFraming } from "../application/framing/edition-framing.view.js";
 import type { BasketOwner, BasketRecord } from "../application/ports/commerce.ports.js";
 import { ShopApiError } from "../errors/shop-api-error.js";
 import { isPgUniqueViolation } from "../lib/pg-errors.js";
 import { createDrizzleEditionRunsReader } from "./edition-runs/drizzle-edition-card-facts.reader.js";
+import { createDrizzleEditionFramingReader } from "./framing/drizzle-edition-framing.store.js";
 import { editionCountsByArtworkId } from "./public-artwork-rows.js";
 import { sellableCountsByVariantIds } from "./shop-variant-availability.js";
 
@@ -115,6 +117,7 @@ export async function loadBasketRecord(db: Database, basketId: string): Promise<
       liveArtworkPricePence: shopArtwork.printPricePence,
       liveVariantPricePence: shopProductVariant.pricePence,
       quantity: shopBasketLine.quantity,
+      framingOptionId: shopBasketLine.framingOptionId,
     })
     .from(shopBasketLine)
     .leftJoin(shopArtwork, eq(shopBasketLine.artworkId, shopArtwork.id))
@@ -129,16 +132,28 @@ export async function loadBasketRecord(db: Database, basketId: string): Promise<
   const variantIds = lines
     .map((line) => line.productVariantId)
     .filter((id): id is string => id !== null);
-  const [editionCounts, editions, sellableByVariant] = await Promise.all([
-    editionCountsByArtworkId(db, artworkIds),
-    basketEditions(createDrizzleEditionRunsReader(db), artworkIds),
-    sellableCountsByVariantIds(db, variantIds),
-  ]);
+  const framedArtworkIds = lines
+    .filter((line) => line.artworkId !== null && line.framingOptionId !== null)
+    .map((line) => line.artworkId as string);
+  const framingOptionIds = lines
+    .map((line) => line.framingOptionId)
+    .filter((id): id is string => id !== null);
+  const framingReader = createDrizzleEditionFramingReader(db);
+  const [editionCounts, editions, sellableByVariant, framingFacts, framingOptions] =
+    await Promise.all([
+      editionCountsByArtworkId(db, artworkIds),
+      basketEditions(createDrizzleEditionRunsReader(db), artworkIds),
+      sellableCountsByVariantIds(db, variantIds),
+      framingReader.read(framedArtworkIds),
+      framingReader.options(framingOptionIds),
+    ]);
 
   const enriched = lines.map((line) => {
     if (line.artworkId) {
       const counts = editionCounts.get(line.artworkId);
       const edition = editions.get(line.artworkId);
+      const facts = framingFacts.get(line.artworkId);
+      const option = line.framingOptionId ? framingOptions.get(line.framingOptionId) : undefined;
       return {
         lineId: line.lineId,
         artworkId: line.artworkId,
@@ -157,6 +172,8 @@ export async function loadBasketRecord(db: Database, basketId: string): Promise<
         artistSlug: line.artistSlug,
         editionSize: edition?.size ?? null,
         editionLine: edition?.line ?? null,
+        framingOptionId: line.framingOptionId,
+        framing: facts && option ? presentBasketFraming(facts, option) : null,
       };
     }
     const variantId = line.productVariantId;

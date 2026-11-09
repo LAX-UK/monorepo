@@ -47,6 +47,7 @@ import {
   type GeneralEnquiryRow,
   PortalGeneralEnquiriesResponseSchema,
 } from "./editorial-public.js";
+import { type PublicEditionFraming, PublicEditionFramingSchema } from "./framing-public.js";
 import {
   type PublicMerchandiseProductDetail,
   PublicMerchandiseProductDetailSchema,
@@ -106,6 +107,13 @@ export function parsePublicArtworkList(value: unknown): PublicArtworkList {
 export function parsePublicArtworkDetail(value: unknown): PublicArtworkDetail {
   if (!Value.Check(PublicArtworkDetailSchema, value)) {
     throw new ShopContractParseError("Invalid public artwork detail payload");
+  }
+  return value;
+}
+
+export function parsePublicEditionFraming(value: unknown): PublicEditionFraming {
+  if (!Value.Check(PublicEditionFramingSchema, value)) {
+    throw new ShopContractParseError("Invalid public edition framing payload");
   }
   return value;
 }

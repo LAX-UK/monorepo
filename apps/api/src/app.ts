@@ -64,6 +64,7 @@ import { createNewsletterRoutes } from "./routes/newsletter.js";
 import { createOnsiteEventRoutes } from "./routes/onsite-events.js";
 import { createOrganisationAccessRequestRoutes } from "./routes/organisation-access-requests.js";
 import { createOrganisationBuyingRoutes } from "./routes/organisation-buying.js";
+import { createOrganisationCollectionVisitRoutes } from "./routes/organisation-collection-visits.js";
 import { createOrganisationHomeRoutes } from "./routes/organisation-home.js";
 import { createOrganisationMembershipRoutes } from "./routes/organisation-membership.js";
 import { createOrganisationSecurityRoutes } from "./routes/organisation-security.js";
@@ -277,6 +278,10 @@ export function createApp(container: Container, env: Env, authenticator: IAuthen
     .route(
       "/legal-entities",
       createOrganisationBuyingRoutes(container, authenticator, requireAccountOnboarding),
+    )
+    .route(
+      "/legal-entities",
+      createOrganisationCollectionVisitRoutes(container, authenticator, requireAccountOnboarding),
     )
     .route("/legal-entities", createOrganisationSellingRoutes(container, authenticator))
     .route("/legal-entities", createOrganisationAccessRequestRoutes(container, authenticator))

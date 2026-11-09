@@ -116,4 +116,38 @@ describe("createStripeShopCheckoutGateway", () => {
     expect(params.payment_intent_data.metadata).toMatchObject({ orderReference: "LAX-S-10482" });
     expect(params.payment_intent_data.description).toBe("LAX Shop order LAX-S-10482");
   });
+
+  it("gives Stripe a session that ends at least 30 minutes from now when the hold is longer", async () => {
+    createMock.mockResolvedValueOnce({
+      id: "cs_test_1",
+      url: "https://checkout.stripe.test/cs_test_1",
+      payment_intent: null,
+    });
+    const gateway = createStripeShopCheckoutGateway({
+      secretKey: "sk_test_mock",
+      storefrontUrl: "http://localhost:3020",
+      fakeCheckoutEnabled: false,
+    });
+    const before = Date.now();
+    await gateway.createHostedCheckout({
+      orderId: "11111111-1111-4111-8111-111111111111",
+      totalPence: 1000,
+      successUrl: "http://localhost:3020/ok?orderId={ORDER_ID}",
+      cancelUrl: "http://localhost:3020/basket?orderId={ORDER_ID}",
+      expiresAt: new Date(before + 31 * 60_000),
+      lines: [
+        {
+          title: "Blue Horizon",
+          description: "Jane Artist · Edition 3",
+          quantity: 1,
+          unitAmountPence: 900,
+          imageUrl: "https://cdn.example/art.jpg",
+        },
+      ],
+      fulfilmentSurchargePence: 100,
+      customerEmail: "buyer@example.com",
+    });
+    const params = createMock.mock.calls.at(-1)?.[0] as { expires_at: number };
+    expect(params.expires_at).toBeGreaterThanOrEqual(Math.floor((before + 30 * 60_000) / 1000));
+  });
 });

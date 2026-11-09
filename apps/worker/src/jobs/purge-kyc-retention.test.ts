@@ -1,4 +1,4 @@
-import type { EnquiryDealRecord } from "@auction/domain";
+import type { EnquiryDealRecord, PartyDealRecord } from "@auction/domain";
 import { describe, expect, it, vi } from "vitest";
 import type {
   IKycRetentionSubjectStore,
@@ -20,7 +20,10 @@ const closedDaysFromBoundary = (days: number) => {
 function createStore(
   candidates: RetentionCandidate[],
   keys: string[] = ["sof/a.pdf"],
-  deals: Record<string, EnquiryDealRecord[]> = {},
+  deals: Record<
+    string,
+    Array<EnquiryDealRecord & Partial<Pick<PartyDealRecord, "reference" | "lastChangeAt">>>
+  > = {},
 ) {
   const held = new Set(candidates.map((c) => c.subjectId));
   const erase = vi.fn(async (subjectId: string): Promise<RecordCounts> => {
@@ -36,8 +39,12 @@ function createStore(
         .sort((a, b) => a.subjectId.localeCompare(b.subjectId))
         .slice(0, limit);
     },
-    async dealRecords(subjectId) {
-      return deals[subjectId] ?? [];
+    async dealRecords(subjectId): Promise<PartyDealRecord[]> {
+      return (deals[subjectId] ?? []).map((deal) => ({
+        reference: "PS-0001",
+        lastChangeAt: deal.endedAt,
+        ...deal,
+      }));
     },
     async describeHolding(subjectId): Promise<RetentionHolding> {
       return held.has(subjectId)
@@ -129,6 +136,8 @@ describe("purgeKycRetentionJob", () => {
       dryRun: true,
       due: 1,
       heldForDeals: 0,
+      heldWithoutEnd: 0,
+      heldByStaleDeal: 0,
       purged: 0,
       failed: 0,
     });
@@ -335,5 +344,130 @@ describe("purgeKycRetentionJob and private sale deals", () => {
     const { store, erase } = createStore([expired("u1")], ["sof/a.pdf"], { u1: [open] });
     expect(await run(store, { dryRun: true })).toMatchObject({ due: 0, heldForDeals: 1 });
     expect(erase).not.toHaveBeenCalled();
+  });
+});
+
+describe("purgeKycRetentionJob holds that need a person", () => {
+  const expired = (id: string) => person(id, closedDaysFromBoundary(-365));
+  const yearsBefore = (years: number) => {
+    const d = new Date(NOW);
+    d.setUTCFullYear(d.getUTCFullYear() - years);
+    return d;
+  };
+  const noEnd = (reference: string): EnquiryDealRecord & { reference: string } => ({
+    reference,
+    stage: "settled",
+    agreedAt: yearsBefore(8),
+    endedAt: null,
+    hasComplianceCase: true,
+  });
+  const stale = (reference: string) => ({
+    reference,
+    stage: "offer" as const,
+    agreedAt: null,
+    endedAt: null,
+    hasComplianceCase: true,
+    lastChangeAt: yearsBefore(6),
+  });
+  const run = (
+    store: IKycRetentionSubjectStore,
+    alerts?: { needAttention: ReturnType<typeof vi.fn> },
+  ) =>
+    purgeKycRetentionJob({
+      stores: [store],
+      storage: { deleteObject: vi.fn() },
+      log: log(),
+      dryRun: false,
+      privateSaleRetentionYears: 5,
+      now: NOW,
+      ...(alerts ? { alerts } : {}),
+    });
+
+  it("counts a hold with no end date separately, and tells compliance which deal", async () => {
+    const alerts = { needAttention: vi.fn(async () => undefined) };
+    const { store, erase } = createStore([expired("u1")], ["sof/a.pdf"], {
+      u1: [noEnd("PS-0042")],
+    });
+    const result = await run(store, alerts);
+    expect(result).toMatchObject({
+      heldForDeals: 1,
+      heldWithoutEnd: 1,
+      heldByStaleDeal: 0,
+      purged: 0,
+    });
+    expect(erase).not.toHaveBeenCalled();
+    expect(alerts.needAttention).toHaveBeenCalledWith([{ reference: "PS-0042", kind: "no_end" }]);
+  });
+
+  it("counts an open deal that has stood still past the retention, and tells compliance", async () => {
+    const alerts = { needAttention: vi.fn(async () => undefined) };
+    const { store } = createStore([expired("u1")], ["sof/a.pdf"], { u1: [stale("PS-0050")] });
+    const result = await run(store, alerts);
+    expect(result).toMatchObject({ heldForDeals: 1, heldWithoutEnd: 0, heldByStaleDeal: 1 });
+    expect(alerts.needAttention).toHaveBeenCalledWith([{ reference: "PS-0050", kind: "stale" }]);
+  });
+
+  it("tells compliance once per deal however many people it holds, in one message", async () => {
+    const alerts = { needAttention: vi.fn(async () => undefined) };
+    const { store } = createStore([expired("u1"), expired("u2")], ["sof/a.pdf"], {
+      u1: [noEnd("PS-0042")],
+      u2: [noEnd("PS-0042"), stale("PS-0050")],
+    });
+    await run(store, alerts);
+    expect(alerts.needAttention).toHaveBeenCalledTimes(1);
+    expect(alerts.needAttention).toHaveBeenCalledWith([
+      { reference: "PS-0042", kind: "no_end" },
+      { reference: "PS-0050", kind: "stale" },
+    ]);
+  });
+
+  it("does not alert for an ordinary hold, or when nothing is held", async () => {
+    const alerts = { needAttention: vi.fn(async () => undefined) };
+    const running: EnquiryDealRecord = {
+      stage: "settled",
+      agreedAt: yearsBefore(7),
+      endedAt: yearsBefore(2),
+      hasComplianceCase: true,
+    };
+    const { store } = createStore([expired("u1"), expired("u2")], ["sof/a.pdf"], {
+      u1: [running],
+    });
+    const result = await run(store, alerts);
+    expect(result).toMatchObject({
+      heldForDeals: 1,
+      heldWithoutEnd: 0,
+      heldByStaleDeal: 0,
+      purged: 1,
+    });
+    expect(alerts.needAttention).not.toHaveBeenCalled();
+  });
+
+  it("keeps holding, and finishes the run, when the alert cannot be sent", async () => {
+    const alerts = {
+      needAttention: vi.fn(async () => {
+        throw new Error("mail down");
+      }),
+    };
+    const { store, erase } = createStore([expired("u1"), expired("u2")], ["sof/a.pdf"], {
+      u1: [noEnd("PS-0042")],
+    });
+    const result = await run(store, alerts);
+    expect(result).toMatchObject({ heldWithoutEnd: 1, purged: 1 });
+    expect(erase).toHaveBeenCalledTimes(1);
+  });
+
+  it("alerts in a dry run too, because the holds are what the dry run is for", async () => {
+    const alerts = { needAttention: vi.fn(async () => undefined) };
+    const { store } = createStore([expired("u1")], ["sof/a.pdf"], { u1: [noEnd("PS-0042")] });
+    await purgeKycRetentionJob({
+      stores: [store],
+      storage: { deleteObject: vi.fn() },
+      log: log(),
+      dryRun: true,
+      privateSaleRetentionYears: 5,
+      alerts,
+      now: NOW,
+    });
+    expect(alerts.needAttention).toHaveBeenCalledTimes(1);
   });
 });

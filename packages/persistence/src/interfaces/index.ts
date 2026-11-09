@@ -1186,6 +1186,10 @@ export type {
   PrivateSaleDealStageCount,
 } from "./private-sale-deal-query.repository.js";
 export type {
+  DealReminderCandidate,
+  IPrivateSaleDealReminderStore,
+} from "./private-sale-deal-reminder.store.js";
+export type {
   ClaimDealPaymentResult,
   IPrivateSaleDealFinanceStore,
   IPrivateSaleDealPaymentReader,
@@ -1341,4 +1345,10 @@ export type {
   RecordHandOver,
   UndoHandOver,
   UndoOutcome,
+  WithinBookingTransaction,
 } from "./collection-booking.repository.js";
+export type {
+  CollectionLotRecord,
+  ICollectionLotFactsReader,
+} from "./collection-lot-facts.reader.js";
+export type { IPartyDealRecordReader } from "./party-deal-record.reader.js";

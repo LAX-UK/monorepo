@@ -744,6 +744,7 @@ export {
 export {
   DELIVERY_QUOTE_STATUSES,
   deliveryQuoteActionsFor,
+  deliveryQuoteDecline,
   deliveryQuoteTransition,
   type DeliveryQuoteAction,
   type DeliveryQuoteActor,
@@ -868,6 +869,8 @@ export {
   COLLECTION_VISIT_MINUTES,
   DEFAULT_COLLECTION_RULES,
   DEFAULT_COLLECTION_WEEKLY_HOURS,
+  DEFAULT_COLLECTION_HANDOVER_RETENTION_YEARS,
+  MIN_COLLECTION_HANDOVER_RETENTION_YEARS,
   MAX_LOTS_PER_COLLECTION,
   MAX_NOTICE_WORKING_DAYS,
   MAX_PLACES_PER_SLOT,
@@ -896,6 +899,7 @@ export {
   type LotSelectionRefusal,
 } from "./collection-eligibility.js";
 export {
+  COLLECTION_AUTHORISATION_POLICY_VERSION,
   collectorGetsOwnEmail,
   resolveCollector,
   type Collector,
