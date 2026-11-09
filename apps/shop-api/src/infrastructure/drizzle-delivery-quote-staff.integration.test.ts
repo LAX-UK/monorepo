@@ -38,10 +38,12 @@ import { reapStaleShopCheckouts } from "./shop-checkout-reaper.js";
 
 function recordingGateway() {
   const created: string[] = [];
+  const expiries: Date[] = [];
   const gateway: PaymentCheckoutGateway = {
     async createHostedCheckout(input) {
       const sessionId = `cs_test_${input.orderId}_${created.length + 1}`;
       created.push(sessionId);
+      expiries.push(input.expiresAt);
       return {
         sessionId,
         paymentIntentId: null,
@@ -55,7 +57,7 @@ function recordingGateway() {
       return { kind: "expired" };
     },
   };
-  return { gateway, created };
+  return { gateway, created, expiries };
 }
 
 const address = {
@@ -214,6 +216,73 @@ describe.skipIf(!hasShopIntegrationDb)("quoting and paying a delivery quote", ()
     expect(order.totalPence).toBe(8_000 + 8_500);
     expect((await quoteOf(quoteId)).status).toBe("accepted");
     expect(recording.created).toHaveLength(1);
+  });
+
+  it("opens a payment session of at least 31 minutes, moving the hold and the reservation with it", async () => {
+    const { db, requested, send, pay, orderOf, recording } = await setup("session-length");
+    const { orderId, quoteId } = await requested();
+    await send(quoteId);
+    await pay(orderId);
+    // The accepted quote's payment window is an hour, so the session was opened for all of it.
+    const order = await orderOf(orderId);
+    const held = await db
+      .select()
+      .from(shopEdition)
+      .where(eq(shopEdition.reservedByOrderId, orderId));
+    const [expiry] = recording.expiries;
+    expect(expiry?.getTime()).toBeGreaterThanOrEqual(Date.now() + 31 * 60_000);
+    expect(order.checkoutExpiresAt?.getTime()).toBe(expiry?.getTime());
+    expect(held[0]?.reservedUntil?.getTime()).toBeGreaterThanOrEqual(
+      (order.checkoutExpiresAt?.getTime() ?? 0) - 1,
+    );
+  });
+
+  it("stretches a short hold to the session's length before opening payment, both together", async () => {
+    const { db, requested, send, repo, subject, orderOf, quoteOf, recording } =
+      await setup("short-hold");
+    const { orderId, quoteId } = await requested();
+    await send(quoteId);
+    // An accepted quote whose hold has only ten minutes left and has no payment session yet.
+    const [row] = await db
+      .select({ price: shopDeliveryQuote.quotedPricePence })
+      .from(shopDeliveryQuote)
+      .where(eq(shopDeliveryQuote.id, quoteId));
+    const price = requireDefined(row, "quote").price ?? 0;
+    const tenMinutes = new Date(Date.now() + 10 * 60_000);
+    await db
+      .update(shopDeliveryQuote)
+      .set({ status: "accepted" })
+      .where(eq(shopDeliveryQuote.id, quoteId));
+    await db
+      .update(shopOrder)
+      .set({
+        fulfilmentSurchargePence: price,
+        totalPence: 8_000 + price,
+        checkoutExpiresAt: tenMinutes,
+      })
+      .where(eq(shopOrder.id, orderId));
+    await db
+      .update(shopEdition)
+      .set({ reservedUntil: tenMinutes })
+      .where(eq(shopEdition.reservedByOrderId, orderId));
+    expect((await quoteOf(quoteId)).status).toBe("accepted");
+
+    await repo.resumeCheckoutOrder({
+      subject,
+      orderId,
+      successUrl: "http://localhost:3020/checkout/confirmation?orderId={ORDER_ID}",
+      cancelUrl: "http://localhost:3020/checkout/cancel?orderId={ORDER_ID}",
+    });
+
+    const [expiry] = recording.expiries;
+    const order = await orderOf(orderId);
+    const held = await db
+      .select()
+      .from(shopEdition)
+      .where(eq(shopEdition.reservedByOrderId, orderId));
+    expect(expiry?.getTime()).toBeGreaterThanOrEqual(Date.now() + 30 * 60_000);
+    expect(order.checkoutExpiresAt?.getTime()).toBe(expiry?.getTime());
+    expect(held[0]?.reservedUntil?.getTime()).toBeGreaterThanOrEqual(expiry?.getTime() ?? 0);
   });
 
   it("repeats an accept without pricing the order twice", async () => {

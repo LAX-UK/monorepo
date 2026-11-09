@@ -54,10 +54,10 @@ export function quoteHoldUntil(now: Date, workingDays: number = QUOTE_HOLD_WORKI
 }
 
 /**
- * How long a buyer has to pay once they accept a quote: the same window an ordinary checkout
- * gives, so the hold and the payment session end together.
+ * How long a buyer has to pay once they accept a quote. Longer than Stripe's 30-minute minimum for
+ * a payment session, so the session the buyer is sent to never has to be stretched past the hold.
  */
-export const QUOTE_PAYMENT_WINDOW_MS = 30 * 60 * 1000;
+export const QUOTE_PAYMENT_WINDOW_MS = 60 * 60 * 1000;
 
 /** Why a quote request ended without being paid; the buyer is told which. */
 export const DELIVERY_QUOTE_END_REASONS = [

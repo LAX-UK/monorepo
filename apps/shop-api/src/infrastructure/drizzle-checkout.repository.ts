@@ -24,6 +24,7 @@ import { cancelShopCheckoutSession } from "./drizzle-payment-event.processor.js"
 import { resolveShopUserEmail } from "./resolve-shop-user-email.js";
 import { assertStorefrontRedirectUrl } from "./shop-basket.persistence.js";
 import { expandBasketLines, loadCheckoutBasket } from "./shop-checkout-basket.js";
+import { extendCheckoutHold, sessionEndFor } from "./shop-checkout-hold.js";
 import {
   type ReplayedCheckout,
   checkoutDeliveryDetails,
@@ -369,14 +370,26 @@ export function createDrizzleCheckoutRepository(
         resolveShopUserEmail(db, input.subject),
       ]);
 
+      // A new session must last at least as long as Stripe allows, so the hold and the
+      // reservation are moved to match it first and the reaper never ends it early.
+      const now = new Date();
+      let checkoutExpiresAt =
+        order.checkoutExpiresAt ?? new Date(now.getTime() + CHECKOUT_SESSION_TTL_MS);
+      if (!order.stripeCheckoutSessionId) {
+        const sessionEnd = sessionEndFor(checkoutExpiresAt, now);
+        if (sessionEnd > checkoutExpiresAt) {
+          await extendCheckoutHold(db, order.id, sessionEnd);
+          checkoutExpiresAt = sessionEnd;
+        }
+      }
+
       return resolveOrCreateStripeCheckoutSession(db, paymentGateway, {
         orderId: order.id,
         orderReference: order.reference,
         totalPence: order.totalPence,
         successUrl: input.successUrl,
         cancelUrl: input.cancelUrl,
-        checkoutExpiresAt:
-          order.checkoutExpiresAt ?? new Date(Date.now() + CHECKOUT_SESSION_TTL_MS),
+        checkoutExpiresAt,
         needsStripeSession: !order.stripeCheckoutSessionId,
         existingSessionId: order.stripeCheckoutSessionId,
         existingCheckoutExpiresAt: order.checkoutExpiresAt,
