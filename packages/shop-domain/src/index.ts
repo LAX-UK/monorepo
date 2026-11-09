@@ -217,6 +217,25 @@ export {
   type FramingStatus,
 } from "./framing.js";
 export {
+  FRAMED_BY_ARTIST_MAX_LENGTH,
+  FRAMING_MODES,
+  FRAMING_MODE_LABELS,
+  buyerFramingChoice,
+  editionFramingIssues,
+  editionOptionPricePence,
+  framingBandForSheetText,
+  framingLeadWindow,
+  isBuyerOffered,
+  parseSheetSizeCm,
+  type BuyerFramingChoice,
+  type EditionFramingInput,
+  type EditionFramingIssue,
+  type EditionFramingIssueReason,
+  type FramingLeadWindow,
+  type FramingMode,
+  type FramingOptionFacts,
+} from "./framing-edition.js";
+export {
   DEFAULT_DELIVERY_REGIONS,
   DEFAULT_EXPORT_RESTRICTED_COUNTRIES,
   DELIVERY_REGIONS_EDIT_CAPABILITY,

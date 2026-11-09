@@ -745,10 +745,21 @@ export const shopBasketLine = pgTable(
     }),
     unitPricePence: integer("unit_price_pence").notNull(),
     quantity: integer("quantity").notNull(),
+    /**
+     * The framing option chosen for this print, null for unframed. Its price is worked out from the
+     * catalogue whenever the basket is read; the buyer only ever names the option. The foreign key
+     * to shop_framing_option is in migration 0338, not declared here, because shop-framing.ts
+     * already imports this file.
+     */
+    framingOptionId: uuid("framing_option_id"),
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [
+    check(
+      "shop_basket_line_framing_on_print_ck",
+      sql`${table.framingOptionId} IS NULL OR ${table.artworkId} IS NOT NULL`,
+    ),
     uniqueIndex("shop_basket_line_basket_artwork_uid")
       .on(table.basketId, table.artworkId)
       .where(sql`${table.artworkId} IS NOT NULL`),

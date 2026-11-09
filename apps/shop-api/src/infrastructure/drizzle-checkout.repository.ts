@@ -12,6 +12,7 @@ import {
 } from "@auction/shop-domain";
 import { isUkPostcode, normalizeUkPostcode, vatIncludedIn } from "@auction/shop-domain";
 import { eq } from "drizzle-orm";
+import { assertNoFramingInOrder } from "../application/framing/framing-checkout-guard.js";
 import type {
   BasketOwner,
   CheckoutOrderInput,
@@ -176,6 +177,7 @@ export function createDrizzleCheckoutRepository(
           404,
         );
       }
+      assertNoFramingInOrder(basket.lines);
       const repriced = await repriceBasketLinesIfNeeded(db, input.basketId);
       if (repriced) {
         throw new ShopApiError(SHOP_API_ERROR_CODES.PRICE_CHANGED, "Basket price changed", 409);

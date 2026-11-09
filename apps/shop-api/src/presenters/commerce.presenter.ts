@@ -23,10 +23,16 @@ export function presentBasket(
       quantity: line.quantity,
     })),
   );
+  // Framing is charged for each print on a line, and only while its option can still be bought.
+  const framingSubtotalPence = record.lines.reduce(
+    (sum, line) => (line.framing?.available ? sum + line.framing.pricePence * line.quantity : sum),
+    0,
+  );
   return {
     basketId: record.basketId,
     expiresAt: record.expiresAt.toISOString(),
     merchandiseSubtotalPence,
+    ...(framingSubtotalPence > 0 ? { framingSubtotalPence } : {}),
     lines: record.lines.map((line) => ({
       lineId: line.lineId,
       artworkSlug: line.artworkSlug,
@@ -50,6 +56,7 @@ export function presentBasket(
         orderLimit: line.artworkId ? options.editionOrderLimit : null,
         sellableCount: line.sellableCount,
       }),
+      ...(line.framing ? { framing: line.framing } : {}),
     })),
   };
 }

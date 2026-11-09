@@ -1,5 +1,10 @@
 import { createHash } from "node:crypto";
-import { BasketViewSchema, ShopApiErrorBodySchema } from "@auction/shop-contracts";
+import {
+  BasketLineFramingBodySchema,
+  BasketViewSchema,
+  ShopApiErrorBodySchema,
+} from "@auction/shop-contracts";
+import type { BasketLineFramingBody } from "@auction/shop-contracts";
 import { SHOP_API_ERROR_CODES } from "@auction/shop-contracts";
 import { SHOP_BASKET_LINE_QUANTITY_MAX } from "@auction/shop-domain";
 import { Type } from "@sinclair/typebox";
@@ -21,6 +26,8 @@ const UpsertBasketLineBodySchema = Type.Union([
     {
       artworkSlug: Type.String({ minLength: 1 }),
       quantity: Type.Integer({ minimum: 1, maximum: SHOP_BASKET_LINE_QUANTITY_MAX }),
+      /** The framing to choose, null for unframed; left out, the line keeps its framing. */
+      framingOptionId: Type.Optional(Type.Union([Type.String({ format: "uuid" }), Type.Null()])),
     },
     { additionalProperties: false },
   ),
@@ -83,7 +90,15 @@ export function parseUpsertBasketLineBody(
     throw new ShopApiError(SHOP_API_ERROR_CODES.VALIDATION, "Invalid basket line body", 400);
   }
   if (hasArtwork) {
-    return { owner, artworkSlug: record.artworkSlug as string, quantity };
+    const framingOptionId = record.framingOptionId;
+    return {
+      owner,
+      artworkSlug: record.artworkSlug as string,
+      quantity,
+      ...(framingOptionId === undefined
+        ? {}
+        : { framingOptionId: framingOptionId as string | null }),
+    };
   }
   if (hasVariant) {
     if (!merchandiseEnabled) {
@@ -135,6 +150,33 @@ export async function registerBasketRoutes(app: FastifyInstance, deps: CommerceR
       const owner = resolveBasketOwner(request);
       const input = parseUpsertBasketLineBody(request.body, owner, deps.merchandiseEnabled);
       const basket = await deps.upsertBasketLine(input);
+      return presentBasket(basket, { editionOrderLimit: deps.editionOrderLimit });
+    },
+  );
+
+  app.put(
+    "/v1/basket/lines/:lineId/framing",
+    {
+      schema: {
+        tags: ["commerce"],
+        params: Type.Object({ lineId: Type.String({ format: "uuid" }) }),
+        body: BasketLineFramingBodySchema,
+        response: {
+          200: BasketViewSchema,
+          400: ShopApiErrorBodySchema,
+          404: ShopApiErrorBodySchema,
+        },
+      },
+    },
+    async (request) => {
+      requireShopScope(request, "shop.write");
+      const { lineId } = request.params as { lineId: string };
+      const { framingOptionId } = request.body as BasketLineFramingBody;
+      const basket = await deps.setBasketLineFraming({
+        owner: resolveBasketOwner(request),
+        lineId,
+        framingOptionId,
+      });
       return presentBasket(basket, { editionOrderLimit: deps.editionOrderLimit });
     },
   );

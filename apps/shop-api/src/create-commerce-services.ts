@@ -10,6 +10,7 @@ import {
   createMergeBasketsHandler,
   createRemoveBasketLineHandler,
   createResumeCheckoutOrderHandler,
+  createSetBasketLineFramingHandler,
   createUpsertBasketLineHandler,
 } from "./application/handlers/commerce-handlers.js";
 import {
@@ -58,6 +59,7 @@ export function createCommerceServices(
     domainEventMode,
     vatPolicy: loadShopVatPolicy(env),
     merchandiseEnabled: env.SHOP_MERCHANDISE_ENABLED,
+    framingEnabled: env.SHOP_FRAMING_ENABLED,
     editionOrderLimit: env.SHOP_EDITION_ORDER_LIMIT,
   });
 
@@ -115,10 +117,12 @@ export function createCommerceServices(
   return {
     commerce: {
       merchandiseEnabled: env.SHOP_MERCHANDISE_ENABLED,
+      framingEnabled: env.SHOP_FRAMING_ENABLED,
       editionOrderLimit: env.SHOP_EDITION_ORDER_LIMIT,
       getBasket: createGetBasketHandler(repository),
       upsertBasketLine: createUpsertBasketLineHandler(repository),
       removeBasketLine: createRemoveBasketLineHandler(repository),
+      setBasketLineFraming: createSetBasketLineFramingHandler(repository),
       mergeBaskets: createMergeBasketsHandler(repository),
       checkoutOrder: guardAgainstPendingDeletion(
         pendingDeletion,

@@ -237,6 +237,14 @@ export const shopApiEnvSchema = z.object({
     .default("false")
     .transform((value) => value === "true"),
   /**
+   * Framing on editions: the options an edition offers appear on its page and in the basket. Off
+   * until orders price framing; with it off, no edition shows framing and no basket takes it.
+   */
+  SHOP_FRAMING_ENABLED: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((value) => value === "true"),
+  /**
    * Copies of one edition a single order may hold, shown to shoppers as "Limit N per order".
    * "none" leaves only the stock as the limit.
    */
