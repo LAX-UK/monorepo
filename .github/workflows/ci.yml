@@ -29,12 +29,6 @@ env:
 jobs:
   static-checks:
     runs-on: ubuntu-latest
-    env:
-      # The pinned versions of the two lint binaries. They key the cache below, so a new version is
-      # downloaded once and an unchanged one never touches GitHub's release downloads.
-      GITLEAKS_VERSION: "8.30.1"
-      # 1.7.12+ aligns with GitHub's 25-input workflow_dispatch limit (see changelog 2025-12-04).
-      ACTIONLINT_VERSION: "1.7.12"
     steps:
       - uses: actions/checkout@v4
         with:
@@ -59,37 +53,11 @@ jobs:
       - name: Biome root check
         run: pnpm exec biome check .
 
-      # GitHub's release downloads fail now and then and drop pull requests from the merge queue, so
-      # the two lint binaries are cached by version and downloaded only on a miss.
-      - name: Cache lint binaries
-        id: lint-binaries
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/lint-bin
-          key: lint-bin-${{ runner.os }}-gitleaks-${{ env.GITLEAKS_VERSION }}-actionlint-${{ env.ACTIONLINT_VERSION }}
-
-      - name: Download lint binaries
-        if: steps.lint-binaries.outputs.cache-hit != 'true'
-        run: |
-          set -euo pipefail
-          bin="$HOME/.cache/lint-bin"
-          mkdir -p "$bin"
-          # Download to a file first (with retries) so a dropped or rate-limited response is retried
-          # instead of reaching tar as a broken stream.
-          curl -sSLf --retry 5 --retry-delay 5 --retry-all-errors -o gitleaks.tar.gz \
-            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
-          tar -xzf gitleaks.tar.gz -C "$bin" gitleaks
-          rm -f gitleaks.tar.gz
-          # The release download fails now and then (rate limits); try a few times before failing.
-          for attempt in 1 2 3 4; do
-            if curl -sSLf --retry 3 --retry-delay 5 https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash | bash -s -- "$ACTIONLINT_VERSION" "$bin" && [ -x "$bin/actionlint" ]; then
-              break
-            fi
-            echo "actionlint download failed (attempt $attempt); retrying"
-            rm -f "$bin/actionlint"
-            sleep $((attempt * 10))
-          done
-          test -x "$bin/gitleaks" && test -x "$bin/actionlint"
+      # The gitleaks and actionlint binaries come from the actions cache (seeded from main by
+      # seed-lint-binaries-cache.yml), so a GitHub release outage cannot drop a pull request from
+      # the merge queue. The versions and checksums are pinned in the action.
+      - name: Set up lint binaries
+        uses: ./.github/actions/setup-lint-binaries
 
       - name: Queue registry lint
         run: node scripts/lint-queue-registry.mjs
