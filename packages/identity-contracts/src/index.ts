@@ -128,6 +128,14 @@ export {
   type OidcDiscoveryDocument,
 } from "./discovery.js";
 export {
+  SESSION_REQUIRED_CODE,
+  TOKEN_EXPIRED_CODE,
+  TOKEN_KEY_UNKNOWN_CODE,
+  TOKEN_REPLACEABLE_CODES,
+  isTokenReplaceableCode,
+  type TokenReplaceableCode,
+} from "./auth-rejection.js";
+export {
   ACCESS_TOKEN_TTL_SECONDS,
   CROSS_PLATFORM_ID_TOKEN_CLAIMS,
   DEFAULT_JWT_AUDIENCE,

@@ -2,6 +2,7 @@ import "server-only";
 
 import { buildAuthedSsrHeaders } from "@/lib/data/http/server-request-headers";
 import { getServerApiBase } from "./hc-server";
+import { isReplayableBody, sendWithSsrKeyRetry } from "./ssr-key-retry.server";
 
 export type AuthedServerFetchInit = RequestInit & {
   /** Skip auto-attaching `X-Legal-Entity-Id` from the acting cookie (e.g. when
@@ -29,12 +30,19 @@ export async function authedServerFetch(
   if (fetchInit.headers !== undefined) {
     headerOpts.init = fetchInit.headers;
   }
-  const headers = await buildAuthedSsrHeaders(headerOpts);
-  return fetch(`${baseUrl ?? getServerApiBase()}${path}`, {
-    ...fetchInit,
-    cache: fetchInit.cache ?? "no-store",
-    headers,
-    credentials: "include",
+  return sendWithSsrKeyRetry({
+    buildHeaders: (rejected) =>
+      buildAuthedSsrHeaders(
+        rejected === undefined ? headerOpts : { ...headerOpts, rejectedBearer: rejected },
+      ),
+    send: (headers) =>
+      fetch(`${baseUrl ?? getServerApiBase()}${path}`, {
+        ...fetchInit,
+        cache: fetchInit.cache ?? "no-store",
+        headers,
+        credentials: "include",
+      }),
+    replayable: isReplayableBody(fetchInit.body),
   });
 }
 

@@ -1,9 +1,9 @@
 import { createHash, randomBytes } from "node:crypto";
-import { BID_API_AUDIENCE, WS_AUDIENCE, bffConfig } from "@/lib/bff/config.server";
+import { TokenExchangeFailedError, fetchBidApiAsSession } from "@/lib/bff/bid-api-session.server";
+import { WS_AUDIENCE, bffConfig } from "@/lib/bff/config.server";
 import { ensureBffRedisConnected, getBffRedis } from "@/lib/bff/redis.server";
 import { readBidSessionId } from "@/lib/bff/session-cookie.server";
 import { BidBffSessionRequiredError, BidBffTokenService } from "@/lib/bff/token-service.server";
-import { fetchBidApi } from "@/lib/data/http/bid-api.server";
 import { parseSessionUser } from "@/lib/data/http/parse/session.parse";
 import { type NextRequest, NextResponse } from "next/server";
 
@@ -36,12 +36,18 @@ export async function POST(request: NextRequest) {
   if (!sessionId) return SESSION_REQUIRED();
   try {
     const tokens = new BidBffTokenService();
-    const apiResource = await tokens.resourceToken(sessionId, BID_API_AUDIENCE, "bid.read");
-    const wsResource = await tokens.resourceToken(sessionId, WS_AUDIENCE, "bid.read");
-    const meResponse = await fetchBidApi(`${bffConfig().apiBaseUrl}/users/me`, {
-      headers: { authorization: `Bearer ${apiResource.token}`, accept: "application/json" },
-      cache: "no-store",
-      signal: AbortSignal.timeout(API_TIMEOUT_MS),
+    // A replaceable API token is swapped once; the ticket carries the token the API accepted,
+    // never the rejected one.
+    const { response: meResponse, resource: apiResource } = await fetchBidApiAsSession({
+      sessionId,
+      scopes: "bid.read",
+      tokens,
+      input: `${bffConfig().apiBaseUrl}/users/me`,
+      init: (token) => ({
+        headers: { authorization: `Bearer ${token}`, accept: "application/json" },
+        cache: "no-store",
+        signal: AbortSignal.timeout(API_TIMEOUT_MS),
+      }),
     });
     if (meResponse.status === 401 || meResponse.status === 403) return SESSION_REQUIRED();
     if (!meResponse.ok) return ticketUnavailable(new Error(`API status ${meResponse.status}`));
@@ -51,6 +57,7 @@ export async function POST(request: NextRequest) {
     if (me.data?.id !== apiResource.session.subject || typeof me.data.role !== "string") {
       return SESSION_REQUIRED();
     }
+    const wsResource = await tokens.resourceToken(sessionId, WS_AUDIENCE, "bid.read");
     const ticket = randomBytes(32).toString("base64url");
     const key = `bid:ws-ticket:${createHash("sha256").update(ticket).digest("base64url")}`;
     const reserved = await (await ensureBffRedisConnected(getBffRedis())).set(
@@ -76,6 +83,11 @@ export async function POST(request: NextRequest) {
     );
   } catch (error) {
     if (error instanceof BidBffSessionRequiredError) return SESSION_REQUIRED();
+    if (error instanceof TokenExchangeFailedError) {
+      return error.cause instanceof BidBffSessionRequiredError
+        ? SESSION_REQUIRED()
+        : ticketUnavailable(error.cause);
+    }
     return ticketUnavailable(error);
   }
 }

@@ -42,17 +42,23 @@ export async function deriveSsrOrigin(): Promise<string> {
   });
 }
 
-export function withBidApiBearer(): HeaderDecorator {
+/**
+ * Adds the session's cached resource token. `rejected` is a token the API just refused: it is
+ * replaced (see `sendWithSsrKeyRetry`), never added again.
+ */
+export function withBidApiBearer(rejected?: string): HeaderDecorator {
   return async (headers) => {
     const jar = await cookies();
     const sessionId = readBidSessionIdFromStore(jar);
     if (!sessionId) return;
     try {
-      const resource = await new BidBffTokenService().resourceToken(
-        sessionId,
-        BID_API_AUDIENCE,
-        "bid.read bid.write",
-      );
+      const tokens = new BidBffTokenService();
+      const resource =
+        rejected === undefined
+          ? await tokens.resourceToken(sessionId, BID_API_AUDIENCE, "bid.read bid.write")
+          : await tokens.resourceToken(sessionId, BID_API_AUDIENCE, "bid.read bid.write", {
+              replacing: rejected,
+            });
       headers.set("Authorization", `Bearer ${resource.token}`);
     } catch {
       // Leave the request anonymous. The API remains the authorization boundary.
@@ -100,13 +106,15 @@ export type BuildAuthedSsrHeadersOptions = {
   /** When set, skips reading consent from cookies. */
   consent?: ConsentSnapshot | null;
   init?: HeadersInit;
+  /** A Bearer token the API refused; the headers carry its replacement. */
+  rejectedBearer?: string;
 };
 
 /** Resource Bearer + Origin (+ optional acting LE + consent) for authenticated SSR API calls. */
 export async function buildAuthedSsrHeaders(
   options: BuildAuthedSsrHeadersOptions = {},
 ): Promise<Headers> {
-  const decorators: HeaderDecorator[] = [withBidApiBearer(), withOrigin()];
+  const decorators: HeaderDecorator[] = [withBidApiBearer(options.rejectedBearer), withOrigin()];
   if (options.consent !== undefined) {
     decorators.push(withConsent(options.consent));
   } else {

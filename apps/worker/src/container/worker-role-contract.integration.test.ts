@@ -7,6 +7,7 @@ import pino from "pino";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { WorkerDb } from "../workers/types.js";
 import { type WorkerRepositories, createWorkerRepositories } from "./create-worker-repositories.js";
+import { NIL, runRolledBack } from "./worker-role-contract.test-helpers.js";
 
 const ownerUrl = process.env.MIGRATION_TEST_DATABASE_URL;
 const workerUrl = process.env.DATABASE_URL_WORKER;
@@ -23,9 +24,7 @@ const workerUrl = process.env.DATABASE_URL_WORKER;
  * checks privileges before it checks constraints or looks for rows.
  */
 
-const NIL = "00000000-0000-0000-0000-000000000000";
 const PROBE_QR_CODE_ID = "00000000-0000-0000-0000-0000000000a1";
-const PERMISSION_DENIED = "42501";
 const log = pino({ level: "silent" });
 const now = new Date();
 const earlier = new Date(now.getTime() - 24 * 60 * 60 * 1000);
@@ -321,16 +320,6 @@ const PROBES: Probes = {
   }),
 };
 
-class RolledBack extends Error {}
-
-function findPermissionDenied(error: unknown): string | null {
-  for (let cause = error; cause instanceof Error; cause = cause.cause) {
-    const { code } = cause as { code?: string };
-    if (code === PERMISSION_DENIED) return cause.message;
-  }
-  return null;
-}
-
 describe.skipIf(!ownerUrl || !workerUrl)("worker repositories as worker_app", () => {
   const env = { DOMAIN_EVENT_PUBLISH_VALIDATE: "off" } as const;
   const db = workerUrl ? createDb(workerUrl) : (undefined as never as WorkerDb);
@@ -374,21 +363,12 @@ describe.skipIf(!ownerUrl || !workerUrl)("worker repositories as worker_app", ()
   });
 
   it.each(calls)("%s.%s is not denied", async (name, method) => {
-    let denied: string | null = null;
-    try {
-      await db.transaction(async (tx) => {
-        const repos = createWorkerRepositories(tx as unknown as WorkerDb, env);
-        const probe = PROBES[name as keyof WorkerRepositories] as (repo: unknown) => Calls;
-        try {
-          await probe(repos[name as keyof WorkerRepositories])[method]?.();
-        } catch (error) {
-          denied = findPermissionDenied(error);
-        }
-        throw new RolledBack();
-      });
-    } catch (error) {
-      if (!(error instanceof RolledBack)) throw error;
-    }
+    const { denied } = await runRolledBack(db, (tx) => {
+      const repos = createWorkerRepositories(tx, env);
+      const probe = PROBES[name as keyof WorkerRepositories] as (repo: unknown) => Calls;
+      const call = probe(repos[name as keyof WorkerRepositories])[method];
+      return call ? call() : Promise.resolve();
+    });
     if (denied) throw new Error(`${name}.${method}: ${denied}`);
   });
 });
