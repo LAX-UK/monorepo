@@ -1,4 +1,5 @@
 import {
+  type AtgClientSurchargeRates,
   type AtgGateway,
   AtgGatewayError,
   type AtgIncrementSet,
@@ -176,13 +177,16 @@ export class GapHttpAdapter implements AtgGateway {
     return rows.flatMap((row) => (row.AuctionId ? [toRemoteAuction(row, row.AuctionId)] : []));
   }
 
-  async getClientDefaultSurchargeRate(clientId: string): Promise<number | null> {
+  async getClientSurchargeRates(clientId: string): Promise<AtgClientSurchargeRates> {
     const row = await this.call<GapClientResponse>(
-      "getClientDefaultSurchargeRate",
+      "getClientSurchargeRates",
       "GET",
       `/Clients/${encodeURIComponent(clientId)}`,
     );
-    return row?.DefaultInternetSurchargeRate ?? null;
+    return {
+      defaultRate: row?.DefaultInternetSurchargeRate ?? null,
+      alternativeRate: row?.AltInternetSurchargeRate ?? null,
+    };
   }
 
   async getIncrementSets(clientId: string): Promise<AtgIncrementSet[]> {

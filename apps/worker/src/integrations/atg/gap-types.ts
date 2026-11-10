@@ -126,6 +126,7 @@ export type GapAuctionResponse = {
 /** `GET /Clients/{clientId}` (fields LAX reads). */
 export type GapClientResponse = {
   DefaultInternetSurchargeRate?: number | null;
+  AltInternetSurchargeRate?: number | null;
 };
 
 /** `GET /Clients/GetIncrementDetails/{clientId}` item (fields LAX reads). */

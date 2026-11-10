@@ -3,7 +3,8 @@ import {
   canPushOrPublishSaleOnAtg,
   resolveSaleSellingPlatform,
 } from "@auction/types";
-import { FEE_MISMATCH_PREFIX, describeFeeMismatch } from "./atg-fee-check.js";
+import { joinMessages, withFeeMismatch, withoutFeeMismatch } from "./atg-fee-check.js";
+import { AtgFeeVerifier } from "./atg-fee-verifier.js";
 import { type AtgGateway, AtgGatewayError } from "./atg-gateway.js";
 import type { AtgImageInspector } from "./atg-image-inspector.js";
 import { AtgLotSyncer, AtgPartialSyncError } from "./atg-lot-syncer.js";
@@ -68,11 +69,6 @@ type UpsertedAuction = {
   sent: boolean;
 };
 
-function joinMessages(...messages: Array<string | null>): string | null {
-  const present = messages.filter((message): message is string => Boolean(message));
-  return present.length > 0 ? present.join(" ") : null;
-}
-
 const SALE_ON_LAX_MESSAGE =
   "This sale is published on lax.bid. Unpublish it there before pushing to ATG.";
 
@@ -99,7 +95,9 @@ export class AtgSyncService {
   private readonly config: AtgSyncConfig;
   private readonly now: () => Date;
   private readonly onTickError: ((saleId: string, err: unknown) => void) | undefined;
-  private readonly onFeeMismatch: ((saleId: string, message: string) => void) | undefined;
+  private readonly feeVerifier: AtgFeeVerifier;
+  /** Staff-fixable tick errors already sent to Sentry, so one that is never stored is not repeated. */
+  private readonly reportedTickErrors = new Set<string>();
 
   constructor(deps: AtgSyncServiceDeps) {
     this.gateway = deps.gateway;
@@ -114,7 +112,10 @@ export class AtgSyncService {
       now: this.now,
     });
     this.onTickError = deps.onTickError;
-    this.onFeeMismatch = deps.onFeeMismatch;
+    this.feeVerifier = new AtgFeeVerifier({
+      gateway: deps.gateway,
+      onMismatch: deps.onFeeMismatch,
+    });
   }
 
   async pushSale(saleId: string): Promise<AtgPushSummary> {
@@ -143,10 +144,16 @@ export class AtgSyncService {
     try {
       auction = await this.upsertAuction(sale, existing);
     } catch (err) {
-      await this.store.saveAuctionLink(saleId, { lastError: errorText(err) });
+      await this.saveError(saleId, errorText(err));
       throw err;
     }
-    const feeMismatch = await this.readBackFees(saleId, auction, existing);
+    const feeMismatch = await this.feeVerifier.verify({
+      saleId,
+      auctionId: auction.auctionId,
+      fields: auction.fields,
+      justSent: auction.sent,
+      priorError: existing?.lastError ?? null,
+    });
 
     let result: { summary: AtgPushSummary; failures: string[] };
     try {
@@ -166,37 +173,19 @@ export class AtgSyncService {
     return result;
   }
 
-  /**
-   * Reads the auction back after a write and compares the fees ATG holds with the ones sent, so
-   * a unit mix-up surfaces at once. Also repeats while a mismatch is showing, so it clears only
-   * when ATG agrees. One read per write; unchanged sales are not read. Never blocks the push.
-   */
-  private async readBackFees(
-    saleId: string,
-    auction: UpsertedAuction,
-    existing: AtgAuctionLink | null,
-  ): Promise<string | null> {
-    const stillShowing = existing?.lastError?.startsWith(FEE_MISMATCH_PREFIX) ?? false;
-    if (!auction.sent && !stillShowing) return null;
-    let message: string | null;
-    try {
-      const remote = await this.gateway.getAuction(auction.auctionId);
-      message = remote ? describeFeeMismatch(auction.fields, remote.fees) : null;
-    } catch (err) {
-      if (!(err instanceof AtgGatewayError)) throw err;
-      return null;
-    }
-    if (message && !existing?.lastError?.startsWith(message)) {
-      this.onFeeMismatch?.(saleId, message);
-    }
-    return message;
+  /** Stores a failure on the link without hiding a fee mismatch that is still showing. */
+  private async saveError(saleId: string, error: string): Promise<void> {
+    const link = await this.store.getAuctionLink(saleId);
+    await this.store.saveAuctionLink(saleId, {
+      lastError: withFeeMismatch(link?.lastError, error),
+    });
   }
 
   async publishSale(saleId: string): Promise<void> {
     const { summary, failures } = await this.push(saleId);
     if (summary.failed > 0) {
       const message = `Not published: fix these lots first. ${failureSummary(failures)}`;
-      await this.store.saveAuctionLink(saleId, { lastError: message });
+      await this.saveError(saleId, message);
       throw new AtgSyncPreconditionError(message);
     }
     const link = await this.requireAuction(saleId);
@@ -205,13 +194,13 @@ export class AtgSyncService {
     try {
       await this.gateway.publishAuction(link.atgAuctionId);
     } catch (err) {
-      await this.store.saveAuctionLink(saleId, { lastError: publishErrorText(err) });
+      await this.saveError(saleId, publishErrorText(err));
       throw err;
     }
     await this.store.saveAuctionLink(saleId, {
       remoteStatus: "published",
       publishedAt: this.now(),
-      lastError: null,
+      lastError: withFeeMismatch(link.lastError, null),
     });
   }
 
@@ -221,13 +210,13 @@ export class AtgSyncService {
       try {
         await this.gateway.closeAuction(link.atgAuctionId);
       } catch (err) {
-        await this.store.saveAuctionLink(saleId, { lastError: errorText(err) });
+        await this.saveError(saleId, errorText(err));
         throw err;
       }
       await this.store.saveAuctionLink(saleId, {
         remoteStatus: "closed",
         closedAt: this.now(),
-        lastError: null,
+        lastError: withFeeMismatch(link.lastError, null),
       });
     }
     await this.pollSale(saleId);
@@ -258,10 +247,12 @@ export class AtgSyncService {
       await this.store.saveAuctionLink(saleId, {
         lastPolledAt: polledAt,
         resultsSnapshot: results,
-        ...(priorError?.startsWith("Poll failed:") ? { lastError: null } : {}),
+        ...(withoutFeeMismatch(priorError)?.startsWith("Poll failed:")
+          ? { lastError: withFeeMismatch(priorError, null) }
+          : {}),
       });
     } catch (err) {
-      await this.store.saveAuctionLink(saleId, { lastError: `Poll failed: ${errorText(err)}` });
+      await this.saveError(saleId, `Poll failed: ${errorText(err)}`);
       throw err;
     }
   }
@@ -302,12 +293,13 @@ export class AtgSyncService {
       }
     };
 
-    let platform: AtgOwnershipState = "free";
+    let platform: AtgOwnershipState | null = null;
     const resolved = await attempt(async () => {
-      platform = (await this.sellingPlatform(link.saleId)) ?? "free";
+      platform = await this.sellingPlatform(link.saleId);
     });
     if (!resolved) return outcome;
-    const canPush = canPushOrPublishSaleOnAtg(platform);
+    // A sale row that is gone cannot be pushed; its ATG auction is still polled.
+    const canPush = platform !== null && canPushOrPublishSaleOnAtg(platform);
 
     if (link.remoteStatus !== "closed" && canPush) {
       let due = false;
@@ -320,6 +312,9 @@ export class AtgSyncService {
         });
       }
     }
+    if (link.remoteStatus !== "closed" && canPush && !this.feeVerifier.hasVerified(link.saleId)) {
+      await attempt(() => this.verifyFees(link.saleId));
+    }
     if (link.remoteStatus === "created" && canPush) {
       await attempt(() => this.checkApproval(link));
     }
@@ -327,6 +322,34 @@ export class AtgSyncService {
       outcome.polled = await attempt(() => this.pollSale(link.saleId));
     }
     return outcome;
+  }
+
+  /**
+   * Checks the fees of an auction that was pushed earlier (an unchanged one is never re-sent),
+   * once per process: one read per auction after each worker start.
+   */
+  private async verifyFees(saleId: string): Promise<void> {
+    const [sale, link] = await Promise.all([
+      this.store.loadSale(saleId),
+      this.store.getAuctionLink(saleId),
+    ]);
+    if (!sale || !link?.atgAuctionId || link.remoteStatus === "closed") return;
+    let fields: GapAuctionFields;
+    try {
+      fields = mapSaleToAuctionFields(sale, this.config);
+    } catch (err) {
+      if (err instanceof AtgMappingError) return; // the push step shows this one
+      throw err;
+    }
+    const message = await this.feeVerifier.verify({
+      saleId,
+      auctionId: link.atgAuctionId,
+      fields,
+      justSent: false,
+      priorError: link.lastError,
+    });
+    const lastError = joinMessages(message, withoutFeeMismatch(link.lastError));
+    if (lastError !== link.lastError) await this.store.saveAuctionLink(saleId, { lastError });
   }
 
   private async needsPush(link: AtgAuctionLink): Promise<boolean> {
@@ -344,7 +367,12 @@ export class AtgSyncService {
    */
   private reportTickError(link: AtgAuctionLink, err: unknown): void {
     const staffFixable = err instanceof AtgMappingError || err instanceof AtgSyncPreconditionError;
-    if (staffFixable && errorText(err) === link.lastError) return;
+    if (staffFixable) {
+      const text = errorText(err);
+      const key = `${link.saleId}\n${text}`;
+      if (text === link.lastError || this.reportedTickErrors.has(key)) return;
+      this.reportedTickErrors.add(key);
+    }
     this.onTickError?.(link.saleId, err);
   }
 
@@ -369,10 +397,16 @@ export class AtgSyncService {
     const remote = await this.gateway.getAuction(link.atgAuctionId);
     if (!remote) return;
     const now = this.now();
+    // Earlier steps of this tick may have changed `lastError`; keep a fee mismatch it holds.
+    const current = remote.isPublished ? await this.store.getAuctionLink(link.saleId) : null;
     const patch: AtgAuctionLinkPatch = {
       ...(remote.isApproved && !link.approvedAt ? { approvedAt: now } : {}),
       ...(remote.isPublished
-        ? { remoteStatus: "published" as const, publishedAt: now, lastError: null }
+        ? {
+            remoteStatus: "published" as const,
+            publishedAt: now,
+            lastError: withFeeMismatch(current?.lastError ?? link.lastError, null),
+          }
         : {}),
     };
     if (Object.keys(patch).length > 0) {

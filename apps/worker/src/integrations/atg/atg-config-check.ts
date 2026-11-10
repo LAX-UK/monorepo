@@ -27,10 +27,11 @@ async function checkDefaultSurcharge(
   const configured = config.fees.internetSurchargeRate.Timed;
   if (!config.clientId || configured == null) return;
   try {
-    const held = await gateway.getClientDefaultSurchargeRate(config.clientId);
-    if (held !== null && Math.abs(held - configured) > FEE_TOLERANCE) {
+    const { defaultRate, alternativeRate } = await gateway.getClientSurchargeRates(config.clientId);
+    if (defaultRate !== null && Math.abs(defaultRate - configured) > FEE_TOLERANCE) {
+      const alternative = alternativeRate === null ? "" : `, alternative ${alternativeRate}`;
       result.warnings.push(
-        `ATG's default internet surcharge for this client is ${held}, but ATG_AUCTION_FEES sends ${configured} on timed auctions.`,
+        `ATG's internet surcharge for this client is default ${defaultRate}${alternative}, but ATG_AUCTION_FEES sends ${configured} on timed auctions.`,
       );
     }
   } catch (err) {
