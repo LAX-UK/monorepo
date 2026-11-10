@@ -7,7 +7,7 @@ import type {
   PaymentCheckoutResult,
 } from "../interfaces/checkout-rail.js";
 import type { MediaUrlResolver } from "../media-url-resolver.js";
-import { createOrRenewCheckoutSession } from "../stripe/stripe-checkout-session-lifecycle.js";
+import type { CheckoutSessionLifecycle } from "../stripe/stripe-checkout-session-lifecycle.js";
 import type { IStripePaymentGateway } from "../stripe/stripe-payment-gateway.js";
 import {
   buildCreateCheckoutSessionInput,
@@ -20,6 +20,7 @@ export class CardCheckoutRail implements ICheckoutRail {
   constructor(
     private readonly env: Pick<Env, "WEB_ORIGIN">,
     private readonly gateway: IStripePaymentGateway,
+    private readonly sessions: CheckoutSessionLifecycle,
     private readonly payments: IPaymentWriteRepository,
     private readonly mediaUrlResolver?: MediaUrlResolver,
   ) {}
@@ -40,8 +41,7 @@ export class CardCheckoutRail implements ICheckoutRail {
     try {
       const imageUrl = await resolveCheckoutLotHeroImage(ctx.lot, this.mediaUrlResolver);
       const parameters = buildCreateCheckoutSessionInput(ctx, { successUrl, cancelUrl, imageUrl });
-      const outcome = await createOrRenewCheckoutSession(
-        this.gateway,
+      const outcome = await this.sessions.openOrRenew(
         "card",
         ctx.paymentId,
         parameters,

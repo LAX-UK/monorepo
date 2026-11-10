@@ -8,7 +8,7 @@ import type {
 } from "../interfaces/checkout-rail.js";
 import type { IStripeCustomerGateway } from "../interfaces/stripe-customer.js";
 import type { MediaUrlResolver } from "../media-url-resolver.js";
-import { createOrRenewCheckoutSession } from "../stripe/stripe-checkout-session-lifecycle.js";
+import type { CheckoutSessionLifecycle } from "../stripe/stripe-checkout-session-lifecycle.js";
 import type { IStripePaymentGateway } from "../stripe/stripe-payment-gateway.js";
 import {
   buildCreateCheckoutSessionInput,
@@ -21,6 +21,7 @@ export class BankTransferCheckoutRail implements ICheckoutRail {
   constructor(
     private readonly env: Pick<Env, "WEB_ORIGIN">,
     private readonly gateway: IStripePaymentGateway,
+    private readonly sessions: CheckoutSessionLifecycle,
     private readonly stripeCustomers: IStripeCustomerGateway,
     private readonly payments: IPaymentWriteRepository,
     private readonly mediaUrlResolver?: MediaUrlResolver,
@@ -50,8 +51,7 @@ export class BankTransferCheckoutRail implements ICheckoutRail {
         ...buildCreateCheckoutSessionInput(ctx, { successUrl, cancelUrl, imageUrl }),
         stripeCustomerId,
       };
-      const outcome = await createOrRenewCheckoutSession(
-        this.gateway,
+      const outcome = await this.sessions.openOrRenew(
         "bank",
         ctx.paymentId,
         parameters,

@@ -1,7 +1,9 @@
 import type { IPaymentWriteRepository } from "@auction/persistence/interfaces";
 import { describe, expect, it, vi } from "vitest";
+import { InMemoryCheckoutSessionLedger } from "../../test/fake-checkout-stripe.js";
 import type { PaymentCheckoutContext } from "../interfaces/checkout-rail.js";
 import type { MediaUrlResolver } from "../media-url-resolver.js";
+import { CheckoutSessionLifecycle } from "../stripe/stripe-checkout-session-lifecycle.js";
 import type { IStripePaymentGateway } from "../stripe/stripe-payment-gateway.js";
 import { CardCheckoutRail } from "./card-checkout.rail.js";
 
@@ -53,6 +55,9 @@ const ctx: PaymentCheckoutContext = {
   invoiceLines: [{ kind: "hammer", label: "Hammer price", ratePercent: null, amountPence: 12_500 }],
 };
 
+const lifecycleFor = (gateway: IStripePaymentGateway) =>
+  new CheckoutSessionLifecycle(gateway, new InMemoryCheckoutSessionLedger(), { report: vi.fn() });
+
 describe("CardCheckoutRail", () => {
   it("creates card session with line items and no customer_balance", async () => {
     const createCardCheckoutSession = vi.fn().mockResolvedValue({
@@ -70,6 +75,7 @@ describe("CardCheckoutRail", () => {
       retrieveCheckoutSession: vi.fn().mockResolvedValue({
         id: "cs_1",
         status: "open",
+        payment_intent: "pi_1",
         url: "https://checkout.stripe.com/card",
         expires_at: Math.floor(Date.now() / 1000) + 3600,
       }),
@@ -89,6 +95,7 @@ describe("CardCheckoutRail", () => {
     const rail = new CardCheckoutRail(
       { WEB_ORIGIN: "https://app.test" },
       gateway,
+      lifecycleFor(gateway),
       payments,
       mediaUrlResolver,
     );
@@ -125,9 +132,14 @@ describe("CardCheckoutRail", () => {
       expireCheckoutSession: vi.fn().mockResolvedValue(undefined),
       revokeOpenCheckoutForPayment: vi.fn().mockResolvedValue(undefined),
     };
-    const rail = new CardCheckoutRail({ WEB_ORIGIN: "https://app.test" }, gateway, {
-      updateStripePaymentIntentId: vi.fn(),
-    } as unknown as IPaymentWriteRepository);
+    const rail = new CardCheckoutRail(
+      { WEB_ORIGIN: "https://app.test" },
+      gateway,
+      lifecycleFor(gateway),
+      {
+        updateStripePaymentIntentId: vi.fn(),
+      } as unknown as IPaymentWriteRepository,
+    );
 
     const result = await rail.createCheckout(ctx);
     expect(result.checkoutUrl).toBeNull();

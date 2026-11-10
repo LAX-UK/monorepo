@@ -1,7 +1,9 @@
 import type { IPaymentWriteRepository } from "@auction/persistence/interfaces";
 import { describe, expect, it, vi } from "vitest";
+import { InMemoryCheckoutSessionLedger } from "../../test/fake-checkout-stripe.js";
 import type { PaymentCheckoutContext } from "../interfaces/checkout-rail.js";
 import type { IStripeCustomerGateway } from "../interfaces/stripe-customer.js";
+import { CheckoutSessionLifecycle } from "../stripe/stripe-checkout-session-lifecycle.js";
 import type { IStripePaymentGateway } from "../stripe/stripe-payment-gateway.js";
 import { BankTransferCheckoutRail } from "./bank-transfer-checkout.rail.js";
 
@@ -48,6 +50,9 @@ const ctx: PaymentCheckoutContext = {
   ],
 };
 
+const lifecycleFor = (gateway: IStripePaymentGateway) =>
+  new CheckoutSessionLifecycle(gateway, new InMemoryCheckoutSessionLedger(), { report: vi.fn() });
+
 describe("BankTransferCheckoutRail", () => {
   it("requires Stripe customer and creates gb_bank_transfer session", async () => {
     const findOrCreateForLegalEntity = vi.fn().mockResolvedValue("cus_1");
@@ -84,6 +89,7 @@ describe("BankTransferCheckoutRail", () => {
     const rail = new BankTransferCheckoutRail(
       { WEB_ORIGIN: "https://app.test" },
       gateway,
+      lifecycleFor(gateway),
       stripeCustomers,
       payments,
     );
