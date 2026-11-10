@@ -57,8 +57,9 @@ export async function runRefreshXeroTokensJob(opts: JobOpts): Promise<void> {
 }
 
 export async function runProcessNotificationOutboxJob(opts: JobOpts): Promise<void> {
-  // Rows are claimed with SKIP LOCKED and a claim is only released after ten minutes, and each
-  // email carries the row's idempotency key, so a repeat never sends a notification twice.
+  // Rows are claimed with FOR UPDATE SKIP LOCKED and a claim is only released after ten minutes,
+  // so a repeat, or an overlap with the first request, takes different rows and never
+  // dispatches a notification twice.
   await runFinanceCronPath("process-notification-outbox", opts, {
     gatewayRetry: DEFAULT_GATEWAY_RETRY,
   });
