@@ -87,3 +87,33 @@ describe("the moved one date style is byte-identical to the old London formatter
     expect(style.formatDate(new Date("2026-09-15T12:00:00Z"), Z)).toBe("15 Sep 2026");
   });
 });
+
+describe("the Stage A additions match the Intl formats they replace", () => {
+  const instants = sweep();
+  const zones = [LONDON_TIME_ZONE, "Europe/Paris", "America/New_York", "UTC"];
+
+  it("names the month, as en-GB spells it in full", () => {
+    for (const zone of zones) {
+      const intl = new Intl.DateTimeFormat("en-GB", { month: "long", timeZone: zone });
+      for (const d of instants) expect(style.formatMonthName(d, zone)).toBe(intl.format(d));
+    }
+  });
+
+  it("gives the calendar year in the zone", () => {
+    for (const zone of zones) {
+      const intl = new Intl.DateTimeFormat("en-GB", { year: "numeric", timeZone: zone });
+      for (const d of instants) expect(style.calendarYear(d, zone)).toBe(Number(intl.format(d)));
+    }
+  });
+
+  it("reads a long moment as the long date style does", () => {
+    for (const zone of zones) {
+      const intl = new Intl.DateTimeFormat("en-GB", {
+        dateStyle: "long",
+        timeStyle: "short",
+        timeZone: zone,
+      });
+      for (const d of instants) expect(style.formatLongMoment(d, zone)).toBe(intl.format(d));
+    }
+  });
+});
