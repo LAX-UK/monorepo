@@ -27,6 +27,8 @@ export type LotSummary = {
   medium: string | null;
   startTime: Date;
   endTime: Date;
+  /** The zone of the lot's sale, which its times are quoted in. Absent for a lot with no sale. */
+  timeZone?: string;
   images: string[];
   /** Measured size and blur preview per picture, aligned with `images`; absent when none is measured. */
   imageAssets?: import("./gallery.js").GalleryImage[];

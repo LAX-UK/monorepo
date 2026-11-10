@@ -1,3 +1,4 @@
+import type { Sale } from "@auction/types";
 import { SALE_TIME_ZONE_INVALID, SALE_TIME_ZONE_NOT_A_PLACE } from "@auction/validators";
 import { describe, expect, it } from "vitest";
 import { emptyAdminSaleFormValues, saleToAdminSaleFormValues } from "./admin-sale-defaults";
@@ -32,7 +33,6 @@ describe("the sale form's time zone", () => {
 
   it("shows a stored sale's times as wall-clock times in its own zone", () => {
     const form = saleToAdminSaleFormValues({
-      ...({} as never),
       title: "Paris",
       description: null,
       coverImages: [],
@@ -60,7 +60,7 @@ describe("the sale form's time zone", () => {
       buyerPremiumRate: "0.25",
       buyerPremiumTiers: null,
       terms: null,
-    });
+    } as unknown as Sale);
     expect(form.timeZone).toBe("Europe/Paris");
     expect(form.startTime).toBe("2030-11-12T18:00");
   });
