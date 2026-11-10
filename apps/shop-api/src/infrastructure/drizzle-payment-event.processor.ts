@@ -137,7 +137,8 @@ async function expireStripeBeforeLocalTransition(
   paymentGateway: PaymentCheckoutGateway | undefined,
   mode: "buyer_cancel" | "expire",
   options: CheckoutTransitionOptions = {},
-): Promise<"proceed" | "skip_async" | "reconciled" | "unconfirmed"> {
+  holdMustHaveEndedBy?: Date,
+): Promise<"proceed" | "skip_async" | "reconciled" | "unconfirmed" | "hold_running"> {
   if (!paymentGateway) {
     return "proceed";
   }
@@ -145,12 +146,18 @@ async function expireStripeBeforeLocalTransition(
     .select({
       status: shopOrder.status,
       stripeCheckoutSessionId: shopOrder.stripeCheckoutSessionId,
+      checkoutExpiresAt: shopOrder.checkoutExpiresAt,
     })
     .from(shopOrder)
     .where(eq(shopOrder.id, orderId))
     .limit(1);
   if (!preview || preview.status !== "pending_payment") {
     return "proceed";
+  }
+  // The session ended below is the one read here, so the hold is judged on this same read: a buyer
+  // who opened payment since the sweep chose the order has a new session that must not be ended.
+  if (holdMustHaveEndedBy && holdStillRunning(preview, holdMustHaveEndedBy)) {
+    return "hold_running";
   }
   const outcome = await expireHostedCheckoutSession(paymentGateway, {
     orderId,
@@ -773,7 +780,15 @@ async function recordPaymentForUnknownOrder(
   });
 }
 
-/** Marks a Stripe event as handled; false when it already was, so a replay does nothing. */
+/**
+ * Marks a Stripe event as handled; false when it already was, so a replay does nothing.
+ *
+ * Always called first in the transaction that records the event's effects. A second delivery of
+ * the same event waits on the first one's uncommitted claim: it gets "already handled" only once
+ * the first has committed, and if the first rolls back it takes the claim and does the work
+ * itself. Never call this outside that transaction, or a duplicate could be acknowledged for work
+ * that was never stored.
+ */
 async function claimPaymentEvent(tx: Database, eventId: string): Promise<boolean> {
   const [claim] = await tx
     .insert(shopProcessedPaymentEvent)
@@ -1184,7 +1199,9 @@ export async function expireShopCheckoutSession(
     input.skipStripe ? undefined : options.paymentGateway,
     "expire",
     options,
+    input.holdMustHaveEndedBy,
   );
+  if (stripeGate === "hold_running") return "unchanged";
   if (stripeGate === "reconciled") return "reconciled";
   if (stripeGate === "unconfirmed") {
     return expireOutcomeOf(
