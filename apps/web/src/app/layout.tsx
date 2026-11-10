@@ -12,6 +12,7 @@ import { BottomChromeSync } from "@/components/layout/bottom-chrome-sync";
 import { SessionThemeSync } from "@/components/layout/session-theme-sync";
 import { ThemeInit } from "@/components/layout/theme-init";
 import { ThemeSystemListener } from "@/components/layout/theme-system-listener";
+import { ViewerZoneInit } from "@/components/layout/viewer-zone-init";
 import { WebVitalsReporter } from "@/components/layout/web-vitals-reporter";
 import { ConsentShell } from "@/components/marketing/consent/consent-shell";
 import { BrowserOfflineBanner } from "@/components/pwa/browser-offline-banner";
@@ -42,7 +43,9 @@ import { AppQueryProvider } from "@/lib/query/query-provider";
 import { isIndexingAllowedAtBuildTime } from "@/lib/seo/is-indexing-allowed";
 import { rootMetadataBase } from "@/lib/seo/metadata-factory";
 import { jsonLdScript, organizationJsonLd, websiteJsonLd } from "@/lib/seo/structured-data";
+import { loadViewerZone } from "@/lib/time/viewer-zone.server";
 import { cn } from "@auction/ui";
+import { ViewerZoneProvider } from "@auction/ui/time";
 import type { Metadata, Viewport } from "next";
 import { cookies, headers } from "next/headers";
 import type { ReactNode } from "react";
@@ -103,6 +106,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   const consentSnapshot = readConsentFromCookies(cookieStore);
   const consentProviderKey =
     consentSnapshot === null ? "consent:none" : JSON.stringify(consentSnapshot);
+  const viewerZone = await loadViewerZone(cookieStore);
   const isDark = isSsrDarkClass(themePref, hdrs.get("sec-ch-prefers-color-scheme"));
 
   return (
@@ -113,6 +117,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
     >
       <head>
         <ThemeInit />
+        <ViewerZoneInit />
         {isAnalyticsEnabled() ? <ConsentInit snapshot={consentSnapshot} nonce={nonce} /> : null}
       </head>
       <body>
@@ -156,7 +161,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
             <AppQueryProvider>
               <PushBootstrap />
               <PwaInstallPrompt />
-              {children}
+              <ViewerZoneProvider initial={viewerZone}>{children}</ViewerZoneProvider>
               <AccountSwitchGreeting />
             </AppQueryProvider>
           </AuthSessionProvider>

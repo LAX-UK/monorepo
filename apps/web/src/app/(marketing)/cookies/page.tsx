@@ -35,7 +35,7 @@ export default function CookiesPage() {
       <LegalPage
         title="Cookie policy"
         toc={[...toc]}
-        lastUpdated="25 July 2026"
+        lastUpdated="10 November 2026"
         kicker={null}
         dividerUnderDate
         embedded
@@ -118,6 +118,13 @@ export default function CookiesPage() {
               <tr className="border-b border-border/60">
                 <td className="py-2 pr-4 font-mono text-xs text-primary">lax_theme</td>
                 <td className="py-2 pr-4">Remembers light, dark, or system colour scheme.</td>
+                <td className="py-2">365 days</td>
+              </tr>
+              <tr className="border-b border-border/60">
+                <td className="py-2 pr-4 font-mono text-xs text-primary">lax_tz</td>
+                <td className="py-2 pr-4">
+                  Remembers your time zone, so sale times can also show in your own time.
+                </td>
                 <td className="py-2">365 days</td>
               </tr>
               <tr className="border-b border-border/60">

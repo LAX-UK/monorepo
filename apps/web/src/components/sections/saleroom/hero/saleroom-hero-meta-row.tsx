@@ -4,6 +4,7 @@ import type { SaleHeroVM } from "@/components/sections/saleroom/view-models";
 import type { SaleFormatExplainerContext } from "@/lib/sale-format-explainer";
 import type { SaleDeliveryMode } from "@auction/types";
 import { StatusBadge } from "@auction/ui/lax";
+import { OfficialTime } from "@auction/ui/time";
 
 type Props = {
   hero: SaleHeroVM;
@@ -30,7 +31,8 @@ export function SaleroomHeroMetaRow({
   const showStatus = LIFECYCLE_STATUSES.includes(hero.status);
 
   return (
-    <div className="fade-up flex flex-col gap-2">
+    // Raised above the title and image that follow, so the open time panel is not covered.
+    <div className="fade-up relative z-10 flex flex-col gap-2">
       <div className="flex flex-wrap items-center gap-2">
         {showStatus ? <SaleLifecycleBadge status={hero.status} opensAt={hero.startTime} /> : null}
         {showOnlineBiddingGatedBadge ? (
@@ -48,7 +50,15 @@ export function SaleroomHeroMetaRow({
         withExplainer
         {...(explainerContext ? { explainerContext } : {})}
       />
-      <p className="font-body text-sm text-on-surface-variant">{hero.dateLine}</p>
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 font-body text-sm text-on-surface-variant">
+        {hero.startTime ? (
+          <OfficialTime instant={hero.startTime} officialZone={hero.timeZone} placement="inline">
+            {hero.dateLine}
+          </OfficialTime>
+        ) : (
+          hero.dateLine
+        )}
+      </div>
     </div>
   );
 }
