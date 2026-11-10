@@ -1,8 +1,7 @@
 import "server-only";
 
 import { usesBidAsClient } from "@/lib/auth/client-audience";
-import { BID_API_AUDIENCE } from "@/lib/bff/config.server";
-import { BidBffTokenService } from "@/lib/bff/token-service.server";
+import { fetchBidApiAsSession } from "@/lib/bff/bid-api-session.server";
 import { getServerApiBase } from "@/lib/data/http/hc-server";
 import { deriveSsrOrigin } from "@/lib/data/http/server-request-headers";
 import { sessionUserSchema } from "@/lib/data/http/session.schema";
@@ -23,18 +22,17 @@ const RESTORE_TIMEOUT_MS = 3_000;
 function senderFor(sessionId: string): ApiSender {
   return async (path, init) => {
     try {
-      const { token } = await new BidBffTokenService().resourceToken(
+      const origin = await deriveSsrOrigin();
+      const { response: res } = await fetchBidApiAsSession({
         sessionId,
-        BID_API_AUDIENCE,
-        "bid.read bid.write",
-      );
-      const headers = new Headers(init.headers);
-      headers.set("Authorization", `Bearer ${token}`);
-      headers.set("Origin", await deriveSsrOrigin());
-      const res = await fetch(`${getServerApiBase()}${path}`, {
-        ...init,
-        headers,
-        signal: AbortSignal.timeout(RESTORE_TIMEOUT_MS),
+        scopes: "bid.read bid.write",
+        input: `${getServerApiBase()}${path}`,
+        init: (token) => {
+          const headers = new Headers(init.headers);
+          headers.set("Authorization", `Bearer ${token}`);
+          headers.set("Origin", origin);
+          return { ...init, headers, signal: AbortSignal.timeout(RESTORE_TIMEOUT_MS) };
+        },
       });
       if (!res.ok) console.warn(`Sign-in account restore: the API answered ${res.status}`);
       return res;

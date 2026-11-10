@@ -43,6 +43,8 @@ describe("Bid BFF WS ticket reservation", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     readSession.mockReturnValue("bff-session-1");
+    // clearAllMocks keeps unconsumed one-shot answers; the rejected-identity cases use only one.
+    resourceToken.mockReset();
     resourceToken
       .mockResolvedValueOnce({
         token: "api-resource-secret",
@@ -74,12 +76,15 @@ describe("Bid BFF WS ticket reservation", () => {
     expect(await response.json()).toEqual({ error: "session_required" });
   });
 
-  it("evicts the stale API token on an unknown signing key and issues the ticket with a fresh one", async () => {
+  it("replaces the stale API token on an unknown signing key and issues the ticket with a fresh one", async () => {
     resourceToken.mockReset();
     resourceToken
       .mockResolvedValueOnce({ token: "stale-api", session: { subject: "user-1", sid: "sid-1" } })
-      .mockResolvedValueOnce({ token: "ws-resource", session: { subject: "user-1", sid: "sid-1" } })
-      .mockResolvedValueOnce({ token: "fresh-api", session: { subject: "user-1", sid: "sid-1" } });
+      .mockResolvedValueOnce({ token: "fresh-api", session: { subject: "user-1", sid: "sid-1" } })
+      .mockResolvedValueOnce({
+        token: "ws-resource",
+        session: { subject: "user-1", sid: "sid-1" },
+      });
     fetchBidApi.mockReset();
     fetchBidApi
       .mockResolvedValueOnce(
@@ -91,13 +96,9 @@ describe("Bid BFF WS ticket reservation", () => {
     const response = await POST(request());
 
     expect(response.status).toBe(200);
-    expect(resourceToken).toHaveBeenNthCalledWith(
-      3,
-      "bff-session-1",
-      "lax-bid-api",
-      "bid.read",
-      true,
-    );
+    expect(resourceToken).toHaveBeenNthCalledWith(2, "bff-session-1", "lax-bid-api", "bid.read", {
+      replacing: "stale-api",
+    });
     expect(fetchBidApi).toHaveBeenCalledTimes(2);
     const retryHeaders = (fetchBidApi.mock.calls[1]?.[1] as RequestInit).headers as Record<
       string,
@@ -128,7 +129,7 @@ describe("Bid BFF WS ticket reservation", () => {
     const response = await POST(request());
     expect(response.status).toBe(401);
     expect(fetchBidApi).toHaveBeenCalledOnce();
-    expect(resourceToken).toHaveBeenCalledTimes(2);
+    expect(resourceToken).toHaveBeenCalledOnce();
   });
 
   it("returns 401 when the session belongs to a different subject", async () => {

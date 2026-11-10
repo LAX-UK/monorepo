@@ -119,7 +119,7 @@ describe("Bid BFF proxy route", () => {
     await expect(response.text()).resolves.toBe("streamed");
   });
 
-  it("force-exchanges once and retries when the Bid API reports an unknown signing key", async () => {
+  it("replaces the token once and retries when the Bid API reports an unknown signing key", async () => {
     mocks.resourceToken
       .mockResolvedValueOnce({ token: "cached-token", session: { kind: "authenticated" } })
       .mockResolvedValueOnce({ token: "fresh-token", session: { kind: "authenticated" } });
@@ -135,7 +135,7 @@ describe("Bid BFF proxy route", () => {
       "bff-session-1",
       "lax-bid-api",
       "bid.read",
-      true,
+      { replacing: "cached-token" },
     );
     expect(mocks.fetchBidApi).toHaveBeenCalledTimes(2);
     expect((mocks.fetchBidApi.mock.calls[1]?.[1] as RequestInit).headers).toEqual(
@@ -164,18 +164,47 @@ describe("Bid BFF proxy route", () => {
     expect(mocks.fetchBidApi).toHaveBeenCalledOnce();
   });
 
-  it("retries a mutation once on the unknown-key signal and never loops", async () => {
+  it("retries a mutation once, with the same method and the same body bytes, and never loops", async () => {
+    mocks.resourceToken
+      .mockResolvedValueOnce({ token: "cached-token", session: { kind: "authenticated" } })
+      .mockResolvedValueOnce({ token: "fresh-token", session: { kind: "authenticated" } });
     mocks.fetchBidApi.mockImplementation(async () => keyUnknown());
+    const payload = JSON.stringify({ a: 1, note: "caf\u00e9 \u20ac" });
     const post = new NextRequest("https://lax.bid/api/bff/users/me", {
       method: "PATCH",
       headers: { origin: "https://lax.bid", "content-type": "application/json" },
-      body: JSON.stringify({ a: 1 }),
+      body: payload,
     });
 
     const response = await PATCH(post, context);
 
     expect(response.status).toBe(401);
     expect(mocks.resourceToken).toHaveBeenCalledTimes(2);
+    expect(mocks.fetchBidApi).toHaveBeenCalledTimes(2);
+    const [first, second] = mocks.fetchBidApi.mock.calls.map(([, init]) => init as RequestInit);
+    expect(first?.method).toBe("PATCH");
+    expect(second?.method).toBe("PATCH");
+    expect(Buffer.from(first?.body as Buffer).toString("utf8")).toBe(payload);
+    expect(Buffer.from(second?.body as Buffer).equals(Buffer.from(first?.body as Buffer))).toBe(
+      true,
+    );
+    expect((first?.headers as Headers).get("authorization")).toBe("Bearer cached-token");
+    expect((second?.headers as Headers).get("authorization")).toBe("Bearer fresh-token");
+  });
+
+  it("retries on an expired token the same way", async () => {
+    mocks.resourceToken
+      .mockResolvedValueOnce({ token: "cached-token", session: { kind: "authenticated" } })
+      .mockResolvedValueOnce({ token: "fresh-token", session: { kind: "authenticated" } });
+    mocks.fetchBidApi
+      .mockResolvedValueOnce(
+        Response.json({ error: "Unauthorized", code: "token_expired" }, { status: 401 }),
+      )
+      .mockResolvedValueOnce(Response.json({ ok: true }));
+
+    const response = await GET(request(), context);
+
+    expect(response.status).toBe(200);
     expect(mocks.fetchBidApi).toHaveBeenCalledTimes(2);
   });
 

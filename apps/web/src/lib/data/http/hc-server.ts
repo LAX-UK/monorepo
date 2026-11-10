@@ -7,6 +7,7 @@ import {
   mergeFetchInitWithPolicy,
 } from "@/lib/data/http/server-fetch-policy";
 import { buildAuthedSsrHeaders } from "@/lib/data/http/server-request-headers";
+import { isReplayableBody, sendWithSsrKeyRetry } from "@/lib/data/http/ssr-key-retry.server";
 import { cookies } from "next/headers";
 
 /** When INTERNAL_API_URL uses 127.0.0.1 but NEXT_PUBLIC_API_URL uses localhost (or vice versa),
@@ -67,11 +68,18 @@ export async function createServerHc(
       if (init?.headers !== undefined) {
         headerOpts.init = init.headers;
       }
-      const headers = await buildAuthedSsrHeaders(headerOpts);
-      return fetch(input, {
-        ...mergeFetchInitWithPolicy(policy, init),
-        headers,
-        credentials: "include",
+      return sendWithSsrKeyRetry({
+        buildHeaders: (rejected) =>
+          buildAuthedSsrHeaders(
+            rejected === undefined ? headerOpts : { ...headerOpts, rejectedBearer: rejected },
+          ),
+        send: (headers) =>
+          fetch(input, {
+            ...mergeFetchInitWithPolicy(policy, init),
+            headers,
+            credentials: "include",
+          }),
+        replayable: isReplayableBody(init?.body),
       });
     },
   });

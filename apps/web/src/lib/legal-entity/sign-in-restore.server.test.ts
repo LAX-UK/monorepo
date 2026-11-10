@@ -67,6 +67,29 @@ describe("planSignInRestore", () => {
     expect(JSON.parse(String(init.body))).toEqual({ candidateId: null });
   });
 
+  it("replaces a token the API says is out of date and asks again", async () => {
+    resourceToken
+      .mockResolvedValueOnce({ token: "stale-token" })
+      .mockResolvedValueOnce({ token: "fresh-token" });
+    let meCalls = 0;
+    fetchApi.mockImplementation(async (url: string) => {
+      if (url.endsWith("/users/me")) {
+        meCalls += 1;
+        return meCalls === 1
+          ? Response.json({ error: "Unauthorized", code: "token_key_unknown" }, { status: 401 })
+          : new Response(JSON.stringify({ data: CLIENT }));
+      }
+      return answer({ accountId: ORG_ID, lostOrganisation: null });
+    });
+
+    const plan = await planSignInRestore({ sessionId: "session-1" });
+
+    expect(plan).toMatchObject({ kind: "client", account: { accountId: ORG_ID } });
+    expect(resourceToken).toHaveBeenNthCalledWith(2, "session-1", "bid-api", "bid.read bid.write", {
+      replacing: "stale-token",
+    });
+  });
+
   it("never offers this browser's old account: a sign-in opens the profile's account", async () => {
     mockApi(answer({ accountId: PERSONAL_ID, lostOrganisation: null }));
     await planSignInRestore({ sessionId: "session-1" });

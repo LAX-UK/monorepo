@@ -240,4 +240,87 @@ describe("BidBffTokenService", () => {
 
     expect(oidc.exchangeResourceToken).toHaveBeenCalledTimes(1);
   });
+
+  describe("replacing a rejected token", () => {
+    function sessionHolding(token: string) {
+      return new DeterministicSessionStore({
+        kind: "authenticated",
+        subject: "user-1",
+        sid: "sid-1",
+        idToken: "id-token",
+        accessToken: "access-token",
+        refreshToken: "refresh-token",
+        accessTokenExpiresAt: Date.now() + 120_000,
+        resourceTokens: {
+          "lax-bid-api": { token, expiresAt: Date.now() + 120_000, scopes: "bid.read" },
+        },
+      });
+    }
+
+    it("exchanges once when concurrent requests are rejected for the same token", async () => {
+      const sessions = sessionHolding("stale");
+      oidc.exchangeResourceToken.mockImplementation(async () => {
+        await Promise.resolve();
+        return { token: "fresh", expiresAt: Date.now() + 120_000, scopes: "bid.read" };
+      });
+      const service = new BidBffTokenService(sessions as never, async () => true);
+
+      const results = await Promise.all([
+        service.resourceToken("session-id", "lax-bid-api", "bid.read", { replacing: "stale" }),
+        service.resourceToken("session-id", "lax-bid-api", "bid.read", { replacing: "stale" }),
+        service.resourceToken("session-id", "lax-bid-api", "bid.read", { replacing: "stale" }),
+      ]);
+
+      expect(oidc.exchangeResourceToken).toHaveBeenCalledTimes(1);
+      expect(results.map(({ token }) => token)).toEqual(["fresh", "fresh", "fresh"]);
+    });
+
+    it("reuses a different cached token that a concurrent request already stored", async () => {
+      const sessions = sessionHolding("already-replaced");
+      const service = new BidBffTokenService(sessions as never, async () => true);
+
+      const result = await service.resourceToken("session-id", "lax-bid-api", "bid.read", {
+        replacing: "stale",
+      });
+
+      expect(oidc.exchangeResourceToken).not.toHaveBeenCalled();
+      expect(result.token).toBe("already-replaced");
+    });
+
+    it("exchanges when the cache still holds the rejected token", async () => {
+      const sessions = sessionHolding("stale");
+      oidc.exchangeResourceToken.mockResolvedValue({
+        token: "fresh",
+        expiresAt: Date.now() + 120_000,
+        scopes: "bid.read",
+      });
+      const service = new BidBffTokenService(sessions as never, async () => true);
+
+      const result = await service.resourceToken("session-id", "lax-bid-api", "bid.read", {
+        replacing: "stale",
+      });
+
+      expect(oidc.exchangeResourceToken).toHaveBeenCalledTimes(1);
+      expect(result.token).toBe("fresh");
+    });
+
+    it("does not reuse a different cached token that is itself unusable", async () => {
+      const sessions = sessionHolding("also-retired");
+      oidc.exchangeResourceToken.mockResolvedValue({
+        token: "fresh",
+        expiresAt: Date.now() + 120_000,
+        scopes: "bid.read",
+      });
+      const service = new BidBffTokenService(
+        sessions as never,
+        async (token) => token !== "also-retired",
+      );
+
+      const result = await service.resourceToken("session-id", "lax-bid-api", "bid.read", {
+        replacing: "stale",
+      });
+
+      expect(result.token).toBe("fresh");
+    });
+  });
 });
