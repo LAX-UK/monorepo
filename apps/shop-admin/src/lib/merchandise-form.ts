@@ -9,7 +9,7 @@ import {
   MERCHANDISE_STOCK_REASON_MAX_LENGTH,
   MERCHANDISE_TITLE_MAX_LENGTH,
 } from "@auction/shop-contracts";
-import { parsePoundsToPence } from "@auction/staff-ui";
+import { formatStaffNumber, parsePoundsToPence } from "@auction/staff-ui";
 import { type FieldErrors, collectFieldErrors, parseWholeNumber } from "./form-validation";
 import { slugify } from "./slugify";
 
@@ -19,7 +19,7 @@ const MAX_PRICE_LABEL = formatPounds(MERCHANDISE_PRICE_MAX_PENCE);
 export type Validated<T> = { ok: true; value: T } | { ok: false; errors: FieldErrors };
 
 function formatPounds(pence: number): string {
-  return `£${(pence / 100).toLocaleString("en-GB", { minimumFractionDigits: 2 })}`;
+  return `£${formatStaffNumber(pence / 100, { minimumFractionDigits: 2 })}`;
 }
 
 /** A URL slug from a title: lower case words joined by hyphens, accents dropped. */

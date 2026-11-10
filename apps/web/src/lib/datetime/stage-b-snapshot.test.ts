@@ -1,7 +1,7 @@
 import { formatDateOfBirth } from "@/components/admin/people/staff-email-change-parts";
 import { defaultQrAnalyticsCustomRange } from "@/components/admin/qr-code/use-qr-analytics";
 import { dueWhen } from "@/lib/admin/consignment-inbox/inbox-presenters";
-import { threadTime } from "@/lib/admin/consignment-inbox/thread-view";
+import { buildThreadView, threadTime } from "@/lib/admin/consignment-inbox/thread-view";
 import { dealHoldLine } from "@/lib/admin/data-requests/deal-holds";
 import { customDateRangeToAnalyticsQuery } from "@/lib/admin/qr-analytics-range";
 import { relativeFromIso } from "@/lib/admin/relative-time";
@@ -90,6 +90,37 @@ function renderSweep(): Record<string, string> {
     set("dealHold", dealHoldLine(HOLD(iso)).text);
     set("dateOfBirth", formatDateOfBirth(iso.slice(0, 10)));
     set("dateOfBirthBad", formatDateOfBirth("not-a-date"));
+  }
+  // The day dividers of a thread: messages and events across both clock changes and midnight edges.
+  const messages = SWEEP_INSTANTS.map((iso, i) => ({
+    id: `m${i}`,
+    createdAt: iso,
+    side: i % 2 ? "staff" : "client",
+    visibility: "thread",
+    readAt: i % 2 ? iso : null,
+    author: { name: "Clara Mendes", role: "Specialist" },
+    body: "Hello",
+    attachments: [],
+  }));
+  const events = SWEEP_INSTANTS.map((iso, i) => ({
+    id: `e${i}`,
+    at: iso,
+    kind: "closed",
+    actor: { name: "James Hale", userId: "u1" },
+    subject: null,
+  }));
+  for (const [label, now] of [
+    ["now", SWEEP_NOW],
+    ["sameDay", new Date("2026-03-29T09:00:00Z")],
+  ] as const) {
+    out[`threadView ${label}`] = JSON.stringify(
+      buildThreadView({ messages, events } as unknown as Parameters<typeof buildThreadView>[0], {
+        now,
+        firstUnreadId: "m3",
+        expanded: true,
+        accountName: "Northbank Gallery",
+      }),
+    );
   }
   const range = (from: string, to: string) =>
     JSON.stringify(customDateRangeToAnalyticsQuery({ from, to }));

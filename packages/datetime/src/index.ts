@@ -1,7 +1,14 @@
 export { LONDON_TIME_ZONE } from "./constants.js";
 export { cityName } from "./city.js";
 export { type DateInput, toDate } from "./date-input.js";
-export { calendarDaysBetween, dayKey, dayOffset, endOfDay, startOfDay } from "./day.js";
+export {
+  addCalendarDays,
+  calendarDaysBetween,
+  dayKey,
+  dayOffset,
+  endOfDay,
+  startOfDay,
+} from "./day.js";
 export {
   formatDate,
   formatDateRange,
@@ -23,7 +30,7 @@ export {
 export type { LocalTime } from "./local-time.js";
 export { gmtOffsetLabel, offsetMinutes, sameOffset } from "./offset.js";
 export { isPlaceholderZone, isValidZone, normaliseViewerZone } from "./zone.js";
-export { shortZoneName } from "./zone-formats.js";
+export { shortMonthFormat, shortZoneName } from "./zone-formats.js";
 export { clockChange, clockChangeNotice } from "./clock-change.js";
 export {
   type WallClockResult,

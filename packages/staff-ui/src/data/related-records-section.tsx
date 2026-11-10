@@ -1,6 +1,7 @@
 import type { LinkComponent } from "@auction/ui/lax";
 import type * as React from "react";
 import { EmptyState, Section } from "../display/states.js";
+import { formatStaffNumber } from "../lib/format.js";
 import { DataTable } from "./data-table.js";
 import type { DataColumn, SortState, TableDensity } from "./types.js";
 
@@ -65,7 +66,7 @@ export function RelatedRecordsSection<T>({
             href={more.href}
             className="staff-focus rounded-staff-xs text-staff-sm font-medium text-staff-fg underline-offset-2 decoration-staff-line-strong hover:underline"
           >
-            View all {more.total.toLocaleString("en-GB")}
+            View all {formatStaffNumber(more.total)}
           </more.Link>
         ) : null}
         {headerButton}
