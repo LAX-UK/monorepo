@@ -3,8 +3,11 @@ import {
   runEnsureLotInvoicesJob,
   runExpireStalePaymentsJob,
   runProcessNotificationOutboxJob,
+  runRefreshXeroTokensJob,
+  runRetryRefundReconcilesJob,
   runRetryXeroInvoiceCreationJob,
   runRetryXeroStripeCaptureSyncJob,
+  runRetryXeroWebhookFailuresJob,
 } from "./payment-ops-cron.js";
 
 const reply = (status: number) => ({ ok: status < 400, status, text: async () => "" });
@@ -45,6 +48,9 @@ describe("payment operations cron jobs behind the API proxy", () => {
     ["retry-xero-stripe-capture-sync", runRetryXeroStripeCaptureSyncJob],
     ["process-notification-outbox", runProcessNotificationOutboxJob],
     ["ensure-lot-invoices", runEnsureLotInvoicesJob],
+    ["retry-xero-invoice-creation", runRetryXeroInvoiceCreationJob],
+    ["retry-refund-reconciles", runRetryRefundReconcilesJob],
+    ["retry-xero-webhook-failures", runRetryXeroWebhookFailuresJob],
   ] as const;
 
   it.each(repeatable)("asks %s again after a deploy-time 504", async (path, run) => {
@@ -78,7 +84,7 @@ describe("payment operations cron jobs behind the API proxy", () => {
     const fetchMock = vi.fn().mockResolvedValue(reply(504));
     vi.stubGlobal("fetch", fetchMock);
 
-    await expect(runRetryXeroInvoiceCreationJob(jobOpts())).rejects.toThrow("failed:504");
+    await expect(runRefreshXeroTokensJob(jobOpts())).rejects.toThrow("failed:504");
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
