@@ -1,4 +1,9 @@
-import { collectionEligibility, londonDateKey, reminderWindow } from "@auction/domain";
+import {
+  DEFAULT_COLLECT_BY_POLICY,
+  collectionEligibility,
+  londonDateKey,
+  reminderWindow,
+} from "@auction/domain";
 import type { IEmailService } from "@auction/email";
 import type { ICollectionLotFactsReader } from "@auction/persistence/interfaces";
 import type pino from "pino";
@@ -6,16 +11,13 @@ import type { ICollectByReader } from "../interfaces/collect-by.reader.js";
 import type { ICollectionNoticeReader } from "../interfaces/collection-notice.reader.js";
 import { collectByEmailsFor, collectByGroups } from "../services/collect-by-notices.js";
 
-/** The longest free period a place can set, plus a day: lots cleared earlier cannot be due. */
-const LOOK_BACK_DAYS = 366;
-
 /**
- * Emails buyers who have neither booked nor collected a week before, and on, the day they are
- * asked to collect by, from 09:00 London time. It can run as often as it likes: it only looks at
- * lots that cleared on the day today's reminder is for, and each email is keyed by the reminder,
- * the account, the deadline and the address, so the outbox sends one however many sweeps find it.
- * A lot with a check open, a dispute or a refund, or one already booked or collected, is left
- * alone. Nothing is charged: "storage charges may apply" is wording, not logic.
+ * Emails buyers who have neither booked nor collected, from a week before the day they are asked
+ * to collect by, and on it, from 09:00 London time. It can run as often as it likes: each email is
+ * keyed by the reminder, the account, the place, the deadline, the person and the lots, and one
+ * whose key is already in the outbox is left alone (so a failed one is not re-armed every sweep).
+ * A lot with a check, a dispute or a refund open, or one already booked or collected, is left out.
+ * Nothing is charged: "storage charges may apply" is wording, not logic.
  */
 export async function runCollectByRemindersJob(options: {
   reader: ICollectByReader;
@@ -30,8 +32,15 @@ export async function runCollectByRemindersJob(options: {
   const at = now();
   if (!reminderWindow(at)) return { groups: 0, queued: 0 };
 
-  const since = new Date(at.getTime() - LOOK_BACK_DAYS * 24 * 60 * 60_000);
-  const groups = collectByGroups(await reader.storedLotsClearedSince(since), londonDateKey(at));
+  const today = londonDateKey(at);
+  const groups = collectByGroups(
+    await reader.storedLotsDue({
+      today,
+      defaultFreeStorageDays: DEFAULT_COLLECT_BY_POLICY.freeStorageDays,
+      reminderLeadDays: DEFAULT_COLLECT_BY_POLICY.reminderLeadDays,
+    }),
+    today,
+  );
   let queued = 0;
   for (const group of groups) {
     try {
@@ -41,8 +50,12 @@ export async function runCollectByRemindersJob(options: {
         return record !== undefined && collectionEligibility(record.facts).eligible;
       });
       if (lots.length === 0) continue;
-      const people = await notices.accountRecipients(group.legalEntityId);
-      for (const email of collectByEmailsFor({ ...group, lots }, people, { webOrigin, now: at })) {
+      const winners = lots.flatMap((lot) => (lot.winnerId ? [lot.winnerId] : []));
+      const people = await notices.accountRecipients(group.legalEntityId, winners);
+      const emails = collectByEmailsFor({ ...group, lots }, people, { webOrigin, now: at });
+      const already = await reader.queuedKeys(emails.map((email) => email.idempotencyKey ?? ""));
+      for (const email of emails) {
+        if (already.has(email.idempotencyKey ?? "")) continue;
         await emailService.enqueue(email);
         queued += 1;
       }

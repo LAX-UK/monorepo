@@ -54,6 +54,8 @@ describe("the settings form", () => {
     expect(bodyFromDraft(draft(" 25 "), "v").storageChargePence).toBe(2500);
     expect(bodyFromDraft(draft("12.5"), "v").storageChargePence).toBe(1250);
     expect(bodyFromDraft(draft("0.05"), "v").storageChargePence).toBe(5);
+    expect(bodyFromDraft(draft("£25"), "v").storageChargePence).toBe(2500);
+    expect(bodyFromDraft(draft("£ 12.50"), "v").storageChargePence).toBe(1250);
     expect(bodyFromDraft(draft(""), "v").storageChargePence).toBeNull();
   });
 

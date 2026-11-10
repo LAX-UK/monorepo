@@ -40,26 +40,40 @@ export function registerCollectionWorkers(
     COLLECTION_REMINDERS_QUEUE_NAME,
     async () => {
       await withSentryCronMonitor(COLLECTION_REMINDERS_QUEUE_NAME, sentryMonitorSlugs, async () => {
-        await runCollectionRemindersJob({
-          reader: options.reader,
-          emailService: options.emailService,
-          config: {
-            organizer: {
-              email: env.COLLECTION_ORGANIZER_EMAIL,
-              name: env.COLLECTION_ORGANIZER_NAME,
+        // Two sweeps in one job: a failure of one is reported and must not skip the other.
+        const failures: unknown[] = [];
+        try {
+          await runCollectionRemindersJob({
+            reader: options.reader,
+            emailService: options.emailService,
+            config: {
+              organizer: {
+                email: env.COLLECTION_ORGANIZER_EMAIL,
+                name: env.COLLECTION_ORGANIZER_NAME,
+              },
+              webOrigin: env.WEB_ORIGIN,
             },
+            log,
+          });
+        } catch (err) {
+          log.error({ err }, "collection_visit_reminders_failed");
+          failures.push(err);
+        }
+        try {
+          await runCollectByRemindersJob({
+            reader: options.collectByReader,
+            notices: options.reader,
+            facts: options.lotFacts,
+            emailService: options.emailService,
             webOrigin: env.WEB_ORIGIN,
-          },
-          log,
-        });
-        await runCollectByRemindersJob({
-          reader: options.collectByReader,
-          notices: options.reader,
-          facts: options.lotFacts,
-          emailService: options.emailService,
-          webOrigin: env.WEB_ORIGIN,
-          log,
-        });
+            log,
+          });
+        } catch (err) {
+          log.error({ err }, "collection_collect_by_sweep_failed");
+          failures.push(err);
+        }
+        // Report to Sentry and the queue by failing the job, after both have run.
+        if (failures.length > 0) throw failures[0];
         await heartbeat(COLLECTION_REMINDERS_QUEUE_NAME);
       });
     },

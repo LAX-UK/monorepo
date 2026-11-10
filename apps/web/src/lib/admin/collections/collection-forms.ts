@@ -3,6 +3,7 @@ import {
   type CollectionRulesIssue,
   type ExceptionIssueCode,
   type HoursIssue,
+  MAX_FREE_STORAGE_DAYS,
   collectionRulesIssues,
   exceptionDraftIssues,
   weeklyHoursIssues,
@@ -71,7 +72,8 @@ export function poundsFromPence(pence: number | null): string {
 
 /** Pounds as pence: null when empty, NaN when it is not an amount with up to two decimals. */
 export function penceFromPounds(text: string): number | null {
-  const value = text.trim();
+  // "£25" is as good as "25".
+  const value = text.trim().replace(/^£\s*/, "");
   if (value === "") return null;
   const match = /^(\d{1,4})(?:\.(\d{1,2}))?$/.exec(value);
   if (!match) return Number.NaN;
@@ -116,7 +118,7 @@ export type SettingsErrors = {
 };
 
 const FIELD_MESSAGES = {
-  free_storage_days: "Enter a whole number of days up to 365, or leave it empty.",
+  free_storage_days: `Enter a whole number of days up to ${MAX_FREE_STORAGE_DAYS}, or leave it empty.`,
   storage_charge: "Enter an amount in pounds, such as 25 or 12.50, or leave it empty.",
   booking_email: "Enter an email address, or leave it empty.",
 } as const;
@@ -138,7 +140,10 @@ export function validateSettingsDraft(draft: SettingsDraft): SettingsErrors {
     out.rules[issue] = RULE_ISSUE_MESSAGES[issue];
   }
   const storage = body.freeStorageDays;
-  if (storage !== null && !(Number.isInteger(storage) && storage >= 0 && storage <= 365)) {
+  if (
+    storage !== null &&
+    !(Number.isInteger(storage) && storage >= 0 && storage <= MAX_FREE_STORAGE_DAYS)
+  ) {
     out.rules.free_storage_days = FIELD_MESSAGES.free_storage_days;
   }
   const charge = body.storageChargePence;

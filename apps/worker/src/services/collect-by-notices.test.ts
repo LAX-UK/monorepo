@@ -1,11 +1,18 @@
 import { describe, expect, it } from "vitest";
 import type { StoredLot } from "../interfaces/collect-by.reader.js";
-import { collectByEmailsFor, collectByGroups } from "./collect-by-notices.js";
+import {
+  type CollectByGroup,
+  collectByEmailsFor,
+  collectByGroups,
+  collectByKey,
+} from "./collect-by-notices.js";
 
 const PLACE = { name: "London Art Exchange", address: "156 New Cavendish Street, London W1W 6YW" };
 const lot = (over: Partial<StoredLot> = {}): StoredLot => ({
   lotId: "l-1",
   legalEntityId: "e-1",
+  venueId: "v-1",
+  winnerId: "u-agent",
   title: "Lowland Storm",
   lotNumber: 12,
   clearedAt: new Date("2026-11-09T10:00:00Z"),
@@ -15,9 +22,11 @@ const lot = (over: Partial<StoredLot> = {}): StoredLot => ({
 });
 const maya = { userId: "u-maya", email: "maya@example.com", firstName: "Maya" };
 const NOW = new Date("2026-12-02T09:20:00Z");
+const config = { webOrigin: "https://lax.bid", now: NOW };
 
 describe("which lots are reminded today", () => {
-  it("picks the lots cleared on the day today's early reminder is for", () => {
+  it("picks the lots cleared a week before their deadline, from the day it falls", () => {
+    // Cleared 9 Nov: deadline 9 Dec, the early reminder from 2 Dec.
     const groups = collectByGroups(
       [lot(), lot({ lotId: "l-2", clearedAt: new Date("2026-11-10T10:00:00Z") })],
       "2026-12-02",
@@ -31,12 +40,19 @@ describe("which lots are reminded today", () => {
     expect(groups[0]?.lots.map((l) => l.lotId)).toEqual(["l-1"]);
   });
 
-  it("reminds on the day itself, and on no other day", () => {
+  it("still reminds on a later day before the deadline, for a day the sweep missed", () => {
+    expect(collectByGroups([lot()], "2026-12-06")[0]).toMatchObject({
+      kind: "lead",
+      collectBy: "2026-12-09",
+    });
+  });
+
+  it("reminds on the day itself, and not before the week or after the deadline", () => {
     expect(collectByGroups([lot()], "2026-12-09")[0]).toMatchObject({
       kind: "day",
       collectBy: "2026-12-09",
     });
-    expect(collectByGroups([lot()], "2026-12-03")).toEqual([]);
+    expect(collectByGroups([lot()], "2026-12-01")).toEqual([]);
     expect(collectByGroups([lot()], "2026-12-10")).toEqual([]);
   });
 
@@ -51,49 +67,47 @@ describe("which lots are reminded today", () => {
     });
   });
 
-  it("puts one account's lots for one deadline together, and keeps accounts apart", () => {
+  it("puts one account's lots for one place and deadline together, and keeps accounts and places apart", () => {
     const groups = collectByGroups(
       [
         lot(),
         lot({ lotId: "l-2", title: "Coastal Notation", lotNumber: 14 }),
         lot({ lotId: "l-3", legalEntityId: "e-2" }),
+        lot({ lotId: "l-4", venueId: "v-2", place: { ...PLACE, name: "The Mayfair Saleroom" } }),
       ],
       "2026-12-02",
     );
-    expect(groups.map((g) => [g.legalEntityId, g.lots.length])).toEqual([
-      ["e-1", 2],
-      ["e-2", 1],
+    expect(groups.map((g) => [g.legalEntityId, g.venueId, g.lots.length])).toEqual([
+      ["e-1", "v-1", 2],
+      ["e-2", "v-1", 1],
+      ["e-1", "v-2", 1],
     ]);
   });
 
   it("counts the London day a lot cleared, not the UTC day", () => {
-    // 23:30 UTC on 8 Jun is 00:30 BST on 9 Jun: it cleared on the 9th.
+    // 23:30 UTC on 8 Jun is 00:30 BST on 9 Jun: it cleared on the 9th, so the deadline is 9 Jul.
     const summer = lot({ clearedAt: new Date("2026-06-08T23:30:00Z") });
-    expect(collectByGroups([summer], "2026-07-02")[0]).toMatchObject({
-      kind: "lead",
+    expect(collectByGroups([summer], "2026-07-09")[0]).toMatchObject({
+      kind: "day",
       collectBy: "2026-07-09",
     });
   });
 });
 
 describe("the storage reminder email", () => {
-  const [group] = collectByGroups(
+  const group = collectByGroups(
     [lot(), lot({ lotId: "l-2", title: "Coastal Notation", lotNumber: 14 })],
     "2026-12-02",
-  );
+  )[0] as CollectByGroup;
 
-  it("names the deadline, the place and the lots, with no price", () => {
-    const [email, ...rest] = collectByEmailsFor(group as never, [maya], {
-      webOrigin: "https://lax.bid",
-      now: NOW,
-    });
+  it("names the deadline, the place and the lots, links to book those lots, and has no price", () => {
+    const [email, ...rest] = collectByEmailsFor(group, [maya], config);
     expect(rest).toEqual([]);
     expect(email).toMatchObject({
       template: "collection-collect-by",
       to: "maya@example.com",
       userId: "u-maya",
       category: "transactional",
-      idempotencyKey: "collection-collect-by:lead:e-1:2026-12-09:maya@example.com",
     });
     expect(email?.vars).toMatchObject({
       userName: "Maya",
@@ -101,27 +115,48 @@ describe("the storage reminder email", () => {
       collectByLabel: "Wed 9 Dec",
       placeName: "London Art Exchange",
       lots: ["Lot 12 · Lowland Storm", "Lot 14 · Coastal Notation"],
-      bookUrl: "https://lax.bid/purchases",
+      bookUrl: "https://lax.bid/purchases/collect?lots=l-1,l-2",
+      storagePolicyUrl: "https://lax.bid/shipping#storage",
+      quoteUrl: "https://lax.bid/purchases",
     });
     expect(JSON.stringify(email)).not.toMatch(/£|price|hammer/i);
   });
 
-  it("goes once to each address, and keys the day-of reminder apart from the early one", () => {
+  it("keys it by the person's id, never their address, and goes once to each person", () => {
     const owner = { userId: "u-owner", email: "OWNER@northbank.example", firstName: "Olu" };
     const emails = collectByEmailsFor(
-      group as never,
-      [maya, owner, { ...maya, userId: "u-maya-2" }],
-      {
-        webOrigin: "https://lax.bid",
-        now: NOW,
-      },
+      group,
+      [maya, owner, { ...maya, email: "maya@elsewhere.example" }],
+      config,
     );
-    expect(emails.map((e) => e.to)).toEqual(["maya@example.com", "OWNER@northbank.example"]);
-    const [dayGroup] = collectByGroups([lot()], "2026-12-09");
-    const [day] = collectByEmailsFor(dayGroup as never, [maya], {
-      webOrigin: "https://lax.bid",
-      now: NOW,
-    });
-    expect(day?.idempotencyKey).toBe("collection-collect-by:day:e-1:2026-12-09:maya@example.com");
+    expect(emails.map((e) => e.userId)).toEqual(["u-maya", "u-owner"]);
+    for (const email of emails) {
+      expect(email.idempotencyKey).not.toMatch(/@|example/);
+      expect(email.idempotencyKey).toContain(email.userId as string);
+    }
+  });
+
+  it("keys the day-of reminder, another place, another deadline and another set of lots apart", () => {
+    const keys = new Set([
+      collectByKey(group, "u-maya"),
+      collectByKey({ ...group, kind: "day" }, "u-maya"),
+      collectByKey({ ...group, venueId: "v-2" }, "u-maya"),
+      collectByKey({ ...group, collectBy: "2026-12-10" }, "u-maya"),
+      collectByKey({ ...group, lots: [lot()] }, "u-maya"),
+    ]);
+    expect(keys.size).toBe(5);
+  });
+
+  it("keeps the same key for the same lots in any order, so a repeat sweep sends nothing", () => {
+    const reversed = { ...group, lots: [...group.lots].reverse() };
+    expect(collectByKey(reversed, "u-maya")).toBe(collectByKey(group, "u-maya"));
+  });
+
+  it("links to the first twenty lots when there are more, which is all the booking page takes", () => {
+    const many = Array.from({ length: 22 }, (_, n) => lot({ lotId: `l-${n}`, lotNumber: n }));
+    const [big] = collectByGroups(many, "2026-12-02");
+    const [email] = collectByEmailsFor(big as never, [maya], config);
+    const link = (email?.vars as { bookUrl: string }).bookUrl;
+    expect(link.split("lots=")[1]?.split(",")).toHaveLength(20);
   });
 });

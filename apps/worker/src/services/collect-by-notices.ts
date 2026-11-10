@@ -1,7 +1,8 @@
+import { createHash } from "node:crypto";
 import {
   type CollectByReminderKind,
   DEFAULT_COLLECT_BY_POLICY,
-  collectByRemindersDue,
+  collectByReminderFor,
   formatCollectionDay,
   londonDateKey,
 } from "@auction/domain";
@@ -9,9 +10,13 @@ import type { EmailEnqueueInput } from "@auction/email";
 import type { StoredLot } from "../interfaces/collect-by.reader.js";
 import type { NoticeRecipient } from "./collection-notices.js";
 
+/** The most lots the booking page takes in one link. */
+const MAX_LOTS_IN_LINK = 20;
+
 /** The lots one account is reminded about together: same place, kind of reminder and deadline. */
 export type CollectByGroup = {
   legalEntityId: string;
+  venueId: string;
   kind: CollectByReminderKind;
   /** The deadline, a London day. */
   collectBy: string;
@@ -20,9 +25,9 @@ export type CollectByGroup = {
 };
 
 /**
- * Which storage reminders go today, as groups of lots by account, place and reminder. A lot is in
- * a group only when its payment cleared on the day the reminder is for, which is what makes each
- * lot reminded once however often the sweep runs. The place's free period decides the deadline.
+ * Which storage reminders are due today, as groups of lots by account, place and reminder. The
+ * place's free period decides each lot's deadline; the early reminder is due from a week before
+ * it, the one on the day on the deadline only.
  */
 export function collectByGroups(lots: readonly StoredLot[], today: string): CollectByGroup[] {
   const groups = new Map<string, CollectByGroup>();
@@ -31,12 +36,12 @@ export function collectByGroups(lots: readonly StoredLot[], today: string): Coll
       ...DEFAULT_COLLECT_BY_POLICY,
       freeStorageDays: stored.freeStorageDays ?? DEFAULT_COLLECT_BY_POLICY.freeStorageDays,
     };
-    const clearedOn = londonDateKey(stored.clearedAt);
-    const due = collectByRemindersDue(today, policy).find((d) => d.clearedOn === clearedOn);
+    const due = collectByReminderFor(stored.clearedAt, today, policy);
     if (!due) continue;
-    const key = [stored.legalEntityId, stored.place.name, due.kind, due.collectBy].join("|");
+    const key = [stored.legalEntityId, stored.venueId, due.kind, due.collectBy].join("|");
     const group = groups.get(key) ?? {
       legalEntityId: stored.legalEntityId,
+      venueId: stored.venueId,
       kind: due.kind,
       collectBy: due.collectBy,
       place: stored.place,
@@ -51,23 +56,48 @@ export function collectByGroups(lots: readonly StoredLot[], today: string): Coll
 const lotLine = (lot: { title: string; lotNumber: number | null }) =>
   lot.lotNumber != null ? `Lot ${lot.lotNumber} · ${lot.title}` : lot.title;
 
+/** A short stamp of which lots an email is about, so lots that become eligible later get their own. */
+const lotSetStamp = (lots: readonly StoredLot[]): string =>
+  createHash("sha256")
+    .update(
+      lots
+        .map((lot) => lot.lotId)
+        .sort()
+        .join(","),
+    )
+    .digest("hex")
+    .slice(0, 12);
+
+/** The key of one reminder to one person: the reminder, account, place, deadline, person and lots. */
+export const collectByKey = (group: CollectByGroup, userId: string): string =>
+  [
+    "collection-collect-by",
+    group.kind,
+    group.legalEntityId,
+    group.venueId,
+    group.collectBy,
+    userId,
+    lotSetStamp(group.lots),
+  ].join(":");
+
 /**
  * The email for one group to each person who hears about the account's purchases. Pure: it reads
- * nothing and sends nothing. The key names the reminder, the account, the deadline and the
- * address, so a retry or another sweep sends nothing twice.
+ * nothing and sends nothing. The key names the person by their id, never their address, and the
+ * lots it is about: a retry or another sweep sends nothing twice, and a lot that becomes eligible
+ * later the same day (a check closes) is reminded about in an email of its own.
  */
 export function collectByEmailsFor(
   group: CollectByGroup,
   people: readonly NoticeRecipient[],
   config: { webOrigin: string; now: Date },
-): EmailEnqueueInput[] {
+): EmailEnqueueInput<"collection-collect-by">[] {
   const collectByLabel = formatCollectionDay(new Date(`${group.collectBy}T12:00:00Z`), config.now);
   const seen = new Set<string>();
-  const emails: EmailEnqueueInput[] = [];
+  const emails: EmailEnqueueInput<"collection-collect-by">[] = [];
+  const lotIds = group.lots.slice(0, MAX_LOTS_IN_LINK).map((lot) => lot.lotId);
   for (const person of people) {
-    const address = person.email.toLowerCase();
-    if (seen.has(address)) continue;
-    seen.add(address);
+    if (seen.has(person.userId)) continue;
+    seen.add(person.userId);
     emails.push({
       template: "collection-collect-by",
       vars: {
@@ -77,13 +107,18 @@ export function collectByEmailsFor(
         placeName: group.place.name,
         address: group.place.address,
         lots: group.lots.map(lotLine),
-        bookUrl: `${config.webOrigin}/purchases`,
+        bookUrl: `${config.webOrigin}/purchases/collect?lots=${lotIds.join(",")}`,
+        storagePolicyUrl: `${config.webOrigin}/shipping#storage`,
+        quoteUrl: `${config.webOrigin}/purchases`,
       },
       to: person.email,
       userId: person.userId,
-      idempotencyKey: `collection-collect-by:${group.kind}:${group.legalEntityId}:${group.collectBy}:${address}`,
+      idempotencyKey: collectByKey(group, person.userId),
       category: "transactional",
-    } as EmailEnqueueInput);
+    });
   }
   return emails;
 }
+
+/** The London day of an instant, for the sweep. */
+export const today = (at: Date): string => londonDateKey(at);

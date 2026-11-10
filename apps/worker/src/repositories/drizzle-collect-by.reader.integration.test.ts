@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { createDb } from "@auction/db";
 import { collectionPlace } from "@auction/db/schema";
-import { eq, sql } from "drizzle-orm";
+import { inArray, sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { DrizzleCollectByReader } from "./drizzle-collect-by.reader.js";
 
@@ -17,11 +17,16 @@ describe.skipIf(!HAS_DB)("collect-by reader (integration)", () => {
   const otherVenueId = randomUUID();
   const saleId = randomUUID();
   const otherSaleId = randomUUID();
+  const closedVenueId = randomUUID();
+  const closedSaleId = randomUUID();
   // biome-ignore lint/style/noNonNullAssertion: gated by HAS_DB
   const db = createDb(process.env.DATABASE_URL!);
   const reader = new DrizzleCollectByReader(db);
   const clearedAt = new Date("2031-03-01T10:00:00Z");
-  const since = new Date("2031-02-01T00:00:00Z");
+  // A reminder is due on 10 Mar 2031 for lots that cleared from 24 Feb (the 14-day free period
+  // ago) to 3 Mar (a week less): the lot cleared 1 Mar is in range, one cleared 1 Jan is not.
+  const window = { today: "2031-03-10", defaultFreeStorageDays: 30, reminderLeadDays: 7 };
+  const due = () => reader.storedLotsDue(window);
 
   let lotNumber = 0;
   async function storedLot(
@@ -29,6 +34,7 @@ describe.skipIf(!HAS_DB)("collect-by reader (integration)", () => {
       status?: string;
       method?: string | null;
       sale?: string;
+      deleted?: boolean;
       cleared?: Date | null;
       buyerEntity?: string | null;
     } = {},
@@ -42,6 +48,7 @@ describe.skipIf(!HAS_DB)("collect-by reader (integration)", () => {
       values (${lotId}, ${sellerEntity}, ${over.sale ?? saleId}, ${`Collect-by lot ${lotNumber}`},
          ${lotNumber}, 'english', 100, 100, now() - interval '40 days', now() - interval '20 days',
          'ended', ${buyer}, ${buyerId})`);
+    if (over.deleted) await db.execute(sql`update lot set deleted_at = now() where id = ${lotId}`);
     const cleared = over.cleared === undefined ? clearedAt : over.cleared;
     await db.execute(sql`
       insert into lot_fulfilment (lot_id, status, fulfilment_method, payment_cleared_at)
@@ -62,31 +69,42 @@ describe.skipIf(!HAS_DB)("collect-by reader (integration)", () => {
     await db.execute(sql`
       insert into venue (id, legal_entity_id, name, address_line1, city, postcode, country)
       values (${venueId}, ${sellerEntity}, 'Collect-by gallery', '156 New Cavendish Street', 'London', 'W1W 6YW', 'GB'),
-             (${otherVenueId}, ${sellerEntity}, 'No collections here', '1 Test Street', 'London', 'W1W 6YW', 'GB')`);
+             (${otherVenueId}, ${sellerEntity}, 'No collections here', '1 Test Street', 'London', 'W1W 6YW', 'GB'),
+             (${closedVenueId}, ${sellerEntity}, 'Online booking off', '2 Test Street', 'London', 'W1W 6YW', 'GB')`);
     await db.execute(sql`
       insert into sale (id, title, start_time, end_time, venue_id, created_by_legal_entity_id)
       values (${saleId}, 'Collect-by sale', now() - interval '30 days', now() - interval '20 days', ${venueId}, ${sellerEntity}),
-             (${otherSaleId}, 'Elsewhere sale', now() - interval '30 days', now() - interval '20 days', ${otherVenueId}, ${sellerEntity})`);
+             (${otherSaleId}, 'Elsewhere sale', now() - interval '30 days', now() - interval '20 days', ${otherVenueId}, ${sellerEntity}),
+             (${closedSaleId}, 'Closed sale', now() - interval '30 days', now() - interval '20 days', ${closedVenueId}, ${sellerEntity})`);
     await db.execute(sql`
-      insert into collection_place (venue_id, free_storage_days) values (${venueId}, 14)`);
+      insert into collection_place (venue_id, free_storage_days, online_booking_enabled)
+      values (${venueId}, 14, true), (${closedVenueId}, 14, false)`);
   });
 
   afterAll(async () => {
     await db.execute(sql`
       delete from lot_fulfilment where lot_id in (select id from lot where seller_legal_entity_id = ${sellerEntity})`);
     await db.execute(sql`delete from lot where seller_legal_entity_id = ${sellerEntity}`);
-    await db.execute(sql`delete from sale where id in (${saleId}, ${otherSaleId})`);
-    await db.delete(collectionPlace).where(eq(collectionPlace.venueId, venueId));
-    await db.execute(sql`delete from venue where id in (${venueId}, ${otherVenueId})`);
+    await db.execute(
+      sql`delete from sale where id in (${saleId}, ${otherSaleId}, ${closedSaleId})`,
+    );
+    await db
+      .delete(collectionPlace)
+      .where(inArray(collectionPlace.venueId, [venueId, closedVenueId]));
+    await db.execute(
+      sql`delete from venue where id in (${venueId}, ${otherVenueId}, ${closedVenueId})`,
+    );
     await db.execute(sql`delete from legal_entity where id in (${buyerEntity}, ${sellerEntity})`);
     await db.execute(sql`delete from "user" where id = ${buyer}`);
   });
 
   it("reads a lot waiting at a collection place, with its buyer, place, clearance day and free period", async () => {
     const lotId = await storedLot();
-    const found = (await reader.storedLotsClearedSince(since)).find((row) => row.lotId === lotId);
+    const found = (await due()).find((row) => row.lotId === lotId);
     expect(found).toMatchObject({
       legalEntityId: buyerEntity,
+      venueId,
+      winnerId: buyer,
       clearedAt,
       freeStorageDays: 14,
       place: { name: "Collect-by gallery", address: "156 New Cavendish Street, London, W1W 6YW" },
@@ -101,7 +119,7 @@ describe.skipIf(!HAS_DB)("collect-by reader (integration)", () => {
       await storedLot({ status: "released", method: "shipping" }),
       await storedLot({ status: "awaiting_payment" }),
     ];
-    const ids = (await reader.storedLotsClearedSince(since)).map((row) => row.lotId);
+    const ids = (await due()).map((row) => row.lotId);
     for (const lotId of skipped) expect(ids).not.toContain(lotId);
   });
 
@@ -109,10 +127,32 @@ describe.skipIf(!HAS_DB)("collect-by reader (integration)", () => {
     const old = await storedLot({ cleared: new Date("2031-01-01T10:00:00Z") });
     const undated = await storedLot({ cleared: null });
     const elsewhere = await storedLot({ sale: otherSaleId });
-    const ids = (await reader.storedLotsClearedSince(since)).map((row) => row.lotId);
+    const noOnlineBooking = await storedLot({ sale: closedSaleId });
+    const deleted = await storedLot({ deleted: true });
+    const ids = (await due()).map((row) => row.lotId);
     expect(ids).not.toContain(old);
     expect(ids).not.toContain(undated);
     expect(ids).not.toContain(elsewhere);
+    expect(ids).not.toContain(noOnlineBooking);
+    expect(ids).not.toContain(deleted);
+  });
+
+  it("leaves out a lot that cleared too late for a reminder yet, or took longer than its free period", async () => {
+    const tooRecent = await storedLot({ cleared: new Date("2031-03-08T10:00:00Z") });
+    const expired = await storedLot({ cleared: new Date("2031-02-20T10:00:00Z") });
+    const ids = (await due()).map((row) => row.lotId);
+    expect(ids).not.toContain(tooRecent);
+    expect(ids).not.toContain(expired);
+  });
+
+  it("says which idempotency keys the outbox already holds", async () => {
+    const key = `collect-by-reader-${run}`;
+    await db.execute(sql`
+      insert into email_outbox (idempotency_key, to_email_hash, template, vars, status, stream, category)
+      values (${key}, ${`hash-${run}`}, 'collection-collect-by', '{}'::jsonb, 'sent', 'transactional', 'transactional')`);
+    expect(await reader.queuedKeys([key, `${key}-other`])).toEqual(new Set([key]));
+    expect(await reader.queuedKeys([])).toEqual(new Set());
+    await db.execute(sql`delete from email_outbox where idempotency_key = ${key}`);
   });
 
   it("leaves out a lot already in a live booking", async () => {
@@ -125,7 +165,7 @@ describe.skipIf(!HAS_DB)("collect-by reader (integration)", () => {
          '2031-03-10T10:30:00Z', 1, 'booked', 'self', 'Buyer', ${buyer}, ${randomUUID()}, ${randomUUID()})`);
     await db.execute(sql`
       insert into collection_booking_lot (booking_id, lot_id, active) values (${bookingId}, ${booked}, true)`);
-    const ids = (await reader.storedLotsClearedSince(since)).map((row) => row.lotId);
+    const ids = (await due()).map((row) => row.lotId);
     expect(ids).not.toContain(booked);
     await db.execute(sql`delete from collection_booking_lot where booking_id = ${bookingId}`);
     await db.execute(sql`delete from collection_booking where id = ${bookingId}`);

@@ -3,6 +3,10 @@ export type StoredLot = {
   lotId: string;
   /** The account that bought it. */
   legalEntityId: string;
+  /** The place it waits at. */
+  venueId: string;
+  /** The person who won it, who may be an agent buying for the account. */
+  winnerId: string | null;
   title: string;
   lotNumber: number | null;
   /** When its payment cleared; "please collect by" counts from here. */
@@ -15,8 +19,17 @@ export type StoredLot = {
 /** What the storage reminders read. */
 export interface ICollectByReader {
   /**
-   * Lots whose payment cleared at or after `since` and that are still with us: not handed over,
-   * ended or on their way by courier, and in no live booking.
+   * Lots a reminder can be due for on `today` (a London day), at places that take online bookings:
+   * those whose payment cleared between the free period ago and the free period less the lead ago,
+   * and that are still with us (not handed over, ended or on their way by courier, nor in a live
+   * booking). The place's own free period decides the range; `defaultFreeStorageDays` stands in
+   * for one that is not set.
    */
-  storedLotsClearedSince(since: Date): Promise<StoredLot[]>;
+  storedLotsDue(window: {
+    today: string;
+    defaultFreeStorageDays: number;
+    reminderLeadDays: number;
+  }): Promise<StoredLot[]>;
+  /** Which of these idempotency keys already have an email queued, sent or failed. */
+  queuedKeys(keys: readonly string[]): Promise<Set<string>>;
 }

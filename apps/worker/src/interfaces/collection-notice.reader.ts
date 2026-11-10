@@ -18,6 +18,12 @@ export interface ICollectionNoticeReader {
    * it) since `since`: the notice to a named collector and the cancellation that follows it.
    */
   collectorEmailsSince(addressHash: string, since: Date): Promise<number>;
-  /** Who hears about an account's purchases: its owners and admins, or the person for a personal one. */
-  accountRecipients(legalEntityId: string): Promise<NoticeRecipient[]>;
+  /**
+   * Who hears about an account's purchases: its owners and admins, or the person for a personal
+   * one, and any of `alsoUserIds` (such as an agent who won a lot for it) who is an active member.
+   */
+  accountRecipients(
+    legalEntityId: string,
+    alsoUserIds?: readonly string[],
+  ): Promise<NoticeRecipient[]>;
 }

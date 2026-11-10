@@ -316,7 +316,7 @@ export function HoursRulesForm({ settings, canChange }: Props) {
         <FieldRow>
           <Field
             label="Free storage"
-            description="Days after payment clears. Empty uses 30 until the storage terms are set"
+            description="Days after payment clears"
             id={field("free_storage_days")}
             error={shown.rules.free_storage_days}
             optional
@@ -325,13 +325,14 @@ export function HoursRulesForm({ settings, canChange }: Props) {
             <TextInput
               inputMode="numeric"
               value={draft.freeStorageDays}
+              placeholder="30"
               maxLength={3}
               onChange={(event) => set("freeStorageDays", event.target.value)}
             />
           </Field>
           <Field
             label="Storage charge"
-            description="Pounds per lot per week after that. Recorded for Finance; nothing is charged automatically"
+            description="Per lot, per week. For Finance only"
             id={field("storage_charge")}
             error={shown.rules.storage_charge}
             optional
@@ -339,6 +340,11 @@ export function HoursRulesForm({ settings, canChange }: Props) {
           >
             <TextInput
               inputMode="decimal"
+              leading={
+                <span aria-hidden="true" className="pl-3 text-staff-sm text-staff-muted">
+                  £
+                </span>
+              }
               value={draft.storageChargePounds}
               maxLength={7}
               onChange={(event) => set("storageChargePounds", event.target.value)}
