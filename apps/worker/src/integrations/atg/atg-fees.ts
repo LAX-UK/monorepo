@@ -2,8 +2,8 @@ import type { GapAuctionTypeAndListing } from "./gap-types.js";
 
 /**
  * The charges ATG adds on top of the hammer price for auctions it hosts. ATG sets these, not LAX,
- * so they can differ from LAX's own charges on lax.bid. Rates are percentages, as GAP expects
- * them: a VAT rate of 20 is VAT at 20% of the charge it applies to.
+ * so they can differ from LAX's own charges on lax.bid. Every rate here is a percentage (VAT
+ * of 20 is 20% of the charge it applies to); the mapper converts VAT to GAP's multiplier.
  */
 export type AtgAuctionFees = {
   buyersPremiumVatRate: number;
