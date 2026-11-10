@@ -148,11 +148,14 @@ describe("UnappliedMoneyRecorder", () => {
       { ...earlier, stripeEventId: "evt_2:gbp", amountCents: 50_000 },
       null,
     );
+    expect(r.lockKey).toHaveBeenCalledWith(tx, "customer:cus_1");
     expect(r.listOpen).toHaveBeenCalledWith(
       expect.objectContaining({
         reasons: ["customer_balance_unapplied"],
         stripeCustomerId: "cus_1",
+        currency: "GBP",
       }),
+      tx,
     );
     expect(publish).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -163,6 +166,22 @@ describe("UnappliedMoneyRecorder", () => {
     expect(publish).toHaveBeenCalledWith(
       expect.objectContaining({ eventType: "payment.unapplied_money_received" }),
     );
+  });
+
+  it("a balance report in one currency only looks for that currency's open tasks", async () => {
+    const r = reader();
+    const balance = {
+      ...money,
+      reason: "customer_balance_unapplied" as const,
+      paymentId: null,
+      stripePaymentIntentId: null,
+      stripeChargeId: null,
+      stripeCustomerId: "cus_1",
+    };
+    const recorder = new UnappliedMoneyRecorder(r, mockDomainEventSink(vi.fn()));
+    await recorder.record(tx, { ...balance, stripeEventId: "evt_1:gbp", currency: "gbp" }, null);
+    await recorder.record(tx, { ...balance, stripeEventId: "evt_1:eur", currency: "eur" }, null);
+    expect(r.listOpen.mock.calls.map((c) => c[0].currency)).toEqual(["GBP", "EUR"]);
   });
 
   it("an unwired recorder fails loudly, so money is never dropped", async () => {

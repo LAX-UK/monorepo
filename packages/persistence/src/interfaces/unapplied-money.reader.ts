@@ -16,6 +16,8 @@ export type OpenUnappliedMoneyFilter = {
   dedupeKey?: string;
   /** Balance money: one Stripe customer's open tasks. */
   stripeCustomerId?: string;
+  /** One currency's tasks (case-insensitive): a balance in one currency never closes another's. */
+  currency?: string;
 };
 
 export interface IUnappliedMoneyReader {
@@ -46,5 +48,9 @@ export interface IUnappliedMoneyReader {
    * at once cannot both open a task. Released when the transaction ends.
    */
   lockKey(tx: Database, dedupeKey: string): Promise<void>;
-  listOpen(input: OpenUnappliedMoneyFilter & { limit: number }): Promise<OpenUnappliedMoney[]>;
+  /** Open tasks, newest first. Pass the caller's transaction to read what it has locked. */
+  listOpen(
+    input: OpenUnappliedMoneyFilter & { limit: number },
+    tx?: Database,
+  ): Promise<OpenUnappliedMoney[]>;
 }

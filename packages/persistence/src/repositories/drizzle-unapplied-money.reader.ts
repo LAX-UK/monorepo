@@ -106,6 +106,7 @@ export class DrizzleUnappliedMoneyReader implements IUnappliedMoneyReader {
 
   async listOpen(
     input: OpenUnappliedMoneyFilter & { limit: number },
+    tx?: Database,
   ): Promise<OpenUnappliedMoney[]> {
     const money =
       input.paymentIntentId || input.chargeId
@@ -116,7 +117,7 @@ export class DrizzleUnappliedMoneyReader implements IUnappliedMoneyReader {
             input.chargeId ? sql`${field("stripeChargeId")} = ${input.chargeId}` : undefined,
           )
         : undefined;
-    const rows = await this.db
+    const rows = await (tx ?? this.db)
       .select({
         id: domainEvent.id,
         payload: domainEvent.payload,
@@ -143,6 +144,9 @@ export class DrizzleUnappliedMoneyReader implements IUnappliedMoneyReader {
           input.dedupeKey ? sql`${field("dedupeKey")} = ${input.dedupeKey}` : undefined,
           input.stripeCustomerId
             ? sql`${field("stripeCustomerId")} = ${input.stripeCustomerId}`
+            : undefined,
+          input.currency
+            ? sql`upper(${field("currency")}) = ${input.currency.toUpperCase()}`
             : undefined,
         ),
       )
