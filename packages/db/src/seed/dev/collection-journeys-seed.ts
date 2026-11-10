@@ -77,6 +77,8 @@ export async function seedCollectionJourneys(db: Db, actors: CollectionJourneyAc
     venueId: ids.venue,
     onlineBookingEnabled: true,
     freeStorageDays: 30,
+    // Five visits are already booked for Northbank; the journeys book and move more.
+    maxActiveVisits: 10,
     updatedByUserId: actors.adminId,
   });
   await db.insert(schema.collectionWeeklyHours).values(

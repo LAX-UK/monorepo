@@ -4,7 +4,7 @@ import {
   COLLECTION_JOURNEY_IDS,
   COLLECTION_JOURNEY_NAMES,
   COLLECTION_JOURNEY_REFERENCES,
-  collectionJourneyVisits,
+  seededVisitDay,
   shoot,
   staffDayText,
   workday,
@@ -19,7 +19,6 @@ import {
 const venue = COLLECTION_JOURNEY_IDS.venue;
 const refs = COLLECTION_JOURNEY_REFERENCES;
 const { buyer, collector } = COLLECTION_JOURNEY_NAMES;
-const visits = collectionJourneyVisits(new Date());
 
 const day = (date: string) => `/admin/collections?venue=${venue}&date=${date}`;
 const row = (page: import("@playwright/test").Page, reference: string) =>
@@ -34,9 +33,11 @@ test.describe("collections desk journey @journey @roles", () => {
     page,
   }, testInfo) => {
     test.setTimeout(240_000);
+    const handOverDay = await seededVisitDay(refs.toHandOver);
+    const noShowDay = await seededVisitDay(refs.noShow);
 
     await test.step("a day shows its visits by time, with what each is ready for", async () => {
-      await page.goto(day(visits.toHandOver.day));
+      await page.goto(day(handOverDay));
       await expect(page.getByRole("heading", { level: 1, name: "Collections" })).toBeVisible();
       await expect(row(page, refs.toHandOver)).toContainText(buyer);
       await expect(row(page, refs.toHandOver)).toContainText("All released");
@@ -88,7 +89,7 @@ test.describe("collections desk journey @journey @roles", () => {
     });
 
     await test.step("marks a visit nobody came to as not collected", async () => {
-      await page.goto(day(visits.noShow.day));
+      await page.goto(day(noShowDay));
       await expect(row(page, refs.noShow)).toContainText("Booked");
       await expect(row(page, refs.collected)).toContainText("Collected");
       await row(page, refs.noShow).getByRole("button", { name: "Not collected" }).click();
@@ -112,7 +113,7 @@ test.describe("collections desk journey @journey @roles", () => {
       const dialog = page.getByRole("dialog");
       await expect(dialog.getByRole("heading", { name: `Rebook ${buyer}` })).toBeVisible();
 
-      const wanted = workday(visits.toHandOver.day, 1);
+      const wanted = workday(handOverDay, 1);
       const dayField = dialog.getByLabel("Day");
       await dayField.fill(staffDayText(wanted));
       await dayField.press("Tab");
