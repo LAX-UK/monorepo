@@ -395,6 +395,10 @@
       "types": "./dist/shell/index.d.ts",
       "default": "./dist/shell/index.js"
     },
+    "./time": {
+      "types": "./dist/time/index.d.ts",
+      "default": "./dist/time/index.js"
+    },
     "./clock": {
       "types": "./dist/clock/index.d.ts",
       "default": "./dist/clock/index.js"
