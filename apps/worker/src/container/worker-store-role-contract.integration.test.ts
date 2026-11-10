@@ -122,12 +122,13 @@ const API_ONLY_METHODS: Record<string, readonly string[]> = {
   DrizzlePaymentRepository: ["isVoidedByBuyerDefault"],
 };
 
-type Call = { method: string; args: unknown[] };
+type Call = { method: string; parameters: string[] };
 
 const COUNT_PARAMS =
-  /^(limit|offset|batchSize|count|size|take|page|pageSize|attempts|max\w*|min\w*)$/i;
-const DATE_PARAMS = /(date|at|since|before|after|cutoff|now|from|to|until|deadline)$/i;
+  /^(limit|offset|batchSize|count|size|take|page|pageSize|attempts|hours|days|minutes|\w*Ms|max\w*|min\w*)$/i;
+const DATE_PARAMS = /(date|at|since|before|after|cutoff|now|from|to|until|deadline|start|end)$/i;
 const LIST_PARAMS = /(ids|list|keys|emails|hashes|values)$/i;
+const CONNECTION_PARAMS = /^(tx|db|conn|connection)$/;
 
 function parameterNames(fn: (...args: never[]) => unknown): string[] {
   const text = Function.prototype.toString.call(fn);
@@ -141,14 +142,115 @@ function parameterNames(fn: (...args: never[]) => unknown): string[] {
     .filter(Boolean);
 }
 
-function argumentFor(parameter: string): unknown {
+function guessArgument(parameter: string, connection: WorkerDb): unknown {
   const name = parameter.split(/[=:]/)[0]?.trim() ?? "";
   if (name.startsWith("{")) return {};
+  if (CONNECTION_PARAMS.test(name)) return connection;
   if (COUNT_PARAMS.test(name)) return 1;
   if (LIST_PARAMS.test(name)) return [NIL];
   if (DATE_PARAMS.test(name)) return new Date();
   return NIL;
 }
+
+const today = new Date();
+const outcomeKey = { lotId: NIL, lotEndTime: today };
+
+/**
+ * Arguments written by hand for calls the name-based guess cannot build (an object or a list of
+ * objects). Without them these calls return before they reach a table, which proves nothing.
+ * Keyed `Store.method`; each gets the transaction the call runs on.
+ */
+const ARGUMENTS: Record<string, (tx: WorkerDb) => unknown[]> = {
+  "BidAlertMatchLedger.record": () => [
+    [
+      {
+        subscriberId: NIL,
+        topic: "bid.new_sales",
+        itemKey: `sale:${NIL}`,
+        groupKey: null,
+        snapshot: {},
+        matchedAt: today,
+      },
+    ],
+  ],
+  "BidAlertDigestLedger.claim": () => [
+    {
+      subscriberId: NIL,
+      product: "bid",
+      localDate: "2026-01-01",
+      matchIds: [NIL],
+      idempotencyKey: "role-contract",
+      now: today,
+    },
+  ],
+  "BidAlertLotReader.matchingSearch": () => [{ q: "role contract", categoryId: null }, [NIL]],
+  "BidAlertMatchValidator.staleMatches": () => [
+    [
+      {
+        id: NIL,
+        subscriberId: NIL,
+        topic: "bid.new_sales",
+        itemKey: `sale:${NIL}`,
+        groupKey: null,
+        snapshot: {},
+        matchedAt: today,
+      },
+    ],
+  ],
+  "BidAlertLotNoticeWriter.write": () => [
+    {
+      digestId: NIL,
+      userId: NIL,
+      notices: [
+        {
+          type: "artist_lots_listed",
+          title: "Role contract",
+          message: "Role contract",
+          linkPath: "/",
+        },
+      ],
+    },
+  ],
+  "DrizzleZohoArtworkSyncStore.record": () => [
+    NIL,
+    "dry_run",
+    [
+      {
+        zohoProductId: "role-contract",
+        stockCode: null,
+        title: null,
+        outcome: "skipped",
+        reason: null,
+        detail: {},
+        zohoModifiedAt: null,
+      },
+    ],
+    today,
+  ],
+  "DrizzleZohoListingRunStore.record": () => [
+    {
+      runId: NIL,
+      mode: "dry_run",
+      startedAt: today,
+      finishedAt: today,
+      checked: 0,
+      changed: 0,
+      unchanged: 0,
+      failed: 0,
+      failures: [],
+    },
+  ],
+  "DrizzleZohoListingSourceReader.registerIdsForSalesStartedBetween": () => [
+    { from: today, to: today },
+    null,
+    1,
+  ],
+  "DrizzleUnsoldChoiceDeadlineStore.keep": () => [[{ ...outcomeKey, chooseBy: today }]],
+  "DrizzleUnsoldChoiceDeadlineStore.kept": () => [[outcomeKey]],
+  "DrizzleUnsoldLotFollowUpRepository.findForOutcome": () => [outcomeKey],
+  "DrizzleUnsoldLotFollowUpRepository.completeByStaff": () => [outcomeKey, NIL, today],
+  "DrizzleUnsoldLotFollowUpRepository.settleOnReturn": (tx) => [tx, outcomeKey, NIL, today],
+};
 
 function publicMethods(store: object): Call[] {
   const calls: Call[] = [];
@@ -161,7 +263,7 @@ function publicMethods(store: object): Call[] {
       const fn = Object.getOwnPropertyDescriptor(proto, method)?.value;
       if (method === "constructor" || method.startsWith("_") || typeof fn !== "function") continue;
       if (calls.some((call) => call.method === method)) continue;
-      calls.push({ method, args: parameterNames(fn).map(argumentFor) });
+      calls.push({ method, parameters: parameterNames(fn) });
     }
   }
   return calls;
@@ -231,9 +333,13 @@ describe.skipIf(!ownerUrl || !workerUrl)("worker stores as worker_app", () => {
   it.each(calls)("%s.%s is not denied", async (name, method) => {
     const outcome = await runRolledBack(db, async (tx) => {
       const store = new (probed[name] as Store)(tx);
-      const call = publicMethods(store).find((candidate) => candidate.method === method);
+      const { parameters } = publicMethods(store).find((call) => call.method === method) ?? {
+        parameters: [],
+      };
+      const args =
+        ARGUMENTS[`${name}.${method}`]?.(tx) ?? parameters.map((p) => guessArgument(p, tx));
       const fn = (store as Record<string, (...args: unknown[]) => unknown>)[method];
-      return fn?.apply(store, call?.args ?? []);
+      return fn?.apply(store, args);
     });
     if (outcome.denied) throw new Error(`${name}.${method}: ${outcome.denied}`);
     if (!outcome.reachedDatabase) unreached.push(`${name}.${method}`);
