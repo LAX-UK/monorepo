@@ -1,7 +1,19 @@
 "use client";
 
-import { type ViewerZone, decodeViewerZone, encodeViewerZone } from "@auction/datetime";
-import { type ReactNode, createContext, useContext, useMemo, useSyncExternalStore } from "react";
+import {
+  TZ_READY_CLASS,
+  type ViewerZone,
+  decodeViewerZone,
+  encodeViewerZone,
+} from "@auction/datetime";
+import {
+  type ReactNode,
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useSyncExternalStore,
+} from "react";
 import { getClientViewerZoneSnapshot, subscribeViewerZone } from "./viewer-zone-store.js";
 
 /** What the server knew when it drew the page; also what React hydrates against. */
@@ -14,6 +26,11 @@ export function ViewerZoneProvider({
   initial: ViewerZone;
   children: ReactNode;
 }) {
+  useEffect(() => {
+    // Hydration, and the chips' own update to the browser's reading, are done: an empty chip row
+    // no longer needs holding (see `.tz-chip-slot` in theme.css).
+    document.documentElement.classList.add(TZ_READY_CLASS);
+  }, []);
   return (
     <ServerViewerZoneContext.Provider value={initial}>{children}</ServerViewerZoneContext.Provider>
   );

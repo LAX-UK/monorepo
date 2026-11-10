@@ -49,15 +49,15 @@ export function SaleroomHeroMetaRow({
         withExplainer
         {...(explainerContext ? { explainerContext } : {})}
       />
-      <p className="font-body text-sm text-on-surface-variant">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 font-body text-sm text-on-surface-variant">
         {hero.startTime ? (
-          <OfficialTime instant={hero.startTime} officialZone={hero.timeZone}>
+          <OfficialTime instant={hero.startTime} officialZone={hero.timeZone} placement="inline">
             {hero.dateLine}
           </OfficialTime>
         ) : (
           hero.dateLine
         )}
-      </p>
+      </div>
     </div>
   );
 }

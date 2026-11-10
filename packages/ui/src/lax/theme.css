@@ -181,10 +181,13 @@
   }
 }
 
-/* The time chip's row. The chip draws under an official time only for a visitor on another clock,
-   so the row is absent for everyone else (no gap). While the page is still learning the visitor's
-   zone, the head script marks <html> `tz-away` and the empty row keeps the 36px the chip will
-   take (28px chip and an 8px gap), so the chip arrives without moving anything. The gap is the
+/* The time chip's row. The chip draws beside or under an official time only for a visitor on
+   another clock, so the row is absent for everyone else (no gap). While the page is still
+   learning the visitor's zone, the head script marks <html> `tz-away` and the empty row keeps the
+   room the chip will take, so the chip arrives without moving anything: 36px under the time
+   (28px chip and an 8px gap), or 28px beside it (`--inline`). The head script compares with
+   London, the commonest sale zone; once the page has drawn (`tz-ready`) it knows the sale's own
+   zone, and a row that stayed empty (a Paris visitor on a Paris sale) is released. The gap is the
    row's own padding, not the chip's margin, which would collapse through the row and leave it 28px
    high once the chip arrives. It is not `:not(:empty)` because Chrome applies that a frame late. */
 .tz-chip-slot {
@@ -192,11 +195,19 @@
   padding-top: 8px;
 }
 
+.tz-chip-slot--inline {
+  padding-top: 0;
+}
+
 .tz-chip-slot:empty {
   display: none;
 }
 
-html.tz-away .tz-chip-slot:empty {
+html.tz-away:not(.tz-ready) .tz-chip-slot:empty {
   display: block;
   min-height: 36px;
+}
+
+html.tz-away:not(.tz-ready) .tz-chip-slot--inline:empty {
+  min-height: 28px;
 }

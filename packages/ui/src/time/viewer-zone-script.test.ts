@@ -102,6 +102,22 @@ describe("the viewer-zone head script", () => {
     },
   );
 
+  it("expires a stale device cookie when the device no longer reports a usable zone", () => {
+    document.cookie = "lax_tz=Africa%2FCairo; path=/";
+    deviceIn("UTC");
+    run();
+    expect(document.cookie).toBe("");
+    expect(document.documentElement.classList.contains("tz-away")).toBe(false);
+  });
+
+  it("keeps a zone the visitor chose even when the device reports nothing usable", () => {
+    document.cookie = "lax_tz=fixed%3AAustralia%2FSydney; path=/";
+    deviceIn(undefined);
+    run();
+    expect(decodeURIComponent(document.cookie)).toBe("lax_tz=fixed:Australia/Sydney");
+    expect(document.documentElement.classList.contains("tz-away")).toBe(true);
+  });
+
   it("never throws, whatever the browser does", () => {
     vi.spyOn(Intl, "DateTimeFormat").mockImplementation(() => {
       throw new Error("blocked");

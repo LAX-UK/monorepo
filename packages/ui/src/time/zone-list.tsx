@@ -2,7 +2,7 @@
 
 import { type ZoneChoice, listZoneChoices, rankZoneChoices } from "@auction/datetime";
 import { Search } from "lucide-react";
-import { useId, useMemo, useState } from "react";
+import { type Ref, useId, useMemo, useState } from "react";
 import { TextInput } from "../lax/input.js";
 import { cn } from "../lib/utils.js";
 
@@ -15,18 +15,26 @@ export type ZoneListProps = {
   onChange: (zone: string) => void;
   /** The instant labels are written for, so the short names (GMT, CET) are right for that date. */
   at: Date;
+  /** The zone saved now: always in the list, first when nothing is typed. */
+  pinned?: string | null;
+  /** Reaches the checked option, so a dialog can put focus there on opening. */
+  checkedRef?: Ref<HTMLInputElement>;
 };
 
-/** A searchable list of cities. The pinned places lead until something is typed. */
-export function ZoneList({ value, onChange, at }: ZoneListProps) {
+/**
+ * A searchable list of cities. The saved zone leads, then the pinned places, until something is
+ * typed.
+ */
+export function ZoneList({ value, onChange, at, pinned = null, checkedRef }: ZoneListProps) {
   const [query, setQuery] = useState("");
   const name = useId();
   const choices = useMemo(() => listZoneChoices(at), [at]);
-  const matches = useMemo(
-    () => rankZoneChoices(choices, query).slice(0, VISIBLE_CHOICES),
-    [choices, query],
-  );
   const hasQuery = query.trim() !== "";
+  const matches = useMemo(
+    () =>
+      leadWith(rankZoneChoices(choices, query), hasQuery ? null : pinned).slice(0, VISIBLE_CHOICES),
+    [choices, query, hasQuery, pinned],
+  );
   return (
     <div className="grid gap-3">
       <TextInput
@@ -53,6 +61,7 @@ export function ZoneList({ value, onChange, at }: ZoneListProps) {
               name={name}
               checked={choice.zone === value}
               onSelect={onChange}
+              {...(choice.zone === value && checkedRef ? { inputRef: checkedRef } : {})}
             />
           ))}
         </fieldset>
@@ -61,26 +70,29 @@ export function ZoneList({ value, onChange, at }: ZoneListProps) {
   );
 }
 
+/** One radio row: shared by the cities and the two ways of choosing. */
+export const RADIO_ROW_CLASS = cn(
+  "flex min-h-11 cursor-pointer items-center gap-3 rounded-lax-control px-3 font-lax text-lax-14 text-lax-fg",
+  "hover:bg-lax-hover has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-[-2px] has-[:focus-visible]:outline-lax-focus",
+);
+
 function ZoneOption({
   choice,
   name,
   checked,
   onSelect,
+  inputRef,
 }: {
   choice: ZoneChoice;
   name: string;
   checked: boolean;
   onSelect: (zone: string) => void;
+  inputRef?: Ref<HTMLInputElement>;
 }) {
   return (
-    <label
-      className={cn(
-        "flex min-h-11 cursor-pointer items-center gap-3 rounded-lax-control px-3 font-lax text-lax-14 text-lax-fg",
-        "hover:bg-lax-hover has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-[-2px] has-[:focus-visible]:outline-lax-focus",
-        checked && "bg-lax-selected font-medium",
-      )}
-    >
+    <label className={cn(RADIO_ROW_CLASS, checked && "bg-lax-selected font-medium")}>
       <input
+        ref={inputRef}
         type="radio"
         name={name}
         value={choice.zone}
@@ -91,4 +103,10 @@ function ZoneOption({
       <span className="min-w-0 flex-1 truncate">{choice.label}</span>
     </label>
   );
+}
+
+/** The same list with one zone moved to the front; unchanged when it is not in the list. */
+function leadWith(choices: ZoneChoice[], zone: string | null): ZoneChoice[] {
+  const lead = zone ? choices.find((choice) => choice.zone === zone) : undefined;
+  return lead ? [lead, ...choices.filter((choice) => choice !== lead)] : choices;
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { describeMoment } from "@auction/datetime";
+import { describeMoment, deviceTimeZone } from "@auction/datetime";
 import { ChevronDown, Globe } from "lucide-react";
 import { useId, useLayoutEffect, useMemo, useState } from "react";
 import { cn } from "../lib/utils.js";
@@ -43,6 +43,11 @@ export function TimeChip({ instant, officialZone, variant = "button" }: TimeChip
   const disclosure = useDisclosure();
   const [zoneOpen, setZoneOpen] = useState(false);
   const [alignEnd, setAlignEnd] = useState(false);
+  // Read when the panel opens: the device's zone is a browser-only value.
+  const deviceZone = useMemo(
+    () => (disclosure.open && viewer?.source !== "device" ? deviceTimeZone() : null),
+    [disclosure.open, viewer?.source],
+  );
 
   useLayoutEffect(() => {
     if (!disclosure.open) return;
@@ -99,6 +104,7 @@ export function TimeChip({ instant, officialZone, variant = "button" }: TimeChip
           officialZone={officialZone}
           source={viewer.source}
           alignEnd={alignEnd}
+          deviceZone={deviceZone && deviceZone !== viewer.zone ? deviceZone : null}
           onChangeZone={() => {
             disclosure.close();
             setZoneOpen(true);
@@ -110,7 +116,7 @@ export function TimeChip({ instant, officialZone, variant = "button" }: TimeChip
         onOpenChange={(next) => {
           setZoneOpen(next);
         }}
-        current={viewer.zone}
+        current={viewer}
         officialZone={officialZone}
         at={at}
         returnFocusTo={() => disclosure.triggerRef.current}

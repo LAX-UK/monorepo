@@ -16,6 +16,8 @@ export type TimeChipPanelProps = {
   source: ViewerZoneSource;
   /** Open towards the left when the chip sits too near the right edge for a 300px panel. */
   alignEnd?: boolean;
+  /** The device's own zone when it is not the one in use (a chosen city while travelling). */
+  deviceZone?: string | null;
   onChangeZone: () => void;
 };
 
@@ -29,6 +31,7 @@ export function TimeChipPanel({
   officialZone,
   source,
   alignEnd = false,
+  deviceZone = null,
   onChangeZone,
 }: TimeChipPanelProps) {
   const local = moment.local;
@@ -60,6 +63,11 @@ export function TimeChipPanel({
           ) : null}
         </p>
       </div>
+      {deviceZone ? (
+        <p className="m-0 px-4 text-lax-12 leading-4 text-lax-muted">
+          This device is on {cityName(deviceZone)} time.
+        </p>
+      ) : null}
       <div className="px-4">
         <p className="m-0 text-lax-12 leading-4 text-lax-muted">
           Official sale time · {cityName(officialZone)}

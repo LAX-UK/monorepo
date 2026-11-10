@@ -1,7 +1,9 @@
-import { describeMoment } from "@auction/datetime";
+import { cityName, describeMoment } from "@auction/datetime";
 import type { ReactNode } from "react";
 import { cn } from "../lib/utils.js";
 import { TimeChip } from "./time-chip.js";
+
+type ChipPlacement = "below" | "inline";
 
 export type OfficialTimeProps = {
   /** The moment, as an ISO instant. */
@@ -16,6 +18,11 @@ export type OfficialTimeProps = {
    */
   children?: ReactNode;
   className?: string;
+  /**
+   * `below` puts the chip on its own row under the time. `inline` puts it on the same line, after
+   * the time, when the parent is a wrapping flex row (the sale hero's meta line).
+   */
+  placement?: ChipPlacement;
 };
 
 /**
@@ -29,29 +36,33 @@ export function OfficialTime({
   now = new Date(instant),
   children,
   className,
+  placement = "below",
 }: OfficialTimeProps) {
   const official = children ?? describeMoment(new Date(instant), { officialZone, now }).official;
   return (
     <>
       <time dateTime={instant} className={cn("tabular-nums", className)}>
         {official}
+        <span className="sr-only"> {cityName(officialZone)} time</span>
       </time>
-      <TimeChipSlot instant={instant} officialZone={officialZone} />
+      <TimeChipSlot instant={instant} officialZone={officialZone} placement={placement} />
     </>
   );
 }
 
 /**
- * Where the chip goes: an empty row that is 36px high only for a visitor on another clock, so a
- * first visit does not shift and a UK visitor gets no gap.
+ * Where the chip goes: an empty row that holds room only for a visitor on another clock until the
+ * page knows better, so a first visit does not shift and a UK visitor gets no gap.
  */
 export function TimeChipSlot({
   instant,
   officialZone,
-}: Pick<OfficialTimeProps, "instant" | "officialZone">) {
+  placement = "below",
+}: Pick<OfficialTimeProps, "instant" | "officialZone" | "placement">) {
+  // A div: the open panel is a dialog holding paragraphs, which a span (or a <p> parent) cannot.
   return (
-    <span className="tz-chip-slot">
+    <div className={cn("tz-chip-slot", placement === "inline" && "tz-chip-slot--inline")}>
       <TimeChip instant={instant} officialZone={officialZone} />
-    </span>
+    </div>
   );
 }

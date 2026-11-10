@@ -144,6 +144,28 @@ describe("TimeChip", () => {
     ).toBeVisible();
   });
 
+  it("goes back to the device's own zone from Automatic, storing it plain", async () => {
+    renderChip("Africa/Cairo");
+    fireEvent.click(screen.getByRole("button"));
+    fireEvent.click(screen.getByRole("button", { name: "Change time zone" }));
+    const dialog = await screen.findByRole("dialog", { name: "Time zone" });
+    fireEvent.click(within(dialog).getByRole("radio", { name: /Automatic/ }));
+    await act(async () => {
+      fireEvent.click(within(dialog).getByRole("button", { name: "Save" }));
+    });
+    expect(decodeURIComponent(document.cookie)).toContain("lax_tz=Europe/London");
+    expect(decodeURIComponent(document.cookie)).not.toContain("fixed:");
+    expect(screen.queryByRole("button", { name: /Your time:/ })).toBeNull();
+  });
+
+  it("tells a visitor on a chosen zone where their device is", () => {
+    renderChip("Africa/Cairo");
+    fireEvent.click(screen.getByRole("button"));
+    expect(screen.getByRole("dialog", { name: "Your time" })).toHaveTextContent(
+      "This device is on London time.",
+    );
+  });
+
   it("explains an empty search", async () => {
     renderChip("Africa/Cairo");
     fireEvent.click(screen.getByRole("button"));
@@ -167,6 +189,16 @@ describe("OfficialTime", () => {
     expect(time).toHaveAttribute("datetime", CLOSE);
   });
 
+  it("names the sale's city for screen readers without changing the printed words", () => {
+    renderChip(
+      null,
+      <OfficialTime instant={CLOSE} officialZone="Europe/Paris" now={new Date(CLOSE)} />,
+    );
+    const time = document.querySelector("time");
+    expect(time).toHaveTextContent(/Paris time$/);
+    expect(time?.querySelector(".sr-only")).toHaveTextContent("Paris time");
+  });
+
   it("prints the caller's words in place of the moment", () => {
     renderChip(
       "Africa/Cairo",
@@ -184,6 +216,34 @@ describe("OfficialTime", () => {
       <OfficialTime instant={CLOSE} officialZone={LONDON} now={new Date(CLOSE)} />,
     );
     expect(container.querySelector(".tz-chip-slot")).toBeEmptyDOMElement();
+  });
+
+  it("leaves the row empty for a visitor on the sale's own clock, whatever London reads", () => {
+    // Paris is away from London, so the head script held the row; on a Paris sale nothing fills it.
+    document.documentElement.classList.add("tz-away");
+    const { container } = renderChip(
+      "Europe/Paris",
+      <OfficialTime instant={CLOSE} officialZone="Europe/Paris" now={new Date(CLOSE)} />,
+    );
+    expect(container.querySelector(".tz-chip-slot")).toBeEmptyDOMElement();
+    // The page has drawn, so the hold ends and the empty row takes no room.
+    expect(document.documentElement).toHaveClass("tz-ready");
+    document.documentElement.className = "";
+  });
+
+  it("draws the chip in the inline slot variant, not as a separate row", () => {
+    const { container } = renderChip(
+      "Africa/Cairo",
+      <OfficialTime
+        instant={CLOSE}
+        officialZone={LONDON}
+        now={new Date(CLOSE)}
+        placement="inline"
+      />,
+    );
+    const slot = container.querySelector(".tz-chip-slot");
+    expect(slot).toHaveClass("tz-chip-slot--inline");
+    expect(slot?.tagName).toBe("DIV");
   });
 });
 

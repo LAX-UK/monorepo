@@ -28,10 +28,8 @@ export function getClientViewerZoneSnapshot(): string {
 
 export function subscribeViewerZone(onChange: () => void): () => void {
   window.addEventListener(CHANGE_EVENT, onChange);
-  window.addEventListener("storage", onChange);
   return () => {
     window.removeEventListener(CHANGE_EVENT, onChange);
-    window.removeEventListener("storage", onChange);
   };
 }
 
@@ -39,5 +37,18 @@ export function subscribeViewerZone(onChange: () => void): () => void {
 export function saveChosenViewerZone(zone: string): void {
   const secure = window.location.protocol === "https:" ? "; secure" : "";
   document.cookie = `${VIEWER_ZONE_COOKIE}=${encodeURIComponent(chosenZoneCookieValue(zone))}; path=/; max-age=${VIEWER_ZONE_COOKIE_MAX_AGE_SEC}; samesite=lax${secure}`;
+  window.dispatchEvent(new Event(CHANGE_EVENT));
+}
+
+/**
+ * Goes back to following the device: the plain device zone is stored (the head script keeps it
+ * current), or the cookie is cleared when the device reports no usable zone. Tells every chip.
+ */
+export function followDeviceViewerZone(): void {
+  const secure = window.location.protocol === "https:" ? "; secure" : "";
+  const zone = deviceTimeZone();
+  document.cookie = zone
+    ? `${VIEWER_ZONE_COOKIE}=${encodeURIComponent(zone)}; path=/; max-age=${VIEWER_ZONE_COOKIE_MAX_AGE_SEC}; samesite=lax${secure}`
+    : `${VIEWER_ZONE_COOKIE}=; path=/; max-age=0; samesite=lax${secure}`;
   window.dispatchEvent(new Event(CHANGE_EVENT));
 }
