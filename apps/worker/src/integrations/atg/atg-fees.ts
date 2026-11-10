@@ -13,6 +13,9 @@ export type AtgAuctionFees = {
 };
 
 /**
+ * The same rates are written out for people in docs/integrations/atg.md,
+ * docs/runbooks/atg-manual-settlement.md and the LAX Bid terms (§11); update them together.
+ *
  * Confirmed by ATG Seller Support (Nov 2026): buyer's premium plus VAT on it, and a 3% internet
  * surcharge for timed auctions plus VAT on it. ATG has not given a live-auction surcharge yet.
  */

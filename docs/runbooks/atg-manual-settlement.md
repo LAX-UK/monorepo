@@ -61,8 +61,8 @@ Create one invoice per winner per ATG auction, in Xero, matching LAX's automated
 | Reference | `atg:<ATG auction ID>` — never `payment:…`, which is reserved for LAX checkout invoices |
 | Line per lot | `Auction settlement — <lot title> (lot <lot number>)`, hammer price |
 | Buyer's premium | One line per lot: the sale's flat rate × hammer (ATG sales have exactly one rate), plus VAT at 20% on the premium |
-| Internet surcharge | One line per lot: 3% × hammer for timed auctions, plus VAT at 20% on the surcharge. This is ATG's commission passed to the buyer; ATG shows it to bidders and invoices LAX for its commission separately |
-| Account / tax | The production `XERO_DEFAULT_REVENUE_ACCOUNT_CODE` and `XERO_DEFAULT_TAX_TYPE`, unless finance has defined different codes for premium |
+| Internet surcharge | One line per lot: 3% × hammer for timed auctions, plus VAT at 20% on the surcharge. This is ATG's commission passed to the buyer, and ATG shows it to bidders |
+| Account / tax | Premium and surcharge lines: the 20% standard-rated output tax type ("20% (VAT on Income)"), never the hammer's tax type. Hammer line: the lot's VAT treatment (ATG sales are margin-scheme lots only, see the ATG integration doc). Account codes: the production `XERO_DEFAULT_REVENUE_ACCOUNT_CODE`, unless finance has defined different codes for premium and surcharge |
 | Due date | Invoice date + 7 days, the LAX payment term (`INVOICE_PAYMENT_DUE_DAYS`) |
 
 Attach the Toolbox results export. Send the invoice from Xero so the bank details come from
