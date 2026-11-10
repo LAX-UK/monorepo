@@ -2388,6 +2388,13 @@
       "when": 1805011200000,
       "tag": "0347_collection_storage_reminders",
       "breakpoints": true
+    },
+    {
+      "idx": 342,
+      "version": "7",
+      "when": 1805184000000,
+      "tag": "0349_email_outbox_recipient_hash_index",
+      "breakpoints": true
     }
   ]
 }

@@ -34,7 +34,7 @@ export async function runCollectionRemindersJob(options: {
       const visit = await reader.visit(bookingId);
       if (!visit) continue;
       const emails = collectionEmailsFor({ kind: "reminder" }, visit, { ...config, now: at });
-      // Transition guard, see legacy-collection-reminder-key.ts (remove after 2026-11-14).
+      // Transition guard, see legacy-collection-reminder-key.ts (remove on or after 2026-11-13).
       const alreadySent = await reader.existingOutboxKeys(
         emails.map((email) => legacyCollectionReminderKey(bookingId, visit.slotStart, email.to)),
       );

@@ -21,8 +21,10 @@ import { anonymiseEnquiries, eraseAlertSubscribers } from "@auction/persistence/
 import { inArray } from "drizzle-orm";
 import type { AnyPgColumn, PgTable } from "drizzle-orm/pg-core";
 import type { ProjectorDbConnection } from "../interfaces/worker-db.types.js";
+import type { BidAnonymisationScope } from "./bid-anonymisation-scope.js";
 import { eraseCollectionBookings } from "./collection-booking-erasure.js";
-import { scrubEmailOutbox } from "./email-outbox-erasure.js";
+import { scrubEmailEvents, scrubEmailOutbox } from "./email-outbox-erasure.js";
+import { scrubNotificationOutbox } from "./notification-outbox-erasure.js";
 
 /**
  * What Bid does with a person's data when Identity purges their account. This file is the single
@@ -34,7 +36,7 @@ import { scrubEmailOutbox } from "./email-outbox-erasure.js";
  * - scrub: the row stays because other records point at it, with the personal fields nulled or
  *   replaced by the person's pseudonym.
  *
- * Mail queue rows are kept, with raw addresses removed from their keys and snapshots.
+ * Mail queue and notification rows are kept as the record, with what identifies the recipient removed.
  *
  * Alert subscriptions are deleted by account and by the addresses those rows hold, including a
  * visitor new-sale alert for the same address; a subscriber stopped by a complaint is kept as a
@@ -52,16 +54,7 @@ import { scrubEmailOutbox } from "./email-outbox-erasure.js";
  * The Identity `user` row is scrubbed by Identity itself and stays so those records keep resolving.
  */
 
-/** Who is being anonymised, resolved once so every rule works on the same set. */
-export type BidAnonymisationScope = {
-  /** The purged subject and every retired alias that was merged into it. */
-  subjectIds: readonly string[];
-  /** Individual legal entities created by the subject (their personal buyer or seller account). */
-  personalLegalEntityIds: readonly string[];
-  pseudonym: string;
-  /** Years a private sale's record is kept after the deal ends; the default applies when unset. */
-  privateSaleRecordRetentionYears?: number | undefined;
-};
+export type { BidAnonymisationScope };
 
 export type BidAnonymisationRule = {
   /** The table name recorded in the audit event. */
@@ -168,18 +161,43 @@ const alertSubscribersRule: BidAnonymisationRule = {
 };
 
 /**
- * The mail queue keeps one row per email sent, as a record of delivery, so rows stay. What goes is
- * the raw address: older rows carry it in the idempotency key (collection emails and the
- * organisation-submitted notice before keys were made from an id or a hash), and rows queued for
- * a snapshot recipient hold it for 30 days. Rows of the person's account, and of a collector
- * their bookings named, get a neutral key and no snapshot. Must run before the collection
- * booking rule, which clears the collector address this rule matches on.
+ * The mail queue keeps one row per email as the record of delivery, so rows stay. Finished rows
+ * of the person lose what identifies the recipient: an address in the idempotency key (collection
+ * emails and the organisation notice before keys were made from an id or a hash), the recipient
+ * snapshot, the message variables (names, addresses, calendar entries) and the provider's error
+ * text. That covers the person's own rows, mail with no account sent to an address their rows
+ * were sent to, and collection emails to a collector their bookings named. Their queued mail is
+ * stopped, except the confirmation of the erasure. Must run before the collection booking rule,
+ * which clears the collector address this rule matches on.
  */
 const emailOutboxRule: BidAnonymisationRule = {
   table: "email_outbox",
   treatment: "scrub",
-  fields: ["idempotency_key", "to_snapshot", "to_snapshot_purge_at"],
+  fields: [
+    "idempotency_key",
+    "to_snapshot",
+    "to_snapshot_purge_at",
+    "vars",
+    "last_error",
+    "status",
+  ],
   apply: (tx, scope) => scrubEmailOutbox(tx, scope),
+};
+
+/** The provider's delivery reports for those messages quote the recipient and bounce text. */
+const emailEventRule: BidAnonymisationRule = {
+  table: "email_event",
+  treatment: "scrub",
+  fields: ["payload"],
+  apply: (tx, scope) => scrubEmailEvents(tx, scope),
+};
+
+/** Dispatched notifications keep their row but not the message, which names other people. */
+const notificationOutboxRule: BidAnonymisationRule = {
+  table: "notification_outbox",
+  treatment: "scrub",
+  fields: ["payload", "last_error"],
+  apply: (tx, scope) => scrubNotificationOutbox(tx, scope),
 };
 
 export const BID_ANONYMISATION_RULES: readonly BidAnonymisationRule[] = [
@@ -275,6 +293,8 @@ export const BID_ANONYMISATION_RULES: readonly BidAnonymisationRule[] = [
   deleteBySubject(marketingClickIds, "marketing_click_ids", marketingClickIds.userId),
   deleteBySubject(userUiPreference, "user_ui_preference", userUiPreference.userId),
   emailOutboxRule,
+  emailEventRule,
+  notificationOutboxRule,
   collectionBookingRule,
   enquiryRule,
   alertSubscribersRule,

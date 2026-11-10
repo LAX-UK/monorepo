@@ -1,4 +1,10 @@
-import { WORKER_ANONYMISATION_DELETE_TABLES, WORKER_FULL_TABLES } from "@auction/db/migrate-roles";
+import {
+  WORKER_ANONYMISATION_DELETE_TABLES,
+  WORKER_ANONYMISATION_SCRUB_COLUMNS,
+  WORKER_FULL_TABLES,
+  WORKER_NOTIFICATION_OUTBOX_TABLES,
+  WORKER_PRODUCT_PROFILE_TABLES,
+} from "@auction/db/migrate-roles";
 import { describe, expect, it } from "vitest";
 import { BID_ANONYMISATION_RULES } from "./bid-personal-data-policy.js";
 
@@ -29,5 +35,29 @@ describe("account erasure rules and the worker DELETE grants", () => {
       (table) => !deleted.includes(table) && !DELETED_BY_ALERT_ERASURE.includes(table),
     );
     expect(unused).toEqual([]);
+  });
+});
+
+/**
+ * A scrub is an UPDATE, so the worker needs it on every table a scrub rule changes. Tables granted
+ * by a statement of their own in migrate-roles (not a list there) are named here.
+ */
+const UPDATE_GRANTED_BY_NAME = ["email_outbox", "collection_booking", "marketing_enquiry"];
+
+describe("account erasure rules and the worker UPDATE grants", () => {
+  const scrubbed = BID_ANONYMISATION_RULES.filter((rule) => rule.treatment === "scrub").map(
+    (rule) => rule.table,
+  );
+  const updatable: readonly string[] = [
+    ...WORKER_FULL_TABLES,
+    ...WORKER_PRODUCT_PROFILE_TABLES,
+    ...WORKER_NOTIFICATION_OUTBOX_TABLES,
+    ...WORKER_ANONYMISATION_SCRUB_COLUMNS.map(([table]) => table),
+    "legal_entity",
+    ...UPDATE_GRANTED_BY_NAME,
+  ];
+
+  it("grants UPDATE on every table a scrub rule changes", () => {
+    expect(scrubbed.filter((table) => !updatable.includes(table))).toEqual([]);
   });
 });

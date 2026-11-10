@@ -1,4 +1,4 @@
-import { type IEmailService, type TemplateVarsByName, emailHash } from "@auction/email";
+import type { IEmailService, TemplateVarsByName } from "@auction/email";
 import type { ILegalEntityMemberRepository } from "@auction/persistence/interfaces";
 import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
 
@@ -41,19 +41,27 @@ export async function enqueueOrgLifecycleMemberEmails(args: {
   }
 }
 
+/**
+ * Tells each staff member who can review accounts that one was submitted. The notice goes to the
+ * person's account (the address is read when it is sent) and is keyed by the submission and their
+ * account id, so sending it again for the same submission changes nothing and no address is kept
+ * in the key.
+ */
 export async function enqueueOrgSubmittedAdminNotice(args: {
   emailService: IEmailService;
   legalEntityId: string;
   entityDisplayName: string;
-  adminRecipients: string[];
+  adminRecipients: { userId: string; email: string }[];
   adminOnboardingUrl: string;
   supportContactEmail: string;
-  eventId: number;
+  /** Names one submission of the account, so a resubmission after changes is a new notice. */
+  submissionId: string;
 }): Promise<void> {
-  for (const to of args.adminRecipients) {
+  for (const { userId, email } of args.adminRecipients) {
     await args.emailService.enqueue({
       template: "legal-entity-submitted-admin-notice",
-      to,
+      to: email,
+      userId,
       vars: {
         entityName: args.entityDisplayName,
         legalEntityId: args.legalEntityId,
@@ -61,7 +69,7 @@ export async function enqueueOrgSubmittedAdminNotice(args: {
         supportContactEmail: args.supportContactEmail,
       },
       category: "transactional",
-      idempotencyKey: `legal-entity-submitted-admin:${args.eventId}:${emailHash(to)}`,
+      idempotencyKey: `legal-entity-submitted-admin:${args.submissionId}:${userId}`,
     });
   }
 }

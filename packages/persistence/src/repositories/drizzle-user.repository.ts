@@ -130,13 +130,23 @@ export class DrizzleUserRepository implements IUserRepository {
   }
 
   async listStaffEmailsWithAccess(requirement: CapabilityRequirement): Promise<string[]> {
+    const recipients = await this.listStaffRecipientsWithAccess(requirement);
+    return [...new Set(recipients.map((r) => r.email))];
+  }
+
+  async listStaffRecipientsWithAccess(
+    requirement: CapabilityRequirement,
+  ): Promise<{ userId: string; email: string }[]> {
     // The links in these notices open platform admin pages, which a finance-only person cannot
     // enter, so the finance role does not count here even where it holds the capability.
     const roles = staffRolesGranting(requirementCapabilities(requirement)).filter(
       (role) => role !== "finance",
     );
     const rows = await this.db
-      .selectDistinct({ email: bidIdentityDirectory.email })
+      .selectDistinct({
+        userId: bidIdentityDirectory.subjectId,
+        email: bidIdentityDirectory.email,
+      })
       .from(bidIdentityDirectory)
       .innerJoin(bidUserProfile, eq(bidUserProfile.userId, bidIdentityDirectory.subjectId))
       .innerJoin(staffRoleAssignment, eq(staffRoleAssignment.userId, bidUserProfile.userId))
@@ -148,7 +158,7 @@ export class DrizzleUserRepository implements IUserRepository {
           staffRoleAssignmentInForceAt(new Date()),
         ),
       );
-    return rows.map((r) => r.email).filter((e): e is string => Boolean(e?.trim()));
+    return rows.flatMap((r) => (r.email?.trim() ? [{ userId: r.userId, email: r.email }] : []));
   }
 
   async listPublicProfiles(params: { limit: number; offset: number }) {

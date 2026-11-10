@@ -1,58 +1,174 @@
-import { collectionBooking, emailOutbox } from "@auction/db/schema";
+import { collectionBooking, domainEvent, emailEvent, emailOutbox } from "@auction/db/schema";
+import { COLLECTION_BOOKING_EVENT_AGGREGATE } from "@auction/domain";
 import { emailHash } from "@auction/email";
-import { and, inArray, isNotNull, like, or, sql } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, isNull, like, ne, notInArray, or, sql } from "drizzle-orm";
+import type { SQL } from "drizzle-orm";
 import type { ProjectorDbConnection } from "../interfaces/worker-db.types.js";
-import { type ErasureScope, involvedIn } from "./collection-booking-erasure.js";
+import type { BidAnonymisationScope } from "./bid-anonymisation-scope.js";
+import { involvedIn } from "./collection-booking-involvement.js";
+
+type Scope = Pick<BidAnonymisationScope, "subjectIds" | "personalLegalEntityIds">;
+
+/** The confirmation that the account is gone: it is sent to the address after erasure. */
+const DELETION_CONFIRMATION = "account-deletion-completed";
+/** Left on a queued email that erasure stopped; read by staff, holds no personal data. */
+export const ACCOUNT_ERASED_REASON = "account_erased";
 
 /** A key that holds an address. Keys made from ids and hashes never contain an "@". */
 const KEY_HOLDS_ADDRESS = like(emailOutbox.idempotencyKey, "%@%");
-
 /** What replaces a key that held an address: unique, and says nothing about anyone. */
 const NEUTRAL_KEY = sql`'erased:' || ${emailOutbox.id}::text`;
+const NO_VARS = sql`'{}'::jsonb`;
 
-/** Collection emails to a collector who has no account of their own. */
-const COLLECTION_TEMPLATES = like(emailOutbox.template, "collection-%");
+/** Mail that is queued or being sent is never changed: scrubbing it would break the send. */
+const FINISHED = notInArray(emailOutbox.status, ["pending", "sending"]);
 
-async function hashesOfNamedCollectors(
-  tx: ProjectorDbConnection,
-  scope: ErasureScope,
-): Promise<string[]> {
+const anyOf = (...conditions: (SQL | undefined)[]) =>
+  or(...conditions.filter((condition): condition is SQL => condition !== undefined));
+
+async function ownAddressHashes(tx: ProjectorDbConnection, subjectIds: readonly string[]) {
   const rows = await tx
-    .select({ email: collectionBooking.collectorEmail })
-    .from(collectionBooking)
-    .where(and(involvedIn(scope), isNotNull(collectionBooking.collectorEmail)));
-  return rows.flatMap((row) => (row.email ? [emailHash(row.email)] : []));
+    .selectDistinct({ hash: emailOutbox.toEmailHash })
+    .from(emailOutbox)
+    .where(inArray(emailOutbox.userId, [...subjectIds]));
+  return rows.map((row) => row.hash);
 }
 
 /**
- * Removes the raw address from the mail queue rows of a purged person: the key (when it was made
- * from the address) and the 30-day recipient snapshot. Covers rows of the person's own accounts
- * and collection emails to a collector their bookings named. Returns the rows changed. It sets
- * fixed values, so a second run changes nothing more.
+ * What marks a collection email as one of the person's bookings: the booking id (reminders) or
+ * the id of an event on it (every other kind) is the second part of its key. The addresses are
+ * the collectors those bookings named, who have no account of their own.
  */
-export async function scrubEmailOutbox(
-  tx: ProjectorDbConnection,
-  scope: ErasureScope,
-): Promise<number> {
-  const collectorHashes = await hashesOfNamedCollectors(tx, scope);
-  const ofTheirAccount = inArray(emailOutbox.userId, [...scope.subjectIds]);
-  const toANamedCollector =
-    collectorHashes.length > 0
-      ? and(COLLECTION_TEMPLATES, inArray(emailOutbox.toEmailHash, collectorHashes))
-      : undefined;
+async function namedCollectors(tx: ProjectorDbConnection, scope: Scope) {
+  const bookings = await tx
+    .select({ id: collectionBooking.id, email: collectionBooking.collectorEmail })
+    .from(collectionBooking)
+    .where(involvedIn(scope));
+  if (bookings.length === 0) return { hashes: [], keyIds: [] };
+  const bookingIds = bookings.map((booking) => booking.id);
+  const events = await tx
+    .select({ id: domainEvent.id })
+    .from(domainEvent)
+    .where(
+      and(
+        eq(domainEvent.aggregateType, COLLECTION_BOOKING_EVENT_AGGREGATE),
+        inArray(domainEvent.aggregateId, bookingIds),
+      ),
+    );
+  return {
+    hashes: bookings.flatMap((booking) => (booking.email ? [emailHash(booking.email)] : [])),
+    keyIds: [...bookingIds, ...events.map((event) => String(event.id))],
+  };
+}
+
+/**
+ * The finished mail rows that belong to the erased person:
+ * - rows of their own account;
+ * - rows with no account sent to an address their own rows were sent to (such as a billing copy),
+ *   except the confirmation of the erasure itself;
+ * - collection emails to a collector their bookings named, for those bookings only.
+ */
+async function rowsOfThePerson(tx: ProjectorDbConnection, scope: Scope): Promise<SQL | undefined> {
+  const own = await ownAddressHashes(tx, scope.subjectIds);
+  const collectors = await namedCollectors(tx, scope);
+  const match = anyOf(
+    inArray(emailOutbox.userId, [...scope.subjectIds]),
+    own.length > 0
+      ? and(
+          isNull(emailOutbox.userId),
+          inArray(emailOutbox.toEmailHash, own),
+          ne(emailOutbox.template, DELETION_CONFIRMATION),
+        )
+      : undefined,
+    collectors.hashes.length > 0 && collectors.keyIds.length > 0
+      ? and(
+          isNull(emailOutbox.userId),
+          like(emailOutbox.template, "collection-%"),
+          inArray(emailOutbox.toEmailHash, collectors.hashes),
+          inArray(sql`split_part(${emailOutbox.idempotencyKey}, ':', 2)`, collectors.keyIds),
+        )
+      : undefined,
+  );
+  return and(FINISHED, match);
+}
+
+const STILL_HOLDS_PERSONAL_DATA = or(
+  KEY_HOLDS_ADDRESS,
+  isNotNull(emailOutbox.toSnapshot),
+  sql`${emailOutbox.vars} <> '{}'::jsonb`,
+  and(isNotNull(emailOutbox.lastError), ne(emailOutbox.lastError, ACCOUNT_ERASED_REASON)),
+);
+
+/**
+ * Mail the person had queued but not yet sent is stopped, except the confirmation of the erasure.
+ * The row is marked suppressed for this one email; the address is not blocked for anyone.
+ */
+async function stopQueuedMail(tx: ProjectorDbConnection, scope: Scope): Promise<string[]> {
   const rows = await tx
+    .update(emailOutbox)
+    .set({ status: "suppressed", lastError: ACCOUNT_ERASED_REASON })
+    .where(
+      and(
+        inArray(emailOutbox.userId, [...scope.subjectIds]),
+        eq(emailOutbox.status, "pending"),
+        ne(emailOutbox.template, DELETION_CONFIRMATION),
+      ),
+    )
+    .returning({ id: emailOutbox.id });
+  return rows.map((row) => row.id);
+}
+
+/**
+ * Removes what the mail queue holds about a purged person. Rows stay as the record that a message
+ * was sent, but lose anything that identifies the recipient: an address in the key, the recipient
+ * snapshot, the message variables (names, addresses, calendar entries) and the provider's error
+ * text, which can quote the address. Returns the rows changed. It sets fixed values, so a second
+ * run changes nothing more.
+ */
+export async function scrubEmailOutbox(tx: ProjectorDbConnection, scope: Scope): Promise<number> {
+  const stopped = await stopQueuedMail(tx, scope);
+  const match = await rowsOfThePerson(tx, scope);
+  const scrubbed = await tx
     .update(emailOutbox)
     .set({
       idempotencyKey: sql`CASE WHEN ${KEY_HOLDS_ADDRESS} THEN ${NEUTRAL_KEY} ELSE ${emailOutbox.idempotencyKey} END`,
       toSnapshot: null,
       toSnapshotPurgeAt: null,
+      vars: NO_VARS,
+      lastError: sql`CASE WHEN ${emailOutbox.lastError} = ${ACCOUNT_ERASED_REASON} THEN ${emailOutbox.lastError} ELSE NULL END`,
     })
+    .where(and(match, STILL_HOLDS_PERSONAL_DATA))
+    .returning({ id: emailOutbox.id });
+  return new Set([...stopped, ...scrubbed.map((row) => row.id)]).size;
+}
+
+/**
+ * The provider's delivery reports for those messages quote the recipient and the bounce text, so
+ * their bodies are emptied. The events stay as counts of what happened.
+ */
+export async function scrubEmailEvents(tx: ProjectorDbConnection, scope: Scope): Promise<number> {
+  const match = await rowsOfThePerson(tx, scope);
+  const rows = await tx
+    .update(emailEvent)
+    .set({ payload: NO_VARS })
     .where(
       and(
-        or(ofTheirAccount, toANamedCollector),
-        or(KEY_HOLDS_ADDRESS, isNotNull(emailOutbox.toSnapshot)),
+        sql`${emailEvent.payload} <> '{}'::jsonb`,
+        or(
+          inArray(
+            emailEvent.outboxId,
+            tx.select({ id: emailOutbox.id }).from(emailOutbox).where(match),
+          ),
+          inArray(
+            emailEvent.messageId,
+            tx
+              .select({ messageId: emailOutbox.messageId })
+              .from(emailOutbox)
+              .where(and(match, isNotNull(emailOutbox.messageId))),
+          ),
+        ),
       ),
     )
-    .returning({ id: emailOutbox.id });
+    .returning({ id: emailEvent.id });
   return rows.length;
 }

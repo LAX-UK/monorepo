@@ -1,17 +1,17 @@
 import { collectionBooking, collectionBookingLot, domainEvent } from "@auction/db/schema";
 import { COLLECTION_BOOKING_EVENT_AGGREGATE, collectionBookingCancelled } from "@auction/domain";
-import { and, eq, inArray, isNull, or, sql } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import type { ProjectorDbConnection } from "../interfaces/worker-db.types.js";
+import type { BidAnonymisationScope } from "./bid-anonymisation-scope.js";
+import { involvedIn } from "./collection-booking-involvement.js";
+
+type ErasureScope = Pick<
+  BidAnonymisationScope,
+  "subjectIds" | "personalLegalEntityIds" | "pseudonym"
+>;
 
 /** What replaces the name of someone who came to collect for the person, or a third party. */
 export const THIRD_PARTY_COLLECTOR_PLACEHOLDER = "Deleted collector";
-
-export type ErasureScope = {
-  subjectIds: readonly string[];
-  personalLegalEntityIds: readonly string[];
-  /** "Deleted user 7F3A": stands in for the person's own name. */
-  pseudonym: string;
-};
 
 export type CollectionErasureCounts = {
   /** Live visits cancelled because the person erased their account. */
@@ -24,21 +24,6 @@ export type CollectionErasureCounts = {
 const UNHANDED = ["cancelled", "not_collected"] as const;
 /** Visits where works were handed over: the record of who collected is kept for a time. */
 const HANDED_OVER = ["collected", "partly_collected"] as const;
-
-/** The bookings the person is behind: they made, authorised or collected at them, or own the account. */
-export function involvedIn(scope: ErasureScope) {
-  const subjects = [...scope.subjectIds];
-  const accounts = [...scope.personalLegalEntityIds];
-  return and(
-    isNull(collectionBooking.personalDetailsErasedAt),
-    or(
-      inArray(collectionBooking.bookedByUserId, subjects),
-      inArray(collectionBooking.collectorUserId, subjects),
-      inArray(collectionBooking.authorisedByUserId, subjects),
-      accounts.length > 0 ? inArray(collectionBooking.legalEntityId, accounts) : undefined,
-    ),
-  );
-}
 
 /**
  * Cancels the visits that are still live. A visit someone is expected at cannot keep a collector
