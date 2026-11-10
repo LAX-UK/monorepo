@@ -43,8 +43,10 @@ function setup(lots: StoredLot[], facts: Record<string, Partial<CollectionLotFac
   );
   const storedLotsDue = vi.fn().mockResolvedValue(lots);
   const remindedLotIds = vi.fn(
-    async (prefix: string) =>
-      new Set(outbox.filter((row) => row.key.startsWith(prefix)).flatMap((row) => row.lotIds)),
+    async (query: { keyPrefix: string; userId: string; today: string }) =>
+      new Set(
+        outbox.filter((row) => row.key.startsWith(query.keyPrefix)).flatMap((row) => row.lotIds),
+      ),
   );
   const accountRecipients = vi.fn().mockResolvedValue([maya, { ...agent, wonOnly: true }]);
   const run = (now: string, due: StoredLot[] = lots) => {
@@ -104,6 +106,16 @@ describe("storage reminders", () => {
     );
     expect(byUser["u-maya"]).toEqual(["l-1", "l-2"]);
     expect(byUser["u-agent"]).toEqual(["l-1"]);
+  });
+
+  it("asks about the person's own reminders, on the London day of the sweep", async () => {
+    const s = setup([stored()]);
+    await s.run("2026-12-02T10:00:00Z");
+    expect(s.remindedLotIds).toHaveBeenCalledWith({
+      keyPrefix: "collection-collect-by:lead:e-1:v-1:2026-12-09:u-maya:",
+      userId: "u-maya",
+      today: "2026-12-02",
+    });
   });
 
   it("sends nothing more on a later sweep for the same lots", async () => {

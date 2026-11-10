@@ -145,18 +145,85 @@ describe.skipIf(!HAS_DB)("collect-by reader (integration)", () => {
     expect(ids).not.toContain(expired);
   });
 
-  it("says which lots earlier reminders with a key prefix covered", async () => {
-    const prefix = `collection-collect-by:lead:e:v:2031-03-15:u-${run}:`;
-    await db.execute(sql`
-      insert into email_outbox (idempotency_key, to_email_hash, template, vars, status, stream, category)
-      values (${`${prefix}aaa`}, ${`hash-a-${run}`}, 'collection-collect-by', '{"lotIds":["l-1","l-2"]}'::jsonb, 'sent', 'transactional', 'transactional'),
-             (${`${prefix}bbb`}, ${`hash-b-${run}`}, 'collection-collect-by', '{"lotIds":["l-3"]}'::jsonb, 'failed', 'transactional', 'transactional'),
-             (${`collection-collect-by:lead:e:v:2031-03-16:u-${run}:ccc`}, ${`hash-c-${run}`}, 'collection-collect-by', '{"lotIds":["l-9"]}'::jsonb, 'sent', 'transactional', 'transactional')`);
-    expect(await reader.remindedLotIds(prefix)).toEqual(new Set(["l-1", "l-2", "l-3"]));
-    expect(await reader.remindedLotIds(`${prefix}nope:`)).toEqual(new Set());
-    await db.execute(
-      sql`delete from email_outbox where idempotency_key like ${`collection-collect-by:lead:e:v:%:u-${run}:%`}`,
-    );
+  describe("which lots earlier reminders covered", () => {
+    const user = `col-by-user-${run}`;
+    const other = `col-by-other-${run}`;
+    const prefix = `collection-collect-by:lead:e:v:2031-03-15:${user}:`;
+    const today = "2031-03-10";
+
+    async function outboxRow(
+      key: string,
+      userId: string,
+      status: string,
+      lotIds: string[],
+      createdAt: string,
+    ) {
+      await db.execute(sql`
+        insert into email_outbox (idempotency_key, user_id, to_email_hash, template, vars, status, stream, category, created_at)
+        values (${key}, ${userId}, ${`hash-${key}`}, 'collection-collect-by', ${JSON.stringify({ lotIds })}::jsonb,
+          ${status}, 'transactional', 'transactional', ${createdAt}::timestamptz)`);
+    }
+
+    beforeAll(async () => {
+      const now = new Date();
+      await db.execute(sql`
+        insert into "user" (id, name, email, email_verified, created_at, updated_at)
+        values (${user}, 'U', ${`${user}@integration.test`}, true, ${now}, ${now}),
+               (${other}, 'O', ${`${other}@integration.test`}, true, ${now}, ${now})`);
+    });
+
+    afterAll(async () => {
+      await db.execute(sql`delete from email_outbox where user_id in (${user}, ${other})`);
+      await db.execute(sql`delete from "user" where id in (${user}, ${other})`);
+    });
+
+    it("counts queued, sent and suppressed rows with the prefix, whenever they were made", async () => {
+      await outboxRow(`${prefix}aaa`, user, "sent", ["l-1", "l-2"], "2031-03-08T10:00:00Z");
+      await outboxRow(`${prefix}bbb`, user, "suppressed", ["l-3"], "2031-03-08T10:00:00Z");
+      await outboxRow(`${prefix}ccc`, user, "pending", ["l-4"], "2031-03-10T09:00:00Z");
+      expect(await reader.remindedLotIds({ keyPrefix: prefix, userId: user, today })).toEqual(
+        new Set(["l-1", "l-2", "l-3", "l-4"]),
+      );
+    });
+
+    it("counts a failed row made today, but not one from an earlier London day, so it is retried once a day", async () => {
+      await outboxRow(`${prefix}fff`, user, "failed", ["l-5"], "2031-03-09T10:00:00Z");
+      await outboxRow(`${prefix}ggg`, user, "failed", ["l-6"], "2031-03-10T09:00:00Z");
+      const covered = await reader.remindedLotIds({ keyPrefix: prefix, userId: user, today });
+      expect(covered.has("l-5")).toBe(false);
+      expect(covered.has("l-6")).toBe(true);
+    });
+
+    it("takes the London day of a failed row, not the UTC day", async () => {
+      // 23:30 UTC on 9 Mar is still the 9th in London in winter; 00:30 BST on 10 Jun is the 10th.
+      await outboxRow(`${prefix}hhh`, user, "failed", ["l-7"], "2031-03-09T23:30:00Z");
+      expect(
+        (await reader.remindedLotIds({ keyPrefix: prefix, userId: user, today })).has("l-7"),
+      ).toBe(false);
+      await outboxRow(`${prefix}iii`, user, "failed", ["l-8"], "2031-06-09T23:30:00Z");
+      expect(
+        (await reader.remindedLotIds({ keyPrefix: prefix, userId: user, today: "2031-06-10" })).has(
+          "l-8",
+        ),
+      ).toBe(true);
+    });
+
+    it("looks only at the person's own rows and the prefix", async () => {
+      await outboxRow(`${prefix}jjj`, other, "sent", ["l-9"], "2031-03-08T10:00:00Z");
+      await outboxRow(
+        `collection-collect-by:lead:e:v:2031-03-16:${user}:kkk`,
+        user,
+        "sent",
+        ["l-10"],
+        "2031-03-08T10:00:00Z",
+      );
+      const covered = await reader.remindedLotIds({ keyPrefix: prefix, userId: user, today });
+      expect(covered.has("l-9")).toBe(false);
+      expect(covered.has("l-10")).toBe(false);
+      expect(
+        await reader.remindedLotIds({ keyPrefix: `${prefix}nope:`, userId: user, today }),
+      ).toEqual(new Set());
+    });
   });
 
   it("leaves out a lot already in a live booking", async () => {

@@ -104,14 +104,30 @@ export class DrizzleCollectByReader implements ICollectByReader {
     );
   }
 
-  async remindedLotIds(keyPrefix: string): Promise<Set<string>> {
+  async remindedLotIds(query: {
+    keyPrefix: string;
+    userId: string;
+    today: string;
+  }): Promise<Set<string>> {
     // The prefix is built from ids and a fixed word, never typed text, but `%` and `_` would still
-    // be wildcards, so they are escaped.
-    const pattern = `${keyPrefix.replace(/[\\%_]/g, "\\$&")}%`;
+    // be wildcards, so they are escaped. The person and the template narrow the rows to the
+    // person's own reminders by an indexed column, before the key is compared.
+    const pattern = `${query.keyPrefix.replace(/[\\%_]/g, "\\$&")}%`;
     const rows = await this.db
       .select({ vars: emailOutbox.vars })
       .from(emailOutbox)
-      .where(like(emailOutbox.idempotencyKey, pattern));
+      .where(
+        and(
+          eq(emailOutbox.userId, query.userId),
+          eq(emailOutbox.template, "collection-collect-by"),
+          like(emailOutbox.idempotencyKey, pattern),
+          // A failed row is tried again on a later day: only today's counts as covering its lots.
+          or(
+            sql`${emailOutbox.status} <> 'failed'`,
+            sql`(${emailOutbox.createdAt} at time zone ${LONDON})::date = ${query.today}::date`,
+          ),
+        ),
+      );
     const ids = new Set<string>();
     for (const row of rows) {
       const lotIds = (row.vars as { lotIds?: unknown } | null)?.lotIds;

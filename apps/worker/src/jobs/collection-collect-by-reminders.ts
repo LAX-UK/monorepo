@@ -60,9 +60,12 @@ export async function runCollectByRemindersJob(options: {
       const winners = lots.flatMap((lot) => (lot.winnerId ? [lot.winnerId] : []));
       const people = await notices.accountRecipients(group.legalEntityId, winners);
       for (const email of collectByEmailsFor({ ...group, lots }, people, { webOrigin, now: at })) {
-        const reminded = await reader.remindedLotIds(
-          collectByKeyPrefix(group, email.userId as string),
-        );
+        const userId = email.userId as string;
+        const reminded = await reader.remindedLotIds({
+          keyPrefix: collectByKeyPrefix(group, userId),
+          userId,
+          today,
+        });
         if (email.vars.lotIds.every((id) => reminded.has(id))) continue;
         await emailService.enqueue(email);
         queued += 1;

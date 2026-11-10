@@ -31,8 +31,10 @@ export interface ICollectByReader {
     reminderLeadDays: number;
   }): Promise<StoredLot[]>;
   /**
-   * The ids of the lots an earlier reminder to this person already covered: those named in the
-   * outbox rows (queued, sent or failed) whose idempotency key starts with `keyPrefix`.
+   * The ids of the lots an earlier reminder to this person already covered: those named in their
+   * outbox rows whose idempotency key starts with `keyPrefix`. A failed row counts as covered only
+   * when it was made today (a London day), so a failed email is tried again once a day, not on
+   * every sweep; a queued, sent or suppressed one always counts.
    */
-  remindedLotIds(keyPrefix: string): Promise<Set<string>>;
+  remindedLotIds(query: { keyPrefix: string; userId: string; today: string }): Promise<Set<string>>;
 }
