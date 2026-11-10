@@ -67,7 +67,7 @@ function setup(existing: Sale, lots: Lot[] = []) {
   } as unknown as SaleServiceDeps;
   const run = (patch: Record<string, unknown>) =>
     updateDraftSale(deps, "staff", existing.id, patch as UpdateSaleBody, ["administrator"]);
-  return { run, update, lotUpdate };
+  return { run, update, lotUpdate, deps };
 }
 
 describe("a sale's time zone on update", () => {
@@ -162,5 +162,46 @@ describe("re-zoning a draft sale moves its times and its lots' times together", 
     });
     expect(result.isErr()).toBe(true);
     expect(update).not.toHaveBeenCalled();
+  });
+});
+
+describe("a draft sale already sent to ATG", () => {
+  function onAtg(remote: "pending" | "created" | "published" | null) {
+    const ready = setup(sale());
+    const ownership = remote && {
+      saleStatus: "draft" as const,
+      atgRemoteStatus: remote,
+      atgLinked: true,
+      atgSoldLotCount: 0,
+      sellingPlatform: remote === "published" ? ("atg" as const) : ("free" as const),
+      atgDistribution: "private_test" as const,
+    };
+    const getSaleOwnership = vi.fn().mockResolvedValue(ownership);
+    Object.assign(ready.deps, { saleChannelReader: { getSaleOwnership } });
+    return { ...ready, getSaleOwnership };
+  }
+
+  it.each(["created", "published"] as const)(
+    "keeps its zone while ATG holds the auction (%s)",
+    async (remote) => {
+      const { run, update } = onAtg(remote);
+      const result = await run({ timeZone: "Europe/Paris" });
+      expect(result.isErr()).toBe(true);
+      expect(result._unsafeUnwrapErr()).toMatchObject({ code: "sale_on_atg" });
+      expect(update).not.toHaveBeenCalled();
+    },
+  );
+
+  it("can still be re-zoned before ATG has the auction", async () => {
+    const { run } = onAtg("pending");
+    const result = await run({ timeZone: "Europe/Paris" });
+    expect(result.isOk()).toBe(true);
+  });
+
+  it("does not ask ATG when the zone is unchanged", async () => {
+    const { run, getSaleOwnership } = onAtg("published");
+    const result = await run({ timeZone: "Europe/London", title: "Renamed" });
+    expect(result.isOk()).toBe(true);
+    expect(getSaleOwnership).not.toHaveBeenCalled();
   });
 });

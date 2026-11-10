@@ -75,3 +75,28 @@ export async function assertCanCancelSaleOnAtg(
   const ownership = await atgOwnedSale(reader, saleId);
   return ownership ? saleOnAtgError(ownership, "cancel it in LAX") : null;
 }
+
+/**
+ * ATG holds the sale's times in its zone from the first push, and an ATG sale stays a LAX draft,
+ * so the draft-only zone lock does not cover it. Re-zoning would move the real start and end on
+ * ATG. Refused while ATG has the auction, or while the sale is ATG-owned after it closed.
+ */
+export async function assertTimeZoneChangeableOnAtg(
+  reader: ISaleChannelReader | null | undefined,
+  saleId: string,
+): Promise<LotError | null> {
+  if (!reader) return null;
+  const ownership = await reader.getSaleOwnership(saleId);
+  if (!ownership) return null;
+  const onAtg =
+    ownership.atgRemoteStatus === "created" ||
+    ownership.atgRemoteStatus === "approved" ||
+    ownership.atgRemoteStatus === "published" ||
+    ownership.sellingPlatform === "atg";
+  if (!onAtg) return null;
+  return new LotError(
+    "This sale is on ATG, which shows its times in the current time zone, so the zone can't change.",
+    409,
+    "sale_on_atg",
+  );
+}
