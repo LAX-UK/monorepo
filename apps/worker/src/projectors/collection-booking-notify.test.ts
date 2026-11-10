@@ -105,8 +105,8 @@ describe("collection booking emails from audit events", () => {
     );
     await s.run();
     expect(s.enqueue.mock.calls.map(([email]) => [email.template, email.idempotencyKey])).toEqual([
-      ["collection-booked", "collection-created:6:maya@example.com"],
-      ["collection-cancelled", "collection-cancelled:7:maya@example.com"],
+      ["collection-booked", "collection-created:6:u1"],
+      ["collection-cancelled", "collection-cancelled:7:u1"],
     ]);
     expect(s.advanceCursor).toHaveBeenCalledWith(COLLECTION_BOOKING_NOTIFY_PROJECTOR, 7);
   });

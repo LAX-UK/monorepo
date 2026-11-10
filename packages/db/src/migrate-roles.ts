@@ -595,12 +595,15 @@ export const WORKER_ANONYMISATION_DELETE_TABLES = [
 
 /**
  * Tables the same job keeps but scrubs. UPDATE is granted on the scrubbed columns only, plus
- * SELECT for the filter. bid_user_profile and legal_entity are granted elsewhere.
+ * SELECT for the filter. bid_user_profile and legal_entity are granted elsewhere, and so are
+ * email_outbox and notification_outbox.
  */
 export const WORKER_ANONYMISATION_SCRUB_COLUMNS = [
   ["legal_entity", ["display_name", "legal_name", "slug", "vat_number"]],
   ["legal_entity_contact_details", ["email", "phone", "website"]],
   ["telephone_bid_booking", ["phone_e164", "buyer_notes"]],
+  /** The provider's delivery reports for a purged person's mail quote their address. */
+  ["email_event", ["payload"]],
   /** The enquiry rule replaces the sender's details and removes what they wrote. */
   ["marketing_enquiry", ["name", "email", "phone", "message", "version"]],
   ["marketing_enquiry_note", ["body"]],

@@ -45,6 +45,7 @@ export class OnboardingSubmitService implements IOnboardingSubmitService {
       }
     }
 
+    const submittedAt = new Date();
     const op: LifecycleSelfOp = "submit_for_review";
     const txnResult = await this.ctx.transactionRunner.runInTransaction(async (tx) => {
       const locked = await this.ctx.onboardingRepo.lockOrganisationForUpdate(entityId, tx);
@@ -91,6 +92,7 @@ export class OnboardingSubmitService implements IOnboardingSubmitService {
         legalEntityId: entityId,
         displayName: row.displayName,
         actorUserId: userId,
+        submittedAt,
       });
     }
 

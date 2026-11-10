@@ -7,7 +7,12 @@ import {
   formatCollectionVisit,
   formatCollectionWhen,
 } from "@auction/domain";
-import type { EmailEnqueueInput, TemplateName, TemplateVarsByName } from "@auction/email";
+import {
+  type EmailEnqueueInput,
+  type TemplateName,
+  type TemplateVarsByName,
+  emailHash,
+} from "@auction/email";
 
 /** Someone an email can go to. */
 export type NoticeRecipient = {
@@ -166,7 +171,9 @@ export function isCollectorEmail(email: Enqueue): boolean {
 /**
  * The emails one booking event sends, and no more: the buyer's (with a calendar entry, never a
  * price) and, for someone named to collect, theirs. Pure: it reads nothing and sends nothing.
- * Every email carries a key that names the event and the address, so a retry sends nothing twice.
+ * Every email carries a key that names the event and the recipient (their account id, or a hash of
+ * the address when they have no account), never the address itself, so a retry sends nothing twice
+ * and the outbox keeps no address in a key.
  */
 export function collectionEmailsFor(
   change: CollectionChange,
@@ -174,10 +181,12 @@ export function collectionEmailsFor(
   config: CollectionNoticeConfig,
 ): Enqueue[] {
   const emails: Enqueue[] = [];
-  const keyOf = (email: string) =>
-    change.kind === "reminder"
-      ? `collection-reminder:${visit.bookingId}:${visit.slotStart.toISOString()}:${email.toLowerCase()}`
-      : `collection-${change.kind}:${change.eventId}:${email.toLowerCase()}`;
+  const keyOf = (email: string, userId: string | undefined) => {
+    const recipient = userId ?? emailHash(email);
+    return change.kind === "reminder"
+      ? `collection-reminder:${visit.bookingId}:${visit.slotStart.toISOString()}:${recipient}`
+      : `collection-${change.kind}:${change.eventId}:${recipient}`;
+  };
   const sentTo = new Set<string>();
   const add = (to: string, userId: string | undefined, message: Message) => {
     const address = to.toLowerCase();
@@ -187,7 +196,7 @@ export function collectionEmailsFor(
       ...message,
       to,
       ...(userId ? { userId } : {}),
-      idempotencyKey: keyOf(to),
+      idempotencyKey: keyOf(to, userId),
       category: "transactional",
     } as Enqueue);
   };

@@ -56,7 +56,7 @@ describe("a booking made", () => {
       to: "maya@example.com",
       userId: "u-maya",
       category: "transactional",
-      idempotencyKey: "collection-created:7:maya@example.com",
+      idempotencyKey: "collection-created:7:u-maya",
     });
     const vars = email?.vars as Record<string, unknown>;
     expect(vars).toMatchObject({
@@ -106,8 +106,10 @@ describe("a booking made", () => {
     expect(notice).toMatchObject({
       to: "sam@example.com",
       recipientResolution: "snapshot",
-      idempotencyKey: "collection-created:7:sam@example.com",
+      idempotencyKey:
+        "collection-created:7:cd25a6171969f2a3c6e35c7667e3908ef1bd2424241db04411a0eec454ca6c16",
     });
+    expect(notice?.idempotencyKey).not.toContain("sam@example.com");
     expect(notice?.userId).toBeUndefined();
     const vars = notice?.vars as Record<string, unknown>;
     expect(vars).toMatchObject({
@@ -214,7 +216,7 @@ describe("a booking changed", () => {
     );
     expect(email).toMatchObject({
       template: "collection-changed",
-      idempotencyKey: "collection-changed:9:maya@example.com",
+      idempotencyKey: "collection-changed:9:u-maya",
     });
     const vars = email?.vars as Record<string, unknown>;
     expect(vars.previousWhenLabel).toBe("Tue 10 Nov, 10:00 GMT");
@@ -334,7 +336,7 @@ describe("works handed over at the desk", () => {
     expect(emails[0]).toMatchObject({
       template: "collection-collected",
       to: "maya@example.com",
-      idempotencyKey: "collection-collected:21:maya@example.com",
+      idempotencyKey: "collection-collected:21:u-maya",
     });
     expect(emails[0]?.vars).toMatchObject({
       collectorName: "Maya Okafor",
@@ -382,7 +384,7 @@ describe("a visit marked not collected", () => {
     expect(email).toMatchObject({
       template: "collection-missed",
       to: "maya@example.com",
-      idempotencyKey: "collection-missed:33:maya@example.com",
+      idempotencyKey: "collection-missed:33:u-maya",
     });
     expect(email?.vars).toMatchObject({
       reference: "COL-4821",
@@ -409,7 +411,7 @@ describe("the day-before reminder", () => {
     expect(rest).toEqual([]);
     expect(email).toMatchObject({
       template: "collection-reminder",
-      idempotencyKey: "collection-reminder:b-1:2026-11-12T14:00:00.000Z:maya@example.com",
+      idempotencyKey: "collection-reminder:b-1:2026-11-12T14:00:00.000Z:u-maya",
     });
     expect(email?.vars).toMatchObject({ timeLabel: "14:00 GMT" });
     expect((email?.vars as { calendar?: unknown }).calendar).toBeUndefined();
