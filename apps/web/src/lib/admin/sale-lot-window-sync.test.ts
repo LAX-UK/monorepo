@@ -193,7 +193,9 @@ describe("a draft sale changing zone", () => {
   it("moves each draft lot by its own wall clock, keeping the stagger", () => {
     const moved = lotsForPendingWindow(lots, "Europe/London", parisWindow);
     moved.forEach((lot, n) => {
-      expect(lot.startTime.getTime()).toBe(lots[n]?.startTime.getTime() - 3_600_000);
+      expect(lot.startTime.getTime()).toBe(
+        (lots[n] as (typeof lots)[number]).startTime.getTime() - 3_600_000,
+      );
       expect(lot.startTime.getTime() - (moved[0] as typeof lot).startTime.getTime()).toBe(
         n * 5 * 60_000,
       );
