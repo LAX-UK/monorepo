@@ -9,7 +9,7 @@ import type {
 } from "@auction/types";
 
 export type AtgAdminError = {
-  status: 404 | 409 | 503;
+  status: 404 | 409 | 422 | 503;
   code:
     | "atg_disabled"
     | "sale_not_found"
@@ -19,6 +19,7 @@ export type AtgAdminError = {
     | "sale_cancelled"
     | "sale_on_lax"
     | "atg_settings_locked"
+    | "atg_auction_type_unavailable"
     | "public_confirmation_required"
     | "queue_unavailable";
   message: string;
