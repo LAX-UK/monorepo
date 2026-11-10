@@ -12,7 +12,8 @@ test.describe("lax.art discovery", () => {
   });
 
   test("grid and list views switch in the URL and persist across visits", async ({ page }) => {
-    await page.goto("/artworks");
+    await page.goto("/artworks", { waitUntil: "domcontentloaded" });
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
     test.skip(
       (await page.getByTestId("art-artwork-card").count()) === 0,
       "no art-channel artworks seeded",
@@ -34,7 +35,8 @@ test.describe("lax.art discovery", () => {
   });
 
   test("medium tiles filter the catalogue by object type", async ({ page }) => {
-    await page.goto("/artworks");
+    await page.goto("/artworks", { waitUntil: "domcontentloaded" });
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
     const tiles = page.getByTestId("art-object-type-tiles");
     test.skip((await tiles.count()) === 0, "fewer than two art-channel media seeded");
     const first = tiles.getByRole("link").first();
