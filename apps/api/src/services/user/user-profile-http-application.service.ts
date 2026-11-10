@@ -1,3 +1,4 @@
+import { parseAccountTimeZoneChange } from "@auction/identity-contracts";
 import type { UpdateAddressInput } from "@auction/persistence/interfaces";
 import {
   NO_STAFF_ROLES,
@@ -7,6 +8,7 @@ import {
 } from "@auction/types";
 import { formatPhoneDisplay, isAccountOnboardingComplete } from "@auction/validators";
 import type { AddressService } from "../address.service.js";
+import type { IIdentityProfileClient } from "../interfaces/identity-issuer-client.js";
 import type { IMediaUrlResolver } from "../interfaces/media-url-resolver.js";
 import type { IUserProfileHttpApplicationService } from "../interfaces/user-routes/user-profile-http.js";
 import type { UserHttpJson } from "../interfaces/user-routes/user-route-http.js";
@@ -18,6 +20,8 @@ export type UserProfileHttpDeps = {
   addressService: AddressService;
   uiPreferenceService: UiPreferenceService;
   mediaUrlResolver: IMediaUrlResolver;
+  /** LAX Account (Identity) owns the time zone; Bid saves through it. */
+  identityTimeZone: Pick<IIdentityProfileClient, "setSubjectTimeZone" | "reportSubjectDeviceZone">;
 };
 
 export class UserProfileHttpApplicationService implements IUserProfileHttpApplicationService {
@@ -29,6 +33,30 @@ export class UserProfileHttpApplicationService implements IUserProfileHttpApplic
   }): Promise<UserHttpJson> {
     await this.deps.profileService.updateProfile(input.userId, input.body);
     return { status: 200, body: { ok: true } };
+  }
+
+  async setTimeZone(input: {
+    userId: string;
+    body: { mode: "automatic" | "fixed"; zone?: string | null | undefined };
+  }): Promise<UserHttpJson> {
+    const change = parseAccountTimeZoneChange({
+      mode: input.body.mode,
+      zone: input.body.zone ?? null,
+    });
+    if (!change) return { status: 400, body: { error: "invalid_time_zone" } };
+    const saved = await this.deps.identityTimeZone.setSubjectTimeZone(input.userId, change);
+    return { status: 200, body: { data: saved } };
+  }
+
+  async reportDeviceZone(input: {
+    userId: string;
+    body: { zone?: string | null | undefined };
+  }): Promise<UserHttpJson> {
+    const saved = await this.deps.identityTimeZone.reportSubjectDeviceZone(
+      input.userId,
+      input.body.zone ?? null,
+    );
+    return { status: 200, body: { data: saved } };
   }
 
   async listAddresses(input: { userId: string }): Promise<UserHttpJson> {
@@ -117,6 +145,7 @@ export class UserProfileHttpApplicationService implements IUserProfileHttpApplic
           securityStatusAvailable: row.securityStatusAvailable,
           suspended: row.suspended,
           uiPreferences: uiPrefs,
+          timeZone: { mode: row.timeZoneMode, zone: row.timeZone },
         },
       },
     };

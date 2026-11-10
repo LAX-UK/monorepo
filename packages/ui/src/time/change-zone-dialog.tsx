@@ -15,7 +15,12 @@ export type ChangeZoneDialogProps = {
   onOpenChange: (open: boolean) => void;
   /** The zone in use now, and where it came from: it decides what opens selected. */
   current: SavedZone;
-  officialZone: string;
+  /** The sale's own zone, said in the description. Leave out where nothing is quoted in one. */
+  officialZone?: string;
+  /** Replaces the default description (LAX Account has no sale to quote). */
+  description?: string;
+  /** Called after the choice is saved: what the person chose, and the zone it shows. */
+  onSaved?: (saved: { mode: "automatic" | "fixed"; zone: string | null }) => void;
   /** The moment the labels are written for. */
   at: Date;
   /** Where focus goes on closing: the panel that opened the dialog is gone by then. */
@@ -37,6 +42,8 @@ export function ChangeZoneDialog({
   onOpenChange,
   current,
   officialZone,
+  description,
+  onSaved,
   at,
   returnFocusTo,
 }: ChangeZoneDialogProps) {
@@ -71,6 +78,7 @@ export function ChangeZoneDialog({
       if (choice.mode === "automatic") await port.followDevice();
       else if (choice.zone) await port.save(choice.zone);
       const shown = choice.mode === "automatic" ? device : choice.zone;
+      onSaved?.({ mode: choice.mode, zone: shown });
       toast.success(
         shown
           ? `Saved. Times now show ${cityName(shown)} time.`
@@ -91,7 +99,12 @@ export function ChangeZoneDialog({
       title="Time zone"
       initialFocusRef={focusRef}
       {...(returnFocusTo ? { returnFocusFallback: returnFocusTo } : {})}
-      description={`Sale times always show ${cityName(officialZone)} time first. Choose the city for the time under it.`}
+      description={
+        description ??
+        (officialZone
+          ? `Sale times always show ${cityName(officialZone)} time first. Choose the city for the time under it.`
+          : "Choose the city for the times we show you.")
+      }
       footer={
         <>
           <DialogClose asChild>

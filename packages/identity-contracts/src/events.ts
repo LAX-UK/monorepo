@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { ACCOUNT_TIME_ZONE_MODES, accountPlaceZoneSchema } from "./account-time-zone.js";
 
 export const IDENTITY_EVENT_SCHEMA_VERSION = 1 as const;
 
@@ -45,6 +46,10 @@ export const userProfileUpdatedPayloadSchemaV1 = identityEventBaseSchemaV1.exten
   phone: z.string().nullable().optional(),
   phoneVerified: z.boolean().optional(),
   image: z.string().nullable().optional(),
+  /** LAX Account's time zone choice; both fields travel together when either changes. */
+  timeZoneMode: z.enum(ACCOUNT_TIME_ZONE_MODES).optional(),
+  /** Fixed: the chosen city. Automatic: the device zone last reported, or null. */
+  timeZone: accountPlaceZoneSchema.nullable().optional(),
   updatedAt: rfc3339Timestamp,
 });
 

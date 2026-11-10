@@ -1,5 +1,5 @@
 import type { Database } from "@auction/db";
-import { notificationPreference } from "@auction/db/schema";
+import { bidIdentityDirectory, notificationPreference } from "@auction/db/schema";
 import type { NotificationPreference } from "@auction/types";
 import type { InferSelectModel } from "drizzle-orm";
 import { eq } from "drizzle-orm";
@@ -67,7 +67,22 @@ export class DrizzleNotificationPreferenceRepository
       .from(notificationPreference)
       .where(eq(notificationPreference.userId, userId))
       .limit(1);
-    return row ? mapRow(row) : null;
+    return row ? this.withAccountZone(mapRow(row)) : null;
+  }
+
+  /**
+   * Quiet hours are read in the zone from LAX Account (the person's fixed city, or the zone their
+   * device last reported). Until Account has one, the zone saved with the hours still applies.
+   */
+  private async withAccountZone(
+    preference: NotificationPreference,
+  ): Promise<NotificationPreference> {
+    const [directory] = await this.db
+      .select({ timeZone: bidIdentityDirectory.timeZone })
+      .from(bidIdentityDirectory)
+      .where(eq(bidIdentityDirectory.subjectId, preference.userId))
+      .limit(1);
+    return directory?.timeZone ? { ...preference, quietTimeZone: directory.timeZone } : preference;
   }
 
   async isChannelEnabled(
@@ -181,6 +196,6 @@ export class DrizzleNotificationPreferenceRepository
       const again = await this.getForUser(userId);
       return again ?? patch;
     }
-    return mapRow(row);
+    return this.withAccountZone(mapRow(row));
   }
 }

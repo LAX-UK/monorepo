@@ -39,6 +39,8 @@ const USER_FIELD_OWNERSHIP = {
   phoneNumber: "identity",
   phoneNumberVerified: "identity",
   twoFactorEnabled: "identity",
+  timeZoneMode: "identity",
+  timeZone: "identity",
   pendingNewEmail: "identity",
   emailChangeOldOk: "identity",
   emailChangeNewOk: "identity",

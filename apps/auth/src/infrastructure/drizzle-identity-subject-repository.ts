@@ -1,3 +1,4 @@
+import type { AccountTimeZone, AccountTimeZoneChange } from "@auction/identity-contracts";
 import type { IdentityDatabase } from "@auction/identity-db";
 import { account, twoFactor, user } from "@auction/identity-db/schema";
 import { and, eq, ne, sql } from "drizzle-orm";
@@ -59,6 +60,60 @@ export class DrizzleIdentitySubjectRepository implements IIdentitySubjectReposit
       .where(eq(user.id, subjectId))
       .limit(1);
     return row ?? null;
+  }
+
+  async readTimeZone(subjectId: string): Promise<AccountTimeZone | null> {
+    const [row] = await this.db
+      .select({ mode: user.timeZoneMode, zone: user.timeZone })
+      .from(user)
+      .where(eq(user.id, subjectId))
+      .limit(1);
+    return row ?? null;
+  }
+
+  async updateTimeZone(
+    transaction: IdentityOperationTransaction,
+    subjectId: string,
+    change: AccountTimeZoneChange,
+    now: Date,
+  ): Promise<AccountTimeZone | null> {
+    const tx = identityOperationDb(this.db, transaction);
+    if (change.mode === "fixed") {
+      const [updated] = await tx
+        .update(user)
+        .set({ timeZoneMode: "fixed", timeZone: change.zone, updatedAt: now })
+        .where(eq(user.id, subjectId))
+        .returning({ mode: user.timeZoneMode, zone: user.timeZone });
+      return updated ?? null;
+    }
+    // Going back to automatic keeps the stored zone only if the device has reported one.
+    const [updated] = await tx
+      .update(user)
+      .set({ timeZoneMode: "automatic", timeZone: change.deviceZone, updatedAt: now })
+      .where(eq(user.id, subjectId))
+      .returning({ mode: user.timeZoneMode, zone: user.timeZone });
+    return updated ?? null;
+  }
+
+  async updateDeviceZone(
+    transaction: IdentityOperationTransaction,
+    subjectId: string,
+    deviceZone: string,
+    now: Date,
+  ): Promise<AccountTimeZone | null> {
+    const tx = identityOperationDb(this.db, transaction);
+    const [updated] = await tx
+      .update(user)
+      .set({ timeZone: deviceZone, updatedAt: now })
+      .where(
+        and(
+          eq(user.id, subjectId),
+          eq(user.timeZoneMode, "automatic"),
+          sql`${user.timeZone} IS DISTINCT FROM ${deviceZone}`,
+        ),
+      )
+      .returning({ mode: user.timeZoneMode, zone: user.timeZone });
+    return updated ?? null;
   }
 
   async updateProfile(

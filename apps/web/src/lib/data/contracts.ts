@@ -162,6 +162,11 @@ export type SessionUser = {
   twoFactorEnabled?: boolean;
   /** True only when live Identity security fields were available for this response. */
   securityStatusAvailable?: boolean;
+  /**
+   * From GET /users/me: the LAX Account time zone choice. Fixed: the chosen city. Automatic: the
+   * zone the person's device last reported, or null.
+   */
+  timeZone?: { mode: "automatic" | "fixed"; zone: string | null };
   /** From GET /users/me — synced UI preferences (theme, catalogue layout defaults, density). */
   uiPreferences?: {
     theme: "light" | "dark" | "system";
