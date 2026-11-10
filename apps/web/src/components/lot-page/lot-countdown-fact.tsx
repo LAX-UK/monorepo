@@ -1,7 +1,12 @@
 "use client";
 
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
-import type { LotInfoRow, LotInfoTone, LotRowCountdown } from "@/lib/lot-page/lot-time-rows";
+import type {
+  LotInfoRow,
+  LotInfoTone,
+  LotRowCountdown,
+  LotRowMoment,
+} from "@/lib/lot-page/lot-time-rows";
 import { useCountdown } from "@/lib/time/use-clock";
 import type { CountdownContext, CountdownDisplay } from "@auction/domain";
 import { useEffect, useRef, useState } from "react";
@@ -26,6 +31,8 @@ type Face = {
   sub: string | null;
   tone: LotInfoTone;
   spoken?: string;
+  /** Only while the second line is the official time: not for "The result follows in a moment". */
+  moment?: LotRowMoment | undefined;
 };
 
 /** What the row prints for the clock's answer; the server's own text until the clock runs. */
@@ -34,11 +41,23 @@ export function faceOf(
   c: LotRowCountdown,
   display: CountdownDisplay | null,
 ): Face {
-  const fallback: Face = { label: row.label, value: row.value, sub: row.sub, tone: row.tone };
+  const fallback: Face = {
+    label: row.label,
+    value: row.value,
+    sub: row.sub,
+    tone: row.tone,
+    moment: row.moment,
+  };
   if (!display) return fallback;
   switch (display.kind) {
     case "date":
-      return { label: c.date.label, value: c.date.value, sub: c.date.sub, tone: "calm" };
+      return {
+        label: c.date.label,
+        value: c.date.value,
+        sub: c.date.sub,
+        tone: "calm",
+        moment: row.moment,
+      };
     case "closing":
       return c.kind === "closes"
         ? {
@@ -56,6 +75,7 @@ export function faceOf(
             sub: c.sub,
             tone: display.tone,
             spoken: `${display.spoken} left`,
+            moment: row.moment,
           }
         : {
             label: "Opens in",
@@ -63,6 +83,7 @@ export function faceOf(
             sub: c.sub,
             tone: "calm",
             spoken: `Opens in ${display.spoken}`,
+            moment: row.moment,
           };
     default:
       return fallback;

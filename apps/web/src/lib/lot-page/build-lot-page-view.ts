@@ -1,3 +1,4 @@
+import { LONDON_TIME_ZONE } from "@auction/datetime";
 import {
   type LotBadgeCopy,
   type LotEstimate,
@@ -23,6 +24,8 @@ export type LotPageViewInput = {
   msLeft: number | null;
   startsAt: string | null;
   endsAt: string | null;
+  /** The zone of the lot's sale, which its times are quoted in; London when the lot has no sale. */
+  timeZone?: string;
   amounts: PriceBlockInput["amounts"];
   estimate: LotEstimate | null;
   bidCount: number;
@@ -55,7 +58,8 @@ type BadgeLabel = (input: LotPageViewInput) => string | null;
 
 /** Badge words that depend on the lot's own times; the rest come from the lifecycle table. */
 const BADGE_LABEL: Partial<Record<LotLifecycleKind, BadgeLabel>> = {
-  scheduled: ({ startsAt, now }) => (startsAt ? `Opens ${formatLotDay(startsAt, now)}` : null),
+  scheduled: ({ startsAt, now, timeZone = LONDON_TIME_ZONE }) =>
+    startsAt ? `Opens ${formatLotDay(startsAt, now, timeZone)}` : null,
 };
 
 function badgeOf(input: LotPageViewInput): LotBadgeCopy {
@@ -93,7 +97,7 @@ function priceInputOf(input: LotPageViewInput): PriceBlockInput {
     agentLimitLeft: viewer.agentLimitLeft,
     format: {
       money: (amount) => formatLotMoney(amount),
-      date: (iso) => formatLotDay(iso, input.now),
+      date: (iso) => formatLotDay(iso, input.now, input.timeZone ?? LONDON_TIME_ZONE),
     },
   };
 }
@@ -112,6 +116,7 @@ export function buildLotPageView(input: LotPageViewInput): LotPageView {
     now: input.now,
     extendedByMs: input.extendedByMs,
     extensions: input.extensions ?? 0,
+    timeZone: input.timeZone ?? LONDON_TIME_ZONE,
   });
   const rows = [estimateRow(input, price), timeRow].filter(
     (row): row is LotInfoRow => row !== null,

@@ -28,6 +28,14 @@ export type LotRowCountdown = {
   extensions: number;
 };
 
+/** The moment a time row is about, for the visitor's own time under the official one. */
+export type LotRowMoment = {
+  /** The instant, as an ISO string. */
+  iso: string;
+  /** The zone the sale quotes its times in. */
+  zone: string;
+};
+
 /** One label and value in the price block's fact grid. */
 export type LotInfoRow = {
   label: string;
@@ -38,6 +46,8 @@ export type LotInfoRow = {
   clock: boolean;
   /** Present when the row counts. */
   countdown?: LotRowCountdown;
+  /** Present when a bidder acts on the row's time, so it carries the visitor's time too. */
+  moment?: LotRowMoment;
 };
 
 export type TimeRowContext = {
@@ -50,6 +60,8 @@ export type TimeRowContext = {
   extendedByMs: number | null;
   /** How many late bids have extended the lot. */
   extensions: number;
+  /** The zone of the lot's sale, which every time on the row is quoted in. */
+  timeZone: string;
 };
 
 type TimeRowBuilder = (ctx: TimeRowContext) => LotInfoRow | null;
@@ -67,6 +79,11 @@ function lotFace(
   return { label: "Time left", text: "", tone: "calm" };
 }
 
+/** The moment a bidder acts on, so the row can add the visitor's own time under it. */
+function momentOf(iso: string | null, zone: string): { moment: LotRowMoment } | undefined {
+  return iso ? { moment: { iso, zone } } : undefined;
+}
+
 function momentMs(iso: string | null): number | null {
   if (!iso) return null;
   const ms = Date.parse(iso);
@@ -75,12 +92,12 @@ function momentMs(iso: string | null): number | null {
 
 /** "A late bid added 30 seconds · closes 18:42 GMT", or just the close when there is no figure. */
 function extendedSub(ctx: TimeRowContext): string | null {
-  const { endsAt, extendedByMs, now } = ctx;
+  const { endsAt, extendedByMs, now, timeZone: zone } = ctx;
   if (!endsAt) return null;
-  const closes = formatLotMoment(endsAt, now);
+  const closes = formatLotMoment(endsAt, now, zone);
   if (extendedByMs && extendedByMs > 0) {
     const seconds = Math.round(extendedByMs / 1000);
-    return `A late bid added ${seconds} second${seconds === 1 ? "" : "s"} · closes ${formatLotClock(endsAt)}`;
+    return `A late bid added ${seconds} second${seconds === 1 ? "" : "s"} · closes ${formatLotClock(endsAt, zone)}`;
   }
   return `Closes ${closes}`;
 }
@@ -94,37 +111,41 @@ function closingCountdown(ctx: TimeRowContext, extended: boolean): LotRowCountdo
     extended,
     date: {
       label: "Closes",
-      value: formatLotDay(ctx.endsAt, ctx.now),
-      sub: formatLotClock(ctx.endsAt),
+      value: formatLotDay(ctx.endsAt, ctx.now, ctx.timeZone),
+      sub: formatLotClock(ctx.endsAt, ctx.timeZone),
     },
-    sub: extended ? extendedSub(ctx) : `Closes ${formatLotMoment(ctx.endsAt, ctx.now)}`,
+    sub: extended
+      ? extendedSub(ctx)
+      : `Closes ${formatLotMoment(ctx.endsAt, ctx.now, ctx.timeZone)}`,
     extensions: ctx.extensions,
   };
 }
 
 const closingRow: TimeRowBuilder = (ctx) => {
-  const { msLeft, endsAt, now } = ctx;
+  const { msLeft, endsAt, now, timeZone: zone } = ctx;
   if (msLeft === null) return null;
   const countdown = closingCountdown(ctx, false);
   // Beyond a week the day is the answer, not a count of days and hours.
   if (msLeft > TIME_LEFT_DATE_BEYOND_MS && endsAt) {
     return {
       label: "Closes",
-      value: formatLotDay(endsAt, now),
-      sub: formatLotClock(endsAt),
+      value: formatLotDay(endsAt, now, zone),
+      sub: formatLotClock(endsAt, zone),
       tone: "calm",
       clock: true,
       ...(countdown ? { countdown } : {}),
+      ...momentOf(endsAt, zone),
     };
   }
   const face = lotFace(msLeft, false);
   return {
     label: face.label,
     value: face.text,
-    sub: endsAt ? `Closes ${formatLotMoment(endsAt, now)}` : null,
+    sub: endsAt ? `Closes ${formatLotMoment(endsAt, now, zone)}` : null,
     tone: face.tone,
     clock: true,
     ...(countdown ? { countdown } : {}),
+    ...momentOf(endsAt, zone),
   };
 };
 
@@ -140,6 +161,7 @@ const extendedRow: TimeRowBuilder = (ctx) => {
     tone: face.tone,
     clock: true,
     ...(countdown ? { countdown } : {}),
+    ...momentOf(ctx.endsAt, ctx.timeZone),
   };
 };
 
@@ -159,7 +181,7 @@ const closingNowRow: TimeRowBuilder = (ctx) => {
 };
 
 const opensRow: TimeRowBuilder = (ctx) => {
-  const { msLeft, startsAt, now } = ctx;
+  const { msLeft, startsAt, now, timeZone: zone } = ctx;
   if (msLeft === null || !startsAt) return null;
   const targetMs = momentMs(startsAt);
   const countdown: LotRowCountdown | undefined =
@@ -171,29 +193,31 @@ const opensRow: TimeRowBuilder = (ctx) => {
           extended: false,
           date: {
             label: "Opens",
-            value: formatLotDay(startsAt, now),
-            sub: formatLotClock(startsAt),
+            value: formatLotDay(startsAt, now, zone),
+            sub: formatLotClock(startsAt, zone),
           },
-          sub: formatLotMoment(startsAt, now),
+          sub: formatLotMoment(startsAt, now, zone),
           extensions: 0,
         };
   if (msLeft > TIME_LEFT_DATE_BEYOND_MS) {
     return {
       label: "Opens",
-      value: formatLotDay(startsAt, now),
-      sub: formatLotClock(startsAt),
+      value: formatLotDay(startsAt, now, zone),
+      sub: formatLotClock(startsAt, zone),
       tone: "calm",
       clock: true,
       ...(countdown ? { countdown } : {}),
+      ...momentOf(startsAt, zone),
     };
   }
   return {
     label: msLeft > 0 ? "Opens in" : "Opens",
     value: msLeft > 0 ? lotFace(msLeft, false).text : "Opening…",
-    sub: formatLotMoment(startsAt, now),
+    sub: formatLotMoment(startsAt, now, zone),
     tone: "calm",
     clock: true,
     ...(countdown ? { countdown } : {}),
+    ...momentOf(startsAt, zone),
   };
 };
 
@@ -205,12 +229,12 @@ const roomRow: TimeRowBuilder = () => ({
   clock: false,
 });
 
-const endedRow: TimeRowBuilder = ({ endsAt, now }) => {
+const endedRow: TimeRowBuilder = ({ endsAt, now, timeZone: zone }) => {
   if (!endsAt) return null;
   return {
     label: "Ended",
-    value: formatLotDay(endsAt, now),
-    sub: formatLotClock(endsAt),
+    value: formatLotDay(endsAt, now, zone),
+    sub: formatLotClock(endsAt, zone),
     tone: "ended",
     clock: false,
   };

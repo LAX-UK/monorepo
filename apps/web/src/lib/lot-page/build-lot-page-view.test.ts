@@ -345,3 +345,33 @@ describe("the time row counts", () => {
     expect(view.rows.find((r) => r.clock)?.value).toBe("Opening…");
   });
 });
+
+describe("buildLotPageView in the sale's own zone", () => {
+  it("quotes the close in the sale's zone and names it as the moment to convert", () => {
+    const view = buildLotPageView(input({ timeZone: "Europe/Paris" }));
+    expect(view.rows[1]?.sub).toBe("Closes Tue 3 Nov, 22:06 CET");
+    expect(view.rows[1]?.moment).toEqual({ iso: "2026-11-03T21:06:00Z", zone: "Europe/Paris" });
+  });
+
+  it("defaults to London", () => {
+    const view = buildLotPageView(input());
+    expect(view.rows[1]?.moment).toEqual({ iso: "2026-11-03T21:06:00Z", zone: "Europe/London" });
+  });
+
+  it("carries the opening moment for a lot that has not opened", () => {
+    const view = buildLotPageView(
+      input({ lifecycle: "scheduled", msLeft: 48 * HOUR, startsAt: "2026-11-03T10:00:00Z" }),
+    );
+    expect(view.rows.at(-1)?.moment).toEqual({
+      iso: "2026-11-03T10:00:00Z",
+      zone: "Europe/London",
+    });
+  });
+
+  it("carries none for the room's close or an ended lot", () => {
+    const room = buildLotPageView(input({ lifecycle: "liveSaleroom", msLeft: null }));
+    expect(room.rows.every((row) => row.moment === undefined)).toBe(true);
+    const ended = buildLotPageView(input({ lifecycle: "endedSold", msLeft: null }));
+    expect(ended.rows.every((row) => row.moment === undefined)).toBe(true);
+  });
+});

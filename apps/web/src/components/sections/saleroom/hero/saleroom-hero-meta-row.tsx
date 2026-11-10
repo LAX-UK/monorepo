@@ -4,6 +4,7 @@ import type { SaleHeroVM } from "@/components/sections/saleroom/view-models";
 import type { SaleFormatExplainerContext } from "@/lib/sale-format-explainer";
 import type { SaleDeliveryMode } from "@auction/types";
 import { StatusBadge } from "@auction/ui/lax";
+import { OfficialTime } from "@auction/ui/time";
 
 type Props = {
   hero: SaleHeroVM;
@@ -48,7 +49,15 @@ export function SaleroomHeroMetaRow({
         withExplainer
         {...(explainerContext ? { explainerContext } : {})}
       />
-      <p className="font-body text-sm text-on-surface-variant">{hero.dateLine}</p>
+      <p className="font-body text-sm text-on-surface-variant">
+        {hero.startTime ? (
+          <OfficialTime instant={hero.startTime} officialZone={hero.timeZone}>
+            {hero.dateLine}
+          </OfficialTime>
+        ) : (
+          hero.dateLine
+        )}
+      </p>
     </div>
   );
 }

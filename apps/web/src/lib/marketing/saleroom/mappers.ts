@@ -1,10 +1,6 @@
 import { mapPressRefToVM } from "@/components/sections/press/mappers";
 import { atgLiveBidLabel } from "@/lib/catalog/atg-white-label";
-import {
-  formatLondonDateRange,
-  formatLondonTimeWithZone,
-  formatLondonWhen,
-} from "@/lib/datetime/london-time";
+import { formatLondonWhen } from "@/lib/datetime/london-time";
 import { formatEstimateRangeWhole, formatMoney } from "@/lib/format-currency";
 import { type LotCardLineModel, lotCardLineModel } from "@/lib/lot-card/lot-card-line";
 import { lotEstimateLine } from "@/lib/lot-marketing-display";
@@ -24,6 +20,7 @@ import { saleVenueLabel } from "@/lib/sale-location-label";
 import { resolveSaleStreamContext } from "@/lib/sale-stream-policy";
 import { getSaleTypePresentation } from "@/lib/sale-type-presentation";
 import { salePath } from "@/lib/seo/url";
+import { LONDON_TIME_ZONE, formatDateRange, formatTimeWithZone } from "@auction/datetime";
 import { type LotMediaTreatmentIndex, lotMediaTreatment } from "@auction/domain";
 import type { BuyerPremiumTier, Lot, Sale, SaleDayMedia } from "@auction/types";
 import { toLotCardTimingVM, toSaleCardTimingVM, toSaleCountdownEndIso } from "@auction/validators";
@@ -35,9 +32,13 @@ import {
   resolveOnsiteMapUrl,
 } from "@auction/validators";
 
-/** "3–9 Nov 2026", in London time. */
-export function formatSaleDateLabel(start: Date, end: Date): string {
-  return formatLondonDateRange(start, end);
+/** "3–9 Nov 2026", in the sale's zone (London for a sale with none). */
+export function formatSaleDateLabel(
+  start: Date,
+  end: Date,
+  zone: string = LONDON_TIME_ZONE,
+): string {
+  return formatDateRange(start, end, zone);
 }
 
 /** "Thu 12 Nov, 21:00 GMT". */
@@ -61,8 +62,8 @@ export function formatRelativeShort(target: Date, now: Date): string {
 
 /** Hero time line: "29 Oct – 3 Nov 2026 · 21:00 GMT". The place has its own line. */
 export function formatHeroDateLine(sale: Sale): string {
-  const range = formatSaleDateLabel(sale.startTime, sale.endTime);
-  const time = formatLondonTimeWithZone(sale.startTime);
+  const range = formatSaleDateLabel(sale.startTime, sale.endTime, sale.timeZone);
+  const time = formatTimeWithZone(sale.startTime, sale.timeZone);
   return [range, time].join(" · ");
 }
 
@@ -187,7 +188,7 @@ export function mapSaleToHeroVM(
     title: sale.title,
     subtitle: sale.subtitle?.trim() || null,
     coverImage: sale.coverImages[0] ?? null,
-    startEndLabel: formatSaleDateLabel(sale.startTime, sale.endTime),
+    startEndLabel: formatSaleDateLabel(sale.startTime, sale.endTime, sale.timeZone),
     ...toSaleCardTimingVM(sale),
     isLive,
     shareUrl: opts.shareUrl,
@@ -196,6 +197,7 @@ export function mapSaleToHeroVM(
     formatLabel: getSaleTypePresentation(sale.deliveryMode).label,
     placeLabel: saleVenueLabel(sale),
     dateLine,
+    timeZone: sale.timeZone,
     previewOpensIso:
       isScheduled && sale.previewStartTime ? sale.previewStartTime.toISOString() : null,
     registrationClosesShort,

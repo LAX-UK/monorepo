@@ -1,5 +1,6 @@
-import type { LotInfoTone } from "@/lib/lot-page/lot-time-rows";
+import type { LotInfoTone, LotRowMoment } from "@/lib/lot-page/lot-time-rows";
 import { cn } from "@auction/ui";
+import { OfficialTime } from "@auction/ui/time";
 import { Clock } from "lucide-react";
 
 /** The clock tightens from calm to soon to final; words change with the colour. */
@@ -24,12 +25,22 @@ export type LotFactProps = {
   spoken?: string | undefined;
   /** Tints the value once to mark a late bid. */
   tinted?: boolean | undefined;
+  /** The instant the second line quotes, so the visitor's own time can sit under it. */
+  moment?: LotRowMoment | undefined;
 };
 
 /** One fact: a label, its value and an optional second line. */
-export function LotFact({ label, value, sub, tone, clock, spoken, tinted }: LotFactProps) {
+export function LotFact({ label, value, sub, tone, clock, spoken, tinted, moment }: LotFactProps) {
   return (
-    <div className={cn("min-w-0", TONE_CLASS[tone])}>
+    <div
+      className={cn(
+        "min-w-0",
+        TONE_CLASS[tone],
+        // The chip needs a line of its own on a phone: a visitor on another clock gets the
+        // whole row, so "Fri 13 Nov, 05:00 in Sydney" does not wrap in a half-width column.
+        moment && "max-sm:[.tz-away_&]:col-span-full",
+      )}
+    >
       <dt
         className={cn(
           "flex items-center gap-1.5 text-lax-13 leading-5",
@@ -54,7 +65,17 @@ export function LotFact({ label, value, sub, tone, clock, spoken, tinted }: LotF
           value
         )}
       </dd>
-      {sub ? <dd className="m-0 text-lax-13 leading-5 text-lax-muted">{sub}</dd> : null}
+      {sub ? (
+        <dd className="m-0 text-lax-13 leading-5 text-lax-muted">
+          {moment ? (
+            <OfficialTime instant={moment.iso} officialZone={moment.zone}>
+              {sub}
+            </OfficialTime>
+          ) : (
+            sub
+          )}
+        </dd>
+      ) : null}
     </div>
   );
 }

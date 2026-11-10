@@ -39,6 +39,8 @@ export type LotPageLot = Pick<
   /** From the public view: whether a reserve is set, and whether the bidding has met it. */
   hasReserve?: boolean | undefined;
   reserveMet?: boolean | null | undefined;
+  /** The zone of the lot's sale, which its times are quoted in. */
+  timeZone?: string | undefined;
 };
 
 export type LotPageViewSource = {
@@ -162,6 +164,7 @@ export function useLotPageView(source: LotPageViewSource): LotPageLive {
         msLeft: lifecycle.msLeft,
         startsAt: isoOf(startMs),
         endsAt: isoOf(endMs),
+        ...(lot.timeZone ? { timeZone: lot.timeZone } : {}),
         amounts: {
           starting: lot.startingPrice,
           current: currentPrice,

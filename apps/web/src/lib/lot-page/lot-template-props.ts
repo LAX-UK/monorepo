@@ -8,7 +8,7 @@ import {
   type LotMediaTreatment,
   type PublicBidHistory,
 } from "@auction/domain";
-import type { GalleryImage, Lot, PublicLotView, Sale } from "@auction/types";
+import type { GalleryImage, Lot, PublicLotView, Sale, WithSaleZone } from "@auction/types";
 import { toGalleryImages } from "@auction/types";
 
 type SalePick =
@@ -37,7 +37,7 @@ export type LotTemplateData = {
 };
 
 export type LotTemplateInput = {
-  auction: Lot | PublicLotView;
+  auction: WithSaleZone<Lot | PublicLotView>;
   lotPath: string;
   shareUrl: string;
   saleLifecycle: SalePick;
@@ -62,7 +62,7 @@ function premiumPercentOf(rate: string): string | null {
   return `${Number(value.toFixed(2))}%`;
 }
 
-function pageLotOf(auction: Lot | PublicLotView): LotPageLot {
+function pageLotOf(auction: WithSaleZone<Lot | PublicLotView>): LotPageLot {
   return {
     id: auction.id,
     status: auction.status,
@@ -75,6 +75,7 @@ function pageLotOf(auction: Lot | PublicLotView): LotPageLot {
     marketingDetails: auction.marketingDetails,
     startTime: new Date(auction.startTime).toISOString(),
     endTime: new Date(auction.endTime).toISOString(),
+    ...(auction.timeZone ? { timeZone: auction.timeZone } : {}),
     ...("hasReserve" in auction
       ? { hasReserve: auction.hasReserve, reserveMet: auction.reserveMet }
       : {}),

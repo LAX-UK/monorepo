@@ -1,29 +1,29 @@
 import {
-  formatLondonDayMonth,
-  formatLondonTimeWithZone,
-  formatLondonWeekday,
-  londonDayKey,
+  dayKey,
+  formatDayMonth,
+  formatTimeWithZone,
+  formatWeekday,
   toDate,
-} from "@/lib/datetime/london-time";
+} from "@auction/datetime";
 
-/** "Tue 10 Nov": a day a bidder plans around, in London time. */
-export function formatLotDay(iso: string, now: Date): string {
+/** "Tue 10 Nov": a day a bidder plans around, in the sale's own zone. */
+export function formatLotDay(iso: string, now: Date, zone: string): string {
   const date = toDate(iso);
   if (!date) return "";
-  return `${formatLondonWeekday(date)} ${formatLondonDayMonth(date, now)}`;
+  return `${formatWeekday(date, zone)} ${formatDayMonth(date, zone, now)}`;
 }
 
-/** "Tue 10 Nov, 18:00 GMT", or "today, 21:06 GMT" when the moment falls on London's today. */
-export function formatLotMoment(iso: string, now: Date): string {
+/** "Tue 10 Nov, 18:00 GMT", or "today, 21:06 GMT" when the moment falls on the sale's today. */
+export function formatLotMoment(iso: string, now: Date, zone: string): string {
   const date = toDate(iso);
   if (!date) return "";
-  const time = formatLondonTimeWithZone(date);
-  if (londonDayKey(date) === londonDayKey(now)) return `today, ${time}`;
-  return `${formatLotDay(iso, now)}, ${time}`;
+  const time = formatTimeWithZone(date, zone);
+  if (dayKey(date, zone) === dayKey(now, zone)) return `today, ${time}`;
+  return `${formatLotDay(iso, now, zone)}, ${time}`;
 }
 
 /** "21:06 GMT". */
-export function formatLotClock(iso: string): string {
+export function formatLotClock(iso: string, zone: string): string {
   const date = toDate(iso);
-  return date ? formatLondonTimeWithZone(date) : "";
+  return date ? formatTimeWithZone(date, zone) : "";
 }
