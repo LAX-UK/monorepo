@@ -13,6 +13,7 @@ import {
   isAtgAuctionTypeAvailable,
   isLotOnAtg,
   isSaleOnAtg,
+  isSaleZoneFixedByAtg,
   resolveSaleSellingPlatform,
   toAtgSaleSellingSummary,
 } from "./atg.js";
@@ -385,5 +386,27 @@ describe("ATG auction type availability", () => {
     expect(isAtgAuctionTypeAvailable("Timed")).toBe(true);
     expect(isAtgAuctionTypeAvailable("Live")).toBe(false);
     expect(Object.keys(ATG_AUCTION_TYPE_AVAILABLE)).toEqual(["Timed", "Live"]);
+  });
+});
+
+describe("isSaleZoneFixedByAtg", () => {
+  it.each(["created", "approved", "published"] as const)(
+    "is fixed while ATG is %s",
+    (remoteStatus) => {
+      expect(isSaleZoneFixedByAtg({ remoteStatus, sellingPlatform: "atg" })).toBe(true);
+    },
+  );
+
+  it("is fixed for an ATG-owned sale after it closed", () => {
+    expect(isSaleZoneFixedByAtg({ remoteStatus: "closed", sellingPlatform: "atg" })).toBe(true);
+  });
+
+  it("stays editable when ATG has not got the auction", () => {
+    expect(isSaleZoneFixedByAtg({ remoteStatus: null, sellingPlatform: "free" })).toBe(false);
+    expect(isSaleZoneFixedByAtg({ remoteStatus: "pending", sellingPlatform: "free" })).toBe(false);
+    expect(isSaleZoneFixedByAtg({ remoteStatus: "closed", sellingPlatform: "cancelled" })).toBe(
+      false,
+    );
+    expect(isSaleZoneFixedByAtg({ remoteStatus: null, sellingPlatform: "lax" })).toBe(false);
   });
 });

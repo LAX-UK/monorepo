@@ -84,6 +84,8 @@ type Props = {
   connectRequiredByLotId?: ConnectRequiredByLotId;
   /** Sellers who must set up payouts before the sale goes live, named once each. */
   sellersWithoutPayouts?: readonly NamedSellerWithoutPayouts[];
+  /** ATG holds the sale's auction, so its time zone is fixed there. */
+  timeZoneFixedByAtg?: boolean;
 };
 
 export function SaleSetupWizard({
@@ -104,6 +106,7 @@ export function SaleSetupWizard({
   pendingRegistrationCount = null,
   connectRequiredByLotId,
   sellersWithoutPayouts,
+  timeZoneFixedByAtg = false,
 }: Props) {
   const router = useRouter();
   const activeSaleZone = sale?.timeZone ?? null;
@@ -424,6 +427,7 @@ export function SaleSetupWizard({
                       isDraft
                       savedTimeZone={activeSaleZone ?? undefined}
                       timeZoneLocked={activeSale ? isSaleTimeZoneLocked(activeSale) : false}
+                      timeZoneFixedByAtg={timeZoneFixedByAtg}
                       isSaleroom={isSaleroom}
                       pending={pending}
                       fields={fields}

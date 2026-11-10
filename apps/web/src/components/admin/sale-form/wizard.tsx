@@ -48,6 +48,8 @@ type Props = {
   venues?: Venue[];
   /** True once the sale has been announced, even if it is a draft again: its zone is fixed. */
   timeZoneLocked?: boolean;
+  /** ATG holds the sale's auction, so its zone is fixed there. */
+  timeZoneFixedByAtg?: boolean;
 };
 
 const SUMMARY_ORDER = SALE_STEP_FIELDS.flat().map(String);
@@ -65,6 +67,7 @@ export function AdminSaleForm({
   lots = [],
   venues = [],
   timeZoneLocked = false,
+  timeZoneFixedByAtg = false,
 }: Props) {
   const isDraft = !saleStatus || saleStatus === "draft";
   const streamUrlEditable = isDraft || saleStatus === "scheduled" || saleStatus === "active";
@@ -183,6 +186,7 @@ export function AdminSaleForm({
           isDraft={isDraft}
           savedTimeZone={defaultValues.timeZone}
           timeZoneLocked={timeZoneLocked}
+          timeZoneFixedByAtg={timeZoneFixedByAtg}
           isSaleroom={isSaleroom}
           pending={pending}
           fields={fields}

@@ -1,5 +1,6 @@
 import { emptyAdminSaleFormValues } from "@/lib/forms/schemas/admin-sale-defaults";
 import type { AdminSaleFormValues } from "@/lib/forms/schemas/admin-sale-form";
+import { ATG_TIME_ZONE_LOCKED_NOTE } from "@auction/types";
 import { SALE_TIME_ZONE_LOCKED_MESSAGE } from "@auction/validators";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { type UseFormReturn, useForm } from "react-hook-form";
@@ -11,11 +12,13 @@ let form: UseFormReturn<AdminSaleFormValues>;
 function Harness({
   isDraft = true,
   timeZoneLocked = false,
+  timeZoneFixedByAtg = false,
   isSaleroom = false,
   defaults = {},
 }: {
   isDraft?: boolean;
   timeZoneLocked?: boolean;
+  timeZoneFixedByAtg?: boolean;
   isSaleroom?: boolean;
   defaults?: Partial<AdminSaleFormValues>;
 }) {
@@ -27,6 +30,7 @@ function Harness({
       form={form}
       isDraft={isDraft}
       timeZoneLocked={timeZoneLocked}
+      timeZoneFixedByAtg={timeZoneFixedByAtg}
       isSaleroom={isSaleroom}
     />
   );
@@ -83,6 +87,13 @@ describe("ScheduleTimesSection time zone", () => {
   it("stays locked for a draft that was announced once and unpublished", () => {
     render(<Harness isDraft timeZoneLocked />);
     expect(screen.queryByRole("combobox", { name: /time zone/i })).not.toBeInTheDocument();
+  });
+
+  it("locks a draft that ATG holds, and says why instead of the announced-sale reason", () => {
+    render(<Harness isDraft timeZoneFixedByAtg />);
+    expect(screen.queryByRole("combobox", { name: /time zone/i })).not.toBeInTheDocument();
+    expect(screen.getByText(new RegExp(ATG_TIME_ZONE_LOCKED_NOTE))).toBeInTheDocument();
+    expect(screen.queryByText(/fixed once a sale is announced/)).not.toBeInTheDocument();
   });
 
   it("leads with the usual cities before anything is typed", async () => {

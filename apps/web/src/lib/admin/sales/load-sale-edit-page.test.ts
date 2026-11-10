@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { loadAdminSaleEditPage } from "./load-sale-edit-page";
 
-const { loadDetail, getCategories, getDocuments } = vi.hoisted(() => ({
+const { loadDetail, getCategories, getDocuments, getSelling } = vi.hoisted(() => ({
+  getSelling: vi.fn(),
   loadDetail: vi.fn(),
   getCategories: vi.fn(),
   getDocuments: vi.fn(),
@@ -9,6 +10,10 @@ const { loadDetail, getCategories, getDocuments } = vi.hoisted(() => ({
 
 vi.mock("@/lib/admin/load-sale-detail", () => ({
   loadAdminSaleDetail: loadDetail,
+}));
+
+vi.mock("@/lib/data/http/atg.server", () => ({
+  getAtgSaleSellingSummary: getSelling,
 }));
 
 vi.mock("@/lib/data/http/categories.server", () => ({
@@ -36,6 +41,7 @@ describe("loadAdminSaleEditPage", () => {
     });
     getCategories.mockResolvedValue([{ id: "cat-1", name: "Paintings" }]);
     getDocuments.mockResolvedValue([{ id: "doc-1", title: "Terms" }]);
+    getSelling.mockResolvedValue({ sellingPlatform: "lax", remoteStatus: null });
   });
 
   it("loads edit bundle", async () => {
@@ -44,5 +50,16 @@ describe("loadAdminSaleEditPage", () => {
     expect(model.categories).toHaveLength(1);
     expect(model.saleDocuments).toHaveLength(1);
     expect(model.lots).toHaveLength(1);
+    expect(model.zoneFixedByAtg).toBe(false);
+  });
+
+  it("marks the zone fixed when ATG holds the auction", async () => {
+    getSelling.mockResolvedValue({ sellingPlatform: "lax", remoteStatus: "created" });
+    expect((await loadAdminSaleEditPage("sale-1")).zoneFixedByAtg).toBe(true);
+  });
+
+  it("leaves the zone editable when the ATG lookup fails", async () => {
+    getSelling.mockResolvedValue(null);
+    expect((await loadAdminSaleEditPage("sale-1")).zoneFixedByAtg).toBe(false);
   });
 });
