@@ -1,5 +1,3 @@
-import { describeMoment } from "@auction/datetime";
-import { lotPath, salePath } from "@auction/types";
 import AxeBuilder from "@axe-core/playwright";
 import {
   type APIRequestContext,
@@ -42,12 +40,20 @@ type Subject = {
 
 type Json = { data?: Record<string, unknown> };
 
+/**
+ * The workspace packages load when a test runs, not when Playwright lists the tests: the listing
+ * step runs before the packages are built.
+ */
+const loadDatetime = () => import("@auction/datetime");
+const loadTypes = () => import("@auction/types");
+
 async function getJson(request: APIRequestContext, path: string) {
   const res = await request.get(`${API}${path}`);
   return ((await res.json()) as Json).data ?? {};
 }
 
 async function resolveSubjects(request: APIRequestContext): Promise<Subject[]> {
+  const { lotPath, salePath } = await loadTypes();
   const subjects: Subject[] = [];
   const lot = (await resolveLotRoutes(request)).find((route) => route.name === "lot-live");
   if (lot) {
@@ -155,6 +161,7 @@ async function visit(
 const chipOf = (page: Page) => page.getByRole("button", { name: /^Your time:/ });
 
 async function expectChipState(page: Page, subject: Subject, zone: string) {
+  const { describeMoment } = await loadDatetime();
   const viewerZone = zone === "UTC" ? "UTC" : zone;
   const moment = describeMoment(new Date(subject.instant), {
     officialZone: subject.officialZone,
