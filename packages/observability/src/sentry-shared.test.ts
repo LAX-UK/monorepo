@@ -7,6 +7,7 @@ import {
   shouldDropInfrastructureNoise,
   shouldDropSentryEvent,
   shouldDropThirdPartyClientNoise,
+  shouldDropUnparsableScriptNoise,
 } from "./sentry-shared.js";
 
 function errorEvent(partial: Omit<Partial<ErrorEvent>, "type">): ErrorEvent {
@@ -318,5 +319,59 @@ describe("scrubSentryTransaction", () => {
     scrubSentryTransaction(event);
 
     expect(event.request?.headers).toEqual({ accept: "application/json" });
+  });
+});
+
+describe("shouldDropUnparsableScriptNoise", () => {
+  const syntaxError = (partial: Omit<Partial<ErrorEvent>, "type">, filenames: string[]) =>
+    errorEvent({
+      ...partial,
+      exception: {
+        values: [
+          {
+            type: "SyntaxError",
+            value: "Unexpected token '='",
+            stacktrace: { frames: filenames.map((filename) => ({ filename })) },
+          },
+        ],
+      },
+    });
+  const ourChunk = "app:///_next/static/chunks/54058-a4b18291697019fa.js";
+
+  it("drops a syntax error from a browser older than the build target", () => {
+    const event = syntaxError({ contexts: { browser: { name: "Chrome", version: "45.0.2454" } } }, [
+      ourChunk,
+    ]);
+    expect(shouldDropUnparsableScriptNoise(event)).toBe(true);
+  });
+
+  it("reads the browser from the tag when the context is missing", () => {
+    const event = syntaxError(
+      { tags: { browser: "Chrome 45.0.2454", "browser.name": "Chrome" } },
+      [],
+    );
+    expect(shouldDropUnparsableScriptNoise(event)).toBe(true);
+  });
+
+  it("drops a syntax error in a script an in-app browser injected", () => {
+    const event = syntaxError({ contexts: { browser: { name: "Facebook", version: "586.0.0" } } }, [
+      "app://browser_declutter:37:40",
+    ]);
+    expect(shouldDropUnparsableScriptNoise(event)).toBe(true);
+  });
+
+  it("keeps a syntax error from a supported browser in our own chunk", () => {
+    const event = syntaxError({ contexts: { browser: { name: "Chrome", version: "126.0.0" } } }, [
+      ourChunk,
+    ]);
+    expect(shouldDropUnparsableScriptNoise(event)).toBe(false);
+  });
+
+  it("keeps other error types from old browsers", () => {
+    const event = errorEvent({
+      contexts: { browser: { name: "Chrome", version: "45.0.2454" } },
+      exception: { values: [{ type: "TypeError", value: "x is undefined" }] },
+    });
+    expect(shouldDropUnparsableScriptNoise(event)).toBe(false);
   });
 });
