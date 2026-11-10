@@ -2,6 +2,8 @@ import { describe, expect, it, vi } from "vitest";
 
 const claim = vi.hoisted(() => ({ tryClaimProcessedWebhookEvent: vi.fn() }));
 vi.mock("../../lib/processed-webhook-event.js", () => claim);
+const sentry = vi.hoisted(() => ({ captureException: vi.fn() }));
+vi.mock("@auction/observability", () => ({ Sentry: sentry }));
 
 import type { Database } from "@auction/db";
 import type { KycServiceDeps } from "./kyc-context.js";
@@ -112,6 +114,30 @@ describe("applying an identity decision", () => {
     expect(order).not.toContain("committed");
   });
 
+  it("says which session is stuck, without naming the person, when the notices cannot be queued", async () => {
+    claim.tryClaimProcessedWebhookEvent.mockResolvedValue({ claimed: true });
+    const { service, notices } = setup();
+    const failure = new Error("outbox unavailable");
+    vi.mocked(notices.queueOutcome).mockRejectedValueOnce(failure);
+    const logged = vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+    await expect(service.handleDecisionWebhook(body, "sig", "client")).rejects.toThrow(failure);
+
+    const line = String(logged.mock.calls[0]?.[0]);
+    expect(JSON.parse(line)).toEqual({
+      msg: "kyc_notice_queue_failed",
+      providerSessionId: "session-1",
+      providerAttemptId: "attempt-1",
+      kind: "outcome",
+      error: "outbox unavailable",
+    });
+    expect(line).not.toContain("u1");
+    expect(sentry.captureException).toHaveBeenCalledWith(failure, {
+      tags: { kyc_session: "session-1", kyc_notice: "outcome" },
+    });
+    logged.mockRestore();
+  });
+
   it("queues a resubmission request in the same transaction", async () => {
     claim.tryClaimProcessedWebhookEvent.mockResolvedValue({ claimed: true });
     const resubmission = {
@@ -136,5 +162,17 @@ describe("applying an identity decision", () => {
     await service.handleDecisionWebhook(body, "sig", "client");
 
     expect(notices.queueOutcome).toHaveBeenCalledWith(null, notice);
+  });
+
+  it("logs when notices are queued without a transaction", async () => {
+    const { service } = setup({ transactional: false });
+    const warned = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+
+    await service.handleDecisionWebhook(body, "sig", "client");
+
+    expect(warned).toHaveBeenCalledWith(
+      JSON.stringify({ msg: "kyc_notice_queued_without_transaction" }),
+    );
+    warned.mockRestore();
   });
 });

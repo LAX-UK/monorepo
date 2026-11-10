@@ -1,9 +1,12 @@
+import type { Database } from "@auction/db";
+import { sql } from "drizzle-orm";
 import { vi } from "vitest";
 import type { AmlServiceDeps } from "../../services/aml/aml-context.js";
 import type { AmlMonitoringService } from "../../services/aml/aml-monitoring.service.js";
 import { AmlWebhookIngestService } from "../../services/aml/aml-webhook-ingest.service.js";
 import type { KycServiceDeps } from "../../services/kyc/kyc-context.js";
 import type { KycDecisionProcessor } from "../../services/kyc/kyc-decision-processor.js";
+import type { IKycNoticeQueue } from "../../services/kyc/kyc-notice-queue.js";
 import { KycWebhookIngestService } from "../../services/kyc/kyc-webhook-ingest.service.js";
 import { type DeliveryCase, eventSink, stub } from "./support.js";
 
@@ -12,9 +15,11 @@ const SESSION_ID = "veriff_session_duplicate_delivery";
 const kycDeps = (
   runner: KycServiceDeps["transactionRunner"],
   sessionRepo: Record<string, unknown>,
+  notices: IKycNoticeQueue | null = null,
 ) =>
   stub<KycServiceDeps>({
     transactionRunner: runner,
+    notices,
     sessionRepo: stub(sessionRepo),
     sharedSecret: "secret",
     veriffClient: { isConfigured: () => true },
@@ -32,19 +37,67 @@ const knownSession = {
   getDecisionPayload: async () => null,
 };
 
+/** The person an identity decision is for: one per event, so cases never share rows. */
+const userIdFor = (eventId: string) => `kycn_${eventId}`;
+
+const countOf = async (owner: Database, query: ReturnType<typeof sql>) =>
+  Number((await owner.execute(query)).rows[0]?.count ?? 0);
+
+/** The account an identity decision is for, which the owner seeds (api_app cannot). */
+const decisionFixture: NonNullable<DeliveryCase["fixture"]> = {
+  async seed(owner, eventId) {
+    const userId = userIdFor(eventId);
+    const address = `${userId}@integration.test`;
+    await owner.execute(sql`
+      insert into "user" (id, name, email, email_verified, created_at, updated_at)
+      values (${userId}, 'Ada Lovelace', ${address}, true, now(), now())`);
+    await owner.execute(sql`
+      insert into bid_identity_directory (subject_id, email, name, email_verified, identity_created_at)
+      values (${userId}, ${address}, 'Ada Lovelace', true, now())`);
+  },
+  async stored(owner, eventId) {
+    const userId = userIdFor(eventId);
+    return {
+      emails: await countOf(
+        owner,
+        sql`select count(*) as count from email_outbox where user_id = ${userId}`,
+      ),
+      notices: await countOf(
+        owner,
+        sql`select count(*) as count from notification where user_id = ${userId}`,
+      ),
+    };
+  },
+  expected: { emails: 1, notices: 1 },
+  async clean(owner, eventId) {
+    const userId = userIdFor(eventId);
+    await owner.execute(sql`delete from notification where user_id = ${userId}`);
+    await owner.execute(sql`delete from email_outbox where user_id = ${userId}`);
+    await owner.execute(sql`delete from bid_identity_directory where subject_id = ${userId}`);
+    await owner.execute(sql`delete from "user" where id = ${userId}`);
+  },
+};
+
 export const identityCases: DeliveryCase[] = [
   {
     name: "identity check decision",
     claimsTable: "processed_webhook_events",
     claimedEventId: (eventId) => `${eventId}:none:decision`,
-    build(eventId, runner) {
+    fixture: decisionFixture,
+    build(eventId, runner, notices) {
       const apply = vi.fn(async () => ({
         verification: null,
         appliedUserKycUpdate: true,
         shouldProgressIndividuals: false,
+        outcomeNotify: {
+          userId: userIdFor(eventId),
+          outcome: "approved" as const,
+          providerSessionId: eventId,
+          providerAttemptId: null,
+        },
       }));
       const service = new KycWebhookIngestService(
-        kycDeps(runner, knownSession),
+        kycDeps(runner, knownSession, notices ?? stub<IKycNoticeQueue>()),
         stub({ verify: () => undefined }),
         stub<KycDecisionProcessor>({ apply }),
       );

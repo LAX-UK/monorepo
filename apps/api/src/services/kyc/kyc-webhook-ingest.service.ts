@@ -1,4 +1,5 @@
 import type { Database } from "@auction/db";
+import { Sentry } from "@auction/observability";
 import type { KycVerification } from "@auction/types";
 import type { z } from "zod";
 import { tryClaimProcessedWebhookEvent } from "../../lib/processed-webhook-event.js";
@@ -107,9 +108,45 @@ export class KycWebhookIngestService implements IKycWebhookIngestService {
     applied: KycDecisionApplyResult,
   ): Promise<KycWebhookHandleResult> {
     const { outcomeNotify, resubmissionNotify, ...result } = applied;
-    if (outcomeNotify) await this.deps.notices?.queueOutcome(tx, outcomeNotify);
-    if (resubmissionNotify) await this.deps.notices?.queueResubmission(tx, resubmissionNotify);
+    const { notices } = this.deps;
+    if (!notices || (!outcomeNotify && !resubmissionNotify)) return result;
+    if (!tx) {
+      console.warn(JSON.stringify({ msg: "kyc_notice_queued_without_transaction" }));
+    }
+    try {
+      if (outcomeNotify) await notices.queueOutcome(tx, outcomeNotify);
+      if (resubmissionNotify) await notices.queueResubmission(tx, resubmissionNotify);
+    } catch (err) {
+      this.reportQueueFailure(err, outcomeNotify ?? resubmissionNotify, Boolean(outcomeNotify));
+      throw err;
+    }
     return result;
+  }
+
+  /**
+   * A decision that cannot be stored because its notices cannot be queued fails the delivery, and
+   * Veriff sends it again. Says so, by session and never by person, so a decision stuck in this
+   * loop is seen.
+   */
+  private reportQueueFailure(
+    err: unknown,
+    notice: { providerSessionId: string; providerAttemptId: string | null } | undefined,
+    outcome: boolean,
+  ): void {
+    const providerSessionId = notice?.providerSessionId ?? null;
+    const kind = outcome ? "outcome" : "resubmission";
+    console.error(
+      JSON.stringify({
+        msg: "kyc_notice_queue_failed",
+        providerSessionId,
+        providerAttemptId: notice?.providerAttemptId ?? null,
+        kind,
+        error: err instanceof Error ? err.message : String(err),
+      }),
+    );
+    Sentry.captureException(err, {
+      tags: { kyc_session: providerSessionId ?? "unknown", kyc_notice: kind },
+    });
   }
 
   async handleEventWebhook(

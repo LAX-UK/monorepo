@@ -96,6 +96,9 @@ describe.skipIf(!HAS_DB)(
       const rows = await outboxRows();
       expect(rows).toHaveLength(1);
       expect(rows[0]?.id).toBe(before?.id);
+      // The in-app notice has no key, so only the decision's claim keeps a repeat delivery from
+      // queueing it again (see the duplicate-delivery tests); queued directly, it is written again.
+      expect(await notificationRows()).toHaveLength(2);
     });
   },
 );
