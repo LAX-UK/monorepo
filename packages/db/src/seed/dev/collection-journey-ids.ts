@@ -3,6 +3,7 @@
  * admin-collections-desk.spec.ts) share with the seed that creates their data. Plain values and
  * pure functions only, so browser tests can import this file without loading the database schema.
  */
+import { LONDON_TIME_ZONE, dayKey, offsetMinutes } from "@auction/datetime";
 
 export const COLLECTION_JOURNEY_IDS = {
   venue: "c0110001-0000-4000-8000-000000000001",
@@ -65,17 +66,11 @@ export const COLLECTION_JOURNEY_NAMES = {
   },
 } as const;
 
-const LONDON = "Europe/London";
 const DAY_MS = 86_400_000;
 
 /** The London calendar day of an instant, as "2026-11-10". */
 export function londonDay(instant: Date): string {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: LONDON,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(instant);
+  return dayKey(instant, LONDON_TIME_ZONE);
 }
 
 const dayParts = (day: string) => {
@@ -112,22 +107,11 @@ export function workday(day: string, offset: number): string {
 export function londonInstant(day: string, hhmm: string): Date {
   const { year, month, date } = dayParts(day);
   const [hours, minutes] = hhmm.split(":").map(Number) as [number, number];
-  const wanted = Date.UTC(year, month - 1, date, hours, minutes);
-  let guess = wanted;
-  // The offset of London from UTC at the guess; twice, because the guess itself may sit across a change.
+  const wall = Date.UTC(year, month - 1, date, hours, minutes);
+  // London's offset from UTC at the guess; twice, because the guess may sit across a change.
+  let guess = wall;
   for (let round = 0; round < 2; round += 1) {
-    const parts = new Intl.DateTimeFormat("en-GB", {
-      timeZone: LONDON,
-      hourCycle: "h23",
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-    }).formatToParts(new Date(guess));
-    const get = (type: string) => Number(parts.find((part) => part.type === type)?.value);
-    const wall = Date.UTC(get("year"), get("month") - 1, get("day"), get("hour"), get("minute"));
-    guess -= wall - wanted;
+    guess = wall - offsetMinutes(new Date(guess), LONDON_TIME_ZONE) * 60_000;
   }
   return new Date(guess);
 }
