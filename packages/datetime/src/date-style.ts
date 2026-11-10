@@ -24,10 +24,17 @@ export function formatTimeWithZone(date: Date, zone: string): string {
   return `${formatTime(date, zone)} ${shortZoneName(zone, date)}`;
 }
 
-/** "3 Nov 2026", or "3 November 2026" with `month: "long"`. */
-export function formatDate(date: Date, zone: string, options: { month?: "short" | "long" } = {}) {
+/** "3 Nov 2026", or "3 November 2026" with `month: "long"`. `engineSept` keeps the runtime's "Sept" (see calendar-formats). */
+export function formatDate(
+  date: Date,
+  zone: string,
+  options: { month?: "short" | "long"; engineSept?: boolean } = {},
+) {
   const formats = zoneFormats(zone);
-  return (options.month === "long" ? formats.dayLongMonthYear : formats.dayMonthYear).format(date);
+  if (options.month === "long") return formats.dayLongMonthYear.format(date);
+  return options.engineSept
+    ? formats.dayMonthYearEngine.format(date)
+    : formats.dayMonthYear.format(date);
 }
 
 /** "Tue". */
