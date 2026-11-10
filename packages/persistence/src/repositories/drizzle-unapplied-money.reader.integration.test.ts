@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { createDb } from "@auction/db";
+import { type Database, createDb } from "@auction/db";
 import { domainEvent } from "@auction/db/schema";
 import {
   UNAPPLIED_MONEY_EVENT,
@@ -98,5 +98,42 @@ describe.skipIf(!HAS_DB)("unapplied money reader (integration)", () => {
     const open = await reader.listOpen({ limit: 500 });
     expect(open.some((m) => m.dedupeKey === event.payload.dedupeKey)).toBe(false);
     expect(await reader.listOpenByChargeId(`ch_unapplied_${run}_done`)).toEqual([]);
+  });
+
+  it("lists open balance tasks of one currency, in the caller's transaction", async () => {
+    const customer = `cus_${run}_cur`;
+    const balance = (currency: string) =>
+      unappliedMoneyPayload({
+        reason: "customer_balance_unapplied",
+        paymentId: null,
+        paymentGroupId: null,
+        stripePaymentIntentId: null,
+        stripeChargeId: null,
+        stripeCustomerId: customer,
+        stripeEventId: `evt_${run}_${currency}`,
+        amountCents: 10_000,
+        currency,
+      });
+    const rows = ["gbp", "eur"].map((currency) => ({
+      aggregateType: "payment_group",
+      aggregateId: `grp-${run}-${currency}`,
+      eventType: UNAPPLIED_MONEY_EVENT,
+      payload: balance(currency),
+      producer: "integration-test",
+    }));
+    await db.insert(domainEvent).values(rows);
+    await db.transaction(async (tx) => {
+      const t = tx as unknown as Database;
+      const gbp = await reader.listOpen(
+        { stripeCustomerId: customer, currency: "gbp", limit: 10 },
+        t,
+      );
+      const eur = await reader.listOpen(
+        { stripeCustomerId: customer, currency: "EUR", limit: 10 },
+        t,
+      );
+      expect(gbp.map((m) => m.currency)).toEqual(["GBP"]);
+      expect(eur.map((m) => m.currency)).toEqual(["EUR"]);
+    });
   });
 });

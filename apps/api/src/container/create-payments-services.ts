@@ -61,7 +61,7 @@ import {
 import { UnappliedMoneyRecorder } from "../services/payment/unapplied-money.recorder.js";
 import { StripePaymentWebhookService } from "../services/stripe-payment-webhook.service.js";
 import { UnappliedMoneyRefundHandler } from "../services/stripe-webhook/unapplied-money-refund.handler.js";
-import { SessionRecordingStripeGateway } from "../services/stripe/session-recording-stripe-gateway.js";
+import { CheckoutSessionLifecycle } from "../services/stripe/stripe-checkout-session-lifecycle.js";
 import { StripeCustomerGateway } from "../services/stripe/stripe-customer.gateway.js";
 import { StripePaymentGateway } from "../services/stripe/stripe-payment-gateway.js";
 import { XeroOAuthService } from "../services/xero-oauth.service.js";
@@ -160,7 +160,12 @@ export function createPaymentsServices(
     paymentRefundReconcileService,
     notificationOutboxService,
   } = platform;
-  const { marketingEventService, mediaUrlResolver, sourceOfFundsService } = complianceMedia;
+  const {
+    marketingEventService,
+    mediaUrlResolver,
+    catalogueMediaUrlResolver,
+    sourceOfFundsService,
+  } = complianceMedia;
   const { itemSubmissionAdminApi } = catalog;
 
   const errorReporter: IErrorReporter = env.SENTRY_DSN_API
@@ -272,16 +277,29 @@ export function createPaymentsServices(
     stripeClientFactory,
   );
 
-  const checkoutGateway = new SessionRecordingStripeGateway(stripePaymentGateway, checkoutSessions);
+  const checkoutSessionLifecycle = new CheckoutSessionLifecycle(
+    stripePaymentGateway,
+    checkoutSessions,
+    errorReporter,
+  );
   const stripeCheckoutService = stripePaymentGateway.isConfigured()
     ? new StripeCheckoutService([
-        new CardCheckoutRail(env, checkoutGateway, paymentRepo, mediaUrlResolver),
+        // The stable resolver keeps the hero image's URL the same all day, so repeating a Pay
+        // reproduces the checkout's parameters and gets the same session back.
+        new CardCheckoutRail(
+          env,
+          stripePaymentGateway,
+          checkoutSessionLifecycle,
+          paymentRepo,
+          catalogueMediaUrlResolver,
+        ),
         new BankTransferCheckoutRail(
           env,
-          checkoutGateway,
+          stripePaymentGateway,
+          checkoutSessionLifecycle,
           stripeCustomerGateway,
           paymentRepo,
-          mediaUrlResolver,
+          catalogueMediaUrlResolver,
         ),
       ])
     : null;
