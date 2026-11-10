@@ -101,6 +101,7 @@ export function mapSaleRow(row: SaleRow, categoryIds: string[] = []): Sale {
     locationPostcode: row.locationPostcode ?? null,
     locationCountry: row.locationCountry ?? null,
     venueId: row.venueId ?? null,
+    timeZone: row.timeZone ?? "Europe/London",
     status: row.status as SaleStatus,
     startTime: row.startTime,
     endTime: row.endTime,

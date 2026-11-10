@@ -90,6 +90,7 @@ const lotRowSchema = z.preprocess(toObjectRecord, z.record(z.unknown())).transfo
       row.dutchLastDecrementAt == null ? null : zCoerceDate.parse(row.dutchLastDecrementAt),
     startTime: zCoerceDate.parse(row.startTime),
     endTime: zCoerceDate.parse(row.endTime),
+    ...(typeof row.timeZone === "string" && row.timeZone !== "" ? { timeZone: row.timeZone } : {}),
     status: row.status as Lot["status"],
     winnerId: row.winnerId == null ? null : String(row.winnerId),
     ...(typeof row.hasWinner === "boolean" ? { hasWinner: row.hasWinner } : {}),

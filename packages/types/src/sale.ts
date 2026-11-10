@@ -147,6 +147,11 @@ export type Sale = {
   locationCountry: string | null;
   /** Reusable venue reference for onsite sales; location fields remain the publish snapshot. */
   venueId?: string | null;
+  /**
+   * IANA zone the sale quotes its times in, e.g. "Europe/London". Every moment is still an
+   * instant; this names how the official time is written. Fixed once the sale is published.
+   */
+  timeZone: string;
   status: SaleStatus;
   /** Set on public reads of draft sales (the only status ATG can own). */
   sellingPlatform?: AtgOwnershipState;
@@ -228,6 +233,8 @@ export type CreateSaleInput = {
   locationPostcode?: string | null | undefined;
   locationCountry?: string | null | undefined;
   venueId?: string | null | undefined;
+  /** IANA zone the sale quotes its times in; defaults to Europe/London. */
+  timeZone?: string | undefined;
   startTime: Date;
   endTime: Date;
   previewStartTime?: Date | undefined;

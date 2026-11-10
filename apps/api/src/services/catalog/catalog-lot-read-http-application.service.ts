@@ -16,7 +16,11 @@ import { listLotDocumentsPublic } from "../../lib/list-lot-documents-public.js";
 import { computeLotCheckoutPricing } from "../../lib/lot-checkout-pricing.js";
 import { buildLotDetailBiddingView } from "../../lib/lot-detail-bidding-view.js";
 import { maskLotForPublicView, presentCatalogueRowForPublic } from "../../lib/lot-public-view.js";
-import { lotsWithCheckoutPricing } from "../../lib/lots-with-checkout-pricing.js";
+import {
+  lotsWithCheckoutPricing,
+  lotsWithSaleTimeZone,
+  withSaleTimeZone,
+} from "../../lib/lots-with-checkout-pricing.js";
 import { mapLotToStaffListRow, mapLotToSummary } from "../../lib/mappers.js";
 import { presentLotImages } from "../../lib/media-presenters.js";
 import { buildConnectRequiredByLotId } from "../../lib/seller-connect-readiness.js";
@@ -131,7 +135,8 @@ export class CatalogLotReadHttpApplicationService implements ICatalogLotReadHttp
           ...lotRow,
           connectRequired: connectByLot.get(lotRow.id) ?? false,
         }));
-        return { data: (rows as Lot[]).map(mapLotToStaffListRow) };
+        const withZone = await lotsWithSaleTimeZone({ saleService: this.saleService }, rows);
+        return { data: (withZone as Lot[]).map(mapLotToStaffListRow) };
       }
 
       const withPricing = await lotsWithCheckoutPricing({ saleService: this.saleService }, rows);
@@ -226,7 +231,7 @@ export class CatalogLotReadHttpApplicationService implements ICatalogLotReadHttp
       input.viewer.staffRoles,
     );
     const checkoutPricing = computeLotCheckoutPricing(masked, sale);
-    const visible = { ...masked, checkoutPricing };
+    const visible = withSaleTimeZone({ ...masked, checkoutPricing }, sale);
     const bidding = buildLotDetailBiddingView({
       lot: visible,
       sale,

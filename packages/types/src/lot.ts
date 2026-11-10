@@ -120,6 +120,8 @@ export type Lot = {
   dutchLastDecrementAt: Date | null;
   startTime: Date;
   endTime: Date;
+  /** The zone of the lot's sale, which its times are quoted in. Added by the API; absent without a sale. */
+  timeZone?: string;
   /** Set when a late bid extended the close; null while the lot has kept its scheduled end. */
   extendedUntil?: Date | null;
   status: LotStatus;

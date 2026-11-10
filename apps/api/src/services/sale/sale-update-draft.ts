@@ -8,6 +8,7 @@ import type {
 } from "@auction/types";
 import {
   HERO_VIDEO_URL_REQUIRED,
+  SALE_TIME_ZONE_LOCKED_MESSAGE,
   applyHeroPresentationPatch,
   getSaleModeCapabilities,
   isValidHeroPresentationState,
@@ -139,6 +140,12 @@ export async function updateDraftSale(
     sale.status !== "draft"
   ) {
     return err(new LotError("Only a draft sale can be marked as, or cleared of, a test sale", 422));
+  }
+
+  // Published times are quoted in the sale's zone in emails, calendar entries and receipts already
+  // sent, so the zone cannot move afterwards.
+  if (patch.timeZone !== undefined && patch.timeZone !== sale.timeZone && sale.status !== "draft") {
+    return err(new LotError(SALE_TIME_ZONE_LOCKED_MESSAGE, 422));
   }
 
   if (sale.status !== "draft") {

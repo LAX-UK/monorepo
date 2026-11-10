@@ -42,6 +42,7 @@ export function testSale(overrides: Partial<AtgSaleSnapshot> = {}): AtgSaleSnaps
     terms: "Standard terms apply.",
     startTime: new Date("2026-10-20T10:00:00Z"),
     endTime: new Date("2026-11-01T18:00:00Z"),
+    timeZone: "Europe/London",
     saleStatus: "draft",
     buyerPremiumRate: "0.2500",
     buyerPremiumTiers: null,
