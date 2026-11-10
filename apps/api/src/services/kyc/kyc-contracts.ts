@@ -18,20 +18,31 @@ export type KycWebhookHandleResult = {
   shouldProgressIndividuals: boolean;
   /** Staged in the same transaction as KYC approval; enqueue after handleWebhook returns. */
   marketingEventToEnqueue?: MarketingEvent;
-  /** Tell the user their identity check passed or did not pass. */
-  outcomeNotify?: {
-    userId: string;
-    outcome: "approved" | "declined";
-    providerSessionId: string;
-    providerAttemptId: string | null;
-  };
-  /** Notify the user to resubmit after Veriff requested more input. */
-  resubmissionNotify?: {
-    userId: string;
-    providerSessionId: string;
-    providerAttemptId: string | null;
-    feedback: KycUserFeedback;
-  };
+};
+
+/** The person to tell that their identity check passed or did not pass. */
+export type KycOutcomeNotice = {
+  userId: string;
+  outcome: "approved" | "declined";
+  providerSessionId: string;
+  providerAttemptId: string | null;
+};
+
+/** The person to tell that Veriff needs more from them. */
+export type KycResubmissionNotice = {
+  userId: string;
+  providerSessionId: string;
+  providerAttemptId: string | null;
+  feedback: KycUserFeedback;
+};
+
+/**
+ * What applying a decision returns inside the decision's own transaction: the result, and the
+ * notices to queue in that same transaction. The notices never leave the ingest service.
+ */
+export type KycDecisionApplyResult = KycWebhookHandleResult & {
+  outcomeNotify?: KycOutcomeNotice;
+  resubmissionNotify?: KycResubmissionNotice;
 };
 
 export type KycStatusSummary = {

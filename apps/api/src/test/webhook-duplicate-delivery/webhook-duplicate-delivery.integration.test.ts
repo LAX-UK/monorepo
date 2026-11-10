@@ -1,7 +1,14 @@
 import { createDb } from "@auction/db";
 import { processedStripeEvents, processedWebhookEvents } from "@auction/db/schema";
+import { PostmarkEmailService } from "@auction/email";
+import {
+  DrizzleNotificationWriteRepository,
+  DrizzleUserRepository,
+} from "@auction/persistence/repositories";
 import { eq, like } from "drizzle-orm";
 import { afterAll, describe, expect, it } from "vitest";
+import { KycNoticeQueue } from "../../services/kyc/kyc-notice-queue.js";
+import { NotificationFactory } from "../../services/notification.factory.js";
 import { claimGatedRunner } from "../claim-gated-runner.js";
 import { claimIsBlockedOnLock } from "../claim-lock-wait.js";
 import { transactionRunnerFromDb } from "../transaction-runner-from-db.js";
@@ -30,6 +37,14 @@ describe.skipIf(!HAS_DB)("the same webhook delivered twice at once (integration)
   const handlerDb = createDb(handlerUrl);
   const db = createDb(process.env.DATABASE_URL_OWNER ?? handlerUrl);
   const base = transactionRunnerFromDb(handlerDb);
+  // What people are told is stored by the handler's own role, in the delivery's transaction.
+  const notices = new KycNoticeQueue({
+    usersFor: (tx) => new DrizzleUserRepository(tx ?? handlerDb),
+    notificationsFor: (tx) => new DrizzleNotificationWriteRepository(tx ?? handlerDb),
+    email: new PostmarkEmailService(handlerDb, { add: async () => undefined }),
+    factory: new NotificationFactory(),
+    webOrigin: "https://lax.bid",
+  });
   const eventIdFor = (handler: DeliveryCase, scenario: string) =>
     `${RUN}_${handler.name.replace(/\W+/g, "_")}_${scenario}`;
 
@@ -44,6 +59,17 @@ describe.skipIf(!HAS_DB)("the same webhook delivered twice at once (integration)
       .where(eq(table.eventId, handler.claimedEventId(eventId)));
   };
 
+  /** The rows a case stores besides its claim are there once, and are then cleaned up. */
+  async function expectStoredOnce(handler: DeliveryCase, eventId: string) {
+    const { fixture } = handler;
+    if (!fixture) return;
+    try {
+      expect(await fixture.stored(db, eventId)).toEqual(fixture.expected);
+    } finally {
+      await fixture.clean(db, eventId);
+    }
+  }
+
   afterAll(async () => {
     await db.delete(processedStripeEvents).where(like(processedStripeEvents.eventId, `%${RUN}%`));
     await db.delete(processedWebhookEvents).where(like(processedWebhookEvents.eventId, `%${RUN}%`));
@@ -52,8 +78,9 @@ describe.skipIf(!HAS_DB)("the same webhook delivered twice at once (integration)
   describe.each(CASES)("$name", (handler) => {
     it("makes the second delivery wait on the first's claim, and stores the effect itself when the first fails", async () => {
       const eventId = eventIdFor(handler, "fails");
+      await handler.fixture?.seed(db, eventId);
       const gate = claimGatedRunner(base, "fail");
-      const { deliver, effect } = handler.build(eventId, gate.runner);
+      const { deliver, effect } = handler.build(eventId, gate.runner, notices);
 
       const first = deliver().then(
         () => null,
@@ -72,12 +99,14 @@ describe.skipIf(!HAS_DB)("the same webhook delivered twice at once (integration)
       await second;
       expect(effect).toHaveBeenCalledTimes(1);
       expect(await claimRows(handler, eventId)).toHaveLength(1);
+      await expectStoredOnce(handler, eventId);
     });
 
     it("answers the second delivery as a duplicate only once the first has committed", async () => {
       const eventId = eventIdFor(handler, "commits");
+      await handler.fixture?.seed(db, eventId);
       const gate = claimGatedRunner(base, "pass");
-      const { deliver, effect, isDuplicate } = handler.build(eventId, gate.runner);
+      const { deliver, effect, isDuplicate } = handler.build(eventId, gate.runner, notices);
 
       const first = deliver();
       await gate.claimed;
@@ -93,6 +122,7 @@ describe.skipIf(!HAS_DB)("the same webhook delivered twice at once (integration)
       }
       expect(effect).toHaveBeenCalledTimes(1);
       expect(await claimRows(handler, eventId)).toHaveLength(1);
+      await expectStoredOnce(handler, eventId);
     });
   });
 });

@@ -16,8 +16,6 @@ import type { ImageCleanupService } from "../services/image-cleanup.service.js";
 import type { IKycService } from "../services/interfaces/kyc-service.js";
 import type { IMarketingEventService } from "../services/interfaces/marketing-event-service.js";
 import type { IUploadService } from "../services/interfaces/upload-service.js";
-import type { KycOutcomeNotifier } from "../services/kyc/kyc-outcome-notifier.js";
-import type { KycResubmissionNotifier } from "../services/kyc/kyc-resubmission-notifier.js";
 import type { MediaAssetEnricher } from "../services/media-asset-enricher.js";
 import type { MediaUrlResolver } from "../services/media-url-resolver.js";
 import type { SourceOfFundsDocumentCollectionService } from "../services/source-of-funds/source-of-funds-document-collection.service.js";
@@ -38,8 +36,6 @@ export type ContainerComplianceMedia = {
   attributionStore: IAttributionStore;
   marketingAttributionEnabled: boolean;
   kycService: IKycService;
-  kycResubmissionNotifier: KycResubmissionNotifier;
-  kycOutcomeNotifier: KycOutcomeNotifier;
   amlService: AmlService;
   amlScreeningReader: IWatchlistScreeningReader;
   sourceOfFundsService: SourceOfFundsService;

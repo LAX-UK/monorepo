@@ -1,3 +1,4 @@
+import type { Database } from "@auction/db";
 import type { RecipientResolution, TemplateName, TemplateVarsByName } from "./types.js";
 
 export type EmailCategory = "auth" | "transactional";
@@ -17,6 +18,17 @@ export type EmailEnqueueInput<T extends TemplateName = TemplateName> = {
 
 export interface IEmailService {
   enqueue<T extends TemplateName>(input: EmailEnqueueInput<T>): Promise<{ outboxId: string }>;
+}
+
+/**
+ * Queues an email inside the caller's database transaction, so it exists exactly when the change
+ * it reports is committed. The send happens later, from the outbox, with retries.
+ */
+export interface ITransactionalEmailOutbox {
+  enqueueInTransaction<T extends TemplateName>(
+    tx: Database,
+    input: EmailEnqueueInput<T>,
+  ): Promise<{ outboxId: string }>;
 }
 
 export type EmailSenderPayload<T extends TemplateName = TemplateName> = {

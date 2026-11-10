@@ -8,6 +8,7 @@ import type { IKycService } from "../interfaces/kyc-service.js";
 import type { IMarketingEventService } from "../interfaces/marketing-event-service.js";
 import { createKycServiceDeps } from "./kyc-context.js";
 import { KycGateService } from "./kyc-gate.service.js";
+import type { IKycNoticeQueue } from "./kyc-notice-queue.js";
 import { KycSessionService } from "./kyc-session.service.js";
 import { KycWebhookIngestService } from "./kyc-webhook-ingest.service.js";
 
@@ -29,15 +30,18 @@ export class VeriffKycService implements IKycService {
       veriffClient?: VeriffClient;
       /** Moves the due dates of a verified buyer's invoices, which were owed while held. */
       invoiceTerms?: Pick<InvoiceDueDateExtender, "extendOpenInvoices">;
+      /** Queues the emails and in-app notices a decision leads to, in its transaction. */
+      notices?: IKycNoticeQueue;
     } = {},
   ) {
-    const { veriffClient, invoiceTerms = null } = options;
+    const { veriffClient, invoiceTerms = null, notices } = options;
     const deps = createKycServiceDeps({
       env,
       repo,
       transactionRunner,
       marketingEvents,
       invoiceTerms,
+      ...(notices ? { notices } : {}),
       ...(veriffClient !== undefined ? { veriffClient } : {}),
     });
     this.session = new KycSessionService(
