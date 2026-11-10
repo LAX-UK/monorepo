@@ -155,10 +155,39 @@ jobs:
           PORT=3003 pnpm --filter @auction/auth-app start > /tmp/art-e2e-logs/auth.log 2>&1 &
           PORT=3051 pnpm --filter @auction/shop-identity start > /tmp/art-e2e-logs/art-identity.log 2>&1 &
           PORT=3011 pnpm --filter @auction/shop-api start > /tmp/art-e2e-logs/shop-api.log 2>&1 &
-          pnpm --filter @auction/art start > /tmp/art-e2e-logs/art.log 2>&1 &
+          # Lets a hung Art process be asked for a diagnostic report (open sockets, pending handles).
+          NODE_OPTIONS="--report-on-signal --report-signal=SIGUSR2 --report-directory=/tmp/art-e2e-logs" \
+            pnpm --filter @auction/art start > /tmp/art-e2e-logs/art.log 2>&1 &
           npx --yes wait-on http://localhost:3003/health/live http://localhost:3051/health/ready http://localhost:3011/health/ready http://localhost:3050/health/live --timeout 120000
       - name: Run Art journeys, a11y and viewport audit
         run: pnpm --filter @auction/art exec playwright test
+      - name: Probe the stack after a failure
+        if: ${{ failure() }}
+        # Shows whether the document, a plain asset and the image optimiser still answer, and how the
+        # Art process looks from inside, so a hang is attributable without re-running.
+        continue-on-error: true
+        run: |
+          probe() {
+            curl -s -o /dev/null --max-time 20 \
+              -w "$1 -> %{http_code} first-byte=%{time_starttransfer}s total=%{time_total}s\n" \
+              "$2" || echo "$1 -> no complete response within 20s"
+          }
+          {
+            echo "== probes $(date -u +%FT%TZ)"
+            probe "artworks" "http://localhost:3050/artworks"
+            probe "artworks view=list" "http://localhost:3050/artworks?view=list"
+            probe "seed file" "http://localhost:3050/art/seed/hero-layer-1.webp"
+            probe "optimiser w=384" "http://localhost:3050/_next/image?url=%2Fart%2Fseed%2Fhero-layer-1.webp&w=384&q=75"
+            probe "optimiser w=256" "http://localhost:3050/_next/image?url=%2Fart%2Fseed%2Fhero-layer-1.webp&w=256&q=75"
+            probe "shop-api ready" "http://localhost:3011/health/ready"
+            echo "== sockets"
+            ss -tnp 2>/dev/null | grep -E ":3050|:3011|:3051|:3003" || true
+            echo "== processes"
+            ps -eo pid,ppid,stat,etime,pcpu,rss,args | grep -E "next|node" | grep -v grep || true
+          } > /tmp/art-e2e-logs/probes.txt 2>&1
+          pkill -USR2 -f "next-server" || true
+          sleep 3
+          cat /tmp/art-e2e-logs/probes.txt
       - name: Upload Playwright report
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4
