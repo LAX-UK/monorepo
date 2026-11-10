@@ -1,10 +1,12 @@
 "use server";
 
 import { ENQUIRIES_PATH } from "@/lib/admin/enquiries/enquiries.vm";
+import { idempotencyHeader } from "@/lib/admin/finance/idempotency-key";
 import { dealErrorMessage } from "@/lib/admin/private-sales/private-sale-errors";
 import { DEALS_PATH, dealHref } from "@/lib/admin/private-sales/private-sales.vm";
 import { denyUnlessAdminCapability } from "@/lib/auth/assert-admin-action-capability";
 import { isStaffStepUpResponse } from "@/lib/auth/step-up/staff-step-up.server";
+import { stepUpRequiredFailure } from "@/lib/auth/step-up/step-up-failure";
 import {
   type DealRecord,
   convertedDealSchema,
@@ -21,7 +23,6 @@ import {
   PRIVATE_SALE_DEALS_RELEASE_ACCESS,
 } from "@/lib/navigation/staff-nav-access";
 import { instrumentServerAction } from "@/lib/observability/instrument-server-action";
-import { STAFF_STEP_UP_REQUIRED } from "@auction/identity-contracts/staff-step-up";
 import type { CapabilityRequirement } from "@auction/types";
 import {
   type StaffDealAction,
@@ -54,18 +55,10 @@ const MONEY_ACTIONS: ReadonlySet<StaffDealAction> = new Set([
   "record_bank_refund",
 ]);
 
-function idempotencyHeader(key: string | undefined): Record<string, string> {
-  const supplied = key?.trim() ?? "";
-  return {
-    "Idempotency-Key":
-      supplied.length >= 8 && supplied.length <= 128 ? supplied : crypto.randomUUID(),
-  };
-}
-
 /** The API's refusal as an action result, keeping what a screen needs to explain it. */
 async function refusal(res: Response): Promise<ActionResult<never>> {
   if (await isStaffStepUpResponse(res)) {
-    return actionFailure("Recent sign-in required", undefined, 403, STAFF_STEP_UP_REQUIRED);
+    return stepUpRequiredFailure();
   }
   const body = dealRefusalSchema.safeParse(await res.json().catch(() => null));
   const code = body.success ? body.data.error : undefined;

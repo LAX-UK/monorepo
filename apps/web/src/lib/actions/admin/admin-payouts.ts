@@ -1,17 +1,17 @@
 "use server";
 
-import { IDEMPOTENCY_KEY_HEADER } from "@/lib/admin/finance/idempotency-key";
+import { idempotencyHeader } from "@/lib/admin/finance/idempotency-key";
 import {
   isPayoutReversalReasonValid,
   payoutReversalConfirmationPhrase,
 } from "@/lib/admin/finance/payout-settlement.vm";
 import { denyUnlessAdminCapability } from "@/lib/auth/assert-admin-action-capability";
 import { isStaffStepUpResponse } from "@/lib/auth/step-up/staff-step-up.server";
+import { stepUpRequiredFailure } from "@/lib/auth/step-up/step-up-failure";
 import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
 import { type ActionResult, actionFailure, actionSuccess } from "@/lib/forms/form-result";
 import { FINANCE_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { instrumentServerAction } from "@/lib/observability/instrument-server-action";
-import { STAFF_STEP_UP_REQUIRED } from "@auction/identity-contracts/staff-step-up";
 import { PAYOUT_ACTION_REASON_MIN, normalizeApiErrorMessage } from "@auction/validators";
 import { revalidatePath } from "next/cache";
 
@@ -21,19 +21,11 @@ const SIGNED_AMOUNT = /^-?\d+(\.\d{1,2})?$/;
 
 type PayoutCall = { ok: true } | ReturnType<typeof actionFailure>;
 
-function idempotencyHeader(key: string | undefined): Record<string, string> {
-  const supplied = key?.trim() ?? "";
-  return {
-    [IDEMPOTENCY_KEY_HEADER]:
-      supplied.length >= 8 && supplied.length <= 128 ? supplied : crypto.randomUUID(),
-  };
-}
-
 /** The API's answer as an action result; a stale sign-in becomes the step-up code. */
 async function payoutCallResult(res: Response, fallback: string): Promise<PayoutCall> {
   if (res.ok) return { ok: true };
   if (await isStaffStepUpResponse(res)) {
-    return actionFailure("Recent sign-in required", undefined, 403, STAFF_STEP_UP_REQUIRED);
+    return stepUpRequiredFailure();
   }
   let message = fallback;
   try {

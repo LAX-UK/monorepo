@@ -3,6 +3,7 @@
 import { COLLECTIONS_PATH } from "@/lib/admin/collections/collections.vm";
 import { denyUnlessAdminCapability } from "@/lib/auth/assert-admin-action-capability";
 import { isStaffStepUpResponse } from "@/lib/auth/step-up/staff-step-up.server";
+import { stepUpRequiredFailure } from "@/lib/auth/step-up/step-up-failure";
 import {
   deskBookingSchema,
   deskClientLotsSchema,
@@ -13,7 +14,6 @@ import { readDataEnvelope, readJsonBody } from "@/lib/data/http/envelope";
 import { type ActionResult, actionFailure, actionSuccess } from "@/lib/forms/form-result";
 import { COLLECTIONS_ACCESS, COLLECTIONS_READ_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { instrumentServerAction } from "@/lib/observability/instrument-server-action";
-import { STAFF_STEP_UP_REQUIRED } from "@auction/identity-contracts/staff-step-up";
 import type { DeskBookingView, DeskClientLot, DeskDayView } from "@auction/types";
 import {
   collectionDeskBookForClientBodySchema,
@@ -41,7 +41,7 @@ type Refusal = {
 /** The API's refusal as an action result, keeping the code and the lots at fault. */
 async function refusal(res: Response): Promise<ActionResult<never>> {
   if (await isStaffStepUpResponse(res)) {
-    return actionFailure("Recent sign-in required", undefined, 403, STAFF_STEP_UP_REQUIRED);
+    return stepUpRequiredFailure();
   }
   const body = (await res.json().catch(() => ({}))) as Refusal;
   return actionFailure(body.message ?? UNAVAILABLE, undefined, res.status, body.error, {
