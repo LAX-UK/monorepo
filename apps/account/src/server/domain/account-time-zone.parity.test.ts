@@ -18,7 +18,6 @@ const EXTRA = [
   "Europe/Kyiv",
   "Europe/Kiev",
   "London",
-  "europe/london",
   " Europe/London",
   "Europe/London ",
   "Mars/Olympus",
@@ -37,6 +36,13 @@ describe("the account zone rule matches the shared viewer-zone rule", () => {
         accountPlaceZoneSchema.safeParse(zone).success !== (normaliseViewerZone(zone) !== null),
     );
     expect(disagreements).toEqual([]);
+  });
+
+  it("is stricter on a name that is right only apart from its letter case", () => {
+    // The runtime resolves "europe/london" to London, so the shared rule lets it through as typed;
+    // Account stores only the exact IANA spelling.
+    expect(accountPlaceZoneSchema.safeParse("europe/london").success).toBe(false);
+    expect(accountPlaceZoneSchema.safeParse("Europe/London").success).toBe(true);
   });
 
   it("agrees on values that are not text", () => {

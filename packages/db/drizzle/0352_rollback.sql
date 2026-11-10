@@ -14,6 +14,8 @@ ALTER TABLE "user" DROP CONSTRAINT IF EXISTS "user_time_zone_names_a_place";
 --> statement-breakpoint
 ALTER TABLE "user" DROP CONSTRAINT IF EXISTS "user_time_zone_mode_valid";
 --> statement-breakpoint
+ALTER TABLE "user" DROP COLUMN IF EXISTS "time_zone_reported_at";
+--> statement-breakpoint
 ALTER TABLE "user" DROP COLUMN IF EXISTS "time_zone";
 --> statement-breakpoint
 ALTER TABLE "user" DROP COLUMN IF EXISTS "time_zone_mode";

@@ -54,17 +54,10 @@ describe("migration 0352 account time zone", () => {
     expect(migration).toContain("NOT LIKE 'Etc/%'");
   });
 
-  it("backfills only people who chose quiet hours, and leaves quiet_time_zone in place", () => {
-    expect(migration).toContain('np."quiet_start" IS NOT NULL');
-    expect(migration).toContain('np."quiet_end" IS NOT NULL');
-    expect(migration).toContain(`np."quiet_time_zone" NOT LIKE 'Etc/%'`);
-    expect(migration).toContain(`"time_zone_mode" = 'fixed'`);
-    expect(migration).not.toContain("DROP COLUMN");
+  it("backfills nobody, so no one is pinned to the zone their quiet hours were saved in", () => {
+    expect(migration).not.toMatch(/\bUPDATE\b/);
+    expect(migration).not.toContain("'fixed',");
     expect(rollback).not.toMatch(/ALTER TABLE "notification_preference"/);
-  });
-
-  it("copies the backfill to the Bid directory", () => {
-    expect(migration).toMatch(/UPDATE "bid_identity_directory" AS d\s+SET "time_zone_mode"/);
   });
 
   it("has a rollback that drops every column it added", () => {
@@ -73,6 +66,7 @@ describe("migration 0352 account time zone", () => {
         expect(rollback).toContain(`ALTER TABLE "${table}" DROP COLUMN IF EXISTS "${column}"`);
       }
     }
+    expect(rollback).toContain('ALTER TABLE "user" DROP COLUMN IF EXISTS "time_zone_reported_at"');
   });
 
   it("matches the schema", () => {
@@ -80,6 +74,7 @@ describe("migration 0352 account time zone", () => {
     expect(userColumns.timeZoneMode.notNull).toBe(true);
     expect(userColumns.timeZoneMode.default).toBe("automatic");
     expect(userColumns.timeZone.notNull).toBe(false);
+    expect(userColumns.timeZoneReportedAt.notNull).toBe(false);
     const directory = getTableColumns(bidIdentityDirectory);
     expect(directory.timeZoneMode.notNull).toBe(true);
     expect(directory.timeZone.notNull).toBe(false);

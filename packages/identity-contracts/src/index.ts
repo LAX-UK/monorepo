@@ -75,6 +75,7 @@ export {
   effectiveAccountTimeZone,
   parseAccountTimeZoneChange,
 } from "./account-time-zone.js";
+export { normalisePlaceZone } from "./place-zone.js";
 export type {
   AccountTimeZone,
   AccountTimeZoneChange,

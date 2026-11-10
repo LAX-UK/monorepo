@@ -1,5 +1,6 @@
 import { bidIdentityDirectory } from "@auction/db/schema";
 import {
+  normalisePlaceZone,
   userDeletionCancelledPayloadSchemaV1,
   userDeletionHeldPayloadSchemaV1,
   userDeletionRequestedPayloadSchemaV1,
@@ -187,7 +188,9 @@ export async function applyBidIdentityDirectoryEvent(
         ...(payload.image !== undefined ? { image: payload.image } : {}),
         ...(payload.phone !== undefined ? { phone: payload.phone } : {}),
         ...(payload.timeZoneMode !== undefined ? { timeZoneMode: payload.timeZoneMode } : {}),
-        ...(payload.timeZone !== undefined ? { timeZone: payload.timeZone } : {}),
+        ...(payload.timeZone !== undefined
+          ? { timeZone: normalisePlaceZone(payload.timeZone) }
+          : {}),
       });
       return;
     }

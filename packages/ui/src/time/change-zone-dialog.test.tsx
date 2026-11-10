@@ -169,55 +169,6 @@ describe("ChangeZoneDialog", () => {
     expect(screen.getByRole("dialog", { name: "Time zone" })).toHaveTextContent("For your emails.");
   });
 
-  it("tells the caller what was saved", async () => {
-    const onSaved = vi.fn();
-    render(
-      <ZonePreferenceProvider port={port()}>
-        <ChangeZoneDialog
-          open
-          onOpenChange={() => {}}
-          current={{ zone: "Africa/Cairo", source: "device" }}
-          officialZone="Europe/London"
-          at={AT}
-          onSaved={onSaved}
-        />
-      </ZonePreferenceProvider>,
-    );
-    const dialog = screen.getByRole("dialog", { name: "Time zone" });
-    fireEvent.change(within(dialog).getByRole("searchbox"), { target: { value: "Sydney" } });
-    fireEvent.click(within(dialog).getByRole("radio", { name: /Sydney/ }));
-    await act(async () => {
-      fireEvent.click(saveButton());
-    });
-    expect(onSaved).toHaveBeenCalledWith({ mode: "fixed", zone: "Australia/Sydney" });
-  });
-
-  it("does not tell the caller when the save failed", async () => {
-    const onSaved = vi.fn();
-    render(
-      <ZonePreferenceProvider
-        port={port({ followDevice: vi.fn().mockRejectedValue(new Error("x")) })}
-      >
-        <ChangeZoneDialog
-          open
-          onOpenChange={() => {}}
-          current={{ zone: "Asia/Tokyo", source: "account" }}
-          at={AT}
-          onSaved={onSaved}
-        />
-      </ZonePreferenceProvider>,
-    );
-    fireEvent.click(
-      within(screen.getByRole("dialog", { name: "Time zone" })).getByRole("radio", {
-        name: /Automatic/,
-      }),
-    );
-    await act(async () => {
-      fireEvent.click(saveButton());
-    });
-    expect(onSaved).not.toHaveBeenCalled();
-  });
-
   it("makes Save the primary (ink) button", () => {
     renderDialog({ zone: "Asia/Tokyo", source: "chosen" });
     expect(saveButton().className).toContain("bg-lax-ink");

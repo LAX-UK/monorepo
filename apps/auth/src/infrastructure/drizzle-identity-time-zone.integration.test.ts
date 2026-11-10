@@ -78,6 +78,20 @@ describe.skipIf(!DATABASE_URL)("identity time zone preference", () => {
     });
   });
 
+  it("lets a device change the zone at most once a day", async () => {
+    const dayLater = new Date(NOW.getTime() + 24 * 60 * 60 * 1000 + 1);
+    expect(await subjects?.updateDeviceZone(null, subjectId, "Asia/Tokyo", NOW)).not.toBeNull();
+    expect(await subjects?.updateDeviceZone(null, subjectId, "Europe/Paris", LATER)).toBeNull();
+    expect(await subjects?.readTimeZone(subjectId)).toEqual({
+      mode: "automatic",
+      zone: "Asia/Tokyo",
+    });
+    expect(await subjects?.updateDeviceZone(null, subjectId, "Europe/Paris", dayLater)).toEqual({
+      mode: "automatic",
+      zone: "Europe/Paris",
+    });
+  });
+
   it("leaves other people untouched", async () => {
     await subjects?.updateTimeZone(null, subjectId, { mode: "fixed", zone: "Asia/Tokyo" }, NOW);
     expect(await subjects?.readTimeZone(otherSubjectId)).toEqual({ mode: "automatic", zone: null });

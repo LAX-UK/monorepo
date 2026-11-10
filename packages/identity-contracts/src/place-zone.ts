@@ -15,20 +15,90 @@ function supportedZones(): ReadonlySet<string> {
   return supported;
 }
 
-/** Older browsers still report retired aliases ("Asia/Calcutta"); the runtime resolves them. */
-function runtimeAcceptsZone(zone: string): boolean {
-  if (!zone.includes("/")) return false;
-  try {
-    new Intl.DateTimeFormat("en-GB", { timeZone: zone });
-    return true;
-  } catch {
-    return false;
-  }
-}
+/**
+ * Real places that `Intl.supportedValuesOf` lists under only one of their two names (the retired
+ * "Asia/Calcutta" or the current "Asia/Kolkata"), depending on the runtime's ICU. Browsers report
+ * either, so both are accepted. The list is written out because this package must not use
+ * `Intl.DateTimeFormat` to probe names.
+ */
+const LEGACY_ZONE_ALIASES: ReadonlySet<string> = new Set([
+  "Africa/Asmara",
+  "Africa/Asmera",
+  "Africa/Timbuktu",
+  "America/Argentina/Buenos_Aires",
+  "America/Argentina/Catamarca",
+  "America/Argentina/Cordoba",
+  "America/Argentina/Jujuy",
+  "America/Argentina/Mendoza",
+  "America/Atikokan",
+  "America/Atka",
+  "America/Buenos_Aires",
+  "America/Catamarca",
+  "America/Cordoba",
+  "America/Ensenada",
+  "America/Godthab",
+  "America/Indiana/Indianapolis",
+  "America/Indianapolis",
+  "America/Jujuy",
+  "America/Kentucky/Louisville",
+  "America/Louisville",
+  "America/Mendoza",
+  "America/Montreal",
+  "America/Nipigon",
+  "America/Nuuk",
+  "America/Pangnirtung",
+  "America/Porto_Acre",
+  "America/Rainy_River",
+  "America/Santa_Isabel",
+  "America/Shiprock",
+  "America/Thunder_Bay",
+  "America/Virgin",
+  "America/Yellowknife",
+  "Asia/Calcutta",
+  "Asia/Choibalsan",
+  "Asia/Chongqing",
+  "Asia/Harbin",
+  "Asia/Ho_Chi_Minh",
+  "Asia/Istanbul",
+  "Asia/Kashgar",
+  "Asia/Kathmandu",
+  "Asia/Katmandu",
+  "Asia/Kolkata",
+  "Asia/Rangoon",
+  "Asia/Saigon",
+  "Asia/Tel_Aviv",
+  "Asia/Thimbu",
+  "Asia/Ujung_Pandang",
+  "Asia/Ulan_Bator",
+  "Asia/Yangon",
+  "Atlantic/Faeroe",
+  "Atlantic/Faroe",
+  "Atlantic/Jan_Mayen",
+  "Australia/Canberra",
+  "Australia/Currie",
+  "Australia/Yancowinna",
+  "Europe/Belfast",
+  "Europe/Kiev",
+  "Europe/Kyiv",
+  "Europe/Nicosia",
+  "Europe/Tiraspol",
+  "Pacific/Chuuk",
+  "Pacific/Johnston",
+  "Pacific/Kanton",
+  "Pacific/Pohnpei",
+  "Pacific/Ponape",
+  "Pacific/Samoa",
+  "Pacific/Truk",
+  "Pacific/Yap",
+  "US/Central",
+  "US/Eastern",
+  "US/Mountain",
+  "US/Pacific",
+]);
 
 function isValidZone(zone: unknown): zone is string {
   if (typeof zone !== "string" || zone === "") return false;
-  return supportedZones().has(zone) || runtimeAcceptsZone(zone);
+  return supportedZones().has(zone) || LEGACY_ZONE_ALIASES.has(zone);
 }
 
 function isPlaceholderZone(zone: string): boolean {

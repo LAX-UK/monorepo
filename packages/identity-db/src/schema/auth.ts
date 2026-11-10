@@ -75,6 +75,8 @@ export const user = pgTable(
      * device last reported, or null before it has.
      */
     timeZone: text("time_zone"),
+    /** When a device last changed the automatic zone; devices report at most once a day. */
+    timeZoneReportedAt: timestamp("time_zone_reported_at", { mode: "date", withTimezone: true }),
     deletionRequestedAt: timestamp("deletion_requested_at", {
       mode: "date",
       withTimezone: true,

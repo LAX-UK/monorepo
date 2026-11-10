@@ -41,6 +41,7 @@ const USER_FIELD_OWNERSHIP = {
   twoFactorEnabled: "identity",
   timeZoneMode: "identity",
   timeZone: "identity",
+  timeZoneReportedAt: "identity",
   pendingNewEmail: "identity",
   emailChangeOldOk: "identity",
   emailChangeNewOk: "identity",

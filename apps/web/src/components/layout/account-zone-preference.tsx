@@ -10,13 +10,14 @@ import {
   type ZonePreferencePort,
   ZonePreferenceProvider,
   deviceZonePreference,
+  setAccountViewerZone,
 } from "@auction/ui/time";
 import { useRouter } from "next/navigation";
 import { type ReactNode, useEffect, useMemo } from "react";
 
 type AccountTimeZone = { mode: "automatic" | "fixed"; zone: string | null };
 
-const SAVED_NOTE = "Saved to your LAX Account. Used in your emails too.";
+const SAVED_NOTE = "Saved to your LAX Account, so your emails use it too.";
 
 /**
  * Where the time zone sheet saves, by who is looking. Signed out, the choice stays on this device
@@ -49,6 +50,9 @@ export function AccountZonePreference({
       savedNote: SAVED_NOTE,
       async save(zone) {
         if (!(await saveAccountFixedZone(zone))) throw new Error("time_zone_not_saved");
+        // The server's copy only catches up once the worker has projected the change, so the
+        // refresh alone could draw the old zone: show the saved one now.
+        setAccountViewerZone({ mode: "fixed", zone });
         router.refresh();
       },
       async followDevice() {
@@ -57,6 +61,7 @@ export function AccountZonePreference({
         }
         // The chip reads the device straight away; the refresh brings the server's view along.
         await deviceZonePreference.followDevice();
+        setAccountViewerZone({ mode: "automatic", zone: deviceTimeZone() });
         router.refresh();
       },
     };

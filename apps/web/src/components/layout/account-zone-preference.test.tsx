@@ -1,7 +1,13 @@
 // The device is in London unless a test says otherwise.
 process.env.TZ = "Europe/London";
 
-import { type ZonePreferencePort, useZonePreference } from "@auction/ui/time";
+import {
+  ViewerZoneProvider,
+  type ZonePreferencePort,
+  clearAccountViewerZone,
+  useViewerZone,
+  useZonePreference,
+} from "@auction/ui/time";
 import { act, render } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AccountZonePreference } from "./account-zone-preference";
@@ -23,14 +29,17 @@ vi.mock("@auction/datetime", async (importOriginal) => ({
 }));
 
 let port: ZonePreferencePort;
+let seen: ReturnType<typeof useViewerZone>;
 function Probe() {
   port = useZonePreference();
+  seen = useViewerZone();
   return null;
 }
 
 describe("AccountZonePreference", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    clearAccountViewerZone();
     device.zone = "Europe/London";
     document.cookie = "lax_tz=; path=/; max-age=0";
     client.saveAccountFixedZone.mockResolvedValue(true);
@@ -57,6 +66,50 @@ describe("AccountZonePreference", () => {
       expect(refresh).toHaveBeenCalledOnce();
     });
 
+    it("shows a saved city at once, before the server has caught up with it", async () => {
+      render(
+        <ViewerZoneProvider initial={{ zone: "Europe/London", source: "account" }}>
+          <AccountZonePreference timeZone={{ mode: "fixed", zone: "Europe/London" }}>
+            <Probe />
+          </AccountZonePreference>
+        </ViewerZoneProvider>,
+      );
+      expect(seen).toEqual({ zone: "Europe/London", source: "account" });
+      await act(async () => {
+        await port.save("Asia/Tokyo");
+      });
+      // The server still hands over the old zone (the refresh does not change it).
+      expect(seen).toEqual({ zone: "Asia/Tokyo", source: "account" });
+    });
+
+    it("shows the device's zone at once when going back to Automatic", async () => {
+      device.zone = "America/New_York";
+      render(
+        <ViewerZoneProvider initial={{ zone: "Asia/Tokyo", source: "account" }}>
+          <AccountZonePreference timeZone={{ mode: "fixed", zone: "Asia/Tokyo" }}>
+            <Probe />
+          </AccountZonePreference>
+        </ViewerZoneProvider>,
+      );
+      await act(async () => {
+        await port.followDevice();
+      });
+      expect(seen).toEqual({ zone: "America/New_York", source: "device" });
+    });
+
+    it("keeps the shown zone when LAX Account refuses the save", async () => {
+      client.saveAccountFixedZone.mockResolvedValue(false);
+      render(
+        <ViewerZoneProvider initial={{ zone: "Asia/Tokyo", source: "account" }}>
+          <AccountZonePreference timeZone={{ mode: "fixed", zone: "Asia/Tokyo" }}>
+            <Probe />
+          </AccountZonePreference>
+        </ViewerZoneProvider>,
+      );
+      await expect(port.save("Europe/Paris")).rejects.toThrow();
+      expect(seen).toEqual({ zone: "Asia/Tokyo", source: "account" });
+    });
+
     it("fails the save when LAX Account does not accept it, so the sheet says so inline", async () => {
       client.saveAccountFixedZone.mockResolvedValue(false);
       renderProbe({ mode: "fixed", zone: "Asia/Tokyo" });
@@ -77,7 +130,7 @@ describe("AccountZonePreference", () => {
 
     it("says it saves to the Account", () => {
       renderProbe({ mode: "fixed", zone: "Asia/Tokyo" });
-      expect(port.savedNote).toMatch(/LAX Account/);
+      expect(port.savedNote).toBe("Saved to your LAX Account, so your emails use it too.");
     });
 
     it("tells Account the device's zone on a visit while automatic and it differs", () => {

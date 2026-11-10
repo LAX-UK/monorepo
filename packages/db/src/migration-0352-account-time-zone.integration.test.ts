@@ -76,19 +76,14 @@ describe.skipIf(!migrationUrl)("migration 0352 account time zone", { timeout: 30
     await client.query(read("0352_account_time_zone.sql"));
   });
 
-  it("moves the zone of people who chose quiet hours into a fixed Account zone", async () => {
-    for (const [id, zone] of [
-      ["tz-set-sydney", "Australia/Sydney"],
-      ["tz-set-default", "Europe/London"],
-    ] as const) {
-      const row = await zoneOf(id);
-      expect(row.user).toEqual({ time_zone_mode: "fixed", time_zone: zone });
-      expect(row.directory).toEqual({ time_zone_mode: "fixed", time_zone: zone });
-    }
-  });
-
-  it("leaves everyone else on automatic with no zone", async () => {
-    for (const id of ["tz-unset", "tz-half-set", "tz-bad-zone"]) {
+  it("leaves everyone on automatic with no zone, whatever their quiet hours say", async () => {
+    for (const id of [
+      "tz-set-sydney",
+      "tz-set-default",
+      "tz-unset",
+      "tz-half-set",
+      "tz-bad-zone",
+    ]) {
       const row = await zoneOf(id);
       expect(row.user).toEqual({ time_zone_mode: "automatic", time_zone: null });
       expect(row.directory).toEqual({ time_zone_mode: "automatic", time_zone: null });
@@ -128,11 +123,11 @@ describe.skipIf(!migrationUrl)("migration 0352 account time zone", { timeout: 30
     await client.query(read("0352_rollback.sql"));
     const gone = await client.query(
       `select column_name from information_schema.columns
-        where table_schema = 'public' and column_name in ('time_zone', 'time_zone_mode')
+        where table_schema = 'public' and column_name in ('time_zone', 'time_zone_mode', 'time_zone_reported_at')
           and table_name in ('user', 'bid_identity_directory')`,
     );
     expect(gone.rows).toEqual([]);
     await client.query(read("0352_account_time_zone.sql"));
-    expect((await zoneOf("tz-set-sydney")).user.time_zone).toBe("Australia/Sydney");
+    expect((await zoneOf("tz-set-sydney")).user.time_zone_mode).toBe("automatic");
   });
 });

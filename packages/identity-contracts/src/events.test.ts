@@ -42,16 +42,16 @@ describe("identity event payload contracts", () => {
     ).toMatchObject({ timeZoneMode: "automatic", timeZone: null });
   });
 
-  it("refuses a time zone that names no place in a profile-updated payload", () => {
+  it("still reads a time zone this runtime does not know, so a consumer never stalls on it", () => {
     for (const timeZone of ["UTC", "Etc/GMT+5", "Nowhere/City"]) {
       expect(
-        userProfileUpdatedPayloadSchemaV1.safeParse({
+        userProfileUpdatedPayloadSchemaV1.parse({
           ...base,
           timeZoneMode: "fixed",
           timeZone,
           updatedAt: "2026-08-19T18:00:00.000Z",
-        }).success,
-      ).toBe(false);
+        }).timeZone,
+      ).toBe(timeZone);
     }
   });
 
