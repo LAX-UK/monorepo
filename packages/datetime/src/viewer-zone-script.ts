@@ -4,16 +4,13 @@ import { VIEWER_ZONE_COOKIE, VIEWER_ZONE_COOKIE_MAX_AGE_SEC } from "./viewer-zon
 /** The class the head script puts on `<html>` when the visitor's clock differs from the sale's. */
 export const TZ_AWAY_CLASS = "tz-away";
 
-/** Added to `<html>` by the page once it knows which chips it shows; it ends the row hold. */
-export const TZ_READY_CLASS = "tz-ready";
-
 /**
  * The inline head script, as a string, so a page can hash it for its CSP and a test can run it.
  *
  * It reads the device zone, stores it in `lax_tz` when it changed (never over a zone the visitor
  * chose), expires a device value the device can no longer back up (so a stale zone never flashes a
  * chip), and adds `tz-away` to `<html>` when the visitor's clock differs from London's right now,
- * which holds the time chip's row until the page knows better (the `tz-ready` class). Everything is wrapped so that an
+ * which holds the time chip's row until the chip's own slot has hydrated (`data-settled`). Everything is wrapped so that an
  * exception, a blocked cookie or an old browser never stops the page.
  */
 export function buildViewerZoneScript(officialZone: string = LONDON_TIME_ZONE): string {

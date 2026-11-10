@@ -1,9 +1,7 @@
 import { cityName, describeMoment } from "@auction/datetime";
 import type { ReactNode } from "react";
 import { cn } from "../lib/utils.js";
-import { TimeChip } from "./time-chip.js";
-
-type ChipPlacement = "below" | "inline";
+import { type ChipPlacement, TimeChipSlot } from "./time-chip-slot.js";
 
 export type OfficialTimeProps = {
   /** The moment, as an ISO instant. */
@@ -47,22 +45,5 @@ export function OfficialTime({
       </time>
       <TimeChipSlot instant={instant} officialZone={officialZone} placement={placement} />
     </>
-  );
-}
-
-/**
- * Where the chip goes: an empty row that holds room only for a visitor on another clock until the
- * page knows better, so a first visit does not shift and a UK visitor gets no gap.
- */
-export function TimeChipSlot({
-  instant,
-  officialZone,
-  placement = "below",
-}: Pick<OfficialTimeProps, "instant" | "officialZone" | "placement">) {
-  // A div: the open panel is a dialog holding paragraphs, which a span (or a <p> parent) cannot.
-  return (
-    <div className={cn("tz-chip-slot", placement === "inline" && "tz-chip-slot--inline")}>
-      <TimeChip instant={instant} officialZone={officialZone} />
-    </div>
   );
 }

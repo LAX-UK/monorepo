@@ -39,7 +39,7 @@ export function LotFact({ label, value, sub, tone, clock, spoken, tinted, moment
         // The chip needs a line of its own on a phone: a visitor on another clock gets the
         // whole row, so "Fri 13 Nov, 05:00 in Sydney" does not wrap in a half-width column.
         moment &&
-          "max-sm:[html.tz-away:not(.tz-ready)_&]:col-span-full max-sm:has-[.tz-chip-slot:not(:empty)]:col-span-full",
+          "max-sm:[html.tz-away_&]:has-[.tz-chip-slot_*,.tz-chip-slot:not([data-settled])]:col-span-full",
       )}
     >
       <dt

@@ -54,4 +54,4 @@ export {
   parseViewerZoneCookie,
   resolveViewerZone,
 } from "./viewer-zone.js";
-export { TZ_AWAY_CLASS, TZ_READY_CLASS, buildViewerZoneScript } from "./viewer-zone-script.js";
+export { TZ_AWAY_CLASS, buildViewerZoneScript } from "./viewer-zone-script.js";

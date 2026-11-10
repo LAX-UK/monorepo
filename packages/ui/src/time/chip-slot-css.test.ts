@@ -5,9 +5,8 @@ import { describe, expect, it } from "vitest";
 const theme = readFileSync(join(import.meta.dirname, "../lax/theme.css"), "utf8");
 
 describe("the chip row's hold", () => {
-  it("ends once the page is ready, so a sale outside London does not keep a gap", () => {
-    expect(theme).toContain("html.tz-away:not(.tz-ready) .tz-chip-slot:empty");
-    expect(theme).toContain("html.tz-away:not(.tz-ready) .tz-chip-slot--inline:empty");
-    expect(theme).not.toMatch(/html\.tz-away \.tz-chip-slot/);
+  it("ends once the row has settled, so a sale outside London does not keep a gap", () => {
+    expect(theme).toContain("html.tz-away .tz-chip-slot:empty:not([data-settled])");
+    expect(theme).toContain("html.tz-away .tz-chip-slot--inline:empty:not([data-settled])");
   });
 });

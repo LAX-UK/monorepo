@@ -186,8 +186,10 @@
    learning the visitor's zone, the head script marks <html> `tz-away` and the empty row keeps the
    room the chip will take, so the chip arrives without moving anything: 36px under the time
    (28px chip and an 8px gap), or 28px beside it (`--inline`). The head script compares with
-   London, the commonest sale zone; once the page has drawn (`tz-ready`) it knows the sale's own
-   zone, and a row that stayed empty (a Paris visitor on a Paris sale) is released. The gap is the
+   London, the commonest sale zone; once the row itself has hydrated (`data-settled`, set in the
+   same commit that fills the chip) it knows the sale's own zone, and a row that stayed empty (a
+   Paris visitor on a Paris sale) is released. The release is per row, not per page, because a row
+   inside a streamed section hydrates after the rest. The gap is the
    row's own padding, not the chip's margin, which would collapse through the row and leave it 28px
    high once the chip arrives. It is not `:not(:empty)` because Chrome applies that a frame late. */
 .tz-chip-slot {
@@ -203,11 +205,11 @@
   display: none;
 }
 
-html.tz-away:not(.tz-ready) .tz-chip-slot:empty {
+html.tz-away .tz-chip-slot:empty:not([data-settled]) {
   display: block;
   min-height: 36px;
 }
 
-html.tz-away:not(.tz-ready) .tz-chip-slot--inline:empty {
+html.tz-away .tz-chip-slot--inline:empty:not([data-settled]) {
   min-height: 28px;
 }

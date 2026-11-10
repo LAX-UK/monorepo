@@ -226,8 +226,8 @@ describe("OfficialTime", () => {
       <OfficialTime instant={CLOSE} officialZone="Europe/Paris" now={new Date(CLOSE)} />,
     );
     expect(container.querySelector(".tz-chip-slot")).toBeEmptyDOMElement();
-    // The page has drawn, so the hold ends and the empty row takes no room.
-    expect(document.documentElement).toHaveClass("tz-ready");
+    // The row has hydrated, so the hold ends and the empty row takes no room.
+    expect(container.querySelector(".tz-chip-slot")).toHaveAttribute("data-settled");
     document.documentElement.className = "";
   });
 

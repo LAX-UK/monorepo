@@ -1,4 +1,5 @@
-export { OfficialTime, TimeChipSlot } from "./official-time.js";
+export { OfficialTime } from "./official-time.js";
+export { TimeChipSlot } from "./time-chip-slot.js";
 export type { OfficialTimeProps } from "./official-time.js";
 export { TimeChip } from "./time-chip.js";
 export type { TimeChipProps } from "./time-chip.js";
