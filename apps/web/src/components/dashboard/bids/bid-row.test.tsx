@@ -49,14 +49,16 @@ afterEach(() => setViewerZone(null));
 describe("BidRow's own-time text", () => {
   it("adds the close in the visitor's time as plain text, not a button", () => {
     renderAsVisitorIn("Africa/Cairo", row(card()));
-    expect(screen.getByText("20:00")).toBeInTheDocument();
-    expect(screen.getByText(/Your time:/)).toBeInTheDocument();
+    // Once under the close (wide row) and once after the facts (narrow row); CSS shows one.
+    expect(screen.getAllByText("20:00")).toHaveLength(2);
+    const closes = screen.getByText("Thu 12 Nov").closest("div");
+    expect(closes).toHaveTextContent("20:00 in Cairo");
     expect(screen.queryByRole("button", { name: /show details/i })).toBeNull();
   });
 
   it("names the day when the visitor's day differs", () => {
     renderAsVisitorIn("Australia/Sydney", row(card()));
-    expect(screen.getByText("Fri 13 Nov")).toBeInTheDocument();
+    expect(screen.getAllByText("Fri 13 Nov")).toHaveLength(2);
   });
 
   it.each(["Europe/London", "UTC", null])("adds nothing for %s", (zone) => {

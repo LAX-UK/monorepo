@@ -4,7 +4,7 @@ import { MediaImage } from "@/components/ui/media-image";
 import { RowStep } from "@/components/workspace/row-step";
 import { BID_STATUS_BADGE } from "@/lib/bid/bid-status-badge";
 import { bidNeedsYou } from "@/lib/bid/my-bid-status";
-import type { MyBidCardVm } from "@/lib/bid/my-bids.vm";
+import { CLOSES_FIGURE_LABEL, type MyBidCardVm } from "@/lib/bid/my-bids.vm";
 import { notify } from "@/lib/ui/notify";
 import {
   InlineActionMenu,
@@ -59,6 +59,7 @@ export function BidRow({
   const badge = BID_STATUS_BADGE[card.status];
   const next = card.next;
   const closing = useViewerMoment(card.closes?.iso ?? null, card.closes?.zone ?? "").moment;
+  const ownTime = closing?.local ? <PlainLocalTime moment={closing} /> : null;
   const blocked = Boolean(bidBlockedReason) && next?.kind !== "view-purchase";
 
   return (
@@ -76,19 +77,16 @@ export function BidRow({
         card.saleTitle,
         card.placedBy ? `Placed by ${card.placedBy}` : null,
         card.placementNote,
-        closing?.local ? (
-          <PlainLocalTime
-            key="closes"
-            moment={closing}
-            // A narrow row wraps the city onto a second line rather than cutting it off.
-            className="max-w-full items-start whitespace-normal [&>svg]:mt-[3px]"
-          />
-        ) : null,
       ]}
-      // A visitor's own time is a fact that must stay whole, so the facts wrap instead of one
-      // of them giving way to it.
-      {...(closing?.local ? {} : { metaShrink: 1 })}
-      figures={card.figures}
+      metaShrink={1}
+      // The visitor's time sits under the close in a wide row, and after the facts in a narrow one.
+      metaNarrow={ownTime}
+      figures={card.figures.map((figure, index, all) => ({
+        ...figure,
+        // The last figure is the one that carries a time; it is roomy on every row so they align.
+        ...(index === all.length - 1 ? { roomyWhenAway: true } : {}),
+        ...(ownTime && figure.label === CLOSES_FIGURE_LABEL ? { note: ownTime } : {}),
+      }))}
       aligned
       status={
         <StatusBadge tone={badge.tone} shape={badge.shape}>

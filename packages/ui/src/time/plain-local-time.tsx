@@ -19,7 +19,7 @@ export function PlainLocalTime({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 font-lax text-lax-13 leading-5 tabular-nums",
+        "inline-flex max-w-full items-center gap-1.5 font-lax text-lax-13 leading-5 tabular-nums",
         moment.localDiffersDay
           ? "rounded-lax-badge bg-lax-info-bg px-1.5 text-lax-info-fg"
           : "text-lax-muted",
@@ -28,7 +28,7 @@ export function PlainLocalTime({
     >
       <span className="sr-only">Your time: </span>
       <Globe aria-hidden className="size-3.5 shrink-0" />
-      <time dateTime={moment.iso}>
+      <time dateTime={moment.iso} className="min-w-0 truncate">
         {moment.localDiffersDay ? (
           <>
             <b className="font-semibold">{local.day}</b>, {local.time} in {local.city}

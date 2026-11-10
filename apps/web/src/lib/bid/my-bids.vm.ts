@@ -8,6 +8,9 @@ import { type MyBidAction, myBidActions } from "./my-bid-next-action";
 import { MY_BID_TABS, type MyBidStatus, type MyBidTab, groupMyBids } from "./my-bid-status";
 
 /** One figure on a bid row: the value above what it is ("£6,800" over "current bid"). */
+/** The label of the figure that states when an open lot closes. */
+export const CLOSES_FIGURE_LABEL = "closes";
+
 export type MyBidFigure = { label: string; value: string };
 
 export type MyBidCardVm = {
@@ -105,7 +108,7 @@ function figuresFor(
       return [
         { label: "current bid", value: money(lot.currentPrice, lot) },
         { label: "your maximum", value: yourMaximum(row, lot) },
-        { label: "closes", value: formatMoment(lot.endTime, zone, now) },
+        { label: CLOSES_FIGURE_LABEL, value: formatMoment(lot.endTime, zone, now) },
       ];
     case "maximum-set":
     case "absentee":
