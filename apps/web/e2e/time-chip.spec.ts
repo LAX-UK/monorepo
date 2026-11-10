@@ -1,4 +1,5 @@
 import { describeMoment } from "@auction/datetime";
+import { lotPath, salePath } from "@auction/types";
 import AxeBuilder from "@axe-core/playwright";
 import {
   type APIRequestContext,
@@ -55,7 +56,8 @@ async function resolveSubjects(request: APIRequestContext): Promise<Subject[]> {
     if (typeof row.endTime === "string") {
       subjects.push({
         name: "lot page",
-        path: lot.path,
+        // The canonical address, so the page is not replaced by a redirect while it is read.
+        path: lotPath({ id, title: String(row.title ?? "") }),
         instant: new Date(row.endTime).toISOString(),
         officialZone: typeof row.timeZone === "string" ? row.timeZone : "Europe/London",
       });
@@ -68,7 +70,7 @@ async function resolveSubjects(request: APIRequestContext): Promise<Subject[]> {
     if (typeof row.startTime === "string") {
       subjects.push({
         name: "sale hero",
-        path: sale.path,
+        path: salePath({ id, title: String(row.title ?? "") }),
         instant: new Date(row.startTime).toISOString(),
         officialZone: typeof row.timeZone === "string" ? row.timeZone : "Europe/London",
       });

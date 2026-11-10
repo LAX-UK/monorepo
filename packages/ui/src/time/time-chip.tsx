@@ -57,7 +57,7 @@ export function TimeChip({ instant, officialZone, variant = "button" }: TimeChip
   if (variant === "plain") return <PlainLocalTime moment={moment} />;
 
   return (
-    <span ref={disclosure.rootRef} className="relative mt-2 flex w-fit max-w-full">
+    <span ref={disclosure.rootRef} className="relative flex w-fit max-w-full">
       <button
         ref={disclosure.triggerRef}
         type="button"
