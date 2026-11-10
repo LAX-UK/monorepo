@@ -114,6 +114,15 @@ describe("mapSaleToAuctionFields", () => {
     });
   });
 
+  it("refuses live sales with the production charges until ATG gives a live surcharge", () => {
+    expect(() =>
+      mapSaleToAuctionFields(
+        testSale({ atgSettings: { auctionType: "Live", distribution: "private_test" } }),
+        { ...testAtgConfig, fees: ATG_AUCTION_FEES },
+      ),
+    ).toThrow(AtgMappingError);
+  });
+
   it("converts fractional premium rates to percentages without float noise", () => {
     const fields = mapSaleToAuctionFields(testSale({ buyerPremiumRate: "0.2875" }), testAtgConfig);
     expect(fields.BuyersPremium).toBe(28.75);
@@ -130,6 +139,16 @@ describe("mapSaleToAuctionFields", () => {
 });
 
 describe("mapLotToLotFields", () => {
+  it("copies the auction's charges onto the lot", () => {
+    const fields = mapLotToLotFields(testLot(), testSale(), 1, testAtgConfig);
+
+    expect(fields).toMatchObject({
+      BuyersPremiumVatRate: 20,
+      InternetSurchargePercent: 3,
+      InternetSurchargeVatRate: 20,
+    });
+  });
+
   it("maps catalogue data with artist, medium and dimensions in the description", () => {
     const fields = mapLotToLotFields(testLot(), testSale(), 4, testAtgConfig);
 
@@ -146,6 +165,9 @@ describe("mapLotToLotFields", () => {
       OpeningPrice: 500,
       Reserve: 800,
       EndTimeUtc: "2026-11-01T18:00:00.000Z",
+      BuyersPremiumVatRate: 20,
+      InternetSurchargePercent: 3,
+      InternetSurchargeVatRate: 20,
     });
   });
 

@@ -56,9 +56,11 @@ export function assertSaleMappableForAtg(sale: AtgSaleSnapshot): void {
 function atgFeeFields(
   auctionType: GapAuctionTypeAndListing,
   config: Pick<AtgSyncConfig, "fees">,
-): Pick<
-  GapAuctionFields,
-  "BuyersPremiumVatRate" | "InternetSurchargeRate" | "InternetSurchargeVatRate"
+): Required<
+  Pick<
+    GapAuctionFields,
+    "BuyersPremiumVatRate" | "InternetSurchargeRate" | "InternetSurchargeVatRate"
+  >
 > {
   const surcharge = config.fees.internetSurchargeRate[auctionType];
   if (surcharge == null) {
@@ -198,6 +200,11 @@ export function mapLotToLotFields(
   const buyNow = money(lot.buyNowPrice);
   if (buyNow !== undefined) fields.BuyItNowPrice = buyNow;
   if (isTimed(sale)) fields.EndTimeUtc = toGapDate(lot.endTime);
+  // ATG keeps the charges on each lot too, so a lot never shows bidders different charges from its auction.
+  const fees = atgFeeFields(sale.atgSettings.auctionType, config);
+  fields.BuyersPremiumVatRate = fees.BuyersPremiumVatRate;
+  fields.InternetSurchargePercent = fees.InternetSurchargeRate;
+  fields.InternetSurchargeVatRate = fees.InternetSurchargeVatRate;
   return fields;
 }
 

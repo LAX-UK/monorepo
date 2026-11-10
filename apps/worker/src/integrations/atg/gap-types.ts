@@ -68,6 +68,10 @@ export type GapLotFields = {
   OpeningPrice?: number;
   BuyItNowPrice?: number;
   EndTimeUtc?: string;
+  /** The lot's copy of the auction's charges; percentages, VAT fields are VAT rates. */
+  BuyersPremiumVatRate?: number;
+  InternetSurchargePercent?: number;
+  InternetSurchargeVatRate?: number;
 };
 
 export type GapCreateLotRequest = GapLotFields;
