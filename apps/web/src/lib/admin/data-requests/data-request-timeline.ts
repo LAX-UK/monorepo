@@ -1,5 +1,6 @@
 import type { DataRequestRecord } from "@auction/identity-contracts/data-requests";
 import type { TimelineEvent } from "@auction/staff-ui";
+import { formatStaffNumber } from "@auction/staff-ui";
 import {
   CHANNEL_LABELS,
   OUTCOME_LABELS,
@@ -55,7 +56,7 @@ const EVENTS: Readonly<Record<string, EventSpec>> = {
         categories === null
           ? null
           : `${categories} ${categories === 1 ? "category" : "categories"}`,
-        records === null ? null : `${records.toLocaleString("en-GB")} records`,
+        records === null ? null : `${formatStaffNumber(records)} records`,
       ]);
     },
     tone: "success",

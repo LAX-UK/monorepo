@@ -1,18 +1,14 @@
 "use client";
 
+import { formatDate } from "@auction/datetime";
 import { KeyValueList, Notice, Skeleton, StaffButton } from "@auction/staff-ui";
 import type { AdminEmailChangeKycRecord } from "@auction/validators";
 
 /** "10 December 1990": a date of birth read aloud and compared, so no numeric shorthand. */
-function formatDateOfBirth(iso: string): string {
+export function formatDateOfBirth(iso: string): string {
   const parsed = new Date(`${iso}T00:00:00Z`);
   if (Number.isNaN(parsed.getTime())) return iso;
-  return parsed.toLocaleDateString("en-GB", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-    timeZone: "UTC",
-  });
+  return formatDate(parsed, "UTC", { month: "long" });
 }
 
 export type KycRecordState =

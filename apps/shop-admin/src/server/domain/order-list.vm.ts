@@ -1,3 +1,4 @@
+import { LONDON_TIME_ZONE, dayKey } from "@auction/datetime";
 import {
   ADMIN_ORDER_STATUSES,
   type AdminOrderStatus,
@@ -140,16 +141,9 @@ export const CREATED_PRESETS = [
 ] as const;
 export type CreatedPresetId = (typeof CREATED_PRESETS)[number]["id"];
 
-const UK_DAY = new Intl.DateTimeFormat("en-CA", {
-  timeZone: "Europe/London",
-  year: "numeric",
-  month: "2-digit",
-  day: "2-digit",
-});
-
 /** The UK calendar day `daysAgo` days before `now`, as `YYYY-MM-DD`. */
 function ukDay(now: Date, daysAgo: number): string {
-  return UK_DAY.format(new Date(now.getTime() - daysAgo * 86_400_000));
+  return dayKey(new Date(now.getTime() - daysAgo * 86_400_000), LONDON_TIME_ZONE);
 }
 
 /** A preset as the inclusive `from`/`to` days the list URL takes. */

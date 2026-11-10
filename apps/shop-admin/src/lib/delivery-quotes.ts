@@ -9,7 +9,7 @@ import {
   declineNoteIssue,
   deliveryQuoteInputIssues,
 } from "@auction/shop-domain";
-import { formatPenceAsPounds } from "@auction/staff-ui";
+import { formatPenceAsPounds, formatStaffNumber } from "@auction/staff-ui";
 
 /*
  * LAX Admin › Orders › Delivery quotes, in words. The rules are the domain's, run as staff type and
@@ -38,7 +38,7 @@ export const QUOTE_FIELD_LABELS: Record<DeliveryQuoteInputField, string> = {
 const QUOTE_MESSAGES: Record<string, string> = {
   not_whole_pence: "Enter a price in pounds and pence",
   below_one_penny: "Enter a price of at least 1p",
-  too_high: `Enter a price of £${(QUOTE_PRICE_MAX_PENCE / 100).toLocaleString("en-GB")} or less`,
+  too_high: `Enter a price of £${formatStaffNumber(QUOTE_PRICE_MAX_PENCE / 100)} or less`,
 };
 
 function quoteMessage(field: DeliveryQuoteInputField, reason: string): string {

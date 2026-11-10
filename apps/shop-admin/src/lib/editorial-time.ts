@@ -1,6 +1,5 @@
+import { LONDON_TIME_ZONE, formatTime } from "@auction/datetime";
 import { formatStaffCalendarDay } from "@auction/staff-ui";
-
-const LONDON = "Europe/London";
 
 function parse(iso: string): Date | null {
   const date = new Date(iso);
@@ -14,12 +13,7 @@ function parse(iso: string): Date | null {
 export function formatLondonTime(iso: string): string {
   const date = parse(iso);
   if (!date) return iso;
-  return new Intl.DateTimeFormat("en-GB", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hourCycle: "h23",
-    timeZone: LONDON,
-  }).format(date);
+  return formatTime(date, LONDON_TIME_ZONE);
 }
 
 /** Exhibition dates are calendar days with no time; midday UTC keeps them on that London date. */

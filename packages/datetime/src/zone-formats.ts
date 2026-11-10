@@ -20,10 +20,11 @@ export type ZoneFormats = {
 };
 
 /**
- * Short months are three letters everywhere ("Sep"), whatever the runtime's locale data: en-GB
- * spells September "Sept", which would be the one four-letter month in a column of dates.
+ * A formatter for a date with a three-letter month ("Sep"), whatever the runtime's locale data:
+ * en-GB spells September "Sept", which would be the one four-letter month in a column of dates.
+ * `options` choose the other parts (day, year, hour, minute...) and `month` is always "short".
  */
-function shortMonth(timeZone: string, options: Intl.DateTimeFormatOptions): Format {
+export function shortMonthFormat(timeZone: string, options: Intl.DateTimeFormatOptions): Format {
   const inner = new Intl.DateTimeFormat(LOCALE, { timeZone, ...options, month: "short" });
   return { format: (date) => inner.format(date).replace(/\bSept\b/, "Sep") };
 }
@@ -41,13 +42,13 @@ function build(timeZone: string): ZoneFormats {
     time: make({ hour: "2-digit", minute: "2-digit", hourCycle: "h23" }),
     zoneName: make({ timeZoneName: "short" }),
     day: make({ day: "numeric" }),
-    dayMonth: shortMonth(timeZone, { day: "numeric" }),
-    dayMonthYear: shortMonth(timeZone, { day: "numeric", year: "numeric" }),
+    dayMonth: shortMonthFormat(timeZone, { day: "numeric" }),
+    dayMonthYear: shortMonthFormat(timeZone, { day: "numeric", year: "numeric" }),
     dayLongMonth: make({ day: "numeric", month: "long" }),
     dayLongMonthYear: make({ day: "numeric", month: "long", year: "numeric" }),
     month: make({ month: "long" }),
     monthYear: make({ month: "long", year: "numeric" }),
-    shortMonthYear: shortMonth(timeZone, { year: "numeric" }),
+    shortMonthYear: shortMonthFormat(timeZone, { year: "numeric" }),
     weekday: make({ weekday: "short" }),
     weekdayLong: make({ weekday: "long" }),
   };
