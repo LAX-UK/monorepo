@@ -27,6 +27,9 @@ export async function runLotLifecycleTickJob(opts: {
     return;
   }
 
+  // No gateway retry: the tick is safe to repeat, but it runs every 10 seconds on a single
+  // worker, so waiting 15 seconds to ask again would hold back the next ticks and delay lots
+  // ending. The next tick is the retry.
   await postInternalCronJob({
     apiBaseUrl: opts.apiBaseUrl,
     cronSecret: opts.cronSecret,
