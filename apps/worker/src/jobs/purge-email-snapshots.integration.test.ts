@@ -34,7 +34,7 @@ describe.skipIf(!ownerUrl || !workerUrl)(
       const [row] = await owner
         .insert(emailOutbox)
         .values({
-          idempotencyKey: `purge-test:${run}:${ids.length}`,
+          idempotencyKey: `purge-test:${run}:${randomUUID()}`,
           toEmailHash: emailHash(address),
           toSnapshot: address,
           toSnapshotPurgeAt: purgeAt,
