@@ -10,3 +10,12 @@ export function idempotencyKeyFrom(formData: FormData): string {
   const supplied = typeof raw === "string" ? raw.trim() : "";
   return supplied.length >= 8 && supplied.length <= 128 ? supplied : crypto.randomUUID();
 }
+
+/** The `Idempotency-Key` header for a call: the caller's key when usable, else a fresh one. */
+export function idempotencyHeader(key: string | undefined): Record<string, string> {
+  const supplied = key?.trim() ?? "";
+  return {
+    [IDEMPOTENCY_KEY_HEADER]:
+      supplied.length >= 8 && supplied.length <= 128 ? supplied : crypto.randomUUID(),
+  };
+}

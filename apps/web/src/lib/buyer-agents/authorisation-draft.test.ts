@@ -33,9 +33,12 @@ describe("parsePounds", () => {
     expect(parsePounds(text)).toBe(expected);
   });
 
-  it.each(["ten", "1.234", "-5", "1,00", "12,34.5", "1e3"])("cannot read %j", (text) => {
-    expect(parsePounds(text)).toBeNaN();
-  });
+  it.each(["ten", "1.234", "-5", "1,00", "12,34.5", "1e3", "1,2,0,0", "12.345", "-0"])(
+    "cannot read %j",
+    (text) => {
+      expect(parsePounds(text)).toBeNaN();
+    },
+  );
 });
 
 describe("validateAuthorisationDraft", () => {
