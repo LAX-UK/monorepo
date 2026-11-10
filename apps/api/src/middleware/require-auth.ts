@@ -1,6 +1,8 @@
+import { SESSION_REQUIRED_CODE } from "@auction/identity-contracts";
 import type { StaffRoles } from "@auction/types";
 import { createMiddleware } from "hono/factory";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
+import { replaceableRejection } from "./auth-rejection.js";
 import { hasBidScope, requiredBidScope } from "./bid-scope-policy.js";
 
 export type RequireAuthOptions = {
@@ -25,7 +27,9 @@ export function createRequireAuth(authenticator: IAuthenticator, opts?: RequireA
   }>(async (c, next) => {
     const user = await authenticator.getSessionUser(c.req.raw.headers);
     if (!user) {
-      return c.json({ error: "Unauthorized", code: "session_required" }, 401);
+      // Only a replaceable token gets its own code; every other failure stays `session_required`.
+      const reason = await replaceableRejection(authenticator, c.req.raw.headers);
+      return c.json({ error: "Unauthorized", code: reason ?? SESSION_REQUIRED_CODE }, 401);
     }
     const granted = user.scopes ?? [];
     if (opts?.acceptedScopes) {

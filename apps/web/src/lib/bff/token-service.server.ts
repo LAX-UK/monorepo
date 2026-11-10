@@ -33,17 +33,19 @@ export type SigningKeyCheck = (token: string) => Promise<boolean>;
 
 /**
  * A cached token is reused only while it is unexpired, covers the scopes and was signed by a
- * key the issuer still publishes, so a rotated-out key never outlives the rotation.
+ * key the issuer still publishes, so a rotated-out key never outlives the rotation. A token the
+ * API just rejected (`replacing`) is never reused, but a different cached token is: a concurrent
+ * request has already replaced it.
  */
 async function reusableResourceToken(
   cached: CachedResourceToken | undefined,
   scopes: string,
-  forceExchange: boolean,
+  replacing: string | undefined,
   isKeyCurrent: SigningKeyCheck,
 ): Promise<CachedResourceToken | null> {
   if (
-    forceExchange ||
     cached === undefined ||
+    cached.token === replacing ||
     !scopesSatisfy(cached.scopes, scopes) ||
     cached.expiresAt <= Date.now() + EXPIRY_SKEW_MS
   ) {
@@ -51,6 +53,15 @@ async function reusableResourceToken(
   }
   return (await isKeyCurrent(cached.token)) ? cached : null;
 }
+
+export type ResourceTokenOptions = {
+  /**
+   * The token the API rejected. It is exchanged for a new one unless the cache already holds a
+   * different, valid token (a concurrent request replaced it), so a burst of rejected requests
+   * makes one exchange.
+   */
+  replacing?: string;
+};
 
 export class BidBffSessionRequiredError extends Error {
   constructor() {
@@ -91,12 +102,17 @@ export class BidBffTokenService {
     sessionId: string,
     audience: LaxResourceId,
     scopes: string,
-    forceExchange = false,
+    options: ResourceTokenOptions = {},
   ): Promise<{ token: string; session: AuthenticatedBidSession }> {
     const session = await this.readAuthenticated(sessionId);
     if (!session) throw new BidBffSessionRequiredError();
     const cached = session.resourceTokens[audience as keyof typeof session.resourceTokens];
-    const reusable = await reusableResourceToken(cached, scopes, forceExchange, this.isKeyCurrent);
+    const reusable = await reusableResourceToken(
+      cached,
+      scopes,
+      options.replacing,
+      this.isKeyCurrent,
+    );
     if (reusable) {
       return { token: reusable.token, session };
     }
@@ -108,7 +124,7 @@ export class BidBffTokenService {
       const reusableCurrent = await reusableResourceToken(
         currentCached,
         scopes,
-        forceExchange,
+        options.replacing,
         this.isKeyCurrent,
       );
       if (reusableCurrent) {

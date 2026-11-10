@@ -1,7 +1,7 @@
-import { BID_API_AUDIENCE, bffConfig } from "@/lib/bff/config.server";
+import { TokenExchangeFailedError, fetchBidApiAsSession } from "@/lib/bff/bid-api-session.server";
+import { bffConfig } from "@/lib/bff/config.server";
 import { readBidSessionId } from "@/lib/bff/session-cookie.server";
-import { BidBffSessionRequiredError, BidBffTokenService } from "@/lib/bff/token-service.server";
-import { fetchBidApi } from "@/lib/data/http/bid-api.server";
+import { BidBffSessionRequiredError } from "@/lib/bff/token-service.server";
 import { type NextRequest, NextResponse } from "next/server";
 
 export const runtime = "nodejs";
@@ -20,14 +20,14 @@ export async function GET(request: NextRequest) {
     );
   }
   try {
-    const resource = await new BidBffTokenService().resourceToken(
+    const { response } = await fetchBidApiAsSession({
       sessionId,
-      BID_API_AUDIENCE,
-      "bid.read",
-    );
-    const response = await fetchBidApi(`${bffConfig().apiBaseUrl}/users/me`, {
-      headers: { authorization: `Bearer ${resource.token}`, accept: "application/json" },
-      cache: "no-store",
+      scopes: "bid.read",
+      input: `${bffConfig().apiBaseUrl}/users/me`,
+      init: (token) => ({
+        headers: { authorization: `Bearer ${token}`, accept: "application/json" },
+        cache: "no-store",
+      }),
     });
     if (!response.ok) {
       return NextResponse.json(
@@ -44,8 +44,9 @@ export async function GET(request: NextRequest) {
       { headers: { "cache-control": "no-store" } },
     );
   } catch (error) {
+    const exchangeError = error instanceof TokenExchangeFailedError ? error.cause : error;
     const reason =
-      error instanceof BidBffSessionRequiredError
+      exchangeError instanceof BidBffSessionRequiredError
         ? "bff_session_not_authenticated"
         : "bff_token_error";
     return NextResponse.json(

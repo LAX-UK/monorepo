@@ -62,3 +62,52 @@ describe("require-auth resource scope enforcement", () => {
     });
   });
 });
+
+describe("require-auth 401 codes", () => {
+  function appRejecting(
+    reason: "token_key_unknown" | "token_expired" | null | "throws" | "absent",
+  ) {
+    const authenticator: IAuthenticator = {
+      getSessionUser: async () => null,
+      ...(reason === "absent"
+        ? {}
+        : {
+            diagnoseRejection: async () => {
+              if (reason === "throws") throw new Error("jwks down");
+              return reason;
+            },
+          }),
+    };
+    const app = new Hono();
+    let handlerRan = false;
+    app.use("/protected", createRequireAuth(authenticator));
+    app.post("/protected", (c) => {
+      handlerRan = true;
+      return c.json({ ok: true });
+    });
+    return { app, ran: () => handlerRan };
+  }
+
+  it.each(["token_key_unknown", "token_expired"] as const)(
+    "returns %s, before any handler runs, when a fresh token would fix the request",
+    async (reason) => {
+      const { app, ran } = appRejecting(reason);
+      const res = await app.request("/protected", { method: "POST" });
+      expect(res.status).toBe(401);
+      await expect(res.json()).resolves.toEqual({ error: "Unauthorized", code: reason });
+      expect(ran()).toBe(false);
+    },
+  );
+
+  it.each([null, "throws", "absent"] as const)(
+    "keeps session_required for every other 401 (%s)",
+    async (reason) => {
+      const res = await appRejecting(reason).app.request("/protected", { method: "POST" });
+      expect(res.status).toBe(401);
+      await expect(res.json()).resolves.toEqual({
+        error: "Unauthorized",
+        code: "session_required",
+      });
+    },
+  );
+});

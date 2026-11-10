@@ -6,6 +6,7 @@ import {
   deriveSsrOrigin,
   withBidApiBearer,
 } from "@/lib/data/http/server-request-headers";
+import { sendWithSsrKeyRetry } from "@/lib/data/http/ssr-key-retry.server";
 import { currentVisitorIpHeaders } from "@/lib/http/visitor-ip.server";
 import type { EnquirerOrganisation } from "@/lib/private-sales/enquiring-as";
 import {
@@ -19,10 +20,10 @@ import {
 const REQUEST_TIMEOUT_MS = 10_000;
 
 /** Origin, the visitor's address and, when they are signed in, their session. */
-async function requestHeaders(): Promise<Headers> {
+async function requestHeaders(rejectedBearer?: string): Promise<Headers> {
   // The visitor's address, so the API limits them and not the web server every visitor shares.
   const [origin, clientAddress] = await Promise.all([deriveSsrOrigin(), currentVisitorIpHeaders()]);
-  return new ComposableServerRequestHeaders([withBidApiBearer()]).build({
+  return new ComposableServerRequestHeaders([withBidApiBearer(rejectedBearer)]).build({
     "content-type": "application/json",
     origin,
     ...clientAddress,
@@ -32,12 +33,17 @@ async function requestHeaders(): Promise<Headers> {
 async function send(method: "GET" | "POST", path: string, body?: unknown): Promise<Response> {
   let response: Response;
   try {
-    response = await fetch(`${getServerApiBase()}${path}`, {
-      method,
-      headers: await requestHeaders(),
-      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-      cache: "no-store",
-      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    const payload = body === undefined ? {} : { body: JSON.stringify(body) };
+    response = await sendWithSsrKeyRetry({
+      buildHeaders: requestHeaders,
+      send: (headers) =>
+        fetch(`${getServerApiBase()}${path}`, {
+          method,
+          headers,
+          ...payload,
+          cache: "no-store",
+          signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+        }),
     });
   } catch {
     throw new ContactDispatchError("The enquiry service could not be reached.");

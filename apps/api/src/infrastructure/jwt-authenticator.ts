@@ -1,6 +1,13 @@
-import { verifyBearerToken } from "@auction/auth/token-verifier";
+import { bearerRejectionCode, verifyBearerToken } from "@auction/auth/token-verifier";
 import { normalizeUserRoleOrClient, normalizeUserStaffRole } from "@auction/types";
-import type { AuthenticatedUser, IAuthenticator } from "../services/interfaces/authenticator.js";
+import type {
+  AuthRejectionReason,
+  AuthenticatedUser,
+  IAuthenticator,
+} from "../services/interfaces/authenticator.js";
+
+/** Clock slack between the issuer and this API when checking `exp` and `nbf`. */
+export const ACCESS_TOKEN_CLOCK_TOLERANCE_SECONDS = 5;
 
 export type JwtAuthenticatorOptions = {
   issuer: string;
@@ -19,6 +26,7 @@ export class JwtAuthenticator implements IAuthenticator {
       jwksUrl: this.opts.jwksUrl,
       issuer: this.opts.issuer,
       audience: this.opts.audience,
+      clockToleranceSeconds: ACCESS_TOKEN_CLOCK_TOLERANCE_SECONDS,
     });
     if (!verified && this.opts.allowLegacyLaxApiAudience) {
       verified = await verifyBearerToken({
@@ -26,6 +34,7 @@ export class JwtAuthenticator implements IAuthenticator {
         jwksUrl: this.opts.jwksUrl,
         issuer: this.opts.issuer,
         audience: "lax-api",
+        clockToleranceSeconds: ACCESS_TOKEN_CLOCK_TOLERANCE_SECONDS,
       });
       if (verified) this.opts.onLegacyAudienceAccepted?.();
     }
@@ -47,5 +56,19 @@ export class JwtAuthenticator implements IAuthenticator {
         ? { identitySessionId: verified.payload.sid }
         : {}),
     };
+  }
+
+  async diagnoseRejection(headers: Headers): Promise<AuthRejectionReason | null> {
+    try {
+      return await bearerRejectionCode({
+        authorization: headers.get("authorization"),
+        jwksUrl: this.opts.jwksUrl,
+        issuer: this.opts.issuer,
+        audience: this.opts.audience,
+        clockToleranceSeconds: ACCESS_TOKEN_CLOCK_TOLERANCE_SECONDS,
+      });
+    } catch {
+      return null;
+    }
   }
 }

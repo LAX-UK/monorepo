@@ -1,4 +1,5 @@
-import { BID_API_AUDIENCE, bffConfig } from "@/lib/bff/config.server";
+import { TokenExchangeFailedError, fetchBidApiAsSession } from "@/lib/bff/bid-api-session.server";
+import { bffConfig } from "@/lib/bff/config.server";
 import {
   APPROVED_PROXY_METHODS,
   UNSAFE_PROXY_METHODS,
@@ -8,8 +9,7 @@ import {
   scopesForProxyMethod,
 } from "@/lib/bff/proxy-policy";
 import { readBidSessionId } from "@/lib/bff/session-cookie.server";
-import { BidBffSessionRequiredError, BidBffTokenService } from "@/lib/bff/token-service.server";
-import { fetchBidApi } from "@/lib/data/http/bid-api.server";
+import { BidBffSessionRequiredError } from "@/lib/bff/token-service.server";
 import { resolveVisitorIp } from "@/lib/http/visitor-ip";
 import { visitorIpHeadersFor } from "@/lib/http/visitor-ip.server";
 import { type NextRequest, NextResponse } from "next/server";
@@ -43,20 +43,6 @@ async function proxy(request: NextRequest, context: RouteContext): Promise<Respo
   const isServerTime = path.length === 1 && path[0] === "time";
   const sessionId = isServerTime ? null : readBidSessionId(request);
 
-  const tokens = new BidBffTokenService();
-  const requiredScopes = scopesForProxyMethod(method);
-  let resource: Awaited<ReturnType<BidBffTokenService["resourceToken"]>> | null;
-  try {
-    resource = sessionId
-      ? await tokens.resourceToken(sessionId, BID_API_AUDIENCE, requiredScopes)
-      : null;
-  } catch (error) {
-    if (error instanceof BidBffSessionRequiredError) {
-      return NextResponse.json({ error: "session_required" }, { status: 401 });
-    }
-    return NextResponse.json({ error: "identity_unavailable" }, { status: 503 });
-  }
-
   const target = new URL(`/${path.map(encodeURIComponent).join("/")}`, config.apiBaseUrl);
   target.search = request.nextUrl.search;
   const body =
@@ -64,33 +50,34 @@ async function proxy(request: NextRequest, context: RouteContext): Promise<Respo
   const forwardedAddress = isServerTime
     ? visitorIpHeadersFor(resolveVisitorIp(request.headers))
     : {};
-  const perform = (bearer?: string) =>
-    fetchBidApi(target, {
-      method,
-      headers: withHeaders(sanitizedProxyRequestHeaders(request.headers, bearer), forwardedAddress),
-      ...(body ? { body } : {}),
-      redirect: "manual",
-      cache: "no-store",
-    });
   try {
-    let upstream = await perform(resource?.token);
-    if (upstream.status === 401 && sessionId && resource) {
-      try {
-        resource = await tokens.resourceToken(sessionId, BID_API_AUDIENCE, requiredScopes, true);
-      } catch (error) {
-        if (error instanceof BidBffSessionRequiredError) {
-          return NextResponse.json({ error: "session_required" }, { status: 401 });
-        }
-        return NextResponse.json({ error: "identity_unavailable" }, { status: 503 });
-      }
-      upstream = await perform(resource.token);
-    }
+    // The body is buffered above, so the one retry on a replaceable token sends the same bytes.
+    const { response: upstream } = await fetchBidApiAsSession({
+      sessionId,
+      scopes: scopesForProxyMethod(method),
+      input: target,
+      init: (bearer) => ({
+        method,
+        headers: withHeaders(
+          sanitizedProxyRequestHeaders(request.headers, bearer),
+          forwardedAddress,
+        ),
+        ...(body ? { body } : {}),
+        redirect: "manual",
+        cache: "no-store",
+      }),
+    });
     return new Response(upstream.body, {
       status: upstream.status,
       statusText: upstream.statusText,
       headers: sanitizedProxyResponseHeaders(upstream.headers),
     });
-  } catch {
+  } catch (error) {
+    if (error instanceof TokenExchangeFailedError) {
+      return error.cause instanceof BidBffSessionRequiredError
+        ? NextResponse.json({ error: "session_required" }, { status: 401 })
+        : NextResponse.json({ error: "identity_unavailable" }, { status: 503 });
+    }
     return NextResponse.json({ error: "api_unavailable" }, { status: 502 });
   }
 }
