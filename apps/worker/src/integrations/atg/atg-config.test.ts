@@ -42,6 +42,12 @@ describe("loadAtgRuntimeConfig", () => {
     expect(config?.sync).not.toHaveProperty("auctionType");
     expect(config?.sync).toMatchObject({
       fees: ATG_AUCTION_FEES,
+      houseVenue: {
+        addressLine1: "156 New Cavendish Street",
+        city: "London",
+        postcode: "W1W 6YW",
+        country: "United Kingdom",
+      },
       artistPlacement: "description",
       currency: "GBP",
       countryCode: "UK",

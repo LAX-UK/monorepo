@@ -7,6 +7,13 @@ export const testAtgConfig: AtgSyncConfig = {
     internetSurchargeRate: { Timed: 3, Live: 5 },
     internetSurchargeVatRate: 20,
   },
+  houseVenue: {
+    addressLine1: "1 House Street",
+    addressLine2: null,
+    city: "London",
+    postcode: "W1 9ZZ",
+    country: "United Kingdom",
+  },
   platformCode: "LAX",
   clientId: "client-1",
   incrementSetId: "inc-1",

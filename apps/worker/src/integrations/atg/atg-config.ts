@@ -1,3 +1,4 @@
+import { SITE_BUSINESS_ADDRESS } from "@auction/branding";
 import type { WorkerEnv } from "../../env.js";
 import { ATG_AUCTION_FEES } from "./atg-fees.js";
 import type { AtgSyncConfig } from "./atg-types.js";
@@ -26,6 +27,14 @@ export function loadAtgRuntimeConfig(env: WorkerEnv): AtgRuntimeConfig | null {
     },
     sync: {
       fees: ATG_AUCTION_FEES,
+      houseVenue: {
+        addressLine1: SITE_BUSINESS_ADDRESS.streetAddress,
+        addressLine2: null,
+        city: SITE_BUSINESS_ADDRESS.addressLocality,
+        postcode: SITE_BUSINESS_ADDRESS.postalCode,
+        // ATG takes the country's name; the business address holds its ISO code (GB).
+        country: "United Kingdom",
+      },
       platformCode: required(env.ATG_PLATFORM_CODE, "ATG_PLATFORM_CODE"),
       clientId: env.ATG_CLIENT_ID ?? null,
       incrementSetId: required(env.ATG_INCREMENT_SET_ID, "ATG_INCREMENT_SET_ID"),
