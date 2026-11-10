@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import type { AtgLotSnapshot, AtgSaleSnapshot, AtgSyncConfig } from "./atg-types.js";
+import type { AtgLotSnapshot, AtgSaleSnapshot, AtgSyncConfig, AtgVenue } from "./atg-types.js";
 import { toGapDate } from "./gap-date.js";
 import type { GapAuctionFields, GapAuctionTypeAndListing, GapLotFields } from "./gap-types.js";
 import { toWindowsTimezoneId } from "./windows-timezone.js";
@@ -45,25 +45,32 @@ function isTimed(sale: Pick<AtgSaleSnapshot, "atgSettings">): boolean {
   return sale.atgSettings.auctionType === "Timed";
 }
 
-/**
- * ATG takes one flat buyer's premium per auction, and the venue address bidders see. Updates
- * replace the whole auction, so a sale without an address would clear the one ATG shows.
- */
+/** ATG takes one flat buyer's premium per auction. */
 export function assertSaleMappableForAtg(sale: AtgSaleSnapshot): void {
   if (sale.buyerPremiumTiers && sale.buyerPremiumTiers.length > 0) {
     throw new AtgMappingError("ATG needs a single flat buyer's premium; remove the bands.");
   }
-  const venue = [
-    sale.locationAddressLine1,
-    sale.locationCity,
-    sale.locationPostcode,
-    sale.locationCountry,
-  ];
-  if (venue.some((part) => !part?.trim())) {
+}
+
+/**
+ * The address ATG shows bidders. Updates replace the whole auction, so one is always sent: the
+ * sale's venue, or LAX's own address for a sale without one (online sales have no venue).
+ */
+function venueFor(sale: AtgSaleSnapshot, config: Pick<AtgSyncConfig, "houseVenue">): AtgVenue {
+  if (!sale.locationAddressLine1?.trim()) return config.houseVenue;
+  const venue: AtgVenue = {
+    addressLine1: sale.locationAddressLine1,
+    addressLine2: sale.locationAddressLine2,
+    city: sale.locationCity ?? "",
+    postcode: sale.locationPostcode ?? "",
+    country: sale.locationCountry ?? "",
+  };
+  if ([venue.city, venue.postcode, venue.country].some((part) => !part.trim())) {
     throw new AtgMappingError(
-      "ATG shows bidders the sale's venue. Choose the venue in the sale's schedule (address, town, postcode and country) before sending it.",
+      "The sale's venue is incomplete. Add its town, postcode and country in the sale's schedule before sending it to ATG.",
     );
   }
+  return venue;
 }
 
 /**
@@ -129,15 +136,16 @@ export function mapSaleToAuctionFields(
   } else {
     fields.SaleDates = [{ Starts: toGapDate(sale.startTime), Ends: toGapDate(sale.endTime) }];
   }
-  const address1 = optionalClip(sale.locationAddressLine1, ADDRESS_MAX);
+  const venue = venueFor(sale, config);
+  const address1 = optionalClip(venue.addressLine1, ADDRESS_MAX);
   if (address1) fields.Address1 = address1;
-  const address2 = optionalClip(sale.locationAddressLine2, ADDRESS_MAX);
+  const address2 = optionalClip(venue.addressLine2, ADDRESS_MAX);
   if (address2) fields.Address2 = address2;
-  const town = optionalClip(sale.locationCity, ADDRESS_MAX);
+  const town = optionalClip(venue.city, ADDRESS_MAX);
   if (town) fields.TownCity = town;
-  const postcode = optionalClip(sale.locationPostcode, POSTCODE_MAX);
+  const postcode = optionalClip(venue.postcode, POSTCODE_MAX);
   if (postcode) fields.Postcode = postcode;
-  const country = optionalClip(sale.locationCountry, COUNTRY_MAX);
+  const country = optionalClip(venue.country, COUNTRY_MAX);
   if (country) fields.Country = country;
   const info = sale.description?.trim();
   if (info) fields.ImportantInformation = info;

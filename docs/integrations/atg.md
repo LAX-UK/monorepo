@@ -170,9 +170,10 @@ GAP limits), `ImportantInformation` = sale description, `Terms`. One `AuctionLis
 with `PlatformCode`, `AuctionTypeAndListing` (the sale's ATG auction type), `CategoryName`
 (`ATG_DEFAULT_CATEGORY`) and `Private` (true unless the sale's distribution is
 `public_marketplace`). ATG takes one flat buyer's premium per auction: banded premiums fail the
-push before anything is sent. The venue address (line 1, town, postcode and country) is required: `UpdateAuction`
-replaces the whole auction, so a sale without one would clear the address ATG shows bidders
-(on creation ATG fills it from the client profile instead).
+push before anything is sent. An address is always sent, because `UpdateAuction` replaces the whole auction and an empty
+one clears the address ATG shows bidders: the sale's venue, or LAX's business address
+(`SITE_BUSINESS_ADDRESS`) for a sale without a street address, which covers every online sale.
+A venue with a street but no town, postcode or country fails the push.
 
 **ATG's charges** (`atg-fees.ts`, `ATG_AUCTION_FEES`). ATG sets its own charges on top of the
 hammer, which can differ from LAX's on lax.bid. Every auction sends `BuyersPremiumVatRate` 0.2,
