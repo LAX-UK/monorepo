@@ -665,6 +665,10 @@ if (atgRuntime) {
       log.warn({ err, saleId }, "ATG tick failed for sale");
       captureBackgroundError("atg-sync-tick", err, { extra: { saleId } });
     },
+    onFeeMismatch: (saleId, message) => {
+      log.error({ saleId, message }, "ATG holds different fees from LAX");
+      captureBackgroundError("atg-fee-mismatch", new Error(message), { extra: { saleId } });
+    },
   });
   atgSyncQueue = new Queue(ATG_SYNC_QUEUE_NAME, queueOpts(ATG_SYNC_QUEUE_NAME));
   atgSyncWorker = new Worker(
@@ -699,11 +703,12 @@ if (atgRuntime) {
   );
   log.info({ pollIntervalMs: atgRuntime.pollIntervalMs }, "atg-sync enabled");
   // One-off startup comparison with ATG; reports a wrong increment set or category, never blocks.
-  void checkAtgConfig(atgGateway, atgRuntime.sync).then(({ problems, unavailable }) => {
+  void checkAtgConfig(atgGateway, atgRuntime.sync).then(({ problems, unavailable, warnings }) => {
     for (const problem of problems) {
       log.error({ problem }, "ATG configuration does not match ATG");
       captureBackgroundError("atg-config-check", new Error(problem));
     }
+    for (const warning of warnings) log.warn({ warning }, "ATG configuration differs from ATG");
     for (const note of unavailable) log.warn({ note }, "ATG configuration check skipped");
   });
 }
