@@ -3,7 +3,9 @@ import { LotFulfilmentPaymentSync } from "./lot-fulfilment-payment-sync.js";
 
 const NOW = new Date("2026-11-09T10:00:00Z");
 
-function setup(existing: { status: string; paymentClearedAt?: Date | null } | null) {
+function setup(
+  existing: { status: string; paymentId?: string; paymentClearedAt?: Date | null } | null,
+) {
   const store = {
     findByLotId: vi.fn().mockResolvedValue(existing),
     insert: vi.fn().mockResolvedValue(undefined),
@@ -35,12 +37,26 @@ describe("recording when payment cleared", () => {
     });
   });
 
-  it("keeps the first clearance time when a payment is captured again", async () => {
+  it("keeps the first clearance time when the same payment is captured again", async () => {
     const first = new Date("2026-11-01T09:00:00Z");
-    const { store, sync } = setup({ status: "awaiting_release", paymentClearedAt: first });
-    await sync.onPaymentCaptured("lot-1", "pay-2");
+    const { store, sync } = setup({
+      status: "awaiting_release",
+      paymentId: "pay-1",
+      paymentClearedAt: first,
+    });
+    await sync.onPaymentCaptured("lot-1", "pay-1");
     const patch = store.updateByLotId.mock.calls[0]?.[1] as Record<string, unknown>;
     expect(patch).not.toHaveProperty("paymentClearedAt");
+  });
+
+  it("clears afresh when a different payment is captured, as after a refund", async () => {
+    const { store, sync } = setup({
+      status: "awaiting_release",
+      paymentId: "pay-1",
+      paymentClearedAt: new Date("2026-11-01T09:00:00Z"),
+    });
+    await sync.onPaymentCaptured("lot-1", "pay-2");
+    expect(store.updateByLotId.mock.calls[0]?.[1]).toMatchObject({ paymentClearedAt: NOW });
   });
 
   it("leaves a record that has moved on alone", async () => {

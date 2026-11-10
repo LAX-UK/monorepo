@@ -325,6 +325,10 @@ export const WORKER_READ_TABLES = [
   "collection_exception",
   "collection_booking",
   "collection_booking_lot",
+  /** The storage reminder sweep reads each lot's eligibility to collect: a courier quote accepted, a dispute open. */
+  "delivery_quote",
+  "dispute_case",
+  "dispute_case_candidate",
 ];
 // Postgres requires UPDATE on the target table for `select ... for update` row locks even
 // when no rows are mutated. The projector runner pulls events with FOR UPDATE SKIP LOCKED,

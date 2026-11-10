@@ -6,6 +6,9 @@ SET LOCAL lock_timeout = '5s';
 --> statement-breakpoint
 ALTER TABLE "lot_fulfilment" ADD COLUMN IF NOT EXISTS "payment_cleared_at" timestamp with time zone;
 --> statement-breakpoint
+-- The storage reminders look up the lots that cleared in a few days' range.
+CREATE INDEX IF NOT EXISTS "lot_fulfilment_payment_cleared_at_idx" ON "lot_fulfilment" ("payment_cleared_at") WHERE "payment_cleared_at" IS NOT NULL;
+--> statement-breakpoint
 ALTER TABLE "collection_place" ADD COLUMN IF NOT EXISTS "storage_charge_pence" integer;
 --> statement-breakpoint
 ALTER TABLE "collection_place" DROP CONSTRAINT IF EXISTS "collection_place_storage_charge_check";

@@ -1,4 +1,4 @@
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import { index, jsonb, pgEnum, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 import { user } from "./auth.js";
 import { lot } from "./lots.js";
@@ -46,7 +46,12 @@ export const lotFulfilment = pgTable(
     updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
   },
-  (table) => [index("lot_fulfilment_status_updated_idx").on(table.status, table.updatedAt)],
+  (table) => [
+    index("lot_fulfilment_status_updated_idx").on(table.status, table.updatedAt),
+    index("lot_fulfilment_payment_cleared_at_idx")
+      .on(table.paymentClearedAt)
+      .where(sql`${table.paymentClearedAt} IS NOT NULL`),
+  ],
 );
 
 export const lotFulfilmentRelations = relations(lotFulfilment, ({ one }) => ({

@@ -59,8 +59,11 @@ export class LotFulfilmentPaymentSync implements ILotFulfilmentPaymentHook {
       await this.fulfilment.updateByLotId(lotId, {
         paymentId,
         status: "awaiting_release",
-        // The first time it cleared is the one "please collect by" counts from.
-        ...(row.paymentClearedAt ? {} : { paymentClearedAt: this.now() }),
+        // The first time it cleared is the one "please collect by" counts from, for as long as the
+        // payment is the same; a new payment (the first was refunded) clears afresh.
+        ...(row.paymentClearedAt && row.paymentId === paymentId
+          ? {}
+          : { paymentClearedAt: this.now() }),
         updatedAt: this.now(),
       });
     }

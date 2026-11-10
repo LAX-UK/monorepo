@@ -31,12 +31,16 @@ describe("migration 0347 collection storage reminders", () => {
     expect(migration).toContain(
       '"collection_place" ADD COLUMN IF NOT EXISTS "storage_charge_pence" integer;',
     );
-    expect(migration).not.toMatch(/NOT NULL|DROP COLUMN|UPDATE /);
+    expect(migration).not.toMatch(/ADD COLUMN[^;]*NOT NULL|DROP COLUMN|UPDATE /);
+    expect(migration).toContain(
+      'CREATE INDEX IF NOT EXISTS "lot_fulfilment_payment_cleared_at_idx"',
+    );
   });
 
   it("is reversed by a rollback that drops what it adds", () => {
     expect(rollback).toContain('DROP COLUMN IF EXISTS "storage_charge_pence"');
     expect(rollback).toContain('DROP COLUMN IF EXISTS "payment_cleared_at"');
+    expect(rollback).toContain('DROP INDEX IF EXISTS "lot_fulfilment_payment_cleared_at_idx"');
   });
 
   it("is mirrored by the Drizzle tables", () => {
