@@ -1,6 +1,6 @@
 import type { IAtgLinkReader, IAtgSaleSettingsWriter } from "@auction/persistence/interfaces";
 import type { AtgSyncQueueProducer } from "@auction/queues";
-import type { AtgSaleSyncView } from "@auction/types";
+import { ATG_LIVE_UNAVAILABLE_MESSAGE, type AtgSaleSyncView } from "@auction/types";
 import { describe, expect, it, vi } from "vitest";
 import { AtgAdminService } from "./atg-admin.service.js";
 
@@ -219,6 +219,14 @@ describe("AtgAdminService", () => {
       distribution: "private_test",
       confirmPublic: false,
     } as const;
+    const timed = {
+      auctionType: "Timed",
+      distribution: "private_test",
+      confirmPublic: false,
+    } as const;
+    // A sale saved as Live before Live was switched off.
+    const legacyLive = (overrides: Partial<AtgSaleSyncView> = {}) =>
+      view({ settings: { auctionType: "Live", distribution: "private_test" }, ...overrides });
     const publicTimed = {
       auctionType: "Timed",
       distribution: "public_marketplace",
@@ -226,16 +234,16 @@ describe("AtgAdminService", () => {
     } as const;
 
     it("saves, audits, and does not push a sale ATG doesn't have yet", async () => {
-      const { service, writer, audit, queue } = setup({});
+      const { service, writer, audit, queue } = setup({ sale: legacyLive() });
 
-      expect(await service.updateSaleSettings(SALE_ID, live, "staff-1")).toEqual({
+      expect(await service.updateSaleSettings(SALE_ID, timed, "staff-1")).toEqual({
         ok: true,
-        settings: { auctionType: "Live", distribution: "private_test" },
+        settings: { auctionType: "Timed", distribution: "private_test" },
         pushJobId: null,
       });
       expect(writer.saveSettings).toHaveBeenCalledWith(
         SALE_ID,
-        { auctionType: "Live", distribution: "private_test" },
+        { auctionType: "Timed", distribution: "private_test" },
         "staff-1",
         NOW,
       );
@@ -243,17 +251,44 @@ describe("AtgAdminService", () => {
         expect.objectContaining({
           action: "atg_sale_settings_updated",
           actorUserId: "staff-1",
-          from: { auctionType: "Timed", distribution: "private_test" },
-          to: { auctionType: "Live", distribution: "private_test" },
+          from: { auctionType: "Live", distribution: "private_test" },
+          to: { auctionType: "Timed", distribution: "private_test" },
         }),
         "atg_admin_mutation",
       );
       expect(queue.add).not.toHaveBeenCalled();
     });
 
+    it("refuses moving a sale to Live with a 422, saving and auditing nothing", async () => {
+      const { service, writer, audit } = setup({});
+      expect(await service.updateSaleSettings(SALE_ID, live, "staff-1")).toEqual({
+        ok: false,
+        error: {
+          status: 422,
+          code: "atg_auction_type_unavailable",
+          message: ATG_LIVE_UNAVAILABLE_MESSAGE,
+        },
+      });
+      expect(writer.saveSettings).not.toHaveBeenCalled();
+      expect(audit.info).not.toHaveBeenCalled();
+    });
+
+    it("still lets a sale already saved as Live change its distribution", async () => {
+      const { service, writer } = setup({ sale: legacyLive() });
+      const keepLive = {
+        ...live,
+        distribution: "public_marketplace",
+        confirmPublic: true,
+      } as const;
+      expect(await service.updateSaleSettings(SALE_ID, keepLive, "staff-1")).toMatchObject({
+        ok: true,
+      });
+      expect(writer.saveSettings).toHaveBeenCalled();
+    });
+
     it("saves while ATG sync is off, so sales can be prepared", async () => {
-      const { service, writer } = setup({ enabled: false });
-      expect(await service.updateSaleSettings(SALE_ID, live, "staff-1")).toMatchObject({
+      const { service, writer } = setup({ enabled: false, sale: legacyLive() });
+      expect(await service.updateSaleSettings(SALE_ID, timed, "staff-1")).toMatchObject({
         ok: true,
       });
       expect(writer.saveSettings).toHaveBeenCalled();
@@ -293,9 +328,9 @@ describe("AtgAdminService", () => {
 
     it("locks the auction type once ATG has the auction, and distribution once published", async () => {
       const linked = setup({
-        sale: view({ linked: true, atgAuctionId: "a", remoteStatus: "created" }),
+        sale: legacyLive({ linked: true, atgAuctionId: "a", remoteStatus: "created" }),
       });
-      expect(await linked.service.updateSaleSettings(SALE_ID, live, "s")).toMatchObject({
+      expect(await linked.service.updateSaleSettings(SALE_ID, timed, "s")).toMatchObject({
         ok: false,
         error: { code: "atg_settings_locked" },
       });
@@ -311,8 +346,8 @@ describe("AtgAdminService", () => {
     });
 
     it("reports a lost race with the worker as locked", async () => {
-      const { service, audit } = setup({ saveSucceeds: false });
-      expect(await service.updateSaleSettings(SALE_ID, live, "s")).toMatchObject({
+      const { service, audit } = setup({ saveSucceeds: false, sale: legacyLive() });
+      expect(await service.updateSaleSettings(SALE_ID, timed, "s")).toMatchObject({
         ok: false,
         error: { status: 409, code: "atg_settings_locked" },
       });

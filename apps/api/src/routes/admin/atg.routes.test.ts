@@ -232,6 +232,22 @@ describe("admin ATG routes", () => {
       expect(updateSaleSettings).not.toHaveBeenCalled();
     });
 
+    it("maps an unavailable auction type to 422 with the refusal message", async () => {
+      const updateSaleSettings = vi.fn().mockResolvedValue({
+        ok: false,
+        error: { status: 422, code: "atg_auction_type_unavailable", message: "Not available" },
+      });
+      const res = await put(buildApp(["sales_manager"], { updateSaleSettings }), {
+        auctionType: "Live",
+        distribution: "private_test",
+      });
+      expect(res.status).toBe(422);
+      expect(await res.json()).toEqual({
+        error: "Not available",
+        code: "atg_auction_type_unavailable",
+      });
+    });
+
     it("maps locked settings to 409 and forbids staff without auction.manage", async () => {
       const updateSaleSettings = vi.fn().mockResolvedValue({
         ok: false,

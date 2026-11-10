@@ -18,6 +18,29 @@ export const ATG_AUCTION_TYPES = ["Timed", "Live"] as const;
 export type AtgAuctionType = (typeof ATG_AUCTION_TYPES)[number];
 
 /**
+ * Which auction types staff can choose. `Live` stays off until ATG confirms its live-auction
+ * internet surcharge: the worker's fee table (`ATG_AUCTION_FEES` in
+ * apps/worker/src/integrations/atg/atg-fees.ts) has no Live rate and refuses to send such a sale.
+ * Turn this on together with that rate.
+ */
+export const ATG_AUCTION_TYPE_AVAILABLE: Record<AtgAuctionType, boolean> = {
+  Timed: true,
+  Live: false,
+};
+
+export function isAtgAuctionTypeAvailable(type: AtgAuctionType): boolean {
+  return ATG_AUCTION_TYPE_AVAILABLE[type];
+}
+
+/** Why staff cannot move a sale to an unavailable auction type (API refusal message). */
+export const ATG_LIVE_UNAVAILABLE_MESSAGE =
+  "ATG has not confirmed its internet surcharge for live auctions. Ask ATG Seller Support before sending this sale.";
+
+/** Short hint shown next to the unavailable choice. */
+export const ATG_LIVE_UNAVAILABLE_HINT =
+  "Not available yet: ATG hasn't confirmed its live-auction fees.";
+
+/**
  * Where ATG lists the auction. `private_test` sends `Private: true` (hidden from public
  * listings); `public_marketplace` lists it on both the White Label and The Saleroom. ATG has not
  * confirmed a public White-Label-only mode, so none is offered.

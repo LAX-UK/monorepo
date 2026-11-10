@@ -20,21 +20,33 @@ import {
   UnsavedChangesGuard,
 } from "@auction/staff-ui";
 import {
+  ATG_AUCTION_TYPES,
+  ATG_LIVE_UNAVAILABLE_HINT,
   type AtgAuctionType,
   type AtgDistribution,
   type AtgSaleSyncView,
   canChangeAtgAuctionType,
   canChangeAtgDistribution,
+  isAtgAuctionTypeAvailable,
 } from "@auction/types";
 import { useRouter } from "next/navigation";
 import { type ReactNode, useId, useRef, useState, useTransition } from "react";
 
-type Option<V extends string> = { value: V; label: string; description?: string };
+type Option<V extends string> = {
+  value: V;
+  label: string;
+  description?: string;
+  /** Shown but not selectable; the description says why. */
+  unavailable?: boolean;
+};
 
-const AUCTION_TYPE_OPTIONS: Option<AtgAuctionType>[] = [
-  { value: "Timed", label: "Timed" },
-  { value: "Live", label: "Live" },
-];
+function auctionTypeOption(value: AtgAuctionType): Option<AtgAuctionType> {
+  return isAtgAuctionTypeAvailable(value)
+    ? { value, label: value }
+    : { value, label: value, description: ATG_LIVE_UNAVAILABLE_HINT, unavailable: true };
+}
+
+const AUCTION_TYPE_OPTIONS: Option<AtgAuctionType>[] = ATG_AUCTION_TYPES.map(auctionTypeOption);
 
 const DISTRIBUTION_OPTIONS: Option<AtgDistribution>[] = [
   {
@@ -116,9 +128,13 @@ function RadioChoices<V extends string>({
             htmlFor={`${id}-${option.value}`}
             label={option.label}
             {...(option.description ? { description: option.description } : {})}
-            disabled={disabled}
+            disabled={disabled || option.unavailable === true}
             control={
-              <StaffRadio id={`${id}-${option.value}`} value={option.value} disabled={disabled} />
+              <StaffRadio
+                id={`${id}-${option.value}`}
+                value={option.value}
+                disabled={disabled || option.unavailable === true}
+              />
             }
           />
         ))}

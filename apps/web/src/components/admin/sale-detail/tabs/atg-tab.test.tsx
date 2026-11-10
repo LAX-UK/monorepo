@@ -107,7 +107,7 @@ describe("SaleAtgTab", () => {
     adminAtgSaleSettingsAction.mockReset();
     adminAtgSaleSettingsAction.mockResolvedValue({
       ok: true,
-      data: { settings: { auctionType: "Live", distribution: "private_test" }, pushJobId: null },
+      data: { settings: { auctionType: "Timed", distribution: "private_test" }, pushJobId: null },
     });
     adminAtgSaleActionResultAction.mockResolvedValue({ ok: true, data: { jobId: "job-1" } });
     adminAtgJobStateAction.mockResolvedValue({ ok: true, data: { state: "active" } });
@@ -124,7 +124,8 @@ describe("SaleAtgTab", () => {
     );
     expect(screen.getByText("ATG sync is turned off")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /push/i })).not.toBeInTheDocument();
-    expect(screen.getByRole("radio", { name: "Live" })).toBeEnabled();
+    expect(screen.getByRole("radio", { name: /^Live/ })).toBeDisabled();
+    expect(screen.getByRole("radio", { name: "Timed" })).toBeEnabled();
     expect(screen.queryByRole("button", { name: "Save changes" })).not.toBeInTheDocument();
     expect(screen.queryByText("Not ready to publish on ATG")).not.toBeInTheDocument();
   });
@@ -439,17 +440,65 @@ describe("SaleAtgTab", () => {
   });
 
   describe("ATG settings", () => {
-    it("saves a changed auction type without asking", async () => {
+    it("offers Live as unavailable, with why", () => {
       renderWithViewer(<SaleAtgTab saleId={SALE_ID} status={ENABLED} view={view()} canManage />);
 
+      const live = screen.getByRole("radio", { name: /^Live/ });
+      expect(live).toBeDisabled();
+      expect(screen.getByRole("radio", { name: "Timed" })).toBeChecked();
+      expect(
+        screen.getByText("Not available yet: ATG hasn't confirmed its live-auction fees."),
+      ).toBeInTheDocument();
+      fireEvent.click(live);
+      expect(screen.getByRole("radio", { name: "Timed" })).toBeChecked();
       expect(screen.queryByRole("button", { name: "Save changes" })).not.toBeInTheDocument();
-      choose("Live");
+    });
+
+    it("keeps a sale saved as Live selected and lets staff switch to Timed", async () => {
+      renderWithViewer(
+        <SaleAtgTab
+          saleId={SALE_ID}
+          status={ENABLED}
+          view={view({ settings: { auctionType: "Live", distribution: "private_test" } })}
+          canManage
+        />,
+      );
+
+      expect(screen.getByRole("radio", { name: /^Live/ })).toBeChecked();
+      expect(screen.getByRole("radio", { name: /^Live/ })).toBeDisabled();
+      expect(
+        screen.getByText("Not available yet: ATG hasn't confirmed its live-auction fees."),
+      ).toBeInTheDocument();
+      choose("Timed");
       fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
 
       await waitFor(() =>
         expect(adminAtgSaleSettingsAction).toHaveBeenCalledWith(
           SALE_ID,
-          { auctionType: "Live", distribution: "private_test" },
+          { auctionType: "Timed", distribution: "private_test" },
+          false,
+        ),
+      );
+    });
+
+    it("saves a changed auction type without asking", async () => {
+      renderWithViewer(
+        <SaleAtgTab
+          saleId={SALE_ID}
+          status={ENABLED}
+          view={view({ settings: { auctionType: "Live", distribution: "private_test" } })}
+          canManage
+        />,
+      );
+
+      expect(screen.queryByRole("button", { name: "Save changes" })).not.toBeInTheDocument();
+      choose("Timed");
+      fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+
+      await waitFor(() =>
+        expect(adminAtgSaleSettingsAction).toHaveBeenCalledWith(
+          SALE_ID,
+          { auctionType: "Timed", distribution: "private_test" },
           false,
         ),
       );
@@ -497,9 +546,16 @@ describe("SaleAtgTab", () => {
         ok: false,
         error: "Those ATG settings can no longer change. Reload the page.",
       });
-      renderWithViewer(<SaleAtgTab saleId={SALE_ID} status={ENABLED} view={view()} canManage />);
+      renderWithViewer(
+        <SaleAtgTab
+          saleId={SALE_ID}
+          status={ENABLED}
+          view={view({ settings: { auctionType: "Live", distribution: "private_test" } })}
+          canManage
+        />,
+      );
 
-      choose("Live");
+      choose("Timed");
       fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
 
       expect(
