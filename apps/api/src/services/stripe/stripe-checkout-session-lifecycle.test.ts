@@ -204,4 +204,39 @@ describe("CheckoutSessionLifecycle", () => {
     expect(stripe.open("bank")).toEqual([legacyBank.sessionId]);
     expect(stripe.open("card")).toEqual([card]);
   });
+
+  it("once any session is paid, no other rail or parameters get a new payable session", async () => {
+    const { stripe, ledger, pay } = setup();
+    const paid = readyId(await pay("card", ["lot"]));
+    const session = stripe.sessions.get(paid);
+    if (session) session.status = "complete";
+    expect(await pay("card", ["lot", "courier"])).toEqual({ kind: "already_complete" });
+    expect(await pay("bank", ["lot"])).toEqual({ kind: "already_complete" });
+    expect(stripe.sessions.size).toBe(1);
+    const recorded = await ledger.listSessions("pay-1");
+    expect(recorded.find((r) => r.stripeSessionId === paid)?.closedAt).toBeNull();
+  });
+
+  it("never marks a paid session closed when superseding", async () => {
+    const { stripe, ledger, lifecycle } = setup();
+    const paid = await stripe.createCardCheckoutSession({ idempotencyKey: "k0" } as never);
+    await ledger.record("pay-1", paid.sessionId, { rail: "card", parametersFingerprint: "old" });
+    const session = stripe.sessions.get(paid.sessionId);
+    if (session) session.status = "complete";
+    // A session that completed after the check began: settling elsewhere must leave it alone.
+    const spy = vi.spyOn(stripe, "retrieveCheckoutSession");
+    spy.mockResolvedValueOnce({ id: paid.sessionId, status: "open" } as never);
+    await payOn(lifecycle, stripe, "card", ["new"]);
+    expect((await ledger.listSessions("pay-1"))[0]?.closedAt).toBeNull();
+    expect(session?.status).toBe("complete");
+  });
+
+  it("two tabs settling at once with different parameters each keep a live session", async () => {
+    const { stripe, pay } = setup();
+    const [a, b] = await Promise.all([pay("card", ["a"]), pay("card", ["b"])]);
+    const ids = [readyId(a), readyId(b)];
+    // Only the session recorded first may be closed by the later one, never the reverse.
+    expect(stripe.open()).toContain(ids[1]);
+    expect(stripe.sessions.get(ids[1] as string)?.status).toBe("open");
+  });
 });

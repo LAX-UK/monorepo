@@ -93,6 +93,7 @@ export class CheckoutSessionLifecycle {
     const fingerprint = checkoutParametersFingerprint(parameters);
     for (let attempt = 0; attempt <= MAX_RENEWALS; attempt += 1) {
       const recorded = await this.ledger.listSessions(paymentId);
+      if (await this.anyComplete(recorded)) return { kind: "already_complete" };
       const sameParameters = recorded.filter(
         (s) => s.rail === rail && s.parametersFingerprint === fingerprint,
       );
@@ -118,6 +119,19 @@ export class CheckoutSessionLifecycle {
       return this.settle(status, rail, paymentId);
     }
     return { kind: "unavailable", error: "Stripe checkout session is not open" };
+  }
+
+  /**
+   * Whether the buyer already paid on any session of the invoice, whatever its rail or
+   * parameters: a second payable session must not be offered while that payment is confirmed.
+   */
+  private async anyComplete(recorded: readonly RecordedCheckoutSession[]): Promise<boolean> {
+    for (const session of recorded) {
+      if (session.closedAt) continue;
+      const stripeSession = await this.gateway.retrieveCheckoutSession(session.stripeSessionId);
+      if (stripeSession.status === "complete") return true;
+    }
+    return false;
   }
 
   /** The newest recorded session of these parameters that can still be paid (or was). */
@@ -178,14 +192,18 @@ export class CheckoutSessionLifecycle {
     return { kind: "ready", session: status.session };
   }
 
-  /** Closes the rail's other open sessions. A failure is reported, never passed to the buyer. */
+  /**
+   * Closes the rail's open sessions recorded before the one the buyer is settled on, so two tabs
+   * settling at once never close each other's. A failure is reported, never passed to the buyer.
+   */
   private async closeSuperseded(
     rail: CheckoutSessionRail,
     paymentId: string,
     keepSessionId: string,
   ): Promise<void> {
     for (const recorded of await this.ledger.listSessions(paymentId)) {
-      if (recorded.closedAt || recorded.stripeSessionId === keepSessionId) continue;
+      if (recorded.stripeSessionId === keepSessionId) break;
+      if (recorded.closedAt) continue;
       try {
         await this.closeIfSameRail(recorded, rail);
       } catch (err) {
@@ -206,6 +224,8 @@ export class CheckoutSessionLifecycle {
   ): Promise<void> {
     const stripeSession = await this.gateway.retrieveCheckoutSession(recorded.stripeSessionId);
     if ((recorded.rail ?? railOf(stripeSession)) !== rail) return;
+    // A paid session is never closed: its payment is still being confirmed.
+    if (stripeSession.status === "complete") return;
     if (stripeSession.status === "open") {
       // A bank transfer with a payment intent has been given instructions: money may be on its way.
       if (rail === "bank" && stripeSession.payment_intent) return;
