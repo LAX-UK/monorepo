@@ -1,7 +1,10 @@
 import type { AtgSaleSettings, BuyerPremiumTier, SaleStatus } from "@auction/types";
+import type { AtgAuctionFees } from "./atg-fees.js";
 
 /** Business settings for the mapping; transport settings live with the adapter. */
 export type AtgSyncConfig = {
+  /** ATG's own charges on top of the hammer; they may differ from LAX's. */
+  fees: AtgAuctionFees;
   platformCode: string;
   clientId: string | null;
   incrementSetId: string;

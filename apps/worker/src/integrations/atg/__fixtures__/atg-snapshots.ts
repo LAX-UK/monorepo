@@ -1,6 +1,12 @@
 import type { AtgLotSnapshot, AtgSaleSnapshot, AtgSyncConfig } from "../atg-types.js";
 
 export const testAtgConfig: AtgSyncConfig = {
+  fees: {
+    buyersPremiumVatRate: 20,
+    // Live: 5 is a test-only value; ATG has not given a live-auction surcharge.
+    internetSurchargeRate: { Timed: 3, Live: 5 },
+    internetSurchargeVatRate: 20,
+  },
   platformCode: "LAX",
   clientId: "client-1",
   incrementSetId: "inc-1",
