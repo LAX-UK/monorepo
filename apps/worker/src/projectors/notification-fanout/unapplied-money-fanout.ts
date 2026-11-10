@@ -15,7 +15,7 @@ const SITUATION: Record<UnappliedMoneyReason, string> = {
   invoice_refunded: "A payment arrived for an invoice that had already been refunded.",
   invoice_already_paid: "A second payment arrived for an invoice that was already paid.",
   transfer_partially_funded_after_paid:
-    "Part of a bank transfer arrived for an invoice that was then paid another way. The transfer is still open in Stripe. Finance returns it or applies it.",
+    "Part of a bank transfer arrived for an invoice that was then paid another way. The transfer is still open with the payment provider. Finance returns it or applies it.",
   amount_mismatch: "A payment arrived for a different amount from the invoice total.",
   group_not_settleable:
     "A payment for several invoices arrived, but they could no longer all be settled by it.",

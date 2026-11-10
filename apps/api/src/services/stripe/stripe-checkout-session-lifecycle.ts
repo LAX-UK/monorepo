@@ -9,6 +9,7 @@ import type Stripe from "stripe";
 import { recordMoneyPathEvent } from "../../middleware/metrics.js";
 import type { ICheckoutCleanupAfterCapture } from "../interfaces/checkout-cleanup.js";
 import type { IErrorReporter } from "../interfaces/error-handling.js";
+import { transferFunding } from "./bank-transfer-funding.js";
 import type {
   CreateCheckoutSessionResult,
   IStripePaymentGateway,
@@ -246,7 +247,9 @@ export class CheckoutSessionLifecycle implements ICheckoutCleanupAfterCapture {
     intent: Stripe.PaymentIntent,
   ): Promise<void> {
     this.recordEvent("checkout_left_open_funded_after_capture");
-    const partTransfer = intent.status === "requires_action" && (intent.amount_received ?? 0) > 0;
+    // Stripe states a part transfer through what is still to send, not `amount_received`.
+    const { receivedPence } = transferFunding(intent);
+    const partTransfer = intent.status === "requires_action" && receivedPence > 0;
     if (partTransfer && this.recordUnapplied) {
       await this.recordUnapplied({
         reason: "transfer_partially_funded_after_paid",
@@ -255,7 +258,7 @@ export class CheckoutSessionLifecycle implements ICheckoutCleanupAfterCapture {
         stripePaymentIntentId: intent.id,
         stripeChargeId: null,
         stripeCustomerId: null,
-        amountCents: intent.amount_received,
+        amountCents: receivedPence,
         currency: intent.currency,
       });
     }

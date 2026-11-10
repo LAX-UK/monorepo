@@ -121,7 +121,7 @@ export class FakeCheckoutStripe {
   partiallyFund(id: string, received: number) {
     const intent = this.intents.get(`pi_${id}`);
     if (!intent) return;
-    intent.received = received;
+    // As Stripe reports it: the amount still to send falls; `amount_received` stays 0 until success.
     intent.remaining = intent.amount - received;
   }
 

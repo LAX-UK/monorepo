@@ -428,6 +428,24 @@ describe("CheckoutSessionLifecycle", () => {
       );
     });
 
+    it("records the part received from what Stripe says is still to send, not amount_received", async () => {
+      const recordUnapplied = vi.fn(async () => {});
+      const { stripe, lifecycle, pay } = setup(recordUnapplied);
+      const bank = readyId(await pay("bank", ["lot"]));
+      stripe.giveTransferInstructions(bank);
+      stripe.partiallyFund(bank, 1000);
+      const intent = await stripe.retrievePaymentIntent(`pi_${bank}`);
+      expect(intent.amount_received).toBe(0);
+      const card = readyId(await pay("card", ["lot"]));
+
+      await lifecycle.closeAfterCapture("pay-1", stripe.complete(card));
+
+      const remaining = intent.next_action?.display_bank_transfer_instructions?.amount_remaining;
+      expect(recordUnapplied).toHaveBeenCalledWith(
+        expect.objectContaining({ amountCents: intent.amount - (remaining ?? 0) }),
+      );
+    });
+
     it("reports, and keeps the capture, when the finance task cannot be recorded", async () => {
       const { stripe, lifecycle, pay, report } = setup(async () => {
         throw new Error("db down");
