@@ -19,6 +19,7 @@ export function createAtgSyncRuntime(deps: {
   env: WorkerEnv;
   db: ReturnType<typeof createDb>;
   onTickError: (saleId: string, err: unknown) => void;
+  onFeeMismatch: (saleId: string, message: string) => void;
   onConfigCheck: (result: AtgConfigCheckResult) => void;
 }): AtgSyncRuntime | null {
   const config = loadAtgRuntimeConfig(deps.env);
@@ -31,6 +32,7 @@ export function createAtgSyncRuntime(deps: {
       imageInspector: new HttpAtgImageInspector(),
       config: config.sync,
       onTickError: deps.onTickError,
+      onFeeMismatch: deps.onFeeMismatch,
     }),
     pollIntervalMs: config.pollIntervalMs,
     checkConfig: async () => {

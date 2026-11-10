@@ -1,3 +1,4 @@
+import { FEE_TOLERANCE } from "./atg-fee-check.js";
 import type { AtgGateway } from "./atg-gateway.js";
 import type { AtgSyncConfig } from "./atg-types.js";
 
@@ -6,10 +7,36 @@ export type AtgConfigCheckResult = {
   problems: string[];
   /** Checks that could not run (ATG unreachable, no client id); nothing is known either way. */
   unavailable: string[];
+  /** Differences worth a look that do not stop pushes (fees ATG holds by default). */
+  warnings: string[];
 };
 
 function reason(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
+}
+
+/**
+ * LAX sends the surcharge on every auction, so ATG's client default is only a hint; a different
+ * default usually means the configured rate or its units are wrong.
+ */
+async function checkDefaultSurcharge(
+  gateway: AtgGateway,
+  config: AtgSyncConfig,
+  result: AtgConfigCheckResult,
+): Promise<void> {
+  const configured = config.fees.internetSurchargeRate.Timed;
+  if (!config.clientId || configured == null) return;
+  try {
+    const { defaultRate, alternativeRate } = await gateway.getClientSurchargeRates(config.clientId);
+    if (defaultRate !== null && Math.abs(defaultRate - configured) > FEE_TOLERANCE) {
+      const alternative = alternativeRate === null ? "" : `, alternative ${alternativeRate}`;
+      result.warnings.push(
+        `ATG's internet surcharge for this client is default ${defaultRate}${alternative}, but ATG_AUCTION_FEES sends ${configured} on timed auctions.`,
+      );
+    }
+  } catch (err) {
+    result.unavailable.push(`Default internet surcharge could not be checked: ${reason(err)}`);
+  }
 }
 
 /**
@@ -20,7 +47,7 @@ export async function checkAtgConfig(
   gateway: AtgGateway,
   config: AtgSyncConfig,
 ): Promise<AtgConfigCheckResult> {
-  const result: AtgConfigCheckResult = { problems: [], unavailable: [] };
+  const result: AtgConfigCheckResult = { problems: [], unavailable: [], warnings: [] };
 
   if (config.clientId) {
     try {
@@ -37,6 +64,8 @@ export async function checkAtgConfig(
   } else {
     result.unavailable.push("Increment set not checked: ATG_CLIENT_ID is not set.");
   }
+
+  await checkDefaultSurcharge(gateway, config, result);
 
   try {
     const categories = await gateway.getSupportedCategories(config.platformCode);

@@ -1,5 +1,6 @@
 import type { SaleStatus } from "@auction/types";
 import type {
+  AtgClientSurchargeRates,
   AtgGateway,
   AtgIncrementSet,
   AtgRemoteAuction,
@@ -44,6 +45,8 @@ export class FakeAtgGateway implements AtgGateway {
   remoteAuctions = new Map<string, AtgRemoteAuction>();
   /** What `findAuctionsByClientId` returns. */
   clientAuctions: AtgRemoteAuction[] = [];
+  /** What `getClientSurchargeRates` returns. */
+  clientSurchargeRates: AtgClientSurchargeRates = { defaultRate: null, alternativeRate: null };
   incrementSets: AtgIncrementSet[] = [];
   supportedCategories: string[] = [];
   private seq = 0;
@@ -108,6 +111,10 @@ export class FakeAtgGateway implements AtgGateway {
   async findAuctionsByClientId(clientId: string, fromDate: Date) {
     this.record("findAuctionsByClientId", { clientId, fromDate });
     return this.clientAuctions;
+  }
+  async getClientSurchargeRates(clientId: string) {
+    this.record("getClientSurchargeRates", clientId);
+    return this.clientSurchargeRates;
   }
   async getIncrementSets(clientId: string) {
     this.record("getIncrementSets", clientId);

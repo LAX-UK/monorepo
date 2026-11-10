@@ -52,6 +52,7 @@ function runtime() {
     env: loadWorkerEnv(),
     db: {} as never,
     onTickError: vi.fn(),
+    onFeeMismatch: vi.fn(),
     onConfigCheck: vi.fn(),
   });
   return built ? { ...built, checkConfig } : built;

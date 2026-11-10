@@ -31,6 +31,17 @@ export type AtgSaleResult = {
   endTimeUtc: string | null;
 };
 
+/**
+ * The charges ATG holds on an auction, in GAP's own units: the rates are percentages (25 = 25%)
+ * and the VAT rates are multipliers (0.2 = 20%). Null when ATG did not return the field.
+ */
+export type AtgRemoteAuctionFees = {
+  buyersPremium: number | null;
+  buyersPremiumVatRate: number | null;
+  internetSurchargeRate: number | null;
+  internetSurchargeVatRate: number | null;
+};
+
 /** Auction state as ATG reports it. */
 export type AtgRemoteAuction = {
   atgAuctionId: string;
@@ -39,6 +50,13 @@ export type AtgRemoteAuction = {
   isApproved: boolean;
   isPublished: boolean;
   statusCode: number | null;
+  fees: AtgRemoteAuctionFees;
+};
+
+/** Surcharge rates ATG holds on the client; null when it holds none. */
+export type AtgClientSurchargeRates = {
+  defaultRate: number | null;
+  alternativeRate: number | null;
 };
 
 /** An increment set available to the ATG client. */
@@ -78,6 +96,8 @@ export interface AtgGateway {
   getAuction(auctionId: string): Promise<AtgRemoteAuction | null>;
   /** Auctions of the client starting from `fromDate`; used to find a create whose reply was lost. */
   findAuctionsByClientId(clientId: string, fromDate: Date): Promise<AtgRemoteAuction[]>;
+  /** The client's own internet surcharge rates, which ATG falls back to on an auction. */
+  getClientSurchargeRates(clientId: string): Promise<AtgClientSurchargeRates>;
   getIncrementSets(clientId: string): Promise<AtgIncrementSet[]>;
   /** Category names accepted for the platform. */
   getSupportedCategories(platformCode: string): Promise<string[]>;

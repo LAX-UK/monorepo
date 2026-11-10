@@ -116,6 +116,17 @@ export type GapAuctionResponse = {
   IsApproved?: boolean | null;
   IsPublished?: boolean | null;
   AuctionStatusCode?: number | null;
+  /** Percentage rates, VAT fields as multipliers: the same units the create request takes. */
+  BuyersPremium?: number | null;
+  BuyersPremiumVatRate?: number | null;
+  InternetSurchargeRate?: number | null;
+  InternetSurchargeVatRate?: number | null;
+};
+
+/** `GET /Clients/{clientId}` (fields LAX reads). */
+export type GapClientResponse = {
+  DefaultInternetSurchargeRate?: number | null;
+  AltInternetSurchargeRate?: number | null;
 };
 
 /** `GET /Clients/GetIncrementDetails/{clientId}` item (fields LAX reads). */
