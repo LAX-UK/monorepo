@@ -10,11 +10,22 @@ import {
   type ReactNode,
   createContext,
   useContext,
-  useEffect,
+  useLayoutEffect,
   useMemo,
   useSyncExternalStore,
 } from "react";
 import { getClientViewerZoneSnapshot, subscribeViewerZone } from "./viewer-zone-store.js";
+
+const noSubscription = () => () => {};
+
+/** False while hydrating and true from the commit that follows it, like the chips' zone reading. */
+function useHydrated(): boolean {
+  return useSyncExternalStore(
+    noSubscription,
+    () => true,
+    () => false,
+  );
+}
 
 /** What the server knew when it drew the page; also what React hydrates against. */
 const ServerViewerZoneContext = createContext<ViewerZone>(null);
@@ -26,11 +37,13 @@ export function ViewerZoneProvider({
   initial: ViewerZone;
   children: ReactNode;
 }) {
-  useEffect(() => {
-    // Hydration, and the chips' own update to the browser's reading, are done: an empty chip row
-    // no longer needs holding (see `.tz-chip-slot` in theme.css).
-    document.documentElement.classList.add(TZ_READY_CLASS);
-  }, []);
+  const hydrated = useHydrated();
+  useLayoutEffect(() => {
+    // The chips have switched to the browser's own reading (React does that in the same commit as
+    // `hydrated` turning true), so an empty chip row no longer needs holding (see `.tz-chip-slot`
+    // in theme.css).
+    if (hydrated) document.documentElement.classList.add(TZ_READY_CLASS);
+  }, [hydrated]);
   return (
     <ServerViewerZoneContext.Provider value={initial}>{children}</ServerViewerZoneContext.Provider>
   );
