@@ -10,7 +10,10 @@ afterEach(() => {
 });
 
 function flashFor(word: string) {
-  const flash = buildSignInMethodFlash(word);
+  const flash = buildSignInMethodFlash(word, undefined, {
+    linked: ["google", "apple"],
+    passkeys: 1,
+  });
   if (!flash) throw new Error(`no notice for ${word}`);
   return flash;
 }

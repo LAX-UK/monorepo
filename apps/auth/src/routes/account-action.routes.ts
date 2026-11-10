@@ -2,6 +2,7 @@ import {
   ACCOUNT_ACTION_DONE_PATH,
   ACCOUNT_ACTION_PASSKEY_PATH,
   ACCOUNT_ACTION_PATH,
+  ACCOUNT_SIGN_IN_METHOD_PROVIDER_PARAM,
   ACCOUNT_SIGN_IN_METHOD_RETURN_PARAM,
   type AccountSignInMethodReturn,
   type SocialSignInProvider,
@@ -57,9 +58,15 @@ export function returnWordForProviderError(error: string | undefined): AccountSi
 export function createAccountActionRoutes(deps: AccountActionRouteDeps) {
   const app = new Hono();
 
-  function back(c: Context, word: AccountSignInMethodReturn): Response {
+  function back(
+    c: Context,
+    word: AccountSignInMethodReturn,
+    provider?: SocialSignInProvider,
+  ): Response {
     const target = new URL("/account/security", `${deps.accountOrigin}/`);
     target.searchParams.set(ACCOUNT_SIGN_IN_METHOD_RETURN_PARAM, word);
+    // Only a known provider is ever added, so the address carries nothing taken from a request.
+    if (provider) target.searchParams.set(ACCOUNT_SIGN_IN_METHOD_PROVIDER_PARAM, provider);
     return c.redirect(target.toString(), 302);
   }
 
@@ -92,7 +99,7 @@ export function createAccountActionRoutes(deps: AccountActionRouteDeps) {
         if (result.code === "already_done") {
           return back(c, result.provider ? `${result.provider}_linked` : "provider_unavailable");
         }
-        return back(c, result.code);
+        return back(c, result.code, result.provider);
       }
       // A passkey is made on the issuer's own page, with permission the redeem just gave.
       if (result.action === "passkey") return c.redirect(ACCOUNT_ACTION_PASSKEY_PATH, 302);
@@ -113,17 +120,17 @@ export function createAccountActionRoutes(deps: AccountActionRouteDeps) {
     if (!provider.success) return back(c, "provider_unavailable");
     try {
       const browser = await deps.getSession(c.req.raw.headers);
-      if (!browser) return back(c, "reauth_required");
+      if (!browser) return back(c, "reauth_required", provider.data);
       const error = c.req.query("error");
-      if (error) return back(c, returnWordForProviderError(error));
+      if (error) return back(c, returnWordForProviderError(error), provider.data);
       // The outcome is read from the account, never taken from the address: a person who opens
       // this page by hand without linking anything is told the provider was not reachable.
       return (await deps.actions.isLinked(browser.user.id, provider.data))
         ? back(c, `${provider.data}_linked`)
-        : back(c, "provider_unavailable");
+        : back(c, "provider_unavailable", provider.data);
     } catch (error) {
       deps.onFailure?.(error);
-      return back(c, "provider_unavailable");
+      return back(c, "provider_unavailable", provider.data);
     }
   });
 

@@ -48,10 +48,8 @@ export function SignInMethodFlash({ flash, pagePath, reauthHref }: SignInMethodF
       role={calm ? "status" : "alert"}
       tabIndex={-1}
       data-sign-in-method-flash={flash.tone}
-      className={cn(
-        NOTICE,
-        "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
-      )}
+      // Focus is moved here so a screen reader reads the notice; it is not a control, so it draws no ring.
+      className={cn(NOTICE, "outline-none")}
     >
       <NoticeTitle level={3}>{flash.title}</NoticeTitle>
       <AlertDescription>{flash.body}</AlertDescription>

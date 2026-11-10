@@ -75,10 +75,12 @@ export type AccountSignInMethodsPorts = {
   available?: SignInMethodsAvailability;
   /**
    * Whether the person is a staff account. Staff cannot sign in with Google or Apple, so no link
-   * is offered to them. Without it nobody is treated as staff here, and the link route still
-   * refuses a staff request.
+   * is offered to them. Required, so a wiring that forgets it fails to compile rather than
+   * offering staff a link.
    */
-  isStaff?: (subjectId: string) => Promise<boolean>;
+  isStaff: (subjectId: string) => Promise<boolean>;
+  /** Told when the staff check could not be read; the list is still shown without link offers. */
+  onStaffCheckFailed?: (error: unknown) => void;
 };
 
 export type RenamePasskeyResult =
@@ -117,7 +119,7 @@ export class AccountSignInMethodsService {
   async read(subjectId: string): Promise<AccountSignInMethodsResponse> {
     const methods = await this.ports.operations.readSignInMethods(subjectId);
     const offered = this.ports.available ?? { google: false, apple: false, passkey: false };
-    const staff = (await this.ports.isStaff?.(subjectId)) ?? false;
+    const mayLink = await this.mayOfferSocialLinks(subjectId, offered);
     return {
       hasPassword: methods.hasPassword,
       social: methods.social.map((method) => ({
@@ -127,8 +129,26 @@ export class AccountSignInMethodsService {
         hidden: method.hidden,
       })),
       passkeys: methods.passkeys.map(presentPasskey),
-      available: staff ? { ...offered, google: false, apple: false } : offered,
+      available: mayLink ? offered : { ...offered, google: false, apple: false },
     };
+  }
+
+  /**
+   * Whether a Google or Apple link may be offered. The check is skipped when neither is offered
+   * here. When it cannot be read the person is treated as staff for the offer only: no link is
+   * offered, but their methods are still listed and removable.
+   */
+  private async mayOfferSocialLinks(
+    subjectId: string,
+    offered: SignInMethodsAvailability,
+  ): Promise<boolean> {
+    if (!offered.google && !offered.apple) return true;
+    try {
+      return !(await this.ports.isStaff(subjectId));
+    } catch (error) {
+      this.ports.onStaffCheckFailed?.(error);
+      return false;
+    }
   }
 
   /**

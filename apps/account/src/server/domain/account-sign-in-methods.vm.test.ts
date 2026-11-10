@@ -97,28 +97,44 @@ describe("buildSignInMethodsSection", () => {
 
   it("shows the address the provider gave and when it was linked", () => {
     const row = rowsOf(ok(true, [google])).rows[1];
-    expect(row?.kind === "social" && row.detail).toBe(
-      "ada.lovelace@gmail.com · Linked Thu 1 Oct 2026",
-    );
+    expect(row).toMatchObject({
+      address: "ada.lovelace@gmail.com",
+      linkedOn: "Linked Thu 1 Oct 2026",
+    });
   });
 
   it("says the address is hidden, and never shows a relay address", () => {
     const relay: Social = { ...apple, providerEmail: "abc123@privaterelay.appleid.com" };
     const row = rowsOf(ok(true, [relay])).rows.find((r) => r.title === "Apple");
-    expect(row?.kind === "social" && row.detail).toBe(
-      "Address hidden by Apple · Linked Mon 5 Oct 2026",
-    );
+    expect(row).toMatchObject({
+      address: "Address hidden by Apple",
+      linkedOn: "Linked Mon 5 Oct 2026",
+    });
     expect(JSON.stringify(row)).not.toContain("privaterelay");
   });
 
   it("shows only the date when the provider reported no address", () => {
     const quiet: Social = { ...google, providerEmail: null };
     const row = rowsOf(ok(true, [quiet])).rows[1];
-    expect(row?.kind === "social" && row.detail).toBe("Linked Thu 1 Oct 2026");
+    expect(row).toMatchObject({ address: null, linkedOn: "Linked Thu 1 Oct 2026" });
+  });
+
+  it("says add another way when a link is offered beside the only method, and drops the hint", () => {
+    const vm = rowsOf(ok(false, [google]));
+    expect(vm.rows[1]).toMatchObject({
+      blockedReason:
+        "This is the only way you can sign in. Add another way to sign in first, then you can remove it.",
+    });
+    expect(vm.hint).toBeNull();
+  });
+
+  it("says add a passkey or a password when nothing else is offered", () => {
+    const vm = rowsOf(ok(false, [google, apple].slice(0, 1), { available: { apple: false } }));
+    expect(vm.rows[1]).toMatchObject({ blockedReason: ONLY_METHOD_REASON });
   });
 
   it("offers to add a password on a social-only account, and blocks removing the only method", () => {
-    const vm = rowsOf(ok(false, [google]));
+    const vm = rowsOf(ok(false, [google], { available: { apple: false } }));
     expect(vm.rows[0]).toMatchObject({
       kind: "password",
       status: "Not set",
@@ -129,13 +145,11 @@ describe("buildSignInMethodsSection", () => {
       title: "Google",
       blockedReason: ONLY_METHOD_REASON,
     });
-    expect(vm.hint).toContain("Add a password");
   });
 
-  it("mentions a passkey in the refusal only when passkeys can be added", () => {
-    const vm = rowsOf(ok(false, [google], { available: { passkey: true } }));
-    const row = vm.rows[1];
-    expect(row?.kind === "social" && row.blockedReason).toContain("Add a passkey or a password");
+  it("keeps the hint for a lone passkey, where no row carries the reason", () => {
+    const vm = rowsOf(ok(false, [], { passkeys: [passkey] }));
+    expect(vm.hint).toContain("Add a password");
   });
 
   it("counts passkeys, so Google can go when a passkey remains", () => {
@@ -167,14 +181,28 @@ describe("buildSignInMethodsSection", () => {
 });
 
 describe("buildSignInMethodFlash", () => {
-  it("says a linked provider worked, in the success tone", () => {
-    expect(buildSignInMethodFlash("google_linked")).toEqual({
+  const holding = { linked: ["google", "apple"], passkeys: 1 } as const;
+  const nothing = { linked: [], passkeys: 0 } as const;
+
+  it("says a linked provider worked, in the success tone, when the account has it", () => {
+    expect(buildSignInMethodFlash("google_linked", undefined, holding)).toEqual({
       tone: "success",
       title: "Google is linked",
       body: "You can now sign in with it.",
       reauth: false,
     });
-    expect(buildSignInMethodFlash("apple_linked")?.title).toBe("Apple is linked");
+    expect(buildSignInMethodFlash("apple_linked", undefined, holding)?.title).toBe(
+      "Apple is linked",
+    );
+  });
+
+  it("shows no success the account does not bear out, or when the list is unknown", () => {
+    expect(buildSignInMethodFlash("google_linked", undefined, nothing)).toBeNull();
+    expect(
+      buildSignInMethodFlash("apple_linked", undefined, { linked: ["google"], passkeys: 0 }),
+    ).toBeNull();
+    expect(buildSignInMethodFlash("passkey_added", undefined, nothing)).toBeNull();
+    expect(buildSignInMethodFlash("google_linked", undefined, null)).toBeNull();
   });
 
   it("has a notice for every word the issuer can send back, and a fresh sign-in only for one", () => {
@@ -192,7 +220,7 @@ describe("buildSignInMethodFlash", () => {
       "staff_not_allowed",
     ];
     for (const word of words) {
-      const flash = buildSignInMethodFlash(word);
+      const flash = buildSignInMethodFlash(word, undefined, holding);
       expect(flash, word).not.toBeNull();
       expect(flash?.title.length).toBeGreaterThan(5);
       expect(flash?.reauth).toBe(word === "reauth_required");
@@ -201,8 +229,38 @@ describe("buildSignInMethodFlash", () => {
 
   it("says nothing changed for each way linking can fail", () => {
     for (const word of ["cancelled", "provider_unavailable", "expired"]) {
-      expect(buildSignInMethodFlash(word)?.body).toContain("Nothing changed");
+      expect(buildSignInMethodFlash(word, "google", nothing)?.body).toContain("Nothing changed");
     }
+  });
+
+  it("names the provider the issuer says the notice is about", () => {
+    expect(buildSignInMethodFlash("cancelled", "google", nothing)?.title).toBe(
+      "Linking Google was cancelled",
+    );
+    expect(buildSignInMethodFlash("reauth_required", "apple", nothing)?.title).toBe(
+      "Sign in again to link Apple",
+    );
+    expect(buildSignInMethodFlash("expired", "google", nothing)?.body).toBe(
+      "Nothing changed. Choose Link Google again to start over.",
+    );
+    const elsewhere = buildSignInMethodFlash("already_linked_elsewhere", "google", nothing);
+    expect(elsewhere?.title).toBe("That Google account is already linked to another LAX Account");
+    expect(elsewhere?.body).toBe(
+      "Each Google account can sign in to one LAX Account. Sign in to the other account and remove Google there, or link a different Google account.",
+    );
+  });
+
+  it("falls back to general wording for a missing or unknown provider, never echoing it", () => {
+    expect(buildSignInMethodFlash("cancelled", undefined, nothing)?.title).toBe(
+      "Linking was cancelled",
+    );
+    const odd = buildSignInMethodFlash("cancelled", "<script>", nothing);
+    expect(odd?.title).toBe("Linking was cancelled");
+    expect(JSON.stringify(odd)).not.toContain("script");
+  });
+
+  it("does not say an account is linked elsewhere when it is linked here", () => {
+    expect(buildSignInMethodFlash("already_linked_elsewhere", "google", holding)).toBeNull();
   });
 
   it("shows nothing for a missing, unknown or edited word, and never echoes it", () => {
@@ -214,9 +272,11 @@ describe("buildSignInMethodFlash", () => {
       "google_linked&x=1",
       "GOOGLE_LINKED",
     ]) {
-      expect(buildSignInMethodFlash(word)).toBeNull();
+      expect(buildSignInMethodFlash(word, undefined, holding)).toBeNull();
     }
-    expect(buildSignInMethodFlash(["google_linked", "x"])?.title).toBe("Google is linked");
+    expect(buildSignInMethodFlash(["google_linked", "x"], undefined, holding)?.title).toBe(
+      "Google is linked",
+    );
   });
 });
 

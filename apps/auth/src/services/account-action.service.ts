@@ -100,19 +100,24 @@ export class AccountActionService {
     if (!ticket || ticket.clientId !== REGISTERED_OIDC_CLIENT_IDS.LAX_ACCOUNT_WEB) {
       return { ok: false, code: "expired" };
     }
+    // The ticket is known from here on, so a refusal can say which provider it was for.
+    const provider = isProvider(ticket.action) ? ticket.action : undefined;
+    const refuse = (code: AccountSignInMethodReturnError | "already_done"): RedeemActionResult => ({
+      ok: false,
+      code,
+      ...(provider ? { provider } : {}),
+    });
     if (!browser || browser.id !== ticket.sessionId || browser.userId !== ticket.subjectId) {
-      return { ok: false, code: "reauth_required" };
+      return refuse("reauth_required");
     }
     if (!(await this.sessions.findRecent(ticket.subjectId, ticket.sessionId))) {
-      return { ok: false, code: "reauth_required" };
+      return refuse("reauth_required");
     }
     const refusal = await this.refusalFor(ticket.subjectId, ticket.action);
-    if (refusal === "staff_not_allowed") return { ok: false, code: "staff_not_allowed" };
-    if (refusal === "not_available") return { ok: false, code: "provider_unavailable" };
+    if (refusal === "staff_not_allowed") return refuse("staff_not_allowed");
+    if (refusal === "not_available") return refuse("provider_unavailable");
     // Linked between the request and now (a second tab): the person has what they asked for.
-    if (refusal === "already_linked" && isProvider(ticket.action)) {
-      return { ok: false, code: "already_done", provider: ticket.action };
-    }
+    if (refusal === "already_linked" && provider) return refuse("already_done");
     // The ticket is the proof: this browser, in this session, just confirmed it is the person.
     if (ticket.action === "passkey")
       await this.ports.grants.grant(ticket.sessionId, ticket.subjectId);

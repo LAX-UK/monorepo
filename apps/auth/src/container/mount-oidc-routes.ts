@@ -77,6 +77,7 @@ import type { PasskeyEnrolmentGrants } from "../services/passkey-enrolment-grant
 import { RecentSessionGuard } from "../services/recent-session-guard.js";
 import type { IRefreshTokenFamilyRepository } from "../services/refresh-token-family.ports.js";
 import type { RefreshedIdTokenService } from "../services/refreshed-id-token.service.js";
+import { hasStaffMarker } from "../services/staff-marker.js";
 import type { SubjectExportService } from "../services/subject-export.service.js";
 import { createSubjectReadRateLimiter } from "../services/subject-read-rate-limiter.js";
 import type { TwoFactorRequirementReader } from "../services/two-factor-requirement.service.js";
@@ -403,8 +404,9 @@ export function mountOidcRoutes(app: Hono, options: OidcRouteMountOptions): void
         durable: options.durableSecurityEffects,
         notices: options.securityNotices,
         available: signInMethodsAvailable,
-        isStaff: async (subjectId) =>
-          (await readSocialSubject(options.socialSubjectPorts, subjectId)).isStaff,
+        isStaff: (subjectId) => hasStaffMarker(options.socialSubjectPorts, subjectId),
+        onStaffCheckFailed: (error) =>
+          options.log.warn({ err: error }, "account_sign_in_methods_staff_check_failed"),
       }),
       actions: accountActions,
       readRateLimit: accountRateLimit("account-sign-in-methods-read", 120),

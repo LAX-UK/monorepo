@@ -19,9 +19,13 @@ import type { SocialSignInProvider } from "@auction/identity-contracts/account";
 import { ConfirmDialog } from "@auction/ui/components/confirm-dialog";
 import { useRouter } from "next/navigation";
 import { type ReactNode, useEffect, useId, useState } from "react";
-import { LIST_ROW, ListCard, ListCardRow, TAG } from "./account-ui";
+import { ListCard, ListCardRow, TAG } from "./account-ui";
 import { ProductText } from "./product-name";
 import { ProviderMark } from "./provider-mark";
+
+/** A row of the list: the text, then its button beside it, or under it on a phone. */
+const ROW =
+  "flex min-h-16 flex-col items-start gap-y-2 px-4 py-2.5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-3 sm:gap-y-1 sm:px-6";
 
 type SignInMethodsListProps = {
   rows: SignInMethodRowVm[];
@@ -46,7 +50,7 @@ function PasswordRow({
   const [open, setOpen] = useState(false);
   return (
     <li>
-      <div className={LIST_ROW}>
+      <div className={ROW}>
         <RowText title={row.title} status={row.status} detail={row.detail} />
         <Button
           type="button"
@@ -75,13 +79,13 @@ function RowText({
 }: {
   title: string;
   status?: string;
-  detail: string;
+  detail: ReactNode;
   /** Said after the detail from the small-tablet width up. */
   detailMore?: string;
   provider?: SocialSignInProvider;
 }) {
   return (
-    <div className="min-w-0 flex-1 basis-48">
+    <div className="min-w-0 sm:flex-1 sm:basis-48">
       <p className="flex flex-wrap items-center gap-2 text-sm font-medium text-on-surface">
         {provider ? <ProviderMark provider={provider} /> : null}
         {title}
@@ -106,8 +110,17 @@ function SocialRow({
 }) {
   const reasonId = useId();
   return (
-    <li className={LIST_ROW}>
-      <RowText title={row.title} detail={row.detail} provider={row.provider} />
+    <li className={ROW}>
+      <RowText
+        title={row.title}
+        provider={row.provider}
+        detail={
+          <>
+            {row.address ? <span className="break-words">{row.address} · </span> : null}
+            <span className="whitespace-nowrap">{row.linkedOn}</span>
+          </>
+        }
+      />
       <Button
         type="button"
         variant="outline"
@@ -120,7 +133,7 @@ function SocialRow({
         Remove
       </Button>
       {row.blockedReason ? (
-        <p id={reasonId} className="order-last basis-full text-xs text-on-surface-variant">
+        <p id={reasonId} className="sm:order-last sm:basis-full text-xs text-on-surface-variant">
           {row.blockedReason}
         </p>
       ) : null}
@@ -143,7 +156,7 @@ function LinkRow({
 }) {
   const errorId = useId();
   return (
-    <li className={LIST_ROW}>
+    <li className={ROW}>
       <RowText
         title={row.title}
         detail={row.detail}
@@ -162,7 +175,7 @@ function LinkRow({
         {busy ? row.busyLabel : row.actionLabel}
       </Button>
       {error ? (
-        <p id={errorId} role="alert" className="order-last basis-full text-xs text-error">
+        <p id={errorId} role="alert" className="sm:order-last sm:basis-full text-xs text-error">
           {error}
         </p>
       ) : null}

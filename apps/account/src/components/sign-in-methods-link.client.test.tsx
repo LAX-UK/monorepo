@@ -45,7 +45,8 @@ const linkedGoogle: SignInMethodRowVm = {
   kind: "social",
   provider: "google",
   title: "Google",
-  detail: "ada@gmail.com · Linked Thu 1 Oct 2026",
+  address: "ada@gmail.com",
+  linkedOn: "Linked Thu 1 Oct 2026",
   blockedReason: null,
 };
 

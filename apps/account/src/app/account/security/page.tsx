@@ -18,8 +18,12 @@ import { ACCOUNT_ROUTES, buildTwoStepRow } from "@/server/domain/account-setting
 import {
   buildSignInMethodFlash,
   buildSignInMethodsSection,
+  signInMethodFacts,
 } from "@/server/domain/account-sign-in-methods.vm";
-import { ACCOUNT_SIGN_IN_METHOD_RETURN_PARAM } from "@auction/identity-contracts/account";
+import {
+  ACCOUNT_SIGN_IN_METHOD_PROVIDER_PARAM,
+  ACCOUNT_SIGN_IN_METHOD_RETURN_PARAM,
+} from "@auction/identity-contracts/account";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
@@ -32,7 +36,9 @@ type SecurityPageProps = {
 };
 
 export default async function SecurityPage({ searchParams }: SecurityPageProps) {
-  const returned = (await searchParams)[ACCOUNT_SIGN_IN_METHOD_RETURN_PARAM];
+  const params = await searchParams;
+  const returned = params[ACCOUNT_SIGN_IN_METHOD_RETURN_PARAM];
+  const returnedProvider = params[ACCOUNT_SIGN_IN_METHOD_PROVIDER_PARAM];
   const session = await loadAccountSession({
     withLiveSecurity: true,
     withLiveSessions: true,
@@ -54,7 +60,11 @@ export default async function SecurityPage({ searchParams }: SecurityPageProps) 
       />
       <SignInMethodsSection
         section={buildSignInMethodsSection(liveSignInMethods)}
-        flash={buildSignInMethodFlash(returned)}
+        flash={buildSignInMethodFlash(
+          returned,
+          returnedProvider,
+          signInMethodFacts(liveSignInMethods),
+        )}
         pagePath={ACCOUNT_ROUTES.security}
         reauthHref={buildReauthHref(ACCOUNT_ROUTES.security)}
         passwordPanel={
