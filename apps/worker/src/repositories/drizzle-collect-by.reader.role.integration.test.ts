@@ -28,9 +28,11 @@ describe.skipIf(!workerUrl)("storage reminder reads as worker_app", () => {
     await expect(reader.queuedKeys([`role-probe-${randomUUID()}`])).resolves.toEqual(new Set());
   });
 
-  it("reads each lot's eligibility to collect: payments, quotes, disputes, refunds, checks", async () => {
+  it("reads the lots a reminder checks the eligibility of", async () => {
     const facts = new DrizzleCollectionLotFactsReader(db);
-    // An id that is no lot: the queries still run, and the role is checked as they are planned.
+    // An id that is no lot stops after the first read. The tables read once a lot is found
+    // (payments, quotes, disputes, refunds, checks) are covered by the privilege probe in the
+    // worker_app role contract test in @auction/db.
     await expect(facts.read([randomUUID()])).resolves.toBeInstanceOf(Map);
   });
 
