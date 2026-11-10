@@ -5,6 +5,7 @@ import {
   CONSIGNMENT_MESSAGE_MAX_ATTACHMENTS,
   CONSIGNMENT_MESSAGE_MAX_LENGTH,
 } from "@auction/domain";
+import { formatStaffNumber } from "@auction/staff-ui";
 
 /**
  * The staff composer's files and Send rules. A file the rules refuse stays in the box as a red
@@ -80,7 +81,7 @@ export function sendBlockedReason(
   if (files.some((file) => file.status === "uploading")) return "Wait until the files are checked";
   const words = body.trim().length;
   if (words > CONSIGNMENT_MESSAGE_MAX_LENGTH) {
-    return `Keep the message under ${CONSIGNMENT_MESSAGE_MAX_LENGTH.toLocaleString("en-GB")} characters`;
+    return `Keep the message under ${formatStaffNumber(CONSIGNMENT_MESSAGE_MAX_LENGTH)} characters`;
   }
   if (words === 0 && !files.some((file) => file.status === "ready")) {
     return "Write a message or attach a file";

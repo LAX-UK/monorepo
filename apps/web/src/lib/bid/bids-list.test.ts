@@ -26,6 +26,7 @@ function card(overrides: Partial<MyBidCardVm>): MyBidCardVm {
     status: "winning",
     statusLabel: "Winning",
     figures: [],
+    closes: null,
     next: null,
     more: [],
     closesAt: 0,

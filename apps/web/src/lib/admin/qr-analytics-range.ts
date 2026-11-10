@@ -1,8 +1,7 @@
+import { addCalendarDays } from "@auction/datetime";
 import type { DateRangeValue } from "@auction/ui/components/date-range-picker";
 import { DEFAULT_AUCTION_ZONE, fromDateFormString } from "@auction/ui/lib/datetime";
 import type { QrCodeAnalyticsClientQuery } from "@auction/validators";
-import { TZDate } from "@date-fns/tz";
-import { addDays } from "date-fns";
 
 /** Maps auction-zone calendar dates to a half-open UTC instant range [from, to). */
 export function customDateRangeToAnalyticsQuery(
@@ -10,9 +9,9 @@ export function customDateRangeToAnalyticsQuery(
 ): Extract<QrCodeAnalyticsClientQuery, { from: string }> {
   const from = fromDateFormString(range.from, DEFAULT_AUCTION_ZONE).instant.toISOString();
   const toDayStart = fromDateFormString(range.to, DEFAULT_AUCTION_ZONE).instant;
-  const toExclusive = addDays(new TZDate(toDayStart.getTime(), DEFAULT_AUCTION_ZONE), 1);
+  const toExclusive = addCalendarDays(toDayStart, 1, DEFAULT_AUCTION_ZONE);
   return {
     from,
-    to: new Date(toExclusive.getTime()).toISOString(),
+    to: toExclusive.toISOString(),
   };
 }

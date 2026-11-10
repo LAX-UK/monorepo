@@ -41,6 +41,7 @@ import {
   TextArea,
   TextLink,
   UnsavedChangesDialog,
+  formatStaffNumber,
   toast,
   useUnsavedChanges,
 } from "@auction/staff-ui";
@@ -109,7 +110,7 @@ export function EnquiryConversation({
   function validate(text: string): string | undefined {
     if (!text.trim()) return "Write a note before adding it.";
     if (text.length > ENQUIRY_NOTE_MAX_LENGTH) {
-      return `Keep the note under ${ENQUIRY_NOTE_MAX_LENGTH.toLocaleString("en-GB")} characters.`;
+      return `Keep the note under ${formatStaffNumber(ENQUIRY_NOTE_MAX_LENGTH)} characters.`;
     }
     return undefined;
   }
@@ -427,7 +428,7 @@ export function EnquiryConversation({
                 label="Note"
                 id={NOTE_FIELD_ID}
                 error={noteError}
-                description={`Only staff see notes, and they cannot be edited or removed. The client is not emailed: reply from your own mailbox. ${note.length.toLocaleString("en-GB")} / ${ENQUIRY_NOTE_MAX_LENGTH.toLocaleString("en-GB")}`}
+                description={`Only staff see notes, and they cannot be edited or removed. The client is not emailed: reply from your own mailbox. ${formatStaffNumber(note.length)} / ${formatStaffNumber(ENQUIRY_NOTE_MAX_LENGTH)}`}
               >
                 <TextArea
                   rows={4}

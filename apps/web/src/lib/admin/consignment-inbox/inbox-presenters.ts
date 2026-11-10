@@ -1,6 +1,12 @@
 import { staffRoleLastDay } from "@/lib/admin/people/staff-roles.vm";
+import {
+  LONDON_TIME_ZONE,
+  dayKey,
+  formatTime,
+  formatWeekday,
+  shortMonthFormat,
+} from "@auction/datetime";
 import { FIRST_REPLY_TARGET_WORKING_MINUTES } from "@auction/domain";
-import { staffShortDateFormat } from "@auction/staff-ui";
 import type { ConsignmentReplyClockView, ConsignmentThreadAssigneeView } from "@auction/validators";
 
 /**
@@ -8,24 +14,8 @@ import type { ConsignmentReplyClockView, ConsignmentThreadAssigneeView } from "@
  * London), so "1d" is one working day of nine hours, never a calendar day.
  */
 
-const ZONE = "Europe/London";
-const TIME = new Intl.DateTimeFormat("en-GB", {
-  hour: "2-digit",
-  minute: "2-digit",
-  timeZone: ZONE,
-});
-const WEEKDAY = new Intl.DateTimeFormat("en-GB", { weekday: "short", timeZone: ZONE });
-const DAY_MONTH = staffShortDateFormat({
-  day: "numeric",
-  month: "short",
-  timeZone: ZONE,
-});
-const DATE_KEY = new Intl.DateTimeFormat("en-CA", {
-  year: "numeric",
-  month: "2-digit",
-  day: "2-digit",
-  timeZone: ZONE,
-});
+const ZONE = LONDON_TIME_ZONE;
+const DAY_MONTH = shortMonthFormat(ZONE, { day: "numeric" });
 
 const WORKING_DAY = FIRST_REPLY_TARGET_WORKING_MINUTES;
 
@@ -63,21 +53,21 @@ export function workingDurationWords(minutes: number): string {
 }
 
 function dayDistance(from: Date, to: Date): number {
-  const a = Date.parse(`${DATE_KEY.format(from)}T00:00:00Z`);
-  const b = Date.parse(`${DATE_KEY.format(to)}T00:00:00Z`);
+  const a = Date.parse(`${dayKey(from, ZONE)}T00:00:00Z`);
+  const b = Date.parse(`${dayKey(to, ZONE)}T00:00:00Z`);
   return Math.round((b - a) / 86_400_000);
 }
 
 /** When a reply is due, as a person would say it: "16:00", "tomorrow 09:45", "Mon 10:00". */
 export function dueWhen(dueAt: Date, now: Date): { prefix: string; text: string } {
   const days = dayDistance(now, dueAt);
-  const time = TIME.format(dueAt);
+  const time = formatTime(dueAt, ZONE);
   if (days <= 0) return { prefix: "Reply by", text: time };
   if (days === 1) return { prefix: "Reply", text: `tomorrow ${time}` };
-  if (days < 7) return { prefix: "Reply by", text: `${WEEKDAY.format(dueAt)} ${time}` };
+  if (days < 7) return { prefix: "Reply by", text: `${formatWeekday(dueAt, ZONE)} ${time}` };
   return {
     prefix: "Reply by",
-    text: `${WEEKDAY.format(dueAt)} ${DAY_MONTH.format(dueAt)}, ${time}`,
+    text: `${formatWeekday(dueAt, ZONE)} ${DAY_MONTH.format(dueAt)}, ${time}`,
   };
 }
 

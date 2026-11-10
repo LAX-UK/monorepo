@@ -1,7 +1,11 @@
+// The device is in London: a visitor elsewhere has chosen their zone.
+process.env.TZ = "Europe/London";
+
 import { SalesAuctionRow } from "@/components/sections/sales/sales-auction-row";
 import type { SaleAuctionRowVM } from "@/components/sections/sales/sales-view-models";
+import { renderAsVisitorIn, setViewerZone } from "@/test/viewer-zone";
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
 function baseVm(over: Partial<SaleAuctionRowVM> = {}): SaleAuctionRowVM {
   return {
@@ -61,5 +65,39 @@ describe("SalesAuctionRow", () => {
     const { container } = render(<SalesAuctionRow vm={baseVm()} />);
     const shell = container.querySelector(".rounded-lg.bg-page-bg");
     expect(shell?.className ?? "").not.toMatch(/\[#[0-9a-fA-F]{3,8}\]/);
+  });
+
+  describe("the visitor's own time", () => {
+    const start = { iso: "2026-11-16T10:00:00.000Z", zone: "Europe/London" };
+    const vm = (over: Partial<SaleAuctionRowVM> = {}) =>
+      baseVm({ deliveryMode: "hybrid", scheduleRest: "· 16 Nov 2026 · 10:00 GMT", start, ...over });
+    afterEach(() => setViewerZone(null));
+
+    it("adds plain text after the schedule for a visitor on another clock", () => {
+      renderAsVisitorIn("Africa/Cairo", <SalesAuctionRow vm={vm()} />);
+      expect(screen.getByText("10:00 GMT")).toBeInTheDocument();
+      expect(screen.getByText("12:00")).toBeInTheDocument();
+      expect(screen.getByText(/Your time:/)).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: /show details/i })).toBeNull();
+    });
+
+    it("names the next day for a visitor ahead of London", () => {
+      renderAsVisitorIn(
+        "Australia/Sydney",
+        <SalesAuctionRow
+          vm={vm({
+            scheduleRest: "· 16 Nov 2026 · 16:00 GMT",
+            start: { iso: "2026-11-16T16:00:00.000Z", zone: "Europe/London" },
+          })}
+        />,
+      );
+      expect(screen.getByText("Tue 17 Nov")).toBeInTheDocument();
+    });
+
+    it.each(["Europe/London", "UTC", null])("adds nothing for %s", (zone) => {
+      const { container } = renderAsVisitorIn(zone, <SalesAuctionRow vm={vm()} />);
+      expect(container.querySelector("time")).toBeNull();
+      expect(screen.queryByText(/Your time:/)).toBeNull();
+    });
   });
 });

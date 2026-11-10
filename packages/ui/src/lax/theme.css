@@ -213,3 +213,8 @@ html.tz-away .tz-chip-slot:empty:not([data-settled]) {
 html.tz-away .tz-chip-slot--inline:empty:not([data-settled]) {
   min-height: 28px;
 }
+
+/* Plain text is a line high (20px), not a chip. */
+html.tz-away .tz-chip-slot--plain:empty:not([data-settled]) {
+  min-height: 20px;
+}

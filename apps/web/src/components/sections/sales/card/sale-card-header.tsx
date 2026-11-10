@@ -1,11 +1,14 @@
 import { SaleTypeBadge } from "@/components/marketing/sale-type-badge";
 import type { Sale } from "@auction/types";
+import { TimeChipSlot } from "@auction/ui/time";
 
 type Props = {
   scheduleLead: string;
   scheduleRest: string;
   auctionTypeLine: string;
   deliveryMode?: Sale["deliveryMode"] | undefined;
+  /** The start the schedule quotes, so a visitor on another clock sees their own time too. */
+  start?: { iso: string; zone: string } | undefined;
 };
 
 /** Schedule + auction type lines for browse rows (SRP). */
@@ -14,6 +17,7 @@ export function SaleCardHeader({
   scheduleRest,
   auctionTypeLine,
   deliveryMode,
+  start,
 }: Props) {
   const segments = scheduleRest
     .split("·")
@@ -35,6 +39,15 @@ export function SaleCardHeader({
               </span>
             </div>
           ))}
+          {start ? (
+            <TimeChipSlot
+              instant={start.iso}
+              officialZone={start.zone}
+              variant="plain"
+              placement="inline"
+              className="max-sm:basis-full"
+            />
+          ) : null}
         </div>
       ) : (
         <>

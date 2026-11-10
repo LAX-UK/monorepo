@@ -2,6 +2,7 @@
 
 import type { AdminArtistApplicationActionResponse } from "@auction/shop-contracts";
 import { ARTIST_APPLICATION_LIMITS } from "@auction/shop-domain";
+import { formatStaffNumber } from "@auction/staff-ui";
 import { ARTIST_SLUG_PATTERN } from "../domain/artist-application.vm";
 import type { AdminMutationResult } from "./admin-mutation-result";
 import { forwardAdminJsonMutation } from "./forward-admin-mutation";
@@ -27,7 +28,7 @@ function noteOrError(text: string, missing: string): { note: string } | { error:
   if (note.length > ARTIST_APPLICATION_LIMITS.messageToArtist) {
     return {
       error: invalid(
-        `Keep the note under ${ARTIST_APPLICATION_LIMITS.messageToArtist.toLocaleString("en-GB")} characters.`,
+        `Keep the note under ${formatStaffNumber(ARTIST_APPLICATION_LIMITS.messageToArtist)} characters.`,
       ),
     };
   }

@@ -287,3 +287,46 @@ describe("RecordRowMedia", () => {
     expect(media.className).toContain("after:ring-inset");
   });
 });
+
+describe("RecordRow figure notes and narrow facts", () => {
+  it("puts a note in the label's place and keeps the label for readers", () => {
+    render(
+      <RecordList aria-label="Bids">
+        <RecordRow
+          title="Lot"
+          figures={[{ value: "Thu 12 Nov", label: "closes", note: "20:00 in Cairo" }]}
+        />
+      </RecordList>,
+    );
+    expect(screen.getByText("20:00 in Cairo")).toBeInTheDocument();
+    expect(screen.getByText("closes").className).toContain("sr-only");
+  });
+
+  it("adds a fact that only a narrow row shows", () => {
+    render(
+      <RecordList aria-label="Bids">
+        <RecordRow title="Lot" meta={["Lot 6"]} metaNarrow="20:00 in Cairo" />
+      </RecordList>,
+    );
+    expect(screen.getByText("20:00 in Cairo").closest("[data-record-fact]")?.className).toContain(
+      "@2xl:hidden",
+    );
+    expect(screen.getByText("Lot 6").closest("[data-record-fact]")?.className).not.toContain(
+      "@2xl:hidden",
+    );
+  });
+
+  it("makes a figure cell roomy only while the visitor's clock is away from London's", () => {
+    render(
+      <RecordList aria-label="Bids">
+        <RecordRow
+          title="Lot"
+          figures={[{ value: "Thu 12 Nov", label: "closes", roomyWhenAway: true }]}
+        />
+      </RecordList>,
+    );
+    expect(screen.getByText("Thu 12 Nov").parentElement?.className).toContain(
+      "[html.tz-away_&]:@2xl:w-36",
+    );
+  });
+});

@@ -11,6 +11,7 @@ export {
   formatStaffMoney,
   formatStaffRelative,
   formatStaffTime,
+  formatStaffNumber,
   staffShortDateFormat,
 } from "./lib/format.js";
 

@@ -2,10 +2,9 @@
 
 import { adminLoadQrCodeAnalyticsResultAction } from "@/lib/actions/admin-qr-codes";
 import { customDateRangeToAnalyticsQuery } from "@/lib/admin/qr-analytics-range";
+import { addCalendarDays } from "@auction/datetime";
 import { DEFAULT_AUCTION_ZONE, toDateFormString } from "@auction/ui/lib/datetime";
 import type { QrCodeAnalyticsRange, QrCodeDetailedAnalytics } from "@auction/validators";
-import { TZDate } from "@date-fns/tz";
-import { addDays } from "date-fns";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 /** A custom range as whole days in auction time (`YYYY-MM-DD`). */
@@ -34,11 +33,11 @@ function toAnalyticsQuery(selection: QrAnalyticsRangeSelection) {
 }
 
 export function defaultQrAnalyticsCustomRange(): DateRangeValue {
-  const end = new TZDate(new Date(), DEFAULT_AUCTION_ZONE);
-  const start = addDays(new TZDate(new Date(end.getTime()), DEFAULT_AUCTION_ZONE), -29);
+  const end = new Date();
+  const start = addCalendarDays(end, -29, DEFAULT_AUCTION_ZONE);
   return {
-    from: toDateFormString(new Date(start.getTime()), DEFAULT_AUCTION_ZONE),
-    to: toDateFormString(new Date(end.getTime()), DEFAULT_AUCTION_ZONE),
+    from: toDateFormString(start, DEFAULT_AUCTION_ZONE),
+    to: toDateFormString(end, DEFAULT_AUCTION_ZONE),
   };
 }
 

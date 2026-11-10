@@ -634,6 +634,9 @@ importers:
       '@auction/branding':
         specifier: workspace:*
         version: link:../../packages/branding
+      '@auction/datetime':
+        specifier: workspace:*
+        version: link:../../packages/datetime
       '@auction/identity-contracts':
         specifier: workspace:*
         version: link:../../packages/identity-contracts

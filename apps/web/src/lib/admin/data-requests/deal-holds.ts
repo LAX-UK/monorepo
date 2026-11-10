@@ -1,11 +1,5 @@
 import type { DealHold } from "@/lib/data/http/admin-data-requests.reader";
-
-const DAY = new Intl.DateTimeFormat("en-GB", {
-  day: "numeric",
-  month: "long",
-  year: "numeric",
-  timeZone: "Europe/London",
-});
+import { LONDON_TIME_ZONE, formatDate } from "@auction/datetime";
 
 /** What staff read for one deal: its reference and how long it keeps the person's records. */
 export function dealHoldLine(hold: DealHold): { reference: string; text: string } {
@@ -14,7 +8,7 @@ export function dealHoldLine(hold: DealHold): { reference: string; text: string 
       return {
         reference: hold.dealReference,
         text: hold.heldUntil
-          ? `Kept until ${DAY.format(new Date(hold.heldUntil))}`
+          ? `Kept until ${formatDate(new Date(hold.heldUntil), LONDON_TIME_ZONE, { month: "long" })}`
           : "Kept while the retention runs",
       };
     case "open":

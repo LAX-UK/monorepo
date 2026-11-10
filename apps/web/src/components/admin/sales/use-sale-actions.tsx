@@ -11,6 +11,7 @@ import {
 } from "@/lib/admin/catalog-lifecycle/admin-catalog-lifecycle-mutations";
 import { humanizeSetupError } from "@/lib/admin/sale-setup/humanize-setup-error";
 import type { OverflowAction } from "@auction/staff-ui";
+import { formatStaffNumber } from "@auction/staff-ui";
 import type { SaleStatus } from "@auction/types";
 import { saleDeleteConfirmationPhrase } from "@auction/validators";
 import { useCallback } from "react";
@@ -61,7 +62,7 @@ export function useSaleActions(
           description:
             subscribers === null
               ? "They get it in the next 08:00 email. Clients also see it in the app now."
-              : `${subscribers.toLocaleString("en-GB")} ${subscribers === 1 ? "person" : "people"}, in the next 08:00 email. Clients also see it in the app now.`,
+              : `${formatStaffNumber(subscribers)} ${subscribers === 1 ? "person" : "people"}, in the next 08:00 email. Clients also see it in the app now.`,
           defaultChecked: true,
         },
         run: async ({ option }) => {
