@@ -601,7 +601,18 @@ export const WORKER_ANONYMISATION_SCRUB_COLUMNS = [
   ["legal_entity", ["display_name", "legal_name", "slug", "vat_number"]],
   ["legal_entity_contact_details", ["email", "phone", "website"]],
   ["telephone_bid_booking", ["phone_e164", "buyer_notes"]],
+  /** The enquiry rule replaces the sender's details and removes what they wrote. */
+  ["marketing_enquiry", ["name", "email", "phone", "message", "version"]],
+  ["marketing_enquiry_note", ["body"]],
+  ["private_sale_enquiry_detail", ["location_town", "location_country", "looking_for"]],
 ] as const;
+
+/**
+ * Erasing an enquiry's sender detaches the files they sent in: the link row is deleted and the
+ * upload record is made to expire (upload_object is already granted in full). Nothing else is
+ * deleted by that rule.
+ */
+export const WORKER_ENQUIRY_ERASURE_DELETE_TABLES = ["marketing_enquiry_attachment"] as const;
 
 /**
  * The CRM projector builds a Lead for a signed-in person's Shop original enquiry from these
@@ -1199,6 +1210,10 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
         }
         for (const [tableName, columns] of WORKER_SHOP_PRINT_GROUP_READ_COLUMNS) {
           await grantColumnSelectIfExists(client, "worker_app", tableName, columns);
+        }
+
+        for (const tableName of WORKER_ENQUIRY_ERASURE_DELETE_TABLES) {
+          await grantIfExists(client, "worker_app", tableName, "SELECT, DELETE");
         }
 
         for (const [tableName, columns] of WORKER_ANONYMISATION_SCRUB_COLUMNS) {
