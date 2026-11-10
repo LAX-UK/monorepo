@@ -15,22 +15,23 @@
     "test:e2e:a11y": "node ../../scripts/ci/require-node-version.mjs && PLAYWRIGHT_E2E=1 playwright test --grep @a11y"
   },
   "dependencies": {
-    "@auction/identity-rp": "workspace:*",
     "@auction/branding": "workspace:*",
-    "@auction/observability": "workspace:*",
+    "@auction/datetime": "workspace:*",
+    "@auction/identity-rp": "workspace:*",
     "@auction/lax-ecosystem": "workspace:*",
     "@auction/marketing-ui": "workspace:*",
+    "@auction/observability": "workspace:*",
     "@auction/shop-contracts": "workspace:*",
     "@auction/shop-domain": "workspace:*",
     "@auction/shop-portal": "workspace:*",
     "@auction/ui": "workspace:*",
     "@sentry/nextjs": "10.51.0",
-    "zod": "^3.24.1",
     "next": "15.5.9",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
     "server-only": "^0.0.1",
     "sharp": "^0.34.5",
-    "react": "^19.1.1",
-    "react-dom": "^19.1.1"
+    "zod": "^3.24.1"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.10.1",

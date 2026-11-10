@@ -1,3 +1,4 @@
+import { dayKey } from "@auction/datetime";
 import type { ICrmRecordLinkRepository } from "@auction/persistence/interfaces";
 import { CRM_ENTITY, CRM_LEAD_STATUS, paidCustomerRecordId } from "../crm-field-constants.js";
 import { CrmGatewayError } from "../crm-gateway-error.js";
@@ -24,12 +25,7 @@ export type CrmPaidBuyerHandlerDeps = {
 /** The calendar day after `now` in London, as Zoho's date fields take it. */
 export function dueTomorrowInLondon(now: Date): string {
   const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Europe/London",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(tomorrow);
+  return dayKey(tomorrow, "Europe/London");
 }
 
 export function purchaseNoteContent(purchase: CrmPaidPurchase): string {

@@ -1,5 +1,5 @@
+import { digestDateFor, isDigestDue } from "../domain/digest-day.js";
 import { assembleDigest } from "../domain/digest.js";
-import { digestDateFor, isDigestDue } from "../domain/london-date.js";
 import type { PendingMatch } from "../domain/match.js";
 import type { AlertProduct, AlertTopic } from "../domain/products.js";
 import type { SubscriberRecord } from "../domain/subscriber.js";

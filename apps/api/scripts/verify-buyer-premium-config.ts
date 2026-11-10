@@ -22,11 +22,11 @@ const saleArg = process.argv.find((a) => a.startsWith("--sale="))?.slice("--sale
 
 const db = createDb(process.env.DATABASE_URL ?? "");
 
-const gbp = (major: string) =>
-  `£${Number.parseFloat(major).toLocaleString("en-GB", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
+const POUNDS = new Intl.NumberFormat("en-GB", {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+const gbp = (major: string) => `£${POUNDS.format(Number.parseFloat(major))}`;
 
 const sales = await db
   .select({

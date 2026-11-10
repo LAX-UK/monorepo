@@ -1,5 +1,6 @@
 import { clientLabel, formatDocumentFileName } from "@auction/artwork-register-contracts";
 import type { LegalEntity } from "@auction/branding";
+import { formatDate } from "@auction/datetime";
 import PDFDocument from "pdfkit";
 import { orderRecordVat } from "./order-vat.js";
 import type { OrderRecord } from "./ports/commerce.ports.js";
@@ -38,13 +39,7 @@ export type OrderInvoiceModel = {
 const money = (pence: number) =>
   new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP" }).format(pence / 100);
 
-const day = (date: Date) =>
-  new Intl.DateTimeFormat("en-GB", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    timeZone: "Europe/London",
-  }).format(date);
+const day = (date: Date) => formatDate(date, "Europe/London", { month: "short", engineSept: true });
 
 const percent = (rateBp: number) => `${Number((rateBp / 100).toFixed(2))}%`;
 

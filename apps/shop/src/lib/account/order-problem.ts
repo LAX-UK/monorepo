@@ -48,7 +48,7 @@ export function validateOrderProblem(input: OrderProblemDetails): OrderProblemEr
   if (!details) {
     errors.details = "Tell us what happened";
   } else if (details.length > ORDER_PROBLEM_DETAILS_MAX_LENGTH) {
-    errors.details = `Keep it to ${ORDER_PROBLEM_DETAILS_MAX_LENGTH.toLocaleString("en-GB")} characters or fewer`;
+    errors.details = `Keep it to ${new Intl.NumberFormat("en-GB").format(ORDER_PROBLEM_DETAILS_MAX_LENGTH)} characters or fewer`;
   }
   return errors;
 }

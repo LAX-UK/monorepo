@@ -1,3 +1,5 @@
+import { formatDate } from "@auction/datetime";
+
 /** Compact relative timestamp for admin audit labels (API-safe, locale-neutral numbers). */
 export function formatAdminRelativeTimeLabel(
   value: Date | string | null | undefined,
@@ -16,10 +18,5 @@ export function formatAdminRelativeTimeLabel(
   if (hours < 24) return `${hours}h ago`;
   const days = Math.floor(hours / 24);
   if (days < 14) return `${days}d ago`;
-  return date.toLocaleDateString("en-GB", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    timeZone: "UTC",
-  });
+  return formatDate(date, "UTC", { month: "short", engineSept: true });
 }

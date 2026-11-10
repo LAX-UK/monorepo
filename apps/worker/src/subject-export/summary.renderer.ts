@@ -1,3 +1,4 @@
+import { formatDate, formatTime } from "@auction/datetime";
 import {
   SUBJECT_EXPORT_PRODUCT_INFO,
   type SubjectExportProduct,
@@ -31,17 +32,11 @@ export function escapeHtml(text: string): string {
     .replace(/'/g, "&#39;");
 }
 
-const londonDate = new Intl.DateTimeFormat("en-GB", {
-  dateStyle: "long",
-  timeZone: "Europe/London",
-});
-const londonTime = new Intl.DateTimeFormat("en-GB", {
-  timeStyle: "short",
-  timeZone: "Europe/London",
-});
+const LONDON = "Europe/London";
+const londonDate = { format: (date: Date) => formatDate(date, LONDON, { month: "long" }) };
 
 function londonDateTime(date: Date): string {
-  return `${londonDate.format(date)} at ${londonTime.format(date)}`;
+  return `${londonDate.format(date)} at ${formatTime(date, LONDON)}`;
 }
 
 const STYLE = `

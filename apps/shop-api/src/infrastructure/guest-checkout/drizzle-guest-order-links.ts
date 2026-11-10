@@ -1,3 +1,4 @@
+import { formatDate } from "@auction/datetime";
 import type { Database } from "@auction/db";
 import { shopGuestCustomer, shopGuestOrderLink, shopOrder } from "@auction/db/schema";
 import { guestOrderLinkState, guestOrderSubject } from "@auction/shop-domain";
@@ -15,13 +16,6 @@ import {
   isGuestOrderLinkTokenShape,
   issueGuestOrderLink,
 } from "./guest-order-link-token.js";
-
-const EXPIRY_DATE = new Intl.DateTimeFormat("en-GB", {
-  day: "numeric",
-  month: "long",
-  year: "numeric",
-  timeZone: "Europe/London",
-});
 
 export function createDrizzleGuestOrderLinks(
   db: Database,
@@ -123,7 +117,7 @@ export function createDrizzleGuestOrderLinks(
           to: order.email,
           orderReference: order.reference,
           orderUrl: guestOrderLinkUrl(deps.storefrontUrl, link.token),
-          expiresOn: EXPIRY_DATE.format(link.expiresAt),
+          expiresOn: formatDate(link.expiresAt, "Europe/London", { month: "long" }),
         });
       });
     },

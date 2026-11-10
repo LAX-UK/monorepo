@@ -1,5 +1,6 @@
 import { ArtStatusState, ArtStatusStateLink } from "@/components/art-status-state";
 import { ARTIST_PORTAL_PATH, FOR_ARTISTS_PATH } from "@/lib/artist-application/for-artists.content";
+import { formatDate } from "@auction/datetime";
 import {
   ARTIST_APPLICATION_JOURNEY,
   type ArtistApplicationStatusTone,
@@ -14,15 +15,8 @@ import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
-const LONG_DATE = new Intl.DateTimeFormat("en-GB", {
-  day: "numeric",
-  month: "long",
-  year: "numeric",
-  timeZone: "Europe/London",
-});
-
 export function formatApplicationDate(value: string | null): string | null {
-  return value ? LONG_DATE.format(new Date(value)) : null;
+  return value ? formatDate(new Date(value), "Europe/London", { month: "long" }) : null;
 }
 
 const TONE_DOT: Record<ArtistApplicationStatusTone, string> = {
