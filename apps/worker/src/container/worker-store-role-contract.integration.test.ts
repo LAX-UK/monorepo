@@ -113,6 +113,15 @@ const COVERED_ELSEWHERE: Record<string, string> = {
   DrizzleRepositoryFactory: "its repositories are listed in BUILT_BY_FACTORY",
 };
 
+/**
+ * Methods of repositories the API shares with the worker that only the API calls, so `worker_app`
+ * rightly cannot run them. Everything not listed here must be allowed.
+ */
+const API_ONLY_METHODS: Record<string, readonly string[]> = {
+  DrizzleItemSubmissionRepository: ["findByIdForUpdate", "update"],
+  DrizzlePaymentRepository: ["isVoidedByBuyerDefault"],
+};
+
 type Call = { method: string; args: unknown[] };
 
 const COUNT_PARAMS =
@@ -214,7 +223,9 @@ describe.skipIf(!ownerUrl || !workerUrl)("worker stores as worker_app", () => {
 
   const probed = { ...STORES, ...BUILT_BY_FACTORY };
   const calls = Object.entries(probed).flatMap(([name, Store]) =>
-    publicMethods(new Store(db)).map(({ method }) => [name, method] as const),
+    publicMethods(new Store(db))
+      .filter(({ method }) => !API_ONLY_METHODS[name]?.includes(method))
+      .map(({ method }) => [name, method] as const),
   );
 
   it.each(calls)("%s.%s is not denied", async (name, method) => {
