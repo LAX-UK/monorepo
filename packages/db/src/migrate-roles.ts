@@ -402,6 +402,14 @@ export const WORKER_KYC_RETENTION_DEAL_READ_TABLES = [
   "private_sale_deal_party_history",
   "private_sale_deal_stage_history",
 ] as const;
+/**
+ * The CSV exports list sales and submissions with their categories, which sit in these join tables.
+ * Read only.
+ */
+export const WORKER_EXPORT_CATEGORY_READ_TABLES = [
+  "sale_categories",
+  "submission_categories",
+] as const;
 /** Append-only proof of each purge: no personal data. */
 export const WORKER_KYC_RETENTION_TOMBSTONE_TABLES = ["kyc_retention_tombstone"] as const;
 /** Worker persists async QR scan events (qr-code-scan job via persistQrCodeScan). */
@@ -1019,6 +1027,9 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
           await grantIfExists(client, "worker_app", tableName, "SELECT, DELETE");
         }
         for (const tableName of WORKER_KYC_RETENTION_DEAL_READ_TABLES) {
+          await grantIfExists(client, "worker_app", tableName, "SELECT");
+        }
+        for (const tableName of WORKER_EXPORT_CATEGORY_READ_TABLES) {
           await grantIfExists(client, "worker_app", tableName, "SELECT");
         }
         for (const tableName of WORKER_KYC_RETENTION_TOMBSTONE_TABLES) {

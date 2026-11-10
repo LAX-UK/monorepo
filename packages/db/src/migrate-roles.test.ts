@@ -36,6 +36,7 @@ import {
   WORKER_DENY_TABLES,
   WORKER_DOMAIN_EVENT_DELIVERY_TABLES,
   WORKER_EMAIL_SUPPRESSION_UPDATE_COLUMNS,
+  WORKER_EXPORT_CATEGORY_READ_TABLES,
   WORKER_FULL_TABLES,
   WORKER_INVOICE_RAISE_FULFILMENT_TABLES,
   WORKER_INVOICE_RAISE_INSERT_TABLES,
@@ -774,6 +775,17 @@ describe("migrate-roles invariants", () => {
     const source = await readFile(join(__dirname, "migrate-roles.ts"), "utf8");
     expect(source).toMatch(
       /for \(const tableName of WORKER_KYC_RETENTION_DEAL_READ_TABLES\) \{\s+await grantIfExists\(client, "worker_app", tableName, "SELECT"\);/,
+    );
+  });
+
+  it("lets the export jobs read the sale and submission category tables, and only read them", async () => {
+    expect([...WORKER_EXPORT_CATEGORY_READ_TABLES].sort()).toEqual([
+      "sale_categories",
+      "submission_categories",
+    ]);
+    const source = await readFile(join(__dirname, "migrate-roles.ts"), "utf8");
+    expect(source).toMatch(
+      /for \(const tableName of WORKER_EXPORT_CATEGORY_READ_TABLES\) \{\s+await grantIfExists\(client, "worker_app", tableName, "SELECT"\);/,
     );
   });
 
