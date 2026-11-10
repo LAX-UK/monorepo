@@ -23,8 +23,6 @@ describe("ending a checkout session in the sweep", () => {
   it("leaves a session alone when the buyer opened a new one after the sweep chose the order", async () => {
     const { gateway, expireHostedCheckout } = gatewayThatExpires();
     const { db, transaction } = dbReading([
-      // The sweep's first look: the hold has ended.
-      { checkoutExpiresAt: new Date(sweepAt.getTime() - 60_000) },
       // Read for the session to end: payment was opened in between, with a new session and hold.
       {
         status: "pending_payment",
@@ -48,7 +46,6 @@ describe("ending a checkout session in the sweep", () => {
     const { gateway, expireHostedCheckout } = gatewayThatExpires();
     const ended = new Date(sweepAt.getTime() - 60_000);
     const { db, transaction } = dbReading([
-      { checkoutExpiresAt: ended },
       { status: "pending_payment", stripeCheckoutSessionId: "cs_old", checkoutExpiresAt: ended },
     ]);
     transaction.mockResolvedValue("expired");

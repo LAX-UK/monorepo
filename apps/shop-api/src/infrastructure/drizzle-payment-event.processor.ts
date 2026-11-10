@@ -783,7 +783,8 @@ async function recordPaymentForUnknownOrder(
 /**
  * Marks a Stripe event as handled; false when it already was, so a replay does nothing.
  *
- * Always called first in the transaction that records the event's effects. A second delivery of
+ * Called inside the transaction that records the event's effects, before any effect is written
+ * (a lock on the order may be taken first). A second delivery of
  * the same event waits on the first one's uncommitted claim: it gets "already handled" only once
  * the first has committed, and if the first rolls back it takes the claim and does the work
  * itself. Never call this outside that transaction, or a duplicate could be acknowledged for work
@@ -1167,7 +1168,7 @@ function holdStillRunning(
  * Expires an order whose checkout ended: the buyer let it run out, Stripe said so, or the reaper
  * found its hold past. The reaper passes `holdMustHaveEndedBy` (its sweep time): an order whose
  * hold was stretched after the sweep chose it (a buyer opening payment) is left alone, both
- * before Stripe's session is ended and again under the order's row lock. That check comes before
+ * on the read that picks Stripe's session to end and again under the order's row lock. That check comes before
  * the event is claimed, so an order that was spared is found again by a later sweep.
  */
 export async function expireShopCheckoutSession(
@@ -1185,14 +1186,6 @@ export async function expireShopCheckoutSession(
 ): Promise<ShopCheckoutExpireOutcome> {
   const source = input.source ?? "stripe";
   const events = createShopDomainEventPublisher(options.domainEventMode ?? "off");
-  if (input.holdMustHaveEndedBy) {
-    const [current] = await db
-      .select({ checkoutExpiresAt: shopOrder.checkoutExpiresAt })
-      .from(shopOrder)
-      .where(eq(shopOrder.id, input.orderId))
-      .limit(1);
-    if (current && holdStillRunning(current, input.holdMustHaveEndedBy)) return "unchanged";
-  }
   const stripeGate = await expireStripeBeforeLocalTransition(
     db,
     input.orderId,

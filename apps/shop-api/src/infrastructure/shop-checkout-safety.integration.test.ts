@@ -571,17 +571,19 @@ describe.skipIf(!hasShopIntegrationDb)(
         return { ...harness, created, paid, claims };
       }
 
-      /** True while the promise is still waiting after a short pause. */
-      async function stillWaiting(promise: Promise<unknown>): Promise<boolean> {
-        const pending = Symbol("pending");
-        const first = await Promise.race([
-          promise.then(
-            () => "settled",
-            () => "settled",
-          ),
-          new Promise((resolve) => setTimeout(() => resolve(pending), 500)),
-        ]);
-        return first === pending;
+      /** Waits, for a bounded time, until a statement on the claims table is blocked on a lock. */
+      async function claimIsBlockedOnLock(): Promise<boolean> {
+        for (let attempt = 0; attempt < 50; attempt += 1) {
+          const { rowCount } = await ownerPool.query(
+            `select 1 from pg_stat_activity
+             where datname = current_database()
+               and wait_event_type = 'Lock'
+               and query ilike '%shop_processed_payment_event%'`,
+          );
+          if (rowCount) return true;
+          await new Promise((resolve) => setTimeout(resolve, 100));
+        }
+        return false;
       }
 
       it("makes the second delivery wait for the first, and records the payment when the first fails", async () => {
@@ -596,7 +598,7 @@ describe.skipIf(!hasShopIntegrationDb)(
 
         // The first has claimed the event but not committed: the second must not answer yet, and
         // above all must not answer "duplicate" for work that is not recorded.
-        expect(await stillWaiting(second)).toBe(true);
+        expect(await claimIsBlockedOnLock()).toBe(true);
         receipts.release();
         await firstFailure;
 
@@ -613,7 +615,7 @@ describe.skipIf(!hasShopIntegrationDb)(
         const first = completeShopCheckoutSession(db, paid, options);
         await receipts.firstReachedReceipt;
         const second = completeShopCheckoutSession(db, paid, options);
-        expect(await stillWaiting(second)).toBe(true);
+        expect(await claimIsBlockedOnLock()).toBe(true);
         receipts.release();
 
         expect(await first).toBe("processed");
