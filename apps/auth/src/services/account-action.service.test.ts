@@ -274,6 +274,7 @@ describe("AccountActionService.redeem: the browser arrives", () => {
     expect(await context.service.redeem(secret, { id: "sid-2", userId: SUBJECT })).toEqual({
       ok: false,
       code: "reauth_required",
+      provider: "google",
     });
     // The right browser cannot use it afterwards either.
     expect(await context.service.redeem(secret, browser)).toEqual({ ok: false, code: "expired" });
@@ -285,6 +286,7 @@ describe("AccountActionService.redeem: the browser arrives", () => {
     expect(await context.service.redeem(secret, { id: "sid-1", userId: OTHER })).toEqual({
       ok: false,
       code: "reauth_required",
+      provider: "google",
     });
   });
 
@@ -294,6 +296,7 @@ describe("AccountActionService.redeem: the browser arrives", () => {
     expect(await context.service.redeem(secret, null)).toEqual({
       ok: false,
       code: "reauth_required",
+      provider: "google",
     });
   });
 
@@ -304,6 +307,7 @@ describe("AccountActionService.redeem: the browser arrives", () => {
     expect(await context.service.redeem(secret, browser)).toEqual({
       ok: false,
       code: "reauth_required",
+      provider: "google",
     });
   });
 
@@ -315,6 +319,7 @@ describe("AccountActionService.redeem: the browser arrives", () => {
     expect(await context.service.redeem(secret, browser)).toEqual({
       ok: false,
       code: "staff_not_allowed",
+      provider: "google",
     });
   });
 
@@ -342,7 +347,11 @@ describe("AccountActionService.redeem: the browser arrives", () => {
       },
       () => NOW,
     );
-    expect(await off.redeem(secret, browser)).toEqual({ ok: false, code: "provider_unavailable" });
+    expect(await off.redeem(secret, browser)).toEqual({
+      ok: false,
+      code: "provider_unavailable",
+      provider: "apple",
+    });
   });
 
   it("treats a provider linked in another tab as done", async () => {

@@ -42,7 +42,8 @@ function setup(
   return { app, actions, startLink, onFailure };
 }
 
-const back = (word: string) => `${ACCOUNT}/account/security?signInMethod=${word}`;
+const back = (word: string, provider?: string) =>
+  `${ACCOUNT}/account/security?signInMethod=${word}${provider ? `&provider=${provider}` : ""}`;
 
 describe("GET /account-action", () => {
   it("spends the ticket and sends the browser to the provider, with the round trip's cookies", async () => {
@@ -88,6 +89,12 @@ describe("GET /account-action", () => {
       expect(startLink).not.toHaveBeenCalled();
     },
   );
+
+  it("names the provider when the refused ticket was for one", async () => {
+    const { app } = setup({ redeem: { ok: false, code: "reauth_required", provider: "apple" } });
+    const response = await app.request(`/account-action?ticket=${SECRET}`);
+    expect(response.headers.get("location")).toBe(back("reauth_required", "apple"));
+  });
 
   it("passes the browser's session, or none, to the service", async () => {
     const { app, actions } = setup({ session: null });
@@ -140,7 +147,7 @@ describe("GET /account-action/done", () => {
   it("never believes the address: a visit with nothing linked is 'provider_unavailable'", async () => {
     const { app } = setup({ isLinked: false });
     const response = await app.request("/account-action/done?provider=google");
-    expect(response.headers.get("location")).toBe(back("provider_unavailable"));
+    expect(response.headers.get("location")).toBe(back("provider_unavailable", "google"));
   });
 
   it.each([
@@ -155,14 +162,14 @@ describe("GET /account-action/done", () => {
     const response = await app.request(
       `/account-action/done?provider=google&error=${encodeURIComponent(error)}`,
     );
-    expect(response.headers.get("location")).toBe(back(word));
+    expect(response.headers.get("location")).toBe(back(word, "google"));
     expect(actions.isLinked).not.toHaveBeenCalled();
   });
 
   it("asks for a sign-in again when the browser has no session", async () => {
     const { app } = setup({ session: null });
     const response = await app.request("/account-action/done?provider=google");
-    expect(response.headers.get("location")).toBe(back("reauth_required"));
+    expect(response.headers.get("location")).toBe(back("reauth_required", "google"));
   });
 
   it("refuses a provider it does not know, and a missing one", async () => {
@@ -180,7 +187,18 @@ describe("GET /account-action/done", () => {
     const target = new URL(response.headers.get("location") ?? "");
     expect(target.origin).toBe(ACCOUNT);
     expect(target.pathname).toBe("/account/security");
+    // A success carries only its word, which already names the provider.
     expect([...target.searchParams.keys()]).toEqual(["signInMethod"]);
+  });
+
+  it("adds only a known provider to an error return, never anything from the request", async () => {
+    const { app } = setup({ isLinked: false });
+    const response = await app.request(
+      "/account-action/done?provider=google&error=x&returnTo=https://evil.test",
+    );
+    const target = new URL(response.headers.get("location") ?? "");
+    expect([...target.searchParams.keys()]).toEqual(["signInMethod", "provider"]);
+    expect(target.searchParams.get("provider")).toBe("google");
   });
 
   it("is never cached and returns rate limited before reading anything", async () => {

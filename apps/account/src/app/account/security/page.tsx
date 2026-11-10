@@ -15,7 +15,15 @@ import { passwordFormMode } from "@/server/domain/account-password.vm";
 import { buildReauthHref } from "@/server/domain/account-reauth";
 import { readAccountSecurityFacts } from "@/server/domain/account-security-facts";
 import { ACCOUNT_ROUTES, buildTwoStepRow } from "@/server/domain/account-settings.vm";
-import { buildSignInMethodsSection } from "@/server/domain/account-sign-in-methods.vm";
+import {
+  buildSignInMethodFlash,
+  buildSignInMethodsSection,
+  signInMethodFacts,
+} from "@/server/domain/account-sign-in-methods.vm";
+import {
+  ACCOUNT_SIGN_IN_METHOD_PROVIDER_PARAM,
+  ACCOUNT_SIGN_IN_METHOD_RETURN_PARAM,
+} from "@auction/identity-contracts/account";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
@@ -23,7 +31,14 @@ export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = { title: "Password and security · LAX Account" };
 
-export default async function SecurityPage() {
+type SecurityPageProps = {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+};
+
+export default async function SecurityPage({ searchParams }: SecurityPageProps) {
+  const params = await searchParams;
+  const returned = params[ACCOUNT_SIGN_IN_METHOD_RETURN_PARAM];
+  const returnedProvider = params[ACCOUNT_SIGN_IN_METHOD_PROVIDER_PARAM];
   const session = await loadAccountSession({
     withLiveSecurity: true,
     withLiveSessions: true,
@@ -44,7 +59,12 @@ export default async function SecurityPage() {
         description="Your sign-in methods, password, two-step verification and devices."
       />
       <SignInMethodsSection
-        section={buildSignInMethodsSection(liveSignInMethods, overview.email)}
+        section={buildSignInMethodsSection(liveSignInMethods)}
+        flash={buildSignInMethodFlash(
+          returned,
+          returnedProvider,
+          signInMethodFacts(liveSignInMethods),
+        )}
         pagePath={ACCOUNT_ROUTES.security}
         reauthHref={buildReauthHref(ACCOUNT_ROUTES.security)}
         passwordPanel={

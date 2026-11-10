@@ -23,6 +23,11 @@ export const ACCOUNT_ACTION_PASSKEY_PATH = "/account-action/passkey";
 export const ACCOUNT_ACTION_TICKET_TTL_SECONDS = 120;
 /** The query parameter LAX Account's Security page reads the outcome from: a fixed word, never text. */
 export const ACCOUNT_SIGN_IN_METHOD_RETURN_PARAM = "signInMethod";
+/**
+ * Which provider an error return is about ("google" or "apple"), so the page can name it. Read
+ * against the fixed list of providers only; anything else is ignored.
+ */
+export const ACCOUNT_SIGN_IN_METHOD_PROVIDER_PARAM = "provider";
 
 /** The social sign-ins a person can have linked. */
 export const SOCIAL_SIGN_IN_PROVIDERS = ["google", "apple"] as const;

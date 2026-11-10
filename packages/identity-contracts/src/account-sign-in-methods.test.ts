@@ -9,6 +9,7 @@ import {
   ACCOUNT_SIGN_IN_METHODS_PATH,
   ACCOUNT_SIGN_IN_METHODS_UNLINK_PATH,
   ACCOUNT_SIGN_IN_METHOD_ERRORS,
+  ACCOUNT_SIGN_IN_METHOD_PROVIDER_PARAM,
   ACCOUNT_SIGN_IN_METHOD_RETURNS,
   ACCOUNT_SIGN_IN_METHOD_RETURN_CODES,
   ACCOUNT_SIGN_IN_METHOD_RETURN_ERRORS,
@@ -123,6 +124,7 @@ describe("account sign-in methods contract", () => {
 
   it("returns to Security with one fixed word, drawn from a single list with no repeats", () => {
     expect(ACCOUNT_SIGN_IN_METHOD_RETURN_PARAM).toBe("signInMethod");
+    expect(ACCOUNT_SIGN_IN_METHOD_PROVIDER_PARAM).toBe("provider");
     expect(new Set(ACCOUNT_SIGN_IN_METHOD_RETURNS).size).toBe(
       ACCOUNT_SIGN_IN_METHOD_RETURNS.length,
     );

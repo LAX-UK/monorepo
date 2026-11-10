@@ -1,4 +1,8 @@
-import type { SignInMethodsSectionVm } from "@/server/domain/account-sign-in-methods.vm";
+import {
+  type SignInMethodFlashVm,
+  type SignInMethodsSectionVm,
+  buildSignInMethodFlash,
+} from "@/server/domain/account-sign-in-methods.vm";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { SignInMethodsSection } from "./sign-in-methods-section";
@@ -24,14 +28,16 @@ const google = (blockedReason: string | null) =>
     kind: "social",
     provider: "google",
     title: "Google",
-    detail: "ada@example.com · Linked 1 Oct 2026",
+    address: "ada@example.com",
+    linkedOn: "Linked 1 Oct 2026",
     blockedReason,
   }) as const;
 
-const render = (section: SignInMethodsSectionVm) =>
+const render = (section: SignInMethodsSectionVm, flash: SignInMethodFlashVm | null = null) =>
   renderToStaticMarkup(
     <SignInMethodsSection
       section={section}
+      flash={flash}
       pagePath="/account/security"
       reauthHref="/api/auth/login?returnTo=%2Faccount%2Fsecurity&intent=reauth"
       passwordPanel={<form data-testid="password-form" />}
@@ -55,9 +61,14 @@ describe("SignInMethodsSection", () => {
     expect(html).not.toMatch(/aria-label="Remove Google sign-in"[^>]*disabled/);
   });
 
+  it("keeps the linked date whole on a line, apart from the address", () => {
+    const html = render({ status: "list", rows: [password(true), google(null)], hint: null });
+    expect(html).toMatch(/<span class="whitespace-nowrap">Linked 1 Oct 2026<\/span>/);
+  });
+
   it("disables Remove on the only method and says why next to it", () => {
     const reason =
-      "This is the only way you can sign in. Add a password first, then you can remove it.";
+      "This is the only way you can sign in. Add a passkey or a password first, then you can remove it.";
     const html = render({
       status: "list",
       rows: [password(false), google(reason)],
@@ -99,5 +110,33 @@ describe("SignInMethodsSection", () => {
     const html = render({ status: "unavailable" });
     expect(html).toContain("We can&#x27;t show your sign-in methods right now");
     expect(html).toContain('href="/account/security"');
+  });
+
+  it("puts what the issuer sent the person back with at the top of the section, above the list", () => {
+    const flash = buildSignInMethodFlash("google_linked", undefined, {
+      linked: ["google"],
+      passkeys: 0,
+    });
+    const html = render(
+      { status: "list", rows: [password(true), google(null)], hint: null },
+      flash,
+    );
+    expect(html).toContain("Google is linked");
+    expect(html.indexOf("Google is linked")).toBeLessThan(html.indexOf("Password"));
+  });
+
+  it("shows it even when the list cannot be read, so a result is never lost", () => {
+    const html = render(
+      { status: "unavailable" },
+      buildSignInMethodFlash("cancelled", "google", null),
+    );
+    expect(html).toContain("Linking Google was cancelled");
+    expect(html).toContain("We can&#x27;t show your sign-in methods right now");
+  });
+
+  it("shows no notice when nothing was sent back", () => {
+    expect(render({ status: "list", rows: [password(true)], hint: null })).not.toContain(
+      "data-sign-in-method-flash",
+    );
   });
 });

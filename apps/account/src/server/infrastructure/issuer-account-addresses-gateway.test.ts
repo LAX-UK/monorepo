@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { createIssuerAccountIdentityGateway } from "./issuer-account-identity-gateway";
 
 const config = {
+  oidcIssuer: "https://auth.example.com",
   oidcInternalIssuer: "https://auth.internal",
   oidcClientId: "lax-account-web",
   oidcClientSecret: "client-secret",

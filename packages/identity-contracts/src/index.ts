@@ -4,6 +4,7 @@ export {
   type AccountBackupCodesResponse,
 } from "./account-backup-codes.js";
 export * from "./account-sign-in-methods.js";
+export * from "./social-provider-marks.js";
 export {
   ACCOUNT_PASSWORD_CHANGE_PATH,
   ACCOUNT_PASSWORD_ERRORS,

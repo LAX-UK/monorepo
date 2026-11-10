@@ -7,9 +7,13 @@ import {
   NoticeTitle,
 } from "@/components/account-ui";
 import type { SettingsRowVm } from "@/server/domain/account-settings.vm";
-import type { SignInMethodsSectionVm } from "@/server/domain/account-sign-in-methods.vm";
+import type {
+  SignInMethodFlashVm,
+  SignInMethodsSectionVm,
+} from "@/server/domain/account-sign-in-methods.vm";
 import { Alert, AlertDescription } from "@auction/ui/components/alert";
 import type { ReactNode } from "react";
+import { SignInMethodFlash } from "./sign-in-method-flash.client";
 import { SignInMethodsList } from "./sign-in-methods-list.client";
 
 type SignInMethodsSectionProps = {
@@ -20,6 +24,8 @@ type SignInMethodsSectionProps = {
   /** The password form, which the Password row opens in place. */
   passwordPanel: ReactNode;
   twoStep: SettingsRowVm;
+  /** What happened when the issuer sent the person back from Google or Apple, if it did. */
+  flash?: SignInMethodFlashVm | null;
 };
 
 /** Why the list of methods cannot be shown, in plain words, with the way forward. */
@@ -66,6 +72,7 @@ export function SignInMethodsSection({
   reauthHref,
   passwordPanel,
   twoStep,
+  flash = null,
 }: SignInMethodsSectionProps) {
   return (
     <AccountSection
@@ -73,6 +80,9 @@ export function SignInMethodsSection({
       title="How you sign in"
       description="The ways you can sign in to LAX. Keep at least one you can always use."
     >
+      {flash ? (
+        <SignInMethodFlash flash={flash} pagePath={pagePath} reauthHref={reauthHref} />
+      ) : null}
       {section.status === "list" ? (
         <SignInMethodsList
           rows={section.rows}

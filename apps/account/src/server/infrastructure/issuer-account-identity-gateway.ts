@@ -1,4 +1,5 @@
 import {
+  ACCOUNT_ACTION_PATH,
   ACCOUNT_ADDRESSES_CREATE_PATH,
   ACCOUNT_ADDRESSES_DEFAULT_PATH,
   ACCOUNT_ADDRESSES_DELETE_PATH,
@@ -25,6 +26,7 @@ import {
   ACCOUNT_SESSIONS_PATH,
   ACCOUNT_SESSIONS_REVOKE_OTHERS_PATH,
   ACCOUNT_SESSIONS_REVOKE_PATH,
+  ACCOUNT_SIGN_IN_METHODS_INTENT_PATH,
   ACCOUNT_SIGN_IN_METHODS_PATH,
   ACCOUNT_SIGN_IN_METHODS_UNLINK_PATH,
   ACCOUNT_SIGN_IN_METHOD_ERRORS,
@@ -32,6 +34,7 @@ import {
   type AccountContactError,
   type AccountPasswordError,
   type AccountSignInMethodError,
+  accountActionIntentSchema,
   accountAddressDeletedSchema,
   accountAddressResultSchema,
   accountAddressesSchema,
@@ -83,6 +86,21 @@ function rejectionReason(body: unknown): RejectionReason | null {
     : null;
 }
 
+/** Whether `url` is the issuer's own `/account-action` page, on the issuer's public origin. */
+export function isIssuerActionUrl(url: string, issuer: string): boolean {
+  try {
+    const target = new URL(url);
+    return (
+      target.origin === new URL(issuer).origin &&
+      target.pathname === ACCOUNT_ACTION_PATH &&
+      target.username === "" &&
+      target.password === ""
+    );
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Calls the issuer's account routes as LAX Account, for the person who owns the access token.
  * Tokens travel in the request body, never a URL, and nothing here logs them. Every failure
@@ -91,7 +109,10 @@ function rejectionReason(body: unknown): RejectionReason | null {
  * which the person can act on.
  */
 export function createIssuerAccountIdentityGateway(
-  config: Pick<LaxAccountConfig, "oidcInternalIssuer" | "oidcClientId" | "oidcClientSecret">,
+  config: Pick<
+    LaxAccountConfig,
+    "oidcIssuer" | "oidcInternalIssuer" | "oidcClientId" | "oidcClientSecret"
+  >,
   fetchImpl: typeof fetch = fetch,
 ): AccountIdentityGateway {
   const base = `${config.oidcInternalIssuer}/api/auth`;
@@ -329,6 +350,20 @@ export function createIssuerAccountIdentityGateway(
         { token: actor.accessToken },
         accountSignInMethodsSchema,
       );
+    },
+    async startSignInMethodAction(actor, action) {
+      const result = await post(
+        ACCOUNT_SIGN_IN_METHODS_INTENT_PATH,
+        fields(actor, { action }),
+        accountActionIntentSchema,
+      );
+      if (result.status !== "ok") return result;
+      // The browser is about to be sent here, so it must be the issuer's own page and nothing else.
+      if (!isIssuerActionUrl(result.value.url, config.oidcIssuer)) {
+        console.warn("account_identity_unavailable", { path: ACCOUNT_SIGN_IN_METHODS_INTENT_PATH });
+        return { status: "unavailable" };
+      }
+      return result;
     },
     unlinkSignInMethod(actor, provider) {
       return post(

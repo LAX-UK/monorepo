@@ -55,7 +55,7 @@ function setup(sessions: IdentitySession[], unlink?: () => Promise<unknown>) {
   const durable = { settle: vi.fn(async () => undefined) };
   const notices = { notify: vi.fn(async () => undefined) };
   const service = new AccountSignInMethodsService(
-    { operations: operations as never, durable, notices },
+    { operations: operations as never, durable, notices, isStaff: async () => false },
     () => NOW,
   );
   return { service, operations, durable, notices };
@@ -90,12 +90,81 @@ describe("AccountSignInMethodsService.read", () => {
       durable: { settle: vi.fn() },
       notices: { notify: vi.fn() },
       available: { google: true, apple: false, passkey: false },
+      isStaff: async () => false,
     });
     expect((await service.read(SUBJECT)).available).toEqual({
       google: true,
       apple: false,
       passkey: false,
     });
+  });
+
+  it("offers a staff account no Google or Apple link, and still offers a passkey", async () => {
+    const operations = {
+      listSessions: vi.fn(),
+      readSignInMethods: vi.fn().mockResolvedValue({ hasPassword: true, social: [], passkeys: [] }),
+      unlinkSocialSignIn: vi.fn(),
+    };
+    const build = (isStaff: boolean) =>
+      new AccountSignInMethodsService({
+        operations: operations as never,
+        durable: { settle: vi.fn() },
+        notices: { notify: vi.fn() },
+        available: { google: true, apple: true, passkey: true },
+        isStaff: async () => isStaff,
+      });
+    expect((await build(true).read(SUBJECT)).available).toEqual({
+      google: false,
+      apple: false,
+      passkey: true,
+    });
+    expect((await build(false).read(SUBJECT)).available).toEqual({
+      google: true,
+      apple: true,
+      passkey: true,
+    });
+  });
+
+  it("still lists the methods, offering no link, when the staff check cannot be read", async () => {
+    const operations = {
+      listSessions: vi.fn(),
+      readSignInMethods: vi.fn().mockResolvedValue({ hasPassword: true, social: [], passkeys: [] }),
+      unlinkSocialSignIn: vi.fn(),
+    };
+    const onStaffCheckFailed = vi.fn();
+    const service = new AccountSignInMethodsService({
+      operations: operations as never,
+      durable: { settle: vi.fn() },
+      notices: { notify: vi.fn() },
+      available: { google: true, apple: true, passkey: true },
+      isStaff: async () => {
+        throw new Error("policy store down");
+      },
+      onStaffCheckFailed,
+    });
+    const read = await service.read(SUBJECT);
+    expect(read.hasPassword).toBe(true);
+    expect(read.available).toEqual({ google: false, apple: false, passkey: true });
+    expect(onStaffCheckFailed).toHaveBeenCalledOnce();
+  });
+
+  it("does not check for staff when neither Google nor Apple is offered", async () => {
+    const isStaff = vi.fn();
+    const service = new AccountSignInMethodsService({
+      operations: {
+        listSessions: vi.fn(),
+        readSignInMethods: vi
+          .fn()
+          .mockResolvedValue({ hasPassword: true, social: [], passkeys: [] }),
+        unlinkSocialSignIn: vi.fn(),
+      } as never,
+      durable: { settle: vi.fn() },
+      notices: { notify: vi.fn() },
+      available: { google: false, apple: false, passkey: true },
+      isStaff,
+    });
+    await service.read(SUBJECT);
+    expect(isStaff).not.toHaveBeenCalled();
   });
 
   it("lists passkeys by name, kind and date, never by key", async () => {
@@ -122,6 +191,7 @@ describe("AccountSignInMethodsService.read", () => {
       operations: operations as never,
       durable: { settle: vi.fn() },
       notices: { notify: vi.fn() },
+      isStaff: async () => false,
     });
     const { passkeys } = await service.read(SUBJECT);
     expect(passkeys).toEqual([

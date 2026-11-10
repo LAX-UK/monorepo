@@ -21,6 +21,7 @@ import { getLaxAccountContainer } from "../container";
 import type {
   AccountActionResult,
   BackupCodesActionResult,
+  LinkActionResult,
   PasswordActionResult,
 } from "../domain/account-action-result";
 import { addressRejectionMessage, isAddressRejection } from "../domain/account-addresses.vm";
@@ -142,6 +143,38 @@ export async function removeSignInMethodAction(provider: string): Promise<Accoun
     () =>
       `${PROVIDER_LABEL[parsed.data]} sign-in has been removed. Every other device has been signed out.`,
   );
+}
+
+/**
+ * Starts linking Google or Apple: asks the issuer for its one-time page and returns that address
+ * for the browser to open. The issuer needs a recent sign-in, refuses staff and a provider that is
+ * already linked or not offered, and limits how often this can be asked.
+ */
+export async function startSignInMethodLinkAction(provider: string): Promise<LinkActionResult> {
+  const parsed = socialSignInProviderSchema.safeParse(provider);
+  if (!parsed.success) {
+    return {
+      status: "error",
+      message: "That sign-in method can't be linked here.",
+      refresh: false,
+    };
+  }
+  const { identity } = getLaxAccountContainer();
+  const actor = await loadActor();
+  if (actor === "no_session") return { status: "reauth_required" };
+  if (actor === "unavailable")
+    return { status: "error", message: UNAVAILABLE_MESSAGE, refresh: false };
+  const result = await identity.startSignInMethodAction(actor, parsed.data);
+  if (result.status === "ok") return { status: "ok", url: result.value.url };
+  if (result.status === "reauth_required") return result;
+  if (result.status === "rejected") {
+    return {
+      status: "error",
+      message: rejectionMessage(result.reason),
+      refresh: result.reason === "already_linked" || result.reason === "not_available",
+    };
+  }
+  return { status: "error", message: UNAVAILABLE_MESSAGE, refresh: false };
 }
 
 /**
