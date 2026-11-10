@@ -21,7 +21,7 @@ export function CoverTimeLine({ text, tick }: { text: string; tick?: CoverTimeTi
 
   // Wakes once a second while there is something to count, and never otherwise.
   const now = useClockTick(
-    (nowMs) => (counting && end > nowMs ? SECOND_MS - (nowMs % SECOND_MS) + 1 : null),
+    (nowMs) => (counting && end > nowMs ? SECOND_MS - (nowMs % SECOND_MS) : null),
     { key: `${endsAt ?? ""}|${template ?? ""}` },
   );
 
