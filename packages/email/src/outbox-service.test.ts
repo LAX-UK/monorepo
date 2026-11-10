@@ -1,6 +1,6 @@
 import { emailSuppression } from "@auction/db/schema";
 import { describe, expect, it, vi } from "vitest";
-import { PostmarkEmailService } from "./outbox-service.js";
+import { PostmarkEmailService, emailHash } from "./outbox-service.js";
 
 const NOTICE_VARS = {
   userName: "Ada",
@@ -172,7 +172,13 @@ describe("PostmarkEmailService.enqueue", () => {
 
     expect(result).toEqual({ outboxId: "row-dead" });
     expect(updateCalls).toEqual([
-      { status: "pending", attempts: 0, lastError: null, messageId: null },
+      expect.objectContaining({
+        status: "pending",
+        attempts: 0,
+        lastError: null,
+        messageId: null,
+        vars: NOTICE_VARS,
+      }),
     ]);
     expect(queue.add).toHaveBeenCalledTimes(1);
     const [name, data, opts] = queue.add.mock.calls[0] as [
@@ -186,6 +192,60 @@ describe("PostmarkEmailService.enqueue", () => {
     // re-adding under the same id would be silently swallowed rather than re-run.
     expect(opts.jobId).not.toBe("row-dead");
     expect(opts.jobId).toContain("row-dead:retry:");
+  });
+
+  it("rewrites a re-armed row from the new input, so a purged or erased row sends its real message", async () => {
+    // The daily purge and account erasure empty the snapshot and variables of a finished row.
+    const { db, updateCalls } = createFakeDb({
+      outboxLookups: [{ id: "row-purged", status: "failed" }],
+    });
+    const service = new PostmarkEmailService(db, { add: vi.fn().mockResolvedValue(undefined) });
+    const vars = { verificationUrl: "https://auth.example.com/verify?token=new" };
+
+    await service.enqueue({
+      template: "verify-email",
+      to: "Identity@Example.com",
+      userId: "subject-1",
+      category: "auth",
+      recipientResolution: "snapshot",
+      idempotencyKey: "verify-email:token-hash",
+      vars,
+    });
+
+    expect(updateCalls).toEqual([
+      {
+        status: "pending",
+        attempts: 0,
+        lastError: null,
+        messageId: null,
+        toEmailHash: emailHash("identity@example.com"),
+        toSnapshot: "Identity@Example.com",
+        toSnapshotPurgeAt: expect.any(Date),
+        vars,
+      },
+    ]);
+  });
+
+  it("re-arms an account-resolved row without a snapshot", async () => {
+    const { db, updateCalls } = createFakeDb({
+      outboxLookups: [{ id: "row-live", status: "failed" }],
+    });
+    const service = new PostmarkEmailService(db, { add: vi.fn().mockResolvedValue(undefined) });
+
+    await service.enqueue({
+      template: "2fa-enabled",
+      to: "ada@example.com",
+      userId: "u1",
+      category: "auth",
+      recipientResolution: "live",
+      vars: NOTICE_VARS,
+    });
+
+    expect(updateCalls[0]).toMatchObject({
+      toSnapshot: null,
+      toSnapshotPurgeAt: null,
+      vars: NOTICE_VARS,
+    });
   });
 
   it("does not re-queue a 'sent' row (already delivered successfully)", async () => {

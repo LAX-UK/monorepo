@@ -69,10 +69,22 @@ export class PostmarkEmailService implements IEmailService {
       // since-fixed recipient issue should not mean the user never gets this email again.
       // Re-arm the same row and re-queue it under a fresh job id (BullMQ dedupes by jobId,
       // and the original job id is the outboxId, so a plain re-add would be swallowed).
+      // The row is rewritten from this call's input: the snapshot and variables of an old failed
+      // row may have been cleared by the daily purge or by an erasure, and an emptied row would
+      // render nothing or fail again.
       if (existing.status === "failed") {
         await this.db
           .update(emailOutbox)
-          .set({ status: "pending", attempts: 0, lastError: null, messageId: null })
+          .set({
+            status: "pending",
+            attempts: 0,
+            lastError: null,
+            messageId: null,
+            toEmailHash: emailHash(input.to),
+            toSnapshot: resolution === "snapshot" ? input.to : null,
+            toSnapshotPurgeAt: resolution === "snapshot" ? snapshotPurgeDate() : null,
+            vars: input.vars as Record<string, unknown>,
+          })
           .where(eq(emailOutbox.id, existing.id));
         await this.emailQueue.add(
           "send-email",

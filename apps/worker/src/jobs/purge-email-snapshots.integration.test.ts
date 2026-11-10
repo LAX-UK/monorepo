@@ -30,7 +30,11 @@ describe.skipIf(!ownerUrl || !workerUrl)(
     const long = new Date("2020-01-01T00:00:00Z");
     const soon = new Date(Date.now() + 86_400_000);
 
-    async function queued(status: string, purgeAt: Date | null): Promise<string> {
+    async function queued(
+      status: string,
+      purgeAt: Date | null,
+      extra: Partial<typeof emailOutbox.$inferInsert> = {},
+    ): Promise<string> {
       const [row] = await owner
         .insert(emailOutbox)
         .values({
@@ -42,6 +46,7 @@ describe.skipIf(!ownerUrl || !workerUrl)(
           vars: { calendar: { content: `mailto:${address}` }, collectorName: "Sam" },
           category: "transactional",
           status: status as never,
+          ...extra,
         })
         .returning({ id: emailOutbox.id });
       const id = (row as { id: string }).id;
@@ -60,7 +65,11 @@ describe.skipIf(!ownerUrl || !workerUrl)(
 
     it("clears the address and variables of finished mail past its deadline, and nothing else about the row", async () => {
       const finished = await Promise.all(
-        ["sent", "failed", "suppressed"].map((status) => queued(status, long)),
+        ["sent", "failed", "suppressed"].map((status) =>
+          queued(status, long, {
+            lastError: `InactiveRecipientsError: Found inactive addresses: ${address}.`,
+          }),
+        ),
       );
       const result = await purgeEmailSnapshots({
         transactionRunner: runner,
@@ -72,11 +81,23 @@ describe.skipIf(!ownerUrl || !workerUrl)(
         expect(after.toSnapshot).toBeNull();
         expect(after.toSnapshotPurgeAt).toBeNull();
         expect(after.vars).toEqual({});
+        expect(after.lastError).toBe(
+          "InactiveRecipientsError: Found inactive addresses: [address].",
+        );
         expect(after.toEmailHash).toBe(emailHash(address));
         expect(after.idempotencyKey).toContain("purge-test:");
       }
       expect((await read(finished[0] as string)).status).toBe("sent");
       expect((await read(finished[1] as string)).status).toBe("failed");
+    });
+
+    it("clears an address kept with no deadline once the row is 30 days old, and not before", async () => {
+      const old = await queued("sent", null, { createdAt: new Date("2020-01-01T00:00:00Z") });
+      const recent = await queued("sent", null);
+      await purgeEmailSnapshots({ transactionRunner: runner, log: pino({ level: "silent" }) });
+      expect((await read(old)).toSnapshot).toBeNull();
+      expect((await read(old)).vars).toEqual({});
+      expect((await read(recent)).toSnapshot).toBe(address);
     });
 
     it("leaves queued and in-flight mail, and mail not yet due", async () => {
