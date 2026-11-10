@@ -2,15 +2,15 @@ import { useActiveSaleCountdownEndIso } from "@/lib/sale/use-active-sale-countdo
 import { renderHook } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-vi.mock("@/lib/time/use-client-clock", () => ({
-  useClientClock: vi.fn(),
+vi.mock("@/lib/time/use-clock", () => ({
+  useCountdownTick: vi.fn(),
 }));
 
-import { useClientClock } from "@/lib/time/use-client-clock";
+import { useCountdownTick } from "@/lib/time/use-clock";
 
 describe("useActiveSaleCountdownEndIso", () => {
   it("returns initialEndIso before client clock mounts", () => {
-    vi.mocked(useClientClock).mockReturnValue(null);
+    vi.mocked(useCountdownTick).mockReturnValue(null);
 
     const { result } = renderHook(() =>
       useActiveSaleCountdownEndIso({
@@ -25,7 +25,7 @@ describe("useActiveSaleCountdownEndIso", () => {
   });
 
   it("returns iso for saleroom sale before scheduled end", () => {
-    vi.mocked(useClientClock).mockReturnValue(Date.parse("2026-06-01T12:00:00.000Z"));
+    vi.mocked(useCountdownTick).mockReturnValue(Date.parse("2026-06-01T12:00:00.000Z"));
 
     const { result } = renderHook(() =>
       useActiveSaleCountdownEndIso({
@@ -40,7 +40,7 @@ describe("useActiveSaleCountdownEndIso", () => {
   });
 
   it("returns undefined for saleroom sale at or after scheduled end", () => {
-    vi.mocked(useClientClock).mockReturnValue(Date.parse("2026-06-03T12:00:00.000Z"));
+    vi.mocked(useCountdownTick).mockReturnValue(Date.parse("2026-06-03T12:00:00.000Z"));
 
     const { result } = renderHook(() =>
       useActiveSaleCountdownEndIso({
@@ -55,7 +55,7 @@ describe("useActiveSaleCountdownEndIso", () => {
   });
 
   it("keeps iso for online sale after scheduled end", () => {
-    vi.mocked(useClientClock).mockReturnValue(Date.parse("2026-06-03T12:00:00.000Z"));
+    vi.mocked(useCountdownTick).mockReturnValue(Date.parse("2026-06-03T12:00:00.000Z"));
 
     const { result } = renderHook(() =>
       useActiveSaleCountdownEndIso({

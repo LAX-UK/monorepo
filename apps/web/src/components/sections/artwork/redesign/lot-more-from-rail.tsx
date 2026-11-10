@@ -18,7 +18,7 @@ import {
 import { PLATFORM_DEFAULT_CURRENCY, formatWholeMoney } from "@/lib/format-currency";
 import { FOCUS_RING } from "@/lib/marketing/chrome";
 import { LOT_CARD_GRID_SLOTS } from "@/lib/media/overlay-slot-presets";
-import { useClientClock } from "@/lib/time/use-client-clock";
+import { useClockNow } from "@/lib/time/use-clock";
 import { cn } from "@auction/ui";
 import { Button, TextLink } from "@auction/ui/lax";
 import Link from "next/link";
@@ -53,7 +53,7 @@ export function LotMoreFromRail({
 }: Props) {
   // `null` during SSR + first client render so the per-card "Closing: …" text
   // matches between server and client; updates every 30s after mount.
-  const nowMs = useClientClock(30_000);
+  const nowMs = useClockNow(30_000);
   if (rail.cards.length === 0 || !rail.heading) {
     return null;
   }

@@ -394,6 +394,10 @@
     "./shell": {
       "types": "./dist/shell/index.d.ts",
       "default": "./dist/shell/index.js"
+    },
+    "./clock": {
+      "types": "./dist/clock/index.d.ts",
+      "default": "./dist/clock/index.js"
     }
   },
   "scripts": {

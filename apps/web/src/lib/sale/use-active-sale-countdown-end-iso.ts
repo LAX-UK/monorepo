@@ -1,6 +1,6 @@
 "use client";
 
-import { useClientClock } from "@/lib/time/use-client-clock";
+import { useCountdownTick } from "@/lib/time/use-clock";
 import type { SaleDeliveryMode } from "@auction/types";
 import { toSaleCountdownEndIso } from "@auction/validators";
 
@@ -14,7 +14,8 @@ export type ActiveSaleCountdownInput = {
 
 /** Re-evaluates sale countdown visibility every second (saleroom past-end self-heal). */
 export function useActiveSaleCountdownEndIso(input: ActiveSaleCountdownInput): string | undefined {
-  const nowMs = useClientClock(1000);
+  const endMs = new Date(input.endTime).getTime();
+  const nowMs = useCountdownTick([endMs], { surface: "card" });
 
   if (nowMs == null) {
     return input.initialEndIso;

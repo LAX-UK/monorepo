@@ -919,6 +919,9 @@ importers:
       '@auction/connect':
         specifier: workspace:*
         version: link:../../packages/connect
+      '@auction/datetime':
+        specifier: workspace:*
+        version: link:../../packages/datetime
       '@auction/domain':
         specifier: workspace:*
         version: link:../../packages/domain
@@ -1489,6 +1492,25 @@ importers:
       '@auction/types':
         specifier: workspace:*
         version: link:../types
+    devDependencies:
+      '@auction/config-ts':
+        specifier: workspace:*
+        version: link:../config-ts
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.0.5
+        version: 3.2.6(@types/node@22.20.1)(jiti@2.6.1)(jsdom@25.0.1)(lightningcss@1.32.0)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.1)
+
+  packages/datetime:
+    dependencies:
+      '@date-fns/tz':
+        specifier: ^1.5.0
+        version: 1.5.0
+      date-fns:
+        specifier: ^4.1.0
+        version: 4.1.0
     devDependencies:
       '@auction/config-ts':
         specifier: workspace:*

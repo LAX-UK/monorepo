@@ -4,83 +4,41 @@
  * on the 24-hour clock, and a time that a bidder acts on carries its zone: "21:00 GMT" in winter,
  * "21:00 BST" in summer.
  *
- * Formatters are built once and reused; `Intl.DateTimeFormat` construction is the expensive part.
+ * The formatting lives in `@auction/datetime`; this file binds it to London so the existing
+ * callers keep their names until they move onto the module directly.
  */
+import {
+  LONDON_TIME_ZONE,
+  dayKey,
+  dayOffset,
+  formatDate,
+  formatDateRange,
+  formatDayMonth,
+  formatFullMoment,
+  formatMoment,
+  formatMonthYear,
+  formatTime,
+  formatTimeWithZone,
+  formatWeekday,
+  formatWhen,
+  shortZoneName,
+} from "@auction/datetime";
 
-export const LONDON_TIME_ZONE = "Europe/London";
+export { LONDON_TIME_ZONE, toDate, type DateInput } from "@auction/datetime";
 
-const LOCALE = "en-GB";
-
-function formatter(options: Intl.DateTimeFormatOptions): Intl.DateTimeFormat {
-  return new Intl.DateTimeFormat(LOCALE, { timeZone: LONDON_TIME_ZONE, ...options });
-}
-
-const DAY_KEY = new Intl.DateTimeFormat("en-CA", {
-  timeZone: LONDON_TIME_ZONE,
-  year: "numeric",
-  month: "2-digit",
-  day: "2-digit",
-});
-/**
- * Short months are three letters everywhere ("Sep"), whatever the runtime's locale data: en-GB
- * spells September "Sept", which would be the one four-letter month in a column of dates.
- */
-function shortMonthFormatter(
-  options: Intl.DateTimeFormatOptions,
-): Pick<Intl.DateTimeFormat, "format"> {
-  const inner = formatter({ ...options, month: "short" });
-  return { format: (date) => inner.format(date).replace(/\bSept\b/, "Sep") };
-}
-
-const TIME = formatter({ hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
-const ZONE_NAME = formatter({ timeZoneName: "short" });
-const DAY = formatter({ day: "numeric" });
-const DAY_MONTH = shortMonthFormatter({ day: "numeric" });
-const DAY_MONTH_YEAR = shortMonthFormatter({ day: "numeric", year: "numeric" });
-const DAY_LONG_MONTH_YEAR = formatter({ day: "numeric", month: "long", year: "numeric" });
-const MONTH_YEAR = formatter({ month: "long", year: "numeric" });
-const SHORT_MONTH_YEAR = shortMonthFormatter({ year: "numeric" });
-const WEEKDAY = formatter({ weekday: "short" });
-const WEEKDAY_LONG = formatter({ weekday: "long" });
-
-/** A date, a timestamp, or an ISO string, as the API and view models hand them over. */
-export type DateInput = Date | string | number;
-
-/** Parses the input; `null` when it is not a real instant, so callers can hide the line. */
-export function toDate(input: DateInput | null | undefined): Date | null {
-  if (input == null || input === "") return null;
-  const date = input instanceof Date ? input : new Date(input);
-  return Number.isNaN(date.getTime()) ? null : date;
-}
+const ZONE = LONDON_TIME_ZONE;
 
 /** "2026-11-03": the London calendar day, for grouping and comparing days. */
-export function londonDayKey(date: Date): string {
-  return DAY_KEY.format(date);
-}
-
-function londonYear(date: Date): string {
-  return londonDayKey(date).slice(0, 4);
-}
-
-function londonMonthKey(date: Date): string {
-  return londonDayKey(date).slice(0, 7);
-}
+export const londonDayKey = (date: Date): string => dayKey(date, ZONE);
 
 /** "GMT" or "BST", whichever London is on at that instant. */
-export function londonZoneName(date: Date): string {
-  const part = ZONE_NAME.formatToParts(date).find((p) => p.type === "timeZoneName");
-  return part?.value === "BST" ? "BST" : "GMT";
-}
+export const londonZoneName = (date: Date): string => shortZoneName(ZONE, date);
 
 /** "21:00". */
-export function formatLondonTime(date: Date): string {
-  return TIME.format(date);
-}
+export const formatLondonTime = (date: Date): string => formatTime(date, ZONE);
 
 /** "21:00 GMT": a time a bidder plans around. */
-export function formatLondonTimeWithZone(date: Date): string {
-  return `${formatLondonTime(date)} ${londonZoneName(date)}`;
-}
+export const formatLondonTimeWithZone = (date: Date): string => formatTimeWithZone(date, ZONE);
 
 export type LondonDateOptions = {
   /** `short` (default): "3 Nov 2026"; `long`: "3 November 2026". */
@@ -88,77 +46,40 @@ export type LondonDateOptions = {
 };
 
 /** "3 Nov 2026". */
-export function formatLondonDate(date: Date, options: LondonDateOptions = {}): string {
-  return (options.month === "long" ? DAY_LONG_MONTH_YEAR : DAY_MONTH_YEAR).format(date);
-}
+export const formatLondonDate = (date: Date, options: LondonDateOptions = {}): string =>
+  formatDate(date, ZONE, options);
 
 /**
- * "Thu 12 Nov, 04:31 GMT": the one full moment line shown to people (closing, opening, collection times, countdowns beyond a week). The weekday
- * leads and the year appears only when it is not `now`'s. Its short form is `formatLondonWeekday`
- * plus `formatLondonDayMonth` ("Thu 12 Nov").
+ * "Thu 12 Nov, 04:31 GMT": the one full moment line shown to people (closing, opening, collection
+ * times, countdowns beyond a week). The year appears only when it is not `now`'s.
  */
-export function formatLondonWhen(date: Date, now: Date = new Date()): string {
-  return `${formatLondonWeekday(date)} ${formatLondonDayMonth(date, now)}, ${formatLondonTimeWithZone(date)}`;
-}
+export const formatLondonWhen = (date: Date, now: Date = new Date()): string =>
+  formatWhen(date, ZONE, now);
 
 /** "Saturday 31 October 2026, 14:02": the full date and time, for a tooltip. */
-export function formatLondonFullMoment(date: Date): string {
-  return `${WEEKDAY_LONG.format(date)} ${formatLondonDate(date, { month: "long" })}, ${formatLondonTime(date)}`;
-}
+export const formatLondonFullMoment = (date: Date): string => formatFullMoment(date, ZONE);
 
 /** "November 2026" (calendar headings), or "Nov 2026" with `short`. */
-export function formatLondonMonthYear(date: Date, options: { short?: boolean } = {}): string {
-  return (options.short ? SHORT_MONTH_YEAR : MONTH_YEAR).format(date);
-}
+export const formatLondonMonthYear = (date: Date, options: { short?: boolean } = {}): string =>
+  formatMonthYear(date, ZONE, options);
 
 /** "Tue". */
-export function formatLondonWeekday(date: Date): string {
-  return WEEKDAY.format(date);
-}
+export const formatLondonWeekday = (date: Date): string => formatWeekday(date, ZONE);
 
 /** "3 Nov", or "3 Nov 2026" when the year differs from `now`'s. */
-export function formatLondonDayMonth(date: Date, now: Date): string {
-  return (londonYear(date) === londonYear(now) ? DAY_MONTH : DAY_MONTH_YEAR).format(date);
-}
+export const formatLondonDayMonth = (date: Date, now: Date): string =>
+  formatDayMonth(date, ZONE, now);
 
-/**
- * A sale's dates, as short as they read clearly: "3 Nov 2026" (one day), "3–9 Nov 2026" (one
- * month), "29 Oct – 3 Nov 2026" (one year), "29 Dec 2026 – 3 Jan 2027".
- */
-export function formatLondonDateRange(start: Date, end: Date): string {
-  if (londonDayKey(start) === londonDayKey(end)) return formatLondonDate(end);
-  if (londonMonthKey(start) === londonMonthKey(end)) {
-    return `${DAY.format(start)}–${formatLondonDate(end)}`;
-  }
-  if (londonYear(start) === londonYear(end)) {
-    return `${DAY_MONTH.format(start)} – ${formatLondonDate(end)}`;
-  }
-  return `${formatLondonDate(start)} – ${formatLondonDate(end)}`;
-}
+/** A sale's dates, as short as they read clearly: "3 Nov 2026", "3–9 Nov 2026", "29 Oct – 3 Nov 2026". */
+export const formatLondonDateRange = (start: Date, end: Date): string =>
+  formatDateRange(start, end, ZONE);
 
 /** Whole London calendar days from `now`'s day to `date`'s: 0 today, -1 yesterday, 1 tomorrow. */
-export function londonDayOffset(date: Date, now: Date): number {
-  const a = Date.parse(londonDayKey(date));
-  const b = Date.parse(londonDayKey(now));
-  return Math.round((a - b) / 86_400_000);
-}
+export const londonDayOffset = (date: Date, now: Date): number => dayOffset(date, now, ZONE);
 
-/**
- * A moment in a list, as short as it can be read: "Today 18:12", "Tomorrow 14:00",
- * "Yesterday 09:30", "19 Nov 14:00", or "19 Nov" without the time; `inSentence` lower-cases the day word after a verb ("Closes tomorrow 14:00"); the year only when it is not
- * this year's.
- */
-export function formatLondonMoment(
+/** A moment in a list: "Today 18:12", "Tomorrow 14:00", "19 Nov 14:00", or "19 Nov" without the time. */
+export const formatLondonMoment = (
   date: Date,
   now: Date,
   options: { time?: boolean; inSentence?: boolean } = {},
-): string {
-  const withTime = options.time ?? true;
-  const time = withTime ? ` ${formatLondonTime(date)}` : "";
-  const offset = londonDayOffset(date, now);
-  const word = (w: string) => (options.inSentence ? w.toLowerCase() : w);
-  if (offset === 0) return `${word("Today")}${time}`;
-  if (offset === 1) return `${word("Tomorrow")}${time}`;
-  if (offset === -1) return `${word("Yesterday")}${time}`;
-  return `${formatLondonDayMonth(date, now)}${time}`;
-}
+): string => formatMoment(date, ZONE, now, options);

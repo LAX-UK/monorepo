@@ -27,6 +27,12 @@ vi.mock("@/lib/bff/token-service.server", () => ({
     resourceToken = mocks.resourceToken;
   },
 }));
+vi.mock("@/lib/http/visitor-ip.server", () => ({
+  visitorIpHeadersFor: (ip: string) => ({ "x-lax-client-ip": ip, "x-lax-client-ip-token": "t" }),
+}));
+vi.mock("@/lib/http/visitor-ip", () => ({
+  resolveVisitorIp: (headers: Headers) => headers.get("x-test-visitor") ?? "unknown",
+}));
 vi.mock("@/lib/data/http/bid-api.server", () => ({
   fetchBidApi: mocks.fetchBidApi,
 }));
@@ -153,5 +159,33 @@ describe("Bid BFF proxy route", () => {
     expect(response.status).toBe(status);
     await expect(response.json()).resolves.toEqual({ error: code });
     expect(mocks.fetchBidApi).toHaveBeenCalledOnce();
+  });
+
+  describe("the public server time", () => {
+    const timeContext = { params: Promise.resolve({ path: ["time"] }) };
+    const timeRequest = (visitor: string) =>
+      new NextRequest("https://lax.bid/api/bff/time", { headers: { "x-test-visitor": visitor } });
+
+    it("is answered with no token exchange, even for a signed-in visitor", async () => {
+      await GET(timeRequest("203.0.113.7"), timeContext);
+      expect(mocks.resourceToken).not.toHaveBeenCalled();
+      const [, init] = mocks.fetchBidApi.mock.calls[0] ?? [];
+      expect((init.headers as Headers).get("authorization")).toBeNull();
+    });
+
+    it("sends each visitor's own address, so two visitors do not share a rate limit", async () => {
+      await GET(timeRequest("203.0.113.7"), timeContext);
+      await GET(timeRequest("198.51.100.9"), timeContext);
+      const addresses = mocks.fetchBidApi.mock.calls.map(([, init]) =>
+        (init.headers as Headers).get("x-lax-client-ip"),
+      );
+      expect(addresses).toEqual(["203.0.113.7", "198.51.100.9"]);
+    });
+
+    it("does not forward the visitor address for other paths", async () => {
+      await GET(request(), context);
+      const [, init] = mocks.fetchBidApi.mock.calls[0] ?? [];
+      expect((init.headers as Headers).get("x-lax-client-ip")).toBeNull();
+    });
   });
 });

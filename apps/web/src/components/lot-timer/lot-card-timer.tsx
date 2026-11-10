@@ -1,7 +1,7 @@
 "use client";
 
-import { useNow } from "@/hooks/use-now";
-import { type LotTimerInputs, classifyLotTimerState } from "./classify";
+import { useCountdownTick } from "@/lib/time/use-clock";
+import { type LotTimerInputs, classifyLotTimerState, lotTimerMoments } from "./classify";
 import { timerText } from "./format";
 import { LotTimerPill, type LotTimerPillVariant } from "./lot-timer-pill";
 
@@ -23,7 +23,7 @@ export function LotCardTimer({
   layout = "overlay",
   ...inputs
 }: LotCardTimerProps) {
-  const now = useNow(1000);
+  const now = useCountdownTick(lotTimerMoments(inputs), { surface: "card" });
   const state = classifyLotTimerState(inputs, now);
   const surface = pillSurfaceClassName ? { surfaceClassName: pillSurfaceClassName } : {};
   const variantProp = variant && variant !== "default" ? { variant } : {};

@@ -1,0 +1,1 @@
+export const label = (date: Date) => date.toLocaleDateString("en-GB");

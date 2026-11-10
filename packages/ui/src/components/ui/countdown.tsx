@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useClockNow } from "../../clock/index.js";
 import { cn } from "../../lib/utils.js";
 
 function clampMs(ms: number) {
@@ -54,15 +55,9 @@ export function Countdown({
   onUrgencyChange,
   variant = "default",
 }: CountdownProps) {
-  /** `null` until after mount so SSR + first client paint match (avoids hydration clock skew). */
-  const [now, setNow] = React.useState<number | null>(null);
+  /** `null` on the server and until mount, so the server render and first paint match. */
+  const now = useClockNow(1000);
   const endMs = end.getTime();
-
-  React.useEffect(() => {
-    setNow(Date.now());
-    const id = window.setInterval(() => setNow(Date.now()), 1000);
-    return () => window.clearInterval(id);
-  }, []);
 
   const secondsRemaining = now == null ? null : clampMs(Math.floor((endMs - now) / 1000));
   const display =

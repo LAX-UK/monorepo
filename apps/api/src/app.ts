@@ -84,6 +84,7 @@ import { createLegacySaleAlertRoutes } from "./routes/sale-alerts-legacy.js";
 import { createSaleDocumentRoutes } from "./routes/sale-documents.js";
 import { createSaleroomDisplayRoutes } from "./routes/saleroom-display.js";
 import { createSaleRoutes } from "./routes/sales.js";
+import { createServerTimeRoutes } from "./routes/server-time.js";
 import { createBidSsfEventsRoute } from "./routes/ssf-events.js";
 import { createStripeConnectRoutes } from "./routes/stripe-connect.js";
 import { createSubmissionDocumentRoutes } from "./routes/submission-documents.js";
@@ -318,6 +319,7 @@ export function createApp(container: Container, env: Env, authenticator: IAuthen
     .route("/contact-enquiries", createMarketingEnquiryRoutes(container, authenticator))
     .route("/auth", createProductAuthRoutes(container))
     .route("/categories", createCategoryRoutes(container))
+    .route("/time", createServerTimeRoutes({ rateLimitStore: container.rateLimitStore }))
     .route("/venues", createVenueRoutes(container, authenticator))
     .route("/q", createQrRoutes(container))
     .route("/payments", createPaymentRoutes(container, authenticator, requireAccountOnboarding))
