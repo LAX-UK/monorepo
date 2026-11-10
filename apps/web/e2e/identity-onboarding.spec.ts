@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs";
 import { expect, test } from "@playwright/test";
-import { dismissCookieConsentIfVisible } from "./helpers/auth";
+import { clickPastCookieBanner } from "./helpers/auth";
 import { roleAuthState } from "./helpers/auth-state";
 
 const enabled = process.env.PLAYWRIGHT_E2E === "1";
@@ -56,8 +56,10 @@ test.describe("identity onboarding @journey", () => {
     await expect(page.getByRole("heading", { name: /verify your identity/i })).toBeVisible();
     await expect(page.getByText(/photo id ready/i).first()).toBeVisible();
 
-    await dismissCookieConsentIfVisible(page);
-    await page.getByRole("link", { name: /verify later|finish later/i }).click();
+    await clickPastCookieBanner(
+      page,
+      page.getByRole("link", { name: /verify later|finish later/i }),
+    );
     await expect(page).toHaveURL(/\/watching/);
 
     // /home lands on My bids, where the identity notice offers the way back into verification.
@@ -81,8 +83,10 @@ test.describe("identity onboarding @journey", () => {
 
   test("rejects an unsafe next destination", async ({ page }) => {
     await page.goto("/onboarding/identity?next=%2F%2Fevil.example&source=direct");
-    await dismissCookieConsentIfVisible(page);
-    await page.getByRole("link", { name: /verify later|finish later/i }).click();
+    await clickPastCookieBanner(
+      page,
+      page.getByRole("link", { name: /verify later|finish later/i }),
+    );
     await expect(page).toHaveURL(/\/(home|bids)$/);
   });
 });

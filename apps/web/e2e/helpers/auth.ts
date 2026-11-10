@@ -4,7 +4,13 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { isSafeNextPath } from "@/lib/auth/safe-next-path";
 import AxeBuilder from "@axe-core/playwright";
-import { type BrowserContext, type Page, type Response, expect } from "@playwright/test";
+import {
+  type BrowserContext,
+  type Locator,
+  type Page,
+  type Response,
+  expect,
+} from "@playwright/test";
 import { roleAuthState } from "./auth-state";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../..");
@@ -160,6 +166,19 @@ export async function dismissCookieConsentIfVisible(page: Page): Promise<void> {
     if (/execution context was destroyed|target closed|timeout.*exceeded/i.test(message)) return;
     throw error;
   }
+}
+
+/**
+ * Clicks a control that the first-visit cookie banner can end up covering. The banner mounts after
+ * hydration, so it may arrive after the control is already visible; dismiss it and click again
+ * until the click lands, instead of waiting out the full action timeout on an obscured target.
+ */
+export async function clickPastCookieBanner(page: Page, target: Locator): Promise<void> {
+  await expect(target).toBeVisible();
+  await expect(async () => {
+    await dismissCookieConsentIfVisible(page);
+    await target.click({ timeout: 2_000 });
+  }).toPass({ timeout: 20_000 });
 }
 
 export type SessionProbe = {
@@ -486,6 +505,11 @@ async function login(
   credentials: Credentials,
   options: LoginOptions = {},
 ): Promise<void> {
+  // Every interactive sign-in starts from an empty test-Redis bucket. The issuer (30/min per
+  // address) is also spent by the web app's own calls from every other spec running beside this
+  // one, so whether a late sign-in is answered "Too many attempts" would otherwise depend on how
+  // fast the run was. Only the isolated test Redis is touched; the limiter itself is unchanged.
+  if (e2eEnabled) flushAuthRateLimits();
   const destination =
     options.destination ?? /\/(admin|home|bids|purchases|watching|selling|organisation)/;
   const preservedNext = preservedNextFromUrl(page.url());

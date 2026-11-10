@@ -1,5 +1,5 @@
 import { type Page, expect, test } from "@playwright/test";
-import { type Credentials, loginWithCredentials } from "./helpers/auth";
+import { type Credentials, buyerSession, loginWithCredentials } from "./helpers/auth";
 
 const enabled = process.env.PLAYWRIGHT_E2E === "1";
 const skipReason =
@@ -8,16 +8,9 @@ const skipReason =
 /** Optional: PLAYWRIGHT_LIVE_LOT_PATH=/lot/slug/uuid for a known active English lot. */
 const liveLotPath = process.env.PLAYWRIGHT_LIVE_LOT_PATH ?? "/search";
 
-const buyerCredentials: Credentials = {
-  email: process.env.PLAYWRIGHT_BUYER_EMAIL ?? "estate-owner@lax.bid",
-  password: process.env.PLAYWRIGHT_BUYER_PASSWORD ?? "Password123!",
-};
-
+/** These specs never sign out, so they share the prepared buyer session instead of signing in again. */
 async function loginAsBuyer(page: Page) {
-  await loginWithCredentials(page, buyerCredentials, {
-    destination:
-      /\/(home|bids|purchases|watching|selling|organisation|onboarding|lot|search|sales)(?:\/|[?#]|$)/,
-  });
+  await buyerSession(page);
 }
 
 async function gotoLiveLot(page: Page) {
