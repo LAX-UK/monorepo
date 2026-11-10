@@ -1,6 +1,6 @@
 "use client";
 
-import { cityName, deviceTimeZone, shortZoneName } from "@auction/datetime";
+import { cityName, deviceTimeZone, gmtOffsetLabel } from "@auction/datetime";
 import { useId, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "../lax/button.js";
@@ -24,7 +24,7 @@ export type ChangeZoneDialogProps = {
 
 /** "Sydney (GMT+11)": the device's city with its offset now. */
 function deviceLabel(zone: string, at: Date): string {
-  return `${cityName(zone)} (${shortZoneName(zone, at)})`;
+  return `${cityName(zone)} (${gmtOffsetLabel(at, zone)})`;
 }
 
 /**

@@ -170,6 +170,7 @@ async function expectChipState(page: Page, subject: Subject, zone: string) {
     // No chip and no gap: the empty row takes no room.
     await expect(page.locator(".tz-chip-slot").first()).toBeHidden();
     await expect(page.locator("html")).not.toHaveClass(/tz-away/);
+    await expect(page.locator("html")).toHaveClass(/tz-ready/);
     return;
   }
   const chip = chipOf(page);
@@ -180,6 +181,9 @@ async function expectChipState(page: Page, subject: Subject, zone: string) {
   const box = await chip.boundingBox();
   expect(box?.height ?? 0).toBeGreaterThanOrEqual(26);
   await expect(page.locator("html")).toHaveClass(/tz-away/);
+  // Once the page has drawn the hold is over, so an empty row (a sale outside London on a visitor
+  // from the same zone) takes no room.
+  await expect(page.locator("html")).toHaveClass(/tz-ready/);
 }
 
 async function expectStable(page: Page) {

@@ -21,7 +21,7 @@ export {
   describeMoment,
 } from "./describe-moment.js";
 export type { LocalTime } from "./local-time.js";
-export { offsetMinutes, sameOffset } from "./offset.js";
+export { gmtOffsetLabel, offsetMinutes, sameOffset } from "./offset.js";
 export { isPlaceholderZone, isValidZone, normaliseViewerZone } from "./zone.js";
 export { shortZoneName } from "./zone-formats.js";
 export { clockChange, clockChangeNotice } from "./clock-change.js";

@@ -31,7 +31,8 @@ export function SaleroomHeroMetaRow({
   const showStatus = LIFECYCLE_STATUSES.includes(hero.status);
 
   return (
-    <div className="fade-up flex flex-col gap-2">
+    // Raised above the title and image that follow, so the open time panel is not covered.
+    <div className="fade-up relative z-10 flex flex-col gap-2">
       <div className="flex flex-wrap items-center gap-2">
         {showStatus ? <SaleLifecycleBadge status={hero.status} opensAt={hero.startTime} /> : null}
         {showOnlineBiddingGatedBadge ? (
