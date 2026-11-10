@@ -91,14 +91,25 @@ async function resolveSubjects(request: APIRequestContext): Promise<Subject[]> {
  * so the page's fixed bars and fonts, which this change does not touch, never decide the result.
  */
 const SHIFT_PROBE = `(() => {
-  const state = { cls: 0, heights: [] };
+  const state = { cls: 0, heights: [], counted: [] };
   window.__chipProbe = state;
   const block = () => document.querySelector(".tz-chip-slot")?.closest("dl, p, section") ?? null;
   new PerformanceObserver((list) => {
     const root = block()?.parentElement ?? null;
     for (const entry of list.getEntries()) {
       if (entry.hadRecentInput) continue;
-      if (root && entry.sources?.some((s) => s.node && root.contains(s.node))) state.cls += entry.value;
+      if (root && entry.sources?.some((s) => s.node && root.contains(s.node))) {
+        state.cls += entry.value;
+        state.counted.push({
+          value: entry.value,
+          at: Math.round(entry.startTime),
+          sources: entry.sources.map((s) => ({
+            node: (s.node?.nodeName ?? "?") + "." + String(s.node?.className ?? "").slice(0, 40),
+            from: s.previousRect && [s.previousRect.x, s.previousRect.y, s.previousRect.width, s.previousRect.height].map(Math.round),
+            to: s.currentRect && [s.currentRect.x, s.currentRect.y, s.currentRect.width, s.currentRect.height].map(Math.round),
+          })),
+        });
+      }
     }
   }).observe({ type: "layout-shift", buffered: true });
   const sample = () => {
@@ -190,9 +201,11 @@ async function expectStable(page: Page) {
   // Let the late fill (hydration, fonts) finish before reading the probe.
   await page.waitForFunction(() => document.readyState === "complete");
   const probe = await page.evaluate(
-    () => (window as unknown as { __chipProbe: { cls: number; heights: number[] } }).__chipProbe,
+    () =>
+      (window as unknown as { __chipProbe: { cls: number; heights: number[]; counted: unknown[] } })
+        .__chipProbe,
   );
-  expect(probe.cls, "layout shift inside the time block").toBe(0);
+  expect(probe.cls, `layout shift inside the time block: ${JSON.stringify(probe.counted)}`).toBe(0);
   // The row holds its height from the first frame that has one, so nothing under it can move
   // when the chip arrives.
   const first = probe.heights.findIndex((h) => h > 0);
