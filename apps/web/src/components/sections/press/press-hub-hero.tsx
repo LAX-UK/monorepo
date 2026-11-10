@@ -5,7 +5,6 @@ import {
 import { MarketingPageHero } from "@/components/marketing/marketing-page-hero";
 import { MarketingPageShell } from "@/components/marketing/marketing-page-shell";
 import { SITE_NAME, SITE_PRESS_EMAIL } from "@/lib/brand";
-import { formatLondonDate } from "@/lib/datetime/london-time";
 import {
   FOCUS_RING,
   LABEL_LINK,
@@ -13,6 +12,7 @@ import {
   MARKETING_PROSE_LINK,
 } from "@/lib/marketing/chrome";
 import { type PressHubStats, formatPressHubStatsLabel } from "@/lib/marketing/press-hub-stats";
+import { LONDON_TIME_ZONE, formatDate } from "@auction/datetime";
 import { DisplayHeading, cn } from "@auction/ui";
 import { ButtonLink } from "@auction/ui/lax";
 import { Rss } from "lucide-react";
@@ -27,7 +27,7 @@ type Props = {
 };
 
 export function PressHubHero({ lastUpdated, stats }: Props) {
-  const lastUpdatedLabel = lastUpdated != null ? formatLondonDate(lastUpdated) : null;
+  const lastUpdatedLabel = lastUpdated != null ? formatDate(lastUpdated, LONDON_TIME_ZONE) : null;
   const statsLabel = stats ? formatPressHubStatsLabel(stats) : null;
 
   return (

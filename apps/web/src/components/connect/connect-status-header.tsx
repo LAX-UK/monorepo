@@ -7,8 +7,8 @@ import {
   connectGapStageLabel,
   connectGapStageSummary,
 } from "@/lib/connect/connect-gap-copy";
-import { formatLondonWhen } from "@/lib/datetime/london-time";
 import type { ConnectGapState } from "@auction/connect";
+import { LONDON_TIME_ZONE, formatWhen } from "@auction/datetime";
 import { presentationToDotStatus } from "@auction/ui";
 import { DotStatusPill } from "@auction/ui/components/dot-status-pill";
 import { Surface } from "@auction/ui/components/surface";
@@ -83,7 +83,7 @@ export function ConnectStatusHeader({
       ) : null}
       {lastSyncedAt ? (
         <p className="font-body text-xs text-on-surface-variant">
-          Last synced {formatLondonWhen(lastSyncedAt)}
+          Last synced {formatWhen(lastSyncedAt, LONDON_TIME_ZONE, new Date())}
         </p>
       ) : null}
     </Surface>

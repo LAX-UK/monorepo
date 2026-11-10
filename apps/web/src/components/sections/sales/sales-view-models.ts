@@ -1,16 +1,17 @@
 import type { SaleCardCommon } from "@/components/sections/sales/card/types";
 import { atgDisplaySale } from "@/lib/catalog/atg-catalog-display";
-import {
-  formatLondonDateRange,
-  formatLondonTimeWithZone,
-  formatLondonWeekday,
-  londonDayKey,
-} from "@/lib/datetime/london-time";
 import { formatMoney } from "@/lib/format-currency";
 import { type SaleListRow, formatSaleLotsLabel } from "@/lib/sale-list-row";
 import { saleVenueLabel } from "@/lib/sale-location-label";
 import { getSaleTypePresentation } from "@/lib/sale-type-presentation";
 import { salePath } from "@/lib/seo/url";
+import {
+  LONDON_TIME_ZONE,
+  dayKey,
+  formatDateRange,
+  formatTimeWithZone,
+  formatWeekday,
+} from "@auction/datetime";
 import type { Lot, Sale } from "@auction/types";
 import { toDisplayDate, toOptionalIsoString, toSaleCountdownEndIso } from "@auction/validators";
 
@@ -66,8 +67,8 @@ export function mapSaleToCalendarCardVM(row: SaleListRow): SaleCalendarCardVM {
   const sale = atgDisplaySale(row.sale);
   const start = toDisplayDate(sale.startTime);
   const end = toDisplayDate(sale.endTime);
-  const dateRangeLabel = formatLondonDateRange(start, end);
-  const timeLabel = formatLondonTimeWithZone(start);
+  const dateRangeLabel = formatDateRange(start, end, LONDON_TIME_ZONE);
+  const timeLabel = formatTimeWithZone(start, LONDON_TIME_ZONE);
   const dateLabel = `${dateRangeLabel} · ${timeLabel}`;
 
   const itemsLabel = formatSaleLotsLabel(lotCount);
@@ -135,7 +136,7 @@ function buildRowScheduleParts(sale: Sale): { lead: string; rest: string } {
   const type = mapDeliveryToAuctionTypeLabel(sale.deliveryMode);
   return {
     lead: `${type} `,
-    rest: `· ${formatLondonDateRange(start, end)} · ${formatLondonTimeWithZone(start)}`,
+    rest: `· ${formatDateRange(start, end, LONDON_TIME_ZONE)} · ${formatTimeWithZone(start, LONDON_TIME_ZONE)}`,
   };
 }
 
@@ -207,9 +208,9 @@ export function mapSaleToAgendaItemVM(row: SaleListRow): SaleAgendaItemVM {
     status: sale.status,
     deliveryMode: sale.deliveryMode,
     startIso,
-    dayLabel: String(Number(londonDayKey(start).slice(8, 10))),
-    weekdayLabel: formatLondonWeekday(start),
-    timeLabel: formatLondonTimeWithZone(start),
+    dayLabel: String(Number(dayKey(start, LONDON_TIME_ZONE).slice(8, 10))),
+    weekdayLabel: formatWeekday(start, LONDON_TIME_ZONE),
+    timeLabel: formatTimeWithZone(start, LONDON_TIME_ZONE),
     auctionTypeLabel: mapDeliveryToAuctionTypeLabel(sale.deliveryMode),
     itemsLabel: formatSaleLotsLabel(lotCount),
     locationLabel: saleVenueLabel(sale),

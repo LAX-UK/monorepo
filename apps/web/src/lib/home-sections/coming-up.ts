@@ -1,11 +1,4 @@
 import { atgDisplaySale } from "@/lib/catalog/atg-catalog-display";
-import {
-  formatLondonDate,
-  formatLondonDayMonth,
-  formatLondonTimeWithZone,
-  formatLondonWeekday,
-  toDate,
-} from "@/lib/datetime/london-time";
 import { HOME_SECTION_LIMITS } from "@/lib/home-sections/limits";
 import type {
   HomeCardImage,
@@ -17,6 +10,14 @@ import { coverTimeLeft } from "@/lib/marketing-cover/cover-time";
 import type { SaleListRow } from "@/lib/sale-list-row";
 import { formatSaleLotsLabel } from "@/lib/sale-list-row";
 import { salePath } from "@/lib/seo/url";
+import {
+  LONDON_TIME_ZONE,
+  formatDate,
+  formatDayMonth,
+  formatTimeWithZone,
+  formatWeekday,
+  toDate,
+} from "@auction/datetime";
 import type { Sale } from "@auction/types";
 
 const HOUR_MS = 60 * 60 * 1000;
@@ -39,8 +40,8 @@ function consignmentDeadline(sale: Sale, now: Date): Date | null {
 function dates(sale: Sale, now: Date): Pick<HomeComingUpRow, "dateMain" | "dateSub"> {
   const start = sale.startTime;
   return {
-    dateMain: formatLondonDayMonth(start, now),
-    dateSub: `${formatLondonWeekday(start)} · ${formatLondonTimeWithZone(start)}`,
+    dateMain: formatDayMonth(start, LONDON_TIME_ZONE, now),
+    dateSub: `${formatWeekday(start, LONDON_TIME_ZONE)} · ${formatTimeWithZone(start, LONDON_TIME_ZONE)}`,
   };
 }
 
@@ -80,7 +81,7 @@ function rowFor(row: SaleListRow, now: Date): HomeComingUpRow {
   const meta = [
     typeLabel,
     lotsLabel,
-    !hasLots && deadline ? `consignments close ${formatLondonDate(deadline)}` : null,
+    !hasLots && deadline ? `consignments close ${formatDate(deadline, LONDON_TIME_ZONE)}` : null,
   ]
     .filter((part): part is string => part !== null)
     .join(" · ");

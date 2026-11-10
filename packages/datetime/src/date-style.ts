@@ -30,6 +30,16 @@ export function formatDate(date: Date, zone: string, options: { month?: "short" 
   return (options.month === "long" ? formats.dayLongMonthYear : formats.dayMonthYear).format(date);
 }
 
+/** "November": the month's full name, for a heading that names months without years. */
+export function formatMonthName(date: Date, zone: string): string {
+  return zoneFormats(zone).month.format(date);
+}
+
+/** 2026: the calendar year the instant falls in, in `zone`. */
+export function calendarYear(date: Date, zone: string): number {
+  return Number(yearOf(date, zone));
+}
+
 /** "Tue". */
 export function formatWeekday(date: Date, zone: string): string {
   return zoneFormats(zone).weekday.format(date);
@@ -56,6 +66,11 @@ export function formatWhen(date: Date, zone: string, now: Date): string {
 export function formatFullMoment(date: Date, zone: string): string {
   const formats = zoneFormats(zone);
   return `${formats.weekdayLong.format(date)} ${formatDate(date, zone, { month: "long" })}, ${formatTime(date, zone)}`;
+}
+
+/** "3 November 2026 at 21:00": a long moment for a card or a share image, with no zone name. */
+export function formatLongMoment(date: Date, zone: string): string {
+  return `${formatDate(date, zone, { month: "long" })} at ${formatTime(date, zone)}`;
 }
 
 /** "November 2026" (calendar headings), or "Nov 2026" with `short`. */

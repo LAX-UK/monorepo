@@ -1,5 +1,5 @@
 import { SITE_BUSINESS_HOURS_LABEL } from "@/lib/brand";
-import { formatLondonWhen } from "@/lib/datetime/london-time";
+import { LONDON_TIME_ZONE, formatWhen } from "@auction/datetime";
 import type { Sale } from "@auction/types";
 
 /** Prefer sale-specific preview window; fall back to global site hours. */
@@ -12,8 +12,8 @@ export function formatOnsitePreviewHoursLabel(sale: Sale): string {
     Number.isFinite(previewStart.getTime()) &&
     Number.isFinite(saleStart.getTime())
   ) {
-    const previewStr = formatLondonWhen(previewStart);
-    const sessionStr = formatLondonWhen(saleStart);
+    const previewStr = formatWhen(previewStart, LONDON_TIME_ZONE, new Date());
+    const sessionStr = formatWhen(saleStart, LONDON_TIME_ZONE, new Date());
     return `Preview from ${previewStr} until session opens ${sessionStr}`;
   }
 

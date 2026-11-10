@@ -1,13 +1,9 @@
 import {
-  formatLondonDayMonth,
-  formatLondonWeekday,
-  formatLondonWhen,
-} from "@/lib/datetime/london-time";
-import {
   COUNTDOWN_DATE_BEYOND_MS,
   formatCountdownForDisplay,
   formatCountdownShort,
 } from "@/lib/format-countdown";
+import { LONDON_TIME_ZONE, formatDayMonth, formatWeekday, formatWhen } from "@auction/datetime";
 
 /** Beyond this, a moment is told as a date, not as a countdown. */
 export const OPENS_COUNTDOWN_WITHIN_MS = COUNTDOWN_DATE_BEYOND_MS;
@@ -27,7 +23,7 @@ export function opensLine(target: Date, now: Date, prefix = "Opens"): OpensLine 
   const ms = target.getTime() - now.getTime();
   if (ms <= 0) return { label: prefix, value: "now" };
   if (ms > OPENS_COUNTDOWN_WITHIN_MS) {
-    return { label: prefix, value: formatLondonWhen(target, now) };
+    return { label: prefix, value: formatWhen(target, LONDON_TIME_ZONE, now) };
   }
   return { label: `${prefix} in`, value: formatCountdownForDisplay(ms) };
 }
@@ -45,7 +41,7 @@ export function closingChipText(msLeft: number, end: Date): string {
 
 /** "Tue 10 Nov": the weekday and day, the short date for a chip or badge. */
 export function shortMoment(target: Date, now: Date): string {
-  return `${formatLondonWeekday(target)} ${formatLondonDayMonth(target, now)}`;
+  return `${formatWeekday(target, LONDON_TIME_ZONE)} ${formatDayMonth(target, LONDON_TIME_ZONE, now)}`;
 }
 
 /** "Opens Tue 10 Nov": for a badge that says when something opens. */

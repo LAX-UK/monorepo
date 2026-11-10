@@ -1,6 +1,6 @@
-import { formatLondonDate } from "@/lib/datetime/london-time";
 import { lotWasSold } from "@/lib/lot/lot-outcome";
 import type { SaleListRow } from "@/lib/sale-list-row";
+import { LONDON_TIME_ZONE, formatDate } from "@auction/datetime";
 import type { Category, Lot } from "@auction/types";
 
 /** The most works a department page shows in either row. */
@@ -81,7 +81,7 @@ export function nextConsignmentDeadline(
   const next = candidates[0];
   if (!next) return null;
   return {
-    date: formatLondonDate(next.date),
+    date: formatDate(next.date, LONDON_TIME_ZONE),
     saleTitle: next.sale.title,
     saleId: next.sale.id,
   };

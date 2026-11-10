@@ -12,6 +12,7 @@ export type ZoneFormats = {
   dayMonthYear: Format;
   dayLongMonth: Intl.DateTimeFormat;
   dayLongMonthYear: Intl.DateTimeFormat;
+  month: Intl.DateTimeFormat;
   monthYear: Intl.DateTimeFormat;
   shortMonthYear: Format;
   weekday: Intl.DateTimeFormat;
@@ -44,6 +45,7 @@ function build(timeZone: string): ZoneFormats {
     dayMonthYear: shortMonth(timeZone, { day: "numeric", year: "numeric" }),
     dayLongMonth: make({ day: "numeric", month: "long" }),
     dayLongMonthYear: make({ day: "numeric", month: "long", year: "numeric" }),
+    month: make({ month: "long" }),
     monthYear: make({ month: "long", year: "numeric" }),
     shortMonthYear: shortMonth(timeZone, { year: "numeric" }),
     weekday: make({ weekday: "short" }),

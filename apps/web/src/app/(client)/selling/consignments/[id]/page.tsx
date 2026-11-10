@@ -25,7 +25,6 @@ import { SetMobileShellTitle } from "@/components/layout/set-mobile-shell-title"
 import { WorkspacePageNoAccess } from "@/components/organisations/workspace-page-no-access";
 import { MediaImage } from "@/components/ui/media-image";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
-import { formatLotMoment } from "@/lib/bid/lot-moment";
 import { ACCOUNT_LOAD_ERROR } from "@/lib/dashboard/dashboard-copy";
 import { describeDashboardSliceFailure } from "@/lib/dashboard/dashboard-fetch-errors";
 import { getServerDataContainer } from "@/lib/data/container.server";
@@ -77,6 +76,7 @@ import { loadSellerAccountFacts } from "@/lib/seller/seller-account-facts.server
 import { sellerDocumentsPanelShows } from "@/lib/seller/seller-documents-visibility";
 import { unsoldChoiceViewModel } from "@/lib/seller/unsold-choice-view";
 import { lotPath } from "@/lib/seo/url";
+import { LONDON_TIME_ZONE, formatMoment } from "@auction/datetime";
 import { agreementAcceptanceHold, computeConsignmentChecklist } from "@auction/domain";
 import { ButtonLink, Notice, StatusBadge } from "@auction/ui/lax";
 import type { Metadata } from "next";
@@ -263,7 +263,7 @@ export default async function SubmissionDetailPage({
   const now = new Date();
   const chooseBy =
     afterSale?.unsold?.chooseBy && !unsoldChoiceMade
-      ? formatLotMoment(new Date(afterSale.unsold.chooseBy), now, { time: false })
+      ? formatMoment(new Date(afterSale.unsold.chooseBy), LONDON_TIME_ZONE, now, { time: false })
       : null;
   // Documents and History read the lot's condition reports, the sold lot's payout (for those
   // who see payouts) and the sale's title; each degrades on its own.

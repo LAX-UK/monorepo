@@ -1,7 +1,7 @@
-import { formatLotMoment } from "@/lib/bid/lot-moment";
 import type { SoldLot } from "@/lib/data/http/workspace-selling.schema";
 import { formatMoney } from "@/lib/format-currency";
 import { matchesEveryWord, searchParam } from "@/lib/workspace/list-search";
+import { LONDON_TIME_ZONE, formatMoment } from "@auction/datetime";
 import type { PayoutStatus } from "@auction/types";
 import type { StatusBadgeShape, StatusBadgeTone } from "@auction/ui/lax";
 
@@ -64,7 +64,7 @@ export function soldRecord(lot: SoldLot, now: Date): SoldRecord {
     settled && lot.stage === "paid_out"
       ? {
           ...base,
-          label: `${base.label} ${formatLotMoment(settled, now, { time: false, inSentence: true })}`,
+          label: `${base.label} ${formatMoment(settled, LONDON_TIME_ZONE, now, { time: false, inSentence: true })}`,
         }
       : base;
   return {
@@ -73,7 +73,7 @@ export function soldRecord(lot: SoldLot, now: Date): SoldRecord {
     meta: [
       lot.saleTitle,
       lot.lotNumber == null ? null : `lot ${lot.lotNumber}`,
-      `sold ${formatLotMoment(lot.soldAt, now, { time: false, inSentence: true })}`,
+      `sold ${formatMoment(lot.soldAt, LONDON_TIME_ZONE, now, { time: false, inSentence: true })}`,
     ].filter((fact): fact is string => Boolean(fact)),
     hammer: formatMoney(lot.hammerPrice, "GBP"),
     net: lot.net == null ? null : formatMoney(lot.net, "GBP"),

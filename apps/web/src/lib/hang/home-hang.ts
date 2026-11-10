@@ -1,9 +1,9 @@
-import { formatLondonDayMonth } from "@/lib/datetime/london-time";
 import { type HangLabelModel, hangLabelModel } from "@/lib/hang/hang-label";
 import { type HangLotPhoto, hangLotPhoto } from "@/lib/hang/hang-lot";
 import { pickHangLots } from "@/lib/hang/hang-selection";
 import { lotWasSold } from "@/lib/lot/lot-outcome";
 import { lotPath, salePath } from "@/lib/seo/url";
+import { LONDON_TIME_ZONE, formatDayMonth } from "@auction/datetime";
 import type { HomeStateResult } from "@auction/domain";
 import type { Lot, Sale } from "@auction/types";
 
@@ -168,7 +168,10 @@ export function buildHomeHang(
         entry.sale,
         now,
         plan.mixed
-          ? { eyebrow: entry.sale.title, notes: [formatLondonDayMonth(entry.sale.endTime, now)] }
+          ? {
+              eyebrow: entry.sale.title,
+              notes: [formatDayMonth(entry.sale.endTime, LONDON_TIME_ZONE, now)],
+            }
           : undefined,
       );
     })
