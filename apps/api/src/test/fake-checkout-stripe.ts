@@ -12,6 +12,8 @@ import type {
 type FakeSession = {
   id: string;
   status: "open" | "expired" | "complete";
+  /** Stripe's payment_status: a bank transfer session is complete but unpaid until funds arrive. */
+  paymentStatus: "paid" | "unpaid";
   rail: CheckoutSessionRail;
   paymentIntent: string | null;
 };
@@ -28,6 +30,14 @@ export class FakeCheckoutStripe {
   >();
   readonly keys: string[] = [];
   failExpireFor = new Set<string>();
+  readonly intents = new Map<
+    string,
+    { status: string; amount: number; received: number; remaining: number }
+  >();
+  readonly cancelledIntents: string[] = [];
+  /** Intents whose cancel Stripe refuses as if funds had landed (`payment_intent_unexpected_state`). */
+  readonly cancelRefusedFor = new Set<string>();
+  failCancelFor = new Set<string>();
   private seq = 0;
 
   createCardCheckoutSession = (input: CreateCheckoutSessionInput) => this.create("card", input);
@@ -49,7 +59,13 @@ export class FakeCheckoutStripe {
     this.seq += 1;
     const id = `cs_${this.seq}`;
     const result = { sessionId: id, url: `https://stripe/${id}`, paymentIntentId: null };
-    this.sessions.set(id, { id, status: "open", rail, paymentIntent: null });
+    this.sessions.set(id, {
+      id,
+      status: "open",
+      paymentStatus: "unpaid",
+      rail,
+      paymentIntent: null,
+    });
     this.byKey.set(idempotencyKey, { params: JSON.stringify(params), result });
     return result;
   }
@@ -57,7 +73,11 @@ export class FakeCheckoutStripe {
   async expireCheckoutSession(id: string) {
     if (this.failExpireFor.has(id)) throw new Error("stripe unavailable");
     const s = this.sessions.get(id);
-    if (s?.status === "open") s.status = "expired";
+    if (s?.status !== "open") return;
+    s.status = "expired";
+    // Stripe cancels the payment intent of the Checkout session it expires.
+    const intent = s.paymentIntent ? this.intents.get(s.paymentIntent) : null;
+    if (intent && intent.status !== "succeeded") intent.status = "canceled";
   }
 
   async retrieveCheckoutSession(id: string) {
@@ -65,6 +85,7 @@ export class FakeCheckoutStripe {
     return {
       id,
       status: s?.status,
+      payment_status: s?.paymentStatus,
       url: `https://stripe/${id}`,
       payment_intent: s?.paymentIntent ?? null,
       payment_method_types: s?.rail === "bank" ? ["customer_balance"] : ["card"],
@@ -78,10 +99,97 @@ export class FakeCheckoutStripe {
     if (s) s.status = "expired";
   }
 
-  /** The buyer was given bank transfer instructions: the session now has a payment intent. */
-  giveTransferInstructions(id: string) {
+  /**
+   * The buyer chose bank transfer and was shown the instructions. Stripe completes the session
+   * at that point, unpaid, and its payment intent waits in requires_action for the funds.
+   */
+  giveTransferInstructions(id: string, amount = 5000) {
     const s = this.sessions.get(id);
-    if (s) s.paymentIntent = `pi_${id}`;
+    if (!s) return;
+    s.status = "complete";
+    s.paymentStatus = "unpaid";
+    s.paymentIntent = `pi_${id}`;
+    this.intents.set(`pi_${id}`, {
+      status: "requires_action",
+      amount,
+      received: 0,
+      remaining: amount,
+    });
+  }
+
+  /** Part of the transfer arrived: the intent keeps waiting for the rest. */
+  partiallyFund(id: string, received: number) {
+    const intent = this.intents.get(`pi_${id}`);
+    if (!intent) return;
+    intent.received = received;
+    intent.remaining = intent.amount - received;
+  }
+
+  /** The buyer paid this session (the intent that paid is returned). */
+  complete(id: string) {
+    const s = this.sessions.get(id);
+    if (!s) return null;
+    s.status = "complete";
+    s.paymentStatus = "paid";
+    s.paymentIntent ??= `pi_${id}`;
+    const intent = this.intents.get(s.paymentIntent);
+    if (intent) {
+      intent.status = "succeeded";
+      intent.received = intent.amount;
+      intent.remaining = 0;
+    }
+    return s.paymentIntent;
+  }
+
+  /** The whole transfer arrived: the session is paid and its intent succeeded. */
+  fullyFund(id: string) {
+    return this.complete(id);
+  }
+
+  /** The transfer landed and is being processed: the intent can no longer be cancelled. */
+  markProcessing(id: string) {
+    const intent = this.intents.get(`pi_${id}`);
+    if (intent) intent.status = "processing";
+  }
+
+  async retrievePaymentIntent(id: string) {
+    const i = this.intents.get(id);
+    return {
+      id,
+      status: i?.status ?? "succeeded",
+      amount: i?.amount ?? 5000,
+      amount_received: i?.received ?? 5000,
+      next_action:
+        i && i.status === "requires_action"
+          ? {
+              display_bank_transfer_instructions: {
+                amount_remaining: i.remaining,
+                hosted_instructions_url: `https://stripe/instructions/${id}`,
+              },
+            }
+          : null,
+    } as unknown as Stripe.PaymentIntent;
+  }
+
+  async cancelPaymentIntent(id: string) {
+    if (this.failCancelFor.has(id)) throw new Error("stripe unavailable");
+    const i = this.intents.get(id);
+    if (i?.status === "canceled") return;
+    // Stripe refuses to cancel the intent of an open Checkout session: expire the session instead.
+    const owner = [...this.sessions.values()].find((s) => s.paymentIntent === id);
+    const refused =
+      owner?.status === "open" ||
+      this.cancelRefusedFor.has(id) ||
+      (i && i.status !== "requires_action" && i.status !== "requires_payment_method");
+    if (refused) {
+      // The refusal is how a transfer that landed in the window shows itself.
+      if (i && this.cancelRefusedFor.has(id)) i.status = "processing";
+      throw Object.assign(new Error("payment_intent_unexpected_state"), {
+        code: "payment_intent_unexpected_state",
+      });
+    }
+    this.cancelledIntents.push(id);
+    if (i) i.status = "canceled";
   }
 
   open(rail?: CheckoutSessionRail) {
