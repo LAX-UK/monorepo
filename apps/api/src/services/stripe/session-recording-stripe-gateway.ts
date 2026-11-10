@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import type { IPaymentCheckoutSessionStore } from "@auction/persistence/interfaces";
 import type Stripe from "stripe";
 import type {
@@ -37,10 +37,11 @@ export class SessionRecordingStripeGateway implements IStripePaymentGateway {
   }
 
   /**
-   * Opens the session and records it before its link is returned. If Stripe refuses the key
-   * because the checkout's parameters changed (a release changed its lines within the key's 24
-   * hours), every session already opened for the invoice is closed first, so only one can ever
-   * be paid, and the session is opened under a key derived from the new parameters.
+   * Opens the session, records it, then closes every other session recorded for the invoice, so
+   * only the newest can be paid. The key carries the checkout's parameters, so repeating the same
+   * checkout returns the same session (never closed here) and a changed one opens a new session.
+   * If Stripe still refuses the key for different parameters (a genuine key clash), the session
+   * is opened under a fresh key.
    */
   private async createRecorded<T extends CreateCheckoutSessionInput>(
     input: T,
@@ -51,16 +52,20 @@ export class SessionRecordingStripeGateway implements IStripePaymentGateway {
       created = await create(input);
     } catch (err) {
       if (!isIdempotencyParameterMismatch(err)) throw err;
-      for (const sessionId of await this.sessions.listSessionIds(input.paymentId)) {
-        await this.inner.expireCheckoutSession(sessionId);
-      }
       created = await create({
         ...input,
-        idempotencyKey: `${input.idempotencyKey ?? input.paymentId}:p:${parametersFingerprint(input)}`,
+        idempotencyKey: `${input.idempotencyKey ?? input.paymentId}:clash:${randomUUID()}`,
       });
     }
     await this.sessions.record(input.paymentId, created.sessionId);
+    await this.closeOtherSessions(input.paymentId, created.sessionId);
     return created;
+  }
+
+  private async closeOtherSessions(paymentId: string, keepSessionId: string): Promise<void> {
+    for (const sessionId of await this.sessions.listSessionIds(paymentId)) {
+      if (sessionId !== keepSessionId) await this.inner.expireCheckoutSession(sessionId);
+    }
   }
 
   retrievePaymentIntent(paymentIntentId: string): Promise<Stripe.PaymentIntent> {
@@ -96,10 +101,4 @@ export class SessionRecordingStripeGateway implements IStripePaymentGateway {
 export function isIdempotencyParameterMismatch(err: unknown): boolean {
   const e = err as { type?: unknown; code?: unknown } | null;
   return e?.type === "StripeIdempotencyError" && e.code !== "idempotency_key_in_use";
-}
-
-/** A short, stable fingerprint of a checkout's parameters (the key itself left out). */
-function parametersFingerprint(input: CreateCheckoutSessionInput): string {
-  const { idempotencyKey: _key, ...rest } = input;
-  return createHash("sha256").update(JSON.stringify(rest)).digest("hex").slice(0, 16);
 }

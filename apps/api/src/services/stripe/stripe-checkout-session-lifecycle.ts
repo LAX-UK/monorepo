@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import type Stripe from "stripe";
 import type {
   CreateCheckoutSessionResult,
@@ -6,13 +7,21 @@ import type {
 
 export type CheckoutSessionRail = "card" | "bank";
 
+/**
+ * A short, stable fingerprint of a checkout's parameters. It is part of the idempotency key, so
+ * one key always means one set of parameters: Stripe replays the session for the same parameters
+ * and a changed invoice (new lines, delivery) gets a key, and a session, of its own.
+ */
+export function checkoutParametersFingerprint(parameters: object): string {
+  return createHash("sha256").update(JSON.stringify(parameters)).digest("hex").slice(0, 16);
+}
+
 export function checkoutSessionIdempotencyKey(
   rail: CheckoutSessionRail,
   paymentId: string,
+  parameters: object,
 ): string {
-  return rail === "card"
-    ? `checkout:card:payment:${paymentId}`
-    : `checkout:bank:payment:${paymentId}`;
+  return `checkout:${rail}:payment:${paymentId}:p:${checkoutParametersFingerprint(parameters)}`;
 }
 
 /** True when the buyer can still complete payment on this hosted Checkout page. */
@@ -35,7 +44,7 @@ export type RenewCheckoutSessionOutcome =
 const MAX_RENEWALS = 3;
 
 /**
- * Creates a Checkout Session (idempotent on `paymentId`), then renews it when Stripe returns an
+ * Creates a Checkout Session (idempotent on the payment and its parameters), then renews it when Stripe returns an
  * expired or unusable one. The renewal key is derived from the session it replaces, so two
  * requests renewing at once (two tabs, a double click) get the same new session, never two
  * payable ones.
@@ -44,9 +53,10 @@ export async function createOrRenewCheckoutSession(
   gateway: IStripePaymentGateway,
   rail: CheckoutSessionRail,
   paymentId: string,
+  parameters: object,
   create: (idempotencyKey: string) => Promise<CreateCheckoutSessionResult>,
 ): Promise<RenewCheckoutSessionOutcome> {
-  const baseKey = checkoutSessionIdempotencyKey(rail, paymentId);
+  const baseKey = checkoutSessionIdempotencyKey(rail, paymentId, parameters);
   let key = baseKey;
   for (let attempt = 0; attempt <= MAX_RENEWALS; attempt += 1) {
     const created = await create(key);

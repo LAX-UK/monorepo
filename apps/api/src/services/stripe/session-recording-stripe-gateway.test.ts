@@ -65,57 +65,46 @@ describe("SessionRecordingStripeGateway", () => {
       },
     );
 
-  it("when Stripe refuses the key for changed parameters, closes every recorded session first", async () => {
-    const order: string[] = [];
+  it("closes the invoice's other recorded sessions, never the one it returned", async () => {
+    const expireCheckoutSession = vi.fn().mockResolvedValue(undefined);
+    const inner = {
+      createCardCheckoutSession: vi
+        .fn()
+        .mockResolvedValue({ sessionId: "cs_new", url: "u", paymentIntentId: null }),
+      expireCheckoutSession,
+    } as unknown as IStripePaymentGateway;
+    const gateway = new SessionRecordingStripeGateway(inner, {
+      record: vi.fn().mockResolvedValue(undefined),
+      listSessionIds: vi.fn().mockResolvedValue(["cs_old_1", "cs_new", "cs_old_2"]),
+    });
+    await gateway.createCardCheckoutSession(input);
+    expect(expireCheckoutSession.mock.calls.map((c) => c[0])).toEqual(["cs_old_1", "cs_old_2"]);
+  });
+
+  it("when Stripe still refuses the key, opens under a fresh key and closes only the others", async () => {
+    const keys: string[] = [];
     const createCardCheckoutSession = vi
       .fn()
       .mockRejectedValueOnce(mismatch())
       .mockImplementation(async (i: { idempotencyKey: string }) => {
-        order.push(`create:${i.idempotencyKey}`);
+        keys.push(i.idempotencyKey);
         return { sessionId: "cs_new", url: "u", paymentIntentId: null };
       });
-    const expireCheckoutSession = vi.fn(async (id: string) => {
-      order.push(`expire:${id}`);
-    });
+    const expireCheckoutSession = vi.fn().mockResolvedValue(undefined);
     const inner = {
       createCardCheckoutSession,
       expireCheckoutSession,
     } as unknown as IStripePaymentGateway;
-    const record = vi.fn().mockResolvedValue(undefined);
     const gateway = new SessionRecordingStripeGateway(inner, {
-      record,
-      listSessionIds: vi.fn().mockResolvedValue(["cs_old_1", "cs_old_2"]),
+      record: vi.fn().mockResolvedValue(undefined),
+      listSessionIds: vi.fn().mockResolvedValue(["cs_old", "cs_new"]),
     });
     await gateway.createCardCheckoutSession({
       ...input,
-      idempotencyKey: "checkout:card:payment:pay-1",
+      idempotencyKey: "checkout:card:payment:pay-1:p:abc",
     });
-    expect(order.slice(0, 2)).toEqual(["expire:cs_old_1", "expire:cs_old_2"]);
-    expect(order[2]).toMatch(/^create:checkout:card:payment:pay-1:p:[0-9a-f]{16}$/);
-    expect(record).toHaveBeenCalledWith("pay-1", "cs_new");
-  });
-
-  it("a second parameter change gets a key of its own, so it does not fail again", async () => {
-    const keys: string[] = [];
-    const createCardCheckoutSession = vi.fn(async (i: { idempotencyKey: string }) => {
-      keys.push(i.idempotencyKey);
-      if (!i.idempotencyKey.includes(":p:")) throw mismatch();
-      return { sessionId: "cs", url: "u", paymentIntentId: null };
-    });
-    const inner = {
-      createCardCheckoutSession,
-      expireCheckoutSession: vi.fn().mockResolvedValue(undefined),
-    } as unknown as IStripePaymentGateway;
-    const gateway = new SessionRecordingStripeGateway(inner, {
-      record: vi.fn().mockResolvedValue(undefined),
-      listSessionIds: vi.fn().mockResolvedValue([]),
-    });
-    const base = { ...input, idempotencyKey: "checkout:card:payment:pay-1" };
-    await gateway.createCardCheckoutSession({ ...base, successUrl: "https://lax.bid/a" } as never);
-    await gateway.createCardCheckoutSession({ ...base, successUrl: "https://lax.bid/b" } as never);
-    const reissued = keys.filter((k) => k.includes(":p:"));
-    expect(reissued).toHaveLength(2);
-    expect(reissued[0]).not.toBe(reissued[1]);
+    expect(keys[0]).toMatch(/^checkout:card:payment:pay-1:p:abc:clash:/);
+    expect(expireCheckoutSession.mock.calls.map((c) => c[0])).toEqual(["cs_old"]);
   });
 
   it("other Stripe errors are not hidden", async () => {

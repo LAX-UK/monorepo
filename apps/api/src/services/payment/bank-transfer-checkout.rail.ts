@@ -46,20 +46,17 @@ export class BankTransferCheckoutRail implements ICheckoutRail {
         buyerName: ctx.buyerName,
       });
       const imageUrl = await resolveCheckoutLotHeroImage(ctx.lot, this.mediaUrlResolver);
+      const parameters = {
+        ...buildCreateCheckoutSessionInput(ctx, { successUrl, cancelUrl, imageUrl }),
+        stripeCustomerId,
+      };
       const outcome = await createOrRenewCheckoutSession(
         this.gateway,
         "bank",
         ctx.paymentId,
+        parameters,
         (idempotencyKey) =>
-          this.gateway.createBankTransferCheckoutSession({
-            ...buildCreateCheckoutSessionInput(ctx, {
-              successUrl,
-              cancelUrl,
-              idempotencyKey,
-              imageUrl,
-            }),
-            stripeCustomerId,
-          }),
+          this.gateway.createBankTransferCheckoutSession({ ...parameters, idempotencyKey }),
       );
 
       if (outcome.kind === "already_complete") {
