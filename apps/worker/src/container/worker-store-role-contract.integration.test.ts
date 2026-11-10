@@ -130,7 +130,7 @@ type Call = { method: string; parameters: string[] };
 const COUNT_PARAMS =
   /^(limit|offset|batchSize|count|size|take|page|pageSize|attempts|hours|days|minutes|\w*Ms|max\w*|min\w*)$/i;
 const DATE_PARAMS =
-  /(date|at|since|before|after|cutoff|now|from|to|until|deadline|start|end|asOf|endAfter|endBeforeInclusive)$/i;
+  /(date|at|since|before|after|cutoff|now|from|to|until|deadline|start|end|time|asOf|endAfter|endBeforeInclusive)$/i;
 const OBJECT_PARAMS = /(filter|input|patch|query|options|opts|payload|params)$/i;
 const LIST_PARAMS = /(ids|list|keys|emails|hashes|values)$/i;
 const CONNECTION_PARAMS = /^(tx|db|conn|connection)$/;
