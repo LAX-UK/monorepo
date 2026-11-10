@@ -1,3 +1,4 @@
+import { reinterpretInZone } from "@auction/datetime";
 import type { ILotRepository } from "@auction/persistence/interfaces";
 import type {
   CreateSaleInput,
@@ -11,6 +12,7 @@ import {
   SALE_TIME_ZONE_LOCKED_MESSAGE,
   applyHeroPresentationPatch,
   getSaleModeCapabilities,
+  isSaleTimeZoneLocked,
   isValidHeroPresentationState,
 } from "@auction/validators";
 import type { updateSaleSchema } from "@auction/validators";
@@ -142,9 +144,10 @@ export async function updateDraftSale(
     return err(new LotError("Only a draft sale can be marked as, or cleared of, a test sale", 422));
   }
 
-  // Published times are quoted in the sale's zone in emails, calendar entries and receipts already
-  // sent, so the zone cannot move afterwards.
-  if (patch.timeZone !== undefined && patch.timeZone !== sale.timeZone && sale.status !== "draft") {
+  // Announced times are quoted in the sale's zone in emails, calendar entries and receipts already
+  // sent, so the zone cannot move afterwards, not even after unpublishing back to draft.
+  const zoneChanged = patch.timeZone !== undefined && patch.timeZone !== sale.timeZone;
+  if (zoneChanged && isSaleTimeZoneLocked(sale)) {
     return err(new LotError(SALE_TIME_ZONE_LOCKED_MESSAGE, 422));
   }
 
@@ -209,12 +212,28 @@ export async function updateDraftSale(
     }
     return ok(updated);
   }
-  const nextStart = patch.startTime ?? sale.startTime;
-  const nextEnd = patch.endTime ?? sale.endTime;
+  const zoneChange = zoneChanged ? { from: sale.timeZone, to: patch.timeZone as string } : null;
+  // The sale keeps its wall-clock times when its zone changes: a time the caller did not send is
+  // read on the old clock and written on the new one.
+  const moveSaleTime = (instant: Date): Date =>
+    zoneChange ? reinterpretInZone(instant, zoneChange.from, zoneChange.to) : instant;
+  const nextStart = patch.startTime ?? moveSaleTime(sale.startTime);
+  const nextEnd = patch.endTime ?? moveSaleTime(sale.endTime);
   if (nextEnd <= nextStart) {
     return err(new LotError("endTime must be after startTime"));
   }
-  let normalized: Partial<CreateSaleInput> = { ...(patch as Partial<CreateSaleInput>) };
+  // Saving the zone unchanged is not a zone change, so it never meets the repository's zone guard.
+  const { timeZone: _sameZone, ...patchWithoutZone } = patch as Partial<CreateSaleInput>;
+  let normalized: Partial<CreateSaleInput> = zoneChanged
+    ? { ...(patch as Partial<CreateSaleInput>) }
+    : patchWithoutZone;
+  if (zoneChanged) {
+    if (patch.startTime === undefined) normalized.startTime = nextStart;
+    if (patch.endTime === undefined) normalized.endTime = nextEnd;
+    if (patch.previewStartTime === undefined && sale.previewStartTime) {
+      normalized.previewStartTime = moveSaleTime(sale.previewStartTime);
+    }
+  }
   if (pressCoverage !== undefined) {
     normalized = { ...normalized, pressCoverage };
   }
@@ -258,8 +277,19 @@ export async function updateDraftSale(
         }
       }
     };
-  } else if (patch.startTime !== undefined || patch.endTime !== undefined) {
-    const lots = await deps.lotRepo.findBySaleId(saleId);
+  } else if (patch.startTime !== undefined || patch.endTime !== undefined || zoneChange) {
+    const saleLots = await deps.lotRepo.findBySaleId(saleId);
+    // A re-zoned sale's draft lots keep their wall-clock times too, each moved on its own so the
+    // stagger between lots survives; other lots are checked as they are.
+    const lots = saleLots.map((l) =>
+      zoneChange && l.status === "draft"
+        ? {
+            ...l,
+            startTime: reinterpretInZone(l.startTime, zoneChange.from, zoneChange.to),
+            endTime: reinterpretInZone(l.endTime, zoneChange.from, zoneChange.to),
+          }
+        : l,
+    );
     const nextSale = {
       ...sale,
       deliveryMode: nextDelivery,
@@ -275,6 +305,15 @@ export async function updateDraftSale(
     }
     if (violations.length > 0) {
       return err(new LotError(violations.join("; "), 400));
+    }
+    if (zoneChange) {
+      syncDraftLots = async (lotRepo) => {
+        for (const l of lots) {
+          if (l.status === "draft") {
+            await lotRepo.update(l.id, { startTime: l.startTime, endTime: l.endTime });
+          }
+        }
+      };
     }
   }
   const updated = await saveSaleEdit(deps, actorUserId, sale, normalized, syncDraftLots);

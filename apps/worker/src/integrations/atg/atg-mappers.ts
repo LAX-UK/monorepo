@@ -52,13 +52,12 @@ export function assertSaleMappableForAtg(sale: AtgSaleSnapshot): void {
   }
 }
 
-/** The sale's own zone as a Windows ID; the configured zone when the sale names none. */
-function windowsZoneFor(sale: Pick<AtgSaleSnapshot, "timeZone">, config: AtgSyncConfig): string {
-  const zone = sale.timeZone.trim() || config.timezone;
+/** The sale's own zone as a Windows ID, or a mapping error the sale can be fixed from. */
+function windowsZoneFor(sale: Pick<AtgSaleSnapshot, "timeZone">): string {
   try {
-    return toWindowsTimezoneId(zone);
+    return toWindowsTimezoneId(sale.timeZone);
   } catch {
-    throw new AtgMappingError(`ATG has no matching time zone for "${zone}".`);
+    throw new AtgMappingError(`ATG has no matching time zone for "${sale.timeZone}".`);
   }
 }
 
@@ -77,7 +76,7 @@ export function mapSaleToAuctionFields(
         Private: sale.atgSettings.distribution !== "public_marketplace",
       },
     ],
-    TimezoneId: windowsZoneFor(sale, config),
+    TimezoneId: windowsZoneFor(sale),
     Currency: config.currency,
     CountryCode: config.countryCode,
     IncrementSetId: config.incrementSetId,

@@ -8,7 +8,6 @@ export const testAtgConfig: AtgSyncConfig = {
   artistPlacement: "description",
   currency: "GBP",
   countryCode: "UK",
-  timezone: "Europe/London",
   mediaBaseUrl: "https://media.example/",
   maxImagesPerLot: 3,
 };

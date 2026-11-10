@@ -49,6 +49,21 @@ export function instantToWallClock(instant: Date, zone: string): { day: string; 
 }
 
 /**
+ * The instant that reads the same on the clock in `toZone` as `instant` does in `fromZone`: a
+ * lot's 18:00 stays 18:00 when its sale moves zone. A time `toZone` skips moves to the first time
+ * after the gap. Moving an instant between two zones is how a stored moment follows a re-zoned
+ * sale; staggered moments stay staggered on the wall clock.
+ */
+export function reinterpretInZone(instant: Date, fromZone: string, toZone: string): Date {
+  const { day, time } = instantToWallClock(instant, fromZone);
+  const exact = wallClockToInstant(day, time, toZone);
+  if (exact.ok) return exact.instant;
+  const next = firstExistingWallTime(day, time, toZone);
+  const shifted = next ? wallClockToInstant(day, next, toZone) : null;
+  return shifted?.ok ? shifted.instant : instant;
+}
+
+/**
  * The earliest time at or after `time` that exists on `day` in `zone`: the same time on an
  * ordinary day, the end of the skipped hour in a gap. Null when none is found within three hours.
  */

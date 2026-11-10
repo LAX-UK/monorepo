@@ -1,7 +1,6 @@
 import type { WorkerEnv } from "../../env.js";
 import type { AtgSyncConfig } from "./atg-types.js";
 import type { GapHttpAdapterOptions } from "./gap-http-adapter.js";
-import { toWindowsTimezoneId } from "./windows-timezone.js";
 
 const MAX_IMAGES_PER_LOT = 20;
 
@@ -18,7 +17,6 @@ export function loadAtgRuntimeConfig(env: WorkerEnv): AtgRuntimeConfig | null {
     if (!value) throw new Error(`${key} is required when ATG_SYNC_ENABLED=true`);
     return value;
   };
-  toWindowsTimezoneId(env.ATG_TIMEZONE);
   return {
     adapter: {
       baseUrl: env.ATG_API_BASE_URL,
@@ -33,7 +31,6 @@ export function loadAtgRuntimeConfig(env: WorkerEnv): AtgRuntimeConfig | null {
       artistPlacement: env.ATG_ARTIST_PLACEMENT,
       currency: "GBP",
       countryCode: "UK",
-      timezone: env.ATG_TIMEZONE,
       mediaBaseUrl: required(env.S3_PUBLIC_BASE_URL, "S3_PUBLIC_BASE_URL"),
       maxImagesPerLot: MAX_IMAGES_PER_LOT,
     },

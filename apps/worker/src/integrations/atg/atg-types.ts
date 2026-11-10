@@ -9,8 +9,6 @@ export type AtgSyncConfig = {
   artistPlacement: "title_prefix" | "description";
   currency: string;
   countryCode: string;
-  /** IANA zone used when a sale carries none; mapped to a Windows ID for GAP. */
-  timezone: string;
   /** Public media origin used to turn stored image keys into URLs ATG can fetch. */
   mediaBaseUrl: string;
   maxImagesPerLot: number;

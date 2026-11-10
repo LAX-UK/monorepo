@@ -43,7 +43,6 @@ describe("loadAtgRuntimeConfig", () => {
       artistPlacement: "description",
       currency: "GBP",
       countryCode: "UK",
-      timezone: "Europe/London",
       mediaBaseUrl: "https://media.example",
     });
     expect(config?.pollIntervalMs).toBe(120_000);
@@ -59,10 +58,5 @@ describe("loadAtgRuntimeConfig", () => {
     vi.spyOn(console, "error").mockImplementation(() => undefined);
     stubEnv({ ...ATG_ENV, ATG_POLL_INTERVAL_MS: "600000" });
     expect(() => loadWorkerEnv()).toThrow();
-  });
-
-  it("rejects unmapped timezones at startup", () => {
-    stubEnv({ ...ATG_ENV, ATG_TIMEZONE: "Mars/Olympus" });
-    expect(() => loadAtgRuntimeConfig(loadWorkerEnv())).toThrow(/No Windows timezone mapping/);
   });
 });

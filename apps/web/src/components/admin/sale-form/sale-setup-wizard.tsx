@@ -1,4 +1,5 @@
-"use client";
+import { isSaleTimeZoneLocked } from "@auction/validators";
+("use client");
 
 import type { NamedSellerWithoutPayouts } from "@/lib/admin/sale-setup/sellers-without-payouts";
 
@@ -418,6 +419,7 @@ export function SaleSetupWizard({
                     <SaleScheduleStep
                       form={form}
                       isDraft
+                      timeZoneLocked={activeSale ? isSaleTimeZoneLocked(activeSale) : false}
                       isSaleroom={isSaleroom}
                       pending={pending}
                       fields={fields}

@@ -115,6 +115,8 @@ export const sale = pgTable(
      * names how they are written. Fixed once the sale is published.
      */
     timeZone: text("time_zone").notNull().default("Europe/London"),
+    /** When the sale first left draft; set once, so unpublishing never reopens the time zone. */
+    firstPublishedAt: timestamp("first_published_at", { mode: "date", withTimezone: true }),
     startTime: timestamp("start_time", { mode: "date", withTimezone: true }).notNull(),
     endTime: timestamp("end_time", { mode: "date", withTimezone: true }).notNull(),
     previewStartTime: timestamp("preview_start_time", {

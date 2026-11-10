@@ -102,6 +102,7 @@ export function mapSaleRow(row: SaleRow, categoryIds: string[] = []): Sale {
     locationCountry: row.locationCountry ?? null,
     venueId: row.venueId ?? null,
     timeZone: row.timeZone ?? "Europe/London",
+    firstPublishedAt: row.firstPublishedAt ?? null,
     status: row.status as SaleStatus,
     startTime: row.startTime,
     endTime: row.endTime,

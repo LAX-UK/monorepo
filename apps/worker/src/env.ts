@@ -70,7 +70,6 @@ export const envSchema = z
       emptyToUndefined,
       z.enum(["title_prefix", "description"]).default("description"),
     ),
-    ATG_TIMEZONE: z.preprocess(emptyToUndefined, z.string().default("Europe/London")),
     /** Must stay under the 5-minute worker readiness heartbeat window. */
     ATG_POLL_INTERVAL_MS: z.coerce.number().int().min(30_000).max(240_000).default(120_000),
     STORAGE_DRIVER: z.enum(["local", "s3"]).default("local"),

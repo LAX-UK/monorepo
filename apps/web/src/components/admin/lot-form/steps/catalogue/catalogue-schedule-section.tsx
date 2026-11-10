@@ -2,6 +2,7 @@
 
 import { StaffDateTimeField } from "@/components/admin/forms/staff-form-fields";
 import type { FieldSpec, LotCatalogueFieldKey } from "@/lib/admin/lot-catalogue";
+import { moveLotFormToZone } from "@/lib/admin/lot-form-zone";
 import {
   parseSaleWindowFromSale,
   proposeLotTimesWithinWindow,
@@ -39,10 +40,8 @@ export function CatalogueScheduleSection({ form, fields, sales }: Props) {
 
   const saleZone = sale?.timeZone;
   useEffect(() => {
-    // A sale chosen before the form opened (or changed elsewhere) sets the zone the times are read in.
-    if (saleZone && form.getValues("timeZone") !== saleZone) {
-      form.setValue("timeZone", saleZone, { shouldDirty: false });
-    }
+    // A sale chosen before the form opened sets the zone the times are read in; the moments keep.
+    if (saleZone) moveLotFormToZone(form, saleZone);
   }, [form, saleZone]);
 
   useEffect(() => {

@@ -7,5 +7,6 @@ SET LOCAL lock_timeout = '5s';
 
 ALTER TABLE "sale" DROP CONSTRAINT IF EXISTS "sale_time_zone_names_a_place";
 ALTER TABLE "sale" DROP COLUMN IF EXISTS "time_zone";
+ALTER TABLE "sale" DROP COLUMN IF EXISTS "first_published_at";
 
 COMMIT;

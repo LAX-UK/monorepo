@@ -29,6 +29,7 @@ export {
   type WallClockResult,
   firstExistingWallTime,
   instantToWallClock,
+  reinterpretInZone,
   wallClockToInstant,
 } from "./wall-clock.js";
 export {
@@ -38,3 +39,4 @@ export {
   zoneAbbreviations,
   zoneChoiceLabel,
 } from "./zone-choices.js";
+export { windowsZoneId } from "./windows-zone.js";

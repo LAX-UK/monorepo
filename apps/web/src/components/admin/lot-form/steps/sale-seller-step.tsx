@@ -1,6 +1,7 @@
 "use client";
 
 import { StaffEntityField, StaffTextField } from "@/components/admin/forms/staff-form-fields";
+import { moveLotFormToZone } from "@/lib/admin/lot-form-zone";
 import { searchLegalEntityOptions } from "@/lib/admin/pickers/staff-entity-search";
 import {
   parseSaleWindowFromSale,
@@ -30,8 +31,8 @@ type Props = {
 
 function applySaleScheduleToLot(form: UseFormReturn<AdminLotFormValues>, sale: SaleOption) {
   const window = parseSaleWindowFromSale(sale);
-  // The lot's typed times are read in the sale's zone from here on.
-  form.setValue("timeZone", sale.timeZone, { shouldDirty: false });
+  // The lot's times keep their instants and are read in the sale's zone from here on.
+  moveLotFormToZone(form, sale.timeZone);
   const set = (name: "startTime" | "endTime", value: Date) =>
     form.setValue(name, toDatetimeFormString(value, sale.timeZone), {
       shouldDirty: true,

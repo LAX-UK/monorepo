@@ -8,9 +8,21 @@ export const SALE_TIME_ZONE_INVALID = "Choose a time zone from the list";
 export const SALE_TIME_ZONE_NOT_A_PLACE =
   "Choose the city the sale runs in, not UTC or a fixed offset";
 
-/** Shown beside the locked field, and returned when a published sale's zone is changed. */
+/** Shown beside the locked field, and returned when an announced sale's zone is changed. */
 export const SALE_TIME_ZONE_LOCKED_MESSAGE =
-  "The time zone is fixed once a sale is published, because the times already sent to bidders are quoted in it.";
+  "The time zone is fixed once a sale is announced, because the times already sent to bidders are quoted in it.";
+
+/**
+ * A sale's zone is fixed from the moment it is first published: the times in every email and
+ * calendar entry already sent are quoted in it, and unpublishing back to draft does not take them
+ * back.
+ */
+export function isSaleTimeZoneLocked(sale: {
+  status: string;
+  firstPublishedAt?: Date | string | null | undefined;
+}): boolean {
+  return sale.status !== "draft" || sale.firstPublishedAt != null;
+}
 
 export type SaleTimeZoneProblem = "unknown" | "not_a_place";
 

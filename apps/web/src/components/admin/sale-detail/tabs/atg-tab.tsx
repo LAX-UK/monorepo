@@ -7,6 +7,7 @@ import { adminAtgJobStateAction, adminAtgSaleActionResultAction } from "@/lib/ac
 import { adminLotEditHref } from "@/lib/admin/catalog-route-helpers";
 import { staffAtgAuctionStatus, staffAtgLotStatus } from "@/lib/admin/staff-kit-status";
 import { decimalToMinorUnits } from "@/lib/data/view-models/client-commerce-tab.vm";
+import { windowsZoneId } from "@auction/datetime";
 import {
   type DataColumn,
   EmptyState,
@@ -42,6 +43,8 @@ type Props = {
   saleId: string;
   status: AtgIntegrationStatus;
   view: AtgSaleSyncView;
+  /** The sale's time zone; ATG needs a matching Windows zone to show the auction in. */
+  timeZone?: string;
   canManage: boolean;
 };
 
@@ -128,7 +131,7 @@ function lotPriceMinor(lot: AtgLotSyncView): number | null {
 }
 
 /** How a sale stands on the ATG White Label, the actions that move it along and each lot's sync. */
-export function SaleAtgTab({ saleId, status, view, canManage }: Props) {
+export function SaleAtgTab({ saleId, status, view, timeZone, canManage }: Props) {
   const router = useRouter();
   const confirm = useStaffConfirm();
   const [waiting, setWaiting] = useState<Waiting | null>(null);
@@ -316,20 +319,30 @@ export function SaleAtgTab({ saleId, status, view, canManage }: Props) {
     [canManage, resultMap, showResultColumn, showResults, view.lots],
   );
 
+  const zoneUnmapped = timeZone !== undefined && windowsZoneId(timeZone) === null;
   const settings = (
-    <AtgSettingsSection
-      key={`${view.settings.auctionType}:${view.settings.distribution}`}
-      saleId={saleId}
-      view={view}
-      canManage={canManage}
-      busy={syncing}
-      lockedReason={blockedReason}
-      onSaved={(pushJobId) => {
-        if (pushJobId) {
-          setWaiting({ jobId: pushJobId, until: Date.now() + ATG_JOB_TIMEOUT_MS, slow: false });
-        }
-      }}
-    />
+    <>
+      {zoneUnmapped ? (
+        <Notice tone="warning" title="ATG has no matching time zone">
+          This sale's time zone, {timeZone}, has no Windows zone ATG can show the auction in, so it
+          cannot be pushed. Choose another time zone for the sale while it is a draft, or ask for
+          the zone to be added.
+        </Notice>
+      ) : null}
+      <AtgSettingsSection
+        key={`${view.settings.auctionType}:${view.settings.distribution}`}
+        saleId={saleId}
+        view={view}
+        canManage={canManage}
+        busy={syncing}
+        lockedReason={blockedReason}
+        onSaved={(pushJobId) => {
+          if (pushJobId) {
+            setWaiting({ jobId: pushJobId, until: Date.now() + ATG_JOB_TIMEOUT_MS, slow: false });
+          }
+        }}
+      />
+    </>
   );
 
   if (!status.enabled) {

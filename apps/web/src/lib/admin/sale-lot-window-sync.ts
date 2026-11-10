@@ -3,10 +3,9 @@ import type { AdminSaleFormValues } from "@/lib/forms/schemas/admin-sale-form";
 import type { Lot, Sale, SaleDeliveryMode } from "@auction/types";
 import { instantFromDatetimeFormString } from "@auction/ui/lib/datetime";
 import {
+  auctionMinuteEpoch,
   findLotTimingConflicts,
   getSaleModeCapabilities,
-  instantFromAuctionDatetimeFormString,
-  toAuctionDatetimeFormString,
 } from "@auction/validators";
 
 export type SaleWindow = {
@@ -89,8 +88,9 @@ export function findLotsOutsideSaleWindow(
 
 const MIN_LOT_DURATION_MS = 60_000;
 
+/** The instant cut to its minute: zone-free, so it is right for every sale's zone. */
 function toAuctionMinuteInstant(instant: Date): Date {
-  return instantFromAuctionDatetimeFormString(toAuctionDatetimeFormString(instant));
+  return new Date(auctionMinuteEpoch(instant));
 }
 
 /** Clamp lot open/close into the sale window; preserve duration when possible. */

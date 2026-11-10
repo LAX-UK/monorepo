@@ -20,6 +20,7 @@ export type { SaleScheduleStepProps, TierPreview } from "./schedule-step/types";
 export function SaleScheduleStep({
   form,
   isDraft,
+  timeZoneLocked = false,
   isSaleroom,
   pending: _pending,
   fields,
@@ -89,7 +90,12 @@ export function SaleScheduleStep({
         ) : null}
       </FormSection>
 
-      <ScheduleTimesSection form={form} isDraft={isDraft} isSaleroom={isSaleroom} />
+      <ScheduleTimesSection
+        form={form}
+        isDraft={isDraft}
+        timeZoneLocked={timeZoneLocked}
+        isSaleroom={isSaleroom}
+      />
 
       <BuyerPremiumSection
         form={form}

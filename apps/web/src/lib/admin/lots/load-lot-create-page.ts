@@ -107,6 +107,14 @@ export async function loadAdminLotCreatePage(
     salesResult.status === "fulfilled" ? salesResult.value : { sales: [], currentSale: null };
   const sales = salesResult_.sales;
   const currentSale = salesResult_.currentSale;
+  // A lot made for a chosen sale starts on that sale's own clock, not London's.
+  if (currentSale && !fromLotId) {
+    defaultValues = {
+      ...emptyAdminLotFormValues(currentSale.timeZone),
+      saleId: defaultValues.saleId,
+      auctionType: defaultValues.auctionType,
+    };
+  }
   const emergencyAddSaleStatus =
     currentSale?.status === "scheduled" || currentSale?.status === "active"
       ? currentSale.status

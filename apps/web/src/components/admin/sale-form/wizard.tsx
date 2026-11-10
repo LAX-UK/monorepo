@@ -46,6 +46,8 @@ type Props = {
   htmlFormId?: string;
   lots?: Lot[];
   venues?: Venue[];
+  /** True once the sale has been announced, even if it is a draft again: its zone is fixed. */
+  timeZoneLocked?: boolean;
 };
 
 const SUMMARY_ORDER = SALE_STEP_FIELDS.flat().map(String);
@@ -62,6 +64,7 @@ export function AdminSaleForm({
   htmlFormId,
   lots = [],
   venues = [],
+  timeZoneLocked = false,
 }: Props) {
   const isDraft = !saleStatus || saleStatus === "draft";
   const streamUrlEditable = isDraft || saleStatus === "scheduled" || saleStatus === "active";
@@ -177,6 +180,7 @@ export function AdminSaleForm({
         <SaleScheduleStep
           form={form}
           isDraft={isDraft}
+          timeZoneLocked={timeZoneLocked}
           isSaleroom={isSaleroom}
           pending={pending}
           fields={fields}

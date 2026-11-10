@@ -152,6 +152,8 @@ export type Sale = {
    * instant; this names how the official time is written. Fixed once the sale is published.
    */
   timeZone: string;
+  /** When the sale first left draft; null until then. The time zone is fixed from this moment. */
+  firstPublishedAt?: Date | null;
   status: SaleStatus;
   /** Set on public reads of draft sales (the only status ATG can own). */
   sellingPlatform?: AtgOwnershipState;

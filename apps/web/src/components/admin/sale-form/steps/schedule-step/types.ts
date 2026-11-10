@@ -21,6 +21,8 @@ export type TierPreview =
 export type SaleScheduleStepProps = {
   form: UseFormReturn<AdminSaleFormValues>;
   isDraft: boolean;
+  /** The sale was announced once, so its time zone cannot change even as a draft. */
+  timeZoneLocked?: boolean;
   isSaleroom: boolean;
   pending: boolean;
   fields: FieldArrayWithId<AdminSaleFormValues, "buyerPremiumTiers", "id">[];

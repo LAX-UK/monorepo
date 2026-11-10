@@ -13,17 +13,14 @@ describe("mapSaleToAuctionFields time zone", () => {
     expect(fields.TimezoneId).toBe("GMT Standard Time");
   });
 
-  it("falls back to the configured zone when the sale names none", () => {
-    const fields = mapSaleToAuctionFields(testSale({ timeZone: " " }), {
-      ...testAtgConfig,
-      timezone: "Europe/Paris",
-    });
-    expect(fields.TimezoneId).toBe("Romance Standard Time");
+  it("maps zones beyond the handful LAX sells in today", () => {
+    const fields = mapSaleToAuctionFields(testSale({ timeZone: "Pacific/Chatham" }), testAtgConfig);
+    expect(fields.TimezoneId).toBe("Chatham Islands Standard Time");
   });
 
   it("explains a zone ATG has no match for instead of guessing", () => {
     expect(() =>
-      mapSaleToAuctionFields(testSale({ timeZone: "Pacific/Chatham" }), testAtgConfig),
-    ).toThrow(new AtgMappingError('ATG has no matching time zone for "Pacific/Chatham".'));
+      mapSaleToAuctionFields(testSale({ timeZone: "Nowhere/Land" }), testAtgConfig),
+    ).toThrow(new AtgMappingError('ATG has no matching time zone for "Nowhere/Land".'));
   });
 });
