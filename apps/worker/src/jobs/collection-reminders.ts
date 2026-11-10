@@ -6,6 +6,7 @@ import {
   type CollectionNoticeConfig,
   collectionEmailsFor,
 } from "../services/collection-notices.js";
+import { legacyCollectionReminderKey } from "../services/legacy-collection-reminder-key.js";
 
 /**
  * Emails the buyer the day before their collection, from 09:00 London time. It can run as often
@@ -32,10 +33,15 @@ export async function runCollectionRemindersJob(options: {
     try {
       const visit = await reader.visit(bookingId);
       if (!visit) continue;
-      for (const email of collectionEmailsFor({ kind: "reminder" }, visit, {
-        ...config,
-        now: at,
-      })) {
+      const emails = collectionEmailsFor({ kind: "reminder" }, visit, { ...config, now: at });
+      // Transition guard, see legacy-collection-reminder-key.ts (remove on or after 2026-11-13).
+      const alreadySent = await reader.existingOutboxKeys(
+        emails.map((email) => legacyCollectionReminderKey(bookingId, visit.slotStart, email.to)),
+      );
+      for (const email of emails) {
+        if (alreadySent.has(legacyCollectionReminderKey(bookingId, visit.slotStart, email.to))) {
+          continue;
+        }
         await emailService.enqueue(email);
         queued += 1;
       }

@@ -823,7 +823,7 @@ jobs:
         run: pnpm turbo run build --filter=@auction/worker^...
 
       - name: Worker repositories as worker_app
-        run: pnpm --filter @auction/worker exec vitest run --maxWorkers=2 src/container/worker-role-contract.integration.test.ts src/container/worker-store-role-contract.integration.test.ts src/repositories/drizzle-qr-code-scan-purge.repository.integration.test.ts src/anonymisation/enquiry-erasure-role.integration.test.ts
+        run: pnpm --filter @auction/worker exec vitest run --maxWorkers=2 src/container/worker-role-contract.integration.test.ts src/container/worker-store-role-contract.integration.test.ts src/repositories/drizzle-qr-code-scan-purge.repository.integration.test.ts src/anonymisation/email-outbox-erasure.integration.test.ts src/anonymisation/bid-anonymisation-role-contract.integration.test.ts src/anonymisation/enquiry-erasure-role.integration.test.ts
 
   auth-role-contract:
     needs: build-packages

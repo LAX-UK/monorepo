@@ -40,6 +40,11 @@ function defaultIdempotencyKey(input: EmailEnqueueInput, resolution: RecipientRe
   return `${input.template}:${recipient}:${hashPayload(input.vars)}`;
 }
 
+/**
+ * The date after which a recipient snapshot is no longer needed to send the message. Nothing clears
+ * it on that date yet: it is cleared when the person is erased, or after the send for messages
+ * listed in `SNAPSHOT_DISCARDED_AFTER_SEND`.
+ */
 function snapshotPurgeDate(now = new Date()): Date {
   const d = new Date(now);
   d.setUTCDate(d.getUTCDate() + 30);

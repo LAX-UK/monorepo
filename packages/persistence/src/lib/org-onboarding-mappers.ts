@@ -106,6 +106,8 @@ export type OrganizationOnboardingFlowOptions = {
     legalEntityId: string;
     displayName: string;
     actorUserId: string;
+    /** When the account was submitted; names this submission. */
+    submittedAt: Date;
   }) => Promise<void>;
 };
 

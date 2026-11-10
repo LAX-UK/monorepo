@@ -6,7 +6,7 @@ import type {
   EmailOutboxRow,
   IEmailOutboxRepository,
 } from "../interfaces/email-outbox.repository.js";
-import { sendEmailUseCase } from "./send-email.use-case.js";
+import { redactedSendError, sendEmailUseCase } from "./send-email.use-case.js";
 
 const baseRow: EmailOutboxRow = {
   id: "outbox-1",
@@ -48,7 +48,7 @@ describe("sendEmailUseCase claim handling", () => {
   });
 
   it("suppresses inactive Postmark recipients without retrying", async () => {
-    const inactive = Object.assign(new Error("Found inactive addresses"), {
+    const inactive = Object.assign(new Error("Found inactive addresses: maya@example.com."), {
       name: "InactiveRecipientsError",
     });
     const sender: IEmailSender = {
@@ -77,7 +77,29 @@ describe("sendEmailUseCase claim handling", () => {
       { outboxId: "outbox-1" },
     );
     expect(insertSuppression).toHaveBeenCalledWith("hash", "hard_bounce");
-    expect(markFailedOrPending).toHaveBeenCalledWith("outbox-1", inactive.message, true);
+    expect(markFailedOrPending).toHaveBeenCalledWith(
+      "outbox-1",
+      "InactiveRecipientsError: Found inactive addresses: [address].",
+      true,
+    );
+  });
+});
+
+describe("redactedSendError", () => {
+  it("keeps the error code and replaces any address in the text", () => {
+    const err = Object.assign(new Error("Cannot send to a.b+c@sub.example.co.uk or <x@y.com>"), {
+      code: 406,
+    });
+    expect(redactedSendError(err)).toBe("406: Cannot send to [address] or <[address]>");
+  });
+
+  it("names the error type when there is no code, and handles non-errors", () => {
+    expect(redactedSendError(new TypeError("boom"))).toBe("TypeError: boom");
+    expect(redactedSendError("plain")).toBe("Error: plain");
+  });
+
+  it("stores a bounded amount of text", () => {
+    expect(redactedSendError(new Error("x".repeat(1000))).length).toBe(300);
   });
 });
 

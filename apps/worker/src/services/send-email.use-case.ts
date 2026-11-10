@@ -79,7 +79,7 @@ export async function sendEmailUseCase(
         ...(SNAPSHOT_DISCARDED_AFTER_SEND.has(row.template) ? [{ discardSnapshot: true }] : []),
       );
     } catch (markErr) {
-      const message = markErr instanceof Error ? markErr.message : String(markErr);
+      const message = redactedSendError(markErr);
       await outboxRepo.markSentPersistenceFailed(row.id, result.messageId, message);
       log.error(
         { outboxId: row.id, messageId: result.messageId, err: message },
@@ -91,7 +91,7 @@ export async function sendEmailUseCase(
     if (providerMessageId) {
       throw err;
     }
-    const message = err instanceof Error ? err.message : String(err);
+    const message = redactedSendError(err);
     if (isInactivePostmarkRecipient(err)) {
       await outboxRepo.insertSuppression(row.toEmailHash, "hard_bounce");
       await outboxRepo.markFailedOrPending(row.id, message, true);
@@ -105,6 +105,26 @@ export async function sendEmailUseCase(
     await outboxRepo.markFailedOrPending(row.id, message, terminal);
     throw err;
   }
+}
+
+const ADDRESS_IN_TEXT = /[^\s@<>"',;:()[\]]+@[^\s@<>"',;:()[\]]*[^\s@<>"',;:()[\].]/g;
+const MAX_STORED_ERROR_LENGTH = 300;
+
+/**
+ * What is kept of a failed send: the error's name or code and its text with any address replaced.
+ * The provider's text can quote the recipient ("Found inactive addresses: ..."), and the row
+ * outlives the person.
+ */
+export function redactedSendError(err: unknown): string {
+  const raw = err instanceof Error ? err.message : String(err);
+  const code = err instanceof Error ? (err as { code?: unknown }).code : undefined;
+  const label =
+    typeof code === "string" || typeof code === "number"
+      ? String(code)
+      : err instanceof Error
+        ? err.name
+        : "Error";
+  return `${label}: ${raw.replace(ADDRESS_IN_TEXT, "[address]")}`.slice(0, MAX_STORED_ERROR_LENGTH);
 }
 
 function isInactivePostmarkRecipient(err: unknown): boolean {
