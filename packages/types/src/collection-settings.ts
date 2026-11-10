@@ -44,6 +44,8 @@ export type StaffCollectionSettings = {
   undoHandOverMinutes: number;
   maxActiveVisits: number;
   freeStorageDays: number | null;
+  /** Pence per lot per week after the free period; recorded for Finance, never charged automatically. */
+  storageChargePence: number | null;
   hours: StaffCollectionHours[];
   /** Closures and extra openings from today on, earliest first. */
   exceptions: StaffCollectionException[];

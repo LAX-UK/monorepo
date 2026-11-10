@@ -127,6 +127,31 @@ export class DrizzleCollectionNoticeReader implements ICollectionNoticeReader {
     return Number(row?.total ?? 0);
   }
 
+  async accountRecipients(
+    legalEntityId: string,
+    alsoUserIds: readonly string[] = [],
+  ): Promise<(NoticeRecipient & { wonOnly?: boolean })[]> {
+    const owners = await this.accountPeople(legalEntityId);
+    const people: (NoticeRecipient & { wonOnly?: boolean })[] = [...owners];
+    if (alsoUserIds.length > 0) {
+      // An agent who is not an owner or admin hears only about the lots they won.
+      for (const member of await this.membersAmong(legalEntityId, alsoUserIds)) {
+        if (!people.some((person) => person.userId === member.userId)) {
+          people.push({ ...member, wonOnly: true });
+        }
+      }
+    }
+    if (people.length > 0) return people;
+    // A personal account has no members to speak of: the person who made it is the buyer.
+    const [account] = await this.db
+      .select({ createdBy: legalEntity.createdByUserId })
+      .from(legalEntity)
+      .where(eq(legalEntity.id, legalEntityId))
+      .limit(1);
+    const person = account?.createdBy ? await this.person(account.createdBy) : null;
+    return person ? [person] : [];
+  }
+
   /** A person with an account still open: their address, first name and full name. */
   private async person(userId: string): Promise<(NoticeRecipient & { name: string }) | null> {
     const [row] = await this.db
@@ -148,6 +173,33 @@ export class DrizzleCollectionNoticeReader implements ICollectionNoticeReader {
       )
       .limit(1);
     return row?.email ? row : null;
+  }
+
+  /** Those of `userIds` who are active members of the account, whatever their role. */
+  private async membersAmong(
+    legalEntityId: string,
+    userIds: readonly string[],
+  ): Promise<NoticeRecipient[]> {
+    return this.db
+      .selectDistinct({
+        userId: bidIdentityDirectory.subjectId,
+        email: bidIdentityDirectory.email,
+        firstName: sql<
+          string | null
+        >`coalesce(${bidUserProfile.firstName}, split_part(${bidIdentityDirectory.name}, ' ', 1))`,
+      })
+      .from(legalEntityMember)
+      .innerJoin(bidIdentityDirectory, eq(bidIdentityDirectory.subjectId, legalEntityMember.userId))
+      .leftJoin(bidUserProfile, eq(bidUserProfile.userId, bidIdentityDirectory.subjectId))
+      .where(
+        and(
+          eq(legalEntityMember.legalEntityId, legalEntityId),
+          inArray(legalEntityMember.userId, [...userIds]),
+          isNull(legalEntityMember.removedAt),
+          isNotNull(legalEntityMember.acceptedAt),
+          isNull(bidIdentityDirectory.deletionRequestedAt),
+        ),
+      );
   }
 
   /** The account's owners and admins who have joined and not left, with a usable address. */

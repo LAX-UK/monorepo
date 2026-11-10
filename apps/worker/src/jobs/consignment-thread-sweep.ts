@@ -1,5 +1,5 @@
 import type pino from "pino";
-import { postInternalCronJob } from "./post-internal-cron-job.js";
+import { DEFAULT_GATEWAY_RETRY, postInternalCronJob } from "./post-internal-cron-job.js";
 
 /**
  * Asks the API to catch up on consignment threads: tell the account about staff replies whose
@@ -16,6 +16,7 @@ export async function runConsignmentThreadSweepJob(opts: {
     cronSecret: opts.cronSecret,
     path: "consignment-thread-sweep",
     log: opts.log,
+    gatewayRetry: DEFAULT_GATEWAY_RETRY,
   });
   if (result.outcome !== "completed") return;
   opts.log.info({ outcome: result.outcome }, "consignment thread sweep completed");

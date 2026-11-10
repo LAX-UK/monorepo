@@ -83,6 +83,7 @@ export class DrizzleLotFulfilmentRepository implements ILotFulfilmentRepository 
       lotId: input.lotId,
       paymentId: input.paymentId,
       status: input.status,
+      ...(input.paymentClearedAt ? { paymentClearedAt: input.paymentClearedAt } : {}),
       ...(input.addressSnapshot ? { addressSnapshot: input.addressSnapshot } : {}),
     });
   }

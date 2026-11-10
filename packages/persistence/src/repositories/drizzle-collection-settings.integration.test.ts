@@ -54,6 +54,7 @@ describe.skipIf(!HAS_DB)("collection settings (integration)", () => {
       onlineBookingEnabled: s.onlineBookingEnabled,
       bookingEmail: s.bookingEmail,
       freeStorageDays: s.freeStorageDays,
+      storageChargePence: s.storageChargePence,
       hours: record.hours,
       updatedByUserId: staffId,
       at: new Date(NOW.getTime() + ++saves * 60_000),

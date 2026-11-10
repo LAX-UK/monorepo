@@ -213,6 +213,17 @@ const PROBES: Probes = {
     visit: () => r.visit(NIL),
     dueReminders: () => r.dueReminders({ from: earlier, to: now, changedBefore: earlier }),
     collectorEmailsSince: () => r.collectorEmailsSince("probe", earlier),
+    accountRecipients: () => r.accountRecipients(NIL, [NIL]),
+  }),
+  collectByReader: (r) => ({
+    storedLotsDue: () =>
+      r.storedLotsDue({ today: "2000-01-01", defaultFreeStorageDays: 30, reminderLeadDays: 7 }),
+    remindedLotIds: () =>
+      r.remindedLotIds({ keyPrefix: "probe:", userId: "probe", today: "2000-01-01" }),
+  }),
+  collectionLotFacts: (r) => ({
+    lotIdsForBuyer: () => r.lotIdsForBuyer(NIL, NIL, 1),
+    read: () => r.read([NIL]),
   }),
   payoutTransferFailedNotifyReader: (r) => ({
     getTransferFailedContext: () => r.getTransferFailedContext(NIL, NIL, 0, "GBP"),

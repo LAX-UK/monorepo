@@ -81,6 +81,9 @@ import CollectionCancelledEmail, {
 import CollectionChangedEmail, {
   subject as collectionChangedSubject,
 } from "./templates/collection-changed.js";
+import CollectionCollectByEmail, {
+  subject as collectionCollectBySubject,
+} from "./templates/collection-collect-by.js";
 import CollectionCollectedEmail, {
   subject as collectionCollectedSubject,
 } from "./templates/collection-collected.js";
@@ -529,6 +532,10 @@ const renderers: { [T in TemplateName]: TemplateRenderer<T> } = {
   "collection-missed": {
     subject: collectionMissedSubject,
     component: (vars) => <CollectionMissedEmail {...vars} />,
+  },
+  "collection-collect-by": {
+    subject: collectionCollectBySubject,
+    component: (vars) => <CollectionCollectByEmail {...vars} />,
   },
   "lot-fulfilment-update": {
     subject: lotFulfilmentUpdateSubject,

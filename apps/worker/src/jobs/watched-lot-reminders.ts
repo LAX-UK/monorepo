@@ -1,5 +1,5 @@
 import type pino from "pino";
-import { postInternalCronJob } from "./post-internal-cron-job.js";
+import { DEFAULT_GATEWAY_RETRY, postInternalCronJob } from "./post-internal-cron-job.js";
 
 /**
  * Asks the API to send the watched-lot reminders that are due. The API decides what is due from
@@ -16,6 +16,7 @@ export async function runWatchedLotRemindersJob(opts: {
     cronSecret: opts.cronSecret,
     path: "watched-lot-reminders",
     log: opts.log,
+    gatewayRetry: DEFAULT_GATEWAY_RETRY,
   });
   if (result.outcome !== "completed") return;
   opts.log.info({ outcome: result.outcome }, "watched lot reminders completed");

@@ -118,6 +118,7 @@ export class InMemoryCollectionPlaces
     venueId: COLLECTION_VENUE,
     onlineBookingEnabled: true,
     freeStorageDays: null,
+    storageChargePence: null,
     bookingEmail: "collections@lax.example",
     updatedAt: COLLECTION_NOW,
   };

@@ -1,3 +1,4 @@
+import { MAX_FREE_STORAGE_DAYS } from "@auction/domain";
 import { z } from "zod";
 
 /**
@@ -45,7 +46,9 @@ export const saveCollectionSettingsBodySchema = z
     closeOnSaleDays: z.boolean(),
     undoHandOverMinutes: z.number().int(),
     maxActiveVisits: z.number().int(),
-    freeStorageDays: z.number().int().min(0).max(365).nullable(),
+    freeStorageDays: z.number().int().min(0).max(MAX_FREE_STORAGE_DAYS).nullable(),
+    /** Absent means unchanged, so a web release that does not send it yet cannot be refused. */
+    storageChargePence: z.number().int().min(0).max(1_000_000).nullable().optional(),
     bookingEmail: z.string().trim().email().max(254).nullable(),
     hours: z
       .array(z.object({ weekday: z.number().int(), opensLocal: time, closesLocal: time }).strict())

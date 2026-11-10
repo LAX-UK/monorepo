@@ -2,6 +2,16 @@ import type pino from "pino";
 
 const DEFAULT_INTERNAL_CRON_TIMEOUT_MS = 120_000;
 
+/** The proxy answers 502 or 504 while no API pod can take the request, for example mid-rollout. */
+const GATEWAY_UNAVAILABLE_STATUSES: ReadonlySet<number> = new Set([502, 504]);
+
+/** Wait a little and ask again, for jobs that are safe to repeat (see the job's own doc). */
+export type GatewayRetry = { retries: number; delayMs: number };
+
+export const DEFAULT_GATEWAY_RETRY: GatewayRetry = { retries: 2, delayMs: 15_000 };
+
+const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
 export type PostInternalCronJobResult =
   | { ok: true; outcome: "completed" }
   | { ok: true; outcome: "deferred"; reason: "settlement_already_running" | "resource_locked" }
@@ -19,25 +29,49 @@ export async function postInternalCronJob(opts: {
   treat409AsSuccess?: boolean;
   /** Abort the request after this many milliseconds (default 120s). */
   timeoutMs?: number;
+  /**
+   * Repeat the request when the proxy has no API pod to send it to (502 or 504). Only for
+   * idempotent jobs; the next scheduled run repeats them anyway, so this just avoids a failed
+   * run during a rollout. Omit for jobs that must not run twice.
+   */
+  gatewayRetry?: GatewayRetry;
+  /** Replaceable in tests. */
+  wait?: (ms: number) => Promise<void>;
 }): Promise<PostInternalCronJobResult> {
   const base = opts.apiBaseUrl.replace(/\/$/, "");
   const url = `${base}/internal/jobs/${opts.path.replace(/^\//, "")}`;
   const timeoutMs = opts.timeoutMs ?? DEFAULT_INTERNAL_CRON_TIMEOUT_MS;
-  let res: Response;
-  try {
-    res = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Cron-Secret": opts.cronSecret,
-      },
-      body: JSON.stringify(opts.body ?? {}),
-      signal: AbortSignal.timeout(timeoutMs),
-    });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    opts.log.error({ url, timeoutMs, err: message }, `${opts.path} request timed out or failed`);
-    throw new Error(`${opts.path.replace(/\//g, "_")}_failed:timeout`);
+  const wait = opts.wait ?? sleep;
+  const retry = opts.gatewayRetry ?? { retries: 0, delayMs: 0 };
+  const send = async (): Promise<Response> => {
+    try {
+      return await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Cron-Secret": opts.cronSecret,
+        },
+        body: JSON.stringify(opts.body ?? {}),
+        signal: AbortSignal.timeout(timeoutMs),
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      opts.log.error({ url, timeoutMs, err: message }, `${opts.path} request timed out or failed`);
+      throw new Error(`${opts.path.replace(/\//g, "_")}_failed:timeout`);
+    }
+  };
+  let res = await send();
+  for (
+    let attempt = 1;
+    attempt <= retry.retries && GATEWAY_UNAVAILABLE_STATUSES.has(res.status);
+    attempt++
+  ) {
+    opts.log.warn(
+      { url, status: res.status, attempt, delayMs: retry.delayMs },
+      "internal_cron_gateway_unavailable_retrying",
+    );
+    await wait(retry.delayMs);
+    res = await send();
   }
   if (res.status === 503) {
     opts.log.warn({ url }, `${opts.path} skipped (API reports cron_not_configured)`);
