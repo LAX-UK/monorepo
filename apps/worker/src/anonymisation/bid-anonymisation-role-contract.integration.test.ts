@@ -39,13 +39,8 @@ describe.skipIf(!ownerUrl || !workerUrl)(
   () => {
     // biome-ignore lint/style/noNonNullAssertion: gated above
     const owner = createDb(ownerUrl!);
-    // The enquiry rule changes marketing_enquiry, its notes, private sale detail and files, and
-    // worker_app only has SELECT on them, so erasing a person who sent an enquiry would be denied.
-    // Found by this test; not part of this change, and to be fixed with its own grants and probe.
-    const GRANT_MISSING_TO_BE_FIXED = ["marketing_enquiry"];
     const scrubbed = BID_ANONYMISATION_RULES.filter((rule) => rule.treatment === "scrub")
       .map((rule) => rule.table)
-      .filter((table) => !GRANT_MISSING_TO_BE_FIXED.includes(table))
       // The mail queue rule also scrubs the provider's reports.
       .concat("email_event");
 
