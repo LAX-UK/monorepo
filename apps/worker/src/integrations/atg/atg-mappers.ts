@@ -45,10 +45,24 @@ function isTimed(sale: Pick<AtgSaleSnapshot, "atgSettings">): boolean {
   return sale.atgSettings.auctionType === "Timed";
 }
 
-/** ATG takes one flat buyer's premium per auction. */
+/**
+ * ATG takes one flat buyer's premium per auction, and the venue address bidders see. Updates
+ * replace the whole auction, so a sale without an address would clear the one ATG shows.
+ */
 export function assertSaleMappableForAtg(sale: AtgSaleSnapshot): void {
   if (sale.buyerPremiumTiers && sale.buyerPremiumTiers.length > 0) {
     throw new AtgMappingError("ATG needs a single flat buyer's premium; remove the bands.");
+  }
+  const venue = [
+    sale.locationAddressLine1,
+    sale.locationCity,
+    sale.locationPostcode,
+    sale.locationCountry,
+  ];
+  if (venue.some((part) => !part?.trim())) {
+    throw new AtgMappingError(
+      "ATG shows bidders the sale's venue. Choose the venue in the sale's schedule (address, town, postcode and country) before sending it.",
+    );
   }
 }
 
