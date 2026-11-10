@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { createIssuerAccountIdentityGateway } from "./issuer-account-identity-gateway";
 
 const config = {
+  oidcIssuer: "https://auth.example.com",
   oidcInternalIssuer: "https://auth.internal",
   oidcClientId: "lax-account-web",
   oidcClientSecret: "client-secret",
@@ -172,6 +173,60 @@ describe("createIssuerAccountIdentityGateway", () => {
       expect(await last.gateway.unlinkSignInMethod(actor, "google")).toEqual({
         status: "rejected",
         reason: "last_sign_in_method",
+      });
+    });
+
+    describe("adding a method", () => {
+      const ISSUER_URL = "https://auth.example.com/account-action?ticket=abc";
+
+      it("asks for a one-time address with the access token, sign-in and action in the body", async () => {
+        const { fetchImpl, gateway: g } = gateway(async () => Response.json({ url: ISSUER_URL }));
+        expect(await g.startSignInMethodAction(actor, "google")).toEqual({
+          status: "ok",
+          value: { url: ISSUER_URL },
+        });
+        const { url, body } = lastRequest(fetchImpl);
+        expect(url).toBe("https://auth.internal/api/auth/lax/account-sign-in-methods/intent");
+        expect(url).not.toContain("access-token");
+        expect(Object.fromEntries(body)).toEqual({
+          token: "access-token",
+          sid: "current-sid",
+          action: "google",
+        });
+      });
+
+      it.each([
+        "https://evil.example/account-action?ticket=abc",
+        "https://auth.example.com/elsewhere?ticket=abc",
+        "http://auth.example.com/account-action?ticket=abc",
+        "https://user:pass@auth.example.com/account-action?ticket=abc",
+        "https://auth.example.com.evil.example/account-action?ticket=abc",
+      ])("never hands the browser %s", async (url) => {
+        const { gateway: g } = gateway(async () => Response.json({ url }));
+        expect(await g.startSignInMethodAction(actor, "google")).toEqual({
+          status: "unavailable",
+        });
+      });
+
+      it("passes sign in again, and the named refusals, through", async () => {
+        const refusals = [
+          [403, "reauth_required", { status: "reauth_required" }],
+          [403, "staff_not_allowed", { status: "rejected", reason: "staff_not_allowed" }],
+          [409, "already_linked", { status: "rejected", reason: "already_linked" }],
+          [404, "not_available", { status: "rejected", reason: "not_available" }],
+          [429, "rate_limited", { status: "rejected", reason: "rate_limited" }],
+        ] as const;
+        for (const [status, error, expected] of refusals) {
+          const { gateway: g } = gateway(async () => Response.json({ error }, { status }));
+          expect(await g.startSignInMethodAction(actor, "apple")).toEqual(expected);
+        }
+      });
+
+      it("is unavailable when the issuer cannot answer", async () => {
+        const { gateway: g } = gateway(async () => Response.json({}, { status: 503 }));
+        expect(await g.startSignInMethodAction(actor, "google")).toEqual({
+          status: "unavailable",
+        });
       });
     });
   });

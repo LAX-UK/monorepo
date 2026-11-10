@@ -23,3 +23,13 @@ export type PasswordActionResult =
   | { status: "ok"; created: boolean }
   | { status: "reauth_required" }
   | { status: "error"; message: string; field: "current" | "next" | "confirm" | null };
+
+/**
+ * The result of asking to link Google or Apple: the address the browser goes to next (the issuer's
+ * own page), or why it does not. `refresh` says the page was out of date (that method is already
+ * linked), so the person is shown the list as it is.
+ */
+export type LinkActionResult =
+  | { status: "ok"; url: string }
+  | { status: "reauth_required" }
+  | { status: "error"; message: string; refresh: boolean };

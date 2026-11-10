@@ -13,6 +13,7 @@ const identity = {
   changePassword: vi.fn(),
   regenerateBackupCodes: vi.fn(),
   unlinkSignInMethod: vi.fn(),
+  startSignInMethodAction: vi.fn(),
   requestDeletion: vi.fn(),
   cancelDeletion: vi.fn(),
 };
@@ -34,6 +35,7 @@ const {
   signOutDeviceAction,
   signOutOtherDevicesAction,
   startEmailChangeAction,
+  startSignInMethodLinkAction,
   removePhoneAction,
   verifyPhoneAction,
 } = await import("./account-identity-actions.server");
@@ -45,6 +47,61 @@ describe("account identity actions", () => {
     vi.resetAllMocks();
     vi.spyOn(console, "error").mockImplementation(() => undefined);
     loadAccountRecord.mockResolvedValue({ ...ACTOR, subject: "subject" });
+  });
+
+  describe("startSignInMethodLinkAction", () => {
+    const URL_OK = "https://auth.example.com/account-action?ticket=abc";
+
+    it("asks the issuer to add the provider as the signed-in person and returns its address", async () => {
+      identity.startSignInMethodAction.mockResolvedValue({ status: "ok", value: { url: URL_OK } });
+      expect(await startSignInMethodLinkAction("google")).toEqual({ status: "ok", url: URL_OK });
+      expect(identity.startSignInMethodAction).toHaveBeenCalledWith(ACTOR, "google");
+    });
+
+    it("refuses anything but Google or Apple before calling the issuer", async () => {
+      for (const provider of ["passkey", "credential", "", "GOOGLE"]) {
+        expect(await startSignInMethodLinkAction(provider)).toMatchObject({ status: "error" });
+      }
+      expect(identity.startSignInMethodAction).not.toHaveBeenCalled();
+    });
+
+    it("sends the person through a fresh sign-in when theirs is too old or ended", async () => {
+      identity.startSignInMethodAction.mockResolvedValue({ status: "reauth_required" });
+      expect(await startSignInMethodLinkAction("apple")).toEqual({ status: "reauth_required" });
+      loadAccountRecord.mockResolvedValue(null);
+      expect(await startSignInMethodLinkAction("apple")).toEqual({ status: "reauth_required" });
+    });
+
+    it("tells a staff account why there is no link, and does not ask for a refresh", async () => {
+      identity.startSignInMethodAction.mockResolvedValue({
+        status: "rejected",
+        reason: "staff_not_allowed",
+      });
+      expect(await startSignInMethodLinkAction("google")).toEqual({
+        status: "error",
+        message: "Staff accounts can't sign in with Google or Apple. Add a passkey instead.",
+        refresh: false,
+      });
+    });
+
+    it("asks for a refresh when the page was out of date", async () => {
+      for (const reason of ["already_linked", "not_available"] as const) {
+        identity.startSignInMethodAction.mockResolvedValue({ status: "rejected", reason });
+        expect(await startSignInMethodLinkAction("google")).toMatchObject({
+          status: "error",
+          refresh: true,
+        });
+      }
+    });
+
+    it("says nothing changed when the issuer could not answer", async () => {
+      identity.startSignInMethodAction.mockResolvedValue({ status: "unavailable" });
+      expect(await startSignInMethodLinkAction("google")).toEqual({
+        status: "error",
+        message: expect.stringContaining("Nothing was changed"),
+        refresh: false,
+      });
+    });
   });
 
   describe("removeSignInMethodAction", () => {

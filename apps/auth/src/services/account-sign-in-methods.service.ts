@@ -73,6 +73,12 @@ export type AccountSignInMethodsPorts = {
   notices: SecurityNoticePublisher;
   /** What this environment offers. Nothing is offered unless it is named here. */
   available?: SignInMethodsAvailability;
+  /**
+   * Whether the person is a staff account. Staff cannot sign in with Google or Apple, so no link
+   * is offered to them. Without it nobody is treated as staff here, and the link route still
+   * refuses a staff request.
+   */
+  isStaff?: (subjectId: string) => Promise<boolean>;
 };
 
 export type RenamePasskeyResult =
@@ -110,6 +116,8 @@ export class AccountSignInMethodsService {
 
   async read(subjectId: string): Promise<AccountSignInMethodsResponse> {
     const methods = await this.ports.operations.readSignInMethods(subjectId);
+    const offered = this.ports.available ?? { google: false, apple: false, passkey: false };
+    const staff = (await this.ports.isStaff?.(subjectId)) ?? false;
     return {
       hasPassword: methods.hasPassword,
       social: methods.social.map((method) => ({
@@ -119,7 +127,7 @@ export class AccountSignInMethodsService {
         hidden: method.hidden,
       })),
       passkeys: methods.passkeys.map(presentPasskey),
-      available: this.ports.available ?? { google: false, apple: false, passkey: false },
+      available: staff ? { ...offered, google: false, apple: false } : offered,
     };
   }
 
