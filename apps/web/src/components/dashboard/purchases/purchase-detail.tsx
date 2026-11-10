@@ -6,6 +6,7 @@ import type { PurchaseProblemPanelVm } from "@/lib/purchases/purchase-problem";
 import type { PurchaseCardVm } from "@/lib/purchases/purchases.vm";
 import { cn } from "@auction/ui";
 import { ButtonLink, Notice, StatusBadge, pageTitleClass } from "@auction/ui/lax";
+import { OfficialTime } from "@auction/ui/time";
 import { Download, FileText } from "lucide-react";
 import Link from "next/link";
 import { DeliveryPanel } from "./delivery-panel";
@@ -48,7 +49,15 @@ function Progress({ card }: { card: PurchaseCardVm }) {
                 </span>
               </p>
               {step.progress === "current" && card.statusNote ? (
-                <p className="text-lax-13 text-lax-muted">{card.statusNote}</p>
+                <div className="text-lax-13 text-lax-muted">
+                  {card.dueMoment ? (
+                    <OfficialTime instant={card.dueMoment.iso} officialZone={card.dueMoment.zone}>
+                      {card.statusNote}
+                    </OfficialTime>
+                  ) : (
+                    card.statusNote
+                  )}
+                </div>
               ) : step.date ? (
                 <p className="text-lax-13 text-lax-muted">{step.date}</p>
               ) : null}
