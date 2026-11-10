@@ -37,6 +37,7 @@ import {
   WORKER_FULL_TABLES,
   WORKER_INVOICE_RAISE_FULFILMENT_TABLES,
   WORKER_INVOICE_RAISE_INSERT_TABLES,
+  WORKER_KYC_RETENTION_DEAL_READ_TABLES,
   WORKER_KYC_RETENTION_PURGE_TABLES,
   WORKER_KYC_RETENTION_TOMBSTONE_TABLES,
   WORKER_LIFECYCLE_READ_TABLES,
@@ -746,6 +747,18 @@ describe("migrate-roles invariants", () => {
   it("WORKER_QR_CODE_SCAN_TABLES includes scan tables (qr-code-scan worker job)", () => {
     expect([...WORKER_QR_CODE_SCAN_TABLES]).toContain("qr_code_scan");
     expect([...WORKER_QR_CODE_SCAN_TABLES]).toContain("qr_code_scan_daily");
+  });
+
+  it("lets the retention purge read the private sale deal records it holds back on, and only read them", async () => {
+    expect([...WORKER_KYC_RETENTION_DEAL_READ_TABLES].sort()).toEqual([
+      "private_sale_deal_party",
+      "private_sale_deal_party_history",
+      "private_sale_deal_stage_history",
+    ]);
+    const source = await readFile(join(__dirname, "migrate-roles.ts"), "utf8");
+    expect(source).toMatch(
+      /for \(const tableName of WORKER_KYC_RETENTION_DEAL_READ_TABLES\) \{\s+await grantIfExists\(client, "worker_app", tableName, "SELECT"\);/,
+    );
   });
 
   it("WORKER_DATA_EXPORT_TABLES includes data_exports (worker data-export jobs)", () => {

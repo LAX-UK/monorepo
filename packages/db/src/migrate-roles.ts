@@ -388,6 +388,16 @@ export const WORKER_KYC_RETENTION_PURGE_TABLES = [
   "legal_entity_document",
   "admin_review_task",
 ] as const;
+/**
+ * The retention purge holds back a person or organisation that is on a private sale deal until the
+ * deal's own retention has passed. It reads who was named on each deal and when the deal changed
+ * stage (the deal itself and the enquiry are granted elsewhere). Read only.
+ */
+export const WORKER_KYC_RETENTION_DEAL_READ_TABLES = [
+  "private_sale_deal_party",
+  "private_sale_deal_party_history",
+  "private_sale_deal_stage_history",
+] as const;
 /** Append-only proof of each purge: no personal data. */
 export const WORKER_KYC_RETENTION_TOMBSTONE_TABLES = ["kyc_retention_tombstone"] as const;
 /** Worker persists async QR scan events (qr-code-scan job via persistQrCodeScan). */
@@ -998,6 +1008,9 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
         );
         for (const tableName of WORKER_KYC_RETENTION_PURGE_TABLES) {
           await grantIfExists(client, "worker_app", tableName, "SELECT, DELETE");
+        }
+        for (const tableName of WORKER_KYC_RETENTION_DEAL_READ_TABLES) {
+          await grantIfExists(client, "worker_app", tableName, "SELECT");
         }
         for (const tableName of WORKER_KYC_RETENTION_TOMBSTONE_TABLES) {
           await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT");

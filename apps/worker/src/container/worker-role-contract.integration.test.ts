@@ -2,8 +2,9 @@ import { alertRetentionCutoffs } from "@auction/alerts";
 import { createDb } from "@auction/db";
 import { applyApplicationRoleGrants } from "@auction/db/migrate-roles";
 import { sql } from "drizzle-orm";
+import pg from "pg";
 import pino from "pino";
-import { beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { WorkerDb } from "../workers/types.js";
 import { type WorkerRepositories, createWorkerRepositories } from "./create-worker-repositories.js";
 
@@ -23,6 +24,7 @@ const workerUrl = process.env.DATABASE_URL_WORKER;
  */
 
 const NIL = "00000000-0000-0000-0000-000000000000";
+const PROBE_QR_CODE_ID = "00000000-0000-0000-0000-0000000000a1";
 const PERMISSION_DENIED = "42501";
 const log = pino({ level: "silent" });
 const now = new Date();
@@ -330,9 +332,29 @@ describe.skipIf(!ownerUrl || !workerUrl)("worker repositories as worker_app", ()
       : [],
   );
 
+  let owner: pg.Pool;
+
   beforeAll(async () => {
     // biome-ignore lint/style/noNonNullAssertion: gated by skipIf
     await applyApplicationRoleGrants(ownerUrl!);
+    // The QR purge selects stale scans first and deletes only when it finds one, so it needs a
+    // stale scan to reach its DELETE. The rows are inert; each call rolls its deletion back.
+    owner = new pg.Pool({ connectionString: ownerUrl });
+    await owner.query(
+      `insert into qr_code (id, short_code, entity_type, entity_id)
+       values ($1, 'role-contract', 'sale', $1) on conflict do nothing`,
+      [PROBE_QR_CODE_ID],
+    );
+    await owner.query(
+      `insert into qr_code_scan (id, qr_code_id, scanned_at)
+       values ($1, $1, now() - interval '10 years') on conflict do nothing`,
+      [PROBE_QR_CODE_ID],
+    );
+  });
+
+  afterAll(async () => {
+    await owner.query("delete from qr_code where id = $1", [PROBE_QR_CODE_ID]);
+    await owner.end();
   });
 
   it("has a probe for every repository the worker wires, and none for one it does not", () => {
@@ -355,6 +377,6 @@ describe.skipIf(!ownerUrl || !workerUrl)("worker repositories as worker_app", ()
     } catch (error) {
       if (!(error instanceof RolledBack)) throw error;
     }
-    expect(denied, `${name}.${method}`).toBeNull();
+    if (denied) throw new Error(`${name}.${method}: ${denied}`);
   });
 });
