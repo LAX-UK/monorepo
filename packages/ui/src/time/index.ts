@@ -11,3 +11,5 @@ export {
   useZonePreference,
 } from "./zone-preference.js";
 export type { ZonePreferencePort } from "./zone-preference.js";
+export type { SavedZone } from "./zone-choice.js";
+export type { ChangeZoneDialogProps } from "./change-zone-dialog.js";

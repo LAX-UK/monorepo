@@ -17,6 +17,7 @@ export function createTestUserRouteServicesInput(
     personalLegalEntityResolver: {
       resolveForUser: vi.fn(async () => ({ id: "personal-1" })),
     } as never,
+    identityTimeZone: { setSubjectTimeZone: vi.fn(), reportSubjectDeviceZone: vi.fn() },
     lotViewerState: { forLot: vi.fn(), forLots: vi.fn() },
     paymentEligibility: { check: vi.fn(async () => ({ kind: "payable" as const })) },
     settlementCompliance: null,

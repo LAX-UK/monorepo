@@ -1,7 +1,7 @@
 // The device is in London for these tests; a visitor elsewhere has chosen their zone.
 process.env.TZ = "Europe/London";
 
-import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ChangeZoneDialog } from "./change-zone-dialog.js";
@@ -133,6 +133,89 @@ describe("ChangeZoneDialog", () => {
     expect(screen.getByRole("alert")).toHaveTextContent("We couldn’t save your time zone.");
     expect(toastSuccess).not.toHaveBeenCalled();
     expect(saveButton()).toBeEnabled();
+  });
+
+  it("says the sale's zone in its description, or a generic line where there is no sale", () => {
+    const dialog = renderDialog({ zone: "Asia/Tokyo", source: "chosen" });
+    expect(dialog).toHaveTextContent("Sale times always show London time first.");
+    cleanup();
+    render(
+      <ZonePreferenceProvider port={port()}>
+        <ChangeZoneDialog
+          open
+          onOpenChange={() => {}}
+          current={{ zone: "Asia/Tokyo", source: "account" }}
+          at={AT}
+        />
+      </ZonePreferenceProvider>,
+    );
+    const generic = screen.getByRole("dialog", { name: "Time zone" });
+    expect(generic).not.toHaveTextContent("Sale times");
+    expect(generic).toHaveTextContent("Choose the city for the times we show you.");
+  });
+
+  it("uses a description the caller gives", () => {
+    render(
+      <ZonePreferenceProvider port={port()}>
+        <ChangeZoneDialog
+          open
+          onOpenChange={() => {}}
+          current={{ zone: "Asia/Tokyo", source: "account" }}
+          at={AT}
+          description="For your emails."
+        />
+      </ZonePreferenceProvider>,
+    );
+    expect(screen.getByRole("dialog", { name: "Time zone" })).toHaveTextContent("For your emails.");
+  });
+
+  it("tells the caller what was saved", async () => {
+    const onSaved = vi.fn();
+    render(
+      <ZonePreferenceProvider port={port()}>
+        <ChangeZoneDialog
+          open
+          onOpenChange={() => {}}
+          current={{ zone: "Africa/Cairo", source: "device" }}
+          officialZone="Europe/London"
+          at={AT}
+          onSaved={onSaved}
+        />
+      </ZonePreferenceProvider>,
+    );
+    const dialog = screen.getByRole("dialog", { name: "Time zone" });
+    fireEvent.change(within(dialog).getByRole("searchbox"), { target: { value: "Sydney" } });
+    fireEvent.click(within(dialog).getByRole("radio", { name: /Sydney/ }));
+    await act(async () => {
+      fireEvent.click(saveButton());
+    });
+    expect(onSaved).toHaveBeenCalledWith({ mode: "fixed", zone: "Australia/Sydney" });
+  });
+
+  it("does not tell the caller when the save failed", async () => {
+    const onSaved = vi.fn();
+    render(
+      <ZonePreferenceProvider
+        port={port({ followDevice: vi.fn().mockRejectedValue(new Error("x")) })}
+      >
+        <ChangeZoneDialog
+          open
+          onOpenChange={() => {}}
+          current={{ zone: "Asia/Tokyo", source: "account" }}
+          at={AT}
+          onSaved={onSaved}
+        />
+      </ZonePreferenceProvider>,
+    );
+    fireEvent.click(
+      within(screen.getByRole("dialog", { name: "Time zone" })).getByRole("radio", {
+        name: /Automatic/,
+      }),
+    );
+    await act(async () => {
+      fireEvent.click(saveButton());
+    });
+    expect(onSaved).not.toHaveBeenCalled();
   });
 
   it("makes Save the primary (ink) button", () => {

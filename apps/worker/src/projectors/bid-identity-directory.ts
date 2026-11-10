@@ -126,6 +126,8 @@ async function mergeIdentity(
         phone: retired.phone,
         emailVerified: retired.emailVerified,
         deletionRequestedAt: retired.deletionRequestedAt,
+        timeZoneMode: retired.timeZoneMode,
+        timeZone: retired.timeZone,
         identityCreatedAt: retired.identityCreatedAt,
         replicatedAt,
         lastEventId: row.id,
@@ -150,6 +152,8 @@ async function mergeIdentity(
         name = canonical.name,
         image = canonical.image,
         phone = canonical.phone,
+        time_zone_mode = canonical.time_zone_mode,
+        time_zone = canonical.time_zone,
         email_verified = canonical.email_verified,
         deletion_requested_at = canonical.deletion_requested_at,
         merged_into_subject_id = ${payload.subjectId},
@@ -182,6 +186,8 @@ export async function applyBidIdentityDirectoryEvent(
         ...(payload.name !== undefined ? { name: payload.name } : {}),
         ...(payload.image !== undefined ? { image: payload.image } : {}),
         ...(payload.phone !== undefined ? { phone: payload.phone } : {}),
+        ...(payload.timeZoneMode !== undefined ? { timeZoneMode: payload.timeZoneMode } : {}),
+        ...(payload.timeZone !== undefined ? { timeZone: payload.timeZone } : {}),
       });
       return;
     }

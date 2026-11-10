@@ -7,6 +7,7 @@ import { EmailChangeEditor } from "@/components/email-change-editor.client";
 import { PersonalNameForm } from "@/components/personal-name-form.client";
 import { PhoneEditor } from "@/components/phone-editor.client";
 import { toAccountViewer } from "@/components/shell/account-viewer";
+import { TimeZoneSection } from "@/components/time-zone-section.client";
 import { loadAccountSession } from "@/server/application/load-account-session";
 import { getLaxAccountContainer } from "@/server/container";
 import { resolveProfileContact } from "@/server/domain/account-contact.vm";
@@ -28,11 +29,12 @@ export default async function PersonalDetailsPage() {
     withLiveName: true,
     withLiveContact: true,
     withLiveAddresses: true,
+    withLiveTimeZone: true,
   });
   if (session.status === "unavailable")
     return <AccountUnavailable retryHref={ACCOUNT_ROUTES.profile} />;
   if (session.status !== "ok") redirect(`/api/auth/login?returnTo=${ACCOUNT_ROUTES.profile}`);
-  const { overview, liveContact, liveAddresses } = session;
+  const { overview, liveContact, liveAddresses, liveTimeZone } = session;
   const { config } = getLaxAccountContainer();
   const contact = resolveProfileContact(overview, liveContact);
   const sections = buildProfileSections(
@@ -111,6 +113,17 @@ export default async function PersonalDetailsPage() {
           ) : null}
         </AccountSection>
       ))}
+      <AccountSection
+        id="time-zone"
+        title="Time zone for emails and dates"
+        description="The time zone we use for the times in your emails and in LAX Bid."
+      >
+        <TimeZoneSection
+          initial={liveTimeZone}
+          at={new Date().toISOString()}
+          returnTo={ACCOUNT_ROUTES.profile}
+        />
+      </AccountSection>
       <AccountSection
         id="addresses"
         title="Addresses"

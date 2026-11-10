@@ -1,6 +1,7 @@
 import { relations, sql } from "drizzle-orm";
 import {
   boolean,
+  check,
   index,
   integer,
   jsonb,
@@ -62,6 +63,18 @@ export const user = pgTable(
       withTimezone: true,
     }),
     twoFactorEnabled: boolean("two_factor_enabled").notNull().default(false),
+    /**
+     * How LAX Account picks the zone for this person's emails and dates: "automatic" follows the
+     * device, "fixed" always uses `timeZone`.
+     */
+    timeZoneMode: text("time_zone_mode", { enum: ["automatic", "fixed"] })
+      .notNull()
+      .default("automatic"),
+    /**
+     * An IANA place zone. Fixed mode: the city the person chose. Automatic mode: the zone their
+     * device last reported, or null before it has.
+     */
+    timeZone: text("time_zone"),
     deletionRequestedAt: timestamp("deletion_requested_at", {
       mode: "date",
       withTimezone: true,
@@ -96,6 +109,15 @@ export const user = pgTable(
       .on(table.phoneNumber)
       .where(sql`${table.phoneNumber} IS NOT NULL`),
     index("user_merged_into_subject_idx").on(table.mergedIntoSubjectId),
+    check("user_time_zone_mode_valid", sql`${table.timeZoneMode} IN ('automatic', 'fixed')`),
+    check(
+      "user_time_zone_names_a_place",
+      sql`${table.timeZone} IS NULL OR (position('/' in ${table.timeZone}) > 1 AND ${table.timeZone} NOT LIKE 'Etc/%')`,
+    ),
+    check(
+      "user_fixed_time_zone_present",
+      sql`${table.timeZoneMode} <> 'fixed' OR ${table.timeZone} IS NOT NULL`,
+    ),
   ],
 );
 

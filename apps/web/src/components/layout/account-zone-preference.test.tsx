@@ -1,0 +1,133 @@
+// The device is in London unless a test says otherwise.
+process.env.TZ = "Europe/London";
+
+import { type ZonePreferencePort, useZonePreference } from "@auction/ui/time";
+import { act, render } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { AccountZonePreference } from "./account-zone-preference";
+
+const refresh = vi.hoisted(() => vi.fn());
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh }) }));
+
+const client = vi.hoisted(() => ({
+  saveAccountFixedZone: vi.fn(),
+  saveAccountAutomaticZone: vi.fn(),
+  reportDeviceZone: vi.fn(),
+}));
+vi.mock("@/lib/data/http/account-time-zone.client", () => client);
+
+const device = vi.hoisted(() => ({ zone: "Europe/London" as string | null }));
+vi.mock("@auction/datetime", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@auction/datetime")>()),
+  deviceTimeZone: () => device.zone,
+}));
+
+let port: ZonePreferencePort;
+function Probe() {
+  port = useZonePreference();
+  return null;
+}
+
+describe("AccountZonePreference", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    device.zone = "Europe/London";
+    document.cookie = "lax_tz=; path=/; max-age=0";
+    client.saveAccountFixedZone.mockResolvedValue(true);
+    client.saveAccountAutomaticZone.mockResolvedValue(true);
+    client.reportDeviceZone.mockResolvedValue(true);
+  });
+
+  function renderProbe(timeZone: { mode: "automatic" | "fixed"; zone: string | null } | null) {
+    render(
+      <AccountZonePreference timeZone={timeZone}>
+        <Probe />
+      </AccountZonePreference>,
+    );
+  }
+
+  describe("signed in", () => {
+    it("saves a chosen city to LAX Account, not to the cookie, and refreshes the page", async () => {
+      renderProbe({ mode: "automatic", zone: "Europe/London" });
+      await act(async () => {
+        await port.save("Asia/Tokyo");
+      });
+      expect(client.saveAccountFixedZone).toHaveBeenCalledWith("Asia/Tokyo");
+      expect(document.cookie).not.toContain("lax_tz=fixed");
+      expect(refresh).toHaveBeenCalledOnce();
+    });
+
+    it("fails the save when LAX Account does not accept it, so the sheet says so inline", async () => {
+      client.saveAccountFixedZone.mockResolvedValue(false);
+      renderProbe({ mode: "fixed", zone: "Asia/Tokyo" });
+      await expect(port.save("Europe/Paris")).rejects.toThrow();
+      expect(refresh).not.toHaveBeenCalled();
+    });
+
+    it("follows the device by saving automatic with the device's zone", async () => {
+      device.zone = "America/New_York";
+      renderProbe({ mode: "fixed", zone: "Asia/Tokyo" });
+      await act(async () => {
+        await port.followDevice();
+      });
+      expect(client.saveAccountAutomaticZone).toHaveBeenCalledWith("America/New_York");
+      expect(document.cookie).toContain("lax_tz=America%2FNew_York");
+      expect(refresh).toHaveBeenCalledOnce();
+    });
+
+    it("says it saves to the Account", () => {
+      renderProbe({ mode: "fixed", zone: "Asia/Tokyo" });
+      expect(port.savedNote).toMatch(/LAX Account/);
+    });
+
+    it("tells Account the device's zone on a visit while automatic and it differs", () => {
+      device.zone = "Asia/Tokyo";
+      renderProbe({ mode: "automatic", zone: "Europe/London" });
+      expect(client.reportDeviceZone).toHaveBeenCalledWith("Asia/Tokyo");
+    });
+
+    it("does not report when the stored zone is already the device's", () => {
+      renderProbe({ mode: "automatic", zone: "Europe/London" });
+      expect(client.reportDeviceZone).not.toHaveBeenCalled();
+    });
+
+    it("never reports over a city the person fixed", () => {
+      device.zone = "Asia/Tokyo";
+      renderProbe({ mode: "fixed", zone: "Europe/London" });
+      expect(client.reportDeviceZone).not.toHaveBeenCalled();
+    });
+
+    it("does not report when the device has no usable zone", () => {
+      device.zone = null;
+      renderProbe({ mode: "automatic", zone: "Europe/London" });
+      expect(client.reportDeviceZone).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("signed out", () => {
+    it("saves a chosen city to the lax_tz cookie and never calls LAX Account", async () => {
+      renderProbe(null);
+      await act(async () => {
+        await port.save("Asia/Tokyo");
+      });
+      expect(document.cookie).toContain("lax_tz=fixed%3AAsia%2FTokyo");
+      expect(client.saveAccountFixedZone).not.toHaveBeenCalled();
+      expect(refresh).not.toHaveBeenCalled();
+    });
+
+    it("follows the device through the cookie only", async () => {
+      renderProbe(null);
+      await act(async () => {
+        await port.followDevice();
+      });
+      expect(client.saveAccountAutomaticZone).not.toHaveBeenCalled();
+      expect(document.cookie).toContain("lax_tz=Europe%2FLondon");
+    });
+
+    it("says it saves on this device, and reports nothing", () => {
+      renderProbe(null);
+      expect(port.savedNote).toMatch(/this device/);
+      expect(client.reportDeviceZone).not.toHaveBeenCalled();
+    });
+  });
+});
