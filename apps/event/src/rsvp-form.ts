@@ -1,3 +1,4 @@
+import { formatWeekdayDateTime } from "@auction/datetime";
 import {
   CATALOGUE_URL,
   EVENTS_EMAIL,
@@ -263,15 +264,7 @@ export class RsvpFormController {
     if (!startsAt) return null;
     const date = new Date(startsAt);
     if (Number.isNaN(date.getTime())) return null;
-    return date.toLocaleString("en-GB", {
-      weekday: "long",
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-      timeZone: "Europe/London",
-    });
+    return formatWeekdayDateTime(date, "Europe/London");
   }
 
   private renderSuccess() {

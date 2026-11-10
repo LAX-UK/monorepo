@@ -1,3 +1,4 @@
+import { formatDate } from "@auction/datetime";
 import { BUSINESS_TIME_ZONE } from "@auction/domain";
 import type { IEmailService } from "@auction/email";
 import type {
@@ -15,13 +16,6 @@ import {
   type IStaffAdministrators,
   staffNoticeAudience,
 } from "../services/staff/staff-role-notices.js";
-
-const dateFormat = new Intl.DateTimeFormat("en-GB", {
-  timeZone: BUSINESS_TIME_ZONE,
-  day: "numeric",
-  month: "long",
-  year: "numeric",
-});
 
 type Notice = {
   readonly recipient: StaffNoticeRecipient;
@@ -78,7 +72,7 @@ export class StaffRoleExpiryNotifier implements IStaffRoleExpiryNotifier {
     const { recipient, audience, ended } = notice;
     const roleLabel = staffRoleLabelOn(ended.product, ended.role);
     const productLabel = laxStaffPlatform(ended.product).label;
-    const endedOnDisplay = dateFormat.format(ended.endedAt);
+    const endedOnDisplay = formatDate(ended.endedAt, BUSINESS_TIME_ZONE, { month: "long" });
     const staffName = subject?.name ?? "A team member";
 
     await this.dispatcher.dispatch(

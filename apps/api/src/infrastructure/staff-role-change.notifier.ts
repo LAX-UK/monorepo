@@ -1,3 +1,4 @@
+import { formatDate } from "@auction/datetime";
 import { BUSINESS_TIME_ZONE } from "@auction/domain";
 import type { IEmailService } from "@auction/email";
 import type { IStaffNoticeRecipientReader } from "@auction/persistence/interfaces";
@@ -11,16 +12,9 @@ import {
   staffNoticeAudience,
 } from "../services/staff/staff-role-notices.js";
 
-const dateFormat = new Intl.DateTimeFormat("en-GB", {
-  timeZone: BUSINESS_TIME_ZONE,
-  day: "numeric",
-  month: "long",
-  year: "numeric",
-});
-
 /** The last day a role is held: the day before the moment it ends. */
 function lastDay(endsAt: Date): string {
-  return dateFormat.format(new Date(endsAt.getTime() - 1));
+  return formatDate(new Date(endsAt.getTime() - 1), BUSINESS_TIME_ZONE, { month: "long" });
 }
 
 /**

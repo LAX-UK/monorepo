@@ -1,3 +1,4 @@
+import { formatWeekdayDate } from "@auction/datetime";
 import { ASSETS, EVENT_ORIGIN, eventAssetPath } from "./config.js";
 import type { OnsiteEventPublicConfig } from "./rsvp-api.js";
 
@@ -12,15 +13,7 @@ function buildDescription(config?: OnsiteEventPublicConfig): string {
   if (config.startsAt) {
     const startsAt = new Date(config.startsAt);
     if (!Number.isNaN(startsAt.getTime())) {
-      parts.push(
-        new Intl.DateTimeFormat("en-GB", {
-          weekday: "long",
-          day: "numeric",
-          month: "long",
-          year: "numeric",
-          timeZone: "Europe/London",
-        }).format(startsAt),
-      );
+      parts.push(formatWeekdayDate(startsAt, "Europe/London"));
     }
   }
   if (config.venue?.trim()) parts.push(config.venue.trim());

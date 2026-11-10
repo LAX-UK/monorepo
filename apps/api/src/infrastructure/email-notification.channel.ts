@@ -1,3 +1,4 @@
+import { LONDON_TIME_ZONE, formatDateTime } from "@auction/datetime";
 import type { TemplateName, TemplateVarsByName } from "@auction/email";
 import { formatMoneyMajor } from "@auction/email";
 import type { IEmailService } from "@auction/email";
@@ -23,15 +24,6 @@ import {
 const SUPPORT_EMAIL = "support@lax.bid";
 
 const OPT_OUTABLE: ReadonlySet<string> = new Set(OPT_OUT_TYPES);
-
-const CLOSES_AT = new Intl.DateTimeFormat("en-GB", {
-  day: "numeric",
-  month: "short",
-  year: "numeric",
-  hour: "2-digit",
-  minute: "2-digit",
-  timeZone: "Europe/London",
-});
 
 /** The first word of a person's name, for "Hi Maya"; `null` when there is none. */
 function firstName(name: string): string | null {
@@ -292,7 +284,10 @@ export class EmailNotificationChannel implements INotificationChannel {
           unsubscribeUrl,
           kind: reminder?.kind ?? "hour_before_close",
           note: reminder?.note ?? null,
-          closesAt: closes && !Number.isNaN(closes.getTime()) ? CLOSES_AT.format(closes) : null,
+          closesAt:
+            closes && !Number.isNaN(closes.getTime())
+              ? formatDateTime(closes, LONDON_TIME_ZONE, { engineSept: true })
+              : null,
         };
       }
       case "payment-reminder": {

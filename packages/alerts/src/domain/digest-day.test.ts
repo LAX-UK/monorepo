@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { digestDateFor, isDigestDue } from "./london-date.js";
+import { digestDateFor, isDigestDue } from "./digest-day.js";
 
 describe("digestDateFor", () => {
   it("rolls over at London midnight in summer, one hour before UTC midnight", () => {

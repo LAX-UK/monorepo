@@ -1,3 +1,4 @@
+import { dayKey } from "@auction/datetime";
 import type { AdminOrderSummary } from "@auction/shop-contracts";
 import type { AdminOrderDailyTotals } from "./ports/admin-readers.js";
 
@@ -6,20 +7,15 @@ export const ORDER_SUMMARY_DAYS = 30;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-const ukDay = new Intl.DateTimeFormat("en-CA", {
-  timeZone: "Europe/London",
-  year: "numeric",
-  month: "2-digit",
-  day: "2-digit",
-});
+const ukDay = (at: Date) => dayKey(at, "Europe/London");
 
 /** "YYYY-MM-DD" for each of the last `days` UK days ending today, oldest first. */
 export function ukDayKeys(now: Date, days: number, offsetDays = 0): string[] {
   const keys: string[] = [];
   // Noon UTC never crosses a UK date boundary, whatever the clocks are doing.
-  const noon = new Date(`${ukDay.format(now)}T12:00:00.000Z`).getTime();
+  const noon = new Date(`${ukDay(now)}T12:00:00.000Z`).getTime();
   for (let i = days - 1 + offsetDays; i >= offsetDays; i -= 1) {
-    keys.push(ukDay.format(new Date(noon - i * DAY_MS)));
+    keys.push(ukDay(new Date(noon - i * DAY_MS)));
   }
   return keys;
 }

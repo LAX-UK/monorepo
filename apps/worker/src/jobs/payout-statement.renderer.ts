@@ -1,5 +1,6 @@
 import { finished } from "node:stream/promises";
 import { legalEntityFor, productCopyrightLine } from "@auction/branding";
+import { formatDate, runtimeTimeZone } from "@auction/datetime";
 import { formatPayoutReference } from "@auction/domain";
 import PDFDocument from "pdfkit";
 import type { WorkerEnv } from "../env.js";
@@ -24,8 +25,7 @@ function moneyFmt(amount: string, currency: string): string {
 }
 
 function formatPeriod(start: Date, end: Date): string {
-  const fmt = (d: Date) =>
-    d.toLocaleDateString("en-GB", { year: "numeric", month: "short", day: "numeric" });
+  const fmt = (d: Date) => formatDate(d, runtimeTimeZone(), { month: "short", engineSept: true });
   return `${fmt(start)} — ${fmt(end)}`;
 }
 

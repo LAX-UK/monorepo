@@ -1,3 +1,4 @@
+import { formatDate } from "@auction/datetime";
 import type { Database } from "@auction/db";
 import { isGuestOrderSubject } from "@auction/shop-domain";
 import { countryNameOf } from "../../application/country-name.js";
@@ -16,13 +17,6 @@ import {
   issueGuestOrderLink,
 } from "../guest-checkout/guest-order-link-token.js";
 import { createDrizzleDeliveryQuoteStaffStore } from "./drizzle-delivery-quote-staff.store.js";
-
-const dayFormat = new Intl.DateTimeFormat("en-GB", {
-  timeZone: "Europe/London",
-  day: "numeric",
-  month: "long",
-  year: "numeric",
-});
 
 const pounds = (pence: number) =>
   new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP" }).format(pence / 100);
@@ -57,7 +51,7 @@ function createQuoteMail(
         leadTimeNote: input.leadTimeNote,
         deliveryPrice: pounds(input.pricePence),
         totalPrice: pounds(row.beforeDeliveryPence + input.pricePence),
-        validUntilOn: dayFormat.format(input.holdUntil),
+        validUntilOn: formatDate(input.holdUntil, "Europe/London", { month: "long" }),
         orderUrl: await orderUrl(row.orderId, input.quote.identitySubjectId),
       });
     },

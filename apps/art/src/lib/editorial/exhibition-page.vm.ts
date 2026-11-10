@@ -6,6 +6,7 @@ import type {
 } from "@/lib/editorial/art-editorial.types";
 import { formatExhibitionDates, venueKickerLabel } from "@/lib/editorial/editorial-card.vm";
 import type { OpeningHoursRow } from "@/lib/editorial/editorial-pages.composer";
+import { formatDate } from "@auction/datetime";
 import type { PublicArtistDetail } from "@auction/shop-contracts";
 
 /** The exhibition's named gallery contact, as the API returns it. */
@@ -125,17 +126,10 @@ export type ExhibitionPressVm = {
   dateLabel: string | null;
 };
 
-const LONG_DATE = new Intl.DateTimeFormat("en-GB", {
-  day: "numeric",
-  month: "long",
-  year: "numeric",
-  timeZone: "UTC",
-});
-
 function longDate(value: string | null | undefined): string | null {
   if (!value) return null;
   const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? null : LONG_DATE.format(date);
+  return Number.isNaN(date.getTime()) ? null : formatDate(date, "UTC", { month: "long" });
 }
 
 /** Stories of kind `press`, in the order the API returns them. */

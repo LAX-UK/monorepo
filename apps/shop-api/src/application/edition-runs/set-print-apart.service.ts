@@ -1,3 +1,4 @@
+import { formatTimeWithZone } from "@auction/datetime";
 import { SHOP_API_ERROR_CODES } from "@auction/shop-contracts";
 import {
   type EditionRunSpec,
@@ -48,13 +49,7 @@ export type ReturnPrintResult = { artworkId: string; version: string };
 
 /** "14:32 GMT": when a reservation ends, in London time. */
 function londonTime(at: Date): string {
-  return new Intl.DateTimeFormat("en-GB", {
-    hour: "2-digit",
-    minute: "2-digit",
-    timeZone: "Europe/London",
-    timeZoneName: "short",
-    hour12: false,
-  }).format(at);
+  return formatTimeWithZone(at, "Europe/London");
 }
 
 function printLabel(print: StoredPrint, run: EditionRunSpec): string {

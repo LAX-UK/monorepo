@@ -1,4 +1,5 @@
 import { SHOP_HELP_CONTACT } from "@/content/policies/help";
+import { dayKey, formatWeekdayDayMonth } from "@auction/datetime";
 import type { ShopFulfilmentOption } from "@auction/shop-contracts";
 import { fulfilmentSurchargePence } from "@auction/shop-domain";
 import { formatGbpPence } from "@auction/shop-portal/vm";
@@ -59,14 +60,7 @@ export function workingDaysLabel(window: WorkingDayWindow): string {
 
 /** Today's calendar date in London, as a UTC midnight so day arithmetic ignores clock changes. */
 export function londonToday(now: Date): Date {
-  const parts = new Intl.DateTimeFormat("en-GB", {
-    timeZone: "Europe/London",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(now);
-  const part = (type: string) => Number(parts.find((p) => p.type === type)?.value);
-  return new Date(Date.UTC(part("year"), part("month") - 1, part("day")));
+  return new Date(`${dayKey(now, "Europe/London")}T00:00:00Z`);
 }
 
 /** The date `days` working days (Monday to Friday) after `from`. Bank holidays are not known. */
@@ -81,14 +75,8 @@ export function addWorkingDays(from: Date, days: number): Date {
   return date;
 }
 
-const dayFormat = new Intl.DateTimeFormat("en-GB", {
-  timeZone: "UTC",
-  weekday: "short",
-  day: "numeric",
-  month: "short",
-});
-
-const formatDay = (date: Date) => dayFormat.format(date).replace(",", "");
+const formatDay = (date: Date) =>
+  formatWeekdayDayMonth(date, "UTC", { engineSept: true }).replace(",", "");
 
 export type CheckoutDeliveryOptionVm = {
   value: CheckoutDeliveryChoice;

@@ -4,6 +4,7 @@ import {
   WITHDRAWN_FROM_LABEL,
   type WhereItIs,
 } from "@auction/artwork-register-contracts";
+import { formatDate, formatDateTime } from "@auction/datetime";
 import type { ListingLot } from "@auction/persistence/interfaces";
 import type { ListingFacts } from "./listing-facts.js";
 import type { ListingLinks } from "./listing-links.js";
@@ -17,24 +18,8 @@ export type PresentInput = {
 export type Presented = { detail: string | null; link: string | null };
 
 const LONDON = "Europe/London";
-const DAY = new Intl.DateTimeFormat("en-GB", {
-  day: "numeric",
-  month: "short",
-  year: "numeric",
-  timeZone: LONDON,
-});
-const DAY_TIME = new Intl.DateTimeFormat("en-GB", {
-  day: "numeric",
-  month: "short",
-  year: "numeric",
-  hour: "2-digit",
-  minute: "2-digit",
-  hourCycle: "h23",
-  timeZone: LONDON,
-});
-
-const day = (value: Date) => DAY.format(value);
-const dayTime = (value: Date) => DAY_TIME.format(value);
+const day = (value: Date) => formatDate(value, LONDON, { month: "short", engineSept: true });
+const dayTime = (value: Date) => formatDateTime(value, LONDON, { engineSept: true });
 
 function joined(...parts: (string | null | undefined)[]): string {
   return parts.filter((part): part is string => Boolean(part)).join(" · ");

@@ -50,9 +50,10 @@ const role = (value: unknown) =>
     ? ROLE_LABEL[value as LegalEntityMemberRole]
     : null;
 
+const POUNDS = new Intl.NumberFormat("en-GB", { minimumFractionDigits: 2 });
 const pounds = (value: unknown) =>
   typeof value === "string" || typeof value === "number"
-    ? `£${Number(value).toLocaleString("en-GB", { minimumFractionDigits: 2 })}`
+    ? `£${POUNDS.format(Number(value))}`
     : null;
 
 /** The one line of detail each kind shows, or nothing. */
