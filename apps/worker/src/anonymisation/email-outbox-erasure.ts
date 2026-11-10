@@ -118,57 +118,62 @@ async function stopQueuedMail(tx: ProjectorDbConnection, scope: Scope): Promise<
   return rows.map((row) => row.id);
 }
 
+export type MailQueueErasureCounts = { email_outbox: number; email_event: number };
+
 /**
  * Removes what the mail queue holds about a purged person. Rows stay as the record that a message
  * was sent, but lose anything that identifies the recipient: an address in the key, the recipient
  * snapshot, the message variables (names, addresses, calendar entries) and the provider's error
- * text, which can quote the address. Returns the rows changed. It sets fixed values, so a second
- * run changes nothing more.
+ * text, which can quote the address. The provider's delivery reports for those messages quote the
+ * recipient and the bounce text, so their bodies are emptied; the events stay as counts of what
+ * happened.
+ *
+ * The person's rows are found once, before anything is rewritten, and both steps work on that set:
+ * scrubbing a key stops a row matching on it, so finding them again would miss their events. It
+ * sets fixed values, so a second run changes nothing more.
  */
-export async function scrubEmailOutbox(tx: ProjectorDbConnection, scope: Scope): Promise<number> {
+export async function scrubMailQueue(
+  tx: ProjectorDbConnection,
+  scope: Scope,
+): Promise<MailQueueErasureCounts> {
   const stopped = await stopQueuedMail(tx, scope);
   const match = await rowsOfThePerson(tx, scope);
-  const scrubbed = await tx
-    .update(emailOutbox)
-    .set({
-      idempotencyKey: sql`CASE WHEN ${KEY_HOLDS_ADDRESS} THEN ${NEUTRAL_KEY} ELSE ${emailOutbox.idempotencyKey} END`,
-      toSnapshot: null,
-      toSnapshotPurgeAt: null,
-      vars: NO_VARS,
-      lastError: sql`CASE WHEN ${emailOutbox.lastError} = ${ACCOUNT_ERASED_REASON} THEN ${emailOutbox.lastError} ELSE NULL END`,
-    })
-    .where(and(match, STILL_HOLDS_PERSONAL_DATA))
-    .returning({ id: emailOutbox.id });
-  return new Set([...stopped, ...scrubbed.map((row) => row.id)]).size;
-}
+  const found = await tx
+    .select({ id: emailOutbox.id, messageId: emailOutbox.messageId })
+    .from(emailOutbox)
+    .where(match);
+  const ids = found.map((row) => row.id);
+  const messageIds = found.flatMap((row) => (row.messageId ? [row.messageId] : []));
 
-/**
- * The provider's delivery reports for those messages quote the recipient and the bounce text, so
- * their bodies are emptied. The events stay as counts of what happened.
- */
-export async function scrubEmailEvents(tx: ProjectorDbConnection, scope: Scope): Promise<number> {
-  const match = await rowsOfThePerson(tx, scope);
-  const rows = await tx
-    .update(emailEvent)
-    .set({ payload: NO_VARS })
-    .where(
-      and(
-        sql`${emailEvent.payload} <> '{}'::jsonb`,
-        or(
-          inArray(
-            emailEvent.outboxId,
-            tx.select({ id: emailOutbox.id }).from(emailOutbox).where(match),
-          ),
-          inArray(
-            emailEvent.messageId,
-            tx
-              .select({ messageId: emailOutbox.messageId })
-              .from(emailOutbox)
-              .where(and(match, isNotNull(emailOutbox.messageId))),
-          ),
-        ),
-      ),
-    )
-    .returning({ id: emailEvent.id });
-  return rows.length;
+  const scrubbed =
+    ids.length === 0
+      ? []
+      : await tx
+          .update(emailOutbox)
+          .set({
+            idempotencyKey: sql`CASE WHEN ${KEY_HOLDS_ADDRESS} THEN ${NEUTRAL_KEY} ELSE ${emailOutbox.idempotencyKey} END`,
+            toSnapshot: null,
+            toSnapshotPurgeAt: null,
+            vars: NO_VARS,
+            lastError: sql`CASE WHEN ${emailOutbox.lastError} = ${ACCOUNT_ERASED_REASON} THEN ${emailOutbox.lastError} ELSE NULL END`,
+          })
+          .where(and(inArray(emailOutbox.id, ids), STILL_HOLDS_PERSONAL_DATA))
+          .returning({ id: emailOutbox.id });
+
+  // The provider's reports link to a message by its id; a webhook may not know the outbox row.
+  const reported = anyOf(
+    ids.length > 0 ? inArray(emailEvent.outboxId, ids) : undefined,
+    messageIds.length > 0 ? inArray(emailEvent.messageId, messageIds) : undefined,
+  );
+  const events = reported
+    ? await tx
+        .update(emailEvent)
+        .set({ payload: NO_VARS })
+        .where(and(sql`${emailEvent.payload} <> '{}'::jsonb`, reported))
+        .returning({ id: emailEvent.id })
+    : [];
+  return {
+    email_outbox: new Set([...stopped, ...scrubbed.map((row) => row.id)]).size,
+    email_event: events.length,
+  };
 }

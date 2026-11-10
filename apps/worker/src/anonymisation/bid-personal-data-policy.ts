@@ -23,7 +23,7 @@ import type { AnyPgColumn, PgTable } from "drizzle-orm/pg-core";
 import type { ProjectorDbConnection } from "../interfaces/worker-db.types.js";
 import type { BidAnonymisationScope } from "./bid-anonymisation-scope.js";
 import { eraseCollectionBookings } from "./collection-booking-erasure.js";
-import { scrubEmailEvents, scrubEmailOutbox } from "./email-outbox-erasure.js";
+import { scrubMailQueue } from "./email-outbox-erasure.js";
 import { scrubNotificationOutbox } from "./notification-outbox-erasure.js";
 
 /**
@@ -165,7 +165,8 @@ const alertSubscribersRule: BidAnonymisationRule = {
  * of the person lose what identifies the recipient: an address in the idempotency key (collection
  * emails and the organisation notice before keys were made from an id or a hash), the recipient
  * snapshot, the message variables (names, addresses, calendar entries) and the provider's error
- * text. That covers the person's own rows, mail with no account sent to an address their rows
+ * text, and the provider's delivery reports for those messages (`email_event`, reported with the
+ * counts). That covers the person's own rows, mail with no account sent to an address their rows
  * were sent to, and collection emails to a collector their bookings named. Their queued mail is
  * stopped, except the confirmation of the erasure. Must run before the collection booking rule,
  * which clears the collector address this rule matches on.
@@ -180,16 +181,9 @@ const emailOutboxRule: BidAnonymisationRule = {
     "vars",
     "last_error",
     "status",
+    "email_event.payload",
   ],
-  apply: (tx, scope) => scrubEmailOutbox(tx, scope),
-};
-
-/** The provider's delivery reports for those messages quote the recipient and bounce text. */
-const emailEventRule: BidAnonymisationRule = {
-  table: "email_event",
-  treatment: "scrub",
-  fields: ["payload"],
-  apply: (tx, scope) => scrubEmailEvents(tx, scope),
+  apply: (tx, scope) => scrubMailQueue(tx, scope),
 };
 
 /** Dispatched notifications keep their row but not the message, which names other people. */
@@ -293,7 +287,6 @@ export const BID_ANONYMISATION_RULES: readonly BidAnonymisationRule[] = [
   deleteBySubject(marketingClickIds, "marketing_click_ids", marketingClickIds.userId),
   deleteBySubject(userUiPreference, "user_ui_preference", userUiPreference.userId),
   emailOutboxRule,
-  emailEventRule,
   notificationOutboxRule,
   collectionBookingRule,
   enquiryRule,

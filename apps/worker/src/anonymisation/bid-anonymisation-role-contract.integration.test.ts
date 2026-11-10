@@ -45,7 +45,9 @@ describe.skipIf(!ownerUrl || !workerUrl)(
     const GRANT_MISSING_TO_BE_FIXED = ["marketing_enquiry"];
     const scrubbed = BID_ANONYMISATION_RULES.filter((rule) => rule.treatment === "scrub")
       .map((rule) => rule.table)
-      .filter((table) => !GRANT_MISSING_TO_BE_FIXED.includes(table));
+      .filter((table) => !GRANT_MISSING_TO_BE_FIXED.includes(table))
+      // The mail queue rule also scrubs the provider's reports.
+      .concat("email_event");
 
     it.each(scrubbed)("lets worker_app update %s", async (table) => {
       const result = await owner.execute<{ allowed: boolean }>(sql`

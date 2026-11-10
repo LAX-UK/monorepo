@@ -45,11 +45,12 @@ describe.skipIf(!ownerUrl || !workerUrl)("anonymising the mail queue (integratio
   const worker = createDb(workerUrl!);
   const outboxIds: string[] = [];
   const notificationIds: string[] = [];
+  const eventIds: string[] = [];
   let bookingId = "";
   let otherBookingId = "";
   let eventId = 0;
 
-  const rules = ["email_outbox", "email_event", "notification_outbox"].map((table) => {
+  const rules = ["email_outbox", "notification_outbox"].map((table) => {
     const rule = BID_ANONYMISATION_RULES.find((r) => r.table === table);
     if (!rule) throw new Error(`No ${table} rule in the policy`);
     return rule;
@@ -141,6 +142,7 @@ describe.skipIf(!ownerUrl || !workerUrl)("anonymising the mail queue (integratio
   });
 
   afterAll(async () => {
+    if (eventIds.length > 0) await owner.delete(emailEvent).where(inArray(emailEvent.id, eventIds));
     if (outboxIds.length > 0) {
       await owner.delete(emailEvent).where(inArray(emailEvent.outboxId, outboxIds));
       await owner.delete(emailOutbox).where(inArray(emailOutbox.id, outboxIds));
@@ -302,6 +304,34 @@ describe.skipIf(!ownerUrl || !workerUrl)("anonymising the mail queue (integratio
     expect(events.find((e) => e.outboxId === theirs)?.payload).toEqual(report);
   });
 
+  it("empties the reports of a collector's old-key row, which the provider links by message id only", async () => {
+    const old = await queued({
+      userId: null,
+      template: "collection-collector-notice",
+      idempotencyKey: `collection-reminder:${bookingId}:2032-03-01T12:00:00.000Z:${collectorAddress}`,
+      toEmailHash: emailHash(collectorAddress),
+      messageId: `msg-${run}-collector`,
+    });
+    const report = { Recipient: collectorAddress, Content: `bounce for ${collectorAddress}` };
+    const [event] = await owner
+      .insert(emailEvent)
+      .values({
+        outboxId: null,
+        messageId: `msg-${run}-collector`,
+        type: "bounce",
+        payload: report,
+      })
+      .returning({ id: emailEvent.id });
+    eventIds.push((event as { id: string }).id);
+    await apply();
+    expect(await read(old)).toMatchObject({ idempotencyKey: `erased:${old}` });
+    const [after] = await owner
+      .select({ payload: emailEvent.payload })
+      .from(emailEvent)
+      .where(eq(emailEvent.id, (event as { id: string }).id));
+    expect(after?.payload).toEqual({});
+  });
+
   it("empties dispatched notifications and leaves waiting ones", async () => {
     const [sent, waiting] = await owner
       .insert(notificationOutbox)
@@ -342,6 +372,9 @@ describe.skipIf(!ownerUrl || !workerUrl)("anonymising the mail queue (integratio
       idempotencyKey: `collection-created:9:${otherAddress}`,
       toSnapshot: otherAddress,
     });
-    expect(await apply()).toEqual({ email_outbox: 0, email_event: 0, notification_outbox: 0 });
+    expect(await apply()).toEqual({
+      email_outbox: { email_outbox: 0, email_event: 0 },
+      notification_outbox: 0,
+    });
   });
 });
