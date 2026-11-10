@@ -5,7 +5,6 @@ export {
   COLLECTION_JOURNEY_IDS,
   COLLECTION_JOURNEY_NAMES,
   COLLECTION_JOURNEY_REFERENCES,
-  collectionJourneyVisits,
   workday,
 } from "../../../../packages/db/src/seed/dev/collection-journey-ids";
 

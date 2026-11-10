@@ -12,13 +12,12 @@ import type { drizzle } from "drizzle-orm/node-postgres";
 import * as schema from "../../schema/index.js";
 import {
   addDays,
-  collectionJourneyVisits,
   COLLECTION_JOURNEY_IDS as ids,
-  londonDay,
   COLLECTION_JOURNEY_NAMES as names,
   COLLECTION_JOURNEY_REFERENCES as references,
   workday,
 } from "./collection-journey-ids.js";
+import { collectionJourneyVisits, londonDay } from "./collection-journey-visits.js";
 
 type Db = ReturnType<typeof drizzle<typeof schema>>;
 
