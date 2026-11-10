@@ -56,6 +56,8 @@ type Props = {
   deliveryMode: SaleDeliveryMode;
   saleStartTime: Date;
   saleEndTime: Date;
+  /** The sale's zone, which the lot's typed times are read in. */
+  timeZone: string;
   categories: CategoryNode[];
   englishOnlyAuctionsLocked: boolean;
   /** After the lot is added; the page refreshes unless this navigates. */
@@ -127,6 +129,7 @@ export function EmergencyAddLotDialog({
   deliveryMode,
   saleStartTime,
   saleEndTime,
+  timeZone,
   categories,
   englishOnlyAuctionsLocked,
   onAdded,
@@ -151,8 +154,8 @@ export function EmergencyAddLotDialog({
     [englishOnlyAuctionsLocked],
   );
   const ctx = useMemo(
-    () => ({ saleStartTime, saleEndTime, deliveryMode, englishOnlyAuctionsLocked }),
-    [deliveryMode, englishOnlyAuctionsLocked, saleEndTime, saleStartTime],
+    () => ({ timeZone, saleStartTime, saleEndTime, deliveryMode, englishOnlyAuctionsLocked }),
+    [deliveryMode, englishOnlyAuctionsLocked, saleEndTime, saleStartTime, timeZone],
   );
 
   const patch = (next: Partial<Draft>) => setDraft((prev) => ({ ...prev, ...next }));
@@ -167,11 +170,11 @@ export function EmergencyAddLotDialog({
       categoryIds: draft.categoryIds,
       auctionType: draft.auctionType,
       startingPrice: draft.startingPence === null ? "" : (draft.startingPence / 100).toFixed(2),
-      startTime: isoToFormString(draft.start),
-      endTime: isoToFormString(draft.end),
+      startTime: isoToFormString(draft.start, timeZone),
+      endTime: isoToFormString(draft.end, timeZone),
     };
     return safeParseEmergencyAddLotForApi(values, ctx);
-  }, [draft, ctx]);
+  }, [draft, ctx, timeZone]);
 
   const errors: Partial<Record<FieldKey, string>> = {};
   const otherProblems: string[] = [];
@@ -398,6 +401,7 @@ export function EmergencyAddLotDialog({
             endError={errors.endTime}
             disabled={busy}
             idPrefix={FORM_ID}
+            timeZone={timeZone}
           />
         )}
       </form>

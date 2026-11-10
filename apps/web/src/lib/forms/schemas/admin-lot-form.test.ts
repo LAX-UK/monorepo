@@ -35,6 +35,7 @@ const base: AdminLotFormValues = {
   dutchDecrementIntervalMs: "60000",
   images: [],
   imageAlts: [],
+  timeZone: "Europe/London",
   startTime: "2026-05-05T10:00",
   endTime: "2026-05-06T10:00",
 };

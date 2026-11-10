@@ -1,11 +1,12 @@
 "use client";
 
+import { TimesZoneNote } from "@/components/admin/forms/times-zone-note";
 import { DateTimeInput, Field } from "@auction/staff-ui";
 import { toDatetimeFormString } from "@auction/ui/lib/datetime";
 
-/** The wall-clock string the sale-setup validators take, from the kit's ISO instant. */
-export function isoToFormString(iso: string | null): string {
-  return iso ? toDatetimeFormString(new Date(iso)) : "";
+/** The wall-clock string the sale-setup validators take, from the kit's ISO instant in `zone`. */
+export function isoToFormString(iso: string | null, zone: string): string {
+  return iso ? toDatetimeFormString(new Date(iso), zone) : "";
 }
 
 type Props = {
@@ -16,6 +17,8 @@ type Props = {
   startError?: string | undefined;
   endError?: string | undefined;
   disabled?: boolean;
+  /** The sale's zone: the two moments are typed and shown in it. */
+  timeZone: string;
   /** Prefix for the two fields' ids, so an error summary can link to them. */
   idPrefix?: string;
 };
@@ -29,26 +32,42 @@ export function LotWindowFields({
   startError,
   endError,
   disabled = false,
+  timeZone,
   idPrefix,
 }: Props) {
   return (
-    <div className="grid gap-4 sm:grid-cols-2">
-      <Field
-        label="Lot opens"
-        error={startError}
-        disabled={disabled}
-        {...(idPrefix ? { id: `${idPrefix}-startTime` } : {})}
-      >
-        <DateTimeInput value={start} onValueChange={onStartChange} timeLabel="Lot opening time" />
-      </Field>
-      <Field
-        label="Lot closes"
-        error={endError}
-        disabled={disabled}
-        {...(idPrefix ? { id: `${idPrefix}-endTime` } : {})}
-      >
-        <DateTimeInput value={end} onValueChange={onEndChange} timeLabel="Lot closing time" />
-      </Field>
+    <div className="flex flex-col gap-3">
+      <TimesZoneNote zone={timeZone} />
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field
+          label="Lot opens"
+          error={startError}
+          disabled={disabled}
+          {...(idPrefix ? { id: `${idPrefix}-startTime` } : {})}
+        >
+          <DateTimeInput
+            value={start}
+            onValueChange={onStartChange}
+            timeLabel="Lot opening time"
+            timeZone={timeZone}
+            showZone={false}
+          />
+        </Field>
+        <Field
+          label="Lot closes"
+          error={endError}
+          disabled={disabled}
+          {...(idPrefix ? { id: `${idPrefix}-endTime` } : {})}
+        >
+          <DateTimeInput
+            value={end}
+            onValueChange={onEndChange}
+            timeLabel="Lot closing time"
+            timeZone={timeZone}
+            showZone={false}
+          />
+        </Field>
+      </div>
     </div>
   );
 }

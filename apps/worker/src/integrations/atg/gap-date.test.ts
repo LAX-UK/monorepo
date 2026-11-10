@@ -27,6 +27,13 @@ describe("toWindowsTimezoneId", () => {
     expect(toWindowsTimezoneId("Europe/London")).toBe("GMT Standard Time");
   });
 
+  it("maps the zones sales are held in, current and retired spellings alike", () => {
+    expect(toWindowsTimezoneId("America/New_York")).toBe("Eastern Standard Time");
+    expect(toWindowsTimezoneId("Asia/Kolkata")).toBe("India Standard Time");
+    expect(toWindowsTimezoneId("Pacific/Auckland")).toBe("New Zealand Standard Time");
+    expect(toWindowsTimezoneId("Australia/Sydney")).toBe("AUS Eastern Standard Time");
+  });
+
   it("throws for unmapped zones instead of guessing", () => {
     expect(() => toWindowsTimezoneId("Mars/Olympus")).toThrow(/No Windows timezone mapping/);
   });

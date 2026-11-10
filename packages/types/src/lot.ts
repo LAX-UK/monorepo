@@ -27,6 +27,8 @@ export type LotSummary = {
   medium: string | null;
   startTime: Date;
   endTime: Date;
+  /** The zone of the lot's sale, which its times are quoted in. Absent for a lot with no sale. */
+  timeZone?: string;
   images: string[];
   /** Measured size and blur preview per picture, aligned with `images`; absent when none is measured. */
   imageAssets?: import("./gallery.js").GalleryImage[];
@@ -142,6 +144,15 @@ export type Lot = {
   deletedAt?: Date | null;
   deletedByUserId?: string | null;
 };
+
+/**
+ * A lot as the API sends it: the domain lot plus the time zone of its sale, which its times are
+ * quoted in. Absent for a lot with no sale. The zone belongs to the sale; the lot never stores it.
+ */
+export type WithSaleZone<T> = T & { timeZone?: string };
+
+/** A domain lot as the API sends it. */
+export type LotWithSaleZone = WithSaleZone<Lot>;
 
 /** Bidder/marketing lot detail — reserve amount withheld; met/not-met only. */
 export type PublicLotView = Omit<Lot, "reservePrice"> & {

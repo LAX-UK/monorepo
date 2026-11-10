@@ -10,6 +10,7 @@ import type {
   SalePressMentionType,
   SalePressRef,
 } from "@auction/types";
+import { DEFAULT_SALE_TIME_ZONE } from "@auction/validators";
 import { z } from "zod";
 
 function isSellingPlatform(v: unknown): v is NonNullable<Sale["sellingPlatform"]> {
@@ -190,6 +191,10 @@ const saleRowSchema = z.preprocess(toObjectRecord, z.record(z.unknown())).transf
     locationCounty: nullableString(row.locationCounty),
     locationPostcode: nullableString(row.locationPostcode),
     locationCountry: nullableString(row.locationCountry),
+    timeZone:
+      typeof row.timeZone === "string" && row.timeZone !== ""
+        ? row.timeZone
+        : DEFAULT_SALE_TIME_ZONE,
     status: row.status as Sale["status"],
     startTime: zCoerceDate.parse(row.startTime),
     endTime: zCoerceDate.parse(row.endTime),

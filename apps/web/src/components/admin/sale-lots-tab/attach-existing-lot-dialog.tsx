@@ -23,6 +23,7 @@ import {
 import { formatSaleSetupActionError } from "@/lib/admin/sale-setup/format-sale-setup-action-error";
 import { resolveLotAuctionTypePresentation } from "@/lib/presenters/lot-auction-type-presentation";
 import { notify } from "@/lib/ui/notify";
+import { formatWhen } from "@auction/datetime";
 import {
   type EntityOption,
   EntityPicker,
@@ -31,7 +32,6 @@ import {
   Notice,
   StaffButton,
   StaffDialog,
-  formatStaffDateTime,
   formatStaffMoney,
 } from "@auction/staff-ui";
 import type { CategoryNode, Lot, Sale } from "@auction/types";
@@ -40,7 +40,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from
 
 const FORM_ID = "attach-existing-lot";
 
-type SaleWindow = Pick<Sale, "deliveryMode" | "startTime" | "endTime">;
+type SaleWindow = Pick<Sale, "deliveryMode" | "startTime" | "endTime" | "timeZone">;
 
 type Props = {
   open: boolean;
@@ -104,12 +104,19 @@ export function AttachExistingLotDialog({
   const inheritsTiming = saleModeInheritsLotTiming(saleWindow.deliveryMode);
   const ctx = useMemo(
     () => ({
+      timeZone: saleWindow.timeZone,
       saleStartTime: saleWindow.startTime,
       saleEndTime: saleWindow.endTime,
       deliveryMode: saleWindow.deliveryMode,
       englishOnlyAuctionsLocked,
     }),
-    [englishOnlyAuctionsLocked, saleWindow.deliveryMode, saleWindow.endTime, saleWindow.startTime],
+    [
+      englishOnlyAuctionsLocked,
+      saleWindow.deliveryMode,
+      saleWindow.endTime,
+      saleWindow.startTime,
+      saleWindow.timeZone,
+    ],
   );
 
   useEffect(() => {
@@ -169,11 +176,11 @@ export function AttachExistingLotDialog({
   const formValues = useMemo(() => {
     if (!preview) return null;
     return {
-      ...inventoryLotToAttachReviewRow(preview, "attach-review"),
-      startTime: isoToFormString(start),
-      endTime: isoToFormString(end),
+      ...inventoryLotToAttachReviewRow(preview, "attach-review", saleWindow.timeZone),
+      startTime: isoToFormString(start, saleWindow.timeZone),
+      endTime: isoToFormString(end, saleWindow.timeZone),
     };
-  }, [preview, start, end]);
+  }, [preview, start, end, saleWindow.timeZone]);
 
   const validation = useMemo(
     () => (formValues ? validateAttachReviewSchedule(formValues, ctx) : null),
@@ -210,7 +217,7 @@ export function AttachExistingLotDialog({
     const checked = validateAttachReviewSchedule(formValues, ctx);
     if (!checked.ok) return;
     startTransition(async () => {
-      if (attachReviewScheduleChanged(preview, formValues)) {
+      if (attachReviewScheduleChanged(preview, formValues, saleWindow.timeZone)) {
         const updated = await adminUpdateLotResultAction(picked.id, {
           startTime: checked.payload.startTime,
           endTime: checked.payload.endTime,
@@ -233,7 +240,7 @@ export function AttachExistingLotDialog({
     });
   };
 
-  const windowText = `${formatStaffDateTime(saleWindow.startTime)} to ${formatStaffDateTime(saleWindow.endTime)}`;
+  const windowText = `${formatWhen(saleWindow.startTime, saleWindow.timeZone, new Date())} to ${formatWhen(saleWindow.endTime, saleWindow.timeZone, new Date())}`;
   const startingPence = preview ? moneyMinor(preview.startingPrice) : null;
 
   return (
@@ -351,6 +358,7 @@ export function AttachExistingLotDialog({
                   startError={errors.start}
                   endError={errors.end}
                   disabled={busy}
+                  timeZone={saleWindow.timeZone}
                 />
                 <p className="text-staff-xs text-staff-muted">
                   The sale runs {windowText}. Lot times must fall within it.

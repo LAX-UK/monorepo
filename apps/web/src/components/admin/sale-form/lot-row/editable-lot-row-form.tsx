@@ -9,6 +9,7 @@ import {
   StaffTextField,
   staffFormSummaryErrors,
 } from "@/components/admin/forms/staff-form-fields";
+import { TimesZoneNote } from "@/components/admin/forms/times-zone-note";
 import { categoryPickerOptions } from "@/lib/admin/catalog/category-picker-options";
 import {
   artistOption,
@@ -22,6 +23,7 @@ import {
   updateLotScheduleLabel,
 } from "@/lib/admin/sale-setup";
 import { lotAuctionTypeLabel } from "@/lib/presenters/lot-auction-type/lot-auction-type-registry";
+import { formatWhen } from "@auction/datetime";
 import {
   FieldRow,
   FormActions,
@@ -30,7 +32,6 @@ import {
   Section,
   StaffButton,
   StatusBadge,
-  formatStaffDateTime,
 } from "@auction/staff-ui";
 import type { ArtistProfile, CategoryNode, LotAuctionType } from "@auction/types";
 import { Trash2 } from "lucide-react";
@@ -190,22 +191,27 @@ export function EditableLotRowForm({
             The lot takes the sale's opening and closing times.
           </p>
         ) : (
-          <FieldRow>
-            <StaffDateTimeField
-              {...f}
-              name="startTime"
-              label="Bidding opens"
-              disabled={readOnly}
-              description={`The sale opens ${formatStaffDateTime(ctx.saleStartTime)}.`}
-            />
-            <StaffDateTimeField
-              {...f}
-              name="endTime"
-              label="Bidding closes"
-              disabled={readOnly}
-              description={`The sale closes ${formatStaffDateTime(ctx.saleEndTime)}.`}
-            />
-          </FieldRow>
+          <>
+            <TimesZoneNote zone={ctx.timeZone} />
+            <FieldRow>
+              <StaffDateTimeField
+                {...f}
+                name="startTime"
+                label="Bidding opens"
+                disabled={readOnly}
+                timeZone={ctx.timeZone}
+                description={`The sale opens ${formatWhen(ctx.saleStartTime, ctx.timeZone, new Date())}.`}
+              />
+              <StaffDateTimeField
+                {...f}
+                name="endTime"
+                label="Bidding closes"
+                disabled={readOnly}
+                timeZone={ctx.timeZone}
+                description={`The sale closes ${formatWhen(ctx.saleEndTime, ctx.timeZone, new Date())}.`}
+              />
+            </FieldRow>
+          </>
         )}
         <StaffEntityField
           {...f}

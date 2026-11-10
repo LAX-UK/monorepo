@@ -37,7 +37,7 @@ function draftLot(overrides: Partial<Lot> = {}): Lot {
 describe("inventoryLotToAttachReviewRow", () => {
   it("maps lot fields for attach review", () => {
     const lot = draftLot();
-    const row = inventoryLotToAttachReviewRow(lot, "row-1");
+    const row = inventoryLotToAttachReviewRow(lot, "row-1", "Europe/London");
     expect(row.source).toBe("existing");
     expect(row.lotId).toBeUndefined();
     expect(row.title).toBe("Blue vase");
@@ -50,14 +50,14 @@ describe("inventoryLotToAttachReviewRow", () => {
 describe("attachReviewScheduleChanged", () => {
   it("detects when schedule differs from the loaded lot", () => {
     const lot = draftLot();
-    const row = inventoryLotToAttachReviewRow(lot, "row-1");
-    expect(attachReviewScheduleChanged(lot, row)).toBe(false);
+    const row = inventoryLotToAttachReviewRow(lot, "row-1", "Europe/London");
+    expect(attachReviewScheduleChanged(lot, row, "Europe/London")).toBe(false);
     expect(
-      attachReviewScheduleChanged(lot, {
-        ...row,
-        startTime: "2030-06-01T10:30",
-        endTime: "2030-06-01T11:30",
-      }),
+      attachReviewScheduleChanged(
+        lot,
+        { ...row, startTime: "2030-06-01T10:30", endTime: "2030-06-01T11:30" },
+        "Europe/London",
+      ),
     ).toBe(true);
   });
 });
@@ -65,9 +65,10 @@ describe("attachReviewScheduleChanged", () => {
 describe("attachReviewScheduleViolation", () => {
   it("returns violation when lot opens before sale start", () => {
     const lot = draftLot();
-    const row = inventoryLotToAttachReviewRow(lot, "row-1");
+    const row = inventoryLotToAttachReviewRow(lot, "row-1", "Europe/London");
     expect(
       attachReviewScheduleViolation(row, {
+        timeZone: "Europe/London",
         saleStartTime: saleStart,
         saleEndTime: saleEnd,
         deliveryMode: "online",
@@ -78,9 +79,10 @@ describe("attachReviewScheduleViolation", () => {
 
   it("returns null for onsite sales", () => {
     const lot = draftLot();
-    const row = inventoryLotToAttachReviewRow(lot, "row-1");
+    const row = inventoryLotToAttachReviewRow(lot, "row-1", "Europe/London");
     expect(
       attachReviewScheduleViolation(row, {
+        timeZone: "Europe/London",
         saleStartTime: saleStart,
         saleEndTime: saleEnd,
         deliveryMode: "onsite",
@@ -93,8 +95,9 @@ describe("attachReviewScheduleViolation", () => {
 describe("validateAttachReviewSchedule", () => {
   it("blocks attach when schedule is outside the sale window", () => {
     const lot = draftLot();
-    const row = inventoryLotToAttachReviewRow(lot, "row-1");
+    const row = inventoryLotToAttachReviewRow(lot, "row-1", "Europe/London");
     const result = validateAttachReviewSchedule(row, {
+      timeZone: "Europe/London",
       saleStartTime: saleStart,
       saleEndTime: saleEnd,
       deliveryMode: "online",
@@ -110,8 +113,9 @@ describe("validateAttachReviewSchedule", () => {
       startTime: instantFromDatetimeFormString("2030-06-01T10:30"),
       endTime: instantFromDatetimeFormString("2030-06-01T11:30"),
     });
-    const row = inventoryLotToAttachReviewRow(lot, "row-1");
+    const row = inventoryLotToAttachReviewRow(lot, "row-1", "Europe/London");
     const result = validateAttachReviewSchedule(row, {
+      timeZone: "Europe/London",
       saleStartTime: saleStart,
       saleEndTime: saleEnd,
       deliveryMode: "online",

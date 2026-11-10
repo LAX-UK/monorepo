@@ -51,7 +51,10 @@ import {
 
 const LOT_WIZARD_FIELD_STEPS = 3;
 
-type SaleOption = Pick<Sale, "id" | "title" | "status" | "deliveryMode" | "startTime" | "endTime">;
+type SaleOption = Pick<
+  Sale,
+  "id" | "title" | "status" | "deliveryMode" | "startTime" | "endTime" | "timeZone"
+>;
 
 type Props = {
   mode: "create" | "edit";

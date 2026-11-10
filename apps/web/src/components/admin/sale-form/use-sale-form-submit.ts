@@ -51,6 +51,8 @@ type SubmitArgs = {
   saleId: string;
   isDraft: boolean;
   lots: Lot[];
+  /** The zone the sale is saved in, which the saved lots' times are written in. */
+  savedTimeZone: string;
   form: UseFormReturn<AdminSaleFormValues>;
   formSchema: zod.ZodType<AdminSaleFormValues>;
   wizardGoTo: (index: number) => void;
@@ -114,7 +116,11 @@ export async function submitSaleForm(values: AdminSaleFormValues, args: SubmitAr
   if (args.isDraft && args.lots.length > 0) {
     const pendingWindow = parseSaleWindowFromForm(values);
     if (pendingWindow) {
-      const conflicts = findPersistBlockingLotWindowConflicts(args.lots, pendingWindow);
+      const conflicts = findPersistBlockingLotWindowConflicts(
+        args.lots,
+        pendingWindow,
+        args.savedTimeZone,
+      );
       if (conflicts.length > 0) {
         const titles = conflicts.map((c) => c.lot.title.trim() || "Untitled lot");
         args.onSaveNotice(scheduleLotConflictPersistBlocked(titles));

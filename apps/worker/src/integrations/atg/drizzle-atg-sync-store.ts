@@ -80,6 +80,7 @@ export class DrizzleAtgSyncStore implements AtgSyncStore {
       terms: saleRow.terms,
       startTime: saleRow.startTime,
       endTime: saleRow.endTime,
+      timeZone: saleRow.timeZone,
       saleStatus: saleRow.status as SaleStatus,
       buyerPremiumRate: saleRow.buyerPremiumRate,
       buyerPremiumTiers: saleRow.buyerPremiumTiers,

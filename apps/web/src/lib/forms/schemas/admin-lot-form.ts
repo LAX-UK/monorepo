@@ -14,6 +14,8 @@ import type { z } from "zod";
 import { z as zod } from "zod";
 import { optionalBuyerPremiumRateSchema } from "./buyer-premium-rate";
 import { framedSizeIssues, readFramedCm } from "./lot-framed-size";
+import { readingZone } from "./reading-zone";
+import { missingWallTimeMessage } from "./wall-time-in-zone";
 
 const decimalString = zod
   .string()
@@ -138,6 +140,8 @@ export const adminLotFormValuesSchema = zod
     dutchDecrementIntervalMs: optionalStr,
     images: zod.array(mediaReferenceSchema).max(50),
     imageAlts: zod.array(zod.string().max(500)).max(50),
+    /** The sale's zone, kept in step with the chosen sale: the times below are read in it. */
+    timeZone: zod.string(),
     startTime: zod.string().min(1, "Enter when bidding opens"),
     endTime: zod.string().min(1, "Enter when bidding closes"),
     artistId: zod.string().uuid().nullable().optional(),
@@ -167,8 +171,13 @@ export const adminLotFormValuesSchema = zod
     for (const issue of framedSizeIssues(values.framedWidthCm, values.framedHeightCm)) {
       ctx.addIssue({ code: zod.ZodIssueCode.custom, message: issue.message, path: [issue.field] });
     }
-    const start = instantFromDatetimeFormString(values.startTime);
-    const end = instantFromDatetimeFormString(values.endTime);
+    const zone = readingZone(values.timeZone);
+    for (const name of ["startTime", "endTime"] as const) {
+      const message = missingWallTimeMessage(values[name], zone);
+      if (message) ctx.addIssue({ code: zod.ZodIssueCode.custom, message, path: [name] });
+    }
+    const start = instantFromDatetimeFormString(values.startTime, zone);
+    const end = instantFromDatetimeFormString(values.endTime, zone);
     if (!Number.isNaN(start.getTime()) && !Number.isNaN(end.getTime()) && end <= start) {
       ctx.addIssue({
         code: zod.ZodIssueCode.custom,
@@ -218,8 +227,8 @@ export function refineLotTimingForAssignedSale(
   if (!values.saleId) return;
   const sale = salesById.get(values.saleId);
   if (!sale) return;
-  const start = instantFromDatetimeFormString(values.startTime);
-  const end = instantFromDatetimeFormString(values.endTime);
+  const start = instantFromDatetimeFormString(values.startTime, readingZone(values.timeZone));
+  const end = instantFromDatetimeFormString(values.endTime, readingZone(values.timeZone));
   if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return;
 
   const window = {
@@ -307,8 +316,8 @@ function buildCreateLotRaw(v: AdminLotFormValues, opts?: { forUpdate?: boolean }
         ? Number.parseInt(String(v.dutchDecrementIntervalMs).trim(), 10)
         : undefined,
     images: opts?.forUpdate ? v.images : v.images.length > 0 ? v.images : undefined,
-    startTime: instantFromDatetimeFormString(v.startTime),
-    endTime: instantFromDatetimeFormString(v.endTime),
+    startTime: instantFromDatetimeFormString(v.startTime, readingZone(v.timeZone)),
+    endTime: instantFromDatetimeFormString(v.endTime, readingZone(v.timeZone)),
     saleId: v.saleId,
     ...(lotNumberRaw !== undefined ? { lotNumber: lotNumberRaw } : {}),
     ...(v.artistId !== undefined ? { artistId: v.artistId } : {}),

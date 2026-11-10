@@ -64,10 +64,27 @@ export function zoneFormats(timeZone: string): ZoneFormats {
 
 /** The short zone name at an instant: "GMT"/"BST" for London, the runtime's own abbreviation elsewhere. */
 export function shortZoneName(timeZone: string, instant: Date): string {
-  const part = zoneFormats(timeZone)
-    .zoneName.formatToParts(instant)
-    .find((p) => p.type === "timeZoneName");
-  const name = part?.value ?? "";
+  const name = zoneNameIn(zoneFormats(timeZone).zoneName, instant);
   if (timeZone === LONDON_TIME_ZONE) return name === "BST" ? "BST" : "GMT";
-  return name;
+  return /^GMT[+-]/.test(name) ? (americanName(timeZone, instant) ?? name) : name;
+}
+
+function zoneNameIn(format: Intl.DateTimeFormat, instant: Date): string {
+  return format.formatToParts(instant).find((p) => p.type === "timeZoneName")?.value ?? "";
+}
+
+const usNameFormats = new Map<string, Intl.DateTimeFormat>();
+
+/**
+ * en-GB can only offer an offset ("GMT-5") for the American zones; en-US names them ("EST",
+ * "PDT"). Used only when en-GB has no name of its own and en-US has a real abbreviation.
+ */
+function americanName(timeZone: string, instant: Date): string | null {
+  let format = usNameFormats.get(timeZone);
+  if (!format) {
+    format = new Intl.DateTimeFormat("en-US", { timeZone, timeZoneName: "short" });
+    usNameFormats.set(timeZone, format);
+  }
+  const name = zoneNameIn(format, instant);
+  return /^[A-Z]{2,5}$/.test(name) ? name : null;
 }

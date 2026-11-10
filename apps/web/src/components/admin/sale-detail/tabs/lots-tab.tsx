@@ -28,6 +28,7 @@ export function SaleLotsTab({
         deliveryMode: sale.deliveryMode,
         startTime: sale.startTime,
         endTime: sale.endTime,
+        timeZone: sale.timeZone,
       }}
       lots={lots}
       canManageAuction={canManageAuction}

@@ -16,10 +16,10 @@ import {
   StaffRadioGroup,
   TextArea,
   TextInput,
-  isoToLondonWallTime,
-  londonWallTimeToIso,
   parsePoundsToPence,
+  wallTimeToIso,
 } from "@auction/staff-ui";
+import { DEFAULT_SALE_TIME_ZONE } from "@auction/validators";
 import type * as React from "react";
 import {
   type Control,
@@ -206,12 +206,16 @@ export function StaffPercentField<T extends FieldValues>(
   );
 }
 
-/** A London wall time kept in the form as "YYYY-MM-DDTHH:mm", entered as date, time and zone. */
-export function StaffDateTimeField<T extends FieldValues>(props: Base<T>) {
+/**
+ * A wall time kept in the form as "YYYY-MM-DDTHH:mm", entered as date, time and zone. The zone is
+ * the sale's (London when not given); the form keeps the typed wall time whatever zone reads it.
+ */
+export function StaffDateTimeField<T extends FieldValues>(props: Base<T> & { timeZone?: string }) {
   const { field, error } = useBoundField(props);
+  const timeZone = props.timeZone ?? DEFAULT_SALE_TIME_ZONE;
   const raw = typeof field.value === "string" ? field.value : "";
   const [day, time] = raw.split("T");
-  const iso = day && time ? londonWallTimeToIso(day, time.slice(0, 5)) : null;
+  const iso = day && time ? wallTimeToIso(day, time.slice(0, 5), timeZone) : null;
   return (
     <Field
       id={staffFieldId(props.formId, props.name)}
@@ -224,11 +228,15 @@ export function StaffDateTimeField<T extends FieldValues>(props: Base<T>) {
     >
       <DateTimeInput
         value={iso}
+        // The typed day and time are the form's value even in a skipped hour, so the field keeps
+        // showing them beside the error rather than clearing.
+        wall={day && time ? { day, time: time.slice(0, 5) } : null}
+        onWallChange={(wall) => field.onChange(wall ? `${wall.day}T${wall.time}` : "")}
+        timeZone={timeZone}
+        // A form that passes its zone states it once above its times; the field does not repeat it.
+        showZone={props.timeZone === undefined}
         disabled={props.disabled ?? false}
-        onValueChange={(next) => {
-          const wall = next ? isoToLondonWallTime(next) : null;
-          field.onChange(wall ? `${wall.day}T${wall.time}` : "");
-        }}
+        onValueChange={() => {}}
       />
     </Field>
   );

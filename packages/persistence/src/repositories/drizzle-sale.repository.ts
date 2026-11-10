@@ -2,7 +2,7 @@ import type { Database } from "@auction/db";
 import { saleNotDeleted } from "@auction/db";
 import { lot, payment, sale, saleCategories } from "@auction/db/schema";
 import type { CreateSaleInput, Sale, SaleStatus } from "@auction/types";
-import { and, asc, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, inArray, isNull, or, sql } from "drizzle-orm";
 import type { ISaleRepository, ListSalesFilter } from "../interfaces/index.js";
 import { mapSaleRow } from "../lib/entity-row-mappers.js";
 import { containsPattern } from "../lib/like-pattern.js";
@@ -167,6 +167,7 @@ export class DrizzleSaleRepository implements ISaleRepository {
         locationPostcode: input.locationPostcode ?? null,
         locationCountry: input.locationCountry ?? null,
         venueId: input.venueId ?? null,
+        ...(input.timeZone !== undefined ? { timeZone: input.timeZone } : {}),
         startTime: input.startTime,
         endTime: input.endTime,
         previewStartTime: input.previewStartTime ?? null,
@@ -272,12 +273,19 @@ export class DrizzleSaleRepository implements ISaleRepository {
     if (patch.locationCountry !== undefined)
       rowPatch.locationCountry = patch.locationCountry ?? null;
     if (patch.venueId !== undefined) rowPatch.venueId = patch.venueId ?? null;
+    if (patch.timeZone !== undefined) rowPatch.timeZone = patch.timeZone;
 
     const row = await this.db.transaction(async (tx) => {
+      // A zone change only lands on a sale that is a draft and has never been published, so a
+      // publish that races this save cannot have its zone moved underneath it.
+      const zoneGuard =
+        patch.timeZone !== undefined
+          ? [eq(sale.status, "draft"), isNull(sale.firstPublishedAt)]
+          : [];
       const [updated] = await tx
         .update(sale)
         .set(rowPatch)
-        .where(and(eq(sale.id, id), saleNotDeleted()))
+        .where(and(eq(sale.id, id), saleNotDeleted(), ...zoneGuard))
         .returning();
       if (!updated) throw new Error("Sale update failed");
       if (categoryIds !== undefined) {
@@ -299,7 +307,17 @@ export class DrizzleSaleRepository implements ISaleRepository {
   }
 
   async updateStatus(id: string, status: Sale["status"]): Promise<void> {
-    await this.db.update(sale).set({ status, updatedAt: new Date() }).where(eq(sale.id, id));
+    await this.db
+      .update(sale)
+      .set({
+        status,
+        updatedAt: new Date(),
+        // Stamped once, the first time the sale leaves draft; never cleared.
+        ...(status === "draft"
+          ? {}
+          : { firstPublishedAt: sql`coalesce(${sale.firstPublishedAt}, now())` }),
+      })
+      .where(eq(sale.id, id));
   }
 
   async countCreatedAtByDay(rangeStart: Date): Promise<Map<string, number>> {

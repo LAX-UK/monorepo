@@ -1,6 +1,8 @@
 import type { Lot } from "@auction/types";
 import { describe, expect, it } from "vitest";
 import { draftLotRow, lotToRow } from "./sale-lot-rows-editor-helpers";
+
+const toRow = (lot: Parameters<typeof lotToRow>[0]) => lotToRow(lot, "Europe/London");
 import {
   appendSaleLotRow,
   countUnsavedSaleLotRows,
@@ -35,7 +37,7 @@ function makeLot(overrides: Partial<Lot> = {}): Lot {
 
 describe("useSaleLotRowsEditorState transitions", () => {
   it("initializes rows from server lots", () => {
-    const rows = initialSaleLotRows([makeLot()], lotToRow);
+    const rows = initialSaleLotRows([makeLot()], toRow);
     expect(rows).toHaveLength(1);
     expect(rows[0]?.lotId).toBe("lot-1");
     expect(
@@ -44,7 +46,7 @@ describe("useSaleLotRowsEditorState transitions", () => {
   });
 
   it("shows first-lot choice when draft sale has no lots", () => {
-    const rows = initialSaleLotRows([], lotToRow);
+    const rows = initialSaleLotRows([], toRow);
     const flags = saleLotRowsEditorFlags({ readOnly: false, lotsCount: 0, rowsCount: rows.length });
     expect(rows).toHaveLength(0);
     expect(flags.showFirstLotChoice).toBe(true);
@@ -52,7 +54,7 @@ describe("useSaleLotRowsEditorState transitions", () => {
   });
 
   it("adds draft rows and tracks unsaved count", () => {
-    let rows = initialSaleLotRows([], lotToRow);
+    let rows = initialSaleLotRows([], toRow);
     rows = appendSaleLotRow(rows, draftLotRow("new"));
     expect(rows[0]?.source).toBe("new");
     expect(countUnsavedSaleLotRows(rows)).toBe(1);
@@ -63,7 +65,7 @@ describe("useSaleLotRowsEditorState transitions", () => {
   });
 
   it("marks row saved and clears unsaved count", () => {
-    let rows = appendSaleLotRow(initialSaleLotRows([], lotToRow), draftLotRow("new"));
+    let rows = appendSaleLotRow(initialSaleLotRows([], toRow), draftLotRow("new"));
     const row = rows[0];
     expect(row).toBeDefined();
     if (!row) return;
@@ -74,7 +76,7 @@ describe("useSaleLotRowsEditorState transitions", () => {
   });
 
   it("removes a row by client id", () => {
-    let rows = appendSaleLotRow(initialSaleLotRows([], lotToRow), draftLotRow("new"));
+    let rows = appendSaleLotRow(initialSaleLotRows([], toRow), draftLotRow("new"));
     const clientRowId = rows[0]?.clientRowId as string;
     rows = removeSaleLotRowByClientId(rows, clientRowId);
     expect(rows).toHaveLength(0);

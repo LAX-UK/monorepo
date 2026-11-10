@@ -194,6 +194,7 @@ describe("safeParseSaleSetupLotRowForApi", () => {
       endTime: "2030-01-01T11:00",
     };
     const ctx = {
+      timeZone: "Europe/London",
       saleStartTime: instantFromDatetimeFormString("2030-01-01T09:00"),
       saleEndTime: instantFromDatetimeFormString("2030-01-01T18:00"),
       deliveryMode: "online" as const,
@@ -217,6 +218,7 @@ describe("safeParseSaleSetupLotRowForApi", () => {
       endTime: "2030-01-01T11:00",
     };
     const ctx = {
+      timeZone: "Europe/London",
       saleStartTime: instantFromDatetimeFormString("2030-01-01T09:00"),
       saleEndTime: instantFromDatetimeFormString("2030-01-01T18:00"),
       deliveryMode: "online" as const,
@@ -240,6 +242,7 @@ describe("safeParseSaleSetupLotRowForApi", () => {
       endTime: "2030-01-01T19:00",
     };
     const ctx = {
+      timeZone: "Europe/London",
       saleStartTime: instantFromDatetimeFormString("2030-01-01T09:00"),
       saleEndTime: instantFromDatetimeFormString("2030-01-01T18:00"),
       deliveryMode: "online" as const,

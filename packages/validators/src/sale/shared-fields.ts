@@ -11,6 +11,7 @@ import {
 } from "../sale-hero-presentation-policy.js";
 import { getSaleModeCapabilities } from "../sale-mode-policy.js";
 import { isAllowedStreamUrl } from "../stream-embed.js";
+import { saleTimeZoneSchema } from "./time-zone.js";
 
 export const buyerPremiumRateString = z
   .string()
@@ -204,6 +205,8 @@ export const saleCreateBodySchema = z.object({
   locationPostcode: locationPostcodeField,
   locationCountry: locationTextField,
   venueId: z.string().uuid().optional().nullable(),
+  /** The IANA zone the sale quotes its times in. Fixed once the sale is published. */
+  timeZone: saleTimeZoneSchema.optional(),
   startTime: z.coerce.date(),
   endTime: z.coerce.date(),
   previewStartTime: z.coerce.date().optional(),

@@ -1,28 +1,22 @@
-import type { Lot, PublicLotView, Sale } from "@auction/types";
+import type { Lot, PublicLotView, Sale, WithSaleZone } from "@auction/types";
 import type { SaleLookupPort } from "../container/container-slices.js";
 import { computeLotCheckoutPricing } from "./lot-checkout-pricing.js";
+import { loadSalesForLots, withSaleTimeZone } from "./lot-sale-time-zone.js";
 
 type LotsWithCheckoutPricingDeps = {
   saleService: SaleLookupPort;
 };
 
-/** Batch-load sales and attach `checkoutPricing` for dashboard / list consumers. */
+/** Batch-load sales and attach `checkoutPricing` and the sale's `timeZone` for dashboard and list consumers. */
 export async function lotsWithCheckoutPricing(
   container: LotsWithCheckoutPricingDeps,
   lots: (Lot | PublicLotView)[],
-): Promise<(Lot | PublicLotView)[]> {
+): Promise<WithSaleZone<Lot | PublicLotView>[]> {
   if (lots.length === 0) return lots;
-  const saleIds = [
-    ...new Set(
-      lots
-        .map((l) => l.saleId)
-        .filter((id): id is string => typeof id === "string" && id.length > 0),
-    ),
-  ];
-  const saleRows = await container.saleService.findByIds(saleIds);
-  const saleById = new Map<string, Sale>(saleRows.map((s) => [s.id, s]));
+  const saleById: Map<string, Sale> = await loadSalesForLots(container, lots);
   return lots.map((lotRow) => {
     const sale = lotRow.saleId ? (saleById.get(lotRow.saleId) ?? null) : null;
-    return { ...lotRow, checkoutPricing: computeLotCheckoutPricing(lotRow, sale) };
+    const priced = { ...lotRow, checkoutPricing: computeLotCheckoutPricing(lotRow, sale) };
+    return withSaleTimeZone(priced, sale);
   });
 }
