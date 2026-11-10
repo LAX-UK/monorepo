@@ -959,6 +959,11 @@ export {
 } from "./collection-handover.js";
 export {
   DEFAULT_COLLECT_BY_POLICY,
+  MAX_FREE_STORAGE_DAYS,
+  collectByClearedRange,
+  collectByReminderFor,
+  type CollectByReminder,
+  type CollectByReminderKind,
   collectBy,
   type CollectBy,
   type CollectByPolicy,

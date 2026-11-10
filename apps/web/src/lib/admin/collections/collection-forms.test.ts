@@ -39,6 +39,41 @@ describe("the settings form", () => {
     expect(validateSettingsDraft(draftFromSettings(SETTINGS)).count).toBe(0);
   });
 
+  it("reads the storage charge as pounds and sends pence, empty meaning none", () => {
+    expect(draftFromSettings(SETTINGS).storageChargePounds).toBe("");
+    expect(draftFromSettings({ ...SETTINGS, storageChargePence: 2500 }).storageChargePounds).toBe(
+      "25",
+    );
+    expect(draftFromSettings({ ...SETTINGS, storageChargePence: 1250 }).storageChargePounds).toBe(
+      "12.50",
+    );
+    expect(draftFromSettings({ ...SETTINGS, storageChargePence: 5 }).storageChargePounds).toBe(
+      "0.05",
+    );
+    const draft = (text: string) => ({ ...draftFromSettings(SETTINGS), storageChargePounds: text });
+    expect(bodyFromDraft(draft(" 25 "), "v").storageChargePence).toBe(2500);
+    expect(bodyFromDraft(draft("12.5"), "v").storageChargePence).toBe(1250);
+    expect(bodyFromDraft(draft("0.05"), "v").storageChargePence).toBe(5);
+    expect(bodyFromDraft(draft("£25"), "v").storageChargePence).toBe(2500);
+    expect(bodyFromDraft(draft("£ 12.50"), "v").storageChargePence).toBe(1250);
+    expect(bodyFromDraft(draft(""), "v").storageChargePence).toBeNull();
+  });
+
+  it("says when the storage charge is not an amount", () => {
+    for (const text of ["abc", "12.345", "-5", "1,000", "99999"]) {
+      const { rules } = validateSettingsDraft({
+        ...draftFromSettings(SETTINGS),
+        storageChargePounds: text,
+      });
+      expect(rules.storage_charge).toBe(
+        "Enter an amount in pounds, such as 25 or 12.50, or leave it empty.",
+      );
+    }
+    expect(
+      validateSettingsDraft({ ...draftFromSettings(SETTINGS), storageChargePounds: "25" }).count,
+    ).toBe(0);
+  });
+
   it("says which rule fields are wrong", () => {
     const draft = {
       ...draftFromSettings(SETTINGS),

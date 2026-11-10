@@ -38,6 +38,7 @@ function toSettings(row: PlaceRow): CollectionPlaceSettings {
     undoHandOverMinutes: row.undoHandOverMinutes,
     maxActiveVisits: row.maxActiveVisits,
     freeStorageDays: row.freeStorageDays,
+    storageChargePence: row.storageChargePence,
     bookingEmail: row.bookingEmail,
     updatedAt: row.updatedAt,
   };

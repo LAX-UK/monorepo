@@ -1,6 +1,7 @@
 import type { AlertRetentionStore } from "@auction/alerts";
 import type { IMarketingProfileReader } from "@auction/marketing-events";
 import type {
+  ICollectionLotFactsReader,
   ICrmRecordLinkRepository,
   IDomainEventDeliveryRepository,
   INotificationWriteRepository,
@@ -18,6 +19,7 @@ import {
   createBidAlertRetentionStores,
 } from "@auction/persistence/repositories";
 import {
+  DrizzleCollectionLotFactsReader,
   DrizzleCrmRecordLinkRepository,
   DrizzleDomainEventDeliveryRepository,
   DrizzleNotificationAccountMuteRepository,
@@ -29,6 +31,7 @@ import { DrizzlePartyDealRecordReader } from "@auction/persistence/repositories"
 import type { IAdminImpersonationNotifyReader } from "../interfaces/admin-impersonation-notify.reader.js";
 import type { IAdminReviewTaskProjectorRepository } from "../interfaces/admin-review-task-projector.repository.js";
 import type { IClearArtistBlocksRepository } from "../interfaces/clear-artist-blocks.repository.js";
+import type { ICollectByReader } from "../interfaces/collect-by.reader.js";
 import type { ICollectionNoticeReader } from "../interfaces/collection-notice.reader.js";
 import type { IComplianceRecipientReader } from "../interfaces/compliance-recipient.reader.js";
 import type { ICoverAnalysisJobRepository } from "../interfaces/cover-analysis-job.repository.js";
@@ -73,6 +76,7 @@ import { DrizzleProfileMarketingReader } from "../marketing/drizzle-profile.read
 import { DrizzleAdminImpersonationNotifyReader } from "../repositories/drizzle-admin-impersonation-notify.reader.js";
 import { DrizzleAdminReviewTaskProjectorRepository } from "../repositories/drizzle-admin-review-task-projector.repository.js";
 import { DrizzleClearArtistBlocksRepository } from "../repositories/drizzle-clear-artist-blocks.repository.js";
+import { DrizzleCollectByReader } from "../repositories/drizzle-collect-by.reader.js";
 import { DrizzleCollectionNoticeReader } from "../repositories/drizzle-collection-notice.reader.js";
 import { DrizzleComplianceRecipientReader } from "../repositories/drizzle-compliance-recipient.reader.js";
 import { DrizzleCoverAnalysisJobRepository } from "../repositories/drizzle-cover-analysis-job.repository.js";
@@ -148,6 +152,8 @@ export type WorkerRepositories = {
   adminImpersonationNotifyReader: IAdminImpersonationNotifyReader;
   paymentRefundNotifyReader: IPaymentRefundNotifyReader;
   collectionNoticeReader: ICollectionNoticeReader;
+  collectByReader: ICollectByReader;
+  collectionLotFacts: ICollectionLotFactsReader;
   payoutTransferFailedNotifyReader: IPayoutTransferFailedNotifyReader;
   clearArtistBlocksRepo: IClearArtistBlocksRepository;
   zohoCampaignsOptOutLiftRepo: IZohoCampaignsOptOutLiftRepository;
@@ -215,6 +221,8 @@ export function createWorkerRepositories(
     adminImpersonationNotifyReader: new DrizzleAdminImpersonationNotifyReader(db),
     paymentRefundNotifyReader: new DrizzlePaymentRefundNotifyReader(db),
     collectionNoticeReader: new DrizzleCollectionNoticeReader(db),
+    collectByReader: new DrizzleCollectByReader(db),
+    collectionLotFacts: new DrizzleCollectionLotFactsReader(db),
     payoutTransferFailedNotifyReader: new DrizzlePayoutTransferFailedNotifyReader(db),
     clearArtistBlocksRepo: new DrizzleClearArtistBlocksRepository(db),
     zohoCampaignsOptOutLiftRepo: new DrizzleZohoCampaignsSuppressionRepository(db),

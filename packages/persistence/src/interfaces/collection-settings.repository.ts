@@ -70,6 +70,7 @@ export type SettingsField =
   | "undo_hand_over_minutes"
   | "max_active_visits"
   | "free_storage_days"
+  | "storage_charge"
   | "booking_email"
   | "weekly_hours";
 
@@ -81,6 +82,7 @@ export type SaveCollectionSettings = {
   onlineBookingEnabled: boolean;
   bookingEmail: string | null;
   freeStorageDays: number | null;
+  storageChargePence: number | null;
   hours: readonly CollectionWeeklyHours[];
   updatedByUserId: string;
   at: Date;
