@@ -121,6 +121,28 @@ describe("PaymentGroupSettlementService.settle for accounts that cannot pay", ()
     );
   });
 
+  it("still answers success, sends the receipt and reports when a capture's follow-up fails", async () => {
+    const { service, captureInTransaction, deps } = setup(async () => ({ kind: "payable" }));
+    captureInTransaction.mockResolvedValue({
+      captured: true,
+      afterCommit: async () => {
+        throw new Error("fulfilment failed");
+      },
+    });
+    const report = vi.fn();
+    deps.errorReporter = { report };
+
+    await expect(service.settle(money)).resolves.toEqual({
+      processed: true,
+      action: "payment_intent_succeeded",
+    });
+
+    expect(report).toHaveBeenCalledWith(
+      expect.objectContaining({ code: "payment_after_capture_failed", severity: "error" }),
+    );
+    expect(deps.receipt.send).toHaveBeenCalled();
+  });
+
   it("treats a group with no recorded payer as not payable", async () => {
     const { service, captureInTransaction, record$ } = setup(
       async () => ({ kind: "payable" }),

@@ -15,11 +15,13 @@ const intent = {
   latest_charge: "ch_1",
 } as unknown as Stripe.PaymentIntent;
 
-function setup(opts: { commitFails?: boolean } = {}) {
+function setup(opts: { commitFails?: boolean; afterCommitFails?: boolean } = {}) {
   const order: string[] = [];
   const afterCommit = vi.fn(async () => {
     order.push("afterCommit");
+    if (opts.afterCommitFails) throw new Error("receipt failed");
   });
+  const report = vi.fn();
   const capture = vi.fn(async () => {
     order.push("capture");
     return { captured: true, afterCommit };
@@ -38,8 +40,9 @@ function setup(opts: { commitFails?: boolean } = {}) {
     },
     paymentCapture: { capture },
     paymentEligibility: null,
+    errorReporter: { report },
   } as unknown as StripePaymentWebhookDeps;
-  return { handler: new PaymentIntentSucceededHandler(deps), order, afterCommit, capture };
+  return { handler: new PaymentIntentSucceededHandler(deps), order, afterCommit, capture, report };
 }
 
 describe("PaymentIntentSucceededHandler capture ordering", () => {
@@ -59,5 +62,19 @@ describe("PaymentIntentSucceededHandler capture ordering", () => {
     await expect(handler.handle(event, intent)).rejects.toThrow("commit failed");
 
     expect(afterCommit).not.toHaveBeenCalled();
+  });
+
+  it("answers success and reports when the follow-up work fails after the commit", async () => {
+    const { handler, order, report } = setup({ afterCommitFails: true });
+
+    await expect(handler.handle(event, intent)).resolves.toEqual({
+      processed: true,
+      action: "payment_intent_succeeded",
+    });
+
+    expect(order).toEqual(["capture", "commit", "afterCommit"]);
+    expect(report).toHaveBeenCalledWith(
+      expect.objectContaining({ code: "payment_after_capture_failed", severity: "error" }),
+    );
   });
 });

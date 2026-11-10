@@ -1,4 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
+import type { UnappliedMoney } from "@auction/domain";
 import type {
   CheckoutSessionRail,
   IPaymentCheckoutSessionStore,
@@ -92,6 +93,9 @@ function paymentIntentIdOf(session: Stripe.Checkout.Session): string | null {
     : (session.payment_intent?.id ?? null);
 }
 
+/** Opens a finance task for money that cannot be applied; the caller owns the transaction. */
+export type RecordUnappliedMoney = (money: UnappliedMoney) => Promise<void>;
+
 /**
  * Gives the buyer one payable Checkout session for an invoice and rail. The newest open session
  * opened for the same parameters is reused; otherwise one is opened (its key derived from how many
@@ -114,6 +118,7 @@ export class CheckoutSessionLifecycle implements ICheckoutCleanupAfterCapture {
     >,
     private readonly reporter: IErrorReporter,
     private readonly recordEvent: (event: string) => void = recordMoneyPathEvent,
+    private readonly recordUnapplied: RecordUnappliedMoney | null = null,
   ) {}
 
   async openOrRenew(
@@ -172,7 +177,7 @@ export class CheckoutSessionLifecycle implements ICheckoutCleanupAfterCapture {
     for (const session of recorded) {
       if (session.closedAt) continue;
       try {
-        await this.closeOtherAfterCapture(session, paidPaymentIntentId);
+        await this.closeOtherAfterCapture(session, paymentId, paidPaymentIntentId);
       } catch (err) {
         this.reportCleanupFailure(err);
       }
@@ -191,6 +196,7 @@ export class CheckoutSessionLifecycle implements ICheckoutCleanupAfterCapture {
 
   private async closeOtherAfterCapture(
     recorded: RecordedCheckoutSession,
+    paymentId: string,
     paidPaymentIntentId: string | null,
   ): Promise<void> {
     const stripeSession = await this.gateway.retrieveCheckoutSession(recorded.stripeSessionId);
@@ -205,7 +211,8 @@ export class CheckoutSessionLifecycle implements ICheckoutCleanupAfterCapture {
       if (!intentId) return;
       const intent = await this.gateway.retrievePaymentIntent(intentId);
       if (intent.status !== "canceled") {
-        if (!isUnfundedIntent(intent)) return this.leaveFunded(recorded.stripeSessionId);
+        if (!isUnfundedIntent(intent))
+          return this.leaveFunded(recorded.stripeSessionId, paymentId, intent);
         if (!(await this.cancelUnfundedIntent(intentId))) return;
       }
       await this.ledger.markClosed(recorded.stripeSessionId);
@@ -217,7 +224,7 @@ export class CheckoutSessionLifecycle implements ICheckoutCleanupAfterCapture {
         const intent = await this.gateway.retrievePaymentIntent(intentId);
         // An intent Stripe already cancelled holds nothing, and a half-done cleanup completes here.
         if (intent.status !== "canceled" && !isUnfundedIntent(intent)) {
-          return this.leaveFunded(recorded.stripeSessionId);
+          return this.leaveFunded(recorded.stripeSessionId, paymentId, intent);
         }
       }
       // Expiring the session makes Stripe cancel its intent; Stripe refuses a direct cancel of a
@@ -227,9 +234,31 @@ export class CheckoutSessionLifecycle implements ICheckoutCleanupAfterCapture {
     await this.ledger.markClosed(recorded.stripeSessionId);
   }
 
-  /** Money is in (or coming) on a session that cannot be closed: finance sees it. */
-  private leaveFunded(stripeSessionId: string): void {
+  /**
+   * Money is in (or coming) on a session that cannot be closed: finance sees it. A transfer that
+   * arrived in part is money nobody else will report (its partially-funded notice came before the
+   * invoice was paid), so it becomes a finance task; a fully received intent is reported by its
+   * own succeeded event.
+   */
+  private async leaveFunded(
+    stripeSessionId: string,
+    paymentId: string,
+    intent: Stripe.PaymentIntent,
+  ): Promise<void> {
     this.recordEvent("checkout_left_open_funded_after_capture");
+    const partTransfer = intent.status === "requires_action" && (intent.amount_received ?? 0) > 0;
+    if (partTransfer && this.recordUnapplied) {
+      await this.recordUnapplied({
+        reason: "transfer_partially_funded_after_paid",
+        paymentId,
+        paymentGroupId: null,
+        stripePaymentIntentId: intent.id,
+        stripeChargeId: null,
+        stripeCustomerId: null,
+        amountCents: intent.amount_received,
+        currency: intent.currency,
+      });
+    }
     this.reporter.report({
       message: `Checkout ${stripeSessionId} holds transfer money for an invoice that was paid another way`,
       status: 200,

@@ -154,11 +154,12 @@ export class FakeCheckoutStripe {
 
   async retrievePaymentIntent(id: string) {
     const i = this.intents.get(id);
+    if (!i) throw new Error(`No such payment intent: ${id}`);
     return {
       id,
-      status: i?.status ?? "succeeded",
-      amount: i?.amount ?? 5000,
-      amount_received: i?.received ?? 5000,
+      status: i.status,
+      amount: i.amount,
+      amount_received: i.received,
       next_action:
         i && i.status === "requires_action"
           ? {

@@ -1,3 +1,4 @@
+import type { UnappliedMoney } from "@auction/domain";
 import type Stripe from "stripe";
 import { describe, expect, it, vi } from "vitest";
 import {
@@ -11,7 +12,7 @@ import {
 } from "./stripe-checkout-session-lifecycle.js";
 import type { IStripePaymentGateway } from "./stripe-payment-gateway.js";
 
-function setup() {
+function setup(recordUnapplied?: (money: UnappliedMoney) => Promise<void>) {
   const stripe = new FakeCheckoutStripe();
   const ledger = new InMemoryCheckoutSessionLedger();
   const report = vi.fn();
@@ -21,6 +22,7 @@ function setup() {
     ledger,
     { report },
     recordEvent,
+    recordUnapplied ?? null,
   );
   const pay = (rail: "card" | "bank", lines: string[]) => payOn(lifecycle, stripe, rail, lines);
   return { stripe, ledger, report, recordEvent, lifecycle, pay };
@@ -403,6 +405,44 @@ describe("CheckoutSessionLifecycle", () => {
       expect(
         (await ledger.listSessions("pay-1")).find((r) => r.stripeSessionId === bank)?.closedAt,
       ).toBeNull();
+    });
+
+    it("opens a finance task for a part-paid transfer once the invoice is paid another way", async () => {
+      const recordUnapplied = vi.fn(async () => {});
+      const { stripe, lifecycle, pay } = setup(recordUnapplied);
+      const bank = readyId(await pay("bank", ["lot"]));
+      stripe.giveTransferInstructions(bank);
+      stripe.partiallyFund(bank, 1000);
+      const card = readyId(await pay("card", ["lot"]));
+      const paidIntent = stripe.complete(card);
+
+      await lifecycle.closeAfterCapture("pay-1", paidIntent);
+
+      expect(recordUnapplied).toHaveBeenCalledWith(
+        expect.objectContaining({
+          reason: "transfer_partially_funded_after_paid",
+          paymentId: "pay-1",
+          stripePaymentIntentId: `pi_${bank}`,
+          amountCents: 1000,
+        }),
+      );
+    });
+
+    it("reports, and keeps the capture, when the finance task cannot be recorded", async () => {
+      const { stripe, lifecycle, pay, report } = setup(async () => {
+        throw new Error("db down");
+      });
+      const bank = readyId(await pay("bank", ["lot"]));
+      stripe.giveTransferInstructions(bank);
+      stripe.partiallyFund(bank, 1000);
+      const card = readyId(await pay("card", ["lot"]));
+      const paidIntent = stripe.complete(card);
+
+      await expect(lifecycle.closeAfterCapture("pay-1", paidIntent)).resolves.toBeUndefined();
+
+      expect(report).toHaveBeenCalledWith(
+        expect.objectContaining({ code: "checkout_cleanup_after_capture_failed" }),
+      );
     });
 
     it("expires an open session that has an intent instead of cancelling the intent", async () => {

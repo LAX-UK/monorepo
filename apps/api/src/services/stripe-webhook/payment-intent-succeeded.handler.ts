@@ -5,6 +5,7 @@ import type Stripe from "stripe";
 import { gbpAmountToPence } from "../../lib/decimal-money.js";
 import { tryClaimProcessedStripeEvent } from "../../lib/stripe-processed-event.js";
 import { recordMoneyPathEvent } from "../../middleware/metrics.js";
+import { runAfterCapture } from "../payment/run-after-capture.js";
 import { chargeIdFromPaymentIntent } from "../stripe/stripe-charge-id.js";
 import type { IPaymentIntentWebhookHandler } from "./payment-intent-webhook-handler.js";
 import type { StripePaymentWebhookDeps } from "./payment-webhook-lookup.js";
@@ -131,7 +132,7 @@ export class PaymentIntentSucceededHandler implements IPaymentIntentWebhookHandl
     );
     // Receipts, fulfilment, accounting and closing the invoice's other checkouts only once the
     // capture is committed, never against a transaction that could still roll back.
-    await afterCommit?.();
+    await runAfterCapture(afterCommit, { paymentId }, this.deps.errorReporter);
     return result;
   }
 

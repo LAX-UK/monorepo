@@ -255,6 +255,12 @@ export function createPaymentsServices(
     stripePaymentGateway,
     checkoutSessions,
     errorReporter,
+    recordMoneyPathEvent,
+    async (money) => {
+      await platform.transactionRunner.runInTransaction((tx) =>
+        unappliedMoney.record(tx, money, null),
+      );
+    },
   );
   const paymentCaptureService = new PaymentCaptureService(
     platform.transactionRunner,
@@ -433,6 +439,7 @@ export function createPaymentsServices(
     stripeCustomers: stripeCustomerGateway,
     unappliedMoney,
     eligibility: paymentEligibility,
+    errorReporter,
   });
 
   const privateSaleDeals = createPrivateSaleDealServices({
@@ -480,6 +487,7 @@ export function createPaymentsServices(
           }),
           paymentEligibility,
           repos.paymentRefundRepository,
+          errorReporter,
         )
       : null;
 
