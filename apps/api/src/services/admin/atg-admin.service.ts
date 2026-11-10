@@ -5,6 +5,7 @@ import {
   atgSyncJobId,
 } from "@auction/queues";
 import {
+  ATG_LIVE_UNAVAILABLE_MESSAGE,
   type AtgIntegrationStatus,
   type AtgLotSellingSummary,
   type AtgSaleSellingSummary,
@@ -14,6 +15,7 @@ import {
   canChangeAtgAuctionType,
   canChangeAtgDistribution,
   canPushOrPublishSaleOnAtg,
+  isAtgAuctionTypeAvailable,
 } from "@auction/types";
 import type { IAtgLinkReader } from "../../repositories/interfaces/atg-link.reader.js";
 import type { IAtgSaleSettingsWriter } from "../../repositories/interfaces/atg-sale-settings.writer.js";
@@ -62,7 +64,7 @@ function saleActionConflict(
 function settingsConflict(
   view: AtgSaleSyncView,
   input: AtgSaleSettingsInput,
-): Pick<AtgAdminError, "code" | "message"> | null {
+): (Pick<AtgAdminError, "code" | "message"> & { status?: AtgAdminError["status"] }) | null {
   if (view.remoteStatus === "closed") {
     return { code: "atg_closed", message: "The ATG auction is closed and can no longer change" };
   }
@@ -74,6 +76,16 @@ function settingsConflict(
       code: "sale_on_lax",
       message:
         "This sale is published on lax.bid. Unpublish it there before changing ATG settings.",
+    };
+  }
+  if (
+    input.auctionType !== view.settings.auctionType &&
+    !isAtgAuctionTypeAvailable(input.auctionType)
+  ) {
+    return {
+      status: 422,
+      code: "atg_auction_type_unavailable",
+      message: ATG_LIVE_UNAVAILABLE_MESSAGE,
     };
   }
   if (input.auctionType !== view.settings.auctionType && !canChangeAtgAuctionType(view)) {
