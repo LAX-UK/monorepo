@@ -157,6 +157,47 @@ export function shouldDropThirdPartyClientNoise(event: ErrorEvent): boolean {
   return false;
 }
 
+/**
+ * The oldest major version of each browser the storefronts are built for. This is the floor of
+ * Next.js's default build target (`next/dist/shared/lib/modern-browserslist-target`); the apps set
+ * no custom browserslist. Older browsers cannot parse the shipped scripts at all.
+ */
+const SUPPORTED_BROWSER_FLOOR: Readonly<Record<string, number>> = {
+  Chrome: 64,
+  Edge: 79,
+  Firefox: 67,
+  Opera: 51,
+  Safari: 12,
+};
+
+function browserMajorVersion(event: ErrorEvent): number | null {
+  const context = event.contexts?.browser as { version?: string } | undefined;
+  const tag = event.tags?.browser;
+  const raw = context?.version ?? (typeof tag === "string" ? tag.split(" ").at(-1) : undefined);
+  const major = Number.parseInt(raw ?? "", 10);
+  return Number.isNaN(major) ? null : major;
+}
+
+function isBelowSupportedBrowserFloor(event: ErrorEvent): boolean {
+  const floor = SUPPORTED_BROWSER_FLOOR[browserName(event).split(" ")[0] ?? ""];
+  const major = browserMajorVersion(event);
+  return floor !== undefined && major !== null && major < floor;
+}
+
+/** A script an in-app browser injects into the page (`app://name`); ours load from `app:///_next`. */
+function isInjectedAppScriptFrame(event: ErrorEvent): boolean {
+  return hasStackFrameMatching(event, /^app:\/\/[^/]/);
+}
+
+/**
+ * Drop syntax errors we cannot act on: the browser is older than the build target and cannot parse
+ * our scripts, or the failing script is one an in-app browser (Facebook, Instagram) injected.
+ */
+export function shouldDropUnparsableScriptNoise(event: ErrorEvent): boolean {
+  if (event.exception?.values?.[0]?.type !== "SyntaxError") return false;
+  return isBelowSupportedBrowserFloor(event) || isInjectedAppScriptFrame(event);
+}
+
 /** Drop transient infrastructure noise (Postgres pool exhaustion, Redis blips, BullMQ lock loss). */
 export function shouldDropInfrastructureNoise(event: ErrorEvent): boolean {
   const message = eventMessage(event);
