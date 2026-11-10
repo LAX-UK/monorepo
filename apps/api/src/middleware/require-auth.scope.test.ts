@@ -64,7 +64,9 @@ describe("require-auth resource scope enforcement", () => {
 });
 
 describe("require-auth 401 codes", () => {
-  function appRejecting(reason: "token_key_unknown" | null | "throws" | "absent") {
+  function appRejecting(
+    reason: "token_key_unknown" | "token_expired" | null | "throws" | "absent",
+  ) {
     const authenticator: IAuthenticator = {
       getSessionUser: async () => null,
       ...(reason === "absent"
@@ -86,13 +88,16 @@ describe("require-auth 401 codes", () => {
     return { app, ran: () => handlerRan };
   }
 
-  it("returns token_key_unknown, before any handler runs, when the signing key is gone", async () => {
-    const { app, ran } = appRejecting("token_key_unknown");
-    const res = await app.request("/protected", { method: "POST" });
-    expect(res.status).toBe(401);
-    await expect(res.json()).resolves.toEqual({ error: "Unauthorized", code: "token_key_unknown" });
-    expect(ran()).toBe(false);
-  });
+  it.each(["token_key_unknown", "token_expired"] as const)(
+    "returns %s, before any handler runs, when a fresh token would fix the request",
+    async (reason) => {
+      const { app, ran } = appRejecting(reason);
+      const res = await app.request("/protected", { method: "POST" });
+      expect(res.status).toBe(401);
+      await expect(res.json()).resolves.toEqual({ error: "Unauthorized", code: reason });
+      expect(ran()).toBe(false);
+    },
+  );
 
   it.each([null, "throws", "absent"] as const)(
     "keeps session_required for every other 401 (%s)",
