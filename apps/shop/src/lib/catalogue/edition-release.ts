@@ -1,3 +1,4 @@
+import { formatDate } from "@auction/datetime";
 /**
  * When an edition counts as a new release. A work is new for a fixed window after it is first
  * listed; after that it is simply on sale. One rule, so the card tag, the hero date and the
@@ -21,15 +22,8 @@ export function isNewRelease(listedAt: string | null | undefined, now: Date): bo
   return age >= 0 && age < NEW_RELEASE_WINDOW_DAYS * DAY_MS;
 }
 
-const releaseDateFormat = new Intl.DateTimeFormat("en-GB", {
-  timeZone: "Europe/London",
-  day: "numeric",
-  month: "short",
-  year: "numeric",
-});
-
 /** "28 Oct 2026" in London time; null without a usable listing date. */
 export function formatReleaseDate(listedAt: string | null | undefined): string | null {
   const listed = parseListedAt(listedAt);
-  return listed ? releaseDateFormat.format(listed) : null;
+  return listed ? formatDate(listed, "Europe/London", { month: "short", engineSept: true }) : null;
 }

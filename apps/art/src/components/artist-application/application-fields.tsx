@@ -7,6 +7,8 @@ import { Input } from "@auction/ui/components/input";
 import { Textarea } from "@auction/ui/components/textarea";
 import type { ComponentProps, ReactNode } from "react";
 
+const COUNT = new Intl.NumberFormat("en-GB");
+
 type Common = {
   /** The field's key in the form's errors, e.g. `artistName` or `works.2.title`. */
   field: string;
@@ -90,7 +92,7 @@ export function ApplicationTextArea({
             )}
             aria-live={near ? "polite" : "off"}
           >
-            {used.toLocaleString("en-GB")} of {maxLength.toLocaleString("en-GB")} characters
+            {COUNT.format(used)} of {COUNT.format(maxLength)} characters
           </p>
         </div>
       )}

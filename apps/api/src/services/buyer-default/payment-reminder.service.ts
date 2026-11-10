@@ -1,3 +1,4 @@
+import { LONDON_TIME_ZONE, formatDate } from "@auction/datetime";
 import { paymentReminderToSend, storedDueAt } from "@auction/domain";
 import type { PaymentReminderStep } from "@auction/domain";
 import type { IInvoiceRecipients } from "@auction/finance-runtime";
@@ -10,13 +11,6 @@ import type { INotificationFactory } from "../interfaces/notification-factory.js
 import type { INotificationOutboxService } from "../interfaces/notification-outbox.js";
 import { notificationRowToPayload } from "../notification-payload.js";
 import type { IPaymentEligibilityGate } from "../payment/payment-eligibility.gate.js";
-
-const DUE_DATE = new Intl.DateTimeFormat("en-GB", {
-  day: "numeric",
-  month: "long",
-  year: "numeric",
-  timeZone: "Europe/London",
-});
 
 export type PaymentReminderServiceDeps = {
   store: IPaymentReminderStore;
@@ -74,7 +68,7 @@ export class PaymentReminderService {
                 lotTitle: candidate.lotTitle,
                 paymentId: candidate.paymentId,
                 amount: candidate.amount,
-                dueDate: DUE_DATE.format(storedDueAt(candidate)),
+                dueDate: formatDate(storedDueAt(candidate), LONDON_TIME_ZONE, { month: "long" }),
                 step,
                 held,
               }),

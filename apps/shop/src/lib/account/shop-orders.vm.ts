@@ -9,6 +9,7 @@ import {
   type ShopStatusPresentation,
   resolveShopOrderStatusPresentation,
 } from "@/lib/presenters/shop-status-presentation";
+import { formatTime } from "@auction/datetime";
 import type { OrderStatus, OrderSummary } from "@auction/shop-contracts";
 import { formatGbpPence, formatShopDate, formatShopDateTime } from "@auction/shop-portal/vm";
 
@@ -163,16 +164,10 @@ export type ShopOrderListVm = {
   rows: ShopOrderRowVm[];
 };
 
-const timeFormat = new Intl.DateTimeFormat("en-GB", {
-  hour: "2-digit",
-  minute: "2-digit",
-  timeZone: "Europe/London",
-});
-
 function reservedLabel(expiresAt: string, now: Date): string {
   const sameDay = formatShopDate(expiresAt) === formatShopDate(now.toISOString());
   return sameDay
-    ? `Your editions are reserved until ${timeFormat.format(new Date(expiresAt))}.`
+    ? `Your editions are reserved until ${formatTime(new Date(expiresAt), "Europe/London")}.`
     : `Your editions are reserved until ${formatShopDateTime(expiresAt)}.`;
 }
 

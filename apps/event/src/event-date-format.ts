@@ -1,20 +1,11 @@
+import { LONDON_TIME_ZONE, formatTimeUnpadded, formatWeekdayDate } from "@auction/datetime";
+
 export function formatEventDateLondon(startsAt: Date): string {
-  return startsAt.toLocaleString("en-GB", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-    timeZone: "Europe/London",
-  });
+  return formatWeekdayDate(startsAt, LONDON_TIME_ZONE);
 }
 
 export function formatEventDoorsTimeLondon(startsAt: Date): string {
-  const time = startsAt.toLocaleString("en-GB", {
-    hour: "numeric",
-    minute: "2-digit",
-    timeZone: "Europe/London",
-  });
-  return `Doors ${time}`;
+  return `Doors ${formatTimeUnpadded(startsAt, LONDON_TIME_ZONE)}`;
 }
 
 export function formatEventDateTimeLondon(iso: string | null): string | null {

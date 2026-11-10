@@ -6,12 +6,11 @@ import { ShopCommerceButton } from "@/components/shop-commerce-button";
 import { ShopNotice } from "@/components/shop-notice";
 import { SHOP_MEDIA_LABELS } from "@/lib/media/shop-media-labels";
 import { FOCUS_RING } from "@auction/branding";
+import { formatDate, runtimeTimeZone } from "@auction/datetime";
 import type { EditionAlert } from "@auction/shop-contracts";
 import { cn } from "@auction/ui";
 import Link from "next/link";
 import { useState, useTransition } from "react";
-
-const DATE = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric" });
 
 function AlertRow({ alert }: { alert: EditionAlert }) {
   const [stopped, setStopped] = useState(false);
@@ -37,7 +36,11 @@ function AlertRow({ alert }: { alert: EditionAlert }) {
           </Link>
         </p>
         <p className="shop-alerts__meta">
-          {alert.artistName} · Asked on {DATE.format(new Date(alert.createdAt))}
+          {alert.artistName} · Asked on{" "}
+          {formatDate(new Date(alert.createdAt), runtimeTimeZone(), {
+            month: "short",
+            engineSept: true,
+          })}
         </p>
         {failure ? (
           <ShopNotice tone="error" className="mt-2">
