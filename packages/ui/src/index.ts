@@ -140,7 +140,6 @@ export {
   BottomSheetTitle,
   BottomSheetDescription,
 } from "./components/ui/bottom-sheet.js";
-export { DataTable } from "./components/ui/data-table.js";
 export {
   AccessDeniedState,
   accessDeniedLine,
