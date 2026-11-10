@@ -168,6 +168,23 @@ describe("saving", () => {
     expect(store.settings.storageChargePence).toBe(2500);
   });
 
+  it("leaves the storage charge as it is when the save does not carry one", async () => {
+    const { service, store } = setup();
+    await service.save(STAFF, SETTINGS_VENUE, saveBody(store, { storageChargePence: 2500 }));
+    const { storageChargePence: _left, ...older } = saveBody(store, { visitMinutes: 45 });
+    const saved = await service.save(STAFF, SETTINGS_VENUE, older as never);
+    expect(saved.isOk()).toBe(true);
+    expect(store.settings.storageChargePence).toBe(2500);
+    expect(store.settings.visitMinutes).toBe(45);
+  });
+
+  it("clears the storage charge when the save sends none", async () => {
+    const { service, store } = setup();
+    await service.save(STAFF, SETTINGS_VENUE, saveBody(store, { storageChargePence: 2500 }));
+    await service.save(STAFF, SETTINGS_VENUE, saveBody(store, { storageChargePence: null }));
+    expect(store.settings.storageChargePence).toBeNull();
+  });
+
   it("changes nothing and records a save that changes nothing as no change", async () => {
     const { service, store, events } = setup();
     await service.save(STAFF, SETTINGS_VENUE, saveBody(store));

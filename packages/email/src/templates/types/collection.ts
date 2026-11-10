@@ -133,8 +133,12 @@ type CollectionTemplateVars = {
     address: string;
     /** One line per lot: "Lot 12 · Lowland Storm". */
     lots: string[];
-    /** Where to book a time. */
+    /** The booking page for these lots. */
     bookUrl: string;
+    /** The storage section of the shipping page. */
+    storagePolicyUrl: string;
+    /** Where the buyer asks for a courier quote. */
+    quoteUrl: string;
   };
 };
 

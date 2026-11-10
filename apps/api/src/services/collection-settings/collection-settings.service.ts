@@ -133,7 +133,11 @@ export class CollectionSettingsAdminService implements ICollectionSettingsAdminS
         onlineBookingEnabled: body.onlineBookingEnabled,
         bookingEmail: body.bookingEmail,
         freeStorageDays: body.freeStorageDays,
-        storageChargePence: body.storageChargePence,
+        // Absent (a web release older than this field) leaves the charge as it is.
+        storageChargePence:
+          body.storageChargePence === undefined
+            ? current.settings.storageChargePence
+            : body.storageChargePence,
         hours: body.hours,
         updatedByUserId: actor.userId,
         at: this.deps.now(),

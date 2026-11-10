@@ -29,39 +29,52 @@ export function collectBy(
   return { date, reminderDates: [addDaysToKey(date, -policy.reminderLeadDays), date] };
 }
 
+/** The longest free storage period a place can set, in days. */
+export const MAX_FREE_STORAGE_DAYS = 365;
+
 export type CollectByReminderKind = "lead" | "day";
 
-/** A storage reminder that goes today, and for which purchases. */
-export type CollectByReminderDue = {
+/** A storage reminder a purchase is due, and the deadline it is about. */
+export type CollectByReminder = {
   kind: CollectByReminderKind;
-  /** The London day payment must have cleared on for this reminder to be today's. */
-  clearedOn: DateKey;
-  /** The "please collect by" day those purchases share. */
+  /** The "please collect by" day, a London day. */
   collectBy: DateKey;
 };
 
 /**
- * The storage reminders that go on `today` (a London day): the one a week before the deadline and
- * the one on the day. Each is for the purchases that cleared on one particular day, so a lot is
- * reminded once for each, however often the sweep runs. A free period no longer than the lead has
- * no early reminder, because it would fall on or before the day payment cleared.
+ * The storage reminder a purchase is due on `today` (a London day), or none. The early reminder is
+ * due on any day from a week before the deadline until the day itself, so a sweep that missed a
+ * day still sends it; the reminder on the day is due on the deadline only. Each is keyed by its
+ * deadline, so a purchase is reminded once for each however often the sweep runs. A free period no
+ * longer than the lead has no early reminder, because it would fall on or before the day payment
+ * cleared.
  */
-export function collectByRemindersDue(
+export function collectByReminderFor(
+  clearedAt: Date,
   today: DateKey,
   policy: CollectByPolicy = DEFAULT_COLLECT_BY_POLICY,
-): CollectByReminderDue[] {
-  const due: CollectByReminderDue[] = [];
-  if (policy.freeStorageDays > policy.reminderLeadDays) {
-    due.push({
-      kind: "lead",
-      clearedOn: addDaysToKey(today, -(policy.freeStorageDays - policy.reminderLeadDays)),
-      collectBy: addDaysToKey(today, policy.reminderLeadDays),
-    });
-  }
-  due.push({
-    kind: "day",
-    clearedOn: addDaysToKey(today, -policy.freeStorageDays),
-    collectBy: today,
-  });
-  return due;
+): CollectByReminder | null {
+  const { date, reminderDates } = collectBy(clearedAt, policy);
+  if (today === date) return { kind: "day", collectBy: date };
+  const early = policy.freeStorageDays > policy.reminderLeadDays;
+  if (early && today >= reminderDates[0] && today < date) return { kind: "lead", collectBy: date };
+  return null;
+}
+
+/**
+ * The London days payment must have cleared on for a purchase to be due a reminder on `today`,
+ * first to last: from the free period ago to the free period less the lead ago.
+ */
+export function collectByClearedRange(
+  today: DateKey,
+  policy: CollectByPolicy = DEFAULT_COLLECT_BY_POLICY,
+): { from: DateKey; to: DateKey } {
+  const early = policy.freeStorageDays > policy.reminderLeadDays;
+  return {
+    from: addDaysToKey(today, -policy.freeStorageDays),
+    to: addDaysToKey(
+      today,
+      -(early ? policy.freeStorageDays - policy.reminderLeadDays : policy.freeStorageDays),
+    ),
+  };
 }
