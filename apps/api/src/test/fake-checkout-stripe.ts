@@ -28,6 +28,11 @@ export class FakeCheckoutStripe {
   >();
   readonly keys: string[] = [];
   failExpireFor = new Set<string>();
+  readonly intents = new Map<
+    string,
+    { status: string; amount: number; received: number; remaining: number }
+  >();
+  readonly cancelledIntents: string[] = [];
   private seq = 0;
 
   createCardCheckoutSession = (input: CreateCheckoutSessionInput) => this.create("card", input);
@@ -79,9 +84,52 @@ export class FakeCheckoutStripe {
   }
 
   /** The buyer was given bank transfer instructions: the session now has a payment intent. */
-  giveTransferInstructions(id: string) {
+  giveTransferInstructions(id: string, amount = 5000) {
     const s = this.sessions.get(id);
-    if (s) s.paymentIntent = `pi_${id}`;
+    if (!s) return;
+    s.paymentIntent = `pi_${id}`;
+    this.intents.set(`pi_${id}`, {
+      status: "requires_action",
+      amount,
+      received: 0,
+      remaining: amount,
+    });
+  }
+
+  /** Part of the transfer arrived: the intent keeps waiting for the rest. */
+  partiallyFund(id: string, received: number) {
+    const intent = this.intents.get(`pi_${id}`);
+    if (!intent) return;
+    intent.received = received;
+    intent.remaining = intent.amount - received;
+  }
+
+  /** The buyer paid this session (the intent that paid is returned). */
+  complete(id: string) {
+    const s = this.sessions.get(id);
+    if (!s) return null;
+    s.status = "complete";
+    s.paymentIntent ??= `pi_${id}`;
+    return s.paymentIntent;
+  }
+
+  async retrievePaymentIntent(id: string) {
+    const i = this.intents.get(id);
+    return {
+      id,
+      status: i?.status ?? "succeeded",
+      amount: i?.amount ?? 5000,
+      amount_received: i?.received ?? 5000,
+      next_action: i
+        ? { display_bank_transfer_instructions: { amount_remaining: i.remaining } }
+        : null,
+    } as unknown as Stripe.PaymentIntent;
+  }
+
+  async cancelPaymentIntent(id: string) {
+    this.cancelledIntents.push(id);
+    const i = this.intents.get(id);
+    if (i) i.status = "canceled";
   }
 
   open(rail?: CheckoutSessionRail) {

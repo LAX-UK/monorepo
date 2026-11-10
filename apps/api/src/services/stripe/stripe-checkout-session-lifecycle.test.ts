@@ -239,4 +239,94 @@ describe("CheckoutSessionLifecycle", () => {
     expect(stripe.open()).toContain(ids[1]);
     expect(stripe.sessions.get(ids[1] as string)?.status).toBe("open");
   });
+
+  describe("closeAfterCapture", () => {
+    it("closes an unfunded bank session and cancels its intent after a card payment", async () => {
+      const { stripe, ledger, lifecycle, pay } = setup();
+      const bank = readyId(await pay("bank", ["lot"]));
+      stripe.giveTransferInstructions(bank);
+      const card = readyId(await pay("card", ["lot"]));
+      const paidIntent = stripe.complete(card);
+
+      await lifecycle.closeAfterCapture("pay-1", paidIntent);
+
+      expect(stripe.open()).toEqual([]);
+      expect(stripe.cancelledIntents).toEqual([`pi_${bank}`]);
+      const rows = await ledger.listSessions("pay-1");
+      expect(rows.find((r) => r.stripeSessionId === bank)?.closedAt).toBeTruthy();
+      // The session that paid is left exactly as it was.
+      expect(rows.find((r) => r.stripeSessionId === card)?.closedAt).toBeNull();
+      expect(stripe.sessions.get(card)?.status).toBe("complete");
+    });
+
+    it("closes another card session opened for old parameters", async () => {
+      const { stripe, ledger, lifecycle, pay } = setup();
+      const paid = readyId(await pay("card", ["lot", "courier"]));
+      const paidIntent = stripe.complete(paid);
+      // A session for old parameters still open next to the one that paid (a second tab).
+      const stale = await stripe.createCardCheckoutSession({ idempotencyKey: "old" } as never);
+      await ledger.record("pay-1", stale.sessionId, { rail: "card", parametersFingerprint: "old" });
+      expect(stripe.open()).toEqual([stale.sessionId]);
+
+      await lifecycle.closeAfterCapture("pay-1", paidIntent);
+
+      expect(stripe.open()).toEqual([]);
+      expect(stripe.cancelledIntents).toEqual([]);
+    });
+
+    it("leaves a partly funded bank session alone", async () => {
+      const { stripe, ledger, lifecycle, pay } = setup();
+      const bank = readyId(await pay("bank", ["lot"]));
+      stripe.giveTransferInstructions(bank);
+      stripe.partiallyFund(bank, 1000);
+      const card = readyId(await pay("card", ["lot"]));
+      const paidIntent = stripe.complete(card);
+
+      await lifecycle.closeAfterCapture("pay-1", paidIntent);
+
+      expect(stripe.open("bank")).toEqual([bank]);
+      expect(stripe.cancelledIntents).toEqual([]);
+      const rows = await ledger.listSessions("pay-1");
+      expect(rows.find((r) => r.stripeSessionId === bank)?.closedAt).toBeNull();
+    });
+
+    it("is a no-op when the webhook is redelivered", async () => {
+      const { stripe, lifecycle, pay, report } = setup();
+      const bank = readyId(await pay("bank", ["lot"]));
+      stripe.giveTransferInstructions(bank);
+      const card = readyId(await pay("card", ["lot"]));
+      const paidIntent = stripe.complete(card);
+
+      await lifecycle.closeAfterCapture("pay-1", paidIntent);
+      await lifecycle.closeAfterCapture("pay-1", paidIntent);
+
+      expect(stripe.cancelledIntents).toEqual([`pi_${bank}`]);
+      expect(report).not.toHaveBeenCalled();
+    });
+
+    it("reports a failed close, never throws, and retries it on redelivery", async () => {
+      const { stripe, ledger, lifecycle, pay, report } = setup();
+      const paid = readyId(await pay("card", ["b"]));
+      const paidIntent = stripe.complete(paid);
+      const staleSession = await stripe.createCardCheckoutSession({
+        idempotencyKey: "old",
+      } as never);
+      const stale = staleSession.sessionId;
+      await ledger.record("pay-1", stale, { rail: "card", parametersFingerprint: "old" });
+      stripe.failExpireFor.add(stale);
+
+      await expect(lifecycle.closeAfterCapture("pay-1", paidIntent)).resolves.toBeUndefined();
+
+      expect(report).toHaveBeenCalledWith(
+        expect.objectContaining({ code: "checkout_cleanup_after_capture_failed" }),
+      );
+      expect(
+        (await ledger.listSessions("pay-1")).find((r) => r.stripeSessionId === stale)?.closedAt,
+      ).toBeNull();
+
+      stripe.failExpireFor.clear();
+      await lifecycle.closeAfterCapture("pay-1", paidIntent);
+      expect(stripe.open()).toEqual([]);
+    });
+  });
 });

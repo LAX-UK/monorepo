@@ -22,6 +22,7 @@ import type {
 import type { NotificationDispatcher } from "../notification.dispatcher.js";
 import type { NotificationFactory } from "../notification.factory.js";
 import { chargeIdFromPaymentIntent } from "../stripe/stripe-charge-id.js";
+import type { CheckoutSessionLifecycle } from "../stripe/stripe-checkout-session-lifecycle.js";
 import type { IStripePaymentGateway } from "../stripe/stripe-payment-gateway.js";
 import { dispatchPaymentReceived } from "./dispatch-payment-received.js";
 import type { IUnappliedMoneyRecorder } from "./unapplied-money.recorder.js";
@@ -50,6 +51,11 @@ export class PaymentCaptureService implements IPaymentCaptureService, IPaymentCa
     private readonly stripePayments: IStripePaymentGateway | null = null,
     /** Closes a "paid, not recorded" finance task once this capture records that money. */
     private readonly unappliedMoney: Pick<IUnappliedMoneyRecorder, "resolveApplied"> | null = null,
+    /** Closes the invoice's other open checkouts once it is paid, so it cannot be paid twice. */
+    private readonly checkoutCleanup: Pick<
+      CheckoutSessionLifecycle,
+      "closeAfterCapture"
+    > | null = null,
   ) {}
 
   async capture(input: CapturePaymentInput): Promise<CapturePaymentResult> {
@@ -164,6 +170,11 @@ export class PaymentCaptureService implements IPaymentCaptureService, IPaymentCa
     }
 
     const afterCommit = async () => {
+      // Never throws: a failure is reported by the lifecycle and must not undo the capture.
+      await this.checkoutCleanup?.closeAfterCapture(
+        input.paymentId,
+        input.stripePaymentIntentId ?? p.stripePaymentIntentId ?? null,
+      );
       const after = (await this.payments.findById(input.paymentId)) ?? p;
       await dispatchPaymentReceived({
         payment: after,

@@ -75,7 +75,10 @@ export class CheckoutSessionLifecycle {
   constructor(
     private readonly gateway: Pick<
       IStripePaymentGateway,
-      "retrieveCheckoutSession" | "expireCheckoutSession"
+      | "retrieveCheckoutSession"
+      | "expireCheckoutSession"
+      | "retrievePaymentIntent"
+      | "cancelPaymentIntent"
     >,
     private readonly ledger: Pick<
       IPaymentCheckoutSessionStore,
@@ -119,6 +122,63 @@ export class CheckoutSessionLifecycle {
       return this.settle(status, rail, paymentId);
     }
     return { kind: "unavailable", error: "Stripe checkout session is not open" };
+  }
+
+  /**
+   * Once an invoice's payment is captured, closes its other recorded open sessions on every rail so
+   * the buyer cannot pay it a second time. The session that paid is never touched, and an intent
+   * with money received or on its way is left for the unapplied-money path. Idempotent (a closed
+   * session is skipped), and it never throws: a failure is reported and the capture stands.
+   */
+  async closeAfterCapture(paymentId: string, paidPaymentIntentId: string | null): Promise<void> {
+    let recorded: RecordedCheckoutSession[];
+    try {
+      recorded = await this.ledger.listSessions(paymentId);
+    } catch (err) {
+      this.reportCleanupFailure(err);
+      return;
+    }
+    for (const session of recorded) {
+      if (session.closedAt) continue;
+      try {
+        await this.closeOtherAfterCapture(session, paidPaymentIntentId);
+      } catch (err) {
+        this.reportCleanupFailure(err);
+      }
+    }
+  }
+
+  private reportCleanupFailure(cause: unknown): void {
+    this.reporter.report({
+      message: "Could not close a checkout session after the payment was captured",
+      status: 500,
+      code: "checkout_cleanup_after_capture_failed",
+      severity: "error",
+      cause,
+    });
+  }
+
+  private async closeOtherAfterCapture(
+    recorded: RecordedCheckoutSession,
+    paidPaymentIntentId: string | null,
+  ): Promise<void> {
+    const stripeSession = await this.gateway.retrieveCheckoutSession(recorded.stripeSessionId);
+    const intentId =
+      typeof stripeSession.payment_intent === "string"
+        ? stripeSession.payment_intent
+        : (stripeSession.payment_intent?.id ?? null);
+    if (paidPaymentIntentId && intentId === paidPaymentIntentId) return;
+    // A paid session is never closed: its payment is being confirmed.
+    if (stripeSession.status === "complete") return;
+    if (stripeSession.status === "open") {
+      if (intentId) {
+        const intent = await this.gateway.retrievePaymentIntent(intentId);
+        if (!isUnfundedIntent(intent)) return;
+        await this.gateway.cancelPaymentIntent(intentId);
+      }
+      await this.gateway.expireCheckoutSession(recorded.stripeSessionId);
+    }
+    await this.ledger.markClosed(recorded.stripeSessionId);
   }
 
   /**
@@ -238,4 +298,21 @@ export class CheckoutSessionLifecycle {
 /** The rail of a session recorded before rails were stored. */
 function railOf(session: Stripe.Checkout.Session): CheckoutSessionRail {
   return session.payment_method_types?.includes("customer_balance") ? "bank" : "card";
+}
+
+/**
+ * True when nothing was paid into the intent: it is still waiting for the buyer (a bank transfer
+ * with instructions shown counts) and no amount was received, not even a partial transfer.
+ */
+function isUnfundedIntent(intent: Stripe.PaymentIntent): boolean {
+  if (
+    intent.status !== "requires_payment_method" &&
+    intent.status !== "requires_confirmation" &&
+    intent.status !== "requires_action"
+  ) {
+    return false;
+  }
+  if ((intent.amount_received ?? 0) > 0) return false;
+  const remaining = intent.next_action?.display_bank_transfer_instructions?.amount_remaining;
+  return remaining == null || remaining >= intent.amount;
 }
