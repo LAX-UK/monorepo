@@ -1,4 +1,9 @@
-import { offsetMinutes } from "@auction/datetime";
+import {
+  clockChange,
+  firstExistingWallTime,
+  instantToWallClock,
+  wallClockToInstant,
+} from "@auction/datetime";
 import { STAFF_TIME_ZONE, formatStaffDate, staffShortDateFormat } from "../lib/format.js";
 
 /*
@@ -90,37 +95,18 @@ export function formatStaffCalendarDay(day: string, now: Date = new Date()): str
 
 /**
  * The UTC instant for a wall-clock day and time in `zone`, or null when that time does not exist
- * (the hour skipped when that zone's clocks go forward).
+ * (the hour skipped when that zone's clocks go forward). One engine, shared with every form's
+ * save path: `wallClockToInstant` in `@auction/datetime`.
  */
 export function wallTimeToIso(day: string, time: string, zone: string): string | null {
-  const [y, m, d] = day.split("-").map(Number);
-  const [hh, mm] = time.split(":").map(Number);
-  if (!y || !m || !d || hh === undefined || mm === undefined) return null;
-  const wall = Date.UTC(y, m - 1, d, hh, mm);
-  const offsetAt = (instant: number) => offsetMinutes(new Date(instant), zone);
-  for (const offset of [offsetAt(wall - 60 * 60_000), offsetAt(wall)]) {
-    const instant = wall - offset * 60_000;
-    if (offsetAt(instant) === offset) return new Date(instant).toISOString();
-  }
-  return null;
+  const result = wallClockToInstant(day, time, zone);
+  return result.ok ? result.instant.toISOString() : null;
 }
 
 /** The day (`YYYY-MM-DD`) and time (`HH:MM`) of an instant on the clock in `zone`. */
 export function isoToWallTime(iso: string, zone: string): { day: string; time: string } | null {
   const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return null;
-  const wall = new Date(date.getTime() + offsetMinutes(date, zone) * 60_000).toISOString();
-  return { day: wall.slice(0, 10), time: wall.slice(11, 16) };
-}
-
-/** "forward" or "back" when the clocks in `zone` change on that day, else null. */
-export function clockChange(day: string, zone: string): "forward" | "back" | null {
-  const [y, m, d] = day.split("-").map(Number);
-  if (!y || !m || !d) return null;
-  const start = offsetMinutes(new Date(Date.UTC(y, m - 1, d, 0, 30)), zone);
-  const end = offsetMinutes(new Date(Date.UTC(y, m - 1, d, 23, 30)), zone);
-  if (start === end) return null;
-  return end > start ? "forward" : "back";
+  return Number.isNaN(date.getTime()) ? null : instantToWallClock(date, zone);
 }
 
 /** `wallTimeToIso` on the London clock, for everything that is not a sale's own time. */
@@ -138,20 +124,9 @@ export function londonClockChange(day: string): "forward" | "back" | null {
   return clockChange(day, STAFF_TIME_ZONE);
 }
 
-/**
- * The earliest time at or after `time` that exists on `day` in `zone`: the same time on an
- * ordinary day, and the end of the skipped hour when the clocks go forward. Null when none is
- * found within three hours.
- */
+/** The first time at or after `time` that exists on `day` in `zone`; see `@auction/datetime`. */
 export function nextExistingWallTime(day: string, time: string, zone: string): string | null {
-  const [hh, mm] = time.split(":").map(Number);
-  if (hh === undefined || mm === undefined) return null;
-  for (let step = 0; step <= 180; step += 1) {
-    const total = hh * 60 + mm + step;
-    const candidate = `${pad(Math.floor(total / 60) % 24)}:${pad(total % 60)}`;
-    if (wallTimeToIso(day, candidate, zone)) return candidate;
-  }
-  return null;
+  return firstExistingWallTime(day, time, zone);
 }
 
 /** Reads "14:05", "1405" or "9:30" on a 24-hour clock. */

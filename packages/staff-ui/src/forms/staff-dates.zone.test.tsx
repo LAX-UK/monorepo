@@ -3,7 +3,7 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import * as React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { DateTimeInput } from "./date-input.js";
-import { clockChange, isoToWallTime, nextExistingWallTime, wallTimeToIso } from "./staff-dates.js";
+import { isoToWallTime, nextExistingWallTime, wallTimeToIso } from "./staff-dates.js";
 
 afterEach(cleanup);
 
@@ -29,13 +29,6 @@ describe("wall time in any zone", () => {
 
   it("uses the earlier of a repeated time", () => {
     expect(wallTimeToIso("2030-10-27", "01:30", "Europe/London")).toBe("2030-10-27T00:30:00.000Z");
-  });
-
-  it("knows the days each zone's clocks change", () => {
-    expect(clockChange("2030-03-31", "Europe/London")).toBe("forward");
-    expect(clockChange("2030-03-10", "America/New_York")).toBe("forward");
-    expect(clockChange("2030-03-10", "Europe/London")).toBeNull();
-    expect(clockChange("2030-10-27", "Europe/Paris")).toBe("back");
   });
 });
 

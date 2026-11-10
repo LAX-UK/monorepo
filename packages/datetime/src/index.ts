@@ -24,6 +24,13 @@ export type { LocalTime } from "./local-time.js";
 export { offsetMinutes, sameOffset } from "./offset.js";
 export { isPlaceholderZone, isValidZone, normaliseViewerZone } from "./zone.js";
 export { shortZoneName } from "./zone-formats.js";
+export { clockChange, clockChangeNotice } from "./clock-change.js";
+export {
+  type WallClockResult,
+  firstExistingWallTime,
+  instantToWallClock,
+  wallClockToInstant,
+} from "./wall-clock.js";
 export {
   type ZoneChoice,
   listZoneChoices,

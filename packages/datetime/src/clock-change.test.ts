@@ -1,5 +1,20 @@
 import { describe, expect, it } from "vitest";
-import { clockChangeNotice } from "./clock-change-notice.js";
+import { clockChange, clockChangeNotice } from "./clock-change.js";
+
+describe("clockChange", () => {
+  it.each([
+    ["2030-03-31", "Europe/London", "forward"],
+    ["2030-10-27", "Europe/London", "back"],
+    ["2030-03-10", "America/New_York", "forward"],
+    ["2030-11-03", "America/New_York", "back"],
+    ["2030-10-06", "Australia/Sydney", "forward"],
+    ["2030-04-07", "Australia/Sydney", "back"],
+    ["2030-03-10", "Europe/London", null],
+    ["2030-06-01", "Asia/Dubai", null],
+  ] as const)("%s in %s is %s", (day, zone, expected) => {
+    expect(clockChange(day, zone)).toBe(expected);
+  });
+});
 
 describe("clockChangeNotice", () => {
   it("names the skipped hour when London's clocks go forward", () => {

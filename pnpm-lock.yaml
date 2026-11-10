@@ -2266,6 +2266,9 @@ importers:
 
   packages/ui:
     dependencies:
+      '@auction/datetime':
+        specifier: workspace:*
+        version: link:../datetime
       '@date-fns/tz':
         specifier: ^1.5.0
         version: 1.5.0

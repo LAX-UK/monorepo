@@ -1,4 +1,5 @@
-import { offsetMinutes, shortZoneName } from "@auction/datetime";
+import { offsetMinutes } from "./offset.js";
+import { shortZoneName } from "./zone-formats.js";
 
 const MINUTE = 60_000;
 const SCAN_STEP = 15 * MINUTE;
@@ -53,6 +54,13 @@ function transitionOn(day: string, zone: string): Transition | null {
     previous = t;
   }
   return null;
+}
+
+/** "forward" or "back" when the clocks in `zone` change during that calendar day, else null. */
+export function clockChange(day: string, zone: string): "forward" | "back" | null {
+  const transition = transitionOn(day, zone);
+  if (!transition) return null;
+  return transition.after > transition.before ? "forward" : "back";
 }
 
 function lengthWords(minutes: number): string {

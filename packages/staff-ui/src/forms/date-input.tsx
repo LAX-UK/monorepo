@@ -1,6 +1,6 @@
 "use client";
 
-import { shortZoneName } from "@auction/datetime";
+import { clockChangeNotice, shortZoneName } from "@auction/datetime";
 import { Calendar } from "@auction/ui/components/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@auction/ui/components/popover";
 import { TextInput, type TextInputProps, useField } from "@auction/ui/lax";
@@ -9,7 +9,6 @@ import * as React from "react";
 import { STAFF_LAYER, cn } from "../lib/cn.js";
 import { STAFF_TIME_ZONE } from "../lib/format.js";
 import { StaffButton } from "../primitives/button.js";
-import { clockChangeNotice } from "./clock-change-notice.js";
 import {
   dateToDay,
   dayToDate,
