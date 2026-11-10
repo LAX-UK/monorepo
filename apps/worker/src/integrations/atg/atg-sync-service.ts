@@ -97,7 +97,7 @@ export class AtgSyncService {
   private readonly onTickError: ((saleId: string, err: unknown) => void) | undefined;
   private readonly feeVerifier: AtgFeeVerifier;
   /** Staff-fixable tick errors already sent to Sentry, so one that is never stored is not repeated. */
-  private readonly reportedTickErrors = new Set<string>();
+  private readonly reportedTickErrors = new Map<string, Set<string>>();
 
   constructor(deps: AtgSyncServiceDeps) {
     this.gateway = deps.gateway;
@@ -134,7 +134,10 @@ export class AtgSyncService {
     if (sale.cancelled) {
       const message = "Sale is cancelled in LAX, so it is no longer pushed. Close it on ATG.";
       if (existing) {
-        await this.store.saveAuctionLink(saleId, { lastSyncedAt: startedAt, lastError: message });
+        await this.store.saveAuctionLink(saleId, {
+          lastSyncedAt: startedAt,
+          lastError: withFeeMismatch(existing.lastError, message),
+        });
       }
       throw new AtgSyncPreconditionError(message);
     }
@@ -310,6 +313,8 @@ export class AtgSyncService {
         outcome.pushed = await attempt(async () => {
           await this.pushSale(link.saleId);
         });
+        // A fixed error that comes back later must be reported again.
+        if (outcome.pushed) this.reportedTickErrors.delete(link.saleId);
       }
     }
     if (link.remoteStatus !== "closed" && canPush && !this.feeVerifier.hasVerified(link.saleId)) {
@@ -369,9 +374,10 @@ export class AtgSyncService {
     const staffFixable = err instanceof AtgMappingError || err instanceof AtgSyncPreconditionError;
     if (staffFixable) {
       const text = errorText(err);
-      const key = `${link.saleId}\n${text}`;
-      if (text === link.lastError || this.reportedTickErrors.has(key)) return;
-      this.reportedTickErrors.add(key);
+      const reported = this.reportedTickErrors.get(link.saleId) ?? new Set<string>();
+      if (text === link.lastError || reported.has(text)) return;
+      reported.add(text);
+      this.reportedTickErrors.set(link.saleId, reported);
     }
     this.onTickError?.(link.saleId, err);
   }
