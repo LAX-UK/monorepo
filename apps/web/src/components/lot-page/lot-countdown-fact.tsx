@@ -5,7 +5,7 @@ import type { LotInfoRow, LotInfoTone, LotRowCountdown } from "@/lib/lot-page/lo
 import { useCountdown } from "@/lib/time/use-clock";
 import type { CountdownContext, CountdownDisplay } from "@auction/domain";
 import { useEffect, useRef, useState } from "react";
-import { LotFact } from "./lot-fact-grid";
+import { LotFact } from "./lot-fact";
 
 /** Module constants, so the clock does not resubscribe on every render. */
 const CONTEXTS: Readonly<Record<string, CountdownContext>> = {
