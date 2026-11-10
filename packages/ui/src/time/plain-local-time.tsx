@@ -7,7 +7,13 @@ import { cn } from "../lib/utils.js";
  * keeps the info tint and the named day, so the day is never told by colour alone. A hidden
  * "Your time:" says whose clock it is.
  */
-export function PlainLocalTime({ moment }: { moment: MomentDescription }) {
+export function PlainLocalTime({
+  moment,
+  className,
+}: {
+  moment: MomentDescription;
+  className?: string;
+}) {
   const local = moment.local;
   if (!local) return null;
   return (
@@ -17,6 +23,7 @@ export function PlainLocalTime({ moment }: { moment: MomentDescription }) {
         moment.localDiffersDay
           ? "rounded-lax-badge bg-lax-info-bg px-1.5 text-lax-info-fg"
           : "text-lax-muted",
+        className,
       )}
     >
       <span className="sr-only">Your time: </span>

@@ -76,9 +76,18 @@ export function BidRow({
         card.saleTitle,
         card.placedBy ? `Placed by ${card.placedBy}` : null,
         card.placementNote,
-        closing?.local ? <PlainLocalTime key="closes" moment={closing} /> : null,
+        closing?.local ? (
+          <PlainLocalTime
+            key="closes"
+            moment={closing}
+            // A narrow row wraps the city onto a second line rather than cutting it off.
+            className="max-w-full items-start whitespace-normal [&>svg]:mt-[3px]"
+          />
+        ) : null,
       ]}
-      metaShrink={1}
+      // A visitor's own time is a fact that must stay whole, so the facts wrap instead of one
+      // of them giving way to it.
+      {...(closing?.local ? {} : { metaShrink: 1 })}
       figures={card.figures}
       aligned
       status={
