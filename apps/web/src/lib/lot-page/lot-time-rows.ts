@@ -1,9 +1,8 @@
 import {
   type LotLifecycleKind,
   TIME_LEFT_DATE_BEYOND_MS,
-  formatTimeLeft,
-  timeLeftShowsSeconds,
-  timeLeftView,
+  type TimeLeftTone,
+  countdownDisplay,
 } from "@auction/domain";
 import { formatLotClock, formatLotDay, formatLotMoment } from "./lot-page-dates";
 
@@ -55,6 +54,19 @@ export type TimeRowContext = {
 
 type TimeRowBuilder = (ctx: TimeRowContext) => LotInfoRow | null;
 
+/**
+ * What the lot page's countdown rule prints for `msLeft`: the words the server draws are the
+ * same ones the countdown leaf prints on its first tick, so nothing changes under the reader.
+ */
+function lotFace(
+  msLeft: number,
+  extended: boolean,
+): { label: string; text: string; tone: TimeLeftTone } {
+  const d = countdownDisplay("lot", msLeft, { extended });
+  if (d.kind === "counting") return { label: d.label, text: d.text, tone: d.tone };
+  return { label: "Time left", text: "", tone: "calm" };
+}
+
 function momentMs(iso: string | null): number | null {
   if (!iso) return null;
   const ms = Date.parse(iso);
@@ -105,12 +117,12 @@ const closingRow: TimeRowBuilder = (ctx) => {
       ...(countdown ? { countdown } : {}),
     };
   }
-  const view = timeLeftView(msLeft);
+  const face = lotFace(msLeft, false);
   return {
-    label: view.label,
-    value: view.text,
+    label: face.label,
+    value: face.text,
     sub: endsAt ? `Closes ${formatLotMoment(endsAt, now)}` : null,
-    tone: view.tone,
+    tone: face.tone,
     clock: true,
     ...(countdown ? { countdown } : {}),
   };
@@ -119,26 +131,32 @@ const closingRow: TimeRowBuilder = (ctx) => {
 const extendedRow: TimeRowBuilder = (ctx) => {
   const { msLeft } = ctx;
   if (msLeft === null) return null;
-  const view = timeLeftView(msLeft, { extended: true });
+  const face = lotFace(msLeft, true);
   const countdown = closingCountdown(ctx, true);
   return {
-    label: view.label,
-    value: view.text,
+    label: face.label,
+    value: face.text,
     sub: extendedSub(ctx),
-    tone: view.tone,
+    tone: face.tone,
     clock: true,
     ...(countdown ? { countdown } : {}),
   };
 };
 
 /** Zero reached and the server has not said how the lot ended. */
-const closingNowRow: TimeRowBuilder = () => ({
-  label: "Time left",
-  value: "Closing…",
-  sub: "The result follows in a moment",
-  tone: "final",
-  clock: true,
-});
+const closingNowRow: TimeRowBuilder = (ctx) => {
+  // It keeps the countdown, aimed at the close that has passed: the same component carries the
+  // row through Closing… and back to Extended if a late bid lands, so it can mark that bid.
+  const countdown = closingCountdown(ctx, false);
+  return {
+    label: "Time left",
+    value: "Closing…",
+    sub: "The result follows in a moment",
+    tone: "final",
+    clock: true,
+    ...(countdown ? { countdown } : {}),
+  };
+};
 
 const opensRow: TimeRowBuilder = (ctx) => {
   const { msLeft, startsAt, now } = ctx;
@@ -171,10 +189,7 @@ const opensRow: TimeRowBuilder = (ctx) => {
   }
   return {
     label: msLeft > 0 ? "Opens in" : "Opens",
-    value:
-      msLeft > 0
-        ? formatTimeLeft(msLeft, { showSeconds: timeLeftShowsSeconds(msLeft) })
-        : "Opening…",
+    value: msLeft > 0 ? lotFace(msLeft, false).text : "Opening…",
     sub: formatLotMoment(startsAt, now),
     tone: "calm",
     clock: true,

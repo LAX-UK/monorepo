@@ -123,7 +123,7 @@ export function classifyLotLifecycle(
     return { kind: "live", msLeft: timer.msLeft };
   }
   if (timer.kind === "closed") {
-    if (opts?.confirmClose && lot.status === "active") {
+    if (opts?.confirmClose && (lot.status === "active" || lot.status === "scheduled")) {
       return { kind: "closing", msLeft: 0 };
     }
     if (lot.winnerId) {

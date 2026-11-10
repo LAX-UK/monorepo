@@ -65,7 +65,7 @@ describe("LotPriceBlockView", () => {
     expect(screen.getByText("Current bid")).toBeInTheDocument();
     expect(screen.getByText("£7,000")).toBeInTheDocument();
     expect(screen.getByText("Time left")).toBeInTheDocument();
-    expect(screen.getByText("2 days 14 hours")).toBeInTheDocument();
+    expect(screen.getByText("2d 14h 00m 00s")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Bid entry" })).toBeInTheDocument();
   });
 

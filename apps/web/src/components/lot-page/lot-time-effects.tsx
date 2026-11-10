@@ -46,7 +46,11 @@ export function LotTimeEffects() {
     for (const message of said) announce(message);
   }, [nowMs, endMs, extensions, view.lifecycle, announce]);
 
-  const closing = view.lifecycle === "closing";
+  // Zero on a lot that is closing, or on one that should have opened: the page asks the server how
+  // things stand rather than guessing, until the live connection or a snapshot says.
+  const closing =
+    view.lifecycle === "closing" ||
+    (view.lifecycle === "scheduled" && view.msLeft !== null && view.msLeft <= 0);
   useEffect(() => {
     if (!closing) return;
     return startClosingFetches(() => refreshFromServer({ silent: true }));

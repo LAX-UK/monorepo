@@ -2,6 +2,7 @@ import { LotFactGrid } from "@/components/lot-page/lot-fact-grid";
 import type { LotInfoRow } from "@/lib/lot-page/lot-time-rows";
 import { createClockSource, createClockStore, replaceDefaultClockStore } from "@auction/ui/clock";
 import { act, render, screen } from "@testing-library/react";
+import { renderToString } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 let reduced = false;
@@ -148,5 +149,62 @@ describe("the lot page time fact", () => {
       />,
     );
     expect(screen.getByText("£6,000–£9,000")).toBeInTheDocument();
+  });
+
+  it("the first tint plays on a lot that goes from live to extended, though its words change", () => {
+    const live = row({ end: START + 120_000, extensions: 0 });
+    const { rerender, container } = render(<LotFactGrid rows={[live]} />);
+    // The label changes from "Closing soon"/"Final minutes" to "Extended" with the first late bid.
+    rerender(
+      <LotFactGrid
+        rows={[
+          { ...row({ extended: true, end: START + 150_000, extensions: 1 }), label: "Extended" },
+        ]}
+      />,
+    );
+    expect(screen.getByText("Extended")).toBeInTheDocument();
+    expect(container.querySelector("dd.bg-lax-danger-bg")).not.toBeNull();
+  });
+
+  it("keeps one component through Closing… and back to Extended, so that bid is marked too", () => {
+    const { rerender, container } = render(<LotFactGrid rows={[row({ end: START + 1_000 })]} />);
+    act(() => {
+      vi.advanceTimersByTime(1_500);
+    });
+    expect(screen.getByText("Closing…")).toBeInTheDocument();
+    rerender(<LotFactGrid rows={[row({ extended: true, end: START + 31_000, extensions: 1 })]} />);
+    expect(screen.getByText("Extended")).toBeInTheDocument();
+    expect(container.querySelector("dd.bg-lax-danger-bg")).not.toBeNull();
+  });
+});
+
+describe("the first paint", () => {
+  it("is the same words the countdown prints on its first tick", async () => {
+    const { buildLotPageView } = await import("@/lib/lot-page/build-lot-page-view");
+    const { NO_LOT_VIEWER } = await import("@/lib/lot-page/lot-viewer");
+    const msLeft = 2 * 86_400_000 + 4 * 3_600_000 + 12 * 60_000 + 33_000;
+    const view = buildLotPageView({
+      lifecycle: "live",
+      now: new Date(START),
+      msLeft,
+      startsAt: new Date(START - 86_400_000).toISOString(),
+      endsAt: new Date(START + msLeft).toISOString(),
+      amounts: { starting: "100", current: "200", hammer: null, soldForWithPremium: null },
+      estimate: null,
+      bidCount: 1,
+      reserve: "none",
+      nextBid: "210",
+      extendedByMs: null,
+      saleroom: null,
+      signedIn: false,
+      viewer: NO_LOT_VIEWER,
+    });
+    const timeRow = view.rows.find((r) => r.countdown);
+    if (!timeRow) throw new Error("no time row");
+    const server = renderToString(<LotFactGrid rows={[timeRow]} />);
+    expect(server).toContain("2d 04h 12m 33s");
+    render(<LotFactGrid rows={[timeRow]} />);
+    // The first client text is the server's text, so nothing changes under the reader.
+    expect(screen.getByText("2d 04h 12m 33s")).toBeInTheDocument();
   });
 });

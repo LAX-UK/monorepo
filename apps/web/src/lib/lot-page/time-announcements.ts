@@ -76,7 +76,8 @@ export function nextTimeAnnouncements(
   state.extensions = Math.max(state.extensions, input.extensions);
 
   const before = state.lifecycle;
-  if (state.initialised && before !== null && before !== input.lifecycle) {
+  // Words are said only while the tab is on screen.
+  if (state.initialised && input.visible && before !== null && before !== input.lifecycle) {
     if (input.lifecycle === "closing" && COUNTING.has(before)) {
       said.push("Bidding has closed");
     } else if (input.lifecycle === "endedSold" || input.lifecycle === "endedNoSale") {

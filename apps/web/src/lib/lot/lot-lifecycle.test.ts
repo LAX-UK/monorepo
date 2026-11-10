@@ -93,6 +93,16 @@ describe("classifyLotLifecycle", () => {
       });
     });
 
+    it("a lot still stored as scheduled is held the same way, not declared from the device clock", () => {
+      const stale = lotBase("scheduled", {
+        startTime: new Date(t - 2 * hour),
+        endTime: new Date(t - 1000),
+      });
+      expect(classifyLotLifecycle(stale, onlineSale, t, { confirmClose: true }).kind).toBe(
+        "closing",
+      );
+    });
+
     it("every other surface still reads the end time, as before", () => {
       expect(classifyLotLifecycle(pastEnd, onlineSale, t).kind).toBe("endedNoSale");
     });

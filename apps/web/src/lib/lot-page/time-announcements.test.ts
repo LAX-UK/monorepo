@@ -103,6 +103,17 @@ describe("extensions, the close and the result", () => {
     ]);
   });
 
+  it("says nothing of the close or the result while the tab is hidden", () => {
+    const state = newTimeAnnouncementState();
+    nextTimeAnnouncements(state, input(10 * S));
+    expect(
+      nextTimeAnnouncements(state, input(0, { lifecycle: "closing", visible: false })),
+    ).toEqual([]);
+    expect(
+      nextTimeAnnouncements(state, input(-S, { lifecycle: "endedSold", visible: false })),
+    ).toEqual([]);
+  });
+
   it("a lot that ends with no close seen says both", () => {
     const state = newTimeAnnouncementState();
     nextTimeAnnouncements(state, input(10 * S));

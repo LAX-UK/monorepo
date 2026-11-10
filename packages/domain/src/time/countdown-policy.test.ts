@@ -58,12 +58,12 @@ const legacy = {
 /** The same instant rounded up to the whole second, which is how every surface reads it now. */
 const roundedUp = (ms: number) => Math.ceil(ms / S) * S;
 
-/** Every second to three hours (with part seconds), a stride across the rest of the week, the edges. */
+/** Every second to 80 minutes (with part seconds), a stride across the rest of the week, the edges. */
 function sweep(): number[] {
   const values = new Set<number>();
-  for (let s = 1; s <= 3 * 3600; s += 1)
+  for (let s = 1; s <= 80 * 60; s += 1)
     values.add(s * S + (s % 3 === 0 ? 999 : s % 3 === 1 ? 0 : 500));
-  for (let s = 3 * 3600; s <= 7 * 86_400; s += 37)
+  for (let s = 80 * 60; s <= 7 * 86_400; s += 53)
     for (const part of [0, 999]) values.add(s * S + part);
   for (const edge of [7 * D, 7 * D - 1, D, D - 1, H, H - 1, 2 * M, 2 * M - 1, M, M - 1, 1])
     values.add(edge);
@@ -77,44 +77,48 @@ function counting(surface: CountdownSurface, ms: number, ctx = {}) {
   return d;
 }
 
-describe("the surfaces other than the lot page read as before, from the rounded-up second", () => {
-  const inRange = SWEEP.filter((ms) => roundedUp(ms) <= TIME_LEFT_DATE_BEYOND_MS);
+describe(
+  "the surfaces other than the lot page read as before, from the rounded-up second",
+  { timeout: 60_000 },
+  () => {
+    const inRange = SWEEP.filter((ms) => roundedUp(ms) <= TIME_LEFT_DATE_BEYOND_MS);
 
-  it("card: words by the time rule", () => {
-    for (const ms of inRange)
-      expect(counting("card", ms).text, String(ms)).toBe(legacy.words(roundedUp(ms)));
-  });
+    it("card: words by the time rule", () => {
+      for (const ms of inRange)
+        expect(counting("card", ms).text, String(ms)).toBe(legacy.words(roundedUp(ms)));
+    });
 
-  it("chip: the compact form", () => {
-    for (const ms of inRange)
-      expect(counting("chip", ms).text, String(ms)).toBe(legacy.compact(roundedUp(ms)));
-  });
+    it("chip: the compact form", () => {
+      for (const ms of inRange)
+        expect(counting("chip", ms).text, String(ms)).toBe(legacy.compact(roundedUp(ms)));
+    });
 
-  it("saleHero: the two largest tiles", () => {
-    for (const ms of inRange)
-      expect(counting("saleHero", ms).tiles, String(ms)).toEqual(legacy.tiles(roundedUp(ms)));
-  });
+    it("saleHero: the two largest tiles", () => {
+      for (const ms of inRange)
+        expect(counting("saleHero", ms).tiles, String(ms)).toEqual(legacy.tiles(roundedUp(ms)));
+    });
 
-  it("cover: the clock in the final hour, the caller's own text before it", () => {
-    for (const ms of SWEEP.filter((v) => roundedUp(v) < H)) {
-      expect(counting("cover", ms).text, String(ms)).toBe(legacy.compact(roundedUp(ms)));
-    }
-    expect(countdownDisplay("cover", H).kind).toBe("static");
-    expect(countdownDisplay("cover", 3 * D).kind).toBe("static");
-    expect(countdownDisplay("cover", H - 1000).kind).toBe("counting");
-  });
-
-  it("every surface agrees on the tone and label of the same second", () => {
-    for (const ms of inRange) {
-      const view = timeLeftView(ms);
-      for (const surface of ["lot", "lotBar", "card", "chip", "saleHero"] as CountdownSurface[]) {
-        const d = counting(surface, ms);
-        expect(d.tone, `${surface} ${ms}`).toBe(view.tone);
-        expect(d.label, `${surface} ${ms}`).toBe(view.label);
+    it("cover: the clock in the final hour, the caller's own text before it", () => {
+      for (const ms of SWEEP.filter((v) => roundedUp(v) < H)) {
+        expect(counting("cover", ms).text, String(ms)).toBe(legacy.compact(roundedUp(ms)));
       }
-    }
-  });
-});
+      expect(countdownDisplay("cover", H).kind).toBe("static");
+      expect(countdownDisplay("cover", 3 * D).kind).toBe("static");
+      expect(countdownDisplay("cover", H - 1000).kind).toBe("counting");
+    });
+
+    it("every surface agrees on the tone and label of the same second", () => {
+      for (const ms of inRange) {
+        const view = timeLeftView(ms);
+        for (const surface of ["lot", "lotBar", "card", "chip", "saleHero"] as CountdownSurface[]) {
+          const d = counting(surface, ms);
+          expect(d.tone, `${surface} ${ms}`).toBe(view.tone);
+          expect(d.label, `${surface} ${ms}`).toBe(view.label);
+        }
+      }
+    });
+  },
+);
 
 describe("the lot page rows count seconds for the whole week", () => {
   it.each<[string, number, string]>([

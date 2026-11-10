@@ -5,8 +5,8 @@ import {
   type LotLifecycleKind,
   type LotPosition,
   type LotStatusTone,
+  countdownDisplay,
   lotLifecycleCopy,
-  timeLeftView,
 } from "@auction/domain";
 
 /** How the line under the figure reads: the clock tightens from calm to soon to final. */
@@ -73,11 +73,13 @@ const closing: LineBuilder = (view, nowMs) => {
   const countdown = countdownOf(view);
   const extra = countdown ? { countdown } : {};
   if (timer.date) return { ...dated("Closes", timer.date), ...extra };
-  const { tone } = timeLeftView(view.msLeft, { extended: view.lifecycle === "extended" });
+  // The words the server draws are the ones the countdown prints on its first tick.
+  const face = countdownDisplay("lotBar", view.msLeft, { extended: view.lifecycle === "extended" });
+  if (face.kind !== "counting") return null;
   return {
-    words: `${timer.words} left`,
-    compact: `${timer.compact} left`,
-    tone,
+    words: `${face.text} left`,
+    compact: face.text,
+    tone: face.tone,
     clock: true,
     ...extra,
   };
@@ -93,9 +95,11 @@ const opening: LineBuilder = (view, nowMs) => {
   const extra = countdown ? { countdown } : {};
   if (view.msLeft <= 0) return { ...plain("Opening…", true), ...extra };
   if (timer.date) return { ...dated("Opens", timer.date), ...extra };
+  const face = countdownDisplay("lotBar", view.msLeft);
+  if (face.kind !== "counting") return null;
   return {
-    words: `Opens in ${timer.words}`,
-    compact: `Opens in ${timer.compact}`,
+    words: `Opens in ${face.text}`,
+    compact: face.text,
     tone: "calm",
     clock: true,
     ...extra,
