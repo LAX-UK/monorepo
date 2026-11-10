@@ -21,6 +21,12 @@ export type StripeRefundInput = {
    */
   paymentId?: string;
   /**
+   * The courier quote, for a refund of the delivery charged in the payment: the refund webhook
+   * attributes it to the delivery and never to an invoice, so no seller payout is clawed back.
+   * Takes the place of `paymentId` in the refund's metadata.
+   */
+  deliveryQuoteId?: string;
+  /**
    * Which of several part refunds of one payment this is (the amount already returned), so two
    * part refunds of the same amount are two refunds, not one repeated.
    */
@@ -116,9 +122,11 @@ export class StripePaymentGateway implements IStripePaymentGateway {
       throw new Error("StripePaymentGateway: refund called while not configured");
     }
     const step = input.sequence === undefined ? "" : `:${input.sequence}`;
-    const idempotencyKey = input.paymentId
-      ? `refund:${input.chargeId}:${input.paymentId}:${input.amount ?? "full"}${step}`
-      : `refund:${input.chargeId}:${input.amount ?? "full"}${step}`;
+    const idempotencyKey = input.deliveryQuoteId
+      ? `refund:${input.chargeId}:delivery:${input.deliveryQuoteId}:${input.amount ?? "full"}${step}`
+      : input.paymentId
+        ? `refund:${input.chargeId}:${input.paymentId}:${input.amount ?? "full"}${step}`
+        : `refund:${input.chargeId}:${input.amount ?? "full"}${step}`;
     return executeWithStripeRetries(async () => {
       try {
         const params: Stripe.RefundCreateParams = {
@@ -128,7 +136,9 @@ export class StripePaymentGateway implements IStripePaymentGateway {
         if (input.amount !== undefined) {
           params.amount = input.amount;
         }
-        if (input.paymentId) {
+        if (input.deliveryQuoteId) {
+          params.metadata = { deliveryQuoteId: input.deliveryQuoteId };
+        } else if (input.paymentId) {
           params.metadata = { paymentId: input.paymentId };
         }
         const refund = await stripe.refunds.create(params, { idempotencyKey });

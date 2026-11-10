@@ -112,31 +112,59 @@ export type GroupRefund = {
   /** The invoice's payment the refund was made for, from the refund's own record. */
   paymentId: string | null;
   amountPence: number;
+  /**
+   * The courier quote the refund was made for (`metadata.deliveryQuoteId`). A refund that names a
+   * quote is never an invoice's refund, whatever else it names.
+   */
+  deliveryQuoteId?: string | null;
 };
 
 export type GroupRefundAttribution = {
   /** Everything refunded so far for each invoice in the group, in pence. */
   refundedPenceByPayment: Map<string, number>;
-  /** Refunds that name no invoice of the group; these are never guessed at. */
+  /** Everything refunded so far for each courier quote charged in the group, in pence. */
+  refundedPenceByDelivery: Map<string, number>;
+  /**
+   * Refunds that name no invoice or quote of the group, and any part of a refund above what its
+   * invoice or quote was charged; these are never guessed at.
+   */
   unattributedPence: number;
 };
 
 /**
- * Which invoice each refund of a group's payment belongs to. Refunds are made per invoice and
- * carry the invoice's payment id, so a partial refund of one invoice never touches the others.
- * A refund that names no invoice of the group (for example one made outside the platform) is
- * reported rather than spread across invoices. A refund is attributed as it was made, even when
- * the invoice has been refunded more than it was: that excess must be visible to whoever checks
- * the invoice, so it is never trimmed here.
+ * Which invoice, or which courier quote, each refund of a group's payment belongs to. Refunds are
+ * made per invoice and carry the invoice's payment id, or, for the delivery portion, the quote's
+ * id, so a partial refund of one invoice never touches the others and a courier refund never
+ * touches an invoice (and so never claws back a seller's payout). A refund that names neither
+ * (for example one made outside the platform) is reported rather than spread.
+ *
+ * A group that carries delivery caps each invoice and each quote at what it was charged: the part
+ * of a refund above that is reported as unattributed, never added to the invoice. A group without
+ * delivery keeps the earlier behaviour, where a refund is attributed as it was made even above the
+ * invoice, so that excess is visible to whoever checks the invoice.
  */
 export function attributeGroupRefunds(
-  members: readonly { paymentId: string }[],
+  members: readonly { paymentId: string; amountPence?: number }[],
   refunds: readonly GroupRefund[],
+  deliveries: readonly { quoteId: string; amountPence: number }[] = [],
 ): GroupRefundAttribution {
   const memberIds = new Set(members.map((m) => m.paymentId));
+  const deliveryAmounts = new Map(deliveries.map((d) => [d.quoteId, d.amountPence]));
   const refundedPenceByPayment = new Map<string, number>();
+  const refundedPenceByDelivery = new Map<string, number>();
   let unattributedPence = 0;
   for (const refund of refunds) {
+    if (refund.deliveryQuoteId) {
+      if (deliveryAmounts.has(refund.deliveryQuoteId)) {
+        refundedPenceByDelivery.set(
+          refund.deliveryQuoteId,
+          (refundedPenceByDelivery.get(refund.deliveryQuoteId) ?? 0) + refund.amountPence,
+        );
+      } else {
+        unattributedPence += refund.amountPence;
+      }
+      continue;
+    }
     if (!refund.paymentId || !memberIds.has(refund.paymentId)) {
       unattributedPence += refund.amountPence;
       continue;
@@ -146,5 +174,22 @@ export function attributeGroupRefunds(
       (refundedPenceByPayment.get(refund.paymentId) ?? 0) + refund.amountPence,
     );
   }
-  return { refundedPenceByPayment, unattributedPence };
+  if (deliveries.length > 0) {
+    for (const member of members) {
+      const refunded = refundedPenceByPayment.get(member.paymentId);
+      if (refunded === undefined || member.amountPence === undefined) continue;
+      if (refunded > member.amountPence) {
+        unattributedPence += refunded - member.amountPence;
+        refundedPenceByPayment.set(member.paymentId, member.amountPence);
+      }
+    }
+    for (const [quoteId, refunded] of refundedPenceByDelivery) {
+      const charged = deliveryAmounts.get(quoteId) ?? 0;
+      if (refunded > charged) {
+        unattributedPence += refunded - charged;
+        refundedPenceByDelivery.set(quoteId, charged);
+      }
+    }
+  }
+  return { refundedPenceByPayment, refundedPenceByDelivery, unattributedPence };
 }
