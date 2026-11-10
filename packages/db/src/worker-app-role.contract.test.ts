@@ -530,6 +530,39 @@ describe.skipIf(!WORKER_URL)("worker_app role contract", { timeout: 60_000 }, ()
         if (!(err instanceof Error) || err.message !== "rollback_role_contract") throw err;
       });
   });
+  it("reads every table the collection reminder sweeps and the lot facts they check use", async () => {
+    // Only SELECT: the sweeps read, and email through the outbox. A table missing here makes every
+    // reminder group fail with "permission denied", which the sweep logs and carries on from.
+    const tables = [
+      "lot",
+      "lot_fulfilment",
+      "sale",
+      "venue",
+      "collection_place",
+      "collection_booking",
+      "collection_booking_lot",
+      "payment",
+      "payment_refund_reconcile",
+      "delivery_quote",
+      "dispute_case",
+      "dispute_case_candidate",
+      "source_of_funds",
+      "bid_user_profile",
+      "bid_identity_directory",
+      "legal_entity",
+      "legal_entity_member",
+      "email_outbox",
+    ];
+    await withWorkerClient(async (client) => {
+      for (const table of tables) {
+        const result = await client.query<{ allowed: boolean }>(
+          "select has_table_privilege(current_user, 'public.' || $1, 'SELECT') as allowed",
+          [table],
+        );
+        expect(result.rows[0]?.allowed, table).toBe(true);
+      }
+    });
+  });
 });
 
 describe("worker_app role contract (static cutover gate)", () => {

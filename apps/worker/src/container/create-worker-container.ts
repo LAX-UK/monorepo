@@ -407,6 +407,8 @@ export function createWorkerContainer(): WorkerContainer {
   const collectionWorkers = registerCollectionWorkers(deps, {
     emailService: emailWorkers.emailOutboxService,
     reader: repositories.collectionNoticeReader,
+    collectByReader: repositories.collectByReader,
+    lotFacts: repositories.collectionLotFacts,
   });
   const purgeWorkers = registerPurgeWorkers(deps, {
     retentionHoldAlerts: new RetentionHoldAlerts({

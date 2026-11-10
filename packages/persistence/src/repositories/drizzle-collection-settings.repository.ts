@@ -50,6 +50,7 @@ function toSettings(row: PlaceRow): CollectionPlaceSettings {
     undoHandOverMinutes: row.undoHandOverMinutes,
     maxActiveVisits: row.maxActiveVisits,
     freeStorageDays: row.freeStorageDays,
+    storageChargePence: row.storageChargePence,
     bookingEmail: row.bookingEmail,
     updatedAt: row.updatedAt,
   };
@@ -95,6 +96,7 @@ function changedFields(
   check("undo_hand_over_minutes", before.undoHandOverMinutes, input.rules.undoHandOverMinutes);
   check("max_active_visits", before.maxActiveVisits, input.rules.maxActiveVisits);
   check("free_storage_days", before.freeStorageDays, input.freeStorageDays);
+  check("storage_charge", before.storageChargePence, input.storageChargePence);
   check("booking_email", before.bookingEmail, input.bookingEmail);
   if (!sameHours(beforeHours, input.hours)) changed.push("weekly_hours");
   return changed;
@@ -244,6 +246,7 @@ export class DrizzleCollectionSettingsRepository
           undoHandOverMinutes: input.rules.undoHandOverMinutes,
           maxActiveVisits: input.rules.maxActiveVisits,
           freeStorageDays: input.freeStorageDays,
+          storageChargePence: input.storageChargePence,
           bookingEmail: input.bookingEmail,
           updatedByUserId: input.updatedByUserId,
           updatedAt: input.at,

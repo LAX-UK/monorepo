@@ -33,7 +33,12 @@ function setup(
   const dueReminders = vi.fn().mockResolvedValue(due);
   const run = (now: string) =>
     runCollectionRemindersJob({
-      reader: { visit: read, dueReminders, collectorEmailsSince: vi.fn().mockResolvedValue(0) },
+      reader: {
+        visit: read,
+        dueReminders,
+        collectorEmailsSince: vi.fn().mockResolvedValue(0),
+        accountRecipients: vi.fn().mockResolvedValue([]),
+      },
       emailService: { enqueue } as unknown as IEmailService,
       config: CONFIG,
       log,

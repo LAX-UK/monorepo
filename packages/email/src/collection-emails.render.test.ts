@@ -103,6 +103,52 @@ describe("collection missed email", () => {
   });
 });
 
+describe("collect by email", () => {
+  const base = {
+    userName: "Maya",
+    when: "lead" as const,
+    collectByLabel: "Wed 9 Dec",
+    placeName: "London Art Exchange",
+    address: "156 New Cavendish Street, London W1W 6YW",
+    lots: ["Lot 12 · Lowland Storm", "Lot 14 · Coastal Notation"],
+    lotIds: ["a", "b"],
+    bookUrl: "https://lax.bid/purchases/collect?lots=a,b",
+    storagePolicyUrl: "https://lax.bid/shipping#storage",
+    quoteUrl: "https://lax.bid/purchases",
+  };
+
+  it("asks them to collect by the day, says charges may apply, and links to book", async () => {
+    const rendered = await renderEmail("collection-collect-by", base);
+    expect(rendered.subject).toBe("Please collect by Wed 9 Dec");
+    expect(rendered.html).toContain("Please collect by Wed 9 Dec");
+    expect(rendered.html).not.toContain("within a week");
+    expect(rendered.text).toContain("lots stay with us at London Art Exchange");
+    expect(rendered.text).toContain(
+      "Please collect by Wed 9 Dec. After that, storage charges may apply",
+    );
+    expect(rendered.html).toContain("https://lax.bid/purchases/collect?lots=a,b");
+    expect(rendered.html).toContain("https://lax.bid/shipping#storage");
+    expect(rendered.html).toContain("ask us for a courier quote");
+    expect(`${rendered.subject} ${rendered.text}`).not.toMatch(PRICE);
+  });
+
+  it("lists each lot on a line of its own", async () => {
+    const rendered = await renderEmail("collection-collect-by", base);
+    expect(rendered.html).toContain("<li>Lot 12 · Lowland Storm</li>");
+    expect(rendered.html).toContain("<li>Lot 14 · Coastal Notation</li>");
+    expect(rendered.html).not.toContain("Lowland Storm; ");
+  });
+
+  it("says the free storage ends today on the day, and asks for the next available time", async () => {
+    const rendered = await renderEmail("collection-collect-by", { ...base, when: "day" });
+    expect(rendered.subject).toBe("Your free storage ends today");
+    expect(rendered.html).toContain("Your free storage ends today");
+    expect(rendered.text).toContain("Book the next available time");
+    expect(rendered.text).toContain("Storage charges may apply from tomorrow");
+    expect(rendered.text).not.toMatch(/book(ing)? today/i);
+  });
+});
+
 describe("who the emails come from", () => {
   it("name LAX Bid's company in the footer, and the gallery only as the place of the visit", async () => {
     const rendered = await renderEmail("collection-booked", visit);
@@ -250,6 +296,7 @@ describe("collection emails are transactional", () => {
       "collection-collector-notice",
       "collection-collected",
       "collection-missed",
+      "collection-collect-by",
     ]) {
       expect(OPTIONAL_EMAIL_TEMPLATES).not.toContain(name);
     }

@@ -325,6 +325,10 @@ export const WORKER_READ_TABLES = [
   "collection_exception",
   "collection_booking",
   "collection_booking_lot",
+  /** The storage reminder sweep reads each lot's eligibility to collect: a courier quote accepted, a dispute open. */
+  "delivery_quote",
+  "dispute_case",
+  "dispute_case_candidate",
 ];
 // Postgres requires UPDATE on the target table for `select ... for update` row locks even
 // when no rows are mutated. The projector runner pulls events with FOR UPDATE SKIP LOCKED,
@@ -388,10 +392,25 @@ export const WORKER_KYC_RETENTION_PURGE_TABLES = [
   "legal_entity_document",
   "admin_review_task",
 ] as const;
+/**
+ * The retention purge holds back a person or organisation that is on a private sale deal until the
+ * deal's own retention has passed. It reads who was named on each deal and when the deal changed
+ * stage (the deal itself and the enquiry are granted elsewhere). Read only.
+ */
+export const WORKER_KYC_RETENTION_DEAL_READ_TABLES = [
+  "private_sale_deal_party",
+  "private_sale_deal_party_history",
+  "private_sale_deal_stage_history",
+] as const;
 /** Append-only proof of each purge: no personal data. */
 export const WORKER_KYC_RETENTION_TOMBSTONE_TABLES = ["kyc_retention_tombstone"] as const;
 /** Worker persists async QR scan events (qr-code-scan job via persistQrCodeScan). */
 export const WORKER_QR_CODE_SCAN_TABLES = ["qr_code_scan", "qr_code_scan_daily"] as const;
+/**
+ * The nightly retention purge (apps/worker, `purge-qr-code-scans`) deletes raw scan rows past
+ * retention. The daily roll-up keeps no personal data and is never deleted.
+ */
+export const WORKER_QR_CODE_SCAN_PURGE_DELETE_TABLES = ["qr_code_scan"] as const;
 /** The unsold-choice projector stores each unsold outcome's choose-by date, once. */
 export const WORKER_UNSOLD_CHOICE_DEADLINE_TABLES = ["unsold_choice_deadline"] as const;
 /** The follow-up projector opens the staff work a confirmed unsold-lot choice leaves behind. */
@@ -999,6 +1018,9 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
         for (const tableName of WORKER_KYC_RETENTION_PURGE_TABLES) {
           await grantIfExists(client, "worker_app", tableName, "SELECT, DELETE");
         }
+        for (const tableName of WORKER_KYC_RETENTION_DEAL_READ_TABLES) {
+          await grantIfExists(client, "worker_app", tableName, "SELECT");
+        }
         for (const tableName of WORKER_KYC_RETENTION_TOMBSTONE_TABLES) {
           await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT");
         }
@@ -1067,6 +1089,9 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
         await grantIfExists(client, "worker_app", "qr_code", "SELECT");
         for (const tableName of WORKER_QR_CODE_SCAN_TABLES) {
           await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT, UPDATE");
+        }
+        for (const tableName of WORKER_QR_CODE_SCAN_PURGE_DELETE_TABLES) {
+          await grantIfExists(client, "worker_app", tableName, "SELECT, DELETE");
         }
         for (const tableName of WORKER_BID_ALERT_TABLES) {
           await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT, UPDATE");

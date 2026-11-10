@@ -1,6 +1,8 @@
 import { readFile, readdir } from "node:fs/promises";
 import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
+import { getTableName, is } from "drizzle-orm";
+import { PgTable } from "drizzle-orm/pg-core";
 import ts from "typescript";
 import { beforeAll, describe, expect, it } from "vitest";
 import {
@@ -37,6 +39,7 @@ import {
   WORKER_FULL_TABLES,
   WORKER_INVOICE_RAISE_FULFILMENT_TABLES,
   WORKER_INVOICE_RAISE_INSERT_TABLES,
+  WORKER_KYC_RETENTION_DEAL_READ_TABLES,
   WORKER_KYC_RETENTION_PURGE_TABLES,
   WORKER_KYC_RETENTION_TOMBSTONE_TABLES,
   WORKER_LIFECYCLE_READ_TABLES,
@@ -45,6 +48,7 @@ import {
   WORKER_PAYMENT_REFUND_TABLES,
   WORKER_PRODUCT_PROFILE_TABLES,
   WORKER_PROVISIONING_TABLES,
+  WORKER_QR_CODE_SCAN_PURGE_DELETE_TABLES,
   WORKER_QR_CODE_SCAN_TABLES,
   WORKER_READ_TABLES,
   WORKER_SHOP_ENQUIRY_READ_COLUMNS,
@@ -54,6 +58,7 @@ import {
   WORKER_ZOHO_CAMPAIGNS_LIFT_READ_TABLES,
   WORKER_ZOHO_CAMPAIGNS_SUPPRESSION_TABLES,
 } from "./migrate-roles.js";
+import * as schema from "./schema/index.js";
 
 /** AST-based audit of every `db.update(user|userTable).set({ ... })` call in `apps/api`.
  *
@@ -748,6 +753,30 @@ describe("migrate-roles invariants", () => {
     expect([...WORKER_QR_CODE_SCAN_TABLES]).toContain("qr_code_scan_daily");
   });
 
+  it("lets the worker purge raw QR scans but never the daily roll-up", async () => {
+    expect([...WORKER_QR_CODE_SCAN_PURGE_DELETE_TABLES]).toEqual(["qr_code_scan"]);
+    for (const table of WORKER_QR_CODE_SCAN_PURGE_DELETE_TABLES) {
+      expect([...WORKER_QR_CODE_SCAN_TABLES]).toContain(table);
+    }
+    const source = await readFile(join(__dirname, "migrate-roles.ts"), "utf8");
+    expect(source).toContain("WORKER_QR_CODE_SCAN_PURGE_DELETE_TABLES");
+    expect(source).toMatch(
+      /for \(const tableName of WORKER_QR_CODE_SCAN_PURGE_DELETE_TABLES\) \{\s+await grantIfExists\(client, "worker_app", tableName, "SELECT, DELETE"\);/,
+    );
+  });
+
+  it("lets the retention purge read the private sale deal records it holds back on, and only read them", async () => {
+    expect([...WORKER_KYC_RETENTION_DEAL_READ_TABLES].sort()).toEqual([
+      "private_sale_deal_party",
+      "private_sale_deal_party_history",
+      "private_sale_deal_stage_history",
+    ]);
+    const source = await readFile(join(__dirname, "migrate-roles.ts"), "utf8");
+    expect(source).toMatch(
+      /for \(const tableName of WORKER_KYC_RETENTION_DEAL_READ_TABLES\) \{\s+await grantIfExists\(client, "worker_app", tableName, "SELECT"\);/,
+    );
+  });
+
   it("WORKER_DATA_EXPORT_TABLES includes data_exports (worker data-export jobs)", () => {
     expect([...WORKER_DATA_EXPORT_TABLES]).toContain("data_exports");
   });
@@ -846,5 +875,64 @@ describe("api_app grants vs API runtime sources", { timeout: 60_000 }, () => {
       }
     }
     expect(forbiddenImports, "direct Identity table imports").toEqual([]);
+  });
+});
+
+/**
+ * Every table a worker purge repository deletes from must be one worker_app may delete from.
+ * Without the grant the nightly job fails with `permission denied` and nothing is ever purged.
+ */
+describe("worker purge repositories hold a DELETE grant", () => {
+  const workerRepositories = join(repoRoot, "apps/worker/src/repositories");
+  const workerDeleteTables = new Set<string>([
+    ...WORKER_FULL_TABLES,
+    ...WORKER_QR_CODE_SCAN_PURGE_DELETE_TABLES,
+    ...WORKER_KYC_RETENTION_PURGE_TABLES,
+  ]);
+  const tableNameByIdentifier = new Map(
+    Object.entries(schema)
+      .filter((entry): entry is [string, PgTable] => is(entry[1], PgTable))
+      .map(([identifier, table]) => [identifier, getTableName(table)]),
+  );
+
+  async function deletedTables(file: string): Promise<string[]> {
+    const source = ts.createSourceFile(
+      file,
+      await readFile(file, "utf8"),
+      ts.ScriptTarget.Latest,
+      true,
+    );
+    const tables: string[] = [];
+    const visit = (node: ts.Node): void => {
+      if (
+        ts.isCallExpression(node) &&
+        ts.isPropertyAccessExpression(node.expression) &&
+        node.expression.name.text === "delete" &&
+        node.arguments[0] &&
+        ts.isIdentifier(node.arguments[0])
+      ) {
+        const table = tableNameByIdentifier.get(node.arguments[0].text);
+        if (table) tables.push(table);
+      }
+      ts.forEachChild(node, visit);
+    };
+    visit(source);
+    return tables;
+  }
+
+  it("covers every table the purge repositories delete from", async () => {
+    const files = (await readdir(workerRepositories))
+      .filter((name) => /purge.*\.repository\.ts$/.test(name))
+      .map((name) => join(workerRepositories, name));
+    expect(files.length).toBeGreaterThan(0);
+    const missing: string[] = [];
+    for (const file of files) {
+      const tables = await deletedTables(file);
+      expect(tables.length, `${relative(repoRoot, file)} deletes nothing`).toBeGreaterThan(0);
+      for (const table of tables) {
+        if (!workerDeleteTables.has(table)) missing.push(`${relative(repoRoot, file)}: ${table}`);
+      }
+    }
+    expect(missing).toEqual([]);
   });
 });
