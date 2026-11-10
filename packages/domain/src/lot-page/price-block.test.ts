@@ -100,15 +100,9 @@ describe("price block by lifecycle", () => {
     expect(buildPriceBlock(input({ bidCount: 0, reserve: "none" })).subLine).toBe("No bids yet");
   });
 
-  it("extended: names the extension", () => {
-    expect(buildPriceBlock(input({ lifecycle: "extended", extendedByMs: 120_000 })).subLine).toBe(
-      "Extended by 2 minutes after a late bid",
-    );
+  it("extended: reads like a live lot; the time row, not the price block, names the extension", () => {
     expect(buildPriceBlock(input({ lifecycle: "extended", extendedByMs: 30_000 })).subLine).toBe(
-      "Extended by 30 seconds after a late bid",
-    );
-    expect(buildPriceBlock(input({ lifecycle: "extended" })).subLine).toBe(
-      "Bidding was extended after a late bid",
+      "6 bids · Reserve met",
     );
   });
 

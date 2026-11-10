@@ -91,7 +91,8 @@ describe("buildLotPageView lifecycles", () => {
       value: "1m 48s",
       tone: "final",
     });
-    expect(view.price.subLine).toBe("Extended by 2 minutes after a late bid");
+    // The time row says why the close moved, so the price block does not say it a second time.
+    expect(view.price.subLine).toBe("7 bids · Reserve met");
     expect(view.rows[1]?.sub).not.toMatch(/Extended/);
   });
 

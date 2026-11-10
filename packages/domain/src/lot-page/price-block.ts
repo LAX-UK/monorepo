@@ -112,15 +112,6 @@ function openSubLine(input: PriceBlockInput): string | null {
   return parts.join(" · ");
 }
 
-function extendedSubLine(input: PriceBlockInput): string {
-  if (input.extendedByMs && input.extendedByMs >= 1000) {
-    const seconds = Math.round(input.extendedByMs / 1000);
-    const text = seconds % 60 === 0 ? plural(seconds / 60, "minute") : plural(seconds, "second");
-    return `Extended by ${text} after a late bid`;
-  }
-  return "Bidding was extended after a late bid";
-}
-
 function saleroomSubLine(input: PriceBlockInput): string | null {
   const room = input.saleroom;
   if (!room) return openSubLine(input);
@@ -205,7 +196,8 @@ function headlineOf(input: PriceBlockInput): Headline {
     case "live":
       return headlineWithAmount(openLabel, openAmount, openSubLine(input), format);
     case "extended":
-      return headlineWithAmount(openLabel, openAmount, extendedSubLine(input), format);
+      // The time row says why the close moved; the price block does not say it again.
+      return headlineWithAmount(openLabel, openAmount, openSubLine(input), format);
     case "closing":
       return headlineWithAmount(openLabel, openAmount, null, format);
     case "liveSaleroom":
