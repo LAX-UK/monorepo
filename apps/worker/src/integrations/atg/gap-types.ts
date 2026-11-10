@@ -29,7 +29,7 @@ export type GapAuctionFields = {
   Currency: string;
   CountryCode: string;
   IncrementSetId: string;
-  /** Percentages, e.g. 25 for 25%. The VAT rates are the VAT charged on that fee (20 = 20%). */
+  /** Fee rates are percentages (25 = 25%); the VAT fields are multipliers (0.2 = 20% VAT). */
   BuyersPremium?: number;
   BuyersPremiumVatRate?: number;
   InternetSurchargeRate?: number;
@@ -68,7 +68,7 @@ export type GapLotFields = {
   OpeningPrice?: number;
   BuyItNowPrice?: number;
   EndTimeUtc?: string;
-  /** The lot's copy of the auction's charges; percentages, VAT fields are VAT rates. */
+  /** The lot's copy of the auction's charges; percentage rates, VAT fields as multipliers (0.2). */
   BuyersPremiumVatRate?: number;
   InternetSurchargePercent?: number;
   InternetSurchargeVatRate?: number;
