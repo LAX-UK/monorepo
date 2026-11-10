@@ -168,8 +168,8 @@ export function createPlatformIdentityServices(
     legalEntityOnboardingRepository,
     stripeConnectService,
     {
-      onSubmittedForReview: async ({ legalEntityId, displayName }) => {
-        const adminRecipients = await repos.userRepo.listStaffEmailsWithAccess(
+      onSubmittedForReview: async ({ legalEntityId, displayName, submittedAt }) => {
+        const adminRecipients = await repos.userRepo.listStaffRecipientsWithAccess(
           LEGAL_ENTITY_BROWSE_ACCESS,
         );
         if (adminRecipients.length === 0) return;
@@ -181,7 +181,7 @@ export function createPlatformIdentityServices(
           adminRecipients,
           adminOnboardingUrl: `${webOrigin}${adminRoutes.onboardingIssues()}`,
           supportContactEmail: env.OPS_SUPPORT_EMAIL ?? "events@lax.bid",
-          eventId: Date.now(),
+          submissionId: `${legalEntityId}:${submittedAt.toISOString()}`,
         });
       },
     },

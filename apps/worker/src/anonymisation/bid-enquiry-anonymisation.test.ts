@@ -20,6 +20,7 @@ function emptyTx() {
   }
   return {
     select: () => chain,
+    selectDistinct: () => chain,
     update: () => chain,
     delete: () => chain,
   } as unknown as ProjectorDbConnection;

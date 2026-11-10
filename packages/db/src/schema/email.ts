@@ -43,6 +43,7 @@ export const emailOutbox = pgTable(
     userId: text("user_id").references(() => user.id, { onDelete: "set null" }),
     toEmailHash: text("to_email_hash").notNull(),
     toSnapshot: text("to_snapshot"),
+    /** When the snapshot stops being needed for a send (30 days after queueing). A purge job that acts on it is not yet registered. */
     toSnapshotPurgeAt: timestamp("to_snapshot_purge_at", {
       mode: "date",
       withTimezone: true,
@@ -65,6 +66,7 @@ export const emailOutbox = pgTable(
     index("email_outbox_status_created_at_idx").on(table.status, table.createdAt),
     index("email_outbox_user_id_idx").on(table.userId),
     index("email_outbox_message_id_idx").on(table.messageId),
+    index("email_outbox_to_email_hash_idx").on(table.toEmailHash),
     index("email_outbox_snapshot_purge_idx").on(table.toSnapshotPurgeAt),
     check(
       "email_outbox_status_check",

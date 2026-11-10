@@ -24,6 +24,10 @@ export interface IUserRepository {
   listStaffEmails(): Promise<string[]>;
   /** Emails of active staff whose roles grant `requirement` and who can enter platform admin. */
   listStaffEmailsWithAccess(requirement: CapabilityRequirement): Promise<string[]>;
+  /** The same people as `listStaffEmailsWithAccess`, with their account ids. */
+  listStaffRecipientsWithAccess(
+    requirement: CapabilityRequirement,
+  ): Promise<{ userId: string; email: string }[]>;
   /** Public directory rows (no email) for marketing / mega-menu. */
   listPublicProfiles(params: {
     limit: number;
