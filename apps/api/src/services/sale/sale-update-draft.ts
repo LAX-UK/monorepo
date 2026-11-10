@@ -22,6 +22,7 @@ import { canManageCatalogue } from "../../lib/catalogue-auth.js";
 import { type AuthzError, LotError, missingCatalogueCapabilityError } from "../../lib/errors.js";
 import { lotTimingViolationForSale } from "../../lib/lot-sale-timing.js";
 import { enrichPressCoverageWithOpenGraphImages } from "../../lib/press-coverage-enrichment.js";
+import { assertTimeZoneChangeableOnAtg } from "../sale-channel-guards.js";
 import { publishSaleEvent, txRepos } from "./sale-mutation-context.js";
 import type { SaleServiceDeps } from "./sale-types.js";
 import { applyVenueSnapshot } from "./venue-snapshot.js";
@@ -149,6 +150,10 @@ export async function updateDraftSale(
   const zoneChanged = patch.timeZone !== undefined && patch.timeZone !== sale.timeZone;
   if (zoneChanged && isSaleTimeZoneLocked(sale)) {
     return err(new LotError(SALE_TIME_ZONE_LOCKED_MESSAGE, 422));
+  }
+  if (zoneChanged) {
+    const atgConflict = await assertTimeZoneChangeableOnAtg(deps.saleChannelReader, sale.id);
+    if (atgConflict) return err(atgConflict);
   }
 
   if (sale.status !== "draft") {
