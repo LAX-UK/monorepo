@@ -17,7 +17,13 @@ import type { IProviderEventClaim } from "./payment-group-settlement.service.js"
 
 export type PaymentGroupChargeEventsDeps = {
   transactionRunner: ITransactionRunner;
-  groups: Pick<IPaymentGroupRepository, "findByStripeRefs" | "lockInTransaction">;
+  groups: Pick<
+    IPaymentGroupRepository,
+    | "findByStripeRefs"
+    | "lockInTransaction"
+    | "raiseDeliveryRefundedInTransaction"
+    | "raiseUnattributedRefundInTransaction"
+  >;
   gateway: Pick<IPaymentGroupGateway, "listChargeRefunds">;
   payments: Pick<IPaymentLifecycleRepository, "applyRefundedInTransaction">;
   payoutAdjustments: Pick<IPayoutAdjustmentService, "addPaymentLineToOpenPayoutOrCreateClawback">;
@@ -145,11 +151,19 @@ export class PaymentGroupChargeEvents {
         });
       }
       // A refund of the courier charge belongs to the delivery quote: it moves no invoice and
-      // charges nothing back from a seller. The amount is the quote's refunded total so far, so
-      // an event seen again, or a later refund, states the same fact rather than adding to it.
+      // charges nothing back from a seller. The group keeps what it already announced for each
+      // quote, so only a refund that raises the total is announced, once, and counts as received;
+      // an event seen again, a later refund of an invoice, or a refund of another quote adds nothing.
       for (const delivery of locked.deliveries) {
         const refundedPence = attribution.refundedPenceByDelivery.get(delivery.quoteId) ?? 0;
-        if (refundedPence <= 0) continue;
+        if (refundedPence <= delivery.refundedPence) continue;
+        const raised = await this.deps.groups.raiseDeliveryRefundedInTransaction(
+          tx,
+          group.id,
+          delivery.quoteId,
+          refundedPence,
+        );
+        if (!raised) continue;
         await this.deps.events.withTx(tx).publish({
           aggregateType: "payment_group",
           aggregateId: group.id,
@@ -167,7 +181,16 @@ export class PaymentGroupChargeEvents {
         });
         deliveryRefunded += 1;
       }
-      if (attribution.unattributedPence > 0) {
+      // The excess no invoice or quote could take stays in the total for good, so it is reported
+      // only when it grows; otherwise every later refund would raise the same task again.
+      if (
+        attribution.unattributedPence > locked.refundUnattributedPence &&
+        (await this.deps.groups.raiseUnattributedRefundInTransaction(
+          tx,
+          group.id,
+          attribution.unattributedPence,
+        ))
+      ) {
         recordMoneyPathEvent("payment_group_refund_unattributed");
         await this.deps.events.withTx(tx).publish({
           aggregateType: "payment_group",

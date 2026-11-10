@@ -32,13 +32,32 @@ function setup(
   const applyRefunded = vi.fn().mockResolvedValue(true);
   const publish = vi.fn().mockResolvedValue(undefined);
   let current = refunds;
+  // What the group holds between events, as the delivery rows and the group row do.
+  const heldDeliveries = (opts.deliveries ?? []).map((d) => ({ ...d, refundedPence: 0 }));
+  const heldUnattributed = { pence: 0 };
   const groups = {
     findByStripeRefs: vi.fn().mockResolvedValue(GROUP),
     lockInTransaction: vi.fn().mockImplementation(async () => ({
       group: GROUP,
       members: [...members].reverse(),
-      deliveries: opts.deliveries ?? [],
+      deliveries: heldDeliveries.map((d) => ({ ...d })),
+      refundUnattributedPence: heldUnattributed.pence,
     })),
+    raiseDeliveryRefundedInTransaction: vi.fn(
+      async (_tx: unknown, _group: string, quoteId: string, pence: number) => {
+        const held = heldDeliveries.find((d) => d.quoteId === quoteId);
+        if (!held || held.refundedPence >= pence) return false;
+        held.refundedPence = pence;
+        return true;
+      },
+    ),
+    raiseUnattributedRefundInTransaction: vi.fn(
+      async (_tx: unknown, _group: string, pence: number) => {
+        if (heldUnattributed.pence >= pence) return false;
+        heldUnattributed.pence = pence;
+        return true;
+      },
+    ),
   };
   const events = new PaymentGroupChargeEvents({
     transactionRunner: {
@@ -353,6 +372,75 @@ describe("PaymentGroupChargeEvents.chargeRefunded", () => {
         reason: "duplicate_event",
       });
       expect(duplicate.publish).not.toHaveBeenCalled();
+    });
+
+    it("announces a courier refund once: a later event with no new money publishes nothing", async () => {
+      const { events, publish, setRefunds } = setup(
+        [{ paymentId: null, deliveryQuoteId: "q-1", amountPence: 1_500 }],
+        { deliveries },
+      );
+      await events.chargeRefunded(event("evt_1"), charge);
+      expect(publish).toHaveBeenCalledTimes(1);
+      // The same refunds seen on a different event, as when the invoice is refunded later.
+      const later = await events.chargeRefunded(event("evt_2"), charge);
+      expect(later).toMatchObject({ action: "skipped", reason: "no_new_refund_amount" });
+      expect(publish).toHaveBeenCalledTimes(1);
+
+      // A later invoice refund moves the invoice only; the courier refund is not announced again.
+      setRefunds([
+        { paymentId: null, deliveryQuoteId: "q-1", amountPence: 1_500 },
+        { paymentId: "pay-a", amountPence: 2_000 },
+      ]);
+      const invoice = await events.chargeRefunded(event("evt_3"), charge);
+      expect(invoice).toEqual({ processed: true, action: "refund_received" });
+      expect(publish.mock.calls.map((c) => c[0].eventType)).toEqual([
+        "payment_group.delivery_refunded",
+        "payment.refunded",
+      ]);
+    });
+
+    it("announces a courier refund again only when its total goes up", async () => {
+      const { events, publish, groups, setRefunds } = setup(
+        [{ paymentId: null, deliveryQuoteId: "q-1", amountPence: 1_000 }],
+        { deliveries },
+      );
+      await events.chargeRefunded(event("evt_1"), charge);
+      setRefunds([
+        { paymentId: null, deliveryQuoteId: "q-1", amountPence: 1_000 },
+        { paymentId: null, deliveryQuoteId: "q-1", amountPence: 500 },
+      ]);
+      const result = await events.chargeRefunded(event("evt_2"), charge);
+      expect(result).toEqual({ processed: true, action: "refund_received" });
+      expect(publish.mock.calls.map((c) => c[0].payload.cumulativeRefundedCents)).toEqual([
+        1_000, 1_500,
+      ]);
+      expect(groups.raiseDeliveryRefundedInTransaction).toHaveBeenLastCalledWith(
+        {},
+        "grp-1",
+        "q-1",
+        1_500,
+      );
+    });
+
+    it("raises the unattributed excess once, and again only when it grows", async () => {
+      const { events, publish, setRefunds } = setup([{ paymentId: "pay-a", amountPence: 10_500 }], {
+        deliveries,
+      });
+      await events.chargeRefunded(event("evt_1"), charge);
+      const unattributed = () =>
+        publish.mock.calls.filter((c) => c[0].eventType === "payment_group.refund_unattributed");
+      expect(unattributed()).toHaveLength(1);
+
+      const later = await events.chargeRefunded(event("evt_2"), charge);
+      expect(later).toMatchObject({ action: "skipped", reason: "no_new_refund_amount" });
+      expect(unattributed()).toHaveLength(1);
+
+      setRefunds([
+        { paymentId: "pay-a", amountPence: 10_500 },
+        { paymentId: null, amountPence: 200 },
+      ]);
+      await events.chargeRefunded(event("evt_3"), charge);
+      expect(unattributed().map((c) => c[0].payload.amountCents)).toEqual([500, 700]);
     });
 
     it("keeps today's behaviour for a legacy refund that names no quote", async () => {

@@ -127,7 +127,10 @@ describe("decidePaymentGroupSettlement", () => {
 describe("attributeGroupRefunds", () => {
   it("adds refunds up per invoice and never spreads one it cannot place", () => {
     const result = attributeGroupRefunds(
-      [{ paymentId: "a" }, { paymentId: "b" }],
+      [
+        { paymentId: "a", amountPence: 1_000 },
+        { paymentId: "b", amountPence: 1_000 },
+      ],
       [
         { paymentId: "a", amountPence: 500 },
         { paymentId: "a", amountPence: 250 },
@@ -141,7 +144,10 @@ describe("attributeGroupRefunds", () => {
 
   it("attributes an invoice every refund that names it, even above what it was", () => {
     const result = attributeGroupRefunds(
-      [{ paymentId: "a" }, { paymentId: "b" }],
+      [
+        { paymentId: "a", amountPence: 1_000 },
+        { paymentId: "b", amountPence: 1_000 },
+      ],
       [
         { paymentId: "a", amountPence: 800 },
         { paymentId: "a", amountPence: 800 },

@@ -138,13 +138,14 @@ export type GroupRefundAttribution = {
  * touches an invoice (and so never claws back a seller's payout). A refund that names neither
  * (for example one made outside the platform) is reported rather than spread.
  *
- * A group that carries delivery caps each invoice and each quote at what it was charged: the part
- * of a refund above that is reported as unattributed, never added to the invoice. A group without
- * delivery keeps the earlier behaviour, where a refund is attributed as it was made even above the
+ * The cap applies only when the group carries delivery (`deliveries` is not empty): then each
+ * invoice and each quote is held at what it was charged, and the part of a refund above that is
+ * reported as unattributed, never added to the invoice. A group without delivery keeps the
+ * earlier, legacy behaviour unchanged, where a refund is attributed as it was made even above the
  * invoice, so that excess is visible to whoever checks the invoice.
  */
 export function attributeGroupRefunds(
-  members: readonly { paymentId: string; amountPence?: number }[],
+  members: readonly { paymentId: string; amountPence: number }[],
   refunds: readonly GroupRefund[],
   deliveries: readonly { quoteId: string; amountPence: number }[] = [],
 ): GroupRefundAttribution {
@@ -177,7 +178,7 @@ export function attributeGroupRefunds(
   if (deliveries.length > 0) {
     for (const member of members) {
       const refunded = refundedPenceByPayment.get(member.paymentId);
-      if (refunded === undefined || member.amountPence === undefined) continue;
+      if (refunded === undefined) continue;
       if (refunded > member.amountPence) {
         unattributedPence += refunded - member.amountPence;
         refundedPenceByPayment.set(member.paymentId, member.amountPence);
