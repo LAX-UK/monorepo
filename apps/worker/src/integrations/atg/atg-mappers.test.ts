@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { testAtgConfig, testLot, testSale } from "./__fixtures__/atg-snapshots.js";
+import { ATG_AUCTION_FEES } from "./atg-fees.js";
 import {
   AtgMappingError,
   bidLockedFieldsHash,
@@ -31,6 +32,9 @@ describe("mapSaleToAuctionFields", () => {
       IncrementSetId: "inc-1",
       ClientsAuctionId: "sale-1",
       BuyersPremium: 25,
+      BuyersPremiumVatRate: 20,
+      InternetSurchargeRate: 3,
+      InternetSurchargeVatRate: 20,
       TimedStart: "2026-10-20T10:00:00.000Z",
       TimedFirstLotEnds: "2026-11-01T18:00:00.000Z",
       Address1: "1 Gallery Road",
@@ -66,6 +70,48 @@ describe("mapSaleToAuctionFields", () => {
 
     expect(listing("private_test")).toBe(true);
     expect(listing("public_marketplace")).toBe(false);
+  });
+
+  it("sends ATG's charges for the sale's auction type", () => {
+    const live = mapSaleToAuctionFields(
+      testSale({ atgSettings: { auctionType: "Live", distribution: "private_test" } }),
+      testAtgConfig,
+    );
+
+    expect(live).toMatchObject({
+      BuyersPremiumVatRate: 20,
+      InternetSurchargeRate: 5,
+      InternetSurchargeVatRate: 20,
+    });
+  });
+
+  it("refuses a sale whose auction type has no confirmed internet surcharge", () => {
+    const config = {
+      ...testAtgConfig,
+      fees: { ...testAtgConfig.fees, internetSurchargeRate: { Timed: 3, Live: null } },
+    };
+
+    expect(() =>
+      mapSaleToAuctionFields(
+        testSale({ atgSettings: { auctionType: "Live", distribution: "private_test" } }),
+        config,
+      ),
+    ).toThrow(
+      new AtgMappingError(
+        "ATG has not confirmed its internet surcharge for live auctions. Ask ATG Seller Support before sending this sale.",
+      ),
+    );
+  });
+
+  it("uses ATG's confirmed charges in production: 20% VAT on the premium, 3% timed surcharge plus 20% VAT", () => {
+    const fields = mapSaleToAuctionFields(testSale(), { ...testAtgConfig, fees: ATG_AUCTION_FEES });
+
+    expect(fields).toMatchObject({
+      BuyersPremium: 25,
+      BuyersPremiumVatRate: 20,
+      InternetSurchargeRate: 3,
+      InternetSurchargeVatRate: 20,
+    });
   });
 
   it("converts fractional premium rates to percentages without float noise", () => {

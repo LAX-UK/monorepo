@@ -60,7 +60,8 @@ Create one invoice per winner per ATG auction, in Xero, matching LAX's automated
 | Contact | The buyer's existing Xero contact (search by email first; LAX may already have created one from a legal entity); create one only if none exists |
 | Reference | `atg:<ATG auction ID>` — never `payment:…`, which is reserved for LAX checkout invoices |
 | Line per lot | `Auction settlement — <lot title> (lot <lot number>)`, hammer price |
-| Buyer's premium | One line per lot: the sale's flat rate × hammer (ATG sales have exactly one rate) |
+| Buyer's premium | One line per lot: the sale's flat rate × hammer (ATG sales have exactly one rate), plus VAT at 20% on the premium |
+| Internet surcharge | One line per lot: 3% × hammer for timed auctions, plus VAT at 20% on the surcharge. This is ATG's commission passed to the buyer; ATG shows it to bidders and invoices LAX for its commission separately |
 | Account / tax | The production `XERO_DEFAULT_REVENUE_ACCOUNT_CODE` and `XERO_DEFAULT_TAX_TYPE`, unless finance has defined different codes for premium |
 | Due date | Invoice date + 7 days, the LAX payment term (`INVOICE_PAYMENT_DUE_DAYS`) |
 
@@ -84,7 +85,7 @@ Keep one row per lot in the sale's reconciliation sheet:
 | --- | --- |
 | LAX sale ID, LAX lot ID | from the admin URL |
 | ATG auction ID, ATG lot ID | ATG tab (auction ID) and lot overview |
-| Lot number, hammer, premium | Toolbox export |
+| Lot number, hammer, premium, internet surcharge | Toolbox export |
 | ATG paddle / bidder ID | Toolbox export |
 | LAX client ID | Admin → Clients |
 | Xero invoice number | Xero |
@@ -100,7 +101,9 @@ finance share only, and delete it under the normal finance retention schedule.
 The checker confirms, for every lot, before goods are released:
 
 1. hammer price and lot status match the Toolbox export;
-2. premium equals the sale's single rate × hammer;
+2. premium equals the sale's single rate × hammer, the internet surcharge equals 3% × hammer
+   (timed), and each carries VAT at 20%. Example: a £1,000 hammer with a 25% premium costs the
+   buyer £1,336 (£1,000 + £250 + £50 VAT + £30 surcharge + £6 VAT);
 3. the invoice contact is the Toolbox winner and the LAX client match is right;
 4. AML checks passed where the threshold applies;
 5. the payment is reconciled in Xero (not just "the buyer says they paid");

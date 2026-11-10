@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import type { AtgLotSnapshot, AtgSaleSnapshot, AtgSyncConfig } from "./atg-types.js";
 import { toGapDate } from "./gap-date.js";
-import type { GapAuctionFields, GapLotFields } from "./gap-types.js";
+import type { GapAuctionFields, GapAuctionTypeAndListing, GapLotFields } from "./gap-types.js";
 import { toWindowsTimezoneId } from "./windows-timezone.js";
 
 const TITLE_MAX = 100;
@@ -61,6 +61,27 @@ function windowsZoneFor(sale: Pick<AtgSaleSnapshot, "timeZone">): string {
   }
 }
 
+/** ATG's own charges on top of the hammer: VAT on the premium, and the internet surcharge plus its VAT. */
+function atgFeeFields(
+  auctionType: GapAuctionTypeAndListing,
+  config: Pick<AtgSyncConfig, "fees">,
+): Pick<
+  GapAuctionFields,
+  "BuyersPremiumVatRate" | "InternetSurchargeRate" | "InternetSurchargeVatRate"
+> {
+  const surcharge = config.fees.internetSurchargeRate[auctionType];
+  if (surcharge == null) {
+    throw new AtgMappingError(
+      `ATG has not confirmed its internet surcharge for ${auctionType.toLowerCase()} auctions. Ask ATG Seller Support before sending this sale.`,
+    );
+  }
+  return {
+    BuyersPremiumVatRate: config.fees.buyersPremiumVatRate,
+    InternetSurchargeRate: surcharge,
+    InternetSurchargeVatRate: config.fees.internetSurchargeVatRate,
+  };
+}
+
 export function mapSaleToAuctionFields(
   sale: AtgSaleSnapshot,
   config: AtgSyncConfig,
@@ -85,6 +106,7 @@ export function mapSaleToAuctionFields(
   if (config.clientId) fields.ClientId = config.clientId;
   const premium = percent(sale.buyerPremiumRate);
   if (premium !== undefined) fields.BuyersPremium = premium;
+  Object.assign(fields, atgFeeFields(sale.atgSettings.auctionType, config));
   // ATG rejects SaleDates on a timed auction ("use TimedStart"), so each type sends only its own dates.
   if (isTimed(sale)) {
     fields.TimedStart = toGapDate(sale.startTime);
