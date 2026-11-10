@@ -1,10 +1,13 @@
 import type Stripe from "stripe";
 import { describe, expect, it, vi } from "vitest";
 import {
+  checkoutSessionIdempotencyKey,
   createOrRenewCheckoutSession,
   isCheckoutSessionUsable,
 } from "./stripe-checkout-session-lifecycle.js";
 import type { IStripePaymentGateway } from "./stripe-payment-gateway.js";
+
+const KEY = checkoutSessionIdempotencyKey("card", "pay_1", { v: 1 });
 
 describe("isCheckoutSessionUsable", () => {
   it("returns true for open sessions with a future expiry", () => {
@@ -59,7 +62,7 @@ describe("createOrRenewCheckoutSession", () => {
         }),
     } as unknown as IStripePaymentGateway;
 
-    const outcome = await createOrRenewCheckoutSession(gateway, "card", "pay_1", create);
+    const outcome = await createOrRenewCheckoutSession(gateway, "card", "pay_1", { v: 1 }, create);
 
     expect(outcome).toEqual({
       kind: "ready",
@@ -70,8 +73,8 @@ describe("createOrRenewCheckoutSession", () => {
       },
     });
     expect(create).toHaveBeenCalledTimes(2);
-    expect(create.mock.calls[0]?.[0]).toBe("checkout:card:payment:pay_1");
-    expect(create.mock.calls[1]?.[0]).toBe("checkout:card:payment:pay_1:renewed:cs_old");
+    expect(create.mock.calls[0]?.[0]).toBe(KEY);
+    expect(create.mock.calls[1]?.[0]).toBe(`${KEY}:renewed:cs_old`);
   });
 
   it("two requests renewing the same expired session use one key, so Stripe opens one session", async () => {
@@ -91,12 +94,12 @@ describe("createOrRenewCheckoutSession", () => {
       const gateway = {
         retrieveCheckoutSession: vi.fn(async (id: string) => (id === "cs_old" ? expired : fresh)),
       } as unknown as IStripePaymentGateway;
-      await createOrRenewCheckoutSession(gateway, "card", "pay_1", create);
+      await createOrRenewCheckoutSession(gateway, "card", "pay_1", { v: 1 }, create);
       return create.mock.calls.map((call) => call[0]);
     };
     const [first, second] = await Promise.all([run(), run()]);
     expect(first).toEqual(second);
-    expect(first?.[1]).toBe("checkout:card:payment:pay_1:renewed:cs_old");
+    expect(first?.[1]).toBe(`${KEY}:renewed:cs_old`);
   });
 
   it("steps over a renewed session that has expired too, by the same rule", async () => {
@@ -116,12 +119,12 @@ describe("createOrRenewCheckoutSession", () => {
           : { id, status: "expired", url: "u" },
       ),
     } as unknown as IStripePaymentGateway;
-    const outcome = await createOrRenewCheckoutSession(gateway, "card", "pay_1", create);
+    const outcome = await createOrRenewCheckoutSession(gateway, "card", "pay_1", { v: 1 }, create);
     expect(outcome).toMatchObject({ kind: "ready", session: { sessionId: "cs_c" } });
     expect(create.mock.calls.map((c) => c[0])).toEqual([
-      "checkout:card:payment:pay_1",
-      "checkout:card:payment:pay_1:renewed:cs_a",
-      "checkout:card:payment:pay_1:renewed:cs_b",
+      KEY,
+      `${KEY}:renewed:cs_a`,
+      `${KEY}:renewed:cs_b`,
     ]);
   });
 
@@ -139,7 +142,7 @@ describe("createOrRenewCheckoutSession", () => {
       }),
     } as unknown as IStripePaymentGateway;
 
-    const outcome = await createOrRenewCheckoutSession(gateway, "bank", "pay_2", create);
+    const outcome = await createOrRenewCheckoutSession(gateway, "bank", "pay_2", { v: 1 }, create);
     expect(outcome).toEqual({ kind: "already_complete" });
     expect(create).toHaveBeenCalledTimes(1);
   });

@@ -160,7 +160,12 @@ export function createPaymentsServices(
     paymentRefundReconcileService,
     notificationOutboxService,
   } = platform;
-  const { marketingEventService, mediaUrlResolver, sourceOfFundsService } = complianceMedia;
+  const {
+    marketingEventService,
+    mediaUrlResolver,
+    catalogueMediaUrlResolver,
+    sourceOfFundsService,
+  } = complianceMedia;
   const { itemSubmissionAdminApi } = catalog;
 
   const errorReporter: IErrorReporter = env.SENTRY_DSN_API
@@ -275,13 +280,15 @@ export function createPaymentsServices(
   const checkoutGateway = new SessionRecordingStripeGateway(stripePaymentGateway, checkoutSessions);
   const stripeCheckoutService = stripePaymentGateway.isConfigured()
     ? new StripeCheckoutService([
-        new CardCheckoutRail(env, checkoutGateway, paymentRepo, mediaUrlResolver),
+        // The stable resolver keeps the hero image's URL the same all day, so repeating a Pay
+        // reproduces the checkout's parameters and gets the same session back.
+        new CardCheckoutRail(env, checkoutGateway, paymentRepo, catalogueMediaUrlResolver),
         new BankTransferCheckoutRail(
           env,
           checkoutGateway,
           stripeCustomerGateway,
           paymentRepo,
-          mediaUrlResolver,
+          catalogueMediaUrlResolver,
         ),
       ])
     : null;

@@ -39,19 +39,14 @@ export class CardCheckoutRail implements ICheckoutRail {
 
     try {
       const imageUrl = await resolveCheckoutLotHeroImage(ctx.lot, this.mediaUrlResolver);
+      const parameters = buildCreateCheckoutSessionInput(ctx, { successUrl, cancelUrl, imageUrl });
       const outcome = await createOrRenewCheckoutSession(
         this.gateway,
         "card",
         ctx.paymentId,
+        parameters,
         (idempotencyKey) =>
-          this.gateway.createCardCheckoutSession(
-            buildCreateCheckoutSessionInput(ctx, {
-              successUrl,
-              cancelUrl,
-              idempotencyKey,
-              imageUrl,
-            }),
-          ),
+          this.gateway.createCardCheckoutSession({ ...parameters, idempotencyKey }),
       );
 
       if (outcome.kind === "already_complete") {
