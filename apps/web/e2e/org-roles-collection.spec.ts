@@ -42,10 +42,10 @@ test.describe("buyer collection journey @journey @roles", () => {
         page.getByRole("heading", { level: 1, name: "Book a collection" }),
       ).toBeVisible();
       await expect(page.getByText(lots.toBook).first()).toBeVisible();
-      // Every lot that can be booked is ticked to begin with: leave only this one.
-      for (const title of [lots.missed, lots.partlyLeft, lots.cancelled]) {
-        await page.getByRole("checkbox", { name: new RegExp(title) }).uncheck();
-      }
+      // Every lot that can be booked is ticked to begin with, and which others can be depends on
+      // what the desk journey has already done: leave only this one.
+      const others = page.getByRole("checkbox", { name: /Collection journey: (?!to book)/ });
+      for (const box of await others.all()) await box.uncheck();
       await shoot(page, testInfo, "buyer-1-choose-lots");
 
       // The first day with times, then its first time.
