@@ -1,7 +1,7 @@
-import { isSaleTimeZoneLocked } from "@auction/validators";
-("use client");
+"use client";
 
 import type { NamedSellerWithoutPayouts } from "@/lib/admin/sale-setup/sellers-without-payouts";
+import { isSaleTimeZoneLocked } from "@auction/validators";
 
 import { AdminFormWizard } from "@/components/admin/admin-form-wizard";
 import type { WizardDraftPayload } from "@/components/admin/admin-form-wizard/wizard-draft";
