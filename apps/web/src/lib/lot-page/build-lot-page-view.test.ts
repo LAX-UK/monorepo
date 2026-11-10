@@ -41,7 +41,7 @@ describe("buildLotPageView lifecycles", () => {
     });
     expect(view.rows.map((r) => [r.label, r.value, r.tone])).toEqual([
       ["Estimate", "£6,000–£9,000", "calm"],
-      ["Time left", "2 days 14 hours", "calm"],
+      ["Time left", "2d 14h 00m 00s", "calm"],
     ]);
     expect(view.rows[1]?.sub).toBe("Closes Tue 3 Nov, 21:06 GMT");
     expect(view.action).toBe("bid");
@@ -53,7 +53,7 @@ describe("buildLotPageView lifecycles", () => {
     const view = buildLotPageView(input({ msLeft: 42 * 60_000, endsAt: "2026-11-01T21:06:00Z" }));
     expect(view.rows[1]).toMatchObject({
       label: "Closing soon",
-      value: "42 minutes",
+      value: "42m 00s",
       tone: "soon",
       sub: "Closes today, 21:06 GMT",
     });
@@ -65,11 +65,11 @@ describe("buildLotPageView lifecycles", () => {
     );
     expect(view.rows[1]).toMatchObject({
       label: "Closing soon",
-      value: "42 minutes 10 seconds",
+      value: "42m 10s",
       tone: "soon",
     });
     const hour = buildLotPageView(input({ msLeft: HOUR, endsAt: "2026-11-01T13:00:00Z" }));
-    expect(hour.rows[1]?.value).toBe("1 hour");
+    expect(hour.rows[1]?.value).toBe("1h 00m 00s");
   });
 
   it("tells the day, not a count, beyond seven days; a week exactly still counts", () => {
@@ -78,7 +78,7 @@ describe("buildLotPageView lifecycles", () => {
     );
     expect(far.rows[1]).toMatchObject({ label: "Closes", value: "Sun 8 Nov", tone: "calm" });
     const week = buildLotPageView(input({ msLeft: 7 * 24 * HOUR, endsAt: "2026-11-08T12:00:00Z" }));
-    expect(week.rows[1]).toMatchObject({ label: "Time left", value: "7 days" });
+    expect(week.rows[1]).toMatchObject({ label: "Time left", value: "7d 00h 00m 00s" });
   });
 
   it("extended: final tone with seconds, and the extension said once", () => {
@@ -87,11 +87,12 @@ describe("buildLotPageView lifecycles", () => {
     );
     expect(view.badge).toEqual({ label: "Extended", tone: "warning", dot: true });
     expect(view.rows[1]).toMatchObject({
-      label: "Final minutes",
-      value: "1 minute 48 seconds",
+      label: "Extended",
+      value: "1m 48s",
       tone: "final",
     });
-    expect(view.price.subLine).toBe("Extended by 2 minutes after a late bid");
+    // The time row says why the close moved, so the price block does not say it a second time.
+    expect(view.price.subLine).toBe("7 bids · Reserve met");
     expect(view.rows[1]?.sub).not.toMatch(/Extended/);
   });
 
@@ -279,5 +280,68 @@ describe("buildLotPageView bidder states", () => {
     expect(view.price.stateLine?.text).toBe(
       "Your maximum bid is £9,000. It starts bidding when the lot opens",
     );
+  });
+});
+
+describe("the time row counts", () => {
+  const NOW = new Date("2026-11-09T12:00:00Z");
+  const base = {
+    now: NOW,
+    startsAt: "2026-11-08T18:00:00Z",
+    endsAt: "2026-11-09T12:42:00Z",
+    amounts: { starting: "4200.00", current: "7000.00", hammer: null, soldForWithPremium: null },
+    estimate: null,
+    bidCount: 3,
+    reserve: "none" as const,
+    nextBid: "7250.00",
+    extendedByMs: null,
+    saleroom: null,
+    signedIn: true,
+    viewer: NO_LOT_VIEWER,
+  };
+
+  it("a live lot's row carries what the countdown leaf counts to", () => {
+    const view = buildLotPageView({ ...base, lifecycle: "live", msLeft: 42 * 60_000 });
+    const row = view.rows.find((r) => r.countdown);
+    expect(row?.countdown).toMatchObject({
+      targetMs: Date.parse("2026-11-09T12:42:00Z"),
+      kind: "closes",
+      extended: false,
+    });
+    expect(row?.countdown?.date.label).toBe("Closes");
+  });
+
+  it("an extended lot says what the late bid added and when it closes", () => {
+    const view = buildLotPageView({
+      ...base,
+      lifecycle: "extended",
+      msLeft: 90_000,
+      extendedByMs: 30_000,
+      extensions: 2,
+    });
+    const row = view.rows.find((r) => r.countdown);
+    expect(row?.label).toBe("Extended");
+    expect(row?.sub).toBe("A late bid added 30 seconds · closes 12:42 GMT");
+    expect(row?.countdown).toMatchObject({ extended: true, extensions: 2 });
+  });
+
+  it("a closing lot reads Closing… with the result to follow, and no count", () => {
+    const view = buildLotPageView({ ...base, lifecycle: "closing", msLeft: 0 });
+    const row = view.rows.find((r) => r.clock);
+    expect(row).toMatchObject({
+      label: "Time left",
+      value: "Closing…",
+      sub: "The result follows in a moment",
+      tone: "final",
+    });
+    // It keeps its countdown, so one component carries the row through Closing… and back to Extended.
+    expect(row?.countdown).toMatchObject({ kind: "closes", extended: false });
+    expect(view.badge.label).toBe("Closing");
+    expect(view.action).toBe("bid_disabled");
+  });
+
+  it("a lot at the moment it opens reads Opening…", () => {
+    const view = buildLotPageView({ ...base, lifecycle: "scheduled", msLeft: 0 });
+    expect(view.rows.find((r) => r.clock)?.value).toBe("Opening…");
   });
 });

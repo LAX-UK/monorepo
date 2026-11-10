@@ -29,6 +29,8 @@ export type LotPageViewInput = {
   reserve: PriceBlockInput["reserve"];
   nextBid: string | null;
   extendedByMs: number | null;
+  /** How many late bids have extended the lot; zero when it has not been. */
+  extensions?: number;
   saleroom: PriceBlockInput["saleroom"];
   signedIn: boolean;
   viewer: LotViewerView;
@@ -108,6 +110,8 @@ export function buildLotPageView(input: LotPageViewInput): LotPageView {
     startsAt: input.startsAt,
     endsAt: input.endsAt,
     now: input.now,
+    extendedByMs: input.extendedByMs,
+    extensions: input.extensions ?? 0,
   });
   const rows = [estimateRow(input, price), timeRow].filter(
     (row): row is LotInfoRow => row !== null,

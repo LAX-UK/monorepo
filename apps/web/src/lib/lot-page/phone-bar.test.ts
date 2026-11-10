@@ -34,19 +34,19 @@ const summary = (over: Partial<LotPageViewInput> = {}) =>
 
 describe("phone bar summary", () => {
   it("live: the current bid and the time left in words and as a short form", () => {
-    expect(summary()).toEqual({
+    expect(summary()).toMatchObject({
       label: "Current bid",
       labelTone: "neutral",
       amount: "£7,000",
-      line: { words: "2 days 14 hours left", compact: "2d 14h left", tone: "calm", clock: true },
+      line: { words: "2d 14h 00m 00s left", compact: "2d 14h 00m 00s", tone: "calm", clock: true },
     });
   });
 
   it("the final hour reads as a clock with seconds, in the soon tone", () => {
     const line = summary({ msLeft: 42 * MINUTE + 9_000 })?.line;
-    expect(line).toEqual({
-      words: "42 minutes 9 seconds left",
-      compact: "42:09 left",
+    expect(line).toMatchObject({
+      words: "42m 09s left",
+      compact: "42m 09s",
       tone: "soon",
       clock: true,
     });
@@ -84,7 +84,7 @@ describe("phone bar summary", () => {
     const result = summary({ lifecycle: "scheduled", msLeft: 9 * HOUR });
     expect(result).toMatchObject({
       label: "Starting bid",
-      line: { words: "Opens in 9 hours", compact: "Opens in 9h 0m", clock: true },
+      line: { words: "Opens in 9h 00m 00s", compact: "9h 00m 00s", clock: true },
     });
     expect(summary({ lifecycle: "scheduled", msLeft: 9 * DAY })?.line?.words).toMatch(/^Opens /);
   });

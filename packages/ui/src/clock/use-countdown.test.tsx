@@ -136,8 +136,8 @@ describe("useClockNow", () => {
     act(() => {
       vi.advanceTimersByTime(1000);
     });
-    // 400 ms into the second, the next step is at 13.001 s (one millisecond after the boundary).
-    expect((result.current ?? 0) % 1000).toBe(1);
+    // 400 ms into the second, the next step is on the second boundary itself.
+    expect((result.current ?? 0) % 1000).toBe(0);
     expect(result.current).toBeGreaterThan(first ?? 0);
   });
 });

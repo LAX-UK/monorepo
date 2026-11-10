@@ -3,6 +3,8 @@
  * milliseconds left; the surface table in `countdown-policy.ts` decides which one a surface uses.
  */
 
+import { wholeSecondsLeft } from "../lot-page/time-left.js";
+
 export type CountdownSegments = {
   days: number;
   hours: number;
@@ -10,9 +12,9 @@ export type CountdownSegments = {
   seconds: number;
 };
 
-/** Split remaining milliseconds into day/hour/minute/second segments (whole seconds, rounded down). */
+/** Split remaining milliseconds into day/hour/minute/second segments (whole seconds, rounded up). */
 export function parseCountdownSegments(msRemaining: number): CountdownSegments {
-  const totalSec = Math.max(0, Math.floor(msRemaining / 1000));
+  const totalSec = wholeSecondsLeft(msRemaining);
   const days = Math.floor(totalSec / 86_400);
   const hours = Math.floor((totalSec % 86_400) / 3600);
   const minutes = Math.floor((totalSec % 3600) / 60);
@@ -37,13 +39,13 @@ export function formatCountdownShort(ms: number): string {
  * it holds its width while it ticks), then the short form ("5h 12m", "2d 14h").
  */
 export function formatCountdownCompact(ms: number): string {
-  if (ms >= 60 * 60 * 1000) return formatCountdownShort(ms);
+  if (wholeSecondsLeft(ms) >= 60 * 60) return formatCountdownShort(ms);
   return formatCountdownClock(ms);
 }
 
 /** Minutes and seconds as a clock: "42:09". */
 export function formatCountdownClock(ms: number): string {
-  const total = Math.max(0, Math.floor(ms / 1000));
+  const total = wholeSecondsLeft(ms);
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${pad(Math.floor(total / 60))}:${pad(total % 60)}`;
 }
@@ -73,7 +75,7 @@ export function countdownTiles(ms: number): readonly [CountdownTile, CountdownTi
 
 /** Time left in words for screen readers, to the minute: "1 hour, 12 minutes". */
 export function formatCountdownSpoken(ms: number): string {
-  const totalSec = Math.floor(ms / 1000);
+  const totalSec = wholeSecondsLeft(ms);
   const days = Math.floor(totalSec / 86_400);
   const hours = Math.floor((totalSec % 86_400) / 3600);
   const minutes = Math.floor((totalSec % 3600) / 60);
@@ -84,4 +86,28 @@ export function formatCountdownSpoken(ms: number): string {
     parts.push(`${minutes} minute${minutes === 1 ? "" : "s"}`);
   }
   return parts.join(", ");
+}
+
+/**
+ * Short units with the leading unit unpadded and the rest two digits: "2d 04h 12m 33s",
+ * "4h 12m 33s", "42m 09s", "48s". Without seconds the minutes lead the tail: "2d 04h 12m".
+ * Tabular figures hold the width while the seconds change.
+ */
+export function formatCountdownUnits(ms: number, opts: { seconds?: boolean } = {}): string {
+  const seconds = opts.seconds ?? true;
+  const { days, hours, minutes, seconds: secs } = parseCountdownSegments(ms);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const parts: string[] = [];
+  if (days > 0) {
+    parts.push(`${days}d`, `${pad(hours)}h`, `${pad(minutes)}m`);
+  } else if (hours > 0) {
+    parts.push(`${hours}h`, `${pad(minutes)}m`);
+  } else if (minutes > 0 || !seconds) {
+    parts.push(`${minutes}m`);
+  }
+  if (seconds) {
+    if (parts.length === 0) return `${secs}s`;
+    parts.push(`${pad(secs)}s`);
+  }
+  return parts.join(" ");
 }

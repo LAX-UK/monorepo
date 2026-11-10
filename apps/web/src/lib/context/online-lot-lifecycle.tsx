@@ -26,6 +26,10 @@ type Ctx = {
   sale: SalePick;
   extendedByMs: number | null;
   setExtendedDeltaMs: (deltaMs: number | null) => void;
+  /** How many late bids have extended the lot since the page loaded. */
+  extensionCount: number;
+  /** A late bid moved the close: the new end time and how much it added. */
+  applyExtension: (extension: { endTimeMs: number; addedMs: number | null }) => void;
   /** Authoritative end time after anti-snipe extend or reconnect hydrate. */
   liveEndTimeMs: number | null;
   setLiveEndTimeMs: (ms: number) => void;
@@ -57,6 +61,13 @@ export function OnlineLotLifecycleProvider({ lot, sale, children }: ProviderProp
   const [bidCardInView, setBidCardInView] = useState(true);
   const ownBidEchoGuardRef = useRef<OwnBidEchoGuard | null>(null);
 
+  const [extensionCount, setExtensionCount] = useState(0);
+  const applyExtension = useCallback((extension: { endTimeMs: number; addedMs: number | null }) => {
+    setLiveEndTimeMs(extension.endTimeMs);
+    setExtendedByMs(extension.addedMs);
+    setExtensionCount((count) => count + 1);
+  }, []);
+
   const setExtendedDeltaMs = useCallback((deltaMs: number | null) => {
     setExtendedByMs(deltaMs);
   }, []);
@@ -72,6 +83,8 @@ export function OnlineLotLifecycleProvider({ lot, sale, children }: ProviderProp
       sale,
       extendedByMs,
       setExtendedDeltaMs,
+      extensionCount,
+      applyExtension,
       liveEndTimeMs,
       setLiveEndTimeMs,
       liveLotStatus,
@@ -87,6 +100,8 @@ export function OnlineLotLifecycleProvider({ lot, sale, children }: ProviderProp
       sale,
       extendedByMs,
       setExtendedDeltaMs,
+      extensionCount,
+      applyExtension,
       liveEndTimeMs,
       liveLotStatus,
       liveWinnerId,

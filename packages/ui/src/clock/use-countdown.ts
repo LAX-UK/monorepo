@@ -171,8 +171,8 @@ export function useClockTick(
 /**
  * The server-aligned time as of the latest step of `resolutionMs`, for callers that decide
  * something from the time itself (a lot opening) rather than print a countdown. The value is the
- * time at the step (just after it), not rounded, so a countdown worked out from it reads the true
- * whole second. `null` on the server and for the first client render.
+ * time at the step, not rounded, so a countdown worked out from it (whole seconds, rounded up)
+ * reads the true second. `null` on the server and for the first client render.
  */
 export function useClockNow(
   resolutionMs = 1000,
@@ -180,7 +180,7 @@ export function useClockNow(
   getStore: () => ClockStore = defaultClockStore,
 ): number | null {
   return useClockTick(
-    (now) => resolutionMs - (now % resolutionMs) + 1,
+    (now) => resolutionMs - (now % resolutionMs),
     { key: resolutionMs, inViewRef: options.inViewRef },
     getStore,
   );

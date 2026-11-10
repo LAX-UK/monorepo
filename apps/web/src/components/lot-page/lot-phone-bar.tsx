@@ -2,7 +2,10 @@
 
 import { CookieDockSlot } from "@/components/marketing/consent/cookie-dock";
 import { useOutOfView } from "@/hooks/use-out-of-view";
+import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import type { PhoneBarLine, PhoneBarSummary, PhoneBarTone } from "@/lib/lot-page/phone-bar";
+import { useCountdown } from "@/lib/time/use-clock";
+import type { CountdownContext, CountdownDisplay } from "@auction/domain";
 import type { LotStatusTone } from "@auction/domain";
 import { useClaimBottomSlot } from "@auction/marketing-ui";
 import { cn } from "@auction/ui";
@@ -31,24 +34,82 @@ const LABEL_TONE_CLASS: Readonly<Record<LotStatusTone, string>> = {
 const WORDS_FIT = "hidden @[12.5rem]:inline";
 const COMPACT_FIT = "@[12.5rem]:hidden";
 
-function Line({ line }: { line: PhoneBarLine }) {
+/** Module constants, so the clock does not resubscribe on every render. */
+const CONTEXTS: Readonly<Record<string, CountdownContext>> = {
+  plain: {},
+  extended: { extended: true },
+  reduced: { reducedMotion: true },
+  extendedReduced: { extended: true, reducedMotion: true },
+};
+
+type LineFace = Pick<PhoneBarLine, "words" | "compact" | "tone">;
+
+/** What the line prints for the clock's answer; the server's own text until the clock runs. */
+function faceOf(line: PhoneBarLine, display: CountdownDisplay | null): LineFace {
+  const c = line.countdown;
+  if (!c || !display) return line;
+  switch (display.kind) {
+    case "date":
+      return { words: c.dateText, compact: c.dateText, tone: "calm" };
+    case "closing":
+      return c.kind === "closes"
+        ? { words: "Closing…", compact: "Closing…", tone: "final" }
+        : { words: "Opening…", compact: "Opening…", tone: "calm" };
+    case "counting":
+      return c.kind === "closes"
+        ? { words: `${display.text} left`, compact: display.text, tone: display.tone }
+        : { words: `Opens in ${display.text}`, compact: display.text, tone: "calm" };
+    default:
+      return line;
+  }
+}
+
+/** A line that counts is its own small component, so only it redraws as the seconds change. */
+function CountingLine({ line }: { line: PhoneBarLine }) {
+  const reduced = useReducedMotion();
+  const c = line.countdown;
+  const key = c?.extended
+    ? reduced
+      ? "extendedReduced"
+      : "extended"
+    : reduced
+      ? "reduced"
+      : "plain";
+  const display = useCountdown(c?.targetMs ?? Number.NaN, "lotBar", {
+    ctx: CONTEXTS[key] as CountdownContext,
+  });
+  return <LineText line={line} face={faceOf(line, display)} />;
+}
+
+function LineText({ line, face }: { line: PhoneBarLine; face: LineFace }) {
   return (
     <p
       className={cn(
         "m-0 flex items-center gap-1.5 whitespace-nowrap text-lax-13 leading-5 tabular-nums",
-        TONE_CLASS[line.tone],
+        TONE_CLASS[face.tone],
       )}
     >
       {line.clock ? <Clock aria-hidden className="size-3.5 shrink-0" /> : null}
-      {line.words === line.compact ? (
-        <span className="truncate">{line.words}</span>
+      {face.words === face.compact ? (
+        <span className="truncate">{face.words}</span>
       ) : (
         <>
-          <span className={WORDS_FIT}>{line.words}</span>
-          <span className={COMPACT_FIT}>{line.compact}</span>
+          <span className={WORDS_FIT}>{face.words}</span>
+          <span className={COMPACT_FIT}>{face.compact}</span>
         </>
       )}
     </p>
+  );
+}
+
+function Line({ line }: { line: PhoneBarLine }) {
+  // The bar's line repeats the time row above it, which a screen reader already has.
+  return line.countdown ? (
+    <div aria-hidden>
+      <CountingLine line={line} />
+    </div>
+  ) : (
+    <LineText line={line} face={line} />
   );
 }
 

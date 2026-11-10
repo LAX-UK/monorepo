@@ -82,14 +82,13 @@ export function useLotPageView(source: LotPageViewSource): LotPageLive {
   const online = useOnlineLotLifecycle();
   const saleroom = useSaleroomLive();
   const { currentPrice, entries } = useLotBidHistory();
-  const nowMs = useLotPageNow(bidding.serverNow);
-
   const status = online?.liveLotStatus ?? lot.status;
   const winnerId = online?.liveWinnerId ?? lot.winnerId;
   const endMs = online?.liveEndTimeMs ?? Date.parse(lot.endTime);
   const startMs = Date.parse(lot.startTime);
   const extendedByMs = online?.extendedByMs ?? null;
   const onBlock = saleroom?.isLotOnBlock(lot.id) ?? false;
+  const nowMs = useLotPageNow(bidding.serverNow, [startMs, endMs]);
 
   const lifecycle = useMemo(
     () =>
@@ -107,6 +106,7 @@ export function useLotPageView(source: LotPageViewSource): LotPageLive {
         nowMs,
         {
           recentlyExtended: Boolean(extendedByMs && extendedByMs > 0),
+          confirmClose: true,
           saleroomSessionPaused: saleroom?.status === "paused",
           saleroomSessionActive: saleroom?.isSessionLive ?? false,
           isOnBlock: onBlock,
@@ -173,6 +173,7 @@ export function useLotPageView(source: LotPageViewSource): LotPageLive {
         reserve: reserveOf(lot),
         nextBid,
         extendedByMs,
+        extensions: online?.extensionCount ?? 0,
         saleroom: lifecycle.kind === "liveSaleroom" ? { onBlock, lotsAway: null } : null,
         signedIn,
         viewer,
@@ -191,6 +192,7 @@ export function useLotPageView(source: LotPageViewSource): LotPageLive {
       entries.length,
       nextBid,
       extendedByMs,
+      online?.extensionCount,
       onBlock,
       signedIn,
       viewer,

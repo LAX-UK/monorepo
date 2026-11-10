@@ -64,14 +64,18 @@ describe("time-left tones", () => {
   it("calm over an hour, soon under an hour, final under two minutes", () => {
     expect(timeLeftBand(3 * DAY).tone).toBe("calm");
     expect(timeLeftBand(HOUR).tone).toBe("calm");
-    expect(timeLeftBand(HOUR - 1).tone).toBe("soon");
+    expect(timeLeftBand(HOUR - 1000).tone).toBe("soon");
+    // read from the rounded-up second, so part of a second above the line is still the line
+    expect(timeLeftBand(HOUR - 1).tone).toBe("calm");
     expect(timeLeftBand(2 * MIN).tone).toBe("soon");
-    expect(timeLeftBand(2 * MIN - 1).tone).toBe("final");
+    expect(timeLeftBand(2 * MIN - 1000).tone).toBe("final");
+    expect(timeLeftBand(2 * MIN - 1).tone).toBe("soon");
     expect(timeLeftBand(0).tone).toBe("final");
   });
 
   it("an extension is always final", () => {
     expect(timeLeftBand(3 * HOUR, { extended: true }).tone).toBe("final");
+    expect(timeLeftBand(3 * HOUR, { extended: true }).label).toBe("Extended");
   });
 
   it("the label changes with the tone, not only the colour", () => {
@@ -96,7 +100,7 @@ describe("time-left tones", () => {
     expect(timeLeftView(42 * MIN + 10_000).text).toBe("42 minutes 10 seconds");
     expect(timeLeftView(2 * MIN + 5000).text).toBe("2 minutes 5 seconds");
     expect(timeLeftShowsSeconds(HOUR)).toBe(false);
-    expect(timeLeftShowsSeconds(HOUR - 1)).toBe(true);
+    expect(timeLeftShowsSeconds(HOUR - 1000)).toBe(true);
     expect(timeLeftShowsSeconds(0)).toBe(true);
   });
 
@@ -110,6 +114,22 @@ describe("time-left tones", () => {
     expect(timeMarkCrossed(4 * MIN, 3 * MIN)).toBeNull();
     expect(timeMarkCrossed(10 * MIN, 30_000)).toBe("1 minute left");
     expect(timeMarkCrossed(MIN, 2 * MIN)).toBeNull();
+  });
+
+  it("has a mark at an hour, ten, five, two and one minute, each said once", () => {
+    expect(timeMarkCrossed(HOUR + 1000, HOUR - 1000)).toBe("1 hour left");
+    expect(timeMarkCrossed(10 * MIN + 1000, 10 * MIN - 1000)).toBe("10 minutes left");
+    expect(timeMarkCrossed(2 * MIN + 1000, 2 * MIN - 1000)).toBe("2 minutes left");
+    // skipping several marks (a hidden tab) says only the tightest crossed
+    expect(timeMarkCrossed(HOUR + 1000, 30_000)).toBe("1 minute left");
+    // an extension that moves back over a mark crosses nothing
+    expect(timeMarkCrossed(2 * MIN - 1000, 2 * MIN + 29_000)).toBeNull();
+  });
+
+  it("rounds the time left up to the whole second", () => {
+    expect(timeLeftView(999).text).toBe("1 second");
+    expect(timeLeftView(1).text).toBe("1 second");
+    expect(timeLeftView(42 * MIN + 10_001).text).toBe("42 minutes 11 seconds");
   });
 });
 

@@ -4,7 +4,7 @@ import { useOverlayTone } from "@/components/ui/overlay-tone-context";
 import { overlayPillClasses, overlayToneProps } from "@/lib/ui/overlay-tone-classes";
 import { LiveDot, cn } from "@auction/ui";
 import { Clock } from "lucide-react";
-import type { ReactNode } from "react";
+import type { ReactNode, Ref } from "react";
 import type { LotTimerState } from "./classify";
 import type { TimerText } from "./format";
 
@@ -109,6 +109,7 @@ export function LotTimerPill({
   variant = "default",
   layout = "overlay",
   useOverlayChrome = false,
+  rootRef,
 }: {
   state: LotTimerState;
   timer?: TimerText;
@@ -119,6 +120,8 @@ export function LotTimerPill({
   layout?: LotTimerPillLayout;
   /** Read `--overlay-*` vars from AdaptiveMediaFrame instead of theme glass. */
   useOverlayChrome?: boolean;
+  /** The pill's element, so its countdown can stop while it is off screen. */
+  rootRef?: Ref<HTMLOutputElement>;
 }) {
   const overlayTone = useOverlayTone("bottomLeft");
   const overlayShell = useOverlayChrome ? overlayPillClasses(overlayTone) : null;
@@ -155,6 +158,7 @@ export function LotTimerPill({
     case "live":
       return place(
         <output
+          ref={rootRef}
           aria-live="off"
           aria-label={aria}
           className={shellClass(
@@ -188,6 +192,7 @@ export function LotTimerPill({
     case "opensSoon":
       return place(
         <output
+          ref={rootRef}
           aria-live="off"
           aria-label={aria}
           className={shellClass(
@@ -227,6 +232,7 @@ export function LotTimerPill({
     case "closed":
       return place(
         <output
+          ref={rootRef}
           aria-live="off"
           aria-label={aria}
           className={shellClass(
@@ -243,6 +249,7 @@ export function LotTimerPill({
     case "cancelled":
       return place(
         <output
+          ref={rootRef}
           aria-live="off"
           aria-label={aria}
           className={shellClass(
@@ -259,6 +266,7 @@ export function LotTimerPill({
     case "unknown":
       return place(
         <output
+          ref={rootRef}
           aria-live="off"
           aria-label={aria}
           className={shellClass(

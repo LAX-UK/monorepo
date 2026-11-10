@@ -9,6 +9,7 @@ export const LOT_LIFECYCLE_KINDS = [
   "scheduled",
   "live",
   "extended",
+  "closing",
   "liveSaleroom",
   "saleroomPaused",
   "endedSold",
@@ -102,6 +103,18 @@ export const LOT_LIFECYCLE_COPY: Readonly<Record<LotLifecycleKind, LotLifecycleC
     biddingOpen: true,
     phoneBar: true,
   },
+  // The clock has reached zero and the server has not yet said how the lot ended. Bids that
+  // reached the server before the close still count, so the page waits instead of guessing.
+  closing: {
+    badge: { label: "Closing", tone: "warning", dot: true },
+    headline: "current",
+    headlineLabel: "Current bid",
+    headlineLabelBeforeBids: "Starting bid",
+    timeLine: "closes",
+    action: "bid_disabled",
+    biddingOpen: false,
+    phoneBar: true,
+  },
   liveSaleroom: {
     badge: { label: "Live · In the room", tone: "neutral", dot: true },
     headline: "current",
@@ -170,7 +183,8 @@ export function lotLifecycleCopy(kind: LotLifecycleKind): LotLifecycleCopy {
 
 /** Lifecycles in which bidding is over: no next bid and no live feed. */
 export function isLotLifecycleClosed(kind: LotLifecycleKind): boolean {
-  return !LOT_LIFECYCLE_COPY[kind].biddingOpen && kind !== "preLaunch";
+  // A closing lot keeps its live feed: the result arrives on it.
+  return !LOT_LIFECYCLE_COPY[kind].biddingOpen && kind !== "preLaunch" && kind !== "closing";
 }
 
 /** Lifecycles that run on a clock the page counts down (the room's auctioneer closes the rest). */
