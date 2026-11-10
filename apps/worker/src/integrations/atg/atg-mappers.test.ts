@@ -128,6 +128,17 @@ describe("mapSaleToAuctionFields", () => {
     expect(fields.BuyersPremium).toBe(28.75);
   });
 
+  it.each([
+    ["locationAddressLine1"],
+    ["locationCity"],
+    ["locationPostcode"],
+    ["locationCountry"],
+  ] as const)("refuses a sale without a full venue address (%s missing)", (field) => {
+    expect(() => mapSaleToAuctionFields(testSale({ [field]: "  " }), testAtgConfig)).toThrow(
+      AtgMappingError,
+    );
+  });
+
   it("requires one flat buyer's premium", () => {
     expect(() =>
       mapSaleToAuctionFields(
