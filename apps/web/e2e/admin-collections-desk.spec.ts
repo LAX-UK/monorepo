@@ -24,7 +24,7 @@ const day = (date: string) => `/admin/collections?venue=${venue}&date=${date}`;
 const row = (page: import("@playwright/test").Page, reference: string) =>
   page.locator(`[data-booking="${reference}"]`);
 
-test.describe("collections desk journey @journey @roles", () => {
+test.describe("collections desk journey @journey", () => {
   test.skip(!e2eEnabled || !hasStaffCredentials(), e2eSkipReason);
   // The journey hands over, closes and rebooks visits, so a retry would start from changed visits.
   test.describe.configure({ retries: 0 });

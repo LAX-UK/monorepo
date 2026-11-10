@@ -22,7 +22,7 @@ import {
 const { approved } = ORGANISATION_JOURNEY_NAMES;
 const lots = COLLECTION_JOURNEY_NAMES.lots;
 
-test.describe("buyer collection journey @journey @roles", () => {
+test.describe("buyer collection journey @journey", () => {
   test.skip(!e2eEnabled, e2eSkipReason);
   // The journey books, moves and cancels visits, so a retry would start from changed visits.
   test.describe.configure({ retries: 0 });
