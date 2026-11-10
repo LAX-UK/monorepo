@@ -33,17 +33,26 @@ describe("migration 0348 sale time zone", () => {
     expect(migration).not.toMatch(/DROP COLUMN|DROP TABLE/);
   });
 
+  it("stamps already published sales so unpublishing never reopens their zone", () => {
+    expect(migration).toContain('ADD COLUMN IF NOT EXISTS "first_published_at"');
+    expect(migration).toMatch(
+      /UPDATE "sale" SET "first_published_at" = "updated_at" WHERE "status" <> 'draft'/,
+    );
+  });
+
   it("is mirrored by the schema", () => {
     const column = getTableColumns(sale).timeZone;
     expect(column.name).toBe("time_zone");
     expect(column.notNull).toBe(true);
     expect(column.default).toBe("Europe/London");
+    expect(getTableColumns(sale).firstPublishedAt.notNull).toBe(false);
   });
 
   it("is undone by the rollback", () => {
     expect(rollback).toMatch(/^BEGIN;/m);
     expect(rollback).toContain('DROP CONSTRAINT IF EXISTS "sale_time_zone_names_a_place"');
     expect(rollback).toContain('DROP COLUMN IF EXISTS "time_zone"');
+    expect(rollback).toContain('DROP COLUMN IF EXISTS "first_published_at"');
     expect(rollback).toMatch(/COMMIT;/);
   });
 });

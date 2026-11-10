@@ -10,17 +10,26 @@ let form: UseFormReturn<AdminSaleFormValues>;
 
 function Harness({
   isDraft = true,
+  timeZoneLocked = false,
   isSaleroom = false,
   defaults = {},
 }: {
   isDraft?: boolean;
+  timeZoneLocked?: boolean;
   isSaleroom?: boolean;
   defaults?: Partial<AdminSaleFormValues>;
 }) {
   form = useForm<AdminSaleFormValues>({
     defaultValues: { ...emptyAdminSaleFormValues(), ...defaults },
   });
-  return <ScheduleTimesSection form={form} isDraft={isDraft} isSaleroom={isSaleroom} />;
+  return (
+    <ScheduleTimesSection
+      form={form}
+      isDraft={isDraft}
+      timeZoneLocked={timeZoneLocked}
+      isSaleroom={isSaleroom}
+    />
+  );
 }
 
 beforeAll(() => {
@@ -31,9 +40,12 @@ afterEach(cleanup);
 describe("ScheduleTimesSection time zone", () => {
   it("shows the zone as a city list and labels the times in it", () => {
     render(<Harness />);
-    expect(screen.getByRole("combobox", { name: /time zone/i })).toHaveTextContent("London");
-    expect(screen.getByText(/Times are in London time \(GMT\/BST\)/)).toBeInTheDocument();
-    expect(screen.getAllByText(/Europe\/London \((GMT|BST)\)/)).toHaveLength(3);
+    expect(screen.getByRole("combobox", { name: /time zone/i })).toHaveTextContent(
+      "London (GMT/BST)",
+    );
+    // The zone is stated once, in one line; the inputs carry no zone name of their own.
+    expect(screen.getAllByText(/Times are in London time \(GMT\/BST\)/)).toHaveLength(1);
+    expect(screen.queryByText(/Europe\/London \((GMT|BST)\)/)).not.toBeInTheDocument();
   });
 
   it("searches by city and keeps the typed times when the zone changes", async () => {
@@ -42,7 +54,7 @@ describe("ScheduleTimesSection time zone", () => {
     fireEvent.change(screen.getByPlaceholderText("Search by city or zone"), {
       target: { value: "paris" },
     });
-    fireEvent.click(await screen.findByText("Europe/Paris"));
+    fireEvent.click(await screen.findByText("Paris (CET/CEST)"));
     await waitFor(() => expect(form.getValues("timeZone")).toBe("Europe/Paris"));
     expect(form.getValues("startTime")).toBe("2030-11-12T18:00");
     expect(screen.getByText(/Times are in Paris time \(CET\/CEST\)/)).toBeInTheDocument();
@@ -58,12 +70,34 @@ describe("ScheduleTimesSection time zone", () => {
     expect(await screen.findByText("No time zone matches.")).toBeInTheDocument();
   });
 
-  it("is locked once the sale is published, with the reason shown", () => {
+  it("is locked once the sale is announced, read-only with the reason shown", () => {
     render(<Harness isDraft={false} />);
-    expect(screen.getByRole("combobox", { name: /time zone/i })).toBeDisabled();
+    expect(screen.queryByRole("combobox", { name: /time zone/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: /time zone/i })).toHaveTextContent("London");
     expect(
       screen.getByText(new RegExp(SALE_TIME_ZONE_LOCKED_MESSAGE.slice(0, 40))),
     ).toBeInTheDocument();
+    expect(SALE_TIME_ZONE_LOCKED_MESSAGE).toContain("announced");
+  });
+
+  it("stays locked for a draft that was announced once and unpublished", () => {
+    render(<Harness isDraft timeZoneLocked />);
+    expect(screen.queryByRole("combobox", { name: /time zone/i })).not.toBeInTheDocument();
+  });
+
+  it("leads with the usual cities before anything is typed", async () => {
+    render(<Harness />);
+    fireEvent.click(screen.getByRole("combobox", { name: /time zone/i }));
+    const options = await screen.findAllByRole("option");
+    expect(options[0]).toHaveTextContent("London (GMT/BST)");
+    expect(options[1]).toHaveTextContent("Paris");
+    expect(options[2]).toHaveTextContent("New York");
+  });
+
+  it("does not repeat a zone it cannot use in the error state", async () => {
+    render(<Harness defaults={{ timeZone: "UTC" }} />);
+    expect(screen.queryByText(/Times are in/)).not.toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: /time zone/i })).toHaveTextContent(/^UTC$/);
   });
 
   it("shows the field's error", async () => {
@@ -89,5 +123,20 @@ describe("ScheduleTimesSection time zone", () => {
       form.setValue("locationCountry", "United States");
     });
     expect(form.getValues("timeZone")).toBe("Europe/Paris");
+  });
+
+  it("keeps London once staff choose it, whatever the venue country does next", async () => {
+    render(<Harness isSaleroom />);
+    await act(async () => {
+      form.setValue("locationCountry", "France");
+    });
+    await waitFor(() => expect(form.getValues("timeZone")).toBe("Europe/Paris"));
+    await act(async () => {
+      form.setValue("timeZone", "Europe/London");
+    });
+    await act(async () => {
+      form.setValue("locationCountry", "Germany");
+    });
+    expect(form.getValues("timeZone")).toBe("Europe/London");
   });
 });

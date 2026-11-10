@@ -1,8 +1,14 @@
 import type { lot, payment } from "@auction/db/schema";
 import { mapBidRow, mapItemSubmissionRow, mapLotRow, mapSaleRow } from "@auction/persistence/lib";
-import type { Lot, LotSummary, Payment, PaymentStatus, PublicLotView } from "@auction/types";
+import type {
+  Lot,
+  LotSummary,
+  Payment,
+  PaymentStatus,
+  PublicLotView,
+  WithSaleZone,
+} from "@auction/types";
 import type { InferSelectModel } from "drizzle-orm";
-import type { WithSaleZone } from "./lot-sale-time-zone.js";
 
 export { mapBidRow, mapItemSubmissionRow, mapLotRow, mapSaleRow };
 

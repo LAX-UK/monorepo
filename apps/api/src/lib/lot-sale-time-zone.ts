@@ -1,10 +1,7 @@
-import type { Lot, PublicLotView, Sale } from "@auction/types";
+import type { Lot, PublicLotView, Sale, WithSaleZone } from "@auction/types";
 import type { SaleLookupPort } from "../container/container-slices.js";
 
 type SaleLookup = { saleService: SaleLookupPort };
-
-/** The lot as the API sends it, naming the zone its sale quotes times in. */
-export type WithSaleZone<T> = T & { timeZone?: string };
 
 /** Batch-load the sales the lots belong to, keyed by sale id. */
 export async function loadSalesForLots(

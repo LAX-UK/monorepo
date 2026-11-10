@@ -1,7 +1,7 @@
-import type { Lot, PublicLotView, Sale } from "@auction/types";
+import type { Lot, PublicLotView, Sale, WithSaleZone } from "@auction/types";
 import type { SaleLookupPort } from "../container/container-slices.js";
 import { computeLotCheckoutPricing } from "./lot-checkout-pricing.js";
-import { type WithSaleZone, loadSalesForLots, withSaleTimeZone } from "./lot-sale-time-zone.js";
+import { loadSalesForLots, withSaleTimeZone } from "./lot-sale-time-zone.js";
 
 type LotsWithCheckoutPricingDeps = {
   saleService: SaleLookupPort;

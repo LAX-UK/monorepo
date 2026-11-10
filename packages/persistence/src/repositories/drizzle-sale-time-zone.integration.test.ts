@@ -74,6 +74,18 @@ describe.skipIf(!HAS_DB)("a sale's time zone (integration)", () => {
         const untouched = await sales.update(created.id, { title: "Renamed" });
         expect(untouched.timeZone).toBe("Asia/Dubai");
 
+        // The first publish is stamped once and survives unpublishing; from then on the zone
+        // cannot be written, so a publish racing a zone change cannot lose the lock.
+        expect(created.firstPublishedAt).toBeNull();
+        await sales.updateStatus(created.id, "scheduled");
+        const stamped = (await sales.findById(created.id))?.firstPublishedAt;
+        expect(stamped).toBeInstanceOf(Date);
+        await sales.updateStatus(created.id, "draft");
+        expect((await sales.findById(created.id))?.firstPublishedAt).toEqual(stamped);
+        await expect(sales.update(created.id, { timeZone: "Europe/Paris" })).rejects.toThrow();
+        const stillMoves = await sales.update(created.id, { title: "Renamed again" });
+        expect(stillMoves.timeZone).toBe("Asia/Dubai");
+
         // The database itself refuses UTC and fixed-offset names (inside a savepoint).
         await expect(
           tx.transaction(async (inner) => {
