@@ -70,9 +70,11 @@ jobs:
           token: ${{ secrets.DIGITALOCEAN_TOKEN }}
       - name: Validate redeploy SHA
         if: env.APP_ID != '' && inputs.git_sha != ''
+        env:
+          GIT_SHA_INPUT: ${{ inputs.git_sha }}
         run: |
           set -euo pipefail
-          [[ "${{ inputs.git_sha }}" =~ ^[0-9a-f]{40}$ ]] || {
+          [[ "${GIT_SHA_INPUT}" =~ ^[0-9a-f]{40}$ ]] || {
             echo "::error::git_sha must be a full 40-character commit SHA"
             exit 1
           }

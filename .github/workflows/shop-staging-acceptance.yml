@@ -82,12 +82,12 @@ jobs:
         run: |
           set -euo pipefail
           if [[ "${{ github.event_name }}" == "workflow_call" ]]; then
-            shop_sha="${{ inputs.shop_sha }}"
-            shop_api_sha="${{ inputs.shop_api_sha != '' && inputs.shop_api_sha || inputs.shop_sha }}"
+            shop_sha="${INPUT_SHOP_SHA}"
+            shop_api_sha="${INPUT_SHOP_API_SHA:-$INPUT_SHOP_SHA}"
             echo "shop_sha=$shop_sha" >> "$GITHUB_OUTPUT"
             echo "shop_api_sha=$shop_api_sha" >> "$GITHUB_OUTPUT"
-            echo "monorepo_ref=${{ inputs.monorepo_ref || '' }}" >> "$GITHUB_OUTPUT"
-            echo "seed_catalogue=${{ inputs.seed_catalogue == true && 'true' || 'false' }}" >> "$GITHUB_OUTPUT"
+            echo "monorepo_ref=${INPUT_MONOREPO_REF}" >> "$GITHUB_OUTPUT"
+            echo "seed_catalogue=${SEED}" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           sha="$INPUT_SHOP_SHA"
