@@ -2,6 +2,7 @@
 
 import { CountUp } from "@auction/ui";
 import { useEffect, useRef, useState } from "react";
+import { whenReaderMoves } from "./reveal/reader-intent.js";
 import { inViewTrigger } from "./reveal/triggers.js";
 
 export type CountUpInViewProps = {
@@ -20,28 +21,57 @@ export function CountUpInView({
   ariaLabel,
 }: CountUpInViewProps) {
   const ref = useRef<HTMLSpanElement>(null);
-  /** False on SSR and until the client effect runs (shows final value, no animation). */
+  /**
+   * True only once the reader has moved through the page and this counter was still off screen.
+   * Until then (SSR, a capture, a preview, a print) it shows its final value, as drawn.
+   */
   const [armed, setArmed] = useState(false);
   const [inView, setInView] = useState(false);
+  /** Print shows every counter at its final value. */
+  const [printing, setPrinting] = useState(false);
+
+  useEffect(() => {
+    const onBeforePrint = () => setPrinting(true);
+    const onAfterPrint = () => setPrinting(false);
+    window.addEventListener("beforeprint", onBeforePrint);
+    window.addEventListener("afterprint", onAfterPrint);
+    return () => {
+      window.removeEventListener("beforeprint", onBeforePrint);
+      window.removeEventListener("afterprint", onAfterPrint);
+    };
+  }, []);
 
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (reduced) {
-      setInView(true);
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const trigger = inViewTrigger({ rootMargin: "0px 0px -10% 0px" });
+    // Already on screen at load: leave the final value as drawn, with nothing to animate.
+    if (trigger.isSatisfiedOnArm?.(el)) return;
+    let isArmed = false;
+    let isStatic = false;
+    const cancelArm = whenReaderMoves(() => {
+      if (isStatic) return;
+      isArmed = true;
       setArmed(true);
-      return;
-    }
-    setArmed(true);
-    const cleanup = inViewTrigger({ rootMargin: "0px 0px -10% 0px" }).bind(el, () =>
-      setInView(true),
-    );
-    return cleanup;
+    });
+    const unbind = trigger.bind(el, () => {
+      if (!isArmed) {
+        // Came into view before the reader ever moved: keep it as drawn.
+        isStatic = true;
+        cancelArm();
+        return;
+      }
+      setInView(true);
+    });
+    return () => {
+      cancelArm();
+      unbind();
+    };
   }, []);
 
-  const showTarget = !armed || inView;
-  const disableAnimation = !armed || !inView;
+  const showTarget = printing || !armed || inView;
+  const disableAnimation = printing || !armed || !inView;
 
   return (
     <span ref={ref} className={className}>
