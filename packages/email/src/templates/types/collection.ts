@@ -133,6 +133,8 @@ type CollectionTemplateVars = {
     address: string;
     /** One line per lot: "Lot 12 · Lowland Storm". */
     lots: string[];
+    /** The lots' ids, so a later sweep can tell which lots an earlier reminder covered. Not shown. */
+    lotIds: string[];
     /** The booking page for these lots. */
     bookUrl: string;
     /** The storage section of the shipping page. */

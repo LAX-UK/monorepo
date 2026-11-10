@@ -38,7 +38,7 @@ export default function CollectionCollectByEmail({
       category="auction"
       eyebrow="Collection"
       preview={today ? "Your free storage ends today." : `Please collect by ${collectByLabel}.`}
-      title={today ? "Your free storage ends today" : "Please collect within a week"}
+      title={today ? "Your free storage ends today" : `Please collect by ${collectByLabel}`}
     >
       <TextBlock>Hi {userName || "there"},</TextBlock>
       <TextBlock>

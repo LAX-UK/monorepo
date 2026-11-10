@@ -111,6 +111,7 @@ describe("collect by email", () => {
     placeName: "London Art Exchange",
     address: "156 New Cavendish Street, London W1W 6YW",
     lots: ["Lot 12 · Lowland Storm", "Lot 14 · Coastal Notation"],
+    lotIds: ["a", "b"],
     bookUrl: "https://lax.bid/purchases/collect?lots=a,b",
     storagePolicyUrl: "https://lax.bid/shipping#storage",
     quoteUrl: "https://lax.bid/purchases",
@@ -119,7 +120,8 @@ describe("collect by email", () => {
   it("asks them to collect by the day, says charges may apply, and links to book", async () => {
     const rendered = await renderEmail("collection-collect-by", base);
     expect(rendered.subject).toBe("Please collect by Wed 9 Dec");
-    expect(rendered.html).toContain("Please collect within a week");
+    expect(rendered.html).toContain("Please collect by Wed 9 Dec");
+    expect(rendered.html).not.toContain("within a week");
     expect(rendered.text).toContain("lots stay with us at London Art Exchange");
     expect(rendered.text).toContain(
       "Please collect by Wed 9 Dec. After that, storage charges may apply",

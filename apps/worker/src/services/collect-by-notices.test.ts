@@ -5,6 +5,7 @@ import {
   collectByEmailsFor,
   collectByGroups,
   collectByKey,
+  collectByKeyPrefix,
 } from "./collect-by-notices.js";
 
 const PLACE = { name: "London Art Exchange", address: "156 New Cavendish Street, London W1W 6YW" };
@@ -115,6 +116,7 @@ describe("the storage reminder email", () => {
       collectByLabel: "Wed 9 Dec",
       placeName: "London Art Exchange",
       lots: ["Lot 12 · Lowland Storm", "Lot 14 · Coastal Notation"],
+      lotIds: ["l-1", "l-2"],
       bookUrl: "https://lax.bid/purchases/collect?lots=l-1,l-2",
       storagePolicyUrl: "https://lax.bid/shipping#storage",
       quoteUrl: "https://lax.bid/purchases",
@@ -145,6 +147,32 @@ describe("the storage reminder email", () => {
       collectByKey({ ...group, lots: [lot()] }, "u-maya"),
     ]);
     expect(keys.size).toBe(5);
+  });
+
+  it("tells an agent who is not an owner or admin only about the lots they won, and nobody about none", () => {
+    const mixed = collectByGroups(
+      [lot(), lot({ lotId: "l-2", winnerId: "u-other" })],
+      "2026-12-02",
+    )[0] as CollectByGroup;
+    const agent = {
+      userId: "u-agent",
+      email: "agent@example.com",
+      firstName: "Alex",
+      wonOnly: true,
+    };
+    const stranger = { userId: "u-x", email: "x@example.com", firstName: "X", wonOnly: true };
+    const emails = collectByEmailsFor(mixed, [maya, agent, stranger], config);
+    expect(emails.map((e) => [e.userId, e.vars.lotIds])).toEqual([
+      ["u-maya", ["l-1", "l-2"]],
+      ["u-agent", ["l-1"]],
+    ]);
+  });
+
+  it("shares a key prefix across the lot sets of one person's reminders for a deadline", () => {
+    const prefix = collectByKeyPrefix(group, "u-maya");
+    expect(prefix).toBe("collection-collect-by:lead:e-1:v-1:2026-12-09:u-maya:");
+    expect(collectByKey(group, "u-maya").startsWith(prefix)).toBe(true);
+    expect(collectByKey({ ...group, lots: [lot()] }, "u-maya").startsWith(prefix)).toBe(true);
   });
 
   it("keeps the same key for the same lots in any order, so a repeat sweep sends nothing", () => {

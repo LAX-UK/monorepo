@@ -32,20 +32,25 @@ const FACTS_OK: CollectionLotFacts = {
 const maya = { userId: "u-maya", email: "maya@example.com", firstName: "Maya" };
 const agent = { userId: "u-agent", email: "agent@example.com", firstName: "Alex" };
 
-function setup(
-  lots: StoredLot[],
-  facts: Record<string, Partial<CollectionLotFacts>> = {},
-  queued: string[] = [],
-) {
-  const enqueue = vi.fn().mockResolvedValue({ outboxId: "o" });
-  const storedLotsDue = vi.fn().mockResolvedValue(lots);
-  const queuedKeys = vi.fn(
-    async (keys: readonly string[]) => new Set(keys.filter((k) => queued.includes(k))),
+/** An outbox that remembers what was sent, so a later sweep sees it as the real one does. */
+function setup(lots: StoredLot[], facts: Record<string, Partial<CollectionLotFacts>> = {}) {
+  const outbox: { key: string; lotIds: string[] }[] = [];
+  const enqueue = vi.fn(
+    async (email: { idempotencyKey?: string; userId?: string; vars: { lotIds: string[] } }) => {
+      outbox.push({ key: email.idempotencyKey as string, lotIds: email.vars.lotIds });
+      return { outboxId: "o" };
+    },
   );
-  const accountRecipients = vi.fn().mockResolvedValue([maya, agent]);
-  const run = (now: string) =>
-    runCollectByRemindersJob({
-      reader: { storedLotsDue, queuedKeys },
+  const storedLotsDue = vi.fn().mockResolvedValue(lots);
+  const remindedLotIds = vi.fn(
+    async (prefix: string) =>
+      new Set(outbox.filter((row) => row.key.startsWith(prefix)).flatMap((row) => row.lotIds)),
+  );
+  const accountRecipients = vi.fn().mockResolvedValue([maya, { ...agent, wonOnly: true }]);
+  const run = (now: string, due: StoredLot[] = lots) => {
+    storedLotsDue.mockResolvedValue(due);
+    return runCollectByRemindersJob({
+      reader: { storedLotsDue, remindedLotIds },
       notices: { accountRecipients },
       facts: {
         lotIdsForBuyer: vi.fn(),
@@ -62,7 +67,8 @@ function setup(
       log,
       now: () => new Date(now),
     });
-  return { run, enqueue, storedLotsDue, queuedKeys, accountRecipients };
+  };
+  return { run, enqueue, storedLotsDue, remindedLotIds, accountRecipients, outbox, facts };
 }
 
 describe("storage reminders", () => {
@@ -90,26 +96,50 @@ describe("storage reminders", () => {
     expect(s.enqueue.mock.calls.map(([email]) => email.userId)).toEqual(["u-maya", "u-agent"]);
   });
 
-  it("leaves alone an email whose key is already in the outbox, and counts only what it sends", async () => {
-    const first = setup([stored()]);
-    await first.run("2026-12-02T10:00:00Z");
-    const keys = first.enqueue.mock.calls.map(([email]) => email.idempotencyKey as string);
-    const again = setup([stored()], {}, [keys[0] as string]);
-    expect(await again.run("2026-12-02T15:00:00Z")).toEqual({ groups: 1, queued: 1 });
-    expect(again.enqueue).toHaveBeenCalledTimes(1);
-    const none = setup([stored()], {}, keys);
-    expect(await none.run("2026-12-02T15:00:00Z")).toEqual({ groups: 1, queued: 0 });
-    expect(none.enqueue).not.toHaveBeenCalled();
+  it("tells an agent who is not an owner or admin only about the lots they won", async () => {
+    const s = setup([stored(), stored({ lotId: "l-2", winnerId: "u-someone-else" })]);
+    await s.run("2026-12-02T10:00:00Z");
+    const byUser = Object.fromEntries(
+      s.enqueue.mock.calls.map(([email]) => [email.userId, email.vars.lotIds]),
+    );
+    expect(byUser["u-maya"]).toEqual(["l-1", "l-2"]);
+    expect(byUser["u-agent"]).toEqual(["l-1"]);
   });
 
-  it("sends the key a lot became eligible under later the same day as a new email", async () => {
-    const early = setup([stored(), stored({ lotId: "l-2" })], {
-      "l-2": { openChecks: ["source_of_funds"] },
-    });
-    await early.run("2026-12-02T09:30:00Z");
-    const sentKeys = early.enqueue.mock.calls.map(([email]) => email.idempotencyKey as string);
-    const later = setup([stored(), stored({ lotId: "l-2" })], {}, sentKeys);
-    expect(await later.run("2026-12-02T14:00:00Z")).toMatchObject({ queued: 2 });
+  it("sends nothing more on a later sweep for the same lots", async () => {
+    const s = setup([stored()]);
+    await s.run("2026-12-02T10:00:00Z");
+    expect(await s.run("2026-12-02T15:00:00Z")).toEqual({ groups: 1, queued: 0 });
+    expect(await s.run("2026-12-03T10:00:00Z")).toEqual({ groups: 1, queued: 0 });
+    expect(s.enqueue).toHaveBeenCalledTimes(2);
+  });
+
+  it("sends nothing more when the buyer books one of three lots, which is what the email asks", async () => {
+    const three = [stored(), stored({ lotId: "l-2" }), stored({ lotId: "l-3" })];
+    const s = setup(three);
+    expect(await s.run("2026-12-02T10:00:00Z")).toMatchObject({ queued: 2 });
+    // l-1 is booked: it drops out of the lots still waiting, so the set shrinks.
+    expect(await s.run("2026-12-02T10:15:00Z", three.slice(1))).toEqual({ groups: 1, queued: 0 });
+    expect(await s.run("2026-12-03T10:00:00Z", three.slice(1))).toEqual({ groups: 1, queued: 0 });
+    expect(s.enqueue).toHaveBeenCalledTimes(2);
+  });
+
+  it("sends an email when a lot becomes eligible later, covering the lots still waiting", async () => {
+    const lots = [stored(), stored({ lotId: "l-2" })];
+    const s = setup(lots, { "l-2": { openChecks: ["source_of_funds"] } });
+    expect(await s.run("2026-12-02T09:30:00Z")).toMatchObject({ queued: 2 });
+    s.facts["l-2"] = {};
+    expect(await s.run("2026-12-02T14:00:00Z")).toMatchObject({ queued: 2 });
+    expect(s.enqueue.mock.calls.at(-2)?.[0].vars.lotIds).toEqual(["l-1", "l-2"]);
+  });
+
+  it("does not send again for lots an earlier email covered, once the new one has gone", async () => {
+    const lots = [stored(), stored({ lotId: "l-2" })];
+    const s = setup(lots, { "l-2": { openChecks: ["source_of_funds"] } });
+    await s.run("2026-12-02T09:30:00Z");
+    s.facts["l-2"] = {};
+    await s.run("2026-12-02T14:00:00Z");
+    expect(await s.run("2026-12-02T15:00:00Z")).toMatchObject({ queued: 0 });
   });
 
   it("reminds on the day itself, and on a day with nothing due it sends nothing", async () => {
@@ -144,7 +174,7 @@ describe("storage reminders", () => {
         storedLotsDue: vi
           .fn()
           .mockResolvedValue([stored(), stored({ lotId: "l-2", legalEntityId: "e-2" })]),
-        queuedKeys: vi.fn().mockResolvedValue(new Set()),
+        remindedLotIds: vi.fn().mockResolvedValue(new Set()),
       },
       notices: { accountRecipients },
       facts: {

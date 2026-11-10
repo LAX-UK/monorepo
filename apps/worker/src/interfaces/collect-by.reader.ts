@@ -30,6 +30,9 @@ export interface ICollectByReader {
     defaultFreeStorageDays: number;
     reminderLeadDays: number;
   }): Promise<StoredLot[]>;
-  /** Which of these idempotency keys already have an email queued, sent or failed. */
-  queuedKeys(keys: readonly string[]): Promise<Set<string>>;
+  /**
+   * The ids of the lots an earlier reminder to this person already covered: those named in the
+   * outbox rows (queued, sent or failed) whose idempotency key starts with `keyPrefix`.
+   */
+  remindedLotIds(keyPrefix: string): Promise<Set<string>>;
 }

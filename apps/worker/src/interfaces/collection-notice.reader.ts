@@ -25,5 +25,5 @@ export interface ICollectionNoticeReader {
   accountRecipients(
     legalEntityId: string,
     alsoUserIds?: readonly string[],
-  ): Promise<NoticeRecipient[]>;
+  ): Promise<(NoticeRecipient & { wonOnly?: boolean })[]>;
 }

@@ -145,14 +145,18 @@ describe.skipIf(!HAS_DB)("collect-by reader (integration)", () => {
     expect(ids).not.toContain(expired);
   });
 
-  it("says which idempotency keys the outbox already holds", async () => {
-    const key = `collect-by-reader-${run}`;
+  it("says which lots earlier reminders with a key prefix covered", async () => {
+    const prefix = `collection-collect-by:lead:e:v:2031-03-15:u-${run}:`;
     await db.execute(sql`
       insert into email_outbox (idempotency_key, to_email_hash, template, vars, status, stream, category)
-      values (${key}, ${`hash-${run}`}, 'collection-collect-by', '{}'::jsonb, 'sent', 'transactional', 'transactional')`);
-    expect(await reader.queuedKeys([key, `${key}-other`])).toEqual(new Set([key]));
-    expect(await reader.queuedKeys([])).toEqual(new Set());
-    await db.execute(sql`delete from email_outbox where idempotency_key = ${key}`);
+      values (${`${prefix}aaa`}, ${`hash-a-${run}`}, 'collection-collect-by', '{"lotIds":["l-1","l-2"]}'::jsonb, 'sent', 'transactional', 'transactional'),
+             (${`${prefix}bbb`}, ${`hash-b-${run}`}, 'collection-collect-by', '{"lotIds":["l-3"]}'::jsonb, 'failed', 'transactional', 'transactional'),
+             (${`collection-collect-by:lead:e:v:2031-03-16:u-${run}:ccc`}, ${`hash-c-${run}`}, 'collection-collect-by', '{"lotIds":["l-9"]}'::jsonb, 'sent', 'transactional', 'transactional')`);
+    expect(await reader.remindedLotIds(prefix)).toEqual(new Set(["l-1", "l-2", "l-3"]));
+    expect(await reader.remindedLotIds(`${prefix}nope:`)).toEqual(new Set());
+    await db.execute(
+      sql`delete from email_outbox where idempotency_key like ${`collection-collect-by:lead:e:v:%:u-${run}:%`}`,
+    );
   });
 
   it("leaves out a lot already in a live booking", async () => {

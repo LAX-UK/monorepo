@@ -68,17 +68,20 @@ const lotSetStamp = (lots: readonly StoredLot[]): string =>
     .digest("hex")
     .slice(0, 12);
 
-/** The key of one reminder to one person: the reminder, account, place, deadline, person and lots. */
-export const collectByKey = (group: CollectByGroup, userId: string): string =>
-  [
+/** What every email to one person about one reminder's deadline has in common in its key. */
+export const collectByKeyPrefix = (group: CollectByGroup, userId: string): string =>
+  `${[
     "collection-collect-by",
     group.kind,
     group.legalEntityId,
     group.venueId,
     group.collectBy,
     userId,
-    lotSetStamp(group.lots),
-  ].join(":");
+  ].join(":")}:`;
+
+/** The key of one reminder to one person: that prefix, and the lots the email is about. */
+export const collectByKey = (group: CollectByGroup, userId: string): string =>
+  `${collectByKeyPrefix(group, userId)}${lotSetStamp(group.lots)}`;
 
 /**
  * The email for one group to each person who hears about the account's purchases. Pure: it reads
@@ -88,16 +91,24 @@ export const collectByKey = (group: CollectByGroup, userId: string): string =>
  */
 export function collectByEmailsFor(
   group: CollectByGroup,
-  people: readonly NoticeRecipient[],
+  people: readonly (NoticeRecipient & { wonOnly?: boolean })[],
   config: { webOrigin: string; now: Date },
 ): EmailEnqueueInput<"collection-collect-by">[] {
   const collectByLabel = formatCollectionDay(new Date(`${group.collectBy}T12:00:00Z`), config.now);
   const seen = new Set<string>();
   const emails: EmailEnqueueInput<"collection-collect-by">[] = [];
-  const lotIds = group.lots.slice(0, MAX_LOTS_IN_LINK).map((lot) => lot.lotId);
   for (const person of people) {
     if (seen.has(person.userId)) continue;
     seen.add(person.userId);
+    // An agent who is not an owner or admin is told only about the lots they won.
+    const own: CollectByGroup = {
+      ...group,
+      lots: person.wonOnly
+        ? group.lots.filter((lot) => lot.winnerId === person.userId)
+        : group.lots,
+    };
+    if (own.lots.length === 0) continue;
+    const lotIds = own.lots.map((lot) => lot.lotId);
     emails.push({
       template: "collection-collect-by",
       vars: {
@@ -106,14 +117,15 @@ export function collectByEmailsFor(
         collectByLabel,
         placeName: group.place.name,
         address: group.place.address,
-        lots: group.lots.map(lotLine),
-        bookUrl: `${config.webOrigin}/purchases/collect?lots=${lotIds.join(",")}`,
+        lots: own.lots.map(lotLine),
+        lotIds,
+        bookUrl: `${config.webOrigin}/purchases/collect?lots=${lotIds.slice(0, MAX_LOTS_IN_LINK).join(",")}`,
         storagePolicyUrl: `${config.webOrigin}/shipping#storage`,
         quoteUrl: `${config.webOrigin}/purchases`,
       },
       to: person.email,
       userId: person.userId,
-      idempotencyKey: collectByKey(group, person.userId),
+      idempotencyKey: collectByKey(own, person.userId),
       category: "transactional",
     });
   }

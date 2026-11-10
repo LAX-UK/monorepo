@@ -7,6 +7,9 @@
  * Apply:
  *   DATABASE_URL=... pnpm --filter @auction/worker backfill:payment-cleared-at -- --apply
  *
+ * Applying makes buyers whose deadline is in the next seven days get a storage reminder at the
+ * next sweep, because their lots now have a date. Run it on production only with the owner's go.
+ *
  * Safe to run again: a lot that already has a date is skipped, and the update only ever fills an
  * empty one. A lot with no capture event is listed and left empty.
  */
@@ -30,6 +33,7 @@ const fulfilments = await db
   .select({
     lotId: lotFulfilment.lotId,
     status: lotFulfilment.status,
+    paymentId: lotFulfilment.paymentId,
     paymentClearedAt: lotFulfilment.paymentClearedAt,
   })
   .from(lotFulfilment);
@@ -39,12 +43,19 @@ const rows = await db
   .from(domainEvent)
   .where(eq(domainEvent.eventType, "payment.captured"));
 const events: CapturedEvent[] = rows.flatMap((row) => {
-  const payload = (row.payload ?? {}) as { lotId?: unknown; capturedAt?: unknown };
+  const payload = (row.payload ?? {}) as {
+    lotId?: unknown;
+    paymentId?: unknown;
+    capturedAt?: unknown;
+  };
   const lotId = typeof payload.lotId === "string" ? payload.lotId : null;
+  const paymentId = typeof payload.paymentId === "string" ? payload.paymentId : null;
   const capturedAt = new Date(
     typeof payload.capturedAt === "string" ? payload.capturedAt : row.occurredAt,
   );
-  return lotId && !Number.isNaN(capturedAt.getTime()) ? [{ lotId, capturedAt }] : [];
+  return lotId && paymentId && !Number.isNaN(capturedAt.getTime())
+    ? [{ lotId, paymentId, capturedAt }]
+    : [];
 });
 
 const plan = planPaymentClearedBackfill(fulfilments, events);

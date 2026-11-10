@@ -130,12 +130,15 @@ export class DrizzleCollectionNoticeReader implements ICollectionNoticeReader {
   async accountRecipients(
     legalEntityId: string,
     alsoUserIds: readonly string[] = [],
-  ): Promise<NoticeRecipient[]> {
+  ): Promise<(NoticeRecipient & { wonOnly?: boolean })[]> {
     const owners = await this.accountPeople(legalEntityId);
-    const people = [...owners];
+    const people: (NoticeRecipient & { wonOnly?: boolean })[] = [...owners];
     if (alsoUserIds.length > 0) {
+      // An agent who is not an owner or admin hears only about the lots they won.
       for (const member of await this.membersAmong(legalEntityId, alsoUserIds)) {
-        if (!people.some((person) => person.userId === member.userId)) people.push(member);
+        if (!people.some((person) => person.userId === member.userId)) {
+          people.push({ ...member, wonOnly: true });
+        }
       }
     }
     if (people.length > 0) return people;

@@ -8,7 +8,8 @@ import {
   sale,
   venue,
 } from "@auction/db/schema";
-import { and, asc, eq, inArray, isNotNull, isNull, notExists, or, sql } from "drizzle-orm";
+import { MAX_FREE_STORAGE_DAYS } from "@auction/domain";
+import { and, asc, eq, isNotNull, isNull, like, notExists, or, sql } from "drizzle-orm";
 import type { ICollectByReader, StoredLot } from "../interfaces/collect-by.reader.js";
 
 const LONDON = "Europe/London";
@@ -54,6 +55,10 @@ export class DrizzleCollectByReader implements ICollectByReader {
           // Places that take no online booking have nothing to book, so no reminder to book.
           eq(collectionPlace.onlineBookingEnabled, true),
           isNotNull(lotFulfilment.paymentClearedAt),
+          // A range on the column itself, so the index can narrow the lots before the exact
+          // London-day test: from the start of the day the longest free period ago to the end of today.
+          sql`${lotFulfilment.paymentClearedAt} >= (${window.today}::date - ${MAX_FREE_STORAGE_DAYS}::int)::timestamp at time zone ${LONDON}`,
+          sql`${lotFulfilment.paymentClearedAt} < (${window.today}::date + 1)::timestamp at time zone ${LONDON}`,
           sql`${clearedOn} between ${first} and ${last}`,
           isNotNull(lot.buyerLegalEntityId),
           eq(lot.status, "ended"),
@@ -99,12 +104,19 @@ export class DrizzleCollectByReader implements ICollectByReader {
     );
   }
 
-  async queuedKeys(keys: readonly string[]): Promise<Set<string>> {
-    if (keys.length === 0) return new Set();
+  async remindedLotIds(keyPrefix: string): Promise<Set<string>> {
+    // The prefix is built from ids and a fixed word, never typed text, but `%` and `_` would still
+    // be wildcards, so they are escaped.
+    const pattern = `${keyPrefix.replace(/[\\%_]/g, "\\$&")}%`;
     const rows = await this.db
-      .select({ key: emailOutbox.idempotencyKey })
+      .select({ vars: emailOutbox.vars })
       .from(emailOutbox)
-      .where(inArray(emailOutbox.idempotencyKey, [...keys]));
-    return new Set(rows.map((row) => row.key));
+      .where(like(emailOutbox.idempotencyKey, pattern));
+    const ids = new Set<string>();
+    for (const row of rows) {
+      const lotIds = (row.vars as { lotIds?: unknown } | null)?.lotIds;
+      if (Array.isArray(lotIds)) for (const id of lotIds) if (typeof id === "string") ids.add(id);
+    }
+    return ids;
   }
 }
