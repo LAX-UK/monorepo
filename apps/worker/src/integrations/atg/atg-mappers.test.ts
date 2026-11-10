@@ -141,16 +141,34 @@ describe("mapSaleToAuctionFields", () => {
     expect(fields.BuyersPremium).toBe(28.75);
   });
 
-  it.each([
-    ["locationAddressLine1"],
-    ["locationCity"],
-    ["locationPostcode"],
-    ["locationCountry"],
-  ] as const)("refuses a sale without a full venue address (%s missing)", (field) => {
-    expect(() => mapSaleToAuctionFields(testSale({ [field]: "  " }), testAtgConfig)).toThrow(
-      AtgMappingError,
+  it("sends LAX's own address for a sale without a venue, as online sales have none", () => {
+    const fields = mapSaleToAuctionFields(
+      testSale({
+        locationAddressLine1: null,
+        locationAddressLine2: null,
+        locationCity: null,
+        locationPostcode: null,
+        locationCountry: "United Kingdom",
+      }),
+      testAtgConfig,
     );
+
+    expect(fields).toMatchObject({
+      Address1: "1 House Street",
+      TownCity: "London",
+      Postcode: "W1 9ZZ",
+      Country: "United Kingdom",
+    });
   });
+
+  it.each([["locationCity"], ["locationPostcode"], ["locationCountry"]] as const)(
+    "refuses a venue with a street but no %s",
+    (field) => {
+      expect(() => mapSaleToAuctionFields(testSale({ [field]: "  " }), testAtgConfig)).toThrow(
+        AtgMappingError,
+      );
+    },
+  );
 
   it("requires one flat buyer's premium", () => {
     expect(() =>
