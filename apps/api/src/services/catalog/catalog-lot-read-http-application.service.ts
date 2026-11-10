@@ -16,11 +16,8 @@ import { listLotDocumentsPublic } from "../../lib/list-lot-documents-public.js";
 import { computeLotCheckoutPricing } from "../../lib/lot-checkout-pricing.js";
 import { buildLotDetailBiddingView } from "../../lib/lot-detail-bidding-view.js";
 import { maskLotForPublicView, presentCatalogueRowForPublic } from "../../lib/lot-public-view.js";
-import {
-  lotsWithCheckoutPricing,
-  lotsWithSaleTimeZone,
-  withSaleTimeZone,
-} from "../../lib/lots-with-checkout-pricing.js";
+import { lotsWithSaleTimeZone, withSaleTimeZone } from "../../lib/lot-sale-time-zone.js";
+import { lotsWithCheckoutPricing } from "../../lib/lots-with-checkout-pricing.js";
 import { mapLotToStaffListRow, mapLotToSummary } from "../../lib/mappers.js";
 import { presentLotImages } from "../../lib/media-presenters.js";
 import { buildConnectRequiredByLotId } from "../../lib/seller-connect-readiness.js";

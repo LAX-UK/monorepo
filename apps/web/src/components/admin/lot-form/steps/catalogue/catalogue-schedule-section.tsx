@@ -1,6 +1,7 @@
 "use client";
 
 import { StaffDateTimeField } from "@/components/admin/forms/staff-form-fields";
+import { TimesZoneNote } from "@/components/admin/forms/times-zone-note";
 import type { FieldSpec, LotCatalogueFieldKey } from "@/lib/admin/lot-catalogue";
 import { moveLotFormToZone } from "@/lib/admin/lot-form-zone";
 import {
@@ -131,6 +132,7 @@ export function CatalogueScheduleSection({ form, fields, sales }: Props) {
           {attachLotScheduleConflictBanner()}
         </Notice>
       ) : null}
+      {!inheritsTiming ? <TimesZoneNote zone={zone} /> : null}
       {!inheritsTiming ? (
         <FieldRow>
           {fields.startTime.visible ? (

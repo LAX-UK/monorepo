@@ -7,7 +7,9 @@ import type { UseFormReturn } from "react-hook-form";
 
 /**
  * Follows the venue's country: when staff change it and the country keeps a single zone, the
- * sale's zone becomes that zone, until staff choose a zone themselves. Opening the form never
+ * sale's zone becomes that zone, until staff choose a zone themselves, including London. The
+ * choice is tracked explicitly (any change to the zone that this hook did not make), so it never
+ * depends on whether the value happens to differ from the saved one. Opening the form never
  * changes a saved zone, and a country with several zones (or none given) changes nothing.
  */
 export function useVenueCountryTimeZone(
@@ -15,16 +17,28 @@ export function useVenueCountryTimeZone(
   enabled: boolean,
 ): void {
   const country = form.watch("locationCountry");
-  const chosenByStaff = form.formState.dirtyFields.timeZone === true;
   const previousCountry = useRef(country);
+  const chosenByStaff = useRef(false);
+  const applying = useRef(false);
+
+  useEffect(() => {
+    const subscription = form.watch((_values, { name }) => {
+      if (name === "timeZone" && !applying.current) chosenByStaff.current = true;
+    });
+    return () => subscription.unsubscribe();
+  }, [form]);
 
   useEffect(() => {
     if (previousCountry.current === country) return;
     previousCountry.current = country;
-    if (!enabled || chosenByStaff) return;
+    if (!enabled || chosenByStaff.current) return;
     const zone = zoneForVenueCountry(country);
-    if (zone && zone !== form.getValues("timeZone")) {
+    if (!zone || zone === form.getValues("timeZone")) return;
+    applying.current = true;
+    try {
       form.setValue("timeZone", zone, { shouldDirty: false, shouldValidate: false });
+    } finally {
+      applying.current = false;
     }
-  }, [chosenByStaff, country, enabled, form]);
+  }, [country, enabled, form]);
 }

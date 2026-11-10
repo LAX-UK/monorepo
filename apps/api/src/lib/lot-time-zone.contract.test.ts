@@ -1,11 +1,8 @@
 import type { Lot, PublicLotView, Sale } from "@auction/types";
 import { describe, expect, it, vi } from "vitest";
 import type { SaleLookupPort } from "../container/container-slices.js";
-import {
-  lotsWithCheckoutPricing,
-  lotsWithSaleTimeZone,
-  withSaleTimeZone,
-} from "./lots-with-checkout-pricing.js";
+import { lotsWithSaleTimeZone, withSaleTimeZone } from "./lot-sale-time-zone.js";
+import { lotsWithCheckoutPricing } from "./lots-with-checkout-pricing.js";
 import { mapLotToStaffListRow, mapLotToSummary } from "./mappers.js";
 
 function lot(overrides: Partial<Lot> = {}): Lot {

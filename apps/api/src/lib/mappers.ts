@@ -2,6 +2,7 @@ import type { lot, payment } from "@auction/db/schema";
 import { mapBidRow, mapItemSubmissionRow, mapLotRow, mapSaleRow } from "@auction/persistence/lib";
 import type { Lot, LotSummary, Payment, PaymentStatus, PublicLotView } from "@auction/types";
 import type { InferSelectModel } from "drizzle-orm";
+import type { WithSaleZone } from "./lot-sale-time-zone.js";
 
 export { mapBidRow, mapItemSubmissionRow, mapLotRow, mapSaleRow };
 
@@ -21,7 +22,7 @@ function summaryMarketingDetails(lot: Lot | PublicLotView): Lot["marketingDetail
   return estimate ? { estimate } : {};
 }
 
-export function mapLotToSummary(lot: Lot | PublicLotView): LotSummary {
+export function mapLotToSummary(lot: WithSaleZone<Lot | PublicLotView>): LotSummary {
   return {
     id: lot.id,
     saleId: lot.saleId,
@@ -62,14 +63,14 @@ export type LotStaffListExtras = {
 };
 
 /** Staff catalogue list row — table fields without checkout pricing or heavy catalogue payload. */
-export function mapLotToStaffListRow(lot: Lot & LotStaffListExtras) {
+export function mapLotToStaffListRow(lot: WithSaleZone<Lot> & LotStaffListExtras) {
   const {
     checkoutPricing: _checkoutPricing,
     imageAssets: _imageAssets,
     description: _description,
     marketingDetails: _marketingDetails,
     ...base
-  } = lot as Lot &
+  } = lot as WithSaleZone<Lot> &
     LotStaffListExtras & {
       checkoutPricing?: unknown;
       imageAssets?: unknown;

@@ -122,8 +122,6 @@ export type Lot = {
   dutchLastDecrementAt: Date | null;
   startTime: Date;
   endTime: Date;
-  /** The zone of the lot's sale, which its times are quoted in. Added by the API; absent without a sale. */
-  timeZone?: string;
   /** Set when a late bid extended the close; null while the lot has kept its scheduled end. */
   extendedUntil?: Date | null;
   status: LotStatus;
@@ -146,6 +144,12 @@ export type Lot = {
   deletedAt?: Date | null;
   deletedByUserId?: string | null;
 };
+
+/**
+ * A lot as the API sends it: the domain lot plus the time zone of its sale, which its times are
+ * quoted in. Absent for a lot with no sale. The zone belongs to the sale; the lot never stores it.
+ */
+export type LotWithSaleZone = Lot & { timeZone?: string };
 
 /** Bidder/marketing lot detail — reserve amount withheld; met/not-met only. */
 export type PublicLotView = Omit<Lot, "reservePrice"> & {

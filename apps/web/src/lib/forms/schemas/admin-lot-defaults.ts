@@ -1,4 +1,4 @@
-import type { Lot } from "@auction/types";
+import type { LotWithSaleZone } from "@auction/types";
 import { toDatetimeFormString, tzDateFromParts } from "@auction/ui/lib/datetime";
 import { DEFAULT_SALE_TIME_ZONE } from "@auction/validators";
 import { TZDate } from "@date-fns/tz";
@@ -27,7 +27,7 @@ function defaultScheduleInstants(zone: string): { start: Date; end: Date } {
   return { start, end: new Date(endTz.getTime()) };
 }
 
-export function lotToAdminLotFormValues(auction: Lot): AdminLotFormValues {
+export function lotToAdminLotFormValues(auction: LotWithSaleZone): AdminLotFormValues {
   const timeZone = auction.timeZone ?? DEFAULT_SALE_TIME_ZONE;
   const categoryIds =
     auction.categoryIds && auction.categoryIds.length > 0

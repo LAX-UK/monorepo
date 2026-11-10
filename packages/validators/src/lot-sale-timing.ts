@@ -87,6 +87,7 @@ export function normalizeLotTimingForSale(
 }
 
 export {
+  auctionMinuteEpoch,
   formatAuctionDatetimeDisplay,
   instantFromAuctionDatetimeFormString,
   isStartInFutureForPublish,

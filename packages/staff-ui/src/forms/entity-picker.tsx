@@ -31,6 +31,12 @@ export type EntityPickerProps = {
   onValueChange: (option: EntityOption | null) => void;
   /** Options known up front (e.g. an order's lines). */
   options?: readonly EntityOption[];
+  /**
+   * Ranks and filters `options` itself as staff type, instead of the default fuzzy match: for a
+   * long fixed list where the order of matches matters (a time zone list that leads with the
+   * usual cities).
+   */
+  filter?: (options: readonly EntityOption[], query: string) => readonly EntityOption[];
   /** Or search the server as staff type; called with the trimmed query (may be empty). */
   search?: (query: string) => Promise<readonly EntityOption[]>;
   /** The chosen option's display, when it is not in `options` (e.g. loaded with the record). */
@@ -54,6 +60,7 @@ export function EntityPicker({
   value,
   onValueChange,
   options = [],
+  filter,
   search,
   selected,
   placeholder = "Choose…",
@@ -94,7 +101,7 @@ export function EntityPicker({
     };
   }, [search, open, query]);
 
-  const list = search ? (remote ?? []) : options;
+  const list = search ? (remote ?? []) : filter ? filter(options, query) : options;
   const current =
     list.find((option) => option.id === value) ??
     options.find((option) => option.id === value) ??
@@ -164,7 +171,7 @@ export function EntityPicker({
         aria-label={searchPlaceholder}
         className="w-[var(--radix-popover-trigger-width)] min-w-72 rounded-staff-md border border-staff-line bg-staff-raised p-0 text-staff-fg shadow-staff-md"
       >
-        <Command shouldFilter={!search} className={staffCommandClass}>
+        <Command shouldFilter={!search && !filter} className={staffCommandClass}>
           <CommandInput
             placeholder={searchPlaceholder}
             value={query}

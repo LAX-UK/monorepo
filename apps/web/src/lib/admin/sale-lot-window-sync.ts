@@ -1,5 +1,6 @@
 import { humanizeSetupError } from "@/lib/admin/sale-setup/humanize-setup-error";
 import type { AdminSaleFormValues } from "@/lib/forms/schemas/admin-sale-form";
+import { readingZone } from "@/lib/forms/schemas/reading-zone";
 import type { Lot, Sale, SaleDeliveryMode } from "@auction/types";
 import { instantFromDatetimeFormString } from "@auction/ui/lib/datetime";
 import {
@@ -24,14 +25,15 @@ export type LotWindowConflict = {
 export function parseSaleWindowFromForm(
   values: Pick<AdminSaleFormValues, "deliveryMode" | "startTime" | "endTime" | "timeZone">,
 ): SaleWindow | null {
-  const startTime = instantFromDatetimeFormString(values.startTime, values.timeZone);
-  const endTime = instantFromDatetimeFormString(values.endTime, values.timeZone);
+  const timeZone = readingZone(values.timeZone);
+  const startTime = instantFromDatetimeFormString(values.startTime, timeZone);
+  const endTime = instantFromDatetimeFormString(values.endTime, timeZone);
   if (Number.isNaN(startTime.getTime()) || Number.isNaN(endTime.getTime())) {
     return null;
   }
   if (endTime <= startTime) return null;
   return {
-    timeZone: values.timeZone,
+    timeZone,
     deliveryMode: values.deliveryMode,
     startTime,
     endTime,

@@ -40,3 +40,4 @@ export {
   zoneChoiceLabel,
 } from "./zone-choices.js";
 export { windowsZoneId } from "./windows-zone.js";
+export { PINNED_ZONES, rankZoneChoices } from "./zone-rank.js";

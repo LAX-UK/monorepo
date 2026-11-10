@@ -1,7 +1,7 @@
 import { parseGalleryImages } from "@/lib/data/http/gallery-image.schema";
 import { isIndexableObject, toObjectRecord } from "@/lib/data/http/object-guards";
 import { zCoerceDate, zStringArrayFromUnknown } from "@/lib/data/http/schema-coerce";
-import type { Lot, LotMarketingDetails, PublicLotView } from "@auction/types";
+import type { Lot, LotMarketingDetails, LotWithSaleZone, PublicLotView } from "@auction/types";
 import { z } from "zod";
 
 function parseMarketingDetails(raw: unknown): LotMarketingDetails {
@@ -35,78 +35,82 @@ function positiveNumberOrNull(value: unknown): number | null {
   return Number.isFinite(n) && n > 0 ? n : null;
 }
 
-const lotRowSchema = z.preprocess(toObjectRecord, z.record(z.unknown())).transform((row): Lot => {
-  const checkoutPricing = parseCheckoutPricing(row.checkoutPricing);
-  const imageAssets = parseGalleryImages(row.imageAssets);
+const lotRowSchema = z
+  .preprocess(toObjectRecord, z.record(z.unknown()))
+  .transform((row): LotWithSaleZone => {
+    const checkoutPricing = parseCheckoutPricing(row.checkoutPricing);
+    const imageAssets = parseGalleryImages(row.imageAssets);
 
-  return {
-    id: String(row.id),
-    saleId: nullableString(row.saleId),
-    lotNumber:
-      row.lotNumber == null || row.lotNumber === ""
-        ? null
-        : typeof row.lotNumber === "number"
-          ? row.lotNumber
-          : Number.parseInt(String(row.lotNumber), 10),
-    ...(row.sellerId != null && row.sellerId !== "" ? { sellerId: String(row.sellerId) } : {}),
-    ...(row.sellerLegalEntityId != null && row.sellerLegalEntityId !== ""
-      ? { sellerLegalEntityId: String(row.sellerLegalEntityId) }
-      : {}),
-    artistId: row.artistId == null ? null : String(row.artistId),
-    artistReviewRequired: Boolean(row.artistReviewRequired),
-    categoryIds: zStringArrayFromUnknown.parse(row.categoryIds),
-    title: String(row.title),
-    description: row.description == null ? null : String(row.description),
-    medium: nullableString(row.medium),
-    dimensions: nullableString(row.dimensions),
-    photoIncludesFrame: row.photoIncludesFrame === true,
-    framedWidthCm: positiveNumberOrNull(row.framedWidthCm),
-    framedHeightCm: positiveNumberOrNull(row.framedHeightCm),
-    images: zStringArrayFromUnknown.parse(row.images),
-    ...(imageAssets !== undefined ? { imageAssets } : {}),
-    categoryId: String(row.categoryId ?? ""),
-    auctionType: row.auctionType as Lot["auctionType"],
-    startingPrice:
-      row.startingPrice == null || row.startingPrice === "" ? "0.00" : String(row.startingPrice),
-    reservePrice: row.reservePrice == null ? null : String(row.reservePrice),
-    buyNowPrice: row.buyNowPrice == null ? null : String(row.buyNowPrice),
-    currentPrice: String(row.currentPrice),
-    buyerPremiumRate:
-      row.buyerPremiumRate == null || row.buyerPremiumRate === ""
-        ? "0.25"
-        : String(row.buyerPremiumRate),
-    ...(checkoutPricing !== undefined ? { checkoutPricing } : {}),
-    minBidIncrement:
-      row.minBidIncrement == null || row.minBidIncrement === ""
-        ? "1.00"
-        : String(row.minBidIncrement),
-    dutchDecrementAmount: nullableString(row.dutchDecrementAmount),
-    dutchDecrementIntervalMs:
-      typeof row.dutchDecrementIntervalMs === "number" &&
-      Number.isFinite(row.dutchDecrementIntervalMs)
-        ? row.dutchDecrementIntervalMs
-        : 60_000,
-    dutchLastDecrementAt:
-      row.dutchLastDecrementAt == null ? null : zCoerceDate.parse(row.dutchLastDecrementAt),
-    startTime: zCoerceDate.parse(row.startTime),
-    endTime: zCoerceDate.parse(row.endTime),
-    ...(typeof row.timeZone === "string" && row.timeZone !== "" ? { timeZone: row.timeZone } : {}),
-    status: row.status as Lot["status"],
-    winnerId: row.winnerId == null ? null : String(row.winnerId),
-    ...(typeof row.hasWinner === "boolean" ? { hasWinner: row.hasWinner } : {}),
-    ...(typeof row.atgSold === "boolean" ? { atgSold: row.atgSold } : {}),
-    ...(row.atgSaleState === "live" || row.atgSaleState === "ended"
-      ? { atgSaleState: row.atgSaleState }
-      : {}),
-    createdAt: zCoerceDate.parse(row.createdAt),
-    updatedAt: zCoerceDate.parse(row.updatedAt),
-    marketingDetails: parseMarketingDetails(row.marketingDetails),
-  };
-});
+    return {
+      id: String(row.id),
+      saleId: nullableString(row.saleId),
+      lotNumber:
+        row.lotNumber == null || row.lotNumber === ""
+          ? null
+          : typeof row.lotNumber === "number"
+            ? row.lotNumber
+            : Number.parseInt(String(row.lotNumber), 10),
+      ...(row.sellerId != null && row.sellerId !== "" ? { sellerId: String(row.sellerId) } : {}),
+      ...(row.sellerLegalEntityId != null && row.sellerLegalEntityId !== ""
+        ? { sellerLegalEntityId: String(row.sellerLegalEntityId) }
+        : {}),
+      artistId: row.artistId == null ? null : String(row.artistId),
+      artistReviewRequired: Boolean(row.artistReviewRequired),
+      categoryIds: zStringArrayFromUnknown.parse(row.categoryIds),
+      title: String(row.title),
+      description: row.description == null ? null : String(row.description),
+      medium: nullableString(row.medium),
+      dimensions: nullableString(row.dimensions),
+      photoIncludesFrame: row.photoIncludesFrame === true,
+      framedWidthCm: positiveNumberOrNull(row.framedWidthCm),
+      framedHeightCm: positiveNumberOrNull(row.framedHeightCm),
+      images: zStringArrayFromUnknown.parse(row.images),
+      ...(imageAssets !== undefined ? { imageAssets } : {}),
+      categoryId: String(row.categoryId ?? ""),
+      auctionType: row.auctionType as Lot["auctionType"],
+      startingPrice:
+        row.startingPrice == null || row.startingPrice === "" ? "0.00" : String(row.startingPrice),
+      reservePrice: row.reservePrice == null ? null : String(row.reservePrice),
+      buyNowPrice: row.buyNowPrice == null ? null : String(row.buyNowPrice),
+      currentPrice: String(row.currentPrice),
+      buyerPremiumRate:
+        row.buyerPremiumRate == null || row.buyerPremiumRate === ""
+          ? "0.25"
+          : String(row.buyerPremiumRate),
+      ...(checkoutPricing !== undefined ? { checkoutPricing } : {}),
+      minBidIncrement:
+        row.minBidIncrement == null || row.minBidIncrement === ""
+          ? "1.00"
+          : String(row.minBidIncrement),
+      dutchDecrementAmount: nullableString(row.dutchDecrementAmount),
+      dutchDecrementIntervalMs:
+        typeof row.dutchDecrementIntervalMs === "number" &&
+        Number.isFinite(row.dutchDecrementIntervalMs)
+          ? row.dutchDecrementIntervalMs
+          : 60_000,
+      dutchLastDecrementAt:
+        row.dutchLastDecrementAt == null ? null : zCoerceDate.parse(row.dutchLastDecrementAt),
+      startTime: zCoerceDate.parse(row.startTime),
+      endTime: zCoerceDate.parse(row.endTime),
+      ...(typeof row.timeZone === "string" && row.timeZone !== ""
+        ? { timeZone: row.timeZone }
+        : {}),
+      status: row.status as Lot["status"],
+      winnerId: row.winnerId == null ? null : String(row.winnerId),
+      ...(typeof row.hasWinner === "boolean" ? { hasWinner: row.hasWinner } : {}),
+      ...(typeof row.atgSold === "boolean" ? { atgSold: row.atgSold } : {}),
+      ...(row.atgSaleState === "live" || row.atgSaleState === "ended"
+        ? { atgSaleState: row.atgSaleState }
+        : {}),
+      createdAt: zCoerceDate.parse(row.createdAt),
+      updatedAt: zCoerceDate.parse(row.updatedAt),
+      marketingDetails: parseMarketingDetails(row.marketingDetails),
+    };
+  });
 
-export const lotSchema = lotRowSchema as z.ZodType<Lot>;
+export const lotSchema = lotRowSchema as z.ZodType<LotWithSaleZone>;
 
-export function parseLotSchema(raw: unknown): Lot {
+export function parseLotSchema(raw: unknown): LotWithSaleZone {
   return lotSchema.parse(raw);
 }
 

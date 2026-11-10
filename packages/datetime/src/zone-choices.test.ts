@@ -11,9 +11,10 @@ const SUMMER = new Date("2026-07-12T12:00:00Z");
 
 describe("zoneChoiceLabel", () => {
   it("names the city and the short name at that moment", () => {
-    expect(zoneChoiceLabel("Europe/London", WINTER)).toBe("London (GMT)");
-    expect(zoneChoiceLabel("Europe/London", SUMMER)).toBe("London (BST)");
-    expect(zoneChoiceLabel("America/New_York", WINTER)).toBe("New York (GMT-5)");
+    expect(zoneChoiceLabel("Europe/London", WINTER)).toBe("London (GMT/BST)");
+    expect(zoneChoiceLabel("Europe/London", SUMMER)).toBe("London (GMT/BST)");
+    expect(zoneChoiceLabel("America/New_York", WINTER)).toBe("New York (GMT-5/GMT-4)");
+    expect(zoneChoiceLabel("Asia/Dubai", WINTER)).toBe("Dubai (GST)");
     expect(zoneChoiceLabel("America/Argentina/Buenos_Aires", WINTER)).toContain("Buenos Aires");
   });
 });
@@ -63,7 +64,7 @@ describe("listZoneChoices", () => {
     expect(labels).toEqual([...labels].sort((a, b) => a.localeCompare(b, "en-GB")));
     expect(choices.find((choice) => choice.zone === "Europe/London")).toEqual({
       zone: "Europe/London",
-      label: "London (GMT)",
+      label: "London (GMT/BST)",
       region: "Europe",
     });
   });

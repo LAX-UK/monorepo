@@ -179,6 +179,11 @@ export type DateTimeInputProps = {
   timeLabel?: string;
   /** The zone the date and time are read in: a sale's own zone. London when not given. */
   timeZone?: string;
+  /**
+   * Whether the zone's name sits beside the fields ("Europe/London (BST)"). A form that states
+   * its zone once, in one line for every time on it, turns this off.
+   */
+  showZone?: boolean;
   className?: string;
 };
 
@@ -196,6 +201,7 @@ export function DateTimeInput({
   disabled,
   timeLabel = "Time, 24-hour clock",
   timeZone = STAFF_TIME_ZONE,
+  showZone = true,
   className,
 }: DateTimeInputProps) {
   const initial = value ? isoToWallTime(value, timeZone) : null;
@@ -272,9 +278,11 @@ export function DateTimeInput({
             if (parsed) setTimeText(parsed);
           }}
         />
-        <span className="shrink-0 text-staff-sm whitespace-nowrap text-staff-muted">
-          {timeZone} ({zoneName})
-        </span>
+        {showZone ? (
+          <span className="shrink-0 text-staff-sm whitespace-nowrap text-staff-muted">
+            {timeZone} ({zoneName})
+          </span>
+        ) : null}
       </div>
       {change ? (
         <p id={hintId} className="text-staff-xs text-staff-muted">

@@ -20,6 +20,7 @@ import {
   parsePoundsToPence,
   wallTimeToIso,
 } from "@auction/staff-ui";
+import { DEFAULT_SALE_TIME_ZONE } from "@auction/validators";
 import type * as React from "react";
 import {
   type Control,
@@ -212,7 +213,7 @@ export function StaffPercentField<T extends FieldValues>(
  */
 export function StaffDateTimeField<T extends FieldValues>(props: Base<T> & { timeZone?: string }) {
   const { field, error } = useBoundField(props);
-  const timeZone = props.timeZone ?? "Europe/London";
+  const timeZone = props.timeZone ?? DEFAULT_SALE_TIME_ZONE;
   const raw = typeof field.value === "string" ? field.value : "";
   const [day, time] = raw.split("T");
   const iso = day && time ? wallTimeToIso(day, time.slice(0, 5), timeZone) : null;
@@ -229,6 +230,8 @@ export function StaffDateTimeField<T extends FieldValues>(props: Base<T> & { tim
       <DateTimeInput
         value={iso}
         timeZone={timeZone}
+        // A form that passes its zone states it once above its times; the field does not repeat it.
+        showZone={props.timeZone === undefined}
         disabled={props.disabled ?? false}
         onValueChange={(next) => {
           const wall = next ? isoToWallTime(next, timeZone) : null;

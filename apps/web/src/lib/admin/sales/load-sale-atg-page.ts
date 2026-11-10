@@ -21,5 +21,5 @@ export async function loadAdminSaleAtgPage(saleId: string): Promise<SaleAtgPageM
     getAdminSaleById(saleId),
   ]);
   if (!view) return null;
-  return { saleId, status, view, timeZone: sale?.timeZone ?? DEFAULT_SALE_TIME_ZONE };
+  return { saleId, status, view, timeZone: sale?.sale.timeZone ?? DEFAULT_SALE_TIME_ZONE };
 }

@@ -143,8 +143,10 @@ describe("re-zoning a draft sale moves its times and its lots' times together", 
     expect(lotUpdate).toHaveBeenCalledTimes(200);
     lotUpdate.mock.calls.forEach((call, n) => {
       const [, times] = call as unknown as [string, { startTime: Date; endTime: Date }];
-      expect(times.startTime.getTime()).toBe(lots[n]?.startTime.getTime() + 5 * 60 * 60_000);
-      expect(times.endTime.getTime()).toBe(lots[n]?.endTime.getTime() + 5 * 60 * 60_000);
+      expect(times.startTime.getTime()).toBe(
+        (lots[n] as Lot).startTime.getTime() + 5 * 60 * 60_000,
+      );
+      expect(times.endTime.getTime()).toBe((lots[n] as Lot).endTime.getTime() + 5 * 60 * 60_000);
     });
   });
 

@@ -1,5 +1,6 @@
 "use client";
 
+import { TimesZoneNote } from "@/components/admin/forms/times-zone-note";
 import { DateTimeInput, Field } from "@auction/staff-ui";
 import { toDatetimeFormString } from "@auction/ui/lib/datetime";
 
@@ -35,33 +36,38 @@ export function LotWindowFields({
   idPrefix,
 }: Props) {
   return (
-    <div className="grid gap-4 sm:grid-cols-2">
-      <Field
-        label="Lot opens"
-        error={startError}
-        disabled={disabled}
-        {...(idPrefix ? { id: `${idPrefix}-startTime` } : {})}
-      >
-        <DateTimeInput
-          value={start}
-          onValueChange={onStartChange}
-          timeLabel="Lot opening time"
-          timeZone={timeZone}
-        />
-      </Field>
-      <Field
-        label="Lot closes"
-        error={endError}
-        disabled={disabled}
-        {...(idPrefix ? { id: `${idPrefix}-endTime` } : {})}
-      >
-        <DateTimeInput
-          value={end}
-          onValueChange={onEndChange}
-          timeLabel="Lot closing time"
-          timeZone={timeZone}
-        />
-      </Field>
+    <div className="flex flex-col gap-2">
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field
+          label="Lot opens"
+          error={startError}
+          disabled={disabled}
+          {...(idPrefix ? { id: `${idPrefix}-startTime` } : {})}
+        >
+          <DateTimeInput
+            value={start}
+            onValueChange={onStartChange}
+            timeLabel="Lot opening time"
+            timeZone={timeZone}
+            showZone={false}
+          />
+        </Field>
+        <Field
+          label="Lot closes"
+          error={endError}
+          disabled={disabled}
+          {...(idPrefix ? { id: `${idPrefix}-endTime` } : {})}
+        >
+          <DateTimeInput
+            value={end}
+            onValueChange={onEndChange}
+            timeLabel="Lot closing time"
+            timeZone={timeZone}
+            showZone={false}
+          />
+        </Field>
+      </div>
+      <TimesZoneNote zone={timeZone} />
     </div>
   );
 }

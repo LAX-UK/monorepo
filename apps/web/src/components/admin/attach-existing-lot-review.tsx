@@ -27,7 +27,7 @@ import { notifySaleSetupActionFailure } from "@/lib/admin/sale-setup/notify-sale
 import { applyZodIssuesToForm } from "@/lib/forms/apply-action-field-errors";
 import { resolveLotAuctionTypePresentation } from "@/lib/presenters/lot-auction-type-presentation";
 import { notify } from "@/lib/ui/notify";
-import { cityName } from "@auction/datetime";
+import { formatWhen } from "@auction/datetime";
 import {
   KeyValueList,
   Notice,
@@ -37,7 +37,7 @@ import {
 } from "@auction/staff-ui";
 import type { ArtistProfile, CategoryNode, Lot, Sale } from "@auction/types";
 import { instantFromDatetimeFormString, toDatetimeFormString } from "@auction/ui/lib/datetime";
-import { formatAuctionDatetimeDisplay, saleModeInheritsLotTiming } from "@auction/validators";
+import { saleModeInheritsLotTiming } from "@auction/validators";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
@@ -263,7 +263,8 @@ export function AttachExistingLotReview({
   };
   const category = resolveCategoryLabels(values.categoryIds, categories);
   const artist = previewLot ? artistLabel(previewLot.artistId, artists) : null;
-  const windowText = `${formatAuctionDatetimeDisplay(saleWindow.startTime, saleWindow.timeZone)} – ${formatAuctionDatetimeDisplay(saleWindow.endTime, saleWindow.timeZone)}`;
+  const now = new Date();
+  const windowText = `${formatWhen(saleWindow.startTime, saleWindow.timeZone, now)} – ${formatWhen(saleWindow.endTime, saleWindow.timeZone, now)}`;
 
   return (
     <div className={className ?? "flex flex-col gap-4"}>
@@ -368,8 +369,7 @@ export function AttachExistingLotReview({
                 idPrefix="attach-review"
               />
               <p className="text-staff-xs text-staff-muted">
-                Sale runs {windowText} ({cityName(saleWindow.timeZone)} time). Lot times must fall
-                within this window.
+                Sale runs {windowText}. Lot times must fall within this window.
               </p>
             </div>
           )}

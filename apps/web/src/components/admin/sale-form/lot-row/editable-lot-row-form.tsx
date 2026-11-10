@@ -9,6 +9,7 @@ import {
   StaffTextField,
   staffFormSummaryErrors,
 } from "@/components/admin/forms/staff-form-fields";
+import { TimesZoneNote } from "@/components/admin/forms/times-zone-note";
 import { categoryPickerOptions } from "@/lib/admin/catalog/category-picker-options";
 import {
   artistOption,
@@ -190,24 +191,27 @@ export function EditableLotRowForm({
             The lot takes the sale's opening and closing times.
           </p>
         ) : (
-          <FieldRow>
-            <StaffDateTimeField
-              {...f}
-              name="startTime"
-              label="Bidding opens"
-              disabled={readOnly}
-              timeZone={ctx.timeZone}
-              description={`The sale opens ${formatWhen(ctx.saleStartTime, ctx.timeZone, new Date())}.`}
-            />
-            <StaffDateTimeField
-              {...f}
-              name="endTime"
-              label="Bidding closes"
-              disabled={readOnly}
-              timeZone={ctx.timeZone}
-              description={`The sale closes ${formatWhen(ctx.saleEndTime, ctx.timeZone, new Date())}.`}
-            />
-          </FieldRow>
+          <>
+            <TimesZoneNote zone={ctx.timeZone} />
+            <FieldRow>
+              <StaffDateTimeField
+                {...f}
+                name="startTime"
+                label="Bidding opens"
+                disabled={readOnly}
+                timeZone={ctx.timeZone}
+                description={`The sale opens ${formatWhen(ctx.saleStartTime, ctx.timeZone, new Date())}.`}
+              />
+              <StaffDateTimeField
+                {...f}
+                name="endTime"
+                label="Bidding closes"
+                disabled={readOnly}
+                timeZone={ctx.timeZone}
+                description={`The sale closes ${formatWhen(ctx.saleEndTime, ctx.timeZone, new Date())}.`}
+              />
+            </FieldRow>
+          </>
         )}
         <StaffEntityField
           {...f}
