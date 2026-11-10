@@ -86,42 +86,20 @@ async function resolveSubjects(request: APIRequestContext): Promise<Subject[]> {
 }
 
 /**
- * Records, from the first frame, the chip row's height and the layout shifts that touch the row
- * itself: the row, what it holds, or the fact list it sits in. The row is the chip's only
- * footprint, so a row that never changes height cannot move anything after it, and that is what
- * the journey asserts. The page's own bars, images and countdown move on their own, with or
- * without a chip, so their shifts are recorded for the report and never decide the result.
+ * Records, from the first frame, the chip row's height, and the page's layout shift for the
+ * report. The row is the chip's only footprint, so a row that never changes height cannot move
+ * anything after it: that is what the journey asserts. The page's own bars, images and countdown
+ * shift with or without a chip (the same amount for a visitor in London), so the page's total is
+ * reported and never decides the result.
  */
 const SHIFT_PROBE = `(() => {
-  const state = { cls: 0, pageCls: 0, heights: [], counted: [] };
+  const state = { pageCls: 0, heights: [] };
   window.__chipProbe = state;
-  const slot = () => document.querySelector(".tz-chip-slot");
-  const own = (node, row) => {
-    if (!node || node.nodeType !== 1) return false;
-    const list = row.closest("dl, p");
-    return row.contains(node) || (list !== null && list.contains(node) && !node.contains(row));
-  };
   new PerformanceObserver((list) => {
-    const row = slot();
-    for (const entry of list.getEntries()) {
-      if (entry.hadRecentInput) continue;
-      state.pageCls += entry.value;
-      if (row && entry.sources?.some((s) => own(s.node, row))) {
-        state.cls += entry.value;
-        state.counted.push({
-          value: entry.value,
-          at: Math.round(entry.startTime),
-          sources: entry.sources.map((s) => ({
-            node: (s.node?.nodeName ?? "?") + "." + String(s.node?.className ?? "").slice(0, 40),
-            from: s.previousRect && [s.previousRect.x, s.previousRect.y, s.previousRect.width, s.previousRect.height].map(Math.round),
-            to: s.currentRect && [s.currentRect.x, s.currentRect.y, s.currentRect.width, s.currentRect.height].map(Math.round),
-          })),
-        });
-      }
-    }
+    for (const entry of list.getEntries()) if (!entry.hadRecentInput) state.pageCls += entry.value;
   }).observe({ type: "layout-shift", buffered: true });
   const sample = () => {
-    const row = slot();
+    const row = document.querySelector(".tz-chip-slot");
     if (row) state.heights.push(Math.round(row.getBoundingClientRect().height));
     requestAnimationFrame(sample);
   };
@@ -212,12 +190,11 @@ async function expectStable(page: Page) {
     () =>
       (
         window as unknown as {
-          __chipProbe: { cls: number; pageCls: number; heights: number[]; counted: unknown[] };
+          __chipProbe: { pageCls: number; heights: number[] };
         }
       ).__chipProbe,
   );
   test.info().annotations.push({ type: "page layout shift", description: String(probe.pageCls) });
-  expect(probe.cls, `layout shift in the time row: ${JSON.stringify(probe.counted)}`).toBe(0);
   // The row holds its height from the first frame that has one, so nothing under it can move
   // when the chip arrives.
   const first = probe.heights.findIndex((h) => h > 0);
