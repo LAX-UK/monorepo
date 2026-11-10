@@ -162,6 +162,7 @@ function sources(
     saleTitleById: { "sale-2": "Jewels and objects of vertu" },
     paymentRoleByLot: {},
     payerName: null,
+    now: new Date("2026-11-02T12:00:00Z"),
     ...overrides,
   };
   return { ...base, owedByLot: owedFor(base, gate, holder), ...overrides };
@@ -382,13 +383,18 @@ describe("buildPurchasesVm", () => {
         },
       }),
     );
-    expect(vm.cardsByTab["to-pay"][0]?.statusNote).toBe("Pay by 24 December");
+    expect(vm.cardsByTab["to-pay"][0]?.statusNote).toBe("Pay by Thu 24 Dec, 12:00 GMT");
+    expect(vm.cardsByTab["to-pay"][0]?.dueMoment).toEqual({
+      iso: "2026-12-24T12:00:00.000Z",
+      zone: "Europe/London",
+    });
   });
 
   it("shows a due purchase with its deadline, breakdown and its own page", () => {
     const [card] = buildPurchasesVm(sources()).cardsByTab["to-pay"];
     expect(card).toMatchObject({
-      statusNote: "Pay by 31 October",
+      statusNote: "Pay by Sat 31 Oct, 23:59 GMT",
+      dueMoment: { iso: "2026-10-31T23:59:59.999Z", zone: "Europe/London" },
       amountLabel: "total due",
       amount: "£8,000.00",
       detailHref: "/purchases/lot-5",

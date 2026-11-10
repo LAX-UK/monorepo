@@ -5,6 +5,7 @@ import { formatMoney, lotChargeCurrency } from "@/lib/format-currency";
 import { CLIENT_ROUTES, organisationHref } from "@/lib/navigation/client-routes";
 import { payHref } from "@/lib/pay/pay-links";
 import { lotPath } from "@/lib/seo/url";
+import { LONDON_TIME_ZONE, formatWhen } from "@auction/datetime";
 import {
   type AmountOwedBlocker,
   type AmountOwedEntry,
@@ -69,6 +70,11 @@ export type PurchaseCardVm = {
   badge: PurchaseBadge;
   statusLabel: string;
   statusNote: string | null;
+  /**
+   * The deadline the note quotes, when it is a payment deadline: the page adds the visitor's own
+   * time under it. A deadline stays on London's day (it is London's 23:59).
+   */
+  dueMoment: { iso: string; zone: string } | null;
   amountLabel: string;
   amount: string;
   /** Someone else pays this purchase (an organisation's); the member is told, never asked. */
@@ -145,6 +151,8 @@ export type PurchaseSources = {
    * whether the person can open the organisation's setup (owners and admins).
    */
   organisation?: { id: string; name: string; canManage: boolean } | null;
+  /** The moment dates are read against; the present when left out. */
+  now?: Date;
   /** The account's invoice and delivery state per lot, when it could be read. */
   factsByLot?: Readonly<Record<string, AccountPurchaseFacts>>;
   /** Several members win for the account, so rows name who won. */
@@ -194,10 +202,11 @@ function noteFor(
   facts: AccountPurchaseFacts | null = null,
   stillToSend: number | null = null,
   refused = false,
+  now: Date = new Date(),
 ): string | null {
   switch (state) {
     case "payment-due":
-      return `Pay by ${DAY_MONTH_LONG.format(dueDate(row, facts))}`;
+      return `Pay by ${formatWhen(dueDate(row, facts), LONDON_TIME_ZONE, now)}`;
     case "in-review":
       if (refused) return REFUSED_ORGANISATION;
       return blocker === "documents"
@@ -417,7 +426,12 @@ export function purchaseCard(row: PortfolioRow, sources: PurchaseSources): Purch
           facts ?? null,
           stillToSend,
           owed?.refused === true,
+          sources.now,
         ),
+    dueMoment:
+      !informed && state === "payment-due"
+        ? { iso: dueDate(row, facts).toISOString(), zone: LONDON_TIME_ZONE }
+        : null,
     amountLabel: amountLabel(state, stillToSend),
     amount: totalMajor ? formatMoney(totalMajor, currency) : "—",
     informed,

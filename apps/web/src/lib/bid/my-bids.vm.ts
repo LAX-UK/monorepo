@@ -28,6 +28,8 @@ export type MyBidCardVm = {
   status: MyBidStatus;
   statusLabel: string;
   figures: MyBidFigure[];
+  /** The close the row quotes, so the visitor's own time can sit beside it; `null` otherwise. */
+  closes: { iso: string; zone: string } | null;
   /** The one step shown on the row; anything else sits in the row's menu. */
   next: MyBidAction | null;
   more: MyBidAction[];
@@ -77,15 +79,33 @@ function currentBidBeforeOpening(lot: Lot): string {
     : NO_AMOUNT;
 }
 
+/** The zone the lot's sale quotes its times in; London for a lot with no sale. */
+function lotZone(lot: Lot, zoneBySale: Readonly<Record<string, string>>): string {
+  return (lot.saleId ? zoneBySale[lot.saleId] : undefined) ?? LONDON_TIME_ZONE;
+}
+
+/** Only an open bid shows its close, so only then is there a moment to add the visitor's time to. */
+function closesOf(status: MyBidStatus, lot: Lot, zone: string): MyBidCardVm["closes"] {
+  return status === "winning" || status === "outbid"
+    ? { iso: lot.endTime.toISOString(), zone }
+    : null;
+}
+
 /** The three figures a row shows, chosen by where the bid stands. */
-function figuresFor(status: MyBidStatus, row: BidWithLot, lot: Lot, now: Date): MyBidFigure[] {
+function figuresFor(
+  status: MyBidStatus,
+  row: BidWithLot,
+  lot: Lot,
+  now: Date,
+  zone: string,
+): MyBidFigure[] {
   switch (status) {
     case "winning":
     case "outbid":
       return [
         { label: "current bid", value: money(lot.currentPrice, lot) },
         { label: "your maximum", value: yourMaximum(row, lot) },
-        { label: "closes", value: formatMoment(lot.endTime, LONDON_TIME_ZONE, now) },
+        { label: "closes", value: formatMoment(lot.endTime, zone, now) },
       ];
     case "maximum-set":
     case "absentee":
@@ -126,7 +146,12 @@ function figuresFor(status: MyBidStatus, row: BidWithLot, lot: Lot, now: Date): 
 
 function toCard(
   { row, status }: { row: BidWithLot; status: MyBidStatus },
-  context: { saleTitleById: Readonly<Record<string, string>>; showPlacedBy: boolean; now: Date },
+  context: {
+    saleTitleById: Readonly<Record<string, string>>;
+    saleZoneById: Readonly<Record<string, string>>;
+    showPlacedBy: boolean;
+    now: Date;
+  },
 ): MyBidCardVm {
   const { bid, lot } = row;
   const actions = myBidActions(status, lot);
@@ -151,9 +176,11 @@ function toCard(
       saleId: null,
       saleTitle: null,
       figures: [],
+      closes: null,
       closesAt: bid.createdAt.getTime(),
     };
   }
+  const zone = lotZone(lot, context.saleZoneById);
   return {
     ...base,
     href: lotPath(lot),
@@ -162,7 +189,8 @@ function toCard(
     lotLabel: lot.lotNumber == null ? null : `Lot ${lot.lotNumber}`,
     saleId: lot.saleId ?? null,
     saleTitle: lot.saleId ? (context.saleTitleById[lot.saleId] ?? null) : null,
-    figures: figuresFor(status, row, lot, context.now),
+    figures: figuresFor(status, row, lot, context.now, zone),
+    closes: closesOf(status, lot, zone),
     closesAt: lot.endTime.getTime(),
   };
 }
@@ -180,10 +208,13 @@ export function buildMyBidsVm(input: {
   userId: string | undefined;
   showPlacedBy?: boolean;
   saleTitleById?: Readonly<Record<string, string>>;
+  /** The zone each sale quotes its times in; a sale missing here is read as London. */
+  saleZoneById?: Readonly<Record<string, string>>;
   now?: Date;
 }): MyBidsVm {
   const context = {
     saleTitleById: input.saleTitleById ?? {},
+    saleZoneById: input.saleZoneById ?? {},
     showPlacedBy: input.showPlacedBy ?? false,
     now: input.now ?? new Date(),
   };

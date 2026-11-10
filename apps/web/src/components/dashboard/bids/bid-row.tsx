@@ -13,6 +13,7 @@ import {
   RecordRowMedia,
 } from "@auction/ui";
 import { StatusBadge } from "@auction/ui/lax";
+import { PlainLocalTime, useViewerMoment } from "@auction/ui/time";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -57,6 +58,7 @@ export function BidRow({
     : [];
   const badge = BID_STATUS_BADGE[card.status];
   const next = card.next;
+  const closing = useViewerMoment(card.closes?.iso ?? null, card.closes?.zone ?? "").moment;
   const blocked = Boolean(bidBlockedReason) && next?.kind !== "view-purchase";
 
   return (
@@ -74,6 +76,7 @@ export function BidRow({
         card.saleTitle,
         card.placedBy ? `Placed by ${card.placedBy}` : null,
         card.placementNote,
+        closing?.local ? <PlainLocalTime key="closes" moment={closing} /> : null,
       ]}
       metaShrink={1}
       figures={card.figures}
