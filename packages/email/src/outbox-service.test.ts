@@ -309,3 +309,50 @@ describe("PostmarkEmailService.enqueue suppression", () => {
     expect((await enqueueWith("payment-receipt", "complaint")).status).toBe("suppressed");
   });
 });
+
+describe("PostmarkEmailService.enqueueInTransaction", () => {
+  const input = {
+    template: "kyc-approved" as const,
+    to: "ada@example.com",
+    userId: "u1",
+    category: "transactional" as const,
+    vars: { userName: "Ada", registerUrl: "https://lax.bid/sales" },
+    idempotencyKey: "kyc-approved:u1:session-1:none",
+  };
+
+  it("writes the row through the caller's transaction and adds no job to the queue", async () => {
+    const own = createFakeDb({ outboxLookups: [] });
+    const inTransaction = createFakeDb({
+      outboxLookups: [undefined],
+      insertReturning: [{ id: "row-tx", status: "pending" }],
+    });
+    const queue = { add: vi.fn().mockResolvedValue(undefined) };
+    const service = new PostmarkEmailService(own.db, queue);
+
+    const result = await service.enqueueInTransaction(inTransaction.db, input);
+
+    expect(result).toEqual({ outboxId: "row-tx" });
+    expect(inTransaction.insertCalls).toHaveLength(1);
+    expect(inTransaction.insertCalls[0]).toMatchObject({
+      idempotencyKey: "kyc-approved:u1:session-1:none",
+      userId: "u1",
+      status: "pending",
+    });
+    // The address is neither stored nor in the key: the recipient is read from the account when sent.
+    expect(JSON.stringify(inTransaction.insertCalls[0])).not.toContain("ada@example.com");
+    expect(own.insertCalls).toHaveLength(0);
+    expect(queue.add).not.toHaveBeenCalled();
+  });
+
+  it("returns the existing row for the same key without writing another", async () => {
+    const inTransaction = createFakeDb({ outboxLookups: [{ id: "row-old", status: "pending" }] });
+    const service = new PostmarkEmailService(createFakeDb({ outboxLookups: [] }).db, {
+      add: vi.fn(),
+    });
+
+    const result = await service.enqueueInTransaction(inTransaction.db, input);
+
+    expect(result).toEqual({ outboxId: "row-old" });
+    expect(inTransaction.insertCalls).toHaveLength(0);
+  });
+});

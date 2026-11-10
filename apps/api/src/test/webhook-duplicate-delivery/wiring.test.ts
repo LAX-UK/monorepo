@@ -51,7 +51,7 @@ const CASES = [...stripePaymentCases, ...connectCases, ...identityCases, ...sett
 describe.each(CASES)("$name is wired for the duplicate-delivery tests", (handler) => {
   it("is taken over by the second delivery when the first fails", async () => {
     const gate = claimGatedRunner(fakeBase() as never, "fail");
-    const { deliver, effect } = handler.build("e1", gate.runner);
+    const { deliver, effect } = handler.build("e1", gate.runner, null);
     const first = deliver().then(
       () => null,
       (error: unknown) => error,
@@ -67,7 +67,7 @@ describe.each(CASES)("$name is wired for the duplicate-delivery tests", (handler
   });
   it("is a duplicate for the second delivery once the first commits", async () => {
     const gate = claimGatedRunner(fakeBase() as never, "pass");
-    const { deliver, effect, isDuplicate } = handler.build("e2", gate.runner);
+    const { deliver, effect, isDuplicate } = handler.build("e2", gate.runner, null);
     const first = deliver();
     await gate.claimed;
     const second = deliver();

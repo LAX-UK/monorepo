@@ -4,7 +4,7 @@ import { emailOutbox, emailSuppression } from "@auction/db/schema";
 import type { JobsOptions, Queue } from "bullmq";
 import { eq } from "drizzle-orm";
 import stringify from "safe-stable-stringify";
-import type { EmailEnqueueInput, IEmailService } from "./service.js";
+import type { EmailEnqueueInput, IEmailService, ITransactionalEmailOutbox } from "./service.js";
 import { suppressionBlocksTemplate } from "./suppression-policy.js";
 import type { RecipientResolution, TemplateName } from "./types.js";
 import { RECIPIENT_RESOLUTION } from "./types.js";
@@ -51,7 +51,7 @@ function snapshotPurgeDate(now = new Date()): Date {
   return d;
 }
 
-export class PostmarkEmailService implements IEmailService {
+export class PostmarkEmailService implements IEmailService, ITransactionalEmailOutbox {
   constructor(
     private readonly db: Database,
     private readonly emailQueue: EmailQueue,
@@ -101,49 +101,7 @@ export class PostmarkEmailService implements IEmailService {
       return { outboxId: existing.id };
     }
 
-    const toEmailHash = emailHash(input.to);
-    const [suppression] = await this.db
-      .select({ emailHash: emailSuppression.emailHash, reason: emailSuppression.reason })
-      .from(emailSuppression)
-      .where(eq(emailSuppression.emailHash, toEmailHash))
-      .limit(1);
-
-    // An unsubscribe only silences optional mail; bounces and complaints silence everything.
-    const suppressed = suppression
-      ? suppressionBlocksTemplate(suppression.reason, input.template)
-      : false;
-    const status = suppressed && input.category === "transactional" ? "suppressed" : "pending";
-    const flaggedAddress =
-      suppressed &&
-      input.category === "auth" &&
-      suppression?.reason !== "unsubscribe" &&
-      suppression?.reason !== "unsubscribed_marketing";
-    const shouldSnapshot = resolution === "snapshot";
-    const now = new Date();
-
-    const [inserted] = await this.db
-      .insert(emailOutbox)
-      .values({
-        idempotencyKey,
-        userId: input.userId ?? null,
-        toEmailHash,
-        toSnapshot: shouldSnapshot ? input.to : null,
-        toSnapshotPurgeAt: shouldSnapshot ? snapshotPurgeDate(now) : null,
-        template: input.template,
-        vars: input.vars as Record<string, unknown>,
-        status,
-        stream: input.stream ?? "transactional",
-        category: input.category,
-        flaggedAddress,
-        createdAt: now,
-      })
-      .onConflictDoNothing()
-      .returning({ id: emailOutbox.id, status: emailOutbox.status });
-
-    const row = inserted ?? (await this.findByIdempotencyKey(idempotencyKey));
-    if (!row) {
-      throw new Error("Email outbox insert failed and no existing idempotency row was found");
-    }
+    const row = await this.insertOutboxRow(this.db, input, idempotencyKey, resolution);
 
     if (row.status === "pending") {
       await this.emailQueue.add(
@@ -162,8 +120,82 @@ export class PostmarkEmailService implements IEmailService {
     return { outboxId: row.id };
   }
 
-  private async findByIdempotencyKey(idempotencyKey: string) {
-    const [row] = await this.db
+  /** Inserts the outbox row (unless the key already has one) and returns it. */
+  private async insertOutboxRow<T extends EmailEnqueueInput["template"]>(
+    executor: Database,
+    input: EmailEnqueueInput<T>,
+    idempotencyKey: string,
+    resolution: RecipientResolution,
+  ) {
+    const toEmailHash = emailHash(input.to);
+    const [suppression] = await executor
+      .select({ emailHash: emailSuppression.emailHash, reason: emailSuppression.reason })
+      .from(emailSuppression)
+      .where(eq(emailSuppression.emailHash, toEmailHash))
+      .limit(1);
+
+    // An unsubscribe only silences optional mail; bounces and complaints silence everything.
+    const suppressed = suppression
+      ? suppressionBlocksTemplate(suppression.reason, input.template)
+      : false;
+    const status = suppressed && input.category === "transactional" ? "suppressed" : "pending";
+    const flaggedAddress =
+      suppressed &&
+      input.category === "auth" &&
+      suppression?.reason !== "unsubscribe" &&
+      suppression?.reason !== "unsubscribed_marketing";
+    const shouldSnapshot = resolution === "snapshot";
+    const now = new Date();
+
+    const [inserted] = await executor
+      .insert(emailOutbox)
+      .values({
+        idempotencyKey,
+        userId: input.userId ?? null,
+        toEmailHash,
+        toSnapshot: shouldSnapshot ? input.to : null,
+        toSnapshotPurgeAt: shouldSnapshot ? snapshotPurgeDate(now) : null,
+        template: input.template,
+        vars: input.vars as Record<string, unknown>,
+        status,
+        stream: input.stream ?? "transactional",
+        category: input.category,
+        flaggedAddress,
+        createdAt: now,
+      })
+      .onConflictDoNothing()
+      .returning({ id: emailOutbox.id, status: emailOutbox.status });
+
+    const row = inserted ?? (await this.findByIdempotencyKey(idempotencyKey, executor));
+    if (!row) {
+      throw new Error("Email outbox insert failed and no existing idempotency row was found");
+    }
+    return row;
+  }
+
+  /**
+   * Queues the email as part of the caller's transaction: the outbox row commits or rolls back
+   * with the change it reports, and the same key never makes a second row. No job is added to the
+   * queue here, since the transaction may still roll back; the outbox drain picks the committed
+   * pending row up and sends it, with the usual retries.
+   *
+   * If a row with the same key already exists it is returned as it is: unlike `enqueue`, a failed
+   * row is not re-armed or rewritten here.
+   */
+  async enqueueInTransaction<T extends EmailEnqueueInput["template"]>(
+    tx: Database,
+    input: EmailEnqueueInput<T>,
+  ): Promise<{ outboxId: string }> {
+    const resolution = input.recipientResolution ?? RECIPIENT_RESOLUTION[input.template];
+    const idempotencyKey = input.idempotencyKey ?? defaultIdempotencyKey(input, resolution);
+    const existing = await this.findByIdempotencyKey(idempotencyKey, tx);
+    if (existing) return { outboxId: existing.id };
+    const row = await this.insertOutboxRow(tx, input, idempotencyKey, resolution);
+    return { outboxId: row.id };
+  }
+
+  private async findByIdempotencyKey(idempotencyKey: string, executor: Database = this.db) {
+    const [row] = await executor
       .select({ id: emailOutbox.id, status: emailOutbox.status })
       .from(emailOutbox)
       .where(eq(emailOutbox.idempotencyKey, idempotencyKey))

@@ -4,7 +4,6 @@ import { describe, expect, it, vi } from "vitest";
 import type { Container } from "../../container.js";
 import { createComplianceRouteServices } from "../../container/create-compliance-route-services.js";
 import type { Env } from "../../env.js";
-import { tryClaimProcessedWebhookEvent } from "../../lib/processed-webhook-event.js";
 import { VeriffWebhookSignatureError } from "../../lib/veriff/veriff-webhook-verifier.js";
 import type { ComplianceVeriffWebhookRoutesContainer } from "../../services/interfaces/compliance-routes/compliance-route-container-slices.js";
 import { VeriffWebhookPayloadError } from "../../services/interfaces/kyc-service.js";
@@ -17,10 +16,6 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("../../services/kyc/kyc-post-verification-progression.js", () => ({
   progressIndividualsAfterKycApproval: mocks.progressIndividualsAfterKycApproval,
-}));
-
-vi.mock("../../lib/processed-webhook-event.js", () => ({
-  tryClaimProcessedWebhookEvent: vi.fn().mockResolvedValue({ claimed: true }),
 }));
 
 const API_KEY = "test-api-key";
@@ -69,8 +64,6 @@ function makeVeriffWebhookContainer(
     amlService?: Container["amlService"];
     stripeConnectService?: Container["stripeConnectService"];
     marketingEventService?: Container["marketingEventService"];
-    kycResubmissionNotifier?: Container["kycResubmissionNotifier"];
-    kycOutcomeNotifier?: Container["kycOutcomeNotifier"];
     domainEventSink?: Container["domainEventSink"];
     compliance?: ComplianceVeriffWebhookRoutesContainer["compliance"];
   } = {},
@@ -115,11 +108,6 @@ function makeVeriffWebhookContainer(
   const marketingEventService =
     overrides.marketingEventService ??
     ({ enqueue: vi.fn() } as unknown as Container["marketingEventService"]);
-  const kycResubmissionNotifier =
-    overrides.kycResubmissionNotifier ??
-    ({
-      notify: vi.fn().mockResolvedValue(undefined),
-    } as unknown as Container["kycResubmissionNotifier"]);
   const domainEventSink = overrides.domainEventSink ?? undefined;
   const compliance =
     overrides.compliance ??
@@ -133,12 +121,6 @@ function makeVeriffWebhookContainer(
       amlService,
       stripeConnectService,
       marketingEventService,
-      kycResubmissionNotifier,
-      kycOutcomeNotifier:
-        overrides.kycOutcomeNotifier ??
-        ({
-          notify: vi.fn().mockResolvedValue(undefined),
-        } as unknown as Container["kycOutcomeNotifier"]),
       sourceOfFundsDocumentCollectionService: {
         getBuyerView: vi.fn(),
       } as never,
@@ -286,151 +268,6 @@ describe("POST /webhooks/veriff/decision", () => {
     });
 
     expect(res.status).toBe(500);
-  });
-
-  it("sends the identity outcome once per decision", async () => {
-    vi.mocked(tryClaimProcessedWebhookEvent).mockResolvedValue({ claimed: true });
-    const notify = vi.fn().mockResolvedValue(undefined);
-    const { container, kycService, db } = makeVeriffWebhookContainer({
-      kycOutcomeNotifier: { notify } as never,
-    });
-    vi.mocked(kycService.handleDecisionWebhook).mockResolvedValue({
-      verification: null,
-      appliedUserKycUpdate: true,
-      shouldProgressIndividuals: false,
-      outcomeNotify: {
-        userId: "u1",
-        outcome: "declined",
-        providerSessionId: "session-1",
-        providerAttemptId: null,
-      },
-    });
-    const res = await createVeriffWebhookRoutes(container).request("/decision", {
-      method: "POST",
-      body: JSON.stringify({ status: "success" }),
-      headers: { "x-hmac-signature": "sig" },
-    });
-
-    expect(res.status).toBe(200);
-    expect(tryClaimProcessedWebhookEvent).toHaveBeenCalledWith(
-      db,
-      "kyc_outcome_notify:declined:session-1:none",
-      "kyc_outcome_notify",
-    );
-    expect(notify).toHaveBeenCalledWith("u1", "declined", "session-1:none");
-  });
-
-  it("does not resend the identity outcome when the webhook is delivered again", async () => {
-    vi.mocked(tryClaimProcessedWebhookEvent).mockResolvedValue({ claimed: false });
-    const notify = vi.fn().mockResolvedValue(undefined);
-    const { container, kycService } = makeVeriffWebhookContainer({
-      kycOutcomeNotifier: { notify } as never,
-    });
-    vi.mocked(kycService.handleDecisionWebhook).mockResolvedValue({
-      verification: null,
-      appliedUserKycUpdate: true,
-      shouldProgressIndividuals: false,
-      outcomeNotify: {
-        userId: "u1",
-        outcome: "approved",
-        providerSessionId: "session-1",
-        providerAttemptId: "attempt-1",
-      },
-    });
-    const res = await createVeriffWebhookRoutes(container).request("/decision", {
-      method: "POST",
-      body: JSON.stringify({ status: "success" }),
-      headers: { "x-hmac-signature": "sig" },
-    });
-
-    expect(res.status).toBe(200);
-    expect(notify).not.toHaveBeenCalled();
-  });
-
-  it("calls resubmission notifier once per session attempt", async () => {
-    vi.mocked(tryClaimProcessedWebhookEvent).mockResolvedValue({ claimed: true });
-    const notify = vi.fn().mockResolvedValue(undefined);
-    const { container, kycService, db } = makeVeriffWebhookContainer({
-      kycResubmissionNotifier: { notify } as never,
-      transactionRunner: {
-        runInTransaction: async (fn: (tx: never) => Promise<unknown>) => fn({} as never),
-      } as never,
-    });
-    vi.mocked(kycService.handleDecisionWebhook).mockResolvedValue({
-      verification: null,
-      appliedUserKycUpdate: true,
-      shouldProgressIndividuals: false,
-      resubmissionNotify: {
-        userId: "u1",
-        providerSessionId: "session-1",
-        providerAttemptId: "attempt-1",
-        feedback: {
-          headline: "More information needed",
-          detail: "Retake selfie",
-          action: "continue",
-          reasonCode: 202,
-          decisionStatus: "resubmission_requested",
-          needsResubmit: true,
-        },
-      },
-    });
-    const app = createVeriffWebhookRoutes(container);
-
-    const res = await app.request("/decision", {
-      method: "POST",
-      body: JSON.stringify({ status: "success" }),
-      headers: { "x-hmac-signature": "sig" },
-    });
-
-    expect(res.status).toBe(200);
-    expect(tryClaimProcessedWebhookEvent).toHaveBeenCalledWith(
-      db,
-      "kyc_resubmit_notify:session-1:attempt-1",
-      "kyc_resubmit_notify",
-    );
-    expect(notify).toHaveBeenCalledWith(
-      "u1",
-      expect.objectContaining({ headline: "More information needed" }),
-    );
-  });
-
-  it("skips resubmission notifier when notify dedupe claim fails", async () => {
-    vi.mocked(tryClaimProcessedWebhookEvent).mockResolvedValue({ claimed: false });
-    const notify = vi.fn().mockResolvedValue(undefined);
-    const { container, kycService } = makeVeriffWebhookContainer({
-      kycResubmissionNotifier: { notify } as never,
-      transactionRunner: {
-        runInTransaction: async (fn: (tx: never) => Promise<unknown>) => fn({} as never),
-      } as never,
-    });
-    vi.mocked(kycService.handleDecisionWebhook).mockResolvedValue({
-      verification: null,
-      appliedUserKycUpdate: true,
-      shouldProgressIndividuals: false,
-      resubmissionNotify: {
-        userId: "u1",
-        providerSessionId: "session-1",
-        providerAttemptId: "attempt-1",
-        feedback: {
-          headline: "More information needed",
-          detail: null,
-          action: "continue",
-          reasonCode: null,
-          decisionStatus: null,
-          needsResubmit: true,
-        },
-      },
-    });
-    const app = createVeriffWebhookRoutes(container);
-
-    const res = await app.request("/decision", {
-      method: "POST",
-      body: JSON.stringify({ status: "success" }),
-      headers: { "x-hmac-signature": "sig" },
-    });
-
-    expect(res.status).toBe(200);
-    expect(notify).not.toHaveBeenCalled();
   });
 });
 

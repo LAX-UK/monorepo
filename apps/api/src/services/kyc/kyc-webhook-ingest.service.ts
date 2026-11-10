@@ -1,4 +1,5 @@
 import type { Database } from "@auction/db";
+import { Sentry } from "@auction/observability";
 import type { KycVerification } from "@auction/types";
 import type { z } from "zod";
 import { tryClaimProcessedWebhookEvent } from "../../lib/processed-webhook-event.js";
@@ -10,6 +11,7 @@ import type { VeriffWebhookVerifier } from "../../lib/veriff/veriff-webhook-veri
 import { KycNotConfiguredError, VeriffWebhookPayloadError } from "../interfaces/kyc-service.js";
 import type { KycWebhookHandleResult } from "../interfaces/kyc-service.js";
 import type { KycServiceDeps } from "./kyc-context.js";
+import type { KycDecisionApplyResult } from "./kyc-contracts.js";
 import type { KycDecisionProcessor } from "./kyc-decision-processor.js";
 import { mergeKycDecisionPayload } from "./kyc-user-feedback.js";
 import type { IKycWebhookIngestService } from "./ports.js";
@@ -65,7 +67,10 @@ export class KycWebhookIngestService implements IKycWebhookIngestService {
     const eventId = `${verification.id}:${verification.attemptId ?? "none"}:decision`;
 
     if (!this.deps.transactionRunner) {
-      return this.applyDecision(verification, parsed as Record<string, unknown>, null);
+      return this.queueNotices(
+        null,
+        await this.applyDecision(verification, parsed as Record<string, unknown>, null),
+      );
     }
 
     return this.deps.transactionRunner.runInTransaction(async (tx) => {
@@ -88,7 +93,59 @@ export class KycWebhookIngestService implements IKycWebhookIngestService {
           shouldProgressIndividuals: retryProgression,
         };
       }
-      return this.applyDecision(verification, parsed as Record<string, unknown>, tx);
+      const applied = await this.applyDecision(verification, parsed as Record<string, unknown>, tx);
+      return this.queueNotices(tx, applied);
+    });
+  }
+
+  /**
+   * Queues what the person is told in the transaction that applied the decision, so the notices
+   * are stored with it or not at all. A decision delivered again is a duplicate and never gets
+   * here, so nobody is told twice. The notices are not part of what the caller gets back.
+   */
+  private async queueNotices(
+    tx: Database | null,
+    applied: KycDecisionApplyResult,
+  ): Promise<KycWebhookHandleResult> {
+    const { outcomeNotify, resubmissionNotify, ...result } = applied;
+    const { notices } = this.deps;
+    if (!notices || (!outcomeNotify && !resubmissionNotify)) return result;
+    if (!tx) {
+      console.warn(JSON.stringify({ msg: "kyc_notice_queued_without_transaction" }));
+    }
+    try {
+      if (outcomeNotify) await notices.queueOutcome(tx, outcomeNotify);
+      if (resubmissionNotify) await notices.queueResubmission(tx, resubmissionNotify);
+    } catch (err) {
+      this.reportQueueFailure(err, outcomeNotify ?? resubmissionNotify, Boolean(outcomeNotify));
+      throw err;
+    }
+    return result;
+  }
+
+  /**
+   * A decision that cannot be stored because its notices cannot be queued fails the delivery, and
+   * Veriff sends it again. Says so, by session and never by person, so a decision stuck in this
+   * loop is seen.
+   */
+  private reportQueueFailure(
+    err: unknown,
+    notice: { providerSessionId: string; providerAttemptId: string | null } | undefined,
+    outcome: boolean,
+  ): void {
+    const providerSessionId = notice?.providerSessionId ?? null;
+    const kind = outcome ? "outcome" : "resubmission";
+    console.error(
+      JSON.stringify({
+        msg: "kyc_notice_queue_failed",
+        providerSessionId,
+        providerAttemptId: notice?.providerAttemptId ?? null,
+        kind,
+        error: err instanceof Error ? err.message : String(err),
+      }),
+    );
+    Sentry.captureException(err, {
+      tags: { kyc_session: providerSessionId ?? "unknown", kyc_notice: kind },
     });
   }
 
@@ -174,7 +231,7 @@ export class KycWebhookIngestService implements IKycWebhookIngestService {
     verification: NonNullable<ReturnType<typeof veriffDecisionWebhookSchema.parse>["verification"]>,
     payload: Record<string, unknown>,
     conn: Database | null,
-  ): Promise<KycWebhookHandleResult> {
+  ): Promise<KycDecisionApplyResult> {
     const input = mapVeriffDecisionToApplyInput(
       {
         id: verification.id,

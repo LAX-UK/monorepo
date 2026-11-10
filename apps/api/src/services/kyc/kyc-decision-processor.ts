@@ -4,8 +4,12 @@ import type { InvoiceDueDateExtender } from "@auction/finance-runtime";
 import type { IKycSessionRepository } from "@auction/persistence/interfaces";
 import type { KycVerification, MarketingEvent, UserKycStatus } from "@auction/types";
 import { buildMarketingEventConsent, nowUnixSeconds } from "../../lib/marketing-event-factory.js";
-import type { KycWebhookHandleResult } from "../interfaces/kyc-service.js";
 import type { IMarketingEventService } from "../interfaces/marketing-event-service.js";
+import type {
+  KycDecisionApplyResult,
+  KycOutcomeNotice,
+  KycResubmissionNotice,
+} from "./kyc-contracts.js";
 import { buildKycUserFeedback, mergeKycDecisionPayload } from "./kyc-user-feedback.js";
 
 export type KycVerifiedFields = {
@@ -57,7 +61,7 @@ export class KycDecisionProcessor {
   async apply(
     input: KycDecisionApplyInput,
     conn: Database | null,
-  ): Promise<KycWebhookHandleResult> {
+  ): Promise<KycDecisionApplyResult> {
     const existing = await this.repo.findByProviderSessionId(
       input.providerSessionId,
       conn ?? undefined,
@@ -113,8 +117,8 @@ export class KycDecisionProcessor {
     let appliedUserKycUpdate = false;
     let shouldProgressIndividuals = false;
     let marketingEventToEnqueue: MarketingEvent | undefined;
-    let resubmissionNotify: KycWebhookHandleResult["resubmissionNotify"];
-    let outcomeNotify: KycWebhookHandleResult["outcomeNotify"];
+    let resubmissionNotify: KycResubmissionNotice | undefined;
+    let outcomeNotify: KycOutcomeNotice | undefined;
 
     if (isCurrentSession) {
       if (setStatus !== null && !skipUserDowngrade) {

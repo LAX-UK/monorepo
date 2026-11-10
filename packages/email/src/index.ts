@@ -40,6 +40,7 @@ export type {
   EmailStream,
   IEmailSender,
   IEmailService,
+  ITransactionalEmailOutbox,
 } from "./service.js";
 export {
   RECIPIENT_RESOLUTION,

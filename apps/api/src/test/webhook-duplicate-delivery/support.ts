@@ -1,7 +1,9 @@
+import type { Database } from "@auction/db";
 import type { ITransactionRunner } from "@auction/persistence/interfaces";
 import type Stripe from "stripe";
 import { type Mock, vi } from "vitest";
 import type { IDomainEventSink } from "../../services/domain-event-sink.js";
+import type { IKycNoticeQueue } from "../../services/kyc/kyc-notice-queue.js";
 
 /**
  * One webhook handler wired for the duplicate-delivery tests. Its transactions run on the given
@@ -14,9 +16,26 @@ export type DeliveryCase = {
   claimedEventId(eventId: string): string;
   /** The claims table the handler writes to. */
   claimsTable: "processed_stripe_events" | "processed_webhook_events";
+  /**
+   * Rows the handler writes besides the claim, counted after the deliveries. The owner connection
+   * seeds the rows it needs (the handler's own role cannot write identity rows), counts what the
+   * deliveries stored, and cleans up.
+   */
+  fixture?: {
+    seed(owner: Database, eventId: string): Promise<void>;
+    stored(owner: Database, eventId: string): Promise<Record<string, number>>;
+    /** What a pair of deliveries must have stored, whichever way they went. */
+    expected: Record<string, number>;
+    clean(owner: Database, eventId: string): Promise<void>;
+  };
+  /**
+   * `notices` is the real queue of what people are told, on the handler's own stores (the role
+   * under test), or null where there is no database and a stand-in is used.
+   */
   build(
     eventId: string,
     runner: ITransactionRunner,
+    notices: IKycNoticeQueue | null,
   ): {
     deliver(): Promise<unknown>;
     effect: Mock;

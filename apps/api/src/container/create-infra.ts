@@ -3,6 +3,7 @@ import type { Database } from "@auction/db";
 import {
   ConsoleEmailService,
   type IEmailService,
+  type ITransactionalEmailOutbox,
   PostmarkEmailService,
   bindEmailQueue,
 } from "@auction/email";
@@ -53,6 +54,8 @@ export type ContainerInfra = {
   queueOpts: (name: QueueName) => ReturnType<typeof createBullQueueOptions>;
   emailQueue: Queue<{ outboxId: string }>;
   emailService: IEmailService;
+  /** The same email service, for queueing an email inside the caller's transaction. */
+  emailOutbox: ITransactionalEmailOutbox;
   objectStorage: IObjectStorage;
   stripeClientFactory: StripeClientFactory;
   stripeWebhookVerifier: StripeWebhookVerifier;
@@ -86,7 +89,7 @@ export function createInfra(env: Env, db: Database): ContainerInfra {
   const queueOpts = (name: QueueName) => createBullQueueOptions(name, bullQueueBase);
   const emailQueue = new Queue<{ outboxId: string }>(EMAIL_QUEUE_NAME, queueOpts(EMAIL_QUEUE_NAME));
   const boundEmailQueue = bindEmailQueue(emailQueue);
-  const emailService: IEmailService =
+  const emailService =
     env.EMAIL_PROVIDER === "postmark"
       ? new PostmarkEmailService(db, boundEmailQueue)
       : new ConsoleEmailService(db, boundEmailQueue);
@@ -153,6 +156,7 @@ export function createInfra(env: Env, db: Database): ContainerInfra {
     queueOpts,
     emailQueue,
     emailService,
+    emailOutbox: emailService,
     objectStorage,
     stripeClientFactory,
     stripeWebhookVerifier,

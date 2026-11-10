@@ -33,7 +33,11 @@ export async function runExpireStalePaymentsJob(opts: JobOpts): Promise<void> {
 }
 
 export async function runRetryXeroWebhookFailuresJob(opts: JobOpts): Promise<void> {
-  await runFinanceCronPath("retry-xero-webhook-failures", opts);
+  // Replaying an event only reads the invoice from Xero and sets the same payment id and the
+  // same processed mark, so a repeat, or an overlap with the first request, changes nothing more.
+  await runFinanceCronPath("retry-xero-webhook-failures", opts, {
+    gatewayRetry: DEFAULT_GATEWAY_RETRY,
+  });
 }
 
 export async function runRetryXeroStripeCaptureSyncJob(opts: JobOpts): Promise<void> {
@@ -45,11 +49,20 @@ export async function runRetryXeroStripeCaptureSyncJob(opts: JobOpts): Promise<v
 }
 
 export async function runRetryXeroInvoiceCreationJob(opts: JobOpts): Promise<void> {
-  await runFinanceCronPath("retry-xero-invoice-creation", opts);
+  // A payment that already has a Xero invoice is skipped, and the invoice call carries a
+  // per-payment idempotency key, so Xero returns the same invoice if an overlapping request
+  // reaches it twice. It never creates a second invoice.
+  await runFinanceCronPath("retry-xero-invoice-creation", opts, {
+    gatewayRetry: DEFAULT_GATEWAY_RETRY,
+  });
 }
 
 export async function runRetryRefundReconcilesJob(opts: JobOpts): Promise<void> {
-  await runFinanceCronPath("retry-refund-reconciles", opts);
+  // Each refund is applied under a lock on the payment, only while it is still captured, and its
+  // ledger line is keyed per payment, so an overlap waits, finds it done, and records nothing more.
+  await runFinanceCronPath("retry-refund-reconciles", opts, {
+    gatewayRetry: DEFAULT_GATEWAY_RETRY,
+  });
 }
 
 export async function runRefreshXeroTokensJob(opts: JobOpts): Promise<void> {
