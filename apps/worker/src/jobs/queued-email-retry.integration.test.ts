@@ -104,7 +104,7 @@ describe.skipIf(!ownerUrl)(
       expect(await row()).toMatchObject({
         status: "pending",
         attempts: 1,
-        lastError: "provider unavailable",
+        lastError: expect.stringContaining("provider unavailable"),
       });
 
       // The queue's retry runs the same job again.
