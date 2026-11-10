@@ -18,6 +18,8 @@ export function PlainLocalTime({
   if (!local) return null;
   return (
     <span
+      // The text can be cut with an ellipsis in a narrow cell; the full line stays on hover.
+      title={local.text}
       className={cn(
         "inline-flex max-w-full items-center gap-1.5 font-lax text-lax-13 leading-5 tabular-nums",
         moment.localDiffersDay
