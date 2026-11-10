@@ -199,9 +199,15 @@ jobs:
           fi
       - name: App Platform Git branch (ephemeral prod only)
         if: inputs.layer == 'ephemeral'
+        env:
+          APP_GIT_BRANCH: ${{ inputs.app_git_branch }}
         run: |
-          b="${{ inputs.app_git_branch }}"
+          b="${APP_GIT_BRANCH}"
           [ -n "$b" ] || b="main"
+          [[ "$b" =~ ^[A-Za-z0-9._/-]+$ ]] || {
+            echo "::error::app_git_branch may contain only letters, digits, '.', '_', '/' and '-'"
+            exit 1
+          }
           echo "TF_VAR_app_git_branch=$b" >> "$GITHUB_ENV"
       - uses: actions/setup-node@v4
         if: inputs.layer == 'ephemeral' && vars.APP_DEPLOY_SOURCE_PROD == 'image'

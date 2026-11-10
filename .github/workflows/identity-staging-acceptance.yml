@@ -54,12 +54,15 @@ jobs:
           INPUT_SHA: ${{ inputs.identity_sha || '' }}
           INPUT_OUTBOX: ${{ inputs.outbox_max_age_ms || '900000' }}
           INPUT_SSF: ${{ inputs.ssf_mode || 'ssf_disabled' }}
+          CALL_SHA: ${{ inputs.identity_sha }}
+          CALL_OUTBOX: ${{ inputs.outbox_max_age_ms }}
+          CALL_SSF: ${{ inputs.ssf_mode }}
         run: |
           set -euo pipefail
           if [[ "${{ github.event_name }}" == "workflow_call" ]]; then
-            echo "identity_sha=${{ inputs.identity_sha }}" >> "$GITHUB_OUTPUT"
-            echo "outbox_max_age_ms=${{ inputs.outbox_max_age_ms }}" >> "$GITHUB_OUTPUT"
-            echo "ssf_mode=${{ inputs.ssf_mode }}" >> "$GITHUB_OUTPUT"
+            echo "identity_sha=${CALL_SHA}" >> "$GITHUB_OUTPUT"
+            echo "outbox_max_age_ms=${CALL_OUTBOX}" >> "$GITHUB_OUTPUT"
+            echo "ssf_mode=${CALL_SSF}" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           sha="$INPUT_SHA"

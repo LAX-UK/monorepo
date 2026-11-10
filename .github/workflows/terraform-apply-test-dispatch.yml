@@ -29,9 +29,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Require APPLY-TEST confirmation
+        env:
+          CONFIRMATION: ${{ inputs.confirmation }}
         run: |
           set -euo pipefail
-          test "${{ inputs.confirmation }}" = "APPLY-TEST" || {
+          test "${CONFIRMATION}" = "APPLY-TEST" || {
             echo "::error::Confirmation must be exactly APPLY-TEST"
             exit 1
           }

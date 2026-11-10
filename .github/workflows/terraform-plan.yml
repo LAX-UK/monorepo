@@ -170,6 +170,8 @@ jobs:
       - uses: infracost/actions/setup@v3
         if: env.INFRACOST_API_KEY != ''
       - name: Record plan summary
+        env:
+          INFRA_REF: ${{ inputs.infra_ref }}
         run: |
           echo "Terraform plan generated for ${{ matrix.layer }}/${{ matrix.env }}." >> "$GITHUB_STEP_SUMMARY"
-          echo "Infra ref: ${{ inputs.infra_ref }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "Infra ref: ${INFRA_REF}" >> "$GITHUB_STEP_SUMMARY"
