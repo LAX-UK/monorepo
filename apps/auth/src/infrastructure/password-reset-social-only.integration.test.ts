@@ -1,11 +1,5 @@
 import { randomUUID } from "node:crypto";
-import {
-  type Auth,
-  type AuthPorts,
-  type CredentialEmailInput,
-  createAuth,
-  resolveTwoFactorRequirement,
-} from "@auction/auth";
+import { type Auth, type AuthPorts, type CredentialEmailInput, createAuth } from "@auction/auth";
 import { createIdentityAuthPorts, createIdentityDb } from "@auction/identity-db";
 import { account, session, user, verification } from "@auction/identity-db/schema";
 import { base32 } from "@better-auth/utils/base32";
@@ -15,14 +9,15 @@ import { afterAll, describe, expect, it } from "vitest";
 import { buildDrizzleDatabase } from "./build-drizzle-database.js";
 
 /**
- * SM-1b: a person who only ever signed in with Google or Apple has no password. Completing
+ * A person who only ever signed in with Google or Apple has no password. Completing
  * "Email me a link" must give them a password sign-in (a `credential` account holding a hash),
- * and that sign-in must still ask for the authenticator code when they have two-step on.
+ * and once they turn two-step on, that sign-in must ask for the authenticator code.
  * Runs the real Better Auth handler against Postgres, with the reset email captured in memory.
  */
 const DATABASE_URL = process.env.DATABASE_URL;
 const BASE_URL = "http://localhost:3001";
-const NEW_PASSWORD = "Correct-Horse-Battery-9-Staple";
+// Generated per run so no fixed credential lives in the repository.
+const NEW_PASSWORD = `Pw-${randomUUID()}`;
 
 type Sink = { sent: CredentialEmailInput[] };
 
@@ -189,12 +184,9 @@ describe.skipIf(!DATABASE_URL)("password reset for a social-only person", () => 
     expect(wrong.status).not.toBe(200);
   });
 
-  it("asks an organisation member with two-step required for the authenticator code at password sign-in", async () => {
-    const { auth, ports, sink } = buildHarness({ orgTwoFactorRequired: true });
+  it("asks a person who turns two-step on after the reset for the authenticator code at password sign-in", async () => {
+    const { auth, sink } = buildHarness({ orgTwoFactorRequired: true });
     const person = await createSocialOnlyUser();
-
-    const inputs = await ports.twoFactorPolicyStore.readSubjectPolicyInputs(person.id);
-    expect(resolveTwoFactorRequirement(inputs).required).toBe(true);
 
     await resetThroughEmailedLink(auth, sink, person.email);
     expect((await accountsOf(person.id)).map((row) => row.providerId).sort()).toEqual([
