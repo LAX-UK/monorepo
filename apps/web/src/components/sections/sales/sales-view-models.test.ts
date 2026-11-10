@@ -36,6 +36,7 @@ function makeSale(overrides: Partial<Sale> = {}): Sale {
     startTime: start,
     endTime: end,
     previewStartTime: null,
+    timeZone: "Europe/London",
     buyerPremiumRate: "0",
     buyerPremiumTiers: null,
     terms: null,

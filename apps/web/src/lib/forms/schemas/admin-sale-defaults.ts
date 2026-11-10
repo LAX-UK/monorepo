@@ -1,24 +1,21 @@
 import type { Sale } from "@auction/types";
-import {
-  DEFAULT_AUCTION_ZONE,
-  toDatetimeFormString,
-  tzDateFromParts,
-} from "@auction/ui/lib/datetime";
+import { toDatetimeFormString, tzDateFromParts } from "@auction/ui/lib/datetime";
+import { DEFAULT_SALE_TIME_ZONE } from "@auction/validators";
 import { TZDate } from "@date-fns/tz";
 import { addDays, addHours } from "date-fns";
 import type { AdminSaleFormValues } from "./admin-sale-form";
 
 export type SaleWithPresentedCovers = Sale & { coverImagePresentedUrls?: string[] };
 
-function defaultScheduleInstants(): { start: Date; end: Date } {
-  const now = new TZDate(new Date(), DEFAULT_AUCTION_ZONE);
+function defaultScheduleInstants(zone: string): { start: Date; end: Date } {
+  const now = new TZDate(new Date(), zone);
   const startTz = tzDateFromParts(
     now.getFullYear(),
     now.getMonth() + 1,
     now.getDate(),
     addHours(now, 1).getHours(),
     0,
-    DEFAULT_AUCTION_ZONE,
+    zone,
   );
   const start = new Date(startTz.getTime());
   const endTz = tzDateFromParts(
@@ -27,7 +24,7 @@ function defaultScheduleInstants(): { start: Date; end: Date } {
     addDays(startTz, 7).getDate(),
     startTz.getHours(),
     0,
-    DEFAULT_AUCTION_ZONE,
+    zone,
   );
   return { start, end: new Date(endTz.getTime()) };
 }
@@ -67,9 +64,12 @@ export function saleToAdminSaleFormValues(sale: Sale): AdminSaleFormValues {
     locationPostcode: sale.locationPostcode ?? "",
     locationCountry: sale.locationCountry ?? "",
     venueId: sale.venueId ?? "",
-    startTime: toDatetimeFormString(sale.startTime),
-    endTime: toDatetimeFormString(sale.endTime),
-    previewStartTime: sale.previewStartTime ? toDatetimeFormString(sale.previewStartTime) : "",
+    timeZone: sale.timeZone,
+    startTime: toDatetimeFormString(sale.startTime, sale.timeZone),
+    endTime: toDatetimeFormString(sale.endTime, sale.timeZone),
+    previewStartTime: sale.previewStartTime
+      ? toDatetimeFormString(sale.previewStartTime, sale.timeZone)
+      : "",
     buyerPremiumRate: sale.buyerPremiumRate,
     buyerPremiumTiers: (sale.buyerPremiumTiers ?? []).map((t) => ({
       hammerThresholdMajor: String(t.hammerThresholdMinor / 100),
@@ -79,8 +79,10 @@ export function saleToAdminSaleFormValues(sale: Sale): AdminSaleFormValues {
   };
 }
 
-export function emptyAdminSaleFormValues(): AdminSaleFormValues {
-  const { start, end } = defaultScheduleInstants();
+export function emptyAdminSaleFormValues(
+  timeZone: string = DEFAULT_SALE_TIME_ZONE,
+): AdminSaleFormValues {
+  const { start, end } = defaultScheduleInstants(timeZone);
   return {
     title: "",
     description: "",
@@ -102,8 +104,9 @@ export function emptyAdminSaleFormValues(): AdminSaleFormValues {
     locationPostcode: "",
     locationCountry: "United Kingdom",
     venueId: "",
-    startTime: toDatetimeFormString(start),
-    endTime: toDatetimeFormString(end),
+    timeZone,
+    startTime: toDatetimeFormString(start, timeZone),
+    endTime: toDatetimeFormString(end, timeZone),
     previewStartTime: "",
     buyerPremiumRate: "0.25",
     buyerPremiumTiers: [],

@@ -5,6 +5,7 @@ import { loadAdminSaleEditPage } from "@/lib/admin/sales/load-sale-edit-page";
 import { requireAdminCapability } from "@/lib/auth/require-admin-capability";
 import { SALES_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { FormPage } from "@auction/staff-ui";
+import { isSaleTimeZoneLocked } from "@auction/validators";
 import type { ReactNode } from "react";
 
 type Props = {
@@ -39,6 +40,7 @@ export default async function AdminEditSaleLayout({ params, children }: Props) {
         <AdminSaleForm
           saleId={id}
           saleStatus={page.sale.status}
+          timeZoneLocked={isSaleTimeZoneLocked(page.sale)}
           defaultValues={page.defaultValues}
           categories={page.categories}
           englishOnlyAuctionsLocked={page.englishOnlyAuctionsLocked}

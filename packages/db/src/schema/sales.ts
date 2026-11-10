@@ -110,6 +110,13 @@ export const sale = pgTable(
     status: saleStatusEnum("status").notNull().default("draft"),
     /** Internal test sale: never public, never announced. Staff-only toggle. */
     isTest: boolean("is_test").notNull().default(false),
+    /**
+     * IANA zone the sale quotes its times in (the official zone). Moments stay instants; this only
+     * names how they are written. Fixed once the sale is published.
+     */
+    timeZone: text("time_zone").notNull().default("Europe/London"),
+    /** When the sale first left draft; set once, so unpublishing never reopens the time zone. */
+    firstPublishedAt: timestamp("first_published_at", { mode: "date", withTimezone: true }),
     startTime: timestamp("start_time", { mode: "date", withTimezone: true }).notNull(),
     endTime: timestamp("end_time", { mode: "date", withTimezone: true }).notNull(),
     previewStartTime: timestamp("preview_start_time", {
@@ -146,6 +153,10 @@ export const sale = pgTable(
     index("sale_start_time_idx").on(table.startTime),
     index("sale_not_deleted_idx").on(table.id).where(sql`${table.deletedAt} IS NULL`),
     check("sale_end_after_start", sql`${table.endTime} > ${table.startTime}`),
+    check(
+      "sale_time_zone_names_a_place",
+      sql`position('/' in ${table.timeZone}) > 1 AND ${table.timeZone} NOT LIKE 'Etc/%'`,
+    ),
     check("sale_subtitle_length", sql`char_length(${table.subtitle}) <= 160`),
     check("sale_featured_lot_ids_max", sql`cardinality(${table.featuredLotIds}) <= 12`),
     check(

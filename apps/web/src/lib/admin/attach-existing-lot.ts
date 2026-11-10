@@ -14,9 +14,11 @@ import type { z } from "zod";
 
 export type AttachReviewApiPayload = z.infer<typeof createNestedLotForSaleSchema>;
 
+/** The row for an inventory lot, its times written as wall-clock times in the sale's `timeZone`. */
 export function inventoryLotToAttachReviewRow(
   lot: Lot,
   clientRowId: string,
+  timeZone: string,
 ): SaleSetupLotRowFormValues {
   return {
     clientRowId,
@@ -32,20 +34,21 @@ export function inventoryLotToAttachReviewRow(
     auctionType: lot.auctionType,
     startingPrice: lot.startingPrice,
     artistId: lot.artistId ?? null,
-    startTime: toDatetimeFormString(lot.startTime),
-    endTime: toDatetimeFormString(lot.endTime),
+    startTime: toDatetimeFormString(lot.startTime, timeZone),
+    endTime: toDatetimeFormString(lot.endTime, timeZone),
   };
 }
 
 export function attachReviewScheduleChanged(
   original: Pick<Lot, "startTime" | "endTime">,
   values: Pick<SaleSetupLotRowFormValues, "startTime" | "endTime">,
+  timeZone: string,
 ): boolean {
   const startRaw = values.startTime?.trim();
   const endRaw = values.endTime?.trim();
   if (!startRaw || !endRaw) return false;
-  const startTime = instantFromDatetimeFormString(startRaw);
-  const endTime = instantFromDatetimeFormString(endRaw);
+  const startTime = instantFromDatetimeFormString(startRaw, timeZone);
+  const endTime = instantFromDatetimeFormString(endRaw, timeZone);
   if (Number.isNaN(startTime.getTime()) || Number.isNaN(endTime.getTime())) return false;
   return (
     startTime.getTime() !== original.startTime.getTime() ||
@@ -83,8 +86,8 @@ export function attachReviewScheduleViolation(
   const startRaw = values.startTime?.trim();
   const endRaw = values.endTime?.trim();
   if (!startRaw || !endRaw) return "Choose lot opening and closing times";
-  const startTime = instantFromDatetimeFormString(startRaw);
-  const endTime = instantFromDatetimeFormString(endRaw);
+  const startTime = instantFromDatetimeFormString(startRaw, ctx.timeZone);
+  const endTime = instantFromDatetimeFormString(endRaw, ctx.timeZone);
   if (Number.isNaN(startTime.getTime()) || Number.isNaN(endTime.getTime())) {
     return "Choose valid lot opening and closing times";
   }

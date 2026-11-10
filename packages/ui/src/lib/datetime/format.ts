@@ -1,3 +1,4 @@
+import { wallClockToInstant } from "@auction/datetime";
 import { TZDate } from "@date-fns/tz";
 import { format } from "date-fns";
 
@@ -37,6 +38,14 @@ export function fromDatetimeFormString(
   const day = dateBits[2] ?? 1;
   const hour = timeBits[0] ?? 0;
   const minute = timeBits[1] ?? 0;
+  // The shared engine reads the time in any zone; a time the clocks skip has no instant there, so
+  // it falls back to the date library's reading (the hour after the change).
+  const exact = wallClockToInstant(
+    datePart ?? "",
+    `${hour}:${String(minute).padStart(2, "0")}`,
+    zone,
+  );
+  if (exact.ok) return { instant: exact.instant, zone };
   const tz = tzDateFromParts(year, month, day, hour, minute, zone);
   return { instant: new Date(tz.getTime()), zone };
 }

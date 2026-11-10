@@ -9,8 +9,6 @@ export type AtgSyncConfig = {
   artistPlacement: "title_prefix" | "description";
   currency: string;
   countryCode: string;
-  /** IANA zone of sale times; mapped to a Windows ID for GAP. */
-  timezone: string;
   /** Public media origin used to turn stored image keys into URLs ATG can fetch. */
   mediaBaseUrl: string;
   maxImagesPerLot: number;
@@ -41,6 +39,8 @@ export type AtgSaleSnapshot = {
   terms: string | null;
   startTime: Date;
   endTime: Date;
+  /** IANA zone the sale quotes its times in; the zone ATG shows the auction in. */
+  timeZone: string;
   saleStatus: SaleStatus;
   buyerPremiumRate: string;
   buyerPremiumTiers: BuyerPremiumTier[] | null;

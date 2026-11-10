@@ -23,7 +23,10 @@ import {
   fetchLotBidHydrate,
   lotBidKeys,
 } from "@/lib/data/queries/lot-bid";
+import { reconcileEnd } from "@/lib/lot-page/reconcile-end";
 import { useQueryCacheState } from "@/lib/query/use-query-cache-state";
+import { parseLotExtension } from "@/lib/realtime/lot-extension";
+import { browserClockSync } from "@/lib/time/browser-clock-sync.client";
 import type { BidUpdateEvent, LotEndedEvent } from "@auction/types";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -112,10 +115,31 @@ export function LotBidHistoryProvider({
     [queryClient, lotId, initialHydrate],
   );
 
+  /**
+   * The latest close this page has applied. A live lot's close only moves later (a late bid), so a
+   * snapshot that was in flight while an extension landed can never move it back, and a later
+   * close that arrives only in a snapshot is an extension the page says so about.
+   */
+  const appliedEndRef = useRef(new Date(initialHydrate.snapshot.endTime).getTime());
+  const noteEnd = useCallback(
+    (endMs: number, status: LotBidSnapshot["status"]) => {
+      const result = reconcileEnd(appliedEndRef.current, endMs, status);
+      appliedEndRef.current = result.endMs;
+      if (result.extension) {
+        onlineLifecycle?.applyExtension({
+          endTimeMs: result.endMs,
+          addedMs: result.extension.addedMs,
+        });
+      } else {
+        onlineLifecycle?.setLiveEndTimeMs(result.endMs);
+      }
+    },
+    [onlineLifecycle],
+  );
+
   const applyLifecycleFromSnapshot = useCallback(
     (snapshot: LotBidSnapshot) => {
-      const endMs = new Date(snapshot.endTime).getTime();
-      onlineLifecycle?.setLiveEndTimeMs(endMs);
+      noteEnd(new Date(snapshot.endTime).getTime(), snapshot.status);
       if (snapshot.status === "ended") {
         // An ended lot carries its result: the winner comes with the status, so the header
         // never reads a sold lot as "No sale" before a realtime event names the winner.
@@ -127,7 +151,7 @@ export function LotBidHistoryProvider({
         onlineLifecycle?.setLiveLotStatus(snapshot.status);
       }
     },
-    [onlineLifecycle],
+    [onlineLifecycle, noteEnd],
   );
 
   useEffect(() => {
@@ -209,7 +233,19 @@ export function LotBidHistoryProvider({
         return { ok: false };
       }
 
-      queryClient.setQueryData(lotBidKeys.hydrate(lotId), hydrated);
+      // A snapshot taken before a late bid landed must not move the close back.
+      const later =
+        hydrated.snapshot.status === "active" &&
+        appliedEndRef.current > new Date(hydrated.snapshot.endTime).getTime();
+      queryClient.setQueryData(
+        lotBidKeys.hydrate(lotId),
+        later
+          ? {
+              ...hydrated,
+              snapshot: { ...hydrated.snapshot, endTime: new Date(appliedEndRef.current) },
+            }
+          : hydrated,
+      );
       applyLifecycleFromSnapshot(hydrated.snapshot);
       noticeReporter?.clearNotice(noticeId);
 
@@ -259,6 +295,21 @@ export function LotBidHistoryProvider({
           status: "ended",
           winnerId: ev.winnerId ?? null,
         },
+      }));
+    },
+    onLotExtended: (payload) => {
+      const extension = parseLotExtension(payload);
+      if (!extension) return;
+      if (extension.serverNowMs !== null) {
+        browserClockSync().observeServerNow(extension.serverNowMs);
+      }
+      // A close that did not move later is one already applied (the event arrives under two names,
+      // back to back, so this reads the ref, not the last render).
+      if (!(extension.endTimeMs > appliedEndRef.current)) return;
+      noteEnd(extension.endTimeMs, "active");
+      patchHydrateCache((prev) => ({
+        ...prev,
+        snapshot: { ...prev.snapshot, endTime: new Date(extension.endTimeMs) },
       }));
     },
     onReconnect: () => {

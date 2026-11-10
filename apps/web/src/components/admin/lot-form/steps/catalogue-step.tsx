@@ -15,7 +15,10 @@ type Props = {
   form: UseFormReturn<AdminLotFormValues>;
   categories: CategoryNode[];
   artists: ArtistProfile[];
-  sales: Pick<Sale, "id" | "title" | "status" | "deliveryMode" | "startTime" | "endTime">[];
+  sales: Pick<
+    Sale,
+    "id" | "title" | "status" | "deliveryMode" | "startTime" | "endTime" | "timeZone"
+  >[];
   showArtistField?: boolean;
   onEditLotType?: () => void;
 };

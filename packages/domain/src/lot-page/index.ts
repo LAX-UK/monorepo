@@ -23,6 +23,7 @@ export {
   timeLeftShowsSeconds,
   timeLeftView,
   timeMarkCrossed,
+  wholeSecondsLeft,
   type TimeLeftBand,
   type TimeLeftTone,
   type TimeLeftView,

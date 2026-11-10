@@ -30,6 +30,7 @@ const baseSale: Sale = {
   previewStartTime: null,
   subtitle: null,
   consignmentDeadline: null,
+  timeZone: "Europe/London",
   buyerPremiumRate: "0.25",
   buyerPremiumTiers: null,
   terms: null,

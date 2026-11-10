@@ -156,6 +156,8 @@ function saleRow(
     startTime: now,
     endTime: now,
     previewStartTime: null,
+    timeZone: "Europe/London",
+    firstPublishedAt: null,
     buyerPremiumRate: "0.25",
     buyerPremiumTiers: null,
     terms: null,

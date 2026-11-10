@@ -90,13 +90,16 @@ paths:
       description: Supports legacy `categoryId` and comma-separated `categoryIds` filters. Responses include `categoryIds` plus a transitional `categoryId` alias for the primary category.
     post:
       summary: Create a draft sale, optionally with multi-category nested draft lots (admin)
+      description: Accepts `timeZone`, the IANA zone the sale quotes its times in (default `Europe/London`). It must name a place: `UTC` and `Etc/*` are rejected.
   /sales/{id}:
     parameters:
       - $ref: "#/components/parameters/SaleId"
     get:
       summary: Get sale with child lots and viewer follow state
+      description: The sale and each lot it returns carry `timeZone`, the IANA zone the sale quotes its times in.
     patch:
       summary: Update a draft sale (admin)
+      description: Accepts `timeZone` while the sale is a draft. Once the sale is published the zone is fixed and a change is refused with 422.
   /sales/{id}/lots:
     parameters:
       - $ref: "#/components/parameters/SaleId"

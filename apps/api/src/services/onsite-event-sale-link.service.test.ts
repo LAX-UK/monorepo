@@ -26,6 +26,7 @@ function mockSaleRepo(row: Pick<Sale, "id" | "title" | "deliveryMode"> | null): 
             locationCounty: null,
             locationPostcode: null,
             locationCountry: null,
+            timeZone: "Europe/London",
             status: "scheduled",
             startTime: new Date(),
             endTime: new Date(),

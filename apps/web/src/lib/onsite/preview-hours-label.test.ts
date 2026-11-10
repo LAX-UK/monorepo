@@ -30,6 +30,7 @@ function makeSale(overrides: Partial<Sale> = {}): Sale {
     startTime: new Date(now + 86_400_000),
     endTime: new Date(now + 172_800_000),
     previewStartTime: null,
+    timeZone: "Europe/London",
     buyerPremiumRate: "0.25",
     buyerPremiumTiers: null,
     terms: null,

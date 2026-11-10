@@ -48,6 +48,8 @@ type UseSaleSetupSubmitArgs = {
   saleId: string | null;
   setSaleId: (id: string | null) => void;
   lots: Lot[];
+  /** The zone the sale is saved in; null before the first save. */
+  savedTimeZone: string | null;
   wizardDraftEntityId?: string | undefined;
   wizardGoToRef: RefObject<(index: number) => void>;
   setStepNotice: (msg: string | null) => void;
@@ -59,6 +61,7 @@ export function useSaleSetupSubmit({
   saleId,
   setSaleId,
   lots,
+  savedTimeZone,
   wizardDraftEntityId,
   wizardGoToRef,
   setStepNotice,
@@ -113,7 +116,11 @@ export function useSaleSetupSubmit({
       }
       const pendingWindow = parseSaleWindowFromForm(values);
       if (pendingWindow && lots.length > 0) {
-        const conflicts = findPersistBlockingLotWindowConflicts(lots, pendingWindow);
+        const conflicts = findPersistBlockingLotWindowConflicts(
+          lots,
+          pendingWindow,
+          savedTimeZone ?? pendingWindow.timeZone,
+        );
         if (conflicts.length > 0) {
           const titles = conflicts.map((c) => c.lot.title.trim() || "Untitled lot");
           setStepNotice(scheduleLotConflictPersistBlocked(titles));
@@ -147,6 +154,7 @@ export function useSaleSetupSubmit({
       lots,
       router,
       saleId,
+      savedTimeZone,
       setSaleId,
       setShowFirstSaveNudge,
       setStepNotice,

@@ -14,5 +14,13 @@ export default async function AdminSaleAtgPage({ params }: Props) {
   const page = await loadAdminSaleAtgPage(id);
   if (!page) notFound();
 
-  return <SaleAtgTab saleId={page.saleId} status={page.status} view={page.view} canManage />;
+  return (
+    <SaleAtgTab
+      saleId={page.saleId}
+      status={page.status}
+      view={page.view}
+      timeZone={page.timeZone}
+      canManage
+    />
+  );
 }

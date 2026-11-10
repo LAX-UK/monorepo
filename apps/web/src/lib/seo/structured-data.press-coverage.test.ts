@@ -27,6 +27,7 @@ const baseSale = {
   endTime: new Date("2026-06-01T18:00:00.000Z"),
   previewStartTime: null,
   buyerPremiumRate: "0.25",
+  timeZone: "Europe/London",
   buyerPremiumTiers: null,
   terms: null,
   createdByLegalEntityId: "le-1",

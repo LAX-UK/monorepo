@@ -75,6 +75,7 @@ export function createSocketLotRealtime(): LotRealtimePort {
       socket.on("bidUpdate", onBidUpdate);
       socket.on("lotExtended", onExtended);
       socket.on("auctionExtended", onExtended);
+      socket.on("lot.extended", onExtended);
       socket.on("lotEnded", onEnded);
       socket.on("auctionEnded", onEnded);
       socket.on("lotEvent", onEvent);
@@ -94,6 +95,7 @@ export function createSocketLotRealtime(): LotRealtimePort {
         socket.off("bidUpdate", onBidUpdate);
         socket.off("lotExtended", onExtended);
         socket.off("auctionExtended", onExtended);
+        socket.off("lot.extended", onExtended);
         socket.off("lotEnded", onEnded);
         socket.off("auctionEnded", onEnded);
         socket.off("lotEvent", onEvent);

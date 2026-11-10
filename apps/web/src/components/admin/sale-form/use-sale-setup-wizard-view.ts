@@ -65,6 +65,7 @@ export function useSaleSetupWizardView({
   const deliveryMode = form.watch("deliveryMode");
   const watchedStartTime = form.watch("startTime");
   const watchedEndTime = form.watch("endTime");
+  const watchedTimeZone = form.watch("timeZone");
   const isSaleroom = isSaleroomDeliveryMode(
     (deliveryMode ?? "online") as "online" | "onsite" | "hybrid",
   );
@@ -90,10 +91,11 @@ export function useSaleSetupWizardView({
       deliveryMode,
       startTime: watchedStartTime,
       endTime: watchedEndTime,
+      timeZone: watchedTimeZone,
     });
     if (fromForm) return fromForm;
     return activeSale ? parseSaleWindowFromSale(activeSale) : null;
-  }, [activeSale, deliveryMode, watchedEndTime, watchedStartTime]);
+  }, [activeSale, deliveryMode, watchedEndTime, watchedStartTime, watchedTimeZone]);
 
   const readyToPublish =
     saleId &&

@@ -28,6 +28,7 @@
     "react-dom": "^19.0.0"
   },
   "dependencies": {
+    "@auction/datetime": "workspace:*",
     "@auction/identity-contracts": "workspace:*",
     "@auction/ui": "workspace:*",
     "@radix-ui/react-slot": "^1.2.4",

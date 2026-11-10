@@ -1,6 +1,13 @@
 import type { lot, payment } from "@auction/db/schema";
 import { mapBidRow, mapItemSubmissionRow, mapLotRow, mapSaleRow } from "@auction/persistence/lib";
-import type { Lot, LotSummary, Payment, PaymentStatus, PublicLotView } from "@auction/types";
+import type {
+  Lot,
+  LotSummary,
+  Payment,
+  PaymentStatus,
+  PublicLotView,
+  WithSaleZone,
+} from "@auction/types";
 import type { InferSelectModel } from "drizzle-orm";
 
 export { mapBidRow, mapItemSubmissionRow, mapLotRow, mapSaleRow };
@@ -21,7 +28,7 @@ function summaryMarketingDetails(lot: Lot | PublicLotView): Lot["marketingDetail
   return estimate ? { estimate } : {};
 }
 
-export function mapLotToSummary(lot: Lot | PublicLotView): LotSummary {
+export function mapLotToSummary(lot: WithSaleZone<Lot | PublicLotView>): LotSummary {
   return {
     id: lot.id,
     saleId: lot.saleId,
@@ -34,6 +41,7 @@ export function mapLotToSummary(lot: Lot | PublicLotView): LotSummary {
     medium: lot.medium,
     startTime: lot.startTime,
     endTime: lot.endTime,
+    ...(lot.timeZone ? { timeZone: lot.timeZone } : {}),
     images: lot.images,
     ...(lot.imageAssets?.length ? { imageAssets: lot.imageAssets } : {}),
     categoryIds: lot.categoryIds ?? (lot.categoryId ? [lot.categoryId] : []),
@@ -61,14 +69,14 @@ export type LotStaffListExtras = {
 };
 
 /** Staff catalogue list row — table fields without checkout pricing or heavy catalogue payload. */
-export function mapLotToStaffListRow(lot: Lot & LotStaffListExtras) {
+export function mapLotToStaffListRow(lot: WithSaleZone<Lot> & LotStaffListExtras) {
   const {
     checkoutPricing: _checkoutPricing,
     imageAssets: _imageAssets,
     description: _description,
     marketingDetails: _marketingDetails,
     ...base
-  } = lot as Lot &
+  } = lot as WithSaleZone<Lot> &
     LotStaffListExtras & {
       checkoutPricing?: unknown;
       imageAssets?: unknown;
@@ -83,6 +91,7 @@ export function mapLotToStaffListRow(lot: Lot & LotStaffListExtras) {
     currentPrice: base.currentPrice,
     endTime: base.endTime,
     startTime: base.startTime,
+    ...(base.timeZone ? { timeZone: base.timeZone } : {}),
     images: base.images,
     categoryIds: base.categoryIds ?? (base.categoryId ? [base.categoryId] : []),
     categoryId: base.categoryId,

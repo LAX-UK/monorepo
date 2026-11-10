@@ -65,6 +65,7 @@ const SIGN_IN_HELP =
 const REGISTER_HELP = "Register once for this sale. We check your identity the first time only.";
 const PENDING_REASON = "You can bid once your registration is approved.";
 const PAUSED_REASON = "Bidding resumes when the auctioneer restarts the sale.";
+const CLOSING_REASON = "Bids that reached us before the close still count.";
 const OVER_LIMIT_REASON = "Ask an organisation admin to raise your limit.";
 
 type Builder = (input: BidEntryInput) => BidEntry;
@@ -175,7 +176,11 @@ const ENTRY_BY_ACTION: Readonly<Partial<Record<ResolvedLotAction, Builder>>> = {
     const { label, start } = bidLabelOf(input);
     return {
       ...EMPTY,
-      primary: { control: openDialog(start, label), disabledReason: PAUSED_REASON },
+      primary: {
+        control: openDialog(start, label),
+        // A lot at zero waits for the server's word; a paused sale waits for the auctioneer.
+        disabledReason: input.lifecycle === "closing" ? CLOSING_REASON : PAUSED_REASON,
+      },
     };
   },
 };

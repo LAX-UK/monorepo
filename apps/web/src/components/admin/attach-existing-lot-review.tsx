@@ -27,6 +27,7 @@ import { notifySaleSetupActionFailure } from "@/lib/admin/sale-setup/notify-sale
 import { applyZodIssuesToForm } from "@/lib/forms/apply-action-field-errors";
 import { resolveLotAuctionTypePresentation } from "@/lib/presenters/lot-auction-type-presentation";
 import { notify } from "@/lib/ui/notify";
+import { formatWhen } from "@auction/datetime";
 import {
   KeyValueList,
   Notice,
@@ -36,14 +37,14 @@ import {
 } from "@auction/staff-ui";
 import type { ArtistProfile, CategoryNode, Lot, Sale } from "@auction/types";
 import { instantFromDatetimeFormString, toDatetimeFormString } from "@auction/ui/lib/datetime";
-import { formatAuctionDatetimeDisplay, saleModeInheritsLotTiming } from "@auction/validators";
+import { saleModeInheritsLotTiming } from "@auction/validators";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 
 const NextLink: StaffLinkComponent = Link;
 
-type SaleWindow = Pick<Sale, "deliveryMode" | "startTime" | "endTime">;
+type SaleWindow = Pick<Sale, "deliveryMode" | "startTime" | "endTime" | "timeZone">;
 
 type Props = {
   saleId: string;
@@ -107,12 +108,19 @@ export function AttachExistingLotReview({
 
   const ctx = useMemo(
     () => ({
+      timeZone: saleWindow.timeZone,
       saleStartTime: saleWindow.startTime,
       saleEndTime: saleWindow.endTime,
       deliveryMode: saleWindow.deliveryMode,
       englishOnlyAuctionsLocked,
     }),
-    [englishOnlyAuctionsLocked, saleWindow.deliveryMode, saleWindow.endTime, saleWindow.startTime],
+    [
+      englishOnlyAuctionsLocked,
+      saleWindow.deliveryMode,
+      saleWindow.endTime,
+      saleWindow.startTime,
+      saleWindow.timeZone,
+    ],
   );
 
   const inheritsTiming = saleModeInheritsLotTiming(saleWindow.deliveryMode);
@@ -138,9 +146,9 @@ export function AttachExistingLotReview({
         return;
       }
       setPreviewLot(r.data);
-      form.reset(inventoryLotToAttachReviewRow(r.data, "attach-review"));
+      form.reset(inventoryLotToAttachReviewRow(r.data, "attach-review", saleWindow.timeZone));
     },
-    [form],
+    [form, saleWindow.timeZone],
   );
 
   useEffect(() => {
@@ -168,12 +176,17 @@ export function AttachExistingLotReview({
   const syncScheduleToWindow = useCallback(() => {
     if (!previewLot || inheritsTiming) return;
     const proposed = proposeLotTimesWithinWindow(previewLot, {
+      timeZone: saleWindow.timeZone,
       deliveryMode: saleWindow.deliveryMode,
       startTime: saleWindow.startTime,
       endTime: saleWindow.endTime,
     });
-    form.setValue("startTime", toDatetimeFormString(proposed.startTime), { shouldValidate: true });
-    form.setValue("endTime", toDatetimeFormString(proposed.endTime), { shouldValidate: true });
+    form.setValue("startTime", toDatetimeFormString(proposed.startTime, saleWindow.timeZone), {
+      shouldValidate: true,
+    });
+    form.setValue("endTime", toDatetimeFormString(proposed.endTime, saleWindow.timeZone), {
+      shouldValidate: true,
+    });
   }, [
     form,
     inheritsTiming,
@@ -181,6 +194,7 @@ export function AttachExistingLotReview({
     saleWindow.deliveryMode,
     saleWindow.endTime,
     saleWindow.startTime,
+    saleWindow.timeZone,
   ]);
 
   const attach = useCallback(() => {
@@ -197,7 +211,7 @@ export function AttachExistingLotReview({
         return;
       }
 
-      if (attachReviewScheduleChanged(previewLot, values)) {
+      if (attachReviewScheduleChanged(previewLot, values, saleWindow.timeZone)) {
         const r = await adminUpdateLotResultAction(pickerLotId, {
           startTime: validated.payload.startTime,
           endTime: validated.payload.endTime,
@@ -230,6 +244,7 @@ export function AttachExistingLotReview({
     pickerTitle,
     previewLot,
     saleId,
+    saleWindow.timeZone,
   ]);
 
   const values = form.watch();
@@ -243,12 +258,13 @@ export function AttachExistingLotReview({
   const endError = form.formState.errors.endTime?.message;
   const toIso = (value: string | undefined) => {
     if (!value?.trim()) return null;
-    const instant = instantFromDatetimeFormString(value);
+    const instant = instantFromDatetimeFormString(value, saleWindow.timeZone);
     return instant ? instant.toISOString() : null;
   };
   const category = resolveCategoryLabels(values.categoryIds, categories);
   const artist = previewLot ? artistLabel(previewLot.artistId, artists) : null;
-  const windowText = `${formatAuctionDatetimeDisplay(saleWindow.startTime)} – ${formatAuctionDatetimeDisplay(saleWindow.endTime)}`;
+  const now = new Date();
+  const windowText = `${formatWhen(saleWindow.startTime, saleWindow.timeZone, now)} – ${formatWhen(saleWindow.endTime, saleWindow.timeZone, now)}`;
 
   return (
     <div className={className ?? "flex flex-col gap-4"}>
@@ -334,14 +350,15 @@ export function AttachExistingLotReview({
               <LotWindowFields
                 start={toIso(lotStartValue)}
                 end={toIso(lotEndValue)}
+                timeZone={saleWindow.timeZone}
                 onStartChange={(iso) =>
-                  form.setValue("startTime", isoToFormString(iso), {
+                  form.setValue("startTime", isoToFormString(iso, saleWindow.timeZone), {
                     shouldValidate: true,
                     shouldDirty: true,
                   })
                 }
                 onEndChange={(iso) =>
-                  form.setValue("endTime", isoToFormString(iso), {
+                  form.setValue("endTime", isoToFormString(iso, saleWindow.timeZone), {
                     shouldValidate: true,
                     shouldDirty: true,
                   })
@@ -352,7 +369,7 @@ export function AttachExistingLotReview({
                 idPrefix="attach-review"
               />
               <p className="text-staff-xs text-staff-muted">
-                Sale runs {windowText} (London time). Lot times must fall within this window.
+                Sale runs {windowText}. Lot times must fall within this window.
               </p>
             </div>
           )}

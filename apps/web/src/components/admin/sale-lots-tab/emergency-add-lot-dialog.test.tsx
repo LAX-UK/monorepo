@@ -25,6 +25,7 @@ function renderDialog(deliveryMode: "online" | "onsite" = "online") {
       deliveryMode={deliveryMode}
       saleStartTime={new Date("2026-11-01T10:00:00Z")}
       saleEndTime={new Date("2026-11-08T10:00:00Z")}
+      timeZone="Europe/London"
       categories={[]}
       englishOnlyAuctionsLocked={false}
       onAdded={vi.fn()}

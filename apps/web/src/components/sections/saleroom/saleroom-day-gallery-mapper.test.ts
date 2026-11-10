@@ -27,6 +27,7 @@ function baseSale(overrides: Partial<Sale> = {}): Sale {
     startTime: new Date("2026-06-01T10:00:00.000Z"),
     endTime: new Date("2026-06-01T18:00:00.000Z"),
     previewStartTime: null,
+    timeZone: "Europe/London",
     buyerPremiumRate: "0.25",
     buyerPremiumTiers: null,
     terms: null,

@@ -1,15 +1,18 @@
 import { humanizeSetupError } from "@/lib/admin/sale-setup/humanize-setup-error";
 import type { AdminSaleFormValues } from "@/lib/forms/schemas/admin-sale-form";
+import { readingZone } from "@/lib/forms/schemas/reading-zone";
+import { lotsAfterSaleZoneChange } from "@auction/datetime";
 import type { Lot, Sale, SaleDeliveryMode } from "@auction/types";
 import { instantFromDatetimeFormString } from "@auction/ui/lib/datetime";
 import {
+  auctionMinuteEpoch,
   findLotTimingConflicts,
   getSaleModeCapabilities,
-  instantFromAuctionDatetimeFormString,
-  toAuctionDatetimeFormString,
 } from "@auction/validators";
 
 export type SaleWindow = {
+  /** The sale's zone, which its opening and closing are written in. */
+  timeZone: string;
   deliveryMode: SaleDeliveryMode;
   startTime: Date;
   endTime: Date;
@@ -21,15 +24,17 @@ export type LotWindowConflict = {
 };
 
 export function parseSaleWindowFromForm(
-  values: Pick<AdminSaleFormValues, "deliveryMode" | "startTime" | "endTime">,
+  values: Pick<AdminSaleFormValues, "deliveryMode" | "startTime" | "endTime" | "timeZone">,
 ): SaleWindow | null {
-  const startTime = instantFromDatetimeFormString(values.startTime);
-  const endTime = instantFromDatetimeFormString(values.endTime);
+  const timeZone = readingZone(values.timeZone);
+  const startTime = instantFromDatetimeFormString(values.startTime, timeZone);
+  const endTime = instantFromDatetimeFormString(values.endTime, timeZone);
   if (Number.isNaN(startTime.getTime()) || Number.isNaN(endTime.getTime())) {
     return null;
   }
   if (endTime <= startTime) return null;
   return {
+    timeZone,
     deliveryMode: values.deliveryMode,
     startTime,
     endTime,
@@ -37,9 +42,10 @@ export function parseSaleWindowFromForm(
 }
 
 export function parseSaleWindowFromSale(
-  sale: Pick<Sale, "deliveryMode" | "startTime" | "endTime">,
+  sale: Pick<Sale, "deliveryMode" | "startTime" | "endTime" | "timeZone">,
 ): SaleWindow {
   return {
+    timeZone: sale.timeZone,
     deliveryMode: sale.deliveryMode,
     startTime: sale.startTime,
     endTime: sale.endTime,
@@ -51,15 +57,31 @@ export function saleInheritsLotTiming(window: Pick<SaleWindow, "deliveryMode">):
   return getSaleModeCapabilities(window.deliveryMode).inheritsLotTiming;
 }
 
+/**
+ * The saved lots as they will stand once the sale is saved in the pending window's zone: draft
+ * lots keep their wall-clock times when the zone changes, as the server does when it saves.
+ */
+export function lotsForPendingWindow<T extends Pick<Lot, "status" | "startTime" | "endTime">>(
+  lots: readonly T[],
+  savedTimeZone: string,
+  pendingWindow: Pick<SaleWindow, "timeZone">,
+): T[] {
+  return lotsAfterSaleZoneChange(lots, savedTimeZone, pendingWindow.timeZone);
+}
+
 /** Lot conflicts that should block persisting a draft sale schedule update. */
 export function findPersistBlockingLotWindowConflicts(
-  lots: readonly Pick<Lot, "id" | "title" | "startTime" | "endTime">[],
+  lots: readonly Pick<Lot, "id" | "title" | "status" | "startTime" | "endTime">[],
   pendingWindow: SaleWindow,
+  savedTimeZone: string,
 ): LotWindowConflict[] {
   if (saleInheritsLotTiming(pendingWindow)) {
     return [];
   }
-  return findLotsOutsideSaleWindow(lots, pendingWindow);
+  return findLotsOutsideSaleWindow(
+    lotsForPendingWindow(lots, savedTimeZone, pendingWindow),
+    pendingWindow,
+  );
 }
 
 export function findLotsOutsideSaleWindow(
@@ -85,8 +107,9 @@ export function findLotsOutsideSaleWindow(
 
 const MIN_LOT_DURATION_MS = 60_000;
 
+/** The instant cut to its minute: zone-free, so it is right for every sale's zone. */
 function toAuctionMinuteInstant(instant: Date): Date {
-  return instantFromAuctionDatetimeFormString(toAuctionDatetimeFormString(instant));
+  return new Date(auctionMinuteEpoch(instant));
 }
 
 /** Clamp lot open/close into the sale window; preserve duration when possible. */

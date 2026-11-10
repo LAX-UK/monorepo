@@ -2392,6 +2392,13 @@
     {
       "idx": 342,
       "version": "7",
+      "when": 1805097600000,
+      "tag": "0348_sale_time_zone",
+      "breakpoints": true
+    },
+    {
+      "idx": 343,
+      "version": "7",
       "when": 1805184000000,
       "tag": "0349_email_outbox_recipient_hash_index",
       "breakpoints": true

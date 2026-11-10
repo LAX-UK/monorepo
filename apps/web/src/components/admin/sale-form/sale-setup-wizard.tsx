@@ -1,6 +1,7 @@
 "use client";
 
 import type { NamedSellerWithoutPayouts } from "@/lib/admin/sale-setup/sellers-without-payouts";
+import { isSaleTimeZoneLocked } from "@auction/validators";
 
 import { AdminFormWizard } from "@/components/admin/admin-form-wizard";
 import type { WizardDraftPayload } from "@/components/admin/admin-form-wizard/wizard-draft";
@@ -11,6 +12,7 @@ import { useGuardedNavigation } from "@/components/admin/use-guarded-navigation"
 import { CATALOG_FORM_IDS } from "@/lib/admin/catalog-form-ids";
 import { saleDetailReadinessDismissKey } from "@/lib/admin/compute-sale-detail-readiness";
 import type { ConnectRequiredByLotId } from "@/lib/admin/connect-readiness-shared";
+import { parseSaleWindowFromSale } from "@/lib/admin/sale-lot-window-sync";
 import {
   SALE_SETUP_STEPS,
   type SaleSetupStepId,
@@ -104,6 +106,7 @@ export function SaleSetupWizard({
   sellersWithoutPayouts,
 }: Props) {
   const router = useRouter();
+  const activeSaleZone = sale?.timeZone ?? null;
   const { guardedPush } = useGuardedNavigation();
   const [pending, startTransition] = useTransition();
   const [saleId, setSaleId] = useState<string | null>(initialSaleId);
@@ -146,6 +149,7 @@ export function SaleSetupWizard({
     saleId,
     setSaleId,
     lots,
+    savedTimeZone: activeSaleZone,
     wizardDraftEntityId,
     wizardGoToRef,
     setStepNotice,
@@ -418,6 +422,8 @@ export function SaleSetupWizard({
                     <SaleScheduleStep
                       form={form}
                       isDraft
+                      savedTimeZone={activeSaleZone ?? undefined}
+                      timeZoneLocked={activeSale ? isSaleTimeZoneLocked(activeSale) : false}
                       isSaleroom={isSaleroom}
                       pending={pending}
                       fields={fields}
@@ -447,9 +453,11 @@ export function SaleSetupWizard({
                   <SaleLotRowsEditor
                     saleId={saleId}
                     sale={{
-                      deliveryMode: pendingSaleWindow.deliveryMode,
-                      startTime: pendingSaleWindow.startTime,
-                      endTime: pendingSaleWindow.endTime,
+                      // The saved lots' times are written in the saved zone until a zone change is
+                      // saved, so the rows read against the saved window until then.
+                      ...(pendingSaleWindow.timeZone === activeSale.timeZone
+                        ? pendingSaleWindow
+                        : parseSaleWindowFromSale(activeSale)),
                     }}
                     lots={lots}
                     categories={categories}

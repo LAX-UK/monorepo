@@ -175,8 +175,8 @@ sizes), `UpdateLotCatalogue`, `RemoveLotImage` (see image gotcha).
 ## Field mapping
 
 **Sale → auction.** `Title` (max 250), `ClientsAuctionId` = sale UUID (ATG does not support custom IDs; nothing relies on it), `SaleDates` and (timed
-formats) `TimedStart` / `TimedFirstLotEnds` from the sale schedule, `TimezoneId` (Windows ID
-from `ATG_TIMEZONE`), `Currency` GBP, `CountryCode` UK, `IncrementSetId`, optional `ClientId`,
+formats) `TimedStart` / `TimedFirstLotEnds` from the sale schedule, `TimezoneId` (the sale's own
+time zone as a Windows ID, from the CLDR table in `@auction/datetime`), `Currency` GBP, `CountryCode` UK, `IncrementSetId`, optional `ClientId`,
 `BuyersPremium` as a percentage (LAX stores `0.2500` → `25`), venue address fields (clipped to
 GAP limits), `ImportantInformation` = sale description, `Terms`. One `AuctionListings` entry
 with `PlatformCode`, `AuctionTypeAndListing` (the sale's ATG auction type), `CategoryName`
@@ -289,7 +289,6 @@ by hand ([ATG manual settlement](../runbooks/atg-manual-settlement.md)).
 | `ATG_INCREMENT_SET_ID` | worker | — | UUID. Required when enabled. |
 | `ATG_DEFAULT_CATEGORY` | worker | — | Required when enabled. |
 | `ATG_ARTIST_PLACEMENT` | worker | `description` | Or `title_prefix`. |
-| `ATG_TIMEZONE` | worker | `Europe/London` | IANA; must have a Windows mapping. |
 | `ATG_POLL_INTERVAL_MS` | worker | `120000` | 30000–240000 (queue readiness goes stale after 5 minutes). |
 | `ATG_WHITE_LABEL_BASE_URL` | api, web | — (web: `https://auctions.lax.bid`) | Link shown on the ATG tab and on public ATG sale and lot pages. Production: `https://auctions.lax.bid` once the hostname is live (see below). |
 

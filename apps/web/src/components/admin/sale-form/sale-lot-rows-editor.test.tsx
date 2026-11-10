@@ -7,6 +7,7 @@ function baseSale(overrides: Partial<Sale> = {}): Sale {
   return {
     id: "sale-1",
     deliveryMode: "onsite",
+    timeZone: "Europe/London",
     startTime: new Date("2030-06-02T10:00:00Z"),
     endTime: new Date("2030-06-08T18:00:00Z"),
     ...overrides,

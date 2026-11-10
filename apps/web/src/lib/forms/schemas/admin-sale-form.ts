@@ -11,10 +11,14 @@ import {
   majorToMinor,
   mediaReferenceSchema,
   normalizeUkPostcode,
+  saleTimeZoneMessage,
+  saleTimeZoneProblem,
   updateSaleSchema,
 } from "@auction/validators";
 import { z } from "zod";
 import { optionalBuyerPremiumRateSchema } from "./buyer-premium-rate";
+import { readingZone } from "./reading-zone";
+import { missingWallTimeMessage } from "./wall-time-in-zone";
 
 function parseCategoryId(cat: string): string | undefined {
   const t = cat.trim();
@@ -53,6 +57,8 @@ export const adminSaleFormValuesSchema = z
     locationPostcode: z.string().max(16),
     locationCountry: z.string().max(120),
     venueId: z.string(),
+    /** IANA zone the sale quotes its times in; the typed times below are read in it. */
+    timeZone: z.string().min(1, "Choose a time zone"),
     startTime: z.string().min(1, "Start is required"),
     endTime: z.string().min(1, "End is required"),
     previewStartTime: z.string(),
@@ -62,8 +68,21 @@ export const adminSaleFormValuesSchema = z
     terms: z.string().max(50_000),
   })
   .superRefine((values, ctx) => {
-    const start = instantFromDatetimeFormString(values.startTime);
-    const end = instantFromDatetimeFormString(values.endTime);
+    const zoneProblem = values.timeZone ? saleTimeZoneProblem(values.timeZone) : null;
+    if (zoneProblem) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: saleTimeZoneMessage(zoneProblem),
+        path: ["timeZone"],
+      });
+    }
+    const zone = readingZone(values.timeZone);
+    for (const name of ["startTime", "endTime", "previewStartTime"] as const) {
+      const message = missingWallTimeMessage(values[name], zone);
+      if (message) ctx.addIssue({ code: z.ZodIssueCode.custom, message, path: [name] });
+    }
+    const start = instantFromDatetimeFormString(values.startTime, zone);
+    const end = instantFromDatetimeFormString(values.endTime, zone);
     if (!Number.isNaN(start.getTime()) && !Number.isNaN(end.getTime()) && end <= start) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -73,7 +92,7 @@ export const adminSaleFormValuesSchema = z
     }
     const previewRaw = values.previewStartTime.trim();
     if (previewRaw) {
-      const preview = instantFromDatetimeFormString(previewRaw);
+      const preview = instantFromDatetimeFormString(previewRaw, zone);
       if (Number.isNaN(preview.getTime())) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
@@ -129,7 +148,7 @@ export const adminSaleFormValuesSchema = z
 /** Draft sales require a future opening time; published sale edits omit this rule. */
 export function adminSaleDraftScheduleSchema() {
   return adminSaleFormValuesSchema.superRefine((values, ctx) => {
-    const start = instantFromDatetimeFormString(values.startTime);
+    const start = instantFromDatetimeFormString(values.startTime, readingZone(values.timeZone));
     if (!Number.isNaN(start.getTime()) && !isStartInFutureForPublish(start)) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -244,6 +263,7 @@ export function safeParseCreateSaleFromForm(values: AdminSaleFormValues) {
     return { success: false as const, error: tiers.error };
   }
   const isSaleroom = isSaleroomDeliveryMode(values.deliveryMode);
+  const zone = readingZone(values.timeZone);
   return createSaleSchema.safeParse({
     title: values.title.trim(),
     description: values.description.trim() || undefined,
@@ -258,10 +278,11 @@ export function safeParseCreateSaleFromForm(values: AdminSaleFormValues) {
     ...pickHeroFields(values),
     venueId: isSaleroom ? values.venueId.trim() || undefined : undefined,
     ...pickLocationCreate(values, isSaleroom),
-    startTime: instantFromDatetimeFormString(values.startTime),
-    endTime: instantFromDatetimeFormString(values.endTime),
+    timeZone: values.timeZone,
+    startTime: instantFromDatetimeFormString(values.startTime, zone),
+    endTime: instantFromDatetimeFormString(values.endTime, zone),
     previewStartTime: values.previewStartTime.trim()
-      ? instantFromDatetimeFormString(values.previewStartTime)
+      ? instantFromDatetimeFormString(values.previewStartTime, zone)
       : undefined,
     buyerPremiumRate: values.buyerPremiumRate.trim() || undefined,
     ...(tiers.data !== null ? { buyerPremiumTiers: tiers.data } : {}),
@@ -289,6 +310,7 @@ export function safeParseUpdateSaleFromForm(values: AdminSaleFormValues) {
   }
   const streamRaw = values.streamUrl.trim();
   const isSaleroom = isSaleroomDeliveryMode(values.deliveryMode);
+  const zone = readingZone(values.timeZone);
   return updateSaleSchema.safeParse({
     title: values.title.trim() || undefined,
     description: values.description.trim() || undefined,
@@ -303,12 +325,15 @@ export function safeParseUpdateSaleFromForm(values: AdminSaleFormValues) {
     ...pickHeroFields(values),
     venueId: isSaleroom ? values.venueId.trim() || null : null,
     ...pickLocationUpdate(values, isSaleroom),
+    timeZone: values.timeZone,
     startTime: values.startTime.trim()
-      ? instantFromDatetimeFormString(values.startTime)
+      ? instantFromDatetimeFormString(values.startTime, zone)
       : undefined,
-    endTime: values.endTime.trim() ? instantFromDatetimeFormString(values.endTime) : undefined,
+    endTime: values.endTime.trim()
+      ? instantFromDatetimeFormString(values.endTime, zone)
+      : undefined,
     previewStartTime: values.previewStartTime.trim()
-      ? instantFromDatetimeFormString(values.previewStartTime)
+      ? instantFromDatetimeFormString(values.previewStartTime, zone)
       : undefined,
     buyerPremiumRate: values.buyerPremiumRate.trim() || undefined,
     buyerPremiumTiers: tiers.data,

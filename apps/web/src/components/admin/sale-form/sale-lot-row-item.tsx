@@ -82,6 +82,7 @@ export function SaleLotRowItem({
       <AttachExistingLotReview
         saleId={saleId}
         saleWindow={{
+          timeZone: ctx.timeZone,
           deliveryMode: ctx.deliveryMode,
           startTime: ctx.saleStartTime,
           endTime: ctx.saleEndTime,

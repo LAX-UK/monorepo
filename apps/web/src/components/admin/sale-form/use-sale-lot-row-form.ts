@@ -104,8 +104,8 @@ export function useSaleLotRowForm({
     const startRaw = lotStartValue?.trim() || row.startTime?.trim();
     const endRaw = form.watch("endTime")?.trim() || row.endTime?.trim();
     if (!startRaw || !endRaw) return null;
-    const startTime = instantFromDatetimeFormString(startRaw);
-    const endTime = instantFromDatetimeFormString(endRaw);
+    const startTime = instantFromDatetimeFormString(startRaw, ctx.timeZone);
+    const endTime = instantFromDatetimeFormString(endRaw, ctx.timeZone);
     if (Number.isNaN(startTime.getTime()) || Number.isNaN(endTime.getTime())) return null;
     return {
       id: row.lotId,
@@ -113,18 +113,26 @@ export function useSaleLotRowForm({
       startTime,
       endTime,
     };
-  }, [form, lotStartValue, row.endTime, row.lotId, row.startTime, row.title]);
+  }, [ctx.timeZone, form, lotStartValue, row.endTime, row.lotId, row.startTime, row.title]);
 
   const scheduleOutOfSync = useMemo(() => {
     if (!lotScheduleSnapshot || inheritsTiming) return false;
     return (
       findLotsOutsideSaleWindow([lotScheduleSnapshot], {
+        timeZone: ctx.timeZone,
         deliveryMode: ctx.deliveryMode,
         startTime: ctx.saleStartTime,
         endTime: ctx.saleEndTime,
       }).length > 0
     );
-  }, [ctx.deliveryMode, ctx.saleEndTime, ctx.saleStartTime, inheritsTiming, lotScheduleSnapshot]);
+  }, [
+    ctx.deliveryMode,
+    ctx.saleEndTime,
+    ctx.saleStartTime,
+    ctx.timeZone,
+    inheritsTiming,
+    lotScheduleSnapshot,
+  ]);
 
   const updateSchedule = useCallback(() => {
     if (!row.lotId) return;

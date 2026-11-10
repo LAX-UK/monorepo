@@ -21,6 +21,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@auction/datetime": "workspace:*",
     "@auction/domain": "workspace:*",
     "@auction/types": "workspace:*",
     "@date-fns/tz": "^1.5.0",

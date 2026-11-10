@@ -4,12 +4,14 @@ import { describe, expect, it } from "vitest";
 import { LotConflictAlert } from "./lot-conflict-alert";
 
 const pendingWindow: SaleWindow = {
+  timeZone: "Europe/London",
   deliveryMode: "onsite",
   startTime: new Date("2030-06-01T21:00:00Z"),
   endTime: new Date("2030-06-07T18:00:00Z"),
 };
 
 const onlineWindow: SaleWindow = {
+  timeZone: "Europe/London",
   deliveryMode: "online",
   startTime: new Date("2030-06-01T21:00:00Z"),
   endTime: new Date("2030-06-07T18:00:00Z"),
