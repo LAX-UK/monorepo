@@ -79,6 +79,7 @@ function lot(overrides: Partial<Lot> & Pick<Lot, "id" | "title">): Lot {
 const SALE = {
   status: "draft" as const,
   deliveryMode: "online" as const,
+  timeZone: "Europe/London",
   startTime: new Date("2026-11-01T10:00:00Z"),
   endTime: new Date("2026-11-08T10:00:00Z"),
 };

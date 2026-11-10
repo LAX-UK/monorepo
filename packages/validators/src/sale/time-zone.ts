@@ -20,9 +20,10 @@ export type SaleTimeZoneProblem = "unknown" | "not_a_place";
  * report, and no auction is held "in UTC".
  */
 export function saleTimeZoneProblem(zone: unknown): SaleTimeZoneProblem | null {
-  if (!isValidZone(zone)) return "unknown";
-  if (isPlaceholderZone(zone)) return "not_a_place";
-  return null;
+  // Placeholders first: the runtime does not list "UTC" as a place zone, but it is what the person
+  // meant, and "Choose the city" is the helpful answer.
+  if (typeof zone === "string" && isPlaceholderZone(zone)) return "not_a_place";
+  return isValidZone(zone) ? null : "unknown";
 }
 
 export function isValidSaleTimeZone(zone: unknown): zone is string {

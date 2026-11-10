@@ -27,7 +27,7 @@ import {
 
 export type SaleLotRowsEditorProps = {
   saleId: string;
-  sale: Pick<Sale, "deliveryMode" | "startTime" | "endTime">;
+  sale: Pick<Sale, "deliveryMode" | "startTime" | "endTime" | "timeZone">;
   lots: Lot[];
   categories: CategoryNode[];
   artists: ArtistProfile[];
@@ -38,7 +38,7 @@ export type SaleLotRowsEditorProps = {
 };
 
 type UseSaleLotRowsEditorStateParams = {
-  sale: Pick<Sale, "deliveryMode" | "startTime" | "endTime">;
+  sale: Pick<Sale, "deliveryMode" | "startTime" | "endTime" | "timeZone">;
   lots: Lot[];
   englishOnlyAuctionsLocked: boolean;
   readOnly?: boolean;
@@ -54,8 +54,9 @@ export function useSaleLotRowsEditorState({
   onLotsChange,
   onUnsavedChange,
 }: UseSaleLotRowsEditorStateParams) {
+  const toRow = useCallback((lot: Lot) => lotToRow(lot, sale.timeZone), [sale.timeZone]);
   const [rows, setRows] = useState<SaleSetupLotRowFormValues[]>(() =>
-    initialSaleLotRows(lots, lotToRow),
+    initialSaleLotRows(lots, toRow),
   );
 
   const { showFirstLotChoice, showAddLotActions } = saleLotRowsEditorFlags({
@@ -70,27 +71,29 @@ export function useSaleLotRowsEditorState({
   }, [onUnsavedChange, unsavedCount]);
 
   useEffect(() => {
-    setRows((prev) => mergeWizardRowsWithServerLots(prev, lots, lotToRow));
-  }, [lots]);
+    setRows((prev) => mergeWizardRowsWithServerLots(prev, lots, toRow));
+  }, [lots, toRow]);
 
   const ctx: SaleSetupLotRowContext = useMemo(
     () => ({
+      timeZone: sale.timeZone,
       saleStartTime: sale.startTime,
       saleEndTime: sale.endTime,
       deliveryMode: sale.deliveryMode,
       englishOnlyAuctionsLocked,
     }),
-    [englishOnlyAuctionsLocked, sale.deliveryMode, sale.endTime, sale.startTime],
+    [englishOnlyAuctionsLocked, sale.deliveryMode, sale.endTime, sale.startTime, sale.timeZone],
   );
 
   const lotWindowConflicts = useMemo(
     () =>
       findLotsOutsideSaleWindow(lots, {
+        timeZone: sale.timeZone,
         deliveryMode: sale.deliveryMode,
         startTime: sale.startTime,
         endTime: sale.endTime,
       }),
-    [lots, sale.deliveryMode, sale.endTime, sale.startTime],
+    [lots, sale.deliveryMode, sale.endTime, sale.startTime, sale.timeZone],
   );
 
   const [syncPending, startSyncTransition] = useTransition();
@@ -102,6 +105,7 @@ export function useSaleLotRowsEditorState({
     if (lotWindowConflicts.length === 0) return;
     startSyncTransition(async () => {
       const window = {
+        timeZone: sale.timeZone,
         deliveryMode: sale.deliveryMode,
         startTime: sale.startTime,
         endTime: sale.endTime,
@@ -119,7 +123,14 @@ export function useSaleLotRowsEditorState({
       setSyncConfirmOpen(false);
       onLotsChange();
     });
-  }, [lotWindowConflicts, onLotsChange, sale.deliveryMode, sale.endTime, sale.startTime]);
+  }, [
+    lotWindowConflicts,
+    onLotsChange,
+    sale.deliveryMode,
+    sale.endTime,
+    sale.startTime,
+    sale.timeZone,
+  ]);
 
   const addNewLotRow = useCallback(() => {
     setRows((prev) => appendSaleLotRow(prev, draftLotRow("new")));

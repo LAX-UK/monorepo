@@ -1,22 +1,19 @@
 import type { Lot } from "@auction/types";
-import {
-  DEFAULT_AUCTION_ZONE,
-  toDatetimeFormString,
-  tzDateFromParts,
-} from "@auction/ui/lib/datetime";
+import { toDatetimeFormString, tzDateFromParts } from "@auction/ui/lib/datetime";
+import { DEFAULT_SALE_TIME_ZONE } from "@auction/validators";
 import { TZDate } from "@date-fns/tz";
 import { addDays, addHours } from "date-fns";
 import type { AdminLotFormValues } from "./admin-lot-form";
 
-function defaultScheduleInstants(): { start: Date; end: Date } {
-  const now = new TZDate(new Date(), DEFAULT_AUCTION_ZONE);
+function defaultScheduleInstants(zone: string): { start: Date; end: Date } {
+  const now = new TZDate(new Date(), zone);
   const startTz = tzDateFromParts(
     now.getFullYear(),
     now.getMonth() + 1,
     now.getDate(),
     addHours(now, 1).getHours(),
     0,
-    DEFAULT_AUCTION_ZONE,
+    zone,
   );
   const start = new Date(startTz.getTime());
   const endTz = tzDateFromParts(
@@ -25,12 +22,13 @@ function defaultScheduleInstants(): { start: Date; end: Date } {
     addDays(startTz, 7).getDate(),
     startTz.getHours(),
     0,
-    DEFAULT_AUCTION_ZONE,
+    zone,
   );
   return { start, end: new Date(endTz.getTime()) };
 }
 
 export function lotToAdminLotFormValues(auction: Lot): AdminLotFormValues {
+  const timeZone = auction.timeZone ?? DEFAULT_SALE_TIME_ZONE;
   const categoryIds =
     auction.categoryIds && auction.categoryIds.length > 0
       ? auction.categoryIds
@@ -65,14 +63,17 @@ export function lotToAdminLotFormValues(auction: Lot): AdminLotFormValues {
     dutchDecrementIntervalMs: String(auction.dutchDecrementIntervalMs),
     images: auction.images,
     imageAlts: auction.images.map((_, index) => auction.marketingDetails.imageAlts?.[index] ?? ""),
-    startTime: toDatetimeFormString(auction.startTime),
-    endTime: toDatetimeFormString(auction.endTime),
+    timeZone,
+    startTime: toDatetimeFormString(auction.startTime, timeZone),
+    endTime: toDatetimeFormString(auction.endTime, timeZone),
     artistId: auction.artistId ?? null,
   };
 }
 
-export function emptyAdminLotFormValues(): AdminLotFormValues {
-  const { start, end } = defaultScheduleInstants();
+export function emptyAdminLotFormValues(
+  timeZone: string = DEFAULT_SALE_TIME_ZONE,
+): AdminLotFormValues {
+  const { start, end } = defaultScheduleInstants(timeZone);
   return {
     title: "",
     description: "",
@@ -100,8 +101,9 @@ export function emptyAdminLotFormValues(): AdminLotFormValues {
     dutchDecrementIntervalMs: "60000",
     images: [],
     imageAlts: [],
-    startTime: toDatetimeFormString(start),
-    endTime: toDatetimeFormString(end),
+    timeZone,
+    startTime: toDatetimeFormString(start, timeZone),
+    endTime: toDatetimeFormString(end, timeZone),
     artistId: null,
   };
 }

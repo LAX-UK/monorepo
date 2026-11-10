@@ -1,3 +1,4 @@
+import { offsetMinutes } from "@auction/datetime";
 import { STAFF_TIME_ZONE, formatStaffDate, staffShortDateFormat } from "../lib/format.js";
 
 /*
@@ -87,66 +88,70 @@ export function formatStaffCalendarDay(day: string, now: Date = new Date()): str
   return formatStaffDate(`${day.slice(0, 10)}T12:00:00Z`, now);
 }
 
-/** Minutes London is ahead of UTC at that instant: 60 in summer, 0 in winter. */
-function londonOffsetMinutes(instant: number): number {
-  const parts = new Intl.DateTimeFormat("en-GB", {
-    timeZone: STAFF_TIME_ZONE,
-    hourCycle: "h23",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).formatToParts(new Date(instant));
-  const get = (type: string) => Number(parts.find((part) => part.type === type)?.value);
-  const wall = Date.UTC(get("year"), get("month") - 1, get("day"), get("hour"), get("minute"));
-  return Math.round((wall - Math.floor(instant / 60_000) * 60_000) / 60_000);
-}
-
 /**
- * The UTC instant for a London wall-clock day and time, or null when that time does not exist
- * (the hour skipped when clocks go forward).
+ * The UTC instant for a wall-clock day and time in `zone`, or null when that time does not exist
+ * (the hour skipped when that zone's clocks go forward).
  */
-export function londonWallTimeToIso(day: string, time: string): string | null {
+export function wallTimeToIso(day: string, time: string, zone: string): string | null {
   const [y, m, d] = day.split("-").map(Number);
   const [hh, mm] = time.split(":").map(Number);
   if (!y || !m || !d || hh === undefined || mm === undefined) return null;
   const wall = Date.UTC(y, m - 1, d, hh, mm);
-  for (const offset of [londonOffsetMinutes(wall - 60 * 60_000), londonOffsetMinutes(wall)]) {
+  const offsetAt = (instant: number) => offsetMinutes(new Date(instant), zone);
+  for (const offset of [offsetAt(wall - 60 * 60_000), offsetAt(wall)]) {
     const instant = wall - offset * 60_000;
-    if (londonOffsetMinutes(instant) === offset) return new Date(instant).toISOString();
+    if (offsetAt(instant) === offset) return new Date(instant).toISOString();
   }
   return null;
 }
 
-/** The London day (`YYYY-MM-DD`) and time (`HH:MM`) of an instant. */
-export function isoToLondonWallTime(iso: string): { day: string; time: string } | null {
+/** The day (`YYYY-MM-DD`) and time (`HH:MM`) of an instant on the clock in `zone`. */
+export function isoToWallTime(iso: string, zone: string): { day: string; time: string } | null {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return null;
-  const parts = new Intl.DateTimeFormat("en-GB", {
-    timeZone: STAFF_TIME_ZONE,
-    hourCycle: "h23",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).formatToParts(date);
-  const get = (type: string) => parts.find((part) => part.type === type)?.value ?? "";
-  return {
-    day: `${get("year")}-${get("month")}-${get("day")}`,
-    time: `${get("hour")}:${get("minute")}`,
-  };
+  const wall = new Date(date.getTime() + offsetMinutes(date, zone) * 60_000).toISOString();
+  return { day: wall.slice(0, 10), time: wall.slice(11, 16) };
+}
+
+/** "forward" or "back" when the clocks in `zone` change on that day, else null. */
+export function clockChange(day: string, zone: string): "forward" | "back" | null {
+  const [y, m, d] = day.split("-").map(Number);
+  if (!y || !m || !d) return null;
+  const start = offsetMinutes(new Date(Date.UTC(y, m - 1, d, 0, 30)), zone);
+  const end = offsetMinutes(new Date(Date.UTC(y, m - 1, d, 23, 30)), zone);
+  if (start === end) return null;
+  return end > start ? "forward" : "back";
+}
+
+/** `wallTimeToIso` on the London clock, for everything that is not a sale's own time. */
+export function londonWallTimeToIso(day: string, time: string): string | null {
+  return wallTimeToIso(day, time, STAFF_TIME_ZONE);
+}
+
+/** The London day (`YYYY-MM-DD`) and time (`HH:MM`) of an instant. */
+export function isoToLondonWallTime(iso: string): { day: string; time: string } | null {
+  return isoToWallTime(iso, STAFF_TIME_ZONE);
 }
 
 /** "forward" or "back" when London's clocks change on that day, else null. */
 export function londonClockChange(day: string): "forward" | "back" | null {
-  const [y, m, d] = day.split("-").map(Number);
-  if (!y || !m || !d) return null;
-  const start = londonOffsetMinutes(Date.UTC(y, m - 1, d, 0, 30));
-  const end = londonOffsetMinutes(Date.UTC(y, m - 1, d, 23, 30));
-  if (start === end) return null;
-  return end > start ? "forward" : "back";
+  return clockChange(day, STAFF_TIME_ZONE);
+}
+
+/**
+ * The earliest time at or after `time` that exists on `day` in `zone`: the same time on an
+ * ordinary day, and the end of the skipped hour when the clocks go forward. Null when none is
+ * found within three hours.
+ */
+export function nextExistingWallTime(day: string, time: string, zone: string): string | null {
+  const [hh, mm] = time.split(":").map(Number);
+  if (hh === undefined || mm === undefined) return null;
+  for (let step = 0; step <= 180; step += 1) {
+    const total = hh * 60 + mm + step;
+    const candidate = `${pad(Math.floor(total / 60) % 24)}:${pad(total % 60)}`;
+    if (wallTimeToIso(day, candidate, zone)) return candidate;
+  }
+  return null;
 }
 
 /** Reads "14:05", "1405" or "9:30" on a 24-hour clock. */

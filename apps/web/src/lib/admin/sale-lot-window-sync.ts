@@ -10,6 +10,8 @@ import {
 } from "@auction/validators";
 
 export type SaleWindow = {
+  /** The sale's zone, which its opening and closing are written in. */
+  timeZone: string;
   deliveryMode: SaleDeliveryMode;
   startTime: Date;
   endTime: Date;
@@ -21,15 +23,16 @@ export type LotWindowConflict = {
 };
 
 export function parseSaleWindowFromForm(
-  values: Pick<AdminSaleFormValues, "deliveryMode" | "startTime" | "endTime">,
+  values: Pick<AdminSaleFormValues, "deliveryMode" | "startTime" | "endTime" | "timeZone">,
 ): SaleWindow | null {
-  const startTime = instantFromDatetimeFormString(values.startTime);
-  const endTime = instantFromDatetimeFormString(values.endTime);
+  const startTime = instantFromDatetimeFormString(values.startTime, values.timeZone);
+  const endTime = instantFromDatetimeFormString(values.endTime, values.timeZone);
   if (Number.isNaN(startTime.getTime()) || Number.isNaN(endTime.getTime())) {
     return null;
   }
   if (endTime <= startTime) return null;
   return {
+    timeZone: values.timeZone,
     deliveryMode: values.deliveryMode,
     startTime,
     endTime,
@@ -37,9 +40,10 @@ export function parseSaleWindowFromForm(
 }
 
 export function parseSaleWindowFromSale(
-  sale: Pick<Sale, "deliveryMode" | "startTime" | "endTime">,
+  sale: Pick<Sale, "deliveryMode" | "startTime" | "endTime" | "timeZone">,
 ): SaleWindow {
   return {
+    timeZone: sale.timeZone,
     deliveryMode: sale.deliveryMode,
     startTime: sale.startTime,
     endTime: sale.endTime,

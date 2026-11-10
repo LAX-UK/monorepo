@@ -3,15 +3,10 @@
 import { poundsStringToPence } from "@/components/admin/forms/staff-form-fields";
 import { draftSaleLotPublishBanner } from "@/lib/admin/sale-setup/field-copy";
 import type { AdminLotFormValues } from "@/lib/forms/schemas/admin-lot-form";
+import { readingZone } from "@/lib/forms/schemas/reading-zone";
 import { lotAuctionTypeLabel } from "@/lib/presenters/lot-auction-type-presentation";
-import {
-  Notice,
-  ReviewSection,
-  formatGbp,
-  formatStaffDateTime,
-  isoToLondonWallTime,
-  londonWallTimeToIso,
-} from "@auction/staff-ui";
+import { formatWhen } from "@auction/datetime";
+import { Notice, ReviewSection, formatGbp, wallTimeToIso } from "@auction/staff-ui";
 import type { CategoryNode, LotAuctionType, Sale } from "@auction/types";
 import type { UseFormReturn } from "react-hook-form";
 
@@ -27,10 +22,11 @@ function money(value: string | null | undefined): string | null {
   return pence == null ? null : formatGbp(pence);
 }
 
-function londonTime(value: string | null | undefined): string | null {
+/** A typed wall time in the sale's zone, written as the one date style with that zone's name. */
+function saleTime(value: string | null | undefined, timeZone: string): string | null {
   const [day, time] = (value ?? "").split("T");
-  const iso = day && time ? londonWallTimeToIso(day, time.slice(0, 5)) : null;
-  return iso && isoToLondonWallTime(iso) ? formatStaffDateTime(iso) : null;
+  const iso = day && time ? wallTimeToIso(day, time.slice(0, 5), timeZone) : null;
+  return iso ? formatWhen(new Date(iso), timeZone, new Date()) : null;
 }
 
 function categoryNames(ids: readonly string[], nodes: readonly CategoryNode[]): string | null {
@@ -93,7 +89,10 @@ export function LotFormReviewStep({ form, onEditStep, sales = [], categories = [
           { label: "Categories", value: categoryNames(values.categoryIds ?? [], categories) },
           { label: "Starting price", value: money(values.startingPrice), numeric: true },
           { label: "Reserve", value: money(values.reservePrice) ?? "No reserve", numeric: true },
-          { label: "Bidding closes", value: londonTime(values.endTime) },
+          {
+            label: "Bidding closes",
+            value: saleTime(values.endTime, readingZone(values.timeZone)),
+          },
           {
             label: "Photos",
             value: values.images?.length ? String(values.images.length) : "None yet",

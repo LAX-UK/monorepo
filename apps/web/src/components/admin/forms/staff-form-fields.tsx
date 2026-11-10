@@ -16,9 +16,9 @@ import {
   StaffRadioGroup,
   TextArea,
   TextInput,
-  isoToLondonWallTime,
-  londonWallTimeToIso,
+  isoToWallTime,
   parsePoundsToPence,
+  wallTimeToIso,
 } from "@auction/staff-ui";
 import type * as React from "react";
 import {
@@ -206,12 +206,16 @@ export function StaffPercentField<T extends FieldValues>(
   );
 }
 
-/** A London wall time kept in the form as "YYYY-MM-DDTHH:mm", entered as date, time and zone. */
-export function StaffDateTimeField<T extends FieldValues>(props: Base<T>) {
+/**
+ * A wall time kept in the form as "YYYY-MM-DDTHH:mm", entered as date, time and zone. The zone is
+ * the sale's (London when not given); the form keeps the typed wall time whatever zone reads it.
+ */
+export function StaffDateTimeField<T extends FieldValues>(props: Base<T> & { timeZone?: string }) {
   const { field, error } = useBoundField(props);
+  const timeZone = props.timeZone ?? "Europe/London";
   const raw = typeof field.value === "string" ? field.value : "";
   const [day, time] = raw.split("T");
-  const iso = day && time ? londonWallTimeToIso(day, time.slice(0, 5)) : null;
+  const iso = day && time ? wallTimeToIso(day, time.slice(0, 5), timeZone) : null;
   return (
     <Field
       id={staffFieldId(props.formId, props.name)}
@@ -224,9 +228,10 @@ export function StaffDateTimeField<T extends FieldValues>(props: Base<T>) {
     >
       <DateTimeInput
         value={iso}
+        timeZone={timeZone}
         disabled={props.disabled ?? false}
         onValueChange={(next) => {
-          const wall = next ? isoToLondonWallTime(next) : null;
+          const wall = next ? isoToWallTime(next, timeZone) : null;
           field.onChange(wall ? `${wall.day}T${wall.time}` : "");
         }}
       />

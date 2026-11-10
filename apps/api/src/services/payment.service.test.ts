@@ -1223,6 +1223,7 @@ describe("PaymentService", () => {
       startTime: new Date(),
       endTime: new Date(),
       previewStartTime: null,
+      timeZone: "Europe/London",
       buyerPremiumRate: "0.1500",
       buyerPremiumTiers: [
         { hammerThresholdMinor: 0, rate: "0.1500" },

@@ -31,6 +31,8 @@ export const saleSetupLotRowFormSchema = z.object({
 export type SaleSetupLotRowFormValues = z.infer<typeof saleSetupLotRowFormSchema>;
 
 export type SaleSetupLotRowContext = {
+  /** The sale's zone: a lot row's typed opening and closing times are read in it. */
+  timeZone: string;
   saleStartTime: Date;
   saleEndTime: Date;
   deliveryMode: SaleDeliveryMode;
@@ -103,12 +105,12 @@ export function saleSetupLotRowToApiPayload(
   const start = caps.inheritsLotTiming
     ? ctx.saleStartTime
     : row.startTime?.trim()
-      ? instantFromDatetimeFormString(row.startTime)
+      ? instantFromDatetimeFormString(row.startTime, ctx.timeZone)
       : ctx.saleStartTime;
   const end = caps.inheritsLotTiming
     ? ctx.saleEndTime
     : row.endTime?.trim()
-      ? instantFromDatetimeFormString(row.endTime)
+      ? instantFromDatetimeFormString(row.endTime, ctx.timeZone)
       : ctx.saleEndTime;
 
   return {
@@ -162,8 +164,8 @@ export function safeParseSaleSetupLotRowForApi(
       };
     }
 
-    const lotStart = instantFromDatetimeFormString(row.startTime);
-    const lotEnd = instantFromDatetimeFormString(row.endTime);
+    const lotStart = instantFromDatetimeFormString(row.startTime, ctx.timeZone);
+    const lotEnd = instantFromDatetimeFormString(row.endTime, ctx.timeZone);
     if (Number.isNaN(lotStart.getTime()) || Number.isNaN(lotEnd.getTime())) {
       return {
         success: false as const,

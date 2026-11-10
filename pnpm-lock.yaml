@@ -2177,6 +2177,9 @@ importers:
 
   packages/staff-ui:
     dependencies:
+      '@auction/datetime':
+        specifier: workspace:*
+        version: link:../datetime
       '@auction/identity-contracts':
         specifier: workspace:*
         version: link:../identity-contracts
@@ -2378,6 +2381,9 @@ importers:
 
   packages/validators:
     dependencies:
+      '@auction/datetime':
+        specifier: workspace:*
+        version: link:../datetime
       '@auction/domain':
         specifier: workspace:*
         version: link:../domain

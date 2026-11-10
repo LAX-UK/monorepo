@@ -3,9 +3,9 @@
 import { DateTimeInput, Field } from "@auction/staff-ui";
 import { toDatetimeFormString } from "@auction/ui/lib/datetime";
 
-/** The wall-clock string the sale-setup validators take, from the kit's ISO instant. */
-export function isoToFormString(iso: string | null): string {
-  return iso ? toDatetimeFormString(new Date(iso)) : "";
+/** The wall-clock string the sale-setup validators take, from the kit's ISO instant in `zone`. */
+export function isoToFormString(iso: string | null, zone: string): string {
+  return iso ? toDatetimeFormString(new Date(iso), zone) : "";
 }
 
 type Props = {
@@ -16,6 +16,8 @@ type Props = {
   startError?: string | undefined;
   endError?: string | undefined;
   disabled?: boolean;
+  /** The sale's zone: the two moments are typed and shown in it. */
+  timeZone: string;
   /** Prefix for the two fields' ids, so an error summary can link to them. */
   idPrefix?: string;
 };
@@ -29,6 +31,7 @@ export function LotWindowFields({
   startError,
   endError,
   disabled = false,
+  timeZone,
   idPrefix,
 }: Props) {
   return (
@@ -39,7 +42,12 @@ export function LotWindowFields({
         disabled={disabled}
         {...(idPrefix ? { id: `${idPrefix}-startTime` } : {})}
       >
-        <DateTimeInput value={start} onValueChange={onStartChange} timeLabel="Lot opening time" />
+        <DateTimeInput
+          value={start}
+          onValueChange={onStartChange}
+          timeLabel="Lot opening time"
+          timeZone={timeZone}
+        />
       </Field>
       <Field
         label="Lot closes"
@@ -47,7 +55,12 @@ export function LotWindowFields({
         disabled={disabled}
         {...(idPrefix ? { id: `${idPrefix}-endTime` } : {})}
       >
-        <DateTimeInput value={end} onValueChange={onEndChange} timeLabel="Lot closing time" />
+        <DateTimeInput
+          value={end}
+          onValueChange={onEndChange}
+          timeLabel="Lot closing time"
+          timeZone={timeZone}
+        />
       </Field>
     </div>
   );

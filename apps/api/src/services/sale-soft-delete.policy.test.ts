@@ -28,6 +28,7 @@ function sale(overrides: Partial<Sale> = {}): Sale {
     startTime: new Date(),
     endTime: new Date(),
     previewStartTime: null,
+    timeZone: "Europe/London",
     buyerPremiumRate: "0.25",
     buyerPremiumTiers: null,
     terms: null,

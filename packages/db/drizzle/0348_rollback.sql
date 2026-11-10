@@ -1,4 +1,4 @@
--- Rollback for 0347_sale_time_zone. Roll back the application release first: nothing reads the
+-- Rollback for 0348_sale_time_zone. Roll back the application release first: nothing reads the
 -- column without it, and every sale is then quoted in London time as before. Zones staff chose for
 -- non-London sales are lost.
 BEGIN;

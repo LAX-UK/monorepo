@@ -42,12 +42,13 @@ export function SaleScheduleStep({
   const streamBlurRef = useRef<(() => void) | null>(null);
   const startTime = form.watch("startTime");
   const endTime = form.watch("endTime");
+  const timeZone = form.watch("timeZone");
   const lotConflicts = useMemo(() => {
-    const window = parseSaleWindowFromForm({ deliveryMode, startTime, endTime });
+    const window = parseSaleWindowFromForm({ deliveryMode, startTime, endTime, timeZone });
     if (!window || lots.length === 0) return [];
     return findLotsOutsideSaleWindow(lots, window);
-  }, [deliveryMode, endTime, lots, startTime]);
-  const pendingWindow = parseSaleWindowFromForm({ deliveryMode, startTime, endTime });
+  }, [deliveryMode, endTime, lots, startTime, timeZone]);
+  const pendingWindow = parseSaleWindowFromForm({ deliveryMode, startTime, endTime, timeZone });
 
   return (
     <>

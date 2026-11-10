@@ -18,7 +18,10 @@ import Link from "next/link";
 import { type UseFormReturn, useWatch } from "react-hook-form";
 import { LOT_FORM_ID } from "../lot-field-spec";
 
-type SaleOption = Pick<Sale, "id" | "title" | "status" | "deliveryMode" | "startTime" | "endTime">;
+type SaleOption = Pick<
+  Sale,
+  "id" | "title" | "status" | "deliveryMode" | "startTime" | "endTime" | "timeZone"
+>;
 
 type Props = {
   form: UseFormReturn<AdminLotFormValues>;
@@ -27,8 +30,13 @@ type Props = {
 
 function applySaleScheduleToLot(form: UseFormReturn<AdminLotFormValues>, sale: SaleOption) {
   const window = parseSaleWindowFromSale(sale);
+  // The lot's typed times are read in the sale's zone from here on.
+  form.setValue("timeZone", sale.timeZone, { shouldDirty: false });
   const set = (name: "startTime" | "endTime", value: Date) =>
-    form.setValue(name, toDatetimeFormString(value), { shouldDirty: true, shouldValidate: true });
+    form.setValue(name, toDatetimeFormString(value, sale.timeZone), {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
   if (saleModeInheritsLotTiming(sale.deliveryMode)) {
     set("startTime", sale.startTime);
     set("endTime", sale.endTime);
@@ -36,8 +44,12 @@ function applySaleScheduleToLot(form: UseFormReturn<AdminLotFormValues>, sale: S
   }
   const startRaw = form.getValues("startTime");
   const endRaw = form.getValues("endTime");
-  const lotStart = startRaw?.trim() ? instantFromDatetimeFormString(startRaw) : sale.startTime;
-  const lotEnd = endRaw?.trim() ? instantFromDatetimeFormString(endRaw) : sale.endTime;
+  const lotStart = startRaw?.trim()
+    ? instantFromDatetimeFormString(startRaw, sale.timeZone)
+    : sale.startTime;
+  const lotEnd = endRaw?.trim()
+    ? instantFromDatetimeFormString(endRaw, sale.timeZone)
+    : sale.endTime;
   const proposed = proposeLotTimesWithinWindow({ startTime: lotStart, endTime: lotEnd }, window);
   set("startTime", proposed.startTime);
   set("endTime", proposed.endTime);

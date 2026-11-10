@@ -447,6 +447,7 @@ export function SaleSetupWizard({
                   <SaleLotRowsEditor
                     saleId={saleId}
                     sale={{
+                      timeZone: pendingSaleWindow.timeZone,
                       deliveryMode: pendingSaleWindow.deliveryMode,
                       startTime: pendingSaleWindow.startTime,
                       endTime: pendingSaleWindow.endTime,

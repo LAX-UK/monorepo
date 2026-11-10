@@ -51,6 +51,7 @@ type Props = {
     deliveryMode: SaleDeliveryMode;
     startTime: Date;
     endTime: Date;
+    timeZone: string;
   };
   lots: Lot[];
   canManageAuction?: boolean;
@@ -497,6 +498,7 @@ export function SaleLotsTabBoard({
           onOpenChange={setAttachOpen}
           saleId={saleId}
           saleWindow={{
+            timeZone: sale.timeZone,
             deliveryMode: sale.deliveryMode,
             startTime: sale.startTime,
             endTime: sale.endTime,
@@ -515,6 +517,7 @@ export function SaleLotsTabBoard({
           deliveryMode={sale.deliveryMode}
           saleStartTime={sale.startTime}
           saleEndTime={sale.endTime}
+          timeZone={sale.timeZone}
           categories={categories}
           englishOnlyAuctionsLocked={englishOnlyAuctionsLocked}
           onAdded={() => router.refresh()}

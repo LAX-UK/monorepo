@@ -45,6 +45,7 @@ function mkSale(overrides: Partial<Sale> = {}): Sale {
     endTime: new Date("2026-06-07T18:00:00Z"),
     previewStartTime: null,
     status: "draft",
+    timeZone: "Europe/London",
     buyerPremiumRate: "0.25",
     buyerPremiumTiers: null,
     terms: null,

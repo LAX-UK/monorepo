@@ -46,6 +46,7 @@ const SELLER_ID = "20000000-0000-4000-8000-000000000002";
 const CATEGORY_ID = "30000000-0000-4000-8000-000000000003";
 
 const ctx: SaleSetupLotRowContext = {
+  timeZone: "Europe/London",
   saleStartTime: new Date("2030-01-01T10:00:00"),
   saleEndTime: new Date("2030-01-07T18:00:00"),
   deliveryMode: "online",

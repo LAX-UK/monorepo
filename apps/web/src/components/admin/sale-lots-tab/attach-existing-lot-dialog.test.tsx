@@ -36,6 +36,7 @@ vi.mock("@auction/staff-ui", async (importOriginal) => {
 });
 
 const SALE_WINDOW = {
+  timeZone: "Europe/London",
   deliveryMode: "online" as const,
   startTime: new Date("2026-11-01T10:00:00Z"),
   endTime: new Date("2026-11-08T10:00:00Z"),

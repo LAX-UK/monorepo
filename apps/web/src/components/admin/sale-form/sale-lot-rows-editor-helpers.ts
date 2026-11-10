@@ -9,7 +9,8 @@ export function draftLotRow(source: "new" | "existing"): SaleSetupLotRowFormValu
   return { ...emptySaleSetupLotRow(crypto.randomUUID()), source };
 }
 
-export function lotToRow(lot: Lot): SaleSetupLotRowFormValues {
+/** The row for a saved lot, its times written as wall-clock times in the sale's `timeZone`. */
+export function lotToRow(lot: Lot, timeZone: string): SaleSetupLotRowFormValues {
   return {
     clientRowId: lot.id,
     source: "new",
@@ -25,8 +26,8 @@ export function lotToRow(lot: Lot): SaleSetupLotRowFormValues {
     auctionType: lot.auctionType,
     startingPrice: lot.startingPrice,
     artistId: lot.artistId ?? null,
-    startTime: toDatetimeFormString(lot.startTime),
-    endTime: toDatetimeFormString(lot.endTime),
+    startTime: toDatetimeFormString(lot.startTime, timeZone),
+    endTime: toDatetimeFormString(lot.endTime, timeZone),
   };
 }
 

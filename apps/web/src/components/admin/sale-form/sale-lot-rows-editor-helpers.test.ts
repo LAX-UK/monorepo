@@ -31,7 +31,7 @@ function makeLot(overrides: Partial<Lot> = {}): Lot {
 
 describe("sale lot row helpers", () => {
   it("lotToRow maps server lot fields", () => {
-    const row = lotToRow(makeLot({ title: "Vase" }));
+    const row = lotToRow(makeLot({ title: "Vase" }), "Europe/London");
     expect(row.lotId).toBe("lot-1");
     expect(row.title).toBe("Vase");
     expect(row.clientRowId).toBe("lot-1");

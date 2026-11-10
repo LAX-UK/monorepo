@@ -122,6 +122,7 @@ describe("core row schema parity", () => {
       description: null,
       categoryId: null,
       allowOnlineBidsBeforeGoLive: false,
+      timeZone: "Europe/London",
       isTest: false,
       streamUrl: null,
       heroPresentation: "cover",

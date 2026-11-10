@@ -76,6 +76,7 @@ function draftSale(window: ReturnType<typeof saleWindow>, overrides: Partial<Sal
     startTime: saleStart,
     endTime: saleEnd,
     previewStartTime: null,
+    timeZone: "Europe/London",
     buyerPremiumRate: "0.25",
     buyerPremiumTiers: null,
     terms: null,

@@ -13,7 +13,7 @@ import type { ArtistProfile, CategoryNode, Sale } from "@auction/types";
 
 type AssignableSale = Pick<
   Sale,
-  "id" | "title" | "status" | "deliveryMode" | "startTime" | "endTime"
+  "id" | "title" | "status" | "deliveryMode" | "startTime" | "endTime" | "timeZone"
 >;
 
 export type LotCreatePageModel = {

@@ -1,22 +1,23 @@
 "use client";
 
+import { shortZoneName } from "@auction/datetime";
 import { Calendar } from "@auction/ui/components/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@auction/ui/components/popover";
 import { TextInput, type TextInputProps, useField } from "@auction/ui/lax";
 import { CalendarDays } from "lucide-react";
 import * as React from "react";
 import { STAFF_LAYER, cn } from "../lib/cn.js";
-import { londonZoneLabel } from "../lib/format.js";
+import { STAFF_TIME_ZONE } from "../lib/format.js";
 import { StaffButton } from "../primitives/button.js";
+import { clockChangeNotice } from "./clock-change-notice.js";
 import {
   dateToDay,
   dayToDate,
   formatStaffDay,
-  isoToLondonWallTime,
-  londonClockChange,
-  londonWallTimeToIso,
+  isoToWallTime,
   parseStaffDay,
   parseStaffTime,
+  wallTimeToIso,
 } from "./staff-dates.js";
 
 /** The calendar in the staff style: 32px days, ink for the chosen day, a ring for today. */
@@ -177,13 +178,16 @@ export type DateTimeInputProps = {
   disabled?: boolean;
   /** Names the time field for assistive technology; the date takes the Field's label. */
   timeLabel?: string;
+  /** The zone the date and time are read in: a sale's own zone. London when not given. */
+  timeZone?: string;
   className?: string;
 };
 
 /**
- * A scheduled moment: a London date and a 24-hour time, with the zone fixed beside them
+ * A scheduled moment: a date and a 24-hour time in one zone, with the zone fixed beside them
  * ("Europe/London (BST)"). On a day the clocks change, a line under the fields says so; a time in
- * the skipped hour is not accepted.
+ * the skipped hour is not accepted. Changing `timeZone` keeps the date and time as typed and
+ * reads them in the new zone.
  */
 export function DateTimeInput({
   value,
@@ -192,30 +196,44 @@ export function DateTimeInput({
   max,
   disabled,
   timeLabel = "Time, 24-hour clock",
+  timeZone = STAFF_TIME_ZONE,
   className,
 }: DateTimeInputProps) {
-  const initial = value ? isoToLondonWallTime(value) : null;
+  const initial = value ? isoToWallTime(value, timeZone) : null;
   const [day, setDay] = React.useState<string | null>(initial?.day ?? null);
   const [timeText, setTimeText] = React.useState(initial?.time ?? "");
   const lastEmitted = React.useRef<string | null>(value);
   const hintId = React.useId();
 
+  const zoneRef = React.useRef(timeZone);
+
   React.useEffect(() => {
+    if (zoneRef.current !== timeZone) {
+      // A new zone moves the instant, not what was typed: keep the text and take the new instant
+      // as already seen, even when the same time does not exist there.
+      zoneRef.current = timeZone;
+      lastEmitted.current = value;
+      return;
+    }
     if (value === lastEmitted.current) return;
     lastEmitted.current = value;
-    const next = value ? isoToLondonWallTime(value) : null;
+    const next = value ? isoToWallTime(value, timeZone) : null;
     setDay(next?.day ?? null);
     setTimeText(next?.time ?? "");
-  }, [value]);
+  }, [value, timeZone]);
 
   const time = parseStaffTime(timeText);
-  const iso = day && time ? londonWallTimeToIso(day, time) : null;
-  const change = day ? londonClockChange(day) : null;
-  const zone = londonZoneLabel(iso ?? (day ? `${day}T12:00:00Z` : new Date()));
+  const iso = day && time ? wallTimeToIso(day, time, timeZone) : null;
+  const change = day ? clockChangeNotice(day, timeZone) : null;
+  const zoneName = shortZoneName(
+    timeZone,
+    new Date(iso ?? (day ? `${day}T12:00:00Z` : Date.now())),
+  );
+  const missingTime = Boolean(day && time && !iso);
 
   const emit = (nextDay: string | null, nextTimeText: string) => {
     const nextTime = parseStaffTime(nextTimeText);
-    const next = nextDay && nextTime ? londonWallTimeToIso(nextDay, nextTime) : null;
+    const next = nextDay && nextTime ? wallTimeToIso(nextDay, nextTime, timeZone) : null;
     lastEmitted.current = next;
     onValueChange(next);
   };
@@ -232,7 +250,7 @@ export function DateTimeInput({
           {...(min ? { min: min.slice(0, 10) } : {})}
           {...(max ? { max: max.slice(0, 10) } : {})}
           {...(disabled !== undefined ? { disabled } : {})}
-          {...(change ? { "aria-describedby": hintId } : {})}
+          {...(change || missingTime ? { "aria-describedby": hintId } : {})}
           boxClassName="min-w-40 flex-1"
         />
         <TextInput
@@ -256,14 +274,12 @@ export function DateTimeInput({
           }}
         />
         <span className="shrink-0 text-staff-sm whitespace-nowrap text-staff-muted">
-          Europe/London ({zone})
+          {timeZone} ({zoneName})
         </span>
       </div>
       {change ? (
         <p id={hintId} className="text-staff-xs text-staff-muted">
-          {change === "forward"
-            ? "Clocks go forward an hour on this day (GMT to BST): there is no 01:00 to 01:59."
-            : "Clocks go back an hour on this day (BST to GMT): 01:00 to 01:59 happens twice; the first is used."}
+          {change}
         </p>
       ) : null}
     </div>

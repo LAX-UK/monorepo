@@ -24,3 +24,10 @@ export type { LocalTime } from "./local-time.js";
 export { offsetMinutes, sameOffset } from "./offset.js";
 export { isPlaceholderZone, isValidZone, normaliseViewerZone } from "./zone.js";
 export { shortZoneName } from "./zone-formats.js";
+export {
+  type ZoneChoice,
+  listZoneChoices,
+  timesAreInLabel,
+  zoneAbbreviations,
+  zoneChoiceLabel,
+} from "./zone-choices.js";

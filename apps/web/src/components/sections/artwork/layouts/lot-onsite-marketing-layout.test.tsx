@@ -79,6 +79,7 @@ const baseSale: Sale = {
   startTime: new Date(now.getTime() + 86_400_000),
   endTime: new Date(now.getTime() + 172_800_000),
   previewStartTime: new Date(now.getTime() + 43_200_000),
+  timeZone: "Europe/London",
   buyerPremiumRate: "0.25",
   buyerPremiumTiers: null,
   terms: null,

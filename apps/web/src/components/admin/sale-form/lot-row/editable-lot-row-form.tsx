@@ -22,6 +22,7 @@ import {
   updateLotScheduleLabel,
 } from "@/lib/admin/sale-setup";
 import { lotAuctionTypeLabel } from "@/lib/presenters/lot-auction-type/lot-auction-type-registry";
+import { formatWhen } from "@auction/datetime";
 import {
   FieldRow,
   FormActions,
@@ -30,7 +31,6 @@ import {
   Section,
   StaffButton,
   StatusBadge,
-  formatStaffDateTime,
 } from "@auction/staff-ui";
 import type { ArtistProfile, CategoryNode, LotAuctionType } from "@auction/types";
 import { Trash2 } from "lucide-react";
@@ -196,14 +196,16 @@ export function EditableLotRowForm({
               name="startTime"
               label="Bidding opens"
               disabled={readOnly}
-              description={`The sale opens ${formatStaffDateTime(ctx.saleStartTime)}.`}
+              timeZone={ctx.timeZone}
+              description={`The sale opens ${formatWhen(ctx.saleStartTime, ctx.timeZone, new Date())}.`}
             />
             <StaffDateTimeField
               {...f}
               name="endTime"
               label="Bidding closes"
               disabled={readOnly}
-              description={`The sale closes ${formatStaffDateTime(ctx.saleEndTime)}.`}
+              timeZone={ctx.timeZone}
+              description={`The sale closes ${formatWhen(ctx.saleEndTime, ctx.timeZone, new Date())}.`}
             />
           </FieldRow>
         )}

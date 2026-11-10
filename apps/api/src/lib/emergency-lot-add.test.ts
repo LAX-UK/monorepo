@@ -33,6 +33,7 @@ function mkSale(overrides: Partial<Sale> = {}): Sale {
     endTime: new Date(Date.now() + 86_400_000),
     previewStartTime: null,
     status: "active",
+    timeZone: "Europe/London",
     buyerPremiumRate: "0.25",
     buyerPremiumTiers: null,
     terms: null,
