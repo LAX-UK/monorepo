@@ -41,9 +41,9 @@ function defaultIdempotencyKey(input: EmailEnqueueInput, resolution: RecipientRe
 }
 
 /**
- * The date after which a recipient snapshot is no longer needed to send the message. Nothing clears
- * it on that date yet: it is cleared when the person is erased, or after the send for messages
- * listed in `SNAPSHOT_DISCARDED_AFTER_SEND`.
+ * When a recipient snapshot is cleared: 30 days after the message is queued. The daily
+ * `purge-email-snapshots` job clears the snapshot and the message variables of every finished row
+ * past this date; a row still queued or being sent is cleared once its send is over.
  */
 function snapshotPurgeDate(now = new Date()): Date {
   const d = new Date(now);
@@ -69,10 +69,22 @@ export class PostmarkEmailService implements IEmailService, ITransactionalEmailO
       // since-fixed recipient issue should not mean the user never gets this email again.
       // Re-arm the same row and re-queue it under a fresh job id (BullMQ dedupes by jobId,
       // and the original job id is the outboxId, so a plain re-add would be swallowed).
+      // The row is rewritten from this call's input: the snapshot and variables of an old failed
+      // row may have been cleared by the daily purge or by an erasure, and an emptied row would
+      // render nothing or fail again.
       if (existing.status === "failed") {
         await this.db
           .update(emailOutbox)
-          .set({ status: "pending", attempts: 0, lastError: null, messageId: null })
+          .set({
+            status: "pending",
+            attempts: 0,
+            lastError: null,
+            messageId: null,
+            toEmailHash: emailHash(input.to),
+            toSnapshot: resolution === "snapshot" ? input.to : null,
+            toSnapshotPurgeAt: resolution === "snapshot" ? snapshotPurgeDate() : null,
+            vars: input.vars as Record<string, unknown>,
+          })
           .where(eq(emailOutbox.id, existing.id));
         await this.emailQueue.add(
           "send-email",
@@ -166,6 +178,9 @@ export class PostmarkEmailService implements IEmailService, ITransactionalEmailO
    * with the change it reports, and the same key never makes a second row. No job is added to the
    * queue here, since the transaction may still roll back; the outbox drain picks the committed
    * pending row up and sends it, with the usual retries.
+   *
+   * If a row with the same key already exists it is returned as it is: unlike `enqueue`, a failed
+   * row is not re-armed or rewritten here.
    */
   async enqueueInTransaction<T extends EmailEnqueueInput["template"]>(
     tx: Database,

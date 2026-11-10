@@ -2,11 +2,13 @@ import { pruneAlertRetention } from "@auction/alerts";
 import {
   PURGE_ALERT_RETENTION_QUEUE_NAME,
   PURGE_COLLECTION_HANDOVER_QUEUE_NAME,
+  PURGE_EMAIL_SNAPSHOTS_QUEUE_NAME,
   PURGE_KYC_RETENTION_QUEUE_NAME,
   PURGE_QR_CODE_SCANS_QUEUE_NAME,
 } from "@auction/queues";
 import { Queue, Worker } from "bullmq";
 import { purgeCollectionHandoverRecords } from "../jobs/purge-collection-handover-records.js";
+import { purgeEmailSnapshots } from "../jobs/purge-email-snapshots.js";
 import { purgeKycRetentionJob } from "../jobs/purge-kyc-retention.js";
 import { purgeQrCodeScans } from "../jobs/purge-qr-code-scans.js";
 import { withSentryCronMonitor } from "../lib/sentry-cron.js";
@@ -166,8 +168,36 @@ export function registerPurgeWorkers(
     },
   );
 
+  // The recipient address and variables kept on finished mail, cleared once their 30 days are up.
+  const purgeEmailSnapshotsQueue = new Queue(
+    PURGE_EMAIL_SNAPSHOTS_QUEUE_NAME,
+    queueOpts(PURGE_EMAIL_SNAPSHOTS_QUEUE_NAME),
+  );
+  const purgeEmailSnapshotsWorker = new Worker(
+    PURGE_EMAIL_SNAPSHOTS_QUEUE_NAME,
+    async () => {
+      await withSentryCronMonitor("purge-email-snapshots", sentryMonitorSlugs, async () => {
+        await purgeEmailSnapshots({ transactionRunner, log });
+      });
+    },
+    bullConnection,
+  );
+  purgeEmailSnapshotsWorker.on("failed", (job, err) => {
+    reportWorkerJobFailure(PURGE_EMAIL_SNAPSHOTS_QUEUE_NAME, job, err);
+  });
+  void purgeEmailSnapshotsQueue.add(
+    "purge",
+    {},
+    {
+      jobId: "purge-email-snapshots-daily",
+      repeat: { every: 24 * 60 * 60 * 1000 },
+      removeOnComplete: 5,
+    },
+  );
+
   return {
     errorHandlers: [
+      { worker: purgeEmailSnapshotsWorker, queue: PURGE_EMAIL_SNAPSHOTS_QUEUE_NAME },
       { worker: purgeCollectionHandoverWorker, queue: PURGE_COLLECTION_HANDOVER_QUEUE_NAME },
       { worker: purgeQrCodeScansWorker, queue: PURGE_QR_CODE_SCANS_QUEUE_NAME },
       { worker: purgeKycRetentionWorker, queue: PURGE_KYC_RETENTION_QUEUE_NAME },
@@ -175,6 +205,8 @@ export function registerPurgeWorkers(
     ],
     close: () =>
       closeAll([
+        purgeEmailSnapshotsWorker,
+        purgeEmailSnapshotsQueue,
         purgeCollectionHandoverWorker,
         purgeCollectionHandoverQueue,
         purgeQrCodeScansWorker,
