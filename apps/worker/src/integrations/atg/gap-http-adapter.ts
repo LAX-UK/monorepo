@@ -10,6 +10,7 @@ import { parseGapDate } from "./gap-date.js";
 import type {
   GapAddUrlImageToLotRequest,
   GapAuctionResponse,
+  GapClientResponse,
   GapCreateAuctionRequest,
   GapCreateLotRequest,
   GapErrorBody,
@@ -175,6 +176,15 @@ export class GapHttpAdapter implements AtgGateway {
     return rows.flatMap((row) => (row.AuctionId ? [toRemoteAuction(row, row.AuctionId)] : []));
   }
 
+  async getClientDefaultSurchargeRate(clientId: string): Promise<number | null> {
+    const row = await this.call<GapClientResponse>(
+      "getClientDefaultSurchargeRate",
+      "GET",
+      `/Clients/${encodeURIComponent(clientId)}`,
+    );
+    return row?.DefaultInternetSurchargeRate ?? null;
+  }
+
   async getIncrementSets(clientId: string): Promise<AtgIncrementSet[]> {
     const rows = await this.call<GapIncrementDetailsResponse[]>(
       "getIncrementSets",
@@ -255,6 +265,12 @@ function toRemoteAuction(row: GapAuctionResponse, fallbackId: string): AtgRemote
     isApproved: row.IsApproved === true,
     isPublished: row.IsPublished === true,
     statusCode: row.AuctionStatusCode ?? null,
+    fees: {
+      buyersPremium: row.BuyersPremium ?? null,
+      buyersPremiumVatRate: row.BuyersPremiumVatRate ?? null,
+      internetSurchargeRate: row.InternetSurchargeRate ?? null,
+      internetSurchargeVatRate: row.InternetSurchargeVatRate ?? null,
+    },
   };
 }
 

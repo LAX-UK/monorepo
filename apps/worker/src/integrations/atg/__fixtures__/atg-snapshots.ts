@@ -1,3 +1,4 @@
+import type { AtgRemoteAuction } from "../atg-gateway.js";
 import type { AtgLotSnapshot, AtgSaleSnapshot, AtgSyncConfig } from "../atg-types.js";
 
 export const testAtgConfig: AtgSyncConfig = {
@@ -60,6 +61,24 @@ export function testSale(overrides: Partial<AtgSaleSnapshot> = {}): AtgSaleSnaps
     updatedAt: new Date("2026-10-01T00:00:00Z"),
     atgSettings: { auctionType: "Timed", distribution: "private_test" },
     lots: [testLot()],
+    ...overrides,
+  };
+}
+
+/** An auction as ATG reports it before staff touch it; ATG returned no fee fields. */
+export function testRemoteAuction(overrides: Partial<AtgRemoteAuction> = {}): AtgRemoteAuction {
+  return {
+    atgAuctionId: "atg-auction-1",
+    clientsAuctionId: "sale-1",
+    isApproved: false,
+    isPublished: false,
+    statusCode: 0,
+    fees: {
+      buyersPremium: null,
+      buyersPremiumVatRate: null,
+      internetSurchargeRate: null,
+      internetSurchargeVatRate: null,
+    },
     ...overrides,
   };
 }

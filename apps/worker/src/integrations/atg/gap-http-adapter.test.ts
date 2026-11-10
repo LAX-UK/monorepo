@@ -138,6 +138,10 @@ describe("GapHttpAdapter", () => {
         IsApproved: true,
         IsPublished: false,
         AuctionStatusCode: 2,
+        BuyersPremium: 25,
+        BuyersPremiumVatRate: 0.2,
+        InternetSurchargeRate: 3,
+        InternetSurchargeVatRate: 0.2,
       }),
       json({ Message: "not found" }, 404),
     ]);
@@ -148,6 +152,12 @@ describe("GapHttpAdapter", () => {
       isApproved: true,
       isPublished: false,
       statusCode: 2,
+      fees: {
+        buyersPremium: 25,
+        buyersPremiumVatRate: 0.2,
+        internetSurchargeRate: 3,
+        internetSurchargeVatRate: 0.2,
+      },
     });
     expect(calls[0]?.url).toBe("https://gap.test/Auction/GetAuctionById/a-1");
     expect(await adapter.getAuction("a-2")).toBeNull();
@@ -168,6 +178,12 @@ describe("GapHttpAdapter", () => {
         isApproved: false,
         isPublished: false,
         statusCode: null,
+        fees: {
+          buyersPremium: null,
+          buyersPremiumVatRate: null,
+          internetSurchargeRate: null,
+          internetSurchargeVatRate: null,
+        },
       },
     ]);
     expect(calls[0]?.url).toBe(
@@ -177,6 +193,17 @@ describe("GapHttpAdapter", () => {
       { atgAuctionId: "a-2", isApproved: true },
     ]);
     expect(await adapter.findAuctionsByClientId("client-1", from)).toEqual([]);
+  });
+
+  it("reads the client's default internet surcharge, null when ATG holds none", async () => {
+    const { adapter, calls } = adapterWith([
+      json({ ClientId: "client-1", DefaultInternetSurchargeRate: 3 }),
+      json({ ClientId: "client-1" }),
+    ]);
+
+    expect(await adapter.getClientDefaultSurchargeRate("client-1")).toBe(3);
+    expect(await adapter.getClientDefaultSurchargeRate("client-1")).toBeNull();
+    expect(calls[0]?.url).toBe("https://gap.test/Clients/client-1");
   });
 
   it("reads the client's increment sets and the platform's categories", async () => {

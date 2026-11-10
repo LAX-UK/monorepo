@@ -1,11 +1,16 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { testAtgConfig, testLot, testSale } from "./__fixtures__/atg-snapshots.js";
+import {
+  testAtgConfig,
+  testLot,
+  testRemoteAuction,
+  testSale,
+} from "./__fixtures__/atg-snapshots.js";
 import {
   FakeAtgGateway,
   FakeAtgImageInspector,
   InMemoryAtgSyncStore,
 } from "./__fixtures__/fakes.js";
-import { AtgGatewayError, type AtgRemoteLot } from "./atg-gateway.js";
+import { AtgGatewayError, type AtgRemoteAuctionFees, type AtgRemoteLot } from "./atg-gateway.js";
 import {
   AWAITING_ATG_APPROVAL_MESSAGE,
   AtgPartialSyncError,
@@ -77,16 +82,17 @@ describe("AtgSyncService", () => {
       expect(summary).toEqual({ created: 2, updated: 0, unchanged: 0, deleted: 0, failed: 0 });
       expect(gateway.ops()).toEqual([
         "createAuction",
+        "getAuction",
         "createLot",
         "addLotImageUrl",
         "addLotImageUrl",
         "createLot",
       ]);
-      expect(gateway.calls[1]?.arg).toMatchObject({
+      expect(gateway.calls[2]?.arg).toMatchObject({
         AuctionId: "atg-auction-1",
         LotNumber: "1",
       });
-      expect(gateway.calls[3]?.arg).toEqual({
+      expect(gateway.calls[4]?.arg).toEqual({
         LotId: "atg-lot-1",
         ImageName: "1-1.jpg",
         Url: "https://media.example/b.jpg",
@@ -129,13 +135,13 @@ describe("AtgSyncService", () => {
       const summary = await service.pushSale("sale-1");
 
       expect(summary).toMatchObject({ updated: 1, unchanged: 1 });
-      expect(gateway.ops()).toEqual(["updateAuction", "updateLot"]);
+      expect(gateway.ops()).toEqual(["updateAuction", "getAuction", "updateLot"]);
       expect(gateway.calls[0]?.arg).toMatchObject({
         AuctionId: "atg-auction-1",
         Title: "Renamed sale",
       });
-      expect(gateway.calls[1]?.arg).toMatchObject({ LotId: "atg-lot-1", Title: "New title" });
-      expect(gateway.calls[1]?.arg).not.toHaveProperty("Status");
+      expect(gateway.calls[2]?.arg).toMatchObject({ LotId: "atg-lot-1", Title: "New title" });
+      expect(gateway.calls[2]?.arg).not.toHaveProperty("Status");
     });
 
     it("never re-sends images once ATG has some, but sends them when a lot had none", async () => {
@@ -255,8 +261,9 @@ describe("AtgSyncService", () => {
 
       const summary = await service.pushSale("sale-1");
 
-      expect(gateway.calls.slice(0, 2)).toEqual([
+      expect(gateway.calls.slice(0, 3)).toEqual([
         expect.objectContaining({ op: "createAuction" }),
+        expect.objectContaining({ op: "getAuction" }),
         { op: "deleteLot", arg: "atg-old" },
       ]);
       expect(store.lotLinks.get("lot-2")).toMatchObject({ saleId: "sale-1" });
@@ -416,13 +423,8 @@ describe("AtgSyncService", () => {
     });
 
     describe("a create whose reply was lost", () => {
-      const lost = (id = "sale-1") => ({
-        atgAuctionId: "atg-found",
-        clientsAuctionId: id,
-        isApproved: false,
-        isPublished: false,
-        statusCode: 0,
-      });
+      const lost = (id = "sale-1") =>
+        testRemoteAuction({ atgAuctionId: "atg-found", clientsAuctionId: id });
 
       it("adopts the auction ATG made and carries on with its lots", async () => {
         gateway.failNext("createAuction", transient("createAuction"));
@@ -529,6 +531,7 @@ describe("AtgSyncService", () => {
 
       expect(gateway.ops().filter((op) => op.endsWith("Auction"))).toEqual([
         "createAuction",
+        "getAuction",
         "publishAuction",
       ]);
       expect(store.auctionLinks.get("sale-1")).toMatchObject({
@@ -661,14 +664,8 @@ describe("AtgSyncService", () => {
     });
 
     describe("approval on ATG", () => {
-      const remote = (patch: { isApproved?: boolean; isPublished?: boolean }) => ({
-        atgAuctionId: "atg-auction-1",
-        clientsAuctionId: "sale-1",
-        isApproved: false,
-        isPublished: false,
-        statusCode: 0,
-        ...patch,
-      });
+      const remote = (patch: { isApproved?: boolean; isPublished?: boolean }) =>
+        testRemoteAuction(patch);
 
       it("records when ATG staff approved a pushed auction, once", async () => {
         await service.pushSale("sale-1");
@@ -773,6 +770,263 @@ describe("AtgSyncService", () => {
 
       expect(await service.tick()).toMatchObject({ failed: 1 });
       expect(errors).toEqual([["sale-1", expect.objectContaining({ retryable: true })]]);
+    });
+  });
+
+  describe("tick resilience", () => {
+    function withHooks() {
+      const tickErrors: unknown[] = [];
+      const feeMismatches: string[] = [];
+      service = new AtgSyncService({
+        gateway,
+        store,
+        imageInspector: images,
+        config: testAtgConfig,
+        now: () => NOW,
+        onTickError: (_saleId, err) => tickErrors.push(err),
+        onFeeMismatch: (_saleId, message) => feeMismatches.push(message),
+      });
+      return { tickErrors, feeMismatches };
+    }
+
+    it("still polls a published auction when its push fails", async () => {
+      const { tickErrors } = withHooks();
+      await service.publishSale("sale-1");
+      store.changedSales = new Set(["sale-1"]);
+      gateway.failNext("updateAuction", rejected("updateAuction"));
+      store.sales.set("sale-1", {
+        ...(store.sales.get("sale-1") ?? testSale()),
+        title: "Renamed after publish",
+      });
+      gateway.calls.length = 0;
+
+      const result = await service.tick();
+
+      expect(result).toEqual({ pushed: 0, polled: 1, failed: 1 });
+      expect(gateway.ops()).toContain("getSaleResults");
+      expect(tickErrors).toEqual([expect.objectContaining({ retryable: false })]);
+    });
+
+    it("still checks approval when the push of an unpublished sale fails", async () => {
+      withHooks();
+      await service.pushSale("sale-1");
+      gateway.remoteAuctions.set(
+        "atg-auction-1",
+        testRemoteAuction({ isApproved: true, isPublished: true }),
+      );
+      store.changedSales = new Set(["sale-1"]);
+      gateway.failNext("updateAuction", rejected("updateAuction"));
+      store.sales.set("sale-1", {
+        ...(store.sales.get("sale-1") ?? testSale()),
+        title: "Renamed",
+      });
+
+      expect(await service.tick()).toEqual({ pushed: 0, polled: 0, failed: 1 });
+      expect(store.auctionLinks.get("sale-1")?.remoteStatus).toBe("published");
+    });
+
+    it("counts a sale once even when push and poll both fail", async () => {
+      withHooks();
+      await service.publishSale("sale-1");
+      store.changedSales = new Set(["sale-1"]);
+      store.sales.set("sale-1", {
+        ...(store.sales.get("sale-1") ?? testSale()),
+        title: "Renamed",
+      });
+      gateway.failNext("updateAuction", rejected("updateAuction"));
+      gateway.failNext("getLots", transient("getLots"));
+
+      expect(await service.tick()).toEqual({ pushed: 0, polled: 0, failed: 1 });
+    });
+
+    describe("a mapping error staff can fix", () => {
+      const liveWithoutSurcharge = (): Partial<AtgSyncConfig> => ({
+        fees: { ...testAtgConfig.fees, internetSurchargeRate: { Timed: 3, Live: null } },
+      });
+
+      async function linkWithMappingError() {
+        await service.pushSale("sale-1");
+        const sale = store.sales.get("sale-1");
+        if (!sale) throw new Error("missing sale");
+        store.sales.set("sale-1", {
+          ...sale,
+          atgSettings: { ...sale.atgSettings, auctionType: "Live" },
+        });
+        store.changedSales = new Set(["sale-1"]);
+        const tickErrors: unknown[] = [];
+        service = new AtgSyncService({
+          gateway,
+          store,
+          imageInspector: images,
+          config: { ...testAtgConfig, ...liveWithoutSurcharge() },
+          now: () => NOW,
+          onTickError: (_saleId, err) => tickErrors.push(err),
+        });
+        return tickErrors;
+      }
+
+      it("is reported to Sentry when it first appears, then stays quiet while it is unchanged", async () => {
+        const tickErrors = await linkWithMappingError();
+
+        expect(await service.tick()).toMatchObject({ failed: 1 });
+        expect(tickErrors).toHaveLength(1);
+        expect(store.auctionLinks.get("sale-1")?.lastError).toContain("internet surcharge");
+
+        expect(await service.tick()).toMatchObject({ failed: 1 });
+        expect(await service.tick()).toMatchObject({ failed: 1 });
+        expect(tickErrors).toHaveLength(1);
+      });
+
+      it("is reported again when the message changes", async () => {
+        const tickErrors = await linkWithMappingError();
+        await service.tick();
+        await store.saveAuctionLink("sale-1", { lastError: "A different earlier message" });
+
+        await service.tick();
+
+        expect(tickErrors).toHaveLength(2);
+      });
+    });
+
+    it("keeps reporting gateway errors on every tick", async () => {
+      const { tickErrors } = withHooks();
+      await service.publishSale("sale-1");
+      gateway.failNext("getLots", transient("getLots"));
+      gateway.failNext("getLots", transient("getLots"), 0);
+
+      await service.tick();
+      await service.tick();
+
+      expect(tickErrors).toHaveLength(2);
+    });
+
+    it("does not re-send an unchanged auction while a lot error keeps the sale re-pushing", async () => {
+      withHooks();
+      await service.pushSale("sale-1");
+      await store.saveAuctionLink("sale-1", { lastError: "Lot 2: needs a lot number" });
+      gateway.calls.length = 0;
+
+      await service.tick();
+
+      expect(gateway.ops()).not.toContain("updateAuction");
+      expect(gateway.ops()).not.toContain("createAuction");
+    });
+  });
+
+  describe("fee read-back", () => {
+    const atgHolds = (fees: Partial<AtgRemoteAuctionFees>) =>
+      testRemoteAuction({
+        fees: {
+          buyersPremium: 25,
+          buyersPremiumVatRate: 0.2,
+          internetSurchargeRate: 3,
+          internetSurchargeVatRate: 0.2,
+          ...fees,
+        },
+      });
+    let mismatches: Array<[string, string]>;
+
+    beforeEach(() => {
+      mismatches = [];
+      service = new AtgSyncService({
+        gateway,
+        store,
+        imageInspector: images,
+        config: testAtgConfig,
+        now: () => NOW,
+        onFeeMismatch: (saleId, message) => mismatches.push([saleId, message]),
+      });
+    });
+
+    it("reads the auction back once after a create and stays quiet when ATG agrees", async () => {
+      gateway.remoteAuctions.set("atg-auction-1", atgHolds({}));
+
+      await service.pushSale("sale-1");
+
+      expect(gateway.ops().filter((op) => op === "getAuction")).toHaveLength(1);
+      expect(mismatches).toEqual([]);
+      expect(store.auctionLinks.get("sale-1")?.lastError).toBeNull();
+    });
+
+    it("shows staff the difference and reports it once (VAT stored as 20 instead of 0.2)", async () => {
+      gateway.remoteAuctions.set(
+        "atg-auction-1",
+        atgHolds({ buyersPremiumVatRate: 20, internetSurchargeVatRate: 20 }),
+      );
+
+      await service.pushSale("sale-1");
+
+      const expected =
+        "ATG holds different fees from LAX: Buyer's premium VAT LAX sent 0.2, ATG has 20; Internet surcharge VAT LAX sent 0.2, ATG has 20.";
+      expect(store.auctionLinks.get("sale-1")?.lastError).toBe(expected);
+      expect(mismatches).toEqual([["sale-1", expected]]);
+    });
+
+    it("does not block the lots when the fees differ", async () => {
+      gateway.remoteAuctions.set("atg-auction-1", atgHolds({ internetSurchargeRate: 300 }));
+
+      const summary = await service.pushSale("sale-1");
+
+      expect(summary.failed).toBe(0);
+      expect(gateway.ops()).toContain("createLot");
+    });
+
+    it("keeps lot failures visible next to the fee message", async () => {
+      gateway.remoteAuctions.set("atg-auction-1", atgHolds({ buyersPremium: 0 }));
+      gateway.failNext("createLot", rejected("createLot"));
+
+      await service.pushSale("sale-1");
+
+      const lastError = store.auctionLinks.get("sale-1")?.lastError ?? "";
+      expect(lastError).toContain("ATG holds different fees from LAX: Buyer's premium LAX sent 25");
+      expect(lastError).toContain("createLot");
+    });
+
+    it("tolerates ATG rounding inside 1e-6", async () => {
+      gateway.remoteAuctions.set("atg-auction-1", atgHolds({ buyersPremiumVatRate: 0.2 + 1e-8 }));
+
+      await service.pushSale("sale-1");
+
+      expect(mismatches).toEqual([]);
+    });
+
+    it("reads again after an update, but not for a push that changed nothing", async () => {
+      gateway.remoteAuctions.set("atg-auction-1", atgHolds({}));
+      await service.pushSale("sale-1");
+      gateway.calls.length = 0;
+
+      await service.pushSale("sale-1");
+      expect(gateway.ops()).not.toContain("getAuction");
+
+      const sale = store.sales.get("sale-1");
+      if (!sale) throw new Error("missing sale");
+      store.sales.set("sale-1", { ...sale, title: "Renamed" });
+      await service.pushSale("sale-1");
+      expect(gateway.ops().filter((op) => op === "getAuction")).toHaveLength(1);
+    });
+
+    it("keeps checking, without re-reporting, until ATG agrees", async () => {
+      gateway.remoteAuctions.set("atg-auction-1", atgHolds({ buyersPremium: 0 }));
+      await service.pushSale("sale-1");
+      await service.pushSale("sale-1");
+
+      expect(mismatches).toHaveLength(1);
+      expect(store.auctionLinks.get("sale-1")?.lastError).toContain("different fees");
+
+      gateway.remoteAuctions.set("atg-auction-1", atgHolds({}));
+      await service.pushSale("sale-1");
+
+      expect(store.auctionLinks.get("sale-1")?.lastError).toBeNull();
+    });
+
+    it("ignores a failed read-back and an auction ATG cannot find", async () => {
+      gateway.failNext("getAuction", transient("getAuction"));
+      await expect(service.pushSale("sale-1")).resolves.toMatchObject({ failed: 0 });
+
+      store.auctionLinks.clear();
+      gateway.remoteAuctions.clear();
+      await expect(service.pushSale("sale-1")).resolves.toMatchObject({ failed: 0 });
+      expect(mismatches).toEqual([]);
     });
   });
 

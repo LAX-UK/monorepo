@@ -3,10 +3,11 @@ import {
   canPushOrPublishSaleOnAtg,
   resolveSaleSellingPlatform,
 } from "@auction/types";
+import { FEE_MISMATCH_PREFIX, describeFeeMismatch } from "./atg-fee-check.js";
 import { type AtgGateway, AtgGatewayError } from "./atg-gateway.js";
 import type { AtgImageInspector } from "./atg-image-inspector.js";
 import { AtgLotSyncer, AtgPartialSyncError } from "./atg-lot-syncer.js";
-import { mapSaleToAuctionFields, payloadHash } from "./atg-mappers.js";
+import { AtgMappingError, mapSaleToAuctionFields, payloadHash } from "./atg-mappers.js";
 import { errorText, failureSummary, isRetryable } from "./atg-sync-errors.js";
 import type { AtgAuctionLinkPatch, AtgSyncStore } from "./atg-sync-store.js";
 import type {
@@ -15,6 +16,7 @@ import type {
   AtgSaleSnapshot,
   AtgSyncConfig,
 } from "./atg-types.js";
+import type { GapAuctionFields } from "./gap-types.js";
 
 export { AtgPartialSyncError };
 
@@ -34,6 +36,8 @@ export type AtgSyncServiceDeps = {
   now?: () => Date;
   /** Per-sale tick failure; the tick carries on with the next sale. */
   onTickError?: (saleId: string, err: unknown) => void;
+  /** ATG holds other fees than LAX sent; called once per distinct message, not every tick. */
+  onFeeMismatch?: (saleId: string, message: string) => void;
 };
 
 const POLL_CLOSED_FOR_MS = 7 * 24 * 60 * 60 * 1000;
@@ -53,6 +57,20 @@ function mayHaveCreated(err: unknown): boolean {
     (err as AtgGatewayError).status !== 429 &&
     (err as AtgGatewayError).status !== 425
   );
+}
+
+/** What an upsert settled on: the auction, the fields LAX maps for it and whether they were sent. */
+type UpsertedAuction = {
+  auctionId: string;
+  created: boolean;
+  fields: GapAuctionFields;
+  /** False when ATG already held these exact fields (payload hash unchanged). */
+  sent: boolean;
+};
+
+function joinMessages(...messages: Array<string | null>): string | null {
+  const present = messages.filter((message): message is string => Boolean(message));
+  return present.length > 0 ? present.join(" ") : null;
 }
 
 const SALE_ON_LAX_MESSAGE =
@@ -81,6 +99,7 @@ export class AtgSyncService {
   private readonly config: AtgSyncConfig;
   private readonly now: () => Date;
   private readonly onTickError: ((saleId: string, err: unknown) => void) | undefined;
+  private readonly onFeeMismatch: ((saleId: string, message: string) => void) | undefined;
 
   constructor(deps: AtgSyncServiceDeps) {
     this.gateway = deps.gateway;
@@ -95,6 +114,7 @@ export class AtgSyncService {
       now: this.now,
     });
     this.onTickError = deps.onTickError;
+    this.onFeeMismatch = deps.onFeeMismatch;
   }
 
   async pushSale(saleId: string): Promise<AtgPushSummary> {
@@ -119,28 +139,57 @@ export class AtgSyncService {
     }
     await this.assertCanPushToAtg(saleId);
 
-    let auction: { auctionId: string; created: boolean };
+    let auction: UpsertedAuction;
     try {
       auction = await this.upsertAuction(sale, existing);
     } catch (err) {
       await this.store.saveAuctionLink(saleId, { lastError: errorText(err) });
       throw err;
     }
+    const feeMismatch = await this.readBackFees(saleId, auction, existing);
 
     let result: { summary: AtgPushSummary; failures: string[] };
     try {
       result = await this.lotSyncer.syncLots(sale, auction.auctionId, auction.created);
     } catch (err) {
       if (err instanceof AtgGatewayError) {
-        await this.store.saveAuctionLink(saleId, { lastError: errorText(err) });
+        await this.store.saveAuctionLink(saleId, {
+          lastError: joinMessages(feeMismatch, errorText(err)),
+        });
       }
       throw err;
     }
     await this.store.saveAuctionLink(saleId, {
       lastSyncedAt: startedAt,
-      lastError: failureSummary(result.failures),
+      lastError: joinMessages(feeMismatch, failureSummary(result.failures)),
     });
     return result;
+  }
+
+  /**
+   * Reads the auction back after a write and compares the fees ATG holds with the ones sent, so
+   * a unit mix-up surfaces at once. Also repeats while a mismatch is showing, so it clears only
+   * when ATG agrees. One read per write; unchanged sales are not read. Never blocks the push.
+   */
+  private async readBackFees(
+    saleId: string,
+    auction: UpsertedAuction,
+    existing: AtgAuctionLink | null,
+  ): Promise<string | null> {
+    const stillShowing = existing?.lastError?.startsWith(FEE_MISMATCH_PREFIX) ?? false;
+    if (!auction.sent && !stillShowing) return null;
+    let message: string | null;
+    try {
+      const remote = await this.gateway.getAuction(auction.auctionId);
+      message = remote ? describeFeeMismatch(auction.fields, remote.fees) : null;
+    } catch (err) {
+      if (!(err instanceof AtgGatewayError)) throw err;
+      return null;
+    }
+    if (message && !existing?.lastError?.startsWith(message)) {
+      this.onFeeMismatch?.(saleId, message);
+    }
+    return message;
   }
 
   async publishSale(saleId: string): Promise<void> {
@@ -218,43 +267,85 @@ export class AtgSyncService {
   }
 
   /**
-   * Repeatable tick: re-pushes linked sales edited in LAX since their last sync, then polls
-   * published and recently closed auctions. One failing sale does not stop the others.
+   * Repeatable tick: re-pushes linked sales edited in LAX since their last sync, checks ATG
+   * approval, then polls published and recently closed auctions. The three steps are
+   * independent, so a failed push still lets a published auction be polled, and one failing
+   * sale does not stop the others. `failed` counts sales with at least one failing step.
    */
   async tick(): Promise<{ pushed: number; polled: number; failed: number }> {
     const now = this.now();
     const links = await this.store.listActiveAuctionLinks(
       new Date(now.getTime() - POLL_CLOSED_FOR_MS),
     );
-    let pushed = 0;
-    let polled = 0;
-    let failed = 0;
+    const totals = { pushed: 0, polled: 0, failed: 0 };
     for (const link of links) {
+      const outcome = await this.tickLink(link);
+      totals.pushed += outcome.pushed ? 1 : 0;
+      totals.polled += outcome.polled ? 1 : 0;
+      totals.failed += outcome.failed ? 1 : 0;
+    }
+    return totals;
+  }
+
+  private async tickLink(
+    link: AtgAuctionLink,
+  ): Promise<{ pushed: boolean; polled: boolean; failed: boolean }> {
+    const outcome = { pushed: false, polled: false, failed: false };
+    const attempt = async (step: () => Promise<void>): Promise<boolean> => {
       try {
-        const platform = (await this.sellingPlatform(link.saleId)) ?? "free";
-        if (
-          link.remoteStatus !== "closed" &&
-          canPushOrPublishSaleOnAtg(platform) &&
-          (!link.lastSyncedAt ||
-            link.lastError ||
-            (await this.store.hasCatalogueChangesSince(link.saleId, link.lastSyncedAt)))
-        ) {
-          await this.pushSale(link.saleId);
-          pushed += 1;
-        }
-        if (link.remoteStatus === "created" && canPushOrPublishSaleOnAtg(platform)) {
-          await this.checkApproval(link);
-        }
-        if (link.remoteStatus === "published" || link.remoteStatus === "closed") {
-          await this.pollSale(link.saleId);
-          polled += 1;
-        }
+        await step();
+        return true;
       } catch (err) {
-        failed += 1;
-        this.onTickError?.(link.saleId, err);
+        outcome.failed = true;
+        this.reportTickError(link, err);
+        return false;
+      }
+    };
+
+    let platform: AtgOwnershipState = "free";
+    const resolved = await attempt(async () => {
+      platform = (await this.sellingPlatform(link.saleId)) ?? "free";
+    });
+    if (!resolved) return outcome;
+    const canPush = canPushOrPublishSaleOnAtg(platform);
+
+    if (link.remoteStatus !== "closed" && canPush) {
+      let due = false;
+      const checked = await attempt(async () => {
+        due = await this.needsPush(link);
+      });
+      if (checked && due) {
+        outcome.pushed = await attempt(async () => {
+          await this.pushSale(link.saleId);
+        });
       }
     }
-    return { pushed, polled, failed };
+    if (link.remoteStatus === "created" && canPush) {
+      await attempt(() => this.checkApproval(link));
+    }
+    if (link.remoteStatus === "published" || link.remoteStatus === "closed") {
+      outcome.polled = await attempt(() => this.pollSale(link.saleId));
+    }
+    return outcome;
+  }
+
+  private async needsPush(link: AtgAuctionLink): Promise<boolean> {
+    return (
+      !link.lastSyncedAt ||
+      Boolean(link.lastError) ||
+      (await this.store.hasCatalogueChangesSince(link.saleId, link.lastSyncedAt))
+    );
+  }
+
+  /**
+   * Mapping and precondition errors are shown to staff on the sale's ATG tab through
+   * `lastError`; they go to Sentry only when that message is new, not on every tick. Gateway and
+   * other errors always go.
+   */
+  private reportTickError(link: AtgAuctionLink, err: unknown): void {
+    const staffFixable = err instanceof AtgMappingError || err instanceof AtgSyncPreconditionError;
+    if (staffFixable && errorText(err) === link.lastError) return;
+    this.onTickError?.(link.saleId, err);
   }
 
   /** Who owns the sale's bidding right now; null when the sale no longer exists. */
@@ -341,7 +432,7 @@ export class AtgSyncService {
   private async upsertAuction(
     sale: AtgSaleSnapshot,
     link: AtgAuctionLink | null,
-  ): Promise<{ auctionId: string; created: boolean }> {
+  ): Promise<UpsertedAuction> {
     const fields = mapSaleToAuctionFields(sale, this.config);
     const hash = payloadHash(fields);
     if (!link?.atgAuctionId) {
@@ -385,12 +476,13 @@ export class AtgSyncService {
         remoteStatus: "created",
         payloadHash: hash,
       });
-      return { auctionId, created: true };
+      return { auctionId, created: true, fields, sent: true };
     }
-    if (link.payloadHash !== hash) {
+    const changed = link.payloadHash !== hash;
+    if (changed) {
       await this.gateway.updateAuction({ ...fields, AuctionId: link.atgAuctionId });
       await this.store.saveAuctionLink(sale.id, { payloadHash: hash });
     }
-    return { auctionId: link.atgAuctionId, created: false };
+    return { auctionId: link.atgAuctionId, created: false, fields, sent: changed };
   }
 }
