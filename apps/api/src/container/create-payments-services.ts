@@ -251,6 +251,11 @@ export function createPaymentsServices(
   const unappliedMoney = new UnappliedMoneyRecorder(unappliedMoneyReader, domainEventSink, {
     record: recordMoneyPathEvent,
   });
+  const checkoutSessionLifecycle = new CheckoutSessionLifecycle(
+    stripePaymentGateway,
+    checkoutSessions,
+    errorReporter,
+  );
   const paymentCaptureService = new PaymentCaptureService(
     platform.transactionRunner,
     paymentRepo,
@@ -270,6 +275,7 @@ export function createPaymentsServices(
     xeroPaymentRecorder,
     stripePaymentGateway,
     unappliedMoney,
+    checkoutSessionLifecycle,
   );
   const stripeCustomerGateway = new StripeCustomerGateway(
     env,
@@ -277,11 +283,6 @@ export function createPaymentsServices(
     stripeClientFactory,
   );
 
-  const checkoutSessionLifecycle = new CheckoutSessionLifecycle(
-    stripePaymentGateway,
-    checkoutSessions,
-    errorReporter,
-  );
   const stripeCheckoutService = stripePaymentGateway.isConfigured()
     ? new StripeCheckoutService([
         // The stable resolver keeps the hero image's URL the same all day, so repeating a Pay

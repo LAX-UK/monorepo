@@ -17,6 +17,7 @@ function makeCaptureService(deps: {
     recordStripeCapture: ReturnType<typeof vi.fn>;
     recordRefundCreditNote: ReturnType<typeof vi.fn>;
   } | null;
+  checkoutCleanup?: { closeAfterCapture: ReturnType<typeof vi.fn> } | null;
 }) {
   return new PaymentCaptureService(
     makeTxRunner(),
@@ -31,10 +32,51 @@ function makeCaptureService(deps: {
     null,
     deps.xeroPaymentRecorder ?? null,
     (deps.stripePayments ?? null) as never,
+    null,
+    (deps.checkoutCleanup ?? null) as never,
   );
 }
 
 describe("PaymentCaptureService", () => {
+  it("closes the invoice's other checkouts once it is captured, keeping the paying intent", async () => {
+    const closeAfterCapture = vi.fn().mockResolvedValue(undefined);
+    const row = {
+      id: "pay1",
+      lotId: "lot1",
+      paidByUserId: null,
+      amount: "100.00",
+      status: "pending",
+      stripeChargeId: "ch_1",
+      stripePaymentIntentId: null,
+      sellerLegalEntityId: "le_seller",
+    };
+    const svc = makeCaptureService({
+      payments: {
+        findById: vi.fn().mockResolvedValue(row),
+        applyCapturedInTransaction: vi.fn().mockResolvedValue(true),
+      },
+      checkoutCleanup: { closeAfterCapture },
+    });
+
+    await svc.capture({
+      paymentId: "pay1",
+      via: "stripe_checkout_webhook",
+      stripePaymentIntentId: "pi_1",
+    });
+
+    expect(closeAfterCapture).toHaveBeenCalledExactlyOnceWith("pay1", "pi_1");
+  });
+
+  it("does not clean up when nothing was captured", async () => {
+    const closeAfterCapture = vi.fn();
+    const svc = makeCaptureService({
+      payments: { findById: vi.fn().mockResolvedValue({ id: "pay1", status: "captured" }) },
+      checkoutCleanup: { closeAfterCapture },
+    });
+    await svc.capture({ paymentId: "pay1", via: "admin_manual" });
+    expect(closeAfterCapture).not.toHaveBeenCalled();
+  });
+
   it("publishes payment.captured and invokes fulfilment hooks", async () => {
     const applyCapturedInTransaction = vi.fn().mockResolvedValue(true);
     const publish = vi.fn().mockResolvedValue(undefined);
