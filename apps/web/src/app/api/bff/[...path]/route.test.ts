@@ -37,11 +37,14 @@ vi.mock("@/lib/data/http/bid-api.server", () => ({
   fetchBidApi: mocks.fetchBidApi,
 }));
 
-const { GET } = await import("./route");
+const { GET, PATCH } = await import("./route");
 
 function request() {
   return new NextRequest("https://lax.bid/api/bff/users/me?include=bids");
 }
+
+const keyUnknown = () =>
+  Response.json({ error: "Unauthorized", code: "token_key_unknown" }, { status: 401 });
 
 const context = { params: Promise.resolve({ path: ["users", "me"] }) };
 
@@ -116,12 +119,12 @@ describe("Bid BFF proxy route", () => {
     await expect(response.text()).resolves.toBe("streamed");
   });
 
-  it("force-exchanges once and retries when the Bid API rejects the cached token", async () => {
+  it("force-exchanges once and retries when the Bid API reports an unknown signing key", async () => {
     mocks.resourceToken
       .mockResolvedValueOnce({ token: "cached-token", session: { kind: "authenticated" } })
       .mockResolvedValueOnce({ token: "fresh-token", session: { kind: "authenticated" } });
     mocks.fetchBidApi
-      .mockResolvedValueOnce(new Response(null, { status: 401 }))
+      .mockResolvedValueOnce(keyUnknown())
       .mockResolvedValueOnce(Response.json({ ok: true }));
 
     const response = await GET(request(), context);
@@ -146,10 +149,41 @@ describe("Bid BFF proxy route", () => {
   });
 
   it.each([
+    ["a bare 401", () => new Response(null, { status: 401 })],
+    [
+      "session_required",
+      () => Response.json({ error: "Unauthorized", code: "session_required" }, { status: 401 }),
+    ],
+  ])("does not exchange or retry on %s", async (_name, makeResponse) => {
+    mocks.fetchBidApi.mockResolvedValueOnce(makeResponse());
+
+    const response = await GET(request(), context);
+
+    expect(response.status).toBe(401);
+    expect(mocks.resourceToken).toHaveBeenCalledOnce();
+    expect(mocks.fetchBidApi).toHaveBeenCalledOnce();
+  });
+
+  it("retries a mutation once on the unknown-key signal and never loops", async () => {
+    mocks.fetchBidApi.mockImplementation(async () => keyUnknown());
+    const post = new NextRequest("https://lax.bid/api/bff/users/me", {
+      method: "PATCH",
+      headers: { origin: "https://lax.bid", "content-type": "application/json" },
+      body: JSON.stringify({ a: 1 }),
+    });
+
+    const response = await PATCH(post, context);
+
+    expect(response.status).toBe(401);
+    expect(mocks.resourceToken).toHaveBeenCalledTimes(2);
+    expect(mocks.fetchBidApi).toHaveBeenCalledTimes(2);
+  });
+
+  it.each([
     [new mocks.BidBffSessionRequiredError(), 401, "session_required"],
     [new Error("refresh lock unavailable"), 503, "identity_unavailable"],
   ])("maps force-exchange failure to %i", async (error, status, code) => {
-    mocks.fetchBidApi.mockResolvedValueOnce(new Response(null, { status: 401 }));
+    mocks.fetchBidApi.mockResolvedValueOnce(keyUnknown());
     mocks.resourceToken
       .mockResolvedValueOnce({ token: "cached-token", session: { kind: "authenticated" } })
       .mockRejectedValueOnce(error);

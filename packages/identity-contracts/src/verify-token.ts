@@ -45,8 +45,11 @@ export async function verifyIdentityToken(options: {
   }
 }
 
+/** Where the key that signed a token stands in the issuer's published key set. */
+export type SigningKeyStatus = "current" | "retired" | "malformed";
+
 /**
- * Whether the key that signed `token` is still published by the issuer.
+ * Where the key that signed `token` stands in the issuer's published key set.
  *
  * An unknown `kid` makes the key set refetch (rate-limited), so a freshly rotated key is picked
  * up and a retired one is detected. A key counts as retired only when the key set was fetched
@@ -55,10 +58,10 @@ export async function verifyIdentityToken(options: {
  * resource server still verifies every request. The same goes for an unreachable key set:
  * issuer availability must not invalidate otherwise healthy tokens.
  */
-export async function isSigningKeyCurrent(options: {
+export async function signingKeyStatus(options: {
   token: string;
   jwksUrl: string;
-}): Promise<boolean> {
+}): Promise<SigningKeyStatus> {
   let header: ReturnType<typeof decodeProtectedHeader>;
   let issuedAtMs: number | null;
   try {
@@ -66,17 +69,27 @@ export async function isSigningKeyCurrent(options: {
     const iat = decodeJwt(options.token).iat;
     issuedAtMs = typeof iat === "number" ? iat * 1000 : null;
   } catch {
-    return false;
+    return "malformed";
   }
-  if (!header.kid || header.alg !== "RS256") return false;
+  if (!header.kid || header.alg !== "RS256") return "malformed";
   const holder = jwksHolderFor(options.jwksUrl);
   try {
     await holder.getKey({ alg: "RS256", kid: header.kid });
-    return true;
+    return "current";
   } catch (error) {
-    if (!(error instanceof errors.JWKSNoMatchingKey)) return true;
-    if (holder.hasSeen(header.kid)) return false;
+    if (!(error instanceof errors.JWKSNoMatchingKey)) return "current";
+    if (holder.hasSeen(header.kid)) return "retired";
     const fetchedAt = holder.fetchedAt();
-    return !(fetchedAt !== null && issuedAtMs !== null && fetchedAt > issuedAtMs + IAT_MARGIN_MS);
+    return fetchedAt !== null && issuedAtMs !== null && fetchedAt > issuedAtMs + IAT_MARGIN_MS
+      ? "retired"
+      : "current";
   }
+}
+
+/** Whether the key that signed `token` is still published by the issuer (see {@link signingKeyStatus}). */
+export async function isSigningKeyCurrent(options: {
+  token: string;
+  jwksUrl: string;
+}): Promise<boolean> {
+  return (await signingKeyStatus(options)) === "current";
 }

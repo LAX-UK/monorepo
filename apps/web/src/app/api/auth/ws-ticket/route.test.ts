@@ -74,6 +74,63 @@ describe("Bid BFF WS ticket reservation", () => {
     expect(await response.json()).toEqual({ error: "session_required" });
   });
 
+  it("evicts the stale API token on an unknown signing key and issues the ticket with a fresh one", async () => {
+    resourceToken.mockReset();
+    resourceToken
+      .mockResolvedValueOnce({ token: "stale-api", session: { subject: "user-1", sid: "sid-1" } })
+      .mockResolvedValueOnce({ token: "ws-resource", session: { subject: "user-1", sid: "sid-1" } })
+      .mockResolvedValueOnce({ token: "fresh-api", session: { subject: "user-1", sid: "sid-1" } });
+    fetchBidApi.mockReset();
+    fetchBidApi
+      .mockResolvedValueOnce(
+        Response.json({ error: "Unauthorized", code: "token_key_unknown" }, { status: 401 }),
+      )
+      .mockResolvedValueOnce(Response.json({ data: { id: "user-1", role: "client" } }));
+    redisSet.mockResolvedValue("OK");
+
+    const response = await POST(request());
+
+    expect(response.status).toBe(200);
+    expect(resourceToken).toHaveBeenNthCalledWith(
+      3,
+      "bff-session-1",
+      "lax-bid-api",
+      "bid.read",
+      true,
+    );
+    expect(fetchBidApi).toHaveBeenCalledTimes(2);
+    const retryHeaders = (fetchBidApi.mock.calls[1]?.[1] as RequestInit).headers as Record<
+      string,
+      string
+    >;
+    expect(retryHeaders.authorization).toBe("Bearer fresh-api");
+    const stored = JSON.parse(redisSet.mock.calls[0]?.[1] as string) as {
+      apiResourceToken: string;
+    };
+    expect(stored.apiResourceToken).toBe("fresh-api");
+  });
+
+  it("retries only once when the fresh token is also rejected for its key", async () => {
+    fetchBidApi.mockReset();
+    fetchBidApi.mockImplementation(async () =>
+      Response.json({ error: "Unauthorized", code: "token_key_unknown" }, { status: 401 }),
+    );
+    resourceToken.mockResolvedValue({ token: "t", session: { subject: "user-1", sid: "sid-1" } });
+    const response = await POST(request());
+    expect(response.status).toBe(401);
+    expect(fetchBidApi).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not exchange again on a plain 401", async () => {
+    fetchBidApi.mockResolvedValue(
+      Response.json({ error: "Unauthorized", code: "session_required" }, { status: 401 }),
+    );
+    const response = await POST(request());
+    expect(response.status).toBe(401);
+    expect(fetchBidApi).toHaveBeenCalledOnce();
+    expect(resourceToken).toHaveBeenCalledTimes(2);
+  });
+
   it("returns 401 when the session belongs to a different subject", async () => {
     fetchBidApi.mockResolvedValue(
       new Response(JSON.stringify({ data: { id: "user-2", role: "user" } }), { status: 200 }),

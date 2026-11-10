@@ -1,6 +1,10 @@
-import { verifyBearerToken } from "@auction/auth/token-verifier";
+import { bearerSigningKeyStatus, verifyBearerToken } from "@auction/auth/token-verifier";
 import { normalizeUserRoleOrClient, normalizeUserStaffRole } from "@auction/types";
-import type { AuthenticatedUser, IAuthenticator } from "../services/interfaces/authenticator.js";
+import type {
+  AuthRejectionReason,
+  AuthenticatedUser,
+  IAuthenticator,
+} from "../services/interfaces/authenticator.js";
 
 export type JwtAuthenticatorOptions = {
   issuer: string;
@@ -47,5 +51,17 @@ export class JwtAuthenticator implements IAuthenticator {
         ? { identitySessionId: verified.payload.sid }
         : {}),
     };
+  }
+
+  async diagnoseRejection(headers: Headers): Promise<AuthRejectionReason | null> {
+    try {
+      const status = await bearerSigningKeyStatus({
+        authorization: headers.get("authorization"),
+        jwksUrl: this.opts.jwksUrl,
+      });
+      return status === "retired" ? "token_key_unknown" : null;
+    } catch {
+      return null;
+    }
   }
 }

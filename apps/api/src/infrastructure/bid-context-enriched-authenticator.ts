@@ -1,4 +1,8 @@
-import type { AuthenticatedUser, IAuthenticator } from "../services/interfaces/authenticator.js";
+import type {
+  AuthRejectionReason,
+  AuthenticatedUser,
+  IAuthenticator,
+} from "../services/interfaces/authenticator.js";
 import type { IBidUserContextLoader } from "../services/interfaces/bid-user-context.js";
 
 /** Resolves Identity subject only (cookie/JWT) without product authorization. */
@@ -6,10 +10,15 @@ export interface IIdentityAuthenticator {
   getIdentityPrincipal(
     headers: Headers,
   ): Promise<{ id: string; identitySessionId?: string; scopes: readonly string[] } | null>;
+  diagnoseRejection?(headers: Headers): Promise<AuthRejectionReason | null>;
 }
 
 export class IdentityPrincipalAuthenticator implements IIdentityAuthenticator {
   constructor(private readonly inner: IAuthenticator) {}
+
+  async diagnoseRejection(headers: Headers): Promise<AuthRejectionReason | null> {
+    return (await this.inner.diagnoseRejection?.(headers)) ?? null;
+  }
 
   async getIdentityPrincipal(
     headers: Headers,
@@ -33,6 +42,10 @@ export class BidContextEnrichedAuthenticator implements IAuthenticator {
     private readonly identity: IIdentityAuthenticator,
     private readonly bidContext: IBidUserContextLoader,
   ) {}
+
+  async diagnoseRejection(headers: Headers): Promise<AuthRejectionReason | null> {
+    return (await this.identity.diagnoseRejection?.(headers)) ?? null;
+  }
 
   async getSessionUser(headers: Headers): Promise<AuthenticatedUser | null> {
     const principal = await this.identity.getIdentityPrincipal(headers);

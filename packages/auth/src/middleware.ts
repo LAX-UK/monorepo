@@ -1,5 +1,7 @@
 import {
+  type SigningKeyStatus,
   type VerifiedIdentityToken,
+  signingKeyStatus,
   verifyIdentityToken,
 } from "@auction/identity-contracts/verify";
 
@@ -20,5 +22,21 @@ export async function verifyBearerToken(options: {
     jwksUrl: options.jwksUrl,
     issuer: options.issuer,
     ...(options.audience === undefined ? {} : { audience: options.audience }),
+  });
+}
+
+/**
+ * Where the key that signed the Bearer JWT stands in the issuer's key set, or `null` when there
+ * is no Bearer token. Used only to tell a rotated-out signing key apart from other rejections.
+ */
+export async function bearerSigningKeyStatus(options: {
+  authorization: string | null | undefined;
+  jwksUrl: string;
+}): Promise<SigningKeyStatus | null> {
+  const header = options.authorization;
+  if (!header?.startsWith("Bearer ")) return null;
+  return signingKeyStatus({
+    token: header.slice("Bearer ".length).trim(),
+    jwksUrl: options.jwksUrl,
   });
 }

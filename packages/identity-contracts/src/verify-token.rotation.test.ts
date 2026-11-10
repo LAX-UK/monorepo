@@ -1,6 +1,6 @@
 import { SignJWT, exportJWK, generateKeyPair } from "jose";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { isSigningKeyCurrent, verifyIdentityToken } from "./verify-token.js";
+import { isSigningKeyCurrent, signingKeyStatus, verifyIdentityToken } from "./verify-token.js";
 
 const ISSUER = "https://auth.test";
 const COOLDOWN_MS = 30_000;
@@ -274,5 +274,17 @@ describe("isSigningKeyCurrent", () => {
       vi.fn(async () => new Response("down", { status: 503 })),
     );
     expect(await isSigningKeyCurrent({ token, jwksUrl })).toBe(true);
+  });
+});
+
+describe("signingKeyStatus", () => {
+  it("separates a retired key from a current key and from a malformed token", async () => {
+    const retired = await newKey("retired");
+    const active = await newKey("active");
+    published = [active];
+    const retiredToken = await sign(retired, new Date(START.getTime() - 60_000));
+    expect(await signingKeyStatus({ token: await sign(active), jwksUrl })).toBe("current");
+    expect(await signingKeyStatus({ token: retiredToken, jwksUrl })).toBe("retired");
+    expect(await signingKeyStatus({ token: "not-a-jwt", jwksUrl })).toBe("malformed");
   });
 });

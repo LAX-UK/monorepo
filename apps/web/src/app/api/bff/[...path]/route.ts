@@ -8,6 +8,7 @@ import {
   scopesForProxyMethod,
 } from "@/lib/bff/proxy-policy";
 import { readBidSessionId } from "@/lib/bff/session-cookie.server";
+import { TokenRefreshFailedError, sendWithKeyRetry } from "@/lib/bff/token-key-retry.server";
 import { BidBffSessionRequiredError, BidBffTokenService } from "@/lib/bff/token-service.server";
 import { fetchBidApi } from "@/lib/data/http/bid-api.server";
 import { resolveVisitorIp } from "@/lib/http/visitor-ip";
@@ -73,24 +74,23 @@ async function proxy(request: NextRequest, context: RouteContext): Promise<Respo
       cache: "no-store",
     });
   try {
-    let upstream = await perform(resource?.token);
-    if (upstream.status === 401 && sessionId && resource) {
-      try {
-        resource = await tokens.resourceToken(sessionId, BID_API_AUDIENCE, requiredScopes, true);
-      } catch (error) {
-        if (error instanceof BidBffSessionRequiredError) {
-          return NextResponse.json({ error: "session_required" }, { status: 401 });
-        }
-        return NextResponse.json({ error: "identity_unavailable" }, { status: 503 });
-      }
-      upstream = await perform(resource.token);
-    }
+    const { response: upstream } = await sendWithKeyRetry({
+      resource,
+      refresh: () =>
+        tokens.resourceToken(sessionId as string, BID_API_AUDIENCE, requiredScopes, true),
+      send: perform,
+    });
     return new Response(upstream.body, {
       status: upstream.status,
       statusText: upstream.statusText,
       headers: sanitizedProxyResponseHeaders(upstream.headers),
     });
-  } catch {
+  } catch (error) {
+    if (error instanceof TokenRefreshFailedError) {
+      return error.cause instanceof BidBffSessionRequiredError
+        ? NextResponse.json({ error: "session_required" }, { status: 401 })
+        : NextResponse.json({ error: "identity_unavailable" }, { status: 503 });
+    }
     return NextResponse.json({ error: "api_unavailable" }, { status: 502 });
   }
 }

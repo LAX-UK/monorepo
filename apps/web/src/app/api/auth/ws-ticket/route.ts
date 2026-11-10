@@ -2,6 +2,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { BID_API_AUDIENCE, WS_AUDIENCE, bffConfig } from "@/lib/bff/config.server";
 import { ensureBffRedisConnected, getBffRedis } from "@/lib/bff/redis.server";
 import { readBidSessionId } from "@/lib/bff/session-cookie.server";
+import { TokenRefreshFailedError, sendWithKeyRetry } from "@/lib/bff/token-key-retry.server";
 import { BidBffSessionRequiredError, BidBffTokenService } from "@/lib/bff/token-service.server";
 import { fetchBidApi } from "@/lib/data/http/bid-api.server";
 import { parseSessionUser } from "@/lib/data/http/parse/session.parse";
@@ -36,13 +37,21 @@ export async function POST(request: NextRequest) {
   if (!sessionId) return SESSION_REQUIRED();
   try {
     const tokens = new BidBffTokenService();
-    const apiResource = await tokens.resourceToken(sessionId, BID_API_AUDIENCE, "bid.read");
+    const initialApiResource = await tokens.resourceToken(sessionId, BID_API_AUDIENCE, "bid.read");
     const wsResource = await tokens.resourceToken(sessionId, WS_AUDIENCE, "bid.read");
-    const meResponse = await fetchBidApi(`${bffConfig().apiBaseUrl}/users/me`, {
-      headers: { authorization: `Bearer ${apiResource.token}`, accept: "application/json" },
-      cache: "no-store",
-      signal: AbortSignal.timeout(API_TIMEOUT_MS),
+    // A rotated-out signing key replaces the cached token once; the ticket carries the token
+    // that was accepted, never the stale one.
+    const { response: meResponse, resource: sentWith } = await sendWithKeyRetry({
+      resource: initialApiResource,
+      refresh: () => tokens.resourceToken(sessionId, BID_API_AUDIENCE, "bid.read", true),
+      send: (token) =>
+        fetchBidApi(`${bffConfig().apiBaseUrl}/users/me`, {
+          headers: { authorization: `Bearer ${token}`, accept: "application/json" },
+          cache: "no-store",
+          signal: AbortSignal.timeout(API_TIMEOUT_MS),
+        }),
     });
+    const apiResource = sentWith ?? initialApiResource;
     if (meResponse.status === 401 || meResponse.status === 403) return SESSION_REQUIRED();
     if (!meResponse.ok) return ticketUnavailable(new Error(`API status ${meResponse.status}`));
     const me = (await meResponse.json()) as {
@@ -76,6 +85,11 @@ export async function POST(request: NextRequest) {
     );
   } catch (error) {
     if (error instanceof BidBffSessionRequiredError) return SESSION_REQUIRED();
+    if (error instanceof TokenRefreshFailedError) {
+      return error.cause instanceof BidBffSessionRequiredError
+        ? SESSION_REQUIRED()
+        : ticketUnavailable(error.cause);
+    }
     return ticketUnavailable(error);
   }
 }

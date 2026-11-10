@@ -25,7 +25,9 @@ export function createRequireAuth(authenticator: IAuthenticator, opts?: RequireA
   }>(async (c, next) => {
     const user = await authenticator.getSessionUser(c.req.raw.headers);
     if (!user) {
-      return c.json({ error: "Unauthorized", code: "session_required" }, 401);
+      // Only an unknown signing key gets its own code; every other failure stays `session_required`.
+      const reason = await authenticator.diagnoseRejection?.(c.req.raw.headers).catch(() => null);
+      return c.json({ error: "Unauthorized", code: reason ?? "session_required" }, 401);
     }
     const granted = user.scopes ?? [];
     if (opts?.acceptedScopes) {
