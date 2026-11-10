@@ -118,15 +118,20 @@ const COVERED_ELSEWHERE: Record<string, string> = {
  * rightly cannot run them. Everything not listed here must be allowed.
  */
 const API_ONLY_METHODS: Record<string, readonly string[]> = {
-  DrizzleItemSubmissionRepository: ["findByIdForUpdate", "update"],
+  DrizzleItemSubmissionRepository: ["findByIdForUpdate", "update", "create"],
   DrizzlePaymentRepository: ["isVoidedByBuyerDefault"],
+  DrizzleUnsoldLotFollowUpRepository: ["completeByStaff", "settleOnReturn"],
+  DrizzleLotRepository: ["create", "update"],
+  DrizzleSaleRepository: ["create", "update"],
 };
 
 type Call = { method: string; parameters: string[] };
 
 const COUNT_PARAMS =
   /^(limit|offset|batchSize|count|size|take|page|pageSize|attempts|hours|days|minutes|\w*Ms|max\w*|min\w*)$/i;
-const DATE_PARAMS = /(date|at|since|before|after|cutoff|now|from|to|until|deadline|start|end)$/i;
+const DATE_PARAMS =
+  /(date|at|since|before|after|cutoff|now|from|to|until|deadline|start|end|asOf|endAfter|endBeforeInclusive)$/i;
+const OBJECT_PARAMS = /(filter|input|patch|query|options|opts|payload|params)$/i;
 const LIST_PARAMS = /(ids|list|keys|emails|hashes|values)$/i;
 const CONNECTION_PARAMS = /^(tx|db|conn|connection)$/;
 
@@ -144,7 +149,7 @@ function parameterNames(fn: (...args: never[]) => unknown): string[] {
 
 function guessArgument(parameter: string, connection: WorkerDb): unknown {
   const name = parameter.split(/[=:]/)[0]?.trim() ?? "";
-  if (name.startsWith("{")) return {};
+  if (name.startsWith("{") || OBJECT_PARAMS.test(name)) return {};
   if (CONNECTION_PARAMS.test(name)) return connection;
   if (COUNT_PARAMS.test(name)) return 1;
   if (LIST_PARAMS.test(name)) return [NIL];
@@ -245,6 +250,7 @@ const ARGUMENTS: Record<string, (tx: WorkerDb) => unknown[]> = {
     null,
     1,
   ],
+  "DrizzleZohoListingLock.withLock": () => [[NIL], async () => undefined],
   "DrizzleUnsoldChoiceDeadlineStore.keep": () => [[{ ...outcomeKey, chooseBy: today }]],
   "DrizzleUnsoldChoiceDeadlineStore.kept": () => [[outcomeKey]],
   "DrizzleUnsoldLotFollowUpRepository.findForOutcome": () => [outcomeKey],
