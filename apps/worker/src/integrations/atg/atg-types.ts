@@ -1,10 +1,21 @@
 import type { AtgSaleSettings, BuyerPremiumTier, SaleStatus } from "@auction/types";
 import type { AtgAuctionFees } from "./atg-fees.js";
 
+/** An address as ATG shows it to bidders. */
+export type AtgVenue = {
+  addressLine1: string;
+  addressLine2: string | null;
+  city: string;
+  postcode: string;
+  country: string;
+};
+
 /** Business settings for the mapping; transport settings live with the adapter. */
 export type AtgSyncConfig = {
   /** ATG's own charges on top of the hammer; they may differ from LAX's. */
   fees: AtgAuctionFees;
+  /** LAX's own address, sent for a sale without a venue (online sales). */
+  houseVenue: AtgVenue;
   platformCode: string;
   clientId: string | null;
   incrementSetId: string;
