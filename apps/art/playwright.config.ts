@@ -4,6 +4,8 @@ const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3050";
 
 export default defineConfig({
   testDir: "./e2e",
+  // Warms the cold catalogue routes once so no spec pays first-hit cost inside its 30 s budget.
+  globalSetup: "./e2e/global-setup.ts",
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,

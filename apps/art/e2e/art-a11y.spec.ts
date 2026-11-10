@@ -48,7 +48,9 @@ test.describe("lax.art accessibility @a11y", () => {
         Boolean(route.editorial) && process.env.ART_EDITORIAL_ENABLED !== "true",
         "editorial pages need ART_EDITORIAL_ENABLED=true",
       );
-      const response = await page.goto(route.path);
+      // DOM-ready is enough: the heading assertion below waits for content, whereas `load` also
+      // waits on every preloaded optimised image.
+      const response = await page.goto(route.path, { waitUntil: "domcontentloaded" });
       expect(response?.ok()).toBeTruthy();
       await expect(page.getByRole("heading", { level: 1 })).toContainText(route.heading);
       await expectNoBlockingViolations(page);
