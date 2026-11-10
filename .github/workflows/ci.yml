@@ -879,6 +879,16 @@ jobs:
       - name: Shop app role contract
         run: pnpm --filter @auction/db test:shop-role-contract
 
+      # Runs the Bid API's webhook handlers as api_app, so a missing grant on the event claims
+      # fails here and not as `permission denied` in production.
+      - name: Build API dependencies
+        run: pnpm turbo run build --filter=@auction/api^...
+
+      - name: Bid API webhook handlers as api_app
+        run: pnpm --filter @auction/api exec vitest run --maxWorkers=2 src/test/webhook-duplicate-delivery/webhook-duplicate-delivery.integration.test.ts
+        env:
+          DATABASE_URL: ${{ env.DATABASE_URL_API }}
+
   build:
     needs: build-packages
     runs-on: ubuntu-latest
