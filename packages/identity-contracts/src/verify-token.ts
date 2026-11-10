@@ -1,4 +1,9 @@
 import { type JWTPayload, decodeJwt, decodeProtectedHeader, errors, jwtVerify } from "jose";
+import {
+  TOKEN_EXPIRED_CODE,
+  TOKEN_KEY_UNKNOWN_CODE,
+  type TokenReplaceableCode,
+} from "./auth-rejection.js";
 import { DEFAULT_JWT_AUDIENCE } from "./claims.js";
 import { jwksFor, jwksHolderFor } from "./jwks-holder.js";
 
@@ -20,6 +25,8 @@ export async function verifyIdentityToken(options: {
   issuer: string;
   /** Defaults to {@link DEFAULT_JWT_AUDIENCE}. */
   audience?: string | string[] | undefined;
+  /** Seconds of clock slack allowed on `exp` and `nbf`. Defaults to none. */
+  clockToleranceSeconds?: number | undefined;
 }): Promise<VerifiedIdentityToken | null> {
   const token = options.token.trim();
   if (!token) return null;
@@ -30,6 +37,7 @@ export async function verifyIdentityToken(options: {
       issuer: options.issuer,
       audience,
       algorithms: ["RS256"],
+      ...(options.clockToleranceSeconds ? { clockTolerance: options.clockToleranceSeconds } : {}),
     });
     if (!result.payload.sub) return null;
     if (
@@ -92,4 +100,59 @@ export async function isSigningKeyCurrent(options: {
   jwksUrl: string;
 }): Promise<boolean> {
   return (await signingKeyStatus(options)) === "current";
+}
+
+/**
+ * Whether `token` is genuine but past its `exp`: signature, issuer and audience all verify as of
+ * the moment just before it expired. Anything else (bad signature, wrong audience, unknown key,
+ * unreadable) is `false`, so only an honest expiry is ever reported.
+ */
+export async function isExpiredWithValidSignature(options: {
+  token: string;
+  jwksUrl: string;
+  issuer: string;
+  audience: string | string[];
+  clockToleranceSeconds?: number | undefined;
+}): Promise<boolean> {
+  let exp: unknown;
+  try {
+    exp = decodeJwt(options.token).exp;
+  } catch {
+    return false;
+  }
+  if (typeof exp !== "number") return false;
+  const toleranceMs = (options.clockToleranceSeconds ?? 0) * 1000;
+  if (exp * 1000 + toleranceMs > Date.now()) return false;
+  try {
+    await jwtVerify(options.token, jwksFor(options.jwksUrl), {
+      issuer: options.issuer,
+      audience: options.audience,
+      algorithms: ["RS256"],
+      currentDate: new Date((exp - 1) * 1000),
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Why a Bearer token that did not verify was rejected, when a fresh token would fix it: the
+ * signing key was rotated out, or the token has expired. `null` for everything else, so those
+ * failures stay indistinguishable from each other. An unreachable key set is not a rotation
+ * ({@link signingKeyStatus} keeps such tokens), so an issuer outage yields `null` and no retry.
+ */
+export async function diagnoseTokenRejection(options: {
+  token: string;
+  jwksUrl: string;
+  issuer: string;
+  audience: string | string[];
+  clockToleranceSeconds?: number | undefined;
+}): Promise<TokenReplaceableCode | null> {
+  const status = await signingKeyStatus(options);
+  if (status === "retired") return TOKEN_KEY_UNKNOWN_CODE;
+  if (status === "current" && (await isExpiredWithValidSignature(options))) {
+    return TOKEN_EXPIRED_CODE;
+  }
+  return null;
 }

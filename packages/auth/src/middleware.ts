@@ -1,7 +1,7 @@
+import type { TokenReplaceableCode } from "@auction/identity-contracts";
 import {
-  type SigningKeyStatus,
   type VerifiedIdentityToken,
-  signingKeyStatus,
+  diagnoseTokenRejection,
   verifyIdentityToken,
 } from "@auction/identity-contracts/verify";
 
@@ -14,6 +14,8 @@ export async function verifyBearerToken(options: {
   issuer: string;
   /** Required — defaults to {@link DEFAULT_JWT_AUDIENCE}. */
   audience?: string | string[] | undefined;
+  /** Seconds of clock slack allowed on `exp` and `nbf`. Defaults to none. */
+  clockToleranceSeconds?: number | undefined;
 }): Promise<VerifiedToken | null> {
   const header = options.authorization;
   if (!header?.startsWith("Bearer ")) return null;
@@ -22,21 +24,32 @@ export async function verifyBearerToken(options: {
     jwksUrl: options.jwksUrl,
     issuer: options.issuer,
     ...(options.audience === undefined ? {} : { audience: options.audience }),
+    ...(options.clockToleranceSeconds === undefined
+      ? {}
+      : { clockToleranceSeconds: options.clockToleranceSeconds }),
   });
 }
 
 /**
- * Where the key that signed the Bearer JWT stands in the issuer's key set, or `null` when there
- * is no Bearer token. Used only to tell a rotated-out signing key apart from other rejections.
+ * Why a Bearer JWT that did not verify was rejected, when a fresh token would fix it (signing key
+ * rotated out, or expired), or `null` for every other failure and when there is no Bearer token.
  */
-export async function bearerSigningKeyStatus(options: {
+export async function bearerRejectionCode(options: {
   authorization: string | null | undefined;
   jwksUrl: string;
-}): Promise<SigningKeyStatus | null> {
+  issuer: string;
+  audience: string | string[];
+  clockToleranceSeconds?: number | undefined;
+}): Promise<TokenReplaceableCode | null> {
   const header = options.authorization;
   if (!header?.startsWith("Bearer ")) return null;
-  return signingKeyStatus({
+  return diagnoseTokenRejection({
     token: header.slice("Bearer ".length).trim(),
     jwksUrl: options.jwksUrl,
+    issuer: options.issuer,
+    audience: options.audience,
+    ...(options.clockToleranceSeconds === undefined
+      ? {}
+      : { clockToleranceSeconds: options.clockToleranceSeconds }),
   });
 }
