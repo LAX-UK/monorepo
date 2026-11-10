@@ -14,6 +14,7 @@ import {
   payoutsMetrics,
   payoutsRangeSummary,
   payoutsViews,
+  poundsToPence,
   toPayoutsStaffRows,
 } from "./payouts-staff-list.vm";
 
@@ -89,6 +90,16 @@ describe("payouts staff list view model", () => {
     expect(formatPayoutAmount("4499.5")).toBe("£4,499.50");
     expect(formatPayoutAmount("-25")).toBe("−£25.00");
     expect(formatPayoutAmount("not money")).toBe("not money");
+  });
+
+  it.each(["1,2,0,0", "12.345", "--5", "", "-"])("reads %j as no amount", (text) => {
+    expect(poundsToPence(text)).toBeNull();
+  });
+
+  it("reads signed pounds, with thousands commas, as pence", () => {
+    expect(poundsToPence("1,200.50")).toBe(120050);
+    expect(poundsToPence("-25")).toBe(-2500);
+    expect(poundsToPence("£5")).toBe(500);
   });
 
   it("turns rows into plain data with the seller's name and the steps open to the payout", () => {

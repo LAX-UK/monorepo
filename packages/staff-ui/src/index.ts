@@ -128,7 +128,6 @@ export {
   formatStaffCalendarDay,
   formatStaffDay,
   isoToLondonWallTime,
-  isoToWallTime,
   londonWallTimeToIso,
   nextExistingWallTime,
   wallTimeToIso,

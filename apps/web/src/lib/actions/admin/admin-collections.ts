@@ -3,13 +3,13 @@
 import { COLLECTIONS_PATH } from "@/lib/admin/collections/collections.vm";
 import { denyUnlessAdminCapability } from "@/lib/auth/assert-admin-action-capability";
 import { isStaffStepUpResponse } from "@/lib/auth/step-up/staff-step-up.server";
+import { stepUpRequiredFailure } from "@/lib/auth/step-up/step-up-failure";
 import { collectionChangeSchema } from "@/lib/data/http/admin-collections.reader";
 import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
 import { readDataEnvelope, readJsonBody } from "@/lib/data/http/envelope";
 import { type ActionResult, actionFailure, actionSuccess } from "@/lib/forms/form-result";
 import { COLLECTIONS_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { instrumentServerAction } from "@/lib/observability/instrument-server-action";
-import { STAFF_STEP_UP_REQUIRED } from "@auction/identity-contracts/staff-step-up";
 import type { StaffAffectedBooking, StaffCollectionChangeResult } from "@auction/types";
 import {
   addCollectionExceptionBodySchema,
@@ -50,7 +50,7 @@ async function send(
     }).catch(() => null);
     if (!res) return actionFailure(UNAVAILABLE, undefined, 503);
     if (await isStaffStepUpResponse(res)) {
-      return actionFailure("Recent sign-in required", undefined, 403, STAFF_STEP_UP_REQUIRED);
+      return stepUpRequiredFailure();
     }
     if (!res.ok) {
       const refusal = (await res.json().catch(() => ({}))) as Refusal;

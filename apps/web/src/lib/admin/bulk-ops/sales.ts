@@ -5,6 +5,7 @@ import {
   adminCancelSaleResultAction,
   adminPublishSaleResultAction,
 } from "@/lib/admin/catalog-lifecycle/admin-catalog-lifecycle-mutations";
+import { stepUpRequiredFailure } from "@/lib/auth/step-up/step-up-failure";
 import { actionFailure, actionSuccess } from "@/lib/forms/form-result";
 import { STAFF_STEP_UP_REQUIRED } from "@auction/identity-contracts/staff-step-up";
 import type { SaleStatus } from "@auction/types";
@@ -45,7 +46,7 @@ async function runSequential(
       // A stale sign-in stops the run: every later item would be refused the same way.
       const errorCode = (result as { errorCode?: string }).errorCode;
       if (errorCode === STAFF_STEP_UP_REQUIRED) {
-        return actionFailure("Recent sign-in required", undefined, 403, STAFF_STEP_UP_REQUIRED);
+        return stepUpRequiredFailure();
       }
       failures.push(id);
     }

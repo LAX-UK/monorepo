@@ -18,18 +18,18 @@ export const PAYOUTS_LIST_PATH = "/admin/payouts";
 
 export type PayoutsListSearch = Record<string, string | string[] | undefined>;
 
-/** "£4,140.00" from the API's pounds string; the raw text when it is not a plain amount. */
-export function formatPayoutAmount(amount: string, currency = "GBP"): string {
-  const parsed = parsePoundsToPence(amount.startsWith("-") ? amount.slice(1) : amount);
-  if (!parsed.ok) return amount;
-  return formatStaffMoney(amount.startsWith("-") ? -parsed.pence : parsed.pence, currency);
-}
-
-function poundsToPence(amount: string): number | null {
+/** Signed pence from the API's pounds string; null when it is not a plain amount. */
+export function poundsToPence(amount: string): number | null {
   const negative = amount.startsWith("-");
   const parsed = parsePoundsToPence(negative ? amount.slice(1) : amount);
   if (!parsed.ok) return null;
   return negative ? -parsed.pence : parsed.pence;
+}
+
+/** "£4,140.00" from the API's pounds string; the raw text when it is not a plain amount. */
+export function formatPayoutAmount(amount: string, currency = "GBP"): string {
+  const pence = poundsToPence(amount);
+  return pence === null ? amount : formatStaffMoney(pence, currency);
 }
 
 /** One payout as the staff list shows it; plain data, so it crosses to the client as is. */
@@ -238,14 +238,14 @@ export function payoutsAttention(
 /** The summary over the payouts that match the current view and filters. */
 export function payoutsMetrics(summary: AdminPayoutListSummary): Metric[] {
   const count = new Intl.NumberFormat("en-GB");
-  const net = Number.parseFloat(summary.totalNet);
+  const netPence = poundsToPence(summary.totalNet) ?? 0;
   return [
     { id: "scheduled", label: "Scheduled", value: count.format(summary.scheduled) },
     { id: "in-transit", label: "In transit", value: count.format(summary.inTransit) },
     {
       id: "net",
       label: "Net payable",
-      value: formatStaffMoney(Math.round((Number.isFinite(net) ? net : 0) * 100)),
+      value: formatStaffMoney(netPence),
     },
     {
       id: "attention",

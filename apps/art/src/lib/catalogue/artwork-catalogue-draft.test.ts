@@ -56,6 +56,24 @@ describe("artwork catalogue draft", () => {
     expect(patch.maxPrice).toBeNull();
   });
 
+  it.each(["1,2,0,0", "12.345", "-5", "", "  ", "abc"])("drops the price %j", (text) => {
+    const patch = artworkDraftToPatch({
+      ...EMPTY_ARTWORK_CATALOGUE_DRAFT,
+      minPrice: text,
+    });
+    expect(patch.minPrice).toBeNull();
+  });
+
+  it.each([
+    ["£1,200", 1200],
+    ["1,200.50", 1200],
+    ["12.", 12],
+  ])("reads the price %j as %d whole pounds", (text, pounds) => {
+    expect(artworkDraftToPatch({ ...EMPTY_ARTWORK_CATALOGUE_DRAFT, maxPrice: text }).maxPrice).toBe(
+      pounds,
+    );
+  });
+
   it("copies list facets so draft edits never mutate the applied state", () => {
     const state = parseArtworkCatalogueParams({ objectType: "painting" });
     const draft = artworkDraftFromState(state);
