@@ -5,7 +5,17 @@
  * so the same value never appears two ways.
  */
 
-export const STAFF_TIME_ZONE = "Europe/London";
+import {
+  LONDON_TIME_ZONE,
+  formatDate,
+  formatDayMonth,
+  formatTime,
+  formatWeekday,
+  shortMonthFormat,
+  shortZoneName,
+} from "@auction/datetime";
+
+export const STAFF_TIME_ZONE = LONDON_TIME_ZONE;
 
 /**
  * A date formatter whose short months are always three letters. en-GB spells September "Sept"
@@ -15,21 +25,8 @@ export const STAFF_TIME_ZONE = "Europe/London";
 export function staffShortDateFormat(
   options: Intl.DateTimeFormatOptions,
 ): Pick<Intl.DateTimeFormat, "format"> {
-  const inner = new Intl.DateTimeFormat("en-GB", { timeZone: STAFF_TIME_ZONE, ...options });
-  return { format: (date) => inner.format(date).replace(/\bSept\b/, "Sep") };
+  return shortMonthFormat(options.timeZone ?? STAFF_TIME_ZONE, options);
 }
-
-const TIME = new Intl.DateTimeFormat("en-GB", {
-  hour: "2-digit",
-  minute: "2-digit",
-  hourCycle: "h23",
-  timeZone: STAFF_TIME_ZONE,
-});
-
-const ZONE = new Intl.DateTimeFormat("en-GB", {
-  timeZone: STAFF_TIME_ZONE,
-  timeZoneName: "short",
-});
 
 type DateLike = string | number | Date;
 
@@ -41,22 +38,16 @@ function toDate(value: DateLike): Date | null {
 /** "BST" in summer and "GMT" in winter, for the London clock at that moment. */
 export function londonZoneLabel(value: DateLike = new Date()): "BST" | "GMT" {
   const date = toDate(value) ?? new Date();
-  const name = ZONE.formatToParts(date).find((part) => part.type === "timeZoneName")?.value;
-  // en-GB names British Summer Time "BST"; winter time comes back as "GMT".
-  return name === "BST" || name === "GMT+1" ? "BST" : "GMT";
+  return shortZoneName(STAFF_TIME_ZONE, date) === "BST" ? "BST" : "GMT";
 }
 
 /** "14:05", London time, 24-hour clock; with `zoneLabel`, "14:05 BST". */
 export function formatStaffTime(value: DateLike, { zoneLabel = false } = {}): string {
   const date = toDate(value);
   if (!date) return String(value);
-  const time = TIME.format(date);
+  const time = formatTime(date, STAFF_TIME_ZONE);
   return zoneLabel ? `${time} ${londonZoneLabel(date)}` : time;
 }
-
-const WEEKDAY = new Intl.DateTimeFormat("en-GB", { weekday: "short", timeZone: STAFF_TIME_ZONE });
-const DAY_MONTH = staffShortDateFormat({ day: "numeric", month: "short" });
-const YEAR = new Intl.DateTimeFormat("en-GB", { year: "numeric", timeZone: STAFF_TIME_ZONE });
 
 /**
  * The date part of the one date style: "Thu 12 Nov". London time, the weekday leads, and the year
@@ -67,13 +58,8 @@ export function formatStaffDate(value: DateLike, now: DateLike = new Date()): st
   const date = toDate(value);
   if (!date) return String(value);
   const reference = toDate(now) ?? new Date();
-  const day = DAY_MONTH.format(date);
-  const year = YEAR.format(date);
-  const dayMonth = year === YEAR.format(reference) ? day : `${day} ${year}`;
-  return `${WEEKDAY.format(date)} ${dayMonth}`;
+  return `${formatWeekday(date, STAFF_TIME_ZONE)} ${formatDayMonth(date, STAFF_TIME_ZONE, reference)}`;
 }
-
-const EXPORT_DATE = staffShortDateFormat({ day: "numeric", month: "short", year: "numeric" });
 
 /**
  * "24 Oct 2026": a London date with the year always present and no weekday. For files staff
@@ -82,7 +68,7 @@ const EXPORT_DATE = staffShortDateFormat({ day: "numeric", month: "short", year:
  */
 export function formatStaffExportDate(value: DateLike): string {
   const date = toDate(value);
-  return date ? EXPORT_DATE.format(date) : String(value);
+  return date ? formatDate(date, STAFF_TIME_ZONE) : String(value);
 }
 
 /**
@@ -122,6 +108,14 @@ export function formatStaffRelative(value: DateLike, now: DateLike = new Date())
     amount /= size;
   }
   return formatStaffDate(date);
+}
+
+/**
+ * A number as staff read it in text: en-GB grouping ("1,250"), so a count in a sentence or a
+ * pager is written one way everywhere. `options` are the usual `Intl.NumberFormat` ones.
+ */
+export function formatStaffNumber(value: number, options?: Intl.NumberFormatOptions): string {
+  return new Intl.NumberFormat("en-GB", options).format(value);
 }
 
 const MINUS = "−";
