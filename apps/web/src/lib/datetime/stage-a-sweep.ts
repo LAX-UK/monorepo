@@ -1,4 +1,4 @@
-/** The fixed instants and zones the Stage A snapshot sweep renders (shared by the test and its fixture builder). */
+/** The fixed instants and zones the Stage A snapshot sweep renders (used by the snapshot test). */
 export const SWEEP_INSTANTS: readonly string[] = [
   "2026-01-01T00:00:00Z", // year boundary, midnight GMT
   "2025-12-31T23:59:00Z", // last minute of the year

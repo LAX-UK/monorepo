@@ -3,10 +3,10 @@ export { cityName } from "./city.js";
 export { type DateInput, toDate } from "./date-input.js";
 export { calendarDaysBetween, dayKey, dayOffset, endOfDay, startOfDay } from "./day.js";
 export {
+  calendarYear,
   formatDate,
   formatDateRange,
   formatDayMonth,
-  calendarYear,
   formatFullMoment,
   formatLongMoment,
   formatMonthName,

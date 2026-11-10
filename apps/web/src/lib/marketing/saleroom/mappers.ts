@@ -19,8 +19,12 @@ import { saleVenueLabel } from "@/lib/sale-location-label";
 import { resolveSaleStreamContext } from "@/lib/sale-stream-policy";
 import { getSaleTypePresentation } from "@/lib/sale-type-presentation";
 import { salePath } from "@/lib/seo/url";
-import { formatWhen } from "@auction/datetime";
-import { LONDON_TIME_ZONE, formatDateRange, formatTimeWithZone } from "@auction/datetime";
+import {
+  LONDON_TIME_ZONE,
+  formatDateRange,
+  formatTimeWithZone,
+  formatWhen,
+} from "@auction/datetime";
 import { type LotMediaTreatmentIndex, lotMediaTreatment } from "@auction/domain";
 import type { BuyerPremiumTier, Lot, Sale, SaleDayMedia } from "@auction/types";
 import { toLotCardTimingVM, toSaleCardTimingVM, toSaleCountdownEndIso } from "@auction/validators";
