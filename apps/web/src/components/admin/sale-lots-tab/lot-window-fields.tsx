@@ -36,7 +36,8 @@ export function LotWindowFields({
   idPrefix,
 }: Props) {
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-3">
+      <TimesZoneNote zone={timeZone} />
       <div className="grid gap-4 sm:grid-cols-2">
         <Field
           label="Lot opens"
@@ -67,7 +68,6 @@ export function LotWindowFields({
           />
         </Field>
       </div>
-      <TimesZoneNote zone={timeZone} />
     </div>
   );
 }

@@ -100,4 +100,23 @@ describe("DateTimeInput in a sale's zone", () => {
       ),
     ).toBeInTheDocument();
   });
+
+  it("keeps a typed time in the skipped hour on screen, and reports it as typed", () => {
+    const onWallChange = vi.fn();
+    render(
+      <Field label="Opens">
+        <DateTimeInput
+          value={null}
+          wall={{ day: "2031-03-09", time: "02:30" }}
+          onWallChange={onWallChange}
+          onValueChange={vi.fn()}
+          timeZone="America/New_York"
+        />
+      </Field>,
+    );
+    expect(screen.getByDisplayValue("02:30")).toBeInTheDocument();
+    expect(screen.getByText(/there is no 02:00 to 02:59/)).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Time, 24-hour clock"), { target: { value: "02:45" } });
+    expect(onWallChange).toHaveBeenLastCalledWith({ day: "2031-03-09", time: "02:45" });
+  });
 });

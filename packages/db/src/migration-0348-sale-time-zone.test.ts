@@ -38,6 +38,10 @@ describe("migration 0348 sale time zone", () => {
     expect(migration).toMatch(
       /UPDATE "sale" SET "first_published_at" = "updated_at" WHERE "status" <> 'draft'/,
     );
+    // A draft that was announced and unpublished is found through the announcement ledger.
+    expect(migration).toMatch(
+      /FROM "bid_alert_announcement" a WHERE a\."item_key" = 'sale:' \|\| "sale"\."id"::text/,
+    );
   });
 
   it("is mirrored by the schema", () => {

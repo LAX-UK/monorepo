@@ -172,6 +172,14 @@ export type DateTimeInputProps = {
   value: string | null;
   /** The instant typed, or null while the date or time is empty, not real, or does not exist. */
   onValueChange: (iso: string | null) => void;
+  /**
+   * The day and time as typed, for a caller that keeps them even when they name no instant (a
+   * time the clocks skip). Shown when `value` is null, so the typed time stays on screen beside
+   * its error.
+   */
+  wall?: { day: string; time: string } | null;
+  /** Called with the day and time typed whenever both read as real, instant or not; else null. */
+  onWallChange?: (wall: { day: string; time: string } | null) => void;
   min?: string;
   max?: string;
   disabled?: boolean;
@@ -196,6 +204,8 @@ export type DateTimeInputProps = {
 export function DateTimeInput({
   value,
   onValueChange,
+  wall,
+  onWallChange,
   min,
   max,
   disabled,
@@ -204,7 +214,7 @@ export function DateTimeInput({
   showZone = true,
   className,
 }: DateTimeInputProps) {
-  const initial = value ? isoToWallTime(value, timeZone) : null;
+  const initial = value ? isoToWallTime(value, timeZone) : (wall ?? null);
   const [day, setDay] = React.useState<string | null>(initial?.day ?? null);
   const [timeText, setTimeText] = React.useState(initial?.time ?? "");
   const lastEmitted = React.useRef<string | null>(value);
@@ -222,10 +232,10 @@ export function DateTimeInput({
     }
     if (value === lastEmitted.current) return;
     lastEmitted.current = value;
-    const next = value ? isoToWallTime(value, timeZone) : null;
+    const next = value ? isoToWallTime(value, timeZone) : (wall ?? null);
     setDay(next?.day ?? null);
     setTimeText(next?.time ?? "");
-  }, [value, timeZone]);
+  }, [value, timeZone, wall]);
 
   const time = parseStaffTime(timeText);
   const iso = day && time ? wallTimeToIso(day, time, timeZone) : null;
@@ -240,6 +250,7 @@ export function DateTimeInput({
     const nextTime = parseStaffTime(nextTimeText);
     const next = nextDay && nextTime ? wallTimeToIso(nextDay, nextTime, timeZone) : null;
     lastEmitted.current = next;
+    onWallChange?.(nextDay && nextTime ? { day: nextDay, time: nextTime } : null);
     onValueChange(next);
   };
 

@@ -16,7 +16,6 @@ import {
   StaffRadioGroup,
   TextArea,
   TextInput,
-  isoToWallTime,
   parsePoundsToPence,
   wallTimeToIso,
 } from "@auction/staff-ui";
@@ -229,14 +228,15 @@ export function StaffDateTimeField<T extends FieldValues>(props: Base<T> & { tim
     >
       <DateTimeInput
         value={iso}
+        // The typed day and time are the form's value even in a skipped hour, so the field keeps
+        // showing them beside the error rather than clearing.
+        wall={day && time ? { day, time: time.slice(0, 5) } : null}
+        onWallChange={(wall) => field.onChange(wall ? `${wall.day}T${wall.time}` : "")}
         timeZone={timeZone}
         // A form that passes its zone states it once above its times; the field does not repeat it.
         showZone={props.timeZone === undefined}
         disabled={props.disabled ?? false}
-        onValueChange={(next) => {
-          const wall = next ? isoToWallTime(next, timeZone) : null;
-          field.onChange(wall ? `${wall.day}T${wall.time}` : "");
-        }}
+        onValueChange={() => {}}
       />
     </Field>
   );

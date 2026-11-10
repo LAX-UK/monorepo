@@ -58,6 +58,7 @@ export function StaffTimeZoneField<T extends FieldValues>(props: Props<T>) {
         id={id}
         value={value}
         options={options}
+        triggerDescriptionFromSm
         filter={(_, query) =>
           rankZoneChoices(choices, query).flatMap((choice) => optionById.get(choice.zone) ?? [])
         }

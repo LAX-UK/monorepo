@@ -13,7 +13,7 @@ describe("zoneChoiceLabel", () => {
   it("names the city and the short name at that moment", () => {
     expect(zoneChoiceLabel("Europe/London", WINTER)).toBe("London (GMT/BST)");
     expect(zoneChoiceLabel("Europe/London", SUMMER)).toBe("London (GMT/BST)");
-    expect(zoneChoiceLabel("America/New_York", WINTER)).toBe("New York (GMT-5/GMT-4)");
+    expect(zoneChoiceLabel("America/New_York", WINTER)).toBe("New York (EST/EDT)");
     expect(zoneChoiceLabel("Asia/Dubai", WINTER)).toBe("Dubai (GST)");
     expect(zoneChoiceLabel("America/Argentina/Buenos_Aires", WINTER)).toContain("Buenos Aires");
   });
@@ -23,7 +23,9 @@ describe("zoneAbbreviations", () => {
   it.each([
     ["Europe/London", "GMT/BST"],
     ["Europe/Paris", "CET/CEST"],
-    ["America/New_York", "GMT-5/GMT-4"],
+    ["America/New_York", "EST/EDT"],
+    ["America/Los_Angeles", "PST/PDT"],
+    ["America/Chicago", "CST/CDT"],
     ["Australia/Sydney", "GMT+10/GMT+11"],
   ])("lists standard time first for %s", (zone, expected) => {
     expect(zoneAbbreviations(zone, WINTER)).toBe(expected);

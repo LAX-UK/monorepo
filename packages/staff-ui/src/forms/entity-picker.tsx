@@ -39,6 +39,11 @@ export type EntityPickerProps = {
   filter?: (options: readonly EntityOption[], query: string) => readonly EntityOption[];
   /** Or search the server as staff type; called with the trimmed query (may be empty). */
   search?: (query: string) => Promise<readonly EntityOption[]>;
+  /**
+   * Shows the chosen option's second line in the closed control only from the `sm` breakpoint up,
+   * so a long label is never cut off on a phone. The list always shows it.
+   */
+  triggerDescriptionFromSm?: boolean;
   /** The chosen option's display, when it is not in `options` (e.g. loaded with the record). */
   selected?: EntityOption | null;
   placeholder?: string;
@@ -63,6 +68,7 @@ export function EntityPicker({
   filter,
   search,
   selected,
+  triggerDescriptionFromSm = false,
   placeholder = "Choose…",
   searchPlaceholder = "Search…",
   emptyText = "No matches.",
@@ -153,7 +159,12 @@ export function EntityPicker({
             <span className="flex min-w-0 items-baseline gap-2">
               <span className="truncate">{current.label}</span>
               {current.description ? (
-                <span className="truncate text-staff-sm text-staff-muted">
+                <span
+                  className={cn(
+                    "truncate text-staff-sm text-staff-muted",
+                    triggerDescriptionFromSm && "hidden sm:inline",
+                  )}
+                >
                   {current.description}
                 </span>
               ) : null}
