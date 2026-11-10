@@ -195,14 +195,20 @@ describe("GapHttpAdapter", () => {
     expect(await adapter.findAuctionsByClientId("client-1", from)).toEqual([]);
   });
 
-  it("reads the client's default internet surcharge, null when ATG holds none", async () => {
+  it("reads the client's surcharge rates, null when ATG holds none", async () => {
     const { adapter, calls } = adapterWith([
-      json({ ClientId: "client-1", DefaultInternetSurchargeRate: 3 }),
+      json({ ClientId: "client-1", DefaultInternetSurchargeRate: 3, AltInternetSurchargeRate: 2 }),
       json({ ClientId: "client-1" }),
     ]);
 
-    expect(await adapter.getClientDefaultSurchargeRate("client-1")).toBe(3);
-    expect(await adapter.getClientDefaultSurchargeRate("client-1")).toBeNull();
+    expect(await adapter.getClientSurchargeRates("client-1")).toEqual({
+      defaultRate: 3,
+      alternativeRate: 2,
+    });
+    expect(await adapter.getClientSurchargeRates("client-1")).toEqual({
+      defaultRate: null,
+      alternativeRate: null,
+    });
     expect(calls[0]?.url).toBe("https://gap.test/Clients/client-1");
   });
 

@@ -133,7 +133,9 @@ check, poll), so a failed push still lets a published or closed auction be polle
 counts sales with at least one failing step. Failures are logged and sent to Sentry
 (`atg-sync-tick`) without stopping other sales. A mapping or precondition error staff can fix is
 already on the sale's ATG tab (`last_error`), so it goes to Sentry only when its message is new
-or changed, not on every tick; gateway and network errors are reported every time.
+or changed, not on every tick (one that is never stored on the link is remembered in memory for
+the life of the worker); gateway and network errors are reported every time. A sale whose row
+is gone is polled but not pushed or checked for approval.
 
 **Startup check.** When sync is enabled the worker compares `ATG_INCREMENT_SET_ID` with the
 client's increment sets (`GetIncrementDetails`, needs `ATG_CLIENT_ID`) and `ATG_DEFAULT_CATEGORY`
@@ -141,8 +143,8 @@ with `GetSupportedCategories`. It runs once, in the background, and never blocks
 value ATG does not know is logged as an error and sent to Sentry (`atg-config-check`); a check
 that cannot run (network failure, no client id) is logged as a warning only. With a client id it
 also reads the client's `DefaultInternetSurchargeRate` (`GET /Clients/{clientId}`) and logs a
-warning when it differs from the timed rate in `ATG_AUCTION_FEES` (a hint, not an error: LAX
-sends the rate on every auction).
+warning, naming the default and alternative rates, when the default differs from the timed rate
+in `ATG_AUCTION_FEES` (a hint, not an error: LAX sends the rate on every auction).
 
 **Images:** `AddUrlImageToLot` returns a `LotImageId`, but GAP has **no** endpoint to list a
 lot's images, and the worker does not store the returned ids. It tracks sent `ImageName` values
@@ -266,12 +268,15 @@ by hand ([ATG manual settlement](../runbooks/atg-manual-settlement.md)).
   error still says to ask ATG.
 - **Fee read-back.** GAP takes fee rates (`BuyersPremium`, `InternetSurchargeRate`) as
   percentages but the VAT rates as multipliers (0.2); sending VAT as 20 once showed 588% on
-  ATG. After each successful auction create or update, the worker reads the auction back
-  (`GetAuctionById`, one extra read per write) and compares the four fee fields with what it
-  sent (tolerance 1e-6). On a difference `last_error` becomes "ATG holds different fees from
-  LAX: …" and Sentry gets one `atg-fee-mismatch` event for that message. It does not block
-  lots or publishing. While the message shows, each tick re-reads the auction until ATG agrees,
-  then clears it. Unchanged sales cost no extra read.
+  ATG. `AtgFeeVerifier` reads the auction back (`GetAuctionById`) and compares the four fee
+  fields with what LAX holds (tolerance 1e-6). It reads (a) after each successful auction create
+  or update, (b) once per auction after each worker start, so an auction pushed earlier and never
+  changed is checked right after a deploy, and (c) on every tick while a mismatch is showing.
+  Other sales cost no extra read. On a difference `last_error` begins "ATG holds different fees
+  from LAX: Buyer's premium VAT: LAX sent 20% (0.2), ATG has 2000% (20)." and Sentry gets one
+  `atg-fee-mismatch` event per distinct message. Publishing, closing, polling and failed pushes
+  keep that message in `last_error` instead of overwriting it; it clears when ATG agrees. It
+  never blocks lots or publishing, and a failed read leaves what is shown as it was.
 - **Partial pushes.** Lot failures do not stop the push; the auction link's `last_error` lists
   up to five (`Lot N: message`). If any failure was retryable the job retries; otherwise the
   error stays visible on the ATG tab until the lot is fixed.

@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { FEE_MISMATCH_PREFIX, describeFeeMismatch } from "./atg-fee-check.js";
+import {
+  FEE_MISMATCH_PREFIX,
+  describeFeeMismatch,
+  feeMismatchSegment,
+  joinMessages,
+  withFeeMismatch,
+  withoutFeeMismatch,
+} from "./atg-fee-check.js";
 import type { AtgRemoteAuctionFees } from "./atg-gateway.js";
 import type { GapAuctionFields } from "./gap-types.js";
 
@@ -35,7 +42,7 @@ describe("describeFeeMismatch", () => {
     );
 
     expect(message).toBe(
-      `${FEE_MISMATCH_PREFIX}Buyer's premium VAT LAX sent 0.2, ATG has 20; Internet surcharge VAT LAX sent 0.2, ATG has 20.`,
+      `${FEE_MISMATCH_PREFIX}Buyer's premium VAT: LAX sent 20% (0.2), ATG has 2000% (20); Internet surcharge VAT: LAX sent 20% (0.2), ATG has 2000% (20).`,
     );
   });
 
@@ -44,5 +51,31 @@ describe("describeFeeMismatch", () => {
     expect(
       describeFeeMismatch(withoutPremium, held({ buyersPremium: 99, internetSurchargeRate: null })),
     ).toBeNull();
+  });
+});
+
+describe("fee mismatch inside lastError", () => {
+  const mismatch = `${FEE_MISMATCH_PREFIX}Buyer's premium: LAX sent 25%, ATG has 0.25%.`;
+
+  it("shows percent rates plainly", () => {
+    expect(describeFeeMismatch(sent, held({ buyersPremium: 0.25 }))).toBe(mismatch);
+  });
+
+  it("finds the message at the start, with or without other text after it", () => {
+    expect(feeMismatchSegment(mismatch)).toBe(mismatch);
+    expect(feeMismatchSegment(`${mismatch} Lot 2: needs a lot number`)).toBe(mismatch);
+    expect(feeMismatchSegment("Poll failed: down")).toBeNull();
+    expect(feeMismatchSegment(null)).toBeNull();
+  });
+
+  it("splits the other text off, and keeps the message through another write", () => {
+    const stored = joinMessages(mismatch, "Poll failed: down");
+    expect(withoutFeeMismatch(stored)).toBe("Poll failed: down");
+    expect(withoutFeeMismatch(mismatch)).toBeNull();
+    expect(withFeeMismatch(stored, "Not published: fix these lots first.")).toBe(
+      `${mismatch} Not published: fix these lots first.`,
+    );
+    expect(withFeeMismatch(mismatch, null)).toBe(mismatch);
+    expect(withFeeMismatch("Poll failed: down", null)).toBeNull();
   });
 });

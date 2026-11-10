@@ -53,6 +53,12 @@ export type AtgRemoteAuction = {
   fees: AtgRemoteAuctionFees;
 };
 
+/** Surcharge rates ATG holds on the client; null when it holds none. */
+export type AtgClientSurchargeRates = {
+  defaultRate: number | null;
+  alternativeRate: number | null;
+};
+
 /** An increment set available to the ATG client. */
 export type AtgIncrementSet = { incrementSetId: string; name: string | null };
 
@@ -90,8 +96,8 @@ export interface AtgGateway {
   getAuction(auctionId: string): Promise<AtgRemoteAuction | null>;
   /** Auctions of the client starting from `fromDate`; used to find a create whose reply was lost. */
   findAuctionsByClientId(clientId: string, fromDate: Date): Promise<AtgRemoteAuction[]>;
-  /** The client's default internet surcharge rate (a percentage); null when ATG holds none. */
-  getClientDefaultSurchargeRate(clientId: string): Promise<number | null>;
+  /** The client's own internet surcharge rates, which ATG falls back to on an auction. */
+  getClientSurchargeRates(clientId: string): Promise<AtgClientSurchargeRates>;
   getIncrementSets(clientId: string): Promise<AtgIncrementSet[]>;
   /** Category names accepted for the platform. */
   getSupportedCategories(platformCode: string): Promise<string[]>;
