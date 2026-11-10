@@ -38,6 +38,121 @@ function makeCaptureService(deps: {
 }
 
 describe("PaymentCaptureService", () => {
+  describe("checkout cleanup", () => {
+    const pending = {
+      id: "pay1",
+      lotId: "lot1",
+      paidByUserId: null,
+      amount: "100.00",
+      status: "pending",
+      stripeChargeId: "ch_1",
+      stripePaymentIntentId: null,
+      sellerLegalEntityId: "le_seller",
+    };
+    const xero = () => ({
+      recordStripeCapture: vi.fn().mockResolvedValue({ ok: true }),
+      recordRefundCreditNote: vi.fn(),
+    });
+
+    it("runs after the receipt and accounting, not before", async () => {
+      const order: string[] = [];
+      const xeroPaymentRecorder = xero();
+      xeroPaymentRecorder.recordStripeCapture.mockImplementation(async () => {
+        order.push("accounting");
+        return { ok: true };
+      });
+      const closeAfterCapture = vi.fn(async () => {
+        order.push("cleanup");
+      });
+      const svc = makeCaptureService({
+        payments: {
+          findById: vi.fn().mockResolvedValue(pending),
+          applyCapturedInTransaction: vi.fn().mockResolvedValue(true),
+        },
+        xeroPaymentRecorder,
+        checkoutCleanup: { closeAfterCapture },
+      });
+
+      await svc.capture({ paymentId: "pay1", via: "stripe_checkout_webhook" });
+
+      expect(order).toEqual(["accounting", "cleanup"]);
+    });
+
+    it("still runs when the receipt or accounting step throws", async () => {
+      const xeroPaymentRecorder = xero();
+      xeroPaymentRecorder.recordStripeCapture.mockRejectedValue(new Error("xero down"));
+      const closeAfterCapture = vi.fn().mockResolvedValue(undefined);
+      const svc = makeCaptureService({
+        payments: {
+          findById: vi.fn().mockResolvedValue(pending),
+          applyCapturedInTransaction: vi.fn().mockResolvedValue(true),
+        },
+        xeroPaymentRecorder,
+        checkoutCleanup: { closeAfterCapture },
+      });
+
+      await expect(
+        svc.capture({ paymentId: "pay1", via: "stripe_checkout_webhook" }),
+      ).rejects.toThrow("xero down");
+
+      expect(closeAfterCapture).toHaveBeenCalledOnce();
+    });
+
+    it("in the caller's transaction is handed back, not run, until the caller commits", async () => {
+      const closeAfterCapture = vi.fn().mockResolvedValue(undefined);
+      const svc = makeCaptureService({
+        payments: {
+          findById: vi.fn().mockResolvedValue(pending),
+          applyCapturedInTransaction: vi.fn().mockResolvedValue(true),
+        },
+        checkoutCleanup: { closeAfterCapture },
+      });
+
+      const result = await svc.capture({
+        paymentId: "pay1",
+        via: "stripe_checkout_webhook",
+        stripePaymentIntentId: "pi_1",
+        tx: {} as never,
+      });
+
+      expect(result.captured).toBe(true);
+      expect(closeAfterCapture).not.toHaveBeenCalled();
+      await result.afterCommit?.();
+      expect(closeAfterCapture).toHaveBeenCalledExactlyOnceWith("pay1", "pi_1");
+    });
+
+    it("for a group closes each member's checkouts after commit, keeping its paying intent", async () => {
+      const closeAfterCapture = vi.fn().mockResolvedValue(undefined);
+      const svc = makeCaptureService({
+        payments: {
+          findById: vi.fn(async (id: string) => ({ ...pending, id })),
+          applyCapturedInTransaction: vi.fn().mockResolvedValue(true),
+        },
+        checkoutCleanup: { closeAfterCapture },
+      });
+      const afterCommit: (() => Promise<void>)[] = [];
+      for (const paymentId of ["pay1", "pay2", "pay3"]) {
+        const captured = await svc.captureInTransaction({
+          paymentId,
+          via: "stripe_checkout_webhook",
+          stripePaymentIntentId: "pi_group",
+          tx: {} as never,
+          buyerReceipt: "none",
+        });
+        afterCommit.push(captured.afterCommit);
+      }
+      expect(closeAfterCapture).not.toHaveBeenCalled();
+
+      for (const run of afterCommit) await run();
+
+      expect(closeAfterCapture.mock.calls).toEqual([
+        ["pay1", "pi_group"],
+        ["pay2", "pi_group"],
+        ["pay3", "pi_group"],
+      ]);
+    });
+  });
+
   it("closes the invoice's other checkouts once it is captured, keeping the paying intent", async () => {
     const closeAfterCapture = vi.fn().mockResolvedValue(undefined);
     const row = {

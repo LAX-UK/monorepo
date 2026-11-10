@@ -5,6 +5,8 @@ import type {
   RecordedCheckoutSession,
 } from "@auction/persistence/interfaces";
 import type Stripe from "stripe";
+import { recordMoneyPathEvent } from "../../middleware/metrics.js";
+import type { ICheckoutCleanupAfterCapture } from "../interfaces/checkout-cleanup.js";
 import type { IErrorReporter } from "../interfaces/error-handling.js";
 import type {
   CreateCheckoutSessionResult,
@@ -62,7 +64,33 @@ export type RenewCheckoutSessionOutcome =
 const MAX_RENEWALS = 3;
 
 type LiveSession = { kind: "ready"; session: CreateCheckoutSessionResult } | { kind: "complete" };
-type SessionStatus = LiveSession | { kind: "dead" };
+/**
+ * `awaiting_transfer`: the buyer chose bank transfer and has the instructions. Stripe completes
+ * such a session while it is still unpaid; it is neither payable again nor a payment.
+ */
+type SessionStatus =
+  | LiveSession
+  | { kind: "awaiting_transfer"; instructionsUrl: string | null }
+  | { kind: "dead" };
+
+/**
+ * True when the buyer has paid on this session. A Checkout session also reaches "complete" for a
+ * bank transfer that is still waiting for funds (payment_status "unpaid"), which is not a payment.
+ */
+function isSessionPaid(session: Stripe.Checkout.Session): boolean {
+  return session.status === "complete" && session.payment_status !== "unpaid";
+}
+
+/** A session the buyer completed by choosing bank transfer, whose funds have not arrived. */
+function isAwaitingTransfer(session: Stripe.Checkout.Session): boolean {
+  return session.status === "complete" && session.payment_status === "unpaid";
+}
+
+function paymentIntentIdOf(session: Stripe.Checkout.Session): string | null {
+  return typeof session.payment_intent === "string"
+    ? session.payment_intent
+    : (session.payment_intent?.id ?? null);
+}
 
 /**
  * Gives the buyer one payable Checkout session for an invoice and rail. The newest open session
@@ -71,7 +99,7 @@ type SessionStatus = LiveSession | { kind: "dead" };
  * open sessions closed, so a session still being paid is never closed for a failed attempt, and a
  * card payment never closes a bank transfer the buyer was given instructions for.
  */
-export class CheckoutSessionLifecycle {
+export class CheckoutSessionLifecycle implements ICheckoutCleanupAfterCapture {
   constructor(
     private readonly gateway: Pick<
       IStripePaymentGateway,
@@ -85,6 +113,7 @@ export class CheckoutSessionLifecycle {
       "record" | "listSessions" | "markClosed"
     >,
     private readonly reporter: IErrorReporter,
+    private readonly recordEvent: (event: string) => void = recordMoneyPathEvent,
   ) {}
 
   async openOrRenew(
@@ -96,7 +125,7 @@ export class CheckoutSessionLifecycle {
     const fingerprint = checkoutParametersFingerprint(parameters);
     for (let attempt = 0; attempt <= MAX_RENEWALS; attempt += 1) {
       const recorded = await this.ledger.listSessions(paymentId);
-      if (await this.anyComplete(recorded)) return { kind: "already_complete" };
+      if (await this.anyPaid(recorded)) return { kind: "already_complete" };
       const sameParameters = recorded.filter(
         (s) => s.rail === rail && s.parametersFingerprint === fingerprint,
       );
@@ -119,6 +148,8 @@ export class CheckoutSessionLifecycle {
         await this.ledger.markClosed(created.sessionId);
         continue;
       }
+      // A session just opened cannot already be waiting on a transfer; if it is, leave it be.
+      if (status.kind === "awaiting_transfer") continue;
       return this.settle(status, rail, paymentId);
     }
     return { kind: "unavailable", error: "Stripe checkout session is not open" };
@@ -163,33 +194,93 @@ export class CheckoutSessionLifecycle {
     paidPaymentIntentId: string | null,
   ): Promise<void> {
     const stripeSession = await this.gateway.retrieveCheckoutSession(recorded.stripeSessionId);
-    const intentId =
-      typeof stripeSession.payment_intent === "string"
-        ? stripeSession.payment_intent
-        : (stripeSession.payment_intent?.id ?? null);
+    const intentId = paymentIntentIdOf(stripeSession);
     if (paidPaymentIntentId && intentId === paidPaymentIntentId) return;
     // A paid session is never closed: its payment is being confirmed.
-    if (stripeSession.status === "complete") return;
+    if (isSessionPaid(stripeSession)) return;
+
+    if (isAwaitingTransfer(stripeSession)) {
+      // The buyer was given transfer instructions and the session is complete, so only the intent
+      // can be cancelled. Once any money is in, or on its way, it is left for finance.
+      if (!intentId) return;
+      const intent = await this.gateway.retrievePaymentIntent(intentId);
+      if (intent.status !== "canceled") {
+        if (!isUnfundedIntent(intent)) return this.leaveFunded(recorded.stripeSessionId);
+        if (!(await this.cancelUnfundedIntent(intentId))) return;
+      }
+      await this.ledger.markClosed(recorded.stripeSessionId);
+      return;
+    }
+
     if (stripeSession.status === "open") {
       if (intentId) {
         const intent = await this.gateway.retrievePaymentIntent(intentId);
-        if (!isUnfundedIntent(intent)) return;
-        await this.gateway.cancelPaymentIntent(intentId);
+        // An intent Stripe already cancelled holds nothing, and a half-done cleanup completes here.
+        if (intent.status !== "canceled" && !isUnfundedIntent(intent)) {
+          return this.leaveFunded(recorded.stripeSessionId);
+        }
       }
+      // Expiring the session makes Stripe cancel its intent; Stripe refuses a direct cancel of a
+      // Checkout-managed intent.
       await this.gateway.expireCheckoutSession(recorded.stripeSessionId);
     }
     await this.ledger.markClosed(recorded.stripeSessionId);
   }
 
+  /** Money is in (or coming) on a session that cannot be closed: finance sees it. */
+  private leaveFunded(stripeSessionId: string): void {
+    this.recordEvent("checkout_left_open_funded_after_capture");
+    this.reporter.report({
+      message: `Checkout ${stripeSessionId} holds transfer money for an invoice that was paid another way`,
+      status: 200,
+      code: "checkout_left_open_funded_after_capture",
+      severity: "info",
+    });
+  }
+
+  /**
+   * Cancels the intent of a completed, unpaid bank session. False when the intent turned out to be
+   * funded (the transfer landed since it was read): that is left for the unapplied-money path.
+   */
+  private async cancelUnfundedIntent(intentId: string): Promise<boolean> {
+    try {
+      await this.gateway.cancelPaymentIntent(intentId);
+      return true;
+    } catch (err) {
+      if ((err as { code?: unknown } | null)?.code !== "payment_intent_unexpected_state") throw err;
+      const current = await this.gateway.retrievePaymentIntent(intentId);
+      if (current.status === "canceled") return true;
+      if (current.status === "succeeded" || current.status === "processing") {
+        this.recordEvent("checkout_intent_settled_during_cleanup");
+        this.reporter.report({
+          message: `Intent ${intentId} took money while its checkout was being closed; left as it is`,
+          status: 200,
+          code: "checkout_intent_settled_during_cleanup",
+          severity: "info",
+        });
+        return false;
+      }
+      throw err;
+    }
+  }
+
   /**
    * Whether the buyer already paid on any session of the invoice, whatever its rail or
    * parameters: a second payable session must not be offered while that payment is confirmed.
+   * A bank transfer session that is complete but unpaid is not a payment: the buyer may still
+   * pay another way, and the transfer stays as it is.
    */
-  private async anyComplete(recorded: readonly RecordedCheckoutSession[]): Promise<boolean> {
+  private async anyPaid(recorded: readonly RecordedCheckoutSession[]): Promise<boolean> {
     for (const session of recorded) {
       if (session.closedAt) continue;
       const stripeSession = await this.gateway.retrieveCheckoutSession(session.stripeSessionId);
-      if (stripeSession.status === "complete") return true;
+      if (isSessionPaid(stripeSession)) return true;
+      if (!isAwaitingTransfer(stripeSession)) continue;
+      // The funds may have landed before the session's payment_status caught up.
+      const intentId = paymentIntentIdOf(stripeSession);
+      if (intentId && (await this.gateway.retrievePaymentIntent(intentId)).status === "succeeded") {
+        return true;
+      }
     }
     return false;
   }
@@ -201,7 +292,21 @@ export class CheckoutSessionLifecycle {
     for (const recorded of [...sessions].reverse()) {
       if (recorded.closedAt) continue;
       const status = await this.inspect(recorded.stripeSessionId);
-      if (status.kind !== "dead") return status;
+      if (status.kind === "ready" || status.kind === "complete") return status;
+      // Instructions already given: shown again when Stripe still has them, and never closed.
+      if (status.kind === "awaiting_transfer") {
+        if (status.instructionsUrl) {
+          return {
+            kind: "ready",
+            session: {
+              sessionId: recorded.stripeSessionId,
+              url: status.instructionsUrl,
+              paymentIntentId: null,
+            },
+          };
+        }
+        continue;
+      }
       await this.ledger.markClosed(recorded.stripeSessionId);
     }
     return null;
@@ -209,12 +314,20 @@ export class CheckoutSessionLifecycle {
 
   private async inspect(sessionId: string): Promise<SessionStatus> {
     const stripeSession = await this.gateway.retrieveCheckoutSession(sessionId);
-    if (stripeSession.status === "complete") return { kind: "complete" };
+    if (isSessionPaid(stripeSession)) return { kind: "complete" };
+    if (isAwaitingTransfer(stripeSession)) {
+      const intentId = paymentIntentIdOf(stripeSession);
+      if (!intentId) return { kind: "awaiting_transfer", instructionsUrl: null };
+      const intent = await this.gateway.retrievePaymentIntent(intentId);
+      if (intent.status === "succeeded") return { kind: "complete" };
+      return {
+        kind: "awaiting_transfer",
+        instructionsUrl:
+          intent.next_action?.display_bank_transfer_instructions?.hosted_instructions_url ?? null,
+      };
+    }
     if (!isCheckoutSessionUsable(stripeSession) || !stripeSession.url) return { kind: "dead" };
-    const paymentIntentId =
-      typeof stripeSession.payment_intent === "string"
-        ? stripeSession.payment_intent
-        : (stripeSession.payment_intent?.id ?? null);
+    const paymentIntentId = paymentIntentIdOf(stripeSession);
     return {
       kind: "ready",
       session: { sessionId, url: stripeSession.url, paymentIntentId },
@@ -284,7 +397,8 @@ export class CheckoutSessionLifecycle {
   ): Promise<void> {
     const stripeSession = await this.gateway.retrieveCheckoutSession(recorded.stripeSessionId);
     if ((recorded.rail ?? railOf(stripeSession)) !== rail) return;
-    // A paid session is never closed: its payment is still being confirmed.
+    // A complete session is never closed: it is paid, or a bank transfer that was given
+    // instructions and may be funded.
     if (stripeSession.status === "complete") return;
     if (stripeSession.status === "open") {
       // A bank transfer with a payment intent has been given instructions: money may be on its way.
@@ -314,5 +428,7 @@ function isUnfundedIntent(intent: Stripe.PaymentIntent): boolean {
   }
   if ((intent.amount_received ?? 0) > 0) return false;
   const remaining = intent.next_action?.display_bank_transfer_instructions?.amount_remaining;
-  return remaining == null || remaining >= intent.amount;
+  if (remaining != null) return remaining >= intent.amount;
+  // Without a stated remainder only an intent that never took a payment method is known unfunded.
+  return intent.status !== "requires_action";
 }
