@@ -41,6 +41,7 @@ export default async function AdminEditSaleLayout({ params, children }: Props) {
           saleId={id}
           saleStatus={page.sale.status}
           timeZoneLocked={isSaleTimeZoneLocked(page.sale)}
+          timeZoneFixedByAtg={page.zoneFixedByAtg}
           defaultValues={page.defaultValues}
           categories={page.categories}
           englishOnlyAuctionsLocked={page.englishOnlyAuctionsLocked}

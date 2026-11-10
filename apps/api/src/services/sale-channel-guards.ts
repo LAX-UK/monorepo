@@ -1,5 +1,9 @@
 import type { ISaleChannelReader } from "@auction/persistence/interfaces";
-import { type AtgSaleOwnershipSnapshot, canPublishSaleOnLax } from "@auction/types";
+import {
+  type AtgSaleOwnershipSnapshot,
+  canPublishSaleOnLax,
+  isSaleZoneFixedByAtg,
+} from "@auction/types";
 import { LotError } from "../lib/errors.js";
 
 function saleOnAtgError(ownership: AtgSaleOwnershipSnapshot, blocked: string): LotError {
@@ -88,12 +92,11 @@ export async function assertTimeZoneChangeableOnAtg(
   if (!reader) return null;
   const ownership = await reader.getSaleOwnership(saleId);
   if (!ownership) return null;
-  const onAtg =
-    ownership.atgRemoteStatus === "created" ||
-    ownership.atgRemoteStatus === "approved" ||
-    ownership.atgRemoteStatus === "published" ||
-    ownership.sellingPlatform === "atg";
-  if (!onAtg) return null;
+  const fixed = isSaleZoneFixedByAtg({
+    remoteStatus: ownership.atgRemoteStatus,
+    sellingPlatform: ownership.sellingPlatform,
+  });
+  if (!fixed) return null;
   return new LotError(
     "This sale is on ATG, which shows its times in the current time zone, so the zone can't change.",
     409,

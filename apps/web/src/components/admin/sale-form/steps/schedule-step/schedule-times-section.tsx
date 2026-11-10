@@ -4,6 +4,7 @@ import type { AdminSaleFormValues } from "@/lib/forms/schemas/admin-sale-form";
 import { readingZone } from "@/lib/forms/schemas/reading-zone";
 import { timesAreInLabel } from "@auction/datetime";
 import { FieldRow, FormSection } from "@auction/staff-ui";
+import { ATG_TIME_ZONE_LOCKED_NOTE } from "@auction/types";
 import { SALE_TIME_ZONE_LOCKED_MESSAGE, saleTimeZoneProblem } from "@auction/validators";
 import type { UseFormReturn } from "react-hook-form";
 import { SALE_FORM_ID } from "../../sale-form-id";
@@ -14,14 +15,25 @@ type Props = {
   isDraft: boolean;
   /** The sale was announced once, so its zone is fixed even when it is a draft again. */
   timeZoneLocked?: boolean;
+  /** ATG holds the auction, so the zone is fixed there. */
+  timeZoneFixedByAtg?: boolean;
   isSaleroom: boolean;
 };
 
-export function ScheduleTimesSection({ form, isDraft, timeZoneLocked = false, isSaleroom }: Props) {
+export function ScheduleTimesSection({
+  form,
+  isDraft,
+  timeZoneLocked = false,
+  timeZoneFixedByAtg = false,
+  isSaleroom,
+}: Props) {
   const chosen = form.watch("timeZone");
   const usable = saleTimeZoneProblem(chosen) === null;
   const zone = readingZone(chosen);
-  const locked = !isDraft || timeZoneLocked;
+  const locked = !isDraft || timeZoneLocked || timeZoneFixedByAtg;
+  const lockedMessage = timeZoneFixedByAtg
+    ? ATG_TIME_ZONE_LOCKED_NOTE
+    : SALE_TIME_ZONE_LOCKED_MESSAGE;
   useVenueCountryTimeZone(form, isDraft && !locked && isSaleroom);
   const f = {
     control: form.control,
@@ -45,7 +57,7 @@ export function ScheduleTimesSection({ form, isDraft, timeZoneLocked = false, is
         formId={SALE_FORM_ID}
         label="Time zone"
         description={`${zoneLine}Changing the zone keeps the times you typed and reads them in the new zone.`}
-        {...(locked ? { lockedReason: `${zoneLine}${SALE_TIME_ZONE_LOCKED_MESSAGE}` } : {})}
+        {...(locked ? { lockedReason: `${zoneLine}${lockedMessage}` } : {})}
       />
       <FieldRow>
         <StaffDateTimeField {...f} name="startTime" label="Opens" />

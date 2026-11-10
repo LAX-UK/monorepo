@@ -25,6 +25,8 @@ export type SaleScheduleStepProps = {
   savedTimeZone?: string | undefined;
   /** The sale was announced once, so its time zone cannot change even as a draft. */
   timeZoneLocked?: boolean;
+  /** ATG holds this sale's auction, so its zone is fixed there. */
+  timeZoneFixedByAtg?: boolean;
   isSaleroom: boolean;
   pending: boolean;
   fields: FieldArrayWithId<AdminSaleFormValues, "buyerPremiumTiers", "id">[];

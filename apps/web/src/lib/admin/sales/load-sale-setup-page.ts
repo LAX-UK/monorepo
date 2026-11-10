@@ -12,7 +12,7 @@ import {
 } from "@/lib/admin/load-sale-detail";
 import { type SaleSetupStepId, resolveFirstIncompleteStep } from "@/lib/admin/sale-setup";
 import { getAdminArtistList } from "@/lib/data/http/admin.server";
-import { getAtgSaleSellingPlatform } from "@/lib/data/http/atg.server";
+import { getAtgSaleSellingSummary } from "@/lib/data/http/atg.server";
 import { getServerCategoryReader } from "@/lib/data/http/categories.server";
 import { getWriteContainer } from "@/lib/data/write-container.server";
 import { isEnglishOnlyAuctionsLocked } from "@/lib/feature-flags/english-only-auctions";
@@ -31,7 +31,7 @@ import type {
   StaffRoles,
   UserRole,
 } from "@auction/types";
-import { userHasAccessTo } from "@auction/types";
+import { isSaleZoneFixedByAtg, userHasAccessTo } from "@auction/types";
 
 import type { AdminVenueListRow } from "@/lib/services/interfaces/admin-venue-service";
 
@@ -55,6 +55,8 @@ export type SaleSetupPageModel = {
   sellersWithoutPayouts: NamedSellerWithoutPayouts[];
   /** Set while ATG sync is on and the viewer manages sales; "atg" shows the edit alert. */
   sellingPlatform: AtgOwnershipState | null;
+  /** ATG holds the auction, so the sale's time zone cannot change. */
+  zoneFixedByAtg: boolean;
 };
 
 type LoadSaleSetupPageInput = {
@@ -88,7 +90,7 @@ export async function loadAdminSaleSetupPage({
     venuesResult,
     pendingRegistrationCount,
     connectRequiredByLotId,
-    sellingPlatform,
+    selling,
   ] = await Promise.all([
     (async () => (await getServerCategoryReader()).tree())(),
     getAdminArtistList({ includeArchived: false, limit: 200 }).catch(() => ({ rows: [] })),
@@ -99,7 +101,7 @@ export async function loadAdminSaleSetupPage({
       .catch(() => ({ ok: true as const, data: { venues: [], total: 0 }, status: 200 })),
     loadAdminSalePendingRegistrationCount(saleId, sale),
     Promise.resolve(connectRequiredFromLots(lots)),
-    canManageSale ? getAtgSaleSellingPlatform(sale) : Promise.resolve(null),
+    canManageSale ? getAtgSaleSellingSummary(sale) : Promise.resolve(null),
   ]);
 
   const initialStep =
@@ -136,6 +138,7 @@ export async function loadAdminSaleSetupPage({
     pendingRegistrationCount,
     connectRequiredByLotId,
     sellersWithoutPayouts,
-    sellingPlatform,
+    sellingPlatform: selling?.sellingPlatform ?? null,
+    zoneFixedByAtg: selling != null && isSaleZoneFixedByAtg(selling),
   };
 }

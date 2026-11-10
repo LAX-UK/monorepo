@@ -60,6 +60,7 @@ export default async function AdminSaleSetupPage({ params, searchParams }: Props
         pendingRegistrationCount={page.pendingRegistrationCount}
         connectRequiredByLotId={page.connectRequiredByLotId}
         sellersWithoutPayouts={page.sellersWithoutPayouts}
+        timeZoneFixedByAtg={page.zoneFixedByAtg}
       />
     </FormPage>
   );

@@ -180,6 +180,29 @@ export type AtgSaleOwnershipSnapshot = {
   atgDistribution: AtgDistribution;
 };
 
+/** Shown beside the locked zone field in the sale form. */
+export const ATG_TIME_ZONE_LOCKED_NOTE =
+  "On ATG: the time zone is fixed while ATG holds this auction.";
+
+/** The ownership facts that decide whether ATG holds a sale's times. */
+export type AtgZoneOwnership = {
+  remoteStatus: AtgRemoteStatus | null;
+  sellingPlatform: AtgOwnershipState;
+};
+
+/**
+ * ATG shows the sale's times in the zone it was first sent with, so the zone cannot change while
+ * ATG has the auction (created, approved or published) or while the sale is ATG-owned after close.
+ */
+export function isSaleZoneFixedByAtg(ownership: AtgZoneOwnership): boolean {
+  return (
+    ownership.remoteStatus === "created" ||
+    ownership.remoteStatus === "approved" ||
+    ownership.remoteStatus === "published" ||
+    ownership.sellingPlatform === "atg"
+  );
+}
+
 export type AtgLotChannelState = {
   linked: boolean;
   numberOfBids: number;

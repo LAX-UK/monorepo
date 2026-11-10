@@ -23,6 +23,7 @@ export function SaleScheduleStep({
   isDraft,
   savedTimeZone,
   timeZoneLocked = false,
+  timeZoneFixedByAtg = false,
   isSaleroom,
   pending: _pending,
   fields,
@@ -99,6 +100,7 @@ export function SaleScheduleStep({
         form={form}
         isDraft={isDraft}
         timeZoneLocked={timeZoneLocked}
+        timeZoneFixedByAtg={timeZoneFixedByAtg}
         isSaleroom={isSaleroom}
       />
 
