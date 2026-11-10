@@ -32,6 +32,10 @@ export function createShopScheduler(options: ShopSchedulerOptions): ShopSchedule
           }
         }
       });
+    } catch (error) {
+      // The lock connection could not be had (for example a database still starting on a fresh
+      // pod). Nothing is held; the next interval tries again, so this is a warning, not a crash.
+      options.log.warn({ err: error }, "shop scheduler tick skipped: could not take the lock");
     } finally {
       running = false;
     }
