@@ -10,8 +10,8 @@ import {
 } from "@/lib/lot-page/build-lot-page-view";
 import type { LotBiddingView } from "@/lib/lot-page/lot-bidding-view";
 import type { LotViewerView } from "@/lib/lot-page/lot-viewer";
+import { useLotPageNow } from "@/lib/lot-page/use-lot-page-now";
 import { useLotPublicHistory, useLotViewer } from "@/lib/lot-page/use-lot-reads";
-import { useServerClock } from "@/lib/lot-page/use-server-clock";
 import { classifyLotLifecycle } from "@/lib/lot/lot-lifecycle";
 import { type PublicBidHistory, lotLifecycleCopy, nextBidAmount } from "@auction/domain";
 import type { Lot, Sale } from "@auction/types";
@@ -82,7 +82,7 @@ export function useLotPageView(source: LotPageViewSource): LotPageLive {
   const online = useOnlineLotLifecycle();
   const saleroom = useSaleroomLive();
   const { currentPrice, entries } = useLotBidHistory();
-  const nowMs = useServerClock(bidding.serverNow);
+  const nowMs = useLotPageNow(bidding.serverNow);
 
   const status = online?.liveLotStatus ?? lot.status;
   const winnerId = online?.liveWinnerId ?? lot.winnerId;

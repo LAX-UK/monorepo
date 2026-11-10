@@ -97,6 +97,9 @@ jobs:
       - name: Staff UI guardrails
         run: pnpm lint:staff-legacy-shell && pnpm lint:bid-public-kit && pnpm lint:staff-route-composition && pnpm lint:staff-list-template
 
+      - name: Date and time guard
+        run: pnpm lint:datetime
+
       - name: E2E portfolio guard
         run: pnpm lint:e2e-portfolio
 

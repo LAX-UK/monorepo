@@ -10,9 +10,10 @@ import {
   lifecycleBadge,
   saleroomOnBlockBadge,
 } from "@/lib/lot/lot-lifecycle";
+import { useClockNow } from "@/lib/time/use-clock";
 import type { Lot, Sale } from "@auction/types";
 import { cn } from "@auction/ui";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 
 type LotPick = Pick<
   Lot,
@@ -86,17 +87,13 @@ export function LotStatePill({
   hideCountdownOnMobile = false,
   initialNowMs,
 }: Props) {
-  const [now, setNow] = useState<number | null>(() => initialNowMs ?? null);
+  // The server's reading until the shared clock is running, so the first paint matches.
+  const tick = useClockNow(1000);
+  const now = tick ?? initialNowMs ?? null;
   const onlineCtx = useOnlineLotLifecycle();
   const saleroomLive = useSaleroomLive();
   const isOnBlock = saleroomLive?.isLotOnBlock(lot.id) ?? false;
   const isSessionLive = saleroomLive?.isSessionLive ?? false;
-
-  useEffect(() => {
-    setNow((cur) => cur ?? Date.now());
-    const id = window.setInterval(() => setNow(Date.now()), 1000);
-    return () => window.clearInterval(id);
-  }, []);
 
   const recentlyExtended = onlineCtx?.extendedByMs != null && onlineCtx.extendedByMs > 0;
   const lifecycle = useMemo(

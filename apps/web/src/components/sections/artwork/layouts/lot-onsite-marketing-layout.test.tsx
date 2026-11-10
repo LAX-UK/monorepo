@@ -13,8 +13,10 @@ import type { Lot, Sale } from "@auction/types";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-vi.mock("@/lib/time/use-client-clock", () => ({
-  useClientClock: () => Date.parse("2026-06-01T12:00:00.000Z"),
+vi.mock("@/lib/time/use-clock", () => ({
+  useClockNow: () => Date.parse("2026-06-01T12:00:00.000Z"),
+  useCountdownTick: () => Date.parse("2026-06-01T12:00:00.000Z"),
+  useCountdown: () => null,
 }));
 
 vi.mock("@/hooks/use-reduced-motion", () => ({

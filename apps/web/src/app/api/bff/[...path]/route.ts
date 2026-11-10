@@ -10,10 +10,17 @@ import {
 import { readBidSessionId } from "@/lib/bff/session-cookie.server";
 import { BidBffSessionRequiredError, BidBffTokenService } from "@/lib/bff/token-service.server";
 import { fetchBidApi } from "@/lib/data/http/bid-api.server";
+import { resolveVisitorIp } from "@/lib/http/visitor-ip";
+import { visitorIpHeadersFor } from "@/lib/http/visitor-ip.server";
 import { type NextRequest, NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+function withHeaders(headers: Headers, extra: Record<string, string>): Headers {
+  for (const [name, value] of Object.entries(extra)) headers.set(name, value);
+  return headers;
+}
 
 type RouteContext = { params: Promise<{ path: string[] }> };
 
@@ -31,7 +38,10 @@ async function proxy(request: NextRequest, context: RouteContext): Promise<Respo
       return NextResponse.json({ error: "csrf_rejected" }, { status: 403 });
     }
   }
-  const sessionId = readBidSessionId(request);
+  // The server clock is public: no session, so no token exchange to skew the round trip, and the
+  // visitor's own address goes to the API so the rate limit is per visitor, not per web server.
+  const isServerTime = path.length === 1 && path[0] === "time";
+  const sessionId = isServerTime ? null : readBidSessionId(request);
 
   const tokens = new BidBffTokenService();
   const requiredScopes = scopesForProxyMethod(method);
@@ -51,10 +61,13 @@ async function proxy(request: NextRequest, context: RouteContext): Promise<Respo
   target.search = request.nextUrl.search;
   const body =
     method === "GET" || method === "HEAD" ? undefined : Buffer.from(await request.arrayBuffer());
+  const forwardedAddress = isServerTime
+    ? visitorIpHeadersFor(resolveVisitorIp(request.headers))
+    : {};
   const perform = (bearer?: string) =>
     fetchBidApi(target, {
       method,
-      headers: sanitizedProxyRequestHeaders(request.headers, bearer),
+      headers: withHeaders(sanitizedProxyRequestHeaders(request.headers, bearer), forwardedAddress),
       ...(body ? { body } : {}),
       redirect: "manual",
       cache: "no-store",
