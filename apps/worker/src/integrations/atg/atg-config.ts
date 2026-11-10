@@ -1,4 +1,5 @@
 import type { WorkerEnv } from "../../env.js";
+import { ATG_AUCTION_FEES } from "./atg-fees.js";
 import type { AtgSyncConfig } from "./atg-types.js";
 import type { GapHttpAdapterOptions } from "./gap-http-adapter.js";
 import { toWindowsTimezoneId } from "./windows-timezone.js";
@@ -26,6 +27,7 @@ export function loadAtgRuntimeConfig(env: WorkerEnv): AtgRuntimeConfig | null {
       password: required(env.ATG_API_PASSWORD, "ATG_API_PASSWORD"),
     },
     sync: {
+      fees: ATG_AUCTION_FEES,
       platformCode: required(env.ATG_PLATFORM_CODE, "ATG_PLATFORM_CODE"),
       clientId: env.ATG_CLIENT_ID ?? null,
       incrementSetId: required(env.ATG_INCREMENT_SET_ID, "ATG_INCREMENT_SET_ID"),

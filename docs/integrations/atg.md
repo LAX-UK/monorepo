@@ -172,6 +172,15 @@ with `PlatformCode`, `AuctionTypeAndListing` (the sale's ATG auction type), `Cat
 `public_marketplace`). ATG takes one flat buyer's premium per auction: banded premiums fail the
 push before anything is sent.
 
+**ATG's charges** (`atg-fees.ts`, `ATG_AUCTION_FEES`). ATG sets its own charges on top of the
+hammer, which can differ from LAX's on lax.bid. Every auction sends `BuyersPremiumVatRate` 20,
+`InternetSurchargeRate` (ATG's commission passed to the bidder: 3 for timed auctions) and
+`InternetSurchargeVatRate` 20. GAP rates are percentages and the VAT fields are VAT rates, not
+shares of the hammer: a £1,000 hammer with a 25% premium costs the bidder £1,336. ATG has not
+confirmed a live-auction surcharge, so a `Live` sale fails the push with a visible error until
+it does. `VatRate` (VAT on the hammer) is not sent; lots under normal VAT rules are handled at
+settlement.
+
 **Per-sale ATG settings** (`atg_auction_link.auction_type`, `.distribution`; ATG tab → "ATG
 settings"; `PUT /admin/integrations/atg/sales/:id/settings`, `auction.manage`):
 
@@ -528,6 +537,7 @@ after Step 7, so keep it that way until SSO (Step 9) exists.
 | Visibility | The White Label mirrors The Saleroom: public auctions appear on both | `public_marketplace` = both sites; no White-Label-only option |
 | Invoicing | LAX (the auction house) invoices; registration rules and deposits are set in Toolbox | [Manual settlement](../runbooks/atg-manual-settlement.md) |
 | Premium | Single rate only in Toolbox | Banded or per-lot rates fail the push |
+| Fees on top of hammer | Premium + 20% VAT, internet surcharge (ATG's commission passed on, 3% timed) + 20% VAT: 33.6% on a 25% premium (Seller Support, Nov 2026) | Sent on every auction (`atg-fees.ts`); added to [manual settlement](../runbooks/atg-manual-settlement.md) |
 | Artist | Anywhere in the title or description | `ATG_ARTIST_PLACEMENT` |
 | IDs | Custom auction and lot IDs are not supported; ATG returns its own IDs | Links store ATG's IDs; `ClientsAuctionId` is still sent but nothing relies on it |
 | Lost creates | Check Toolbox | Automatic lookup by `ClientsAuctionId` when `ATG_CLIENT_ID` is set; otherwise runbook "Lost auction creates" |
