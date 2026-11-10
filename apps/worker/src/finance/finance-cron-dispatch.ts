@@ -1,7 +1,7 @@
 import type { FinanceCronInternalJobPath, IFinanceCronHandlers } from "@auction/finance-cron-app";
 import type pino from "pino";
 import type { WorkerEnv } from "../env.js";
-import { postInternalCronJob } from "../jobs/post-internal-cron-job.js";
+import { type GatewayRetry, postInternalCronJob } from "../jobs/post-internal-cron-job.js";
 
 export type FinanceCronDispatchContext = {
   env: WorkerEnv;
@@ -30,7 +30,11 @@ const PATH_TO_HANDLER: Record<
 export async function dispatchFinanceCronJob(
   ctx: FinanceCronDispatchContext,
   path: FinanceCronInternalJobPath,
-  options?: { treat409AsSuccess?: boolean; body?: Record<string, unknown> },
+  options?: {
+    treat409AsSuccess?: boolean;
+    body?: Record<string, unknown>;
+    gatewayRetry?: GatewayRetry;
+  },
 ): Promise<void> {
   const workerOwns =
     ctx.env.FINANCE_CRON_EXECUTION_OWNER === "worker" && !ctx.env.FINANCE_CRON_API_ROLLBACK;
@@ -59,5 +63,6 @@ export async function dispatchFinanceCronJob(
     ...(options?.treat409AsSuccess !== undefined
       ? { treat409AsSuccess: options.treat409AsSuccess }
       : {}),
+    ...(options?.gatewayRetry !== undefined ? { gatewayRetry: options.gatewayRetry } : {}),
   });
 }
