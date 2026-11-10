@@ -522,6 +522,139 @@ describe.skipIf(!hasShopIntegrationDb)(
       expect(queueCheckoutOpsAlert).toHaveBeenCalledTimes(1);
     });
 
+    describe("the same payment event delivered twice at once", () => {
+      /** A receipt queue that holds the first delivery open until released, then fails it or not. */
+      function receiptsHeldOpen(afterRelease: "fail" | "pass") {
+        let release!: () => void;
+        let reached!: () => void;
+        const released = new Promise<void>((resolve) => {
+          release = resolve;
+        });
+        const firstReachedReceipt = new Promise<void>((resolve) => {
+          reached = resolve;
+        });
+        let calls = 0;
+        const queueOrderReceipt = vi.fn(async () => {
+          calls += 1;
+          if (calls > 1) return;
+          reached();
+          await released;
+          if (afterRelease === "fail") throw new Error("receipt queue unavailable");
+        });
+        return {
+          options: {
+            notifications: { queueOrderReceipt } as never,
+            storefrontUrl: "http://localhost:3020",
+          },
+          release,
+          firstReachedReceipt,
+        };
+      }
+
+      async function paidEvent(label: string) {
+        const harness = await setup(label);
+        const created = await harness.checkout("buyer");
+        const placed = await harness.order(created.orderId);
+        const paid = {
+          eventId: `evt_${label}_${created.orderId}`,
+          orderId: created.orderId,
+          sessionId: `cs_test_${created.orderId}`,
+          amountTotalPence: placed.totalPence,
+          paidAt: new Date(),
+          paymentIntentId: `pi_${label}`,
+        };
+        const claims = () =>
+          harness.db
+            .select()
+            .from(shopProcessedPaymentEvent)
+            .where(eq(shopProcessedPaymentEvent.eventId, paid.eventId));
+        return { ...harness, created, paid, claims };
+      }
+
+      /** Waits, for a bounded time, until a statement on the claims table is blocked on a lock. */
+      async function claimIsBlockedOnLock(): Promise<boolean> {
+        for (let attempt = 0; attempt < 50; attempt += 1) {
+          const { rowCount } = await ownerPool.query(
+            `select 1 from pg_stat_activity
+             where datname = current_database()
+               and wait_event_type = 'Lock'
+               and query ilike '%shop_processed_payment_event%'`,
+          );
+          if (rowCount) return true;
+          await new Promise((resolve) => setTimeout(resolve, 100));
+        }
+        return false;
+      }
+
+      it("makes the second delivery wait for the first, and records the payment when the first fails", async () => {
+        const { db, order, created, paid, claims } = await paidEvent("webhook-first-fails");
+        const receipts = receiptsHeldOpen("fail");
+        const { options } = receipts;
+
+        const first = completeShopCheckoutSession(db, paid, options);
+        const firstFailure = expect(first).rejects.toThrow("receipt queue unavailable");
+        await receipts.firstReachedReceipt;
+        const second = completeShopCheckoutSession(db, paid, options);
+
+        // The first has claimed the event but not committed: the second must not answer yet, and
+        // above all must not answer "duplicate" for work that is not recorded.
+        expect(await claimIsBlockedOnLock()).toBe(true);
+        receipts.release();
+        await firstFailure;
+
+        expect(await second).toBe("processed");
+        expect((await order(created.orderId)).status).toBe("paid");
+        expect(await claims()).toHaveLength(1);
+      });
+
+      it("answers the second delivery as a duplicate only once the first is committed", async () => {
+        const { db, order, created, paid, claims } = await paidEvent("webhook-first-succeeds");
+        const receipts = receiptsHeldOpen("pass");
+        const { options } = receipts;
+
+        const first = completeShopCheckoutSession(db, paid, options);
+        await receipts.firstReachedReceipt;
+        const second = completeShopCheckoutSession(db, paid, options);
+        expect(await claimIsBlockedOnLock()).toBe(true);
+        receipts.release();
+
+        expect(await first).toBe("processed");
+        expect(await second).toBe("duplicate");
+        expect((await order(created.orderId)).status).toBe("paid");
+        expect(await claims()).toHaveLength(1);
+      });
+    });
+
+    it("leaves a session alone when payment was opened again after the sweep chose the order", async () => {
+      const { db, checkout, order } = await setup("reaper-new-session");
+      const created = await checkout("buyer");
+      const sweepAt = new Date();
+      // Payment was opened again: a new session, and a hold that runs past the sweep.
+      await db
+        .update(shopOrder)
+        .set({
+          stripeCheckoutSessionId: "cs_test_reopened",
+          checkoutExpiresAt: new Date(sweepAt.getTime() + 30 * 60_000),
+        })
+        .where(eq(shopOrder.id, created.orderId));
+      const expireHostedCheckout = vi.fn(async () => ({ kind: "expired" as const }));
+
+      const outcome = await expireShopCheckoutSession(
+        db,
+        {
+          eventId: reaperEventIdForOrder(created.orderId),
+          orderId: created.orderId,
+          source: SHOP_CHECKOUT_REAPER_EVENT_SOURCE,
+          holdMustHaveEndedBy: sweepAt,
+        },
+        { paymentGateway: { ...gateway, expireHostedCheckout } },
+      );
+
+      expect(outcome).toBe("unchanged");
+      expect(expireHostedCheckout).not.toHaveBeenCalled();
+      expect((await order(created.orderId)).status).toBe("pending_payment");
+    });
+
     it("will not stretch a hold that has already ended", async () => {
       const { db, checkout, order, holder, pastHold } = await setup("no-revive");
       const created = await checkout("buyer");

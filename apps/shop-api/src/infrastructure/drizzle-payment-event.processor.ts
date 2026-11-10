@@ -137,7 +137,8 @@ async function expireStripeBeforeLocalTransition(
   paymentGateway: PaymentCheckoutGateway | undefined,
   mode: "buyer_cancel" | "expire",
   options: CheckoutTransitionOptions = {},
-): Promise<"proceed" | "skip_async" | "reconciled" | "unconfirmed"> {
+  holdMustHaveEndedBy?: Date,
+): Promise<"proceed" | "skip_async" | "reconciled" | "unconfirmed" | "hold_running"> {
   if (!paymentGateway) {
     return "proceed";
   }
@@ -145,12 +146,18 @@ async function expireStripeBeforeLocalTransition(
     .select({
       status: shopOrder.status,
       stripeCheckoutSessionId: shopOrder.stripeCheckoutSessionId,
+      checkoutExpiresAt: shopOrder.checkoutExpiresAt,
     })
     .from(shopOrder)
     .where(eq(shopOrder.id, orderId))
     .limit(1);
   if (!preview || preview.status !== "pending_payment") {
     return "proceed";
+  }
+  // The session ended below is the one read here, so the hold is judged on this same read: a buyer
+  // who opened payment since the sweep chose the order has a new session that must not be ended.
+  if (holdMustHaveEndedBy && holdStillRunning(preview, holdMustHaveEndedBy)) {
+    return "hold_running";
   }
   const outcome = await expireHostedCheckoutSession(paymentGateway, {
     orderId,
@@ -773,7 +780,16 @@ async function recordPaymentForUnknownOrder(
   });
 }
 
-/** Marks a Stripe event as handled; false when it already was, so a replay does nothing. */
+/**
+ * Marks a Stripe event as handled; false when it already was, so a replay does nothing.
+ *
+ * Called inside the transaction that records the event's effects, before any effect is written
+ * (a lock on the order may be taken first). A second delivery of
+ * the same event waits on the first one's uncommitted claim: it gets "already handled" only once
+ * the first has committed, and if the first rolls back it takes the claim and does the work
+ * itself. Never call this outside that transaction, or a duplicate could be acknowledged for work
+ * that was never stored.
+ */
 async function claimPaymentEvent(tx: Database, eventId: string): Promise<boolean> {
   const [claim] = await tx
     .insert(shopProcessedPaymentEvent)
@@ -1152,7 +1168,7 @@ function holdStillRunning(
  * Expires an order whose checkout ended: the buyer let it run out, Stripe said so, or the reaper
  * found its hold past. The reaper passes `holdMustHaveEndedBy` (its sweep time): an order whose
  * hold was stretched after the sweep chose it (a buyer opening payment) is left alone, both
- * before Stripe's session is ended and again under the order's row lock. That check comes before
+ * on the read that picks Stripe's session to end and again under the order's row lock. That check comes before
  * the event is claimed, so an order that was spared is found again by a later sweep.
  */
 export async function expireShopCheckoutSession(
@@ -1170,21 +1186,15 @@ export async function expireShopCheckoutSession(
 ): Promise<ShopCheckoutExpireOutcome> {
   const source = input.source ?? "stripe";
   const events = createShopDomainEventPublisher(options.domainEventMode ?? "off");
-  if (input.holdMustHaveEndedBy) {
-    const [current] = await db
-      .select({ checkoutExpiresAt: shopOrder.checkoutExpiresAt })
-      .from(shopOrder)
-      .where(eq(shopOrder.id, input.orderId))
-      .limit(1);
-    if (current && holdStillRunning(current, input.holdMustHaveEndedBy)) return "unchanged";
-  }
   const stripeGate = await expireStripeBeforeLocalTransition(
     db,
     input.orderId,
     input.skipStripe ? undefined : options.paymentGateway,
     "expire",
     options,
+    input.holdMustHaveEndedBy,
   );
+  if (stripeGate === "hold_running") return "unchanged";
   if (stripeGate === "reconciled") return "reconciled";
   if (stripeGate === "unconfirmed") {
     return expireOutcomeOf(
