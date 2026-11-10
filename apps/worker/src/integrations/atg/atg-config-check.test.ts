@@ -17,6 +17,7 @@ describe("checkAtgConfig", () => {
     expect(await checkAtgConfig(gateway, testAtgConfig)).toEqual({
       problems: [],
       unavailable: [],
+      warnings: [],
     });
   });
 
@@ -45,6 +46,41 @@ describe("checkAtgConfig", () => {
 
     expect(result.problems).toEqual([]);
     expect(result.unavailable).toHaveLength(2);
+  });
+
+  describe("default internet surcharge", () => {
+    it("warns when ATG's client default differs from the surcharge LAX sends", async () => {
+      gateway.clientDefaultSurchargeRate = 5;
+
+      const { warnings, problems } = await checkAtgConfig(gateway, testAtgConfig);
+
+      expect(problems).toEqual([]);
+      expect(warnings).toEqual([expect.stringContaining("default internet surcharge")]);
+      expect(warnings[0]).toContain("is 5");
+      expect(warnings[0]).toContain("sends 3");
+    });
+
+    it("stays quiet when the default matches, within tolerance", async () => {
+      gateway.clientDefaultSurchargeRate = 3 + 1e-9;
+
+      expect((await checkAtgConfig(gateway, testAtgConfig)).warnings).toEqual([]);
+    });
+
+    it("stays quiet when ATG holds no default", async () => {
+      expect((await checkAtgConfig(gateway, testAtgConfig)).warnings).toEqual([]);
+    });
+
+    it("treats a failed read as unavailable, not as a mismatch", async () => {
+      gateway.failNext(
+        "getClientDefaultSurchargeRate",
+        new AtgGatewayError("down", true, null, "x"),
+      );
+
+      const result = await checkAtgConfig(gateway, testAtgConfig);
+
+      expect(result.warnings).toEqual([]);
+      expect(result.unavailable).toEqual([expect.stringContaining("Default internet surcharge")]);
+    });
   });
 
   it("skips the increment set check without a client id", async () => {

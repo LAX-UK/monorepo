@@ -44,6 +44,8 @@ export class FakeAtgGateway implements AtgGateway {
   remoteAuctions = new Map<string, AtgRemoteAuction>();
   /** What `findAuctionsByClientId` returns. */
   clientAuctions: AtgRemoteAuction[] = [];
+  /** What `getClientDefaultSurchargeRate` returns. */
+  clientDefaultSurchargeRate: number | null = null;
   incrementSets: AtgIncrementSet[] = [];
   supportedCategories: string[] = [];
   private seq = 0;
@@ -108,6 +110,10 @@ export class FakeAtgGateway implements AtgGateway {
   async findAuctionsByClientId(clientId: string, fromDate: Date) {
     this.record("findAuctionsByClientId", { clientId, fromDate });
     return this.clientAuctions;
+  }
+  async getClientDefaultSurchargeRate(clientId: string) {
+    this.record("getClientDefaultSurchargeRate", clientId);
+    return this.clientDefaultSurchargeRate;
   }
   async getIncrementSets(clientId: string) {
     this.record("getIncrementSets", clientId);
