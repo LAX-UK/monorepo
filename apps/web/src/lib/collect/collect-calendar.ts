@@ -1,3 +1,4 @@
+import { calendarYear, formatMonthName } from "@auction/datetime";
 import { formatCollectionDay, isoWeekday } from "@auction/domain";
 import type { CollectionDayView, CollectionSlotView } from "@auction/types";
 import { COLLECT_COPY } from "./collect-copy";
@@ -97,15 +98,15 @@ export function windowHeading(days: readonly CollectionDayView[]): string {
   const first = days[0];
   const last = days[days.length - 1];
   if (!first || !last) return "";
-  const month = new Intl.DateTimeFormat("en-GB", { month: "long", timeZone: "UTC" });
-  const year = new Intl.DateTimeFormat("en-GB", { year: "numeric", timeZone: "UTC" });
+  const month = (date: Date) => formatMonthName(date, "UTC");
+  const year = (date: Date) => calendarYear(date, "UTC");
   const a = noon(first.date);
   const b = noon(last.date);
-  const sameMonth = month.format(a) === month.format(b) && year.format(a) === year.format(b);
-  if (sameMonth) return `${month.format(a)} ${year.format(a)}`;
-  return year.format(a) === year.format(b)
-    ? `${month.format(a)} – ${month.format(b)} ${year.format(a)}`
-    : `${month.format(a)} ${year.format(a)} – ${month.format(b)} ${year.format(b)}`;
+  const sameMonth = month(a) === month(b) && year(a) === year(b);
+  if (sameMonth) return `${month(a)} ${year(a)}`;
+  return year(a) === year(b)
+    ? `${month(a)} – ${month(b)} ${year(a)}`
+    : `${month(a)} ${year(a)} – ${month(b)} ${year(b)}`;
 }
 
 /**

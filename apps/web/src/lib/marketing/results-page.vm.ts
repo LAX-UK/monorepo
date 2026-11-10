@@ -2,7 +2,13 @@ import { atgDisplaySale } from "@/lib/catalog/atg-catalog-display";
 import { formatWholeMoney } from "@/lib/money/currency";
 import type { SaleListRow } from "@/lib/sale-list-row";
 import { salePath } from "@/lib/seo/url";
-import { LONDON_TIME_ZONE, formatDayMonth, formatWeekday, toDate } from "@auction/datetime";
+import {
+  LONDON_TIME_ZONE,
+  calendarYear,
+  formatDayMonth,
+  formatWeekday,
+  toDate,
+} from "@auction/datetime";
 import type { Lot, Sale, SaleDeliveryMode } from "@auction/types";
 
 /** The order the Sales view is in, said out loud. */
@@ -112,10 +118,7 @@ export function resultsYears(rows: readonly SaleListRow[]): number[] {
   for (const row of rows) {
     if (!row.resultsSummary || row.lotCount === 0) continue;
     const ended = endedAt(row);
-    if (ended)
-      years.add(
-        Number(ended.toLocaleString("en-GB", { year: "numeric", timeZone: "Europe/London" })),
-      );
+    if (ended) years.add(calendarYear(ended, LONDON_TIME_ZONE));
   }
   return [...years].sort((a, b) => b - a);
 }

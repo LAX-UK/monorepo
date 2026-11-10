@@ -1,4 +1,4 @@
-import { LONDON_TIME_ZONE } from "@auction/datetime";
+import { LONDON_TIME_ZONE, formatMonthName } from "@auction/datetime";
 import type { CoverMedia, CoverSeasonRow, CoverSlide } from "@auction/marketing-ui";
 import type { SaleCoverSlotAssets } from "@auction/types";
 import { type BidCoverLot, photoFromCover, plateFromLot } from "./bid-cover.adapter";
@@ -6,8 +6,6 @@ import { coverDay } from "./cover-time";
 
 /** The most sales the season list names after the consignment deadline. */
 const SEASON_SALES_MAX = 2;
-
-const MONTH = new Intl.DateTimeFormat("en-GB", { timeZone: LONDON_TIME_ZONE, month: "long" });
 
 export type BidSeasonSale = { title: string; startsAt: Date | null };
 
@@ -32,7 +30,8 @@ export function seasonRows(input: {
     })
     .sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime())
     .slice(0, SEASON_SALES_MAX);
-  for (const sale of dated) rows.push({ label: MONTH.format(sale.startsAt), value: sale.title });
+  for (const sale of dated)
+    rows.push({ label: formatMonthName(sale.startsAt, LONDON_TIME_ZONE), value: sale.title });
   return rows.length > 0 ? rows : undefined;
 }
 
