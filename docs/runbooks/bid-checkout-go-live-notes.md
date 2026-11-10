@@ -111,3 +111,10 @@ Manual replay remains available via the same endpoints (see `docs/runbooks/xero-
 - `OnlineBidsView` bid history not resynced on reconnect
 - Cron trigger queues outside `QUEUE_REGISTRY`
 - Reserve enforced at close only (English auctions — confirm with saleroom ops)
+
+### Courier delivery paid inside the invoice payment (CO-4c)
+
+Behind `DELIVERY_IN_PAYMENT_ENABLED` (off).
+
+- **Refunds.** A refund of the courier charge must be made with `metadata.deliveryQuoteId` (the gateway's `createRefund` takes `deliveryQuoteId`). The refund webhook (`PaymentGroupChargeEvents`) attributes it to the quote and emits `payment_group.delivery_refunded`; it never moves an invoice's refunded amount or claws back a seller payout. Invoice refunds name `metadata.paymentId`. On a group that carries delivery, each invoice and each quote is capped at what it was charged; any excess is reported as `payment_group.refund_unattributed`. A refund naming neither (made in the Stripe dashboard) is reported as unattributed, never spread. Groups without delivery behave as before.
+- **No separate courier payment.** There is no staff or buyer path for paying a delivery quote outside the invoice payment, so nothing needs switching off. The "paid" marker is the `payment_group_delivery` row, one per quote for good: `acceptedFor` excludes any quote that has one, so a paid quote is never charged again.

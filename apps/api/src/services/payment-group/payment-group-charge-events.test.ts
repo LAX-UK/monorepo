@@ -13,8 +13,9 @@ const charge = { id: "ch_group", currency: "gbp", payment_intent: "pi_group" } a
 const event = (id: string) => ({ id, type: "charge.refunded" }) as Stripe.Event;
 
 function setup(
-  refunds: { paymentId: string | null; amountPence: number }[],
+  refunds: { paymentId: string | null; amountPence: number; deliveryQuoteId?: string | null }[],
   opts: {
+    deliveries?: { quoteId: string; lotId: string; amount: string }[];
     claimed?: boolean;
     paymentRefunds?: InMemoryPaymentRefunds;
     /** Pence the seller's ledger already holds as refunded, per payment (a refund the previous release handled). */
@@ -36,7 +37,7 @@ function setup(
     lockInTransaction: vi.fn().mockImplementation(async () => ({
       group: GROUP,
       members: [...members].reverse(),
-      deliveries: [],
+      deliveries: opts.deliveries ?? [],
     })),
   };
   const events = new PaymentGroupChargeEvents({
@@ -263,5 +264,106 @@ describe("PaymentGroupChargeEvents.chargeRefunded", () => {
       events as unknown as { deps: { groups: { findByStripeRefs: unknown } } }
     ).deps.groups.findByStripeRefs = vi.fn().mockResolvedValue(null);
     expect(await events.chargeRefunded(event("evt_1"), charge)).toBeNull();
+  });
+
+  describe("with courier delivery charged in the payment", () => {
+    const deliveries = [{ quoteId: "q-1", lotId: "lot-1", amount: "20.00" }];
+
+    it("attributes a refund smaller than the delivery to the delivery only", async () => {
+      const { events, paymentRefunds, addLine, applyRefunded, publish } = setup(
+        [{ paymentId: null, deliveryQuoteId: "q-1", amountPence: 1_500 }],
+        { deliveries },
+      );
+      const result = await events.chargeRefunded(event("evt_1"), charge);
+      expect(result).toEqual({ processed: true, action: "refund_received" });
+      expect(paymentRefunds.entries).toEqual([]);
+      expect(addLine).not.toHaveBeenCalled();
+      expect(applyRefunded).not.toHaveBeenCalled();
+      expect(publish).toHaveBeenCalledTimes(1);
+      expect(publish.mock.calls[0]?.[0]).toMatchObject({
+        eventType: "payment_group.delivery_refunded",
+        payload: { deliveryQuoteId: "q-1", cumulativeRefundedCents: 1_500, chargedCents: 2_000 },
+      });
+    });
+
+    it("caps each invoice and the delivery when invoices and delivery are all refunded", async () => {
+      const { events, paymentRefunds, addLine, publish } = setup(
+        [
+          { paymentId: "pay-a", amountPence: 10_000 },
+          { paymentId: "pay-b", amountPence: 5_000 },
+          { paymentId: null, deliveryQuoteId: "q-1", amountPence: 2_000 },
+        ],
+        { deliveries },
+      );
+      await events.chargeRefunded(event("evt_1"), charge);
+      expect(paymentRefunds.entries.map((e) => [e.paymentId, e.amountPence])).toEqual([
+        ["pay-a", 10_000],
+        ["pay-b", 5_000],
+      ]);
+      const clawed = addLine.mock.calls.map((c) => [c[0].paymentId, c[0].amount]);
+      expect(clawed).toEqual([
+        ["pay-a", "-100.00"],
+        ["pay-b", "-50.00"],
+      ]);
+      const types = publish.mock.calls.map((c) => c[0].eventType);
+      expect(types).toContain("payment_group.delivery_refunded");
+      expect(types).not.toContain("payment_group.refund_unattributed");
+    });
+
+    it("never lets a refund above an invoice reach the buyer record or the seller", async () => {
+      const { events, paymentRefunds, addLine, publish } = setup(
+        [{ paymentId: "pay-a", amountPence: 10_500 }],
+        { deliveries },
+      );
+      await events.chargeRefunded(event("evt_1"), charge);
+      expect(paymentRefunds.entries.map((e) => e.amountPence)).toEqual([10_000]);
+      expect(addLine.mock.calls[0]?.[0].amount).toBe("-100.00");
+      const unattributed = publish.mock.calls.find(
+        (c) => c[0].eventType === "payment_group.refund_unattributed",
+      );
+      expect(unattributed?.[0].payload.amountCents).toBe(500);
+    });
+
+    it("claws a seller back only for the invoice portion of a part refund", async () => {
+      const { events, addLine } = setup(
+        [
+          { paymentId: "pay-b", amountPence: 1_000 },
+          { paymentId: null, deliveryQuoteId: "q-1", amountPence: 2_000 },
+        ],
+        { deliveries },
+      );
+      await events.chargeRefunded(event("evt_1"), charge);
+      expect(addLine).toHaveBeenCalledTimes(1);
+      expect(addLine.mock.calls[0]?.[0]).toMatchObject({ paymentId: "pay-b", amount: "-10.00" });
+    });
+
+    it("records nothing twice when the event is delivered again", async () => {
+      const first = setup([{ paymentId: "pay-a", amountPence: 2_500 }], { deliveries });
+      await first.events.chargeRefunded(event("evt_1"), charge);
+      const again = await first.events.chargeRefunded(event("evt_1_again"), charge);
+      expect(again).toMatchObject({ reason: "no_new_refund_amount" });
+      expect(first.paymentRefunds.entries).toHaveLength(1);
+      expect(first.addLine).toHaveBeenCalledTimes(1);
+
+      const duplicate = setup([{ paymentId: null, deliveryQuoteId: "q-1", amountPence: 500 }], {
+        deliveries,
+        claimed: false,
+      });
+      expect(await duplicate.events.chargeRefunded(event("evt_1"), charge)).toMatchObject({
+        reason: "duplicate_event",
+      });
+      expect(duplicate.publish).not.toHaveBeenCalled();
+    });
+
+    it("keeps today's behaviour for a legacy refund that names no quote", async () => {
+      const { events, paymentRefunds, publish } = setup([{ paymentId: null, amountPence: 300 }], {
+        deliveries,
+      });
+      await events.chargeRefunded(event("evt_1"), charge);
+      expect(paymentRefunds.entries).toEqual([]);
+      expect(publish.mock.calls.map((c) => c[0].eventType)).toEqual([
+        "payment_group.refund_unattributed",
+      ]);
+    });
   });
 });
