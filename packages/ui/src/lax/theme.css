@@ -184,14 +184,11 @@
 /* The time chip's row. The chip draws under an official time only for a visitor on another clock,
    so the row is absent for everyone else (no gap). While the page is still learning the visitor's
    zone, the head script marks <html> `tz-away` and the empty row keeps the 36px the chip will
-   take (28px chip and an 8px gap), so the chip arrives without moving anything. */
+   take (28px chip and an 8px gap), so the chip arrives without moving anything. The gap is the
+   row's own padding, not the chip's margin, which would collapse through the row and leave it 28px
+   high once the chip arrives. It is not `:not(:empty)` because Chrome applies that a frame late. */
 .tz-chip-slot {
   display: block;
-}
-
-/* The 8px gap belongs to the row, not to the chip's margin, which would collapse through it and
-   make the row 28px high once the chip arrives. */
-.tz-chip-slot:not(:empty) {
   padding-top: 8px;
 }
 
