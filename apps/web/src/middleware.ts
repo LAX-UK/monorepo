@@ -8,7 +8,7 @@ import {
 } from "@/lib/auth/auth-public-edge";
 import { purgeStaleAuthCookies } from "@/lib/auth/purge-stale-auth-cookies";
 import { applySilentSignInEdge } from "@/lib/auth/silent-sign-in/apply-silent-sign-in-edge";
-import { THEME_INIT_SNIPPET } from "@/lib/csp/theme-init-snippet";
+import { INLINE_HEAD_SCRIPTS } from "@/lib/csp/inline-head-scripts";
 import { isOrgModuleEnabled } from "@/lib/legal-entity/org-module-enabled";
 import { legacyArchiveRedirect } from "@/lib/marketing/archive-redirect";
 import { accountLinkRedirect } from "@/lib/navigation/account-link";
@@ -34,25 +34,29 @@ function uint8ArrayToBase64(bytes: Uint8Array): string {
   return btoa(binary);
 }
 
-/** CSP `script-src` token for the inline theme-init script (matches {@link THEME_INIT_SNIPPET}). */
-const themeInitScriptSrcTokenPromise = (async (): Promise<string> => {
-  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(THEME_INIT_SNIPPET));
-  const b64 = uint8ArrayToBase64(new Uint8Array(buf));
-  return `'sha256-${b64}'`;
+/** CSP `script-src` tokens for the inline head scripts (theme, viewer zone), one hash each. */
+const inlineHeadScriptSrcTokensPromise = (async (): Promise<string> => {
+  const tokens = await Promise.all(
+    INLINE_HEAD_SCRIPTS.map(async (script) => {
+      const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(script));
+      return `'sha256-${uint8ArrayToBase64(new Uint8Array(buf))}'`;
+    }),
+  );
+  return tokens.join(" ");
 })();
 
 /**
  * Build Content-Security-Policy header value.
  * Set `CSP_ENFORCE=1` to flip from report-only to enforcing.
  */
-function buildCsp(nonce: string, themeInitScriptSrcToken: string): string {
+function buildCsp(nonce: string, inlineHeadScriptSrcTokens: string): string {
   const isDev = process.env.NODE_ENV !== "production";
   // Next.js dev mode (HMR / React Refresh) and Turbopack rely on `eval()`,
   // so we permit `'unsafe-eval'` in development only. Production runs without it.
-  // Theme init runs without a nonce (avoids hydration mismatch); allow via static hash.
+  // The head scripts run without a nonce (avoids hydration mismatch); allow each via its static hash.
   const scriptSrc = isDev
-    ? `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' 'unsafe-eval' ${themeInitScriptSrcToken} https://*.facebook.net https://js.stripe.com`
-    : `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' ${themeInitScriptSrcToken} https://*.facebook.net https://js.stripe.com`;
+    ? `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' 'unsafe-eval' ${inlineHeadScriptSrcTokens} https://*.facebook.net https://js.stripe.com`
+    : `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' ${inlineHeadScriptSrcTokens} https://*.facebook.net https://js.stripe.com`;
 
   const directives = [
     `default-src 'self'`,
@@ -109,7 +113,7 @@ export async function middleware(request: NextRequest) {
   }
 
   const nonce = generateNonce();
-  const themeInitScriptSrcToken = await themeInitScriptSrcTokenPromise;
+  const inlineHeadScriptSrcTokens = await inlineHeadScriptSrcTokensPromise;
   const cookieHeader = request.headers.get("cookie") ?? "";
 
   if (isStaleAuthEdgePublicLanding(request.nextUrl, cookieHeader)) {
@@ -169,7 +173,7 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  const csp = buildCsp(nonce, themeInitScriptSrcToken);
+  const csp = buildCsp(nonce, inlineHeadScriptSrcTokens);
   const headerName = CSP_REPORT_ONLY
     ? "content-security-policy-report-only"
     : "content-security-policy";
