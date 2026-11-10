@@ -52,6 +52,14 @@ export function assertSaleMappableForAtg(sale: AtgSaleSnapshot): void {
   }
 }
 
+/**
+ * GAP multiplies a fee by its VAT field, so VAT goes as a multiplier (20% → 0.2), while the fee
+ * rates themselves go as percentages (25 → 25%). Sending 20 made ATG show 588% in fees.
+ */
+function gapVatMultiplier(vatPercent: number): number {
+  return Math.round(vatPercent * 100) / 10_000;
+}
+
 /** ATG's own charges on top of the hammer: VAT on the premium, and the internet surcharge plus its VAT. */
 function atgFeeFields(
   auctionType: GapAuctionTypeAndListing,
@@ -69,9 +77,9 @@ function atgFeeFields(
     );
   }
   return {
-    BuyersPremiumVatRate: config.fees.buyersPremiumVatRate,
+    BuyersPremiumVatRate: gapVatMultiplier(config.fees.buyersPremiumVatRate),
     InternetSurchargeRate: surcharge,
-    InternetSurchargeVatRate: config.fees.internetSurchargeVatRate,
+    InternetSurchargeVatRate: gapVatMultiplier(config.fees.internetSurchargeVatRate),
   };
 }
 
