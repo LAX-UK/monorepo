@@ -1,6 +1,5 @@
 import type { Database } from "@auction/db";
 import type { ILegalEntityRepository, ITransactionRunner } from "@auction/persistence/interfaces";
-import { tryClaimProcessedWebhookEvent } from "../../lib/processed-webhook-event.js";
 import {
   VeriffWebhookNotConfiguredError,
   VeriffWebhookSignatureError,
@@ -12,13 +11,11 @@ import type {
   IVeriffWebhookIngressApplicationService,
   VeriffWebhookHttpResult,
 } from "../interfaces/compliance-routes/compliance-veriff-webhook-ingress.js";
-import type { IKycService, KycWebhookHandleResult } from "../interfaces/kyc-service.js";
+import type { IKycService } from "../interfaces/kyc-service.js";
 import { KycNotConfiguredError, VeriffWebhookPayloadError } from "../interfaces/kyc-service.js";
 import type { IMarketingEventService } from "../interfaces/marketing-event-service.js";
 import type { IStripeConnectService } from "../interfaces/stripe-connect.js";
-import type { KycOutcomeNotifier } from "../kyc/kyc-outcome-notifier.js";
 import { progressIndividualsAfterKycApproval } from "../kyc/kyc-post-verification-progression.js";
-import type { KycResubmissionNotifier } from "../kyc/kyc-resubmission-notifier.js";
 import { provisionConnectForIndividuals } from "../kyc/provision-connect-after-kyc.js";
 
 type VeriffWebhookSurface = "decision" | "event" | "watchlist";
@@ -80,8 +77,6 @@ export type VeriffWebhookIngressApplicationServiceDeps = {
   amlService: AmlService;
   stripeConnectService: IStripeConnectService;
   marketingEventService: IMarketingEventService;
-  kycResubmissionNotifier: KycResubmissionNotifier;
-  kycOutcomeNotifier: KycOutcomeNotifier;
 };
 
 export class VeriffWebhookIngressApplicationService
@@ -119,32 +114,6 @@ export class VeriffWebhookIngressApplicationService
     }
   }
 
-  /** Sends the outcome once per decision, even if the provider delivers the webhook again. */
-  private async notifyOutcome(
-    notify: NonNullable<KycWebhookHandleResult["outcomeNotify"]>,
-  ): Promise<void> {
-    const { userId, outcome, providerSessionId, providerAttemptId } = notify;
-    const decisionKey = `${providerSessionId}:${providerAttemptId ?? "none"}`;
-    const { claimed } = await tryClaimProcessedWebhookEvent(
-      this.deps.db,
-      `kyc_outcome_notify:${outcome}:${decisionKey}`,
-      "kyc_outcome_notify",
-    );
-    if (!claimed) return;
-    try {
-      await this.deps.kycOutcomeNotifier.notify(userId, outcome, decisionKey);
-    } catch (err) {
-      console.error(
-        JSON.stringify({
-          msg: "kyc_outcome_notify_failed",
-          userId,
-          outcome,
-          error: err instanceof Error ? err.message : String(err),
-        }),
-      );
-    }
-  }
-
   async handleDecisionWebhook(input: {
     rawBody: string;
     signature: string | undefined;
@@ -165,33 +134,6 @@ export class VeriffWebhookIngressApplicationService
       }
       if (result.marketingEventToEnqueue) {
         await this.deps.marketingEventService.enqueue(result.marketingEventToEnqueue);
-      }
-      if (result.outcomeNotify) {
-        await this.notifyOutcome(result.outcomeNotify);
-      }
-      if (result.resubmissionNotify) {
-        const { userId, feedback, providerSessionId, providerAttemptId } =
-          result.resubmissionNotify;
-        const attemptKey = providerAttemptId ?? "none";
-        const notifyEventId = `kyc_resubmit_notify:${providerSessionId}:${attemptKey}`;
-        const { claimed } = await tryClaimProcessedWebhookEvent(
-          this.deps.db,
-          notifyEventId,
-          "kyc_resubmit_notify",
-        );
-        if (claimed) {
-          try {
-            await this.deps.kycResubmissionNotifier.notify(userId, feedback);
-          } catch (err) {
-            console.error(
-              JSON.stringify({
-                msg: "kyc_resubmission_notify_failed",
-                userId,
-                error: err instanceof Error ? err.message : String(err),
-              }),
-            );
-          }
-        }
       }
       return { ok: true, status: 200, body: { ok: true, processed: Boolean(updated) } };
     } catch (err) {

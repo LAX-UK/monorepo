@@ -10,6 +10,7 @@ import type { VeriffWebhookVerifier } from "../../lib/veriff/veriff-webhook-veri
 import { KycNotConfiguredError, VeriffWebhookPayloadError } from "../interfaces/kyc-service.js";
 import type { KycWebhookHandleResult } from "../interfaces/kyc-service.js";
 import type { KycServiceDeps } from "./kyc-context.js";
+import type { KycDecisionApplyResult } from "./kyc-contracts.js";
 import type { KycDecisionProcessor } from "./kyc-decision-processor.js";
 import { mergeKycDecisionPayload } from "./kyc-user-feedback.js";
 import type { IKycWebhookIngestService } from "./ports.js";
@@ -65,7 +66,10 @@ export class KycWebhookIngestService implements IKycWebhookIngestService {
     const eventId = `${verification.id}:${verification.attemptId ?? "none"}:decision`;
 
     if (!this.deps.transactionRunner) {
-      return this.applyDecision(verification, parsed as Record<string, unknown>, null);
+      return this.queueNotices(
+        null,
+        await this.applyDecision(verification, parsed as Record<string, unknown>, null),
+      );
     }
 
     return this.deps.transactionRunner.runInTransaction(async (tx) => {
@@ -88,8 +92,24 @@ export class KycWebhookIngestService implements IKycWebhookIngestService {
           shouldProgressIndividuals: retryProgression,
         };
       }
-      return this.applyDecision(verification, parsed as Record<string, unknown>, tx);
+      const applied = await this.applyDecision(verification, parsed as Record<string, unknown>, tx);
+      return this.queueNotices(tx, applied);
     });
+  }
+
+  /**
+   * Queues what the person is told in the transaction that applied the decision, so the notices
+   * are stored with it or not at all. A decision delivered again is a duplicate and never gets
+   * here, so nobody is told twice. The notices are not part of what the caller gets back.
+   */
+  private async queueNotices(
+    tx: Database | null,
+    applied: KycDecisionApplyResult,
+  ): Promise<KycWebhookHandleResult> {
+    const { outcomeNotify, resubmissionNotify, ...result } = applied;
+    if (outcomeNotify) await this.deps.notices?.queueOutcome(tx, outcomeNotify);
+    if (resubmissionNotify) await this.deps.notices?.queueResubmission(tx, resubmissionNotify);
+    return result;
   }
 
   async handleEventWebhook(
@@ -174,7 +194,7 @@ export class KycWebhookIngestService implements IKycWebhookIngestService {
     verification: NonNullable<ReturnType<typeof veriffDecisionWebhookSchema.parse>["verification"]>,
     payload: Record<string, unknown>,
     conn: Database | null,
-  ): Promise<KycWebhookHandleResult> {
+  ): Promise<KycDecisionApplyResult> {
     const input = mapVeriffDecisionToApplyInput(
       {
         id: verification.id,
