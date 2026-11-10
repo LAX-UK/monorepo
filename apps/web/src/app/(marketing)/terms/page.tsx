@@ -143,6 +143,7 @@ const buyerSections: TermsSection[] = [
       "hammer price",
       "buyer’s premium",
       "VAT on the buyer’s premium, where applicable",
+      "an internet surcharge and VAT on it, for sales held on auctions.lax.bid and The Saleroom",
       "VAT on the lot, where applicable",
       "Artist’s Resale Right, where applicable",
       "import VAT, customs duties, clearance fees, or local taxes",
@@ -152,6 +153,7 @@ const buyerSections: TermsSection[] = [
     trailingParagraphs: [
       `Unless stated otherwise, LAX.BID’s buyer’s premium is ${SITE_BUYERS_PREMIUM_STANDARD} on the hammer price up to ${SITE_BUYERS_PREMIUM_THRESHOLD} and ${SITE_BUYERS_PREMIUM_ABOVE_THRESHOLD} on any balance above ${SITE_BUYERS_PREMIUM_THRESHOLD}.`,
       `UK VAT is charged on the buyer’s premium at the prevailing rate, currently ${SITE_UK_VAT_RATE}, unless otherwise stated.`,
+      `Sales held on auctions.lax.bid and The Saleroom run on Auction Technology Group’s platform and follow that platform’s fee structure, which may differ from LAX Bid’s: the buyer’s premium shown for that sale, and Auction Technology Group’s internet surcharge, currently 3% of the hammer price for timed sales, each with UK VAT at the prevailing rate, currently ${SITE_UK_VAT_RATE}.`,
       "Lots may be sold under the VAT margin scheme or under normal VAT rules; by default VAT will be charged at the usual rate but otherwise the treatment of a Lot is indicated in the catalogue or invoice. Where Artist’s Resale Right applies, ARR is payable in addition to the Purchase Price and, unless stated otherwise, is charged to the Buyer at the rates set by the Artist’s Resale Right Regulations 2006. We will tell a Consumer Buyer the total Purchase Price, including all premiums, taxes and known charges, before the contract is concluded.",
     ],
   },

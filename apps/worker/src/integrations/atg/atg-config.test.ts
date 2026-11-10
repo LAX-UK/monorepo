@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { loadWorkerEnv } from "../../env.js";
 import { loadAtgRuntimeConfig } from "./atg-config.js";
+import { ATG_AUCTION_FEES } from "./atg-fees.js";
 
 const ATG_ENV = {
   ATG_SYNC_ENABLED: "true",
@@ -40,6 +41,7 @@ describe("loadAtgRuntimeConfig", () => {
     });
     expect(config?.sync).not.toHaveProperty("auctionType");
     expect(config?.sync).toMatchObject({
+      fees: ATG_AUCTION_FEES,
       artistPlacement: "description",
       currency: "GBP",
       countryCode: "UK",
