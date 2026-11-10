@@ -9,7 +9,7 @@
 import { LOCALE } from "./constants.js";
 import { formatDate, formatTime } from "./date-style.js";
 
-type ShortMonthOptions = { engineSept?: boolean };
+type ShortMonthOptions = { engineSept?: boolean | undefined };
 
 const formats = new Map<string, Intl.DateTimeFormat>();
 

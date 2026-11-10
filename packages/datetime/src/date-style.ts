@@ -28,7 +28,7 @@ export function formatTimeWithZone(date: Date, zone: string): string {
 export function formatDate(
   date: Date,
   zone: string,
-  options: { month?: "short" | "long"; engineSept?: boolean } = {},
+  options: { month?: "short" | "long"; engineSept?: boolean | undefined } = {},
 ) {
   const formats = zoneFormats(zone);
   if (options.month === "long") return formats.dayLongMonthYear.format(date);
