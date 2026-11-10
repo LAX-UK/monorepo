@@ -68,14 +68,20 @@ export class UnappliedMoneyRecorder implements IUnappliedMoneyRecorder {
     const payload = unappliedMoneyPayload(money);
     await this.reader.lockKey(tx, payload.dedupeKey);
     if (await this.reader.exists(payload.dedupeKey, tx)) return;
-    // Stripe reports a customer's whole balance each time: the newest report replaces the
-    // earlier open ones, so the same money is never shown twice.
+    // Stripe reports a customer's balance in a currency each time: the newest report replaces
+    // the earlier open ones of that currency, so the same money is never shown twice. The
+    // customer is locked first, so two reports at once take turns and the second sees the first.
     if (money.reason === "customer_balance_unapplied" && money.stripeCustomerId) {
-      const earlier = await this.reader.listOpen({
-        reasons: ["customer_balance_unapplied"],
-        stripeCustomerId: money.stripeCustomerId,
-        limit: 50,
-      });
+      await this.reader.lockKey(tx, `customer:${money.stripeCustomerId}`);
+      const earlier = await this.reader.listOpen(
+        {
+          reasons: ["customer_balance_unapplied"],
+          stripeCustomerId: money.stripeCustomerId,
+          currency: payload.currency,
+          limit: 50,
+        },
+        tx,
+      );
       await this.resolve(tx, earlier, { via: "superseded" });
     }
     this.metrics.record(`unapplied_money_${money.reason}`);

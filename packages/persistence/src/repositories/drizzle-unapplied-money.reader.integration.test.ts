@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { createDb } from "@auction/db";
+import { type Database, createDb } from "@auction/db";
 import { domainEvent } from "@auction/db/schema";
 import {
   UNAPPLIED_MONEY_EVENT,
@@ -98,5 +98,83 @@ describe.skipIf(!HAS_DB)("unapplied money reader (integration)", () => {
     const open = await reader.listOpen({ limit: 500 });
     expect(open.some((m) => m.dedupeKey === event.payload.dedupeKey)).toBe(false);
     expect(await reader.listOpenByChargeId(`ch_unapplied_${run}_done`)).toEqual([]);
+  });
+
+  describe("customer balance reports", () => {
+    const balance = (customer: string, n: string, currency: string) =>
+      unappliedMoneyPayload({
+        reason: "customer_balance_unapplied",
+        paymentId: null,
+        paymentGroupId: null,
+        stripePaymentIntentId: null,
+        stripeChargeId: null,
+        stripeCustomerId: customer,
+        stripeEventId: `evt_${run}_${n}:${currency}`,
+        amountCents: 10_000,
+        currency,
+      });
+
+    const row = (payload: ReturnType<typeof balance>, eventType: string, body: object) => ({
+      aggregateType: "payment_group",
+      aggregateId: `grp-${run}-${payload.dedupeKey}`,
+      eventType,
+      payload: body,
+      producer: "integration-test",
+    });
+
+    /** The recorder's steps for a balance report: lock, find the earlier open ones, replace them. */
+    const report = (payload: ReturnType<typeof balance>) =>
+      db.transaction(async (tx) => {
+        const t = tx as unknown as Database;
+        await reader.lockKey(t, payload.dedupeKey);
+        await reader.lockKey(t, `customer:${payload.stripeCustomerId}`);
+        const earlier = await reader.listOpen(
+          {
+            reasons: ["customer_balance_unapplied"],
+            stripeCustomerId: payload.stripeCustomerId as string,
+            currency: payload.currency,
+            limit: 50,
+          },
+          t,
+        );
+        await t.insert(domainEvent).values([
+          ...earlier.map((m) =>
+            row(payload, UNAPPLIED_MONEY_RESOLVED_EVENT, {
+              dedupeKey: m.dedupeKey,
+              via: "superseded",
+            }),
+          ),
+          row(payload, UNAPPLIED_MONEY_EVENT, payload),
+        ]);
+      });
+
+    it("filters open tasks by currency, in the caller's transaction", async () => {
+      const customer = `cus_${run}_cur`;
+      await report(balance(customer, "a", "gbp"));
+      await report(balance(customer, "b", "eur"));
+      await db.transaction(async (tx) => {
+        const t = tx as unknown as Database;
+        const gbp = await reader.listOpen(
+          { stripeCustomerId: customer, currency: "gbp", limit: 10 },
+          t,
+        );
+        const eur = await reader.listOpen(
+          { stripeCustomerId: customer, currency: "EUR", limit: 10 },
+          t,
+        );
+        expect(gbp.map((m) => m.currency)).toEqual(["GBP"]);
+        expect(eur.map((m) => m.currency)).toEqual(["EUR"]);
+      });
+    });
+
+    it("two balance reports for one customer at once leave exactly one open task", async () => {
+      const customer = `cus_${run}_race`;
+      await Promise.all([
+        report(balance(customer, "x", "gbp")),
+        report(balance(customer, "y", "gbp")),
+      ]);
+      const open = await reader.listOpen({ stripeCustomerId: customer, limit: 10 });
+      expect(open).toHaveLength(1);
+    });
   });
 });
