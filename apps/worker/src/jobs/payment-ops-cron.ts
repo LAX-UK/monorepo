@@ -5,6 +5,7 @@ import {
   type FinanceCronDispatchContext,
   dispatchFinanceCronJob,
 } from "../finance/finance-cron-dispatch.js";
+import { DEFAULT_GATEWAY_RETRY, type GatewayRetry } from "./post-internal-cron-job.js";
 
 type JobOpts = {
   env: WorkerEnv;
@@ -16,7 +17,11 @@ type JobOpts = {
 async function runFinanceCronPath(
   path: FinanceCronInternalJobPath,
   opts: JobOpts,
-  options?: { treat409AsSuccess?: boolean; body?: Record<string, unknown> },
+  options?: {
+    treat409AsSuccess?: boolean;
+    body?: Record<string, unknown>;
+    gatewayRetry?: GatewayRetry;
+  },
 ): Promise<void> {
   await dispatchFinanceCronJob(opts.financeCron, path, options);
 }
@@ -50,5 +55,6 @@ export async function runProcessNotificationOutboxJob(opts: JobOpts): Promise<vo
 }
 
 export async function runEnsureLotInvoicesJob(opts: JobOpts): Promise<void> {
-  await runFinanceCronPath("ensure-lot-invoices", opts);
+  // Creating a lot's invoice is idempotent, so a briefly unavailable API is asked again.
+  await runFinanceCronPath("ensure-lot-invoices", opts, { gatewayRetry: DEFAULT_GATEWAY_RETRY });
 }

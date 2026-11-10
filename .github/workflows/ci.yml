@@ -779,6 +779,7 @@ jobs:
     env:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/auction_ci
       DATABASE_URL_OWNER: postgresql://postgres:postgres@localhost:5432/auction_ci
+      MIGRATION_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/auction_ci
       DATABASE_URL_WORKER: postgresql://worker_app:postgres@localhost:5432/auction_ci
       WORKER_APP_DB_PASSWORD: postgres
       API_APP_DB_PASSWORD: postgres
@@ -815,6 +816,14 @@ jobs:
 
       - name: Worker app role contract
         run: pnpm --filter @auction/db test -- worker-app-role
+
+      # Runs the worker's own repositories as worker_app, so a missing grant fails here and not as
+      # `permission denied` in production. Skipped everywhere else, where that role is not set up.
+      - name: Build worker dependencies
+        run: pnpm turbo run build --filter=@auction/worker^...
+
+      - name: Worker repositories as worker_app
+        run: pnpm --filter @auction/worker exec vitest run --maxWorkers=2 src/container/worker-role-contract.integration.test.ts src/repositories/drizzle-qr-code-scan-purge.repository.integration.test.ts
 
   auth-role-contract:
     needs: build-packages
