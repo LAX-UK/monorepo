@@ -5,7 +5,7 @@ import type { GapAuctionFields } from "./gap-types.js";
 export type AtgFeeVerifierDeps = {
   gateway: Pick<AtgGateway, "getAuction">;
   /** Called once per distinct message for a sale, not every time the same mismatch is seen. */
-  onMismatch?: (saleId: string, message: string) => void;
+  onMismatch?: ((saleId: string, message: string) => void) | undefined;
 };
 
 export type FeeVerification = {

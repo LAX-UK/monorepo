@@ -1262,7 +1262,7 @@ describe("AtgSyncService", () => {
       await service.closeSale("sale-1");
       const sale = store.sales.get("sale-1");
       if (!sale) throw new Error("missing sale");
-      store.sales.set("sale-1", { ...sale, saleStatus: "live" });
+      store.sales.set("sale-1", { ...sale, saleStatus: "active" });
       store.changedSales = new Set(["sale-1"]);
       gateway.calls.length = 0;
 
