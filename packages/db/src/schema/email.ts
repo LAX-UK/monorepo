@@ -43,6 +43,7 @@ export const emailOutbox = pgTable(
     userId: text("user_id").references(() => user.id, { onDelete: "set null" }),
     toEmailHash: text("to_email_hash").notNull(),
     toSnapshot: text("to_snapshot"),
+    /** 30 days after queueing; the daily purge-email-snapshots job then clears the snapshot and `vars` of finished rows. */
     toSnapshotPurgeAt: timestamp("to_snapshot_purge_at", {
       mode: "date",
       withTimezone: true,

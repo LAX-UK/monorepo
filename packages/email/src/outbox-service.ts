@@ -40,6 +40,11 @@ function defaultIdempotencyKey(input: EmailEnqueueInput, resolution: RecipientRe
   return `${input.template}:${recipient}:${hashPayload(input.vars)}`;
 }
 
+/**
+ * When a recipient snapshot is cleared: 30 days after the message is queued. The daily
+ * `purge-email-snapshots` job clears the snapshot and the message variables of every finished row
+ * past this date; a row still queued or being sent is cleared once its send is over.
+ */
 function snapshotPurgeDate(now = new Date()): Date {
   const d = new Date(now);
   d.setUTCDate(d.getUTCDate() + 30);

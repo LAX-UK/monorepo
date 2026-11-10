@@ -450,7 +450,7 @@ There are two flavours of opt-out:
 ### Idempotency, PII, and retention
 
 - **Idempotency.** `email_outbox.idempotency_key` defaults to `template:userId-or-emailHash:sha256(canonical(vars))`. Callers can override when there's a more meaningful key (e.g. `bid.outbid:lotId:userId`). The unique index makes duplicate enqueues collapse to the first row.
-- **PII.** Recipient addresses live as `to_email_hash` (SHA-256, kept forever) and optionally `to_snapshot` (plaintext, purged at `to_snapshot_purge_at`, default 30 days). Templates that resolve at enqueue (`invite`) snapshot; templates that resolve at send-time from `user.id` do not. The hash-only retention means a GDPR Article 17 deletion request on the user wipes `to_snapshot` immediately and leaves only the hashed audit trail.
+- **PII.** Recipient addresses live as `to_email_hash` (SHA-256, kept forever) and optionally `to_snapshot` (plaintext, cleared with the row's `vars` by the daily `purge-email-snapshots` job once the send is over and `to_snapshot_purge_at` has passed, 30 days after queueing). Templates that resolve at enqueue (`invite`) snapshot; templates that resolve at send-time from `user.id` do not. The hash-only retention means a GDPR Article 17 deletion request on the user wipes `to_snapshot` immediately and leaves only the hashed audit trail.
 - **Retention.** `email_outbox` and `email_event` are kept for 12 months for delivery analytics. `email_suppression` is kept until the user explicitly resubscribes (Gmail/Yahoo expect long memory here). `newsletter_signup_log` is kept 24 months for GDPR audit. None of these have an automatic purge job today; cleanup is **(planned)**.
 
 ### Adding a new email template
