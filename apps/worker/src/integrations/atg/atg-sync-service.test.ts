@@ -10,6 +10,7 @@ import {
   FakeAtgImageInspector,
   InMemoryAtgSyncStore,
 } from "./__fixtures__/fakes.js";
+import { FEE_MISMATCH_PREFIX } from "./atg-fee-check.js";
 import { AtgGatewayError, type AtgRemoteAuctionFees, type AtgRemoteLot } from "./atg-gateway.js";
 import {
   AWAITING_ATG_APPROVAL_MESSAGE,
@@ -517,6 +518,21 @@ describe("AtgSyncService", () => {
       });
     });
 
+    it("keeps a fee mismatch when the sale is cancelled", async () => {
+      await service.pushSale("sale-1");
+      const feeMismatch = `${FEE_MISMATCH_PREFIX}buyer's premium 25 vs 20.`;
+      await store.saveAuctionLink("sale-1", { lastError: feeMismatch });
+      const sale = store.sales.get("sale-1");
+      if (!sale) throw new Error("missing sale");
+      store.sales.set("sale-1", { ...sale, cancelled: true });
+
+      await expect(service.pushSale("sale-1")).rejects.toBeInstanceOf(AtgSyncPreconditionError);
+
+      expect(store.auctionLinks.get("sale-1")?.lastError).toBe(
+        `${feeMismatch} Sale is cancelled in LAX, so it is no longer pushed. Close it on ATG.`,
+      );
+    });
+
     it("refuses to touch closed auctions or missing sales", async () => {
       await expect(service.pushSale("missing")).rejects.toBeInstanceOf(AtgSyncPreconditionError);
       await store.saveAuctionLink("sale-1", { atgAuctionId: "a", remoteStatus: "closed" });
@@ -890,6 +906,25 @@ describe("AtgSyncService", () => {
         await service.tick();
         await service.tick();
 
+        expect(tickErrors).toHaveLength(2);
+      });
+
+      it("is reported again when it returns after a push succeeded", async () => {
+        const tickErrors = await linkWithMappingError();
+        await service.tick();
+        expect(tickErrors).toHaveLength(1);
+        const live = store.sales.get("sale-1");
+        if (!live) throw new Error("missing sale");
+
+        store.sales.set("sale-1", {
+          ...live,
+          atgSettings: { ...live.atgSettings, auctionType: "Timed" },
+        });
+        expect(await service.tick()).toMatchObject({ pushed: 1, failed: 0 });
+        store.sales.set("sale-1", live);
+        store.changedSales = new Set(["sale-1"]);
+
+        expect(await service.tick()).toMatchObject({ failed: 1 });
         expect(tickErrors).toHaveLength(2);
       });
 
