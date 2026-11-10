@@ -187,11 +187,11 @@ replaces the whole auction, so a sale without one would clear the address ATG sh
 (on creation ATG fills it from the client profile instead).
 
 **ATG's charges** (`atg-fees.ts`, `ATG_AUCTION_FEES`). ATG sets its own charges on top of the
-hammer, which can differ from LAX's on lax.bid. Every auction sends `BuyersPremiumVatRate` 20,
+hammer, which can differ from LAX's on lax.bid. Every auction sends `BuyersPremiumVatRate` 0.2,
 `InternetSurchargeRate` (ATG's commission passed to the bidder: 3 for timed auctions) and
-`InternetSurchargeVatRate` 20, and every lot carries the same charges (`BuyersPremiumVatRate`,
-`InternetSurchargePercent`, `InternetSurchargeVatRate`) so a lot never differs from its auction. GAP rates are percentages and the VAT fields are VAT rates, not
-shares of the hammer: a £1,000 hammer with a 25% premium costs the bidder £1,336. ATG has not
+`InternetSurchargeVatRate` 0.2, and every lot carries the same charges (`BuyersPremiumVatRate`,
+`InternetSurchargePercent`, `InternetSurchargeVatRate`) so a lot never differs from its auction. GAP takes fee rates as percentages but VAT as a multiplier of the fee (0.2 for 20%; sending
+20 made ATG show "588% Inc. VAT"), not as a share of the hammer: a £1,000 hammer with a 25% premium costs the bidder £1,336. ATG has not
 confirmed a live-auction surcharge, so a `Live` sale fails the push with a visible error until
 it does. `VatRate` (VAT on the hammer) is not sent, so ATG sales are for margin-scheme lots only: a
 lot under normal VAT rules would be invoiced for more than ATG showed the bidder. Map `VatRate`

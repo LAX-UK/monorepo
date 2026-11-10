@@ -32,9 +32,9 @@ describe("mapSaleToAuctionFields", () => {
       IncrementSetId: "inc-1",
       ClientsAuctionId: "sale-1",
       BuyersPremium: 25,
-      BuyersPremiumVatRate: 20,
+      BuyersPremiumVatRate: 0.2,
       InternetSurchargeRate: 3,
-      InternetSurchargeVatRate: 20,
+      InternetSurchargeVatRate: 0.2,
       TimedStart: "2026-10-20T10:00:00.000Z",
       TimedFirstLotEnds: "2026-11-01T18:00:00.000Z",
       Address1: "1 Gallery Road",
@@ -79,9 +79,9 @@ describe("mapSaleToAuctionFields", () => {
     );
 
     expect(live).toMatchObject({
-      BuyersPremiumVatRate: 20,
+      BuyersPremiumVatRate: 0.2,
       InternetSurchargeRate: 5,
-      InternetSurchargeVatRate: 20,
+      InternetSurchargeVatRate: 0.2,
     });
   });
 
@@ -108,10 +108,23 @@ describe("mapSaleToAuctionFields", () => {
 
     expect(fields).toMatchObject({
       BuyersPremium: 25,
-      BuyersPremiumVatRate: 20,
+      BuyersPremiumVatRate: 0.2,
       InternetSurchargeRate: 3,
-      InternetSurchargeVatRate: 20,
+      InternetSurchargeVatRate: 0.2,
     });
+  });
+
+  it("sends VAT as GAP's multiplier so a 25% premium totals ATG's 33.6%", () => {
+    const fields = mapSaleToAuctionFields(testSale(), { ...testAtgConfig, fees: ATG_AUCTION_FEES });
+    const premium = fields.BuyersPremium ?? 0;
+    const surcharge = fields.InternetSurchargeRate ?? 0;
+    const total =
+      premium +
+      premium * (fields.BuyersPremiumVatRate ?? 0) +
+      surcharge +
+      surcharge * (fields.InternetSurchargeVatRate ?? 0);
+
+    expect(total).toBeCloseTo(33.6, 10);
   });
 
   it("refuses live sales with the production charges until ATG gives a live surcharge", () => {
@@ -154,9 +167,9 @@ describe("mapLotToLotFields", () => {
     const fields = mapLotToLotFields(testLot(), testSale(), 1, testAtgConfig);
 
     expect(fields).toMatchObject({
-      BuyersPremiumVatRate: 20,
+      BuyersPremiumVatRate: 0.2,
       InternetSurchargePercent: 3,
-      InternetSurchargeVatRate: 20,
+      InternetSurchargeVatRate: 0.2,
     });
   });
 
@@ -176,9 +189,9 @@ describe("mapLotToLotFields", () => {
       OpeningPrice: 500,
       Reserve: 800,
       EndTimeUtc: "2026-11-01T18:00:00.000Z",
-      BuyersPremiumVatRate: 20,
+      BuyersPremiumVatRate: 0.2,
       InternetSurchargePercent: 3,
-      InternetSurchargeVatRate: 20,
+      InternetSurchargeVatRate: 0.2,
     });
   });
 
