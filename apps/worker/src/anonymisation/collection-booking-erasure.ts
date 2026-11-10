@@ -6,7 +6,7 @@ import type { ProjectorDbConnection } from "../interfaces/worker-db.types.js";
 /** What replaces the name of someone who came to collect for the person, or a third party. */
 export const THIRD_PARTY_COLLECTOR_PLACEHOLDER = "Deleted collector";
 
-type ErasureScope = {
+export type ErasureScope = {
   subjectIds: readonly string[];
   personalLegalEntityIds: readonly string[];
   /** "Deleted user 7F3A": stands in for the person's own name. */
@@ -26,7 +26,7 @@ const UNHANDED = ["cancelled", "not_collected"] as const;
 const HANDED_OVER = ["collected", "partly_collected"] as const;
 
 /** The bookings the person is behind: they made, authorised or collected at them, or own the account. */
-function involvedIn(scope: ErasureScope) {
+export function involvedIn(scope: ErasureScope) {
   const subjects = [...scope.subjectIds];
   const accounts = [...scope.personalLegalEntityIds];
   return and(

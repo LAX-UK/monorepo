@@ -1,4 +1,4 @@
-import type { IEmailService, TemplateVarsByName } from "@auction/email";
+import { type IEmailService, type TemplateVarsByName, emailHash } from "@auction/email";
 import type { ILegalEntityMemberRepository } from "@auction/persistence/interfaces";
 import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
 
@@ -61,7 +61,7 @@ export async function enqueueOrgSubmittedAdminNotice(args: {
         supportContactEmail: args.supportContactEmail,
       },
       category: "transactional",
-      idempotencyKey: `legal-entity-submitted-admin:${args.eventId}:${to}`,
+      idempotencyKey: `legal-entity-submitted-admin:${args.eventId}:${emailHash(to)}`,
     });
   }
 }

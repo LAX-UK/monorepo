@@ -127,6 +127,15 @@ export class DrizzleCollectionNoticeReader implements ICollectionNoticeReader {
     return Number(row?.total ?? 0);
   }
 
+  async existingOutboxKeys(keys: readonly string[]): Promise<ReadonlySet<string>> {
+    if (keys.length === 0) return new Set();
+    const rows = await this.db
+      .select({ key: emailOutbox.idempotencyKey })
+      .from(emailOutbox)
+      .where(inArray(emailOutbox.idempotencyKey, [...keys]));
+    return new Set(rows.map((row) => row.key));
+  }
+
   async accountRecipients(
     legalEntityId: string,
     alsoUserIds: readonly string[] = [],

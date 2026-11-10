@@ -28,7 +28,11 @@ const visit: CollectionNoticeVisit = {
 function setup(
   due: { bookingId: string }[],
   read = async (): Promise<CollectionNoticeVisit | null> => visit,
+  taken: readonly string[] = [],
 ) {
+  const existingOutboxKeys = vi.fn(async (keys: readonly string[]) => {
+    return new Set(keys.filter((key) => taken.includes(key)));
+  });
   const enqueue = vi.fn().mockResolvedValue({ outboxId: "o" });
   const dueReminders = vi.fn().mockResolvedValue(due);
   const run = (now: string) =>
@@ -37,6 +41,7 @@ function setup(
         visit: read,
         dueReminders,
         collectorEmailsSince: vi.fn().mockResolvedValue(0),
+        existingOutboxKeys,
         accountRecipients: vi.fn().mockResolvedValue([]),
       },
       emailService: { enqueue } as unknown as IEmailService,
@@ -44,7 +49,7 @@ function setup(
       log,
       now: () => new Date(now),
     });
-  return { run, enqueue, dueReminders };
+  return { run, enqueue, dueReminders, existingOutboxKeys };
 }
 
 describe("the collection reminder sweep", () => {
@@ -66,7 +71,7 @@ describe("the collection reminder sweep", () => {
     expect(s.enqueue.mock.calls[0]?.[0]).toMatchObject({
       template: "collection-reminder",
       to: "maya@example.com",
-      idempotencyKey: "collection-reminder:b-1:2026-11-10T14:00:00.000Z:maya@example.com",
+      idempotencyKey: "collection-reminder:b-1:2026-11-10T14:00:00.000Z:u1",
     });
   });
 
@@ -90,5 +95,13 @@ describe("the collection reminder sweep", () => {
   it("skips a visit that has gone since it was found", async () => {
     const s = setup([{ bookingId: "gone" }], async () => null);
     expect(await s.run("2026-11-09T09:15:00Z")).toEqual({ visits: 1, queued: 0 });
+  });
+
+  it("never puts the address in the key, and skips a reminder already queued under the old address key", async () => {
+    const legacy = "collection-reminder:b-1:2026-11-10T14:00:00.000Z:maya@example.com";
+    const s = setup([{ bookingId: "b-1" }], undefined, [legacy]);
+    expect(await s.run("2026-11-09T09:15:00Z")).toEqual({ visits: 1, queued: 0 });
+    expect(s.existingOutboxKeys).toHaveBeenCalledWith([legacy]);
+    expect(s.enqueue).not.toHaveBeenCalled();
   });
 });

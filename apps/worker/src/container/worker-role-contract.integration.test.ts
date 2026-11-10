@@ -214,6 +214,7 @@ const PROBES: Probes = {
     visit: () => r.visit(NIL),
     dueReminders: () => r.dueReminders({ from: earlier, to: now, changedBefore: earlier }),
     collectorEmailsSince: () => r.collectorEmailsSince("probe", earlier),
+    existingOutboxKeys: () => r.existingOutboxKeys(["probe"]),
     accountRecipients: () => r.accountRecipients(NIL, [NIL]),
   }),
   collectByReader: (r) => ({
