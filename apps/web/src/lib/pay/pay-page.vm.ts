@@ -1,6 +1,6 @@
-import { formatLondonDayMonth, formatLondonWeekday } from "@/lib/datetime/london-time";
 import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
 import type { PurchaseBadge } from "@/lib/purchases/purchase-standing";
+import { LONDON_TIME_ZONE, formatDayMonth, formatWeekday } from "@auction/datetime";
 import type {
   InvoiceLine,
   PayPlan,
@@ -185,7 +185,7 @@ const PURCHASES_LINK = { label: PAY_COPY.openPurchases, href: CLIENT_ROUTES.purc
 
 function dayLabel(iso: string, now: Date): string {
   const date = new Date(iso);
-  return `${formatLondonWeekday(date)} ${formatLondonDayMonth(date, now)}`;
+  return `${formatWeekday(date, LONDON_TIME_ZONE)} ${formatDayMonth(date, LONDON_TIME_ZONE, now)}`;
 }
 
 export function lotSubtitle(payable: Pick<PayPlanPayable, "lotNumber" | "saleTitle">): string {

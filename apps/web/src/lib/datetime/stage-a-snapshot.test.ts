@@ -1,6 +1,7 @@
 import { windowHeading } from "@/lib/collect/collect-calendar";
 import { seasonRows } from "@/lib/marketing-cover/bid-between-seasons";
 import { resultsYears } from "@/lib/marketing/results-page.vm";
+import type { SaleListRow } from "@/lib/sale-list-row";
 import { formatOgDateTime } from "@/lib/seo/og-date-format";
 import {
   dayKey,
@@ -17,7 +18,7 @@ import {
   formatWhen,
   shortZoneName,
 } from "@auction/datetime";
-import type { CollectionDayView, SaleListRow } from "@auction/types";
+import type { CollectionDayView } from "@auction/types";
 import { describe, expect, it } from "vitest";
 import golden from "./stage-a-snapshot.golden.json";
 import { SWEEP_INSTANTS, SWEEP_NOW, SWEEP_ZONES } from "./stage-a-sweep";

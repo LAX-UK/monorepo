@@ -1,4 +1,4 @@
-import { LONDON_TIME_ZONE } from "@/lib/datetime/london-time";
+import { LONDON_TIME_ZONE } from "@auction/datetime";
 import type { CoverMedia, CoverSeasonRow, CoverSlide } from "@auction/marketing-ui";
 import type { SaleCoverSlotAssets } from "@auction/types";
 import { type BidCoverLot, photoFromCover, plateFromLot } from "./bid-cover.adapter";

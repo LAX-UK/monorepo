@@ -1,9 +1,9 @@
-import { formatLondonWhen } from "@/lib/datetime/london-time";
 import { HOME_SECTION_LIMITS } from "@/lib/home-sections/limits";
 import { type ArtistNames, homeLotCard } from "@/lib/home-sections/lot-card";
 import type { HomeLotRail } from "@/lib/home-sections/types";
 import { formatSaleLotsLabel } from "@/lib/sale-list-row";
 import { salePath } from "@/lib/seo/url";
+import { LONDON_TIME_ZONE, formatWhen } from "@auction/datetime";
 import type { LotMediaTreatmentIndex } from "@auction/domain";
 import type { Lot, Sale } from "@auction/types";
 
@@ -19,13 +19,14 @@ type RailCopy = {
 const RAIL_COPY: Record<LotRailKind, RailCopy> = {
   inThisSale: {
     heading: "More from this sale",
-    subtitle: (sale, now) => `Bidding closes from ${formatLondonWhen(sale.endTime, now)}`,
+    subtitle: (sale, now) =>
+      `Bidding closes from ${formatWhen(sale.endTime, LONDON_TIME_ZONE, now)}`,
     seeAll: (total) => `View all ${formatSaleLotsLabel(total)}`,
   },
   highlightsFromNextSale: {
     heading: "Highlights from the next sale",
     subtitle: (sale, now) =>
-      `Estimates shown; bidding opens ${formatLondonWhen(sale.startTime, now)}`,
+      `Estimates shown; bidding opens ${formatWhen(sale.startTime, LONDON_TIME_ZONE, now)}`,
     seeAll: (total) => `View all ${formatSaleLotsLabel(total)}`,
   },
   topLotsOfSale: {

@@ -1,9 +1,9 @@
 import type { BidWithLot } from "@/lib/data/dto/dashboard-dtos";
 import { formatMoney, lotChargeCurrency } from "@/lib/format-currency";
 import { lotPath } from "@/lib/seo/url";
+import { LONDON_TIME_ZONE, formatMoment } from "@auction/datetime";
 import type { Lot } from "@auction/types";
 import { formatBidPlacementBadgeLabel, getBidPlacement } from "./bid-placement-presenter";
-import { formatLotMoment } from "./lot-moment";
 import { type MyBidAction, myBidActions } from "./my-bid-next-action";
 import { MY_BID_TABS, type MyBidStatus, type MyBidTab, groupMyBids } from "./my-bid-status";
 
@@ -85,7 +85,7 @@ function figuresFor(status: MyBidStatus, row: BidWithLot, lot: Lot, now: Date): 
       return [
         { label: "current bid", value: money(lot.currentPrice, lot) },
         { label: "your maximum", value: yourMaximum(row, lot) },
-        { label: "closes", value: formatLotMoment(lot.endTime, now) },
+        { label: "closes", value: formatMoment(lot.endTime, LONDON_TIME_ZONE, now) },
       ];
     case "maximum-set":
     case "absentee":
@@ -95,7 +95,10 @@ function figuresFor(status: MyBidStatus, row: BidWithLot, lot: Lot, now: Date): 
           label: status === "absentee" ? "absentee bid" : "your maximum",
           value: yourMaximum(row, lot),
         },
-        { label: "sale day", value: formatLotMoment(lot.startTime, now, { time: false }) },
+        {
+          label: "sale day",
+          value: formatMoment(lot.startTime, LONDON_TIME_ZONE, now, { time: false }),
+        },
       ];
     case "won":
       return [
@@ -104,13 +107,19 @@ function figuresFor(status: MyBidStatus, row: BidWithLot, lot: Lot, now: Date): 
           value: money(lot.checkoutPricing?.hammerMajor ?? lot.currentPrice, lot),
         },
         { label: "your maximum", value: yourMaximum(row, lot) },
-        { label: "closed", value: formatLotMoment(lot.endTime, now, { time: false }) },
+        {
+          label: "closed",
+          value: formatMoment(lot.endTime, LONDON_TIME_ZONE, now, { time: false }),
+        },
       ];
     default:
       return [
         { label: "final bid", value: money(lot.currentPrice, lot) },
         { label: "your maximum", value: yourMaximum(row, lot) },
-        { label: "closed", value: formatLotMoment(lot.endTime, now, { time: false }) },
+        {
+          label: "closed",
+          value: formatMoment(lot.endTime, LONDON_TIME_ZONE, now, { time: false }),
+        },
       ];
   }
 }

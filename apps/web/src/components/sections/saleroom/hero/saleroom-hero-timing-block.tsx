@@ -3,9 +3,9 @@
 import { MarketingCountdownPanel } from "@/components/marketing/marketing-countdown-panel";
 import { resolveHeroCountdownEnd } from "@/components/sections/saleroom/hero/saleroom-hero-copy";
 import type { SaleHeroVM } from "@/components/sections/saleroom/view-models";
-import { formatLondonWhen } from "@/lib/datetime/london-time";
 import { opensLine } from "@/lib/time/opens-line";
 import { useCountdownTick } from "@/lib/time/use-clock";
+import { LONDON_TIME_ZONE, formatWhen } from "@auction/datetime";
 
 type Props = {
   hero: SaleHeroVM;
@@ -18,7 +18,7 @@ function PreviewLine({ iso }: { iso: string }) {
   const line =
     nowMs != null
       ? opensLine(target, new Date(nowMs), "Preview opens")
-      : { label: "Preview opens", value: formatLondonWhen(target) };
+      : { label: "Preview opens", value: formatWhen(target, LONDON_TIME_ZONE, new Date()) };
   return (
     <p className="font-body text-base text-on-surface">
       <span className="text-on-surface-variant">{line.label} </span>

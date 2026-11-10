@@ -1,6 +1,6 @@
 import type { PressCoverageVM } from "@/components/sections/saleroom/view-models";
-import { formatLondonDate } from "@/lib/datetime/london-time";
 import { resolveMediaSrc } from "@/lib/media/resolve-media-src";
+import { LONDON_TIME_ZONE, formatDate } from "@auction/datetime";
 import type { PressArchiveEntry, PressDayMediaSaleSummary } from "@auction/types";
 
 export type PressArchiveEntryVM = PressCoverageVM & {
@@ -27,7 +27,7 @@ export function mapPressDayMediaSaleToVM(
   const href = salePathFn(sale);
   let endDateLabel: string | null = null;
   if (sale.endTime) {
-    endDateLabel = formatLondonDate(sale.endTime);
+    endDateLabel = formatDate(sale.endTime, LONDON_TIME_ZONE);
   }
   const coverImageUrl = sale.coverImages[0] ? resolveMediaSrc(sale.coverImages[0]) : null;
   return {
@@ -59,7 +59,7 @@ export function mapPressRefToVM(ref: {
   let dateLabel: string | null = null;
   if (ref.publishedAt) {
     try {
-      dateLabel = formatLondonDate(new Date(`${ref.publishedAt}T12:00:00Z`));
+      dateLabel = formatDate(new Date(`${ref.publishedAt}T12:00:00Z`), LONDON_TIME_ZONE);
     } catch {
       dateLabel = ref.publishedAt;
     }

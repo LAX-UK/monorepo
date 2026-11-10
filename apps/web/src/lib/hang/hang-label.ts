@@ -1,8 +1,8 @@
-import { formatLondonMoment } from "@/lib/datetime/london-time";
 import { lotChargeCurrency } from "@/lib/format-currency";
 import { formatHangMoney } from "@/lib/hang/hang-money";
 import { lotEstimateLine } from "@/lib/lot-marketing-display";
 import { lotWasSold } from "@/lib/lot/lot-outcome";
+import { LONDON_TIME_ZONE, formatMoment } from "@auction/datetime";
 import { lotHeadlineLabel, lotPriceHasBids } from "@auction/domain";
 import type { Lot, Sale } from "@auction/types";
 import { buildBuyerPremiumPolicy, majorToMinor, minorToMajor } from "@auction/validators";
@@ -60,7 +60,7 @@ function endedLabel(lot: Lot, ctx: HangLabelContext, currency: string): PriceAnd
 
 function biddingLabel(lot: Lot, ctx: HangLabelContext, currency: string): PriceAndNotes {
   const live = { lotId: lot.id, currency };
-  const closes = `Closes ${formatLondonMoment(lot.endTime, ctx.now, { inSentence: true })}`;
+  const closes = `Closes ${formatMoment(lot.endTime, LONDON_TIME_ZONE, ctx.now, { inSentence: true })}`;
   if (lot.status === "active") {
     return {
       price: {
@@ -83,7 +83,9 @@ function biddingLabel(lot: Lot, ctx: HangLabelContext, currency: string): PriceA
           qualifier: lotHeadlineLabel("scheduled", false),
           value: formatHangMoney(lot.startingPrice, currency),
         },
-    notes: [`Opens ${formatLondonMoment(lot.startTime, ctx.now, { inSentence: true })}`],
+    notes: [
+      `Opens ${formatMoment(lot.startTime, LONDON_TIME_ZONE, ctx.now, { inSentence: true })}`,
+    ],
     live: undefined,
   };
 }

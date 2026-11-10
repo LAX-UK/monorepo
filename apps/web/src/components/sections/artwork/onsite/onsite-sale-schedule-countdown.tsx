@@ -2,7 +2,6 @@
 
 import { timerText } from "@/components/lot-timer/format";
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
-import { formatLondonWhen } from "@/lib/datetime/london-time";
 import {
   COUNTDOWN_DATE_BEYOND_MS,
   countdownTiles,
@@ -19,6 +18,7 @@ import {
 import { liveUrgencyPulseClass } from "@/lib/presenters/status-presentation";
 import { opensLine } from "@/lib/time/opens-line";
 import { useCountdownTick } from "@/lib/time/use-clock";
+import { LONDON_TIME_ZONE, formatWhen } from "@auction/datetime";
 import type { Sale } from "@auction/types";
 import { LiveDot, cn } from "@auction/ui";
 import {
@@ -46,7 +46,7 @@ function formatStartsAriaLabel(ms: number): string {
 function formatTargetDatetime(value: Date | string): string {
   const d = toDisplayDate(value);
   if (Number.isNaN(d.getTime())) return "";
-  return formatLondonWhen(d);
+  return formatWhen(d, LONDON_TIME_ZONE, new Date());
 }
 
 function pad2(n: number): string {

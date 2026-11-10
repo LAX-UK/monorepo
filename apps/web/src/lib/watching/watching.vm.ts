@@ -1,9 +1,9 @@
-import { formatLotMoment } from "@/lib/bid/lot-moment";
 import { type MyBidStatus, latestBidPerLot, myBidStatus } from "@/lib/bid/my-bid-status";
 import type { BidWithLot, WatchlistWithLotRow } from "@/lib/data/dto/dashboard-dtos";
 import { formatEstimateRange, formatMoney, lotChargeCurrency } from "@/lib/format-currency";
 import { lotPath } from "@/lib/seo/url";
 import { matchesEveryWord, searchParam } from "@/lib/workspace/list-search";
+import { LONDON_TIME_ZONE, formatMoment } from "@auction/datetime";
 import {
   type DepartmentDisplayStyle,
   type LotMediaTreatmentIndex,
@@ -102,10 +102,10 @@ function figureFor(lot: Lot, standing: WatchedLotStanding): { value: string; lab
 
 function momentFor(lot: Lot, now: Date): string {
   if (ENDED.has(lot.status))
-    return `closed ${formatLotMoment(lot.endTime, now, { time: false, inSentence: true })}`;
+    return `closed ${formatMoment(lot.endTime, LONDON_TIME_ZONE, now, { time: false, inSentence: true })}`;
   if (lot.status === "active")
-    return `closes ${formatLotMoment(lot.endTime, now, { inSentence: true })}`;
-  return `opens ${formatLotMoment(lot.startTime, now, { time: false, inSentence: true })}`;
+    return `closes ${formatMoment(lot.endTime, LONDON_TIME_ZONE, now, { inSentence: true })}`;
+  return `opens ${formatMoment(lot.startTime, LONDON_TIME_ZONE, now, { time: false, inSentence: true })}`;
 }
 
 /** The watched lots, with where the person stands on each. */

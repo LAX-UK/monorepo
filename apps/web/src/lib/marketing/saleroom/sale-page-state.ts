@@ -1,4 +1,4 @@
-import { formatLondonDayMonth, formatLondonWeekday } from "@/lib/datetime/london-time";
+import { LONDON_TIME_ZONE, formatDayMonth, formatWeekday } from "@auction/datetime";
 import type { Sale } from "@auction/types";
 
 /**
@@ -26,7 +26,7 @@ export type CataloguePreparingVM = {
 
 /** "Mon 22 Feb": the weekday and the day, with the year only when it is not this year's. */
 function formatLondonWeekdayDate(date: Date, now: Date): string {
-  return `${formatLondonWeekday(date)} ${formatLondonDayMonth(date, now)}`;
+  return `${formatWeekday(date, LONDON_TIME_ZONE)} ${formatDayMonth(date, LONDON_TIME_ZONE, now)}`;
 }
 
 /**

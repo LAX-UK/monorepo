@@ -1,8 +1,4 @@
-import {
-  formatLondonDayMonth,
-  formatLondonFullMoment,
-  formatLondonTime,
-} from "@/lib/datetime/london-time";
+import { LONDON_TIME_ZONE, formatDayMonth, formatFullMoment, formatTime } from "@auction/datetime";
 import { DATE_BANDS, dateBand } from "./notification-presenters";
 
 /**
@@ -13,11 +9,11 @@ import { DATE_BANDS, dateBand } from "./notification-presenters";
 export function inboxTime(date: Date, now: Date = new Date()): string {
   const band = dateBand(date, now);
   return band === DATE_BANDS[0] || band === DATE_BANDS[1]
-    ? formatLondonTime(date)
-    : formatLondonDayMonth(date, now);
+    ? formatTime(date, LONDON_TIME_ZONE)
+    : formatDayMonth(date, LONDON_TIME_ZONE, now);
 }
 
 /** The full date and time, for the tooltip: "Saturday 31 October 2026, 14:02". */
 export function inboxFullTime(date: Date): string {
-  return formatLondonFullMoment(date);
+  return formatFullMoment(date, LONDON_TIME_ZONE);
 }

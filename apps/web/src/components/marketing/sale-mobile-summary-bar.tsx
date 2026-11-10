@@ -7,7 +7,6 @@ import { SaleroomMobileSummaryBar } from "@/components/marketing/saleroom-mobile
 import { AddSaleToCalendarButton } from "@/components/sections/artwork/onsite/onsite-calendar-actions";
 import { useSalePhoneBarVisible } from "@/hooks/use-sale-phone-bar-visible";
 import { useSaleroomLive } from "@/lib/context/saleroom-live-provider";
-import { formatLondonWhen } from "@/lib/datetime/london-time";
 import { saleAllowsWebBidding } from "@/lib/sale-mode";
 import { useActiveSaleCountdownEndIso } from "@/lib/sale/use-active-sale-countdown-end-iso";
 import {
@@ -16,6 +15,7 @@ import {
 } from "@/lib/saleroom/saleroom-mobile-chrome";
 import { closingChipText, opensLine } from "@/lib/time/opens-line";
 import { useCountdownTick } from "@/lib/time/use-clock";
+import { LONDON_TIME_ZONE, formatWhen } from "@auction/datetime";
 import type { Sale, SaleDeliveryMode } from "@auction/types";
 import { Countdown, LiveDot } from "@auction/ui";
 import { Button } from "@auction/ui/lax";
@@ -27,7 +27,7 @@ function OpensText({ start }: { start: Date }) {
   const line =
     nowMs != null
       ? opensLine(start, new Date(nowMs))
-      : { label: "Opens", value: formatLondonWhen(start) };
+      : { label: "Opens", value: formatWhen(start, LONDON_TIME_ZONE, new Date()) };
   return (
     <p className="m-0 text-lax-13 leading-5 text-lax-fg">
       <span className="text-lax-muted">{line.label} </span>
