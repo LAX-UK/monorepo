@@ -326,7 +326,7 @@ describe("RecordRow figure notes and narrow facts", () => {
       </RecordList>,
     );
     expect(screen.getByText("Thu 12 Nov").parentElement?.className).toContain(
-      "[html.tz-away_&]:@2xl:w-48",
+      "[html.tz-away_&]:@2xl:w-36",
     );
   });
 });

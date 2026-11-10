@@ -115,7 +115,7 @@ export type RecordFigure = {
    */
   note?: React.ReactNode;
   /**
-   * A wide row gives this cell room for a note that names a day, while the page knows the
+   * A wide row gives this cell room (9rem) for a note that names a day, while the page knows the
    * visitor's clock differs from London's (`html.tz-away`). Give it to every row's cell in the
    * column, so the columns of a list stay aligned.
    */
@@ -137,7 +137,7 @@ function RecordFigures({ figures }: { figures: readonly RecordFigure[] }) {
             "min-w-0 items-baseline gap-1",
             "@2xl:w-28 @2xl:flex-col @2xl:items-end @2xl:gap-0 @2xl:text-right",
             index === 0 ? "flex" : "hidden @2xl:flex",
-            figure.roomyWhenAway && "[html.tz-away_&]:@2xl:w-48",
+            figure.roomyWhenAway && "[html.tz-away_&]:@2xl:w-36",
           )}
         >
           <dt
