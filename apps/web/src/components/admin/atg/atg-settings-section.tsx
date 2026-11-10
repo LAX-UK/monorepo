@@ -4,11 +4,14 @@ import { adminAtgSaleSettingsAction } from "@/lib/actions/admin-atg";
 import { formatDateTime } from "@/lib/ui/format";
 import { notify } from "@/lib/ui/notify";
 import {
+  ATG_AUCTION_TYPES,
+  ATG_LIVE_UNAVAILABLE_HINT,
   type AtgAuctionType,
   type AtgDistribution,
   type AtgSaleSyncView,
   canChangeAtgAuctionType,
   canChangeAtgDistribution,
+  isAtgAuctionTypeAvailable,
 } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
 import { ConfirmDialog } from "@auction/ui/components/confirm-dialog";
@@ -18,12 +21,21 @@ import { RadioGroup, RadioGroupItem } from "@auction/ui/components/radio-group";
 import { useRouter } from "next/navigation";
 import { useId, useState, useTransition } from "react";
 
-type Option<V extends string> = { value: V; label: string; description?: string };
+type Option<V extends string> = {
+  value: V;
+  label: string;
+  description?: string;
+  /** Shown but not selectable; the description says why. */
+  unavailable?: boolean;
+};
 
-const AUCTION_TYPE_OPTIONS: Option<AtgAuctionType>[] = [
-  { value: "Timed", label: "Timed" },
-  { value: "Live", label: "Live" },
-];
+function auctionTypeOption(value: AtgAuctionType): Option<AtgAuctionType> {
+  return isAtgAuctionTypeAvailable(value)
+    ? { value, label: value }
+    : { value, label: value, description: ATG_LIVE_UNAVAILABLE_HINT, unavailable: true };
+}
+
+const AUCTION_TYPE_OPTIONS: Option<AtgAuctionType>[] = ATG_AUCTION_TYPES.map(auctionTypeOption);
 
 const DISTRIBUTION_OPTIONS: Option<AtgDistribution>[] = [
   { value: "private_test", label: "Private test", description: "Hidden from public listings" },
@@ -121,6 +133,7 @@ function RadioChoices<V extends string>({
               id={`${id}-${option.value}`}
               value={option.value}
               className="mt-0.5"
+              disabled={option.unavailable === true}
               {...(option.description ? { "aria-describedby": `${id}-${option.value}-hint` } : {})}
             />
             <div className="space-y-0.5">

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  ATG_AUCTION_TYPE_AVAILABLE,
   type AtgRemoteStatus,
   atgLotSellingBadge,
   atgLotStatusLabel,
@@ -9,6 +10,7 @@ import {
   canChangeAtgDistribution,
   canPublishSaleOnLax,
   canPushOrPublishSaleOnAtg,
+  isAtgAuctionTypeAvailable,
   isLotOnAtg,
   isSaleOnAtg,
   resolveSaleSellingPlatform,
@@ -375,5 +377,13 @@ describe("selling badges", () => {
     expect(isLotOnAtg({ saleId: "s1", sale: atgSale, lot: null })).toBe(false);
     expect(isLotOnAtg(null)).toBe(false);
     expect(isSaleOnAtg(undefined)).toBe(false);
+  });
+});
+
+describe("ATG auction type availability", () => {
+  it("offers Timed and holds Live back until ATG confirms its live fees", () => {
+    expect(isAtgAuctionTypeAvailable("Timed")).toBe(true);
+    expect(isAtgAuctionTypeAvailable("Live")).toBe(false);
+    expect(Object.keys(ATG_AUCTION_TYPE_AVAILABLE)).toEqual(["Timed", "Live"]);
   });
 });
