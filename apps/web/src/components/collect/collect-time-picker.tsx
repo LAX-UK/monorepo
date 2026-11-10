@@ -1,7 +1,7 @@
 "use client";
 
 import { COLLECT_COPY } from "@/lib/collect/collect-copy";
-import { formatLondonTime } from "@/lib/datetime/london-time";
+import { LONDON_TIME_ZONE, formatTime } from "@auction/datetime";
 import { londonZoneLabel } from "@auction/domain";
 import type { CollectionSlotView } from "@auction/types";
 import { cn } from "@auction/ui";
@@ -74,7 +74,7 @@ export function CollectTimePicker({
   }
   const items: RadioGridItem[] = slots.map((slot) => {
     const taken = slot.state !== "open" || slot.placesLeft === 0;
-    const time = formatLondonTime(new Date(slot.start));
+    const time = formatTime(new Date(slot.start), LONDON_TIME_ZONE);
     return {
       id: slot.start,
       label: taken ? `${time}, ${slot.state === "too_soon" ? "too soon" : "full"}` : time,

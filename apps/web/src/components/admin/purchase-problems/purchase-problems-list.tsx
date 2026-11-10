@@ -22,8 +22,8 @@ import type {
   PurchaseProblemListItem,
   PurchaseProblemListPage,
 } from "@/lib/data/http/admin-purchase-problems.schema";
-import { formatLondonWhen } from "@/lib/datetime/london-time";
 import { copyToClipboard } from "@/lib/ui/copy-to-clipboard";
+import { LONDON_TIME_ZONE, formatWhen } from "@auction/datetime";
 import {
   type DataColumn,
   DataViews,
@@ -122,7 +122,9 @@ export function PurchaseProblemsList(props: PurchaseProblemsListProps) {
         mobile: "hidden",
         truncate: false,
         cell: (row) => (
-          <span className="tabular-nums">{formatLondonWhen(new Date(row.raisedAt), now)}</span>
+          <span className="tabular-nums">
+            {formatWhen(new Date(row.raisedAt), LONDON_TIME_ZONE, now)}
+          </span>
         ),
       },
       {

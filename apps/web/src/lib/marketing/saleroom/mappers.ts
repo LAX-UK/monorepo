@@ -1,6 +1,5 @@
 import { mapPressRefToVM } from "@/components/sections/press/mappers";
 import { atgLiveBidLabel } from "@/lib/catalog/atg-white-label";
-import { formatLondonWhen } from "@/lib/datetime/london-time";
 import { formatEstimateRangeWhole, formatMoney } from "@/lib/format-currency";
 import { type LotCardLineModel, lotCardLineModel } from "@/lib/lot-card/lot-card-line";
 import { lotEstimateLine } from "@/lib/lot-marketing-display";
@@ -20,7 +19,12 @@ import { saleVenueLabel } from "@/lib/sale-location-label";
 import { resolveSaleStreamContext } from "@/lib/sale-stream-policy";
 import { getSaleTypePresentation } from "@/lib/sale-type-presentation";
 import { salePath } from "@/lib/seo/url";
-import { LONDON_TIME_ZONE, formatDateRange, formatTimeWithZone } from "@auction/datetime";
+import {
+  LONDON_TIME_ZONE,
+  formatDateRange,
+  formatTimeWithZone,
+  formatWhen,
+} from "@auction/datetime";
 import { type LotMediaTreatmentIndex, lotMediaTreatment } from "@auction/domain";
 import type { BuyerPremiumTier, Lot, Sale, SaleDayMedia } from "@auction/types";
 import { toLotCardTimingVM, toSaleCardTimingVM, toSaleCountdownEndIso } from "@auction/validators";
@@ -43,7 +47,7 @@ export function formatSaleDateLabel(
 
 /** "Thu 12 Nov, 21:00 GMT". */
 export function formatLongDateTime(d: Date): string {
-  return formatLondonWhen(d);
+  return formatWhen(d, LONDON_TIME_ZONE, new Date());
 }
 
 /** Relative short copy e.g. "10 days" for UI rows (not "in 10 days"). */

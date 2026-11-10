@@ -1,5 +1,5 @@
-import { formatLondonDate, toDate } from "@/lib/datetime/london-time";
 import type { HomeSelling } from "@/lib/home-sections/types";
+import { LONDON_TIME_ZONE, formatDate, toDate } from "@auction/datetime";
 import type { Sale } from "@auction/types";
 
 const SELLING_IMAGES = 2;
@@ -24,7 +24,7 @@ export function buildSelling(input: {
   const next = nextDeadline(input.scheduledSales, input.now);
   return {
     deadlineNote: next
-      ? `Consignments for ${next.sale.title} close ${formatLondonDate(next.deadline)}`
+      ? `Consignments for ${next.sale.title} close ${formatDate(next.deadline, LONDON_TIME_ZONE)}`
       : null,
     imageUrls: input.imageUrls
       .filter((url): url is string => typeof url === "string" && url.length > 0)

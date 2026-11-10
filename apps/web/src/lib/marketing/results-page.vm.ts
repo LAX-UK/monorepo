@@ -1,8 +1,14 @@
 import { atgDisplaySale } from "@/lib/catalog/atg-catalog-display";
-import { formatLondonDayMonth, formatLondonWeekday, toDate } from "@/lib/datetime/london-time";
 import { formatWholeMoney } from "@/lib/money/currency";
 import type { SaleListRow } from "@/lib/sale-list-row";
 import { salePath } from "@/lib/seo/url";
+import {
+  LONDON_TIME_ZONE,
+  calendarYear,
+  formatDayMonth,
+  formatWeekday,
+  toDate,
+} from "@auction/datetime";
 import type { Lot, Sale, SaleDeliveryMode } from "@auction/types";
 
 /** The order the Sales view is in, said out loud. */
@@ -50,7 +56,7 @@ function endedAt(row: SaleListRow): Date | null {
 function endedLabel(sale: Sale, ended: Date | null, now: Date): string {
   const mode = DELIVERY_LABEL[sale.deliveryMode] ?? "";
   if (!ended) return mode ? `Ended · ${mode}` : "Ended";
-  const when = `${formatLondonWeekday(ended)} ${formatLondonDayMonth(ended, now)}`;
+  const when = `${formatWeekday(ended, LONDON_TIME_ZONE)} ${formatDayMonth(ended, LONDON_TIME_ZONE, now)}`;
   return mode ? `Ended ${when} · ${mode}` : `Ended ${when}`;
 }
 
@@ -112,10 +118,7 @@ export function resultsYears(rows: readonly SaleListRow[]): number[] {
   for (const row of rows) {
     if (!row.resultsSummary || row.lotCount === 0) continue;
     const ended = endedAt(row);
-    if (ended)
-      years.add(
-        Number(ended.toLocaleString("en-GB", { year: "numeric", timeZone: "Europe/London" })),
-      );
+    if (ended) years.add(calendarYear(ended, LONDON_TIME_ZONE));
   }
   return [...years].sort((a, b) => b - a);
 }

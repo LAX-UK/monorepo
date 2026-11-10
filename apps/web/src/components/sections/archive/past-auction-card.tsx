@@ -2,14 +2,14 @@ import { OwnerBadge } from "@/components/marketing/owner-badge";
 import { DomainStatusBadge } from "@/components/ui/domain-status-badge";
 import { MediaImage } from "@/components/ui/media-image.server";
 import { archiveLotResult } from "@/lib/archive/archive-lot-result";
-import { formatLondonMonthYear } from "@/lib/datetime/london-time";
 import { FOCUS_RING } from "@/lib/marketing/chrome";
+import { LONDON_TIME_ZONE, formatMonthYear } from "@auction/datetime";
 import type { Lot } from "@auction/types";
 import { cn } from "@auction/ui";
 import Link from "next/link";
 
 function closingCaption(endTime: Date): string {
-  return formatLondonMonthYear(endTime, { short: true });
+  return formatMonthYear(endTime, LONDON_TIME_ZONE, { short: true });
 }
 
 type Props = {

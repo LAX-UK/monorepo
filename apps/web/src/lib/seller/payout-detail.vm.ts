@@ -1,7 +1,7 @@
-import { formatLotMoment } from "@/lib/bid/lot-moment";
 import type { PayoutDetail, PayoutLine } from "@/lib/data/http/workspace-selling.schema";
 import { formatMoney } from "@/lib/format-currency";
 import { formatDeduction } from "@/lib/money/currency";
+import { LONDON_TIME_ZONE, formatMoment } from "@auction/datetime";
 import { addMoneyStrings, formatPayoutReference } from "@auction/domain";
 import type { PayoutStatus } from "@auction/types";
 import { payoutStatuses } from "@auction/types";
@@ -76,9 +76,12 @@ export function payoutDetailVm(
   const status = PAYOUT_STATUS_BADGE[isPayoutStatus(detail.status) ? detail.status : "scheduled"];
   const money = (amount: string) => formatMoney(amount, detail.currency);
   const sent = detail.processedAt
-    ? formatLotMoment(detail.processedAt, input.now, { time: false, inSentence: true })
+    ? formatMoment(detail.processedAt, LONDON_TIME_ZONE, input.now, {
+        time: false,
+        inSentence: true,
+      })
     : null;
-  const period = `${formatLotMoment(detail.periodStart, input.now, { time: false })} to ${formatLotMoment(detail.periodEnd, input.now, { time: false })}`;
+  const period = `${formatMoment(detail.periodStart, LONDON_TIME_ZONE, input.now, { time: false })} to ${formatMoment(detail.periodEnd, LONDON_TIME_ZONE, input.now, { time: false })}`;
   const statusNote =
     detail.status === "in_transit" && sent
       ? `Sent ${sent}, usually 2 working days`

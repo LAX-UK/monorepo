@@ -1,9 +1,10 @@
 import {
-  formatLondonDayMonth,
-  formatLondonTimeWithZone,
-  formatLondonWeekday,
-  londonDayKey,
-} from "@/lib/datetime/london-time";
+  LONDON_TIME_ZONE,
+  dayKey,
+  formatDayMonth,
+  formatTimeWithZone,
+  formatWeekday,
+} from "@auction/datetime";
 
 import { type CoverTimeTick, formatCoverClock } from "@auction/marketing-ui";
 
@@ -41,12 +42,12 @@ export function coverTimeLeft(ms: number): string | null {
 
 /** "Tue 3 Nov, 21:00 GMT". */
 export function coverMoment(date: Date, now: Date): string {
-  return `${formatLondonWeekday(date)} ${formatLondonDayMonth(date, now)}, ${formatLondonTimeWithZone(date)}`;
+  return `${formatWeekday(date, LONDON_TIME_ZONE)} ${formatDayMonth(date, LONDON_TIME_ZONE, now)}, ${formatTimeWithZone(date, LONDON_TIME_ZONE)}`;
 }
 
 /** "Tue 3 Nov" without the time. */
 export function coverDay(date: Date, now: Date): string {
-  return `${formatLondonWeekday(date)} ${formatLondonDayMonth(date, now)}`;
+  return `${formatWeekday(date, LONDON_TIME_ZONE)} ${formatDayMonth(date, LONDON_TIME_ZONE, now)}`;
 }
 
 export type CoverSaleStatus = "scheduled" | "active" | "ended";
@@ -84,8 +85,8 @@ export function coverTimeLine(input: {
   if (status === "ended" && end) {
     return {
       time:
-        londonDayKey(end) === londonDayKey(now)
-          ? `Ended today, ${formatLondonTimeWithZone(end)}`
+        dayKey(end, LONDON_TIME_ZONE) === dayKey(now, LONDON_TIME_ZONE)
+          ? `Ended today, ${formatTimeWithZone(end, LONDON_TIME_ZONE)}`
           : `Ended ${coverDay(end, now)}`,
     };
   }

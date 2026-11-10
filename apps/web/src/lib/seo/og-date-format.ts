@@ -1,10 +1,6 @@
-const OG_DATE_FORMAT: Intl.DateTimeFormatOptions = {
-  dateStyle: "long",
-  timeStyle: "short",
-  timeZone: "Europe/London",
-};
+import { LONDON_TIME_ZONE, formatLongMoment } from "@auction/datetime";
 
-/** Stable en-GB formatting for OG image cards (avoids server-locale drift). */
+/** "18 June 2026 at 15:30" for OG image cards, in London time whatever the server's locale. */
 export function formatOgDateTime(date: Date): string {
-  return new Intl.DateTimeFormat("en-GB", OG_DATE_FORMAT).format(date);
+  return formatLongMoment(date, LONDON_TIME_ZONE);
 }

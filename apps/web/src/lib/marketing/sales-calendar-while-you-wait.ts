@@ -1,8 +1,8 @@
-import { formatLondonDate } from "@/lib/datetime/london-time";
 import { formatMoney } from "@/lib/format-currency";
 import type { CalendarOverview } from "@/lib/marketing/sales-calendar-overview";
 import type { SaleListRow } from "@/lib/sale-list-row";
 import { salePath } from "@/lib/seo/url";
+import { LONDON_TIME_ZONE, formatDate } from "@auction/datetime";
 
 export type WhileYouWaitLink = {
   id: "lastResult" | "consignments";
@@ -21,7 +21,7 @@ function toDate(value: Date | string): Date | null {
 /** "Ended 15 Oct 2026 · 18 of 24 sold · £186,400"; the figures only once they are final. */
 function lastResultDetail(row: SaleListRow): string {
   const ended = toDate(row.sale.endTime);
-  const parts = [ended ? `Ended ${formatLondonDate(ended)}` : "Ended"];
+  const parts = [ended ? `Ended ${formatDate(ended, LONDON_TIME_ZONE)}` : "Ended"];
   const summary = row.resultsSummary;
   if (summary?.state === "final") {
     parts.push(`${summary.soldCount} of ${summary.lotCount} sold`);
@@ -52,7 +52,7 @@ function consignments(overview: CalendarOverview, now: Date): WhileYouWaitLink |
   return {
     id: "consignments",
     title: "Consignments are open",
-    detail: `Close ${formatLondonDate(next)}`,
+    detail: `Close ${formatDate(next, LONDON_TIME_ZONE)}`,
     href: CONSIGN_HREF,
   };
 }

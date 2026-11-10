@@ -1,11 +1,11 @@
 import { atgDisplaySale } from "@/lib/catalog/atg-catalog-display";
-import { formatLondonDayMonth, formatLondonWeekday, toDate } from "@/lib/datetime/london-time";
 import { formatWholeMoney } from "@/lib/format-currency";
 import { HOME_SECTION_LIMITS } from "@/lib/home-sections/limits";
 import { type ArtistNames, homeLotCard } from "@/lib/home-sections/lot-card";
 import type { HomeResultsBand } from "@/lib/home-sections/types";
 import { RECENT_RESULTS_HREF } from "@/lib/marketing/recent-results-link";
 import type { SaleListRow } from "@/lib/sale-list-row";
+import { LONDON_TIME_ZONE, formatDayMonth, formatWeekday, toDate } from "@auction/datetime";
 import type { LotMediaTreatmentIndex } from "@auction/domain";
 import type { Lot, SaleDeliveryMode } from "@auction/types";
 
@@ -18,7 +18,9 @@ const DELIVERY: Record<SaleDeliveryMode, string> = {
 function endedLabel(row: SaleListRow, now: Date): string {
   const ended = toDate(row.sale.endTime);
   const mode = DELIVERY[row.sale.deliveryMode];
-  const when = ended ? ` ${formatLondonWeekday(ended)} ${formatLondonDayMonth(ended, now)}` : "";
+  const when = ended
+    ? ` ${formatWeekday(ended, LONDON_TIME_ZONE)} ${formatDayMonth(ended, LONDON_TIME_ZONE, now)}`
+    : "";
   return `Ended${when}${mode ? ` · ${mode}` : ""}`;
 }
 

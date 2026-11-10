@@ -1,5 +1,5 @@
 import { coerceToDate } from "@/lib/data/http/parse";
-import { formatLondonDate, londonDayOffset } from "@/lib/datetime/london-time";
+import { LONDON_TIME_ZONE, dayOffset, formatDate } from "@auction/datetime";
 import type { UserNotification } from "@auction/types";
 import {
   BellRing,
@@ -183,7 +183,7 @@ export function relativeTime(date: Date, now: Date = new Date()): string {
   if (days < 7) return `${days}d ago`;
   const weeks = Math.round(days / 7);
   if (weeks < 5) return `${weeks}w ago`;
-  return formatLondonDate(date);
+  return formatDate(date, LONDON_TIME_ZONE);
 }
 
 /** Date bands used to group rows in the inbox. Order is meaningful. */
@@ -196,7 +196,7 @@ export function dateBand(date: Date | string | number, now: Date = new Date()): 
   if (Number.isNaN(resolved.getTime())) return "Earlier";
   // Days are London days, so a notification sits under the same heading on the server and in
   // a browser in any time zone.
-  const offset = londonDayOffset(resolved, now);
+  const offset = dayOffset(resolved, now, LONDON_TIME_ZONE);
   if (offset >= 0) return "Today";
   if (offset === -1) return "Yesterday";
   if (offset >= -7) return "This week";

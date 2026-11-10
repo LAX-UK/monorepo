@@ -10,15 +10,15 @@ import { DomainStatusBadge } from "@/components/ui/domain-status-badge";
 import { HeroVerticalScrim } from "@/components/ui/hero-tone-scrim";
 import { OverlayToneText } from "@/components/ui/overlay-tone-text";
 import { archiveLotResult } from "@/lib/archive/archive-lot-result";
-import { formatLondonMonthYear } from "@/lib/datetime/london-time";
 import { FOCUS_RING } from "@/lib/marketing/chrome";
 import { EDITORIAL_BOLD_SLOTS } from "@/lib/media/overlay-slot-presets";
+import { LONDON_TIME_ZONE, formatMonthYear } from "@auction/datetime";
 import type { Lot } from "@auction/types";
 import { cn } from "@auction/ui";
 import Link from "next/link";
 
 function closingSeason(endTime: Date): string {
-  return formatLondonMonthYear(endTime, { short: true });
+  return formatMonthYear(endTime, LONDON_TIME_ZONE, { short: true });
 }
 
 export type ArchiveLotHeroRow = {

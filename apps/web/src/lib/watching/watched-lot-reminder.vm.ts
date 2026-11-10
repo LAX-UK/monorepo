@@ -1,4 +1,4 @@
-import { formatLotMoment } from "@/lib/bid/lot-moment";
+import { LONDON_TIME_ZONE, formatMoment } from "@auction/datetime";
 import {
   WATCHED_LOT_REMINDER_KINDS,
   type WatchedLotReminderKind,
@@ -46,7 +46,7 @@ export function reminderOptions(
     const due = watchedLotReminderDueAt(kind, times);
     const passed = !due || due.getTime() <= now.getTime();
     // UK time, as the row says when the lot closes.
-    const when = due ? formatLotMoment(due, now) : "";
+    const when = due ? formatMoment(due, LONDON_TIME_ZONE, now) : "";
     return {
       value: kind,
       label: OPTION_LABEL[kind],

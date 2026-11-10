@@ -1,4 +1,3 @@
-import { formatLotMoment } from "@/lib/bid/lot-moment";
 import {
   formatEstimateRangeShort,
   formatWholeMoney,
@@ -6,6 +5,7 @@ import {
 } from "@/lib/format-currency";
 import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
 import { lotPath } from "@/lib/seo/url";
+import { LONDON_TIME_ZONE, formatMoment } from "@auction/datetime";
 import {
   type ConsignedLotScope,
   type ConsignmentProgressStage,
@@ -125,7 +125,7 @@ export function consignmentHistoryHref(submissionId: string): string {
 }
 
 function day(date: Date, now: Date): string {
-  return formatLotMoment(date, now, { time: false });
+  return formatMoment(date, LONDON_TIME_ZONE, now, { time: false });
 }
 
 function agreementState(agreement: ConsignmentAgreement | undefined) {

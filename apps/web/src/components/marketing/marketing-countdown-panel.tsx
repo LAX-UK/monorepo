@@ -1,7 +1,6 @@
 "use client";
 
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
-import { formatLondonWhen } from "@/lib/datetime/london-time";
 import {
   COUNTDOWN_DATE_BEYOND_MS,
   countdownTiles,
@@ -18,6 +17,7 @@ import { liveUrgencyPulseClass } from "@/lib/presenters/status-presentation";
 import { useActiveSaleCountdownEndIso } from "@/lib/sale/use-active-sale-countdown-end-iso";
 import { opensLine } from "@/lib/time/opens-line";
 import { useCountdownTick } from "@/lib/time/use-clock";
+import { LONDON_TIME_ZONE, formatWhen } from "@auction/datetime";
 import type { SaleDeliveryMode } from "@auction/types";
 import { LabelCaps, LiveDot, cn } from "@auction/ui";
 import { isSaleroomDeliveryMode, toDisplayDate } from "@auction/validators";
@@ -152,7 +152,10 @@ export function MarketingCountdownPanel({
     const line =
       nowMs != null
         ? opensLine(target, new Date(nowMs), label.replace(/ in$/, ""))
-        : { label: label.replace(/ in$/, ""), value: formatLondonWhen(target) };
+        : {
+            label: label.replace(/ in$/, ""),
+            value: formatWhen(target, LONDON_TIME_ZONE, new Date()),
+          };
     return (
       <div className={cn("text-left", className)}>
         <p className="font-body text-base text-on-surface">
@@ -174,7 +177,7 @@ export function MarketingCountdownPanel({
   }
 
   if (reduced && Number.isFinite(endMs) && effectiveEndIso != null) {
-    const formatted = formatLondonWhen(toDisplayDate(effectiveEndIso));
+    const formatted = formatWhen(toDisplayDate(effectiveEndIso), LONDON_TIME_ZONE, new Date());
     return (
       <div className={cn("text-left", className)}>
         <LabelCaps className="inline-flex items-center gap-2 text-on-surface-variant">
@@ -242,5 +245,5 @@ export function formatCountdownSecondaryLine(
   if (!iso) return null;
   const d = toDisplayDate(iso);
   if (Number.isNaN(d.getTime())) return null;
-  return `${prefix} ${formatLondonWhen(d)}`;
+  return `${prefix} ${formatWhen(d, LONDON_TIME_ZONE, new Date())}`;
 }

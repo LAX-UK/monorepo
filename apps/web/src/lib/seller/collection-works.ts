@@ -1,4 +1,3 @@
-import { formatLotMoment } from "@/lib/bid/lot-moment";
 import type { AccountPurchaseFacts } from "@/lib/data/http/account-buying.types";
 import type { EntityWonLot } from "@/lib/data/http/payments.schema";
 import type { ReturnedWork } from "@/lib/data/http/workspace-selling.schema";
@@ -6,6 +5,7 @@ import { formatMoney } from "@/lib/format-currency";
 import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
 import { lotPath } from "@/lib/seo/url";
 import { matchesEveryWord, searchParam } from "@/lib/workspace/list-search";
+import { LONDON_TIME_ZONE, formatMoment } from "@auction/datetime";
 import { purchaseIsOwned } from "@auction/domain";
 import type { StatusBadgeShape, StatusBadgeTone } from "@auction/ui/lax";
 
@@ -119,7 +119,7 @@ export function boughtWork(
     meta: [
       Number.isNaN(at)
         ? null
-        : `bought ${formatLotMoment(new Date(at), input.now, { time: false, inSentence: true })}`,
+        : `bought ${formatMoment(new Date(at), LONDON_TIME_ZONE, input.now, { time: false, inSentence: true })}`,
       win.lotNumber == null ? null : `lot ${win.lotNumber}`,
     ].filter((fact): fact is string => Boolean(fact)),
     price: win.hammerPrice == null ? null : formatMoney(win.hammerPrice, "GBP"),
@@ -150,7 +150,7 @@ export function returnedWork(work: ReturnedWork, input: { now: Date }): Collecti
     image: null,
     meta: [
       work.returnedAt
-        ? `returned unsold ${formatLotMoment(work.returnedAt, input.now, { time: false, inSentence: true })}`
+        ? `returned unsold ${formatMoment(work.returnedAt, LONDON_TIME_ZONE, input.now, { time: false, inSentence: true })}`
         : "returned unsold",
       work.reference,
     ],

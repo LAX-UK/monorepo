@@ -1,8 +1,8 @@
 "use client";
 
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
-import { formatLondonWhen } from "@/lib/datetime/london-time";
 import { closingChipText } from "@/lib/time/opens-line";
+import { LONDON_TIME_ZONE, formatWhen } from "@auction/datetime";
 import { Countdown, cn } from "@auction/ui";
 
 type Props = {
@@ -24,7 +24,7 @@ export function SaleCalendarCountdown({ endIso, className }: Props) {
           className,
         )}
       >
-        {formatLondonWhen(end)}
+        {formatWhen(end, LONDON_TIME_ZONE, new Date())}
       </span>
     );
   }
