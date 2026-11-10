@@ -2,6 +2,7 @@
 
 import {
   findLotsOutsideSaleWindow,
+  lotsForPendingWindow,
   parseSaleWindowFromForm,
 } from "@/lib/admin/sale-lot-window-sync";
 import { FormSection } from "@auction/staff-ui";
@@ -20,6 +21,7 @@ export type { SaleScheduleStepProps, TierPreview } from "./schedule-step/types";
 export function SaleScheduleStep({
   form,
   isDraft,
+  savedTimeZone,
   timeZoneLocked = false,
   isSaleroom,
   pending: _pending,
@@ -47,8 +49,11 @@ export function SaleScheduleStep({
   const lotConflicts = useMemo(() => {
     const window = parseSaleWindowFromForm({ deliveryMode, startTime, endTime, timeZone });
     if (!window || lots.length === 0) return [];
-    return findLotsOutsideSaleWindow(lots, window);
-  }, [deliveryMode, endTime, lots, startTime, timeZone]);
+    return findLotsOutsideSaleWindow(
+      lotsForPendingWindow(lots, savedTimeZone ?? window.timeZone, window),
+      window,
+    );
+  }, [deliveryMode, endTime, lots, savedTimeZone, startTime, timeZone]);
   const pendingWindow = parseSaleWindowFromForm({ deliveryMode, startTime, endTime, timeZone });
 
   return (

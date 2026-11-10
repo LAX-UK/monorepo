@@ -65,6 +65,7 @@ describe("submitSaleForm schedule persist gate", () => {
     await submitSaleForm(baseValues({ deliveryMode: "onsite" }), {
       saleId: "sale-1",
       isDraft: true,
+      savedTimeZone: "Europe/London",
       lots: [staleLot()],
       form: formStub() as never,
       formSchema: {} as never,
@@ -91,6 +92,7 @@ describe("submitSaleForm schedule persist gate", () => {
     await submitSaleForm(baseValues({ deliveryMode: "hybrid", streamUrl: "https://vimeo.com/1" }), {
       saleId: "sale-1",
       isDraft: true,
+      savedTimeZone: "Europe/London",
       lots: [staleLot()],
       form: formStub() as never,
       formSchema: {} as never,
@@ -111,6 +113,7 @@ describe("submitSaleForm schedule persist gate", () => {
     await submitSaleForm(baseValues({ deliveryMode: "online" }), {
       saleId: "sale-1",
       isDraft: true,
+      savedTimeZone: "Europe/London",
       lots: [staleLot()],
       form: formStub() as never,
       formSchema: {} as never,
@@ -128,6 +131,7 @@ describe("submitSaleForm schedule persist gate", () => {
     await submitSaleForm(baseValues({ deliveryMode: "online" }), {
       saleId: "sale-1",
       isDraft: true,
+      savedTimeZone: "Europe/London",
       lots: [],
       form: formStub() as never,
       formSchema: {} as never,

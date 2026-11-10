@@ -29,6 +29,7 @@ export {
   type WallClockResult,
   firstExistingWallTime,
   instantToWallClock,
+  lotsAfterSaleZoneChange,
   reinterpretInZone,
   wallClockToInstant,
 } from "./wall-clock.js";

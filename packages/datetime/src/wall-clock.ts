@@ -64,6 +64,27 @@ export function reinterpretInZone(instant: Date, fromZone: string, toZone: strin
 }
 
 /**
+ * The lots as they stand once their sale moves from `fromZone` to `toZone`: every draft lot keeps
+ * its wall-clock opening and closing (each moved on its own, so the stagger survives); lots that
+ * are no longer drafts keep their instants. One rule for the server's save and for every check the
+ * form runs before it, so a zone change is never judged against the old clock.
+ */
+export function lotsAfterSaleZoneChange<
+  T extends { status: string; startTime: Date; endTime: Date },
+>(lots: readonly T[], fromZone: string, toZone: string): T[] {
+  if (fromZone === toZone) return [...lots];
+  return lots.map((lot) =>
+    lot.status === "draft"
+      ? {
+          ...lot,
+          startTime: reinterpretInZone(lot.startTime, fromZone, toZone),
+          endTime: reinterpretInZone(lot.endTime, fromZone, toZone),
+        }
+      : lot,
+  );
+}
+
+/**
  * The earliest time at or after `time` that exists on `day` in `zone`: the same time on an
  * ordinary day, the end of the skipped hour in a gap. Null when none is found within three hours.
  */

@@ -1,4 +1,4 @@
-import { reinterpretInZone } from "@auction/datetime";
+import { lotsAfterSaleZoneChange, reinterpretInZone } from "@auction/datetime";
 import type { ILotRepository } from "@auction/persistence/interfaces";
 import type {
   CreateSaleInput,
@@ -281,15 +281,9 @@ export async function updateDraftSale(
     const saleLots = await deps.lotRepo.findBySaleId(saleId);
     // A re-zoned sale's draft lots keep their wall-clock times too, each moved on its own so the
     // stagger between lots survives; other lots are checked as they are.
-    const lots = saleLots.map((l) =>
-      zoneChange && l.status === "draft"
-        ? {
-            ...l,
-            startTime: reinterpretInZone(l.startTime, zoneChange.from, zoneChange.to),
-            endTime: reinterpretInZone(l.endTime, zoneChange.from, zoneChange.to),
-          }
-        : l,
-    );
+    const lots = zoneChange
+      ? lotsAfterSaleZoneChange(saleLots, zoneChange.from, zoneChange.to)
+      : saleLots;
     const nextSale = {
       ...sale,
       deliveryMode: nextDelivery,

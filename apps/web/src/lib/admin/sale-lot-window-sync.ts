@@ -1,6 +1,7 @@
 import { humanizeSetupError } from "@/lib/admin/sale-setup/humanize-setup-error";
 import type { AdminSaleFormValues } from "@/lib/forms/schemas/admin-sale-form";
 import { readingZone } from "@/lib/forms/schemas/reading-zone";
+import { lotsAfterSaleZoneChange } from "@auction/datetime";
 import type { Lot, Sale, SaleDeliveryMode } from "@auction/types";
 import { instantFromDatetimeFormString } from "@auction/ui/lib/datetime";
 import {
@@ -56,15 +57,31 @@ export function saleInheritsLotTiming(window: Pick<SaleWindow, "deliveryMode">):
   return getSaleModeCapabilities(window.deliveryMode).inheritsLotTiming;
 }
 
+/**
+ * The saved lots as they will stand once the sale is saved in the pending window's zone: draft
+ * lots keep their wall-clock times when the zone changes, as the server does when it saves.
+ */
+export function lotsForPendingWindow<T extends Pick<Lot, "status" | "startTime" | "endTime">>(
+  lots: readonly T[],
+  savedTimeZone: string,
+  pendingWindow: Pick<SaleWindow, "timeZone">,
+): T[] {
+  return lotsAfterSaleZoneChange(lots, savedTimeZone, pendingWindow.timeZone);
+}
+
 /** Lot conflicts that should block persisting a draft sale schedule update. */
 export function findPersistBlockingLotWindowConflicts(
-  lots: readonly Pick<Lot, "id" | "title" | "startTime" | "endTime">[],
+  lots: readonly Pick<Lot, "id" | "title" | "status" | "startTime" | "endTime">[],
   pendingWindow: SaleWindow,
+  savedTimeZone: string,
 ): LotWindowConflict[] {
   if (saleInheritsLotTiming(pendingWindow)) {
     return [];
   }
-  return findLotsOutsideSaleWindow(lots, pendingWindow);
+  return findLotsOutsideSaleWindow(
+    lotsForPendingWindow(lots, savedTimeZone, pendingWindow),
+    pendingWindow,
+  );
 }
 
 export function findLotsOutsideSaleWindow(

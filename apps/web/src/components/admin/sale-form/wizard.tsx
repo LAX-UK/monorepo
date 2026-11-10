@@ -126,6 +126,7 @@ export function AdminSaleForm({
         onSubmit={form.handleSubmit((values) => {
           startTransition(async () => {
             await submitSaleForm(values, {
+              savedTimeZone: defaultValues.timeZone,
               saleId,
               isDraft,
               lots,
@@ -180,6 +181,7 @@ export function AdminSaleForm({
         <SaleScheduleStep
           form={form}
           isDraft={isDraft}
+          savedTimeZone={defaultValues.timeZone}
           timeZoneLocked={timeZoneLocked}
           isSaleroom={isSaleroom}
           pending={pending}
