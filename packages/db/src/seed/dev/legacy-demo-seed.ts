@@ -16,6 +16,7 @@ import { buildPgPoolConfig } from "../../ssl.js";
 import { assertDevSeedMayRunDestructiveClear } from "../runners/dev-seed-guard.js";
 import { buildPressDemoSaleRow } from "../shared/press-demo.js";
 import { insertSeedInvoices, totalOnlySeedInvoice } from "../shared/seed-invoice.js";
+import { seedCollectionJourneys } from "./collection-journeys-seed.js";
 import { DEMO_SEED_NOW } from "./demo-seed-clock.js";
 import { seedOrganisationJourneys } from "./organisation-journeys-seed.js";
 
@@ -458,6 +459,12 @@ async function clearAll(db: ReturnType<typeof drizzle<typeof schema>>) {
   await db.delete(submissionCategories);
   await db.delete(itemSubmission);
   await db.delete(adminReviewTask);
+  // Collection visits hold lots and places, so they go first.
+  await db.delete(schema.collectionBookingLot);
+  await db.delete(schema.collectionBooking);
+  await db.delete(schema.collectionException);
+  await db.delete(schema.collectionWeeklyHours);
+  await db.delete(schema.collectionPlace);
   await db.delete(lotCategories);
   await db.delete(lot);
   await db.delete(saleCategories);
@@ -5010,6 +5017,14 @@ export async function runLegacyDemoSeed() {
     laxStockId: LEO.laxStockApproved,
     categoryId: CAT.paintings,
     signInUserIds: [GALLERY_ADMIN_ID, CONSIGNOR_ID, BUYER_AGENT_ID, SPECIALIST_ID],
+  });
+
+  await seedCollectionJourneys(db, {
+    adminId: ADMIN_ID,
+    winnerId: BUYER_AGENT_ID,
+    northbankId: LE.gallery,
+    sellerAccountId: LE.user2,
+    laxStockId: LEO.laxStockApproved,
   });
 
   // ── Summary ────────────────────────────────────────────────────────────────

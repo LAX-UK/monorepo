@@ -56,6 +56,7 @@
   },
   "dependencies": {
     "@auction/alerts": "workspace:*",
+    "@auction/datetime": "workspace:*",
     "@auction/domain": "workspace:*",
     "@auction/identity-contracts": "workspace:*",
     "@auction/identity-db": "workspace:*",
