@@ -269,7 +269,7 @@ describe("RecordRow", () => {
     const action = li.querySelector("[data-record-action]") as HTMLElement;
     // Hidden in a narrow list, a fixed column in a wide one.
     expect(status.className).toContain("hidden");
-    expect(status.className).toContain("@2xl:w-40");
+    expect(status.className).toContain("@2xl:w-32");
     expect(action.className).toContain("@2xl:w-40");
   });
 });
