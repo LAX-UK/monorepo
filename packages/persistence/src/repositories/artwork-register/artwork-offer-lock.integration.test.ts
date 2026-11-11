@@ -144,4 +144,35 @@ describe.skipIf(!url)("one place at a time (Postgres)", { timeout: 30_000 }, () 
     const rows = await db.execute(sql`SELECT count(*)::int AS n FROM artwork_register_event`);
     expect(rows.rows[0]?.n).toBe(0);
   });
+
+  it("sells a withdrawn artwork on an ATG result, and raises one staff item if it was relisted", async () => {
+    const entry = await created();
+    await lock.offer({ registerId: entry.id }, lot, "system");
+    await lock.withdraw({ registerId: entry.id }, lot, "system");
+    expect((await lock.markSold({ registerId: entry.id }, lot, "system")).status).toBe("moved");
+    expect((await lock.markSold({ registerId: entry.id }, lot, "system")).status).toBe("unchanged");
+
+    const relisted = await repo.create(
+      newEntry({ zohoProductId: "5002", stockCode: "LAX-ORI-PH-GAC-26-0002" }),
+      "zoho",
+      NOW,
+    );
+    if (!relisted.ok) throw new Error(relisted.reason);
+    await lock.offer({ registerId: relisted.entry.id }, shop, "staff:u1");
+    const outcome = await lock.markSold({ registerId: relisted.entry.id }, lot, "system");
+    expect(outcome.status).toBe("skipped");
+    const input = {
+      registerId: relisted.entry.id,
+      message: "Sold on ATG but now listed on lax.art",
+      state: "lax_art" as const,
+      lotId: lot.id,
+      now: LATER,
+    };
+    expect(await repo.recordOfferConflict(input)).toBe(true);
+    expect(await repo.recordOfferConflict(input)).toBe(false);
+    const open = await repo.listOpenConflicts(10);
+    expect(open).toHaveLength(1);
+    expect(open[0]).toMatchObject({ field: "offerState", zohoValue: input.message });
+    expect((await repo.findById(relisted.entry.id))?.offer.state).toBe("lax_art");
+  });
 });

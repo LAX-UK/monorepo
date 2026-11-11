@@ -44,6 +44,7 @@ import type {
   RecordCatalogueStatusWrittenResult,
   RecordLaxArtDraftCreatedInput,
   RecordMoveConfirmedInput,
+  RecordOfferConflictInput,
   RecordZohoLinkInput,
   RegisterActor,
   RegisterConflict,
@@ -451,6 +452,45 @@ export class DrizzleArtworkRegisterRepository
         ...(applied ? { applied } : {}),
       });
       return { ok: true, conflict: toConflict(row) };
+    });
+  }
+
+  async recordOfferConflict(input: RecordOfferConflictInput): Promise<boolean> {
+    return this.db.transaction(async (tx) => {
+      const [locked] = await tx
+        .select({ id: register.id })
+        .from(register)
+        .where(eq(register.id, input.registerId))
+        .for("update");
+      if (!locked) return false;
+      const [open] = await tx
+        .select({ id: conflict.id })
+        .from(conflict)
+        .where(
+          and(
+            eq(conflict.registerId, input.registerId),
+            eq(conflict.field, "offerState"),
+            eq(conflict.status, "open"),
+          ),
+        )
+        .limit(1);
+      // The ATG poll repeats the result every tick: one open item, one history entry.
+      if (open) return false;
+      const laxValue = { state: input.state, lotId: input.lotId };
+      await tx.insert(conflict).values({
+        registerId: input.registerId,
+        field: "offerState",
+        zohoValue: input.message,
+        laxValue,
+        zohoModifiedAt: input.now,
+        detectedAt: input.now,
+      });
+      await this.record(tx, input.registerId, "conflict_recorded", "system", input.now, {
+        field: "offerState",
+        message: input.message,
+        ...laxValue,
+      });
+      return true;
     });
   }
 
