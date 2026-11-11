@@ -149,6 +149,17 @@ describe.skipIf(!API_URL)("api_app role contract", { timeout: 60_000 }, () => {
     });
   });
 
+  it("appends the bank-transfer references and reads them, never changing or removing one", async () => {
+    await withApiClient(async (client) => {
+      const rows = await readTablePrivileges(
+        client,
+        ["payment_transfer_reference"],
+        ["SELECT", "INSERT", "UPDATE", "DELETE"],
+      );
+      expectTablePrivileges(rows, (row) => ["SELECT", "INSERT"].includes(row.privilege));
+    });
+  });
+
   it("owns only the Bid SSF replay ledger", async () => {
     await withApiClient(async (client) => {
       for (const table of API_SSF_RECEIVER_TABLES) {

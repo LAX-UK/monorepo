@@ -29,6 +29,8 @@ function baseProfile(over: Partial<ProfileMeRow> = {}): ProfileMeRow {
     deletionRequestedAt: null,
     twoFactorEnabled: false,
     suspended: false,
+    timeZoneMode: "automatic",
+    timeZone: null,
     ...over,
   };
 }
@@ -227,5 +229,107 @@ describe("PATCH /users/me/profile", () => {
 
     expect(res.status, await res.clone().text()).toBe(400);
     expect(profileService.updateProfile).not.toHaveBeenCalled();
+  });
+});
+
+describe("LAX Account time zone", () => {
+  function appWithIdentity(identityTimeZone: {
+    setSubjectTimeZone: ReturnType<typeof vi.fn>;
+    reportSubjectDeviceZone: ReturnType<typeof vi.fn>;
+  }) {
+    const userRoutes = createUserRouteServices(
+      createTestUserRouteServicesInput({ identityTimeZone: identityTimeZone as never }),
+    );
+    const app = new Hono();
+    const container = {
+      env: {},
+      userSuspensionChecker: { isSuspended: vi.fn().mockResolvedValue(false) },
+      userRoutes,
+    } as unknown as Container;
+    const authenticator: IAuthenticator = {
+      getSessionUser: vi
+        .fn()
+        .mockResolvedValue({ id: "u1", role: "client", scopes: ["bid.read", "bid.write"] }),
+    };
+    app.route("/users", createUserRoutes(container, authenticator));
+    return app;
+  }
+
+  const put = (app: Hono, path: string, body: unknown, method = "PUT") =>
+    app.request(path, {
+      method,
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    });
+
+  it("includes the choice in GET /users/me", async () => {
+    const { app } = appWithGetProfile(
+      baseProfile({ timeZoneMode: "fixed", timeZone: "Australia/Sydney" }),
+    );
+    const res = await app.request("/users/me");
+    const body = (await res.json()) as { data: { timeZone: unknown } };
+    expect(body.data.timeZone).toEqual({ mode: "fixed", zone: "Australia/Sydney" });
+  });
+
+  it("saves a fixed city through Identity for the signed-in person", async () => {
+    const identity = {
+      setSubjectTimeZone: vi.fn().mockResolvedValue({ mode: "fixed", zone: "Asia/Tokyo" }),
+      reportSubjectDeviceZone: vi.fn(),
+    };
+    const res = await put(appWithIdentity(identity), "/users/me/time-zone", {
+      mode: "fixed",
+      zone: "Asia/Tokyo",
+    });
+    expect(res.status, await res.clone().text()).toBe(200);
+    expect(await res.json()).toEqual({ data: { mode: "fixed", zone: "Asia/Tokyo" } });
+    expect(identity.setSubjectTimeZone).toHaveBeenCalledWith("u1", {
+      mode: "fixed",
+      zone: "Asia/Tokyo",
+    });
+  });
+
+  it.each([
+    ["UTC", { mode: "fixed", zone: "UTC" }],
+    ["an Etc zone", { mode: "fixed", zone: "Etc/GMT+3" }],
+    ["no zone", { mode: "fixed" }],
+    ["an unknown mode", { mode: "later", zone: "Asia/Tokyo" }],
+  ])("refuses %s and calls nothing", async (_name, body) => {
+    const identity = { setSubjectTimeZone: vi.fn(), reportSubjectDeviceZone: vi.fn() };
+    const res = await put(appWithIdentity(identity), "/users/me/time-zone", body);
+    expect(res.status).toBe(400);
+    expect(identity.setSubjectTimeZone).not.toHaveBeenCalled();
+  });
+
+  it("goes back to automatic with the device's zone, or none when the device reports UTC", async () => {
+    const identity = {
+      setSubjectTimeZone: vi.fn().mockResolvedValue({ mode: "automatic", zone: null }),
+      reportSubjectDeviceZone: vi.fn(),
+    };
+    const app = appWithIdentity(identity);
+    await put(app, "/users/me/time-zone", { mode: "automatic", zone: "UTC" });
+    expect(identity.setSubjectTimeZone).toHaveBeenLastCalledWith("u1", {
+      mode: "automatic",
+      deviceZone: null,
+    });
+    await put(app, "/users/me/time-zone", { mode: "automatic", zone: "Europe/Paris" });
+    expect(identity.setSubjectTimeZone).toHaveBeenLastCalledWith("u1", {
+      mode: "automatic",
+      deviceZone: "Europe/Paris",
+    });
+  });
+
+  it("reports the device's zone to Identity", async () => {
+    const identity = {
+      setSubjectTimeZone: vi.fn(),
+      reportSubjectDeviceZone: vi.fn().mockResolvedValue({ mode: "automatic", zone: "Asia/Tokyo" }),
+    };
+    const res = await put(
+      appWithIdentity(identity),
+      "/users/me/time-zone/device",
+      { zone: "Asia/Tokyo" },
+      "POST",
+    );
+    expect(res.status).toBe(200);
+    expect(identity.reportSubjectDeviceZone).toHaveBeenCalledWith("u1", "Asia/Tokyo");
   });
 });

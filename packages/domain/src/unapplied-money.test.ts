@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
   type UnappliedMoney,
+  misappliedTransferText,
   possibleSourceText,
   unappliedMoneyAggregate,
   unappliedMoneyDedupeKey,
   unappliedMoneyPayload,
+  unappliedMoneyWorkItemWording,
 } from "./unapplied-money.js";
 
 const base: UnappliedMoney = {
@@ -19,6 +21,18 @@ const base: UnappliedMoney = {
 };
 
 describe("unappliedMoneyDedupeKey", () => {
+  it("keys a transfer applied to another invoice by the ledger entry that applied it, so two applications to one payment are two tasks", () => {
+    const money = {
+      ...base,
+      reason: "transfer_applied_to_other_invoice" as const,
+      cashBalanceTransactionId: "ccsbtxn_1",
+    };
+    expect(unappliedMoneyDedupeKey(money)).toBe("transfer_applied_to_other_invoice:ccsbtxn_1");
+    expect(unappliedMoneyDedupeKey({ ...money, cashBalanceTransactionId: "ccsbtxn_2" })).toBe(
+      "transfer_applied_to_other_invoice:ccsbtxn_2",
+    );
+  });
+
   it("keys card and transfer money by its intent, so a replay is the same task", () => {
     expect(unappliedMoneyDedupeKey(base)).toBe("invoice_already_paid:pi_1");
     expect(unappliedMoneyDedupeKey({ ...base, paymentId: "pay-other" })).toBe(
@@ -110,5 +124,60 @@ describe("unappliedMoneyAggregate", () => {
       aggregateType: "payment_group",
       aggregateId: "shop_order_paid_after_close:pi_1",
     });
+  });
+});
+
+describe("misappliedTransferText", () => {
+  it("names both invoices and the reference, without naming the payment provider", () => {
+    const text = misappliedTransferText({
+      paymentId: "aaaaaaaa-0000-4000-8000-000000000000",
+      paymentGroupId: null,
+      intendedPaymentId: "bbbbbbbb-0000-4000-8000-000000000000",
+      intendedPaymentGroupId: null,
+      transferReference: "REF-1",
+    });
+    expect(text).toContain("sent with invoice PAY-BBBBBBBB's payment reference (reference REF-1)");
+    expect(text).toContain("was applied to invoice PAY-AAAAAAAA.");
+    expect(text).not.toMatch(/stripe/i);
+  });
+
+  it("names a combined payment, and describes an invoice it cannot name", () => {
+    const text = misappliedTransferText({
+      paymentId: null,
+      paymentGroupId: "cccccccc-0000-4000-8000-000000000000",
+      intendedPaymentId: null,
+      intendedPaymentGroupId: null,
+      transferReference: null,
+    });
+    expect(text).toContain(
+      "sent with another invoice's payment reference was applied to combined payment PG-CCCCCCCC.",
+    );
+  });
+});
+
+describe("unappliedMoneyWorkItemWording", () => {
+  it("titles a misapplied transfer by what happened and hints at both invoices", () => {
+    const wording = unappliedMoneyWorkItemWording({
+      reason: "transfer_applied_to_other_invoice",
+      paymentId: "aaaaaaaa-0000-4000-8000-000000000000",
+      paymentGroupId: null,
+      intendedPaymentId: "bbbbbbbb-0000-4000-8000-000000000000",
+      intendedPaymentGroupId: null,
+      transferReference: "REF-1",
+    });
+    expect(wording.title).toBe("Bank transfer applied to another invoice");
+    expect(wording.hint).toContain("PAY-BBBBBBBB");
+    expect(wording.hint).toContain("PAY-AAAAAAAA");
+  });
+
+  it("keeps the general title and the possible-source hint for other money", () => {
+    expect(
+      unappliedMoneyWorkItemWording({
+        reason: "customer_balance_unapplied",
+        paymentId: null,
+        paymentGroupId: null,
+        possibleGroup: null,
+      }),
+    ).toEqual({ title: "Money received that could not be applied", hint: null });
   });
 });

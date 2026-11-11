@@ -728,6 +728,10 @@ export type {
   IPaymentCheckoutSessionStore,
   RecordedCheckoutSession,
 } from "./payment-checkout-session.store.js";
+export type {
+  IPaymentTransferReferenceStore,
+  TransferReferenceRecord,
+} from "./payment-transfer-reference.store.js";
 export type { IStalePaymentCanceller } from "./stale-payment-canceller.js";
 export type { OpenUnappliedMoneyFilter } from "./unapplied-money.reader.js";
 export type { IUnappliedMoneyReader, OpenUnappliedMoney } from "./unapplied-money.reader.js";
@@ -1218,6 +1222,7 @@ export type {
   IPaymentGroupRepository,
   LivePaymentGroupFacts,
   LockedPaymentGroup,
+  LockedPaymentGroupDelivery,
   PaySeveralInvoiceFlags,
   PaymentGroupDelivery,
   PaymentGroupMember,
@@ -1261,6 +1266,9 @@ export type {
   IAuctionOfferReader,
   RecordMoveConfirmedInput,
   ILotRegisterLinkReader,
+  IAtgLotSoldReader,
+  IRegisterOfferConflicts,
+  RecordOfferConflictInput,
   LotRegisterLink,
   IArtworkRegisterReader,
   IArtworkRegisterRepository,

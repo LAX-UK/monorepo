@@ -1,4 +1,5 @@
 import { HOSTED_AUTH_POLICY } from "../policy.js";
+import { createCaptchaGate } from "./captcha-gate.js";
 import { legalAcceptanceFields } from "./legal-acceptance.js";
 import {
   type HostedLoginStep,
@@ -6,12 +7,14 @@ import {
   focusTargetForLoginStep,
   nextLoginStep,
 } from "./login-state.js";
+import { bindPasskeySignIn } from "./passkey-sign-in-dom.js";
 import { bindSocialCallbackError, bindSocialSignIn } from "./social-sign-in.js";
-import { submitEnabled } from "./turnstile.js";
 import { asButton, hostedAuth, inputValue, submitButton } from "./window-auth.js";
 
 const auth = hostedAuth();
+const captcha = createCaptchaGate(auth);
 bindSocialCallbackError(auth);
+bindPasskeySignIn(auth);
 const root = document.getElementById("login-root");
 // Google and Apple can create the account here, so they carry the statement the page showed;
 // email and password sign-in does not.
@@ -31,7 +34,9 @@ function setStep(next: HostedLoginStep): void {
     }
   }
   const methods = root.querySelector("[data-login-chrome=methods]");
-  if (methods instanceof HTMLElement) methods.hidden = next === "magic-link-sent";
+  if (methods instanceof HTMLElement) {
+    methods.hidden = next === "magic-link-sent" || methods.dataset.methodsEmpty === "true";
+  }
   const footer = root.querySelector("[data-login-chrome=footer]");
   if (footer instanceof HTMLElement) footer.hidden = next === "magic-link-sent";
   const summary = document.getElementById("email-summary-value");
@@ -55,24 +60,6 @@ function setStep(next: HostedLoginStep): void {
   window.setTimeout(() => auth.focusById(focusId), 0);
 }
 
-function bindCaptchaGate(button: HTMLButtonElement | null): void {
-  auth.onTokenChange((token) => {
-    if (!button || button.getAttribute("aria-busy") === "true") return;
-    button.disabled = !submitEnabled({ captchaRequired: true, token });
-  });
-}
-
-async function handleCaptcha(
-  data: unknown,
-  buttons: Array<HTMLButtonElement | null>,
-): Promise<boolean> {
-  if (!auth.isCaptchaRequired(data)) return false;
-  for (const button of buttons) bindCaptchaGate(button);
-  await auth.ensureTurnstile(buttons);
-  auth.showError(auth.CAPTCHA_REQUIRED);
-  return true;
-}
-
 async function signInEmail(submit: HTMLButtonElement | null): Promise<void> {
   if (!auth.validateFields(["email", "password"])) return;
   auth.hideStatus();
@@ -82,7 +69,7 @@ async function signInEmail(submit: HTMLButtonElement | null): Promise<void> {
       email: inputValue("email").trim(),
       password: inputValue("password"),
     });
-    if (await handleCaptcha(data, [submit])) return;
+    if (await captcha.handle(data, [submit])) return;
     if (!response.ok) {
       auth.reportFailure({ response, data }, "sign-in", auth.GENERIC_SIGN_IN);
       return;
@@ -105,7 +92,7 @@ async function sendMagicLink(button: HTMLButtonElement | null): Promise<void> {
       email: inputValue("email").trim(),
       callbackURL: auth.magicLinkCallbackUrl(),
     });
-    if (await handleCaptcha(data, [button])) return;
+    if (await captcha.handle(data, [button])) return;
     if (!response.ok) {
       auth.reportFailure({ response, data }, "other", auth.GENERIC_NETWORK);
       return;

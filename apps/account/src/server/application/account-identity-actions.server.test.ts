@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const identity = {
   rename: vi.fn(),
+  setTimeZone: vi.fn(),
+  reportDeviceZone: vi.fn(),
   revokeSession: vi.fn(),
   revokeOtherSessions: vi.fn(),
   startEmailChange: vi.fn(),
@@ -30,7 +32,9 @@ const {
   regenerateBackupCodesAction,
   removeSignInMethodAction,
   renameAccountAction,
+  reportDeviceZoneAction,
   requestAccountDeletionAction,
+  saveTimeZoneAction,
   sendPhoneCodeAction,
   signOutDeviceAction,
   signOutOtherDevicesAction,
@@ -47,6 +51,79 @@ describe("account identity actions", () => {
     vi.resetAllMocks();
     vi.spyOn(console, "error").mockImplementation(() => undefined);
     loadAccountRecord.mockResolvedValue({ ...ACTOR, subject: "subject" });
+  });
+
+  describe("saveTimeZoneAction", () => {
+    it("saves always-use-one-city for the signed-in person", async () => {
+      identity.setTimeZone.mockResolvedValue({
+        status: "ok",
+        value: { mode: "fixed", zone: "Asia/Tokyo" },
+      });
+      expect(await saveTimeZoneAction({ mode: "fixed", zone: "Asia/Tokyo" })).toEqual({
+        status: "ok",
+        mode: "fixed",
+        zone: "Asia/Tokyo",
+      });
+      expect(identity.setTimeZone).toHaveBeenCalledWith(ACTOR, {
+        mode: "fixed",
+        zone: "Asia/Tokyo",
+      });
+    });
+
+    it("saves Automatic with the device's zone, or none when it reports none", async () => {
+      identity.setTimeZone.mockResolvedValue({
+        status: "ok",
+        value: { mode: "automatic", zone: null },
+      });
+      await saveTimeZoneAction({ mode: "automatic", zone: "UTC" });
+      expect(identity.setTimeZone).toHaveBeenCalledWith(ACTOR, {
+        mode: "automatic",
+        deviceZone: null,
+      });
+    });
+
+    it.each(["UTC", "Etc/GMT+2", "Nowhere/City", null])(
+      "refuses %s as a fixed zone without calling the issuer",
+      async (zone) => {
+        expect(await saveTimeZoneAction({ mode: "fixed", zone })).toEqual({
+          status: "error",
+          message: "Choose a city, such as London or New York.",
+        });
+        expect(identity.setTimeZone).not.toHaveBeenCalled();
+      },
+    );
+
+    it("sends a person whose sign-in has ended to sign in again", async () => {
+      loadAccountRecord.mockResolvedValue(null);
+      expect(await saveTimeZoneAction({ mode: "fixed", zone: "Asia/Tokyo" })).toEqual({
+        status: "reauth_required",
+      });
+    });
+
+    it("says nothing was changed when the issuer is unavailable", async () => {
+      identity.setTimeZone.mockResolvedValue({ status: "unavailable" });
+      expect(await saveTimeZoneAction({ mode: "fixed", zone: "Asia/Tokyo" })).toMatchObject({
+        status: "error",
+        message: expect.stringContaining("Nothing was changed"),
+      });
+    });
+  });
+
+  describe("reportDeviceZoneAction", () => {
+    it("tells the issuer the device's zone and answers with what is stored", async () => {
+      identity.reportDeviceZone.mockResolvedValue({ mode: "automatic", zone: "Asia/Tokyo" });
+      expect(await reportDeviceZoneAction("Asia/Tokyo")).toEqual({
+        status: "ok",
+        mode: "automatic",
+        zone: "Asia/Tokyo",
+      });
+      expect(identity.reportDeviceZone).toHaveBeenCalledWith(ACTOR, "Asia/Tokyo");
+    });
+
+    it("is an error when the issuer cannot be reached", async () => {
+      identity.reportDeviceZone.mockResolvedValue(null);
+      expect((await reportDeviceZoneAction("Asia/Tokyo")).status).toBe("error");
+    });
   });
 
   describe("startSignInMethodLinkAction", () => {

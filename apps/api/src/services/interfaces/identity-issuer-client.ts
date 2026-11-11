@@ -3,6 +3,8 @@ import type {
   AccountAddressDefaultKind,
   AccountAddressInput,
   AccountDeletionOutcome,
+  AccountTimeZone,
+  AccountTimeZoneChange,
 } from "@auction/identity-contracts";
 
 export type IdentityIssuerRequestContext = {
@@ -195,6 +197,13 @@ export interface IIdentityProfileClient {
     subjectId: string,
     patch: { name?: string; image?: string | null },
   ): Promise<void>;
+  /** Saves the person's time zone choice in LAX Account and resolves to what is now stored. */
+  setSubjectTimeZone(subjectId: string, change: AccountTimeZoneChange): Promise<AccountTimeZone>;
+  /**
+   * Tells Identity which zone the person's device is in. It is kept only while they follow their
+   * device. Resolves to the preference now stored.
+   */
+  reportSubjectDeviceZone(subjectId: string, deviceZone: string | null): Promise<AccountTimeZone>;
   /**
    * Starts the 30-day deletion through Identity's orchestration, which asks every product
    * whether the person has anything in flight first.

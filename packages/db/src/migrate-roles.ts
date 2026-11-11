@@ -218,6 +218,11 @@ export const API_SSF_RECEIVER_TABLES = ["bid_ssf_replay"] as const;
  * access.
  */
 export const API_PAYMENT_REFUND_TABLES = ["payment_refund"] as const;
+/**
+ * The reference each bank-transfer payment shows its sender, kept for after the provider stops
+ * showing it. Append-only, so api_app gets INSERT and SELECT only; no other role touches it.
+ */
+export const API_PAYMENT_TRANSFER_REFERENCE_TABLES = ["payment_transfer_reference"] as const;
 /** Shop Identity owns only its local Identity projection. */
 export const SHOP_PRODUCT_PROFILE_TABLES = [
   "shop_user_profile",
@@ -997,7 +1002,10 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
             await grantIfExists(client, "api_app", tableName, "INSERT, SELECT, DELETE");
             continue;
           }
-          if ((API_PAYMENT_REFUND_TABLES as readonly string[]).includes(tableName)) {
+          if (
+            (API_PAYMENT_REFUND_TABLES as readonly string[]).includes(tableName) ||
+            (API_PAYMENT_TRANSFER_REFERENCE_TABLES as readonly string[]).includes(tableName)
+          ) {
             await grantIfExists(client, "api_app", tableName, "INSERT, SELECT");
             continue;
           }

@@ -9,6 +9,7 @@ import { assertRecentAuthentication, validateOAuthStateTimingSafe } from "@aucti
 import type { LaxAccountConfig } from "../config";
 import { createAccountTokenEndpoint } from "../infrastructure/account-token-endpoint";
 import type { SessionStore, StaffSessionRecord } from "../ports/session-store";
+import { assertReauthSubject } from "./confirm-reauth-subject";
 import type { PendingAccountLogin } from "./start-account-login";
 export async function completeAccountLogin(input: {
   config: LaxAccountConfig;
@@ -52,6 +53,8 @@ export async function completeAccountLogin(input: {
         typeof verified.payload.auth_time === "number" ? verified.payload.auth_time : undefined,
       maxAgeSeconds: ACCOUNT_STEP_UP_MAX_AGE_SECONDS,
     });
+    // And it must be the person who asked: a passkey for someone else is not a step-up.
+    assertReauthSubject(input.pending, verified.subject);
   }
   const authTime =
     typeof verified.payload.auth_time === "number"

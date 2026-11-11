@@ -1,3 +1,4 @@
+import type { LockMessage } from "@auction/artwork-register-contracts";
 import type {
   DealBlockerCode,
   DealView,
@@ -200,12 +201,26 @@ export type ConvertEnquiryError =
   | "work_not_available"
   /** The work is already in a deal that is neither cancelled nor settled. */
   | "work_in_deal"
+  /** The artwork register has no such entry. */
+  | "artwork_not_found"
+  /** Only originals are held for a deal; prints are sold in runs. */
+  | "artwork_not_original"
+  /** The register shows the artwork in another sale, or sold. `message` says where. */
+  | "artwork_unavailable"
+  /** The register was changed by someone else while this was recorded; trying again is safe. */
+  | "artwork_register_busy"
   | "stale_version"
   | "unavailable";
 
 export type ConvertEnquiryResult =
   | { ok: true; reference: string }
-  | { ok: false; error: ConvertEnquiryError };
+  | {
+      ok: false;
+      error: ConvertEnquiryError;
+      message?: string;
+      /** For `artwork_unavailable`: the register's own reason, words and link, as every product shows them. */
+      lock?: LockMessage;
+    };
 
 /** Turns a private sale enquiry into a proposed deal. */
 export interface IEnquiryConversion {

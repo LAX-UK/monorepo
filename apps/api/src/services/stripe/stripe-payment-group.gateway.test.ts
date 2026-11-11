@@ -106,6 +106,7 @@ describe("StripePaymentGroupGateway", () => {
     const refunds = [
       { amount: 500, status: "succeeded", metadata: { paymentId: "pay-2" } },
       { amount: 200, status: "pending", metadata: {} },
+      { amount: 300, status: "succeeded", metadata: { deliveryQuoteId: "q-1" } },
       { amount: 900, status: "failed", metadata: { paymentId: "pay-3" } },
     ];
     const list = vi.fn(() => ({
@@ -115,8 +116,9 @@ describe("StripePaymentGroupGateway", () => {
     }));
     const gateway = gatewayWith({ refunds: { list } });
     expect(await gateway.listChargeRefunds("ch_1")).toEqual([
-      { paymentId: "pay-2", amountPence: 500 },
-      { paymentId: null, amountPence: 200 },
+      { paymentId: "pay-2", deliveryQuoteId: null, amountPence: 500 },
+      { paymentId: null, deliveryQuoteId: null, amountPence: 200 },
+      { paymentId: null, deliveryQuoteId: "q-1", amountPence: 300 },
     ]);
     expect(list).toHaveBeenCalledWith({ charge: "ch_1", limit: 100 });
   });

@@ -44,6 +44,7 @@ import type {
   RecordCatalogueStatusWrittenResult,
   RecordLaxArtDraftCreatedInput,
   RecordMoveConfirmedInput,
+  RecordOfferConflictInput,
   RecordZohoLinkInput,
   RegisterActor,
   RegisterConflict,
@@ -451,6 +452,50 @@ export class DrizzleArtworkRegisterRepository
         ...(applied ? { applied } : {}),
       });
       return { ok: true, conflict: toConflict(row) };
+    });
+  }
+
+  async recordOfferConflict(input: RecordOfferConflictInput): Promise<boolean> {
+    return this.db.transaction(async (tx) => {
+      const [locked] = await tx
+        .select({ id: register.id })
+        .from(register)
+        .where(eq(register.id, input.registerId))
+        .for("update");
+      if (!locked) return false;
+      const laxValue = { state: input.state, lotId: input.lotId };
+      // The ATG poll repeats the result every tick. Only one offerState item can be open per
+      // artwork (staff already have one to look at), and a situation staff have settled (this lot,
+      // the register in this state) is not raised again by the next poll.
+      const [seen] = await tx
+        .select({ id: conflict.id })
+        .from(conflict)
+        .where(
+          and(
+            eq(conflict.registerId, input.registerId),
+            eq(conflict.field, "offerState"),
+            or(
+              eq(conflict.status, "open"),
+              sql`${conflict.laxValue} @> ${JSON.stringify(laxValue)}::jsonb`,
+            ),
+          ),
+        )
+        .limit(1);
+      if (seen) return false;
+      await tx.insert(conflict).values({
+        registerId: input.registerId,
+        field: "offerState",
+        zohoValue: input.message,
+        laxValue,
+        zohoModifiedAt: input.now,
+        detectedAt: input.now,
+      });
+      await this.record(tx, input.registerId, "conflict_recorded", "system", input.now, {
+        field: "offerState",
+        message: input.message,
+        ...laxValue,
+      });
+      return true;
     });
   }
 

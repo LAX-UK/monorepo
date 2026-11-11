@@ -54,6 +54,7 @@ export * from "./payments.js";
 export * from "./payment-group.js";
 export * from "./bid-invoice.js";
 export * from "./payment-checkout-session.js";
+export * from "./payment-transfer-reference.js";
 export * from "./disputes.js";
 export * from "./watchlist.js";
 export * from "./watchlist-reminder.js";

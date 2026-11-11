@@ -15,6 +15,8 @@ type ProfileRow = {
   createdAt: Date;
   deletionRequestedAt: Date | null;
   identityDisabledAt: Date | null;
+  timeZoneMode: "automatic" | "fixed";
+  timeZone: string | null;
 };
 
 export function mapProfile(row: ProfileRow) {
@@ -34,10 +36,12 @@ export function mapProfile(row: ProfileRow) {
     language: null,
     theme: null,
     image: row.image,
+    timeZoneMode: row.timeZoneMode,
+    timeZone: row.timeZone,
   };
 }
 
-/** Name, join date and account status. The reason for a disablement is a staff note and is not read. */
+/** Name, join date, account status and time zone choice. The reason for a disablement is a staff note and is not read. */
 export class ProfileExportCategory extends SourcedExportCategory {
   readonly id = "profile";
   protected readonly sources: readonly ExportSource[];
@@ -54,6 +58,8 @@ export class ProfileExportCategory extends SourcedExportCategory {
             createdAt: user.createdAt,
             deletionRequestedAt: user.deletionRequestedAt,
             identityDisabledAt: user.identityDisabledAt,
+            timeZoneMode: user.timeZoneMode,
+            timeZone: user.timeZone,
           })
           .from(user)
           .where(eq(user.id, subjectId))

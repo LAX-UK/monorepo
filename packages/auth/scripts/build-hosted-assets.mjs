@@ -25,6 +25,8 @@ const entries = {
   "hosted-verify-email": join(src, "verify-email.entry.ts"),
   "hosted-resend-verification": join(src, "resend-verification.entry.ts"),
   "hosted-magic-link": join(src, "magic-link.entry.ts"),
+  "hosted-passkey-add": join(src, "passkey-add.entry.ts"),
+  "hosted-confirm": join(src, "confirm.entry.ts"),
   "oidc-consent": join(src, "consent.entry.ts"),
 };
 

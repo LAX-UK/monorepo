@@ -1,4 +1,5 @@
 import type { Page } from "@playwright/test";
+import { rememberSignIn, signOutContext } from "../../../../scripts/ci/e2e-sign-out.mjs";
 import { signInStaffThroughIdentity } from "./staff-sign-in.js";
 
 export type StaffBrowserSession = {
@@ -27,6 +28,10 @@ export async function openStaffBrowserSession(input: {
     totpSecret: input.totpSecret,
     returnTo: "/",
   });
+  // The spec fixture signs this browser out when the spec ends.
+  rememberSignIn(input.page.context(), (context) =>
+    signOutContext(context, { origin: input.baseUrl }),
+  );
   const cookies = await input.page.context().cookies();
   const csrf = cookies.find((c) => c.name === "lax-shop-admin-csrf")?.value;
   if (!csrf) {

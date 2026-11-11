@@ -8,6 +8,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import {
   API_DENY_TABLES,
   API_PAYMENT_REFUND_TABLES,
+  API_PAYMENT_TRANSFER_REFERENCE_TABLES,
   API_READ_TABLES,
   AUTH_ADDRESS_TABLES,
   AUTH_EXPORT_AUDIT_TABLES,
@@ -826,6 +827,13 @@ describe("migrate-roles invariants", () => {
     expect([...SHOP_COMMERCE_TABLES, ...SHOP_COMMERCE_APPEND_ONLY_TABLES]).not.toContain(
       "payment_refund",
     );
+  });
+
+  it("keeps the bank-transfer references append-only for the Bid API and away from every other role", () => {
+    expect([...API_PAYMENT_TRANSFER_REFERENCE_TABLES]).toEqual(["payment_transfer_reference"]);
+    expect([...API_DENY_TABLES]).not.toContain("payment_transfer_reference");
+    expect([...WORKER_FULL_TABLES]).not.toContain("payment_transfer_reference");
+    expect([...WORKER_READ_TABLES]).not.toContain("payment_transfer_reference");
   });
 
   it("WORKER_PAYMENT_MAINTENANCE_TABLES includes payment (expire-stale-payments)", () => {

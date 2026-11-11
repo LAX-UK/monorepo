@@ -20,6 +20,9 @@ export type IdentityLifecycleEvent =
       phone?: string | null;
       phoneVerified?: boolean;
       image?: string | null;
+      /** LAX Account's time zone choice; sent together. */
+      timeZoneMode?: "automatic" | "fixed";
+      timeZone?: string | null;
     }
   | { type: "user.deletion_requested"; userId: string; requestedAt?: Date }
   | { type: "user.deletion_cancelled"; userId: string; cancelledAt?: Date }

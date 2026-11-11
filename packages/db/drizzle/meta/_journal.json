@@ -2418,7 +2418,28 @@
       "breakpoints": true
     },
     {
+      "idx": 346,
+      "version": "7",
+      "when": 1805443200000,
+      "tag": "0352_account_time_zone",
+      "breakpoints": true
+    },
+    {
+      "idx": 347,
+      "version": "7",
+      "when": 1805529600000,
+      "tag": "0353_payment_group_refund_state",
+      "breakpoints": true
+    },
+    {
       "idx": 348,
+      "version": "7",
+      "when": 1805702400000,
+      "tag": "0355_payment_transfer_reference",
+      "breakpoints": true
+    },
+    {
+      "idx": 349,
       "version": "7",
       "when": 1805616000000,
       "tag": "0354_lot_reoffer",

@@ -9,12 +9,14 @@ import {
   type AccountEmailChangeConfirmedResponse,
   type AccountPasswordError,
   type AccountSignInMethodError,
+  type AccountTimeZoneError,
   accountAddressDefaultKindSchema,
   accountAddressInputSchema,
   accountEmailSchema,
   accountNameSchema,
   accountPhoneCodeSchema,
   accountPhoneSchema,
+  parseAccountTimeZoneChange,
   socialSignInProviderSchema,
 } from "@auction/identity-contracts";
 import { getLaxAccountContainer } from "../container";
@@ -23,6 +25,7 @@ import type {
   BackupCodesActionResult,
   LinkActionResult,
   PasswordActionResult,
+  TimeZoneActionResult,
 } from "../domain/account-action-result";
 import { addressRejectionMessage, isAddressRejection } from "../domain/account-addresses.vm";
 import { contactRejectionMessage } from "../domain/account-contact.vm";
@@ -49,8 +52,10 @@ function rejectionMessage(
     | AccountContactError
     | AccountAddressError
     | AccountPasswordError
-    | AccountSignInMethodError,
+    | AccountSignInMethodError
+    | AccountTimeZoneError,
 ): string {
+  if (reason === "invalid_time_zone") return "Choose a city, such as London or New York.";
   if (isSignInMethodRejection(reason)) return signInMethodRejectionMessage(reason);
   if (isAddressRejection(reason)) return addressRejectionMessage(reason);
   if (isPasswordRejection(reason)) return passwordRejection(reason).message;
@@ -93,6 +98,36 @@ export async function renameAccountAction(name: string): Promise<AccountActionRe
     (actor) => identity.rename(actor, parsed.data),
     () => "Your name has been updated.",
   );
+}
+
+/**
+ * Saves the time zone for emails and dates: follow this device (`zone` is the device's reading,
+ * or null when it has none) or always use one city. It needs no recent sign-in.
+ */
+export async function saveTimeZoneAction(input: {
+  mode: "automatic" | "fixed";
+  zone: string | null;
+}): Promise<TimeZoneActionResult> {
+  const change = parseAccountTimeZoneChange(input);
+  if (!change) return { status: "error", message: rejectionMessage("invalid_time_zone") };
+  const { identity } = getLaxAccountContainer();
+  const result = await asSignedInPerson((actor) => identity.setTimeZone(actor, change));
+  return result.status === "ok"
+    ? { status: "ok", mode: result.value.mode, zone: result.value.zone }
+    : result;
+}
+
+/**
+ * Remembers the zone this device is in, so emails follow a person who travels with Automatic on.
+ * Quiet: a failure changes nothing the person sees, so it only reports whether it was stored.
+ */
+export async function reportDeviceZoneAction(zone: string): Promise<TimeZoneActionResult> {
+  const actor = await loadActor();
+  if (actor === "no_session") return { status: "reauth_required" };
+  if (actor === "unavailable") return UNAVAILABLE;
+  const { identity } = getLaxAccountContainer();
+  const preference = await identity.reportDeviceZone(actor, zone);
+  return preference ? { status: "ok", mode: preference.mode, zone: preference.zone } : UNAVAILABLE;
 }
 
 export async function signOutDeviceAction(sessionId: string): Promise<AccountActionResult> {
