@@ -13,26 +13,31 @@ import { type DeviceSessionHook, createDeviceSessionHook } from "./device-sessio
 const TAKEOVER_PATH = "session-takeover";
 
 /**
- * Another person's records that a new sign-in in the same browser ended: their products are
- * signed out by back-channel logout, retried from the durable outbox if it fails.
+ * Another person's records that a new sign-in in the same browser ends: their products are signed
+ * out by back-channel logout, and one `session_revoked` is announced for the record and for each
+ * earlier id of it, so downstream receivers see every sign-in that ended. Written to the durable
+ * outbox before the records are deleted.
  */
 export function createEndedSessionNotifier(
-  durable: Pick<DurableSecurityEffects, "settle">,
+  durable: Pick<DurableSecurityEffects, "reserve">,
 ): EndedSessionNotifier {
   return {
-    async ended({ userId, sessionIds }) {
-      await Promise.all([
-        durable.settle(TAKEOVER_PATH, { kind: "revoke_identity_sessions", userId, sessionIds }),
-        durable.settle(TAKEOVER_PATH, { kind: "publish_session_revoked", userId }),
-      ]);
-    },
+    reserve: ({ userId, sessionIds }) =>
+      durable.reserve(TAKEOVER_PATH, [
+        { kind: "revoke_identity_sessions", userId, sessionIds },
+        ...sessionIds.map((sessionId) => ({
+          kind: "publish_session_revoked" as const,
+          userId,
+          sessionId,
+        })),
+      ]),
   };
 }
 
 export function createDeviceSessions(options: {
   db: IdentityDatabase;
   auth: ReturnType<typeof createAuth>;
-  durable: Pick<DurableSecurityEffects, "settle">;
+  durable: Pick<DurableSecurityEffects, "reserve">;
   secrets: { deviceMarker: string | undefined; issuer: string };
   log: SecurityEffectLogger;
 }): DeviceSessionHook {

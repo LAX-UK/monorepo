@@ -26,6 +26,19 @@ export type DeviceSessionHook = (input: {
 /** What the hook needs from the sign-in library: who a request's session cookie signs in. */
 export type SessionReader = (headers: Headers) => Promise<{ id?: string | null } | null>;
 
+/** A browser navigating to a page, as opposed to a script, a product's server or a cache warming. */
+function isBrowserNavigation(request: Request): boolean {
+  return (
+    request.headers.get("sec-fetch-mode") === "navigate" ||
+    (request.headers.get("accept") ?? "").includes("text/html")
+  );
+}
+
+/** A response a shared cache may keep and hand to someone else (discovery, JWKS), so it never carries a cookie. */
+function isSharedCacheable(response: Response): boolean {
+  return /\b(public|s-maxage)\b/i.test(response.headers.get("cache-control") ?? "");
+}
+
 const NO_COUNTRY = new Set(["XX", "T1"]);
 
 /** An ISO 3166-1 alpha-2 code from an edge header, or null for anything else (unknown, Tor). */
@@ -39,8 +52,8 @@ export function normaliseCountry(region: string | null): string | null {
  * method produced it (password, email link, Google or Apple, two-step, passkey, "Confirm it's
  * you", switching account):
  *
- * - the browser gets its private device marker (and keeps it fresh); only a keyed hash of it is
- *   stored on the session record;
+ * - the browser gets its private device marker (and keeps it fresh when it loads a page); only a
+ *   keyed hash of it is stored on the session record;
  * - the new record takes over the record the browser already had (see SessionTakeoverService).
  *
  * The marker never decides who is signed in. A failure to take over is logged and retried, and
@@ -54,12 +67,13 @@ export function createDeviceSessionHook(options: {
   log: SecurityEffectLogger;
 }): DeviceSessionHook {
   return async ({ request, response, path }) => {
-    if (response.status >= 400) return response;
+    if (response.status >= 400 || isSharedCacheable(response)) return response;
     const carried = readDeviceMarker(request.headers.get("cookie"));
     const newToken = readResponseSessionToken(response);
     // The same cookie again is a refresh of the record the browser already holds, not a sign-in.
     const isNewSignIn = newToken !== null && newToken !== readRequestSessionToken(request);
-    if (!carried && !isNewSignIn) return response;
+    // The marker is renewed when a sign-in happens or the browser loads a page, not on every call.
+    if (!isNewSignIn && !(carried && isBrowserNavigation(request))) return response;
 
     const marker = carried ?? mintDeviceMarker();
     if (isNewSignIn) {

@@ -48,10 +48,13 @@ export type TakeoverWrite = TakeoverPlan & {
 export interface SessionTakeoverStore {
   findSession(sessionId: string): Promise<NewSession | null>;
   /**
-   * Records still signed in, other than `excludeId`, that are the named previous record or carry
-   * the same device hash.
+   * Records still signed in, other than `excludeId`, that the new sign-in may replace: the
+   * previous record the request's own session cookie named (whoever's it is), and records of
+   * `userId` that carry the same device hash. Another person's record is matched by the marker
+   * never: ending someone's sign-in takes the cookie that holds it.
    */
   findLive(input: {
+    userId: string;
     previousSessionId: string | null;
     deviceHash: string | null;
     excludeId: string;
@@ -61,9 +64,16 @@ export interface SessionTakeoverStore {
   replace(write: TakeoverWrite): Promise<void>;
 }
 
-/** Ends another person's relying-party sessions for records that were just deleted. */
+/**
+ * Ends another person's relying-party sessions for records that are about to be deleted. The work
+ * is `reserve`d (made durable) before the records go and `run` once they have, so a crash in
+ * between cannot leave their products signed in.
+ */
 export interface EndedSessionNotifier {
-  ended(input: { userId: string; sessionIds: readonly string[] }): Promise<void>;
+  reserve(input: {
+    userId: string;
+    sessionIds: readonly string[];
+  }): Promise<{ run(): Promise<void> }>;
 }
 
 /**
@@ -73,8 +83,10 @@ export interface EndedSessionNotifier {
  *
  * - Same person: the old record is deleted and its id is kept as an earlier name of the new one,
  *   so a product that still holds the old id keeps working. The original sign-in time is carried.
- * - Different person: the old record is ended completely, with a back-channel sign-out for every
- *   id it stood for, so the previous person is signed out of every LAX product in this browser.
+ * - Different person: the old record the browser's own session cookie held is ended completely,
+ *   with a back-channel sign-out for every id it stood for, so the previous person is signed out of
+ *   every LAX product in this browser. A record found only through the device marker is left alone
+ *   unless it is the same person's.
  */
 export class SessionTakeoverService {
   constructor(
@@ -93,12 +105,23 @@ export class SessionTakeoverService {
     if (!fresh) return;
     const now = this.now();
     const prior = await this.store.findLive({
+      userId: fresh.userId,
       previousSessionId: input.previousSessionId,
       deviceHash: input.deviceHash,
       excludeId: fresh.id,
       now,
     });
     const plan = planTakeover(fresh, prior);
+    // Durable before the other person's records are deleted: once they are gone nothing else
+    // remembers which products to sign out.
+    const reservations = await Promise.all(
+      groupByUser(plan.otherSubject).map(([userId, sessions]) =>
+        this.ended.reserve({
+          userId,
+          sessionIds: sessions.flatMap((session) => [session.id, ...session.previousSids]),
+        }),
+      ),
+    );
     await this.store.replace({
       ...plan,
       newSessionId: fresh.id,
@@ -108,14 +131,7 @@ export class SessionTakeoverService {
       maxLineage: MAX_LINEAGE_PER_SESSION,
       now,
     });
-    await Promise.all(
-      groupByUser(plan.otherSubject).map(([userId, sessions]) =>
-        this.ended.ended({
-          userId,
-          sessionIds: sessions.flatMap((session) => [session.id, ...session.previousSids]),
-        }),
-      ),
-    );
+    await Promise.all(reservations.map((reservation) => reservation.run()));
   }
 }
 

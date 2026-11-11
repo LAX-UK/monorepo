@@ -81,12 +81,13 @@ describe.skipIf(!DATABASE_URL)("one sign-in record per browser", () => {
     ? new BackchannelLogoutRevocationCoordinator(new DrizzleRpLogoutRepository(db))
     : undefined;
   const log = { warn: vi.fn(), error: vi.fn() };
+  const publish = vi.fn(async (_event: unknown) => undefined);
   const durable = new DurableSecurityEffects(
     new InMemorySecurityEffectOutbox(),
     {
       operations: { removeOtherSessions: vi.fn() },
       logout: logoutCoordinator,
-      events: { publish: vi.fn(async () => undefined) },
+      events: { publish },
       notices: { deliver: vi.fn() },
       email: { enqueue: vi.fn() },
     } as never,
@@ -438,19 +439,33 @@ describe.skipIf(!DATABASE_URL)("one sign-in record per browser", () => {
         .from(oidcRpSession)
         .where(and(eq(oidcRpSession.clientId, CLIENT), eq(oidcRpSession.sid, annRecord?.id ?? "")));
       expect(rp?.revokedAt).not.toBeNull();
+      expect(publish).toHaveBeenCalledWith({
+        type: "user.session_revoked",
+        userId: ANN,
+        sessionId: annRecord?.id,
+      });
       // The first person's product can no longer renew.
       await expect(
         service.renew({ previousRefreshToken: "refresh-1", nextRefreshToken: "refresh-2" }),
       ).resolves.toBeNull();
     });
 
-    it("ends the first person's record by the marker alone when the cookie is gone", async () => {
+    it("leaves another person's record alone when only the marker matches, but ends the same person's", async () => {
       await reset();
       const browser = new Browser();
       await browser.signIn("/api/auth/sign-in/email", ANN);
       browser.forgetSessionCookie();
       await browser.signIn("/api/auth/sign-in/email", BEN);
-      expect((await liveRecordsOf(ANN, BEN)).map((record) => record.userId)).toEqual([BEN]);
+      // Ending a sign-in takes the cookie that holds it; the marker alone is not enough.
+      expect((await liveRecordsOf(ANN, BEN)).map((record) => record.userId).sort()).toEqual([
+        ANN,
+        BEN,
+      ]);
+      const deliveries = await (db as NonNullable<typeof db>)
+        .select()
+        .from(oidcBackchannelLogoutDelivery)
+        .where(eq(oidcBackchannelLogoutDelivery.clientId, CLIENT));
+      expect(deliveries).toHaveLength(0);
     });
   });
 

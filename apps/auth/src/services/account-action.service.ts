@@ -75,16 +75,15 @@ export class AccountActionService {
     sessionId: string,
     action: SignInMethodKind,
   ): Promise<StartActionResult> {
-    const current = await this.sessions.findRecent(subjectId, sessionId);
-    if (!current) return { ok: false, reason: "reauth_required" };
+    if (!(await this.sessions.findRecent(subjectId, sessionId))) {
+      return { ok: false, reason: "reauth_required" };
+    }
     const refusal = await this.refusalFor(subjectId, action);
     if (refusal) return { ok: false, kind: refusal };
     const secret = await this.ports.tickets.issue(
       {
         subjectId,
-        // The record the browser holds now, which a later sign-in may have taken over from the
-        // id LAX Account signed in with.
-        sessionId: current.id,
+        sessionId,
         action,
         clientId: REGISTERED_OIDC_CLIENT_IDS.LAX_ACCOUNT_WEB,
         issuedAt: this.now().getTime(),

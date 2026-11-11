@@ -197,11 +197,14 @@ cookie or by the marker.
 - Same person: the old record is deleted and its id is kept in `session_lineage` as an earlier name
   of the new record (at most 20), the original sign-in time is carried over, and the products that
   signed in through the old record are re-bound to the new one. A product that still holds the old
-  `sid` keeps renewing its ID token and keeps being recognised by LAX Account, and back-channel
-  logout still reaches it under the `sid` it knows. Lineage resolves only for the same person and
+  `sid` keeps renewing its ID token (with the `sid`, `auth_time`, `acr` and `amr` it received, never
+  the newer record's) and back-channel logout still reaches it under the `sid` it knows. LAX
+  Account's read-only calls recognise an earlier id; a sensitive change needs a sign-in of its own. Lineage resolves only for the same person and
   only to renew, look up and end a sign-in, never to sign anyone in.
-- Different person: the old record is ended completely, with back-channel logout for every id it
-  stood for.
+- Different person: the old record that the browser's own session cookie held is ended completely,
+  with back-channel logout and a `session_revoked` for every id it stood for, written to the
+  durable outbox before the record is deleted. A record found only through the marker is ended
+  only when it is the same person's.
 
 ## Where things go wrong
 

@@ -111,25 +111,58 @@ describe("RefreshedIdTokenService", () => {
     expect(continuity.records.has(hashRefreshToken("refresh-2"))).toBe(true);
   });
 
-  it("keeps the sid the client signed in with when a newer sign-in took its record over", async () => {
-    const { service, signed, findLiveIdentitySession } = setup({
-      session: {
-        id: "sid-2",
-        subjectId: "user-1",
-        createdAt: signedInAt,
-        lastPasswordAuthAt: signedInAt,
-        mfaCompletedAt: signedInAt,
-      },
+  describe("when a newer sign-in in the same browser took the client's record over", () => {
+    const takenOver: LiveIdentitySession = {
+      id: "sid-2",
+      subjectId: "user-1",
+      // A step-up made later, with a second factor: stronger and fresher than the original.
+      createdAt: new Date(signedInAt.getTime() + 3_600_000),
+      lastPasswordAuthAt: signedInAt,
+      mfaCompletedAt: signedInAt,
+    };
+
+    it("keeps the sid, auth_time, acr and amr the client received, never the newer record's", async () => {
+      const { service, signed, findLiveIdentitySession } = setup({ session: takenOver });
+      await service.rememberIssued({
+        refreshToken: "refresh-1",
+        idToken: idToken({ ...originalClaims, amr: ["pwd"] }),
+      });
+
+      await expect(
+        service.renew({ previousRefreshToken: "refresh-1", nextRefreshToken: "refresh-2" }),
+      ).resolves.toBe("signed-1");
+
+      expect(findLiveIdentitySession).toHaveBeenCalledWith("sid-1");
+      expect(signed[0]?.claims).toMatchObject({
+        sid: "sid-1",
+        auth_time: 999,
+        acr: "old-acr",
+        amr: ["pwd"],
+      });
     });
-    await service.rememberIssued({ refreshToken: "refresh-1", idToken: idToken(originalClaims) });
 
-    await expect(
-      service.renew({ previousRefreshToken: "refresh-1", nextRefreshToken: "refresh-2" }),
-    ).resolves.toBe("signed-1");
+    it("keeps the original claims through further renewals", async () => {
+      const { service, signed } = setup({ session: takenOver });
+      await service.rememberIssued({ refreshToken: "refresh-1", idToken: idToken(originalClaims) });
+      await service.renew({ previousRefreshToken: "refresh-1", nextRefreshToken: "refresh-2" });
+      await service.renew({ previousRefreshToken: "refresh-2", nextRefreshToken: "refresh-3" });
+      expect(signed[1]?.claims).toMatchObject({ auth_time: 999, acr: "old-acr", sid: "sid-1" });
+    });
 
-    // The lookup is by the client's sid; the record that answers may carry another id.
-    expect(findLiveIdentitySession).toHaveBeenCalledWith("sid-1");
-    expect(signed[0]?.claims).toMatchObject({ sid: "sid-1" });
+    it("does not renew a record kept before the original claims were stored", async () => {
+      const { service, continuity, signed } = setup({ session: takenOver });
+      continuity.records.set(hashRefreshToken("refresh-1"), {
+        issuer: ISSUER,
+        sid: "sid-1",
+        subject: "user-1",
+        clientId: "lax-shop-admin",
+        claims: { email: "staff@lax.test" },
+      });
+      await expect(
+        service.renew({ previousRefreshToken: "refresh-1", nextRefreshToken: "refresh-2" }),
+      ).resolves.toBeNull();
+      expect(signed).toHaveLength(0);
+    });
   });
 
   it("keeps renewing across rotations", async () => {

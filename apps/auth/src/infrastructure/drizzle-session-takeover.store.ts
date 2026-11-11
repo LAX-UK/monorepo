@@ -21,6 +21,7 @@ export class DrizzleSessionTakeoverStore implements SessionTakeoverStore {
   }
 
   async findLive(input: {
+    userId: string;
     previousSessionId: string | null;
     deviceHash: string | null;
     excludeId: string;
@@ -28,7 +29,9 @@ export class DrizzleSessionTakeoverStore implements SessionTakeoverStore {
   }): Promise<SessionSnapshot[]> {
     const matches = [
       input.previousSessionId ? eq(session.id, input.previousSessionId) : undefined,
-      input.deviceHash ? eq(session.deviceHash, input.deviceHash) : undefined,
+      input.deviceHash
+        ? and(eq(session.deviceHash, input.deviceHash), eq(session.userId, input.userId))
+        : undefined,
     ].filter((match) => match !== undefined);
     if (matches.length === 0) return [];
     const rows = await this.db

@@ -116,7 +116,6 @@ export class AccountIdentityService {
     subjectId: string,
     currentSessionId: string,
   ): Promise<{ ok: true; revoked: number } | ReauthRequired> {
-    // The record this sign-in stands for: a product may hold an earlier name of it.
     const current = await this.sessions.findRecent(subjectId, currentSessionId);
     if (!current) return { ok: false, reason: "reauth_required" };
     const removed = await this.ports.operations.removeOtherSessions(subjectId, current.id);

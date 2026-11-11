@@ -59,20 +59,18 @@ describe("AccountIdentityService", () => {
       ]);
     });
 
-    it("never offers to sign out the record it stands for", async () => {
+    it("is not recent: a sensitive change needs a sign-in of its own", async () => {
       const { service, operations } = setup([taken, other]);
-      expect(await service.revokeSession(SUBJECT, "earlier-name", "current")).toEqual({
+      expect(await service.revokeSession(SUBJECT, "earlier-name", "other")).toEqual({
         ok: false,
-        reason: "cannot_revoke_current",
+        reason: "reauth_required",
+      });
+      expect(await service.revokeOtherSessions(SUBJECT, "earlier-name")).toEqual({
+        ok: false,
+        reason: "reauth_required",
       });
       expect(operations.removeSession).not.toHaveBeenCalled();
-    });
-
-    it("signs out everywhere else but keeps the record the earlier id stands for", async () => {
-      const { service, operations, logout } = setup([taken, other]);
-      await service.revokeOtherSessions(SUBJECT, "earlier-name");
-      expect(operations.removeOtherSessions).toHaveBeenCalledWith(SUBJECT, "current");
-      expect(logout.revokeSubjectExceptIdentitySession).toHaveBeenCalledWith(SUBJECT, "current");
+      expect(operations.removeOtherSessions).not.toHaveBeenCalled();
     });
 
     it("does not resolve another person's earlier id", async () => {

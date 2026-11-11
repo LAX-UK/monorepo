@@ -145,15 +145,52 @@ describe("device session hook", () => {
     expect(takeOver).not.toHaveBeenCalled();
   });
 
-  it("renews the marker on a browser request that carries one, without a sign-in", async () => {
+  it("renews the marker when the browser loads a page, without a sign-in", async () => {
     const marker = mintDeviceMarker();
     const { hook, takeOver } = setup();
     const response = await hook({
-      request: requestAt("/api/auth/get-session", `${DEVICE_MARKER_COOKIE}=${marker}`),
-      response: Response.json({ session: null }),
-      path: "/api/auth/get-session",
+      request: requestAt("/api/auth/oauth2/authorize", `${DEVICE_MARKER_COOKIE}=${marker}`, {
+        "sec-fetch-mode": "navigate",
+      }),
+      response: Response.redirect("https://auth.test/login", 302),
+      path: "/api/auth/oauth2/authorize",
     });
     expect(markerCookieOf(response)).toContain(marker);
+    expect(takeOver).not.toHaveBeenCalled();
+  });
+
+  it("does not renew the marker on a script or server call", async () => {
+    const marker = mintDeviceMarker();
+    const { hook } = setup();
+    const response = Response.json({ session: null });
+    expect(
+      await hook({
+        request: requestAt("/api/auth/get-session", `${DEVICE_MARKER_COOKIE}=${marker}`),
+        response,
+        path: "/api/auth/get-session",
+      }),
+    ).toBe(response);
+  });
+
+  it("never puts a cookie on a response a shared cache may keep", async () => {
+    const marker = mintDeviceMarker();
+    const { hook, takeOver } = setup({ response: "new" });
+    for (const cacheControl of ["public, max-age=600", "max-age=60, s-maxage=60"]) {
+      const response = new Response("{}", {
+        headers: {
+          "cache-control": cacheControl,
+          "set-cookie": "better-auth.session_token=new.sig",
+        },
+      });
+      const result = await hook({
+        request: requestAt("/.well-known/jwks.json", `${DEVICE_MARKER_COOKIE}=${marker}`, {
+          "sec-fetch-mode": "navigate",
+        }),
+        response,
+        path: "/.well-known/jwks.json",
+      });
+      expect(result).toBe(response);
+    }
     expect(takeOver).not.toHaveBeenCalled();
   });
 
