@@ -50,8 +50,8 @@ export function BlockUnlinkedPublishing({
 
   return (
     <Section
-      title="Block publishing unlinked originals"
-      description="Originals come from Zoho. With this on, a lot made without its Zoho record is refused when staff publish it."
+      title="Publishing in LAX Bid"
+      description="Originals come from Zoho. With the switch on, a lot made without its Zoho record is refused when staff publish it."
     >
       <div className="flex flex-col gap-4">
         {error ? (
@@ -61,7 +61,6 @@ export function BlockUnlinkedPublishing({
         ) : null}
         <ChoiceRow
           htmlFor="block-unlinked-publishing"
-          disabled={!canEdit}
           label="Block publishing unlinked originals"
           description={`${state}${canEdit ? "" : " Only an administrator can change it."}`}
           control={

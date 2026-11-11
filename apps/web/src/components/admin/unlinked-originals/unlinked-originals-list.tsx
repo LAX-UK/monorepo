@@ -1,5 +1,6 @@
 import type { UnlinkedOriginal } from "@/lib/data/http/unlinked-originals.server";
 import { KeyValueList, Notice, Section, StatusBadge } from "@auction/staff-ui";
+import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 
 const COUNT = new Intl.NumberFormat("en-GB");
@@ -9,9 +10,11 @@ const PRODUCT_LABEL: Record<UnlinkedOriginal["product"], string> = {
   lax_art: "lax.art",
 };
 
-const rowClass = "flex min-h-11 flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2.5 text-staff-sm";
+const rowClass =
+  "flex min-h-11 flex-col gap-1 px-4 py-2.5 text-staff-sm sm:flex-row sm:items-center sm:gap-3";
 
 function Row({ item }: { item: UnlinkedOriginal }) {
+  const opens = item.product === "bid";
   const body = (
     <>
       <span className="flex min-w-0 flex-1 flex-col">
@@ -20,12 +23,20 @@ function Row({ item }: { item: UnlinkedOriginal }) {
           <span className="text-staff-xs text-staff-muted">{item.artistName}</span>
         ) : null}
       </span>
-      <StatusBadge tone="neutral">{PRODUCT_LABEL[item.product]}</StatusBadge>
-      <span className="w-20 text-staff-muted">{item.state}</span>
+      <span className="flex items-center gap-3">
+        <span className="sm:w-20 sm:text-right">
+          <StatusBadge tone="neutral">{PRODUCT_LABEL[item.product]}</StatusBadge>
+        </span>
+        <span className="text-staff-muted sm:w-20">{item.state}</span>
+        <ChevronRight
+          aria-hidden
+          className={`hidden size-4 shrink-0 text-staff-subtle sm:block ${opens ? "" : "invisible"}`}
+        />
+      </span>
     </>
   );
   // A lot opens its page here; a lax.art artwork is linked in LAX Admin, which this app cannot open.
-  return item.product === "bid" ? (
+  return opens ? (
     <Link
       href={`/admin/lots/${encodeURIComponent(item.id)}`}
       className={`${rowClass} staff-focus-inset hover:staff-overlay-hover`}
