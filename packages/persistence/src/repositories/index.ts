@@ -311,6 +311,12 @@ export {
   DrizzleBuyerDefaultReader,
   DrizzleBuyerDefaultRepository,
 } from "./drizzle-buyer-default.repository.js";
+export {
+  DrizzleLotReofferReader,
+  DrizzleLotReofferRepository,
+  DrizzleSellerConsentRepository,
+} from "./drizzle-lot-reoffer.repository.js";
+export { DrizzleLotReawardRepository } from "./drizzle-lot-reaward.repository.js";
 export { DrizzlePaymentReminderStore } from "./drizzle-payment-reminder.store.js";
 export { DrizzlePrivateSaleDealRepository } from "./drizzle-private-sale-deal.repository.js";
 export {

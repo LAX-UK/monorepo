@@ -138,6 +138,17 @@ describe.skipIf(!API_URL)("api_app role contract", { timeout: 60_000 }, () => {
     });
   });
 
+  it("creates, reads, changes and removes re-offers and seller answers", async () => {
+    await withApiClient(async (client) => {
+      const rows = await readTablePrivileges(
+        client,
+        ["lot_reoffer", "seller_consent"],
+        ["SELECT", "INSERT", "UPDATE", "DELETE"],
+      );
+      expectTablePrivileges(rows, () => true);
+    });
+  });
+
   it("owns only the Bid SSF replay ledger", async () => {
     await withApiClient(async (client) => {
       for (const table of API_SSF_RECEIVER_TABLES) {

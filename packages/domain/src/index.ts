@@ -1334,6 +1334,12 @@ export {
 } from "./reoffer-next-bidder.js";
 export { claimableShortfall, type ClaimableShortfall } from "./reoffer-shortfall.js";
 export {
+  reawardGuard,
+  type ReawardGuard,
+  type ReawardGuardCode,
+  type ReawardGuardFacts,
+} from "./reoffer-reaward.js";
+export {
   reawardBlock,
   reofferStartBlock,
   type ReofferBlock,

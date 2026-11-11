@@ -124,8 +124,6 @@ export class BuyerDefaultService {
           wonAt: lot.wonAt,
           reason,
           outcome: input.outcome,
-          offeredUserId: offered?.userId ?? null,
-          offeredAmount: offered?.amount ?? null,
           buyerRestricted: input.restrictBidding,
           actorUserId: actor.userId,
         });

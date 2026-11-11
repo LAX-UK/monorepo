@@ -9,7 +9,10 @@ import type {
   LotEventType,
   LotReturnedToInventoryPayload,
 } from "../domain/lot-events.js";
-import type { ILotLifecycleRecorder } from "./interfaces/lot-lifecycle-recorder.js";
+import type {
+  ILotLifecycleRecorder,
+  LotReofferEventType,
+} from "./interfaces/lot-lifecycle-recorder.js";
 import type {
   LotLifecycleEventRecorder,
   RecordLotLifecycleInput,
@@ -241,6 +244,22 @@ export class LotLifecycleRecording implements ILotLifecycleRecorder {
     await this.recordStatusEvent(tx, {
       lot: { ...lotRow, status: "ended" },
       eventType: "lot.buyer_defaulted",
+      payload,
+      actorUserId,
+    });
+  }
+
+  async recordReoffer<T extends LotReofferEventType>(
+    tx: Database,
+    lotRow: Pick<Lot, "id" | "saleId" | "sellerLegalEntityId">,
+    eventType: T,
+    payload: LotEventPayload<T>,
+    actorUserId: string | null,
+  ): Promise<void> {
+    // The lot keeps its ended status through the whole offer; where the offer goes is the payload.
+    await this.recordStatusEvent(tx, {
+      lot: { ...lotRow, status: "ended" },
+      eventType,
       payload,
       actorUserId,
     });
