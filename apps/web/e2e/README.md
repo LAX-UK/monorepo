@@ -78,6 +78,52 @@ pnpm --filter @auction/web test:e2e:visual
 pnpm lint:e2e-portfolio
 ```
 
+## Signing out after a check
+
+Every sign-in a check makes is a device in that account's Account > Security > Where you're
+signed in. On the shared test environment, checks that never sign out fill the accounts people
+review with "Chrome on macOS" rows. So checks end what they start, through the product's own
+sign-out, which also ends the sign-in service's session:
+
+- **Saved sessions** (`e2e/.auth`, and Account's `e2e/.auth`): the `sign-out` project is the
+  teardown of every setup project and runs after the run's specs. When the sessions were made by
+  a separate prepare step (`prepare-e2e-auth-states.mjs`, which sets
+  `PLAYWRIGHT_KEEP_AUTH_STATE=1`), end them after the specs with
+  `pnpm --filter @auction/web test:e2e:sign-out`.
+- **Specs that sign in themselves**: import `test` from `e2e/helpers/test.ts` (Shop, Art and LAX Admin
+  have the same file in their `e2e/helpers` or `e2e/support`). The sign-in helpers
+  register the browser and the fixture signs it out when the spec ends. A failed sign-out is
+  logged, never a failed spec.
+- **Scripts** that sign in (screenshots, one-off checks): call `signOutContext(context, { origin })`
+  from `scripts/ci/e2e-sign-out.mjs` before closing the browser.
+
+Never sign out a context that was started from a saved session: that ends the session the other
+specs still use.
+
+### Check accounts
+
+Run checks as the check accounts, not as demo or owner accounts. Add them to a test database with
+
+```bash
+DATABASE_URL=... pnpm --filter @auction/db db:seed:check-accounts
+```
+
+It is additive, so it does not change what the demo data shows. All share the seeded password.
+
+| Email | Use |
+| --- | --- |
+| `check-client@lax.bid` | signed-in buyer journeys (Shop, Art, Bid): `SHOP_E2E_BUYER_EMAIL`, `ART_E2E_BUYER_EMAIL`, `PLAYWRIGHT_BUYER_EMAIL` |
+| `check-new-person@lax.bid` | empty states in Account: `ACCOUNT_E2E_EMPTY_EMAIL` |
+| `check-admin@lax.bid` | Bid staff screens: `PLAYWRIGHT_STAFF_EMAIL` |
+
+Journeys that need seeded works, bids or payments (Account's collector, the organisation roles)
+still use the demo accounts they need and sign out when they finish. The CI stack keeps using its
+own seeded accounts.
+
+The check "five sign-ins and two step-ups in one browser leave exactly one row"
+(`apps/account/e2e/signed-in-devices.spec.ts`) is marked `fixme` until a new sign-in on a browser
+replaces that browser's earlier one. Remove the `fixme` when that lands.
+
 ## Visual baselines
 
 The admin portfolio uses an explicit case manifest rather than every route
