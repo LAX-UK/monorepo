@@ -12,6 +12,7 @@ import { createAuthRepositories } from "./container/create-auth-repositories.js"
 import { createAuthRequestHandler } from "./container/create-auth-request-handler.js";
 import { createAuthSchedules } from "./container/create-auth-schedules.js";
 import { createDataRequests } from "./container/create-data-requests.js";
+import { createDeviceSessions } from "./container/create-device-sessions.js";
 import { createIdentityAddressService } from "./container/create-identity-address-service.js";
 import { createIdentityDeletionPurgeService } from "./container/create-identity-deletion-purge-service.js";
 import { createIdentityLifecycleService } from "./container/create-identity-lifecycle-service.js";
@@ -216,6 +217,13 @@ const authHandler = createAuthRequestHandler({
   sessionStampStore: identityPorts.sessionStampStore,
   readTwoFactorRequirement,
   auth,
+  deviceSessions: createDeviceSessions({
+    db,
+    auth,
+    durable: durableSecurityEffects,
+    secrets: { deviceMarker: env.DEVICE_MARKER_SECRET, issuer: env.BETTER_AUTH_SECRET },
+    log,
+  }),
   oidcSessions: services.oidc.sessions,
   ...(env.PASSKEYS_ENABLED
     ? {

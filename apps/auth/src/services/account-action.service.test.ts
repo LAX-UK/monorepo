@@ -16,6 +16,7 @@ function session(id: string, ageSeconds: number) {
     ipAddress: null,
     userAgent: null,
     lastPasswordAuthAt: null,
+    previousIds: [] as readonly string[],
     isCurrent: false,
   };
 }
@@ -139,6 +140,15 @@ describe("AccountActionService.start: the intent", () => {
   it("accepts a sign-in of exactly five minutes", async () => {
     const context = setup({ sessions: [session("sid-1", 300)] });
     expect((await context.service.start(SUBJECT, "sid-1", "google")).ok).toBe(true);
+  });
+
+  it("binds the ticket to the record the browser holds when a newer sign-in took the caller's over", async () => {
+    const context = setup({
+      sessions: [{ ...session("sid-2", 30), previousIds: ["sid-1"] }],
+    });
+    expect((await context.service.start(SUBJECT, "sid-1", "google")).ok).toBe(true);
+    const [entry] = [...context.held.values()];
+    expect(entry?.ticket.sessionId).toBe("sid-2");
   });
 
   it("refuses a session that is not the person's own", async () => {

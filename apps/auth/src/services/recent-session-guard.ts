@@ -19,8 +19,22 @@ export class RecentSessionGuard {
     return sessions.filter((session) => session.expiresAt.getTime() > nowMs);
   }
 
+  /**
+   * The live sign-in `sessionId` names: that record, or the one that replaced it when a newer
+   * sign-in in the same browser took it over. A product keeps the id it signed in with, so this is
+   * how it keeps being recognised. Only the person's own records are searched.
+   */
+  async findLive(subjectId: string, sessionId: string): Promise<IdentitySession | null> {
+    const live = await this.liveSessions(subjectId);
+    return (
+      live.find((row) => row.id === sessionId) ??
+      live.find((row) => row.previousIds.includes(sessionId)) ??
+      null
+    );
+  }
+
   async findRecent(subjectId: string, sessionId: string): Promise<IdentitySession | null> {
-    const session = (await this.liveSessions(subjectId)).find((row) => row.id === sessionId);
+    const session = await this.findLive(subjectId, sessionId);
     if (!session) return null;
     const ageSeconds = (this.now().getTime() - session.createdAt.getTime()) / 1_000;
     return ageSeconds >= 0 && ageSeconds <= ACCOUNT_STEP_UP_MAX_AGE_SECONDS ? session : null;

@@ -75,10 +75,9 @@ export class AccountIdentityService {
     subjectId: string,
     currentSessionId: string,
   ): Promise<{ ok: true; sessions: AccountSessionRow[] } | ReauthRequired> {
+    const current = await this.sessions.findLive(subjectId, currentSessionId);
+    if (!current) return { ok: false, reason: "reauth_required" };
     const live = await this.sessions.liveSessions(subjectId);
-    if (!live.some((session) => session.id === currentSessionId)) {
-      return { ok: false, reason: "reauth_required" };
-    }
     return {
       ok: true,
       sessions: live.map((session) => ({
@@ -86,7 +85,7 @@ export class AccountIdentityService {
         userAgent: session.userAgent,
         createdAt: session.createdAt,
         lastActiveAt: session.updatedAt,
-        isCurrent: session.id === currentSessionId,
+        isCurrent: session.id === current.id,
       })),
     };
   }
@@ -98,10 +97,11 @@ export class AccountIdentityService {
   ): Promise<
     { ok: true; revoked: number } | ReauthRequired | { ok: false; reason: "cannot_revoke_current" }
   > {
-    if (targetSessionId === currentSessionId) return { ok: false, reason: "cannot_revoke_current" };
-    if (!(await this.sessions.findRecent(subjectId, currentSessionId))) {
-      return { ok: false, reason: "reauth_required" };
+    const current = await this.sessions.findRecent(subjectId, currentSessionId);
+    if (targetSessionId === currentSessionId || targetSessionId === current?.id) {
+      return { ok: false, reason: "cannot_revoke_current" };
     }
+    if (!current) return { ok: false, reason: "reauth_required" };
     const removed = await this.ports.operations.removeSession(subjectId, targetSessionId);
     if (!removed) return { ok: true, revoked: 0 };
     await this.ports.durable.settle(ACCOUNT_SESSIONS_PATH, {
@@ -116,16 +116,16 @@ export class AccountIdentityService {
     subjectId: string,
     currentSessionId: string,
   ): Promise<{ ok: true; revoked: number } | ReauthRequired> {
-    if (!(await this.sessions.findRecent(subjectId, currentSessionId))) {
-      return { ok: false, reason: "reauth_required" };
-    }
-    const removed = await this.ports.operations.removeOtherSessions(subjectId, currentSessionId);
+    // The record this sign-in stands for: a product may hold an earlier name of it.
+    const current = await this.sessions.findRecent(subjectId, currentSessionId);
+    if (!current) return { ok: false, reason: "reauth_required" };
+    const removed = await this.ports.operations.removeOtherSessions(subjectId, current.id);
     // Relying-party sessions (Bid, Shop, Art) can outlive the issuer session they came from, so
     // they are ended even when no issuer session was left to delete.
     await this.ports.durable.settle(ACCOUNT_SESSIONS_PATH, {
       kind: "revoke_tokens_except_session",
       userId: subjectId,
-      keepSessionId: currentSessionId,
+      keepSessionId: current.id,
     });
     return { ok: true, revoked: removed.length };
   }

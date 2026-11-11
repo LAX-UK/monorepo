@@ -119,6 +119,7 @@ export class RefreshedIdTokenService {
     const record = await this.deps.continuity.take(hashRefreshToken(input.previousRefreshToken));
     if (!record) return null;
 
+    // Resolves through the lineage, so a sign-in that was taken over keeps renewing.
     const session = await this.deps.findLiveIdentitySession(record.sid);
     if (!session || session.subjectId !== record.subject) return null;
     if (!(await this.deps.isSubjectActive(record.subject))) return null;
@@ -133,7 +134,14 @@ export class RefreshedIdTokenService {
       audience: record.clientId,
       subject: record.subject,
       expirationTime: `${this.deps.idTokenTtlSec}s`,
-      claims: { ...record.claims, ...identityClaims(access), ...oidcSessionClaims(session) },
+      // `sid` stays the one the client signed in with: a newer sign-in in the same browser may
+      // have taken its record over, and the client matches back-channel logout by this value.
+      claims: {
+        ...record.claims,
+        ...identityClaims(access),
+        ...oidcSessionClaims(session),
+        sid: record.sid,
+      },
     });
     await this.deps.continuity.put(
       hashRefreshToken(input.nextRefreshToken),

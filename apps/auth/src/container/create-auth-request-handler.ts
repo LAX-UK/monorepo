@@ -22,10 +22,10 @@ import {
 } from "../services/settle-security-effect.js";
 import type { TwoFactorRequirementReader } from "../services/two-factor-requirement.service.js";
 import {
-  buildCookieHeaderForAuthorizationCodeCapture,
-  readResponseSetCookies,
+  headersWithResponseSessionCookie,
   withSessionDataClearedOnLogout,
 } from "./better-auth-session-cookies.js";
+import type { DeviceSessionHook } from "./device-session-hook.js";
 import { type PasskeyRequestPorts, createPasskeyRequestPolicy } from "./passkey-request-policy.js";
 
 export { SECURITY_EFFECT_RETRY_DELAYS_MS };
@@ -52,6 +52,8 @@ export function createAuthRequestHandler(options: {
   sessionStampStore: SessionStampStore;
   readTwoFactorRequirement: TwoFactorRequirementReader;
   auth: ReturnType<typeof createAuth>;
+  /** Gives the browser its device marker and lets a new sign-in take over the browser's record. */
+  deviceSessions: DeviceSessionHook;
   oidcSessions: Pick<OidcSessionCoordinator, "runTokenRequest" | "captureAuthorizationSession">;
   /** Passkeys, when this environment offers them; see `createPasskeyRequestPolicy`. */
   passkeys?: PasskeyRequestPorts;
@@ -168,6 +170,9 @@ export function createAuthRequestHandler(options: {
       );
     }
     response = await passkeyPolicy.after({ request, response, path, enrolment });
+    // After every sign-in method has stamped the new record, and before the authorisation code is
+    // bound to it, so the code is bound to the record that stays.
+    response = await options.deviceSessions({ request, response, path });
     if (response.status < 400 && isSocialSignInPath(path)) {
       await settleSecurityEffect(options.log, { path, effect: "stamp_social_auth" }, () =>
         stampSocialAuthFromResponse(options.sessionStampStore, response),
@@ -231,21 +236,6 @@ function changesTwoFactorState(
 ): boolean {
   if (path.endsWith("/two-factor/disable")) return true;
   return path.endsWith("/two-factor/verify-totp") && priorSession?.user?.twoFactorEnabled !== true;
-}
-
-function headersWithResponseSessionCookie(request: Request, response: Response): Headers {
-  const headers = new Headers(request.headers);
-  const responseSessionCookie = readResponseSetCookies(response)
-    .map((cookie) => /((?:__Secure-)?better-auth\.session_token=[^;,]+)/.exec(cookie)?.[1])
-    .find(Boolean);
-  headers.set(
-    "cookie",
-    buildCookieHeaderForAuthorizationCodeCapture(
-      headers.get("cookie"),
-      responseSessionCookie ?? null,
-    ),
-  );
-  return headers;
 }
 
 async function revokeOtherIdentitySessions(

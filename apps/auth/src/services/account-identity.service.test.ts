@@ -14,6 +14,7 @@ function session(overrides: Partial<IdentitySession> & { id: string }): Identity
     ipAddress: "203.0.113.9",
     userAgent: "Mozilla/5.0 (Macintosh) Chrome/130.0",
     lastPasswordAuthAt: null,
+    previousIds: [],
     isCurrent: false,
     ...overrides,
   };
@@ -46,6 +47,43 @@ const staleCurrent = session({ id: "current", createdAt: new Date(NOW.getTime() 
 const other = session({ id: "other", userAgent: "Mozilla/5.0 (iPhone) Safari/605" });
 
 describe("AccountIdentityService", () => {
+  describe("a sign-in that a newer one in the same browser took over", () => {
+    const taken = session({ id: "current", previousIds: ["earlier-name"] });
+
+    it("is still the caller's own sign-in when named by an earlier id", async () => {
+      const { service } = setup([taken, other]);
+      const result = await service.listSessions(SUBJECT, "earlier-name");
+      expect(result.ok && result.sessions.map((row) => [row.id, row.isCurrent])).toEqual([
+        ["current", true],
+        ["other", false],
+      ]);
+    });
+
+    it("never offers to sign out the record it stands for", async () => {
+      const { service, operations } = setup([taken, other]);
+      expect(await service.revokeSession(SUBJECT, "earlier-name", "current")).toEqual({
+        ok: false,
+        reason: "cannot_revoke_current",
+      });
+      expect(operations.removeSession).not.toHaveBeenCalled();
+    });
+
+    it("signs out everywhere else but keeps the record the earlier id stands for", async () => {
+      const { service, operations, logout } = setup([taken, other]);
+      await service.revokeOtherSessions(SUBJECT, "earlier-name");
+      expect(operations.removeOtherSessions).toHaveBeenCalledWith(SUBJECT, "current");
+      expect(logout.revokeSubjectExceptIdentitySession).toHaveBeenCalledWith(SUBJECT, "current");
+    });
+
+    it("does not resolve another person's earlier id", async () => {
+      const { service } = setup([session({ id: "mine" })]);
+      expect(await service.listSessions(SUBJECT, "earlier-name")).toEqual({
+        ok: false,
+        reason: "reauth_required",
+      });
+    });
+  });
+
   describe("listSessions", () => {
     it("marks the caller's own sign-in and never exposes IP addresses", async () => {
       const { service } = setup([freshCurrent, other]);

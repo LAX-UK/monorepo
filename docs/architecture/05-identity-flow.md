@@ -181,6 +181,28 @@ outside the short retry grace revokes the family and Identity sessions. The
 retry response is encrypted in Redis; browser continuity uses the Better Auth
 cookie rather than exposing refresh tokens to the web application.
 
+## One sign-in record per browser
+
+The sign-in service keeps one record (a `session` row) per browser. Each browser holds a private
+device marker, the host-only `__Host-lax_device` cookie (HttpOnly, Secure, SameSite=Lax, 400 days,
+renewed on use), set by the issuer and never sent to a product. The record stores only a keyed
+hash of it (`session.device_hash`, key `DEVICE_MARKER_SECRET`, or derived from `BETTER_AUTH_SECRET`).
+The marker never decides who is signed in; it only says which earlier record a new sign-in replaces.
+
+One hook (`apps/auth/src/container/device-session-hook.ts`) handles every response that sets a new
+session cookie: password, email links, Google and Apple, two-step, passkey, "Confirm it's you" and
+switching account. The new record takes over what the browser held, found by its previous session
+cookie or by the marker.
+
+- Same person: the old record is deleted and its id is kept in `session_lineage` as an earlier name
+  of the new record (at most 20), the original sign-in time is carried over, and the products that
+  signed in through the old record are re-bound to the new one. A product that still holds the old
+  `sid` keeps renewing its ID token and keeps being recognised by LAX Account, and back-channel
+  logout still reaches it under the `sid` it knows. Lineage resolves only for the same person and
+  only to renew, look up and end a sign-in, never to sign anyone in.
+- Different person: the old record is ended completely, with back-channel logout for every id it
+  stood for.
+
 ## Where things go wrong
 
 The failure modes that have actually happened in production at other companies running this pattern. None of these are theoretical.

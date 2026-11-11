@@ -44,6 +44,13 @@ const envSchema = z
     IDENTITY_SUBJECT_USAGE_TIMEOUT_MS: z.coerce.number().int().min(250).max(10_000).default(1_500),
     REDIS_URL: z.string().default("redis://127.0.0.1:6379"),
     BETTER_AUTH_SECRET: z.string().min(16),
+    /**
+     * Key for the hash of the private device marker (`__Host-lax_device`). Optional: without it
+     * the key is derived from BETTER_AUTH_SECRET under its own label. Set it to rotate the two
+     * independently; changing it makes browsers look new once (each keeps working and gets a fresh
+     * record on its next sign-in).
+     */
+    DEVICE_MARKER_SECRET: z.preprocess(emptyToUndefined, z.string().min(32).optional()),
     OIDC_ISSUER_URL: z.string().url().default("http://localhost:3003"),
     FEDCM_ENABLED: z
       .preprocess((val) => val === "true" || val === true, z.boolean())

@@ -111,6 +111,27 @@ describe("RefreshedIdTokenService", () => {
     expect(continuity.records.has(hashRefreshToken("refresh-2"))).toBe(true);
   });
 
+  it("keeps the sid the client signed in with when a newer sign-in took its record over", async () => {
+    const { service, signed, findLiveIdentitySession } = setup({
+      session: {
+        id: "sid-2",
+        subjectId: "user-1",
+        createdAt: signedInAt,
+        lastPasswordAuthAt: signedInAt,
+        mfaCompletedAt: signedInAt,
+      },
+    });
+    await service.rememberIssued({ refreshToken: "refresh-1", idToken: idToken(originalClaims) });
+
+    await expect(
+      service.renew({ previousRefreshToken: "refresh-1", nextRefreshToken: "refresh-2" }),
+    ).resolves.toBe("signed-1");
+
+    // The lookup is by the client's sid; the record that answers may carry another id.
+    expect(findLiveIdentitySession).toHaveBeenCalledWith("sid-1");
+    expect(signed[0]?.claims).toMatchObject({ sid: "sid-1" });
+  });
+
   it("keeps renewing across rotations", async () => {
     const { service } = setup();
     await service.rememberIssued({ refreshToken: "refresh-1", idToken: idToken(originalClaims) });

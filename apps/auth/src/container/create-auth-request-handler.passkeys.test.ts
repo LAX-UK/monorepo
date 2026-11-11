@@ -53,6 +53,7 @@ function setup(options: Options = {}) {
     durable: { settle: vi.fn(async () => undefined) } as never,
     notices: { notify: vi.fn(async () => undefined) },
     sessionStampStore,
+    deviceSessions: async ({ response }) => response,
     readTwoFactorRequirement: (async () => ({ required: false, sources: [] })) as never,
     auth: auth as never,
     oidcSessions: {

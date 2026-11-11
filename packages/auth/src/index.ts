@@ -12,6 +12,7 @@ export {
   stampTrustedClientIp,
 } from "./client-ip-headers.js";
 export { AUTH_TIMINGS, DEFAULT_JWT_AUDIENCE } from "./auth-timings.js";
+export { readRequestRegion } from "./auth-hooks/session-hooks.js";
 export { createEnvelopeCrypto, type EnvelopeCrypto } from "./crypto/envelope.js";
 export { parseAuthDekKey } from "./crypto/dek.js";
 export {
