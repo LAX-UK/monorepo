@@ -28,7 +28,14 @@ export type DealCommand =
 /** The part of a deal the rules read. */
 export type DealSnapshot = Pick<
   PrivateSaleDealDetail,
-  "stage" | "priceMinor" | "sellerCommissionBps" | "vatTreatment" | "agreedByUserId" | "buyer"
+  | "stage"
+  | "priceMinor"
+  | "sellerCommissionBps"
+  | "vatTreatment"
+  | "agreedByUserId"
+  | "buyer"
+  | "artworkRegisterId"
+  | "artworkUnlinkedReason"
 >;
 
 /** What a move reads besides the deal: who, when, the configuration and the checks. */
@@ -61,6 +68,16 @@ const ROLES: readonly PrivateSalePartyRole[] = ["seller", "buyer"];
 // ---- Guards: each answers one question and reports every reason it fails.
 
 const buyerNamed: Guard = (deal) => (deal.buyer ? [] : [{ code: "buyer_not_named" }]);
+
+/**
+ * The artwork is settled: linked to the register, or recorded as the seller's own work (not gallery
+ * stock). "In Zoho, not linked yet" is a note, not an answer, so it does not pass: no deal reaches
+ * agreement without the register's lock.
+ */
+const artworkSettled: Guard = (deal) =>
+  deal.artworkRegisterId !== null || deal.artworkUnlinkedReason === "sellers_own_work"
+    ? []
+    : [{ code: "artwork_not_linked" }];
 
 const priceSet: Guard = (deal) =>
   deal.priceMinor !== null && deal.priceMinor > 0 ? [] : [{ code: "price_not_set" }];
@@ -154,7 +171,7 @@ export const DEAL_TRANSITIONS: Readonly<Record<DealCommand, TransitionRow>> = {
     from: ["offer"],
     to: "agreed",
     // The commission is part of what the seller accepts, so it is set before the price is agreed.
-    guards: [buyerNamed, priceSet, commissionSet, partiesCleared, termsAccepted],
+    guards: [buyerNamed, artworkSettled, priceSet, commissionSet, partiesCleared, termsAccepted],
     changes: (_deal, ctx) => ({ agreedAt: ctx.now, agreedByUserId: ctx.actorUserId }),
   },
   clear: {

@@ -11,6 +11,8 @@ import {
   transitionDeal,
 } from "./transitions.js";
 
+const REGISTER_ID = "reg-1";
+
 const codes = (blockers: { code: string; party?: string }[]) =>
   blockers.map((b) => (b.party ? `${b.code}:${b.party}` : b.code));
 
@@ -26,7 +28,7 @@ const agreedDeal = (over = {}) =>
 
 describe("deal stages", () => {
   it("moves through every stage in order", () => {
-    let current = deal({ buyer: BUYER, priceMinor: 4_800_000 });
+    let current = deal({ buyer: BUYER, priceMinor: 4_800_000, artworkRegisterId: REGISTER_ID });
     const steps: [DealCommand, PrivateSaleDealStage, object?][] = [
       ["open_offer", "offer"],
       ["agree", "agreed"],
@@ -111,6 +113,7 @@ describe("agree: identity and screening gate", () => {
       buyer: BUYER,
       priceMinor: 4_800_000,
       sellerCommissionBps: 1500,
+      artworkRegisterId: REGISTER_ID,
       ...over,
     });
 
@@ -159,6 +162,38 @@ describe("agree: identity and screening gate", () => {
     expect(codes(dealBlockers(offer(), "agree", context({ clearance })))).toEqual([
       "party_missing:seller",
     ]);
+  });
+
+  describe("artwork", () => {
+    const blockersFor = (over: object) => codes(dealBlockers(offer(over), "agree", context()));
+
+    it.each([
+      ["no artwork and no reason", { artworkRegisterId: null, artworkUnlinkedReason: null }, true],
+      [
+        "a note that it is in Zoho but not linked",
+        { artworkRegisterId: null, artworkUnlinkedReason: "in_zoho_not_linked" },
+        true,
+      ],
+      [
+        "the seller's own work",
+        { artworkRegisterId: null, artworkUnlinkedReason: "sellers_own_work" },
+        false,
+      ],
+      ["a linked register artwork", { artworkRegisterId: REGISTER_ID }, false],
+    ] as const)("with %s, blocked is %s", (_label, over, blocked) => {
+      expect(blockersFor(over)).toEqual(blocked ? ["artwork_not_linked"] : []);
+    });
+
+    it("says what to do, in the words staff read", () => {
+      expect(describeDealBlocker({ code: "artwork_not_linked" })).toBe(
+        "Link the artwork, or record that it is the seller's own work.",
+      );
+    });
+
+    it("does not stop the moves after agreement", () => {
+      const agreed = agreedDeal({ artworkRegisterId: null });
+      expect(codes(dealBlockers(agreed, "clear", context()))).not.toContain("artwork_not_linked");
+    });
   });
 
   it("needs an agreed price", () => {
@@ -455,7 +490,12 @@ describe("blocker messages", () => {
 
 describe("terms locked by agreement", () => {
   it("cannot be agreed without a commission on the deal", () => {
-    const offer = deal({ stage: "offer", buyer: BUYER, priceMinor: 4_800_000 });
+    const offer = deal({
+      stage: "offer",
+      buyer: BUYER,
+      priceMinor: 4_800_000,
+      artworkRegisterId: REGISTER_ID,
+    });
     expect(codes(dealBlockers(offer, "agree", context()))).toEqual(["commission_not_set"]);
   });
 
