@@ -28,6 +28,8 @@ export interface IdTokenContinuityStore {
   put(refreshTokenHash: string, record: IdTokenContinuityRecord, ttlSec: number): Promise<void>;
   /** Reads and removes the record, so a rotated refresh token can never renew twice. */
   take(refreshTokenHash: string): Promise<IdTokenContinuityRecord | null>;
+  /** Reads the record without removing it. */
+  peek(refreshTokenHash: string): Promise<IdTokenContinuityRecord | null>;
 }
 
 export type LiveIdentitySession = IdentitySessionClaimSource & { subjectId: string };

@@ -83,6 +83,7 @@ import { createSubjectReadRateLimiter } from "../services/subject-read-rate-limi
 import type { TwoFactorRequirementReader } from "../services/two-factor-requirement.service.js";
 import type { AuthRouteServicesSlice } from "./auth-container-slices.js";
 import type { AuthRequestHandler } from "./create-auth-request-handler.js";
+import type { BrowserSignIns } from "./create-browser-sign-ins.js";
 import { createIdentityAddressService } from "./create-identity-address-service.js";
 
 type Counter = { inc(labels: Record<string, string>): void };
@@ -100,6 +101,8 @@ export type OidcRouteMountOptions = {
   refreshFamilies: IRefreshTokenFamilyRepository;
   /** Renews the ID token on refresh, so clients never hold an expired one after rotating. */
   idTokenRenewal: Pick<RefreshedIdTokenService, "rememberIssued" | "renew">;
+  /** Signing out of one browser, refresh refused after the sign-in ends, tokens bound to their sign-in. */
+  browserSignIns: Pick<BrowserSignIns, "signOut" | "refreshGuard" | "tokenBinding">;
   replay: RefreshReplayRedis;
   clientIp: ClientIpResolver;
   services: AuthRouteServicesSlice;
@@ -144,6 +147,7 @@ export function mountOidcRoutes(app: Hono, options: OidcRouteMountOptions): void
     "/api/auth/*",
     createRefreshReplayGateMiddleware({
       families: options.refreshFamilies,
+      signIns: options.browserSignIns.refreshGuard,
       onOutcome: (outcome) => options.metrics.refreshRotationOutcomes.inc({ outcome }),
       ...(options.retryResponseCrypto ? { retryResponseCrypto: options.retryResponseCrypto } : {}),
       replay: options.replay,
@@ -154,6 +158,7 @@ export function mountOidcRoutes(app: Hono, options: OidcRouteMountOptions): void
     "/api/auth/*",
     createIdTokenRenewalMiddleware({
       renewal: options.idTokenRenewal,
+      signIns: options.browserSignIns.tokenBinding,
       onOutcome: (outcome, error) => {
         if (outcome === "failed") options.log.warn({ err: error }, "id_token_renewal_failed");
       },
@@ -503,6 +508,7 @@ export function mountOidcRoutes(app: Hono, options: OidcRouteMountOptions): void
     createRpInitiatedLogoutRoutes({
       authHandler: options.authHandler,
       verifier: services.oidc.rpInitiatedLogout,
+      signOut: options.browserSignIns.signOut,
       revokeIdentitySession: (sessionId) =>
         services.oidc.logout.revokeIdentitySessions([sessionId]),
       currentSession: async (headers) => {

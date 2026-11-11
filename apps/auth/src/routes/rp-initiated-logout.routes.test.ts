@@ -16,10 +16,8 @@ function setup(options?: {
   } | null;
   currentSession?: { subjectId: string; sessionId: string } | null;
   upstream?: Response;
-  consumeFormBody?: boolean;
 }) {
-  const authHandler = vi.fn(async (request: Request) => {
-    if (options?.consumeFormBody) await request.formData();
+  const authHandler = vi.fn(async (_request: Request) => {
     return options?.upstream ?? new Response(JSON.stringify({ success: true }));
   });
   const verifier = {
@@ -37,6 +35,10 @@ function setup(options?: {
       verifier,
       currentSession,
       revokeIdentitySession,
+      signOut: {
+        isSignInOf: async (current, sid) => current.sessionId === sid,
+        end: (_current, endRecord) => endRecord(),
+      },
     }),
     authHandler,
     verifier,
@@ -46,25 +48,13 @@ function setup(options?: {
 }
 
 describe("RP-initiated logout routes", () => {
-  it("delegates end-session requests that do not request an RP redirect", async () => {
+  it("never hands an end-session request to Better Auth as it came in", async () => {
     const { app, authHandler, verifier } = setup();
     const response = await app.request("/oauth2/endsession");
 
-    expect(response.status).toBe(200);
-    expect(authHandler).toHaveBeenCalledOnce();
-    expect(verifier.verify).not.toHaveBeenCalled();
-  });
-
-  it("delegates an intact form POST when no RP redirect is requested", async () => {
-    const { app, authHandler, verifier } = setup({ consumeFormBody: true });
-    const response = await app.request("/oauth2/endsession", {
-      method: "POST",
-      headers: { "content-type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({ client_id: "lax-bid-mobile" }),
-    });
-
-    expect(response.status).toBe(200);
-    expect(authHandler).toHaveBeenCalledOnce();
+    // No ID token and no same-site marker: nothing is signed out.
+    expect(response.status).toBe(400);
+    expect(authHandler).not.toHaveBeenCalled();
     expect(verifier.verify).not.toHaveBeenCalled();
   });
 
@@ -145,7 +135,7 @@ describe("RP-initiated logout routes", () => {
     expect(stale.authHandler).not.toHaveBeenCalled();
   });
 
-  it("redirects without upstream delegation when no OP session exists", async () => {
+  it("redirects without ending a record when no OP session exists", async () => {
     const { app, authHandler, revokeIdentitySession } = setup({
       verified: {
         subjectId: "subject-1",
@@ -221,17 +211,12 @@ describe("RP-initiated logout routes", () => {
     expect(verifier.verify).toHaveBeenCalledWith({
       idTokenHint: "header.payload.signature",
     });
-    const delegated = authHandler.mock.calls[0]?.[0];
-    expect(delegated?.headers.get("sec-fetch-site")).toBe("same-origin");
-    expect(delegated?.headers.get("content-type")).toBeNull();
-    expect(delegated?.headers.get("content-length")).toBeNull();
-    expect(delegated?.method).toBe("GET");
-    const delegatedUrl = new URL(delegated?.url ?? "");
-    expect(delegatedUrl.searchParams.get("client_id")).toBe("lax-shop-web");
-    expect(delegatedUrl.searchParams.get("id_token_hint")).toBe("header.payload.signature");
+    const signOut = authHandler.mock.calls[0]?.[0];
+    expect(signOut?.method).toBe("POST");
+    expect(new URL(signOut?.url ?? "").pathname).toBe("/sign-out");
   });
 
-  it("delegates a verified matching hint and restores the registered redirect", async () => {
+  it("ends the record for a verified matching hint and restores the registered redirect", async () => {
     const { app, authHandler } = setup({
       verified: {
         subjectId: "subject-1",
@@ -254,12 +239,11 @@ describe("RP-initiated logout routes", () => {
 
     expect(response.status).toBe(302);
     expect(response.headers.get("location")).toBe("http://localhost:3010/?state=logout-state");
-    const delegated = authHandler.mock.calls[0]?.[0];
-    expect(delegated?.headers.get("sec-fetch-site")).toBe("same-origin");
-    const delegatedUrl = new URL(delegated?.url ?? "");
-    expect(delegatedUrl.searchParams.has("post_logout_redirect_uri")).toBe(false);
-    expect(delegatedUrl.searchParams.has("state")).toBe(false);
-    expect(delegatedUrl.searchParams.get("id_token_hint")).toBe("header.payload.signature");
+    // The issuer's own sign-out ends the record: a same-origin call that carries only the cookie.
+    const signOut = authHandler.mock.calls[0]?.[0];
+    expect(signOut?.headers.get("sec-fetch-site")).toBe("same-origin");
+    expect(signOut?.headers.get("origin")).toBe("https://auth.example.test");
+    expect(new URL(signOut?.url ?? "").search).toBe("");
     expect(response.headers.get("set-cookie")).toContain("Max-Age=0");
   });
 });
