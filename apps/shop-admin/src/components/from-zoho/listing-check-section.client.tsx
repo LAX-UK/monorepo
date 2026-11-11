@@ -71,7 +71,10 @@ export function ListingCheckSection({ listing }: { listing: AdminRegisterLastChe
                     <TextLink href={recordHref(failure.registerId)} Link={Link}>
                       {failure.stockCode || "Artwork record"}
                     </TextLink>
-                    <span className="text-staff-muted">{listingFailureLabel(failure.code)}</span>
+                    <span className="text-staff-muted">
+                      {listingFailureLabel(failure.code)}
+                      {failure.place ? ` · now ${failure.place}` : ""}
+                    </span>
                   </li>
                 ))}
               </ul>

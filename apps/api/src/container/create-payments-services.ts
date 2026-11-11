@@ -15,6 +15,8 @@ import {
   DrizzleLotFulfilmentRepository,
   DrizzlePaymentCheckoutSessionRepository,
   DrizzlePaymentDomainEventsRepository,
+  DrizzlePaymentTransferReferenceRepository,
+  DrizzlePrivateSaleDealRepository,
   DrizzleStalePaymentCanceller,
   DrizzleUnappliedMoneyReader,
 } from "@auction/persistence/repositories";
@@ -61,6 +63,7 @@ import {
 import { UnappliedMoneyRecorder } from "../services/payment/unapplied-money.recorder.js";
 import { StripePaymentWebhookService } from "../services/stripe-payment-webhook.service.js";
 import { UnappliedMoneyRefundHandler } from "../services/stripe-webhook/unapplied-money-refund.handler.js";
+import { StripeCashBalanceGateway } from "../services/stripe/cash-balance-gateway.js";
 import { CheckoutSessionLifecycle } from "../services/stripe/stripe-checkout-session-lifecycle.js";
 import { StripeCustomerGateway } from "../services/stripe/stripe-customer.gateway.js";
 import { StripePaymentGateway } from "../services/stripe/stripe-payment-gateway.js";
@@ -488,6 +491,12 @@ export function createPaymentsServices(
           paymentEligibility,
           repos.paymentRefundRepository,
           errorReporter,
+          {
+            cashBalance: new StripeCashBalanceGateway(stripeClientFactory),
+            references: new DrizzlePaymentTransferReferenceRepository(db),
+            groups: paymentGroups.webhooks.groups,
+            deals: new DrizzlePrivateSaleDealRepository(db),
+          },
         )
       : null;
 

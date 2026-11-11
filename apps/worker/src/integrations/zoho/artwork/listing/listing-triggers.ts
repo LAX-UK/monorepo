@@ -49,6 +49,8 @@ export const LISTING_TRIGGERS: Readonly<Record<string, Resolve>> = {
   "lot.voided": ofLot,
   "lot.ended": ofLot,
   "lot.returned_to_inventory": ofLot,
+  /** A soft-deleted lot no longer shows on the register; refresh without waiting for the nightly run. */
+  "lot.soft_deleted": ofLot,
   "lot.activated": ofLotsSale,
   "sale.published": ofSale,
   /** The start time moved: the sale's lots read upcoming or live from it. */
