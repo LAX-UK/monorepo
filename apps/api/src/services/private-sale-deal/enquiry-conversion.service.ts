@@ -180,7 +180,12 @@ export class EnquiryConversionService implements IEnquiryConversion {
       if (error instanceof EnquiryMovedOn) return { ok: false, error: "stale_version" };
       if (error instanceof WorkTaken) return { ok: false, error: error.reason };
       if (error instanceof DealArtworkRefused) {
-        return { ok: false, error: "artwork_unavailable", message: error.message };
+        return {
+          ok: false,
+          error: "artwork_unavailable",
+          message: error.message,
+          lock: error.lock,
+        };
       }
       if (error instanceof DealRegisterUnavailable) {
         return { ok: false, error: "artwork_register_busy", message: error.message };

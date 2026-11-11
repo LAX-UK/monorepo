@@ -1,4 +1,7 @@
-/** What a refusal from the Bid API says to the person, one sentence each. */
+/**
+ * What a refusal from the Bid API says to the person, one sentence each. Fallback copy: where the
+ * API sends its own message and link (an artwork the register will not hold), those are shown.
+ */
 export const DEAL_ERROR_COPY: Readonly<Record<string, string>> = {
   deal_not_found: "This private sale no longer exists, or you can't open it.",
   stale_version: "This private sale changed while you were looking at it.",

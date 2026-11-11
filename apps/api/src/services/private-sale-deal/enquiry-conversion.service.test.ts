@@ -449,15 +449,19 @@ describe("EnquiryConversionService and the artwork register", () => {
   });
 
   it("refuses with the register's own words when the artwork is offered elsewhere", async () => {
-    const refused = new DealArtworkRefused({
+    const lock = {
+      reason: "live_on_lax_art",
       message: "This artwork is live on lax.art. Withdraw it there first.",
-    } as never);
+      link: { label: "Open on lax.art", target: "lax_art_listing" },
+    } as const;
+    const refused = new DealArtworkRefused(lock);
     const { service, updateInTransaction } = setup(enquiry(), { offerError: refused });
     const result = await service.convert(VIEWER, "E-1042", { artworkRegisterId: ARTWORK });
     expect(result).toEqual({
       ok: false,
       error: "artwork_unavailable",
       message: "This artwork is live on lax.art. Withdraw it there first.",
+      lock,
     });
     // The hold is the last write of the transaction, so the enquiry was not left converted by a
     // refusal: the thrown error undoes the whole conversion.

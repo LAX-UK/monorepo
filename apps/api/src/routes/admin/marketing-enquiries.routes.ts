@@ -139,7 +139,11 @@ export function attachAdminMarketingEnquiryRoutes(
       );
       if (result.ok) return c.json({ data: { reference: result.reference } }, 201);
       return c.json(
-        { error: result.error, ...(result.message ? { message: result.message } : {}) },
+        {
+          error: result.error,
+          ...(result.message ? { message: result.message } : {}),
+          ...(result.lock ? { lock: result.lock } : {}),
+        },
         CONVERT_ERROR_STATUS[result.error],
       );
     },

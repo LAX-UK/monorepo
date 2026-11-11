@@ -1,3 +1,4 @@
+import type { LockMessage } from "@auction/artwork-register-contracts";
 import type {
   DealBlockerCode,
   DealView,
@@ -213,7 +214,13 @@ export type ConvertEnquiryError =
 
 export type ConvertEnquiryResult =
   | { ok: true; reference: string }
-  | { ok: false; error: ConvertEnquiryError; message?: string };
+  | {
+      ok: false;
+      error: ConvertEnquiryError;
+      message?: string;
+      /** For `artwork_unavailable`: the register's own reason, words and link, as every product shows them. */
+      lock?: LockMessage;
+    };
 
 /** Turns a private sale enquiry into a proposed deal. */
 export interface IEnquiryConversion {

@@ -209,6 +209,27 @@ describe("POST /enquiries/:ref/convert", () => {
     expect(await res.json()).toEqual({ error });
   });
 
+  it("answers an artwork the register will not hold with the lock's reason, words and link", async () => {
+    const { app, enquiryConversion } = createApp(["specialist"]);
+    const lock = {
+      reason: "live_on_lax_art",
+      message: "This artwork is live on lax.art. Take it off lax.art first.",
+      link: { label: "Open on lax.art", target: "lax_art_listing" },
+    };
+    enquiryConversion.convert.mockResolvedValueOnce({
+      ok: false,
+      error: "artwork_unavailable",
+      message: lock.message,
+      lock,
+    });
+    const res = await app.request(
+      "http://test/enquiries/E-1042/convert",
+      post({ artworkRegisterId: "5b1c1b9e-3a2f-4f6e-9c1d-2f7a8e9d0c11" }),
+    );
+    expect(res.status).toBe(409);
+    expect(await res.json()).toEqual({ error: "artwork_unavailable", message: lock.message, lock });
+  });
+
   it("rejects a work reference that is not one", async () => {
     const { app, enquiryConversion } = createApp(["specialist"]);
     const res = await app.request(

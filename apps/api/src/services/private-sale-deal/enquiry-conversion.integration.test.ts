@@ -160,6 +160,10 @@ describe.skipIf(!url)(
         });
         expect(result).toMatchObject({ ok: false, error: "artwork_unavailable" });
         expect((result as { message?: string }).message).toMatch(/lax\.art/);
+        expect((result as { lock?: unknown }).lock).toMatchObject({
+          reason: "live_on_lax_art",
+          link: { target: "lax_art_listing" },
+        });
 
         expect(
           await tx
