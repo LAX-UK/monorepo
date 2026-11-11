@@ -17,7 +17,6 @@ describe.skipIf(!HAS_DB)("DrizzleLotRegisterLinkReader (integration)", () => {
   const ids = {
     sale: "a7c00000-0000-4000-8000-000000000001",
     seller: "a7c00000-0000-4000-8000-000000000002",
-    winner: "a7c00000-0000-4000-8000-000000000003",
     withWinner: "a7c00000-0000-4000-8000-000000000011",
     noWinner: "a7c00000-0000-4000-8000-000000000012",
     atgSold: "a7c00000-0000-4000-8000-000000000013",
@@ -56,15 +55,6 @@ describe.skipIf(!HAS_DB)("DrizzleLotRegisterLinkReader (integration)", () => {
           createdAt: t,
           updatedAt: t,
         });
-        await tx.insert(legalEntity).values({
-          id: ids.winner,
-          displayName: "Buyer",
-          kind: "individual",
-          createdByUserId: winnerUserId,
-          status: "approved",
-          createdAt: t,
-          updatedAt: t,
-        });
         await tx.insert(sale).values({
           id: ids.sale,
           title: "ATG sale",
@@ -77,7 +67,7 @@ describe.skipIf(!HAS_DB)("DrizzleLotRegisterLinkReader (integration)", () => {
           .values(
             [1, 2, 3, 4].map((n) => ({
               zohoProductId: `lot-register-link-${n}`,
-              stockCode: `LAX-ORI-AR-PC-26-90${n}`,
+              stockCode: `LAX-ORI-AR-PC-26-090${n}`,
               kind: "original" as const,
               title: `Work ${n}`,
               artistName: "Ada Rowe",
@@ -106,7 +96,7 @@ describe.skipIf(!HAS_DB)("DrizzleLotRegisterLinkReader (integration)", () => {
             id: ids.withWinner,
             lotNumber: 1,
             title: "Won",
-            winnerId: ids.winner,
+            winnerId: winnerUserId,
             artworkRegisterId: registerFor(1),
           },
           {

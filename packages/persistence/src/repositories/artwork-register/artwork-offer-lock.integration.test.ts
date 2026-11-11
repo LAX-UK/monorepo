@@ -175,4 +175,27 @@ describe.skipIf(!url)("one place at a time (Postgres)", { timeout: 30_000 }, () 
     expect(open[0]).toMatchObject({ field: "offerState", zohoValue: input.message });
     expect((await repo.findById(relisted.entry.id))?.offer.state).toBe("lax_art");
   });
+
+  it("does not raise an ATG sold conflict again once staff have settled it, but does for a new situation", async () => {
+    const entry = await created();
+    const input = {
+      registerId: entry.id,
+      message: "Sold on ATG but now listed on lax.art",
+      state: "lax_art" as const,
+      lotId: lot.id,
+      now: LATER,
+    };
+    expect(await repo.recordOfferConflict(input)).toBe(true);
+    await db.execute(
+      sql`UPDATE artwork_register_conflict SET status = 'resolved', resolution = 'kept_lax',
+            resolved_by = 'staff:u1', resolved_at = now() WHERE register_id = ${entry.id}`,
+    );
+    expect(await repo.recordOfferConflict(input)).toBe(false);
+    expect(await repo.listOpenConflicts(10)).toHaveLength(0);
+
+    const other = { ...input, state: "private_sale" as const, message: "Sold on ATG elsewhere" };
+    expect(await repo.recordOfferConflict(other)).toBe(true);
+    expect(await repo.recordOfferConflict(input)).toBe(false);
+    expect(await repo.listOpenConflicts(10)).toHaveLength(1);
+  });
 });

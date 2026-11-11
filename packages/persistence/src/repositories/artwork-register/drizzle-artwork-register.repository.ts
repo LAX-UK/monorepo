@@ -463,20 +463,25 @@ export class DrizzleArtworkRegisterRepository
         .where(eq(register.id, input.registerId))
         .for("update");
       if (!locked) return false;
-      const [open] = await tx
+      const laxValue = { state: input.state, lotId: input.lotId };
+      // The ATG poll repeats the result every tick. Only one offerState item can be open per
+      // artwork (staff already have one to look at), and a situation staff have settled (this lot,
+      // the register in this state) is not raised again by the next poll.
+      const [seen] = await tx
         .select({ id: conflict.id })
         .from(conflict)
         .where(
           and(
             eq(conflict.registerId, input.registerId),
             eq(conflict.field, "offerState"),
-            eq(conflict.status, "open"),
+            or(
+              eq(conflict.status, "open"),
+              sql`${conflict.laxValue} @> ${JSON.stringify(laxValue)}::jsonb`,
+            ),
           ),
         )
         .limit(1);
-      // The ATG poll repeats the result every tick: one open item, one history entry.
-      if (open) return false;
-      const laxValue = { state: input.state, lotId: input.lotId };
+      if (seen) return false;
       await tx.insert(conflict).values({
         registerId: input.registerId,
         field: "offerState",
