@@ -1,6 +1,7 @@
 import { passkey } from "@better-auth/passkey";
 import type { BetterAuthPlugin } from "better-auth";
 import { APIError, getSessionFromCtx } from "better-auth/api";
+import { PASSKEY_USER_VERIFICATION_REQUIRED, PASSKEY_WRONG_PERSON } from "./passkey-error-codes.js";
 import { suggestPasskeyName } from "./passkey-names.js";
 
 /**
@@ -24,11 +25,7 @@ export type PasskeyPorts = {
   markUsed(credentialId: string): Promise<void>;
 };
 
-/** Said when a browser that is signed in as one person is given another person's passkey. */
-export const PASSKEY_WRONG_PERSON = "passkey_wrong_person";
-
-/** Said to the hosted page and LAX Account when a device did not check the person. */
-export const PASSKEY_USER_VERIFICATION_REQUIRED = "passkey_user_verification_required";
+export { PASSKEY_USER_VERIFICATION_REQUIRED, PASSKEY_WRONG_PERSON };
 
 /** The config for an issuer URL: its host and origin, nothing taken from a request. */
 export function passkeyConfigForIssuer(issuerUrl: string, rpName = "LAX"): PasskeyConfig {
