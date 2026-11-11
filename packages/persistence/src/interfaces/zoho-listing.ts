@@ -61,6 +61,15 @@ export interface IZohoListingSourceReader {
   pageOriginals(after: string | null, limit: number): Promise<string[]>;
 }
 
+/** What the Zoho Status needs of a record: the register entry and when it last moved. */
+export type RegisterStatusSource = { entry: ArtworkRegisterEntry; lastMove: ListingMove | null };
+
+/** Reads the register for the Status LAX writes to the Zoho Product. Reads only. */
+export interface IZohoStatusSourceReader {
+  /** The sources for these records, any kind, in no particular order. */
+  readStatusSources(registerIds: readonly string[]): Promise<RegisterStatusSource[]>;
+}
+
 /**
  * Serialises listing writes per artwork. Whoever holds the lock reads the facts after taking it,
  * so a write can never carry a picture older than one already sent.

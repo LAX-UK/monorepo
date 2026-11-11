@@ -17,17 +17,17 @@ function setup(rows: Record<string, unknown>[] = []) {
 }
 
 describe("productWriteStateQuery", () => {
-  it("selects the two fields LAX writes for one Product, escaping the id", () => {
+  it("selects the stock code LAX writes for one Product, escaping the id", () => {
     expect(productWriteStateQuery("1' or '1'='1")).toBe(
-      "select id, Status, Reference_Stock_Code from Products where id = '1\\' or \\'1\\'=\\'1' limit 1",
+      "select id, Reference_Stock_Code from Products where id = '1\\' or \\'1\\'=\\'1' limit 1",
     );
   });
 });
 
 describe("CrmZohoProductWriter", () => {
-  it("reads the Status and stock code, treating blanks as none", async () => {
-    const { writer, coql } = setup([{ id: "1", Status: "Reserved", Reference_Stock_Code: " " }]);
-    expect(await writer.read("1")).toEqual({ status: "Reserved", stockCode: null });
+  it("reads the stock code, treating blanks as none", async () => {
+    const { writer, coql } = setup([{ id: "1", Reference_Stock_Code: " " }]);
+    expect(await writer.read("1")).toEqual({ stockCode: null });
     expect(coql.queryCoql).toHaveBeenCalledWith(productWriteStateQuery("1"));
   });
 

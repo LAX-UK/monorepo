@@ -100,6 +100,7 @@ const ConflictFieldSchema = Type.Union([
   Type.Literal("kind"),
   Type.Literal("sourceOriginalId"),
   Type.Literal("offerState"),
+  Type.Literal("catalogueStatus"),
 ]);
 const ConflictResolutionSchema = Type.Union([
   Type.Literal("kept_lax"),
