@@ -1,5 +1,5 @@
-import { expect, test } from "@playwright/test";
 import { signInShopBuyer } from "./helpers/shop-auth";
+import { expect, test } from "./helpers/test";
 
 const enabled = process.env.PLAYWRIGHT_E2E === "1";
 const skipReason =
