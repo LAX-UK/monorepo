@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   type ActingContextCookieV1,
   decodeActingContextCookie,
@@ -27,5 +27,20 @@ describe("acting context cookie", () => {
     expect(decodeActingContextCookie("not-a-cookie")).toBeNull();
     expect(decodeActingContextCookie("!!!")).toBeNull();
     expect(decodeActingContextCookie("")).toBeNull();
+  });
+
+  describe("without Node Buffer (browser)", () => {
+    afterEach(() => vi.unstubAllGlobals());
+
+    it("encodes and decodes a view-as-client cookie", () => {
+      vi.stubGlobal("Buffer", undefined);
+      const payload: ActingContextCookieV1 = {
+        v: 1,
+        e: ENTITY,
+        n: "Zo\u00eb",
+        i: { sid: SESSION },
+      };
+      expect(decodeActingContextCookie(encodeActingContextCookie(payload))).toEqual(payload);
+    });
   });
 });

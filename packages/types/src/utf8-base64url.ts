@@ -1,7 +1,8 @@
 /**
  * UTF-8 text <-> unpadded base64url, on web-standard APIs only (`TextEncoder`, `btoa`, `atob`).
- * Browser bundles that refer to Node's `Buffer` get a polyfill injected, so shared code that runs
- * on public pages encodes through these helpers instead.
+ * Browser bundles that refer to Node's `Buffer` get a polyfill injected, and that polyfill does not
+ * support the `base64url` encoding (it throws `Unknown encoding: base64url`). Packages whose code
+ * can run in the browser must therefore encode and decode through these helpers, never `Buffer`.
  */
 
 export function encodeUtf8Base64Url(value: string): string {
