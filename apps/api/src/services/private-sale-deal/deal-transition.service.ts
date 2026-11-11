@@ -1,3 +1,4 @@
+import type { Database } from "@auction/db";
 import {
   type DealBlocker,
   type DealClearancePort,
@@ -13,14 +14,25 @@ import {
 import type {
   IPrivateSaleDealReader,
   IPrivateSaleDealWriter,
+  ITransactionRunner,
 } from "@auction/persistence/interfaces";
 import type { PrivateSaleDealDetail } from "@auction/types";
 import type { IDomainEventSink } from "../domain-event-sink.js";
+import {
+  type IDealRegisterLock,
+  REGISTER_EFFECT_BY_STAGE,
+  staffOrSystem,
+} from "./deal-register-lock.js";
 
 /** The reads, writes and events one transition uses, so they can share a transaction. */
 export type DealTransitionScope = {
   deals: IPrivateSaleDealReader & IPrivateSaleDealWriter;
   events: IDomainEventSink;
+  /**
+   * The artwork register, bound to the same transaction as the rest of the scope. Absent where
+   * deals are not tied to the register.
+   */
+  register?: IDealRegisterLock;
 };
 
 export type DealTransitionOutcome =
@@ -43,6 +55,14 @@ export type DealTransitionOptions = {
 
 export type DealTransitionDeps = {
   scope: DealTransitionScope;
+  /**
+   * Runs a move that was not given a transaction in one of its own, so the stage, its event and
+   * the register change commit together or not at all.
+   */
+  inTransaction?: {
+    runner: ITransactionRunner;
+    scopeForTx: (tx: Database) => DealTransitionScope;
+  };
   clearance: DealClearancePort;
   policy: PrivateSalePolicy;
   now?: () => Date;
@@ -75,7 +95,21 @@ export class DealTransitionService {
     dealId: string,
     command: DealCommand,
     options: DealTransitionOptions,
-    scope: DealTransitionScope = this.deps.scope,
+    scope?: DealTransitionScope,
+  ): Promise<DealTransitionOutcome> {
+    if (scope) return this.move(dealId, command, options, scope);
+    const own = this.deps.inTransaction;
+    if (!own) return this.move(dealId, command, options, this.deps.scope);
+    return own.runner.runInTransaction((tx) =>
+      this.move(dealId, command, options, own.scopeForTx(tx)),
+    );
+  }
+
+  private async move(
+    dealId: string,
+    command: DealCommand,
+    options: DealTransitionOptions,
+    scope: DealTransitionScope,
   ): Promise<DealTransitionOutcome> {
     const deal = await scope.deals.findById(dealId);
     if (!deal) return { kind: "not_found" };
@@ -103,7 +137,37 @@ export class DealTransitionService {
       actorUserId: options.actorUserId,
       actingLegalEntityId: null,
     });
+    await this.followInRegister(scope, deal, result.change.to, options.actorUserId);
     return { kind: "ok", deal: written.deal };
+  }
+
+  /** Carries the new stage to the artwork register, when the deal has an artwork and the stage matters there. */
+  private async followInRegister(
+    scope: DealTransitionScope,
+    deal: PrivateSaleDealDetail,
+    stage: PrivateSaleDealDetail["stage"],
+    actorUserId: string | null,
+  ): Promise<void> {
+    const effect = REGISTER_EFFECT_BY_STAGE[stage];
+    if (!effect || !scope.register || !deal.artworkRegisterId) return;
+    try {
+      await scope.register[effect.move](
+        deal.artworkRegisterId,
+        deal.id,
+        staffOrSystem(actorUserId),
+      );
+    } catch (error) {
+      if (effect.blocking) throw error;
+      console.error(
+        JSON.stringify({
+          msg: "private_sale_register_follow_failed",
+          dealId: deal.id,
+          registerId: deal.artworkRegisterId,
+          stage,
+          error: error instanceof Error ? error.message : String(error),
+        }),
+      );
+    }
   }
 
   /** What the rules read besides the deal: who, when, the configuration and the checks. */

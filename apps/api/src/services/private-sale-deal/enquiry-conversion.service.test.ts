@@ -2,6 +2,7 @@ import { resolvePrivateSalePolicy } from "@auction/domain";
 import type { DealWork, MarketingEnquiryDetailRecord } from "@auction/persistence/interfaces";
 import { describe, expect, it, vi } from "vitest";
 import { inlineTransactions, makeDeal, recordingSink } from "./deal-fixtures.test-util.js";
+import { DealArtworkRefused } from "./deal-register-lock.js";
 import { EnquiryConversionService, isWorkAlreadyInDeal } from "./enquiry-conversion.service.js";
 
 const VIEWER = { userId: "u-specialist", readsPrivateSale: true };
@@ -63,6 +64,10 @@ function setup(
     dealAppearsAfterHold?: boolean;
     createError?: unknown;
     moved?: boolean;
+    /** What the register holds for the artwork id; `null` means it has none. */
+    artwork?: { kind: string } | null;
+    /** The register refuses to hold the artwork. */
+    offerError?: unknown;
   } = {},
 ) {
   const events = recordingSink();
@@ -81,6 +86,9 @@ function setup(
     convertedLotId: null,
   }));
   const updateInTransaction = vi.fn(async () => (options.moved === false ? null : ({} as never)));
+  const offer = vi.fn(async () => {
+    if (options.offerError) throw options.offerError;
+  });
   const service = new EnquiryConversionService({
     enquiries: { findByRef: async () => record, updateInTransaction },
     works: {
@@ -107,6 +115,11 @@ function setup(
       },
     },
     dealsForTx: () => ({ create }),
+    artworks: {
+      findById: async () =>
+        options.artwork === undefined ? { kind: "original" } : options.artwork,
+    },
+    registerForTx: () => ({ offer, withdraw: vi.fn(), markSold: vi.fn() }),
     parties: {
       resolve: async (input: { userId: string; legalEntityId?: string }) => {
         if (input.userId === "u-henry") {
@@ -123,7 +136,7 @@ function setup(
     transactionRunner: inlineTransactions,
     events,
   });
-  return { service, create, createDraft, updateInTransaction, events, locked };
+  return { service, create, createDraft, updateInTransaction, events, locked, offer };
 }
 
 describe("EnquiryConversionService", () => {
@@ -413,6 +426,58 @@ describe("EnquiryConversionService", () => {
       });
       expect(create).not.toHaveBeenCalled();
     });
+  });
+});
+
+describe("EnquiryConversionService and the artwork register", () => {
+  const ARTWORK = "5b1c1b9e-3a2f-4f6e-9c1d-2f7a8e9d0c11";
+
+  it("holds the artwork for the deal it opens, in the same transaction", async () => {
+    const { service, create, offer } = setup();
+    const result = await service.convert(VIEWER, "E-1042", { artworkRegisterId: ARTWORK });
+    expect(result).toEqual({ ok: true, reference: "PS-0007" });
+    expect(create).toHaveBeenCalledWith(expect.objectContaining({ artworkRegisterId: ARTWORK }));
+    expect(offer).toHaveBeenCalledWith(ARTWORK, "deal-new", "staff:u-specialist");
+  });
+
+  it("opens a deal with no artwork exactly as before and does not touch the register", async () => {
+    const { service, create, offer } = setup();
+    await service.convert(VIEWER, "E-1042", {});
+    expect(create.mock.calls[0]?.[0]).not.toHaveProperty("artworkRegisterId");
+    expect(offer).not.toHaveBeenCalled();
+  });
+
+  it("refuses with the register's own words when the artwork is offered elsewhere", async () => {
+    const refused = new DealArtworkRefused({
+      message: "This artwork is live on lax.art. Withdraw it there first.",
+    } as never);
+    const { service, updateInTransaction } = setup(enquiry(), { offerError: refused });
+    const result = await service.convert(VIEWER, "E-1042", { artworkRegisterId: ARTWORK });
+    expect(result).toEqual({
+      ok: false,
+      error: "artwork_unavailable",
+      message: "This artwork is live on lax.art. Withdraw it there first.",
+    });
+    // The hold is the last write of the transaction, so the enquiry was not left converted by a
+    // refusal: the thrown error undoes the whole conversion.
+    expect(updateInTransaction).toHaveBeenCalledTimes(1);
+  });
+
+  it("reports an artwork the register does not know, and one that is not an original", async () => {
+    const missing = setup(enquiry(), { artwork: null });
+    expect(await missing.service.convert(VIEWER, "E-1042", { artworkRegisterId: ARTWORK })).toEqual(
+      {
+        ok: false,
+        error: "artwork_not_found",
+      },
+    );
+    const print = setup(enquiry(), { artwork: { kind: "print" } });
+    expect(await print.service.convert(VIEWER, "E-1042", { artworkRegisterId: ARTWORK })).toEqual({
+      ok: false,
+      error: "artwork_not_original",
+    });
+    expect(missing.create).not.toHaveBeenCalled();
+    expect(print.create).not.toHaveBeenCalled();
   });
 });
 

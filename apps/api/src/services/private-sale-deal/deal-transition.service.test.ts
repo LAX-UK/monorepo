@@ -114,3 +114,113 @@ describe("DealTransitionService", () => {
     expect(events.events).toEqual([]);
   });
 });
+
+describe("DealTransitionService and the artwork register", () => {
+  const REGISTER_ID = "reg-1";
+
+  function withRegister(deal = makeDeal({ stage: "invoiced", artworkRegisterId: REGISTER_ID })) {
+    const events = recordingSink();
+    const register = { offer: vi.fn(), withdraw: vi.fn(), markSold: vi.fn() };
+    const scope = {
+      deals: {
+        findById: async () => deal,
+        applyStageChange: async (_id: string, _v: number, change: PrivateSaleStageChange) => ({
+          kind: "ok" as const,
+          deal: { ...deal, stage: change.to },
+        }),
+      } as never,
+      events,
+      register,
+    };
+    const service = new DealTransitionService({
+      scope,
+      clearance: { snapshot: async () => CLEAR },
+      policy: POLICY,
+      now: () => new Date("2026-11-04T09:00:00Z"),
+    });
+    return { service, register };
+  }
+
+  it("records the artwork as sold when the deal is paid", async () => {
+    const { service, register } = withRegister();
+    await service.transition("deal-1", "mark_paid", { actorUserId: null });
+    expect(register.markSold).toHaveBeenCalledWith(REGISTER_ID, "deal-1", "system");
+    expect(register.withdraw).not.toHaveBeenCalled();
+  });
+
+  it("names the staff member who recorded the payment", async () => {
+    const { service, register } = withRegister();
+    await service.transition("deal-1", "mark_paid", { actorUserId: "u-finance" });
+    expect(register.markSold).toHaveBeenCalledWith(REGISTER_ID, "deal-1", "staff:u-finance");
+  });
+
+  it("does not undo a payment when the register cannot record the sale", async () => {
+    const { service, register } = withRegister();
+    register.markSold.mockRejectedValue(new Error("register down"));
+    const logged = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    expect(await service.transition("deal-1", "mark_paid", { actorUserId: null })).toMatchObject({
+      kind: "ok",
+      deal: { stage: "paid" },
+    });
+    expect(logged).toHaveBeenCalledWith(
+      expect.stringContaining("private_sale_register_follow_failed"),
+    );
+    logged.mockRestore();
+  });
+
+  it("ends the artwork's hold when the deal is cancelled", async () => {
+    const { service, register } = withRegister(
+      makeDeal({ stage: "offer", artworkRegisterId: REGISTER_ID }),
+    );
+    await service.transition("deal-1", "cancel", { actorUserId: "u", cancelReason: "withdrew" });
+    expect(register.withdraw).toHaveBeenCalledWith(REGISTER_ID, "deal-1", "staff:u");
+    expect(register.markSold).not.toHaveBeenCalled();
+  });
+
+  it("stops a cancellation the register could not record, so no hold is left behind", async () => {
+    const { service, register } = withRegister(
+      makeDeal({ stage: "offer", artworkRegisterId: REGISTER_ID }),
+    );
+    register.withdraw.mockRejectedValue(new Error("register down"));
+    await expect(
+      service.transition("deal-1", "cancel", { actorUserId: "u", cancelReason: "withdrew" }),
+    ).rejects.toThrow("register down");
+  });
+
+  it("leaves the register alone for stages it does not follow, and for deals with no artwork", async () => {
+    const stages = withRegister(makeDeal({ stage: "released", artworkRegisterId: REGISTER_ID }));
+    await stages.service.transition("deal-1", "settle", { actorUserId: null });
+    expect(stages.register.markSold).not.toHaveBeenCalled();
+    expect(stages.register.withdraw).not.toHaveBeenCalled();
+
+    const unlinked = withRegister(makeDeal({ stage: "invoiced", artworkRegisterId: null }));
+    await unlinked.service.transition("deal-1", "mark_paid", { actorUserId: null });
+    expect(unlinked.register.markSold).not.toHaveBeenCalled();
+  });
+
+  it("runs a move that has no transaction of its own inside one, with the register bound to it", async () => {
+    const deal = makeDeal({ stage: "offer", artworkRegisterId: REGISTER_ID });
+    const register = { offer: vi.fn(), withdraw: vi.fn(), markSold: vi.fn() };
+    const scopeForTx = vi.fn(() => ({
+      deals: {
+        findById: async () => deal,
+        applyStageChange: async (_i: string, _v: number, change: PrivateSaleStageChange) => ({
+          kind: "ok" as const,
+          deal: { ...deal, stage: change.to },
+        }),
+      } as never,
+      events: recordingSink(),
+      register,
+    }));
+    const runInTransaction = vi.fn(async (fn: (tx: never) => Promise<unknown>) => fn({} as never));
+    const service = new DealTransitionService({
+      scope: { deals: {} as never, events: recordingSink() },
+      inTransaction: { runner: { runInTransaction } as never, scopeForTx },
+      clearance: { snapshot: async () => CLEAR },
+      policy: POLICY,
+    });
+    await service.transition("deal-1", "cancel", { actorUserId: "u", cancelReason: "withdrew" });
+    expect(runInTransaction).toHaveBeenCalledTimes(1);
+    expect(register.withdraw).toHaveBeenCalledTimes(1);
+  });
+});

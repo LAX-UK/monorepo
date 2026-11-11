@@ -1,3 +1,4 @@
+import { ArtworkOfferLock } from "@auction/artwork-register-contracts";
 import type { Database } from "@auction/db";
 import type { DealInvoiceIssuer, PrivateSalePolicy } from "@auction/domain";
 import type { IUnappliedMoneyRecorder } from "@auction/finance-runtime";
@@ -11,6 +12,7 @@ import type {
   IWatchlistScreeningReader,
 } from "@auction/persistence/interfaces";
 import {
+  DrizzleArtworkRegisterRepository,
   DrizzleDealWorkStore,
   DrizzleMarketingEnquiryRepository,
   DrizzlePrivateSaleDealFinanceStore,
@@ -46,6 +48,7 @@ import { DealPaymentService } from "../services/private-sale-deal/deal-payment.s
 import { DealPayoutSettlementService } from "../services/private-sale-deal/deal-payout-settlement.service.js";
 import { PrivateSaleDealQueryService } from "../services/private-sale-deal/deal-query.service.js";
 import { DealReceiptNotifier } from "../services/private-sale-deal/deal-receipt.notifier.js";
+import { ArtworkRegisterDealLock } from "../services/private-sale-deal/deal-register-lock.js";
 import { DealReversalService } from "../services/private-sale-deal/deal-reversal.service.js";
 import { DealTransferService } from "../services/private-sale-deal/deal-transfer.service.js";
 import { DealTransitionService } from "../services/private-sale-deal/deal-transition.service.js";
@@ -118,15 +121,24 @@ export function createPrivateSaleDealServices(
     deals: finance,
     sourceOfFundsValidityDays: env.SOF_APPROVAL_VALIDITY_DAYS,
   });
+  const registerForTx = (executor: Database) =>
+    new ArtworkRegisterDealLock(
+      new ArtworkOfferLock(new DrizzleArtworkRegisterRepository(db).withExecutor(executor)),
+    );
+  const transitionScopeForTx = (tx: Database) => ({
+    deals: new DrizzlePrivateSaleDealRepository(tx),
+    events: events.withTx(tx),
+    register: registerForTx(tx),
+  });
   const transitions = new DealTransitionService({
     scope: { deals, events },
+    inTransaction: { runner: input.transactionRunner, scopeForTx: transitionScopeForTx },
     clearance,
     policy,
   });
   const scopeForTx = (tx: Database): DealPaymentScope => ({
-    deals: new DrizzlePrivateSaleDealRepository(tx),
+    ...transitionScopeForTx(tx),
     payments: new DrizzlePrivateSaleDealPaymentRepository(tx),
-    events: events.withTx(tx),
   });
   const claims: IProviderEventClaim = {
     claim: async (tx, eventId) =>
@@ -220,6 +232,8 @@ export function createPrivateSaleDealServices(
       works: new DrizzleDealWorkStore(db),
       openDeals: queries,
       dealsForTx: (tx) => new DrizzlePrivateSaleDealRepository(tx),
+      artworks: new DrizzleArtworkRegisterRepository(db),
+      registerForTx,
       parties,
       policy,
       transactionRunner: input.transactionRunner,

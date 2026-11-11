@@ -200,12 +200,18 @@ export type ConvertEnquiryError =
   | "work_not_available"
   /** The work is already in a deal that is neither cancelled nor settled. */
   | "work_in_deal"
+  /** The artwork register has no such entry. */
+  | "artwork_not_found"
+  /** Only originals are held for a deal; prints are sold in runs. */
+  | "artwork_not_original"
+  /** The register shows the artwork in another sale, or sold. `message` says where. */
+  | "artwork_unavailable"
   | "stale_version"
   | "unavailable";
 
 export type ConvertEnquiryResult =
   | { ok: true; reference: string }
-  | { ok: false; error: ConvertEnquiryError };
+  | { ok: false; error: ConvertEnquiryError; message?: string };
 
 /** Turns a private sale enquiry into a proposed deal. */
 export interface IEnquiryConversion {
