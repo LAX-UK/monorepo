@@ -9,6 +9,8 @@ const { Client } = pg;
 export const AUTH_FULL_TABLES = [
   "user",
   "session",
+  /** The earlier ids a sign-in record stands for after a new sign-in took it over; issuer-only. */
+  "session_lineage",
   "account",
   "verification",
   "jwks_key",
@@ -171,6 +173,7 @@ export const SHOP_COMMERCE_APPEND_ONLY_TABLES = [
 export const API_DENY_TABLES = [
   "user",
   "session",
+  "session_lineage",
   "account",
   "verification",
   "two_factor",
