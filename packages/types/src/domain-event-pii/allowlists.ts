@@ -197,6 +197,7 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
     "shopOrderId",
     "shopOrderReference",
     "shopCheckoutSessionId",
+    "transferReference",
     "possibleGroup.id",
     "possibleGroup.status",
   ]),
@@ -624,6 +625,14 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
     "reference",
     "payoutId",
     "netToSellerMinor",
+  ]),
+  /** A fixed sentence about the deal's artwork record; no names. */
+  "private_sale_deal.artwork_record_not_updated": new Set([
+    "dealId",
+    "reference",
+    "stage",
+    "reason",
+    "message",
   ]),
   "enquiry_routing.changed": new Set([
     "departmentSlug",

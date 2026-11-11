@@ -22,6 +22,9 @@ function setup(
   const identity = {
     readProfile: vi.fn().mockResolvedValue({ name: "Ada Lovelace" }),
     rename: vi.fn().mockResolvedValue({ ok: true, name: "Ada King" }),
+    readTimeZone: vi.fn().mockResolvedValue({ mode: "automatic", zone: "Europe/Paris" }),
+    setTimeZone: vi.fn().mockResolvedValue({ mode: "fixed", zone: "Australia/Sydney" }),
+    reportDeviceZone: vi.fn().mockResolvedValue({ mode: "automatic", zone: "Asia/Tokyo" }),
     listSessions: vi.fn().mockResolvedValue({
       ok: true,
       sessions: [
@@ -65,9 +68,12 @@ const WRITES: [string, string][] = [
   ["/lax/account-profile/update", "token=t&sid=current&name=Ada%20King"],
   ["/lax/account-sessions/revoke", "token=t&sid=current&session_id=other"],
   ["/lax/account-sessions/revoke-others", "token=t&sid=current"],
+  ["/lax/account-time-zone/update", "token=t&mode=fixed&zone=Australia%2FSydney"],
+  ["/lax/account-time-zone/device", "token=t&zone=Asia%2FTokyo"],
 ];
 const ALL: [string, string][] = [
   ["/lax/account-profile", "token=t"],
+  ["/lax/account-time-zone", "token=t"],
   ["/lax/account-sessions", "token=t&sid=current"],
   ...WRITES,
 ];
@@ -114,6 +120,68 @@ describe("account identity routes", () => {
     const response = await call("/lax/account-profile", "token=t");
     expect(await response.json()).toEqual({ name: "Ada Lovelace" });
     expect(response.headers.get("cache-control")).toBe("no-store");
+  });
+
+  describe("time zone", () => {
+    it("reads the preference for the token's own subject", async () => {
+      const { call, identity } = setup();
+      const response = await call("/lax/account-time-zone", "token=t");
+      expect(await response.json()).toEqual({ mode: "automatic", zone: "Europe/Paris" });
+      expect(identity.readTimeZone).toHaveBeenCalledWith(SUBJECT);
+    });
+
+    it("saves a fixed city for the token's subject", async () => {
+      const { call, identity } = setup();
+      const response = await call(
+        "/lax/account-time-zone/update",
+        `token=t&mode=fixed&zone=Australia%2FSydney&sub=${OTHER_SUBJECT}`,
+      );
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual({ mode: "fixed", zone: "Australia/Sydney" });
+      expect(identity.setTimeZone).toHaveBeenCalledWith(SUBJECT, {
+        mode: "fixed",
+        zone: "Australia/Sydney",
+      });
+    });
+
+    it.each([
+      ["UTC", "mode=fixed&zone=UTC"],
+      ["an Etc zone", "mode=fixed&zone=Etc%2FGMT%2B5"],
+      ["a made-up name", "mode=fixed&zone=Mars%2FOlympus"],
+      ["no zone", "mode=fixed"],
+      ["an unknown mode", "mode=sometimes&zone=Europe%2FParis"],
+      ["no mode", "zone=Europe%2FParis"],
+    ])("refuses %s with invalid_time_zone and saves nothing", async (_name, fields) => {
+      const { call, identity } = setup();
+      const response = await call("/lax/account-time-zone/update", `token=t&${fields}`);
+      expect(response.status).toBe(400);
+      expect(await response.json()).toEqual({ error: "invalid_time_zone" });
+      expect(identity.setTimeZone).not.toHaveBeenCalled();
+    });
+
+    it("goes back to automatic, treating a UTC device reading as no zone", async () => {
+      const { call, identity } = setup();
+      await call("/lax/account-time-zone/update", "token=t&mode=automatic&zone=UTC");
+      expect(identity.setTimeZone).toHaveBeenCalledWith(SUBJECT, {
+        mode: "automatic",
+        deviceZone: null,
+      });
+    });
+
+    it("stores the device's zone and answers with what is stored", async () => {
+      const { call, identity } = setup();
+      const response = await call("/lax/account-time-zone/device", "token=t&zone=Asia%2FTokyo");
+      expect(await response.json()).toEqual({ mode: "automatic", zone: "Asia/Tokyo" });
+      expect(identity.reportDeviceZone).toHaveBeenCalledWith(SUBJECT, "Asia/Tokyo");
+    });
+
+    it("ignores an unusable device zone and still answers with the preference", async () => {
+      const { call, identity } = setup();
+      const response = await call("/lax/account-time-zone/device", "token=t&zone=UTC");
+      expect(response.status).toBe(200);
+      expect(identity.reportDeviceZone).not.toHaveBeenCalled();
+      expect(identity.readTimeZone).toHaveBeenCalledWith(SUBJECT);
+    });
   });
 
   it("lists sessions with only the documented fields", async () => {

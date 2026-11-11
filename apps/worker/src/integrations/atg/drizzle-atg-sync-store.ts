@@ -46,6 +46,7 @@ function toLotLink(row: typeof atgLotLink.$inferSelect): AtgLotLink {
     payloadHash: row.payloadHash,
     lockedFieldsHash: row.lockedFieldsHash,
     numberOfBids: row.numberOfBids ?? 0,
+    sold: row.sold === true,
   };
 }
 

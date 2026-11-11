@@ -46,7 +46,10 @@ import { UserDashboardHttpApplicationService } from "../services/user/user-dashb
 import { UserLotStatesHttpApplicationService } from "../services/user/user-lot-states-http-application.service.js";
 import { UserNotificationsHttpApplicationService } from "../services/user/user-notifications-http-application.service.js";
 import { UserPreferencesHttpApplicationService } from "../services/user/user-preferences-http-application.service.js";
-import { UserProfileHttpApplicationService } from "../services/user/user-profile-http-application.service.js";
+import {
+  UserProfileHttpApplicationService,
+  type UserProfileHttpDeps,
+} from "../services/user/user-profile-http-application.service.js";
 import { UserPublicHttpApplicationService } from "../services/user/user-public-http-application.service.js";
 import { UserSecurityHttpApplicationService } from "../services/user/user-security-http-application.service.js";
 import { UserWatchlistHttpApplicationService } from "../services/user/user-watchlist-http-application.service.js";
@@ -65,6 +68,7 @@ export type CreateUserRouteServicesInput = {
   marketingAttributionEnabled: boolean;
   userService: UserService;
   mediaUrlResolver: IMediaUrlResolver;
+  identityTimeZone: UserProfileHttpDeps["identityTimeZone"];
   conditionReportService: IConditionReportService;
   userDashboardReadService: UserDashboardReadService;
   lotService: LotReadPort;
@@ -166,6 +170,7 @@ export function createUserRouteServices(input: CreateUserRouteServicesInput): Us
       addressService: input.addressService,
       uiPreferenceService: input.uiPreferenceService,
       mediaUrlResolver: input.mediaUrlResolver,
+      identityTimeZone: input.identityTimeZone,
     }),
     accountOnboardingHttp: new UserAccountOnboardingHttpApplicationService({
       onboarding: input.accountOnboardingService,

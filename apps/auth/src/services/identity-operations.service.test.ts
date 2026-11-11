@@ -41,6 +41,9 @@ function createRepositories(): IdentityOperationsRepositories {
       updateProfile: vi
         .fn()
         .mockResolvedValue({ id: "subject", name: "Updated Name", image: "https://cdn/image.jpg" }),
+      readTimeZone: vi.fn().mockResolvedValue({ mode: "automatic", zone: null }),
+      updateTimeZone: vi.fn().mockResolvedValue({ mode: "fixed", zone: "Australia/Sydney" }),
+      updateDeviceZone: vi.fn().mockResolvedValue({ mode: "automatic", zone: "Asia/Tokyo" }),
       markDeletionRequested: vi.fn().mockResolvedValue(true),
       cancelDeletionRequested: vi.fn().mockResolvedValue(true),
       lockForCompensation: vi
@@ -977,6 +980,74 @@ describe("IdentityOperationsService", () => {
     await expect(service.updateSubjectProfile("missing", { name: "Name" })).rejects.toBeInstanceOf(
       IdentityOperationError,
     );
+  });
+
+  describe("time zone", () => {
+    it("saves the choice and publishes mode and zone in the same transaction", async () => {
+      const repositories = createRepositories();
+      const { service, identityEventPublisher } = createService(repositories);
+
+      const saved = await service.setTimeZone("subject", {
+        mode: "fixed",
+        zone: "Australia/Sydney",
+      });
+
+      expect(saved).toEqual({ mode: "fixed", zone: "Australia/Sydney" });
+      expect(repositories.subjects.updateTimeZone).toHaveBeenCalledWith(
+        transaction,
+        "subject",
+        { mode: "fixed", zone: "Australia/Sydney" },
+        now,
+      );
+      expect(identityEventPublisher.publish).toHaveBeenCalledWith(
+        {
+          type: "user.profile_updated",
+          userId: "subject",
+          timeZoneMode: "fixed",
+          timeZone: "Australia/Sydney",
+        },
+        expect.objectContaining({ transaction }),
+      );
+    });
+
+    it("refuses a person who does not exist and sends nothing", async () => {
+      const repositories = createRepositories();
+      vi.mocked(repositories.subjects.updateTimeZone).mockResolvedValue(null);
+      const { service, identityEventPublisher } = createService(repositories);
+
+      await expect(
+        service.setTimeZone("missing", { mode: "automatic", deviceZone: null }),
+      ).rejects.toBeInstanceOf(IdentityOperationError);
+      expect(identityEventPublisher.publish).not.toHaveBeenCalled();
+    });
+
+    it("tells every product when a device reports a new zone", async () => {
+      const repositories = createRepositories();
+      const { service, identityEventPublisher } = createService(repositories);
+
+      expect(await service.reportDeviceZone("subject", "Asia/Tokyo")).toEqual({
+        mode: "automatic",
+        zone: "Asia/Tokyo",
+      });
+      expect(identityEventPublisher.publish).toHaveBeenCalledWith(
+        {
+          type: "user.profile_updated",
+          userId: "subject",
+          timeZoneMode: "automatic",
+          timeZone: "Asia/Tokyo",
+        },
+        expect.objectContaining({ transaction }),
+      );
+    });
+
+    it("sends no event when nothing changed (fixed mode, or the same zone again)", async () => {
+      const repositories = createRepositories();
+      vi.mocked(repositories.subjects.updateDeviceZone).mockResolvedValue(null);
+      const { service, identityEventPublisher } = createService(repositories);
+
+      expect(await service.reportDeviceZone("subject", "Asia/Tokyo")).toBeNull();
+      expect(identityEventPublisher.publish).not.toHaveBeenCalled();
+    });
   });
 
   it("stores a verified phone and publishes it with the profile in one transaction", async () => {

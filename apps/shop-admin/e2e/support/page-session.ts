@@ -1,4 +1,5 @@
 import { type Browser, type BrowserContext, type Page, expect } from "@playwright/test";
+import { signOutContext } from "../../../../scripts/ci/e2e-sign-out.mjs";
 import { ARTWORK_EDITOR_PATH } from "./lax-admin-pages.js";
 import { signInStaffThroughIdentity } from "./staff-sign-in.js";
 
@@ -31,7 +32,7 @@ export function administratorAccount(): StaffAccount | null {
   return { email, password, ...(totpSecret ? { totpSecret } : {}) };
 }
 
-export type StaffSession = { context: BrowserContext; page: Page };
+export type StaffSession = { context: BrowserContext; page: Page; baseURL: string };
 
 /** Signs `account` in, in a fresh browser context with the theme and window size chosen. */
 export async function openStaffSession(input: {
@@ -58,7 +59,23 @@ export async function openStaffSession(input: {
     ...(input.account.totpSecret ? { totpSecret: input.account.totpSecret } : {}),
     returnTo: "/overview",
   });
-  return { context, page };
+  return { context, page, baseURL: input.baseURL };
+}
+
+/**
+ * Signs the staff member out through LAX Admin's own sign-out, so the sign-in service ends the
+ * session, then closes the browser context. A failed sign-out is reported and never fails a spec.
+ */
+export async function closeStaffSession(session: StaffSession): Promise<void> {
+  try {
+    await signOutContext(session.context, { origin: session.baseURL });
+  } catch (error) {
+    console.warn(
+      `[e2e] staff sign-out failed: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  } finally {
+    await session.context.close();
+  }
 }
 
 /** Opens a staff page and waits until it has rendered content rather than an error. */

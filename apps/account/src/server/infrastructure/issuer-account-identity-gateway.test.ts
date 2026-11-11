@@ -539,6 +539,83 @@ describe("createIssuerAccountIdentityGateway", () => {
     });
   });
 
+  describe("time zone", () => {
+    it("reads the preference with only the access token", async () => {
+      const { fetchImpl, gateway: g } = gateway(async () =>
+        Response.json({ mode: "automatic", zone: "Europe/Paris" }),
+      );
+      expect(await g.readTimeZone(actor)).toEqual({ mode: "automatic", zone: "Europe/Paris" });
+      expect(lastRequest(fetchImpl).url).toBe(
+        "https://auth.internal/api/auth/lax/account-time-zone",
+      );
+      expect(Object.fromEntries(lastRequest(fetchImpl).body)).toEqual({ token: "access-token" });
+    });
+
+    it("saves a fixed city and goes back to automatic with the device's zone", async () => {
+      const fixed = gateway(async () => Response.json({ mode: "fixed", zone: "Asia/Tokyo" }));
+      expect(await fixed.gateway.setTimeZone(actor, { mode: "fixed", zone: "Asia/Tokyo" })).toEqual(
+        {
+          status: "ok",
+          value: { mode: "fixed", zone: "Asia/Tokyo" },
+        },
+      );
+      expect(lastRequest(fixed.fetchImpl).url).toContain("/lax/account-time-zone/update");
+      expect(Object.fromEntries(lastRequest(fixed.fetchImpl).body)).toEqual({
+        token: "access-token",
+        mode: "fixed",
+        zone: "Asia/Tokyo",
+      });
+      const automatic = gateway(async () =>
+        Response.json({ mode: "automatic", zone: "Europe/Paris" }),
+      );
+      await automatic.gateway.setTimeZone(actor, { mode: "automatic", deviceZone: "Europe/Paris" });
+      expect(Object.fromEntries(lastRequest(automatic.fetchImpl).body)).toEqual({
+        token: "access-token",
+        mode: "automatic",
+        zone: "Europe/Paris",
+      });
+      await automatic.gateway.setTimeZone(actor, { mode: "automatic", deviceZone: null });
+      expect(Object.fromEntries(lastRequest(automatic.fetchImpl).body)).toEqual({
+        token: "access-token",
+        mode: "automatic",
+      });
+    });
+
+    it("surfaces the issuer's refusal of a zone that names no place", async () => {
+      const { gateway: g } = gateway(async () =>
+        Response.json({ error: "invalid_time_zone" }, { status: 400 }),
+      );
+      expect(await g.setTimeZone(actor, { mode: "fixed", zone: "Asia/Tokyo" })).toEqual({
+        status: "rejected",
+        reason: "invalid_time_zone",
+      });
+    });
+
+    it("reports the device's zone, and reads an unavailable issuer as unknown", async () => {
+      const ok = gateway(async () => Response.json({ mode: "automatic", zone: "Asia/Tokyo" }));
+      expect(await ok.gateway.reportDeviceZone(actor, "Asia/Tokyo")).toEqual({
+        mode: "automatic",
+        zone: "Asia/Tokyo",
+      });
+      expect(lastRequest(ok.fetchImpl).url).toContain("/lax/account-time-zone/device");
+      expect(Object.fromEntries(lastRequest(ok.fetchImpl).body)).toEqual({
+        token: "access-token",
+        zone: "Asia/Tokyo",
+      });
+      const down = gateway(async () => new Response("no", { status: 503 }));
+      expect(await down.gateway.reportDeviceZone(actor, "Asia/Tokyo")).toBeNull();
+      expect(await down.gateway.readTimeZone(actor)).toBeNull();
+    });
+
+    it("treats an answer that is not a preference as unavailable", async () => {
+      const { gateway: g } = gateway(async () => Response.json({ mode: "sometimes", zone: 7 }));
+      expect(await g.readTimeZone(actor)).toBeNull();
+      expect(await g.setTimeZone(actor, { mode: "fixed", zone: "Asia/Tokyo" })).toEqual({
+        status: "unavailable",
+      });
+    });
+  });
+
   describe("deleting the account", () => {
     const STATUS = {
       requestedAt: null,

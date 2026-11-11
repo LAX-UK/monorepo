@@ -1,3 +1,4 @@
+import type { AccountTimeZone, AccountTimeZoneChange } from "@auction/identity-contracts";
 import type { DurableSecurityEffects } from "./durable-security-effects.js";
 import type { IdentityOperationsService } from "./identity-operations.service.js";
 import { RecentSessionGuard } from "./recent-session-guard.js";
@@ -8,6 +9,9 @@ export type AccountIdentityPorts = {
   operations: Pick<
     IdentityOperationsService,
     | "readSubject"
+    | "readTimeZone"
+    | "setTimeZone"
+    | "reportDeviceZone"
     | "updateSubjectProfile"
     | "listSessions"
     | "removeSession"
@@ -70,6 +74,24 @@ export class AccountIdentityService {
   async readProfile(subjectId: string): Promise<{ name: string } | null> {
     const subject = await this.ports.operations.readSubject(subjectId);
     return subject ? { name: subject.name } : null;
+  }
+
+  /** The person's time zone preference, or null when the account no longer exists. */
+  readTimeZone(subjectId: string): Promise<AccountTimeZone | null> {
+    return this.ports.operations.readTimeZone(subjectId);
+  }
+
+  /**
+   * Saves the choice. A time zone is not sensitive, so unlike a rename it needs no recent sign-in:
+   * a person who is signed in changes it as often as they like.
+   */
+  setTimeZone(subjectId: string, change: AccountTimeZoneChange): Promise<AccountTimeZone> {
+    return this.ports.operations.setTimeZone(subjectId, change);
+  }
+
+  /** Records the zone of the device in use; only people who follow their device are affected. */
+  async reportDeviceZone(subjectId: string, deviceZone: string): Promise<AccountTimeZone | null> {
+    return this.ports.operations.reportDeviceZone(subjectId, deviceZone);
   }
 
   async rename(

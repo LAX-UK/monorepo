@@ -1,4 +1,5 @@
 import { type BrowserContext, test as base } from "@playwright/test";
+import { withSignOutAfterEach } from "../../../../scripts/ci/e2e-sign-out.mjs";
 import { formatPageSessionFailure, probePageSession } from "./auth";
 
 const BID_SESSION_COOKIE = /(?:__Host-)?lax-bid-session/;
@@ -12,7 +13,7 @@ async function assertPreparedBidSession(context: BrowserContext, label: string):
 }
 
 /** Fresh Playwright context per test; prepared `.auth` files are read-only inputs. */
-export const test = base.extend({
+export const test = withSignOutAfterEach(base).extend({
   page: async ({ page, storageState }, use) => {
     if (typeof storageState === "string") {
       await assertPreparedBidSession(page.context(), storageState);

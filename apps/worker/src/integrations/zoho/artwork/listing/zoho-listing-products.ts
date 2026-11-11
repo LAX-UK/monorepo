@@ -1,5 +1,6 @@
 import type { CrmBatchUpdate, CrmCoqlQuery, CrmFieldValue } from "../../../crm/crm-gateway.js";
 import { escapeCoqlString } from "../coql.js";
+import { PRODUCT_NOT_FOUND, deletedInZoho } from "../zoho-product-gone.js";
 import { ZOHO_LISTING_FIELDS, type ZohoListingState } from "./zoho-listing-fields.js";
 
 /** Zoho's COQL takes at most 50 values in one `in` list. */
@@ -29,6 +30,7 @@ export const NON_RETRYABLE_CODES = new Set([
   "OAUTH_SCOPE_MISMATCH",
   "ID_INVALID",
   "RECORD_NOT_FOUND",
+  "product_not_found",
 ]);
 
 function text(value: unknown): string | null {
@@ -92,7 +94,7 @@ export class CrmZohoListingProducts implements ZohoListingProducts {
           results.push({ productId: update.productId, ok: true });
           continue;
         }
-        const code = row?.code ?? "EMPTY_RESPONSE";
+        const code = deletedInZoho(row?.code) ? PRODUCT_NOT_FOUND : (row?.code ?? "EMPTY_RESPONSE");
         results.push({
           productId: update.productId,
           ok: false,

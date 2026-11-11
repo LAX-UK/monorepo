@@ -17,6 +17,12 @@ export const bidIdentityDirectory = pgTable(
       mode: "date",
       withTimezone: true,
     }),
+    /** The person's LAX Account time zone choice, copied from the identity profile event. */
+    timeZoneMode: text("time_zone_mode", { enum: ["automatic", "fixed"] })
+      .notNull()
+      .default("automatic"),
+    /** Fixed: the chosen city. Automatic: the device zone last reported, or null. */
+    timeZone: text("time_zone"),
     /** Set while the daily purge is holding this person's deletion; staff see it as work. */
     deletionHeldAt: timestamp("deletion_held_at", { mode: "date", withTimezone: true }),
     deletionHoldReasons: jsonb("deletion_hold_reasons"),

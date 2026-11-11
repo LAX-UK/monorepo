@@ -36,7 +36,12 @@ function setup(options: { link: LotRegisterLink | null; entry?: Partial<ArtworkR
   return { recording, register, journal };
 }
 
-const link: LotRegisterLink = { registerId: "reg-1", status: "scheduled", hasWinner: false };
+const link: LotRegisterLink = {
+  registerId: "reg-1",
+  status: "scheduled",
+  hasWinner: false,
+  soldOnAtg: false,
+};
 
 describe("OfferLockLotLifecycleRecording.recordPublished", () => {
   it("records the lot's publish and the offer on Bid for a linked lot", async () => {
