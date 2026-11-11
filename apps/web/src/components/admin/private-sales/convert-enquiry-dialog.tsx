@@ -57,7 +57,14 @@ export function ConvertEnquiryDialog({
     if (needsWork && !WORK_REFERENCE.test(work.trim())) return;
     setFailure(null);
     setBusy(true);
-    const result = await convert(reference, needsWork ? { workReference: work.trim() } : {});
+    // A deal records its artwork or why it has none. A sell enquiry brings the seller's own work;
+    // a buy enquiry's artwork is linked from the deal until the dialog can pick it.
+    const result = await convert(
+      reference,
+      needsWork
+        ? { workReference: work.trim(), notInRegister: { reason: "in_zoho_not_linked" } }
+        : { notInRegister: { reason: "sellers_own_work" } },
+    );
     setBusy(false);
     if (result.ok && result.data) {
       onOpenChange(false);

@@ -169,14 +169,39 @@ describe("nameDealBuyerAction", () => {
 describe("convertEnquiryAction", () => {
   it("returns the new deal's reference", async () => {
     fetchMock.mockResolvedValue(json({ data: { reference: "PS-0012" } }, 201));
-    const result = await convertEnquiryAction("E-1042", { workReference: "C-1042" });
+    const result = await convertEnquiryAction("E-1042", {
+      workReference: "C-1042",
+      notInRegister: { reason: "in_zoho_not_linked" },
+    });
     expect(result).toEqual({ ok: true, data: { reference: "PS-0012" } });
     expect(sent().path).toBe("/admin/enquiries/E-1042/convert");
+    expect(JSON.parse(sent().init.body ?? "{}")).toEqual({
+      workReference: "C-1042",
+      notInRegister: { reason: "in_zoho_not_linked" },
+    });
+  });
+
+  it("sends an artwork chosen from the register", async () => {
+    fetchMock.mockResolvedValue(json({ data: { reference: "PS-0012" } }, 201));
+    const artworkRegisterId = "5b1c1b9e-3a2f-4f6e-9c1d-2f7a8e9d0c11";
+    await convertEnquiryAction("E-1042", { artworkRegisterId });
+    expect(JSON.parse(sent().init.body ?? "{}")).toEqual({ artworkRegisterId });
+  });
+
+  it("does not send a conversion that names no artwork and no reason", async () => {
+    const result = await convertEnquiryAction("E-1042", { workReference: "C-1042" });
+    expect(result).toMatchObject({
+      ok: false,
+      error: "Choose an artwork from the register, or say why it is not there",
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("explains a refusal in words", async () => {
     fetchMock.mockResolvedValue(json({ error: "account_required" }, 422));
-    expect(await convertEnquiryAction("E-1042", {})).toMatchObject({
+    expect(
+      await convertEnquiryAction("E-1042", { notInRegister: { reason: "sellers_own_work" } }),
+    ).toMatchObject({
       ok: false,
       error: expect.stringContaining("no LAX account yet"),
     });
