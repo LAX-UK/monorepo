@@ -2425,6 +2425,13 @@
       "breakpoints": true
     },
     {
+      "idx": 347,
+      "version": "7",
+      "when": 1805529600000,
+      "tag": "0353_payment_group_refund_state",
+      "breakpoints": true
+    },
+    {
       "idx": 351,
       "version": "7",
       "when": 1805875200000,
