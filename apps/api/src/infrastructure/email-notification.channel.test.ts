@@ -8,7 +8,10 @@ const USER_ID = "2f1c1a1e-7a0e-4c53-9d0b-6f1a2b3c4d5e";
 const LOT_ID = "9b7d0a52-1f43-4b7a-8a55-0c2f6e1d3a90";
 const BASE_URL = "https://test.lax.bid/";
 
-function setup(billingEmail: string | null = null) {
+const CHANGE_ZONE_URL = "https://account.test.lax.bid/account/profile#time-zone";
+const NOW = new Date("2026-11-11T12:00:00Z");
+
+function setup(billingEmail: string | null = null, savedZone: string | null = null) {
   const enqueued: EmailEnqueueInput<TemplateName>[] = [];
   const email: IEmailService = {
     async enqueue(input) {
@@ -30,6 +33,9 @@ function setup(billingEmail: string | null = null) {
       find: async () =>
         billingEmail ? { billingEmail, address: null, poReference: null, updatedAt: null } : null,
     },
+    { zonesFor: async () => new Map(savedZone ? [[USER_ID, savedZone]] : []) },
+    CHANGE_ZONE_URL,
+    () => NOW,
   );
   return { channel, enqueued };
 }
@@ -306,14 +312,105 @@ describe("EmailNotificationChannel watched-lot reminder", () => {
         lotTitle: "Blue Vase",
         kind: "hour_before_close",
         note: "Check the glaze",
-        closesAt: "26 Nov 2026, 18:00",
+        closesAt: { official: "Thu 26 Nov, 18:00 GMT" },
       },
     });
+    expect(enqueued[0]?.vars).not.toHaveProperty("zoneNote");
     const url = new URL((enqueued[0]?.vars as { unsubscribeUrl: string }).unsubscribeUrl);
     const body = JSON.parse(
       Buffer.from(url.searchParams.get("t")?.split(".")[0] ?? "", "base64url").toString(),
     );
     expect(body).toMatchObject({ scope: "type", notificationType: "watchlist_reminder" });
+  });
+});
+
+describe("EmailNotificationChannel times on the recipient's clock", () => {
+  const watched = (): NotificationPayload => ({
+    type: "watchlist_reminder",
+    legalEntityId: null,
+    title: 'Reminder: "Blue Vase"',
+    message: "It closes in about an hour.",
+    lotId: LOT_ID,
+    meta: {
+      lotTitle: "Blue Vase",
+      watchedLotReminder: {
+        kind: "hour_before_close",
+        note: null,
+        // 18:00 in London, 05:00 the next day in Sydney.
+        closesAt: "2026-11-12T18:00:00.000Z",
+      },
+    },
+  });
+  const reminder = (): NotificationPayload => ({
+    type: "payment_reminder",
+    legalEntityId: null,
+    title: "Payment due today",
+    message: "Payment due today",
+    meta: {
+      paymentId: "pay-1",
+      amount: "1250.00",
+      dueDate: "12 November 2026",
+      dueAt: "2026-11-12T23:59:59.999Z",
+      reminderStep: "due_day",
+    },
+  });
+
+  it("shows the sale's clock first and a saved Sydney clock under it, on its own day", async () => {
+    const { channel, enqueued } = setup(null, "Australia/Sydney");
+    await channel.send(USER_ID, watched());
+    expect(enqueued[0]?.vars).toMatchObject({
+      closesAt: { official: "Thu 12 Nov, 18:00 GMT", local: "Fri 13 Nov, 05:00 in Sydney" },
+      zoneNote: { city: "Sydney", changeUrl: CHANGE_ZONE_URL },
+    });
+  });
+
+  it("names no day for a local time on the same day", async () => {
+    const { channel, enqueued } = setup(null, "Africa/Cairo");
+    await channel.send(USER_ID, watched());
+    expect(enqueued[0]?.vars).toMatchObject({
+      closesAt: { official: "Thu 12 Nov, 18:00 GMT", local: "20:00 in Cairo" },
+      zoneNote: { city: "Cairo" },
+    });
+  });
+
+  it("shows official only, and no footer, when the saved zone is London or there is none", async () => {
+    for (const zone of [null, "Europe/London"]) {
+      const { channel, enqueued } = setup(null, zone);
+      await channel.send(USER_ID, watched());
+      expect(enqueued[0]?.vars).toMatchObject({ closesAt: { official: "Thu 12 Nov, 18:00 GMT" } });
+      expect(enqueued[0]?.vars).not.toHaveProperty("zoneNote");
+      expect(JSON.stringify(enqueued[0]?.vars)).not.toContain("local");
+    }
+  });
+
+  it("uses the sale's own zone as the official clock when it has one", async () => {
+    const payload = watched();
+    (payload.meta?.watchedLotReminder as { saleTimeZone?: string }).saleTimeZone =
+      "America/New_York";
+    const { channel, enqueued } = setup(null, "Australia/Sydney");
+    await channel.send(USER_ID, payload);
+    expect(enqueued[0]?.vars).toMatchObject({
+      closesAt: { official: "Thu 12 Nov, 13:00 EST", local: "Fri 13 Nov, 05:00 in Sydney" },
+    });
+  });
+
+  it("shows a payment's due moment as the end of the London day, then the local time", async () => {
+    const { channel, enqueued } = setup(null, "Australia/Sydney");
+    await channel.send(USER_ID, reminder());
+    expect(enqueued[0]?.vars).toMatchObject({
+      dueDate: "12 November 2026",
+      due: { official: "Thu 12 Nov, 23:59 GMT", local: "Fri 13 Nov, 10:59 in Sydney" },
+      zoneNote: { city: "Sydney" },
+    });
+  });
+
+  it("gives the billing inbox official times only: it has no zone of its own", async () => {
+    const { channel, enqueued } = setup("accounts@northbank.example", "Australia/Sydney");
+    await channel.send(USER_ID, { ...reminder(), legalEntityId: ORG_ID });
+    const billing = enqueued.find((message) => message.to === "accounts@northbank.example");
+    expect(billing?.vars).toMatchObject({ due: { official: "Thu 12 Nov, 23:59 GMT" } });
+    expect(billing?.vars).not.toHaveProperty("zoneNote");
+    expect(JSON.stringify(billing?.vars)).not.toContain("Sydney");
   });
 });
 

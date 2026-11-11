@@ -4,6 +4,7 @@ import {
   DrizzleBuyerDefaultRepository,
   DrizzlePaymentReminderStore,
   DrizzlePrivateSaleDealReminderStore,
+  DrizzleRecipientZoneReader,
   createDrizzleLotTransitionRepository,
 } from "@auction/persistence/repositories";
 import type { Env } from "../env.js";
@@ -63,6 +64,7 @@ export function createBuyerDefaultServices(input: {
     jobScheduler: catalog.lotJobScheduler,
   });
 
+  const recipientZones = new DrizzleRecipientZoneReader(db);
   const paymentReminderService = new PaymentReminderService({
     store: new DrizzlePaymentReminderStore(db),
     compliance: payments.settlementCompliancePolicy,
@@ -70,6 +72,7 @@ export function createBuyerDefaultServices(input: {
     factory: platform.notificationFactory,
     recipients: payments.invoiceRecipients,
     eligibility: payments.paymentEligibility,
+    zones: recipientZones,
   });
 
   const dealReminderService = new DealReminderService({
@@ -79,6 +82,7 @@ export function createBuyerDefaultServices(input: {
     factory: platform.notificationFactory,
     recipients: payments.invoiceRecipients,
     eligibility: payments.paymentEligibility,
+    zones: recipientZones,
   });
 
   return {
