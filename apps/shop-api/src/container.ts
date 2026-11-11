@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { AlertRetentionStore } from "@auction/alerts";
+import type { MoneyPauseReader } from "@auction/artwork-register-contracts";
 import { ArtworkOfferLock } from "@auction/artwork-register-contracts";
 import { type Database, closeDb, createDb } from "@auction/db";
 import { issuerJwksUrl } from "@auction/identity-contracts";
@@ -265,6 +266,8 @@ export type ShopApiContainer = {
   alertRetention: AlertRetentionStore;
   /** The finance task store, shared with the scheduler's checkout sweep. */
   unappliedMoney: UnappliedMoneyLookup;
+  /** The money pause, shared with the scheduler's sweep of payment pages for paused artworks. */
+  moneyPause: MoneyPauseReader;
   app: ShopApiAppDeps;
   importArtwork: ReturnType<typeof createImportArtworkHandler>;
   grantStaffRole(input: {
@@ -678,6 +681,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
     db,
     alertRetention: createShopAlertRetentionStore(db),
     unappliedMoney,
+    moneyPause: soldAttentionStore,
     app: {
       env,
       auth: {

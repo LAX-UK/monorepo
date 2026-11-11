@@ -36,7 +36,7 @@ CREATE TABLE IF NOT EXISTS "artwork_register_sold_attention" (
     CHECK ("place" IN ('lax_art', 'bid_sale', 'bid_reoffer', 'private_sale')),
   CONSTRAINT "artwork_register_sold_attention_resolution_check"
     CHECK ("resolution" IS NULL OR "resolution" IN
-      ('zoho_status_changed', 'withdrawn', 'replaced', 'staff_override'))
+      ('zoho_status_changed', 'withdrawn', 'sold_in_lax', 'replaced', 'staff_override'))
 );
 --> statement-breakpoint
 CREATE UNIQUE INDEX IF NOT EXISTS "artwork_register_sold_attention_live_uid"

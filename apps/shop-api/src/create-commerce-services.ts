@@ -140,6 +140,7 @@ export function createCommerceServices(
     paymentGateway,
     domainEventMode,
     unappliedMoney: options.unappliedMoney,
+    moneyPause: createDrizzleCheckoutMoneyPause(db, options.moneyPause),
   });
 
   const fetchPaymentIntentMetadata = createStripePaymentIntentMetadataFetcher({

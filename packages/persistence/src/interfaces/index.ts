@@ -1281,6 +1281,8 @@ export type {
   RaiseSoldAttentionInput,
   ResolveSoldAttentionInput,
   SoldAttentionItem,
+  SoldAttentionLiveCursor,
+  SoldAttentionLiveRef,
   SoldAttentionRecord,
 } from "./artwork-register-sold-attention.js";
 

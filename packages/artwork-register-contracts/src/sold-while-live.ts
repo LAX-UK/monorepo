@@ -53,6 +53,9 @@ export function assessSoldWhileLive(
   const status = soldWhileLiveStatusOf(entry.catalogueStatus);
   const place = PLACE_FOR_STATE[entry.offer.state];
   if (!status || !place) return null;
+  // LAX writes Reserved to Zoho for a private sale itself, so Reserved there is LAX's own value and
+  // says nothing. Only Sold, which LAX never writes for a private sale, is a situation.
+  if (place === "private_sale" && status === "Reserved") return null;
   return { status, place: place === "bid_sale" && options.reoffer ? "bid_reoffer" : place };
 }
 
@@ -140,7 +143,8 @@ export type SoldWhileLiveItemView = {
   state: "open" | "overridden";
 };
 
-export type SoldWhileLiveResolution = "zoho_status_changed" | "withdrawn";
+/** `sold_in_lax`: the artwork has since sold on LAX, so it is no longer for sale anywhere. */
+export type SoldWhileLiveResolution = "zoho_status_changed" | "withdrawn" | "sold_in_lax";
 
 export type SoldWhileLiveDecision =
   | { action: "none" }
@@ -160,13 +164,18 @@ export function decideSoldWhileLive(input: {
   item: SoldWhileLiveItemView | null;
   situation: SoldWhileLiveSituation | null;
   statusNow: string | null | undefined;
+  /** The register's offer state now, to tell an artwork that sold on LAX from one withdrawn. */
+  offerState?: OfferState;
 }): SoldWhileLiveDecision {
   const { item, situation } = input;
   if (!item) return situation ? { action: "raise", situation } : { action: "none" };
   if (!situation) {
+    if (!soldWhileLiveStatusOf(input.statusNow)) {
+      return { action: "resolve", resolution: "zoho_status_changed" };
+    }
     return {
       action: "resolve",
-      resolution: soldWhileLiveStatusOf(input.statusNow) ? "withdrawn" : "zoho_status_changed",
+      resolution: input.offerState === "sold" ? "sold_in_lax" : "withdrawn",
     };
   }
   return item.status === situation.status ? { action: "none" } : { action: "replace", situation };

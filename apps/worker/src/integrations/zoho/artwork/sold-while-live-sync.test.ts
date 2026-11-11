@@ -2,6 +2,7 @@ import type { ArtworkRegisterEntry, OfferState } from "@auction/artwork-register
 import type {
   ISoldAttentionStore,
   RaiseSoldAttentionInput,
+  SoldAttentionLiveCursor,
   SoldAttentionRecord,
 } from "@auction/persistence/interfaces";
 import { describe, expect, it, vi } from "vitest";
@@ -84,8 +85,19 @@ class InMemoryAttention implements ISoldAttentionStore {
   async countOpen() {
     return this.items.filter((i) => i.status === "open").length;
   }
-  async listLiveRegisterIds() {
-    return this.items.filter((i) => i.status !== "resolved").map((i) => i.registerId);
+  replaces = 0;
+  async replace(input: { id: string; now: Date; raise: RaiseSoldAttentionInput }) {
+    this.replaces += 1;
+    const closed = await this.resolve({ id: input.id, resolution: "replaced", now: input.now });
+    const raised = await this.raise(input.raise);
+    return closed && raised.raised;
+  }
+  async listLive(limit: number, after?: SoldAttentionLiveCursor) {
+    return this.items
+      .filter((i) => i.status !== "resolved")
+      .map((i) => ({ id: i.id, registerId: i.registerId, raisedAt: i.raisedAt }))
+      .filter((i) => !after || i.id > after.id)
+      .slice(0, limit);
   }
   async isPaused() {
     return this.items.some((i) => i.status === "open");
@@ -211,6 +223,58 @@ describe("Zoho Sold or Reserved on an artwork that is still for sale", () => {
       ["Sold", "resolved", "replaced"],
       ["Reserved", "open", null],
     ]);
+  });
+
+  it("replaces in one step, never leaving a moment with nothing open", async () => {
+    const t = setup("live", entry("Sold", "lax_art"));
+    await t.notice("notice:1");
+    t.zohoNowSays(entry("Reserved", "lax_art"));
+    await t.notice("notice:2");
+    expect(t.attention.replaces).toBe(1);
+    expect(await t.attention.isPaused()).toBe(true);
+  });
+
+  it("does not raise an item or pause money for LAX's own Reserved on a private sale", async () => {
+    const t = setup("live", entry("Reserved", "private_sale"));
+    await t.notice("notice:1");
+    await t.nightly();
+    expect(t.attention.items).toEqual([]);
+    expect(await t.attention.isPaused()).toBe(false);
+  });
+
+  it("still raises for Zoho saying Sold on a private sale", async () => {
+    const t = setup("live", entry("Sold", "private_sale"));
+    await t.notice("notice:1");
+    expect(t.attention.items).toHaveLength(1);
+  });
+
+  it("closes an item as sold in LAX when the artwork then sells on LAX", async () => {
+    const t = setup("live", entry("Sold", "lax_art"));
+    await t.notice("notice:1");
+    t.zohoNowSays(entry("Sold", "sold"));
+    await t.nightly();
+    expect(t.attention.items[0]).toMatchObject({ status: "resolved", resolution: "sold_in_lax" });
+  });
+
+  it("sweeps past the first page of live items", async () => {
+    const attention = new InMemoryAttention();
+    const held = entry("Available", "lax_art");
+    for (let n = 1; n <= 5; n += 1) {
+      await attention.raise({
+        registerId: `reg-${n}`,
+        zohoProductId: `p-${n}`,
+        zohoStatus: "Sold",
+        place: "lax_art",
+        placeRefId: null,
+        markedAt: MARKED,
+        now: NOW,
+      });
+    }
+    const monitor = new SoldWhileLiveMonitor(attention, {
+      findById: vi.fn(async (id: string) => ({ ...held, id })),
+    } as never);
+    expect(await monitor.sweep(NOW, 2)).toBe(5);
+    expect(attention.items.every((i) => i.status === "resolved")).toBe(true);
   });
 
   it("does not fail the Product when the check cannot run", async () => {

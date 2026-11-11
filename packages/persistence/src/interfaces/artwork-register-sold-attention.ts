@@ -42,6 +42,11 @@ export type ResolveSoldAttentionInput = {
   now: Date;
 };
 
+/** Where the next page of live items starts: after this one, by when it was raised, then id. */
+export type SoldAttentionLiveCursor = { raisedAt: Date; id: string };
+
+export type SoldAttentionLiveRef = { id: string; registerId: string; raisedAt: Date };
+
 export type OverrideSoldAttentionResult =
   | { ok: true; item: SoldAttentionRecord }
   | { ok: false; reason: "not_found" | "not_open" };
@@ -51,10 +56,15 @@ export type OverrideSoldAttentionResult =
  * artwork's history entry together, so the record never shows one without the other.
  */
 export interface ISoldAttentionStore extends MoneyPauseReader {
-  /** The item that is open or kept by an override for this artwork, or null. */
+  /** The item that is open or kept by an override for this artwork (the newest if two), or null. */
   findLive(registerId: string): Promise<SoldAttentionRecord | null>;
   /** Raises the item; a second call for the same artwork and status changes nothing. */
   raise(input: RaiseSoldAttentionInput): Promise<{ raised: boolean }>;
+  /**
+   * Closes the live item as replaced and raises the new one in one transaction, so there is no
+   * moment with nothing open (and no pause) between the two. False when the item was no longer live.
+   */
+  replace(input: { id: string; now: Date; raise: RaiseSoldAttentionInput }): Promise<boolean>;
   /** Closes an item the situation has ended for. Safe to repeat. */
   resolve(input: ResolveSoldAttentionInput): Promise<boolean>;
   /** "It is not sold": clears the pause and keeps the reason in the artwork's history. */
@@ -68,6 +78,9 @@ export interface ISoldAttentionStore extends MoneyPauseReader {
   /** Open items, oldest first, with their artworks. */
   listOpen(limit: number): Promise<SoldAttentionItem[]>;
   countOpen(): Promise<number>;
-  /** Every item still held (open or overridden), for the nightly check that closes finished ones. */
-  listLiveRegisterIds(limit: number): Promise<string[]>;
+  /**
+   * Items still held (open or overridden), oldest first, for the nightly check that closes finished
+   * ones. Pass the last item's cursor to read the next page; a page shorter than `limit` is the last.
+   */
+  listLive(limit: number, after?: SoldAttentionLiveCursor): Promise<SoldAttentionLiveRef[]>;
 }

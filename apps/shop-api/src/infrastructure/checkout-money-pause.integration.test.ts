@@ -1,6 +1,7 @@
 import type { RegisterLink } from "@auction/artwork-register-contracts";
-import { shopOrder } from "@auction/db/schema";
-import { eq } from "drizzle-orm";
+import { domainEvent, shopFulfilment, shopOrder } from "@auction/db/schema";
+import { DrizzleUnappliedMoneyReader } from "@auction/persistence/repositories";
+import { and, eq, sql } from "drizzle-orm";
 import type pg from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createDeliveryQuoteAcceptanceService } from "../application/delivery-quote-acceptance/delivery-quote-acceptance.service.js";
@@ -21,9 +22,12 @@ import {
 } from "../test-support/shop-integration-setup.js";
 import { createDrizzleCheckoutMoneyPause } from "./drizzle-checkout-money-pause.js";
 import { createDrizzleCommerceRepository } from "./drizzle-commerce.repository.js";
+import { completeShopCheckoutSession } from "./drizzle-payment-event.processor.js";
+import { expirePausedShopCheckouts } from "./shop-checkout-money-pause-sweep.js";
 
 function recordingGateway() {
   const created: string[] = [];
+  const expired: string[] = [];
   const gateway: PaymentCheckoutGateway = {
     async createHostedCheckout(input) {
       const sessionId = `cs_test_${input.orderId}_${created.length + 1}`;
@@ -38,11 +42,12 @@ function recordingGateway() {
       return { checkoutUrl: `https://pay.example.test/${input.sessionId}` };
     },
     retrievePaidCheckout: async () => null,
-    async expireHostedCheckout() {
+    async expireHostedCheckout(input) {
+      expired.push(input.sessionId);
       return { kind: "expired" };
     },
   };
-  return { gateway, created };
+  return { gateway, created, expired };
 }
 
 const PAUSED_MESSAGE = "This artwork is no longer available to buy online.";
@@ -77,10 +82,11 @@ describe.skipIf(!hasShopIntegrationDb)("checkout money pause, on every payment p
         "zohoProductId" in link && paused.has(link.zohoProductId),
     };
     const recording = recordingGateway();
+    const guard = createDrizzleCheckoutMoneyPause(db, pause);
     const repo = createDrizzleCommerceRepository(db, recording.gateway, {
       storefrontUrl: "http://localhost:3020",
       domainEventMode: "off",
-      moneyPause: createDrizzleCheckoutMoneyPause(db, pause),
+      moneyPause: guard,
     });
     const subject = `subject-${suffix}`;
     const basket = await repo.addOrUpdateLine({
@@ -113,7 +119,7 @@ describe.skipIf(!hasShopIntegrationDb)("checkout money pause, on every payment p
         successUrl: "http://localhost:3020/checkout/confirmation?orderId={ORDER_ID}",
         cancelUrl: "http://localhost:3020/checkout/cancel?orderId={ORDER_ID}",
       });
-    return { db, repo, recording, request, pauseNow, resumeNow, resume, subject };
+    return { db, repo, recording, request, pauseNow, resumeNow, resume, subject, guard };
   }
 
   const refused = { message: PAUSED_MESSAGE, statusCode: 409 };
@@ -219,5 +225,98 @@ describe.skipIf(!hasShopIntegrationDb)("checkout money pause, on every payment p
     t.pauseNow();
     const order = await t.repo.createCheckoutOrder(t.request());
     await expect(t.resume(order.orderId)).resolves.toMatchObject({ orderId: order.orderId });
+  });
+
+  describe("a payment page opened before the artwork was paused", () => {
+    const orderRow = async (t: { db: ReturnType<typeof createShopDb> }, orderId: string) => {
+      const [row] = await t.db.select().from(shopOrder).where(eq(shopOrder.id, orderId));
+      if (!row) throw new Error("order missing");
+      return row;
+    };
+
+    it("is expired when the item is raised: Stripe is asked to end it and the order expires", async () => {
+      const t = await setup("pause-sweep");
+      const order = await t.repo.createCheckoutOrder(t.request());
+      const sessionId = (await orderRow(t, order.orderId)).stripeCheckoutSessionId;
+      expect(sessionId).toBeTruthy();
+      const options = { paymentGateway: t.recording.gateway, domainEventMode: "off" as const };
+
+      // Not paused yet: the sweep leaves the order and its page alone.
+      await expirePausedShopCheckouts(t.db, t.guard, options);
+      expect(t.recording.expired).toEqual([]);
+      expect((await orderRow(t, order.orderId)).status).toBe("pending_payment");
+
+      t.pauseNow();
+      await expirePausedShopCheckouts(t.db, t.guard, options);
+      expect(t.recording.expired).toEqual([sessionId]);
+      expect((await orderRow(t, order.orderId)).status).toBe("expired");
+
+      // Repeating it changes nothing.
+      await expirePausedShopCheckouts(t.db, t.guard, options);
+      expect(t.recording.expired).toEqual([sessionId]);
+    });
+
+    const paymentFor = (orderId: string, sessionId: string, totalPence: number) => ({
+      eventId: `evt_paused_${orderId}`,
+      orderId,
+      sessionId,
+      amountTotalPence: totalPence,
+      paidAt: new Date(),
+      paymentIntentId: `pi_paused_${orderId}`,
+    });
+
+    it("if paid anyway, is not fulfilled: it goes to finance and the order is closed", async () => {
+      const t = await setup("pause-backstop");
+      const order = await t.repo.createCheckoutOrder(t.request());
+      const row = await orderRow(t, order.orderId);
+      const options = {
+        domainEventMode: "enforce" as const,
+        unappliedMoney: new DrizzleUnappliedMoneyReader(t.db),
+        moneyPause: t.guard,
+      };
+      t.pauseNow();
+      const paid = paymentFor(order.orderId, row.stripeCheckoutSessionId ?? "", row.totalPence);
+
+      expect(await completeShopCheckoutSession(t.db, paid, options)).toBe("unapplied_recorded");
+
+      const after = await orderRow(t, order.orderId);
+      expect(after.status).toBe("payment_failed");
+      expect(after.paidAt).toBeNull();
+      const fulfilments = await t.db
+        .select()
+        .from(shopFulfilment)
+        .where(eq(shopFulfilment.orderId, order.orderId));
+      expect(fulfilments).toEqual([]);
+      const tasks = await t.db
+        .select()
+        .from(domainEvent)
+        .where(
+          and(
+            eq(domainEvent.eventType, "payment.unapplied_money_received"),
+            sql`${domainEvent.payload}->>'shopOrderId' = ${order.orderId}`,
+          ),
+        );
+      expect(tasks).toHaveLength(1);
+      expect(tasks[0]?.payload).toMatchObject({
+        reason: "shop_order_paid_while_paused",
+        shopOrderId: order.orderId,
+        amountCents: row.totalPence,
+        stripePaymentIntentId: `pi_paused_${order.orderId}`,
+      });
+    });
+
+    it("is applied as usual when the artwork is not paused", async () => {
+      const t = await setup("pause-backstop-clear");
+      const order = await t.repo.createCheckoutOrder(t.request());
+      const row = await orderRow(t, order.orderId);
+      const options = {
+        domainEventMode: "enforce" as const,
+        unappliedMoney: new DrizzleUnappliedMoneyReader(t.db),
+        moneyPause: t.guard,
+      };
+      const paid = paymentFor(order.orderId, row.stripeCheckoutSessionId ?? "", row.totalPence);
+      expect(await completeShopCheckoutSession(t.db, paid, options)).toBe("processed");
+      expect((await orderRow(t, order.orderId)).status).toBe("paid");
+    });
   });
 });

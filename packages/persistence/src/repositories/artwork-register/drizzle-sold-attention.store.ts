@@ -4,17 +4,21 @@ import {
   artworkRegisterSoldAttention as attention,
   artworkRegister as register,
 } from "@auction/db/schema";
-import { and, asc, count, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, gt, inArray, or, sql } from "drizzle-orm";
 import type {
   ISoldAttentionStore,
   OverrideSoldAttentionResult,
   RaiseSoldAttentionInput,
   ResolveSoldAttentionInput,
   SoldAttentionItem,
+  SoldAttentionLiveCursor,
+  SoldAttentionLiveRef,
   SoldAttentionRecord,
 } from "../../interfaces/artwork-register-sold-attention.js";
 import { toEntry } from "./artwork-register.mapper.js";
 import { appendRegisterEvent } from "./register-event-writer.js";
+
+type Tx = Parameters<Parameters<Database["transaction"]>[0]>[0];
 
 const SYSTEM_ACTOR = "zoho";
 const LIVE = ["open", "overridden"] as const;
@@ -31,69 +35,91 @@ export class DrizzleSoldAttentionStore implements ISoldAttentionStore {
       .select()
       .from(attention)
       .where(and(eq(attention.registerId, registerId), inArray(attention.status, [...LIVE])))
+      // One live item per status is allowed, so after a race there can be two: the newest decides.
+      .orderBy(desc(attention.raisedAt), desc(attention.id))
       .limit(1);
     return row ? toRecord(row) : null;
   }
 
   async raise(input: RaiseSoldAttentionInput): Promise<{ raised: boolean }> {
-    return this.db.transaction(async (tx) => {
-      const [created] = await tx
-        .insert(attention)
-        .values({
-          registerId: input.registerId,
-          zohoProductId: input.zohoProductId,
-          zohoStatus: input.zohoStatus,
-          place: input.place,
-          placeRefId: input.placeRefId,
-          markedAt: input.markedAt,
-          raisedAt: input.now,
-        })
-        .onConflictDoNothing()
-        .returning({ id: attention.id });
-      if (!created) return { raised: false };
-      await appendRegisterEvent(tx, {
-        registerId: input.registerId,
-        type: "sold_while_live_raised",
-        actor: SYSTEM_ACTOR,
-        now: input.now,
-        payload: {
-          attentionId: created.id,
-          status: input.zohoStatus,
-          place: input.place,
-          placeRefId: input.placeRefId,
-          markedAt: input.markedAt.toISOString(),
-        },
-      });
-      return { raised: true };
-    });
+    return this.db.transaction((tx) => this.raiseIn(tx, input));
   }
 
   async resolve(input: ResolveSoldAttentionInput): Promise<boolean> {
+    return this.db.transaction((tx) => this.resolveIn(tx, input));
+  }
+
+  async replace(input: {
+    id: string;
+    now: Date;
+    raise: RaiseSoldAttentionInput;
+  }): Promise<boolean> {
     return this.db.transaction(async (tx) => {
-      const [closed] = await tx
-        .update(attention)
-        .set({
-          status: "resolved",
-          resolution: input.resolution,
-          resolvedBy: SYSTEM_ACTOR,
-          resolvedAt: input.now,
-        })
-        .where(and(eq(attention.id, input.id), inArray(attention.status, [...LIVE])))
-        .returning({ registerId: attention.registerId, zohoStatus: attention.zohoStatus });
-      if (!closed) return false;
-      await appendRegisterEvent(tx, {
-        registerId: closed.registerId,
-        type: "sold_while_live_resolved",
-        actor: SYSTEM_ACTOR,
+      const closed = await this.resolveIn(tx, {
+        id: input.id,
+        resolution: "replaced",
         now: input.now,
-        payload: {
-          attentionId: input.id,
-          status: closed.zohoStatus,
-          resolution: input.resolution,
-        },
       });
-      return true;
+      const raised = await this.raiseIn(tx, input.raise);
+      return closed && raised.raised;
     });
+  }
+
+  private async raiseIn(tx: Tx, input: RaiseSoldAttentionInput): Promise<{ raised: boolean }> {
+    const [created] = await tx
+      .insert(attention)
+      .values({
+        registerId: input.registerId,
+        zohoProductId: input.zohoProductId,
+        zohoStatus: input.zohoStatus,
+        place: input.place,
+        placeRefId: input.placeRefId,
+        markedAt: input.markedAt,
+        raisedAt: input.now,
+      })
+      .onConflictDoNothing()
+      .returning({ id: attention.id });
+    if (!created) return { raised: false };
+    await appendRegisterEvent(tx, {
+      registerId: input.registerId,
+      type: "sold_while_live_raised",
+      actor: SYSTEM_ACTOR,
+      now: input.now,
+      payload: {
+        attentionId: created.id,
+        status: input.zohoStatus,
+        place: input.place,
+        placeRefId: input.placeRefId,
+        markedAt: input.markedAt.toISOString(),
+      },
+    });
+    return { raised: true };
+  }
+
+  private async resolveIn(tx: Tx, input: ResolveSoldAttentionInput): Promise<boolean> {
+    const [closed] = await tx
+      .update(attention)
+      .set({
+        status: "resolved",
+        resolution: input.resolution,
+        resolvedBy: SYSTEM_ACTOR,
+        resolvedAt: input.now,
+      })
+      .where(and(eq(attention.id, input.id), inArray(attention.status, [...LIVE])))
+      .returning({ registerId: attention.registerId, zohoStatus: attention.zohoStatus });
+    if (!closed) return false;
+    await appendRegisterEvent(tx, {
+      registerId: closed.registerId,
+      type: "sold_while_live_resolved",
+      actor: SYSTEM_ACTOR,
+      now: input.now,
+      payload: {
+        attentionId: input.id,
+        status: closed.zohoStatus,
+        resolution: input.resolution,
+      },
+    });
+    return true;
   }
 
   async override(input: {
@@ -152,14 +178,23 @@ export class DrizzleSoldAttentionStore implements ISoldAttentionStore {
     return row?.total ?? 0;
   }
 
-  async listLiveRegisterIds(limit: number): Promise<string[]> {
-    const rows = await this.db
-      .select({ registerId: attention.registerId })
+  async listLive(limit: number, after?: SoldAttentionLiveCursor): Promise<SoldAttentionLiveRef[]> {
+    return this.db
+      .select({ id: attention.id, registerId: attention.registerId, raisedAt: attention.raisedAt })
       .from(attention)
-      .where(inArray(attention.status, [...LIVE]))
-      .orderBy(asc(attention.raisedAt))
+      .where(
+        and(
+          inArray(attention.status, [...LIVE]),
+          after
+            ? or(
+                gt(attention.raisedAt, after.raisedAt),
+                and(eq(attention.raisedAt, after.raisedAt), gt(attention.id, after.id)),
+              )
+            : undefined,
+        ),
+      )
+      .orderBy(asc(attention.raisedAt), asc(attention.id))
       .limit(limit);
-    return rows.map((row) => row.registerId);
   }
 
   async isPaused(link: RegisterLink): Promise<boolean> {

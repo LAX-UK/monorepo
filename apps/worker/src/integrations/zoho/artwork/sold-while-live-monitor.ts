@@ -3,7 +3,12 @@ import {
   assessSoldWhileLive,
   decideSoldWhileLive,
 } from "@auction/artwork-register-contracts";
-import type { IArtworkRegisterReader, ISoldAttentionStore } from "@auction/persistence/interfaces";
+import type {
+  IArtworkRegisterReader,
+  ISoldAttentionStore,
+  RaiseSoldAttentionInput,
+  SoldAttentionLiveCursor,
+} from "@auction/persistence/interfaces";
 
 export type SoldWhileLiveOutcome = "none" | "raised" | "resolved" | "replaced";
 
@@ -34,6 +39,7 @@ export class SoldWhileLiveMonitor implements SoldWhileLiveReconciler {
       item: live ? { status: live.zohoStatus, state: live.status as "open" | "overridden" } : null,
       situation: assessSoldWhileLive(entry),
       statusNow: entry.catalogueStatus,
+      offerState: entry.offer.state,
     });
     switch (decision.action) {
       case "none":
@@ -44,36 +50,55 @@ export class SoldWhileLiveMonitor implements SoldWhileLiveReconciler {
           ? "resolved"
           : "none";
       case "raise":
-        return (await this.raise(entry, decision.situation, now)) ? "raised" : "none";
+        return (await this.attention.raise(raiseInput(entry, decision.situation, now))).raised
+          ? "raised"
+          : "none";
       case "replace":
-        if (live) await this.attention.resolve({ id: live.id, resolution: "replaced", now });
-        return (await this.raise(entry, decision.situation, now)) ? "replaced" : "none";
+        // One transaction, so no moment has nothing open and money unpaused between the two items.
+        if (live) {
+          return (await this.attention.replace({
+            id: live.id,
+            now,
+            raise: raiseInput(entry, decision.situation, now),
+          }))
+            ? "replaced"
+            : "none";
+        }
+        return (await this.attention.raise(raiseInput(entry, decision.situation, now))).raised
+          ? "replaced"
+          : "none";
     }
   }
 
+  /** Pages through every live item, so a backlog of more than one page is still looked at. */
   async sweep(now: Date, limit = SWEEP_LIMIT): Promise<number> {
     let closed = 0;
-    for (const registerId of await this.attention.listLiveRegisterIds(limit)) {
-      const entry = await this.register.findById(registerId);
-      if (entry && (await this.reconcile(entry, now)) === "resolved") closed += 1;
+    let after: SoldAttentionLiveCursor | undefined;
+    for (;;) {
+      const page = await this.attention.listLive(limit, after);
+      for (const ref of page) {
+        const entry = await this.register.findById(ref.registerId);
+        if (entry && (await this.reconcile(entry, now)) === "resolved") closed += 1;
+      }
+      const last = page.at(-1);
+      if (!last || page.length < limit) return closed;
+      after = { raisedAt: last.raisedAt, id: last.id };
     }
-    return closed;
   }
+}
 
-  private async raise(
-    entry: ArtworkRegisterEntry,
-    situation: NonNullable<ReturnType<typeof assessSoldWhileLive>>,
-    now: Date,
-  ): Promise<boolean> {
-    const result = await this.attention.raise({
-      registerId: entry.id,
-      zohoProductId: entry.zohoProductId,
-      zohoStatus: situation.status,
-      place: situation.place,
-      placeRefId: entry.offer.ref?.id ?? null,
-      markedAt: entry.zohoModifiedAt ?? now,
-      now,
-    });
-    return result.raised;
-  }
+function raiseInput(
+  entry: ArtworkRegisterEntry,
+  situation: NonNullable<ReturnType<typeof assessSoldWhileLive>>,
+  now: Date,
+): RaiseSoldAttentionInput {
+  return {
+    registerId: entry.id,
+    zohoProductId: entry.zohoProductId,
+    zohoStatus: situation.status,
+    place: situation.place,
+    placeRefId: entry.offer.ref?.id ?? null,
+    markedAt: entry.zohoModifiedAt ?? now,
+    now,
+  };
 }

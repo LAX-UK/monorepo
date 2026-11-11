@@ -166,7 +166,7 @@ export const artworkRegisterSoldAttention = pgTable(
     markedAt: timestamp("marked_at", { mode: "date", withTimezone: true }).notNull(),
     status: text("status").$type<"open" | "overridden" | "resolved">().notNull().default("open"),
     resolution: text("resolution").$type<
-      "zoho_status_changed" | "withdrawn" | "replaced" | "staff_override"
+      "zoho_status_changed" | "withdrawn" | "sold_in_lax" | "replaced" | "staff_override"
     >(),
     resolvedBy: text("resolved_by"),
     overrideReason: text("override_reason"),

@@ -35,6 +35,18 @@ describe("assessSoldWhileLive", () => {
     });
   });
 
+  it("ignores Reserved for a private sale: that is the value LAX writes itself", () => {
+    expect(assessSoldWhileLive(entry("Reserved", "private_sale"))).toBeNull();
+    expect(assessSoldWhileLive(entry("reserved", "private_sale"))).toBeNull();
+  });
+
+  it("still counts Reserved on lax.art and in a bid sale", () => {
+    expect(assessSoldWhileLive(entry("Reserved", "bid_sale"))).toEqual({
+      status: "Reserved",
+      place: "bid_sale",
+    });
+  });
+
   it.each(["held", "withdrawn", "sold"] as const)("is nothing when the offer is %s", (state) => {
     expect(assessSoldWhileLive(entry("Sold", state))).toBeNull();
   });
@@ -129,6 +141,17 @@ describe("decideSoldWhileLive", () => {
         statusNow: "Available",
       }),
     ).toEqual({ action: "resolve", resolution: "zoho_status_changed" });
+  });
+
+  it("resolves as sold in LAX when Zoho says Sold and the artwork then sold on LAX", () => {
+    expect(
+      decideSoldWhileLive({
+        item: { status: "Sold", state: "open" },
+        situation: null,
+        statusNow: "Sold",
+        offerState: "sold",
+      }),
+    ).toEqual({ action: "resolve", resolution: "sold_in_lax" });
   });
 
   it("resolves as withdrawn when Zoho still says Sold but the listing is gone", () => {

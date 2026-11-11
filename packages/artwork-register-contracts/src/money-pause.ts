@@ -34,8 +34,14 @@ export class ArtworkMoneyPausedError extends Error {
 
 /**
  * Throws `ArtworkMoneyPausedError` when new money for this artwork is paused. An artwork with no
- * register link is not governed, as with the offer lock. The re-offer API calls this before it
- * sends an offer to the next bidder and before it accepts one.
+ * register link is not governed, as with the offer lock.
+ *
+ * Wired today: lax.art checkout (create, replay, resume) and the payment-completed processor, which
+ * routes a payment taken while paused to finance instead of fulfilling it. NOT wired yet: the
+ * re-offer endpoints do not exist (only the domain does). When the re-offer service lands, it MUST
+ * call this with "reoffer_send" before it sends an offer to the next bidder and with
+ * "reoffer_accept" before it accepts one. This is tracked as follow-up work, and the contract test
+ * in `money-pause.reoffer-contract.test.ts` fails if such a service appears without the call.
  */
 export async function assertMoneyNotPaused(
   pause: MoneyPauseReader,
