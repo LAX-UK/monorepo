@@ -28,7 +28,9 @@ export const DEAL_ERROR_COPY: Readonly<Record<string, string>> = {
   artwork_not_found: "The artwork register has no artwork with that id.",
   artwork_not_original: "Only an original artwork can be sold privately.",
   artwork_unavailable: "This artwork is already offered somewhere else, reserved or sold.",
-  artwork_register_busy: "The artwork's record is busy. Try again.",
+  artwork_register_busy:
+    "The artwork register couldn't record the hold, so nothing was converted. Try again.",
+  artwork_choice_required: "Choose the artwork from the register, or say why it isn't there.",
   work_has_no_seller_contact: "That work has no one who can act for its owner yet.",
 };
 
