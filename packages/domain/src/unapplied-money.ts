@@ -203,3 +203,28 @@ export function misappliedTransferText(
   const quoted = money.transferReference ? ` (reference ${money.transferReference})` : "";
   return `A bank transfer sent with ${intended}'s payment reference${quoted} was applied to ${received}. The money is not lost, but it is recorded against the wrong invoice. Check both invoices and move the payment if needed.`;
 }
+
+/** What the work inbox shows for an open task: its title and the line that says what to check. */
+export function unappliedMoneyWorkItemWording(
+  money: Pick<
+    UnappliedMoney,
+    | "reason"
+    | "possibleGroup"
+    | "paymentId"
+    | "paymentGroupId"
+    | "intendedPaymentId"
+    | "intendedPaymentGroupId"
+    | "transferReference"
+  >,
+): { title: string; hint: string | null } {
+  if (money.reason === "transfer_applied_to_other_invoice") {
+    return {
+      title: "Bank transfer applied to another invoice",
+      hint: misappliedTransferText(money),
+    };
+  }
+  return {
+    title: "Money received that could not be applied",
+    hint: possibleSourceText(money.possibleGroup ?? null),
+  };
+}

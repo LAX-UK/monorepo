@@ -13,8 +13,18 @@ describe.skipIf(!HAS_DB)("payment transfer reference store (integration)", () =>
   const store = new DrizzlePaymentTransferReferenceRepository(db);
   const run = randomUUID().slice(0, 8);
   const intent = `pi_ptr_${run}`;
+  const customer = `cus_ptr_${run}`;
   const reference = `REF-${run}`.toUpperCase();
   const paymentId = randomUUID();
+  const record = {
+    stripePaymentIntentId: intent,
+    reference,
+    stripeCustomerId: customer,
+    paymentId,
+    paymentGroupId: null,
+    privateSaleDealId: null,
+    privateSaleDealPaymentId: null,
+  };
 
   afterAll(async () => {
     await db
@@ -23,30 +33,14 @@ describe.skipIf(!HAS_DB)("payment transfer reference store (integration)", () =>
   });
 
   it("records a reference once: recording it again changes nothing", async () => {
-    await store.remember({
-      stripePaymentIntentId: intent,
-      reference,
-      paymentId,
-      paymentGroupId: null,
-    });
-    await store.remember({
-      stripePaymentIntentId: intent,
-      reference: "SOMETHING-ELSE",
-      paymentId: null,
-      paymentGroupId: randomUUID(),
-    });
-    expect(await store.findByPaymentIntent(intent)).toEqual({
-      stripePaymentIntentId: intent,
-      reference,
-      paymentId,
-      paymentGroupId: null,
-    });
+    await store.remember(record);
+    await store.remember({ ...record, reference: "SOMETHING-ELSE", paymentId: null });
+    expect(await store.findByPaymentIntent(intent)).toEqual(record);
   });
 
-  it("finds the payment a reference was issued for, without regard to case", async () => {
-    const found = await store.findByReference(` ${reference.toLowerCase()} `);
-    expect(found).toMatchObject({ stripePaymentIntentId: intent, paymentId });
-    expect(await store.findByReference("REF-UNKNOWN")).toBeNull();
+  it("lists only one buyer's references", async () => {
+    expect(await store.listForCustomer(customer, 10)).toEqual([record]);
+    expect(await store.listForCustomer("cus_someone_else", 10)).toEqual([]);
     expect(await store.findByPaymentIntent("pi_unknown")).toBeNull();
   });
 });

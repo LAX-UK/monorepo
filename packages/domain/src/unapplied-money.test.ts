@@ -6,6 +6,7 @@ import {
   unappliedMoneyAggregate,
   unappliedMoneyDedupeKey,
   unappliedMoneyPayload,
+  unappliedMoneyWorkItemWording,
 } from "./unapplied-money.js";
 
 const base: UnappliedMoney = {
@@ -151,5 +152,32 @@ describe("misappliedTransferText", () => {
     expect(text).toContain(
       "sent with another invoice's payment reference was applied to combined payment PG-CCCCCCCC.",
     );
+  });
+});
+
+describe("unappliedMoneyWorkItemWording", () => {
+  it("titles a misapplied transfer by what happened and hints at both invoices", () => {
+    const wording = unappliedMoneyWorkItemWording({
+      reason: "transfer_applied_to_other_invoice",
+      paymentId: "aaaaaaaa-0000-4000-8000-000000000000",
+      paymentGroupId: null,
+      intendedPaymentId: "bbbbbbbb-0000-4000-8000-000000000000",
+      intendedPaymentGroupId: null,
+      transferReference: "REF-1",
+    });
+    expect(wording.title).toBe("Bank transfer applied to another invoice");
+    expect(wording.hint).toContain("PAY-BBBBBBBB");
+    expect(wording.hint).toContain("PAY-AAAAAAAA");
+  });
+
+  it("keeps the general title and the possible-source hint for other money", () => {
+    expect(
+      unappliedMoneyWorkItemWording({
+        reason: "customer_balance_unapplied",
+        paymentId: null,
+        paymentGroupId: null,
+        possibleGroup: null,
+      }),
+    ).toEqual({ title: "Money received that could not be applied", hint: null });
   });
 });

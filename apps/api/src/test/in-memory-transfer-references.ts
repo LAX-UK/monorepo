@@ -19,8 +19,10 @@ export class InMemoryTransferReferences implements IPaymentTransferReferenceStor
     return this.rows.get(id) ?? null;
   }
 
-  async findByReference(reference: string): Promise<TransferReferenceRecord | null> {
-    const wanted = reference.trim().toUpperCase();
-    return [...this.rows.values()].find((r) => r.reference.toUpperCase() === wanted) ?? null;
+  async listForCustomer(customerId: string, limit: number): Promise<TransferReferenceRecord[]> {
+    return [...this.rows.values()]
+      .filter((r) => r.stripeCustomerId === customerId)
+      .reverse()
+      .slice(0, limit);
   }
 }

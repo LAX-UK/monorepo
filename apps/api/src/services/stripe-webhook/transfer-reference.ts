@@ -1,34 +1,48 @@
+import type { IErrorReporter } from "@auction/finance-runtime";
 import type { IPaymentTransferReferenceStore } from "@auction/persistence/interfaces";
 import type Stripe from "stripe";
+import { type PaymentTransferDetails, transferDetailsOf } from "../stripe/transfer-intent.js";
 import type { IPaymentIntentWebhookHandler } from "./payment-intent-webhook-handler.js";
 import type { PaymentWebhookResult } from "./payment-webhook-types.js";
 
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const uuidOrNull = (value: string | undefined): string | null =>
-  value && UUID.test(value) ? value : null;
-
-/** The reference a bank-transfer intent tells its sender to quote, while it still shows one. */
-export function transferReferenceOf(intent: Stripe.PaymentIntent): string | null {
-  const reference = intent.next_action?.display_bank_transfer_instructions?.reference?.trim();
-  return reference ? reference : null;
+/**
+ * Keeps the reference an intent shows, once. Idempotent, so every path that sees it can call
+ * this: it is only ever written the first time. Nothing is kept for an intent that shows none.
+ */
+export async function rememberTransferDetails(
+  store: IPaymentTransferReferenceStore,
+  paymentIntentId: string,
+  details: PaymentTransferDetails,
+): Promise<void> {
+  const { ownReference, ...owner } = details;
+  if (!ownReference) return;
+  await store.remember({
+    stripePaymentIntentId: paymentIntentId,
+    reference: ownReference,
+    ...owner,
+  });
 }
 
 /**
- * Keeps the reference an intent shows, once. Idempotent, so every event that carries it can call
- * this: it is only ever written the first time it is seen.
+ * Saving a reference is a safeguard for a later check, never a reason to fail the payment event
+ * that carried it: a failure is reported and the event carries on.
  */
-export async function rememberTransferReference(
+async function rememberQuietly(
   store: IPaymentTransferReferenceStore,
+  reporter: IErrorReporter | undefined,
   intent: Stripe.PaymentIntent,
 ): Promise<void> {
-  const reference = transferReferenceOf(intent);
-  if (!reference) return;
-  await store.remember({
-    stripePaymentIntentId: intent.id,
-    reference,
-    paymentId: uuidOrNull(intent.metadata?.paymentId),
-    paymentGroupId: uuidOrNull(intent.metadata?.paymentGroupId),
-  });
+  try {
+    await rememberTransferDetails(store, intent.id, transferDetailsOf(intent));
+  } catch (cause) {
+    reporter?.report({
+      message: "Could not keep a bank-transfer payment's reference",
+      status: 500,
+      code: "transfer_reference_not_kept",
+      severity: "warn",
+      cause,
+    });
+  }
 }
 
 /**
@@ -36,29 +50,33 @@ export async function rememberTransferReference(
  * instructions. Card intents send it too (for authentication) and carry no reference: ignored.
  */
 export class PaymentIntentRequiresActionHandler implements IPaymentIntentWebhookHandler {
-  constructor(private readonly references: IPaymentTransferReferenceStore) {}
+  constructor(
+    private readonly references: IPaymentTransferReferenceStore,
+    private readonly reporter?: IErrorReporter,
+  ) {}
 
   async handle(
     _event: Stripe.Event,
     paymentIntent: Stripe.PaymentIntent,
   ): Promise<PaymentWebhookResult> {
-    await rememberTransferReference(this.references, paymentIntent);
+    await rememberQuietly(this.references, this.reporter, paymentIntent);
     return { processed: true, action: "skipped", reason: "transfer_reference_noted" };
   }
 }
 
-/** Notes the intent's reference before the wrapped handler does its own work. */
+/** Notes the intent's reference, best effort, then always runs the wrapped handler. */
 export class ReferenceNotingHandler implements IPaymentIntentWebhookHandler {
   constructor(
     private readonly inner: IPaymentIntentWebhookHandler,
     private readonly references: IPaymentTransferReferenceStore,
+    private readonly reporter?: IErrorReporter,
   ) {}
 
   async handle(
     event: Stripe.Event,
     paymentIntent: Stripe.PaymentIntent,
   ): Promise<PaymentWebhookResult> {
-    await rememberTransferReference(this.references, paymentIntent);
+    await rememberQuietly(this.references, this.reporter, paymentIntent);
     return this.inner.handle(event, paymentIntent);
   }
 }

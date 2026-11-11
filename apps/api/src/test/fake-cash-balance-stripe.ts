@@ -1,48 +1,108 @@
 import type Stripe from "stripe";
-import type { ICashBalanceGateway } from "../services/stripe/cash-balance-gateway.js";
-import { StripeCashBalanceGateway } from "../services/stripe/cash-balance-gateway.js";
+import {
+  type ICashBalanceGateway,
+  StripeCashBalanceGateway,
+} from "../services/stripe/cash-balance-gateway.js";
 
 /**
- * Models the Stripe objects the cash-balance check reads, with their real field names:
- * `funded` entries carry `funded.bank_transfer.reference`; `applied_to_payment` entries name the
- * payment intent and carry a negative `net_amount`; an intent shows its own reference in
+ * Models the Stripe objects the cash-balance check reads, with their real field names, in the
+ * order the real ledger lists them (newest first, paged with `starting_after`):
+ * `funded` entries carry `funded.bank_transfer.reference`; `applied_to_payment` and
+ * `unapplied_from_payment` entries name the payment intent; an intent shows its own reference in
  * `next_action.display_bank_transfer_instructions.reference` until it completes.
+ * Entries are added in the order things happen, and may share one `created` second.
  */
 export class FakeCashBalanceStripe {
+  /** Newest first. */
   readonly ledger: Stripe.CustomerCashBalanceTransaction[] = [];
   private readonly intents = new Map<string, Stripe.PaymentIntent>();
   listCalls = 0;
   retrieveCalls = 0;
+  private seq = 0;
 
-  fund(opts: { id: string; customer: string; reference: string | null; created: number }) {
-    this.ledger.unshift({
-      id: opts.id,
+  private add(
+    customer: string,
+    created: number,
+    fields: Record<string, unknown>,
+    id?: string,
+  ): Stripe.CustomerCashBalanceTransaction {
+    this.seq += 1;
+    const txn = {
+      id: id ?? `ccsbtxn_${this.seq}`,
       object: "customer_cash_balance_transaction",
-      type: "funded",
-      customer: opts.customer,
-      created: opts.created,
+      customer,
+      created,
       currency: "gbp",
-      net_amount: 5_000,
-      ending_balance: 5_000,
+      ending_balance: 0,
       livemode: false,
-      funded: {
-        bank_transfer: { type: "gb_bank_transfer", reference: opts.reference },
+      net_amount: 0,
+      ...fields,
+    } as unknown as Stripe.CustomerCashBalanceTransaction;
+    this.ledger.unshift(txn);
+    return txn;
+  }
+
+  fund(opts: { id?: string; customer: string; reference: string | null; created: number }) {
+    return this.add(
+      opts.customer,
+      opts.created,
+      {
+        type: "funded",
+        net_amount: 5_000,
+        funded: { bank_transfer: { type: "gb_bank_transfer", reference: opts.reference } },
       },
-    } as unknown as Stripe.CustomerCashBalanceTransaction);
+      opts.id,
+    );
+  }
+
+  unapply(opts: { customer: string; intentId: string; created: number; amountCents?: number }) {
+    return this.add(opts.customer, opts.created, {
+      type: "unapplied_from_payment",
+      net_amount: opts.amountCents ?? 5_000,
+      unapplied_from_payment: { payment_intent: opts.intentId },
+    });
+  }
+
+  /** Money applied to an intent: the ledger entry, which is also the event's object. */
+  apply(opts: {
+    id?: string;
+    customer: string;
+    intentId: string;
+    amountCents?: number;
+    created: number;
+  }) {
+    return this.add(
+      opts.customer,
+      opts.created,
+      {
+        type: "applied_to_payment",
+        net_amount: -(opts.amountCents ?? 5_000),
+        applied_to_payment: { payment_intent: opts.intentId },
+      },
+      opts.id,
+    );
   }
 
   addIntent(opts: {
     id: string;
+    customer?: string;
     paymentId?: string;
     paymentGroupId?: string;
+    privateSaleDealId?: string;
+    privateSaleDealPaymentId?: string;
     ownReference: string | null;
   }) {
     this.intents.set(opts.id, {
       id: opts.id,
       object: "payment_intent",
+      customer: opts.customer ?? null,
       metadata: {
         ...(opts.paymentId ? { paymentId: opts.paymentId } : {}),
         ...(opts.paymentGroupId ? { paymentGroupId: opts.paymentGroupId } : {}),
+        ...(opts.privateSaleDealId ? { privateSaleDealId: opts.privateSaleDealId } : {}),
+        ...(opts.privateSaleDealPaymentId
+          ? { privateSaleDealPaymentId: opts.privateSaleDealPaymentId }
+          : {}),
       },
       next_action: opts.ownReference
         ? {
@@ -53,35 +113,20 @@ export class FakeCashBalanceStripe {
     } as unknown as Stripe.PaymentIntent);
   }
 
-  /** The `customer_cash_balance_transaction.created` object for money applied to an intent. */
-  applied(opts: {
-    id: string;
-    customer: string;
-    intentId: string;
-    amountCents: number;
-    created: number;
-  }): Stripe.CustomerCashBalanceTransaction {
-    return {
-      id: opts.id,
-      object: "customer_cash_balance_transaction",
-      type: "applied_to_payment",
-      customer: opts.customer,
-      created: opts.created,
-      currency: "gbp",
-      net_amount: -opts.amountCents,
-      ending_balance: 0,
-      livemode: false,
-      applied_to_payment: { payment_intent: opts.intentId },
-    } as unknown as Stripe.CustomerCashBalanceTransaction;
-  }
-
-  /** The real gateway over this fake client, so the field mapping itself is under test. */
+  /** The real gateway over this fake client, so the field mapping and paging are under test. */
   gateway(): ICashBalanceGateway {
     const client = {
       customers: {
-        listCashBalanceTransactions: async () => {
+        listCashBalanceTransactions: async (
+          _customer: string,
+          params: { limit: number; starting_after?: string },
+        ) => {
           this.listCalls += 1;
-          return { data: this.ledger };
+          const from = params.starting_after
+            ? this.ledger.findIndex((t) => t.id === params.starting_after) + 1
+            : 0;
+          const data = this.ledger.slice(from, from + params.limit);
+          return { data, has_more: from + params.limit < this.ledger.length };
         },
       },
       paymentIntents: {

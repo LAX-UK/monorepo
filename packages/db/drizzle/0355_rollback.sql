@@ -3,5 +3,5 @@
 -- then no longer recognised once their payment has completed.
 SET LOCAL lock_timeout = '5s';
 
-DROP INDEX IF EXISTS "payment_transfer_reference_reference_idx";
+DROP INDEX IF EXISTS "payment_transfer_reference_customer_idx";
 DROP TABLE IF EXISTS "payment_transfer_reference";

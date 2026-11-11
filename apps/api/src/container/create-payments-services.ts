@@ -16,6 +16,7 @@ import {
   DrizzlePaymentCheckoutSessionRepository,
   DrizzlePaymentDomainEventsRepository,
   DrizzlePaymentTransferReferenceRepository,
+  DrizzlePrivateSaleDealRepository,
   DrizzleStalePaymentCanceller,
   DrizzleUnappliedMoneyReader,
 } from "@auction/persistence/repositories";
@@ -493,6 +494,8 @@ export function createPaymentsServices(
           {
             cashBalance: new StripeCashBalanceGateway(stripeClientFactory),
             references: new DrizzlePaymentTransferReferenceRepository(db),
+            groups: paymentGroups.webhooks.groups,
+            deals: new DrizzlePrivateSaleDealRepository(db),
           },
         )
       : null;

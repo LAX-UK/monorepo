@@ -81,6 +81,18 @@ describe("UnappliedMoneyRecorder", () => {
     );
   });
 
+  it("does not write the reference a payer quoted to the log", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const recorder = new UnappliedMoneyRecorder(reader(), mockDomainEventSink(vi.fn()));
+    await recorder.record(
+      tx,
+      { ...money, reason: "transfer_applied_to_other_invoice", transferReference: "REF-1" },
+      null,
+    );
+    expect(String(log.mock.calls[0]?.[0])).not.toContain("REF-1");
+    log.mockRestore();
+  });
+
   it("reporting the same money again (a replay or a second cron run) publishes nothing", async () => {
     const publish = vi.fn();
     const recorder = new UnappliedMoneyRecorder(

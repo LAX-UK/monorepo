@@ -22,8 +22,8 @@ import {
 import {
   UNAPPLIED_MONEY_HANDLED_ELSEWHERE,
   UNSOLD_LOT_END_STATUSES,
-  possibleSourceText,
   storedDueAt,
+  unappliedMoneyWorkItemWording,
 } from "@auction/domain";
 import { INVOICE_PAYMENT_DUE_DAYS, type UnsoldLotChoiceKind } from "@auction/types";
 import { and, desc, eq, inArray, isNotNull, isNull, lt, ne, or, sql } from "drizzle-orm";
@@ -209,9 +209,9 @@ export class DrizzleAdminWorkItemsReader implements IAdminWorkItemsReader {
       sourceId: money.dedupeKey,
       kind: "payment_money_unapplied" as const,
       domain: "finance" as const,
-      title: "Money received that could not be applied",
+      title: unappliedMoneyWorkItemWording(money).title,
       subtitle: `${sentenceCase(money.reason)} · ${formatWorkItemAmount(money.amountCents / 100)}`,
-      hint: possibleSourceText(money.possibleGroup ?? null),
+      hint: unappliedMoneyWorkItemWording(money).hint,
       href: adminWorkItemHref("payment_money_unapplied", { paymentId: money.paymentId }),
       saleId: null,
       createdAt: money.receivedAt,

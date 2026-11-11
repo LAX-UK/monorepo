@@ -5,31 +5,44 @@
  * against the wrong invoice, so finance is told. These rules decide when that has happened.
  */
 
-/** One transfer that reached a buyer's balance, as the provider's ledger reports it. */
-export type TransferFunding = {
-  id: string;
-  /** Unix seconds. */
-  createdAt: number;
-  /** The reference the sender quoted; null when none was given. */
-  reference: string | null;
-};
+/** One entry of a buyer's transfer ledger, reduced to what finding the source of money needs. */
+export type LedgerEntry =
+  | { kind: "funded"; id: string; reference: string | null }
+  | { kind: "unapplied"; id: string; paymentIntentId: string }
+  | { kind: "other"; id: string };
 
-const normalise = (reference: string): string => reference.trim().toUpperCase();
+/** Where the money applied to a payment came from. */
+export type TransferSupply =
+  | { kind: "funded"; reference: string | null }
+  | { kind: "unapplied"; paymentIntentId: string };
 
 /**
- * The transfer that supplied money applied at `appliedAt`: the latest one received at or before
- * it. Null when none is known, or when that transfer carried no reference.
+ * The source of an application: the first transfer received, or the first payment the money was
+ * taken back from, found walking back from the application (entries newest first, as the ledger
+ * lists them). Other applications in between are skipped. Order, not timestamps, decides: several
+ * entries can share one second.
  */
-export function fundingThatSuppliedApplication(
-  fundings: readonly TransferFunding[],
-  appliedAt: number,
-): TransferFunding | null {
-  let nearest: TransferFunding | null = null;
-  for (const funding of fundings) {
-    if (funding.createdAt > appliedAt) continue;
-    if (!nearest || funding.createdAt > nearest.createdAt) nearest = funding;
+export function supplyBehindApplication(
+  entriesNewestFirst: readonly LedgerEntry[],
+): TransferSupply | null {
+  for (const entry of entriesNewestFirst) {
+    if (entry.kind === "funded") return { kind: "funded", reference: entry.reference };
+    if (entry.kind === "unapplied") {
+      return { kind: "unapplied", paymentIntentId: entry.paymentIntentId };
+    }
   }
-  return nearest?.reference?.trim() ? nearest : null;
+  return null;
+}
+
+/** A reference compared as letters and digits only, in one case: senders add spaces and dashes. */
+export function normaliseReference(reference: string): string {
+  return reference.replace(/[^a-z0-9]/gi, "").toUpperCase();
+}
+
+/** Whether what the sender typed contains the reference (banks add their own text around it). */
+export function senderQuotedReference(sent: string, reference: string): boolean {
+  const wanted = normaliseReference(reference);
+  return wanted.length > 0 && normaliseReference(sent).includes(wanted);
 }
 
 /**
@@ -40,8 +53,49 @@ export function isTransferAppliedToOtherPayment(input: {
   sentWithReference: string | null;
   paymentOwnReference: string | null;
 }): boolean {
-  const sent = input.sentWithReference?.trim();
-  const own = input.paymentOwnReference?.trim();
-  if (!sent || !own) return false;
-  return normalise(sent) !== normalise(own);
+  const { sentWithReference: sent, paymentOwnReference: own } = input;
+  if (!sent?.trim() || !own?.trim()) return false;
+  return !senderQuotedReference(sent, own);
+}
+
+/**
+ * The kept reference the sender quoted, when it is one we issued: the longest that the sent text
+ * contains. Text that contains none of ours is not another invoice's reference.
+ */
+export function referenceIssuedIn<T extends { reference: string }>(
+  sent: string,
+  issued: readonly T[],
+): T | null {
+  let best: T | null = null;
+  for (const candidate of issued) {
+    if (!senderQuotedReference(sent, candidate.reference)) continue;
+    if (
+      !best ||
+      normaliseReference(candidate.reference).length > normaliseReference(best.reference).length
+    ) {
+      best = candidate;
+    }
+  }
+  return best;
+}
+
+type PaymentIdentity = { paymentId: string | null; paymentGroupId: string | null };
+
+/**
+ * Whether two payments are one invoice's money: the same payment, the same combined payment, or an
+ * invoice and the combined payment that holds it. `membersOf` lists a combined payment's invoices.
+ */
+export function isSameInvoiceMoney(
+  a: PaymentIdentity,
+  b: PaymentIdentity,
+  membersOf: (groupId: string) => readonly string[],
+): boolean {
+  if (a.paymentId && a.paymentId === b.paymentId) return true;
+  if (a.paymentGroupId && a.paymentGroupId === b.paymentGroupId) return true;
+  if (a.paymentId && b.paymentGroupId && membersOf(b.paymentGroupId).includes(a.paymentId)) {
+    return true;
+  }
+  return Boolean(
+    b.paymentId && a.paymentGroupId && membersOf(a.paymentGroupId).includes(b.paymentId),
+  );
 }

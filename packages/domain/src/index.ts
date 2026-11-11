@@ -1240,6 +1240,7 @@ export {
   unappliedMoneyAggregate,
   unappliedMoneyDedupeKey,
   unappliedMoneyPayload,
+  unappliedMoneyWorkItemWording,
   type UnappliedMoney,
   type UnappliedMoneyPayload,
   type UnappliedMoneyReason,
@@ -1351,7 +1352,12 @@ export {
 export { paymentIsPaidOrBeingPaid, paymentIsSettling } from "./buyer-default.js";
 
 export {
-  type TransferFunding,
-  fundingThatSuppliedApplication,
+  type LedgerEntry,
+  type TransferSupply,
+  isSameInvoiceMoney,
   isTransferAppliedToOtherPayment,
+  normaliseReference,
+  referenceIssuedIn,
+  senderQuotedReference,
+  supplyBehindApplication,
 } from "./misapplied-transfer.js";

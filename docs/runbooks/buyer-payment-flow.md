@@ -79,16 +79,20 @@ sequenceDiagram
 
 **What staff do.**
 
-1. Open the payment named as Y in the task and compare it with X (and the buyer's other bank-transfer invoices).
+1. Open the payment named as Y in the task (the task links to it; a combined payment or a private sale deal opens the payments list or the deal) and compare it with X.
 2. If Y is genuinely due and the buyer is content, leave it: Y is correctly paid, and X stays open for the buyer to pay again, or is closed.
 3. If it is not right, refund the transfer from Y (the normal refund path; it reopens Y for payment) and ask the buyer to resend with the correct reference, or apply the funds to X from the provider's dashboard.
-4. Tell the buyer which invoice now shows as paid. Nothing here is refunded automatically, and a seller payout is not paid for an invoice until it is right.
+4. Tell the buyer which invoice now shows as paid.
+5. Nothing is held automatically. If Y's seller has a payout in progress, hold that payout by hand until the invoices are right.
 
-**How it is detected (engineering).** The payments webhook endpoint must subscribe to `payment_intent.requires_action` and `customer_cash_balance_transaction.created`.
+**What is detected (engineering).** The payments webhook endpoint must subscribe to `payment_intent.requires_action` and `customer_cash_balance_transaction.created`.
 
-- When a bank-transfer payment first shows its transfer instructions (`payment_intent.requires_action`, also `processing` and `partially_funded`), the reference it tells the sender to quote (`next_action.display_bank_transfer_instructions.reference`) is kept in `payment_transfer_reference`, once per payment intent, with the payment or combined payment it belongs to. The provider stops showing it when the payment completes; the kept copy is what lets a transfer that fully pays the wrong invoice be recognised.
-- On `customer_cash_balance_transaction.created` with `type = applied_to_payment`, the handler takes the receiving payment's reference (the live one when still shown, else the kept one; a stored reference that disagrees with the live one is counted as `transfer_reference_stored_differs_from_live`) and the buyer's latest 25 ledger entries. The transfer that supplied the money is the latest `type = funded` entry at or before the application; its `funded.bank_transfer.reference` is compared case-insensitively with the payment's own. A difference raises the task. The reference is looked up in `payment_transfer_reference` to name the invoice it was issued for.
-- Not reported: a transfer sent with no reference, and an application to a payment whose reference was never kept and is no longer shown (older payments). The latter are counted by `transfer_application_check_skipped_no_reference`.
+- When a bank-transfer payment first shows its transfer instructions (`payment_intent.requires_action`, also `processing` and `partially_funded`), the reference it tells the sender to quote (`next_action.display_bank_transfer_instructions.reference`) is kept in `payment_transfer_reference`, once per payment intent, with its buyer and the payment, combined payment or private sale deal it belongs to. Stripe stops showing it when the payment completes; the kept copy is what lets a transfer that fully pays the wrong invoice be recognised. Saving it is best effort: a failure is reported and never fails the payment event. Only references we issued are kept, never text the sender typed. They are issued codes, not personal data, and are kept with the payment's own records.
+- On `customer_cash_balance_transaction.created` with `type = applied_to_payment`, the receiving payment's reference is the live one when still shown, else the kept one. The source of the money is found by reading the buyer's ledger back from that entry (up to 4 pages of 25, skipping other applications) to the first `funded` entry (its `funded.bank_transfer.reference`) or the first `unapplied_from_payment` entry (the payment the money was taken back from).
+  - A transfer is a different invoice's when the text the sender quoted does not contain the receiving payment's own reference (letters and digits only, any case) and does contain a reference we issued to another payment of the same buyer.
+  - Money taken back from a payment (cancelled while part funded) and applied elsewhere is reported, naming the payment it came from when its reference was kept.
+  - Not reported: the same invoice (the sent reference belongs to the same payment, the same combined payment, or an invoice and the combined payment holding it); a transfer sent with no reference or with text that is none of our references; a source more than 100 ledger entries back (counted as `transfer_supply_window_exceeded`); a payment whose reference was never kept and is no longer shown (older payments, `transfer_application_check_skipped_no_reference`). A payment with no reference yet is answered with a retry for ten minutes after the event, so a reference event that is still on its way can be processed first.
+- The task is one per ledger entry. The Work inbox titles it "Bank transfer applied to another invoice".
 
 ## Related
 

@@ -1,6 +1,6 @@
 import type { Database } from "@auction/db";
 import { paymentTransferReference } from "@auction/db/schema";
-import { asc, eq, sql } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import type {
   IPaymentTransferReferenceStore,
   TransferReferenceRecord,
@@ -9,8 +9,11 @@ import type {
 const columns = {
   stripePaymentIntentId: paymentTransferReference.stripePaymentIntentId,
   reference: paymentTransferReference.reference,
+  stripeCustomerId: paymentTransferReference.stripeCustomerId,
   paymentId: paymentTransferReference.paymentId,
   paymentGroupId: paymentTransferReference.paymentGroupId,
+  privateSaleDealId: paymentTransferReference.privateSaleDealId,
+  privateSaleDealPaymentId: paymentTransferReference.privateSaleDealPaymentId,
 };
 
 export class DrizzlePaymentTransferReferenceRepository implements IPaymentTransferReferenceStore {
@@ -34,13 +37,15 @@ export class DrizzlePaymentTransferReferenceRepository implements IPaymentTransf
     return row ?? null;
   }
 
-  async findByReference(reference: string): Promise<TransferReferenceRecord | null> {
-    const [row] = await this.db
+  async listForCustomer(
+    stripeCustomerId: string,
+    limit: number,
+  ): Promise<TransferReferenceRecord[]> {
+    return this.db
       .select(columns)
       .from(paymentTransferReference)
-      .where(sql`upper(${paymentTransferReference.reference}) = ${reference.trim().toUpperCase()}`)
-      .orderBy(asc(paymentTransferReference.createdAt))
-      .limit(1);
-    return row ?? null;
+      .where(eq(paymentTransferReference.stripeCustomerId, stripeCustomerId))
+      .orderBy(desc(paymentTransferReference.createdAt))
+      .limit(limit);
   }
 }

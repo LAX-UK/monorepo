@@ -97,14 +97,18 @@ export class StripePaymentWebhookService {
           paymentIntentProcessing: new ReferenceNotingHandler(
             routed.paymentIntentProcessing,
             references,
+            errorReporter,
           ),
           paymentIntentPartiallyFunded: new ReferenceNotingHandler(
             routed.paymentIntentPartiallyFunded,
             references,
+            errorReporter,
           ),
         }
       : routed;
-    this.requiresAction = references ? new PaymentIntentRequiresActionHandler(references) : null;
+    this.requiresAction = references
+      ? new PaymentIntentRequiresActionHandler(references, errorReporter)
+      : null;
   }
 
   /** A bank-transfer intent shows its transfer instructions: the reference is kept. */

@@ -3,7 +3,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { getTableColumns } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
-import { WORKER_READ_TABLES } from "./migrate-roles.js";
+import { API_PAYMENT_TRANSFER_REFERENCE_TABLES, WORKER_READ_TABLES } from "./migrate-roles.js";
 import { paymentTransferReference } from "./schema/payment-transfer-reference.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -25,26 +25,36 @@ describe("migration 0355 payment transfer reference", () => {
     );
   });
 
-  it("only adds a table and a case-insensitive reference index, idempotently", () => {
+  it("only adds a table and a per-customer index, idempotently", () => {
     expect(migration).not.toMatch(/\bDROP\b/);
     expect(migration).toMatch(/CREATE TABLE IF NOT EXISTS "payment_transfer_reference"/);
     expect(migration).toMatch(
-      /CREATE INDEX IF NOT EXISTS "payment_transfer_reference_reference_idx"\s+ON "payment_transfer_reference" \(upper\("reference"\)\)/,
+      /CREATE INDEX IF NOT EXISTS "payment_transfer_reference_customer_idx"\s+ON "payment_transfer_reference" \("stripe_customer_id"/,
     );
   });
 
   it("has a rollback that drops the index and the table", () => {
-    expect(rollback).toMatch(/DROP INDEX IF EXISTS "payment_transfer_reference_reference_idx"/);
+    expect(rollback).toMatch(/DROP INDEX IF EXISTS "payment_transfer_reference_customer_idx"/);
     expect(rollback).toMatch(/DROP TABLE IF EXISTS "payment_transfer_reference"/);
   });
 
-  it("matches the schema; the worker never reads it, and the API role gets the default grants", () => {
+  it("matches the schema; the worker never reads it, and the API role may only insert and read", () => {
     const columns = getTableColumns(paymentTransferReference);
     expect(Object.keys(columns).sort()).toEqual(
-      ["createdAt", "paymentGroupId", "paymentId", "reference", "stripePaymentIntentId"].sort(),
+      [
+        "createdAt",
+        "paymentGroupId",
+        "paymentId",
+        "privateSaleDealId",
+        "privateSaleDealPaymentId",
+        "reference",
+        "stripeCustomerId",
+        "stripePaymentIntentId",
+      ].sort(),
     );
     expect(columns.reference.notNull).toBe(true);
     expect(columns.paymentId.notNull).toBe(false);
     expect(WORKER_READ_TABLES).not.toContain("payment_transfer_reference");
+    expect(API_PAYMENT_TRANSFER_REFERENCE_TABLES).toContain("payment_transfer_reference");
   });
 });
