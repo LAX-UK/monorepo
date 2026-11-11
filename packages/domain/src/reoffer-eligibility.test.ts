@@ -2,6 +2,12 @@ import { paymentStatuses } from "@auction/types";
 import { describe, expect, it } from "vitest";
 import { paymentIsPaidOrBeingPaid } from "./buyer-default.js";
 import { type ReofferStartFacts, reawardBlock, reofferStartBlock } from "./reoffer-eligibility.js";
+import {
+  type ReofferRecord,
+  type ReofferStatus,
+  canReopenLapsedRequest,
+  transitionReoffer,
+} from "./reoffer-state.js";
 
 const startable: ReofferStartFacts = {
   soldOnAtg: false,
@@ -9,6 +15,12 @@ const startable: ReofferStartFacts = {
   payments: [{ status: "cancelled" }],
   offers: [],
 };
+
+const SENT = new Date("2026-11-10T10:00:00Z");
+const rec = (status: ReofferStatus, sent = false): ReofferRecord => ({
+  status,
+  offerSentAt: sent ? SENT : null,
+});
 
 const PAID_OR_BEING_PAID = ["authorized", "captured", "refunded", "requires_manual_review"];
 
@@ -53,35 +65,35 @@ describe("reofferStartBlock", () => {
   });
 
   it("allows one offer at a time", () => {
-    expect(reofferStartBlock({ ...startable, offers: [{ status: "offered" }] })?.code).toBe(
+    expect(reofferStartBlock({ ...startable, offers: [rec("offered", true)] })?.code).toBe(
       "open_offer_exists",
     );
-    expect(reofferStartBlock({ ...startable, offers: [{ status: "awaiting_seller" }] })?.code).toBe(
+    expect(reofferStartBlock({ ...startable, offers: [rec("awaiting_seller", false)] })?.code).toBe(
       "open_offer_exists",
     );
   });
 
   it("stops once a bidder has accepted", () => {
     expect(
-      reofferStartBlock({ ...startable, offers: [{ status: "declined" }, { status: "accepted" }] })
+      reofferStartBlock({ ...startable, offers: [rec("declined", true), rec("accepted", true)] })
         ?.code,
     ).toBe("already_re_offered");
   });
 
   it("stops after three offers reached bidders", () => {
-    const two = [{ status: "declined" as const }, { status: "expired" as const }];
+    const two = [rec("declined", true), rec("expired", true)];
     expect(reofferStartBlock({ ...startable, offers: two })).toBeNull();
-    expect(
-      reofferStartBlock({ ...startable, offers: [...two, { status: "declined" }] })?.code,
-    ).toBe("offer_limit_reached");
+    expect(reofferStartBlock({ ...startable, offers: [...two, rec("declined", true)] })?.code).toBe(
+      "offer_limit_reached",
+    );
   });
 
   it("does not count offers that never reached a bidder toward the limit", () => {
     const never = [
-      { status: "seller_lapsed" as const },
-      { status: "withdrawn" as const },
-      { status: "declined" as const },
-      { status: "expired" as const },
+      rec("seller_lapsed", false),
+      rec("withdrawn", false),
+      rec("declined", true),
+      rec("expired", true),
     ];
     expect(reofferStartBlock({ ...startable, offers: never })).toBeNull();
   });
@@ -90,7 +102,7 @@ describe("reofferStartBlock", () => {
     expect(
       reofferStartBlock({
         ...startable,
-        offers: [{ status: "declined" }, { status: "seller_declined" }],
+        offers: [rec("declined", true), rec("seller_declined", false)],
       })?.code,
     ).toBe("seller_declined_last_offer");
   });
@@ -98,22 +110,59 @@ describe("reofferStartBlock", () => {
 
 describe("reawardBlock", () => {
   it.each(paymentStatuses)("a lot whose only payment is %s", (status) => {
-    expect(reawardBlock([{ status }])?.code ?? null).toBe(
+    expect(reawardBlock({ payments: [{ status }], otherOffers: [] })?.code ?? null).toBe(
       PAID_OR_BEING_PAID.includes(status) ? "payment_in_progress" : null,
     );
   });
 
   it("blocks when any payment on the lot is paid, in any order", () => {
-    expect(reawardBlock([{ status: "cancelled" }, { status: "captured" }])?.code).toBe(
-      "payment_in_progress",
-    );
-    expect(reawardBlock([{ status: "captured" }, { status: "cancelled" }])?.code).toBe(
-      "payment_in_progress",
-    );
+    expect(
+      reawardBlock({ payments: [{ status: "cancelled" }, { status: "captured" }], otherOffers: [] })
+        ?.code,
+    ).toBe("payment_in_progress");
+    expect(
+      reawardBlock({ payments: [{ status: "captured" }, { status: "cancelled" }], otherOffers: [] })
+        ?.code,
+    ).toBe("payment_in_progress");
   });
 
   it("allows a lot with no payments or only unpaid ones", () => {
-    expect(reawardBlock([])).toBeNull();
-    expect(reawardBlock([{ status: "cancelled" }, { status: "pending" }])).toBeNull();
+    expect(reawardBlock({ payments: [], otherOffers: [] })).toBeNull();
+    expect(
+      reawardBlock({
+        payments: [{ status: "cancelled" }, { status: "pending" }],
+        otherOffers: [rec("declined", true)],
+      }),
+    ).toBeNull();
+  });
+});
+
+describe("a lapsed request and a second offer", () => {
+  it("cannot award the lot through two offers", () => {
+    // Offer 1 lapses; offer 2 goes to the same bidder and is accepted.
+    const offers = [rec("seller_lapsed"), rec("accepted", true)];
+    // The late answer on offer 1 can no longer reopen it...
+    expect(canReopenLapsedRequest(offers)).toBe(false);
+    // ...and even if it were sent, accepting it is refused while another offer is accepted.
+    expect(
+      reawardBlock({ payments: [{ status: "pending" }], otherOffers: [offers[1] as ReofferRecord] })
+        ?.code,
+    ).toBe("already_re_offered");
+  });
+
+  it("offers nothing new after a lapse: staff record the late answer or return the lot", () => {
+    const offers = [rec("seller_lapsed")];
+    expect(reofferStartBlock({ ...startable, offers })?.code).toBe("seller_declined_last_offer");
+    expect(canReopenLapsedRequest(offers)).toBe(true);
+    expect(transitionReoffer("seller_lapsed", "seller_agreed", "staff")).toEqual({
+      ok: true,
+      status: "ready",
+    });
+  });
+
+  it("does not offer again to a bidder whose sent offer was withdrawn", () => {
+    const offers = [rec("withdrawn", true), rec("withdrawn", true), rec("expired", true)];
+    expect(reofferStartBlock({ ...startable, offers })?.code).toBe("offer_limit_reached");
+    expect(reofferStartBlock({ ...startable, offers: [rec("withdrawn", true)] })).toBeNull();
   });
 });

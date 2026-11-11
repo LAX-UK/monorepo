@@ -1,6 +1,6 @@
+import { BIDDER_REOFFER_STATUSES } from "@auction/domain";
 import { describe, expect, it } from "vitest";
 import {
-  BIDDER_REOFFER_STATUSES,
   acceptReofferBodySchema,
   bidderReofferPriceSchema,
   bidderReofferViewSchema,

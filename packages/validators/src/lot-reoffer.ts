@@ -1,4 +1,5 @@
 import {
+  BIDDER_REOFFER_STATUSES,
   DEFAULT_OFFER_DAYS,
   MAX_OFFER_DAYS,
   MIN_OFFER_DAYS,
@@ -24,14 +25,6 @@ const declinePreference = z.enum(SELLER_DECLINE_PREFERENCES);
 export const reofferStatusSchema = z.enum(REOFFER_STATUSES);
 export const sellerConsentStatusSchema = z.enum(SELLER_CONSENT_STATUSES);
 
-/** What a bidder sees of an offer: no seller-side step is ever named. */
-export const BIDDER_REOFFER_STATUSES = [
-  "offered",
-  "accepted",
-  "declined",
-  "ended",
-  "withdrawn",
-] as const;
 export const bidderReofferStatusSchema = z.enum(BIDDER_REOFFER_STATUSES);
 
 export const skippedBidderSchema = z.object({

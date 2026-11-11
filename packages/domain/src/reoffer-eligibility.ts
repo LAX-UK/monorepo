@@ -37,7 +37,7 @@ const MESSAGES: Record<ReofferBlockCode, string> = {
   already_re_offered: "A bidder has already accepted an offer for this lot.",
   open_offer_exists: "An offer for this lot is still open.",
   seller_declined_last_offer:
-    "The seller declined the last offer. Return the lot to inventory or follow the seller's preference.",
+    "The seller declined or did not reply to the last offer. Record their answer on that request, return the lot to inventory, or follow the seller's preference.",
   offer_limit_reached: "Three offers have been made. Return the lot to inventory.",
 };
 
@@ -58,9 +58,9 @@ export function reofferStartBlock(facts: ReofferStartFacts): ReofferBlock | null
   if (facts.offers.some((offer) => isOpenReofferStatus(offer.status))) {
     return block("open_offer_exists");
   }
-  if (reofferProgress(facts.offers).kind === "re_offered") return block("already_re_offered");
-  if (capReached(facts.offers)) return block("offer_limit_reached");
   const progress = reofferProgress(facts.offers);
+  if (progress.kind === "re_offered") return block("already_re_offered");
+  if (capReached(facts.offers)) return block("offer_limit_reached");
   if (progress.kind === "needs_decision" && !progress.canOfferAgain) {
     return block("seller_declined_last_offer");
   }
@@ -68,9 +68,17 @@ export function reofferStartBlock(facts: ReofferStartFacts): ReofferBlock | null
 }
 
 /**
- * Whether the lot can still be re-awarded when the bidder accepts. A lot with any payment that
- * is paid, being paid or held is never awarded again, whatever state the offer is in.
+ * Whether the lot can still be re-awarded when a bidder accepts. A lot with any payment that is
+ * paid, being paid or held is never awarded again, and neither is a lot another offer of the
+ * default has already been accepted for. `otherOffers` are the default's other offers.
  */
-export function reawardBlock(payments: readonly { status: PaymentStatus }[]): ReofferBlock | null {
-  return hasPaidPayment(payments) ? block("payment_in_progress") : null;
+export function reawardBlock(input: {
+  payments: readonly { status: PaymentStatus }[];
+  otherOffers: readonly ReofferRecord[];
+}): ReofferBlock | null {
+  if (hasPaidPayment(input.payments)) return block("payment_in_progress");
+  if (input.otherOffers.some((offer) => offer.status === "accepted")) {
+    return block("already_re_offered");
+  }
+  return null;
 }

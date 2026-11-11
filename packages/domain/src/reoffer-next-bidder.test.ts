@@ -5,6 +5,7 @@ import {
   selectNextBidder,
 } from "./reoffer-next-bidder.js";
 
+const SENT = new Date("2026-11-10T10:00:00Z");
 let clock = 0;
 function bid(
   userId: string,
@@ -98,7 +99,9 @@ describe("selectNextBidder", () => {
     const result = selectNextBidder({
       bids: [bid("u2", "e2", 800), bid("u2", "e2", 600), bid("u3", "e3", 700)],
       defaultingBuyer: buyer,
-      alreadyOffered: [{ userId: "u2", legalEntityId: "e2", status: "declined" }],
+      alreadyOffered: [
+        { userId: "u2", legalEntityId: "e2", status: "declined", offerSentAt: SENT },
+      ],
     });
     expect(result).toEqual({
       kind: "found",
@@ -111,7 +114,9 @@ describe("selectNextBidder", () => {
     const result = selectNextBidder({
       bids: [bid("u2", "e2", 800), bid("u3", "e3", 700)],
       defaultingBuyer: buyer,
-      alreadyOffered: [{ userId: "u2", legalEntityId: "e2", status: "declined" }],
+      alreadyOffered: [
+        { userId: "u2", legalEntityId: "e2", status: "declined", offerSentAt: SENT },
+      ],
     });
     expect(result).toMatchObject({ kind: "found", bidder: { userId: "u3", amountMinor: 700 } });
   });
@@ -149,6 +154,7 @@ describe("selectNextBidder", () => {
       userId: `u-${id}`,
       legalEntityId: `e-${id}`,
       status: "declined" as const,
+      offerSentAt: SENT,
     }));
     expect(
       selectNextBidder({
@@ -161,10 +167,16 @@ describe("selectNextBidder", () => {
 
   it("counts only offers that reached a bidder toward the limit and as already offered", () => {
     const prior = [
-      { userId: "u-a", legalEntityId: "e-a", status: "seller_declined" as const },
-      { userId: "u-b", legalEntityId: "e-b", status: "seller_lapsed" as const },
-      { userId: "u-c", legalEntityId: "e-c", status: "withdrawn" as const },
-      { userId: "u-d", legalEntityId: "e-d", status: "declined" as const },
+      {
+        userId: "u-a",
+        legalEntityId: "e-a",
+        status: "seller_declined" as const,
+        offerSentAt: null,
+      },
+      { userId: "u-b", legalEntityId: "e-b", status: "seller_lapsed" as const, offerSentAt: null },
+      { userId: "u-c", legalEntityId: "e-c", status: "withdrawn" as const, offerSentAt: null },
+      { userId: "u-d", legalEntityId: "e-d", status: "declined" as const, offerSentAt: SENT },
+      { userId: "u-e", legalEntityId: "e-e", status: "withdrawn" as const, offerSentAt: SENT },
     ];
     const bids = [bid("u-a", "e-a", 800), bid("u-d", "e-d", 700), bid("u9", "e9", 100)];
     // The seller's refusal never reached u-a, so u-a is still next in line; u-d was offered.
@@ -174,6 +186,14 @@ describe("selectNextBidder", () => {
     expect(
       selectNextBidder({
         bids: [bid("u-d", "e-d", 700)],
+        defaultingBuyer: buyer,
+        alreadyOffered: prior,
+      }),
+    ).toMatchObject({ kind: "none", reason: "no_other_bidder" });
+    // A withdrawn offer that had been sent did reach u-e: they are not offered again.
+    expect(
+      selectNextBidder({
+        bids: [bid("u-e", "e-e", 650)],
         defaultingBuyer: buyer,
         alreadyOffered: prior,
       }),

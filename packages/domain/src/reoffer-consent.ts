@@ -1,4 +1,4 @@
-import type { ReofferEvent } from "./reoffer-state.js";
+import type { ReofferActor, ReofferEvent } from "./reoffer-state.js";
 
 /** The seller's agreement to one offer, recorded with every answer. */
 export const SELLER_CONSENT_STATUSES = [
@@ -14,7 +14,7 @@ export const SELLER_CONSENT_ANSWERS = ["given", "refused", "lapsed"] as const;
 export type SellerConsentAnswer = (typeof SELLER_CONSENT_ANSWERS)[number];
 
 /** How an answer arrives: from the seller, recorded by staff on their behalf, or the clock. */
-export type ConsentChannel = "seller" | "staff" | "clock";
+export type ConsentChannel = Extract<ReofferActor, "seller" | "staff" | "clock">;
 
 /** Whose stock the lot is: a seller's, or LAX's own. */
 export type LotOwnership = "seller" | "lax_owned";
