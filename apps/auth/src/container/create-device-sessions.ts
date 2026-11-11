@@ -1,8 +1,11 @@
 import type { createAuth } from "@auction/auth";
 import type { IdentityDatabase } from "@auction/identity-db";
+import { DrizzleSessionCapStore } from "../infrastructure/drizzle-session-cap.store.js";
 import { DrizzleSessionTakeoverStore } from "../infrastructure/drizzle-session-takeover.store.js";
 import { DeviceMarkerHasher } from "../services/device-marker.js";
 import type { DurableSecurityEffects } from "../services/durable-security-effects.js";
+import type { SessionActivity } from "../services/session-activity.service.js";
+import { SessionCap } from "../services/session-cap.service.js";
 import {
   type EndedSessionNotifier,
   SessionTakeoverService,
@@ -11,6 +14,7 @@ import type { SecurityEffectLogger } from "../services/settle-security-effect.js
 import { type DeviceSessionHook, createDeviceSessionHook } from "./device-session-hook.js";
 
 const TAKEOVER_PATH = "session-takeover";
+const CAP_PATH = "session-cap";
 
 /**
  * Another person's records that a new sign-in in the same browser ends: their products are signed
@@ -20,10 +24,11 @@ const TAKEOVER_PATH = "session-takeover";
  */
 export function createEndedSessionNotifier(
   durable: Pick<DurableSecurityEffects, "reserve">,
+  path: string = TAKEOVER_PATH,
 ): EndedSessionNotifier {
   return {
     reserve: ({ userId, sessionIds }) =>
-      durable.reserve(TAKEOVER_PATH, [
+      durable.reserve(path, [
         { kind: "revoke_identity_sessions", userId, sessionIds },
         ...sessionIds.map((sessionId) => ({
           kind: "publish_session_revoked" as const,
@@ -38,6 +43,7 @@ export function createDeviceSessions(options: {
   db: IdentityDatabase;
   auth: ReturnType<typeof createAuth>;
   durable: Pick<DurableSecurityEffects, "reserve">;
+  activity: Pick<SessionActivity, "record">;
   secrets: { deviceMarker: string | undefined; issuer: string };
   log: SecurityEffectLogger;
 }): DeviceSessionHook {
@@ -45,6 +51,11 @@ export function createDeviceSessions(options: {
     takeover: new SessionTakeoverService(
       new DrizzleSessionTakeoverStore(options.db),
       createEndedSessionNotifier(options.durable),
+      // A browser that loses its sign-in to the cap is announced like any other ended record.
+      new SessionCap(
+        new DrizzleSessionCapStore(options.db),
+        createEndedSessionNotifier(options.durable, CAP_PATH),
+      ),
     ),
     hasher: new DeviceMarkerHasher({
       secret: options.secrets.deviceMarker,
@@ -54,6 +65,9 @@ export function createDeviceSessions(options: {
     readSession: async (headers) =>
       (await options.auth.api.getSession({ headers, query: { disableCookieCache: true } }))
         ?.session ?? null,
+    readCachedSession: async (headers) =>
+      (await options.auth.api.getSession({ headers }))?.session ?? null,
+    activity: options.activity,
     log: options.log,
   });
 }

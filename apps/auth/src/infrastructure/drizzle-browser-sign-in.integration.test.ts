@@ -443,8 +443,9 @@ describe.skipIf(!DATABASE_URL)("ending one browser's sign-in, against Postgres",
       });
       await first;
 
-      expect(seenByFirst).toEqual([["rec-1"]]);
-      expect(seenByOther).toEqual([["rec-2"]]);
+      // The sweep takes records in no particular order; what matters is that none is taken twice.
+      expect(seenByFirst).toHaveLength(1);
+      expect([...seenByFirst.flat(), ...seenByOther.flat()].sort()).toEqual(["rec-1", "rec-2"]);
       const left = await database
         .select({ id: session.id })
         .from(session)

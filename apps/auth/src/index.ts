@@ -164,6 +164,7 @@ const browserSignIns = createBrowserSignIns({
   sealer: envelope ?? undefined,
   logout: services.oidc.logout,
   durable: durableSecurityEffects,
+  onActivityFailed: (error) => log.warn({ err: error }, "session_activity_failed"),
 });
 const emailChange = new EmailChangeService({
   operations: identityOperations,
@@ -229,6 +230,7 @@ const authHandler = createAuthRequestHandler({
     db,
     auth,
     durable: durableSecurityEffects,
+    activity: browserSignIns.activity,
     secrets: { deviceMarker: env.DEVICE_MARKER_SECRET, issuer: env.BETTER_AUTH_SECRET },
     log,
   }),

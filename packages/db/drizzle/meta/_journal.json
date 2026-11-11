@@ -2430,6 +2430,13 @@
       "when": 1806220800000,
       "tag": "0361_oauth_token_sign_in",
       "breakpoints": true
+    },
+    {
+      "idx": 352,
+      "version": "7",
+      "when": 1806566400000,
+      "tag": "0365_session_lifetime_indexes",
+      "breakpoints": true
     }
   ]
 }

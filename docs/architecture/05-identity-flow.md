@@ -206,6 +206,29 @@ cookie or by the marker.
   durable outbox before the record is deleted. A record found only through the marker is ended
   only when it is the same person's.
 
+### How long a browser stays signed in, and on how many browsers
+
+All the lengths are in one policy object (`apps/auth/src/services/session-lifetime-policy.ts`).
+Staff are the people holding a staff marker (`identity_access_marker`, the source the social-sign-in
+and two-step rules read); everyone else is a client.
+
+| | Idle | Absolute (from first sign-in) | Browsers |
+|---|---|---|---|
+| Client | 7 days | 30 days | 20 |
+| Staff | 12 hours | 24 hours | 5 |
+
+- Idle counts from `session.last_seen_at`, written when the issuer serves the browser's session
+  cookie and when a product refreshes under the record, at most once per 15 minutes per record. A
+  record without it (made before) falls back to `updated_at`.
+- Absolute counts from `session.signed_in_at`, which a renewal in the same browser carries over, so
+  signing in again does not restart the clock. Older records fall back to `created_at`.
+- A record that is over is ended like a sign-out by the once-a-minute expiry sweep (back-channel
+  logout, tokens under it deleted). Until the sweep takes it, a product refresh under it is already
+  refused, and being used does not bring it back.
+- A new sign-in beyond the cap ends the person's least recently used record the same way, with a
+  `session_revoked` for each id it stood for and no security notice. The new sign-in is never the
+  one ended.
+
 ## Where things go wrong
 
 The failure modes that have actually happened in production at other companies running this pattern. None of these are theoretical.

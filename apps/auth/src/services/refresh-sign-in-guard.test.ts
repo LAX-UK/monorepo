@@ -17,7 +17,7 @@ function records() {
   const find = async (sid: string) => {
     const id = live.has(sid) ? sid : lineage.get(sid);
     const record = id ? live.get(id) : undefined;
-    return record && record.expiresAt > now ? { subjectId: record.subjectId } : null;
+    return id && record && record.expiresAt > now ? { id, subjectId: record.subjectId } : null;
   };
   return {
     live,
@@ -29,10 +29,19 @@ function records() {
   };
 }
 
-function guardOver(world: ReturnType<typeof records>, continuity: Record<string, string> = {}) {
+function guardOver(
+  world: ReturnType<typeof records>,
+  continuity: Record<string, string> = {},
+  activity: {
+    recordActivity?: (sessionId: string) => Promise<void>;
+    onActivityFailed?: (error: unknown) => void;
+  } = {},
+) {
   return new SignInLivenessGuard({
     findLiveIdentitySession: world.find,
     peekContinuity: async (hash) => (continuity[hash] ? { sid: continuity[hash] } : null),
+    recordActivity: activity.recordActivity ?? (async () => undefined),
+    onActivityFailed: activity.onActivityFailed ?? (() => undefined),
   });
 }
 
@@ -62,6 +71,55 @@ describe("SignInLivenessGuard", () => {
     await expect(
       guardOver(world).isLive({ userId: "ann", sid: "rec", refreshToken: "r" }),
     ).resolves.toBe(false);
+  });
+
+  it("counts a refresh as use of the record that stands for the sid, not of the old name", async () => {
+    const world = records();
+    world.live.set("rec", { subjectId: "ann", expiresAt: 5_000 });
+    world.lineage.set("old", "rec");
+    const recordActivity = vi.fn(async () => undefined);
+
+    await guardOver(world, {}, { recordActivity }).isLive({
+      userId: "ann",
+      sid: "old",
+      refreshToken: "r",
+    });
+
+    expect(recordActivity).toHaveBeenCalledExactlyOnceWith("rec");
+  });
+
+  it("does not count a refused refresh as use, so a record that ended is not kept alive", async () => {
+    const world = records();
+    world.live.set("rec", { subjectId: "ann", expiresAt: 5_000 });
+    const recordActivity = vi.fn(async () => undefined);
+    const guard = guardOver(world, {}, { recordActivity });
+
+    await guard.isLive({ userId: "ben", sid: "rec", refreshToken: "r" });
+    world.advance(5_000);
+    await guard.isLive({ userId: "ann", sid: "rec", refreshToken: "r" });
+
+    expect(recordActivity).not.toHaveBeenCalled();
+  });
+
+  it("lets the refresh through, and says so, when noting the use fails", async () => {
+    const world = records();
+    world.live.set("rec", { subjectId: "ann", expiresAt: 5_000 });
+    const onActivityFailed = vi.fn();
+    const failure = new Error("db down");
+
+    await expect(
+      guardOver(
+        world,
+        {},
+        {
+          recordActivity: async () => {
+            throw failure;
+          },
+          onActivityFailed,
+        },
+      ).isLive({ userId: "ann", sid: "rec", refreshToken: "r" }),
+    ).resolves.toBe(true);
+    expect(onActivityFailed).toHaveBeenCalledWith(failure);
   });
 
   it("follows an earlier id to the record that took it over", async () => {
