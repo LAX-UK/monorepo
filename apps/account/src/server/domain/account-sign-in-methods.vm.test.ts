@@ -282,13 +282,19 @@ describe("buildSignInMethodFlash", () => {
 
 describe("buildRemoveConfirm", () => {
   it("names the provider and what still works, and warns about other devices and the email", () => {
-    const withPassword = buildRemoveConfirm("google", []);
+    const withPassword = buildRemoveConfirm("google", "your password");
     expect(withPassword.title).toBe("Remove Google sign-in?");
     expect(withPassword.confirmLabel).toBe("Remove Google");
-    expect(withPassword.body).toContain("email and password");
+    expect(withPassword.body).toContain("sign in with your password");
     expect(withPassword.body).toContain("Every other device will be signed out");
     expect(withPassword.body).toContain("sign in again");
-    expect(buildRemoveConfirm("google", ["Apple"]).body).toContain("sign in with Apple");
+    expect(buildRemoveConfirm("google", "your password, your passkeys or Apple").body).toContain(
+      "sign in with your password, your passkeys or Apple",
+    );
+  });
+
+  it("falls back to the email and password when nothing is named", () => {
+    expect(buildRemoveConfirm("google", null).body).toContain("email and password");
   });
 });
 
@@ -314,6 +320,136 @@ describe("refusal copy", () => {
     }
     expect(signInMethodRejectionMessage("staff_not_allowed")).toBe(
       "Staff accounts can't sign in with Google or Apple. Add a passkey instead.",
+    );
+  });
+});
+
+describe("passkey rows", () => {
+  const NOW = new Date("2026-11-11T12:00:00.000Z");
+  const keychain = { ...passkey, lastUsedAt: "2026-11-11T08:00:00.000Z" };
+  const yubikey = {
+    id: "pk-2",
+    name: "YubiKey 5",
+    synced: false,
+    kind: "security_key",
+    createdAt: "2026-10-21T09:00:00.000Z",
+    lastUsedAt: "2026-11-02T09:00:00.000Z",
+  } as const;
+  const on = { available: { passkey: true } };
+  const build = (result: ReturnType<typeof ok>) => {
+    const vm = buildSignInMethodsSection(result, NOW);
+    if (vm.status !== "list") throw new Error("expected list");
+    return vm;
+  };
+  const passkeysRow = (result: ReturnType<typeof ok>) => {
+    const row = build(result).rows.find((entry) => entry.kind === "passkeys");
+    if (row?.kind !== "passkeys") throw new Error("expected a passkeys row");
+    return row;
+  };
+
+  it("has no passkeys row at all when the environment does not offer passkeys", () => {
+    const vm = build(ok(true, [google], { passkeys: [keychain] }));
+    expect(vm.rows.map((row) => row.kind)).toEqual(["password", "social", "link"]);
+  });
+
+  it("puts the row between the password and the providers", () => {
+    expect(build(ok(true, [google], on)).rows.map((row) => `${row.kind}:${row.title}`)).toEqual([
+      "password:Password",
+      "passkeys:Passkeys",
+      "social:Google",
+      "link:Apple",
+    ]);
+  });
+
+  it("invites when there are none, in the design's words", () => {
+    const row = passkeysRow(ok(true, [], on));
+    expect(row).toMatchObject({ count: 0, items: [], addBlockedReason: null });
+    expect(row.detail).toBe("Sign in with your face, fingerprint or screen lock.");
+    expect(row.detailLong).toBe(
+      "Sign in with your face, fingerprint or screen lock instead of your password. Safer, and nothing to remember.",
+    );
+    expect(passkeysRow(ok(false, [google], on)).detailLong).toBe(
+      "Sign in with your face, fingerprint or screen lock. Safer, and nothing to remember.",
+    );
+  });
+
+  it("says where each is kept and when it was added and last used, in the one date style", () => {
+    const row = passkeysRow(ok(true, [], { ...on, passkeys: [keychain, yubikey] }));
+    expect(row.count).toBe(2);
+    expect(row.detailLong).toBe(
+      "Sign in with your face, fingerprint or screen lock. No password to type.",
+    );
+    expect(row.items[0]).toMatchObject({
+      name: "iCloud Keychain",
+      hint: "Synced to your other devices",
+      addedOn: "Tue 3 Nov 2026",
+      lastUsed: "Last used today",
+    });
+    expect(row.items[1]).toMatchObject({
+      name: "YubiKey 5",
+      hint: "This security key only",
+      addedOn: "Wed 21 Oct 2026",
+      lastUsed: "Last used Mon 2 Nov 2026",
+    });
+  });
+
+  it("says a device-bound passkey is for this device only, and one never used is not used yet", () => {
+    const device = { ...passkey, synced: false, lastUsedAt: null };
+    const [item] = passkeysRow(ok(true, [], { ...on, passkeys: [device] })).items;
+    expect(item).toMatchObject({ hint: "This device only", lastUsed: "Not used yet" });
+  });
+
+  it("blocks Remove on the only way in, with the reason, and on no other", () => {
+    const lone = passkeysRow(ok(false, [], { ...on, passkeys: [passkey] }));
+    expect(lone.items[0]?.blockedReason).toBe(ONLY_METHOD_REASON);
+    const withPassword = passkeysRow(ok(true, [], { ...on, passkeys: [passkey] }));
+    expect(withPassword.items[0]?.blockedReason).toBeNull();
+    const twoPasskeys = passkeysRow(ok(false, [], { ...on, passkeys: [keychain, yubikey] }));
+    expect(twoPasskeys.items.map((item) => item.blockedReason)).toEqual([null, null]);
+    const withGoogle = passkeysRow(ok(false, [google], { ...on, passkeys: [passkey] }));
+    expect(withGoogle.items[0]?.blockedReason).toBeNull();
+  });
+
+  it("does not hint that the one method is a lone passkey when the row already says it", () => {
+    expect(build(ok(false, [], { ...on, passkeys: [passkey] })).hint).toBeNull();
+  });
+
+  it("lists what still works in the confirmation, with the other passkeys", () => {
+    const row = passkeysRow(ok(true, [google], { ...on, passkeys: [keychain, yubikey] }));
+    const confirm = row.items[1]?.confirm;
+    expect(confirm?.title).toBe('Remove "YubiKey 5"?');
+    expect(confirm?.body).toContain(
+      "You'll still be able to sign in with your password, your other passkey or Google.",
+    );
+    expect(confirm?.body).toContain("Every other device will be signed out");
+    expect(confirm?.note).toBe(
+      "The passkey stays saved on the device until you delete it there too.",
+    );
+    expect(confirm?.confirmLabel).toBe("Remove passkey");
+  });
+
+  it("disables Add at ten, with the reason", () => {
+    const ten = Array.from({ length: 10 }, (_, index) => ({ ...passkey, id: `pk-${index}` }));
+    const row = passkeysRow(ok(true, [], { ...on, passkeys: ten }));
+    expect(row.items).toHaveLength(10);
+    expect(row.addBlockedReason).toBe(
+      "You have 10 passkeys, the most an account can have. Remove one to add another.",
+    );
+    const nine = passkeysRow(ok(true, [], { ...on, passkeys: ten.slice(0, 9) }));
+    expect(nine.addBlockedReason).toBeNull();
+  });
+
+  it("counts passkeys, flag on or off, when deciding the only way in is a provider", () => {
+    const vm = build(ok(false, [google], { passkeys: [passkey] }));
+    const social = vm.rows.find((row) => row.kind === "social");
+    expect(social?.kind === "social" && social.blockedReason).toBeNull();
+  });
+
+  it("tells a provider's confirmation that passkeys are still there to sign in with", () => {
+    const vm = build(ok(false, [google], { ...on, passkeys: [passkey, keychain] }));
+    const social = vm.rows.find((row) => row.kind === "social");
+    expect(social?.kind === "social" && social.confirm.body).toContain(
+      "sign in with your passkeys",
     );
   });
 });

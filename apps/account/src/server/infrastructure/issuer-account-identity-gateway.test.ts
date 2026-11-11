@@ -176,6 +176,89 @@ describe("createIssuerAccountIdentityGateway", () => {
       });
     });
 
+    describe("passkeys", () => {
+      const passkey = {
+        id: "pk-1",
+        name: "Studio iMac",
+        synced: true,
+        kind: "platform",
+        createdAt: "2026-11-03T10:00:00.000Z",
+        lastUsedAt: null,
+      };
+
+      it("renames with the access token, passkey and name in the body, and answers with the passkey", async () => {
+        const { fetchImpl, gateway: g } = gateway(async () => Response.json({ passkey }));
+        expect(await g.renamePasskey(actor, "pk-1", "Studio iMac")).toEqual({
+          status: "ok",
+          value: passkey,
+        });
+        const { url, body } = lastRequest(fetchImpl);
+        expect(url).toBe(
+          "https://auth.internal/api/auth/lax/account-sign-in-methods/passkeys/rename",
+        );
+        expect(url).not.toContain("access-token");
+        expect(Object.fromEntries(body)).toEqual({
+          token: "access-token",
+          sid: "current-sid",
+          passkeyId: "pk-1",
+          name: "Studio iMac",
+        });
+      });
+
+      it("names a passkey that is not the person's as not linked", async () => {
+        const { gateway: g } = gateway(async () =>
+          Response.json({ error: "not_linked" }, { status: 404 }),
+        );
+        expect(await g.renamePasskey(actor, "pk-9", "Mine")).toEqual({
+          status: "rejected",
+          reason: "not_linked",
+        });
+      });
+
+      it("removes with the access token, sign-in and passkey in the body", async () => {
+        const { fetchImpl, gateway: g } = gateway(async () =>
+          Response.json({ removed: true, revokedSessions: 2 }),
+        );
+        expect(await g.removePasskey(actor, "pk-1")).toEqual({
+          status: "ok",
+          value: { removed: true, revokedSessions: 2 },
+        });
+        const { url, body } = lastRequest(fetchImpl);
+        expect(url).toBe(
+          "https://auth.internal/api/auth/lax/account-sign-in-methods/passkeys/remove",
+        );
+        expect(Object.fromEntries(body)).toEqual({
+          token: "access-token",
+          sid: "current-sid",
+          passkeyId: "pk-1",
+        });
+      });
+
+      it("passes sign in again through, and names the last-method and not-linked refusals", async () => {
+        const stale = gateway(async () =>
+          Response.json({ error: "reauth_required" }, { status: 403 }),
+        );
+        expect(await stale.gateway.removePasskey(actor, "pk-1")).toEqual({
+          status: "reauth_required",
+        });
+        const last = gateway(async () =>
+          Response.json({ error: "last_sign_in_method" }, { status: 422 }),
+        );
+        expect(await last.gateway.removePasskey(actor, "pk-1")).toEqual({
+          status: "rejected",
+          reason: "last_sign_in_method",
+        });
+      });
+
+      it("treats a failure as unavailable, never as a change", async () => {
+        const down = gateway(async () => new Response("", { status: 503 }));
+        expect(await down.gateway.removePasskey(actor, "pk-1")).toEqual({ status: "unavailable" });
+        expect(await down.gateway.renamePasskey(actor, "pk-1", "x")).toEqual({
+          status: "unavailable",
+        });
+      });
+    });
+
     describe("adding a method", () => {
       const ISSUER_URL = "https://auth.example.com/account-action?ticket=abc";
 

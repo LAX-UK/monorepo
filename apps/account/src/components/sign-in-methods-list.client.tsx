@@ -3,29 +3,24 @@
 import { Button } from "@/components/account-button";
 import {
   removeSignInMethodAction,
-  startSignInMethodLinkAction,
+  startSignInMethodAddAction,
 } from "@/server/application/account-identity-actions.server";
 import type { AccountActionResult, LinkActionResult } from "@/server/domain/account-action-result";
 import { buildReauthHref } from "@/server/domain/account-reauth";
 import type { SettingsRowVm } from "@/server/domain/account-settings.vm";
-import {
-  type LinkRowVm,
-  PROVIDER_LABEL,
-  type SignInMethodRowVm,
-  type SocialRowVm,
-  buildRemoveConfirm,
+import type {
+  LinkRowVm,
+  SignInMethodRowVm,
+  SocialRowVm,
 } from "@/server/domain/account-sign-in-methods.vm";
-import type { SocialSignInProvider } from "@auction/identity-contracts/account";
+import type { SignInMethodKind } from "@auction/identity-contracts/account";
 import { ConfirmDialog } from "@auction/ui/components/confirm-dialog";
 import { useRouter } from "next/navigation";
 import { type ReactNode, useEffect, useId, useState } from "react";
-import { ListCard, ListCardRow, TAG } from "./account-ui";
+import { ListCard, ListCardRow } from "./account-ui";
+import { PasskeysGroup } from "./passkey-rows.client";
 import { ProductText } from "./product-name";
-import { ProviderMark } from "./provider-mark";
-
-/** A row of the list: the text, then its button beside it, or under it on a phone. */
-const ROW =
-  "flex min-h-16 flex-col items-start gap-y-2 px-4 py-2.5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-3 sm:gap-y-1 sm:px-6";
+import { SIGN_IN_METHOD_ROW as ROW, SignInMethodRowText as RowText } from "./sign-in-method-row";
 
 type SignInMethodsListProps = {
   rows: SignInMethodRowVm[];
@@ -67,35 +62,6 @@ function PasswordRow({
         {panel}
       </div>
     </li>
-  );
-}
-
-function RowText({
-  title,
-  status,
-  detail,
-  detailMore,
-  provider,
-}: {
-  title: string;
-  status?: string;
-  detail: ReactNode;
-  /** Said after the detail from the small-tablet width up. */
-  detailMore?: string;
-  provider?: SocialSignInProvider;
-}) {
-  return (
-    <div className="min-w-0 sm:flex-1 sm:basis-48">
-      <p className="flex flex-wrap items-center gap-2 text-sm font-medium text-on-surface">
-        {provider ? <ProviderMark provider={provider} /> : null}
-        {title}
-        {status ? <span className={TAG}>{status}</span> : null}
-      </p>
-      <p className="mt-0.5 text-xs text-on-surface-variant">
-        {detail}
-        {detailMore ? <span className="hidden sm:inline"> {detailMore}</span> : null}
-      </p>
-    </div>
   );
 }
 
@@ -184,9 +150,10 @@ function LinkRow({
 }
 
 /**
- * The person's sign-in methods: a confirmed Remove for each linked Google or Apple account, and a
- * Link button for each one that is not linked and is offered, which hands the browser to the
- * issuer's own page.
+ * The person's sign-in methods: the password, the passkeys (each with Rename and a confirmed
+ * Remove, and an Add button), a confirmed Remove for each linked Google or Apple account, and a
+ * Link button for each one that is not linked and is offered. Add and Link hand the browser to the
+ * issuer's own page, where the method is made.
  * The password row opens the password form in place, which changes the password or adds the first
  * one; two-step verification is the last row.
  */
@@ -202,29 +169,28 @@ export function SignInMethodsList({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  /** The provider whose Link button was pressed: the browser is on its way to the issuer. */
-  const [linking, setLinking] = useState<SocialSignInProvider | null>(null);
-  const [linkError, setLinkError] = useState<{
-    provider: SocialSignInProvider;
-    message: string;
-  } | null>(null);
+  /** The method whose Add or Link button was pressed: the browser is on its way to the issuer. */
+  const [adding, setAdding] = useState<SignInMethodKind | null>(null);
+  const [addError, setAddError] = useState<{ kind: SignInMethodKind; message: string } | null>(
+    null,
+  );
 
-  // Coming back with the browser's Back button restores this page as it was left, mid-link.
+  // Coming back with the browser's Back button restores this page as it was left, mid-hand-off.
   useEffect(() => {
     const restored = (event: PageTransitionEvent) => {
-      if (event.persisted) setLinking(null);
+      if (event.persisted) setAdding(null);
     };
     window.addEventListener("pageshow", restored);
     return () => window.removeEventListener("pageshow", restored);
   }, []);
 
-  async function link(provider: SocialSignInProvider) {
+  async function add(kind: SignInMethodKind) {
     setNotice(null);
-    setLinkError(null);
-    setLinking(provider);
+    setAddError(null);
+    setAdding(kind);
     let result: LinkActionResult;
     try {
-      result = await startSignInMethodLinkAction(provider);
+      result = await startSignInMethodAddAction(kind);
     } catch {
       result = {
         status: "error",
@@ -238,23 +204,13 @@ export function SignInMethodsList({
       return;
     }
     if (result.status === "reauth_required") {
-      window.location.assign(buildReauthHref(returnTo));
+      window.location.assign(buildReauthHref(returnTo, "add_sign_in_method"));
       return;
     }
-    setLinking(null);
-    setLinkError({ provider, message: result.message });
+    setAdding(null);
+    setAddError({ kind, message: result.message });
     if (result.refresh) router.refresh();
   }
-
-  const confirm = target
-    ? buildRemoveConfirm(
-        target.provider,
-        rows
-          .filter((row): row is SocialRowVm => row.kind === "social")
-          .filter((row) => row.provider !== target.provider)
-          .map((row) => PROVIDER_LABEL[row.provider]),
-      )
-    : null;
 
   function close() {
     if (busy) return;
@@ -272,7 +228,7 @@ export function SignInMethodsList({
       result = { status: "error", message: "We couldn't do that just now. Please try again." };
     }
     if (result.status === "reauth_required") {
-      window.location.assign(buildReauthHref(returnTo));
+      window.location.assign(buildReauthHref(returnTo, "remove_sign_in_method"));
       return;
     }
     setBusy(false);
@@ -288,31 +244,53 @@ export function SignInMethodsList({
   return (
     <div className="flex flex-col gap-4">
       <ListCard>
-        {rows.map((row) =>
-          row.kind === "password" ? (
-            <PasswordRow key="password" row={row} panel={passwordPanel} />
-          ) : row.kind === "link" ? (
-            <LinkRow
-              key={`link-${row.provider}`}
-              row={row}
-              busy={linking === row.provider}
-              disabled={linking !== null}
-              error={linkError?.provider === row.provider ? linkError.message : null}
-              onLink={() => link(row.provider)}
-            />
-          ) : (
-            <SocialRow
-              key={row.provider}
-              row={row}
-              disabled={linking !== null}
-              onRemove={() => {
-                setNotice(null);
-                setLinkError(null);
-                setTarget(row);
-              }}
-            />
-          ),
-        )}
+        {rows.map((row) => {
+          switch (row.kind) {
+            case "password":
+              return <PasswordRow key="password" row={row} panel={passwordPanel} />;
+            case "passkeys":
+              return (
+                <PasskeysGroup
+                  key="passkeys"
+                  row={row}
+                  returnTo={returnTo}
+                  adding={adding === "passkey"}
+                  disabled={adding !== null}
+                  addError={addError?.kind === "passkey" ? addError.message : null}
+                  onAdd={() => add("passkey")}
+                  onChanged={(message) => {
+                    setAddError(null);
+                    setNotice(message);
+                    router.refresh();
+                  }}
+                />
+              );
+            case "link":
+              return (
+                <LinkRow
+                  key={`link-${row.provider}`}
+                  row={row}
+                  busy={adding === row.provider}
+                  disabled={adding !== null}
+                  error={addError?.kind === row.provider ? addError.message : null}
+                  onLink={() => add(row.provider)}
+                />
+              );
+            case "social":
+              return (
+                <SocialRow
+                  key={row.provider}
+                  row={row}
+                  disabled={adding !== null}
+                  onRemove={() => {
+                    setNotice(null);
+                    setAddError(null);
+                    setTarget(row);
+                  }}
+                />
+              );
+          }
+        })}
         <ListCardRow
           title={twoStep.title}
           {...(twoStep.subtitle ? { subtitle: twoStep.subtitle } : {})}
@@ -323,17 +301,17 @@ export function SignInMethodsList({
       <output aria-live="polite" className="block px-4 text-sm text-success empty:hidden">
         {notice}
       </output>
-      {confirm && target ? (
+      {target ? (
         <ConfirmDialog
           open
           onOpenChange={(open) => {
             if (!open) close();
           }}
-          title={confirm.title}
+          title={target.confirm.title}
           body={
             <>
               <p>
-                <ProductText text={confirm.body} />
+                <ProductText text={target.confirm.body} />
               </p>
               {error ? (
                 <p role="alert" className="mt-3 text-error">
@@ -342,8 +320,9 @@ export function SignInMethodsList({
               ) : null}
             </>
           }
-          confirmLabel={confirm.confirmLabel}
+          confirmLabel={target.confirm.confirmLabel}
           loading={busy}
+          loadingLabel="Removing…"
           onConfirm={() => run(target)}
         />
       ) : null}

@@ -15,6 +15,7 @@ import {
   accountNameSchema,
   accountPhoneCodeSchema,
   accountPhoneSchema,
+  signInMethodKindSchema,
   socialSignInProviderSchema,
 } from "@auction/identity-contracts";
 import { getLaxAccountContainer } from "../container";
@@ -26,6 +27,7 @@ import type {
 } from "../domain/account-action-result";
 import { addressRejectionMessage, isAddressRejection } from "../domain/account-addresses.vm";
 import { contactRejectionMessage } from "../domain/account-contact.vm";
+import { passkeyNameProblem } from "../domain/account-passkeys.vm";
 import {
   PASSWORD_FIELDS,
   isPasswordRejection,
@@ -146,16 +148,17 @@ export async function removeSignInMethodAction(provider: string): Promise<Accoun
 }
 
 /**
- * Starts linking Google or Apple: asks the issuer for its one-time page and returns that address
- * for the browser to open. The issuer needs a recent sign-in, refuses staff and a provider that is
- * already linked or not offered, and limits how often this can be asked.
+ * Starts adding a way to sign in (Google, Apple or a passkey): asks the issuer for its one-time
+ * page and returns that address for the browser to open. The issuer needs a recent sign-in,
+ * refuses staff for Google or Apple and a method that is already linked or not offered, and limits
+ * how often this can be asked.
  */
-export async function startSignInMethodLinkAction(provider: string): Promise<LinkActionResult> {
-  const parsed = socialSignInProviderSchema.safeParse(provider);
+export async function startSignInMethodAddAction(kind: string): Promise<LinkActionResult> {
+  const parsed = signInMethodKindSchema.safeParse(kind);
   if (!parsed.success) {
     return {
       status: "error",
-      message: "That sign-in method can't be linked here.",
+      message: "That way to sign in can't be added here.",
       refresh: false,
     };
   }
@@ -175,6 +178,38 @@ export async function startSignInMethodLinkAction(provider: string): Promise<Lin
     };
   }
   return { status: "error", message: UNAVAILABLE_MESSAGE, refresh: false };
+}
+
+/**
+ * Removes one of the person's own passkeys. The issuer finds it among the signed-in person's
+ * passkeys only (another person's id is "not linked"), needs a recent sign-in, refuses the last
+ * way in, signs out every other device and emails the person.
+ */
+export async function removePasskeyAction(passkeyId: string): Promise<AccountActionResult> {
+  if (!passkeyId) return { status: "error", message: "That passkey can't be removed here." };
+  const { identity } = getLaxAccountContainer();
+  return actAsSignedInPerson(
+    (actor) => identity.removePasskey(actor, passkeyId),
+    () => "Passkey removed. We've emailed you to confirm.",
+  );
+}
+
+/**
+ * Renames one of the person's own passkeys. The form checks the name too; this repeats it because
+ * actions are public endpoints, and the issuer checks it a third time.
+ */
+export async function renamePasskeyAction(
+  passkeyId: string,
+  name: string,
+): Promise<AccountActionResult> {
+  if (!passkeyId) return { status: "error", message: "That passkey can't be renamed here." };
+  const problem = passkeyNameProblem(name);
+  if (problem) return { status: "error", message: problem };
+  const { identity } = getLaxAccountContainer();
+  return actAsSignedInPerson(
+    (actor) => identity.renamePasskey(actor, passkeyId, name.trim()),
+    () => "Passkey renamed.",
+  );
 }
 
 /**

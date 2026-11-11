@@ -9,6 +9,8 @@ import type {
   AccountDeletionOutcome,
   AccountDeletionStatus,
   AccountEmailChangeConfirmedResponse,
+  AccountPasskey,
+  AccountPasskeyRemovedResponse,
   AccountPasswordChangedResponse,
   AccountPasswordError,
   AccountSession,
@@ -143,4 +145,21 @@ export type AccountIdentityGateway = {
     actor: IdentityActor,
     provider: SocialSignInProvider,
   ): Promise<IdentityCallResult<AccountSignInMethodUnlinkedResponse>>;
+  /**
+   * Gives one of the person's own passkeys a new name. The issuer answers "not linked" for a
+   * passkey that is not theirs. No recent sign-in is needed: a name changes how nobody signs in.
+   */
+  renamePasskey(
+    actor: IdentityActor,
+    passkeyId: string,
+    name: string,
+  ): Promise<IdentityCallResult<AccountPasskey>>;
+  /**
+   * Removes one of the person's own passkeys. Needs a recent sign-in, and is refused when it is the
+   * person's last way in. Every other device is signed out; this one stays.
+   */
+  removePasskey(
+    actor: IdentityActor,
+    passkeyId: string,
+  ): Promise<IdentityCallResult<AccountPasskeyRemovedResponse>>;
 };
