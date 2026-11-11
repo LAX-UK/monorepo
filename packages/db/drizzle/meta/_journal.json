@@ -2437,6 +2437,13 @@
       "when": 1805875200000,
       "tag": "0357_private_sale_deal_artwork_unlinked_reason",
       "breakpoints": true
+    },
+    {
+      "idx": 357,
+      "version": "7",
+      "when": 1806393600000,
+      "tag": "0363_private_sale_deal_artwork_history",
+      "breakpoints": true
     }
   ]
 }

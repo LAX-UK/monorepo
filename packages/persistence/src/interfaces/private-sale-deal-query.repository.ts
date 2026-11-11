@@ -48,6 +48,8 @@ export interface IPrivateSaleDealQueryReader {
    * work: a settled one has sold it.
    */
   findLiveDealReferenceForWork(itemSubmissionId: string): Promise<string | null>;
+  /** The references (PS-0012) of the deals with these ids, for links to them. */
+  findReferencesByIds(ids: readonly string[]): Promise<Map<string, string>>;
   /** Deals a person is named to act in, most recently changed first. */
   listIdsForActingUser(userId: string, limit: number): Promise<string[]>;
   /** The title and consignment reference of a work, for a deal's record. */

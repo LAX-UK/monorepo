@@ -196,6 +196,89 @@ describe.skipIf(!HAS_DB)("private sale deals (integration)", () => {
     },
   );
 
+  describe("setting the artwork", () => {
+    const registerEntry = (db: Database) =>
+      db
+        .insert(artworkRegister)
+        .values({
+          zohoProductId: "psd-it-zoho-set",
+          stockCode: "LAX-ORI-PSD-IT-26-0002",
+          kind: "original",
+          title: "Low tide at Maldon",
+          artistName: "Test Artist",
+          artistCode: "TA",
+        })
+        .returning({ id: artworkRegister.id })
+        .then((rows) => rows[0]?.id as string);
+
+    it("sets the artwork, bumps the version and appends the history row with before and after", async () => {
+      await inRollback(async (db, submissionId) => {
+        const repo = new DrizzlePrivateSaleDealRepository(db);
+        const deal = await repo.create(
+          newDeal(submissionId, { artworkUnlinkedReason: "in_zoho_not_linked" }),
+        );
+        const registerId = await registerEntry(db);
+        const result = await repo.setArtwork(deal.id, deal.version, {
+          action: "linked",
+          actorUserId: staffId,
+          artworkRegisterId: registerId,
+          unlinkedReason: null,
+          reason: null,
+        });
+        expect(result).toMatchObject({
+          kind: "ok",
+          deal: {
+            artworkRegisterId: registerId,
+            artworkUnlinkedReason: null,
+            version: deal.version + 1,
+          },
+        });
+        expect(await repo.artworkHistory(deal.id)).toMatchObject([
+          {
+            action: "linked",
+            actorUserId: staffId,
+            fromArtworkRegisterId: null,
+            toArtworkRegisterId: registerId,
+            fromUnlinkedReason: "in_zoho_not_linked",
+            toUnlinkedReason: null,
+          },
+        ]);
+      });
+    });
+
+    it("refuses a change made against an old version, and writes nothing", async () => {
+      await inRollback(async (db, submissionId) => {
+        const repo = new DrizzlePrivateSaleDealRepository(db);
+        const deal = await repo.create(newDeal(submissionId));
+        const result = await repo.setArtwork(deal.id, deal.version + 5, {
+          action: "linked",
+          actorUserId: staffId,
+          artworkRegisterId: null,
+          unlinkedReason: "sellers_own_work",
+          reason: null,
+        });
+        expect(result).toEqual({ kind: "conflict" });
+        expect(await repo.artworkHistory(deal.id)).toEqual([]);
+        expect((await repo.findById(deal.id))?.artworkUnlinkedReason).toBeNull();
+      });
+    });
+
+    it("answers a deal that does not exist as not found", async () => {
+      await inRollback(async (db) => {
+        const repo = new DrizzlePrivateSaleDealRepository(db);
+        expect(
+          await repo.setArtwork("a0d00000-0000-4000-8000-00000000ffff", 1, {
+            action: "linked",
+            actorUserId: staffId,
+            artworkRegisterId: null,
+            unlinkedReason: "sellers_own_work",
+            reason: null,
+          }),
+        ).toEqual({ kind: "not_found" });
+      });
+    });
+  });
+
   it("records no reason unless one is given", async () => {
     await inRollback(async (db, submissionId) => {
       const deal = await new DrizzlePrivateSaleDealRepository(db).create(newDeal(submissionId));

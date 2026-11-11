@@ -1,4 +1,5 @@
 import type {
+  PrivateSaleArtworkUnlinkedReason,
   PrivateSaleDealStage,
   PrivateSalePartyRole,
   PrivateSalePaymentRail,
@@ -8,6 +9,12 @@ import type {
 export const PRIVATE_SALE_DEAL_EVENT_AGGREGATE = "private_sale_deal";
 
 type DealRef = { id: string; reference: string };
+
+/** What a deal's artwork was or is: identifiers only, never the staff's own words. */
+export type DealArtworkSnapshot = {
+  artworkRegisterId: string | null;
+  unlinkedReason: PrivateSaleArtworkUnlinkedReason | null;
+};
 
 export type PrivateSaleDealEvent =
   | {
@@ -93,6 +100,19 @@ export type PrivateSaleDealEvent =
       payload: { dealId: string; reference: string; payoutId: string; netToSellerMinor: number };
     }
   | {
+      eventType:
+        | "private_sale_deal.artwork_linked"
+        | "private_sale_deal.artwork_changed"
+        | "private_sale_deal.artwork_removed";
+      payload: {
+        dealId: string;
+        reference: string;
+        /** The register artwork before and after, and the reason recorded when there is none. */
+        from: DealArtworkSnapshot;
+        to: DealArtworkSnapshot;
+      };
+    }
+  | {
       eventType: "private_sale_deal.artwork_record_not_updated";
       payload: {
         dealId: string;
@@ -141,6 +161,28 @@ export function dealArtworkRecordNotUpdatedEvent(
       reason: failure.reason,
       message: `Deal ${deal.reference} ${failure.stage}, but the artwork's record couldn't be marked sold — check where it is`,
     },
+  };
+}
+
+const ARTWORK_EVENT_TYPE = {
+  link: "private_sale_deal.artwork_linked",
+  record_reason: "private_sale_deal.artwork_linked",
+  change: "private_sale_deal.artwork_changed",
+  remove: "private_sale_deal.artwork_removed",
+} as const;
+
+/**
+ * The artwork a deal holds was linked, changed or taken off. The reason staff gave stays with the
+ * deal's artwork history; the event carries only which artworks were involved.
+ */
+export function dealArtworkMovedEvent(
+  deal: DealRef,
+  move: keyof typeof ARTWORK_EVENT_TYPE,
+  change: { from: DealArtworkSnapshot; to: DealArtworkSnapshot },
+): PrivateSaleDealEvent {
+  return {
+    eventType: ARTWORK_EVENT_TYPE[move],
+    payload: { dealId: deal.id, reference: deal.reference, from: change.from, to: change.to },
   };
 }
 
