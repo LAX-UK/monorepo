@@ -48,6 +48,8 @@ export type GroupCheckoutStatus = "open" | "complete" | "expired";
 export type GroupChargeRefund = {
   /** The invoice's payment the refund names, `null` when it names none. */
   paymentId: string | null;
+  /** The courier quote the refund names (`metadata.deliveryQuoteId`), `null` when it names none. */
+  deliveryQuoteId?: string | null;
   amountPence: number;
 };
 

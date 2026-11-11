@@ -66,6 +66,8 @@ ENV SENTRY_RELEASE=$SENTRY_RELEASE
 ENV SENTRY_PROJECT=$SENTRY_PROJECT
 ENV NEXT_TELEMETRY_DISABLED=1
 COPY scripts/ci/require-node-version.mjs ./scripts/ci/require-node-version.mjs
+# Typechecked with the browser checks, which sign out through it.
+COPY scripts/ci/e2e-sign-out.mjs scripts/ci/e2e-sign-out.d.mts ./scripts/ci/
 COPY scripts/vitest ./scripts/vitest
 COPY .nvmrc ./.nvmrc
 COPY apps/api ./apps/api

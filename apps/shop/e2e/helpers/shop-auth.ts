@@ -1,4 +1,5 @@
-import type { Page } from "@playwright/test";
+import type { BrowserContext, Page } from "@playwright/test";
+import { forgetSignIn, rememberSignIn } from "../../../../scripts/ci/e2e-sign-out.mjs";
 
 export type ShopBuyerCredentials = {
   email: string;
@@ -56,6 +57,8 @@ export async function signInShopBuyer(
       timeout: 60_000,
     });
   }
+  // The spec fixture signs this browser out when the spec ends.
+  rememberSignIn(page.context(), signOutContextThroughMenu);
 }
 
 export async function signOutShopBuyer(page: Page): Promise<void> {
@@ -69,4 +72,16 @@ export async function signOutShopBuyer(page: Page): Promise<void> {
     signOut.click(),
   ]);
   await page.waitForLoadState("networkidle", { timeout: 25_000 }).catch(() => {});
+  forgetSignIn(page.context());
+}
+
+/** Signs a signed-in browser out from a desktop-sized page, whatever size the spec ran at. */
+async function signOutContextThroughMenu(context: BrowserContext): Promise<void> {
+  const page = await context.newPage();
+  try {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await signOutShopBuyer(page);
+  } finally {
+    await page.close();
+  }
 }

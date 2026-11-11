@@ -4,6 +4,7 @@ import {
   type StaffSession,
   type StaffTheme,
   administratorAccount,
+  closeStaffSession,
   e2eEnabled,
   openStaffPage,
   openStaffSession,
@@ -57,7 +58,7 @@ for (const variant of variants) {
     });
 
     test.afterAll(async () => {
-      await session?.context.close();
+      if (session) await closeStaffSession(session);
     });
 
     for (const staffPage of administratorStaffPages()) {
