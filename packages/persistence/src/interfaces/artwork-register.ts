@@ -162,7 +162,9 @@ export type RecordCatalogueStatusWrittenResult = {
  * Writes to the register. Every write that changes a record is optimistic (the version moves
  * on) and leaves an event. Bid and Shop reach the register only through this port.
  */
-export interface IArtworkRegisterRepository extends IArtworkRegisterReader {
+export interface IArtworkRegisterRepository
+  extends IArtworkRegisterReader,
+    IRegisterOfferConflicts {
   /** Adds a record, held and unlisted, and records that it was created. */
   create(
     entry: NewArtworkRegisterEntry,
@@ -309,6 +311,8 @@ export type LotRegisterLink = {
   registerId: string;
   status: "draft" | "scheduled" | "active" | "ended" | "cancelled" | "voided";
   hasWinner: boolean;
+  /** ATG reports the lot sold. A lot sold there has no LAX winner, so this is its only sold fact. */
+  soldOnAtg: boolean;
 };
 
 /**
@@ -318,6 +322,29 @@ export type LotRegisterLink = {
 export interface ILotRegisterLinkReader {
   /** The lot's link to the register, or null when the lot has none (or does not exist). */
   findLink(lotId: string): Promise<LotRegisterLink | null>;
+}
+
+/** Whether a lot was sold on ATG (The Saleroom). */
+export interface IAtgLotSoldReader {
+  /** True when ATG's result for the lot says it sold. False for a lot with no ATG link. */
+  soldOnAtg(lotId: string): Promise<boolean>;
+}
+
+export type RecordOfferConflictInput = {
+  registerId: string;
+  /** Why staff need to look, in words they can act on. */
+  message: string;
+  /** Where the register shows the artwork now. */
+  state: OfferState;
+  /** The lot the change was for. */
+  lotId: string;
+  now: Date;
+};
+
+/** Raises a staff item for an offer change the register could not make. */
+export interface IRegisterOfferConflicts {
+  /** Opens (or refreshes) the open offer-state conflict. True when a new one was opened. */
+  recordOfferConflict(input: RecordOfferConflictInput): Promise<boolean>;
 }
 
 export type RecordZohoLinkInput = {

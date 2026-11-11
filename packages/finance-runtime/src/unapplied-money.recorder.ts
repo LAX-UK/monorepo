@@ -104,7 +104,9 @@ export class UnappliedMoneyRecorder implements IUnappliedMoneyRecorder {
       await this.resolve(tx, partial, { via: "superseded" });
     }
     this.metrics.record(`unapplied_money_${money.reason}`);
-    console.error(JSON.stringify({ msg: "unapplied_money_received", ...payload }));
+    // The reference a payer quoted is left out of the log: it is typed by a person.
+    const { transferReference: _quoted, ...loggable } = payload;
+    console.error(JSON.stringify({ msg: "unapplied_money_received", ...loggable }));
     await this.events.withTx(tx).publish({
       ...unappliedMoneyAggregate(money, payload.dedupeKey),
       eventType: UNAPPLIED_MONEY_EVENT,
