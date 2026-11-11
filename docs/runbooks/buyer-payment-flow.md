@@ -91,7 +91,14 @@ sequenceDiagram
 - On `customer_cash_balance_transaction.created` with `type = applied_to_payment`, the receiving payment's reference is the live one when still shown, else the kept one. The source of the money is found by reading the buyer's ledger back from that entry (up to 4 pages of 25, skipping other applications) to the first `funded` entry (its `funded.bank_transfer.reference`) or the first `unapplied_from_payment` entry (the payment the money was taken back from).
   - A transfer is a different invoice's when the text the sender quoted does not contain the receiving payment's own reference (letters and digits only, any case) and does contain a reference we issued to another payment of the same buyer.
   - Money taken back from a payment (cancelled while part funded) and applied elsewhere is reported, naming the payment it came from when its reference was kept.
-  - Not reported: the same invoice (the sent reference belongs to the same payment, the same combined payment, or an invoice and the combined payment holding it); a transfer sent with no reference or with text that is none of our references; a source more than 100 ledger entries back (counted as `transfer_supply_window_exceeded`); a payment whose reference was never kept and is no longer shown (older payments, `transfer_application_check_skipped_no_reference`). A payment with no reference yet is answered with a retry for ten minutes after the event, so a reference event that is still on its way can be processed first.
+  - Money taken back from a payment (cancelled while part funded) and applied elsewhere is reported, naming the payment it came from when its reference was kept. This does not need the receiving payment's own reference.
+  - Not reported, each counted by a metric where noted:
+    - the same invoice: the sent reference belongs to the same payment, the same private sale deal payment, the same combined payment, an invoice and the combined payment holding it, or two combined payments that share an invoice (the invoices a combined payment held are kept with its reference, because a combined payment that is let go holds none);
+    - a transfer sent with no reference, or with text that is none of our references (`transfer_reference_not_ours`);
+    - a trail that ends where the money left the balance (refunded, moved to the account balance, a return): `transfer_supply_interrupted`;
+    - a source more than 100 ledger entries back: `transfer_supply_window_exceeded`;
+    - a transfer applied to a payment whose reference was never kept and is no longer shown (payments from before this check, or invoices paid from an existing balance, which never show instructions): `transfer_application_check_skipped_no_reference`. These cannot name the intended invoice either.
+  - Ambiguous text: text that contains both the receiving payment's own reference and another payment's is treated as a match and raises nothing.
 - The task is one per ledger entry. The Work inbox titles it "Bank transfer applied to another invoice".
 
 ## Related

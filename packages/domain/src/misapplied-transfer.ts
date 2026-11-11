@@ -9,12 +9,15 @@
 export type LedgerEntry =
   | { kind: "funded"; id: string; reference: string | null }
   | { kind: "unapplied"; id: string; paymentIntentId: string }
+  /** The money left the balance (refunded, moved to the account balance, a return): the trail ends. */
+  | { kind: "stop"; id: string }
   | { kind: "other"; id: string };
 
 /** Where the money applied to a payment came from. */
 export type TransferSupply =
   | { kind: "funded"; reference: string | null }
-  | { kind: "unapplied"; paymentIntentId: string };
+  | { kind: "unapplied"; paymentIntentId: string }
+  | { kind: "stopped" };
 
 /**
  * The source of an application: the first transfer received, or the first payment the money was
@@ -26,6 +29,7 @@ export function supplyBehindApplication(
   entriesNewestFirst: readonly LedgerEntry[],
 ): TransferSupply | null {
   for (const entry of entriesNewestFirst) {
+    if (entry.kind === "stop") return { kind: "stopped" };
     if (entry.kind === "funded") return { kind: "funded", reference: entry.reference };
     if (entry.kind === "unapplied") {
       return { kind: "unapplied", paymentIntentId: entry.paymentIntentId };
@@ -79,23 +83,26 @@ export function referenceIssuedIn<T extends { reference: string }>(
   return best;
 }
 
-type PaymentIdentity = { paymentId: string | null; paymentGroupId: string | null };
+type PaymentIdentity = {
+  paymentId: string | null;
+  paymentGroupId: string | null;
+  privateSaleDealPaymentId: string | null;
+  /** The invoices a combined payment holds or held (empty for a single invoice). */
+  memberPaymentIds: readonly string[];
+};
 
 /**
- * Whether two payments are one invoice's money: the same payment, the same combined payment, or an
- * invoice and the combined payment that holds it. `membersOf` lists a combined payment's invoices.
+ * Whether two payments are one invoice's money: the same payment, the same private sale deal
+ * payment, the same combined payment, an invoice and a combined payment that holds it, or two
+ * combined payments that share an invoice (one let go, one opened after it).
  */
-export function isSameInvoiceMoney(
-  a: PaymentIdentity,
-  b: PaymentIdentity,
-  membersOf: (groupId: string) => readonly string[],
-): boolean {
+export function isSameInvoiceMoney(a: PaymentIdentity, b: PaymentIdentity): boolean {
   if (a.paymentId && a.paymentId === b.paymentId) return true;
-  if (a.paymentGroupId && a.paymentGroupId === b.paymentGroupId) return true;
-  if (a.paymentId && b.paymentGroupId && membersOf(b.paymentGroupId).includes(a.paymentId)) {
+  if (a.privateSaleDealPaymentId && a.privateSaleDealPaymentId === b.privateSaleDealPaymentId) {
     return true;
   }
-  return Boolean(
-    b.paymentId && a.paymentGroupId && membersOf(a.paymentGroupId).includes(b.paymentId),
-  );
+  if (a.paymentGroupId && a.paymentGroupId === b.paymentGroupId) return true;
+  if (a.paymentId && b.memberPaymentIds.includes(a.paymentId)) return true;
+  if (b.paymentId && a.memberPaymentIds.includes(b.paymentId)) return true;
+  return a.memberPaymentIds.some((id) => b.memberPaymentIds.includes(id));
 }

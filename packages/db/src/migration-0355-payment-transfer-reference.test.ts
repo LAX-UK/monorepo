@@ -43,6 +43,7 @@ describe("migration 0355 payment transfer reference", () => {
     expect(Object.keys(columns).sort()).toEqual(
       [
         "createdAt",
+        "memberPaymentIds",
         "paymentGroupId",
         "paymentId",
         "privateSaleDealId",

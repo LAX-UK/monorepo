@@ -97,17 +97,23 @@ export class StripePaymentWebhookService {
           paymentIntentProcessing: new ReferenceNotingHandler(
             routed.paymentIntentProcessing,
             references,
+            transferChecks?.groups ?? null,
             errorReporter,
           ),
           paymentIntentPartiallyFunded: new ReferenceNotingHandler(
             routed.paymentIntentPartiallyFunded,
             references,
+            transferChecks?.groups ?? null,
             errorReporter,
           ),
         }
       : routed;
     this.requiresAction = references
-      ? new PaymentIntentRequiresActionHandler(references, errorReporter)
+      ? new PaymentIntentRequiresActionHandler(
+          references,
+          transferChecks?.groups ?? null,
+          errorReporter,
+        )
       : null;
   }
 

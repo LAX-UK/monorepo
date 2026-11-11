@@ -19,7 +19,7 @@ import {
   PAYMENT_WEBHOOK_EVENT_SOURCE,
   type PaymentWebhookResult,
 } from "./payment-webhook-types.js";
-import { rememberTransferDetails } from "./transfer-reference.js";
+import { memberPaymentIdsOf, rememberTransferDetails } from "./transfer-reference.js";
 
 /** What the transfer check reads: the provider's ledger and the references kept here. */
 export type TransferCheckDeps = {
@@ -33,12 +33,6 @@ export type TransferCheckDeps = {
 
 /** How many of a buyer's kept references a quoted reference is looked for among. */
 const ISSUED_REFERENCES_WINDOW = 50;
-/**
- * A reference event can arrive after the application it explains. For this long after an event,
- * a payment with no reference yet is answered with a retry; after it, the check is given up.
- */
-const REFERENCE_EVENT_GRACE_SECONDS = 600;
-
 const idOf = (value: string | { id: string }): string =>
   typeof value === "string" ? value : value.id;
 
@@ -75,7 +69,7 @@ export async function handleCashBalanceTransactionCreated(
   const payment = await cashBalance.describePayment(intentId);
   // Late notice of a reference the events did not carry: kept while it can still be read.
   try {
-    await rememberTransferDetails(references, intentId, payment);
+    await rememberTransferDetails(references, intentId, payment, checks.groups);
   } catch (cause) {
     deps.errorReporter?.report({
       message: "Could not keep a bank-transfer payment's reference",
@@ -94,15 +88,6 @@ export async function handleCashBalanceTransactionCreated(
     recordMoneyPathEvent("transfer_reference_stored_differs_from_live");
   }
   const ownReference = payment.ownReference ?? stored?.reference ?? null;
-  if (!ownReference) {
-    recordMoneyPathEvent("transfer_application_check_skipped_no_reference");
-    const ageSeconds = Date.now() / 1000 - (event.created ?? 0);
-    // The event that carries the reference may simply not have been processed yet: ask for a
-    // redelivery for a short while, then give the check up.
-    return event.created && ageSeconds < REFERENCE_EVENT_GRACE_SECONDS
-      ? { processed: false, action: "skipped", reason: "payment_reference_pending" }
-      : { processed: true, action: "skipped", reason: "payment_reference_unavailable" };
-  }
 
   const { supply, windowExceeded } = await cashBalance.findSupplyBehind(customerId, txn.id);
   if (!supply) {
@@ -111,11 +96,22 @@ export async function handleCashBalanceTransactionCreated(
       windowExceeded ? "transfer_supply_window_exceeded" : "transfer_supply_not_found",
     );
   }
+  if (supply.kind === "stopped") {
+    return skipped("money_left_the_balance", "transfer_supply_interrupted");
+  }
 
   let intended: TransferReferenceRecord | null;
   if (supply.kind === "funded") {
     const sent = supply.reference;
     if (!sent?.trim()) return skipped("no_reference_quoted");
+    // Without the receiving payment's own reference there is nothing to compare the transfer
+    // with (a payment from before references were kept, or one paid from an existing balance).
+    if (!ownReference) {
+      return skipped(
+        "payment_reference_unavailable",
+        "transfer_application_check_skipped_no_reference",
+      );
+    }
     if (
       !isTransferAppliedToOtherPayment({
         sentWithReference: sent,
@@ -138,18 +134,27 @@ export async function handleCashBalanceTransactionCreated(
   }
 
   if (intended) {
-    const groupIds = [payment.paymentGroupId, intended.paymentGroupId].filter(
-      (id): id is string => id !== null,
-    );
-    const members = new Map<string, string[]>();
-    for (const groupId of new Set(groupIds)) {
-      const listed = (await checks.groups?.listMembers(groupId)) ?? [];
-      members.set(
-        groupId,
-        listed.map((member) => member.paymentId),
-      );
-    }
-    if (isSameInvoiceMoney(payment, intended, (groupId) => members.get(groupId) ?? [])) {
+    // A combined payment that has been let go holds no invoices now: the ones kept when its
+    // reference was shown stand in for them.
+    const receiving = {
+      paymentId: payment.paymentId,
+      paymentGroupId: payment.paymentGroupId,
+      privateSaleDealPaymentId: payment.privateSaleDealPaymentId,
+      memberPaymentIds: [
+        ...(stored?.memberPaymentIds ?? []),
+        ...(await memberPaymentIdsOf(checks.groups, payment.paymentGroupId)),
+      ],
+    };
+    const meant = {
+      paymentId: intended.paymentId,
+      paymentGroupId: intended.paymentGroupId,
+      privateSaleDealPaymentId: intended.privateSaleDealPaymentId,
+      memberPaymentIds: [
+        ...intended.memberPaymentIds,
+        ...(await memberPaymentIdsOf(checks.groups, intended.paymentGroupId)),
+      ],
+    };
+    if (isSameInvoiceMoney(receiving, meant)) {
       return skipped("same_invoice", "transfer_applied_to_same_invoice");
     }
   }

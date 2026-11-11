@@ -37,6 +37,13 @@ export interface ICashBalanceGateway {
 const idOf = (value: string | { id: string }): string =>
   typeof value === "string" ? value : value.id;
 
+/** Entries where the money left the balance: nothing older explains what is applied after them. */
+const LEDGER_STOPS: ReadonlySet<string> = new Set([
+  "refunded_from_payment",
+  "transferred_to_balance",
+  "return_canceled",
+]);
+
 function ledgerEntryOf(txn: Stripe.CustomerCashBalanceTransaction): LedgerEntry {
   if (txn.type === "funded" && txn.funded) {
     return { kind: "funded", id: txn.id, reference: txn.funded.bank_transfer.reference ?? null };
@@ -48,6 +55,7 @@ function ledgerEntryOf(txn: Stripe.CustomerCashBalanceTransaction): LedgerEntry 
       paymentIntentId: idOf(txn.unapplied_from_payment.payment_intent),
     };
   }
+  if (LEDGER_STOPS.has(txn.type)) return { kind: "stop", id: txn.id };
   return { kind: "other", id: txn.id };
 }
 

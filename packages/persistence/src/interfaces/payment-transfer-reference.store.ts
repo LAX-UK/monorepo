@@ -6,6 +6,8 @@ export type TransferReferenceRecord = {
   stripeCustomerId: string | null;
   paymentId: string | null;
   paymentGroupId: string | null;
+  /** The invoices the combined payment held when the reference was shown; empty otherwise. */
+  memberPaymentIds: string[];
   privateSaleDealId: string | null;
   privateSaleDealPaymentId: string | null;
 };

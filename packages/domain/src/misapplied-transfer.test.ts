@@ -64,6 +64,11 @@ describe("supplyBehindApplication", () => {
       paymentIntentId: "pi_cancelled",
     });
   });
+  it("stops at an entry where the money left the balance, rather than reaching older funding", () => {
+    expect(supplyBehindApplication([{ kind: "stop", id: "r" }, funded("f", "R")])).toEqual({
+      kind: "stopped",
+    });
+  });
   it("is null when the window holds neither", () => {
     expect(supplyBehindApplication([other("a")])).toBeNull();
     expect(supplyBehindApplication([])).toBeNull();
@@ -87,47 +92,44 @@ describe("referenceIssuedIn", () => {
 });
 
 describe("isSameInvoiceMoney", () => {
-  const none = () => [] as string[];
-  it("is the same payment or the same combined payment", () => {
+  const id = (over: Partial<Parameters<typeof isSameInvoiceMoney>[0]>) => ({
+    paymentId: null,
+    paymentGroupId: null,
+    privateSaleDealPaymentId: null,
+    memberPaymentIds: [],
+    ...over,
+  });
+  it("is the same payment, the same combined payment, or the same deal payment", () => {
+    expect(isSameInvoiceMoney(id({ paymentId: "p1" }), id({ paymentId: "p1" }))).toBe(true);
+    expect(isSameInvoiceMoney(id({ paymentGroupId: "g" }), id({ paymentGroupId: "g" }))).toBe(true);
     expect(
       isSameInvoiceMoney(
-        { paymentId: "p1", paymentGroupId: null },
-        { paymentId: "p1", paymentGroupId: null },
-        none,
-      ),
-    ).toBe(true);
-    expect(
-      isSameInvoiceMoney(
-        { paymentId: null, paymentGroupId: "g" },
-        { paymentId: null, paymentGroupId: "g" },
-        none,
+        id({ privateSaleDealPaymentId: "d1" }),
+        id({ privateSaleDealPaymentId: "d1" }),
       ),
     ).toBe(true);
   });
   it("is an invoice and the combined payment that holds it, either way round", () => {
-    const members = (g: string) => (g === "g" ? ["p1", "p2"] : []);
+    const group = id({ paymentGroupId: "g", memberPaymentIds: ["p1", "p2"] });
+    expect(isSameInvoiceMoney(id({ paymentId: "p1" }), group)).toBe(true);
+    expect(isSameInvoiceMoney(group, id({ paymentId: "p2" }))).toBe(true);
+  });
+  it("is two different combined payments that share an invoice", () => {
     expect(
       isSameInvoiceMoney(
-        { paymentId: "p1", paymentGroupId: null },
-        { paymentId: null, paymentGroupId: "g" },
-        members,
-      ),
-    ).toBe(true);
-    expect(
-      isSameInvoiceMoney(
-        { paymentId: null, paymentGroupId: "g" },
-        { paymentId: "p2", paymentGroupId: null },
-        members,
+        id({ paymentGroupId: "g1", memberPaymentIds: ["p1", "p2"] }),
+        id({ paymentGroupId: "g2", memberPaymentIds: ["p2", "p3"] }),
       ),
     ).toBe(true);
   });
-  it("is not for two unrelated payments", () => {
+  it("is not for unrelated payments, or combined payments with no invoice in common", () => {
+    expect(isSameInvoiceMoney(id({ paymentId: "p1" }), id({ paymentId: "p9" }))).toBe(false);
     expect(
       isSameInvoiceMoney(
-        { paymentId: "p1", paymentGroupId: null },
-        { paymentId: "p9", paymentGroupId: null },
-        none,
+        id({ paymentGroupId: "g1", memberPaymentIds: ["p1"] }),
+        id({ paymentGroupId: "g2", memberPaymentIds: ["p2"] }),
       ),
     ).toBe(false);
+    expect(isSameInvoiceMoney(id({}), id({}))).toBe(false);
   });
 });

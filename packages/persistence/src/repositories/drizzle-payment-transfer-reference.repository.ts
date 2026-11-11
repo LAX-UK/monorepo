@@ -12,6 +12,7 @@ const columns = {
   stripeCustomerId: paymentTransferReference.stripeCustomerId,
   paymentId: paymentTransferReference.paymentId,
   paymentGroupId: paymentTransferReference.paymentGroupId,
+  memberPaymentIds: paymentTransferReference.memberPaymentIds,
   privateSaleDealId: paymentTransferReference.privateSaleDealId,
   privateSaleDealPaymentId: paymentTransferReference.privateSaleDealPaymentId,
 };

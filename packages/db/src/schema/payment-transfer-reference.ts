@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import { index, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 
 /**
@@ -17,6 +18,8 @@ export const paymentTransferReference = pgTable(
     stripeCustomerId: text("stripe_customer_id"),
     paymentId: uuid("payment_id"),
     paymentGroupId: uuid("payment_group_id"),
+    /** The invoices a combined payment held when its reference was shown (it may be let go later). */
+    memberPaymentIds: uuid("member_payment_ids").array().notNull().default(sql`'{}'::uuid[]`),
     privateSaleDealId: uuid("private_sale_deal_id"),
     privateSaleDealPaymentId: uuid("private_sale_deal_payment_id"),
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),

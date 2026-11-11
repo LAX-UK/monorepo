@@ -113,8 +113,7 @@ export class StripeWebhookIngressApplicationService
         !result.processed &&
         (result.reason === "payment_not_found" ||
           result.reason === "amount_mismatch" ||
-          result.reason === "missing_charge_id" ||
-          result.reason === "payment_reference_pending")
+          result.reason === "missing_charge_id")
       ) {
         recordMoneyPathEvent(`stripe_payment_webhook_${result.reason}`);
         recordStripeWebhookHttpError("payments", 500);

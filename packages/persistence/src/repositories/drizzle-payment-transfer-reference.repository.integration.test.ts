@@ -22,6 +22,7 @@ describe.skipIf(!HAS_DB)("payment transfer reference store (integration)", () =>
     stripeCustomerId: customer,
     paymentId,
     paymentGroupId: null,
+    memberPaymentIds: [randomUUID()],
     privateSaleDealId: null,
     privateSaleDealPaymentId: null,
   };

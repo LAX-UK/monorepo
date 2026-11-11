@@ -10,6 +10,8 @@ import {
   rememberTransferDetails,
 } from "./transfer-reference.js";
 
+const metric = vi.hoisted(() => vi.fn());
+vi.mock("../../middleware/metrics.js", () => ({ recordMoneyPathEvent: metric }));
 vi.mock("../../lib/stripe-processed-event.js", () => ({
   tryClaimProcessedStripeEvent: vi.fn(async () => ({ claimed: true })),
 }));
@@ -23,6 +25,8 @@ const CUSTOMER = "cus_Rk3TestBuyer";
 const PAY_RECEIVING = "11111111-1111-4111-8111-111111111111";
 const PAY_INTENDED = "22222222-2222-4222-8222-222222222222";
 const GROUP = "33333333-3333-4333-8333-333333333333";
+const GROUP2 = "66666666-6666-4666-8666-666666666666";
+const PAY_OTHER = "77777777-7777-4777-8777-777777777777";
 const DEAL = "44444444-4444-4444-8444-444444444444";
 const DEAL_PAYMENT = "55555555-5555-4555-8555-555555555555";
 
@@ -32,8 +36,10 @@ type Owner = {
   paymentGroupId: string | null;
   privateSaleDealId: string | null;
   privateSaleDealPaymentId: string | null;
+  memberPaymentIds: string[];
 };
 const noOwner: Owner = {
+  memberPaymentIds: [],
   stripeCustomerId: CUSTOMER,
   paymentId: null,
   paymentGroupId: null,
@@ -194,7 +200,7 @@ describe("handleCashBalanceTransactionCreated", () => {
     expect(record).not.toHaveBeenCalled();
   });
 
-  it("skips a reference that resolves to the same invoice, or to the combined payment that holds it", async () => {
+  it("skips a reference that resolves to the same invoice", async () => {
     const same = setup();
     await same.issue("pi_old", "REFOLD", { paymentId: PAY_RECEIVING });
     same.stripe.fund({ customer: CUSTOMER, reference: "REFOLD", created: 1000 });
@@ -208,7 +214,9 @@ describe("handleCashBalanceTransactionCreated", () => {
       await same.run(same.stripe.apply({ customer: CUSTOMER, intentId: "pi_new", created: 1000 })),
     ).toMatchObject({ reason: "same_invoice" });
     expect(same.record).not.toHaveBeenCalled();
+  });
 
+  it("skips an invoice and the combined payment that holds it, either way round", async () => {
     const member = setup({ members: { [GROUP]: [PAY_INTENDED] } });
     await member.issue("pi_single", "REFSINGLE", { paymentId: PAY_INTENDED });
     member.stripe.fund({ customer: CUSTOMER, reference: "REFSINGLE", created: 1000 });
@@ -238,6 +246,107 @@ describe("handleCashBalanceTransactionCreated", () => {
         group.stripe.apply({ customer: CUSTOMER, intentId: "pi_single", created: 1000 }),
       ),
     ).toMatchObject({ reason: "same_invoice" });
+  });
+
+  it("skips the same private sale deal payment under another intent", async () => {
+    const { record, stripe, run, issue } = setup();
+    await issue("pi_deal_old", "REFDEALOLD", {
+      privateSaleDealId: DEAL,
+      privateSaleDealPaymentId: DEAL_PAYMENT,
+    });
+    stripe.fund({ customer: CUSTOMER, reference: "REFDEALOLD", created: 1000 });
+    stripe.addIntent({
+      id: "pi_deal_new",
+      customer: CUSTOMER,
+      privateSaleDealId: DEAL,
+      privateSaleDealPaymentId: DEAL_PAYMENT,
+      ownReference: "REFDEALNEW",
+    });
+    expect(
+      await run(stripe.apply({ customer: CUSTOMER, intentId: "pi_deal_new", created: 1000 })),
+    ).toMatchObject({ reason: "same_invoice" });
+    expect(record).not.toHaveBeenCalled();
+  });
+
+  it("skips two combined payments that share an invoice, even when the earlier one was let go and holds none now", async () => {
+    // The earlier group (GROUP) was let go: only the invoices kept when its reference was shown remain.
+    const { record, stripe, run, issue } = setup({
+      members: { [GROUP2]: [PAY_RECEIVING, PAY_INTENDED] },
+    });
+    await issue("pi_group_old", "REFGROUPOLD", {
+      paymentGroupId: GROUP,
+      memberPaymentIds: [PAY_INTENDED, PAY_OTHER],
+    });
+    stripe.fund({ customer: CUSTOMER, reference: "REFGROUPOLD", created: 1000 });
+    stripe.addIntent({
+      id: "pi_group_new",
+      customer: CUSTOMER,
+      paymentGroupId: GROUP2,
+      ownReference: "REFGROUPNEW",
+    });
+    expect(
+      await run(stripe.apply({ customer: CUSTOMER, intentId: "pi_group_new", created: 1000 })),
+    ).toMatchObject({ reason: "same_invoice" });
+    expect(record).not.toHaveBeenCalled();
+  });
+
+  it("still raises a task for combined payments with no invoice in common", async () => {
+    const { record, stripe, run, issue } = setup({ members: { [GROUP2]: [PAY_RECEIVING] } });
+    await issue("pi_group_old", "REFGROUPOLD", {
+      paymentGroupId: GROUP,
+      memberPaymentIds: [PAY_OTHER],
+    });
+    stripe.fund({ customer: CUSTOMER, reference: "REFGROUPOLD", created: 1000 });
+    stripe.addIntent({
+      id: "pi_group_new",
+      customer: CUSTOMER,
+      paymentGroupId: GROUP2,
+      ownReference: "REFGROUPNEW",
+    });
+    await run(stripe.apply({ customer: CUSTOMER, intentId: "pi_group_new", created: 1000 }));
+    expect(record).toHaveBeenCalledOnce();
+  });
+
+  it("names the source of money taken back from a cancelled payment even when the receiving payment's reference is unknown", async () => {
+    const { record, stripe, run, issue } = setup();
+    await issue("pi_cancelled", "REFCANCELLED", { paymentId: PAY_INTENDED });
+    stripe.fund({ customer: CUSTOMER, reference: "REFCANCELLED", created: 900 });
+    stripe.unapply({ customer: CUSTOMER, intentId: "pi_cancelled", created: 1000 });
+    stripe.addIntent({
+      id: "pi_old",
+      customer: CUSTOMER,
+      paymentId: PAY_RECEIVING,
+      ownReference: null,
+    });
+    await run(stripe.apply({ customer: CUSTOMER, intentId: "pi_old", created: 1000 }));
+    expect(record.mock.calls[0]?.[1]).toMatchObject({
+      paymentId: PAY_RECEIVING,
+      intendedPaymentId: PAY_INTENDED,
+    });
+  });
+
+  it("stops where the money left the balance, rather than reaching older funding", async () => {
+    const { record, stripe, run, issue } = setup();
+    await issue("pi_cancelled", "REFCANCELLED", { paymentId: PAY_INTENDED });
+    stripe.fund({ customer: CUSTOMER, reference: "REFCANCELLED", created: 900 });
+    stripe.ledger.unshift({
+      id: "ccsbtxn_refund",
+      object: "customer_cash_balance_transaction",
+      type: "refunded_from_payment",
+      customer: CUSTOMER,
+      created: 950,
+    } as never);
+    stripe.addIntent({
+      id: "pi_other",
+      customer: CUSTOMER,
+      paymentId: PAY_RECEIVING,
+      ownReference: "REFOTHER",
+    });
+    expect(
+      await run(stripe.apply({ customer: CUSTOMER, intentId: "pi_other", created: 1000 })),
+    ).toMatchObject({ reason: "money_left_the_balance" });
+    expect(metric).toHaveBeenCalledWith("transfer_supply_interrupted");
+    expect(record).not.toHaveBeenCalled();
   });
 
   it("names a payment that was part funded, then cancelled, with its money moved to another payment", async () => {
@@ -430,7 +539,7 @@ describe("handleCashBalanceTransactionCreated", () => {
     expect(record).not.toHaveBeenCalled();
   });
 
-  it("asks for a redelivery while a payment's reference may still be on its way, then gives up", async () => {
+  it("cannot compare a payment whose reference was never kept and is no longer shown: counted once, answered normally at any event age", async () => {
     const { record, stripe, run } = setup();
     stripe.fund({ customer: CUSTOMER, reference: "REFX", created: 1000 });
     stripe.addIntent({
@@ -441,15 +550,17 @@ describe("handleCashBalanceTransactionCreated", () => {
     });
     const txn = stripe.apply({ customer: CUSTOMER, intentId: "pi_done", created: 1000 });
     const fresh = { ...OLD_EVENT, created: Math.floor(Date.now() / 1000) - 5 } as Stripe.Event;
+    metric.mockClear();
     expect(await run(txn, fresh)).toEqual({
-      processed: false,
-      action: "skipped",
-      reason: "payment_reference_pending",
-    });
-    expect(await run(txn, OLD_EVENT)).toMatchObject({
       processed: true,
+      action: "skipped",
       reason: "payment_reference_unavailable",
     });
+    expect(
+      metric.mock.calls.filter(
+        ([name]) => name === "transfer_application_check_skipped_no_reference",
+      ),
+    ).toHaveLength(1);
     expect(record).not.toHaveBeenCalled();
   });
 });
@@ -492,6 +603,23 @@ describe("keeping the reference an intent shows", () => {
     expect(references.writes).toBe(0);
   });
 
+  it("keeps the invoices a combined payment holds when its reference is shown", async () => {
+    const references = new InMemoryTransferReferences();
+    const groups = {
+      listMembers: vi.fn(async () => [{ paymentId: PAY_RECEIVING }, { paymentId: PAY_INTENDED }]),
+    };
+    await rememberTransferDetails(
+      references,
+      "pi_group",
+      { ...details(intent()), paymentId: null, paymentGroupId: GROUP },
+      groups as never,
+    );
+    expect(references.rows.get("pi_group")?.memberPaymentIds).toEqual([
+      PAY_RECEIVING,
+      PAY_INTENDED,
+    ]);
+  });
+
   it("reads the intent the one way: ids that are not uuids are ignored, deals are carried", async () => {
     const references = new InMemoryTransferReferences();
     const handler = new PaymentIntentRequiresActionHandler(references);
@@ -532,20 +660,18 @@ describe("keeping the reference an intent shows", () => {
     };
     const report = vi.fn();
     const inner2 = { handle: vi.fn(async () => ({ processed: true as const })) };
-    const result = await new ReferenceNotingHandler(inner2, failing as never, { report }).handle(
-      event,
-      intent(),
-    );
+    const result = await new ReferenceNotingHandler(inner2, failing as never, null, {
+      report,
+    }).handle(event, intent());
     expect(result).toEqual({ processed: true });
     expect(inner2.handle).toHaveBeenCalledOnce();
     expect(report).toHaveBeenCalledWith(
       expect.objectContaining({ code: "transfer_reference_not_kept" }),
     );
 
-    const quiet = await new PaymentIntentRequiresActionHandler(failing as never, { report }).handle(
-      event,
-      intent(),
-    );
+    const quiet = await new PaymentIntentRequiresActionHandler(failing as never, null, {
+      report,
+    }).handle(event, intent());
     expect(quiet.processed).toBe(true);
   });
 });
