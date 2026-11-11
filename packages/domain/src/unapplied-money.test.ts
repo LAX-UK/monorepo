@@ -19,6 +19,18 @@ const base: UnappliedMoney = {
 };
 
 describe("unappliedMoneyDedupeKey", () => {
+  it("keys a transfer applied to another invoice by the ledger entry that applied it, so two applications to one payment are two tasks", () => {
+    const money = {
+      ...base,
+      reason: "transfer_applied_to_other_invoice" as const,
+      cashBalanceTransactionId: "ccsbtxn_1",
+    };
+    expect(unappliedMoneyDedupeKey(money)).toBe("transfer_applied_to_other_invoice:ccsbtxn_1");
+    expect(unappliedMoneyDedupeKey({ ...money, cashBalanceTransactionId: "ccsbtxn_2" })).toBe(
+      "transfer_applied_to_other_invoice:ccsbtxn_2",
+    );
+  });
+
   it("keys card and transfer money by its intent, so a replay is the same task", () => {
     expect(unappliedMoneyDedupeKey(base)).toBe("invoice_already_paid:pi_1");
     expect(unappliedMoneyDedupeKey({ ...base, paymentId: "pay-other" })).toBe(

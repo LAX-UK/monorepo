@@ -4,6 +4,38 @@ import { describe, expect, it, vi } from "vitest";
 import { alertFromUnappliedMoney, fanoutUnappliedMoney } from "./unapplied-money-fanout.js";
 
 describe("unapplied money alert", () => {
+  it("tells finance a transfer was applied to another invoice, with the reference used and no provider named", async () => {
+    const enqueue = vi.fn().mockResolvedValue(undefined);
+    const alert = alertFromUnappliedMoney({
+      reason: "transfer_applied_to_other_invoice",
+      paymentId: "pay-9",
+      paymentGroupId: null,
+      stripePaymentIntentId: "pi_9",
+      stripeChargeId: null,
+      stripeCustomerId: "cus_1",
+      transferReference: "REF-CANCELLED",
+      amountCents: 5000,
+      currency: "GBP",
+      dedupeKey: "transfer_applied_to_other_invoice:ccsbtxn_1",
+    });
+    await fanoutUnappliedMoney({
+      staffOpsRecipientReader: {
+        listRecipients: vi
+          .fn()
+          .mockResolvedValue([{ id: "s", email: "f@lax.test", firstName: "F" }]),
+      },
+      emailService: { enqueue } as never,
+      webOrigin: "https://lax.bid",
+      eventId: 7,
+      alert,
+    });
+    const situation = (enqueue.mock.calls[0]?.[0] as { vars: { situation: string } }).vars
+      .situation;
+    expect(situation).toContain("applied to a different invoice");
+    expect(situation).toContain("Reference used: REF-CANCELLED.");
+    expect(situation).not.toMatch(/stripe/i);
+  });
+
   it("emails each finance member once per event, linking to the payment", async () => {
     const enqueue = vi.fn().mockResolvedValue(undefined);
     const listRecipients = vi

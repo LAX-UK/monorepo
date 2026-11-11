@@ -17,6 +17,7 @@ import {
   type IUnappliedMoneyRecorder,
   NO_UNAPPLIED_MONEY_RECORDER,
 } from "./payment/unapplied-money.recorder.js";
+import { handleCashBalanceTransactionCreated } from "./stripe-webhook/cash-balance-transaction.handler.js";
 import { handleChargeRefunded } from "./stripe-webhook/checkout-refund-handlers.js";
 import {
   type PaymentGroupWebhookDeps,
@@ -31,6 +32,7 @@ import {
 import type { StripePaymentWebhookDeps } from "./stripe-webhook/payment-webhook-lookup.js";
 import type { PaymentWebhookResult } from "./stripe-webhook/payment-webhook-types.js";
 import type { UnappliedMoneyRefundHandler } from "./stripe-webhook/unapplied-money-refund.handler.js";
+import type { ICashBalanceGateway } from "./stripe/cash-balance-gateway.js";
 
 export type { PaymentWebhookResult } from "./stripe-webhook/payment-webhook-types.js";
 
@@ -64,6 +66,7 @@ export class StripePaymentWebhookService {
     paymentEligibility: IPaymentEligibilityGate | null = null,
     paymentRefunds: IPaymentRefundLedger | null = null,
     errorReporter?: IErrorReporter,
+    private readonly cashBalance: ICashBalanceGateway | null = null,
   ) {
     this.deps = {
       transactionRunner,
@@ -175,6 +178,15 @@ export class StripePaymentWebhookService {
     if (deal) return deal;
     const grouped = await this.paymentGroups?.chargeEvents.chargeRefunded(event, charge);
     return grouped ?? handleChargeRefunded(this.deps, event, charge);
+  }
+
+  /** Money moved in a buyer's transfer balance: checked for a transfer applied to another invoice. */
+  async handleCashBalanceTransactionCreated(
+    event: Stripe.Event,
+    txn: Stripe.CustomerCashBalanceTransaction,
+  ): Promise<PaymentWebhookResult> {
+    if (!this.cashBalance) return { processed: false };
+    return handleCashBalanceTransactionCreated(this.deps, this.cashBalance, event, txn);
   }
 
   /** A bank transfer reached the buyer's Stripe balance and Stripe could not apply it. */

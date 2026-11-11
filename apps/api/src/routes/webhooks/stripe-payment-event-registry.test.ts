@@ -25,6 +25,7 @@ describe("STRIPE_PAYMENT_EVENT_HANDLERS", () => {
         "charge.refunded",
         "checkout.session.async_payment_failed",
         "checkout.session.expired",
+        "customer_cash_balance_transaction.created",
         "payment_intent.canceled",
         "payment_intent.partially_funded",
         "payment_intent.payment_failed",

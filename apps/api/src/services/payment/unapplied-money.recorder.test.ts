@@ -55,6 +55,32 @@ describe("UnappliedMoneyRecorder", () => {
     );
   });
 
+  it("a transfer applied to another invoice is one task per ledger entry: a replay is dropped, a second application is new", async () => {
+    const applied: UnappliedMoney = {
+      ...money,
+      reason: "transfer_applied_to_other_invoice",
+      stripeChargeId: null,
+      cashBalanceTransactionId: "ccsbtxn_1",
+      transferReference: "REF-CANCELLED",
+    };
+    const publish = vi.fn().mockResolvedValue(undefined);
+    const recorder = new UnappliedMoneyRecorder(
+      reader(["transfer_applied_to_other_invoice:ccsbtxn_1"]),
+      mockDomainEventSink(publish),
+    );
+    await recorder.record(tx, applied, null);
+    expect(publish).not.toHaveBeenCalled();
+    await recorder.record(tx, { ...applied, cashBalanceTransactionId: "ccsbtxn_2" }, null);
+    expect(publish).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({
+        payload: expect.objectContaining({
+          dedupeKey: "transfer_applied_to_other_invoice:ccsbtxn_2",
+          transferReference: "REF-CANCELLED",
+        }),
+      }),
+    );
+  });
+
   it("reporting the same money again (a replay or a second cron run) publishes nothing", async () => {
     const publish = vi.fn();
     const recorder = new UnappliedMoneyRecorder(

@@ -1348,3 +1348,9 @@ export {
   type SellerConsentWindow,
 } from "./reoffer-windows.js";
 export { paymentIsPaidOrBeingPaid, paymentIsSettling } from "./buyer-default.js";
+
+export {
+  type TransferFunding,
+  fundingThatSuppliedApplication,
+  isTransferAppliedToOtherPayment,
+} from "./misapplied-transfer.js";

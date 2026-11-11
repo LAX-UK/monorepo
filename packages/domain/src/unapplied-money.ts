@@ -61,6 +61,11 @@ export const UNAPPLIED_MONEY_REASONS = [
    * by the time the order's hold had run its longest, so it was not applied and the order closed.
    */
   "shop_order_paid_not_confirmed",
+  /**
+   * A bank transfer sent with one invoice's payment reference was applied by the payment provider
+   * to another open payment of the same buyer. Nothing is lost; finance checks both invoices.
+   */
+  "transfer_applied_to_other_invoice",
 ] as const;
 
 export type UnappliedMoneyReason = (typeof UNAPPLIED_MONEY_REASONS)[number];
@@ -101,6 +106,10 @@ export type UnappliedMoney = {
   shopOrderReference?: string | null;
   /** The Checkout Session the buyer paid in. */
   shopCheckoutSessionId?: string | null;
+  /** The provider's ledger entry that applied the money: one task per entry. */
+  cashBalanceTransactionId?: string | null;
+  /** The reference the sender quoted on a transfer that was applied to another payment. */
+  transferReference?: string | null;
   amountCents: number;
   currency: string;
 };
@@ -127,6 +136,7 @@ export function possibleSourceText(
  */
 export function unappliedMoneyDedupeKey(money: UnappliedMoney): string {
   const reference =
+    money.cashBalanceTransactionId ??
     money.stripePaymentIntentId ??
     money.stripeChargeId ??
     money.shopCheckoutSessionId ??
