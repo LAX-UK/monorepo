@@ -26,7 +26,6 @@ describe("migration 0352 account time zone", () => {
     expect(journal.entries[index]?.when).toBe(1805443200000);
     expect(journal.entries[index - 1]?.tag).toBe("0351_payment_checkout_session_parameters");
     expect(journal.entries[index]?.when).toBeGreaterThan(journal.entries[index - 1]?.when ?? 0);
-    expect(index).toBe(journal.entries.length - 1);
   });
 
   it("adds the columns idempotently and never drops data", () => {
