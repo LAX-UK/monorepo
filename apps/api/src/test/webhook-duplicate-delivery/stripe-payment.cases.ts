@@ -117,7 +117,7 @@ export const stripePaymentCases: DeliveryCase[] = [
     claimsTable: "processed_stripe_events",
     claimedEventId: (eventId) => eventId,
     build(eventId, runner) {
-      const capture = vi.fn(async () => undefined);
+      const capture = vi.fn(async () => ({ captured: true, afterCommit: async () => {} }));
       const deps = stub<StripePaymentWebhookDeps>({
         transactionRunner: runner,
         payments: stub({ findById: async () => paymentRow }),

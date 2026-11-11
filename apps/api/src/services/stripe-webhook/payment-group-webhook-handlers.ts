@@ -9,8 +9,8 @@ import type {
   PaymentGroupReleaseReason,
   PaymentGroupSettlementService,
 } from "../payment-group/payment-group-settlement.service.js";
+import { transferFunding } from "../stripe/bank-transfer-funding.js";
 import { chargeIdFromPaymentIntent } from "../stripe/stripe-charge-id.js";
-import { transferFunding } from "./bank-transfer-funding.js";
 import type { ICheckoutSessionWebhookHandler } from "./checkout-session-webhook-handler.js";
 import type { IPaymentIntentWebhookHandler } from "./payment-intent-webhook-handler.js";
 import type { PaymentWebhookResult } from "./payment-webhook-types.js";
