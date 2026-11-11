@@ -1275,6 +1275,13 @@ export type {
 } from "./artwork-register.js";
 
 export type {
+  DealArtworkSearchInput,
+  IDealArtworkSearchReader,
+  IOpenLotPlaceReader,
+  OpenLotPlace,
+} from "./deal-artwork-search.js";
+
+export type {
   ArtworkRegisterArtistCount,
   IArtworkRegisterQueue,
   QueuedConflict,
