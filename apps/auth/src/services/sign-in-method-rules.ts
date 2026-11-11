@@ -1,4 +1,8 @@
-import { SOCIAL_SIGN_IN_PROVIDERS, type SocialSignInProvider } from "@auction/identity-contracts";
+import {
+  SOCIAL_SIGN_IN_PROVIDERS,
+  type SignInMethodKinds,
+  type SocialSignInProvider,
+} from "@auction/identity-contracts";
 
 /** One row of the account table that can sign the person in. */
 export type SignInAccountRow = {
@@ -32,6 +36,26 @@ export type SignInMethods = {
   }>;
   passkeys: PasskeyRow[];
 };
+
+/**
+ * What staff may read about how a person signs in: which kinds they have and how many passkeys,
+ * and nothing that identifies a method (no provider address, passkey name or credential id).
+ * The passkey count is left out (null) when passkeys are not offered, so staff see nothing
+ * about them.
+ */
+export function summariseSignInMethodKinds(
+  methods: SignInMethods,
+  passkeysOffered: boolean,
+): SignInMethodKinds {
+  const linked = (provider: SocialSignInProvider) =>
+    methods.social.some((method) => method.provider === provider);
+  return {
+    password: methods.hasPassword,
+    google: linked("google"),
+    apple: linked("apple"),
+    passkeys: passkeysOffered ? methods.passkeys.length : null,
+  };
+}
 
 export type RemovePasskeyDecision = "allowed" | "last_sign_in_method";
 

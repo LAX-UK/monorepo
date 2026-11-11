@@ -3,7 +3,7 @@ import type { IIdentityLifecycleService } from "../services/identity-lifecycle.s
 import { IdentityOperationError } from "../services/identity-operations.service.js";
 import { createInternalIdentityRoutes } from "./internal-identity.routes.js";
 
-function setup() {
+function setup(options: { passkeysEnabled?: boolean } = {}) {
   const tokens = new Map<string, string>();
   const setToken = vi.fn(async (key: string, value: string) => {
     tokens.set(key, value);
@@ -25,6 +25,29 @@ function setup() {
       phoneNumberVerified: true,
       pendingNewEmail: "next@example.com",
       emailChangeExpiresAt: new Date("2026-08-21T00:00:00.000Z"),
+    })),
+    readSubject: vi.fn<(id: string) => Promise<{ id: string } | null>>(async (id) => ({ id })),
+    readSignInMethods: vi.fn(async () => ({
+      hasPassword: true,
+      social: [
+        {
+          provider: "google" as const,
+          linkedAt: new Date("2026-01-01T00:00:00.000Z"),
+          providerEmail: "person@gmail.com",
+          hidden: false,
+        },
+      ],
+      passkeys: [
+        {
+          id: "credential-1",
+          name: "Work laptop",
+          deviceType: "multiDevice" as const,
+          backedUp: true,
+          transports: null,
+          createdAt: new Date("2026-02-01T00:00:00.000Z"),
+          lastUsedAt: null,
+        },
+      ],
     })),
     markDeletionRequested: vi.fn(async () => undefined),
     cancelDeletionRequested: vi.fn(async () => undefined),
@@ -71,6 +94,7 @@ function setup() {
     machineClientId: "api-service",
     machineClientSecret: "machine-secret-at-least-32-characters",
     allowMerge: true,
+    ...(options.passkeysEnabled === undefined ? {} : { passkeysEnabled: options.passkeysEnabled }),
   });
   return { app, lifecycle, operations, emailChange, accountDeletion, setToken, tokens };
 }
@@ -276,6 +300,40 @@ describe("internal Identity machine routes", () => {
         pendingNewEmail: "next@example.com",
       },
     });
+  });
+
+  it("answers sign-in method kinds, and passkey count only when passkeys are offered", async () => {
+    const on = setup({ passkeysEnabled: true });
+    const onResponse = await on.app.request("/identity/subjects/u1/sign-in-method-kinds", {
+      headers: { authorization: `Bearer ${await issueToken(on.app)}` },
+    });
+    expect(onResponse.status).toBe(200);
+    const body = await onResponse.json();
+    expect(body).toEqual({
+      kinds: { password: true, google: true, apple: false, passkeys: 1 },
+    });
+    expect(JSON.stringify(body)).not.toMatch(/gmail|Work laptop|credential-1/);
+
+    const off = setup();
+    const offResponse = await off.app.request("/identity/subjects/u1/sign-in-method-kinds", {
+      headers: { authorization: `Bearer ${await issueToken(off.app)}` },
+    });
+    await expect(offResponse.json()).resolves.toEqual({
+      kinds: { password: true, google: true, apple: false, passkeys: null },
+    });
+  });
+
+  it("answers 404 for sign-in method kinds of an unknown subject, and 401 without a token", async () => {
+    const { app, operations } = setup({ passkeysEnabled: true });
+    operations.readSubject.mockResolvedValueOnce(null);
+    const missing = await app.request("/identity/subjects/nobody/sign-in-method-kinds", {
+      headers: { authorization: `Bearer ${await issueToken(app)}` },
+    });
+    expect(missing.status).toBe(404);
+
+    const anonymous = await app.request("/identity/subjects/u1/sign-in-method-kinds");
+    expect(anonymous.status).toBe(401);
+    expect(operations.readSignInMethods).not.toHaveBeenCalled();
   });
 
   it("requests deletion through the shared orchestration and cancels through operations", async () => {

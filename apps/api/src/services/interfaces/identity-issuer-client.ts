@@ -3,6 +3,7 @@ import type {
   AccountAddressDefaultKind,
   AccountAddressInput,
   AccountDeletionOutcome,
+  SignInMethodKinds,
 } from "@auction/identity-contracts";
 
 export type IdentityIssuerRequestContext = {
@@ -69,6 +70,12 @@ export interface IIdentitySubjectClient {
 
 export interface IIdentitySecurityClient {
   readSecurityStatus(subjectId: string): Promise<IdentitySecurityStatus | null>;
+}
+
+/** Which kinds of sign-in method a person has: kinds and a passkey count only. */
+export interface IIdentitySignInMethodsClient {
+  /** Null when the issuer does not know the subject. */
+  readSignInMethodKinds(subjectId: string): Promise<SignInMethodKinds | null>;
 }
 
 export type IdentityTwoFactorPolicyScope =

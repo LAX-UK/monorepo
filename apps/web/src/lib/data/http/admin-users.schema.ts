@@ -8,7 +8,14 @@ import type {
 } from "@/lib/data/http/admin-users.types";
 import { toObjectRecord } from "@/lib/data/http/object-guards";
 import { zCoerceDate } from "@/lib/data/http/schema-coerce";
+import { type SignInMethodKinds, signInMethodKindsSchema } from "@auction/identity-contracts";
 import { z } from "zod";
+
+/** The issuer's answer, or null ("Not available") when it is missing or not in the agreed shape. */
+function parseSignInMethodKinds(value: unknown): SignInMethodKinds | null {
+  const parsed = signInMethodKindsSchema.safeParse(value);
+  return parsed.success ? parsed.data : null;
+}
 
 export const adminUserRowSchema = z.preprocess(toObjectRecord, z.record(z.unknown())).transform(
   (row): AdminUserRow => ({
@@ -44,6 +51,7 @@ export const adminUserDetailRowSchema = z
       ...base,
       securityStatusAvailable:
         typeof row.securityStatusAvailable === "boolean" ? row.securityStatusAvailable : false,
+      signInMethodKinds: parseSignInMethodKinds(row.signInMethodKinds),
       suspendedReason: row.suspendedReason == null ? null : String(row.suspendedReason),
       dateOfBirth: row.dateOfBirth == null ? null : String(row.dateOfBirth),
       emailStatusChangedAt:

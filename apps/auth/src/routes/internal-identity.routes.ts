@@ -43,6 +43,8 @@ import {
   mountTwoFactorPolicyRoutes,
 } from "./internal-two-factor-policy.routes.js";
 
+import { summariseSignInMethodKinds } from "../services/sign-in-method-rules.js";
+
 const MACHINE_TOKEN_TTL_SEC = 5 * 60;
 const MACHINE_SCOPE = "identity.lifecycle";
 
@@ -147,6 +149,8 @@ export function createInternalIdentityRoutes(options: {
   machineClientId: string;
   machineClientSecret: string;
   allowMerge?: boolean;
+  /** Whether passkeys are offered here; when not, the sign-in method summary says nothing about them. */
+  passkeysEnabled?: boolean;
   onCredentialRateLimitError?: (error: unknown) => void;
   onOperation?: (
     operation: "disable" | "enable" | "merge" | "two_factor_reset",
@@ -362,6 +366,17 @@ export function createInternalIdentityRoutes(options: {
   app.get("/identity/subjects/:subjectId/security-status", async (c) => {
     const status = await options.operations.readSecurityStatus(c.req.param("subjectId"));
     return status ? c.json({ status }) : c.json({ error: "subject_not_found" }, 404);
+  });
+
+  app.get("/identity/subjects/:subjectId/sign-in-method-kinds", async (c) => {
+    const subjectId = c.req.param("subjectId");
+    if (!(await options.operations.readSubject(subjectId))) {
+      return c.json({ error: "subject_not_found" }, 404);
+    }
+    const methods = await options.operations.readSignInMethods(subjectId);
+    return c.json({
+      kinds: summariseSignInMethodKinds(methods, options.passkeysEnabled ?? false),
+    });
   });
 
   app.post("/identity/subjects/lookup", async (c) => {
