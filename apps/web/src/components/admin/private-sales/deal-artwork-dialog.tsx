@@ -124,8 +124,10 @@ export function DealArtworkDialog({
       ? copy.missing
       : undefined;
   const reasonError = attempted && mode === "change" && !reason.trim() ? REASON_MISSING : undefined;
+  // The summary is for what staff left out. A refusal by the register has its own notice, and
+  // its message beside the field.
   const summary = [
-    ...(artworkError && mode === "change"
+    ...(artworkError && mode === "change" && !refused
       ? [{ fieldId: `${ids}-artwork`, message: artworkError }]
       : []),
     ...(reasonError ? [{ fieldId: `${ids}-reason`, message: reasonError }] : []),
@@ -238,7 +240,7 @@ export function DealArtworkDialog({
           <Field
             label="Reason"
             id={`${ids}-reason`}
-            description="Shown in the deal's history. Don't paste the clients' personal details."
+            description="Shown in the deal's history."
             error={reasonError}
             disabled={busy}
           >

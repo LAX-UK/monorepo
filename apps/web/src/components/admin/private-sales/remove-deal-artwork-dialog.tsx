@@ -18,6 +18,11 @@ import type { PrivateSaleArtworkUnlinkedReason } from "@auction/types";
 import { useEffect, useId, useRef, useState } from "react";
 import { UNLINKED_REASONS } from "./artwork-choice";
 
+/** Taking the artwork off usually means it still has to be linked, so that reason comes first. */
+const REMOVE_REASONS = [...UNLINKED_REASONS].sort(
+  (a, b) => Number(b.reason === "in_zoho_not_linked") - Number(a.reason === "in_zoho_not_linked"),
+);
+
 type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -137,7 +142,7 @@ export function RemoveDealArtworkDialog({
             value={why}
             onValueChange={(next) => setWhy(next as PrivateSaleArtworkUnlinkedReason)}
           >
-            {UNLINKED_REASONS.map(({ reason, label, hint }) => (
+            {REMOVE_REASONS.map(({ reason, label, hint }) => (
               <ChoiceRow
                 key={reason}
                 htmlFor={`${ids}-${reason}`}
@@ -155,7 +160,7 @@ export function RemoveDealArtworkDialog({
         <Field
           label="Note"
           id={`${ids}-note`}
-          description="Optional. Shown in the deal's history."
+          description="Shown in the deal's history."
           optional
           disabled={busy}
         >

@@ -343,12 +343,12 @@ describe("DealArtworkDialog", () => {
       "href",
       "/admin/lots/lot-14",
     );
-    // Two fields, so the message is in the summary and beside the field.
+    // A refusal has its own notice: its message is beside the field, not repeated in a summary.
     expect(
       screen.getAllByText(
         "Choose an artwork that can be held. Evening Tide is still held for this deal.",
       ),
-    ).toHaveLength(2);
+    ).toHaveLength(1);
     expect(within(dialog).getByRole("textbox", { name: /Reason/ })).toHaveValue("Prefer this one.");
     expect(onDone).not.toHaveBeenCalled();
   });
