@@ -1,4 +1,8 @@
-import { type PaymentReminderStep, reminderStepReached } from "@auction/domain";
+import {
+  type PaymentReminderStep,
+  reminderStepReached,
+  reminderWindowClosed,
+} from "@auction/domain";
 import type { IRecipientZoneReader } from "@auction/persistence/interfaces";
 
 /**
@@ -7,6 +11,9 @@ import type { IRecipientZoneReader } from "@auction/persistence/interfaces";
  * the London day the step belongs to), so one invoice's recipients are reminded at different
  * moments. The outbox key of each reminder holds the recipient's step, so staging it on every run
  * of the window sends it once; only when everyone has it does the caller take the step.
+ * Once the step's window has closed (a late or missed poll) nothing is staged: a reminder is never
+ * sent on the wrong London day or after the due time. The step then counts as done, so the caller
+ * claims it and it is not looked at again; `windowClosed` tells the caller nothing was sent.
  */
 export async function stageForRecipientsDue(input: {
   recipients: readonly string[];
@@ -16,7 +23,10 @@ export async function stageForRecipientsDue(input: {
   now: Date;
   /** Stages the reminder for one person; an already staged one is a no-op in the outbox. */
   stage: (recipientId: string) => Promise<void>;
-}): Promise<{ everyoneStaged: boolean }> {
+}): Promise<{ everyoneStaged: boolean; windowClosed: boolean }> {
+  if (reminderWindowClosed(input.step, input.dueAt, input.now)) {
+    return { everyoneStaged: true, windowClosed: true };
+  }
   const saved = await input.zones.zonesFor(input.recipients);
   let everyoneStaged = true;
   for (const recipientId of input.recipients) {
@@ -27,5 +37,5 @@ export async function stageForRecipientsDue(input: {
     }
     await input.stage(recipientId);
   }
-  return { everyoneStaged };
+  return { everyoneStaged, windowClosed: false };
 }

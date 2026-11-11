@@ -16,6 +16,8 @@ describe.skipIf(!HAS_DB)("recipient zone reader (integration)", () => {
     sydney: `rz-sydney-${tag}`,
     bad: `rz-bad-${tag}`,
     none: `rz-none-${tag}`,
+    utc: `rz-utc-${tag}`,
+    etc: `rz-etc-${tag}`,
   };
 
   beforeAll(async () => {
@@ -32,6 +34,8 @@ describe.skipIf(!HAS_DB)("recipient zone reader (integration)", () => {
         row(ids.sydney, "Australia/Sydney"),
         row(ids.bad, "Mars/Olympus_Mons"),
         row(ids.none, null),
+        row(ids.utc, "UTC"),
+        row(ids.etc, "Etc/GMT-10"),
       ]);
   });
 
@@ -41,7 +45,7 @@ describe.skipIf(!HAS_DB)("recipient zone reader (integration)", () => {
       .where(inArray(bidIdentityDirectory.subjectId, Object.values(ids)));
   });
 
-  it("keeps a usable zone and treats a zone the server cannot use as London, logging it once", async () => {
+  it("keeps a usable zone and treats a zone the server cannot use, and UTC or Etc/*, as no zone; logs a bad one once", async () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
     try {
       const zones = await reader.zonesFor(Object.values(ids));

@@ -1,4 +1,4 @@
-import { isValidZone } from "@auction/datetime";
+import { isPlaceholderZone, normaliseViewerZone } from "@auction/datetime";
 import type { Database } from "@auction/db";
 import { bidIdentityDirectory } from "@auction/db/schema";
 import { inArray } from "drizzle-orm";
@@ -27,9 +27,11 @@ export class DrizzleRecipientZoneReader implements IRecipientZoneReader {
       .where(inArray(bidIdentityDirectory.subjectId, [...userIds]));
     for (const row of rows) {
       if (!row.timeZone) continue;
-      if (isValidZone(row.timeZone)) {
-        zones.set(row.subjectId, row.timeZone);
-      } else if (!reportedBadZones.has(row.timeZone)) {
+      // UTC and Etc/* name no place: the email shows no local time for them, so no 09:00 either.
+      const zone = normaliseViewerZone(row.timeZone);
+      if (zone) {
+        zones.set(row.subjectId, zone);
+      } else if (!isPlaceholderZone(row.timeZone) && !reportedBadZones.has(row.timeZone)) {
         reportedBadZones.add(row.timeZone);
         console.warn(
           `[RecipientZoneReader] unusable saved time zone "${row.timeZone}"; treating as London`,

@@ -3,6 +3,7 @@ import {
   type PaymentReminderStep,
   reminderStepOpen,
   reminderStepReached,
+  reminderWindowClosed,
 } from "../payment-reminder.js";
 
 /** The two deadlines a deal sets: when the buyer pays, and when the work is collected. */
@@ -36,7 +37,8 @@ export function dealReminderToSend(
   const open = dealReminderOpen(facts, now);
   if (!open) return null;
   const reached = reminderStepReached(open.dueAt, now, null);
-  return reached && !facts.sentSteps.includes(reached) ? reached : null;
+  if (!reached || reminderWindowClosed(reached, open.dueAt, now)) return null;
+  return facts.sentSteps.includes(reached) ? null : reached;
 }
 
 /**

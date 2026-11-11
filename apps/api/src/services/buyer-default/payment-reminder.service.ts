@@ -66,7 +66,7 @@ export class PaymentReminderService {
           buyerLegalEntityId: candidate.buyerLegalEntityId,
           winnerUserId: candidate.buyerId,
         });
-        const { everyoneStaged } = await stageForRecipientsDue({
+        const { everyoneStaged, windowClosed } = await stageForRecipientsDue({
           recipients,
           zones: this.deps.zones,
           dueAt,
@@ -93,7 +93,7 @@ export class PaymentReminderService {
             }),
         });
         if (everyoneStaged && (await this.deps.store.claim(candidate.paymentId, step))) {
-          reminded += 1;
+          if (!windowClosed) reminded += 1;
         }
       } catch (error) {
         console.error("[PaymentReminderService] reminder failed", candidate.paymentId, error);

@@ -110,7 +110,9 @@ describe("paymentReminderToSend", () => {
   });
 
   it("sends only the latest step after a gap, never a backlog", () => {
-    expect(paymentReminderToSend(owed, at(4 * DAY))).toBe("overdue");
+    expect(paymentReminderToSend(owed, at(3 * DAY))).toBe("overdue");
+    // Once the overdue day has ended nothing is sent late.
+    expect(paymentReminderToSend(owed, at(4 * DAY))).toBeNull();
   });
 
   it("keeps reminding a buyer whose checkout was abandoned", () => {

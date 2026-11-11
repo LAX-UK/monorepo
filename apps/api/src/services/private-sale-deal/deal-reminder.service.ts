@@ -106,7 +106,7 @@ export class DealReminderService {
       return false;
     }
     const held = eligibility?.kind === "held" ? eligibility.reason : null;
-    const { everyoneStaged } = await stageForRecipientsDue({
+    const { everyoneStaged, windowClosed } = await stageForRecipientsDue({
       recipients: await this.recipientsOf(candidate),
       zones: this.deps.zones,
       dueAt,
@@ -134,7 +134,9 @@ export class DealReminderService {
           idempotencyKey: `private_sale_${candidate.kind}_reminder:${candidate.dealId}:${step}:${recipientId}`,
         }),
     });
-    return everyoneStaged && (await this.deps.store.claim(candidate.dealId, candidate.kind, step));
+    const claimed =
+      everyoneStaged && (await this.deps.store.claim(candidate.dealId, candidate.kind, step));
+    return claimed && !windowClosed;
   }
 
   private recipientsOf(candidate: DealReminderCandidate) {

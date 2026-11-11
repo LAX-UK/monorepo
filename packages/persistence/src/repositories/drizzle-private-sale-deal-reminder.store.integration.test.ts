@@ -13,7 +13,8 @@ describe.skipIf(!HAS_DB)("private sale deal reminders (integration)", () => {
   const sellerEntityId = "a0e00000-0000-4000-8000-0000000000b1";
   const buyerEntityId = "a0e00000-0000-4000-8000-0000000000b2";
   const t = new Date("2026-10-01T00:00:00Z");
-  const due = new Date("2026-11-20T23:59:59Z");
+  // Far enough ahead (or behind) of the run that the deadline is always in the window it names.
+  const due = new Date(Date.now() + 2 * 86_400_000);
 
   async function inRollback(run: (db: Database, dealId: string) => Promise<void>) {
     const databaseUrl = process.env.DATABASE_URL;
@@ -122,6 +123,16 @@ describe.skipIf(!HAS_DB)("private sale deal reminders (integration)", () => {
       expect(found[0]).toMatchObject({ dealId, kind: "collection", stage: "paid" });
       await moveTo(db, dealId, "released", { collectionDueAt: due });
       expect(await store.listCandidates(10)).toEqual([]);
+    });
+  });
+
+  it("leaves out a deadline whose last reminder window closed days ago", async () => {
+    await inRollback(async (db, dealId) => {
+      const store = new DrizzlePrivateSaleDealReminderStore(db);
+      await moveTo(db, dealId, "invoiced", { paymentDueAt: new Date(Date.now() - 5 * 86_400_000) });
+      expect(await store.listCandidates(10)).toEqual([]);
+      await moveTo(db, dealId, "invoiced", { paymentDueAt: new Date(Date.now() - 3 * 86_400_000) });
+      expect(await store.listCandidates(10)).toHaveLength(1);
     });
   });
 

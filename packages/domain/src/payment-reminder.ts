@@ -59,7 +59,7 @@ export const PAYMENT_REMINDER_POLL_INTERVAL_MS = 15 * 60_000;
 /**
  * When a step is sent to a recipient: exactly once, inside the London day the step belongs to.
  * That is 09:00 on the recipient's clock when it falls inside the day, early enough that a poll
- * still lands in the day (at least one poll interval before it ends) and not before the step
+ * still lands in the day even if one poll is missed (at least two poll intervals before it ends) and not before the step
  * opens. When no 09:00 fits (a recipient far from London, or London's 23-hour spring-forward
  * day), the step is sent the moment its day opens, so the first poll of that day sends it.
  * With no saved zone that is 09:00 London on the day itself.
@@ -70,7 +70,7 @@ export function reminderSendAt(
   recipientZone: string | null = null,
 ): Date {
   const opens = reminderOpensAt(step, dueAt).getTime();
-  const latest = reminderClosesAt(step, dueAt).getTime() - PAYMENT_REMINDER_POLL_INTERVAL_MS;
+  const latest = reminderClosesAt(step, dueAt).getTime() - 2 * PAYMENT_REMINDER_POLL_INTERVAL_MS;
   const zone = recipientZone ?? LONDON_TIME_ZONE;
   const day = instantToWallClock(new Date(opens), zone).day;
   for (const candidate of [day, nextDay(day), previousDay(day)]) {
@@ -94,6 +94,11 @@ function latestStep(
     if (startOf(step).getTime() <= now.getTime()) latest = step;
   }
   return latest;
+}
+
+/** Whether a step's window has ended: a reminder is never sent after it, however late the poll. */
+export function reminderWindowClosed(step: PaymentReminderStep, dueAt: Date, now: Date): boolean {
+  return now.getTime() > reminderClosesAt(step, dueAt).getTime();
 }
 
 /** The latest step whose send time has come for a recipient in `zone`, or `null` before the first. */
@@ -137,7 +142,8 @@ export function paymentReminderToSend(
   const dueAt = remindableDueAt(facts);
   if (!dueAt) return null;
   const latest = reminderStepReached(dueAt, now, null);
-  return latest && !facts.sentSteps.includes(latest) ? latest : null;
+  if (!latest || reminderWindowClosed(latest, dueAt, now)) return null;
+  return facts.sentSteps.includes(latest) ? null : latest;
 }
 
 /**

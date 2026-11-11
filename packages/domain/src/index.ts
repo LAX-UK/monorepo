@@ -1226,11 +1226,13 @@ export {
   PAYMENT_REMINDER_STEPS,
   paymentReminderOpen,
   paymentReminderToSend,
+  reminderClosesAt,
   reminderDueAt,
   reminderOpensAt,
   reminderSendAt,
   reminderStepOpen,
   reminderStepReached,
+  reminderWindowClosed,
   type PaymentReminderFacts,
   type PaymentReminderStep,
 } from "./payment-reminder.js";

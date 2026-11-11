@@ -5,9 +5,11 @@ import {
   PAYMENT_REMINDER_POLL_INTERVAL_MS,
   PAYMENT_REMINDER_STEPS,
   type PaymentReminderStep,
+  reminderClosesAt,
   reminderOpensAt,
   reminderSendAt,
   reminderStepReached,
+  reminderWindowClosed,
 } from "./payment-reminder.js";
 
 const HOUR = 3_600_000;
@@ -182,6 +184,36 @@ describe("payment reminders go out at 09:00 for the recipient, once per London d
   });
 });
 
+describe("a window that has closed is never sent late", () => {
+  it("reports a step closed only after the last instant of its London day", () => {
+    const dueAt = dueOf(2026, 3, 29);
+    for (const step of PAYMENT_REMINDER_STEPS) {
+      const closes = reminderClosesAt(step, dueAt);
+      expect(reminderWindowClosed(step, dueAt, closes)).toBe(false);
+      expect(reminderWindowClosed(step, dueAt, new Date(closes.getTime() + 1))).toBe(true);
+    }
+  });
+
+  it("sends no later than two poll intervals before the window closes", () => {
+    for (const zone of [null, "Australia/Adelaide", "Australia/Brisbane", "Pacific/Auckland"]) {
+      for (const step of PAYMENT_REMINDER_STEPS) {
+        const dueAt = dueOf(2026, 3, 29);
+        const sendAt = reminderSendAt(step, dueAt, zone).getTime();
+        const opens = reminderOpensAt(step, dueAt).getTime();
+        if (sendAt > opens) {
+          expect(sendAt).toBeLessThanOrEqual(reminderClosesAt(step, dueAt).getTime() - 2 * POLL);
+        }
+      }
+    }
+  });
+
+  it("does not send the London reminder after its window, even when the step is unsent", () => {
+    const dueAt = dueOf(2026, 3, 29);
+    const late = new Date(reminderClosesAt("due_day", dueAt).getTime() + 1);
+    expect(reminderWindowClosed("due_day", dueAt, late)).toBe(true);
+  });
+});
+
 describe("every zone, every day of 2026 and 2027: one reminder per London day, inside it", () => {
   const ALL_ZONES = [
     ...new Set([
@@ -216,9 +248,9 @@ describe("every zone, every day of 2026 and 2027: one reminder per London day, i
             const sendAt = reminderSendAt(step, dueAt, zone);
             const opens = reminderOpensAt(step, dueAt);
             const label = `${zone ?? "none"} ${dueAt.toISOString()} ${step} -> ${sendAt.toISOString()}`;
-            // The poller that just missed the send time runs a whole interval (less 1 ms) late:
-            // the latest run that can send the step. It must still be in the step's London day.
-            const lastRun = new Date(sendAt.getTime() + POLL - 1);
+            // A poll is missed, then the next one runs a whole interval (less 1 ms) late: the
+            // latest run that can still send the step. It must still be in the step's London day.
+            const lastRun = new Date(sendAt.getTime() + 2 * POLL - 1);
             if (londonDay(sendAt) !== londonDay(opens)) failures.push(`${label}: wrong London day`);
             if (londonDay(lastRun) !== londonDay(opens)) {
               failures.push(`${label}: sent by a run in the next London day`);
@@ -245,7 +277,7 @@ describe("every zone, every day of 2026 and 2027: one reminder per London day, i
     for (const zone of ["Australia/Brisbane", "Asia/Vladivostok", "Pacific/Guam"]) {
       for (const step of PAYMENT_REMINDER_STEPS) {
         const sendAt = reminderSendAt(step, dueAt, zone);
-        const lastRun = new Date(sendAt.getTime() + POLL - 1);
+        const lastRun = new Date(sendAt.getTime() + 2 * POLL - 1);
         expect(londonDayOf(lastRun)).toBe(londonDayOf(reminderOpensAt(step, dueAt)));
       }
       expect(reminderSendAt("due_day", dueAt, zone)).toEqual(reminderOpensAt("due_day", dueAt));
