@@ -2,7 +2,11 @@
 
 import { type ViewerZone, decodeViewerZone, encodeViewerZone } from "@auction/datetime";
 import { type ReactNode, createContext, useContext, useMemo, useSyncExternalStore } from "react";
-import { getClientViewerZoneSnapshot, subscribeViewerZone } from "./viewer-zone-store.js";
+import {
+  getAccountViewerZoneSnapshot,
+  getClientViewerZoneSnapshot,
+  subscribeViewerZone,
+} from "./viewer-zone-store.js";
 
 /** What the server knew when it drew the page; also what React hydrates against. */
 const ServerViewerZoneContext = createContext<ViewerZone>(null);
@@ -32,8 +36,14 @@ export function useViewerZone(): ViewerZone {
     getClientViewerZoneSnapshot,
     () => serverSnapshot,
   );
-  return useMemo(
-    () => (server?.source === "account" ? server : decodeViewerZone(snapshot)),
-    [server, snapshot],
+  // A choice just saved to LAX Account wins until the server catches up with it.
+  const override = useSyncExternalStore(
+    subscribeViewerZone,
+    getAccountViewerZoneSnapshot,
+    () => null,
   );
+  return useMemo(() => {
+    if (override !== null) return decodeViewerZone(override);
+    return server?.source === "account" ? server : decodeViewerZone(snapshot);
+  }, [server, snapshot, override]);
 }

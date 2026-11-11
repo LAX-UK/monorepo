@@ -91,6 +91,16 @@ export type PrivateSaleDealEvent =
   | {
       eventType: "private_sale_deal.payout_queued";
       payload: { dealId: string; reference: string; payoutId: string; netToSellerMinor: number };
+    }
+  | {
+      eventType: "private_sale_deal.artwork_record_not_updated";
+      payload: {
+        dealId: string;
+        reference: string;
+        stage: PrivateSaleDealStage;
+        reason: "skipped" | "failed";
+        message: string;
+      };
     };
 
 /**
@@ -111,6 +121,26 @@ export function dealStageChangedEvent(
   return {
     eventType: "private_sale_deal.stage_changed",
     payload: { dealId: deal.id, reference: deal.reference, from: change.from, to: change.to },
+  };
+}
+
+/**
+ * The deal moved on but the artwork register could not follow, so staff must check where the
+ * artwork is. Identifiers, the stage and a fixed sentence only.
+ */
+export function dealArtworkRecordNotUpdatedEvent(
+  deal: DealRef,
+  failure: { stage: PrivateSaleDealStage; reason: "skipped" | "failed" },
+): PrivateSaleDealEvent {
+  return {
+    eventType: "private_sale_deal.artwork_record_not_updated",
+    payload: {
+      dealId: deal.id,
+      reference: deal.reference,
+      stage: failure.stage,
+      reason: failure.reason,
+      message: `Deal ${deal.reference} ${failure.stage}, but the artwork's record couldn't be marked sold — check where it is`,
+    },
   };
 }
 

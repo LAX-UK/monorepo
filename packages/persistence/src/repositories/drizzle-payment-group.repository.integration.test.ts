@@ -453,8 +453,38 @@ describe.skipIf(!HAS_DB)("payment groups (integration)", () => {
       expect(await groups.listDeliveries(claimed.group.id)).toEqual(expected);
       await db.transaction(async (tx) => {
         expect((await groups.lockInTransaction(tx, claimed.group.id))?.deliveries).toEqual(
-          expected,
+          expected.map((d) => ({ ...d, refundedPence: 0 })),
         );
+      });
+    });
+
+    it("only ever raises what is held as refunded for a quote, and reports whether it rose", async () => {
+      const [a] = paymentIds as [string];
+      const quote = await quoteFor(lotIds[0] as string);
+      const claimed = await groups.claim(withDelivery([a], quote, lotIds[0] as string));
+      if (claimed.kind !== "claimed") throw new Error("expected a claim");
+      const id = claimed.group.id;
+      await db.transaction(async (tx) => {
+        expect(await groups.raiseDeliveryRefundedInTransaction(tx, id, quote, 1_000)).toBe(true);
+        expect(await groups.raiseDeliveryRefundedInTransaction(tx, id, quote, 1_000)).toBe(false);
+        expect(await groups.raiseDeliveryRefundedInTransaction(tx, id, quote, 400)).toBe(false);
+        expect(await groups.raiseDeliveryRefundedInTransaction(tx, id, quote, 1_800)).toBe(true);
+        const locked = await groups.lockInTransaction(tx, id);
+        expect(locked?.deliveries.map((d) => d.refundedPence)).toEqual([1_800]);
+      });
+    });
+
+    it("only ever raises the refund no invoice or quote could take", async () => {
+      const [a] = paymentIds as [string];
+      const claimed = await groups.claim(claimInput([a]));
+      if (claimed.kind !== "claimed") throw new Error("expected a claim");
+      const id = claimed.group.id;
+      await db.transaction(async (tx) => {
+        expect((await groups.lockInTransaction(tx, id))?.refundUnattributedPence).toBe(0);
+        expect(await groups.raiseUnattributedRefundInTransaction(tx, id, 500)).toBe(true);
+        expect(await groups.raiseUnattributedRefundInTransaction(tx, id, 500)).toBe(false);
+        expect(await groups.raiseUnattributedRefundInTransaction(tx, id, 200)).toBe(false);
+        expect((await groups.lockInTransaction(tx, id))?.refundUnattributedPence).toBe(500);
       });
     });
 

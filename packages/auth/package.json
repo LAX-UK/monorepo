@@ -48,6 +48,7 @@
     "@auction/identity-contracts": "workspace:^",
     "@better-auth/passkey": "1.6.22",
     "@better-auth/utils": "0.4.2",
+    "@simplewebauthn/browser": "13.3.0",
     "better-auth": "1.6.22",
     "jose": "^6.2.3",
     "qrcode": "^1.5.4",

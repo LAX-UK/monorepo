@@ -160,6 +160,25 @@ const roleProjects = [
   },
 ];
 
+/**
+ * Ends every saved sign-in once the run is over (see e2e/auth.teardown.ts), so automated checks
+ * leave no devices behind in the accounts they used. It runs after the projects that depend on a
+ * setup project, and not at all when the setup ran in a separate prepare step.
+ */
+const signOutProject = {
+  name: "sign-out",
+  testMatch: /auth\.teardown\.ts/,
+  timeout: 240_000,
+  use: chromium,
+};
+
+const projectsWithSignOut = [
+  signOutProject,
+  ...roleProjects.map((project) =>
+    project.name.startsWith("setup-") ? { ...project, teardown: signOutProject.name } : project,
+  ),
+];
+
 export default defineConfig({
   testDir: "e2e",
   reporter: process.env.CI
@@ -179,5 +198,5 @@ export default defineConfig({
     trace: process.env.CI ? "retain-on-failure" : "on-first-retry",
     screenshot: process.env.CI ? "only-on-failure" : "off",
   },
-  projects: e2eEnabled ? roleProjects : [{ name: "chromium", use: chromium }],
+  projects: e2eEnabled ? projectsWithSignOut : [{ name: "chromium", use: chromium }],
 });

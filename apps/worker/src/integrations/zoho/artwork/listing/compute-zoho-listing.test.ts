@@ -150,6 +150,23 @@ describe("computeZohoListing", () => {
     expect(compute(facts).detail).toBe("Autumn Modern · Lot 12 · lot closed, sold on ATG");
   });
 
+  it("names the deal and the day on an artwork sold through a private sale", () => {
+    const soldAt = moved("sold", "private_sale", "2026-11-14T21:00:00Z");
+    expect(
+      compute(
+        factsFor(
+          "sold",
+          { kind: "private_sale", id: "d" },
+          { privateSale: { id: "d", reference: "PS-0007" }, ...soldAt },
+        ),
+      ),
+    ).toMatchObject({
+      value: "Sold privately",
+      detail: "Private sale PS-0007 · sold 14 Nov 2026",
+      link: RECORD,
+    });
+  });
+
   it("says where a sale was made", () => {
     const soldAt = moved("sold", "bid_sale", "2026-11-14T21:00:00Z");
     expect(

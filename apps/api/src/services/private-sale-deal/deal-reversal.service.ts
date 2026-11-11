@@ -205,6 +205,9 @@ export class DealReversalService {
         reason: "checkout_cancelled",
       });
     }
+    // Ending the deal also ends the artwork's hold in the same transaction. If the register cannot
+    // record that, the cancel is undone but the checkout ended above stays ended; a retry of the
+    // cancel recovers, because there is nothing open left to end.
     return this.deps.transitions.transition(input.dealId, "cancel", {
       actorUserId: input.actorUserId,
       cancelReason: input.reason,

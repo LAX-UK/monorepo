@@ -56,6 +56,12 @@ function parseUiPreferences(raw: unknown): SessionUser["uiPreferences"] | undefi
   return out;
 }
 
+function parseTimeZone(raw: unknown): SessionUser["timeZone"] | undefined {
+  const row = toObjectRecord(raw);
+  if (row.mode !== "automatic" && row.mode !== "fixed") return undefined;
+  return { mode: row.mode, zone: typeof row.zone === "string" && row.zone ? row.zone : null };
+}
+
 /**
  * The staff roles in force from `GET /users/me`. An API release from before role assignments
  * sends only the single `staffRole`; that role is then the whole set, so admin access never
@@ -150,6 +156,8 @@ export function parseSessionUser(raw: unknown): SessionUser {
   }
   const uiPreferences = parseUiPreferences(row.uiPreferences);
   if (uiPreferences) out.uiPreferences = uiPreferences;
+  const timeZone = parseTimeZone(row.timeZone);
+  if (timeZone) out.timeZone = timeZone;
 
   return out;
 }

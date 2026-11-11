@@ -17,7 +17,13 @@ import type { IProviderEventClaim } from "./payment-group-settlement.service.js"
 
 export type PaymentGroupChargeEventsDeps = {
   transactionRunner: ITransactionRunner;
-  groups: Pick<IPaymentGroupRepository, "findByStripeRefs" | "lockInTransaction">;
+  groups: Pick<
+    IPaymentGroupRepository,
+    | "findByStripeRefs"
+    | "lockInTransaction"
+    | "raiseDeliveryRefundedInTransaction"
+    | "raiseUnattributedRefundInTransaction"
+  >;
   gateway: Pick<IPaymentGroupGateway, "listChargeRefunds">;
   payments: Pick<IPaymentLifecycleRepository, "applyRefundedInTransaction">;
   payoutAdjustments: Pick<IPayoutAdjustmentService, "addPaymentLineToOpenPayoutOrCreateClawback">;
@@ -78,10 +84,15 @@ export class PaymentGroupChargeEvents {
       if (!locked) return GROUP_NOT_FOUND;
       const members = [...locked.members].sort((a, b) => a.paymentId.localeCompare(b.paymentId));
       const attribution = attributeGroupRefunds(
-        members.map((m) => ({ paymentId: m.paymentId })),
+        members.map((m) => ({ paymentId: m.paymentId, amountPence: gbpAmountToPence(m.amount) })),
         refunds,
+        locked.deliveries.map((d) => ({
+          quoteId: d.quoteId,
+          amountPence: gbpAmountToPence(d.amount),
+        })),
       );
       let applied = 0;
+      let deliveryRefunded = 0;
       for (const member of members) {
         const refundedPence = attribution.refundedPenceByPayment.get(member.paymentId) ?? 0;
         const invoicePence = gbpAmountToPence(member.amount);
@@ -139,7 +150,50 @@ export class PaymentGroupChargeEvents {
           actingLegalEntityId: member.sellerLegalEntityId,
         });
       }
-      if (attribution.unattributedPence > 0) {
+      // A refund of the courier charge belongs to the delivery quote: it moves no invoice and
+      // charges nothing back from a seller. The group keeps what it already announced for each
+      // quote, so only a refund that raises the total is announced, once, and counts as received;
+      // an event seen again, a later refund of an invoice, or a refund of another quote adds nothing.
+      for (const delivery of locked.deliveries) {
+        const refundedPence = attribution.refundedPenceByDelivery.get(delivery.quoteId) ?? 0;
+        if (refundedPence <= delivery.refundedPence) continue;
+        const raised = await this.deps.groups.raiseDeliveryRefundedInTransaction(
+          tx,
+          group.id,
+          delivery.quoteId,
+          refundedPence,
+        );
+        if (!raised) continue;
+        await this.deps.events.withTx(tx).publish({
+          aggregateType: "payment_group",
+          aggregateId: group.id,
+          eventType: "payment_group.delivery_refunded",
+          payload: {
+            paymentGroupId: group.id,
+            deliveryQuoteId: delivery.quoteId,
+            stripeChargeId: charge.id,
+            cumulativeRefundedCents: refundedPence,
+            chargedCents: gbpAmountToPence(delivery.amount),
+            currency: charge.currency,
+          },
+          actorUserId: null,
+          actingLegalEntityId: group.buyerLegalEntityId,
+        });
+        deliveryRefunded += 1;
+      }
+      // The excess no invoice or quote could take stays in the total for good, so it is reported
+      // only when it grows; otherwise every later refund would raise the same task again. The
+      // event carries the increase and the new running total, so entries can be added up.
+      let unattributedRaised = false;
+      if (
+        attribution.unattributedPence > locked.refundUnattributedPence &&
+        (await this.deps.groups.raiseUnattributedRefundInTransaction(
+          tx,
+          group.id,
+          attribution.unattributedPence,
+        ))
+      ) {
+        unattributedRaised = true;
         recordMoneyPathEvent("payment_group_refund_unattributed");
         await this.deps.events.withTx(tx).publish({
           aggregateType: "payment_group",
@@ -148,14 +202,15 @@ export class PaymentGroupChargeEvents {
           payload: {
             paymentGroupId: group.id,
             stripeChargeId: charge.id,
-            amountCents: attribution.unattributedPence,
+            amountCents: attribution.unattributedPence - locked.refundUnattributedPence,
+            cumulativeUnattributedCents: attribution.unattributedPence,
             currency: charge.currency,
           },
           actorUserId: null,
           actingLegalEntityId: group.buyerLegalEntityId,
         });
       }
-      return applied > 0
+      return applied > 0 || deliveryRefunded > 0 || unattributedRaised
         ? { processed: true, action: "refund_received" }
         : { processed: true, action: "skipped", reason: "no_new_refund_amount" };
     });

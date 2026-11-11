@@ -198,7 +198,11 @@ export class StripePaymentGroupGateway implements IPaymentGroupGateway {
     const refunds: GroupChargeRefund[] = [];
     for await (const refund of stripe.refunds.list({ charge: chargeId, limit: 100 })) {
       if (!COUNTED_REFUND_STATUSES.has(refund.status ?? "")) continue;
-      refunds.push({ paymentId: refund.metadata?.paymentId ?? null, amountPence: refund.amount });
+      refunds.push({
+        paymentId: refund.metadata?.paymentId ?? null,
+        deliveryQuoteId: refund.metadata?.deliveryQuoteId ?? null,
+        amountPence: refund.amount,
+      });
     }
     return refunds;
   }
