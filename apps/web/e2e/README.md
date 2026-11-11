@@ -97,6 +97,9 @@ sign-out, which also ends the sign-in service's session:
 - **Scripts** that sign in (screenshots, one-off checks): call `signOutContext(context, { origin })`
   from `scripts/ci/e2e-sign-out.mjs` before closing the browser.
 
+Signing out is on for local runs and off in CI, whose stack is thrown away and whose issuer
+request allowance the run's own sign-ins need. Set `E2E_SIGN_OUT=1` or `0` to decide either way.
+
 Never sign out a context that was started from a saved session: that ends the session the other
 specs still use.
 

@@ -23,6 +23,8 @@ export type SignOutTarget = { origin: string; logoutPath?: string };
 
 export const DEFAULT_LOGOUT_PATH: string;
 
+export function signOutEnabled(env?: Record<string, string | undefined>): boolean;
+
 export function endSessionTarget(
   response: { status: number; headers: Record<string, string>; body: unknown },
   origin: string,

@@ -8,6 +8,17 @@
  */
 import { existsSync } from "node:fs";
 
+/**
+ * Whether checks sign out at all. A run in CI starts from a throwaway stack with nothing to tidy,
+ * and every sign-out spends the issuer's per-address request allowance that the run's own
+ * sign-ins need, so it is off there. `E2E_SIGN_OUT=1` or `0` decides either way.
+ */
+export function signOutEnabled(env = process.env) {
+  if (env.E2E_SIGN_OUT === "1") return true;
+  if (env.E2E_SIGN_OUT === "0") return false;
+  return !env.CI;
+}
+
 /** Where the Bid, Account and LAX Admin apps accept a sign-out request. */
 export const DEFAULT_LOGOUT_PATH = "/api/auth/logout";
 
@@ -40,6 +51,7 @@ async function readBody(response) {
  * to the sign-in service so its session ends too.
  */
 export async function signOutContext(context, { origin, logoutPath = DEFAULT_LOGOUT_PATH }) {
+  if (!signOutEnabled()) return;
   const publicOrigin = new URL(origin).origin;
   const response = await context.request.post(new URL(logoutPath, publicOrigin).toString(), {
     headers: { origin: publicOrigin, accept: "application/json" },
@@ -65,6 +77,7 @@ export async function signOutContext(context, { origin, logoutPath = DEFAULT_LOG
 /** Signs out every saved browser state that exists, each in a context of its own. */
 export async function signOutStorageStates(browser, { files, origin, logoutPath }) {
   const failures = [];
+  if (!signOutEnabled()) return failures;
   for (const file of files) {
     if (!existsSync(file)) continue;
     const context = await browser.newContext({ storageState: file });
@@ -84,6 +97,7 @@ const signedIn = new Map();
 
 /** Records that a spec signed in on this context, so the fixture signs it out afterwards. */
 export function rememberSignIn(context, signOut) {
+  if (!signOutEnabled()) return;
   signedIn.set(context, signOut);
 }
 

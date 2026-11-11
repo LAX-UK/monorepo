@@ -5,10 +5,26 @@ import {
   forgetSignIn,
   rememberSignIn,
   signOutContext,
+  signOutEnabled,
   signOutRememberedSignIns,
 } from "./e2e-sign-out.mjs";
 
+// The helper is off in CI by default; these tests exercise it either way.
+process.env.E2E_SIGN_OUT = "1";
+
 const origin = "http://localhost:3000";
+
+describe("whether checks sign out", () => {
+  it("does on a developer machine and not in CI", () => {
+    assert.equal(signOutEnabled({}), true);
+    assert.equal(signOutEnabled({ CI: "true" }), false);
+  });
+
+  it("follows E2E_SIGN_OUT when it is set", () => {
+    assert.equal(signOutEnabled({ CI: "true", E2E_SIGN_OUT: "1" }), true);
+    assert.equal(signOutEnabled({ E2E_SIGN_OUT: "0" }), false);
+  });
+});
 
 describe("end-session target", () => {
   it("reads the redirect a script is given as JSON", () => {
