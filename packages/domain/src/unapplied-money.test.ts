@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   type UnappliedMoney,
+  misappliedTransferText,
   possibleSourceText,
   unappliedMoneyAggregate,
   unappliedMoneyDedupeKey,
@@ -122,5 +123,33 @@ describe("unappliedMoneyAggregate", () => {
       aggregateType: "payment_group",
       aggregateId: "shop_order_paid_after_close:pi_1",
     });
+  });
+});
+
+describe("misappliedTransferText", () => {
+  it("names both invoices and the reference, without naming the payment provider", () => {
+    const text = misappliedTransferText({
+      paymentId: "aaaaaaaa-0000-4000-8000-000000000000",
+      paymentGroupId: null,
+      intendedPaymentId: "bbbbbbbb-0000-4000-8000-000000000000",
+      intendedPaymentGroupId: null,
+      transferReference: "REF-1",
+    });
+    expect(text).toContain("sent with invoice PAY-BBBBBBBB's payment reference (reference REF-1)");
+    expect(text).toContain("was applied to invoice PAY-AAAAAAAA.");
+    expect(text).not.toMatch(/stripe/i);
+  });
+
+  it("names a combined payment, and describes an invoice it cannot name", () => {
+    const text = misappliedTransferText({
+      paymentId: null,
+      paymentGroupId: "cccccccc-0000-4000-8000-000000000000",
+      intendedPaymentId: null,
+      intendedPaymentGroupId: null,
+      transferReference: null,
+    });
+    expect(text).toContain(
+      "sent with another invoice's payment reference was applied to combined payment PG-CCCCCCCC.",
+    );
   });
 });

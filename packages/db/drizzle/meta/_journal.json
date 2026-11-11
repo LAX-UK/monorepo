@@ -2416,6 +2416,13 @@
       "when": 1805356800000,
       "tag": "0351_payment_checkout_session_parameters",
       "breakpoints": true
+    },
+    {
+      "idx": 349,
+      "version": "7",
+      "when": 1805702400000,
+      "tag": "0355_payment_transfer_reference",
+      "breakpoints": true
     }
   ]
 }

@@ -8,8 +8,9 @@ describe("unapplied money alert", () => {
     const enqueue = vi.fn().mockResolvedValue(undefined);
     const alert = alertFromUnappliedMoney({
       reason: "transfer_applied_to_other_invoice",
-      paymentId: "pay-9",
+      paymentId: "aaaaaaaa-0000-4000-8000-000000000000",
       paymentGroupId: null,
+      intendedPaymentId: "bbbbbbbb-0000-4000-8000-000000000000",
       stripePaymentIntentId: "pi_9",
       stripeChargeId: null,
       stripeCustomerId: "cus_1",
@@ -31,8 +32,10 @@ describe("unapplied money alert", () => {
     });
     const situation = (enqueue.mock.calls[0]?.[0] as { vars: { situation: string } }).vars
       .situation;
-    expect(situation).toContain("applied to a different invoice");
-    expect(situation).toContain("Reference used: REF-CANCELLED.");
+    expect(situation).toContain(
+      "sent with invoice PAY-BBBBBBBB's payment reference (reference REF-CANCELLED)",
+    );
+    expect(situation).toContain("was applied to invoice PAY-AAAAAAAA.");
     expect(situation).not.toMatch(/stripe/i);
   });
 

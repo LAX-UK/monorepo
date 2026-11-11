@@ -1,6 +1,7 @@
 import {
   type UnappliedMoneyPayload,
   type UnappliedMoneyReason,
+  misappliedTransferText,
   possibleSourceText,
 } from "@auction/domain";
 import type { IEmailService } from "@auction/email";
@@ -41,7 +42,7 @@ const SITUATION: Record<UnappliedMoneyReason, string> = {
   shop_order_paid_not_confirmed:
     "Stripe shows a Shop buyer's checkout as paid, but the payment could not be read or confirmed, so it was not applied. The order was closed and its prints released. The amount shown is the order's total, not necessarily what Stripe took. Open the order in LAX Admin, check the payment in Stripe, then refund the buyer or reinstate the order.",
   transfer_applied_to_other_invoice:
-    "A bank transfer sent with one invoice's payment reference was applied to a different invoice of the same buyer. The money is not lost, but it is recorded against the wrong invoice. Check both invoices and move the payment if needed.",
+    "A bank transfer sent with one invoice's payment reference was applied to a different invoice of the same buyer.",
   private_sale_refund_after_payout:
     "Money went back to a private sale buyer after the seller's payout included the deal. The seller's payout may need adjusting.",
 };
@@ -57,8 +58,8 @@ export type UnappliedMoneyAlert = {
   /** The Shop order the money was paid for, when it is one's: its id, for the link to LAX Admin. */
   shopOrderId: string | null;
   reference: string;
-  /** The reference the sender quoted, when the money went to a different payment's invoice. */
-  transferReference: string | null;
+  /** Full wording for money applied to a different invoice than its reference names; else null. */
+  situationText: string | null;
   amountCents: number;
   currency: string;
 };
@@ -70,7 +71,10 @@ export function alertFromUnappliedMoney(payload: UnappliedMoneyPayload): Unappli
     paymentId: payload.paymentId,
     dealReference: payload.privateSaleDealReference ?? null,
     shopOrderId: payload.shopOrderId ?? null,
-    transferReference: payload.transferReference ?? null,
+    situationText:
+      payload.reason === "transfer_applied_to_other_invoice"
+        ? misappliedTransferText(payload)
+        : null,
     reference:
       payload.privateSaleDealReference ??
       payload.shopOrderReference ??
@@ -126,11 +130,7 @@ export async function fanoutUnappliedMoney(options: {
       ...(target.snapshot ? { recipientResolution: "snapshot" as const } : {}),
       vars: {
         recipientFirstName: target.firstName,
-        situation: [
-          SITUATION[alert.situation],
-          alert.possibleSource,
-          alert.transferReference ? `Reference used: ${alert.transferReference}.` : null,
-        ]
+        situation: [alert.situationText ?? SITUATION[alert.situation], alert.possibleSource]
           .filter(Boolean)
           .join(" "),
         amount,

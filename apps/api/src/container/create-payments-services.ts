@@ -15,6 +15,7 @@ import {
   DrizzleLotFulfilmentRepository,
   DrizzlePaymentCheckoutSessionRepository,
   DrizzlePaymentDomainEventsRepository,
+  DrizzlePaymentTransferReferenceRepository,
   DrizzleStalePaymentCanceller,
   DrizzleUnappliedMoneyReader,
 } from "@auction/persistence/repositories";
@@ -489,7 +490,10 @@ export function createPaymentsServices(
           paymentEligibility,
           repos.paymentRefundRepository,
           errorReporter,
-          new StripeCashBalanceGateway(stripeClientFactory),
+          {
+            cashBalance: new StripeCashBalanceGateway(stripeClientFactory),
+            references: new DrizzlePaymentTransferReferenceRepository(db),
+          },
         )
       : null;
 

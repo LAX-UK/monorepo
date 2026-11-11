@@ -1235,6 +1235,7 @@ export {
   UNAPPLIED_MONEY_HANDLED_ELSEWHERE,
   UNAPPLIED_MONEY_REASONS,
   UNAPPLIED_MONEY_RESOLVED_EVENT,
+  misappliedTransferText,
   possibleSourceText,
   unappliedMoneyAggregate,
   unappliedMoneyDedupeKey,

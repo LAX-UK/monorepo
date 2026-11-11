@@ -110,6 +110,9 @@ export type UnappliedMoney = {
   cashBalanceTransactionId?: string | null;
   /** The reference the sender quoted on a transfer that was applied to another payment. */
   transferReference?: string | null;
+  /** The payment (or combined payment) that reference was issued for, when it is known. */
+  intendedPaymentId?: string | null;
+  intendedPaymentGroupId?: string | null;
   amountCents: number;
   currency: string;
 };
@@ -168,4 +171,35 @@ export function unappliedMoneyPayload(money: UnappliedMoney): UnappliedMoneyPayl
     currency: money.currency.toUpperCase(),
     dedupeKey: unappliedMoneyDedupeKey(money),
   };
+}
+
+const shortRef = (prefix: string, id: string) => `${prefix}-${id.slice(0, 8).toUpperCase()}`;
+
+function paymentLabel(paymentId: string | null | undefined, groupId: string | null | undefined) {
+  if (paymentId) return `invoice ${shortRef("PAY", paymentId)}`;
+  if (groupId) return `combined payment ${shortRef("PG", groupId)}`;
+  return null;
+}
+
+/**
+ * What finance reads about a bank transfer applied to a different invoice than its reference
+ * names, worded without naming the payment provider. Either invoice may be unknown (a reference
+ * issued before references were kept), and is then described, never guessed.
+ */
+export function misappliedTransferText(
+  money: Pick<
+    UnappliedMoney,
+    | "paymentId"
+    | "paymentGroupId"
+    | "intendedPaymentId"
+    | "intendedPaymentGroupId"
+    | "transferReference"
+  >,
+): string {
+  const intended =
+    paymentLabel(money.intendedPaymentId, money.intendedPaymentGroupId) ?? "another invoice";
+  const received =
+    paymentLabel(money.paymentId, money.paymentGroupId) ?? "a different invoice of the same buyer";
+  const quoted = money.transferReference ? ` (reference ${money.transferReference})` : "";
+  return `A bank transfer sent with ${intended}'s payment reference${quoted} was applied to ${received}. The money is not lost, but it is recorded against the wrong invoice. Check both invoices and move the payment if needed.`;
 }
