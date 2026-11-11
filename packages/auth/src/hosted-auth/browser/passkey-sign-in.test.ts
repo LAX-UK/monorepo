@@ -15,7 +15,14 @@ function setup(
   const queue = [...(options.results ?? ["ok"])];
   const authenticate = vi.fn(async () => {
     const next = queue.shift() ?? "ok";
-    if (next === "cancelled") throw Object.assign(new Error("x"), { name: "NotAllowedError" });
+    const thrown: Partial<Record<PasskeyFailure, string>> = {
+      cancelled: "NotAllowedError",
+      unsupported: "NotSupportedError",
+      unavailable: "SecurityError",
+      already_on_device: "InvalidStateError",
+    };
+    // The device's own refusals are thrown by the browser; the issuer's are answered over the wire.
+    if (next !== "ok" && thrown[next]) throw Object.assign(new Error("x"), { name: thrown[next] });
     return { id: "cred", response: {} };
   });
   const verifyFailures: Partial<Record<PasskeyFailure, [number, unknown]>> = {
@@ -23,7 +30,6 @@ function setup(
     not_verified: [403, { code: "passkey_user_verification_required" }],
     wrong_person: [403, { code: "passkey_wrong_person" }],
     rate_limited: [429, {}],
-    unavailable: [500, {}],
   };
   let last: "ok" | PasskeyFailure = "ok";
   const runtime: PasskeyRuntime = {
@@ -90,6 +96,19 @@ describe("passkey sign-in controller", () => {
     expect(view.quietNote).not.toHaveBeenCalled();
     expect(view.proceed).not.toHaveBeenCalled();
   });
+
+  it.each(["unsupported", "unavailable", "already_on_device"] as const)(
+    "says nothing when the quiet request fails as %s",
+    async (failure) => {
+      const { controller, view } = setup({
+        autofill: true,
+        hasAutofillField: true,
+        results: [failure],
+      });
+      await controller.start();
+      expect(view.summary).not.toHaveBeenCalled();
+    },
+  );
 
   it("signs in with the button and carries on with the issuer's answer", async () => {
     const { controller, view } = setup();

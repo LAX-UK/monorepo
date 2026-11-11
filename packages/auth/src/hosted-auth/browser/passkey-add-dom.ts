@@ -69,6 +69,8 @@ export function bindPasskeyAdd(auth: HostedAuthApi): void {
         auth.hideStatus();
         show(ready, false);
         show(saved, true);
+        // The passkey is made: the way back is "Save and go back" now.
+        show(document.querySelector(".product-back") as HTMLElement | null, false);
         if (title) title.textContent = COPY.savedTitle;
         if (lead instanceof HTMLElement) lead.hidden = true;
         if (savedLead) savedLead.textContent = `${PASSKEY_COPY.add.savedLead} ${syncNote}`;

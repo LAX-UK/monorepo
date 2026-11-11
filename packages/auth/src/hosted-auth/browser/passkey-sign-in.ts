@@ -21,6 +21,14 @@ export const SIGN_IN_FAILURE_LINES: Readonly<Record<PasskeyFailure, FailureLine>
   unsupported: unavailable,
 };
 
+/** The failures of the quiet request that follow a passkey the person chose. */
+const QUIET_REQUEST_REPORTS: ReadonlySet<PasskeyFailure> = new Set([
+  "not_recognised",
+  "not_verified",
+  "wrong_person",
+  "rate_limited",
+]);
+
 /** What the sign-in controller changes on the page; the DOM glue implements it. */
 export type PasskeySignInView = {
   /** Shows the passkey button (it stays hidden where the browser has no passkeys). */
@@ -60,9 +68,9 @@ export function createPasskeySignIn(input: {
       view.proceed(result.data);
       return;
     }
-    // A prompt that was dismissed, replaced by the button, or could not run is not worth a line.
-    if (result.failure === "cancelled" || result.failure === "unavailable") return;
-    show(result.failure);
+    // Only what the person did (chose a passkey that was refused) is worth a line. A prompt that
+    // was dismissed, replaced by the button, or that this browser cannot run quietly is not.
+    if (QUIET_REQUEST_REPORTS.has(result.failure)) show(result.failure);
   }
 
   return {
