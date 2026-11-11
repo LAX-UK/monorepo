@@ -10,6 +10,7 @@ import type { IPayoutRepository } from "@auction/persistence/interfaces";
 import type Stripe from "stripe";
 import type { IDisputeWebhookRecorder } from "./disputes/dispute-case-recorder.js";
 import type { IDomainEventSink } from "./domain-event-sink.js";
+import type { IErrorReporter } from "./interfaces/error-handling.js";
 import type { IPaymentCaptureService } from "./interfaces/payment-capture.js";
 import type { IPayoutAdjustmentService } from "./interfaces/payout-adjustment.js";
 import {
@@ -62,6 +63,7 @@ export class StripePaymentWebhookService {
     private readonly unappliedRefunds: UnappliedMoneyRefundHandler | null = null,
     paymentEligibility: IPaymentEligibilityGate | null = null,
     paymentRefunds: IPaymentRefundLedger | null = null,
+    errorReporter?: IErrorReporter,
   ) {
     this.deps = {
       transactionRunner,
@@ -74,6 +76,7 @@ export class StripePaymentWebhookService {
       domainEventSink,
       unappliedMoney: unappliedMoney ?? NO_UNAPPLIED_MONEY_RECORDER,
       paymentEligibility,
+      ...(errorReporter ? { errorReporter } : {}),
     };
     const handlers = createPaymentWebhookHandlers(this.deps, paymentGroups);
     this.handlers = dealPayments ? withDealPaymentHandlers(handlers, dealPayments) : handlers;

@@ -1,23 +1,16 @@
 /**
  * Route JavaScript budget rule: pure functions shared by `check-route-js-budget.mjs` and its tests.
  *
- * A route's first load is every script its `app-build-manifest.json` entry lists plus the root main
- * files (framework, polyfills and runtime every page needs). The size is the sum of each file
- * gzipped on its own, which is what a browser downloads. Code fetched later (a dynamic import) is
- * not in the manifest and not counted.
+ * A route's size is what a phone downloads to start it: every script in its start-up set (see
+ * `route-js-startup-set.mjs`), each gzipped on its own, which is what a browser downloads. A module
+ * that two of those scripts both contain is shipped twice and counted twice. Code fetched later
+ * (a dynamic import) is not in the set and not counted.
  */
+import { duplicateModules } from "./route-js-chunk-modules.mjs";
+import { startupSet } from "./route-js-startup-set.mjs";
 
 const KB = 1024;
 const PAGE_SUFFIX = "/page";
-
-/** The files a route loads first: the root main files and the route's own, scripts only. */
-export function firstLoadFiles(appManifest, buildManifest, routeKey) {
-  const listed = appManifest.pages?.[routeKey];
-  if (!listed) return null;
-  return [...new Set([...(buildManifest.rootMainFiles ?? []), ...listed])].filter((file) =>
-    file.endsWith(".js"),
-  );
-}
 
 /** Page routes only: route handlers, layouts, loading and error boundaries are not navigations. */
 export function pageRoutes(appManifest) {
@@ -44,19 +37,33 @@ export function isIgnored(appConfig, routeKey) {
   return (appConfig.ignore ?? []).some((pattern) => new RegExp(pattern).test(path));
 }
 
-/** One row per audited page route, with its gzip size against its group's budget. */
-export function auditApp({ app, appConfig, appManifest, buildManifest, gzipKbOf }) {
+/**
+ * One row per audited page route: its start-up size against its group's budget, split into the
+ * shared frame and the page's own files, plus the modules shipped twice. `chunkOf(file)` returns
+ * `{ gzipKb, rawBytes, modules }`. A group's own `enforce` wins over the config-wide default.
+ */
+export function auditApp({ app, appConfig, appManifest, buildManifest, chunkOf, enforce = false }) {
+  const sumKb = (files) => files.reduce((sum, file) => sum + chunkOf(file).gzipKb, 0);
   return pageRoutes(appManifest)
     .filter((route) => !isIgnored(appConfig, route))
     .map((route) => {
       const group = groupOf(appConfig, route);
-      const files = firstLoadFiles(appManifest, buildManifest, route);
+      const { frame, page } = startupSet(appManifest, buildManifest, route);
+      const files = [...frame, ...page];
+      const duplicates = duplicateModules(Object.fromEntries(files.map((f) => [f, chunkOf(f)])));
+      const groupConfig = appConfig.groups[group];
       return {
         app,
         route,
         group,
-        gzipKb: files.reduce((sum, file) => sum + gzipKbOf(file), 0),
-        budgetKb: appConfig.groups[group].budgetKb,
+        files: files.length,
+        gzipKb: sumKb(files),
+        frameKb: sumKb(frame),
+        pageKb: sumKb(page),
+        duplicateCount: duplicates.count,
+        duplicateKb: duplicates.kb,
+        budgetKb: groupConfig.budgetKb,
+        enforce: groupConfig.enforce ?? enforce,
       };
     })
     .sort((a, b) => a.group.localeCompare(b.group) || b.gzipKb - a.gzipKb);
@@ -68,19 +75,25 @@ export function suggestBudgetKb(rows) {
 }
 
 /**
- * What to print and whether to fail. Over-budget routes are GitHub warning annotations while
- * `enforce` is false and error lines that fail the run once it is true.
+ * What to print and whether to fail. An over-budget route in an enforced group is an error line
+ * that fails the run; in any other group it is a GitHub warning annotation.
  */
-export function verdict(rows, { enforce }) {
+export function verdict(rows, { enforce = false } = {}) {
   const over = rows.filter((row) => row.gzipKb > row.budgetKb);
+  const isEnforced = (row) => enforce || row.enforce === true;
   const lines = over.map((row) => {
     const message = `${row.app} ${row.route} loads ${row.gzipKb.toFixed(1)} KB of JavaScript (gzip); the ${row.group} budget is ${row.budgetKb} KB`;
-    return enforce ? `error: ${message}` : `::warning title=Route JS budget::${message}`;
+    return isEnforced(row) ? `error: ${message}` : `::warning title=Route JS budget::${message}`;
   });
-  return { lines, over, failed: enforce && over.length > 0 };
+  return { lines, over, failed: over.some(isEnforced) };
 }
 
-/** Per app and group: route count, largest route and the budget, as a plain-text table. */
+const kbText = (kb) => `${kb.toFixed(1)} KB`;
+
+/**
+ * Per app and group, the largest route as the budget sees it: total, shared frame, the page's own
+ * files, and the modules shipped twice, with the budget and whether it is enforced.
+ */
 export function summaryTable(rows) {
   const keys = [...new Set(rows.map((row) => `${row.app}\t${row.group}`))];
   const body = keys.map((key) => {
@@ -92,14 +105,30 @@ export function summaryTable(rows) {
       app,
       group,
       String(members.length),
-      `${largest.gzipKb.toFixed(1)} KB`,
+      kbText(largest.gzipKb),
+      kbText(largest.frameKb),
+      kbText(largest.pageKb),
+      `${largest.duplicateCount} (${kbText(largest.duplicateKb)})`,
       `${largest.budgetKb} KB`,
+      largest.enforce ? "enforced" : "warn",
       over === 0 ? "ok" : `${over} over`,
       largest.route,
     ];
   });
   return renderTable(
-    ["app", "group", "routes", "largest", "budget", "status", "largest route"],
+    [
+      "app",
+      "group",
+      "routes",
+      "largest",
+      "frame",
+      "page",
+      "duplicates",
+      "budget",
+      "mode",
+      "status",
+      "largest route",
+    ],
     body,
   );
 }
@@ -125,11 +154,15 @@ export function overBudgetTable(rows) {
 /** Every audited route, for `--all`. */
 export function fullTable(rows) {
   return renderTable(
-    ["app", "group", "size", "budget", "route"],
+    ["app", "group", "size", "frame", "page", "duplicates", "files", "budget", "route"],
     rows.map((row) => [
       row.app,
       row.group,
-      `${row.gzipKb.toFixed(1)} KB`,
+      kbText(row.gzipKb),
+      kbText(row.frameKb),
+      kbText(row.pageKb),
+      `${row.duplicateCount} (${kbText(row.duplicateKb)})`,
+      String(row.files),
       `${row.budgetKb} KB`,
       row.route,
     ]),

@@ -19,6 +19,12 @@ export type CapturePaymentInput = {
 
 export type CapturePaymentResult = {
   captured: boolean;
+  /**
+   * Set only when the capture ran in the caller's transaction (`tx` given) and applied: the
+   * notices, fulfilment, accounting and checkout cleanup of the capture. Nothing is committed yet,
+   * so the caller runs this once its transaction has committed.
+   */
+  afterCommit?: () => Promise<void>;
 };
 
 export interface IPaymentCaptureService {

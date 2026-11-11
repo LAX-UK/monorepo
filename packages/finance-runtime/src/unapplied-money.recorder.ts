@@ -53,6 +53,12 @@ export type UnappliedMoneyResolution =
   | { via: "superseded" }
   | { via: "staff"; actorUserId: string; note: string };
 
+/** Reasons that report the whole of an intent's money, replacing a part-transfer task for it. */
+const SUPERSEDES_PART_TRANSFER: readonly UnappliedMoney["reason"][] = [
+  "invoice_already_paid",
+  "customer_balance_unapplied",
+];
+
 export class UnappliedMoneyRecorder implements IUnappliedMoneyRecorder {
   constructor(
     private readonly reader: IUnappliedMoneyReader,
@@ -83,6 +89,19 @@ export class UnappliedMoneyRecorder implements IUnappliedMoneyRecorder {
         tx,
       );
       await this.resolve(tx, earlier, { via: "superseded" });
+    }
+    // Once the same intent is reported as paid twice, or as a balance, it is no longer a part
+    // payment: that earlier task is replaced by this one.
+    if (money.stripePaymentIntentId && SUPERSEDES_PART_TRANSFER.includes(money.reason)) {
+      const partial = await this.reader.listOpen(
+        {
+          reasons: ["transfer_partially_funded_after_paid"],
+          paymentIntentId: money.stripePaymentIntentId,
+          limit: 10,
+        },
+        tx,
+      );
+      await this.resolve(tx, partial, { via: "superseded" });
     }
     this.metrics.record(`unapplied_money_${money.reason}`);
     console.error(JSON.stringify({ msg: "unapplied_money_received", ...payload }));
