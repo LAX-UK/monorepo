@@ -138,34 +138,70 @@ describe("DealTransitionService and the artwork register", () => {
       policy: POLICY,
       now: () => new Date("2026-11-04T09:00:00Z"),
     });
-    return { service, register };
+    return { service, register, events };
   }
 
-  it("records the artwork as sold when the deal is paid", async () => {
-    const { service, register } = withRegister();
-    await service.transition("deal-1", "mark_paid", { actorUserId: null });
+  it("records the artwork as sold when the deal settles", async () => {
+    const { service, register } = withRegister(
+      makeDeal({ stage: "released", artworkRegisterId: REGISTER_ID }),
+    );
+    await service.transition("deal-1", "settle", { actorUserId: null });
     expect(register.markSold).toHaveBeenCalledWith(REGISTER_ID, "deal-1", "system");
     expect(register.withdraw).not.toHaveBeenCalled();
   });
 
-  it("names the staff member who recorded the payment", async () => {
+  it("does not mark the artwork sold when the deal is only paid", async () => {
     const { service, register } = withRegister();
     await service.transition("deal-1", "mark_paid", { actorUserId: "u-finance" });
-    expect(register.markSold).toHaveBeenCalledWith(REGISTER_ID, "deal-1", "staff:u-finance");
+    expect(register.markSold).not.toHaveBeenCalled();
   });
 
-  it("does not undo a payment when the register cannot record the sale", async () => {
-    const { service, register } = withRegister();
+  it("keeps the settlement and records a staff-visible event when the register cannot record the sale", async () => {
+    const { service, register, events } = withRegister(
+      makeDeal({ stage: "released", artworkRegisterId: REGISTER_ID }),
+    );
     register.markSold.mockRejectedValue(new Error("register down"));
     const logged = vi.spyOn(console, "error").mockImplementation(() => undefined);
-    expect(await service.transition("deal-1", "mark_paid", { actorUserId: null })).toMatchObject({
+    expect(await service.transition("deal-1", "settle", { actorUserId: null })).toMatchObject({
       kind: "ok",
-      deal: { stage: "paid" },
+      deal: { stage: "settled" },
     });
     expect(logged).toHaveBeenCalledWith(
       expect.stringContaining("private_sale_register_follow_failed"),
     );
+    expect(events.events.map((e) => e.eventType)).toContain(
+      "private_sale_deal.artwork_record_not_updated",
+    );
     logged.mockRestore();
+  });
+
+  it("treats a skipped sale like a failure: the artwork is shown elsewhere, so staff must look", async () => {
+    const { service, register, events } = withRegister(
+      makeDeal({ stage: "released", artworkRegisterId: REGISTER_ID }),
+    );
+    register.markSold.mockResolvedValue("skipped");
+    const logged = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    await service.transition("deal-1", "settle", { actorUserId: null });
+    const failure = events.events.find(
+      (e) => e.eventType === "private_sale_deal.artwork_record_not_updated",
+    );
+    expect(failure?.payload).toMatchObject({
+      dealId: "deal-1",
+      reference: "PS-0001",
+      stage: "settled",
+      reason: "skipped",
+      message:
+        "Deal PS-0001 settled, but the artwork's record couldn't be marked sold — check where it is",
+    });
+    logged.mockRestore();
+  });
+
+  it("records nothing extra when the sale is recorded", async () => {
+    const { service, events } = withRegister(
+      makeDeal({ stage: "released", artworkRegisterId: REGISTER_ID }),
+    );
+    await service.transition("deal-1", "settle", { actorUserId: null });
+    expect(events.events.map((e) => e.eventType)).toEqual(["private_sale_deal.stage_changed"]);
   });
 
   it("ends the artwork's hold when the deal is cancelled", async () => {
@@ -188,8 +224,11 @@ describe("DealTransitionService and the artwork register", () => {
   });
 
   it("leaves the register alone for stages it does not follow, and for deals with no artwork", async () => {
-    const stages = withRegister(makeDeal({ stage: "released", artworkRegisterId: REGISTER_ID }));
-    await stages.service.transition("deal-1", "settle", { actorUserId: null });
+    const stages = withRegister(makeDeal({ stage: "paid", artworkRegisterId: REGISTER_ID }));
+    await stages.service.transition("deal-1", "release", {
+      actorUserId: "u",
+      releaseNote: "Collected",
+    });
     expect(stages.register.markSold).not.toHaveBeenCalled();
     expect(stages.register.withdraw).not.toHaveBeenCalled();
 

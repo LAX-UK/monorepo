@@ -2,7 +2,7 @@ import { resolvePrivateSalePolicy } from "@auction/domain";
 import type { DealWork, MarketingEnquiryDetailRecord } from "@auction/persistence/interfaces";
 import { describe, expect, it, vi } from "vitest";
 import { inlineTransactions, makeDeal, recordingSink } from "./deal-fixtures.test-util.js";
-import { DealArtworkRefused } from "./deal-register-lock.js";
+import { DealArtworkRefused, DealRegisterUnavailable } from "./deal-register-lock.js";
 import { EnquiryConversionService, isWorkAlreadyInDeal } from "./enquiry-conversion.service.js";
 
 const VIEWER = { userId: "u-specialist", readsPrivateSale: true };
@@ -88,6 +88,7 @@ function setup(
   const updateInTransaction = vi.fn(async () => (options.moved === false ? null : ({} as never)));
   const offer = vi.fn(async () => {
     if (options.offerError) throw options.offerError;
+    return "moved" as const;
   });
   const service = new EnquiryConversionService({
     enquiries: { findByRef: async () => record, updateInTransaction },
@@ -461,6 +462,16 @@ describe("EnquiryConversionService and the artwork register", () => {
     // The hold is the last write of the transaction, so the enquiry was not left converted by a
     // refusal: the thrown error undoes the whole conversion.
     expect(updateInTransaction).toHaveBeenCalledTimes(1);
+  });
+
+  it("asks for a retry when the register was busy", async () => {
+    const { service } = setup(enquiry(), {
+      offerError: new DealRegisterUnavailable("The artwork register could not record this change."),
+    });
+    expect(await service.convert(VIEWER, "E-1042", { artworkRegisterId: ARTWORK })).toMatchObject({
+      ok: false,
+      error: "artwork_register_busy",
+    });
   });
 
   it("reports an artwork the register does not know, and one that is not an original", async () => {

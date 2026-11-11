@@ -206,6 +206,8 @@ export type ConvertEnquiryError =
   | "artwork_not_original"
   /** The register shows the artwork in another sale, or sold. `message` says where. */
   | "artwork_unavailable"
+  /** The register was changed by someone else while this was recorded; trying again is safe. */
+  | "artwork_register_busy"
   | "stale_version"
   | "unavailable";
 

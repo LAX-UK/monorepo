@@ -3,6 +3,7 @@ import {
   ArtworkOfferMoveError,
   ArtworkOfferedElsewhereError,
   type LockMessage,
+  type OfferLockOutcome,
 } from "@auction/artwork-register-contracts";
 import type { PrivateSaleDealStage } from "@auction/types";
 
@@ -24,35 +25,53 @@ export class DealRegisterUnavailable extends Error {
   }
 }
 
+/** What the register did: it moved, already showed this, skipped it (shown elsewhere), or does not govern the artwork. */
+export type DealRegisterStatus = OfferLockOutcome["status"];
+
 /** What a deal asks of the artwork register. Each call is safe to repeat. */
 export interface IDealRegisterLock {
   /** Holds the artwork for the deal. Throws {@link DealArtworkRefused} when it is offered elsewhere. */
-  offer(registerId: string, dealId: string, actor: string): Promise<void>;
+  offer(registerId: string, dealId: string, actor: string): Promise<DealRegisterStatus>;
   /** Ends the deal's hold. A hold made by something else is left alone. */
-  withdraw(registerId: string, dealId: string, actor: string): Promise<void>;
-  /** Records the artwork as sold through this deal. */
-  markSold(registerId: string, dealId: string, actor: string): Promise<void>;
+  withdraw(registerId: string, dealId: string, actor: string): Promise<DealRegisterStatus>;
+  /** Records the artwork as sold through this deal. `skipped` when the register shows it elsewhere. */
+  markSold(registerId: string, dealId: string, actor: string): Promise<DealRegisterStatus>;
 }
 
-/** The register's one-place-at-a-time lock, seen from a private sale deal. */
-export class ArtworkRegisterDealLock implements IDealRegisterLock {
-  constructor(private readonly lock: ArtworkOfferLock) {}
+/** The part of a database session the lock needs: a savepoint to run each call in. */
+export type RegisterSession<Tx> = {
+  transaction<T>(run: (tx: Tx) => Promise<T>): Promise<T>;
+};
 
-  offer(registerId: string, dealId: string, actor: string): Promise<void> {
-    return this.run(() => this.lock.offer({ registerId }, ref(dealId), actor));
+/**
+ * The register's one-place-at-a-time lock, seen from a private sale deal. Every call runs in its
+ * own savepoint of the deal's transaction, so a database error inside the register's reads or
+ * writes is undone on its own and cannot abort the payment or stage change around it.
+ */
+export class ArtworkRegisterDealLock<Tx = unknown> implements IDealRegisterLock {
+  constructor(
+    private readonly session: RegisterSession<Tx>,
+    private readonly lockOver: (tx: Tx) => ArtworkOfferLock,
+  ) {}
+
+  offer(registerId: string, dealId: string, actor: string): Promise<DealRegisterStatus> {
+    return this.run((lock) => lock.offer({ registerId }, ref(dealId), actor));
   }
 
-  withdraw(registerId: string, dealId: string, actor: string): Promise<void> {
-    return this.run(() => this.lock.withdraw({ registerId }, ref(dealId), actor));
+  withdraw(registerId: string, dealId: string, actor: string): Promise<DealRegisterStatus> {
+    return this.run((lock) => lock.withdraw({ registerId }, ref(dealId), actor));
   }
 
-  markSold(registerId: string, dealId: string, actor: string): Promise<void> {
-    return this.run(() => this.lock.markSold({ registerId }, ref(dealId), actor));
+  markSold(registerId: string, dealId: string, actor: string): Promise<DealRegisterStatus> {
+    return this.run((lock) => lock.markSold({ registerId }, ref(dealId), actor));
   }
 
-  private async run(move: () => Promise<unknown>): Promise<void> {
+  private async run(
+    move: (lock: ArtworkOfferLock) => Promise<OfferLockOutcome>,
+  ): Promise<DealRegisterStatus> {
     try {
-      await move();
+      const outcome = await this.session.transaction((tx) => move(this.lockOver(tx)));
+      return outcome.status;
     } catch (error) {
       if (error instanceof ArtworkOfferedElsewhereError) throw new DealArtworkRefused(error.lock);
       if (error instanceof ArtworkOfferMoveError) throw new DealRegisterUnavailable(error.message);
@@ -69,14 +88,17 @@ function ref(dealId: string) {
 export type DealRegisterEffect = {
   move: "withdraw" | "markSold";
   /**
-   * Whether a failure to record it must stop the change. A payment is money already taken, so the
-   * register follows it rather than blocking it; ending a deal has nothing to protect.
+   * Whether a failure to record it must stop the change. Settling follows money already paid out,
+   * so the register catches up (and staff are told) rather than blocking it; ending a deal has
+   * nothing to protect, so it must not leave a hold behind.
    */
   blocking: boolean;
 };
 
 export const REGISTER_EFFECT_BY_STAGE: Partial<Record<PrivateSaleDealStage, DealRegisterEffect>> = {
-  paid: { move: "markSold", blocking: false },
+  // Sold is final in the register, and a deal can still be cancelled after it is paid or released.
+  // Until it settles the artwork stays held for the deal, which already blocks every other place.
+  settled: { move: "markSold", blocking: false },
   cancelled: { move: "withdraw", blocking: true },
 };
 

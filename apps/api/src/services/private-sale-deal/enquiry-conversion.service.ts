@@ -183,7 +183,7 @@ export class EnquiryConversionService implements IEnquiryConversion {
         return { ok: false, error: "artwork_unavailable", message: error.message };
       }
       if (error instanceof DealRegisterUnavailable) {
-        return { ok: false, error: "unavailable", message: error.message };
+        return { ok: false, error: "artwork_register_busy", message: error.message };
       }
       // Two people converting for the same work at once: the second is refused by the database.
       if (isWorkAlreadyInDeal(error)) return { ok: false, error: "work_in_deal" };

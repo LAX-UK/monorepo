@@ -24,14 +24,21 @@ export const DEAL_ERROR_COPY: Readonly<Record<string, string>> = {
   work_in_deal: "That work is already in a private sale.",
   artwork_not_found: "The artwork register has no artwork with that id.",
   artwork_not_original: "Only an original artwork can be sold privately.",
-  artwork_unavailable: "That artwork is already offered somewhere else or sold.",
+  artwork_unavailable: "This artwork is already offered somewhere else, reserved or sold.",
+  artwork_register_busy: "The artwork's record is busy. Try again.",
   work_has_no_seller_contact: "That work has no one who can act for its owner yet.",
 };
 
 const UNAVAILABLE = "The Bid API didn't answer. Nothing was changed. Try again in a moment.";
 
 /** The sentence for a failed write: the API's own refusal, or a plain "didn't answer". */
-export function dealErrorMessage(code: string | undefined, status: number | undefined): string {
+export function dealErrorMessage(
+  code: string | undefined,
+  status: number | undefined,
+  /** The API's own sentence, preferred for a refusal that says where the artwork is. */
+  apiMessage?: string,
+): string {
+  if (code === "artwork_unavailable" && apiMessage) return apiMessage;
   if (code && code in DEAL_ERROR_COPY) return DEAL_ERROR_COPY[code] as string;
   if (status === 403) return "You don't have permission to change private sales.";
   return UNAVAILABLE;

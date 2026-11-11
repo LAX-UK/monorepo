@@ -212,6 +212,7 @@ export const ALL_LIVE_DOMAIN_EVENT_TYPES = [
   "private_sale_deal.payment_cancelled",
   "private_sale_deal.payment_refunded",
   "private_sale_deal.payout_queued",
+  "private_sale_deal.artwork_record_not_updated",
   "collection.booking.created",
   "collection.booking.changed",
   "collection.booking.cancelled",
@@ -883,6 +884,12 @@ const REGISTRY_OVERRIDES: Partial<Record<LiveDomainEventType, RegistryOverride>>
     piiClassification: "none",
   },
   "private_sale_deal.payout_queued": {
+    producers: ["apps/api"],
+    consumers: [],
+    idempotencyPolicy: "none",
+    piiClassification: "none",
+  },
+  "private_sale_deal.artwork_record_not_updated": {
     producers: ["apps/api"],
     consumers: [],
     idempotencyPolicy: "none",

@@ -193,6 +193,7 @@ const LABELS: Record<string, string> = {
   "private_sale_deal.payment_cancelled": "Private sale payment cancelled",
   "private_sale_deal.payment_refunded": "Private sale payment refunded",
   "private_sale_deal.payout_queued": "Private sale payout queued",
+  "private_sale_deal.artwork_record_not_updated": "Private sale artwork record not updated",
   "collection.booking.created": "Collection booked",
   "collection.booking.changed": "Collection changed",
   "collection.booking.cancelled": "Collection cancelled",

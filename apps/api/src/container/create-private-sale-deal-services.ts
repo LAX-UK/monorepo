@@ -122,8 +122,10 @@ export function createPrivateSaleDealServices(
     sourceOfFundsValidityDays: env.SOF_APPROVAL_VALIDITY_DAYS,
   });
   const registerForTx = (executor: Database) =>
-    new ArtworkRegisterDealLock(
-      new ArtworkOfferLock(new DrizzleArtworkRegisterRepository(db).withExecutor(executor)),
+    new ArtworkRegisterDealLock<Database>(
+      executor,
+      (session) =>
+        new ArtworkOfferLock(new DrizzleArtworkRegisterRepository(db).withExecutor(session)),
     );
   const transitionScopeForTx = (tx: Database) => ({
     deals: new DrizzlePrivateSaleDealRepository(tx),

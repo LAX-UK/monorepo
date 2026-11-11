@@ -67,6 +67,7 @@ const CONVERT_ERROR_STATUS = {
   artwork_not_found: 422,
   artwork_not_original: 422,
   artwork_unavailable: 409,
+  artwork_register_busy: 503,
   stale_version: 409,
   unavailable: 503,
 } as const satisfies Record<ConvertEnquiryError, 404 | 409 | 422 | 503>;

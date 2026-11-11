@@ -32,7 +32,11 @@ function memoryRegister(initial: ArtworkRegisterEntry) {
       return { ok: true, entry };
     },
   };
-  return { lock: new ArtworkRegisterDealLock(new ArtworkOfferLock(port)), read: () => entry.offer };
+  const session = { transaction: <T>(run: (tx: undefined) => Promise<T>) => run(undefined) };
+  return {
+    lock: new ArtworkRegisterDealLock(session, () => new ArtworkOfferLock(port)),
+    read: () => entry.offer,
+  };
 }
 
 const HELD: Offer = { state: "held", ref: null } as never;
@@ -90,6 +94,31 @@ describe("ArtworkRegisterDealLock", () => {
     expect(read()).toMatchObject({ state: "sold", ref: { kind: "private_sale", id: "deal-1" } });
   });
 
+  it("reports what the register did, including a sale it skipped", async () => {
+    const free = memoryRegister(entryWith(HELD));
+    expect(await free.lock.offer("reg-1", "deal-1", "staff:u")).toBe("moved");
+    expect(await free.lock.offer("reg-1", "deal-1", "staff:u")).toBe("unchanged");
+    const elsewhere = memoryRegister(
+      entryWith({ state: "lax_art", ref: { kind: "shop_artwork", id: "x" } } as never),
+    );
+    expect(await elsewhere.lock.markSold("reg-1", "deal-1", "system")).toBe("skipped");
+  });
+
+  it("runs every call in its own savepoint", async () => {
+    const seen: string[] = [];
+    const lock = new ArtworkRegisterDealLock(
+      {
+        transaction: async <T>(run: (tx: string) => Promise<T>) => {
+          seen.push("savepoint");
+          return run("tx");
+        },
+      },
+      () => new ArtworkOfferLock({ findById: async () => null } as never),
+    );
+    await lock.markSold("reg-1", "deal-1", "system");
+    expect(seen).toEqual(["savepoint"]);
+  });
+
   it("does not govern a print", async () => {
     const { lock, read } = memoryRegister(entryWith(HELD, "print"));
     await lock.offer("reg-1", "deal-1", "staff:u");
@@ -98,10 +127,14 @@ describe("ArtworkRegisterDealLock", () => {
 });
 
 describe("register effects", () => {
-  it("follows payment with a sale, never blocking the payment, and cancellation with a withdrawal", () => {
-    expect(REGISTER_EFFECT_BY_STAGE.paid).toEqual({ move: "markSold", blocking: false });
+  it("follows settlement with a sale, never blocking it, and cancellation with a withdrawal", () => {
+    expect(REGISTER_EFFECT_BY_STAGE.settled).toEqual({ move: "markSold", blocking: false });
     expect(REGISTER_EFFECT_BY_STAGE.cancelled).toEqual({ move: "withdraw", blocking: true });
-    expect(REGISTER_EFFECT_BY_STAGE.settled).toBeUndefined();
+  });
+
+  it("does not mark the artwork sold on payment or release, because the deal can still be cancelled", () => {
+    expect(REGISTER_EFFECT_BY_STAGE.paid).toBeUndefined();
+    expect(REGISTER_EFFECT_BY_STAGE.released).toBeUndefined();
   });
 
   it("names staff, or the system when nobody acted", () => {

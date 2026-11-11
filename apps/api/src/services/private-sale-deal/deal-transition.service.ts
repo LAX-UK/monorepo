@@ -6,6 +6,7 @@ import {
   type DealTransitionContext,
   PRIVATE_SALE_DEAL_EVENT_AGGREGATE,
   type PrivateSalePolicy,
+  dealArtworkRecordNotUpdatedEvent,
   dealBlockers,
   dealStageChangedEvent,
   termsAcceptance,
@@ -17,6 +18,7 @@ import type {
   ITransactionRunner,
 } from "@auction/persistence/interfaces";
 import type { PrivateSaleDealDetail } from "@auction/types";
+import { recordMoneyPathEvent } from "../../middleware/metrics.js";
 import type { IDomainEventSink } from "../domain-event-sink.js";
 import {
   type IDealRegisterLock,
@@ -151,23 +153,54 @@ export class DealTransitionService {
     const effect = REGISTER_EFFECT_BY_STAGE[stage];
     if (!effect || !scope.register || !deal.artworkRegisterId) return;
     try {
-      await scope.register[effect.move](
+      const status = await scope.register[effect.move](
         deal.artworkRegisterId,
         deal.id,
         staffOrSystem(actorUserId),
       );
+      if (status === "skipped" && !effect.blocking) {
+        await this.reportRegisterNotFollowed(scope, deal, stage, "skipped", status);
+      }
     } catch (error) {
       if (effect.blocking) throw error;
-      console.error(
-        JSON.stringify({
-          msg: "private_sale_register_follow_failed",
-          dealId: deal.id,
-          registerId: deal.artworkRegisterId,
-          stage,
-          error: error instanceof Error ? error.message : String(error),
-        }),
+      await this.reportRegisterNotFollowed(
+        scope,
+        deal,
+        stage,
+        "failed",
+        error instanceof Error ? error.message : String(error),
       );
     }
+  }
+
+  /** The deal moved on but the register did not: kept as an event in the same transaction, counted and logged. */
+  private async reportRegisterNotFollowed(
+    scope: DealTransitionScope,
+    deal: PrivateSaleDealDetail,
+    stage: PrivateSaleDealDetail["stage"],
+    reason: "skipped" | "failed",
+    detail: string,
+  ): Promise<void> {
+    recordMoneyPathEvent("private_sale_register_follow_failed");
+    console.error(
+      JSON.stringify({
+        msg: "private_sale_register_follow_failed",
+        dealId: deal.id,
+        registerId: deal.artworkRegisterId,
+        stage,
+        reason,
+        detail,
+      }),
+    );
+    const event = dealArtworkRecordNotUpdatedEvent(deal, { stage, reason });
+    await scope.events.publish({
+      aggregateType: PRIVATE_SALE_DEAL_EVENT_AGGREGATE,
+      aggregateId: deal.id,
+      eventType: event.eventType,
+      payload: event.payload,
+      actorUserId: null,
+      actingLegalEntityId: null,
+    });
   }
 
   /** What the rules read besides the deal: who, when, the configuration and the checks. */

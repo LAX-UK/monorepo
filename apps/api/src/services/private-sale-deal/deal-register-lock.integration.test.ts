@@ -10,8 +10,8 @@ import {
   DrizzleArtworkRegisterRepository,
   DrizzlePrivateSaleDealRepository,
 } from "@auction/persistence/repositories";
-import { eq } from "drizzle-orm";
-import { describe, expect, it } from "vitest";
+import { eq, sql } from "drizzle-orm";
+import { describe, expect, it, vi } from "vitest";
 import { seedIdentityUserFixtures } from "../../testing/identity-user-fixtures.js";
 import { recordingSink } from "./deal-fixtures.test-util.js";
 import {
@@ -117,8 +117,12 @@ describe.skipIf(!url)(
             return deal.id;
           };
           const lockFor = (e: Database) =>
-            new ArtworkRegisterDealLock(
-              new ArtworkOfferLock(new DrizzleArtworkRegisterRepository(db).withExecutor(e)),
+            new ArtworkRegisterDealLock<Database>(
+              e,
+              (session) =>
+                new ArtworkOfferLock(
+                  new DrizzleArtworkRegisterRepository(db).withExecutor(session),
+                ),
             );
           await run({ tx: executor, registers, lockFor, newArtwork, newDeal });
           throw new Rollback();
@@ -128,10 +132,14 @@ describe.skipIf(!url)(
       }
     }
 
-    function transitionsOver(tx: Database, lockFor: (e: Database) => IDealRegisterLock) {
+    function transitionsOver(
+      tx: Database,
+      lockFor: (e: Database) => IDealRegisterLock,
+      events = recordingSink(),
+    ) {
       const scopeForTx = (executor: Database) => ({
         deals: new DrizzlePrivateSaleDealRepository(executor),
-        events: recordingSink(),
+        events,
         register: lockFor(executor),
       });
       return new DealTransitionService({
@@ -217,30 +225,111 @@ describe.skipIf(!url)(
       });
     });
 
-    it("marks the artwork sold through the deal when the deal is paid", async () => {
+    /** Puts a deal at a stage the way the earlier steps would have left it. */
+    async function atStage(tx: Database, deal: string, stage: string) {
+      await tx
+        .update(privateSaleDeal)
+        .set({
+          stage,
+          priceMinor: 4_800_000,
+          agreedAt: t,
+          vatTreatment: "margin_scheme",
+          paymentDueAt: t,
+          ...(stage === "released" ? { collectionDueAt: t } : {}),
+        })
+        .where(eq(privateSaleDeal.id, deal));
+    }
+
+    it("keeps the artwork held, not sold, while the deal is paid or released", async () => {
       await inRollback(async ({ tx, registers, lockFor, newArtwork, newDeal }) => {
         const artwork = await newArtwork("9006");
         const deal = await newDeal(artwork.id);
         await lockFor(tx).offer(artwork.id, deal, "staff:u1");
-        await tx
-          .update(privateSaleDeal)
-          .set({
-            stage: "invoiced",
-            priceMinor: 4_800_000,
-            agreedAt: t,
-            vatTreatment: "margin_scheme",
-            paymentDueAt: t,
-          })
-          .where(eq(privateSaleDeal.id, deal));
+        await atStage(tx, deal, "invoiced");
 
         const outcome = await transitionsOver(tx, lockFor).transition(deal, "mark_paid", {
           actorUserId: staffId,
         });
         expect(outcome.kind).toBe("ok");
         expect((await registers.findById(artwork.id))?.offer).toMatchObject({
+          state: "private_sale",
+          ref: { kind: "private_sale", id: deal },
+        });
+      });
+    });
+
+    it("marks the artwork sold through the deal when the deal settles", async () => {
+      await inRollback(async ({ tx, registers, lockFor, newArtwork, newDeal }) => {
+        const artwork = await newArtwork("9007");
+        const deal = await newDeal(artwork.id);
+        await lockFor(tx).offer(artwork.id, deal, "staff:u1");
+        await atStage(tx, deal, "released");
+
+        const outcome = await transitionsOver(tx, lockFor).transition(deal, "settle", {
+          actorUserId: null,
+        });
+        expect(outcome.kind).toBe("ok");
+        expect((await registers.findById(artwork.id))?.offer).toMatchObject({
           state: "sold",
           ref: { kind: "private_sale", id: deal },
         });
+      });
+    });
+
+    it("withdraws, and does not sell, an artwork whose deal was paid, refunded and cancelled", async () => {
+      await inRollback(async ({ tx, registers, lockFor, newArtwork, newDeal }) => {
+        const artwork = await newArtwork("9008");
+        const deal = await newDeal(artwork.id);
+        await lockFor(tx).offer(artwork.id, deal, "staff:u1");
+        await atStage(tx, deal, "invoiced");
+        const transitions = transitionsOver(tx, lockFor);
+        await transitions.transition(deal, "mark_paid", { actorUserId: staffId });
+
+        const cancelled = await transitions.transition(deal, "cancel", {
+          actorUserId: staffId,
+          cancelReason: "Buyer withdrew",
+          refundRecorded: true,
+        });
+        expect(cancelled.kind).toBe("ok");
+        expect((await registers.findById(artwork.id))?.offer.state).toBe("withdrawn");
+      });
+    });
+
+    it("still settles the deal, and tells staff, when the register read fails in the database", async () => {
+      await inRollback(async ({ tx, registers, newArtwork, newDeal }) => {
+        const artwork = await newArtwork("9009");
+        const deal = await newDeal(artwork.id);
+        await atStage(tx, deal, "released");
+        const events = recordingSink();
+        const failing = (e: Database) =>
+          new ArtworkRegisterDealLock<Database>(
+            e,
+            (session) =>
+              new ArtworkOfferLock({
+                findById: async () => {
+                  await session.execute(sql`SELECT * FROM no_such_register_table`);
+                  return null;
+                },
+              } as never),
+          );
+        const logged = vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+        const outcome = await transitionsOver(tx, failing, events).transition(deal, "settle", {
+          actorUserId: null,
+        });
+        logged.mockRestore();
+
+        expect(outcome.kind).toBe("ok");
+        // The surrounding transaction is still usable: the failed read was undone on its own.
+        const [row] = await tx
+          .select({ stage: privateSaleDeal.stage })
+          .from(privateSaleDeal)
+          .where(eq(privateSaleDeal.id, deal));
+        expect(row?.stage).toBe("settled");
+        expect(events.events.map((e) => e.eventType)).toContain(
+          "private_sale_deal.artwork_record_not_updated",
+        );
+        expect((await registers.findById(artwork.id))?.offer.state).toBe("held");
       });
     });
   },
