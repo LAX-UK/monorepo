@@ -57,8 +57,9 @@ export function ConvertEnquiryDialog({
     if (needsWork && !WORK_REFERENCE.test(work.trim())) return;
     setFailure(null);
     setBusy(true);
-    // A deal records its artwork or why it has none. A sell enquiry brings the seller's own work;
-    // a buy enquiry's artwork is linked from the deal until the dialog can pick it.
+    // Temporary: a deal records its artwork or why it has none, and this dialog cannot pick from
+    // the register yet. A sell enquiry brings the seller's own work; a buy enquiry is recorded as
+    // not linked yet. The artwork field replaces both values with the staff member's own choice.
     const result = await convert(
       reference,
       needsWork

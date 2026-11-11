@@ -248,10 +248,27 @@ describe("POST /enquiries/:ref/convert", () => {
   it.each([
     ["neither the artwork nor a reason", {}],
     ["both", { artworkRegisterId: "5b1c1b9e-3a2f-4f6e-9c1d-2f7a8e9d0c11", ...OWN_WORK }],
-    ["a reason that is not offered", { notInRegister: { reason: "lost" } }],
-  ])("rejects %s", async (_label, body) => {
+  ])(
+    "answers %s with 422 artwork_choice_required, from the conversion's own rule",
+    async (_label, body) => {
+      const { app, enquiryConversion } = createApp(["specialist"]);
+      enquiryConversion.convert.mockResolvedValueOnce({
+        ok: false,
+        error: "artwork_choice_required",
+      });
+      const res = await app.request("http://test/enquiries/E-1042/convert", post(body));
+      expect(res.status).toBe(422);
+      expect(await res.json()).toEqual({ error: "artwork_choice_required" });
+      expect(enquiryConversion.convert).toHaveBeenCalledWith(expect.anything(), "E-1042", body);
+    },
+  );
+
+  it("rejects a reason that is not offered as a malformed request", async () => {
     const { app, enquiryConversion } = createApp(["specialist"]);
-    const res = await app.request("http://test/enquiries/E-1042/convert", post(body));
+    const res = await app.request(
+      "http://test/enquiries/E-1042/convert",
+      post({ notInRegister: { reason: "lost" } }),
+    );
     expect(res.status).toBe(400);
     expect(enquiryConversion.convert).not.toHaveBeenCalled();
   });

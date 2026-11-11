@@ -107,23 +107,16 @@ export const privateSaleArtworkUnlinkedReasonSchema = z.enum(PRIVATE_SALE_ARTWOR
  * Turn an enquiry into a deal. A sell enquiry names its own work; a buy enquiry names the work
  * the buyer is being offered, by its consignment reference (C-1042). Either way the deal says
  * what its artwork is: an original in the register, which is held for the deal from the moment it
- * opens, or the reason it is not there. Exactly one of the two.
+ * opens, or the reason it is not there. Exactly one of the two: the shape is checked here and the rule by the conversion, which
+ * answers `artwork_choice_required`.
  */
-export const adminDealConvertSchema = z
-  .object({
-    workReference: workReferenceSchema.optional(),
-    /** The artwork register entry for the work. */
-    artworkRegisterId: z.string().uuid().optional(),
-    /** Why the artwork is not in the register. */
-    notInRegister: z.object({ reason: privateSaleArtworkUnlinkedReasonSchema }).strict().optional(),
-  })
-  .refine(
-    (input) => (input.artworkRegisterId !== undefined) !== (input.notInRegister !== undefined),
-    {
-      message: "Choose an artwork from the register, or say why it is not there",
-      path: ["artworkRegisterId"],
-    },
-  );
+export const adminDealConvertSchema = z.object({
+  workReference: workReferenceSchema.optional(),
+  /** The artwork register entry for the work. */
+  artworkRegisterId: z.string().uuid().optional(),
+  /** Why the artwork is not in the register. */
+  notInRegister: z.object({ reason: privateSaleArtworkUnlinkedReasonSchema }).strict().optional(),
+});
 export type AdminDealConvertInput = z.infer<typeof adminDealConvertSchema>;
 
 /** The artwork search staff use to pick a deal's artwork. */

@@ -188,13 +188,12 @@ describe("convertEnquiryAction", () => {
     expect(JSON.parse(sent().init.body ?? "{}")).toEqual({ artworkRegisterId });
   });
 
-  it("does not send a conversion that names no artwork and no reason", async () => {
-    const result = await convertEnquiryAction("E-1042", { workReference: "C-1042" });
-    expect(result).toMatchObject({
+  it("explains a conversion that names no artwork and no reason", async () => {
+    fetchMock.mockResolvedValue(json({ error: "artwork_choice_required" }, 422));
+    expect(await convertEnquiryAction("E-1042", { workReference: "C-1042" })).toMatchObject({
       ok: false,
-      error: "Choose an artwork from the register, or say why it is not there",
+      error: expect.stringContaining("Choose an artwork from the register"),
     });
-    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("explains a refusal in words", async () => {
