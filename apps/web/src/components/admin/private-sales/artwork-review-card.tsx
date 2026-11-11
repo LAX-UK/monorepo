@@ -1,19 +1,14 @@
 import { KeyValueList, RecordThumbnail, WhereItIsChip } from "@auction/staff-ui";
 import type { DealArtworkOption } from "@auction/validators";
 import { CircleAlert } from "lucide-react";
-
-/** A draft linked to the artwork cannot be published while a deal holds it. */
-const DRAFT_WARNINGS: Partial<Record<DealArtworkOption["whereItIs"]["key"], string>> = {
-  draft_bid_lot: "A draft lot is linked. It can't be published while a deal holds the artwork.",
-  draft_lax_art: "A lax.art draft is linked. It can't be published while a deal holds the artwork.",
-};
+import { draftWarning } from "./artwork-option";
 
 /**
  * The chosen artwork, so staff can see they picked the right piece before anything is held: its
  * picture, title, artist, medium and size, stock code, where it is now and Zoho's status.
  */
 export function ArtworkReviewCard({ artwork }: { artwork: DealArtworkOption }) {
-  const warning = DRAFT_WARNINGS[artwork.whereItIs.key];
+  const warning = draftWarning(artwork);
   const mediumAndSize = [artwork.medium, artwork.size].filter(Boolean).join(", ");
   return (
     <section

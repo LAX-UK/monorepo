@@ -29,7 +29,9 @@ import {
   type DealArtworkSearchResult,
   type StaffDealAction,
   adminDealActionSchema,
+  adminDealArtworkRemoveSchema,
   adminDealArtworkSearchQuerySchema,
+  adminDealArtworkSetSchema,
   adminDealBuyerSchema,
   adminDealConvertSchema,
   adminDealTermsPatchSchema,
@@ -75,6 +77,7 @@ async function refusal(res: Response): Promise<ActionResult<never>> {
       ? {
           ...(body.data.fields ? { fields: body.data.fields } : {}),
           ...(body.data.blockers ? { blockers: body.data.blockers } : {}),
+          ...(body.data.lock ? { lock: body.data.lock } : {}),
         }
       : undefined,
   );
@@ -175,6 +178,58 @@ export async function dealMoveAction(
     ).catch(() => null);
     if (!res) return actionFailure(dealErrorMessage(undefined, undefined), undefined, 503);
     return res.ok ? record(res, "POST /admin/private-sales/:ref/actions/:action") : refusal(res);
+  });
+}
+
+/** Links an artwork to a deal, changes it, or records why the deal has none; the register holds it. */
+export async function setDealArtworkAction(
+  ref: string,
+  input: unknown,
+): Promise<ActionResult<DealRecord>> {
+  return instrumentServerAction("setDealArtworkAction", async () => {
+    const denied = await denyUnlessAdminCapability(PRIVATE_SALE_DEALS_MANAGE_ACCESS);
+    if (denied) return denied;
+    const reference = privateSaleReferenceSchema.safeParse(ref);
+    const body = adminDealArtworkSetSchema.safeParse(input);
+    if (!reference.success || !body.success) {
+      return actionFailure(body.error?.issues[0]?.message ?? "Check the details.", undefined, 400);
+    }
+    const res = await authedServerFetch(
+      `/admin/private-sales/${encodeURIComponent(reference.data)}/artwork`,
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body.data),
+      },
+    ).catch(() => null);
+    if (!res) return actionFailure(dealErrorMessage(undefined, undefined), undefined, 503);
+    return res.ok ? record(res, "PUT /admin/private-sales/:ref/artwork") : refusal(res);
+  });
+}
+
+/** Takes the artwork off a deal that is still being offered, and releases it in the register. */
+export async function removeDealArtworkAction(
+  ref: string,
+  input: unknown,
+): Promise<ActionResult<DealRecord>> {
+  return instrumentServerAction("removeDealArtworkAction", async () => {
+    const denied = await denyUnlessAdminCapability(PRIVATE_SALE_DEALS_MANAGE_ACCESS);
+    if (denied) return denied;
+    const reference = privateSaleReferenceSchema.safeParse(ref);
+    const body = adminDealArtworkRemoveSchema.safeParse(input);
+    if (!reference.success || !body.success) {
+      return actionFailure(body.error?.issues[0]?.message ?? "Check the details.", undefined, 400);
+    }
+    const res = await authedServerFetch(
+      `/admin/private-sales/${encodeURIComponent(reference.data)}/artwork`,
+      {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body.data),
+      },
+    ).catch(() => null);
+    if (!res) return actionFailure(dealErrorMessage(undefined, undefined), undefined, 503);
+    return res.ok ? record(res, "DELETE /admin/private-sales/:ref/artwork") : refusal(res);
   });
 }
 
