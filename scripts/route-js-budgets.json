@@ -6,71 +6,89 @@
       "ignore": ["^/admin", "^/dev/", "^/display/"],
       "groups": {
         "public": {
-          "budgetKb": 648,
+          "budgetKb": 610,
+          "enforce": true,
           "match": []
         },
+        "sale": {
+          "budgetKb": 886,
+          "enforce": true,
+          "match": ["^/\\(marketing\\)/sales/\\[slug\\]/\\[id\\]"]
+        },
+        "listing": {
+          "budgetKb": 812,
+          "enforce": true,
+          "match": [
+            "^/\\(marketing\\)/(search|artists|press)$",
+            "^/\\(marketing\\)/(artists|sales/\\(index\\))"
+          ]
+        },
         "lot": {
-          "budgetKb": 567,
+          "budgetKb": 709,
+          "enforce": true,
           "match": ["^/\\(marketing\\)/(lot|artist)/"]
         },
         "checkout": {
-          "budgetKb": 326,
+          "budgetKb": 635,
           "match": ["^/\\(client\\)/purchases/(checkout|pay|collect)"]
         },
         "account": {
-          "budgetKb": 435,
+          "budgetKb": 716,
           "match": ["^/\\((client|task)\\)/"]
         }
-      }
+      },
+      "requireSentry": true
     },
     "apps/shop": {
       "fallback": "public",
       "ignore": [],
       "groups": {
         "public": {
-          "budgetKb": 528,
+          "budgetKb": 571,
           "match": []
         },
         "product": {
-          "budgetKb": 564,
+          "budgetKb": 606,
           "match": ["^/(artworks|merchandise)/\\[slug\\]$"]
         },
         "checkout": {
-          "budgetKb": 567,
+          "budgetKb": 605,
           "match": ["^/(basket|checkout)"]
         },
         "account": {
-          "budgetKb": 530,
+          "budgetKb": 571,
           "match": [
             "^/(account|login|register|signed-out|session-expired|sign-in-error|orders/guest)"
           ]
         }
-      }
+      },
+      "requireSentry": true
     },
     "apps/art": {
       "fallback": "public",
       "ignore": [],
       "groups": {
         "public": {
-          "budgetKb": 536,
+          "budgetKb": 579,
           "match": []
         },
         "product": {
-          "budgetKb": 494,
+          "budgetKb": 575,
           "match": ["^/(artworks|artists)/\\[slug\\]$"]
         },
         "account": {
-          "budgetKb": 482,
+          "budgetKb": 573,
           "match": ["^/(account|login|register|signed-out|session-expired|sign-in-error)"]
         }
-      }
+      },
+      "requireSentry": true
     },
     "apps/account": {
       "fallback": "account",
       "ignore": [],
       "groups": {
         "account": {
-          "budgetKb": 362,
+          "budgetKb": 375,
           "match": []
         }
       }
