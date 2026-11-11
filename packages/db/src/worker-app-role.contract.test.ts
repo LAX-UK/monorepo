@@ -79,6 +79,33 @@ describe.skipIf(!WORKER_URL)("worker_app role contract", { timeout: 60_000 }, ()
         const updatable = columns.rows.filter((row) => row.allowed).map((row) => row.column_name);
         expect(updatable.sort(), table).toEqual([...WORKER_REOFFER_UPDATE_COLUMNS[table]].sort());
       }
+      // Written out, so widening a grant is a visible change here and not only in the constant:
+      // the status moves a sweep makes, a lapse (an answer given by the clock) and the reminder.
+      const updatableOf = async (table: string) =>
+        (
+          await client.query<{ column_name: string }>(
+            `select column_name from information_schema.columns
+              where table_schema = 'public' and table_name = $1
+                and has_column_privilege(current_user, 'public.' || $1, column_name, 'UPDATE')
+              order by column_name`,
+            [table],
+          )
+        ).rows.map((row) => row.column_name);
+      expect(await updatableOf("lot_reoffer")).toEqual([
+        "close_reason",
+        "closed_by",
+        "status",
+        "updated_at",
+      ]);
+      expect(await updatableOf("seller_consent")).toEqual([
+        "answered_at",
+        "answered_by_user_id",
+        "channel",
+        "note",
+        "preferred_next",
+        "reminded_at",
+        "status",
+      ]);
     });
   });
 

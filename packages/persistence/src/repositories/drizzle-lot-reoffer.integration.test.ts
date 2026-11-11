@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { createDb } from "@auction/db";
+import { closeDb, createDb } from "@auction/db";
 import {
   bid,
   bidIdentityDirectory,
@@ -27,6 +27,9 @@ import {
 } from "./drizzle-lot-reoffer.repository.js";
 
 const HAS_DB = Boolean(process.env.DATABASE_URL);
+/** Postgres' insufficient_privilege. */
+const DENIED = "42501";
+const WORKER_URL = process.env.DATABASE_URL_WORKER ?? process.env.WORKER_APP_DATABASE_URL;
 
 const terms: SellerConsentTerms = {
   amountPence: 90_000,
@@ -357,6 +360,84 @@ describe.skipIf(!HAS_DB)("lot re-offer persistence (integration)", () => {
       const first = await createOffer(s);
       expect(await consents.markReminded(first.consentId, acceptedAt)).toBe(true);
       expect(await consents.markReminded(first.consentId, acceptedAt)).toBe(false);
+    });
+  });
+
+  // The sweeps run as the restricted worker_app role, so what they write is what its column
+  // grants must allow: a lapse, a reminder, the status moves a sweep makes, and nothing more.
+  describe.skipIf(!WORKER_URL)("sweeps running as worker_app", () => {
+    // biome-ignore lint/style/noNonNullAssertion: gated by WORKER_URL
+    const workerDb = createDb(WORKER_URL!);
+    const workerConsents = new DrizzleSellerConsentRepository(workerDb);
+
+    afterAll(async () => {
+      await closeDb(workerDb);
+    });
+
+    it("lapses an unanswered seller request and moves the offer to seller_lapsed", async () => {
+      const s = await defaultedLot();
+      const first = await createOffer(s);
+      await workerDb.transaction(async (tx) => {
+        await workerConsents.answer(tx, {
+          id: first.consentId,
+          from: "requested",
+          to: "lapsed",
+          channel: null,
+          answeredByUserId: null,
+          answeredAt: acceptedAt,
+          note: null,
+          preferredNext: null,
+        });
+        await offers.changeStatus(tx, {
+          id: first.id,
+          from: "awaiting_seller",
+          to: "seller_lapsed",
+          closedBy: null,
+          closeReason: "The seller did not answer in time",
+        });
+      });
+      expect(await consents.findById(first.consentId)).toMatchObject({
+        status: "lapsed",
+        channel: null,
+        answeredByUserId: null,
+        answeredAt: acceptedAt,
+      });
+      expect((await reader.findById(first.id))?.status).toBe("seller_lapsed");
+    });
+
+    it("sends the seller's one reminder", async () => {
+      const s = await defaultedLot();
+      const first = await createOffer(s);
+      expect(await workerConsents.markReminded(first.consentId, acceptedAt)).toBe(true);
+    });
+
+    it("ends an offer the bidder let run out", async () => {
+      const s = await defaultedLot();
+      const first = await createOffer(s, { status: "offered", respondedAt: null });
+      await workerDb.transaction((tx) =>
+        offers.changeStatus(tx, {
+          id: first.id,
+          from: "offered",
+          to: "expired",
+          closedBy: null,
+          closeReason: "The offer ran out",
+        }),
+      );
+      expect((await reader.findById(first.id))?.status).toBe("expired");
+    });
+
+    it("still cannot make a re-award, re-price an offer or change who it is for", async () => {
+      const s = await defaultedLot();
+      const first = await createOffer(s);
+      await expect(
+        workerDb
+          .update(lotReoffer)
+          .set({ reawardedAt: acceptedAt })
+          .where(eq(lotReoffer.id, first.id)),
+      ).rejects.toMatchObject({ cause: { code: DENIED } });
+      await expect(
+        workerDb.update(lotReoffer).set({ amountPence: 1 }).where(eq(lotReoffer.id, first.id)),
+      ).rejects.toMatchObject({ cause: { code: DENIED } });
     });
   });
 

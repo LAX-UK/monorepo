@@ -108,6 +108,23 @@ describe("migration 0354 lot re-offer", () => {
     }
     const known = Object.values(getTableColumns(lotReoffer)).map((c) => c.name);
     for (const column of WORKER_REOFFER_UPDATE_COLUMNS.lot_reoffer) expect(known).toContain(column);
+    // A lapse is written as an answer, so it needs the answer columns; the request itself stays fixed.
+    const consentColumns = Object.values(getTableColumns(sellerConsent)).map((c) => c.name);
+    for (const column of WORKER_REOFFER_UPDATE_COLUMNS.seller_consent) {
+      expect(consentColumns).toContain(column);
+    }
+    expect([...WORKER_REOFFER_UPDATE_COLUMNS.seller_consent].sort()).toEqual([
+      "answered_at",
+      "answered_by_user_id",
+      "channel",
+      "note",
+      "preferred_next",
+      "reminded_at",
+      "status",
+    ]);
+    for (const column of ["terms_snapshot", "due_at", "seller_legal_entity_id", "subject_id"]) {
+      expect([...WORKER_REOFFER_UPDATE_COLUMNS.seller_consent]).not.toContain(column);
+    }
   });
 
   it("records when the offer re-awarded the lot, only for an accepted offer", () => {
