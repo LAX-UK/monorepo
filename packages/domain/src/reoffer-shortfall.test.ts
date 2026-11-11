@@ -52,4 +52,13 @@ describe("claimableShortfall", () => {
       }),
     ).toEqual({ hammerDifferenceMinor: 2, premiumLostMinor: 250_00, totalMinor: 250_02 });
   });
+
+  it("refuses amounts that are not safe whole pence", () => {
+    const base = { originalHammerMinor: 100, newHammerMinor: 50, originalPremiumMinor: 25 };
+    for (const bad of [1.5, Number.NaN, Number.POSITIVE_INFINITY, 2 ** 53]) {
+      expect(() => claimableShortfall({ ...base, originalHammerMinor: bad })).toThrow(RangeError);
+      expect(() => claimableShortfall({ ...base, newHammerMinor: bad })).toThrow(RangeError);
+      expect(() => claimableShortfall({ ...base, originalPremiumMinor: bad })).toThrow(RangeError);
+    }
+  });
 });

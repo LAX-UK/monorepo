@@ -1277,27 +1277,30 @@ export {
   type CountdownTile,
 } from "./time/countdown-format.js";
 export {
+  DEADLINE_AT_LOCAL,
   DEFAULT_OFFER_DAYS,
   MAX_OFFER_DAYS,
   MAX_REOFFERS_PER_DEFAULT,
   MIN_OFFER_DAYS,
-  OFFER_ENDS_AT_LOCAL,
   SELLER_CONSENT_REMINDER_WORKING_DAYS,
   SELLER_CONSENT_WORKING_DAYS,
 } from "./reoffer-rules.js";
 export {
   REOFFER_EVENTS,
-  REOFFER_RESOLUTIONS,
   REOFFER_STATUSES,
   allowedReofferEvents,
+  capReached,
   endedWithoutSale,
   isFinalReofferStatus,
   isOpenReofferStatus,
+  offerReachedBidder,
+  offersCountedTowardCap,
   reofferProgress,
   transitionReoffer,
+  type ReofferActor,
   type ReofferEvent,
   type ReofferProgress,
-  type ReofferResolution,
+  type ReofferRecord,
   type ReofferStatus,
   type ReofferTransition,
 } from "./reoffer-state.js";
@@ -1307,6 +1310,7 @@ export {
   answerConsent,
   consentRequirement,
   initialReofferStatus,
+  type ConsentChannel,
   type ConsentRequirement,
   type ConsentTransition,
   type LotOwnership,
@@ -1320,7 +1324,8 @@ export {
   type NextBidderResult,
   type OfferedParty,
   type PlacedBid,
-  type SkipReason,
+  type PriorOffer,
+  type ReofferSkipReason,
   type SkippedBidder,
 } from "./reoffer-next-bidder.js";
 export { claimableShortfall, type ClaimableShortfall } from "./reoffer-shortfall.js";
@@ -1338,4 +1343,4 @@ export {
   sellerConsentWindow,
   type SellerConsentWindow,
 } from "./reoffer-windows.js";
-export { paymentIsSettling } from "./buyer-default.js";
+export { paymentIsPaidOrBeingPaid, paymentIsSettling } from "./buyer-default.js";

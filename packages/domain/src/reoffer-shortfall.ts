@@ -14,6 +14,9 @@ export function claimableShortfall(input: {
   newHammerMinor: number;
   originalPremiumMinor: number;
 }): ClaimableShortfall {
+  for (const amount of Object.values(input)) {
+    if (!Number.isSafeInteger(amount)) throw new RangeError("Amounts are whole pence");
+  }
   const hammerDifferenceMinor = Math.max(0, input.originalHammerMinor - input.newHammerMinor);
   const premiumLostMinor = Math.max(0, input.originalPremiumMinor);
   return {

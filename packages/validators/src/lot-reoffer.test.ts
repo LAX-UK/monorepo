@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
+  BIDDER_REOFFER_STATUSES,
+  acceptReofferBodySchema,
+  bidderReofferPriceSchema,
   bidderReofferViewSchema,
+  declineReofferBodySchema,
   recordSellerAnswerBodySchema,
+  sellerReofferAnswerBodySchema,
   sellerReofferViewSchema,
   sendReofferBodySchema,
   staffReofferSchema,
@@ -19,17 +24,23 @@ const sellerView = {
   originalProceedsMinor: 77_440_00,
   reserveMinor: 85_000_00,
   belowReserve: true,
-  answerDueAt: "2026-11-16T10:00:00.000Z",
+  answerDueAt: "2026-11-16T17:00:00.000Z",
+};
+
+const price = {
+  hammerMinor: 82_000_00,
+  buyersPremiumMinor: 20_500_00,
+  vatOnPremiumMinor: 4_100_00,
+  vatOnLotMinor: null,
+  artistsResaleRightMinor: null,
+  totalMinor: 106_600_00,
 };
 
 const bidderView = {
   id: "r1",
   lotId: "l1",
   status: "offered",
-  hammerMinor: 82_000_00,
-  buyersPremiumMinor: 20_500_00,
-  vatMinor: 4_100_00,
-  totalMinor: 106_600_00,
+  price,
   endsAt: "2026-11-13T17:00:00.000Z",
 };
 
@@ -61,6 +72,81 @@ describe("staff notes", () => {
     );
     expect(withdrawReofferBodySchema.safeParse({}).success).toBe(false);
   });
+
+  it("takes the seller's preference on a refusal only", () => {
+    const refused = { answer: "refused", note: "By phone", declinePreference: "later_sale" };
+    expect(recordSellerAnswerBodySchema.safeParse(refused).success).toBe(true);
+    expect(recordSellerAnswerBodySchema.safeParse({ ...refused, answer: "given" }).success).toBe(
+      false,
+    );
+    expect(
+      recordSellerAnswerBodySchema.safeParse({ ...refused, declinePreference: "sell_it" }).success,
+    ).toBe(false);
+  });
+});
+
+describe("seller answer", () => {
+  it("is a yes with no preference, or a no that says what to do with the lot", () => {
+    expect(sellerReofferAnswerBodySchema.safeParse({ answer: "given" }).success).toBe(true);
+    expect(
+      sellerReofferAnswerBodySchema.safeParse({
+        answer: "refused",
+        declinePreference: "talk_to_us",
+      }).success,
+    ).toBe(true);
+    expect(sellerReofferAnswerBodySchema.safeParse({ answer: "refused" }).success).toBe(false);
+    expect(
+      sellerReofferAnswerBodySchema.safeParse({ answer: "given", declinePreference: "later_sale" })
+        .success,
+    ).toBe(false);
+  });
+});
+
+describe("bidder accept and decline", () => {
+  it("accepting needs the terms ticked", () => {
+    expect(acceptReofferBodySchema.safeParse({ termsAccepted: true }).success).toBe(true);
+    expect(acceptReofferBodySchema.safeParse({ termsAccepted: false }).success).toBe(false);
+    expect(acceptReofferBodySchema.safeParse({}).success).toBe(false);
+    expect(acceptReofferBodySchema.safeParse({ termsAccepted: true, price: 1 }).success).toBe(
+      false,
+    );
+  });
+
+  it("declining takes an optional trimmed reason of up to 500 characters", () => {
+    expect(declineReofferBodySchema.parse({})).toEqual({});
+    expect(declineReofferBodySchema.parse({ reason: "  Too late  " })).toEqual({
+      reason: "Too late",
+    });
+    expect(declineReofferBodySchema.safeParse({ reason: "x".repeat(501) }).success).toBe(false);
+    expect(declineReofferBodySchema.safeParse({ reason: "x", other: 1 }).success).toBe(false);
+  });
+});
+
+describe("bidder price", () => {
+  it("adds up", () => {
+    expect(bidderReofferPriceSchema.safeParse(price).success).toBe(true);
+  });
+
+  it("adds up for a lot that carries VAT and the Artist's Resale Right", () => {
+    const withAll = {
+      hammerMinor: 10_000_00,
+      buyersPremiumMinor: 2_500_00,
+      vatOnPremiumMinor: 500_00,
+      vatOnLotMinor: 2_000_00,
+      artistsResaleRightMinor: 400_00,
+      totalMinor: 15_400_00,
+    };
+    expect(bidderReofferPriceSchema.safeParse(withAll).success).toBe(true);
+    expect(bidderReofferPriceSchema.safeParse({ ...withAll, totalMinor: 15_000_00 }).success).toBe(
+      false,
+    );
+  });
+
+  it("refuses a total that does not match its lines", () => {
+    expect(
+      bidderReofferPriceSchema.safeParse({ ...price, totalMinor: price.totalMinor + 1 }).success,
+    ).toBe(false);
+  });
 });
 
 describe("member-safe views", () => {
@@ -84,16 +170,29 @@ describe("member-safe views", () => {
   });
 
   it("carry no staff-only key in their shape", () => {
-    for (const schema of [sellerReofferViewSchema, bidderReofferViewSchema]) {
-      const keys = Object.keys(schema.shape);
-      for (const forbidden of [
-        "claimableShortfall",
-        "bidder",
-        "skippedBidders",
-        "premiumLostMinor",
-      ]) {
-        expect(keys).not.toContain(forbidden);
-      }
+    const keys = Object.keys(sellerReofferViewSchema.shape);
+    for (const forbidden of [
+      "claimableShortfall",
+      "bidder",
+      "skippedBidders",
+      "premiumLostMinor",
+    ]) {
+      expect(keys).not.toContain(forbidden);
+    }
+  });
+
+  it("show the bidder only bidder-side statuses", () => {
+    for (const status of BIDDER_REOFFER_STATUSES) {
+      expect(bidderReofferViewSchema.safeParse({ ...bidderView, status }).success).toBe(true);
+    }
+    for (const status of [
+      "awaiting_seller",
+      "ready",
+      "seller_declined",
+      "seller_lapsed",
+      "expired",
+    ]) {
+      expect(bidderReofferViewSchema.safeParse({ ...bidderView, status }).success).toBe(false);
     }
   });
 });
@@ -117,7 +216,9 @@ describe("staff view", () => {
         premiumLostMinor: 22_000_00,
         totalMinor: 28_000_00,
       },
-      skippedBidders: [],
+      skippedBidders: [
+        { userId: "u3", legalEntityId: "e3", amountMinor: 90_000_00, reason: "suspended" },
+      ],
     });
     expect(parsed.success).toBe(true);
   });

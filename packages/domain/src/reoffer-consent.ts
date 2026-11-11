@@ -13,13 +13,16 @@ export type SellerConsentStatus = (typeof SELLER_CONSENT_STATUSES)[number];
 export const SELLER_CONSENT_ANSWERS = ["given", "refused", "lapsed"] as const;
 export type SellerConsentAnswer = (typeof SELLER_CONSENT_ANSWERS)[number];
 
+/** How an answer arrives: from the seller, recorded by staff on their behalf, or the clock. */
+export type ConsentChannel = "seller" | "staff" | "clock";
+
 /** Whose stock the lot is: a seller's, or LAX's own. */
 export type LotOwnership = "seller" | "lax_owned";
 
 export type ConsentRequirement = {
   /** The consent the offer starts with: `requested` or `not_needed`. */
   status: "requested" | "not_needed";
-  /** Staff-facing reason when no consent is asked, for the record. */
+  /** Staff-facing reason for the record. */
   reason: "seller_consent_required" | "lax_owned_no_consent_needed";
   /** A reserve was agreed. */
   hasReserve: boolean;
@@ -54,7 +57,7 @@ export function initialReofferStatus(consent: ConsentRequirement): "awaiting_sel
 
 export type ConsentTransition =
   | { ok: true; status: SellerConsentStatus; reofferEvent: ReofferEvent }
-  | { ok: false; reason: "already_answered" | "not_requested" };
+  | { ok: false; reason: "already_answered" | "not_requested" | "not_allowed" };
 
 const ANSWER_EVENT: Record<SellerConsentAnswer, ReofferEvent> = {
   given: "seller_agreed",
@@ -63,15 +66,25 @@ const ANSWER_EVENT: Record<SellerConsentAnswer, ReofferEvent> = {
 };
 
 /**
- * Records the seller's answer (or the lapse of the window). Only a requested consent can be
- * answered, once; a missing answer is never taken as a yes. The result names the offer event
- * that follows.
+ * Records an answer. A requested consent is answered once, by the seller or by staff on their
+ * behalf; only the clock lets it lapse, and silence is never a yes. A lapsed consent can still
+ * be answered, by staff alone, who record what the seller said by phone or email. The result
+ * names the offer event that follows.
  */
 export function answerConsent(
   status: SellerConsentStatus,
   answer: SellerConsentAnswer,
+  channel: ConsentChannel,
 ): ConsentTransition {
   if (status === "not_needed") return { ok: false, reason: "not_requested" };
-  if (status !== "requested") return { ok: false, reason: "already_answered" };
+  const lapsedByClock = answer === "lapsed";
+  if (status === "requested") {
+    if (lapsedByClock !== (channel === "clock")) return { ok: false, reason: "not_allowed" };
+  } else if (status === "lapsed") {
+    if (channel !== "staff") return { ok: false, reason: "already_answered" };
+    if (lapsedByClock) return { ok: false, reason: "not_allowed" };
+  } else {
+    return { ok: false, reason: "already_answered" };
+  }
   return { ok: true, status: answer, reofferEvent: ANSWER_EVENT[answer] };
 }

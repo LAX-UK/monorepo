@@ -1,12 +1,19 @@
 import type { LotStatus, PaymentStatus } from "@auction/types";
 import { canTransition } from "./lot-transitions.js";
+import { parseMoneyToMinorUnits } from "./money-compare.js";
+import { type BidderAccountState, selectNextBidder } from "./reoffer-next-bidder.js";
 
 /** Where the lot goes once the buyer's sale is cancelled. */
 export const BUYER_DEFAULT_OUTCOMES = ["returned_to_inventory", "offered_to_underbidder"] as const;
 export type BuyerDefaultOutcome = (typeof BUYER_DEFAULT_OUTCOMES)[number];
 
 /** The bidder who would be next in line: the highest bid from someone other than the buyer. */
-export type Underbidder = { userId: string; legalEntityId: string; amount: string };
+export type Underbidder = {
+  userId: string;
+  legalEntityId: string;
+  amount: string;
+  accountState?: BidderAccountState;
+};
 
 export type BuyerDefaultFacts = {
   lotStatus: LotStatus;
@@ -35,6 +42,14 @@ const SETTLING: readonly PaymentStatus[] = ["authorized", "captured", "refunded"
 /** Whether money has moved or is moving on the payment: it can no longer be cancelled by a default. */
 export function paymentIsSettling(status: PaymentStatus): boolean {
   return SETTLING.includes(status);
+}
+
+/**
+ * Whether the payment is paid, being paid, or held by LAX for checks with the money taken. A
+ * lot with such a payment is never re-awarded to someone else.
+ */
+export function paymentIsPaidOrBeingPaid(status: PaymentStatus): boolean {
+  return paymentIsSettling(status) || status === "requires_manual_review";
 }
 const DELIVERY_NOT_STARTED: readonly (string | null)[] = [null, "awaiting_payment"];
 
@@ -85,17 +100,37 @@ export function buyerDefaultBlock(
 }
 
 /**
- * The highest bid placed by anyone other than the buyer's account. Amounts are decimal strings;
- * they are compared as numbers.
+ * The bidder next in line: the same rule as a re-offer (`selectNextBidder`). Bids from the
+ * buyer's account, or from the buyer's person under any account when `buyerUserId` is given, are
+ * left out, as are suspended, closed and deletion-pending accounts (an `Underbidder` with no
+ * `accountState` is active). Amounts are decimal strings.
  */
 export function pickUnderbidder(
   bids: readonly Underbidder[],
   buyerLegalEntityId: string,
+  buyerUserId?: string,
 ): Underbidder | null {
-  let best: Underbidder | null = null;
-  for (const bid of bids) {
-    if (bid.legalEntityId === buyerLegalEntityId) continue;
-    if (!best || Number(bid.amount) > Number(best.amount)) best = bid;
-  }
-  return best;
+  const placed = bids.map((bid, index) => ({
+    userId: bid.userId,
+    legalEntityId: bid.legalEntityId,
+    amountMinor: Number(parseMoneyToMinorUnits(bid.amount)),
+    // Bids arrive in no stated order; the position keeps a tie stable.
+    placedAt: new Date(index),
+    accountState: bid.accountState ?? "active",
+  }));
+  const result = selectNextBidder({
+    bids: placed,
+    defaultingBuyer: { userId: buyerUserId ?? "", legalEntityId: buyerLegalEntityId },
+    alreadyOffered: [],
+  });
+  if (result.kind !== "found") return null;
+  const { userId, legalEntityId, amountMinor } = result.bidder;
+  return (
+    bids.find(
+      (bid) =>
+        bid.userId === userId &&
+        bid.legalEntityId === legalEntityId &&
+        Number(parseMoneyToMinorUnits(bid.amount)) === amountMinor,
+    ) ?? null
+  );
 }

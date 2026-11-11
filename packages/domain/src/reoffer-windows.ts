@@ -2,28 +2,27 @@ import {
   LONDON_TIME_ZONE,
   dayKey,
   firstExistingWallTime,
-  instantToWallClock,
   wallClockToInstant,
 } from "@auction/datetime";
-import { addDaysToKey, isoWeekday } from "./collection-time.js";
+import { addDaysToKey, dateKeyParts } from "./collection-time.js";
 import { invoiceDueAt } from "./purchase-invoice-state.js";
 import {
+  DEADLINE_AT_LOCAL,
   DEFAULT_OFFER_DAYS,
   MAX_OFFER_DAYS,
   MIN_OFFER_DAYS,
-  OFFER_ENDS_AT_LOCAL,
   SELLER_CONSENT_REMINDER_WORKING_DAYS,
   SELLER_CONSENT_WORKING_DAYS,
 } from "./reoffer-rules.js";
-import { LONDON_WORKING_CALENDAR } from "./working-hours.js";
+import { LONDON_WORKING_CALENDAR, isWorkingDay } from "./working-hours.js";
 
 /**
  * Working days are Monday to Friday except the bank holidays of England and Wales (the London
- * office calendar). The wall-clock time of a deadline is the time the request was made.
+ * office calendar). Deadlines fall at 17:00 London time.
  */
 
-function isWorkingDay(key: string): boolean {
-  return isoWeekday(key) <= 5 && !LONDON_WORKING_CALENDAR.isHoliday(key);
+function isLondonWorkingDay(key: string): boolean {
+  return isWorkingDay(LONDON_WORKING_CALENDAR, dateKeyParts(key));
 }
 
 function londonInstant(day: string, time: string): Date {
@@ -43,19 +42,21 @@ function workingDayAfter(from: Date, count: number): string {
   let counted = 0;
   while (counted < count) {
     key = addDaysToKey(key, 1);
-    if (isWorkingDay(key)) counted += 1;
+    if (isLondonWorkingDay(key)) counted += 1;
   }
   return key;
 }
 
 function workingDeadline(askedAt: Date, workingDays: number): Date {
-  const { time } = instantToWallClock(askedAt, LONDON_TIME_ZONE);
-  return londonInstant(workingDayAfter(askedAt, workingDays), time);
+  return londonInstant(workingDayAfter(askedAt, workingDays), DEADLINE_AT_LOCAL);
 }
 
 export type SellerConsentWindow = { dueAt: Date; reminderAt: Date };
 
-/** When the seller must answer (3 working days) and when the one reminder goes (after 2). */
+/**
+ * When the seller must answer (17:00 on the 3rd working day after asking) and when the one
+ * reminder goes (17:00 on the 2nd).
+ */
 export function sellerConsentWindow(askedAt: Date): SellerConsentWindow {
   return {
     dueAt: workingDeadline(askedAt, SELLER_CONSENT_WORKING_DAYS),
@@ -67,13 +68,18 @@ export function isValidOfferDays(days: number): boolean {
   return Number.isInteger(days) && days >= MIN_OFFER_DAYS && days <= MAX_OFFER_DAYS;
 }
 
-/** When an offer sent at `sentAt` ends: `days` London days later, at 17:00 London time. */
+/**
+ * When an offer sent at `sentAt` ends: `days` London days later, at 17:00 London time. An offer
+ * sent after 17:00 counts its days from the next day, so no offer is shorter than its days.
+ */
 export function offerEndsAt(sentAt: Date, days: number = DEFAULT_OFFER_DAYS): Date {
   if (!isValidOfferDays(days)) {
     throw new RangeError(`An offer lasts ${MIN_OFFER_DAYS} to ${MAX_OFFER_DAYS} days`);
   }
-  const lastDay = addDaysToKey(dayKey(sentAt, LONDON_TIME_ZONE), days);
-  return londonInstant(lastDay, OFFER_ENDS_AT_LOCAL);
+  const today = dayKey(sentAt, LONDON_TIME_ZONE);
+  const sentAfterDeadline = sentAt.getTime() > londonInstant(today, DEADLINE_AT_LOCAL).getTime();
+  const startDay = sentAfterDeadline ? addDaysToKey(today, 1) : today;
+  return londonInstant(addDaysToKey(startDay, days), DEADLINE_AT_LOCAL);
 }
 
 /** When the invoice raised on acceptance is due: the one invoice rule, from the acceptance day. */

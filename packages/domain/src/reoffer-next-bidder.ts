@@ -1,4 +1,4 @@
-import { MAX_REOFFERS_PER_DEFAULT } from "./reoffer-rules.js";
+import { type ReofferRecord, capReached, offerReachedBidder } from "./reoffer-state.js";
 
 /** The standing of a bidder's account, as far as being offered a lot goes. */
 export type BidderAccountState = "active" | "suspended" | "closed" | "deletion_pending";
@@ -12,16 +12,20 @@ export type PlacedBid = {
   accountState: BidderAccountState;
 };
 
-/** Someone already offered the lot in this default (an earlier offer, in any state). */
+/** A party in a bid or an offer: the person and the account. */
 export type OfferedParty = { userId: string; legalEntityId: string };
 
-export type SkipReason = "suspended" | "closed" | "deletion_pending" | "already_offered";
+/** An earlier offer of this lot in this default, to whom, and how it stands. */
+export type PriorOffer = OfferedParty & ReofferRecord;
+
+/** Why an otherwise eligible bidder was passed over, to be recorded. */
+export type ReofferSkipReason = "suspended" | "closed" | "deletion_pending";
 
 export type SkippedBidder = {
   userId: string;
   legalEntityId: string;
   amountMinor: number;
-  reason: SkipReason;
+  reason: ReofferSkipReason;
 };
 
 export type NextBidder = { userId: string; legalEntityId: string; amountMinor: number };
@@ -34,7 +38,7 @@ export type NextBidderResult =
       skipped: SkippedBidder[];
     };
 
-const ACCOUNT_SKIP: Record<Exclude<BidderAccountState, "active">, SkipReason> = {
+const ACCOUNT_SKIP: Record<Exclude<BidderAccountState, "active">, ReofferSkipReason> = {
   suspended: "suspended",
   closed: "closed",
   deletion_pending: "deletion_pending",
@@ -57,29 +61,35 @@ function byBidOrder(a: PlacedBid, b: PlacedBid): number {
 /**
  * Who the lot is offered to next. The bidder is the highest placed bid from an account and a
  * person other than the defaulting buyer (a person bidding for another account counts as the
- * same buyer), at that bid and nothing else. Bidders already offered are passed over, as are
- * suspended, closed and deletion-pending accounts; each is returned once, with its reason, to be
- * recorded. At most three offers are made per default.
+ * same buyer), at that bid and nothing else.
+ *
+ * Bidders who were already offered the lot are left out without a record, and so are all their
+ * other bids. Only offers that reached a bidder count (an offer the seller refused or let lapse,
+ * or that was withdrawn before it was sent, did not), and at most three are made per default.
+ * Suspended, closed and deletion-pending accounts are passed over and returned once, with the
+ * reason, to be recorded. A person's lower bid under another account is collapsed into that
+ * person's highest: when the highest is passed over, the lower one is not tried.
  */
 export function selectNextBidder(input: {
   bids: readonly PlacedBid[];
   defaultingBuyer: OfferedParty;
-  alreadyOffered: readonly OfferedParty[];
+  alreadyOffered: readonly PriorOffer[];
 }): NextBidderResult {
-  if (input.alreadyOffered.length >= MAX_REOFFERS_PER_DEFAULT) {
+  if (capReached(input.alreadyOffered)) {
     return { kind: "none", reason: "offer_limit_reached", skipped: [] };
   }
+  const offered = input.alreadyOffered.filter(offerReachedBidder);
   const others = input.bids
     .filter((bid) => !sharesParty(bid, input.defaultingBuyer))
+    .filter((bid) => !offered.some((party) => sharesParty(bid, party)))
     .sort(byBidOrder);
   if (others.length === 0) return { kind: "none", reason: "no_other_bidder", skipped: [] };
 
   const skipped: SkippedBidder[] = [];
   const passedOver: PlacedBid[] = [];
   for (const bid of others) {
-    // A party's lower bids are not considered again once its highest was passed over.
     if (passedOver.some((seen) => sharesParty(bid, seen))) continue;
-    const reason = skipReason(bid, input.alreadyOffered);
+    const reason = accountSkipReason(bid.accountState);
     if (!reason) {
       const { userId, legalEntityId, amountMinor } = bid;
       return { kind: "found", bidder: { userId, legalEntityId, amountMinor }, skipped };
@@ -95,7 +105,6 @@ export function selectNextBidder(input: {
   return { kind: "none", reason: "no_eligible_bidder", skipped };
 }
 
-function skipReason(bid: PlacedBid, offered: readonly OfferedParty[]): SkipReason | null {
-  if (offered.some((party) => sharesParty(bid, party))) return "already_offered";
-  return bid.accountState === "active" ? null : ACCOUNT_SKIP[bid.accountState];
+function accountSkipReason(state: BidderAccountState): ReofferSkipReason | null {
+  return state === "active" ? null : ACCOUNT_SKIP[state];
 }

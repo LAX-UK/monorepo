@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { invoiceDueAt } from "./purchase-invoice-state.js";
 import {
   invoiceDueAfterAcceptance,
   isValidOfferDays,
@@ -13,24 +14,24 @@ const window = (askedAt: string) => {
 };
 
 describe("sellerConsentWindow", () => {
-  it("counts working days from a weekday request: reminder after 2, due after 3", () => {
+  it("ends at 17:00 on the 3rd working day, with the reminder at 17:00 on the 2nd", () => {
     expect(window("2026-11-11T10:00:00Z")).toEqual({
-      reminderAt: "2026-11-13T10:00:00.000Z",
-      dueAt: "2026-11-16T10:00:00.000Z",
+      reminderAt: "2026-11-13T17:00:00.000Z",
+      dueAt: "2026-11-16T17:00:00.000Z",
     });
   });
 
   it("skips the weekend for a Friday request", () => {
     expect(window("2026-11-13T15:00:00Z")).toEqual({
-      reminderAt: "2026-11-17T15:00:00.000Z",
-      dueAt: "2026-11-18T15:00:00.000Z",
+      reminderAt: "2026-11-17T17:00:00.000Z",
+      dueAt: "2026-11-18T17:00:00.000Z",
     });
   });
 
   it("starts counting on Monday for a request made on a Saturday or Sunday", () => {
     const expected = {
-      reminderAt: "2026-11-17T10:00:00.000Z",
-      dueAt: "2026-11-18T10:00:00.000Z",
+      reminderAt: "2026-11-17T17:00:00.000Z",
+      dueAt: "2026-11-18T17:00:00.000Z",
     };
     expect(window("2026-11-14T10:00:00Z")).toEqual(expected);
     expect(window("2026-11-15T10:00:00Z")).toEqual(expected);
@@ -38,25 +39,27 @@ describe("sellerConsentWindow", () => {
 
   it("does not count bank holidays (Christmas and the substitute Boxing Day)", () => {
     expect(window("2026-12-23T10:00:00Z")).toEqual({
-      reminderAt: "2026-12-29T10:00:00.000Z",
-      dueAt: "2026-12-30T10:00:00.000Z",
+      reminderAt: "2026-12-29T17:00:00.000Z",
+      dueAt: "2026-12-30T17:00:00.000Z",
     });
   });
 
-  it("keeps the London wall-clock time when clocks go forward (late March)", () => {
-    // Fri 27 Mar 12:00 GMT; BST begins Sun 29 Mar.
+  it("is 17:00 BST after clocks go forward (late March)", () => {
     expect(window("2026-03-27T12:00:00Z")).toEqual({
-      reminderAt: "2026-03-31T11:00:00.000Z",
-      dueAt: "2026-04-01T11:00:00.000Z",
+      reminderAt: "2026-03-31T16:00:00.000Z",
+      dueAt: "2026-04-01T16:00:00.000Z",
     });
   });
 
-  it("keeps the London wall-clock time when clocks go back (late October)", () => {
-    // Fri 23 Oct 12:00 BST; GMT begins Sun 25 Oct.
+  it("is 17:00 GMT after clocks go back (late October)", () => {
     expect(window("2026-10-23T11:00:00Z")).toEqual({
-      reminderAt: "2026-10-27T12:00:00.000Z",
-      dueAt: "2026-10-28T12:00:00.000Z",
+      reminderAt: "2026-10-27T17:00:00.000Z",
+      dueAt: "2026-10-28T17:00:00.000Z",
     });
+  });
+
+  it("does not depend on the time of day of the request", () => {
+    expect(window("2026-11-11T00:05:00Z")).toEqual(window("2026-11-11T23:50:00Z"));
   });
 
   it("reminds before it is due", () => {
@@ -93,6 +96,15 @@ describe("offerEndsAt", () => {
     expect(iso(offerEndsAt(new Date("2026-10-24T23:30:00Z"), 1))).toBe("2026-10-26T17:00:00.000Z");
   });
 
+  it("counts the days from the next day when sent after 17:00 London", () => {
+    // 17:30 GMT on Tue 10 Nov: a 1-day offer ends Thu 12 Nov, not 23.5 hours later.
+    expect(iso(offerEndsAt(new Date("2026-11-10T17:30:00Z"), 1))).toBe("2026-11-12T17:00:00.000Z");
+    // 16:30Z is 17:30 BST, also after 17:00 London.
+    expect(iso(offerEndsAt(new Date("2026-07-01T16:30:00Z"), 1))).toBe("2026-07-03T16:00:00.000Z");
+    // Exactly 17:00 still counts from the same day.
+    expect(iso(offerEndsAt(new Date("2026-11-10T17:00:00Z"), 1))).toBe("2026-11-11T17:00:00.000Z");
+  });
+
   it("allows 1 to 7 days and refuses anything else", () => {
     for (const days of [1, 2, 3, 4, 5, 6, 7]) expect(isValidOfferDays(days)).toBe(true);
     for (const days of [0, 8, -1, 2.5, Number.NaN]) {
@@ -103,6 +115,12 @@ describe("offerEndsAt", () => {
 });
 
 describe("invoiceDueAfterAcceptance", () => {
+  it("is the one invoice due rule", () => {
+    for (const at of ["2026-03-26T14:00:00Z", "2026-10-22T23:30:00Z", "2026-11-10T00:10:00Z"]) {
+      expect(invoiceDueAfterAcceptance(new Date(at))).toEqual(invoiceDueAt(new Date(at)));
+    }
+  });
+
   it("is due 7 days after acceptance, at the end of that London day", () => {
     expect(iso(invoiceDueAfterAcceptance(new Date("2026-11-10T14:00:00Z")))).toBe(
       "2026-11-17T23:59:59.999Z",

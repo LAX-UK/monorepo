@@ -94,16 +94,16 @@ describe("selectNextBidder", () => {
     },
   );
 
-  it("skips bidders already offered, and does not offer them a lower bid of theirs", () => {
+  it("leaves out bidders already offered, and their lower bids, without a record", () => {
     const result = selectNextBidder({
       bids: [bid("u2", "e2", 800), bid("u2", "e2", 600), bid("u3", "e3", 700)],
       defaultingBuyer: buyer,
-      alreadyOffered: [{ userId: "u2", legalEntityId: "e2" }],
+      alreadyOffered: [{ userId: "u2", legalEntityId: "e2", status: "declined" }],
     });
     expect(result).toEqual({
       kind: "found",
       bidder: { userId: "u3", legalEntityId: "e3", amountMinor: 700 },
-      skipped: [{ userId: "u2", legalEntityId: "e2", amountMinor: 800, reason: "already_offered" }],
+      skipped: [],
     });
   });
 
@@ -111,7 +111,7 @@ describe("selectNextBidder", () => {
     const result = selectNextBidder({
       bids: [bid("u2", "e2", 800), bid("u3", "e3", 700)],
       defaultingBuyer: buyer,
-      alreadyOffered: [{ userId: "u2", legalEntityId: "e2" }],
+      alreadyOffered: [{ userId: "u2", legalEntityId: "e2", status: "declined" }],
     });
     expect(result).toMatchObject({ kind: "found", bidder: { userId: "u3", amountMinor: 700 } });
   });
@@ -145,7 +145,11 @@ describe("selectNextBidder", () => {
   });
 
   it("makes no fourth offer", () => {
-    const offered = ["a", "b", "c"].map((id) => ({ userId: `u-${id}`, legalEntityId: `e-${id}` }));
+    const offered = ["a", "b", "c"].map((id) => ({
+      userId: `u-${id}`,
+      legalEntityId: `e-${id}`,
+      status: "declined" as const,
+    }));
     expect(
       selectNextBidder({
         bids: [bid("u9", "e9", 100)],
@@ -153,6 +157,40 @@ describe("selectNextBidder", () => {
         alreadyOffered: offered,
       }),
     ).toEqual({ kind: "none", reason: "offer_limit_reached", skipped: [] });
+  });
+
+  it("counts only offers that reached a bidder toward the limit and as already offered", () => {
+    const prior = [
+      { userId: "u-a", legalEntityId: "e-a", status: "seller_declined" as const },
+      { userId: "u-b", legalEntityId: "e-b", status: "seller_lapsed" as const },
+      { userId: "u-c", legalEntityId: "e-c", status: "withdrawn" as const },
+      { userId: "u-d", legalEntityId: "e-d", status: "declined" as const },
+    ];
+    const bids = [bid("u-a", "e-a", 800), bid("u-d", "e-d", 700), bid("u9", "e9", 100)];
+    // The seller's refusal never reached u-a, so u-a is still next in line; u-d was offered.
+    expect(selectNextBidder({ bids, defaultingBuyer: buyer, alreadyOffered: prior })).toMatchObject(
+      { kind: "found", bidder: { userId: "u-a", amountMinor: 800 } },
+    );
+    expect(
+      selectNextBidder({
+        bids: [bid("u-d", "e-d", 700)],
+        defaultingBuyer: buyer,
+        alreadyOffered: prior,
+      }),
+    ).toMatchObject({ kind: "none", reason: "no_other_bidder" });
+  });
+
+  it("collapses a person's lower bid under another account into their highest", () => {
+    const result = selectNextBidder({
+      bids: [bid("u2", "e2", 800, "suspended"), bid("u2", "e2-company", 600), bid("u3", "e3", 500)],
+      defaultingBuyer: buyer,
+      alreadyOffered: [],
+    });
+    expect(result).toMatchObject({
+      kind: "found",
+      bidder: { userId: "u3" },
+      skipped: [{ userId: "u2", reason: "suspended" }],
+    });
   });
 
   it("does not change the bids it is given", () => {

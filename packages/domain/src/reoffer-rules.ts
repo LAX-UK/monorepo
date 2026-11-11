@@ -14,5 +14,5 @@ export const DEFAULT_OFFER_DAYS = 3;
 export const MIN_OFFER_DAYS = 1;
 export const MAX_OFFER_DAYS = 7;
 
-/** An offer ends at this London wall-clock time on its last day. */
-export const OFFER_ENDS_AT_LOCAL = "17:00";
+/** Every deadline (the seller's answer, the end of an offer) falls at this London time. */
+export const DEADLINE_AT_LOCAL = "17:00";

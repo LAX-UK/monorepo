@@ -71,25 +71,76 @@ describe("initialReofferStatus", () => {
 
 describe("answerConsent", () => {
   it.each([
+    ["given", "seller", "seller_agreed"],
+    ["refused", "seller", "seller_declined"],
+    ["given", "staff", "seller_agreed"],
+    ["refused", "staff", "seller_declined"],
+    ["lapsed", "clock", "seller_lapsed"],
+  ] as const)(
+    "a requested consent answered %s by %s moves the offer with %s",
+    (answer, channel, event) => {
+      expect(answerConsent("requested", answer, channel)).toEqual({
+        ok: true,
+        status: answer,
+        reofferEvent: event,
+      });
+    },
+  );
+
+  it("lets only the clock lapse a request, and never takes the clock for an answer", () => {
+    expect(answerConsent("requested", "lapsed", "seller")).toEqual({
+      ok: false,
+      reason: "not_allowed",
+    });
+    expect(answerConsent("requested", "lapsed", "staff")).toEqual({
+      ok: false,
+      reason: "not_allowed",
+    });
+    expect(answerConsent("requested", "given", "clock")).toEqual({
+      ok: false,
+      reason: "not_allowed",
+    });
+  });
+
+  it.each([
     ["given", "seller_agreed"],
     ["refused", "seller_declined"],
-    ["lapsed", "seller_lapsed"],
-  ] as const)("a %s answer moves the offer with %s", (answer, event) => {
-    expect(answerConsent("requested", answer)).toEqual({
+  ] as const)("lets staff record a %s answer after the request lapsed", (answer, event) => {
+    expect(answerConsent("lapsed", answer, "staff")).toEqual({
       ok: true,
       status: answer,
       reofferEvent: event,
     });
   });
 
-  it.each(["given", "refused", "lapsed"] as const)(
-    "cannot answer a consent already %s",
-    (status) => {
-      expect(answerConsent(status, "given")).toEqual({ ok: false, reason: "already_answered" });
-    },
-  );
+  it("keeps a lapsed request closed to the seller and the clock", () => {
+    expect(answerConsent("lapsed", "given", "seller")).toEqual({
+      ok: false,
+      reason: "already_answered",
+    });
+    expect(answerConsent("lapsed", "lapsed", "clock")).toEqual({
+      ok: false,
+      reason: "already_answered",
+    });
+    expect(answerConsent("lapsed", "lapsed", "staff")).toEqual({
+      ok: false,
+      reason: "not_allowed",
+    });
+  });
+
+  it.each(["given", "refused"] as const)("cannot answer a consent already %s", (status) => {
+    for (const channel of ["seller", "staff", "clock"] as const) {
+      expect(answerConsent(status, "given", channel)).toEqual({
+        ok: false,
+        reason: "already_answered",
+      });
+    }
+  });
 
   it("cannot answer a consent that was never needed", () => {
-    expect(answerConsent("not_needed", "given")).toEqual({ ok: false, reason: "not_requested" });
+    expect(answerConsent("not_needed", "given", "staff")).toEqual({
+      ok: false,
+      reason: "not_requested",
+    });
   });
 });
