@@ -1,9 +1,17 @@
+import { isValidZone } from "@auction/datetime";
 import type { Database } from "@auction/db";
 import { bidIdentityDirectory } from "@auction/db/schema";
 import { inArray } from "drizzle-orm";
 import type { IRecipientZoneReader } from "../interfaces/recipient-zone.reader.js";
 
-/** Reads the Account time zone from the identity directory Bid keeps in step with Account. */
+/** Zones already reported as unusable, so a bad saved zone is logged once, not on every run. */
+const reportedBadZones = new Set<string>();
+
+/**
+ * Reads the Account time zone from the identity directory Bid keeps in step with Account. A saved
+ * zone this server cannot compute with is left out, so that person is treated as being in London
+ * (as with no saved zone) instead of the bad value failing the 09:00 calculation for everyone.
+ */
 export class DrizzleRecipientZoneReader implements IRecipientZoneReader {
   constructor(private readonly db: Database) {}
 
@@ -18,7 +26,15 @@ export class DrizzleRecipientZoneReader implements IRecipientZoneReader {
       .from(bidIdentityDirectory)
       .where(inArray(bidIdentityDirectory.subjectId, [...userIds]));
     for (const row of rows) {
-      if (row.timeZone) zones.set(row.subjectId, row.timeZone);
+      if (!row.timeZone) continue;
+      if (isValidZone(row.timeZone)) {
+        zones.set(row.subjectId, row.timeZone);
+      } else if (!reportedBadZones.has(row.timeZone)) {
+        reportedBadZones.add(row.timeZone);
+        console.warn(
+          `[RecipientZoneReader] unusable saved time zone "${row.timeZone}"; treating as London`,
+        );
+      }
     }
     return zones;
   }

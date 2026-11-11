@@ -35,6 +35,7 @@
     "@auction/alerts": "workspace:*",
     "@auction/artwork-register-contracts": "workspace:*",
     "@auction/db": "workspace:*",
+    "@auction/datetime": "workspace:*",
     "@auction/domain": "workspace:*",
     "@auction/types": "workspace:*",
     "@auction/validators": "workspace:*",

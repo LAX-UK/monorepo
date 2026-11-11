@@ -1,7 +1,8 @@
 import type { Database } from "@auction/db";
 import { bidInvoice, lot, lotFulfilment, payment, paymentReminder } from "@auction/db/schema";
 import { PAYMENT_REMINDER_STEPS } from "@auction/domain";
-import { and, asc, eq, inArray, ne, or, sql } from "drizzle-orm";
+import { INVOICE_PAYMENT_DUE_DAYS } from "@auction/types";
+import { and, asc, eq, inArray, isNull, lte, ne, or, sql } from "drizzle-orm";
 import type {
   IPaymentReminderStore,
   PaymentReminderCandidate,
@@ -9,6 +10,13 @@ import type {
 
 /** Reminders stop mattering once an invoice is this old: staff have long since taken it over. */
 const MAX_AGE_DAYS = 90;
+
+/**
+ * The first step opens at the London midnight two days before the due day, so an invoice due more
+ * than three days from now has no step open yet and is left out of the run. The due date is the
+ * stored one, or (a fixture with no stored invoice) the end of the London term from when it was raised.
+ */
+const FIRST_STEP_LEAD_DAYS = 3;
 
 export class DrizzlePaymentReminderStore implements IPaymentReminderStore {
   constructor(private readonly db: Database) {}
@@ -44,6 +52,13 @@ export class DrizzlePaymentReminderStore implements IPaymentReminderStore {
           eq(lot.winnerId, payment.buyerId),
           or(ne(lotFulfilment.status, "cancelled"), sql`${lotFulfilment.status} is null`),
           sql`${payment.createdAt} > now() - make_interval(days => ${MAX_AGE_DAYS})`,
+          or(
+            lte(bidInvoice.dueAt, sql`now() + make_interval(days => ${FIRST_STEP_LEAD_DAYS})`),
+            and(
+              isNull(bidInvoice.dueAt),
+              sql`${payment.createdAt} + make_interval(days => ${INVOICE_PAYMENT_DUE_DAYS + 1 - FIRST_STEP_LEAD_DAYS}) <= now()`,
+            ),
+          ),
           sql`(select count(*) from ${paymentReminder} where ${paymentReminder.paymentId} = ${payment.id}) < ${PAYMENT_REMINDER_STEPS.length}`,
         ),
       )

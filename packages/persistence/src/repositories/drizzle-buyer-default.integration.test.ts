@@ -53,6 +53,8 @@ describe.skipIf(!HAS_DB)("buyer default (integration)", () => {
     held: randomUUID(),
     paid: randomUUID(),
     cancelledSale: randomUUID(),
+    /** Raised just now: due days away, so no reminder step is open yet. */
+    notYetOpen: randomUUID(),
   };
 
   const wonLot = (id: string) => ({
@@ -160,6 +162,7 @@ describe.skipIf(!HAS_DB)("buyer default (integration)", () => {
       invoice(lots.held, "requires_manual_review", 9),
       invoice(lots.paid, "captured", 9),
       invoice(lots.cancelledSale, "cancelled", 9),
+      invoice(lots.notYetOpen, "pending", 0),
     ]) {
       const [stored] = await db
         .insert(bidInvoice)
@@ -232,6 +235,9 @@ describe.skipIf(!HAS_DB)("buyer default (integration)", () => {
       expect(ids).toContain(lots.overdue);
       expect(ids).not.toContain(lots.paid);
       expect(ids).not.toContain(lots.cancelledSale);
+      // An invoice whose first step has not opened is not re-checked on every run.
+      expect(ids).not.toContain(lots.notYetOpen);
+      expect(ids).toContain(lots.notYetOverdue);
 
       const overdue = candidates.find((c) => c.lotId === lots.overdue);
       const paymentId = overdue?.paymentId ?? "";

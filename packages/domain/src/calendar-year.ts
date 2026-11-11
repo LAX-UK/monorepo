@@ -14,17 +14,19 @@ const yearFormatter = new Intl.DateTimeFormat("en-GB", {
   year: "numeric",
 });
 
+const offsetFormatter = new Intl.DateTimeFormat("en-GB", {
+  timeZone: BUSINESS_TIME_ZONE,
+  hourCycle: "h23",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+});
+
 /** Minutes London is ahead of UTC at `instant` (0 in winter, 60 in summer). */
 export function londonOffsetMinutes(instant: Date): number {
-  const parts = new Intl.DateTimeFormat("en-GB", {
-    timeZone: BUSINESS_TIME_ZONE,
-    hourCycle: "h23",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).formatToParts(instant);
+  const parts = offsetFormatter.formatToParts(instant);
   const part = (type: Intl.DateTimeFormatPartTypes) =>
     Number(parts.find((p) => p.type === type)?.value ?? 0);
   const asUtc = Date.UTC(

@@ -5,7 +5,7 @@ import {
   wallClockToInstant,
 } from "@auction/datetime";
 import type { LotStatus, PaymentStatus } from "@auction/types";
-import { londonDateOf, londonWallClock } from "./calendar-year.js";
+import { londonDateOf, londonMidnight } from "./calendar-year.js";
 import { storedDueAt } from "./purchase-invoice-state.js";
 import { purchaseEnding } from "./purchase-state.js";
 
@@ -26,12 +26,15 @@ const PAYMENT_REMINDER_SEND_TIME = "09:00";
 /** The first instant of the London day a step belongs to: no recipient is reminded before it. */
 export function reminderOpensAt(step: PaymentReminderStep, dueAt: Date): Date {
   const { year, month, day } = londonDateOf(dueAt);
-  return londonWallClock(year, month, day + STEP_OFFSET_DAYS[step], 0);
+  return londonMidnight(year, month, day + STEP_OFFSET_DAYS[step]);
 }
 
-function nextDay(day: string): string {
-  return new Date(Date.parse(`${day}T00:00:00Z`) + 86_400_000).toISOString().slice(0, 10);
+function shiftDay(day: string, days: number): string {
+  return new Date(Date.parse(`${day}T00:00:00Z`) + days * 86_400_000).toISOString().slice(0, 10);
 }
+
+const previousDay = (day: string): string => shiftDay(day, -1);
+const nextDay = (day: string): string => shiftDay(day, 1);
 
 /** 09:00 on a day in `zone`; a day whose 09:00 the clocks skip sends at the first time after it. */
 function nineAm(day: string, zone: string): Date {
@@ -43,22 +46,48 @@ function nineAm(day: string, zone: string): Date {
   throw new Error(`No 09:00 on ${day} in ${zone}`);
 }
 
+/** The last instant a step may be sent: the end of its London day, and never after the due time. */
+export function reminderClosesAt(step: PaymentReminderStep, dueAt: Date): Date {
+  const { year, month, day } = londonDateOf(dueAt);
+  const dayEnd = londonMidnight(year, month, day + STEP_OFFSET_DAYS[step] + 1).getTime() - 1;
+  return new Date(step === "due_day" ? Math.min(dayEnd, dueAt.getTime()) : dayEnd);
+}
+
 /**
- * When a step is sent to a recipient: the first 09:00 on their clock that is not before the London
- * day the step belongs to. With no saved zone that is 09:00 London on the day itself. A recipient
- * far ahead of London may get it the next morning on their clock (their 09:00 on the day itself
- * falls before London's day began); nobody gets one before it.
+ * When a step is sent to a recipient: exactly once, inside the London day the step belongs to.
+ * That is 09:00 on the recipient's clock when it falls inside the day (not before the step opens);
+ * for a recipient far from London, whose 09:00 falls outside it, the closest instant inside the
+ * day: the moment it opens or the last moment before it ends. With no saved zone that is 09:00
+ * London on the day itself.
  */
 export function reminderSendAt(
   step: PaymentReminderStep,
   dueAt: Date,
   recipientZone: string | null = null,
 ): Date {
-  const opens = reminderOpensAt(step, dueAt);
+  const opens = reminderOpensAt(step, dueAt).getTime();
+  const closes = reminderClosesAt(step, dueAt).getTime();
   const zone = recipientZone ?? LONDON_TIME_ZONE;
-  const day = instantToWallClock(opens, zone).day;
-  const first = nineAm(day, zone);
-  return first.getTime() >= opens.getTime() ? first : nineAm(nextDay(day), zone);
+  const day = instantToWallClock(new Date(opens), zone).day;
+  // Usually the 09:00 of the day the step opens is inside the day; the others are the fallback.
+  const same = nineAm(day, zone).getTime();
+  if (same >= opens && same <= closes) return new Date(same);
+  const candidates = [
+    same,
+    ...[nextDay(day), previousDay(day)].map((d) => nineAm(d, zone).getTime()),
+  ];
+  const inside = candidates.find((at) => at >= opens && at <= closes);
+  if (inside !== undefined) return new Date(inside);
+  const nearest = candidates.reduce((best, at) =>
+    Math.abs(at - clamp(at, opens, closes)) < Math.abs(best - clamp(best, opens, closes))
+      ? at
+      : best,
+  );
+  return new Date(clamp(nearest, opens, closes));
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(Math.max(value, min), max);
 }
 
 /** When a step is sent with no recipient zone: 09:00 London on the due day, or days before or after. */
