@@ -6,6 +6,7 @@ import {
   SELLER_CONSENT_STATUSES,
   type SellerConsentStatus,
 } from "@auction/domain";
+import { z } from "zod";
 import type {
   LotReofferView,
   SellerConsentChannel,
@@ -19,6 +20,24 @@ type SellerConsentRow = typeof sellerConsent.$inferSelect;
 
 const CHANNELS: readonly SellerConsentChannel[] = ["workspace", "recorded_by_staff", "house_stock"];
 const PREFERENCES: readonly SellerPreferredNext[] = ["later_sale", "return_to_me", "talk_to_us"];
+
+const pence = z.number().int().nonnegative().safe();
+const termsSchema = z
+  .object({
+    amountPence: pence,
+    originalHammerPence: pence,
+    proceedsAtOfferPence: pence,
+    proceedsAtOriginalPence: pence,
+    reservePence: pence.nullable(),
+  })
+  .strict();
+
+/** The frozen terms are evidence: a stored snapshot that is not in this shape is an error, not a guess. */
+function parseTerms(value: unknown): SellerConsentTerms {
+  const parsed = termsSchema.safeParse(value);
+  if (!parsed.success) throw new Error("Unreadable seller consent terms");
+  return parsed.data;
+}
 
 /** A stored value the database allows but the application does not know: never guess its meaning. */
 function narrow<T extends string>(value: string, allowed: readonly T[], what: string): T {
@@ -57,6 +76,7 @@ export function toLotReofferView(row: LotReofferRow): LotReofferView {
     offerSentAt: row.offerSentAt,
     offerEndsAt: row.offerEndsAt,
     respondedAt: row.respondedAt,
+    reawardedAt: row.reawardedAt,
     declineReason: row.declineReason,
     invoiceId: row.invoiceId,
     paymentId: row.paymentId,
@@ -83,7 +103,7 @@ export function toSellerConsentView(row: SellerConsentRow): SellerConsentView {
     subjectId: row.subjectId,
     sellerLegalEntityId: row.sellerLegalEntityId,
     lotId: row.lotId,
-    termsSnapshot: row.termsSnapshot as SellerConsentTerms,
+    termsSnapshot: parseTerms(row.termsSnapshot),
     status: narrow<SellerConsentStatus>(row.status, SELLER_CONSENT_STATUSES, "consent status"),
     channel: row.channel === null ? null : narrow(row.channel, CHANNELS, "consent channel"),
     answeredByUserId: row.answeredByUserId,

@@ -116,6 +116,7 @@ describe.skipIf(!HAS_DB)("lot re-offer persistence (integration)", () => {
   async function createOffer(
     s: Scenario,
     over: {
+      defaultId?: string;
       sequence?: number;
       to?: "second" | "third";
       status?: string;
@@ -126,7 +127,7 @@ describe.skipIf(!HAS_DB)("lot re-offer persistence (integration)", () => {
     const created = await db.transaction((tx) =>
       offers.create(tx, {
         lotId: s.lotId,
-        buyerDefaultId: s.defaultId,
+        buyerDefaultId: over.defaultId ?? s.defaultId,
         sequence: over.sequence ?? 1,
         offeredUserId: second ? rivalId : thirdId,
         offeredLegalEntityId: second ? rivalEntity : thirdEntity,
@@ -155,6 +156,32 @@ describe.skipIf(!HAS_DB)("lot re-offer persistence (integration)", () => {
         .where(eq(lotReoffer.id, created.id));
     }
     return created;
+  }
+
+  /** The lot's buyer defaults again: the winner is taken off and a later default is recorded. */
+  async function defaultAgain(s: Scenario, buyer: { id: string; entity: string }) {
+    await db.update(payment).set({ status: "cancelled" }).where(eq(payment.lotId, s.lotId));
+    await db
+      .update(lot)
+      .set({ winnerId: null, buyerLegalEntityId: null })
+      .where(eq(lot.id, s.lotId));
+    await db.update(bid).set({ isWinning: false }).where(eq(bid.lotId, s.lotId));
+    const [def] = await db
+      .insert(buyerDefault)
+      .values({
+        lotId: s.lotId,
+        buyerId: buyer.id,
+        buyerLegalEntityId: buyer.entity,
+        sellerLegalEntityId: sellerEntity,
+        hammerPrice: "900.00",
+        wonAt: acceptedAt,
+        reason: "No payment",
+        outcome: "offered_to_underbidder",
+        actorUserId: staffId,
+        createdAt: new Date(Date.now() + 1000),
+      })
+      .returning({ id: buyerDefault.id });
+    return def?.id as string;
   }
 
   const runReaward = (reofferId: string) =>
@@ -372,6 +399,139 @@ describe.skipIf(!HAS_DB)("lot re-offer persistence (integration)", () => {
       const [def] = await db.select().from(buyerDefault).where(eq(buyerDefault.id, s.defaultId));
       expect(def?.hammerPrice).toBe("1000.00");
       expect(def?.buyerId).toBe(buyerId);
+    });
+
+    it("resets every buyer-specific fulfilment field for the new buyer", async () => {
+      const s = await defaultedLot();
+      const offer = await createOffer(s, { status: "accepted" });
+      const paid = (await addPayment(s.lotId, "cancelled").returning({ id: payment.id }))[0];
+      await db
+        .update(lotFulfilment)
+        .set({
+          status: "ready_for_collection",
+          paymentId: paid?.id,
+          releaseApprovedByUserId: staffId,
+          releaseApprovedAt: acceptedAt,
+          fulfilmentMethod: "shipping",
+          shippingCarrier: "DHL",
+          trackingNumber: "TRK1",
+          collectedBy: "Old buyer",
+          collectedByUserId: staffId,
+          collectedAt: acceptedAt,
+          addressSnapshot: { line1: "1 Old Street" },
+          paymentClearedAt: acceptedAt,
+          notes: "Old buyer asked for courier",
+        })
+        .where(eq(lotFulfilment.lotId, s.lotId));
+
+      await runReaward(offer.id);
+
+      const [fulfilment] = await db
+        .select()
+        .from(lotFulfilment)
+        .where(eq(lotFulfilment.lotId, s.lotId));
+      expect(fulfilment).toMatchObject({
+        status: "awaiting_payment",
+        paymentId: null,
+        releaseApprovedByUserId: null,
+        releaseApprovedAt: null,
+        fulfilmentMethod: null,
+        shippingCarrier: null,
+        trackingNumber: null,
+        collectedBy: null,
+        collectedByUserId: null,
+        collectedAt: null,
+        addressSnapshot: null,
+        paymentClearedAt: null,
+        notes: null,
+      });
+    });
+
+    it("stamps the offer, so a repeat is a no-op even once the buyer's payment is under way", async () => {
+      const s = await defaultedLot();
+      const offer = await createOffer(s, { status: "accepted" });
+      await runReaward(offer.id);
+      const [row] = await db.select().from(lotReoffer).where(eq(lotReoffer.id, offer.id));
+      expect(row?.reawardedAt).toBeInstanceOf(Date);
+      await addPayment(s.lotId, "captured");
+      const again = await runReaward(offer.id);
+      expect(again.outcome).toBe("already_reawarded");
+      expect(again.wonAt).toEqual(row?.reawardedAt);
+    });
+
+    it("refuses a retried re-award after the new buyer defaulted too, and writes nothing", async () => {
+      const s = await defaultedLot();
+      const first = await createOffer(s, { status: "accepted" });
+      await runReaward(first.id);
+      await defaultAgain(s, { id: rivalId, entity: rivalEntity });
+
+      // The retry must not make the bidder who defaulted the winner again. Not even as a repeat.
+      expect(await refusal(first.id)).toBe("offer_superseded");
+      const row = await lotRow(s.lotId);
+      expect(row?.winnerId).toBeNull();
+      expect(row?.buyerLegalEntityId).toBeNull();
+      const winning = await db
+        .select({ id: bid.id })
+        .from(bid)
+        .where(and(eq(bid.lotId, s.lotId), eq(bid.isWinning, true)));
+      expect(winning).toEqual([]);
+    });
+
+    it("lets the second default's offer win the lot ahead of the first offer's retry", async () => {
+      const s = await defaultedLot();
+      const first = await createOffer(s, { status: "accepted" });
+      await runReaward(first.id);
+      const secondDefault = await defaultAgain(s, { id: rivalId, entity: rivalEntity });
+      const second = await createOffer(s, {
+        defaultId: secondDefault,
+        sequence: 1,
+        to: "third",
+        status: "accepted",
+      });
+
+      // The retry reaches the lot lock first; it still loses to the later default's offer.
+      let release: () => void = () => undefined;
+      const released = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      let holding: () => void = () => undefined;
+      const holdingLock = new Promise<void>((resolve) => {
+        holding = resolve;
+      });
+      const holder = db.transaction(async (tx) => {
+        await tx.select({ id: lot.id }).from(lot).where(eq(lot.id, s.lotId)).for("update");
+        holding();
+        await released;
+      });
+      await holdingLock;
+      const retry = refusal(first.id);
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      const accept = runReaward(second.id);
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      release();
+      await holder;
+
+      expect(await retry).toBe("offer_superseded");
+      expect((await accept).outcome).toBe("reawarded");
+      const row = await lotRow(s.lotId);
+      expect(row?.winnerId).toBe(thirdId);
+      expect(row?.currentPrice).toBe("800.00");
+      const winning = await db
+        .select({ id: bid.id })
+        .from(bid)
+        .where(and(eq(bid.lotId, s.lotId), eq(bid.isWinning, true)));
+      expect(winning.map((b) => b.id)).toEqual([s.bids.third]);
+    });
+
+    it("refuses an offer whose source bid is another bidder's", async () => {
+      const s = await defaultedLot();
+      const offer = await createOffer(s, { status: "accepted" });
+      await db
+        .update(lotReoffer)
+        .set({ sourceBidId: s.bids.third })
+        .where(eq(lotReoffer.id, offer.id));
+      expect(await refusal(offer.id)).toBe("offer_bid_mismatch");
+      expect((await lotRow(s.lotId))?.winnerId).toBeNull();
     });
 
     it("does nothing the second time", async () => {

@@ -553,12 +553,17 @@ export const WORKER_DISPLAY_PAIRING_TABLES = ["saleroom_display_pairing"] as con
 export const WORKER_FINANCE_READ_TABLES = ["address"] as const;
 
 /**
- * Re-offers after a buyer default: the sweeps lapse an unanswered seller request and end an offer
- * the bidder let run out, so worker_app reads these tables and updates their status. It never
- * creates an offer or a seller answer and never deletes one: staff and the people answering do,
- * through the API.
+ * Re-offers after a buyer default: the sweeps lapse an unanswered seller request, remind the seller
+ * and end an offer the bidder let run out, so worker_app reads these tables and updates the
+ * columns that say where a request or an offer stands, and nothing else. It never creates, deletes
+ * or re-prices an offer, never changes who it is for, and never sets `reawarded_at`: only the
+ * re-award transaction, through the API, makes a lot's winner.
  */
 export const WORKER_REOFFER_TABLES = ["lot_reoffer", "seller_consent"] as const;
+export const WORKER_REOFFER_UPDATE_COLUMNS = {
+  lot_reoffer: ["status", "close_reason", "closed_by", "updated_at"],
+  seller_consent: ["status", "reminded_at"],
+} as const;
 
 /** Lot lifecycle notification staging (won/lost) drained by notification outbox cron. */
 export const WORKER_NOTIFICATION_OUTBOX_TABLES = ["notification_outbox"] as const;
@@ -1183,8 +1188,9 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
         for (const tableName of WORKER_FINANCE_READ_TABLES) {
           await grantIfExists(client, "worker_app", tableName, "SELECT");
         }
-        for (const tableName of WORKER_REOFFER_TABLES) {
-          await grantIfExists(client, "worker_app", tableName, "SELECT, UPDATE");
+        for (const [tableName, columns] of Object.entries(WORKER_REOFFER_UPDATE_COLUMNS)) {
+          await grantIfExists(client, "worker_app", tableName, "SELECT");
+          await grantColumnUpdateIfExists(client, "worker_app", tableName, columns);
         }
         for (const tableName of WORKER_NOTIFICATION_OUTBOX_TABLES) {
           await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT, UPDATE");

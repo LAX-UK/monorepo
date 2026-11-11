@@ -22,6 +22,8 @@ export type LotReofferView = {
   offerSentAt: Date | null;
   offerEndsAt: Date | null;
   respondedAt: Date | null;
+  /** When the lot was re-awarded to this bidder; set once. */
+  reawardedAt: Date | null;
   declineReason: string | null;
   invoiceId: string | null;
   paymentId: string | null;
@@ -165,7 +167,7 @@ export type ReawardLotInput = {
 };
 
 export type ReawardLotResult = {
-  /** `already_reawarded` when an earlier call did it: nothing was written. */
+  /** `already_reawarded` when this offer already re-awarded the lot: nothing was written. */
   outcome: "reawarded" | "already_reawarded";
   lotId: string;
   saleId: string | null;
@@ -184,9 +186,11 @@ export type ReawardLotResult = {
 export interface ILotReawardRepository {
   /**
    * In the caller's transaction, under a row lock on the lot: re-checks that the offer is
-   * accepted, that no payment on the lot is paid or being paid and that no other offer of the
-   * default was accepted, then makes the bidder the lot's winner at the offered amount, marks
-   * their bid winning and resets fulfilment to awaiting payment. The original hammer stays on the
+   * accepted and answers the lot's latest default, that its source bid is the bidder's own, that
+   * no payment on the lot is paid or being paid and that no other offer of the default was
+   * accepted, then makes the bidder the lot's winner at the offered amount, marks
+   * their bid winning, resets fulfilment to a fresh awaiting-payment record and stamps the offer's
+   * `reawardedAt`. Lock order: lot, then offer. The original hammer stays on the
    * buyer default. Throws `LotReawardRefusedError` when any check fails; writes nothing then.
    */
   reaward(tx: Database, input: ReawardLotInput): Promise<ReawardLotResult>;

@@ -126,6 +126,12 @@ export const lotReoffer = pgTable(
     offerEndsAt: timestamp("offer_ends_at", { mode: "date", withTimezone: true }),
     /** When the bidder accepted or declined. */
     respondedAt: timestamp("responded_at", { mode: "date", withTimezone: true }),
+    /**
+     * When the lot was re-awarded to this bidder. Written once, in the transaction that makes them
+     * the winner, and the only thing that makes a repeated re-award a no-op: a lot whose buyer later
+     * defaulted again is never re-awarded from this offer.
+     */
+    reawardedAt: timestamp("reawarded_at", { mode: "date", withTimezone: true }),
     declineReason: text("decline_reason"),
     /** The invoice and payment raised for the bidder once they accept. */
     invoiceId: uuid("invoice_id").references(() => bidInvoice.id, { onDelete: "set null" }),
@@ -155,6 +161,10 @@ export const lotReoffer = pgTable(
     check(
       "lot_reoffer_status_check",
       sql`${table.status} IN ('awaiting_seller', 'ready', 'offered', 'accepted', 'declined', 'expired', 'seller_declined', 'seller_lapsed', 'withdrawn')`,
+    ),
+    check(
+      "lot_reoffer_reawarded_check",
+      sql`${table.reawardedAt} IS NULL OR (${table.status} = 'accepted' AND ${table.respondedAt} IS NOT NULL)`,
     ),
     check(
       "lot_reoffer_text_length",

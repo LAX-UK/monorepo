@@ -208,6 +208,21 @@ describe.skipIf(!migrationUrl)("migration 0354 lot re-offer", { timeout: 120_000
     });
   });
 
+  it("records the re-award only on an accepted offer that was answered", async () => {
+    await withTemporaryDatabase(async (pool) => {
+      await runMigrationsPerTransaction(pool);
+      const f = await fixture(pool);
+      const declined = await f.offer({ sequence: 1, status: "declined" });
+      const accepted = await f.offer({ sequence: 2, status: "accepted" });
+      const stamp = "update lot_reoffer set reawarded_at = now() where id = $1";
+      expect(await code(pool.query(stamp, [declined]))).toBe(CHECK);
+      // Accepted, but with no time of acceptance.
+      expect(await code(pool.query(stamp, [accepted]))).toBe(CHECK);
+      await pool.query("update lot_reoffer set responded_at = now() where id = $1", [accepted]);
+      expect(await code(pool.query(stamp, [accepted]))).toBe(undefined);
+    });
+  });
+
   it("requires a note when staff record the seller's answer", async () => {
     await withTemporaryDatabase(async (pool) => {
       await runMigrationsPerTransaction(pool);

@@ -69,6 +69,7 @@ CREATE TABLE IF NOT EXISTS "lot_reoffer" (
   "offer_sent_at" timestamp with time zone,
   "offer_ends_at" timestamp with time zone,
   "responded_at" timestamp with time zone,
+  "reawarded_at" timestamp with time zone,
   "decline_reason" text,
   "invoice_id" uuid,
   "payment_id" uuid,
@@ -81,6 +82,8 @@ CREATE TABLE IF NOT EXISTS "lot_reoffer" (
   CONSTRAINT "lot_reoffer_amount_check" CHECK ("amount_pence" > 0),
   CONSTRAINT "lot_reoffer_status_check"
     CHECK ("status" IN ('awaiting_seller', 'ready', 'offered', 'accepted', 'declined', 'expired', 'seller_declined', 'seller_lapsed', 'withdrawn')),
+  CONSTRAINT "lot_reoffer_reawarded_check"
+    CHECK ("reawarded_at" IS NULL OR ("status" = 'accepted' AND "responded_at" IS NOT NULL)),
   CONSTRAINT "lot_reoffer_text_length"
     CHECK (("decline_reason" IS NULL OR char_length("decline_reason") <= 500) AND ("close_reason" IS NULL OR char_length("close_reason") <= 1000)),
   CONSTRAINT "lot_reoffer_lot_id_lot_id_fk"

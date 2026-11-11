@@ -2,9 +2,23 @@ import { describe, expect, it } from "vitest";
 import { canTransition, targetStatusForKind } from "./lot-transitions.js";
 import { type ReawardGuardFacts, reawardGuard } from "./reoffer-reaward.js";
 
+const acceptedAt = new Date("2026-11-12T10:00:00Z");
+const offerOf = (over: Partial<ReawardGuardFacts["offer"]> = {}): ReawardGuardFacts["offer"] => ({
+  lotId: "lot-1",
+  buyerDefaultId: "default-1",
+  status: "accepted",
+  respondedAt: acceptedAt,
+  offeredUserId: "user-2",
+  offeredLegalEntityId: "entity-2",
+  amountPence: 90_000,
+  sourceBid: { lotId: "lot-1", bidderId: "user-2", legalEntityId: "entity-2", amountPence: 90_000 },
+  ...over,
+});
+
 const facts = (over: Partial<ReawardGuardFacts> = {}): ReawardGuardFacts => ({
   lot: { id: "lot-1", status: "ended", winnerId: null },
-  offer: { lotId: "lot-1", status: "accepted", respondedAt: new Date("2026-11-12T10:00:00Z") },
+  offer: offerOf(),
+  latestDefault: { id: "default-1", lotId: "lot-1" },
   payments: [],
   otherOffers: [],
   ...over,
@@ -39,23 +53,25 @@ describe("reawardGuard", () => {
   it.each(["awaiting_seller", "ready", "offered", "declined", "expired", "withdrawn"] as const)(
     "refuses an offer that is %s, not accepted",
     (status) => {
-      const result = reawardGuard(
-        facts({ offer: { lotId: "lot-1", status, respondedAt: new Date("2026-11-12T10:00:00Z") } }),
-      );
+      const result = reawardGuard(facts({ offer: offerOf({ status }) }));
       expect(result).toMatchObject({ ok: false, code: "offer_not_accepted" });
     },
   );
 
   it("refuses an accepted offer with no time of acceptance", () => {
-    expect(
-      reawardGuard(facts({ offer: { lotId: "lot-1", status: "accepted", respondedAt: null } })),
-    ).toMatchObject({ ok: false, code: "offer_not_accepted" });
+    expect(reawardGuard(facts({ offer: offerOf({ respondedAt: null }) }))).toMatchObject({
+      ok: false,
+      code: "offer_not_accepted",
+    });
   });
 
   it("refuses an offer of another lot", () => {
     expect(
       reawardGuard(
-        facts({ offer: { lotId: "lot-2", status: "accepted", respondedAt: new Date() } }),
+        facts({
+          offer: offerOf({ lotId: "lot-2" }),
+          latestDefault: { id: "default-1", lotId: "lot-1" },
+        }),
       ),
     ).toMatchObject({
       ok: false,
@@ -92,5 +108,43 @@ describe("reawardGuard", () => {
       facts({ otherOffers: [{ status: "accepted", offerSentAt: new Date() }] }),
     );
     expect(result).toMatchObject({ ok: false, code: "already_re_offered" });
+  });
+
+  it("refuses an offer of an earlier default once the lot has defaulted again", () => {
+    expect(
+      reawardGuard(facts({ latestDefault: { id: "default-2", lotId: "lot-1" } })),
+    ).toMatchObject({ ok: false, code: "offer_superseded" });
+  });
+
+  it("refuses when the lot has no default, or the latest default belongs to another lot", () => {
+    expect(reawardGuard(facts({ latestDefault: null }))).toMatchObject({
+      ok: false,
+      code: "offer_superseded",
+    });
+    expect(
+      reawardGuard(facts({ latestDefault: { id: "default-1", lotId: "lot-9" } })),
+    ).toMatchObject({ ok: false, code: "offer_superseded" });
+  });
+
+  it.each([
+    ["is missing", null],
+    [
+      "is on another lot",
+      { lotId: "lot-9", bidderId: "user-2", legalEntityId: "entity-2", amountPence: 90_000 },
+    ],
+    ["is another bidder's", { lotId: "lot-1", bidderId: "user-3", amountPence: 90_000 }],
+    [
+      "is another entity's",
+      { lotId: "lot-1", bidderId: "user-2", legalEntityId: "entity-9", amountPence: 90_000 },
+    ],
+    [
+      "is for another amount",
+      { lotId: "lot-1", bidderId: "user-2", legalEntityId: "entity-2", amountPence: 95_000 },
+    ],
+  ])("refuses when the source bid %s", (_name, sourceBid) => {
+    expect(reawardGuard(facts({ offer: offerOf({ sourceBid }) }))).toMatchObject({
+      ok: false,
+      code: "offer_bid_mismatch",
+    });
   });
 });

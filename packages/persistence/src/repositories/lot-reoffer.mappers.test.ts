@@ -24,6 +24,7 @@ const offerRow = (over: Record<string, unknown> = {}) =>
     offerSentAt: at,
     offerEndsAt: at,
     respondedAt: null,
+    reawardedAt: null,
     declineReason: null,
     invoiceId: null,
     paymentId: null,
@@ -77,6 +78,7 @@ describe("toLotReofferView", () => {
       offerSentAt: at,
       offerEndsAt: at,
       respondedAt: null,
+      reawardedAt: null,
       declineReason: null,
       invoiceId: null,
       paymentId: null,
@@ -170,5 +172,17 @@ describe("pence and pounds", () => {
     expect(() => decimalToPence("abc")).toThrow();
     expect(() => penceToDecimal(-1)).toThrow();
     expect(() => penceToDecimal(1.5)).toThrow();
+  });
+
+  it("refuses stored consent terms that are not in the expected shape", () => {
+    for (const bad of [null, {}, { amountPence: "9" }, { amountPence: -1 }]) {
+      expect(() => toSellerConsentView(consentRow({ termsSnapshot: bad }))).toThrow(
+        /Unreadable seller consent terms/,
+      );
+    }
+  });
+
+  it("carries when the offer re-awarded the lot", () => {
+    expect(toLotReofferView(offerRow({ reawardedAt: at })).reawardedAt).toEqual(at);
   });
 });

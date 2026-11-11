@@ -8,6 +8,7 @@ import {
   WORKER_DENY_TABLES,
   WORKER_EMAIL_SUPPRESSION_UPDATE_COLUMNS,
   WORKER_REOFFER_TABLES,
+  WORKER_REOFFER_UPDATE_COLUMNS,
   WORKER_SHOP_ENQUIRY_READ_COLUMNS,
   WORKER_SHOP_ORDER_READ_COLUMNS,
   WORKER_SHOP_PRINT_GROUP_READ_COLUMNS,
@@ -58,14 +59,26 @@ describe.skipIf(!WORKER_URL)("worker_app role contract", { timeout: 60_000 }, ()
     });
   });
 
-  it("reads and updates re-offers and seller answers, never adding or removing one", async () => {
+  it("reads re-offers and seller answers and updates only where a request or offer stands", async () => {
     await withWorkerClient(async (client) => {
       const rows = await readTablePrivileges(
         client,
         [...WORKER_REOFFER_TABLES],
         ["SELECT", "INSERT", "UPDATE", "DELETE"],
       );
-      expectTablePrivileges(rows, (row) => ["SELECT", "UPDATE"].includes(row.privilege));
+      // UPDATE is granted by column, so the table-level check sees SELECT only.
+      expectTablePrivileges(rows, (row) => row.privilege === "SELECT");
+      for (const table of WORKER_REOFFER_TABLES) {
+        const columns = await client.query<{ column_name: string; allowed: boolean }>(
+          `select column_name,
+                  has_column_privilege(current_user, 'public.' || $1, column_name, 'UPDATE') as allowed
+             from information_schema.columns
+            where table_schema = 'public' and table_name = $1`,
+          [table],
+        );
+        const updatable = columns.rows.filter((row) => row.allowed).map((row) => row.column_name);
+        expect(updatable.sort(), table).toEqual([...WORKER_REOFFER_UPDATE_COLUMNS[table]].sort());
+      }
     });
   });
 

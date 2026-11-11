@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import { getTableColumns, getTableName } from "drizzle-orm";
 import { getTableConfig } from "drizzle-orm/pg-core";
 import { describe, expect, it } from "vitest";
-import { WORKER_REOFFER_TABLES } from "./migrate-roles.js";
+import { WORKER_REOFFER_TABLES, WORKER_REOFFER_UPDATE_COLUMNS } from "./migrate-roles.js";
 import { buyerDefault } from "./schema/buyer-default.js";
 import { lotReoffer, sellerConsent } from "./schema/lot-reoffer.js";
 import { NOTIFICATION_TYPES } from "./schema/notifications.js";
@@ -101,5 +101,22 @@ describe("migration 0354 lot re-offer", () => {
 
   it("gives the worker no more than the sweeps need on the two tables", () => {
     expect([...WORKER_REOFFER_TABLES]).toEqual(["lot_reoffer", "seller_consent"]);
+    // Never the column that makes a lot's winner, the price, or who the offer is for.
+    expect([...WORKER_REOFFER_UPDATE_COLUMNS.lot_reoffer]).not.toContain("reawarded_at");
+    for (const column of ["amount_pence", "offered_user_id", "source_bid_id", "lot_id"]) {
+      expect([...WORKER_REOFFER_UPDATE_COLUMNS.lot_reoffer]).not.toContain(column);
+    }
+    const known = Object.values(getTableColumns(lotReoffer)).map((c) => c.name);
+    for (const column of WORKER_REOFFER_UPDATE_COLUMNS.lot_reoffer) expect(known).toContain(column);
+  });
+
+  it("records when the offer re-awarded the lot, only for an accepted offer", () => {
+    expect(getTableColumns(lotReoffer).reawardedAt.name).toBe("reawarded_at");
+    expect(migration).toContain('"reawarded_at" timestamp with time zone');
+    expect(migration).toContain(
+      `CHECK ("reawarded_at" IS NULL OR ("status" = 'accepted' AND "responded_at" IS NOT NULL))`,
+    );
+    // The rollback drops the table, and with it the column and its check.
+    expect(rollback).toContain('DROP TABLE IF EXISTS "lot_reoffer"');
   });
 });
