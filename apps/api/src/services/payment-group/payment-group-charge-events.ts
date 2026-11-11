@@ -182,7 +182,9 @@ export class PaymentGroupChargeEvents {
         deliveryRefunded += 1;
       }
       // The excess no invoice or quote could take stays in the total for good, so it is reported
-      // only when it grows; otherwise every later refund would raise the same task again.
+      // only when it grows; otherwise every later refund would raise the same task again. The
+      // event carries the increase and the new running total, so entries can be added up.
+      let unattributedRaised = false;
       if (
         attribution.unattributedPence > locked.refundUnattributedPence &&
         (await this.deps.groups.raiseUnattributedRefundInTransaction(
@@ -191,6 +193,7 @@ export class PaymentGroupChargeEvents {
           attribution.unattributedPence,
         ))
       ) {
+        unattributedRaised = true;
         recordMoneyPathEvent("payment_group_refund_unattributed");
         await this.deps.events.withTx(tx).publish({
           aggregateType: "payment_group",
@@ -199,14 +202,15 @@ export class PaymentGroupChargeEvents {
           payload: {
             paymentGroupId: group.id,
             stripeChargeId: charge.id,
-            amountCents: attribution.unattributedPence,
+            amountCents: attribution.unattributedPence - locked.refundUnattributedPence,
+            cumulativeUnattributedCents: attribution.unattributedPence,
             currency: charge.currency,
           },
           actorUserId: null,
           actingLegalEntityId: group.buyerLegalEntityId,
         });
       }
-      return applied > 0 || deliveryRefunded > 0
+      return applied > 0 || deliveryRefunded > 0 || unattributedRaised
         ? { processed: true, action: "refund_received" }
         : { processed: true, action: "skipped", reason: "no_new_refund_amount" };
     });

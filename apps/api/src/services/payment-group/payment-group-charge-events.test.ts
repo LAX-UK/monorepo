@@ -439,8 +439,13 @@ describe("PaymentGroupChargeEvents.chargeRefunded", () => {
         { paymentId: "pay-a", amountPence: 10_500 },
         { paymentId: null, amountPence: 200 },
       ]);
-      await events.chargeRefunded(event("evt_3"), charge);
-      expect(unattributed().map((c) => c[0].payload.amountCents)).toEqual([500, 700]);
+      const grown = await events.chargeRefunded(event("evt_3"), charge);
+      expect(grown).toEqual({ processed: true, action: "refund_received" });
+      // Each entry carries its increase, so the entries add up to the running total.
+      expect(unattributed().map((c) => c[0].payload)).toEqual([
+        expect.objectContaining({ amountCents: 500, cumulativeUnattributedCents: 500 }),
+        expect.objectContaining({ amountCents: 200, cumulativeUnattributedCents: 700 }),
+      ]);
     });
 
     it("keeps today's behaviour for a legacy refund that names no quote", async () => {
