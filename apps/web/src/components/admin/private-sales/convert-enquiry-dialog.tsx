@@ -16,6 +16,7 @@ import {
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import {
   ARTWORK_REFUSED,
+  ARTWORK_REQUIRED,
   type ArtworkChoice,
   artworkChoiceError,
   artworkConvertInput,
@@ -75,6 +76,8 @@ export function ConvertEnquiryDialog({
   // The artwork the register refused stays chosen, with a reason to pick another.
   const [refusedId, setRefusedId] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  // The API found no artwork choice in the request: shown with the Artwork field, not as a banner.
+  const [choiceMissing, setChoiceMissing] = useState(false);
   // Once staff choose for themselves, the earlier lot's artwork no longer replaces their choice.
   const chosenByStaff = useRef(false);
 
@@ -86,6 +89,7 @@ export function ConvertEnquiryDialog({
     setAttempts(0);
     setFailure(null);
     setRefusedId(null);
+    setChoiceMissing(false);
     chosenByStaff.current = false;
   }, [open, needsWork]);
 
@@ -122,9 +126,11 @@ export function ConvertEnquiryDialog({
   const choiceError =
     attempted && artworkChoiceError(choice)
       ? artworkChoiceError(choice)
-      : choice.mode === "register" && choice.artwork && choice.artwork.id === refusedId
-        ? ARTWORK_REFUSED
-        : undefined;
+      : choiceMissing
+        ? ARTWORK_REQUIRED
+        : choice.mode === "register" && choice.artwork && choice.artwork.id === refusedId
+          ? ARTWORK_REFUSED
+          : undefined;
   // One field needs no summary; two or more get one, with every message also beside its field.
   const summary = [
     ...(workError ? [{ fieldId: `${ids}-work`, message: workError }] : []),
@@ -133,6 +139,7 @@ export function ConvertEnquiryDialog({
 
   function chooseArtwork(next: ArtworkChoice) {
     chosenByStaff.current = true;
+    setChoiceMissing(false);
     setChoice(next);
   }
 
@@ -149,6 +156,8 @@ export function ConvertEnquiryDialog({
     if (result.ok && result.data) {
       onOpenChange(false);
       onDone(result.data.reference);
+    } else if (!result.ok && result.errorCode === "artwork_choice_required") {
+      setChoiceMissing(true);
     } else if (!result.ok) {
       const refusedArtwork = result.errorCode === "artwork_unavailable";
       if (refusedArtwork && choice.mode === "register" && choice.artwork) {
