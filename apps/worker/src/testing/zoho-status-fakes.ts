@@ -102,6 +102,11 @@ export function fakeWorld(initial: Partial<FakeWorld> & { zohoStatus?: string | 
       }
       return { status: "recorded" as const };
     }),
+    closeCatalogueStatusConflict: vi.fn(async () => {
+      const closed = world.conflict !== null;
+      world.conflict = null;
+      return { closed };
+    }),
     recordCatalogueStatusConflict: vi.fn(
       async (input: { zohoStatus: string; laxStatus: string }) => {
         world.conflict = { zohoStatus: input.zohoStatus, laxStatus: input.laxStatus };

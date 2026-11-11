@@ -859,6 +859,30 @@ describe.skipIf(!url)("artwork register repository (Postgres)", { timeout: 30_00
       );
     });
 
+    it("closes a conflict because Zoho matched LAX without recording the Status as written", async () => {
+      const entry = await created();
+      await repo.recordCatalogueStatusConflict({
+        registerId: entry.id,
+        zohoStatus: "Sold",
+        laxStatus: "Available",
+        zohoModifiedAt: T0,
+        now: T1,
+      });
+      expect(await repo.closeCatalogueStatusConflict({ registerId: entry.id, now: T2 })).toEqual({
+        closed: true,
+      });
+      expect(await repo.listOpenConflicts(10)).toHaveLength(0);
+      const ledger = (await repo.findCatalogueStatusLedgers([entry.id])).get(entry.id);
+      expect(ledger).toEqual({ written: null, conflictOpen: false });
+      const resolved = (await repo.listEvents(entry.id, 20)).filter(
+        (e) => e.type === "conflict_resolved",
+      );
+      expect(resolved.at(-1)?.payload).toMatchObject({ reason: "zoho_matched_lax" });
+      expect(await repo.closeCatalogueStatusConflict({ registerId: entry.id, now: T2 })).toEqual({
+        closed: false,
+      });
+    });
+
     it("never accepts Zoho's Status through a decision: it already stands", async () => {
       const entry = await created();
       await repo.recordCatalogueStatusConflict({

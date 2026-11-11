@@ -230,6 +230,14 @@ export interface IArtworkRegisterRepository extends IArtworkRegisterReader {
     input: RecordCatalogueStatusWrittenInput,
   ): Promise<RecordCatalogueStatusWrittenResult>;
   /**
+   * Closes an open Status conflict because Zoho now shows the Status LAX wants. Records nothing as
+   * "written": LAX sent nothing, so `catalogue_status_written` is left as it is. The event says the
+   * conflict closed because Zoho matched LAX, not because LAX wrote.
+   */
+  closeCatalogueStatusConflict(input: { registerId: string; now: Date }): Promise<{
+    closed: boolean;
+  }>;
+  /**
    * For each record found: the Status LAX last wrote to the Zoho Product (null when it has not
    * written one) and whether a Status conflict is open. Records not found are absent.
    */

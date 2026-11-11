@@ -176,7 +176,7 @@ describe("ZohoStatusSync: idempotent and ordered", () => {
     expect(w.products.write).toHaveBeenCalledTimes(1);
   });
 
-  it("records the written Status when Zoho already held it, without sending", async () => {
+  it("does not record a Status LAX did not send as written, even when Zoho already holds it", async () => {
     const w = fakeWorld({
       zohoStatus: "Sold",
       written: null,
@@ -185,7 +185,36 @@ describe("ZohoStatusSync: idempotent and ordered", () => {
     const [outcome] = await w.sync().sync([REGISTER_ID]);
     expect(outcome?.kind).toBe("in_sync");
     expect(w.products.write).not.toHaveBeenCalled();
-    expect(w.world.written).toBe("Sold");
+    expect(w.world.written).toBeNull();
+    expect(w.register.recordCatalogueStatusWritten).not.toHaveBeenCalled();
+  });
+
+  it("never writes over staff's Sold after LAX moved on (two-step regression)", async () => {
+    const w = fakeWorld({
+      zohoStatus: "Sold",
+      written: null,
+      source: { entry: inState("sold"), lastMove: null },
+    });
+    const sync = w.sync();
+    await sync.sync([REGISTER_ID]);
+    w.world.source = { entry: inState("lax_art"), lastMove: null };
+    const [outcome] = await sync.sync([REGISTER_ID]);
+    expect(outcome).toMatchObject({ kind: "conflict", zohoStatus: "Sold" });
+    expect(w.products.write).not.toHaveBeenCalled();
+  });
+
+  it("never writes over staff's Reserved when a private sale becomes a bid sale", async () => {
+    const w = fakeWorld({
+      zohoStatus: "Reserved",
+      written: null,
+      source: { entry: inState("private_sale"), lastMove: null },
+    });
+    const sync = w.sync();
+    await sync.sync([REGISTER_ID]);
+    w.world.source = { entry: inState("bid_sale"), lastMove: null };
+    const [outcome] = await sync.sync([REGISTER_ID]);
+    expect(outcome?.kind).toBe("conflict");
+    expect(w.products.write).not.toHaveBeenCalled();
   });
 
   it("does not touch the register when nothing differs and nothing is open", async () => {
@@ -228,12 +257,22 @@ describe("ZohoStatusSync: idempotent and ordered", () => {
     expect(order).toEqual(["lock", "read facts", "read zoho"]);
   });
 
+  it("treats a Modified_Time a few seconds ahead as clock skew, not a newer change", async () => {
+    const w = fakeWorld({
+      zohoStatus: "Available",
+      source: { entry: inState("bid_sale"), lastMove: null },
+    });
+    w.world.zoho = { status: "Available", modifiedAt: new Date("2026-11-03T12:00:02.000Z") };
+    const [outcome] = await w.sync().sync([REGISTER_ID]);
+    expect(outcome?.kind).toBe("written");
+  });
+
   it("drops a write when Zoho changed after the facts were read: never older over newer", async () => {
     const w = fakeWorld({
       zohoStatus: "Available",
       source: { entry: inState("bid_sale"), lastMove: null },
     });
-    w.world.zoho = { status: "Available", modifiedAt: new Date(NOW_PLUS_1S) };
+    w.world.zoho = { status: "Available", modifiedAt: new Date(NOW_PLUS_10S) };
     const [outcome] = await w.sync().sync([REGISTER_ID]);
     expect(outcome?.kind).toBe("stale");
     expect(w.products.write).not.toHaveBeenCalled();
@@ -308,7 +347,7 @@ describe("ZohoStatusSync: compare-and-set re-reads the Product just before writi
   });
 });
 
-const NOW_PLUS_1S = "2026-11-03T12:00:01.000Z";
+const NOW_PLUS_10S = "2026-11-03T12:00:10.000Z";
 
 describe("ZohoStatusSync: modes and failures", () => {
   it("in a dry run reads and decides but sends and records nothing", async () => {

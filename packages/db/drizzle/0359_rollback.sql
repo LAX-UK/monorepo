@@ -1,4 +1,4 @@
--- Rollback for 0352_artwork_register_status_written. Roll back the application release first: the
+-- Rollback for 0359_artwork_register_status_written. Roll back the application release first: the
 -- previous release neither reads nor writes the column or raises Status conflicts.
 -- Conflicts are kept as history, so this refuses while any Status conflict exists.
 SET LOCAL lock_timeout = '30s';

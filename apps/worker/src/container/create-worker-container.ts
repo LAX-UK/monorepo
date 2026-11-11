@@ -94,6 +94,7 @@ import { createZohoArtworkSyncRuntime } from "./create-zoho-artwork-sync.js";
 import { createZohoArtworkWriteback } from "./create-zoho-artwork-writeback.js";
 import { createZohoCampaignsSuppressionRuntime } from "./create-zoho-campaigns-suppression.js";
 import { createZohoFulfilmentMirror } from "./create-zoho-fulfilment-mirror.js";
+import { createZohoStatusNightly } from "./create-zoho-status-nightly.js";
 
 export type WorkerContainer = {
   env: WorkerEnv;
@@ -380,6 +381,12 @@ export function createWorkerContainer(): WorkerContainer {
         : {}),
   };
 
+  const zohoStatusNightly = createZohoStatusNightly({
+    env,
+    db,
+    log,
+    listingOn: zohoArtworkListing !== undefined,
+  });
   const webhookWorkers = registerWebhookWorker({
     ...deps,
     webhookProcessorDeps,
@@ -388,6 +395,13 @@ export function createWorkerContainer(): WorkerContainer {
       : {}),
     ...(zohoCampaignsSuppression
       ? { runZohoCampaignsSuppressionSync: zohoCampaignsSuppression }
+      : {}),
+    ...(zohoStatusNightly
+      ? {
+          runZohoStatusNightlyCheck: async () => {
+            await zohoStatusNightly.run();
+          },
+        }
       : {}),
     ...(zohoArtworkListing
       ? {

@@ -8,6 +8,14 @@ export const ZOHO_LISTING_NIGHTLY_PATTERN = "0 3 * * *";
 export const ZOHO_LISTING_NIGHTLY_TIME_ZONE = "Europe/London";
 
 /**
+ * The nightly Zoho Status check on its own, for when the listing is off. With the listing on, its
+ * nightly pass runs the Status check as well, so this job is not scheduled then. It is what turns
+ * Withdrawn back into Available after 30 days, which no register event does.
+ */
+export const ZOHO_STATUS_NIGHTLY_JOB_NAME = "zoho-status-nightly-check" as const;
+export const ZOHO_STATUS_NIGHTLY_PATTERN = "15 3 * * *";
+
+/**
  * Refreshes the listings of sales that have just started on their own time. Runs on its own queue
  * (`ZOHO_LISTING_SALE_START_QUEUE_NAME`) so it never holds up inbound webhooks.
  */

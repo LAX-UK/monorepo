@@ -232,7 +232,7 @@ describe("ZohoArtworkWritebackService live: the Status", () => {
     const { service, status, world } = setup("live", {
       entry: entry({ offer: { state: "sold", ref: null } }),
     });
-    world.zoho = { status: "Available", modifiedAt: new Date("2026-11-03T12:00:05.000Z") };
+    world.zoho = { status: "Available", modifiedAt: new Date("2026-11-03T12:00:10.000Z") };
     const result = await service.deliver(offerEvent("sold"));
     expect(result.outcome).toBe("retry");
     expect(status.write).not.toHaveBeenCalled();
@@ -360,13 +360,14 @@ describe("echo protection", () => {
     expect(decision.outcome).toBe("update");
   });
 
-  it("notes the register copy even when Zoho already held the value", async () => {
+  it("leaves the register copy to the inbound sync when Zoho already held the value", async () => {
     const { service, held } = setup("live", {
       entry: entry({ catalogueStatus: "Available", offer: { state: "sold", ref: null } }),
       zohoStatus: "Sold",
     });
     await service.deliver(offerEvent("sold"));
-    expect(held()?.catalogueStatus).toBe("Sold");
+    // LAX sent nothing, so it records nothing as its own write; the inbound sync copies Zoho's value.
+    expect(held()?.catalogueStatus).toBe("Available");
   });
 
   it("still reports a real Zoho edit made alongside the echo", async () => {

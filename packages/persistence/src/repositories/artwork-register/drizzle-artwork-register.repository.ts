@@ -469,7 +469,7 @@ export class DrizzleArtworkRegisterRepository
         .where(eq(register.id, input.registerId))
         .for("update");
       if (!locked) return { status: "not_found" };
-      await this.closeStatusConflict(tx, locked.id, input.now);
+      await this.closeStatusConflict(tx, locked.id, input.now, "lax_wrote_status");
       if (locked.catalogueStatus === input.status) {
         if (locked.catalogueStatusWritten !== input.status) {
           await tx
@@ -494,6 +494,23 @@ export class DrizzleArtworkRegisterRepository
         to: input.status,
       });
       return { status: "recorded" };
+    });
+  }
+
+  async closeCatalogueStatusConflict(input: {
+    registerId: string;
+    now: Date;
+  }): Promise<{ closed: boolean }> {
+    return this.db.transaction(async (tx) => {
+      const [locked] = await tx
+        .select({ id: register.id })
+        .from(register)
+        .where(eq(register.id, input.registerId))
+        .for("update");
+      if (!locked) return { closed: false };
+      return {
+        closed: await this.closeStatusConflict(tx, locked.id, input.now, "zoho_matched_lax"),
+      };
     });
   }
 
@@ -561,7 +578,12 @@ export class DrizzleArtworkRegisterRepository
   }
 
   /** LAX and Zoho agree again, so an open Status conflict has nothing left to decide. */
-  private async closeStatusConflict(tx: Tx, registerId: string, now: Date): Promise<void> {
+  private async closeStatusConflict(
+    tx: Tx,
+    registerId: string,
+    now: Date,
+    reason: "lax_wrote_status" | "zoho_matched_lax",
+  ): Promise<boolean> {
     const [closed] = await tx
       .update(conflict)
       .set({ status: "resolved", resolution: "kept_lax", resolvedBy: "system", resolvedAt: now })
@@ -573,12 +595,15 @@ export class DrizzleArtworkRegisterRepository
         ),
       )
       .returning();
-    if (!closed) return;
+    if (!closed) return false;
+    // The resolution column stays "kept_lax" (its check allows no other value); the reason says how.
     await this.record(tx, registerId, "conflict_resolved", "system", now, {
       conflictId: closed.id,
       field: closed.field,
       resolution: "kept_lax",
+      reason,
     });
+    return true;
   }
 
   /** Puts Zoho's stock code on the artwork, if it is valid for it and free. */

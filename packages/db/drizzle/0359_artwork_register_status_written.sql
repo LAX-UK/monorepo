@@ -6,6 +6,10 @@
 -- event, so the latest such event per register seeds the column when its value is still the Status
 -- Zoho shows. Without it that Status would read as a staff edit and raise a conflict. Only rows still
 -- NULL are touched, so a re-run changes nothing.
+-- The old recorder returned without an event when the inbound sync had already copied the value, so
+-- a second seed covers the Statuses only LAX writes for a place that still holds: In Auction for a
+-- bid sale and Withdrawn for a withdrawn artwork. Sold, Reserved and Available are not seeded from
+-- the copy, since staff set those by hand too and LAX cannot tell whose they are.
 -- Additive: the column is nullable and the check only widens; existing rows already satisfy both.
 SET LOCAL lock_timeout = '30s';
 --> statement-breakpoint
@@ -22,6 +26,14 @@ FROM (
 WHERE r."id" = w."register_id"
   AND r."catalogue_status_written" IS NULL
   AND r."catalogue_status" = w."status";
+--> statement-breakpoint
+UPDATE "artwork_register"
+SET "catalogue_status_written" = "catalogue_status"
+WHERE "catalogue_status_written" IS NULL
+  AND (
+    ("catalogue_status" = 'In Auction' AND "offer_state" = 'bid_sale')
+    OR ("catalogue_status" = 'Withdrawn' AND "offer_state" = 'withdrawn')
+  );
 --> statement-breakpoint
 ALTER TABLE "artwork_register_conflict" DROP CONSTRAINT IF EXISTS "artwork_register_conflict_field_check";
 --> statement-breakpoint

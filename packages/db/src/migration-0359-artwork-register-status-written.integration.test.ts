@@ -12,6 +12,12 @@ const read = (name: string) =>
     .replaceAll("--> statement-breakpoint", "")
     .replace("SET LOCAL lock_timeout = '30s';", "");
 
+const REF_KIND: Record<string, string> = {
+  bid_sale: "bid_lot",
+  private_sale: "private_sale",
+  lax_art: "shop_artwork",
+};
+
 /**
  * Runs against a database migrated to the head, inside one transaction that is always rolled
  * back: it steps 0359 back, seeds registers whose Status LAX wrote before the column existed, then
@@ -24,13 +30,20 @@ describe.skipIf(!migrationUrl)(
     let client: pg.Client;
     let seq = 0;
 
-    async function addRegister(status: string | null): Promise<string> {
+    async function addRegister(status: string | null, offerState?: string): Promise<string> {
       seq += 1;
       const row = await client.query(
         `insert into artwork_register
-           (zoho_product_id, stock_code, kind, title, artist_name, artist_code, catalogue_status)
-         values ($1, $2, 'original', 't', 'a', 'AAA', $3) returning id`,
-        [`bf-${seq}`, `LAX-ORI-AAA-ART${seq}-26-${String(seq).padStart(4, "0")}`, status],
+           (zoho_product_id, stock_code, kind, title, artist_name, artist_code, catalogue_status, offer_state, offer_ref_kind, offer_ref_id)
+         values ($1, $2, 'original', 't', 'a', 'AAA', $3, coalesce($4, 'held'), $5, $6) returning id`,
+        [
+          `bf-${seq}`,
+          `LAX-ORI-AAA-ART${seq}-26-${String(seq).padStart(4, "0")}`,
+          status,
+          offerState ?? null,
+          offerState && offerState in REF_KIND ? REF_KIND[offerState] : null,
+          offerState && offerState in REF_KIND ? `ref-${seq}` : null,
+        ],
       );
       return row.rows[0].id;
     }
@@ -90,6 +103,20 @@ describe.skipIf(!migrationUrl)(
       await client.query(read("0359_artwork_register_status_written.sql"));
       expect(await written(never)).toBeNull();
       expect(await written(other)).toBeNull();
+    });
+
+    it("seeds In Auction and Withdrawn that LAX wrote without an event, but not Sold or Reserved", async () => {
+      const auction = await addRegister("In Auction", "bid_sale");
+      const withdrawn = await addRegister("Withdrawn", "withdrawn");
+      const staffSold = await addRegister("Sold", "sold");
+      const staffReserved = await addRegister("Reserved", "private_sale");
+      const mismatch = await addRegister("In Auction", "lax_art");
+      await client.query(read("0359_artwork_register_status_written.sql"));
+      expect(await written(auction)).toBe("In Auction");
+      expect(await written(withdrawn)).toBe("Withdrawn");
+      expect(await written(staffSold)).toBeNull();
+      expect(await written(staffReserved)).toBeNull();
+      expect(await written(mismatch)).toBeNull();
     });
 
     it("is idempotent and never overwrites a value already recorded", async () => {

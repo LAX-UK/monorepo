@@ -101,13 +101,23 @@ export type ZohoStatusSyncDeps = {
   sources: Pick<IZohoStatusSourceReader, "readStatusSources">;
   register: Pick<
     IArtworkRegisterRepository,
-    "findCatalogueStatusLedgers" | "recordCatalogueStatusWritten" | "recordCatalogueStatusConflict"
+    | "findCatalogueStatusLedgers"
+    | "recordCatalogueStatusWritten"
+    | "closeCatalogueStatusConflict"
+    | "recordCatalogueStatusConflict"
   >;
   products: ZohoStatusProducts;
   lock: IZohoListingLock;
   log: Logger;
   now?: () => Date;
 };
+
+/**
+ * Zoho stamps Modified_Time on its clock and `observedAt` is the worker's. A Product modified up to
+ * this long "after" the read is taken to be clock skew, not a newer change; the re-read just before
+ * the write (`sameState`) still catches a real one.
+ */
+export const CLOCK_SKEW_TOLERANCE_MS = 5_000;
 
 const NO_LEDGER: CatalogueStatusLedger = { written: null, conflictOpen: false };
 
@@ -188,7 +198,10 @@ export class ZohoStatusSync {
     if (!state) {
       return { ...who, kind: "failed", code: "product_not_found", retryable: false };
     }
-    if (state.modifiedAt && state.modifiedAt.getTime() > observedAt.getTime()) {
+    if (
+      state.modifiedAt &&
+      state.modifiedAt.getTime() > observedAt.getTime() + CLOCK_SKEW_TOLERANCE_MS
+    ) {
       return { ...who, kind: "stale" };
     }
 
@@ -240,11 +253,17 @@ export class ZohoStatusSync {
         await this.deps.products.write(entry.zohoProductId, wanted);
       }
 
-      // Sent now or already there, the register should hold what LAX last wrote and no conflict.
-      if (live && (decision.kind === "write" || ledger.written !== wanted || ledger.conflictOpen)) {
+      if (live && decision.kind === "write") {
         await this.deps.register.recordCatalogueStatusWritten({
           registerId: entry.id,
           status: wanted,
+          now: this.now(),
+        });
+      } else if (live && ledger.conflictOpen) {
+        // Zoho already shows what LAX wants, but LAX did not send it, so it is not "last written":
+        // it may be staff's Sold or Reserved. Only the open conflict is closed.
+        await this.deps.register.closeCatalogueStatusConflict({
+          registerId: entry.id,
           now: this.now(),
         });
       }
