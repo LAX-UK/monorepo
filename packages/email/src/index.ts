@@ -50,3 +50,5 @@ export {
   type TemplateName,
   type TemplateVarsByName,
 } from "./types.js";
+export { RecipientClock } from "./recipient-clock.js";
+export type { EmailMoment, ZoneNote } from "./templates/types/moment.js";

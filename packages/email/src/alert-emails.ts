@@ -5,6 +5,7 @@ import {
   TOPIC_CATALOGUE,
 } from "@auction/alerts";
 import { LAX_PRODUCT_NAMES } from "@auction/branding";
+import { RecipientClock } from "./recipient-clock.js";
 import type { AlertDigestGroup, AlertTemplateVars } from "./templates/types/sale-alerts.js";
 
 const CONFIRM_COPY = {
@@ -73,7 +74,7 @@ function titleFor(vm: DigestVm): string {
     : def.subjectForMany(lead.total);
 }
 
-function groupsFor(message: DigestMessage): AlertDigestGroup[] {
+function groupsFor(message: DigestMessage, clock: RecipientClock): AlertDigestGroup[] {
   return message.vm.groups.map((group) => ({
     heading: group.heading,
     total: group.total,
@@ -84,6 +85,14 @@ function groupsFor(message: DigestMessage): AlertDigestGroup[] {
         title: item.title,
         ...(item.subtitle ? { subtitle: item.subtitle } : {}),
         ...(item.detail ? { detail: item.detail } : {}),
+        ...(item.moments.length > 0
+          ? {
+              moments: item.moments.map((entry) => ({
+                label: entry.label,
+                moment: clock.moment(new Date(entry.at), entry.zone),
+              })),
+            }
+          : {}),
         ...(item.imageUrl ? { imageUrl: item.imageUrl } : {}),
         url: message.siteUrl(item.path),
       })),
@@ -128,6 +137,15 @@ export function confirmationEmail(message: ConfirmationMessage): AlertEmail<"ale
 export function digestEmail(message: DigestMessage): AlertEmail<"alert-digest"> {
   const lead = message.vm.groups[0];
   const visitorStop = lead ? TOPIC_CATALOGUE[lead.topic].stopLabel : "Stop these emails";
+  // Times are the sale's own; an account holder with a saved zone also sees their own clock, and
+  // only where there is a page to change it, so a local time never appears without its footer.
+  const clock = new RecipientClock(
+    message.changeZoneUrl ? message.viewerZone : null,
+    new Date(`${message.localDate}T12:00:00Z`),
+    message.changeZoneUrl ?? "",
+  );
+  const groups = groupsFor(message, clock);
+  const zoneNote = clock.zoneNote;
   return {
     template: "alert-digest",
     stream: "broadcast",
@@ -137,7 +155,8 @@ export function digestEmail(message: DigestMessage): AlertEmail<"alert-digest"> 
       subject: message.vm.subject,
       title: titleFor(message.vm),
       dateLabel: digestDateLabel(message.localDate),
-      groups: groupsFor(message),
+      groups,
+      ...(zoneNote ? { zoneNote } : {}),
       reason: reasonFor(message),
       ...(message.audience === "visitor" ? { address: message.to } : {}),
       ...(message.manageUrl ? { manageUrl: message.manageUrl } : {}),

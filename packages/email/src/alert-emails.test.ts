@@ -37,6 +37,8 @@ function artDigest(over: Partial<DigestMessage> = {}): DigestMessage {
     oneClickUrl: "https://lax.art/alerts/unsubscribe?token=S",
     manageUrl: null,
     audience: "account",
+    viewerZone: null,
+    changeZoneUrl: null,
     ...over,
   };
 }

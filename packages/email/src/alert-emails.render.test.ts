@@ -51,6 +51,8 @@ function message(over: Partial<DigestMessage> = {}): DigestMessage {
     oneClickUrl: "https://lax.bid/alerts/unsubscribe?t=STOP",
     manageUrl: "https://lax.bid/settings#alerts",
     audience: "account",
+    viewerZone: null,
+    changeZoneUrl: null,
     ...over,
   };
 }

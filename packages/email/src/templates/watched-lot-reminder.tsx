@@ -1,7 +1,9 @@
 import { Button } from "../components/Button.js";
 import { FactCard } from "../components/FactCard.js";
 import { Layout } from "../components/Layout.js";
+import { MomentValue } from "../components/MomentValue.js";
 import { TextBlock } from "../components/TextBlock.js";
+import { ZoneNoteLine } from "../components/ZoneNoteLine.js";
 import type { TemplateVarsByName } from "../types.js";
 
 type Vars = TemplateVarsByName["watched-lot-reminder"];
@@ -22,7 +24,7 @@ export const subject = (vars: Vars) =>
  * Sent only while their "Lots you watch" email switch is on; the footer turns it off.
  */
 export default function WatchedLotReminderEmail(vars: Vars) {
-  const { userName, lotTitle, lotUrl, kind, note, closesAt, unsubscribeUrl } = vars;
+  const { userName, lotTitle, lotUrl, kind, note, closesAt, zoneNote, unsubscribeUrl } = vars;
   return (
     <Layout
       category="auction"
@@ -37,10 +39,11 @@ export default function WatchedLotReminderEmail(vars: Vars) {
       </TextBlock>
       <FactCard
         rows={[
-          ...(closesAt ? [{ label: "Closes", value: closesAt }] : []),
+          ...(closesAt ? [{ label: "Closes", value: <MomentValue moment={closesAt} /> }] : []),
           ...(note ? [{ label: "Your note", value: note }] : []),
         ]}
       />
+      <ZoneNoteLine note={zoneNote} />
       <Button href={lotUrl}>View the lot</Button>
     </Layout>
   );
