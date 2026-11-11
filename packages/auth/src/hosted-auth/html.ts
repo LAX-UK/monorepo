@@ -17,6 +17,7 @@ const ALLOWED_INPUT_TYPES = new Set(["text", "email", "tel", "password", "search
 const ALLOWED_AUTOCOMPLETE = new Set([
   "name",
   "username",
+  "username webauthn",
   "email",
   "tel",
   "current-password",
@@ -86,6 +87,8 @@ export type HostedButtonOptions = {
   loadingLabel?: string;
   /** Trusted inline SVG/HTML placed before the visible label. */
   leadingMark?: string;
+  /** Rendered hidden; a page script shows it when it applies. */
+  hidden?: boolean;
   extraAttrs?: Readonly<Record<string, string>>;
 };
 
@@ -236,6 +239,7 @@ export function hostedButton(input: HostedButtonOptions): string {
     input.id ? attr("id", input.id) : "",
     input.name ? attr("name", input.name) : "",
     input.value ? attr("value", input.value) : "",
+    input.hidden ? "hidden" : "",
     input.loadingLabel ? attr("data-loading-label", input.loadingLabel) : "",
     ...Object.entries(input.extraAttrs ?? {}).flatMap(([name, value]) => {
       const safeName = extraAttrName(name);

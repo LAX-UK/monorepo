@@ -77,6 +77,31 @@ change in what is counted:
 "Counted before" is the old method on a build without Sentry (`public` was one group then, and its
 largest route was the sale page).
 
+After the public-frame leak fixes (Sentry on, largest route per group, budget = size + 10%):
+
+| Bid group | Largest route | Before | After | Frame after | Budget |
+| --- | --- | --- | --- | --- | --- |
+| public | home | 554.4 KB | 493.2 KB | 424.6 KB | 543 KB |
+| listing | search | 737.9 KB | 554.0 KB | 424.6 KB | 610 KB |
+| sale | sale page | 805.2 KB | 637.1 KB | 466.9 KB | 701 KB |
+| lot | lot page | 644.1 KB | 590.8 KB | 472.0 KB | 650 KB |
+| checkout | purchases/collect | 576.4 KB | 553.6 KB | 517.7 KB | 609 KB |
+| account | consignment edit | 650.7 KB | 624.5 KB | 520.0 KB | 687 KB |
+
+What moved: the Node `Buffer` polyfill (attribution and acting-context cookies now use `TextEncoder`
+and `btoa`), the staff nav and presenters that the account menu pulled in through
+`app-shell-nav`, and the kit barrels. Two causes were behind the barrels. `@auction/ui/lax` and
+`@auction/ui/time` were not in `optimizePackageImports`, which lists exact specifiers, so every
+import of them shipped the whole barrel. And `export { X } from "@auction/ui"` in a consumer is not
+rewritten by that option the way `import { X } from "@auction/ui"` is, so each such re-export file
+shipped the entire package; write it as an `import` followed by an `export`.
+
+Code that can run in the browser must not use `Buffer`. Next injects a polyfill for it, and that
+polyfill throws `Unknown encoding: base64url`. The acting-context cookie (which carries a staff
+"view as client" session id) could therefore not be decoded in the browser before; it is now read
+through `decodeUtf8Base64Url`, so the browser keeps the cookie as it is and sends the viewed
+account's `X-Legal-Entity-Id` header. That is a declared behaviour change of the Buffer fix.
+
 ## Enforcement
 
 `enforce` is set per group. A route over budget in a group with `"enforce": true` is an error line

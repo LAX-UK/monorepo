@@ -54,3 +54,4 @@ export * from "./sale-cover.js";
 export * from "./collection-booking.js";
 export * from "./collection-desk.js";
 export * from "./collection-settings.js";
+export * from "./utf8-base64url.js";

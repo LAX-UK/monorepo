@@ -148,7 +148,7 @@ export const artworkRegisterConflict = pgTable(
  * Zoho says an artwork is Sold or Reserved while LAX still has it for sale: one "Needs attention"
  * item per artwork and status. `open` pauses new money for the artwork; `overridden` is staff
  * saying it is not sold, kept (with the reason) so the sync does not raise it again; `resolved`
- * is over. The constraints are in migration 0352; they are repeated here where drizzle-kit needs them.
+ * is over. The constraints are in migration 0360; they are repeated here where drizzle-kit needs them.
  */
 export const artworkRegisterSoldAttention = pgTable(
   "artwork_register_sold_attention",

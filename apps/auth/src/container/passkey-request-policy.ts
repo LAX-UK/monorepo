@@ -1,4 +1,5 @@
 import {
+  PASSKEY_NOT_ALLOWED,
   type SessionStampStore,
   type createAuth,
   stampPasskeyAuthFromResponse,
@@ -13,7 +14,7 @@ import {
   settleSecurityEffect,
 } from "../services/settle-security-effect.js";
 
-export const PASSKEY_NOT_ALLOWED = "passkey_enrolment_not_allowed";
+export { PASSKEY_NOT_ALLOWED };
 export const PASSKEY_NAME_INVALID = "passkey_name_invalid";
 
 type Step = "register_options" | "register_verify" | "authenticate_verify";
@@ -35,7 +36,7 @@ export type PasskeyCounterReader = {
 };
 
 export type PasskeyRequestPorts = {
-  grants: Pick<PasskeyEnrolmentGrants, "holds" | "spend" | "grant">;
+  grants: Pick<PasskeyEnrolmentGrants, "holds" | "spend" | "grant" | "noteCreated">;
   /** Runs once a passkey has been made: the one security email. The audit event is already stored. */
   onRegistered(input: {
     userId: string;
@@ -210,6 +211,16 @@ export function createPasskeyRequestPolicy(deps: {
         return response;
       }
       const made = await readMadePasskey(response);
+      // Only this passkey may be renamed from the page that made it.
+      if (made) {
+        await settleSecurityEffect(
+          deps.log,
+          { path: input.path, effect: "passkey_created_noted", userId: enrolment.userId },
+          () =>
+            deps.passkeys?.grants.noteCreated(enrolment.sessionId, enrolment.userId, made.id) ??
+            Promise.resolve(),
+        );
+      }
       await settleSecurityEffect(
         deps.log,
         { path: input.path, effect: "passkey_registered", userId: enrolment.userId },

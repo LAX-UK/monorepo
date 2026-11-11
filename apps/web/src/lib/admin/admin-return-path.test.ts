@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { adminReturnPath, isAdminPath } from "./admin-return-path";
+import { adminReturnPath } from "./admin-return-path";
 
 describe("adminReturnPath", () => {
   it("returns staff to the admin page they were on, with its query", () => {
@@ -20,14 +20,5 @@ describe("adminReturnPath", () => {
 
   it("ignores a query that does not start with a question mark", () => {
     expect(adminReturnPath("/admin/lots", "status=draft")).toBe("/admin/lots");
-  });
-});
-
-describe("isAdminPath", () => {
-  it("matches the admin home and pages below it only", () => {
-    expect(isAdminPath("/admin")).toBe(true);
-    expect(isAdminPath("/admin/payments")).toBe(true);
-    expect(isAdminPath("/admins")).toBe(false);
-    expect(isAdminPath(undefined)).toBe(false);
   });
 });

@@ -5,19 +5,22 @@ import { describe, expect, it } from "vitest";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const read = (name: string) => readFileSync(join(__dirname, "../drizzle", name), "utf8");
-const migration = read("0352_artwork_register_sold_attention.sql");
-const rollback = read("0352_rollback.sql");
+const migration = read("0360_artwork_register_sold_attention.sql");
+const rollback = read("0360_rollback.sql");
 const journal = JSON.parse(read("meta/_journal.json")) as {
   entries: { idx: number; tag: string; when: number }[];
 };
 
-describe("migration 0352 sold-while-live attention", () => {
-  it("is journal entry 346, after the entry before it", () => {
-    const at = journal.entries.findIndex((e) => e.tag === "0352_artwork_register_sold_attention");
-    expect(journal.entries[at]?.idx).toBe(346);
-    expect(journal.entries[at]?.when).toBeGreaterThan(
-      journal.entries[at - 1]?.when ?? Number.POSITIVE_INFINITY,
-    );
+describe("migration 0360 sold-while-live attention", () => {
+  it("is journalled after the entry before it, with a fixed stamp", () => {
+    const at = journal.entries.findIndex((e) => e.tag === "0360_artwork_register_sold_attention");
+    const entry = journal.entries[at];
+    const previous = journal.entries[at - 1];
+    expect(entry?.idx).toBe((previous?.idx ?? 0) + 1);
+    expect(entry?.when).toBe(1806134400000);
+    expect(entry?.when).toBeGreaterThan(previous?.when ?? Number.POSITIVE_INFINITY);
+    const next = journal.entries[at + 1];
+    if (next) expect(next.when).toBeGreaterThan(entry?.when ?? 0);
   });
 
   it("allows one live item per artwork and Zoho status", () => {

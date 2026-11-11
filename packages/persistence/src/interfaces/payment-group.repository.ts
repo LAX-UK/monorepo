@@ -61,11 +61,16 @@ export type ClaimPaymentGroupResult =
   /** Some payment was no longer due, belonged elsewhere or was taken by another payment. */
   | { kind: "conflict" };
 
+/** A quote charged in a group, with what the buyer was refunded for it so far, in pence. */
+export type LockedPaymentGroupDelivery = PaymentGroupDelivery & { refundedPence: number };
+
 /** A group and its invoices, locked for the rest of the caller's transaction. */
 export type LockedPaymentGroup = {
   group: PaymentGroupRecord;
   members: PaymentGroupMember[];
-  deliveries: PaymentGroupDelivery[];
+  deliveries: LockedPaymentGroupDelivery[];
+  /** The largest refund total, in pence, that no invoice or quote could take, announced so far. */
+  refundUnattributedPence: number;
 };
 
 export interface IPaymentGroupRepository {
@@ -122,6 +127,25 @@ export interface IPaymentGroupRepository {
    * callers can never hold the payments in opposite order.
    */
   lockInTransaction(tx: Database, groupId: string): Promise<LockedPaymentGroup | null>;
+  /**
+   * Raises what is held as refunded for a quote of the group to `refundedPence`, inside `tx`
+   * (the group is locked by the caller). Never lowers it; `true` only when it went up.
+   */
+  raiseDeliveryRefundedInTransaction(
+    tx: Database,
+    groupId: string,
+    quoteId: string,
+    refundedPence: number,
+  ): Promise<boolean>;
+  /**
+   * Raises what is held as refund no invoice or quote could take to `unattributedPence`, inside
+   * `tx` (the group is locked by the caller). Never lowers it; `true` only when it went up.
+   */
+  raiseUnattributedRefundInTransaction(
+    tx: Database,
+    groupId: string,
+    unattributedPence: number,
+  ): Promise<boolean>;
   /**
    * Moves the group from one of `from` to `to` inside `tx`; `false` when it was not in `from`.
    * Settling (`paid` or `cancelled`) stamps `settledAt`; the Stripe references are recorded when

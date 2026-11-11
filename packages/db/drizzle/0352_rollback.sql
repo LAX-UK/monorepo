@@ -1,22 +1,21 @@
--- Rollback for 0352_artwork_register_sold_attention. Roll back the application release first.
--- History is append-only, so sold_while_live_* events cannot be removed: this refuses while any
--- exist, and the wider check stays.
+-- Rollback for 0352_account_time_zone. Roll back the application release first: the previous
+-- release neither reads nor writes these columns, and reads quiet hours from
+-- "notification_preference.quiet_time_zone", which this migration leaves in place. A zone a person
+-- chose in LAX Account is dropped with the columns.
 SET LOCAL lock_timeout = '30s';
-
-DO $$
-BEGIN
-  IF EXISTS (SELECT 1 FROM "artwork_register_event" WHERE "type" LIKE 'sold_while_live_%') THEN
-    RAISE EXCEPTION 'artwork_register_event holds sold_while_live_* rows; keep the wider check';
-  END IF;
-END $$;
-
-DROP TABLE IF EXISTS "artwork_register_sold_attention";
-
-ALTER TABLE "artwork_register_event" DROP CONSTRAINT IF EXISTS "artwork_register_event_type_check";
-ALTER TABLE "artwork_register_event" ADD CONSTRAINT "artwork_register_event_type_check" CHECK (
-  "type" IN (
-    'created', 'offer_moved', 'zoho_change_applied', 'conflict_recorded', 'conflict_resolved',
-    'zoho_writeback_recorded', 'move_confirmed', 'lax_art_draft_created',
-    'zoho_link_linked', 'zoho_link_unlinked'
-  )
-);
+--> statement-breakpoint
+ALTER TABLE "bid_identity_directory" DROP COLUMN IF EXISTS "time_zone";
+--> statement-breakpoint
+ALTER TABLE "bid_identity_directory" DROP COLUMN IF EXISTS "time_zone_mode";
+--> statement-breakpoint
+ALTER TABLE "user" DROP CONSTRAINT IF EXISTS "user_fixed_time_zone_present";
+--> statement-breakpoint
+ALTER TABLE "user" DROP CONSTRAINT IF EXISTS "user_time_zone_names_a_place";
+--> statement-breakpoint
+ALTER TABLE "user" DROP CONSTRAINT IF EXISTS "user_time_zone_mode_valid";
+--> statement-breakpoint
+ALTER TABLE "user" DROP COLUMN IF EXISTS "time_zone_reported_at";
+--> statement-breakpoint
+ALTER TABLE "user" DROP COLUMN IF EXISTS "time_zone";
+--> statement-breakpoint
+ALTER TABLE "user" DROP COLUMN IF EXISTS "time_zone_mode";

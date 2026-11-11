@@ -4,7 +4,13 @@ import type { StatusBadgeShape, StatusBadgeTone } from "@auction/ui/lax";
 import { PURCHASE_STATE_LABEL } from "./purchase-labels";
 import { type PurchaseState, purchaseEndedEarly } from "./purchase-progress";
 
-export type PurchaseBadge = { label: string; tone: StatusBadgeTone; shape: StatusBadgeShape };
+export type PurchaseBadge = {
+  label: string;
+  tone: StatusBadgeTone;
+  shape: StatusBadgeShape;
+  /** What the short label leaves out, said in the row's facts ("overdue since 29 Oct"). */
+  note?: string;
+};
 
 const DAY_MONTH = new Intl.DateTimeFormat("en-GB", {
   timeZone: "Europe/London",
@@ -68,9 +74,10 @@ export function purchaseBadge(
   const invoice = facts?.invoice;
   if (invoice?.status === "overdue" && invoice.dueAt) {
     return {
-      label: `Overdue since ${DAY_MONTH.format(invoice.dueAt)}`,
+      label: "Overdue",
       tone: "danger",
       shape: "alert",
+      note: `overdue since ${DAY_MONTH.format(invoice.dueAt)}`,
     };
   }
   if (invoice?.status === "due" && invoice.dueAt) {

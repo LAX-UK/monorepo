@@ -70,6 +70,8 @@ const cases: Record<string, Case> = {
       createdAt: AT,
       deletionRequestedAt: null,
       identityDisabledAt: AT,
+      timeZoneMode: "automatic",
+      timeZone: "Africa/Cairo",
       ...forbidden,
     } as never),
   },
@@ -248,6 +250,13 @@ describe("Account subject export: what each category may contain", () => {
     expect(mapPasswordMethod(null)).toMatchObject({ passwordSet: false, changedAt: null });
   });
 
+  it("includes the time zone choice in the profile", () => {
+    expect(cases.profile?.record).toMatchObject({
+      timeZoneMode: "automatic",
+      timeZone: "Africa/Cairo",
+    });
+  });
+
   it("shortens the device hash to a record id and returns no label or address", () => {
     const record = cases.device?.record;
     expect(record?.id).toBe("device-abcdef0123456789");
@@ -255,7 +264,15 @@ describe("Account subject export: what each category may contain", () => {
   });
 
   it("states the profile status including pending deletion", () => {
-    const base = { id: "u", name: "n", image: null, createdAt: AT, identityDisabledAt: null };
+    const base = {
+      id: "u",
+      name: "n",
+      image: null,
+      createdAt: AT,
+      identityDisabledAt: null,
+      timeZoneMode: "automatic" as const,
+      timeZone: null,
+    };
     expect(mapProfile({ ...base, deletionRequestedAt: AT }).status).toBe("pending_deletion");
     expect(mapProfile({ ...base, deletionRequestedAt: null }).status).toBe("active");
   });

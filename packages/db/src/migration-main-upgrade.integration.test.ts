@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import type pg from "pg";
@@ -23,7 +24,14 @@ const DIRECTORY_0159_FOLDER_MILLIS = 1788000035000;
 const WORKER_CUTOVER_0160_FOLDER_MILLIS = 1788000036000;
 const BEFORE_ADDRESS_BOOK_FOLDER_MILLIS = 1794643200000;
 const DECLINE_REASON_0232_FOLDER_MILLIS = 1795420800000;
-const FINAL_FOLDER_MILLIS = 1805356800000;
+// The journal's newest stamp, so a later migration does not have to edit this file.
+const FINAL_FOLDER_MILLIS = Math.max(
+  ...(
+    JSON.parse(
+      readFileSync(resolve(import.meta.dirname, "../drizzle/meta/_journal.json"), "utf8"),
+    ) as { entries: { when: number }[] }
+  ).entries.map((entry) => entry.when),
+);
 const ATG_SYNC_LINKS_FOLDER_MILLIS = 1788000007500;
 
 async function executeMigrationSql(pool: pg.Pool, fileName: string): Promise<void> {

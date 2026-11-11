@@ -14,10 +14,12 @@ export default defineConfig({
     baseURL,
     trace: "on-first-retry",
   },
-  // Sign-in happens once, in the setup project; the desktop project reuses the saved states.
-  // Specs that need a phone width resize the page to 375px themselves.
+  // Sign-in happens once, in the setup project; the desktop project reuses the saved states and
+  // the teardown project signs them out when the run ends. Specs that need a phone width resize
+  // the page to 375px themselves.
   projects: [
-    { name: "setup", testMatch: /auth\.setup\.ts/ },
+    { name: "setup", testMatch: /auth\.setup\.ts/, teardown: "sign-out" },
+    { name: "sign-out", testMatch: /auth\.teardown\.ts/ },
     {
       name: "chromium-desktop",
       testIgnore: /auth\.setup\.ts/,

@@ -60,6 +60,11 @@ export type HostedAuthFlow = {
   /** The email a product already knows (OIDC `login_hint`), to prefill sign-in and sign-up. */
   loginHint: string | null;
   context: HostedContext | null;
+  /**
+   * LAX Account asked for a fresh sign-in (`prompt=login`) before a sensitive change, so the page
+   * says "Confirm it's you" instead of starting a new sign-in.
+   */
+  reauth: boolean;
 };
 
 /** Only a plausible email is used as a hint; anything else is ignored. */
@@ -105,6 +110,7 @@ function emptyFlow(): HostedAuthFlow {
     allowedRedirectOrigins: [],
     loginHint: null,
     context: null,
+    reauth: false,
   };
 }
 
@@ -149,6 +155,10 @@ export function parseHostedAuthFlow(searchParams: URLSearchParams): HostedAuthFl
     allowedRedirectOrigins,
     loginHint: parseLoginHint(searchParams.get("login_hint")),
     context: parseHostedContext(searchParams.get(HOSTED_CONTEXT_QUERY)),
+    reauth:
+      canResume &&
+      product === "account" &&
+      promptTokens(searchParams.get("prompt")).includes("login"),
   };
 }
 
