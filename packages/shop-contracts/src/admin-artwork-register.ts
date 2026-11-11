@@ -171,6 +171,8 @@ export const AdminRegisterLastCheckSchema = Type.Object({
             registerId: Type.String(),
             stockCode: Type.Optional(Type.String()),
             code: Type.String(),
+            /** Where the record is in LAX now, for a Product deleted in Zoho. */
+            place: Type.Optional(Type.String()),
           }),
         ),
       }),
