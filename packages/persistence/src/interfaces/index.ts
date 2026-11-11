@@ -1326,6 +1326,24 @@ export {
   type PaymentReminderCandidate,
   type RecordBuyerDefaultInput,
 } from "./buyer-default.js";
+export {
+  LotReawardRefusedError,
+  LotReofferConflictError,
+  type CreateLotReofferInput,
+  type ILotReawardRepository,
+  type ILotReofferReader,
+  type ILotReofferRepository,
+  type ISellerConsentRepository,
+  type LotReofferView,
+  type ReawardLotInput,
+  type ReawardLotResult,
+  type ReofferStatusChange,
+  type SellerConsentAnswerWrite,
+  type SellerConsentChannel,
+  type SellerConsentTerms,
+  type SellerConsentView,
+  type SellerPreferredNext,
+} from "./lot-reoffer.js";
 export type {
   IPrivateSaleDealReader,
   IPrivateSaleDealWriter,

@@ -552,6 +552,14 @@ export const WORKER_DISPLAY_PAIRING_TABLES = ["saleroom_display_pairing"] as con
 /** Invoice addressing reads during lot invoice initiation. */
 export const WORKER_FINANCE_READ_TABLES = ["address"] as const;
 
+/**
+ * Re-offers after a buyer default: the sweeps lapse an unanswered seller request and end an offer
+ * the bidder let run out, so worker_app reads these tables and updates their status. It never
+ * creates an offer or a seller answer and never deletes one: staff and the people answering do,
+ * through the API.
+ */
+export const WORKER_REOFFER_TABLES = ["lot_reoffer", "seller_consent"] as const;
+
 /** Lot lifecycle notification staging (won/lost) drained by notification outbox cron. */
 export const WORKER_NOTIFICATION_OUTBOX_TABLES = ["notification_outbox"] as const;
 
@@ -1174,6 +1182,9 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
         }
         for (const tableName of WORKER_FINANCE_READ_TABLES) {
           await grantIfExists(client, "worker_app", tableName, "SELECT");
+        }
+        for (const tableName of WORKER_REOFFER_TABLES) {
+          await grantIfExists(client, "worker_app", tableName, "SELECT, UPDATE");
         }
         for (const tableName of WORKER_NOTIFICATION_OUTBOX_TABLES) {
           await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT, UPDATE");

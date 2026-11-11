@@ -7,6 +7,7 @@ import { createDb } from "./client.js";
 import {
   WORKER_DENY_TABLES,
   WORKER_EMAIL_SUPPRESSION_UPDATE_COLUMNS,
+  WORKER_REOFFER_TABLES,
   WORKER_SHOP_ENQUIRY_READ_COLUMNS,
   WORKER_SHOP_ORDER_READ_COLUMNS,
   WORKER_SHOP_PRINT_GROUP_READ_COLUMNS,
@@ -54,6 +55,17 @@ describe.skipIf(!WORKER_URL)("worker_app role contract", { timeout: 60_000 }, ()
         ["SELECT", "INSERT", "UPDATE", "DELETE"],
       );
       expectTablePrivileges(rows, (row) => ["SELECT", "INSERT"].includes(row.privilege));
+    });
+  });
+
+  it("reads and updates re-offers and seller answers, never adding or removing one", async () => {
+    await withWorkerClient(async (client) => {
+      const rows = await readTablePrivileges(
+        client,
+        [...WORKER_REOFFER_TABLES],
+        ["SELECT", "INSERT", "UPDATE", "DELETE"],
+      );
+      expectTablePrivileges(rows, (row) => ["SELECT", "UPDATE"].includes(row.privilege));
     });
   });
 

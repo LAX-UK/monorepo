@@ -67,7 +67,17 @@ describe("migration 0284 alert engine", () => {
     };
     // Types added by later migrations are not part of what 0284 allowed.
     const asOf0284 = NOTIFICATION_TYPES.filter(
-      (t) => !["artist_lots_listed", "search_lots_listed"].includes(t),
+      (t) =>
+        ![
+          "artist_lots_listed",
+          "search_lots_listed",
+          "reoffer_seller_request",
+          "reoffer_seller_reminder",
+          "reoffer_seller_outcome",
+          "reoffer_offer",
+          "reoffer_offer_reminder",
+          "reoffer_offer_closed",
+        ].includes(t),
     );
     expect(typesIn(migration)).toEqual(asOf0284);
     expect(typesIn(rollback)).toEqual(asOf0284.filter((t) => t !== "sale_announced"));
