@@ -1,6 +1,7 @@
+import type { AccountTimeZone, AccountTimeZoneChange } from "@auction/identity-contracts";
 import type { IdentityDatabase } from "@auction/identity-db";
 import { account, twoFactor, user } from "@auction/identity-db/schema";
-import { and, eq, ne, sql } from "drizzle-orm";
+import { and, eq, isNull, lt, ne, or, sql } from "drizzle-orm";
 import type {
   IIdentitySubjectRepository,
   IdentityOperationTransaction,
@@ -12,6 +13,9 @@ function isUniqueViolation(error: unknown): boolean {
   const code = (error as { code?: unknown; cause?: { code?: unknown } } | null) ?? {};
   return code.code === "23505" || code.cause?.code === "23505";
 }
+
+/** TZ11: a device changes the automatic zone at most once a day. */
+const DEVICE_ZONE_REPORT_INTERVAL_MS = 24 * 60 * 60 * 1000;
 
 const subjectSelection = {
   id: user.id,
@@ -59,6 +63,71 @@ export class DrizzleIdentitySubjectRepository implements IIdentitySubjectReposit
       .where(eq(user.id, subjectId))
       .limit(1);
     return row ?? null;
+  }
+
+  async readTimeZone(subjectId: string): Promise<AccountTimeZone | null> {
+    const [row] = await this.db
+      .select({ mode: user.timeZoneMode, zone: user.timeZone })
+      .from(user)
+      .where(eq(user.id, subjectId))
+      .limit(1);
+    return row ?? null;
+  }
+
+  async updateTimeZone(
+    transaction: IdentityOperationTransaction,
+    subjectId: string,
+    change: AccountTimeZoneChange,
+    now: Date,
+  ): Promise<AccountTimeZone | null> {
+    const tx = identityOperationDb(this.db, transaction);
+    if (change.mode === "fixed") {
+      const [updated] = await tx
+        .update(user)
+        .set({ timeZoneMode: "fixed", timeZone: change.zone, updatedAt: now })
+        .where(eq(user.id, subjectId))
+        .returning({ mode: user.timeZoneMode, zone: user.timeZone });
+      return updated ?? null;
+    }
+    // Going back to automatic keeps the stored zone only if the device has reported one.
+    const [updated] = await tx
+      .update(user)
+      .set({
+        timeZoneMode: "automatic",
+        timeZone: change.deviceZone,
+        timeZoneReportedAt: change.deviceZone ? now : null,
+        updatedAt: now,
+      })
+      .where(eq(user.id, subjectId))
+      .returning({ mode: user.timeZoneMode, zone: user.timeZone });
+    return updated ?? null;
+  }
+
+  async updateDeviceZone(
+    transaction: IdentityOperationTransaction,
+    subjectId: string,
+    deviceZone: string,
+    now: Date,
+  ): Promise<AccountTimeZone | null> {
+    const tx = identityOperationDb(this.db, transaction);
+    const [updated] = await tx
+      .update(user)
+      .set({ timeZone: deviceZone, timeZoneReportedAt: now, updatedAt: now })
+      .where(
+        and(
+          eq(user.id, subjectId),
+          eq(user.timeZoneMode, "automatic"),
+          sql`${user.timeZone} IS DISTINCT FROM ${deviceZone}`,
+          // A device reports at most once a day, so two devices on different zones do not write
+          // and publish on every switch.
+          or(
+            isNull(user.timeZoneReportedAt),
+            lt(user.timeZoneReportedAt, new Date(now.getTime() - DEVICE_ZONE_REPORT_INTERVAL_MS)),
+          ),
+        ),
+      )
+      .returning({ mode: user.timeZoneMode, zone: user.timeZone });
+    return updated ?? null;
   }
 
   async updateProfile(

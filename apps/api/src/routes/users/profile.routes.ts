@@ -6,10 +6,18 @@ import {
   updateAddressBodySchema,
   updateProfileSchema,
 } from "@auction/validators";
+import { z } from "zod";
 import { marketingWebsiteContextFromHono } from "../../lib/marketing-website-context.js";
 import { respondUserHttpJson } from "../../lib/user-route-response.js";
 import { zValidator } from "../../lib/z-validator.js";
 import type { UserHono, UserRouteDeps } from "./_shared.js";
+
+const timeZoneBodySchema = z.object({
+  mode: z.enum(["automatic", "fixed"]),
+  zone: z.string().max(64).nullable().optional(),
+});
+
+const deviceZoneBodySchema = z.object({ zone: z.string().max(64).nullable().optional() });
 
 export function attachUserProfileRoutes(r: UserHono, deps: UserRouteDeps): void {
   const { container, requireAuth, requireAuthAllowSuspended } = deps;
@@ -36,6 +44,25 @@ export function attachUserProfileRoutes(r: UserHono, deps: UserRouteDeps): void 
     const response = await container.userRoutes.profileHttp.updateProfile({ userId, body });
     return respondUserHttpJson(c, response);
   });
+
+  r.put("/me/time-zone", requireAuth, zValidator("json", timeZoneBodySchema), async (c) => {
+    const userId = c.get("userId") as string;
+    const body = c.req.valid("json");
+    const response = await container.userRoutes.profileHttp.setTimeZone({ userId, body });
+    return respondUserHttpJson(c, response);
+  });
+
+  r.post(
+    "/me/time-zone/device",
+    requireAuth,
+    zValidator("json", deviceZoneBodySchema),
+    async (c) => {
+      const userId = c.get("userId") as string;
+      const body = c.req.valid("json");
+      const response = await container.userRoutes.profileHttp.reportDeviceZone({ userId, body });
+      return respondUserHttpJson(c, response);
+    },
+  );
 
   r.get("/me/addresses", requireAuth, async (c) => {
     const userId = c.get("userId") as string;

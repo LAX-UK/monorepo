@@ -1,7 +1,7 @@
 // The device is in London for these tests; a visitor elsewhere has chosen their zone.
 process.env.TZ = "Europe/London";
 
-import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ChangeZoneDialog } from "./change-zone-dialog.js";
@@ -133,6 +133,25 @@ describe("ChangeZoneDialog", () => {
     expect(screen.getByRole("alert")).toHaveTextContent("We couldn’t save your time zone.");
     expect(toastSuccess).not.toHaveBeenCalled();
     expect(saveButton()).toBeEnabled();
+  });
+
+  it("says the sale's zone in its description, or a generic line where there is no sale", () => {
+    const dialog = renderDialog({ zone: "Asia/Tokyo", source: "chosen" });
+    expect(dialog).toHaveTextContent("Sale times always show London time first.");
+    cleanup();
+    render(
+      <ZonePreferenceProvider port={port()}>
+        <ChangeZoneDialog
+          open
+          onOpenChange={() => {}}
+          current={{ zone: "Asia/Tokyo", source: "account" }}
+          at={AT}
+        />
+      </ZonePreferenceProvider>,
+    );
+    const generic = screen.getByRole("dialog", { name: "Time zone" });
+    expect(generic).not.toHaveTextContent("Sale times");
+    expect(generic).toHaveTextContent("Choose the city for the times we show you.");
   });
 
   it("makes Save the primary (ink) button", () => {

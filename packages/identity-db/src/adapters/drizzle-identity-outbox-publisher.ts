@@ -25,6 +25,9 @@ export type IdentityOutboxLifecycleEvent =
       phone?: string | null;
       phoneVerified?: boolean;
       image?: string | null;
+      /** LAX Account's time zone choice; sent together. */
+      timeZoneMode?: "automatic" | "fixed";
+      timeZone?: string | null;
     }
   | { type: "user.deletion_requested"; userId: string; requestedAt?: Date }
   | { type: "user.deletion_cancelled"; userId: string; cancelledAt?: Date }
@@ -145,6 +148,8 @@ function buildOutboxRow(
           ...(event.phone !== undefined ? { phone: event.phone } : {}),
           ...(event.phoneVerified !== undefined ? { phoneVerified: event.phoneVerified } : {}),
           ...(event.image !== undefined ? { image: event.image } : {}),
+          ...(event.timeZoneMode !== undefined ? { timeZoneMode: event.timeZoneMode } : {}),
+          ...(event.timeZone !== undefined ? { timeZone: event.timeZone } : {}),
           updatedAt: new Date().toISOString(),
         },
       };
