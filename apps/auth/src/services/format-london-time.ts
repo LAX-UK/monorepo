@@ -22,3 +22,41 @@ export function formatLondonTime(at: Date): string {
 export function formatLondonDate(at: Date): string {
   return DATE.format(at);
 }
+
+const LONDON = "Europe/London";
+
+type ZoneFormats = { date: Intl.DateTimeFormat; time: Intl.DateTimeFormat };
+const formatsByZone = new Map<string, ZoneFormats>();
+
+function formatsFor(zone: string): ZoneFormats {
+  let formats = formatsByZone.get(zone);
+  if (!formats) {
+    formats = {
+      date: new Intl.DateTimeFormat("en-GB", {
+        timeZone: zone,
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      }),
+      time: new Intl.DateTimeFormat("en-GB", {
+        timeZone: zone,
+        hour: "2-digit",
+        minute: "2-digit",
+        hourCycle: "h23",
+        timeZoneName: "short",
+      }),
+    };
+    formatsByZone.set(zone, formats);
+  }
+  return formats;
+}
+
+/**
+ * "24 October 2026 at 01:05 GMT+11": the time as the person's own clock reads it, with the zone
+ * named. A personal event is shown on the person's clock only: their saved Account zone, or
+ * London when they have none.
+ */
+export function formatNoticeTime(at: Date, savedZone: string | null): string {
+  const { date, time } = formatsFor(savedZone ?? LONDON);
+  return `${date.format(at)} at ${time.format(at)}`;
+}

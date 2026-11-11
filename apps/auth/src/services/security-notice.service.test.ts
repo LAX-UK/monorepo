@@ -1,6 +1,6 @@
 import type { EmailEnqueueInput } from "@auction/auth";
 import { describe, expect, it, vi } from "vitest";
-import { formatLondonTime } from "./format-london-time.js";
+import { formatLondonTime, formatNoticeTime } from "./format-london-time.js";
 import {
   KNOWN_DEVICE_WINDOW_MS,
   type KnownDeviceStore,
@@ -19,7 +19,11 @@ const CANCEL_URL = "https://account.lax.bid/account/security/delete";
 const DATA_URL = "https://account.lax.bid/account/privacy/download";
 
 function setup(
-  options: { seen?: Awaited<ReturnType<KnownDeviceStore["touch"]>>; sentToday?: number } = {},
+  options: {
+    seen?: Awaited<ReturnType<KnownDeviceStore["touch"]>>;
+    sentToday?: number;
+    zone?: string | null;
+  } = {},
 ) {
   const email = {
     enqueue: vi.fn<(input: EmailEnqueueInput) => Promise<{ outboxId: string }>>(async () => ({
@@ -33,6 +37,7 @@ function setup(
   };
   const subjects = {
     findById: vi.fn(async () => ({ id: USER, email: "ada@example.com", name: "Ada" })),
+    readTimeZone: vi.fn(async () => ({ mode: "fixed" as const, zone: options.zone ?? null })),
   };
   const log = { warn: vi.fn(), error: vi.fn() };
   const service = new SecurityNoticeService(
@@ -60,6 +65,33 @@ describe("formatLondonTime", () => {
   it("uses GMT in winter", () => {
     expect(formatLondonTime(new Date("2026-12-01T13:05:00.000Z"))).toBe(
       "1 December 2026 at 13:05 GMT",
+    );
+  });
+});
+
+describe("formatNoticeTime", () => {
+  it("is London with the zone named when the person has no saved zone", () => {
+    expect(formatNoticeTime(AT, null)).toBe("23 October 2026 at 14:05 BST");
+  });
+
+  it("is the saved zone's clock with that zone named, on its own day", () => {
+    const late = new Date("2026-10-23T20:30:00.000Z");
+    expect(formatNoticeTime(late, "Australia/Sydney")).toBe("24 October 2026 at 07:30 GMT+11");
+  });
+});
+
+describe("SecurityNoticeService sign-in times", () => {
+  it("tells a new sign-in on the clock of the zone saved in LAX Account", async () => {
+    const { service, email } = setup({ zone: "Africa/Cairo" });
+    await service.deliver({
+      kind: "password_changed",
+      userId: USER,
+      at: AT,
+      userAgent: CHROME_MAC,
+    } as never);
+    const sent = email.enqueue.mock.calls[0]?.[0];
+    expect((sent?.vars as { whenDisplay: string }).whenDisplay).toBe(
+      "23 October 2026 at 16:05 EEST",
     );
   });
 });
