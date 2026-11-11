@@ -17,6 +17,7 @@ import { STAFF_ROLE_FILTERS } from "@/lib/admin/people/staff-directory-list.vm";
 import { staffRoleLastDay } from "@/lib/admin/people/staff-roles.vm";
 import { staffStatus } from "@/lib/admin/staff-kit-status";
 import { USER_ROLE_MANAGEMENT_ACCESS } from "@/lib/navigation/staff-nav-access";
+import { londonToday } from "@auction/staff-ui";
 import {
   CsvExportMenu,
   type DataColumn,
@@ -198,7 +199,7 @@ export function StaffAccessReviewList({ model, search }: Props) {
           requires={USER_ROLE_MANAGEMENT_ACCESS}
           onExport={(scope) =>
             downloadCsv(
-              `staff-access-review-${new Date().toISOString().slice(0, 10)}.csv`,
+              `staff-access-review-${londonToday()}.csv`,
               ACCESS_REVIEW_CSV_COLUMNS,
               scope === "shown" ? model.csv.shown : model.csv.all,
             )
