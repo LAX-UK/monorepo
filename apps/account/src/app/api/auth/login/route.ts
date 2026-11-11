@@ -1,6 +1,8 @@
 import { safeReturnTo } from "@/lib/safe-return-to";
 import { LAX_ACCOUNT_LOGIN_COOKIE } from "@/lib/session-cookie";
 import { getLaxAccountContainer } from "@/server/container";
+import { REAUTH_REASON_QUERY } from "@/server/domain/account-reauth";
+import { parseAccountStepUpReason } from "@auction/identity-contracts";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
@@ -26,10 +28,12 @@ export async function GET(request: Request): Promise<Response> {
     url.searchParams.get("intent") === "reauth"
       ? await signedInSubject(container, cookieStore.get(container.cookies.sessionCookie)?.value)
       : null;
+  // Read against the fixed list: anything else is dropped, so no text from the address is ever shown.
+  const reason = parseAccountStepUpReason(url.searchParams.get(REAUTH_REASON_QUERY));
   const { authorizeUrl, pending } = container.startAccountLogin({
     config: container.config,
     returnTo,
-    ...(reauthSubject ? { reauth: { subject: reauthSubject } } : {}),
+    ...(reauthSubject ? { reauth: { subject: reauthSubject, ...(reason ? { reason } : {}) } } : {}),
   });
   cookieStore.set(LAX_ACCOUNT_LOGIN_COOKIE, JSON.stringify(pending), {
     httpOnly: true,

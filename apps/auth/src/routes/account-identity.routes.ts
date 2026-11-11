@@ -144,6 +144,7 @@ export function createAccountIdentityRoutes(deps: AccountIdentityRouteDeps) {
           createdAt: session.createdAt.toISOString(),
           lastActiveAt: session.lastActiveAt.toISOString(),
           isCurrent: session.isCurrent,
+          signedInWith: session.signedInWith,
         })),
       });
     });
