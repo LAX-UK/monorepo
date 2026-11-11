@@ -1,5 +1,5 @@
 import { encodeActingContextCookie } from "@auction/types";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { detectActingEntityCookieDrift } from "./acting-entity-cookie-drift";
 
 const PERSONAL = "10000000-0000-4000-8000-000000000003";
@@ -59,6 +59,20 @@ describe("detectActingEntityCookieDrift", () => {
     );
     expect(r?.isImpersonation).toBe(true);
     expect(r?.hasDrift).toBe(false);
+    expect(r?.shouldReconcile).toBe(false);
+  });
+});
+
+describe("detectActingEntityCookieDrift without Node Buffer (browser)", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("reads a view-as-client cookie and keeps its view session", () => {
+    const sid = "20000000-0000-4000-8000-000000000009";
+    const encoded = encodeActingContextCookie({ v: 1, e: OTHER, i: { sid } });
+    vi.stubGlobal("Buffer", undefined);
+    const r = detectActingEntityCookieDrift(OTHER, `lax_acting_legal_entity_id=${encoded}`);
+    expect(r?.cookieActingId).toBe(OTHER);
+    expect(r?.isImpersonation).toBe(true);
     expect(r?.shouldReconcile).toBe(false);
   });
 });

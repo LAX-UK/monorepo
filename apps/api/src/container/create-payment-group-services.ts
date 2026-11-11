@@ -17,6 +17,7 @@ import type { IStripeClientFactory } from "../lib/stripe-client.js";
 import { tryClaimProcessedStripeEvent } from "../lib/stripe-processed-event.js";
 import { recordMoneyPathEvent } from "../middleware/metrics.js";
 import type { IDomainEventSink } from "../services/domain-event-sink.js";
+import type { IErrorReporter } from "../services/interfaces/error-handling.js";
 import type { IInvoiceAccountingProvider } from "../services/interfaces/invoice-accounting.js";
 import type { IPaymentCaptureInTransaction } from "../services/interfaces/payment-capture.js";
 import type { IPayoutAdjustmentService } from "../services/interfaces/payout-adjustment.js";
@@ -70,6 +71,7 @@ export type CreatePaymentGroupServicesInput = {
   stripeCustomers: IStripeCustomerGateway;
   unappliedMoney: Pick<IUnappliedMoneyRecorder, "record">;
   eligibility: IPaymentEligibilityGate;
+  errorReporter: IErrorReporter;
 };
 
 /** Each invoice gets its accounting invoice first, as a single-invoice checkout does. */
@@ -120,6 +122,7 @@ export function createPaymentGroupServices(
     receipt: new PaymentGroupReceiptNotifier(input.notificationDispatcher),
     unappliedMoney: input.unappliedMoney,
     eligibility: input.eligibility,
+    errorReporter: input.errorReporter,
   });
   const checkout = new PaymentGroupCheckoutService({
     groups,

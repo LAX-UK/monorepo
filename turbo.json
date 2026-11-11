@@ -9,6 +9,7 @@
   ],
   "globalPassThroughEnv": [
     "NODE_ENV",
+    "NODE_OPTIONS",
     "APP_ENV",
     "PORT",
     "DATABASE_URL",
@@ -176,6 +177,8 @@
         "NEXT_PUBLIC_CSP_REPORT_URI",
         "NEXT_PUBLIC_SHOW_LIVE_BIDDING_NAV",
         "NEXT_PUBLIC_SENTRY_DSN_WEB",
+        "NEXT_PUBLIC_SENTRY_DSN_SHOP",
+        "NEXT_PUBLIC_SENTRY_DSN_ART",
         "NEXT_PUBLIC_SETTLEMENTS_EMAIL",
         "NEXT_PUBLIC_SETTLEMENTS_PHONE"
       ]

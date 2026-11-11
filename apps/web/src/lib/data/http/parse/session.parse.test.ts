@@ -16,6 +16,24 @@ describe("parseSessionUser", () => {
     });
   });
 
+  it("reads the LAX Account time zone choice", () => {
+    const base = { id: "u1", email: "client@example.com" };
+    expect(
+      parseSessionUser({ ...base, timeZone: { mode: "fixed", zone: "Asia/Tokyo" } }).timeZone,
+    ).toEqual({ mode: "fixed", zone: "Asia/Tokyo" });
+    expect(
+      parseSessionUser({ ...base, timeZone: { mode: "automatic", zone: null } }).timeZone,
+    ).toEqual({ mode: "automatic", zone: null });
+  });
+
+  it("ignores a time zone choice it does not recognise", () => {
+    const base = { id: "u1", email: "client@example.com" };
+    expect(
+      parseSessionUser({ ...base, timeZone: { mode: "later", zone: "Asia/Tokyo" } }).timeZone,
+    ).toBeUndefined();
+    expect(parseSessionUser(base).timeZone).toBeUndefined();
+  });
+
   it("does not invent availability when the field is absent", () => {
     expect(
       parseSessionUser({ id: "u1", email: "client@example.com" }).securityStatusAvailable,

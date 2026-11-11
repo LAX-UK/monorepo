@@ -5,6 +5,7 @@ import type Stripe from "stripe";
 import { gbpAmountToPence } from "../../lib/decimal-money.js";
 import { tryClaimProcessedStripeEvent } from "../../lib/stripe-processed-event.js";
 import { recordMoneyPathEvent } from "../../middleware/metrics.js";
+import { runAfterCapture } from "../payment/run-after-capture.js";
 import { chargeIdFromPaymentIntent } from "../stripe/stripe-charge-id.js";
 import type { IPaymentIntentWebhookHandler } from "./payment-intent-webhook-handler.js";
 import type { StripePaymentWebhookDeps } from "./payment-webhook-lookup.js";
@@ -41,89 +42,98 @@ export class PaymentIntentSucceededHandler implements IPaymentIntentWebhookHandl
     const chargeId = chargeIdFromPaymentIntent(paymentIntent);
     const hold = await this.holdReason(paymentRow);
 
-    return this.deps.transactionRunner.runInTransaction(async (tx) => {
-      const { claimed } = await tryClaimProcessedStripeEvent(
-        tx,
-        event.id,
-        PAYMENT_WEBHOOK_EVENT_SOURCE,
-      );
-      if (!claimed) {
-        return { processed: false, action: "skipped", reason: "duplicate_event" };
-      }
-
-      // Money that does not match the frozen invoice total is never captured against it.
-      if (paymentIntent.amount !== expectedPence) {
-        recordMoneyPathEvent("payment_intent_amount_mismatch");
-        return this.unapplied(tx, paymentRow, paymentIntent, chargeId, "amount_mismatch");
-      }
-
-      if (paymentRow.status === "cancelled" || paymentRow.status === "refunded") {
-        recordMoneyPathEvent("stripe_succeeded_for_terminal_payment");
-        console.error(
-          JSON.stringify({
-            msg: "stripe_succeeded_for_terminal_payment",
-            paymentId,
-            lotId: paymentRow.lotId,
-            statusBefore: paymentRow.status,
-            stripePaymentIntentId: paymentIntent.id,
-            stripeChargeId: chargeId,
-          }),
-        );
-        // A cancelled invoice keeps its own inbox item, where finance reinstates or refunds it.
-        await this.deps.domainEventSink.withTx(tx).publish({
-          aggregateType: "payment",
-          aggregateId: paymentId,
-          eventType: "payment.capture_blocked_terminal_status",
-          payload: {
-            paymentId,
-            lotId: paymentRow.lotId,
-            buyerUserId: paymentRow.paidByUserId ?? paymentRow.buyerId ?? null,
-            statusBefore: paymentRow.status,
-            stripePaymentIntentId: paymentIntent.id,
-            stripeChargeId: chargeId,
-            amountCents: expectedPence,
-          },
-          actorUserId: null,
-          actingLegalEntityId: paymentRow.buyerLegalEntityId ?? null,
-        });
-        await this.unapplied(
+    let afterCommit: (() => Promise<void>) | undefined;
+    const result = await this.deps.transactionRunner.runInTransaction<PaymentWebhookResult>(
+      async (tx) => {
+        afterCommit = undefined;
+        const { claimed } = await tryClaimProcessedStripeEvent(
           tx,
-          paymentRow,
-          paymentIntent,
-          chargeId,
-          paymentRow.status === "refunded" ? "invoice_refunded" : "invoice_cancelled",
+          event.id,
+          PAYMENT_WEBHOOK_EVENT_SOURCE,
         );
-        return {
-          processed: true,
-          action: "payment_intent_succeeded_terminal_blocked",
-          reason: "payment_terminal_status",
-        };
-      }
+        if (!claimed) {
+          return { processed: false, action: "skipped", reason: "duplicate_event" };
+        }
 
-      if (
-        paymentRow.status === "captured" &&
-        !isRecordedMoney(paymentRow, paymentIntent.id, chargeId)
-      ) {
-        // Paid twice: a renewed checkout, or a single checkout and a "Pay several" both paid.
-        recordMoneyPathEvent("payment_paid_twice");
-        return this.unapplied(tx, paymentRow, paymentIntent, chargeId, "invoice_already_paid");
-      }
+        // Money that does not match the frozen invoice total is never captured against it.
+        if (paymentIntent.amount !== expectedPence) {
+          recordMoneyPathEvent("payment_intent_amount_mismatch");
+          return this.unapplied(tx, paymentRow, paymentIntent, chargeId, "amount_mismatch");
+        }
 
-      if (hold && (paymentRow.status === "pending" || paymentRow.status === "authorized")) {
-        return this.toManualReview(tx, paymentRow, paymentIntent.id, chargeId, hold);
-      }
+        if (paymentRow.status === "cancelled" || paymentRow.status === "refunded") {
+          recordMoneyPathEvent("stripe_succeeded_for_terminal_payment");
+          console.error(
+            JSON.stringify({
+              msg: "stripe_succeeded_for_terminal_payment",
+              paymentId,
+              lotId: paymentRow.lotId,
+              statusBefore: paymentRow.status,
+              stripePaymentIntentId: paymentIntent.id,
+              stripeChargeId: chargeId,
+            }),
+          );
+          // A cancelled invoice keeps its own inbox item, where finance reinstates or refunds it.
+          await this.deps.domainEventSink.withTx(tx).publish({
+            aggregateType: "payment",
+            aggregateId: paymentId,
+            eventType: "payment.capture_blocked_terminal_status",
+            payload: {
+              paymentId,
+              lotId: paymentRow.lotId,
+              buyerUserId: paymentRow.paidByUserId ?? paymentRow.buyerId ?? null,
+              statusBefore: paymentRow.status,
+              stripePaymentIntentId: paymentIntent.id,
+              stripeChargeId: chargeId,
+              amountCents: expectedPence,
+            },
+            actorUserId: null,
+            actingLegalEntityId: paymentRow.buyerLegalEntityId ?? null,
+          });
+          await this.unapplied(
+            tx,
+            paymentRow,
+            paymentIntent,
+            chargeId,
+            paymentRow.status === "refunded" ? "invoice_refunded" : "invoice_cancelled",
+          );
+          return {
+            processed: true,
+            action: "payment_intent_succeeded_terminal_blocked",
+            reason: "payment_terminal_status",
+          };
+        }
 
-      await this.deps.paymentCapture.capture({
-        paymentId,
-        via: "stripe_checkout_webhook",
-        stripeChargeId: chargeId,
-        stripePaymentIntentId: paymentIntent.id,
-        requireApply: true,
-        tx,
-      });
+        if (
+          paymentRow.status === "captured" &&
+          !isRecordedMoney(paymentRow, paymentIntent.id, chargeId)
+        ) {
+          // Paid twice: a renewed checkout, or a single checkout and a "Pay several" both paid.
+          recordMoneyPathEvent("payment_paid_twice");
+          return this.unapplied(tx, paymentRow, paymentIntent, chargeId, "invoice_already_paid");
+        }
 
-      return { processed: true, action: "payment_intent_succeeded" };
-    });
+        if (hold && (paymentRow.status === "pending" || paymentRow.status === "authorized")) {
+          return this.toManualReview(tx, paymentRow, paymentIntent.id, chargeId, hold);
+        }
+
+        const captured = await this.deps.paymentCapture.capture({
+          paymentId,
+          via: "stripe_checkout_webhook",
+          stripeChargeId: chargeId,
+          stripePaymentIntentId: paymentIntent.id,
+          requireApply: true,
+          tx,
+        });
+        afterCommit = captured.afterCommit;
+
+        return { processed: true, action: "payment_intent_succeeded" };
+      },
+    );
+    // Receipts, fulfilment, accounting and closing the invoice's other checkouts only once the
+    // capture is committed, never against a transaction that could still roll back.
+    await runAfterCapture(afterCommit, { paymentId }, this.deps.errorReporter);
+    return result;
   }
 
   /**

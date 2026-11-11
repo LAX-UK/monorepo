@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "../lib/utils.js";
-import { TimeChip } from "./time-chip.js";
+import { TimeChip, type TimeChipProps } from "./time-chip.js";
 import { useHydrated } from "./use-hydrated.js";
 
 export type ChipPlacement = "below" | "inline";
@@ -16,6 +16,9 @@ export type TimeChipSlotProps = {
    * the time, when the parent is a wrapping flex row (the sale hero's meta line).
    */
   placement?: ChipPlacement;
+  /** `plain` is the same words as text, for a row that is a link already. */
+  variant?: TimeChipProps["variant"];
+  className?: string;
 };
 
 /**
@@ -25,14 +28,25 @@ export type TimeChipSlotProps = {
  * from the sale's own zone (a Paris visitor on a Paris sale) is released at once. It is a div:
  * the open panel is a dialog holding paragraphs, which a span cannot contain.
  */
-export function TimeChipSlot({ instant, officialZone, placement = "below" }: TimeChipSlotProps) {
+export function TimeChipSlot({
+  instant,
+  officialZone,
+  placement = "below",
+  variant = "button",
+  className,
+}: TimeChipSlotProps) {
   const settled = useHydrated();
   return (
     <div
-      className={cn("tz-chip-slot", placement === "inline" && "tz-chip-slot--inline")}
+      className={cn(
+        "tz-chip-slot",
+        placement === "inline" && "tz-chip-slot--inline",
+        variant === "plain" && "tz-chip-slot--plain",
+        className,
+      )}
       {...(settled ? { "data-settled": "" } : {})}
     >
-      <TimeChip instant={instant} officialZone={officialZone} />
+      <TimeChip instant={instant} officialZone={officialZone} variant={variant} />
     </div>
   );
 }

@@ -168,6 +168,45 @@ describe("UnappliedMoneyRecorder", () => {
     );
   });
 
+  it("a paid-twice report for an intent closes its open part-transfer task as superseded", async () => {
+    const publish = vi.fn().mockResolvedValue(undefined);
+    const r = reader();
+    const partial = {
+      ...money,
+      reason: "transfer_partially_funded_after_paid" as const,
+      dedupeKey: "transfer_partially_funded_after_paid:pi_2",
+      eventId: 4,
+      receivedAt: new Date(),
+    };
+    r.listOpen.mockResolvedValue([partial]);
+
+    await new UnappliedMoneyRecorder(r, mockDomainEventSink(publish)).record(tx, money, null);
+
+    expect(r.listOpen).toHaveBeenCalledWith(
+      expect.objectContaining({
+        reasons: ["transfer_partially_funded_after_paid"],
+        paymentIntentId: "pi_2",
+      }),
+      tx,
+    );
+    expect(publish).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventType: "payment.unapplied_money_resolved",
+        payload: { dedupeKey: partial.dedupeKey, via: "superseded" },
+      }),
+    );
+  });
+
+  it("a part-transfer report supersedes nothing", async () => {
+    const r = reader();
+    await new UnappliedMoneyRecorder(r, mockDomainEventSink(vi.fn())).record(
+      tx,
+      { ...money, reason: "transfer_partially_funded_after_paid" },
+      null,
+    );
+    expect(r.listOpen).not.toHaveBeenCalled();
+  });
+
   it("a balance report in one currency only looks for that currency's open tasks", async () => {
     const r = reader();
     const balance = {

@@ -16,7 +16,9 @@ import type {
 import { gbpAmountToPence, gbpPenceToMajorString } from "../../lib/decimal-money.js";
 import { recordMoneyPathEvent } from "../../middleware/metrics.js";
 import type { IDomainEventSink } from "../domain-event-sink.js";
+import type { IErrorReporter } from "../interfaces/error-handling.js";
 import type { IPaymentCaptureInTransaction } from "../interfaces/payment-capture.js";
+import { runAfterCapture } from "../payment/run-after-capture.js";
 import type { IUnappliedMoneyRecorder } from "../payment/unapplied-money.recorder.js";
 import type { PaymentWebhookResult } from "../stripe-webhook/payment-webhook-types.js";
 
@@ -57,6 +59,8 @@ export type PaymentGroupSettlementDeps = {
   unappliedMoney: Pick<IUnappliedMoneyRecorder, "record">;
   /** The same gate single-invoice payments use: a held or closed account's money is not captured. */
   eligibility: IPaymentEligibilityGate;
+  /** Where a capture's failed follow-up steps are reported; they never fail the webhook. */
+  errorReporter?: IErrorReporter;
 };
 
 const LIVE: PaymentGroupStatus[] = ["open", "processing"];
@@ -181,7 +185,9 @@ export class PaymentGroupSettlementService {
       return { processed: true, action: "payment_intent_succeeded" } as const;
     });
 
-    for (const run of afterCommit) await run();
+    for (const run of afterCommit) {
+      await runAfterCapture(run, { paymentGroupId: input.groupId }, this.deps.errorReporter);
+    }
     const settled = paid as {
       group: PaymentGroupRecord;
       members: PaymentGroupMember[];

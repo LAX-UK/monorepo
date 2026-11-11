@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@auction/branding": "workspace:*",
+    "@auction/datetime": "workspace:*",
     "@auction/http-headers": "workspace:*",
     "@auction/identity-rp": "workspace:*",
     "@auction/lax-ecosystem": "workspace:*",

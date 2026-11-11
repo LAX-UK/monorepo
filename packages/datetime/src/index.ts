@@ -1,7 +1,14 @@
 export { LONDON_TIME_ZONE } from "./constants.js";
 export { cityName } from "./city.js";
 export { type DateInput, toDate } from "./date-input.js";
-export { calendarDaysBetween, dayKey, dayOffset, endOfDay, startOfDay } from "./day.js";
+export {
+  addCalendarDays,
+  calendarDaysBetween,
+  dayKey,
+  dayOffset,
+  endOfDay,
+  startOfDay,
+} from "./day.js";
 export {
   calendarYear,
   formatDate,
@@ -26,7 +33,7 @@ export {
 export type { LocalTime } from "./local-time.js";
 export { gmtOffsetLabel, offsetMinutes, sameOffset } from "./offset.js";
 export { isPlaceholderZone, isValidZone, normaliseViewerZone } from "./zone.js";
-export { shortZoneName } from "./zone-formats.js";
+export { shortMonthFormat, shortZoneName } from "./zone-formats.js";
 export { clockChange, clockChangeNotice } from "./clock-change.js";
 export {
   type WallClockResult,
@@ -58,3 +65,12 @@ export {
   resolveViewerZone,
 } from "./viewer-zone.js";
 export { TZ_AWAY_CLASS, buildViewerZoneScript } from "./viewer-zone-script.js";
+export {
+  formatDateTime,
+  formatDayMonthOnly,
+  formatTimeUnpadded,
+  formatWeekdayDate,
+  formatWeekdayDateTime,
+  formatWeekdayDayMonth,
+  runtimeTimeZone,
+} from "./calendar-formats.js";

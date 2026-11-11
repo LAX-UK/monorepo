@@ -46,6 +46,11 @@ export type RecordRowProps = {
   /** One line of facts, shown with "·" between them. Empty entries are dropped. */
   meta?: readonly React.ReactNode[];
   /**
+   * One more fact for a narrow row only, for a fact a wide row says elsewhere (in a figure's
+   * `note`), so it is never said twice.
+   */
+  metaNarrow?: React.ReactNode;
+  /**
    * The position in `meta` of the one fact that gives way to a long value. When set, a wide row
    * keeps its facts on one line, truncating that fact, in tabular figures; a narrow row wraps
    * them as usual. Without it, facts wrap at every width.
@@ -104,6 +109,17 @@ export type RecordFigure = {
    * never reads as a dash under a label.
    */
   pending?: boolean;
+  /**
+   * A line in the label's place, one line under the value ("20:00 in Cairo"). The label stays
+   * for readers only, so the cell keeps its height.
+   */
+  note?: React.ReactNode;
+  /**
+   * A wide row gives this cell room (9rem) for a note that names a day, while the page knows the
+   * visitor's clock differs from London's (`html.tz-away`). Give it to every row's cell in the
+   * column, so the columns of a list stay aligned.
+   */
+  roomyWhenAway?: boolean;
 };
 
 /**
@@ -121,12 +137,13 @@ function RecordFigures({ figures }: { figures: readonly RecordFigure[] }) {
             "min-w-0 items-baseline gap-1",
             "@2xl:w-28 @2xl:flex-col @2xl:items-end @2xl:gap-0 @2xl:text-right",
             index === 0 ? "flex" : "hidden @2xl:flex",
+            figure.roomyWhenAway && "[html.tz-away_&]:@2xl:w-36",
           )}
         >
           <dt
             // Joined, not merged: the type step and the colour are both `text-` classes.
             className={
-              figure.pending
+              figure.pending || figure.note
                 ? "sr-only"
                 : `truncate font-body text-label-3 leading-5 text-on-surface-variant ${
                     figure.labelFirst ? "order-1 @2xl:order-2" : "order-2"
@@ -146,6 +163,11 @@ function RecordFigures({ figures }: { figures: readonly RecordFigure[] }) {
           >
             {figure.value}
           </dd>
+          {figure.note ? (
+            <dd className="order-2 w-full min-w-0 truncate font-body text-label-3 leading-5 whitespace-nowrap text-on-surface-variant">
+              {figure.note}
+            </dd>
+          ) : null}
         </div>
       ))}
     </dl>
@@ -164,11 +186,14 @@ function isShown(node: React.ReactNode): boolean {
 function MetaLine({
   items,
   shrink,
+  narrowOnly,
 }: {
   items: readonly React.ReactNode[];
   shrink?: number | undefined;
+  narrowOnly?: React.ReactNode;
 }) {
   const shown = items.flatMap((item, index) => (isShown(item) ? [{ item, index }] : []));
+  if (isShown(narrowOnly)) shown.push({ item: narrowOnly, index: items.length });
   if (shown.length === 0) return null;
   const oneLine = shrink !== undefined;
   return (
@@ -186,7 +211,7 @@ function MetaLine({
             data-record-fact
             className={`flex min-w-0 before:w-4 before:shrink-0 before:text-center before:content-['·'_/_'']${
               oneLine && index !== shrink ? " @2xl:shrink-0" : ""
-            }`}
+            }${index === items.length && isShown(narrowOnly) ? " @2xl:hidden" : ""}`}
           >
             <span className="min-w-0 truncate">{item}</span>
           </span>
@@ -209,6 +234,7 @@ export function RecordRow({
   linkAs: Link = "a",
   meta = [],
   metaShrink,
+  metaNarrow,
   status,
   value,
   figures = [],
@@ -261,7 +287,7 @@ export function RecordRow({
                   title
                 )}
               </p>
-              <MetaLine items={meta} shrink={metaShrink} />
+              <MetaLine items={meta} shrink={metaShrink} narrowOnly={metaNarrow} />
             </div>
             {hasFoot ? (
               <div
@@ -279,7 +305,7 @@ export function RecordRow({
                       "shrink-0",
                       // Narrow, the status leads the line and the figure follows it.
                       figures.length > 0 && "-order-1 @2xl:order-none",
-                      aligned && "@2xl:flex @2xl:w-40 @2xl:justify-start",
+                      aligned && "@2xl:flex @2xl:w-32 @2xl:justify-start",
                       !isShown(status) && "hidden",
                     )}
                   >

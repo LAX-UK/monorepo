@@ -26,6 +26,7 @@ export const HOSTED_AUTH_MESSAGES = {
   VERIFY_FAILED: "Verification link is invalid or expired.",
   MFA_FAILED: "Verification failed. Try again.",
   MFA_CODE_INVALID: "That code didn't match. Check your authenticator app and try again.",
+  PASSWORD_INCORRECT: "That password is incorrect.",
   MFA_PASSWORD_INCORRECT: "That password is incorrect.",
   MFA_CHALLENGE_EXPIRED: "Your sign-in timed out.",
   MFA_LOCKED:

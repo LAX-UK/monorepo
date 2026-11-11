@@ -1,3 +1,4 @@
+import { formatDateTime } from "@auction/datetime";
 import type { IEmailService } from "@auction/email";
 import type pino from "pino";
 import type { ProjectorRunContext } from "./lib/projector.types.js";
@@ -57,11 +58,7 @@ export async function processAdminImpersonationNotify(options: {
       const windowEnd = new Date(payload.expires_at);
       const windowEndDisplay = Number.isNaN(windowEnd.getTime())
         ? payload.expires_at
-        : windowEnd.toLocaleString("en-GB", {
-            dateStyle: "medium",
-            timeStyle: "short",
-            timeZone: "UTC",
-          });
+        : formatDateTime(windowEnd, "UTC", { engineSept: true });
 
       for (const m of members) {
         await emailService.enqueue({

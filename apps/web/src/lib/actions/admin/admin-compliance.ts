@@ -2,6 +2,7 @@
 
 import { complianceErrorMessage } from "@/lib/admin/compliance-error-messages";
 import { denyUnlessAdminCapability } from "@/lib/auth/assert-admin-action-capability";
+import { stepUpRequiredFailure } from "@/lib/auth/step-up/step-up-failure";
 import { getWriteContainer } from "@/lib/data/write-container.server";
 import { type ActionResult, actionFailure, actionSuccess } from "@/lib/forms/form-result";
 import { AML_REVIEW_ACCESS, MLRO_DECISION_ACCESS } from "@/lib/navigation/staff-nav-access";
@@ -34,7 +35,7 @@ function staleSignIn(res: {
   const bodyCode =
     res.body && typeof res.body === "object" ? (res.body as { code?: unknown }).code : undefined;
   if (res.status !== 403 || (res.code ?? bodyCode) !== STAFF_STEP_UP_REQUIRED) return null;
-  return actionFailure("Recent sign-in required", undefined, 403, STAFF_STEP_UP_REQUIRED);
+  return stepUpRequiredFailure();
 }
 
 const amlTriageInput = z.object({

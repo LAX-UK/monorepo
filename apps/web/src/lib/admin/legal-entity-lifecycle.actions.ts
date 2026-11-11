@@ -8,13 +8,13 @@ import {
 import { CLIENT_MESSAGE_MAX } from "@/lib/admin/legal-entity-client-message";
 import { denyUnlessAdminCapability } from "@/lib/auth/assert-admin-action-capability";
 import { isStaffStepUpResponse } from "@/lib/auth/step-up/staff-step-up.server";
+import { stepUpRequiredFailure } from "@/lib/auth/step-up/step-up-failure";
 import type { AdminLegalEntityDocument } from "@/lib/data/http/admin.server";
 import { getAdminLegalEntityById } from "@/lib/data/http/admin.server";
 import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
 import { type ActionResult, actionFailure, actionSuccess } from "@/lib/forms/form-result";
 import { LEGAL_ENTITY_WRITE_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { instrumentServerAction } from "@/lib/observability/instrument-server-action";
-import { STAFF_STEP_UP_REQUIRED } from "@auction/identity-contracts/staff-step-up";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
@@ -136,7 +136,7 @@ async function runReasonedTransition(
     return actionSuccess();
   }
   if (await isStaffStepUpResponse(res)) {
-    return actionFailure("Recent sign-in required", undefined, 403, STAFF_STEP_UP_REQUIRED);
+    return stepUpRequiredFailure();
   }
   return actionFailure(await readFailureMessage(res), undefined, res.status);
 }

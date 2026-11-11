@@ -102,3 +102,16 @@ export {
 } from "./pages/verification.js";
 export { HOSTED_MAGIC_LINK_SCRIPT, buildHostedMagicLinkHtml } from "./pages/magic-link.js";
 export { OIDC_CONSENT_SCRIPT, buildOidcConsentHtml } from "./pages/consent.js";
+export {
+  HOSTED_PASSKEY_ADD_SCRIPT,
+  buildHostedAddPasskeyHtml,
+  buildHostedPasskeyExpiredHtml,
+  type HostedAddPasskeyInput,
+} from "./pages/passkey-add.js";
+export {
+  HOSTED_CONFIRM_SCRIPT,
+  buildHostedConfirmHtml,
+  hasConfirmMethod,
+  type ConfirmMethods,
+} from "./pages/confirm.js";
+export { PASSKEY_COPY } from "./passkey-copy.js";

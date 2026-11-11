@@ -5,6 +5,7 @@ import {
   type ConsignmentInboxView,
   defaultConsignmentInboxSort,
 } from "@auction/domain";
+import { formatStaffNumber } from "@auction/staff-ui";
 import type { ConsignmentInboxFacet, ConsignmentInboxSummary } from "@auction/validators";
 
 /**
@@ -194,5 +195,5 @@ export function inboxClearedHref(state: InboxListState): string {
 /** "1–6 of 12". */
 export function inboxRangeSummary(offset: number, shown: number, total: number): string {
   if (total === 0 || shown === 0) return "0 threads";
-  return `${offset + 1}–${offset + shown} of ${total.toLocaleString("en-GB")}`;
+  return `${offset + 1}–${offset + shown} of ${formatStaffNumber(total)}`;
 }

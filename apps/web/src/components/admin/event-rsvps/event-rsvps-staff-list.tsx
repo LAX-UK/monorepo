@@ -24,6 +24,7 @@ import {
   StatusBadge,
   TableSearch,
   formatStaffDateTime,
+  formatStaffNumber,
   searchChipLabel,
 } from "@auction/staff-ui";
 import { ArrowUpRight, Plus, ScanLine } from "lucide-react";
@@ -105,7 +106,7 @@ export function EventRsvpsStaffList(props: EventRsvpsStaffListProps) {
         sortable: true,
         defaultSortDirection: "desc",
         mobile: "meta",
-        cell: (row) => row.rsvpCount.toLocaleString("en-GB"),
+        cell: (row) => formatStaffNumber(row.rsvpCount),
       },
       {
         id: "starts",
@@ -252,7 +253,7 @@ export function EventRsvpQuickView({
       }}
       title={row?.title ?? "Event"}
       status={row ? <StatusBadge tone={row.status.tone}>{row.status.label}</StatusBadge> : null}
-      meta={row ? [{ label: "RSVPs", value: row.rsvpCount.toLocaleString("en-GB") }] : []}
+      meta={row ? [{ label: "RSVPs", value: formatStaffNumber(row.rsvpCount) }] : []}
       overflow={
         row ? (
           <OverflowMenu

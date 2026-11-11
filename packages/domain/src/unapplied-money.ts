@@ -16,6 +16,11 @@ export const UNAPPLIED_MONEY_REASONS = [
   "invoice_refunded",
   /** The invoice was already paid, by other money (a second checkout, or single and group). */
   "invoice_already_paid",
+  /**
+   * A bank transfer for an invoice arrived in part while the invoice was paid another way, so the
+   * checkout holding it could not be closed. Finance returns or applies the part payment.
+   */
+  "transfer_partially_funded_after_paid",
   /** Stripe took a different amount from the invoice total. */
   "amount_mismatch",
   /** A "Pay several" payment arrived but its invoices could no longer all be settled. */

@@ -7,6 +7,7 @@ import {
   statusRegions,
   viewChrome,
 } from "../html.js";
+import { PASSKEY_COPY } from "../passkey-copy.js";
 import { HOSTED_AUTH_POLICY } from "../policy.js";
 import { type HostedAuthView, hostedAuthViewFromSearch } from "../view.js";
 
@@ -29,6 +30,9 @@ function setupDescription(
 ): string {
   if (requiredBy === "staff") {
     return `LAX requires ${HOSTED_COPY.twoStep.name} for staff accounts. Add an ${HOSTED_COPY.twoStep.app} to continue.`;
+  }
+  if (requiredBy === "org" && view.capabilities.passkeysEnabled) {
+    return PASSKEY_COPY.twoStepSetup.orgOffer;
   }
   if (requiredBy === "org") {
     return `Your organisation requires ${HOSTED_COPY.twoStep.name}. Add an ${HOSTED_COPY.twoStep.app} to continue.`;
@@ -54,6 +58,16 @@ function continueHref(view: HostedAuthView): string {
   return view.config.authorizeResumePath ?? view.config.restartUrl;
 }
 
+/**
+ * A passkey meets an organisation's two-step rule on its own, so a person who signs in without a
+ * password is offered one here instead of being left to guess. Passkeys are made in LAX Account.
+ */
+function passkeyOffer(view: HostedAuthView, requiredBy: TwoFactorSetupRequiredBy | null): string {
+  const accountOrigin = view.capabilities.accountOrigin?.replace(/\/$/, "");
+  if (requiredBy !== "org" || !view.capabilities.passkeysEnabled || !accountOrigin) return "";
+  return `<a id="setup-add-passkey" class="btn btn-secondary" href="${escapeHostedHtml(`${accountOrigin}/account/security`)}">${escapeHostedHtml(PASSKEY_COPY.twoStepSetup.addPasskey)}</a>`;
+}
+
 export function buildHostedTwoFactorSetupHtml(
   view: HostedAuthView = hostedAuthViewFromSearch(""),
   requiredBy: TwoFactorSetupRequiredBy | null = null,
@@ -74,6 +88,7 @@ export function buildHostedTwoFactorSetupHtml(
         })}
         ${hostedButton({ id: "setup-enable-btn", label: "Continue", loadingLabel: "Preparing…" })}
       </form>
+      ${passkeyOffer(view, requiredBy)}
       <section id="setup-enrol" class="auth-form" hidden>
         <p class="auth-hint">Scan this code with your ${HOSTED_COPY.twoStep.app}, or enter the key manually.</p>
         <div id="setup-qr" class="auth-qr" role="img" aria-label="QR code for your ${HOSTED_COPY.twoStep.app}"></div>

@@ -20,10 +20,14 @@ describe("startAccountLogin", () => {
     const { authorizeUrl, pending } = startAccountLogin({
       config,
       returnTo: "/account/security",
-      reauth: true,
+      reauth: { subject: "user-a" },
     });
     expect(authorizeUrl.searchParams.get("prompt")).toBe("login");
     expect(authorizeUrl.searchParams.get("max_age")).toBe("300");
-    expect(pending).toMatchObject({ returnTo: "/account/security", reauth: true });
+    expect(pending).toMatchObject({
+      returnTo: "/account/security",
+      reauth: true,
+      reauthSubject: "user-a",
+    });
   });
 });

@@ -4,6 +4,7 @@ import type {
   ArtEditorialStorySummary,
 } from "@/lib/editorial/art-editorial.types";
 import { editorialPageHref } from "@/lib/editorial/editorial-page-routes";
+import { formatDate, formatDayMonthOnly } from "@auction/datetime";
 import { isSafeEditorialHref } from "@auction/shop-contracts";
 
 export type EditorialCardVm = {
@@ -74,17 +75,8 @@ export function buildPlacementCards(
     }));
 }
 
-const DAY_MONTH = new Intl.DateTimeFormat("en-GB", {
-  day: "numeric",
-  month: "short",
-  timeZone: "UTC",
-});
-const DAY_MONTH_YEAR = new Intl.DateTimeFormat("en-GB", {
-  day: "numeric",
-  month: "short",
-  year: "numeric",
-  timeZone: "UTC",
-});
+const dayMonth = (date: Date) => formatDayMonthOnly(date, "UTC", { engineSept: true });
+const dayMonthYear = (date: Date) => formatDate(date, "UTC", { month: "short", engineSept: true });
 
 function parseIsoDate(value: string | null): Date | null {
   if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
@@ -100,13 +92,13 @@ export function formatExhibitionDates(
   const start = parseIsoDate(startsOn);
   const end = parseIsoDate(endsOn);
   if (start && end) {
-    if (start.getTime() === end.getTime()) return DAY_MONTH_YEAR.format(start);
+    if (start.getTime() === end.getTime()) return dayMonthYear(start);
     const sameYear = start.getUTCFullYear() === end.getUTCFullYear();
-    const from = sameYear ? DAY_MONTH.format(start) : DAY_MONTH_YEAR.format(start);
-    return `${from} – ${DAY_MONTH_YEAR.format(end)}`;
+    const from = sameYear ? dayMonth(start) : dayMonthYear(start);
+    return `${from} – ${dayMonthYear(end)}`;
   }
-  if (start) return `From ${DAY_MONTH_YEAR.format(start)}`;
-  if (end) return `Until ${DAY_MONTH_YEAR.format(end)}`;
+  if (start) return `From ${dayMonthYear(start)}`;
+  if (end) return `Until ${dayMonthYear(end)}`;
   return null;
 }
 

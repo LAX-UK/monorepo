@@ -1,10 +1,5 @@
 import { isSafeNextPath } from "@/lib/auth/safe-next-path";
-
-export const ADMIN_HOME_PATH = "/admin";
-
-export function isAdminPath(pathname: string | null | undefined): pathname is string {
-  return pathname === ADMIN_HOME_PATH || Boolean(pathname?.startsWith(`${ADMIN_HOME_PATH}/`));
-}
+import { ADMIN_HOME_PATH, isAdminPath } from "@/lib/navigation/admin-path";
 
 /**
  * Where staff land after signing in again: the admin page they were on, with its filters, or the

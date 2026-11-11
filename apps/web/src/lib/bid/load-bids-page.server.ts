@@ -11,7 +11,7 @@ import {
 } from "@/lib/data/http/account-buying.server";
 import type { AccountRegistrationView } from "@/lib/data/http/account-buying.types";
 import { getServerMyBuyerAgentAuthorisations } from "@/lib/data/http/organisation-membership.server";
-import { resolveSaleTitles } from "@/lib/data/sale-titles.server";
+import { resolveSaleTitles, resolveSaleZones } from "@/lib/data/sale-titles.server";
 import { resolveActiveOrganisation } from "@/lib/legal-entity/active-organisation.server";
 import { organisationBidReasonCopy } from "@/lib/presenters/organisation-state/organisation-state-copy";
 import {
@@ -60,11 +60,17 @@ export async function loadBidsPage(user: SessionUser | null): Promise<LoadedBids
   let vm: MyBidsVm | null = null;
   if (bidsResult.status === "fulfilled") {
     const rows = bidsResult.value;
+    const saleIds = rows.map((row) => row.lot?.saleId);
+    const [saleTitleById, saleZoneById] = await Promise.all([
+      resolveSaleTitles(saleIds),
+      resolveSaleZones(saleIds),
+    ]);
     vm = buildMyBidsVm({
       rows,
       userId: user?.id,
       showPlacedBy: shared,
-      saleTitleById: await resolveSaleTitles(rows.map((row) => row.lot?.saleId)),
+      saleTitleById,
+      saleZoneById,
     });
   }
 

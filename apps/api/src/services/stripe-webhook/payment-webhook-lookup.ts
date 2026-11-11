@@ -8,6 +8,7 @@ import type { IPaymentWriteRepository } from "@auction/persistence/interfaces";
 import type { IPayoutRepository } from "@auction/persistence/interfaces";
 import { eq } from "drizzle-orm";
 import type { IDomainEventSink } from "../domain-event-sink.js";
+import type { IErrorReporter } from "../interfaces/error-handling.js";
 import type { IPaymentCaptureService } from "../interfaces/payment-capture.js";
 import type { IPayoutAdjustmentService } from "../interfaces/payout-adjustment.js";
 import type { IUnappliedMoneyRecorder } from "../payment/unapplied-money.recorder.js";
@@ -31,6 +32,8 @@ export type StripePaymentWebhookDeps = {
    * goes to manual review instead of being captured. Null only where it is not wired (tests).
    */
   paymentEligibility: IPaymentEligibilityGate | null;
+  /** Where a capture's failed follow-up steps are reported; they never fail the webhook. */
+  errorReporter?: IErrorReporter;
 };
 
 export type PaymentRowLookup = {

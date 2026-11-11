@@ -6,6 +6,7 @@ import {
   londonToday,
   workingDayWindowLine,
 } from "@/lib/checkout/checkout-delivery";
+import { formatDayMonthOnly, formatWeekdayDayMonth } from "@auction/datetime";
 import { FULFILMENT_SURCHARGE_PENCE } from "@auction/shop-domain";
 import { formatGbpPenceForDisplay } from "@auction/shop-portal/vm";
 
@@ -44,17 +45,10 @@ export function presentDeliveryEstimate(input: {
   };
 }
 
-const dayMonth = new Intl.DateTimeFormat("en-GB", {
-  timeZone: "UTC",
-  day: "numeric",
-  month: "short",
-});
-const dayMonthParts = new Intl.DateTimeFormat("en-GB", {
-  timeZone: "UTC",
-  day: "numeric",
-  month: "short",
-  weekday: "short",
-});
+const dayMonth = { format: (date: Date) => formatDayMonthOnly(date, "UTC", { engineSept: true }) };
+const dayMonthParts = {
+  format: (date: Date) => formatWeekdayDayMonth(date, "UTC", { engineSept: true }),
+};
 
 /** "2 to 4 Nov", "30 Oct to 3 Nov" or "4 Nov": the days a window covers, from today in London. */
 function arrivalRange(today: Date, window: WorkingDayWindow): string {

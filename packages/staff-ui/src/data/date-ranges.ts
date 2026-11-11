@@ -3,18 +3,13 @@
  * a client module is only a client reference on the server.
  */
 
-export type DayRange = { from: string; to: string };
+import { LONDON_TIME_ZONE, dayKey } from "@auction/datetime";
 
-const LONDON_DAY = new Intl.DateTimeFormat("en-CA", {
-  timeZone: "Europe/London",
-  year: "numeric",
-  month: "2-digit",
-  day: "2-digit",
-});
+export type DayRange = { from: string; to: string };
 
 /** Today's date in London as `YYYY-MM-DD`; staff work in UK time whatever their laptop says. */
 export function londonToday(now: Date = new Date()): string {
-  return LONDON_DAY.format(now);
+  return dayKey(now, LONDON_TIME_ZONE);
 }
 
 /** The day `count` days before `day` (`YYYY-MM-DD`). */

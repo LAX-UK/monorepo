@@ -11,6 +11,7 @@ export {
   formatStaffMoney,
   formatStaffRelative,
   formatStaffTime,
+  formatStaffNumber,
   staffShortDateFormat,
 } from "./lib/format.js";
 
@@ -128,7 +129,6 @@ export {
   formatStaffCalendarDay,
   formatStaffDay,
   isoToLondonWallTime,
-  isoToWallTime,
   londonWallTimeToIso,
   nextExistingWallTime,
   wallTimeToIso,

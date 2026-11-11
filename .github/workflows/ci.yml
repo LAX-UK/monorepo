@@ -925,11 +925,22 @@ jobs:
       - name: Restore shared turbo build cache
         uses: ./.github/actions/restore-turbo-build-cache
 
+      # The browser Sentry SDK only initialises, and only ships its start-up code, when a DSN is
+      # inlined at build time. Production images get the real DSNs; this build gets placeholders on
+      # a reserved host so the route budgets below measure what visitors download. Nothing is
+      # deployed from this build and nothing can reach that host.
       - name: Build
         run: pnpm turbo run build --affected
+        env:
+          # The Sentry build plugin makes the Bid app build need more than Node's default heap.
+          NODE_OPTIONS: --max-old-space-size=6144
+          NEXT_PUBLIC_SENTRY_DSN_WEB: https://budget@sentry.invalid/1
+          NEXT_PUBLIC_SENTRY_DSN_SHOP: https://budget@sentry.invalid/2
+          NEXT_PUBLIC_SENTRY_DSN_ART: https://budget@sentry.invalid/3
 
       # Reads the .next output the Build step just produced; it never rebuilds. Apps the affected
-      # build skipped are reported and left out. Warns only until `enforce` is set in the config.
+      # build skipped are reported and left out. Groups with `enforce: true` fail the job when a
+      # route is over budget; the others warn.
       - name: Route JavaScript budgets
         run: pnpm check:route-js-budget
 

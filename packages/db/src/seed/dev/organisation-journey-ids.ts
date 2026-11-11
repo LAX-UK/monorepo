@@ -11,6 +11,8 @@ export const ORGANISATION_JOURNEY_IDS = {
   lotInvoiceRestricted: "b1000405-0000-4000-8000-000000000405",
   /** An invoice whose winner and payer have no source-of-funds or anti-money-laundering exposure. */
   lotInvoiceNorthbankClear: "b1000406-0000-4000-8000-000000000406",
+  /** An invoice the buyer agent won and pays on their own account, not for an organisation. */
+  lotInvoicePersonal: "b1000407-0000-4000-8000-000000000407",
   submissionDraft: "d2000101-0000-4000-8000-000000000101",
   submissionNeedsChanges: "d2000102-0000-4000-8000-000000000102",
   submissionUnsold: "d2000103-0000-4000-8000-000000000103",

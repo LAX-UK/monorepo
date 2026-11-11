@@ -11,7 +11,7 @@ import {
   formatLeadTime,
   restrictedCountryIssues,
 } from "@auction/shop-domain";
-import { formatPenceAsPounds } from "@auction/staff-ui";
+import { formatPenceAsPounds, formatStaffNumber } from "@auction/staff-ui";
 
 /*
  * LAX Admin › Settings › Delivery regions, in words. The rules are the domain's, run as staff type
@@ -85,7 +85,7 @@ const REGION_MESSAGES: Record<DeliveryRegionIssueReason, string> = {
   min_above_max: "The shortest time can't be longer than the longest",
   price_not_whole_pence: "Enter a price in pounds and pence",
   price_below_one_penny: "Enter a price of at least 1p",
-  price_too_high: `Enter a price of ${`£${(FIXED_PRICE_MAX_PENCE / 100).toLocaleString("en-GB")}`} or less`,
+  price_too_high: `Enter a price of ${`£${formatStaffNumber(FIXED_PRICE_MAX_PENCE / 100)}`} or less`,
   uk_price_is_set_in_checkout:
     "UK delivery is charged at its fixed price in checkout, so the price can't be changed here yet",
 };

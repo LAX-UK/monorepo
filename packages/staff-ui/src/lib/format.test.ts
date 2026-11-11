@@ -3,6 +3,7 @@ import {
   formatStaffDate,
   formatStaffDateTime,
   formatStaffMoney,
+  formatStaffNumber,
   formatStaffRelative,
   formatStaffTime,
   londonZoneLabel,
@@ -85,5 +86,17 @@ describe("formatStaffMoney", () => {
   it("adds the ISO code after any other currency", () => {
     expect(formatStaffMoney(125000, "eur")).toBe("€1,250.00 EUR");
     expect(formatStaffMoney(-99, "USD")).toBe("−US$0.99 USD");
+  });
+});
+
+describe("formatStaffNumber", () => {
+  it("reads as Number.toLocaleString in en-GB did", () => {
+    for (const value of [0, 7, 999, 1000, 1250, 12_345.5, 1_234_567, -4321, 0.05, 1000.1]) {
+      expect(formatStaffNumber(value)).toBe(value.toLocaleString("en-GB"));
+      expect(formatStaffNumber(value, { minimumFractionDigits: 2 })).toBe(
+        value.toLocaleString("en-GB", { minimumFractionDigits: 2 }),
+      );
+    }
+    expect(formatStaffNumber(1250)).toBe("1,250");
   });
 });

@@ -25,6 +25,7 @@ import {
   TextArea,
   UnsavedChangesDialog,
   cn,
+  formatStaffNumber,
   useUnsavedChanges,
 } from "@auction/staff-ui";
 import { Check, Eye, Pencil, RotateCcw, Undo2 } from "@auction/staff-ui/icons";
@@ -69,7 +70,7 @@ function stepDetail(step: DataRequestRecord["steps"][number], manual: boolean): 
   else if (step.state === "waiting") parts.push("Waiting");
   else if (step.state === "collecting") parts.push("Collecting");
   if (step.records !== null && step.state === "done") {
-    parts.push(`${step.records.toLocaleString("en-GB")} records`);
+    parts.push(`${formatStaffNumber(step.records)} records`);
   }
   parts.push(PRODUCT_DETAILS[step.product].company);
   return parts.join(" · ");

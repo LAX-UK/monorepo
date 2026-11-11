@@ -1,6 +1,6 @@
 "use client";
 
-import { describeMoment, deviceTimeZone } from "@auction/datetime";
+import { deviceTimeZone } from "@auction/datetime";
 import { ChevronDown, Globe } from "lucide-react";
 import { useId, useLayoutEffect, useMemo, useState } from "react";
 import { cn } from "../lib/utils.js";
@@ -8,7 +8,7 @@ import { ChangeZoneDialog } from "./change-zone-dialog.js";
 import { PlainLocalTime } from "./plain-local-time.js";
 import { TimeChipPanel } from "./time-chip-panel.js";
 import { useDisclosure } from "./use-disclosure.js";
-import { useViewerZone } from "./viewer-zone-context.js";
+import { useViewerMoment } from "./use-viewer-moment.js";
 
 export type TimeChipProps = {
   /** The moment, as an ISO instant. */
@@ -33,12 +33,8 @@ const EDGE_GUTTER_PX = 16;
  * The chip stays neutral however close the close is: urgency belongs to the countdown.
  */
 export function TimeChip({ instant, officialZone, variant = "button" }: TimeChipProps) {
-  const viewer = useViewerZone();
+  const { viewer, moment } = useViewerMoment(instant, officialZone);
   const at = useMemo(() => new Date(instant), [instant]);
-  const moment = useMemo(
-    () => describeMoment(at, { officialZone, viewerZone: viewer?.zone ?? null, now: at }),
-    [at, officialZone, viewer?.zone],
-  );
   const panelId = useId();
   const disclosure = useDisclosure();
   const [zoneOpen, setZoneOpen] = useState(false);
@@ -55,8 +51,8 @@ export function TimeChip({ instant, officialZone, variant = "button" }: TimeChip
     setAlignEnd(left + PANEL_WIDTH_PX > window.innerWidth - EDGE_GUTTER_PX);
   }, [disclosure.open, disclosure.rootRef]);
 
-  const local = moment.local;
-  if (!local || !moment.spoken || !viewer) return null;
+  const local = moment?.local;
+  if (!moment || !local || !moment.spoken || !viewer) return null;
   const differsDay = moment.localDiffersDay;
 
   if (variant === "plain") return <PlainLocalTime moment={moment} />;

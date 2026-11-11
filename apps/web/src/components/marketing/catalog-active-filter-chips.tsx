@@ -1,4 +1,2 @@
-export {
-  CatalogActiveFilterChips,
-  type CatalogActiveFilterChip,
-} from "@auction/marketing-ui";
+import { type CatalogActiveFilterChip, CatalogActiveFilterChips } from "@auction/marketing-ui";
+export { CatalogActiveFilterChips, type CatalogActiveFilterChip };

@@ -14,6 +14,7 @@ import type {
   DATA_REQUEST_EXTENSION_REASONS,
   DATA_REQUEST_TOLD_VIA,
 } from "@auction/identity-contracts/data-requests";
+import { formatStaffNumber } from "@auction/staff-ui";
 
 /**
  * The checks each dialog makes on submit, kept out of the components. Each returns one message
@@ -60,7 +61,7 @@ export const LOG_REQUEST_MESSAGES = {
   receivedFuture: "Received date can't be in the future.",
   products: "Choose at least one product.",
   notes: 'Add a note for "Other".',
-  notesLong: `Keep the note under ${NOTE_MAX_LENGTH.toLocaleString("en-GB")} characters.`,
+  notesLong: `Keep the note under ${formatStaffNumber(NOTE_MAX_LENGTH)} characters.`,
 } as const;
 
 export function emptyLogRequest(today: string): LogRequestDraft {
@@ -154,7 +155,7 @@ export function validateExtend(
   const errors: FieldErrors<ExtendField> = {};
   if (!draft.note.trim()) errors.note = "Say why the request needs more time.";
   else if (draft.note.trim().length > NOTE_MAX_LENGTH) {
-    errors.note = `Keep the note under ${NOTE_MAX_LENGTH.toLocaleString("en-GB")} characters.`;
+    errors.note = `Keep the note under ${formatStaffNumber(NOTE_MAX_LENGTH)} characters.`;
   }
   if (!draft.personToldOn || !isCalendarDate(draft.personToldOn)) {
     errors.personToldOn = "Enter the date the person was told.";
@@ -219,7 +220,7 @@ export function validateClose(draft: CloseDraft): FieldErrors<CloseField> {
   if (rule?.required && !note) {
     errors.note = NOTE_REQUIRED_MESSAGES[draft.outcome] ?? "Add a note.";
   } else if (note.length > NOTE_MAX_LENGTH) {
-    errors.note = `Keep the note under ${NOTE_MAX_LENGTH.toLocaleString("en-GB")} characters.`;
+    errors.note = `Keep the note under ${formatStaffNumber(NOTE_MAX_LENGTH)} characters.`;
   }
   if (draft.outcome === "refused" && !draft.complaintRightTold) {
     errors.complaintRightTold = "Confirm the person was told before closing.";

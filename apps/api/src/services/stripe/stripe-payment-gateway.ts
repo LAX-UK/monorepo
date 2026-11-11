@@ -56,6 +56,8 @@ export interface IStripeCheckoutGateway {
   retrieveCheckoutSession(sessionId: string): Promise<Stripe.Checkout.Session>;
   /** Closes one Checkout session; one already closed or completed is left as it is. */
   expireCheckoutSession(sessionId: string): Promise<void>;
+  /** Cancels a PaymentIntent; one already cancelled, or gone, is left as it is. */
+  cancelPaymentIntent(paymentIntentId: string): Promise<void>;
   findChargeIdForPayment(paymentId: string): Promise<string | null>;
   /** Expire open Checkout sessions and cancel a cancellable PaymentIntent for this payment. */
   revokeOpenCheckoutForPayment(
@@ -287,6 +289,28 @@ export class StripePaymentGateway implements IStripePaymentGateway {
     await executeWithStripeRetries(() => stripe.checkout.sessions.expire(sessionId));
   }
 
+  /**
+   * An intent that is already cancelled, or gone, needs nothing. One in any other state (for
+   * example processing or succeeded) may still take money, so that failure is raised, not hidden.
+   */
+  async cancelPaymentIntent(piId: string): Promise<void> {
+    const stripe = this.stripe;
+    if (!stripe) return;
+    try {
+      await executeWithStripeRetries(() =>
+        stripe.paymentIntents.cancel(piId, {}, { idempotencyKey: `cancel:${piId}` }),
+      );
+    } catch (err) {
+      if (!(err instanceof Stripe.errors.StripeError)) throw err;
+      if (err.code === "resource_missing") return;
+      if (err.code === "payment_intent_unexpected_state") {
+        const current = await executeWithStripeRetries(() => stripe.paymentIntents.retrieve(piId));
+        if (current.status === "canceled") return;
+      }
+      throw err;
+    }
+  }
+
   async revokeOpenCheckoutForPayment(
     paymentId: string,
     paymentIntentId: string | null | undefined,
@@ -304,25 +328,7 @@ export class StripePaymentGateway implements IStripePaymentGateway {
       }
     };
 
-    // An intent that is already cancelled, or gone, needs nothing. One in any other state (for
-    // example processing or succeeded) may still take money, so that failure is raised, not hidden.
-    const cancelIntentIfOpen = async (piId: string) => {
-      try {
-        await executeWithStripeRetries(() =>
-          stripe.paymentIntents.cancel(piId, {}, { idempotencyKey: `cancel:${piId}` }),
-        );
-      } catch (err) {
-        if (!(err instanceof Stripe.errors.StripeError)) throw err;
-        if (err.code === "resource_missing") return;
-        if (err.code === "payment_intent_unexpected_state") {
-          const current = await executeWithStripeRetries(() =>
-            stripe.paymentIntents.retrieve(piId),
-          );
-          if (current.status === "canceled") return;
-        }
-        throw err;
-      }
-    };
+    const cancelIntentIfOpen = (piId: string) => this.cancelPaymentIntent(piId);
 
     if (paymentIntentId) {
       await expireOpenSessionsForIntent(paymentIntentId);

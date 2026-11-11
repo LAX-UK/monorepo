@@ -3,6 +3,7 @@ import {
   HOSTED_AUTH_FAVICON_BASE_PATH,
   HOSTED_AUTH_RUNTIME_SCRIPT,
   HOSTED_AUTH_STYLES,
+  HOSTED_CONFIRM_SCRIPT,
   HOSTED_FAVICON_ASSET_NAMES,
   HOSTED_FONT_ASSET_DIR,
   HOSTED_FONT_BASE_PATH,
@@ -16,6 +17,7 @@ import {
   HOSTED_LOCKUP_FILES,
   HOSTED_LOGIN_SCRIPT,
   HOSTED_MAGIC_LINK_SCRIPT,
+  HOSTED_PASSKEY_ADD_SCRIPT,
   HOSTED_RESEND_VERIFICATION_SCRIPT,
   HOSTED_RESET_PASSWORD_SCRIPT,
   HOSTED_SIGN_UP_SCRIPT,
@@ -49,6 +51,8 @@ export function mountHostedAuthAssets(app: Hono): void {
     ["/hosted-verify-email.js", HOSTED_VERIFY_EMAIL_SCRIPT],
     ["/hosted-resend-verification.js", HOSTED_RESEND_VERIFICATION_SCRIPT],
     ["/hosted-magic-link.js", HOSTED_MAGIC_LINK_SCRIPT],
+    ["/hosted-passkey-add.js", HOSTED_PASSKEY_ADD_SCRIPT],
+    ["/hosted-confirm.js", HOSTED_CONFIRM_SCRIPT],
     ["/oidc-consent.js", OIDC_CONSENT_SCRIPT],
   ];
   app.get("/hosted-auth.css", (c) => {

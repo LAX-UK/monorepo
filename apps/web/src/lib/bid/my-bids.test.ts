@@ -197,6 +197,27 @@ describe("buildMyBidsVm", () => {
     expect(card?.more.map((action) => action.label)).toEqual(["Set maximum"]);
   });
 
+  it("quotes the close in the sale's own zone and carries it for the visitor's time", () => {
+    const own = buildMyBidsVm({ rows, userId: "user-1", now: NOW }).cardsByTab.active[0];
+    expect(own?.closes).toEqual({ iso: "2026-11-02T12:04:12.000Z", zone: "Europe/London" });
+    const paris = buildMyBidsVm({
+      rows,
+      userId: "user-1",
+      now: NOW,
+      saleZoneById: { "sale-3": "Europe/Paris" },
+    }).cardsByTab.active[0];
+    expect(paris?.closes?.zone).toBe("Europe/Paris");
+    expect(paris?.figures.find((f) => f.label === "closes")?.value).toBe("Today 13:04");
+  });
+
+  it("carries no close for a bid that is not open", () => {
+    const vm = buildMyBidsVm({ rows, userId: "user-1", now: NOW });
+    const cards = Object.values(vm.cardsByTab).flat();
+    for (const card of cards.filter((c) => c.status !== "winning" && c.status !== "outbid")) {
+      expect(card.closes).toBeNull();
+    }
+  });
+
   it("shows a maximum waiting for the sale with no current bid yet", () => {
     const card = buildMyBidsVm({ rows, userId: "user-1", now: NOW }).cardsByTab.active[1];
     expect(card?.figures.map((f) => [f.label, f.value])).toEqual([
