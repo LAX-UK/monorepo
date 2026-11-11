@@ -73,7 +73,10 @@ function forceHttpCookies(filePath) {
     process.env.PLAYWRIGHT_BASE_URL ??
     "http://localhost:3000"
   ).replace(/\/+$/, "");
-  for (const cookie of state.cookies ?? []) {
+  // The issuer's device marker is a Secure, host-only cookie that a plain-HTTP context cannot hold
+  // (`__Host-` requires Secure). It is only the issuer's own bookkeeping, so the state leaves it out.
+  state.cookies = (state.cookies ?? []).filter((cookie) => cookie.name !== "__Host-lax_device");
+  for (const cookie of state.cookies) {
     cookie.secure = false;
     if (/^(?:__Host-)?lax-bid-session$/.test(cookie.name)) {
       cookie.name = "lax-bid-session";
