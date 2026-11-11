@@ -61,10 +61,16 @@ export function RegisterArtworkPicker({
   // What the last search returned, so a chosen option maps back to the full record.
   const known = useRef(new Map<string, DealArtworkOption>());
   const [hasMore, setHasMore] = useState(false);
+  // The print message says the same as the footer, so a print's code shows it once.
+  const [query, setQuery] = useState("");
+  const footer = PRINT_STOCK_CODE.test(query)
+    ? undefined
+    : "Originals only. Prints are sold in runs on LAX Shop.";
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: a new key asks the register again
   const find = useCallback(
     async (query: string) => {
+      setQuery(query);
       const result = await search(query);
       known.current = new Map(result.items.map((item) => [item.id, item]));
       setHasMore(result.hasMore);
@@ -95,9 +101,7 @@ export function RegisterArtworkPicker({
       }
       emptyText={noMatch}
       footer={
-        hasMore
-          ? "Originals only. There are more matches: type more to narrow them."
-          : "Originals only. Prints are sold in runs on LAX Shop."
+        hasMore ? "Originals only. There are more matches: type more to narrow them." : footer
       }
       {...(id ? { id } : {})}
       {...(invalid !== undefined ? { invalid } : {})}

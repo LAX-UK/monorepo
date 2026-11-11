@@ -129,6 +129,21 @@ describe("ConvertEnquiryDialog", () => {
     expect(within(option).getByText(/live on lax\.art/)).toBeInTheDocument();
   });
 
+  it("explains a print's stock code once, without the footer repeating it", async () => {
+    searchArtworks.mockResolvedValue({
+      ok: true,
+      data: { items: [], hasMore: false, preselected: null },
+    });
+    renderDialog(true);
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(within(dialog).getByRole("combobox", { name: "Artwork from the register" }));
+    fireEvent.change(screen.getByPlaceholderText("Search by title, artist or stock code"), {
+      target: { value: "LAX-PRT-HC-24-0042-A" },
+    });
+    expect(await screen.findByText("LAX-PRT-HC-24-0042-A is a print")).toBeInTheDocument();
+    expect(screen.getAllByText(/Prints are sold in runs on LAX Shop/)).toHaveLength(1);
+  });
+
   it("asks a buy enquiry for the work and the artwork together: summary and inline", async () => {
     renderDialog(true);
     const dialog = await screen.findByRole("dialog");
