@@ -84,6 +84,7 @@ export * from "./domain-event-delivery.js";
 export * from "./crm-record-link.js";
 export * from "./artwork-register.js";
 export * from "./zoho-artwork-sync.js";
+export * from "./zoho-sync-health.js";
 export * from "./zoho-campaigns-suppression.js";
 export * from "./ssf.js";
 export * from "./identity-lifecycle-outbox.js";

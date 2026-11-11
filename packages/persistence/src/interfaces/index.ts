@@ -1303,6 +1303,24 @@ export type {
 } from "./zoho-artwork-sync.js";
 
 export type {
+  IZohoDriftReader,
+  IZohoOutboundQueueReader,
+  IZohoSyncHealthReader,
+  IZohoSyncHealthStore,
+  ProductWithoutRegisterRow,
+  RegisterWithoutProductRow,
+  StatusMismatchRow,
+  ZohoDriftCounts,
+  ZohoDriftPage,
+  ZohoDriftPaging,
+  ZohoOutboundQueueStats,
+  ZohoSyncHealthRecord,
+  ZohoSyncModes,
+  ZohoSyncRunMode,
+  ZohoTokenHealth,
+} from "./zoho-sync-health.js";
+
+export type {
   IZohoListingLock,
   IZohoListingRunReader,
   IZohoListingRunStore,

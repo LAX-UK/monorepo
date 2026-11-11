@@ -8,7 +8,10 @@ import {
   DrizzleArtworkRegisterRepository,
   DrizzleUnappliedMoneyReader,
   DrizzleZohoArtworkSyncStore,
+  DrizzleZohoDriftReader,
   DrizzleZohoListingRunStore,
+  DrizzleZohoOutboundQueueReader,
+  DrizzleZohoSyncHealthStore,
   createShopAlertRetentionStore,
   registerRowToEntry,
 } from "@auction/persistence/repositories";
@@ -26,6 +29,7 @@ import {
 } from "./application/artwork-register/artwork-zoho-link.service.js";
 import { OfferOnLaxArtService } from "./application/artwork-register/offer-on-lax-art.service.js";
 import { ZohoLinkService } from "./application/artwork-register/zoho-link.service.js";
+import { ZohoSyncHealthService } from "./application/artwork-register/zoho-sync-health.service.js";
 import { createShopDeletionEligibilityService } from "./application/deletion-eligibility.service.js";
 import { createDeliveryQuoteStaffService } from "./application/delivery-quote-staff/delivery-quote-staff.service.js";
 import { createDeliveryRegionsService } from "./application/delivery-regions/delivery-regions.service.js";
@@ -507,6 +511,9 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
     offers: originalOffers,
   });
   const artistCatalogue = createDrizzleArtistCatalogueWriter(shopUow);
+  const zohoArtworkSyncRuns = new DrizzleZohoArtworkSyncStore(db);
+  const zohoListingRuns = new DrizzleZohoListingRunStore(db);
+  const zohoSyncHealth = new DrizzleZohoSyncHealthStore(db);
   const originalMoveReader = createDrizzleOriginalMoveReader(db);
   const artworkRegister = new DrizzleArtworkRegisterRepository(db);
   const inventoryMoves = new OriginalMoveService({
@@ -714,11 +721,18 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
           overview: createDrizzleRegisterOverviewReader(db, registerRowToEntry),
           register: artworkRegisterRepository,
           resolver: artworkRegisterRepository,
-          runs: new DrizzleZohoArtworkSyncStore(db),
-          listingRuns: new DrizzleZohoListingRunStore(db),
+          runs: zohoArtworkSyncRuns,
+          listingRuns: zohoListingRuns,
           staffNames: createDrizzleStaffNameReader(db),
           listings: laxArtListings,
           auction: inventoryMoves,
+        }),
+        zohoSyncHealth: new ZohoSyncHealthService({
+          health: zohoSyncHealth,
+          inboundRuns: zohoArtworkSyncRuns,
+          listingRuns: zohoListingRuns,
+          outbound: new DrizzleZohoOutboundQueueReader(db),
+          drift: new DrizzleZohoDriftReader(db),
         }),
         offerOnLaxArt: new OfferOnLaxArtService({
           register: artworkRegisterRepository,
