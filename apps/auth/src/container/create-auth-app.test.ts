@@ -6,6 +6,7 @@ import { type CreateAuthAppOptions, createAuthApp } from "./create-auth-app.js";
 
 type BuildAppOptions = {
   fedcmEnabled?: boolean;
+  passkeysEnabled?: boolean;
   authHandler?: (request: Request) => Promise<Response>;
   trustedProxyCidrs?: string;
 };
@@ -31,6 +32,7 @@ function buildApp(
     OIDC_ISSUER_URL: "https://auth.test",
     WEB_ORIGIN: "https://web.test",
     ...(options.fedcmEnabled ? { FEDCM_ENABLED: "true" } : {}),
+    ...(options.passkeysEnabled ? { PASSKEYS_ENABLED: "true" } : {}),
     ...(options.trustedProxyCidrs ? { AUTH_TRUSTED_PROXY_CIDRS: options.trustedProxyCidrs } : {}),
   });
   const app = createAuthApp({
@@ -84,6 +86,7 @@ function buildApp(
         },
         ssf: { streams: {}, delivery: {} },
       } as unknown as CreateAuthAppOptions["oidc"]["services"],
+      passkeyGrants: { grant: vi.fn(async () => undefined), holds: vi.fn(async () => false) },
       authHandler: options.authHandler ?? vi.fn(async () => Response.json({ handledBy: "issuer" })),
       metrics: { refreshRotationOutcomes: counter, tokenExchangeOutcomes: counter },
     },
@@ -325,6 +328,31 @@ describe("auth HTTP app composition", () => {
     expect(refresh).toBeGreaterThan(parser);
     expect(exchange).toBeGreaterThan(refresh);
     expect(internal).toBeLessThan(catchAll);
+  });
+});
+
+describe("passkey pages", () => {
+  const signInQuery =
+    "client_id=lax-shop-web&response_type=code&redirect_uri=https://test-shop.lax.bid/auth/callback&scope=openid&state=s&nonce=n&code_challenge=c&code_challenge_method=S256";
+
+  it("are not served while passkeys are off: no add page, no passkey button, no passkey script entry points", async () => {
+    const app = buildApp();
+    expect((await app.request("/account-action/passkey")).status).toBe(404);
+    expect(await (await app.request(`/login?${signInQuery}`)).text()).not.toContain("passkey");
+  });
+
+  it("are served once the environment turns passkeys on", async () => {
+    const app = buildApp(null, undefined, { passkeysEnabled: true });
+    const add = await app.request("/account-action/passkey");
+    // No sign-in and no permission: the expired page, which says nothing about the account.
+    expect(add.status).toBe(403);
+    expect(await add.text()).toContain("This link has expired");
+    const login = await (await app.request(`/login?${signInQuery}`)).text();
+    expect(login).toContain("data-passkey-button");
+    expect(login).toContain('autocomplete="username webauthn"');
+    for (const script of ["/hosted-passkey-add.js", "/hosted-confirm.js"]) {
+      expect((await app.request(script)).status).toBe(200);
+    }
   });
 });
 

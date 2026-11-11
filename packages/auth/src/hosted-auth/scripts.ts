@@ -16,4 +16,6 @@ export const HOSTED_TWO_FACTOR_PASSWORD_SCRIPT = readHostedAsset("hosted-two-fac
 export const HOSTED_VERIFY_EMAIL_SCRIPT = readHostedAsset("hosted-verify-email.js");
 export const HOSTED_RESEND_VERIFICATION_SCRIPT = readHostedAsset("hosted-resend-verification.js");
 export const HOSTED_MAGIC_LINK_SCRIPT = readHostedAsset("hosted-magic-link.js");
+export const HOSTED_PASSKEY_ADD_SCRIPT = readHostedAsset("hosted-passkey-add.js");
+export const HOSTED_CONFIRM_SCRIPT = readHostedAsset("hosted-confirm.js");
 export const OIDC_CONSENT_SCRIPT = readHostedAsset("oidc-consent.js");

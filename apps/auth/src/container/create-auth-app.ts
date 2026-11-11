@@ -26,7 +26,7 @@ type Counter = { inc(labels: Record<string, string>): void };
 export type CreateAuthAppOptions = {
   log: pino.Logger;
   operational: Omit<AuthOperationalRoutes, "log" | "clientIp">;
-  oidc: Omit<OidcRouteMountOptions, "clientIp" | "log">;
+  oidc: Omit<OidcRouteMountOptions, "clientIp" | "log" | "hostedCapabilities">;
   issuerHttpOutcomes: Counter;
 };
 
@@ -67,6 +67,7 @@ export function createAuthApp(options: CreateAuthAppOptions): Hono {
     ...(options.oidc.env.LAX_ACCOUNT_ORIGIN
       ? { accountOrigin: options.oidc.env.LAX_ACCOUNT_ORIGIN }
       : {}),
+    passkeysEnabled: options.oidc.env.PASSKEYS_ENABLED,
     emailFirst: options.oidc.env.HOSTED_AUTH_EMAIL_FIRST,
     requireEmailVerification: options.oidc.env.REQUIRE_EMAIL_VERIFICATION,
   };
@@ -96,6 +97,14 @@ export function createAuthApp(options: CreateAuthAppOptions): Hono {
     ...hostedCapabilities,
     getSession: (headers) => options.oidc.auth.api.getSession({ headers }),
     readTwoFactorRequirement: options.oidc.readTwoFactorRequirement,
+    readConfirmMethods: async (subjectId) => {
+      const methods = await options.oidc.identityOperations.readSignInMethods(subjectId);
+      return {
+        password: methods.hasPassword,
+        passkey: methods.passkeys.length > 0,
+        providers: methods.social.map((link) => link.provider),
+      };
+    },
   });
   app.use("/api/auth/oauth2/authorize", async (c, next) => {
     const normalized = normalizeAuthorizePromptForCreate(new URL(c.req.url));
@@ -113,7 +122,7 @@ export function createAuthApp(options: CreateAuthAppOptions): Hono {
     clientIp,
     clientIpDiagnostics: options.oidc.env.AUTH_CLIENT_IP_DIAGNOSTICS,
   });
-  mountOidcRoutes(app, { ...options.oidc, clientIp, log: options.log });
+  mountOidcRoutes(app, { ...options.oidc, hostedCapabilities, clientIp, log: options.log });
   return app;
 }
 

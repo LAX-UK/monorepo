@@ -1,4 +1,5 @@
 import {
+  PASSKEY_NOT_ALLOWED,
   type SessionStampStore,
   type createAuth,
   stampPasskeyAuthFromResponse,
@@ -13,7 +14,7 @@ import {
   settleSecurityEffect,
 } from "../services/settle-security-effect.js";
 
-export const PASSKEY_NOT_ALLOWED = "passkey_enrolment_not_allowed";
+export { PASSKEY_NOT_ALLOWED };
 export const PASSKEY_NAME_INVALID = "passkey_name_invalid";
 
 type Step = "register_options" | "register_verify" | "authenticate_verify";

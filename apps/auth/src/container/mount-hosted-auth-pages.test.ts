@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   type HostedAuthPageMountOptions,
   mountHostedAuthPages,
@@ -223,5 +223,81 @@ describe("account chooser for an explicit sign-in or sign-up visit", () => {
       },
     });
     expect(await (await app.request(signIn)).text()).not.toContain("account-chooser");
+  });
+});
+
+const reauthQuery =
+  "response_type=code&client_id=lax-account-web&redirect_uri=https://test-account.lax.bid/api/auth/callback&scope=openid&state=s&nonce=n&code_challenge=c&code_challenge_method=S256&prompt=login&max_age=300";
+
+describe("hosted Confirm it's you page (LAX Account asked for a fresh sign-in)", () => {
+  const session = { user: { id: "u1", email: "collector@lax.bid", name: "Collector" } };
+  const withPasskeys = { ...capabilities, passkeysEnabled: true };
+
+  function appFor(
+    options: {
+      session?: unknown;
+      methods?: Awaited<ReturnType<NonNullable<HostedAuthPageMountOptions["readConfirmMethods"]>>>;
+      readFails?: boolean;
+      capabilities?: typeof capabilities & { passkeysEnabled?: boolean };
+    } = {},
+  ) {
+    const app = new Hono();
+    const readConfirmMethods = vi.fn(async () => {
+      if (options.readFails) throw new Error("down");
+      return options.methods ?? { password: true, passkey: true, providers: [] };
+    });
+    mountHostedAuthPages(app, {
+      ...(options.capabilities ?? withPasskeys),
+      getSession: async () => (options.session === undefined ? session : options.session),
+      readConfirmMethods,
+    });
+    return { app, readConfirmMethods };
+  }
+
+  it("shows the signed-in person's own email and the methods their account has", async () => {
+    const { app, readConfirmMethods } = appFor();
+    const response = await app.request(`/login?${reauthQuery}`);
+    const html = await response.text();
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(html).toContain("confirm-root");
+    expect(html).toContain('data-email="collector@lax.bid"');
+    expect(html).toContain("Use your passkey");
+    // Only the signed-in person's own methods are read: the subject comes from the session.
+    expect(readConfirmMethods).toHaveBeenCalledWith("u1");
+  });
+
+  it("is not used for a product's ordinary sign-in, even with a session", async () => {
+    const { app, readConfirmMethods } = appFor();
+    const html = await (
+      await app.request(
+        `/login?${reauthQuery.replace("lax-account-web", "lax-shop-web").replace("https://test-account.lax.bid/api/auth/callback", "https://test-shop.lax.bid/auth/callback")}`,
+      )
+    ).text();
+    expect(html).not.toContain("confirm-root");
+    expect(readConfirmMethods).not.toHaveBeenCalled();
+  });
+
+  it("shows the ordinary sign-in when the browser has no session", async () => {
+    const { app } = appFor({ session: null });
+    expect(await (await app.request(`/login?${reauthQuery}`)).text()).not.toContain("confirm-root");
+  });
+
+  it("shows the ordinary sign-in when the account has nothing to confirm with", async () => {
+    const { app } = appFor({ methods: { password: false, passkey: false, providers: [] } });
+    expect(await (await app.request(`/login?${reauthQuery}`)).text()).not.toContain("confirm-root");
+  });
+
+  it("shows the ordinary sign-in rather than failing when the methods cannot be read", async () => {
+    const { app } = appFor({ readFails: true });
+    const response = await app.request(`/login?${reauthQuery}`);
+    expect(response.status).toBe(200);
+    expect(await response.text()).not.toContain("confirm-root");
+  });
+
+  it("does not offer a passkey while passkeys are switched off", async () => {
+    const { app } = appFor({ capabilities: { ...capabilities, passkeysEnabled: false } });
+    const html = await (await app.request(`/login?${reauthQuery}`)).text();
+    expect(html).toContain("confirm-root");
+    expect(html).not.toContain("data-passkey-button");
   });
 });
