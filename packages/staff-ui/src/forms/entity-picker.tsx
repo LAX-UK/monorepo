@@ -336,30 +336,42 @@ function OptionRow({
       disabled={locked || (option.disabled ?? false)}
       aria-describedby={locked ? reasonId : undefined}
       onSelect={() => onPick(option)}
-      className={cn(staffCommandItemClass, locked && "cursor-not-allowed items-start")}
+      className={cn(
+        staffCommandItemClass,
+        // A locked option stays readable: its title is muted, never faded out.
+        locked && "cursor-not-allowed items-start data-[disabled=true]:text-staff-muted",
+      )}
     >
-      <div className="flex min-w-0 flex-1 flex-col gap-1">
-        <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
-          <Check aria-hidden className={cn("shrink-0", selected ? "opacity-100" : "opacity-0")} />
-          {option.leading}
-          <span className="flex min-w-0 flex-1 flex-col">
-            <span className="truncate">{option.label}</span>
-            {option.description ? (
-              <span className="truncate text-staff-xs text-staff-muted">{option.description}</span>
-            ) : null}
-          </span>
-          {option.meta ? (
-            <span className="shrink-0 text-staff-xs text-staff-muted max-sm:basis-full max-sm:pl-[1.625rem]">
-              {option.meta}
+      <div className="flex w-full min-w-0 items-start gap-2.5">
+        {option.leading ?? (
+          <Check
+            aria-hidden
+            className={cn("shrink-0 self-center", selected ? "opacity-100" : "opacity-0")}
+          />
+        )}
+        <div className="flex min-w-0 flex-1 flex-col gap-1">
+          <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+            <span className="flex min-w-0 flex-1 flex-col">
+              <span className="truncate">{option.label}</span>
+              {option.description ? (
+                <span className="truncate text-staff-xs text-staff-muted max-sm:whitespace-normal">
+                  {option.description}
+                </span>
+              ) : null}
             </span>
+            {option.meta ? (
+              <span className="shrink-0 text-staff-xs text-staff-muted max-sm:basis-full">
+                {option.meta}
+              </span>
+            ) : null}
+          </div>
+          {locked ? (
+            <p id={reasonId} className="flex gap-1.5 text-staff-xs text-staff-muted">
+              <Lock aria-hidden className="mt-px size-3.5 shrink-0" />
+              <span>{option.disabledReason}</span>
+            </p>
           ) : null}
         </div>
-        {locked ? (
-          <p id={reasonId} className="flex gap-1.5 pl-[1.625rem] text-staff-xs text-staff-muted">
-            <Lock aria-hidden className="mt-px size-3.5 shrink-0" />
-            <span>{option.disabledReason}</span>
-          </p>
-        ) : null}
       </div>
     </CommandItem>
   );

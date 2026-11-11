@@ -54,6 +54,7 @@ export function RegisterArtworkField({
     >
       <StaffRadioGroup
         aria-label="Artwork"
+        className="grid-cols-[minmax(0,1fr)]"
         value={value.mode}
         onValueChange={(mode) =>
           onChange(
@@ -69,7 +70,7 @@ export function RegisterArtworkField({
           label="From the register"
         />
         {value.mode === "register" ? (
-          <div className="flex flex-col gap-3 pb-2 pl-[1.625rem]">
+          <div className="flex min-w-0 flex-col gap-3 pb-2 pl-[1.625rem]">
             <RegisterArtworkPicker
               aria-label="Artwork from the register"
               value={chosen}
@@ -97,7 +98,7 @@ export function RegisterArtworkField({
       {value.mode === "not_in_register" ? (
         <StaffRadioGroup
           aria-label="Why it isn't in the register"
-          className="pl-[1.625rem]"
+          className="grid-cols-[minmax(0,1fr)] pl-[1.625rem]"
           value={value.reason ?? ""}
           onValueChange={(reason) =>
             onChange({
