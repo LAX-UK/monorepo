@@ -15,11 +15,11 @@ export function attachAdminUnlinkedOriginalsRoutes(
   platform: AdminHono,
   container: AdminInventoryRoutesContainer,
 ): void {
-  const service = container.admin.inventoryMoves.unlinkedOriginals;
+  const service = () => container.admin.inventoryMoves.unlinkedOriginals;
 
   platform.get("/inventory/unlinked-originals", requireLotsRead, async (c) => {
     c.header("Cache-Control", "no-store");
-    return c.json({ data: await service.view() });
+    return c.json({ data: await service().view() });
   });
 
   platform.put(
@@ -29,7 +29,7 @@ export function attachAdminUnlinkedOriginalsRoutes(
     async (c) => {
       const { blockPublishing } = c.req.valid("json");
       return c.json({
-        data: await service.setBlockPublishing(blockPublishing, c.get("userId") as string),
+        data: await service().setBlockPublishing(blockPublishing, c.get("userId") as string),
       });
     },
   );
