@@ -12,8 +12,8 @@ import {
   withTemporaryDatabase,
 } from "./testing/temporary-database.js";
 
-/** The journal time of the last migration before 0352. */
-const BEFORE_0352_FOLDER_MILLIS = 1805356800000;
+/** The journal time of the last migration before 0356. */
+const BEFORE_0356_FOLDER_MILLIS = 1805702400000;
 
 const sql = (name: string) => readFile(resolve(import.meta.dirname, "../drizzle", name), "utf8");
 
@@ -34,10 +34,10 @@ async function insertSession(pool: pg.Pool, userId: string, id: string): Promise
   );
 }
 
-describe.skipIf(!migrationUrl)("migration 0352 session device marker", { timeout: 60_000 }, () => {
+describe.skipIf(!migrationUrl)("migration 0356 session device marker", { timeout: 60_000 }, () => {
   it("keeps older sign-in records working, ties lineage to its record and person, and rolls back", async () => {
     await withTemporaryDatabase(async (pool) => {
-      await runMigrationsPerTransactionThrough(pool, BEFORE_0352_FOLDER_MILLIS);
+      await runMigrationsPerTransactionThrough(pool, BEFORE_0356_FOLDER_MILLIS);
       const userId = `device-user-${randomUUID()}`;
       await pool.query(
         `insert into "user" (id, name, email, email_verified, created_at, updated_at)
@@ -99,14 +99,14 @@ describe.skipIf(!migrationUrl)("migration 0352 session device marker", { timeout
       );
 
       // Rolling back removes only what this migration added, and re-applying is idempotent.
-      await pool.query(await sql("0352_rollback.sql"));
+      await pool.query(await sql("0356_rollback.sql"));
       expect(await columnsOf(pool, "session")).not.toEqual(expect.arrayContaining(["device_hash"]));
       expect(await columnsOf(pool, "session_lineage")).toEqual([]);
       expect(await columnsOf(pool, "session")).toEqual(
         expect.arrayContaining(["amr", "last_password_auth_at", "token", "user_id"]),
       );
-      await pool.query(await sql("0352_session_device_marker.sql"));
-      await pool.query(await sql("0352_session_device_marker.sql"));
+      await pool.query(await sql("0356_session_device_marker.sql"));
+      await pool.query(await sql("0356_session_device_marker.sql"));
       expect(await columnsOf(pool, "session")).toEqual(
         expect.arrayContaining(["country", "device_hash", "last_seen_at", "signed_in_at"]),
       );

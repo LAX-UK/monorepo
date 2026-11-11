@@ -1,4 +1,4 @@
--- Rollback for 0352_session_device_marker. Roll back the application release first: the previous
+-- Rollback for 0356_session_device_marker. Roll back the application release first: the previous
 -- release neither reads nor writes these columns or the lineage table. Rolling back forgets which
 -- browser each record belongs to and which earlier ids a record stands for; people stay signed in,
 -- and a product that held an earlier id then signs in again at its next renewal.

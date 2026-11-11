@@ -8,18 +8,18 @@ import { API_DENY_TABLES, AUTH_FULL_TABLES, WORKER_DENY_TABLES } from "./migrate
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const read = (name: string) => readFileSync(join(__dirname, "../drizzle", name), "utf8");
-const migration = read("0352_session_device_marker.sql");
-const rollback = read("0352_rollback.sql");
+const migration = read("0356_session_device_marker.sql");
+const rollback = read("0356_rollback.sql");
 const journal = JSON.parse(read("meta/_journal.json")) as {
   entries: { idx: number; tag: string; when: number }[];
 };
 
-describe("migration 0352 session device marker", () => {
-  it("is journalled as entry 346, one day after 0351", () => {
-    const index = journal.entries.findIndex((e) => e.tag === "0352_session_device_marker");
-    expect(journal.entries[index]?.idx).toBe(346);
-    expect(journal.entries[index]?.when).toBe(1805443200000);
-    expect(journal.entries[index - 1]?.tag).toBe("0351_payment_checkout_session_parameters");
+describe("migration 0356 session device marker", () => {
+  it("is journalled as entry 350, after the migrations other open changes take (0352 to 0355)", () => {
+    const index = journal.entries.findIndex((e) => e.tag === "0356_session_device_marker");
+    expect(journal.entries[index]?.idx).toBe(350);
+    expect(journal.entries[index]?.when).toBe(1805788800000);
+    expect(journal.entries[index - 1]?.when).toBeLessThan(1805788800000);
   });
 
   it("only adds nullable columns and one table, idempotently, so older records and the previous release keep working", () => {
