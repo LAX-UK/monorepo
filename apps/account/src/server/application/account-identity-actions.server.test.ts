@@ -159,9 +159,36 @@ describe("account identity actions", () => {
         status: "error",
         message:
           "This is the only way you can sign in. Add a passkey or a password first, then you can remove it.",
+        stale: true,
       });
       identity.removePasskey.mockResolvedValue({ status: "rejected", reason: "not_linked" });
       expect(await removePasskeyAction("pk-1")).toMatchObject({ status: "error" });
+    });
+
+    it("marks a refusal that means the page was out of date, and words a gone passkey as one", async () => {
+      identity.removePasskey.mockResolvedValue({
+        status: "rejected",
+        reason: "last_sign_in_method",
+      });
+      expect(await removePasskeyAction("pk-1")).toMatchObject({ status: "error", stale: true });
+      identity.removePasskey.mockResolvedValue({ status: "rejected", reason: "not_linked" });
+      expect(await removePasskeyAction("pk-1")).toEqual({
+        status: "error",
+        message: "That passkey isn't on your account any more.",
+        stale: true,
+      });
+    });
+
+    it("refuses a crafted id cleanly, without calling the issuer", async () => {
+      for (const bad of ["", "x".repeat(129), 42 as never, null as never]) {
+        expect(await removePasskeyAction(bad)).toMatchObject({ status: "error" });
+        expect(await renamePasskeyAction(bad, "Mine")).toMatchObject({ status: "error" });
+      }
+      expect(await renamePasskeyAction("pk-1", { toString: () => "x" } as never)).toMatchObject({
+        status: "error",
+      });
+      expect(identity.removePasskey).not.toHaveBeenCalled();
+      expect(identity.renamePasskey).not.toHaveBeenCalled();
     });
 
     it("says nothing was changed when the issuer could not answer, and needs a passkey id", async () => {
@@ -237,6 +264,7 @@ describe("account identity actions", () => {
       expect(await removeSignInMethodAction("google")).toEqual({
         status: "error",
         message: expect.stringContaining("only way you can sign in"),
+        stale: true,
       });
     });
 

@@ -73,6 +73,9 @@ export type SignInMethodsSectionVm =
 /** Why the last way in cannot be removed. One rule, said the same wherever it appears. */
 export const ONLY_METHOD_REASON =
   "This is the only way you can sign in. Add a passkey or a password first, then you can remove it.";
+/** The same rule where passkeys are not offered, so a password is the only thing to add. */
+const ONLY_METHOD_REASON_PASSWORD =
+  "This is the only way you can sign in. Add a password first, then you can remove it.";
 /** The same rule when the page offers another way in right beside it. */
 const ONLY_METHOD_REASON_WITH_LINK =
   "This is the only way you can sign in. Add another way to sign in first, then you can remove it.";
@@ -95,11 +98,17 @@ export function buildSignInMethodsSection(
   if (result.status === "reauth_required") return { status: "reauth_required" };
   const { hasPassword, social, passkeys, available } = result.value;
   // Every kind counts: the emailed sign-in link does not, as it is not a way to sign in on its own.
-  const isLastMethod = (hasPassword ? 1 : 0) + social.length + passkeys.length === 1;
+  // Passkeys are a way in only where the environment lets them sign anyone in.
+  const passkeyCount = available.passkey ? passkeys.length : 0;
+  const isLastMethod = (hasPassword ? 1 : 0) + social.length + passkeyCount === 1;
   const offersLink = SOCIAL_SIGN_IN_PROVIDERS.some(
     (provider) => available[provider] && !social.some((method) => method.provider === provider),
   );
-  const onlyMethod = offersLink ? ONLY_METHOD_REASON_WITH_LINK : ONLY_METHOD_REASON;
+  const onlyMethod = offersLink
+    ? ONLY_METHOD_REASON_WITH_LINK
+    : available.passkey
+      ? ONLY_METHOD_REASON
+      : ONLY_METHOD_REASON_PASSWORD;
   const providerRows = SOCIAL_SIGN_IN_PROVIDERS.flatMap((provider): SignInMethodRowVm[] => {
     const linked = social.find((method) => method.provider === provider);
     const label = PROVIDER_LABEL[provider];
@@ -116,7 +125,7 @@ export function buildSignInMethodsSection(
             provider,
             describeRemainingMethods({
               hasPassword,
-              passkeys: passkeys.length,
+              passkeys: passkeyCount,
               providers: social
                 .filter((method) => method.provider !== provider)
                 .map((method) => PROVIDER_LABEL[method.provider]),
@@ -147,7 +156,7 @@ export function buildSignInMethodsSection(
           hasPassword,
           providers: social.map((method) => PROVIDER_LABEL[method.provider]),
           isLastMethod,
-          onlyMethodReason: ONLY_METHOD_REASON,
+          onlyMethodReason: onlyMethod,
           now,
         }),
       ]

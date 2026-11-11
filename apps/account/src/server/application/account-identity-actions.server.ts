@@ -18,6 +18,7 @@ import {
   signInMethodKindSchema,
   socialSignInProviderSchema,
 } from "@auction/identity-contracts";
+import { z } from "zod";
 import { getLaxAccountContainer } from "../container";
 import type {
   AccountActionResult,
@@ -61,8 +62,15 @@ function rejectionMessage(
 
 type NotOk = Exclude<AccountActionResult, { status: "ok" }>;
 
+/** Refusals that mean the page showed something that is no longer true. */
+const STALE_REFUSALS: ReadonlySet<string> = new Set(["last_sign_in_method", "not_linked"]);
+
+/** Sentences that replace the general ones for a refusal, where the general one names the wrong thing. */
+type RefusalCopy = Partial<Record<AccountSignInMethodError, string>>;
+
 async function asSignedInPerson<T>(
   change: (actor: IdentityActor) => Promise<IdentityCallResult<T>>,
+  refusalCopy: RefusalCopy = {},
 ): Promise<{ status: "ok"; value: T } | NotOk> {
   const actor = await loadActor();
   if (actor === "no_session") return { status: "reauth_required" };
@@ -70,7 +78,13 @@ async function asSignedInPerson<T>(
   const result = await change(actor);
   if (result.status === "ok") return result;
   if (result.status === "rejected") {
-    return { status: "error", message: rejectionMessage(result.reason) };
+    const reason = result.reason;
+    const message =
+      (isSignInMethodRejection(reason) ? refusalCopy[reason] : undefined) ??
+      rejectionMessage(reason);
+    return STALE_REFUSALS.has(reason)
+      ? { status: "error", message, stale: true }
+      : { status: "error", message };
   }
   return result.status === "reauth_required"
     ? result
@@ -80,8 +94,9 @@ async function asSignedInPerson<T>(
 async function actAsSignedInPerson<T>(
   change: (actor: IdentityActor) => Promise<IdentityCallResult<T>>,
   success: (value: T) => string,
+  refusalCopy: RefusalCopy = {},
 ): Promise<AccountActionResult> {
-  const result = await asSignedInPerson(change);
+  const result = await asSignedInPerson(change, refusalCopy);
   return result.status === "ok" ? { status: "ok", message: success(result.value) } : result;
 }
 
@@ -180,17 +195,25 @@ export async function startSignInMethodAddAction(kind: string): Promise<LinkActi
   return { status: "error", message: UNAVAILABLE_MESSAGE, refresh: false };
 }
 
+/** A passkey id as the issuer makes them: a short opaque string. Anything else is not one. */
+const passkeyIdSchema = z.string().min(1).max(128);
+const passkeyNameInputSchema = z.string().max(1_000);
+
+const PASSKEY_GONE: RefusalCopy = { not_linked: "That passkey isn't on your account any more." };
+
 /**
  * Removes one of the person's own passkeys. The issuer finds it among the signed-in person's
  * passkeys only (another person's id is "not linked"), needs a recent sign-in, refuses the last
  * way in, signs out every other device and emails the person.
  */
 export async function removePasskeyAction(passkeyId: string): Promise<AccountActionResult> {
-  if (!passkeyId) return { status: "error", message: "That passkey can't be removed here." };
+  const id = passkeyIdSchema.safeParse(passkeyId);
+  if (!id.success) return { status: "error", message: "That passkey can't be removed here." };
   const { identity } = getLaxAccountContainer();
   return actAsSignedInPerson(
-    (actor) => identity.removePasskey(actor, passkeyId),
+    (actor) => identity.removePasskey(actor, id.data),
     () => "Passkey removed. We've emailed you to confirm.",
+    PASSKEY_GONE,
   );
 }
 
@@ -202,13 +225,16 @@ export async function renamePasskeyAction(
   passkeyId: string,
   name: string,
 ): Promise<AccountActionResult> {
-  if (!passkeyId) return { status: "error", message: "That passkey can't be renamed here." };
-  const problem = passkeyNameProblem(name);
+  const id = passkeyIdSchema.safeParse(passkeyId);
+  if (!id.success) return { status: "error", message: "That passkey can't be renamed here." };
+  const raw = passkeyNameInputSchema.safeParse(name);
+  const problem = passkeyNameProblem(raw.success ? raw.data : "x".repeat(1_001));
   if (problem) return { status: "error", message: problem };
   const { identity } = getLaxAccountContainer();
   return actAsSignedInPerson(
-    (actor) => identity.renamePasskey(actor, passkeyId, name.trim()),
+    (actor) => identity.renamePasskey(actor, id.data, name.trim()),
     () => "Passkey renamed.",
+    PASSKEY_GONE,
   );
 }
 

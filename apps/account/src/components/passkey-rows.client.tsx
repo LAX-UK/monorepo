@@ -27,6 +27,7 @@ import { Input } from "@auction/ui/components/input";
 import { Label } from "@auction/ui/components/label";
 import { LoadingButton } from "@auction/ui/components/loading-button";
 import { useId, useState } from "react";
+import { ProductText } from "./product-name";
 import {
   SIGN_IN_METHOD_ROW,
   SIGN_IN_METHOD_SUBROW,
@@ -49,11 +50,13 @@ function RenamePasskeyDialog({
   returnTo,
   onClose,
   onRenamed,
+  onStale,
 }: {
   item: PasskeyItemVm;
   returnTo: string;
   onClose: () => void;
   onRenamed: (message: string) => void;
+  onStale: (message: string) => void;
 }) {
   const fieldId = useId();
   const messageId = useId();
@@ -73,6 +76,11 @@ function RenamePasskeyDialog({
     if (result.status === "reauth_required") {
       // A rename needs no recent sign-in, but a sign-in that has ended has to start again.
       window.location.assign(buildReauthHref(returnTo));
+      return;
+    }
+    if (result.status === "error" && result.stale) {
+      // The passkey is already gone: say so and show the list as it is.
+      onStale(result.message);
       return;
     }
     setBusy(false);
@@ -150,11 +158,13 @@ function RemovePasskeyDialog({
   returnTo,
   onClose,
   onRemoved,
+  onStale,
 }: {
   item: PasskeyItemVm;
   returnTo: string;
   onClose: () => void;
   onRemoved: (message: string) => void;
+  onStale: (message: string) => void;
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -165,6 +175,12 @@ function RemovePasskeyDialog({
     const result = await attempt(() => removePasskeyAction(item.id));
     if (result.status === "reauth_required") {
       window.location.assign(buildReauthHref(returnTo, "remove_sign_in_method"));
+      return;
+    }
+    if (result.status === "error" && result.stale) {
+      // The page was out of date (already removed, or now the last way in): close and reload it,
+      // so the dialog never promises a way in the row below says is not there.
+      onStale(result.message);
       return;
     }
     setBusy(false);
@@ -184,7 +200,9 @@ function RemovePasskeyDialog({
       title={item.confirm.title}
       body={
         <>
-          <p>{item.confirm.body}</p>
+          <p>
+            <ProductText text={item.confirm.body} />
+          </p>
           <p className="mt-3">{item.confirm.note}</p>
           {error ? (
             <p role="alert" className="mt-3 text-error">
@@ -269,6 +287,8 @@ type PasskeysGroupProps = {
   onAdd: () => void;
   /** A rename or removal went through: the list shows the message and reloads. */
   onChanged: (message: string) => void;
+  /** The page was out of date: the list shows why and reloads. */
+  onStale: (message: string) => void;
 };
 
 /**
@@ -284,6 +304,7 @@ export function PasskeysGroup({
   addError,
   onAdd,
   onChanged,
+  onStale,
 }: PasskeysGroupProps) {
   const addReasonId = useId();
   const addErrorId = useId();
@@ -352,6 +373,10 @@ export function PasskeysGroup({
             setRenaming(null);
             onChanged(message);
           }}
+          onStale={(message) => {
+            setRenaming(null);
+            onStale(message);
+          }}
         />
       ) : null}
       {removing ? (
@@ -362,6 +387,10 @@ export function PasskeysGroup({
           onRemoved={(message) => {
             setRemoving(null);
             onChanged(message);
+          }}
+          onStale={(message) => {
+            setRemoving(null);
+            onStale(message);
           }}
         />
       ) : null}

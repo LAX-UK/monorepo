@@ -296,6 +296,34 @@ describe("Remove a passkey", () => {
     ).toBe(false);
   });
 
+  it("closes the dialog and reloads when the page was out of date, saying why", async () => {
+    remove.mockResolvedValue({
+      status: "error",
+      message:
+        "This is the only way you can sign in. Add a passkey or a password first, then you can remove it.",
+      stale: true,
+    });
+    const dialog = open();
+    fireEvent.click(within(dialog).getByRole("button", { name: "Remove passkey" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(refresh).toHaveBeenCalledTimes(1);
+    expect(screen.getByText(/only way you can sign in/).className).toContain("text-error");
+  });
+
+  it("does the same when a rename finds the passkey already gone", async () => {
+    rename.mockResolvedValue({
+      status: "error",
+      message: "That passkey isn't on your account any more.",
+      stale: true,
+    });
+    renderList([password, passkeys([item("pk-1", "iCloud Keychain")])]);
+    fireEvent.click(screen.getByRole("button", { name: "Rename iCloud Keychain" }));
+    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(refresh).toHaveBeenCalledTimes(1);
+    expect(screen.getByText("That passkey isn't on your account any more.")).toBeTruthy();
+  });
+
   it("cancels without removing", () => {
     const dialog = open();
     fireEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));

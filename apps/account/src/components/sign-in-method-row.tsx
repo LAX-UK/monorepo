@@ -7,8 +7,8 @@ import { ProviderMark } from "./provider-mark";
 export const SIGN_IN_METHOD_ROW =
   "flex min-h-16 flex-col items-start gap-y-2 px-4 py-2.5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-3 sm:gap-y-1 sm:px-6";
 
-/** A passkey's row sits a step in under the "Passkeys" row it belongs to. */
-export const SIGN_IN_METHOD_SUBROW = `${SIGN_IN_METHOD_ROW} sm:pl-12`;
+/** A passkey's row sits a step in under the "Passkeys" row it belongs to, on a phone too. */
+export const SIGN_IN_METHOD_SUBROW = `${SIGN_IN_METHOD_ROW} pl-8 sm:pl-12`;
 
 type RowTextProps = {
   title: string;

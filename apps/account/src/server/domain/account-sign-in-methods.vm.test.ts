@@ -129,8 +129,18 @@ describe("buildSignInMethodsSection", () => {
   });
 
   it("says add a passkey or a password when nothing else is offered", () => {
-    const vm = rowsOf(ok(false, [google, apple].slice(0, 1), { available: { apple: false } }));
-    expect(vm.rows[1]).toMatchObject({ blockedReason: ONLY_METHOD_REASON });
+    const vm = rowsOf(ok(false, [google], { available: { apple: false, passkey: true } }));
+    expect(vm.rows.find((row) => row.kind === "social")).toMatchObject({
+      blockedReason: ONLY_METHOD_REASON,
+    });
+  });
+
+  it("says only to add a password where passkeys are not offered", () => {
+    const vm = rowsOf(ok(false, [google], { available: { apple: false } }));
+    expect(vm.rows[1]).toMatchObject({
+      blockedReason:
+        "This is the only way you can sign in. Add a password first, then you can remove it.",
+    });
   });
 
   it("offers to add a password on a social-only account, and blocks removing the only method", () => {
@@ -143,17 +153,17 @@ describe("buildSignInMethodsSection", () => {
     expect(vm.rows[1]).toMatchObject({
       kind: "social",
       title: "Google",
-      blockedReason: ONLY_METHOD_REASON,
+      blockedReason: expect.stringContaining("only way you can sign in"),
     });
   });
 
-  it("keeps the hint for a lone passkey, where no row carries the reason", () => {
-    const vm = rowsOf(ok(false, [], { passkeys: [passkey] }));
-    expect(vm.hint).toContain("Add a password");
+  it("leaves the hint out for a lone passkey: its own row says why it stays", () => {
+    const vm = rowsOf(ok(false, [], { available: { passkey: true }, passkeys: [passkey] }));
+    expect(vm.hint).toBeNull();
   });
 
   it("counts passkeys, so Google can go when a passkey remains", () => {
-    const vm = rowsOf(ok(false, [google], { passkeys: [passkey] }));
+    const vm = rowsOf(ok(false, [google], { available: { passkey: true }, passkeys: [passkey] }));
     const row = vm.rows.find((r) => r.kind === "social");
     expect(row?.kind === "social" && row.blockedReason).toBeNull();
     expect(vm.hint).toBeNull();
@@ -401,7 +411,7 @@ describe("passkey rows", () => {
 
   it("blocks Remove on the only way in, with the reason, and on no other", () => {
     const lone = passkeysRow(ok(false, [], { ...on, passkeys: [passkey] }));
-    expect(lone.items[0]?.blockedReason).toBe(ONLY_METHOD_REASON);
+    expect(lone.items[0]?.blockedReason).toContain("only way you can sign in");
     const withPassword = passkeysRow(ok(true, [], { ...on, passkeys: [passkey] }));
     expect(withPassword.items[0]?.blockedReason).toBeNull();
     const twoPasskeys = passkeysRow(ok(false, [], { ...on, passkeys: [keychain, yubikey] }));
@@ -439,10 +449,18 @@ describe("passkey rows", () => {
     expect(nine.addBlockedReason).toBeNull();
   });
 
-  it("counts passkeys, flag on or off, when deciding the only way in is a provider", () => {
-    const vm = build(ok(false, [google], { passkeys: [passkey] }));
-    const social = vm.rows.find((row) => row.kind === "social");
-    expect(social?.kind === "social" && social.blockedReason).toBeNull();
+  it("counts passkeys as a way in only while they are offered", () => {
+    const social = (result: ReturnType<typeof ok>) => {
+      const row = build(result).rows.find((entry) => entry.kind === "social");
+      return row?.kind === "social" ? row : null;
+    };
+    expect(social(ok(false, [google], { passkeys: [passkey] }))?.blockedReason).toContain(
+      "only way you can sign in",
+    );
+    expect(social(ok(false, [google], { ...on, passkeys: [passkey] }))?.blockedReason).toBeNull();
+    expect(social(ok(false, [google], { passkeys: [passkey] }))?.confirm.body).not.toContain(
+      "passkey",
+    );
   });
 
   it("tells a provider's confirmation that passkeys are still there to sign in with", () => {

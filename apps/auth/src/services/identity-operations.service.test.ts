@@ -460,6 +460,15 @@ describe("IdentityOperationsService", () => {
       ).resolves.toBeDefined();
     });
 
+    it("does not count the other passkeys as a way in while passkeys are not offered", async () => {
+      const repositories = createRepositories();
+      vi.mocked(repositories.credentials.lockSignInAccounts).mockResolvedValue([]);
+      vi.mocked(repositories.credentials.lockPasskeys).mockResolvedValue(2);
+      await expect(
+        createService(repositories).service.removePasskey("subject", "pk-1", "current", false),
+      ).rejects.toMatchObject({ code: "last_sign_in_method" });
+    });
+
     it("answers not linked for a passkey the person does not have, before the last-method rule", async () => {
       const repositories = createRepositories();
       vi.mocked(repositories.credentials.lockSignInAccounts).mockResolvedValue([]);
@@ -579,6 +588,21 @@ describe("IdentityOperationsService", () => {
       await expect(
         createService(none).service.unlinkSocialSignIn("subject", "google", "current"),
       ).rejects.toMatchObject({ code: "last_sign_in_method" });
+    });
+
+    it("does not count passkeys as a way in while passkeys are not offered", async () => {
+      const repositories = createRepositories();
+      vi.mocked(repositories.credentials.lockSignInAccounts).mockResolvedValue([row("google")]);
+      vi.mocked(repositories.credentials.lockPasskeys).mockResolvedValue(2);
+      await expect(
+        createService(repositories).service.unlinkSocialSignIn(
+          "subject",
+          "google",
+          "current",
+          false,
+        ),
+      ).rejects.toMatchObject({ code: "last_sign_in_method" });
+      expect(repositories.credentials.deleteSocialAccount).not.toHaveBeenCalled();
     });
 
     it("refuses a provider that is not linked", async () => {

@@ -14,6 +14,7 @@ import type {
   SocialRowVm,
 } from "@/server/domain/account-sign-in-methods.vm";
 import type { SignInMethodKind } from "@auction/identity-contracts/account";
+import { cn } from "@auction/ui";
 import { ConfirmDialog } from "@auction/ui/components/confirm-dialog";
 import { useRouter } from "next/navigation";
 import { type ReactNode, useEffect, useId, useState } from "react";
@@ -168,7 +169,8 @@ export function SignInMethodsList({
   const [target, setTarget] = useState<SocialRowVm | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
+  /** What just happened: said in green when it worked, in red when the page was out of date. */
+  const [notice, setNotice] = useState<{ message: string; ok: boolean } | null>(null);
   /** The method whose Add or Link button was pressed: the browser is on its way to the issuer. */
   const [adding, setAdding] = useState<SignInMethodKind | null>(null);
   const [addError, setAddError] = useState<{ kind: SignInMethodKind; message: string } | null>(
@@ -231,13 +233,21 @@ export function SignInMethodsList({
       window.location.assign(buildReauthHref(returnTo, "remove_sign_in_method"));
       return;
     }
+    if (result.status === "error" && result.stale) {
+      // Already removed, or now the last way in: show why and reload, never keep the dialog open.
+      setBusy(false);
+      setTarget(null);
+      setNotice({ message: result.message, ok: false });
+      router.refresh();
+      return;
+    }
     setBusy(false);
     if (result.status === "error") {
       setError(result.message);
       return;
     }
     setTarget(null);
-    setNotice(result.message);
+    setNotice({ message: result.message, ok: true });
     router.refresh();
   }
 
@@ -260,7 +270,12 @@ export function SignInMethodsList({
                   onAdd={() => add("passkey")}
                   onChanged={(message) => {
                     setAddError(null);
-                    setNotice(message);
+                    setNotice({ message, ok: true });
+                    router.refresh();
+                  }}
+                  onStale={(message) => {
+                    setAddError(null);
+                    setNotice({ message, ok: false });
                     router.refresh();
                   }}
                 />
@@ -298,8 +313,14 @@ export function SignInMethodsList({
         />
       </ListCard>
       {hint ? <p className="px-4 text-xs text-on-surface-variant">{hint}</p> : null}
-      <output aria-live="polite" className="block px-4 text-sm text-success empty:hidden">
-        {notice}
+      <output
+        aria-live="polite"
+        className={cn(
+          "block px-4 text-sm empty:hidden",
+          notice?.ok === false ? "text-error" : "text-success",
+        )}
+      >
+        {notice?.message}
       </output>
       {target ? (
         <ConfirmDialog
