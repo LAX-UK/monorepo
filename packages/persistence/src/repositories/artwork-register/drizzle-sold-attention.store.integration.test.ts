@@ -1,7 +1,7 @@
 import type { NewArtworkRegisterEntry } from "@auction/artwork-register-contracts";
 import { createDb } from "@auction/db";
 import { sql } from "drizzle-orm";
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { DrizzleArtworkRegisterRepository, DrizzleSoldAttentionStore } from "./index.js";
 
 const url = process.env.DATABASE_URL;
@@ -30,6 +30,11 @@ function newEntry(n: number): NewArtworkRegisterEntry {
 describe.skipIf(!url)("sold attention store (Postgres)", { timeout: 30_000 }, () => {
   const register = new DrizzleArtworkRegisterRepository(db);
   const store = new DrizzleSoldAttentionStore(db);
+
+  // Items reference the register (ON DELETE RESTRICT): leave none behind for the other register tests.
+  afterAll(async () => {
+    await db.execute(sql`DELETE FROM artwork_register_sold_attention`);
+  });
 
   beforeEach(async () => {
     await db.execute(
