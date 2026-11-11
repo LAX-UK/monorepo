@@ -2,6 +2,7 @@ import type { ArtworkRegisterEntry } from "@auction/artwork-register-contracts";
 import type {
   AdminArtworkDetail,
   AdminBidLotRef,
+  AdminCatalogueChange,
   AdminLaxArtListing,
 } from "@auction/shop-contracts";
 import type { AdminArtworkReader } from "../ports/artwork-catalogue-admin.js";
@@ -14,6 +15,11 @@ import { presentWhereItIs } from "./where-it-is.presenter.js";
 /** LAX Bid's draft lot for a record. Asking can fail; the page then reads as if there were none. */
 export type ZohoLinkBidDrafts = {
   findDraftLot(registerId: string): Promise<AdminBidLotRef | null>;
+};
+
+/** Where the lax.art listing no longer matches Zoho. Asking can fail; the page then shows no change. */
+export type ZohoLinkCatalogueChanges = {
+  laxArtChange(entry: ArtworkRegisterEntry): Promise<AdminCatalogueChange | null>;
 };
 
 export type ZohoLinkRegister = {
@@ -37,6 +43,7 @@ export class ArtworkZohoLinkService {
       register: ZohoLinkRegister;
       staffNames: StaffNameReader;
       bidDrafts: ZohoLinkBidDrafts;
+      catalogueChanges: ZohoLinkCatalogueChanges;
       now?: () => Date;
     },
   ) {}
@@ -51,9 +58,10 @@ export class ArtworkZohoLinkService {
     if (!artwork.zohoProductId) return null;
     const entry = await this.deps.register.findByZohoProductId(artwork.zohoProductId);
     if (!entry) return null;
-    const [events, bidDraft] = await Promise.all([
+    const [events, bidDraft, catalogueChange] = await Promise.all([
       this.deps.register.listEvents(entry.id, HISTORY_LIMIT),
       this.bidDraftFor(entry),
+      this.deps.catalogueChanges.laxArtChange(entry).catch(() => null),
     ]);
     const laxArt: AdminLaxArtListing = {
       artworkId: artwork.artworkId,
@@ -76,6 +84,7 @@ export class ArtworkZohoLinkService {
         now: (this.deps.now ?? (() => new Date()))(),
       }),
       recentMoves: moves.map((event) => presentRegisterEvent(event, names)),
+      catalogueChange,
     };
   }
 

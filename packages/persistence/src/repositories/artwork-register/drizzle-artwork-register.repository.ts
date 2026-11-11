@@ -11,10 +11,12 @@ import {
   assertSeries,
   canAcceptZohoValue,
   imageKeysOf,
+  isCatalogueField,
   nextStockCode,
   parseStockCode,
   printCodeForOriginal,
   reconcileZohoChange,
+  registerFieldValue,
   sameImageSources,
   transitionOffer,
 } from "@auction/artwork-register-contracts";
@@ -292,6 +294,7 @@ export class DrizzleArtworkRegisterRepository
         year: entry.year,
         imageRefs: entry.imageRefs,
         catalogueStatus: entry.catalogueStatus,
+        zohoPrice: entry.zohoPrice ?? null,
         zohoModifiedAt: entry.zohoModifiedAt ?? null,
         createdAt: now,
         updatedAt: now,
@@ -362,6 +365,7 @@ export class DrizzleArtworkRegisterRepository
           zohoModifiedAt: change.modifiedAt.toISOString(),
         });
       }
+      await this.publishCatalogueChange(tx, current, applied, result.apply);
       for (const found of result.conflicts) {
         await this.recordConflict(tx, row.id, found, change.modifiedAt, now);
       }
@@ -626,6 +630,9 @@ export class DrizzleArtworkRegisterRepository
       await this.record(tx, row.id, "zoho_change_applied", "zoho", input.now, {
         fields: { imageRefs: { from: locked.imageRefs, to: refs } },
       });
+      if (!sameKeys(locked.imageRefs, refs)) {
+        await this.publishCatalogueChange(tx, toEntry(locked), ["imageRefs"], { imageRefs: refs });
+      }
       return { status: "replaced", entry: toEntry(row) };
     });
   }
@@ -695,11 +702,43 @@ export class DrizzleArtworkRegisterRepository
     });
   }
 
+  /**
+   * Announces a change to the fields lax.art listings and Bid lots copy, in the transaction that
+   * made it: the event exists exactly when the change does, and only when one of those fields
+   * really changed (a repeated or stale notice applies nothing, so it announces nothing). Carries
+   * the register id and the before and after of the changed fields, never anything personal.
+   */
+  private async publishCatalogueChange(
+    tx: Tx,
+    before: ArtworkRegisterEntry,
+    applied: readonly RegisterField[],
+    values: Partial<Record<RegisterField, unknown>>,
+  ): Promise<void> {
+    const changed = applied.filter(isCatalogueField);
+    if (changed.length === 0) return;
+    await this.publish(tx, before.id, "artwork_register.catalogue_changed", {
+      schemaVersion: 1,
+      registerId: before.id,
+      zohoProductId: before.zohoProductId,
+      stockCode: before.stockCode,
+      fields: changed,
+      changes: Object.fromEntries(
+        changed.map((field) => [
+          field,
+          { from: registerFieldValue(before, field), to: values[field] },
+        ]),
+      ),
+    });
+  }
+
   /** Appends a domain event in the caller's transaction, so it exists exactly when the change does. */
   private async publish(
     tx: Tx,
     registerId: string,
-    eventType: "artwork_register.offer_changed" | "artwork_register.stock_code_assigned",
+    eventType:
+      | "artwork_register.offer_changed"
+      | "artwork_register.stock_code_assigned"
+      | "artwork_register.catalogue_changed",
     payload: Record<string, unknown>,
   ): Promise<void> {
     await tx.insert(domainEvent).values({

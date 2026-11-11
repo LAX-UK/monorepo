@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { assessProduct } from "./assess-product.js";
+import { assessProduct, zohoPriceText } from "./assess-product.js";
 import { product } from "./fixtures/load-fixtures.js";
 
 describe("assessProduct", () => {
@@ -19,6 +19,7 @@ describe("assessProduct", () => {
       year: 2024,
       imageRefs: [],
       catalogueStatus: "Available",
+      zohoPrice: expect.stringMatching(/^\d+\.\d{2}$/),
       zohoModifiedAt: new Date("2026-09-07T09:15:30.000Z"),
     });
     expect(a.change?.fields).toMatchObject({
@@ -106,5 +107,26 @@ describe("assessProduct", () => {
     expect(a.blockers).toContain("invalid_modified_time");
     expect(a.change).toBeNull();
     expect(a.newEntry).toBeNull();
+  });
+});
+
+describe("zohoPriceText", () => {
+  it("reads Zoho's Unit Price as pounds with pence", () => {
+    expect(zohoPriceText(250)).toBe("250.00");
+    expect(zohoPriceText(1234.5)).toBe("1234.50");
+  });
+
+  it("reads no price when Zoho has none worth showing", () => {
+    expect(zohoPriceText(null)).toBeNull();
+    expect(zohoPriceText(0)).toBeNull();
+    expect(zohoPriceText(-5)).toBeNull();
+    expect(zohoPriceText(Number.NaN)).toBeNull();
+  });
+
+  it("puts Zoho's price in the change, so the register follows it", () => {
+    const a = assessProduct({ ...product(1), unitPrice: 4800 });
+    expect(a.change?.fields.zohoPrice).toBe("4800.00");
+    expect(a.newEntry?.zohoPrice).toBe("4800.00");
+    expect(assessProduct({ ...product(1), unitPrice: null }).change?.fields.zohoPrice).toBeNull();
   });
 });

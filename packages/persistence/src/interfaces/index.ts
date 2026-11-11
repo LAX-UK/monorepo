@@ -1250,6 +1250,7 @@ export type {
   CreateRegisterEntryResult,
   AuctionOfferDraftLot,
   AuctionOfferDraftLotSummary,
+  AuctionOfferLotCatalogue,
   AuctionOfferSale,
   IArtworkImageStore,
   IArtworkLinkHistory,

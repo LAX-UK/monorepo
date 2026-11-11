@@ -66,6 +66,7 @@ function setup(
       ),
       findOpenLotForRegister,
       findDraftLotForRegister: vi.fn().mockResolvedValue(over.draft ?? null),
+      findLotCatalogueForRegister: vi.fn().mockResolvedValue(null),
     },
     register: {
       findById: vi.fn().mockResolvedValue(over.register === undefined ? entry() : over.register),

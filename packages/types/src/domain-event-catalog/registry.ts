@@ -1,6 +1,7 @@
 import type { z } from "zod";
 import { alertSubscriptionConfirmedPayloadSchemaV1 } from "./alert-payload-schemas.js";
 import {
+  artworkRegisterCatalogueChangedPayloadSchemaV1,
   artworkRegisterOfferChangedPayloadSchemaV1,
   artworkRegisterStockCodeAssignedPayloadSchemaV1,
 } from "./artwork-register-payload-schemas.js";
@@ -103,6 +104,7 @@ export const ALL_LIVE_DOMAIN_EVENT_TYPES = [
   "artist.merged",
   "artist.propose_matches",
   "artist.reviewed",
+  "artwork_register.catalogue_changed",
   "artwork_register.offer_changed",
   "artwork_register.stock_code_assigned",
   "auth.account_suspended",
@@ -1197,6 +1199,13 @@ const REGISTRY_OVERRIDES: Partial<Record<LiveDomainEventType, RegistryOverride>>
   },
   "sale.unpublished": { consumers: ["zoho_artwork_listing"] },
   "sale.ended": { consumers: ["zoho_artwork_listing"] },
+  "artwork_register.catalogue_changed": {
+    schema: artworkRegisterCatalogueChangedPayloadSchemaV1,
+    producers: ["packages/db"],
+    consumers: ["audit"],
+    idempotencyPolicy: "none",
+    piiClassification: "operational",
+  },
   "artwork_register.offer_changed": {
     schema: artworkRegisterOfferChangedPayloadSchemaV1,
     producers: ["packages/db"],
