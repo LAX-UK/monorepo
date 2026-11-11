@@ -1218,6 +1218,7 @@ export type {
   IPaymentGroupRepository,
   LivePaymentGroupFacts,
   LockedPaymentGroup,
+  LockedPaymentGroupDelivery,
   PaySeveralInvoiceFlags,
   PaymentGroupDelivery,
   PaymentGroupMember,

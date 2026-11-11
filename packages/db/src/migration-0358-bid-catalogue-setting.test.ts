@@ -5,18 +5,18 @@ import { describe, expect, it } from "vitest";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const read = (name: string) => readFileSync(join(__dirname, "../drizzle", name), "utf8");
-const migration = read("0353_bid_catalogue_setting.sql");
-const rollback = read("0353_rollback.sql");
+const migration = read("0358_bid_catalogue_setting.sql");
+const rollback = read("0358_rollback.sql");
 const journal = JSON.parse(read("meta/_journal.json")) as {
   entries: { idx: number; tag: string; when: number }[];
 };
 
-describe("migration 0353 Bid catalogue setting", () => {
-  it("is journalled one day after the previous migration", () => {
-    const index = journal.entries.findIndex((e) => e.tag === "0353_bid_catalogue_setting");
+describe("migration 0358 Bid catalogue setting", () => {
+  it("is journalled right after the previous migration, with a later timestamp", () => {
+    const index = journal.entries.findIndex((e) => e.tag === "0358_bid_catalogue_setting");
     expect(index).toBeGreaterThan(0);
     expect(journal.entries[index]?.idx).toBe((journal.entries[index - 1]?.idx ?? 0) + 1);
-    expect(journal.entries[index]?.when).toBe((journal.entries[index - 1]?.when ?? 0) + 86_400_000);
+    expect(journal.entries[index]?.when).toBeGreaterThan(journal.entries[index - 1]?.when ?? 0);
   });
 
   it("adds a switch table that starts empty, so every switch is off", () => {

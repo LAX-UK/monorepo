@@ -2428,7 +2428,14 @@
       "idx": 347,
       "version": "7",
       "when": 1805529600000,
-      "tag": "0353_bid_catalogue_setting",
+      "tag": "0353_payment_group_refund_state",
+      "breakpoints": true
+    },
+    {
+      "idx": 348,
+      "version": "7",
+      "when": 1805961600000,
+      "tag": "0358_bid_catalogue_setting",
       "breakpoints": true
     }
   ]
