@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import {
   deviceZoneOffer,
   shouldReportDeviceZone,
+  timeZoneSummary,
   toTimeZonePreferenceVm,
   zoneLabel,
 } from "./account-time-zone.vm";
@@ -44,6 +45,40 @@ describe("toTimeZonePreferenceVm", () => {
     expect(toTimeZonePreferenceVm({ mode: "automatic", zone: "Etc/GMT+5" })).toEqual({
       mode: "automatic",
       zone: null,
+    });
+  });
+});
+
+describe("timeZoneSummary", () => {
+  it("names the zone in use and its source for Automatic", () => {
+    expect(timeZoneSummary({ mode: "automatic", zone: "Africa/Cairo" }, null, WINTER)).toEqual({
+      value: "Automatic · Cairo (GMT+2)",
+      detail: "Taken from this device. Sale times stay in London time, with yours next to them.",
+    });
+  });
+
+  it("says what happens next when the device has not reported yet", () => {
+    expect(timeZoneSummary({ mode: "automatic", zone: null }, null, WINTER)).toEqual({
+      value: "Automatic",
+      detail: "We’ll use this device’s time zone the next time you visit.",
+    });
+  });
+
+  it("shows a fixed city alone when the device is there too, or unknown", () => {
+    const fixed = { mode: "fixed", zone: "America/New_York" } as const;
+    expect(timeZoneSummary(fixed, "America/New_York", WINTER)).toEqual({
+      value: "New York (GMT−5)",
+      detail: null,
+    });
+    expect(timeZoneSummary(fixed, null, WINTER).detail).toBeNull();
+  });
+
+  it("notes a device somewhere else without asking for anything", () => {
+    expect(
+      timeZoneSummary({ mode: "fixed", zone: "America/New_York" }, "Asia/Dubai", WINTER),
+    ).toEqual({
+      value: "New York (GMT−5)",
+      detail: "This device is on Dubai time. We still use New York, as you chose.",
     });
   });
 });

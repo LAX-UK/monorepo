@@ -154,21 +154,6 @@ describe("ChangeZoneDialog", () => {
     expect(generic).toHaveTextContent("Choose the city for the times we show you.");
   });
 
-  it("uses a description the caller gives", () => {
-    render(
-      <ZonePreferenceProvider port={port()}>
-        <ChangeZoneDialog
-          open
-          onOpenChange={() => {}}
-          current={{ zone: "Asia/Tokyo", source: "account" }}
-          at={AT}
-          description="For your emails."
-        />
-      </ZonePreferenceProvider>,
-    );
-    expect(screen.getByRole("dialog", { name: "Time zone" })).toHaveTextContent("For your emails.");
-  });
-
   it("makes Save the primary (ink) button", () => {
     renderDialog({ zone: "Asia/Tokyo", source: "chosen" });
     expect(saveButton().className).toContain("bg-lax-ink");

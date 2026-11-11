@@ -41,9 +41,39 @@ export function setAccountViewerZone(saved: { mode: "automatic" | "fixed"; zone:
   window.dispatchEvent(new Event(CHANGE_EVENT));
 }
 
-/** Test seam: forget the override, as a full page load would. */
+/** Forgets the override, as a full page load would, and tells every chip. */
 export function clearAccountViewerZone(): void {
+  if (accountOverride === undefined) return;
   accountOverride = undefined;
+  window.dispatchEvent(new Event(CHANGE_EVENT));
+}
+
+function overrideAgreesWith(
+  override: ViewerZone,
+  saved: { mode: "automatic" | "fixed"; zone: string | null },
+): boolean {
+  if (saved.mode === "fixed") return override?.source === "account" && override.zone === saved.zone;
+  // Automatic: the override reads the device, and the server holds the zone it reported.
+  return (
+    (override === null || override.source === "device") && (override?.zone ?? null) === saved.zone
+  );
+}
+
+/**
+ * Drops the override once the server's copy no longer needs it: the signed-in person's saved
+ * choice now says the same, or they have signed out (`null`). Until then it keeps showing the
+ * zone they just saved.
+ */
+export function reconcileAccountViewerZone(
+  saved: { mode: "automatic" | "fixed"; zone: string | null } | null,
+): void {
+  if (accountOverride === undefined) return;
+  if (saved === null) {
+    clearAccountViewerZone();
+    return;
+  }
+  const caughtUp = overrideAgreesWith(accountOverride, saved);
+  if (caughtUp) clearAccountViewerZone();
 }
 
 /** The override as a snapshot `useSyncExternalStore` can compare; `null` means there is none. */

@@ -113,11 +113,7 @@ export default async function PersonalDetailsPage() {
           ) : null}
         </AccountSection>
       ))}
-      <AccountSection
-        id="time-zone"
-        title="Time zone for emails and dates"
-        description="The time zone we use for the times in your emails and in LAX Bid."
-      >
+      <AccountSection id="time-zone" title="Time zone">
         <TimeZoneSection
           initial={liveTimeZone}
           at={new Date().toISOString()}

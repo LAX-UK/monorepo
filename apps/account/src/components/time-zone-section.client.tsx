@@ -1,7 +1,7 @@
 "use client";
 
 import { Button, LoadingButton } from "@/components/account-button";
-import { CARD, CARD_PADDING, ListCard, ListCardRow } from "@/components/account-ui";
+import { CARD } from "@/components/account-ui";
 import {
   reportDeviceZoneAction,
   saveTimeZoneAction,
@@ -10,17 +10,18 @@ import type { TimeZoneActionResult } from "@/server/domain/account-action-result
 import { buildReauthHref } from "@/server/domain/account-reauth";
 import {
   type TimeZonePreferenceVm,
-  deviceZoneOffer,
   shouldReportDeviceZone,
+  timeZoneSummary,
   toTimeZonePreferenceVm,
-  zoneLabel,
 } from "@/server/domain/account-time-zone.vm";
-import { cityName, deviceTimeZone } from "@auction/datetime";
+import { deviceTimeZone } from "@auction/datetime";
+import { Skeleton } from "@auction/ui";
 import {
-  ChangeZoneDialog,
   type SavedZone,
+  ZoneChoiceFields,
   type ZonePreferencePort,
   ZonePreferenceProvider,
+  useZoneChoiceEditor,
 } from "@auction/ui/time";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
@@ -34,9 +35,6 @@ type TimeZoneSectionProps = {
   returnTo: string;
 };
 
-const SAVED_NOTE =
-  "Saved to your LAX Account. We use it in your emails and in the times LAX Bid shows you.";
-
 const noSubscription = () => () => {};
 /** False while the page hydrates, true after: the device's zone is only known in the browser. */
 function useBrowserReady(): boolean {
@@ -48,11 +46,10 @@ function useBrowserReady(): boolean {
 }
 
 /**
- * Personal details → "Time zone for emails and dates". Two ways to set it, as in the zone sheet on
- * Bid: Automatic follows this device (and the zone it reported on the last visit is what emails
- * use), or Always use one city. A person on a fixed city who opens Account from a device in
- * another zone is offered the switch to Automatic. The picker is the shared zone dialog: a sheet
- * on phones, a dialog from 768px.
+ * Personal details → "Time zone for emails and dates". One row that says which zone is in use
+ * and where it came from; "Change" opens the choice in place: Automatic follows this device, or
+ * Always use one city. Saving is confirmed by the toast. A fixed city on a device somewhere else
+ * gets a one-line note, never a prompt.
  */
 export function TimeZoneSection({ initial, at, returnTo }: TimeZoneSectionProps) {
   const router = useRouter();
@@ -60,10 +57,7 @@ export function TimeZoneSection({ initial, at, returnTo }: TimeZoneSectionProps)
   const [preference, setPreference] = useState<TimeZonePreferenceVm | null>(
     initial ? toTimeZonePreferenceVm(initial) : null,
   );
-  const [open, setOpen] = useState(false);
-  const [saved, setSaved] = useState<string | null>(null);
-  const [switching, setSwitching] = useState(false);
-  const [switchFailed, setSwitchFailed] = useState(false);
+  const [editing, setEditing] = useState(false);
   const reported = useRef<string | null>(null);
   const when = useMemo(() => new Date(at), [at]);
   const device = ready ? deviceTimeZone() : null;
@@ -85,17 +79,10 @@ export function TimeZoneSection({ initial, at, returnTo }: TimeZoneSectionProps)
         throw new Error("time_zone_sign_in_required");
       }
       if (result.status === "error") throw new Error("time_zone_not_saved");
-      const next = toTimeZonePreferenceVm(result);
-      setPreference(next);
-      setSaved(
-        next.zone
-          ? `Saved. Your emails and dates now use ${cityName(next.zone)} time.`
-          : "Saved. Your emails and dates will follow this device.",
-      );
+      setPreference(toTimeZonePreferenceVm(result));
       router.refresh();
     }
     return {
-      savedNote: SAVED_NOTE,
       save: async (zone) => accept(await saveTimeZoneAction({ mode: "fixed", zone })),
       followDevice: async () =>
         accept(await saveTimeZoneAction({ mode: "automatic", zone: deviceTimeZone() })),
@@ -110,87 +97,111 @@ export function TimeZoneSection({ initial, at, returnTo }: TimeZoneSectionProps)
     );
   }
 
-  const offer = deviceZoneOffer(preference, device);
   const current: SavedZone =
     preference.mode === "fixed"
       ? { zone: preference.zone, source: "account" }
       : { zone: preference.zone ?? device ?? "", source: "device" };
 
-  async function switchToAutomatic() {
-    setSwitching(true);
-    setSwitchFailed(false);
-    setSaved(null);
-    try {
-      await port.followDevice();
-    } catch {
-      setSwitchFailed(true);
-    } finally {
-      setSwitching(false);
-    }
-  }
-
   return (
-    <div className="flex flex-col gap-4">
-      <ListCard>
-        <ListCardRow
-          title={preference.mode === "automatic" ? "Automatic" : "Always use"}
-          subtitle={automaticDetail(preference, ready)}
-          value={preference.zone ? zoneLabel(preference.zone, when) : "Not detected yet"}
-          trailing={
-            <Button
-              variant="outline"
-              onClick={() => {
-                setSaved(null);
-                setOpen(true);
-              }}
-              aria-label="Change time zone for emails and dates"
-            >
-              Change
-            </Button>
-          }
-        />
-      </ListCard>
-      {offer ? (
-        <div className={`${CARD} ${CARD_PADDING} flex flex-col gap-3`}>
-          <p className="text-sm text-on-surface">
-            This device is in {zoneLabel(offer.deviceZone, when)}, but your emails and dates use{" "}
-            {zoneLabel(offer.fixedZone, when)}. Switch to Automatic to follow this device?
-          </p>
-          <LoadingButton
-            variant="outline"
-            loading={switching}
-            loadingLabel="Switching…"
-            onClick={switchToAutomatic}
-            className="self-start"
-          >
-            Switch to Automatic
-          </LoadingButton>
-          {switchFailed ? (
-            <p role="alert" className="text-sm text-error">
-              We couldn't save your time zone. Try again.
-            </p>
-          ) : null}
-        </div>
-      ) : null}
-      {saved ? <output className="block text-sm text-success">{saved}</output> : null}
-      <ZonePreferenceProvider port={port}>
-        <ChangeZoneDialog
-          open={open}
-          onOpenChange={setOpen}
-          current={current}
+    <div className={`${CARD} px-4 py-4 sm:px-6`}>
+      {editing ? (
+        <ZonePreferenceProvider port={port}>
+          <ZoneEditor current={current} at={when} onDone={() => setEditing(false)} />
+        </ZonePreferenceProvider>
+      ) : (
+        <ZoneRow
+          preference={preference}
+          device={device}
+          ready={ready}
           at={when}
-          description="Choose the time zone for your emails and for the times LAX Bid shows you."
+          onChange={() => setEditing(true)}
         />
-      </ZonePreferenceProvider>
+      )}
     </div>
   );
 }
 
-/** The line under the title: what Automatic is based on, or that a city is fixed. */
-function automaticDetail(preference: TimeZonePreferenceVm, ready: boolean): string {
-  if (preference.mode === "fixed") return "Used in emails and dates until you change it.";
-  if (!ready) return "Checking this device…";
-  return preference.zone
-    ? "Detected from your device on your last visit."
-    : "We haven't detected this device's time zone yet.";
+const ROW_LABEL = "Time zone for emails and dates";
+
+function ZoneRow({
+  preference,
+  device,
+  ready,
+  at,
+  onChange,
+}: {
+  preference: TimeZonePreferenceVm;
+  device: string | null;
+  ready: boolean;
+  at: Date;
+  onChange: () => void;
+}) {
+  const summary = timeZoneSummary(preference, device, at);
+  return (
+    <div className="flex items-start justify-between gap-4">
+      <div className="min-w-0">
+        <p className="text-sm text-on-surface-variant">{ROW_LABEL}</p>
+        {ready ? (
+          <>
+            <p className="mt-0.5 text-base font-medium text-on-surface">{summary.value}</p>
+            {summary.detail ? (
+              <p className="mt-1 text-sm text-on-surface-variant">{summary.detail}</p>
+            ) : null}
+          </>
+        ) : (
+          <div aria-busy="true" className="mt-1 grid gap-2">
+            <Skeleton className="h-5 w-48" />
+            <Skeleton className="h-4 w-full max-w-sm" />
+          </div>
+        )}
+      </div>
+      <Button variant="underline" onClick={onChange} aria-label={`Change: ${ROW_LABEL}`}>
+        Change
+      </Button>
+    </div>
+  );
+}
+
+function ZoneEditor({
+  current,
+  at,
+  onDone,
+}: {
+  current: SavedZone;
+  at: Date;
+  onDone: () => void;
+}) {
+  const editor = useZoneChoiceEditor({ current, active: true, onSaved: onDone });
+  return (
+    <fieldset className="m-0 grid min-w-0 gap-3 border-0 p-0">
+      <legend className="mb-3 text-sm text-on-surface-variant">{ROW_LABEL}</legend>
+      <ZoneChoiceFields
+        choice={editor.choice}
+        onChoiceChange={editor.setChoice}
+        current={current}
+        device={editor.device}
+        startsAutomatic={editor.startsAutomatic}
+        at={at}
+      />
+      {editor.failed ? (
+        <p role="alert" className="text-sm text-error">
+          We couldn’t save your time zone. Try again.
+        </p>
+      ) : null}
+      <div className="flex flex-wrap gap-2">
+        <LoadingButton
+          variant="cta"
+          loading={editor.saving}
+          loadingLabel="Saving…"
+          disabled={!editor.canSave}
+          onClick={editor.save}
+        >
+          Save
+        </LoadingButton>
+        <Button variant="outline" onClick={onDone} disabled={editor.saving}>
+          Cancel
+        </Button>
+      </div>
+    </fieldset>
+  );
 }

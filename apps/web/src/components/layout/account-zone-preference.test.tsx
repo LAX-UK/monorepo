@@ -40,6 +40,7 @@ describe("AccountZonePreference", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     clearAccountViewerZone();
+    window.sessionStorage.clear();
     device.zone = "Europe/London";
     document.cookie = "lax_tz=; path=/; max-age=0";
     client.saveAccountFixedZone.mockResolvedValue(true);
@@ -137,6 +138,62 @@ describe("AccountZonePreference", () => {
       device.zone = "Asia/Tokyo";
       renderProbe({ mode: "automatic", zone: "Europe/London" });
       expect(client.reportDeviceZone).toHaveBeenCalledWith("Asia/Tokyo");
+    });
+
+    it("reports a device zone once per session, not again on the next full load", () => {
+      device.zone = "Asia/Tokyo";
+      const first = render(
+        <AccountZonePreference timeZone={{ mode: "automatic", zone: "Europe/London" }}>
+          <Probe />
+        </AccountZonePreference>,
+      );
+      first.unmount();
+      renderProbe({ mode: "automatic", zone: "Europe/London" });
+      expect(client.reportDeviceZone).toHaveBeenCalledTimes(1);
+    });
+
+    it("reports again when the device is somewhere else than it was last reported", () => {
+      device.zone = "Asia/Tokyo";
+      renderProbe({ mode: "automatic", zone: "Europe/London" });
+      device.zone = "Asia/Dubai";
+      renderProbe({ mode: "automatic", zone: "Europe/London" });
+      expect(client.reportDeviceZone).toHaveBeenCalledTimes(2);
+    });
+
+    it("hands the chip back to the server's copy once it says the same as the saved zone", async () => {
+      const view = (timeZone: { mode: "fixed"; zone: string }) => (
+        <ViewerZoneProvider initial={{ zone: timeZone.zone, source: "account" }}>
+          <AccountZonePreference timeZone={timeZone}>
+            <Probe />
+          </AccountZonePreference>
+        </ViewerZoneProvider>
+      );
+      const { rerender } = render(view({ mode: "fixed", zone: "Europe/London" }));
+      await act(async () => {
+        await port.save("Asia/Tokyo");
+      });
+      expect(seen).toEqual({ zone: "Asia/Tokyo", source: "account" });
+      // The server's copy catches up with the save.
+      rerender(view({ mode: "fixed", zone: "Asia/Tokyo" }));
+      // A later change made elsewhere is no longer hidden by the old override.
+      rerender(view({ mode: "fixed", zone: "Europe/Paris" }));
+      expect(seen).toEqual({ zone: "Europe/Paris", source: "account" });
+    });
+
+    it("forgets a saved zone when the person signs out", async () => {
+      const view = (timeZone: { mode: "fixed"; zone: string } | null) => (
+        <ViewerZoneProvider initial={{ zone: "Europe/London", source: "device" }}>
+          <AccountZonePreference timeZone={timeZone}>
+            <Probe />
+          </AccountZonePreference>
+        </ViewerZoneProvider>
+      );
+      const { rerender } = render(view({ mode: "fixed", zone: "Europe/London" }));
+      await act(async () => {
+        await port.save("Asia/Tokyo");
+      });
+      rerender(view(null));
+      expect(seen).toEqual({ zone: "Europe/London", source: "device" });
     });
 
     it("does not report when the stored zone is already the device's", () => {

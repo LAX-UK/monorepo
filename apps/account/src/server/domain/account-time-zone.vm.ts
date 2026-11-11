@@ -26,8 +26,8 @@ export function toTimeZonePreferenceVm(preference: {
 }
 
 /**
- * Whether to offer a switch to Automatic: the person fixed a city, and this device is somewhere
- * else (a trip, a new laptop). Nothing is offered when the device's zone is unknown or the same.
+ * Whether this device is somewhere other than the city the person fixed (a trip, a new laptop).
+ * Nothing when the device's zone is unknown or the same. It only feeds the note under the value.
  */
 export function deviceZoneOffer(
   preference: TimeZonePreferenceVm,
@@ -35,6 +35,40 @@ export function deviceZoneOffer(
 ): { deviceZone: string; fixedZone: string } | null {
   if (preference.mode !== "fixed" || !deviceZone || deviceZone === preference.zone) return null;
   return { deviceZone, fixedZone: preference.zone };
+}
+
+/** The row's value and the one line under it. */
+export type TimeZoneSummaryVm = { value: string; detail: string | null };
+
+/**
+ * What the Personal details row says. Automatic names the zone in use and where it came from; a
+ * fixed city stands alone, and only a device somewhere else gets a note, so the difference is
+ * explained without asking the person to do anything.
+ */
+export function timeZoneSummary(
+  preference: TimeZonePreferenceVm,
+  deviceZone: string | null,
+  at: Date,
+): TimeZoneSummaryVm {
+  if (preference.mode === "automatic") {
+    return preference.zone
+      ? {
+          value: `Automatic · ${zoneLabel(preference.zone, at)}`,
+          detail:
+            "Taken from this device. Sale times stay in London time, with yours next to them.",
+        }
+      : {
+          value: "Automatic",
+          detail: "We’ll use this device’s time zone the next time you visit.",
+        };
+  }
+  const elsewhere = deviceZoneOffer(preference, deviceZone);
+  return {
+    value: zoneLabel(preference.zone, at),
+    detail: elsewhere
+      ? `This device is on ${cityName(elsewhere.deviceZone)} time. We still use ${cityName(elsewhere.fixedZone)}, as you chose.`
+      : null,
+  };
 }
 
 /**

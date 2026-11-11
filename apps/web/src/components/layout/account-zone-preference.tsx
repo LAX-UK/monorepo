@@ -10,6 +10,7 @@ import {
   type ZonePreferencePort,
   ZonePreferenceProvider,
   deviceZonePreference,
+  reconcileAccountViewerZone,
   setAccountViewerZone,
 } from "@auction/ui/time";
 import { useRouter } from "next/navigation";
@@ -18,6 +19,25 @@ import { type ReactNode, useEffect, useMemo } from "react";
 type AccountTimeZone = { mode: "automatic" | "fixed"; zone: string | null };
 
 const SAVED_NOTE = "Saved to your LAX Account, so your emails use it too.";
+
+const REPORTED_KEY = "lax:reported-device-zone";
+
+/** The zone this tab already told LAX Account about: a throttled report is not sent again on every load. */
+function alreadyReportedThisSession(zone: string): boolean {
+  try {
+    return window.sessionStorage.getItem(REPORTED_KEY) === zone;
+  } catch {
+    return false;
+  }
+}
+
+function rememberReportedThisSession(zone: string): void {
+  try {
+    window.sessionStorage.setItem(REPORTED_KEY, zone);
+  } catch {
+    /* Storage can be blocked: the report is then simply sent again next load. */
+  }
+}
 
 /**
  * Where the time zone sheet saves, by who is looking. Signed out, the choice stays on this device
@@ -38,10 +58,18 @@ export function AccountZonePreference({
   const mode = timeZone?.mode;
   const storedZone = timeZone?.zone ?? null;
 
+  // A zone just saved is shown from memory until the server's copy says the same (or the person
+  // signs out), then the server's copy is the one in use again.
+  useEffect(() => {
+    reconcileAccountViewerZone(mode ? { mode, zone: storedZone } : null);
+  }, [mode, storedZone]);
+
   useEffect(() => {
     if (mode !== "automatic") return;
     const zone = deviceTimeZone();
-    if (zone && zone !== storedZone) void reportDeviceZone(zone);
+    if (!zone || zone === storedZone || alreadyReportedThisSession(zone)) return;
+    rememberReportedThisSession(zone);
+    void reportDeviceZone(zone);
   }, [mode, storedZone]);
 
   const port = useMemo<ZonePreferencePort>(() => {
