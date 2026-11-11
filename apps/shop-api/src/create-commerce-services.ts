@@ -1,3 +1,4 @@
+import type { MoneyPauseReader } from "@auction/artwork-register-contracts";
 import { legalEntityFor } from "@auction/branding";
 import type { Database } from "@auction/db";
 import { createDeliveryQuoteAcceptanceService } from "./application/delivery-quote-acceptance/delivery-quote-acceptance.service.js";
@@ -25,6 +26,7 @@ import type { CommerceRoutesDeps, StripeWebhookDeps } from "./commerce-route-dep
 import { createGuestCheckoutDeps } from "./create-guest-checkout-deps.js";
 import type { ShopApiEnv } from "./env.js";
 import { readDeliveryRegions } from "./infrastructure/delivery-regions/drizzle-delivery-regions.store.js";
+import { createDrizzleCheckoutMoneyPause } from "./infrastructure/drizzle-checkout-money-pause.js";
 import { createDrizzleCommerceRepository } from "./infrastructure/drizzle-commerce.repository.js";
 import { createDrizzleDeliveryQuoteAcceptanceStore } from "./infrastructure/drizzle-delivery-quote-acceptance.store.js";
 import { createDrizzleDeliveryQuoteOrderStore } from "./infrastructure/drizzle-delivery-quote-order.store.js";
@@ -57,6 +59,8 @@ export function createCommerceServices(
     originalOffers: OriginalOfferRegister;
     /** The finance task store: money that arrives for a closed order is recorded there. */
     unappliedMoney: UnappliedMoneyLookup;
+    /** Whether new money for an artwork is paused while Zoho says it is sold. */
+    moneyPause: MoneyPauseReader;
   },
 ): { commerce: CommerceRoutesDeps; stripeWebhook: StripeWebhookDeps } {
   const paymentGateway = createStripeShopCheckoutGateway({
@@ -73,6 +77,7 @@ export function createCommerceServices(
     exportPaymentEnabled: env.SHOP_EXPORT_PAYMENT_ENABLED,
     framingEnabled: env.SHOP_FRAMING_ENABLED,
     editionOrderLimit: env.SHOP_EDITION_ORDER_LIMIT,
+    moneyPause: createDrizzleCheckoutMoneyPause(db, options.moneyPause),
   });
 
   // Identity shares one machine client across products. Without it checkout asks for entry

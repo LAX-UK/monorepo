@@ -18,6 +18,10 @@ import {
   vatIncludedIn,
 } from "@auction/shop-domain";
 import { eq } from "drizzle-orm";
+import {
+  type CheckoutMoneyPause,
+  assertCheckoutNotPaused,
+} from "../application/artwork-register/checkout-money-pause.js";
 import type {
   BasketOwner,
   CheckoutOrderInput,
@@ -77,6 +81,8 @@ export function createDrizzleCheckoutRepository(
      * applies to exports: with it off, no outside-UK order opens a payment, however it was made.
      */
     exportPaymentEnabled?: boolean;
+    /** Refuses a basket holding an artwork Zoho says is sold while it is still for sale. */
+    moneyPause?: CheckoutMoneyPause;
   },
 ): CheckoutWriter {
   const merchandiseEnabled = options.merchandiseEnabled ?? false;
@@ -217,6 +223,12 @@ export function createDrizzleCheckoutRepository(
         { basketId: input.basketId, ownedBy: (owner) => ownsBasket(owner, input) },
         { merchandiseEnabled, framingEnabled },
       );
+      if (options.moneyPause) {
+        await assertCheckoutNotPaused(
+          options.moneyPause,
+          basketLines.flatMap((line) => (line.artworkId ? [line.artworkId] : [])),
+        );
+      }
 
       const fulfilmentSurcharge = pence(
         outsideUk ? outsideUk.pricePence : fulfilmentSurchargePence(input.fulfilment),

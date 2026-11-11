@@ -54,6 +54,8 @@ export type ArtworkRegisterReviewDeps = {
   /** The LAX listing LAX keeps on Zoho Products. */
   listingRuns: ListingRunReader;
   staffNames: StaffNameReader;
+  /** Artworks Zoho says are sold that are still for sale; they wait in the same queue as conflicts. */
+  soldAttention?: { countOpen(): Promise<number> };
   /** The lax.art listing made from a record, for "Where it is". */
   listings: LaxArtListingReader;
   /** Whether the record can be offered at auction, and the draft lot LAX Bid already holds. */
@@ -328,10 +330,11 @@ export class ArtworkRegisterReviewService {
   }
 
   private async counts() {
-    const [created, decisions] = await Promise.all([
+    const [created, conflicts, sold] = await Promise.all([
       this.deps.queue.countHeld(),
       this.deps.queue.countOpenConflicts(),
+      this.deps.soldAttention?.countOpen() ?? 0,
     ]);
-    return { new: created, decisions };
+    return { new: created, decisions: conflicts + sold };
   }
 }

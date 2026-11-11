@@ -6,6 +6,8 @@ import { issuerJwksUrl } from "@auction/identity-contracts";
 import {
   DrizzleArtworkRegisterQueueReader,
   DrizzleArtworkRegisterRepository,
+  DrizzleLotNumberReader,
+  DrizzleSoldAttentionStore,
   DrizzleUnappliedMoneyReader,
   DrizzleZohoArtworkSyncStore,
   DrizzleZohoListingRunStore,
@@ -25,6 +27,7 @@ import {
   withZohoLinks,
 } from "./application/artwork-register/artwork-zoho-link.service.js";
 import { OfferOnLaxArtService } from "./application/artwork-register/offer-on-lax-art.service.js";
+import { SoldAttentionReviewService } from "./application/artwork-register/sold-attention-review.service.js";
 import { ZohoLinkService } from "./application/artwork-register/zoho-link.service.js";
 import { createShopDeletionEligibilityService } from "./application/deletion-eligibility.service.js";
 import { createDeliveryQuoteStaffService } from "./application/delivery-quote-staff/delivery-quote-staff.service.js";
@@ -321,10 +324,12 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
     ? createRedisFixedWindowCounter(rateLimitRedis)
     : createInMemoryFixedWindowCounter();
   const unappliedMoney = new DrizzleUnappliedMoneyReader(db);
+  const soldAttentionStore = new DrizzleSoldAttentionStore(db);
   const { commerce, stripeWebhook } = createCommerceServices(db, env, {
     rateLimitCounter,
     originalOffers,
     unappliedMoney,
+    moneyPause: soldAttentionStore,
   });
   const readiness = createDrizzleShopReadinessAdapter(db);
   const storefrontOrigins = resolveStorefrontOrigins({
@@ -714,11 +719,16 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
           overview: createDrizzleRegisterOverviewReader(db, registerRowToEntry),
           register: artworkRegisterRepository,
           resolver: artworkRegisterRepository,
+          soldAttention: soldAttentionStore,
           runs: new DrizzleZohoArtworkSyncStore(db),
           listingRuns: new DrizzleZohoListingRunStore(db),
           staffNames: createDrizzleStaffNameReader(db),
           listings: laxArtListings,
           auction: inventoryMoves,
+        }),
+        soldAttention: new SoldAttentionReviewService({
+          queue: soldAttentionStore,
+          lots: new DrizzleLotNumberReader(db),
         }),
         offerOnLaxArt: new OfferOnLaxArtService({
           register: artworkRegisterRepository,
