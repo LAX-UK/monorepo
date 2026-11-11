@@ -56,25 +56,15 @@ export class AdminImpersonationService implements IAdminImpersonationService {
     if (!entity) {
       return { ok: false, status: 404, error: "not_found" };
     }
-    const prev = parseActingLegalEntityCookieFromHeader(cookieHeader);
-    const prevSessionId = prev?.i?.sid;
-    const prevEntityId = prev?.e;
+    const prevSessionId = parseActingLegalEntityCookieFromHeader(cookieHeader)?.i?.sid;
 
     const session = await this.transactionRunner.runInTransaction(async (tx) => {
       const txRepo = this.impersonationSessionRepository.forConnection(tx);
-      if (prevSessionId && prevEntityId) {
-        await txRepo.end(prevSessionId, "session_replaced");
-        await this.domainEventSink.withTx(tx).publish({
-          aggregateType: ADMIN_IMPERSONATION_AGGREGATE_TYPE,
-          aggregateId: prevSessionId,
-          eventType: "admin.impersonation_ended",
-          payload: {
-            session_id: prevSessionId,
-            end_reason: "session_replaced",
-          },
+      if (prevSessionId) {
+        await this.endOwnedSession(txRepo, tx, {
+          sessionId: prevSessionId,
           actorUserId,
-          actingLegalEntityId: prevEntityId,
-          schemaVersion: 1,
+          endReason: "session_replaced",
         });
       }
       const row = await txRepo.start(actorUserId, entity.id);
@@ -117,27 +107,42 @@ export class AdminImpersonationService implements IAdminImpersonationService {
     actorUserId: string;
     cookieHeader: string | undefined;
   }): Promise<{ ok: true } | { ok: false; error: "no_active_impersonation" }> {
-    const cookiePayload = parseActingLegalEntityCookieFromHeader(input.cookieHeader);
-    const imp = cookiePayload?.i;
-    if (!imp?.sid || !cookiePayload?.e) {
-      return { ok: false, error: "no_active_impersonation" };
-    }
-    await this.transactionRunner.runInTransaction(async (tx) => {
-      await this.impersonationSessionRepository.forConnection(tx).end(imp.sid, "manual");
-      await this.domainEventSink.withTx(tx).publish({
-        aggregateType: ADMIN_IMPERSONATION_AGGREGATE_TYPE,
-        aggregateId: imp.sid,
-        eventType: "admin.impersonation_ended",
-        payload: {
-          session_id: imp.sid,
-          end_reason: "manual",
-        },
+    const sessionId = parseActingLegalEntityCookieFromHeader(input.cookieHeader)?.i?.sid;
+    if (!sessionId) return { ok: false, error: "no_active_impersonation" };
+    const ended = await this.transactionRunner.runInTransaction((tx) =>
+      this.endOwnedSession(this.impersonationSessionRepository.forConnection(tx), tx, {
+        sessionId,
         actorUserId: input.actorUserId,
-        actingLegalEntityId: cookiePayload.e,
-        schemaVersion: 1,
-      });
+        endReason: "manual",
+      }),
+    );
+    return ended ? { ok: true } : { ok: false, error: "no_active_impersonation" };
+  }
+
+  /** Ends the actor's own open session and audits it against the session's real target entity
+   * (never the cookie's). A session that is not the actor's, or is already ended, is left alone. */
+  private async endOwnedSession(
+    sessions: IImpersonationSessionRepository,
+    tx: Parameters<IImpersonationSessionRepository["forConnection"]>[0],
+    input: {
+      sessionId: string;
+      actorUserId: string;
+      endReason: "manual" | "session_replaced";
+    },
+  ): Promise<boolean> {
+    const row = await sessions.findById(input.sessionId);
+    if (!row || row.actorUserId !== input.actorUserId || row.endedAt) return false;
+    if (!(await sessions.endForActor(row.id, input.actorUserId, input.endReason))) return false;
+    await this.domainEventSink.withTx(tx).publish({
+      aggregateType: ADMIN_IMPERSONATION_AGGREGATE_TYPE,
+      aggregateId: row.id,
+      eventType: "admin.impersonation_ended",
+      payload: { session_id: row.id, end_reason: input.endReason },
+      actorUserId: input.actorUserId,
+      actingLegalEntityId: row.targetLegalEntityId,
+      schemaVersion: 1,
     });
-    return { ok: true };
+    return true;
   }
 
   async recordFailedEnd(input: {

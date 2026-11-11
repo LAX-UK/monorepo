@@ -1,7 +1,7 @@
 import { ACTING_LEGAL_ENTITY_COOKIE_NAME, decodeActingContextCookie } from "@auction/types";
 
 /** Characters of a base64url value; a structured acting cookie never needs more. */
-const BASE64URL_VALUE = /^[A-Za-z0-9_-]+$/;
+const BASE64URL_VALUE = /^[A-Za-z0-9_-]{1,512}$/;
 
 /**
  * The one cookie the API reads besides the bearer token: the staff "view as client" session. The

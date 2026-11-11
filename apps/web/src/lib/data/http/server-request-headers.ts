@@ -12,7 +12,6 @@ import { viewSessionCookieHeader } from "@/lib/bff/view-session-cookie";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { deriveSsrOriginFromHeaders } from "@/lib/data/http/ssr-origin";
 import { getActingLegalEntityHeader } from "@/lib/legal-entity/acting-context.server";
-import { ACTING_LEGAL_ENTITY_COOKIE } from "@/lib/legal-entity/client-acting-context";
 import { cookies, headers as nextHeaders } from "next/headers";
 
 export type { HeaderBag } from "@/lib/data/http/ssr-origin";
@@ -89,8 +88,8 @@ export function withActingLegalEntity(): HeaderDecorator {
 /** Carries the staff "view as client" session cookie (that cookie only) to the API, which validates it. */
 export function withViewSessionCookie(): HeaderDecorator {
   return async (headers) => {
-    const raw = (await cookies()).get(ACTING_LEGAL_ENTITY_COOKIE)?.value;
-    const cookie = raw ? viewSessionCookieHeader(`${ACTING_LEGAL_ENTITY_COOKIE}=${raw}`) : null;
+    // The raw header, so a duplicated cookie resolves to the first one, as on the BFF and the API.
+    const cookie = viewSessionCookieHeader((await nextHeaders()).get("cookie"));
     if (cookie) headers.set("Cookie", cookie);
   };
 }
@@ -125,14 +124,20 @@ export type BuildAuthedSsrHeadersOptions = {
 export async function buildAuthedSsrHeaders(
   options: BuildAuthedSsrHeadersOptions = {},
 ): Promise<Headers> {
-  const decorators: HeaderDecorator[] = [withBidApiBearer(options.rejectedBearer), withOrigin()];
+  // The view session travels on every API call, whether or not the acting header is sent: the API
+  // uses it only with a matching entity and validates the actor and expiry itself.
+  const decorators: HeaderDecorator[] = [
+    withBidApiBearer(options.rejectedBearer),
+    withOrigin(),
+    withViewSessionCookie(),
+  ];
   if (options.consent !== undefined) {
     decorators.push(withConsent(options.consent));
   } else {
     decorators.push(withConsentFromCookie());
   }
   if (!options.skipActingLegalEntityHeader) {
-    decorators.push(withActingLegalEntity(), withViewSessionCookie());
+    decorators.push(withActingLegalEntity());
   }
   return new ComposableServerRequestHeaders(decorators).build(options.init);
 }

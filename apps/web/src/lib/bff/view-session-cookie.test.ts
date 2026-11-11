@@ -29,6 +29,7 @@ describe("viewSessionCookieHeader", () => {
     expect(viewSessionCookieHeader(`${name}=not-a-cookie`)).toBeNull();
     expect(viewSessionCookieHeader(`${name}=${view}%0d%0ax`)).toBeNull();
     expect(viewSessionCookieHeader(`${name}=`)).toBeNull();
+    expect(viewSessionCookieHeader(`${name}=${"a".repeat(513)}`)).toBeNull();
     expect(viewSessionCookieHeader(null)).toBeNull();
     expect(viewSessionCookieHeader("")).toBeNull();
   });
