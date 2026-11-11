@@ -22,6 +22,39 @@ describe("identity event payload contracts", () => {
     ).toMatchObject({ subjectId: "subject-1" });
   });
 
+  it("carries the time zone choice, with no zone while automatic has none yet", () => {
+    const updatedAt = "2026-08-19T18:00:00.000Z";
+    expect(
+      userProfileUpdatedPayloadSchemaV1.parse({
+        ...base,
+        timeZoneMode: "fixed",
+        timeZone: "Australia/Sydney",
+        updatedAt,
+      }),
+    ).toMatchObject({ timeZoneMode: "fixed", timeZone: "Australia/Sydney" });
+    expect(
+      userProfileUpdatedPayloadSchemaV1.parse({
+        ...base,
+        timeZoneMode: "automatic",
+        timeZone: null,
+        updatedAt,
+      }),
+    ).toMatchObject({ timeZoneMode: "automatic", timeZone: null });
+  });
+
+  it("still reads a time zone this runtime does not know, so a consumer never stalls on it", () => {
+    for (const timeZone of ["UTC", "Etc/GMT+5", "Nowhere/City"]) {
+      expect(
+        userProfileUpdatedPayloadSchemaV1.parse({
+          ...base,
+          timeZoneMode: "fixed",
+          timeZone,
+          updatedAt: "2026-08-19T18:00:00.000Z",
+        }).timeZone,
+      ).toBe(timeZone);
+    }
+  });
+
   it("accepts image changes in profile-updated payloads", () => {
     expect(
       userProfileUpdatedPayloadSchemaV1.parse({

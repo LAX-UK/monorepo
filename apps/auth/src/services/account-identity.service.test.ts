@@ -23,6 +23,9 @@ function setup(sessions: IdentitySession[]) {
   const operations = {
     readSubject: vi.fn().mockResolvedValue({ id: SUBJECT, name: "Ada Lovelace" }),
     updateSubjectProfile: vi.fn().mockResolvedValue(undefined),
+    readTimeZone: vi.fn().mockResolvedValue({ mode: "automatic", zone: "Europe/Paris" }),
+    setTimeZone: vi.fn().mockResolvedValue({ mode: "fixed", zone: "Asia/Tokyo" }),
+    reportDeviceZone: vi.fn().mockResolvedValue(null),
     listSessions: vi.fn().mockResolvedValue(sessions),
     removeSession: vi.fn().mockResolvedValue(true),
     removeOtherSessions: vi.fn().mockResolvedValue(["old-1", "old-2"]),
@@ -46,6 +49,27 @@ const staleCurrent = session({ id: "current", createdAt: new Date(NOW.getTime() 
 const other = session({ id: "other", userAgent: "Mozilla/5.0 (iPhone) Safari/605" });
 
 describe("AccountIdentityService", () => {
+  describe("time zone", () => {
+    it("reads and saves without asking for a recent sign-in", async () => {
+      const { service, operations } = setup([staleCurrent]);
+      expect(await service.readTimeZone(SUBJECT)).toEqual({
+        mode: "automatic",
+        zone: "Europe/Paris",
+      });
+      expect(await service.setTimeZone(SUBJECT, { mode: "fixed", zone: "Asia/Tokyo" })).toEqual({
+        mode: "fixed",
+        zone: "Asia/Tokyo",
+      });
+      expect(operations.listSessions).not.toHaveBeenCalled();
+    });
+
+    it("passes the device's zone on for storage", async () => {
+      const { service, operations } = setup([freshCurrent]);
+      await service.reportDeviceZone(SUBJECT, "Europe/Paris");
+      expect(operations.reportDeviceZone).toHaveBeenCalledWith(SUBJECT, "Europe/Paris");
+    });
+  });
+
   describe("listSessions", () => {
     it("marks the caller's own sign-in and never exposes IP addresses", async () => {
       const { service } = setup([freshCurrent, other]);

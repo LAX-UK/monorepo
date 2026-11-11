@@ -125,6 +125,77 @@ describe("applyBidIdentityDirectoryEvent", () => {
     expect(db.updateWhere).toHaveBeenCalledOnce();
   });
 
+  it("copies the time zone choice from a profile update, mode and zone together", async () => {
+    const db = createTx();
+
+    await applyBidIdentityDirectoryEvent(
+      db.tx as never,
+      event(12, "user.profile_updated", {
+        schemaVersion: 1,
+        subjectId: "subject-1",
+        timeZoneMode: "fixed",
+        timeZone: "Australia/Sydney",
+        updatedAt: "2026-08-19T11:00:00.000Z",
+      }),
+      replicatedAt,
+    );
+
+    expect(db.set).toHaveBeenCalledWith({
+      timeZoneMode: "fixed",
+      timeZone: "Australia/Sydney",
+      replicatedAt,
+      lastEventId: 12,
+    });
+  });
+
+  it("still projects an event whose zone this worker does not know, keeping no zone", async () => {
+    const db = createTx();
+
+    await applyBidIdentityDirectoryEvent(
+      db.tx as never,
+      event(14, "user.profile_updated", {
+        schemaVersion: 1,
+        subjectId: "subject-1",
+        name: "Renamed",
+        timeZoneMode: "fixed",
+        timeZone: "Nowhere/City",
+        updatedAt: "2026-08-19T11:00:00.000Z",
+      }),
+      replicatedAt,
+    );
+
+    expect(db.set).toHaveBeenCalledWith({
+      name: "Renamed",
+      timeZoneMode: "fixed",
+      timeZone: null,
+      replicatedAt,
+      lastEventId: 14,
+    });
+  });
+
+  it("stores no zone for an automatic choice before the device has reported one", async () => {
+    const db = createTx();
+
+    await applyBidIdentityDirectoryEvent(
+      db.tx as never,
+      event(13, "user.profile_updated", {
+        schemaVersion: 1,
+        subjectId: "subject-1",
+        timeZoneMode: "automatic",
+        timeZone: null,
+        updatedAt: "2026-08-19T11:00:00.000Z",
+      }),
+      replicatedAt,
+    );
+
+    expect(db.set).toHaveBeenCalledWith({
+      timeZoneMode: "automatic",
+      timeZone: null,
+      replicatedAt,
+      lastEventId: 13,
+    });
+  });
+
   it("keeps the event-order guard inside the subject filter so other rows are untouched", async () => {
     const db = createTx();
 
