@@ -103,32 +103,40 @@ export async function ensurePeople(db: Db, now: number) {
   const created: string[] = [];
   const existing: string[] = [];
   for (const [key, person] of Object.entries(DEMO_PEOPLE) as [keyof PeopleIds, DemoPerson][]) {
-    const [found] = await db
-      .select({ id: schema.user.id })
-      .from(schema.user)
-      .where(sql`lower(${schema.user.email}) = ${person.email}`)
-      .limit(1);
-    if (found) {
-      ids[key] = found.id;
-      existing.push(person.email);
-    } else {
-      await createPerson(db, person, passwordHash, now);
-      ids[key] = person.userId;
-      created.push(person.email);
-    }
-    if (person.bidStaffRole) {
-      await db
-        .insert(schema.staffRoleAssignment)
-        .values({
-          userId: ids[key],
-          role: person.bidStaffRole,
-          startsAt: new Date(now - 60 * DAY),
-          reason: "demo seed",
-        })
-        .onConflictDoNothing();
-    }
+    const result = await ensurePerson(db, person, passwordHash, now);
+    ids[key] = result.id;
+    (result.created ? created : existing).push(person.email);
   }
   return { ids, created, existing };
+}
+
+/** Finds the person by email, or creates them (with their staff role) when they are missing. */
+export async function ensurePerson(
+  db: Db,
+  person: DemoPerson,
+  passwordHash: string,
+  now: number,
+): Promise<{ id: string; created: boolean }> {
+  const [found] = await db
+    .select({ id: schema.user.id })
+    .from(schema.user)
+    .where(sql`lower(${schema.user.email}) = ${person.email}`)
+    .limit(1);
+  const created = !found;
+  if (created) await createPerson(db, person, passwordHash, now);
+  const id = found?.id ?? person.userId;
+  if (person.bidStaffRole) {
+    await db
+      .insert(schema.staffRoleAssignment)
+      .values({
+        userId: id,
+        role: person.bidStaffRole,
+        startsAt: new Date(now - 60 * DAY),
+        reason: "demo seed",
+      })
+      .onConflictDoNothing();
+  }
+  return { id, created };
 }
 
 async function createPerson(db: Db, person: DemoPerson, passwordHash: string, now: number) {
