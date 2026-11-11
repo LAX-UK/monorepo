@@ -184,6 +184,36 @@ describe.skipIf(!HAS_DB)("private sale deals (integration)", () => {
     });
   });
 
+  it.each(["sellers_own_work", "in_zoho_not_linked"] as const)(
+    "records %s when the deal has no register artwork, and reads it back",
+    async (reason) => {
+      await inRollback(async (db, submissionId) => {
+        const repo = new DrizzlePrivateSaleDealRepository(db);
+        const deal = await repo.create(newDeal(submissionId, { artworkUnlinkedReason: reason }));
+        expect(deal).toMatchObject({ artworkRegisterId: null, artworkUnlinkedReason: reason });
+        expect((await repo.findById(deal.id))?.artworkUnlinkedReason).toBe(reason);
+      });
+    },
+  );
+
+  it("records no reason unless one is given", async () => {
+    await inRollback(async (db, submissionId) => {
+      const deal = await new DrizzlePrivateSaleDealRepository(db).create(newDeal(submissionId));
+      expect(deal.artworkUnlinkedReason).toBeNull();
+    });
+  });
+
+  it("refuses a reason that is not one of the two", async () => {
+    await inRollback(async (db, submissionId) => {
+      const repo = new DrizzlePrivateSaleDealRepository(db);
+      await expect(
+        db.transaction(async () =>
+          repo.create(newDeal(submissionId, { artworkUnlinkedReason: "lost" })),
+        ),
+      ).rejects.toThrow();
+    });
+  });
+
   it("refuses a register entry that does not exist", async () => {
     await inRollback(async (db, submissionId) => {
       const repo = new DrizzlePrivateSaleDealRepository(db);
