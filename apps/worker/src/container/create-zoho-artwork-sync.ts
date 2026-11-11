@@ -2,6 +2,7 @@ import type { createDb } from "@auction/db";
 import { createSharpImageNormalizer } from "@auction/image-processing";
 import {
   DrizzleArtworkRegisterRepository,
+  DrizzleSoldAttentionStore,
   DrizzleZohoArtworkSyncStore,
 } from "@auction/persistence/repositories";
 import type { Logger } from "pino";
@@ -9,6 +10,7 @@ import type { WorkerEnv } from "../env.js";
 import { CrmProductImageGateway } from "../integrations/zoho/artwork/images/crm-product-image-gateway.js";
 import { createUploadStorageImageStore } from "../integrations/zoho/artwork/images/upload-storage-image-store.js";
 import { ZohoImageSyncService } from "../integrations/zoho/artwork/images/zoho-image-sync.service.js";
+import { SoldWhileLiveMonitor } from "../integrations/zoho/artwork/sold-while-live-monitor.js";
 import {
   ZohoArtworkSyncService,
   type ZohoProductImages,
@@ -47,6 +49,7 @@ export function createZohoArtworkSyncRuntime(deps: {
     register,
     report: store,
     watermark: store,
+    soldWhileLive: new SoldWhileLiveMonitor(new DrizzleSoldAttentionStore(db), register),
     log,
   });
   return {
