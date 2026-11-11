@@ -96,6 +96,12 @@ import of them shipped the whole barrel. And `export { X } from "@auction/ui"` i
 rewritten by that option the way `import { X } from "@auction/ui"` is, so each such re-export file
 shipped the entire package; write it as an `import` followed by an `export`.
 
+Code that can run in the browser must not use `Buffer`. Next injects a polyfill for it, and that
+polyfill throws `Unknown encoding: base64url`. The acting-context cookie (which carries a staff
+"view as client" session id) could therefore not be decoded in the browser before; it is now read
+through `decodeUtf8Base64Url`, so the browser keeps the cookie as it is and sends the viewed
+account's `X-Legal-Entity-Id` header. That is a declared behaviour change of the Buffer fix.
+
 ## Enforcement
 
 `enforce` is set per group. A route over budget in a group with `"enforce": true` is an error line
