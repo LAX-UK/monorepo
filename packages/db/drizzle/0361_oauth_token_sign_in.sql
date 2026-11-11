@@ -9,9 +9,18 @@
 --
 -- Additive and nullable: tokens issued before this carry none and behave as before. Not a foreign
 -- key, because the record it names may already have been taken over or ended.
+--
+-- It also indexes session.expires_at. The once-a-minute expiry sweep selects the oldest expired
+-- records (WHERE expires_at <= now ORDER BY expires_at, id LIMIT n FOR UPDATE SKIP LOCKED); without
+-- an index every run scans the whole session table. (expires_at, id) lets it walk the oldest rows
+-- in order and stop at the limit.
+-- Plain CREATE INDEX: the migration runner is transactional, so CONCURRENTLY is not available.
+-- The build blocks writes to session for the few seconds it takes at current table sizes.
 SET LOCAL lock_timeout = '5s';
 --> statement-breakpoint
 ALTER TABLE "oauth_access_token" ADD COLUMN IF NOT EXISTS "sid" text;
 --> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "oauth_access_token_user_sid_idx"
   ON "oauth_access_token" ("user_id", "sid") WHERE "sid" IS NOT NULL;
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "session_expires_at_id_idx" ON "session" USING btree ("expires_at","id");

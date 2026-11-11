@@ -1,8 +1,9 @@
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { oauthAccessToken } from "@auction/identity-db/schema";
+import { oauthAccessToken, session } from "@auction/identity-db/schema";
 import { getTableColumns } from "drizzle-orm";
+import { getTableConfig } from "drizzle-orm/pg-core";
 import { describe, expect, it } from "vitest";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -28,6 +29,24 @@ describe("migration 0361 oauth token sign-in", () => {
     expect(migration).toMatch(
       /"oauth_access_token_user_sid_idx"\s+ON "oauth_access_token" \("user_id", "sid"\) WHERE "sid" IS NOT NULL/,
     );
+  });
+
+  it("indexes the session expiry sweep on (expires_at, id), without CONCURRENTLY", () => {
+    expect(migration).toMatch(
+      /CREATE INDEX IF NOT EXISTS "session_expires_at_id_idx" ON "session" USING btree \("expires_at","id"\)/,
+    );
+    expect(migration).not.toMatch(/CREATE INDEX CONCURRENTLY/);
+    expect(rollback).toContain('DROP INDEX IF EXISTS "session_expires_at_id_idx"');
+  });
+
+  it("declares the sweep index in the schema", () => {
+    const config = getTableConfig(session).indexes.find(
+      (i) => i.config.name === "session_expires_at_id_idx",
+    );
+    expect(config?.config.columns.map((c) => (c as { name: string }).name)).toEqual([
+      "expires_at",
+      "id",
+    ]);
   });
 
   it("has a rollback that drops the index and the column", () => {

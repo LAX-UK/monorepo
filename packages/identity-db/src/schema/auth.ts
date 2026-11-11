@@ -152,6 +152,8 @@ export const session = pgTable(
     index("session_device_hash_user_idx")
       .on(table.deviceHash, table.userId)
       .where(sql`${table.deviceHash} IS NOT NULL`),
+    // Serves the expiry sweep: WHERE expires_at <= now ORDER BY expires_at, id LIMIT n.
+    index("session_expires_at_id_idx").on(table.expiresAt, table.id),
   ],
 );
 

@@ -4,5 +4,6 @@
 -- release deletes all of a person's tokens at sign-out).
 SET LOCAL lock_timeout = '5s';
 
+DROP INDEX IF EXISTS "session_expires_at_id_idx";
 DROP INDEX IF EXISTS "oauth_access_token_user_sid_idx";
 ALTER TABLE "oauth_access_token" DROP COLUMN IF EXISTS "sid";
