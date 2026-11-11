@@ -1,3 +1,4 @@
+import { formatDate } from "@auction/datetime";
 import type { Database } from "@auction/db";
 import { shopBasket, shopDeliveryQuote, shopOrder } from "@auction/db/schema";
 import { SHOP_API_ERROR_CODES } from "@auction/shop-contracts";
@@ -29,12 +30,6 @@ import {
 import { createShopDomainEventPublisher } from "./shop-domain-event-publisher.js";
 
 const regionNames = new Intl.DisplayNames(["en-GB"], { type: "region" });
-const dayFormat = new Intl.DateTimeFormat("en-GB", {
-  timeZone: "Europe/London",
-  day: "numeric",
-  month: "long",
-  year: "numeric",
-});
 
 /** A basket belongs to an account's subject, or to a guest's anonymous basket token. */
 function ownsBasket(owner: BasketOwner, input: CreateQuoteOrderInput): boolean {
@@ -210,7 +205,7 @@ export function createDrizzleDeliveryQuoteOrderStore(
             fallbackEmail: input.fallbackEmail,
             orderReference: order.reference,
             countryName: regionNames.of(input.country) ?? input.country,
-            holdUntilOn: dayFormat.format(input.holdUntil),
+            holdUntilOn: formatDate(input.holdUntil, "Europe/London", { month: "long" }),
             itemsSummary: receiptLineSummary(
               basket.lines.flatMap((line) =>
                 Array.from({ length: line.quantity }, () => ({

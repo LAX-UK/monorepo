@@ -14,3 +14,5 @@ export {
 export type { ZonePreferencePort } from "./zone-preference.js";
 export type { SavedZone } from "./zone-choice.js";
 export type { ChangeZoneDialogProps } from "./change-zone-dialog.js";
+export { PlainLocalTime } from "./plain-local-time.js";
+export { useViewerMoment } from "./use-viewer-moment.js";

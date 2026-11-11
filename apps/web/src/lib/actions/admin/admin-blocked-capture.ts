@@ -4,11 +4,11 @@ import { normalizeFinanceApiError } from "@/lib/admin/finance/finance-action-err
 import { IDEMPOTENCY_KEY_HEADER } from "@/lib/admin/finance/idempotency-key";
 import { denyUnlessAdminCapability } from "@/lib/auth/assert-admin-action-capability";
 import { isStaffStepUpResponse } from "@/lib/auth/step-up/staff-step-up.server";
+import { stepUpRequiredFailure } from "@/lib/auth/step-up/step-up-failure";
 import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
 import { type ActionResult, actionFailure, actionSuccess } from "@/lib/forms/form-result";
 import { PAYMENT_MANUAL_REVIEW_WRITE_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { instrumentServerAction } from "@/lib/observability/instrument-server-action";
-import { STAFF_STEP_UP_REQUIRED } from "@auction/identity-contracts/staff-step-up";
 import { ADMIN_REFUND_BUYER_REASON_MIN, adminRefundBuyerBodySchema } from "@auction/validators";
 import { revalidatePath } from "next/cache";
 
@@ -19,7 +19,7 @@ async function toResult(res: Response, fallback: string): Promise<ActionResult<v
     return actionSuccess();
   }
   if (await isStaffStepUpResponse(res)) {
-    return actionFailure("Recent sign-in required", undefined, 403, STAFF_STEP_UP_REQUIRED);
+    return stepUpRequiredFailure();
   }
   const message = (await normalizeFinanceApiError(res, fallback)) ?? fallback;
   return actionFailure(message.replace(/ \(\d{3}\)$/, ""), undefined, res.status);

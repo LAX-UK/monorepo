@@ -32,7 +32,7 @@ export {
   DIGEST_TIME_ZONE,
   digestDateFor,
   isDigestDue,
-} from "./domain/london-date.js";
+} from "./domain/digest-day.js";
 export {
   matchSnapshotSchema,
   type MatchSnapshot,

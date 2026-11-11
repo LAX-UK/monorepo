@@ -34,6 +34,10 @@ async function settle(page: Page) {
   await expect(page.locator("#main-content")).toHaveCount(1, { timeout: 15_000 });
   await expect(page.locator('[aria-busy="true"]')).toHaveCount(0, { timeout: 15_000 });
   await expect(page.locator("#main-content")).toBeVisible();
+  // Next streams a dynamic page's metadata after its first paint and moves the <title> into the
+  // head when it arrives, so a scan taken right after the shell settles can see a document with no
+  // title (axe `document-title`). Scan only once the title is there; the rule stays as it was.
+  await expect(page).toHaveTitle(/\S/, { timeout: 15_000 });
 }
 
 /** Whole page, so the header, family bar, footer and cookie banner are checked with the content. */

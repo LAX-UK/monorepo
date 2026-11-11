@@ -10,6 +10,7 @@ import { buildMarketingEventConsent, nowUnixSeconds } from "../../lib/marketing-
 import { recordMoneyPathEvent } from "../../middleware/metrics.js";
 import type { IXeroPaymentRecorder } from "../accounting/xero-payment-recorder.js";
 import type { IDomainEventSink } from "../domain-event-sink.js";
+import type { ICheckoutCleanupAfterCapture } from "../interfaces/checkout-cleanup.js";
 import type { IMarketingEventService } from "../interfaces/marketing-event-service.js";
 import type {
   CaptureInTransactionInput,
@@ -50,6 +51,8 @@ export class PaymentCaptureService implements IPaymentCaptureService, IPaymentCa
     private readonly stripePayments: IStripePaymentGateway | null = null,
     /** Closes a "paid, not recorded" finance task once this capture records that money. */
     private readonly unappliedMoney: Pick<IUnappliedMoneyRecorder, "resolveApplied"> | null = null,
+    /** Closes the invoice's other open checkouts once it is paid, so it cannot be paid twice. */
+    private readonly checkoutCleanup: ICheckoutCleanupAfterCapture | null = null,
   ) {}
 
   async capture(input: CapturePaymentInput): Promise<CapturePaymentResult> {
@@ -81,6 +84,8 @@ export class PaymentCaptureService implements IPaymentCaptureService, IPaymentCa
       return { captured: false };
     }
 
+    // In the caller's transaction nothing is committed yet: the caller runs this once it commits.
+    if (input.tx) return { captured: true, afterCommit: result.afterCommit };
     await result.afterCommit();
     return { captured: true };
   }
@@ -164,34 +169,43 @@ export class PaymentCaptureService implements IPaymentCaptureService, IPaymentCa
     }
 
     const afterCommit = async () => {
-      const after = (await this.payments.findById(input.paymentId)) ?? p;
-      await dispatchPaymentReceived({
-        payment: after,
-        lots: this.lots,
-        lotFulfilmentHooks: this.lotFulfilmentHooks,
-        notificationDispatcher: this.notificationDispatcher,
-        notificationFactory: this.notificationFactory,
-        legalEntityNotificationRecipients: this.legalEntityNotificationRecipients,
-        notifyBuyer: buyerReceipt === "each",
-      });
+      try {
+        const after = (await this.payments.findById(input.paymentId)) ?? p;
+        await dispatchPaymentReceived({
+          payment: after,
+          lots: this.lots,
+          lotFulfilmentHooks: this.lotFulfilmentHooks,
+          notificationDispatcher: this.notificationDispatcher,
+          notificationFactory: this.notificationFactory,
+          legalEntityNotificationRecipients: this.legalEntityNotificationRecipients,
+          notifyBuyer: buyerReceipt === "each",
+        });
 
-      if (purchaseEvent && this.marketingEvents) {
-        await this.marketingEvents.enqueue(purchaseEvent);
-      }
-
-      recordMoneyPathEvent(`payment_capture_via_${input.via}`);
-      if (captureFromManualReview) {
-        recordMoneyPathEvent("payment_capture_from_manual_review_reconciliation");
-      }
-
-      if (XERO_CAPTURE_VIAS.includes(input.via) && this.xeroPaymentRecorder) {
-        const xeroResult = await this.xeroPaymentRecorder.recordStripeCapture(
-          input.paymentId,
-          after.amount,
-        );
-        if (!xeroResult.ok) {
-          recordMoneyPathEvent("xero_payment_record_failed");
+        if (purchaseEvent && this.marketingEvents) {
+          await this.marketingEvents.enqueue(purchaseEvent);
         }
+
+        recordMoneyPathEvent(`payment_capture_via_${input.via}`);
+        if (captureFromManualReview) {
+          recordMoneyPathEvent("payment_capture_from_manual_review_reconciliation");
+        }
+
+        if (XERO_CAPTURE_VIAS.includes(input.via) && this.xeroPaymentRecorder) {
+          const xeroResult = await this.xeroPaymentRecorder.recordStripeCapture(
+            input.paymentId,
+            after.amount,
+          );
+          if (!xeroResult.ok) {
+            recordMoneyPathEvent("xero_payment_record_failed");
+          }
+        }
+      } finally {
+        // After the receipt and fulfilment, so a slow or failing Stripe call never delays them.
+        // Never throws: a failure is reported by the cleanup and must not undo the capture.
+        await this.checkoutCleanup?.closeAfterCapture(
+          input.paymentId,
+          input.stripePaymentIntentId ?? p.stripePaymentIntentId ?? null,
+        );
       }
     };
     return { captured: true, afterCommit };

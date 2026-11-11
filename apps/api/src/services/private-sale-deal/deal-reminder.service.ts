@@ -1,3 +1,4 @@
+import { LONDON_TIME_ZONE, formatDate } from "@auction/datetime";
 import { type PaymentReminderStep, dealReminderToSend } from "@auction/domain";
 import { minorUnitsToMoneyString } from "@auction/domain";
 import type { IInvoiceRecipients } from "@auction/finance-runtime";
@@ -10,13 +11,6 @@ import type { INotificationFactory } from "../interfaces/notification-factory.js
 import type { INotificationOutboxService } from "../interfaces/notification-outbox.js";
 import { notificationRowToPayload } from "../notification-payload.js";
 import type { IPaymentEligibilityGate } from "../payment/payment-eligibility.gate.js";
-
-const DUE_DATE = new Intl.DateTimeFormat("en-GB", {
-  day: "numeric",
-  month: "long",
-  year: "numeric",
-  timeZone: "Europe/London",
-});
 
 export type DealReminderServiceDeps = {
   store: IPrivateSaleDealReminderStore;
@@ -77,7 +71,7 @@ export class DealReminderService {
       buyerLegalEntityId: candidate.buyerLegalEntityId,
       winnerUserId: candidate.buyerUserId,
     });
-    const dueDate = DUE_DATE.format(candidate.dueAt);
+    const dueDate = formatDate(candidate.dueAt, LONDON_TIME_ZONE, { month: "long" });
     for (const recipientId of recipients) {
       const row =
         candidate.kind === "payment"

@@ -1,3 +1,4 @@
+import { LONDON_TIME_ZONE, dayKey, formatTime } from "@auction/datetime";
 import {
   type ThreadItem,
   type ThreadMessage,
@@ -19,18 +20,7 @@ import type {
  * receipt under the last reply the client read, and older messages folded once it grows long.
  */
 
-const ZONE = "Europe/London";
-const TIME = new Intl.DateTimeFormat("en-GB", {
-  hour: "2-digit",
-  minute: "2-digit",
-  timeZone: ZONE,
-});
-const DATE_KEY = new Intl.DateTimeFormat("en-CA", {
-  year: "numeric",
-  month: "2-digit",
-  day: "2-digit",
-  timeZone: ZONE,
-});
+const ZONE = LONDON_TIME_ZONE;
 
 /** Messages shown before older ones fold behind "Show N earlier". */
 export const THREAD_VISIBLE_MESSAGES = 8;
@@ -40,10 +30,10 @@ export const THREAD_FOLD_AFTER = 12;
 /** "14:05" today, otherwise the one staff date style: "Sat 31 Oct, 10:15 GMT". */
 export function threadTime(iso: string, now: Date): ThreadTime {
   const at = new Date(iso);
-  const sameDay = DATE_KEY.format(at) === DATE_KEY.format(now);
+  const sameDay = dayKey(at, ZONE) === dayKey(now, ZONE);
   const full = formatStaffDateTime(at, now);
   return {
-    label: sameDay ? TIME.format(at) : full,
+    label: sameDay ? formatTime(at, ZONE) : full,
     dateTime: at.toISOString(),
     full,
   };
@@ -163,7 +153,7 @@ export function buildThreadView(
   const items: ThreadItem[] = [];
   let lastDay: string | null = null;
   for (const entry of shown) {
-    const day = DATE_KEY.format(new Date(entry.at));
+    const day = dayKey(new Date(entry.at), ZONE);
     if ("message" in entry && entry.message.id === options.firstUnreadId) {
       items.push({ type: "new", id: `new-${entry.message.id}` });
       lastDay = day;

@@ -18,6 +18,7 @@ export * from "./lot-live-events.js";
 export * from "./lot-realtime-events.js";
 export * from "./bid-anti-sniping-policy.js";
 export * from "./auto-bid.js";
+export * from "./lot-reoffer.js";
 export * from "./buyer-premium.js";
 export * from "./lot-checkout-pricing.js";
 export * from "./invoice-lines.js";

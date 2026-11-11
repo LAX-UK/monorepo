@@ -4,7 +4,7 @@ import { MediaImage } from "@/components/ui/media-image";
 import { RowStep } from "@/components/workspace/row-step";
 import { BID_STATUS_BADGE } from "@/lib/bid/bid-status-badge";
 import { bidNeedsYou } from "@/lib/bid/my-bid-status";
-import type { MyBidCardVm } from "@/lib/bid/my-bids.vm";
+import { CLOSES_FIGURE_LABEL, type MyBidCardVm } from "@/lib/bid/my-bids.vm";
 import { notify } from "@/lib/ui/notify";
 import {
   InlineActionMenu,
@@ -13,6 +13,7 @@ import {
   RecordRowMedia,
 } from "@auction/ui";
 import { StatusBadge } from "@auction/ui/lax";
+import { PlainLocalTime, useViewerMoment } from "@auction/ui/time";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -57,6 +58,8 @@ export function BidRow({
     : [];
   const badge = BID_STATUS_BADGE[card.status];
   const next = card.next;
+  const closing = useViewerMoment(card.closes?.iso ?? null, card.closes?.zone ?? "").moment;
+  const ownTime = closing?.local ? <PlainLocalTime moment={closing} /> : null;
   const blocked = Boolean(bidBlockedReason) && next?.kind !== "view-purchase";
 
   return (
@@ -76,7 +79,14 @@ export function BidRow({
         card.placementNote,
       ]}
       metaShrink={1}
-      figures={card.figures}
+      // The visitor's time sits under the close in a wide row, and after the facts in a narrow one.
+      metaNarrow={ownTime}
+      figures={card.figures.map((figure, index, all) => ({
+        ...figure,
+        // The last figure is the one that carries a time; it is roomy on every row so they align.
+        ...(index === all.length - 1 ? { roomyWhenAway: true } : {}),
+        ...(ownTime && figure.label === CLOSES_FIGURE_LABEL ? { note: ownTime } : {}),
+      }))}
       aligned
       status={
         <StatusBadge tone={badge.tone} shape={badge.shape}>

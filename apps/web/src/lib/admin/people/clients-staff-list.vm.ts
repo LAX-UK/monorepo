@@ -2,7 +2,12 @@ import { buildListHref } from "@/lib/admin/admin-list-params";
 import { defineListSort } from "@/lib/admin/define-list-sort";
 import { staffIdentityStatus } from "@/lib/admin/staff-kit-status";
 import type { AdminUserRow } from "@/lib/data/http/admin-users.types";
-import { type StatusPresentation, type TeamView, viewQuery } from "@auction/staff-ui";
+import {
+  type StatusPresentation,
+  type TeamView,
+  formatStaffNumber,
+  viewQuery,
+} from "@auction/staff-ui";
 import type { UserRole, UserStaffRole } from "@auction/types";
 import { CLIENTS_LIST_PATH } from "./build-clients-list-page-model";
 
@@ -138,5 +143,5 @@ export function peopleRangeSummary(
 ): string {
   const first = offset + 1;
   const last = offset + countOnPage;
-  return `${first}–${last} of ${total.toLocaleString("en-GB")} ${total === 1 ? noun.one : noun.other}`;
+  return `${first}–${last} of ${formatStaffNumber(total)} ${total === 1 ? noun.one : noun.other}`;
 }

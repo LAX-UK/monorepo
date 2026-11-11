@@ -47,7 +47,23 @@ export class BidContextEnrichedAuthenticator implements IAuthenticator {
     return (await this.identity.diagnoseRejection?.(headers)) ?? null;
   }
 
-  async getSessionUser(headers: Headers): Promise<AuthenticatedUser | null> {
+  /**
+   * One request reaches this several times (the auth gate, the pending-deletion guard), so the
+   * answer is remembered against that request's own `Headers` object. It is dropped with the
+   * request: nothing is shared between requests, and a failed lookup is not remembered.
+   */
+  private readonly perRequest = new WeakMap<Headers, Promise<AuthenticatedUser | null>>();
+
+  getSessionUser(headers: Headers): Promise<AuthenticatedUser | null> {
+    const known = this.perRequest.get(headers);
+    if (known) return known;
+    const lookup = this.resolveSessionUser(headers);
+    this.perRequest.set(headers, lookup);
+    lookup.catch(() => this.perRequest.delete(headers));
+    return lookup;
+  }
+
+  private async resolveSessionUser(headers: Headers): Promise<AuthenticatedUser | null> {
     const principal = await this.identity.getIdentityPrincipal(headers);
     if (!principal) return null;
     const context = await this.bidContext.loadContext(principal.id);

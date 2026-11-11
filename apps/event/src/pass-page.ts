@@ -1,3 +1,4 @@
+import { formatDateTime, formatTimeUnpadded, formatWeekdayDate } from "@auction/datetime";
 import { EVENTS_EMAIL, EVENT_DETAILS } from "./config.js";
 import { PassFetchError, fetchPass } from "./pass-api.js";
 import type { OnsiteEventPassView } from "./pass-types.js";
@@ -84,18 +85,9 @@ function formatPassDate(startsAt: string | null, dateOnly = false): string {
   if (!startsAt) return `${EVENT_DETAILS.date} · ${EVENT_DETAILS.time}`;
   try {
     const date = new Date(startsAt);
-    const dateLabel = new Intl.DateTimeFormat("en-GB", {
-      weekday: "long",
-      day: "numeric",
-      month: "long",
-      timeZone: "Europe/London",
-    }).format(date);
+    const dateLabel = formatWeekdayDate(date, "Europe/London", { year: false });
     if (dateOnly) return dateLabel;
-    const timeLabel = new Intl.DateTimeFormat("en-GB", {
-      hour: "numeric",
-      minute: "2-digit",
-      timeZone: "Europe/London",
-    }).format(date);
+    const timeLabel = formatTimeUnpadded(date, "Europe/London");
     return `${dateLabel} · ${timeLabel}`;
   } catch {
     return `${EVENT_DETAILS.date} · ${EVENT_DETAILS.time}`;
@@ -199,11 +191,7 @@ function renderPass(mount: HTMLElement, pass: OnsiteEventPassView, onRefresh: ()
 
 function formatCheckedIn(iso: string): string {
   try {
-    return new Intl.DateTimeFormat("en-GB", {
-      dateStyle: "medium",
-      timeStyle: "short",
-      timeZone: "Europe/London",
-    }).format(new Date(iso));
+    return formatDateTime(new Date(iso), "Europe/London", { engineSept: true });
   } catch {
     return iso;
   }

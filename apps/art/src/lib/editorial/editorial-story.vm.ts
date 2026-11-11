@@ -5,6 +5,7 @@ import type {
 } from "@/lib/editorial/art-editorial.types";
 import { type EditorialCardVm, exhibitionCard, storyCard } from "@/lib/editorial/editorial-card.vm";
 import { exhibitionHasEnded } from "@/lib/editorial/editorial-page-title.vm";
+import { formatDate } from "@auction/datetime";
 import {
   EDITORIAL_STORY_CATEGORY_LABELS,
   EDITORIAL_STORY_TAB_LABELS,
@@ -16,18 +17,13 @@ import {
 
 type StoryFields = Pick<ArtEditorialStorySummary, "kind" | "category">;
 
-const STORY_DATE = new Intl.DateTimeFormat("en-GB", {
-  day: "numeric",
-  month: "short",
-  year: "numeric",
-  timeZone: "UTC",
-});
-
 /** “21 Oct 2026”; null when unpublished or unparseable. */
 export function formatStoryDate(publishedAt: string | null | undefined): string | null {
   if (!publishedAt) return null;
   const date = new Date(publishedAt);
-  return Number.isNaN(date.getTime()) ? null : STORY_DATE.format(date);
+  return Number.isNaN(date.getTime())
+    ? null
+    : formatDate(date, "UTC", { month: "short", engineSept: true });
 }
 
 export function storyCategory(story: StoryFields): EditorialStoryCategory {

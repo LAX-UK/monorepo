@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "@auction/branding": "workspace:*",
+    "@auction/datetime": "workspace:*",
     "@auction/identity-contracts": "workspace:*",
     "@auction/identity-rp": "workspace:*",
     "@auction/shop-contracts": "workspace:*",

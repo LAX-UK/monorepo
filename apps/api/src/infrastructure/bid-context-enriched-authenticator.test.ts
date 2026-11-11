@@ -80,4 +80,58 @@ describe("BidContextEnrichedAuthenticator", () => {
       ),
     ).resolves.toBeNull();
   });
+
+  describe("within one request", () => {
+    const profile = {
+      role: "staff" as const,
+      staffRoles: ["sales_manager"] as const,
+      suspendedAt: null,
+      identityDisabledAt: null,
+      mergedIntoSubjectId: null,
+    };
+    const build = (loadContext: IBidUserContextLoader["loadContext"]) => {
+      const identity: IAuthenticator = {
+        getSessionUser: vi.fn().mockResolvedValue({ id: "user_1", scopes: [] }),
+      };
+      const auth = new BidContextEnrichedAuthenticator(
+        new IdentityPrincipalAuthenticator(identity),
+        {
+          loadContext,
+        },
+      );
+      return { auth, identity };
+    };
+
+    it("looks the session up once for the same request headers", async () => {
+      const loadContext = vi.fn().mockResolvedValue(profile);
+      const { auth, identity } = build(loadContext);
+      const headers = new Headers();
+      const [a, b] = await Promise.all([
+        auth.getSessionUser(headers),
+        auth.getSessionUser(headers),
+      ]);
+      expect(a).toBe(b);
+      expect(identity.getSessionUser).toHaveBeenCalledTimes(1);
+      expect(loadContext).toHaveBeenCalledTimes(1);
+    });
+
+    it("does not share an answer between requests", async () => {
+      const loadContext = vi.fn().mockResolvedValue(profile);
+      const { auth } = build(loadContext);
+      await auth.getSessionUser(new Headers());
+      await auth.getSessionUser(new Headers());
+      expect(loadContext).toHaveBeenCalledTimes(2);
+    });
+
+    it("does not remember a failed lookup", async () => {
+      const loadContext = vi
+        .fn()
+        .mockRejectedValueOnce(new Error("db down"))
+        .mockResolvedValueOnce(profile);
+      const { auth } = build(loadContext);
+      const headers = new Headers();
+      await expect(auth.getSessionUser(headers)).rejects.toThrow("db down");
+      await expect(auth.getSessionUser(headers)).resolves.toMatchObject({ id: "user_1" });
+    });
+  });
 });

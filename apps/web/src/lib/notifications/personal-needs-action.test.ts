@@ -105,7 +105,7 @@ describe("a person's Needs action, driven by money", () => {
       due: { tone: "warning", dateTime: "2026-11-12T00:00:00.000Z" },
     });
     expect(rows[0]?.due?.text).toMatch(/^Due /);
-    expect(rows[0]?.detail).toContain("Pay by 12 November");
+    expect(rows[0]?.detail).toContain("Pay by Thu 12 Nov, 00:00 GMT");
   });
 
   it("marks an overdue invoice as overdue", () => {

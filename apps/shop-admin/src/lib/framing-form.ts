@@ -25,6 +25,7 @@ import {
   nextPlaceholderBands,
 } from "@auction/shop-domain";
 import type { EnumOption } from "@auction/staff-ui";
+import { formatStaffNumber } from "@auction/staff-ui";
 import { type FieldErrors, collectFieldErrors } from "./form-validation";
 
 /*
@@ -57,7 +58,7 @@ export const MOUNT_OPTIONS = optionsOf(FRAMING_MOUNTS, FRAMING_MOUNT_LABELS);
 export const GLAZING_OPTIONS = optionsOf(FRAMING_GLAZINGS, FRAMING_GLAZING_LABELS);
 export const HANGING_OPTIONS = optionsOf(FRAMING_HANGINGS, FRAMING_HANGING_LABELS);
 
-const MAX_PRICE_LABEL = `£${(FRAMING_PRICE_MAX_PENCE / 100).toLocaleString("en-GB")}`;
+const MAX_PRICE_LABEL = `£${formatStaffNumber(FRAMING_PRICE_MAX_PENCE / 100)}`;
 
 /** A form for a new option, or one filled from the option being edited. */
 export function framingFormDefaults(option: FramingOption | null): FramingFormValues {

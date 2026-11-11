@@ -20,7 +20,7 @@ const DAY_MS = 24 * 60 * MINUTE_MS;
 /** A clock never looks further than this for working time, so a bad input cannot loop. */
 const MAX_DAYS = 3660;
 
-type LocalDate = { year: number; month: number; day: number };
+export type LocalDate = { year: number; month: number; day: number };
 
 function pad(value: number): string {
   return String(value).padStart(2, "0");
@@ -167,7 +167,8 @@ export function londonWorkingCalendar(extraHolidays: readonly string[] = []): Wo
 
 export const LONDON_WORKING_CALENDAR: WorkingCalendar = londonWorkingCalendar();
 
-function isWorkingDay(calendar: WorkingCalendar, date: LocalDate): boolean {
+/** Monday to Friday and not a bank holiday in the calendar. */
+export function isWorkingDay(calendar: WorkingCalendar, date: LocalDate): boolean {
   const day = weekday(date);
   return day !== 0 && day !== 6 && !calendar.isHoliday(localDateKey(date));
 }

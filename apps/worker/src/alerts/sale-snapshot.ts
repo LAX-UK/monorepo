@@ -1,4 +1,5 @@
 import type { MatchSnapshot } from "@auction/alerts";
+import { formatWeekdayDayMonth } from "@auction/datetime";
 import type { AnnouncedSale } from "@auction/persistence/interfaces";
 
 const DELIVERY_LABEL: Record<AnnouncedSale["deliveryMode"], string> = {
@@ -7,18 +8,9 @@ const DELIVERY_LABEL: Record<AnnouncedSale["deliveryMode"], string> = {
   hybrid: "Live and online",
 };
 
-const dayFormat = new Intl.DateTimeFormat("en-GB", {
-  timeZone: "Europe/London",
-  weekday: "short",
-  day: "numeric",
-  month: "short",
-});
-
 /** "Wed 18 Nov": the London day an instant falls on. */
 export function londonDayLabel(at: Date): string {
-  const parts = dayFormat.formatToParts(at);
-  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "";
-  return `${get("weekday")} ${get("day")} ${get("month")}`;
+  return formatWeekdayDayMonth(at, "Europe/London", { engineSept: true });
 }
 
 function lots(count: number): string {

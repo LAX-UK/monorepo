@@ -110,4 +110,34 @@ describe("pickUnderbidder", () => {
       )?.userId,
     ).toBe("u3");
   });
+
+  it("leaves out the buyer's person under any account when the buyer's user is given", () => {
+    const other = [
+      { userId: "buyer-1", legalEntityId: "e-company", amount: "990.00" },
+      { userId: "u2", legalEntityId: "e2", amount: "900.00" },
+    ];
+    expect(pickUnderbidder(other, "e1")?.userId).toBe("buyer-1");
+    expect(pickUnderbidder(other, "e1", "buyer-1")?.userId).toBe("u2");
+  });
+
+  it("skips suspended, closed and deletion-pending accounts", () => {
+    const states = ["suspended", "closed", "deletion_pending"] as const;
+    for (const accountState of states) {
+      expect(
+        pickUnderbidder(
+          [
+            { userId: "u2", legalEntityId: "e2", amount: "950.00", accountState },
+            { userId: "u3", legalEntityId: "e3", amount: "900.00" },
+          ],
+          "e1",
+        )?.userId,
+      ).toBe("u3");
+    }
+    expect(
+      pickUnderbidder(
+        [{ userId: "u2", legalEntityId: "e2", amount: "9.00", accountState: "closed" }],
+        "e1",
+      ),
+    ).toBeNull();
+  });
 });

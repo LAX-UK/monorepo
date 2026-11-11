@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
   auditApp,
-  firstLoadFiles,
+  fullTable,
   groupOf,
   overBudgetTable,
   pageRoutes,
@@ -14,6 +14,8 @@ import {
 
 // A fixture build: gzip sizes in KB per file, standing in for reading and compressing real chunks.
 const KB_OF = {
+  "static/chunks/layout.js": 10,
+  "static/chunks/marketing-layout.js": 20,
   "static/chunks/main-app.js": 100,
   "static/chunks/framework.js": 50,
   "static/chunks/home.js": 40,
@@ -26,12 +28,13 @@ const buildManifest = {
 };
 const appManifest = {
   pages: {
+    "/layout": ["static/chunks/layout.js"],
+    "/(marketing)/layout": ["static/chunks/marketing-layout.js"],
     "/(marketing)/(home)/page": ["static/chunks/home.js", "static/css/home.css"],
     "/(marketing)/lot/[slug]/[id]/page": ["static/chunks/lot.js", "static/chunks/main-app.js"],
     "/(client)/purchases/pay/page": ["static/chunks/pay.js"],
     "/(client)/settings/page": ["static/chunks/settings.js"],
     "/admin/(platform)/staff/page": ["static/chunks/settings.js"],
-    "/(marketing)/layout": ["static/chunks/home.js"],
     "/health/live/route": [],
   },
 };
@@ -51,17 +54,8 @@ const audit = () =>
     appConfig,
     appManifest,
     buildManifest,
-    gzipKbOf: (file) => KB_OF[file],
+    chunkOf: (file) => ({ gzipKb: KB_OF[file], rawBytes: KB_OF[file] * 4, modules: new Map() }),
   });
-
-test("first load is the root files and the route's own scripts, once each, without styles", () => {
-  assert.deepEqual(firstLoadFiles(appManifest, buildManifest, "/(marketing)/(home)/page"), [
-    "static/chunks/main-app.js",
-    "static/chunks/framework.js",
-    "static/chunks/home.js",
-  ]);
-  assert.equal(firstLoadFiles(appManifest, buildManifest, "/nope/page"), null);
-});
 
 test("only page routes are audited", () => {
   assert.deepEqual(pageRoutes(appManifest), [
@@ -92,17 +86,64 @@ test("routes join the first matching group, else the fallback", () => {
   assert.equal(groupOf(appConfig, "/(marketing)/(home)/page"), "public");
 });
 
-test("first-load size sums the shared and route files, and ignored routes are left out", () => {
+test("start-up size sums the frame and the page's own files; ignored routes are left out", () => {
   const rows = audit();
   assert.deepEqual(
-    rows.map((row) => [row.route, row.group, row.gzipKb, row.budgetKb]),
+    rows.map((row) => [row.route, row.group, row.gzipKb, row.frameKb, row.pageKb, row.budgetKb]),
     [
-      ["/(client)/settings/page", "account", 180, 170],
-      ["/(client)/purchases/pay/page", "checkout", 170, 150],
-      ["/(marketing)/lot/[slug]/[id]/page", "lot", 350, 300],
-      ["/(marketing)/(home)/page", "public", 190, 200],
+      ["/(client)/settings/page", "account", 190, 160, 30, 170],
+      ["/(client)/purchases/pay/page", "checkout", 180, 160, 20, 150],
+      ["/(marketing)/lot/[slug]/[id]/page", "lot", 380, 180, 200, 300],
+      ["/(marketing)/(home)/page", "public", 220, 180, 40, 200],
     ],
   );
+});
+
+test("a group's own enforce setting wins over the default", () => {
+  const configured = {
+    ...appConfig,
+    groups: { ...appConfig.groups, lot: { ...appConfig.groups.lot, enforce: true } },
+  };
+  const rows = auditApp({
+    app: "apps/web",
+    appConfig: configured,
+    appManifest,
+    buildManifest,
+    chunkOf: (file) => ({ gzipKb: KB_OF[file], rawBytes: 1, modules: new Map() }),
+  });
+  assert.deepEqual(
+    rows.map((row) => [row.group, row.enforce]),
+    [
+      ["account", false],
+      ["checkout", false],
+      ["lot", true],
+      ["public", false],
+    ],
+  );
+  const v = verdict(rows.filter((row) => row.group !== "lot"));
+  assert.equal(v.failed, false);
+  assert.equal(verdict(rows).failed, true);
+});
+
+test("modules shipped in two start-up files are counted as duplicates with their weight", () => {
+  const modules = (ids) => new Map(ids.map((id) => [id, 100]));
+  const chunks = {
+    "static/chunks/main-app.js": { gzipKb: 10, rawBytes: 1000, modules: modules(["a", "b"]) },
+    "static/chunks/framework.js": { gzipKb: 10, rawBytes: 1000, modules: modules(["b", "c"]) },
+    "static/chunks/layout.js": { gzipKb: 10, rawBytes: 1000, modules: modules([]) },
+    "static/chunks/marketing-layout.js": { gzipKb: 10, rawBytes: 1000, modules: modules([]) },
+    "static/chunks/home.js": { gzipKb: 10, rawBytes: 1000, modules: modules(["c", "d"]) },
+  };
+  const [home] = auditApp({
+    app: "apps/web",
+    appConfig: { ...appConfig, ignore: ["^/admin", "^/\\(client\\)", "lot"] },
+    appManifest,
+    buildManifest,
+    chunkOf: (file) => chunks[file],
+  });
+  assert.equal(home.route, "/(marketing)/(home)/page");
+  assert.equal(home.duplicateCount, 2);
+  assert.equal(home.duplicateKb, 2);
 });
 
 test("a budget suggestion is the largest route in the group plus 10%, rounded up", () => {
@@ -113,15 +154,15 @@ test("over-budget routes are warning annotations and do not fail until enforce i
   const rows = audit();
   const warned = verdict(rows, { enforce: false });
   assert.equal(warned.failed, false);
-  assert.equal(warned.lines.length, 3);
+  assert.equal(warned.lines.length, 4);
   assert.match(
     warned.lines[0],
-    /^::warning title=Route JS budget::apps\/web \/\(client\)\/settings\/page loads 180.0 KB of JavaScript \(gzip\); the account budget is 170 KB$/,
+    /^::warning title=Route JS budget::apps\/web \/\(client\)\/settings\/page loads 190.0 KB of JavaScript \(gzip\); the account budget is 170 KB$/,
   );
 
   const enforced = verdict(rows, { enforce: true });
   assert.equal(enforced.failed, true);
-  assert.match(enforced.lines[0], /^error: apps\/web \/\(client\)\/settings\/page loads 180.0 KB/);
+  assert.match(enforced.lines[0], /^error: apps\/web \/\(client\)\/settings\/page loads 190.0 KB/);
 });
 
 test("a build within budget says nothing and passes under enforcement", () => {
@@ -131,11 +172,15 @@ test("a build within budget says nothing and passes under enforcement", () => {
 
 test("the tables show the group summary and the over-budget routes", () => {
   const rows = audit();
-  assert.match(summaryTable(rows), /apps\/web\s+lot\s+1\s+350.0 KB\s+300 KB\s+1 over/);
-  assert.match(summaryTable(rows), /apps\/web\s+public\s+1\s+190.0 KB\s+200 KB\s+ok/);
+  assert.match(
+    summaryTable(rows),
+    /apps\/web\s+lot\s+1\s+380.0 KB\s+180.0 KB\s+200.0 KB\s+0 \(0.0 KB\)\s+300 KB\s+warn\s+1 over/,
+  );
+  assert.match(summaryTable(rows), /apps\/web\s+public\s+1\s+220.0 KB\s+.*200 KB\s+warn\s+1 over/);
+  assert.match(fullTable(rows), /lot\s+380.0 KB\s+180.0 KB\s+200.0 KB/);
   const over = overBudgetTable(rows);
-  assert.match(over, /lot\s+350.0 KB\s+300 KB\s+50.0 KB/);
-  assert.doesNotMatch(over, /home/);
+  assert.match(over, /lot\s+380.0 KB\s+300 KB\s+80.0 KB/);
+  assert.ok(over.indexOf("lot") < over.indexOf("public"), "largest overshoot first");
 });
 
 test("the checked-in config has a boolean enforce flag and a fallback group per app", async () => {

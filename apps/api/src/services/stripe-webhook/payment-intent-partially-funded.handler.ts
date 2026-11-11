@@ -2,7 +2,7 @@ import type Stripe from "stripe";
 import { gbpAmountToPence } from "../../lib/decimal-money.js";
 import { tryClaimProcessedStripeEvent } from "../../lib/stripe-processed-event.js";
 import { recordMoneyPathEvent } from "../../middleware/metrics.js";
-import { transferFunding } from "./bank-transfer-funding.js";
+import { transferFunding } from "../stripe/bank-transfer-funding.js";
 import type { IPaymentIntentWebhookHandler } from "./payment-intent-webhook-handler.js";
 import type { StripePaymentWebhookDeps } from "./payment-webhook-lookup.js";
 import {

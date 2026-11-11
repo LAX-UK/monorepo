@@ -292,6 +292,7 @@ describe("PaymentService", () => {
       retrieveCheckoutSession: vi.fn(),
       findChargeIdForPayment: vi.fn(),
       expireCheckoutSession: vi.fn().mockResolvedValue(undefined),
+      cancelPaymentIntent: vi.fn().mockResolvedValue(undefined),
       revokeOpenCheckoutForPayment: vi.fn().mockResolvedValue(undefined),
     };
     const payments = {
@@ -377,6 +378,7 @@ describe("PaymentService", () => {
       retrieveCheckoutSession: vi.fn(),
       findChargeIdForPayment: vi.fn(),
       expireCheckoutSession: vi.fn().mockResolvedValue(undefined),
+      cancelPaymentIntent: vi.fn().mockResolvedValue(undefined),
       revokeOpenCheckoutForPayment: vi.fn().mockResolvedValue(undefined),
     };
     const payments = {
@@ -452,6 +454,7 @@ describe("PaymentService", () => {
       retrieveCheckoutSession: vi.fn(),
       findChargeIdForPayment: vi.fn(),
       expireCheckoutSession: vi.fn().mockResolvedValue(undefined),
+      cancelPaymentIntent: vi.fn().mockResolvedValue(undefined),
       revokeOpenCheckoutForPayment: vi.fn().mockResolvedValue(undefined),
     };
     const payments = {
@@ -547,6 +550,7 @@ describe("PaymentService", () => {
       retrieveCheckoutSession: vi.fn(),
       findChargeIdForPayment: vi.fn(),
       expireCheckoutSession: vi.fn().mockResolvedValue(undefined),
+      cancelPaymentIntent: vi.fn().mockResolvedValue(undefined),
       revokeOpenCheckoutForPayment: vi.fn().mockResolvedValue(undefined),
     };
     const payments = {
@@ -613,6 +617,7 @@ describe("PaymentService", () => {
       retrieveCheckoutSession: vi.fn(),
       findChargeIdForPayment: vi.fn(),
       expireCheckoutSession: vi.fn().mockResolvedValue(undefined),
+      cancelPaymentIntent: vi.fn().mockResolvedValue(undefined),
       revokeOpenCheckoutForPayment: vi.fn().mockResolvedValue(undefined),
     };
     const payments = {
@@ -1916,6 +1921,7 @@ describe("PaymentService", () => {
       retrieveCheckoutSession: vi.fn(),
       findChargeIdForPayment: vi.fn(),
       expireCheckoutSession: vi.fn().mockResolvedValue(undefined),
+      cancelPaymentIntent: vi.fn().mockResolvedValue(undefined),
       revokeOpenCheckoutForPayment: vi.fn().mockResolvedValue(undefined),
     };
   }

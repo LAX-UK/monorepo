@@ -1,11 +1,5 @@
 import type { OpeningHoursRow } from "@/lib/editorial/editorial-pages.composer";
-
-const LONDON_DATE = new Intl.DateTimeFormat("en-CA", {
-  timeZone: "Europe/London",
-  year: "numeric",
-  month: "2-digit",
-  day: "2-digit",
-});
+import { dayKey } from "@auction/datetime";
 
 /**
  * An exhibition has ended once its last day (a calendar date, no time) is before today in London,
@@ -14,7 +8,7 @@ const LONDON_DATE = new Intl.DateTimeFormat("en-CA", {
  */
 export function exhibitionHasEnded(endsOn: string | null, now: Date): boolean {
   if (!endsOn || !/^\d{4}-\d{2}-\d{2}$/.test(endsOn)) return false;
-  return endsOn < LONDON_DATE.format(now);
+  return endsOn < dayKey(now, "Europe/London");
 }
 
 /** "Exhibition · 18 Aug – 27 Aug 2026"; the kind alone when undated. */

@@ -339,6 +339,9 @@ importers:
       '@auction/branding':
         specifier: workspace:*
         version: link:../../packages/branding
+      '@auction/datetime':
+        specifier: workspace:*
+        version: link:../../packages/datetime
       '@auction/http-headers':
         specifier: workspace:*
         version: link:../../packages/http-headers
@@ -506,6 +509,9 @@ importers:
 
   apps/event:
     dependencies:
+      '@auction/datetime':
+        specifier: workspace:*
+        version: link:../../packages/datetime
       '@auction/types':
         specifier: workspace:*
         version: link:../../packages/types
@@ -534,6 +540,9 @@ importers:
       '@auction/branding':
         specifier: workspace:*
         version: link:../../packages/branding
+      '@auction/datetime':
+        specifier: workspace:*
+        version: link:../../packages/datetime
       '@auction/identity-rp':
         specifier: workspace:*
         version: link:../../packages/identity-rp
@@ -625,6 +634,9 @@ importers:
       '@auction/branding':
         specifier: workspace:*
         version: link:../../packages/branding
+      '@auction/datetime':
+        specifier: workspace:*
+        version: link:../../packages/datetime
       '@auction/identity-contracts':
         specifier: workspace:*
         version: link:../../packages/identity-contracts
@@ -728,6 +740,9 @@ importers:
       '@auction/connect':
         specifier: workspace:*
         version: link:../../packages/connect
+      '@auction/datetime':
+        specifier: workspace:*
+        version: link:../../packages/datetime
       '@auction/db':
         specifier: workspace:*
         version: link:../../packages/db
@@ -1346,6 +1361,9 @@ importers:
 
   packages/alerts:
     dependencies:
+      '@auction/datetime':
+        specifier: workspace:*
+        version: link:../datetime
       zod:
         specifier: ^3.24.1
         version: 3.25.76
@@ -1585,6 +1603,9 @@ importers:
 
   packages/domain:
     dependencies:
+      '@auction/datetime':
+        specifier: workspace:*
+        version: link:../datetime
       '@auction/types':
         specifier: workspace:*
         version: link:../types

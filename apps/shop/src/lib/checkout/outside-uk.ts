@@ -1,3 +1,4 @@
+import { formatDate } from "@auction/datetime";
 import { ISO_COUNTRY_CODES } from "@auction/shop-domain";
 
 const regionNames = new Intl.DisplayNames(["en-GB"], { type: "region" });
@@ -21,14 +22,7 @@ export function outsideUkCountryOptions(): { value: string; label: string }[] {
   ];
 }
 
-const dayFormat = new Intl.DateTimeFormat("en-GB", {
-  timeZone: "Europe/London",
-  day: "numeric",
-  month: "long",
-  year: "numeric",
-});
-
 /** "12 November 2026", the one date style, from an ISO moment. */
 export function holdUntilLabel(iso: string): string {
-  return dayFormat.format(new Date(iso));
+  return formatDate(new Date(iso), "Europe/London", { month: "long" });
 }

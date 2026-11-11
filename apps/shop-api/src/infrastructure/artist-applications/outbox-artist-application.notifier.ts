@@ -1,3 +1,4 @@
+import { formatDate } from "@auction/datetime";
 import type { Database } from "@auction/db";
 import { ARTIST_APPLICATION_REVIEW_WEEKS } from "@auction/shop-domain";
 import type { ArtistApplicationNotifier } from "../../application/artist-applications/artist-application.ports.js";
@@ -13,13 +14,6 @@ export function artistApplicationLinks(artPublicUrl: string): ArtistApplicationL
     portalUrl: `${base}/for-artists/portal`,
   };
 }
-
-const LONG_DATE = new Intl.DateTimeFormat("en-GB", {
-  day: "numeric",
-  month: "long",
-  year: "numeric",
-  timeZone: "Europe/London",
-});
 
 /**
  * The applicant's emails, queued in the email outbox inside the transaction that made the
@@ -64,7 +58,7 @@ export function createOutboxArtistApplicationNotifier(
           artistName,
           reference,
           reason,
-          reapplyFrom: LONG_DATE.format(reapplyFrom),
+          reapplyFrom: formatDate(reapplyFrom, "Europe/London", { month: "long" }),
           applicationUrl: links.applicationUrl,
         },
       });

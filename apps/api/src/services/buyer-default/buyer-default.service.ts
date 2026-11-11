@@ -90,7 +90,9 @@ export class BuyerDefaultService {
     const { lot } = facts;
 
     const underbidder =
-      lot.buyerLegalEntityId !== null ? pickUnderbidder(facts.bids, lot.buyerLegalEntityId) : null;
+      lot.buyerLegalEntityId !== null
+        ? pickUnderbidder(facts.bids, lot.buyerLegalEntityId, lot.winnerId ?? undefined)
+        : null;
     const block = buyerDefaultBlock(
       {
         lotStatus: lot.status,

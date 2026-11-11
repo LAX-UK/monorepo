@@ -7,11 +7,13 @@ FROM base AS deps
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
 COPY patches ./patches
 COPY packages/config-ts/package.json ./packages/config-ts/
+COPY packages/datetime/package.json ./packages/datetime/
 COPY apps/event/package.json ./apps/event/
 RUN pnpm install --frozen-lockfile --filter @auction/event...
 
 FROM deps AS builder
 COPY packages/config-ts ./packages/config-ts
+COPY packages/datetime ./packages/datetime
 COPY apps/event ./apps/event
 ARG VITE_API_BASE=https://api.lax.bid
 ARG VITE_WEB_ORIGIN=https://lax.bid
@@ -21,7 +23,7 @@ ENV VITE_API_BASE=$VITE_API_BASE
 ENV VITE_WEB_ORIGIN=$VITE_WEB_ORIGIN
 ENV VITE_EVENT_ORIGIN=$VITE_EVENT_ORIGIN
 ENV VITE_CDN_BASE=$VITE_CDN_BASE
-RUN pnpm --filter @auction/event build
+RUN pnpm --filter @auction/datetime build && pnpm --filter @auction/event build
 
 FROM nginx:alpine AS runner
 COPY apps/event/nginx.conf /etc/nginx/conf.d/default.conf

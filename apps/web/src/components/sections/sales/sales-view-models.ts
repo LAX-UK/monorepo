@@ -118,6 +118,8 @@ export type SaleAuctionRowVM = SaleCardCommon & {
   /** First line: bold segment + remainder, e.g. type "Online Auction " + "| 9–16 April …". */
   scheduleLead: string;
   scheduleRest: string;
+  /** The start instant and the zone the schedule line quotes it in, for the visitor's own time. */
+  start?: { iso: string; zone: string };
   auctionTypeLine: string;
   itemsLabel: string;
   showRegisterButton: boolean;
@@ -129,14 +131,14 @@ export type CalendarGridCardVM = FeaturedAuctionCardVM & {
   showRegisterButton: boolean;
 };
 
-/** Row schedule: "Online auction " + "· 9–16 Apr 2026 · 11:00 BST". */
+/** Row schedule: "Online auction " + "· 9–16 Apr 2026 · 11:00 BST", in the sale's own zone. */
 function buildRowScheduleParts(sale: Sale): { lead: string; rest: string } {
   const start = toDisplayDate(sale.startTime);
   const end = toDisplayDate(sale.endTime);
   const type = mapDeliveryToAuctionTypeLabel(sale.deliveryMode);
   return {
     lead: `${type} `,
-    rest: `· ${formatDateRange(start, end, LONDON_TIME_ZONE)} · ${formatTimeWithZone(start, LONDON_TIME_ZONE)}`,
+    rest: `· ${formatDateRange(start, end, sale.timeZone)} · ${formatTimeWithZone(start, sale.timeZone)}`,
   };
 }
 
@@ -226,6 +228,7 @@ export function mapSaleToAuctionRowVM(
   const { lotCount } = row;
   const sale = atgDisplaySale(row.sale);
   const { lead, rest } = buildRowScheduleParts(sale);
+  const startIso = toOptionalIsoString(sale.startTime);
   const itemsLabel = formatSaleLotsLabel(lotCount);
   const countdownEndIso = toSaleCountdownEndIso(sale);
   const endTimeIso = toOptionalIsoString(sale.endTime);
@@ -239,6 +242,7 @@ export function mapSaleToAuctionRowVM(
     coverImageAlt: sale.title,
     scheduleLead: lead,
     scheduleRest: rest,
+    ...(startIso ? { start: { iso: startIso, zone: sale.timeZone } } : {}),
     auctionTypeLine: mapDeliveryToAuctionTypeLabel(sale.deliveryMode),
     itemsLabel,
     status: sale.status,

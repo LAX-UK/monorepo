@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { after, before, test } from "node:test";
@@ -12,7 +12,11 @@ const APP_MANIFEST = {
   pages: {
     "/_not-found/page": ["static/chunks/webpack-aaa.js", "static/chunks/main-app-bbb.js"],
     "/global-error": ["static/chunks/webpack-aaa.js", "static/chunks/main-app-bbb.js"],
-    "/layout": ["static/chunks/webpack-aaa.js", "static/css/app/layout.css"],
+    "/layout": [
+      "static/chunks/webpack-aaa.js",
+      "static/chunks/app/layout-fff.js",
+      "static/css/app/layout.css",
+    ],
     "/(marketing)/page": [
       "static/chunks/webpack-aaa.js",
       "static/chunks/main-app-bbb.js",
@@ -49,10 +53,11 @@ const run = (argv, env = {}) => {
   return main(argv, { root, configPath, env, log });
 };
 const writeConfig = (config) => writeFileSync(configPath, JSON.stringify(config));
-const config = (enforce, budgetKb) => ({
+const config = (enforce, budgetKb, extra = {}) => ({
   enforce,
   apps: {
     "apps/built": {
+      ...extra,
       fallback: "public",
       ignore: ["^/admin"],
       groups: { public: { budgetKb, match: [] } },
@@ -71,16 +76,18 @@ before(() => {
   writeFileSync(path.join(next, "static/chunks/webpack-aaa.js"), chunk(2048));
   writeFileSync(path.join(next, "static/chunks/main-app-bbb.js"), chunk(10240));
   writeFileSync(path.join(next, "static/chunks/app/(marketing)/page-ccc.js"), chunk(5120));
+  writeFileSync(path.join(next, "static/chunks/app/layout-fff.js"), chunk(3072));
 });
 
 after(() => rmSync(root, { recursive: true, force: true }));
 
-test("the home route is measured from a Next 15 manifest: root files plus its own, no styles", () => {
+test("a route is measured from a Next 15 manifest: root files, layouts and its own, no styles", () => {
   writeConfig(config(false, 100));
   assert.equal(run(["--all"]), 0);
+  // Frame: webpack, main-app and the root layout chunk; page: the route's own chunk.
   assert.match(
     logs.join("\n"),
-    /apps\/built\s+public\s+\d+\.\d KB\s+100 KB\s+\/\(marketing\)\/page/,
+    /apps\/built\s+public\s+\d+\.\d KB\s+\d+\.\d KB\s+[1-9]\d*\.\d KB\s+0 \(0\.0 KB\)\s+4\s+100 KB\s+\/\(marketing\)\/page/,
   );
   assert.doesNotMatch(logs.join("\n"), /admin|global-error|layout/);
 });
@@ -120,6 +127,29 @@ test("--enforce and BUDGET_ENFORCE=1 enforce even when the config only warns", (
   assert.equal(run([], { BUDGET_ENFORCE: "0" }), 0);
 });
 
+test("a group with enforce: true fails while other groups only warn", () => {
+  const strict = config(false, 5);
+  strict.apps["apps/built"].groups.public.enforce = true;
+  writeConfig(strict);
+  assert.equal(run([]), 1);
+  assert.match(logs.join("\n"), /^error: /m);
+});
+
+test("an app that needs Sentry is refused when its build has no inlined DSN", () => {
+  writeConfig(config(false, 100, { requireSentry: true }));
+  assert.equal(run([]), 2);
+  assert.equal(run(["--allow-no-sentry"]), 0);
+
+  const mainApp = path.join(root, "apps/built/.next/static/chunks/main-app-bbb.js");
+  const original = readFileSync(mainApp);
+  writeFileSync(mainApp, `${original}\nSentry.init({dsn:"https://abc123@sentry.invalid/1"});`);
+  try {
+    assert.equal(run([]), 0);
+  } finally {
+    writeFileSync(mainApp, original);
+  }
+});
+
 test("--suggest prints each group's largest route plus 10% and never fails", () => {
   writeConfig(config(true, 5));
   assert.equal(run(["--suggest"]), 0);
@@ -134,5 +164,7 @@ test("--app refuses a missing value, including when another option follows", () 
     all: true,
     suggest: false,
     enforce: true,
+    allowNoSentry: false,
   });
+  assert.equal(parseArgs(["--allow-no-sentry"]).allowNoSentry, true);
 });
