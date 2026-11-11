@@ -251,6 +251,12 @@ export const SHOP_ARTWORK_REGISTER_READ_TABLES = [
   "zoho_listing_sync_run",
 ] as const;
 export const SHOP_ARTWORK_REGISTER_CONFLICT_TABLES = ["artwork_register_conflict"] as const;
+/**
+ * "Zoho says Sold" items: LAX Admin reads them (the pause check, the Needs attention list) and
+ * decides one ("It is not sold": UPDATE). The worker raises and closes them, so it also INSERTs.
+ */
+export const SHOP_SOLD_ATTENTION_TABLES = ["artwork_register_sold_attention"] as const;
+export const WORKER_SOLD_ATTENTION_TABLES = ["artwork_register_sold_attention"] as const;
 export const SHOP_ARTWORK_REGISTER_EVENT_TABLES = ["artwork_register_event"] as const;
 /**
  * Shop moves an original's offer state through the register (one place at a time across lax.art
@@ -1018,6 +1024,9 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
         for (const tableName of SHOP_ARTWORK_REGISTER_CONFLICT_TABLES) {
           await grantIfExists(client, "shop_app", tableName, "SELECT, UPDATE");
         }
+        for (const tableName of SHOP_SOLD_ATTENTION_TABLES) {
+          await grantIfExists(client, "shop_app", tableName, "SELECT, UPDATE");
+        }
         for (const tableName of SHOP_ARTWORK_REGISTER_EVENT_TABLES) {
           await grantIfExists(client, "shop_app", tableName, "INSERT, SELECT");
         }
@@ -1125,6 +1134,9 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
           await grantIfExists(client, "worker_app", tableName, "SELECT, DELETE");
         }
         for (const tableName of WORKER_ARTWORK_REGISTER_TABLES) {
+          await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT, UPDATE");
+        }
+        for (const tableName of WORKER_SOLD_ATTENTION_TABLES) {
           await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT, UPDATE");
         }
         for (const tableName of WORKER_ARTWORK_REGISTER_APPEND_ONLY_TABLES) {
