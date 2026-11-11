@@ -2416,6 +2416,13 @@
       "when": 1805356800000,
       "tag": "0351_payment_checkout_session_parameters",
       "breakpoints": true
+    },
+    {
+      "idx": 346,
+      "version": "7",
+      "when": 1805443200000,
+      "tag": "0352_bid_catalogue_setting",
+      "breakpoints": true
     }
   ]
 }
