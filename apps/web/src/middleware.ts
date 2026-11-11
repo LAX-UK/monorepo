@@ -1,4 +1,3 @@
-import { isAdminPath } from "@/lib/admin/admin-return-path";
 import {
   buildRequestWithAuthEdgeHeader,
   buildStaleSessionRecoveryLoginUrl,
@@ -12,6 +11,7 @@ import { INLINE_HEAD_SCRIPTS } from "@/lib/csp/inline-head-scripts";
 import { isOrgModuleEnabled } from "@/lib/legal-entity/org-module-enabled";
 import { legacyArchiveRedirect } from "@/lib/marketing/archive-redirect";
 import { accountLinkRedirect } from "@/lib/navigation/account-link";
+import { isAdminPath } from "@/lib/navigation/admin-path";
 import { isClientAreaPath } from "@/lib/navigation/client-routes";
 import { applyClientHintHeaders } from "@/lib/preferences/client-hint-headers";
 import { seedDefaultThemeCookieIfNeeded } from "@/lib/preferences/seed-theme-cookie";
