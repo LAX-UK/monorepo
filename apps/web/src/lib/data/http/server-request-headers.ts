@@ -8,9 +8,11 @@ import {
 import { BID_API_AUDIENCE } from "@/lib/bff/config.server";
 import { readBidSessionIdFromStore } from "@/lib/bff/session-cookie.server";
 import { BidBffTokenService } from "@/lib/bff/token-service.server";
+import { viewSessionCookieHeader } from "@/lib/bff/view-session-cookie";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { deriveSsrOriginFromHeaders } from "@/lib/data/http/ssr-origin";
 import { getActingLegalEntityHeader } from "@/lib/legal-entity/acting-context.server";
+import { ACTING_LEGAL_ENTITY_COOKIE } from "@/lib/legal-entity/client-acting-context";
 import { cookies, headers as nextHeaders } from "next/headers";
 
 export type { HeaderBag } from "@/lib/data/http/ssr-origin";
@@ -84,6 +86,15 @@ export function withActingLegalEntity(): HeaderDecorator {
   };
 }
 
+/** Carries the staff "view as client" session cookie (that cookie only) to the API, which validates it. */
+export function withViewSessionCookie(): HeaderDecorator {
+  return async (headers) => {
+    const raw = (await cookies()).get(ACTING_LEGAL_ENTITY_COOKIE)?.value;
+    const cookie = raw ? viewSessionCookieHeader(`${ACTING_LEGAL_ENTITY_COOKIE}=${raw}`) : null;
+    if (cookie) headers.set("Cookie", cookie);
+  };
+}
+
 export function withConsent(snapshot: ConsentSnapshot | null): HeaderDecorator {
   return (headers) => {
     if (!snapshot) return;
@@ -121,7 +132,7 @@ export async function buildAuthedSsrHeaders(
     decorators.push(withConsentFromCookie());
   }
   if (!options.skipActingLegalEntityHeader) {
-    decorators.push(withActingLegalEntity());
+    decorators.push(withActingLegalEntity(), withViewSessionCookie());
   }
   return new ComposableServerRequestHeaders(decorators).build(options.init);
 }
