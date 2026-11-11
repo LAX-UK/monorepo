@@ -96,6 +96,9 @@ export const artworkRegisterEvent = pgTable(
         | "lax_art_draft_created"
         | "zoho_link_linked"
         | "zoho_link_unlinked"
+        | "sold_while_live_raised"
+        | "sold_while_live_resolved"
+        | "sold_while_live_overridden"
       >()
       .notNull(),
     /** `zoho`, `system`, or `staff:<user id>`. */
@@ -138,5 +141,51 @@ export const artworkRegisterConflict = pgTable(
       .on(table.detectedAt, table.id)
       .where(sql`${table.status} = 'open'`),
     index("artwork_register_conflict_register_idx").on(table.registerId),
+  ],
+);
+
+/**
+ * Zoho says an artwork is Sold or Reserved while LAX still has it for sale: one "Needs attention"
+ * item per artwork and status. `open` pauses new money for the artwork; `overridden` is staff
+ * saying it is not sold, kept (with the reason) so the sync does not raise it again; `resolved`
+ * is over. The constraints are in migration 0352; they are repeated here where drizzle-kit needs them.
+ */
+export const artworkRegisterSoldAttention = pgTable(
+  "artwork_register_sold_attention",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    registerId: uuid("register_id")
+      .notNull()
+      .references(() => artworkRegister.id, { onDelete: "restrict" }),
+    zohoProductId: text("zoho_product_id").notNull(),
+    zohoStatus: text("zoho_status").$type<"Sold" | "Reserved">().notNull(),
+    place: text("place").$type<"lax_art" | "bid_sale" | "bid_reoffer" | "private_sale">().notNull(),
+    /** The listing, lot or offer the artwork is still for sale in, when the register names it. */
+    placeRefId: text("place_ref_id"),
+    /** When Zoho last changed the Product, which is when it was marked. */
+    markedAt: timestamp("marked_at", { mode: "date", withTimezone: true }).notNull(),
+    status: text("status").$type<"open" | "overridden" | "resolved">().notNull().default("open"),
+    resolution: text("resolution").$type<
+      "zoho_status_changed" | "withdrawn" | "replaced" | "staff_override"
+    >(),
+    resolvedBy: text("resolved_by"),
+    overrideReason: text("override_reason"),
+    raisedAt: timestamp("raised_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
+    resolvedAt: timestamp("resolved_at", { mode: "date", withTimezone: true }),
+  },
+  (table) => [
+    uniqueIndex("artwork_register_sold_attention_live_uid")
+      .on(table.registerId, table.zohoStatus)
+      .where(sql`${table.status} IN ('open', 'overridden')`),
+    index("artwork_register_sold_attention_open_idx")
+      .on(table.raisedAt, table.id)
+      .where(sql`${table.status} = 'open'`),
+    index("artwork_register_sold_attention_product_idx")
+      .on(table.zohoProductId)
+      .where(sql`${table.status} = 'open'`),
+    check(
+      "artwork_register_sold_attention_status_check",
+      sql`${table.status} IN ('open', 'overridden', 'resolved')`,
+    ),
   ],
 );

@@ -1275,6 +1275,15 @@ export type {
 } from "./artwork-register.js";
 
 export type {
+  ISoldAttentionStore,
+  OverrideSoldAttentionResult,
+  RaiseSoldAttentionInput,
+  ResolveSoldAttentionInput,
+  SoldAttentionItem,
+  SoldAttentionRecord,
+} from "./artwork-register-sold-attention.js";
+
+export type {
   ArtworkRegisterArtistCount,
   IArtworkRegisterQueue,
   QueuedConflict,
