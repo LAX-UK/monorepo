@@ -32,16 +32,18 @@ function setup(
     rate_limited: [429, {}],
   };
   let last: "ok" | PasskeyFailure = "ok";
+  let fetches = 0;
   const runtime: PasskeyRuntime = {
     supportsPasskeys: () => options.supports ?? true,
     supportsAutofill: async () => options.autofill ?? false,
     authenticate: async () => {
-      last = options.results ? (options.results[0] ?? "ok") : "ok";
+      last = queue[0] ?? "ok";
       const result = await authenticate();
       return result;
     },
     register: vi.fn(),
     fetch: (async (_url: string, init?: RequestInit) => {
+      fetches += 1;
       if (init?.method !== "POST") return Response.json({ challenge: "c" });
       const failure = verifyFailures[last as PasskeyFailure];
       if (last !== "ok" && failure) return Response.json(failure[1], { status: failure[0] });
@@ -62,27 +64,40 @@ function setup(
     view,
     hasAutofillField: options.hasAutofillField ?? false,
   });
-  return { controller, view, authenticate };
+  return { controller, view, authenticate, fetchCalls: () => fetches };
 }
 
 describe("passkey sign-in controller", () => {
-  it("shows nothing where the browser cannot use passkeys", async () => {
+  it("shows nothing where the browser cannot use passkeys", () => {
     const { controller, view } = setup({ supports: false });
-    await controller.start();
+    controller.start();
     expect(view.reveal).not.toHaveBeenCalled();
   });
 
-  it("reveals the button, and starts the quiet request only when the page has the field", async () => {
-    const withField = setup({ autofill: true, hasAutofillField: true });
-    await withField.controller.start();
-    expect(withField.view.reveal).toHaveBeenCalled();
-    expect(withField.authenticate).toHaveBeenCalledTimes(1);
-    expect(withField.view.proceed).toHaveBeenCalledWith({ url: "/next" });
+  it("reveals the button on load and asks the issuer for nothing", async () => {
+    const { controller, view, authenticate, fetchCalls } = setup({
+      autofill: true,
+      hasAutofillField: true,
+    });
+    controller.start();
+    expect(view.reveal).toHaveBeenCalled();
+    expect(authenticate).not.toHaveBeenCalled();
+    expect(fetchCalls()).toBe(0);
+  });
 
-    const withoutField = setup({ autofill: true, hasAutofillField: false });
-    await withoutField.controller.start();
-    expect(withoutField.view.reveal).toHaveBeenCalled();
-    expect(withoutField.authenticate).not.toHaveBeenCalled();
+  it("starts the quiet request, once, when the person first reaches for the email box", async () => {
+    const { controller, view, authenticate } = setup({ autofill: true, hasAutofillField: true });
+    controller.start();
+    await controller.armAutofill();
+    await controller.armAutofill();
+    expect(authenticate).toHaveBeenCalledTimes(1);
+    expect(view.proceed).toHaveBeenCalledWith({ url: "/next" });
+  });
+
+  it("starts no quiet request when the page has no autofill field", async () => {
+    const { controller, authenticate } = setup({ autofill: true, hasAutofillField: false });
+    await controller.armAutofill();
+    expect(authenticate).not.toHaveBeenCalled();
   });
 
   it("says nothing when the quiet request is dismissed", async () => {
@@ -91,24 +106,60 @@ describe("passkey sign-in controller", () => {
       hasAutofillField: true,
       results: ["cancelled"],
     });
-    await controller.start();
+    await controller.armAutofill();
     expect(view.summary).not.toHaveBeenCalled();
     expect(view.quietNote).not.toHaveBeenCalled();
     expect(view.proceed).not.toHaveBeenCalled();
   });
 
-  it.each(["unsupported", "unavailable", "already_on_device"] as const)(
-    "says nothing when the quiet request fails as %s",
+  it.each(["unsupported", "unavailable", "already_on_device", "rate_limited"] as const)(
+    "says nothing when the quiet request fails as %s: the person never asked for it",
     async (failure) => {
       const { controller, view } = setup({
         autofill: true,
         hasAutofillField: true,
         results: [failure],
       });
-      await controller.start();
+      await controller.armAutofill();
       expect(view.summary).not.toHaveBeenCalled();
     },
   );
+
+  it("does not start the quiet request again after the button was rate limited", async () => {
+    const { controller, view, authenticate } = setup({
+      autofill: true,
+      hasAutofillField: true,
+      results: ["cancelled", "rate_limited"],
+    });
+    await controller.armAutofill();
+    const before = authenticate.mock.calls.length;
+    await controller.signIn();
+    expect(view.summary).toHaveBeenCalledWith(PASSKEY_COPY.signIn.rateLimited);
+    // One call for the button itself, none to restart the quiet request.
+    expect(authenticate.mock.calls.length - before).toBe(1);
+  });
+
+  it("restarts the quiet request after another failed button try, once it was started", async () => {
+    const { controller, authenticate } = setup({
+      autofill: true,
+      hasAutofillField: true,
+      results: ["cancelled", "cancelled", "ok"],
+    });
+    await controller.armAutofill();
+    await controller.signIn();
+    // quiet (dismissed), button (closed), quiet again.
+    expect(authenticate).toHaveBeenCalledTimes(3);
+  });
+
+  it("does not start the quiet request after a failed button try if the box was never reached for", async () => {
+    const { controller, authenticate } = setup({
+      autofill: true,
+      hasAutofillField: true,
+      results: ["cancelled"],
+    });
+    await controller.signIn();
+    expect(authenticate).toHaveBeenCalledTimes(1);
+  });
 
   it("signs in with the button and carries on with the issuer's answer", async () => {
     const { controller, view } = setup();

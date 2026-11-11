@@ -98,7 +98,7 @@ describe("sign-up page", () => {
 
 describe("Confirm it's you", () => {
   const person = { email: "collector@lax.bid" };
-  const all = { password: true, passkey: true, providers: ["google"] as const };
+  const all = { password: true, passkey: true, providers: ["google"] as const, staff: false };
 
   it("is how a fresh sign-in asked for by LAX Account is recognised, and nothing else", () => {
     expect(view(reauth).flow.reauth).toBe(true);
@@ -130,7 +130,7 @@ describe("Confirm it's you", () => {
 
   it("offers a password-only account just the password", () => {
     const html = buildHostedConfirmHtml(
-      { ...person, methods: { password: true, passkey: false, providers: [] } },
+      { ...person, methods: { password: true, passkey: false, providers: [], staff: false } },
       view(reauth),
     );
     expect(html).not.toContain("passkey");
@@ -146,10 +146,29 @@ describe("Confirm it's you", () => {
 
   it("does not offer a provider this environment does not have", () => {
     const html = buildHostedConfirmHtml(
-      { ...person, methods: { password: false, passkey: true, providers: ["apple"] } },
+      {
+        ...person,
+        methods: { password: false, passkey: true, providers: ["apple"], staff: false },
+      },
       view(reauth, { ...ON, appleEnabled: false }),
     );
     expect(html).not.toContain("Continue with Apple");
+  });
+
+  it("never offers Google or Apple to a staff account, whatever is linked", () => {
+    const html = buildHostedConfirmHtml(
+      { ...person, methods: { ...all, providers: ["google"], staff: true } },
+      view(reauth),
+    );
+    expect(html).not.toContain("Continue with Google");
+    expect(html).toContain("Use your passkey");
+    const onlyProvider = {
+      password: false,
+      passkey: false,
+      providers: ["google"] as const,
+      staff: true,
+    };
+    expect(hasConfirmMethod(onlyProvider, view(reauth))).toBe(false);
   });
 
   it("escapes an email that carries markup", () => {
@@ -167,7 +186,7 @@ describe("Confirm it's you", () => {
   });
 
   it("is only used when there is something to offer", () => {
-    const none = { password: false, passkey: false, providers: [] };
+    const none = { password: false, passkey: false, providers: [], staff: false };
     expect(hasConfirmMethod(none, view(reauth))).toBe(false);
     expect(hasConfirmMethod({ ...none, passkey: true }, view(reauth, OFF))).toBe(false);
     expect(hasConfirmMethod({ ...none, passkey: true }, view(reauth))).toBe(true);
@@ -217,6 +236,10 @@ describe("Add a passkey page", () => {
     expect(html).toContain('id="passkey-name"');
     expect(textOf(html)).toContain("So you can tell your passkeys apart in Security.");
     expect(textOf(html)).toContain("Save and go back to LAX Account");
+  });
+
+  it("lets the script hide the note about syncing when the browser cannot make passkeys", () => {
+    expect(html).toMatch(/id="passkey-sync-note"/);
   });
 
   it("loads only its own script", () => {

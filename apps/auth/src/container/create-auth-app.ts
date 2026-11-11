@@ -12,6 +12,7 @@ import { createClientIpResolver } from "../infrastructure/client-ip.js";
 import { createBrowserErrorPageMiddleware } from "../middleware/browser-error-page.js";
 import { createOidcPromptCookieHardeningMiddleware } from "../middleware/oidc-prompt-cookie-hardening.js";
 import { createSecurityHeadersMiddleware } from "../middleware/security-headers.js";
+import { hasStaffMarker } from "../services/staff-marker.js";
 import {
   type AuthOperationalRoutes,
   mountAuthOperationalRoutes,
@@ -103,6 +104,8 @@ export function createAuthApp(options: CreateAuthAppOptions): Hono {
         password: methods.hasPassword,
         passkey: methods.passkeys.length > 0,
         providers: methods.social.map((link) => link.provider),
+        // A failed read throws, and the ordinary sign-in page is shown instead.
+        staff: await hasStaffMarker(options.oidc.socialSubjectPorts, subjectId),
       };
     },
   });

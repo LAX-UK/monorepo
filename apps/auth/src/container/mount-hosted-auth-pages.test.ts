@@ -244,7 +244,7 @@ describe("hosted Confirm it's you page (LAX Account asked for a fresh sign-in)",
     const app = new Hono();
     const readConfirmMethods = vi.fn(async () => {
       if (options.readFails) throw new Error("down");
-      return options.methods ?? { password: true, passkey: true, providers: [] };
+      return options.methods ?? { password: true, passkey: true, providers: [], staff: false };
     });
     mountHostedAuthPages(app, {
       ...(options.capabilities ?? withPasskeys),
@@ -283,7 +283,9 @@ describe("hosted Confirm it's you page (LAX Account asked for a fresh sign-in)",
   });
 
   it("shows the ordinary sign-in when the account has nothing to confirm with", async () => {
-    const { app } = appFor({ methods: { password: false, passkey: false, providers: [] } });
+    const { app } = appFor({
+      methods: { password: false, passkey: false, providers: [], staff: false },
+    });
     expect(await (await app.request(`/login?${reauthQuery}`)).text()).not.toContain("confirm-root");
   });
 
@@ -294,10 +296,15 @@ describe("hosted Confirm it's you page (LAX Account asked for a fresh sign-in)",
     expect(await response.text()).not.toContain("confirm-root");
   });
 
-  it("does not offer a passkey while passkeys are switched off", async () => {
-    const { app } = appFor({ capabilities: { ...capabilities, passkeysEnabled: false } });
+  it("uses today's sign-in page, and reads nothing, while passkeys are switched off", async () => {
+    const { app, readConfirmMethods } = appFor({
+      capabilities: { ...capabilities, passkeysEnabled: false },
+    });
     const html = await (await app.request(`/login?${reauthQuery}`)).text();
-    expect(html).toContain("confirm-root");
-    expect(html).not.toContain("data-passkey-button");
+    expect(html).not.toContain("confirm-root");
+    expect(html).toContain('id="login-root"');
+    expect(readConfirmMethods).not.toHaveBeenCalled();
+    const unset = appFor({ capabilities });
+    expect(await (await unset.app.request(`/login?${reauthQuery}`)).text()).toBe(html);
   });
 });

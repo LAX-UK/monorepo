@@ -21,12 +21,15 @@ export const SIGN_IN_FAILURE_LINES: Readonly<Record<PasskeyFailure, FailureLine>
   unsupported: unavailable,
 };
 
-/** The failures of the quiet request that follow a passkey the person chose. */
+/**
+ * The failures of the quiet request that follow a passkey the person chose. A rate limit is never
+ * among them: the quiet request runs without being asked, so it must not tell anyone they are
+ * limited (only pressing the button can).
+ */
 const QUIET_REQUEST_REPORTS: ReadonlySet<PasskeyFailure> = new Set([
   "not_recognised",
   "not_verified",
   "wrong_person",
-  "rate_limited",
 ]);
 
 /** What the sign-in controller changes on the page; the DOM glue implements it. */
@@ -54,6 +57,7 @@ export function createPasskeySignIn(input: {
   hasAutofillField: boolean;
 }) {
   const { runtime, view } = input;
+  let armed = false;
 
   function show(failure: PasskeyFailure): void {
     const line = SIGN_IN_FAILURE_LINES[failure];
@@ -74,10 +78,18 @@ export function createPasskeySignIn(input: {
   }
 
   return {
-    /** Reveals the button where passkeys work, and starts the quiet request. */
-    async start(): Promise<void> {
-      if (!runtime.supportsPasskeys()) return;
-      view.reveal();
+    /** Reveals the button where passkeys work. Nothing is asked of the issuer yet. */
+    start(): void {
+      if (runtime.supportsPasskeys()) view.reveal();
+    },
+
+    /**
+     * Starts the quiet request, once, when the person first reaches for the email box: a page that
+     * is only opened, or opened by many people behind one address, asks the issuer for nothing.
+     */
+    async armAutofill(): Promise<void> {
+      if (armed || !runtime.supportsPasskeys()) return;
+      armed = true;
       await startAutofill();
     },
 
@@ -94,8 +106,9 @@ export function createPasskeySignIn(input: {
       }
       show(result.failure);
       view.focusButton();
-      // The button's request replaced the quiet one; start it again for the next try.
-      await startAutofill();
+      // The button's request replaced the quiet one; start it again for the next try, unless the
+      // issuer just said to slow down or the person never reached for the email box.
+      if (armed && result.failure !== "rate_limited") await startAutofill();
     },
   };
 }

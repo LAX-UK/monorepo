@@ -24,6 +24,8 @@ export type ConfirmMethods = {
   password: boolean;
   passkey: boolean;
   providers: readonly SocialProviderId[];
+  /** Staff accounts never use Google or Apple, whatever is linked to them. */
+  staff: boolean;
 };
 
 /** Whether the "Confirm it's you" page has any way to offer; without one the ordinary page is used. */
@@ -38,6 +40,7 @@ function passkeyOffered(methods: ConfirmMethods, view: HostedAuthView): boolean 
 }
 
 function offeredProviders(methods: ConfirmMethods, view: HostedAuthView): SocialProviderId[] {
+  if (methods.staff) return [];
   return methods.providers.filter((provider) =>
     provider === "google" ? view.capabilities.googleEnabled : view.capabilities.appleEnabled,
   );

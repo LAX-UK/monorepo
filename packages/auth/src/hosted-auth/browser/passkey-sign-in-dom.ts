@@ -57,5 +57,10 @@ export function bindPasskeySignIn(
       void controller.signIn();
     });
   }
-  void controller.start();
+  controller.start();
+  // The quiet request waits for the person to reach for the email box.
+  const field = document.querySelector('input[autocomplete~="webauthn"]');
+  const arm = () => void controller.armAutofill();
+  field?.addEventListener("focus", arm, { once: true });
+  field?.addEventListener("pointerdown", arm, { once: true });
 }

@@ -21,7 +21,7 @@ export type AccountActionPasskeyRouteDeps = {
   capabilities: HostedAuthCapabilities;
   /** The issuer session the browser's cookie holds, or null. */
   getSession(headers: Headers): Promise<{ session: { id: string }; user: { id: string } } | null>;
-  grants: Pick<PasskeyEnrolmentGrants, "holds">;
+  grants: Pick<PasskeyEnrolmentGrants, "holds" | "createdPasskey">;
   methods: Pick<AccountSignInMethodsService, "renamePasskey">;
   /** The issuer's own origin: the only origin a rename may come from. */
   issuerOrigin: string;
@@ -118,6 +118,10 @@ export function createAccountActionPasskeyRoutes(deps: AccountActionPasskeyRoute
     try {
       const browser = await deps.getSession(c.req.raw.headers);
       if (!browser) return c.json({ error: "unauthorized" }, 401);
+      // Only the passkey this enrolment just made: nothing older can be renamed from here.
+      const created = await deps.grants.createdPasskey(browser.session.id, browser.user.id);
+      if (created === null || created !== body.passkeyId)
+        return c.json({ error: "not_found" }, 404);
       const result = await deps.methods.renamePasskey(browser.user.id, body.passkeyId, body.name);
       return result.ok ? c.json({ renamed: true }) : c.json({ error: "not_found" }, 404);
     } catch (error) {

@@ -29,9 +29,16 @@ function setup(
     wait?: number | null;
     rename?: { ok: true } | { ok: false; kind: "not_linked" | "invalid_name" };
     sessionFails?: boolean;
+    created?: string | null;
   } = {},
 ) {
-  const grants = { holds: vi.fn(async () => overrides.holds ?? true) };
+  const grants = {
+    holds: vi.fn(async () => overrides.holds ?? true),
+    // The passkey this enrolment just made; `null` models an enrolment that made none.
+    createdPasskey: vi.fn(async () =>
+      overrides.created === undefined ? "pk-1" : overrides.created,
+    ),
+  };
   const methods = {
     renamePasskey: vi.fn(
       async () => overrides.rename ?? { ok: true as const, passkey: {} as never },
@@ -151,6 +158,26 @@ describe(`POST ${ACCOUNT_ACTION_PASSKEY_RENAME_PATH}`, () => {
     const response = await app.request(ACCOUNT_ACTION_PASSKEY_RENAME_PATH, post(body));
     expect(response.status).toBe(400);
     expect(methods.renamePasskey).not.toHaveBeenCalled();
+  });
+
+  it("renames only the passkey this enrolment just made, 404 for any other", async () => {
+    const { app, methods, grants } = setup();
+    const response = await app.request(
+      ACCOUNT_ACTION_PASSKEY_RENAME_PATH,
+      post({ passkeyId: "an-older-passkey", name: "Mine" }),
+    );
+    expect(response.status).toBe(404);
+    expect(grants.createdPasskey).toHaveBeenCalledWith("sid-1", "u1");
+    expect(methods.renamePasskey).not.toHaveBeenCalled();
+    const none = setup({ created: null });
+    expect(
+      (
+        await none.app.request(
+          ACCOUNT_ACTION_PASSKEY_RENAME_PATH,
+          post({ passkeyId: "pk-1", name: "Mine" }),
+        )
+      ).status,
+    ).toBe(404);
   });
 
   it("refuses a browser with no session", async () => {

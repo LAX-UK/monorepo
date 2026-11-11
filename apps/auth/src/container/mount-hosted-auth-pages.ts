@@ -118,7 +118,13 @@ async function confirmItsYou(
   capabilities: HostedAuthPageMountOptions,
 ): Promise<Response | null> {
   const view = viewFromRequest(c.req.url, capabilities);
-  if (!view.flow.reauth || !capabilities.getSession || !capabilities.readConfirmMethods) {
+  // With passkeys off, every step-up uses the ordinary sign-in page, exactly as before.
+  if (
+    !capabilities.passkeysEnabled ||
+    !view.flow.reauth ||
+    !capabilities.getSession ||
+    !capabilities.readConfirmMethods
+  ) {
     return null;
   }
   try {

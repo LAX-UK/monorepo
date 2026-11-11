@@ -109,7 +109,7 @@ export type OidcRouteMountOptions = {
   /** What the hosted pages are built from, so the issuer's own pages match the sign-in pages. */
   hostedCapabilities: HostedAuthCapabilities;
   /** Permission to make a passkey, given when the hand-off for adding one is spent. */
-  passkeyGrants: Pick<PasskeyEnrolmentGrants, "grant" | "holds">;
+  passkeyGrants: Pick<PasskeyEnrolmentGrants, "grant" | "holds" | "createdPasskey">;
   /** What the Google and Apple rules read about a person: staff markers and two-step. */
   socialSubjectPorts: SocialSubjectPorts;
   emailChange: EmailChangeService;

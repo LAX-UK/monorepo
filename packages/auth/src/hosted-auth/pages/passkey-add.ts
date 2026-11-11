@@ -38,7 +38,7 @@ export function buildHostedAddPasskeyHtml(
     productBack: { href: input.returnUrl, label: COPY.backToAccount },
     body: `<div id="passkey-add" class="auth-stack" data-return-url="${escapeHostedHtml(input.savedReturnUrl ?? input.returnUrl)}">
       <div id="passkey-ready" class="auth-form">
-        <p class="auth-hint">${escapeHostedHtml(COPY.syncNote)}</p>
+        <p id="passkey-sync-note" class="auth-hint">${escapeHostedHtml(COPY.syncNote)}</p>
         <p id="passkey-note" class="passkey-note" role="status" aria-live="polite" hidden></p>
         ${hostedButton({ id: "passkey-create", type: "button", label: COPY.create, loadingLabel: COPY.waiting })}
         <a id="passkey-cancel" class="btn btn-secondary" href="${back}">${escapeHostedHtml(COPY.cancel)}</a>

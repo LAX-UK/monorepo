@@ -62,6 +62,8 @@ export function bindPasskeyAdd(auth: HostedAuthApi): void {
       },
       showUnsupported() {
         show(unsupported, true);
+        // Only the explanation shows: the note about syncing is about a button that is not there.
+        show(document.getElementById("passkey-sync-note"), false);
         show(create, false);
         show(cancel, false);
       },
