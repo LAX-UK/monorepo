@@ -7,3 +7,9 @@ export * from "./account-sign-in-methods.js";
 export * from "./social-provider-marks.js";
 export * from "./account-profile.js";
 export * from "./account-addresses.js";
+export {
+  ACCOUNT_STEP_UP_REASONS,
+  ACCOUNT_STEP_UP_REASON_PARAM,
+  parseAccountStepUpReason,
+  type AccountStepUpReason,
+} from "./account-sessions.js";

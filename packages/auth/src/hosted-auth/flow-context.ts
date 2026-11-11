@@ -1,7 +1,10 @@
 import {
+  ACCOUNT_STEP_UP_REASON_PARAM,
+  type AccountStepUpReason,
   REGISTERED_OIDC_CLIENTS,
   REGISTERED_OIDC_CLIENT_IDS,
   type RegisteredOidcClientId,
+  parseAccountStepUpReason,
 } from "@auction/identity-contracts";
 
 /** Set by a product that knows why the person is here (selling); read only to word the page. */
@@ -22,6 +25,7 @@ export const ALLOWED_OIDC_AUTHORIZE_QUERY_PARAMS = [
   "acr_values",
   "login_hint",
   HOSTED_CONTEXT_QUERY,
+  ACCOUNT_STEP_UP_REASON_PARAM,
 ] as const;
 
 /** Copy OIDC authorize query params onto a hosted MFA/setup URL so authorize can resume. */
@@ -65,6 +69,11 @@ export type HostedAuthFlow = {
    * says "Confirm it's you" instead of starting a new sign-in.
    */
   reauth: boolean;
+  /**
+   * Why Account asked, from its fixed list, so the page can say what the sign-in is for. Null when
+   * none was given or the word is not on the list: the page then says it in general terms.
+   */
+  reauthReason: AccountStepUpReason | null;
 };
 
 /** Only a plausible email is used as a hint; anything else is ignored. */
@@ -111,6 +120,7 @@ function emptyFlow(): HostedAuthFlow {
     loginHint: null,
     context: null,
     reauth: false,
+    reauthReason: null,
   };
 }
 
@@ -145,6 +155,10 @@ export function parseHostedAuthFlow(searchParams: URLSearchParams): HostedAuthFl
 
   const continuationQuery = continuation.toString();
   const productHintQuery = `client_id=${encodeURIComponent(clientId)}`;
+  const reauth =
+    canResume &&
+    product === "account" &&
+    promptTokens(searchParams.get("prompt")).includes("login");
   return {
     clientId,
     product,
@@ -155,10 +169,10 @@ export function parseHostedAuthFlow(searchParams: URLSearchParams): HostedAuthFl
     allowedRedirectOrigins,
     loginHint: parseLoginHint(searchParams.get("login_hint")),
     context: parseHostedContext(searchParams.get(HOSTED_CONTEXT_QUERY)),
-    reauth:
-      canResume &&
-      product === "account" &&
-      promptTokens(searchParams.get("prompt")).includes("login"),
+    reauth,
+    reauthReason: reauth
+      ? parseAccountStepUpReason(searchParams.get(ACCOUNT_STEP_UP_REASON_PARAM))
+      : null,
   };
 }
 
