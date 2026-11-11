@@ -47,6 +47,10 @@ function newEntry(
   };
 }
 
+/** The shared database may hold other tests' artworks; only the ones seeded here are compared. */
+const seededOnly = <T extends { stockCode: string }>(rows: T[]) =>
+  rows.filter((row) => row.stockCode.startsWith("LAX-ORI-PX-GAC-26-9"));
+
 async function seed(tx: Database, entries: NewArtworkRegisterEntry[]) {
   const repo = new DrizzleArtworkRegisterRepository(tx);
   const created = [];
@@ -93,7 +97,9 @@ describe.skipIf(!url)(
         ]);
         const reader = new DrizzleDealArtworkSearchReader(tx);
         const titles = async (text: string) =>
-          (await reader.searchOriginals({ text, limit: 20 })).map((e) => e.title).sort();
+          seededOnly(await reader.searchOriginals({ text, limit: 20 }))
+            .map((e) => e.title)
+            .sort();
         expect(await titles("HARBOUR")).toEqual(["Harbour at dusk"]);
         expect(await titles("reyes")).toEqual(["Quarry"]);
         expect(await titles("9001")).toEqual(["Harbour at dusk"]);
@@ -131,9 +137,8 @@ describe.skipIf(!url)(
         ]);
         const reader = new DrizzleDealArtworkSearchReader(tx);
         const suggest = { artist: "Pia Xavier", title: "Harbour at dusk" };
-        const titles = (await reader.searchOriginals({ text: "", suggest, limit: 20 })).map(
-          (e) => e.title,
-        );
+        const found = await reader.searchOriginals({ text: "", suggest, limit: 500 });
+        const titles = seededOnly(found).map((e) => e.title);
         // Artist and title both match, then one of them, then the rest by title.
         expect(titles).toEqual(["Harbour at dusk", "Zinc", "Aardvark", "Harbour at dawn"]);
         expect(await reader.searchOriginals({ text: "", suggest, limit: 2 })).toHaveLength(2);
