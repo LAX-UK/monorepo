@@ -12,6 +12,8 @@ function createApp(staffRoles: StaffRoles | undefined) {
     updateTerms: vi.fn().mockResolvedValue({ ok: true, record: RECORD }),
     nameBuyer: vi.fn().mockResolvedValue({ ok: true, record: RECORD }),
     act: vi.fn().mockResolvedValue({ ok: true, record: RECORD }),
+    set: vi.fn().mockResolvedValue({ ok: true, record: RECORD }),
+    remove: vi.fn().mockResolvedValue({ ok: true, record: RECORD }),
   };
   const dealArtworks = {
     search: vi.fn().mockResolvedValue({
@@ -407,5 +409,109 @@ describe("GET /private-sales/artworks", () => {
     const res = await app.request(`${url}?enquiry=E-9999`);
     expect(res.status).toBe(404);
     expect(await res.json()).toEqual({ error: "enquiry_not_found" });
+  });
+});
+
+describe("PUT and DELETE /private-sales/:ref/artwork", () => {
+  const ARTWORK = "00000000-0000-4000-8000-000000000002";
+  const change = { version: 3, artworkRegisterId: ARTWORK, reason: "The buyer chose another." };
+  const remove = { version: 3, notInRegister: { reason: "in_zoho_not_linked" } };
+
+  it.each(["administrator", "sales_manager", "specialist"] as const)(
+    "%s may link, change and remove",
+    async (role) => {
+      const { app, privateSaleDeals } = createApp([role]);
+      expect(
+        (await app.request("http://test/private-sales/PS-0012/artwork", send("PUT", change)))
+          .status,
+      ).toBe(200);
+      expect(
+        (await app.request("http://test/private-sales/PS-0012/artwork", send("DELETE", remove)))
+          .status,
+      ).toBe(200);
+      expect(privateSaleDeals.set).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: "staff-1",
+          abilities: expect.objectContaining({ manage: true }),
+        }),
+        "PS-0012",
+        change,
+      );
+      expect(privateSaleDeals.remove).toHaveBeenCalledWith(expect.anything(), "PS-0012", remove);
+    },
+  );
+
+  it.each([
+    "client_services",
+    "finance",
+    "fulfilment",
+    "compliance",
+    "cataloguer",
+    "saleroom_clerk",
+    "read_only",
+  ] as const)("%s is view-only: 403, and the desk is never asked", async (role) => {
+    const { app, privateSaleDeals } = createApp([role]);
+    expect(
+      (await app.request("http://test/private-sales/PS-0012/artwork", send("PUT", change))).status,
+    ).toBe(403);
+    expect(
+      (await app.request("http://test/private-sales/PS-0012/artwork", send("DELETE", remove)))
+        .status,
+    ).toBe(403);
+    expect(privateSaleDeals.set).not.toHaveBeenCalled();
+    expect(privateSaleDeals.remove).not.toHaveBeenCalled();
+  });
+
+  it("rejects bodies that are not the shape: a bad id, no version, an unknown reason", async () => {
+    const { app, privateSaleDeals } = createApp(["sales_manager"]);
+    const put = (body: unknown) =>
+      app.request("http://test/private-sales/PS-0012/artwork", send("PUT", body));
+    expect((await put({ version: 3, artworkRegisterId: "nope" })).status).toBe(400);
+    expect((await put({ artworkRegisterId: ARTWORK })).status).toBe(400);
+    expect((await put({ version: 3, notInRegister: { reason: "whatever" } })).status).toBe(400);
+    const del = await app.request(
+      "http://test/private-sales/PS-0012/artwork",
+      send("DELETE", { version: 3 }),
+    );
+    expect(del.status).toBe(400);
+    expect(privateSaleDeals.set).not.toHaveBeenCalled();
+    expect(privateSaleDeals.remove).not.toHaveBeenCalled();
+  });
+
+  it("passes the lock's own reason, message and link on when the register refuses", async () => {
+    const { app, privateSaleDeals } = createApp(["sales_manager"]);
+    const lock = {
+      reason: "in_bid_sale",
+      message:
+        "This artwork is in a LAX Bid sale (Winter Modern, lot 14). Withdraw the lot there first.",
+      link: { label: "Open lot in LAX Bid", target: "bid_lot", href: "/admin/lots/lot-1" },
+    };
+    privateSaleDeals.set.mockResolvedValueOnce({
+      ok: false,
+      error: "artwork_unavailable",
+      message: lock.message,
+      lock,
+    });
+    const res = await app.request("http://test/private-sales/PS-0012/artwork", send("PUT", change));
+    expect(res.status).toBe(409);
+    expect(await res.json()).toEqual({ error: "artwork_unavailable", message: lock.message, lock });
+  });
+
+  it.each([
+    ["artwork_locked", 409],
+    ["stale_version", 409],
+    ["reason_required", 422],
+    ["artwork_unchanged", 422],
+    ["artwork_not_found", 422],
+    ["artwork_not_original", 422],
+    ["artwork_choice_required", 422],
+    ["artwork_register_busy", 503],
+    ["deal_not_found", 404],
+  ] as const)("answers %s with %s", async (error, status) => {
+    const { app, privateSaleDeals } = createApp(["sales_manager"]);
+    privateSaleDeals.set.mockResolvedValueOnce({ ok: false, error });
+    const res = await app.request("http://test/private-sales/PS-0012/artwork", send("PUT", change));
+    expect(res.status).toBe(status);
+    expect(await res.json()).toEqual({ error });
   });
 });

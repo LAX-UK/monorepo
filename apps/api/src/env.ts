@@ -103,6 +103,10 @@ const envSchema = z
     WEB_ORIGIN: z.string().url().default("http://localhost:3000"),
     /** Where LAX Account lives; the "manage your alerts" link in alert emails goes there. */
     LAX_ACCOUNT_PUBLIC_ORIGIN: z.preprocess(emptyToUndefined, z.string().url().optional()),
+    /** Where LAX Admin lives; links from the artwork register's messages to an artwork's record open there. */
+    LAX_ADMIN_PUBLIC_ORIGIN: z.preprocess(emptyToUndefined, z.string().url().optional()),
+    /** The Zoho CRM record page, with `{module}` and `{recordId}` in it, for "Edit in Zoho" links. */
+    ZOHO_CRM_RECORD_URL_TEMPLATE: z.preprocess(emptyToUndefined, z.string().url().optional()),
     /**
      * Legal entity that owns Bid records in the cross-product portfolio. Defaults to Bid's
      * operator from `legalEntityFor("bid")`; override it only if the company changes.

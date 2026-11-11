@@ -1,3 +1,4 @@
+import type { ArtworkRegisterEntry } from "@auction/artwork-register-contracts";
 import type { Database } from "@auction/db";
 import {
   PRIVATE_SALE_DEAL_EVENT_AGGREGATE,
@@ -22,6 +23,7 @@ import type {
   ConvertEnquiryResult,
   IEnquiryConversion,
 } from "../interfaces/private-sale-deal-desk.js";
+import type { DealLockLinks } from "./deal-lock-links.js";
 import type { DealPartyResolver, ResolvedDealParty } from "./deal-party-resolver.js";
 import {
   DealArtworkRefused,
@@ -37,7 +39,9 @@ export type EnquiryConversionDeps = {
   /** The deal store, bound to the transaction the conversion runs in. */
   dealsForTx: (tx: Database) => Pick<IPrivateSaleDealWriter, "create">;
   /** The artworks in the register, to check one exists before a deal is opened for it. */
-  artworks: { findById(id: string): Promise<{ kind: string } | null> };
+  artworks: { findById(id: string): Promise<ArtworkRegisterEntry | null> };
+  /** Gives the register's refusal link its address. */
+  lockLinks: Pick<DealLockLinks, "attach">;
   /** Holds an artwork for a deal, bound to the transaction the conversion runs in. */
   registerForTx: (tx: Database) => IDealRegisterLock;
   parties: DealPartyResolver;
@@ -125,8 +129,9 @@ export class EnquiryConversionService implements IEnquiryConversion {
     if ((input.artworkRegisterId !== undefined) === (input.notInRegister !== undefined)) {
       return { ok: false, error: "artwork_choice_required" };
     }
+    let artwork: ArtworkRegisterEntry | null = null;
     if (input.artworkRegisterId) {
-      const artwork = await this.deps.artworks.findById(input.artworkRegisterId);
+      artwork = await this.deps.artworks.findById(input.artworkRegisterId);
       if (!artwork) return { ok: false, error: "artwork_not_found" };
       if (artwork.kind !== "original") return { ok: false, error: "artwork_not_original" };
     }
@@ -185,11 +190,14 @@ export class EnquiryConversionService implements IEnquiryConversion {
       if (error instanceof EnquiryMovedOn) return { ok: false, error: "stale_version" };
       if (error instanceof WorkTaken) return { ok: false, error: error.reason };
       if (error instanceof DealArtworkRefused) {
+        const [lock] = artwork
+          ? await this.deps.lockLinks.attach([{ entry: artwork, lock: error.lock }])
+          : [error.lock];
         return {
           ok: false,
           error: "artwork_unavailable",
           message: error.message,
-          lock: error.lock,
+          ...(lock ? { lock } : {}),
         };
       }
       if (error instanceof DealRegisterUnavailable) {

@@ -67,6 +67,7 @@ import { StripePaymentGateway } from "../services/stripe/stripe-payment-gateway.
 import { XeroOAuthService } from "../services/xero-oauth.service.js";
 import type { ContainerCatalogServices } from "./create-catalog-services.js";
 import type { ContainerComplianceMedia } from "./create-compliance-media.js";
+import { createDealLockLinks } from "./create-deal-lock-links.js";
 import {
   createDisputeAllocationService,
   createDisputeCaseRecorder,
@@ -459,6 +460,8 @@ export function createPaymentsServices(
     sourceOfFunds: repos.sourceOfFundsRepository,
     notificationDispatcher,
     unappliedMoney,
+    lockLinks: createDealLockLinks({ db, env }),
+    media: complianceMedia.mediaUrlResolver,
   });
 
   const stripePaymentWebhookService: StripePaymentWebhookService | null =

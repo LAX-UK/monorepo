@@ -43,6 +43,7 @@ import { createComplianceRouteServices } from "./container/create-compliance-rou
 import { createConsignmentMessageServices } from "./container/create-consignment-message-services.js";
 import { createCronServices } from "./container/create-cron-services.js";
 import { createDealArtworkSearch } from "./container/create-deal-artwork-search.js";
+import { createDealLockLinks } from "./container/create-deal-lock-links.js";
 import { createFinanceRouteServices } from "./container/create-finance-route-services.js";
 import { createIdentityRouteServices } from "./container/create-identity-route-services.js";
 import { createInfra } from "./container/create-infra.js";
@@ -831,7 +832,11 @@ export function createContainer(env: Env): Container {
       marketingEnquiries: marketingEnquiries.desk,
       privateSaleDeals: payments.privateSaleDeals.desk,
       enquiryConversion: payments.privateSaleDeals.conversion,
-      dealArtworks: createDealArtworkSearch({ db, media: complianceMedia.mediaUrlResolver }),
+      dealArtworks: createDealArtworkSearch({
+        db,
+        media: complianceMedia.mediaUrlResolver,
+        lockLinks: createDealLockLinks({ db, env }),
+      }),
       enquiryRouting: marketingEnquiries.routing,
       purchaseProblems: createPurchaseProblemDesk({
         db,

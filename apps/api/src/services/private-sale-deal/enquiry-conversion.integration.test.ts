@@ -16,6 +16,7 @@ import { eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { seedIdentityUserFixtures } from "../../testing/identity-user-fixtures.js";
 import { recordingSink } from "./deal-fixtures.test-util.js";
+import { DealLockLinks } from "./deal-lock-links.js";
 import { ArtworkRegisterDealLock } from "./deal-register-lock.js";
 import { EnquiryConversionService } from "./enquiry-conversion.service.js";
 
@@ -101,6 +102,7 @@ describe.skipIf(!url)(
             openDeals: new DrizzlePrivateSaleDealQueryRepository(tx),
             dealsForTx: (executor) => new DrizzlePrivateSaleDealRepository(executor),
             artworks: registers,
+            lockLinks: new DealLockLinks({}, new DrizzlePrivateSaleDealQueryRepository(tx)),
             registerForTx: (executor) =>
               new ArtworkRegisterDealLock<Database>(
                 executor,

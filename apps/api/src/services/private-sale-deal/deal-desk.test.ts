@@ -57,6 +57,8 @@ type Setup = {
   payments?: InMemoryDealPayments;
   partyResolves?: { legalEntityId: string; actingUserId: string } | null;
   hasPayoutLine?: boolean;
+  artwork?: { id: string; title: string; stockCode: string };
+  artworkHistory?: object[];
 };
 
 function setup(options: Setup = {}) {
@@ -95,6 +97,7 @@ function setup(options: Setup = {}) {
     findById: async () => deal,
     findByReference: async (ref: string) => (ref === deal.reference ? deal : null),
     history: async () => [],
+    artworkHistory: async () => options.artworkHistory ?? [],
     applyStageChange,
     updateTerms,
     setParty,
@@ -125,6 +128,7 @@ function setup(options: Setup = {}) {
       countByStage: async () => [],
       listIdsForActingUser: async () => [],
       findLiveDealReferenceForWork: async () => null,
+      findReferencesByIds: async () => new Map<string, string>(),
       findWorkSummary: async () => ({
         title: "Harbour at dusk",
         reference: "C-1042",
@@ -138,6 +142,37 @@ function setup(options: Setup = {}) {
     policy,
     enquiries: { findById: async () => null },
     names: { namesOf: async () => new Map() },
+    register: {
+      findById: async (id: string) =>
+        options.artwork && options.artwork.id === id ? (options.artwork as never) : null,
+    },
+    artworkPresenter: {
+      present: async (entries: readonly { id: string; title: string; stockCode: string }[]) =>
+        new Map(
+          entries.map((entry) => [
+            entry.id,
+            {
+              summary: {
+                id: entry.id,
+                title: entry.title,
+                artist: "Hannah Cole",
+                medium: "Oil on canvas",
+                size: "60 x 80 cm",
+                stockCode: entry.stockCode,
+                catalogueStatus: "Available",
+                thumbnailUrl: null,
+                whereItIs: {
+                  key: "private_sale",
+                  chip: { label: "In a private sale", tone: "info", marker: "filled" },
+                },
+                draftLot: null,
+              },
+              place: undefined,
+            },
+          ]),
+        ) as never,
+    },
+    links: { recordHref: (id: string) => `https://admin.test/from-zoho/${id}` },
   };
   const queries = new PrivateSaleDealQueryService(queryDeps);
   const transfers = {
@@ -160,7 +195,10 @@ function setup(options: Setup = {}) {
     events,
     records: queries,
   });
-  const real = new PrivateSaleDealDesk(queries, commands);
+  const real = new PrivateSaleDealDesk(queries, commands, {
+    set: vi.fn(),
+    remove: vi.fn(),
+  });
   // Moves are made against the version the person saw; these tests saw the deal as it is now.
   const desk = {
     list: real.list,
@@ -954,5 +992,190 @@ describe("recording a refund made at the bank", () => {
       amountMinor: 99_999_999,
     });
     expect(result.ok === false && result.blockers?.[0]?.code).toBe("refund_amount_invalid");
+  });
+});
+
+describe("the artwork on the deal record", () => {
+  const ART = { id: "reg-1", title: "Evening Tide", stockCode: "LAX-ORI-HC-24-0042" };
+
+  it("shows the linked artwork where it is, with its record in LAX Admin for people who run deals", async () => {
+    const { desk } = setup({
+      deal: stageDeal("offer", { artworkRegisterId: ART.id }),
+      artwork: ART,
+    });
+    const asManager = await desk.detail(MANAGER, "PS-0001");
+    expect(asManager?.artwork).toMatchObject({
+      id: "reg-1",
+      title: "Evening Tide",
+      stockCode: "LAX-ORI-HC-24-0042",
+      whereItIs: { key: "private_sale" },
+      heldSince: new Date("2026-11-03T10:00:00Z"),
+      recordHref: "https://admin.test/from-zoho/reg-1",
+    });
+    expect((await desk.detail(FINANCE, "PS-0001"))?.artwork?.recordHref).toBeNull();
+  });
+
+  it("shows no artwork, and the recorded reason, when none is linked", async () => {
+    const { desk } = setup({
+      deal: stageDeal("offer", {
+        artworkRegisterId: null,
+        artworkUnlinkedReason: "in_zoho_not_linked",
+      }),
+    });
+    const record = await desk.detail(MANAGER, "PS-0001");
+    expect(record?.artwork).toBeNull();
+    expect(record?.artworkUnlinkedReason).toBe("in_zoho_not_linked");
+  });
+
+  it.each([
+    [
+      "proposed",
+      { artworkRegisterId: "reg-1" },
+      { canLink: false, canChange: true, changeOffReason: null },
+    ],
+    [
+      "offer",
+      { artworkRegisterId: "reg-1" },
+      { canLink: false, canChange: true, changeOffReason: null },
+    ],
+    [
+      "agreed",
+      { artworkRegisterId: "reg-1" },
+      {
+        canLink: false,
+        canChange: false,
+        changeOffReason: "Change artwork is off from Agreed onwards.",
+      },
+    ],
+    [
+      "paid",
+      { artworkRegisterId: "reg-1" },
+      {
+        canLink: false,
+        canChange: false,
+        changeOffReason: "Change artwork is off from Agreed onwards.",
+      },
+    ],
+    [
+      "settled",
+      { artworkRegisterId: "reg-1" },
+      { canLink: false, canChange: false, changeOffReason: null },
+    ],
+    [
+      "cancelled",
+      { artworkRegisterId: "reg-1" },
+      { canLink: false, canChange: false, changeOffReason: null },
+    ],
+    [
+      "offer",
+      { artworkRegisterId: null },
+      { canLink: true, canChange: false, changeOffReason: null },
+    ],
+    [
+      "paid",
+      { artworkRegisterId: null },
+      { canLink: true, canChange: false, changeOffReason: null },
+    ],
+    [
+      "settled",
+      { artworkRegisterId: null },
+      { canLink: false, canChange: false, changeOffReason: null },
+    ],
+    [
+      "cancelled",
+      { artworkRegisterId: null },
+      { canLink: false, canChange: false, changeOffReason: null },
+    ],
+  ] as const)("at %s with %o: %o", async (stage, over, expected) => {
+    const { desk } = setup({ deal: stageDeal(stage, over), artwork: ART });
+    expect((await desk.detail(MANAGER, "PS-0001"))?.artworkAccess).toEqual(expected);
+  });
+
+  it("gives people who cannot run deals a view-only section", async () => {
+    const { desk } = setup({ deal: stageDeal("offer", { artworkRegisterId: null }) });
+    expect((await desk.detail(FINANCE, "PS-0001"))?.artworkAccess).toEqual({
+      canLink: false,
+      canChange: false,
+      changeOffReason: null,
+    });
+  });
+
+  it("lists each move with the artworks' names, who made it and why", async () => {
+    const { desk } = setup({
+      deal: stageDeal("offer", { artworkRegisterId: ART.id }),
+      artwork: ART,
+      artworkHistory: [
+        {
+          id: "h1",
+          dealId: "deal-1",
+          action: "changed",
+          actorUserId: "u-staff",
+          fromArtworkRegisterId: null,
+          toArtworkRegisterId: ART.id,
+          fromUnlinkedReason: "in_zoho_not_linked",
+          toUnlinkedReason: null,
+          reason: "The buyer chose it.",
+          createdAt: new Date("2026-11-05T10:00:00Z"),
+        },
+      ],
+    });
+    const record = await desk.detail(MANAGER, "PS-0001");
+    expect(record?.artworkMoves).toEqual([
+      {
+        action: "changed",
+        from: null,
+        to: { title: "Evening Tide", stockCode: "LAX-ORI-HC-24-0042" },
+        fromUnlinkedReason: "in_zoho_not_linked",
+        toUnlinkedReason: null,
+        reason: "The buyer chose it.",
+        createdAt: new Date("2026-11-05T10:00:00Z"),
+        actorName: "Former staff member",
+      },
+    ]);
+    expect(record?.artwork?.heldSince).toEqual(new Date("2026-11-05T10:00:00Z"));
+  });
+});
+
+describe("agree needs the artwork settled", () => {
+  const blockersOf = async (over: Partial<PrivateSaleDealDetail>) => {
+    const { desk } = setup({ deal: stageDeal("offer", over) });
+    const record = await desk.detail(MANAGER, "PS-0001");
+    return record?.actions.find((a) => a.action === "agree")?.blockers.map((b) => b.code) ?? [];
+  };
+
+  it.each([
+    ["nothing recorded", { artworkRegisterId: null, artworkUnlinkedReason: null }, true],
+    [
+      "in Zoho but not linked yet",
+      { artworkRegisterId: null, artworkUnlinkedReason: "in_zoho_not_linked" },
+      true,
+    ],
+    [
+      "the seller's own work",
+      { artworkRegisterId: null, artworkUnlinkedReason: "sellers_own_work" },
+      false,
+    ],
+    ["a linked artwork", { artworkRegisterId: "reg-1" }, false],
+  ] as const)("with %s, blocked is %s", async (_label, over, blocked) => {
+    expect((await blockersOf(over)).includes("artwork_not_linked")).toBe(blocked);
+  });
+
+  it("says what to do in the approved words", async () => {
+    const { desk } = setup({ deal: stageDeal("offer", { artworkRegisterId: null }) });
+    const record = await desk.detail(MANAGER, "PS-0001");
+    expect(
+      record?.actions
+        .find((a) => a.action === "agree")
+        ?.blockers.find((b) => b.code === "artwork_not_linked")?.message,
+    ).toBe("Link the artwork, or record that it is the seller's own work.");
+  });
+
+  it("refuses to agree an unlinked deal and changes nothing", async () => {
+    const unlinked = setup({ deal: stageDeal("offer", { artworkRegisterId: null }) });
+    const refused = await unlinked.desk.act(MANAGER, "PS-0001", "agree", {});
+    expect(refused.ok === false && refused.blockers?.map((b) => b.code)).toContain(
+      "artwork_not_linked",
+    );
+    expect(unlinked.applyStageChange).not.toHaveBeenCalled();
   });
 });
