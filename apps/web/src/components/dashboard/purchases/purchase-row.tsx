@@ -91,7 +91,12 @@ export function PurchaseRow({
         </span>
       }
       title={card.title}
-      meta={[card.lotLabel, card.saleTitle, card.wonBy ? `won by ${card.wonBy}` : null]}
+      meta={[
+        card.lotLabel,
+        card.saleTitle,
+        card.wonBy ? `won by ${card.wonBy}` : null,
+        card.badge.note,
+      ]}
       figures={[{ value: card.amount, label: card.amountLabel }]}
       aligned
       status={

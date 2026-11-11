@@ -16,6 +16,20 @@ describe("auth issuer security headers", () => {
     expect(response.headers.get("strict-transport-security")).toContain("max-age=31536000");
   });
 
+  it("sets the default referrer policy, but keeps one a route already set", async () => {
+    const app = new Hono();
+    app.use("*", createSecurityHeadersMiddleware());
+    app.get("/plain", (c) => c.text("x"));
+    app.get("/one-time", (c) => {
+      c.header("Referrer-Policy", "no-referrer");
+      return c.text("x");
+    });
+    expect((await app.request("/plain")).headers.get("referrer-policy")).toBe(
+      "strict-origin-when-cross-origin",
+    );
+    expect((await app.request("/one-time")).headers.get("referrer-policy")).toBe("no-referrer");
+  });
+
   it("allows hosted HTML to load the stylesheet, fonts, and logo", async () => {
     const app = new Hono();
     app.use("*", createSecurityHeadersMiddleware());

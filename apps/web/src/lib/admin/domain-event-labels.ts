@@ -162,6 +162,7 @@ const LABELS: Record<string, string> = {
   "payment_group.paid": "Several invoices paid together",
   "payment_group.released": "Several invoices handed back to pay separately",
   "payment_group.settlement_refused": "Payment for several invoices needs reconciling",
+  "payment_group.delivery_refunded": "Courier charge on a combined payment refunded",
   "payment_group.refund_unattributed": "Refund on a combined payment needs an invoice",
   "payment_group.dispute_needs_allocation": "Dispute on a combined payment needs allocating",
 
@@ -193,6 +194,7 @@ const LABELS: Record<string, string> = {
   "private_sale_deal.payment_cancelled": "Private sale payment cancelled",
   "private_sale_deal.payment_refunded": "Private sale payment refunded",
   "private_sale_deal.payout_queued": "Private sale payout queued",
+  "private_sale_deal.artwork_record_not_updated": "Private sale artwork record not updated",
   "collection.booking.created": "Collection booked",
   "collection.booking.changed": "Collection changed",
   "collection.booking.cancelled": "Collection cancelled",

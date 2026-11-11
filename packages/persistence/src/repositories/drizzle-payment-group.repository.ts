@@ -8,7 +8,7 @@ import {
   paymentGroupDelivery,
 } from "@auction/db/schema";
 import type { PaymentGroupStatus } from "@auction/domain";
-import { and, asc, desc, eq, gte, inArray, isNull, lte, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, isNull, lt, lte, or, sql } from "drizzle-orm";
 import type {
   ChargeableDeliveryQuote,
   ClaimPaymentGroupInput,
@@ -17,6 +17,7 @@ import type {
   IPaySeveralInvoiceFlagsReader,
   IPaymentGroupRepository,
   LockedPaymentGroup,
+  LockedPaymentGroupDelivery,
   PaySeveralInvoiceFlags,
   PaymentGroupDelivery,
   PaymentGroupMember,
@@ -192,7 +193,8 @@ export class DrizzlePaymentGroupRepository implements IPaymentGroupRepository {
   }
 
   async listDeliveries(groupId: string): Promise<PaymentGroupDelivery[]> {
-    return this.deliveriesQuery(this.db, groupId);
+    const rows = await this.deliveriesQuery(this.db, groupId);
+    return rows.map(({ refundedPence: _refundedPence, ...delivery }) => delivery);
   }
 
   async findBankTransferGroupsForCustomer(
@@ -298,7 +300,46 @@ export class DrizzlePaymentGroupRepository implements IPaymentGroupRepository {
       group: mapGroup(row),
       members: await this.membersQuery(tx, groupId),
       deliveries: await this.deliveriesQuery(tx, groupId),
+      refundUnattributedPence: row.refundUnattributedPence,
     };
+  }
+
+  async raiseDeliveryRefundedInTransaction(
+    tx: Database,
+    groupId: string,
+    quoteId: string,
+    refundedPence: number,
+  ): Promise<boolean> {
+    const rows = await tx
+      .update(paymentGroupDelivery)
+      .set({ refundedPence })
+      .where(
+        and(
+          eq(paymentGroupDelivery.paymentGroupId, groupId),
+          eq(paymentGroupDelivery.deliveryQuoteId, quoteId),
+          lt(paymentGroupDelivery.refundedPence, refundedPence),
+        ),
+      )
+      .returning({ id: paymentGroupDelivery.id });
+    return rows.length > 0;
+  }
+
+  async raiseUnattributedRefundInTransaction(
+    tx: Database,
+    groupId: string,
+    unattributedPence: number,
+  ): Promise<boolean> {
+    const rows = await tx
+      .update(paymentGroup)
+      .set({ refundUnattributedPence: unattributedPence })
+      .where(
+        and(
+          eq(paymentGroup.id, groupId),
+          lt(paymentGroup.refundUnattributedPence, unattributedPence),
+        ),
+      )
+      .returning({ id: paymentGroup.id });
+    return rows.length > 0;
   }
 
   async transitionInTransaction(
@@ -341,12 +382,16 @@ export class DrizzlePaymentGroupRepository implements IPaymentGroupRepository {
     return rows.map((r) => r.id);
   }
 
-  private async deliveriesQuery(conn: Database, groupId: string): Promise<PaymentGroupDelivery[]> {
+  private async deliveriesQuery(
+    conn: Database,
+    groupId: string,
+  ): Promise<LockedPaymentGroupDelivery[]> {
     const rows = await conn
       .select({
         quoteId: paymentGroupDelivery.deliveryQuoteId,
         lotId: paymentGroupDelivery.lotId,
         amount: paymentGroupDelivery.amount,
+        refundedPence: paymentGroupDelivery.refundedPence,
       })
       .from(paymentGroupDelivery)
       .where(eq(paymentGroupDelivery.paymentGroupId, groupId))

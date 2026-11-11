@@ -31,6 +31,9 @@ function arrivedAt(facts: ListingFacts, state: OfferState): Date | null {
   return move && move.to === state ? move.at : null;
 }
 
+/** What the listing says of a lot ATG sold: it has no LAX winner and no LAX payment. */
+export const SOLD_ON_ATG_DETAIL = "Sold in LAX Bid (ATG)";
+
 function lotLine(lot: ListingLot | null, ...extra: (string | null)[]): string | null {
   if (!lot) return extra.filter(Boolean).join(" · ") || null;
   return joined(lot.sale?.title, lot.lotNumber !== null ? `Lot ${lot.lotNumber}` : null, ...extra);
@@ -110,7 +113,12 @@ export const LISTING_PRESENTERS: Readonly<
     };
   },
   bid_sale_ended: (input) => ({
-    detail: lotLine(input.facts.lot, "lot closed, sold once the buyer pays"),
+    detail: lotLine(
+      input.facts.lot,
+      input.facts.lot?.soldOnAtg
+        ? "lot closed, sold on ATG"
+        : "lot closed, sold once the buyer pays",
+    ),
     link: lotLink(input),
   }),
   private_sale: (input) => ({ detail: privateSaleText(input.facts), link: recordLink(input) }),
@@ -120,6 +128,12 @@ export const LISTING_PRESENTERS: Readonly<
   }),
   sold_bid_sale: (input) => {
     const at = arrivedAt(input.facts, "sold");
+    if (input.facts.lot?.soldOnAtg) {
+      return {
+        detail: lotLine(input.facts.lot, SOLD_ON_ATG_DETAIL, at ? day(at) : null),
+        link: lotLink(input),
+      };
+    }
     return {
       detail: lotLine(input.facts.lot, at ? `sold ${day(at)}` : "sold"),
       link: lotLink(input),

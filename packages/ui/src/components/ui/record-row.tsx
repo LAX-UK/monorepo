@@ -305,7 +305,7 @@ export function RecordRow({
                       "shrink-0",
                       // Narrow, the status leads the line and the figure follows it.
                       figures.length > 0 && "-order-1 @2xl:order-none",
-                      aligned && "@2xl:flex @2xl:w-40 @2xl:justify-start",
+                      aligned && "@2xl:flex @2xl:w-32 @2xl:justify-start",
                       !isShown(status) && "hidden",
                     )}
                   >

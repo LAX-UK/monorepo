@@ -1,3 +1,4 @@
 "use client";
 
-export { useCatalogLayoutView as useUrlLayoutView } from "@auction/marketing-ui";
+import { useCatalogLayoutView } from "@auction/marketing-ui";
+export { useCatalogLayoutView as useUrlLayoutView };

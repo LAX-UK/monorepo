@@ -97,5 +97,7 @@ export const adminDealConvertSchema = z.object({
     .trim()
     .regex(/^C-?\d{1,15}$/i, "Use a reference like C-1042")
     .optional(),
+  /** The artwork register entry for the work. The artwork is held for the deal from the moment it opens. */
+  artworkRegisterId: z.string().uuid().optional(),
 });
 export type AdminDealConvertInput = z.infer<typeof adminDealConvertSchema>;

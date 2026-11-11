@@ -1,4 +1,4 @@
-import { type BrowserContext, type Page, expect, test } from "@playwright/test";
+import type { BrowserContext, Page } from "@playwright/test";
 import {
   buyerLogin,
   dismissCookieConsentIfVisible,
@@ -6,6 +6,7 @@ import {
   e2eSkipReason,
   flushAuthRateLimits,
 } from "./helpers/auth";
+import { expect, test } from "./helpers/test";
 
 /**
  * Account switching against the production build (`next build` then the standalone server), the

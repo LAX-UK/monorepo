@@ -52,6 +52,16 @@ function setup(options: { passkeysEnabled?: boolean } = {}) {
     markDeletionRequested: vi.fn(async () => undefined),
     cancelDeletionRequested: vi.fn(async () => undefined),
     isEmailRegistered: vi.fn(async () => true),
+    setTimeZone: vi.fn(async (_subjectId: string, change: { mode: string }) =>
+      change.mode === "fixed"
+        ? { mode: "fixed", zone: "Asia/Tokyo" }
+        : { mode: "automatic", zone: null },
+    ),
+    reportDeviceZone: vi.fn<(...args: unknown[]) => Promise<unknown>>(async () => ({
+      mode: "automatic",
+      zone: "Europe/Paris",
+    })),
+    readTimeZone: vi.fn(async () => ({ mode: "fixed", zone: "Asia/Tokyo" })),
   };
   const accountDeletion = {
     requestDeletion: vi.fn<(...args: unknown[]) => Promise<unknown>>(async () => ({
@@ -115,6 +125,79 @@ async function issueToken(app: ReturnType<typeof createInternalIdentityRoutes>):
   const body = (await response.json()) as { access_token: string };
   return body.access_token;
 }
+
+async function putJson(
+  app: ReturnType<typeof createInternalIdentityRoutes>,
+  token: string,
+  path: string,
+  method: "PUT" | "POST",
+  body: unknown,
+) {
+  return app.request(path, {
+    method,
+    headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+describe("internal Identity time zone routes", () => {
+  it("rejects a change without a machine token", async () => {
+    const { app, operations } = setup();
+    const response = await app.request("/identity/subjects/u1/time-zone", { method: "PUT" });
+    expect(response.status).toBe(401);
+    expect(operations.setTimeZone).not.toHaveBeenCalled();
+  });
+
+  it("saves a fixed city for the subject named in the path", async () => {
+    const { app, operations } = setup();
+    const token = await issueToken(app);
+    const response = await putJson(app, token, "/identity/subjects/u1/time-zone", "PUT", {
+      mode: "fixed",
+      zone: "Asia/Tokyo",
+    });
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ mode: "fixed", zone: "Asia/Tokyo" });
+    expect(operations.setTimeZone).toHaveBeenCalledWith("u1", {
+      mode: "fixed",
+      zone: "Asia/Tokyo",
+    });
+  });
+
+  it("refuses a zone that names no place", async () => {
+    const { app, operations } = setup();
+    const token = await issueToken(app);
+    for (const zone of ["UTC", "Etc/GMT+1", "Nowhere/City", 7]) {
+      const response = await putJson(app, token, "/identity/subjects/u1/time-zone", "PUT", {
+        mode: "fixed",
+        zone,
+      });
+      expect(response.status).toBe(400);
+      expect(await response.json()).toEqual({ error: "invalid_time_zone" });
+    }
+    expect(operations.setTimeZone).not.toHaveBeenCalled();
+  });
+
+  it("stores a device's zone and answers with what is stored", async () => {
+    const { app, operations } = setup();
+    const token = await issueToken(app);
+    const response = await putJson(app, token, "/identity/subjects/u1/time-zone/device", "POST", {
+      zone: "Europe/Paris",
+    });
+    expect(await response.json()).toEqual({ mode: "automatic", zone: "Europe/Paris" });
+    expect(operations.reportDeviceZone).toHaveBeenCalledWith("u1", "Europe/Paris");
+  });
+
+  it("reads the stored preference when the device's zone is unusable or unchanged", async () => {
+    const { app, operations } = setup();
+    operations.reportDeviceZone.mockResolvedValue(null);
+    const token = await issueToken(app);
+    const response = await putJson(app, token, "/identity/subjects/u1/time-zone/device", "POST", {
+      zone: "UTC",
+    });
+    expect(await response.json()).toEqual({ mode: "fixed", zone: "Asia/Tokyo" });
+    expect(operations.reportDeviceZone).not.toHaveBeenCalled();
+  });
+});
 
 describe("internal Identity machine routes", () => {
   it("rejects lifecycle operations without a machine token", async () => {

@@ -8,6 +8,7 @@ import { MarketingAttributionSync } from "@/components/analytics/marketing-attri
 import { MarketingClickIdsSync } from "@/components/analytics/marketing-click-ids-sync";
 import { SilentSignInNotice } from "@/components/auth/silent-sign-in-notice.client";
 import { AccountSwitchGreeting } from "@/components/layout/account-switcher/account-switch-greeting";
+import { AccountZonePreference } from "@/components/layout/account-zone-preference";
 import { BottomChromeSync } from "@/components/layout/bottom-chrome-sync";
 import { SessionThemeSync } from "@/components/layout/session-theme-sync";
 import { ThemeInit } from "@/components/layout/theme-init";
@@ -43,7 +44,7 @@ import { AppQueryProvider } from "@/lib/query/query-provider";
 import { isIndexingAllowedAtBuildTime } from "@/lib/seo/is-indexing-allowed";
 import { rootMetadataBase } from "@/lib/seo/metadata-factory";
 import { jsonLdScript, organizationJsonLd, websiteJsonLd } from "@/lib/seo/structured-data";
-import { loadViewerZone } from "@/lib/time/viewer-zone.server";
+import { accountTimeZoneFor, loadViewerZone } from "@/lib/time/viewer-zone.server";
 import { cn } from "@auction/ui";
 import { ViewerZoneProvider } from "@auction/ui/time";
 import type { Metadata, Viewport } from "next";
@@ -106,7 +107,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   const consentSnapshot = readConsentFromCookies(cookieStore);
   const consentProviderKey =
     consentSnapshot === null ? "consent:none" : JSON.stringify(consentSnapshot);
-  const viewerZone = await loadViewerZone(cookieStore);
+  const viewerZone = await loadViewerZone(cookieStore, accountTimeZoneFor(user?.timeZone));
   const isDark = isSsrDarkClass(themePref, hdrs.get("sec-ch-prefers-color-scheme"));
 
   return (
@@ -161,7 +162,11 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
             <AppQueryProvider>
               <PushBootstrap />
               <PwaInstallPrompt />
-              <ViewerZoneProvider initial={viewerZone}>{children}</ViewerZoneProvider>
+              <ViewerZoneProvider initial={viewerZone}>
+                <AccountZonePreference timeZone={user?.timeZone ?? null}>
+                  {children}
+                </AccountZonePreference>
+              </ViewerZoneProvider>
               <AccountSwitchGreeting />
             </AppQueryProvider>
           </AuthSessionProvider>

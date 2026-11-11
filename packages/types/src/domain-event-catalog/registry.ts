@@ -212,6 +212,7 @@ export const ALL_LIVE_DOMAIN_EVENT_TYPES = [
   "private_sale_deal.payment_cancelled",
   "private_sale_deal.payment_refunded",
   "private_sale_deal.payout_queued",
+  "private_sale_deal.artwork_record_not_updated",
   "collection.booking.created",
   "collection.booking.changed",
   "collection.booking.cancelled",
@@ -241,6 +242,7 @@ export const ALL_LIVE_DOMAIN_EVENT_TYPES = [
   "payment.unapplied_money_received",
   "payment.unapplied_money_resolved",
   "payment_group.created",
+  "payment_group.delivery_refunded",
   "payment_group.dispute_needs_allocation",
   "payment_group.paid",
   "payment_group.processing",
@@ -499,7 +501,11 @@ const REGISTRY_OVERRIDES: Partial<Record<LiveDomainEventType, RegistryOverride>>
     consumers: ["artwork_offer_lock", "lot_lifecycle_snapshot", "zoho_artwork_listing"],
     piiClassification: "none",
   },
-  "lot.soft_deleted": { schema: LotEventSchemas["lot.soft_deleted"], piiClassification: "none" },
+  "lot.soft_deleted": {
+    schema: LotEventSchemas["lot.soft_deleted"],
+    consumers: ["zoho_artwork_listing"],
+    piiClassification: "none",
+  },
   "lot.unpublished": {
     schema: LotEventSchemas["lot.unpublished"],
     consumers: ["artwork_offer_lock", "lot_lifecycle_snapshot", "zoho_artwork_listing"],
@@ -883,6 +889,12 @@ const REGISTRY_OVERRIDES: Partial<Record<LiveDomainEventType, RegistryOverride>>
     piiClassification: "none",
   },
   "private_sale_deal.payout_queued": {
+    producers: ["apps/api"],
+    consumers: [],
+    idempotencyPolicy: "none",
+    piiClassification: "none",
+  },
+  "private_sale_deal.artwork_record_not_updated": {
     producers: ["apps/api"],
     consumers: [],
     idempotencyPolicy: "none",

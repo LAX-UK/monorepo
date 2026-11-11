@@ -756,3 +756,67 @@ describe("HttpIdentityIssuerClient address book", () => {
     });
   });
 });
+
+describe("HttpIdentityIssuerClient time zone", () => {
+  function client(answer: () => Response) {
+    const calls: { url: string; init: RequestInit }[] = [];
+    const fetchImpl = vi.fn(async (input: Parameters<typeof fetch>[0], init?: RequestInit) => {
+      const url = String(input);
+      if (url.endsWith("/internal/oauth/token")) {
+        return Response.json({ access_token: "machine-token", expires_in: 300 });
+      }
+      calls.push({ url, init: init ?? {} });
+      return answer();
+    });
+    return {
+      calls,
+      issuer: new HttpIdentityIssuerClient({
+        issuerBaseUrl: "https://identity.example.com",
+        fetchImpl: fetchImpl as never,
+        machineClientId: "api-service",
+        machineClientSecret: "machine-secret-that-is-long-enough-0123",
+      }),
+    };
+  }
+
+  it("saves a fixed city and the automatic choice through the machine route", async () => {
+    const { issuer, calls } = client(() => Response.json({ mode: "fixed", zone: "Asia/Tokyo" }));
+    expect(
+      await issuer.setSubjectTimeZone("user/1", { mode: "fixed", zone: "Asia/Tokyo" }),
+    ).toEqual({
+      mode: "fixed",
+      zone: "Asia/Tokyo",
+    });
+    await issuer.setSubjectTimeZone("user/1", { mode: "automatic", deviceZone: null });
+    const url = "https://identity.example.com/internal/identity/subjects/user%2F1/time-zone";
+    expect(calls.map((call) => `${call.init.method} ${call.url}`)).toEqual([
+      `PUT ${url}`,
+      `PUT ${url}`,
+    ]);
+    expect(JSON.parse(String(calls[0]?.init.body))).toEqual({ mode: "fixed", zone: "Asia/Tokyo" });
+    expect(JSON.parse(String(calls[1]?.init.body))).toEqual({ mode: "automatic", zone: null });
+  });
+
+  it("reports a device's zone", async () => {
+    const { issuer, calls } = client(() =>
+      Response.json({ mode: "automatic", zone: "Asia/Tokyo" }),
+    );
+    expect(await issuer.reportSubjectDeviceZone("u1", "Asia/Tokyo")).toEqual({
+      mode: "automatic",
+      zone: "Asia/Tokyo",
+    });
+    expect(calls[0]?.url).toBe(
+      "https://identity.example.com/internal/identity/subjects/u1/time-zone/device",
+    );
+    expect(JSON.parse(String(calls[0]?.init.body))).toEqual({ zone: "Asia/Tokyo" });
+  });
+
+  it("rejects an answer it does not recognise", async () => {
+    const { issuer } = client(() => Response.json({ mode: "sometimes" }));
+    await expect(
+      issuer.setSubjectTimeZone("u1", { mode: "fixed", zone: "Asia/Tokyo" }),
+    ).rejects.toMatchObject({
+      kind: "invalid_response",
+    });
+  });
+});
