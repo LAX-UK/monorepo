@@ -17,6 +17,15 @@ export interface PasskeyEnrolmentGrants {
   holds(sessionId: string, subjectId: string): Promise<boolean>;
   /** Uses the permission up once a passkey has been made; false when there was none. */
   spend(sessionId: string, subjectId: string): Promise<boolean>;
+  /** Remembers the passkey just made in this enrolment, the only one the naming step may rename. */
+  noteCreated(sessionId: string, subjectId: string, passkeyId: string): Promise<void>;
+  /** The passkey made in this enrolment, or null when none was (or it belongs to another person). */
+  createdPasskey(sessionId: string, subjectId: string): Promise<string | null>;
+}
+
+/** Where the id of the passkey just made is kept: beside the grant, with the same lifetime. */
+export function passkeyCreatedKey(sessionId: string): string {
+  return `${passkeyGrantKey(sessionId)}:created`;
 }
 
 /** The key never holds the session id itself, so a Redis dump names no session. */

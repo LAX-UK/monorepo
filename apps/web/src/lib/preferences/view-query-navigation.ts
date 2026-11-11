@@ -1,12 +1,19 @@
 import type { CatalogLayoutView } from "@/lib/preferences/view-cookie";
 
-export {
+import {
   type BuildViewQueryParamsOptions,
   VIEW_CHANGE_CLEAR_PARAMS,
   buildViewHref,
   buildViewQueryParams,
   writeViewPreferenceCookie,
 } from "@auction/marketing-ui";
+export {
+  type BuildViewQueryParamsOptions,
+  VIEW_CHANGE_CLEAR_PARAMS,
+  buildViewHref,
+  buildViewQueryParams,
+  writeViewPreferenceCookie,
+};
 
 /**
  * Marketing layout view navigation contract (performance + SEO + SOLID):

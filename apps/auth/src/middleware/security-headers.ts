@@ -72,7 +72,10 @@ export function createSecurityHeadersMiddleware(options?: { turnstileEnabled?: b
       "Content-Security-Policy",
       isHtml ? hostedHtmlCsp(Boolean(options?.turnstileEnabled), cspNonce) : AUTH_API_CSP,
     );
-    c.header("Referrer-Policy", "strict-origin-when-cross-origin");
+    // A route that set its own (the one-time pages send "no-referrer") keeps it.
+    if (!c.res.headers.has("Referrer-Policy")) {
+      c.header("Referrer-Policy", "strict-origin-when-cross-origin");
+    }
     c.header(
       "Permissions-Policy",
       isHtml ? HOSTED_HTML_PERMISSIONS_POLICY : API_PERMISSIONS_POLICY,

@@ -8,8 +8,8 @@ import { purchaseRequestAccountId } from "./purchase-account";
 const BASE = "/legal-entities/purchases";
 
 /**
- * Calls the purchases endpoints for the account in use: an organisation names itself, a person's
- * own account sends no account, as every purchase request does.
+ * Calls the purchases endpoints for the account in use: every purchase request names it,
+ * a person's own account included.
  */
 export async function purchasesApiFetch(path: string, init: RequestInit = {}): Promise<Response> {
   const scope = await (await getServerDataContainer()).buying.scope();

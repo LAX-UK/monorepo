@@ -1,7 +1,7 @@
 "use client";
 
-import { isAdminPath } from "@/lib/admin/admin-return-path";
 import { CLIENT_KIT_REVIEW_PATH } from "@/lib/kit/client-kit-review";
+import { isAdminPath } from "@/lib/navigation/admin-path";
 import { isClientAreaPath } from "@/lib/navigation/client-routes";
 import { Toaster as AuctionToaster } from "@auction/ui";
 import { Toaster as LaxToaster } from "@auction/ui/lax";
