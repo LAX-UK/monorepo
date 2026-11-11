@@ -5,6 +5,7 @@ import type {
   AccountSecurityFactsResponse,
   AccountSession,
   AccountSignInMethodsResponse,
+  AccountTimeZone,
 } from "@auction/identity-contracts";
 import { decodeJwt } from "jose";
 import { getLaxAccountContainer } from "../container";
@@ -29,6 +30,8 @@ export type AccountSessionState =
       liveDeletion: AccountDeletionStatus | null;
       /** Present only when requested. */
       liveSignInMethods: IdentityCallResult<AccountSignInMethodsResponse> | null;
+      /** Present only when requested, and null when the issuer could not answer. */
+      liveTimeZone: AccountTimeZone | null;
     }
   | { status: "unsigned" }
   /** The session store could not be reached, so the person's state is unknown. */
@@ -60,6 +63,8 @@ export type LoadAccountSessionOptions = {
   withLiveDeletion?: boolean;
   /** Ask the issuer for the password and linked social sign-ins. */
   withLiveSignInMethods?: boolean;
+  /** Ask the issuer for the person's time zone preference. */
+  withLiveTimeZone?: boolean;
 };
 
 /** Only the pages that show a live fact pay for its extra issuer request. */
@@ -79,6 +84,7 @@ export async function loadAccountSession(
       liveAddresses,
       liveDeletion,
       liveSignInMethods,
+      liveTimeZone,
     ] = await Promise.all([
       options.withLiveSecurity ? securityFacts.read(record.accessToken) : null,
       options.withLiveName ? identity.readName(actor) : null,
@@ -87,6 +93,7 @@ export async function loadAccountSession(
       options.withLiveAddresses ? identity.listAddresses(actor) : null,
       options.withLiveDeletion ? identity.readDeletionStatus(actor) : null,
       options.withLiveSignInMethods ? identity.readSignInMethods(actor) : null,
+      options.withLiveTimeZone ? identity.readTimeZone(actor) : null,
     ]);
     const claims = idTokenClaims(record.idToken);
     return {
@@ -99,6 +106,7 @@ export async function loadAccountSession(
       liveAddresses,
       liveDeletion,
       liveSignInMethods,
+      liveTimeZone,
     };
   } catch (error) {
     // A Redis outage must not look like a sign-out: the person is still signed in, and sending

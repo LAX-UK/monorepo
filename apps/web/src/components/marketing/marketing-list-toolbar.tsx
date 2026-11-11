@@ -1,4 +1,2 @@
-export {
-  MarketingListToolbar,
-  type MarketingListToolbarProps,
-} from "@auction/marketing-ui";
+import { MarketingListToolbar, type MarketingListToolbarProps } from "@auction/marketing-ui";
+export { MarketingListToolbar, type MarketingListToolbarProps };

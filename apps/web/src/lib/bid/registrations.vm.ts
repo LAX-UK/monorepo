@@ -19,7 +19,7 @@ const STATUS: Record<
 > = {
   approved: { label: "Approved", tone: "success", shape: "check", noLimit: "a lot" },
   pending: {
-    label: "Waiting for approval",
+    label: "Pending review",
     tone: "info",
     shape: "dot",
     noLimit: "set when approved",

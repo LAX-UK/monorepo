@@ -1,4 +1,7 @@
-/** What a refusal from the Bid API says to the person, one sentence each. */
+/**
+ * What a refusal from the Bid API says to the person, one sentence each. Fallback copy: where the
+ * API sends its own message and link (an artwork the register will not hold), those are shown.
+ */
 export const DEAL_ERROR_COPY: Readonly<Record<string, string>> = {
   deal_not_found: "This private sale no longer exists, or you can't open it.",
   stale_version: "This private sale changed while you were looking at it.",
@@ -22,13 +25,23 @@ export const DEAL_ERROR_COPY: Readonly<Record<string, string>> = {
   work_not_found: "No work has that reference.",
   work_not_available: "Only an approved consignment that isn't on a lot yet can be sold privately.",
   work_in_deal: "That work is already in a private sale.",
+  artwork_not_found: "The artwork register has no artwork with that id.",
+  artwork_not_original: "Only an original artwork can be sold privately.",
+  artwork_unavailable: "This artwork is already offered somewhere else, reserved or sold.",
+  artwork_register_busy: "The artwork's record is busy. Try again.",
   work_has_no_seller_contact: "That work has no one who can act for its owner yet.",
 };
 
 const UNAVAILABLE = "The Bid API didn't answer. Nothing was changed. Try again in a moment.";
 
 /** The sentence for a failed write: the API's own refusal, or a plain "didn't answer". */
-export function dealErrorMessage(code: string | undefined, status: number | undefined): string {
+export function dealErrorMessage(
+  code: string | undefined,
+  status: number | undefined,
+  /** The API's own sentence, preferred for a refusal that says where the artwork is. */
+  apiMessage?: string,
+): string {
+  if (code === "artwork_unavailable" && apiMessage) return apiMessage;
   if (code && code in DEAL_ERROR_COPY) return DEAL_ERROR_COPY[code] as string;
   if (status === 403) return "You don't have permission to change private sales.";
   return UNAVAILABLE;

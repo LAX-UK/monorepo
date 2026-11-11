@@ -1,8 +1,10 @@
 import {
+  type ConfirmMethods,
   type HostedAccountChooserIntent,
   type HostedAuthCapabilities,
   type TwoFactorSetupRequiredBy,
   buildHostedAccountChooserHtml,
+  buildHostedConfirmHtml,
   buildHostedForgotPasswordHtml,
   buildHostedLoginHtml,
   buildHostedMagicLinkHtml,
@@ -16,6 +18,7 @@ import {
   buildHostedTwoFactorSetupHtml,
   buildHostedVerifyEmailHtml,
   continuationHref,
+  hasConfirmMethod,
   hostedAuthViewFromSearch,
   hostedSignUpRequested,
   parseTwoFactorSetupRequiredBy,
@@ -34,6 +37,8 @@ function hostedAuthHtml(c: Context, html: string): Response {
 export type HostedAuthPageMountOptions = HostedAuthCapabilities & {
   getSession?: (headers: Headers) => Promise<unknown>;
   readTwoFactorRequirement?: TwoFactorRequirementReader;
+  /** What the signed-in person can confirm themselves with, for the "Confirm it's you" page. */
+  readConfirmMethods?: (subjectId: string) => Promise<ConfirmMethods>;
 };
 
 function viewFromRequest(url: string, capabilities: HostedAuthCapabilities) {
@@ -96,6 +101,41 @@ async function accountChooserIfSignedIn(
         view,
       ),
     );
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * LAX Account asks for a fresh sign-in (`prompt=login`) before a sensitive change. The browser
+ * still holds the person's issuer session, so the page can fix the email to that person and offer
+ * only the ways their account has: that is what makes a passkey, which names no email of its own,
+ * able to confirm them and nobody else. Without a session, or with no usable method, the ordinary
+ * sign-in page is shown.
+ */
+async function confirmItsYou(
+  c: Context,
+  capabilities: HostedAuthPageMountOptions,
+): Promise<Response | null> {
+  const view = viewFromRequest(c.req.url, capabilities);
+  // With passkeys off, every step-up uses the ordinary sign-in page, exactly as before.
+  if (
+    !capabilities.passkeysEnabled ||
+    !view.flow.reauth ||
+    !capabilities.getSession ||
+    !capabilities.readConfirmMethods
+  ) {
+    return null;
+  }
+  try {
+    const session = await capabilities.getSession(c.req.raw.headers);
+    const identity = sessionIdentity(session);
+    const subjectId = sessionSubjectId(session);
+    if (!identity || !subjectId) return null;
+    const methods = await capabilities.readConfirmMethods(subjectId);
+    if (!hasConfirmMethod(methods, view)) return null;
+    c.header("Cache-Control", "no-store");
+    return hostedAuthHtml(c, buildHostedConfirmHtml({ email: identity.email, methods }, view));
   } catch {
     return null;
   }
@@ -176,6 +216,8 @@ export function mountHostedAuthPages(app: Hono, capabilities: HostedAuthPageMoun
     if (hostedSignUpRequested(url.searchParams)) {
       return c.redirect(`/sign-up${url.search}`, 302);
     }
+    const confirm = await confirmItsYou(c, capabilities);
+    if (confirm) return confirm;
     const chooser = await accountChooserIfSignedIn(c, capabilities, "sign-in");
     if (chooser) return chooser;
     c.header("Cache-Control", "no-store");

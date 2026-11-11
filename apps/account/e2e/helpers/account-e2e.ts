@@ -46,8 +46,11 @@ export async function signInAccount(
   page: Page,
   credentials: AccountCredentials,
   returnTo = "/account",
+  { stepUp = false }: { stepUp?: boolean } = {},
 ): Promise<void> {
-  await page.goto(`/api/auth/login?returnTo=${encodeURIComponent(returnTo)}`, {
+  // `intent=reauth` is the "Confirm it's you" link: a fresh sign-in for someone already signed in.
+  const intent = stepUp ? "&intent=reauth" : "";
+  await page.goto(`/api/auth/login?returnTo=${encodeURIComponent(returnTo)}${intent}`, {
     waitUntil: "domcontentloaded",
   });
   const email = page.locator('#email, input[name="email"], input[type="email"]').first();

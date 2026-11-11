@@ -35,6 +35,8 @@ export class DrizzleProfileRepository implements IProfileReader, IProfileWriter 
           bidUserProfile.categoryInterestsOnboardingCompletedAt,
         deletionRequestedAt: bidIdentityDirectory.deletionRequestedAt,
         suspendedAt: bidUserProfile.suspendedAt,
+        timeZoneMode: bidIdentityDirectory.timeZoneMode,
+        timeZone: bidIdentityDirectory.timeZone,
       })
       .from(bidIdentityDirectory)
       .leftJoin(bidUserProfile, eq(bidUserProfile.userId, bidIdentityDirectory.subjectId))
@@ -68,6 +70,8 @@ export class DrizzleProfileRepository implements IProfileReader, IProfileWriter 
       deletionRequestedAt: row.deletionRequestedAt ?? null,
       twoFactorEnabled: false,
       suspended: row.suspendedAt != null,
+      timeZoneMode: row.timeZoneMode,
+      timeZone: row.timeZone ?? null,
     };
   }
 

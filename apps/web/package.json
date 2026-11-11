@@ -12,6 +12,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "test:e2e": "node ../../scripts/ci/require-node-version.mjs && playwright test",
+    "test:e2e:sign-out": "node ../../scripts/ci/require-node-version.mjs && PLAYWRIGHT_E2E=1 playwright test --project=sign-out --no-deps",
     "test:e2e:smoke": "node ../../scripts/ci/require-node-version.mjs && PLAYWRIGHT_E2E=1 playwright test --grep @smoke",
     "test:e2e:pr": "node ../../scripts/ci/require-node-version.mjs && PLAYWRIGHT_E2E=1 playwright test --grep \"@smoke|@roles\" --no-deps --workers=1",
     "test:e2e:public-a11y": "node ../../scripts/ci/require-node-version.mjs && PLAYWRIGHT_E2E=1 playwright test --grep @public-a11y --no-deps --workers=1",

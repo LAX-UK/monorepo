@@ -23,6 +23,11 @@ import type {
   IEnquiryConversion,
 } from "../interfaces/private-sale-deal-desk.js";
 import type { DealPartyResolver, ResolvedDealParty } from "./deal-party-resolver.js";
+import {
+  DealArtworkRefused,
+  DealRegisterUnavailable,
+  type IDealRegisterLock,
+} from "./deal-register-lock.js";
 
 export type EnquiryConversionDeps = {
   enquiries: Pick<IMarketingEnquiryRepository, "findByRef" | "updateInTransaction">;
@@ -31,6 +36,10 @@ export type EnquiryConversionDeps = {
   openDeals: Pick<IPrivateSaleDealQueryReader, "findLiveDealReferenceForWork">;
   /** The deal store, bound to the transaction the conversion runs in. */
   dealsForTx: (tx: Database) => Pick<IPrivateSaleDealWriter, "create">;
+  /** The artworks in the register, to check one exists before a deal is opened for it. */
+  artworks: { findById(id: string): Promise<{ kind: string } | null> };
+  /** Holds an artwork for a deal, bound to the transaction the conversion runs in. */
+  registerForTx: (tx: Database) => IDealRegisterLock;
   parties: DealPartyResolver;
   policy: PrivateSalePolicy;
   transactionRunner: ITransactionRunner;
@@ -112,6 +121,11 @@ export class EnquiryConversionService implements IEnquiryConversion {
 
     const sides = await this.sidesOf(enquiry, input);
     if ("error" in sides) return { ok: false, error: sides.error };
+    if (input.artworkRegisterId) {
+      const artwork = await this.deps.artworks.findById(input.artworkRegisterId);
+      if (!artwork) return { ok: false, error: "artwork_not_found" };
+      if (artwork.kind !== "original") return { ok: false, error: "artwork_not_original" };
+    }
 
     try {
       const reference = await this.deps.transactionRunner.runInTransaction(async (tx) => {
@@ -120,6 +134,7 @@ export class EnquiryConversionService implements IEnquiryConversion {
           itemSubmissionId,
           sourceEnquiryId: enquiry.id,
           ownerUserId: viewer.userId,
+          ...(input.artworkRegisterId ? { artworkRegisterId: input.artworkRegisterId } : {}),
           seller: sides.seller,
           ...(sides.buyer ? { buyer: sides.buyer } : {}),
           ...initialDealTerms(this.deps.policy),
@@ -132,6 +147,14 @@ export class EnquiryConversionService implements IEnquiryConversion {
           { status: "converted" },
         );
         if (!moved) throw new EnquiryMovedOn();
+
+        // The artwork is held for the deal in the same transaction: if the register shows it
+        // somewhere else the whole conversion is undone, and nothing is left holding it.
+        if (input.artworkRegisterId) {
+          await this.deps
+            .registerForTx(tx)
+            .offer(input.artworkRegisterId, deal.id, `staff:${viewer.userId}`);
+        }
 
         const events = this.deps.events.withTx(tx);
         const created = dealCreatedEvent(deal);
@@ -156,6 +179,17 @@ export class EnquiryConversionService implements IEnquiryConversion {
     } catch (error) {
       if (error instanceof EnquiryMovedOn) return { ok: false, error: "stale_version" };
       if (error instanceof WorkTaken) return { ok: false, error: error.reason };
+      if (error instanceof DealArtworkRefused) {
+        return {
+          ok: false,
+          error: "artwork_unavailable",
+          message: error.message,
+          lock: error.lock,
+        };
+      }
+      if (error instanceof DealRegisterUnavailable) {
+        return { ok: false, error: "artwork_register_busy", message: error.message };
+      }
       // Two people converting for the same work at once: the second is refused by the database.
       if (isWorkAlreadyInDeal(error)) return { ok: false, error: "work_in_deal" };
       throw error;

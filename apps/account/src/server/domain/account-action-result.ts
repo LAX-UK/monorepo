@@ -33,3 +33,9 @@ export type LinkActionResult =
   | { status: "ok"; url: string }
   | { status: "reauth_required" }
   | { status: "error"; message: string; refresh: boolean };
+
+/** The result of saving the time zone, or of reporting the device's: what is stored now. */
+export type TimeZoneActionResult =
+  | { status: "ok"; mode: "automatic" | "fixed"; zone: string | null }
+  | { status: "reauth_required" }
+  | { status: "error"; message: string };

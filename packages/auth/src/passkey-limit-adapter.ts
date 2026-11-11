@@ -1,4 +1,5 @@
 import { APIError } from "better-auth/api";
+import { PASSKEY_LIMIT_ERROR_CODE } from "./passkey-error-codes.js";
 
 // biome-ignore lint/suspicious/noExplicitAny: Better Auth adapter methods use heterogeneous per-model args
 type AdapterMethod = (...args: any[]) => Promise<any>;
@@ -9,8 +10,7 @@ type AuthDbAdapter = {
   [key: string]: unknown;
 };
 
-/** The code the hosted page and LAX Account know a refused 11th passkey by. */
-export const PASSKEY_LIMIT_ERROR_CODE = "passkey_limit";
+export { PASSKEY_LIMIT_ERROR_CODE };
 
 /** The one SQLSTATE the database raises when a person already holds the most passkeys. */
 const CHECK_VIOLATION = "23514";
