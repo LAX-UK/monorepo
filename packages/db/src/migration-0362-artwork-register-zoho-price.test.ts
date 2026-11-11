@@ -7,19 +7,20 @@ import { artworkRegister } from "./schema/artwork-register.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const read = (name: string) => readFileSync(join(__dirname, "../drizzle", name), "utf8");
-const migration = read("0353_artwork_register_zoho_price.sql");
-const rollback = read("0353_rollback.sql");
+const migration = read("0362_artwork_register_zoho_price.sql");
+const rollback = read("0362_rollback.sql");
 const journal = JSON.parse(read("meta/_journal.json")) as {
   entries: { idx: number; tag: string; when: number }[];
 };
 
-describe("migration 0353 artwork register Zoho price", () => {
-  it("is journalled as entry 347, right after 0352, with a later timestamp", () => {
-    const index = journal.entries.findIndex((e) => e.tag === "0353_artwork_register_zoho_price");
-    expect(journal.entries[index]?.idx).toBe(347);
-    expect(journal.entries[index - 1]?.tag).toBe("0352_account_time_zone");
+describe("migration 0362 artwork register Zoho price", () => {
+  it("is journalled as entry 348, right after 0353, with a later timestamp", () => {
+    const index = journal.entries.findIndex((e) => e.tag === "0362_artwork_register_zoho_price");
+    expect(journal.entries[index]?.idx).toBe(348);
+    expect(journal.entries[index - 1]?.tag).toBe("0353_payment_group_refund_state");
     expect(journal.entries[index]?.when).toBeGreaterThan(journal.entries[index - 1]?.when ?? 0);
-    expect(index).toBe(journal.entries.length - 1);
+    const next = journal.entries[index + 1];
+    if (next) expect(next.when).toBeGreaterThan(journal.entries[index]?.when ?? 0);
   });
 
   it("adds one nullable column idempotently and backfills nobody", () => {

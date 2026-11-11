@@ -127,7 +127,10 @@ describe("decidePaymentGroupSettlement", () => {
 describe("attributeGroupRefunds", () => {
   it("adds refunds up per invoice and never spreads one it cannot place", () => {
     const result = attributeGroupRefunds(
-      [{ paymentId: "a" }, { paymentId: "b" }],
+      [
+        { paymentId: "a", amountPence: 1_000 },
+        { paymentId: "b", amountPence: 1_000 },
+      ],
       [
         { paymentId: "a", amountPence: 500 },
         { paymentId: "a", amountPence: 250 },
@@ -141,7 +144,10 @@ describe("attributeGroupRefunds", () => {
 
   it("attributes an invoice every refund that names it, even above what it was", () => {
     const result = attributeGroupRefunds(
-      [{ paymentId: "a" }, { paymentId: "b" }],
+      [
+        { paymentId: "a", amountPence: 1_000 },
+        { paymentId: "b", amountPence: 1_000 },
+      ],
       [
         { paymentId: "a", amountPence: 800 },
         { paymentId: "a", amountPence: 800 },
@@ -155,6 +161,73 @@ describe("attributeGroupRefunds", () => {
         ["b", 501],
       ]),
     );
+    expect(result.unattributedPence).toBe(0);
+  });
+
+  const members = [
+    { paymentId: "a", amountPence: 10_000 },
+    { paymentId: "b", amountPence: 5_000 },
+  ];
+  const deliveries = [{ quoteId: "q1", amountPence: 2_000 }];
+
+  it("attributes a refund smaller than the delivery to the delivery only", () => {
+    const result = attributeGroupRefunds(
+      members,
+      [{ paymentId: "a", deliveryQuoteId: "q1", amountPence: 1_500 }],
+      deliveries,
+    );
+    expect(result.refundedPenceByDelivery).toEqual(new Map([["q1", 1_500]]));
+    expect(result.refundedPenceByPayment).toEqual(new Map());
+    expect(result.unattributedPence).toBe(0);
+  });
+
+  it("caps each invoice and the delivery when the whole charge is refunded", () => {
+    const result = attributeGroupRefunds(
+      members,
+      [
+        { paymentId: "a", amountPence: 10_000 },
+        { paymentId: "b", amountPence: 5_000 },
+        { paymentId: null, deliveryQuoteId: "q1", amountPence: 2_000 },
+      ],
+      deliveries,
+    );
+    expect(result.refundedPenceByPayment).toEqual(
+      new Map([
+        ["a", 10_000],
+        ["b", 5_000],
+      ]),
+    );
+    expect(result.refundedPenceByDelivery).toEqual(new Map([["q1", 2_000]]));
+    expect(result.unattributedPence).toBe(0);
+  });
+
+  it("never lets an invoice or the delivery take more than it was charged", () => {
+    const result = attributeGroupRefunds(
+      members,
+      [
+        { paymentId: "a", amountPence: 10_500 },
+        { paymentId: null, deliveryQuoteId: "q1", amountPence: 2_300 },
+      ],
+      deliveries,
+    );
+    expect(result.refundedPenceByPayment).toEqual(new Map([["a", 10_000]]));
+    expect(result.refundedPenceByDelivery).toEqual(new Map([["q1", 2_000]]));
+    expect(result.unattributedPence).toBe(800);
+  });
+
+  it("reports a refund naming a quote that is not in the group, never an invoice's", () => {
+    const result = attributeGroupRefunds(
+      members,
+      [{ paymentId: "a", deliveryQuoteId: "other", amountPence: 700 }],
+      deliveries,
+    );
+    expect(result.refundedPenceByPayment).toEqual(new Map());
+    expect(result.unattributedPence).toBe(700);
+  });
+
+  it("keeps the earlier behaviour for a refund with no quote on a group without delivery", () => {
+    const result = attributeGroupRefunds(members, [{ paymentId: "a", amountPence: 10_500 }]);
+    expect(result.refundedPenceByPayment).toEqual(new Map([["a", 10_500]]));
     expect(result.unattributedPence).toBe(0);
   });
 });
