@@ -282,7 +282,7 @@ export function OfferAtAuctionDialogView({
             />
           </Field>
           {zohoPrice.differs ? (
-            <Notice tone="info" title={`This differs from Zoho's price (${zohoPrice.label})`}>
+            <Notice tone="info" title="This differs from Zoho's price">
               The starting price you enter here is the one the lot uses. Zoho's price is not
               changed.
             </Notice>

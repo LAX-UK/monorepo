@@ -125,7 +125,7 @@ describe("OfferAtAuctionDialog", () => {
       fireEvent.change(await screen.findByLabelText("Starting price"), {
         target: { value: "3900" },
       });
-      const flag = screen.getByText("This differs from Zoho's price (£4,800.00)");
+      const flag = screen.getByText("This differs from Zoho's price");
       expect(flag.closest("[data-tone]")).toHaveAttribute("data-tone", "info");
       expect(screen.getByRole("button", { name: "Offer at auction" })).toBeEnabled();
     });
