@@ -1,4 +1,5 @@
 import { laxFaviconMetadataIcons } from "@auction/branding";
+import { Toaster } from "@auction/ui/lax";
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import { THEME_INIT_SNIPPET } from "../lib/theme";
@@ -42,6 +43,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           Skip to content
         </a>
         {children}
+        <Toaster density="client" />
       </body>
     </html>
   );

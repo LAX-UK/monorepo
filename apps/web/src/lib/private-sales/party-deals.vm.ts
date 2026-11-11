@@ -18,8 +18,8 @@ type Shape = "ring" | "dot" | "check";
 type Badge = { label: string; tone: Tone; shape: Shape };
 
 export const BUYER_STAGE_BADGES = {
-  proposed: { label: "Offer under discussion", tone: "neutral", shape: "ring" },
-  offer: { label: "Offer under discussion", tone: "neutral", shape: "ring" },
+  proposed: { label: "In discussion", tone: "neutral", shape: "ring" },
+  offer: { label: "In discussion", tone: "neutral", shape: "ring" },
   agreed: { label: "Agreed", tone: "info", shape: "dot" },
   cleared: { label: "Agreed", tone: "info", shape: "dot" },
   invoiced: { label: "Payment due", tone: "warning", shape: "ring" },

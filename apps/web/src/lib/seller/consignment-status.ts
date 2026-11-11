@@ -84,7 +84,7 @@ export const CONSIGNMENT_STATUS: Record<ConsignmentStatus, ConsignmentStatusPres
   unsold: { label: "Did not sell", tone: "neutral", shape: "ring", stage: "unsold" },
   not_accepted: { label: "Not accepted", tone: "neutral", shape: "ring", stage: "closed" },
   withdrawn: { label: "Withdrawn", tone: "neutral", shape: "ring", stage: "closed" },
-  cancelled: { label: "Withdrawn from sale", tone: "neutral", shape: "ring", stage: "closed" },
+  cancelled: { label: "Withdrawn", tone: "neutral", shape: "ring", stage: "closed" },
 };
 
 export type ConsignmentStatusFacts = {

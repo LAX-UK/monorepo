@@ -1,5 +1,6 @@
-import { type Page, expect, test } from "@playwright/test";
+import type { Page } from "@playwright/test";
 import { signInShopBuyer } from "./helpers/shop-auth";
+import { expect, test } from "./helpers/test";
 
 /** Foundation seed artwork with sellable editions (see shop-api catalogue-seed). */
 const ACCEPTANCE_IN_STOCK_SLUG = "harbor-print";

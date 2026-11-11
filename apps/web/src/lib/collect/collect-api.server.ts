@@ -23,7 +23,7 @@ const BASE = "/legal-entities/collection";
  */
 async function collectApiFetch(path: string, init: RequestInit = {}): Promise<Response> {
   const scope = await (await getServerDataContainer()).buying.scope();
-  const account = purchaseRequestAccountId(scope.account, { includePersonal: true });
+  const account = purchaseRequestAccountId(scope.account);
   return authedServerFetch(`${BASE}${path}`, {
     ...init,
     headers: {

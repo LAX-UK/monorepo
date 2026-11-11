@@ -786,6 +786,7 @@ export function createContainer(env: Env): Container {
       marketingAttributionEnabled: complianceMedia.marketingAttributionEnabled,
       userService: userMisc.userService,
       mediaUrlResolver: complianceMedia.mediaUrlResolver,
+      identityTimeZone: identityIssuer,
       conditionReportService: catalog.conditionReportService,
       userDashboardReadService: userMisc.userDashboardReadService,
       lotService: catalog.lotService,

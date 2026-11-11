@@ -210,7 +210,7 @@ const ACCOUNT_CATEGORIES = [
     "profile",
     "Profile",
     ["provided"],
-    "Your name, display name, when you joined, your account status and your language and theme choices.",
+    "Your name, display name, when you joined, your account status and your language and theme choices, and your time zone choice.",
     [
       f("name", "Your full name as held on your account."),
       f("displayName", "The name shown to others, where you set one."),
@@ -220,6 +220,11 @@ const ACCOUNT_CATEGORIES = [
       f("language", "Your chosen language."),
       f("theme", "Your chosen colour theme: light, dark or system."),
       f("image", "The address of your profile picture, or null."),
+      f("timeZoneMode", "Whether your time zone follows your device (automatic) or is fixed."),
+      f(
+        "timeZone",
+        "The time zone used for your emails and dates: your chosen city, or the one your device last reported; null if none yet.",
+      ),
     ],
   ),
   category(

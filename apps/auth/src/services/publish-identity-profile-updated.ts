@@ -11,6 +11,8 @@ export async function publishIdentityProfileUpdated(
     phone?: string | null;
     phoneVerified?: boolean;
     image?: string | null;
+    timeZoneMode?: "automatic" | "fixed";
+    timeZone?: string | null;
   },
   options?: { transaction?: unknown },
 ): Promise<void> {
@@ -24,6 +26,8 @@ export async function publishIdentityProfileUpdated(
       ...(input.phone !== undefined ? { phone: input.phone } : {}),
       ...(input.phoneVerified !== undefined ? { phoneVerified: input.phoneVerified } : {}),
       ...(input.image !== undefined ? { image: input.image } : {}),
+      ...(input.timeZoneMode !== undefined ? { timeZoneMode: input.timeZoneMode } : {}),
+      ...(input.timeZone !== undefined ? { timeZone: input.timeZone } : {}),
     },
     { producer: "apps/auth", transaction: options?.transaction },
   );
