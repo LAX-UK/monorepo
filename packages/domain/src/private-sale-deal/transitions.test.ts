@@ -6,6 +6,7 @@ import { resolvePrivateSalePolicy } from "./policy.js";
 import {
   DEAL_TRANSITIONS,
   type DealCommand,
+  artworkSettled,
   dealBlockers,
   dealCommandsFrom,
   transitionDeal,
@@ -164,8 +165,8 @@ describe("agree: identity and screening gate", () => {
     ]);
   });
 
-  describe("artwork", () => {
-    const blockersFor = (over: object) => codes(dealBlockers(offer(over), "agree", context()));
+  describe("artwork guard (not yet wired into agree)", () => {
+    const blockersFor = (over: object) => codes(artworkSettled(offer(over), context()));
 
     it.each([
       ["no artwork and no reason", { artworkRegisterId: null, artworkUnlinkedReason: null }, true],
@@ -190,9 +191,10 @@ describe("agree: identity and screening gate", () => {
       );
     });
 
-    it("does not stop the moves after agreement", () => {
-      const agreed = agreedDeal({ artworkRegisterId: null });
-      expect(codes(dealBlockers(agreed, "clear", context()))).not.toContain("artwork_not_linked");
+    it("is not yet a blocker on agree, so deals opened before the link action can still be agreed", () => {
+      expect(
+        codes(dealBlockers(offer({ artworkRegisterId: null }), "agree", context())),
+      ).not.toContain("artwork_not_linked");
     });
   });
 

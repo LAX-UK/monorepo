@@ -70,11 +70,14 @@ const ROLES: readonly PrivateSalePartyRole[] = ["seller", "buyer"];
 const buyerNamed: Guard = (deal) => (deal.buyer ? [] : [{ code: "buyer_not_named" }]);
 
 /**
+ * Not yet part of any move: it joins the agree row together with the action that links an
+ * artwork or records a reason on an existing deal, so no deal is left unable to be agreed.
+ *
  * The artwork is settled: linked to the register, or recorded as the seller's own work (not gallery
  * stock). "In Zoho, not linked yet" is a note, not an answer, so it does not pass: no deal reaches
  * agreement without the register's lock.
  */
-const artworkSettled: Guard = (deal) =>
+export const artworkSettled: Guard = (deal) =>
   deal.artworkRegisterId !== null || deal.artworkUnlinkedReason === "sellers_own_work"
     ? []
     : [{ code: "artwork_not_linked" }];
@@ -171,7 +174,7 @@ export const DEAL_TRANSITIONS: Readonly<Record<DealCommand, TransitionRow>> = {
     from: ["offer"],
     to: "agreed",
     // The commission is part of what the seller accepts, so it is set before the price is agreed.
-    guards: [buyerNamed, artworkSettled, priceSet, commissionSet, partiesCleared, termsAccepted],
+    guards: [buyerNamed, priceSet, commissionSet, partiesCleared, termsAccepted],
     changes: (_deal, ctx) => ({ agreedAt: ctx.now, agreedByUserId: ctx.actorUserId }),
   },
   clear: {

@@ -28,19 +28,14 @@ describe("adminDealConvertSchema", () => {
     expect(parsed.workReference).toBe("c-1042");
   });
 
-  it.each([
-    ["neither", {}],
-    ["only a consignment", { workReference: "C-1042" }],
-    ["both", { artworkRegisterId: REGISTER_ID, notInRegister: { reason: "sellers_own_work" } }],
-  ])("needs exactly one of the two: not %s", (_label, input) => {
-    const parsed = adminDealConvertSchema.safeParse(input);
-    expect(parsed.success).toBe(false);
-    if (!parsed.success) {
-      expect(parsed.error.issues[0]?.message).toBe(
-        "Choose an artwork from the register, or say why it is not there",
-      );
-      expect(parsed.error.issues[0]?.path).toEqual(["artworkRegisterId"]);
-    }
+  it("leaves the exactly-one rule to the conversion, which answers artwork_choice_required", () => {
+    expect(adminDealConvertSchema.safeParse({}).success).toBe(true);
+    expect(
+      adminDealConvertSchema.safeParse({
+        artworkRegisterId: REGISTER_ID,
+        notInRegister: { reason: "sellers_own_work" },
+      }).success,
+    ).toBe(true);
   });
 
   it.each([

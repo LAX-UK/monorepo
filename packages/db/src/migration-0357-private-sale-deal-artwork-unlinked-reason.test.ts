@@ -36,6 +36,10 @@ describe("migration 0357 private sale deal artwork unlinked reason", () => {
     );
     expect(migration).toContain("'sellers_own_work', 'in_zoho_not_linked'");
     expect(migration).toMatch(/NOT VALID/);
+    // Safe to apply again after a partial apply: the constraint is only added when it is missing.
+    expect(migration).toMatch(
+      /IF NOT EXISTS \(\s*SELECT 1 FROM pg_constraint\s+WHERE conname = 'private_sale_deal_artwork_unlinked_reason_check'/,
+    );
     expect(migration).toMatch(
       /VALIDATE CONSTRAINT "private_sale_deal_artwork_unlinked_reason_check"/,
     );

@@ -6,8 +6,17 @@ SET LOCAL lock_timeout = '5s';
 --> statement-breakpoint
 ALTER TABLE "private_sale_deal" ADD COLUMN IF NOT EXISTS "artwork_unlinked_reason" text;
 --> statement-breakpoint
-ALTER TABLE "private_sale_deal"
-  ADD CONSTRAINT "private_sale_deal_artwork_unlinked_reason_check"
-  CHECK ("artwork_unlinked_reason" IS NULL OR "artwork_unlinked_reason" IN ('sellers_own_work', 'in_zoho_not_linked')) NOT VALID;
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'private_sale_deal_artwork_unlinked_reason_check'
+      AND conrelid = 'private_sale_deal'::regclass
+  ) THEN
+    ALTER TABLE "private_sale_deal"
+      ADD CONSTRAINT "private_sale_deal_artwork_unlinked_reason_check"
+      CHECK ("artwork_unlinked_reason" IS NULL OR "artwork_unlinked_reason" IN ('sellers_own_work', 'in_zoho_not_linked')) NOT VALID;
+  END IF;
+END $$;
 --> statement-breakpoint
 ALTER TABLE "private_sale_deal" VALIDATE CONSTRAINT "private_sale_deal_artwork_unlinked_reason_check";

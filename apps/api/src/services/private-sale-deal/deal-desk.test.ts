@@ -230,34 +230,6 @@ describe("the staff desk record", () => {
     ]);
   });
 
-  it("says why agreement is off while the deal has no artwork, and lets the seller's own work through", async () => {
-    const agreeBlockers = async (over: object) => {
-      const { desk } = setup({ deal: stageDeal("offer", over) });
-      const record = await desk.detail(MANAGER, "PS-0001");
-      return record?.actions.find((a) => a.action === "agree")?.blockers.map((b) => b.code);
-    };
-    const unlinked = await agreeBlockers({ artworkRegisterId: null });
-    expect(unlinked).toContain("artwork_not_linked");
-    expect(
-      await agreeBlockers({ artworkRegisterId: null, artworkUnlinkedReason: "in_zoho_not_linked" }),
-    ).toContain("artwork_not_linked");
-    expect(
-      await agreeBlockers({ artworkRegisterId: null, artworkUnlinkedReason: "sellers_own_work" }),
-    ).not.toContain("artwork_not_linked");
-    expect(await agreeBlockers({ artworkRegisterId: "reg-1" })).not.toContain("artwork_not_linked");
-  });
-
-  it("states the artwork blocker in the register's plain words", async () => {
-    const { desk } = setup({ deal: stageDeal("offer", { artworkRegisterId: null }) });
-    const record = await desk.detail(MANAGER, "PS-0001");
-    expect(record?.actions.find((a) => a.action === "agree")?.blockers).toContainEqual(
-      expect.objectContaining({
-        code: "artwork_not_linked",
-        message: "Link the artwork, or record that it is the seller's own work.",
-      }),
-    );
-  });
-
   it("blocks the invoice on the VAT treatment and the source of funds, never a guessed value", async () => {
     const { desk } = setup({
       deal: stageDeal("cleared", { vatTreatment: null, priceMinor: 900_000 }),
