@@ -6,6 +6,7 @@ import {
   ORGANISATION_JOURNEY_NAMES,
   expectActingAs,
   openAs,
+  openPersonal,
 } from "./helpers/organisation-journeys";
 
 /**
@@ -17,6 +18,7 @@ import {
 
 const { approved } = ORGANISATION_JOURNEY_NAMES;
 const clearLot = ORGANISATION_JOURNEY_IDS.lotInvoiceNorthbankClear;
+const personalLot = ORGANISATION_JOURNEY_IDS.lotInvoicePersonal;
 const heldLot = ORGANISATION_JOURNEY_IDS.lotInvoiceNorthbank;
 
 test.describe("Pay page @roles", () => {
@@ -79,6 +81,42 @@ test.describe("Pay page @roles", () => {
     });
 
     await finance.close();
+  });
+
+  test("an individual buyer opens the Pay page on their own account and can start paying", async ({
+    browser,
+    baseURL,
+  }) => {
+    test.setTimeout(120_000);
+    const person = await openPersonal(browser, roleAuthState.orgBuyerAgent, baseURL);
+    const { page } = person;
+
+    await test.step("the Pay page loads and states the invoice", async () => {
+      await page.goto(`/purchases/pay?lots=${personalLot}`);
+      await expect(page.getByText("We couldn't load this payment")).toHaveCount(0);
+      await expect(page.getByRole("heading", { level: 1 })).toHaveText(
+        "Pay for Quiet Pier, won on a personal account",
+      );
+      const payment = page.getByRole("region", { name: "Payment" });
+      await expect(payment.getByText("Total to pay")).toBeVisible();
+      await expect(payment.getByText(/Invoice from London Auction Xchange LTD/)).toBeVisible();
+    });
+
+    await test.step("offers Pay, and starting it reaches the payment, not an account error", async () => {
+      const pay = page.getByRole("button", { name: /^Pay £/ }).first();
+      await expect(pay).toBeEnabled();
+      await pay.click();
+      // Where no card provider is configured the payment is paused with a clear note; where one is,
+      // the buyer is sent on to pay. Either way the request named the account and was understood.
+      const paused = page.getByText("Paying is paused for a moment. Nothing was charged.");
+      await expect(async () => {
+        const left = !new RegExp(`/purchases/pay\\?lots=${personalLot}$`).test(page.url());
+        expect(left || (await paused.isVisible())).toBe(true);
+      }).toPass({ timeout: 30_000 });
+      await expect(page.getByText("We couldn't load this payment")).toHaveCount(0);
+    });
+
+    await person.close();
   });
 
   test("a check on the person who won stops the payment, with no way to pay", async ({

@@ -1,7 +1,7 @@
 import "server-only";
 
-import { isAdminPath } from "@/lib/admin/admin-return-path";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
+import { isAdminPath } from "@/lib/navigation/admin-path";
 import { staffRolesThatCanOpen } from "@/lib/navigation/admin-route-access";
 import {
   type CapabilityRequirement,

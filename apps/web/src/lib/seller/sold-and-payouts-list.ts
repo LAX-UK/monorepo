@@ -56,24 +56,20 @@ export function payoutHref(payoutId: string): string {
   return `/selling/payouts/${encodeURIComponent(payoutId)}`;
 }
 
-/** A sold lot as the list shows it; the date on the badge says when its payout moved. */
+/** A sold lot as the list shows it; the facts say when it sold and, once paid, when its payout moved. */
 export function soldRecord(lot: SoldLot, now: Date): SoldRecord {
-  const base = SOLD_STAGE_BADGE[lot.stage];
+  const badge = SOLD_STAGE_BADGE[lot.stage];
   const settled = lot.payout?.settledAt;
-  const badge =
-    settled && lot.stage === "paid_out"
-      ? {
-          ...base,
-          label: `${base.label} ${formatMoment(settled, LONDON_TIME_ZONE, now, { time: false, inSentence: true })}`,
-        }
-      : base;
+  const day = (at: Date) =>
+    formatMoment(at, LONDON_TIME_ZONE, now, { time: false, inSentence: true });
   return {
     lotId: lot.lotId,
     title: lot.lotTitle,
     meta: [
       lot.saleTitle,
       lot.lotNumber == null ? null : `lot ${lot.lotNumber}`,
-      `sold ${formatMoment(lot.soldAt, LONDON_TIME_ZONE, now, { time: false, inSentence: true })}`,
+      `sold ${day(lot.soldAt)}`,
+      settled && lot.stage === "paid_out" ? `paid out ${day(settled)}` : null,
     ].filter((fact): fact is string => Boolean(fact)),
     hammer: formatMoney(lot.hammerPrice, "GBP"),
     net: lot.net == null ? null : formatMoney(lot.net, "GBP"),
