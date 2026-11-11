@@ -95,7 +95,7 @@ sequenceDiagram
   - Not reported, each counted by a metric where noted:
     - the same invoice: the sent reference belongs to the same payment, the same private sale deal payment, the same combined payment, an invoice and the combined payment holding it, or two combined payments that share an invoice (the invoices a combined payment held are kept with its reference, because a combined payment that is let go holds none);
     - a transfer sent with no reference, or with text that is none of our references (`transfer_reference_not_ours`);
-    - a trail that ends where the money left the balance (refunded, moved to the account balance, a return): `transfer_supply_interrupted`;
+    - a trail that reaches money that did not come from a bank transfer (a refund or a cancelled return paid back into the balance, or a move to the account balance), so the applied money may have come from there rather than the transfer: `transfer_supply_interrupted`;
     - a source more than 100 ledger entries back: `transfer_supply_window_exceeded`;
     - a transfer applied to a payment whose reference was never kept and is no longer shown (payments from before this check, or invoices paid from an existing balance, which never show instructions): `transfer_application_check_skipped_no_reference`. These cannot name the intended invoice either.
   - Ambiguous text: text that contains both the receiving payment's own reference and another payment's is treated as a match and raises nothing.

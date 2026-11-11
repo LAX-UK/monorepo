@@ -37,7 +37,10 @@ export interface ICashBalanceGateway {
 const idOf = (value: string | { id: string }): string =>
   typeof value === "string" ? value : value.id;
 
-/** Entries where the money left the balance: nothing older explains what is applied after them. */
+/**
+ * Entries after which an older transfer may not be the source of what is applied next: money
+ * refunded or returned into the balance, or moved to the account balance. The check stops there.
+ */
 const LEDGER_STOPS: ReadonlySet<string> = new Set([
   "refunded_from_payment",
   "transferred_to_balance",
