@@ -45,6 +45,12 @@ export const accountSessionSchema = z.object({
   lastActiveAt: z.string().datetime({ offset: true }),
   /** True for the sign-in that made this request, so it is never offered for sign-out. */
   isCurrent: z.boolean(),
+  /**
+   * How this sign-in was made, as the issuer recorded it when it started: with the password, with
+   * a passkey, or through Google or Apple. Null for a sign-in that did not record one. Defaults to
+   * null when an older issuer leaves it out.
+   */
+  signedInWith: z.enum(["password", "provider", "passkey"]).nullable().default(null),
 });
 
 export const accountSessionsSchema = z.object({ sessions: z.array(accountSessionSchema) });

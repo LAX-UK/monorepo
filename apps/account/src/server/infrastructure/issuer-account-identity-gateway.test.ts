@@ -34,7 +34,10 @@ afterEach(() => vi.restoreAllMocks());
 describe("createIssuerAccountIdentityGateway", () => {
   it("sends the access token and sign-in in the body with the client's Basic credentials", async () => {
     const { fetchImpl, gateway: g } = gateway(async () => Response.json({ sessions: [SESSION] }));
-    expect(await g.listSessions(actor)).toEqual({ status: "ok", value: [SESSION] });
+    expect(await g.listSessions(actor)).toEqual({
+      status: "ok",
+      value: [{ ...SESSION, signedInWith: null }],
+    });
     const { url, init, body } = lastRequest(fetchImpl);
     expect(url).toBe("https://auth.internal/api/auth/lax/account-sessions");
     expect(url).not.toContain("access-token");

@@ -30,7 +30,22 @@ export type AccountSessionRow = {
   createdAt: Date;
   lastActiveAt: Date;
   isCurrent: boolean;
+  /** How the sign-in was made; null when none was recorded. */
+  signedInWith: "password" | "provider" | "passkey" | null;
 };
+
+/**
+ * The way a sign-in was made, from what was recorded when it started. A passkey outranks the rest
+ * (it is the strongest), then a provider, then the password; none recorded is null.
+ */
+export function signedInWithOf(
+  amr: readonly string[] | undefined,
+): AccountSessionRow["signedInWith"] {
+  for (const method of ["passkey", "provider", "password"] as const) {
+    if (amr?.includes(method)) return method;
+  }
+  return null;
+}
 
 /**
  * What a signed-in person may do to their own identity from LAX Account: read and rename
@@ -87,6 +102,7 @@ export class AccountIdentityService {
         createdAt: session.createdAt,
         lastActiveAt: session.updatedAt,
         isCurrent: session.id === currentSessionId,
+        signedInWith: signedInWithOf(session.amr),
       })),
     };
   }
