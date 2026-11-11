@@ -1222,6 +1222,7 @@ export {
   type Underbidder,
 } from "./buyer-default.js";
 export {
+  PAYMENT_REMINDER_POLL_INTERVAL_MS,
   PAYMENT_REMINDER_STEPS,
   paymentReminderOpen,
   paymentReminderToSend,

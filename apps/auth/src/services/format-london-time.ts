@@ -1,7 +1,8 @@
 /**
  * Moments in security notices, in the one style LAX shows people: "Thu 12 Nov, 04:49 GMT". The
  * shared formatter lives in `@auction/datetime`, which Identity must not depend on, so it
- * stays extractable; this writes out the same style and the tests pin the strings.
+ * stays extractable; this writes out the same style, pinned string by string here and, against
+ * `@auction/datetime` itself, by apps/api's identity-time-format-parity test.
  * A notice is about the present, so the year is left out.
  */
 const LONDON = "Europe/London";

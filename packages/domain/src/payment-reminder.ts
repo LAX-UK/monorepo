@@ -53,12 +53,16 @@ export function reminderClosesAt(step: PaymentReminderStep, dueAt: Date): Date {
   return new Date(step === "due_day" ? Math.min(dayEnd, dueAt.getTime()) : dayEnd);
 }
 
+/** How often the worker looks for reminders to send (see register-cron-workers). */
+export const PAYMENT_REMINDER_POLL_INTERVAL_MS = 15 * 60_000;
+
 /**
  * When a step is sent to a recipient: exactly once, inside the London day the step belongs to.
- * That is 09:00 on the recipient's clock when it falls inside the day (not before the step opens);
- * for a recipient far from London, whose 09:00 falls outside it, the closest instant inside the
- * day: the moment it opens or the last moment before it ends. With no saved zone that is 09:00
- * London on the day itself.
+ * That is 09:00 on the recipient's clock when it falls inside the day, early enough that a poll
+ * still lands in the day (at least one poll interval before it ends) and not before the step
+ * opens. When no 09:00 fits (a recipient far from London, or London's 23-hour spring-forward
+ * day), the step is sent the moment its day opens, so the first poll of that day sends it.
+ * With no saved zone that is 09:00 London on the day itself.
  */
 export function reminderSendAt(
   step: PaymentReminderStep,
@@ -66,28 +70,14 @@ export function reminderSendAt(
   recipientZone: string | null = null,
 ): Date {
   const opens = reminderOpensAt(step, dueAt).getTime();
-  const closes = reminderClosesAt(step, dueAt).getTime();
+  const latest = reminderClosesAt(step, dueAt).getTime() - PAYMENT_REMINDER_POLL_INTERVAL_MS;
   const zone = recipientZone ?? LONDON_TIME_ZONE;
   const day = instantToWallClock(new Date(opens), zone).day;
-  // Usually the 09:00 of the day the step opens is inside the day; the others are the fallback.
-  const same = nineAm(day, zone).getTime();
-  if (same >= opens && same <= closes) return new Date(same);
-  const candidates = [
-    same,
-    ...[nextDay(day), previousDay(day)].map((d) => nineAm(d, zone).getTime()),
-  ];
-  const inside = candidates.find((at) => at >= opens && at <= closes);
-  if (inside !== undefined) return new Date(inside);
-  const nearest = candidates.reduce((best, at) =>
-    Math.abs(at - clamp(at, opens, closes)) < Math.abs(best - clamp(best, opens, closes))
-      ? at
-      : best,
-  );
-  return new Date(clamp(nearest, opens, closes));
-}
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(Math.max(value, min), max);
+  for (const candidate of [day, nextDay(day), previousDay(day)]) {
+    const at = nineAm(candidate, zone).getTime();
+    if (at >= opens && at <= latest) return new Date(at);
+  }
+  return new Date(opens);
 }
 
 /** When a step is sent with no recipient zone: 09:00 London on the due day, or days before or after. */

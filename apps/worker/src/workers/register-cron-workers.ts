@@ -1,3 +1,4 @@
+import { PAYMENT_REMINDER_POLL_INTERVAL_MS } from "@auction/domain";
 import {
   CONSIGNMENT_AGREEMENT_REMINDERS_QUEUE_NAME,
   CONSIGNMENT_THREAD_SWEEP_QUEUE_NAME,
@@ -172,7 +173,7 @@ export function registerCronWorkers(deps: WorkerBootstrapDeps): CronWorkersHandl
     {},
     {
       jobId: "payment-reminders-every-15-minutes",
-      repeat: { every: 15 * 60 * 1000 },
+      repeat: { every: PAYMENT_REMINDER_POLL_INTERVAL_MS },
       removeOnComplete: 50,
     },
   );
