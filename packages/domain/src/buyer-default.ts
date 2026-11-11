@@ -31,6 +31,11 @@ export type BuyerDefaultBlockCode =
 export type BuyerDefaultBlock = { code: BuyerDefaultBlockCode; message: string };
 
 const SETTLING: readonly PaymentStatus[] = ["authorized", "captured", "refunded"];
+
+/** Whether money has moved or is moving on the payment: it can no longer be cancelled by a default. */
+export function paymentIsSettling(status: PaymentStatus): boolean {
+  return SETTLING.includes(status);
+}
 const DELIVERY_NOT_STARTED: readonly (string | null)[] = [null, "awaiting_payment"];
 
 /**
@@ -61,7 +66,7 @@ export function buyerDefaultBlock(
         "The payment is held for our own checks. Finish the review before marking a default.",
     };
   }
-  if (facts.payment && SETTLING.includes(facts.payment.status)) {
+  if (facts.payment && paymentIsSettling(facts.payment.status)) {
     return {
       code: "payment_in_progress",
       message: "The buyer has paid or is paying. Refund the payment instead of marking a default.",
