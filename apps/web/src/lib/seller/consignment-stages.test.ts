@@ -51,7 +51,7 @@ describe("the one stage list", () => {
       needs_changes: NEEDS_CHANGES_LABEL,
       not_accepted: "Not accepted",
       withdrawn: "Withdrawn",
-      cancelled: "Withdrawn from sale",
+      cancelled: "Withdrawn",
     };
     for (const [status, view] of Object.entries(CONSIGNMENT_STATUS)) {
       const expected = exceptions[status as ConsignmentStatus] ?? stageLabel.get(view.stage);

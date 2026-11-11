@@ -249,6 +249,65 @@ describe("ZohoStatusSync: idempotent and ordered", () => {
   });
 });
 
+describe("ZohoStatusSync: compare-and-set re-reads the Product just before writing", () => {
+  const before = { status: "Available", modifiedAt: new Date("2026-11-03T11:00:00Z") };
+
+  function changing(after: { status: string | null; modifiedAt: Date | null }) {
+    const w = fakeWorld({ source: { entry: inState("bid_sale"), lastMove: null } });
+    w.world.zoho = before;
+    let reads = 0;
+    w.products.read.mockImplementation(async () => {
+      reads += 1;
+      return new Map([[PRODUCT_ID, reads === 1 ? before : after]]);
+    });
+    return w;
+  }
+
+  it("reads again before sending, and sends when nothing changed", async () => {
+    const w = fakeWorld({ source: { entry: inState("bid_sale"), lastMove: null } });
+    w.world.zoho = before;
+    expect((await w.sync().sync([REGISTER_ID]))[0]?.kind).toBe("written");
+    expect(w.products.read).toHaveBeenCalledTimes(2);
+    expect(w.products.write).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not send when staff changed the Status after the decision", async () => {
+    const w = changing({ status: "Sold", modifiedAt: new Date("2026-11-03T11:00:00Z") });
+    expect((await w.sync().sync([REGISTER_ID]))[0]?.kind).toBe("stale");
+    expect(w.products.write).not.toHaveBeenCalled();
+    expect(w.register.recordCatalogueStatusWritten).not.toHaveBeenCalled();
+  });
+
+  it("does not send when Modified_Time moved, even though the Status looks the same", async () => {
+    const w = changing({ status: "Available", modifiedAt: new Date("2026-11-03T11:59:00Z") });
+    expect((await w.sync().sync([REGISTER_ID]))[0]?.kind).toBe("stale");
+    expect(w.products.write).not.toHaveBeenCalled();
+  });
+
+  it("reports a Product deleted between the two reads as a failure that will not pass", async () => {
+    const w = fakeWorld({ source: { entry: inState("bid_sale"), lastMove: null } });
+    w.world.zoho = before;
+    let reads = 0;
+    w.products.read.mockImplementation(async () => {
+      reads += 1;
+      return reads === 1 ? new Map([[PRODUCT_ID, before]]) : new Map();
+    });
+    expect((await w.sync().sync([REGISTER_ID]))[0]).toMatchObject({
+      kind: "failed",
+      code: "product_not_found",
+      retryable: false,
+    });
+    expect(w.products.write).not.toHaveBeenCalled();
+  });
+
+  it("sends nothing and reads once in a dry run", async () => {
+    const w = fakeWorld({ source: { entry: inState("bid_sale"), lastMove: null } });
+    await w.sync("dry_run").sync([REGISTER_ID]);
+    expect(w.products.read).toHaveBeenCalledTimes(1);
+    expect(w.products.write).not.toHaveBeenCalled();
+  });
+});
+
 const NOW_PLUS_1S = "2026-11-03T12:00:01.000Z";
 
 describe("ZohoStatusSync: modes and failures", () => {

@@ -7,19 +7,29 @@ import { artworkRegister } from "./schema/artwork-register.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const read = (name: string) => readFileSync(join(__dirname, "../drizzle", name), "utf8");
-const migration = read("0352_artwork_register_status_written.sql");
-const rollback = read("0352_rollback.sql");
+const migration = read("0359_artwork_register_status_written.sql");
+const rollback = read("0359_rollback.sql");
 const journal = JSON.parse(read("meta/_journal.json")) as {
   entries: { idx: number; tag: string; when: number }[];
 };
 
-describe("migration 0352 artwork register status written", () => {
-  it("is journalled right after 0351, later than it", () => {
-    const at = journal.entries.findIndex((e) => e.tag === "0352_artwork_register_status_written");
-    expect(journal.entries[at - 1]?.tag).toBe("0351_payment_checkout_session_parameters");
-    expect(journal.entries[at]?.when).toBeGreaterThan(
-      journal.entries[at - 1]?.when ?? Number.POSITIVE_INFINITY,
-    );
+describe("migration 0359 artwork register status written", () => {
+  it("is journalled right after 0353, later than it, with a fixed stamp", () => {
+    const at = journal.entries.findIndex((e) => e.tag === "0359_artwork_register_status_written");
+    const entry = journal.entries[at];
+    const previous = journal.entries[at - 1];
+    expect(previous?.tag).toBe("0353_payment_group_refund_state");
+    expect(entry?.idx).toBe((previous?.idx ?? 0) + 1);
+    expect(entry?.when).toBe(1806048000000);
+    expect(entry?.when).toBeGreaterThan(previous?.when ?? Number.POSITIVE_INFINITY);
+    const next = journal.entries[at + 1];
+    if (next) expect(next.when).toBeGreaterThan(entry?.when ?? 0);
+  });
+
+  it("backfills only still-empty rows from the latest writeback event that matches", () => {
+    expect(migration).toContain("'zoho_writeback_recorded'");
+    expect(migration).toContain('"catalogue_status_written" IS NULL');
+    expect(migration).toContain('r."catalogue_status" = w."status"');
   });
 
   it("adds one nullable column and widens the conflict field check, idempotently", () => {

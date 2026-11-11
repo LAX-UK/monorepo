@@ -312,7 +312,7 @@ describe("buildPurchasesVm", () => {
       documentsAction: null,
     });
     expect(vm.cardsByTab["to-pay"].map((card) => card.badge.label)).toEqual([
-      "Overdue since 29 Oct",
+      "Overdue",
       "Due 6 Nov",
     ]);
   });

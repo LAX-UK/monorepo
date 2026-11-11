@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import {
   check,
   index,
+  integer,
   numeric,
   pgTable,
   text,
@@ -51,6 +52,12 @@ export const paymentGroup = pgTable(
     amountReceived: numeric("amount_received", { precision: 18, scale: 2 }).notNull().default("0"),
     /** The provider's time of the event that set `amount_received`; orders late deliveries. */
     receivedEventAt: timestamp("received_event_at", { mode: "date", withTimezone: true }),
+    /**
+     * The largest refund total, in pence, that no invoice or courier quote of the group could take
+     * (a refund naming neither, or the part above what an invoice or quote was charged). Only ever
+     * raised, under the group lock, so the finance task is raised once per increase.
+     */
+    refundUnattributedPence: integer("refund_unattributed_pence").notNull().default(0),
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
     /** When it was paid or cancelled. */
@@ -70,6 +77,7 @@ export const paymentGroup = pgTable(
     ),
     check("payment_group_rail_check", sql`${table.checkoutRail} in ('card', 'gb_bank_transfer')`),
     check("payment_group_total_check", sql`${table.totalAmount} > 0`),
+    check("payment_group_refund_unattributed_check", sql`${table.refundUnattributedPence} >= 0`),
     check(
       "payment_group_amount_received_check",
       sql`${table.amountReceived} >= 0 and ${table.amountReceived} <= ${table.totalAmount}`,
@@ -98,11 +106,18 @@ export const paymentGroupDelivery = pgTable(
       .references(() => lot.id, { onDelete: "restrict" }),
     /** The quote's price at the moment the group was opened. */
     amount: numeric("amount", { precision: 18, scale: 2 }).notNull(),
+    /**
+     * What the buyer has been refunded for this quote so far, in pence, capped at `amount`. Only
+     * ever raised, under the group lock. The row is deleted when the group is let go, so it
+     * exists only while a payment holds the quote.
+     */
+    refundedPence: integer("refunded_pence").notNull().default(0),
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
     uniqueIndex("payment_group_delivery_quote_uidx").on(table.deliveryQuoteId),
     index("payment_group_delivery_group_idx").on(table.paymentGroupId),
     check("payment_group_delivery_amount_check", sql`${table.amount} > 0`),
+    check("payment_group_delivery_refunded_pence_check", sql`${table.refundedPence} >= 0`),
   ],
 );

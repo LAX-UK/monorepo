@@ -32,7 +32,7 @@ export type StatusOutcome = Subject &
     | { kind: "in_sync" }
     /** Zoho shows `zohoStatus`, which LAX did not write; LAX would set `wanted`. */
     | { kind: "conflict"; zohoStatus: string; wanted: string }
-    /** Zoho changed after the facts were read: whatever changed it saw newer facts. */
+    /** Zoho changed after the facts were read, or between the read and the write: left for the next run. */
     | { kind: "stale" }
     | { kind: "skipped"; reason: "register_entry_missing" | "print_group_not_a_product" }
     | { kind: "failed"; code: string; retryable: boolean }
@@ -120,7 +120,10 @@ const NO_LEDGER: CatalogueStatusLedger = { written: null, conflictOpen: false };
  * A Status is sent only when Zoho shows nothing, the Status LAX last wrote, or Available; any
  * other value is left alone and raised as a conflict for staff. What was sent is recorded, so the
  * next compare knows it. Sending twice sends once, and a Product Zoho changed after the facts were
- * read is left for the next pass, so an older picture never goes over a newer one.
+ * read is left for the next pass, so an older picture never goes over a newer one. Just before a
+ * write the Product is read again and its Status and Modified_Time must match the read the decision
+ * was made on; if not, nothing is sent. Zoho cannot make the write itself conditional, so a change
+ * in the few milliseconds between that read and the write remains (docs/integrations/zoho.md).
  */
 export class ZohoStatusSync {
   private readonly now: () => Date;
@@ -222,6 +225,18 @@ export class ZohoStatusSync {
           );
           return { ...who, kind: "written", status: wanted };
         }
+        // Zoho has no conditional update, so the nearest thing to compare-and-set is to read the
+        // Product again immediately before sending and give way if it is not the one decided on.
+        const latest = (await this.deps.products.read([entry.zohoProductId])).get(
+          entry.zohoProductId,
+        );
+        if (!latest) {
+          return { ...who, kind: "failed", code: "product_not_found", retryable: false };
+        }
+        if (!sameState(state, latest)) {
+          this.deps.log.info({ registerId: entry.id, wanted }, "zoho_status_changed_before_write");
+          return { ...who, kind: "stale" };
+        }
         await this.deps.products.write(entry.zohoProductId, wanted);
       }
 
@@ -241,6 +256,13 @@ export class ZohoStatusSync {
       return { ...who, kind: "failed", code: error.code, retryable };
     }
   }
+}
+
+/** The same Status, last changed at the same moment: nothing happened to the Product in between. */
+function sameState(a: ZohoStatusState, b: ZohoStatusState): boolean {
+  return (
+    a.status === b.status && (a.modifiedAt?.getTime() ?? null) === (b.modifiedAt?.getTime() ?? null)
+  );
 }
 
 /**
