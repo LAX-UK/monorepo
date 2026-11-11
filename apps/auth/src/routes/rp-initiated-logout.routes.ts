@@ -10,6 +10,12 @@ type CurrentOpSession = {
 
 type RpInitiatedLogoutRoutesOptions = {
   authHandler(request: Request): Promise<Response>;
+  /**
+   * Where the issuer's own sign-out lives, from configuration (the issuer URL), never from the
+   * request: TLS ends at the ingress, so the scheme a request arrives with is not the public one
+   * and Better Auth's origin check would refuse a call built from it.
+   */
+  signOutUrl: string;
   currentSession(headers: Headers): Promise<CurrentOpSession | null>;
   verifier: Pick<RpInitiatedLogoutVerifier, "verify">;
   /** Revokes RP sessions bound to a verified `sid` when the OP cookie is absent. */
@@ -27,6 +33,31 @@ type EndSessionParams = {
 
 /** Browsers say how a request relates to the issuer; a cross-site request is never a sign-out by itself. */
 const SAME_SITE_FETCH = new Set(["same-origin", "same-site"]);
+
+/** The origins of the registered products' own pages: where a genuine sign-out request comes from. */
+const PRODUCT_ORIGINS: ReadonlySet<string> = new Set(
+  Object.values(REGISTERED_OIDC_CLIENTS).flatMap((client) =>
+    client.postLogoutRedirectUris.map((uri) => new URL(uri).origin),
+  ),
+);
+
+/**
+ * Whether a request without an ID token comes from the issuer's own site. Browsers that send
+ * Fetch Metadata say so. Older ones send none, and then the request must say it comes from a
+ * registered product's page (Origin, else Referer); with neither, or from anywhere else, it is
+ * refused, so a page on another site cannot sign anyone out by sending the browser here.
+ */
+function isFromSameSite(request: Request): boolean {
+  const site = request.headers.get("sec-fetch-site");
+  if (site !== null) return SAME_SITE_FETCH.has(site);
+  const from = request.headers.get("origin") ?? request.headers.get("referer");
+  if (!from) return false;
+  try {
+    return PRODUCT_ORIGINS.has(new URL(from).origin);
+  } catch {
+    return false;
+  }
+}
 
 /**
  * RP-initiated logout. Better Auth's own end-session is never reached: it deletes every OAuth token
@@ -115,7 +146,7 @@ async function fallbackSignOut(
   currentSession: CurrentOpSession | null,
   options: RpInitiatedLogoutRoutesOptions,
 ): Promise<Response> {
-  if (!SAME_SITE_FETCH.has(request.headers.get("sec-fetch-site") ?? "")) {
+  if (!isFromSameSite(request)) {
     return invalidRequest("a valid id_token_hint is required for cross-site logout");
   }
   if (params.postLogoutRedirectUri) {
@@ -147,7 +178,7 @@ async function endBrowserSignIn(
   params: EndSessionParams,
 ): Promise<Response | null> {
   const response = await options.signOut.end(currentSession, () =>
-    options.authHandler(signOutRequest(request)),
+    options.authHandler(signOutRequest(request, options.signOutUrl)),
   );
   if (!response.ok) return response;
   if (!params.postLogoutRedirectUri) return response;
@@ -160,12 +191,19 @@ async function endBrowserSignIn(
   return new Response(null, { status: 302, headers });
 }
 
+/** Headers a proxy sets; none of them belongs on a call the issuer makes to itself. */
+const FORWARDING_HEADERS = [
+  "forwarded",
+  "x-forwarded-host",
+  "x-forwarded-port",
+  "x-forwarded-proto",
+];
+
 /** The issuer's own sign-out for the cookie this request carries, as a same-origin call. */
-function signOutRequest(request: Request): Request {
-  const url = new URL(request.url);
-  url.pathname = url.pathname.replace(/\/oauth2\/endsession$/, "/sign-out");
-  url.search = "";
+function signOutRequest(request: Request, signOutUrl: string): Request {
+  const url = new URL(signOutUrl);
   const headers = new Headers(request.headers);
+  for (const name of FORWARDING_HEADERS) headers.delete(name);
   headers.set("origin", url.origin);
   headers.set("sec-fetch-site", "same-origin");
   headers.set("content-type", "application/json");

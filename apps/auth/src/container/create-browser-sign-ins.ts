@@ -48,7 +48,11 @@ export function createBrowserSignIns(options: {
       findLiveIdentitySession: (sid) => sessions.findLiveIdentitySession(sid, now()),
       peekContinuity: (hash) => continuity.peek(hash),
     }),
-    tokenBinding: new OAuthTokenSignInBinding(new DrizzleOAuthTokenSignInStore(options.db)),
+    tokenBinding: new OAuthTokenSignInBinding(
+      new DrizzleOAuthTokenSignInStore(options.db),
+      async (sid, subjectId) =>
+        (await sessions.findLiveIdentitySession(sid, now()))?.subjectId === subjectId,
+    ),
     expirySweep: new SessionExpirySweep(
       new DrizzleSessionExpiryStore(options.db),
       {

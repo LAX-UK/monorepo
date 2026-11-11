@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import { createRpInitiatedLogoutRoutes } from "./rp-initiated-logout.routes.js";
 
+const SIGN_OUT_URL = "https://auth.example.test/api/auth/sign-out";
+
 function requestUrl(params: Record<string, string>): string {
   const url = new URL("https://auth.example.test/oauth2/endsession");
   for (const [name, value] of Object.entries(params)) url.searchParams.set(name, value);
@@ -32,6 +34,7 @@ function setup(options?: {
   return {
     app: createRpInitiatedLogoutRoutes({
       authHandler,
+      signOutUrl: SIGN_OUT_URL,
       verifier,
       currentSession,
       revokeIdentitySession,
@@ -213,7 +216,7 @@ describe("RP-initiated logout routes", () => {
     });
     const signOut = authHandler.mock.calls[0]?.[0];
     expect(signOut?.method).toBe("POST");
-    expect(new URL(signOut?.url ?? "").pathname).toBe("/sign-out");
+    expect(new URL(signOut?.url ?? "").pathname).toBe("/api/auth/sign-out");
   });
 
   it("ends the record for a verified matching hint and restores the registered redirect", async () => {

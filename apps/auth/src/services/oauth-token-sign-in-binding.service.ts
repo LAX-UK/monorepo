@@ -12,20 +12,31 @@ export interface OAuthTokenSignInStore {
  * with it, so that signing out of that sign-in can delete those tokens and no others.
  */
 export class OAuthTokenSignInBinding {
-  constructor(private readonly store: OAuthTokenSignInStore) {}
+  constructor(
+    private readonly store: OAuthTokenSignInStore,
+    /** Whether `sid` is still a signed-in record of that person (the record, or the one that took it over). */
+    private readonly isSignedIn: (sid: string, subjectId: string) => Promise<boolean>,
+  ) {}
 
   /**
-   * Fails closed: when the sign-in cannot be recorded the tokens are deleted and this throws, so a
-   * token that no sign-out could ever find is never handed out.
+   * Fails closed: when the sign-in cannot be recorded, or has already ended, the tokens are deleted
+   * and this throws, so a token that no sign-out could ever find is never handed out.
+   *
+   * The sign-in is checked after it is recorded. A sign-out that ran before the token row had its
+   * sid would not have found the token; checking afterwards catches that, and one that runs later
+   * finds the recorded sid.
    */
   async bindIssued(input: { refreshToken: string; idToken: string }): Promise<void> {
     try {
-      const { sid } = decodeJwt(input.idToken);
+      const { sid, sub } = decodeJwt(input.idToken);
       if (typeof sid !== "string" || sid.length === 0) {
         throw new Error("OIDC token response carries no sid");
       }
       if (!(await this.store.bindRefreshToken(input.refreshToken, sid))) {
         throw new Error("OIDC token row was not persisted");
+      }
+      if (typeof sub !== "string" || !(await this.isSignedIn(sid, sub))) {
+        throw new Error("OIDC token was issued for a sign-in that has ended");
       }
     } catch (error) {
       await this.store.discardRefreshToken(input.refreshToken);

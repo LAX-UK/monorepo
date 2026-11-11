@@ -4,19 +4,24 @@ import { OAuthTokenSignInBinding } from "./oauth-token-sign-in-binding.service.j
 
 const idToken = (claims: Record<string, unknown>) => new UnsecuredJWT(claims).encode();
 
-function setup(bound = true) {
+function setup(bound = true, signedIn = true) {
   const store = {
     bindRefreshToken: vi.fn(async () => bound),
     discardRefreshToken: vi.fn(async () => undefined),
   };
-  return { binding: new OAuthTokenSignInBinding(store), store };
+  const isSignedIn = vi.fn(async (_sid: string, _subjectId: string) => signedIn);
+  return { binding: new OAuthTokenSignInBinding(store, isSignedIn), store, isSignedIn };
 }
 
 describe("OAuthTokenSignInBinding", () => {
   it("records the ID token's sid on the token", async () => {
-    const { binding, store } = setup();
-    await binding.bindIssued({ refreshToken: "r1", idToken: idToken({ sid: "rec-1" }) });
+    const { binding, store, isSignedIn } = setup();
+    await binding.bindIssued({
+      refreshToken: "r1",
+      idToken: idToken({ sid: "rec-1", sub: "ann" }),
+    });
     expect(store.bindRefreshToken).toHaveBeenCalledWith("r1", "rec-1");
+    expect(isSignedIn).toHaveBeenCalledWith("rec-1", "ann");
     expect(store.discardRefreshToken).not.toHaveBeenCalled();
   });
 
@@ -35,8 +40,21 @@ describe("OAuthTokenSignInBinding", () => {
   it("deletes the tokens and fails when the token row is missing", async () => {
     const { binding, store } = setup(false);
     await expect(
-      binding.bindIssued({ refreshToken: "r1", idToken: idToken({ sid: "rec-1" }) }),
+      binding.bindIssued({ refreshToken: "r1", idToken: idToken({ sid: "rec-1", sub: "ann" }) }),
     ).rejects.toThrow("not persisted");
+    expect(store.discardRefreshToken).toHaveBeenCalledWith("r1");
+  });
+
+  it("deletes the tokens and fails when the sign-in ended while the code was being exchanged", async () => {
+    const { binding, store } = setup(true, false);
+    await expect(
+      binding.bindIssued({
+        refreshToken: "r1",
+        idToken: idToken({ sid: "rec-1", sub: "ann" }),
+      }),
+    ).rejects.toThrow("has ended");
+    // Recorded first, so a sign-out that runs from here on finds the token; this one is deleted.
+    expect(store.bindRefreshToken).toHaveBeenCalled();
     expect(store.discardRefreshToken).toHaveBeenCalledWith("r1");
   });
 });

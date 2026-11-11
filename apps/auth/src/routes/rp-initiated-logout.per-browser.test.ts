@@ -2,6 +2,8 @@ import { describe, expect, it, vi } from "vitest";
 import { BrowserSignOutService } from "../services/browser-sign-out.service.js";
 import { createRpInitiatedLogoutRoutes } from "./rp-initiated-logout.routes.js";
 
+const SIGN_OUT_URL = "https://auth.example.test/api/auth/sign-out";
+
 type TokenRow = { id: string; userId: string; sid: string | null };
 
 /**
@@ -55,6 +57,7 @@ function twoDevices() {
   const verify = vi.fn();
   const app = createRpInitiatedLogoutRoutes({
     authHandler,
+    signOutUrl: SIGN_OUT_URL,
     verifier: { verify },
     currentSession: async () => ({ subjectId: "ann", sessionId: "rec-a" }),
     revokeIdentitySession: vi.fn(),
@@ -109,7 +112,7 @@ describe("signing out of one product on one device", () => {
     await world.app.request(withHint());
 
     const paths = world.authHandler.mock.calls.map(([request]) => new URL(request.url).pathname);
-    expect(paths).toEqual(["/sign-out"]);
+    expect(paths).toEqual(["/api/auth/sign-out"]);
   });
 
   it("ends the browser's sign-in through an earlier id of its record, and only that browser's", async () => {
@@ -153,6 +156,7 @@ describe("signing out of one product on one device", () => {
     // The browser's cookie names Ben's record: Ann's lineage must not resolve for him.
     const app = createRpInitiatedLogoutRoutes({
       authHandler: world.authHandler,
+      signOutUrl: SIGN_OUT_URL,
       verifier: { verify: vi.fn(async () => hintFor("old-a", "ben")) },
       currentSession: async () => ({ subjectId: "ben", sessionId: "rec-a" }),
       revokeIdentitySession: vi.fn(),
@@ -209,6 +213,45 @@ describe("signing out without an ID token", () => {
     expect(response.status).toBe(400);
     expect(world.authHandler).not.toHaveBeenCalled();
     expect(ids(world.tokens)).toEqual(["tok-a", "tok-b", "tok-other-person"]);
+  });
+
+  describe("on a browser that sends no Fetch Metadata", () => {
+    const product = new URL(REDIRECT).origin;
+
+    it.each([
+      ["Referer", { referer: `${product}/settings` }],
+      ["Origin", { origin: product }],
+    ])(
+      "ends the record when the request names a registered product's page in %s",
+      async (_name, headers) => {
+        const world = twoDevices();
+
+        const response = await world.app.request(request(headers));
+
+        expect(response.status).toBe(302);
+        expect(ids(world.tokens)).toEqual(["tok-b", "tok-other-person"]);
+      },
+    );
+
+    it.each([
+      ["another site's Referer", { referer: "https://attacker.example/page" }],
+      ["a null Origin", { origin: "null" }],
+      ["an unreadable Referer", { referer: "not a url" }],
+      [
+        "a registered Referer that Fetch Metadata says is cross-site",
+        {
+          referer: `${product}/`,
+          "sec-fetch-site": "cross-site",
+        },
+      ],
+    ])("refuses %s", async (_name, headers) => {
+      const world = twoDevices();
+
+      const response = await world.app.request(request(headers));
+
+      expect(response.status).toBe(400);
+      expect(world.authHandler).not.toHaveBeenCalled();
+    });
   });
 
   it("refuses an unregistered redirect and an unknown client", async () => {

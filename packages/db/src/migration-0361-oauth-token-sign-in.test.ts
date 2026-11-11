@@ -7,15 +7,15 @@ import { describe, expect, it } from "vitest";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const read = (name: string) => readFileSync(join(__dirname, "../drizzle", name), "utf8");
-const migration = read("0357_oauth_token_sign_in.sql");
-const rollback = read("0357_rollback.sql");
+const migration = read("0361_oauth_token_sign_in.sql");
+const rollback = read("0361_rollback.sql");
 const journal = JSON.parse(read("meta/_journal.json")) as {
   entries: { idx: number; tag: string; when: number }[];
 };
 
-describe("migration 0357 oauth token sign-in", () => {
+describe("migration 0361 oauth token sign-in", () => {
   it("is journalled straight after 0356, in order", () => {
-    const index = journal.entries.findIndex((e) => e.tag === "0357_oauth_token_sign_in");
+    const index = journal.entries.findIndex((e) => e.tag === "0361_oauth_token_sign_in");
     expect(journal.entries[index - 1]?.tag).toBe("0356_session_device_marker");
     expect(journal.entries[index]?.idx).toBe((journal.entries[index - 1]?.idx ?? 0) + 1);
     expect(journal.entries[index]?.when).toBeGreaterThan(journal.entries[index - 1]?.when ?? 0);

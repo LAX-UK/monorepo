@@ -11,14 +11,16 @@ function setup(initial: ExpiredSession[]) {
   const remaining = [...initial];
   const calls: string[] = [];
   const store: SessionExpiryStore = {
-    findExpired: vi.fn(async (_now, limit) => remaining.slice(0, limit)),
-    deleteExpired: vi.fn(async (sessions) => {
+    endExpired: vi.fn(async (_now, limit, beforeDelete) => {
+      const batch = remaining.slice(0, limit);
+      if (batch.length === 0) return null;
+      const prepared = await beforeDelete(batch);
       calls.push("delete");
-      for (const session of sessions) {
+      for (const session of batch) {
         const index = remaining.findIndex((entry) => entry.id === session.id);
         if (index >= 0) remaining.splice(index, 1);
       }
-      return [...sessions];
+      return { ended: batch.length, prepared };
     }),
   };
   const run = vi.fn(async () => {
@@ -72,7 +74,7 @@ describe("SessionExpirySweep", () => {
     await expect(sweep.run()).resolves.toBe(0);
 
     expect(reserve).toHaveBeenCalledOnce();
-    expect(store.findExpired).toHaveBeenCalledTimes(2);
+    expect(store.endExpired).toHaveBeenCalledTimes(2);
   });
 
   it("takes a batch at a time and leaves the rest for the next run", async () => {
@@ -88,12 +90,15 @@ describe("SessionExpirySweep", () => {
   });
 
   it("leaves records in place when the durable write fails, to be tried again", async () => {
-    const { sweep, store, reserve } = setup([{ id: "a1", userId: "ann", previousSids: [] }]);
+    const { sweep, store, reserve, remaining } = setup([
+      { id: "a1", userId: "ann", previousSids: [] },
+    ]);
     reserve.mockRejectedValueOnce(new Error("outbox down"));
 
     await expect(sweep.run()).rejects.toThrow("outbox down");
 
-    expect(store.deleteExpired).not.toHaveBeenCalled();
+    expect(remaining).toHaveLength(1);
+    expect(store.endExpired).toHaveBeenCalledTimes(1);
     await expect(sweep.run()).resolves.toBe(1);
   });
 });

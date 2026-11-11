@@ -507,6 +507,7 @@ export function mountOidcRoutes(app: Hono, options: OidcRouteMountOptions): void
     "/api/auth",
     createRpInitiatedLogoutRoutes({
       authHandler: options.authHandler,
+      signOutUrl: `${issuer}/api/auth/sign-out`,
       verifier: services.oidc.rpInitiatedLogout,
       signOut: options.browserSignIns.signOut,
       revokeIdentitySession: (sessionId) =>

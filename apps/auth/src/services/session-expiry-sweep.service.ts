@@ -6,13 +6,18 @@ export type ExpiredSession = {
 };
 
 export interface SessionExpiryStore {
-  /** Records whose time is up, oldest first. */
-  findExpired(now: Date, limit: number): Promise<ExpiredSession[]>;
   /**
-   * One transaction: deletes those of `sessions` that are still expired (and so their earlier ids)
-   * and the OAuth tokens issued under them, and returns the ones deleted.
+   * Takes one batch of records whose time is up, oldest first, skipping any another instance is
+   * already working on, and holds them while `beforeDelete` runs. Then, in the same transaction,
+   * deletes them (and so their earlier ids) and the OAuth tokens issued under them. Returns what
+   * `beforeDelete` returned and how many records went, or null when there was nothing to take.
+   * When `beforeDelete` throws nothing is deleted.
    */
-  deleteExpired(sessions: readonly ExpiredSession[], now: Date): Promise<ExpiredSession[]>;
+  endExpired<T>(
+    now: Date,
+    limit: number,
+    beforeDelete: (batch: readonly ExpiredSession[]) => Promise<T>,
+  ): Promise<{ ended: number; prepared: T } | null>;
 }
 
 /**
@@ -34,8 +39,9 @@ export const SESSION_EXPIRY_BATCH_SIZE = 200;
  * lifetimes end. This sweep ends such records the way a manual sign-out does: back-channel logout
  * for the record and each earlier id, and the tokens issued under them deleted.
  *
- * Safe to run again at any time: a swept record no longer exists, products already told are not
- * told twice, and a batch that stopped halfway is picked up by the next run.
+ * Safe to run on every instance at once: each takes a batch the others skip (row locks), so no
+ * record is handled twice at the same time. A swept record no longer exists, products already told
+ * are not told twice, and a batch that stopped halfway is picked up by the next run.
  */
 export class SessionExpirySweep {
   constructor(
@@ -47,14 +53,21 @@ export class SessionExpirySweep {
 
   /** Sweeps one batch; returns how many records were ended. */
   async run(): Promise<number> {
-    const now = this.now();
-    const expired = await this.store.findExpired(now, this.batchSize);
-    if (expired.length === 0) return 0;
+    const result = await this.store.endExpired(this.now(), this.batchSize, (batch) =>
+      this.reserveAll(batch),
+    );
+    if (!result) return 0;
+    await Promise.all(result.prepared.map((reservation) => reservation.run()));
+    return result.ended;
+  }
+
+  /** Written to the durable outbox while the records are still held, before they go. */
+  private reserveAll(batch: readonly ExpiredSession[]) {
     const byUser = new Map<string, ExpiredSession[]>();
-    for (const session of expired) {
+    for (const session of batch) {
       byUser.set(session.userId, [...(byUser.get(session.userId) ?? []), session]);
     }
-    const reservations = await Promise.all(
+    return Promise.all(
       [...byUser].map(([userId, sessions]) =>
         this.ended.reserve({
           userId,
@@ -62,8 +75,5 @@ export class SessionExpirySweep {
         }),
       ),
     );
-    const deleted = await this.store.deleteExpired(expired, now);
-    await Promise.all(reservations.map((reservation) => reservation.run()));
-    return deleted.length;
   }
 }

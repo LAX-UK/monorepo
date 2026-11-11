@@ -1,4 +1,4 @@
--- Rollback for 0357_oauth_token_sign_in. Roll back the application release first: the previous
+-- Rollback for 0361_oauth_token_sign_in. Roll back the application release first: the previous
 -- release neither reads nor writes the column. Rolling back forgets which sign-in each token was
 -- issued under; tokens keep working, and signing out ends only the record again (the previous
 -- release deletes all of a person's tokens at sign-out).

@@ -110,47 +110,81 @@ async function realIssuer() {
     .map((value) => value.split(";")[0])
     .join("; ");
   if (!cookie.includes("session_token")) throw new Error("the test person did not sign in");
-  return { auth, rows, cookie };
+  return { auth, rows, cookie, context: (await auth.$context) as { skipOriginCheck: boolean } };
+}
+
+type Issuer = Awaited<ReturnType<typeof realIssuer>>;
+
+/** The route mounted where the issuer mounts it, so the sign-out path is the one Better Auth serves. */
+const SIGN_OUT_URL = `${BASE}/api/auth/sign-out`;
+
+function mountRoutes(issuer: Issuer) {
+  const { auth } = issuer;
+  const authHandler = vi.fn((request: Request) => auth.handler(request));
+  const routes = createRpInitiatedLogoutRoutes({
+    authHandler,
+    signOutUrl: SIGN_OUT_URL,
+    verifier: { verify: vi.fn(async () => null) },
+    currentSession: async (headers) => {
+      const found = await auth.api.getSession({ headers });
+      const subjectId = found?.user?.id;
+      const sessionId = found?.session?.id;
+      return subjectId && sessionId ? { subjectId, sessionId } : null;
+    },
+    revokeIdentitySession: vi.fn(),
+    signOut: new BrowserSignOutService(
+      { earlierNames: async () => [], deleteTokensIssuedUnder: async () => 0 },
+      { revokeIdentitySessions: vi.fn(async () => 1) },
+      async () => undefined,
+    ),
+  });
+  return { app: new Hono().route("/api/auth", routes), authHandler };
+}
+
+/** The browser's own request to the issuer, as LAX Account sends it with no ID token. */
+function endSession(origin: string, cookie: string, headers: Record<string, string> = {}) {
+  return new Request(
+    `${origin}/api/auth/oauth2/endsession?client_id=lax-account-web&post_logout_redirect_uri=${encodeURIComponent(
+      "https://account.lax.bid/",
+    )}`,
+    { headers: { cookie, "sec-fetch-site": "same-site", ...headers } },
+  );
 }
 
 describe("signing out of one browser, through the real Better Auth", () => {
   it("ends the session behind the cookie, expires the cookie, and leaves every token alone", async () => {
-    const { auth, rows, cookie } = await realIssuer();
+    const issuer = await realIssuer();
+    const { rows, cookie } = issuer;
     const sessionId = String(rows.session?.[0]?.id);
-    const authHandler = vi.fn((request: Request) => auth.handler(request));
-    const routes = createRpInitiatedLogoutRoutes({
-      authHandler,
-      verifier: { verify: vi.fn(async () => null) },
-      currentSession: async (headers) => {
-        const found = await auth.api.getSession({ headers });
-        const subjectId = found?.user?.id;
-        const sessionId = found?.session?.id;
-        return subjectId && sessionId ? { subjectId, sessionId } : null;
-      },
-      revokeIdentitySession: vi.fn(),
-      signOut: new BrowserSignOutService(
-        { earlierNames: async () => [], deleteTokensIssuedUnder: async () => 0 },
-        { revokeIdentitySessions: vi.fn(async () => 1) },
-        async () => undefined,
-      ),
-    });
+    const { app, authHandler } = mountRoutes(issuer);
 
-    // Mounted where the issuer mounts it, so the sign-out path is the one Better Auth serves.
-    const app = new Hono().route("/api/auth", routes);
-    // The browser's own request to the issuer, as LAX Account sends it with no ID token.
-    const response = await app.request(
-      new Request(
-        `${BASE}/api/auth/oauth2/endsession?client_id=lax-account-web&post_logout_redirect_uri=${encodeURIComponent(
-          "https://account.lax.bid/",
-        )}`,
-        { headers: { cookie, "sec-fetch-site": "same-site" } },
-      ),
-    );
+    const response = await app.request(endSession(BASE, cookie));
 
     expect(authHandler).toHaveBeenCalledOnce();
     expect(rows.session?.some((row) => row.id === sessionId)).toBe(false);
     expect(response.headers.getSetCookie().join(";")).toMatch(/session_token=;/);
     expect(rows.oauthAccessToken?.map((row) => row.id)).toEqual(["tok-ann-other-device"]);
     expect(response.status).toBe(302);
+  });
+
+  it("still ends the record behind the proxy that ends TLS, with Better Auth's origin check on", async () => {
+    const issuer = await realIssuer();
+    const { rows, cookie, context } = issuer;
+    // Better Auth disables the origin check under test; force the production branch.
+    context.skipOriginCheck = false;
+    const sessionId = String(rows.session?.[0]?.id);
+    const { app } = mountRoutes(issuer);
+
+    // The ingress ends TLS, so the server sees http:// and a client may send any forwarding header.
+    const response = await app.request(
+      endSession("http://auth.test", cookie, {
+        "x-forwarded-proto": "http",
+        "x-forwarded-host": "attacker.example",
+      }),
+    );
+
+    expect(response.status).toBe(302);
+    expect(rows.session?.some((row) => row.id === sessionId)).toBe(false);
+    expect(response.headers.getSetCookie().join(";")).toMatch(/session_token=;/);
   });
 });

@@ -20,6 +20,7 @@ import { DrizzleBrowserSignOutStore } from "./drizzle-browser-sign-out.store.js"
 import { DrizzleOAuthTokenSignInStore } from "./drizzle-oauth-token-sign-in.store.js";
 import { DrizzleRefreshTokenFamilyRepository } from "./drizzle-refresh-token-family-repository.js";
 import { DrizzleSessionExpiryStore } from "./drizzle-session-expiry.store.js";
+import { DrizzleSessionTakeoverStore } from "./drizzle-session-takeover.store.js";
 import { DrizzleOidcRpSessionRepository } from "./oidc-session-adapters.js";
 
 const DATABASE_URL = process.env.DATABASE_URL;
@@ -207,6 +208,54 @@ describe.skipIf(!DATABASE_URL)("ending one browser's sign-in, against Postgres",
     expect(other?.revokedAt).toBeNull();
   });
 
+  describe("the 20-name cap on earlier ids", () => {
+    it("moves tokens under a name that falls off the list to the record, so sign-out still finds them", async () => {
+      await record("rec-new", ANN);
+      await record("rec-mid", ANN);
+      await database.insert(sessionLineage).values([
+        {
+          previousSid: "n-old",
+          sessionId: "rec-new",
+          userId: ANN,
+          createdAt: new Date(now.getTime() - 3000),
+        },
+        {
+          previousSid: "n-new",
+          sessionId: "rec-new",
+          userId: ANN,
+          createdAt: new Date(now.getTime() - 1000),
+        },
+      ]);
+      await token("t-evicted", ANN, CLIENTS[0] as string, "n-old");
+      await token("t-kept", ANN, CLIENTS[0] as string, "n-new");
+      await token("t-ben", BEN, CLIENTS[0] as string, "n-old");
+
+      await new DrizzleSessionTakeoverStore(database).replace({
+        newSessionId: "rec-new",
+        userId: ANN,
+        deviceHash: null,
+        country: null,
+        maxLineage: 2,
+        now,
+        sameSubject: [{ id: "rec-mid", userId: ANN, signedInAt: now, previousSids: [] }],
+        otherSubject: [],
+        signedInAt: now,
+      });
+
+      const names = await new DrizzleBrowserSignOutStore(database).earlierNames("rec-new", ANN);
+      expect(names.sort()).toEqual(["n-new", "rec-mid"]);
+      const sids = await database
+        .select({ id: oauthAccessToken.id, sid: oauthAccessToken.sid })
+        .from(oauthAccessToken)
+        .where(inArray(oauthAccessToken.userId, [ANN, BEN]));
+      expect(Object.fromEntries(sids.map((row) => [row.id, row.sid]))).toEqual({
+        "t-evicted": "rec-new",
+        "t-kept": "n-new",
+        "t-ben": "n-old",
+      });
+    });
+  });
+
   describe("refresh families", () => {
     it("reads the sign-in off the token and passes it to the successor", async () => {
       await record("a-rec", ANN);
@@ -227,6 +276,26 @@ describe.skipIf(!DATABASE_URL)("ending one browser's sign-in, against Postgres",
         .from(oauthAccessToken)
         .where(eq(oauthAccessToken.id, "t-2"));
       expect(successor?.sid).toBe("a-old");
+    });
+
+    it("leaves no successor behind when a sign-out deleted the token it replaces mid-refresh", async () => {
+      await record("a-rec", ANN);
+      await token("t-1", ANN, CLIENTS[0] as string, "a-rec");
+      // Better Auth has inserted the successor, which has no sign-in recorded yet.
+      await token("t-2", ANN, CLIENTS[0] as string, null);
+      const families = new DrizzleRefreshTokenFamilyRepository(database);
+      const found = await families.findAndPrepare("refresh-t-1");
+
+      await new DrizzleBrowserSignOutStore(database).deleteTokensIssuedUnder(ANN, ["a-rec"]);
+      await expect(
+        families.completeRotation({
+          consumedTokenId: "t-1",
+          newRawToken: "refresh-t-2",
+          familyId: found?.familyId ?? "",
+        }),
+      ).rejects.toThrow();
+
+      expect(await tokensOf(ANN)).toEqual([]);
     });
 
     it("deleteFamilyTokens leaves the person's records and other tokens", async () => {
@@ -358,16 +427,61 @@ describe.skipIf(!DATABASE_URL)("ending one browser's sign-in, against Postgres",
       expect(deliveries).toHaveLength(1);
     });
 
-    it("leaves a record that is live again alone", async () => {
+    it("skips records another instance is already working on, so none is handled twice", async () => {
+      await record("rec-1", ANN, past);
+      await record("rec-2", ANN, new Date(past.getTime() + 1));
+      const store = new DrizzleSessionExpiryStore(database);
+      const seenByOther: string[][] = [];
+      const seenByFirst: string[][] = [];
+
+      const first = store.endExpired(now, 1, async (batch) => {
+        seenByFirst.push(batch.map((entry) => entry.id));
+        // While the first instance holds rec-1, a second instance takes the next one instead.
+        await store.endExpired(now, 10, async (other) => {
+          seenByOther.push(other.map((entry) => entry.id));
+        });
+      });
+      await first;
+
+      expect(seenByFirst).toEqual([["rec-1"]]);
+      expect(seenByOther).toEqual([["rec-2"]]);
+      const left = await database
+        .select({ id: session.id })
+        .from(session)
+        .where(eq(session.userId, ANN));
+      expect(left).toEqual([]);
+    });
+
+    it("deletes nothing when the durable write fails, and a later run takes the records", async () => {
       await record("rec", ANN, past);
       const store = new DrizzleSessionExpiryStore(database);
-      const found = await store.findExpired(now, 10);
+
+      await expect(
+        store.endExpired(now, 10, async () => {
+          throw new Error("outbox down");
+        }),
+      ).rejects.toThrow("outbox down");
+
+      const [still] = await database
+        .select({ id: session.id })
+        .from(session)
+        .where(eq(session.id, "rec"));
+      expect(still?.id).toBe("rec");
+      await expect(store.endExpired(now, 10, async () => "ok")).resolves.toEqual({
+        ended: 1,
+        prepared: "ok",
+      });
+    });
+
+    it("leaves a record that is live again alone", async () => {
+      await record("rec", ANN, past);
       await database
         .update(session)
         .set({ expiresAt: new Date(now.getTime() + DAY) })
         .where(eq(session.id, "rec"));
 
-      await expect(store.deleteExpired(found, now)).resolves.toEqual([]);
+      const store = new DrizzleSessionExpiryStore(database);
+      await expect(store.endExpired(now, 10, async () => "x")).resolves.toBeNull();
       const [still] = await database
         .select({ id: session.id })
         .from(session)
