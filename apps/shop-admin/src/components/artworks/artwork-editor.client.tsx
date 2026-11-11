@@ -29,6 +29,7 @@ import { OfferAtAuctionDialog } from "@/components/artworks/offer-at-auction-dia
 import { OriginalArtworkPicker } from "@/components/artworks/original-artwork-picker.client";
 import { ZohoOwnedDetails, ZohoOwnedMedia } from "@/components/artworks/zoho-owned-details";
 import { UnlinkedWherePanel, ZohoWherePanel } from "@/components/artworks/zoho-where-it-is-panel";
+import { CatalogueChanges } from "@/components/from-zoho/catalogue-changes.client";
 import { LinkToZohoDialog } from "@/components/from-zoho/link-to-zoho-dialog.client";
 import { UnlinkZohoDialog } from "@/components/from-zoho/unlink-zoho-dialog.client";
 import { adminMutationErrorMessage } from "@/lib/admin-mutation-message";
@@ -808,6 +809,9 @@ export function ArtworkEditor({
           ) : null
         }
       >
+        {zohoLink?.catalogueChange ? (
+          <CatalogueChanges registerId={zohoLink.registerId} changes={[zohoLink.catalogueChange]} />
+        ) : null}
         <form
           id="artwork-form"
           noValidate

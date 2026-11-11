@@ -15,6 +15,7 @@ import {
   bidLotUrl,
   blockerLink,
 } from "@/lib/offer-at-auction-links";
+import { compareWithZohoPrice } from "@/lib/zoho-price";
 import {
   getAuctionOfferAssessment,
   listAuctionSales,
@@ -126,6 +127,7 @@ export function OfferAtAuctionDialogView({
   onRetryLoad,
 }: OfferAtAuctionViewProps) {
   const ready = loaded.phase === "ready" ? loaded : null;
+  const zohoPrice = compareWithZohoPrice(ready?.assessment.zohoPrice ?? null, values.priceText);
   const saleOptions =
     ready?.sales.map((sale) => ({
       value: sale.id,
@@ -258,7 +260,11 @@ export function OfferAtAuctionDialogView({
           </Field>
           <Field
             label="Starting price"
-            description="In pounds. Staff can change it in LAX Bid before the lot is published."
+            description={
+              zohoPrice.label
+                ? `In pounds. Zoho's price is ${zohoPrice.label}. Staff can change the starting price in LAX Bid before the lot is published.`
+                : "In pounds. Staff can change it in LAX Bid before the lot is published."
+            }
             error={errors.price}
             id="offer-price"
           >
@@ -275,6 +281,12 @@ export function OfferAtAuctionDialogView({
               }
             />
           </Field>
+          {zohoPrice.differs ? (
+            <Notice tone="info" title={`This differs from Zoho's price (${zohoPrice.label})`}>
+              The starting price you enter here is the one the lot uses. Zoho's price is not
+              changed.
+            </Notice>
+          ) : null}
           <ChoiceFieldset legend="Consignor" id="offer-consignor" error={errors.consignorAgreed}>
             <ChoiceRow
               htmlFor="offer-consignor-agreed"

@@ -42,6 +42,7 @@ const eligible = {
     draftLot: null,
     holdingLotId: null,
     eligible: true,
+    zohoPrice: null,
     blockers: [],
   },
 };
@@ -98,6 +99,46 @@ describe("OfferAtAuctionDialog", () => {
     open(register);
     await screen.findByLabelText("Starting price");
     expect(assess).toHaveBeenCalledWith(register);
+  });
+
+  describe("Zoho's price", () => {
+    const priced = (zohoPrice: string | null) => ({
+      ok: true,
+      data: { ...eligible.data, zohoPrice },
+    });
+
+    it("shows Zoho's price beside the starting price, and flags nothing until they differ", async () => {
+      assess.mockResolvedValue(priced("4800.00"));
+      sales.mockResolvedValue(oneSale);
+      open(register);
+      const price = await screen.findByLabelText("Starting price");
+      expect(screen.getByText(/Zoho's price is £4,800\.00/)).toBeInTheDocument();
+      expect(screen.queryByText(/differs from Zoho's price/)).not.toBeInTheDocument();
+      fireEvent.change(price, { target: { value: "4800" } });
+      expect(screen.queryByText(/differs from Zoho's price/)).not.toBeInTheDocument();
+    });
+
+    it("flags a different starting price in a neutral tone, without blocking the offer", async () => {
+      assess.mockResolvedValue(priced("4800.00"));
+      sales.mockResolvedValue(oneSale);
+      open(register);
+      fireEvent.change(await screen.findByLabelText("Starting price"), {
+        target: { value: "3900" },
+      });
+      const flag = screen.getByText("This differs from Zoho's price (£4,800.00)");
+      expect(flag.closest("[data-tone]")).toHaveAttribute("data-tone", "info");
+      expect(screen.getByRole("button", { name: "Offer at auction" })).toBeEnabled();
+    });
+
+    it("says nothing about Zoho's price when Zoho has none", async () => {
+      assess.mockResolvedValue(priced(null));
+      sales.mockResolvedValue(oneSale);
+      open(register);
+      fireEvent.change(await screen.findByLabelText("Starting price"), {
+        target: { value: "3900" },
+      });
+      expect(screen.queryByText(/Zoho's price/)).not.toBeInTheDocument();
+    });
   });
 
   it("shows a skeleton that says it is checking, with no primary button yet", () => {
