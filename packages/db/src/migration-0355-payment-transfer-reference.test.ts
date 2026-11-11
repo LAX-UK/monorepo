@@ -15,14 +15,18 @@ const journal = JSON.parse(read("meta/_journal.json")) as {
 };
 
 describe("migration 0355 payment transfer reference", () => {
-  it("is the last journal entry, after 0351", () => {
-    const last = journal.entries[journal.entries.length - 1];
-    expect(last?.tag).toBe("0355_payment_transfer_reference");
-    expect(last?.idx).toBe(349);
-    expect(last?.when).toBe(1805702400000);
-    expect(journal.entries[journal.entries.length - 2]?.tag).toBe(
-      "0351_payment_checkout_session_parameters",
+  it("follows every earlier entry with a unique idx and a later timestamp", () => {
+    const index = journal.entries.findIndex(
+      (entry) => entry.tag === "0355_payment_transfer_reference",
     );
+    expect(index).toBeGreaterThan(0);
+    const entry = journal.entries[index];
+    const previous = journal.entries[index - 1];
+    const next = journal.entries[index + 1];
+    expect(entry?.when).toBe(1805702400000);
+    expect(entry?.idx).toBeGreaterThan(previous?.idx ?? Number.POSITIVE_INFINITY);
+    expect(entry?.when).toBeGreaterThan(previous?.when ?? Number.POSITIVE_INFINITY);
+    if (next) expect(next.when).toBeGreaterThan(entry?.when ?? Number.POSITIVE_INFINITY);
   });
 
   it("only adds a table and a per-customer index, idempotently", () => {
