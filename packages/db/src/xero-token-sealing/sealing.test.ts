@@ -32,33 +32,46 @@ describe("XeroTokenSealer", () => {
 
   it("refuses to seal without a key, so a token is never written in the clear", () => {
     for (const missing of [undefined, null, "", "   "]) {
-      expect(() => XeroTokenSealer.fromKey(missing).seal(tokens)).toThrow(XeroTokenSealingError);
+      expect(() => XeroTokenSealer.fromKey(missing)).toThrow(
+        new XeroTokenSealingError("key_missing"),
+      );
     }
+    expect(() => XeroTokenSealer.unavailable().seal(tokens)).toThrow(/key_missing/);
   });
 
   it("rejects a key that is not 32 bytes", () => {
     expect(() => XeroTokenSealer.fromKey("abc")).toThrow(/32 bytes/);
   });
 
-  it("reads a row that was never sealed, with or without a key", () => {
+  it("reads a row that was never sealed", () => {
     const legacy = { ...none, accessToken: "old-a", refreshToken: "old-r" };
     expect(XeroTokenSealer.fromKey(KEY).open(legacy)).toEqual({
       accessToken: "old-a",
       refreshToken: "old-r",
     });
-    expect(XeroTokenSealer.fromKey(undefined).open(legacy).accessToken).toBe("old-a");
+    expect(() => XeroTokenSealer.unavailable().open(legacy)).toThrow(/key_missing/);
   });
 
-  it("prefers the sealed value over a leftover plaintext one", () => {
+  it("prefers a plaintext value over a sealed one: only an older release writes plaintext", () => {
     const sealer = XeroTokenSealer.fromKey(KEY);
-    const opened = sealer.open({ ...sealer.seal(tokens), accessToken: "stale", refreshToken: "x" });
-    expect(opened).toEqual(tokens);
+    const opened = sealer.open({
+      ...sealer.seal(tokens),
+      accessToken: "newer-a",
+      refreshToken: "newer-r",
+    });
+    expect(opened).toEqual({ accessToken: "newer-a", refreshToken: "newer-r" });
+  });
+
+  it("rejects a sealed column that is not an envelope", () => {
+    const sealer = XeroTokenSealer.fromKey(KEY);
+    const raw = { ...none, accessTokenSealed: "raw-access", refreshTokenSealed: "raw-refresh" };
+    expect(() => sealer.open(raw)).toThrow(new XeroTokenSealingError("unreadable"));
   });
 
   it("fails closed: sealed data without the key, with another key, or tampered", () => {
     const columns = XeroTokenSealer.fromKey(KEY).seal(tokens);
     const unreadable = new XeroTokenSealingError("unreadable");
-    expect(() => XeroTokenSealer.fromKey(undefined).open(columns)).toThrow(
+    expect(() => XeroTokenSealer.unavailable().open(columns)).toThrow(
       new XeroTokenSealingError("key_missing"),
     );
     expect(() => XeroTokenSealer.fromKey(randomBytes(32).toString("hex")).open(columns)).toThrow(

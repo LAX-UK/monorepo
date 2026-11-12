@@ -58,12 +58,7 @@ export async function backfillXeroTokenSealing(
   );
   const result: XeroTokenBackfillResult = { sealed: 0, skipped: 0 };
   for (const row of rows as Row[]) {
-    const tokens = sealer.open({
-      accessToken: row.access_token,
-      refreshToken: row.refresh_token,
-      accessTokenSealed: row.access_token === null ? row.access_token_sealed : null,
-      refreshTokenSealed: row.refresh_token === null ? row.refresh_token_sealed : null,
-    });
+    const tokens = sealer.open(toStored(row));
     const columns = sealer.seal(tokens);
     const check = sealer.open({ ...columns });
     if (check.accessToken !== tokens.accessToken || check.refreshToken !== tokens.refreshToken) {

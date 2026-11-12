@@ -101,8 +101,44 @@ describe.skipIf(!HAS_DB)("DrizzleXeroConnectionRepository token sealing (integra
     });
   });
 
+  it("serves a newer plaintext write from a pre-sealing release, not the stale sealed copy", async () => {
+    await repo.upsertConnection({
+      tenantId,
+      accessToken: "OLD-A",
+      refreshToken: "OLD-R",
+      expiresAt,
+    });
+    await db
+      .update(xeroConnection)
+      .set({ accessToken: "NEW-A", refreshToken: "NEW-R", updatedAt: new Date() })
+      .where(eq(xeroConnection.tenantId, tenantId));
+    expect(await repo.findLatest()).toMatchObject({ accessToken: "NEW-A", refreshToken: "NEW-R" });
+  });
+
+  it("refuses to read a legacy row without a key, so no refresh can be attempted", async () => {
+    await db.insert(xeroConnection).values({
+      tenantId,
+      accessToken: "LEGACY-A",
+      refreshToken: "LEGACY-R",
+      expiresAt,
+    });
+    const keyless = new DrizzleXeroConnectionRepository(db, XeroTokenSealer.unavailable());
+    await expect(keyless.findLatest()).rejects.toThrow(/key_missing/);
+  });
+
+  it("rejects a sealed column that is not an envelope", async () => {
+    const error = await db
+      .insert(xeroConnection)
+      .values({ tenantId, accessTokenSealed: "raw-token", refreshTokenSealed: "v1:ok", expiresAt })
+      .then(
+        () => null,
+        (e: unknown) => e as { cause?: { constraint?: string } },
+      );
+    expect(error?.cause?.constraint).toBe("xero_connection_access_token_sealed_envelope_chk");
+  });
+
   it("refuses to write when no key is configured, leaving the stored row unchanged", async () => {
-    const keyless = new DrizzleXeroConnectionRepository(db, XeroTokenSealer.fromKey(undefined));
+    const keyless = new DrizzleXeroConnectionRepository(db, XeroTokenSealer.unavailable());
     await expect(
       keyless.upsertConnection({ tenantId, accessToken: "x", refreshToken: "y", expiresAt }),
     ).rejects.toThrow(/key_missing/);

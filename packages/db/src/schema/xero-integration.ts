@@ -1,5 +1,5 @@
 import { relations, sql } from "drizzle-orm";
-import { index, pgEnum, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { check, index, pgEnum, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 import { user } from "./auth.js";
 import { payment } from "./payments.js";
 
@@ -43,7 +43,17 @@ export const xeroConnection = pgTable(
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
   },
-  (table) => [index("xero_connection_tenant_id_idx").on(table.tenantId)],
+  (table) => [
+    index("xero_connection_tenant_id_idx").on(table.tenantId),
+    check(
+      "xero_connection_access_token_sealed_envelope_chk",
+      sql`${table.accessTokenSealed} IS NULL OR ${table.accessTokenSealed} LIKE 'v1:%'`,
+    ),
+    check(
+      "xero_connection_refresh_token_sealed_envelope_chk",
+      sql`${table.refreshTokenSealed} IS NULL OR ${table.refreshTokenSealed} LIKE 'v1:%'`,
+    ),
+  ],
 );
 
 /** Xero (or future provider) identifiers for a local payment row. */

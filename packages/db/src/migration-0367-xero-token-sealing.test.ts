@@ -12,12 +12,25 @@ const journal = JSON.parse(read("meta/_journal.json")) as {
 };
 
 describe("migration 0367 Xero token sealing", () => {
-  it("is journalled with a timestamp later than every other entry", () => {
-    const entry = journal.entries.find((e) => e.tag === "0367_xero_token_sealing");
-    expect(entry?.when).toBe(1806739200000);
-    for (const other of journal.entries) {
-      if (other !== entry) expect(entry?.when).toBeGreaterThan(other.when);
-    }
+  it("is journalled once, with a unique idx and a timestamp later than the entry before it", () => {
+    const matches = journal.entries.filter((e) => e.tag === "0367_xero_token_sealing");
+    expect(matches).toHaveLength(1);
+    const entry = matches[0];
+    if (!entry) throw new Error("journal entry missing");
+    expect(entry.when).toBe(1806739200000);
+    expect(journal.entries.filter((e) => e.idx === entry.idx)).toHaveLength(1);
+    const position = journal.entries.indexOf(entry);
+    const previous = journal.entries[position - 1];
+    expect(previous).toBeDefined();
+    expect(entry.idx).toBeGreaterThan(previous?.idx ?? Number.POSITIVE_INFINITY);
+    expect(entry.when).toBeGreaterThan(previous?.when ?? Number.POSITIVE_INFINITY);
+  });
+
+  it("requires the sealed columns to hold an envelope", () => {
+    expect(migration).toMatch(/"access_token_sealed" IS NULL OR "access_token_sealed" LIKE 'v1:%'/);
+    expect(migration).toMatch(
+      /"refresh_token_sealed" IS NULL OR "refresh_token_sealed" LIKE 'v1:%'/,
+    );
   });
 
   it("adds nullable sealed columns and relaxes the plaintext ones, without touching rows", () => {

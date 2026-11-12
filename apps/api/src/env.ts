@@ -6,7 +6,7 @@ import {
   DEFAULT_TRUSTED_PROXY_CIDRS,
   parseCidrList,
 } from "@auction/http-headers/client-ip";
-import { STAFF_STEP_UP_MAX_AGE_SECONDS } from "@auction/identity-contracts";
+import { STAFF_STEP_UP_MAX_AGE_SECONDS, parseAuthDekKey } from "@auction/identity-contracts";
 import { parseOptionalBooleanFlag } from "@auction/validators";
 import { z } from "zod";
 
@@ -488,6 +488,26 @@ const envSchema = z
     }
     const appEnv = e.APP_ENV;
 
+    if (e.XERO_CLIENT_ID) {
+      if (!e.XERO_TOKEN_DEK_KEY) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message:
+            "XERO_TOKEN_DEK_KEY is required when XERO_CLIENT_ID is set: without it a token refresh could not be stored",
+          path: ["XERO_TOKEN_DEK_KEY"],
+        });
+      } else {
+        try {
+          parseAuthDekKey(e.XERO_TOKEN_DEK_KEY);
+        } catch {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "XERO_TOKEN_DEK_KEY must be 64 hex chars or base64 of exactly 32 bytes",
+            path: ["XERO_TOKEN_DEK_KEY"],
+          });
+        }
+      }
+    }
     const hasXeroId = Boolean(e.XERO_CLIENT_ID && e.XERO_CLIENT_ID.length > 0);
     const hasXeroSecret = Boolean(e.XERO_CLIENT_SECRET && e.XERO_CLIENT_SECRET.length > 0);
     const hasXeroRedirect = Boolean(e.XERO_REDIRECT_URI);

@@ -5,6 +5,7 @@ import {
   MIN_COLLECTION_HANDOVER_RETENTION_YEARS,
   resolveStrictBidEligibilityRollout,
 } from "@auction/domain";
+import { parseAuthDekKey } from "@auction/identity-contracts";
 import { parseOptionalBooleanFlag } from "@auction/validators";
 import { z } from "zod";
 
@@ -309,6 +310,26 @@ export const envSchema = z
       .default(false),
   })
   .superRefine((e, ctx) => {
+    if (e.XERO_CLIENT_ID) {
+      if (!e.XERO_TOKEN_DEK_KEY) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message:
+            "XERO_TOKEN_DEK_KEY is required when XERO_CLIENT_ID is set: without it a token refresh could not be stored",
+          path: ["XERO_TOKEN_DEK_KEY"],
+        });
+      } else {
+        try {
+          parseAuthDekKey(e.XERO_TOKEN_DEK_KEY);
+        } catch {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "XERO_TOKEN_DEK_KEY must be 64 hex chars or base64 of exactly 32 bytes",
+            path: ["XERO_TOKEN_DEK_KEY"],
+          });
+        }
+      }
+    }
     if (e.EMAIL_PROVIDER === "postmark" && !e.POSTMARK_SERVER_TOKEN) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,

@@ -138,7 +138,9 @@ export function createContainer(env: Env): Container {
   const repos = createRepositories(
     db,
     identityIssuer,
-    XeroTokenSealer.fromKey(env.XERO_TOKEN_DEK_KEY),
+    env.XERO_TOKEN_DEK_KEY
+      ? XeroTokenSealer.fromKey(env.XERO_TOKEN_DEK_KEY)
+      : XeroTokenSealer.unavailable(),
   );
   if (env.ADDRESS_BOOK_SOURCE === "identity") {
     repos.addressRepo = new IdentityAddressBookRepository(

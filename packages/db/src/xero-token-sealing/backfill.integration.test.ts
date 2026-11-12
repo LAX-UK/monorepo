@@ -138,9 +138,9 @@ describe.skipIf(!migrationUrl)(
           "insert into xero_connection (tenant_id, access_token, refresh_token) values ('t1','a1','r1')",
         );
         await pool.query(migrationSql.replaceAll("--> statement-breakpoint", ""));
-        await expect(
-          backfillXeroTokenSealing(pool, XeroTokenSealer.fromKey(undefined)),
-        ).rejects.toThrow(/key_missing/);
+        await expect(backfillXeroTokenSealing(pool, XeroTokenSealer.unavailable())).rejects.toThrow(
+          /key_missing/,
+        );
         expect((await rows(pool)).rows[0]?.access_token).toBe("a1");
       });
     });

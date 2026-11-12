@@ -1,6 +1,7 @@
 import {
   type EnvelopeCrypto,
   createEnvelopeCrypto,
+  isEnvelopeSealed,
   parseAuthDekKey,
 } from "@auction/identity-contracts";
 
@@ -31,16 +32,27 @@ export class XeroTokenSealingError extends Error {
 
 /**
  * Seals and opens Xero OAuth tokens with the existing AES-256-GCM envelope (the same one that
- * protects Identity's provider tokens). Without a key the sealer still reads rows that were never
- * sealed, so a deploy that precedes the key cannot lock anyone out, but it refuses to write: a
- * token is never stored in the clear.
+ * protects Identity's provider tokens). The key is required for every read and every write: a
+ * sealer without one throws `key_missing` before anything is read or sent to Xero, so a refresh
+ * can never be made whose rotated token could not then be stored.
  */
 export class XeroTokenSealer {
-  constructor(private readonly crypto: Pick<EnvelopeCrypto, "seal" | "open"> | null) {}
+  private constructor(private readonly crypto: Pick<EnvelopeCrypto, "seal" | "open"> | null) {}
 
+  /** Throws `key_missing` when the key is absent or blank, and rejects a malformed key. */
   static fromKey(rawKey: string | null | undefined): XeroTokenSealer {
     const trimmed = rawKey?.trim();
-    return new XeroTokenSealer(trimmed ? createEnvelopeCrypto(parseAuthDekKey(trimmed)) : null);
+    if (!trimmed) throw new XeroTokenSealingError("key_missing");
+    try {
+      return new XeroTokenSealer(createEnvelopeCrypto(parseAuthDekKey(trimmed)));
+    } catch {
+      throw new Error("XERO_TOKEN_DEK_KEY must be 64 hex chars or base64 of exactly 32 bytes");
+    }
+  }
+
+  /** For a process where Xero is not configured: every operation fails closed. */
+  static unavailable(): XeroTokenSealer {
+    return new XeroTokenSealer(null);
   }
 
   seal(tokens: XeroTokens): SealedXeroTokenColumns {
@@ -53,7 +65,10 @@ export class XeroTokenSealer {
     };
   }
 
-  /** Sealed values win; plaintext is read only for a row not yet backfilled. */
+  /**
+   * A non-null plaintext value wins over the sealed one: only a release that predates sealing
+   * writes plaintext, so it is always the newer write (the backfill applies the same rule).
+   */
   open(stored: StoredXeroTokens): XeroTokens {
     return {
       accessToken: this.openOne(stored.accessTokenSealed, stored.accessToken),
@@ -62,16 +77,15 @@ export class XeroTokenSealer {
   }
 
   private openOne(sealed: string | null, legacy: string | null): string {
-    if (sealed !== null) {
-      const crypto = this.requireCrypto();
-      try {
-        return crypto.open(sealed);
-      } catch {
-        throw new XeroTokenSealingError("unreadable");
-      }
+    const crypto = this.requireCrypto();
+    if (legacy !== null && legacy !== "") return legacy;
+    if (sealed === null || sealed === "") throw new XeroTokenSealingError("tokens_missing");
+    if (!isEnvelopeSealed(sealed)) throw new XeroTokenSealingError("unreadable");
+    try {
+      return crypto.open(sealed);
+    } catch {
+      throw new XeroTokenSealingError("unreadable");
     }
-    if (legacy === null || legacy === "") throw new XeroTokenSealingError("tokens_missing");
-    return legacy;
   }
 
   private requireCrypto(): Pick<EnvelopeCrypto, "seal" | "open"> {

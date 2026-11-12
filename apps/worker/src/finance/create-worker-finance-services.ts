@@ -102,7 +102,9 @@ export function createWorkerFinanceServices(
     log,
     connections: new DrizzleXeroConnectionRepository(
       db,
-      XeroTokenSealer.fromKey(env.XERO_TOKEN_DEK_KEY),
+      env.XERO_TOKEN_DEK_KEY
+        ? XeroTokenSealer.fromKey(env.XERO_TOKEN_DEK_KEY)
+        : XeroTokenSealer.unavailable(),
     ),
     externalRefs: new DrizzlePaymentExternalRefRepository(db),
     payments,
