@@ -1,3 +1,4 @@
+import { formatDayMonth, formatTime, formatWeekday, shortZoneName } from "@auction/datetime";
 import { BUSINESS_TIME_ZONE } from "./calendar-year.js";
 import { localDateKey, localDateOf } from "./working-hours.js";
 
@@ -68,40 +69,22 @@ export function parseLocalTime(value: string): number | null {
   return match ? Number(match[1]) * 60 + Number(match[2]) : null;
 }
 
-function formatter(options: Intl.DateTimeFormatOptions): Intl.DateTimeFormat {
-  return new Intl.DateTimeFormat("en-GB", { timeZone: BUSINESS_TIME_ZONE, ...options });
-}
-
-const WEEKDAY = formatter({ weekday: "short" });
-const DAY = formatter({ day: "numeric" });
-const MONTH = formatter({ month: "short" });
-const YEAR = formatter({ year: "numeric" });
-const TIME = formatter({ hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
-const ZONE = formatter({ timeZoneName: "short" });
-
 /** "GMT" or "BST", whichever London is on at that instant. */
 export function londonZoneLabel(instant: Date): "GMT" | "BST" {
-  const part = ZONE.formatToParts(instant).find((p) => p.type === "timeZoneName");
-  return part?.value === "BST" ? "BST" : "GMT";
-}
-
-function dayAndMonth(instant: Date, now: Date): string {
-  const month = MONTH.format(instant).replace(/^Sept$/, "Sep");
-  const year = YEAR.format(instant) === YEAR.format(now) ? "" : ` ${YEAR.format(instant)}`;
-  return `${DAY.format(instant)} ${month}${year}`;
+  return shortZoneName(BUSINESS_TIME_ZONE, instant) === "BST" ? "BST" : "GMT";
 }
 
 /** "Thu 12 Nov": a day alone. The year is added only when it is not `now`'s. */
 export function formatCollectionDay(instant: Date, now: Date = new Date()): string {
-  return `${WEEKDAY.format(instant)} ${dayAndMonth(instant, now)}`;
+  return `${formatWeekday(instant, BUSINESS_TIME_ZONE)} ${formatDayMonth(instant, BUSINESS_TIME_ZONE, now)}`;
 }
 
 /** "Thu 12 Nov, 14:00 GMT": a moment. */
 export function formatCollectionWhen(instant: Date, now: Date = new Date()): string {
-  return `${formatCollectionDay(instant, now)}, ${TIME.format(instant)} ${londonZoneLabel(instant)}`;
+  return `${formatCollectionDay(instant, now)}, ${formatTime(instant, BUSINESS_TIME_ZONE)} ${londonZoneLabel(instant)}`;
 }
 
 /** "Thu 12 Nov, 14:00–14:30 GMT": a visit. */
 export function formatCollectionVisit(start: Date, end: Date, now: Date = new Date()): string {
-  return `${formatCollectionDay(start, now)}, ${TIME.format(start)}–${TIME.format(end)} ${londonZoneLabel(end)}`;
+  return `${formatCollectionDay(start, now)}, ${formatTime(start, BUSINESS_TIME_ZONE)}–${formatTime(end, BUSINESS_TIME_ZONE)} ${londonZoneLabel(end)}`;
 }
