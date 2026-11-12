@@ -157,6 +157,26 @@ describe("DealArtworkSearchService availability", () => {
     });
     expect(option?.whereItIs).toMatchObject({ key: "bid_sale" });
   });
+
+  it("names the lot the register says the artwork is in, not another open lot", async () => {
+    const inSale = entry({ offer: at("bid_sale", "bid_lot", "lot-1") });
+    const { service } = setup({
+      found: [inSale],
+      places: [
+        {
+          registerId: inSale.id,
+          lotId: "lot-other",
+          lotNumber: 3,
+          saleTitle: "Spring Drawings",
+          status: "draft",
+        },
+      ],
+    });
+    const [option] = (await items(service)).items;
+    expect(option?.lock?.reason).toBe("in_bid_sale");
+    expect(option?.lock?.message).not.toContain("Spring Drawings");
+    expect(option?.lock?.message).not.toContain("lot 3");
+  });
 });
 
 describe("DealArtworkSearchService ordering and size", () => {
