@@ -16,7 +16,7 @@ import {
 export class DrizzleSessionExpiryClamp {
   constructor(
     private readonly db: IdentityDatabase,
-    private readonly now: () => Date = () => new Date(),
+    readonly now: () => Date = () => new Date(),
   ) {}
 
   async clamp(input: { userId: string; sessionId: string | null; expiresAt: Date }): Promise<Date> {

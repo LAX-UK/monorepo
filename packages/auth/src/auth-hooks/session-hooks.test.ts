@@ -70,7 +70,7 @@ describe("session expiry hooks", () => {
   const withClamp = () =>
     buildSessionDatabaseHooks({
       ports: { subjectStatusReader: { isDisabledOrMerged: async () => false } },
-      sessionExpiry: { clamp },
+      sessionExpiry: { clamp, now: () => new Date("2026-10-30T12:00:00.000Z") },
     } as unknown as AuthHookDeps);
 
   it("holds a new session's expiry to the person's limits", async () => {
@@ -88,6 +88,19 @@ describe("session expiry hooks", () => {
     );
     expect(clamp).toHaveBeenCalledWith({ userId: "user-1", sessionId: "sess-1", expiresAt: SOON });
     expect(result).toEqual({ data: { expiresAt: new Date(SOON.getTime() - 1000) } });
+  });
+
+  it("refuses a renewal that the limits clamp to a time that has passed", async () => {
+    const over = vi.fn(async () => new Date("2026-10-30T13:00:00.000Z"));
+    const hooks = buildSessionDatabaseHooks({
+      ports: { subjectStatusReader: { isDisabledOrMerged: async () => false } },
+      sessionExpiry: { clamp: over, now: () => new Date("2026-10-30T13:00:00.000Z") },
+    } as unknown as AuthHookDeps);
+    const result = await hooks.update.before(
+      { expiresAt: SOON },
+      { context: { session: { session: { id: "sess-1", userId: "user-1" } } } },
+    );
+    expect(result).toBe(false);
   });
 
   it("leaves an update that does not move the expiry, or that names no session, alone", async () => {

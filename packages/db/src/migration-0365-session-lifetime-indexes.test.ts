@@ -16,15 +16,17 @@ const journal = JSON.parse(read("meta/_journal.json")) as {
 };
 
 describe("migration 0365 session lifetime indexes", () => {
-  it("is journalled straight after 0361, later than every other entry", () => {
-    const index = journal.entries.findIndex((e) => e.tag === "0365_session_lifetime_indexes");
-    const entry = journal.entries[index];
-    expect(journal.entries[index - 1]?.tag).toBe("0361_oauth_token_sign_in");
-    expect(entry?.idx).toBe((journal.entries[index - 1]?.idx ?? 0) + 1);
+  it("is journalled after 0361, with a later time, in a journal that stays ordered", () => {
+    const entry = journal.entries.find((e) => e.tag === "0365_session_lifetime_indexes");
+    const base = journal.entries.find((e) => e.tag === "0361_oauth_token_sign_in");
     expect(entry?.when).toBe(1806566400000);
-    for (const other of journal.entries.filter((e) => e.tag !== entry?.tag)) {
-      expect(entry?.when).toBeGreaterThan(other.when);
+    expect(entry?.when).toBeGreaterThan(base?.when ?? Number.POSITIVE_INFINITY);
+    // Other migrations may land before or after it; only the ordering rules must hold.
+    const times = journal.entries.map((e) => e.when);
+    for (let i = 1; i < times.length; i++) {
+      expect(times[i]).toBeGreaterThan(times[i - 1] ?? Number.POSITIVE_INFINITY);
     }
+    expect(new Set(journal.entries.map((e) => e.idx)).size).toBe(journal.entries.length);
   });
 
   it("only adds the signed-in expression index, idempotently, under the lock timeout", () => {

@@ -1,3 +1,4 @@
+import { AUTH_TIMINGS } from "@auction/auth";
 import type { IdentityDatabase } from "@auction/identity-db";
 import type { Redis } from "ioredis";
 import { DrizzleBrowserSignOutStore } from "../infrastructure/drizzle-browser-sign-out.store.js";
@@ -43,7 +44,10 @@ export function createBrowserSignIns(options: {
   const now = options.now ?? (() => new Date());
   const sessions = new DrizzleOidcRpSessionRepository(options.db);
   const continuity = new RedisIdTokenContinuityStore(options.redis, options.sealer);
-  const activity = new SessionActivity(new DrizzleSessionActivityStore(options.db), now);
+  const activity = new SessionActivity(
+    new DrizzleSessionActivityStore(options.db, AUTH_TIMINGS.sessionExpiresSec * 1000),
+    now,
+  );
   return {
     activity,
     // The safety net behind the cap at sign-in, run after each sweep.

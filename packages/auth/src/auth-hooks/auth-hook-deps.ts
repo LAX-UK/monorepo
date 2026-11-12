@@ -44,6 +44,8 @@ export type AuthHookDeps = {
   sessionExpiry?:
     | {
         clamp(input: { userId: string; sessionId: string | null; expiresAt: Date }): Promise<Date>;
+        /** The clock the clamp reads; a renewal that clamps to or before it is refused. */
+        readonly now?: () => Date;
       }
     | undefined;
   /** When true, reject new auth user rows (email + OAuth) at `user.create.before`. */

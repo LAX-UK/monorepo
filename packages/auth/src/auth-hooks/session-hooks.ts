@@ -26,7 +26,7 @@ export function buildSessionDatabaseHooks(deps: AuthHookDeps) {
   return {
     update: {
       // Better Auth renews `expires_at` by 7 days on use. The renewal never goes past the idle or
-      // absolute limit. The record is named by the session the request was already served from
+      // absolute limit, and a renewal that would land in the past is refused. The record is named by the session the request was already served from
       // (Better Auth sets it on the request context before it renews).
       before: async (
         data: { expiresAt?: Date | undefined },
@@ -48,6 +48,12 @@ export function buildSessionDatabaseHooks(deps: AuthHookDeps) {
           sessionId: current.id,
           expiresAt: data.expiresAt,
         });
+        // A record that is already over (written before the limits were enforced, or held by a
+        // person whose limits have since become shorter) is not renewed into the past: Better
+        // Auth would still serve the renewing request. Refusing the update refuses the request.
+        if (expiresAt.getTime() <= (deps.sessionExpiry.now?.() ?? new Date()).getTime()) {
+          return false;
+        }
         return { data: { expiresAt } };
       },
     },

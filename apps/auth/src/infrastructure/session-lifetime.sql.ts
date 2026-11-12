@@ -53,12 +53,16 @@ export function sessionIsLive(now: Date): SQL {
  * `signedIn` plus their absolute limit. In an UPDATE the new values of the columns are passed
  * in, since a column name there still means the old row. The SQL twin of `clampExpiry`.
  */
-export function clampedExpiresAt(proposed: SQL | Date, signedIn: Date, lastActive: Date): SQL {
+export function clampedExpiresAt(
+  proposed: SQL | Date,
+  signedIn: SQL | Date,
+  lastActive: SQL | Date,
+): SQL {
   const { client, staff } = SESSION_LIFETIME_POLICY;
-  const proposedSql = proposed instanceof Date ? at(proposed) : proposed;
-  return sql`LEAST(${proposedSql},
-    ${at(lastActive)} + ${limit(seconds(staff.idleMs), seconds(client.idleMs))},
-    ${at(signedIn)} + ${limit(seconds(staff.absoluteMs), seconds(client.absoluteMs))})`;
+  const instant = (value: SQL | Date) => (value instanceof Date ? at(value) : value);
+  return sql`LEAST(${instant(proposed)},
+    ${instant(lastActive)} + ${limit(seconds(staff.idleMs), seconds(client.idleMs))},
+    ${instant(signedIn)} + ${limit(seconds(staff.absoluteMs), seconds(client.absoluteMs))})`;
 }
 
 /**
