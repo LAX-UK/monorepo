@@ -5,6 +5,7 @@ import type {
   AdminRegisterGap,
   AdminRegisterLastCheck,
   AdminRegisterPlace,
+  AdminSoldAttentionItem,
   ZohoDriftList,
 } from "@auction/shop-contracts";
 import {
@@ -13,6 +14,7 @@ import {
   ZOHO_DRIFT_LISTS,
 } from "@auction/shop-contracts";
 import type { TimelineEvent } from "@auction/staff-ui";
+import { bidLotUrl } from "../../lib/offer-at-auction-links";
 import { type RawSearchParams, listHref, oneOf, singleParam } from "./list-url-state";
 
 export const ZOHO_QUEUE_PATH = "/from-zoho";
@@ -197,6 +199,7 @@ export const CONFLICT_FIELD_LABEL: Record<AdminRegisterConflict["field"], string
   kind: "Original or print",
   sourceOriginalId: "Made from",
   offerState: "Where it is offered",
+  catalogueStatus: "Zoho Status",
 };
 
 /** A conflicted field as it reads in a sentence: "Zoho changed the stock code". */
@@ -205,6 +208,7 @@ const CONFLICT_FIELD_PHRASE: Record<AdminRegisterConflict["field"], string> = {
   kind: "whether it is an original or a print",
   sourceOriginalId: "the original it was made from",
   offerState: "where it is offered",
+  catalogueStatus: "the Zoho Status",
 };
 
 const FIELD_LABEL: Record<string, string> = {
@@ -250,6 +254,34 @@ export function zohoProductUrl(
   return template
     .replace("{module}", encodeURIComponent(module))
     .replace("{recordId}", encodeURIComponent(zohoProductId));
+}
+
+/**
+ * Where an action on a "Zoho says Sold, but this artwork is still for sale" item goes: the
+ * place the artwork is withdrawn from, or its Zoho record. Null when the place has no page to
+ * link to, so the action is left out rather than sent nowhere. "It is not sold" is not a link.
+ */
+export function soldAttentionActionHref(
+  item: Pick<AdminSoldAttentionItem, "place" | "placeRefId" | "zohoProductId">,
+  action: AdminSoldAttentionItem["actions"][number]["kind"],
+  links: { bidAdminUrl: string | null; zohoUrlTemplate: string | null },
+): { href: string; external: boolean } | null {
+  switch (action) {
+    case "unpublish_lax_art":
+      return item.placeRefId ? { href: `/artworks/${item.placeRefId}`, external: false } : null;
+    case "withdraw_lot":
+    case "withdraw_offer": {
+      if (item.place === "private_sale" || !item.placeRefId) return null;
+      const href = bidLotUrl(links.bidAdminUrl, item.placeRefId);
+      return href ? { href, external: true } : null;
+    }
+    case "open_in_zoho": {
+      const href = zohoProductUrl(links.zohoUrlTemplate, item.zohoProductId);
+      return href ? { href, external: true } : null;
+    }
+    case "not_sold":
+      return null;
+  }
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -537,6 +569,14 @@ export function conflictDecisionCopy(
   const what = CONFLICT_FIELD_PHRASE[conflict.field];
   const zoho = presentConflictValue(conflict.field, conflict.zohoValue) ?? "nothing";
   const lax = presentConflictValue(conflict.field, conflict.laxValue);
+  if (conflict.field === "catalogueStatus") {
+    return {
+      title: "Close this Status difference?",
+      description: `Zoho shows ${zoho}, which staff set, and LAX would set ${lax ?? "nothing"}. LAX has left Zoho as it is. Closing this does not change Zoho. It comes back at the next check unless Zoho shows Available or the Status LAX wrote, so change the Status in Zoho to let LAX update it.`,
+      confirmLabel: "Close",
+      success: RESOLUTION_LABEL.kept_lax,
+    };
+  }
   if (decision === "kept_lax") {
     return {
       title: `Keep the LAX value for ${what}?`,
@@ -556,7 +596,15 @@ export function conflictDecisionCopy(
 }
 
 /** The one line under a comparison where Zoho's value cannot be taken over. */
-export function setInLaxLine(conflict: Pick<AdminRegisterConflict, "field" | "laxValue">): string {
+export function setInLaxLine(
+  conflict: Pick<AdminRegisterConflict, "field" | "laxValue"> &
+    Partial<Pick<AdminRegisterConflict, "zohoValue">>,
+): string {
+  if (conflict.field === "catalogueStatus") {
+    const zoho = presentConflictValue(conflict.field, conflict.zohoValue ?? null) ?? "nothing";
+    const lax = presentConflictValue(conflict.field, conflict.laxValue) ?? "nothing";
+    return `Zoho Status is ${zoho}, LAX would set ${lax}. LAX has left Zoho as it is.`;
+  }
   const label = CONFLICT_FIELD_LABEL[conflict.field];
   const lax = presentConflictValue(conflict.field, conflict.laxValue);
   return lax

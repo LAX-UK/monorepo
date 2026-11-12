@@ -117,11 +117,12 @@ It is additive, so it does not change what the demo data shows. All share the se
 | --- | --- |
 | `check-client@lax.bid` | signed-in buyer journeys (Shop, Art, Bid): `SHOP_E2E_BUYER_EMAIL`, `ART_E2E_BUYER_EMAIL`, `PLAYWRIGHT_BUYER_EMAIL` |
 | `check-new-person@lax.bid` | empty states in Account: `ACCOUNT_E2E_EMPTY_EMAIL` |
+| `check-devices@lax.bid` | signed-in devices journeys in Account (several browsers, sign out of one or all others): `ACCOUNT_E2E_DEVICES_EMAIL` |
 | `check-admin@lax.bid` | Bid staff screens: `PLAYWRIGHT_STAFF_EMAIL` |
 
 Journeys that need seeded works, bids or payments (Account's collector, the organisation roles)
-still use the demo accounts they need and sign out when they finish. The CI stack keeps using its
-own seeded accounts.
+still use the demo accounts they need and sign out when they finish. The CI stack seeds the check
+accounts too, and its Account gate uses `check-new-person` and `check-devices`.
 
 The check "five sign-ins and two step-ups in one browser leave exactly one row"
 (`apps/account/e2e/signed-in-devices.spec.ts`) is marked `fixme` until a new sign-in on a browser

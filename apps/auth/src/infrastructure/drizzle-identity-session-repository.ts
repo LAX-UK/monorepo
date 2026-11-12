@@ -7,6 +7,7 @@ import type {
   IdentitySessionRecord,
 } from "../services/identity-operations.ports.js";
 import { identityOperationDb } from "./drizzle-identity-unit-of-work.js";
+import { retireRevokedBrowserMarkers } from "./drizzle-known-device.store.js";
 import {
   lastActiveAtColumn,
   sessionPersonIsStaff,
@@ -14,7 +15,10 @@ import {
 } from "./session-lifetime.sql.js";
 
 export class DrizzleIdentitySessionRepository implements IIdentitySessionRepository {
-  constructor(private readonly db: IdentityDatabase) {}
+  constructor(
+    private readonly db: IdentityDatabase,
+    private readonly now: () => Date = () => new Date(),
+  ) {}
 
   async listForSubject(
     subjectId: string,
@@ -141,7 +145,8 @@ export class DrizzleIdentitySessionRepository implements IIdentitySessionReposit
     const deleted = await tx
       .delete(session)
       .where(and(eq(session.userId, subjectId), eq(session.id, sessionId)))
-      .returning({ id: session.id });
+      .returning({ id: session.id, deviceHash: session.deviceHash });
+    await this.retireMarkers(tx, subjectId, deleted);
     return deleted.length > 0;
   }
 
@@ -154,7 +159,11 @@ export class DrizzleIdentitySessionRepository implements IIdentitySessionReposit
     const where = exceptSessionToken
       ? and(eq(session.userId, subjectId), ne(session.token, exceptSessionToken))
       : eq(session.userId, subjectId);
-    const deleted = await tx.delete(session).where(where).returning({ id: session.id });
+    const deleted = await tx
+      .delete(session)
+      .where(where)
+      .returning({ id: session.id, deviceHash: session.deviceHash });
+    await this.retireMarkers(tx, subjectId, deleted);
     return deleted.length;
   }
 
@@ -167,8 +176,22 @@ export class DrizzleIdentitySessionRepository implements IIdentitySessionReposit
     const deleted = await tx
       .delete(session)
       .where(and(eq(session.userId, subjectId), ne(session.id, keepSessionId)))
-      .returning({ id: session.id });
+      .returning({ id: session.id, deviceHash: session.deviceHash });
+    await this.retireMarkers(tx, subjectId, deleted);
     return deleted.map((row) => row.id);
+  }
+
+  /** Browsers signed out here stop being known and owe a new sign-in email (see retireRevokedBrowserMarkers). */
+  private retireMarkers(
+    tx: Pick<IdentityDatabase, "delete" | "insert">,
+    subjectId: string,
+    deleted: readonly { deviceHash: string | null }[],
+  ): Promise<void> {
+    return retireRevokedBrowserMarkers(tx, {
+      userId: subjectId,
+      deviceHashes: deleted.map((row) => row.deviceHash),
+      at: this.now(),
+    });
   }
 
   async purgeSubjectSessionsAndTokens(

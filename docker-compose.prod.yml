@@ -52,6 +52,8 @@ services:
       IDENTITY_EMAIL_ENQUEUE_TIMEOUT_MS: ${IDENTITY_EMAIL_ENQUEUE_TIMEOUT_MS:-3000}
       IDENTITY_SUBJECT_USAGE_TIMEOUT_MS: ${IDENTITY_SUBJECT_USAGE_TIMEOUT_MS:-1500}
       IDENTITY_MERGE_ENABLED: ${IDENTITY_MERGE_ENABLED:-false}
+      # Unset: the new sign-in email is sent (APP_ENV=test turns it off; see auth-go-live-rollout.md).
+      NEW_DEVICE_EMAIL_ENABLED: ${NEW_DEVICE_EMAIL_ENABLED:-}
     depends_on:
       redis:
         condition: service_healthy

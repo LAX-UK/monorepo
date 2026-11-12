@@ -14,6 +14,7 @@ import { type ProductAssessment, assessProduct } from "./assess-product.js";
 import type { CatalogueProduct } from "./catalogue-product.js";
 import { type ArtworkDecision, decideArtworkOutcome } from "./decide-outcome.js";
 import type { ImageSyncReport } from "./images/zoho-image-sync.service.js";
+import type { SoldWhileLiveReconciler } from "./sold-while-live-monitor.js";
 import type { ZohoCatalogueReader } from "./zoho-catalogue-reader.js";
 
 /** The picture side of the sync: what the service needs, not how pictures are fetched or stored. */
@@ -32,6 +33,11 @@ export type ZohoArtworkSyncDeps = {
   imageCheck: IArtworkImageStore;
   report: IZohoArtworkSyncReport;
   watermark: IZohoArtworkSyncWatermark;
+  /**
+   * Raises a staff item when Zoho says Sold or Reserved on an artwork still for sale. Only runs
+   * live; absent where the check is not wired.
+   */
+  soldWhileLive?: SoldWhileLiveReconciler;
   log: Logger;
   now?: () => Date;
 };
@@ -135,6 +141,7 @@ export class ZohoArtworkSyncService {
       await watermark.advance(mode, newest, this.now());
     }
     const images = await this.recheckPictures(mode, startedAt);
+    await this.sweepSoldWhileLive(mode);
     const summary = await report.summarise(runId);
     log.info(
       { runId, mode, firstPass: since === null, read, summary, images },
@@ -193,7 +200,10 @@ export class ZohoArtworkSyncService {
         : null;
 
     let decision = decideArtworkOutcome(assessment, { existing, holderOfStockCode });
-    if (mode === "live") decision = await this.apply(assessment, decision);
+    if (mode === "live") {
+      decision = await this.apply(assessment, decision);
+      await this.checkSoldWhileLive(assessment.productId);
+    }
 
     const kind = existing?.kind ?? assessment.newEntry?.kind;
     const pictures =
@@ -201,6 +211,31 @@ export class ZohoArtworkSyncService {
         ? await this.checkPictures(mode, assessment.productId)
         : null;
     return toOutcome(assessment, decision, pictures);
+  }
+
+  /**
+   * Looks at the artwork as the register now holds it. A problem here never fails the Product:
+   * the next change or the nightly sweep looks again.
+   */
+  private async checkSoldWhileLive(productId: string): Promise<void> {
+    const { soldWhileLive, register, log } = this.deps;
+    if (!soldWhileLive) return;
+    try {
+      const entry = await register.findByZohoProductId(productId);
+      if (entry) await soldWhileLive.reconcile(entry, this.now());
+    } catch (error) {
+      log.warn({ err: error, productId }, "zoho sold-while-live check failed");
+    }
+  }
+
+  private async sweepSoldWhileLive(mode: ZohoArtworkSyncModeSetting): Promise<void> {
+    const { soldWhileLive, log } = this.deps;
+    if (mode !== "live" || !soldWhileLive) return;
+    try {
+      await soldWhileLive.sweep(this.now());
+    } catch (error) {
+      log.warn({ err: error }, "zoho sold-while-live sweep failed");
+    }
   }
 
   /** Only originals carry pictures to lax.art. A failure here never fails the Product itself. */

@@ -7,6 +7,7 @@ import {
   original,
   pendingLine,
   refund,
+  settledLine,
   work,
 } from "../../test-support/portfolio-facts.js";
 import {
@@ -52,27 +53,27 @@ describe("Shop Portfolio and Money agree on what was paid", () => {
     const harborPrint = edition({
       editionId: "harbor",
       work: work({ title: "Harbor Print" }),
-      purchase: purchase({ orderId: "order-harbor", unitPricePence: 8_500, shippingPence: 1_500 }),
+      purchase: purchase({ orderId: "order-harbor", unitPricePence: 8_500 }),
     });
     const [row] = agreementFor({
       editions: [harborPrint],
-      orders: [order({ orderId: "order-harbor", totalPence: 10_000 })],
+      orders: [order({ orderId: "order-harbor", totalPence: 10_000, shippingPence: 1_500 })],
     });
     expect(row).toMatchObject({ business: "lax_art", paidSoFar: 10_000, moneyPaid: 10_000 });
   });
 
   it("agrees when there is no delivery charge", () => {
     const [row] = agreementFor({
-      editions: [edition({ purchase: purchase({ unitPricePence: 45_000, shippingPence: 0 }) })],
-      orders: [order({ totalPence: 45_000 })],
+      editions: [edition({ purchase: purchase({ unitPricePence: 45_000 }) })],
+      orders: [order({ totalPence: 45_000, shippingPence: 0 })],
     });
     expect(row).toMatchObject({ paidSoFar: 45_000, moneyPaid: 45_000 });
   });
 
   it("takes a partial refund off what was paid on both pages", () => {
     const [row] = agreementFor({
-      editions: [edition({ purchase: purchase({ unitPricePence: 45_000, shippingPence: 2_500 }) })],
-      orders: [order({ totalPence: 47_500, status: "partially_refunded" })],
+      editions: [edition({ purchase: purchase({ unitPricePence: 45_000 }) })],
+      orders: [order({ totalPence: 47_500, shippingPence: 2_500, status: "partially_refunded" })],
       refunds: [refund({ amountPence: 10_000, status: "succeeded" })],
     });
     expect(row).toMatchObject({ paidSoFar: 37_500, moneyPaid: 47_500, moneyRefunded: 10_000 });
@@ -83,14 +84,14 @@ describe("Shop Portfolio and Money agree on what was paid", () => {
       editions: [
         edition({
           editionId: "first",
-          purchase: purchase({ unitPricePence: 20_000, shippingPence: 2_000 }),
+          purchase: purchase({ orderLineId: "line-first", unitPricePence: 20_000 }),
         }),
         edition({
           editionId: "second",
-          purchase: purchase({ unitPricePence: 30_000, shippingPence: 0 }),
+          purchase: purchase({ orderLineId: "line-second", unitPricePence: 30_000 }),
         }),
       ],
-      orders: [order({ totalPence: 52_000, status: "partially_refunded" })],
+      orders: [order({ totalPence: 52_000, shippingPence: 2_000, status: "partially_refunded" })],
       refunds: [refund({ amountPence: 25_000, status: "succeeded" })],
     });
     expect(row).toMatchObject({ paidSoFar: 27_000, moneyNetPaid: 27_000 });
@@ -98,8 +99,8 @@ describe("Shop Portfolio and Money agree on what was paid", () => {
 
   it("ignores a refund that failed or was cancelled", () => {
     const [row] = agreementFor({
-      editions: [edition({ purchase: purchase({ unitPricePence: 45_000, shippingPence: 0 }) })],
-      orders: [order({ totalPence: 45_000 })],
+      editions: [edition({ purchase: purchase({ unitPricePence: 45_000 }) })],
+      orders: [order({ totalPence: 45_000, shippingPence: 0 })],
       refunds: [
         refund({ refundId: "f", amountPence: 5_000, status: "failed" }),
         refund({ refundId: "c", amountPence: 6_000, status: "cancelled" }),
@@ -112,10 +113,10 @@ describe("Shop Portfolio and Money agree on what was paid", () => {
     const [row] = agreementFor({
       editions: [
         edition({
-          purchase: purchase({ orderStatus: "refunded", unitPricePence: 45_000, shippingPence: 0 }),
+          purchase: purchase({ orderStatus: "refunded", unitPricePence: 45_000 }),
         }),
       ],
-      orders: [order({ totalPence: 45_000, status: "refunded" })],
+      orders: [order({ totalPence: 45_000, shippingPence: 0, status: "refunded" })],
       refunds: [refund({ amountPence: 45_000, status: "succeeded" })],
     });
     expect(row).toMatchObject({ paidSoFar: 0, moneyPaid: 45_000, moneyRefunded: 45_000 });
@@ -124,14 +125,15 @@ describe("Shop Portfolio and Money agree on what was paid", () => {
   it("owes the order total, delivery included, on both pages for an unpaid order", () => {
     const [row] = agreementFor({
       pendingOrderLines: [
-        pendingLine({ orderLineId: "l1", unitPricePence: 30_000, shippingPence: 2_500 }),
-        pendingLine({ orderLineId: "l2", unitPricePence: 15_000, shippingPence: 0 }),
+        pendingLine({ orderLineId: "l1", unitPricePence: 30_000 }),
+        pendingLine({ orderLineId: "l2", unitPricePence: 15_000 }),
       ],
       orders: [
         order({
           orderId: "ffffffff-ffff-4fff-8fff-ffffffffffff",
           status: "pending_payment",
           totalPence: 47_500,
+          shippingPence: 2_500,
           paidAt: null,
           checkoutExpiresAt: new Date("2026-08-02T00:00:00.000Z"),
         }),
@@ -145,5 +147,72 @@ describe("Shop Portfolio and Money agree on what was paid", () => {
       originals: [original({ status: "invoiced", salePricePence: 1_200_000 })],
     });
     expect(row).toMatchObject({ totalDue: 1_200_000, owedByYou: 1_200_000, paidSoFar: 0 });
+  });
+
+  describe("works no longer in the person's editions", () => {
+    const OTHER = "line-other";
+
+    it("attributes a refund to the released work it was made for, not to the one still held", () => {
+      const [row] = agreementFor({
+        editions: [
+          edition({
+            editionId: "held",
+            purchase: purchase({ orderLineId: "line-held", unitPricePence: 20_000 }),
+          }),
+        ],
+        settledOrderLines: [settledLine({ orderLineId: OTHER, unitPricePence: 30_000 })],
+        orders: [order({ totalPence: 52_000, shippingPence: 2_000, status: "partially_refunded" })],
+        refunds: [refund({ orderLineId: OTHER, amountPence: 30_000, status: "succeeded" })],
+      });
+      expect(row).toMatchObject({ paidSoFar: 22_000, moneyNetPaid: 22_000 });
+    });
+
+    it("keeps what was paid for a work that was resold, less its refund", () => {
+      const [row] = agreementFor({
+        settledOrderLines: [settledLine({ unitPricePence: 45_000 })],
+        orders: [order({ totalPence: 47_500, shippingPence: 2_500, status: "partially_refunded" })],
+        refunds: [refund({ amountPence: 10_000, status: "succeeded" })],
+      });
+      expect(row).toMatchObject({ paidSoFar: 37_500, moneyPaid: 47_500, moneyRefunded: 10_000 });
+    });
+
+    it("states nothing paid once every work of a paid order was refunded and released", () => {
+      const [row] = agreementFor({
+        settledOrderLines: [settledLine({ unitPricePence: 45_000 })],
+        orders: [order({ totalPence: 47_500, shippingPence: 2_500, status: "refunded" })],
+        refunds: [refund({ amountPence: 47_500, status: "succeeded" })],
+      });
+      expect(row).toMatchObject({ paidSoFar: 0, moneyNetPaid: 0 });
+    });
+  });
+
+  describe("an unpaid order owes its whole total on both pages", () => {
+    const unpaid = (patch: Partial<Parameters<typeof order>[0]> = {}) =>
+      order({
+        orderId: "ffffffff-ffff-4fff-8fff-ffffffffffff",
+        status: "pending_payment",
+        paidAt: null,
+        checkoutExpiresAt: new Date("2026-08-02T00:00:00.000Z"),
+        ...patch,
+      });
+
+    it("counts delivery and framing that no shown work line carries", () => {
+      const [row] = agreementFor({
+        pendingOrderLines: [
+          pendingLine({ orderLineId: "l1", unitPricePence: 30_000 }),
+          pendingLine({ orderLineId: "l2", unitPricePence: 15_000 }),
+        ],
+        orders: [unpaid({ totalPence: 52_500, shippingPence: 2_500 })],
+      });
+      expect(row).toMatchObject({ totalDue: 52_500, owedByYou: 52_500 });
+    });
+
+    it("keeps the delivery charge when the order's first line has no work to show", () => {
+      const [row] = agreementFor({
+        pendingOrderLines: [pendingLine({ orderLineId: "l2", unitPricePence: 15_000 })],
+        orders: [unpaid({ totalPence: 47_500, shippingPence: 2_500 })],
+      });
+      expect(row).toMatchObject({ totalDue: 47_500, owedByYou: 47_500 });
+    });
   });
 });

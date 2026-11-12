@@ -14,7 +14,9 @@ import { ZohoListingReconcile } from "../integrations/zoho/artwork/listing/zoho-
 import { ZohoListingSaleStartPass } from "../integrations/zoho/artwork/listing/zoho-listing-sale-start.js";
 import { ZohoListingSync } from "../integrations/zoho/artwork/listing/zoho-listing-sync.js";
 import { ZohoListingWriteback } from "../integrations/zoho/artwork/listing/zoho-listing-writeback.js";
+import { ZohoStatusReconcile } from "../integrations/zoho/artwork/status/zoho-status-reconcile.js";
 import { createZohoCrmBatchStack } from "../integrations/zoho/create-zoho-crm-gateway.js";
+import { createZohoStatusSync } from "./create-zoho-status-sync.js";
 
 export type ZohoArtworkListingRuntime = {
   writeback: ZohoListingWriteback;
@@ -60,6 +62,7 @@ export function createZohoArtworkListing(deps: {
     log,
   });
   const runs = new DrizzleZohoListingRunStore(db);
+  const statusSync = createZohoStatusSync({ env, db, log });
   return {
     writeback: new ZohoListingWriteback({ sync, sources, mode }),
     reconcile: new ZohoListingReconcile({
@@ -67,6 +70,9 @@ export function createZohoArtworkListing(deps: {
       sync,
       sources,
       runs,
+      ...(statusSync
+        ? { statuses: new ZohoStatusReconcile({ sync: statusSync, sources, log }) }
+        : {}),
       log,
     }),
     saleStart: new ZohoListingSaleStartPass({ sync, sources, mark: runs, log }),

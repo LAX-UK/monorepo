@@ -23,6 +23,11 @@ export type SecurityNoticeProps = {
    * password. Left out for an email queued without one, which then says where to look instead.
    */
   secureAccountUrl?: string | null | undefined;
+  /**
+   * A more specific first step than the security page, for notices where one list answers "was
+   * this me?": it replaces the generic "Secure your account" paragraph and button.
+   */
+  review?: { text: string; label: string; href: string } | undefined;
 };
 
 /**
@@ -39,6 +44,7 @@ export function SecurityNotice({
   deviceLabel,
   details = [],
   secureAccountUrl,
+  review,
 }: SecurityNoticeProps) {
   return (
     <Layout category="account" eyebrow="Security" header="account" preview={preview} title={title}>
@@ -52,7 +58,12 @@ export function SecurityNotice({
         ]}
       />
       <Text style={subheading}>If this wasn't you</Text>
-      {secureAccountUrl ? (
+      {review ? (
+        <>
+          <TextBlock>{review.text}</TextBlock>
+          <Button href={review.href}>{review.label}</Button>
+        </>
+      ) : secureAccountUrl ? (
         <>
           <TextBlock>
             Secure your account straight away. You can sign out everywhere and change your password

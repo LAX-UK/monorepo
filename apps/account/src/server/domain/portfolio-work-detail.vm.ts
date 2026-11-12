@@ -3,7 +3,7 @@ import {
   type CurrencyTotal,
   type LaxPortfolioItemV1,
   isPaidFor,
-  paidLines,
+  paidAmounts,
   sumByCurrency,
 } from "@auction/lax-ecosystem";
 import {
@@ -22,7 +22,14 @@ export const NO_VALUATION_NOTE =
 
 const DOCUMENT_PENDING_NOTE = "We'll add it here when it's ready.";
 
-export type WorkCostLineVm = { key: string; label: string; amount: number; currency: string };
+export type WorkCostLineVm = {
+  key: string;
+  label: string;
+  amount: number;
+  currency: string;
+  /** Money taken off the lines above it; shown as a negative amount. */
+  deduction: boolean;
+};
 export type WorkDocumentVm = {
   key: string;
   label: string;
@@ -77,6 +84,29 @@ function documentVm(doc: LaxPortfolioItemV1["documents"][number]): WorkDocumentV
   };
 }
 
+/** The charges as made, then any refund as its own line so no charge reads lower than it was. */
+function costLines(item: LaxPortfolioItemV1): WorkCostLineVm[] {
+  const charges = item.paid.lines.map((line, index) => ({
+    key: `${line.kind}-${line.currency}-${index}`,
+    label: COST_LINE_LABELS[line.kind],
+    amount: line.amount,
+    currency: line.currency,
+    deduction: false,
+  }));
+  const { refunded } = item.paid;
+  if (!refunded || refunded.amount === 0) return charges;
+  return [
+    ...charges,
+    {
+      key: `refunded-${refunded.currency}`,
+      label: "Refunded",
+      amount: refunded.amount,
+      currency: refunded.currency,
+      deduction: true,
+    },
+  ];
+}
+
 export function buildWorkDetail(
   item: LaxPortfolioItemV1,
   imageOrigins: readonly string[],
@@ -96,13 +126,8 @@ export function buildWorkDetail(
     productLabel: PRODUCT_LABELS[item.product],
     businessName: item.business.legalName,
     acquiredAt: item.acquiredAt,
-    costLines: item.paid.lines.map((line, index) => ({
-      key: `${line.kind}-${line.currency}-${index}`,
-      label: COST_LINE_LABELS[line.kind],
-      amount: line.amount,
-      currency: line.currency,
-    })),
-    total: sumByCurrency(isPaidFor(item) ? paidLines(item) : item.paid.lines),
+    costLines: costLines(item),
+    total: sumByCurrency(isPaidFor(item) ? paidAmounts(item) : item.paid.lines),
     shipping: sumByCurrency(item.paid.lines.filter((line) => line.kind === "shipping")),
     costsAreDue: item.status === "awaiting_payment",
     paymentConfirming: item.status === "payment_confirming",

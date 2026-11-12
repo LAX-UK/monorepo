@@ -9,6 +9,7 @@ import {
   pendingLine,
   refund,
   sale,
+  settledLine,
   work,
 } from "../../test-support/portfolio-facts.js";
 import {
@@ -46,7 +47,7 @@ const purchase = (patch: Partial<NonNullable<ReturnType<typeof edition>["purchas
 
 describe("buildShopPortfolioItems: editions", () => {
   it("presents a delivered edition as owned with price and shipping lines", () => {
-    const [item] = itemsFor({ editions: [edition()] });
+    const [item] = itemsFor({ editions: [edition()], orders: [order()] });
     expect(item).toMatchObject({
       product: "shop",
       title: "Quiet Orchard",
@@ -92,7 +93,10 @@ describe("buildShopPortfolioItems: editions", () => {
   );
 
   it("shows an edition the owner has offered for sale as in_sale and keeps what was paid", () => {
-    const [item] = itemsFor({ editions: [edition({ listingStatus: "authorised" })] });
+    const [item] = itemsFor({
+      editions: [edition({ listingStatus: "authorised" })],
+      orders: [order()],
+    });
     expect(item?.status).toBe("in_sale");
     expect(item?.paid.lines).toHaveLength(2);
     expect(item?.actions.map((a) => a.kind)).toEqual(["view"]);
@@ -281,7 +285,17 @@ describe("buildShopPortfolioItems: originals, pending orders and sales", () => {
   });
 
   it("lists an order awaiting payment with a pay action to the order", () => {
-    const [item] = itemsFor({ pendingOrderLines: [pendingLine({ shippingPence: 2_500 })] });
+    const [item] = itemsFor({
+      pendingOrderLines: [pendingLine()],
+      orders: [
+        order({
+          orderId: "ffffffff-ffff-4fff-8fff-ffffffffffff",
+          status: "pending_payment",
+          totalPence: 47_500,
+          shippingPence: 2_500,
+        }),
+      ],
+    });
     expect(item).toMatchObject({ status: "awaiting_payment", product: "shop" });
     expect(item?.paid.lines.map((l) => l.kind)).toEqual(["price", "shipping"]);
     expect(item?.actions[0]).toEqual({
@@ -418,5 +432,93 @@ describe("buildShopMoneyEntries", () => {
 
   it("is empty when there is nothing to report", () => {
     expect(entriesFor({})).toEqual([]);
+  });
+});
+
+describe("buildShopPortfolioItems: refunds and works no longer held", () => {
+  it("keeps every charge as made and shows a part refund as its own amount", () => {
+    const [item] = itemsFor({
+      editions: [edition({ purchase: purchase({ orderStatus: "partially_refunded" }) })],
+      orders: [order({ status: "partially_refunded" })],
+      refunds: [refund({ amountPence: 10_000 })],
+    });
+    expect(item?.paid).toEqual({
+      lines: [
+        { kind: "price", amount: 45_000, currency: "GBP" },
+        { kind: "shipping", amount: 2_500, currency: "GBP" },
+      ],
+      refunded: { amount: 10_000, currency: "GBP" },
+    });
+  });
+
+  it("does not count a failed or cancelled refund", () => {
+    const [item] = itemsFor({
+      editions: [edition()],
+      orders: [order()],
+      refunds: [
+        refund({ refundId: "a", status: "failed", amountPence: 5_000 }),
+        refund({ refundId: "b", status: "cancelled", amountPence: 5_000 }),
+      ],
+    });
+    expect(item?.paid.refunded).toBeUndefined();
+  });
+
+  it("carries the delivery charge on the first held work when the first line was released", () => {
+    const items = itemsFor({
+      editions: [edition({ purchase: purchase({ orderLineId: "held", unitPricePence: 20_000 }) })],
+      settledOrderLines: [settledLine({ unitPricePence: 30_000 })],
+      orders: [order({ totalPence: 52_500 })],
+      refunds: [
+        refund({ orderLineId: "22222222-2222-4222-8222-222222222222", amountPence: 30_000 }),
+      ],
+    });
+    expect(items).toHaveLength(1);
+    expect(items[0]?.paid.lines).toEqual([
+      { kind: "price", amount: 20_000, currency: "GBP" },
+      { kind: "shipping", amount: 2_500, currency: "GBP" },
+    ]);
+    expect(items[0]?.paid.refunded).toBeUndefined();
+  });
+
+  it("shows a work paid for and kept but no longer held as sold", () => {
+    const [item] = itemsFor({
+      settledOrderLines: [settledLine({ unitPricePence: 45_000 })],
+      orders: [order({ status: "partially_refunded" })],
+      refunds: [refund({ amountPence: 10_000 })],
+    });
+    expect(item).toMatchObject({
+      status: "sold",
+      title: "Released Work",
+      paid: { refunded: { amount: 10_000, currency: "GBP" } },
+    });
+  });
+
+  it("shows nothing for a released work whose payment was refunded in full", () => {
+    expect(
+      itemsFor({
+        settledOrderLines: [settledLine({ unitPricePence: 45_000 })],
+        orders: [order({ status: "refunded" })],
+        refunds: [refund({ amountPence: 47_500 })],
+      }),
+    ).toEqual([]);
+  });
+
+  it("puts charges no work line carries, such as framing, on the first work awaiting payment", () => {
+    const [item] = itemsFor({
+      pendingOrderLines: [pendingLine({ unitPricePence: 30_000 })],
+      orders: [
+        order({
+          orderId: "ffffffff-ffff-4fff-8fff-ffffffffffff",
+          status: "pending_payment",
+          totalPence: 38_000,
+          shippingPence: 2_500,
+        }),
+      ],
+    });
+    expect(item?.paid.lines).toEqual([
+      { kind: "price", amount: 35_500, currency: "GBP" },
+      { kind: "shipping", amount: 2_500, currency: "GBP" },
+    ]);
+    expect(item?.owed?.amount).toBe(38_000);
   });
 });

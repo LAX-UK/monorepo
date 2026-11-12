@@ -15,6 +15,7 @@ import {
 import {
   DrizzleLotReawardRepository,
   DrizzleLotReofferRepository,
+  DrizzleNeedsYouFactsReader,
   DrizzleReofferViewsReader,
   DrizzleReofferWorkflowReader,
   DrizzleSellerConsentRepository,
@@ -95,6 +96,7 @@ describe.skipIf(!HAS_DB)("re-offer API services (integration)", () => {
     pauseCalls: [] as { step: string; lotId: string }[],
     laxOwned: false,
     invoiced: [] as string[],
+    pricedFor: [] as { buyerLegalEntityId: string; hammerPence: number }[],
   };
   const moneyPause: IReofferMoneyPauseGuard = {
     async assertNotPaused(step, context) {
@@ -122,7 +124,14 @@ describe.skipIf(!HAS_DB)("re-offer API services (integration)", () => {
   const start = new ReofferStartService({
     ...base,
     atg,
-    proceeds: { proceedsPence: async (_s, hammer) => Math.round(hammer * 0.95) },
+    proceeds: {
+      // Settlement's shape: a 25% premium on the hammer, and a 5% fee on that total.
+      proceedsFor: async ({ buyerLegalEntityId, hammerPence }) => {
+        control.pricedFor.push({ buyerLegalEntityId, hammerPence });
+        const salePence = Math.round(hammerPence * 1.25);
+        return { salePence, proceedsPence: Math.round(salePence * 0.95) };
+      },
+    },
     ownership: { of: () => (control.laxOwned ? "lax_owned" : "seller") },
   });
   const consent = new ReofferConsentService({ ...base, consents });
@@ -347,6 +356,7 @@ describe.skipIf(!HAS_DB)("re-offer API services (integration)", () => {
     control.pauseCalls.length = 0;
     control.laxOwned = false;
     control.invoiced.length = 0;
+    control.pricedFor.length = 0;
   };
 
   describe("starting an offer", () => {
@@ -377,12 +387,18 @@ describe.skipIf(!HAS_DB)("re-offer API services (integration)", () => {
         termsSnapshot: {
           amountPence: 90_000,
           originalHammerPence: 100_000,
-          proceedsAtOfferPence: 85_500,
-          proceedsAtOriginalPence: 95_000,
+          saleAtOfferPence: 112_500,
+          proceedsAtOfferPence: 106_875,
+          proceedsAtOriginalPence: 118_750,
           // A reserve above the offer is carried as evidence; it never stops the request.
           reservePence: 95_000,
         },
       });
+      // Each figure is priced for the buyer who would pay it: the next bidder, and the original.
+      expect(control.pricedFor).toEqual([
+        { buyerLegalEntityId: entity.second, hammerPence: 90_000 },
+        { buyerLegalEntityId: entity.buyer, hammerPence: 100_000 },
+      ]);
       const started1 = events.find((e) => e.lotId === s.lotId && e.type === "lot.reoffer_started");
       expect(started1?.payload).toMatchObject({
         reofferId: started.reofferId,
@@ -1063,11 +1079,19 @@ describe.skipIf(!HAS_DB)("re-offer API services (integration)", () => {
         status: "awaiting_seller",
         consentStatus: "requested",
         offerMinor: 90_000,
-        originalHammerMinor: 100_000,
-        estimatedProceedsMinor: 85_500,
-        originalProceedsMinor: 95_000,
+        proceeds: {
+          offerSaleMinor: 112_500,
+          offerProceedsMinor: 106_875,
+          originalHammerMinor: 100_000,
+          originalProceedsMinor: 118_750,
+        },
         reserveMinor: 95_000,
         belowReserve: true,
+        lotTitle: `Reoffer lot ${s.lotId.slice(0, 4)}`,
+        lotEndedAt: "2026-10-10T10:00:00.000Z",
+        answeredAt: null,
+        answeredBy: null,
+        soldAt: null,
       });
       const text = JSON.stringify(view);
       for (const secret of [ids.second, ids.buyer, entity.second, entity.buyer, "Entity"]) {
@@ -1077,6 +1101,80 @@ describe.skipIf(!HAS_DB)("re-offer API services (integration)", () => {
         await reads.listForSeller({ ...member("seller"), legalEntityId: entity.otherSeller }),
       ).toEqual([]);
       expect(await codeOf(reads.listForSeller(member("seller", "buyer_agent")))).toBe("forbidden");
+    });
+
+    it("gives the seller's money only to the members who see its payouts", async () => {
+      reset();
+      const s = await defaultedLot();
+      const { reofferId } = await start.start(staff, s.lotId);
+      for (const role of ["owner", "admin", "finance"]) {
+        const view = await reads.getForSeller(member("seller", role), reofferId);
+        expect(view.proceeds?.offerProceedsMinor).toBe(106_875);
+      }
+      for (const role of ["viewer", "consignor"]) {
+        const view = await reads.getForSeller(member("seller", role), reofferId);
+        const listed = (await reads.listForSeller(member("seller", role))).find(
+          (v) => v.id === reofferId,
+        );
+        expect(view.proceeds).toBeNull();
+        expect(listed?.proceeds).toBeNull();
+        expect(view.offerMinor).toBe(90_000);
+        expect(JSON.stringify([view, listed])).not.toMatch(/106875|118750|112500/);
+      }
+    });
+
+    it("waits on the seller until answered, then says how the answer reached us", async () => {
+      reset();
+      const facts = new DrizzleNeedsYouFactsReader(db);
+      const s = await defaultedLot();
+      const { reofferId } = await start.start(staff, s.lotId);
+      const waiting = await facts.reofferRequests({
+        legalEntityId: entity.seller,
+        now: clock.now,
+        limit: 50,
+      });
+      expect(waiting.find((request) => request.id === reofferId)).toMatchObject({
+        title: `Reoffer lot ${s.lotId.slice(0, 4)}`,
+        offerMinor: 90_000,
+      });
+      expect(
+        await facts.reofferRequests({
+          legalEntityId: entity.otherSeller,
+          now: clock.now,
+          limit: 50,
+        }),
+      ).toEqual([]);
+      await consent.recordForSeller(staff, reofferId, { answer: "given", note: "Phoned" });
+      const view = (await reads.listForSeller(member("seller"))).find((v) => v.id === reofferId);
+      expect(view).toMatchObject({ answeredBy: "recorded_by_staff", consentStatus: "given" });
+      expect(view?.answeredAt).not.toBeNull();
+      const after = await facts.reofferRequests({
+        legalEntityId: entity.seller,
+        now: clock.now,
+        limit: 50,
+      });
+      expect(after.some((request) => request.id === reofferId)).toBe(false);
+    });
+
+    it("drops a request from Needs you once its deadline has passed, before the worker lapses it", async () => {
+      reset();
+      const facts = new DrizzleNeedsYouFactsReader(db);
+      const s = await defaultedLot();
+      const { reofferId, consentDueAt } = await start.start(staff, s.lotId);
+      if (!consentDueAt) throw new Error("expected a deadline");
+      const ids = async (now: Date) =>
+        (await facts.reofferRequests({ legalEntityId: entity.seller, now, limit: 50 })).map(
+          (request) => request.id,
+        );
+      expect(await ids(new Date(consentDueAt.getTime() - 60_000))).toContain(reofferId);
+      // Still `requested` and `awaiting_seller` in the store, but no longer answerable.
+      expect(await ids(consentDueAt)).not.toContain(reofferId);
+      expect(await ids(new Date(consentDueAt.getTime() + HOUR))).not.toContain(reofferId);
+      const [stored] = await db
+        .select({ status: sellerConsent.status })
+        .from(sellerConsent)
+        .where(eq(sellerConsent.subjectId, reofferId));
+      expect(stored?.status).toBe("requested");
     });
 
     it("shows the bidder nothing until the offer is sent, then the price lines and window, never the seller", async () => {

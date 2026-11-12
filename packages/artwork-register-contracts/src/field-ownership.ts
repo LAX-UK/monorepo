@@ -112,6 +112,13 @@ export type ZohoChange = {
   fields: Partial<RegisterFieldValues>;
 };
 
+/**
+ * What a conflict can be about: a LAX-owned field Zoho changed, or the Status LAX would have
+ * written over a value staff set in Zoho. The Status is Zoho's to hold, so it is never applied
+ * from Zoho or forced from LAX; staff see both sides.
+ */
+export type RegisterConflictField = LaxOwnedField | "catalogueStatus";
+
 export type FieldConflict = {
   field: LaxOwnedField;
   zohoValue: unknown;
@@ -179,10 +186,11 @@ export function reconcileZohoChange(
 /**
  * The LAX-owned fields where Zoho's value can be taken over. The stock code is a plain value LAX
  * can change; where an artwork is offered, and the identity facts behind it, are set in LAX only,
- * so the answer there is always to keep LAX's value and send it back to Zoho.
+ * so the answer there is always to keep LAX's value and send it back to Zoho. A Status conflict is
+ * never accepted: Zoho's Status already stands, and LAX does not force its own over it.
  */
 export const ZOHO_ACCEPTABLE_FIELDS = ["stockCode"] as const satisfies readonly LaxOwnedField[];
 
-export function canAcceptZohoValue(field: LaxOwnedField): boolean {
-  return (ZOHO_ACCEPTABLE_FIELDS as readonly LaxOwnedField[]).includes(field);
+export function canAcceptZohoValue(field: RegisterConflictField): boolean {
+  return (ZOHO_ACCEPTABLE_FIELDS as readonly RegisterConflictField[]).includes(field);
 }
