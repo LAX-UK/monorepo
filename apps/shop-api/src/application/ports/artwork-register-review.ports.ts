@@ -1,7 +1,7 @@
 import type {
   ArtworkRegisterEntry,
   CatalogueGap,
-  FieldConflict,
+  RegisterConflictField,
 } from "@auction/artwork-register-contracts";
 import type { AdminRegisterPlace } from "@auction/shop-contracts";
 
@@ -13,7 +13,7 @@ import type { AdminRegisterPlace } from "@auction/shop-contracts";
 export type RegisterConflictRecord = {
   id: string;
   registerId: string;
-  field: FieldConflict["field"];
+  field: RegisterConflictField;
   zohoValue: unknown;
   laxValue: unknown;
   status: "open" | "resolved";

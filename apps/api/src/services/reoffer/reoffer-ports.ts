@@ -39,9 +39,17 @@ export interface IReofferAtgGuard {
   soldOnAtg(lotId: string): Promise<boolean>;
 }
 
-/** What the seller would receive, so the seller is asked about money they can read. */
+/**
+ * What the seller would receive if the lot sold to a buyer at a hammer, worked out the way
+ * settlement pays it (see `sellerNetForSale`), so the seller is asked about money they will see.
+ */
 export interface IReofferSellerProceeds {
-  proceedsPence(sellerLegalEntityId: string, hammerPence: number): Promise<number>;
+  proceedsFor(input: {
+    lotId: string;
+    sellerLegalEntityId: string;
+    buyerLegalEntityId: string;
+    hammerPence: number;
+  }): Promise<{ salePence: number; proceedsPence: number }>;
 }
 
 export interface IReofferLotOwnership {

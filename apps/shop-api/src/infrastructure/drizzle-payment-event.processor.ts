@@ -20,6 +20,7 @@ import {
   parseFramingOrderSnapshot,
 } from "@auction/shop-domain";
 import { and, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
+import type { CheckoutMoneyPause } from "../application/artwork-register/checkout-money-pause.js";
 import { describeReceiptEdition } from "../application/order-line-edition.js";
 import { printThenFrame } from "../application/order-line-order.js";
 import type { BasketOwner, PaymentCheckoutGateway } from "../application/ports/commerce.ports.js";
@@ -76,6 +77,12 @@ export type CheckoutTransitionOptions = {
    * money cannot be recorded, so the webhook fails and Stripe sends it again: it is never dropped.
    */
   unappliedMoney?: UnappliedMoneyLookup;
+  /**
+   * The money pause. A payment that completes for an order holding an artwork Zoho says is Sold or
+   * Reserved (an open "Needs attention" item) is not fulfilled: it is recorded for finance, the
+   * order closed. Without it no payment is held back, as before.
+   */
+  moneyPause?: CheckoutMoneyPause;
 };
 
 /**
@@ -279,6 +286,25 @@ async function settleOrderPastCeiling(
     options,
   );
   return "expired";
+}
+
+/** Whether any lax.art artwork on the order is one Zoho says is Sold or Reserved, with staff yet to decide. */
+export async function orderHoldsPausedArtwork(
+  db: Database,
+  orderId: string,
+  guard: CheckoutMoneyPause,
+): Promise<boolean> {
+  const rows = await db
+    .selectDistinct({ zohoProductId: shopArtwork.zohoProductId })
+    .from(shopOrderLine)
+    .innerJoin(shopArtwork, eq(shopArtwork.id, shopOrderLine.artworkId))
+    .where(and(eq(shopOrderLine.orderId, orderId), isNotNull(shopArtwork.zohoProductId)));
+  for (const row of rows) {
+    if (row.zohoProductId && (await guard.pause.isPaused({ zohoProductId: row.zohoProductId }))) {
+      return true;
+    }
+  }
+  return false;
 }
 
 /** Closes an order Stripe shows paid but that could not be confirmed, with a finance task. */
@@ -723,7 +749,14 @@ async function recordUnappliedPayment(
     // A print that was no longer held is found only by applying the payment: keep that finding.
     // Any other failure that no longer holds means the order changed under us: apply it again.
     if (verdict.kind === "apply" && attempted !== "edition_state_invalid") {
-      throw new ShopPaymentWebhookError("payment_state_changed", { retryable: true });
+      // A pause staff cleared since the attempt means the payment can now be applied: try it again.
+      const stillPaused =
+        attempted === "paid_while_money_paused" &&
+        options.moneyPause !== undefined &&
+        (await orderHoldsPausedArtwork(database, order.id, options.moneyPause));
+      if (!stillPaused) {
+        throw new ShopPaymentWebhookError("payment_state_changed", { retryable: true });
+      }
     }
     const failure = verdict.kind === "unapplied" ? verdict.failure : attempted;
     const orderClosed = closesOrder(failure) && order.status === "pending_payment";
@@ -822,6 +855,13 @@ async function applyShopPayment(
     if (verdict.kind === "already_applied") return "processed";
     if (verdict.kind === "unapplied") {
       throw new ShopPaymentWebhookError(verdict.failure, { retryable: false });
+    }
+    // Backstop for a payment page opened before the artwork was paused: never fulfil it silently.
+    if (
+      options.moneyPause &&
+      (await orderHoldsPausedArtwork(tx as Database, order.id, options.moneyPause))
+    ) {
+      throw new ShopPaymentWebhookError("paid_while_money_paused", { retryable: false });
     }
 
     const buyerPartyId = await findOrCreateBuyerParty(

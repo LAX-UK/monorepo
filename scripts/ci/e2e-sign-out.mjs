@@ -48,10 +48,14 @@ async function readBody(response) {
 
 /**
  * Signs out the browser context through the product's sign-out route, then follows the redirect
- * to the sign-in service so its session ends too.
+ * to the sign-in service so its session ends too. A check that is about signing out passes
+ * `force`, so it signs out in CI as well.
  */
-export async function signOutContext(context, { origin, logoutPath = DEFAULT_LOGOUT_PATH }) {
-  if (!signOutEnabled()) return;
+export async function signOutContext(
+  context,
+  { origin, logoutPath = DEFAULT_LOGOUT_PATH, force = false },
+) {
+  if (!force && !signOutEnabled()) return;
   const publicOrigin = new URL(origin).origin;
   const response = await context.request.post(new URL(logoutPath, publicOrigin).toString(), {
     headers: { origin: publicOrigin, accept: "application/json" },

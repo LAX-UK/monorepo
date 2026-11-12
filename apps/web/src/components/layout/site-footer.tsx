@@ -1,18 +1,15 @@
-"use client";
-
+import { FooterAccountList } from "@/components/layout/footer-account-list";
+import { FooterLink } from "@/components/layout/footer-link";
 import {
-  BID_COOKIE_PREFERENCES_HREF,
+  BID_FOOTER_ACCOUNT_COLUMN_ID,
   buildBidFooterColumns,
 } from "@/components/layout/footer-link-groups";
-import { FooterNavLink } from "@/components/layout/footer-nav-link";
 import { FooterSocials } from "@/components/layout/footer-socials";
 import { LaxLogo } from "@/components/layout/lax-logo";
-import { CookiePreferencesLink } from "@/components/marketing/consent/cookie-preferences-link";
-import { useAppSession } from "@/lib/auth/use-app-session";
 import { productCopyrightLine } from "@/lib/brand";
 import { FOCUS_RING } from "@/lib/marketing/chrome";
 import type { LaxProductLinkVm } from "@auction/lax-ecosystem";
-import { MarketingFooter, type MarketingFooterLink } from "@auction/marketing-ui/marketing-footer";
+import { MarketingFooter } from "@auction/marketing-ui/marketing-footer";
 import { cn } from "@auction/ui/lib/utils";
 import Link from "next/link";
 
@@ -21,27 +18,17 @@ type SiteFooterProps = {
   crossProductLinks?: LaxProductLinkVm[];
 };
 
-const LINK_CLASS = cn(
-  "rounded-sm font-footer-links text-base font-medium leading-6 text-on-surface/90 transition-colors hover:text-link",
-  FOCUS_RING,
-);
-
-function renderLink(link: MarketingFooterLink) {
-  if (link.href === BID_COOKIE_PREFERENCES_HREF) {
-    return <CookiePreferencesLink className="min-h-0 text-base font-medium leading-6" />;
-  }
-  if (link.href.startsWith("http://") || link.href.startsWith("https://")) {
-    return (
-      <a href={link.href} className={LINK_CLASS} rel="noopener noreferrer">
-        {link.label}
-      </a>
-    );
-  }
-  return <FooterNavLink href={link.href} label={link.label} className={LINK_CLASS} />;
-}
-
+/**
+ * The Bid footer, drawn on the server so none of it is in the page's scripts. The pieces that
+ * need the browser are small islands: the Account list (it follows the session), the link that
+ * marks the current page, the cookie settings button and the phone sections that fold away.
+ */
 export function SiteFooter({ crossProductLinks = [] }: SiteFooterProps = {}) {
-  const { user } = useAppSession();
+  const columns = buildBidFooterColumns(crossProductLinks).map((column) =>
+    column.id === BID_FOOTER_ACCOUNT_COLUMN_ID
+      ? { ...column, list: <FooterAccountList /> }
+      : column,
+  );
   return (
     <MarketingFooter
       headingId="bid-footer-heading"
@@ -50,10 +37,10 @@ export function SiteFooter({ crossProductLinks = [] }: SiteFooterProps = {}) {
           <LaxLogo variant="footer" />
         </Link>
       }
-      columns={buildBidFooterColumns(crossProductLinks, user)}
+      columns={columns}
       socials={<FooterSocials />}
       copyright={productCopyrightLine("bid")}
-      renderLink={renderLink}
+      renderLink={(link) => <FooterLink link={link} />}
     />
   );
 }

@@ -14,7 +14,7 @@ import {
   shopThirdPartySale,
 } from "@auction/db/schema";
 import { readEditionSnapshot } from "@auction/shop-domain";
-import { and, desc, eq, gt, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
+import { and, desc, eq, gt, inArray, isNull, or, sql } from "drizzle-orm";
 import type {
   PortalPortfolioFacts,
   PortalPortfolioReader,
@@ -22,6 +22,7 @@ import type {
   PortfolioOriginalFact,
   PortfolioPendingOrderLineFact,
   PortfolioSaleFact,
+  PortfolioSettledLineFact,
   PortfolioWork,
 } from "../application/ports/portal-portfolio.reader.js";
 import { PORTAL_ME_LIST_LIMIT } from "../domain/portal-me-list-limit.js";
@@ -30,13 +31,8 @@ import { resolvePortalPartyIds } from "./portal-party-ids.js";
 
 const ORIGINAL_SALE_STATUSES = ["deposit_due", "invoiced", "paid", "assigned"] as const;
 
-/** True for the first goods line of an order (a frame is never one), which carries the order's delivery charge. */
-const isFirstLineOfOrder = sql<boolean>`${shopOrderLine.id} = (
-  SELECT first_line.id FROM shop_order_line first_line
-  WHERE first_line.order_id = ${shopOrderLine.orderId} AND first_line.kind = 'goods'
-  ORDER BY first_line.created_at, first_line.id
-  LIMIT 1
-)`;
+/** Order states in which the buyer has paid, fully or in part, or was paid back in full. */
+const SETTLED_ORDER_STATUSES = ["paid", "partially_refunded", "refunded"] as const;
 
 async function loadWorks(
   db: Database,
@@ -76,12 +72,11 @@ export function createDrizzlePortalPortfolioRepository(db: Database): PortalPort
           hasCertificate: shopArtwork.hasCertificate,
           certificateIssuedAt: shopCertificate.issuedAt,
           orderId: shopOrder.id,
+          orderLineId: shopOrderLine.id,
           orderStatus: shopOrder.status,
           orderChannel: shopOrder.salesChannel,
           paidAt: shopOrder.paidAt,
           unitPricePence: shopOrderLine.unitPricePence,
-          shippingPence: shopOrder.fulfilmentSurchargePence,
-          isFirstLine: isFirstLineOfOrder,
           fulfilmentStatus: shopFulfilment.status,
         })
         .from(shopEdition)
@@ -125,6 +120,11 @@ export function createDrizzlePortalPortfolioRepository(db: Database): PortalPort
       .limit(PORTAL_ME_LIST_LIMIT);
   }
 
+  /**
+   * Every work line of the person's live checkouts, released or without an edition included: the
+   * order is owed whole, so no line may drop out of it. Lines with no artwork cannot be shown and
+   * are dropped later; what they were charged is carried by the order's first shown line.
+   */
   async function listPendingOrderLines(subject: string) {
     return db
       .select({
@@ -134,8 +134,6 @@ export function createDrizzlePortalPortfolioRepository(db: Database): PortalPort
         artworkId: shopOrderLine.artworkId,
         editionNumber: shopOrderLine.editionNumber,
         unitPricePence: shopOrderLine.unitPricePence,
-        shippingPence: shopOrder.fulfilmentSurchargePence,
-        isFirstLine: isFirstLineOfOrder,
         createdAt: shopOrderLine.createdAt,
       })
       .from(shopOrder)
@@ -145,11 +143,34 @@ export function createDrizzlePortalPortfolioRepository(db: Database): PortalPort
           eq(shopOrder.identitySubjectId, subject),
           eq(shopOrder.status, "pending_payment"),
           or(isNull(shopOrder.checkoutExpiresAt), gt(shopOrder.checkoutExpiresAt, new Date())),
-          isNotNull(shopOrderLine.editionId),
-          isNull(shopOrderLine.releasedAt),
+          eq(shopOrderLine.kind, "goods"),
         ),
       )
-      .orderBy(desc(shopOrder.createdAt))
+      .orderBy(desc(shopOrder.createdAt), shopOrderLine.createdAt, shopOrderLine.id)
+      .limit(PORTAL_ME_LIST_LIMIT);
+  }
+
+  /** Work lines of the person's paid orders; those still held as editions are removed by the caller. */
+  async function listSettledOrderLines(subject: string) {
+    return db
+      .select({
+        orderLineId: shopOrderLine.id,
+        orderId: shopOrderLine.orderId,
+        channel: shopOrder.salesChannel,
+        artworkId: shopOrderLine.artworkId,
+        unitPricePence: shopOrderLine.unitPricePence,
+        createdAt: shopOrderLine.createdAt,
+      })
+      .from(shopOrder)
+      .innerJoin(shopOrderLine, eq(shopOrderLine.orderId, shopOrder.id))
+      .where(
+        and(
+          eq(shopOrder.identitySubjectId, subject),
+          inArray(shopOrder.status, [...SETTLED_ORDER_STATUSES]),
+          eq(shopOrderLine.kind, "goods"),
+        ),
+      )
+      .orderBy(desc(shopOrder.createdAt), shopOrderLine.createdAt, shopOrderLine.id)
       .limit(PORTAL_ME_LIST_LIMIT);
   }
 
@@ -185,6 +206,7 @@ export function createDrizzlePortalPortfolioRepository(db: Database): PortalPort
         channel: shopOrder.salesChannel,
         status: shopOrder.status,
         totalPence: shopOrder.totalPence,
+        shippingPence: shopOrder.fulfilmentSurchargePence,
         paidAt: shopOrder.paidAt,
         createdAt: shopOrder.createdAt,
         checkoutExpiresAt: shopOrder.checkoutExpiresAt,
@@ -200,6 +222,7 @@ export function createDrizzlePortalPortfolioRepository(db: Database): PortalPort
       .select({
         refundId: shopRefund.id,
         orderId: shopRefund.orderId,
+        orderLineId: shopRefund.orderLineId,
         channel: shopOrder.salesChannel,
         amountPence: shopRefund.amountPence,
         status: shopRefund.status,
@@ -216,21 +239,22 @@ export function createDrizzlePortalPortfolioRepository(db: Database): PortalPort
     async loadFacts(identitySubjectId, options): Promise<PortalPortfolioFacts> {
       const partyIds = await resolvePortalPartyIds(db, identitySubjectId);
       // Orders and refunds belong to the signed-in subject even if they have no party yet.
-      const [editionRows, originalRows, pendingRows, saleRows, orders, refunds] = await Promise.all(
-        [
+      const [editionRows, originalRows, pendingRows, settledRows, saleRows, orders, refunds] =
+        await Promise.all([
           partyIds.length > 0 ? listEditions(partyIds, identitySubjectId) : [],
           partyIds.length > 0 ? listOriginals(partyIds) : [],
           listPendingOrderLines(identitySubjectId),
+          listSettledOrderLines(identitySubjectId),
           partyIds.length > 0 && options.includeSales ? listSales(partyIds) : [],
           listOrders(identitySubjectId),
           listRefunds(identitySubjectId),
-        ],
-      );
+        ]);
 
       const works = await loadWorks(db, [
         ...editionRows.map((row) => row.artworkId),
         ...originalRows.map((row) => row.artworkId),
         ...pendingRows.flatMap((row) => (row.artworkId ? [row.artworkId] : [])),
+        ...settledRows.flatMap((row) => (row.artworkId ? [row.artworkId] : [])),
         ...saleRows.flatMap((row) => (row.artworkId ? [row.artworkId] : [])),
       ]);
 
@@ -260,14 +284,14 @@ export function createDrizzlePortalPortfolioRepository(db: Database): PortalPort
             listingStatus: row.listingStatus,
             createdAt: row.createdAt,
             purchase:
-              row.orderId && row.orderStatus && row.unitPricePence !== null
+              row.orderId && row.orderLineId && row.orderStatus && row.unitPricePence !== null
                 ? {
                     orderId: row.orderId,
+                    orderLineId: row.orderLineId,
                     orderStatus: row.orderStatus,
                     channel: row.orderChannel ?? work.channel,
                     paidAt: row.paidAt,
                     unitPricePence: row.unitPricePence,
-                    shippingPence: row.isFirstLine ? (row.shippingPence ?? 0) : 0,
                     fulfilmentStatus: row.fulfilmentStatus,
                   }
                 : null,
@@ -307,7 +331,25 @@ export function createDrizzlePortalPortfolioRepository(db: Database): PortalPort
                 work,
                 editionNumber: row.editionNumber,
                 unitPricePence: row.unitPricePence,
-                shippingPence: row.isFirstLine ? row.shippingPence : 0,
+                createdAt: row.createdAt,
+              },
+            ]
+          : [];
+      });
+
+      const heldLineIds = new Set(
+        editions.flatMap((e) => (e.purchase ? [e.purchase.orderLineId] : [])),
+      );
+      const settledOrderLines = settledRows.flatMap((row): PortfolioSettledLineFact[] => {
+        const work = row.artworkId ? works.get(row.artworkId) : undefined;
+        return work && !heldLineIds.has(row.orderLineId)
+          ? [
+              {
+                orderLineId: row.orderLineId,
+                orderId: row.orderId,
+                channel: row.channel,
+                work,
+                unitPricePence: row.unitPricePence,
                 createdAt: row.createdAt,
               },
             ]
@@ -328,7 +370,7 @@ export function createDrizzlePortalPortfolioRepository(db: Database): PortalPort
         }),
       );
 
-      return { editions, originals, pendingOrderLines, sales, orders, refunds };
+      return { editions, originals, pendingOrderLines, settledOrderLines, sales, orders, refunds };
     },
   };
 }

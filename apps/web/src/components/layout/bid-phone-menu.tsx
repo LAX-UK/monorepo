@@ -9,7 +9,7 @@ import type { LaxFamilyLinkVm } from "@auction/lax-ecosystem";
 import { MarketingPhoneMenu } from "@auction/marketing-ui/header/marketing-phone-menu";
 import type { RefObject } from "react";
 
-type BidPhoneMenuProps = {
+export type BidPhoneMenuProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   pathname: string;

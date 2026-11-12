@@ -1258,6 +1258,7 @@ export type {
 
 export type {
   ApplyZohoChangeResult,
+  CatalogueStatusLedger,
   ConflictCursor,
   CreateRegisterEntryResult,
   AuctionOfferDraftLot,
@@ -1290,6 +1291,16 @@ export type {
   ResolveConflictResult,
 } from "./artwork-register.js";
 
+export type {
+  ISoldAttentionStore,
+  OverrideSoldAttentionResult,
+  RaiseSoldAttentionInput,
+  ResolveSoldAttentionInput,
+  SoldAttentionItem,
+  SoldAttentionLiveCursor,
+  SoldAttentionLiveRef,
+  SoldAttentionRecord,
+} from "./artwork-register-sold-attention.js";
 export type {
   DealArtworkSearchInput,
   IDealArtworkSearchReader,
@@ -1350,9 +1361,11 @@ export type {
   IZohoListingRunStore,
   IZohoListingSaleStartMark,
   IZohoListingSourceReader,
+  IZohoStatusSourceReader,
   ListingLot,
   ListingMove,
   RegisterListingSource,
+  RegisterStatusSource,
   ZohoListingRun,
   ZohoListingRunFailure,
   ZohoListingRunMode,

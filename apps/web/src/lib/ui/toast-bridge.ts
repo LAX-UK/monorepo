@@ -36,7 +36,7 @@ function load(): void {
   });
 }
 
-/** Fetches the toast library ahead of the first toast (see `preloadToastWhenIdle`). */
+/** Fetches the toast library ahead of the first toast (see `preloadWhenIdle`). */
 export function preloadToastLibrary(): void {
   load();
 }

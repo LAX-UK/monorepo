@@ -1,9 +1,5 @@
 import type { Database } from "@auction/db";
-import {
-  PlatformFeePolicy,
-  gbpAmountToPence,
-  gbpPenceToMajorString,
-} from "@auction/finance-runtime";
+import { PlatformFeePolicy, gbpPenceToMajorString } from "@auction/finance-runtime";
 import {
   DrizzleArtworkRegisterRepository,
   DrizzleLotReawardRepository,
@@ -23,12 +19,12 @@ import {
   type IReofferLotOwnership,
   type IReofferMoneyPauseGuard,
   type IReofferPricing,
-  type IReofferSellerProceeds,
   allowAllMoneyPauseGuard,
 } from "../services/reoffer/reoffer-ports.js";
 import { ReofferPreviewService } from "../services/reoffer/reoffer-preview.service.js";
 import { ReofferReadsService } from "../services/reoffer/reoffer-reads.service.js";
 import { ReofferResponseService } from "../services/reoffer/reoffer-response.service.js";
+import { settlementSellerProceeds } from "../services/reoffer/reoffer-seller-proceeds.js";
 import { ReofferStartService } from "../services/reoffer/reoffer-start.service.js";
 import type { ContainerPaymentsServices } from "./create-payments-services.js";
 import type { ContainerPlatformServices } from "./create-platform-services.js";
@@ -83,12 +79,6 @@ export function createReofferServices(input: {
     recorder: platform.lotLifecycleRecording,
   };
 
-  const proceeds: IReofferSellerProceeds = {
-    async proceedsPence(sellerLegalEntityId, hammerPence) {
-      const fee = await feePolicy.computePlatformFeeFromPence(sellerLegalEntityId, hammerPence);
-      return Math.max(0, hammerPence - gbpAmountToPence(fee));
-    },
-  };
   // The same pricing the invoice uses, so the total the bidder is shown is the total they are billed.
   const pricing: IReofferPricing = {
     async priceFor({ lotId, buyerLegalEntityId, hammerPence }) {
@@ -102,6 +92,7 @@ export function createReofferServices(input: {
       return { lines: priced.lines, totalPence: priced.totalPence };
     },
   };
+  const proceeds = settlementSellerProceeds({ pricing, feePolicy });
   const invoicing: IReofferInvoicing = {
     async raiseFor(lotId) {
       await payments.lotInvoiceInitiationService.ensureForLot(lotId);

@@ -1,5 +1,5 @@
 import type { Database } from "@auction/db";
-import { shopBasket, shopDeliveryQuote, shopOrder } from "@auction/db/schema";
+import { shopBasket, shopDeliveryQuote, shopOrder, shopOrderLine } from "@auction/db/schema";
 import { SHOP_API_ERROR_CODES } from "@auction/shop-contracts";
 import {
   type VatPolicy,
@@ -18,6 +18,10 @@ import {
   vatIncludedIn,
 } from "@auction/shop-domain";
 import { eq } from "drizzle-orm";
+import {
+  type CheckoutMoneyPause,
+  assertCheckoutNotPaused,
+} from "../application/artwork-register/checkout-money-pause.js";
 import type {
   BasketOwner,
   CheckoutOrderInput,
@@ -77,12 +81,32 @@ export function createDrizzleCheckoutRepository(
      * applies to exports: with it off, no outside-UK order opens a payment, however it was made.
      */
     exportPaymentEnabled?: boolean;
+    /** Refuses a basket holding an artwork Zoho says is sold while it is still for sale. */
+    moneyPause?: CheckoutMoneyPause;
   },
 ): CheckoutWriter {
   const merchandiseEnabled = options.merchandiseEnabled ?? false;
   const framingEnabled = options.framingEnabled ?? false;
   const exportPaymentEnabled = options.exportPaymentEnabled ?? false;
   const domainEvents = createShopDomainEventPublisher(options.domainEventMode);
+
+  /**
+   * Refuses to open or return a payment session for an order holding an artwork whose money is
+   * paused. Every path that can take payment for an existing order runs through this: a retry of
+   * the same checkout, resuming a pending order, and (through resume) accepting a delivery quote
+   * and the guest links.
+   */
+  async function assertOrderNotPaused(orderId: string): Promise<void> {
+    if (!options.moneyPause) return;
+    const lines = await db
+      .select({ artworkId: shopOrderLine.artworkId })
+      .from(shopOrderLine)
+      .where(eq(shopOrderLine.orderId, orderId));
+    await assertCheckoutNotPaused(
+      options.moneyPause,
+      lines.flatMap((line) => (line.artworkId ? [line.artworkId] : [])),
+    );
+  }
 
   /** The payment session for a pending order: the open one, or a new one when it needs one. */
   async function openPaymentSession(
@@ -205,6 +229,7 @@ export function createDrizzleCheckoutRepository(
         .where(eq(shopOrder.idempotencyKey, input.idempotencyKey))
         .limit(1);
       if (earlier) {
+        await assertOrderNotPaused(earlier.id);
         return openPaymentSession(input, await replay(earlier));
       }
 
@@ -217,6 +242,12 @@ export function createDrizzleCheckoutRepository(
         { basketId: input.basketId, ownedBy: (owner) => ownsBasket(owner, input) },
         { merchandiseEnabled, framingEnabled },
       );
+      if (options.moneyPause) {
+        await assertCheckoutNotPaused(
+          options.moneyPause,
+          basketLines.flatMap((line) => (line.artworkId ? [line.artworkId] : [])),
+        );
+      }
 
       const fulfilmentSurcharge = pence(
         outsideUk ? outsideUk.pricePence : fulfilmentSurchargePence(input.fulfilment),
@@ -320,6 +351,7 @@ export function createDrizzleCheckoutRepository(
           if (!existing) {
             throw new ShopApiError(SHOP_API_ERROR_CODES.INTERNAL, "Checkout idempotency race", 500);
           }
+          await assertOrderNotPaused(existing.id);
           pending = await replay(existing);
         } else {
           throw error;
@@ -350,6 +382,7 @@ export function createDrizzleCheckoutRepository(
           409,
         );
       }
+      await assertOrderNotPaused(order.id);
       // A pending order always has a hold; one without it, or past it, can no longer be paid.
       const holdEndsAt = order.checkoutExpiresAt;
       if (!holdEndsAt || holdEndsAt < new Date()) {

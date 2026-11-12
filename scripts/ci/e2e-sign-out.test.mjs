@@ -88,6 +88,21 @@ describe("sign out through the product", () => {
     assert.deepEqual(calls.visited, ["http://localhost:3003/api/auth/oauth2/endsession?x=1"]);
   });
 
+  it("signs out in CI when the check is about signing out", async () => {
+    const previous = process.env.E2E_SIGN_OUT;
+    process.env.E2E_SIGN_OUT = "0";
+    try {
+      const idle = fakeContext(answer(200, {}, {}));
+      await signOutContext(idle.context, { origin });
+      assert.equal(idle.calls.posts.length, 0);
+      const forced = fakeContext(answer(200, {}, {}));
+      await signOutContext(forced.context, { origin, force: true });
+      assert.equal(forced.calls.posts.length, 1);
+    } finally {
+      process.env.E2E_SIGN_OUT = previous;
+    }
+  });
+
   it("refuses to carry on when the product rejects the request", async () => {
     const { context } = fakeContext(answer(403, {}, { error: "invalid_origin" }));
     await assert.rejects(signOutContext(context, { origin }), /answered 403/);

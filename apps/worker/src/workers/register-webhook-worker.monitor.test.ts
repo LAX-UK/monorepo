@@ -5,6 +5,7 @@ const captured = vi.hoisted(() => ({ processor: null as Processor | null }));
 vi.mock("bullmq", () => ({
   Queue: class {
     add = vi.fn(async () => ({}));
+    removeRepeatable = vi.fn(async () => true);
     close = vi.fn(async () => {});
   },
   Worker: class {
