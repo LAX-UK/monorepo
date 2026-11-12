@@ -22,6 +22,7 @@ type SalePick =
 type Ctx = {
   lot: Pick<Lot, "status" | "startTime" | "endTime" | "winnerId" | "currentPrice" | "id"> & {
     hasWinner?: boolean | undefined;
+    resultPending?: boolean | undefined;
   };
   sale: SalePick;
   extendedByMs: number | null;

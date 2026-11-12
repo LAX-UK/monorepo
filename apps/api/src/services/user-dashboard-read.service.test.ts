@@ -119,3 +119,144 @@ describe("UserDashboardReadService", () => {
     });
   });
 });
+
+describe("UserDashboardReadService lots that are not the reader's", () => {
+  // The lot defaulted and was re-awarded to the next bidder, who has not paid yet. The row holds
+  // the new buyer and the offer price; the public result is still open.
+  const reawarded = {
+    id: "lot-pending",
+    saleId: null,
+    images: [],
+    status: "ended",
+    startingPrice: "100.00",
+    currentPrice: "900.00",
+    winnerId: "next-bidder",
+    buyerLegalEntityId: "next-account",
+  } as unknown as Lot;
+  // Before the re-award: no buyer, but the price is still the hammer of the winner who did not pay.
+  const beforeReaward = {
+    ...reawarded,
+    id: "lot-defaulted",
+    currentPrice: "1000.00",
+    winnerId: null,
+    buyerLegalEntityId: null,
+  } as Lot;
+  // An ordinary sold lot, bought by someone else.
+  const sold = {
+    ...reawarded,
+    id: "lot-sold",
+    currentPrice: "500.00",
+    winnerId: "someone",
+    buyerLegalEntityId: "someone-account",
+  } as Lot;
+  const pendingAmong = () =>
+    vi.fn(async (ids: string[]) => new Set(ids.filter((id) => id !== "lot-sold")));
+  const service = (
+    reader: { pendingAmong: ReturnType<typeof pendingAmong> },
+    rows: { bids?: unknown[]; watchlist?: unknown[] },
+  ) =>
+    new UserDashboardReadService(
+      {
+        listBidsWithLotsForBidder: vi.fn().mockResolvedValue(rows.bids ?? []),
+        listBidsWithLotsForBuyerAccount: vi.fn().mockResolvedValue(rows.bids ?? []),
+      } as unknown as DashboardQueryService,
+      {
+        listWithLots: vi.fn().mockResolvedValue(rows.watchlist ?? []),
+      } as unknown as WatchlistService,
+      undefined,
+      { findByIds: vi.fn().mockResolvedValue([]) },
+      undefined,
+      undefined,
+      reader as never,
+    );
+  const watched = (lot: Lot) => ({ watchlistId: `w-${lot.id}`, lotId: lot.id, lot });
+  const bidOn = (lot: Lot, buyerLegalEntityId?: string) => ({
+    bid: {
+      id: `b-${lot.id}`,
+      lotId: lot.id,
+      ...(buyerLegalEntityId ? { buyerLegalEntityId } : {}),
+    },
+    lot,
+  });
+
+  it("GET /users/me/watchlist: shows a watcher an open result as ended, with no buyer, price or pricing", async () => {
+    const reader = { pendingAmong: pendingAmong() };
+    const rows = await service(reader, {
+      watchlist: [watched(reawarded), watched(beforeReaward), watched(sold)],
+    }).listWatchlistForUser("watcher");
+
+    for (const row of rows.slice(0, 2)) {
+      expect(row.lot).toMatchObject({
+        currentPrice: "100.00",
+        winnerId: null,
+        buyerLegalEntityId: null,
+        hasWinner: false,
+        resultPending: true,
+      });
+      expect(row.lot?.checkoutPricing).toBeUndefined();
+    }
+    // A final result keeps its price, but never says who bought it.
+    expect(rows[2]?.lot).toMatchObject({
+      currentPrice: "500.00",
+      winnerId: null,
+      buyerLegalEntityId: null,
+      hasWinner: true,
+    });
+    expect(rows[2]?.lot?.resultPending).toBeUndefined();
+  });
+
+  it("GET /users/me/watchlist: shows the new buyer their own lot and price", async () => {
+    const reader = { pendingAmong: pendingAmong() };
+    const rows = await service(reader, { watchlist: [watched(reawarded)] }).listWatchlistForUser(
+      "next-bidder",
+    );
+    expect(rows[0]?.lot).toMatchObject({
+      currentPrice: "900.00",
+      winnerId: "next-bidder",
+      buyerLegalEntityId: "next-account",
+    });
+    expect(rows[0]?.lot?.resultPending).toBeUndefined();
+    expect(reader.pendingAmong).not.toHaveBeenCalled();
+  });
+
+  it("GET /users/me/bids: shows a losing bidder an open result as ended, before and after the re-award", async () => {
+    const reader = { pendingAmong: pendingAmong() };
+    const rows = await service(reader, {
+      bids: [bidOn(reawarded, "loser-account"), bidOn(beforeReaward, "loser-account")],
+    }).listBidsForUser("loser");
+    expect(reader.pendingAmong).toHaveBeenCalledWith(["lot-pending", "lot-defaulted"]);
+    for (const row of rows) {
+      expect(row.lot).toMatchObject({
+        currentPrice: "100.00",
+        winnerId: null,
+        buyerLegalEntityId: null,
+        resultPending: true,
+      });
+    }
+  });
+
+  it("GET /users/me/bids: shows a lot won through an account the bidder bid for as theirs", async () => {
+    const reader = { pendingAmong: pendingAmong() };
+    const rows = await service(reader, {
+      bids: [bidOn(reawarded, "next-account")],
+    }).listBidsForUser("colleague");
+    expect(rows[0]?.lot).toMatchObject({
+      currentPrice: "900.00",
+      buyerLegalEntityId: "next-account",
+    });
+    expect(rows[0]?.lot?.resultPending).toBeUndefined();
+  });
+
+  it("GET /users/me/account/bids: shows the buying account its own lot, and others' lots without ids", async () => {
+    const reader = { pendingAmong: pendingAmong() };
+    const rows = await service(reader, {
+      bids: [bidOn(reawarded, "next-account"), bidOn(sold, "next-account")],
+    }).listBidsForBuyerAccount("next-account", null);
+    expect(rows[0]?.lot).toMatchObject({ currentPrice: "900.00", winnerId: "next-bidder" });
+    expect(rows[1]?.lot).toMatchObject({
+      winnerId: null,
+      buyerLegalEntityId: null,
+      hasWinner: true,
+    });
+  });
+});

@@ -237,3 +237,66 @@ describe("SaleListReadService title search", () => {
     expect(saleRepo.list).toHaveBeenCalledWith(expect.objectContaining({ statuses: [] }));
   });
 });
+
+describe("SaleListReadService preview lots with an open result", () => {
+  // Lot 1 defaulted and was re-awarded to the next bidder, who has not paid yet: the row holds the
+  // new buyer and the offer price, but the result is still open.
+  const pending = {
+    ...lotRow("l-pending", "s-ended"),
+    status: "ended",
+    startingPrice: "100.00",
+    currentPrice: "900.00",
+    winnerId: "next-bidder",
+    buyerLegalEntityId: "next-account",
+  } as Lot;
+  const sold = {
+    ...lotRow("l-sold", "s-ended"),
+    status: "ended",
+    startingPrice: "100.00",
+    currentPrice: "500.00",
+    winnerId: "buyer",
+    buyerLegalEntityId: "buyer-account",
+  } as Lot;
+  const serviceWith = (pendingAmong: (ids: string[]) => Promise<Set<string>>) =>
+    new SaleListReadService(
+      { list: vi.fn(async () => [{ ...sale("s-ended"), status: "ended" } as Sale]) } as never,
+      {
+        countLotsBySaleIds: vi.fn(async () => new Map([["s-ended", 2]])),
+        findPreviewLotsBySaleIds: vi.fn(async () => [pending, sold]),
+      } as never,
+      { resolveManyUnique: vi.fn(async () => new Map()) } as never,
+      {
+        lookupByKeys: vi.fn(async () => new Map()),
+        buildGalleryImages: vi.fn(async () => []),
+        buildGalleryImagesWithLookup: vi.fn(async () => []),
+      } as never,
+      null,
+      null,
+      { pendingAmong: vi.fn(pendingAmong) },
+    );
+
+  it("shows the public an open result as ended, with no buyer and no price", async () => {
+    const pendingAmong = vi.fn(async () => new Set(["l-pending"]));
+    const { data } = await serviceWith(pendingAmong).listForPublicApi({ limit: 20, offset: 0 });
+    const [first, second] = data[0]?.previewLots ?? [];
+    expect(pendingAmong).toHaveBeenCalledWith(["l-pending", "l-sold"]);
+    expect(first).toMatchObject({
+      id: "l-pending",
+      currentPrice: "100.00",
+      hasWinner: false,
+      resultPending: true,
+    });
+    expect(second).toMatchObject({ id: "l-sold", currentPrice: "500.00", hasWinner: true });
+    expect(second).not.toHaveProperty("resultPending");
+  });
+
+  it("shows staff the real buyer and price without asking which results are open", async () => {
+    const pendingAmong = vi.fn(async () => new Set(["l-pending"]));
+    const { data } = await serviceWith(pendingAmong).listForPublicApi(
+      { limit: 20, offset: 0 },
+      { role: "staff", staffRoles: ["cataloguer"] },
+    );
+    expect(pendingAmong).not.toHaveBeenCalled();
+    expect(data[0]?.previewLots[0]).toMatchObject({ currentPrice: "900.00", hasWinner: true });
+  });
+});

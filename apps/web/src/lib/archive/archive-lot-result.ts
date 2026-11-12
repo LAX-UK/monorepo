@@ -8,6 +8,7 @@ type ArchiveLotSource = Pick<
   "status" | "winnerId" | "currentPrice" | "lotNumber" | "marketingDetails"
 > & {
   hasWinner?: boolean;
+  resultPending?: boolean | undefined;
 };
 
 /** What an archive card says about one past lot. */
@@ -16,6 +17,8 @@ export type ArchiveLotResultVM = {
   statusContext: LotStatusContext;
   /** The hammer price of a sold lot; null when the lot did not sell. */
   hammer: { label: string; value: string } | null;
+  /** What a card says in place of a hammer price: the lot did not sell, or its result is not final. */
+  noHammerLabel: "Not sold" | "Ended";
   /** The catalogue lot number ("Lot 4"); null when the lot has none. */
   lotNumberLabel: string | null;
 };
@@ -27,11 +30,14 @@ export type ArchiveLotResultVM = {
  */
 export function archiveLotResult(lot: ArchiveLotSource): ArchiveLotResultVM {
   const sold = lotWasSold(lot);
+  const pending = lot.resultPending === true;
   return {
     statusContext: {
       winnerId: lot.winnerId ?? null,
       hasWinner: sold,
+      ...(pending ? { resultPending: true } : {}),
     },
+    noHammerLabel: pending ? "Ended" : "Not sold",
     hammer: sold
       ? { label: "Hammer price", value: formatMoney(lot.currentPrice, lotChargeCurrency(lot)) }
       : null,

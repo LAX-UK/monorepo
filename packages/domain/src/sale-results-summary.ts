@@ -18,6 +18,11 @@ export type SaleResultLot = {
   currentPrice: string;
   /** The hammer found a buyer (LAX lots). */
   hasWinner: boolean;
+  /**
+   * The winner did not pay and the lot is being offered on, so it has no result to publish yet.
+   * It is counted neither as sold nor as unsold, and no price of it is added to a total.
+   */
+  resultPending?: boolean;
   /** The lot's scheduled close. */
   endTime: Date;
   /** Set when a late bid moved the close. */
@@ -81,6 +86,7 @@ function lotOutcome(lot: SaleResultLot, sale: SaleResultsSaleContext, now: Date)
       // Still bidding, including a soft-close extension.
       return "pending";
     case "ended":
+      if (lot.resultPending) return "excluded";
       return lot.hasWinner ? "sold" : "unsold";
     default:
       // Draft, scheduled, withdrawn and voided lots are not part of a result.

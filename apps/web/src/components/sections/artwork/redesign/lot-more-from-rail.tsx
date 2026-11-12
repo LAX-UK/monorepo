@@ -170,7 +170,9 @@ export function LotMoreFromRail({
                     <p className="text-xs text-on-surface-variant">
                       {c.artistName ? `${c.artistName} \u00B7 ` : null}
                       <span className="text-on-surface">
-                        {formatWholeMoney(c.currentPrice, PLATFORM_DEFAULT_CURRENCY)}
+                        {c.resultPending
+                          ? "Ended"
+                          : formatWholeMoney(c.currentPrice, PLATFORM_DEFAULT_CURRENCY)}
                       </span>
                     </p>
                   </div>
@@ -198,9 +200,13 @@ export function LotMoreFromRail({
                       </div>
                     ) : null}
                     <div>
-                      <p className="text-xs text-on-surface-variant">{c.priceLabel}</p>
+                      <p className="text-xs text-on-surface-variant">
+                        {c.resultPending ? "Result" : c.priceLabel}
+                      </p>
                       <p className="text-sm font-semibold text-on-surface">
-                        {formatWholeMoney(c.currentPrice, PLATFORM_DEFAULT_CURRENCY)}
+                        {c.resultPending
+                          ? "Ended"
+                          : formatWholeMoney(c.currentPrice, PLATFORM_DEFAULT_CURRENCY)}
                       </p>
                     </div>
                     <p className="whitespace-nowrap text-sm text-on-surface-variant">

@@ -69,6 +69,7 @@ export function soldRecord(lot: SoldLot, now: Date): SoldRecord {
       lot.saleTitle,
       lot.lotNumber == null ? null : `lot ${lot.lotNumber}`,
       `sold ${day(lot.soldAt)}`,
+      lot.soldAfterAuction ? "after the auction" : null,
       settled && lot.stage === "paid_out" ? `paid out ${day(settled)}` : null,
     ].filter((fact): fact is string => Boolean(fact)),
     hammer: formatMoney(lot.hammerPrice, "GBP"),

@@ -286,6 +286,7 @@ export function mapLotToCardVM(
     viewerIsWatching: Boolean(opts.initialWatching),
     winnerId: lot.winnerId,
     ...(lot.hasWinner !== undefined ? { hasWinner: lot.hasWinner } : {}),
+    ...(lot.resultPending ? { resultPending: true } : {}),
     ...toLotCardTimingVM(lot),
   };
 }
