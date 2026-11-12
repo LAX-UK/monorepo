@@ -34,6 +34,15 @@ export const skippedBidderSchema = z.object({
   reason: z.enum(["suspended", "closed", "deletion_pending"]),
 });
 
+/** Staff start an offer of a defaulted lot to the next bidder; the lot's latest default is used. */
+export const startReofferBodySchema = z
+  .object({ buyerDefaultId: z.string().uuid().optional() })
+  .strict();
+export type StartReofferBody = z.infer<typeof startReofferBodySchema>;
+
+/** The path of an offer. */
+export const reofferIdParamSchema = z.object({ reofferId: z.string().uuid() });
+
 /** Staff send an offer: how long the bidder has, 1 to 7 days (3 by default). */
 export const sendReofferBodySchema = z
   .object({

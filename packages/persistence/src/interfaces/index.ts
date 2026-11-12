@@ -1453,3 +1453,13 @@ export type {
   GuardSettingsTransaction,
 } from "./collection-settings.repository.js";
 export type { IPartyDealRecordReader } from "./party-deal-record.reader.js";
+export type {
+  BidderReofferRow,
+  IReofferViewsReader,
+  IReofferWorkflowReader,
+  PlacedBidWithId,
+  ReofferDefaultFacts,
+  ReofferLockedLot,
+  SellerConsentRequestRow,
+  StaffReofferView,
+} from "./reoffer-workflow.js";

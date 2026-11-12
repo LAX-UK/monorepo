@@ -69,6 +69,7 @@ import { createOrganisationBuyingRoutes } from "./routes/organisation-buying.js"
 import { createOrganisationCollectionVisitRoutes } from "./routes/organisation-collection-visits.js";
 import { createOrganisationHomeRoutes } from "./routes/organisation-home.js";
 import { createOrganisationMembershipRoutes } from "./routes/organisation-membership.js";
+import { createOrganisationReofferRoutes } from "./routes/organisation-reoffers.js";
 import { createOrganisationSecurityRoutes } from "./routes/organisation-security.js";
 import { createOrganisationSellingRoutes } from "./routes/organisation-selling.js";
 import { createOrganisationTeamRoutes } from "./routes/organisation-team.js";
@@ -289,6 +290,7 @@ export function createApp(container: Container, env: Env, authenticator: IAuthen
       ),
     )
     .route("/legal-entities", createOrganisationSellingRoutes(container, authenticator))
+    .route("/legal-entities", createOrganisationReofferRoutes(container, authenticator))
     .route("/legal-entities", createOrganisationAccessRequestRoutes(container, authenticator))
     .route("/legal-entities", createOrganisationWorkspaceRoutes(container, authenticator))
     .route("/legal-entities", createOrganisationTeamRoutes(container, authenticator))
