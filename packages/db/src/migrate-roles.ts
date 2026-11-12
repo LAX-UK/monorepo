@@ -171,6 +171,8 @@ export const SHOP_COMMERCE_APPEND_ONLY_TABLES = [
   "shop_edition_stock_batch",
 ] as const;
 export const API_DENY_TABLES = [
+  /** Sealed Zoho Books OAuth tokens: only the worker, the process that calls Books, may touch them. */
+  "zoho_books_connection",
   "user",
   "session",
   "session_lineage",
@@ -557,6 +559,33 @@ export const WORKER_ZOHO_ARTWORK_SYNC_TABLES = [
   "zoho_artwork_sync_outcome",
   "zoho_listing_sync_run",
   "zoho_sync_health",
+] as const;
+/**
+ * Zoho Books connections (sealed OAuth tokens). Only the worker, the process that calls Books, is
+ * granted anything, and only by column: it reads the token columns, creates a connection and updates
+ * the token and status columns. It never deletes, truncates or rewrites `id`, `organization_id` or
+ * `created_at`. `api_app` is denied (API_DENY_TABLES); `shop_app` and `auth_app` get nothing. If a
+ * staff "connect Books" route is added to the API later, give it column-level INSERT/UPDATE on the
+ * write columns and no SELECT on the sealed ones.
+ */
+export const WORKER_ZOHO_BOOKS_TABLES = ["zoho_books_connection"] as const;
+export const WORKER_ZOHO_BOOKS_SELECT_COLUMNS = [
+  "organization_id",
+  "refresh_token_sealed",
+  "access_token_sealed",
+  "access_token_expires_at",
+  "connection_status",
+  "last_refresh_error_code",
+  "updated_at",
+] as const;
+export const WORKER_ZOHO_BOOKS_INSERT_COLUMNS = WORKER_ZOHO_BOOKS_SELECT_COLUMNS;
+export const WORKER_ZOHO_BOOKS_UPDATE_COLUMNS = [
+  "refresh_token_sealed",
+  "access_token_sealed",
+  "access_token_expires_at",
+  "connection_status",
+  "last_refresh_error_code",
+  "updated_at",
 ] as const;
 /**
  * The alert engine's Bid tables: the matching projector records matches and announcements, and the
@@ -953,6 +982,21 @@ async function grantColumnUpdateIfExists(
   );
 }
 
+async function grantColumnPrivilegeIfExists(
+  client: pg.Client,
+  role: RoleName,
+  tableName: string,
+  privilege: "select" | "insert" | "update",
+  columns: readonly string[],
+  schemaName = "public",
+): Promise<void> {
+  if (!(await tableExists(client, tableName, schemaName)) || columns.length === 0) return;
+  const columnList = columns.map(quoteIdent).join(", ");
+  await client.query(
+    `grant ${privilege} (${columnList}) on table ${quoteIdent(schemaName)}.${quoteIdent(tableName)} to ${quoteIdent(role)}`,
+  );
+}
+
 async function grantColumnSelectIfExists(
   client: pg.Client,
   role: RoleName,
@@ -1306,6 +1350,17 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
         }
         for (const tableName of WORKER_ZOHO_ARTWORK_SYNC_TABLES) {
           await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT, UPDATE");
+        }
+        for (const tableName of WORKER_ZOHO_BOOKS_TABLES) {
+          // Start from nothing so a table-level grant from an earlier run is removed, then grant by column.
+          await revokeIfExists(client, "worker_app", tableName);
+          for (const [privilege, columns] of [
+            ["select", WORKER_ZOHO_BOOKS_SELECT_COLUMNS],
+            ["insert", WORKER_ZOHO_BOOKS_INSERT_COLUMNS],
+            ["update", WORKER_ZOHO_BOOKS_UPDATE_COLUMNS],
+          ] as const) {
+            await grantColumnPrivilegeIfExists(client, "worker_app", tableName, privilege, columns);
+          }
         }
         for (const tableName of WORKER_UNSOLD_CHOICE_DEADLINE_TABLES) {
           await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT");
