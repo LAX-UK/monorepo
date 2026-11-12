@@ -104,7 +104,7 @@ describe("the next bidder preview", () => {
     expect(result.next?.othersAfter).toBe(0);
   });
 
-  it.each([
+  it.each<[string, Setup, string]>([
     ["no one else bid", { bids: [bid("buyer", 8_800_000)] }, "no_other_bidder"],
     [
       "every other account is unavailable",
@@ -112,7 +112,7 @@ describe("the next bidder preview", () => {
       "no_eligible_bidder",
     ],
     ["there is no buyer", { winner: false }, "no_buyer"],
-  ] as const)("says why there is nobody when %s", async (_name, setup, reason) => {
+  ])("says why there is nobody when %s", async (_name, setup, reason) => {
     const { preview } = service(setup);
     const result = await preview.previewForLot("lot");
     expect(result.next).toBeNull();

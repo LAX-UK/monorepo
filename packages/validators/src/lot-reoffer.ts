@@ -144,6 +144,9 @@ export const staffReofferSchema = z.object({
   sourceBidId: z.string().min(1),
   bidPlacedAt: moment.nullable(),
   originalHammerMinor: pence,
+  /** What the seller would receive at this offer, from the terms they were shown. */
+  estimatedProceedsMinor: pence,
+  reserveMinor: pence.nullable(),
   belowReserve: z.boolean(),
   consentDueAt: moment.nullable(),
   consent: staffConsentSchema,

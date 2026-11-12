@@ -158,6 +158,8 @@ export class ReofferReadsService {
       sourceBidId: offer.sourceBidId,
       bidPlacedAt: row.sourceBidPlacedAt?.toISOString() ?? null,
       originalHammerMinor: consent.terms.originalHammerPence,
+      estimatedProceedsMinor: consent.terms.proceedsAtOfferPence,
+      reserveMinor: consent.terms.reservePence,
       belowReserve:
         consent.terms.reservePence !== null && offer.amountPence < consent.terms.reservePence,
       consentDueAt: consent.dueAt?.toISOString() ?? null,

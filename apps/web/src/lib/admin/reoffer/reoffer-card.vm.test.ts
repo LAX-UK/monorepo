@@ -195,7 +195,7 @@ describe("the Re-offer card", () => {
       { preview: { ...NO_PREVIEW, noneReason: "offer_limit_reached", offersMade: 3 } },
     );
     expect(actionIds(model)).toEqual(["return_to_inventory"]);
-    expect(model.notice?.title).toBe("Three offers have been made");
+    expect(model.notice?.title).toBe("Offer limit reached");
     expect(model.position).toBe("Offer 3 of up to 3");
   });
 

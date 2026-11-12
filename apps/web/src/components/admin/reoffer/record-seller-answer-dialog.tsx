@@ -92,8 +92,13 @@ export function RecordSellerAnswerDialog({
           Offer to the next bidder at {formatStaffMoney(offer.offerMinor)}
         </p>
         <p>
-          Original sale {formatStaffMoney(offer.originalHammerMinor)}
-          {offer.belowReserve ? " · below the reserve" : ""}
+          Original sale {formatStaffMoney(offer.originalHammerMinor)} · estimated proceeds{" "}
+          {formatStaffMoney(offer.estimatedProceedsMinor)} ·{" "}
+          {offer.reserveMinor === null
+            ? "no reserve"
+            : offer.belowReserve
+              ? `below the reserve of ${formatStaffMoney(offer.reserveMinor)}`
+              : `reserve ${formatStaffMoney(offer.reserveMinor)}`}
         </p>
       </div>
       <ChoiceFieldset legend="Their answer" disabled={busy}>

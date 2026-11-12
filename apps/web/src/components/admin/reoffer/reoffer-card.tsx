@@ -23,7 +23,7 @@ const VARIANT: Record<ReofferAction["variant"], "primary" | "secondary" | "dange
  * line, and the actions that fit. Everything it shows is decided by the model; it only draws it.
  */
 export function ReofferCard({ model, onAction }: Props) {
-  const { badge, position, steps, notice, actions, readOnlyNote } = model;
+  const { badge, position, steps, notice, actions, readOnlyNote, earlier } = model;
   return (
     <Section
       title="Re-offer"
@@ -43,6 +43,22 @@ export function ReofferCard({ model, onAction }: Props) {
             state: step.state,
           }))}
         />
+        {earlier.length > 0 ? (
+          <div className="flex flex-col gap-1.5">
+            <h3 className="text-staff-sm font-medium text-staff-fg">Earlier offers</h3>
+            <ul className="flex flex-col gap-1">
+              {earlier.map((item) => (
+                <li
+                  key={item.id}
+                  className="flex flex-wrap items-center gap-2 text-staff-xs text-staff-muted"
+                >
+                  <span>{item.text}</span>
+                  <StatusBadge tone={item.status.tone}>{item.status.label}</StatusBadge>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
         {notice ? (
           <Notice tone="info" title={notice.title}>
             {notice.body}

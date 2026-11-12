@@ -55,6 +55,8 @@ export type ReofferCardModel = {
   actions: ReofferAction[];
   /** Said instead of buttons when the person can only look. */
   readOnlyNote: string | null;
+  /** Offers before the current one, oldest first, so the chain reads in order. */
+  earlier: { id: string; text: string; status: StatusPresentation }[];
   /** The offer the actions apply to. */
   current: StaffReoffer | null;
 };
@@ -293,7 +295,7 @@ const NO_NEXT_BIDDER_TITLE: Record<NextBidderNoneReason, string> = {
   no_buyer: "No buyer to offer from",
   no_other_bidder: "No one else bid",
   no_eligible_bidder: "No one can be offered this lot",
-  offer_limit_reached: "Three offers have been made",
+  offer_limit_reached: "Offer limit reached",
 };
 
 function noNextBidder(reason: NextBidderNoneReason): { title: string; body: string } {
@@ -356,6 +358,11 @@ export function buildReofferCard(input: Input): ReofferCardModel {
     notice: noticeFor(current, preview, canOfferAgain),
     actions,
     readOnlyNote: canChange ? null : READ_ONLY_NOTE,
+    earlier: offers.slice(0, -1).map((earlier) => ({
+      id: earlier.id,
+      text: `Offer ${earlier.sequence}: ${by(earlier.bidder.accountName, "The bidder")}, ${money(earlier.offerMinor)}`,
+      status: REOFFER_STATUS_PRESENTATION[earlier.status],
+    })),
     current,
   };
 }

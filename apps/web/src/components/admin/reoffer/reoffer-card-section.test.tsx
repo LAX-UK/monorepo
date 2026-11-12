@@ -65,7 +65,12 @@ describe("the Re-offer card on the lot page", () => {
   });
 
   it("shows nothing for a lot with no default", () => {
-    const { container } = renderCard({ ...bundle(), buyerDefault: null });
+    const { container } = renderCard({
+      status: "ready",
+      buyerDefault: null,
+      offers: [],
+      preview: PREVIEW,
+    });
     expect(container).toBeEmptyDOMElement();
   });
 
@@ -191,8 +196,12 @@ describe("the Re-offer card on the lot page", () => {
       const dialog = screen.getByRole("dialog");
       fireEvent.click(within(dialog).getByRole("button", { name: "Send offer" }));
       expect(await within(dialog).findByText("This account is suspended")).toBeInTheDocument();
-      const sendAgain = within(dialog).getByRole("button", { name: "Send offer" });
-      expect(sendAgain).toHaveAttribute("aria-disabled", "true");
+      await waitFor(() =>
+        expect(within(dialog).getByRole("button", { name: "Send offer" })).toHaveAttribute(
+          "aria-disabled",
+          "true",
+        ),
+      );
       fireEvent.click(within(dialog).getByRole("button", { name: "Choose the next bidder" }));
       expect(
         await screen.findByRole("heading", { name: "Withdraw the offer to Northbank Gallery?" }),

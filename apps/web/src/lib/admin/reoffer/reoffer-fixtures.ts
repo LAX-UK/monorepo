@@ -39,6 +39,8 @@ export function offer(overrides: Partial<StaffReoffer> = {}): StaffReoffer {
     sourceBidId: "bid-2",
     bidPlacedAt: "2026-10-23T18:11:00.000Z",
     originalHammerMinor: 8_800_000,
+    estimatedProceedsMinor: 7_216_000,
+    reserveMinor: null,
     belowReserve: false,
     consentDueAt: "2026-11-13T17:00:00.000Z",
     consent: {
