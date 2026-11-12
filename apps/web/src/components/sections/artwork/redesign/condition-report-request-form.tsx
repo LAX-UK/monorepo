@@ -9,7 +9,7 @@ import {
   FormMessage,
 } from "@auction/ui/components/form";
 import { Textarea } from "@auction/ui/components/textarea";
-import { Button } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
 import {
   CONDITION_REPORT_REQUEST_NOTE_MAX,
   type ConditionReportRequestFormValues,

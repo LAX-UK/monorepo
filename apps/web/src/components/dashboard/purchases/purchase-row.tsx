@@ -8,10 +8,10 @@ import { notify } from "@/lib/ui/notify";
 import {
   InlineActionMenu,
   type InlineActionMenuItem,
-  RecordRow,
-  RecordRowMedia,
-} from "@auction/ui";
-import { Checkbox, StatusBadge } from "@auction/ui/lax";
+} from "@auction/ui/components/inline-action-menu";
+import { RecordRow, RecordRowMedia } from "@auction/ui/components/record-row";
+import { Checkbox } from "@auction/ui/lax/checkbox";
+import { StatusBadge } from "@auction/ui/lax/status-badge";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 

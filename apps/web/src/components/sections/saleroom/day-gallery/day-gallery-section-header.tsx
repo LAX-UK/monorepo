@@ -1,8 +1,8 @@
 "use client";
 
 import { MarketingSectionHeader } from "@/components/marketing/marketing-section-header";
-import { DisplayHeading } from "@auction/ui";
-import { Button } from "@auction/ui/lax";
+import { DisplayHeading } from "@auction/ui/components/typography";
+import { Button } from "@auction/ui/lax/button";
 import { ChevronRight } from "lucide-react";
 
 export type DayGallerySectionHeaderProps = {

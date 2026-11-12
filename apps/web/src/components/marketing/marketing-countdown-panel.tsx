@@ -19,7 +19,9 @@ import { opensLine } from "@/lib/time/opens-line";
 import { useCountdownTick } from "@/lib/time/use-clock";
 import { LONDON_TIME_ZONE, formatWhen } from "@auction/datetime";
 import type { SaleDeliveryMode } from "@auction/types";
-import { LabelCaps, LiveDot, cn } from "@auction/ui";
+import { LiveDot } from "@auction/ui/components/live-dot";
+import { LabelCaps } from "@auction/ui/components/typography";
+import { cn } from "@auction/ui/lib/utils";
 import { isSaleroomDeliveryMode, toDisplayDate } from "@auction/validators";
 import { useEffect, useMemo, useState } from "react";
 

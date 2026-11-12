@@ -1,4 +1,4 @@
-import { ButtonLink } from "@auction/ui/lax";
+import { ButtonLink } from "@auction/ui/lax/button-link";
 import { Gavel } from "lucide-react";
 import Link from "next/link";
 

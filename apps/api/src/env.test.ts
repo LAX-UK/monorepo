@@ -256,3 +256,28 @@ describe("envSchema addresses opened from private sale artwork refusals", () => 
     ).toBe(false);
   });
 });
+
+describe("api XERO_TOKEN_DEK_KEY", () => {
+  const issues = (overrides: Record<string, unknown>) => {
+    const result = envSchema.safeParse(productionEnvBase(overrides));
+    return result.success
+      ? []
+      : result.error.issues.filter((i) => i.path[0] === "XERO_TOKEN_DEK_KEY");
+  };
+  const xero = {
+    XERO_CLIENT_ID: "id",
+    XERO_CLIENT_SECRET: "secret",
+    XERO_REDIRECT_URI: "https://app.example.com/cb",
+    XERO_WEBHOOK_KEY: "hook",
+  };
+
+  it("is required once Xero is configured, and must be a 32-byte key", () => {
+    expect(issues(xero)).not.toHaveLength(0);
+    expect(issues({ ...xero, XERO_TOKEN_DEK_KEY: "short" })).not.toHaveLength(0);
+    expect(issues({ ...xero, XERO_TOKEN_DEK_KEY: "ab".repeat(32) })).toEqual([]);
+  });
+
+  it("is not needed when Xero is not configured", () => {
+    expect(issues({})).toEqual([]);
+  });
+});

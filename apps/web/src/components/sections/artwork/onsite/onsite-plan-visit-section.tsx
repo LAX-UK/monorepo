@@ -8,7 +8,7 @@ import { formatOnsitePreviewHoursLabel } from "@/lib/onsite/preview-hours-label"
 import { salePath } from "@/lib/seo/url";
 import { LONDON_TIME_ZONE, formatWhen } from "@auction/datetime";
 import type { Lot, PublicLotView, Sale } from "@auction/types";
-import { ButtonLink } from "@auction/ui/lax";
+import { ButtonLink } from "@auction/ui/lax/button-link";
 import {
   buildGoogleMapsEmbedUrl,
   formatPostalAddressLines,

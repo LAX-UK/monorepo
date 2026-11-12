@@ -1,6 +1,6 @@
 "use client";
 
-import { CommandInput } from "@auction/ui";
+import { CommandInput } from "@auction/ui/components/command";
 
 type PaletteVariant = "marketing" | "dashboard" | "admin";
 

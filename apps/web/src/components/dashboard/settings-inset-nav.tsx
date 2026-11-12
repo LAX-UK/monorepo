@@ -1,9 +1,9 @@
 "use client";
 
 import { laxAccountHomeUrl } from "@/lib/lax-account-url";
-import { cn } from "@auction/ui";
 import { InsetGroup } from "@auction/ui/components/inset-group";
 import { ListRow } from "@auction/ui/components/list-row";
+import { cn } from "@auction/ui/lib/utils";
 import { ArrowUpRight, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";

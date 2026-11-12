@@ -1,6 +1,7 @@
 "use client";
 
-import { type LaxDensity, LaxDensityProvider, laxDensityAttributes } from "@auction/ui/lax";
+import { LaxDensityProvider } from "@auction/ui/lax/density";
+import { type LaxDensity, laxDensityAttributes } from "@auction/ui/lax/density-attributes";
 import { type ReactNode, createContext, useContext } from "react";
 
 /**

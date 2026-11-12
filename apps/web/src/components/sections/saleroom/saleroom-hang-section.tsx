@@ -4,7 +4,7 @@ import { toMarketingWork } from "@/components/sections/home/home-hang/to-marketi
 import { hangMetaLine } from "@/lib/hang/hang-meta";
 import type { SaleHangVM } from "@/lib/hang/sale-hang";
 import { reportImageFallback } from "@/lib/observability/report-image-fallback";
-import { MarketingHang } from "@auction/marketing-ui";
+import { MarketingHang } from "@auction/marketing-ui/hang/marketing-hang";
 
 /** The hang that opens a sale's catalogue: the room first, then the lots. */
 export function SaleroomHangSection({ hang }: { hang: SaleHangVM }) {

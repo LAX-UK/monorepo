@@ -7,7 +7,9 @@ import type {
   BidBlockerTone,
 } from "@/lib/bid/bid-blocker-presentation";
 import { notify } from "@/lib/ui/notify";
-import { Button, ButtonLink, Notice, type NoticeTone } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
+import { ButtonLink } from "@auction/ui/lax/button-link";
+import { Notice, type NoticeTone } from "@auction/ui/lax/notice";
 import Link from "next/link";
 import { type ReactNode, useState } from "react";
 

@@ -1,7 +1,7 @@
 import { isPublicLotStatus } from "@/lib/catalog/public-catalog-visibility";
 import { longSideCmFromDimensions } from "@/lib/hang/dimensions";
-import type { MarketingHangWork } from "@auction/marketing-ui";
-import { resolveHangLongSide } from "@auction/marketing-ui";
+import { resolveHangLongSide } from "@auction/marketing-ui/hang/hang-layout";
+import type { MarketingHangWork } from "@auction/marketing-ui/hang/marketing-hang";
 import type { Lot } from "@auction/types";
 
 /** Shape used when a photograph's size is not stored: a portrait, drawn in salon mode only. */

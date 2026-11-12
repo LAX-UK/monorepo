@@ -7,7 +7,7 @@ import {
 } from "@/lib/legal-entity/invitation.actions";
 import type { PendingInvitationRow } from "@/lib/legal-entity/pending-invitations.gateway.server";
 import { notify } from "@/lib/ui/notify";
-import { Button } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 

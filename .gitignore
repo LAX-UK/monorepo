@@ -35,3 +35,10 @@ progress.md
 actionlint
 jar.txt
 apps/account/e2e/.auth
+
+# Reports built from live data hold buyers' names and emails: keep local only (see docs/reports/README.md).
+docs/reports/*
+!docs/reports/README.md
+**/*reconciliation*.json
+**/*reconciliation*.csv
+**/*snapshot*.csv

@@ -2,7 +2,7 @@
 
 import { dismissWelcomeAction } from "@/lib/legal-entity/organisation-membership.actions";
 import type { WelcomeCardView } from "@/lib/organisation-home/organisation-home-view";
-import { Button } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
 import { X } from "lucide-react";
 import { useState, useTransition } from "react";
 

@@ -3,7 +3,7 @@ import { WorkspaceTabBar } from "@/components/workspace/workspace-tab-bar";
 import type { BidAttention } from "@/hooks/use-bid-attention";
 import { NO_ATTENTION } from "@/lib/navigation/client-attention";
 import { getClientMobileTabs, getClientNavSections } from "@/lib/navigation/client-nav-model";
-import { claimBottomSlot } from "@auction/marketing-ui";
+import { claimBottomSlot } from "@auction/marketing-ui/bottom-bar/bottom-slot";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 

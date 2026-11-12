@@ -8,7 +8,7 @@ import {
   attentionChip,
 } from "@/lib/navigation/client-attention";
 import { useAccountMenuContext } from "@/lib/navigation/use-account-menu-context.client";
-import type { MarketingAccountEntryViewer } from "@auction/marketing-ui";
+import type { MarketingAccountEntryViewer } from "@auction/marketing-ui/marketing-account-entry";
 import { useMemo } from "react";
 
 export type BidAttention = {

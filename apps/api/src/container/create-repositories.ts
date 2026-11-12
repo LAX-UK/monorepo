@@ -1,4 +1,5 @@
 import type { Database } from "@auction/db";
+import type { XeroTokenSealer } from "@auction/db/xero-token-sealing";
 import type { IAdminUserActivityReader } from "@auction/persistence/interfaces";
 import { type AdminRepositories, createAdminRepositories } from "./create-admin-repos.js";
 import { type CatalogRepositories, createCatalogRepositories } from "./create-catalog-repos.js";
@@ -23,11 +24,12 @@ export type ContainerRepositories = IdentityRepositories &
 export function createRepositories(
   db: Database,
   adminActivityReader: IAdminUserActivityReader,
+  xeroTokenSealer: XeroTokenSealer,
 ): ContainerRepositories {
   return {
     ...createIdentityRepositories(db),
     ...createCatalogRepositories(db),
-    ...createPaymentsRepositories(db),
+    ...createPaymentsRepositories(db, xeroTokenSealer),
     ...createAdminRepositories(db, adminActivityReader),
     ...createComplianceRepositories(db),
   };

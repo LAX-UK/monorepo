@@ -3,7 +3,7 @@ import { MarketingCatalogToolbarSkeleton } from "@/components/marketing/marketin
 import { MarketingListSkeleton } from "@/components/marketing/marketing-list-skeleton";
 import { MARKETING_PAGE_INNER } from "@/lib/marketing/chrome";
 import { readSkeletonView } from "@/lib/preferences/skeleton-view.server";
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 
 export default async function SearchLoading() {
   const view = await readSkeletonView("search", "grid");

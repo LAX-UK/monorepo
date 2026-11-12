@@ -1,6 +1,7 @@
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { COLLECT_COPY } from "@/lib/collect/collect-copy";
-import { Skeleton, pageTitleClass } from "@auction/ui/lax";
+import { Skeleton } from "@auction/ui/lax/skeleton";
+import { pageTitleClass } from "@auction/ui/lax/styles";
 
 /** The booking page while its times are read: the title at once, then the panels. */
 export default function CollectLoading() {

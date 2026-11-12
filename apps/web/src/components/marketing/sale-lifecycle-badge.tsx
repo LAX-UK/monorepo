@@ -2,7 +2,7 @@ import { toPublicStatusBadgeProps } from "@/lib/presenters/public-status-badge";
 import { resolveStatusPresentation } from "@/lib/presenters/status-presentation";
 import { opensBadgeLabel } from "@/lib/time/opens-line";
 import type { SaleStatus } from "@auction/types";
-import { StatusBadge } from "@auction/ui";
+import { StatusBadge } from "@auction/ui/components/status-badge";
 
 export type SaleLifecycleBadgeProps = {
   status: SaleStatus | string;

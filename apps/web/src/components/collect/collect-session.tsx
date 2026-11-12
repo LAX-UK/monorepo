@@ -16,16 +16,14 @@ import {
   refreshAvailabilityAction,
 } from "@/lib/collect/collect.actions";
 import { formatCollectionWhen } from "@auction/domain";
-import { useClaimBottomSlot } from "@auction/marketing-ui";
+import { useClaimBottomSlot } from "@auction/marketing-ui/bottom-bar/bottom-slot";
 import type { CollectionAvailability, CollectionVisitView } from "@auction/types";
-import {
-  Button,
-  ButtonLink,
-  ErrorSummary,
-  FieldError,
-  Notice,
-  laxDensityAttributes,
-} from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
+import { ButtonLink } from "@auction/ui/lax/button-link";
+import { laxDensityAttributes } from "@auction/ui/lax/density-attributes";
+import { ErrorSummary } from "@auction/ui/lax/error-summary";
+import { FieldError } from "@auction/ui/lax/field";
+import { Notice } from "@auction/ui/lax/notice";
 import { useRouter } from "next/navigation";
 import { useMemo, useReducer, useRef, useState } from "react";
 import { BookedResult } from "./booked-result";

@@ -4,7 +4,7 @@ import { CountdownFadeSlot } from "@/components/marketing/countdown-fade-slot";
 import { useActiveSaleCountdownEndIso } from "@/lib/sale/use-active-sale-countdown-end-iso";
 import { closingChipText } from "@/lib/time/opens-line";
 import type { Sale } from "@auction/types";
-import { Countdown } from "@auction/ui";
+import { Countdown } from "@auction/ui/components/countdown";
 
 type Props = {
   status: Sale["status"];

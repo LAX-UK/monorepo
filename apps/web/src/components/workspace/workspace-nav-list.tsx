@@ -2,8 +2,8 @@
 
 import type { AppShellNavItem } from "@/components/layout/app-shell-nav-item";
 import { type ClientNavSection, navItemMatches } from "@/lib/navigation/client-nav-model";
-import { cn } from "@auction/ui";
-import { Count } from "@auction/ui/lax";
+import { Count } from "@auction/ui/lax/tabs";
+import { cn } from "@auction/ui/lib/utils";
 import { ArrowUpRight } from "lucide-react";
 import Link from "next/link";
 

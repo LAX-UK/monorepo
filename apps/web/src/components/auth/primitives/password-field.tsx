@@ -1,7 +1,7 @@
 "use client";
 
 import { optionalString } from "@/lib/ts/if-defined";
-import { PasswordInput } from "@auction/ui";
+import { PasswordInput } from "@auction/ui/components/password-input";
 import { type Control, Controller, type FieldPath, type FieldValues } from "react-hook-form";
 
 type RHFPasswordFieldProps<TFieldValues extends FieldValues> = {

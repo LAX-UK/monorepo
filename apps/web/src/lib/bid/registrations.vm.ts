@@ -2,7 +2,7 @@ import { formatPounds } from "@/lib/buyer-agents/authorisation-presenter";
 import type { AccountRegistrationView } from "@/lib/data/http/account-buying.types";
 import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
 import { matchesEveryWord } from "@/lib/workspace/list-search";
-import type { StatusBadgeShape, StatusBadgeTone } from "@auction/ui/lax";
+import type { StatusBadgeShape, StatusBadgeTone } from "@auction/ui/lax/status-badge";
 
 type RegistrationStatus = AccountRegistrationView["status"];
 

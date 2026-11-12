@@ -11,7 +11,7 @@ import {
 } from "@/lib/organisation-team/team-data.server";
 import { twoStepImpact } from "@/lib/organisation-team/two-step-impact";
 import { entityActorCan } from "@auction/domain";
-import { Notice } from "@auction/ui/lax";
+import { Notice } from "@auction/ui/lax/notice";
 import { notFound } from "next/navigation";
 
 /**

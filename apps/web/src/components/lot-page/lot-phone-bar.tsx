@@ -7,9 +7,9 @@ import type { PhoneBarLine, PhoneBarSummary, PhoneBarTone } from "@/lib/lot-page
 import { useCountdown } from "@/lib/time/use-clock";
 import type { CountdownContext, CountdownDisplay } from "@auction/domain";
 import type { LotStatusTone } from "@auction/domain";
-import { useClaimBottomSlot } from "@auction/marketing-ui";
-import { cn } from "@auction/ui";
-import { laxDensityAttributes } from "@auction/ui/lax";
+import { useClaimBottomSlot } from "@auction/marketing-ui/bottom-bar/bottom-slot";
+import { laxDensityAttributes } from "@auction/ui/lax/density-attributes";
+import { cn } from "@auction/ui/lib/utils";
 import { Clock } from "lucide-react";
 import type { ReactNode, RefObject } from "react";
 

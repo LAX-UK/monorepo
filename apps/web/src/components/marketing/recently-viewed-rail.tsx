@@ -4,7 +4,7 @@ import { RailArrows } from "@/components/marketing/rail/rail-arrows";
 import { ScrollRegion } from "@/components/marketing/rail/scroll-region";
 import { FOCUS_RING, MARKETING_CATALOG_GUTTER } from "@/lib/marketing/chrome";
 import { getRecentlyViewedLots } from "@/lib/marketing/recently-viewed-lots";
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 

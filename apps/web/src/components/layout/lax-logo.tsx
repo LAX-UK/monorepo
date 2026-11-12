@@ -1,5 +1,5 @@
 import { SITE_LOGO_PATH, SITE_SHORT_NAME, siteLogoLightPath } from "@/lib/brand";
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 import Image from "next/image";
 import type { ReactNode } from "react";
 

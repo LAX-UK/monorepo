@@ -7,9 +7,9 @@ import {
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
-  BodyText,
-  cn,
-} from "@auction/ui";
+} from "@auction/ui/components/accordion";
+import { BodyText } from "@auction/ui/components/typography";
+import { cn } from "@auction/ui/lib/utils";
 import type { ReactNode } from "react";
 
 type LotDetailsSectionProps = {

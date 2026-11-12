@@ -11,7 +11,7 @@ import type { ClientNavScope } from "@/lib/navigation/client-nav-model";
 import { buildShellConfig } from "@/lib/shell/build-shell-config";
 import { ShellChromeProvider } from "@/lib/shell/shell-chrome-context";
 import { ShellConfigProvider } from "@/lib/shell/shell-config-context";
-import { AccountArea } from "@auction/marketing-ui";
+import { AccountArea } from "@auction/marketing-ui/account/index";
 import { TooltipProvider } from "@auction/ui/components/tooltip";
 import { type ReactNode, useMemo } from "react";
 

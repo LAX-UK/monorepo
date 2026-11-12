@@ -1,7 +1,7 @@
 import { MarketingViewAllLink } from "@/components/marketing/marketing-view-all-link";
 import { MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
-import { MarketingSectionHeader } from "@auction/marketing-ui";
-import { cn } from "@auction/ui";
+import { MarketingSectionHeader } from "@auction/marketing-ui/marketing-section-header";
+import { cn } from "@auction/ui/lib/utils";
 import type { ReactNode } from "react";
 
 /**

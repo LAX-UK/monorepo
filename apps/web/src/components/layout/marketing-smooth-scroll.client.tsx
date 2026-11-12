@@ -1,7 +1,7 @@
 "use client";
 
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
-import { SmoothScroll } from "@auction/marketing-ui";
+import { SmoothScroll } from "@auction/marketing-ui/motion/index";
 import type { ReactNode } from "react";
 
 export function MarketingSmoothScroll({ children }: { children: ReactNode }) {

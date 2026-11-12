@@ -1,5 +1,5 @@
 import { MarketingPromoCta } from "@/components/marketing/marketing-promo-cta";
-import { ButtonLink } from "@auction/ui/lax";
+import { ButtonLink } from "@auction/ui/lax/button-link";
 import Link from "next/link";
 import type { ReactNode } from "react";
 

@@ -13,7 +13,7 @@ import {
   DEFAULT_PLATE_FIELD,
   plateFieldFromPreview,
 } from "@/lib/marketing-cover/lot-plate-field.server";
-import { neutralCoverSlide } from "@auction/marketing-ui";
+import { neutralCoverSlide } from "@auction/marketing-ui/cover/cover-neutral";
 import type { Lot } from "@auction/types";
 
 /** Shown when the sales could not be read: it claims nothing about any sale. */
