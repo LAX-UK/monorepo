@@ -1,4 +1,5 @@
 import type { Database } from "@auction/db";
+import type { XeroTokenSealer } from "@auction/db/xero-token-sealing";
 import type {
   IBidPortfolioReader,
   IConnectTransferRepository,
@@ -40,7 +41,10 @@ export type PaymentsRepositories = {
   xeroWebhookEventRepository: IXeroWebhookEventRepository;
 };
 
-export function createPaymentsRepositories(db: Database): PaymentsRepositories {
+export function createPaymentsRepositories(
+  db: Database,
+  xeroTokenSealer: XeroTokenSealer,
+): PaymentsRepositories {
   const bidPortfolioReader: IBidPortfolioReader = new DrizzleBidPortfolioReader(db);
   const payoutRepository: IPayoutRepository = new DrizzlePayoutRepository(db);
   const connectTransferRepository: IConnectTransferRepository =
@@ -49,7 +53,7 @@ export function createPaymentsRepositories(db: Database): PaymentsRepositories {
   const paymentRefundReconcileRepository = new DrizzlePaymentRefundReconcileRepository(db);
   const paymentExtRepo = new DrizzlePaymentExternalRefRepository(db);
   const paymentWebhookLookupReader = new DrizzlePaymentWebhookLookupReader(db);
-  const xeroConnRepo = new DrizzleXeroConnectionRepository(db);
+  const xeroConnRepo = new DrizzleXeroConnectionRepository(db, xeroTokenSealer);
   const xeroWebhookEventRepository = new DrizzleXeroWebhookEventRepository(db);
 
   return {
