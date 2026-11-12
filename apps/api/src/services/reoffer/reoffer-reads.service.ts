@@ -125,6 +125,23 @@ export class ReofferReadsService {
     });
   }
 
+  /** What the bidder would pay, line by line: the same pricing the invoice uses. */
+  private async priceOf(lotId: string, buyerLegalEntityId: string, hammerPence: number) {
+    const priced = await this.deps.pricing.priceFor({ lotId, buyerLegalEntityId, hammerPence });
+    const line = (kind: string) =>
+      priced.lines.filter((l) => l.kind === kind).reduce((sum, l) => sum + l.amountPence, 0);
+    return {
+      hammerMinor: line("hammer"),
+      buyersPremiumMinor: line("buyers_premium"),
+      // The invoice carries no VAT or resale-right line until the accountant confirms the
+      // rules; nothing is invented here, so the lines that do not apply are null or nil.
+      vatOnPremiumMinor: line("vat_on_premium"),
+      vatOnLotMinor: null,
+      artistsResaleRightMinor: null,
+      totalMinor: priced.totalPence,
+    };
+  }
+
   private async staffView(
     row: StaffReofferView,
     all: readonly StaffReofferView[],
@@ -151,13 +168,39 @@ export class ReofferReadsService {
       sequence: offer.sequence,
       status: offer.status,
       consentStatus: consent.status,
-      bidder: { userId: offer.offeredUserId, legalEntityId: offer.offeredLegalEntityId },
+      bidder: {
+        userId: offer.offeredUserId,
+        legalEntityId: offer.offeredLegalEntityId,
+        accountName: row.offeredAccountName,
+      },
       offerMinor: offer.amountPence,
+      price: await this.priceOf(offer.lotId, offer.offeredLegalEntityId, offer.amountPence),
+      sourceBidId: offer.sourceBidId,
+      bidPlacedAt: row.sourceBidPlacedAt?.toISOString() ?? null,
       originalHammerMinor: consent.terms.originalHammerPence,
+      estimatedProceedsMinor: consent.terms.proceedsAtOfferPence,
+      reserveMinor: consent.terms.reservePence,
       belowReserve:
         consent.terms.reservePence !== null && offer.amountPence < consent.terms.reservePence,
       consentDueAt: consent.dueAt?.toISOString() ?? null,
+      consent: {
+        channel: consent.channel,
+        requestedAt: consent.requestedAt.toISOString(),
+        remindedAt: consent.remindedAt?.toISOString() ?? null,
+        answeredAt: consent.answeredAt?.toISOString() ?? null,
+        answeredByName: consent.answeredByName,
+        note: consent.note,
+        declinePreference: consent.preferredNext,
+      },
+      createdAt: offer.createdAt.toISOString(),
+      createdByName: row.createdByName,
+      offerSentAt: offer.offerSentAt?.toISOString() ?? null,
       offerEndsAt: offer.offerEndsAt?.toISOString() ?? null,
+      respondedAt: offer.respondedAt?.toISOString() ?? null,
+      declineReason: offer.declineReason,
+      closeReason: offer.closeReason,
+      closedByName: row.closedByName,
+      invoiceId: offer.invoiceId,
       claimableShortfall: shortfall,
       skippedBidders: original ? skippedBefore(offer, all, bids, original) : [],
     });

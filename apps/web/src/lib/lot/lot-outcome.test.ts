@@ -22,4 +22,9 @@ describe("lotOutcome", () => {
     expect(lotWasSold({ hasWinner: true })).toBe(true);
     expect(lotWasSold({ winnerId: null })).toBe(false);
   });
+
+  it("is pending, never sold or unsold, while the result is open", () => {
+    expect(lotOutcome({ winnerId: null, hasWinner: false, resultPending: true })).toBe("pending");
+    expect(lotWasSold({ winnerId: "buyer-1", resultPending: true })).toBe(false);
+  });
 });

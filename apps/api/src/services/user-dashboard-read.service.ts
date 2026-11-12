@@ -1,7 +1,12 @@
-import { type IBidInvoiceBatchReader, bidInvoiceKey } from "@auction/persistence/interfaces";
+import {
+  type IBidInvoiceBatchReader,
+  type IPublicLotResultReader,
+  bidInvoiceKey,
+} from "@auction/persistence/interfaces";
 import type { Bid, Lot, Sale } from "@auction/types";
 import { computeLotCheckoutPricing } from "../lib/lot-checkout-pricing.js";
 import { presentLotsImages } from "../lib/media-presenters.js";
+import { type LotViewer, presentLotsForViewer } from "../lib/public-lot-result.js";
 import {
   type StoredInvoicePricing,
   checkoutPricingFromInvoice,
@@ -32,11 +37,13 @@ export class UserDashboardReadService {
     private readonly mediaAssetEnricher?: MediaAssetEnricher,
     /** A lot that has been invoiced shows the invoice's figures, not its price now. */
     private readonly invoices?: IBidInvoiceBatchReader,
+    /** Lots whose result is still open; another reader's view of them shows only that they ended. */
+    private readonly publicLotResults?: IPublicLotResultReader,
   ) {}
 
   async listBidsForUser(userId: string): Promise<UserBidWithLot[]> {
     const rows = await this.dashboardQuery.listBidsWithLotsForBidder(userId);
-    return this.attachEnrichedLots(rows, { userId, accountId: null });
+    return this.attachEnrichedLots(rows, { userId, accountId: null }, bidAccounts(rows));
   }
 
   /** Bids placed for a buyer account, by everyone or (with `bidderId`) by one member. */
@@ -50,7 +57,9 @@ export class UserDashboardReadService {
       bidderId,
       saleId,
     );
-    return this.attachEnrichedLots(rows, { userId: bidderId, accountId: buyerLegalEntityId });
+    return this.attachEnrichedLots(rows, { userId: bidderId, accountId: buyerLegalEntityId }, [
+      buyerLegalEntityId,
+    ]);
   }
 
   async listWatchlistForUser(
@@ -61,11 +70,20 @@ export class UserDashboardReadService {
     return this.attachEnrichedLots(rows, { userId, accountId: null });
   }
 
+  /**
+   * `buyerAccounts` are the accounts the reader acts for here: a lot bought by one of them, or by
+   * the reader, is theirs and shows its buyer and price. Every other lot is shown as the public
+   * sees it, without the buyer's ids, so a watcher or an outbid bidder never learns who bought it
+   * or the price of a result that is still open.
+   */
   private async attachEnrichedLots<T extends { lot: Lot | null }>(
     rows: T[],
     viewer: Viewer,
+    buyerAccounts: readonly string[] = [],
   ): Promise<(T & { lot: Lot | null })[]> {
-    const lots = rows.map((r) => r.lot).filter((l): l is Lot => Boolean(l));
+    const raw = rows.map((r) => r.lot).filter((l): l is Lot => Boolean(l));
+    const lotViewer: LotViewer = { userId: viewer.userId, accountIds: new Set(buyerAccounts) };
+    const lots = await presentLotsForViewer(this.publicLotResults, raw, lotViewer);
     const enriched = await this.enrichLots(lots, viewer);
     const byId = new Map(enriched.map((l) => [l.id, l]));
     return rows.map((row) => ({
@@ -93,6 +111,8 @@ export class UserDashboardReadService {
     const invoices = await this.invoicesFor(lots, viewer);
     return lots.map((lotRow) => {
       const sale = lotRow.saleId ? (saleById.get(lotRow.saleId) ?? null) : null;
+      // An open result has no price to show yet.
+      if (lotRow.resultPending) return lotRow;
       const live = computeLotCheckoutPricing(lotRow, sale);
       const invoice = lotRow.buyerLegalEntityId
         ? invoices.get(bidInvoiceKey(lotRow.id, lotRow.buyerLegalEntityId))
@@ -121,4 +141,15 @@ export class UserDashboardReadService {
     });
     return this.invoices.findLiveByLotsAndBuyerAccounts(pairs);
   }
+}
+
+/** The buyer accounts the reader bid for: they act for these, so a lot one of them won is theirs. */
+function bidAccounts(rows: readonly { bid: Bid }[]): string[] {
+  return [
+    ...new Set(
+      rows
+        .map((row) => row.bid.buyerLegalEntityId)
+        .filter((id): id is string => typeof id === "string" && id.length > 0),
+    ),
+  ];
 }

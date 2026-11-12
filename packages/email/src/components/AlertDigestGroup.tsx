@@ -1,6 +1,7 @@
 import { COLORS, FONT_STACK_BODY, FONT_STACK_HEADING } from "@auction/branding";
 import { Heading, Img, Link, Section, Text } from "@react-email/components";
 import type { AlertDigestGroup as Group } from "../templates/types/sale-alerts.js";
+import { MomentValue } from "./MomentValue.js";
 
 /** One topic of a digest: its heading, the items under it, and a link to all when some are left out. */
 export function AlertDigestGroup({
@@ -31,6 +32,11 @@ export function AlertDigestGroup({
                 {item.title}
               </Link>
               {item.subtitle ? <Text style={itemLine}>{item.subtitle}</Text> : null}
+              {item.moments?.map((entry) => (
+                <Text key={entry.label} style={itemLine}>
+                  {entry.label} <MomentValue moment={entry.moment} />
+                </Text>
+              ))}
               {item.detail ? <Text style={itemLine}>{item.detail}</Text> : null}
             </Section>
           ))}

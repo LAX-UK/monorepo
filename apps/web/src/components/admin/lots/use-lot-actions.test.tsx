@@ -11,6 +11,9 @@ const declineAction = vi.fn();
 const returnAction = vi.fn();
 const buyerDefaultAction = vi.fn();
 const returnToLaxArtAction = vi.fn();
+const previewAction = vi.fn();
+const startAction = vi.fn();
+const notifyError = vi.fn();
 const notifySuccess = vi.fn();
 const notifySuccessDescription = vi.fn();
 
@@ -25,18 +28,39 @@ vi.mock("@/lib/actions/admin", () => ({
   adminReturnLotToLaxArtResultAction: (...args: unknown[]) => returnToLaxArtAction(...args),
   adminRecordBuyerDefaultResultAction: (...args: unknown[]) => buyerDefaultAction(...args),
 }));
+vi.mock("@/lib/actions/admin/admin-reoffers", () => ({
+  adminLoadReofferPreviewAction: (...args: unknown[]) => previewAction(...args),
+  adminStartReofferResultAction: (...args: unknown[]) => startAction(...args),
+}));
 vi.mock("@/lib/ui/notify", () => ({
   notify: {
     success: (title: string, options?: { description?: string }) => {
       notifySuccess(title);
       if (options?.description) notifySuccessDescription(options.description);
     },
-    error: vi.fn(),
+    error: (title: string, options?: { description?: string }) =>
+      notifyError(title, options?.description),
   },
 }));
 vi.mock("@/lib/auth/step-up/use-step-up-coordinator", () => ({
   redirectToHostedReauth: vi.fn(),
 }));
+
+const NEXT_BIDDER = {
+  soldOnAtg: false,
+  next: {
+    userId: "u2",
+    legalEntityId: "e2",
+    accountName: "Northbank Gallery",
+    bidMinor: 8_200_000,
+    placedAt: "2026-10-23T18:11:00.000Z",
+    belowReserve: false,
+    othersAfter: 2,
+  },
+  noneReason: null,
+  skippedBidders: [],
+  offersMade: 0,
+};
 
 const FULL: LotActionAccess = {
   canManageCatalog: true,
@@ -77,6 +101,26 @@ function Harness({ target, access = FULL }: { target: LotActionTarget; access?: 
   );
 }
 
+/** Two lots on one page, so the one Buyer default dialog can be opened for each in turn. */
+function TwoLots({ a, b }: { a: LotActionTarget; b: LotActionTarget }) {
+  const actions = useLotActions(FULL);
+  return (
+    <>
+      {[a, b].map((target) =>
+        actions
+          .actionsFor(target)
+          .filter((action) => action.label === "Buyer default…")
+          .map((action) => (
+            <button key={target.id} type="button" onClick={() => action.onSelect?.()}>
+              {`${action.label} ${target.title}`}
+            </button>
+          )),
+      )}
+      {actions.dialogs}
+    </>
+  );
+}
+
 describe("useLotActions", () => {
   beforeEach(() => {
     for (const fn of [
@@ -90,9 +134,14 @@ describe("useLotActions", () => {
       returnToLaxArtAction,
       buyerDefaultAction,
       notifySuccess,
+      notifyError,
+      previewAction,
+      startAction,
     ]) {
       fn.mockReset();
     }
+    previewAction.mockResolvedValue({ ok: true, data: NEXT_BIDDER });
+    startAction.mockResolvedValue({ ok: true, data: { status: "awaiting_seller" } });
   });
 
   it("offers a read-only role nothing", () => {
@@ -217,7 +266,7 @@ describe("useLotActions", () => {
     expect(buyerDefaultAction).not.toHaveBeenCalled();
     expect(screen.getByText("Enter reason.")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("radio", { name: /Offer to the underbidder/ }));
+    fireEvent.click(await screen.findByRole("radio", { name: /Offer to the next bidder/ }));
     fireEvent.click(screen.getByRole("checkbox", { name: /Pause the buyer's bidding/ }));
     fireEvent.change(screen.getByLabelText("Reason"), {
       target: { value: "No reply after two reminders" },
@@ -230,8 +279,140 @@ describe("useLotActions", () => {
         restrictBidding: true,
       }),
     );
-    await waitFor(() => expect(notifySuccess).toHaveBeenCalled());
+    await waitFor(() => expect(startAction).toHaveBeenCalledWith("lot_1"));
+    await waitFor(() =>
+      expect(notifySuccess).toHaveBeenCalledWith("Re-offer started: the seller has been asked"),
+    );
     expect(refresh).toHaveBeenCalled();
+  });
+
+  describe("offering to the next bidder", () => {
+    const ended = { ...lot, status: "ended" as const, hasWinner: true };
+    const record = async (reason = "No payment") => {
+      fireEvent.click(await screen.findByRole("radio", { name: /Offer to the next bidder/ }));
+      fireEvent.change(screen.getByLabelText("Reason"), { target: { value: reason } });
+      fireEvent.click(screen.getByRole("button", { name: "Record buyer default" }));
+    };
+
+    it("names the bidder, their bid and the bidders after them", async () => {
+      render(<Harness target={ended} />);
+      fireEvent.click(screen.getByRole("button", { name: "Buyer default…" }));
+      const line = await screen.findByTestId("next-bidder");
+      expect(line).toHaveTextContent("Northbank Gallery · their bid £82,000.00 on");
+      expect(line).toHaveTextContent("2 other bidders after them");
+      expect(previewAction).toHaveBeenCalledWith("lot_1");
+    });
+
+    it("says no one else bid and keeps the option closed", async () => {
+      previewAction.mockResolvedValue({
+        ok: true,
+        data: { ...NEXT_BIDDER, next: null, noneReason: "no_other_bidder" },
+      });
+      render(<Harness target={ended} />);
+      fireEvent.click(screen.getByRole("button", { name: "Buyer default…" }));
+      expect(await screen.findByText("No one else bid on this lot.")).toBeInTheDocument();
+      expect(screen.getByRole("radio", { name: /Offer to the next bidder/ })).toBeDisabled();
+    });
+
+    it("does not offer the option until it knows who is next", () => {
+      previewAction.mockReturnValue(new Promise(() => undefined));
+      render(<Harness target={ended} />);
+      fireEvent.click(screen.getByRole("button", { name: "Buyer default…" }));
+      expect(screen.getByText("Checking who bid next…")).toBeInTheDocument();
+      expect(screen.getByRole("radio", { name: /Offer to the next bidder/ })).toBeDisabled();
+    });
+
+    it("says the default was recorded when the offer could not start, and points to the lot page", async () => {
+      buyerDefaultAction.mockResolvedValue({ ok: true });
+      startAction.mockResolvedValue({ ok: false, error: "Three offers have been made." });
+      render(<Harness target={ended} />);
+      fireEvent.click(screen.getByRole("button", { name: "Buyer default…" }));
+      await record();
+      await waitFor(() =>
+        expect(notifyError).toHaveBeenCalledWith(
+          "Buyer default recorded, but the offer did not start",
+          "Three offers have been made. Start it from the lot page.",
+        ),
+      );
+      expect(refresh).toHaveBeenCalled();
+    });
+
+    it("does not start an offer when the default itself is refused", async () => {
+      buyerDefaultAction.mockResolvedValue({ ok: false, error: "The buyer has paid." });
+      render(<Harness target={ended} />);
+      fireEvent.click(screen.getByRole("button", { name: "Buyer default…" }));
+      await record();
+      expect(await screen.findByText("The buyer has paid.")).toBeInTheDocument();
+      expect(startAction).not.toHaveBeenCalled();
+    });
+
+    it("never shows one lot's next bidder under another lot", async () => {
+      let answerA: (value: unknown) => void = () => undefined;
+      previewAction.mockImplementation((lotId: string) =>
+        lotId === "lot_a"
+          ? new Promise((resolve) => {
+              answerA = resolve;
+            })
+          : Promise.resolve({
+              ok: true,
+              data: {
+                ...NEXT_BIDDER,
+                next: { ...NEXT_BIDDER.next, accountName: "Lot B's bidder" },
+              },
+            }),
+      );
+      render(
+        <TwoLots
+          a={{ ...ended, id: "lot_a", title: "Lot A" }}
+          b={{ ...ended, id: "lot_b", title: "Lot B" }}
+        />,
+      );
+      fireEvent.click(screen.getByRole("button", { name: "Buyer default… Lot A" }));
+      fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+      fireEvent.click(screen.getByRole("button", { name: "Buyer default… Lot B" }));
+      expect(await screen.findByTestId("next-bidder")).toHaveTextContent("Lot B's bidder");
+      // A's answer arrives late, while B is open: it is dropped.
+      answerA({
+        ok: true,
+        data: { ...NEXT_BIDDER, next: { ...NEXT_BIDDER.next, accountName: "Lot A's bidder" } },
+      });
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(screen.getByTestId("next-bidder")).toHaveTextContent("Lot B's bidder");
+      expect(screen.queryByText(/Lot A's bidder/)).not.toBeInTheDocument();
+    });
+
+    it("asks for a fresh sign-in when starting the offer needs one, and keeps the default", async () => {
+      buyerDefaultAction.mockResolvedValue({ ok: true });
+      startAction.mockResolvedValue({
+        ok: false,
+        error: "Confirm it’s you",
+        errorCode: "step_up_required",
+      });
+      render(<Harness target={ended} />);
+      fireEvent.click(screen.getByRole("button", { name: "Buyer default…" }));
+      await record();
+      expect(
+        await screen.findByText(
+          "To start this offer, sign in again. You will come back to this page to finish.",
+        ),
+      ).toBeInTheDocument();
+      expect(notifyError).not.toHaveBeenCalled();
+      expect(notifySuccess).toHaveBeenCalledWith("Buyer default recorded for Blue Interior");
+      expect(refresh).toHaveBeenCalled();
+    });
+
+    it("no longer promises that no fees are added", async () => {
+      render(<Harness target={ended} />);
+      fireEvent.click(screen.getByRole("button", { name: "Buyer default…" }));
+      expect(screen.queryByText(/no fees or interest/i)).not.toBeInTheDocument();
+    });
+  });
+
+  it("replaces Buyer default with the ATG settlement note for a lot sold on ATG", () => {
+    render(<Harness target={{ ...lot, status: "ended", soldOnAtg: true }} />);
+    const action = screen.getByRole("button", { name: "Buyer default…" });
+    expect(action).toBeDisabled();
+    expect(action).toHaveAttribute("title", "Sold on ATG: follow the ATG settlement runbook");
   });
 
   describe("return to lax.art", () => {

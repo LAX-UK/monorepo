@@ -1,5 +1,6 @@
 import type { BetterAuthPlugin } from "better-auth";
 import { createAuthMiddleware } from "better-auth/api";
+import type { AuthAfterHook } from "./auth-after-hook.js";
 
 type AuthUser = { id: string; email: string; name: string };
 
@@ -30,7 +31,7 @@ export async function runMagicLinkVerifyAfter(deps: {
 /** After magic-link verify: publish email-verified parity. */
 export function buildMagicLinkVerifyAfterHooks(options: {
   onEmailVerified?: OnEmailVerified;
-}) {
+}): AuthAfterHook {
   return {
     matcher: (context: { path?: string }) => context.path === "/magic-link/verify",
     handler: createAuthMiddleware(async (ctx) => {

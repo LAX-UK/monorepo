@@ -8,6 +8,11 @@ import type {
 } from "../services/identity-operations.ports.js";
 import { identityOperationDb } from "./drizzle-identity-unit-of-work.js";
 import { retireRevokedBrowserMarkers } from "./drizzle-known-device.store.js";
+import {
+  lastActiveAtColumn,
+  sessionPersonIsStaff,
+  signedInAtColumn,
+} from "./session-lifetime.sql.js";
 
 export class DrizzleIdentitySessionRepository implements IIdentitySessionRepository {
   constructor(
@@ -29,9 +34,10 @@ export class DrizzleIdentitySessionRepository implements IIdentitySessionReposit
         ipAddress: session.ipAddress,
         userAgent: session.userAgent,
         lastPasswordAuthAt: session.lastPasswordAuthAt,
+        lastActiveAt: sql<Date>`${lastActiveAtColumn}`.mapWith(session.createdAt),
+        signedInAt: sql<Date>`${signedInAtColumn}`.mapWith(session.createdAt),
+        isStaff: sql<boolean>`${sessionPersonIsStaff}`,
         amr: session.amr,
-        signedInAt: session.signedInAt,
-        lastSeenAt: session.lastSeenAt,
         country: session.country,
       })
       .from(session)

@@ -7,6 +7,7 @@ import {
   DrizzleLotReawardRepository,
   DrizzleLotRegisterLinkReader,
   DrizzleLotReofferRepository,
+  DrizzleReofferStaffReader,
   DrizzleReofferViewsReader,
   DrizzleReofferWorkflowReader,
   DrizzleSellerConsentRepository,
@@ -22,6 +23,7 @@ import {
   type IReofferPricing,
   allowAllMoneyPauseGuard,
 } from "../services/reoffer/reoffer-ports.js";
+import { ReofferPreviewService } from "../services/reoffer/reoffer-preview.service.js";
 import { ReofferReadsService } from "../services/reoffer/reoffer-reads.service.js";
 import { ReofferResponseService } from "../services/reoffer/reoffer-response.service.js";
 import { settlementSellerProceeds } from "../services/reoffer/reoffer-seller-proceeds.js";
@@ -36,6 +38,7 @@ export type ContainerReofferServices = {
   offer: ReofferOfferService;
   response: ReofferResponseService;
   reads: ReofferReadsService;
+  preview: ReofferPreviewService;
 };
 
 export function createReofferServices(input: {
@@ -112,6 +115,12 @@ export function createReofferServices(input: {
       views: new DrizzleReofferViewsReader(db),
       workflow,
       pricing,
+    }),
+    preview: new ReofferPreviewService({
+      db,
+      staff: new DrizzleReofferStaffReader(),
+      workflow,
+      atg: links,
     }),
   };
 }

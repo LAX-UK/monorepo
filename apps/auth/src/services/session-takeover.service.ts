@@ -76,6 +76,11 @@ export interface EndedSessionNotifier {
   }): Promise<{ run(): Promise<void> }>;
 }
 
+/** Keeps a person within their cap of browsers once a new sign-in is recorded. */
+export interface SessionCapEnforcer {
+  enforce(input: { userId: string; keepSessionId: string }): Promise<number>;
+}
+
 /**
  * One rule for every sign-in that sets a new session cookie (password, email link, Google or
  * Apple, two-step, passkey, "Confirm it's you", switching account): the new record takes over what
@@ -87,12 +92,15 @@ export interface EndedSessionNotifier {
  *   with a back-channel sign-out for every id it stood for, so the previous person is signed out of
  *   every LAX product in this browser. A record found only through the device marker is left alone
  *   unless it is the same person's.
+ * - Either way, the person is then held to their cap of browsers (see SessionCap).
  */
 export class SessionTakeoverService {
   constructor(
     private readonly store: SessionTakeoverStore,
     private readonly ended: EndedSessionNotifier,
+    private readonly cap: SessionCapEnforcer,
     private readonly now: () => Date = () => new Date(),
+    private readonly onCapFailed?: (error: unknown, userId: string) => void,
   ) {}
 
   async takeOver(input: {
@@ -132,6 +140,14 @@ export class SessionTakeoverService {
       now,
     });
     await Promise.all(reservations.map((reservation) => reservation.run()));
+    // After the new record stands, so the count includes it and it is never the one ended.
+    // The sign-in stands whether or not this succeeds. A failure is reported, and the sweep's
+    // over-cap pass enforces the cap within a minute.
+    try {
+      await this.cap.enforce({ userId: fresh.userId, keepSessionId: fresh.id });
+    } catch (error) {
+      this.onCapFailed?.(error, fresh.userId);
+    }
   }
 }
 

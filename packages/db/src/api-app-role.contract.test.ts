@@ -15,6 +15,7 @@ import {
   expectTablePrivileges,
   readTablePrivileges,
 } from "./role-contract/table-privileges.test-helpers.js";
+import { expectZohoBooksConnectionGrants } from "./role-contract/zoho-books-connection-privileges.test-helpers.js";
 import { buildPgConnectionConfig } from "./ssl.js";
 
 const API_URL = process.env.DATABASE_URL_API ?? process.env.API_APP_DATABASE_URL;
@@ -32,6 +33,12 @@ async function withApiClient<T>(fn: (client: pg.Client) => Promise<T>): Promise<
 }
 
 describe.skipIf(!API_URL)("api_app role contract", { timeout: 60_000 }, () => {
+  it("has no privilege at all on the sealed Zoho Books tokens", async () => {
+    await withApiClient(async (client) => {
+      await expectZohoBooksConnectionGrants(client);
+    });
+  });
+
   it("can lock a lot row and raise its invoice and payment in the same transaction", async () => {
     // The invoice raise locks the lot first (FOR UPDATE, which needs UPDATE on the table) and
     // re-checks its winner before inserting, so a buyer default cannot slip in between.

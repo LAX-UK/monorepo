@@ -203,12 +203,17 @@ export class CatalogLotReadHttpApplicationService implements ICatalogLotReadHttp
     if (!lot) {
       return { status: 404, body: { error: "Not found" } };
     }
-    const presented = await presentLotImages(this.mediaUrlResolver, lot, this.mediaAssetEnricher);
+    const withImages = await presentLotImages(this.mediaUrlResolver, lot, this.mediaAssetEnricher);
     const sale = lot.saleId ? await this.saleService.getByIdForPublicCatalog(lot.saleId) : null;
     const canPreview = viewerCanSeeNonPublicCatalog(
       input.viewer.role ?? undefined,
       input.viewer.staffRoles,
     );
+    // Staff see the real buyer and price; everyone else sees an open result as "ended".
+    const [presented] = canPreview
+      ? [withImages]
+      : await this.lotService.presentForPublic([withImages]);
+    if (!presented) return { status: 404, body: { error: "Not found" } };
     if (!canPreview && !isPublicCatalogueLot(presented, sale)) {
       return { status: 404, body: { error: "Not found" } };
     }

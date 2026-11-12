@@ -150,7 +150,11 @@ only what is staff: `requires` on buttons and menu items, read-only views, and e
   />
   ```
 - **Overview**: `AttentionList` (queues that need someone, linking to the filtered list).
-- **Record pages**: `Section`, `KeyValueList`, `Timeline`, `RelativeTime`, `TruncatedText`,
+- **Record pages**: `Section` (with an optional `status` slot: a `StatusBadge` beside the
+  title, for a section whose state is the point of it; the title keeps its style),
+  `StepList` (a short process as steps, each with a state dot, its facts and a date; the state is
+  also read out, so colour is never the only signal), `KeyValueList`, `Timeline`, `RelativeTime`,
+  `TruncatedText`,
   `StatGrid`, `ProgressBar`, `StatusBadge` with
   `defineStatusMap` (one map per domain status), `Notice` (info, warning or danger line above
   the work it concerns), `DangerZone` and `DangerZoneAction`.

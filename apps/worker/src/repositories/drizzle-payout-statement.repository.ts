@@ -8,6 +8,7 @@ import {
   payoutLine,
   privateSaleDeal,
 } from "@auction/db/schema";
+import { lotSoldAfterAuctionSql } from "@auction/persistence/lib";
 import { eq, inArray } from "drizzle-orm";
 import type {
   IPayoutStatementRepository,
@@ -65,6 +66,7 @@ export class DrizzlePayoutStatementRepository implements IPayoutStatementReposit
         lotTitle: lot.title,
         lotNumber: lot.lotNumber,
         buyerName: bidIdentityDirectory.name,
+        soldAfterAuction: lotSoldAfterAuctionSql(),
         dealReference: privateSaleDeal.reference,
       })
       .from(payoutLine)

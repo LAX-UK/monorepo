@@ -336,6 +336,15 @@ describe("classifyLotLifecycle", () => {
     expect(classifyLotLifecycle(unsold, onlineSale, Date.now()).kind).toBe("endedNoSale");
   });
 
+  it("reads an ended lot whose result is still open as ended, never sold or not sold", () => {
+    const open = { ...lotBase("ended", { winnerId: null }), resultPending: true };
+    expect(classifyLotLifecycle(open, onlineSale, Date.now()).kind).toBe("endedPending");
+    expect(lifecycleBadge({ kind: "endedPending", msLeft: null }).label).toBe("Ended");
+    // Even if a buyer were on the payload, an open result is not a sale.
+    const withBuyer = { ...lotBase("ended", { winnerId: "u1" }), resultPending: true };
+    expect(classifyLotLifecycle(withBuyer, onlineSale, Date.now()).kind).toBe("endedPending");
+  });
+
   it("returns withdrawn for voided", () => {
     const l = lotBase("voided");
     expect(classifyLotLifecycle(l, onlineSale, Date.now()).kind).toBe("withdrawn");

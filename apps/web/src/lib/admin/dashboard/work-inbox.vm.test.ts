@@ -98,3 +98,28 @@ describe("work inbox view model", () => {
     expect(workInboxSummary([])).toBe("Nothing waiting");
   });
 });
+
+describe("workItemGuidance", () => {
+  it("says what to do about an overdue payment and each re-offer step", async () => {
+    const { workItemGuidance } = await import("./work-inbox.vm");
+    expect(workItemGuidance({ kind: "payment_overdue", actions: [] })).toBe(
+      "Remind the buyer, or record a buyer default from the lot.",
+    );
+    expect(workItemGuidance({ kind: "reoffer_ready", actions: [] })).toBe(
+      "Send the offer to the next bidder from the lot.",
+    );
+    expect(workItemGuidance({ kind: "reoffer_decision", actions: [] })).toContain("next bidder");
+    expect(workItemGuidance({ kind: "reoffer_no_reply", actions: [] })).toContain("seller");
+    expect(workItemGuidance({ kind: "reoffer_accepted", actions: [] })).toContain("invoiced");
+  });
+
+  it("prefers the item's own actions, and points to the record when nothing else applies", async () => {
+    const { workItemGuidance } = await import("./work-inbox.vm");
+    expect(
+      workItemGuidance({ kind: "payment_manual_review", actions: ["capture", "refund"] }),
+    ).toBe("Capture payment, Refund payment");
+    expect(workItemGuidance({ kind: "deletion_hold", actions: [] })).toBe(
+      "Open the record to deal with it",
+    );
+  });
+});

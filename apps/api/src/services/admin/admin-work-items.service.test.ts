@@ -46,6 +46,7 @@ function createReader(overrides: Partial<IAdminWorkItemsReader> = {}): IAdminWor
     listPurchaseProblems: vi.fn().mockResolvedValue([]),
     listDeletionHolds: vi.fn().mockResolvedValue([]),
     listRegisterLotMismatches: vi.fn().mockResolvedValue([]),
+    listReofferWork: vi.fn().mockResolvedValue([]),
     ...overrides,
   };
 }
@@ -177,6 +178,47 @@ describe("AdminWorkItemsService", () => {
       query,
     });
     expect(asFinance.items.some((i) => i.kind === "payment_overdue")).toBe(false);
+  });
+
+  it("shows each re-offer step to sales staff, with its link to the lot and no inline action", async () => {
+    const kinds = [
+      "reoffer_no_reply",
+      "reoffer_ready",
+      "reoffer_decision",
+      "reoffer_accepted",
+    ] as const;
+    const listReofferWork = vi.fn().mockResolvedValue(
+      kinds.map((kind) =>
+        row({
+          sourceId: `offer-${kind}`,
+          kind,
+          domain: "saleroom",
+          title: kind,
+          sourceUpdatedAt: new Date(),
+        }),
+      ),
+    );
+    const service = new AdminWorkItemsService(createReader({ listReofferWork }));
+    const query = { limit: 25, assignment: "all", urgentOnly: false } as const;
+    const asSales = await service.listWorkItems({
+      actorUserId: "u1",
+      actorRole: "staff",
+      actorStaffRoles: ["sales_manager"],
+      query,
+    });
+    expect(asSales.items.map((i) => i.kind).sort()).toEqual([...kinds].sort());
+    expect(asSales.items.every((i) => i.actions.length === 0)).toBe(true);
+    expect(asSales.items.find((i) => i.kind === "reoffer_accepted")?.severity).toBe("low");
+    expect(asSales.items.find((i) => i.kind === "reoffer_ready")?.severity).toBe("high");
+    for (const staffRole of ["finance", "cataloguer", "client_services", "read_only"] as const) {
+      const other = await service.listWorkItems({
+        actorUserId: "u2",
+        actorRole: "staff",
+        actorStaffRoles: [staffRole],
+        query,
+      });
+      expect(other.items.some((i) => i.kind.startsWith("reoffer_"))).toBe(false);
+    }
   });
 
   it("does not show an entity review to finance-only staff, who cannot open the entity page", async () => {

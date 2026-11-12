@@ -95,11 +95,14 @@ describe("ReofferOfferAnswer", () => {
     fireEvent.click(acceptButton());
     expect(await screen.findByText("The total has changed")).toBeTruthy();
     expect(screen.getByText(/has changed since you opened this page/)).toBeTruthy();
+    // The new total needs its own yes. The accept transition settles after the notice shows, so
+    // the box and button are awaited rather than read straight away.
+    await waitFor(() => {
+      expect(screen.getByRole("checkbox").getAttribute("aria-checked")).toBe("false");
+      expect(acceptButton().getAttribute("aria-disabled")).toBe("true");
+    });
     expect(router.refresh).toHaveBeenCalled();
     expect(router.push).not.toHaveBeenCalled();
-    // The new total needs its own yes.
-    expect(screen.getByRole("checkbox").getAttribute("aria-checked")).toBe("false");
-    expect(acceptButton().getAttribute("aria-disabled")).toBe("true");
   });
 
   it("reloads with the reason when the offer moved on for another cause", async () => {
