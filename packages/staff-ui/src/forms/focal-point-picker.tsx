@@ -1,5 +1,6 @@
 "use client";
 
+import { useField } from "@auction/ui/lax";
 import * as React from "react";
 import { cn } from "../lib/cn.js";
 import { type FocalPoint, describeFocal, focalFromKey, focalFromPointer } from "./focal-point.js";
@@ -13,7 +14,7 @@ export type FocalPointPickerProps = {
   onValueChange: (point: FocalPoint) => void;
   /** Names the control for screen readers, e.g. "Where the subject is in the cover picture". */
   label: string;
-  /** Lets an error summary or a label move focus here. */
+  /** Lets an error summary or a label move focus here; inside a `Field` it takes the field's id. */
   id?: string;
   /** Called with the picture's own pixel size once it has loaded. */
   onImageSize?: (size: { width: number; height: number }) => void;
@@ -28,7 +29,7 @@ const MAX_HEIGHT_REM = 22;
  * Shows a picture and lets staff mark where its subject is: click or drag on it, or Tab to it and
  * use the arrow keys (Shift moves further, Home centres). The marker is a white ring edged in
  * black so it stays visible on any picture. It never changes the picture; the caller keeps the
- * point.
+ * point. Inside a `Field` it takes the field's id and description and error.
  */
 export function FocalPointPicker({
   src,
@@ -44,7 +45,10 @@ export function FocalPointPicker({
   const surface = React.useRef<HTMLDivElement>(null);
   const [dragging, setDragging] = React.useState(false);
   const aspect = ratio && ratio > 0 ? ratio : FALLBACK_RATIO;
+  const field = useField();
   const hintId = React.useId();
+  const controlId = id ?? field?.controlId;
+  const describedBy = [field?.describedBy, hintId].filter(Boolean).join(" ");
 
   const pointAt = (event: React.PointerEvent) => {
     const rect = surface.current?.getBoundingClientRect();
@@ -54,11 +58,11 @@ export function FocalPointPicker({
   return (
     <div
       ref={surface}
-      id={id}
+      id={controlId}
       role="application"
       aria-roledescription="picture focal point"
       aria-label={label}
-      aria-describedby={hintId}
+      aria-describedby={describedBy}
       aria-disabled={disabled || undefined}
       tabIndex={disabled ? -1 : 0}
       onPointerDown={(event) => {

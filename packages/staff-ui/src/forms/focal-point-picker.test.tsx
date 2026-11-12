@@ -1,3 +1,4 @@
+import { Field } from "@auction/ui/lax";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { FocalPointPicker } from "./focal-point-picker.js";
@@ -92,6 +93,22 @@ describe("FocalPointPicker", () => {
     surface.setPointerCapture = vi.fn();
     press(surface, 150, 25);
     expect(onValueChange).toHaveBeenCalledWith({ x: 0.75, y: 0.25 });
+  });
+
+  it("takes the id, description and error of the Field around it", () => {
+    render(
+      <Field label="Picture" id="cover-picture" description="Click the subject." error="Too small">
+        <FocalPointPicker
+          src="/p.jpg"
+          value={{ x: 0.5, y: 0.5 }}
+          onValueChange={() => {}}
+          label="Where the subject is"
+        />
+      </Field>,
+    );
+    const surface = screen.getByRole("application");
+    expect(surface).toHaveAttribute("id", "cover-picture");
+    expect(surface).toHaveAccessibleDescription(/Click the subject\..*Too small.*50% across/);
   });
 
   it("reports the picture's own size once it has loaded", () => {

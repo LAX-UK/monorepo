@@ -281,7 +281,10 @@ export function HomeCoverSection({
 
       {!draft && actions ? (
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label={HOME_COVER_COPY.pickerLabel} id={editorialFieldId("home-cover-choose")}>
+          <Field
+            label={HOME_COVER_COPY.pickerFieldLabel}
+            id={editorialFieldId("home-cover-choose")}
+          >
             <EntityPicker
               value={null}
               onValueChange={(option) => {
@@ -305,7 +308,7 @@ export function HomeCoverSection({
             />
           </Field>
           <Field
-            label={HOME_COVER_COPY.uploadLabel}
+            label={HOME_COVER_COPY.uploadFieldLabel}
             id={editorialFieldId("home-cover-upload")}
             error={uploadFailure ?? undefined}
           >
@@ -347,24 +350,25 @@ export function HomeCoverSection({
               title="Fix this before saving"
               focusKey={submitCount}
             />
-            <FocalPointPicker
+            <Field
+              label={HOME_COVER_COPY.pictureLabel}
               id={PICTURE_FIELD}
-              src={draft.imageUrl}
-              ratio={ratio}
-              value={draft.focal}
-              label={HOME_COVER_COPY.focalLabel}
-              disabled={!actions || pending}
-              onValueChange={(focal) => actions && change({ ...draft, focal })}
-              onImageSize={(size) => {
-                if (draft.width === null) setDraft({ ...draft, ...size });
-              }}
-            />
-            <p className="text-staff-xs text-staff-muted">
-              {HOME_COVER_COPY.focalHint} <span>Subject: {describeFocal(draft.focal)}.</span>
-            </p>
-            {pictureProblem ? (
-              <p className="text-staff-sm font-medium text-staff-danger">{pictureProblem}</p>
-            ) : null}
+              {...(actions ? { description: HOME_COVER_COPY.focalHint } : {})}
+              error={pictureProblem}
+            >
+              <FocalPointPicker
+                src={draft.imageUrl}
+                ratio={ratio}
+                value={draft.focal}
+                label={HOME_COVER_COPY.focalLabel}
+                disabled={!actions || pending}
+                onValueChange={(focal) => actions && change({ ...draft, focal })}
+                onImageSize={(size) => {
+                  if (draft.width === null) setDraft({ ...draft, ...size });
+                }}
+              />
+            </Field>
+            <p className="text-staff-xs text-staff-muted">Subject: {describeFocal(draft.focal)}.</p>
           </div>
 
           <div className="flex min-w-0 flex-col gap-4">

@@ -29,9 +29,12 @@ export const HOME_COVER_COPY = {
   emptyReadOnly: "No cover image is set. The home leads with the newest release.",
   altLabel: "Alt text",
   altHint: "Describes the picture for people who cannot see it.",
+  pickerFieldLabel: "From the Shop",
   pickerLabel: "Choose a Shop picture",
   pickerPlaceholder: "Search editions and artists",
+  uploadFieldLabel: "From your computer",
   uploadLabel: "Upload a picture",
+  pictureLabel: "Picture",
   focalLabel: "Where the subject is",
   focalHint: "Click or drag on the picture. The headline sits on the other side.",
 } as const;
