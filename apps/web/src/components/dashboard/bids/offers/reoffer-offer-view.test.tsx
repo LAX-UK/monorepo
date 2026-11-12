@@ -38,10 +38,10 @@ const view = (over: Partial<BidderReofferView> = {}): BidderReofferView => ({
   price: {
     hammerMinor: 82_000_00,
     buyersPremiumMinor: 20_500_00,
-    vatOnPremiumMinor: 4_100_00,
+    vatOnPremiumMinor: null,
     vatOnLotMinor: null,
     artistsResaleRightMinor: null,
-    totalMinor: 106_600_00,
+    totalMinor: 102_500_00,
   },
   endsAt: "2026-11-14T17:00:00.000Z",
   respondedAt: null,
@@ -64,7 +64,9 @@ describe("ReofferOfferView", () => {
     expect(screen.getByRole("heading", { level: 1, name: "An offer for you" })).toBeTruthy();
     expect(screen.getByText("Ends Sat 14 Nov, 17:00 GMT")).toBeTruthy();
     expect(screen.getByText("Total")).toBeTruthy();
-    expect(screen.getByText("£106,600.00")).toBeTruthy();
+    expect(screen.getByText("£102,500.00")).toBeTruthy();
+    // The invoice has no VAT line, so neither does the page.
+    expect(screen.queryByText(/VAT/)).toBeNull();
     expect(screen.getByRole("checkbox")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Accept and continue" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Decline" })).toBeTruthy();
@@ -83,7 +85,7 @@ describe("ReofferOfferView", () => {
     show({ status: "ended" });
     expect(screen.getByRole("heading", { name: "This offer has ended" })).toBeTruthy();
     expect(screen.queryByRole("checkbox")).toBeNull();
-    expect(screen.getByText("£106,600.00")).toBeTruthy();
+    expect(screen.getByText("£102,500.00")).toBeTruthy();
     expect(screen.getByRole("link", { name: "Browse upcoming sales" })).toBeTruthy();
   });
 

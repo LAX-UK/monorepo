@@ -22,7 +22,8 @@ import {
   DrizzleSellerConsentRepository,
   DrizzleTransactionRunner,
 } from "@auction/persistence/repositories";
-import { LotEventSchemas } from "@auction/types";
+import { type Lot, LotEventSchemas } from "@auction/types";
+import { buildInvoiceLines } from "@auction/validators";
 import { eq, inArray } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
@@ -34,7 +35,7 @@ import type { ReofferMemberActor, ReofferStaffActor } from "./reoffer-actors.js"
 import { ReofferConsentService } from "./reoffer-consent.service.js";
 import { ReofferError } from "./reoffer-errors.js";
 import { ReofferOfferService } from "./reoffer-offer.service.js";
-import type { IReofferMoneyPauseGuard } from "./reoffer-ports.js";
+import type { IReofferMoneyPauseGuard, IReofferPricing } from "./reoffer-ports.js";
 import { ReofferReadsService } from "./reoffer-reads.service.js";
 import { ReofferResponseService } from "./reoffer-response.service.js";
 import { ReofferStartService } from "./reoffer-start.service.js";
@@ -105,6 +106,21 @@ describe.skipIf(!HAS_DB)("re-offer API services (integration)", () => {
       if (control.paused) throw new ReofferError("money_paused", control.paused);
     },
   };
+  /**
+   * The invoice's own calculator on the lot as stored, at the offer's hammer: the lines and total
+   * the page shows are the ones the invoice would carry, and a premium changed on the lot shows.
+   */
+  const pricing: IReofferPricing = {
+    async priceFor({ lotId, hammerPence }) {
+      const [stored] = await db.select().from(lot).where(eq(lot.id, lotId));
+      if (!stored) throw new Error(`Lot ${lotId} not found for pricing`);
+      const priced = buildInvoiceLines(
+        { ...stored, currentPrice: (hammerPence / 100).toFixed(2) } as unknown as Lot,
+        null,
+      );
+      return { lines: priced.lines, totalPence: priced.totalPence };
+    },
+  };
   const workflow = new DrizzleReofferWorkflowReader();
   const offers = new DrizzleLotReofferRepository();
   const consents = new DrizzleSellerConsentRepository(db);
@@ -154,15 +170,7 @@ describe.skipIf(!HAS_DB)("re-offer API services (integration)", () => {
     db,
     views: new DrizzleReofferViewsReader(db),
     workflow,
-    pricing: {
-      priceFor: async ({ hammerPence }) => ({
-        lines: [
-          { kind: "hammer", amountPence: hammerPence },
-          { kind: "buyers_premium", amountPence: Math.round(hammerPence * 0.25) },
-        ],
-        totalPence: hammerPence + Math.round(hammerPence * 0.25),
-      }),
-    },
+    pricing,
   });
 
   const member = (who: keyof typeof ids | "seller", role = "owner"): ReofferMemberActor => ({
@@ -1206,7 +1214,7 @@ describe.skipIf(!HAS_DB)("re-offer API services (integration)", () => {
         price: {
           hammerMinor: 90_000,
           buyersPremiumMinor: 22_500,
-          vatOnPremiumMinor: 0,
+          vatOnPremiumMinor: null,
           vatOnLotMinor: null,
           artistsResaleRightMinor: null,
           totalMinor: 112_500,

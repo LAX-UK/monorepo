@@ -21,10 +21,10 @@ const view = (over: Partial<BidderReofferView> = {}): BidderReofferView => ({
   price: {
     hammerMinor: 82_000_00,
     buyersPremiumMinor: 20_500_00,
-    vatOnPremiumMinor: 4_100_00,
+    vatOnPremiumMinor: null,
     vatOnLotMinor: null,
     artistsResaleRightMinor: null,
-    totalMinor: 106_600_00,
+    totalMinor: 102_500_00,
   },
   endsAt: "2026-11-14T17:00:00.000Z",
   respondedAt: null,
@@ -76,9 +76,23 @@ describe("the open offer", () => {
     expect(vm.price.rows).toEqual([
       { label: "Hammer (your bid)", value: "£82,000.00" },
       { label: "Buyer's premium", value: "£20,500.00" },
-      { label: "VAT on the buyer's premium", value: "£4,100.00" },
-      { label: "Total", value: "£106,600.00", strong: true },
+      { label: "Total", value: "£102,500.00", strong: true },
     ]);
+    const noPremium = bidderReofferVm(
+      view({
+        price: {
+          hammerMinor: 100,
+          buyersPremiumMinor: null,
+          vatOnPremiumMinor: null,
+          vatOnLotMinor: null,
+          artistsResaleRightMinor: null,
+          totalMinor: 100,
+        },
+      }),
+      viewer,
+      NOW,
+    );
+    expect(noPremium.price.rows.map((row) => row.label)).toEqual(["Hammer (your bid)", "Total"]);
     const withLotTaxes = bidderReofferVm(
       view({
         price: {
@@ -172,7 +186,7 @@ describe("an offer that is over", () => {
     );
     expect(accepted.chip?.label).toBe("Accepted");
     expect(accepted.card.heading).toBe("You bought this lot");
-    expect(accepted.card.paragraphs[0]).toContain("£106,600.00 is due by Thu 19 Nov, 23:59 GMT");
+    expect(accepted.card.paragraphs[0]).toContain("£102,500.00 is due by Thu 19 Nov, 23:59 GMT");
     expect(accepted.card.purchaseHref).toBe("/purchases/lot1");
     expect(accepted.card.answerable).toBe(false);
   });

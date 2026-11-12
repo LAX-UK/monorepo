@@ -216,7 +216,10 @@ const STATES: Record<BidderReofferState, StateEntry> = {
   },
 };
 
-/** The figures the bidder agrees to: the lines that apply to this lot, then the total. */
+/**
+ * The figures the bidder agrees to: the lines the invoice will carry, then the total. A line the
+ * invoice does not have is not drawn, never shown as nil.
+ */
 function priceOf(view: BidderReofferView): BidderReofferPriceVm {
   const { price } = view;
   const optional = (label: string, minor: number | null) =>
@@ -224,8 +227,8 @@ function priceOf(view: BidderReofferView): BidderReofferPriceVm {
   return {
     rows: [
       { label: "Hammer (your bid)", value: money(price.hammerMinor) },
-      { label: "Buyer's premium", value: money(price.buyersPremiumMinor) },
-      { label: "VAT on the buyer's premium", value: money(price.vatOnPremiumMinor) },
+      ...optional("Buyer's premium", price.buyersPremiumMinor),
+      ...optional("VAT on the buyer's premium", price.vatOnPremiumMinor),
       ...optional("VAT on the lot", price.vatOnLotMinor),
       ...optional("Artist's Resale Right", price.artistsResaleRightMinor),
       { label: "Total", value: money(price.totalMinor), strong: true },

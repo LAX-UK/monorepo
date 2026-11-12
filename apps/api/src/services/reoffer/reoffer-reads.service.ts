@@ -15,7 +15,9 @@ import type {
   SellerConsentRequestRow,
   StaffReofferView,
 } from "@auction/persistence/interfaces";
+import type { InvoiceLineKind } from "@auction/types";
 import {
+  type BidderReofferPrice,
   type BidderReofferView,
   type SellerReofferView,
   type StaffReoffer,
@@ -102,8 +104,6 @@ export class ReofferReadsService {
       buyerLegalEntityId: row.offeredLegalEntityId,
       hammerPence: row.amountPence,
     });
-    const line = (kind: string) =>
-      priced.lines.filter((l) => l.kind === kind).reduce((sum, l) => sum + l.amountPence, 0);
     return bidderReofferViewSchema.parse({
       id: row.id,
       lotId: row.lotId,
@@ -113,16 +113,7 @@ export class ReofferReadsService {
       lotImage: row.lot.image,
       lotEndedAt: row.lotEndedAt.toISOString(),
       status,
-      price: {
-        hammerMinor: line("hammer"),
-        buyersPremiumMinor: line("buyers_premium"),
-        // The invoice carries no VAT or resale-right line until the accountant confirms the
-        // rules; nothing is invented here, so the lines that do not apply are null or nil.
-        vatOnPremiumMinor: line("vat_on_premium"),
-        vatOnLotMinor: null,
-        artistsResaleRightMinor: null,
-        totalMinor: priced.totalPence,
-      },
+      price: bidderPriceLines(priced),
       endsAt: row.offerEndsAt.toISOString(),
       respondedAt: row.respondedAt?.toISOString() ?? null,
       // Only an accepted offer has an invoice to come: due seven days on, counted from acceptance.
@@ -178,6 +169,41 @@ export class ReofferReadsService {
       .reduce((sum, l) => sum + l.amountPence, 0);
   }
 }
+
+/**
+ * The invoice's own lines as the bidder's price: one field per kind of line, `null` when the
+ * invoice has no line of that kind, so the page shows exactly the lines the invoice will carry and
+ * nothing it will not. The invoice has no separate VAT-on-premium line, so that field stays
+ * `null`. A line of a kind the page cannot show is refused rather than left out of the sum.
+ */
+export function bidderPriceLines(priced: {
+  lines: readonly { kind: string; amountPence: number }[];
+  totalPence: number;
+}): BidderReofferPrice {
+  const shown = new Set<string>(Object.values(PRICE_LINE_KINDS));
+  const unshown = priced.lines.find((l) => !shown.has(l.kind));
+  if (unshown) throw new Error(`An invoice line the offer page cannot show: ${unshown.kind}`);
+  const sum = (kind: string): number | null => {
+    const lines = priced.lines.filter((l) => l.kind === kind);
+    return lines.length === 0 ? null : lines.reduce((total, l) => total + l.amountPence, 0);
+  };
+  return {
+    hammerMinor: sum(PRICE_LINE_KINDS.hammer) ?? 0,
+    buyersPremiumMinor: sum(PRICE_LINE_KINDS.buyersPremium),
+    vatOnPremiumMinor: null,
+    vatOnLotMinor: sum(PRICE_LINE_KINDS.vatOnLot),
+    artistsResaleRightMinor: sum(PRICE_LINE_KINDS.artistsResaleRight),
+    totalMinor: priced.totalPence,
+  };
+}
+
+/** The invoice line kinds behind each line of the bidder's price. */
+const PRICE_LINE_KINDS = {
+  hammer: "hammer",
+  buyersPremium: "buyers_premium",
+  vatOnLot: "vat_on_hammer",
+  artistsResaleRight: "artists_resale_right",
+} as const satisfies Record<string, InvoiceLineKind>;
 
 /**
  * The bidders passed over (suspended, closed or being deleted) on the way to this offer's bidder,

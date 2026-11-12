@@ -38,13 +38,14 @@ const sellerView = {
   soldAt: null,
 };
 
+/** The lines today's invoice carries: the hammer and the buyer's premium, nothing else. */
 const price = {
   hammerMinor: 82_000_00,
   buyersPremiumMinor: 20_500_00,
-  vatOnPremiumMinor: 4_100_00,
+  vatOnPremiumMinor: null,
   vatOnLotMinor: null,
   artistsResaleRightMinor: null,
-  totalMinor: 106_600_00,
+  totalMinor: 102_500_00,
 };
 
 const bidderView = {
@@ -158,6 +159,21 @@ describe("bidder price", () => {
     expect(bidderReofferPriceSchema.safeParse({ ...withAll, totalMinor: 15_000_00 }).success).toBe(
       false,
     );
+  });
+
+  it("adds up for a lot with no buyer's premium line", () => {
+    expect(
+      bidderReofferPriceSchema.safeParse({
+        ...price,
+        buyersPremiumMinor: null,
+        totalMinor: price.hammerMinor,
+      }).success,
+    ).toBe(true);
+  });
+
+  it("names every line, null when the invoice has none, never leaves one out", () => {
+    const { vatOnPremiumMinor: _omitted, ...withoutVat } = price;
+    expect(bidderReofferPriceSchema.safeParse(withoutVat).success).toBe(false);
   });
 
   it("refuses a total that does not match its lines", () => {

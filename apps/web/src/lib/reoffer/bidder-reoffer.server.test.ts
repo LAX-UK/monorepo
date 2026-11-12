@@ -23,10 +23,10 @@ const view = {
   price: {
     hammerMinor: 8_200_000,
     buyersPremiumMinor: 2_050_000,
-    vatOnPremiumMinor: 410_000,
+    vatOnPremiumMinor: null,
     vatOnLotMinor: null,
     artistsResaleRightMinor: null,
-    totalMinor: 10_660_000,
+    totalMinor: 10_250_000,
   },
   endsAt: "2026-11-14T17:00:00.000Z",
   respondedAt: null,

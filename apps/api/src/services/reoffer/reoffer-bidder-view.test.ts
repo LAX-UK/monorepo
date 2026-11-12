@@ -1,5 +1,6 @@
 import type { BidderReofferRow } from "@auction/persistence/interfaces";
-import { bidderReofferViewSchema } from "@auction/validators";
+import type { Lot } from "@auction/types";
+import { type InvoiceLines, bidderReofferViewSchema, buildInvoiceLines } from "@auction/validators";
 import { describe, expect, it } from "vitest";
 import type { ReofferMemberActor } from "./reoffer-actors.js";
 import { ReofferReadsService } from "./reoffer-reads.service.js";
@@ -23,16 +24,14 @@ const row = (over: Partial<BidderReofferRow> = {}): BidderReofferRow => ({
 
 const bidder: ReofferMemberActor = { userId: "u1", legalEntityId: "e1", role: "owner" };
 
-const PRICED = {
-  totalPence: 10_660_000,
-  lines: [
-    { kind: "hammer", amountPence: 8_200_000 },
-    { kind: "buyers_premium", amountPence: 2_050_000 },
-    { kind: "vat_on_premium", amountPence: 410_000 },
-  ],
-};
+/** The lot as the invoice prices it: its own premium rate, no sale. */
+const pricedLot = (buyerPremiumRate: string) =>
+  ({ currentPrice: "82000.00", buyerPremiumRate, saleId: null }) as Lot;
 
-function service(rows: BidderReofferRow[]) {
+/** The real invoice pricing: the page's lines are the invoice's lines, nothing invented. */
+const PRICED = buildInvoiceLines(pricedLot("0.25"), null);
+
+function service(rows: BidderReofferRow[], priced: InvoiceLines = PRICED) {
   return new ReofferReadsService({
     db: never as never,
     views: {
@@ -41,7 +40,7 @@ function service(rows: BidderReofferRow[]) {
         rows.find((r) => r.id === id) ?? null,
     } as never,
     workflow: never as never,
-    pricing: { priceFor: async () => PRICED } as never,
+    pricing: { priceFor: async () => priced } as never,
   });
 }
 
@@ -58,14 +57,40 @@ describe("the bidder's view of an offer", () => {
       price: {
         hammerMinor: 8_200_000,
         buyersPremiumMinor: 2_050_000,
-        vatOnPremiumMinor: 410_000,
-        totalMinor: 10_660_000,
+        vatOnPremiumMinor: null,
+        vatOnLotMinor: null,
+        artistsResaleRightMinor: null,
+        totalMinor: 10_250_000,
       },
       endsAt: "2026-11-14T17:00:00.000Z",
       respondedAt: null,
       invoiceDueAt: null,
     });
     expect(Object.keys(bidderReofferViewSchema.parse(view)).join()).not.toMatch(/seller|default/i);
+  });
+
+  it("shows exactly the invoice's lines: no VAT line while the invoice has none", async () => {
+    const view = await service([row()]).getForBidder(bidder, row().id);
+    expect(PRICED.lines.map((line) => line.kind)).toEqual(["hammer", "buyers_premium"]);
+    expect(view.price.vatOnPremiumMinor).toBeNull();
+    expect(view.price.vatOnLotMinor).toBeNull();
+    expect(view.price.artistsResaleRightMinor).toBeNull();
+    expect(view.price.totalMinor).toBe(PRICED.totalPence);
+  });
+
+  it("has no buyer's premium line when the invoice charges none", async () => {
+    const view = await service([row()], buildInvoiceLines(pricedLot("0"), null)).getForBidder(
+      bidder,
+      row().id,
+    );
+    expect(view.price).toEqual({
+      hammerMinor: 8_200_000,
+      buyersPremiumMinor: null,
+      vatOnPremiumMinor: null,
+      vatOnLotMinor: null,
+      artistsResaleRightMinor: null,
+      totalMinor: 8_200_000,
+    });
   });
 
   it("gives the day the invoice falls due once the offer is accepted", async () => {

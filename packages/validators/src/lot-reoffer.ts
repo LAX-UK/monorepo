@@ -159,15 +159,16 @@ export const sellerReofferViewSchema = z
 export type SellerReofferView = z.infer<typeof sellerReofferViewSchema>;
 
 /**
- * The price the bidder pays, line by line. A line that does not apply to the lot is `null`,
- * never zero: VAT on the lot only for a lot sold with VAT, the Artist's Resale Right only for a
- * lot that owes it. The total is the sum of the lines.
+ * The price the bidder pays, line by line, exactly as the invoice will carry it. The hammer is
+ * always there; every other line is `null` when the invoice has no such line, never zero: a lot
+ * with no buyer's premium, VAT only once the invoice charges it, the Artist's Resale Right only
+ * for a lot that owes it. The total is the sum of the lines.
  */
 export const bidderReofferPriceSchema = z
   .object({
     hammerMinor: pence,
-    buyersPremiumMinor: pence,
-    vatOnPremiumMinor: pence,
+    buyersPremiumMinor: pence.nullable(),
+    vatOnPremiumMinor: pence.nullable(),
     vatOnLotMinor: pence.nullable(),
     artistsResaleRightMinor: pence.nullable(),
     totalMinor: pence,
@@ -177,8 +178,8 @@ export const bidderReofferPriceSchema = z
     (price) =>
       price.totalMinor ===
       price.hammerMinor +
-        price.buyersPremiumMinor +
-        price.vatOnPremiumMinor +
+        (price.buyersPremiumMinor ?? 0) +
+        (price.vatOnPremiumMinor ?? 0) +
         (price.vatOnLotMinor ?? 0) +
         (price.artistsResaleRightMinor ?? 0),
     { message: "The total must equal the lines", path: ["totalMinor"] },
