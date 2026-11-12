@@ -11,7 +11,7 @@
           "match": []
         },
         "sale": {
-          "budgetKb": 672,
+          "budgetKb": 614,
           "enforce": true,
           "match": ["^/\\(marketing\\)/sales/\\[slug\\]/\\[id\\]"]
         },
@@ -24,7 +24,7 @@
           ]
         },
         "lot": {
-          "budgetKb": 627,
+          "budgetKb": 619,
           "enforce": true,
           "match": ["^/\\(marketing\\)/(lot|artist)/"]
         },

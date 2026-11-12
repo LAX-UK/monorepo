@@ -5,68 +5,68 @@
     "apps/web /(marketing)/(home)/page": {
       "label": "Home",
       "targetKb": 300,
-      "gzipKb": 460.6,
-      "parsedKb": 1421.3,
-      "frameKb": 389.4,
-      "pageKb": 71.2,
-      "duplicateCount": 120,
-      "duplicateKb": 34.2,
-      "files": 47
+      "gzipKb": 459.2,
+      "parsedKb": 1418.7,
+      "frameKb": 388.2,
+      "pageKb": 71,
+      "duplicateCount": 118,
+      "duplicateKb": 33.6,
+      "files": 46
     },
     "apps/web /(marketing)/sales/(index)/page": {
       "label": "Sales list",
       "targetKb": 300,
       "gzipKb": 501.4,
-      "parsedKb": 1567.9,
-      "frameKb": 389.4,
-      "pageKb": 112.1,
-      "duplicateCount": 110,
+      "parsedKb": 1565.9,
+      "frameKb": 388.2,
+      "pageKb": 113.2,
+      "duplicateCount": 108,
       "duplicateKb": 36.4,
       "files": 53
     },
     "apps/web /(marketing)/sales/[slug]/[id]/page": {
       "label": "Sale page",
       "targetKb": 350,
-      "gzipKb": 610.9,
-      "parsedKb": 1902.9,
-      "frameKb": 431.5,
-      "pageKb": 179.4,
-      "duplicateCount": 200,
-      "duplicateKb": 64.7,
-      "files": 64
+      "gzipKb": 558.1,
+      "parsedKb": 1733.7,
+      "frameKb": 432,
+      "pageKb": 126.2,
+      "duplicateCount": 175,
+      "duplicateKb": 55.6,
+      "files": 61
     },
     "apps/web /(marketing)/lot/[slug]/[id]/page": {
       "label": "Lot page",
       "targetKb": 350,
-      "gzipKb": 569.5,
-      "parsedKb": 1768.5,
-      "frameKb": 435.1,
-      "pageKb": 134.4,
-      "duplicateCount": 187,
-      "duplicateKb": 58.6,
-      "files": 59
+      "gzipKb": 562.4,
+      "parsedKb": 1747.6,
+      "frameKb": 435.6,
+      "pageKb": 126.9,
+      "duplicateCount": 172,
+      "duplicateKb": 52.4,
+      "files": 57
     },
     "apps/web /(marketing)/about/page": {
       "label": "About",
       "targetKb": 300,
-      "gzipKb": 397.3,
-      "parsedKb": 1235.2,
-      "frameKb": 389.4,
+      "gzipKb": 396.1,
+      "parsedKb": 1233.1,
+      "frameKb": 388.2,
       "pageKb": 8,
-      "duplicateCount": 68,
-      "duplicateKb": 20.6,
-      "files": 40
+      "duplicateCount": 65,
+      "duplicateKb": 20,
+      "files": 39
     },
     "apps/web /(marketing)/terms/page": {
       "label": "Terms (content page)",
       "targetKb": 300,
-      "gzipKb": 394.3,
-      "parsedKb": 1226.6,
-      "frameKb": 389.4,
+      "gzipKb": 393.1,
+      "parsedKb": 1224.5,
+      "frameKb": 388.2,
       "pageKb": 4.9,
-      "duplicateCount": 66,
-      "duplicateKb": 19.7,
-      "files": 40
+      "duplicateCount": 63,
+      "duplicateKb": 19.1,
+      "files": 39
     }
   }
 }
