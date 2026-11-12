@@ -7,6 +7,7 @@ export const CONSIGNMENT_AGREEMENT_REMINDERS_QUEUE_NAME =
 export const PAYMENT_REMINDERS_QUEUE_NAME = "payment-reminders" as const;
 export const WATCHED_LOT_REMINDERS_QUEUE_NAME = "watched-lot-reminders" as const;
 export const COLLECTION_REMINDERS_QUEUE_NAME = "collection-reminders" as const;
+export const REOFFER_SWEEP_QUEUE_NAME = "reoffer-sweep" as const;
 export const STAFF_ROLE_EXPIRY_QUEUE_NAME = "staff-role-expiry" as const;
 /** Daily check for settled private sales whose artwork the register does not show as sold. */
 export const PRIVATE_SALE_SETTLEMENT_FOLLOW_UPS_QUEUE_NAME =

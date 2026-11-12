@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { deviceProductNames } from "./account-device-products.js";
 import {
   ACCOUNT_NAME_MAX_LENGTH,
   accountNameSchema,
@@ -41,7 +42,34 @@ describe("account sessions contract", () => {
     const parsed = accountSessionsSchema.parse({
       sessions: [{ ...session, ipAddress: "203.0.113.9", token: "secret" }],
     });
-    expect(parsed.sessions[0]).toEqual({ ...session, signedInWith: null });
+    expect(parsed.sessions[0]).toEqual({
+      ...session,
+      signedInWith: null,
+      deviceKind: "laptop",
+      country: null,
+      products: [],
+    });
+  });
+
+  it("reads the device kind, country and products an updated issuer adds", () => {
+    const parsed = accountSessionsSchema.parse({
+      sessions: [{ ...session, deviceKind: "phone", country: "GB", products: ["lax-bid-web"] }],
+    });
+    expect(parsed.sessions[0]).toMatchObject({
+      deviceKind: "phone",
+      country: "GB",
+      products: ["lax-bid-web"],
+    });
+  });
+
+  it("rejects a country that is not a two-letter code and an unknown device kind", () => {
+    expect(
+      accountSessionsSchema.safeParse({ sessions: [{ ...session, country: "United Kingdom" }] })
+        .success,
+    ).toBe(false);
+    expect(
+      accountSessionsSchema.safeParse({ sessions: [{ ...session, deviceKind: "watch" }] }).success,
+    ).toBe(false);
   });
 
   it("rejects a session with a malformed time", () => {
@@ -59,5 +87,20 @@ describe("account sessions contract", () => {
 
   it("keeps the step-up window at five minutes, matching the sign-in link's max_age", () => {
     expect(ACCOUNT_STEP_UP_MAX_AGE_SECONDS).toBe(300);
+  });
+});
+
+describe("deviceProductNames", () => {
+  it("names the four public products in a fixed order and drops the rest", () => {
+    expect(
+      deviceProductNames([
+        "lax-art-web",
+        "lax-shop-admin",
+        "lax-bid-web",
+        "ws-mobile",
+        "lax-account-web",
+      ]),
+    ).toEqual(["LAX Account", "LAX Bid", "lax.art"]);
+    expect(deviceProductNames([])).toEqual([]);
   });
 });

@@ -628,6 +628,15 @@ export const WORKER_REOFFER_UPDATE_COLUMNS = {
   ],
 } as const;
 
+/**
+ * What the re-offer clock reads of the buyer default: which one is the lot's latest, so it never
+ * reminds a bidder about an offer a later default has overtaken. Three columns only; the hammer,
+ * the buyer and the reason stay with the API.
+ */
+export const WORKER_REOFFER_READ_COLUMNS = [
+  ["buyer_default", ["id", "lot_id", "created_at"]],
+] as const;
+
 /** Lot lifecycle notification staging (won/lost) drained by notification outbox cron. */
 export const WORKER_NOTIFICATION_OUTBOX_TABLES = ["notification_outbox"] as const;
 
@@ -1288,6 +1297,9 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
         for (const [tableName, columns] of Object.entries(WORKER_REOFFER_UPDATE_COLUMNS)) {
           await grantIfExists(client, "worker_app", tableName, "SELECT");
           await grantColumnUpdateIfExists(client, "worker_app", tableName, columns);
+        }
+        for (const [tableName, columns] of WORKER_REOFFER_READ_COLUMNS) {
+          await grantColumnSelectIfExists(client, "worker_app", tableName, columns);
         }
         for (const tableName of WORKER_NOTIFICATION_OUTBOX_TABLES) {
           await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT, UPDATE");

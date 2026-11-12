@@ -11,6 +11,7 @@ import {
   WORKER_ACCOUNTING_READ_TABLES,
   WORKER_DENY_TABLES,
   WORKER_EMAIL_SUPPRESSION_UPDATE_COLUMNS,
+  WORKER_REOFFER_READ_COLUMNS,
   WORKER_REOFFER_TABLES,
   WORKER_REOFFER_UPDATE_COLUMNS,
   WORKER_SHOP_ENQUIRY_READ_COLUMNS,
@@ -153,6 +154,24 @@ describe.skipIf(!WORKER_URL)("worker_app role contract", { timeout: 60_000 }, ()
         "reminded_at",
         "status",
       ]);
+    });
+  });
+
+  it("reads which buyer default is a lot's latest, and nothing else of the defaults", async () => {
+    await withWorkerClient(async (client) => {
+      for (const [table, columns] of WORKER_REOFFER_READ_COLUMNS) {
+        const all = await client.query<{ column_name: string; allowed: boolean }>(
+          `select column_name,
+                  has_column_privilege(current_user, 'public.' || $1, column_name, 'SELECT') as allowed
+             from information_schema.columns
+            where table_schema = 'public' and table_name = $1`,
+          [table],
+        );
+        const allowed = all.rows.filter((row) => row.allowed).map((row) => row.column_name);
+        expect(allowed.sort(), table).toEqual([...columns].sort());
+        const whole = await readTablePrivileges(client, [table], ["INSERT", "UPDATE", "DELETE"]);
+        expectUniformTablePrivileges(whole, false);
+      }
     });
   });
 
@@ -448,6 +467,27 @@ describe.skipIf(!WORKER_URL)("worker_app role contract", { timeout: 60_000 }, ()
     const db = createDb(WORKER_URL!);
     await db.execute(sql`SELECT id FROM lot LIMIT 1 FOR UPDATE SKIP LOCKED`);
     expect(true).toBe(true);
+  });
+
+  it("can lock a lot row and raise its invoice and payment in the same transaction", async () => {
+    // The invoice raise locks the lot first (FOR UPDATE, which needs UPDATE on the table) and
+    // re-checks its winner before inserting, so a buyer default cannot slip in between.
+    await withWorkerClient(async (client) => {
+      await client.query("BEGIN");
+      try {
+        await client.query(
+          "SELECT status, winner_id, buyer_legal_entity_id FROM lot LIMIT 1 FOR UPDATE",
+        );
+      } finally {
+        await client.query("ROLLBACK");
+      }
+      const rows = await readTablePrivileges(
+        client,
+        ["bid_invoice", "bid_invoice_line", "payment"],
+        ["INSERT"],
+      );
+      expectTablePrivileges(rows, () => true);
+    });
   });
 
   it("can insert payout and payout_line for settlement (rolled back)", async () => {

@@ -67,6 +67,9 @@ provider that cannot record an exact VAT amount on a credit line must be refused
 money; confirm this in the Zoho Books sandbox before the runtime is built.
 `buildCreditNoteFor` rebuilds the invoice it is given and refuses a forged one (`bad_invoice`).
 
+`priorCredits` must be every credit note already issued for the invoice (all states except `cancelled` and
+`failed`), in creation order. `buildCreditNoteFor` refuses when they cover less than the refunded buckets say.
+
 Not covered here, and owned by the runtime: payment allocations are compared on amount only, `expected` totals
 are not carried on the record, and an `ambiguous` lookup with `count: 0` is accepted.
 

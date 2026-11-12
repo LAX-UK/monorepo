@@ -51,7 +51,7 @@ test.describe("Signed-in devices @journey", () => {
       await expect(devices.getByRole("heading", { name: "Where you're signed in" })).toBeVisible();
       await expect(devices.getByRole("listitem")).toHaveCount(1);
       await expect(devices.getByText("This device")).toBeVisible();
-      await expect(devices.getByText("You're not signed in on any other device.")).toBeVisible();
+      await expect(devices.getByText("You're not signed in anywhere else.")).toBeVisible();
     } finally {
       await signOutContext(context, { origin: baseURL ?? "http://localhost:3040" }).catch(
         () => undefined,

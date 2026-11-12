@@ -18,6 +18,10 @@ function session(overrides: Partial<IdentitySession> & { id: string }): Identity
     userAgent: "Mozilla/5.0 (Macintosh) Chrome/130.0",
     lastPasswordAuthAt: null,
     previousIds: [],
+    signedInAt: null,
+    lastSeenAt: null,
+    country: null,
+    clientIds: [],
     isCurrent: false,
     ...overrides,
   };
