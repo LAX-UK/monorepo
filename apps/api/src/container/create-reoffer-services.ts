@@ -12,17 +12,14 @@ import {
   DrizzleReofferWorkflowReader,
   DrizzleSellerConsentRepository,
   DrizzleSellerTermsFactsReader,
+  DrizzleSoldAttentionStore,
 } from "@auction/persistence/repositories";
 import { RegisterArtworkPlaceGuard } from "../services/reoffer/register-artwork-place.guard.js";
+import { RegisterMoneyPauseGuard } from "../services/reoffer/register-money-pause.guard.js";
 import { ReofferConsentService } from "../services/reoffer/reoffer-consent.service.js";
 import { lotOwnershipFromAccount } from "../services/reoffer/reoffer-lot-ownership.js";
 import { ReofferOfferService } from "../services/reoffer/reoffer-offer.service.js";
-import {
-  type IReofferInvoicing,
-  type IReofferMoneyPauseGuard,
-  type IReofferPricing,
-  allowAllMoneyPauseGuard,
-} from "../services/reoffer/reoffer-ports.js";
+import type { IReofferInvoicing, IReofferPricing } from "../services/reoffer/reoffer-ports.js";
 import { ReofferPreviewService } from "../services/reoffer/reoffer-preview.service.js";
 import { ReofferReadsService } from "../services/reoffer/reoffer-reads.service.js";
 import { ReofferResponseService } from "../services/reoffer/reoffer-response.service.js";
@@ -46,8 +43,6 @@ export function createReofferServices(input: {
   platform: Pick<ContainerPlatformServices, "transactionRunner" | "lotLifecycleRecording">;
   repos: Pick<ContainerRepositories, "lotRepo">;
   payments: Pick<ContainerPaymentsServices, "lotInvoiceInitiationService" | "invoiceRaiser">;
-  /** Replaces the allow-all hook when the Zoho sold-while-live guard is available. */
-  moneyPause?: IReofferMoneyPauseGuard;
 }): ContainerReofferServices {
   const { db, platform, payments } = input;
   const sellerFacts = new DrizzleSellerTermsFactsReader(db);
@@ -58,7 +53,7 @@ export function createReofferServices(input: {
   const reaward = new DrizzleLotReawardRepository();
   const links = new DrizzleLotRegisterLinkReader(db);
   const place = new RegisterArtworkPlaceGuard(links, new DrizzleArtworkRegisterRepository(db));
-  const moneyPause = input.moneyPause ?? allowAllMoneyPauseGuard;
+  const moneyPause = new RegisterMoneyPauseGuard(links, new DrizzleSoldAttentionStore(db));
   const base = {
     transactionRunner: platform.transactionRunner,
     workflow,
