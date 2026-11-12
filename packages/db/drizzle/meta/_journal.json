@@ -2525,8 +2525,15 @@
     {
       "idx": 361,
       "version": "7",
+      "when": 1809777600000,
+      "tag": "0371_reminder_candidate_indexes",
+      "breakpoints": true
+    },
+    {
+      "idx": 362,
+      "version": "7",
       "when": 1810123200000,
-      "tag": "0369_shop_home_cover",
+      "tag": "0372_shop_home_cover",
       "breakpoints": true
     }
   ]

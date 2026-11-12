@@ -10,6 +10,18 @@ export const matchSnapshotSchema = z.object({
   title: z.string().min(1).max(300),
   subtitle: z.string().max(300).optional(),
   detail: z.string().max(300).optional(),
+  /** Times that matter for the item, kept as instants so each email can show them on the reader's clock. */
+  moments: z
+    .array(
+      z.object({
+        label: z.string().min(1).max(40),
+        at: z.string().datetime(),
+        /** The zone the time is official in (the sale's own). */
+        zone: z.string().min(1).max(64),
+      }),
+    )
+    .max(4)
+    .optional(),
   imageUrl: z.string().url().nullish(),
   path: z.string().startsWith("/").max(500),
   /** A heading for matches that share a group: the artist, or the saved search. */

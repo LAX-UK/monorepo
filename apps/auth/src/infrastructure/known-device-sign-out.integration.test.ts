@@ -44,6 +44,8 @@ describe.skipIf(!DATABASE_URL)("known-device marker after sign-out (Postgres)", 
       {
         subjects: {
           findById: async () => ({ id, email: `${id}@example.test`, name: id }),
+          // No saved zone: notices are told on the London clock.
+          readTimeZone: async () => null,
         } as never,
         email: {
           enqueue: async (input) => {

@@ -1,5 +1,12 @@
 import type { Database } from "@auction/db";
-import { DrizzleInvoiceDetailsRepository } from "@auction/persistence/repositories";
+import {
+  laxAccountPageUrl,
+  resolveLaxAccountOrigin,
+} from "@auction/lax-ecosystem/lax-account-origin";
+import {
+  DrizzleInvoiceDetailsRepository,
+  DrizzleRecipientZoneReader,
+} from "@auction/persistence/repositories";
 import type { Env } from "../env.js";
 import { EmailNotificationChannel } from "../infrastructure/email-notification.channel.js";
 import { InAppNotificationChannel } from "../infrastructure/in-app-notification.channel.js";
@@ -71,6 +78,11 @@ export function createPlatformNotificationServices(
     env.WEB_ORIGIN,
     env.EMAIL_UNSUBSCRIBE_SECRET,
     new DrizzleInvoiceDetailsRepository(input.db),
+    new DrizzleRecipientZoneReader(input.db),
+    laxAccountPageUrl(
+      resolveLaxAccountOrigin(env.LAX_ACCOUNT_PUBLIC_ORIGIN, env.NODE_ENV),
+      "timeZone",
+    ),
   );
   const channels = env.ENABLE_WHATSAPP_CHANNEL
     ? [inAppChannel, pushChannel, emailChannel, new WhatsappNotificationChannel()]

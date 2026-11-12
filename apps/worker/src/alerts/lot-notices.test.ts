@@ -10,6 +10,7 @@ const item = (
   title,
   subtitle: "Oil on canvas",
   detail: null,
+  moments: [],
   imageUrl: null,
   path,
 });

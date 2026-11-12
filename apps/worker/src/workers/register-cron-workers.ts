@@ -1,3 +1,4 @@
+import { PAYMENT_REMINDER_POLL_INTERVAL_MS } from "@auction/domain";
 import {
   CONSIGNMENT_AGREEMENT_REMINDERS_QUEUE_NAME,
   CONSIGNMENT_THREAD_SWEEP_QUEUE_NAME,
@@ -157,17 +158,28 @@ export function registerCronWorkers(deps: WorkerBootstrapDeps): CronWorkersHandl
   paymentRemindersWorker.on("failed", (job, err) => {
     reportWorkerJobFailure(PAYMENT_REMINDERS_QUEUE_NAME, job, err);
   });
-  // Hourly: a reminder goes out within an hour of its step; the API sends each one once.
+  // Every 15 minutes, so a reminder reaches a recipient on a half-hour or 45-minute offset zone
+  // (Kolkata, Kathmandu) at 09:00 on their clock, not up to an hour late. Each recipient's reminder
+  // is staged under its own outbox key and each step is claimed with an insert-if-absent, so a more
+  // frequent run cannot send anything twice. The hourly repeat this replaces is removed.
+  void paymentRemindersQueue
+    .removeRepeatable(PAYMENT_REMINDERS_QUEUE_NAME, {
+      every: 60 * 60 * 1000,
+      jobId: "hourly-payment-reminders",
+    })
+    .catch((err: unknown) => {
+      log.warn({ err }, "could not remove the hourly payment-reminders repeat");
+    });
   void paymentRemindersQueue.add(
     PAYMENT_REMINDERS_QUEUE_NAME,
     {},
     {
-      jobId: "hourly-payment-reminders",
-      repeat: { every: 60 * 60 * 1000 },
+      jobId: "payment-reminders-every-15-minutes",
+      repeat: { every: PAYMENT_REMINDER_POLL_INTERVAL_MS },
       removeOnComplete: 50,
     },
   );
-  log.info("payment-reminders repeat registered (hourly)");
+  log.info("payment-reminders repeat registered (every 15 minutes)");
   errorHandlers.push({ worker: paymentRemindersWorker, queue: PAYMENT_REMINDERS_QUEUE_NAME });
   closables.push(paymentRemindersWorker, paymentRemindersQueue);
 

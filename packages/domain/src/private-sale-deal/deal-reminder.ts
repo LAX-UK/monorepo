@@ -1,8 +1,9 @@
 import type { PrivateSaleDealStage } from "@auction/types";
 import {
-  PAYMENT_REMINDER_STEPS,
   type PaymentReminderStep,
-  reminderDueAt,
+  reminderStepOpen,
+  reminderStepReached,
+  reminderWindowClosed,
 } from "../payment-reminder.js";
 
 /** The two deadlines a deal sets: when the buyer pays, and when the work is collected. */
@@ -24,20 +25,31 @@ export type DealReminderFacts = {
 };
 
 /**
- * The reminder to send for one deadline now, or `null`. It follows the same schedule as a lot
- * invoice (two days before, the day itself, three days after) so buyers get one rhythm. Only the
- * latest step reached is sent, so a worker that was down does not send a backlog, and each step
- * goes once.
+ * The reminder to send for one deadline now at 09:00 London, or `null`. It follows the same
+ * schedule as a lot invoice (two days before, the day itself, three days after) so buyers get one
+ * rhythm. Only the latest step reached is sent, so a worker that was down does not send a backlog,
+ * and each step goes once. A collection is a visit to a place, so it always runs on London time.
  */
 export function dealReminderToSend(
   facts: DealReminderFacts,
   now: Date,
 ): PaymentReminderStep | null {
+  const open = dealReminderOpen(facts, now);
+  if (!open) return null;
+  const reached = reminderStepReached(open.dueAt, now, null);
+  if (!reached || reminderWindowClosed(reached, open.dueAt, now)) return null;
+  return facts.sentSteps.includes(reached) ? null : reached;
+}
+
+/**
+ * The step of a deadline whose London day has begun and that is not yet fully sent, with the
+ * deadline: what a payment reminder then sends each recipient at 09:00 in their own zone.
+ */
+export function dealReminderOpen(
+  facts: DealReminderFacts,
+  now: Date,
+): { step: PaymentReminderStep; dueAt: Date } | null {
   if (facts.dueAt === null || facts.stage !== OPEN_IN_STAGE[facts.kind]) return null;
-  let latest: PaymentReminderStep | null = null;
-  for (const step of PAYMENT_REMINDER_STEPS) {
-    if (reminderDueAt(step, facts.dueAt).getTime() <= now.getTime()) latest = step;
-  }
-  if (!latest || facts.sentSteps.includes(latest)) return null;
-  return latest;
+  const step = reminderStepOpen(facts.dueAt, now);
+  return step && !facts.sentSteps.includes(step) ? { step, dueAt: facts.dueAt } : null;
 }

@@ -14,6 +14,7 @@ const reminder = (fields: Partial<PendingWatchlistReminder>): PendingWatchlistRe
   lotTitle: "Red chair, evening",
   startTime: new Date(now.getTime() - 24 * HOUR),
   endTime: new Date(now.getTime() + HOUR),
+  saleTimeZone: "Europe/London",
   closed: false,
   ...fields,
 });
@@ -49,6 +50,7 @@ describe("WatchedLotReminderJob", () => {
           kind: "hour_before_close",
           note: "Check the frame",
           closesAt: new Date(now.getTime() + HOUR).toISOString(),
+          saleTimeZone: "Europe/London",
         },
         outboxIdempotencyKey: "watched-lot-reminder:w1:hour_before_close",
       },

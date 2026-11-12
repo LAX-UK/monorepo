@@ -18,7 +18,8 @@
     "build": "tsc -p tsconfig.json",
     "lint": "biome check .",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:exhaustive-tz": "EXHAUSTIVE_TZ=1 vitest run src/payment-reminder.zones.test.ts"
   },
   "dependencies": {
     "@auction/datetime": "workspace:*",

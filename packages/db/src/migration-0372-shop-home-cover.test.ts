@@ -7,14 +7,14 @@ import { shopHomeCover } from "./schema/shop-commerce.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const read = (name: string) => readFileSync(join(__dirname, "../drizzle", name), "utf8");
-const TAG = "0369_shop_home_cover";
+const TAG = "0372_shop_home_cover";
 const migration = read(`${TAG}.sql`);
-const rollback = read("0369_rollback.sql");
+const rollback = read("0372_rollback.sql");
 const journal = JSON.parse(read("meta/_journal.json")) as {
   entries: { idx: number; tag: string; when: number }[];
 };
 
-describe("migration 0369 shop home cover", () => {
+describe("migration 0372 shop home cover", () => {
   it("is journalled once, after the entry before it in both idx and time", () => {
     const index = journal.entries.findIndex((e) => e.tag === TAG);
     expect(index).toBeGreaterThan(0);
