@@ -10,7 +10,7 @@ import {
 } from "@/lib/private-sales/party-deals.vm";
 import { formatDateTime, formatMoney } from "@/lib/ui/format";
 import { RecordList, RecordRow } from "@auction/ui/components/record-row";
-import { StatusBadge } from "@auction/ui/components/status-badge";
+import { StatusBadge } from "@auction/ui/lax/status-badge";
 import Link from "next/link";
 
 function PrivateSaleRow({ row }: { row: PartyDealRow }) {

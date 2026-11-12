@@ -614,6 +614,10 @@
     "./lib/wizard-copy": {
       "types": "./dist/lib/wizard-copy.d.ts",
       "default": "./dist/lib/wizard-copy.js"
+    },
+    "./lax/status-badge": {
+      "types": "./dist/lax/status-badge.d.ts",
+      "default": "./dist/lax/status-badge.js"
     }
   },
   "scripts": {

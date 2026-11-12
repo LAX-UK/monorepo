@@ -1,7 +1,7 @@
 "use client";
 
-import { StatusBadge, type StatusBadgeTone } from "@auction/ui/components/status-badge";
 import { Kbd, ShortcutKeys } from "@auction/ui/lax/kbd";
+import { StatusBadge, type StatusBadgeTone } from "@auction/ui/lax/status-badge";
 import { Count } from "@auction/ui/lax/tabs";
 import { SheetSection, StateRow } from "./sheet-frame";
 

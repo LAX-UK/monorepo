@@ -1,4 +1,4 @@
-import { StatusBadge } from "@auction/ui/components/status-badge";
+import { StatusBadge } from "@auction/ui/lax/status-badge";
 
 type Props = {
   owned: boolean;

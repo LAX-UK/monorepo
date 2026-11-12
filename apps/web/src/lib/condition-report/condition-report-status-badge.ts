@@ -1,5 +1,5 @@
 import type { ConditionReportRequestStatus } from "@/lib/condition-report/condition-report-types";
-import type { StatusBadgeShape, StatusBadgeTone } from "@auction/ui/components/status-badge";
+import type { StatusBadgeShape, StatusBadgeTone } from "@auction/ui/lax/status-badge";
 
 /**
  * How each condition report request is drawn: one still with our specialists is information, a

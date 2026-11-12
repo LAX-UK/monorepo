@@ -18,8 +18,8 @@ import {
 } from "@auction/marketing-ui/marketing-artist-facts";
 import { MarketingArtistHero } from "@auction/marketing-ui/marketing-artist-hero";
 import { MarketingReadMore } from "@auction/marketing-ui/marketing-read-more";
-import { StatusBadge } from "@auction/ui/components/status-badge";
 import { ButtonLink } from "@auction/ui/lax/button-link";
+import { StatusBadge } from "@auction/ui/lax/status-badge";
 import { cn } from "@auction/ui/lib/utils";
 import Link from "next/link";
 

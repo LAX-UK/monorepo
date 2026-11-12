@@ -3,7 +3,7 @@ import { SaleScheduleBadges } from "@/components/marketing/sale-status-badge";
 import { SaleTypeBadge } from "@/components/marketing/sale-type-badge";
 import type { SaleFormatExplainerContext } from "@/lib/sale-format-explainer";
 import type { Sale, SaleDeliveryMode } from "@auction/types";
-import { StatusBadge } from "@auction/ui/components/status-badge";
+import { StatusBadge } from "@auction/ui/lax/status-badge";
 import { cn } from "@auction/ui/lib/utils";
 
 type Props = {

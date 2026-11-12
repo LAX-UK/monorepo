@@ -4,9 +4,9 @@ import type {
   RecoveryDocumentRow,
 } from "@/lib/organisations/organisation-recovery.vm";
 import { RecordList, RecordRow } from "@auction/ui/components/record-row";
-import { StatusBadge } from "@auction/ui/components/status-badge";
 import { Surface } from "@auction/ui/components/surface";
 import { ButtonLink } from "@auction/ui/lax/button-link";
+import { StatusBadge } from "@auction/ui/lax/status-badge";
 import Link from "next/link";
 import { useId } from "react";
 import { AccountSwitchLink } from "./account-switch-link";

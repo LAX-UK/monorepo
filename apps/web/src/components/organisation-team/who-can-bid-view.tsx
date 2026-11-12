@@ -16,10 +16,10 @@ import type {
   BuyerAgentAuthorisationView,
 } from "@auction/types";
 import { RecordList, RecordRow } from "@auction/ui/components/record-row";
-import { StatusBadge } from "@auction/ui/components/status-badge";
 import { Button } from "@auction/ui/lax/button";
 import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from "@auction/ui/lax/menu";
 import { Meter } from "@auction/ui/lax/meter";
+import { StatusBadge } from "@auction/ui/lax/status-badge";
 import { Ellipsis, Plus, SlidersHorizontal, UserPlus, X } from "lucide-react";
 import { useState } from "react";
 import { OrganisationLimitDialog } from "./organisation-limit-dialog";

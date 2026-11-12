@@ -2,7 +2,7 @@
 
 import type { TelephoneBookingRowVm } from "@/lib/telephone/telephone-booking-rows.vm";
 import { RecordRow, RecordRowMedia } from "@auction/ui/components/record-row";
-import { StatusBadge } from "@auction/ui/components/status-badge";
+import { StatusBadge } from "@auction/ui/lax/status-badge";
 import { Phone } from "lucide-react";
 import Link from "next/link";
 

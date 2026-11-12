@@ -1,6 +1,6 @@
 import type { PayoutDetailVm } from "@/lib/seller/payout-detail.vm";
-import { StatusBadge } from "@auction/ui/components/status-badge";
 import { ButtonLink } from "@auction/ui/lax/button-link";
+import { StatusBadge } from "@auction/ui/lax/status-badge";
 import { pageTitleClass } from "@auction/ui/lax/styles";
 import { Download } from "lucide-react";
 

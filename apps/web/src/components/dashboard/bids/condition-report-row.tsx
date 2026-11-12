@@ -3,8 +3,8 @@
 import { CONDITION_REPORT_STATUS_BADGE } from "@/lib/condition-report/condition-report-status-badge";
 import type { BuyerConditionReportRequestVM } from "@/lib/condition-report/map-buyer-condition-report-requests.vm";
 import { RecordRow, RecordRowMedia } from "@auction/ui/components/record-row";
-import { StatusBadge } from "@auction/ui/components/status-badge";
 import { ButtonLink } from "@auction/ui/lax/button-link";
+import { StatusBadge } from "@auction/ui/lax/status-badge";
 import { FileText } from "lucide-react";
 import Link from "next/link";
 

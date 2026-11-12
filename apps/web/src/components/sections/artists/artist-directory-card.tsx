@@ -8,7 +8,7 @@ import { artistProfileHref } from "@/lib/marketing/catalog-links";
 import { MarketingArtistCard } from "@auction/marketing-ui/marketing-artist-card";
 import { marketingArtistFactsLine } from "@auction/marketing-ui/marketing-artist-facts";
 import type { PublicArtistDirectoryRow } from "@auction/types";
-import { StatusBadge } from "@auction/ui/components/status-badge";
+import { StatusBadge } from "@auction/ui/lax/status-badge";
 import { cn } from "@auction/ui/lib/utils";
 
 type Props = {

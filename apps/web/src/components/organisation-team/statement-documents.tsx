@@ -2,8 +2,8 @@
 
 import type { StatementDocumentRow } from "@/lib/organisation-team/statement-documents.vm";
 import { RecordList, RecordRow } from "@auction/ui/components/record-row";
-import { StatusBadge } from "@auction/ui/components/status-badge";
 import { Button } from "@auction/ui/lax/button";
+import { StatusBadge } from "@auction/ui/lax/status-badge";
 import { Download, Wallet } from "lucide-react";
 
 /** The organisation's payout statements, each with its PDF. */
