@@ -3,16 +3,20 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 
-let cookieHeader: string | null = null;
+let actingValue: string | undefined;
 vi.mock("next/headers", () => ({
   cookies: async () => ({ get: () => undefined }),
-  headers: async () => new Headers(cookieHeader ? { cookie: cookieHeader } : undefined),
+  headers: async () => new Headers(),
 }));
 vi.mock("@/lib/bff/token-service.server", () => ({ BidBffTokenService: class {} }));
 vi.mock("@/lib/data/http/session.server", () => ({ getServerSessionUser: async () => null }));
-vi.mock("@/lib/legal-entity/acting-context.server", () => ({
-  getActingLegalEntityHeader: async () => ({}),
-}));
+vi.mock("@/lib/legal-entity/acting-context.server", async () => {
+  const { viewSessionCookieFromValue } = await import("@/lib/bff/view-session-cookie");
+  return {
+    getActingLegalEntityHeader: async () => ({}),
+    viewSessionCookieForRequest: async () => viewSessionCookieFromValue(actingValue),
+  };
+});
 
 import { buildAuthedSsrHeaders, withViewSessionCookie } from "./server-request-headers";
 
@@ -24,18 +28,11 @@ const view = encodeActingContextCookie({
 
 describe("withViewSessionCookie", () => {
   beforeEach(() => {
-    cookieHeader = null;
+    actingValue = undefined;
   });
 
   it("sends only the view-as-client cookie, by exact name", async () => {
-    cookieHeader = `lax_bid_session=secret; ${ACTING_LEGAL_ENTITY_COOKIE_NAME}=${view}`;
-    const headers = new Headers();
-    await withViewSessionCookie()(headers);
-    expect(headers.get("cookie")).toBe(`${ACTING_LEGAL_ENTITY_COOKIE_NAME}=${view}`);
-  });
-
-  it("uses the first of a duplicated cookie, as the BFF and the API do", async () => {
-    cookieHeader = `${ACTING_LEGAL_ENTITY_COOKIE_NAME}=${view}; ${ACTING_LEGAL_ENTITY_COOKIE_NAME}=other`;
+    actingValue = view;
     const headers = new Headers();
     await withViewSessionCookie()(headers);
     expect(headers.get("cookie")).toBe(`${ACTING_LEGAL_ENTITY_COOKIE_NAME}=${view}`);
@@ -44,13 +41,13 @@ describe("withViewSessionCookie", () => {
   it("sends nothing for the plain account choice or no cookie", async () => {
     const headers = new Headers();
     await withViewSessionCookie()(headers);
-    cookieHeader = `${ACTING_LEGAL_ENTITY_COOKIE_NAME}=6f1c2d3e-4a5b-4c6d-8e7f-0a1b2c3d4e5f`;
+    actingValue = "6f1c2d3e-4a5b-4c6d-8e7f-0a1b2c3d4e5f";
     await withViewSessionCookie()(headers);
     expect(headers.has("cookie")).toBe(false);
   });
 
   it("sends the view session even when the acting header is skipped", async () => {
-    cookieHeader = `${ACTING_LEGAL_ENTITY_COOKIE_NAME}=${view}`;
+    actingValue = view;
     const headers = await buildAuthedSsrHeaders({
       skipActingLegalEntityHeader: true,
       consent: null,

@@ -3,7 +3,8 @@
 import { PAY_COPY } from "@/lib/pay/pay-copy";
 import type { PayMethod } from "@/lib/pay/pay-methods";
 import type { PayAction } from "@/lib/pay/pay-page.vm";
-import { Button, ButtonLink } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
+import { ButtonLink } from "@auction/ui/lax/button-link";
 import Link from "next/link";
 import { usePaySession } from "./pay-session";
 

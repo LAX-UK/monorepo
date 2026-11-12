@@ -1,31 +1,8 @@
+import { defaultScheduleInstants } from "@auction/datetime";
 import type { LotWithSaleZone } from "@auction/types";
-import { toDatetimeFormString, tzDateFromParts } from "@auction/ui/lib/datetime";
+import { toDatetimeFormString } from "@auction/ui/lib/datetime";
 import { DEFAULT_SALE_TIME_ZONE } from "@auction/validators";
-import { TZDate } from "@date-fns/tz";
-import { addDays, addHours } from "date-fns";
 import type { AdminLotFormValues } from "./admin-lot-form";
-
-function defaultScheduleInstants(zone: string): { start: Date; end: Date } {
-  const now = new TZDate(new Date(), zone);
-  const startTz = tzDateFromParts(
-    now.getFullYear(),
-    now.getMonth() + 1,
-    now.getDate(),
-    addHours(now, 1).getHours(),
-    0,
-    zone,
-  );
-  const start = new Date(startTz.getTime());
-  const endTz = tzDateFromParts(
-    addDays(startTz, 7).getFullYear(),
-    addDays(startTz, 7).getMonth() + 1,
-    addDays(startTz, 7).getDate(),
-    startTz.getHours(),
-    0,
-    zone,
-  );
-  return { start, end: new Date(endTz.getTime()) };
-}
 
 export function lotToAdminLotFormValues(auction: LotWithSaleZone): AdminLotFormValues {
   const timeZone = auction.timeZone ?? DEFAULT_SALE_TIME_ZONE;
@@ -73,7 +50,7 @@ export function lotToAdminLotFormValues(auction: LotWithSaleZone): AdminLotFormV
 export function emptyAdminLotFormValues(
   timeZone: string = DEFAULT_SALE_TIME_ZONE,
 ): AdminLotFormValues {
-  const { start, end } = defaultScheduleInstants(timeZone);
+  const { start, end } = defaultScheduleInstants(new Date(), timeZone);
   return {
     title: "",
     description: "",

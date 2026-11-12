@@ -91,3 +91,22 @@ describe("worker collection calendar organizer", () => {
     expect(parse({ COLLECTION_ORGANIZER_EMAIL: "not-an-address" }).success).toBe(false);
   });
 });
+
+describe("worker XERO_TOKEN_DEK_KEY", () => {
+  const issues = (env: Record<string, unknown>) => {
+    const result = envSchema.safeParse({ DATABASE_URL: "postgres://localhost/test", ...env });
+    return result.success
+      ? []
+      : result.error.issues.filter((i) => i.path[0] === "XERO_TOKEN_DEK_KEY");
+  };
+
+  it("is required once Xero is configured, and must be a 32-byte key", () => {
+    expect(issues({ XERO_CLIENT_ID: "id" })).not.toHaveLength(0);
+    expect(issues({ XERO_CLIENT_ID: "id", XERO_TOKEN_DEK_KEY: "short" })).not.toHaveLength(0);
+    expect(issues({ XERO_CLIENT_ID: "id", XERO_TOKEN_DEK_KEY: "ab".repeat(32) })).toEqual([]);
+  });
+
+  it("is not needed when Xero is not configured", () => {
+    expect(issues({})).toEqual([]);
+  });
+});

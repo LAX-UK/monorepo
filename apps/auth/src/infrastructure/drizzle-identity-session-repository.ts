@@ -1,5 +1,5 @@
 import type { IdentityDatabase } from "@auction/identity-db";
-import { oauthAccessToken, session } from "@auction/identity-db/schema";
+import { oauthAccessToken, session, sessionLineage } from "@auction/identity-db/schema";
 import { and, desc, eq, ne, or } from "drizzle-orm";
 import type {
   IIdentitySessionRepository,
@@ -30,8 +30,15 @@ export class DrizzleIdentitySessionRepository implements IIdentitySessionReposit
       .from(session)
       .where(eq(session.userId, subjectId))
       .orderBy(desc(session.createdAt));
+    const lineage = await this.db
+      .select({ previousSid: sessionLineage.previousSid, sessionId: sessionLineage.sessionId })
+      .from(sessionLineage)
+      .where(eq(sessionLineage.userId, subjectId));
     return rows.map(({ token, ...row }) => ({
       ...row,
+      previousIds: lineage
+        .filter((entry) => entry.sessionId === row.id)
+        .map((entry) => entry.previousSid),
       isCurrent: Boolean(currentSessionToken) && token === currentSessionToken,
     }));
   }

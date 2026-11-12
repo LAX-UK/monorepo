@@ -4,7 +4,7 @@ import { SetMobileShellTitle } from "@/components/layout/set-mobile-shell-title"
 import { OrganisationRecoveryPanel } from "@/components/organisations/organisation-recovery-panel";
 import { OrganisationStateBanner } from "@/components/organisations/organisation-state-banner";
 import type { LoadedOrganisationHome } from "@/lib/organisation-home/load-organisation-home.server";
-import { ButtonLink } from "@auction/ui/lax";
+import { ButtonLink } from "@auction/ui/lax/button-link";
 import { Info, Plus } from "lucide-react";
 import Link from "next/link";
 import { HomeActivity } from "./home-activity";

@@ -1,11 +1,4 @@
-/** The Zoho Products Status picklist values LAX knows. Zoho staff may set others. */
-export const ZOHO_STATUS = {
-  available: "Available",
-  reserved: "Reserved",
-  inAuction: "In Auction",
-  sold: "Sold",
-  withdrawn: "Withdrawn",
-} as const;
+import { ZOHO_STATUS } from "@auction/artwork-register-contracts";
 
 export type StatusDecision =
   /** Zoho already shows the Status LAX wants. */

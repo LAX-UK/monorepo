@@ -1,5 +1,5 @@
 import { MARKETING_CATALOG_GUTTER } from "@/lib/marketing/chrome";
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 
 type Props = {
   showDesktopFilters?: boolean;

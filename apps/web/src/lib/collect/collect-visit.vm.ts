@@ -1,3 +1,4 @@
+import { LONDON_TIME_ZONE, formatDayMonthOnly, formatWeekday } from "@auction/datetime";
 import { formatCollectionDay, formatCollectionVisit, formatCollectionWhen } from "@auction/domain";
 import type { CollectionVisitView } from "@auction/types";
 import { COLLECT_COPY } from "./collect-copy";
@@ -36,10 +37,6 @@ export type VisitCardVm = {
   /** Why the date reads as it does for a cancelled visit. */
   cancelled: boolean;
 };
-
-const WEEKDAY = new Intl.DateTimeFormat("en-GB", { weekday: "short", timeZone: "Europe/London" });
-const DAY = new Intl.DateTimeFormat("en-GB", { day: "numeric", timeZone: "Europe/London" });
-const MONTH = new Intl.DateTimeFormat("en-GB", { month: "short", timeZone: "Europe/London" });
 
 function lotNote(lot: CollectionVisitView["lots"][number], status: CollectionVisitView["status"]) {
   if (!lot.active && status !== "cancelled") return "Not in this visit";
@@ -87,15 +84,16 @@ export function visitCard(
   const collector = visit.collector;
   const thirdParty = collector.kind === "third_party";
   const activeLots = visit.lots.filter((lot) => lot.active || visit.status !== "booked");
+  const [day = "", month = ""] = formatDayMonthOnly(start, LONDON_TIME_ZONE).split(" ");
   return {
     id: visit.id,
     reference: visit.reference,
     live: upcoming,
     status: visit.status,
     tile: {
-      weekday: WEEKDAY.format(start),
-      day: DAY.format(start),
-      month: MONTH.format(start),
+      weekday: formatWeekday(start, LONDON_TIME_ZONE),
+      day,
+      month,
     },
     when: formatCollectionVisit(start, end, context.now),
     where: COLLECT_COPY.where,

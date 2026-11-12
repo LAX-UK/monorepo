@@ -12,8 +12,8 @@ import {
   orgOnboardingStepKeyFromPathname,
 } from "@/lib/legal-entity/org-onboarding-steps";
 import type { OrgOnboardingStepKey } from "@auction/types";
-import { LabelCaps } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
+import { LabelCaps } from "@auction/ui/components/typography";
 import { WizardProgress } from "@auction/ui/components/wizard-progress";
 import type { PublicOrganisationSubkind } from "@auction/validators";
 import Link from "next/link";

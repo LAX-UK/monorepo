@@ -245,6 +245,14 @@ Picklist values, in order: Not offered, Draft on lax.art, On lax.art, Draft lot 
 
 Everything is required once the mode is not `off`; `live` also turns on the wrong-org guard. Roll out: sandbox `dry_run`, review Last check; sandbox `live`, check a few Products; production `dry_run`; production `live` with the owner's go.
 
+## Sync health (LAX Admin)
+
+LAX Admin's From Zoho › Sync health tab (read with `artwork_register.read`, which `artwork_register.review` includes) shows whether Zoho and LAX are keeping up: the last inbound nightly run (Products seen, changed, left out; test artists are not counted as left out), the last nightly listing and Status check (drift found), the writes waiting to go to Zoho Products (depth, oldest waiting, dead-lettered with a link to Failed jobs in LAX Bid admin), the token (last good refresh, expiry, failed refreshes in a row) and three read-only drift lists, 25 per page: artworks whose Zoho Product is deleted, Zoho Products (originals) with no register entry, and originals whose Zoho Status is not the one their place calls for (`ZOHO_STATUS_FOR_OFFER` in `@auction/artwork-register-contracts`, the same table the writeback uses). With the sync off, or before the worker has reported, the tab says so.
+
+The worker keeps one row in `zoho_sync_health` (migration 0366): the sync modes it started with, and the token refresh record. A failed refresh is recorded by code only (never Zoho's response). The second failure in a row logs `{ alert: "zoho_token_refresh_failing" }` at error level and the tab shows a danger notice; the next good refresh clears both. Anything older than a day without a good refresh while a sync is on shows as a warning.
+
+Sentry cron monitors: add `zoho-artwork-nightly-check` (inbound, 02:30 London) and `zoho-listing-nightly-check` (listing and Status, 03:00 London) to `SENTRY_MONITOR_SLUGS` and create the monitors (daily schedule). A job checks in only when its slug is configured and `SENTRY_DSN_WORKER` is set; otherwise it runs unmonitored.
+
 ## Campaigns suppression (inbound)
 
 LAX copies Zoho Campaigns unsubscribes and hard bounces into its own suppression list, so mail sent from LAX respects a choice made in Campaigns. Read-only towards Zoho.

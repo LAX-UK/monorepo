@@ -1,7 +1,7 @@
 "use client";
 
-import { cn } from "@auction/ui";
-import { Button } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
+import { cn } from "@auction/ui/lib/utils";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 type Props = {

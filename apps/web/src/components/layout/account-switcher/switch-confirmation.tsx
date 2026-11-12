@@ -4,7 +4,7 @@ import { HOP_REASON_PARAM, type HopReason } from "@/lib/navigation/account-link"
 import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
 import type { SwitchConfirmation as SwitchConfirmationVm } from "@/lib/navigation/switch-confirmation.vm";
 import { EmptyState } from "@auction/ui/components/empty-state";
-import { Button } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
 import { Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";

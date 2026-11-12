@@ -1,8 +1,8 @@
 "use client";
 
 import { resolveMediaSrc } from "@/lib/media/resolve-media-src";
-import { cn } from "@auction/ui";
 import { Avatar, AvatarFallback, AvatarImage } from "@auction/ui/components/avatar";
+import { cn } from "@auction/ui/lib/utils";
 
 type Props = {
   src: string | null | undefined;

@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/adaptive-media-frame";
 import { MediaImage } from "@/components/ui/media-image";
 import { LOT_TRANSITION_IMAGE_ATTR, LOT_TRANSITION_ROOT_ATTR } from "@/lib/view-transitions";
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 import { Fragment, type ReactNode } from "react";
 
 export type MarketingLotTileProps = {

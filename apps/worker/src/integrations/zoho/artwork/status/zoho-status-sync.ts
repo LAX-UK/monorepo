@@ -1,7 +1,7 @@
 import {
   type ArtworkRegisterEntry,
-  deriveWhereItIs,
   zohoModuleOf,
+  zohoStatusFor,
 } from "@auction/artwork-register-contracts";
 import type {
   CatalogueStatusLedger,
@@ -12,7 +12,6 @@ import type {
 } from "@auction/persistence/interfaces";
 import type { Logger } from "pino";
 import { crmErrorOutcome } from "../../../crm/classify-crm-error.js";
-import { zohoStatusForPlace } from "../writeback-mapping.js";
 import { decideStatusWrite } from "./decide-status-write.js";
 import {
   ZOHO_STATUS_BATCH_SIZE,
@@ -294,7 +293,7 @@ export function wantedStatus(source: RegisterStatusSource, now: Date): string {
     entry.offer.state === "withdrawn" && lastMove?.to === "withdrawn"
       ? { at: lastMove.at, from: null }
       : null;
-  return zohoStatusForPlace(deriveWhereItIs({ offer: entry.offer, now, withdrawn }).key);
+  return zohoStatusFor({ offer: entry.offer, now, withdrawn });
 }
 
 function subject(entry: ArtworkRegisterEntry): Subject {

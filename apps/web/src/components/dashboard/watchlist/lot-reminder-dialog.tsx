@@ -11,7 +11,12 @@ import {
   reminderOptions,
 } from "@/lib/watching/watched-lot-reminder.vm";
 import { WATCHED_LOT_REMINDER_NOTE_MAX, type WatchedLotReminderKind } from "@auction/domain";
-import { Button, Dialog, DialogClose, Field, Notice, PresetCards, TextArea } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
+import { Dialog, DialogClose } from "@auction/ui/lax/dialog";
+import { Field } from "@auction/ui/lax/field";
+import { TextArea } from "@auction/ui/lax/input";
+import { Notice } from "@auction/ui/lax/notice";
+import { PresetCards } from "@auction/ui/lax/preset-cards";
 import { useEffect, useState, useTransition } from "react";
 
 type Lot = {

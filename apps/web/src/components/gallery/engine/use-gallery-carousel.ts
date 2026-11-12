@@ -1,6 +1,6 @@
 "use client";
 
-import type { CarouselApi } from "@auction/ui";
+import type { CarouselApi } from "@auction/ui/components/carousel";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 export type GalleryCarouselEvent = "select" | "reInit" | "settle";

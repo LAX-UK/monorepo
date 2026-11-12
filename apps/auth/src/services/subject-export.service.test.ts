@@ -33,6 +33,7 @@ function setup(options: { sessionAgeMs?: number; signer?: boolean; clock?: { now
           ipAddress: null,
           userAgent: null,
           lastPasswordAuthAt: null,
+          previousIds: [],
           isCurrent: true,
         },
       ];

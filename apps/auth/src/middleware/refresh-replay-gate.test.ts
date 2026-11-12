@@ -30,10 +30,13 @@ function setup(nowValue = 1_000) {
       userId: "user-1",
       familyId: "family-1",
       expiresAt: new Date(now + 60_000),
+      sid: "sid-1" as string | null,
     })),
     completeRotation: vi.fn(async () => undefined),
     revokeFamily: vi.fn(async () => undefined),
+    deleteFamilyTokens: vi.fn(async () => undefined),
   } satisfies IRefreshTokenFamilyRepository;
+  const signIns = { isLive: vi.fn(async () => true) };
   const app = new Hono();
   app.use("/api/auth/oauth2/token", createOAuthTokenRequestContextMiddleware());
   app.use(
@@ -41,6 +44,7 @@ function setup(nowValue = 1_000) {
     createRefreshReplayGateMiddleware({
       replay,
       families,
+      signIns,
       graceMs: 5_000,
       now: () => now,
       retryResponseCrypto: {
@@ -55,6 +59,7 @@ function setup(nowValue = 1_000) {
   return {
     app,
     families,
+    signIns,
     advance: (milliseconds: number) => {
       now += milliseconds;
     },

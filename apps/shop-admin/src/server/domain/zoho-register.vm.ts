@@ -6,15 +6,20 @@ import type {
   AdminRegisterLastCheck,
   AdminRegisterPlace,
   AdminSoldAttentionItem,
+  ZohoDriftList,
 } from "@auction/shop-contracts";
-import { REGISTER_GAP_VALUES, REGISTER_PLACE_VALUES } from "@auction/shop-contracts";
+import {
+  REGISTER_GAP_VALUES,
+  REGISTER_PLACE_VALUES,
+  ZOHO_DRIFT_LISTS,
+} from "@auction/shop-contracts";
 import type { TimelineEvent } from "@auction/staff-ui";
 import { bidLotUrl } from "../../lib/offer-at-auction-links";
 import { type RawSearchParams, listHref, oneOf, singleParam } from "./list-url-state";
 
 export const ZOHO_QUEUE_PATH = "/from-zoho";
 
-export const ZOHO_QUEUE_TABS = ["new", "decisions", "all", "link", "check"] as const;
+export const ZOHO_QUEUE_TABS = ["new", "decisions", "all", "link", "check", "health"] as const;
 export type ZohoQueueTab = (typeof ZOHO_QUEUE_TABS)[number];
 
 export const ZOHO_QUEUE_TAB_LABEL: Record<ZohoQueueTab, string> = {
@@ -23,6 +28,7 @@ export const ZOHO_QUEUE_TAB_LABEL: Record<ZohoQueueTab, string> = {
   all: "All artworks",
   link: "Link lax.art",
   check: "Last check",
+  health: "Sync health",
 };
 
 /** The queue's state as it appears in the page URL. Every field is optional. */
@@ -43,6 +49,8 @@ export type ZohoQueueQuery = {
   on?: "live" | "draft";
   /** Link lax.art: the order of the rows (by title when absent). */
   sort?: "artist";
+  /** Sync health: one drift list instead of the summary. */
+  drift?: ZohoDriftList;
 };
 
 export const ZOHO_LINK_VIEWS = ["matched", "choice", "none", "linked"] as const;
@@ -69,7 +77,13 @@ export const GAP_OPTIONS = REGISTER_GAP_VALUES.map((value) => ({
 }));
 
 export function parseZohoQueueQuery(params: RawSearchParams): ZohoQueueQuery {
-  const tab = oneOf(singleParam(params.tab), ["decisions", "all", "link", "check"] as const);
+  const tab = oneOf(singleParam(params.tab), [
+    "decisions",
+    "all",
+    "link",
+    "check",
+    "health",
+  ] as const);
   const artist = singleParam(params.artist)?.slice(0, 80);
   const view = oneOf(singleParam(params.view), ["choice", "none", "linked"] as const);
   const q = singleParam(params.q)?.trim().slice(0, ZOHO_LINK_SEARCH_MAX);
@@ -78,6 +92,7 @@ export function parseZohoQueueQuery(params: RawSearchParams): ZohoQueueQuery {
   const sort = oneOf(singleParam(params.sort), ["artist"] as const);
   const missing = oneOf(singleParam(params.missing), REGISTER_GAP_VALUES);
   const place = oneOf(singleParam(params.place), REGISTER_PLACE_VALUES);
+  const drift = oneOf(singleParam(params.drift), ZOHO_DRIFT_LISTS);
   const page = singleParam(params.page);
   return {
     ...(tab ? { tab } : {}),
@@ -89,6 +104,7 @@ export function parseZohoQueueQuery(params: RawSearchParams): ZohoQueueQuery {
     ...(matched ? { matched } : {}),
     ...(on ? { on } : {}),
     ...(sort ? { sort } : {}),
+    ...(drift && tab === "health" ? { drift } : {}),
     ...(page && /^[1-9]\d{0,3}$/.test(page) && page !== "1" ? { page } : {}),
   };
 }

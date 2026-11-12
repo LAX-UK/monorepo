@@ -2,8 +2,8 @@
 
 import type { BreadcrumbItem } from "@/components/dashboard/primitives/breadcrumbs";
 import type { MobileShellTitleModel } from "@/lib/navigation/mobile-shell-title";
-import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
+import { cn } from "@auction/ui/lib/utils";
 import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
 

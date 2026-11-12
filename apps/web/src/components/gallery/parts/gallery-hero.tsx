@@ -6,6 +6,7 @@ import { MediaImage } from "@/components/ui/media-image";
 import { useOverlayTone } from "@/components/ui/overlay-tone-context";
 import { overlayPillClasses, overlayToneProps } from "@/lib/ui/overlay-tone-classes";
 import type { GalleryImage } from "@auction/types";
+import { Button } from "@auction/ui/components/button";
 import {
   Carousel,
   type CarouselApi,
@@ -13,15 +14,14 @@ import {
   CarouselItem,
   CarouselNext,
   CarouselPrevious,
-} from "@auction/ui";
-import { cn } from "@auction/ui";
-import { Button } from "@auction/ui/components/button";
+} from "@auction/ui/components/carousel";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@auction/ui/components/tooltip";
+import { cn } from "@auction/ui/lib/utils";
 import { Maximize2 } from "lucide-react";
 
 type Props = {

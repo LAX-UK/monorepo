@@ -1,4 +1,4 @@
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 
 export type DeckDirection = "left" | "right" | null;
 

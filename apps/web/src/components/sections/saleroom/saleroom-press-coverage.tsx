@@ -1,8 +1,9 @@
 import { MarketingSectionHeader } from "@/components/marketing/marketing-section-header";
 import { PressCoverageCard } from "@/components/sections/press/press-coverage-card";
 import type { PressCoverageVM } from "@/components/sections/saleroom/view-models";
-import { MarketingCardReveal } from "@auction/marketing-ui";
-import { DisplayHeading, cn } from "@auction/ui";
+import { MarketingCardReveal } from "@auction/marketing-ui/motion/index";
+import { DisplayHeading } from "@auction/ui/components/typography";
+import { cn } from "@auction/ui/lib/utils";
 
 type Props = {
   items: PressCoverageVM[];

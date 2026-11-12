@@ -2455,14 +2455,49 @@
     {
       "idx": 351,
       "version": "7",
-      "when": 1806998400000,
-      "tag": "0359_artwork_register_status_written",
+      "when": 1806393600000,
+      "tag": "0357_private_sale_deal_artwork_unlinked_reason",
       "breakpoints": true
     },
     {
       "idx": 352,
       "version": "7",
-      "when": 1807084800000,
+      "when": 1806739200000,
+      "tag": "0367_xero_token_sealing",
+      "breakpoints": true
+    },
+    {
+      "idx": 353,
+      "version": "7",
+      "when": 1807171200000,
+      "tag": "0356_session_device_marker",
+      "breakpoints": true
+    },
+    {
+      "idx": 354,
+      "version": "7",
+      "when": 1807257600000,
+      "tag": "0361_oauth_token_sign_in",
+      "breakpoints": true
+    },
+    {
+      "idx": 355,
+      "version": "7",
+      "when": 1807776000000,
+      "tag": "0366_zoho_sync_health",
+      "breakpoints": true
+    },
+    {
+      "idx": 356,
+      "version": "7",
+      "when": 1808467200000,
+      "tag": "0359_artwork_register_status_written",
+      "breakpoints": true
+    },
+    {
+      "idx": 357,
+      "version": "7",
+      "when": 1808553600000,
       "tag": "0360_artwork_register_sold_attention",
       "breakpoints": true
     }

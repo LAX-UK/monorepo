@@ -13,6 +13,12 @@ function createApp(staffRoles: StaffRoles | undefined) {
     nameBuyer: vi.fn().mockResolvedValue({ ok: true, record: RECORD }),
     act: vi.fn().mockResolvedValue({ ok: true, record: RECORD }),
   };
+  const dealArtworks = {
+    search: vi.fn().mockResolvedValue({
+      ok: true,
+      result: { items: [], hasMore: false, preselected: null },
+    }),
+  };
   const stepUp = vi.fn(async (_c: unknown, next: () => Promise<void>) => next());
   const idempotentScopes: string[] = [];
   const app = new Hono<{
@@ -26,7 +32,7 @@ function createApp(staffRoles: StaffRoles | undefined) {
   });
   attachAdminPrivateSaleDealRoutes(
     app as never,
-    { admin: { privateSaleDeals } } as never,
+    { admin: { privateSaleDeals, dealArtworks } } as never,
     {
       requireStepUp: stepUp as never,
       idempotent: (scope: string) => {
@@ -35,7 +41,7 @@ function createApp(staffRoles: StaffRoles | undefined) {
       },
     } as never,
   );
-  return { app, privateSaleDeals, stepUp, idempotentScopes };
+  return { app, privateSaleDeals, dealArtworks, stepUp, idempotentScopes };
 }
 
 const send = (method: string, body: unknown) => ({
@@ -344,5 +350,62 @@ describe("POST /private-sales/:ref/actions/:action", () => {
     );
     expect(res.status).toBe(403);
     expect(privateSaleDeals.act).not.toHaveBeenCalled();
+  });
+});
+
+describe("GET /private-sales/artworks", () => {
+  const url = "http://test/private-sales/artworks";
+
+  it.each(["administrator", "sales_manager", "specialist"] as const)(
+    "is open to %s, who run deals",
+    async (role) => {
+      const { app, dealArtworks } = createApp([role]);
+      const res = await app.request(`${url}?q=harbour&enquiry=E-1042&work=C-1042&limit=10`);
+      expect(res.status).toBe(200);
+      expect(await res.json()).toEqual({ data: { items: [], hasMore: false, preselected: null } });
+      expect(dealArtworks.search).toHaveBeenCalledWith(
+        { userId: "staff-1", readsPrivateSale: true },
+        { q: "harbour", enquiry: "E-1042", work: "C-1042", limit: 10 },
+      );
+    },
+  );
+
+  it.each(["client_services", "finance", "fulfilment", "compliance", "read_only"] as const)(
+    "is not for %s: they may read a deal but not choose its artwork",
+    async (role) => {
+      const { app, dealArtworks } = createApp([role]);
+      expect((await app.request(url)).status).toBe(403);
+      expect(dealArtworks.search).not.toHaveBeenCalled();
+    },
+  );
+
+  it("is never read as the reference of a deal", async () => {
+    const { app, privateSaleDeals, dealArtworks } = createApp(["specialist"]);
+    await app.request(url);
+    expect(privateSaleDeals.detail).not.toHaveBeenCalled();
+    expect(dealArtworks.search).toHaveBeenCalledWith(expect.anything(), {
+      q: "",
+      limit: 20,
+    });
+  });
+
+  it.each([
+    ["a limit past the cap", "limit=51"],
+    ["a limit of zero", "limit=0"],
+    ["an enquiry that is not a reference", "enquiry=hello"],
+    ["a work that is not a reference", "work=hello"],
+    ["text that is too long", `q=${"x".repeat(101)}`],
+  ])("rejects %s", async (_label, query) => {
+    const { app, dealArtworks } = createApp(["specialist"]);
+    expect((await app.request(`${url}?${query}`)).status).toBe(400);
+    expect(dealArtworks.search).not.toHaveBeenCalled();
+  });
+
+  it("answers an enquiry the person cannot see with 404", async () => {
+    const { app, dealArtworks } = createApp(["specialist"]);
+    dealArtworks.search.mockResolvedValueOnce({ ok: false, error: "enquiry_not_found" });
+    const res = await app.request(`${url}?enquiry=E-9999`);
+    expect(res.status).toBe(404);
+    expect(await res.json()).toEqual({ error: "enquiry_not_found" });
   });
 });

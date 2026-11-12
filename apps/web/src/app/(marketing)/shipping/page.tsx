@@ -11,7 +11,7 @@ import {
 import { MARKETING_PROSE_LINK } from "@/lib/marketing/chrome";
 import { policyHubPageJsonLd } from "@/lib/seo/jsonld";
 import { metadataForStatic } from "@/lib/seo/metadata-factory";
-import { EmailLink } from "@auction/marketing-ui";
+import { EmailLink } from "@auction/marketing-ui/email-text";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = metadataForStatic({

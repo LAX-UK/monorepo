@@ -7,6 +7,7 @@ import type { CatalogueChangeService } from "./application/artwork-register/cata
 import type { OfferOnLaxArtService } from "./application/artwork-register/offer-on-lax-art.service.js";
 import type { SoldAttentionReviewService } from "./application/artwork-register/sold-attention-review.service.js";
 import type { ZohoLinkService } from "./application/artwork-register/zoho-link.service.js";
+import type { ZohoSyncHealthService } from "./application/artwork-register/zoho-sync-health.service.js";
 import type { DeliveryQuoteStaffService } from "./application/delivery-quote-staff/delivery-quote-staff.service.js";
 import type { DeliveryRegionsService } from "./application/delivery-regions/delivery-regions.service.js";
 import type { EditionRunServices } from "./application/edition-runs/edition-run-services.js";
@@ -97,6 +98,8 @@ export type AdminRoutesDeps = {
   artworkRegister: ArtworkRegisterReviewService;
   /** Artworks Zoho says are sold that are still for sale, waiting for staff to decide. */
   soldAttention: SoldAttentionReviewService;
+  /** The From Zoho Sync health tab: sync runs, queue, token and where Zoho and LAX disagree. */
+  zohoSyncHealth: ZohoSyncHealthService;
   /** Offer on lax.art: check a From Zoho record and make the lax.art draft from it. */
   offerOnLaxArt: Pick<OfferOnLaxArtService, "assess" | "offer">;
   catalogueChange: Pick<CatalogueChangeService, "update">;

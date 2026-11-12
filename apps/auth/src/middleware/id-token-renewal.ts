@@ -1,9 +1,15 @@
 import { AUTH_ROUTE_PATH } from "@auction/auth";
 import type { MiddlewareHandler } from "hono";
+import type { OAuthTokenSignInBinding } from "../services/oauth-token-sign-in-binding.service.js";
 import type { RefreshedIdTokenService } from "../services/refreshed-id-token.service.js";
 import { getOAuthTokenRequestContext } from "./oauth-token-request-context.js";
 
-export type IdTokenRenewalOutcome = "remembered" | "renewed" | "not_renewed" | "failed";
+export type IdTokenRenewalOutcome =
+  | "remembered"
+  | "renewed"
+  | "not_renewed"
+  | "failed"
+  | "bind_failed";
 
 type TokenResponseBody = Record<string, unknown> & {
   refresh_token?: unknown;
@@ -43,6 +49,8 @@ function withIdToken(response: Response, body: TokenResponseBody, idToken: strin
  */
 export function createIdTokenRenewalMiddleware(options: {
   renewal: Pick<RefreshedIdTokenService, "rememberIssued" | "renew">;
+  /** Records the sign-in on each token issued for an authorization code. */
+  signIns: Pick<OAuthTokenSignInBinding, "bindIssued">;
   onOutcome?: (outcome: IdTokenRenewalOutcome, error?: unknown) => void;
 }): MiddlewareHandler {
   return async (c, next) => {
@@ -59,6 +67,23 @@ export function createIdTokenRenewalMiddleware(options: {
 
     const body = await readJsonBody(c.res);
     if (!body || typeof body.refresh_token !== "string") return;
+
+    if (request.grantType === "authorization_code" && typeof body.id_token === "string") {
+      try {
+        await options.signIns.bindIssued({
+          refreshToken: body.refresh_token,
+          idToken: body.id_token,
+        });
+      } catch (error) {
+        // The tokens were deleted rather than left unbound, so none can outlive a sign-out.
+        options.onOutcome?.("bind_failed", error);
+        c.res = Response.json(
+          { error: "server_error", error_description: "Token could not be issued" },
+          { status: 500 },
+        );
+        return;
+      }
+    }
 
     try {
       if (request.grantType === "authorization_code" && typeof body.id_token === "string") {

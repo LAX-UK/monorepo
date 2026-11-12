@@ -29,7 +29,7 @@ import { toEntry } from "./artwork-register.mapper.js";
 const OPEN_LOT_STATUSES = ["draft", "scheduled", "active"] as const;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 /** The delivery consumers that write to Zoho Products for the register. */
-const PRODUCT_WRITE_CONSUMERS = ["zoho_artwork_writeback", "zoho_artwork_listing"];
+export const ZOHO_PRODUCT_WRITE_CONSUMERS = ["zoho_artwork_writeback", "zoho_artwork_listing"];
 
 function stateOf(value: unknown): OfferState | null {
   const state = value && typeof value === "object" ? (value as { state?: unknown }).state : null;
@@ -387,7 +387,7 @@ export class DrizzleZohoListingRunStore
       .from(domainEventDelivery)
       .where(
         and(
-          inArray(domainEventDelivery.consumer, PRODUCT_WRITE_CONSUMERS),
+          inArray(domainEventDelivery.consumer, ZOHO_PRODUCT_WRITE_CONSUMERS),
           eq(domainEventDelivery.status, "dead_lettered"),
         ),
       );

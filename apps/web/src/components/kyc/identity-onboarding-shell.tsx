@@ -5,7 +5,7 @@ import {
   type IdentityOnboardingSource,
   type IdentityOnboardingStep,
 } from "@/lib/kyc/identity-onboarding";
-import { DisplayHeading, LabelCaps } from "@auction/ui";
+import { DisplayHeading, LabelCaps } from "@auction/ui/components/typography";
 import { WizardProgress } from "@auction/ui/components/wizard-progress";
 import type { ReactNode } from "react";
 

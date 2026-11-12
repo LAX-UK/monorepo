@@ -13,7 +13,9 @@ import {
   CONSIGNMENT_MESSAGE_ATTACHMENT_TYPES,
   CONSIGNMENT_MESSAGE_MAX_LENGTH,
 } from "@auction/domain";
-import { Button, FilePickerButton, TextArea } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
+import { FilePickerButton } from "@auction/ui/lax/file-picker-button";
+import { TextArea } from "@auction/ui/lax/input";
 import { Paperclip, RotateCcw, Send, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useId, useState } from "react";

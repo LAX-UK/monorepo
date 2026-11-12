@@ -3,8 +3,8 @@
 import { PaletteItemBadge } from "@/components/layout/palette/palette-item-badge";
 import { paletteItemCommandValue } from "@/components/layout/palette/palette-item-presenter";
 import type { PaletteItem } from "@/components/layout/palette/types";
-import { cn } from "@auction/ui";
-import { CommandItem } from "@auction/ui";
+import { CommandItem } from "@auction/ui/components/command";
+import { cn } from "@auction/ui/lib/utils";
 import { Search } from "lucide-react";
 
 type Props = {

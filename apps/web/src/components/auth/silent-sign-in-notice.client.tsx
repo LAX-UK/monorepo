@@ -5,7 +5,10 @@ import { BID_SILENT_NOTICE_COOKIE } from "@/lib/auth/silent-sign-in/config";
 import { useAppSession } from "@/lib/auth/use-app-session";
 import { useLogout } from "@/lib/auth/use-logout";
 import { setSignInNoticeActive } from "@/lib/ui/first-visit-overlays";
-import { MarketingSignedInToast, signedInFirstName } from "@auction/marketing-ui";
+import {
+  MarketingSignedInToast,
+  signedInFirstName,
+} from "@auction/marketing-ui/marketing-signed-in-toast";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 function consumeNoticeCookie(cookieName: string): boolean {

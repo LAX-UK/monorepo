@@ -20,8 +20,13 @@ vi.mock("@/lib/data/http/authed-server-fetch", () => ({
   authedServerFetch: (...args: unknown[]) => fetchMock(...args),
 }));
 
-const { convertEnquiryAction, dealMoveAction, nameDealBuyerAction, updateDealTermsAction } =
-  await import("./admin-private-sales");
+const {
+  convertEnquiryAction,
+  dealMoveAction,
+  nameDealBuyerAction,
+  searchDealArtworksAction,
+  updateDealTermsAction,
+} = await import("./admin-private-sales");
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
@@ -169,16 +174,72 @@ describe("nameDealBuyerAction", () => {
 describe("convertEnquiryAction", () => {
   it("returns the new deal's reference", async () => {
     fetchMock.mockResolvedValue(json({ data: { reference: "PS-0012" } }, 201));
-    const result = await convertEnquiryAction("E-1042", { workReference: "C-1042" });
+    const result = await convertEnquiryAction("E-1042", {
+      workReference: "C-1042",
+      notInRegister: { reason: "in_zoho_not_linked" },
+    });
     expect(result).toEqual({ ok: true, data: { reference: "PS-0012" } });
     expect(sent().path).toBe("/admin/enquiries/E-1042/convert");
+    expect(JSON.parse(sent().init.body ?? "{}")).toEqual({
+      workReference: "C-1042",
+      notInRegister: { reason: "in_zoho_not_linked" },
+    });
+  });
+
+  it("sends an artwork chosen from the register", async () => {
+    fetchMock.mockResolvedValue(json({ data: { reference: "PS-0012" } }, 201));
+    const artworkRegisterId = "5b1c1b9e-3a2f-4f6e-9c1d-2f7a8e9d0c11";
+    await convertEnquiryAction("E-1042", { artworkRegisterId });
+    expect(JSON.parse(sent().init.body ?? "{}")).toEqual({ artworkRegisterId });
+  });
+
+  it("explains a conversion that names no artwork and no reason", async () => {
+    fetchMock.mockResolvedValue(json({ error: "artwork_choice_required" }, 422));
+    expect(await convertEnquiryAction("E-1042", { workReference: "C-1042" })).toMatchObject({
+      ok: false,
+      error: expect.stringContaining("Choose an artwork from the register"),
+    });
   });
 
   it("explains a refusal in words", async () => {
     fetchMock.mockResolvedValue(json({ error: "account_required" }, 422));
-    expect(await convertEnquiryAction("E-1042", {})).toMatchObject({
+    expect(
+      await convertEnquiryAction("E-1042", { notInRegister: { reason: "sellers_own_work" } }),
+    ).toMatchObject({
       ok: false,
       error: expect.stringContaining("no LAX account yet"),
+    });
+  });
+});
+
+describe("searchDealArtworksAction", () => {
+  const result = { items: [], hasMore: false, preselected: null };
+
+  it("asks the register for the originals matching what was typed, for this enquiry and work", async () => {
+    fetchMock.mockResolvedValue(json({ data: result }));
+    expect(
+      await searchDealArtworksAction({ q: "tide", enquiry: "E-1042", work: "C-1042" }),
+    ).toEqual({ ok: true, data: result });
+    const url = new URL(sent().path, "http://api");
+    expect(url.pathname).toBe("/admin/private-sales/artworks");
+    expect(Object.fromEntries(url.searchParams)).toMatchObject({
+      q: "tide",
+      enquiry: "E-1042",
+      work: "C-1042",
+    });
+  });
+
+  it("leaves out what was not given", async () => {
+    fetchMock.mockResolvedValue(json({ data: result }));
+    await searchDealArtworksAction({});
+    expect(new URL(sent().path, "http://api").searchParams.has("enquiry")).toBe(false);
+  });
+
+  it("says the API did not answer when it cannot be reached", async () => {
+    fetchMock.mockRejectedValue(new Error("down"));
+    expect(await searchDealArtworksAction({ q: "tide" })).toMatchObject({
+      ok: false,
+      status: 503,
     });
   });
 });

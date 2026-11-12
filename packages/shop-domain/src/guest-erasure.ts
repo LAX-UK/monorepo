@@ -1,3 +1,4 @@
+import { LONDON_TIME_ZONE, formatDate } from "@auction/datetime";
 import type { ShopFulfilmentStatus } from "./fulfilment-state.js";
 import { normaliseGuestEmail } from "./guest-checkout.js";
 import type { ShopOrderStatus } from "./order-state.js";
@@ -168,12 +169,7 @@ export function decideGuestErasure(input: {
 }
 
 function formatDay(date: Date): string {
-  return date.toLocaleDateString("en-GB", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    timeZone: "Europe/London",
-  });
+  return formatDate(date, LONDON_TIME_ZONE);
 }
 
 /** Staff read why erasure cannot happen, in a sentence they can act on. */

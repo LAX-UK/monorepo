@@ -16,15 +16,12 @@ import {
 } from "@/lib/presenters/organisation-role/organisation-role-presentation";
 import { notify } from "@/lib/ui/notify";
 import type { LegalEntityMemberRole } from "@auction/types";
-import {
-  Button,
-  Dialog,
-  DialogClose,
-  Field,
-  Notice,
-  PresetCards,
-  TokenInput,
-} from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
+import { Dialog, DialogClose } from "@auction/ui/lax/dialog";
+import { Field } from "@auction/ui/lax/field";
+import { Notice } from "@auction/ui/lax/notice";
+import { PresetCards } from "@auction/ui/lax/preset-cards";
+import { TokenInput } from "@auction/ui/lax/token-input";
 import { Plus } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";

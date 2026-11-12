@@ -19,6 +19,7 @@ function setup(options: { recent?: boolean; configured?: boolean } = {}) {
         ipAddress: null,
         userAgent: null,
         lastPasswordAuthAt: null,
+        previousIds: [],
         isCurrent: true,
       },
     ]),

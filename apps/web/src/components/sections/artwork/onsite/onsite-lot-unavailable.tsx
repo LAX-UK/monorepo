@@ -1,5 +1,5 @@
 import { salePath } from "@/lib/seo/url";
-import { ButtonLink } from "@auction/ui/lax";
+import { ButtonLink } from "@auction/ui/lax/button-link";
 import Link from "next/link";
 
 type Props = {

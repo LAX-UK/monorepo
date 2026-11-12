@@ -1,4 +1,4 @@
-import { createHeroPresence } from "@auction/marketing-ui";
+import { createHeroPresence } from "@auction/marketing-ui/header/hero-presence";
 
 /**
  * Bid pages whose first section can be a full-bleed cover photograph the header sits over until

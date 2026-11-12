@@ -1,6 +1,6 @@
 import { LotMediaBlock } from "@/components/sections/artwork/redesign/lot-media-block";
 import type { Lot, PublicLotView } from "@auction/types";
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 
 type Props = {
   lot: Lot | PublicLotView;

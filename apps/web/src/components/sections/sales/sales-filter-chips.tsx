@@ -5,13 +5,13 @@ import { FOCUS_RING } from "@/lib/marketing/chrome";
 import type { CalendarSalesUrlState } from "@/lib/marketing/sales-calendar-params";
 import { calendarSalesHrefFromState } from "@/lib/marketing/sales-calendar-params";
 import { getSaleDeliveryModeLabel } from "@/lib/sale-type-presentation";
-import { cn } from "@auction/ui";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@auction/ui";
+} from "@auction/ui/components/dropdown-menu";
+import { cn } from "@auction/ui/lib/utils";
 import { ChevronDown } from "lucide-react";
 import Link from "next/link";
 

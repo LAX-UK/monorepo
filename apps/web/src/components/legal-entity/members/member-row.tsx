@@ -1,8 +1,9 @@
 "use client";
 
 import type { MemberRowView } from "@/lib/legal-entity/member-row.vm";
-import { RecordRow } from "@auction/ui";
-import { Button, Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from "@auction/ui/lax";
+import { RecordRow } from "@auction/ui/components/record-row";
+import { Button } from "@auction/ui/lax/button";
+import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from "@auction/ui/lax/menu";
 import {
   ArrowLeftRight,
   Clock,

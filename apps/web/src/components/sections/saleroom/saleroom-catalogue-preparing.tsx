@@ -3,7 +3,9 @@
 import { buildHostedLoginStartHref } from "@/lib/auth/hosted-login-start-href";
 import { toggleSaleFollow } from "@/lib/data/http/sale-follow.client";
 import type { CataloguePreparingVM } from "@/lib/marketing/saleroom/sale-page-state";
-import { Button, ButtonLink, EmptyState } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
+import { ButtonLink } from "@auction/ui/lax/button-link";
+import { EmptyState } from "@auction/ui/lax/empty-state";
 import { Bell, BellRing } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useState } from "react";

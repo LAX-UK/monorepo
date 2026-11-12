@@ -1,9 +1,10 @@
 import { MediaImage } from "@/components/ui/media-image";
 import { SPECIALIST_RESPONSE_PROMISE } from "@/lib/marketing/sell-flow-copy";
 import type { ConsignmentDetailVm } from "@/lib/seller/consignment-detail.vm";
-import { AccountProgress } from "@auction/marketing-ui";
-import { cn } from "@auction/ui";
-import { ButtonLink, pageTitleClass } from "@auction/ui/lax";
+import { AccountProgress } from "@auction/marketing-ui/account/index";
+import { ButtonLink } from "@auction/ui/lax/button-link";
+import { pageTitleClass } from "@auction/ui/lax/styles";
+import { cn } from "@auction/ui/lib/utils";
 import { MessageSquare } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";

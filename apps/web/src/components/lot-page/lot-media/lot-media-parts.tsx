@@ -3,8 +3,8 @@
 import { MediaImage } from "@/components/ui/media-image";
 import { MediaPlaceholder } from "@/components/ui/media-placeholder";
 import type { GalleryImage } from "@auction/types";
-import { cn } from "@auction/ui";
-import { Button } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
+import { cn } from "@auction/ui/lib/utils";
 import { Maximize2, ZoomIn } from "lucide-react";
 
 export const NO_IMAGE_LABEL = "No image yet";

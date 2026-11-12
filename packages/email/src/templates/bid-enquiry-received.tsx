@@ -1,3 +1,4 @@
+import { LONDON_TIME_ZONE, formatWeekdayDate } from "@auction/datetime";
 import { FactCard } from "../components/FactCard.js";
 import { Layout } from "../components/Layout.js";
 import { TextBlock } from "../components/TextBlock.js";
@@ -10,14 +11,8 @@ export const subject = ({ reference }: Vars) => `We have your enquiry (${referen
 
 /** "Wednesday 4 November": the day the reply was promised, as a person in London reads it. */
 export function replyByLabel(iso: string): string {
-  const parts = new Intl.DateTimeFormat("en-GB", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    timeZone: "Europe/London",
-  }).formatToParts(new Date(iso));
-  const part = (type: string) => parts.find((p) => p.type === type)?.value ?? "";
-  return `${part("weekday")} ${part("day")} ${part("month")}`;
+  // The weekday leads without a comma, however the runtime punctuates it.
+  return formatWeekdayDate(new Date(iso), LONDON_TIME_ZONE, { year: false }).replace(",", "");
 }
 
 const ASKED_TO: Record<Kind, (vars: Vars) => string> = {

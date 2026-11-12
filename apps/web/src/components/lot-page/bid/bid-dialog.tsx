@@ -10,7 +10,10 @@ import {
   useBidDialog,
 } from "@/lib/lot-page/bid-dialog/use-bid-dialog";
 import type { BidMode } from "@auction/domain";
-import { Button, Dialog, DialogClose, Notice, PresetCards } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
+import { Dialog, DialogClose } from "@auction/ui/lax/dialog";
+import { Notice } from "@auction/ui/lax/notice";
+import { PresetCards } from "@auction/ui/lax/preset-cards";
 import Link from "next/link";
 import { type ReactNode, useEffect, useId, useRef } from "react";
 

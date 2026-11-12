@@ -1294,6 +1294,12 @@ export type {
   SoldAttentionLiveRef,
   SoldAttentionRecord,
 } from "./artwork-register-sold-attention.js";
+export type {
+  DealArtworkSearchInput,
+  IDealArtworkSearchReader,
+  IOpenLotPlaceReader,
+  OpenLotPlace,
+} from "./deal-artwork-search.js";
 
 export type {
   IBidPublishSettings,
@@ -1323,6 +1329,24 @@ export type {
   ZohoArtworkSyncRunSummary,
   ZohoArtworkSyncSummary,
 } from "./zoho-artwork-sync.js";
+
+export type {
+  IZohoDriftReader,
+  IZohoOutboundQueueReader,
+  IZohoSyncHealthReader,
+  IZohoSyncHealthStore,
+  ProductWithoutRegisterRow,
+  RegisterWithoutProductRow,
+  StatusMismatchRow,
+  ZohoDriftCounts,
+  ZohoDriftPage,
+  ZohoDriftPaging,
+  ZohoOutboundQueueStats,
+  ZohoSyncHealthRecord,
+  ZohoSyncModes,
+  ZohoSyncRunMode,
+  ZohoTokenHealth,
+} from "./zoho-sync-health.js";
 
 export type {
   IZohoListingLock,

@@ -1,6 +1,6 @@
 import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
 import type { BankTransferInstructions, PayPlan, PayPlanProgress } from "@auction/types";
-import { formatGbp } from "@auction/ui";
+import { formatGbp } from "@auction/ui/lib/money";
 import { PAY_COPY } from "./pay-copy";
 import {
   type BankDetailRow,

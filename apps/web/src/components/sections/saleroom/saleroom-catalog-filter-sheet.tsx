@@ -10,7 +10,7 @@ import {
   parseSaleroomCatalogStatus,
 } from "@/lib/marketing/saleroom-catalog-status";
 import type { SaleroomStatusCounts } from "@/lib/marketing/saleroom-status-counts";
-import { MarketingFilterCheckboxRow } from "@auction/marketing-ui";
+import { MarketingFilterCheckboxRow } from "@auction/marketing-ui/marketing-filter-checkbox-row";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useState } from "react";
 

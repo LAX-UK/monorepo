@@ -7,11 +7,12 @@ import { consignmentAgreementViewModel } from "@/lib/seller/consignment-agreemen
 import { notify } from "@/lib/ui/notify";
 import { agreementTermsComplete } from "@auction/domain";
 import type { ConsignmentAgreement } from "@auction/types";
-import { cn } from "@auction/ui";
 import { Alert, AlertDescription } from "@auction/ui/components/alert";
 import { Label } from "@auction/ui/components/label";
 import { Surface } from "@auction/ui/components/surface";
-import { Button, Checkbox } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
+import { Checkbox } from "@auction/ui/lax/checkbox";
+import { cn } from "@auction/ui/lib/utils";
 import { CheckCircle2, Download } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";

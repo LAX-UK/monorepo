@@ -1,5 +1,6 @@
 import { finished } from "node:stream/promises";
 import { legalEntityFor, productCopyrightLine } from "@auction/branding";
+import { LONDON_TIME_ZONE, formatLongMoment } from "@auction/datetime";
 import PDFDocument from "pdfkit";
 
 /** What a consignment agreement document says, already worded for the seller. */
@@ -23,12 +24,6 @@ export type ConsignmentAgreementDocument = {
   /** Who accepted and when; `null` while it waits for acceptance. */
   accepted: { byName: string | null; at: Date } | null;
 };
-
-const dateFmt = new Intl.DateTimeFormat("en-GB", {
-  dateStyle: "long",
-  timeStyle: "short",
-  timeZone: "Europe/London",
-});
 
 function money(amount: string | null, currency: string): string {
   if (amount === null) return "To be confirmed";
@@ -87,7 +82,7 @@ export async function renderConsignmentAgreementPdf(
     ...(input.relistReserveFloor !== null
       ? ([["Lowest reserve if relisted", money(input.relistReserveFloor, input.currency)]] as const)
       : []),
-    ["Proposed", dateFmt.format(input.proposedAt)],
+    ["Proposed", formatLongMoment(input.proposedAt, LONDON_TIME_ZONE)],
   ]);
 
   doc.moveDown(0.8);
@@ -103,7 +98,7 @@ export async function renderConsignmentAgreementPdf(
   doc.font("Helvetica").fontSize(10).moveDown(0.3);
   doc.text(
     input.accepted
-      ? `Accepted by ${input.accepted.byName ?? "the seller"} for ${input.sellerName} on ${dateFmt.format(input.accepted.at)}.`
+      ? `Accepted by ${input.accepted.byName ?? "the seller"} for ${input.sellerName} on ${formatLongMoment(input.accepted.at, LONDON_TIME_ZONE)}.`
       : "Not accepted yet. Accept it in your LAX Bid account to confirm the consignment.",
     { width: 495 },
   );

@@ -1,6 +1,6 @@
 import { hangLotPhoto } from "@/lib/hang/hang-lot";
 import { lotWasSold } from "@/lib/lot/lot-outcome";
-import { HANG_MAX_WORKS } from "@auction/marketing-ui";
+import { HANG_MAX_WORKS } from "@auction/marketing-ui/hang/hang-layout";
 import type { Lot } from "@auction/types";
 
 /** Staff's featured lots lead only when there are at least this many; one lot is not a wall. */

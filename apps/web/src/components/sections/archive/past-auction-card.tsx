@@ -5,7 +5,7 @@ import { archiveLotResult } from "@/lib/archive/archive-lot-result";
 import { FOCUS_RING } from "@/lib/marketing/chrome";
 import { LONDON_TIME_ZONE, formatMonthYear } from "@auction/datetime";
 import type { Lot } from "@auction/types";
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 import Link from "next/link";
 
 function closingCaption(endTime: Date): string {

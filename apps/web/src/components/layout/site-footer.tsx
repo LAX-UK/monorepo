@@ -12,8 +12,8 @@ import { useAppSession } from "@/lib/auth/use-app-session";
 import { productCopyrightLine } from "@/lib/brand";
 import { FOCUS_RING } from "@/lib/marketing/chrome";
 import type { LaxProductLinkVm } from "@auction/lax-ecosystem";
-import { MarketingFooter, type MarketingFooterLink } from "@auction/marketing-ui";
-import { cn } from "@auction/ui";
+import { MarketingFooter, type MarketingFooterLink } from "@auction/marketing-ui/marketing-footer";
+import { cn } from "@auction/ui/lib/utils";
 import Link from "next/link";
 
 type SiteFooterProps = {

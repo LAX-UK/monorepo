@@ -20,7 +20,7 @@ import { lotStatusBadgeProps } from "@/lib/presenters/lot-status-badge-props";
 import { lotPath } from "@/lib/seo/url";
 import type { OverlaySurface } from "@/lib/ui/overlay-tone-classes";
 import { type LotMediaTreatmentIndex, lotMediaTreatment } from "@auction/domain";
-import { lotCardMediaFrame } from "@auction/marketing-ui";
+import { lotCardMediaFrame } from "@auction/marketing-ui/lot-media/lot-card-media-frame";
 import type { CatalogLotVM } from "@auction/types";
 
 export type CatalogLotViewsProps = {

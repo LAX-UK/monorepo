@@ -1,6 +1,7 @@
 import type { SaleAction } from "@/components/sections/sales/card/types";
-import { cn } from "@auction/ui";
-import { ButtonLink, type ButtonProps } from "@auction/ui/lax";
+import type { ButtonProps } from "@auction/ui/lax/button";
+import { ButtonLink } from "@auction/ui/lax/button-link";
+import { cn } from "@auction/ui/lib/utils";
 import Link from "next/link";
 
 type Props = {

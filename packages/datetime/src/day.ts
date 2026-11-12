@@ -6,6 +6,8 @@ import {
 } from "date-fns";
 import { zoneFormats } from "./zone-formats.js";
 
+export { addCalendarKeyDays } from "./day-key.js";
+
 /** "2026-11-03": the calendar day in `zone`, for grouping and comparing days. */
 export function dayKey(instant: Date, zone: string): string {
   return zoneFormats(zone).dayKey.format(instant);

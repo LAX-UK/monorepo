@@ -1,9 +1,9 @@
 "use client";
 
 import { adminDetailTabsStickyTop } from "@/lib/admin/admin-sticky-layout";
-import { cn } from "@auction/ui";
 import { Skeleton } from "@auction/ui/components/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@auction/ui/components/tabs";
+import { cn } from "@auction/ui/lib/utils";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { ReactNode } from "react";
 import { Suspense, useCallback, useEffect, useState } from "react";

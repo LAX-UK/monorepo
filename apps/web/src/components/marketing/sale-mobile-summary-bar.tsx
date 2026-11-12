@@ -17,8 +17,9 @@ import { closingChipText, opensLine } from "@/lib/time/opens-line";
 import { useCountdownTick } from "@/lib/time/use-clock";
 import { LONDON_TIME_ZONE, formatWhen } from "@auction/datetime";
 import type { Sale, SaleDeliveryMode } from "@auction/types";
-import { Countdown, LiveDot } from "@auction/ui";
-import { Button } from "@auction/ui/lax";
+import { Countdown } from "@auction/ui/components/countdown";
+import { LiveDot } from "@auction/ui/components/live-dot";
+import { Button } from "@auction/ui/lax/button";
 import Link from "next/link";
 
 /** When a sale opens, by the time rule: the date beyond a week, then days, hours and minutes. */

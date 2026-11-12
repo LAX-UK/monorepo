@@ -5,7 +5,7 @@ import { needsIosInstallForPush } from "@/lib/push/capability";
 import { devicePushView } from "@/lib/push/device-push.vm";
 import { usePushSubscription } from "@/lib/push/use-push-subscription";
 import { notify } from "@/lib/ui/notify";
-import { Button } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
 import { useState } from "react";
 
 /**

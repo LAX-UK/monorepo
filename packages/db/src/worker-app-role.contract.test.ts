@@ -160,6 +160,25 @@ describe.skipIf(!WORKER_URL)("worker_app role contract", { timeout: 60_000 }, ()
     });
   });
 
+  it("reads and writes the sealed Xero token columns, and may null the plaintext ones", async () => {
+    await withWorkerClient(async (client) => {
+      for (const column of [
+        "access_token_sealed",
+        "refresh_token_sealed",
+        "access_token",
+        "refresh_token",
+      ]) {
+        for (const privilege of ["SELECT", "INSERT", "UPDATE"]) {
+          const result = await client.query<{ allowed: boolean }>(
+            "select has_column_privilege(current_user, 'public.xero_connection', $1, $2) as allowed",
+            [column, privilege],
+          );
+          expect(result.rows[0]?.allowed, `${column} ${privilege}`).toBe(true);
+        }
+      }
+    });
+  });
+
   it("may run the buyer refund top-up function", async () => {
     await withWorkerClient(async (client) => {
       const result = await client.query<{ run: boolean }>(

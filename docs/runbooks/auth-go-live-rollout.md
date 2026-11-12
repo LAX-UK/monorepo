@@ -144,6 +144,8 @@ Do not run automatically in deploy scripts. Users who hit an authenticated API p
 
 After a sign-out, password change, two-step change or "sign out other sessions", the issuer must still end sessions and tokens and tell the other products. If that fails once, the job is written to `auth_security_effect_outbox` and the issuer's own schedule (`apps/auth`, every 2 seconds) retries it at 2s, 10s, 60s, 5m and 30m. A restart does not lose it. A job that succeeds is deleted.
 
+A product's refresh now ends when the browser's sign-in record ends (7 days of inactivity), even though refresh tokens last 30 days.
+
 Signals (structured `pino` lines from the `auction-auth` service, searchable in the App Platform component logs):
 
 | Message | Level | Meaning | Also in Sentry |

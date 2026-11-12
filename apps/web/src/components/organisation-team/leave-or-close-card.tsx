@@ -1,7 +1,7 @@
 "use client";
 
 import type { LeaveControl } from "@/lib/legal-entity/member-controls.vm";
-import { Button } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
 import Link from "next/link";
 import { type ReactNode, useState } from "react";
 import { LeaveOrganisationDialog } from "./leave-organisation-dialog";

@@ -3,9 +3,9 @@ import {
   resolveEmptyStateIllustration,
 } from "@/components/illustrations/empty-state-illustrations";
 import { CONTEXT_DEFAULT_ILLUSTRATION, type EmptyStateContext } from "@/lib/ui/empty-state-copy";
-import { cn } from "@auction/ui";
 import type { LaxIllustrationName } from "@auction/ui/components/lax-illustration";
-import { EmptyState } from "@auction/ui/lax";
+import { EmptyState } from "@auction/ui/lax/empty-state";
+import { cn } from "@auction/ui/lib/utils";
 import type { ReactNode } from "react";
 
 /**

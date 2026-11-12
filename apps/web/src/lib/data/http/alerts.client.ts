@@ -1,5 +1,9 @@
 import { apiBaseUrl } from "@/lib/auth/api-base";
-import type { ConfirmResult, StopChoice, StopResult } from "@auction/marketing-ui";
+import type {
+  ConfirmResult,
+  StopChoice,
+  StopResult,
+} from "@auction/marketing-ui/alerts/alert-link-page";
 
 const url = (path: string) => `${apiBaseUrl()}/alerts${path}`;
 

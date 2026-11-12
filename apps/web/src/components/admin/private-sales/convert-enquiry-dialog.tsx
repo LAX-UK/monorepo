@@ -1,9 +1,30 @@
 "use client";
 
-import { convertEnquiryAction } from "@/lib/actions/admin/admin-private-sales";
+import {
+  convertEnquiryAction,
+  searchDealArtworksAction,
+} from "@/lib/actions/admin/admin-private-sales";
 import { isStaleDeal } from "@/lib/admin/private-sales/private-sale-errors";
-import { Field, Notice, StaffButton, StaffDialog, TextInput } from "@auction/staff-ui";
-import { useEffect, useId, useRef, useState } from "react";
+import {
+  Field,
+  FormErrorSummary,
+  Notice,
+  StaffButton,
+  StaffDialog,
+  TextInput,
+} from "@auction/staff-ui";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
+import {
+  ARTWORK_REFUSED,
+  ARTWORK_REQUIRED,
+  type ArtworkChoice,
+  artworkChoiceError,
+  artworkConvertInput,
+  defaultArtworkChoice,
+} from "./artwork-choice";
+import { RegisterArtworkField } from "./register-artwork-field";
+import type { SearchRegisterArtworks } from "./register-artwork-picker";
+import { useEarlierLotArtwork } from "./use-earlier-lot-artwork";
 
 type Props = {
   open: boolean;
@@ -14,6 +35,7 @@ type Props = {
   onReload: () => void;
   onDone: (dealReference: string) => void;
   convert?: typeof convertEnquiryAction;
+  searchArtworks?: typeof searchDealArtworksAction;
 };
 
 const WORK_REFERENCE = /^C-?\d{1,15}$/i;
@@ -21,8 +43,10 @@ const WORK_REFERENCE = /^C-?\d{1,15}$/i;
 /**
  * Turns a private sale enquiry into a proposed deal. A sell enquiry opens a draft consignment for
  * the work with the sender as seller; a buy enquiry names the work the buyer is being offered, by
- * its consignment reference. The sender needs an account, because the checks that gate the deal
- * are recorded against one, and the enquiry then belongs to its deal.
+ * its consignment reference. Either says which artwork the deal is for: an original from the
+ * register, which is held for the deal from the moment it opens, or why it is not there. The
+ * sender needs an account, because the checks that gate the deal are recorded against one, and
+ * the enquiry then belongs to its deal.
  */
 export function ConvertEnquiryDialog({
   open,
@@ -32,38 +56,120 @@ export function ConvertEnquiryDialog({
   onReload,
   onDone,
   convert = convertEnquiryAction,
+  searchArtworks = searchDealArtworksAction,
 }: Props) {
   const ids = useId();
   const cancelRef = useRef<HTMLButtonElement>(null);
   const [work, setWork] = useState("");
-  const [attempted, setAttempted] = useState(false);
+  const [choice, setChoice] = useState<ArtworkChoice>(() => defaultArtworkChoice(needsWork));
+  const [earlierLot, setEarlierLot] = useState<{
+    artworkId: string;
+    workReference: string;
+  } | null>(null);
+  const [attempts, setAttempts] = useState(0);
   const [busy, setBusy] = useState(false);
-  const [failure, setFailure] = useState<{ message: string; stale: boolean } | null>(null);
+  const [failure, setFailure] = useState<{
+    message: string;
+    stale: boolean;
+    refusedArtwork: boolean;
+  } | null>(null);
+  // The artwork the register refused stays chosen, with a reason to pick another.
+  const [refusedId, setRefusedId] = useState<string | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
+  // The API found no artwork choice in the request: shown with the Artwork field, not as a banner.
+  const [choiceMissing, setChoiceMissing] = useState(false);
+  // Once staff choose for themselves, the earlier lot's artwork no longer replaces their choice.
+  const chosenByStaff = useRef(false);
 
   useEffect(() => {
     if (!open) return;
     setWork("");
-    setAttempted(false);
+    setChoice(defaultArtworkChoice(needsWork));
+    setEarlierLot(null);
+    setAttempts(0);
     setFailure(null);
-  }, [open]);
+    setRefusedId(null);
+    setChoiceMissing(false);
+    chosenByStaff.current = false;
+  }, [open, needsWork]);
+
+  const workReference = WORK_REFERENCE.test(work.trim()) ? work.trim() : null;
+  const attempted = attempts > 0;
+
+  const search = useCallback<SearchRegisterArtworks>(
+    async (query) => {
+      const result = await searchArtworks({
+        q: query,
+        enquiry: reference,
+        ...(workReference ? { work: workReference } : {}),
+      });
+      if (!result.ok || !result.data) throw new Error(result.ok ? "No answer" : result.error);
+      return result.data;
+    },
+    [searchArtworks, reference, workReference],
+  );
+
+  useEarlierLotArtwork({
+    enabled: open && needsWork && choice.mode === "register" && !chosenByStaff.current,
+    workReference,
+    search,
+    onFound: useCallback((artwork, found) => {
+      setChoice({ mode: "register", artwork });
+      setEarlierLot({ artworkId: artwork.id, workReference: found });
+    }, []),
+  });
 
   const workError =
-    attempted && needsWork && !WORK_REFERENCE.test(work.trim())
+    attempted && needsWork && !workReference
       ? "Enter the reference of the work, such as C-1042."
       : undefined;
+  const choiceError =
+    attempted && artworkChoiceError(choice)
+      ? artworkChoiceError(choice)
+      : choiceMissing
+        ? ARTWORK_REQUIRED
+        : choice.mode === "register" && choice.artwork && choice.artwork.id === refusedId
+          ? ARTWORK_REFUSED
+          : undefined;
+  // One field needs no summary; two or more get one, with every message also beside its field.
+  const summary = [
+    ...(workError ? [{ fieldId: `${ids}-work`, message: workError }] : []),
+    ...(choiceError && needsWork ? [{ fieldId: `${ids}-artwork`, message: choiceError }] : []),
+  ];
+
+  function chooseArtwork(next: ArtworkChoice) {
+    chosenByStaff.current = true;
+    setChoiceMissing(false);
+    setChoice(next);
+  }
 
   async function proceed() {
-    setAttempted(true);
-    if (needsWork && !WORK_REFERENCE.test(work.trim())) return;
+    setAttempts((count) => count + 1);
+    if ((needsWork && !workReference) || artworkChoiceError(choice)) return;
     setFailure(null);
     setBusy(true);
-    const result = await convert(reference, needsWork ? { workReference: work.trim() } : {});
+    const result = await convert(reference, {
+      ...(needsWork && workReference ? { workReference } : {}),
+      ...artworkConvertInput(choice),
+    });
     setBusy(false);
     if (result.ok && result.data) {
       onOpenChange(false);
       onDone(result.data.reference);
+    } else if (!result.ok && result.errorCode === "artwork_choice_required") {
+      setChoiceMissing(true);
     } else if (!result.ok) {
-      setFailure({ message: result.error, stale: isStaleDeal(result.errorCode) });
+      const refusedArtwork = result.errorCode === "artwork_unavailable";
+      if (refusedArtwork && choice.mode === "register" && choice.artwork) {
+        setRefusedId(choice.artwork.id);
+        // Someone else took it first: ask the register again so the list tells the truth.
+        setRefreshKey((key) => key + 1);
+      }
+      setFailure({
+        message: result.error,
+        stale: isStaleDeal(result.errorCode),
+        refusedArtwork,
+      });
     }
   }
 
@@ -107,6 +213,7 @@ export function ConvertEnquiryDialog({
           void proceed();
         }}
       >
+        <FormErrorSummary errors={summary} focusKey={attempts} />
         {failure ? (
           failure.stale ? (
             <Notice
@@ -123,7 +230,15 @@ export function ConvertEnquiryDialog({
               nothing was converted.
             </Notice>
           ) : (
-            <Notice tone="danger" alert title="The enquiry couldn't be converted">
+            <Notice
+              tone="danger"
+              alert
+              title={
+                failure.refusedArtwork
+                  ? "That artwork can't be held for this deal"
+                  : "The enquiry couldn't be converted"
+              }
+            >
               {failure.message}
             </Notice>
           )
@@ -143,11 +258,18 @@ export function ConvertEnquiryDialog({
               onChange={(event) => setWork(event.target.value)}
             />
           </Field>
-        ) : (
-          <p className="m-0 text-staff-sm text-staff-muted">
-            No more details are needed. Photos and documents stay on the enquiry.
-          </p>
-        )}
+        ) : null}
+        <RegisterArtworkField
+          id={`${ids}-artwork`}
+          value={choice}
+          onChange={chooseArtwork}
+          search={search}
+          error={choiceError}
+          earlierLot={earlierLot}
+          startReason={needsWork ? null : "sellers_own_work"}
+          refreshKey={refreshKey}
+          disabled={busy}
+        />
       </form>
     </StaffDialog>
   );

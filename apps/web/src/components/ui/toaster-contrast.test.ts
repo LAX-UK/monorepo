@@ -1,5 +1,5 @@
 import { createTokenContrast } from "@/test/css-token-contrast";
-import { TOAST_SUCCESS_COLOURS } from "@auction/ui";
+import { TOAST_SUCCESS_COLOURS } from "@auction/ui/components/sonner";
 import { describe, expect, it } from "vitest";
 
 /**

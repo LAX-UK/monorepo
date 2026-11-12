@@ -11,7 +11,6 @@ import {
 import { createTelephoneBooking } from "@/lib/telephone/telephone-booking-api";
 import type { TelephoneBookingSnapshot } from "@/lib/telephone/telephone-booking-types";
 import { TelephoneParticipationGate } from "@/lib/telephone/telephone-participation-gate";
-import { cn } from "@auction/ui";
 import {
   Dialog,
   DialogContent,
@@ -37,7 +36,8 @@ import {
   SelectValue,
 } from "@auction/ui/components/select";
 import { Textarea } from "@auction/ui/components/textarea";
-import { Button } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
+import { cn } from "@auction/ui/lib/utils";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Mail, Phone } from "lucide-react";
 import Link from "next/link";

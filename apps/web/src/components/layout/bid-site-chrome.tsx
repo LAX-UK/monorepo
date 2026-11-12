@@ -11,8 +11,9 @@ import { MarketingHeaderTitleProvider } from "@/lib/marketing/marketing-header-t
 import { loadCachedMegaMenuSections } from "@/lib/marketing/mega-menu-sections.server";
 import { NavActivityProvider } from "@/lib/marketing/nav-activity-context";
 import { loadNavActivity } from "@/lib/marketing/nav-activity.server";
-import { MarketingBottomBarSpace } from "@auction/marketing-ui";
-import { LaxDensityProvider, laxDensityAttributes } from "@auction/ui/lax";
+import { MarketingBottomBarSpace } from "@auction/marketing-ui/marketing-bottom-tab-bar";
+import { LaxDensityProvider } from "@auction/ui/lax/density";
+import { laxDensityAttributes } from "@auction/ui/lax/density-attributes";
 import type { ReactNode } from "react";
 
 type BidSiteChromeProps = {

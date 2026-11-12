@@ -51,7 +51,8 @@ export type StoredSecurityEffect = {
 };
 
 export type SecurityEffectOutboxRepository = {
-  enqueue(input: { job: SecurityEffectJob; error: string; nextAttemptAt: Date }): Promise<void>;
+  /** Writes the job and returns the id of its row. */
+  enqueue(input: { job: SecurityEffectJob; error: string; nextAttemptAt: Date }): Promise<string>;
   /** Marks due jobs as running so two workers never take the same one, and returns them. */
   claimDue(input: { now: Date; staleBefore: Date; batchSize: number }): Promise<
     StoredSecurityEffect[]
@@ -83,6 +84,15 @@ export type SecurityEffectPorts = {
  * database or Redis outage can outlast a minute and a restart no longer loses the job.
  */
 export const DURABLE_RETRY_DELAYS_MS = [2_000, 10_000, 60_000, 5 * 60_000, 30 * 60_000] as const;
+
+/**
+ * How long a reserved job waits before the drain may run it. Longer than the change it follows
+ * takes, so the drain only picks it up when the process stopped before running it.
+ */
+const RESERVATION_GRACE_MS = 2 * 60_000;
+
+/** Jobs written to the outbox ahead of the change they follow, run once that change is done. */
+export type ReservedSecurityEffects = { run(): Promise<void> };
 
 /** A job claimed longer ago than this belongs to a worker that stopped, so it is taken again. */
 const CLAIM_TIMEOUT_MS = 2 * 60_000;
@@ -198,6 +208,60 @@ export class DurableSecurityEffects {
         retryInBackground(this.log, context, () => runSecurityEffect(this.ports, job));
       }
     }
+  }
+
+  /**
+   * For effects that must not be lost to a crash between a change and its follow-up (ending a
+   * person's products once their sign-in record has been deleted): writes the jobs to the outbox
+   * first, so the change is only made once they are safe, and `run` then does them and removes each
+   * row. If the process stops before `run`, the drain does them after a short grace. Throws, and
+   * leaves nothing behind that matters, when the rows cannot be written.
+   */
+  async reserve(
+    path: string,
+    jobs: readonly SecurityEffectJob[],
+  ): Promise<ReservedSecurityEffects> {
+    const graceEnds = new Date(this.now().getTime() + RESERVATION_GRACE_MS);
+    const reserved: { id: string; job: SecurityEffectJob }[] = [];
+    for (const job of jobs) {
+      const id = await this.repository.enqueue({
+        job,
+        error: "reserved",
+        nextAttemptAt: graceEnds,
+      });
+      reserved.push({ id, job });
+    }
+    return {
+      run: async () => {
+        for (const { id, job } of reserved) {
+          const context = { path, effect: job.kind, userId: job.userId };
+          try {
+            await runSecurityEffect(this.ports, job);
+            await this.repository.complete(id);
+          } catch (error) {
+            this.log.error(
+              { ...context, ...describeError(error), attempt: 1 },
+              "auth_security_effect_failed",
+            );
+            const now = this.now();
+            await this.repository
+              .retryLater({
+                id,
+                attemptCount: 1,
+                error: describeError(error).errorMessage,
+                nextAttemptAt: new Date(now.getTime() + DURABLE_RETRY_DELAYS_MS[0]),
+                now,
+              })
+              .catch((retryError: unknown) =>
+                this.log.error(
+                  { ...context, ...describeError(retryError) },
+                  "auth_security_effect_not_durable",
+                ),
+              );
+          }
+        }
+      },
+    };
   }
 
   /** Retries every due job once. Returns how many ran. */

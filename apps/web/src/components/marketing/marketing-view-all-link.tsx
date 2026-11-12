@@ -1,4 +1,4 @@
-import { TextLink, type TextLinkProps } from "@auction/ui/lax";
+import { TextLink, type TextLinkProps } from "@auction/ui/lax/text-link";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
