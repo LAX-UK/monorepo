@@ -4,7 +4,7 @@ import {
   LEGAL_DOCUMENT_SETS,
   LEGAL_ENTITY_NAMES,
 } from "@auction/identity-contracts";
-import { LAX_ART_POLICIES } from "@auction/marketing-ui";
+import { LAX_ART_POLICIES } from "@auction/marketing-ui/legal/london-art-exchange/index";
 import { describe, expect, it } from "vitest";
 
 /**

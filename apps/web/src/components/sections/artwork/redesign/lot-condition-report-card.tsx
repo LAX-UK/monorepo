@@ -3,8 +3,8 @@
 import { preloadConditionReportRequestForm } from "@/components/sections/artwork/redesign/condition-report-request-form.lazy";
 import { LotConditionReportStatePanel } from "@/components/sections/artwork/redesign/lot-condition-report-state-panel";
 import type { ConditionReportCardState } from "@/lib/condition-report/derive-condition-report-card-state";
-import { cn } from "@auction/ui";
-import { Button } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
+import { cn } from "@auction/ui/lib/utils";
 import type { ConditionReportRequestFormValues } from "@auction/validators";
 import { ChevronDown, FileSearch, X } from "lucide-react";
 import { type ReactNode, useId, useState } from "react";

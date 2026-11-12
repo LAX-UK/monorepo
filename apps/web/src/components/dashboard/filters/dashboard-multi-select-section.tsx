@@ -1,6 +1,6 @@
 "use client";
 
-import { FilterChip } from "@auction/ui";
+import { FilterChip } from "@auction/ui/components/filter-chip";
 import type { ReactNode } from "react";
 import { DashboardFilterSection } from "./dashboard-filter-section";
 

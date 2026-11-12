@@ -8,7 +8,7 @@ import { authedServerFetch } from "@/lib/data/http/authed-fetch.server";
 import { resolveOrgModuleEnabledFromRequest } from "@/lib/legal-entity/org-module-host.server";
 import type { PendingInvitationRow } from "@/lib/legal-entity/pending-invitations.gateway.server";
 import { invitationRows } from "@/lib/organisations/organisation-accounts.vm";
-import { ButtonLink } from "@auction/ui/lax";
+import { ButtonLink } from "@auction/ui/lax/button-link";
 import Link from "next/link";
 
 export default async function InvitationsInboxPage() {

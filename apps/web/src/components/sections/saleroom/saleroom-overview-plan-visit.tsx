@@ -4,7 +4,7 @@ import {
 } from "@/components/sections/artwork/onsite/onsite-calendar-actions";
 import { SITE_BUSINESS_HOURS_LABEL } from "@/lib/brand";
 import type { Sale } from "@auction/types";
-import { DisplayHeading } from "@auction/ui";
+import { DisplayHeading } from "@auction/ui/components/typography";
 import { formatPostalAddressLines, isSaleroomDeliveryMode } from "@auction/validators";
 import Link from "next/link";
 

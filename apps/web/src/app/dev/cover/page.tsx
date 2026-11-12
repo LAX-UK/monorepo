@@ -1,12 +1,12 @@
 import { isCoverFixtureReviewAvailable } from "@/lib/marketing-cover/cover-fixture-review";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
-import { MarketingCover } from "@auction/marketing-ui";
 import {
   BID_COVER_FIXTURES,
   COVER_BEHAVIOUR_FIXTURES,
   type CoverFixture,
   SHOP_COVER_FIXTURES,
 } from "@auction/marketing-ui/cover-fixtures";
+import { MarketingCover } from "@auction/marketing-ui/cover/marketing-cover";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 

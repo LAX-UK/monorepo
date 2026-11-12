@@ -1,8 +1,8 @@
 "use client";
 
 import { normalizeCurrencyInput } from "@/lib/forms/submission/submission-currency";
-import { cn } from "@auction/ui";
 import { Input } from "@auction/ui/components/input";
+import { cn } from "@auction/ui/lib/utils";
 import type { ComponentProps } from "react";
 
 type Props = Omit<ComponentProps<typeof Input>, "onChange" | "value" | "variant"> & {

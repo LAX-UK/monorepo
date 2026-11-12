@@ -3,7 +3,7 @@
 import { clearAccountNotice } from "@/lib/navigation/account-notice-cookie.client";
 import { pageAfterSwitch } from "@/lib/navigation/account-page-map";
 import type { AccountOption } from "@/lib/navigation/account-switcher-model";
-import { Button } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
 import { usePathname } from "next/navigation";
 import { useEffect } from "react";
 import { AccountToast } from "./account-toast";

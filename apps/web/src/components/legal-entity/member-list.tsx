@@ -17,8 +17,9 @@ import {
 import { organisationRoleLabel } from "@/lib/presenters/organisation-role/organisation-role-presentation";
 import { notify } from "@/lib/ui/notify";
 import type { LegalEntityMemberRole } from "@auction/types";
-import { RecordList } from "@auction/ui";
-import { ListSearch, SelectMenu } from "@auction/ui/lax";
+import { RecordList } from "@auction/ui/components/record-row";
+import { ListSearch } from "@auction/ui/lax/list-toolbar";
+import { SelectMenu } from "@auction/ui/lax/select-menu";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ChangeRoleDialog } from "./members/change-role-dialog";
 import { MemberRow } from "./members/member-row";

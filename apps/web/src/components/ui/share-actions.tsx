@@ -2,9 +2,9 @@
 
 import { FOCUS_RING } from "@/lib/marketing/chrome";
 import { buildLinkedInShareUrl, buildTwitterShareUrl } from "@/lib/marketing/share-urls";
-import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@auction/ui/components/tooltip";
+import { cn } from "@auction/ui/lib/utils";
 import { Check, Copy, Share2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 

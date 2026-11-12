@@ -2,7 +2,7 @@
 
 import type { DashboardDensity } from "@/lib/preferences/density";
 import { useOptionalShellConfig } from "@/lib/shell/shell-config-context";
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 
 /**
  * The density the surrounding frame asks lists for. The public site and staff frames provide a

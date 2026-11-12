@@ -1,4 +1,4 @@
-import { wizardContinueLabel } from "@auction/ui";
+import { wizardContinueLabel } from "@auction/ui/lib/wizard-copy";
 
 /** Shared multi-step wizard copy — keep labels identical across every flow. */
 export const WIZARD_COPY = {

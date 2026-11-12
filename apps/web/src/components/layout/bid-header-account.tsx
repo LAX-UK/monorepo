@@ -20,8 +20,9 @@ import type { SiteHeaderTone } from "@/lib/layout/header-chrome-tone";
 import { accountButtonView } from "@/lib/navigation/account-button.vm";
 import type { AccountMenuEntry } from "@/lib/navigation/account-menu-model";
 import type { LaxProductLinkVm } from "@auction/lax-ecosystem";
-import { MarketingAccountEntry, MarketingAccountSheet } from "@auction/marketing-ui";
-import { cn } from "@auction/ui";
+import { MarketingAccountSheet } from "@auction/marketing-ui/header/marketing-account-sheet";
+import { MarketingAccountEntry } from "@auction/marketing-ui/marketing-account-entry";
+import { cn } from "@auction/ui/lib/utils";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 

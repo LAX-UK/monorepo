@@ -1,6 +1,6 @@
 import { MARKETING_CATALOG_LIST_SHELL } from "@/lib/marketing/chrome";
 import type { CatalogLayoutView } from "@/lib/preferences/view-cookie";
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 
 const block = "shimmer-sweep rounded bg-surface-container-high";
 

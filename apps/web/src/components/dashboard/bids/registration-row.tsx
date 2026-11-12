@@ -1,8 +1,9 @@
 "use client";
 
 import type { RegistrationRowVm } from "@/lib/bid/registrations.vm";
-import { RecordRow, RecordRowMedia } from "@auction/ui";
-import { ButtonLink, StatusBadge } from "@auction/ui/lax";
+import { RecordRow, RecordRowMedia } from "@auction/ui/components/record-row";
+import { ButtonLink } from "@auction/ui/lax/button-link";
+import { StatusBadge } from "@auction/ui/lax/status-badge";
 import { Gavel } from "lucide-react";
 import Link from "next/link";
 

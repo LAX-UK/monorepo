@@ -6,8 +6,11 @@ import type { AccessRequestRowView } from "@/lib/organisation-team/access-reques
 import { decideAccessRequestAction } from "@/lib/organisation-team/organisation-team.actions";
 import { notify } from "@/lib/ui/notify";
 import type { LegalEntityMemberRole } from "@auction/types";
-import { RecordList, RecordRow } from "@auction/ui";
-import { Button, Dialog, Field, SelectMenu } from "@auction/ui/lax";
+import { RecordList, RecordRow } from "@auction/ui/components/record-row";
+import { Button } from "@auction/ui/lax/button";
+import { Dialog } from "@auction/ui/lax/dialog";
+import { Field } from "@auction/ui/lax/field";
+import { SelectMenu } from "@auction/ui/lax/select-menu";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 

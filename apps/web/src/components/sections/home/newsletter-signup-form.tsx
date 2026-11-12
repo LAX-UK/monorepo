@@ -3,7 +3,10 @@
 import { publicFormResolver } from "@/lib/forms/public-form-resolver";
 import { defaultNewsletterSubmitter } from "@/lib/newsletter/services/newsletter.client";
 import { useNewsletterSubmit } from "@/lib/newsletter/use-newsletter-submit";
-import { Button, Field, Notice, TextInput } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
+import { Field } from "@auction/ui/lax/field";
+import { TextInput } from "@auction/ui/lax/input";
+import { Notice } from "@auction/ui/lax/notice";
 import { type NewsletterSubscribeInput, newsletterSubscribeSchema } from "@auction/validators";
 import { type FormEvent, useState } from "react";
 import { useForm } from "react-hook-form";

@@ -2,7 +2,7 @@
 
 import { useOverlayTone } from "@/components/ui/overlay-tone-context";
 import { toneAwareHeroScrimGradient, toneAwareScrimStops } from "@/lib/media/tone-aware-scrim";
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 
 type Props = {
   className?: string;

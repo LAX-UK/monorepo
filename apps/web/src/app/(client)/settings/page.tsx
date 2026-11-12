@@ -9,7 +9,7 @@ import { SetMobileShellTitle } from "@/components/layout/set-mobile-shell-title"
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { laxAccountUrl } from "@/lib/lax-account-url";
 import { resolveActingContext } from "@/lib/legal-entity/acting-context.server";
-import { Skeleton } from "@auction/ui/lax";
+import { Skeleton } from "@auction/ui/lax/skeleton";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";

@@ -1,9 +1,9 @@
 "use client";
 
 import { CookieDockSlot } from "@/components/marketing/consent/cookie-dock";
-import { useClaimBottomSlot } from "@auction/marketing-ui";
-import { cn } from "@auction/ui";
-import { laxDensityAttributes } from "@auction/ui/lax";
+import { useClaimBottomSlot } from "@auction/marketing-ui/bottom-bar/bottom-slot";
+import { laxDensityAttributes } from "@auction/ui/lax/density-attributes";
+import { cn } from "@auction/ui/lib/utils";
 import type { ReactNode } from "react";
 
 export type MarketingStickyBidBarProps = {

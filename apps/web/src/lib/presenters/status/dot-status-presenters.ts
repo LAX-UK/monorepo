@@ -2,7 +2,7 @@ import type { AdminSaleRegistrationRow } from "@/lib/data/http/admin-sale-regist
 import type { AdminTelephoneBookingRow } from "@/lib/data/http/admin.server";
 import { telephoneBookingStatusLabel } from "@/lib/telephone/telephone-booking-types";
 import type { EntityDocument } from "@auction/types";
-import type { DotStatusPillTone } from "@auction/ui";
+import type { DotStatusPillTone } from "@auction/ui/components/dot-status-pill";
 import { resolveDotStatusPresentation } from "./resolver";
 
 export type DotStatusPresentation = {

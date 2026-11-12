@@ -17,7 +17,7 @@ import {
 import { MARKETING_PROSE_LINK } from "@/lib/marketing/chrome";
 import { metadataForStatic } from "@/lib/seo/metadata-factory";
 import { breadcrumbJsonLd, jsonLdScript, localBusinessJsonLd } from "@/lib/seo/structured-data";
-import { EmailLink } from "@auction/marketing-ui";
+import { EmailLink } from "@auction/marketing-ui/email-text";
 import type { Metadata } from "next";
 import Link from "next/link";
 

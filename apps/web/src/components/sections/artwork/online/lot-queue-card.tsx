@@ -1,6 +1,6 @@
 import type { LotQueueCardVM } from "@/components/sections/artwork/artwork-view-models";
 import { MediaImage } from "@/components/ui/media-image";
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 import Link from "next/link";
 import type { CSSProperties } from "react";
 
