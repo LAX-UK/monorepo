@@ -2486,6 +2486,13 @@
       "when": 1807776000000,
       "tag": "0366_zoho_sync_health",
       "breakpoints": true
+    },
+    {
+      "idx": 356,
+      "version": "7",
+      "when": 1808035200000,
+      "tag": "0354_lot_reoffer",
+      "breakpoints": true
     }
   ]
 }

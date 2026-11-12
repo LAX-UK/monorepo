@@ -12,7 +12,8 @@ export type LotTransitionKind =
   | "detach"
   | "admin_override"
   | "return_to_inventory"
-  | "buyer_default";
+  | "buyer_default"
+  | "reaward";
 
 export type LotTransitionDef = {
   kind: LotTransitionKind;
@@ -47,6 +48,9 @@ export const LOT_TRANSITIONS: readonly LotTransitionDef[] = [
   // The buyer did not pay. The lot keeps its ended status while staff void the invoice; where the
   // lot goes next (back to inventory, or offered on) is a second, separate transition.
   { kind: "buyer_default", from: new Set(["ended"]), to: "ended" },
+  // A bidder accepted an offer of the defaulted lot: the lot is won again at the offered amount.
+  // It is never a free move: it runs only from an accepted re-offer (see `reawardGuard`).
+  { kind: "reaward", from: new Set(["ended"]), to: "ended" },
 ] as const;
 
 const cancelTransition = LOT_TRANSITIONS.find((t) => t.kind === "cancel");

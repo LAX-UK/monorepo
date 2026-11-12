@@ -31,7 +31,18 @@ describe("migration 0282 buyer default and payment reminders", () => {
 
   // Types added by later migrations are not part of what 0282 allowed.
   const asOf0282 = NOTIFICATION_TYPES.filter(
-    (t) => !["sale_announced", "artist_lots_listed", "search_lots_listed"].includes(t),
+    (t) =>
+      ![
+        "sale_announced",
+        "artist_lots_listed",
+        "search_lots_listed",
+        "reoffer_seller_request",
+        "reoffer_seller_reminder",
+        "reoffer_seller_outcome",
+        "reoffer_offer",
+        "reoffer_offer_reminder",
+        "reoffer_offer_closed",
+      ].includes(t),
   );
 
   it("allows exactly the types the schema listed then, including those from 0281", () => {
