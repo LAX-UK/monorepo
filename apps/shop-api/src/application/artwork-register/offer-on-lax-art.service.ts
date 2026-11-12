@@ -60,6 +60,7 @@ export class OfferOnLaxArtService {
         ? { artworkId: existing.artworkId, slug: existing.slug, published: existing.published }
         : null,
       eligible: blockers.length === 0,
+      zohoPrice: entry.zohoPrice ?? null,
       blockers: blockers.map(({ message, link }) => ({ message, link })),
     };
   }

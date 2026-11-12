@@ -41,6 +41,7 @@ const SLA_MS: Partial<Record<AdminWorkItemSourceKind, number>> = {
   // The item appears the day after the due date; staff are expected to decide within two days.
   payment_overdue: 48 * 60 * 60 * 1000,
   deletion_hold: 72 * 60 * 60 * 1000,
+  register_lot_mismatch: 72 * 60 * 60 * 1000,
 };
 
 /** Kinds due in business days (Monday to Friday) rather than hours. */
@@ -82,6 +83,7 @@ const BASE_SEVERITY: Record<AdminWorkItemSourceKind, WorkItemSeverity> = {
   purchase_problem: "high",
   payment_overdue: "medium",
   deletion_hold: "medium",
+  register_lot_mismatch: "medium",
 };
 
 export function applyWorkItemSla(

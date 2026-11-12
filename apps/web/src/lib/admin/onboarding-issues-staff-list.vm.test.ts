@@ -82,7 +82,7 @@ describe("onboarding issues staff list view model", () => {
       urgency: "attention",
     });
     expect(toOnboardingStaffRow("entities", entity, undefined, NOW)).toMatchObject({
-      ageLabel: "2026-10-01",
+      ageLabel: "Thu 1 Oct",
       urgency: "stale",
     });
   });

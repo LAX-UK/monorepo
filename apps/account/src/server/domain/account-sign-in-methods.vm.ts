@@ -11,6 +11,8 @@ import {
   socialSignInProviderSchema,
 } from "@auction/identity-contracts/account";
 import type { IdentityCallResult } from "../ports/account-identity-gateway";
+import { PASSKEY_LIMIT_REASON, type PasskeysRowVm, buildPasskeysRow } from "./account-passkeys.vm";
+import { describeRemainingMethods } from "./account-remaining-methods";
 
 export const PROVIDER_LABEL: Record<SocialSignInProvider, string> = {
   google: "Google",
@@ -37,6 +39,8 @@ export type SocialRowVm = {
   linkedOn: string;
   /** Null when it can be removed; otherwise the sentence that says why not. */
   blockedReason: string | null;
+  /** What the person is asked before it is removed. */
+  confirm: RemoveConfirmVm;
 };
 
 /** A provider the person has not linked and this environment offers: a row with a Link button. */
@@ -53,7 +57,7 @@ export type LinkRowVm = {
   busyLabel: string;
 };
 
-export type SignInMethodRowVm = PasswordRowVm | SocialRowVm | LinkRowVm;
+export type SignInMethodRowVm = PasswordRowVm | PasskeysRowVm | SocialRowVm | LinkRowVm;
 
 /**
  * What the "Sign-in methods" section shows. The two ways the list can be missing need different
@@ -69,6 +73,9 @@ export type SignInMethodsSectionVm =
 /** Why the last way in cannot be removed. One rule, said the same wherever it appears. */
 export const ONLY_METHOD_REASON =
   "This is the only way you can sign in. Add a passkey or a password first, then you can remove it.";
+/** The same rule where passkeys are not offered, so a password is the only thing to add. */
+const ONLY_METHOD_REASON_PASSWORD =
+  "This is the only way you can sign in. Add a password first, then you can remove it.";
 /** The same rule when the page offers another way in right beside it. */
 const ONLY_METHOD_REASON_WITH_LINK =
   "This is the only way you can sign in. Add another way to sign in first, then you can remove it.";
@@ -82,6 +89,7 @@ function linkedAddress(method: AccountSignInMethodsResponse["social"][number]): 
 
 export function buildSignInMethodsSection(
   result: IdentityCallResult<AccountSignInMethodsResponse> | null,
+  now: Date = new Date(),
 ): SignInMethodsSectionVm {
   // Listing has no refusal the person can act on, so a refusal reads as "could not answer".
   if (!result || result.status === "unavailable" || result.status === "rejected") {
@@ -90,11 +98,17 @@ export function buildSignInMethodsSection(
   if (result.status === "reauth_required") return { status: "reauth_required" };
   const { hasPassword, social, passkeys, available } = result.value;
   // Every kind counts: the emailed sign-in link does not, as it is not a way to sign in on its own.
-  const isLastMethod = (hasPassword ? 1 : 0) + social.length + passkeys.length === 1;
+  // Passkeys are a way in only where the environment lets them sign anyone in.
+  const passkeyCount = available.passkey ? passkeys.length : 0;
+  const isLastMethod = (hasPassword ? 1 : 0) + social.length + passkeyCount === 1;
   const offersLink = SOCIAL_SIGN_IN_PROVIDERS.some(
     (provider) => available[provider] && !social.some((method) => method.provider === provider),
   );
-  const onlyMethod = offersLink ? ONLY_METHOD_REASON_WITH_LINK : ONLY_METHOD_REASON;
+  const onlyMethod = offersLink
+    ? ONLY_METHOD_REASON_WITH_LINK
+    : available.passkey
+      ? ONLY_METHOD_REASON
+      : ONLY_METHOD_REASON_PASSWORD;
   const providerRows = SOCIAL_SIGN_IN_PROVIDERS.flatMap((provider): SignInMethodRowVm[] => {
     const linked = social.find((method) => method.provider === provider);
     const label = PROVIDER_LABEL[provider];
@@ -107,6 +121,16 @@ export function buildSignInMethodsSection(
           address: linkedAddress(linked),
           linkedOn: `Linked ${formatDate(linked.linkedAt)}`,
           blockedReason: isLastMethod ? onlyMethod : null,
+          confirm: buildRemoveConfirm(
+            provider,
+            describeRemainingMethods({
+              hasPassword,
+              passkeys: passkeyCount,
+              providers: social
+                .filter((method) => method.provider !== provider)
+                .map((method) => PROVIDER_LABEL[method.provider]),
+            }),
+          ),
         },
       ];
     }
@@ -124,6 +148,19 @@ export function buildSignInMethodsSection(
       },
     ];
   });
+  // Passkeys are only offered where the environment turns them on; with them off the page is as before.
+  const passkeyRows: SignInMethodRowVm[] = available.passkey
+    ? [
+        buildPasskeysRow({
+          passkeys,
+          hasPassword,
+          providers: social.map((method) => PROVIDER_LABEL[method.provider]),
+          isLastMethod,
+          onlyMethodReason: onlyMethod,
+          now,
+        }),
+      ]
+    : [];
   const rows: SignInMethodRowVm[] = [
     {
       kind: "password",
@@ -135,11 +172,16 @@ export function buildSignInMethodsSection(
         : "Add one to sign in with your email as well.",
       actionLabel: hasPassword ? "Change" : "Add a password",
     },
+    ...passkeyRows,
     ...providerRows,
   ];
   // The hint is for a person whose one way in is not a password, and only when no row already
   // says it: a row that carries the reason needs no second line under the list.
-  const rowSaysIt = rows.some((row) => row.kind === "social" && row.blockedReason !== null);
+  const rowSaysIt = rows.some(
+    (row) =>
+      (row.kind === "social" && row.blockedReason !== null) ||
+      (row.kind === "passkeys" && row.items.some((item) => item.blockedReason !== null)),
+  );
   return {
     status: "list",
     rows,
@@ -152,16 +194,18 @@ export function buildSignInMethodsSection(
 
 export type RemoveConfirmVm = { title: string; body: string; confirmLabel: string };
 
-/** What the confirm dialog says before a social sign-in is removed. */
+/**
+ * What the confirm dialog says before a social sign-in is removed. `remaining` is what the person
+ * will still sign in with, in words (see `describeRemainingMethods`).
+ */
 export function buildRemoveConfirm(
   provider: SocialSignInProvider,
-  remaining: readonly string[],
+  remaining: string | null,
 ): RemoveConfirmVm {
   const label = PROVIDER_LABEL[provider];
-  const left =
-    remaining.length > 0
-      ? `You'll still be able to sign in with ${remaining.join(" or ")}.`
-      : "You'll sign in with your email and password.";
+  const left = remaining
+    ? `You'll still be able to sign in with ${remaining}.`
+    : "You'll sign in with your email and password.";
   return {
     title: `Remove ${label} sign-in?`,
     body: `You'll no longer be able to sign in to LAX with ${label}. ${left} Every other device will be signed out of LAX Account, LAX Bid, LAX Shop and lax.art, and we'll email you to confirm. If you signed in a while ago, we'll ask you to sign in again first.`,
@@ -173,7 +217,7 @@ const REJECTIONS: Record<AccountSignInMethodError, string> = {
   last_sign_in_method: ONLY_METHOD_REASON,
   not_linked: "That sign-in isn't linked to your account any more.",
   rate_limited: "Too many attempts. Wait a few minutes and try again.",
-  passkey_limit: "You've reached the most passkeys you can have. Remove one to add another.",
+  passkey_limit: PASSKEY_LIMIT_REASON,
   not_available: "That way to sign in isn't available right now.",
   staff_not_allowed: "Staff accounts can't sign in with Google or Apple. Add a passkey instead.",
   already_linked: "That way to sign in is already linked to your account.",
@@ -242,7 +286,7 @@ const FLASH: Record<AccountSignInMethodReturn, (provider: FlashProvider) => Flas
     tone: "error",
     title: provider
       ? `We couldn't finish linking ${PROVIDER_LABEL[provider]}`
-      : "We couldn't finish linking",
+      : "We couldn't finish adding that way to sign in",
     body: "Nothing changed. Try again in a moment.",
   }),
   expired: (provider) => ({
@@ -250,7 +294,7 @@ const FLASH: Record<AccountSignInMethodReturn, (provider: FlashProvider) => Flas
     title: "That took too long",
     body: provider
       ? `Nothing changed. Choose Link ${PROVIDER_LABEL[provider]} again to start over.`
-      : "Nothing changed. Choose the Link button again to start over.",
+      : "Nothing changed. Choose the Add or Link button again to start over.",
   }),
   reauth_required: (provider) => ({
     tone: "warning",

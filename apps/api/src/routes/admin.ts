@@ -65,6 +65,7 @@ import {
   attachAdminStaffRolesRoutes,
 } from "./admin/staff-roles.routes.js";
 import { attachAdminTwoFactorResetRoutes } from "./admin/two-factor-reset.routes.js";
+import { attachAdminUnlinkedOriginalsRoutes } from "./admin/unlinked-originals.routes.js";
 import {
   attachAdminUsersDirectoryRoutes,
   attachAdminUsersManagementRoutes,
@@ -138,6 +139,7 @@ export function createAdminRoutes(
   attachAdminAttentionRoutes(platform, container);
   attachAdminLotsRoutes(platform, container, guards);
   attachAdminLotLaxArtReturnRoutes(platform, container);
+  attachAdminUnlinkedOriginalsRoutes(platform, container);
   attachAdminAuditRoutes(platform, container);
   attachAdminCatalogRoutes(platform, container);
   attachAdminEmailRoutes(platform, container);

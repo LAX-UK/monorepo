@@ -12,7 +12,7 @@ import type { ProjectorRunContext } from "./lib/projector.types.js";
 const log = { info: vi.fn(), warn: vi.fn(), error: vi.fn() } as never;
 
 function link(over: Partial<LotRegisterLink> = {}): LotRegisterLink {
-  return { registerId: "reg-1", status: "draft", hasWinner: false, ...over };
+  return { registerId: "reg-1", status: "draft", hasWinner: false, soldOnAtg: false, ...over };
 }
 
 describe("bidOfferMove", () => {
@@ -156,5 +156,34 @@ describe("processArtworkOfferLock", () => {
       ARTWORK_OFFER_LOCK_PROJECTOR,
       6,
     );
+  });
+});
+
+describe("bidOfferMove for a lot ATG sold", () => {
+  const ended = { eventType: "lot.ended", aggregateId: "lot-1", payload: {} };
+
+  it("treats an ended lot with no LAX winner that ATG sold as sold, not withdrawn", () => {
+    expect(bidOfferMove(ended, link({ status: "ended", soldOnAtg: true }))).toEqual({
+      kind: "sold",
+      lotId: "lot-1",
+    });
+  });
+
+  it("still withdraws an ended lot ATG did not sell", () => {
+    expect(bidOfferMove(ended, link({ status: "ended", soldOnAtg: false }))?.kind).toBe("withdraw");
+  });
+
+  it("marks the register sold against the lot", async () => {
+    const lock = { markSold: vi.fn(async () => ({ status: "moved" })), withdraw: vi.fn() };
+    const recorder = new BidOfferLockRecorder(lock as unknown as ArtworkOfferLock, {
+      findLink: async () => link({ status: "ended", soldOnAtg: true }),
+    });
+    await recorder.apply(ended);
+    expect(lock.markSold).toHaveBeenCalledWith(
+      { registerId: "reg-1" },
+      { kind: "bid_lot", id: "lot-1" },
+      "system",
+    );
+    expect(lock.withdraw).not.toHaveBeenCalled();
   });
 });

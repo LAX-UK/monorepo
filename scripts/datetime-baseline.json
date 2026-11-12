@@ -3,7 +3,6 @@
     "apps/auth/src/services/format-london-time.ts",
     "apps/web/src/app/(client)/organisations/invitations/review/[id]/page.tsx",
     "apps/web/src/app/(client)/purchases/[lotId]/page.tsx",
-    "apps/web/src/app/admin/(platform)/event-rsvps/page.tsx",
     "apps/web/src/components/charts/chart-renderer.tsx",
     "apps/web/src/components/dashboard/bids/bid-close-countdown.tsx",
     "apps/web/src/components/exports/export-confirm-sheet.tsx",

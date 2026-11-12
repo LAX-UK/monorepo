@@ -236,6 +236,58 @@ describe("HttpIdentityIssuerClient", () => {
     });
   });
 
+  it("reads sign-in method kinds from the machine boundary", async () => {
+    const requested: string[] = [];
+    const fetchImpl = vi.fn(async (input: Parameters<typeof fetch>[0]) => {
+      if (String(input).endsWith("/internal/oauth/token")) {
+        return Response.json({ access_token: "machine-token", expires_in: 300 });
+      }
+      requested.push(String(input));
+      return Response.json({
+        kinds: { password: true, google: false, apple: true, passkeys: null },
+      });
+    });
+    const client = new HttpIdentityIssuerClient({
+      issuerBaseUrl: "https://identity.example.com",
+      fetchImpl,
+      machineClientId: "api-service",
+      machineClientSecret: "machine-secret-at-least-32-characters",
+    });
+
+    await expect(client.readSignInMethodKinds("user-1")).resolves.toEqual({
+      password: true,
+      google: false,
+      apple: true,
+      passkeys: null,
+    });
+    expect(requested).toEqual([
+      "https://identity.example.com/internal/identity/subjects/user-1/sign-in-method-kinds",
+    ]);
+  });
+
+  it("treats subject_not_found as absent and rejects a malformed sign-in method answer", async () => {
+    const answer = (response: () => Response) =>
+      new HttpIdentityIssuerClient({
+        issuerBaseUrl: "https://identity.example.com",
+        fetchImpl: vi.fn(async (input: Parameters<typeof fetch>[0]) =>
+          String(input).endsWith("/internal/oauth/token")
+            ? Response.json({ access_token: "machine-token", expires_in: 300 })
+            : response(),
+        ),
+        machineClientId: "api-service",
+        machineClientSecret: "machine-secret-at-least-32-characters",
+      });
+
+    await expect(
+      answer(() =>
+        Response.json({ code: "subject_not_found" }, { status: 404 }),
+      ).readSignInMethodKinds("x"),
+    ).resolves.toBeNull();
+    await expect(
+      answer(() => Response.json({ kinds: { password: "yes" } })).readSignInMethodKinds("x"),
+    ).rejects.toThrow();
+  });
+
   it("parses authoritative security status from the machine boundary", async () => {
     const fetchImpl = vi.fn(async (input: Parameters<typeof fetch>[0]) => {
       if (String(input).endsWith("/internal/oauth/token")) {

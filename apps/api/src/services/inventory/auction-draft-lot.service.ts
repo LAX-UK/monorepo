@@ -45,6 +45,16 @@ function isOpenLotConflict(error: unknown): boolean {
   return text.includes("lot_artwork_register_open_uid");
 }
 
+const WAITING_ON_LAST_LOT = "This artwork's last lot is waiting for payment or a re-offer.";
+
+/** Whether the lot the register shows the artwork on is the open lot this request would find. */
+function holdsPlace(
+  ref: { kind: string; id: string } | null | undefined,
+  existing: { lotId: string } | null,
+): boolean {
+  return Boolean(existing && ref?.kind === "bid_lot" && ref.id === existing.lotId);
+}
+
 function composeDescription(content: DraftLotRequest["content"]): string | null {
   const parts = [content.description, content.year ? `Made in ${content.year}.` : null].filter(
     (part): part is string => Boolean(part?.trim()),
@@ -104,6 +114,11 @@ export class AuctionDraftLotService {
     }
 
     const existing = await this.deps.offers.findOpenLotForRegister(entry.id);
+    // The register shows the artwork on a lot in a sale: that lot ended and is waiting for payment
+    // or a re-offer. The lot that holds the place is the one a retry finds below; any other is refused.
+    if (state === "bid_sale" && !holdsPlace(entry.offer.ref, existing)) {
+      return refuse(409, "artwork_offered_elsewhere", WAITING_ON_LAST_LOT);
+    }
     // A hold set by hand in Zoho stops a new lot. A lot already made is left alone: a retry still
     // finds it below.
     if (!existing && isReservedInZoho(entry.catalogueStatus)) {

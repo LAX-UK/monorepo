@@ -25,4 +25,18 @@ describe("adminUserDetailRowSchema", () => {
 
     expect(detail.securityStatusAvailable).toBe(false);
   });
+
+  it("keeps sign-in method kinds and reads a missing or malformed answer as not available", () => {
+    const base = { id: "u1", email: "client@example.com", name: "Client" };
+    const kinds = { password: true, google: false, apple: true, passkeys: 1 };
+
+    expect(
+      adminUserDetailRowSchema.parse({ ...base, signInMethodKinds: kinds }).signInMethodKinds,
+    ).toEqual(kinds);
+    expect(adminUserDetailRowSchema.parse(base).signInMethodKinds).toBeNull();
+    expect(
+      adminUserDetailRowSchema.parse({ ...base, signInMethodKinds: { password: "yes" } })
+        .signInMethodKinds,
+    ).toBeNull();
+  });
 });

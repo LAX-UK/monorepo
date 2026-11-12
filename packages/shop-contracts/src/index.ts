@@ -1188,6 +1188,17 @@ export {
   type AdminZohoUnlinkResult,
 } from "./admin-zoho-link.js";
 export {
+  ADMIN_CATALOGUE_COPIES,
+  AdminCatalogueChangeSchema,
+  AdminCatalogueCopySchema,
+  AdminCatalogueUpdateBodySchema,
+  AdminCatalogueUpdateResponseSchema,
+  type AdminCatalogueChange,
+  type AdminCatalogueCopy,
+  type AdminCatalogueUpdateBody,
+  type AdminCatalogueUpdateResponse,
+} from "./admin-catalogue-change.js";
+export {
   DeliveryQuoteRequestBodySchema,
   DeliveryQuoteRequestIssueSchema,
   DeliveryQuoteRequestRejectedBodySchema,

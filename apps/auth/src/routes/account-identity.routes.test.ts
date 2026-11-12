@@ -34,6 +34,7 @@ function setup(
           createdAt: NOW,
           lastActiveAt: NOW,
           isCurrent: true,
+          signedInWith: "passkey",
           ipAddress: "203.0.113.9",
           token: "secret-session-token",
         },
@@ -195,6 +196,7 @@ describe("account identity routes", () => {
           createdAt: NOW.toISOString(),
           lastActiveAt: NOW.toISOString(),
           isCurrent: true,
+          signedInWith: "passkey",
         },
       ],
     });
