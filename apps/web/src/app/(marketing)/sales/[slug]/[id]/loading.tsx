@@ -3,7 +3,7 @@ import { MarketingDetailShell } from "@/components/marketing/marketing-detail-sh
 import { MarketingListSkeleton } from "@/components/marketing/marketing-list-skeleton";
 import { MARKETING_PAGE_SHELL, SALE_ANCHOR_STICKY_CLASS } from "@/lib/marketing/chrome";
 import { readSkeletonView } from "@/lib/preferences/skeleton-view.server";
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 
 const pulse = "animate-pulse rounded bg-surface-container-high";
 

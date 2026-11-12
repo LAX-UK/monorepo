@@ -41,6 +41,7 @@ The shape of every secret in this list:
 | `APPLE_CLIENT_ID` / `APPLE_CLIENT_SECRET` | DO App Platform env on `apps/auth`; Apple Developer Program | `apps/auth`; ops team | Every 180 days or on suspected leak |
 | `APPLE_DOMAIN_ASSOCIATION` | DO App Platform env on `apps/auth`; Apple Developer Program | `apps/auth`; ops team | When Apple domain verification content changes |
 | `XERO_*` (client id/secret/refresh token) | DO App Platform env on `apps/worker`; Xero developer console; 1Password | `apps/worker`; ops team | Refresh token rotates on use; client secret annually |
+| `XERO_TOKEN_DEK_KEY` | DO App Platform env on `apps/api` and `apps/worker` (same value); `openssl rand -hex 32`; 1Password | `apps/api`, `apps/worker`; ops team | Never rotate in place: Xero OAuth tokens in `xero_connection` are sealed with it. To rotate, set the new key on both apps, then reconnect Xero (Admin → Xero) so fresh tokens are sealed with it |
 | `ZOHO_*` (client id/secret/refresh token, region) | DO App Platform env on `apps/worker`; api-console.zoho.eu; 1Password | `apps/worker`; ops team | Refresh token rotates on use; client secret annually |
 | `S3_ACCESS_KEY_ID` / `S3_SECRET_ACCESS_KEY` | DO App Platform env on `apps/api` and `apps/worker`; DigitalOcean Spaces keys; 1Password | `apps/api`, `apps/worker`; ops team | Annual or on suspected leak |
 | `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` | DO App Platform env on `apps/api`; Stripe dashboard; 1Password | `apps/api`; ops team | Quarterly for live keys, on suspected leak |

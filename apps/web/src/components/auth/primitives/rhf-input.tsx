@@ -1,7 +1,7 @@
 "use client";
 
 import { optionalString } from "@/lib/ts/if-defined";
-import { FloatingLabelInput } from "@auction/ui";
+import { FloatingLabelInput } from "@auction/ui/components/floating-label-input";
 import { type Control, Controller, type FieldPath, type FieldValues } from "react-hook-form";
 
 type RHFInputProps<TFieldValues extends FieldValues> = {

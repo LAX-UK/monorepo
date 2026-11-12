@@ -1,6 +1,6 @@
 import { ShareButton } from "@/components/marketing/share-button";
 import { MarketingWatchlistHeart } from "@/components/marketing/watchlist-heart-button";
-import { ButtonLink } from "@auction/ui/lax";
+import { ButtonLink } from "@auction/ui/lax/button-link";
 import Link from "next/link";
 import { emitQuickLookCta } from "./lot-quick-look-analytics";
 import type { LotQuickLookOpenOptions, LotQuickLookVM } from "./types";

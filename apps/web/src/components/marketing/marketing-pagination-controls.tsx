@@ -1,6 +1,6 @@
 import { MarketingPagination } from "@/components/marketing/marketing-pagination";
 import { type MarketingPageWindow, buildMarketingPageWindow } from "@/lib/marketing/pagination";
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";

@@ -46,8 +46,6 @@ export type RecordBuyerDefaultInput = {
   wonAt: Date;
   reason: string;
   outcome: "returned_to_inventory" | "offered_to_underbidder";
-  offeredUserId: string | null;
-  offeredAmount: string | null;
   buyerRestricted: boolean;
   actorUserId: string;
 };

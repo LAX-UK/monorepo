@@ -1,5 +1,5 @@
 import type { SaleDeliveryMode } from "@auction/types";
-import type { DeliveryModeTagKey } from "@auction/ui";
+import type { DeliveryModeTagKey } from "@auction/ui/components/delivery-mode-pill";
 
 export type DeliveryModePresentation = {
   label: string;

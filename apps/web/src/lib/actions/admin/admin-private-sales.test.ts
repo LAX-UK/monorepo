@@ -20,8 +20,15 @@ vi.mock("@/lib/data/http/authed-server-fetch", () => ({
   authedServerFetch: (...args: unknown[]) => fetchMock(...args),
 }));
 
-const { convertEnquiryAction, dealMoveAction, nameDealBuyerAction, updateDealTermsAction } =
-  await import("./admin-private-sales");
+const {
+  convertEnquiryAction,
+  dealMoveAction,
+  nameDealBuyerAction,
+  removeDealArtworkAction,
+  searchDealArtworksAction,
+  setDealArtworkAction,
+  updateDealTermsAction,
+} = await import("./admin-private-sales");
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
@@ -203,6 +210,117 @@ describe("convertEnquiryAction", () => {
     ).toMatchObject({
       ok: false,
       error: expect.stringContaining("no LAX account yet"),
+    });
+  });
+});
+
+describe("searchDealArtworksAction", () => {
+  const result = { items: [], hasMore: false, preselected: null };
+
+  it("asks the register for the originals matching what was typed, for this enquiry and work", async () => {
+    fetchMock.mockResolvedValue(json({ data: result }));
+    expect(
+      await searchDealArtworksAction({ q: "tide", enquiry: "E-1042", work: "C-1042" }),
+    ).toEqual({ ok: true, data: result });
+    const url = new URL(sent().path, "http://api");
+    expect(url.pathname).toBe("/admin/private-sales/artworks");
+    expect(Object.fromEntries(url.searchParams)).toMatchObject({
+      q: "tide",
+      enquiry: "E-1042",
+      work: "C-1042",
+    });
+  });
+
+  it("leaves out what was not given", async () => {
+    fetchMock.mockResolvedValue(json({ data: result }));
+    await searchDealArtworksAction({});
+    expect(new URL(sent().path, "http://api").searchParams.has("enquiry")).toBe(false);
+  });
+
+  it("says the API did not answer when it cannot be reached", async () => {
+    fetchMock.mockRejectedValue(new Error("down"));
+    expect(await searchDealArtworksAction({ q: "tide" })).toMatchObject({
+      ok: false,
+      status: 503,
+    });
+  });
+});
+
+describe("setDealArtworkAction", () => {
+  const ART = "5b1c1b9e-3a2f-4f6e-9c1d-2f7a8e9d0c11";
+
+  it("links or changes the artwork against the version the person saw", async () => {
+    fetchMock.mockResolvedValue(json({ data: dealRecord() }));
+    const result = await setDealArtworkAction("PS-0012", {
+      version: 4,
+      artworkRegisterId: ART,
+      reason: "The buyer chose it.",
+    });
+    expect(result.ok).toBe(true);
+    expect(sent().path).toBe("/admin/private-sales/PS-0012/artwork");
+    expect(sent().init.method).toBe("PUT");
+    expect(JSON.parse(sent().init.body as string)).toEqual({
+      version: 4,
+      artworkRegisterId: ART,
+      reason: "The buyer chose it.",
+    });
+  });
+
+  it("keeps the lock's own words and link when the register refuses", async () => {
+    const lock = {
+      reason: "in_bid_sale",
+      message:
+        "This artwork is in a LAX Bid sale (Winter Modern, lot 14). Withdraw the lot there first.",
+      link: { label: "Open lot in LAX Bid", target: "bid_lot", href: "/admin/lots/lot-14" },
+    };
+    fetchMock.mockResolvedValue(
+      json({ error: "artwork_unavailable", message: lock.message, lock }, 409),
+    );
+    const result = await setDealArtworkAction("PS-0012", { version: 4, artworkRegisterId: ART });
+    expect(result).toMatchObject({
+      ok: false,
+      error: lock.message,
+      errorCode: "artwork_unavailable",
+      meta: { lock },
+    });
+  });
+
+  it("does not call the API for someone without the capability, or for a body that is not the shape", async () => {
+    denyMock.mockResolvedValueOnce({ ok: false, error: "denied" });
+    expect(await setDealArtworkAction("PS-0012", { version: 4, artworkRegisterId: ART })).toEqual({
+      ok: false,
+      error: "denied",
+    });
+    expect((await setDealArtworkAction("PS-0012", { artworkRegisterId: "nope" })).ok).toBe(false);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("removeDealArtworkAction", () => {
+  it("removes the artwork with the reason there is none, against a version", async () => {
+    fetchMock.mockResolvedValue(json({ data: dealRecord() }));
+    const result = await removeDealArtworkAction("PS-0012", {
+      version: 4,
+      notInRegister: { reason: "in_zoho_not_linked" },
+    });
+    expect(result.ok).toBe(true);
+    expect(sent().init.method).toBe("DELETE");
+    expect(JSON.parse(sent().init.body as string)).toEqual({
+      version: 4,
+      notInRegister: { reason: "in_zoho_not_linked" },
+    });
+  });
+
+  it("explains a deal that can no longer change its artwork", async () => {
+    fetchMock.mockResolvedValue(json({ error: "artwork_locked" }, 409));
+    const result = await removeDealArtworkAction("PS-0012", {
+      version: 4,
+      notInRegister: { reason: "sellers_own_work" },
+    });
+    expect(result).toMatchObject({
+      ok: false,
+      error: "The artwork can't be changed at this stage.",
+      errorCode: "artwork_locked",
     });
   });
 });

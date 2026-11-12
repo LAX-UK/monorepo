@@ -3,6 +3,7 @@ import {
   type OrganisationDocumentStateView,
   organisationDocumentStateView,
 } from "@/lib/presenters/organisation-document-state";
+import { LONDON_TIME_ZONE, formatDate } from "@auction/datetime";
 import {
   type EntityActor,
   type OrganisationDocumentReviewStatus,
@@ -83,18 +84,13 @@ const ACTION_BY_STATE: Record<OrganisationDocumentState, "Upload" | "Replace" | 
   needs_replacing: "Replace",
 };
 
-const CHECK_DATE = new Intl.DateTimeFormat("en-GB", {
-  timeZone: "Europe/London",
-  day: "numeric",
-  month: "long",
-  year: "numeric",
-});
-
 /** "9 May 2026", or `null` without a usable date. */
 export function longDateOrNull(value: Date | string | null | undefined): string | null {
   if (!value) return null;
   const date = value instanceof Date ? value : new Date(value);
-  return Number.isNaN(date.getTime()) ? null : CHECK_DATE.format(date);
+  return Number.isNaN(date.getTime())
+    ? null
+    : formatDate(date, LONDON_TIME_ZONE, { month: "long" });
 }
 
 /** The most recent time a copy was sent, or `null` when none carries a usable date. */

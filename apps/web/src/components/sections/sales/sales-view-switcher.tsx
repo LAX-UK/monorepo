@@ -3,7 +3,7 @@
 import { useUrlLayoutView } from "@/lib/hooks/use-url-layout-view";
 import { useViewQueryNavigation } from "@/lib/hooks/use-view-query-navigation";
 import { salesBrowseViewCookieValue } from "@/lib/preferences/view-query-navigation";
-import { type SegmentOption, SegmentedControl } from "@auction/ui/lax";
+import { type SegmentOption, SegmentedControl } from "@auction/ui/lax/tabs";
 import { CalendarDays, LayoutGrid, Rows3 } from "lucide-react";
 
 export type SalesBrowseView = "grid" | "list" | "calendar";

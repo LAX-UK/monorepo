@@ -1,7 +1,7 @@
 import {
   MarketingCatalogHubShell as BaseCatalogHubShell,
   type MarketingCatalogHubShellProps as BaseProps,
-} from "@auction/marketing-ui";
+} from "@auction/marketing-ui/marketing-catalog-hub-shell";
 
 export type MarketingCatalogHubShellProps = Omit<BaseProps, "as">;
 

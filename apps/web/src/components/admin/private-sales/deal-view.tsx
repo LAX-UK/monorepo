@@ -23,6 +23,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useId, useState } from "react";
 import { DealActionDialog } from "./deal-action-dialog";
+import { DealArtworkDialog, type DealArtworkMode } from "./deal-artwork-dialog";
+import { DealArtworkSection } from "./deal-artwork-section";
 import { DealStageBadge } from "./deal-cells";
 import {
   ClosedNotice,
@@ -35,6 +37,7 @@ import {
 } from "./deal-sections";
 import { DealTermsDialog } from "./deal-terms-dialog";
 import { NameBuyerDialog } from "./name-buyer-dialog";
+import { RemoveDealArtworkDialog } from "./remove-deal-artwork-dialog";
 
 const NextLink: StaffLinkComponent = Link;
 
@@ -47,7 +50,12 @@ const FORWARD: readonly StaffDealAction[] = [
   "clear",
 ];
 
-type Dialog = { kind: "action"; action: StaffDealAction } | { kind: "terms" } | { kind: "buyer" };
+type Dialog =
+  | { kind: "action"; action: StaffDealAction }
+  | { kind: "terms" }
+  | { kind: "buyer" }
+  | { kind: "artwork"; mode: DealArtworkMode }
+  | { kind: "remove_artwork" };
 
 /**
  * One private sale on the staff record page: its stage and the one next move, then the money, the
@@ -66,7 +74,8 @@ export function DealView({ deal }: { deal: DealRecord }) {
   const nextState = next ? offered.get(next) : undefined;
   const blocked = nextState && nextState.blockers.length > 0;
   const canEdit = deal.editableTerms.length > 0;
-  const readOnly = deal.actions.length === 0 && !canEdit && !deal.canNameBuyer;
+  const canWorkOnArtwork = deal.artworkAccess.canLink || deal.artworkAccess.canChange;
+  const readOnly = deal.actions.length === 0 && !canEdit && !deal.canNameBuyer && !canWorkOnArtwork;
 
   const overflowActions = [
     ...(["clear", "record_bank_transfer", "refund", "record_bank_refund", "cancel"] as const)
@@ -149,6 +158,7 @@ export function DealView({ deal }: { deal: DealRecord }) {
         meta={
           <>
             <MetaItem label="Work">{deal.work.reference}</MetaItem>
+            {deal.artwork ? <MetaItem label="Stock code">{deal.artwork.stockCode}</MetaItem> : null}
             {deal.priceMinor !== null ? (
               <MetaItem label="Price">{formatStaffMoney(deal.priceMinor)}</MetaItem>
             ) : null}
@@ -186,13 +196,19 @@ export function DealView({ deal }: { deal: DealRecord }) {
         {...(hasNotice ? { notice } : {})}
         rail={
           <>
+            <DealArtworkSection
+              deal={deal}
+              onLink={() => setDialog({ kind: "artwork", mode: "link" })}
+              onChange={() => setDialog({ kind: "artwork", mode: "change" })}
+              onRemove={() => setDialog({ kind: "remove_artwork" })}
+            />
             <PartiesSection deal={deal} />
             <Section id="history" title="History" description="Each stage the deal has been in.">
               <Timeline label="Private sale history" events={dealTimeline(deal)} />
             </Section>
           </>
         }
-        railLabel="Parties, checks and history"
+        railLabel="Artwork, parties, checks and history"
       >
         <MoneySection deal={deal} />
         <TermsSection deal={deal} />
@@ -219,6 +235,31 @@ export function DealView({ deal }: { deal: DealRecord }) {
         onReload={reload}
         onDone={() => {
           notify.success(`Terms saved · ${deal.reference}`);
+          reload();
+        }}
+      />
+      {dialog?.kind === "artwork" ? (
+        <DealArtworkDialog
+          open
+          onOpenChange={(open) => setDialog(open ? dialog : null)}
+          mode={dialog.mode}
+          deal={deal}
+          onReload={reload}
+          onDone={(mode) => {
+            notify.success(
+              `${mode === "link" ? "Artwork held" : "Artwork changed"} · ${deal.reference}`,
+            );
+            reload();
+          }}
+        />
+      ) : null}
+      <RemoveDealArtworkDialog
+        open={dialog?.kind === "remove_artwork"}
+        onOpenChange={(open) => setDialog(open ? { kind: "remove_artwork" } : null)}
+        deal={deal}
+        onReload={reload}
+        onDone={() => {
+          notify.success(`Artwork removed · ${deal.reference}`);
           reload();
         }}
       />

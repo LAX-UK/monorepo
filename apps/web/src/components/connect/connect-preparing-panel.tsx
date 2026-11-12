@@ -1,7 +1,7 @@
 "use client";
 
 import { ConnectInlineAlert } from "@/components/connect/connect-inline-alert";
-import { Button } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
 import { Loader2 } from "lucide-react";
 
 type Props = {

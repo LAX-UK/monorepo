@@ -9,16 +9,13 @@ import {
 } from "@/lib/address/address-fields";
 import { DEFAULT_ADDRESS_LABEL, type DeliveryAddress } from "@/lib/purchases/delivery-addresses.vm";
 import { saveDeliveryAddressAction } from "@/lib/purchases/purchase.actions";
-import {
-  Button,
-  Dialog,
-  DialogClose,
-  EmptyState,
-  Field,
-  Notice,
-  PresetCards,
-  TextInput,
-} from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
+import { Dialog, DialogClose } from "@auction/ui/lax/dialog";
+import { EmptyState } from "@auction/ui/lax/empty-state";
+import { Field } from "@auction/ui/lax/field";
+import { TextInput } from "@auction/ui/lax/input";
+import { Notice } from "@auction/ui/lax/notice";
+import { PresetCards } from "@auction/ui/lax/preset-cards";
 import { Plus } from "lucide-react";
 import { useState, useTransition } from "react";
 

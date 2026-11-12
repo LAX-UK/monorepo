@@ -12,6 +12,7 @@ function fakeRedis() {
       values.set(key, { value, ttlSec });
       return "OK";
     },
+    get: async (key) => values.get(key)?.value ?? null,
     getdel: async (key) => {
       const entry = values.get(key);
       values.delete(key);
@@ -39,6 +40,17 @@ describe("RedisIdTokenContinuityStore", () => {
     expect(values.get("auth:id-token-continuity:hash-1")?.ttlSec).toBe(60);
     await expect(store.take("hash-1")).resolves.toEqual(record);
     await expect(store.take("hash-1")).resolves.toBeNull();
+  });
+
+  it("reads a record without using it up", async () => {
+    const { redis } = fakeRedis();
+    const store = new RedisIdTokenContinuityStore(redis);
+    await store.put("hash-1", record, 60);
+
+    await expect(store.peek("hash-1")).resolves.toEqual(record);
+    await expect(store.peek("hash-1")).resolves.toEqual(record);
+    await expect(store.take("hash-1")).resolves.toEqual(record);
+    await expect(store.peek("hash-1")).resolves.toBeNull();
   });
 
   it("seals records at rest when a sealer is configured", async () => {

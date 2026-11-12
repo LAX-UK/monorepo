@@ -6,7 +6,7 @@ import {
   DEFAULT_TRUSTED_PROXY_CIDRS,
   parseCidrList,
 } from "@auction/http-headers/client-ip";
-import { STAFF_STEP_UP_MAX_AGE_SECONDS } from "@auction/identity-contracts";
+import { STAFF_STEP_UP_MAX_AGE_SECONDS, parseAuthDekKey } from "@auction/identity-contracts";
 import { parseOptionalBooleanFlag } from "@auction/validators";
 import { z } from "zod";
 
@@ -14,6 +14,18 @@ import { z } from "zod";
 function emptyToUndefined(val: unknown): unknown {
   if (val === "" || val === null) return undefined;
   return val;
+}
+
+/** An address staff open from the screens: https, or http on this machine while developing. */
+function httpsUrl() {
+  return z
+    .string()
+    .url()
+    .refine(
+      (url) =>
+        url.startsWith("https://") || /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?(\/|$)/.test(url),
+      "must be an https address (http only for localhost)",
+    );
 }
 
 function trimEmptyToUndefined(val: unknown): unknown {
@@ -103,6 +115,15 @@ const envSchema = z
     WEB_ORIGIN: z.string().url().default("http://localhost:3000"),
     /** Where LAX Account lives; the "manage your alerts" link in alert emails goes there. */
     LAX_ACCOUNT_PUBLIC_ORIGIN: z.preprocess(emptyToUndefined, z.string().url().optional()),
+    /** Where LAX Admin lives; links from the artwork register's messages to an artwork's record open there. */
+    LAX_ADMIN_PUBLIC_ORIGIN: z.preprocess(emptyToUndefined, httpsUrl().optional()),
+    /** The Zoho CRM record page, with `{module}` and `{recordId}` in it, for "Edit in Zoho" links. */
+    ZOHO_CRM_RECORD_URL_TEMPLATE: z.preprocess(
+      emptyToUndefined,
+      httpsUrl()
+        .refine((url) => url.includes("{recordId}"), "must contain {recordId}")
+        .optional(),
+    ),
     /**
      * Legal entity that owns Bid records in the cross-product portfolio. Defaults to Bid's
      * operator from `legalEntityFor("bid")`; override it only if the company changes.
@@ -237,6 +258,8 @@ const envSchema = z
     /** Xero OAuth app (optional). When set with secret + redirect, admins can connect Xero. */
     XERO_CLIENT_ID: z.string().optional(),
     XERO_CLIENT_SECRET: z.string().optional(),
+    /** 32-byte key (64 hex chars or base64) that seals Xero OAuth tokens at rest. Required to connect Xero. */
+    XERO_TOKEN_DEK_KEY: z.preprocess(emptyToUndefined, z.string().optional()),
     /** Must match the web app callback route registered in the Xero developer portal (e.g. https://lax.bid/admin/integrations/xero/callback). */
     XERO_REDIRECT_URI: z.preprocess(emptyToUndefined, z.string().url().optional()),
     /** Webhook signing key from Xero (optional until webhooks are configured). */
@@ -486,6 +509,26 @@ const envSchema = z
     }
     const appEnv = e.APP_ENV;
 
+    if (e.XERO_CLIENT_ID) {
+      if (!e.XERO_TOKEN_DEK_KEY) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message:
+            "XERO_TOKEN_DEK_KEY is required when XERO_CLIENT_ID is set: without it a token refresh could not be stored",
+          path: ["XERO_TOKEN_DEK_KEY"],
+        });
+      } else {
+        try {
+          parseAuthDekKey(e.XERO_TOKEN_DEK_KEY);
+        } catch {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "XERO_TOKEN_DEK_KEY must be 64 hex chars or base64 of exactly 32 bytes",
+            path: ["XERO_TOKEN_DEK_KEY"],
+          });
+        }
+      }
+    }
     const hasXeroId = Boolean(e.XERO_CLIENT_ID && e.XERO_CLIENT_ID.length > 0);
     const hasXeroSecret = Boolean(e.XERO_CLIENT_SECRET && e.XERO_CLIENT_SECRET.length > 0);
     const hasXeroRedirect = Boolean(e.XERO_REDIRECT_URI);

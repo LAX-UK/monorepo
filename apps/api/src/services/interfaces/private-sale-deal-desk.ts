@@ -1,4 +1,3 @@
-import type { LockMessage } from "@auction/artwork-register-contracts";
 import type {
   DealBlockerCode,
   DealView,
@@ -9,6 +8,7 @@ import type { PrivateSaleDealListRow } from "@auction/persistence/interfaces";
 import type {
   PartyAmlStatus,
   PartyKycStatus,
+  PrivateSaleArtworkUnlinkedReason,
   PrivateSaleDealDocument,
   PrivateSaleDealMoney,
   PrivateSaleDealPartyView,
@@ -18,11 +18,15 @@ import type {
   SourceOfFundsStatus,
 } from "@auction/types";
 import type {
+  AdminDealArtworkRemoveInput,
   AdminDealArtworkSearchQuery,
+  AdminDealArtworkSetInput,
   AdminDealBuyerInput,
   AdminDealConvertInput,
   AdminDealListQuery,
   AdminDealTerms,
+  DealArtworkLock,
+  DealArtworkOption,
   DealArtworkSearchResult,
   StaffDealAction,
 } from "@auction/validators";
@@ -80,6 +84,46 @@ export type DealRecordPayment = {
   recordedTransfer: boolean;
 };
 
+/** The register artwork a deal holds, drawn the way every deal screen draws it. */
+export type DealRecordArtwork = {
+  id: string;
+  title: string;
+  artist: string;
+  medium: string | null;
+  size: string | null;
+  stockCode: string;
+  /** Zoho's Status for the artwork. */
+  catalogueStatus: string | null;
+  thumbnailUrl: string | null;
+  whereItIs: DealArtworkOption["whereItIs"];
+  /** When the deal took the hold: the latest link or change, else the day the deal opened. */
+  heldSince: Date;
+  /** The artwork's record in LAX Admin, for people who run deals; `null` without LAX Admin's address. */
+  recordHref: string | null;
+};
+
+/** One line of a deal's artwork history: who linked, changed or removed it, and why. */
+export type DealRecordArtworkMove = {
+  action: "linked" | "changed" | "removed";
+  from: { title: string; stockCode: string } | null;
+  to: { title: string; stockCode: string } | null;
+  fromUnlinkedReason: PrivateSaleArtworkUnlinkedReason | null;
+  toUnlinkedReason: PrivateSaleArtworkUnlinkedReason | null;
+  reason: string | null;
+  createdAt: Date;
+  actorName: string | null;
+};
+
+/** What this person may do to the deal's artwork now, from their role and the deal's stage. */
+export type DealArtworkAccess = {
+  /** Link an artwork to a deal that has none. */
+  canLink: boolean;
+  /** Change or remove the linked artwork. */
+  canChange: boolean;
+  /** Why change and remove are off, for a person who could use them at another stage. */
+  changeOffReason: string | null;
+};
+
 export type DealStaffRecord = {
   reference: string;
   stage: PrivateSaleDealStage;
@@ -103,6 +147,12 @@ export type DealStaffRecord = {
   createdAt: Date;
   updatedAt: Date;
   money: PrivateSaleDealMoney | null;
+  /** `null` while no register artwork is linked. */
+  artwork: DealRecordArtwork | null;
+  /** Why there is no register artwork, when one was recorded. */
+  artworkUnlinkedReason: PrivateSaleArtworkUnlinkedReason | null;
+  artworkAccess: DealArtworkAccess;
+  artworkMoves: DealRecordArtworkMove[];
   seller: DealRecordParty;
   buyer: DealRecordParty | null;
   /** `null` for people who may not see how the checks stand. */
@@ -146,6 +196,20 @@ export type DealWriteError =
   | "buyer_is_seller"
   | "blocked"
   | "payment_in_progress"
+  /** The artwork change names no artwork and no reason, or names both. */
+  | "artwork_choice_required"
+  /** The deal has moved past the stage where its artwork can be changed or linked. */
+  | "artwork_locked"
+  /** The artwork asked for is the one the deal already has. */
+  | "artwork_unchanged"
+  /** Changing the artwork needs the reason for it. */
+  | "reason_required"
+  | "artwork_not_found"
+  | "artwork_not_original"
+  /** The register shows the artwork in another sale, or sold. `lock` says where. */
+  | "artwork_unavailable"
+  /** The register could not record the change, so nothing was changed. */
+  | "artwork_register_busy"
   | "unavailable";
 
 export type DealWriteResult =
@@ -157,6 +221,9 @@ export type DealWriteResult =
       fields?: (keyof AdminDealTerms)[];
       blockers?: DealActionBlocker[];
       currentVersion?: number;
+      /** For `artwork_unavailable`: the register's own reason, words and link. */
+      lock?: DealArtworkLock;
+      message?: string;
     };
 
 /** The lists and the record, cut to what the person may see. */
@@ -185,8 +252,27 @@ export interface IPrivateSaleDealCommands {
   ): Promise<DealWriteResult>;
 }
 
+/** Linking, changing and removing a deal's artwork, each held through the register's lock. */
+export interface IPrivateSaleDealArtworkCommands {
+  /** Links an artwork, changes it, or records why the deal has none. */
+  set(
+    viewer: DealStaffViewer,
+    ref: string,
+    input: AdminDealArtworkSetInput,
+  ): Promise<DealWriteResult>;
+  /** Takes the artwork off a deal that is still being offered, and releases it. */
+  remove(
+    viewer: DealStaffViewer,
+    ref: string,
+    input: AdminDealArtworkRemoveInput,
+  ): Promise<DealWriteResult>;
+}
+
 /** Staff work on private sale deals here. Who may see or do what is decided in these services. */
-export interface IPrivateSaleDealDesk extends IPrivateSaleDealQueries, IPrivateSaleDealCommands {}
+export interface IPrivateSaleDealDesk
+  extends IPrivateSaleDealQueries,
+    IPrivateSaleDealCommands,
+    IPrivateSaleDealArtworkCommands {}
 
 export type ConvertEnquiryError =
   | "enquiry_not_found"
@@ -223,7 +309,7 @@ export type ConvertEnquiryResult =
       error: ConvertEnquiryError;
       message?: string;
       /** For `artwork_unavailable`: the register's own reason, words and link, as every product shows them. */
-      lock?: LockMessage;
+      lock?: DealArtworkLock;
     };
 
 /** Turns a private sale enquiry into a proposed deal. */

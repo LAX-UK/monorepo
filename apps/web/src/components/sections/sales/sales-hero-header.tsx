@@ -3,7 +3,7 @@ import {
   MarketingBreadcrumb,
 } from "@/components/marketing/marketing-breadcrumb";
 import { MarketingPageHero } from "@/components/marketing/marketing-page-hero";
-import { DisplayHeading } from "@auction/ui";
+import { DisplayHeading } from "@auction/ui/components/typography";
 
 const SUBTITLE =
   "Live and upcoming auctions from London, with modern and contemporary art, design and luxury.";

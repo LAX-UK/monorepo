@@ -3,8 +3,8 @@
 import { useAnnounce } from "@/components/lot-page/lot-announcer";
 import { useConnectionNotice } from "@/lib/connection/use-connection-notice";
 import { CONNECTION_NOTICES, type ConnectionNoticeKind, type LotStatusTone } from "@auction/domain";
-import { cn } from "@auction/ui";
-import { Button } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
+import { cn } from "@auction/ui/lib/utils";
 import { Check, Loader2, RefreshCw, WifiLow, WifiOff } from "lucide-react";
 import { type ComponentType, useEffect } from "react";
 

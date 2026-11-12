@@ -225,3 +225,59 @@ describe("envSchema private sale deadlines", () => {
     expect(parse({ PRIVATE_SALE_COLLECTION_DUE_DAYS: "400" }).success).toBe(false);
   });
 });
+
+describe("envSchema addresses opened from private sale artwork refusals", () => {
+  const parse = (extra: Record<string, unknown>) => envSchema.safeParse(productionEnvBase(extra));
+
+  it("takes https addresses, or none", () => {
+    expect(parse({}).success).toBe(true);
+    const set = parse({
+      LAX_ADMIN_PUBLIC_ORIGIN: "https://admin.example.com",
+      ZOHO_CRM_RECORD_URL_TEMPLATE: "https://crm.example.com/tab/{module}/{recordId}",
+    });
+    expect(set.success).toBe(true);
+    expect(parse({ LAX_ADMIN_PUBLIC_ORIGIN: "", ZOHO_CRM_RECORD_URL_TEMPLATE: "" }).success).toBe(
+      true,
+    );
+  });
+
+  it("refuses a scheme that is not https, other than http on this machine", () => {
+    expect(parse({ LAX_ADMIN_PUBLIC_ORIGIN: "javascript:alert(1)" }).success).toBe(false);
+    expect(parse({ LAX_ADMIN_PUBLIC_ORIGIN: "http://admin.example.com" }).success).toBe(false);
+    expect(parse({ LAX_ADMIN_PUBLIC_ORIGIN: "http://localhost:3050" }).success).toBe(true);
+    expect(
+      parse({ ZOHO_CRM_RECORD_URL_TEMPLATE: "ftp://crm.example.com/{recordId}" }).success,
+    ).toBe(false);
+  });
+
+  it("needs the record id in the Zoho template", () => {
+    expect(
+      parse({ ZOHO_CRM_RECORD_URL_TEMPLATE: "https://crm.example.com/tab/{module}" }).success,
+    ).toBe(false);
+  });
+});
+
+describe("api XERO_TOKEN_DEK_KEY", () => {
+  const issues = (overrides: Record<string, unknown>) => {
+    const result = envSchema.safeParse(productionEnvBase(overrides));
+    return result.success
+      ? []
+      : result.error.issues.filter((i) => i.path[0] === "XERO_TOKEN_DEK_KEY");
+  };
+  const xero = {
+    XERO_CLIENT_ID: "id",
+    XERO_CLIENT_SECRET: "secret",
+    XERO_REDIRECT_URI: "https://app.example.com/cb",
+    XERO_WEBHOOK_KEY: "hook",
+  };
+
+  it("is required once Xero is configured, and must be a 32-byte key", () => {
+    expect(issues(xero)).not.toHaveLength(0);
+    expect(issues({ ...xero, XERO_TOKEN_DEK_KEY: "short" })).not.toHaveLength(0);
+    expect(issues({ ...xero, XERO_TOKEN_DEK_KEY: "ab".repeat(32) })).toEqual([]);
+  });
+
+  it("is not needed when Xero is not configured", () => {
+    expect(issues({})).toEqual([]);
+  });
+});

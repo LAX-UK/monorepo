@@ -5,6 +5,10 @@ import { cn } from "../lib/cn.js";
 /** A record's headline number: the metric cell, with an optional context line under the value. */
 export type StatItem = MetricCellItem;
 
+/** Static class names, so Tailwind sees them. */
+const WIDE_COLUMNS = { 2: "md:grid-cols-2", 3: "md:grid-cols-3", 4: "md:grid-cols-4" } as const;
+const NARROW_COLUMNS = { 1: "grid-cols-1", 2: "grid-cols-2" } as const;
+
 /**
  * Headline numbers for a record, in one hairline card divided into cells. Each cell is the same
  * metric cell as a list's metric strip (label, value in tabular figures, and the change and trend
@@ -15,6 +19,8 @@ export function StatGrid({
   label,
   period,
   Link,
+  columns = 4,
+  narrowColumns = 2,
   className,
 }: {
   items: readonly StatItem[];
@@ -23,10 +29,23 @@ export function StatGrid({
   period?: React.ReactNode;
   /** Needed when items carry an `href`. */
   Link?: LinkComponent;
+  /**
+   * Cells per row from the medium breakpoint up. Match it to the number of items so the last row
+   * has no empty cell. Default 4.
+   */
+  columns?: keyof typeof WIDE_COLUMNS;
+  /** Cells per row below the medium breakpoint; 1 gives long values (dates) the full width. Default 2. */
+  narrowColumns?: keyof typeof NARROW_COLUMNS;
   className?: string;
 }) {
   const grid = (
-    <div className="grid grid-cols-2 gap-px overflow-hidden rounded-staff-lg border border-staff-line bg-staff-line-subtle md:grid-cols-4">
+    <div
+      className={cn(
+        "grid gap-px overflow-hidden rounded-staff-lg border border-staff-line bg-staff-line-subtle",
+        NARROW_COLUMNS[narrowColumns],
+        WIDE_COLUMNS[columns],
+      )}
+    >
       {items.map((item) => (
         <MetricCell key={item.id} item={item} Link={Link} className="bg-staff-surface" />
       ))}

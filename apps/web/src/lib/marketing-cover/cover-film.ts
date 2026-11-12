@@ -1,4 +1,4 @@
-import type { CoverFilm } from "@auction/marketing-ui";
+import type { CoverFilm } from "@auction/marketing-ui/cover/cover-types";
 import type { Sale } from "@auction/types";
 import { parseStreamEmbedUrl } from "@auction/validators";
 

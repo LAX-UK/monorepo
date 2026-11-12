@@ -1,7 +1,7 @@
 import { lotOutcome } from "@/lib/lot/lot-outcome";
 import type { LotStatus } from "@auction/types";
-import type { DotStatusPillTone } from "@auction/ui";
-import { presentationToDotStatus } from "@auction/ui";
+import type { DotStatusPillTone } from "@auction/ui/components/dot-status-pill";
+import { presentationToDotStatus } from "@auction/ui/lib/status-presentation-bridge";
 import { ADMIN_STATUS_REGISTRY } from "./admin-status-registry";
 import { lotStatusLabel, lotStatusToBadgeVariant } from "./catalog";
 import type {

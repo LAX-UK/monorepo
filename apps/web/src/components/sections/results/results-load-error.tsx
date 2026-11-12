@@ -1,5 +1,5 @@
 import { MarketingEmptyState } from "@/components/marketing/marketing-empty-state";
-import { ButtonLink } from "@auction/ui/lax";
+import { ButtonLink } from "@auction/ui/lax/button-link";
 import Link from "next/link";
 
 /** A failed load, which must not read as "no results". The cause is logged, never shown. */

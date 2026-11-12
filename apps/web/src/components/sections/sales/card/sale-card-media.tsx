@@ -6,7 +6,7 @@ import { AdaptiveFrameImage } from "@/components/ui/adaptive-frame-image";
 import { AdaptiveMediaFrame } from "@/components/ui/adaptive-media-frame";
 import { MediaImage } from "@/components/ui/media-image";
 import { LOT_CARD_TIMER_SLOTS } from "@/lib/media/overlay-slot-presets";
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 import Link from "next/link";
 
 const DEFAULT_SIZES = "(max-width: 1024px) 100vw, 420px";

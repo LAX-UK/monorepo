@@ -1,5 +1,5 @@
 import type { AuctionSessionHeaderVM } from "@/components/sections/artwork/artwork-view-models";
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 import type { ReactNode } from "react";
 
 type Props = {

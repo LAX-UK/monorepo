@@ -1,4 +1,5 @@
-import { DisplayHeading, cn } from "@auction/ui";
+import { DisplayHeading } from "@auction/ui/components/typography";
+import { cn } from "@auction/ui/lib/utils";
 import { type ReactNode, useId } from "react";
 
 export type MarketingPromoCtaProps = {

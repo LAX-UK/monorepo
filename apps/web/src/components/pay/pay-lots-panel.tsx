@@ -2,8 +2,8 @@ import { WorkspacePanel } from "@/components/dashboard/primitives/workspace-pane
 import { MediaImage } from "@/components/ui/media-image";
 import { PAY_COPY } from "@/lib/pay/pay-copy";
 import type { PayLotVm } from "@/lib/pay/pay-page.vm";
-import { RecordRowMedia } from "@auction/ui";
-import { TextLink } from "@auction/ui/lax";
+import { RecordRowMedia } from "@auction/ui/components/record-row";
+import { TextLink } from "@auction/ui/lax/text-link";
 import Link from "next/link";
 
 /**

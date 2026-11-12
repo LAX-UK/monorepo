@@ -4,8 +4,10 @@ import { WorkspacePanel } from "@/components/dashboard/primitives/workspace-pane
 import { COLLECT_COPY } from "@/lib/collect/collect-copy";
 import { COLLECT_FIELD_IDS, authorisationText } from "@/lib/collect/collect-form";
 import type { CollectAction, CollectState } from "@/lib/collect/collect-state";
-import { cn } from "@auction/ui";
-import { Checkbox, Field, FieldError, TextInput } from "@auction/ui/lax";
+import { Checkbox } from "@auction/ui/lax/checkbox";
+import { Field, FieldError } from "@auction/ui/lax/field";
+import { TextInput } from "@auction/ui/lax/input";
+import { cn } from "@auction/ui/lib/utils";
 import { RadioGrid, type RadioGridItem } from "./radio-grid";
 
 const COLLECTOR_CHOICES = [

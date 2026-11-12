@@ -1,4 +1,4 @@
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 import type { HTMLAttributes } from "react";
 
 export function TableScroll({ className, children, ...props }: HTMLAttributes<HTMLDivElement>) {

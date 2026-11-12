@@ -109,7 +109,14 @@ export async function proactiveRefreshXeroTokens(input: {
   connections: IXeroConnectionRepository;
   redis: Redis;
 }): Promise<{ ok: true; tenantId: string } | { ok: false; reason: string }> {
-  const conn = await input.connections.findLatest();
+  let conn: XeroConnectionRow | null;
+  try {
+    // Reading opens the sealed tokens; if that fails (e.g. no sealing key) Xero is never called,
+    // so a rotated refresh token is never obtained that could not be stored.
+    conn = await input.connections.findLatest();
+  } catch (cause) {
+    return { ok: false, reason: cause instanceof Error ? cause.message : String(cause) };
+  }
   if (!conn) {
     return { ok: false, reason: "not_connected" };
   }

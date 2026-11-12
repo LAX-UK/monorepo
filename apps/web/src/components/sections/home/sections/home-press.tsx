@@ -1,7 +1,7 @@
 import { MarketingSection } from "@/components/marketing/marketing-section";
 import type { HomePressItem } from "@/lib/home-sections/types";
 import { FOCUS_RING } from "@/lib/marketing/chrome";
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 
 /** The latest coverage of the house, each a ruled card that opens the article in a new tab. */
 export function HomePressSection({ items }: { items: readonly HomePressItem[] }) {

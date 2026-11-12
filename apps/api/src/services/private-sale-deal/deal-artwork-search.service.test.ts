@@ -73,6 +73,13 @@ function setup(options: Options = {}) {
     enquiries: { findByRef },
     works: { findByReference },
     media: { resolveManyUnique },
+    lockLinks: {
+      attach: async (items) =>
+        items.map(({ lock }) => ({
+          ...lock,
+          link: lock.link ? { ...lock.link, href: `https://link.test/${lock.link.target}` } : null,
+        })),
+    },
     now: () => NOW,
   });
   return {
@@ -116,7 +123,11 @@ describe("DealArtworkSearchService availability", () => {
       reason: "live_on_lax_art",
       message:
         "This artwork is live on lax.art. Take it off lax.art first, or use Offer at auction to move it.",
-      link: { label: "Open on lax.art", target: "lax_art_listing" },
+      link: {
+        label: "Open on lax.art",
+        target: "lax_art_listing",
+        href: "https://link.test/lax_art_listing",
+      },
     });
     expect(byId.get(inPrivateSale.id)?.lock?.reason).toBe("in_private_sale");
     expect(byId.get(sold.id)?.lock?.reason).toBe("sold_through_lax");
@@ -156,6 +167,26 @@ describe("DealArtworkSearchService availability", () => {
       link: { target: "bid_lot" },
     });
     expect(option?.whereItIs).toMatchObject({ key: "bid_sale" });
+  });
+
+  it("names the lot the register says the artwork is in, not another open lot", async () => {
+    const inSale = entry({ offer: at("bid_sale", "bid_lot", "lot-1") });
+    const { service } = setup({
+      found: [inSale],
+      places: [
+        {
+          registerId: inSale.id,
+          lotId: "lot-other",
+          lotNumber: 3,
+          saleTitle: "Spring Drawings",
+          status: "draft",
+        },
+      ],
+    });
+    const [option] = (await items(service)).items;
+    expect(option?.lock?.reason).toBe("in_bid_sale");
+    expect(option?.lock?.message).not.toContain("Spring Drawings");
+    expect(option?.lock?.message).not.toContain("lot 3");
   });
 });
 
@@ -219,6 +250,13 @@ describe("DealArtworkSearchService suggestions", () => {
       ["Harbour at dusk", true],
       ["Unrelated", false],
     ]);
+    // The list can say what the suggestions are matched against.
+    expect(result.suggestion).toEqual({ artist: "Tom Morris", title: "Harbour at dusk" });
+  });
+
+  it("gives no suggestion once the person types", async () => {
+    const { service } = setup({ enquiry: enquiry() });
+    expect((await items(service, { enquiry: "E-1042", q: "tide" })).suggestion).toBeNull();
   });
 
   it("lets typed text decide once the person types", async () => {
@@ -360,6 +398,28 @@ describe("DealArtworkSearchService what each option shows", () => {
       places: [{ registerId: e.id, lotId: "l", lotNumber: null, saleTitle: null, status: "draft" }],
     });
     expect((await items(service)).items[0]?.whereItIs.key).toBe("draft_bid_lot");
+  });
+
+  it("names the sale a linked draft lot belongs to, so a list row can say which draft is affected", async () => {
+    const e = entry();
+    const { service } = setup({
+      found: [e],
+      places: [
+        {
+          registerId: e.id,
+          lotId: "l",
+          lotNumber: 14,
+          saleTitle: "Winter Modern",
+          status: "draft",
+        },
+      ],
+    });
+    expect((await items(service)).items[0]?.draftLot).toEqual({ saleName: "Winter Modern" });
+  });
+
+  it("has no draft lot note for an artwork that has none", async () => {
+    const { service } = setup({ found: [entry()] });
+    expect((await items(service)).items[0]).not.toHaveProperty("draftLot");
   });
 
   it("reads Withdrawn, then Not offered after 30 days, from the artwork's history like its own page", async () => {

@@ -1,4 +1,5 @@
 import { initials } from "@/components/organisations/initials";
+import { dayKey, formatDayMonth, formatFullMoment, formatTime } from "@auction/datetime";
 import { z } from "zod";
 
 /**
@@ -50,38 +51,16 @@ export function parseConsignmentMessage(body: unknown): ConsignmentMessage | nul
 }
 
 const ZONE = "Europe/London";
-const TIME = new Intl.DateTimeFormat("en-GB", {
-  hour: "2-digit",
-  minute: "2-digit",
-  timeZone: ZONE,
-});
-const DAY = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: ZONE });
-const DAY_YEAR = new Intl.DateTimeFormat("en-GB", {
-  day: "numeric",
-  month: "short",
-  year: "numeric",
-  timeZone: ZONE,
-});
-const FULL = new Intl.DateTimeFormat("en-GB", {
-  weekday: "long",
-  day: "numeric",
-  month: "long",
-  year: "numeric",
-  hour: "2-digit",
-  minute: "2-digit",
-  timeZone: ZONE,
-});
-const YEAR = new Intl.DateTimeFormat("en-GB", { year: "numeric", timeZone: ZONE });
 
 /** When a message was sent: the time today ("14:02"), the day this year ("27 Oct"), or with the year. */
 export function messageTime(at: Date, now: Date): string {
-  if (DAY_YEAR.format(at) === DAY_YEAR.format(now)) return TIME.format(at);
-  return YEAR.format(at) === YEAR.format(now) ? DAY.format(at) : DAY_YEAR.format(at);
+  if (dayKey(at, ZONE) === dayKey(now, ZONE)) return formatTime(at, ZONE);
+  return formatDayMonth(at, ZONE, now);
 }
 
 /** The full date and time, for the time element's title. */
 export function messageFullTime(at: Date): string {
-  return FULL.format(at);
+  return formatFullMoment(at, ZONE);
 }
 
 /** "2.4 MB", "830 KB": a file's size on its attachment line. */

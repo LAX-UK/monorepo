@@ -23,7 +23,7 @@ import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/aler
 import { ConfirmDialog } from "@auction/ui/components/confirm-dialog";
 import { StatusBadge } from "@auction/ui/components/status-badge";
 import { Surface } from "@auction/ui/components/surface";
-import { Button } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";

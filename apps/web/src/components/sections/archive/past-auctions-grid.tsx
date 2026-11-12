@@ -1,6 +1,6 @@
 import { MarketingEmptyState } from "@/components/marketing/marketing-empty-state";
 import { archiveClearFiltersHref } from "@/lib/archive/build-archive-params";
-import { ButtonLink } from "@auction/ui/lax";
+import { ButtonLink } from "@auction/ui/lax/button-link";
 import Link from "next/link";
 
 export type { ArchiveLotVM } from "./catalog-archive-views";

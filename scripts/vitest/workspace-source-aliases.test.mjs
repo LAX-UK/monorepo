@@ -12,7 +12,11 @@ test("maps @auction/marketing-ui root and cover fixture exports to src", () => {
   assert.ok(fixtures, "cover fixtures alias");
   assert.match(fixtures.replacement, /marketing-ui\/src\/cover\/cover-fixtures\.ts$/);
 
-  assert.equal(aliases.filter((a) => a.find.startsWith("@auction/marketing-ui")).length, 2);
+  const narrow = aliases.find(
+    (a) => a.find === "@auction/marketing-ui/header/marketing-header-mega-nav",
+  );
+  assert.ok(narrow, "narrow component alias");
+  assert.match(narrow.replacement, /marketing-ui\/src\/header\/marketing-header-mega-nav\.tsx$/);
 });
 
 test("maps @auction/shop-portal subpath exports to src", () => {

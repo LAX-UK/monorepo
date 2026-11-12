@@ -7,7 +7,7 @@ import {
   buildSaleroomStatusHref,
   parseSaleroomCatalogStatus,
 } from "@/lib/marketing/saleroom-catalog-status";
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 

@@ -155,11 +155,55 @@ export const session = pgTable(
     }),
     /** How this session was signed in: any of `SESSION_SIGN_IN_METHODS`. Empty when unknown. */
     amr: text("amr").array().notNull().default(sql`'{}'::text[]`),
+    /**
+     * Keyed hash of the private device marker the browser holds (`__Host-lax_device`), never the
+     * marker itself. Null for records made before the marker existed. It only decides which record
+     * a new sign-in in the same browser replaces; it never decides whether anyone is signed in.
+     */
+    deviceHash: text("device_hash"),
+    /** When the person first signed in on this browser; carried over when a record is taken over. */
+    signedInAt: timestamp("signed_in_at", { mode: "date", withTimezone: true }),
+    /** Last real use of this browser's sign-in. */
+    lastSeenAt: timestamp("last_seen_at", { mode: "date", withTimezone: true }),
+    /** Country (ISO 3166-1 alpha-2) the edge reported at sign-in; never an address. */
+    country: text("country"),
     userId: text("user_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
   },
-  (table) => [index("session_user_id_idx").on(table.userId)],
+  (table) => [
+    index("session_user_id_idx").on(table.userId),
+    index("session_device_hash_user_idx")
+      .on(table.deviceHash, table.userId)
+      .where(sql`${table.deviceHash} IS NOT NULL`),
+    // Serves the expiry sweep: WHERE expires_at <= now ORDER BY expires_at, id LIMIT n.
+    index("session_expires_at_id_idx").on(table.expiresAt, table.id),
+  ],
+);
+
+/**
+ * The earlier ids a sign-in record stands for. A new sign-in in the same browser takes over that
+ * browser's record: the old record is deleted and its id is kept here, so a product that still
+ * holds the old id (its `sid`) keeps working against the record that replaced it. Consulted only
+ * to renew, look up and end a sign-in, never to sign anyone in. At most 20 per record; rows go
+ * with the record.
+ */
+export const sessionLineage = pgTable(
+  "session_lineage",
+  {
+    previousSid: text("previous_sid").primaryKey(),
+    sessionId: text("session_id")
+      .notNull()
+      .references(() => session.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("session_lineage_session_id_idx").on(table.sessionId),
+    index("session_lineage_user_id_idx").on(table.userId),
+  ],
 );
 
 export const account = pgTable(

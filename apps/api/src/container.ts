@@ -1,4 +1,5 @@
 import { createDb } from "@auction/db";
+import { XeroTokenSealer } from "@auction/db/xero-token-sealing";
 import {
   DrizzleAdminSavedViewRepository,
   DrizzleBiddingExposureReader,
@@ -43,6 +44,7 @@ import { createComplianceRouteServices } from "./container/create-compliance-rou
 import { createConsignmentMessageServices } from "./container/create-consignment-message-services.js";
 import { createCronServices } from "./container/create-cron-services.js";
 import { createDealArtworkSearch } from "./container/create-deal-artwork-search.js";
+import { createDealLockLinks } from "./container/create-deal-lock-links.js";
 import { createFinanceRouteServices } from "./container/create-finance-route-services.js";
 import { createIdentityRouteServices } from "./container/create-identity-route-services.js";
 import { createInfra } from "./container/create-infra.js";
@@ -135,7 +137,13 @@ export function createContainer(env: Env): Container {
   const ensurePersonalLegalEntityService = new EnsurePersonalLegalEntityService(db);
   const authenticator = createContainerAuthenticator({ env, db });
 
-  const repos = createRepositories(db, identityIssuer);
+  const repos = createRepositories(
+    db,
+    identityIssuer,
+    env.XERO_TOKEN_DEK_KEY
+      ? XeroTokenSealer.fromKey(env.XERO_TOKEN_DEK_KEY)
+      : XeroTokenSealer.unavailable(),
+  );
   if (env.ADDRESS_BOOK_SOURCE === "identity") {
     repos.addressRepo = new IdentityAddressBookRepository(
       identityIssuer,
@@ -831,7 +839,11 @@ export function createContainer(env: Env): Container {
       marketingEnquiries: marketingEnquiries.desk,
       privateSaleDeals: payments.privateSaleDeals.desk,
       enquiryConversion: payments.privateSaleDeals.conversion,
-      dealArtworks: createDealArtworkSearch({ db, media: complianceMedia.mediaUrlResolver }),
+      dealArtworks: createDealArtworkSearch({
+        db,
+        media: complianceMedia.mediaUrlResolver,
+        lockLinks: createDealLockLinks({ db, env }),
+      }),
       enquiryRouting: marketingEnquiries.routing,
       purchaseProblems: createPurchaseProblemDesk({
         db,

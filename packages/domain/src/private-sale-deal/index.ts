@@ -1,4 +1,5 @@
 export * from "./anonymity.js";
+export * from "./artwork.js";
 export * from "./blockers.js";
 export * from "./clearance.js";
 export * from "./deal-reminder.js";

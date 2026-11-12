@@ -3,7 +3,8 @@
 import { useLotPageViewContext } from "@/components/lot-page/lot-page-view-context";
 import { useShareLink } from "@/lib/lot-page/use-share-link";
 import { useWatchlistToggle } from "@/lib/watchlist/use-watchlist-toggle";
-import { Button, ButtonLink } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
+import { ButtonLink } from "@auction/ui/lax/button-link";
 import { Check, Heart, Share2 } from "lucide-react";
 import Link from "next/link";
 

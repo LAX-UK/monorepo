@@ -4,7 +4,7 @@ import { SITE_SUPPORT_EMAIL } from "@/lib/brand";
 import { useClientOrigin } from "@/lib/dom/use-client-origin";
 import { salePath } from "@/lib/seo/url";
 import type { Sale } from "@auction/types";
-import { Button } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
 import { CalendarPlus } from "lucide-react";
 import { useCallback } from "react";
 

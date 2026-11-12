@@ -179,8 +179,6 @@ export class DrizzleBuyerDefaultRepository implements IBuyerDefaultRepository {
         wonAt: input.wonAt,
         reason: input.reason,
         outcome: input.outcome,
-        offeredUserId: input.offeredUserId,
-        offeredAmount: input.offeredAmount,
         buyerRestricted: input.buyerRestricted,
         actorUserId: input.actorUserId,
       })

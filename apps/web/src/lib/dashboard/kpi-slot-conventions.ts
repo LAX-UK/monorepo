@@ -7,7 +7,7 @@
  * Pages with active filters should pass compareHint when filtered count differs from total
  * (portfolio, overview KPI rows, in-sale metrics).
  */
-import type { KpiTileProps } from "@auction/ui";
+import type { KpiTileProps } from "@auction/ui/components/kpi-tile";
 
 export type DashboardKpiSecondarySlots = Pick<
   KpiTileProps,

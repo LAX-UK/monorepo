@@ -3,7 +3,7 @@
 import type { LifecycleBadgeVM } from "@/lib/lot/lot-lifecycle";
 import { lifecycleToStatusPresentation } from "@/lib/presenters/lifecycle-status-presentation";
 import { toPublicStatusBadgeProps } from "@/lib/presenters/public-status-badge";
-import { StatusBadge } from "@auction/ui";
+import { StatusBadge } from "@auction/ui/components/status-badge";
 
 export type LotLifecycleStatusBadgeProps = {
   badge: LifecycleBadgeVM;

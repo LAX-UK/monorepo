@@ -1,7 +1,7 @@
 import {
   MarketingDetailShell as BaseDetailShell,
   type MarketingDetailShellProps as BaseProps,
-} from "@auction/marketing-ui";
+} from "@auction/marketing-ui/marketing-detail-shell";
 
 export type MarketingDetailShellProps = Omit<BaseProps, "as">;
 

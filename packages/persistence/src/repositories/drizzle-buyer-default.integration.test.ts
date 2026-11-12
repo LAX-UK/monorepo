@@ -100,8 +100,6 @@ describe.skipIf(!HAS_DB)("buyer default (integration)", () => {
     wonAt: new Date(nowMs - 12 * day),
     reason: "No payment after two reminders",
     outcome: "returned_to_inventory" as const,
-    offeredUserId: null,
-    offeredAmount: null,
     buyerRestricted: false,
     actorUserId: staffId,
   });

@@ -19,8 +19,8 @@ export async function POST(request: Request): Promise<Response> {
       await container.sessions.delete(sessionId);
     } catch (error) {
       // Sign-out must still end this browser's session when Redis is down: the cookie is
-      // cleared below and the record expires on its own TTL. Without the ID token the issuer
-      // session is not ended, so the person lands on the sign-in page instead.
+      // cleared below, and without the ID token the issuer is asked to end this browser's
+      // sign-in on a same-site request instead.
       console.error("account_logout_session_store_failed", error);
       idToken = undefined;
     }
@@ -34,12 +34,15 @@ export async function POST(request: Request): Promise<Response> {
     });
   }
   const landing = `${container.config.publicOrigin}/`;
-  if (!idToken) return NextResponse.redirect(landing, 303);
+  // No sign-in here to end, so nothing to ask the issuer.
+  if (!sessionId) return NextResponse.redirect(landing, 303);
+  // With no ID token the issuer ends the browser's own sign-in from its cookie, on this
+  // same-site navigation, and sends the person back to the registered landing page.
   const redirectTo = buildEndSessionUrl({
     endSessionEndpoint: `${container.config.oidcIssuer}/api/auth/oauth2/endsession`,
     clientId: container.config.oidcClientId,
     postLogoutRedirectUri: landing,
-    idTokenHint: idToken,
+    idTokenHint: idToken ?? null,
   });
   return NextResponse.redirect(redirectTo, 303);
 }

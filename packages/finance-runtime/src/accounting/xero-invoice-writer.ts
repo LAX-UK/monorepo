@@ -1,3 +1,4 @@
+import { LONDON_TIME_ZONE, dayKey } from "@auction/datetime";
 import type {
   IBidInvoiceReader,
   IPaymentExternalRefRepository,
@@ -18,7 +19,7 @@ import type { XeroTokenService } from "./xero-token.service.js";
 
 /** The calendar day in London, as Xero dates are (YYYY-MM-DD). */
 function londonDate(d: Date): string {
-  return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/London" }).format(d);
+  return dayKey(d, LONDON_TIME_ZONE);
 }
 
 export class XeroInvoiceWriter {

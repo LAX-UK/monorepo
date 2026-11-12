@@ -5,7 +5,7 @@ import { LazyConditionReportRequestForm } from "@/components/sections/artwork/re
 import { buildHostedLoginStartHref } from "@/lib/auth/hosted-login-start-href";
 import type { ConditionReportCardState } from "@/lib/condition-report/derive-condition-report-card-state";
 import { contextualIdentityOnboardingHref } from "@/lib/kyc/identity-onboarding";
-import { Button } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
 import type { ConditionReportRequestFormValues } from "@auction/validators";
 import Link from "next/link";
 
