@@ -1,6 +1,6 @@
 import { createIdentityDb } from "@auction/identity-db";
-import { session, user } from "@auction/identity-db/schema";
-import { inArray } from "drizzle-orm";
+import { session, sessionLineage, user } from "@auction/identity-db/schema";
+import { eq, inArray } from "drizzle-orm";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { DrizzleOidcRpSessionRepository } from "./oidc-session-adapters.js";
 
@@ -59,6 +59,36 @@ describe.skipIf(!DATABASE_URL)("DrizzleOidcRpSessionRepository.findLiveIdentityS
       subjectId,
       mfaCompletedAt: null,
     });
+  });
+
+  it("resolves an id that a newer sign-in took over to the record that replaced it", async () => {
+    if (!db) return;
+    await db.insert(sessionLineage).values({
+      previousSid: "live-identity-session-test-earlier",
+      sessionId: liveId,
+      userId: subjectId,
+    });
+    try {
+      await expect(
+        repository?.findLiveIdentitySession("live-identity-session-test-earlier", now),
+      ).resolves.toMatchObject({ id: liveId, subjectId });
+    } finally {
+      await db
+        .delete(sessionLineage)
+        .where(eq(sessionLineage.previousSid, "live-identity-session-test-earlier"));
+    }
+  });
+
+  it("does not resolve a name whose record has expired", async () => {
+    if (!db) return;
+    await db.insert(sessionLineage).values({
+      previousSid: "live-identity-session-test-earlier-expired",
+      sessionId: expiredId,
+      userId: subjectId,
+    });
+    await expect(
+      repository?.findLiveIdentitySession("live-identity-session-test-earlier-expired", now),
+    ).resolves.toBeNull();
   });
 
   it("ignores expired and unknown sessions", async () => {

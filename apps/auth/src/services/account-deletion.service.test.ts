@@ -40,6 +40,7 @@ function setup(
         ipAddress: null,
         userAgent: null,
         lastPasswordAuthAt: null,
+        previousIds: [],
         isCurrent: true,
       },
     ]),
