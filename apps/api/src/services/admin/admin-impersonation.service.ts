@@ -167,10 +167,11 @@ export class AdminImpersonationService implements IAdminImpersonationService {
       return { ok: true, alreadyEnded: true };
     }
 
-    await this.transactionRunner.runInTransaction(async (tx) => {
-      await this.impersonationSessionRepository
+    const recorded = await this.transactionRunner.runInTransaction(async (tx) => {
+      const ended = await this.impersonationSessionRepository
         .forConnection(tx)
-        .end(sessionId, "cookie_cleared_after_failed_end");
+        .endForActor(sessionId, actorUserId, "cookie_cleared_after_failed_end");
+      if (!ended) return false;
       await this.domainEventSink.withTx(tx).publish({
         aggregateType: ADMIN_IMPERSONATION_AGGREGATE_TYPE,
         aggregateId: sessionId,
@@ -183,7 +184,8 @@ export class AdminImpersonationService implements IAdminImpersonationService {
         actingLegalEntityId: legalEntityId,
         schemaVersion: 1,
       });
+      return true;
     });
-    return { ok: true };
+    return recorded ? { ok: true } : { ok: true, alreadyEnded: true };
   }
 }

@@ -68,7 +68,8 @@ export class ImpersonationSessionService {
     }
     if (row.endedAt) return { ok: false, reason: "ended" };
     if (row.expiresAt.getTime() <= Date.now()) {
-      await this.end(row.id, "timeout");
+      // Only reports the expiry. The caller records it, ending the row and writing the audit
+      // event together (`ImpersonationAuditService.recordSessionTimedOut`).
       return { ok: false, reason: "expired" };
     }
     return { ok: true, session: row };

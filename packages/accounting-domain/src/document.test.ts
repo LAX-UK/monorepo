@@ -466,6 +466,24 @@ describe("credit notes are bounded by the original invoice", () => {
       }),
     ).toMatchObject({ refusal: { code: "exceeds_invoice" } });
   });
+  it("refuses when a prior credit note is left out, so its VAT cannot be credited twice", () => {
+    const i = original();
+    const first = buildCreditNoteFor(i, {
+      ...args,
+      request: { goodsPence: 12_000, deliveryPence: 0 },
+    });
+    if (!first.ok) throw new Error("fixture");
+    const next = {
+      ...args,
+      sourceId: "cn2",
+      buckets: { ...buckets, refundedGoodsPence: 12_000 },
+      request: { goodsPence: 5_000, deliveryPence: 0 },
+    };
+    expect(buildCreditNoteFor(i, { ...next, priorCredits: [] })).toMatchObject({
+      refusal: { code: "bad_invoice" },
+    });
+    expect(buildCreditNoteFor(i, { ...next, priorCredits: [first.value] }).ok).toBe(true);
+  });
   it("refuses a prior credit note from another invoice, bad dates and a date before the invoice", () => {
     const i = original();
     const other = buildInvoice({ ...inv, sourceId: "2", lines: lines() });

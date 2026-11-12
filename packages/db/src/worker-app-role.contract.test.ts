@@ -5,8 +5,13 @@ import { describe, expect, it } from "vitest";
 import { readUserReadCutoverFromEnv } from "./applied-user-read-cutover.js";
 import { createDb } from "./client.js";
 import {
+  WORKER_ACCOUNTING_APPEND_ONLY_TABLES,
+  WORKER_ACCOUNTING_DOCUMENT_TABLES,
+  WORKER_ACCOUNTING_DOCUMENT_UPDATE_COLUMNS,
+  WORKER_ACCOUNTING_READ_TABLES,
   WORKER_DENY_TABLES,
   WORKER_EMAIL_SUPPRESSION_UPDATE_COLUMNS,
+  WORKER_REOFFER_READ_COLUMNS,
   WORKER_REOFFER_TABLES,
   WORKER_REOFFER_UPDATE_COLUMNS,
   WORKER_SHOP_ENQUIRY_READ_COLUMNS,
@@ -59,6 +64,49 @@ describe.skipIf(!WORKER_URL)("worker_app role contract", { timeout: 60_000 }, ()
     });
   });
 
+  it("creates and advances accounting documents, only adds to their history, and reads the switch", async () => {
+    await withWorkerClient(async (client) => {
+      const privileges = ["SELECT", "INSERT", "UPDATE", "DELETE"];
+      const documents = await readTablePrivileges(
+        client,
+        WORKER_ACCOUNTING_DOCUMENT_TABLES,
+        privileges,
+      );
+      // UPDATE is by column (below), so the table-level check sees only INSERT and SELECT.
+      expectTablePrivileges(documents, (row) => ["SELECT", "INSERT"].includes(row.privilege));
+      const columns = await client.query<{ column_name: string; allowed: boolean }>(
+        `select column_name::text,
+                has_column_privilege(current_user, 'public.accounting_document', column_name, 'UPDATE') as allowed
+           from information_schema.columns
+          where table_schema = 'public' and table_name = 'accounting_document'`,
+      );
+      const updatable = columns.rows.filter((row) => row.allowed).map((row) => row.column_name);
+      expect(updatable.sort()).toEqual([...WORKER_ACCOUNTING_DOCUMENT_UPDATE_COLUMNS].sort());
+      for (const fixed of [
+        "payload",
+        "net_pence",
+        "vat_pence",
+        "gross_pence",
+        "product",
+        "kind",
+        "lax_reference",
+        "legal_entity",
+        "source_event_ref",
+        "created_at",
+      ]) {
+        expect(updatable, fixed).not.toContain(fixed);
+      }
+      const history = await readTablePrivileges(
+        client,
+        WORKER_ACCOUNTING_APPEND_ONLY_TABLES,
+        privileges,
+      );
+      expectTablePrivileges(history, (row) => row.privilege === "INSERT");
+      const settings = await readTablePrivileges(client, WORKER_ACCOUNTING_READ_TABLES, privileges);
+      expectTablePrivileges(settings, (row) => row.privilege === "SELECT");
+    });
+  });
+
   it("reads re-offers and seller answers and updates only where a request or offer stands", async () => {
     await withWorkerClient(async (client) => {
       const rows = await readTablePrivileges(
@@ -106,6 +154,24 @@ describe.skipIf(!WORKER_URL)("worker_app role contract", { timeout: 60_000 }, ()
         "reminded_at",
         "status",
       ]);
+    });
+  });
+
+  it("reads which buyer default is a lot's latest, and nothing else of the defaults", async () => {
+    await withWorkerClient(async (client) => {
+      for (const [table, columns] of WORKER_REOFFER_READ_COLUMNS) {
+        const all = await client.query<{ column_name: string; allowed: boolean }>(
+          `select column_name,
+                  has_column_privilege(current_user, 'public.' || $1, column_name, 'SELECT') as allowed
+             from information_schema.columns
+            where table_schema = 'public' and table_name = $1`,
+          [table],
+        );
+        const allowed = all.rows.filter((row) => row.allowed).map((row) => row.column_name);
+        expect(allowed.sort(), table).toEqual([...columns].sort());
+        const whole = await readTablePrivileges(client, [table], ["INSERT", "UPDATE", "DELETE"]);
+        expectUniformTablePrivileges(whole, false);
+      }
     });
   });
 
