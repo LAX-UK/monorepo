@@ -7,6 +7,7 @@ import {
   privateSaleDeal,
   user,
 } from "@auction/db/schema";
+import { settlementFollowUp } from "@auction/domain";
 import { eq, sql } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { DrizzleDealSettlementFollowUpMarker } from "./drizzle-deal-settlement-follow-up.marker.js";
@@ -252,6 +253,145 @@ describe.skipIf(!HAS_DB)("settled deals whose artwork is not marked sold (integr
       expect(await marker.claimInTransaction(db, deal.id)).toBe(false);
       const another = await dealFor(db, { artwork: await register(db) });
       expect(await marker.claimInTransaction(db, another.id)).toBe(true);
+    });
+  });
+
+  it("agrees with the domain rule on every combination of state and reference, NULL refs included", async () => {
+    await inRollback(async (db) => {
+      const queries = new DrizzlePrivateSaleDealQueryRepository(db);
+      const states: OfferState[] = [
+        "held",
+        "lax_art",
+        "bid_sale",
+        "private_sale",
+        "sold",
+        "withdrawn",
+      ];
+      const refs = (id: string): ({ kind: RefKind; id: string } | null)[] => [
+        null,
+        { kind: "shop_artwork", id: "s1" },
+        { kind: "bid_lot", id: "l1" },
+        { kind: "private_sale", id },
+        { kind: "private_sale", id: randomUUID() },
+        { kind: "gallery_sale", id: "z1" },
+      ];
+      const cases: { id: string; state: OfferState; kind: "original" | "print"; ref: string }[] =
+        [];
+      for (const kind of ["original", "print"] as const) {
+        for (const state of states) {
+          for (let r = 0; r < 6; r++) {
+            // Combinations the register's own constraints forbid cannot exist; skip them.
+            const deal = await dealFor(db, { artwork: null });
+            const ref = refs(deal.id)[r] ?? null;
+            const allowed =
+              state === "sold" ||
+              (state === "lax_art" && ref?.kind === "shop_artwork") ||
+              (state === "bid_sale" && ref?.kind === "bid_lot") ||
+              (state === "private_sale" && ref?.kind === "private_sale") ||
+              ((state === "held" || state === "withdrawn") && ref === null);
+            if (!allowed) continue;
+            const art = await register(db, { kind, state, ref });
+            await db
+              .update(privateSaleDeal)
+              .set({ artworkRegisterId: art })
+              .where(eq(privateSaleDeal.id, deal.id));
+            cases.push({ id: deal.id, state, kind, ref: ref ? `${ref.kind}` : "null" });
+          }
+        }
+      }
+      expect(cases.length).toBeGreaterThanOrEqual(24);
+      const rows = await queries.list({
+        view: "settled",
+        viewerUserId: ownerId,
+        scope: { kind: "all" },
+        limit: 1000,
+      });
+      const listed = new Map(
+        (await queries.listSettlementFollowUps({ kind: "all" }, 1000)).map((r) => [
+          r.dealId,
+          r.severity,
+        ]),
+      );
+      const counted = await queries.countSettlementFollowUps({ kind: "all" });
+      let expectedTotal = 0;
+      let expectedUrgent = 0;
+      for (const c of cases) {
+        const row = rows.find((r) => r.id === c.id);
+        const expected = row?.settlementFollowUp ?? null;
+        // The per-row severity comes from the domain rule; the selection and the aggregate are SQL.
+        expect(listed.get(c.id) ?? null, `${c.kind} ${c.state} ${c.ref}`).toBe(expected);
+        if (expected) expectedTotal += 1;
+        if (expected === "urgent") expectedUrgent += 1;
+      }
+      // Counted over the test's own deals: the database may hold others, so compare at least.
+      expect(counted.total).toBeGreaterThanOrEqual(expectedTotal);
+      expect(counted.urgent).toBeGreaterThanOrEqual(expectedUrgent);
+      // A sold artwork with no recorded place is urgent, in both.
+      const unknown = cases.find(
+        (c) => c.kind === "original" && c.state === "sold" && c.ref === "null",
+      );
+      expect(unknown && listed.get(unknown.id)).toBe("urgent");
+      expect(
+        settlementFollowUp(
+          { id: "d", stage: "settled", artworkRegisterId: "a" },
+          { kind: "original", offerState: "sold", offerRefKind: null, offerRefId: null },
+        ),
+      ).toBe("urgent");
+    });
+  });
+
+  it("counts without a cap, urgent included, and lists urgent first", async () => {
+    await inRollback(async (db) => {
+      const queries = new DrizzlePrivateSaleDealQueryRepository(db);
+      const before = await queries.countSettlementFollowUps({ kind: "all" });
+      for (let i = 0; i < 3; i++) await dealFor(db, { artwork: await register(db) });
+      const urgent = await dealFor(db, {
+        artwork: await register(db, { state: "sold", ref: null }),
+      });
+      const after = await queries.countSettlementFollowUps({ kind: "all" });
+      expect(after.total - before.total).toBe(4);
+      expect(after.urgent - before.urgent).toBe(1);
+      // Even a window of one holds the urgent deal.
+      const [first] = await queries.listSettlementFollowUps({ kind: "all" }, 1);
+      expect(first?.severity).toBe("urgent");
+      expect(
+        (await queries.listSettlementFollowUps({ kind: "all" }, 1000)).map((r) => r.dealId),
+      ).toContain(urgent.id);
+    });
+  });
+
+  it("leaves out deals already raised at their severity, and raises an escalation once more", async () => {
+    await inRollback(async (db) => {
+      const queries = new DrizzlePrivateSaleDealQueryRepository(db);
+      const marker = new DrizzleDealSettlementFollowUpMarker();
+      const art = await register(db, { state: "held" });
+      const deal = await dealFor(db, { artwork: art });
+      const unraised = async () =>
+        (await queries.listSettlementFollowUps({ kind: "all" }, 1000, { unraisedOnly: true })).map(
+          (r) => r.dealId,
+        );
+      const raise = (severity: "normal" | "urgent") =>
+        db.execute(
+          sql`INSERT INTO domain_events (aggregate_type, aggregate_id, event_type, payload, producer)
+              VALUES ('private_sale_deal', ${deal.id}, 'private_sale_deal.settlement_follow_up_raised', ${JSON.stringify({ dealId: deal.id, severity })}::jsonb, 'apps/api')`,
+        );
+      expect(await unraised()).toContain(deal.id);
+      expect(await marker.claimInTransaction(db, deal.id, "normal")).toBe(true);
+      await raise("normal");
+      expect(await unraised()).not.toContain(deal.id);
+      expect(await marker.claimInTransaction(db, deal.id, "normal")).toBe(false);
+
+      // The register now shows it somewhere else: urgent, and not yet raised as urgent.
+      await db
+        .update(artworkRegister)
+        .set({ offerState: "bid_sale", offerRefKind: "bid_lot", offerRefId: "lot-1" })
+        .where(eq(artworkRegister.id, art));
+      expect(await unraised()).toContain(deal.id);
+      expect(await marker.claimInTransaction(db, deal.id, "urgent")).toBe(true);
+      await raise("urgent");
+      expect(await unraised()).not.toContain(deal.id);
+      expect(await marker.claimInTransaction(db, deal.id, "urgent")).toBe(false);
+      expect(await marker.claimInTransaction(db, deal.id, "normal")).toBe(false);
     });
   });
 });

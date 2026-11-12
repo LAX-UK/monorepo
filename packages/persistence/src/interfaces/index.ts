@@ -1196,6 +1196,7 @@ export type {
   PrivateSaleDealListFilter,
   PrivateSaleDealListRow,
   PrivateSaleDealStageCount,
+  SettlementFollowUpCount,
   SettlementFollowUpRow,
 } from "./private-sale-deal-query.repository.js";
 export type { IDealSettlementFollowUpMarker } from "./deal-settlement-follow-up.marker.js";

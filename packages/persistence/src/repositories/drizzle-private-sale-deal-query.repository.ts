@@ -23,6 +23,7 @@ import type {
   PrivateSaleDealListFilter,
   PrivateSaleDealListRow,
   PrivateSaleDealStageCount,
+  SettlementFollowUpCount,
   SettlementFollowUpRow,
 } from "../interfaces/private-sale-deal-query.repository.js";
 
@@ -45,8 +46,24 @@ function scopeConditions(scope: DealScope): SQL[] {
 const settlementFollowUpOpen = and(
   eq(privateSaleDeal.stage, "settled"),
   eq(artworkRegister.kind, "original"),
-  sql`NOT (${artworkRegister.offerState} = 'sold' AND ${artworkRegister.offerRefKind} = 'private_sale' AND ${artworkRegister.offerRefId} = ${privateSaleDeal.id}::text)`,
+  // NULL-safe: a sold artwork with no recorded place has NULL refs, and is not sold through this deal.
+  sql`NOT (${artworkRegister.offerState} = 'sold' AND ${artworkRegister.offerRefKind} IS NOT DISTINCT FROM 'private_sale' AND ${artworkRegister.offerRefId} IS NOT DISTINCT FROM ${privateSaleDeal.id}::text)`,
 );
+
+/** Mirrors the domain's "urgent": the register shows the artwork somewhere other than free or held for this deal. */
+const settlementFollowUpUrgent = sql`(${artworkRegister.offerState} NOT IN ('held', 'withdrawn') AND NOT (${artworkRegister.offerState} = 'private_sale' AND ${artworkRegister.offerRefKind} IS NOT DISTINCT FROM 'private_sale' AND ${artworkRegister.offerRefId} IS NOT DISTINCT FROM ${privateSaleDeal.id}::text))`;
+
+/**
+ * Staff were already told about this deal at its current severity: an urgent one only by an urgent
+ * alert, a normal one by any. The audit log is the record, so nothing else is stored.
+ */
+const settlementFollowUpRaised = sql`EXISTS (
+  SELECT 1 FROM domain_events e
+  WHERE e.aggregate_type = 'private_sale_deal'
+    AND e.aggregate_id = ${privateSaleDeal.id}::text
+    AND e.event_type = 'private_sale_deal.settlement_follow_up_raised'
+    AND (e.payload->>'severity' = 'urgent' OR NOT ${settlementFollowUpUrgent})
+)`;
 
 /** The deal lists staff work from, and the deals a person is named to act in. */
 export class DrizzlePrivateSaleDealQueryRepository implements IPrivateSaleDealQueryReader {
@@ -139,7 +156,23 @@ export class DrizzlePrivateSaleDealQueryRepository implements IPrivateSaleDealQu
     );
   }
 
-  async listSettlementFollowUps(scope: DealScope, limit: number): Promise<SettlementFollowUpRow[]> {
+  async countSettlementFollowUps(scope: DealScope): Promise<SettlementFollowUpCount> {
+    const [row] = await this.db
+      .select({
+        total: sql<number>`count(*)::int`,
+        urgent: sql<number>`(count(*) FILTER (WHERE ${settlementFollowUpUrgent}))::int`,
+      })
+      .from(privateSaleDeal)
+      .innerJoin(artworkRegister, eq(artworkRegister.id, privateSaleDeal.artworkRegisterId))
+      .where(and(settlementFollowUpOpen, ...scopeConditions(scope)));
+    return { total: row?.total ?? 0, urgent: row?.urgent ?? 0 };
+  }
+
+  async listSettlementFollowUps(
+    scope: DealScope,
+    limit: number,
+    options: { unraisedOnly?: boolean } = {},
+  ): Promise<SettlementFollowUpRow[]> {
     const rows = await this.db
       .select({
         dealId: privateSaleDeal.id,
@@ -154,8 +187,19 @@ export class DrizzlePrivateSaleDealQueryRepository implements IPrivateSaleDealQu
       })
       .from(privateSaleDeal)
       .innerJoin(artworkRegister, eq(artworkRegister.id, privateSaleDeal.artworkRegisterId))
-      .where(and(settlementFollowUpOpen, ...scopeConditions(scope)))
-      .orderBy(asc(privateSaleDeal.updatedAt), asc(privateSaleDeal.id))
+      .where(
+        and(
+          settlementFollowUpOpen,
+          ...scopeConditions(scope),
+          options.unraisedOnly ? sql`NOT ${settlementFollowUpRaised}` : undefined,
+        ),
+      )
+      // Urgent first, so a limit can never push a possible double sale out of the window.
+      .orderBy(
+        desc(settlementFollowUpUrgent),
+        asc(privateSaleDeal.updatedAt),
+        asc(privateSaleDeal.id),
+      )
       .limit(limit);
     return rows.flatMap(
       ({ artworkRegisterId, kind, offerState, offerRefKind, offerRefId, ...row }) => {

@@ -15,6 +15,7 @@ function createApp(staffRoles: StaffRoles | undefined) {
     set: vi.fn().mockResolvedValue({ ok: true, record: RECORD }),
     remove: vi.fn().mockResolvedValue({ ok: true, record: RECORD }),
     markSold: vi.fn().mockResolvedValue({ ok: true, record: RECORD }),
+    attentionCount: vi.fn().mockResolvedValue({ total: 2, urgent: 1 }),
   };
   const dealArtworks = {
     search: vi.fn().mockResolvedValue({
@@ -591,5 +592,27 @@ describe("POST /private-sales/:ref/artwork/mark-sold", () => {
     expect((await app.request(url, { method: "POST" })).status).toBe(404);
     privateSaleDeals.markSold.mockResolvedValueOnce({ ok: false, error: "artwork_register_busy" });
     expect((await app.request(url, { method: "POST" })).status).toBe(503);
+  });
+});
+
+describe("GET /private-sales/attention-count", () => {
+  it.each(["administrator", "sales_manager", "specialist", "finance", "client_services"] as const)(
+    "%s reads the count, cut to their scope, and it is not read as a reference",
+    async (role) => {
+      const { app, privateSaleDeals } = createApp([role]);
+      const res = await app.request("http://test/private-sales/attention-count");
+      expect(res.status).toBe(200);
+      expect(await res.json()).toEqual({ data: { total: 2, urgent: 1 } });
+      expect(privateSaleDeals.attentionCount).toHaveBeenCalledWith(
+        expect.objectContaining({ userId: "staff-1" }),
+      );
+      expect(privateSaleDeals.detail).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(["cataloguer", "saleroom_clerk", "read_only"] as const)("%s does not", async (role) => {
+    const { app, privateSaleDeals } = createApp([role]);
+    expect((await app.request("http://test/private-sales/attention-count")).status).toBe(403);
+    expect(privateSaleDeals.attentionCount).not.toHaveBeenCalled();
   });
 });

@@ -13,6 +13,7 @@ import type {
 export class PrivateSaleDealDesk implements IPrivateSaleDealDesk {
   readonly list: IPrivateSaleDealQueries["list"];
   readonly detail: IPrivateSaleDealQueries["detail"];
+  readonly attentionCount: IPrivateSaleDealQueries["attentionCount"];
   readonly updateTerms: IPrivateSaleDealCommands["updateTerms"];
   readonly nameBuyer: IPrivateSaleDealCommands["nameBuyer"];
   readonly act: IPrivateSaleDealCommands["act"];
@@ -28,6 +29,7 @@ export class PrivateSaleDealDesk implements IPrivateSaleDealDesk {
   ) {
     this.list = (viewer, query) => queries.list(viewer, query);
     this.detail = (viewer, ref) => queries.detail(viewer, ref);
+    this.attentionCount = (viewer) => queries.attentionCount(viewer);
     this.updateTerms = (viewer, ref, change) => commands.updateTerms(viewer, ref, change);
     this.nameBuyer = (viewer, ref, input) => commands.nameBuyer(viewer, ref, input);
     this.act = (viewer, ref, action, input) => commands.act(viewer, ref, action, input);

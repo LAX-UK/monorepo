@@ -43,6 +43,8 @@ export class DealSettlementFollowUpPresenter {
             },
           ])
         : [];
-    return { severity, settledAt, lock: lock ?? null, canRetry: canDo(viewer, "manage") };
+    // Marking sold again is only safe while nothing else holds the artwork.
+    const canRetry = severity === "normal" && canDo(viewer, "manage");
+    return { severity, settledAt, lock: lock ?? null, canRetry };
   }
 }

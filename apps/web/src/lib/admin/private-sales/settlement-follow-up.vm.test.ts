@@ -75,6 +75,9 @@ describe("markSoldErrorMessage", () => {
     expect(markSoldErrorMessage("artwork_register_busy", 503, undefined, fallback)).toContain(
       "The deal is unaffected",
     );
+    expect(markSoldErrorMessage("not_applicable", 409, undefined, fallback)).toContain(
+      "nothing to mark sold",
+    );
     expect(markSoldErrorMessage("forbidden", 403, undefined, fallback)).toBe("fallback");
   });
 });

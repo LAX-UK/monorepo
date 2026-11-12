@@ -1,5 +1,6 @@
 import type { Database } from "@auction/db";
 import { domainEvent } from "@auction/db/schema";
+import type { SettlementFollowUpSeverity } from "@auction/domain";
 import { and, eq, sql } from "drizzle-orm";
 import type { IDealSettlementFollowUpMarker } from "../interfaces/deal-settlement-follow-up.marker.js";
 
@@ -11,7 +12,11 @@ const RAISED_EVENT = "private_sale_deal.settlement_follow_up_raised";
  * is written in the same transaction as the claim, so the two cannot disagree.
  */
 export class DrizzleDealSettlementFollowUpMarker implements IDealSettlementFollowUpMarker {
-  async claimInTransaction(tx: Database, dealId: string): Promise<boolean> {
+  async claimInTransaction(
+    tx: Database,
+    dealId: string,
+    severity: SettlementFollowUpSeverity,
+  ): Promise<boolean> {
     await tx.execute(
       sql`SELECT pg_advisory_xact_lock(hashtextextended(${`${RAISED_EVENT}:${dealId}`}, 0))`,
     );
@@ -23,6 +28,8 @@ export class DrizzleDealSettlementFollowUpMarker implements IDealSettlementFollo
           eq(domainEvent.aggregateType, AGGREGATE_TYPE),
           eq(domainEvent.aggregateId, dealId),
           eq(domainEvent.eventType, RAISED_EVENT),
+          // Raised as urgent covers every severity; raised as normal covers only normal.
+          severity === "urgent" ? sql`${domainEvent.payload}->>'severity' = 'urgent'` : undefined,
         ),
       )
       .limit(1);

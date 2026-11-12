@@ -33,6 +33,9 @@ export type SettlementFollowUpRow = {
   updatedAt: Date;
 };
 
+/** How many settled deals need attention, and how many of those may have been sold twice. */
+export type SettlementFollowUpCount = { total: number; urgent: number };
+
 export type PrivateSaleDealListFilter = {
   view: DealView;
   viewerUserId: string;
@@ -59,7 +62,14 @@ export interface IPrivateSaleDealQueryReader {
    * Settled deals in the scope whose artwork the register does not show as sold through them,
    * longest waiting first. Derived from the deal and the register on every read, never stored.
    */
-  listSettlementFollowUps(scope: DealScope, limit: number): Promise<SettlementFollowUpRow[]>;
+  listSettlementFollowUps(
+    scope: DealScope,
+    limit: number,
+    /** Leave out deals staff were already told about at their current severity. */
+    options?: { unraisedOnly?: boolean },
+  ): Promise<SettlementFollowUpRow[]>;
+  /** The same deals counted in one aggregate, with no cap. */
+  countSettlementFollowUps(scope: DealScope): Promise<SettlementFollowUpCount>;
   /**
    * The reference of the deal a work is in (PS-0012), or `null`. Only a cancelled deal frees the
    * work: a settled one has sold it.

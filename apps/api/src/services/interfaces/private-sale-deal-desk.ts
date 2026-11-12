@@ -137,7 +137,7 @@ export type DealRecordSettlementFollowUp = {
   settledAt: Date;
   /** The register's own reason, words and link, when it shows the artwork somewhere else. */
   lock: DealArtworkLock | null;
-  /** This person may ask the register to mark the artwork sold again. */
+  /** This person may ask the register to mark the artwork sold again: not once it is shown elsewhere. */
   canRetry: boolean;
 };
 
@@ -231,6 +231,8 @@ export type DealWriteError =
   | "artwork_register_busy"
   /** Marking sold applies only to a settled deal with a linked artwork. */
   | "not_settled"
+  /** The register does not govern this artwork (a print, or no register row), so there is nothing to mark. */
+  | "not_applicable"
   | "unavailable";
 
 export type DealWriteResult =
@@ -251,6 +253,8 @@ export type DealWriteResult =
 export interface IPrivateSaleDealQueries {
   list(viewer: DealStaffViewer, query: AdminDealListQuery): Promise<DealListPage>;
   detail(viewer: DealStaffViewer, ref: string): Promise<DealStaffRecord | null>;
+  /** Settled deals needing attention, and the urgent ones among them, for the nav count and bell. */
+  attentionCount(viewer: DealStaffViewer): Promise<{ total: number; urgent: number }>;
 }
 
 /** Every change a person can make to a deal, each against the version they were looking at. */

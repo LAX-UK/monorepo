@@ -1,7 +1,7 @@
 import "server-only";
 
 import type { AdminNavCounts } from "@/lib/data/http/admin-nav-counts.types";
-import { getAdminDeals } from "@/lib/data/http/admin-private-sales.reader";
+import { getAdminDealsAttentionCount } from "@/lib/data/http/admin-private-sales.reader";
 import {
   PRIVATE_SALE_DEALS_READ_ACCESS,
   type StaffRoles,
@@ -25,13 +25,11 @@ export async function withPrivateSalesNavCount(
   if (!userHasAccessTo(role, staffRoles, PRIVATE_SALE_DEALS_READ_ACCESS)) {
     return { ...counts, ...NONE };
   }
-  const page = await getAdminDeals(
-    new URLSearchParams({ view: "needs_attention", limit: "1" }),
-  ).catch(() => null);
-  if (!page) return { ...counts, ...NONE };
+  const attention = await getAdminDealsAttentionCount().catch(() => null);
+  if (!attention) return { ...counts, ...NONE };
   return {
     ...counts,
-    privateSalesAttention: page.counts.needs_attention ?? 0,
-    privateSalesUrgent: page.urgentFollowUps,
+    privateSalesAttention: attention.total,
+    privateSalesUrgent: attention.urgent,
   };
 }

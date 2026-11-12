@@ -48,6 +48,7 @@ describe("DealSettlementFollowUpPresenter", () => {
     const p = presenterFor({ state: "bid_sale", ref: { kind: "bid_lot", id: "lot-1" } });
     const result = await p.present(viewer(true), deal, SETTLED);
     expect(result?.severity).toBe("urgent");
+    expect(result?.canRetry).toBe(false);
     expect(result?.lock).toMatchObject({ reason: "in_bid_sale", link: { href: "/x" } });
   });
 

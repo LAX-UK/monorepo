@@ -127,6 +127,7 @@ function setup(options: Setup = {}) {
       list: async () => [],
       countByStage: async () => [],
       listSettlementFollowUps: async () => [],
+      countSettlementFollowUps: async () => ({ total: 0, urgent: 0 }),
       listIdsForActingUser: async () => [],
       findLiveDealReferenceForWork: async () => null,
       findReferencesByIds: async () => new Map<string, string>(),

@@ -19,9 +19,9 @@ export type DealSettlementFollowUpDeps = {
 };
 
 export type SettlementFollowUpCheckResult = {
-  /** Settled deals whose artwork the register does not show as sold through them. */
+  /** Settled deals not yet raised at their current severity, urgent first. */
   open: number;
-  /** Deals raised for the first time by this run. */
+  /** Deals raised by this run: first time, or newly urgent. */
   raised: number;
   /** Of the open ones, those the register shows somewhere else. */
   urgent: number;
@@ -40,12 +40,25 @@ export class DealSettlementFollowUpService {
   constructor(private readonly deps: DealSettlementFollowUpDeps) {}
 
   async raiseNew(): Promise<SettlementFollowUpCheckResult> {
-    const open = await this.deps.queries.listSettlementFollowUps({ kind: "all" }, CHECK_LIMIT);
+    // Urgent first and only those not yet raised, so already-raised deals never use up the window.
+    const open = await this.deps.queries.listSettlementFollowUps({ kind: "all" }, CHECK_LIMIT, {
+      unraisedOnly: true,
+    });
+    if (open.length === CHECK_LIMIT) {
+      recordMoneyPathEvent("private_sale_settlement_follow_up_check_truncated");
+      console.error(
+        JSON.stringify({
+          msg: "private_sale_settlement_follow_up_check_truncated",
+          limit: CHECK_LIMIT,
+        }),
+      );
+    }
     let raised = 0;
     for (const row of open) {
       try {
         const first = await this.deps.transactionRunner.runInTransaction(async (tx) => {
-          if (!(await this.deps.raised.claimInTransaction(tx, row.dealId))) return false;
+          if (!(await this.deps.raised.claimInTransaction(tx, row.dealId, row.severity)))
+            return false;
           const event = dealSettlementFollowUpRaisedEvent(
             { id: row.dealId, reference: row.reference },
             row.severity,

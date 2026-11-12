@@ -40,6 +40,10 @@ export const dealListPageSchema = z.object({
 });
 export type DealListPage = z.infer<typeof dealListPageSchema>;
 
+/** Settled deals needing attention for this person, and the urgent ones among them. */
+export const dealAttentionCountSchema = z.object({ total: z.number(), urgent: z.number() });
+export type DealAttentionCount = z.infer<typeof dealAttentionCountSchema>;
+
 const blockerSchema = z.object({
   code: z.string(),
   message: z.string(),

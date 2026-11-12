@@ -132,6 +132,15 @@ describe("DealMarkSoldService", () => {
     expect(published.map((e) => (e.payload as { outcome: string }).outcome)).toEqual(["failed"]);
   });
 
+  it("says there is nothing to mark when the register does not govern the artwork, and audits nothing", async () => {
+    const { service, published } = setup({ status: "not_governed" });
+    expect(await service.markSold(viewer(), "PS-0001")).toEqual({
+      ok: false,
+      error: "not_applicable",
+    });
+    expect(published).toEqual([]);
+  });
+
   it("is only for people who run deals", async () => {
     const { service, markSold } = setup();
     expect(await service.markSold(viewer(false), "PS-0001")).toEqual({

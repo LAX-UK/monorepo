@@ -44,6 +44,8 @@ export type DealMarkSoldDeps = {
 
 type Attempt =
   | { kind: "done"; outcome: "marked" | "already_marked" }
+  /** The register does not govern this artwork: nothing was changed, so nothing is audited. */
+  | { kind: "not_governed" }
   | { kind: "skipped" }
   | { kind: "failed"; message: string };
 
@@ -67,6 +69,7 @@ export class DealMarkSoldService implements IPrivateSaleDealSettlementCommands {
     const attempt = await this.deps.transactionRunner.runInTransaction((tx) =>
       this.attempt(this.deps.scopeForTx(tx), viewer, deal, deal.artworkRegisterId as string),
     );
+    if (attempt.kind === "not_governed") return { ok: false, error: "not_applicable" };
     if (attempt.kind === "failed") {
       return { ok: false, error: "artwork_register_busy", message: attempt.message };
     }
@@ -82,6 +85,7 @@ export class DealMarkSoldService implements IPrivateSaleDealSettlementCommands {
     registerId: string,
   ): Promise<Attempt> {
     const result = await this.tryRegister(scope, viewer, deal, registerId);
+    if (result.kind === "not_governed") return result;
     const outcome: MarkSoldOutcome =
       result.kind === "done" ? result.outcome : result.kind === "skipped" ? "skipped" : "failed";
     const event = dealArtworkMarkSoldRetriedEvent(deal, outcome);
@@ -109,6 +113,7 @@ export class DealMarkSoldService implements IPrivateSaleDealSettlementCommands {
         staffOrSystem(viewer.userId),
       );
       if (status === "skipped") return { kind: "skipped" };
+      if (status === "not_governed") return { kind: "not_governed" };
       return { kind: "done", outcome: status === "moved" ? "marked" : "already_marked" };
     } catch (error) {
       if (error instanceof DealRegisterUnavailable) {

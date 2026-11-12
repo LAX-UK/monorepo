@@ -72,6 +72,8 @@ const MARK_SOLD_ERROR_COPY: Readonly<Record<string, string>> = {
   artwork_register_busy:
     "The artwork register didn't answer. The deal is unaffected. Try again in a moment.",
   not_settled: "Only a settled deal's artwork is marked sold.",
+  not_applicable:
+    "The artwork register doesn't track this artwork, so there is nothing to mark sold.",
 };
 
 /**

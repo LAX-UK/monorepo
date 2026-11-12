@@ -83,9 +83,6 @@ export type DealQueryDeps = {
   settlement: Pick<DealSettlementFollowUpPresenter, "present">;
 };
 
-/** How many settled deals needing attention the lists count; the rest are still in the view. */
-const FOLLOW_UP_COUNT_LIMIT = 500;
-
 /** Why change and remove are off once the buyer has agreed to the artwork. */
 export const ARTWORK_CHANGE_OFF = "Change artwork is off from Agreed onwards.";
 
@@ -119,14 +116,18 @@ export class PrivateSaleDealQueryService implements IPrivateSaleDealQueries {
     const last = items.at(-1);
     const [stages, followUps] = await Promise.all([
       this.deps.queries.countByStage(viewer.userId, viewer.scope),
-      this.deps.queries.listSettlementFollowUps(viewer.scope, FOLLOW_UP_COUNT_LIMIT),
+      this.deps.queries.countSettlementFollowUps(viewer.scope),
     ]);
     return {
       items,
       nextCursor: rows.length > query.limit && last ? encodeCursor(last) : null,
-      counts: dealViewCounts(stages, followUps.length),
-      urgentFollowUps: followUps.filter((row) => row.severity === "urgent").length,
+      counts: dealViewCounts(stages, followUps.total),
+      urgentFollowUps: followUps.urgent,
     };
+  }
+
+  attentionCount(viewer: DealStaffViewer): Promise<{ total: number; urgent: number }> {
+    return this.deps.queries.countSettlementFollowUps(viewer.scope);
   }
 
   async detail(viewer: DealStaffViewer, ref: string): Promise<DealStaffRecord | null> {
