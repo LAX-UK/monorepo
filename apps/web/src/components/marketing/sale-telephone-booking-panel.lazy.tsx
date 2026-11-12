@@ -1,6 +1,6 @@
 "use client";
 
-import type { SaleTelephoneBookingFormProps } from "@/components/marketing/sale-telephone-booking-form";
+import type { SaleTelephoneBookingPanelFormProps } from "@/components/marketing/sale-telephone-booking-panel";
 import { useAnchorIntent } from "@/hooks/use-anchor-intent";
 import { useDeferredModule } from "@/hooks/use-deferred-module";
 import { useNearViewport } from "@/hooks/use-near-viewport";
@@ -8,16 +8,16 @@ import { Button } from "@auction/ui/lax/button";
 import { Skeleton } from "@auction/ui/lax/skeleton";
 import { useRef } from "react";
 
-const loadBookingForm = () =>
-  import("@/components/marketing/sale-telephone-booking-form").then(
-    (module) => module.SaleTelephoneBookingForm,
+const loadPanelForm = () =>
+  import("@/components/marketing/sale-telephone-booking-panel").then(
+    (module) => module.SaleTelephoneBookingPanelForm,
   );
 
 /**
  * What the form's three fields, note and button occupy, so the card does not change height when
  * the form arrives. The note is real text: it does not depend on the form.
  */
-function BookingFormPlaceholder({ contactNumber }: { contactNumber: string | null }) {
+function BookingPanelFormPlaceholder({ contactNumber }: { contactNumber: string | null }) {
   const bar = "motion-reduce:animate-none";
   return (
     <div className="space-y-4">
@@ -47,11 +47,11 @@ function BookingFormPlaceholder({ contactNumber }: { contactNumber: string | nul
  * arrives the card shows a placeholder of the form's own height; if the fetch fails or takes more
  * than ten seconds the card says so and offers a retry. The rest of the page is not affected.
  */
-export function LazySaleTelephoneBookingForm(props: SaleTelephoneBookingFormProps) {
+export function LazySaleTelephoneBookingPanelForm(props: SaleTelephoneBookingPanelFormProps) {
   const anchor = useRef<HTMLDivElement>(null);
   const near = useNearViewport(anchor);
   const jumping = useAnchorIntent("telephone");
-  const loaded = useDeferredModule(loadBookingForm, near || jumping);
+  const loaded = useDeferredModule(loadPanelForm, near || jumping);
 
   return (
     <div ref={anchor} aria-busy={loaded.status !== "ready" && loaded.status !== "failed"}>
@@ -67,7 +67,7 @@ export function LazySaleTelephoneBookingForm(props: SaleTelephoneBookingFormProp
           </Button>
         </div>
       ) : (
-        <BookingFormPlaceholder contactNumber={props.contactNumber} />
+        <BookingPanelFormPlaceholder contactNumber={props.contactNumber} />
       )}
     </div>
   );

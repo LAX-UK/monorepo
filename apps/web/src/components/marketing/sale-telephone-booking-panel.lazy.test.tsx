@@ -1,4 +1,4 @@
-import { LazySaleTelephoneBookingForm } from "@/components/marketing/sale-telephone-booking-form.lazy";
+import { LazySaleTelephoneBookingPanelForm } from "@/components/marketing/sale-telephone-booking-panel.lazy";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -16,14 +16,14 @@ afterEach(() => {
   vi.resetModules();
 });
 
-describe("LazySaleTelephoneBookingForm", () => {
+describe("LazySaleTelephoneBookingPanelForm", () => {
   it("shows the note and a busy placeholder, and no form, until the card comes near", () => {
     class Quiet {
       observe = vi.fn();
       disconnect = vi.fn();
     }
     vi.stubGlobal("IntersectionObserver", Quiet);
-    const { container } = render(<LazySaleTelephoneBookingForm {...props} />);
+    const { container } = render(<LazySaleTelephoneBookingPanelForm {...props} />);
     expect(container.firstElementChild).toHaveAttribute("aria-busy", "true");
     expect(screen.getByText(/We will call \+44 7700 900123/)).toBeInTheDocument();
     expect(
@@ -32,7 +32,7 @@ describe("LazySaleTelephoneBookingForm", () => {
   });
 
   it("loads the form once the card is near", async () => {
-    const { container } = render(<LazySaleTelephoneBookingForm {...props} />);
+    const { container } = render(<LazySaleTelephoneBookingPanelForm {...props} />);
     expect(
       await screen.findByRole("button", { name: "Request telephone line" }),
     ).toBeInTheDocument();
@@ -41,13 +41,13 @@ describe("LazySaleTelephoneBookingForm", () => {
   });
 });
 
-describe("LazySaleTelephoneBookingForm when the form cannot be fetched", () => {
+describe("LazySaleTelephoneBookingPanelForm when the form cannot be fetched", () => {
   it("says so and offers a retry", async () => {
-    vi.doMock("@/components/marketing/sale-telephone-booking-form", () => {
+    vi.doMock("@/components/marketing/sale-telephone-booking-panel", () => {
       throw new Error("chunk failed");
     });
-    const { LazySaleTelephoneBookingForm: Lazy } = await import(
-      "@/components/marketing/sale-telephone-booking-form.lazy"
+    const { LazySaleTelephoneBookingPanelForm: Lazy } = await import(
+      "@/components/marketing/sale-telephone-booking-panel.lazy"
     );
     render(<Lazy {...props} />);
     expect(await screen.findByText(/did not load/i)).toBeInTheDocument();

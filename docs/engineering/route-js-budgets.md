@@ -122,6 +122,34 @@ Sizes after this change (Sentry on, gzip): the frame of a content page went from
 389.1 KB, home from 494.1 to 460.3 KB, the sales list from 526.8 to 501.2 KB, the sale page from
 638.4 to 610.6 KB and the lot page from 592.0 to 569.2 KB.
 
+## Sale page parts loaded on demand
+
+Four parts of the sale page are separate chunks, fetched when they are needed:
+
+| Part | Loaded |
+| --- | --- |
+| Telephone request form (`sale-telephone-booking-panel.tsx`: react-hook-form, the form controls, the validation schema) | only for a signed-in bidder who can book, when its card is within one screen of the viewport (`sale-telephone-booking-panel.lazy.tsx`) |
+| Lot status filter sheet (phone) | once the page has hydrated (`saleroom-catalog-filter-sheet.lazy.tsx`) |
+| Catalogue sort select | once the page has hydrated (`saleroom-catalog-sort.lazy.tsx`) |
+| Day gallery "View all" sheet | when the control is pointed at or focused, or when it is pressed (`day-gallery-view-all-sheet.lazy.tsx`) |
+
+What a visitor sees does not change, with one exception: while the telephone form is on its way
+its card shows a placeholder of the form's own height (the three fields, the note and the button),
+so nothing below it moves. If the fetch fails or takes more than ten seconds the card says so and
+offers "Try again". The filter trigger and the sort choice are drawn first as before hydration
+(a plain trigger, the current choice as text) and swapped for the live control when its chunk
+arrives. Signed-out visitors, people who still have to verify, and people who already have a
+booking never download the form.
+
+Two hooks carry the pattern: `useNearViewport` (true once an element is within a viewport of the
+screen, and stays true) and `useDeferredModule` (a dynamic import with idle, loading, ready and
+failed states, a timeout and a retry).
+
+Not moved: the live session provider, the live lot banner and the socket client. They share one
+subscription with the lot cards and the mobile summary bar, and the socket is the last PR of the
+plan. The toast library still reaches the sale page through the time chip's zone dialog
+(`@auction/ui/time`), which every product shares.
+
 ## Enforcement
 
 `enforce` is set per group. A route over budget in a group with `"enforce": true` is an error line
