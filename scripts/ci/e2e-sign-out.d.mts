@@ -19,7 +19,7 @@ export type SignOutContextLike = {
   }>;
 };
 
-export type SignOutTarget = { origin: string; logoutPath?: string };
+export type SignOutTarget = { origin: string; logoutPath?: string; force?: boolean };
 
 export const DEFAULT_LOGOUT_PATH: string;
 

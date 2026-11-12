@@ -26,6 +26,7 @@ describe("check accounts", () => {
   it("give the buyers a personal account and leave staff without one", () => {
     expect(CHECK_PEOPLE.client.personalEntityId).not.toBeNull();
     expect(CHECK_PEOPLE.newPerson.personalEntityId).not.toBeNull();
+    expect(CHECK_PEOPLE.devices.personalEntityId).not.toBeNull();
     expect(CHECK_PEOPLE.administrator.personalEntityId).toBeNull();
     expect(CHECK_PEOPLE.administrator.bidStaffRole).toBe("administrator");
   });

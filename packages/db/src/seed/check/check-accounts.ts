@@ -33,6 +33,14 @@ export const CHECK_PEOPLE = {
     ...checkPerson(2, "newPerson", "check-new-person@lax.bid", "Newcomer"),
     personalEntityId: id("9ce80000", 2),
   },
+  /**
+   * Signs in from several browsers and signs others out in the Account devices journeys, so no
+   * other check shares it.
+   */
+  devices: {
+    ...checkPerson(4, "devices", "check-devices@lax.bid", "Devices"),
+    personalEntityId: id("9ce80000", 4),
+  },
   /** Bid administrator: the staff screens and sign-in journeys. */
   administrator: {
     ...checkPerson(3, "administrator", "check-admin@lax.bid", "Administrator"),
