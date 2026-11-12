@@ -200,6 +200,7 @@ export class AtgLotSyncer {
         payloadHash: hash,
         lockedFieldsHash: lockedHash,
         numberOfBids: 0,
+        sold: false,
       };
       outcome = adoptAtgLotId ? "updated" : "created";
     } else if (current.payloadHash !== hash) {

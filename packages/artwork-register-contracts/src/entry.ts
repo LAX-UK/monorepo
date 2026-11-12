@@ -35,6 +35,7 @@ export const artworkRegisterEntrySchema = z.object({
   imageRefs: z.array(z.string().min(1)),
   /** The product Status as Zoho reports it (for example Available). */
   catalogueStatus: z.string().nullable(),
+  zohoPrice: z.string().nullable().optional(),
   /** Where the artwork is offered now. Owned by LAX. */
   offer: z.object({
     state: z.enum(OFFER_STATES),
@@ -61,6 +62,11 @@ export type ArtworkRegisterEntry = {
   year: number | null;
   imageRefs: string[];
   catalogueStatus: string | null;
+  /**
+   * Zoho's Unit Price in pounds, for example "250.00", shown beside the LAX price. Information
+   * only: the price a piece is sold at is set in LAX. Absent on records built without it.
+   */
+  zohoPrice?: string | null;
   offer: { state: OfferState; ref: OfferRef | null };
   zohoModifiedAt: Date | null;
   createdAt: Date;

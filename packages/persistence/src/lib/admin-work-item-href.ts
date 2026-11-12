@@ -37,6 +37,7 @@ export function adminWorkItemHref(
       return subjectId ? adminRoutes.legalEntity(subjectId) : adminRoutes.onboardingIssues();
     case "lot_withdrawal":
     case "lot_draft_past_start":
+    case "register_lot_mismatch":
       return subjectId ? adminRoutes.lot(subjectId) : adminRoutes.lots.list();
     case "payment_overdue":
       return requireId(kind, subjectId, adminRoutes.lot);

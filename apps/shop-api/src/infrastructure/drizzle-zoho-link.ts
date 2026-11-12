@@ -18,7 +18,12 @@ import {
 import type { IArtworkLinkHistory } from "@auction/persistence/interfaces";
 import { and, asc, desc, eq, ilike, inArray, isNull, or, sql } from "drizzle-orm";
 import { laxArtOfferBlockers } from "../application/artwork-register/lax-art-offer-blockers.js";
-import { planLink } from "../application/artwork-register/zoho-link-differences.js";
+import {
+  type ArtistForCode,
+  type LinkListingFacts,
+  type LinkUpdate,
+  planLink,
+} from "../application/artwork-register/zoho-link-differences.js";
 import type { ShopUnitOfWorkFactory } from "../application/ports/shop-unit-of-work.js";
 import {
   type LinkCommand,
@@ -114,6 +119,112 @@ async function imagesByArtwork(
   for (const row of rows)
     keys.set(row.artworkId, [...(keys.get(row.artworkId) ?? []), row.mediaKey]);
   return keys;
+}
+
+type ListingToRead = {
+  id: string;
+  title: string;
+  medium: string | null;
+  dimensions: string | null;
+  year: number | null;
+  artistId: string;
+};
+
+/**
+ * The listing's facts as linking compares them, with the lax.art artist Zoho's artist code points
+ * to. Shared by linking and by "Update from Zoho", so both read a listing the same way.
+ */
+export async function readListingFacts(
+  session: Database,
+  listing: ListingToRead,
+  entry: { artist: { code: string } },
+): Promise<{ facts: LinkListingFacts; artistForCode: ArtistForCode }> {
+  const [artist] = await session
+    .select({
+      displayName: shopParty.displayName,
+      code: shopArtist.zohoArtistCode,
+    })
+    .from(shopArtist)
+    .innerJoin(shopParty, eq(shopArtist.partyId, shopParty.id))
+    .where(eq(shopArtist.id, listing.artistId))
+    .limit(1);
+  const [forCode] = await session
+    .select({
+      artistId: shopArtist.id,
+      displayName: shopParty.displayName,
+      archivedAt: shopArtist.archivedAt,
+    })
+    .from(shopArtist)
+    .innerJoin(shopParty, eq(shopArtist.partyId, shopParty.id))
+    .where(eq(shopArtist.zohoArtistCode, entry.artist.code))
+    .limit(1);
+  const images = (await imagesByArtwork(session, [listing.id])).get(listing.id) ?? [];
+  return {
+    facts: {
+      title: listing.title,
+      artistId: listing.artistId,
+      artistName: artist?.displayName ?? "",
+      artistCode: artist?.code ?? null,
+      medium: listing.medium,
+      dimensions: listing.dimensions,
+      year: listing.year,
+      imageKeys: images,
+    },
+    artistForCode: forCode
+      ? {
+          artistId: forCode.artistId,
+          displayName: forCode.displayName,
+          archived: forCode.archivedAt !== null,
+        }
+      : null,
+  };
+}
+
+/** Writes what a link plan changes on the listing: facts, artist, images. The web address never. */
+export async function writeListingUpdate(
+  session: Database,
+  input: {
+    listingId: string;
+    artistId: string;
+    update: LinkUpdate;
+    now: Date;
+    /** Set when linking: the Zoho Product the listing now comes from. */
+    link?: string;
+  },
+): Promise<void> {
+  const { update, listingId } = input;
+  if (update.claimArtistCode) {
+    await session
+      .update(shopArtist)
+      .set({ zohoArtistCode: update.claimArtistCode })
+      .where(and(eq(shopArtist.id, input.artistId), isNull(shopArtist.zohoArtistCode)));
+  }
+  await session
+    .update(shopArtwork)
+    .set({
+      ...(input.link !== undefined ? { zohoProductId: input.link } : {}),
+      ...(update.title !== undefined ? { title: update.title } : {}),
+      ...(update.medium !== undefined ? { medium: update.medium } : {}),
+      ...(update.dimensions !== undefined ? { dimensions: update.dimensions } : {}),
+      ...(update.yearCreated !== undefined ? { yearCreated: update.yearCreated } : {}),
+      ...(update.artistId !== undefined ? { artistId: update.artistId } : {}),
+      version: sql`${shopArtwork.version} + 1`,
+      updatedAt: input.now,
+    })
+    .where(eq(shopArtwork.id, listingId));
+  if (update.images) {
+    await session.delete(shopArtworkImage).where(eq(shopArtworkImage.artworkId, listingId));
+    if (update.images.length > 0) {
+      await session.insert(shopArtworkImage).values(
+        update.images.map((mediaKey, position) => ({
+          artworkId: listingId,
+          mediaKey,
+          position,
+          alt: null,
+        })),
+      );
+    }
+  }
 }
 
 export function createDrizzleZohoLinkListingReader(db: Database): ZohoLinkListingReader {
@@ -353,84 +464,19 @@ export function createDrizzleZohoLinkWriter(
         );
       }
 
-      const [artist] = await session
-        .select({
-          artistId: shopArtist.id,
-          displayName: shopParty.displayName,
-          archivedAt: shopArtist.archivedAt,
-          code: shopArtist.zohoArtistCode,
-        })
-        .from(shopArtist)
-        .innerJoin(shopParty, eq(shopArtist.partyId, shopParty.id))
-        .where(eq(shopArtist.id, listing.artistId))
-        .limit(1);
-      const [forCode] = await session
-        .select({
-          artistId: shopArtist.id,
-          displayName: shopParty.displayName,
-          archivedAt: shopArtist.archivedAt,
-        })
-        .from(shopArtist)
-        .innerJoin(shopParty, eq(shopArtist.partyId, shopParty.id))
-        .where(eq(shopArtist.zohoArtistCode, entry.artist.code))
-        .limit(1);
-      const images = (await imagesByArtwork(session, [listing.id])).get(listing.id) ?? [];
-      const plan = planLink(
-        {
-          title: listing.title,
-          artistId: listing.artistId,
-          artistName: artist?.displayName ?? "",
-          artistCode: artist?.code ?? null,
-          medium: listing.medium,
-          dimensions: listing.dimensions,
-          year: listing.year,
-          imageKeys: images,
-        },
-        entry,
-        forCode
-          ? {
-              artistId: forCode.artistId,
-              displayName: forCode.displayName,
-              archived: forCode.archivedAt !== null,
-            }
-          : null,
-      );
+      const { facts, artistForCode } = await readListingFacts(session, listing, entry);
+      const images = facts.imageKeys;
+      const plan = planLink(facts, entry, artistForCode);
       if (plan.artistRefusal) throw new ZohoLinkRefusedError(plan.artistRefusal);
 
       const now = clock();
-      const { update } = plan;
-      if (update.claimArtistCode) {
-        await session
-          .update(shopArtist)
-          .set({ zohoArtistCode: update.claimArtistCode })
-          .where(and(eq(shopArtist.id, listing.artistId), isNull(shopArtist.zohoArtistCode)));
-      }
-      await session
-        .update(shopArtwork)
-        .set({
-          zohoProductId: entry.zohoProductId,
-          ...(update.title !== undefined ? { title: update.title } : {}),
-          ...(update.medium !== undefined ? { medium: update.medium } : {}),
-          ...(update.dimensions !== undefined ? { dimensions: update.dimensions } : {}),
-          ...(update.yearCreated !== undefined ? { yearCreated: update.yearCreated } : {}),
-          ...(update.artistId !== undefined ? { artistId: update.artistId } : {}),
-          version: sql`${shopArtwork.version} + 1`,
-          updatedAt: now,
-        })
-        .where(eq(shopArtwork.id, listing.id));
-      if (update.images) {
-        await session.delete(shopArtworkImage).where(eq(shopArtworkImage.artworkId, listing.id));
-        if (update.images.length > 0) {
-          await session.insert(shopArtworkImage).values(
-            update.images.map((mediaKey, position) => ({
-              artworkId: listing.id,
-              mediaKey,
-              position,
-              alt: null,
-            })),
-          );
-        }
-      }
+      await writeListingUpdate(session, {
+        listingId: listing.id,
+        artistId: listing.artistId,
+        update: plan.update,
+        now,
+        link: entry.zohoProductId,
+      });
 
       const actor = `staff:${command.actorSubjectId}`;
       // A live listing is offered on lax.art, so the register says so, through the same lock as a

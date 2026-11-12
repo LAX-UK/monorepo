@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { selectHostedBrand } from "./brand.js";
 import { contextLine } from "./chrome.js";
 import { HOSTED_COPY } from "./copy.js";
-import { parseHostedAuthFlow } from "./flow-context.js";
+import { appendOidcAuthorizeParams, parseHostedAuthFlow } from "./flow-context.js";
 
 const textOf = (html: string) => html.replace(/<[^>]+>/g, "");
 
@@ -44,5 +44,17 @@ describe("hosted_context", () => {
     expect(
       parseHostedAuthFlow(new URLSearchParams("client_id=lax-bid-web&hosted_context=x")).context,
     ).toBeNull();
+  });
+});
+
+describe("reauth_reason", () => {
+  it("rides along with the authorize parameters, so the sign-in page can say why", () => {
+    const target = new URL("https://auth.test/login");
+    appendOidcAuthorizeParams(
+      target,
+      new URLSearchParams("client_id=lax-account-web&reauth_reason=add_sign_in_method&junk=1"),
+    );
+    expect(target.searchParams.get("reauth_reason")).toBe("add_sign_in_method");
+    expect(target.searchParams.has("junk")).toBe(false);
   });
 });

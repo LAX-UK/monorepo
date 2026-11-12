@@ -107,6 +107,37 @@ describe("Confirm it's you", () => {
     expect(view(`${shop}&prompt=login`).flow.reauth).toBe(false);
   });
 
+  it("says why it asks, in the words for the reasons on its list", () => {
+    const lead = (reason: string) =>
+      textOf(
+        buildHostedConfirmHtml(
+          { ...person, methods: all },
+          view(`${reauth}&reauth_reason=${reason}`),
+        ),
+      );
+    expect(lead("add_sign_in_method")).toContain(
+      "Before you add a way to sign in, we need you to sign in again.",
+    );
+    expect(lead("remove_sign_in_method")).toContain(
+      "Before you remove a way to sign in, we need you to sign in again.",
+    );
+    expect(lead("change_password")).toContain(
+      "Before you change your password, we need you to sign in again.",
+    );
+  });
+
+  it("never words a reason that is not on the list, and ignores one on any other page", () => {
+    const general = "Before you make this change, we need you to sign in again.";
+    for (const raw of ["%3Cscript%3Ealert(1)%3C/script%3E", "delete_everything", ""]) {
+      const url = `${reauth}&reauth_reason=${raw}`;
+      expect(view(url).flow.reauthReason).toBeNull();
+      const html = buildHostedConfirmHtml({ ...person, methods: all }, view(url));
+      expect(textOf(html)).toContain(general);
+      expect(html).not.toContain("<script>alert");
+    }
+    expect(view(`${shop}&reauth_reason=add_sign_in_method`).flow.reauthReason).toBeNull();
+  });
+
   it("leads with the passkey, then the password, then Google, for the signed-in person", () => {
     const html = buildHostedConfirmHtml({ ...person, methods: all }, view(reauth));
     expect(html).toContain("<h1>Confirm it&#39;s you</h1>");

@@ -14,6 +14,8 @@ export const STRIPE_PAYMENT_EVENT_HANDLERS: Partial<
     service.handlePaymentIntentSucceeded(event, event.data.object as Stripe.PaymentIntent),
   "payment_intent.processing": (service, event) =>
     service.handlePaymentIntentProcessing(event, event.data.object as Stripe.PaymentIntent),
+  "payment_intent.requires_action": (service, event) =>
+    service.handlePaymentIntentRequiresAction(event, event.data.object as Stripe.PaymentIntent),
   "payment_intent.partially_funded": (service, event) =>
     service.handlePaymentIntentPartiallyFunded(event, event.data.object as Stripe.PaymentIntent),
   "payment_intent.payment_failed": (service, event) =>
@@ -32,6 +34,11 @@ export const STRIPE_PAYMENT_EVENT_HANDLERS: Partial<
     service.handleDisputeClosed(event, event.data.object as Stripe.Dispute),
   "cash_balance.funds_available": (service, event) =>
     service.handleCashBalanceFundsAvailable(event, event.data.object as Stripe.CashBalance),
+  "customer_cash_balance_transaction.created": (service, event) =>
+    service.handleCashBalanceTransactionCreated(
+      event,
+      event.data.object as Stripe.CustomerCashBalanceTransaction,
+    ),
   "charge.refunded": (service, event) =>
     service.handleChargeRefunded(event, event.data.object as Stripe.Charge),
   "checkout.session.async_payment_failed": (service, event) =>

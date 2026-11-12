@@ -22,6 +22,7 @@ const baseUser: AdminUserDetailPayload = {
   emailStatus: "ok",
   signupPersona: "individual",
   securityStatusAvailable: true,
+  signInMethodKinds: null,
   twoFactorEnabled: false,
   kycStatus: "approved",
   kycVerifiedAt: "2024-02-01T00:00:00.000Z",

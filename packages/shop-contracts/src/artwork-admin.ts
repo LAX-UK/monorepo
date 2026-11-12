@@ -1,5 +1,6 @@
 import { type Static, Type } from "@sinclair/typebox";
 import { AdminRegisterEventSchema } from "./admin-artwork-register.js";
+import { AdminCatalogueChangeSchema } from "./admin-catalogue-change.js";
 import { AdminWhereItIsSchema } from "./admin-where-it-is.js";
 import { CATALOGUE_SLUG_MAX_LENGTH, CATALOGUE_SLUG_PATTERN } from "./catalogue-slug.js";
 import { createCursorListResponseSchema } from "./cursor-list.js";
@@ -372,6 +373,8 @@ export const AdminArtworkDetailSchema = Type.Object({
         whereItIs: AdminWhereItIsSchema,
         /** The last few moves, newest first. */
         recentMoves: Type.Array(AdminRegisterEventSchema),
+        /** Where Zoho has changed the details since this listing took them; null when it matches. */
+        catalogueChange: Type.Optional(Type.Union([AdminCatalogueChangeSchema, Type.Null()])),
       }),
       Type.Null(),
     ]),

@@ -24,6 +24,8 @@ export type ConfirmDialogProps = {
   cancelLabel?: string;
   tone?: ConfirmDialogTone;
   loading?: boolean;
+  /** Replaces the confirm label while loading ("Removing…"); "Working…" when not given. */
+  loadingLabel?: string;
   onConfirm: () => void | Promise<void>;
 };
 
@@ -43,6 +45,7 @@ export function ConfirmDialog({
   cancelLabel = "Cancel",
   tone = "danger",
   loading = false,
+  loadingLabel = "Working…",
   onConfirm,
 }: ConfirmDialogProps) {
   return (
@@ -67,7 +70,7 @@ export function ConfirmDialog({
             type="button"
             variant={confirmVariant[tone]}
             loading={loading}
-            loadingLabel="Working…"
+            loadingLabel={loadingLabel}
             onClick={() => void onConfirm()}
           >
             {confirmLabel}

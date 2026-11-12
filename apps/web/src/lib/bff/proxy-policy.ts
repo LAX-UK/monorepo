@@ -1,3 +1,5 @@
+import { viewSessionCookieHeader } from "./view-session-cookie";
+
 const APPROVED_ROOTS = new Set([
   "admin",
   "alerts",
@@ -71,6 +73,9 @@ export function sanitizedProxyRequestHeaders(source: Headers, bearer?: string): 
   for (const [name, value] of source) {
     if (REQUEST_HEADERS.has(name.toLowerCase())) result.set(name, value);
   }
+  // `cookie` is never in the allow-list above: only the view-as-client session crosses, by name.
+  const viewSession = viewSessionCookieHeader(source.get("cookie"));
+  if (viewSession) result.set("cookie", viewSession);
   return result;
 }
 
