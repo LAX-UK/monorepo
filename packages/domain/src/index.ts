@@ -1355,6 +1355,14 @@ export {
   sellerConsentWindow,
   type SellerConsentWindow,
 } from "./reoffer-windows.js";
+export {
+  reofferResponseBlock,
+  reofferSendBlock,
+  type ReofferResponseBlockCode,
+  type ReofferSendBlock,
+  type ReofferSendBlockCode,
+  type ReofferSendFacts,
+} from "./reoffer-guards.js";
 export { paymentIsPaidOrBeingPaid, paymentIsSettling } from "./buyer-default.js";
 
 export {

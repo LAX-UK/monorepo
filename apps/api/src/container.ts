@@ -66,6 +66,7 @@ import { createPaymentsServices } from "./container/create-payments-services.js"
 import { createPlatformCronRouteServices } from "./container/create-platform-cron-route-services.js";
 import { createPlatformServices } from "./container/create-platform-services.js";
 import { createPurchaseProblemDesk } from "./container/create-purchase-problem-desk.js";
+import { createReofferServices } from "./container/create-reoffer-services.js";
 import { createRepositories } from "./container/create-repositories.js";
 import { createSubmissionRouteServices } from "./container/create-submission-route-services.js";
 import { createUserMiscServices } from "./container/create-user-misc-services.js";
@@ -508,6 +509,7 @@ export function createContainer(env: Env): Container {
     onPayoutTotalsMismatch: (report) =>
       createBaseLogger(env).warn(report, "payout totals differ from payout lines"),
   });
+  const reoffer = createReofferServices({ env, db, platform, repos, payments });
   const organisationWorkspace = createOrganisationWorkspaceServices({
     db,
     legalEntities: repos.legalEntityRepository,
@@ -888,6 +890,7 @@ export function createContainer(env: Env): Container {
     organisationHome,
     organisationBuying: organisationBuying.client,
     organisationSelling,
+    reoffer,
     organisationAccess,
     organisationWorkspace,
     organisationTeam,
@@ -937,6 +940,7 @@ export type {
   ContainerOrganisationHomeRoutesSlice,
   ContainerOrganisationBuyingRoutesSlice,
   ContainerOrganisationSellingRoutesSlice,
+  ContainerReofferRoutesSlice,
   ContainerOrganisationAccessRoutesSlice,
   ContainerOrganisationWorkspaceRoutesSlice,
   ContainerOrganisationTeamRoutesSlice,
