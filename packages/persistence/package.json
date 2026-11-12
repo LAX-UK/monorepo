@@ -34,6 +34,7 @@
   "dependencies": {
     "@auction/alerts": "workspace:*",
     "@auction/artwork-register-contracts": "workspace:*",
+    "@auction/datetime": "workspace:*",
     "@auction/db": "workspace:*",
     "@auction/domain": "workspace:*",
     "@auction/types": "workspace:*",

@@ -5,6 +5,7 @@ import { formatMoney, lotChargeCurrency } from "@/lib/format-currency";
 import { CLIENT_ROUTES, organisationHref } from "@/lib/navigation/client-routes";
 import { payHref } from "@/lib/pay/pay-links";
 import { lotPath } from "@/lib/seo/url";
+import { formatDate, formatDayMonthOnly } from "@auction/datetime";
 import { LONDON_TIME_ZONE, formatWhen } from "@auction/datetime";
 import {
   type AmountOwedBlocker,
@@ -159,16 +160,10 @@ export type PurchaseSources = {
   showWonBy?: boolean;
 };
 
-const DAY_MONTH = new Intl.DateTimeFormat("en-GB", {
-  day: "numeric",
-  month: "short",
-  timeZone: "Europe/London",
-});
-const DAY_MONTH_LONG = new Intl.DateTimeFormat("en-GB", {
-  day: "numeric",
-  month: "long",
-  timeZone: "Europe/London",
-});
+/** "12 November": a day and month in full, in London time. */
+function longDayMonth(date: Date): string {
+  return formatDate(date, LONDON_TIME_ZONE, { month: "long" }).replace(/ \d{4}$/, "");
+}
 
 function dueDate(row: PortfolioRow, facts: AccountPurchaseFacts | null = null): Date {
   if (facts?.invoice.dueAt) return facts.invoice.dueAt;
@@ -232,7 +227,7 @@ function noteFor(
       return "Delivered by insured courier";
     case "collected":
       return fulfilment?.collectedAt
-        ? `Collected ${DAY_MONTH_LONG.format(new Date(fulfilment.collectedAt))}`
+        ? `Collected ${longDayMonth(new Date(fulfilment.collectedAt))}`
         : "Collected from LAX";
     case "refunded":
       return "Your payment has been refunded";
@@ -295,12 +290,12 @@ function stepDate(
   fulfilment: LotFulfilmentSnapshot | undefined,
   facts: AccountPurchaseFacts | null,
 ): string | null {
-  if (step === "won") return DAY_MONTH.format(row.lot.endTime);
+  if (step === "won") return formatDayMonthOnly(row.lot.endTime, LONDON_TIME_ZONE);
   if (step === "payment" && (state === "payment-due" || state === "in-review")) {
-    return `Due ${DAY_MONTH.format(dueDate(row, facts))}`;
+    return `Due ${formatDayMonthOnly(dueDate(row, facts), LONDON_TIME_ZONE)}`;
   }
   if (step === "delivered" && fulfilment?.collectedAt) {
-    return DAY_MONTH.format(new Date(fulfilment.collectedAt));
+    return formatDayMonthOnly(new Date(fulfilment.collectedAt), LONDON_TIME_ZONE);
   }
   return null;
 }

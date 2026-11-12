@@ -2,6 +2,7 @@ import { formatPounds } from "@/lib/buyer-agents/authorisation-presenter";
 import type { AccountRegistrationView } from "@/lib/data/http/account-buying.types";
 import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
 import { matchesEveryWord } from "@/lib/workspace/list-search";
+import { LONDON_TIME_ZONE, formatDateTime, formatDayMonthOnly } from "@auction/datetime";
 import type { StatusBadgeShape, StatusBadgeTone } from "@auction/ui/lax";
 
 type RegistrationStatus = AccountRegistrationView["status"];
@@ -50,20 +51,6 @@ export type RegistrationRowVm = {
   contact: boolean;
 };
 
-const DATE_TIME = new Intl.DateTimeFormat("en-GB", {
-  timeZone: "Europe/London",
-  day: "numeric",
-  month: "short",
-  year: "numeric",
-  hour: "2-digit",
-  minute: "2-digit",
-});
-const DAY_MONTH = new Intl.DateTimeFormat("en-GB", {
-  timeZone: "Europe/London",
-  day: "numeric",
-  month: "short",
-});
-
 /** The per-sale view of Bids. */
 export function saleBidsHref(saleId: string): string {
   return `${CLIENT_ROUTES.bids}?sale=${encodeURIComponent(saleId)}`;
@@ -71,9 +58,10 @@ export function saleBidsHref(saleId: string): string {
 
 function toRow(row: AccountRegistrationView, showRegisteredBy: boolean): RegistrationRowVm {
   const spec = STATUS[row.status];
-  const meta = [`${DATE_TIME.format(row.saleStartsAt)} UK time`];
+  const meta = [`${formatDateTime(row.saleStartsAt, LONDON_TIME_ZONE)} UK time`];
   if (row.paddleNumber != null) meta.push(`paddle ${row.paddleNumber}`);
-  if (row.status === "pending") meta.push(`asked ${DAY_MONTH.format(row.requestedAt)}`);
+  if (row.status === "pending")
+    meta.push(`asked ${formatDayMonthOnly(row.requestedAt, LONDON_TIME_ZONE)}`);
   if (showRegisteredBy && row.registeredBy.name)
     meta.push(`registered by ${row.registeredBy.name}`);
   return {
