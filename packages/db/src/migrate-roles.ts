@@ -222,10 +222,50 @@ export const API_SSF_RECEIVER_TABLES = ["bid_ssf_replay"] as const;
  */
 export const API_PAYMENT_REFUND_TABLES = ["payment_refund"] as const;
 /**
+ * Each link, change and removal of a private sale deal's artwork. Append-only, so api_app gets
+ * INSERT and SELECT only; no other role has access.
+ */
+export const API_PRIVATE_SALE_ARTWORK_HISTORY_TABLES = [
+  "private_sale_deal_artwork_history",
+] as const;
+
+/**
  * The reference each bank-transfer payment shows its sender, kept for after the provider stops
  * showing it. Append-only, so api_app gets INSERT and SELECT only; no other role touches it.
  */
 export const API_PAYMENT_TRANSFER_REFERENCE_TABLES = ["payment_transfer_reference"] as const;
+/**
+ * Accounting documents and their history (migration 0368). The Bid API only reads them, and
+ * changes the per-product source switch that staff routes expose; the worker creates and advances
+ * documents, adds to their history and reads the switch. History is append-only: nobody gets
+ * UPDATE or DELETE on it (a trigger refuses them for the owner too). No other role has access.
+ */
+export const API_ACCOUNTING_READ_TABLES = [
+  "accounting_document",
+  "accounting_document_event",
+] as const;
+export const API_ACCOUNTING_SETTING_TABLES = ["accounting_source_setting"] as const;
+export const WORKER_ACCOUNTING_DOCUMENT_TABLES = ["accounting_document"] as const;
+/** The columns the work queue and the transitions write; see `lifecycleColumns` in persistence. */
+export const WORKER_ACCOUNTING_DOCUMENT_UPDATE_COLUMNS = [
+  "state",
+  "attempts",
+  "lease_token",
+  "lease_expires_at",
+  "settles_at",
+  "review_lookup",
+  "needs_review_reason",
+  "provider",
+  "provider_id",
+  "provider_number",
+  "pdf_ref",
+  "mismatch_field",
+  "mismatch_difference_pence",
+  "last_error_class",
+  "updated_at",
+] as const;
+export const WORKER_ACCOUNTING_APPEND_ONLY_TABLES = ["accounting_document_event"] as const;
+export const WORKER_ACCOUNTING_READ_TABLES = ["accounting_source_setting"] as const;
 /** Shop Identity owns only its local Identity projection. */
 export const SHOP_PRODUCT_PROFILE_TABLES = [
   "shop_user_profile",
@@ -561,6 +601,41 @@ export const WORKER_DISPLAY_PAIRING_TABLES = ["saleroom_display_pairing"] as con
 
 /** Invoice addressing reads during lot invoice initiation. */
 export const WORKER_FINANCE_READ_TABLES = ["address"] as const;
+
+/**
+ * Re-offers after a buyer default: the sweeps lapse an unanswered seller request, remind the seller
+ * and end an offer the bidder let run out, so worker_app reads these tables and updates the
+ * columns that say where a request or an offer stands, and nothing else. It never creates, deletes
+ * or re-prices an offer, never changes who it is for, and never sets `reawarded_at`: only the
+ * re-award transaction, through the API, makes a lot's winner.
+ */
+export const WORKER_REOFFER_TABLES = ["lot_reoffer", "seller_consent"] as const;
+export const WORKER_REOFFER_UPDATE_COLUMNS = {
+  lot_reoffer: ["status", "close_reason", "closed_by", "updated_at"],
+  /**
+   * A lapse is the same write as an answer (`answer`): status, who and how it arrived (nobody, by
+   * the clock), when, and the note and preference an answer may carry. The reminder sets
+   * `reminded_at`. The request itself (terms, due date, who it is for) is never changed.
+   */
+  seller_consent: [
+    "status",
+    "channel",
+    "answered_by_user_id",
+    "answered_at",
+    "note",
+    "preferred_next",
+    "reminded_at",
+  ],
+} as const;
+
+/**
+ * What the re-offer clock reads of the buyer default: which one is the lot's latest, so it never
+ * reminds a bidder about an offer a later default has overtaken. Three columns only; the hammer,
+ * the buyer and the reason stay with the API.
+ */
+export const WORKER_REOFFER_READ_COLUMNS = [
+  ["buyer_default", ["id", "lot_id", "created_at"]],
+] as const;
 
 /** Lot lifecycle notification staging (won/lost) drained by notification outbox cron. */
 export const WORKER_NOTIFICATION_OUTBOX_TABLES = ["notification_outbox"] as const;
@@ -981,6 +1056,20 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
             await grantIfExists(client, "api_app", tableName, "INSERT, SELECT, DELETE");
             continue;
           }
+          if ((API_ACCOUNTING_READ_TABLES as readonly string[]).includes(tableName)) {
+            await grantIfExists(client, "api_app", tableName, "SELECT");
+            continue;
+          }
+          if ((API_ACCOUNTING_SETTING_TABLES as readonly string[]).includes(tableName)) {
+            // Read only until a staff route changes the switch; that route's PR grants
+            // UPDATE (xero_mode, books_mode, updated_at, updated_by) and nothing wider.
+            await grantIfExists(client, "api_app", tableName, "SELECT");
+            continue;
+          }
+          if ((API_PRIVATE_SALE_ARTWORK_HISTORY_TABLES as readonly string[]).includes(tableName)) {
+            await grantIfExists(client, "api_app", tableName, "INSERT, SELECT");
+            continue;
+          }
           if (
             (API_PAYMENT_REFUND_TABLES as readonly string[]).includes(tableName) ||
             (API_PAYMENT_TRANSFER_REFERENCE_TABLES as readonly string[]).includes(tableName)
@@ -1143,6 +1232,23 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
         for (const tableName of WORKER_ARTWORK_REGISTER_APPEND_ONLY_TABLES) {
           await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT");
         }
+        for (const tableName of WORKER_ACCOUNTING_DOCUMENT_TABLES) {
+          // The worker moves a document along its life cycle; it never rewrites what the document
+          // says (payload, totals, product, reference), so UPDATE is column by column.
+          await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT");
+          await grantColumnUpdateIfExists(
+            client,
+            "worker_app",
+            tableName,
+            WORKER_ACCOUNTING_DOCUMENT_UPDATE_COLUMNS,
+          );
+        }
+        for (const tableName of WORKER_ACCOUNTING_APPEND_ONLY_TABLES) {
+          await grantIfExists(client, "worker_app", tableName, "INSERT");
+        }
+        for (const tableName of WORKER_ACCOUNTING_READ_TABLES) {
+          await grantIfExists(client, "worker_app", tableName, "SELECT");
+        }
         for (const tableName of WORKER_ZOHO_CAMPAIGNS_SUPPRESSION_TABLES) {
           await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT, UPDATE");
         }
@@ -1187,6 +1293,13 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
         }
         for (const tableName of WORKER_FINANCE_READ_TABLES) {
           await grantIfExists(client, "worker_app", tableName, "SELECT");
+        }
+        for (const [tableName, columns] of Object.entries(WORKER_REOFFER_UPDATE_COLUMNS)) {
+          await grantIfExists(client, "worker_app", tableName, "SELECT");
+          await grantColumnUpdateIfExists(client, "worker_app", tableName, columns);
+        }
+        for (const [tableName, columns] of WORKER_REOFFER_READ_COLUMNS) {
+          await grantColumnSelectIfExists(client, "worker_app", tableName, columns);
         }
         for (const tableName of WORKER_NOTIFICATION_OUTBOX_TABLES) {
           await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT, UPDATE");

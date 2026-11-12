@@ -1,3 +1,4 @@
+import { artworkMoveTitle } from "@/lib/admin/private-sales/deal-artwork.vm";
 import {
   CHECK_LABELS,
   DEAL_STAGE_LABELS,
@@ -23,6 +24,11 @@ import type * as React from "react";
 type Tone = "neutral" | "success" | "warning" | "danger";
 
 const NOT_CONFIGURED = "Terms not configured";
+
+const UNLINKED_REASON_LABEL = {
+  sellers_own_work: "The seller's own work",
+  in_zoho_not_linked: "In Zoho, but not linked yet",
+} as const;
 
 function Check({ tone, children }: { tone: Tone; children: React.ReactNode }) {
   return <StatusBadge tone={tone}>{children}</StatusBadge>;
@@ -428,21 +434,40 @@ export function DocumentsSection({ deal }: { deal: DealRecord }) {
   );
 }
 
+/** The reason given and the artwork's stock code: what the history line adds to its title. */
+function artworkMoveDetail(move: DealRecord["artworkMoves"][number]): string | null {
+  const parts = [
+    move.to ? move.to.stockCode : null,
+    move.action === "removed" && move.toUnlinkedReason
+      ? UNLINKED_REASON_LABEL[move.toUnlinkedReason]
+      : null,
+    move.reason,
+  ].filter((part): part is string => Boolean(part));
+  return parts.length > 0 ? parts.join(" · ") : null;
+}
+
 /** The deal's own history: each stage it entered, who moved it and why. */
 export function dealTimeline(deal: DealRecord): TimelineEvent[] {
-  return deal.timeline
-    .map((entry, index) => ({
-      id: `${index}-${entry.toStage}`,
-      title:
-        entry.fromStage === null ? "Deal opened" : `Moved to ${DEAL_STAGE_LABELS[entry.toStage]}`,
-      at: entry.createdAt,
-      actor: entry.actorName ?? "System",
-      ...(entry.reason ? { detail: entry.reason } : {}),
-      tone: (entry.toStage === "cancelled"
-        ? "neutral"
-        : entry.toStage === "settled" || entry.toStage === "paid"
-          ? "success"
-          : "info") as NonNullable<TimelineEvent["tone"]>,
-    }))
-    .sort((a, b) => b.at.localeCompare(a.at));
+  const artwork: TimelineEvent[] = deal.artworkMoves.map((move, index) => ({
+    id: `artwork-${index}`,
+    title: artworkMoveTitle(move),
+    at: move.createdAt,
+    actor: move.actorName ?? "System",
+    ...(artworkMoveDetail(move) ? { detail: artworkMoveDetail(move) as string } : {}),
+    tone: "info" as const,
+  }));
+  const stages = deal.timeline.map((entry, index) => ({
+    id: `${index}-${entry.toStage}`,
+    title:
+      entry.fromStage === null ? "Deal opened" : `Moved to ${DEAL_STAGE_LABELS[entry.toStage]}`,
+    at: entry.createdAt,
+    actor: entry.actorName ?? "System",
+    ...(entry.reason ? { detail: entry.reason } : {}),
+    tone: (entry.toStage === "cancelled"
+      ? "neutral"
+      : entry.toStage === "settled" || entry.toStage === "paid"
+        ? "success"
+        : "info") as NonNullable<TimelineEvent["tone"]>,
+  }));
+  return [...stages, ...artwork].sort((a, b) => b.at.localeCompare(a.at));
 }

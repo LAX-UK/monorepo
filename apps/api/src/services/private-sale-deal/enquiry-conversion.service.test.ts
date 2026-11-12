@@ -1,3 +1,4 @@
+import type { ArtworkRegisterEntry, LockMessage } from "@auction/artwork-register-contracts";
 import { resolvePrivateSalePolicy } from "@auction/domain";
 import type { DealWork, MarketingEnquiryDetailRecord } from "@auction/persistence/interfaces";
 import { describe, expect, it, vi } from "vitest";
@@ -118,7 +119,16 @@ function setup(
     dealsForTx: () => ({ create }),
     artworks: {
       findById: async () =>
-        options.artwork === undefined ? { kind: "original" } : options.artwork,
+        (options.artwork === undefined
+          ? { kind: "original" }
+          : options.artwork) as ArtworkRegisterEntry | null,
+    },
+    lockLinks: {
+      attach: async (items: readonly { lock: LockMessage }[]) =>
+        items.map(({ lock }) => ({
+          ...lock,
+          link: lock.link ? { ...lock.link, href: "https://admin.test/lot" } : null,
+        })),
     },
     registerForTx: () => ({ offer, withdraw: vi.fn(), markSold: vi.fn() }),
     parties: {
@@ -515,7 +525,8 @@ describe("EnquiryConversionService and the artwork register", () => {
       ok: false,
       error: "artwork_unavailable",
       message: "This artwork is live on lax.art. Withdraw it there first.",
-      lock,
+      // The link carries the address the product is configured with, so staff can open it.
+      lock: { ...lock, link: { ...lock.link, href: "https://admin.test/lot" } },
     });
     // The hold is the last write of the transaction, so the enquiry was not left converted by a
     // refusal: the thrown error undoes the whole conversion.

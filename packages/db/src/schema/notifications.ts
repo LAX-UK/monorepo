@@ -70,6 +70,12 @@ export const NOTIFICATION_TYPES = [
   "sale_announced",
   "artist_lots_listed",
   "search_lots_listed",
+  "reoffer_seller_request",
+  "reoffer_seller_reminder",
+  "reoffer_seller_outcome",
+  "reoffer_offer",
+  "reoffer_offer_reminder",
+  "reoffer_offer_closed",
 ] as const;
 
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];

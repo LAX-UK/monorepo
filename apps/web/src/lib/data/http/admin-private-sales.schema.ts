@@ -1,6 +1,11 @@
-import { DEAL_VIEWS } from "@auction/domain";
+import { DEAL_VIEWS, SETTLEMENT_FOLLOW_UP_SEVERITIES } from "@auction/domain";
 import { PRIVATE_SALE_DEAL_STAGES } from "@auction/types";
-import { STAFF_DEAL_ACTIONS } from "@auction/validators";
+import { PRIVATE_SALE_ARTWORK_UNLINKED_REASONS } from "@auction/types";
+import {
+  STAFF_DEAL_ACTIONS,
+  dealArtworkLockSchema,
+  dealArtworkOptionSchema,
+} from "@auction/validators";
 import { z } from "zod";
 
 /** What the staff Private sales routes answer with. Browser-safe: no server-only imports. */
@@ -21,6 +26,8 @@ export const dealListItemSchema = z.object({
   paymentDueAt: z.string().nullable(),
   collectionDueAt: z.string().nullable(),
   updatedAt: z.string(),
+  /** Set on a settled deal whose artwork the register does not show as sold through it. */
+  settlementFollowUp: z.enum(SETTLEMENT_FOLLOW_UP_SEVERITIES).nullable(),
 });
 export type DealListItem = z.infer<typeof dealListItemSchema>;
 
@@ -28,8 +35,14 @@ export const dealListPageSchema = z.object({
   items: z.array(dealListItemSchema),
   nextCursor: z.string().nullable(),
   counts: z.record(z.enum(DEAL_VIEWS), z.number()),
+  /** Of the settled deals needing attention, how many may have been sold twice. */
+  urgentFollowUps: z.number(),
 });
 export type DealListPage = z.infer<typeof dealListPageSchema>;
+
+/** Settled deals needing attention for this person, and the urgent ones among them. */
+export const dealAttentionCountSchema = z.object({ total: z.number(), urgent: z.number() });
+export type DealAttentionCount = z.infer<typeof dealAttentionCountSchema>;
 
 const blockerSchema = z.object({
   code: z.string(),
@@ -68,6 +81,48 @@ export const TERM_KEYS = [
 ] as const;
 export type TermKey = (typeof TERM_KEYS)[number];
 
+const unlinkedReason = z.enum(PRIVATE_SALE_ARTWORK_UNLINKED_REASONS);
+
+/** The register artwork a deal holds, with where it is. */
+const dealArtworkSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  artist: z.string(),
+  medium: z.string().nullable(),
+  size: z.string().nullable(),
+  stockCode: z.string(),
+  catalogueStatus: z.string().nullable(),
+  thumbnailUrl: z.string().nullable(),
+  whereItIs: dealArtworkOptionSchema.shape.whereItIs,
+  heldSince: z.string(),
+  recordHref: z.string().nullable(),
+});
+export type DealArtwork = z.infer<typeof dealArtworkSchema>;
+
+const artworkNameSchema = z.object({ title: z.string(), stockCode: z.string() });
+
+const artworkMoveSchema = z.object({
+  action: z.enum(["linked", "changed", "removed"]),
+  from: artworkNameSchema.nullable(),
+  to: artworkNameSchema.nullable(),
+  fromUnlinkedReason: unlinkedReason.nullable(),
+  toUnlinkedReason: unlinkedReason.nullable(),
+  reason: z.string().nullable(),
+  createdAt: z.string(),
+  actorName: z.string().nullable(),
+});
+export type DealArtworkMoveRecord = z.infer<typeof artworkMoveSchema>;
+
+/** A settled deal whose artwork the register does not show as sold through it. */
+const settlementFollowUpSchema = z.object({
+  severity: z.enum(SETTLEMENT_FOLLOW_UP_SEVERITIES),
+  settledAt: z.string(),
+  /** The register's own reason, words and link, when it shows the artwork somewhere else. */
+  lock: dealArtworkLockSchema.nullable(),
+  canRetry: z.boolean(),
+});
+export type DealSettlementFollowUp = z.infer<typeof settlementFollowUpSchema>;
+
 export const dealRecordSchema = z.object({
   reference: z.string(),
   stage,
@@ -91,6 +146,16 @@ export const dealRecordSchema = z.object({
   createdAt: z.string(),
   updatedAt: z.string(),
   money: moneySchema.nullable(),
+  /** `null` while no register artwork is linked. */
+  artwork: dealArtworkSchema.nullable(),
+  artworkUnlinkedReason: unlinkedReason.nullable(),
+  artworkAccess: z.object({
+    canLink: z.boolean(),
+    canChange: z.boolean(),
+    changeOffReason: z.string().nullable(),
+  }),
+  artworkMoves: z.array(artworkMoveSchema),
+  settlementFollowUp: settlementFollowUpSchema.nullable(),
   seller: partySchema,
   buyer: partySchema.nullable(),
   /** `null` for people who may not see how the checks stand. */
@@ -152,6 +217,8 @@ export const dealRefusalSchema = z.object({
   fields: z.array(z.string()).optional(),
   blockers: z.array(blockerSchema).optional(),
   currentVersion: z.number().optional(),
+  /** For an artwork the register will not hold: its reason, words and link. */
+  lock: dealArtworkLockSchema.optional(),
 });
 export type DealRefusal = z.infer<typeof dealRefusalSchema>;
 

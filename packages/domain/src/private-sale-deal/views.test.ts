@@ -50,10 +50,26 @@ describe("deal views", () => {
       needs_me: 3,
       waiting_on_checks: 2,
       payment_due: 1,
+      needs_attention: 0,
       settled: 4,
       cancelled: 5,
       all: 15,
     });
+  });
+
+  it("counts the settlement follow-up from the register, not from the stage", () => {
+    const counts = dealViewCounts([{ stage: "settled", total: 4, ownedByViewer: 4 }], 2);
+    expect(counts.needs_attention).toBe(2);
+    expect(counts.settled).toBe(4);
+  });
+
+  it("holds a settled deal under needs attention only while it has a follow-up", () => {
+    const settled = { stage: "settled", ownerUserId: "u1" } as const;
+    expect(dealIsInView("needs_attention", { ...settled, followUp: true }, "u1")).toBe(true);
+    expect(dealIsInView("needs_attention", settled, "u1")).toBe(false);
+    expect(
+      dealIsInView("needs_attention", { stage: "paid", ownerUserId: "u1", followUp: true }, "u1"),
+    ).toBe(false);
   });
 
   it("shows the longest wait first in working views and the latest first in archives", () => {

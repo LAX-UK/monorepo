@@ -75,6 +75,11 @@ export const DANGEROUS_STAFF_ACTIONS: readonly DangerousStaffAction[] = [
   ),
   a("payout_release", "dispute.allocation", "POST", "/admin/finance/dispute-cases/:id/allocation"),
   a("payout_release", "lot.buyer-default", "POST", "/admin/lots/:lotId/buyer-default"),
+  // Offering a defaulted lot to the next bidder moves the sale to a new buyer
+  a("payout_release", "lot.reoffer-start", "POST", "/admin/lots/:lotId/reoffers"),
+  a("payout_release", "reoffer.seller-answer", "POST", "/admin/reoffers/:reofferId/seller-answer"),
+  a("payout_release", "reoffer.send", "POST", "/admin/reoffers/:reofferId/send"),
+  a("payout_release", "reoffer.withdraw", "POST", "/admin/reoffers/:reofferId/withdraw"),
   // Payout release and override
   a("payout_release", "payout.run-settlement", "POST", "/admin/payouts/run-settlement", "route"),
   a("payout_release", "payout.mark-paid", "POST", "/admin/payouts/:payoutId/mark-paid", "route"),

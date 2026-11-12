@@ -7,6 +7,21 @@ import type {
 } from "../../domain/lot-events.js";
 import type { RecordCreatedInput, RecordEndedInput } from "../lot-lifecycle-recording.types.js";
 
+/** The lifecycle events of re-offering a defaulted lot to the next bidder, and of the re-award. */
+export const LOT_REOFFER_EVENT_TYPES = [
+  "lot.reoffer_started",
+  "lot.seller_consent_given",
+  "lot.seller_consent_refused",
+  "lot.seller_consent_lapsed",
+  "lot.reoffer_sent",
+  "lot.reoffer_accepted",
+  "lot.reoffer_declined",
+  "lot.reoffer_expired",
+  "lot.reoffer_withdrawn",
+  "lot.reawarded",
+] as const;
+export type LotReofferEventType = (typeof LOT_REOFFER_EVENT_TYPES)[number];
+
 /** Narrow port for lot lifecycle event recording (status transitions, attach/detach). */
 export interface ILotLifecycleRecorder {
   recordCreated(tx: Database, input: RecordCreatedInput): Promise<void>;
@@ -80,6 +95,18 @@ export interface ILotLifecycleRecorder {
     lotRow: Pick<Lot, "id" | "saleId" | "sellerLegalEntityId">,
     payload: LotEventPayload<"lot.buyer_defaulted">,
     actorUserId: string,
+  ): Promise<void>;
+
+  /**
+   * A step of an offer to the next bidder, or the re-award itself. The lot stays ended, so no
+   * status is set: the event is recorded against the lot with the actor in the payload.
+   */
+  recordReoffer<T extends LotReofferEventType>(
+    tx: Database,
+    lotRow: Pick<Lot, "id" | "saleId" | "sellerLegalEntityId">,
+    eventType: T,
+    payload: LotEventPayload<T>,
+    actorUserId: string | null,
   ): Promise<void>;
 
   recordReturnedToInventory(

@@ -10,11 +10,13 @@ import {
 import type { IMediaUrlResolver } from "../services/interfaces/media-url-resolver.js";
 import type { IDealArtworkSearch } from "../services/interfaces/private-sale-deal-desk.js";
 import { DealArtworkSearchService } from "../services/private-sale-deal/deal-artwork-search.service.js";
+import type { DealLockLinks } from "../services/private-sale-deal/deal-lock-links.js";
 
 /** The picker staff choose a private sale deal's artwork from. */
 export function createDealArtworkSearch(input: {
   db: Database;
   media: Pick<IMediaUrlResolver, "resolveManyUnique">;
+  lockLinks: DealLockLinks;
 }): IDealArtworkSearch {
   const { db } = input;
   return new DealArtworkSearchService({
@@ -25,5 +27,6 @@ export function createDealArtworkSearch(input: {
     enquiries: new DrizzleMarketingEnquiryRepository(db),
     works: new DrizzleDealWorkStore(db),
     media: input.media,
+    lockLinks: input.lockLinks,
   });
 }

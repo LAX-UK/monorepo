@@ -32,6 +32,8 @@ export type EntityOption = {
    * always visible under it, read with the option, and never hidden behind a hover.
    */
   disabledReason?: string;
+  /** A line of context under a choosable option, such as a draft that cannot be published while it is held. */
+  note?: string;
   /** A heading above the first of a run of options that share it ("Can be held"). */
   group?: string;
   /** Unavailable with no reason to give: skipped by the arrow keys and read as unavailable. */
@@ -365,6 +367,12 @@ function OptionRow({
               </span>
             ) : null}
           </div>
+          {!locked && option.note ? (
+            <p className="flex gap-1.5 text-staff-xs text-staff-muted">
+              <Info aria-hidden className="mt-px size-3.5 shrink-0" />
+              <span>{option.note}</span>
+            </p>
+          ) : null}
           {locked ? (
             <p id={reasonId} className="flex gap-1.5 text-staff-xs text-staff-muted">
               <Lock aria-hidden className="mt-px size-3.5 shrink-0" />

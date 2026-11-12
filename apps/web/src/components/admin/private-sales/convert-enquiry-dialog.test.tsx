@@ -240,6 +240,40 @@ describe("ConvertEnquiryDialog", () => {
     expect(onDone).not.toHaveBeenCalled();
   });
 
+  it("shows the link in the lock's refusal when it has an address, and no link when it has none", async () => {
+    const lock = (href: string | null) => ({
+      reason: "live_on_lax_art",
+      message: "This artwork is live on lax.art. Take it off lax.art first.",
+      link: { label: "Open on lax.art", target: "lax_art_listing", href },
+    });
+    convert.mockResolvedValueOnce({
+      ok: false,
+      error: "This artwork is live on lax.art. Take it off lax.art first.",
+      errorCode: "artwork_unavailable",
+      meta: { lock: lock("https://admin.lax.test/from-zoho/reg-1") },
+    });
+    renderDialog(false);
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(within(dialog).getByRole("radio", { name: "From the register" }));
+    await pickTide(dialog);
+    submit(dialog);
+    const link = await within(dialog).findByRole("link", { name: /Open on lax\.art/ });
+    expect(link).toHaveAttribute("href", "https://admin.lax.test/from-zoho/reg-1");
+    expect(link).toHaveAttribute("target", "_blank");
+
+    convert.mockResolvedValueOnce({
+      ok: false,
+      error: "This artwork is live on lax.art. Take it off lax.art first.",
+      errorCode: "artwork_unavailable",
+      meta: { lock: lock(null) },
+    });
+    submit(dialog);
+    await waitFor(() =>
+      expect(within(dialog).queryByRole("link", { name: /Open on lax\.art/ })).toBeNull(),
+    );
+    expect(within(dialog).getByText(/live on lax\.art/)).toBeVisible();
+  });
+
   it("shows a missing choice the API reports beside the Artwork field", async () => {
     convert.mockResolvedValue({
       ok: false,

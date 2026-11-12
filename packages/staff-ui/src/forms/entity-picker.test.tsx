@@ -30,6 +30,16 @@ describe("EntityPicker", () => {
     expect(screen.getByText("Can't be held now")).toBeInTheDocument();
   });
 
+  it("shows a note under a choosable option, and that option can still be chosen", () => {
+    const change = vi.fn();
+    const noted: EntityOption = { ...free, note: "A draft lot is linked. It can't be published." };
+    render(<EntityPicker value={null} onValueChange={change} options={[noted]} />);
+    open();
+    expect(screen.getByText("A draft lot is linked. It can't be published.")).toBeInTheDocument();
+    fireEvent.click(screen.getByText("Evening Tide"));
+    expect(change).toHaveBeenCalledWith(noted);
+  });
+
   it("shows the chosen option's thumbnail in the closed control", () => {
     render(<EntityPicker value="a1" onValueChange={vi.fn()} options={[free]} />);
     expect(within(screen.getByRole("combobox")).getByTestId("thumb-a1")).toBeInTheDocument();

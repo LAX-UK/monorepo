@@ -1,4 +1,5 @@
 export * from "./anonymity.js";
+export * from "./artwork.js";
 export * from "./blockers.js";
 export * from "./clearance.js";
 export * from "./deal-reminder.js";
@@ -9,6 +10,7 @@ export * from "./party-record-hold.js";
 export * from "./payment-rules.js";
 export * from "./policy.js";
 export * from "./settlement-amounts.js";
+export * from "./settlement-follow-up.js";
 export * from "./terms.js";
 export * from "./transitions.js";
 export * from "./views.js";

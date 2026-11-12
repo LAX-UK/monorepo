@@ -13,8 +13,10 @@ import type {
 } from "@auction/persistence/interfaces";
 import {
   DrizzleArtworkRegisterRepository,
+  DrizzleDealSettlementFollowUpMarker,
   DrizzleDealWorkStore,
   DrizzleMarketingEnquiryRepository,
+  DrizzleOpenLotPlaceReader,
   DrizzlePrivateSaleDealFinanceStore,
   DrizzlePrivateSaleDealPaymentRepository,
   DrizzlePrivateSaleDealPayoutStore,
@@ -25,6 +27,7 @@ import type { Env } from "../env.js";
 import type { IStripeClientFactory } from "../lib/stripe-client.js";
 import { tryClaimProcessedStripeEvent } from "../lib/stripe-processed-event.js";
 import type { IDomainEventSink } from "../services/domain-event-sink.js";
+import type { IMediaUrlResolver } from "../services/interfaces/media-url-resolver.js";
 import type {
   IEnquiryConversion,
   IPrivateSaleDealDesk,
@@ -34,10 +37,14 @@ import type { IStripeCustomerGateway } from "../services/interfaces/stripe-custo
 import type { NotificationDispatcher } from "../services/notification.dispatcher.js";
 import type { IProviderEventClaim } from "../services/payment-group/payment-group-settlement.service.js";
 import type { PaymentTierPolicy } from "../services/payment/payment-tier.policy.js";
+import { DealArtworkPresenter } from "../services/private-sale-deal/deal-artwork-presenter.js";
+import { DealArtworkService } from "../services/private-sale-deal/deal-artwork.service.js";
 import { ComplianceDealClearanceReader } from "../services/private-sale-deal/deal-clearance.reader.js";
 import { PrivateSaleDealCommandService } from "../services/private-sale-deal/deal-command.service.js";
 import { PrivateSaleDealDesk } from "../services/private-sale-deal/deal-desk.js";
 import { DealInvoiceService } from "../services/private-sale-deal/deal-invoice.service.js";
+import type { DealLockLinks } from "../services/private-sale-deal/deal-lock-links.js";
+import { DealMarkSoldService } from "../services/private-sale-deal/deal-mark-sold.service.js";
 import { DealPartyResolver } from "../services/private-sale-deal/deal-party-resolver.js";
 import { PrivateSaleDealPartyService } from "../services/private-sale-deal/deal-party.service.js";
 import {
@@ -50,6 +57,8 @@ import { PrivateSaleDealQueryService } from "../services/private-sale-deal/deal-
 import { DealReceiptNotifier } from "../services/private-sale-deal/deal-receipt.notifier.js";
 import { ArtworkRegisterDealLock } from "../services/private-sale-deal/deal-register-lock.js";
 import { DealReversalService } from "../services/private-sale-deal/deal-reversal.service.js";
+import { DealSettlementFollowUpPresenter } from "../services/private-sale-deal/deal-settlement-follow-up.presenter.js";
+import { DealSettlementFollowUpService } from "../services/private-sale-deal/deal-settlement-follow-up.service.js";
 import { DealTransferService } from "../services/private-sale-deal/deal-transfer.service.js";
 import { DealTransitionService } from "../services/private-sale-deal/deal-transition.service.js";
 import { EnquiryConversionService } from "../services/private-sale-deal/enquiry-conversion.service.js";
@@ -70,6 +79,8 @@ export type PrivateSaleDealServices = {
   webhooks: DealPaymentWebhookDeps;
   /** Staff work on deals: the lists, the record and every move. */
   desk: IPrivateSaleDealDesk;
+  /** The daily check for settled deals whose artwork was not recorded sold. */
+  settlementFollowUps: DealSettlementFollowUpService;
   /** A private sale enquiry becomes a proposed deal. */
   conversion: IEnquiryConversion;
   /** A buyer's and a seller's own deals. */
@@ -100,6 +111,10 @@ export type CreatePrivateSaleDealServicesInput = {
   notificationDispatcher?: Pick<NotificationDispatcher, "dispatch"> | null;
   /** The finance task and alert for money that could not be applied. */
   unappliedMoney: Pick<IUnappliedMoneyRecorder, "record">;
+  /** Turns the artwork register's refusals into messages whose links open. */
+  lockLinks: DealLockLinks;
+  /** Resolves an artwork's picture to an address. */
+  media: Pick<IMediaUrlResolver, "resolveManyUnique">;
 };
 
 /** Private sale deals: the state machine, the buyer's payment, refunds and the seller's payout. */
@@ -206,6 +221,17 @@ export function createPrivateSaleDealServices(
     policy,
     enquiries,
     names: new UserRepositoryActorNames(input.users),
+    register: new DrizzleArtworkRegisterRepository(db),
+    artworkPresenter: new DealArtworkPresenter({
+      register: new DrizzleArtworkRegisterRepository(db),
+      places: new DrizzleOpenLotPlaceReader(db),
+      media: input.media,
+    }),
+    links: input.lockLinks,
+    settlement: new DealSettlementFollowUpPresenter({
+      register: new DrizzleArtworkRegisterRepository(db),
+      lockLinks: input.lockLinks,
+    }),
   });
   const deskCommands = new PrivateSaleDealCommandService({
     deals,
@@ -228,13 +254,39 @@ export function createPrivateSaleDealServices(
     reversal,
     payoutSettlement: new DealPayoutSettlementService({ payouts, transitions }),
     webhooks: { settlement, payments },
-    desk: new PrivateSaleDealDesk(deskQueries, deskCommands),
+    desk: new PrivateSaleDealDesk(
+      deskQueries,
+      deskCommands,
+      new DealArtworkService({
+        deals,
+        artworks: new DrizzleArtworkRegisterRepository(db),
+        transactionRunner: input.transactionRunner,
+        scopeForTx: transitionScopeForTx,
+        lockLinks: input.lockLinks,
+        records: deskQueries,
+      }),
+      new DealMarkSoldService({
+        deals,
+        artworks: new DrizzleArtworkRegisterRepository(db),
+        transactionRunner: input.transactionRunner,
+        scopeForTx: transitionScopeForTx,
+        lockLinks: input.lockLinks,
+        records: deskQueries,
+      }),
+    ),
+    settlementFollowUps: new DealSettlementFollowUpService({
+      queries,
+      transactionRunner: input.transactionRunner,
+      eventsForTx: (tx) => events.withTx(tx),
+      raised: new DrizzleDealSettlementFollowUpMarker(),
+    }),
     conversion: new EnquiryConversionService({
       enquiries,
       works: new DrizzleDealWorkStore(db),
       openDeals: queries,
       dealsForTx: (tx) => new DrizzlePrivateSaleDealRepository(tx),
       artworks: new DrizzleArtworkRegisterRepository(db),
+      lockLinks: input.lockLinks,
       registerForTx,
       parties,
       policy,

@@ -15,6 +15,7 @@ import { PlatformHygieneCronApplicationService } from "../services/finance/platf
 import type { PlatformCronRouteServices } from "../services/interfaces/platform-cron-routes/index.js";
 import type { NotificationDispatcher } from "../services/notification.dispatcher.js";
 import { PlatformLifecycleCronApplicationService } from "../services/platform/platform-lifecycle-cron-application.service.js";
+import type { DealSettlementFollowUpService } from "../services/private-sale-deal/deal-settlement-follow-up.service.js";
 import {
   LaxAdminRoleExpiryService,
   StaffRoleExpiryJob,
@@ -37,6 +38,7 @@ export type CreatePlatformCronRouteServicesInput = {
   watchlistReminders: Pick<IWatchlistReminderRepository, "listPending" | "markSent">;
   consignmentThreadSweep: ConsignmentThreadSweepService;
   paymentReminders: Pick<PaymentReminderService, "sendDueReminders">;
+  dealSettlementFollowUps: Pick<DealSettlementFollowUpService, "raiseNew">;
 };
 
 export function createPlatformCronRouteServices(
@@ -61,6 +63,7 @@ export function createPlatformCronRouteServices(
       new LaxAdminRoleExpiryService(input.laxAdminRoleExpiry, expiryNotifier),
     ]),
     paymentReminders: input.paymentReminders,
+    dealSettlementFollowUps: input.dealSettlementFollowUps,
     watchedLotReminders: new WatchedLotReminderJob({
       reminders: input.watchlistReminders,
       dispatcher: input.notificationDispatcher,

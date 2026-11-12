@@ -2490,6 +2490,27 @@
     {
       "idx": 356,
       "version": "7",
+      "when": 1808035200000,
+      "tag": "0354_lot_reoffer",
+      "breakpoints": true
+    },
+    {
+      "idx": 357,
+      "version": "7",
+      "when": 1808121600000,
+      "tag": "0363_private_sale_deal_artwork_history",
+      "breakpoints": true
+    },
+    {
+      "idx": 358,
+      "version": "7",
+      "when": 1808294400000,
+      "tag": "0368_accounting_tables",
+      "breakpoints": true
+    },
+    {
+      "idx": 359,
+      "version": "7",
       "when": 1808467200000,
       "tag": "0359_artwork_register_status_written",
       "breakpoints": true

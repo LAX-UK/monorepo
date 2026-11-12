@@ -135,7 +135,14 @@ export type AdminDealArtworkSearchQuery = z.infer<typeof adminDealArtworkSearchQ
 export const dealArtworkLockSchema = z.object({
   reason: z.enum(LOCK_REASONS),
   message: z.string(),
-  link: z.object({ label: z.string(), target: z.enum(LOCK_LINK_TARGETS) }).nullable(),
+  link: z
+    .object({
+      label: z.string(),
+      target: z.enum(LOCK_LINK_TARGETS),
+      /** Where the link opens, from the product's own configuration; `null` when this person cannot open it. */
+      href: z.string().nullable().optional(),
+    })
+    .nullable(),
 });
 export type DealArtworkLock = z.infer<typeof dealArtworkLockSchema>;
 
@@ -163,6 +170,8 @@ export const dealArtworkOptionSchema = z.object({
   lock: dealArtworkLockSchema.optional(),
   /** It matches the artist or title the enquiry described. */
   suggested: z.boolean(),
+  /** The sale a linked draft lot belongs to, so the list can say which draft would be blocked. */
+  draftLot: z.object({ saleName: z.string().nullable() }).nullable().optional(),
 });
 export type DealArtworkOption = z.infer<typeof dealArtworkOptionSchema>;
 
@@ -173,5 +182,36 @@ export const dealArtworkSearchResultSchema = z.object({
   hasMore: z.boolean(),
   /** The artwork the consignment's earlier lot offered, when it is linked to the register. */
   preselected: dealArtworkOptionSchema.nullable(),
+  /** What the enquiry describes, which the first suggestions are matched against. */
+  suggestion: z
+    .object({ artist: z.string().nullable(), title: z.string().nullable() })
+    .nullable()
+    .optional(),
 });
 export type DealArtworkSearchResult = z.infer<typeof dealArtworkSearchResultSchema>;
+
+/** Why staff gave for changing or taking off a deal's artwork, kept with the deal's history. */
+const artworkReasonSchema = z.string().trim().min(1).max(500);
+
+const dealVersionSchema = z.number().int().positive();
+
+/**
+ * Link or change a deal's artwork, or record why it is not in the register. Exactly one of the
+ * artwork and the reason is sent (the shape is checked here and the rule by the desk). A change
+ * says why; a first link does not need to.
+ */
+export const adminDealArtworkSetSchema = z.object({
+  version: dealVersionSchema,
+  artworkRegisterId: z.string().uuid().optional(),
+  notInRegister: z.object({ reason: privateSaleArtworkUnlinkedReasonSchema }).strict().optional(),
+  reason: artworkReasonSchema.optional(),
+});
+export type AdminDealArtworkSetInput = z.infer<typeof adminDealArtworkSetSchema>;
+
+/** Take the artwork off a deal that is still being offered: why it is no longer linked, and an optional note. */
+export const adminDealArtworkRemoveSchema = z.object({
+  version: dealVersionSchema,
+  notInRegister: z.object({ reason: privateSaleArtworkUnlinkedReasonSchema }).strict(),
+  reason: artworkReasonSchema.optional(),
+});
+export type AdminDealArtworkRemoveInput = z.infer<typeof adminDealArtworkRemoveSchema>;

@@ -6,6 +6,7 @@ export const DEAL_VIEWS = [
   "needs_me",
   "waiting_on_checks",
   "payment_due",
+  "needs_attention",
   "settled",
   "cancelled",
   "all",
@@ -20,6 +21,8 @@ export type DealViewCriteria = {
   stages: readonly PrivateSaleDealStage[] | null;
   /** Only deals the viewer owns. */
   ownedByViewer: boolean;
+  /** Only settled deals whose artwork the register does not show as sold through them. */
+  settlementFollowUp?: true;
   /** Working views show the deal that has waited longest first; archives show the latest first. */
   order: "oldest_first" | "newest_first";
 };
@@ -49,6 +52,13 @@ const VIEW_CRITERIA: Readonly<Record<DealView, DealViewCriteria>> = {
   // Agreed, and not yet cleared: waiting on identity, screening or source of funds.
   waiting_on_checks: { ...WORKING, stages: ["agreed"], ownedByViewer: false },
   payment_due: { ...WORKING, stages: ["invoiced"], ownedByViewer: false },
+  // Derived from the register, not from the stage alone: see `settlementFollowUp`.
+  needs_attention: {
+    ...WORKING,
+    stages: ["settled"],
+    ownedByViewer: false,
+    settlementFollowUp: true,
+  },
   settled: { order: "newest_first", stages: ["settled"], ownedByViewer: false },
   cancelled: { order: "newest_first", stages: ["cancelled"], ownedByViewer: false },
   all: { order: "newest_first", stages: null, ownedByViewer: false },
@@ -83,11 +93,21 @@ export function dealInScope(
 /** Deals per stage, and how many of them the viewer owns. */
 export type DealStageCount = { stage: PrivateSaleDealStage; total: number; ownedByViewer: number };
 
-/** How many deals each view holds, from the counts per stage. */
-export function dealViewCounts(rows: readonly DealStageCount[]): Record<DealView, number> {
+/**
+ * How many deals each view holds, from the counts per stage. A view that depends on the register
+ * is counted by the caller and passed in `followUps`.
+ */
+export function dealViewCounts(
+  rows: readonly DealStageCount[],
+  followUps = 0,
+): Record<DealView, number> {
   const counts = {} as Record<DealView, number>;
   for (const view of DEAL_VIEWS) {
-    const { stages, ownedByViewer } = VIEW_CRITERIA[view];
+    const { stages, ownedByViewer, settlementFollowUp } = VIEW_CRITERIA[view];
+    if (settlementFollowUp) {
+      counts[view] = followUps;
+      continue;
+    }
     counts[view] = rows
       .filter((row) => !stages || stages.includes(row.stage))
       .reduce((sum, row) => sum + (ownedByViewer ? row.ownedByViewer : row.total), 0);
@@ -98,10 +118,11 @@ export function dealViewCounts(rows: readonly DealStageCount[]): Record<DealView
 /** Whether a deal in `stage`, owned by `ownerUserId`, belongs to `view` for `viewerUserId`. */
 export function dealIsInView(
   view: DealView,
-  deal: { stage: PrivateSaleDealStage; ownerUserId: string | null },
+  deal: { stage: PrivateSaleDealStage; ownerUserId: string | null; followUp?: boolean },
   viewerUserId: string,
 ): boolean {
   const criteria = VIEW_CRITERIA[view];
+  if (criteria.settlementFollowUp && !deal.followUp) return false;
   if (criteria.stages && !criteria.stages.includes(deal.stage)) return false;
   return !criteria.ownedByViewer || deal.ownerUserId === viewerUserId;
 }
