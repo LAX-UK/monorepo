@@ -2507,6 +2507,13 @@
       "when": 1808294400000,
       "tag": "0368_accounting_tables",
       "breakpoints": true
+    },
+    {
+      "idx": 359,
+      "version": "7",
+      "when": 1808467200000,
+      "tag": "0359_artwork_register_status_written",
+      "breakpoints": true
     }
   ]
 }

@@ -1258,6 +1258,7 @@ export type {
 
 export type {
   ApplyZohoChangeResult,
+  CatalogueStatusLedger,
   ConflictCursor,
   CreateRegisterEntryResult,
   AuctionOfferDraftLot,
@@ -1350,9 +1351,11 @@ export type {
   IZohoListingRunStore,
   IZohoListingSaleStartMark,
   IZohoListingSourceReader,
+  IZohoStatusSourceReader,
   ListingLot,
   ListingMove,
   RegisterListingSource,
+  RegisterStatusSource,
   ZohoListingRun,
   ZohoListingRunFailure,
   ZohoListingRunMode,

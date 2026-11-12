@@ -48,6 +48,8 @@ export const artworkRegister = pgTable(
     /** When the pictures were last compared with Zoho's; null until the first check. */
     imagesCheckedAt: timestamp("images_checked_at", { mode: "date", withTimezone: true }),
     catalogueStatus: text("catalogue_status"),
+    /** The Status LAX last wrote to the Zoho Product; null before the first write. */
+    catalogueStatusWritten: text("catalogue_status_written"),
     /** Zoho's Unit Price in pounds; shown beside the LAX price, never the price itself. */
     zohoPrice: numeric("zoho_price", { precision: 12, scale: 2 }),
     offerState: text("offer_state")
@@ -120,7 +122,7 @@ export const artworkRegisterConflict = pgTable(
       .notNull()
       .references(() => artworkRegister.id, { onDelete: "restrict" }),
     field: text("field")
-      .$type<"stockCode" | "kind" | "sourceOriginalId" | "offerState">()
+      .$type<"stockCode" | "kind" | "sourceOriginalId" | "offerState" | "catalogueStatus">()
       .notNull(),
     zohoValue: jsonb("zoho_value").$type<unknown>(),
     laxValue: jsonb("lax_value").$type<unknown>(),

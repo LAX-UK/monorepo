@@ -2,6 +2,7 @@ import {
   type ArtworkRegisterEntry,
   type FieldConflict,
   type NewArtworkRegisterEntry,
+  type RegisterConflictField,
   type RegisterField,
   StockCodeError,
   type StockCodeKind,
@@ -28,9 +29,10 @@ import {
   artworkRegisterEvent as event,
   artworkRegister as register,
 } from "@auction/db/schema";
-import { and, asc, desc, eq, gt, isNull, lt, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, inArray, isNull, lt, or, sql } from "drizzle-orm";
 import type {
   ApplyZohoChangeResult,
+  CatalogueStatusLedger,
   ConflictCursor,
   CreateRegisterEntryResult,
   IArtworkDraftHistory,
@@ -43,6 +45,8 @@ import type {
   IssueRegisterEntryResult,
   MoveOfferInput,
   MoveOfferResult,
+  RecordCatalogueStatusConflictInput,
+  RecordCatalogueStatusConflictResult,
   RecordCatalogueStatusWrittenInput,
   RecordCatalogueStatusWrittenResult,
   RecordLaxArtDraftCreatedInput,
@@ -433,7 +437,8 @@ export class DrizzleArtworkRegisterRepository
 
       let applied: { field: string; from: string; to: string } | null = null;
       if (input.resolution === "accepted_zoho") {
-        if (!canAcceptZohoValue(open.field)) return { ok: false, reason: "cannot_accept_field" };
+        if (open.field === "catalogueStatus" || !canAcceptZohoValue(open.field))
+          return { ok: false, reason: "cannot_accept_field" };
         const taken = await this.applyZohoStockCode(tx, open, input.now);
         if (!taken.ok) return taken;
         applied = taken.applied;
@@ -514,11 +519,24 @@ export class DrizzleArtworkRegisterRepository
         .where(eq(register.id, input.registerId))
         .for("update");
       if (!locked) return { status: "not_found" };
-      if (locked.catalogueStatus === input.status) return { status: "unchanged" };
+      await this.closeStatusConflict(tx, locked.id, input.now, "lax_wrote_status");
+      if (locked.catalogueStatus === input.status) {
+        if (locked.catalogueStatusWritten !== input.status) {
+          await tx
+            .update(register)
+            .set({ catalogueStatusWritten: input.status })
+            .where(eq(register.id, locked.id));
+        }
+        return { status: "unchanged" };
+      }
       // The version stays put: this is a copy of what Zoho now shows, not a change to LAX's record.
       await tx
         .update(register)
-        .set({ catalogueStatus: input.status, updatedAt: input.now })
+        .set({
+          catalogueStatus: input.status,
+          catalogueStatusWritten: input.status,
+          updatedAt: input.now,
+        })
         .where(eq(register.id, locked.id));
       await this.record(tx, locked.id, "zoho_writeback_recorded", "system", input.now, {
         field: "catalogueStatus",
@@ -527,6 +545,115 @@ export class DrizzleArtworkRegisterRepository
       });
       return { status: "recorded" };
     });
+  }
+
+  async closeCatalogueStatusConflict(input: {
+    registerId: string;
+    now: Date;
+  }): Promise<{ closed: boolean }> {
+    return this.db.transaction(async (tx) => {
+      const [locked] = await tx
+        .select({ id: register.id })
+        .from(register)
+        .where(eq(register.id, input.registerId))
+        .for("update");
+      if (!locked) return { closed: false };
+      return {
+        closed: await this.closeStatusConflict(tx, locked.id, input.now, "zoho_matched_lax"),
+      };
+    });
+  }
+
+  async findCatalogueStatusLedgers(
+    registerIds: readonly string[],
+  ): Promise<Map<string, CatalogueStatusLedger>> {
+    const ledgers = new Map<string, CatalogueStatusLedger>();
+    if (registerIds.length === 0) return ledgers;
+    const [rows, open] = await Promise.all([
+      this.db
+        .select({ id: register.id, written: register.catalogueStatusWritten })
+        .from(register)
+        .where(inArray(register.id, [...registerIds])),
+      this.db
+        .select({ registerId: conflict.registerId })
+        .from(conflict)
+        .where(
+          and(
+            inArray(conflict.registerId, [...registerIds]),
+            eq(conflict.field, "catalogueStatus"),
+            eq(conflict.status, "open"),
+          ),
+        ),
+    ]);
+    const withConflict = new Set(open.map((row) => row.registerId));
+    for (const row of rows) {
+      ledgers.set(row.id, { written: row.written, conflictOpen: withConflict.has(row.id) });
+    }
+    return ledgers;
+  }
+
+  async recordCatalogueStatusConflict(
+    input: RecordCatalogueStatusConflictInput,
+  ): Promise<RecordCatalogueStatusConflictResult> {
+    return this.db.transaction(async (tx) => {
+      const [locked] = await tx
+        .select({ id: register.id })
+        .from(register)
+        .where(eq(register.id, input.registerId))
+        .for("update");
+      if (!locked) return { status: "not_found" };
+      const [open] = await tx
+        .select()
+        .from(conflict)
+        .where(
+          and(
+            eq(conflict.registerId, locked.id),
+            eq(conflict.field, "catalogueStatus"),
+            eq(conflict.status, "open"),
+          ),
+        )
+        .limit(1);
+      if (open && open.zohoValue === input.zohoStatus && open.laxValue === input.laxStatus) {
+        return { status: "unchanged" };
+      }
+      await this.recordConflict(
+        tx,
+        locked.id,
+        { field: "catalogueStatus", zohoValue: input.zohoStatus, laxValue: input.laxStatus },
+        input.zohoModifiedAt,
+        input.now,
+      );
+      return { status: "recorded" };
+    });
+  }
+
+  /** LAX and Zoho agree again, so an open Status conflict has nothing left to decide. */
+  private async closeStatusConflict(
+    tx: Tx,
+    registerId: string,
+    now: Date,
+    reason: "lax_wrote_status" | "zoho_matched_lax",
+  ): Promise<boolean> {
+    const [closed] = await tx
+      .update(conflict)
+      .set({ status: "resolved", resolution: "kept_lax", resolvedBy: "system", resolvedAt: now })
+      .where(
+        and(
+          eq(conflict.registerId, registerId),
+          eq(conflict.field, "catalogueStatus"),
+          eq(conflict.status, "open"),
+        ),
+      )
+      .returning();
+    if (!closed) return false;
+    // The resolution column stays "kept_lax" (its check allows no other value); the reason says how.
+    await this.record(tx, registerId, "conflict_resolved", "system", now, {
+      conflictId: closed.id,
+      field: closed.field,
+      resolution: "kept_lax",
+      reason,
+    });
+    return true;
   }
 
   /** Puts Zoho's stock code on the artwork, if it is valid for it and free. */
@@ -718,7 +845,7 @@ export class DrizzleArtworkRegisterRepository
   private async recordConflict(
     tx: Tx,
     registerId: string,
-    found: FieldConflict,
+    found: Omit<FieldConflict, "field"> & { field: RegisterConflictField },
     zohoModifiedAt: Date,
     now: Date,
   ): Promise<void> {

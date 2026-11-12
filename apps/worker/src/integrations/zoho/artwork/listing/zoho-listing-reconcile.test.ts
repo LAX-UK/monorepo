@@ -9,18 +9,24 @@ const START = new Date("2026-11-05T03:00:00Z");
 const ids = (from: number, count: number) =>
   Array.from({ length: count }, (_, i) => `id-${String(from + i).padStart(4, "0")}`);
 
-function setup(pages: string[][], sync: (ids: readonly string[]) => Promise<typeof EMPTY_REPORT>) {
+function setup(
+  pages: string[][],
+  sync: (ids: readonly string[]) => Promise<typeof EMPTY_REPORT>,
+  statuses?: { run: () => Promise<unknown> },
+) {
   const pageOriginals = vi.fn(async () => pages.shift() ?? []);
   const record = vi.fn(async (_run: ZohoListingRun) => undefined);
+  const log = { info: vi.fn(), warn: vi.fn(), error: vi.fn() };
   const reconcile = new ZohoListingReconcile({
     mode: "live",
     sync: { sync: vi.fn(sync) },
     sources: { pageOriginals },
     runs: { record },
-    log: { info: vi.fn(), warn: vi.fn() } as unknown as Logger,
+    ...(statuses ? { statuses: statuses as never } : {}),
+    log: log as unknown as Logger,
     now: () => START,
   });
-  return { reconcile, pageOriginals, record };
+  return { reconcile, pageOriginals, record, log };
 }
 
 describe("ZohoListingReconcile", () => {
@@ -74,5 +80,35 @@ describe("ZohoListingReconcile", () => {
       registerId: "id-0000",
       code: "TOO_MANY_REQUESTS",
     });
+  });
+
+  it("checks the Zoho Status after the listing pass is recorded", async () => {
+    const order: string[] = [];
+    const statuses = { run: vi.fn(async () => void order.push("status")) };
+    const { reconcile, record } = setup([["a"]], async () => EMPTY_REPORT, statuses);
+    record.mockImplementation(async () => void order.push("recorded"));
+    await reconcile.run();
+    expect(order).toEqual(["recorded", "status"]);
+  });
+
+  it("keeps the listing result when the Status check fails, and logs it", async () => {
+    const statuses = {
+      run: vi.fn(async () => {
+        throw new Error("zoho down");
+      }),
+    };
+    const { reconcile, record, log } = setup([["a"]], async () => EMPTY_REPORT, statuses);
+    await expect(reconcile.run()).resolves.toMatchObject({ checked: 0 });
+    expect(record).toHaveBeenCalledTimes(1);
+    expect(log.error).toHaveBeenCalledWith(
+      expect.objectContaining({ runId: expect.stringContaining("listing:") }),
+      "zoho_status_reconcile_failed",
+    );
+  });
+
+  it("runs without a Status check when Status writes are off", async () => {
+    const { reconcile, log } = setup([["a"]], async () => EMPTY_REPORT);
+    await reconcile.run();
+    expect(log.error).not.toHaveBeenCalled();
   });
 });
