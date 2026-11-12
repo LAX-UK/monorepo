@@ -18,6 +18,7 @@ const violations = [];
 for (const group of WORKSPACE_ROOTS) {
   for (const file of listSourceFiles(path.join(ROOT, group), { includeTests: false })) {
     const rel = path.relative(ROOT, file).split(path.sep).join("/");
+    if (/(^|\/)\.next\//.test(rel)) continue; // build output, not source
     const constructs = bannedConstructsIn(rel, await readFile(file, "utf8"));
     if (constructs.length > 0) {
       violations.push(
