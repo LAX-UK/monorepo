@@ -2,6 +2,7 @@
 
 import { answerSellerReofferAction } from "@/lib/actions/seller-reoffer";
 import { sellerReofferIsSettled } from "@/lib/seller/seller-reoffer-errors";
+import { PAYMENT_TERM } from "@/lib/seller/seller-reoffer.vm";
 import { notify } from "@/lib/ui/notify";
 import { RadioCardGroup } from "@auction/ui/components/radio-card-group";
 import { Button } from "@auction/ui/lax/button";
@@ -31,7 +32,8 @@ type Props = {
   lotTitle: string;
   /** "£82,000.00" and "£72,160.00": what the sheet repeats before the seller agrees. */
   offer: string;
-  proceeds: string;
+  /** What the seller would receive; `null` for a member who does not see the payouts. */
+  proceeds: string | null;
 };
 
 /**
@@ -96,7 +98,7 @@ export function SellerReofferAnswer({ reofferId, lotTitle, offer, proceeds }: Pr
         open={sheet === "agree"}
         onOpenChange={(open) => (open ? setSheet("agree") : close())}
         title={`Agree to offer ${lotTitle} to the next bidder at ${offer}?`}
-        description={`We'll send the offer today. If they accept, they pay within 7 days and we pay you once it clears. Estimated proceeds ${proceeds}.`}
+        description={`We'll send them the offer shortly. If they accept, they pay within ${PAYMENT_TERM} and we pay you once it clears.${proceeds ? ` Estimated proceeds ${proceeds}.` : ""}`}
         footerLayout="stacked"
         footer={
           <>

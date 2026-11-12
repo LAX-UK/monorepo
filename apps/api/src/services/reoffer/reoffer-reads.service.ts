@@ -74,19 +74,19 @@ export class ReofferReadsService {
   async listForSeller(actor: ReofferMemberActor): Promise<SellerReofferView[]> {
     this.requireSellerRead(actor);
     const rows = await this.deps.views.listForSellerAccount(actor.legalEntityId);
-    return rows.filter(isAskedOfSeller).map(sellerView);
+    const money = seesSellerMoney(actor);
+    return rows.filter(isAskedOfSeller).map((row) => sellerView(row, money));
   }
 
   async getForSeller(actor: ReofferMemberActor, reofferId: string): Promise<SellerReofferView> {
     this.requireSellerRead(actor);
     const row = await this.deps.views.findForSellerAccount(actor.legalEntityId, reofferId);
     if (!row) throw new ReofferError("offer_not_found", "This request does not exist.");
-    return sellerView(row);
+    return sellerView(row, seesSellerMoney(actor));
   }
 
   private requireSellerRead(actor: ReofferMemberActor): void {
-    const member = { role: actor.role, isImpersonation: actor.isImpersonation };
-    if (!entityActorCan(member, "entity.consignments.read")) {
+    if (!entityActorCan(memberOf(actor), "entity.consignments.read")) {
       throw new ReofferError("forbidden", "Your role in this account can't see this.");
     }
   }
@@ -194,7 +194,19 @@ function skippedBefore(
   return picked.skipped;
 }
 
-function sellerView(row: SellerConsentRequestRow): SellerReofferView {
+function memberOf(actor: ReofferMemberActor) {
+  return { role: actor.role, isImpersonation: actor.isImpersonation };
+}
+
+/**
+ * The seller's money is for the members who see the account's payouts (owners, admins, finance),
+ * as on Sold & payouts; a viewer or a consignor follows the request without it.
+ */
+function seesSellerMoney(actor: ReofferMemberActor): boolean {
+  return entityActorCan(memberOf(actor), "entity.payouts.read");
+}
+
+function sellerView(row: SellerConsentRequestRow, withMoney: boolean): SellerReofferView {
   const { terms } = row;
   return sellerReofferViewSchema.parse({
     id: row.reofferId,
@@ -205,9 +217,15 @@ function sellerView(row: SellerConsentRequestRow): SellerReofferView {
     status: row.offerStatus,
     consentStatus: row.consentStatus,
     offerMinor: terms.amountPence,
-    originalHammerMinor: terms.originalHammerPence,
-    estimatedProceedsMinor: terms.proceedsAtOfferPence,
-    originalProceedsMinor: terms.proceedsAtOriginalPence,
+    proceeds: withMoney
+      ? {
+          // Requests started before the sale total was kept were worked out on the hammer alone.
+          offerSaleMinor: terms.saleAtOfferPence ?? terms.amountPence,
+          offerProceedsMinor: terms.proceedsAtOfferPence,
+          originalHammerMinor: terms.originalHammerPence,
+          originalProceedsMinor: terms.proceedsAtOriginalPence,
+        }
+      : null,
     reserveMinor: terms.reservePence,
     belowReserve: terms.reservePence !== null && terms.amountPence < terms.reservePence,
     answerDueAt: row.dueAt?.toISOString() ?? null,

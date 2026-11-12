@@ -18,9 +18,13 @@ const view = (over: Partial<SellerReofferView> = {}): SellerReofferView => ({
   status: "awaiting_seller",
   consentStatus: "requested",
   offerMinor: 8_200_000,
-  originalHammerMinor: 8_800_000,
-  estimatedProceedsMinor: 7_216_000,
-  originalProceedsMinor: 7_744_000,
+  // Settlement's split: a 25% premium on the hammer, and a 5% fee on that total.
+  proceeds: {
+    offerSaleMinor: 10_250_000,
+    offerProceedsMinor: 9_737_500,
+    originalHammerMinor: 8_800_000,
+    originalProceedsMinor: 10_450_000,
+  },
   reserveMinor: null,
   belowReserve: false,
   answerDueAt: "2026-11-13T17:00:00.000Z",
@@ -62,16 +66,52 @@ describe("the waiting request", () => {
     expect(page.card.paragraphs.join(" ")).toContain("The next highest bidder bid £82,000.00");
     expect(page.subtitle).toBe("Lot 2 · ended Thu 29 Oct");
     expect(page.offer).toBe("£82,000.00");
-    expect(page.proceeds).toBe("£72,160.00");
+    expect(page.proceeds).toBe("£97,375.00");
   });
 
-  it("shows the proceeds at both prices, the fees and the difference", () => {
-    expect(vm(view()).money?.rows).toEqual([
+  it("shows the proceeds at both prices, split as the payout splits a sale, and the difference", () => {
+    const money = vm(view()).money;
+    expect(money?.rows).toEqual([
       { label: "Offer to the next bidder", value: "£82,000.00" },
-      { label: "Commission and VAT on it", value: "−£9,840.00" },
-      { label: "Estimated proceeds", value: "£72,160.00", strong: true },
-      { label: "At the original £88,000.00", value: "£77,440.00" },
-      { label: "Difference", value: "−£5,280.00" },
+      { label: "Buyer's premium", value: "+£20,500.00" },
+      { label: "Commission and fees", value: "−£5,125.00" },
+      { label: "Estimated proceeds", value: "£97,375.00", strong: true },
+      { label: "At the original £88,000.00", value: "£104,500.00" },
+      { label: "Difference", value: "−£7,125.00" },
+    ]);
+    // It never claims figures it does not hold.
+    expect(JSON.stringify(money)).not.toMatch(/VAT|consignment agreement/i);
+  });
+
+  it("leaves out the premium row when there is no premium", () => {
+    const flat = view({
+      proceeds: {
+        offerSaleMinor: 8_200_000,
+        offerProceedsMinor: 7_790_000,
+        originalHammerMinor: 8_800_000,
+        originalProceedsMinor: 8_360_000,
+      },
+    });
+    expect(vm(flat).money?.rows.map((row) => row.label)).toEqual([
+      "Offer to the next bidder",
+      "Commission and fees",
+      "Estimated proceeds",
+      "At the original £88,000.00",
+      "Difference",
+    ]);
+  });
+
+  it("shows no money to a member who does not see the payouts", () => {
+    const page = vm(view({ proceeds: null }), viewer);
+    expect(page.money).toBeNull();
+    expect(page.proceeds).toBeNull();
+    expect(page.offer).toBe("£82,000.00");
+    const sold = vm(
+      view({ status: "accepted", consentStatus: "given", soldAt: null, proceeds: null }),
+      viewer,
+    );
+    expect(sold.card.paragraphs).toEqual([
+      "Sold for £82,000.00. We'll pay you once their payment clears.",
     ]);
   });
 
@@ -141,7 +181,7 @@ describe("the request after it was answered", () => {
     expect(page.chip?.label).toBe("Sold after the auction");
     expect(page.card.heading).toBe("The Winter Study has a new buyer");
     expect(page.card.paragraphs).toEqual([
-      "Sold for £82,000.00 on Thu 12 Nov. We'll pay you once their payment clears, about £72,160.00.",
+      "Sold for £82,000.00 on Thu 12 Nov. We'll pay you once their payment clears, about £97,375.00.",
     ]);
     expect(page.money).toBeNull();
   });

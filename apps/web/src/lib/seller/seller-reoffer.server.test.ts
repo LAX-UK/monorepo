@@ -18,9 +18,13 @@ const view = {
   status: "awaiting_seller",
   consentStatus: "requested",
   offerMinor: 8_200_000,
-  originalHammerMinor: 8_800_000,
-  estimatedProceedsMinor: 7_216_000,
-  originalProceedsMinor: 7_744_000,
+  // Settlement's split: a 25% premium on the hammer, and a 5% fee on that total.
+  proceeds: {
+    offerSaleMinor: 10_250_000,
+    offerProceedsMinor: 9_737_500,
+    originalHammerMinor: 8_800_000,
+    originalProceedsMinor: 10_450_000,
+  },
   reserveMinor: null,
   belowReserve: false,
   answerDueAt: "2026-11-13T17:00:00.000Z",

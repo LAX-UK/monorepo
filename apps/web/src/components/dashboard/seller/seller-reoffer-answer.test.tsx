@@ -39,6 +39,10 @@ describe("SellerReofferAnswer", () => {
       await screen.findByText("Agree to offer The Winter Study to the next bidder at £82,000.00?"),
     ).toBeTruthy();
     expect(screen.getByText(/Estimated proceeds £72,160.00/)).toBeTruthy();
+    // Sending is a staff step, so the sheet promises "shortly", and the buyer's term is the invoice's.
+    expect(
+      screen.getByText(/We'll send them the offer shortly\. .* pay within 7 days/),
+    ).toBeTruthy();
     expect(answer).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "Yes, agree" }));
     await waitFor(() => expect(answer).toHaveBeenCalledWith(ID, { answer: "given" }));

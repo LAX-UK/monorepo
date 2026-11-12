@@ -22,9 +22,12 @@ const sellerView = {
   status: "awaiting_seller",
   consentStatus: "requested",
   offerMinor: 82_000_00,
-  originalHammerMinor: 88_000_00,
-  estimatedProceedsMinor: 72_160_00,
-  originalProceedsMinor: 77_440_00,
+  proceeds: {
+    offerSaleMinor: 102_500_00,
+    offerProceedsMinor: 97_375_00,
+    originalHammerMinor: 88_000_00,
+    originalProceedsMinor: 104_500_00,
+  },
   reserveMinor: 85_000_00,
   belowReserve: true,
   answerDueAt: "2026-11-16T17:00:00.000Z",
@@ -161,6 +164,14 @@ describe("member-safe views", () => {
   it("accept their own fields", () => {
     expect(sellerReofferViewSchema.safeParse(sellerView).success).toBe(true);
     expect(bidderReofferViewSchema.safeParse(bidderView).success).toBe(true);
+  });
+
+  it("let the seller's view leave out the money for a member who does not see the payouts", () => {
+    expect(sellerReofferViewSchema.safeParse({ ...sellerView, proceeds: null }).success).toBe(true);
+    const { proceeds: _money, ...withoutKey } = sellerView;
+    expect(sellerReofferViewSchema.safeParse(withoutKey).success).toBe(false);
+    const flat = { ...withoutKey, proceeds: null, estimatedProceedsMinor: 1 };
+    expect(sellerReofferViewSchema.safeParse(flat).success).toBe(false);
   });
 
   it("reject staff fields and the other party's identity", () => {

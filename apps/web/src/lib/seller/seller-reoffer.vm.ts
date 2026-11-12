@@ -1,6 +1,7 @@
 import { formatMoney } from "@/lib/ui/format";
 import { LONDON_TIME_ZONE, formatDayMonth, formatWeekday, formatWhen } from "@auction/datetime";
-import type { SellerReofferView } from "@auction/validators";
+import { INVOICE_PAYMENT_DUE_DAYS } from "@auction/types";
+import type { SellerReofferProceeds, SellerReofferView } from "@auction/validators";
 
 /**
  * What a seller reads on the page of one request to sell their lot at the next bidder's price
@@ -46,14 +47,20 @@ export type SellerReofferMoneyVm = {
 export type SellerReofferVm = {
   id: string;
   lotTitle: string;
-  /** The price offered and what the seller would receive, as the Agree sheet repeats them. */
+  /**
+   * The price offered and what the seller would receive, as the Agree sheet repeats them. The
+   * proceeds are `null` for a member who does not see the account's payouts.
+   */
   offer: string;
-  proceeds: string;
+  proceeds: string | null;
   /** "Lot 2 · ended Thu 29 Oct". */
   subtitle: string;
   chip: SellerReofferChip | null;
   card: SellerReofferCardVm;
-  /** Shown while the figures still matter to the seller; `null` once they do not. */
+  /**
+   * Shown while the figures still matter to the seller, and only to a member who sees the
+   * account's payouts; `null` otherwise.
+   */
   money: SellerReofferMoneyVm | null;
 };
 
@@ -65,6 +72,8 @@ export type SellerReofferViewer = {
 };
 
 const money = (minor: number) => formatMoney(minor / 100);
+/** "7 days": the buyer's payment term, the one every invoice is raised with. */
+export const PAYMENT_TERM = `${INVOICE_PAYMENT_DUE_DAYS} days`;
 const at = (iso: string) => new Date(iso);
 /** "Wed 11 Nov", with the year only when it is not this year's. */
 const day = (iso: string, now: Date) =>
@@ -120,7 +129,7 @@ function waitingParagraphs({ view, viewer }: Ctx): string[] {
   // Below the reserve the notice carries the price, so the sentence is not said twice.
   if (!view.belowReserve) {
     intro.push(
-      `The next highest bidder bid ${price}. With your agreement, we'll offer them the lot at that price. If they accept, they'll have 7 days to pay.`,
+      `The next highest bidder bid ${price}. With your agreement, we'll offer them the lot at that price. If they accept, they'll have ${PAYMENT_TERM} to pay.`,
     );
   }
   if (viewer.canAnswer) {
@@ -196,7 +205,7 @@ const STATES: Record<SellerReofferState, StateEntry> = {
     card: ({ view, now }) => ({
       heading: `${view.lotTitle} has a new buyer`,
       paragraphs: [
-        `Sold for ${money(view.offerMinor)}${view.soldAt ? ` on ${day(view.soldAt, now)}` : ""}. We'll pay you once their payment clears, about ${money(view.estimatedProceedsMinor)}.`,
+        `Sold for ${money(view.offerMinor)}${view.soldAt ? ` on ${day(view.soldAt, now)}` : ""}. We'll pay you once their payment clears${view.proceeds ? `, about ${money(view.proceeds.offerProceedsMinor)}` : ""}.`,
       ],
       notice: null,
       answerable: false,
@@ -285,21 +294,28 @@ const STATES: Record<SellerReofferState, StateEntry> = {
   },
 };
 
-function moneyOf(view: SellerReofferView): SellerReofferMoneyVm {
-  const fees = view.offerMinor - view.estimatedProceedsMinor;
-  const shortfall = view.originalProceedsMinor - view.estimatedProceedsMinor;
+/**
+ * The seller's figures, split the way Sold & payouts splits a sale: what the buyer pays (the
+ * hammer and the buyer's premium), less LAX's commission and fees on it, is what the seller
+ * receives. The rows add up to the figure the payout will show for the same hammer.
+ */
+function moneyOf(view: SellerReofferView, proceeds: SellerReofferProceeds): SellerReofferMoneyVm {
+  const premium = proceeds.offerSaleMinor - view.offerMinor;
+  const fees = proceeds.offerSaleMinor - proceeds.offerProceedsMinor;
+  const shortfall = proceeds.originalProceedsMinor - proceeds.offerProceedsMinor;
   return {
     rows: [
       { label: "Offer to the next bidder", value: money(view.offerMinor) },
-      { label: "Commission and VAT on it", value: `−${money(fees)}` },
-      { label: "Estimated proceeds", value: money(view.estimatedProceedsMinor), strong: true },
+      ...(premium > 0 ? [{ label: "Buyer's premium", value: `+${money(premium)}` }] : []),
+      { label: "Commission and fees", value: `−${money(fees)}` },
+      { label: "Estimated proceeds", value: money(proceeds.offerProceedsMinor), strong: true },
       {
-        label: `At the original ${money(view.originalHammerMinor)}`,
-        value: money(view.originalProceedsMinor),
+        label: `At the original ${money(proceeds.originalHammerMinor)}`,
+        value: money(proceeds.originalProceedsMinor),
       },
       ...(shortfall > 0 ? [{ label: "Difference", value: `−${money(shortfall)}` }] : []),
     ],
-    note: "Estimated from your consignment agreement. You're paid once the buyer's payment clears.",
+    note: "Worked out the way your payout is. You're paid once the buyer's payment clears.",
   };
 }
 
@@ -316,11 +332,11 @@ export function sellerReofferVm(
     id: view.id,
     lotTitle: view.lotTitle,
     offer: money(view.offerMinor),
-    proceeds: money(view.estimatedProceedsMinor),
+    proceeds: view.proceeds ? money(view.proceeds.offerProceedsMinor) : null,
     subtitle: `${lot} · ended ${day(view.lotEndedAt, now)}`,
     chip: entry.chip(ctx),
     card: { state, ...entry.card(ctx) },
-    money: entry.showMoney ? moneyOf(view) : null,
+    money: entry.showMoney && view.proceeds ? moneyOf(view, view.proceeds) : null,
   };
 }
 
