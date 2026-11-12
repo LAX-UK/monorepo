@@ -6,6 +6,7 @@ import type {
   PortfolioPendingOrderLineFact,
   PortfolioRefundFact,
   PortfolioSaleFact,
+  PortfolioSettledLineFact,
   PortfolioWork,
 } from "../application/ports/portal-portfolio.reader.js";
 
@@ -13,6 +14,7 @@ export const NO_FACTS: PortalPortfolioFacts = {
   editions: [],
   originals: [],
   pendingOrderLines: [],
+  settledOrderLines: [],
   sales: [],
   orders: [],
   refunds: [],
@@ -43,11 +45,11 @@ export function edition(overrides: Partial<PortfolioEditionFact> = {}): Portfoli
     listingStatus: "sold",
     purchase: {
       orderId: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+      orderLineId: "11111111-1111-4111-8111-111111111111",
       orderStatus: "paid",
       channel: "shop",
       paidAt: new Date("2026-05-02T12:00:00.000Z"),
       unitPricePence: 45_000,
-      shippingPence: 2_500,
       fulfilmentStatus: "delivered",
     },
     createdAt: new Date("2026-01-01T00:00:00.000Z"),
@@ -78,8 +80,25 @@ export function pendingLine(
     work: work(),
     editionNumber: 4,
     unitPricePence: 45_000,
-    shippingPence: 0,
     createdAt: new Date("2026-07-01T08:00:00.000Z"),
+    ...overrides,
+  };
+}
+
+export function settledLine(
+  overrides: Partial<PortfolioSettledLineFact> = {},
+): PortfolioSettledLineFact {
+  return {
+    orderLineId: "22222222-2222-4222-8222-222222222222",
+    orderId: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+    channel: "shop",
+    work: work({
+      artworkId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaab2",
+      slug: "released",
+      title: "Released Work",
+    }),
+    unitPricePence: 30_000,
+    createdAt: new Date("2026-05-02T11:55:00.000Z"),
     ...overrides,
   };
 }
@@ -105,6 +124,7 @@ export function order(overrides: Partial<PortfolioOrderFact> = {}): PortfolioOrd
     channel: "shop",
     status: "paid",
     totalPence: 47_500,
+    shippingPence: 2_500,
     paidAt: new Date("2026-05-02T12:00:00.000Z"),
     createdAt: new Date("2026-05-02T11:50:00.000Z"),
     checkoutExpiresAt: null,
@@ -116,6 +136,7 @@ export function refund(overrides: Partial<PortfolioRefundFact> = {}): PortfolioR
   return {
     refundId: "88888888-8888-4888-8888-888888888888",
     orderId: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+    orderLineId: null,
     channel: "shop",
     amountPence: 47_500,
     status: "succeeded",
