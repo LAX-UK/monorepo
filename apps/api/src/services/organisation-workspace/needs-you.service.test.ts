@@ -204,8 +204,9 @@ describe("NeedsYouService", () => {
       link: { page: "reoffer_request", id: "r1" },
       requests: [{ id: "r1", title: "The Winter Study", offerMinor: 8_200_000 }],
     });
+    // The reader is asked at the service's clock, so a request past its deadline drops out.
     expect(facts.reofferRequests).toHaveBeenCalledWith(
-      expect.objectContaining({ legalEntityId: ENTITY }),
+      expect.objectContaining({ legalEntityId: ENTITY, now: NOW }),
     );
     const others = setup({ reofferRequests });
     await others.service.read(member("consignor"));

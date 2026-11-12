@@ -246,6 +246,7 @@ export class DrizzleNeedsYouFactsReader implements INeedsYouFactsReader {
 
   async reofferRequests(input: {
     legalEntityId: string;
+    now: Date;
     limit: number;
   }): Promise<Array<ReofferRequestSubject & { requestedAt: Date | null }>> {
     const rows = await this.db
@@ -265,6 +266,9 @@ export class DrizzleNeedsYouFactsReader implements INeedsYouFactsReader {
           eq(sellerConsent.subjectType, "lot_reoffer"),
           eq(sellerConsent.status, "requested"),
           eq(lotReoffer.status, "awaiting_seller"),
+          // Past its deadline the request can no longer be answered, even before the worker
+          // marks it lapsed, so it is no longer work for the seller.
+          or(isNull(sellerConsent.dueAt), gt(sellerConsent.dueAt, input.now)),
         ),
       )
       .orderBy(asc(sellerConsent.dueAt), asc(lotReoffer.id))

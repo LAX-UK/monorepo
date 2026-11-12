@@ -361,7 +361,8 @@ const SPECS: { readonly [K in NeedsYouKind]: Spec<K> } = {
   reoffer_request: {
     kind: "reoffer_request",
     section: "consignments",
-    // The people who run the account answer; a consignor or viewer sees the request on its page.
+    // The people who run the account answer. Consignors and viewers get no task: they can open
+    // the request's page from a link, read-only and without the seller's money.
     allowed: capability("entity.consignments.after_sale"),
     announcedBy: ["reoffer_seller_request", "reoffer_seller_reminder"],
     collect: (facts) =>

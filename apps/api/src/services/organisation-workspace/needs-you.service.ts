@@ -149,7 +149,7 @@ export class NeedsYouService implements INeedsYouService {
       ),
       when(
         any("reoffer_request"),
-        () => this.deps.facts.reofferRequests({ legalEntityId, limit: LIST_LIMIT }),
+        () => this.deps.facts.reofferRequests({ legalEntityId, now, limit: LIST_LIMIT }),
         [],
       ),
       when(
