@@ -1,5 +1,5 @@
 import type { Database } from "@auction/db";
-import type { DealScope, DealView } from "@auction/domain";
+import type { DealScope, DealView, SettlementFollowUpSeverity } from "@auction/domain";
 import type { PrivateSaleDealStage } from "@auction/types";
 
 /** One deal as a list row: enough to find it and see what it waits for. */
@@ -19,7 +19,22 @@ export type PrivateSaleDealListRow = {
   paymentDueAt: Date | null;
   collectionDueAt: Date | null;
   updatedAt: Date;
+  /** Set on a settled deal whose artwork the register does not show as sold through it. */
+  settlementFollowUp: SettlementFollowUpSeverity | null;
 };
+
+/** A settled deal the register has not been told is sold, for the people who must act on it. */
+export type SettlementFollowUpRow = {
+  dealId: string;
+  reference: string;
+  ownerUserId: string | null;
+  severity: SettlementFollowUpSeverity;
+  /** When the deal last changed: the settlement, or the last staff change since. */
+  updatedAt: Date;
+};
+
+/** How many settled deals need attention, and how many of those may have been sold twice. */
+export type SettlementFollowUpCount = { total: number; urgent: number };
 
 export type PrivateSaleDealListFilter = {
   view: DealView;
@@ -43,6 +58,18 @@ export interface IPrivateSaleDealQueryReader {
   /** One page of a view. Returns up to `limit + 1` rows so the caller can tell whether more follow. */
   list(filter: PrivateSaleDealListFilter): Promise<PrivateSaleDealListRow[]>;
   countByStage(viewerUserId: string, scope: DealScope): Promise<PrivateSaleDealStageCount[]>;
+  /**
+   * Settled deals in the scope whose artwork the register does not show as sold through them,
+   * longest waiting first. Derived from the deal and the register on every read, never stored.
+   */
+  listSettlementFollowUps(
+    scope: DealScope,
+    limit: number,
+    /** Leave out deals staff were already told about at their current severity. */
+    options?: { unraisedOnly?: boolean },
+  ): Promise<SettlementFollowUpRow[]>;
+  /** The same deals counted in one aggregate, with no cap. */
+  countSettlementFollowUps(scope: DealScope): Promise<SettlementFollowUpCount>;
   /**
    * The reference of the deal a work is in (PS-0012), or `null`. Only a cancelled deal frees the
    * work: a settled one has sold it.

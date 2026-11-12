@@ -1,5 +1,6 @@
 import { existsSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
+import { EMPTY_ADMIN_NAV_COUNTS } from "@/lib/data/http/admin-nav-counts.types";
 import { adminRouteArea } from "@/lib/navigation/admin-route-access";
 import {
   ADMIN_ROUTE_TABLE,
@@ -62,7 +63,7 @@ describe("header attention links", () => {
   it.each(STAFF_HEADER_ATTENTION_SPECS.map((spec) => [spec.id, spec] as const))(
     "%s resolves and opens for everyone who sees it",
     (_id, spec) => {
-      const { href } = spec.buildItem(2);
+      const { href } = spec.buildItem(2, { ...EMPTY_ADMIN_NAV_COUNTS, privateSalesUrgent: 1 });
       expect(resolveAdminRoute(href), href).toBeDefined();
       for (const staffRoles of SOLO_STAFF) {
         if (!userHasAccessTo("staff", [...staffRoles], spec.requirement)) continue;

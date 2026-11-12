@@ -635,6 +635,8 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
     "reason",
     "message",
   ]),
+  "private_sale_deal.settlement_follow_up_raised": new Set(["dealId", "reference", "severity"]),
+  "private_sale_deal.artwork_mark_sold_retried": new Set(["dealId", "reference", "outcome"]),
   "enquiry_routing.changed": new Set([
     "departmentSlug",
     "assignedToUserId",

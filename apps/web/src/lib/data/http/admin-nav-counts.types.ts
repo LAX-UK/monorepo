@@ -26,6 +26,9 @@ export type AdminNavCounts = {
   /** Open data requests due within 7 days, and those already overdue (per person, from Identity). */
   dataRequestsDueSoon: number;
   dataRequestsOverdue: number;
+  /** Settled private sales whose artwork the register does not show as sold, and the urgent ones among them (per person). */
+  privateSalesAttention: number;
+  privateSalesUrgent: number;
 };
 
 export const EMPTY_ADMIN_NAV_COUNTS: AdminNavCounts = {
@@ -52,4 +55,6 @@ export const EMPTY_ADMIN_NAV_COUNTS: AdminNavCounts = {
   enquiriesLate: 0,
   dataRequestsDueSoon: 0,
   dataRequestsOverdue: 0,
+  privateSalesAttention: 0,
+  privateSalesUrgent: 0,
 };

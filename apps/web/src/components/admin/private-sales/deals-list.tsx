@@ -14,6 +14,7 @@ import {
   dealHref,
   dealNextStep,
 } from "@/lib/admin/private-sales/private-sales.vm";
+import { settlementRowLabel } from "@/lib/admin/private-sales/settlement-follow-up.vm";
 import type { DealListItem, DealListPage } from "@/lib/data/http/admin-private-sales.schema";
 import { copyToClipboard } from "@/lib/ui/copy-to-clipboard";
 import { DEAL_VIEWS } from "@auction/domain";
@@ -30,6 +31,13 @@ import {
 import Link from "next/link";
 import { useCallback, useMemo } from "react";
 import { DeadlineCell, DealStageBadge } from "./deal-cells";
+
+/** What the stage column says under the badge: what the deal waits for, or what went wrong at settlement. */
+function stageNote(row: DealListItem): string {
+  return row.settlementFollowUp
+    ? settlementRowLabel(row.settlementFollowUp)
+    : dealNextStep(row.stage, row.buyerName !== null);
+}
 
 export type DealsListProps = {
   page: DealListPage | null;
@@ -105,7 +113,7 @@ export function DealsList({ page, search, filters, pagination, loadError }: Deal
         mobile: "badge",
         truncate: false,
         cell: (row) => (
-          <StackedCell secondary={dealNextStep(row.stage, row.buyerName !== null)}>
+          <StackedCell secondary={stageNote(row)}>
             <DealStageBadge stage={row.stage} />
           </StackedCell>
         ),
