@@ -7,8 +7,6 @@ import { PLATFORM_DEFAULT_CURRENCY } from "@/lib/money/currency";
 import {
   calendarYear,
   formatDate as datetimeFormatDate,
-  formatDateTime as datetimeFormatDateTime,
-  formatDayMonthOnly,
   formatTime,
   runtimeTimeZone,
 } from "@auction/datetime";
@@ -57,6 +55,11 @@ function normalizeCurrencyCode(raw: string): string {
   return /^[A-Z]{3}$/.test(code) ? code : PLATFORM_DEFAULT_CURRENCY;
 }
 
+/** "19 May": the day and short month in the runtime zone, without the year. */
+function dayAndMonth(d: Date): string {
+  return datetimeFormatDate(d, runtimeTimeZone()).replace(/ \d{4}$/, "");
+}
+
 function twoDigitYear(d: Date): string {
   return String(calendarYear(d, runtimeTimeZone())).slice(-2);
 }
@@ -96,14 +99,15 @@ export function formatPeriod(
 export function formatDateShort(value: Date | string | number | null | undefined): string {
   const d = toDate(value);
   if (!d) return "—";
-  return `${formatDayMonthOnly(d, runtimeTimeZone())} ${twoDigitYear(d)}`;
+  return `${dayAndMonth(d)} ${twoDigitYear(d)}`;
 }
 
 /** Date + time for staff tables and detail panels */
 export function formatDateTime(value: Date | string | number | null | undefined): string {
   const d = toDate(value);
   if (!d) return "—";
-  return datetimeFormatDateTime(d, runtimeTimeZone());
+  const zone = runtimeTimeZone();
+  return `${datetimeFormatDate(d, zone)}, ${formatTime(d, zone)}`;
 }
 
 /** Compact date + time for table secondary lines (drops year when same as reference). */
@@ -115,7 +119,7 @@ export function formatDateTimeShort(
   if (!d) return "—";
   const zone = runtimeTimeZone();
   const sameYear = calendarYear(d, zone) === calendarYear(reference, zone);
-  const day = formatDayMonthOnly(d, zone);
+  const day = dayAndMonth(d);
   return `${sameYear ? day : `${day} ${twoDigitYear(d)}`}, ${formatTime(d, zone)}`;
 }
 
