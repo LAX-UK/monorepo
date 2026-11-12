@@ -1,12 +1,13 @@
-import type {
-  CreateNotificationRow,
-  ILegalEntityRepository,
-  ILotFulfilmentPaymentHook,
-  ILotRepository,
-  IPaymentWriteRepository,
-  IUserRepository,
-  NotificationPayload,
-  RaisedInvoice,
+import {
+  BidInvoiceLotMovedError,
+  type CreateNotificationRow,
+  type ILegalEntityRepository,
+  type ILotFulfilmentPaymentHook,
+  type ILotRepository,
+  type IPaymentWriteRepository,
+  type IUserRepository,
+  type NotificationPayload,
+  type RaisedInvoice,
 } from "@auction/persistence/interfaces";
 import type { Lot } from "@auction/types";
 import { gbpPenceToMajorString } from "./decimal-money.js";
@@ -208,6 +209,12 @@ export class LotInvoiceInitiationService {
         },
       });
     } catch (err) {
+      // Defaulted, re-awarded or moved to another account since it was read above: nothing was
+      // stored, and no notice goes to someone who no longer owns the lot.
+      if (err instanceof BidInvoiceLotMovedError) {
+        this.metrics.record("invoice_raise_lot_moved");
+        return { created: false, reason: "lot_moved", lotId };
+      }
       if (isOpenPaymentUniqueViolation(err)) {
         const raced = await this.payments.findOpenByLotAndBuyerAccount(lotId, buyerAccountId);
         return {

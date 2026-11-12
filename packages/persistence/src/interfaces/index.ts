@@ -612,7 +612,11 @@ export type {
   NewLaxAdminRoleRemoval,
 } from "./lax-admin-roles.repository.js";
 
-export { BidInvoiceTotalMismatchError, bidInvoiceKey } from "./bid-invoice.repository.js";
+export {
+  BidInvoiceLotMovedError,
+  BidInvoiceTotalMismatchError,
+  bidInvoiceKey,
+} from "./bid-invoice.repository.js";
 export type {
   BidInvoiceRecord,
   IBidInvoiceBatchReader,
