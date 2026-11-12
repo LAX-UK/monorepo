@@ -120,6 +120,10 @@ export function createHomeCoverService(deps: {
 
     async save(command: SaveHomeCoverCommand): Promise<StoredHomeCover> {
       // The picture is read before the transaction so no database work waits on image work.
+      // Known trade-off: this runs before the idempotency record is looked up, so a retry with
+      // the same key downloads and measures the picture again, and if the picture has become
+      // unusable in between, the retry is refused (400) rather than answered with the stored
+      // result. Checking the record first would need a second transaction for a rare retry.
       const record = await measure(command);
       return deps.uow.run((tx) =>
         withAdminIdempotency({

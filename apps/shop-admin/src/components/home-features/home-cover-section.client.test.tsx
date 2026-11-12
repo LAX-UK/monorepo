@@ -201,4 +201,10 @@ describe("HomeCoverSection", () => {
     expect(screen.getByText("Not set")).toBeInTheDocument();
     expect(screen.getByRole("combobox", { name: "Choose a Shop picture" })).toBeInTheDocument();
   });
+
+  it("shows a failed state when the cover could not be read", () => {
+    render(<HomeCoverSection saved={null} actions={actions()} />);
+    expect(screen.getByText("The cover image could not be loaded")).toBeTruthy();
+    expect(screen.queryByRole("combobox")).toBeNull();
+  });
 });

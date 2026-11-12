@@ -71,8 +71,15 @@ describe("admin home cover routes", () => {
     expect(read.json().minimumWidth).toBe(2400);
   });
 
-  it("lets any staff member read it but not change it", async () => {
-    const { app, store } = await buildApp("read_only");
+  it.each([
+    "operations",
+    "finance",
+    "catalogue_editor",
+    "read_only",
+    "account_manager",
+    "broker",
+  ] as const)("lets %s read the cover but not change it", async (role) => {
+    const { app, store } = await buildApp(role);
     const read = await app.inject({ method: "GET", url: "/admin/v1/home-cover", headers });
     expect(read.statusCode).toBe(200);
     expect((await put(app)).statusCode).toBe(403);
@@ -84,6 +91,7 @@ describe("admin home cover routes", () => {
         .statusCode,
     ).toBe(403);
     expect(store.state.saved).toBeNull();
+    expect(store.audit).toHaveLength(0);
   });
 
   it("names the fields at fault when a save is refused", async () => {

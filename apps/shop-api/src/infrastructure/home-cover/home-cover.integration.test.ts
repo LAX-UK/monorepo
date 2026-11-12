@@ -98,7 +98,9 @@ describe.skipIf(!ownerUrl || !shopUrl)("drizzle home cover (as shop_app)", () =>
     const upload = `shop/editorial-cover/${suffix}.jpg`;
     const application = `shop/application/${suffix}.jpg`;
     const stray = `private/${suffix}.jpg`;
-    for (const key of [upload, application, stray]) {
+    const pending = `shop/editorial-cover/pending-${suffix}.jpg`;
+    const rejected = `shop/editorial-cover/rejected-${suffix}.jpg`;
+    for (const key of [upload, application, stray, pending, rejected]) {
       await storage.putObject(key, Buffer.from(key), "image/jpeg");
     }
     await db.insert(shopMediaAsset).values([
@@ -116,6 +118,20 @@ describe.skipIf(!ownerUrl || !shopUrl)("drizzle home cover (as shop_app)", () =>
         contentType: "image/jpeg",
         byteSize: application.length,
       },
+      {
+        key: pending,
+        kind: "editorial_cover",
+        status: "pending",
+        contentType: "image/jpeg",
+        byteSize: pending.length,
+      },
+      {
+        key: rejected,
+        kind: "editorial_cover",
+        status: "rejected",
+        contentType: "image/jpeg",
+        byteSize: rejected.length,
+      },
     ]);
     const pictures = createDrizzleHomeCoverPictures(db, {
       storage,
@@ -125,10 +141,14 @@ describe.skipIf(!ownerUrl || !shopUrl)("drizzle home cover (as shop_app)", () =>
     expect((await pictures.load(upload))?.toString()).toBe(upload);
     expect(await pictures.load(application)).toBeNull();
     expect(await pictures.load(stray)).toBeNull();
+    expect(await pictures.load(pending)).toBeNull();
+    expect(await pictures.load(rejected)).toBeNull();
     expect(await pictures.load(`shop/editorial-cover/missing-${suffix}.jpg`)).toBeNull();
 
     await db.delete(shopMediaAsset).where(eq(shopMediaAsset.key, upload));
     await db.delete(shopMediaAsset).where(eq(shopMediaAsset.key, application));
+    await db.delete(shopMediaAsset).where(eq(shopMediaAsset.key, pending));
+    await db.delete(shopMediaAsset).where(eq(shopMediaAsset.key, rejected));
   });
 
   it("lists pictures of live Shop editions for staff to choose from", async () => {

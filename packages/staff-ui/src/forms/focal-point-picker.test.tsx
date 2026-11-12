@@ -68,10 +68,34 @@ describe("FocalPointPicker", () => {
     return { onValueChange, surface: screen.getByRole("application") };
   };
 
-  it("is named, and describes where the point is and how to move it", () => {
+  it("is named, and describes how to move the point", () => {
     const { surface } = setup();
     expect(surface).toHaveAccessibleName("Where the subject is");
-    expect(surface).toHaveAccessibleDescription(/50% across, 50% down\. Use the arrow keys/);
+    expect(surface).toHaveAccessibleDescription(/Use the arrow keys to move it/);
+  });
+
+  it("announces the position politely, and again when it moves", () => {
+    const { rerender } = render(
+      <FocalPointPicker
+        src="/p.jpg"
+        ratio={2}
+        value={{ x: 0.5, y: 0.5 }}
+        onValueChange={vi.fn()}
+        label="Where the subject is"
+      />,
+    );
+    const live = document.querySelector('[aria-live="polite"]');
+    expect(live?.textContent).toBe(describeFocal({ x: 0.5, y: 0.5 }));
+    rerender(
+      <FocalPointPicker
+        src="/p.jpg"
+        ratio={2}
+        value={{ x: 0.6, y: 0.5 }}
+        onValueChange={vi.fn()}
+        label="Where the subject is"
+      />,
+    );
+    expect(live?.textContent).toBe(describeFocal({ x: 0.6, y: 0.5 }));
   });
 
   it("moves with the arrow keys", () => {
@@ -108,7 +132,9 @@ describe("FocalPointPicker", () => {
     );
     const surface = screen.getByRole("application");
     expect(surface).toHaveAttribute("id", "cover-picture");
-    expect(surface).toHaveAccessibleDescription(/Click the subject\..*Too small.*50% across/);
+    expect(surface).toHaveAccessibleDescription(
+      /Click the subject\..*Too small.*Use the arrow keys/,
+    );
   });
 
   it("reports the picture's own size once it has loaded", () => {

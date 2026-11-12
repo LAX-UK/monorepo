@@ -91,6 +91,42 @@ export function HomeCoverSection({
   actions,
   onSaved,
 }: {
+  /** `null` when the cover could not be read; the section then says so and nothing else is affected. */
+  saved: AdminHomeCover | null;
+  actions?: HomeCoverActions;
+  onSaved?: (cover: AdminHomeCover) => void;
+}) {
+  if (!saved) return <HomeCoverUnavailable />;
+  return (
+    <HomeCoverEditor
+      saved={saved}
+      {...(actions ? { actions } : {})}
+      {...(onSaved ? { onSaved } : {})}
+    />
+  );
+}
+
+function HomeCoverUnavailable() {
+  return (
+    <section
+      aria-labelledby="home-cover-heading"
+      className="flex flex-col gap-4 rounded-staff-lg border border-staff-line bg-staff-surface p-4 sm:p-6"
+    >
+      <h2 id="home-cover-heading" className="font-staff text-staff-md font-semibold text-staff-fg">
+        {HOME_COVER_COPY.title}
+      </h2>
+      <Notice tone="warning" title="The cover image could not be loaded">
+        The prints, artists and categories below are not affected. Reload the page to try again.
+      </Notice>
+    </section>
+  );
+}
+
+function HomeCoverEditor({
+  saved,
+  actions,
+  onSaved,
+}: {
   saved: AdminHomeCover;
   actions?: HomeCoverActions;
   onSaved?: (cover: AdminHomeCover) => void;

@@ -28,9 +28,9 @@ export default async function FeaturedOnHomePage() {
   if (features.status !== "ok") {
     return <AdminFailedPage title={TITLE} status={features.status} />;
   }
-  if (cover.status !== "ok") {
-    return <AdminFailedPage title={TITLE} status={cover.status} />;
-  }
+  // A cover that cannot be read (not deployed yet, or a server error) must not take the prints,
+  // artists and categories editor down with it: the cover section shows its own failed state.
+  const coverData = cover.status === "ok" ? cover.data : null;
   const canEdit =
     session.status === "ok" &&
     session.data.capabilities.includes(HOME_FEATURES_EDIT_CAPABILITY) &&
@@ -50,7 +50,7 @@ export default async function FeaturedOnHomePage() {
         }
         description="The cover image, prints, artists and categories the LAX Shop home features. The artists also lead on the lax.art home. Each part is saved on its own and goes live at once."
       />
-      <HomeFeaturesEditor initial={features.data} cover={cover.data} canEdit={canEdit} />
+      <HomeFeaturesEditor initial={features.data} cover={coverData} canEdit={canEdit} />
     </div>
   );
 }

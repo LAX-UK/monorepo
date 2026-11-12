@@ -22,6 +22,14 @@ export type FocalPointPickerProps = {
   className?: string;
 };
 
+/**
+ * Documented exception to the kit's `light-dark()` colour tokens: the marker sits on the
+ * photograph, not on the staff surface, so it must read on any picture in either colour scheme.
+ * It is a white ring edged inside and out in black, fixed in both schemes.
+ */
+const MARKER_CLASSES =
+  "border-2 border-white shadow-[0_0_0_1.5px_rgba(0,0,0,0.65),inset_0_0_0_1.5px_rgba(0,0,0,0.65)]";
+
 const FALLBACK_RATIO = 3 / 2;
 const MAX_HEIGHT_REM = 22;
 
@@ -105,14 +113,18 @@ export function FocalPointPicker({
         className="pointer-events-none absolute inset-0 size-full object-cover"
       />
       <span id={hintId} className="sr-only">
-        {describeFocal(value)}. Use the arrow keys to move it, Shift for larger steps, Home to
-        centre.
+        Use the arrow keys to move it, Shift for larger steps, Home to centre.
+      </span>
+      {/* Announces each move; the hint above is read once, on focus. */}
+      <span aria-live="polite" className="sr-only">
+        {describeFocal(value)}
       </span>
       <span
         aria-hidden
         style={{ left: `${value.x * 100}%`, top: `${value.y * 100}%` }}
         className={cn(
-          "pointer-events-none absolute size-6 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white shadow-[0_0_0_1.5px_rgba(0,0,0,0.65),inset_0_0_0_1.5px_rgba(0,0,0,0.65)]",
+          "pointer-events-none absolute size-6 -translate-x-1/2 -translate-y-1/2 rounded-full",
+          MARKER_CLASSES,
           disabled && "opacity-60",
         )}
       />

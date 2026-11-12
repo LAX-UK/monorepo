@@ -33,13 +33,13 @@ export function HomeFeaturesEditor({
   canEdit,
 }: {
   initial: AdminHomeFeatures;
-  cover: AdminHomeCover;
+  cover: AdminHomeCover | null;
   canEdit: boolean;
 }) {
   const [features, setFeatures] = useState(initial);
   return (
     <div className="flex w-full max-w-[1040px] flex-col gap-6">
-      <HomeCoverSection saved={cover} {...(canEdit ? { actions: COVER_ACTIONS } : {})} />
+      <HomeCoverSection saved={cover} {...(canEdit && cover ? { actions: COVER_ACTIONS } : {})} />
       {HOME_FEATURE_SLOT_ORDER.map((slot) => (
         <HomeFeatureList
           key={slot}
