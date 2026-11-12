@@ -20,6 +20,7 @@ import type {
   ReturnedWorkRow,
   SoldLotRow,
 } from "../interfaces/workspace-selling.readers.js";
+import { lotSoldAfterAuctionSql } from "../lib/lot-result-pending.sql.js";
 import { submissionSenderSql } from "./submission-sender.sql.js";
 
 export class DrizzleAgreementDocumentFactsReader implements IAgreementDocumentFactsReader {
@@ -66,6 +67,7 @@ export class DrizzleSoldLotsReader implements ISoldLotsReader {
         saleTitle: sale.title,
         soldAt: lot.endTime,
         hammerPrice: lot.currentPrice,
+        soldAfterAuction: lotSoldAfterAuctionSql(),
       })
       .from(lot)
       .leftJoin(sale, eq(sale.id, lot.saleId))
@@ -153,6 +155,7 @@ export class DrizzlePayoutLinesReader implements IPayoutLinesReader {
         hammerPrice: lot.currentPrice,
         paymentAmount: payment.amount,
         platformFee: payment.platformFee,
+        soldAfterAuction: lotSoldAfterAuctionSql(),
       })
       .from(payoutLine)
       .leftJoin(payment, eq(payment.id, payoutLine.paymentId))
@@ -183,6 +186,7 @@ export class DrizzlePayoutLinesReader implements IPayoutLinesReader {
           l.paymentAmount && l.platformFee
             ? { amount: l.paymentAmount, platformFee: l.platformFee }
             : null,
+        soldAfterAuction: l.soldAfterAuction,
       })),
     };
   }

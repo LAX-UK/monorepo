@@ -219,6 +219,7 @@ export function createLotCatalogServices(
     telephoneBidBookingService,
     repoFactory,
     saleChannelReader,
+    publicLotResults: repos.publicLotResultReader,
     // Seller withdrawal requests and the staff decisions on them are review tasks.
     adminReviewTaskRepository: repos.adminReviewTaskRepository,
   });
@@ -283,6 +284,7 @@ export function createLotCatalogServices(
     qrCodeService,
     repoFactory,
     saleChannelReader,
+    publicLotResults: repos.publicLotResultReader,
     salePublishService,
   });
   const saleResultsSummaryService = new SaleResultsSummaryService(

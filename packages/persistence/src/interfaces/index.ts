@@ -1008,6 +1008,8 @@ export type {
   SubmissionAttentionRow,
 } from "./attention-feed.reader.js";
 
+export type { IPublicLotResultReader } from "./public-lot-result.reader.js";
+
 export type {
   ISaleResultLotsReader,
   SaleResultLotRow,

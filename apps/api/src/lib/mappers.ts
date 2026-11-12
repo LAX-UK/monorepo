@@ -47,6 +47,7 @@ export function mapLotToSummary(lot: WithSaleZone<Lot | PublicLotView>): LotSumm
     categoryIds: lot.categoryIds ?? (lot.categoryId ? [lot.categoryId] : []),
     marketingDetails: summaryMarketingDetails(lot),
     ...(lot.status === "ended" ? { hasWinner: lot.winnerId != null } : {}),
+    ...(lot.status === "ended" && lot.resultPending ? { resultPending: true } : {}),
     // A sold lot's price with the buyer's premium, so a result is shown as the buyer paid it.
     ...(lot.status === "ended" && lot.winnerId != null && lot.checkoutPricing
       ? { checkoutPricing: lot.checkoutPricing }

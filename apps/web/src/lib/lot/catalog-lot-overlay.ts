@@ -66,6 +66,8 @@ function statusPresentationForLifecycle(
         winnerId: null,
         hasWinner: false,
       });
+    case "endedPending":
+      return { label: "Ended", variant: "neutral" };
     case "cancelled":
       return resolveLotStatusPresentation("cancelled");
     case "withdrawn":

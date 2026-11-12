@@ -38,7 +38,11 @@ export function createCatalogLotReadHttpFixture(
   input: CatalogLotReadHttpFixtureInput,
 ): ICatalogLotReadHttpApplicationService {
   return new CatalogLotReadHttpApplicationService(
-    input.lotService as ILotService,
+    // Unless a test says otherwise, no lot has an open result.
+    {
+      presentForPublic: vi.fn(async (lots: readonly unknown[]) => [...lots]),
+      ...input.lotService,
+    } as unknown as ILotService,
     (input.saleService ?? { getById: vi.fn(), findByIds: vi.fn() }) as ISaleService,
     (input.lotSoftDeleteService ?? {
       getDeleteEligibility: vi.fn(),

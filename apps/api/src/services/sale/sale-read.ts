@@ -14,6 +14,7 @@ import {
   presentSaleImages,
   presentSalesWithLotsImages,
 } from "../../lib/media-presenters.js";
+import { withPublicLotResults } from "../../lib/public-lot-result.js";
 import {
   withAtgLotResults,
   withSellingPlatform,
@@ -80,9 +81,10 @@ export async function getSaleDetailForPublicApi(
           presentLotsImages(deps.mediaUrlResolver, rows, deps.mediaAssetEnricher),
         ),
   ]);
+  // Staff see the real buyer and price; everyone else sees an open result as "ended".
   const visibleLots = canPreview
     ? lots
-    : lots
+    : (await withPublicLotResults(deps.publicLotResults, lots))
         .filter((lot) => isPublicCatalogueLot(lot, saleWithPlatform))
         .map(presentCatalogueRowForPublic);
   return { data: { sale, lots: visibleLots, viewer: { isFollowing } } };
@@ -186,7 +188,11 @@ export async function listSaleLotsPageForPublicApi(
   );
   return {
     data: {
-      items: canPreview ? items : items.map(presentCatalogueRowForPublic),
+      items: canPreview
+        ? items
+        : (await withPublicLotResults(deps.publicLotResults, items)).map(
+            presentCatalogueRowForPublic,
+          ),
       total: page.total,
       limit: opts.limit,
       offset: opts.offset,

@@ -72,6 +72,7 @@ function pageLotOf(auction: WithSaleZone<Lot | PublicLotView>): LotPageLot {
     minBidIncrement: auction.minBidIncrement,
     winnerId: auction.winnerId,
     hasWinner: auction.hasWinner,
+    ...(auction.resultPending ? { resultPending: true } : {}),
     marketingDetails: auction.marketingDetails,
     startTime: new Date(auction.startTime).toISOString(),
     endTime: new Date(auction.endTime).toISOString(),

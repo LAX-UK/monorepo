@@ -30,6 +30,8 @@ export type PayoutStatementLineRow = {
   lotTitle: string | null;
   lotNumber: number | null;
   buyerName: string | null;
+  /** The lot was re-awarded to the next bidder after the first buyer did not pay. */
+  soldAfterAuction: boolean;
   /** The private sale a line settles (its PS reference), never the buyer, who may stay anonymous. */
   dealReference: string | null;
 };

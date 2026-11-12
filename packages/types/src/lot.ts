@@ -37,6 +37,8 @@ export type LotSummary = {
   marketingDetails: LotMarketingDetails;
   /** Present on ended list rows when the hammer sold (buyer id stays on detail only). */
   hasWinner?: boolean;
+  /** Present on ended list rows whose result is still open: ended, with no result to show yet. */
+  resultPending?: boolean;
   /** Present on sold list rows: hammer, buyer's premium and total, computed on the server. */
   checkoutPricing?: Lot["checkoutPricing"];
 };
@@ -132,6 +134,11 @@ export type Lot = {
   winnerId: string | null;
   /** Present on list rows derived from summaries — sold outcome without exposing buyer id. */
   hasWinner?: boolean;
+  /**
+   * Public reads of an ended lot whose winner did not pay and whose result is still open: it has
+   * ended, with no buyer and no price yet. Never set on a staff read.
+   */
+  resultPending?: boolean;
   /** Public reads of a sale that ended on ATG: whether this lot sold there. */
   atgSold?: boolean;
   /** Public lot lists: set when the parent sale is selling (or sold) on ATG. */

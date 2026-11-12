@@ -34,6 +34,8 @@ export type LotPageLot = Pick<
   | "marketingDetails"
 > & {
   hasWinner?: boolean | undefined;
+  /** Ended, with the result not final yet: no buyer and no price are shown. */
+  resultPending?: boolean | undefined;
   startTime: string;
   endTime: string;
   /** From the public view: whether a reserve is set, and whether the bidding has met it. */
@@ -103,6 +105,7 @@ export function useLotPageView(source: LotPageViewSource): LotPageLive {
           winnerId,
           currentPrice,
           hasWinner: lot.hasWinner,
+          resultPending: lot.resultPending,
         },
         sale,
         nowMs,
@@ -117,6 +120,7 @@ export function useLotPageView(source: LotPageViewSource): LotPageLive {
     [
       lot.id,
       lot.hasWinner,
+      lot.resultPending,
       status,
       startMs,
       endMs,
