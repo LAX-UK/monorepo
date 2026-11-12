@@ -4,7 +4,8 @@ import type { SaleDayMedia } from "@auction/types";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-const preloaded = vi.hoisted(() => ({ count: 0, sheet: 0 }));
+const preloaded = vi.hoisted(() => ({ count: 0 }));
+const preloadSheet = vi.hoisted(() => vi.fn());
 
 const mediaLightboxMock = vi.fn(
   ({
@@ -34,11 +35,12 @@ vi.mock("@/components/gallery/engine/media-lightbox", () => {
   };
 });
 
-vi.mock("@/components/sections/saleroom/day-gallery/day-gallery-view-all-sheet", async () => {
-  preloaded.sheet += 1;
-  return await vi.importActual<
-    typeof import("@/components/sections/saleroom/day-gallery/day-gallery-view-all-sheet")
-  >("@/components/sections/saleroom/day-gallery/day-gallery-view-all-sheet");
+vi.mock("@/components/sections/saleroom/day-gallery/day-gallery-view-all-sheet.lazy", async () => {
+  const actual = await vi.importActual<
+    typeof import("@/components/sections/saleroom/day-gallery/day-gallery-view-all-sheet.lazy")
+  >("@/components/sections/saleroom/day-gallery/day-gallery-view-all-sheet.lazy");
+  preloadSheet.mockImplementation(actual.preloadDayGalleryViewAllSheet);
+  return { ...actual, preloadDayGalleryViewAllSheet: preloadSheet };
 });
 
 vi.mock("@/components/ui/media-image", () => ({
@@ -167,15 +169,37 @@ describe("SaleroomDayGallery", () => {
     );
   });
 
-  it("starts fetching the sheet when View all is pointed at, before it is pressed", async () => {
+  it.each([
+    ["pointed at", fireEvent.pointerEnter],
+    ["focused", fireEvent.focus],
+  ] as const)(
+    "starts fetching the sheet when View all is %s, before it is pressed",
+    (_, intent) => {
+      render(
+        <SaleroomDayGallery vm={makeVm(Array.from({ length: 15 }, (_, i) => imageItem(i + 1)))} />,
+      );
+      preloadSheet.mockClear();
+      const viewAll = screen.getByRole("button", { name: /View all \(15\)/i });
+      expect(preloadSheet).not.toHaveBeenCalled();
+
+      intent(viewAll);
+
+      expect(preloadSheet).toHaveBeenCalledTimes(1);
+      expect(screen.queryByText("All auction day media")).toBeNull();
+    },
+  );
+
+  it("starts fetching the sheet when the overflow tile is pointed at or focused", () => {
     render(
       <SaleroomDayGallery vm={makeVm(Array.from({ length: 15 }, (_, i) => imageItem(i + 1)))} />,
     );
-    const before = preloaded.sheet;
-    const viewAll = screen.getByRole("button", { name: /View all \(15\)/i });
-    fireEvent.pointerEnter(viewAll);
-    await waitFor(() => expect(preloaded.sheet).toBeGreaterThanOrEqual(before));
-    expect(screen.queryByText("All auction day media")).toBeNull();
+    preloadSheet.mockClear();
+    const tile = screen.getByRole("button", { name: /View all 15 auction day photographs/ });
+
+    fireEvent.pointerEnter(tile);
+    fireEvent.focus(tile);
+
+    expect(preloadSheet).toHaveBeenCalledTimes(2);
   });
 
   it("renders video play affordance in preview and sheet", async () => {

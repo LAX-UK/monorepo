@@ -1,7 +1,8 @@
 "use client";
 
 import type { DayGalleryViewAllSheetProps } from "@/components/sections/saleroom/day-gallery/day-gallery-view-all-sheet";
-import dynamic from "next/dynamic";
+import { useDeferredModule } from "@/hooks/use-deferred-module";
+import { useEffect, useRef } from "react";
 
 /**
  * Starts fetching the "view all" sheet and its drawer library. They are not part of the page's
@@ -13,7 +14,35 @@ export function preloadDayGalleryViewAllSheet() {
   return import("@/components/sections/saleroom/day-gallery/day-gallery-view-all-sheet");
 }
 
-export const LazyDayGalleryViewAllSheet = dynamic<DayGalleryViewAllSheetProps>(
-  () => preloadDayGalleryViewAllSheet().then((module) => module.DayGalleryViewAllSheet),
-  { ssr: false },
-);
+const loadSheet = () =>
+  preloadDayGalleryViewAllSheet().then((module) => module.DayGalleryViewAllSheet);
+
+/**
+ * The sheet, mounted on the first press of "View all" and drawn (already open) once it arrives.
+ * If it cannot be fetched, the press is undone (`onOpenChange(false)`) instead of the failure
+ * reaching the page's error screen, and the next press fetches it again.
+ */
+export function LazyDayGalleryViewAllSheet(props: DayGalleryViewAllSheetProps) {
+  const loaded = useDeferredModule(loadSheet, true);
+  const { open, onOpenChange } = props;
+  // The current failure has been answered by closing; a later press is a request to try again.
+  const failureHandled = useRef(false);
+  const failed = loaded.status === "failed";
+  const { retry } = loaded;
+
+  useEffect(() => {
+    if (!failed) return;
+    if (!failureHandled.current) {
+      failureHandled.current = true;
+      if (open) onOpenChange(false);
+      return;
+    }
+    if (open) {
+      failureHandled.current = false;
+      retry();
+    }
+  }, [failed, open, onOpenChange, retry]);
+
+  if (loaded.status !== "ready") return null;
+  return <loaded.value {...props} />;
+}
