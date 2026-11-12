@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { AccessDeniedState, NotFoundState } from "./states.js";
+import { AccessDeniedState, NotFoundState, Section } from "./states.js";
 
 describe("AccessDeniedState", () => {
   it("names the resource and the one role that can open it", () => {
@@ -47,5 +47,27 @@ describe("NotFoundState", () => {
   it("can be the page heading", () => {
     render(<NotFoundState headingLevel="h1" title="This page doesn’t exist" />);
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("This page doesn’t exist");
+  });
+});
+
+describe("Section", () => {
+  it("puts a status beside the title, outside the heading, and keeps the heading as it was", () => {
+    render(
+      <Section title="Re-offer" status={<span>Waiting for seller</span>}>
+        <p>Body</p>
+      </Section>,
+    );
+    const heading = screen.getByRole("heading", { level: 2, name: "Re-offer" });
+    expect(heading).toHaveClass("font-staff", "text-staff-md", "font-semibold", "text-staff-fg");
+    expect(heading.parentElement).toHaveTextContent("Waiting for seller");
+  });
+
+  it("draws no status slot content when there is none", () => {
+    render(
+      <Section title="Notes">
+        <p>Body</p>
+      </Section>,
+    );
+    expect(screen.getByRole("heading", { level: 2 }).parentElement?.childElementCount).toBe(1);
   });
 });

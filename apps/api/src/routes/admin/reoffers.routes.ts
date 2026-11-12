@@ -59,6 +59,22 @@ export function attachAdminReofferRoutes(
     (c) => respond(c, () => reoffer.reads.listForLot(c.req.valid("param").lotId)),
   );
 
+  /** GET /admin/lots/:lotId/reoffer-preview: who the lot would be offered to next, and at what bid. */
+  platform.get(
+    "/lots/:lotId/reoffer-preview",
+    requireLotsRead,
+    zValidator("param", lotIdOnlyParamSchema),
+    (c) => respond(c, () => reoffer.preview.previewForLot(c.req.valid("param").lotId)),
+  );
+
+  /** GET /admin/lots/:lotId/buyer-default: the default the lot's re-offer answers. */
+  platform.get(
+    "/lots/:lotId/buyer-default",
+    requireLotsRead,
+    zValidator("param", lotIdOnlyParamSchema),
+    (c) => respond(c, () => reoffer.preview.buyerDefaultForLot(c.req.valid("param").lotId)),
+  );
+
   /** POST /admin/lots/:lotId/reoffers: offer the defaulted lot to the next bidder (RA22). */
   platform.post(
     "/lots/:lotId/reoffers",

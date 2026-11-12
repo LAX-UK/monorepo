@@ -93,6 +93,8 @@ export { LinkList } from "./display/link-list.js";
 export type { LinkListItem } from "./display/link-list.js";
 export { IssueList } from "./display/issue-list.js";
 export { Checklist } from "./display/checklist.js";
+export { StepList } from "./display/step-list.js";
+export type { StepItem, StepState } from "./display/step-list.js";
 export type { ChecklistItem } from "./display/checklist.js";
 export type { IssueItem } from "./display/issue-list.js";
 export type { AttentionItem } from "./display/attention-list.js";

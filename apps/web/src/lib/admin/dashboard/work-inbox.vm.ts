@@ -51,6 +51,26 @@ export const WORK_ACTION_LABELS: Record<AdminWorkItemAction, string> = {
   delivered: "Mark delivered",
 };
 
+/** What to do about an item that has no button of its own: one sentence per kind that needs one. */
+const WORK_KIND_GUIDANCE: Partial<Record<AdminWorkItem["kind"], string>> = {
+  payment_overdue: "Remind the buyer, or record a buyer default from the lot.",
+  reoffer_no_reply:
+    "Record the seller's answer if they have given one, or return the lot to inventory.",
+  reoffer_ready: "Send the offer to the next bidder from the lot.",
+  reoffer_decision: "Offer the lot to the next bidder, or return it to inventory.",
+  reoffer_accepted: "Nothing to do. The new buyer has been invoiced.",
+};
+
+const DEFAULT_GUIDANCE = "Open the record to deal with it";
+
+/** The "What to do" line: the item's actions, else what its kind needs, else a pointer to the record. */
+export function workItemGuidance(item: Pick<AdminWorkItem, "kind" | "actions">): string {
+  if (item.actions.length > 0) {
+    return item.actions.map((action) => WORK_ACTION_LABELS[action]).join(", ");
+  }
+  return WORK_KIND_GUIDANCE[item.kind] ?? DEFAULT_GUIDANCE;
+}
+
 /** Past tense for the toast once an action is done: "Payment captured". */
 const WORK_ACTION_DONE: Record<AdminWorkItemAction, string> = {
   start_review: "Review started",

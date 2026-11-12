@@ -3,6 +3,7 @@ import "server-only";
 import { type AdminKpiPeriodDays, parseAdminKpiPeriod } from "@/lib/admin/admin-kpi-period";
 import { type AdminLotDetailBundle, loadAdminLotDetail } from "@/lib/admin/load-lot-detail";
 import type { LotDetailContext } from "@/lib/admin/lot-detail-context";
+import type { LotReofferBundle } from "@/lib/admin/reoffer/reoffer-bundle";
 import {
   type AdminLotAttention,
   getAdminLotAttention,
@@ -15,6 +16,7 @@ import {
   type AdminLotOverviewKpiTrends,
   getAdminLotOverviewKpiTrends,
 } from "@/lib/data/http/admin-lot-overview-kpi-trends.server";
+import { getLotReofferBundle } from "@/lib/data/http/admin-reoffers.server";
 import {
   type AdminDomainEventRow,
   getAdminDomainEventsForAggregate,
@@ -22,7 +24,7 @@ import {
 import { getAtgLotSyncView } from "@/lib/data/http/atg.server";
 import { getServerLotBids } from "@/lib/data/http/lots.server";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
-import { SALES_ACCESS } from "@/lib/navigation/staff-nav-access";
+import { BUYER_DEFAULT_ACCESS, SALES_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { type AtgLotSyncView, type Lot, type UserRole, userHasAccessTo } from "@auction/types";
 
 export type LotOverviewPageModel = {
@@ -37,6 +39,10 @@ export type LotOverviewPageModel = {
   kpiPeriodDays: AdminKpiPeriodDays;
   /** ATG link state; only loaded for staff who manage sales. */
   atgLot: AtgLotSyncView | null;
+  /** The lot's default, offers and next bidder, for the Re-offer card. */
+  reoffers: LotReofferBundle;
+  /** What this person may do with the Re-offer card. */
+  reofferAccess: { canAct: boolean; canRecordAnswer: boolean };
 };
 
 /** Data/composition boundary for `/admin/lots/[id]` overview tab. */
@@ -47,7 +53,7 @@ export async function loadAdminLotOverviewPage(
   const kpiPeriodDays = parseAdminKpiPeriod(periodParam);
   const bundle: AdminLotDetailBundle = await loadAdminLotDetail(lotId);
 
-  const [bids, metrics, attention, kpiTrends, activityEvents, user] = await Promise.all([
+  const [bids, metrics, attention, kpiTrends, activityEvents, user, reoffers] = await Promise.all([
     getServerLotBids(lotId, 100).catch(() => []),
     getAdminLotDetailMetrics(lotId),
     getAdminLotAttention(lotId),
@@ -58,6 +64,7 @@ export async function loadAdminLotOverviewPage(
       limit: 100,
     }).catch(() => []),
     getServerSessionUser().catch(() => null),
+    getLotReofferBundle(lotId),
   ]);
   const canSeeAtg =
     user != null && userHasAccessTo(user.role as UserRole, user.staffRoles, SALES_ACCESS);
@@ -74,5 +81,12 @@ export async function loadAdminLotOverviewPage(
     kpiTrends,
     kpiPeriodDays,
     atgLot,
+    reoffers,
+    reofferAccess: {
+      canAct:
+        user != null &&
+        userHasAccessTo(user.role as UserRole, user.staffRoles, BUYER_DEFAULT_ACCESS),
+      canRecordAnswer: canSeeAtg,
+    },
   };
 }
