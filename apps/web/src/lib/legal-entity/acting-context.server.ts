@@ -2,6 +2,7 @@ import "server-only";
 
 import { createHash } from "node:crypto";
 import { readBidSessionIdFromStore } from "@/lib/bff/session-cookie.server";
+import { viewSessionCookieFromValue } from "@/lib/bff/view-session-cookie";
 import { authedServerFetch } from "@/lib/data/http/authed-fetch.server";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { resolveOrgModuleEnabledFromRequest } from "@/lib/legal-entity/org-module-host.server";
@@ -78,10 +79,23 @@ export async function listMyAccounts(options?: {
   return (await createAccountDirectory()).listMine(options);
 }
 
+/** The acting cookie's value for this request: the one pair every SSR decision is made from. */
+async function readActingCookieValue(): Promise<string | undefined> {
+  return (await cookies()).get(ACTING_LEGAL_ENTITY_COOKIE)?.value;
+}
+
 /** What this browser's acting cookie says; `null` when it has none it can read. */
 async function readBrowserChoice(): Promise<BrowserAccountChoice | null> {
-  const raw = (await cookies()).get(ACTING_LEGAL_ENTITY_COOKIE)?.value;
-  return readActingCookie(raw);
+  return readActingCookie(await readActingCookieValue());
+}
+
+/**
+ * The `Cookie` header that carries this request's staff view session to the API, or `null`. It is
+ * built from the same cookie value as {@link readBrowserChoice}, so the `X-Legal-Entity-Id` header
+ * and the forwarded session can never come from different copies of a duplicated cookie.
+ */
+export async function viewSessionCookieForRequest(): Promise<string | null> {
+  return viewSessionCookieFromValue(await readActingCookieValue());
 }
 
 /**

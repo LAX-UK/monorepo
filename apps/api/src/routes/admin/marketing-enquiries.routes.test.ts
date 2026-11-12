@@ -161,6 +161,8 @@ describe("PATCH /enquiries/:ref", () => {
   });
 });
 
+const OWN_WORK = { notInRegister: { reason: "sellers_own_work" } } as const;
+
 describe("POST /enquiries/:ref/convert", () => {
   const post = (body: unknown) => ({
     method: "POST",
@@ -170,21 +172,25 @@ describe("POST /enquiries/:ref/convert", () => {
 
   it("turns the enquiry into a deal as the signed-in person and returns its reference", async () => {
     const { app, enquiryConversion } = createApp(["specialist"]);
-    const res = await app.request("http://test/enquiries/E-1042/convert", post({}));
+    const res = await app.request("http://test/enquiries/E-1042/convert", post(OWN_WORK));
     expect(res.status).toBe(201);
     expect(await res.json()).toEqual({ data: { reference: "PS-0012" } });
     expect(enquiryConversion.convert).toHaveBeenCalledWith(
       { userId: "staff-1", readsPrivateSale: true },
       "E-1042",
-      {},
+      OWN_WORK,
     );
   });
 
   it("passes the work a buy enquiry is about", async () => {
     const { app, enquiryConversion } = createApp(["sales_manager"]);
-    await app.request("http://test/enquiries/E-1042/convert", post({ workReference: "C-1042" }));
+    await app.request(
+      "http://test/enquiries/E-1042/convert",
+      post({ workReference: "C-1042", ...OWN_WORK }),
+    );
     expect(enquiryConversion.convert).toHaveBeenCalledWith(expect.anything(), "E-1042", {
       workReference: "C-1042",
+      ...OWN_WORK,
     });
   });
 
@@ -204,7 +210,7 @@ describe("POST /enquiries/:ref/convert", () => {
   ] as const)("answers %s with %i", async (error, status) => {
     const { app, enquiryConversion } = createApp(["specialist"]);
     enquiryConversion.convert.mockResolvedValueOnce({ ok: false, error });
-    const res = await app.request("http://test/enquiries/E-1042/convert", post({}));
+    const res = await app.request("http://test/enquiries/E-1042/convert", post(OWN_WORK));
     expect(res.status).toBe(status);
     expect(await res.json()).toEqual({ error });
   });
@@ -230,11 +236,58 @@ describe("POST /enquiries/:ref/convert", () => {
     expect(await res.json()).toEqual({ error: "artwork_unavailable", message: lock.message, lock });
   });
 
+  it("passes the artwork chosen from the register", async () => {
+    const { app, enquiryConversion } = createApp(["specialist"]);
+    const artworkRegisterId = "5b1c1b9e-3a2f-4f6e-9c1d-2f7a8e9d0c11";
+    await app.request("http://test/enquiries/E-1042/convert", post({ artworkRegisterId }));
+    expect(enquiryConversion.convert).toHaveBeenCalledWith(expect.anything(), "E-1042", {
+      artworkRegisterId,
+    });
+  });
+
+  it.each([
+    ["neither the artwork nor a reason", {}],
+    ["both", { artworkRegisterId: "5b1c1b9e-3a2f-4f6e-9c1d-2f7a8e9d0c11", ...OWN_WORK }],
+  ])(
+    "answers %s with 422 artwork_choice_required, from the conversion's own rule",
+    async (_label, body) => {
+      const { app, enquiryConversion } = createApp(["specialist"]);
+      enquiryConversion.convert.mockResolvedValueOnce({
+        ok: false,
+        error: "artwork_choice_required",
+      });
+      const res = await app.request("http://test/enquiries/E-1042/convert", post(body));
+      expect(res.status).toBe(422);
+      expect(await res.json()).toEqual({ error: "artwork_choice_required" });
+      expect(enquiryConversion.convert).toHaveBeenCalledWith(expect.anything(), "E-1042", body);
+    },
+  );
+
+  it("rejects a reason that is not offered as a malformed request", async () => {
+    const { app, enquiryConversion } = createApp(["specialist"]);
+    const res = await app.request(
+      "http://test/enquiries/E-1042/convert",
+      post({ notInRegister: { reason: "lost" } }),
+    );
+    expect(res.status).toBe(400);
+    expect(enquiryConversion.convert).not.toHaveBeenCalled();
+  });
+
+  it("answers a missing artwork choice from the service with 422", async () => {
+    const { app, enquiryConversion } = createApp(["specialist"]);
+    enquiryConversion.convert.mockResolvedValueOnce({
+      ok: false,
+      error: "artwork_choice_required",
+    });
+    const res = await app.request("http://test/enquiries/E-1042/convert", post(OWN_WORK));
+    expect(res.status).toBe(422);
+  });
+
   it("rejects a work reference that is not one", async () => {
     const { app, enquiryConversion } = createApp(["specialist"]);
     const res = await app.request(
       "http://test/enquiries/E-1042/convert",
-      post({ workReference: "hello" }),
+      post({ workReference: "hello", ...OWN_WORK }),
     );
     expect(res.status).toBe(400);
     expect(enquiryConversion.convert).not.toHaveBeenCalled();

@@ -24,6 +24,17 @@ export function isValidZone(zone: unknown): zone is string {
   return supportedZones().has(zone) || runtimeAcceptsZone(zone);
 }
 
+/** True for any zone the runtime can compute with, including "UTC" and the fixed `Etc/*` zones that `isValidZone` leaves out. */
+export function isKnownZone(zone: unknown): zone is string {
+  if (typeof zone !== "string" || zone === "") return false;
+  try {
+    new Intl.DateTimeFormat(LOCALE, { timeZone: zone });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /** UTC and the fixed `Etc/*` zones are what privacy modes report on purpose; they name no place. */
 export function isPlaceholderZone(zone: string): boolean {
   return zone === "UTC" || zone === "GMT" || zone.startsWith("Etc/");
