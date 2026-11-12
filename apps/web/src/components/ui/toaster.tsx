@@ -1,44 +1,20 @@
 "use client";
 
-import { CLIENT_KIT_REVIEW_PATH } from "@/lib/kit/client-kit-review";
-import { isAdminPath } from "@/lib/navigation/admin-path";
-import { isClientAreaPath } from "@/lib/navigation/client-routes";
-import { Toaster as AuctionToaster } from "@auction/ui";
-import { Toaster as LaxToaster } from "@auction/ui/lax";
-import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { subscribeToastRequested, toastRequested } from "@/lib/ui/toast-bridge";
+import dynamic from "next/dynamic";
+import { useSyncExternalStore } from "react";
 
-function useHtmlDarkClass(): "light" | "dark" {
-  const [theme, setTheme] = useState<"light" | "dark">("light");
-  useEffect(() => {
-    const el = document.documentElement;
-    const sync = () => setTheme(el.classList.contains("dark") ? "dark" : "light");
-    sync();
-    const mo = new MutationObserver(sync);
-    mo.observe(el, { attributes: true, attributeFilter: ["class"] });
-    return () => mo.disconnect();
-  }, []);
-  return theme;
-}
+const ToasterHost = dynamic(
+  () => import("@/components/ui/toaster-host").then((mod) => ({ default: mod.ToasterHost })),
+  { ssr: false },
+);
 
 /**
- * Global toast host. The client workspace uses the LAX system toast (the same element as the
- * staff tools, at the client density); public pages keep the marketing toast, whose theme
- * follows `<html class="dark">`. Admin pages render the staff toaster from their own shell
- * instead, so a toast shows once.
+ * Global toast host. Nothing is on screen until a toast is raised, so the toast library and its
+ * styles are not part of the page's first load: the first `notify` call (or a toast queued by
+ * `runToast`) mounts the host, which then shows it. See `ToasterHost` for which toaster is used.
  */
 export function Toaster() {
-  const resolvedTheme = useHtmlDarkClass();
-  const pathname = usePathname();
-  if (isAdminPath(pathname)) return null;
-  if (pathname && (isClientAreaPath(pathname) || pathname === CLIENT_KIT_REVIEW_PATH)) {
-    return <LaxToaster density="client" />;
-  }
-  // A toast that sits at the bottom clears the docked tab bar.
-  return (
-    <AuctionToaster
-      theme={resolvedTheme}
-      mobileOffset={{ bottom: "calc(var(--lax-bottom-bar-space, 0px) + 1rem)" }}
-    />
-  );
+  const raised = useSyncExternalStore(subscribeToastRequested, toastRequested, () => false);
+  return raised ? <ToasterHost /> : null;
 }
