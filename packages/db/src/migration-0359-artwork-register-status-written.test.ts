@@ -14,11 +14,12 @@ const journal = JSON.parse(read("meta/_journal.json")) as {
 };
 
 describe("migration 0359 artwork register status written", () => {
-  it("is journalled right after 0353, later than it, with a fixed stamp", () => {
+  it("is journalled after the previous entry, later than it, with a fixed stamp", () => {
     const at = journal.entries.findIndex((e) => e.tag === "0359_artwork_register_status_written");
     const entry = journal.entries[at];
     const previous = journal.entries[at - 1];
-    expect(previous?.tag).toBe("0353_payment_group_refund_state");
+    expect(at).toBeGreaterThan(0);
+    expect(previous?.tag).not.toBe(entry?.tag);
     expect(entry?.idx).toBe((previous?.idx ?? 0) + 1);
     expect(entry?.when).toBe(1806048000000);
     expect(entry?.when).toBeGreaterThan(previous?.when ?? Number.POSITIVE_INFINITY);

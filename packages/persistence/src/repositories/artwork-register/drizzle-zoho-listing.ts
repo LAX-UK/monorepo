@@ -1,6 +1,7 @@
 import type { OfferState } from "@auction/artwork-register-contracts";
 import type { Database } from "@auction/db";
 import {
+  atgLotLink,
   domainEventDelivery,
   lot,
   privateSaleDeal,
@@ -42,6 +43,7 @@ type LotRow = {
   lotNumber: number | null;
   status: ListingLot["status"];
   deletedAt: Date | null;
+  atgSold: boolean | null;
   saleId: string | null;
   saleTitle: string | null;
   saleStatus: NonNullable<ListingLot["sale"]>["status"] | null;
@@ -63,6 +65,7 @@ function toLot(row: LotRow): ListingLot {
     lotNumber: row.lotNumber,
     status: row.status,
     deleted: row.deletedAt !== null,
+    soldOnAtg: row.atgSold === true,
     sale: hasSale
       ? {
           id: row.saleId as string,
@@ -233,6 +236,7 @@ export class DrizzleZohoListingSourceReader
         lotNumber: lot.lotNumber,
         status: lot.status,
         deletedAt: lot.deletedAt,
+        atgSold: atgLotLink.sold,
         saleId: sale.id,
         saleTitle: sale.title,
         saleStatus: sale.status,
@@ -242,6 +246,7 @@ export class DrizzleZohoListingSourceReader
       })
       .from(lot)
       .leftJoin(sale, eq(sale.id, lot.saleId))
+      .leftJoin(atgLotLink, eq(atgLotLink.lotId, lot.id))
       .where(
         or(
           refIds.length > 0 ? inArray(lot.id, refIds) : sql`FALSE`,

@@ -13,6 +13,7 @@ import type {
   IIdentityIssuerClient,
   IIdentityProfileClient,
   IIdentitySecurityClient,
+  IIdentitySignInMethodsClient,
   IIdentitySubjectClient,
 } from "../services/interfaces/identity-issuer-client.js";
 import { InvitationConsumptionService } from "../services/invitation-consumption.service.js";
@@ -59,7 +60,8 @@ export type CreateUserProfileServicesInput = {
   identityIssuer: IIdentityIssuerClient &
     IIdentitySubjectClient &
     IIdentityProfileClient &
-    IIdentitySecurityClient;
+    IIdentitySecurityClient &
+    IIdentitySignInMethodsClient;
   ensurePersonalLegalEntityService: EnsurePersonalLegalEntityService;
   infra: ContainerInfra;
   repos: ContainerRepositories;
@@ -202,6 +204,7 @@ export function createUserProfileServices(
     adminUserBidsReader,
     adminUserKycReader,
     cachedUserSuspensionChecker,
+    identityIssuer,
     identityIssuer,
   );
 

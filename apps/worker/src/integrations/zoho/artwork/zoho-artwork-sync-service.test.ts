@@ -233,6 +233,22 @@ describe("ZohoArtworkSyncService notices", () => {
     expect(t.recorded[0]).toMatchObject({ outcome: "skipped", reason: "not_found_in_zoho" });
   });
 
+  it("names the LAX record of a deleted Product and changes nothing in the register", async () => {
+    const t = setup("live", [], []);
+    t.registerRepo.findByZohoProductId.mockResolvedValueOnce({
+      stockCode: "LAX-ORI-PH-GAC-26-0001",
+      title: "Harbour at Dusk",
+    } as never);
+    await t.service.processNotice({ productId: "5000000000009999999", runId: "notice:k3" });
+    expect(t.recorded[0]).toMatchObject({
+      outcome: "skipped",
+      reason: "not_found_in_zoho",
+      stockCode: "LAX-ORI-PH-GAC-26-0001",
+      title: "Harbour at Dusk",
+    });
+    expect(t.registerRepo.applyZohoChange).not.toHaveBeenCalled();
+  });
+
   it("is idempotent in live mode: the same Product twice creates once, then finds it unchanged", async () => {
     const t = setup("live", [[product(1)]]);
     await t.service.processNotice({ productId: product(1).id, runId: "notice:a" });

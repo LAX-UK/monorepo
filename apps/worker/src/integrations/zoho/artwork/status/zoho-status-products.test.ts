@@ -58,4 +58,12 @@ describe("CrmZohoStatusProducts", () => {
     await expect(bad.products.write("1", "Sold")).rejects.toBeInstanceOf(CrmGatewayError);
     await expect(bad.products.write("1", "Sold")).rejects.toMatchObject({ retryable: false });
   });
+
+  it("reads a Product deleted in Zoho as not found, without retrying", async () => {
+    const gone = setup([], { status: "error", code: "RECORD_NOT_FOUND" });
+    await expect(gone.products.write("1", "Sold")).rejects.toMatchObject({
+      code: "product_not_found",
+      retryable: false,
+    });
+  });
 });

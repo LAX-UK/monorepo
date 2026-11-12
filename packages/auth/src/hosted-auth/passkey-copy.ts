@@ -1,3 +1,5 @@
+import type { AccountStepUpReason } from "@auction/identity-contracts";
+
 /**
  * Every sentence the hosted pages say about passkeys, in one place: the sign-in page, the
  * "Confirm it's you" page and the "Add a passkey" page. The wording never names a technology
@@ -21,6 +23,12 @@ export const PASSKEY_COPY = {
   confirm: {
     title: "Confirm it's you",
     lead: "Before you make this change, we need you to sign in again. This keeps your account safe if someone else is using your device.",
+    /** What the sign-in is for, when Account said (its fixed list of reasons). */
+    leadByReason: {
+      add_sign_in_method: "Before you add a way to sign in, we need you to sign in again.",
+      remove_sign_in_method: "Before you remove a way to sign in, we need you to sign in again.",
+      change_password: "Before you change your password, we need you to sign in again.",
+    } satisfies Record<AccountStepUpReason, string>,
     usePasskey: "Use your passkey",
     notYou: "Not you?",
     notYouBusy: "Signing out…",

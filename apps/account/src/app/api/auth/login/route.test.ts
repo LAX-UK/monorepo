@@ -56,6 +56,37 @@ describe("GET /api/auth/login", () => {
     expect(pendingSaved()).toMatchObject({ reauth: true, reauthSubject: "user-a" });
   });
 
+  it("tells the sign-in page why, from the fixed list of reasons", async () => {
+    cookieValues.set("lax_account_session", "sess-1");
+    sessionGet.mockResolvedValue({ subject: "user-a" });
+    const response = await reauth("&reason=add_sign_in_method");
+    const url = new URL(response.headers.get("location") ?? "");
+    expect(url.searchParams.get("reauth_reason")).toBe("add_sign_in_method");
+    expect(url.searchParams.get("prompt")).toBe("login");
+  });
+
+  it("drops a reason that is not on the list instead of passing it on", async () => {
+    cookieValues.set("lax_account_session", "sess-1");
+    sessionGet.mockResolvedValue({ subject: "user-a" });
+    for (const reason of ["<script>alert(1)</script>", "delete_account", ""]) {
+      const response = await reauth(`&reason=${encodeURIComponent(reason)}`);
+      expect(
+        new URL(response.headers.get("location") ?? "").searchParams.has("reauth_reason"),
+      ).toBe(false);
+    }
+  });
+
+  it("does not pass a reason on to an ordinary sign-in", async () => {
+    const response = await GET(
+      new Request(
+        "https://account.test/api/auth/login?returnTo=/account&reason=add_sign_in_method",
+      ),
+    );
+    expect(new URL(response.headers.get("location") ?? "").searchParams.has("reauth_reason")).toBe(
+      false,
+    );
+  });
+
   it("starts an ordinary sign-in, not a step-up, when there is no session here", async () => {
     const response = await reauth();
     expect(new URL(response.headers.get("location") ?? "").searchParams.has("prompt")).toBe(false);

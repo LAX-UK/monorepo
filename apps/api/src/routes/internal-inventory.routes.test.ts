@@ -52,6 +52,7 @@ function createApp(
         inventoryMoves: {
           draftLots: { listSales, createDraft, findDraft },
           returnToLaxArt: {} as never,
+          unlinkedOriginals: {} as never,
         },
       },
       env as never,

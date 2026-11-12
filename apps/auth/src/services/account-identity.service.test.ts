@@ -83,6 +83,22 @@ describe("AccountIdentityService", () => {
       expect(JSON.stringify(result)).not.toContain("203.0.113.9");
     });
 
+    it("says how each sign-in was made, the strongest recorded method first", async () => {
+      const { service } = setup([
+        session({ id: "current", amr: ["password", "passkey"] }),
+        session({ id: "social", amr: ["provider"] }),
+        session({ id: "pw", amr: ["password"] }),
+        session({ id: "old", amr: [] }),
+      ]);
+      const result = await service.listSessions(SUBJECT, "current");
+      expect(result.ok && result.sessions.map((row) => [row.id, row.signedInWith])).toEqual([
+        ["current", "passkey"],
+        ["social", "provider"],
+        ["pw", "password"],
+        ["old", null],
+      ]);
+    });
+
     it("hides sessions that have already expired", async () => {
       const expired = session({ id: "expired", expiresAt: new Date(NOW.getTime() - 1) });
       const { service } = setup([freshCurrent, expired]);

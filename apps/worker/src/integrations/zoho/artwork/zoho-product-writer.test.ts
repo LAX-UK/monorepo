@@ -60,6 +60,21 @@ describe("CrmZohoProductWriter", () => {
     expect(error.retryable).toBe(false);
   });
 
+  it("throws a non-retryable product_not_found when the Product was deleted in Zoho", async () => {
+    const { writer, gateway } = setup();
+    gateway.updateById.mockResolvedValue({
+      module: "Products",
+      recordId: "1",
+      action: "update",
+      status: "error",
+      code: "RECORD_NOT_FOUND",
+      message: "gone",
+    } as never);
+    const error = (await writer.update("1", { Status: "Sold" }).catch((e) => e)) as CrmGatewayError;
+    expect(error.code).toBe("product_not_found");
+    expect(error.retryable).toBe(false);
+  });
+
   it("throws a retryable error for any other refusal", async () => {
     const { writer, gateway } = setup();
     gateway.updateById.mockResolvedValue({

@@ -1,4 +1,4 @@
-import { formatDate } from "@auction/datetime";
+import { LONDON_TIME_ZONE, formatDayMonth, formatWeekday } from "@auction/datetime";
 
 /** Compact relative timestamp for admin audit labels (API-safe, locale-neutral numbers). */
 export function formatAdminRelativeTimeLabel(
@@ -18,5 +18,5 @@ export function formatAdminRelativeTimeLabel(
   if (hours < 24) return `${hours}h ago`;
   const days = Math.floor(hours / 24);
   if (days < 14) return `${days}d ago`;
-  return formatDate(date, "UTC", { month: "short", engineSept: true });
+  return `${formatWeekday(date, LONDON_TIME_ZONE)} ${formatDayMonth(date, LONDON_TIME_ZONE, now)}`;
 }

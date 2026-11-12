@@ -315,12 +315,17 @@ export class IdentityOperationsService {
     subjectId: string,
     provider: SocialSignInProvider,
     keepSessionId: string,
+    /**
+     * Whether passkeys can sign anyone in here. When they cannot, the passkeys a person holds are
+     * not a way in, so they do not stop the last other method from being protected.
+     */
+    passkeysOffered = true,
   ): Promise<{ revokedSessionIds: string[] }> {
     let revokedSessionIds: string[] = [];
     await this.repositories.unitOfWork.transaction(async (transaction) => {
       const rows = await this.repositories.credentials.lockSignInAccounts(transaction, subjectId);
       const passkeys = await this.repositories.credentials.lockPasskeys(transaction, subjectId);
-      const decision = decideUnlink(rows, provider, passkeys);
+      const decision = decideUnlink(rows, provider, passkeysOffered ? passkeys : 0);
       if (decision !== "allowed") throw new IdentityOperationError(decision);
       await this.repositories.credentials.deleteSocialAccount(transaction, subjectId, provider);
       await this.identityEventPublisher.publish(
@@ -354,6 +359,8 @@ export class IdentityOperationsService {
     subjectId: string,
     passkeyId: string,
     keepSessionId: string,
+    /** As for `unlinkSocialSignIn`: other passkeys count as a way in only while they are offered. */
+    passkeysOffered = true,
   ): Promise<{ revokedSessionIds: string[]; name: string | null }> {
     let revokedSessionIds: string[] = [];
     let name: string | null = null;
@@ -367,7 +374,7 @@ export class IdentityOperationsService {
       );
       if (!removed) throw new IdentityOperationError("not_linked");
       // Throwing here rolls the delete back with the rest of the transaction.
-      if (decideRemovePasskey(rows, held) !== "allowed") {
+      if (decideRemovePasskey(rows, passkeysOffered ? held : 1) !== "allowed") {
         throw new IdentityOperationError("last_sign_in_method");
       }
       name = removed.name;

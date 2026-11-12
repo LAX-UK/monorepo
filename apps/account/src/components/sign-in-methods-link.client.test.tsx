@@ -8,7 +8,7 @@ const start = vi.fn();
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh }) }));
 vi.mock("@/server/application/account-identity-actions.server", () => ({
   removeSignInMethodAction: vi.fn(),
-  startSignInMethodLinkAction: (provider: string) => start(provider),
+  startSignInMethodAddAction: (kind: string) => start(kind),
 }));
 
 const { SignInMethodsList } = await import("./sign-in-methods-list.client");
@@ -48,6 +48,11 @@ const linkedGoogle: SignInMethodRowVm = {
   address: "ada@gmail.com",
   linkedOn: "Linked Thu 1 Oct 2026",
   blockedReason: null,
+  confirm: {
+    title: "Remove Google sign-in?",
+    body: "You'll no longer be able to sign in to LAX with Google.",
+    confirmLabel: "Remove Google",
+  },
 };
 
 function renderList(rows: SignInMethodRowVm[]) {
@@ -115,7 +120,7 @@ describe("Link rows", () => {
     fireEvent.click(screen.getByRole("button", { name: "Link Google" }));
     await waitFor(() => expect(assign).toHaveBeenCalled());
     expect(assign.mock.calls[0]?.[0]).toBe(
-      "/api/auth/login?returnTo=%2Faccount%2Fsecurity&intent=reauth",
+      "/api/auth/login?returnTo=%2Faccount%2Fsecurity&intent=reauth&reason=add_sign_in_method",
     );
   });
 

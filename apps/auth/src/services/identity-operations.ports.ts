@@ -37,6 +37,8 @@ export type IdentitySessionRecord = {
   ipAddress: string | null;
   userAgent: string | null;
   lastPasswordAuthAt: Date | null;
+  /** How the sign-in was made, as recorded when it started (see `SessionSignInMethod`). */
+  amr?: readonly string[];
   isCurrent: boolean;
 };
 

@@ -9,7 +9,7 @@ describe("formatAdminRelativeTimeLabel", () => {
 
   it("gives an older date in words, not as an ISO string", () => {
     const now = new Date("2026-10-27T12:00:00Z");
-    expect(formatAdminRelativeTimeLabel(new Date("2026-07-07T09:00:00Z"), now)).toBe("7 Jul 2026");
+    expect(formatAdminRelativeTimeLabel(new Date("2026-07-07T09:00:00Z"), now)).toBe("Tue 7 Jul");
   });
 
   it("returns null for invalid values", () => {

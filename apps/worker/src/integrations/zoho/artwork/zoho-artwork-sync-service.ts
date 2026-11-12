@@ -83,19 +83,26 @@ export class ZohoArtworkSyncService {
     const product = await reader.fetchProduct(input.productId);
     const outcomes: ZohoArtworkSyncOutcomeInput[] = product
       ? await this.processProducts(mode, [product])
-      : [
-          {
-            zohoProductId: input.productId,
-            stockCode: null,
-            title: null,
-            outcome: "skipped",
-            reason: "not_found_in_zoho",
-            detail: {},
-            zohoModifiedAt: null,
-          },
-        ];
+      : [await this.deletedInZoho(input.productId)];
     await report.record(input.runId, mode, outcomes, this.now());
     return { ran: true, runId: input.runId, summary: await report.summarise(input.runId) };
+  }
+
+  /**
+   * The Product is gone from Zoho. Nothing in LAX is withdrawn or changed; the outcome names the
+   * record so staff can see it under "Deleted in Zoho" and decide.
+   */
+  private async deletedInZoho(productId: string): Promise<ZohoArtworkSyncOutcomeInput> {
+    const entry = await this.deps.register.findByZohoProductId(productId);
+    return {
+      zohoProductId: productId,
+      stockCode: entry?.stockCode ?? null,
+      title: entry?.title ?? null,
+      outcome: "skipped",
+      reason: "not_found_in_zoho",
+      detail: {},
+      zohoModifiedAt: null,
+    };
   }
 
   /**

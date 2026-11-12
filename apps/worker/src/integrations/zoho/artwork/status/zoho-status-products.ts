@@ -2,6 +2,7 @@ import { CrmGatewayError } from "../../../crm/crm-gateway-error.js";
 import type { CrmCoqlQuery, CrmGateway } from "../../../crm/crm-gateway.js";
 import { productStatusQuery } from "../coql.js";
 import { ZOHO_STATUS_FIELD } from "../writeback-mapping.js";
+import { PRODUCT_NOT_FOUND, deletedInZoho } from "../zoho-product-gone.js";
 
 /** Zoho's COQL takes at most 50 values in one `in` list. */
 export const ZOHO_STATUS_BATCH_SIZE = 50;
@@ -24,6 +25,7 @@ export interface ZohoStatusProducts {
 
 /** Zoho answers these when the data itself is wrong, so sending it again cannot help. */
 const NON_RETRYABLE_CODES = new Set([
+  PRODUCT_NOT_FOUND,
   "INVALID_DATA",
   "MANDATORY_NOT_FOUND",
   "INVALID_MODULE",
@@ -73,7 +75,7 @@ export class CrmZohoStatusProducts implements ZohoStatusProducts {
       fields: { [ZOHO_STATUS_FIELD]: status },
     });
     if (result.status === "success") return;
-    const code = result.code ?? "ERROR";
+    const code = deletedInZoho(result.code) ? PRODUCT_NOT_FOUND : (result.code ?? "ERROR");
     throw new CrmGatewayError({
       code,
       message: result.message ?? "product_status_update_failed",

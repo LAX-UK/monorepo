@@ -9,6 +9,7 @@ import { type AtgGateway, AtgGatewayError } from "./atg-gateway.js";
 import type { AtgImageInspector } from "./atg-image-inspector.js";
 import { AtgLotSyncer, AtgPartialSyncError } from "./atg-lot-syncer.js";
 import { AtgMappingError, mapSaleToAuctionFields, payloadHash } from "./atg-mappers.js";
+import type { AtgSoldRegisterRecorder } from "./atg-sold-register.js";
 import { errorText, failureSummary, isRetryable } from "./atg-sync-errors.js";
 import type { AtgAuctionLinkPatch, AtgSyncStore } from "./atg-sync-store.js";
 import type {
@@ -39,6 +40,8 @@ export type AtgSyncServiceDeps = {
   onTickError?: (saleId: string, err: unknown) => void;
   /** ATG holds other fees than LAX sent; called once per distinct message, not every tick. */
   onFeeMismatch?: (saleId: string, message: string) => void;
+  /** Moves the artwork register to sold for each lot ATG reports sold. */
+  soldRegister?: AtgSoldRegisterRecorder;
 };
 
 const POLL_CLOSED_FOR_MS = 7 * 24 * 60 * 60 * 1000;
@@ -96,6 +99,7 @@ export class AtgSyncService {
   private readonly now: () => Date;
   private readonly onTickError: ((saleId: string, err: unknown) => void) | undefined;
   private readonly feeVerifier: AtgFeeVerifier;
+  private readonly soldRegister: AtgSoldRegisterRecorder | undefined;
   /** Staff-fixable tick errors already sent to Sentry, so one that is never stored is not repeated. */
   private readonly reportedTickErrors = new Map<string, Set<string>>();
 
@@ -112,6 +116,7 @@ export class AtgSyncService {
       now: this.now,
     });
     this.onTickError = deps.onTickError;
+    this.soldRegister = deps.soldRegister;
     this.feeVerifier = new AtgFeeVerifier({
       gateway: deps.gateway,
       onMismatch: deps.onFeeMismatch,
@@ -247,6 +252,7 @@ export class AtgSyncService {
         this.gateway.getSaleResults(link.atgAuctionId),
       ]);
       await this.store.applyRemoteLots(saleId, lots, polledAt);
+      await this.recordSoldLots(saleId);
       await this.store.saveAuctionLink(saleId, {
         lastPolledAt: polledAt,
         resultsSnapshot: results,
@@ -257,6 +263,24 @@ export class AtgSyncService {
     } catch (err) {
       await this.saveError(saleId, `Poll failed: ${errorText(err)}`);
       throw err;
+    }
+  }
+
+  /**
+   * Tells the register about every lot ATG reports sold. Each poll repeats it, which is safe (the
+   * register write is idempotent) and means a failed write is retried on the next poll. A failure
+   * is reported, never allowed to fail the poll that already stored the results.
+   */
+  private async recordSoldLots(saleId: string): Promise<void> {
+    const recorder = this.soldRegister;
+    if (!recorder) return;
+    for (const link of await this.store.listLotLinks(saleId)) {
+      if (!link.sold) continue;
+      try {
+        await recorder.recordSold(link.lotId);
+      } catch (err) {
+        this.onTickError?.(saleId, err);
+      }
     }
   }
 

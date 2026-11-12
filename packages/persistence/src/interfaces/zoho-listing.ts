@@ -13,6 +13,8 @@ export type ListingLot = {
   status: BidLotStatus;
   /** Soft-deleted lots are kept so a sold artwork still names the lot that sold it. */
   deleted: boolean;
+  /** ATG reports the lot sold: it has no LAX winner, so the listing needs this to say so. */
+  soldOnAtg: boolean;
   sale: {
     id: string;
     title: string;

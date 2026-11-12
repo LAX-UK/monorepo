@@ -411,7 +411,7 @@ describe("the LAX listing check", () => {
   });
 
   it("names why a write failed, with a plain fallback", () => {
-    expect(listingFailureLabel("product_not_found")).toBe("No longer in Zoho");
+    expect(listingFailureLabel("product_not_found")).toBe("Deleted in Zoho");
     expect(listingFailureLabel("SOMETHING_NEW")).toBe("Zoho did not accept it");
   });
 
