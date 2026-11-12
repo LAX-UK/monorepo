@@ -3,6 +3,7 @@ export { cityName } from "./city.js";
 export { type DateInput, toDate } from "./date-input.js";
 export {
   addCalendarDays,
+  addCalendarKeyDays,
   calendarDaysBetween,
   dayKey,
   dayOffset,
@@ -74,3 +75,9 @@ export {
   formatWeekdayDayMonth,
   runtimeTimeZone,
 } from "./calendar-formats.js";
+export {
+  defaultScheduleInstants,
+  instantFromDatetimeFormString,
+  resolveWallClock,
+  toDatetimeFormString,
+} from "./wall-clock-form.js";

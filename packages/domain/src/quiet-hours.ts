@@ -3,6 +3,8 @@
  * wait. Times are local "HH:MM" and kept with an IANA zone, so 22:00 stays 22:00 through each
  * clock change. A window may cross midnight (22:00 to 07:00).
  */
+import { instantToWallClock, isValidZone } from "@auction/datetime";
+
 export const DEFAULT_QUIET_HOURS_TIME_ZONE = "Europe/London";
 
 const HHMM = /^([01]\d|2[0-3]):([0-5]\d)$/;
@@ -11,12 +13,7 @@ export type QuietHours = { start: string | null; end: string | null; timeZone: s
 
 /** Whether `timeZone` is an IANA zone this runtime knows. */
 export function isValidTimeZone(timeZone: string): boolean {
-  try {
-    new Intl.DateTimeFormat("en-GB", { timeZone });
-    return true;
-  } catch {
-    return false;
-  }
+  return isValidZone(timeZone);
 }
 
 function minutes(hhmm: string): number | null {
@@ -26,15 +23,8 @@ function minutes(hhmm: string): number | null {
 
 /** The wall-clock minute of the day at `at` in `timeZone`. */
 export function localMinuteOfDay(at: Date, timeZone: string): number {
-  const parts = new Intl.DateTimeFormat("en-GB", {
-    timeZone,
-    hourCycle: "h23",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).formatToParts(at);
-  const hour = Number(parts.find((p) => p.type === "hour")?.value ?? 0);
-  const minute = Number(parts.find((p) => p.type === "minute")?.value ?? 0);
-  return hour * 60 + minute;
+  const { time } = instantToWallClock(at, timeZone);
+  return Number(time.slice(0, 2)) * 60 + Number(time.slice(3, 5));
 }
 
 /**

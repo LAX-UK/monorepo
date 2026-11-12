@@ -4,6 +4,7 @@ import {
   liveAuthorisationsFor,
   summariseAuthorisation,
 } from "@/lib/buyer-agents/authorisation-presenter";
+import { LONDON_TIME_ZONE, dayKey } from "@auction/datetime";
 import type {
   AuthorisableBuyerAgent,
   BiddingLimitUsage,
@@ -86,11 +87,12 @@ export function usageView(usage: BiddingLimitUsage): UsageView {
   };
 }
 
-const LONDON_DAY = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/London" });
-
 function badgeFor(a: BuyerAgentAuthorisationView, now: Date): AuthorisationRowView["badge"] {
   if (a.scheduled) return { label: `Starts ${formatLondonDay(a.validFrom)}`, tone: "neutral" };
-  if (a.validUntil && LONDON_DAY.format(new Date(a.validUntil)) === LONDON_DAY.format(now)) {
+  if (
+    a.validUntil &&
+    dayKey(new Date(a.validUntil), LONDON_TIME_ZONE) === dayKey(now, LONDON_TIME_ZONE)
+  ) {
     return { label: "Ends today", tone: "warning" };
   }
   return { label: "Can bid", tone: "success" };
