@@ -2525,8 +2525,8 @@
     {
       "idx": 361,
       "version": "7",
-      "when": 1809691200000,
-      "tag": "0369_sale_seller_terms",
+      "when": 1809864000000,
+      "tag": "0372_sale_seller_terms",
       "breakpoints": true
     }
   ]

@@ -267,7 +267,7 @@ export const WORKER_ACCOUNTING_DOCUMENT_UPDATE_COLUMNS = [
 export const WORKER_ACCOUNTING_APPEND_ONLY_TABLES = ["accounting_document_event"] as const;
 export const WORKER_ACCOUNTING_READ_TABLES = ["accounting_source_setting"] as const;
 /**
- * What a seller is paid for each sale, fixed when the buyer's invoice is raised (migration 0369).
+ * What a seller is paid for each sale, fixed when the buyer's invoice is raised (migration 0372).
  * Both payment-raising processes (the API at checkout, the worker at lot end) write the row in the
  * invoice's transaction and read it; nobody updates or deletes it. `bid_finance_setting` holds the
  * Bid company's finance settings: both roles read it, and the staff route that changes it gets its

@@ -9,14 +9,14 @@ import { saleSellerTerms } from "./schema/sale-seller-terms.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const read = (name: string) => readFileSync(join(__dirname, "../drizzle", name), "utf8");
-const TAG = "0369_sale_seller_terms";
+const TAG = "0372_sale_seller_terms";
 const migration = read(`${TAG}.sql`);
-const rollback = read("0369_rollback.sql");
+const rollback = read("0372_rollback.sql");
 const journal = JSON.parse(read("meta/_journal.json")) as {
   entries: { idx: number; tag: string; when: number }[];
 };
 
-describe("migration 0369 sale seller terms", () => {
+describe("migration 0372 sale seller terms", () => {
   it("follows the entry before it with the next idx and a later stamp, and precedes later ones", () => {
     const at = journal.entries.findIndex((e) => e.tag === TAG);
     expect(at).toBeGreaterThan(0);

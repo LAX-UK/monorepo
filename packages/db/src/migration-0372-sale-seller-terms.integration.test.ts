@@ -8,7 +8,7 @@ const { Client } = pg;
 type Row = Record<string, unknown>;
 
 /** Every probe runs in a savepoint inside one transaction that is rolled back at the end. */
-describe.skipIf(!url)("migration 0369 sale seller terms (database)", { timeout: 60_000 }, () => {
+describe.skipIf(!url)("migration 0372 sale seller terms (database)", { timeout: 60_000 }, () => {
   let client: pg.Client;
   let paymentId: string;
   let lotId: string;

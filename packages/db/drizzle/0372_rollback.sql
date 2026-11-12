@@ -1,4 +1,4 @@
--- Rollback for 0369_sale_seller_terms. Roll the release back first: nothing may still write seller
+-- Rollback for 0372_sale_seller_terms. Roll the release back first: nothing may still write seller
 -- terms. The snapshots, the recorded-agreement columns and the finance setting are deleted with
 -- their tables and columns; snapshots can be rebuilt from the invoices and agreements.
 SET LOCAL lock_timeout = '30s';
