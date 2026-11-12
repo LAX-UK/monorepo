@@ -15,6 +15,8 @@ export const INVENTORY_INTERNAL_PREFIX = "/internal/inventory";
 export const AUCTION_SALES_SUBROUTE = "/auction-sales";
 /** LAX Bid: create the draft lot for an original. */
 export const DRAFT_LOT_SUBROUTE = "/draft-lots";
+/** LAX Bid: the catalogue facts of the lot that holds a register record's place, and updating a draft's. */
+export const LOT_CATALOGUE_SUBROUTE = "/lot-catalogue";
 /** LAX Shop: reopen an original's lax.art listing as a draft. */
 export const ART_LISTING_REOPEN_SUBROUTE = "/art-listings/reopen";
 
@@ -90,6 +92,45 @@ export type DraftLotLookupAnswer = z.infer<typeof draftLotLookupAnswerSchema>;
 export const draftLotLookupSubroute = (registerId: string) =>
   `${DRAFT_LOT_SUBROUTE}/${encodeURIComponent(registerId)}`;
 
+/**
+ * The catalogue facts of a Bid lot that Zoho owns, as Bid holds them, with how far the lot has
+ * gone. Only a `draft` lot (not yet published, in a sale that has not started) may be changed from
+ * Zoho; a lot in a live or upcoming sale never is.
+ */
+export const lotCatalogueFactsSchema = z.object({
+  lotId: z.string().uuid(),
+  status: z.enum(["draft", "scheduled", "active", "ended", "cancelled", "voided"]),
+  /** The sale's own status; null when the lot has no sale. */
+  saleStatus: z.string().nullable(),
+  title: z.string(),
+  medium: z.string().nullable(),
+  dimensions: z.string().nullable(),
+  /** Public image addresses, first is the cover. */
+  imageUrls: z.array(z.string()),
+});
+export type LotCatalogueFacts = z.infer<typeof lotCatalogueFactsSchema>;
+
+export const lotCatalogueAnswerSchema = z.object({ lot: lotCatalogueFactsSchema.nullable() });
+export type LotCatalogueAnswer = z.infer<typeof lotCatalogueAnswerSchema>;
+
+export const lotCatalogueSubroute = (registerId: string) =>
+  `${LOT_CATALOGUE_SUBROUTE}/${encodeURIComponent(registerId)}`;
+
+/** The facts a draft lot takes from Zoho. The lot's description, provenance and price are staff's. */
+export const lotCatalogueUpdateRequestSchema = z.object({
+  actor: staffActorSchema,
+  content: z.object({
+    title: z.string().min(1).max(500),
+    medium: z.string().max(300).nullable(),
+    dimensions: z.string().max(300).nullable(),
+    imageUrls: z.array(z.string().url()).max(20),
+  }),
+});
+export type LotCatalogueUpdateRequest = z.infer<typeof lotCatalogueUpdateRequestSchema>;
+
+export const lotCatalogueUpdateAnswerSchema = z.object({ lotId: z.string().uuid() });
+export type LotCatalogueUpdateAnswer = z.infer<typeof lotCatalogueUpdateAnswerSchema>;
+
 export const reopenListingRequestSchema = z.object({
   registerId: z.string().uuid(),
   actor: staffActorSchema,
@@ -112,6 +153,7 @@ export const MOVE_REFUSAL_CODES = [
   "register_not_found",
   "not_configured",
   "artwork_offered_elsewhere",
+  "lot_not_draft",
 ] as const;
 export type MoveRefusalCode = (typeof MOVE_REFUSAL_CODES)[number];
 

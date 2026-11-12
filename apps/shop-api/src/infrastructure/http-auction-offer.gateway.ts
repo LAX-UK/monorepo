@@ -8,6 +8,9 @@ import {
   draftLotAnswerSchema,
   draftLotLookupAnswerSchema,
   draftLotLookupSubroute,
+  lotCatalogueAnswerSchema,
+  lotCatalogueSubroute,
+  lotCatalogueUpdateAnswerSchema,
 } from "@auction/artwork-register-contracts";
 import type { AuctionOfferGateway } from "../application/ports/original-move.js";
 
@@ -34,7 +37,13 @@ export function createHttpAuctionOfferGateway(
     const closed = async (): Promise<never> => {
       throw new InventoryPeerRefusedError(NOT_SET_UP, 503);
     };
-    return { listSales: closed, createDraftLot: closed, findDraftLot: closed };
+    return {
+      listSales: closed,
+      createDraftLot: closed,
+      findDraftLot: closed,
+      findLotCatalogue: closed,
+      updateLotCatalogue: closed,
+    };
   }
   const connection = {
     baseUrl: BID_API_INTERNAL_URL,
@@ -52,5 +61,10 @@ export function createHttpAuctionOfferGateway(
     findDraftLot: async (registerId) =>
       (await lookupPeer.call("GET", draftLotLookupSubroute(registerId), draftLotLookupAnswerSchema))
         .lot,
+    findLotCatalogue: async (registerId) =>
+      (await lookupPeer.call("GET", lotCatalogueSubroute(registerId), lotCatalogueAnswerSchema))
+        .lot,
+    updateLotCatalogue: (registerId, request) =>
+      peer.call("POST", lotCatalogueSubroute(registerId), lotCatalogueUpdateAnswerSchema, request),
   };
 }

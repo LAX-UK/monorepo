@@ -693,6 +693,96 @@ describe.skipIf(!url)("artwork register repository (Postgres)", { timeout: 30_00
       });
       expect((await published()).length).toBe(before);
     });
+
+    describe("catalogue changes", () => {
+      const catalogue = async () =>
+        (await published()).filter((e) => e.event_type === "artwork_register.catalogue_changed");
+
+      it("announces a real catalogue change once, with the before and after of each field", async () => {
+        const entry = await created();
+        await repo.applyZohoChange(
+          {
+            zohoProductId: "5001",
+            modifiedAt: T1,
+            fields: { title: "Harbour at dawn", year: 2025 },
+          },
+          T1,
+        );
+        const events = await catalogue();
+        expect(events).toHaveLength(1);
+        expect(events[0]?.aggregate_id).toBe(entry.id);
+        expect(events[0]?.payload).toEqual({
+          schemaVersion: 1,
+          registerId: entry.id,
+          zohoProductId: "5001",
+          stockCode: "LAX-ORI-PH-GAC-26-0001",
+          fields: ["title", "year"],
+          changes: {
+            title: { from: "Harbour at dusk", to: "Harbour at dawn" },
+            year: { from: 2024, to: 2025 },
+          },
+        });
+      });
+
+      it("announces nothing for a notice that arrives twice, late, or changes nothing in the catalogue", async () => {
+        await created();
+        const change = {
+          zohoProductId: "5001",
+          modifiedAt: T1,
+          fields: { title: "Harbour at dawn" },
+        };
+        await repo.applyZohoChange(change, T1);
+        await repo.applyZohoChange(change, T2);
+        await repo.applyZohoChange(
+          { zohoProductId: "5001", modifiedAt: T0, fields: { title: "Older title" } },
+          T2,
+        );
+        await repo.applyZohoChange(
+          { zohoProductId: "5001", modifiedAt: T2, fields: { title: "Harbour at dawn" } },
+          T2,
+        );
+        // Price and status are shown beside LAX's own values but are not copied to listings.
+        await repo.applyZohoChange(
+          {
+            zohoProductId: "5001",
+            modifiedAt: new Date("2026-11-03T12:00:00.000Z"),
+            fields: { zohoPrice: "250.00", catalogueStatus: "Reserved" },
+          },
+          T2,
+        );
+        expect(await catalogue()).toHaveLength(1);
+      });
+
+      it("announces changes in the order they were applied", async () => {
+        await created();
+        await repo.applyZohoChange(
+          { zohoProductId: "5001", modifiedAt: T1, fields: { medium: "Acrylic" } },
+          T1,
+        );
+        await repo.applyZohoChange(
+          { zohoProductId: "5001", modifiedAt: T2, fields: { medium: "Gouache" } },
+          T2,
+        );
+        expect((await catalogue()).map((e) => e.payload.changes)).toEqual([
+          { medium: { from: "Oil on canvas", to: "Acrylic" } },
+          { medium: { from: "Acrylic", to: "Gouache" } },
+        ]);
+      });
+
+      it("announces a change of pictures only when the pictures really differ", async () => {
+        const entry = await created();
+        const source = { zohoFileId: "f1", fingerprint: "a", sha256: "b", key: "img-2" };
+        await repo.replaceZohoImages({ zohoProductId: "5001", sources: [source], now: T1 });
+        await repo.replaceZohoImages({ zohoProductId: "5001", sources: [source], now: T2 });
+        const events = await catalogue();
+        expect(events).toHaveLength(1);
+        expect(events[0]?.payload).toMatchObject({
+          registerId: entry.id,
+          fields: ["imageRefs"],
+          changes: { imageRefs: { from: ["img-1"], to: ["img-2"] } },
+        });
+      });
+    });
   });
 
   describe("recordCatalogueStatusWritten", () => {

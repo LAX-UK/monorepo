@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { type ArtworkRegisterEntry, artworkRegisterEntrySchema } from "./entry.js";
 import {
+  CATALOGUE_FIELDS,
   FIELD_OWNERS,
   LAX_OWNED_FIELDS,
   REGISTER_FIELDS,
   ZOHO_OWNED_FIELDS,
   canAcceptZohoValue,
+  isCatalogueField,
   ownerOf,
   reconcileZohoChange,
 } from "./field-ownership.js";
@@ -67,6 +69,7 @@ describe("field ownership table", () => {
       "medium",
       "title",
       "year",
+      "zohoPrice",
     ]);
     expect(LAX_OWNED_FIELDS.sort()).toEqual([
       "kind",
@@ -198,5 +201,22 @@ describe("artworkRegisterEntrySchema", () => {
         entry({ offer: { state: "listed" as never, ref: null } }),
       ).success,
     ).toBe(false);
+  });
+});
+
+describe("catalogue fields", () => {
+  it("are the Zoho-owned facts a listing or lot copies, not status or price", () => {
+    expect([...CATALOGUE_FIELDS].sort()).toEqual([
+      "artist",
+      "dimensions",
+      "imageRefs",
+      "medium",
+      "title",
+      "year",
+    ]);
+    expect(isCatalogueField("title")).toBe(true);
+    expect(isCatalogueField("zohoPrice")).toBe(false);
+    expect(isCatalogueField("catalogueStatus")).toBe(false);
+    expect(isCatalogueField("stockCode")).toBe(false);
   });
 });

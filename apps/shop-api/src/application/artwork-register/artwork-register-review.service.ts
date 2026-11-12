@@ -9,6 +9,7 @@ import {
 import {
   ADMIN_REGISTER_PAGE_SIZE,
   type AdminAuctionOfferAssessment,
+  type AdminCatalogueChange,
   type AdminRegisterAllItem,
   type AdminRegisterAllList,
   type AdminRegisterArtworkSummary,
@@ -58,6 +59,8 @@ export type ArtworkRegisterReviewDeps = {
   soldAttention?: { countOpen(): Promise<number> };
   /** The lax.art listing made from a record, for "Where it is". */
   listings: LaxArtListingReader;
+  /** Where the lax.art listing or Bid lot made from a record no longer matches Zoho. */
+  catalogueChanges: { changesFor(entry: ArtworkRegisterEntry): Promise<AdminCatalogueChange[]> };
   /** Whether the record can be offered at auction, and the draft lot LAX Bid already holds. */
   auction: { assessRegister(registerId: string): Promise<AdminAuctionOfferAssessment> };
   now?: () => Date;
@@ -276,11 +279,12 @@ export class ArtworkRegisterReviewService {
   async get(registerId: string): Promise<AdminRegisterDetail | null> {
     const entry = await this.deps.register.findById(registerId);
     if (!entry) return null;
-    const [conflicts, events, laxArt, auction] = await Promise.all([
+    const [conflicts, events, laxArt, auction, catalogueChanges] = await Promise.all([
       this.deps.queue.listConflictsFor(registerId),
       this.deps.register.listEvents(registerId, HISTORY_LIMIT),
       this.deps.listings.findByZohoProductId(entry.zohoProductId),
       this.deps.auction.assessRegister(registerId),
+      this.deps.catalogueChanges.changesFor(entry).catch(() => []),
     ]);
     const names = await this.deps.staffNames.namesFor(staffIdsOf(events));
     return {
@@ -297,6 +301,7 @@ export class ArtworkRegisterReviewService {
       year: entry.year,
       imageCount: entry.imageRefs.length,
       catalogueStatus: entry.catalogueStatus,
+      zohoPrice: entry.zohoPrice ?? null,
       offerState: entry.offer.state,
       whereItIs: presentWhereItIs({
         entry,
@@ -311,6 +316,7 @@ export class ArtworkRegisterReviewService {
         ? []
         : laxArtOfferBlockers(entry, DRAFT_PROBE).map(({ message, link }) => ({ message, link })),
       auctionBlockers: auction.blockers,
+      catalogueChanges,
       missing: catalogueGapsOf(entry),
       zohoModifiedAt: iso(entry.zohoModifiedAt),
       createdAt: entry.createdAt.toISOString(),

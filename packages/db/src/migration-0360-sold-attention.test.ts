@@ -17,7 +17,7 @@ describe("migration 0360 sold-while-live attention", () => {
     const entry = journal.entries[at];
     const previous = journal.entries[at - 1];
     expect(entry?.idx).toBe((previous?.idx ?? 0) + 1);
-    expect(entry?.when).toBe(1806134400000);
+    expect(entry?.when).toBe(1807084800000);
     expect(entry?.when).toBeGreaterThan(previous?.when ?? Number.POSITIVE_INFINITY);
     const next = journal.entries[at + 1];
     if (next) expect(next.when).toBeGreaterThan(entry?.when ?? 0);

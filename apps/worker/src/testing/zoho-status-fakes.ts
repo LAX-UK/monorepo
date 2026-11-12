@@ -28,6 +28,7 @@ export function entry(overrides: Partial<ArtworkRegisterEntry> = {}): ArtworkReg
     year: 2024,
     imageRefs: [],
     catalogueStatus: "Available",
+    zohoPrice: "4200.00",
     offer: { state: "held", ref: null },
     zohoModifiedAt: new Date("2026-09-01T00:00:00.000Z"),
     createdAt: new Date("2026-09-01T00:00:00.000Z"),

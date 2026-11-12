@@ -21,7 +21,7 @@ describe("migration 0359 artwork register status written", () => {
     expect(at).toBeGreaterThan(0);
     expect(previous?.tag).not.toBe(entry?.tag);
     expect(entry?.idx).toBe((previous?.idx ?? 0) + 1);
-    expect(entry?.when).toBe(1806048000000);
+    expect(entry?.when).toBe(1806998400000);
     expect(entry?.when).toBeGreaterThan(previous?.when ?? Number.POSITIVE_INFINITY);
     const next = journal.entries[at + 1];
     if (next) expect(next.when).toBeGreaterThan(entry?.when ?? 0);
