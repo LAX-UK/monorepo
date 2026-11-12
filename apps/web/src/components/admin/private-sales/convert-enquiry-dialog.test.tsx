@@ -38,7 +38,11 @@ describe("ConvertEnquiryDialog", () => {
     const dialog = await screen.findByRole("dialog", { name: "Convert E-1042 to a deal" });
     expect(within(dialog).queryByRole("textbox")).toBeNull();
     fireEvent.click(within(dialog).getByRole("button", { name: "Convert to deal" }));
-    await waitFor(() => expect(convert).toHaveBeenCalledWith("E-1042", {}));
+    await waitFor(() =>
+      expect(convert).toHaveBeenCalledWith("E-1042", {
+        notInRegister: { reason: "sellers_own_work" },
+      }),
+    );
     await waitFor(() => expect(onDone).toHaveBeenCalledWith("PS-0012"));
   });
 
@@ -55,7 +59,10 @@ describe("ConvertEnquiryDialog", () => {
     });
     fireEvent.click(within(dialog).getByRole("button", { name: "Convert to deal" }));
     await waitFor(() =>
-      expect(convert).toHaveBeenCalledWith("E-1042", { workReference: "c-1042" }),
+      expect(convert).toHaveBeenCalledWith("E-1042", {
+        workReference: "c-1042",
+        notInRegister: { reason: "in_zoho_not_linked" },
+      }),
     );
   });
 
