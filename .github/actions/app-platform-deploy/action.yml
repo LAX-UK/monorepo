@@ -166,6 +166,7 @@ runs:
         DEPLOYMENT_ID: ${{ steps.resolve-deployment.outputs.deployment_id }}
         TIMEOUT_SECONDS: ${{ inputs.timeout-seconds }}
         POLL_INTERVAL_SECONDS: ${{ inputs.poll-interval-seconds }}
+        TAG_MAP: ${{ inputs.image-tag-map }}
       run: |
         set -euo pipefail
         deadline=$((SECONDS + TIMEOUT_SECONDS))
@@ -178,17 +179,9 @@ runs:
           case "$phase" in
             ACTIVE) break ;;
             ERROR|CANCELED|SUPERSEDED)
-              echo "::error::App Platform deployment ended in phase $phase"
-              doctl apps get-deployment "$APP_ID" "$DEPLOYMENT_ID" --output json |
-                jq -r '
-                  (if type == "array" then .[0].progress.steps[]? else .progress.steps[]? end)
-                  | select(.status == "ERROR")
-                  | "\(.name): \(.reason // .message // "unknown")"
-                ' || true
-              for component in auth shop shop-identity shop-api shop-admin api ws worker web migrate; do
-                doctl apps logs "$APP_ID" "$component" \
-                  --type run --tail 200 --deployment "$DEPLOYMENT_ID" || true
-              done
+              node scripts/ci/report-deploy-failure.mjs \
+                --app-id "$APP_ID" --deployment-id "$DEPLOYMENT_ID" \
+                --phase "$phase" --tag-map "${TAG_MAP:-}" || true
               exit 1
               ;;
           esac
@@ -196,12 +189,9 @@ runs:
         done
         echo "phase=$phase" >> "$GITHUB_OUTPUT"
         if test "$phase" != "ACTIVE"; then
-          echo "::error::App Platform deployment $DEPLOYMENT_ID timed out in phase ${phase:-unknown}"
-          doctl apps get-deployment "$APP_ID" "$DEPLOYMENT_ID" --output json || true
-          for component in auth shop shop-identity shop-api shop-admin api ws worker web migrate; do
-            doctl apps logs "$APP_ID" "$component" \
-              --type run --tail 200 --deployment "$DEPLOYMENT_ID" || true
-          done
+          node scripts/ci/report-deploy-failure.mjs \
+            --app-id "$APP_ID" --deployment-id "$DEPLOYMENT_ID" \
+            --phase "timed out in ${phase:-unknown}" --tag-map "${TAG_MAP:-}" || true
           exit 1
         fi
 
