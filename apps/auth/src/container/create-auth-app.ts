@@ -12,6 +12,7 @@ import { createClientIpResolver } from "../infrastructure/client-ip.js";
 import { createBrowserErrorPageMiddleware } from "../middleware/browser-error-page.js";
 import { createOidcPromptCookieHardeningMiddleware } from "../middleware/oidc-prompt-cookie-hardening.js";
 import { createSecurityHeadersMiddleware } from "../middleware/security-headers.js";
+import { IDENTIFY_ONLY } from "../services/session-read-query.js";
 import { hasStaffMarker } from "../services/staff-marker.js";
 import {
   type AuthOperationalRoutes,
@@ -96,7 +97,7 @@ export function createAuthApp(options: CreateAuthAppOptions): Hono {
   mountHostedAuthAssets(app);
   mountHostedAuthPages(app, {
     ...hostedCapabilities,
-    getSession: (headers) => options.oidc.auth.api.getSession({ headers }),
+    getSession: (headers) => options.oidc.auth.api.getSession({ headers, query: IDENTIFY_ONLY }),
     readTwoFactorRequirement: options.oidc.readTwoFactorRequirement,
     readConfirmMethods: async (subjectId) => {
       const methods = await options.oidc.identityOperations.readSignInMethods(subjectId);

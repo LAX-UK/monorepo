@@ -225,7 +225,7 @@ describe("auth request lifecycle ordering", () => {
 
     expect(getSession).toHaveBeenCalledWith(
       expect.objectContaining({
-        query: { disableCookieCache: true },
+        query: { disableCookieCache: true, disableRefresh: true },
         headers: expect.any(Headers),
       }),
     );

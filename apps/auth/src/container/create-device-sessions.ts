@@ -6,6 +6,7 @@ import { DeviceMarkerHasher } from "../services/device-marker.js";
 import type { DurableSecurityEffects } from "../services/durable-security-effects.js";
 import type { SessionActivity } from "../services/session-activity.service.js";
 import { SessionCap } from "../services/session-cap.service.js";
+import { IDENTIFY_ONLY } from "../services/session-read-query.js";
 import {
   type EndedSessionNotifier,
   SessionTakeoverService,
@@ -39,6 +40,22 @@ export function createEndedSessionNotifier(
   };
 }
 
+type GetSession = (input: {
+  headers: Headers;
+  query: { disableCookieCache?: boolean };
+}) => Promise<{ session?: { id?: string | null } | null } | null>;
+
+/** Who a request's session cookie signs in, read for identification only (see `IDENTIFY_ONLY`). */
+export function createSessionReaders(api: { getSession: GetSession }) {
+  const read = async (headers: Headers, query: { disableCookieCache?: boolean }) =>
+    (await api.getSession({ headers, query: { ...query, ...IDENTIFY_ONLY } }))?.session ?? null;
+  return {
+    readSession: (headers: Headers) => read(headers, { disableCookieCache: true }),
+    /** May answer from the signed cookie cache (no database read). */
+    readCachedSession: (headers: Headers) => read(headers, {}),
+  };
+}
+
 export function createDeviceSessions(options: {
   db: IdentityDatabase;
   auth: ReturnType<typeof createAuth>;
@@ -65,11 +82,7 @@ export function createDeviceSessions(options: {
       fallbackSecret: options.secrets.issuer,
     }),
     // The cookie cache is skipped: takeover must see the record as it is in the database.
-    readSession: async (headers) =>
-      (await options.auth.api.getSession({ headers, query: { disableCookieCache: true } }))
-        ?.session ?? null,
-    readCachedSession: async (headers) =>
-      (await options.auth.api.getSession({ headers }))?.session ?? null,
+    ...createSessionReaders(options.auth.api),
     activity: options.activity,
     log: options.log,
   });
