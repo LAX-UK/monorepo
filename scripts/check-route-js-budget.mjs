@@ -12,16 +12,22 @@
  * An app marked `"requireSentry": true` must have been built with its client Sentry DSN set, so the
  * SDK's start-up code is in the bundle the budget measures; the check refuses a build without it.
  *
+ * Tracked routes also have a per-route ratchet in `route-js-baseline.json`: the size each was
+ * measured at, the target it is being brought down to, and a tolerance. A tracked route over its
+ * ratchet fails the run in every group, enforced or not.
+ *
  * Usage: node scripts/check-route-js-budget.mjs [--app apps/web ...] [--all] [--suggest] [--enforce]
+ *                                               [--write-baseline]
  *   --all             print every route, not just the group summary and the over-budget routes
  *   --suggest         print each group's current largest route plus 10%, to review a budget change
  *   --enforce         fail on over-budget routes everywhere; also BUDGET_ENFORCE=1
+ *   --write-baseline  record the current size of every tracked route as its new ratchet
  *   --allow-no-sentry measure a build made without the Sentry DSN (local runs; CI never does)
  *
  * Exit codes: 0 pass (or warnings only), 1 over budget under enforcement, 2 bad usage, config or
  * a build that does not match what the budget measures.
  */
-import { appendFileSync, existsSync, readFileSync } from "node:fs";
+import { appendFileSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { gzipSync } from "node:zlib";
@@ -35,9 +41,16 @@ import {
   verdict,
 } from "./route-js-budget-rule.mjs";
 import { chunkModules } from "./route-js-chunk-modules.mjs";
+import {
+  ratchetLines,
+  ratchetResult,
+  ratchetTable,
+  refreshBaseline,
+} from "./route-js-ratchet-rule.mjs";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
 const CONFIG_PATH = path.join(import.meta.dirname, "route-js-budgets.json");
+const BASELINE_PATH = path.join(import.meta.dirname, "route-js-baseline.json");
 
 const readJson = (file) => JSON.parse(readFileSync(file, "utf8"));
 
@@ -50,6 +63,7 @@ export function parseArgs(argv) {
     all: false,
     suggest: false,
     enforce: false,
+    writeBaseline: false,
     allowNoSentry: false,
   };
   for (let i = 0; i < argv.length; i++) {
@@ -61,6 +75,7 @@ export function parseArgs(argv) {
     } else if (arg === "--all") args.all = true;
     else if (arg === "--suggest") args.suggest = true;
     else if (arg === "--enforce") args.enforce = true;
+    else if (arg === "--write-baseline") args.writeBaseline = true;
     else if (arg === "--allow-no-sentry") args.allowNoSentry = true;
     else throw new UsageError(`unknown option ${arg}`);
   }
@@ -134,7 +149,13 @@ function suggestionLines(rows) {
  */
 export function main(
   argv,
-  { root = ROOT, configPath = CONFIG_PATH, env = process.env, log = console.log } = {},
+  {
+    root = ROOT,
+    configPath = CONFIG_PATH,
+    baselinePath = BASELINE_PATH,
+    env = process.env,
+    log = console.log,
+  } = {},
 ) {
   let args;
   try {
@@ -184,15 +205,34 @@ export function main(
     return 0;
   }
 
-  const { lines, failed } = verdict(rows, { enforce: forced });
+  const baseline = existsSync(baselinePath) ? readJson(baselinePath) : { routes: {} };
+  const measuredApps = [...new Set(rows.map((row) => row.app))];
+  if (args.writeBaseline) {
+    const refreshed = refreshBaseline({ rows, baseline, apps: measuredApps });
+    writeFileSync(baselinePath, `${JSON.stringify(refreshed, null, 2)}\n`);
+    log(`Recorded ${Object.keys(refreshed.routes).length} route ratchets in ${baselinePath}`);
+    return 0;
+  }
+
+  const { lines, failed: budgetFailed } = verdict(rows, { enforce: forced });
+  const ratchet = ratchetResult({ rows, baseline, apps: measuredApps });
+  const ratchetOutput = ratchetLines(ratchet);
+  const failed = budgetFailed || ratchet.over.length > 0 || ratchet.missing.length > 0;
   const summary = [
     "Route JS (gzip, start-up scripts; sizes in KB of 1024 bytes)",
     summaryTable(rows),
   ];
+  if (Object.keys(baseline.routes).length > 0) {
+    summary.push(
+      "",
+      "Tracked routes against their ratchet and target",
+      ratchetTable({ rows, baseline, apps: measuredApps }),
+    );
+  }
   if (lines.length > 0) summary.push("", "Over budget", overBudgetTable(rows));
   if (args.all) summary.push("", "All routes", fullTable(rows));
   log(summary.join("\n"));
-  for (const line of lines) log(line);
+  for (const line of [...lines, ...ratchetOutput]) log(line);
   if (lines.some((line) => line.startsWith("::warning"))) {
     log(
       "Warnings do not fail the run: those groups have no `enforce: true` in scripts/route-js-budgets.json.",
