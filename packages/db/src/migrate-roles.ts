@@ -223,6 +223,20 @@ export const API_PAYMENT_REFUND_TABLES = ["payment_refund"] as const;
  * showing it. Append-only, so api_app gets INSERT and SELECT only; no other role touches it.
  */
 export const API_PAYMENT_TRANSFER_REFERENCE_TABLES = ["payment_transfer_reference"] as const;
+/**
+ * Accounting documents and their history (migration 0368). The Bid API only reads them, and
+ * changes the per-product source switch that staff routes expose; the worker creates and advances
+ * documents, adds to their history and reads the switch. History is append-only: nobody gets
+ * UPDATE or DELETE on it (a trigger refuses them for the owner too). No other role has access.
+ */
+export const API_ACCOUNTING_READ_TABLES = [
+  "accounting_document",
+  "accounting_document_event",
+] as const;
+export const API_ACCOUNTING_SETTING_TABLES = ["accounting_source_setting"] as const;
+export const WORKER_ACCOUNTING_DOCUMENT_TABLES = ["accounting_document"] as const;
+export const WORKER_ACCOUNTING_APPEND_ONLY_TABLES = ["accounting_document_event"] as const;
+export const WORKER_ACCOUNTING_READ_TABLES = ["accounting_source_setting"] as const;
 /** Shop Identity owns only its local Identity projection. */
 export const SHOP_PRODUCT_PROFILE_TABLES = [
   "shop_user_profile",
@@ -976,6 +990,14 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
             await grantIfExists(client, "api_app", tableName, "INSERT, SELECT, DELETE");
             continue;
           }
+          if ((API_ACCOUNTING_READ_TABLES as readonly string[]).includes(tableName)) {
+            await grantIfExists(client, "api_app", tableName, "SELECT");
+            continue;
+          }
+          if ((API_ACCOUNTING_SETTING_TABLES as readonly string[]).includes(tableName)) {
+            await grantIfExists(client, "api_app", tableName, "SELECT, UPDATE");
+            continue;
+          }
           if (
             (API_PAYMENT_REFUND_TABLES as readonly string[]).includes(tableName) ||
             (API_PAYMENT_TRANSFER_REFERENCE_TABLES as readonly string[]).includes(tableName)
@@ -1137,6 +1159,15 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
         }
         for (const tableName of WORKER_ARTWORK_REGISTER_APPEND_ONLY_TABLES) {
           await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT");
+        }
+        for (const tableName of WORKER_ACCOUNTING_DOCUMENT_TABLES) {
+          await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT, UPDATE");
+        }
+        for (const tableName of WORKER_ACCOUNTING_APPEND_ONLY_TABLES) {
+          await grantIfExists(client, "worker_app", tableName, "INSERT");
+        }
+        for (const tableName of WORKER_ACCOUNTING_READ_TABLES) {
+          await grantIfExists(client, "worker_app", tableName, "SELECT");
         }
         for (const tableName of WORKER_ZOHO_CAMPAIGNS_SUPPRESSION_TABLES) {
           await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT, UPDATE");

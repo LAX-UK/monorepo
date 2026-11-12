@@ -2064,12 +2064,18 @@ importers:
 
   packages/persistence:
     dependencies:
+      '@auction/accounting-domain':
+        specifier: workspace:*
+        version: link:../accounting-domain
       '@auction/alerts':
         specifier: workspace:*
         version: link:../alerts
       '@auction/artwork-register-contracts':
         specifier: workspace:*
         version: link:../artwork-register-contracts
+      '@auction/datetime':
+        specifier: workspace:*
+        version: link:../datetime
       '@auction/db':
         specifier: workspace:*
         version: link:../db

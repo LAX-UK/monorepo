@@ -6,6 +6,8 @@ import { PgTable } from "drizzle-orm/pg-core";
 import ts from "typescript";
 import { beforeAll, describe, expect, it } from "vitest";
 import {
+  API_ACCOUNTING_READ_TABLES,
+  API_ACCOUNTING_SETTING_TABLES,
   API_DENY_TABLES,
   API_PAYMENT_REFUND_TABLES,
   API_PAYMENT_TRANSFER_REFERENCE_TABLES,
@@ -26,6 +28,9 @@ import {
   SHOP_COMMERCE_APPEND_ONLY_TABLES,
   SHOP_COMMERCE_TABLES,
   SHOP_SUBJECT_EXPORT_READ_TABLES,
+  WORKER_ACCOUNTING_APPEND_ONLY_TABLES,
+  WORKER_ACCOUNTING_DOCUMENT_TABLES,
+  WORKER_ACCOUNTING_READ_TABLES,
   WORKER_ANONYMISATION_DELETE_TABLES,
   WORKER_ARTWORK_REGISTER_APPEND_ONLY_TABLES,
   WORKER_ARTWORK_REGISTER_TABLES,
@@ -824,6 +829,30 @@ describe("migrate-roles invariants", () => {
     expect([...API_DENY_TABLES]).not.toContain("payment_transfer_reference");
     expect([...WORKER_FULL_TABLES]).not.toContain("payment_transfer_reference");
     expect([...WORKER_READ_TABLES]).not.toContain("payment_transfer_reference");
+  });
+
+  it("keeps accounting history append-only for the worker, read-only for the Bid API, and away from Shop", () => {
+    expect([...API_ACCOUNTING_READ_TABLES].sort()).toEqual([
+      "accounting_document",
+      "accounting_document_event",
+    ]);
+    expect([...API_ACCOUNTING_SETTING_TABLES]).toEqual(["accounting_source_setting"]);
+    expect([...WORKER_ACCOUNTING_DOCUMENT_TABLES]).toEqual(["accounting_document"]);
+    expect([...WORKER_ACCOUNTING_APPEND_ONLY_TABLES]).toEqual(["accounting_document_event"]);
+    expect([...WORKER_ACCOUNTING_READ_TABLES]).toEqual(["accounting_source_setting"]);
+    const accounting = [
+      ...API_ACCOUNTING_READ_TABLES,
+      ...API_ACCOUNTING_SETTING_TABLES,
+    ] as string[];
+    // The worker's lists carry no broader grant for these tables, and no role list denies the pair
+    // that must stay reachable.
+    for (const table of accounting) {
+      expect([...WORKER_FULL_TABLES]).not.toContain(table);
+      expect([...WORKER_DENY_TABLES]).not.toContain(table);
+      expect([...WORKER_READ_TABLES]).not.toContain(table);
+      expect([...SHOP_COMMERCE_TABLES, ...SHOP_COMMERCE_APPEND_ONLY_TABLES]).not.toContain(table);
+      expect([...API_DENY_TABLES]).not.toContain(table);
+    }
   });
 
   it("WORKER_PAYMENT_MAINTENANCE_TABLES includes payment (expire-stale-payments)", () => {

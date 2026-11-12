@@ -2458,6 +2458,13 @@
       "when": 1806393600000,
       "tag": "0357_private_sale_deal_artwork_unlinked_reason",
       "breakpoints": true
+    },
+    {
+      "idx": 352,
+      "version": "7",
+      "when": 1807430400000,
+      "tag": "0368_accounting_tables",
+      "breakpoints": true
     }
   ]
 }

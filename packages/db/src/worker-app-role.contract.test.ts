@@ -5,6 +5,9 @@ import { describe, expect, it } from "vitest";
 import { readUserReadCutoverFromEnv } from "./applied-user-read-cutover.js";
 import { createDb } from "./client.js";
 import {
+  WORKER_ACCOUNTING_APPEND_ONLY_TABLES,
+  WORKER_ACCOUNTING_DOCUMENT_TABLES,
+  WORKER_ACCOUNTING_READ_TABLES,
   WORKER_DENY_TABLES,
   WORKER_EMAIL_SUPPRESSION_UPDATE_COLUMNS,
   WORKER_SHOP_ENQUIRY_READ_COLUMNS,
@@ -54,6 +57,26 @@ describe.skipIf(!WORKER_URL)("worker_app role contract", { timeout: 60_000 }, ()
         ["SELECT", "INSERT", "UPDATE", "DELETE"],
       );
       expectTablePrivileges(rows, (row) => ["SELECT", "INSERT"].includes(row.privilege));
+    });
+  });
+
+  it("creates and advances accounting documents, only adds to their history, and reads the switch", async () => {
+    await withWorkerClient(async (client) => {
+      const privileges = ["SELECT", "INSERT", "UPDATE", "DELETE"];
+      const documents = await readTablePrivileges(
+        client,
+        WORKER_ACCOUNTING_DOCUMENT_TABLES,
+        privileges,
+      );
+      expectTablePrivileges(documents, (row) => row.privilege !== "DELETE");
+      const history = await readTablePrivileges(
+        client,
+        WORKER_ACCOUNTING_APPEND_ONLY_TABLES,
+        privileges,
+      );
+      expectTablePrivileges(history, (row) => row.privilege === "INSERT");
+      const settings = await readTablePrivileges(client, WORKER_ACCOUNTING_READ_TABLES, privileges);
+      expectTablePrivileges(settings, (row) => row.privilege === "SELECT");
     });
   });
 

@@ -2,6 +2,8 @@ import pg from "pg";
 import { describe, expect, it } from "vitest";
 import { readUserReadCutoverFromEnv } from "./applied-user-read-cutover.js";
 import {
+  API_ACCOUNTING_READ_TABLES,
+  API_ACCOUNTING_SETTING_TABLES,
   API_DENY_TABLES,
   API_PRODUCT_PROFILE_TABLES,
   API_READ_TABLES,
@@ -41,6 +43,16 @@ describe.skipIf(!API_URL)("api_app role contract", { timeout: 60_000 }, () => {
         );
         expect(result.rows[0]?.allowed, privilege).toBe(false);
       }
+    });
+  });
+
+  it("reads accounting documents and their history, and changes only the source switch", async () => {
+    await withApiClient(async (client) => {
+      const privileges = ["SELECT", "INSERT", "UPDATE", "DELETE"];
+      const documents = await readTablePrivileges(client, API_ACCOUNTING_READ_TABLES, privileges);
+      expectTablePrivileges(documents, (row) => row.privilege === "SELECT");
+      const settings = await readTablePrivileges(client, API_ACCOUNTING_SETTING_TABLES, privileges);
+      expectTablePrivileges(settings, (row) => ["SELECT", "UPDATE"].includes(row.privilege));
     });
   });
 
