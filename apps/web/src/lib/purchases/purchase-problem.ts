@@ -1,4 +1,5 @@
 import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
+import { LONDON_TIME_ZONE, formatDate } from "@auction/datetime";
 import { PURCHASE_PROBLEM_CATEGORIES, type PurchaseProblemCategory } from "@auction/domain";
 import { z } from "zod";
 
@@ -58,13 +59,6 @@ export type PurchaseProblemPanelVm = {
   nextStep: string;
 };
 
-const REPORTED_ON = new Intl.DateTimeFormat("en-GB", {
-  timeZone: "Europe/London",
-  day: "numeric",
-  month: "short",
-  year: "numeric",
-});
-
 /** What the purchase shows once a problem is reported: the reference and what happens next. */
 export function purchaseProblemPanel(problem: PurchaseProblemView): PurchaseProblemPanelVm {
   return {
@@ -72,7 +66,7 @@ export function purchaseProblemPanel(problem: PurchaseProblemView): PurchaseProb
     reference: problem.reference,
     facts: [
       { label: "About", value: PURCHASE_PROBLEM_CATEGORY_LABEL[problem.category] },
-      { label: "Reported", value: REPORTED_ON.format(problem.reportedAt) },
+      { label: "Reported", value: formatDate(problem.reportedAt, LONDON_TIME_ZONE) },
     ],
     nextStep:
       "Our client services team has your report and will reply by email within two business days. Quote the reference if you write to us.",

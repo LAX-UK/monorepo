@@ -29,6 +29,7 @@
   },
   "dependencies": {
     "@auction/branding": "workspace:*",
+    "@auction/datetime": "workspace:*",
     "@auction/db": "workspace:*",
     "@auction/domain": "workspace:*",
     "@auction/persistence": "workspace:*",

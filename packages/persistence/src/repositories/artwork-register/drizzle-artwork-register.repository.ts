@@ -20,6 +20,7 @@ import {
   sameImageSources,
   transitionOffer,
 } from "@auction/artwork-register-contracts";
+import { LONDON_TIME_ZONE, calendarYear } from "@auction/datetime";
 import type { Database } from "@auction/db";
 import {
   artworkRegisterConflict as conflict,
@@ -822,11 +823,7 @@ export class DrizzleArtworkRegisterRepository
 
 /** The two-digit registration year, in London time. */
 function registrationYear(now: Date): number {
-  const year = new Intl.DateTimeFormat("en-GB", {
-    timeZone: "Europe/London",
-    year: "numeric",
-  }).format(now);
-  return Number(year) % 100;
+  return calendarYear(now, LONDON_TIME_ZONE) % 100;
 }
 
 function sameKeys(a: readonly string[], b: readonly string[]): boolean {
