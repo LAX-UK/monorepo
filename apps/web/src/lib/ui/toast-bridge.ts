@@ -36,6 +36,11 @@ function load(): void {
   });
 }
 
+/** Fetches the toast library ahead of the first toast (see `preloadToastWhenIdle`). */
+export function preloadToastLibrary(): void {
+  load();
+}
+
 /** Raises a toast through the library, loading it and its host first when needed. */
 export function runToast(action: ToastAction): void {
   queue.push(action);

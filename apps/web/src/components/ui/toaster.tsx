@@ -1,6 +1,11 @@
 "use client";
 
-import { subscribeToastRequested, toastRequested } from "@/lib/ui/toast-bridge";
+import {
+  preloadToastLibrary,
+  subscribeToastRequested,
+  toastRequested,
+} from "@/lib/ui/toast-bridge";
+import { preloadToastWhenIdle } from "@/lib/ui/toast-preload";
 import { type ComponentType, useEffect, useState, useSyncExternalStore } from "react";
 
 type Host = ComponentType;
@@ -20,7 +25,8 @@ function loadHost(): Promise<Host> {
 /**
  * Global toast host. Nothing is on screen until a toast is raised, so the toast library and its
  * styles are not part of the page's first load: the first `notify` call (or a toast queued by
- * `runToast`) fetches the host, which then shows it. See `ToasterHost` for which toaster is used.
+ * `runToast`) mounts the host, which then shows it. Once the page is idle the code is fetched
+ * ahead (`preloadToastWhenIdle`), so that first toast is not slower. See `ToasterHost` for which toaster is used.
  *
  * The host is held in plain state rather than behind `next/dynamic`: the first toast is often
  * raised together with a router refresh, and a suspended lazy component could be dropped by it.
@@ -28,6 +34,16 @@ function loadHost(): Promise<Host> {
 export function Toaster() {
   const raised = useSyncExternalStore(subscribeToastRequested, toastRequested, () => false);
   const [Host, setHost] = useState<Host | null>(() => loadedHost);
+
+  // Once the page is idle, fetch the host and the library so the first toast is not slower.
+  useEffect(
+    () =>
+      preloadToastWhenIdle(() => {
+        preloadToastLibrary();
+        void loadHost();
+      }),
+    [],
+  );
 
   useEffect(() => {
     if (!raised) return;
