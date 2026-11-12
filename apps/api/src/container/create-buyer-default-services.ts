@@ -88,7 +88,7 @@ export function createBuyerDefaultServices(input: {
   return {
     buyerDefaultService,
     paymentReminderService,
-    // One hourly job reminds buyers of unpaid lot invoices and of a deal's deadlines.
+    // One job, run every 15 minutes, reminds buyers of unpaid lot invoices and of a deal's deadlines.
     paymentReminders: {
       async sendDueReminders() {
         const lots = await paymentReminderService.sendDueReminders();

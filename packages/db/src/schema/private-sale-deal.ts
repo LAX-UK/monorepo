@@ -89,6 +89,12 @@ export const privateSaleDeal = pgTable(
     index("private_sale_deal_open_idx")
       .on(table.updatedAt)
       .where(sql`${table.stage} NOT IN ('settled', 'cancelled')`),
+    index("private_sale_deal_payment_due_idx")
+      .on(table.paymentDueAt)
+      .where(sql`${table.stage} = 'invoiced' AND ${table.paymentDueAt} IS NOT NULL`),
+    index("private_sale_deal_collection_due_idx")
+      .on(table.collectionDueAt)
+      .where(sql`${table.stage} = 'paid' AND ${table.collectionDueAt} IS NOT NULL`),
     check("private_sale_deal_stage_check", sql.raw(`"stage" IN (${STAGES})`)),
     check("private_sale_deal_currency_check", sql`${table.currency} = 'GBP'`),
     check(
