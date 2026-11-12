@@ -17,7 +17,7 @@ export class ImpersonationAuditService {
     private readonly publisher: IDomainEventSink,
     private readonly impersonationSessions: Pick<
       IImpersonationSessionRepository,
-      "listActiveByActor" | "findById" | "endForActor" | "forConnection"
+      "listActiveByActor" | "findById" | "endExpiredForActor" | "forConnection"
     >,
   ) {}
 
@@ -106,8 +106,8 @@ export class ImpersonationAuditService {
     }
   }
 
-  /** Ends the actor's open session and records the end in one transaction. Returns false when
-   * the session was not the actor's, was already ended, or already has an end event. */
+  /** Ends the actor's expired session and records the end in one transaction. Returns false when
+   * the session was not the actor's, is still live, was already ended, or has an end event. */
   private async endAndRecord(input: {
     sessionId: string;
     actorUserId: string;
@@ -117,7 +117,9 @@ export class ImpersonationAuditService {
     return this.transactionRunner.runInTransaction(async (tx) => {
       if (await this.impersonationDomainEventReader.hasEndedEvent(input.sessionId)) return false;
       const sessions = this.impersonationSessions.forConnection(tx);
-      if (!(await sessions.endForActor(input.sessionId, input.actorUserId, input.endReason))) {
+      if (
+        !(await sessions.endExpiredForActor(input.sessionId, input.actorUserId, input.endReason))
+      ) {
         return false;
       }
       await this.publisher.withTx(tx).publish({
