@@ -70,6 +70,20 @@ describe("public lot reads while a result is open", () => {
     expect((data as Lot[])[0]).toMatchObject({ winnerId: "next-bidder-user" });
   });
 
+  it("ignores a buyer filter from the public, and keeps it for staff", async () => {
+    const filter = { limit: 10, offset: 0, resolveImages: false, winnerId: "next-bidder-user" };
+    const publicDeps = deps([]);
+    await listLotsForPublicApi(publicDeps, filter, undefined);
+    expect(publicDeps.lotRepo.list).toHaveBeenCalledWith(
+      expect.not.objectContaining({ winnerId: expect.anything() }),
+    );
+    const staffDeps = deps([]);
+    await listLotsForPublicApi(staffDeps, filter, "staff", ["cataloguer"] as never);
+    expect(staffDeps.lotRepo.list).toHaveBeenCalledWith(
+      expect.objectContaining({ winnerId: "next-bidder-user" }),
+    );
+  });
+
   it("shows no bid history, so the first buyer's price cannot be read from it", async () => {
     const result = await listPublicBidHistory(deps(["open"]), {
       lotId: "open",

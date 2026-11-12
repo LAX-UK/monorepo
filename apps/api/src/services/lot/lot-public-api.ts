@@ -27,8 +27,10 @@ export async function listLotsForPublicApi(
     statuses: filter.statuses,
     viewerCanSeeNonPublic,
   });
+  // Listing a buyer's lots by their id would tell anyone what that person bought: staff only.
+  const { winnerId, ...unscoped } = filter;
   const queryFilter: ListLotsFilter = {
-    ...filter,
+    ...(viewerCanSeeNonPublic ? filter : unscoped),
     ...(resolved.statuses !== undefined
       ? { statuses: resolved.statuses, status: undefined }
       : resolved.status !== undefined
