@@ -7,6 +7,7 @@ import {
   NEW_DEVICE_NOTICES_PER_DAY,
   fingerprintDevice,
   fingerprintMarker,
+  fingerprintMarkerOwingNotice,
   isNewDevice,
 } from "./known-device.js";
 import { SecurityNoticeService } from "./security-notice.service.js";
@@ -19,11 +20,18 @@ const SECURE_URL = "https://account.lax.bid/account/security";
 const CANCEL_URL = "https://account.lax.bid/account/security/delete";
 const DATA_URL = "https://account.lax.bid/account/privacy/download";
 
+/** The "owes a notice" keys the fake store answers `owesNotice` for. */
+const owedKeys = new Set([
+  fingerprintMarkerOwingNotice({ userId: USER, deviceHash: "hash-of-marker" }),
+]);
+
 function setup(
   options: {
     seen?: Awaited<ReturnType<KnownDeviceStore["touch"]>>;
     sentToday?: number;
     knownMarker?: boolean;
+    /** The browser was signed out from the devices list, or its last notice failed. */
+    owesNotice?: boolean;
   } = {},
 ) {
   const email = {
@@ -33,8 +41,13 @@ function setup(
   };
   const devices = {
     touch: vi.fn(async () => options.seen ?? { previousLastSeenAt: null, hadOtherDevices: true }),
-    hasSeen: vi.fn(async () => options.knownMarker ?? false),
+    hasSeen: vi.fn(async (input: { userId: string; fingerprint: string; at: Date }) =>
+      owedKeys.has(input.fingerprint)
+        ? (options.owesNotice ?? false)
+        : (options.knownMarker ?? false),
+    ),
     remember: vi.fn(async () => undefined),
+    forget: vi.fn(async () => undefined),
     countNoticesSince: vi.fn(async () => options.sentToday ?? 0),
     markNotified: vi.fn(async () => undefined),
   };
@@ -475,7 +488,7 @@ describe("new-device notices for a browser with a device marker", () => {
   const marker = fingerprintMarker({ userId: USER, deviceHash: "hash-of-marker" });
   const stale = new Date(AT.getTime() - KNOWN_DEVICE_WINDOW_MS - 60_000);
 
-  it("never emails a browser the person has signed in from before, even after 90 days", async () => {
+  it("never emails a browser the person signed in from in the last 90 days, whatever its label says", async () => {
     const { service, email, devices } = setup({
       knownMarker: true,
       seen: { previousLastSeenAt: stale, hadOtherDevices: true },
@@ -483,7 +496,7 @@ describe("new-device notices for a browser with a device marker", () => {
 
     await service.notify(signIn);
 
-    expect(devices.hasSeen).toHaveBeenCalledWith({ userId: USER, fingerprint: marker });
+    expect(devices.hasSeen).toHaveBeenCalledWith({ userId: USER, fingerprint: marker, at: AT });
     expect(email.enqueue).not.toHaveBeenCalled();
   });
 
@@ -509,6 +522,78 @@ describe("new-device notices for a browser with a device marker", () => {
 
     expect(email.enqueue).not.toHaveBeenCalled();
     expect(devices.remember).toHaveBeenCalledTimes(1);
+  });
+
+  it("emails a browser that owes a notice even when its label was seen recently, then settles it", async () => {
+    const { service, email, devices } = setup({
+      owesNotice: true,
+      knownMarker: true,
+      seen: { previousLastSeenAt: AT, hadOtherDevices: true },
+    });
+
+    await service.notify(signIn);
+
+    expect(email.enqueue).toHaveBeenCalledTimes(1);
+    expect(devices.markNotified).toHaveBeenCalledTimes(1);
+    expect(devices.remember).toHaveBeenCalledWith({ userId: USER, fingerprint: marker, at: AT });
+    expect(devices.forget).toHaveBeenCalledWith({
+      userId: USER,
+      fingerprints: [fingerprintMarkerOwingNotice({ userId: USER, deviceHash: "hash-of-marker" })],
+    });
+  });
+
+  it("remembers the marker only after the notice was queued", async () => {
+    const { service, email, devices } = setup({
+      seen: { previousLastSeenAt: stale, hadOtherDevices: true },
+    });
+    const order: string[] = [];
+    email.enqueue.mockImplementation(async () => {
+      order.push("enqueue");
+      return { outboxId: "o1" };
+    });
+    devices.remember.mockImplementation(async () => {
+      order.push("remember");
+    });
+
+    await service.notify(signIn);
+
+    expect(order).toEqual(["enqueue", "remember"]);
+  });
+
+  it("leaves the browser unknown and owing a notice when the email could not be queued", async () => {
+    const { service, email, devices, log } = setup({
+      seen: { previousLastSeenAt: stale, hadOtherDevices: true },
+    });
+    email.enqueue.mockRejectedValue(new Error("outbox down"));
+
+    await service.notify(signIn);
+
+    expect(devices.remember).toHaveBeenCalledTimes(1);
+    expect(devices.remember).toHaveBeenCalledWith({
+      userId: USER,
+      fingerprint: fingerprintMarkerOwingNotice({ userId: USER, deviceHash: "hash-of-marker" }),
+      at: AT,
+    });
+    expect(devices.remember).not.toHaveBeenCalledWith(
+      expect.objectContaining({ fingerprint: marker }),
+    );
+    expect(devices.markNotified).not.toHaveBeenCalled();
+    expect(log.error).toHaveBeenCalledWith(
+      expect.objectContaining({ kind: "sign_in" }),
+      "security_notice_failed",
+    );
+  });
+
+  it("remembers a browser the daily cap deliberately held back, sending nothing", async () => {
+    const { service, email, devices } = setup({
+      sentToday: NEW_DEVICE_NOTICES_PER_DAY,
+      seen: { previousLastSeenAt: stale, hadOtherDevices: true },
+    });
+
+    await service.notify(signIn);
+
+    expect(email.enqueue).not.toHaveBeenCalled();
+    expect(devices.remember).toHaveBeenCalledWith({ userId: USER, fingerprint: marker, at: AT });
   });
 
   it("does not look a marker up for a sign-in that carried none", async () => {

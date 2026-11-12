@@ -79,3 +79,48 @@ describe("session create hook", () => {
     expect(notify).not.toHaveBeenCalled();
   });
 });
+
+describe("session delete hook", () => {
+  const markerHash = (headers: Headers | undefined) =>
+    headers?.get("cookie")?.includes("__Host-lax_device=") ? "keyed-hash" : null;
+  const withMarker = { headers: new Headers({ cookie: "__Host-lax_device=raw-marker-value" }) };
+
+  function deleteSetup() {
+    const forgetDeviceMarker = vi.fn(async () => undefined);
+    const hooks = buildSessionDatabaseHooks({
+      ports: { subjectStatusReader: { isDisabledOrMerged: async () => false } },
+      readDeviceHash: markerHash,
+      forgetDeviceMarker,
+    } as unknown as AuthHookDeps);
+    return { hooks, forgetDeviceMarker };
+  }
+
+  it("forgets the marker of the browser that signs itself out", async () => {
+    const { hooks, forgetDeviceMarker } = deleteSetup();
+
+    await hooks.delete.after({ userId: "user-1" }, { path: "/sign-out", request: withMarker });
+
+    expect(forgetDeviceMarker).toHaveBeenCalledWith({ userId: "user-1", deviceHash: "keyed-hash" });
+  });
+
+  it("leaves markers alone when sessions end for another reason, such as a password change", async () => {
+    const { hooks, forgetDeviceMarker } = deleteSetup();
+
+    await hooks.delete.after(
+      { userId: "user-1" },
+      { path: "/change-password", request: withMarker },
+    );
+    await hooks.delete.after({ userId: "user-1" }, null);
+
+    expect(forgetDeviceMarker).not.toHaveBeenCalled();
+  });
+
+  it("never turns a sign-out into an error when forgetting fails", async () => {
+    const { hooks, forgetDeviceMarker } = deleteSetup();
+    forgetDeviceMarker.mockRejectedValue(new Error("db down"));
+
+    await expect(
+      hooks.delete.after({ userId: "user-1" }, { path: "/sign-out", request: withMarker }),
+    ).resolves.toBeUndefined();
+  });
+});

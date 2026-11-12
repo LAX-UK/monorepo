@@ -69,5 +69,26 @@ export function buildSessionDatabaseHooks(deps: AuthHookDeps) {
         });
       },
     },
+    delete: {
+      /**
+       * A browser that signs itself out stops vouching for its next sign-in: its marker is
+       * forgotten, so that sign-in is judged like any browser without one. Only the issuer's own
+       * sign-out counts here, because only then is the request's marker the deleted record's
+       * browser (a password change ending other sessions runs in the browser that stays).
+       */
+      after: async (
+        sess: { userId: string },
+        context?: {
+          path?: string | undefined;
+          request?: { headers: Headers } | undefined;
+        } | null,
+      ) => {
+        if (context?.path !== "/sign-out" || !deps.forgetDeviceMarker) return;
+        const deviceHash = deps.readDeviceHash?.(context.request?.headers) ?? null;
+        if (!deviceHash) return;
+        // The sign-out has already happened; failing to forget must not turn it into an error.
+        await deps.forgetDeviceMarker({ userId: sess.userId, deviceHash }).catch(() => undefined);
+      },
+    },
   };
 }

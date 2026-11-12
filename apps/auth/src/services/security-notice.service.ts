@@ -20,6 +20,7 @@ import {
   NEW_DEVICE_NOTICE_WINDOW_MS,
   fingerprintDevice,
   fingerprintMarker,
+  fingerprintMarkerOwingNotice,
   isNewDevice,
 } from "./known-device.js";
 import { type SecurityEffectLogger, describeError } from "./settle-security-effect.js";
@@ -238,24 +239,49 @@ export class SecurityNoticeService implements SecurityNoticePublisher, SecurityN
     event: Extract<SecurityNoticeEvent, { kind: "sign_in" }>,
     send: () => Promise<unknown>,
   ): Promise<void> {
+    const { userId, at } = event;
     const fingerprint = fingerprintDevice(event);
-    // A browser the person has signed in from before is never new, whatever its label or country
-    // says now. Without a marker (a first visit, cleared cookies) the 90-day rule below decides.
     const marker = event.deviceHash
-      ? fingerprintMarker({ userId: event.userId, deviceHash: event.deviceHash })
+      ? fingerprintMarker({ userId, deviceHash: event.deviceHash })
       : null;
-    const knownBrowser = marker
-      ? await this.deps.devices.hasSeen({ userId: event.userId, fingerprint: marker })
+    const owedKey = event.deviceHash
+      ? fingerprintMarkerOwingNotice({ userId, deviceHash: event.deviceHash })
+      : null;
+    // A browser that was signed out from the devices list (or whose last notice failed) owes an
+    // email, whatever its label or country says.
+    const owed = owedKey
+      ? await this.deps.devices.hasSeen({ userId, fingerprint: owedKey, at })
       : false;
-    const seen = await this.deps.devices.touch({ userId: event.userId, fingerprint, at: event.at });
-    if (marker) {
-      await this.deps.devices.remember({ userId: event.userId, fingerprint: marker, at: event.at });
+    // A browser the person has signed in from in the last 90 days is never new, whatever its label
+    // or country says now. Without a marker (a first visit, cleared cookies) the label rule decides.
+    const knownBrowser =
+      !owed && marker
+        ? await this.deps.devices.hasSeen({ userId, fingerprint: marker, at })
+        : false;
+    const seen = await this.deps.devices.touch({ userId, fingerprint, at });
+    // The marker is remembered only once the browser has been dealt with: no notice was due, the
+    // notice was queued, or the daily cap deliberately held it back. A notice that failed to queue
+    // leaves the browser unknown and owing, so its next sign-in is reported.
+    const settleBrowser = async () => {
+      if (!marker) return;
+      await this.deps.devices.remember({ userId, fingerprint: marker, at });
+      if (owed && owedKey) await this.deps.devices.forget({ userId, fingerprints: [owedKey] });
+    };
+    if (!owed && (knownBrowser || !isNewDevice(seen, at))) {
+      await settleBrowser();
+      return;
     }
-    if (knownBrowser || !isNewDevice(seen, event.at)) return;
     const since = new Date(this.now().getTime() - NEW_DEVICE_NOTICE_WINDOW_MS);
-    const sent = await this.deps.devices.countNoticesSince(event.userId, since);
-    if (sent >= NEW_DEVICE_NOTICES_PER_DAY) return;
-    await send();
-    await this.deps.devices.markNotified({ userId: event.userId, fingerprint, at: event.at });
+    const sent = await this.deps.devices.countNoticesSince(userId, since);
+    if (sent < NEW_DEVICE_NOTICES_PER_DAY) {
+      try {
+        await send();
+      } catch (error) {
+        if (owedKey) await this.deps.devices.remember({ userId, fingerprint: owedKey, at });
+        throw error;
+      }
+      await this.deps.devices.markNotified({ userId, fingerprint, at });
+    }
+    await settleBrowser();
   }
 }

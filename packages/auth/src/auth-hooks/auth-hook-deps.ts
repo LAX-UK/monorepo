@@ -38,6 +38,13 @@ export type AuthHookDeps = {
   enableNewDeviceLoginEmail?: boolean | undefined;
   /** Hash of the private device marker a request carries, or null; attached to sign-in reports. */
   readDeviceHash?: ((headers: Headers | undefined) => string | null) | undefined;
+  /**
+   * Forgets that the person has signed in from the browser holding this marker hash. Called when
+   * that browser signs itself out, so its marker no longer vouches for its next sign-in.
+   */
+  forgetDeviceMarker?:
+    | ((input: { userId: string; deviceHash: string }) => Promise<void>)
+    | undefined;
   /** When true, reject new auth user rows (email + OAuth) at `user.create.before`. */
   blockNewUserRegistration?: boolean | undefined;
   /**

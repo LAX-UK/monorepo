@@ -18,6 +18,10 @@ import type { Redis } from "ioredis";
 import type pino from "pino";
 import type { AuthAppEnv } from "../env.js";
 import { buildDrizzleDatabase } from "../infrastructure/build-drizzle-database.js";
+import {
+  DrizzleKnownDeviceStore,
+  retireRevokedBrowserMarkers,
+} from "../infrastructure/drizzle-known-device.store.js";
 import { DrizzleLegalAcceptanceRecorder } from "../infrastructure/drizzle-legal-acceptance.recorder.js";
 import { createPasskeyUsageRecorder } from "../infrastructure/drizzle-passkey-usage.js";
 import { HibpRangeBreachedPasswordChecker } from "../infrastructure/hibp-range-breached-password-checker.js";
@@ -38,12 +42,18 @@ export function createPasswordResetSessionRevoker(options: {
   identityEventPublisher: IdentityEventPublisher;
 }): (userId: string) => Promise<number> {
   return async (userId) => {
-    let rows: { id: string }[] = [];
+    let rows: { id: string; deviceHash: string | null }[] = [];
     await options.db.transaction(async (transaction) => {
       rows = await transaction
         .delete(session)
         .where(eq(session.userId, userId))
-        .returning({ id: session.id });
+        .returning({ id: session.id, deviceHash: session.deviceHash });
+      // A reset is the moment to stop trusting every browser that was signed in.
+      await retireRevokedBrowserMarkers(transaction, {
+        userId,
+        deviceHashes: rows.map((row) => row.deviceHash),
+        at: new Date(),
+      });
       await options.identityEventPublisher.publish(
         { type: "user.credential_changed", userId, changeType: "update" },
         { transaction },
@@ -141,6 +151,7 @@ export function createAuthIssuer(options: {
     secret: env.DEVICE_MARKER_SECRET,
     fallbackSecret: env.BETTER_AUTH_SECRET,
   });
+  const knownDevices = new DrizzleKnownDeviceStore(options.db);
   const identityPorts = createIdentityAuthPorts(options.db, { envelope });
   const ports: AuthPorts = {
     ...identityPorts,
@@ -200,6 +211,13 @@ export function createAuthIssuer(options: {
       const marker = readDeviceMarker(headers?.get("cookie"));
       return marker ? deviceHasher.hash(marker) : null;
     },
+    forgetDeviceMarker: (input) =>
+      knownDevices.forgetBrowser(input).catch((error: unknown) => {
+        options.log.error(
+          { error: error instanceof Error ? error.message : String(error), userId: input.userId },
+          "device_marker_forget_failed",
+        );
+      }),
     blockNewUserRegistration: Boolean(env.DISABLE_NEW_USER_REGISTRATION),
     resolveOidcIdTokenClaims: adaptOidcClaimsResolver(async (input) => ({
       ...(await options.oidcSessions.resolveIdTokenClaims(input)),

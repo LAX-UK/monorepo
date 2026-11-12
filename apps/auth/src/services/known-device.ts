@@ -15,10 +15,16 @@ export type KnownDeviceStore = {
     /** Whether the person had signed in from any other device before. */
     hadOtherDevices: boolean;
   }>;
-  /** Whether the person has signed in from the browser holding this private device marker before. */
-  hasSeen(input: { userId: string; fingerprint: string }): Promise<boolean>;
+  /**
+   * Whether the person has signed in from the browser holding this private device marker within
+   * the last 90 days (`KNOWN_DEVICE_WINDOW_MS` before `at`). Also answers for the "owes a notice"
+   * key of `fingerprintMarkerOwingNotice`.
+   */
+  hasSeen(input: { userId: string; fingerprint: string; at: Date }): Promise<boolean>;
   /** Remembers a device (or browser marker) without reporting anything about it. */
   remember(input: { userId: string; fingerprint: string; at: Date }): Promise<void>;
+  /** Forgets these keys of the person: the browser is no longer vouched for, or no longer owes a notice. */
+  forget(input: { userId: string; fingerprints: readonly string[] }): Promise<void>;
   countNoticesSince(userId: string, since: Date): Promise<number>;
   markNotified(input: { userId: string; fingerprint: string; at: Date }): Promise<void>;
 };
@@ -45,6 +51,21 @@ export function fingerprintDevice(input: {
  */
 export function fingerprintMarker(input: { userId: string; deviceHash: string }): string {
   return createHash("sha256").update(`${input.userId}\nmarker\n${input.deviceHash}`).digest("hex");
+}
+
+/**
+ * The key that says the browser holding this marker owes the person a new sign-in email: it was
+ * signed out from the devices list (or by a password reset or a support reset), or its last
+ * notice could not be queued. Its next sign-in is treated as new whatever its label or country
+ * says. Kept apart from `fingerprintMarker`, so one row never means both "known" and "owed".
+ */
+export function fingerprintMarkerOwingNotice(input: {
+  userId: string;
+  deviceHash: string;
+}): string {
+  return createHash("sha256")
+    .update(`${input.userId}\nmarker-owes-notice\n${input.deviceHash}`)
+    .digest("hex");
 }
 
 /**
