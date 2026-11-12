@@ -218,6 +218,23 @@ sum(increase(auction_auth_social_policy_read_failures_total[10m])) > 0
 
 `auction_auth_social_policy_read_failures_total`: the issuer could not read the staff, two-step or email facts a Google or Apple sign-in depends on (the identity database is unavailable or slow). The sign-in is stopped on purpose, so while this rises **Google and Apple sign-in fails for everyone**; password and email-link sign-in are unaffected. People see "Sign-in with Google or Apple isn't available just now" on the hosted sign-in page. Check the identity database first (`social_policy_read_failed` in the issuer log carries the reason), then the issuer's database pool.
 
+## Re-offer sweep: re-awarded lot has no invoice (`reoffer_invoice_not_raised`)
+
+The worker's re-offer sweep (every 15 minutes) raises the invoice of an accepted re-offer whose award went through but whose invoice did not. It never lists a buyer account that already has a payment on the lot, cancelled ones included (a buyer who relinquished the win, a stale checkout), unless the cancelled payment's invoice was voided by a default. When `ensureForLot` still does not raise the invoice, the sweep logs `reoffer_invoice_not_raised` and sends a Sentry warning (tag `reason`, tag `retry`), and only then marks the offer in `lot_reoffer.close_reason`:
+
+- `retry: false`, marker `invoice_not_raised:<reason>`: an invoice already exists or the award has gone (`payment_already_exists`, `already_refunded`, `lot_moved`, `no_winner`, `lot_not_found`, `lot_not_ended`, `missing_buyer_legal_entity`). The offer is never listed again. Nothing to do unless the reason is unexpected.
+- `retry: true`, marker `invoice_not_raised:retry:<reason>`: the invoice is owed but blocked (`missing_seller_legal_entity`, `payment_amount_exceeds_limit`, `invalid_payment_amount`, or a reason the sweep does not know). The sweep tries again 24 hours after the mark and warns once per try. Fix the cause (seller account, payment limit, lot amount); the invoice is raised on the next try.
+
+To try again straight away after a fix, or to re-arm an offer marked for good by mistake:
+
+```sql
+UPDATE lot_reoffer
+   SET close_reason = NULL, updated_at = now()
+ WHERE id = '<reoffer id from the Sentry event>'
+   AND status = 'accepted'
+   AND close_reason LIKE 'invoice_not_raised:%';
+```
+
 ## Related
 
 - [Scale monitoring](./scale-monitoring.md)

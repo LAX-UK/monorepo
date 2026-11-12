@@ -17,10 +17,24 @@ export interface IReofferSweepReader {
   offersOut(limit: number): Promise<ReofferSweepRef[]>;
   /**
    * Accepted offers whose lot was re-awarded before `reawardedBefore` and whose new buyer's account
-   * has no invoice on the lot: the re-award committed, but raising the invoice did not.
+   * has no payment standing for an invoice on the lot: the re-award committed, but raising the
+   * invoice did not. Any payment of that account counts, cancelled ones included, except a
+   * cancelled one whose invoice was voided by a default. Lots that were deleted, whose buyer
+   * account differs from the offer's, and offers marked as unraisable for good are left out;
+   * offers marked for retry come back once their mark is older than `retryMarkedBefore`.
    */
   acceptedWithoutInvoice(input: {
     reawardedBefore: Date;
+    retryMarkedBefore: Date;
     limit: number;
   }): Promise<ReofferSweepRef[]>;
+}
+
+/** Records that the sweep tried an accepted offer's invoice and was told it cannot be raised. */
+export interface IReofferInvoiceMarker {
+  /**
+   * True when this call set the marker; false when the offer was not accepted or is already marked
+   * for good. A retry marker is replaced, which restarts its back-off.
+   */
+  markInvoiceNotRaised(reofferId: string, marker: string): Promise<boolean>;
 }
