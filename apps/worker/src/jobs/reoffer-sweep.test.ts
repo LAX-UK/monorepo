@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { INVOICE_GRACE_MS, runReofferSweepJob } from "./reoffer-sweep.js";
 
 const log = pino({ level: "silent" });
+const markerOf = () => ({ markInvoiceNotRaised: vi.fn(async () => true) });
 const ref = (n: number) => ({ reofferId: `offer-${n}`, lotId: `lot-${n}` });
 
 function readerOf(input: {
@@ -31,6 +32,7 @@ describe("runReofferSweepJob", () => {
     const result = await runReofferSweepJob({
       reader: readerOf({ requests: [1, 2], offers: [3, 4] }),
       clock,
+      marker: markerOf(),
       ensureInvoice: null,
       log,
     });
@@ -40,6 +42,7 @@ describe("runReofferSweepJob", () => {
       ended: 1,
       offerReminders: 0,
       invoicesRaised: 0,
+      invoicesUnraised: 0,
       failed: 0,
     });
   });
@@ -55,6 +58,7 @@ describe("runReofferSweepJob", () => {
     const result = await runReofferSweepJob({
       reader: readerOf({ offers: [1, 2] }),
       clock,
+      marker: markerOf(),
       ensureInvoice: null,
       log,
     });
@@ -72,6 +76,7 @@ describe("runReofferSweepJob", () => {
     const result = await runReofferSweepJob({
       reader,
       clock: { settleSellerRequest: vi.fn(), settleOffer: vi.fn() },
+      marker: markerOf(),
       ensureInvoice,
       log,
       now: () => now,
@@ -89,9 +94,68 @@ describe("runReofferSweepJob", () => {
     await runReofferSweepJob({
       reader,
       clock: { settleSellerRequest: vi.fn(), settleOffer: vi.fn() },
+      marker: markerOf(),
       ensureInvoice: null,
       log,
     });
     expect(reader.acceptedWithoutInvoice).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    "lot_not_found",
+    "lot_not_ended",
+    "no_winner",
+    "missing_buyer_legal_entity",
+    "missing_seller_legal_entity",
+    "payment_already_exists",
+    "already_refunded",
+    "payment_amount_exceeds_limit",
+    "invalid_payment_amount",
+    "lot_moved",
+  ])("counts, logs and marks %s so the row is not listed again", async (reason) => {
+    const marker = markerOf();
+    const warn = vi.fn();
+    const result = await runReofferSweepJob({
+      reader: readerOf({ missed: [1] }),
+      clock: { settleSellerRequest: vi.fn(), settleOffer: vi.fn() },
+      marker,
+      ensureInvoice: vi.fn(async () => ({ created: false, reason })),
+      log: { ...log, info: vi.fn(), warn } as unknown as typeof log,
+    });
+    expect(result.invoicesUnraised).toBe(1);
+    expect(result.invoicesRaised).toBe(0);
+    expect(result.failed).toBe(0);
+    expect(marker.markInvoiceNotRaised).toHaveBeenCalledWith(
+      "offer-1",
+      `invoice_not_raised:${reason}`,
+    );
+    expect(warn).toHaveBeenCalledWith(
+      expect.objectContaining({ reofferId: "offer-1", lotId: "lot-1", reason }),
+      "reoffer_invoice_not_raised",
+    );
+  });
+
+  it("does not mark a raised invoice", async () => {
+    const marker = markerOf();
+    await runReofferSweepJob({
+      reader: readerOf({ missed: [1] }),
+      clock: { settleSellerRequest: vi.fn(), settleOffer: vi.fn() },
+      marker,
+      ensureInvoice: vi.fn(async () => ({ created: true })),
+      log,
+    });
+    expect(marker.markInvoiceNotRaised).not.toHaveBeenCalled();
+  });
+
+  it("reports a failed mark as a failed step", async () => {
+    const result = await runReofferSweepJob({
+      reader: readerOf({ missed: [1] }),
+      clock: { settleSellerRequest: vi.fn(), settleOffer: vi.fn() },
+      marker: { markInvoiceNotRaised: vi.fn(async () => Promise.reject(new Error("db down"))) },
+      ensureInvoice: vi.fn(async () => ({ created: false, reason: "lot_not_found" })),
+      log,
+    });
+    expect(result.failed).toBe(1);
+    expect(result.invoicesUnraised).toBe(0);
   });
 });

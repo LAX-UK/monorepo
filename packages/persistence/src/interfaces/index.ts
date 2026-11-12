@@ -1467,4 +1467,8 @@ export type {
   SellerConsentRequestRow,
   StaffReofferView,
 } from "./reoffer-workflow.js";
-export type { IReofferSweepReader, ReofferSweepRef } from "./reoffer-sweep.js";
+export type {
+  IReofferInvoiceMarker,
+  IReofferSweepReader,
+  ReofferSweepRef,
+} from "./reoffer-sweep.js";

@@ -17,10 +17,18 @@ export interface IReofferSweepReader {
   offersOut(limit: number): Promise<ReofferSweepRef[]>;
   /**
    * Accepted offers whose lot was re-awarded before `reawardedBefore` and whose new buyer's account
-   * has no invoice on the lot: the re-award committed, but raising the invoice did not.
+   * has no live invoice on the lot: the re-award committed, but raising the invoice did not.
+   * Lots that were deleted, whose buyer account differs from the offer's, and offers already marked
+   * as unraisable are left out.
    */
   acceptedWithoutInvoice(input: {
     reawardedBefore: Date;
     limit: number;
   }): Promise<ReofferSweepRef[]>;
+}
+
+/** Records that the sweep tried an accepted offer's invoice and was told it cannot be raised. */
+export interface IReofferInvoiceMarker {
+  /** True when this call set the marker; false when the offer was not accepted or already marked. */
+  markInvoiceNotRaised(reofferId: string, marker: string): Promise<boolean>;
 }

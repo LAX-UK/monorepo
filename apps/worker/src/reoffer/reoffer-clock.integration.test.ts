@@ -86,7 +86,7 @@ describe.skipIf(!ownerUrl || !workerUrl)(
       new WorkerDomainEventPublisher({ publishValidateMode: "enforce" }),
       workerDb,
     );
-    const { clock, reader } = createReofferClock({
+    const { clock, reader, marker } = createReofferClock({
       db: workerDb,
       transactionRunner: new DrizzleTransactionRunner(workerDb),
       domainEventSink: sink,
@@ -622,6 +622,7 @@ describe.skipIf(!ownerUrl || !workerUrl)(
         const result = await runReofferSweepJob({
           reader,
           clock: flaky,
+          marker,
           ensureInvoice: null,
           log,
           now: () => currentNow,
@@ -633,6 +634,7 @@ describe.skipIf(!ownerUrl || !workerUrl)(
         const again = await runReofferSweepJob({
           reader,
           clock,
+          marker,
           ensureInvoice: null,
           log,
           now: () => currentNow,
@@ -670,6 +672,7 @@ describe.skipIf(!ownerUrl || !workerUrl)(
             settleSellerRequest: async () => "waiting" as const,
             settleOffer: async () => "waiting" as const,
           },
+          marker,
           ensureInvoice,
           log,
           now: () => new Date(Date.now() + 3_600_000),
@@ -713,6 +716,103 @@ describe.skipIf(!ownerUrl || !workerUrl)(
           createdAt: new Date(Date.now() + 5_000),
         });
         expect(await listed(later())).not.toContain(o.id);
+      });
+
+      it("does not list a soft-deleted lot", async () => {
+        const { s, o } = await reawarded();
+        expect(await listed(later())).toContain(o.id);
+        await owner.update(lot).set({ deletedAt: new Date() }).where(eq(lot.id, s.lotId));
+        expect(await listed(later())).not.toContain(o.id);
+      });
+
+      it("pins the lot's buyer account to the offer's", async () => {
+        const { s, o } = await reawarded();
+        await owner
+          .update(lot)
+          .set({ buyerLegalEntityId: defaulterEntity })
+          .where(eq(lot.id, s.lotId));
+        expect(await listed(later())).not.toContain(o.id);
+        await owner
+          .update(lot)
+          .set({ buyerLegalEntityId: bidderEntity })
+          .where(eq(lot.id, s.lotId));
+        expect(await listed(later())).toContain(o.id);
+      });
+
+      const paymentOf = (
+        lotId: string,
+        status: "cancelled" | "authorized",
+        entity = bidderEntity,
+      ) =>
+        owner.insert(payment).values({
+          lotId,
+          buyerId: bidderId,
+          buyerLegalEntityId: entity,
+          sellerLegalEntityId: sellerEntity,
+          amount: "972.00",
+          platformFee: "90.00",
+          status,
+        });
+
+      it("counts only live payments: a cancelled one hides nothing", async () => {
+        const { s, o } = await reawarded();
+        await paymentOf(s.lotId, "cancelled");
+        await paymentOf(s.lotId, "cancelled");
+        expect(await listed(later())).toContain(o.id);
+        await paymentOf(s.lotId, "authorized");
+        expect(await listed(later())).not.toContain(o.id);
+      });
+
+      it("ignores a live payment of another account on the lot", async () => {
+        const { s, o } = await reawarded();
+        await paymentOf(s.lotId, "authorized", defaulterEntity);
+        expect(await listed(later())).toContain(o.id);
+      });
+
+      describe.each([
+        ["lot_not_found"],
+        ["payment_amount_exceeds_limit"],
+        ["invalid_payment_amount"],
+        ["missing_seller_legal_entity"],
+        ["no_winner"],
+        ["lot_not_ended"],
+        ["missing_buyer_legal_entity"],
+        ["payment_already_exists"],
+        ["already_refunded"],
+        ["lot_moved"],
+      ])("when ensureForLot answers %s", (reason) => {
+        it("counts it, marks it, and lists the row only once", async () => {
+          const { o } = await reawarded();
+          const ensureInvoice = vi.fn(async () => ({ created: false, reason }));
+          const sweep = () =>
+            runReofferSweepJob({
+              reader: sweepReader,
+              clock: {
+                settleSellerRequest: async () => "waiting" as const,
+                settleOffer: async () => "waiting" as const,
+              },
+              marker,
+              ensureInvoice,
+              log,
+              now: () => new Date(Date.now() + 3_600_000),
+            });
+          const first = await sweep();
+          expect(first.invoicesUnraised).toBeGreaterThanOrEqual(1);
+          expect(first.failed).toBe(0);
+          expect((await offerRow(o.id))?.closeReason).toBe(`invoice_not_raised:${reason}`);
+          expect((await offerRow(o.id))?.status).toBe("accepted");
+          expect(await listed(later())).not.toContain(o.id);
+          ensureInvoice.mockClear();
+          await sweep();
+          expect(ensureInvoice).not.toHaveBeenCalledWith(o.ref.lotId);
+        });
+      });
+
+      it("marks an offer once, only while accepted", async () => {
+        const { o } = await reawarded();
+        expect(await marker.markInvoiceNotRaised(o.id, "invoice_not_raised:x")).toBe(true);
+        expect(await marker.markInvoiceNotRaised(o.id, "invoice_not_raised:y")).toBe(false);
+        expect((await offerRow(o.id))?.closeReason).toBe("invoice_not_raised:x");
       });
 
       it("never lists an offer that was not accepted", async () => {

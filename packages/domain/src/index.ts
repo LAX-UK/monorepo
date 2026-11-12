@@ -1334,6 +1334,12 @@ export {
   type ReofferSkipReason,
   type SkippedBidder,
 } from "./reoffer-next-bidder.js";
+export {
+  INVOICE_NOT_RAISED_PREFIX,
+  invoiceSweepOutcome,
+  type InvoiceAttempt,
+  type InvoiceSweepOutcome,
+} from "./reoffer-invoice-outcome.js";
 export { claimableShortfall, type ClaimableShortfall } from "./reoffer-shortfall.js";
 export {
   reawardGuard,
