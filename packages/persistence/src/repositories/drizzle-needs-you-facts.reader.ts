@@ -13,7 +13,9 @@ import {
   itemSubmission,
   lot,
   lotFulfilment,
+  lotReoffer,
   payment,
+  sellerConsent,
   sourceOfFunds,
   userInvitation,
 } from "@auction/db/schema";
@@ -25,6 +27,7 @@ import {
   type PendingAccessRequest,
   type PurchaseNextStepFacts,
   type PurchaseNextStepTimes,
+  type ReofferRequestSubject,
   type UnreadReply,
 } from "@auction/domain";
 import type { PaymentStatus } from "@auction/types";
@@ -239,6 +242,38 @@ export class DrizzleNeedsYouFactsReader implements INeedsYouFactsReader {
       )
       .orderBy(desc(itemSubmission.updatedAt), asc(itemSubmission.id))
       .limit(input.limit);
+  }
+
+  async reofferRequests(input: {
+    legalEntityId: string;
+    now: Date;
+    limit: number;
+  }): Promise<Array<ReofferRequestSubject & { requestedAt: Date | null }>> {
+    const rows = await this.db
+      .select({
+        id: lotReoffer.id,
+        title: lot.title,
+        offerMinor: lotReoffer.amountPence,
+        answerBy: sellerConsent.dueAt,
+        requestedAt: sellerConsent.requestedAt,
+      })
+      .from(sellerConsent)
+      .innerJoin(lotReoffer, eq(lotReoffer.id, sellerConsent.subjectId))
+      .innerJoin(lot, eq(lot.id, sellerConsent.lotId))
+      .where(
+        and(
+          eq(sellerConsent.sellerLegalEntityId, input.legalEntityId),
+          eq(sellerConsent.subjectType, "lot_reoffer"),
+          eq(sellerConsent.status, "requested"),
+          eq(lotReoffer.status, "awaiting_seller"),
+          // Past its deadline the request can no longer be answered, even before the worker
+          // marks it lapsed, so it is no longer work for the seller.
+          or(isNull(sellerConsent.dueAt), gt(sellerConsent.dueAt, input.now)),
+        ),
+      )
+      .orderBy(asc(sellerConsent.dueAt), asc(lotReoffer.id))
+      .limit(input.limit);
+    return rows;
   }
 
   async changesRequested(input: {
