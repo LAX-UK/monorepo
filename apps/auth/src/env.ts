@@ -215,6 +215,20 @@ const envSchema = z
         return val === "true" || val === true;
       }, z.boolean())
       .default(true),
+    /**
+     * The "new sign-in to your account" email. Unset: on when NODE_ENV=production, except where
+     * APP_ENV=test (the test site), because nothing in this repository limits who test-site mail
+     * reaches. Set "true" or "false" to decide explicitly (see isNewDeviceEmailEnabled).
+     */
+    NEW_DEVICE_EMAIL_ENABLED: z.preprocess(
+      (value) =>
+        value === "true" || value === true
+          ? true
+          : value === "false" || value === false
+            ? false
+            : undefined,
+      z.boolean().optional(),
+    ),
     DISABLE_NEW_USER_REGISTRATION: z
       .preprocess((v) => v === "true" || v === true, z.boolean())
       .default(false),
