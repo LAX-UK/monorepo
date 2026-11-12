@@ -41,6 +41,27 @@ describe("buildWorkDetail", () => {
     expect(vm.shipping).toEqual([{ currency: "GBP", amount: 4_000 }]);
   });
 
+  it("shows a refund as its own deduction and totals what was kept", () => {
+    const vm = buildWorkDetail(
+      item({
+        paid: {
+          lines: [
+            { kind: "price", amount: 45_000, currency: "GBP" },
+            { kind: "shipping", amount: 2_500, currency: "GBP" },
+          ],
+          refunded: { amount: 10_000, currency: "GBP" },
+        },
+      }),
+      ORIGINS,
+    );
+    expect(vm.costLines.map((line) => [line.label, line.amount, line.deduction])).toEqual([
+      ["Price", 45_000, false],
+      ["Shipping", 2_500, false],
+      ["Refunded", 10_000, true],
+    ]);
+    expect(vm.total).toEqual([{ currency: "GBP", amount: 37_500 }]);
+  });
+
   it("lists present documents first and gives each missing one a note", () => {
     const vm = buildWorkDetail(full, ORIGINS);
     expect(vm.documents.map((doc) => [doc.label, doc.href !== null, doc.note])).toEqual([

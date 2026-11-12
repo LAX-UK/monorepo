@@ -110,6 +110,25 @@ describe("buildHoldings", () => {
     ]);
   });
 
+  it("takes a refund off the paid figure on the row and in the header, leaving the charges whole", () => {
+    const refunded = [
+      item({
+        id: "r1",
+        paid: {
+          lines: [
+            { kind: "price", amount: 45_000, currency: "GBP" },
+            { kind: "shipping", amount: 2_500, currency: "GBP" },
+          ],
+          refunded: { amount: 10_000, currency: "GBP" },
+        },
+      }),
+    ];
+    const [row] = buildHoldings(refunded).rows;
+    expect(row?.paid).toEqual([{ currency: "GBP", amount: 37_500 }]);
+    expect(row?.item.paid.lines[0]).toEqual({ kind: "price", amount: 45_000, currency: "GBP" });
+    expect(buildPortfolioHeader(refunded).paidSoFar).toEqual([{ currency: "GBP", amount: 37_500 }]);
+  });
+
   it("counts allocation by artist and product over the filtered works", () => {
     const { allocation } = buildHoldings(works);
     expect(allocation.byProduct).toEqual([
