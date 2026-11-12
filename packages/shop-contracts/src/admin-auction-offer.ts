@@ -25,6 +25,8 @@ export const AdminAuctionOfferAssessmentSchema = Type.Object({
   /** The lot holding the artwork in a LAX Bid sale, for the link in a refusal. */
   holdingLotId: Type.Union([Type.String({ format: "uuid" }), Type.Null()]),
   eligible: Type.Boolean(),
+  /** Zoho's price in pounds ("250.00"), shown beside the LAX price; null when Zoho has none. Information only. */
+  zohoPrice: Type.Union([Type.String(), Type.Null()]),
   /** Why the artwork cannot be offered, most important first, with the link that goes with each. */
   blockers: Type.Array(AdminLaxArtOfferBlockerSchema),
 });

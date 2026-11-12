@@ -68,6 +68,7 @@ async function buildApp(
     },
   });
   deps.admin.artworkRegister = new ArtworkRegisterReviewService({
+    catalogueChanges: { changesFor: async () => [] },
     queue: {
       listHeld: async () => ({ entries: [], total: 0 }),
       listOpenConflicts: async () => ({ items: [], total: 0 }),

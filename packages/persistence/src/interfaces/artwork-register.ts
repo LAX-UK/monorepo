@@ -343,6 +343,17 @@ export type AuctionOfferDraftLot = {
   status: "draft" | "scheduled" | "active" | "ended" | "cancelled" | "voided";
 };
 
+/** The catalogue facts of the lot holding an artwork's place, with how far lot and sale have gone. */
+export type AuctionOfferLotCatalogue = {
+  lotId: string;
+  status: "draft" | "scheduled" | "active" | "ended" | "cancelled" | "voided";
+  saleStatus: string | null;
+  title: string;
+  medium: string | null;
+  dimensions: string | null;
+  images: string[];
+};
+
 /** What LAX Bid shows another product that wants to offer an artwork at auction. */
 export interface IAuctionOfferReader {
   /** Sales still being set up and not yet started, soonest first. */
@@ -351,6 +362,8 @@ export interface IAuctionOfferReader {
   findOpenLotForRegister(registerId: string): Promise<AuctionOfferDraftLot | null>;
   /** The artwork's draft lot, with its sale's title; null once the lot is scheduled or gone. */
   findDraftLotForRegister(registerId: string): Promise<AuctionOfferDraftLotSummary | null>;
+  /** The catalogue facts of the lot that holds this artwork's place (draft, scheduled or live), if any. */
+  findLotCatalogueForRegister(registerId: string): Promise<AuctionOfferLotCatalogue | null>;
 }
 
 export type LotRegisterLink = {

@@ -39,6 +39,31 @@ describe("DOMAIN_EVENT_REGISTRY", () => {
     });
   });
 
+  it("records Zoho catalogue changes for the audit trail, with the before and after of each field", () => {
+    const payload = {
+      schemaVersion: 1,
+      registerId: "11111111-1111-4111-8111-111111111111",
+      zohoProductId: "5000000000001000001",
+      stockCode: "LAX-ORI-PH-GAC-26-0001",
+      fields: ["title", "year"],
+      changes: { title: { from: "Old", to: "New" }, year: { from: null, to: 2021 } },
+    };
+    const entry = DOMAIN_EVENT_REGISTRY["artwork_register.catalogue_changed"];
+    expect(entry.consumers).toEqual(["audit"]);
+    expect(entry.piiClassification).toBe("operational");
+    expect(parseDomainEventPayload("artwork_register.catalogue_changed", 1, payload).ok).toBe(true);
+    expect(
+      parseDomainEventPayload("artwork_register.catalogue_changed", 1, {
+        ...payload,
+        fields: ["stockCode"],
+      }).ok,
+    ).toBe(false);
+    expect(
+      parseDomainEventPayload("artwork_register.catalogue_changed", 1, { ...payload, fields: [] })
+        .ok,
+    ).toBe(false);
+  });
+
   it("routes artwork register events to the Zoho artwork writeback, and moves to the listing", () => {
     const base = {
       schemaVersion: 1,

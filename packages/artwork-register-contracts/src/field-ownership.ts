@@ -15,6 +15,7 @@ export const FIELD_OWNERS = {
   year: "zoho",
   imageRefs: "zoho",
   catalogueStatus: "zoho",
+  zohoPrice: "zoho",
   stockCode: "lax",
   kind: "lax",
   sourceOriginalId: "lax",
@@ -44,6 +45,25 @@ export function ownerOf(field: RegisterField): FieldOwner {
   return FIELD_OWNERS[field];
 }
 
+/**
+ * The register fields a lax.art listing or a Bid lot copies from Zoho. A change to one of these
+ * is announced (`artwork_register.catalogue_changed`) so staff can decide whether the copies follow.
+ * The status and Zoho's price are shown beside LAX's own values but are not copied.
+ */
+export const CATALOGUE_FIELDS = [
+  "title",
+  "artist",
+  "medium",
+  "dimensions",
+  "year",
+  "imageRefs",
+] as const satisfies readonly ZohoOwnedField[];
+export type CatalogueField = (typeof CATALOGUE_FIELDS)[number];
+
+export function isCatalogueField(field: string): field is CatalogueField {
+  return (CATALOGUE_FIELDS as readonly string[]).includes(field);
+}
+
 /** The value of each register field as a plain, comparable value. */
 export type RegisterFieldValues = {
   title: ArtworkRegisterEntry["title"];
@@ -53,6 +73,7 @@ export type RegisterFieldValues = {
   year: ArtworkRegisterEntry["year"];
   imageRefs: ArtworkRegisterEntry["imageRefs"];
   catalogueStatus: ArtworkRegisterEntry["catalogueStatus"];
+  zohoPrice: ArtworkRegisterEntry["zohoPrice"];
   stockCode: ArtworkRegisterEntry["stockCode"];
   kind: ArtworkRegisterEntry["kind"];
   sourceOriginalId: ArtworkRegisterEntry["sourceOriginalId"];
@@ -72,6 +93,7 @@ export function registerFieldValue<F extends RegisterField>(
     year: entry.year,
     imageRefs: entry.imageRefs,
     catalogueStatus: entry.catalogueStatus,
+    zohoPrice: entry.zohoPrice ?? null,
     stockCode: entry.stockCode,
     kind: entry.kind,
     sourceOriginalId: entry.sourceOriginalId,
