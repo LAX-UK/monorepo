@@ -2,6 +2,7 @@ import type {
   AccountingDocument,
   DocumentKind,
   DocumentRecord,
+  DocumentTarget,
   IssueOutcome,
   LegalEntity,
   LifecycleCode,
@@ -34,6 +35,8 @@ export interface StoredAccountingDocument {
   readonly totals: Totals;
   /** Where the document was last sent; null until the first claim. */
   readonly provider: AccountingProvider | null;
+  /** The provider and mode the document was created for; null if none could be chosen. Never changes. */
+  readonly target: DocumentTarget | null;
   readonly record: DocumentRecord;
   /** The last failure's class, kept after a requeue so history is not lost. */
   readonly lastErrorClass: string | null;
@@ -110,8 +113,10 @@ export interface ClaimRequest {
 
 /**
  * Hand out the oldest pending document, locked and leased so two callers never get the same one.
- * Only documents of a product whose source switch lets `request.provider` act (mode `dry_run`,
- * `test_org` or `live`) are handed out; with the mode `off` nothing is. A document whose lease ran
+ * A document is handed out only to the provider and mode it was created for (its recorded
+ * `target`), and only while that provider is still in that mode: a Books claim in `test_org` or
+ * `dry_run` never takes a document aimed at Xero live, and a flip of the switch never re-aims an
+ * existing document. A document with no target, or whose provider is now `off`, is not handed out. A document whose lease ran
  * out is not handed out again: it becomes unknown and goes through lookup first.
  */
 export interface IAccountingDocumentWorkQueue {

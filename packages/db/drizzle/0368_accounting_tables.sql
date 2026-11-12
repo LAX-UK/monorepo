@@ -18,6 +18,8 @@ CREATE TABLE IF NOT EXISTS "accounting_document" (
   "gross_pence" bigint NOT NULL,
   "state" text DEFAULT 'pending' NOT NULL,
   "provider" text,
+  "target_provider" text,
+  "target_mode" text,
   "provider_id" text,
   "provider_number" text,
   "pdf_ref" text,
@@ -62,6 +64,15 @@ CREATE TABLE IF NOT EXISTS "accounting_document" (
   CONSTRAINT "accounting_document_provider_ck" CHECK ("provider" IS NULL OR "provider" IN ('xero', 'books')),
   -- Lookup before retry must ask the provider the first request went to, so a row that was or may
   -- have been sent always names it. The claim stamps the provider as it leases the document.
+  -- The provider and mode the document was created for, set once from the source switch at
+  -- creation (never updated: the worker has no UPDATE on these columns). Both or neither; a
+  -- document with neither is never handed out. Whatever provider a document is sent to is its target.
+  CONSTRAINT "accounting_document_target_ck" CHECK (
+    ("target_provider" IS NULL) = ("target_mode" IS NULL)
+    AND ("target_provider" IS NULL OR "target_provider" IN ('xero', 'books'))
+    AND ("target_mode" IS NULL OR "target_mode" IN ('dry_run', 'test_org', 'live'))
+    AND ("provider" IS NULL OR ("target_provider" IS NOT NULL AND "provider" = "target_provider"))
+  ),
   CONSTRAINT "accounting_document_provider_sent_ck" CHECK (
     "provider" IS NOT NULL
     OR ("attempts" = 0 AND "state" IN ('pending', 'cancelled'))

@@ -1,7 +1,17 @@
 import { isDeepStrictEqual } from "node:util";
-import { type Result, legalEntityFor, ok, refuse } from "@auction/accounting-domain";
+import {
+  type Result,
+  documentTarget,
+  legalEntityFor,
+  ok,
+  refuse,
+} from "@auction/accounting-domain";
 import type { Database } from "@auction/db";
-import { accountingDocument, accountingDocumentEvent } from "@auction/db/schema";
+import {
+  accountingDocument,
+  accountingDocumentEvent,
+  accountingSourceSetting,
+} from "@auction/db/schema";
 import { and, eq } from "drizzle-orm";
 import type {
   AccountingClock,
@@ -35,6 +45,15 @@ export class DrizzleAccountingDocumentRegistry implements IAccountingDocumentReg
     const at = this.clock.now();
 
     return this.db.transaction(async (tx) => {
+      // The document is aimed, once, at the provider and mode the switch names as it is created.
+      // No row for the product (never seeded) means no target, so nobody takes the document.
+      const [setting] = await tx
+        .select()
+        .from(accountingSourceSetting)
+        .where(eq(accountingSourceSetting.product, document.product));
+      const target = setting
+        ? documentTarget({ xero: setting.xeroMode, books: setting.booksMode })
+        : null;
       const [inserted] = await tx
         .insert(accountingDocument)
         .values({
@@ -45,6 +64,8 @@ export class DrizzleAccountingDocumentRegistry implements IAccountingDocumentReg
           sourceEventRef,
           payload,
           ...totals,
+          targetProvider: target?.provider ?? null,
+          targetMode: target?.mode ?? null,
           createdAt: at,
           updatedAt: at,
         })
@@ -63,7 +84,7 @@ export class DrizzleAccountingDocumentRegistry implements IAccountingDocumentReg
           fromState: null,
           toState: "pending",
           attempts: 0,
-          detail: { sourceEventRef },
+          detail: { sourceEventRef, target },
           occurredAt: at,
         });
         const stored = rowToStored(inserted, at.getTime());

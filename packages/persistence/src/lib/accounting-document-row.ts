@@ -1,5 +1,6 @@
 import {
   type DocumentRecord,
+  type DocumentTarget,
   type Result,
   type Totals,
   ok,
@@ -132,6 +133,13 @@ export function rowTotals(row: AccountingDocumentRow): Totals {
   return { netPence: row.netPence, vatPence: row.vatPence, grossPence: row.grossPence };
 }
 
+/** The recorded target; a half-set pair (the CHECK refuses it) is read as no target, so never handed out. */
+export function rowTarget(row: AccountingDocumentRow): DocumentTarget | null {
+  return row.targetProvider === null || row.targetMode === null
+    ? null
+    : { provider: row.targetProvider, mode: row.targetMode };
+}
+
 /** A row read back through the domain's rules; a row the domain would not accept is refused. */
 export function rowToStored(
   row: AccountingDocumentRow,
@@ -156,6 +164,7 @@ export function rowToStored(
     document: document.value,
     totals: rowTotals(row),
     provider: row.provider,
+    target: rowTarget(row),
     record: record.value,
     lastErrorClass: row.lastErrorClass,
     createdAt: row.createdAt,

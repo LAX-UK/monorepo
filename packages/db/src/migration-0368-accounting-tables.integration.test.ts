@@ -40,7 +40,13 @@ describe.skipIf(!url)("migration 0368 accounting tables (database)", { timeout: 
       await client.query("rollback to savepoint probe");
     }
   }
-  const document = (patch: Row) => accepts("accounting_document", { ...BASE, ...patch });
+  /** A row that names a provider is, unless a test says otherwise, aimed at that provider. */
+  const document = (patch: Row) =>
+    accepts("accounting_document", {
+      ...BASE,
+      ...(patch.provider ? { target_provider: patch.provider, target_mode: "live" } : {}),
+      ...patch,
+    });
 
   const LEASE = { lease_token: "t", lease_expires_at: "2030-01-01T00:00:00Z" };
   const ISSUED = { provider: "books", provider_id: "p1", provider_number: "INV-1" };
@@ -203,6 +209,35 @@ describe.skipIf(!url)("migration 0368 accounting tables (database)", { timeout: 
     // Never sent: no provider needed.
     expect(await document({})).toBe(true);
     expect(await document({ state: "cancelled" })).toBe(true);
+  });
+
+  it("D4b: a document is aimed at one provider and mode, or at none, and is sent only there", async () => {
+    expect(await document({ target_provider: "xero", target_mode: "live" })).toBe(true);
+    expect(await document({ target_provider: "books", target_mode: "test_org" })).toBe(true);
+    expect(await document({ target_provider: "books", target_mode: "dry_run" })).toBe(true);
+    expect(await document({})).toBe(true);
+    // Both or neither; no unknown provider; `off` is not a target.
+    expect(await document({ target_provider: "xero" })).toBe(false);
+    expect(await document({ target_mode: "live" })).toBe(false);
+    expect(await document({ target_provider: "zoho", target_mode: "live" })).toBe(false);
+    expect(await document({ target_provider: "xero", target_mode: "off" })).toBe(false);
+    // Sent only to its target, and never without one.
+    const sent = { state: "sending", attempts: 1, ...LEASE };
+    expect(await document({ ...sent, provider: "books" })).toBe(true);
+    expect(
+      await document({ ...sent, provider: "books", target_provider: "xero", target_mode: "live" }),
+    ).toBe(false);
+    expect(
+      await document({
+        ...sent,
+        provider: "xero",
+        target_provider: "books",
+        target_mode: "test_org",
+      }),
+    ).toBe(false);
+    expect(
+      await document({ ...sent, provider: "books", target_provider: null, target_mode: null }),
+    ).toBe(false);
   });
 
   it("L3: a reference id starts with a letter or digit, as the domain requires", async () => {

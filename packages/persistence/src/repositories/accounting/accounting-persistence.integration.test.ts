@@ -98,16 +98,20 @@ describe.skipIf(!HAS_DB)("accounting persistence (integration)", { timeout: 60_0
     return must(await repos.registry.register({ document, sourceEventRef: `evt-${newId()}` }));
   }
 
-  /** The seed, and Books in dry run for every product so the Books worker may claim. */
-  async function setModes(books: "off" | "dry_run" | "test_org" | "live") {
+  type Mode = "off" | "dry_run" | "test_org" | "live";
+  /** One mode pair for every product. The default is Books in dry run, Xero off. */
+  async function setModes(books: Mode, xero: Mode = "off") {
     await owner.execute(sql`
       insert into accounting_source_setting (product, xero_mode, books_mode) values
-        ('bid', 'live', ${books}), ('shop', 'off', ${books}), ('lax_art', 'off', ${books})
+        ('bid', ${xero}, ${books}), ('shop', ${xero}, ${books}), ('lax_art', ${xero}, ${books})
       on conflict (product) do update
         set xero_mode = excluded.xero_mode, books_mode = excluded.books_mode`);
   }
+  /** The migration's seed: Bid's invoices go to Xero, the rest has no provider, Books is off. */
   async function restoreSeed() {
-    await setModes("off");
+    await owner.execute(sql`
+      update accounting_source_setting
+         set xero_mode = case product when 'bid' then 'live' else 'off' end, books_mode = 'off'`);
   }
 
   beforeAll(async () => {
@@ -200,48 +204,130 @@ describe.skipIf(!HAS_DB)("accounting persistence (integration)", { timeout: 60_0
     });
   });
 
-  describe("claiming follows the source switch (D4)", () => {
+  describe("a document is claimed only by the provider and mode it was created for (D4b)", () => {
     const claim = (provider: AccountingProvider) =>
       repos.workQueue.claimNext({ provider, leaseToken: randomUUID(), leaseMs: LEASE_MS });
+    const targetOf = async (id: string) =>
+      (
+        await owner.execute<{ target_provider: string | null; target_mode: string | null }>(
+          sql`select target_provider, target_mode from accounting_document where id = ${id}`,
+        )
+      ).rows[0];
 
-    it("hands nothing to a provider whose mode for the product is off", async () => {
+    it("records the target from the switch when the document is created", async () => {
+      await setModes("test_org", "live");
+      const live = await register(invoice("bid", newId()));
+      expect(live.stored.target).toEqual({ provider: "xero", mode: "live" });
+      expect(await targetOf(live.stored.id)).toEqual({
+        target_provider: "xero",
+        target_mode: "live",
+      });
+      await setModes("test_org");
+      const rehearsal = await register(invoice("bid", newId()));
+      expect(rehearsal.stored.target).toEqual({ provider: "books", mode: "test_org" });
       await setModes("off");
-      const doc = await register(invoice("bid", newId()));
-      expect(must(await claim("books"))).toBeNull();
-      // Bid's source is Xero live, so Xero may claim it while Books may not.
-      const owned = must(await claim("xero"));
-      expect(owned?.id).toBe(doc.stored.id);
-      expect(owned?.provider).toBe("xero");
+      const none = await register(invoice("bid", newId()));
+      expect(none.stored.target).toBeNull();
+      expect(await targetOf(none.stored.id)).toEqual({ target_provider: null, target_mode: null });
     });
 
-    it("claims only documents of products whose Books mode allows it", async () => {
-      await owner.execute(sql`
-        update accounting_source_setting set books_mode = 'off' where product = 'bid'`);
-      const bid = await register(invoice("bid", newId()));
-      const shop = await register(invoice("shop", newId()));
-      const first = must(await claim("books"));
-      expect(first?.id).toBe(shop.stored.id);
-      expect(must(await claim("books"))).toBeNull();
-      const state = await owner.execute<{ state: string; provider: string | null }>(
-        sql`select state, provider from accounting_document where id = ${bid.stored.id}`,
-      );
-      expect(state.rows[0]).toEqual({ state: "pending", provider: null });
-    });
-
-    it("claims in dry_run, test_org and live, and in none of the other cases", async () => {
-      for (const mode of ["dry_run", "test_org", "live"] as const) {
-        await owner.execute(sql`
-          update accounting_source_setting set xero_mode = 'off', books_mode = ${mode}
-           where product = 'shop'`);
+    it("probe: Xero live and Books test_org or dry_run, so a Books claim takes nothing live", async () => {
+      for (const books of ["test_org", "dry_run"] as const) {
         await drain();
+        await setModes(books, "live");
+        const doc = await register(invoice("bid", newId()));
+        expect(must(await claim("books")), books).toBeNull();
+        const row = await owner.execute<{ state: string; provider: string | null }>(
+          sql`select state, provider from accounting_document where id = ${doc.stored.id}`,
+        );
+        expect(row.rows[0], books).toEqual({ state: "pending", provider: null });
+        const owned = must(await claim("xero"));
+        expect(owned?.id, books).toBe(doc.stored.id);
+        expect(owned?.provider).toBe("xero");
+      }
+    });
+
+    it("hands a rehearsal document only to its provider in that same mode", async () => {
+      for (const mode of ["dry_run", "test_org"] as const) {
+        await drain();
+        await setModes(mode);
         const doc = await register(invoice("shop", newId()));
+        expect(must(await claim("xero")), mode).toBeNull();
         expect(must(await claim("books"))?.id, mode).toBe(doc.stored.id);
       }
+    });
+
+    it("hands a live document only to the live provider", async () => {
+      await setModes("off", "live");
+      const doc = await register(invoice("bid", newId()));
+      expect(must(await claim("books"))).toBeNull();
+      expect(must(await claim("xero"))?.id).toBe(doc.stored.id);
+    });
+
+    it("never re-aims a document when the switch is flipped", async () => {
+      await setModes("off", "live");
+      const toXero = await register(invoice("bid", newId()));
+      await setModes("live", "off");
+      expect(must(await claim("books"))).toBeNull();
+      expect(must(await claim("xero"))).toBeNull();
+      expect((await targetOf(toXero.stored.id))?.target_provider).toBe("xero");
+      // A document made after the flip is aimed at the new live source only.
+      const toBooks = await register(invoice("bid", newId()));
+      expect(must(await claim("xero"))).toBeNull();
+      expect(must(await claim("books"))?.id).toBe(toBooks.stored.id);
+      // Flipping back makes the Xero document claimable again, and by Xero alone.
+      await setModes("off", "live");
+      expect(must(await claim("books"))).toBeNull();
+      expect(must(await claim("xero"))?.id).toBe(toXero.stored.id);
+    });
+
+    it("does not take a rehearsal document once its mode has moved on", async () => {
+      await setModes("dry_run");
+      await register(invoice("shop", newId()));
+      for (const books of ["test_org", "live", "off"] as const) {
+        await setModes(books);
+        expect(must(await claim("books")), books).toBeNull();
+      }
+    });
+
+    it("hands nothing to a provider whose mode for the product is off", async () => {
+      await setModes("dry_run");
+      await register(invoice("shop", newId()));
       await owner.execute(sql`
         update accounting_source_setting set books_mode = 'off' where product = 'shop'`);
-      await drain();
-      await register(invoice("shop", newId()));
       expect(must(await claim("books"))).toBeNull();
+    });
+
+    it("hands nothing for a document that has no target", async () => {
+      await setModes("off");
+      const doc = await register(invoice("shop", newId()));
+      expect(doc.stored.target).toBeNull();
+      await setModes("dry_run");
+      expect(must(await claim("books"))).toBeNull();
+      expect(must(await claim("xero"))).toBeNull();
+    });
+
+    it("refuses a target the database cannot hold", async () => {
+      const doc = await register(invoice("shop", newId()));
+      for (const set of [
+        sql`target_provider = 'zoho'`,
+        sql`target_mode = 'off'`,
+        sql`target_provider = null`,
+        sql`target_provider = 'xero', target_mode = null`,
+      ]) {
+        const code = await rejectedCode(
+          owner.execute(sql`update accounting_document set ${set} where id = ${doc.stored.id}`),
+        );
+        expect(code).toBe("23514");
+      }
+      expect(
+        await rejectedCode(
+          owner.execute(sql`
+          update accounting_document set provider = 'xero', state = 'sending',
+            lease_token = 't', lease_expires_at = now(), attempts = 1
+           where id = ${doc.stored.id}`),
+        ),
+      ).toBe("23514");
     });
 
     it("still settles a lapsed lease when the switch is off, and calls no provider", async () => {
@@ -342,6 +428,7 @@ describe.skipIf(!HAS_DB)("accounting persistence (integration)", { timeout: 60_0
         sql`payload = '{}'::jsonb`,
         sql`gross_pence = 1`,
         sql`product = 'bid'`,
+        sql`target_provider = 'xero', target_mode = 'live'`,
         sql`lax_reference = 'LAX-SHOP-INV-other'`,
       ]) {
         expect(

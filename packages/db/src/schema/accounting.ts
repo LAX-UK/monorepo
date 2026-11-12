@@ -43,6 +43,9 @@ export const accountingDocument = pgTable(
       .notNull()
       .default("pending"),
     provider: text("provider").$type<"xero" | "books">(),
+    /** The provider and mode the document was created for; both null when nothing could be chosen. Never updated. */
+    targetProvider: text("target_provider").$type<"xero" | "books">(),
+    targetMode: text("target_mode").$type<"dry_run" | "test_org" | "live">(),
     providerId: text("provider_id"),
     providerNumber: text("provider_number"),
     pdfRef: text("pdf_ref"),
