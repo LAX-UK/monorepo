@@ -17,6 +17,7 @@ export function shopAlertUrls(origin: string, manageUrl: string | null = null): 
     stop,
     oneClick: stop,
     manage: () => manageUrl,
+    changeTimeZone: () => null,
     site: (path) => `${trim(origin)}${path}`,
   };
 }
@@ -32,6 +33,7 @@ export function artAlertUrls(origin: string, manageUrl: string | null = null): A
     stop,
     oneClick: stop,
     manage: () => manageUrl,
+    changeTimeZone: () => null,
     site: (path) => `${trim(origin)}${path}`,
   };
 }

@@ -1,12 +1,14 @@
 import { LONDON_TIME_ZONE, formatDate } from "@auction/datetime";
-import { type PaymentReminderStep, dealReminderToSend } from "@auction/domain";
+import { dealReminderOpen, dealReminderToSend } from "@auction/domain";
 import { minorUnitsToMoneyString } from "@auction/domain";
 import type { IInvoiceRecipients } from "@auction/finance-runtime";
 import type {
   DealReminderCandidate,
   IPrivateSaleDealReminderStore,
+  IRecipientZoneReader,
 } from "@auction/persistence/interfaces";
 import type { ISettlementCompliancePolicy } from "../aml/settlement-compliance.policy.js";
+import { stageForRecipientsDue } from "../buyer-default/reminder-recipient-schedule.js";
 import type { INotificationFactory } from "../interfaces/notification-factory.js";
 import type { INotificationOutboxService } from "../interfaces/notification-outbox.js";
 import { notificationRowToPayload } from "../notification-payload.js";
@@ -23,6 +25,8 @@ export type DealReminderServiceDeps = {
   recipients: IInvoiceRecipients;
   /** Whether the account can pay yet; a held payment's reminder says what to do instead. */
   eligibility?: Pick<IPaymentEligibilityGate, "check">;
+  /** Each recipient's saved Account zone: a payment reminder reaches them at 09:00 their time. */
+  zones: IRecipientZoneReader;
   now?: () => Date;
 };
 
@@ -30,9 +34,12 @@ export type DealReminderServiceDeps = {
  * Reminds the buyer of a deal's two deadlines: to pay once the invoice is issued, and to collect
  * the work once it is paid. The schedule is the lot invoice's (two days before, the day itself,
  * three days after) and lives in the domain; the days to each deadline are the deal's own,
- * set from the private sale settings when the invoice is issued and the deal is paid. Each step
- * is taken before it is sent, so a repeated or parallel run sends it once, and it is given back if
- * the send fails.
+ * set from the private sale settings when the invoice is issued and the deal is paid.
+ *
+ * A payment reminder reaches each person at 09:00 on their own clock (London with no saved zone):
+ * it is staged for each whose time has come, and the step is taken only when everyone has it. A
+ * collection is a visit to a place, so it is taken first and sent to everyone at 09:00 London; it
+ * is given back if the send fails.
  */
 export class DealReminderService {
   constructor(private readonly deps: DealReminderServiceDeps) {}
@@ -42,88 +49,122 @@ export class DealReminderService {
     const candidates = await this.deps.store.listCandidates(input.batchLimit ?? 200);
     let reminded = 0;
     for (const candidate of candidates) {
-      const step = await this.stepFor(candidate, now);
-      if (!step) continue;
-      if (!(await this.deps.store.claim(candidate.dealId, candidate.kind, step))) continue;
       try {
-        if (await this.send(candidate, step)) reminded += 1;
+        if (candidate.kind === "payment") {
+          if (await this.sendPaymentReminder(candidate, now)) reminded += 1;
+        } else if (await this.sendCollectionReminder(candidate, now)) {
+          reminded += 1;
+        }
       } catch (error) {
-        await this.deps.store.release(candidate.dealId, candidate.kind, step);
         console.error("[DealReminderService] reminder failed", candidate.dealId, error);
       }
     }
     return { reminded };
   }
 
-  /** Stages the reminder for each person; `false` when the buyer is not chased. */
-  private async send(candidate: DealReminderCandidate, step: PaymentReminderStep) {
-    const eligibility =
-      candidate.kind === "payment"
-        ? await this.deps.eligibility?.check({
-            payerUserId: candidate.buyerUserId,
-            buyerLegalEntityId: candidate.buyerLegalEntityId,
-          })
-        : undefined;
-    // A closed account is not chased for payment.
-    if (eligibility?.kind === "refused") return false;
-    const held = eligibility?.kind === "held" ? eligibility.reason : null;
-    const recipients = await this.deps.recipients.forInvoice({
+  private async sendCollectionReminder(candidate: DealReminderCandidate, now: Date) {
+    const step = dealReminderToSend(this.factsOf(candidate), now);
+    if (!step) return false;
+    if (!(await this.deps.store.claim(candidate.dealId, candidate.kind, step))) return false;
+    try {
+      const recipients = await this.recipientsOf(candidate);
+      for (const recipientId of recipients) {
+        await this.deps.outbox.stageDispatch({
+          userId: recipientId,
+          payload: notificationRowToPayload(
+            this.deps.factory.createDealCollectionReminder({
+              userId: recipientId,
+              legalEntityId: candidate.buyerLegalEntityId,
+              dealId: candidate.dealId,
+              workTitle: candidate.workTitle,
+              dueDate: this.dueDateOf(candidate),
+              step,
+            }),
+          ),
+          idempotencyKey: `private_sale_${candidate.kind}_reminder:${candidate.dealId}:${step}:${recipientId}`,
+        });
+      }
+      return true;
+    } catch (error) {
+      await this.deps.store.release(candidate.dealId, candidate.kind, step);
+      throw error;
+    }
+  }
+
+  /** `true` when the step was taken: everyone has it, or the buyer is not chased at all. */
+  private async sendPaymentReminder(candidate: DealReminderCandidate, now: Date) {
+    const open = await this.openPaymentStep(candidate, now);
+    if (!open) return false;
+    const { step, dueAt } = open;
+    const eligibility = await this.deps.eligibility?.check({
+      payerUserId: candidate.buyerUserId,
       buyerLegalEntityId: candidate.buyerLegalEntityId,
-      winnerUserId: candidate.buyerUserId,
     });
-    const dueDate = formatDate(candidate.dueAt, LONDON_TIME_ZONE, { month: "long" });
-    for (const recipientId of recipients) {
-      const row =
-        candidate.kind === "payment"
-          ? this.deps.factory.createPaymentReminder({
+    // A closed account is not chased for payment.
+    if (eligibility?.kind === "refused") {
+      await this.deps.store.claim(candidate.dealId, candidate.kind, step);
+      return false;
+    }
+    const held = eligibility?.kind === "held" ? eligibility.reason : null;
+    const { everyoneStaged, windowClosed } = await stageForRecipientsDue({
+      recipients: await this.recipientsOf(candidate),
+      zones: this.deps.zones,
+      dueAt,
+      step,
+      now,
+      stage: (recipientId) =>
+        this.deps.outbox.stageDispatch({
+          userId: recipientId,
+          payload: notificationRowToPayload(
+            this.deps.factory.createPaymentReminder({
               userId: recipientId,
               legalEntityId: candidate.buyerLegalEntityId,
               lotId: null,
               lotTitle: candidate.workTitle,
               paymentId: candidate.dealId,
               amount: minorUnitsToMoneyString(BigInt(candidate.amountDueMinor ?? 0)),
-              dueDate,
+              dueDate: this.dueDateOf(candidate),
+              dueAt,
               step,
               // The email calls what is owed a work, not a lot.
               privateSale: true,
               held,
-            })
-          : this.deps.factory.createDealCollectionReminder({
-              userId: recipientId,
-              legalEntityId: candidate.buyerLegalEntityId,
-              dealId: candidate.dealId,
-              workTitle: candidate.workTitle,
-              dueDate,
-              step,
-            });
-      await this.deps.outbox.stageDispatch({
-        userId: recipientId,
-        payload: notificationRowToPayload(row),
-        idempotencyKey: `private_sale_${candidate.kind}_reminder:${candidate.dealId}:${step}:${recipientId}`,
-      });
-    }
-    return true;
+            }),
+          ),
+          idempotencyKey: `private_sale_${candidate.kind}_reminder:${candidate.dealId}:${step}:${recipientId}`,
+        }),
+    });
+    const claimed =
+      everyoneStaged && (await this.deps.store.claim(candidate.dealId, candidate.kind, step));
+    return claimed && !windowClosed;
   }
 
-  private async stepFor(
-    candidate: DealReminderCandidate,
-    now: Date,
-  ): Promise<PaymentReminderStep | null> {
-    const step = dealReminderToSend(
-      {
-        kind: candidate.kind,
-        stage: candidate.stage,
-        dueAt: candidate.dueAt,
-        sentSteps: candidate.sentSteps,
-      },
-      now,
-    );
-    // Nothing to chase for a payment of nothing, and a buyer held for LAX's own checks is not
-    // asked to pay.
-    if (!step || candidate.kind !== "payment") return step;
-    if (candidate.amountDueMinor === null) return null;
-    if (!this.deps.compliance) return step;
+  private recipientsOf(candidate: DealReminderCandidate) {
+    return this.deps.recipients.forInvoice({
+      buyerLegalEntityId: candidate.buyerLegalEntityId,
+      winnerUserId: candidate.buyerUserId,
+    });
+  }
+
+  private dueDateOf(candidate: DealReminderCandidate): string {
+    return formatDate(candidate.dueAt, LONDON_TIME_ZONE, { month: "long" });
+  }
+
+  private factsOf(candidate: DealReminderCandidate) {
+    return {
+      kind: candidate.kind,
+      stage: candidate.stage,
+      dueAt: candidate.dueAt,
+      sentSteps: candidate.sentSteps,
+    };
+  }
+
+  /** Nothing to chase for a payment of nothing, and a buyer held for LAX's own checks is not asked to pay. */
+  private async openPaymentStep(candidate: DealReminderCandidate, now: Date) {
+    const open = dealReminderOpen(this.factsOf(candidate), now);
+    if (!open || candidate.amountDueMinor === null) return null;
+    if (!this.deps.compliance) return open;
     const hold = await this.deps.compliance.peek(candidate.buyerUserId);
-    return hold.hold ? null : step;
+    return hold.hold ? null : open;
   }
 }

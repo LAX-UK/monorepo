@@ -28,8 +28,10 @@ import {
   BidAlertSubscriberStore,
   BidAlertTopicStore,
   BidAlertWatcherReader,
+  DrizzleRecipientZoneReader,
 } from "@auction/persistence/repositories";
 import type pino from "pino";
+import { AccountZoneLookup } from "../alerts/account-zone-lookup.js";
 import { BidDigestNotices } from "../alerts/bid-digest-notices.js";
 import { BidLotMatcher } from "../alerts/bid-lot-matcher.js";
 import { BidSaleAnnouncer } from "../alerts/bid-sale-announcer.js";
@@ -68,6 +70,7 @@ export function createBidAlertRuntime(input: {
   const matches = new BidAlertMatchLedger(db);
   const digests = new BidAlertDigestLedger(db);
   const clock = { now: () => new Date() };
+  const accountOrigin = resolveLaxAccountOrigin(env.LAX_ACCOUNT_PUBLIC_ORIGIN, env.NODE_ENV);
   const seed = new BidAlertSeed(db);
   const record = new RecordMatchService({
     topics,
@@ -117,12 +120,11 @@ export function createBidAlertRuntime(input: {
       mailer: new OutboxAlertMailer({ email }),
       notices: new BidDigestNotices({ notices: new BidAlertLotNoticeWriter(db) }),
       codec,
+      zones: new AccountZoneLookup(new DrizzleRecipientZoneReader(db)),
       urls: webAlertUrls(
         env.WEB_ORIGIN,
-        laxAccountPageUrl(
-          resolveLaxAccountOrigin(env.LAX_ACCOUNT_PUBLIC_ORIGIN, env.NODE_ENV),
-          "alerts",
-        ),
+        laxAccountPageUrl(accountOrigin, "alerts"),
+        laxAccountPageUrl(accountOrigin, "timeZone"),
       ),
       clock,
       log: { info: (f, m) => log.info(f, m), warn: (f, m) => log.warn(f, m) },

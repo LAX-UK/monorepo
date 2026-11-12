@@ -1,6 +1,7 @@
 import { BidsExportButton } from "@/components/dashboard/bids/bids-export-button";
 import { BidsView } from "@/components/dashboard/bids/bids-view";
 import { BuyerAgentBanner } from "@/components/dashboard/bids/buyer-agent-banner";
+import { ReofferOffersSection } from "@/components/dashboard/bids/offers/reoffer-offers-section";
 import { DashboardListPage } from "@/components/dashboard/dashboard-list-page";
 import { KycVerificationBanner } from "@/components/dashboard/kyc-verification-banner";
 import { parseBidsListQuery } from "@/lib/bid/bids-list";
@@ -10,7 +11,7 @@ import { shouldOfferIdentityOnboarding } from "@/lib/kyc/identity-onboarding";
 import { isIdentityOnboardingEnabled } from "@/lib/kyc/identity-onboarding-rollout.server";
 import { roleNeedsPersonalIdentity } from "@auction/domain";
 import { Notice } from "@auction/ui/lax/notice";
-import type { ReactNode } from "react";
+import { type ReactNode, Suspense } from "react";
 
 type PageProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -72,6 +73,9 @@ export async function BidsPageContent({
     >
       {/* One rhythm for the notices and the list: 24px, as between every block of a list page. */}
       <div className="flex flex-col gap-6">
+        <Suspense fallback={null}>
+          <ReofferOffersSection />
+        </Suspense>
         {page.bidBlockedReason ? (
           <Notice tone="warning" title={`${page.bidBlockedReason}.`}>
             You can still see every bid, and pay for what was won.

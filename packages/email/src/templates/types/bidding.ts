@@ -1,4 +1,5 @@
 import type { SaleCancelledAudience } from "@auction/branding";
+import type { EmailMoment, ZoneNote } from "./moment.js";
 import type { OptOutableLotVars, TemplateDomainSlice } from "./shared.js";
 
 const names = [
@@ -102,8 +103,10 @@ type BiddingTemplateVars = {
   "watched-lot-reminder": OptOutableLotVars & {
     kind: "sale_start" | "day_before_close" | "hour_before_close";
     note?: string | null;
-    /** When the lot closes, formatted for display ("26 Nov 2026, 18:00"). */
-    closesAt?: string | null;
+    /** When the lot closes: the sale's own clock, then the recipient's local time if different. */
+    closesAt?: EmailMoment | null;
+    /** Where the local time comes from; present only when a local time is shown. */
+    zoneNote?: ZoneNote | null;
   };
 };
 

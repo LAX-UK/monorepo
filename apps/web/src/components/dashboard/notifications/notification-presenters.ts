@@ -53,6 +53,12 @@ export function notificationTypePresenter(type: string): NotificationPresentatio
   if (type === "buyer_default_notice") {
     return { label: "Sale update", Icon: CreditCard, tone: "warn" };
   }
+  if (type === "reoffer_offer" || type === "reoffer_offer_reminder") {
+    return { label: "Offer for you", Icon: Gavel, tone: "info" };
+  }
+  if (type === "reoffer_offer_closed") {
+    return { label: "Offer ended", Icon: Gavel, tone: "neutral" };
+  }
   if (type === "payment_reminder") {
     return { label: "Payment reminder", Icon: CreditCard, tone: "warn" };
   }

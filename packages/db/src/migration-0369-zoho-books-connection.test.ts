@@ -30,7 +30,7 @@ describe("migration 0369 Zoho Books connection", () => {
     const previous = journal.entries[index - 1];
     const next = journal.entries[index + 1];
     expect(index).toBeGreaterThan(0);
-    expect(entry?.when).toBe(1809172800000);
+    expect(entry?.when).toBe(1809950400000);
     expect(journal.entries.filter((e) => e.idx === entry?.idx)).toHaveLength(1);
     expect(entry?.idx).toBeGreaterThan(previous?.idx ?? Number.POSITIVE_INFINITY);
     expect(entry?.when).toBeGreaterThan(previous?.when ?? Number.POSITIVE_INFINITY);

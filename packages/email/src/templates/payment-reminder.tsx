@@ -3,7 +3,9 @@ import { Button } from "../components/Button.js";
 import { FactCard } from "../components/FactCard.js";
 import { HelpBlock } from "../components/HelpBlock.js";
 import { Layout } from "../components/Layout.js";
+import { MomentValue } from "../components/MomentValue.js";
 import { TextBlock } from "../components/TextBlock.js";
+import { ZoneNoteLine } from "../components/ZoneNoteLine.js";
 import type { TemplateVarsByName } from "../types.js";
 
 export const subject = (vars: TemplateVarsByName["payment-reminder"]) =>
@@ -26,9 +28,10 @@ export default function PaymentReminderEmail(vars: TemplateVarsByName["payment-r
         rows={[
           { label: vars.itemLabel ?? "Lot", value: vars.lotTitle },
           { label: "Amount", value: vars.amount },
-          { label: "Due", value: vars.dueDate },
+          { label: "Due", value: vars.due ? <MomentValue moment={vars.due} /> : vars.dueDate },
         ]}
       />
+      <ZoneNoteLine note={vars.zoneNote} />
       {vars.held === "identity_verification_required" && vars.actionUrl ? (
         <Button href={vars.actionUrl}>Verify your identity</Button>
       ) : vars.held ? null : (

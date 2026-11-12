@@ -24,6 +24,7 @@ export type WorkspacePage = {
 const RECORD_PAGES: readonly { pattern: RegExp; label: string }[] = [
   { pattern: /^\/selling\/consignments\/[^/]+$/, label: "this consignment" },
   { pattern: /^\/bids\/telephone\/[^/]+$/, label: "this telephone bid" },
+  { pattern: /^\/bids\/offers\/[^/]+$/, label: "this offer" },
   { pattern: /^\/selling\/payouts\/offers\/[^/]+$/, label: "this request" },
 ];
 

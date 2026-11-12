@@ -58,6 +58,7 @@ export class WatchedLotReminderJob implements IWatchedLotReminderJob {
             kind: reminder.kind,
             note: reminder.note?.trim() || null,
             closesAt: reminder.endTime.toISOString(),
+            saleTimeZone: reminder.saleTimeZone,
           },
           outboxIdempotencyKey: `watched-lot-reminder:${reminder.watchlistId}:${reminder.kind}`,
         },

@@ -14,6 +14,7 @@ import type {
   MatchLedger,
   MatchValidator,
   SubscriberStore,
+  SubscriberZoneLookup,
   TopicStore,
 } from "../ports.js";
 import { stopLinks } from "./confirmation-links.js";
@@ -51,6 +52,8 @@ export type DigestRunDeps = {
   log: AlertLogger;
   /** In-app notices for signed-in people; omitted where a product has none. */
   notices?: DigestNoticeWriter;
+  /** Account time zones, so an account holder's times show on their own clock too. */
+  zones?: SubscriberZoneLookup;
   batchSize?: number;
 };
 
@@ -205,7 +208,8 @@ export class DigestRun {
     localDate: string,
     idempotencyKey: string,
   ) {
-    const { mailer, codec, urls } = this.deps;
+    const { mailer, codec, urls, zones } = this.deps;
+    const viewerZone = record.subjectId && zones ? await zones.zoneOf(record.subjectId) : null;
     await mailer.sendDigest({
       product: record.product,
       to: record.email,
@@ -218,6 +222,8 @@ export class DigestRun {
       ...stopLinks(record, codec, urls),
       manageUrl: record.subjectId ? urls.manage() : null,
       audience: record.subjectId ? "account" : "visitor",
+      viewerZone,
+      changeZoneUrl: urls.changeTimeZone(),
     });
   }
 

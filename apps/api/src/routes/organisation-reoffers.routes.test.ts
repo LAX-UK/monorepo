@@ -11,6 +11,8 @@ import { createOrganisationReofferRoutes } from "./organisation-reoffers.js";
 
 const ACCOUNT = "11111111-1111-4111-8111-111111111111";
 const OFFER = "22222222-2222-4222-8222-222222222222";
+/** An accept as the page sends it: the terms ticked and the total the page showed. */
+const ACCEPT = { termsAccepted: true, expectedTotalMinor: 102_500_00 };
 
 const ROLES: LegalEntityMemberRole[] = [
   "owner",
@@ -58,6 +60,7 @@ function mount(role: LegalEntityMemberRole, userRole = "client") {
     place: never as never,
     moneyPause: never as never,
     invoicing: never as never,
+    pricing: never as never,
   });
   const consent = new ReofferConsentService({
     transactionRunner: tx,
@@ -104,7 +107,7 @@ const MATRIX: Record<
     allowed: ROLES,
   },
   "POST /reoffers/:id/accept": {
-    call: (app) => send(app, "POST", `/reoffers/${OFFER}/accept`, { termsAccepted: true }),
+    call: (app) => send(app, "POST", `/reoffers/${OFFER}/accept`, ACCEPT),
     allowed: ["owner", "admin", "buyer_agent"],
   },
   "POST /reoffers/:id/decline": {
@@ -156,7 +159,7 @@ describe("workspace re-offer routes", () => {
       const app = mount("owner", "staff");
       for (const call of [
         () => send(app, "GET", "/reoffers"),
-        () => send(app, "POST", `/reoffers/${OFFER}/accept`, { termsAccepted: true }),
+        () => send(app, "POST", `/reoffers/${OFFER}/accept`, ACCEPT),
       ]) {
         const res = await call();
         expect(res.status).toBe(403);
@@ -191,13 +194,16 @@ describe("workspace re-offer routes", () => {
       expect(reachedTransaction).not.toHaveBeenCalled();
     });
 
-    it("needs the terms box ticked: false, missing or another type is refused before any work", async () => {
+    it("needs the terms box ticked and the total shown: anything else is refused before any work", async () => {
       const app = mount("owner");
       for (const body of [
         { termsAccepted: false },
         {},
         { termsAccepted: "true" },
         { termsAccepted: 1 },
+        // The total the page showed is part of the answer: without it nothing is accepted.
+        { termsAccepted: true },
+        { termsAccepted: true, expectedTotalMinor: "102500" },
       ]) {
         const res = await send(app, "POST", `/reoffers/${OFFER}/accept`, body);
         expect([400, 422]).toContain(res.status);
@@ -214,14 +220,14 @@ describe("workspace re-offer routes", () => {
       const authenticator: IAuthenticator = { getSessionUser: vi.fn().mockResolvedValue(null) };
       const app = new Hono();
       app.route("/legal-entities", createOrganisationReofferRoutes(container, authenticator));
-      const res = await send(app, "POST", `/reoffers/${OFFER}/accept`, { termsAccepted: true });
+      const res = await send(app, "POST", `/reoffers/${OFFER}/accept`, ACCEPT);
       expect(res.status).toBe(401);
     });
   });
 
   describe("validation", () => {
     it.each([
-      ["a non-uuid offer", "POST", "/reoffers/nope/accept", { termsAccepted: true }],
+      ["a non-uuid offer", "POST", "/reoffers/nope/accept", ACCEPT],
       [
         "a decline reason that is too long",
         "POST",

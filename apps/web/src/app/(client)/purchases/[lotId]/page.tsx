@@ -19,8 +19,9 @@ import { deliveryPanel } from "@/lib/purchases/purchase-delivery.vm";
 import { parsePaidLots, purchaseHandover } from "@/lib/purchases/purchase-handover";
 import { purchaseProblemPanel } from "@/lib/purchases/purchase-problem";
 import { loadPurchaseSources } from "@/lib/purchases/purchase-sources.server";
+import { purchaseSubtitle } from "@/lib/purchases/purchase-subtitle";
 import { purchaseCard } from "@/lib/purchases/purchases.vm";
-import { LONDON_TIME_ZONE, formatDate } from "@auction/datetime";
+import { reofferBoughtOn } from "@/lib/reoffer/bidder-reoffer.server";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
@@ -56,7 +57,9 @@ export default async function PurchaseDetailPage({ params, searchParams }: PageP
       </>
     );
   }
-  const sources = await loadPurchaseSources();
+  // Read alongside the purchase: a lot bought by accepting an offer after the auction was not
+  // won at its sale. The read never throws; a failure only leaves the plain subtitle.
+  const [sources, boughtOn] = await Promise.all([loadPurchaseSources(), reofferBoughtOn(lotId)]);
   // A read that failed says so and offers Try again; it never claims the purchase doesn't exist.
   if (!sources) {
     return (
@@ -104,15 +107,18 @@ export default async function PurchaseDetailPage({ params, searchParams }: PageP
     accountId && card.problemHref
       ? await getServerPurchaseProblem(accountId, lotId).catch(() => null)
       : null;
-  const wonOn = formatDate(row.lot.endTime, LONDON_TIME_ZONE);
   return (
     <DashboardPage>
       <SetMobileShellTitle title={card.title} />
       <PurchaseDetail
         card={card}
-        subtitle={[card.lotLabel, card.saleTitle, wonOn, card.wonBy ? `won by ${card.wonBy}` : null]
-          .filter(Boolean)
-          .join(" · ")}
+        subtitle={purchaseSubtitle({
+          lotLabel: card.lotLabel,
+          saleTitle: card.saleTitle,
+          endedAt: row.lot.endTime,
+          boughtOn,
+          buyer: card.wonBy,
+        })}
         panel={panel}
         problem={reported ? purchaseProblemPanel(reported) : null}
         handover={purchaseHandover({

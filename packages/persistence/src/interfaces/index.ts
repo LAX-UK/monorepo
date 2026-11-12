@@ -1375,6 +1375,8 @@ export type {
   BidAlertLotNotice,
   IBidAlertLotNoticeWriter,
 } from "./bid-alert-lot-notice.js";
+export type { IRecipientZoneReader } from "./recipient-zone.reader.js";
+
 export type {
   AnnouncedSale,
   IBidAlertSaleNoticeWriter,
