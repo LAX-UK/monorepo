@@ -29,7 +29,7 @@ import {
   artworkRegisterEvent as event,
   artworkRegister as register,
 } from "@auction/db/schema";
-import { and, asc, desc, eq, gt, inArray, isNull, lt, or, sql } from "drizzle-orm";
+import { and, asc, eq, gt, inArray, isNull, lt, or, sql } from "drizzle-orm";
 import type {
   ApplyZohoChangeResult,
   CatalogueStatusLedger,
@@ -63,6 +63,7 @@ import type {
   ResolveConflictResult,
 } from "../../interfaces/artwork-register.js";
 import { columnsForZohoFields, toConflict, toEntry, toEvent } from "./artwork-register.mapper.js";
+import { appendRegisterEvent } from "./register-event-writer.js";
 
 type Tx = Parameters<Parameters<Database["transaction"]>[0]>[0];
 
@@ -932,19 +933,7 @@ export class DrizzleArtworkRegisterRepository
     now: Date,
     payload: Record<string, unknown>,
   ): Promise<void> {
-    // History is read in time order, so each entry is stamped strictly after the one before it,
-    // even when the caller's clock repeats or steps back.
-    const [latest] = await tx
-      .select({ createdAt: event.createdAt })
-      .from(event)
-      .where(eq(event.registerId, registerId))
-      .orderBy(desc(event.createdAt))
-      .limit(1);
-    const createdAt =
-      latest && latest.createdAt.getTime() >= now.getTime()
-        ? new Date(latest.createdAt.getTime() + 1)
-        : now;
-    await tx.insert(event).values({ registerId, type, actor, payload, createdAt });
+    await appendRegisterEvent(tx, { registerId, type, actor, now, payload });
   }
 }
 

@@ -1292,6 +1292,16 @@ export type {
 } from "./artwork-register.js";
 
 export type {
+  ISoldAttentionStore,
+  OverrideSoldAttentionResult,
+  RaiseSoldAttentionInput,
+  ResolveSoldAttentionInput,
+  SoldAttentionItem,
+  SoldAttentionLiveCursor,
+  SoldAttentionLiveRef,
+  SoldAttentionRecord,
+} from "./artwork-register-sold-attention.js";
+export type {
   DealArtworkSearchInput,
   IDealArtworkSearchReader,
   IOpenLotPlaceReader,
