@@ -159,22 +159,33 @@ Four parts of the sale page are separate chunks, fetched when they are needed:
 | Catalogue sort select | once the page has hydrated (`saleroom-catalog-sort.lazy.tsx`) |
 | Day gallery "View all" sheet | when the control is pointed at or focused, or when it is pressed (`day-gallery-view-all-sheet.lazy.tsx`) |
 
-What a visitor sees does not change, with one exception: while the telephone form is on its way
-its card shows a placeholder of the form's own height (the three fields, the note and the button),
-so nothing below it moves. If the fetch fails or takes more than ten seconds the card says so and
-offers "Try again". The filter trigger and the sort choice are drawn first as before hydration
-(a plain trigger, the current choice as text) and swapped for the live control when its chunk
-arrives. Signed-out visitors, people who still have to verify, and people who already have a
-booking never download the form.
+On the first load, what a visitor sees does not change, with one exception: while the telephone
+form is on its way its card shows a placeholder of the form's own height (the three fields, the
+note and the button), so nothing below it moves. If the fetch fails or takes more than ten seconds,
+the message and "Try again" are laid over that same placeholder box, so the card keeps its height;
+the message is announced (`role="alert"`), and focus stays in the card while it retries. The filter
+trigger and the sort choice are drawn first as before hydration (the trigger, the current choice as
+text) and swapped for the live control when its chunk arrives. The stand-in trigger already shows
+the active filter badge, read from the address, and a press on it opens the sheet as soon as the
+sheet arrives. If a chunk failed, pointing at, focusing or pressing its control fetches it again.
+Signed-out visitors, people who still have to verify, people without a buyer profile and people
+who already have a booking never download the form.
+
+`useDeferredModule` remembers modules that have arrived. A part mounted again after a client
+navigation (sales list to sale, or Back from a lot) is therefore drawn at once, as before the split,
+not stand-in first. While server HTML hydrates, the stand-in is always drawn so the markup matches.
+The day gallery sheet uses the same hook instead of `next/dynamic`: if it cannot be fetched, the
+press is undone instead of the page's error screen showing, and the next press fetches it again.
 
 Two hooks carry the pattern: `useNearViewport` (true once an element is within a viewport of the
 screen, and stays true) and `useDeferredModule` (a dynamic import with idle, loading, ready and
-failed states, a timeout and a retry).
+failed states, a timeout, a retry and a cache of arrived modules).
 
 Measured on the CI build (Sentry on, gzip, start-up set): the sale page went from 584.6 to 538.7 KB
-(page-only part from 179.4 to 133.1 KB). Routes that do not use these parts moved by about 1.2 KB
-up or down because webpack regrouped shared chunks, so their ratchets were re-recorded. The sale
-group's budget is now 593 KB.
+(page-only part from 179.4 to 133.1 KB). Routes that do not use these parts each grew by up to about
+1.1 KB (home +1.1, sales list +1.1, lot +0.8, about +0.2): webpack regrouped shared chunks (home and
+lot each load one more file) and the runtime's chunk map names the new chunks. Their module sets
+did not change, and their ratchets were re-recorded. The sale group's budget is now 593 KB.
 
 Not moved: the live session provider, the live lot banner and the socket client. They share one
 subscription with the lot cards and the mobile summary bar, and the socket is the last PR of the
