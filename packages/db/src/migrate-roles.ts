@@ -506,6 +506,11 @@ export const WORKER_ZOHO_ARTWORK_SYNC_TABLES = [
   "zoho_sync_health",
 ] as const;
 /**
+ * Zoho Books connections (sealed OAuth tokens). Only the worker, the process that calls Books, may
+ * read and change them; it never deletes one. No other role is granted anything.
+ */
+export const WORKER_ZOHO_BOOKS_TABLES = ["zoho_books_connection"] as const;
+/**
  * The alert engine's Bid tables: the matching projector records matches and announcements, and the
  * 08:00 digest claims digests, attaches matches and drops stale ones. Nothing is deleted here.
  */
@@ -1194,6 +1199,9 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
           await grantExecuteIfFunctionExists(client, role, PAYMENT_REFUND_BACKFILL_FUNCTION);
         }
         for (const tableName of WORKER_ZOHO_ARTWORK_SYNC_TABLES) {
+          await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT, UPDATE");
+        }
+        for (const tableName of WORKER_ZOHO_BOOKS_TABLES) {
           await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT, UPDATE");
         }
         for (const tableName of WORKER_UNSOLD_CHOICE_DEADLINE_TABLES) {

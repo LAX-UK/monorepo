@@ -2500,6 +2500,13 @@
       "when": 1808121600000,
       "tag": "0363_private_sale_deal_artwork_history",
       "breakpoints": true
+    },
+    {
+      "idx": 358,
+      "version": "7",
+      "when": 1809172800000,
+      "tag": "0369_zoho_books_connection",
+      "breakpoints": true
     }
   ]
 }
