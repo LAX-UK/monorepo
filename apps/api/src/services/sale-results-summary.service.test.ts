@@ -22,6 +22,7 @@ const row = (id: string, overrides: Partial<SaleResultLotRow> = {}): SaleResultL
   currentPrice: "1000.00",
   buyerPremiumRate: "0.25",
   hasWinner: true,
+  resultPending: false,
   endTime: CLOSE,
   extendedUntil: null,
   ...overrides,

@@ -102,7 +102,7 @@ export function ArchiveLotListView({
         {items.map((row, i) => {
           const a = row.auction;
           const img = a.images[0];
-          const { hammer } = archiveLotResult(a);
+          const { hammer, noHammerLabel } = archiveLotResult(a);
           return (
             <li key={a.id}>
               <MarketingCardReveal index={i} className="block w-full">
@@ -139,7 +139,7 @@ export function ArchiveLotListView({
                       </p>
                     </div>
                   ) : (
-                    <p className="font-body text-sm text-on-surface-variant">Not sold</p>
+                    <p className="font-body text-sm text-on-surface-variant">{noHammerLabel}</p>
                   )}
                 </Link>
               </MarketingCardReveal>

@@ -1,4 +1,8 @@
-import type { ISaleChannelReader, ITransactionRunner } from "@auction/persistence/interfaces";
+import type {
+  IPublicLotResultReader,
+  ISaleChannelReader,
+  ITransactionRunner,
+} from "@auction/persistence/interfaces";
 import type { ILegalEntityNotificationRecipientReader } from "@auction/persistence/interfaces";
 import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
 import type {
@@ -67,4 +71,6 @@ export type LotServiceDeps = {
   repoFactory: IRepositoryFactory | null;
   /** Unset when the ATG integration is not wired; ownership guards then never fire. */
   saleChannelReader?: ISaleChannelReader | null | undefined;
+  /** Unset when not wired; public reads then show every ended lot as the lot row says. */
+  publicLotResults?: IPublicLotResultReader | null | undefined;
 };

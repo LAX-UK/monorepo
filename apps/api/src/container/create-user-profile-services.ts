@@ -134,6 +134,7 @@ export function createUserProfileServices(
     saleService,
     mediaAssetEnricher,
     repos.bidInvoiceRepository,
+    repos.publicLotResultReader,
   );
   const savedSearchService = new SavedSearchService(savedSearchRepository);
   const artistWatchlistService = new ArtistWatchlistService(artistWatchlistRepo, {

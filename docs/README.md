@@ -34,6 +34,7 @@ Operational procedures for things that go wrong or need to happen on a schedule.
 - [Email provider incident](./runbooks/email-provider-incident.md) — Postmark outage / sender-reputation incident, including the `REQUIRE_EMAIL_VERIFICATION` kill-switch
 - [Deletion request](./runbooks/deletion-request.md) — GDPR Article 17: the automated path, held deletions and requests from outside the product
 - [Deploy checklist](./runbooks/deploy-checklist.md) — what to verify before, during, and after every production deploy
+- [Buyer default and re-offer](./runbooks/buyer-default-and-reoffer.md) — a winner who did not pay: the default, crediting the voided invoice, offering the lot to the next bidder, and each work inbox item
 - [Collection booking](./runbooks/collection-booking.md) — collection data, erasure and retention, staff hours and closures, and the yearly bank holiday check
 - [Saleroom clerk](./runbooks/saleroom-clerk.md) — paddle bidding and clerk console operations
 - [Production rollback](./runbooks/prod-rollback.md) — Terraform-driven rollback for infrastructure regressions

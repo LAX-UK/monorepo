@@ -58,6 +58,8 @@ export type LotStatusContext = {
   winnerId?: string | null | undefined;
   /** List-row sold flag when buyer id is omitted from public summaries. */
   hasWinner?: boolean;
+  /** The result is not final yet: the lot reads as Ended, never Sold or Unsold. */
+  resultPending?: boolean | undefined;
 };
 
 export type StatusPresentationContext = {

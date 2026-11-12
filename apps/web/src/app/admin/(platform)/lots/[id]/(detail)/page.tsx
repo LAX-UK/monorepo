@@ -25,6 +25,8 @@ export default async function AdminLotOverviewPage({ params, searchParams }: Pro
         attention={page.attention}
         kpiTrends={page.kpiTrends}
         kpiPeriodDays={page.kpiPeriodDays}
+        reoffers={page.reoffers}
+        reofferAccess={page.reofferAccess}
       />
     </>
   );

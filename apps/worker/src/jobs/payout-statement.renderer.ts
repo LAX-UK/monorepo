@@ -29,6 +29,12 @@ function formatPeriod(start: Date, end: Date): string {
   return `${fmt(start)} — ${fmt(end)}`;
 }
 
+/** Who bought, in the seller's words: never the next bidder's name after a default (they stay private). */
+export function buyerPhrase(line: Pick<PayoutStatementLineRow, "buyerName" | "soldAfterAuction">) {
+  if (line.soldAfterAuction) return "sold after the auction to the next bidder";
+  return `buyer: ${line.buyerName?.trim() || "—"}`;
+}
+
 export async function renderPayoutStatementPdf(input: PayoutStatementRenderInput): Promise<Buffer> {
   const { payout: pRow, entity: entityRow, lines, authorNames, env } = input;
   const payoutId = pRow.id;
@@ -74,8 +80,7 @@ export async function renderPayoutStatementPdf(input: PayoutStatementRenderInput
     if (line.paymentId && line.lotTitle) {
       const lotRef =
         line.lotNumber != null ? `Lot #${line.lotNumber}` : `Lot ${line.paymentId.slice(0, 8)}`;
-      const buyer = line.buyerName?.trim() || "—";
-      desc = `${lotRef} — ${line.lotTitle} — buyer: ${buyer}`;
+      desc = `${lotRef} — ${line.lotTitle} — ${buyerPhrase(line)}`;
     } else if (line.dealReference) {
       desc = `Private sale ${line.dealReference}`;
     } else if (kind === "adjustment") {

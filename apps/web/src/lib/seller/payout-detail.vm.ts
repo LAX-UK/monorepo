@@ -40,6 +40,9 @@ export type PayoutDetailVm = {
   statementHref: string;
 };
 
+/** Said once, in the same words on the sold list, the payout and the statement. */
+export const SOLD_AFTER_AUCTION_LINE = "Sold after the auction to the next bidder";
+
 function line(row: PayoutLine, currency: string): PayoutLineVm {
   const money = (amount: string) => formatMoney(amount, currency);
   if (row.breakdown) {
@@ -50,7 +53,7 @@ function line(row: PayoutLine, currency: string): PayoutLineVm {
       hammer: money(row.breakdown.gross),
       fees: formatDeduction(row.breakdown.commissionAndFees, currency),
       receive: money(row.breakdown.net),
-      note: row.note,
+      note: row.note ?? (row.soldAfterAuction ? SOLD_AFTER_AUCTION_LINE : null),
     };
   }
   return {

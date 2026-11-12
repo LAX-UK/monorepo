@@ -264,28 +264,66 @@ describe("member-safe views", () => {
 });
 
 describe("staff view", () => {
-  it("carries the shortfall and the bidder", () => {
-    const parsed = staffReofferSchema.safeParse({
-      id: "r1",
-      lotId: "l1",
-      sequence: 1,
-      status: "ready",
-      consentStatus: "given",
-      bidder: { userId: "u2", legalEntityId: "e2" },
-      offerMinor: 82_000_00,
-      originalHammerMinor: 88_000_00,
-      belowReserve: false,
-      consentDueAt: null,
-      offerEndsAt: null,
-      claimableShortfall: {
-        hammerDifferenceMinor: 6_000_00,
-        premiumLostMinor: 22_000_00,
-        totalMinor: 28_000_00,
-      },
-      skippedBidders: [
-        { userId: "u3", legalEntityId: "e3", amountMinor: 90_000_00, reason: "suspended" },
-      ],
-    });
+  const price = {
+    hammerMinor: 82_000_00,
+    buyersPremiumMinor: 20_500_00,
+    vatOnPremiumMinor: 4_100_00,
+    vatOnLotMinor: null,
+    artistsResaleRightMinor: null,
+    totalMinor: 106_600_00,
+  };
+  const view = {
+    id: "r1",
+    lotId: "l1",
+    sequence: 1,
+    status: "ready",
+    consentStatus: "given",
+    bidder: { userId: "u2", legalEntityId: "e2", accountName: "Northbank Gallery" },
+    offerMinor: 82_000_00,
+    price,
+    sourceBidId: "bid-2",
+    bidPlacedAt: "2026-10-23T18:11:00.000Z",
+    originalHammerMinor: 88_000_00,
+    estimatedProceedsMinor: 72_160_00,
+    reserveMinor: null,
+    belowReserve: false,
+    consentDueAt: null,
+    consent: {
+      channel: "workspace",
+      requestedAt: "2026-11-10T10:30:00.000Z",
+      remindedAt: null,
+      answeredAt: "2026-11-11T09:02:00.000Z",
+      answeredByName: "Priya Shah",
+      note: null,
+      declinePreference: null,
+    },
+    createdAt: "2026-11-10T10:30:00.000Z",
+    createdByName: "Eleanor Pereira",
+    offerSentAt: null,
+    offerEndsAt: null,
+    respondedAt: null,
+    declineReason: null,
+    closeReason: null,
+    closedByName: null,
+    invoiceId: null,
+    claimableShortfall: {
+      hammerDifferenceMinor: 6_000_00,
+      premiumLostMinor: 22_000_00,
+      totalMinor: 28_000_00,
+    },
+    skippedBidders: [
+      { userId: "u3", legalEntityId: "e3", amountMinor: 90_000_00, reason: "suspended" },
+    ],
+  };
+
+  it("carries the shortfall, the bidder by name, the price lines and who answered", () => {
+    const parsed = staffReofferSchema.safeParse(view);
     expect(parsed.success).toBe(true);
+  });
+
+  it("refuses a price whose total is not the sum of its lines", () => {
+    expect(
+      staffReofferSchema.safeParse({ ...view, price: { ...price, totalMinor: 1 } }).success,
+    ).toBe(false);
   });
 });

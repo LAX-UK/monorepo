@@ -8,6 +8,8 @@ export type SaleResultLotRow = {
   currentPrice: string;
   buyerPremiumRate: string;
   hasWinner: boolean;
+  /** The winner did not pay and the lot is being offered on: no result to publish yet. */
+  resultPending: boolean;
   endTime: Date;
   extendedUntil: Date | null;
 };

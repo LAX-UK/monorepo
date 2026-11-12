@@ -6,6 +6,7 @@ import type {
   ISaleResultLotsReader,
   SaleResultLotRow,
 } from "../interfaces/sale-result-lots.reader.js";
+import { lotResultPendingSql } from "../lib/lot-result-pending.sql.js";
 
 export class DrizzleSaleResultLotsReader implements ISaleResultLotsReader {
   constructor(private readonly db: Database) {}
@@ -21,6 +22,7 @@ export class DrizzleSaleResultLotsReader implements ISaleResultLotsReader {
         currentPrice: lot.currentPrice,
         buyerPremiumRate: lot.buyerPremiumRate,
         winnerId: lot.winnerId,
+        resultPending: lotResultPendingSql(),
         endTime: lot.endTime,
         extendedUntil: lot.extendedUntil,
       })
@@ -36,6 +38,7 @@ export class DrizzleSaleResultLotsReader implements ISaleResultLotsReader {
         currentPrice: row.currentPrice,
         buyerPremiumRate: row.buyerPremiumRate,
         hasWinner: row.winnerId != null,
+        resultPending: row.resultPending,
         endTime: row.endTime,
         extendedUntil: row.extendedUntil,
       });

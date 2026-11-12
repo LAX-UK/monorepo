@@ -19,6 +19,9 @@ export interface ILotReadService {
     viewerStaffRoles?: StaffRoles | undefined,
   ): Promise<{ data: (Lot | PublicLotView)[] }>;
 
+  /** Lots as the public reads them: one whose result is still open shows as ended, with no result. */
+  presentForPublic<T extends Lot>(lots: readonly T[]): Promise<T[]>;
+
   listBidsForPublicApi(input: {
     lotId: string;
     viewerRole: UserRole;

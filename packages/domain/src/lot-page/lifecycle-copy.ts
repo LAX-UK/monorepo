@@ -14,6 +14,8 @@ export const LOT_LIFECYCLE_KINDS = [
   "saleroomPaused",
   "endedSold",
   "endedNoSale",
+  /** Ended, and the result is not final: no buyer and no price to show yet. */
+  "endedPending",
   "cancelled",
   "withdrawn",
 ] as const;
@@ -152,6 +154,16 @@ export const LOT_LIFECYCLE_COPY: Readonly<Record<LotLifecycleKind, LotLifecycleC
     headlineLabelBeforeBids: "Estimate",
     timeLine: "ended",
     action: "enquire",
+    biddingOpen: false,
+    phoneBar: false,
+  },
+  endedPending: {
+    badge: { label: "Ended", tone: "neutral", dot: false },
+    headline: "none",
+    headlineLabel: "Ended",
+    headlineLabelBeforeBids: "Ended",
+    timeLine: "ended",
+    action: "none",
     biddingOpen: false,
     phoneBar: false,
   },

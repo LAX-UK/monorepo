@@ -1008,6 +1008,8 @@ export type {
   SubmissionAttentionRow,
 } from "./attention-feed.reader.js";
 
+export type { IPublicLotResultReader } from "./public-lot-result.reader.js";
+
 export type {
   ISaleResultLotsReader,
   SaleResultLotRow,
@@ -1478,8 +1480,11 @@ export type * from "./accounting.js";
 
 export type {
   BidderReofferRow,
+  IReofferStaffReader,
   IReofferViewsReader,
   IReofferWorkflowReader,
+  ReofferLotFacts,
+  StaffBuyerDefaultView,
   PlacedBidWithId,
   ReofferDefaultFacts,
   ReofferLockedLot,

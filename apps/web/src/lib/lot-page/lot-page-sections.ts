@@ -23,6 +23,8 @@ export const LOT_SECTIONS: Readonly<Record<LotLifecycleKind, LotSections>> = {
   saleroomPaused: { watchShare: true, history: true },
   endedSold: { watchShare: true, history: true },
   endedNoSale: { watchShare: true, history: true },
+  // The highest bid is the first buyer's price, so a lot with an open result shows no history.
+  endedPending: { watchShare: true, history: false },
   cancelled: NOTHING,
   withdrawn: NOTHING,
 };
