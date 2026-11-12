@@ -6,7 +6,7 @@
       "label": "Home",
       "targetKb": 300,
       "gzipKb": 460.3,
-      "parsedKb": 1420.4,
+      "parsedKb": 1420.5,
       "frameKb": 389.1,
       "pageKb": 71.2,
       "duplicateCount": 120,
@@ -41,7 +41,7 @@
       "gzipKb": 569.2,
       "parsedKb": 1767.6,
       "frameKb": 434.8,
-      "pageKb": 134.5,
+      "pageKb": 134.4,
       "duplicateCount": 186,
       "duplicateKb": 58.5,
       "files": 59
@@ -49,8 +49,8 @@
     "apps/web /(marketing)/about/page": {
       "label": "About",
       "targetKb": 300,
-      "gzipKb": 397,
-      "parsedKb": 1234.4,
+      "gzipKb": 397.1,
+      "parsedKb": 1234.5,
       "frameKb": 389.1,
       "pageKb": 8,
       "duplicateCount": 68,
