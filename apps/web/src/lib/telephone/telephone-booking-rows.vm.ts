@@ -1,7 +1,7 @@
 import { formatPounds } from "@/lib/buyer-agents/authorisation-presenter";
 import { formatDateInline } from "@/lib/ui/format";
 import type { TelephoneBidBookingStatus } from "@auction/types";
-import type { StatusBadgeShape, StatusBadgeTone } from "@auction/ui/lax";
+import type { StatusBadgeShape, StatusBadgeTone } from "@auction/ui/components/status-badge";
 import {
   type TelephoneBookingListItem,
   telephoneBookingStatusLabel,

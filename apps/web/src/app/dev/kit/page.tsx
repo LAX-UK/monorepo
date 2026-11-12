@@ -1,7 +1,7 @@
 import { LaxComponentSheet } from "@/components/admin/kit/lax-component-sheet";
 import { isClientKitReviewAvailable } from "@/lib/kit/client-kit-review";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
-import { TooltipProvider } from "@auction/ui/lax";
+import { TooltipProvider } from "@auction/ui/lax/tooltip";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 

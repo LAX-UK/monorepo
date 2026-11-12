@@ -18,7 +18,7 @@ import { SALEROOM_CATALOG_SORT_OPTIONS } from "@/lib/marketing/saleroom-catalog-
 import type { SaleroomStatusCounts } from "@/lib/marketing/saleroom-status-counts";
 import type { CatalogueControls } from "@/lib/marketing/saleroom/catalogue-controls";
 import type { CatalogLayoutView } from "@/lib/preferences/view-cookie";
-import { DisplayHeading } from "@auction/ui";
+import { DisplayHeading } from "@auction/ui/components/typography";
 import { useSearchParams } from "next/navigation";
 
 type Props = {

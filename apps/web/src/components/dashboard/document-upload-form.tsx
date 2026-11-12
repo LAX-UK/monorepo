@@ -16,7 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@auction/ui/components/select";
-import { Button } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
 import { useCallback, useRef, useState } from "react";
 
 function uploadKindForEntity(entityKind: DocumentEntityKind): DocumentUploadKind {

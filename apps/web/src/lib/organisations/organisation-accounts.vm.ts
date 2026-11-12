@@ -5,7 +5,7 @@ import { organisationRoleLabel } from "@/lib/presenters/organisation-role/organi
 import { organisationStatusView } from "@/lib/presenters/organisation-status/organisation-status-presentation";
 import { formatDate } from "@/lib/ui/format";
 import type { LegalEntityStatus } from "@auction/types";
-import type { StatusBadgeShape, StatusBadgeTone } from "@auction/ui/lax";
+import type { StatusBadgeShape, StatusBadgeTone } from "@auction/ui/components/status-badge";
 import { subkindLabel } from "./legal-entity-labels";
 import { type SetupStep, setupStep } from "./organisation-setup";
 

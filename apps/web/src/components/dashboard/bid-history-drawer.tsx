@@ -4,10 +4,10 @@ import { fetchSessionUserAfterAuth } from "@/lib/auth/fetch-session-user.client"
 import { fetchLotBidHistoryRows } from "@/lib/bid/fetch-lot-bid-history.client";
 import { PLATFORM_DEFAULT_CURRENCY, formatMoney } from "@/lib/format-currency";
 import { formatDateTimeShort } from "@/lib/ui/format";
-import { Skeleton } from "@auction/ui";
 import { DrawerDetail } from "@auction/ui/components/drawer-detail";
 import { EmptyState } from "@auction/ui/components/empty-state";
-import { Button } from "@auction/ui/lax";
+import { Skeleton } from "@auction/ui/components/skeleton";
+import { Button } from "@auction/ui/lax/button";
 import { RotateCw } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 

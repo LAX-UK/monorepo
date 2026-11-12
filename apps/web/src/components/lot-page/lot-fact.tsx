@@ -1,5 +1,5 @@
 import type { LotInfoTone, LotRowMoment } from "@/lib/lot-page/lot-time-rows";
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 import { OfficialTime } from "@auction/ui/time";
 import { Clock } from "lucide-react";
 

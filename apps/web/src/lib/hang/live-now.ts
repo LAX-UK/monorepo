@@ -1,7 +1,7 @@
 import { type HangSale, type HomeHangVM, buildHomeHang, planHomeHang } from "@/lib/hang/home-hang";
 import { opensLine } from "@/lib/time/opens-line";
 import { type HomeStateResult, liveTabSaleIds } from "@auction/domain";
-import { HANG_MAX_WORKS } from "@auction/marketing-ui";
+import { HANG_MAX_WORKS } from "@auction/marketing-ui/hang/hang-layout";
 import type { Lot } from "@auction/types";
 
 export type LiveNowTab = {

@@ -1,6 +1,8 @@
 "use client";
 
-import { Count, Kbd, ShortcutKeys, StatusBadge, type StatusBadgeTone } from "@auction/ui/lax";
+import { StatusBadge, type StatusBadgeTone } from "@auction/ui/components/status-badge";
+import { Kbd, ShortcutKeys } from "@auction/ui/lax/kbd";
+import { Count } from "@auction/ui/lax/tabs";
 import { SheetSection, StateRow } from "./sheet-frame";
 
 /** The badge set by kind of state, as the client and staff tools both show them. */

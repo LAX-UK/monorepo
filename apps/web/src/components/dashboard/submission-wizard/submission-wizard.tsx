@@ -46,7 +46,8 @@ import {
 import { Form } from "@auction/ui/components/form";
 import { Surface } from "@auction/ui/components/surface";
 import type { WizardProgressStep } from "@auction/ui/components/wizard-progress";
-import { Button, ErrorSummary } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
+import { ErrorSummary } from "@auction/ui/lax/error-summary";
 import type { ItemSubmissionFormValues } from "@auction/validators";
 import { useRouter } from "next/navigation";
 import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";

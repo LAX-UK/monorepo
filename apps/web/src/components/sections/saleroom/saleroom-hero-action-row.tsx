@@ -13,7 +13,7 @@ import { saleAllowsWebBidding } from "@/lib/sale-mode";
 import { saleLifecycleActions } from "@/lib/sale/sale-lifecycle-actions";
 import { SALE_HERO_ACTIONS_ID } from "@/lib/sale/sale-phone-bar-visibility";
 import type { LegalEntityMemberRole, SaleDeliveryMode } from "@auction/types";
-import { Button } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import type { SaleHeroVM } from "./view-models";

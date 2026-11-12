@@ -1,7 +1,7 @@
 import { AuthContentReveal } from "@/components/auth/auth-content-reveal";
 import { LaxLogo } from "@/components/layout/lax-logo";
-import { DisplayHeading } from "@auction/ui";
 import { Surface } from "@auction/ui/components/surface";
+import { DisplayHeading } from "@auction/ui/components/typography";
 import Link from "next/link";
 import type { ReactNode } from "react";
 

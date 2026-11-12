@@ -1,4 +1,4 @@
-import type { CarouselApi } from "@auction/ui";
+import type { CarouselApi } from "@auction/ui/components/carousel";
 import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { useGalleryCarouselApi } from "./use-gallery-carousel";

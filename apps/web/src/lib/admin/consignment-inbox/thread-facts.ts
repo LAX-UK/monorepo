@@ -2,7 +2,7 @@ import { formatEstimateRangeShort, formatWholeMoney } from "@/lib/money/currency
 import { CONSIGNMENT_STATUS, consignmentStatus } from "@/lib/seller/consignment-status";
 import { formatStaffDate, formatStaffDateTime } from "@auction/staff-ui";
 import type { ItemSubmissionStatus, LotStatus } from "@auction/types";
-import type { StatusBadgeShape, StatusBadgeTone } from "@auction/ui/lax";
+import type { StatusBadgeShape, StatusBadgeTone } from "@auction/ui/components/status-badge";
 import type { ConsignmentThreadDetail } from "@auction/validators";
 
 /**

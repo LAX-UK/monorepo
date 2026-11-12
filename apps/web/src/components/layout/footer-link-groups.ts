@@ -8,11 +8,11 @@ import { sellDepartmentsAnchorHref } from "@/lib/marketing/sell-departments";
 import { sellIntakeHref } from "@/lib/marketing/sell-intake";
 import { ACCOUNT_PRIMARY_ENTRIES } from "@/lib/navigation/account-menu-model";
 import type { LaxProductLinkVm } from "@auction/lax-ecosystem";
-import {
-  type MarketingFooterColumn,
-  type MarketingFooterLink,
-  buildFooterLegalColumn,
-} from "@auction/marketing-ui";
+import { buildFooterLegalColumn } from "@auction/marketing-ui/footer-legal-column";
+import type {
+  MarketingFooterColumn,
+  MarketingFooterLink,
+} from "@auction/marketing-ui/marketing-footer";
 
 /** Footer entry rendered as the button that reopens the cookie settings dialog. */
 export const BID_COOKIE_PREFERENCES_HREF = "#cookie-preferences";

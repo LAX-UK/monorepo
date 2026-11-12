@@ -3,7 +3,9 @@
 import { AccountTile } from "@/components/layout/account-switcher/account-tile";
 import { initials } from "@/components/organisations/initials";
 import type { EnquiringAsChoice } from "@/lib/private-sales/enquiring-as";
-import { Button, Field, NativeSelect } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
+import { Field } from "@auction/ui/lax/field";
+import { NativeSelect } from "@auction/ui/lax/native-select";
 import { useState } from "react";
 
 /**

@@ -1,5 +1,5 @@
 import type { PublicSaleroomSessionStatus } from "@/lib/saleroom/public-session-status";
-import { defineStatusMap } from "@auction/ui/lax";
+import { defineStatusMap } from "@auction/ui/components/status-badge";
 
 /**
  * How each public saleroom session status reads: one table, so a new status is one row. Live is

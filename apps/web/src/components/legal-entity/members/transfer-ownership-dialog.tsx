@@ -3,7 +3,8 @@
 import { transferOwnershipCopy } from "@/lib/legal-entity/member-change-copy";
 import { transferOwnershipAction } from "@/lib/legal-entity/member-management.actions";
 import { notify } from "@/lib/ui/notify";
-import { Field, TextInput } from "@auction/ui/lax";
+import { Field } from "@auction/ui/lax/field";
+import { TextInput } from "@auction/ui/lax/input";
 import { useState } from "react";
 import { MemberChangeDialog } from "./member-change-dialog";
 

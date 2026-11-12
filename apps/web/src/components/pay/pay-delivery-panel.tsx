@@ -1,7 +1,8 @@
 import { WorkspacePanel } from "@/components/dashboard/primitives/workspace-panel";
 import { PAY_COPY } from "@/lib/pay/pay-copy";
 import type { PayDeliveryVm } from "@/lib/pay/pay-page.vm";
-import { StatusBadge, TextLink } from "@auction/ui/lax";
+import { StatusBadge } from "@auction/ui/components/status-badge";
+import { TextLink } from "@auction/ui/lax/text-link";
 import Link from "next/link";
 
 /**

@@ -12,7 +12,7 @@ import { lotShowsBidAction } from "@/lib/lot/lot-bid-action";
 import type { CatalogueRow } from "@/lib/marketing/saleroom/catalogue-rows";
 import type { CatalogLayoutView } from "@/lib/preferences/view-cookie";
 import { isSaleroomSessionActive } from "@/lib/saleroom/public-session-status";
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 
 type Props = {
   view: CatalogLayoutView;

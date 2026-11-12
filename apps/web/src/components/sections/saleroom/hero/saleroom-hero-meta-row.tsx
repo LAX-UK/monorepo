@@ -3,7 +3,7 @@ import { SaleLifecycleBadge } from "@/components/marketing/sale-lifecycle-badge"
 import type { SaleHeroVM } from "@/components/sections/saleroom/view-models";
 import type { SaleFormatExplainerContext } from "@/lib/sale-format-explainer";
 import type { SaleDeliveryMode } from "@auction/types";
-import { StatusBadge } from "@auction/ui/lax";
+import { StatusBadge } from "@auction/ui/components/status-badge";
 import { OfficialTime } from "@auction/ui/time";
 
 type Props = {

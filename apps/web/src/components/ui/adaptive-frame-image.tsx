@@ -3,7 +3,7 @@
 import { useAdaptiveMediaImageProps } from "@/components/ui/adaptive-media-frame";
 import { MediaImage } from "@/components/ui/media-image";
 import type { ObjectFitMode } from "@/lib/media/overlay-tone-types";
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 
 type Props = {
   src: string | null | undefined;

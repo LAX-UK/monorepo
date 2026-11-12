@@ -12,7 +12,7 @@ import {
   roleNeedsPersonalIdentity,
 } from "@auction/domain";
 import type { LegalEntityStatus, OrganisationBiddingLimitsView } from "@auction/types";
-import type { StatusBadgeTone } from "@auction/ui/lax";
+import type { StatusBadgeTone } from "@auction/ui/components/status-badge";
 
 type KycStatus = NonNullable<SessionUser["kycStatus"]>;
 

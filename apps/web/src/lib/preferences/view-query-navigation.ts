@@ -6,7 +6,7 @@ import {
   buildViewHref,
   buildViewQueryParams,
   writeViewPreferenceCookie,
-} from "@auction/marketing-ui";
+} from "@auction/marketing-ui/catalog-view/catalog-view";
 export {
   type BuildViewQueryParamsOptions,
   VIEW_CHANGE_CLEAR_PARAMS,

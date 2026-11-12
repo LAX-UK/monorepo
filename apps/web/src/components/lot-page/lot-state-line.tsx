@@ -1,6 +1,6 @@
 import { splitStateText } from "@/lib/lot-page/split-state-text";
 import type { LotStatusTone, StateLine, StateLineIcon } from "@auction/domain";
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 import { Check, CircleAlert } from "lucide-react";
 import type { ComponentType } from "react";
 

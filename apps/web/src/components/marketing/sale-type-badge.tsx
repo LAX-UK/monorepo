@@ -4,7 +4,8 @@ import type { SaleFormatExplainerContext } from "@/lib/sale-format-explainer";
 import { saleFormatIcon } from "@/lib/sale-format-icon";
 import { getSaleTypePresentation } from "@/lib/sale-type-presentation";
 import type { Sale, SaleDeliveryMode } from "@auction/types";
-import { Button, StatusBadge } from "@auction/ui/lax";
+import { StatusBadge } from "@auction/ui/components/status-badge";
+import { Button } from "@auction/ui/lax/button";
 import { HelpCircle } from "lucide-react";
 import { SaleTypeExplainerPopover } from "./sale-type-explainer";
 

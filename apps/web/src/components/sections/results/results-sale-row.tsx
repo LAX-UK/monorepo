@@ -1,6 +1,7 @@
 import { MediaImage } from "@/components/ui/media-image";
 import type { ResultsCover, ResultsFigures, ResultsRowVM } from "@/lib/marketing/results-page.vm";
-import { ButtonLink, StatusBadge } from "@auction/ui/lax";
+import { StatusBadge } from "@auction/ui/components/status-badge";
+import { ButtonLink } from "@auction/ui/lax/button-link";
 import Link from "next/link";
 
 const FIGURE_LABEL = "text-lax-12 text-lax-muted";

@@ -16,7 +16,13 @@ import {
   SALES_FILTER_SIDEBAR_DEFAULT_OPEN,
   SALES_FILTER_SIDEBAR_GROUPS,
 } from "@/lib/marketing/sales-filter-sidebar-catalog";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger, cn } from "@auction/ui";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@auction/ui/components/accordion";
+import { cn } from "@auction/ui/lib/utils";
 import { useState } from "react";
 
 type Category = { id: string; name: string };

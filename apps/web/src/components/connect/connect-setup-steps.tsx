@@ -1,6 +1,6 @@
 "use client";
 
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 import { CheckCircle2, Circle } from "lucide-react";
 
 type Props = {

@@ -1,8 +1,9 @@
 "use client";
 
 import type { AgreementDocumentRow } from "@/lib/organisation-team/agreement-documents.vm";
-import { RecordList, RecordRow } from "@auction/ui";
-import { Button, StatusBadge } from "@auction/ui/lax";
+import { RecordList, RecordRow } from "@auction/ui/components/record-row";
+import { StatusBadge } from "@auction/ui/components/status-badge";
+import { Button } from "@auction/ui/lax/button";
 import { Download, FileText } from "lucide-react";
 
 /** The organisation's consignment agreements, each with its PDF; one still to accept says so. */

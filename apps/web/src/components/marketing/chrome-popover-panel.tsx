@@ -1,4 +1,4 @@
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 import { type HTMLAttributes, type ReactNode, forwardRef } from "react";
 
 export type ChromePopoverPanelProps = HTMLAttributes<HTMLDivElement> & {

@@ -2,7 +2,9 @@
 
 import type { NeedsYouRowView, NeedsYouTopic } from "@/lib/organisation-home/needs-you-view";
 import type { HomeNoticeView } from "@/lib/organisation-home/organisation-home-view";
-import { Button, Dialog, StatusBadge } from "@auction/ui/lax";
+import { StatusBadge } from "@auction/ui/components/status-badge";
+import { Button } from "@auction/ui/lax/button";
+import { Dialog } from "@auction/ui/lax/dialog";
 import {
   Building2,
   CircleCheck,

@@ -8,7 +8,7 @@ import {
   organisationOnlyView,
 } from "@/lib/organisations/organisation-only-page.vm";
 import { EmptyState } from "@auction/ui/components/empty-state";
-import { ButtonLink } from "@auction/ui/lax";
+import { ButtonLink } from "@auction/ui/lax/button-link";
 import Link from "next/link";
 import { useMemo } from "react";
 import { AccountSwitchLink } from "./account-switch-link";

@@ -1,7 +1,7 @@
 "use client";
 
 import { BRAND_COLORS } from "@auction/branding";
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 import { useId, useMemo } from "react";
 import {
   Area,

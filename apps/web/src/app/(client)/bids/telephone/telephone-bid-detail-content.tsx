@@ -15,7 +15,7 @@ import { Badge } from "@auction/ui/components/badge";
 import { EmptyState } from "@auction/ui/components/empty-state";
 import { Input } from "@auction/ui/components/input";
 import { Label } from "@auction/ui/components/label";
-import { Button } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState, useTransition } from "react";

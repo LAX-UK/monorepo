@@ -1,7 +1,8 @@
 "use client";
 
 import { parseSoldListQuery } from "@/lib/seller/sold-and-payouts-list";
-import { Button, ExportSheet } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
+import { ExportSheet } from "@auction/ui/lax/export-sheet";
 import { Download } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";

@@ -20,7 +20,8 @@ import { opensLine } from "@/lib/time/opens-line";
 import { useCountdownTick } from "@/lib/time/use-clock";
 import { LONDON_TIME_ZONE, formatWhen } from "@auction/datetime";
 import type { Sale } from "@auction/types";
-import { LiveDot, cn } from "@auction/ui";
+import { LiveDot } from "@auction/ui/components/live-dot";
+import { cn } from "@auction/ui/lib/utils";
 import {
   isSaleroomDeliveryMode,
   normalizeAuctionTime,

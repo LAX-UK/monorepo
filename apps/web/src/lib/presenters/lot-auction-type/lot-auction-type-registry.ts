@@ -1,5 +1,5 @@
 import type { LotAuctionType } from "@auction/types";
-import type { LotAuctionTypeTagKey } from "@auction/ui";
+import type { LotAuctionTypeTagKey } from "@auction/ui/components/lot-auction-type-pill";
 
 export type LotAuctionTypePresentation = {
   label: string;

@@ -402,6 +402,218 @@
     "./clock": {
       "types": "./dist/clock/index.d.ts",
       "default": "./dist/clock/index.js"
+    },
+    "./components/countdown": {
+      "types": "./dist/components/ui/countdown.d.ts",
+      "default": "./dist/components/ui/countdown.js"
+    },
+    "./components/delivery-mode-pill": {
+      "types": "./dist/components/ui/delivery-mode-pill.d.ts",
+      "default": "./dist/components/ui/delivery-mode-pill.js"
+    },
+    "./components/field-variant": {
+      "types": "./dist/components/ui/field-variant.d.ts",
+      "default": "./dist/components/ui/field-variant.js"
+    },
+    "./components/filter-chip": {
+      "types": "./dist/components/ui/filter-chip.d.ts",
+      "default": "./dist/components/ui/filter-chip.js"
+    },
+    "./components/floating-label-input": {
+      "types": "./dist/components/ui/floating-label-input.d.ts",
+      "default": "./dist/components/ui/floating-label-input.js"
+    },
+    "./components/inline-action-menu": {
+      "types": "./dist/components/ui/inline-action-menu.d.ts",
+      "default": "./dist/components/ui/inline-action-menu.js"
+    },
+    "./components/live-dot": {
+      "types": "./dist/components/ui/live-dot.d.ts",
+      "default": "./dist/components/ui/live-dot.js"
+    },
+    "./components/lot-auction-type-pill": {
+      "types": "./dist/components/ui/lot-auction-type-pill.d.ts",
+      "default": "./dist/components/ui/lot-auction-type-pill.js"
+    },
+    "./components/marketing-pagination": {
+      "types": "./dist/components/ui/marketing-pagination.d.ts",
+      "default": "./dist/components/ui/marketing-pagination.js"
+    },
+    "./components/password-input": {
+      "types": "./dist/components/ui/password-input.d.ts",
+      "default": "./dist/components/ui/password-input.js"
+    },
+    "./components/toc-nav": {
+      "types": "./dist/components/ui/toc-nav.d.ts",
+      "default": "./dist/components/ui/toc-nav.js"
+    },
+    "./hooks/use-focus-on-mount": {
+      "types": "./dist/hooks/use-focus-on-mount.d.ts",
+      "default": "./dist/hooks/use-focus-on-mount.js"
+    },
+    "./lax/button-link": {
+      "types": "./dist/lax/button-link.d.ts",
+      "default": "./dist/lax/button-link.js"
+    },
+    "./lax/button-variants": {
+      "types": "./dist/lax/button-variants.d.ts",
+      "default": "./dist/lax/button-variants.js"
+    },
+    "./lax/checkbox": {
+      "types": "./dist/lax/checkbox.d.ts",
+      "default": "./dist/lax/checkbox.js"
+    },
+    "./lax/count": {
+      "types": "./dist/lax/count.d.ts",
+      "default": "./dist/lax/count.js"
+    },
+    "./lax/density": {
+      "types": "./dist/lax/density.d.ts",
+      "default": "./dist/lax/density.js"
+    },
+    "./lax/density-attributes": {
+      "types": "./dist/lax/density-attributes.d.ts",
+      "default": "./dist/lax/density-attributes.js"
+    },
+    "./lax/dialog": {
+      "types": "./dist/lax/dialog.d.ts",
+      "default": "./dist/lax/dialog.js"
+    },
+    "./lax/empty-state": {
+      "types": "./dist/lax/empty-state.d.ts",
+      "default": "./dist/lax/empty-state.js"
+    },
+    "./lax/error-summary": {
+      "types": "./dist/lax/error-summary.d.ts",
+      "default": "./dist/lax/error-summary.js"
+    },
+    "./lax/export-sheet": {
+      "types": "./dist/lax/export-sheet.d.ts",
+      "default": "./dist/lax/export-sheet.js"
+    },
+    "./lax/fact-list": {
+      "types": "./dist/lax/fact-list.d.ts",
+      "default": "./dist/lax/fact-list.js"
+    },
+    "./lax/field": {
+      "types": "./dist/lax/field.d.ts",
+      "default": "./dist/lax/field.js"
+    },
+    "./lax/file-attachment": {
+      "types": "./dist/lax/file-attachment.d.ts",
+      "default": "./dist/lax/file-attachment.js"
+    },
+    "./lax/file-picker-button": {
+      "types": "./dist/lax/file-picker-button.d.ts",
+      "default": "./dist/lax/file-picker-button.js"
+    },
+    "./lax/input": {
+      "types": "./dist/lax/input.d.ts",
+      "default": "./dist/lax/input.js"
+    },
+    "./lax/kbd": {
+      "types": "./dist/lax/kbd.d.ts",
+      "default": "./dist/lax/kbd.js"
+    },
+    "./lax/link": {
+      "types": "./dist/lax/link.d.ts",
+      "default": "./dist/lax/link.js"
+    },
+    "./lax/list-toolbar": {
+      "types": "./dist/lax/list-toolbar.d.ts",
+      "default": "./dist/lax/list-toolbar.js"
+    },
+    "./lax/menu": {
+      "types": "./dist/lax/menu.d.ts",
+      "default": "./dist/lax/menu.js"
+    },
+    "./lax/meter": {
+      "types": "./dist/lax/meter.d.ts",
+      "default": "./dist/lax/meter.js"
+    },
+    "./lax/metric-cell": {
+      "types": "./dist/lax/metric-cell.d.ts",
+      "default": "./dist/lax/metric-cell.js"
+    },
+    "./lax/native-select": {
+      "types": "./dist/lax/native-select.d.ts",
+      "default": "./dist/lax/native-select.js"
+    },
+    "./lax/notice": {
+      "types": "./dist/lax/notice.d.ts",
+      "default": "./dist/lax/notice.js"
+    },
+    "./lax/preset-cards": {
+      "types": "./dist/lax/preset-cards.d.ts",
+      "default": "./dist/lax/preset-cards.js"
+    },
+    "./lax/search-palette": {
+      "types": "./dist/lax/search-palette.d.ts",
+      "default": "./dist/lax/search-palette.js"
+    },
+    "./lax/select-menu": {
+      "types": "./dist/lax/select-menu.d.ts",
+      "default": "./dist/lax/select-menu.js"
+    },
+    "./lax/selection-bar": {
+      "types": "./dist/lax/selection-bar.d.ts",
+      "default": "./dist/lax/selection-bar.js"
+    },
+    "./lax/shortcuts-dialog": {
+      "types": "./dist/lax/shortcuts-dialog.d.ts",
+      "default": "./dist/lax/shortcuts-dialog.js"
+    },
+    "./lax/skeleton": {
+      "types": "./dist/lax/skeleton.d.ts",
+      "default": "./dist/lax/skeleton.js"
+    },
+    "./lax/styles": {
+      "types": "./dist/lax/styles.d.ts",
+      "default": "./dist/lax/styles.js"
+    },
+    "./lax/switch": {
+      "types": "./dist/lax/switch.d.ts",
+      "default": "./dist/lax/switch.js"
+    },
+    "./lax/tab-panels": {
+      "types": "./dist/lax/tab-panels.d.ts",
+      "default": "./dist/lax/tab-panels.js"
+    },
+    "./lax/tabs": {
+      "types": "./dist/lax/tabs.d.ts",
+      "default": "./dist/lax/tabs.js"
+    },
+    "./lax/toaster": {
+      "types": "./dist/lax/toaster.d.ts",
+      "default": "./dist/lax/toaster.js"
+    },
+    "./lax/toggle-row": {
+      "types": "./dist/lax/toggle-row.d.ts",
+      "default": "./dist/lax/toggle-row.js"
+    },
+    "./lax/token-input": {
+      "types": "./dist/lax/token-input.d.ts",
+      "default": "./dist/lax/token-input.js"
+    },
+    "./lax/tooltip": {
+      "types": "./dist/lax/tooltip.d.ts",
+      "default": "./dist/lax/tooltip.js"
+    },
+    "./lib/money": {
+      "types": "./dist/lib/money.d.ts",
+      "default": "./dist/lib/money.js"
+    },
+    "./lib/read-cookie": {
+      "types": "./dist/lib/read-cookie.d.ts",
+      "default": "./dist/lib/read-cookie.js"
+    },
+    "./lib/status-presentation-bridge": {
+      "types": "./dist/lib/status-presentation-bridge.d.ts",
+      "default": "./dist/lib/status-presentation-bridge.js"
+    },
+    "./lib/wizard-copy": {
+      "types": "./dist/lib/wizard-copy.d.ts",
+      "default": "./dist/lib/wizard-copy.js"
     }
   },
   "scripts": {

@@ -14,12 +14,13 @@ import type { ArtistDetailPageData } from "@/lib/marketing/load-artist-detail-pa
 import { SELL_A_WORK_LABEL } from "@/lib/marketing/sell-flow-copy";
 import {
   MarketingArtistFacts,
-  MarketingArtistHero,
-  MarketingReadMore,
   marketingArtistFacts,
-} from "@auction/marketing-ui";
-import { cn } from "@auction/ui";
-import { ButtonLink, StatusBadge } from "@auction/ui/lax";
+} from "@auction/marketing-ui/marketing-artist-facts";
+import { MarketingArtistHero } from "@auction/marketing-ui/marketing-artist-hero";
+import { MarketingReadMore } from "@auction/marketing-ui/marketing-read-more";
+import { StatusBadge } from "@auction/ui/components/status-badge";
+import { ButtonLink } from "@auction/ui/lax/button-link";
+import { cn } from "@auction/ui/lib/utils";
 import Link from "next/link";
 
 type ArtistDetailViewProps = ArtistDetailPageData;

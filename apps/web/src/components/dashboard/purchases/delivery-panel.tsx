@@ -14,7 +14,11 @@ import {
   requestDeliveryQuoteAction,
   withdrawDeliveryQuoteAction,
 } from "@/lib/purchases/purchase.actions";
-import { Button, ButtonLink, Notice, PresetCards, TextLink } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
+import { ButtonLink } from "@auction/ui/lax/button-link";
+import { Notice } from "@auction/ui/lax/notice";
+import { PresetCards } from "@auction/ui/lax/preset-cards";
+import { TextLink } from "@auction/ui/lax/text-link";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";

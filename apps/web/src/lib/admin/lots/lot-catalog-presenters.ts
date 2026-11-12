@@ -9,7 +9,7 @@ import { lotChargeCurrency } from "@/lib/money/currency";
 import { lotDotStatusPresentation } from "@/lib/presenters/status/lot-dot-status";
 import { formatMoney } from "@/lib/ui/format";
 import type { LotStatus, SaleDeliveryMode } from "@auction/types";
-import type { DotStatusPillTone } from "@auction/ui";
+import type { DotStatusPillTone } from "@auction/ui/components/dot-status-pill";
 
 export type LotCatalogSaleContext = {
   deliveryMode: SaleDeliveryMode;

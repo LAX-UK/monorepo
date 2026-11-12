@@ -2,7 +2,7 @@
 
 import { PAY_COPY } from "@/lib/pay/pay-copy";
 import type { PayMethodsVm } from "@/lib/pay/pay-methods";
-import { PresetCards } from "@auction/ui/lax";
+import { PresetCards } from "@auction/ui/lax/preset-cards";
 import { usePaySession } from "./pay-session";
 
 /**

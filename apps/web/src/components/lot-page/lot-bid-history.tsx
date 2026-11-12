@@ -3,8 +3,8 @@
 import { useLotPageViewContext } from "@/components/lot-page/lot-page-view-context";
 import { buildLotHistoryView } from "@/lib/lot-page/lot-history-rows";
 import { useClockNow } from "@/lib/time/use-clock";
-import { cn } from "@auction/ui";
-import { Button } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
+import { cn } from "@auction/ui/lib/utils";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { useId, useState } from "react";
 

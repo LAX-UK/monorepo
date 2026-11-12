@@ -7,7 +7,9 @@ import type {
   BidBlockerPresentation,
   BidBlockerTone,
 } from "@/lib/bid/bid-blocker-presentation";
-import { ButtonLink, Notice, type NoticeTone, StatusBadge } from "@auction/ui/lax";
+import { StatusBadge } from "@auction/ui/components/status-badge";
+import { ButtonLink } from "@auction/ui/lax/button-link";
+import { Notice, type NoticeTone } from "@auction/ui/lax/notice";
 import Link from "next/link";
 
 /** The bid blocker tones on the kit notice: a neutral hold reads as information. */

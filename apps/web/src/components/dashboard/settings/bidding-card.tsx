@@ -1,5 +1,6 @@
 import type { BiddingRow } from "@/lib/settings/bidding-standing";
-import { ButtonLink, StatusBadge } from "@auction/ui/lax";
+import { StatusBadge } from "@auction/ui/components/status-badge";
+import { ButtonLink } from "@auction/ui/lax/button-link";
 import Link from "next/link";
 
 function RowValue({ value }: { value: BiddingRow["value"] }) {

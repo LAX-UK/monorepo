@@ -9,10 +9,10 @@ import { formatArtistLifespan } from "@/lib/artists/lifespan-presenter";
 import type { ArtistProfileLinkContext } from "@/lib/marketing/catalog-links";
 import { artistProfileHref } from "@/lib/marketing/catalog-links";
 import { FOCUS_RING } from "@/lib/marketing/chrome";
-import { MARKETING_ARTIST_GRID_CLASS } from "@auction/marketing-ui";
+import { MARKETING_ARTIST_GRID_CLASS } from "@auction/marketing-ui/marketing-artist-card";
 import type { PublicArtistDirectoryRow } from "@auction/types";
-import { cn } from "@auction/ui";
-import { StatusBadge } from "@auction/ui/lax";
+import { StatusBadge } from "@auction/ui/components/status-badge";
+import { cn } from "@auction/ui/lib/utils";
 import Link from "next/link";
 
 export function ArtistBrowseGrid({

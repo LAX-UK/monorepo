@@ -1,5 +1,5 @@
 import type { EmailBlockView } from "@auction/types";
-import { TooltipProvider } from "@auction/ui/lax";
+import { TooltipProvider } from "@auction/ui/lax/tooltip";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { LiftEmailBlockDialog } from "./lift-email-block-dialog";

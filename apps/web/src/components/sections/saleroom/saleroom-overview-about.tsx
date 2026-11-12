@@ -1,4 +1,4 @@
-import { DisplayHeading, LabelCaps } from "@auction/ui";
+import { DisplayHeading, LabelCaps } from "@auction/ui/components/typography";
 import type { SaleOverviewVM } from "./view-models";
 
 type Props = {

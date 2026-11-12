@@ -30,17 +30,15 @@ import {
 } from "@/lib/watching/watching.vm";
 import { matchesEveryWord } from "@/lib/workspace/list-search";
 import type { ArtistAlertCriteria } from "@auction/domain";
-import { lotCardMediaFrame } from "@auction/marketing-ui";
-import { InlineActionMenu, RecordList, RecordRow, RecordRowMedia, cn } from "@auction/ui";
-import {
-  Button,
-  ButtonLink,
-  ListToolbar,
-  ShowingCount,
-  SortMenu,
-  StatusBadge,
-  type TabNavItem,
-} from "@auction/ui/lax";
+import { lotCardMediaFrame } from "@auction/marketing-ui/lot-media/lot-card-media-frame";
+import { InlineActionMenu } from "@auction/ui/components/inline-action-menu";
+import { RecordList, RecordRow, RecordRowMedia } from "@auction/ui/components/record-row";
+import { StatusBadge } from "@auction/ui/components/status-badge";
+import { Button } from "@auction/ui/lax/button";
+import { ButtonLink } from "@auction/ui/lax/button-link";
+import { ListToolbar, ShowingCount, SortMenu } from "@auction/ui/lax/list-toolbar";
+import type { TabNavItem } from "@auction/ui/lax/tabs";
+import { cn } from "@auction/ui/lib/utils";
 import { Lock, UserRound } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";

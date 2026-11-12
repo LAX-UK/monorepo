@@ -9,7 +9,7 @@ import { GalleryHeroOverlays } from "@/components/gallery/parts/gallery-overlays
 import { ViewAllSheet } from "@/components/gallery/parts/view-all-sheet";
 import type { GalleryImage } from "@auction/types";
 import { toGalleryImages } from "@auction/types";
-import type { CarouselApi } from "@auction/ui";
+import type { CarouselApi } from "@auction/ui/components/carousel";
 import { useState } from "react";
 
 type LotGalleryProps = {

@@ -3,7 +3,7 @@ import { formatMoney } from "@/lib/format-currency";
 import { matchesEveryWord, searchParam } from "@/lib/workspace/list-search";
 import { LONDON_TIME_ZONE, formatMoment } from "@auction/datetime";
 import type { PayoutStatus } from "@auction/types";
-import type { StatusBadgeShape, StatusBadgeTone } from "@auction/ui/lax";
+import type { StatusBadgeShape, StatusBadgeTone } from "@auction/ui/components/status-badge";
 
 type Badge = { label: string; tone: StatusBadgeTone; shape: StatusBadgeShape };
 

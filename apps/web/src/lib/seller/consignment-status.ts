@@ -1,5 +1,5 @@
 import type { ItemSubmissionStatus, LotStatus } from "@auction/types";
-import type { StatusBadgeShape, StatusBadgeTone } from "@auction/ui/lax";
+import type { StatusBadgeShape, StatusBadgeTone } from "@auction/ui/components/status-badge";
 
 /**
  * Where a consignment stands, as the seller reads it: one status from its submission, its

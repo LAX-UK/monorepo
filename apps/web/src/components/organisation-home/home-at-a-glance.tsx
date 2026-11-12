@@ -1,6 +1,6 @@
 import type { DashboardTileView } from "@/lib/organisation-home/organisation-dashboard-view";
-import { cn } from "@auction/ui";
-import { MetricCell } from "@auction/ui/lax";
+import { MetricCell } from "@auction/ui/lax/metric-cell";
+import { cn } from "@auction/ui/lib/utils";
 import Link from "next/link";
 import { HomeSection } from "./home-section";
 

@@ -3,7 +3,7 @@
 import { timerText } from "@/components/lot-timer/format";
 import type { LotCardLineModel } from "@/lib/lot-card/lot-card-line";
 import { useCountdownTick } from "@/lib/time/use-clock";
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 import { useRef } from "react";
 
 type Clock = { words: string; compact: string };

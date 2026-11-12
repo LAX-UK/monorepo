@@ -1,5 +1,5 @@
 import { FOCUS_RING } from "@/lib/marketing/chrome";
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 
 /** Visual chrome context for shared header icon controls. */
 export type ChromeSurface = "marketing" | "shell";

@@ -2,8 +2,11 @@
 
 import { useBidAttention } from "@/hooks/use-bid-attention";
 import type { AttentionChip } from "@/lib/navigation/client-attention";
-import { MarketingAttentionStrip, type MarketingAttentionTone } from "@auction/marketing-ui";
-import { cn } from "@auction/ui";
+import {
+  MarketingAttentionStrip,
+  type MarketingAttentionTone,
+} from "@auction/marketing-ui/marketing-attention-strip";
+import { cn } from "@auction/ui/lib/utils";
 
 const TONE: Record<AttentionChip["kind"], MarketingAttentionTone> = {
   outbid: "danger",

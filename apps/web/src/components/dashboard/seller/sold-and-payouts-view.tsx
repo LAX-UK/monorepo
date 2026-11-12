@@ -29,22 +29,15 @@ import { lotPath } from "@/lib/seo/url";
 import {
   InlineActionMenu,
   type InlineActionMenuItem,
-  RecordList,
-  RecordRow,
-  RecordRowMedia,
-} from "@auction/ui";
-import {
-  ButtonLink,
-  Field,
-  FilterSheet,
-  ListToolbar,
-  NativeSelect,
-  Notice,
-  ShowingCount,
-  SortMenu,
-  StatusBadge,
-  type TabNavItem,
-} from "@auction/ui/lax";
+} from "@auction/ui/components/inline-action-menu";
+import { RecordList, RecordRow, RecordRowMedia } from "@auction/ui/components/record-row";
+import { StatusBadge } from "@auction/ui/components/status-badge";
+import { ButtonLink } from "@auction/ui/lax/button-link";
+import { Field } from "@auction/ui/lax/field";
+import { FilterSheet, ListToolbar, ShowingCount, SortMenu } from "@auction/ui/lax/list-toolbar";
+import { NativeSelect } from "@auction/ui/lax/native-select";
+import { Notice } from "@auction/ui/lax/notice";
+import type { TabNavItem } from "@auction/ui/lax/tabs";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";

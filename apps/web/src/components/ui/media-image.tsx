@@ -4,7 +4,7 @@ import { resolveMediaSrc } from "@/lib/media/resolve-media-src";
 import {
   MediaImage as SharedMediaImage,
   type MediaImageProps as SharedMediaImageProps,
-} from "@auction/marketing-ui";
+} from "@auction/marketing-ui/media/media-image";
 
 export type MediaImageProps = Omit<SharedMediaImageProps, "resolveSrc">;
 

@@ -7,7 +7,7 @@ import { lotPath } from "@/lib/seo/url";
 import { matchesEveryWord, searchParam } from "@/lib/workspace/list-search";
 import { LONDON_TIME_ZONE, formatMoment } from "@auction/datetime";
 import { purchaseIsOwned } from "@auction/domain";
-import type { StatusBadgeShape, StatusBadgeTone } from "@auction/ui/lax";
+import type { StatusBadgeShape, StatusBadgeTone } from "@auction/ui/components/status-badge";
 
 type Badge = { label: string; tone: StatusBadgeTone; shape: StatusBadgeShape };
 

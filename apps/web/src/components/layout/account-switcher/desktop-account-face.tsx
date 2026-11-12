@@ -1,6 +1,6 @@
 import type { SessionUser } from "@/lib/data/contracts";
 import type { AccountButtonView } from "@/lib/navigation/account-button.vm";
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 import { ChevronDown } from "lucide-react";
 import { AccountButtonMark } from "./account-button-mark";
 

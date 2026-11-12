@@ -1,5 +1,6 @@
 import { DashboardEmptyState } from "@/components/dashboard/primitives/dashboard-empty-state";
-import { Button, ButtonLink } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
+import { ButtonLink } from "@auction/ui/lax/button-link";
 import Link from "next/link";
 
 type Clear =

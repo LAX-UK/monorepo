@@ -1,7 +1,7 @@
 "use client";
 
 import { useLotPageViewContext } from "@/components/lot-page/lot-page-view-context";
-import { StatusBadge } from "@auction/ui/lax";
+import { StatusBadge } from "@auction/ui/components/status-badge";
 
 /** "Lot 4" and the lifecycle badge. A live lot wears the neutral badge with the live dot. */
 export function LotEyebrow({ lotNumber }: { lotNumber: number | null }) {

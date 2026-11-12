@@ -11,7 +11,7 @@ import type {
   BuyerAgentAuthorisationView,
   OrganisationBiddingLimitsView,
 } from "@auction/types";
-import type { StatusBadgeTone } from "@auction/ui/lax";
+import type { StatusBadgeTone } from "@auction/ui/components/status-badge";
 
 /**
  * "Who can bid", read from the authorisations and the limits: the organisation's own limit with
