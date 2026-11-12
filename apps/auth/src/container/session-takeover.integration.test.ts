@@ -321,6 +321,7 @@ describe.skipIf(!DATABASE_URL)("one sign-in record per browser", () => {
           records.delete(hash);
           return record;
         },
+        peek: async (hash) => records.get(hash) ?? null,
       };
     };
     const renewer = () =>

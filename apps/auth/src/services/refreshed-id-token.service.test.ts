@@ -28,6 +28,7 @@ function memoryContinuity() {
       records.delete(hash);
       return record;
     }),
+    peek: vi.fn(async (hash: string) => records.get(hash) ?? null),
   };
   return { store, records };
 }

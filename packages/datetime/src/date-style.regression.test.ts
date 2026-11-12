@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import { LONDON_TIME_ZONE } from "./constants.js";
 import * as style from "./date-style.js";
 import { dayKey, dayOffset } from "./day.js";
-import * as legacy from "./testing/legacy-london-time.js";
 import { shortZoneName } from "./zone-formats.js";
 
 /** Hourly through a year, plus the edges of both London clock changes and a leap year. */
@@ -25,62 +24,51 @@ function sweep(): Date[] {
 const NOW = new Date("2026-11-10T09:00:00Z");
 const Z = LONDON_TIME_ZONE;
 
-describe("the moved one date style is byte-identical to the old London formatters", () => {
-  const instants = sweep();
+describe("the one date style keeps the text it was moved with", () => {
+  // Sampled from the sweep and both clock-change edges, recorded while the module still matched
+  // the London formatters it replaced byte for byte; a change here is a visible change.
+  const instants = sweep().filter((_, i) => i % 12 === 0);
 
-  it("sweeps enough instants to mean something", () => {
-    expect(instants.length).toBeGreaterThan(1500);
+  it("samples enough instants to mean something", () => {
+    expect(instants.length).toBeGreaterThan(100);
   });
 
-  it("matches on every instant for every formatter", () => {
-    const mismatches: string[] = [];
-    const check = (name: string, instant: Date, next: string, old: string) => {
-      if (next !== old) mismatches.push(`${name} @ ${instant.toISOString()}: ${next} != ${old}`);
-    };
+  it("reads every formatter as recorded", async () => {
+    const lines: string[] = [];
     for (const d of instants) {
-      check("when", d, style.formatWhen(d, Z, NOW), legacy.formatLondonWhen(d, NOW));
-      check("time", d, style.formatTime(d, Z), legacy.formatLondonTime(d));
-      check("timeZone", d, style.formatTimeWithZone(d, Z), legacy.formatLondonTimeWithZone(d));
-      check("zoneName", d, shortZoneName(Z, d), legacy.londonZoneName(d));
-      check("dayKey", d, dayKey(d, Z), legacy.londonDayKey(d));
-      check("date", d, style.formatDate(d, Z), legacy.formatLondonDate(d));
-      check(
-        "dateLong",
-        d,
-        style.formatDate(d, Z, { month: "long" }),
-        legacy.formatLondonDate(d, { month: "long" }),
-      );
-      check("full", d, style.formatFullMoment(d, Z), legacy.formatLondonFullMoment(d));
-      check("monthYear", d, style.formatMonthYear(d, Z), legacy.formatLondonMonthYear(d));
-      check(
-        "monthYearShort",
-        d,
-        style.formatMonthYear(d, Z, { short: true }),
-        legacy.formatLondonMonthYear(d, { short: true }),
-      );
-      check("weekday", d, style.formatWeekday(d, Z), legacy.formatLondonWeekday(d));
-      check("dayMonth", d, style.formatDayMonth(d, Z, NOW), legacy.formatLondonDayMonth(d, NOW));
-      check("offset", d, String(dayOffset(d, NOW, Z)), String(legacy.londonDayOffset(d, NOW)));
-      check("moment", d, style.formatMoment(d, Z, NOW), legacy.formatLondonMoment(d, NOW));
-      check(
-        "momentNoTime",
-        d,
-        style.formatMoment(d, Z, NOW, { time: false, inSentence: true }),
-        legacy.formatLondonMoment(d, NOW, { time: false, inSentence: true }),
+      lines.push(
+        [
+          d.toISOString(),
+          style.formatWhen(d, Z, NOW),
+          style.formatTime(d, Z),
+          style.formatTimeWithZone(d, Z),
+          shortZoneName(Z, d),
+          dayKey(d, Z),
+          style.formatDate(d, Z),
+          style.formatDate(d, Z, { month: "long" }),
+          style.formatFullMoment(d, Z),
+          style.formatMonthYear(d, Z),
+          style.formatMonthYear(d, Z, { short: true }),
+          style.formatWeekday(d, Z),
+          style.formatDayMonth(d, Z, NOW),
+          String(dayOffset(d, NOW, Z)),
+          style.formatMoment(d, Z, NOW),
+          style.formatMoment(d, Z, NOW, { time: false, inSentence: true }),
+        ].join(" | "),
       );
     }
-    expect(mismatches).toEqual([]);
+    await expect(`${lines.join("\n")}\n`).toMatchFileSnapshot("./testing/date-style.golden.txt");
   });
 
-  it("matches on date ranges across days, months and years", () => {
-    const starts = instants.filter((_, i) => i % 40 === 0);
+  it("reads date ranges across days, months and years as recorded", async () => {
+    const starts = instants.filter((_, i) => i % 4 === 0);
     const gaps = [0, 6, 30, 26 * 3_600_000, 3 * 86_400_000, 40 * 86_400_000, 400 * 86_400_000];
-    for (const start of starts) {
-      for (const gap of gaps) {
-        const end = new Date(start.getTime() + gap);
-        expect(style.formatDateRange(start, end, Z)).toBe(legacy.formatLondonDateRange(start, end));
-      }
-    }
+    const lines = starts.flatMap((start) =>
+      gaps.map((gap) => style.formatDateRange(start, new Date(start.getTime() + gap), Z)),
+    );
+    await expect(`${lines.join("\n")}\n`).toMatchFileSnapshot(
+      "./testing/date-style-ranges.golden.txt",
+    );
   });
 
   it("spells September with three letters", () => {

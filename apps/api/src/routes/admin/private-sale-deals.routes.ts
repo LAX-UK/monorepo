@@ -8,7 +8,9 @@ import {
 import {
   type StaffDealAction,
   adminDealActionSchema,
+  adminDealArtworkRemoveSchema,
   adminDealArtworkSearchQuerySchema,
+  adminDealArtworkSetSchema,
   adminDealBuyerSchema,
   adminDealListQuerySchema,
   adminDealTermsPatchSchema,
@@ -53,6 +55,14 @@ const WRITE_ERROR_STATUS = {
   buyer_is_seller: 422,
   blocked: 422,
   payment_in_progress: 409,
+  artwork_choice_required: 422,
+  artwork_locked: 409,
+  artwork_unchanged: 422,
+  reason_required: 422,
+  artwork_not_found: 422,
+  artwork_not_original: 422,
+  artwork_unavailable: 409,
+  artwork_register_busy: 503,
   unavailable: 503,
 } as const satisfies Record<DealWriteError, 403 | 404 | 409 | 422 | 503>;
 
@@ -139,6 +149,41 @@ export function attachAdminPrivateSaleDealRoutes(
     },
   );
 
+  /**
+   * PUT /admin/private-sales/:ref/artwork — link an artwork, change it, or record why the deal has
+   * none. The artwork is held through the register's lock in the same transaction.
+   */
+  admin.put(
+    "/private-sales/:ref/artwork",
+    requirePrivateSaleDealsManage,
+    zValidator("param", privateSaleRefParamSchema),
+    zValidator("json", adminDealArtworkSetSchema),
+    async (c) => {
+      const result = await container.admin.privateSaleDeals.set(
+        viewerOf(c),
+        c.req.valid("param").ref,
+        c.req.valid("json"),
+      );
+      return respond(c, result);
+    },
+  );
+
+  /** DELETE /admin/private-sales/:ref/artwork — take the artwork off a deal still being offered, and release it. */
+  admin.delete(
+    "/private-sales/:ref/artwork",
+    requirePrivateSaleDealsManage,
+    zValidator("param", privateSaleRefParamSchema),
+    zValidator("json", adminDealArtworkRemoveSchema),
+    async (c) => {
+      const result = await container.admin.privateSaleDeals.remove(
+        viewerOf(c),
+        c.req.valid("param").ref,
+        c.req.valid("json"),
+      );
+      return respond(c, result);
+    },
+  );
+
   // Moving money needs a recent sign-in and a key that makes a retry safe. Which moves move money
   // is read from the permission table, not from the path, so a new money move is guarded the
   // moment it is given the finance ability.
@@ -182,6 +227,8 @@ function respond(c: Context, result: WriteResult) {
       ...(result.fields ? { fields: result.fields } : {}),
       ...(result.blockers ? { blockers: result.blockers } : {}),
       ...(result.currentVersion !== undefined ? { currentVersion: result.currentVersion } : {}),
+      ...(result.lock ? { lock: result.lock } : {}),
+      ...(result.message ? { message: result.message } : {}),
     },
     WRITE_ERROR_STATUS[result.error],
   );

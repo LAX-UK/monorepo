@@ -227,11 +227,17 @@ export const DEAL_ACTION_COPY = {
   cancel: {
     label: "Cancel the deal",
     effect: (deal) =>
-      deal.stage === "paid" || deal.stage === "released"
-        ? "Cancels the deal. The buyer must be refunded first."
-        : deal.stage === "invoiced"
-          ? "Cancels the deal and ends the buyer's open payment, so it can't be paid afterwards."
-          : "Cancels the deal. It can't be reopened.",
+      `${
+        deal.stage === "paid" || deal.stage === "released"
+          ? "Cancels the deal. The buyer must be refunded first."
+          : deal.stage === "invoiced"
+            ? "Cancels the deal and ends the buyer's open payment, so it can't be paid afterwards."
+            : "Cancels the deal. It can't be reopened."
+      }${
+        deal.artwork
+          ? ` Releases ${deal.artwork.title}: it shows as Withdrawn for 30 days and can be offered again.`
+          : ""
+      }`,
     confirm: "Cancel deal",
     reason: {
       label: "Reason",

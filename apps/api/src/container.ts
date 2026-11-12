@@ -44,6 +44,7 @@ import { createComplianceRouteServices } from "./container/create-compliance-rou
 import { createConsignmentMessageServices } from "./container/create-consignment-message-services.js";
 import { createCronServices } from "./container/create-cron-services.js";
 import { createDealArtworkSearch } from "./container/create-deal-artwork-search.js";
+import { createDealLockLinks } from "./container/create-deal-lock-links.js";
 import { createFinanceRouteServices } from "./container/create-finance-route-services.js";
 import { createIdentityRouteServices } from "./container/create-identity-route-services.js";
 import { createInfra } from "./container/create-infra.js";
@@ -65,6 +66,7 @@ import { createPaymentsServices } from "./container/create-payments-services.js"
 import { createPlatformCronRouteServices } from "./container/create-platform-cron-route-services.js";
 import { createPlatformServices } from "./container/create-platform-services.js";
 import { createPurchaseProblemDesk } from "./container/create-purchase-problem-desk.js";
+import { createReofferServices } from "./container/create-reoffer-services.js";
 import { createRepositories } from "./container/create-repositories.js";
 import { createSubmissionRouteServices } from "./container/create-submission-route-services.js";
 import { createUserMiscServices } from "./container/create-user-misc-services.js";
@@ -507,6 +509,7 @@ export function createContainer(env: Env): Container {
     onPayoutTotalsMismatch: (report) =>
       createBaseLogger(env).warn(report, "payout totals differ from payout lines"),
   });
+  const reoffer = createReofferServices({ env, db, platform, repos, payments });
   const organisationWorkspace = createOrganisationWorkspaceServices({
     db,
     legalEntities: repos.legalEntityRepository,
@@ -838,7 +841,11 @@ export function createContainer(env: Env): Container {
       marketingEnquiries: marketingEnquiries.desk,
       privateSaleDeals: payments.privateSaleDeals.desk,
       enquiryConversion: payments.privateSaleDeals.conversion,
-      dealArtworks: createDealArtworkSearch({ db, media: complianceMedia.mediaUrlResolver }),
+      dealArtworks: createDealArtworkSearch({
+        db,
+        media: complianceMedia.mediaUrlResolver,
+        lockLinks: createDealLockLinks({ db, env }),
+      }),
       enquiryRouting: marketingEnquiries.routing,
       purchaseProblems: createPurchaseProblemDesk({
         db,
@@ -883,6 +890,7 @@ export function createContainer(env: Env): Container {
     organisationHome,
     organisationBuying: organisationBuying.client,
     organisationSelling,
+    reoffer,
     organisationAccess,
     organisationWorkspace,
     organisationTeam,
@@ -932,6 +940,7 @@ export type {
   ContainerOrganisationHomeRoutesSlice,
   ContainerOrganisationBuyingRoutesSlice,
   ContainerOrganisationSellingRoutesSlice,
+  ContainerReofferRoutesSlice,
   ContainerOrganisationAccessRoutesSlice,
   ContainerOrganisationWorkspaceRoutesSlice,
   ContainerOrganisationTeamRoutesSlice,

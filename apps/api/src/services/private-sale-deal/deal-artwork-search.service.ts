@@ -3,10 +3,7 @@ import {
   type OfferPlaceDetail,
   type OfferPlaceRef,
   checkOfferable,
-  deriveWhereItIs,
-  offerMovesOf,
   offerRefusal,
-  withdrawalOf,
 } from "@auction/artwork-register-contracts";
 import { canViewEnquiry } from "@auction/domain";
 import type {
@@ -18,21 +15,16 @@ import type {
   IOpenLotPlaceReader,
   OpenLotPlace,
 } from "@auction/persistence/interfaces";
-import type {
-  AdminDealArtworkSearchQuery,
-  DealArtworkLock,
-  DealArtworkOption,
-} from "@auction/validators";
+import type { AdminDealArtworkSearchQuery, DealArtworkOption } from "@auction/validators";
 import type {
   DealArtworkSearchOutcome,
   IDealArtworkSearch,
 } from "../interfaces/private-sale-deal-desk.js";
+import { DealArtworkPresenter } from "./deal-artwork-presenter.js";
+import type { DealLockLinks } from "./deal-lock-links.js";
 
 /** Enough matches to put the artworks that can be held first, without reading the whole register. */
 export const ARTWORK_SEARCH_CANDIDATES = 200;
-
-/** How much of an artwork's history is read to tell when a withdrawn artwork was withdrawn. */
-const HISTORY_EVENTS = 200;
 
 /**
  * Asked of the register as if a new deal wanted the artwork. No deal exists yet, so no place
@@ -49,6 +41,8 @@ export type DealArtworkSearchDeps = {
   enquiries: Pick<IMarketingEnquiryRepository, "findByRef">;
   works: Pick<IDealWorkStore, "findByReference">;
   media: { resolveManyUnique(keys: readonly string[]): Promise<Map<string, string>> };
+  /** Gives each refusal's link its address. */
+  lockLinks: Pick<DealLockLinks, "attach">;
   now?: () => Date;
 };
 
@@ -84,7 +78,11 @@ function placeDetail(
  * opens, and the same words when it would not. Artworks that can be held come first.
  */
 export class DealArtworkSearchService implements IDealArtworkSearch {
-  constructor(private readonly deps: DealArtworkSearchDeps) {}
+  private readonly presenter: DealArtworkPresenter;
+
+  constructor(private readonly deps: DealArtworkSearchDeps) {
+    this.presenter = new DealArtworkPresenter(deps);
+  }
 
   async search(
     viewer: { userId: string; readsPrivateSale: boolean },
@@ -125,6 +123,7 @@ export class DealArtworkSearchService implements IDealArtworkSearch {
         items: page.map(optionOf),
         hasMore: ordered.length > query.limit || entries.length >= ARTWORK_SEARCH_CANDIDATES,
         preselected: preselected ? optionOf(preselected) : null,
+        suggestion: useSuggestion ? suggest : null,
       },
     };
   }
@@ -173,65 +172,36 @@ export class DealArtworkSearchService implements IDealArtworkSearch {
   }
 
   private async present(candidates: readonly Candidate[]): Promise<DealArtworkOption[]> {
-    const now = (this.deps.now ?? (() => new Date()))();
-    const [places, thumbnails, histories] = await Promise.all([
-      this.deps.places.listOpenLotPlaces(candidates.map((c) => c.entry.id)),
-      this.thumbnails(candidates),
-      this.withdrawals(candidates),
-    ]);
-    const placeOf = new Map(places.map((place) => [place.registerId, place]));
+    const presented = await this.presenter.present(candidates.map((c) => c.entry));
+    // The sale and lot make the refusal say where; without them it says what the register says.
+    const refused = candidates.flatMap(({ entry, refusal }) => {
+      const place = presented.get(entry.id)?.place;
+      return refusal
+        ? [
+            {
+              entry,
+              lock: offerRefusal(refusal.reason, refusal.state, placeDetail(place, entry.offer)),
+            },
+          ]
+        : [];
+    });
+    const locks = new Map(
+      (await this.deps.lockLinks.attach(refused)).map((lock, index) => [
+        (refused[index] as (typeof refused)[number]).entry.id,
+        lock,
+      ]),
+    );
     return candidates.map(({ entry, refusal, suggested }) => {
-      const place = placeOf.get(entry.id);
-      const whereItIs = deriveWhereItIs({
-        offer: entry.offer,
-        now,
-        withdrawn: histories.get(entry.id) ?? null,
-        hasBidDraftLot: place?.status === "draft",
-      });
-      // The sale and lot make the refusal say where; without them it says what the register says.
-      const lock: DealArtworkLock | undefined = refusal
-        ? offerRefusal(refusal.reason, refusal.state, placeDetail(place, entry.offer))
-        : undefined;
+      const { summary } = presented.get(entry.id) as NonNullable<ReturnType<typeof presented.get>>;
+      const lock = locks.get(entry.id);
+      const { draftLot, ...rest } = summary;
       return {
-        id: entry.id,
-        title: entry.title,
-        artist: entry.artist.name,
-        medium: entry.medium,
-        size: entry.dimensions,
-        stockCode: entry.stockCode,
-        catalogueStatus: entry.catalogueStatus,
-        thumbnailUrl: thumbnails.get(entry.id) ?? null,
-        whereItIs: { key: whereItIs.key, chip: whereItIs.chip },
+        ...rest,
         available: refusal === null,
         ...(lock ? { lock } : {}),
         suggested,
+        ...(draftLot ? { draftLot } : {}),
       };
     });
-  }
-
-  private async thumbnails(candidates: readonly Candidate[]): Promise<Map<string, string>> {
-    const covers = candidates.flatMap(({ entry }) =>
-      entry.imageRefs[0] ? [{ id: entry.id, ref: entry.imageRefs[0] }] : [],
-    );
-    if (covers.length === 0) return new Map();
-    const resolved = await this.deps.media.resolveManyUnique(covers.map((c) => c.ref));
-    return new Map(
-      covers.flatMap(({ id, ref }) => {
-        const url = resolved.get(ref);
-        return url ? [[id, url] as const] : [];
-      }),
-    );
-  }
-
-  /** When a withdrawn artwork was withdrawn, so its chip reads the same here as on its own page. */
-  private async withdrawals(candidates: readonly Candidate[]) {
-    const withdrawn = candidates.filter((c) => c.entry.offer.state === "withdrawn");
-    const found = await Promise.all(
-      withdrawn.map(async ({ entry }) => {
-        const events = await this.deps.register.listEvents(entry.id, HISTORY_EVENTS);
-        return [entry.id, withdrawalOf(offerMovesOf(events), entry.offer.state)] as const;
-      }),
-    );
-    return new Map(found);
   }
 }

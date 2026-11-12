@@ -16,6 +16,7 @@ import {
 } from "../jobs/register-lot-integrity-check.job.js";
 import {
   ZOHO_ARTWORK_NIGHTLY_JOB_NAME,
+  ZOHO_ARTWORK_NIGHTLY_MONITOR_KEY,
   ZOHO_ARTWORK_NIGHTLY_PATTERN,
   ZOHO_ARTWORK_NIGHTLY_TIME_ZONE,
 } from "../jobs/zoho-artwork-sync.job.js";
@@ -26,9 +27,11 @@ import {
 } from "../jobs/zoho-campaigns-suppression-sync.job.js";
 import {
   ZOHO_LISTING_NIGHTLY_JOB_NAME,
+  ZOHO_LISTING_NIGHTLY_MONITOR_KEY,
   ZOHO_LISTING_NIGHTLY_PATTERN,
   ZOHO_LISTING_NIGHTLY_TIME_ZONE,
 } from "../jobs/zoho-listing-reconcile.job.js";
+import { withSentryCronMonitor } from "../lib/sentry-cron.js";
 import type { WorkerBootstrapDeps, WorkerErrorHandlerEntry } from "./types.js";
 import { closeAll } from "./worker-utils.js";
 
@@ -59,6 +62,7 @@ export function registerWebhookWorker(input: RegisterWebhookWorkerInput): Webhoo
     runZohoListingNightlyCheck,
     runRegisterLotIntegrityCheck,
     runZohoCampaignsSuppressionSync,
+    sentryMonitorSlugs,
     queueOpts,
     log,
   } = input;
@@ -81,7 +85,11 @@ export function registerWebhookWorker(input: RegisterWebhookWorkerInput): Webhoo
       if (job.name === ZOHO_ARTWORK_NIGHTLY_JOB_NAME) {
         if (!runZohoArtworkNightlyCheck)
           throw new Error("zoho artwork nightly check not configured");
-        await runZohoArtworkNightlyCheck();
+        await withSentryCronMonitor(
+          ZOHO_ARTWORK_NIGHTLY_MONITOR_KEY,
+          sentryMonitorSlugs,
+          runZohoArtworkNightlyCheck,
+        );
         await heartbeat("webhook-events");
         return;
       }
@@ -97,7 +105,11 @@ export function registerWebhookWorker(input: RegisterWebhookWorkerInput): Webhoo
       if (job.name === ZOHO_LISTING_NIGHTLY_JOB_NAME) {
         if (!runZohoListingNightlyCheck)
           throw new Error("zoho listing nightly check not configured");
-        await runZohoListingNightlyCheck();
+        await withSentryCronMonitor(
+          ZOHO_LISTING_NIGHTLY_MONITOR_KEY,
+          sentryMonitorSlugs,
+          runZohoListingNightlyCheck,
+        );
         await heartbeat("webhook-events");
         return;
       }

@@ -31,6 +31,32 @@ async function previousFolderMillis(): Promise<number> {
   return previous.when;
 }
 
+/**
+ * Rolls back, newest first, every migration journalled after this one that has a rollback file.
+ * A later migration can hang a table or constraint off bid_invoice (a foreign key, for one), and
+ * Postgres refuses to drop the table while it does. Rolling back in reverse journal order is the
+ * order a real rollback takes, and it needs no change here when the next dependent is added.
+ */
+async function rollBackLaterMigrations(pool: pg.Pool): Promise<void> {
+  const journal = JSON.parse(await readDrizzle("meta/_journal.json")) as {
+    entries: { tag: string }[];
+  };
+  const index = journal.entries.findIndex((entry) => entry.tag === TAG);
+  if (index < 0) throw new Error(`${TAG} is not in the journal`);
+  const later = journal.entries.slice(index + 1).reverse();
+  for (const { tag } of later) {
+    const rollbackFile = `${tag.slice(0, 4)}_rollback.sql`;
+    let sql: string;
+    try {
+      sql = await readDrizzle(rollbackFile);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") continue;
+      throw error;
+    }
+    await pool.query(sql);
+  }
+}
+
 type Fixture = {
   buyer: string;
   seller: string;
@@ -475,6 +501,7 @@ describe.skipIf(!migrationUrl)("migration 0319 bid invoices", { timeout: 120_000
   it("rolls back cleanly, and can be applied again", async () => {
     await withTemporaryDatabase(async (pool) => {
       await runMigrationsPerTransaction(pool);
+      await rollBackLaterMigrations(pool);
       await pool.query(await readDrizzle("0319_rollback.sql"));
       const gone = await pool.query<{ n: string }>(
         `select count(*)::text as n from information_schema.tables

@@ -1336,6 +1336,12 @@ export {
 } from "./reoffer-next-bidder.js";
 export { claimableShortfall, type ClaimableShortfall } from "./reoffer-shortfall.js";
 export {
+  reawardGuard,
+  type ReawardGuard,
+  type ReawardGuardCode,
+  type ReawardGuardFacts,
+} from "./reoffer-reaward.js";
+export {
   reawardBlock,
   reofferStartBlock,
   type ReofferBlock,
@@ -1349,6 +1355,14 @@ export {
   sellerConsentWindow,
   type SellerConsentWindow,
 } from "./reoffer-windows.js";
+export {
+  reofferResponseBlock,
+  reofferSendBlock,
+  type ReofferResponseBlockCode,
+  type ReofferSendBlock,
+  type ReofferSendBlockCode,
+  type ReofferSendFacts,
+} from "./reoffer-guards.js";
 export { paymentIsPaidOrBeingPaid, paymentIsSettling } from "./buyer-default.js";
 
 export {

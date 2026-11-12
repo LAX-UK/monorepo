@@ -28,6 +28,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@auction/datetime": "workspace:*",
     "@auction/shop-contracts": "workspace:*",
     "@auction/ui": "workspace:*",
     "@stripe/connect-js": "^3.3.31",

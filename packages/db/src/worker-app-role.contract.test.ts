@@ -11,6 +11,8 @@ import {
   WORKER_ACCOUNTING_READ_TABLES,
   WORKER_DENY_TABLES,
   WORKER_EMAIL_SUPPRESSION_UPDATE_COLUMNS,
+  WORKER_REOFFER_TABLES,
+  WORKER_REOFFER_UPDATE_COLUMNS,
   WORKER_SHOP_ENQUIRY_READ_COLUMNS,
   WORKER_SHOP_ORDER_READ_COLUMNS,
   WORKER_SHOP_PRINT_GROUP_READ_COLUMNS,
@@ -101,6 +103,56 @@ describe.skipIf(!WORKER_URL)("worker_app role contract", { timeout: 60_000 }, ()
       expectTablePrivileges(history, (row) => row.privilege === "INSERT");
       const settings = await readTablePrivileges(client, WORKER_ACCOUNTING_READ_TABLES, privileges);
       expectTablePrivileges(settings, (row) => row.privilege === "SELECT");
+    });
+  });
+
+  it("reads re-offers and seller answers and updates only where a request or offer stands", async () => {
+    await withWorkerClient(async (client) => {
+      const rows = await readTablePrivileges(
+        client,
+        [...WORKER_REOFFER_TABLES],
+        ["SELECT", "INSERT", "UPDATE", "DELETE"],
+      );
+      // UPDATE is granted by column, so the table-level check sees SELECT only.
+      expectTablePrivileges(rows, (row) => row.privilege === "SELECT");
+      for (const table of WORKER_REOFFER_TABLES) {
+        const columns = await client.query<{ column_name: string; allowed: boolean }>(
+          `select column_name,
+                  has_column_privilege(current_user, 'public.' || $1, column_name, 'UPDATE') as allowed
+             from information_schema.columns
+            where table_schema = 'public' and table_name = $1`,
+          [table],
+        );
+        const updatable = columns.rows.filter((row) => row.allowed).map((row) => row.column_name);
+        expect(updatable.sort(), table).toEqual([...WORKER_REOFFER_UPDATE_COLUMNS[table]].sort());
+      }
+      // Written out, so widening a grant is a visible change here and not only in the constant:
+      // the status moves a sweep makes, a lapse (an answer given by the clock) and the reminder.
+      const updatableOf = async (table: string) =>
+        (
+          await client.query<{ column_name: string }>(
+            `select column_name from information_schema.columns
+              where table_schema = 'public' and table_name = $1
+                and has_column_privilege(current_user, 'public.' || $1, column_name, 'UPDATE')
+              order by column_name`,
+            [table],
+          )
+        ).rows.map((row) => row.column_name);
+      expect(await updatableOf("lot_reoffer")).toEqual([
+        "close_reason",
+        "closed_by",
+        "status",
+        "updated_at",
+      ]);
+      expect(await updatableOf("seller_consent")).toEqual([
+        "answered_at",
+        "answered_by_user_id",
+        "channel",
+        "note",
+        "preferred_next",
+        "reminded_at",
+        "status",
+      ]);
     });
   });
 

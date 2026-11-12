@@ -1,4 +1,5 @@
-"use client";
+import { LONDON_TIME_ZONE, formatDayMonthOnly, formatTime } from "@auction/datetime";
+("use client");
 
 import {
   type CountdownTier,
@@ -19,15 +20,6 @@ const TIER_TONE: Record<CountdownTier, string> = {
   critical: "text-danger-on-surface",
 };
 
-/** "1 Nov, 12:00", in UK time, the same on the server and in every browser. */
-const CLOSING_TIME = new Intl.DateTimeFormat("en-GB", {
-  day: "numeric",
-  month: "short",
-  hour: "2-digit",
-  minute: "2-digit",
-  timeZone: "Europe/London",
-});
-
 /**
  * Time left before a lot closes, in words ("4m 12s"), ticking each second. It warms to amber in
  * the last hour and red in the last ten minutes. The visible text is hidden from screen readers,
@@ -42,7 +34,7 @@ export function BidCloseCountdown({ endsAt, className }: { endsAt: string; class
   if (now == null) {
     return (
       <time dateTime={endsAt} className={cn("tabular-nums text-on-surface", className)}>
-        {CLOSING_TIME.format(end)}
+        {`${formatDayMonthOnly(new Date(end), LONDON_TIME_ZONE)}, ${formatTime(new Date(end), LONDON_TIME_ZONE)}`}
       </time>
     );
   }

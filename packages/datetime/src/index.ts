@@ -73,8 +73,8 @@ export {
   formatWeekdayDate,
   formatWeekdayDateTime,
   formatWeekdayDayMonth,
-  runtimeTimeZone,
 } from "./calendar-formats.js";
+export { runtimeTimeZone } from "./runtime-zone.js";
 export {
   defaultScheduleInstants,
   instantFromDatetimeFormString,
