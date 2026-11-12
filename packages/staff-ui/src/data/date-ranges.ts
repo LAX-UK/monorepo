@@ -3,7 +3,7 @@
  * a client module is only a client reference on the server.
  */
 
-import { LONDON_TIME_ZONE, dayKey } from "@auction/datetime";
+import { LONDON_TIME_ZONE, addCalendarDays, dayKey } from "@auction/datetime";
 
 export type DayRange = { from: string; to: string };
 
@@ -12,11 +12,17 @@ export function londonToday(now: Date = new Date()): string {
   return dayKey(now, LONDON_TIME_ZONE);
 }
 
+/** The London day `days` after `day` (`YYYY-MM-DD`); negative goes back. */
+export function shiftDay(day: string, days: number): string {
+  return dayKey(
+    addCalendarDays(new Date(`${day}T12:00:00Z`), days, LONDON_TIME_ZONE),
+    LONDON_TIME_ZONE,
+  );
+}
+
 /** The day `count` days before `day` (`YYYY-MM-DD`). */
 export function daysBefore(day: string, count: number): string {
-  const date = new Date(`${day}T00:00:00Z`);
-  date.setUTCDate(date.getUTCDate() - count);
-  return date.toISOString().slice(0, 10);
+  return shiftDay(day, -count);
 }
 
 export type DateRangePreset = { id: string; label: string; range: (today: string) => DayRange };

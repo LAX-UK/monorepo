@@ -3,6 +3,9 @@ import type {
   DraftLotAnswer,
   DraftLotRequest,
   DraftLotSummary,
+  LotCatalogueFacts,
+  LotCatalogueUpdateAnswer,
+  LotCatalogueUpdateRequest,
 } from "@auction/artwork-register-contracts";
 
 /** What lax.art holds about an original that a move needs: its facts, and where it stands. */
@@ -42,4 +45,11 @@ export interface AuctionOfferGateway {
   createDraftLot(request: DraftLotRequest): Promise<DraftLotAnswer>;
   /** The draft lot LAX Bid holds for a register record, if any. */
   findDraftLot(registerId: string): Promise<DraftLotSummary | null>;
+  /** What the lot holding a register record's place says, to compare with Zoho; null when none does. */
+  findLotCatalogue(registerId: string): Promise<LotCatalogueFacts | null>;
+  /** Gives a draft lot Zoho's details. LAX Bid refuses (`lot_not_draft`) for anything but a draft. */
+  updateLotCatalogue(
+    registerId: string,
+    request: LotCatalogueUpdateRequest,
+  ): Promise<LotCatalogueUpdateAnswer>;
 }

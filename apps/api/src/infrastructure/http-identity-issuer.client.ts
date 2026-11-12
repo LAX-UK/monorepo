@@ -6,10 +6,13 @@ import {
   type AccountTimeZone,
   type AccountTimeZoneChange,
   STAFF_EMAIL_CHANGE_MACHINE_SCOPE,
+  type SignInMethodKinds,
   accountAddressResultSchema,
   accountAddressesSchema,
   accountDeletionOutcomeSchema,
   accountTimeZoneSchema,
+  identitySignInMethodKindsPath,
+  signInMethodKindsSchema,
   staffEmailChangeCancelledSchema,
   staffEmailChangeResultSchema,
 } from "@auction/identity-contracts";
@@ -280,6 +283,24 @@ export class HttpIdentityIssuerClient
           "securityStatus.emailChangeExpiresAt",
         ),
       };
+    } catch (error) {
+      if (
+        error instanceof IdentityIssuerClientError &&
+        error.status === 404 &&
+        error.code === "subject_not_found"
+      ) {
+        return null;
+      }
+      throw error;
+    }
+  }
+
+  async readSignInMethodKinds(subjectId: string): Promise<SignInMethodKinds | null> {
+    try {
+      const body = await this.machineRequest("GET", identitySignInMethodKindsPath(subjectId));
+      const parsed = isRecord(body) ? signInMethodKindsSchema.safeParse(body.kinds) : null;
+      if (!parsed?.success) throw invalidResponse("sign-in method kinds");
+      return parsed.data;
     } catch (error) {
       if (
         error instanceof IdentityIssuerClientError &&

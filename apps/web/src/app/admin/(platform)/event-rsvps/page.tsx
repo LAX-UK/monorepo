@@ -6,6 +6,7 @@ import {
 import { loadAdminEventRsvpsHubPage } from "@/lib/admin/events/load-event-rsvps-hub-page";
 import { peopleRangeSummary } from "@/lib/admin/people/clients-staff-list.vm";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
+import { formatStaffNumber } from "@auction/staff-ui";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = metadataForPrivate(
@@ -32,17 +33,17 @@ export default async function AdminEventRsvpsPage({
       search={sp}
       counts={result.counts}
       metrics={[
-        { id: "upcoming", label: "Upcoming", value: upcoming.toLocaleString("en-GB") },
+        { id: "upcoming", label: "Upcoming", value: formatStaffNumber(upcoming) },
         {
           id: "published",
           label: "Published",
-          value: publishedCount.toLocaleString("en-GB"),
+          value: formatStaffNumber(publishedCount),
           href: `${EVENT_RSVPS_LIST_PATH}?status=published`,
         },
         {
           id: "rsvps",
           label: "RSVPs, all events",
-          value: result.totalRsvps.toLocaleString("en-GB"),
+          value: formatStaffNumber(result.totalRsvps),
         },
       ]}
       sort={result.sort}

@@ -62,11 +62,13 @@ function detail(patch: Partial<AdminRegisterDetail> = {}): AdminRegisterDetail {
     year: 2024,
     imageCount: 3,
     catalogueStatus: "Available",
+    zohoPrice: null,
     offerState: "held",
     whereItIs: NOT_OFFERED,
     laxArt: null,
     offerBlockers: [],
     auctionBlockers: [],
+    catalogueChanges: [],
     missing: [],
     zohoModifiedAt: "2026-11-04T09:40:00.000Z",
     createdAt: "2026-11-02T02:10:00.000Z",
@@ -102,6 +104,39 @@ function show(
     </StaffTooltipProvider>,
   );
 }
+
+describe("FromZohoRecord: Zoho changed since it was listed", () => {
+  it("shows the difference above Where it is, for each copy that no longer matches", () => {
+    show(
+      detail({
+        catalogueChanges: [
+          {
+            copy: "bid_lot",
+            state: "in_sale",
+            comparison: [
+              {
+                field: "title",
+                label: "Title",
+                laxArtValue: "Tidal margin IV",
+                zohoValue: "Tidal margin V",
+                changes: true,
+              },
+            ],
+            canUpdate: false,
+            note: "This lot is in a sale that is live or coming up, so it is not changed from Zoho.",
+          },
+        ],
+      }),
+    );
+    expect(screen.getByText("Zoho changed since it was listed: Bid lot")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Update from Zoho/ })).not.toBeInTheDocument();
+  });
+
+  it("shows nothing extra when every copy matches", () => {
+    show(detail());
+    expect(screen.queryByText(/Zoho changed since it was listed/)).not.toBeInTheDocument();
+  });
+});
 
 describe("FromZohoRecord offer on lax.art", () => {
   beforeEach(() => assess.mockReset());
