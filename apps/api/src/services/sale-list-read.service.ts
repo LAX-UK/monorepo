@@ -1,6 +1,7 @@
 import type { SaleResultsSummary } from "@auction/domain";
 import type {
   ILotRepository,
+  IPublicLotResultReader,
   ISaleChannelReader,
   ISaleRepository,
 } from "@auction/persistence/interfaces";
@@ -13,6 +14,7 @@ import {
 } from "@auction/validators";
 import { mapLotToSummary } from "../lib/mappers.js";
 import { presentSalesWithLotsImages } from "../lib/media-presenters.js";
+import { withPublicLotResults } from "../lib/public-lot-result.js";
 import type { MediaAssetEnricher } from "./media-asset-enricher.js";
 import type { MediaUrlResolver } from "./media-url-resolver.js";
 import type { ISaleResultsSummaryService } from "./sale-results-summary.service.js";
@@ -43,6 +45,8 @@ export class SaleListReadService implements ISaleListReadService {
     private readonly mediaAssetEnricher: MediaAssetEnricher,
     private readonly saleChannelReader: Pick<ISaleChannelReader, "getSaleOwnerships"> | null = null,
     private readonly resultsSummaries: ISaleResultsSummaryService | null = null,
+    /** Lots whose result is still open; the public preview shows only that they ended. */
+    private readonly publicLotResults: IPublicLotResultReader | null = null,
   ) {}
 
   async listForPublicApi(
@@ -73,10 +77,14 @@ export class SaleListReadService implements ISaleListReadService {
 
     const saleIds = sales.map((s) => s.id);
     const visibilityOpts = canPreview ? undefined : { publicOnly: true as const };
-    const [lotCounts, previewLots] = await Promise.all([
+    const [lotCounts, foundPreviewLots] = await Promise.all([
       this.lotRepo.countLotsBySaleIds(saleIds, visibilityOpts),
       this.lotRepo.findPreviewLotsBySaleIds(saleIds, PREVIEW_LOTS_PER_SALE, visibilityOpts),
     ]);
+    // Staff see the real buyer and price; everyone else sees an open result as "ended".
+    const previewLots = canPreview
+      ? foundPreviewLots
+      : await withPublicLotResults(this.publicLotResults, foundPreviewLots);
 
     const previewsBySale = new Map<string, Lot[]>();
     for (const lot of previewLots) {

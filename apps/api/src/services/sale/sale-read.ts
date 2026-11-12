@@ -127,7 +127,24 @@ export async function listSalesForPublicApi(
         : {}),
     ...(canPreview ? {} : { includeAtgOwnedDrafts: true, excludeTestSales: true }),
   };
-  const rows = await list(deps, queryFilter);
+  const listed = await list(deps, queryFilter);
+  // Staff see the real buyer and price; everyone else sees an open result as "ended".
+  const shown = canPreview
+    ? null
+    : new Map(
+        (
+          await withPublicLotResults(
+            deps.publicLotResults,
+            listed.flatMap(({ lots }) => lots),
+          )
+        ).map((lot) => [lot.id, lot]),
+      );
+  const rows = shown
+    ? listed.map(({ sale, lots }) => ({
+        sale,
+        lots: lots.map((lot) => shown.get(lot.id) ?? lot),
+      }))
+    : listed;
   const data = await presentSalesWithLotsImages(
     deps.catalogueMediaUrlResolver,
     rows,

@@ -298,6 +298,7 @@ export function createLotCatalogServices(
     mediaAssetEnricher,
     saleChannelReader,
     saleResultsSummaryService,
+    repos.publicLotResultReader,
   );
   const pressArchiveReadService = new PressArchiveReadService(
     new SalePressArchiveRepository(saleRepo),
