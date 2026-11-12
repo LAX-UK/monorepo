@@ -45,12 +45,26 @@ function createApp(
     saleId: body.saleId,
     saleTitle: "Winter sale",
   });
+  const describe = vi.fn().mockResolvedValue({
+    lotId: "33333333-3333-4333-8333-333333333333",
+    status: "draft",
+    saleStatus: "draft",
+    title: "Blue",
+    medium: null,
+    dimensions: null,
+    imageUrls: [],
+  });
+  const updateDraft = vi.fn().mockResolvedValue({
+    ok: true,
+    data: { lotId: "33333333-3333-4333-8333-333333333333" },
+  });
   const app = new Hono().route(
     "/internal/inventory",
     createInternalInventoryRoutes(
       {
         inventoryMoves: {
           draftLots: { listSales, createDraft, findDraft },
+          lotCatalogue: { describe, updateDraft },
           returnToLaxArt: {} as never,
           unlinkedOriginals: {} as never,
         },
@@ -58,7 +72,7 @@ function createApp(
       env as never,
     ),
   );
-  return { app, listSales, createDraft, findDraft };
+  return { app, listSales, createDraft, findDraft, describe, updateDraft };
 }
 
 describe("internal inventory routes (Bid)", () => {
@@ -164,5 +178,37 @@ describe("internal inventory routes (Bid)", () => {
       error: "sale_not_open",
       message: "That sale is no longer open for new lots.",
     });
+  });
+
+  it("tells LAX Admin what the lot holding a record says", async () => {
+    const { app, describe } = createApp();
+    const response = await app.request(`/internal/inventory/lot-catalogue/${body.registerId}`, {
+      headers,
+    });
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ lot: { status: "draft", title: "Blue" } });
+    expect(describe).toHaveBeenCalledWith(body.registerId);
+  });
+
+  it("asks a draft lot to take Zoho's details, and passes a refusal on", async () => {
+    const { app, updateDraft } = createApp();
+    const send = () =>
+      app.request(`/internal/inventory/lot-catalogue/${body.registerId}`, {
+        method: "POST",
+        headers: { ...headers, "content-type": "application/json" },
+        body: JSON.stringify({
+          actor: "staff:abc",
+          content: { title: "Green", medium: "Oil", dimensions: null, imageUrls: [] },
+        }),
+      });
+    expect((await send()).status).toBe(200);
+    updateDraft.mockResolvedValueOnce({
+      ok: false,
+      status: 409,
+      refusal: { error: "lot_not_draft", message: "Not a draft." },
+    });
+    const refused = await send();
+    expect(refused.status).toBe(409);
+    expect(await refused.json()).toEqual({ error: "lot_not_draft", message: "Not a draft." });
   });
 });

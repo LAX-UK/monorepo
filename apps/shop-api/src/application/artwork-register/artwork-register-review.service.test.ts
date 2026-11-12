@@ -67,6 +67,7 @@ function assessment(over: Partial<AdminAuctionOfferAssessment> = {}): AdminAucti
     draftLot: null,
     holdingLotId: null,
     eligible: true,
+    zohoPrice: null,
     blockers: [],
     ...over,
   };
@@ -118,6 +119,7 @@ function service(overrides: Partial<ArtworkRegisterReviewDeps> = {}) {
         }),
       })),
     },
+    catalogueChanges: { changesFor: vi.fn(async () => []) },
     runs: { latestNightlyRun: vi.fn(async () => null) },
     listingRuns: { latestRun: async () => null, countFailedDeliveries: async () => 0 },
     staffNames: { namesFor: async () => new Map([["u1", "Cat Alogue"]]) },
