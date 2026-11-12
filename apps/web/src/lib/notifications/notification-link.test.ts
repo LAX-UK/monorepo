@@ -37,6 +37,24 @@ describe("notificationHref", () => {
     expect(notificationHref({ ...base, type: "sale_cancelled" })).toBeNull();
   });
 
+  it("opens the bidder's offer, not the lot, from a notice about it", () => {
+    const base = {
+      id: "n11",
+      userId: "u1",
+      title: "Your offer for Lot 2 ends tomorrow",
+      message: "Body",
+      lotId: "lot-2",
+      submissionId: null,
+      legalEntityId: "acct",
+      read: false,
+      createdAt: new Date(),
+    };
+    for (const type of ["reoffer_offer", "reoffer_offer_reminder", "reoffer_offer_closed"]) {
+      expect(notificationHref({ ...base, type })).toBe("/bids/offers/lot/lot-2");
+    }
+    expect(notificationHref({ ...base, type: "lot_won" })).toContain("/lot/");
+  });
+
   it("prefers submission detail over lot page", () => {
     expect(
       notificationHref({

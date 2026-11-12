@@ -1,6 +1,6 @@
 import type { Database } from "@auction/db";
-import { itemSubmission, lot } from "@auction/db/schema";
-import { eq } from "drizzle-orm";
+import { itemSubmission, lot, lotReoffer } from "@auction/db/schema";
+import { and, eq, isNotNull } from "drizzle-orm";
 import type {
   AccountRecordKind,
   IRecordAccountReader,
@@ -24,6 +24,15 @@ const OWNER_QUERIES: Record<AccountRecordKind, OwnerQuery> = {
       .select({ owner: lot.buyerLegalEntityId })
       .from(lot)
       .where(eq(lot.id, id))
+      .limit(1);
+    return row?.owner ?? null;
+  },
+  // An offer belongs to the account that was offered the lot, once the bidder has been told.
+  reoffer: async (db, id) => {
+    const [row] = await db
+      .select({ owner: lotReoffer.offeredLegalEntityId })
+      .from(lotReoffer)
+      .where(and(eq(lotReoffer.id, id), isNotNull(lotReoffer.offerSentAt)))
       .limit(1);
     return row?.owner ?? null;
   },

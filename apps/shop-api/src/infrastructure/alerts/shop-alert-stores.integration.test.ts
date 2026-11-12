@@ -182,6 +182,8 @@ describe.skipIf(!hasShopIntegrationDb)("Shop alert adapters (integration)", () =
       oneClickUrl: "https://lax.art/alerts/unsubscribe?token=S",
       manageUrl: null,
       audience: "account" as const,
+      viewerZone: null,
+      changeZoneUrl: null,
     };
     await mailer.sendDigest(digest);
     await mailer.sendDigest(digest);

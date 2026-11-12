@@ -1,7 +1,7 @@
 import type { Database } from "@auction/db";
-import { lot, watchlist, watchlistReminder } from "@auction/db/schema";
+import { lot, sale, watchlist, watchlistReminder } from "@auction/db/schema";
 import type { WatchedLotReminderKind } from "@auction/domain";
-import { and, asc, eq, inArray, isNull, lte, or } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, lte, or, sql } from "drizzle-orm";
 import type {
   IWatchlistReminderRepository,
   PendingWatchlistReminder,
@@ -82,10 +82,12 @@ export class DrizzleWatchlistReminderRepository implements IWatchlistReminderRep
         lotTitle: lot.title,
         startTime: lot.startTime,
         endTime: lot.endTime,
+        saleTimeZone: sql<string>`coalesce(${sale.timeZone}, 'Europe/London')`,
         status: lot.status,
       })
       .from(watchlistReminder)
       .innerJoin(lot, eq(lot.id, watchlistReminder.lotId))
+      .leftJoin(sale, eq(sale.id, lot.saleId))
       .where(
         and(
           isNull(watchlistReminder.sentAt),

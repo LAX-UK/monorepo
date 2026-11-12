@@ -668,6 +668,7 @@ export {
   unsoldChoiceDueBy,
   type EndingAuthorisation,
   type ExpiredInvitation,
+  type ReofferOfferSubject,
   type PendingAccessRequest,
   type PurchaseNextStepTimes,
   type ReofferRequestSubject,
@@ -1223,9 +1224,17 @@ export {
   type Underbidder,
 } from "./buyer-default.js";
 export {
+  PAYMENT_REMINDER_POLL_INTERVAL_MS,
   PAYMENT_REMINDER_STEPS,
+  paymentReminderOpen,
   paymentReminderToSend,
+  reminderClosesAt,
   reminderDueAt,
+  reminderOpensAt,
+  reminderSendAt,
+  reminderStepOpen,
+  reminderStepReached,
+  reminderWindowClosed,
   type PaymentReminderFacts,
   type PaymentReminderStep,
 } from "./payment-reminder.js";

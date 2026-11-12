@@ -70,8 +70,14 @@ export const sellerReofferAnswerBodySchema = z.discriminatedUnion("answer", [
 ]);
 export type SellerReofferAnswerBody = z.infer<typeof sellerReofferAnswerBodySchema>;
 
-/** The bidder accepts: a binding purchase at the total shown, with the terms ticked. */
-export const acceptReofferBodySchema = z.object({ termsAccepted: z.literal(true) }).strict();
+/**
+ * The bidder accepts: a binding purchase at the total shown, with the terms ticked. The total the
+ * page showed comes with it, so the server refuses (`price_changed`) when the lot would now be
+ * invoiced at anything else.
+ */
+export const acceptReofferBodySchema = z
+  .object({ termsAccepted: z.literal(true), expectedTotalMinor: pence })
+  .strict();
 export type AcceptReofferBody = z.infer<typeof acceptReofferBodySchema>;
 
 export const declineReofferBodySchema = z
@@ -140,15 +146,16 @@ export const sellerReofferViewSchema = z
 export type SellerReofferView = z.infer<typeof sellerReofferViewSchema>;
 
 /**
- * The price the bidder pays, line by line. A line that does not apply to the lot is `null`,
- * never zero: VAT on the lot only for a lot sold with VAT, the Artist's Resale Right only for a
- * lot that owes it. The total is the sum of the lines.
+ * The price the bidder pays, line by line, exactly as the invoice will carry it. The hammer is
+ * always there; every other line is `null` when the invoice has no such line, never zero: a lot
+ * with no buyer's premium, VAT only once the invoice charges it, the Artist's Resale Right only
+ * for a lot that owes it. The total is the sum of the lines.
  */
 export const bidderReofferPriceSchema = z
   .object({
     hammerMinor: pence,
-    buyersPremiumMinor: pence,
-    vatOnPremiumMinor: pence,
+    buyersPremiumMinor: pence.nullable(),
+    vatOnPremiumMinor: pence.nullable(),
     vatOnLotMinor: pence.nullable(),
     artistsResaleRightMinor: pence.nullable(),
     totalMinor: pence,
@@ -158,8 +165,8 @@ export const bidderReofferPriceSchema = z
     (price) =>
       price.totalMinor ===
       price.hammerMinor +
-        price.buyersPremiumMinor +
-        price.vatOnPremiumMinor +
+        (price.buyersPremiumMinor ?? 0) +
+        (price.vatOnPremiumMinor ?? 0) +
         (price.vatOnLotMinor ?? 0) +
         (price.artistsResaleRightMinor ?? 0),
     { message: "The total must equal the lines", path: ["totalMinor"] },
@@ -225,9 +232,20 @@ export const bidderReofferViewSchema = z
   .object({
     id: z.string().min(1),
     lotId: z.string().min(1),
+    /** The work on offer, as the bidder knows it. */
+    lotTitle: z.string(),
+    lotNumber: z.number().int().nullable(),
+    saleId: z.string().min(1).nullable(),
+    lotImage: z.string().min(1).nullable(),
+    /** When the lot's own sale ended. */
+    lotEndedAt: moment,
     status: bidderReofferStatusSchema,
     price: bidderReofferPriceSchema,
     endsAt: moment,
+    /** When the bidder answered; for an accepted offer, when the lot became theirs. */
+    respondedAt: moment.nullable(),
+    /** When the invoice that follows an accepted offer falls due. */
+    invoiceDueAt: moment.nullable(),
   })
   .strict();
 export type BidderReofferView = z.infer<typeof bidderReofferViewSchema>;

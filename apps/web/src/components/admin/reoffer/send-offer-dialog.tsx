@@ -114,8 +114,12 @@ export function SendOfferDialog({
         ) : null}
         <dl className="flex flex-col gap-1.5 text-staff-sm">
           <Line label="Hammer (their bid)" value={formatStaffMoney(price.hammerMinor)} />
-          <Line label="Buyer's premium" value={formatStaffMoney(price.buyersPremiumMinor)} />
-          <Line label="VAT on the premium" value={formatStaffMoney(price.vatOnPremiumMinor)} />
+          {price.buyersPremiumMinor === null ? null : (
+            <Line label="Buyer's premium" value={formatStaffMoney(price.buyersPremiumMinor)} />
+          )}
+          {price.vatOnPremiumMinor === null ? null : (
+            <Line label="VAT on the premium" value={formatStaffMoney(price.vatOnPremiumMinor)} />
+          )}
           <div className="my-1 border-t border-staff-line" />
           <Line label="Total they'll pay" value={formatStaffMoney(price.totalMinor)} strong />
         </dl>

@@ -8,7 +8,7 @@ const vars = {
   unsubscribeUrl: "https://lax.bid/unsubscribe?t=x",
   kind: "hour_before_close" as const,
   note: "Check the frame",
-  closesAt: "26 Nov 2026, 18:00",
+  closesAt: { official: "Thu 26 Nov, 18:00 GMT" },
 };
 
 describe("watched-lot-reminder", () => {
@@ -17,7 +17,7 @@ describe("watched-lot-reminder", () => {
     expect(rendered.subject).toBe("Red chair, evening closes soon");
     expect(rendered.text).toContain("It closes in about an hour.");
     expect(rendered.text).toContain("Check the frame");
-    expect(rendered.text).toContain("26 Nov 2026, 18:00");
+    expect(rendered.text).toContain("Thu 26 Nov, 18:00 GMT");
     expect(rendered.html).toContain("https://lax.bid/lots/red-chair");
     expect(rendered.html).toContain("https://lax.bid/unsubscribe?t=x");
   });

@@ -1,3 +1,4 @@
+import type { EmailMoment, ZoneNote } from "./moment.js";
 import type { TemplateDomainSlice } from "./shared.js";
 
 const names = ["alert-confirm", "alert-digest"] as const;
@@ -11,6 +12,8 @@ export type AlertDigestItem = {
   title: string;
   subtitle?: string;
   detail?: string;
+  /** Times that matter for the item ("Opens", "Closes"), each on the sale's clock and the recipient's. */
+  moments?: { label: string; moment: EmailMoment }[];
   imageUrl?: string;
   /** Absolute link to the item. */
   url: string;
@@ -52,6 +55,8 @@ type AlertTemplateVars = {
     /** "Wednesday 4 November": the London day the digest is for. */
     dateLabel: string;
     groups: AlertDigestGroup[];
+    /** Where local times come from; present only when a local time is shown. */
+    zoneNote?: ZoneNote | null;
     /** Why the person gets this, in the product's words. */
     reason: string;
     /** Set for a visitor, who has no account: names the address the email went to. */

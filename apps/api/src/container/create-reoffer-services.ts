@@ -89,7 +89,11 @@ export function createReofferServices(input: {
         buyerLegalEntityId,
         currentPrice: gbpPenceToMajorString(hammerPence),
       });
-      return { lines: priced.lines, totalPence: priced.totalPence };
+      return {
+        lines: priced.lines,
+        totalPence: priced.totalPence,
+        invoiceDueAt: priced.existing?.dueAt ?? null,
+      };
     },
   };
   const proceeds = settlementSellerProceeds({ pricing, feePolicy });
@@ -116,6 +120,7 @@ export function createReofferServices(input: {
       place,
       moneyPause,
       invoicing,
+      pricing,
     }),
     reads: new ReofferReadsService({
       db,

@@ -10,9 +10,10 @@ import {
   DELETION_HOLD_COPY,
   SUBJECT_EXPORT_RETENTION_DAYS,
   deletionHoldNextCheck,
+  effectiveAccountTimeZone,
   formatDeviceLabel,
 } from "@auction/identity-contracts";
-import { formatLondonDate, formatLondonTime } from "./format-london-time.js";
+import { formatLondonDate, formatNoticeTime } from "./format-london-time.js";
 import type { IIdentitySubjectRepository } from "./identity-operations.ports.js";
 import {
   type KnownDeviceStore,
@@ -37,7 +38,7 @@ const SIGN_IN_METHOD_LABELS = {
 
 export type SecurityNoticeDeps = {
   /** Read straight from the repository, not the operations service, which itself sends notices. */
-  subjects: Pick<IIdentitySubjectRepository, "findById">;
+  subjects: Pick<IIdentitySubjectRepository, "findById" | "readTimeZone">;
   email: EmailSender;
   devices: KnownDeviceStore;
   /** LAX Account's security page: where "this wasn't me" sends the reader. */
@@ -91,9 +92,15 @@ export class SecurityNoticeService implements SecurityNoticePublisher, SecurityN
     }
     const subject = await this.deps.subjects.findById(event.userId);
     if (!subject) return;
+    // A sign-in is the person's own event, so it is told on their clock: the zone saved in LAX
+    // Account, or London when there is none.
+    const preference = await this.deps.subjects.readTimeZone(event.userId);
     const base = {
       userName: subject.name,
-      whenDisplay: formatLondonTime(event.at),
+      whenDisplay: formatNoticeTime(
+        event.at,
+        preference ? effectiveAccountTimeZone(preference) : null,
+      ),
       deviceLabel: event.userAgent ? formatDeviceLabel(event.userAgent) : null,
       secureAccountUrl: this.deps.secureAccountUrl,
     };

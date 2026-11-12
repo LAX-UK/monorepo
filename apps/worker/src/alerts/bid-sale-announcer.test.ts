@@ -7,6 +7,7 @@ const sale = {
   title: "Modern British and Irish Art",
   startTime: new Date("2026-11-18T10:00:00Z"),
   endTime: new Date("2026-11-26T18:00:00Z"),
+  timeZone: "Europe/London",
   status: "scheduled" as const,
   deliveryMode: "online" as const,
   isTest: false,
@@ -54,7 +55,11 @@ describe("BidSaleAnnouncer", () => {
       announce: true,
       snapshot: {
         title: "Modern British and Irish Art",
-        subtitle: "Online · opens Wed 18 Nov, closes Thu 26 Nov",
+        subtitle: "Online",
+        moments: [
+          { label: "Opens", at: "2026-11-18T10:00:00.000Z", zone: "Europe/London" },
+          { label: "Closes", at: "2026-11-26T18:00:00.000Z", zone: "Europe/London" },
+        ],
         detail: "214 lots",
         path: `/sales/${sale.id}`,
       },

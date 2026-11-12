@@ -4,6 +4,8 @@ export type AnnouncedSale = {
   title: string;
   startTime: Date;
   endTime: Date;
+  /** The sale's own zone: the clock its times are official in. */
+  timeZone: string;
   status: "draft" | "scheduled" | "active" | "ended" | "cancelled";
   deliveryMode: "online" | "onsite" | "hybrid";
   /** A test sale is never announced. */
