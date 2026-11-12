@@ -587,6 +587,7 @@ describe("admin dashboard metrics routes", () => {
       listPurchaseProblems: empty,
       listDeletionHolds: empty,
       listRegisterLotMismatches: empty,
+      listReofferWork: empty,
     };
     const workItems = new AdminWorkItemsService(reader);
     const container = createDashboardMetricsContainer({}, {}, {}, {}, workItems);

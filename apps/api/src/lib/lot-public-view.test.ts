@@ -50,6 +50,14 @@ describe("maskLotForPublicView", () => {
     expect(result).toMatchObject({ hasReserve: true, reserveMet: true });
   });
 
+  it("says nothing about the reserve of an ended lot whose result is still open", () => {
+    const result = maskLotForPublicView(
+      baseLot({ status: "ended", currentPrice: "100.00", resultPending: true }),
+      undefined,
+    );
+    expect(result).toMatchObject({ hasReserve: true, reserveMet: null });
+  });
+
   it("returns hasReserve false when no reserve configured", () => {
     const result = maskLotForPublicView(baseLot({ reservePrice: null }), undefined);
     expect(result).toMatchObject({ hasReserve: false, reserveMet: null });

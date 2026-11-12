@@ -22,6 +22,7 @@ const soldRows = [
     saleTitle: "Autumn",
     soldAt: new Date("2026-10-01T18:00:00Z"),
     hammerPrice: "4000.00",
+    soldAfterAuction: false,
     payment: { status: "captured" as const, amount: "5000.00", platformFee: "1000.00" },
     payout: {
       id: "po1",
@@ -37,6 +38,7 @@ const soldRows = [
     saleTitle: "Autumn",
     soldAt: new Date("2026-10-01T18:00:00Z"),
     hammerPrice: "900.00",
+    soldAfterAuction: true,
     payment: { status: "pending" as const, amount: "1100.00", platformFee: "200.00" },
     payout: null,
   },
@@ -65,6 +67,7 @@ function soldService() {
               note: null,
               lot: { id: "l1", title: "Field", lotNumber: 4, hammerPrice: "4000.00" },
               payment: { amount: "5000.00", platformFee: "1000.00" },
+              soldAfterAuction: true,
             },
             {
               id: "line2",
@@ -73,6 +76,7 @@ function soldService() {
               note: "Packing",
               lot: null,
               payment: null,
+              soldAfterAuction: false,
             },
           ],
         }
@@ -87,9 +91,9 @@ describe("SoldAndPayoutsService", () => {
       const page = (
         await soldService().service.listSold(actor(role), { limit: 50, offset: 0 })
       )._unsafeUnwrap();
-      expect(page.items.map((i) => [i.lotId, i.stage, i.net])).toEqual([
-        ["l1", "paid_out", "4000.00"],
-        ["l2", "buyer_paying", null],
+      expect(page.items.map((i) => [i.lotId, i.stage, i.net, i.soldAfterAuction])).toEqual([
+        ["l1", "paid_out", "4000.00", false],
+        ["l2", "buyer_paying", null, true],
       ]);
     }
   });
@@ -116,6 +120,7 @@ describe("SoldAndPayoutsService", () => {
     const detail = (
       await soldService().service.payoutDetail(actor("finance"), "po1")
     )._unsafeUnwrap();
+    expect(detail.lines.map((l) => l.soldAfterAuction)).toEqual([true, false]);
     expect(detail.lines.map((l) => l.breakdown)).toEqual([
       { gross: "5000.00", commissionAndFees: "1000.00", net: "4000.00" },
       null,
@@ -247,10 +252,13 @@ describe("SoldAndPayoutsService", () => {
   it("exports sold lots in plain words", async () => {
     const csv = (await soldService().service.exportSoldCsv(actor("owner"), {}))._unsafeUnwrap();
     expect(csv.split("\n")[0]).toBe(
-      "Lot,Title,Sale,Sold on,Hammer price,Net to you,Status,Paid out on",
+      "Lot,Title,Sale,Sold on,Hammer price,Net to you,Sold after the auction,Status,Paid out on",
     );
     expect(csv).toContain("Paid out");
     expect(csv).toContain("Buyer paying");
+    // Only the lot that was sold on to the next bidder says so.
+    expect(csv).toContain("Dusk,Autumn,2026-10-01,900.00,,Yes,Buyer paying");
+    expect(csv).toContain("Field,Autumn,2026-10-01,4000.00,4000.00,,Paid out");
   });
 });
 

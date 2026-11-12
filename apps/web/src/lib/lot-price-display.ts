@@ -19,6 +19,7 @@ type LotPriceDisplaySource = Pick<
   | "marketingDetails"
 > & {
   hasWinner?: boolean;
+  resultPending?: boolean;
 };
 
 function money(amount: string, lot: LotPriceDisplaySource): string {
@@ -34,6 +35,7 @@ export function lotPriceDisplay(lot: LotPriceDisplaySource): LotPriceDisplay {
   }
 
   if (lot.status === "ended") {
+    if (lot.resultPending) return { label: "Ended", value: "—" };
     if (lotWasSold(lot)) {
       return { label: "Sold for", value: money(lot.currentPrice, lot) };
     }

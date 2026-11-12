@@ -55,7 +55,8 @@ function endedLabel(lot: Lot, ctx: HangLabelContext, currency: string): PriceAnd
       live: undefined,
     };
   }
-  return { price: { value: "Not sold" }, notes: [], live: undefined };
+  const value = lot.resultPending ? "Ended" : "Not sold";
+  return { price: { value }, notes: [], live: undefined };
 }
 
 function biddingLabel(lot: Lot, ctx: HangLabelContext, currency: string): PriceAndNotes {

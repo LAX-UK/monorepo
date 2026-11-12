@@ -19,6 +19,10 @@ function build(who: { role: string; staffRoles: string[]; recent?: boolean } | n
       withdraw: vi.fn().mockResolvedValue({ reofferId: OFFER }),
     },
     reads: { listForLot: vi.fn().mockResolvedValue([]) },
+    preview: {
+      previewForLot: vi.fn().mockResolvedValue({ soldOnAtg: false, next: null }),
+      buyerDefaultForLot: vi.fn().mockResolvedValue(null),
+    },
   };
   const container = {
     env: { LOG_LEVEL: "silent", NODE_ENV: "test" } as never,
@@ -135,6 +139,35 @@ describe("admin re-offer routes", () => {
       expect(reoffer.reads.listForLot).toHaveBeenCalledWith(LOT);
       const clerk = build({ role: "staff", staffRoles: ["saleroom_clerk"] });
       expect((await clerk.app.request(`http://test/admin/lots/${LOT}/reoffers`)).status).toBe(403);
+    });
+  });
+
+  describe("reads that show the next bidder and the default", () => {
+    const READS = ["reoffers", "reoffer-preview", "buyer-default"] as const;
+
+    it.each(READS)(
+      "lets lot readers open %s and turns away other staff, clients and visitors",
+      async (path) => {
+        const url = `http://test/admin/lots/${LOT}/${path}`;
+        for (const staffRole of ["administrator", "sales_manager", "cataloguer", "read_only"]) {
+          const { app } = build({ role: "staff", staffRoles: [staffRole] });
+          expect((await app.request(url)).status).toBe(200);
+        }
+        for (const staffRole of ["saleroom_clerk", "client_services", "fulfilment", "compliance"]) {
+          const { app } = build({ role: "staff", staffRoles: [staffRole] });
+          expect((await app.request(url)).status).toBe(403);
+        }
+        expect((await build({ role: "client", staffRoles: [] }).app.request(url)).status).toBe(403);
+        expect((await build(null).app.request(url)).status).toBe(401);
+      },
+    );
+
+    it("asks the preview and the default for the lot on the page, with no step-up needed", async () => {
+      const { app, reoffer } = build({ role: "staff", staffRoles: ["read_only"], recent: false });
+      expect((await app.request(`http://test/admin/lots/${LOT}/reoffer-preview`)).status).toBe(200);
+      expect((await app.request(`http://test/admin/lots/${LOT}/buyer-default`)).status).toBe(200);
+      expect(reoffer.preview.previewForLot).toHaveBeenCalledWith(LOT);
+      expect(reoffer.preview.buyerDefaultForLot).toHaveBeenCalledWith(LOT);
     });
   });
 

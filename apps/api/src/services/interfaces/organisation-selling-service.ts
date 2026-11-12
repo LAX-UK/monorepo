@@ -23,6 +23,8 @@ export type SoldLotView = {
   saleTitle: string | null;
   soldAt: Date;
   hammerPrice: string;
+  /** The first buyer did not pay and the lot was re-awarded to the next bidder. */
+  soldAfterAuction: boolean;
   stage: SoldLotPayoutStage;
   /** What reaches the seller once the buyer has paid; `null` before then. */
   net: string | null;
@@ -37,6 +39,8 @@ export type PayoutLineView = {
   lot: { id: string; title: string; lotNumber: number | null; hammerPrice: string } | null;
   /** Sale lines split into gross, commission and fees, and net; other lines carry the amount. */
   breakdown: SaleLineBreakdown | null;
+  /** The sale was re-awarded to the next bidder after the first buyer did not pay. */
+  soldAfterAuction: boolean;
   amount: string;
 };
 

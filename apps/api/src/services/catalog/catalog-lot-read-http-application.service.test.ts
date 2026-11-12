@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { withPublicLotResults } from "../../lib/public-lot-result.js";
 import { createCatalogLotReadHttpFixture } from "../../testing/catalog-lot-read-http-fixture.js";
 import { CachedCatalogueListService } from "../cached-catalogue-list.service.js";
 import type { ICacheProvider } from "../interfaces/cache.js";
@@ -148,6 +149,85 @@ describe("CatalogLotReadHttpApplicationService", () => {
         status: "cancelled",
         currentPrice: "900.00",
       });
+    });
+  });
+
+  describe("lot detail while the result is still open", () => {
+    const publicSale = { id: "s1", status: "ended", buyerPremiumTiers: null };
+    const defaulted = {
+      id: "lot-1",
+      saleId: "s1",
+      lotNumber: 3,
+      title: "Harbour lights",
+      description: null,
+      medium: "Oil",
+      dimensions: null,
+      images: [],
+      categoryId: "c1",
+      auctionType: "english",
+      status: "ended",
+      startingPrice: "100.00",
+      reservePrice: "500.00",
+      currentPrice: "88000.00",
+      buyerPremiumRate: "0.25",
+      minBidIncrement: "10.00",
+      winnerId: "next-bidder-user",
+      buyerLegalEntityId: "next-bidder-entity",
+      startTime: new Date("2026-10-01T10:00:00Z"),
+      endTime: new Date("2026-10-31T10:00:00Z"),
+      marketingDetails: {},
+    };
+    const open = (pendingIds: string[]) =>
+      createCatalogLotReadHttpFixture({
+        lotService: {
+          listLotsForPublicApi: vi.fn(),
+          getById: vi.fn().mockResolvedValue(defaulted),
+          presentForPublic: (lots: readonly { id: string }[]) =>
+            withPublicLotResults(
+              {
+                pendingAmong: async (ids: readonly string[]) =>
+                  new Set(ids.filter((id) => pendingIds.includes(id))),
+              },
+              lots as never,
+            ),
+        } as never,
+        saleService: { getByIdForPublicCatalog: vi.fn().mockResolvedValue(publicSale) } as never,
+        cachedCatalogueListService: new CachedCatalogueListService(createMemoryCache(), 60),
+        now: () => new Date("2026-11-01T12:00:00Z"),
+      });
+
+    it("says only that the lot ended: no buyer, no price, no hammer, nothing of the offer", async () => {
+      const res = await open(["lot-1"]).getLotDetail({ lotId: "lot-1", viewer: {} });
+      expect(res.status).toBe(200);
+      const data = (res.body as { data: Record<string, unknown> }).data;
+      expect(data).toMatchObject({
+        status: "ended",
+        resultPending: true,
+        winnerId: null,
+        hammerPrice: null,
+        soldForWithPremium: null,
+      });
+      const json = JSON.stringify(data);
+      for (const secret of ["88000", "next-bidder", "reoffer", "default"]) {
+        expect(json).not.toContain(secret);
+      }
+    });
+
+    it("shows a lot whose result is final as sold", async () => {
+      const res = await open([]).getLotDetail({ lotId: "lot-1", viewer: {} });
+      const data = (res.body as { data: Record<string, unknown> }).data;
+      expect(data).toMatchObject({ winnerId: "next-bidder-user", hammerPrice: "88000.00" });
+      expect(data).not.toHaveProperty("resultPending");
+    });
+
+    it("gives staff the real buyer and price", async () => {
+      const res = await open(["lot-1"]).getLotDetail({
+        lotId: "lot-1",
+        viewer: { role: "staff", staffRoles: ["cataloguer"] },
+      });
+      const data = (res.body as { data: Record<string, unknown> }).data;
+      expect(data).toMatchObject({ winnerId: "next-bidder-user", currentPrice: "88000.00" });
+      expect(data).not.toHaveProperty("resultPending");
     });
   });
 });

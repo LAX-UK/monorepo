@@ -37,7 +37,8 @@ export type WatchedLotStanding =
   | "maximum-set"
   | "not-bidding"
   | "sold"
-  | "closed";
+  | "closed"
+  | "ended";
 
 const STANDING: Record<
   WatchedLotStanding,
@@ -49,6 +50,7 @@ const STANDING: Record<
   "not-bidding": { label: "Not bidding", tone: "neutral", shape: "ring" },
   sold: { label: "Sold", tone: "neutral", shape: "ring" },
   closed: { label: "Closed", tone: "neutral", shape: "ring" },
+  ended: { label: "Ended", tone: "neutral", shape: "ring" },
 };
 
 const BID_STANDING: Partial<Record<MyBidStatus, WatchedLotStanding>> = {
@@ -84,7 +86,11 @@ export type WatchedLotRowVm = {
 };
 
 function standingOf(lot: Lot, bid: MyBidStatus | null): WatchedLotStanding {
-  if (ENDED.has(lot.status)) return lot.hasWinner || lot.winnerId ? "sold" : "closed";
+  if (ENDED.has(lot.status)) {
+    // An ended lot whose result is still open reads as ended: neither sold nor not sold.
+    if (lot.resultPending) return "ended";
+    return lot.hasWinner || lot.winnerId ? "sold" : "closed";
+  }
   return (bid ? BID_STANDING[bid] : undefined) ?? "not-bidding";
 }
 
@@ -92,6 +98,7 @@ function figureFor(lot: Lot, standing: WatchedLotStanding): { value: string; lab
   const money = (amount: string) => formatMoney(amount, lotChargeCurrency(lot));
   if (standing === "sold") return { value: money(lot.currentPrice), label: "sold for" };
   if (standing === "closed") return { value: "–", label: "not sold" };
+  if (standing === "ended") return { value: "–", label: "ended" };
   const opened = lot.status === "active";
   if (opened) return { value: money(lot.currentPrice), label: "current bid" };
   const estimate = lot.marketingDetails?.estimate;

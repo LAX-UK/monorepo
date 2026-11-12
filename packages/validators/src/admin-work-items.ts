@@ -22,6 +22,10 @@ export const adminWorkItemKindSchema = z.enum([
   "purchase_problem",
   "deletion_hold",
   "register_lot_mismatch",
+  "reoffer_no_reply",
+  "reoffer_ready",
+  "reoffer_decision",
+  "reoffer_accepted",
 ]);
 
 export const adminWorkItemDomainSchema = z.enum([

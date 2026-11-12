@@ -28,6 +28,7 @@ import type {
   IOnsiteEventRsvpRepository,
   IPaddleRepository,
   IPlatformCatalogLegalEntityReader,
+  IPublicLotResultReader,
   IQrCodeAnalyticsReader,
   IQrCodeRepository,
   IQrCodeScanPersister,
@@ -80,6 +81,7 @@ import {
   DrizzleOnsiteEventRsvpRepository,
   DrizzlePaddleRepository,
   DrizzlePlatformCatalogLegalEntityReader,
+  DrizzlePublicLotResultReader,
   DrizzleQrCodeAnalyticsReader,
   DrizzleQrCodeRepository,
   DrizzleQrCodeScanPersister,
@@ -159,6 +161,7 @@ export type CatalogRepositories = {
   saleroomDisplaySessionRepository: ISaleroomDisplaySessionRepository;
   saleBiddersReader: ISaleBiddersReader;
   saleResultLotsReader: ISaleResultLotsReader;
+  publicLotResultReader: IPublicLotResultReader;
   saleroomDisplaySnapshotReader: ISaleroomDisplaySnapshotReader;
   qrCodeAnalyticsReader: IQrCodeAnalyticsReader;
   mediaAssetReader: IMediaAssetReader;
@@ -215,6 +218,7 @@ export function createCatalogRepositories(db: Database): CatalogRepositories {
   const saleroomDisplaySessionRepository = new DrizzleSaleroomDisplaySessionRepository(db);
   const saleBiddersReader = new DrizzleSaleBiddersReader(db);
   const saleResultLotsReader = new DrizzleSaleResultLotsReader(db);
+  const publicLotResultReader = new DrizzlePublicLotResultReader(db);
   const saleroomDisplaySnapshotReader = new DrizzleSaleroomDisplaySnapshotReader(db);
   const qrCodeAnalyticsReader = new DrizzleQrCodeAnalyticsReader(db);
   const mediaAssetReader = new DrizzleMediaAssetReader(db);
@@ -270,6 +274,7 @@ export function createCatalogRepositories(db: Database): CatalogRepositories {
     saleroomDisplaySessionRepository,
     saleBiddersReader,
     saleResultLotsReader,
+    publicLotResultReader,
     saleroomDisplaySnapshotReader,
     qrCodeAnalyticsReader,
     mediaAssetReader,

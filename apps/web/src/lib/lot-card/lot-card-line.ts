@@ -25,6 +25,7 @@ export type LotCardLineSource = Pick<
   Partial<Pick<Lot, "checkoutPricing">> &
   LotTimingSource & {
     hasWinner?: boolean | undefined;
+    resultPending?: boolean | undefined;
   };
 
 /** The card line as plain data, so a server page can hand it to the ticking client piece. */

@@ -45,6 +45,10 @@ const WORK_ITEM_SAMPLES: Record<AdminWorkItemSourceKind, AdminWorkItemLinkIds> =
   payment_overdue: { subjectId: "lot-1" },
   deletion_hold: { subjectId: "subject-1" },
   register_lot_mismatch: { subjectId: "lot-1" },
+  reoffer_no_reply: { subjectId: "lot-1" },
+  reoffer_ready: { subjectId: "lot-1" },
+  reoffer_decision: { subjectId: "lot-1" },
+  reoffer_accepted: { subjectId: "lot-1" },
 };
 
 const KINDS = Object.keys(WORK_ITEM_SAMPLES) as AdminWorkItemSourceKind[];

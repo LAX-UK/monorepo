@@ -9,6 +9,7 @@ import type {
   SaleCatalogLotsSort,
 } from "../../interfaces/index.js";
 import { containsPattern } from "../../lib/like-pattern.js";
+import { lotResultPendingSql } from "../../lib/lot-result-pending.sql.js";
 import {
   atgOwnedDraftLotForStatusesSql,
   publicCatalogueLotCondition,
@@ -113,6 +114,13 @@ export function listWhere(input: ListWhereInput) {
 const lotNumberOrder = sql`coalesce(${lot.lotNumber}, 999999)`;
 
 /**
+ * The price a lot is ordered by: the price the public reads. An ended lot whose result is still
+ * open shows its starting price, so it sorts there too; ordering by the real price would place it
+ * where the price no one may see puts it.
+ */
+const shownPriceOrder = sql`case when ${lot.status} = 'ended' and ${lotResultPendingSql()} then ${lot.startingPrice} else ${lot.currentPrice} end`;
+
+/**
  * The order of a sale's catalogue page. On every sort but lot order a withdrawn (cancelled) lot is
  * pinned last, since it has no price or close to place it by; lot order keeps it at its number.
  * Ties fall back to lot number then id so pages never repeat or skip a row.
@@ -121,9 +129,9 @@ export function catalogSalePageOrderBy(sort: SaleCatalogLotsSort) {
   const withdrawnLast = asc(sql`(${lot.status} = 'cancelled')`);
   switch (sort) {
     case "priceAsc":
-      return [withdrawnLast, asc(lot.currentPrice), asc(lotNumberOrder), asc(lot.id)];
+      return [withdrawnLast, asc(shownPriceOrder), asc(lotNumberOrder), asc(lot.id)];
     case "priceDesc":
-      return [withdrawnLast, desc(lot.currentPrice), asc(lotNumberOrder), asc(lot.id)];
+      return [withdrawnLast, desc(shownPriceOrder), asc(lotNumberOrder), asc(lot.id)];
     case "endingAsc":
       return [withdrawnLast, asc(lot.endTime), asc(lotNumberOrder), asc(lot.id)];
     default:
@@ -155,7 +163,7 @@ export function listOrderBy(sort: ListLotsSort | undefined) {
     case "endingAsc":
       return asc(lot.endTime);
     case "hammerDesc":
-      return desc(lot.currentPrice);
+      return desc(shownPriceOrder);
     case "endedDesc":
       return desc(lot.endTime);
     default:

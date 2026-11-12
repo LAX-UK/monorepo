@@ -33,4 +33,12 @@ describe("archiveLotResult", () => {
       archiveLotResult({ ...base, lotNumber: null, winnerId: null }).lotNumberLabel,
     ).toBeNull();
   });
+
+  it("shows Ended with no hammer price while the result is open", () => {
+    const vm = archiveLotResult({ ...base, winnerId: null, hasWinner: false, resultPending: true });
+    expect(resolveLotStatusPresentation("ended", vm.statusContext).label).toBe("Ended");
+    expect(vm.hammer).toBeNull();
+    expect(vm.noHammerLabel).toBe("Ended");
+    expect(archiveLotResult({ ...base, winnerId: null }).noHammerLabel).toBe("Not sold");
+  });
 });

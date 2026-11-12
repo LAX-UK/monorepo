@@ -19,6 +19,8 @@ export const soldLotSchema = z.object({
   saleTitle: z.string().nullable(),
   soldAt: zCoerceDate,
   hammerPrice: z.string(),
+  /** The first buyer did not pay and the lot was sold on to the next bidder. */
+  soldAfterAuction: z.boolean().default(false),
   stage: z.enum(SOLD_LOT_STAGES),
   net: z.string().nullable(),
   payout: z.object({ id: z.string(), settledAt: zCoerceDate.nullable() }).nullable(),
@@ -44,6 +46,7 @@ const payoutLineSchema = z.object({
     })
     .nullable(),
   breakdown: breakdownSchema.nullable(),
+  soldAfterAuction: z.boolean().default(false),
   amount: z.string(),
 });
 export type PayoutLine = z.infer<typeof payoutLineSchema>;

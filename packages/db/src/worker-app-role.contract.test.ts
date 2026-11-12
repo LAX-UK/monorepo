@@ -188,7 +188,7 @@ describe.skipIf(!WORKER_URL)("worker_app role contract", { timeout: 60_000 }, ()
     });
   });
 
-  it("reads which buyer default is a lot's latest, and nothing else of the defaults", async () => {
+  it("reads which buyer default is a lot's latest and what it decided, and nothing else of the defaults", async () => {
     await withWorkerClient(async (client) => {
       for (const [table, columns] of WORKER_REOFFER_READ_COLUMNS) {
         const all = await client.query<{ column_name: string; allowed: boolean }>(

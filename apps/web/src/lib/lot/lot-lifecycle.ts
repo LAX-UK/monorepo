@@ -32,6 +32,8 @@ type LotLifecycleLot = Pick<Lot, "status" | "winnerId" | "currentPrice" | "id"> 
   LotTimingSource & {
     /** Public lot payloads hide the buyer and say only whether the lot sold. */
     hasWinner?: boolean | undefined;
+    /** The winner did not pay and the lot is being offered on: it has ended, with no result yet. */
+    resultPending?: boolean | undefined;
   };
 
 type LotLifecycleSale =
@@ -74,6 +76,7 @@ export function classifyLotLifecycle(
   }
 
   if (lot.status === "ended") {
+    if (lot.resultPending) return { kind: "endedPending", msLeft: null };
     if (lotWasSold(lot)) {
       return { kind: "endedSold", msLeft: null, winnerId: lot.winnerId ?? null };
     }
@@ -168,6 +171,8 @@ export function lifecycleBadge(lifecycle: LotLifecycle): LifecycleBadgeVM {
       return { label: "Sold", tone: "ended", pulse: false };
     case "endedNoSale":
       return { label: "No sale", tone: "ended", pulse: false };
+    case "endedPending":
+      return { label: "Ended", tone: "ended", pulse: false };
     case "cancelled":
       return { label: "Cancelled", tone: "muted", pulse: false };
     case "withdrawn":

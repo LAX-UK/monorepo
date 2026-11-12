@@ -35,4 +35,11 @@ describe("lotPriceDisplay", () => {
       value: "—",
     });
   });
+
+  it("shows Ended, with no price, while the result is open", () => {
+    expect(lotPriceDisplay({ ...base, hasWinner: false, resultPending: true })).toEqual({
+      label: "Ended",
+      value: "—",
+    });
+  });
 });
