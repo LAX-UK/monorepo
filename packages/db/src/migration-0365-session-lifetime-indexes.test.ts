@@ -19,7 +19,7 @@ describe("migration 0365 session lifetime indexes", () => {
   it("is journalled after 0361, with a later time, in a journal that stays ordered", () => {
     const entry = journal.entries.find((e) => e.tag === "0365_session_lifetime_indexes");
     const base = journal.entries.find((e) => e.tag === "0361_oauth_token_sign_in");
-    expect(entry?.when).toBe(1806566400000);
+    expect(entry?.when).toBe(1807344000000);
     expect(entry?.when).toBeGreaterThan(base?.when ?? Number.POSITIVE_INFINITY);
     // Other migrations may land before or after it; only the ordering rules must hold.
     const times = journal.entries.map((e) => e.when);
@@ -45,7 +45,7 @@ describe("migration 0365 session lifetime indexes", () => {
     expect(rollback).toMatch(/^COMMIT;$/m);
     expect(rollback.indexOf("BEGIN;")).toBeLessThan(rollback.indexOf("SET LOCAL lock_timeout"));
     expect(rollback).toContain(
-      "DELETE FROM drizzle.__drizzle_migrations WHERE created_at = 1806566400000",
+      "DELETE FROM drizzle.__drizzle_migrations WHERE created_at = 1807344000000",
     );
   });
 

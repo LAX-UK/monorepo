@@ -1,33 +1,10 @@
+import { defaultScheduleInstants } from "@auction/datetime";
 import type { Sale } from "@auction/types";
-import { toDatetimeFormString, tzDateFromParts } from "@auction/ui/lib/datetime";
+import { toDatetimeFormString } from "@auction/ui/lib/datetime";
 import { DEFAULT_SALE_TIME_ZONE } from "@auction/validators";
-import { TZDate } from "@date-fns/tz";
-import { addDays, addHours } from "date-fns";
 import type { AdminSaleFormValues } from "./admin-sale-form";
 
 export type SaleWithPresentedCovers = Sale & { coverImagePresentedUrls?: string[] };
-
-function defaultScheduleInstants(zone: string): { start: Date; end: Date } {
-  const now = new TZDate(new Date(), zone);
-  const startTz = tzDateFromParts(
-    now.getFullYear(),
-    now.getMonth() + 1,
-    now.getDate(),
-    addHours(now, 1).getHours(),
-    0,
-    zone,
-  );
-  const start = new Date(startTz.getTime());
-  const endTz = tzDateFromParts(
-    addDays(startTz, 7).getFullYear(),
-    addDays(startTz, 7).getMonth() + 1,
-    addDays(startTz, 7).getDate(),
-    startTz.getHours(),
-    0,
-    zone,
-  );
-  return { start, end: new Date(endTz.getTime()) };
-}
 
 /** Maps storage keys to resolved thumbnail URLs for admin image fields. */
 export function buildCoverImagePreviewMap(
@@ -82,7 +59,7 @@ export function saleToAdminSaleFormValues(sale: Sale): AdminSaleFormValues {
 export function emptyAdminSaleFormValues(
   timeZone: string = DEFAULT_SALE_TIME_ZONE,
 ): AdminSaleFormValues {
-  const { start, end } = defaultScheduleInstants(timeZone);
+  const { start, end } = defaultScheduleInstants(new Date(), timeZone);
   return {
     title: "",
     description: "",

@@ -214,6 +214,7 @@ describe("the staff desk record", () => {
 
   it("says why agreement is off while the buyer's identity is not verified", async () => {
     const { desk } = setup({
+      deal: stageDeal("offer", { artworkRegisterId: "reg-1" }),
       clearance: { ...CLEAR, buyer: { kyc: "pending", aml: "clear" } },
     });
     const record = await desk.detail(MANAGER, "PS-0001");
@@ -511,7 +512,10 @@ describe("PrivateSaleDealDeskService act", () => {
       createdAt: new Date(),
     });
     const { desk, currentDeal } = setup({
-      deal: stageDeal("offer", { documents: [accepted("le-seller"), accepted("le-buyer")] }),
+      deal: stageDeal("offer", {
+        artworkRegisterId: "reg-1",
+        documents: [accepted("le-seller"), accepted("le-buyer")],
+      }),
     });
     const result = await desk.act(MANAGER, "PS-0001", "agree", {});
     expect(result.ok).toBe(true);

@@ -3,7 +3,7 @@ import type { IIdentityLifecycleService } from "../services/identity-lifecycle.s
 import { IdentityOperationError } from "../services/identity-operations.service.js";
 import { createInternalIdentityRoutes } from "./internal-identity.routes.js";
 
-function setup() {
+function setup(options: { passkeysEnabled?: boolean } = {}) {
   const tokens = new Map<string, string>();
   const setToken = vi.fn(async (key: string, value: string) => {
     tokens.set(key, value);
@@ -26,9 +26,42 @@ function setup() {
       pendingNewEmail: "next@example.com",
       emailChangeExpiresAt: new Date("2026-08-21T00:00:00.000Z"),
     })),
+    readSubject: vi.fn<(id: string) => Promise<{ id: string } | null>>(async (id) => ({ id })),
+    readSignInMethods: vi.fn(async () => ({
+      hasPassword: true,
+      social: [
+        {
+          provider: "google" as const,
+          linkedAt: new Date("2026-01-01T00:00:00.000Z"),
+          providerEmail: "person@gmail.com",
+          hidden: false,
+        },
+      ],
+      passkeys: [
+        {
+          id: "credential-1",
+          name: "Work laptop",
+          deviceType: "multiDevice" as const,
+          backedUp: true,
+          transports: null,
+          createdAt: new Date("2026-02-01T00:00:00.000Z"),
+          lastUsedAt: null,
+        },
+      ],
+    })),
     markDeletionRequested: vi.fn(async () => undefined),
     cancelDeletionRequested: vi.fn(async () => undefined),
     isEmailRegistered: vi.fn(async () => true),
+    setTimeZone: vi.fn(async (_subjectId: string, change: { mode: string }) =>
+      change.mode === "fixed"
+        ? { mode: "fixed", zone: "Asia/Tokyo" }
+        : { mode: "automatic", zone: null },
+    ),
+    reportDeviceZone: vi.fn<(...args: unknown[]) => Promise<unknown>>(async () => ({
+      mode: "automatic",
+      zone: "Europe/Paris",
+    })),
+    readTimeZone: vi.fn(async () => ({ mode: "fixed", zone: "Asia/Tokyo" })),
   };
   const accountDeletion = {
     requestDeletion: vi.fn<(...args: unknown[]) => Promise<unknown>>(async () => ({
@@ -71,6 +104,7 @@ function setup() {
     machineClientId: "api-service",
     machineClientSecret: "machine-secret-at-least-32-characters",
     allowMerge: true,
+    ...(options.passkeysEnabled === undefined ? {} : { passkeysEnabled: options.passkeysEnabled }),
   });
   return { app, lifecycle, operations, emailChange, accountDeletion, setToken, tokens };
 }
@@ -91,6 +125,79 @@ async function issueToken(app: ReturnType<typeof createInternalIdentityRoutes>):
   const body = (await response.json()) as { access_token: string };
   return body.access_token;
 }
+
+async function putJson(
+  app: ReturnType<typeof createInternalIdentityRoutes>,
+  token: string,
+  path: string,
+  method: "PUT" | "POST",
+  body: unknown,
+) {
+  return app.request(path, {
+    method,
+    headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+describe("internal Identity time zone routes", () => {
+  it("rejects a change without a machine token", async () => {
+    const { app, operations } = setup();
+    const response = await app.request("/identity/subjects/u1/time-zone", { method: "PUT" });
+    expect(response.status).toBe(401);
+    expect(operations.setTimeZone).not.toHaveBeenCalled();
+  });
+
+  it("saves a fixed city for the subject named in the path", async () => {
+    const { app, operations } = setup();
+    const token = await issueToken(app);
+    const response = await putJson(app, token, "/identity/subjects/u1/time-zone", "PUT", {
+      mode: "fixed",
+      zone: "Asia/Tokyo",
+    });
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ mode: "fixed", zone: "Asia/Tokyo" });
+    expect(operations.setTimeZone).toHaveBeenCalledWith("u1", {
+      mode: "fixed",
+      zone: "Asia/Tokyo",
+    });
+  });
+
+  it("refuses a zone that names no place", async () => {
+    const { app, operations } = setup();
+    const token = await issueToken(app);
+    for (const zone of ["UTC", "Etc/GMT+1", "Nowhere/City", 7]) {
+      const response = await putJson(app, token, "/identity/subjects/u1/time-zone", "PUT", {
+        mode: "fixed",
+        zone,
+      });
+      expect(response.status).toBe(400);
+      expect(await response.json()).toEqual({ error: "invalid_time_zone" });
+    }
+    expect(operations.setTimeZone).not.toHaveBeenCalled();
+  });
+
+  it("stores a device's zone and answers with what is stored", async () => {
+    const { app, operations } = setup();
+    const token = await issueToken(app);
+    const response = await putJson(app, token, "/identity/subjects/u1/time-zone/device", "POST", {
+      zone: "Europe/Paris",
+    });
+    expect(await response.json()).toEqual({ mode: "automatic", zone: "Europe/Paris" });
+    expect(operations.reportDeviceZone).toHaveBeenCalledWith("u1", "Europe/Paris");
+  });
+
+  it("reads the stored preference when the device's zone is unusable or unchanged", async () => {
+    const { app, operations } = setup();
+    operations.reportDeviceZone.mockResolvedValue(null);
+    const token = await issueToken(app);
+    const response = await putJson(app, token, "/identity/subjects/u1/time-zone/device", "POST", {
+      zone: "UTC",
+    });
+    expect(await response.json()).toEqual({ mode: "fixed", zone: "Asia/Tokyo" });
+    expect(operations.reportDeviceZone).not.toHaveBeenCalled();
+  });
+});
 
 describe("internal Identity machine routes", () => {
   it("rejects lifecycle operations without a machine token", async () => {
@@ -276,6 +383,40 @@ describe("internal Identity machine routes", () => {
         pendingNewEmail: "next@example.com",
       },
     });
+  });
+
+  it("answers sign-in method kinds, and passkey count only when passkeys are offered", async () => {
+    const on = setup({ passkeysEnabled: true });
+    const onResponse = await on.app.request("/identity/subjects/u1/sign-in-method-kinds", {
+      headers: { authorization: `Bearer ${await issueToken(on.app)}` },
+    });
+    expect(onResponse.status).toBe(200);
+    const body = await onResponse.json();
+    expect(body).toEqual({
+      kinds: { password: true, google: true, apple: false, passkeys: 1 },
+    });
+    expect(JSON.stringify(body)).not.toMatch(/gmail|Work laptop|credential-1/);
+
+    const off = setup();
+    const offResponse = await off.app.request("/identity/subjects/u1/sign-in-method-kinds", {
+      headers: { authorization: `Bearer ${await issueToken(off.app)}` },
+    });
+    await expect(offResponse.json()).resolves.toEqual({
+      kinds: { password: true, google: true, apple: false, passkeys: null },
+    });
+  });
+
+  it("answers 404 for sign-in method kinds of an unknown subject, and 401 without a token", async () => {
+    const { app, operations } = setup({ passkeysEnabled: true });
+    operations.readSubject.mockResolvedValueOnce(null);
+    const missing = await app.request("/identity/subjects/nobody/sign-in-method-kinds", {
+      headers: { authorization: `Bearer ${await issueToken(app)}` },
+    });
+    expect(missing.status).toBe(404);
+
+    const anonymous = await app.request("/identity/subjects/u1/sign-in-method-kinds");
+    expect(anonymous.status).toBe(401);
+    expect(operations.readSignInMethods).not.toHaveBeenCalled();
   });
 
   it("requests deletion through the shared orchestration and cancels through operations", async () => {

@@ -13,6 +13,7 @@ export type PaymentWebhookResult = {
     | "unapplied_money_recorded"
     | "unapplied_money_refunded"
     | "customer_balance_unapplied"
+    | "transfer_applied_to_other_invoice"
     | "payment_intent_processing"
     | "payment_intent_partially_funded"
     | "payment_intent_failed"

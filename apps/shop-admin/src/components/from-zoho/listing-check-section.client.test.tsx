@@ -18,6 +18,7 @@ const run: NonNullable<Listing["run"]> = {
       registerId: "6f1c1d0e-0000-4000-8000-000000000001",
       stockCode: "LAX-ORI-PH-GAC-26-0001",
       code: "product_not_found",
+      place: "On lax.art",
     },
   ],
 };
@@ -37,7 +38,7 @@ describe("ListingCheckSection", () => {
     expect(within(figures).getByText("668")).toBeTruthy();
     const link = screen.getByRole("link", { name: "LAX-ORI-PH-GAC-26-0001" });
     expect(link.getAttribute("href")).toBe("/from-zoho/6f1c1d0e-0000-4000-8000-000000000001");
-    expect(screen.getByText("No longer in Zoho")).toBeTruthy();
+    expect(screen.getByText("Deleted in Zoho · now On lax.art")).toBeTruthy();
   });
 
   it("says a dry run would correct, and points at writes that stopped after their retries", () => {

@@ -47,6 +47,7 @@ const link = (over: Partial<LotRegisterLink> = {}): LotRegisterLink => ({
   registerId: REGISTER_ID,
   status: "ended",
   hasWinner: false,
+  soldOnAtg: false,
   ...over,
 });
 
@@ -153,6 +154,13 @@ describe("ReturnLotToLaxArtService.returnToLaxArt", () => {
     expect(result).toMatchObject({ ok: false, status: 409, code: "has_winner" });
     expect(moveOffer).not.toHaveBeenCalled();
     expect(reopen).not.toHaveBeenCalled();
+  });
+
+  it("refuses a lot ATG sold, which has no LAX winner but is sold", async () => {
+    const { service, moveOffer } = setup({ link: link({ soldOnAtg: true }) });
+    const result = await service.returnToLaxArt(LOT_ID, "user-1");
+    expect(result).toMatchObject({ ok: false, status: 409, code: "has_winner" });
+    expect(moveOffer).not.toHaveBeenCalled();
   });
 
   it("answers 404 for a lot with no register link", async () => {

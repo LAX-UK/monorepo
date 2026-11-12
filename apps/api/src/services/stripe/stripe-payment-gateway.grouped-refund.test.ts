@@ -60,4 +60,20 @@ describe("StripePaymentGateway part refunds of one payment", () => {
       { idempotencyKey: "refund:ch_2:pay-b:5000" },
     ]);
   });
+
+  it("names the courier quote, not an invoice, on a refund of the delivery charge", async () => {
+    const create = vi.fn().mockResolvedValue({ id: "re_d" });
+    const stripe = { refunds: { create } } as unknown as Stripe;
+    const gateway = new StripePaymentGateway(
+      { STRIPE_SECRET_KEY: "sk_test" },
+      { get: () => stripe, require: () => stripe },
+    );
+
+    await gateway.createRefund({ chargeId: "ch_1", amount: 2_000, deliveryQuoteId: "q-1" });
+
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({ amount: 2_000, metadata: { deliveryQuoteId: "q-1" } }),
+      { idempotencyKey: "refund:ch_1:delivery:q-1:2000" },
+    );
+  });
 });

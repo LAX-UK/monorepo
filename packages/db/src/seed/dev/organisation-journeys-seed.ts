@@ -21,6 +21,8 @@ export type OrganisationJourneyActors = {
   estateOwnerId: string;
   consignorId: string;
   buyerAgentId: string;
+  /** The buyer agent's own account. */
+  buyerAgentPersonalId: string;
   /** Northbank Gallery: approved. */
   northbankId: string;
   /** An organisation whose bidding and selling are paused, owned by the estate owner. */
@@ -204,6 +206,38 @@ export async function seedOrganisationJourneys(db: Db, actors: OrganisationJourn
       subjectId: actors.buyerAgentId,
       buyerLegalEntityId: actors.northbankId,
       amount: "1200.00",
+      isWinning: true,
+      isAutoBid: false,
+      maxAutoBidAmount: null,
+      createdAt: new Date(today - 4 * DAY),
+    })
+    .onConflictDoNothing();
+
+  await db
+    .insert(schema.lot)
+    .values({
+      ...lotDefaults,
+      id: ids.lotInvoicePersonal,
+      title: "Quiet Pier, won on a personal account",
+      description: "Won on a personal account; nothing stands in the way of paying the invoice.",
+      startingPrice: "600.00",
+      currentPrice: "800.00",
+      minBidIncrement: "50.00",
+      startTime: new Date(today - 10 * DAY),
+      endTime: ended,
+      status: "ended",
+      winnerId: actors.buyerAgentId,
+      buyerLegalEntityId: actors.buyerAgentPersonalId,
+    })
+    .onConflictDoNothing();
+  await db
+    .insert(schema.bid)
+    .values({
+      lotId: ids.lotInvoicePersonal,
+      bidderId: actors.buyerAgentId,
+      subjectId: actors.buyerAgentId,
+      buyerLegalEntityId: actors.buyerAgentPersonalId,
+      amount: "800.00",
       isWinning: true,
       isAutoBid: false,
       maxAutoBidAmount: null,

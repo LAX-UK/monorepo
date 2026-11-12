@@ -311,6 +311,7 @@ const internal =
           machineClientId: env.IDENTITY_MACHINE_CLIENT_ID,
           machineClientSecret: env.IDENTITY_MACHINE_CLIENT_SECRET,
           allowMerge: env.IDENTITY_MERGE_ENABLED,
+          passkeysEnabled: env.PASSKEYS_ENABLED,
           addresses: {
             addresses: createIdentityAddressService(db),
           },

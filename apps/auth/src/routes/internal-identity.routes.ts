@@ -5,6 +5,7 @@ import {
   STAFF_EMAIL_CHANGE_MACHINE_SCOPE,
   SUBJECT_EXPORT_MACHINE_SCOPE,
   emailRegistrationRequestSchema,
+  parseAccountTimeZoneChange,
 } from "@auction/identity-contracts";
 import { type Context, Hono } from "hono";
 import type { AccountDeletionService } from "../services/account-deletion.service.js";
@@ -42,6 +43,8 @@ import {
   type TwoFactorPolicyRouteDeps,
   mountTwoFactorPolicyRoutes,
 } from "./internal-two-factor-policy.routes.js";
+
+import { summariseSignInMethodKinds } from "../services/sign-in-method-rules.js";
 
 const MACHINE_TOKEN_TTL_SEC = 5 * 60;
 const MACHINE_SCOPE = "identity.lifecycle";
@@ -147,6 +150,8 @@ export function createInternalIdentityRoutes(options: {
   machineClientId: string;
   machineClientSecret: string;
   allowMerge?: boolean;
+  /** Whether passkeys are offered here; when not, the sign-in method summary says nothing about them. */
+  passkeysEnabled?: boolean;
   onCredentialRateLimitError?: (error: unknown) => void;
   onOperation?: (
     operation: "disable" | "enable" | "merge" | "two_factor_reset",
@@ -364,6 +369,17 @@ export function createInternalIdentityRoutes(options: {
     return status ? c.json({ status }) : c.json({ error: "subject_not_found" }, 404);
   });
 
+  app.get("/identity/subjects/:subjectId/sign-in-method-kinds", async (c) => {
+    const subjectId = c.req.param("subjectId");
+    if (!(await options.operations.readSubject(subjectId))) {
+      return c.json({ error: "subject_not_found" }, 404);
+    }
+    const methods = await options.operations.readSignInMethods(subjectId);
+    return c.json({
+      kinds: summariseSignInMethodKinds(methods, options.passkeysEnabled ?? false),
+    });
+  });
+
   app.post("/identity/subjects/lookup", async (c) => {
     const body = await readJson(c);
     if (typeof body.email !== "string" || !body.email) {
@@ -546,6 +562,39 @@ export function createInternalIdentityRoutes(options: {
     return runIdentityOperation(c, async () => {
       await options.operations.updateSubjectProfile(c.req.param("subjectId"), patch);
       return { ok: true };
+    });
+  });
+
+  // LAX Bid saves a time zone choice made on its own pages for the signed-in person.
+  app.put("/identity/subjects/:subjectId/time-zone", async (c) => {
+    const body = await readJson(c);
+    const change = parseAccountTimeZoneChange({
+      mode: typeof body.mode === "string" ? body.mode : null,
+      zone: typeof body.zone === "string" ? body.zone : null,
+    });
+    if (!change) return c.json({ error: "invalid_time_zone" }, 400);
+    return runIdentityOperation(c, async () => {
+      const saved = await options.operations.setTimeZone(c.req.param("subjectId"), change);
+      return { mode: saved.mode, zone: saved.zone };
+    });
+  });
+
+  // The zone of the device a signed-in person is using; stored only while they follow their device.
+  app.post("/identity/subjects/:subjectId/time-zone/device", async (c) => {
+    const body = await readJson(c);
+    const change = parseAccountTimeZoneChange({
+      mode: "automatic",
+      zone: typeof body.zone === "string" ? body.zone : null,
+    });
+    return runIdentityOperation(c, async () => {
+      const subjectId = c.req.param("subjectId");
+      const stored =
+        change?.mode === "automatic" && change.deviceZone
+          ? await options.operations.reportDeviceZone(subjectId, change.deviceZone)
+          : null;
+      const preference = stored ?? (await options.operations.readTimeZone(subjectId));
+      if (!preference) throw new IdentityOperationError("subject_not_found");
+      return { mode: preference.mode, zone: preference.zone };
     });
   });
 

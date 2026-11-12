@@ -34,7 +34,10 @@ afterEach(() => vi.restoreAllMocks());
 describe("createIssuerAccountIdentityGateway", () => {
   it("sends the access token and sign-in in the body with the client's Basic credentials", async () => {
     const { fetchImpl, gateway: g } = gateway(async () => Response.json({ sessions: [SESSION] }));
-    expect(await g.listSessions(actor)).toEqual({ status: "ok", value: [SESSION] });
+    expect(await g.listSessions(actor)).toEqual({
+      status: "ok",
+      value: [{ ...SESSION, signedInWith: null }],
+    });
     const { url, init, body } = lastRequest(fetchImpl);
     expect(url).toBe("https://auth.internal/api/auth/lax/account-sessions");
     expect(url).not.toContain("access-token");
@@ -173,6 +176,89 @@ describe("createIssuerAccountIdentityGateway", () => {
       expect(await last.gateway.unlinkSignInMethod(actor, "google")).toEqual({
         status: "rejected",
         reason: "last_sign_in_method",
+      });
+    });
+
+    describe("passkeys", () => {
+      const passkey = {
+        id: "pk-1",
+        name: "Studio iMac",
+        synced: true,
+        kind: "platform",
+        createdAt: "2026-11-03T10:00:00.000Z",
+        lastUsedAt: null,
+      };
+
+      it("renames with the access token, passkey and name in the body, and answers with the passkey", async () => {
+        const { fetchImpl, gateway: g } = gateway(async () => Response.json({ passkey }));
+        expect(await g.renamePasskey(actor, "pk-1", "Studio iMac")).toEqual({
+          status: "ok",
+          value: passkey,
+        });
+        const { url, body } = lastRequest(fetchImpl);
+        expect(url).toBe(
+          "https://auth.internal/api/auth/lax/account-sign-in-methods/passkeys/rename",
+        );
+        expect(url).not.toContain("access-token");
+        expect(Object.fromEntries(body)).toEqual({
+          token: "access-token",
+          sid: "current-sid",
+          passkeyId: "pk-1",
+          name: "Studio iMac",
+        });
+      });
+
+      it("names a passkey that is not the person's as not linked", async () => {
+        const { gateway: g } = gateway(async () =>
+          Response.json({ error: "not_linked" }, { status: 404 }),
+        );
+        expect(await g.renamePasskey(actor, "pk-9", "Mine")).toEqual({
+          status: "rejected",
+          reason: "not_linked",
+        });
+      });
+
+      it("removes with the access token, sign-in and passkey in the body", async () => {
+        const { fetchImpl, gateway: g } = gateway(async () =>
+          Response.json({ removed: true, revokedSessions: 2 }),
+        );
+        expect(await g.removePasskey(actor, "pk-1")).toEqual({
+          status: "ok",
+          value: { removed: true, revokedSessions: 2 },
+        });
+        const { url, body } = lastRequest(fetchImpl);
+        expect(url).toBe(
+          "https://auth.internal/api/auth/lax/account-sign-in-methods/passkeys/remove",
+        );
+        expect(Object.fromEntries(body)).toEqual({
+          token: "access-token",
+          sid: "current-sid",
+          passkeyId: "pk-1",
+        });
+      });
+
+      it("passes sign in again through, and names the last-method and not-linked refusals", async () => {
+        const stale = gateway(async () =>
+          Response.json({ error: "reauth_required" }, { status: 403 }),
+        );
+        expect(await stale.gateway.removePasskey(actor, "pk-1")).toEqual({
+          status: "reauth_required",
+        });
+        const last = gateway(async () =>
+          Response.json({ error: "last_sign_in_method" }, { status: 422 }),
+        );
+        expect(await last.gateway.removePasskey(actor, "pk-1")).toEqual({
+          status: "rejected",
+          reason: "last_sign_in_method",
+        });
+      });
+
+      it("treats a failure as unavailable, never as a change", async () => {
+        const down = gateway(async () => new Response("", { status: 503 }));
+        expect(await down.gateway.removePasskey(actor, "pk-1")).toEqual({ status: "unavailable" });
+        expect(await down.gateway.renamePasskey(actor, "pk-1", "x")).toEqual({
+          status: "unavailable",
+        });
       });
     });
 
@@ -450,6 +536,83 @@ describe("createIssuerAccountIdentityGateway", () => {
         });
         expect(await g.readContact(actor)).toBeNull();
       }
+    });
+  });
+
+  describe("time zone", () => {
+    it("reads the preference with only the access token", async () => {
+      const { fetchImpl, gateway: g } = gateway(async () =>
+        Response.json({ mode: "automatic", zone: "Europe/Paris" }),
+      );
+      expect(await g.readTimeZone(actor)).toEqual({ mode: "automatic", zone: "Europe/Paris" });
+      expect(lastRequest(fetchImpl).url).toBe(
+        "https://auth.internal/api/auth/lax/account-time-zone",
+      );
+      expect(Object.fromEntries(lastRequest(fetchImpl).body)).toEqual({ token: "access-token" });
+    });
+
+    it("saves a fixed city and goes back to automatic with the device's zone", async () => {
+      const fixed = gateway(async () => Response.json({ mode: "fixed", zone: "Asia/Tokyo" }));
+      expect(await fixed.gateway.setTimeZone(actor, { mode: "fixed", zone: "Asia/Tokyo" })).toEqual(
+        {
+          status: "ok",
+          value: { mode: "fixed", zone: "Asia/Tokyo" },
+        },
+      );
+      expect(lastRequest(fixed.fetchImpl).url).toContain("/lax/account-time-zone/update");
+      expect(Object.fromEntries(lastRequest(fixed.fetchImpl).body)).toEqual({
+        token: "access-token",
+        mode: "fixed",
+        zone: "Asia/Tokyo",
+      });
+      const automatic = gateway(async () =>
+        Response.json({ mode: "automatic", zone: "Europe/Paris" }),
+      );
+      await automatic.gateway.setTimeZone(actor, { mode: "automatic", deviceZone: "Europe/Paris" });
+      expect(Object.fromEntries(lastRequest(automatic.fetchImpl).body)).toEqual({
+        token: "access-token",
+        mode: "automatic",
+        zone: "Europe/Paris",
+      });
+      await automatic.gateway.setTimeZone(actor, { mode: "automatic", deviceZone: null });
+      expect(Object.fromEntries(lastRequest(automatic.fetchImpl).body)).toEqual({
+        token: "access-token",
+        mode: "automatic",
+      });
+    });
+
+    it("surfaces the issuer's refusal of a zone that names no place", async () => {
+      const { gateway: g } = gateway(async () =>
+        Response.json({ error: "invalid_time_zone" }, { status: 400 }),
+      );
+      expect(await g.setTimeZone(actor, { mode: "fixed", zone: "Asia/Tokyo" })).toEqual({
+        status: "rejected",
+        reason: "invalid_time_zone",
+      });
+    });
+
+    it("reports the device's zone, and reads an unavailable issuer as unknown", async () => {
+      const ok = gateway(async () => Response.json({ mode: "automatic", zone: "Asia/Tokyo" }));
+      expect(await ok.gateway.reportDeviceZone(actor, "Asia/Tokyo")).toEqual({
+        mode: "automatic",
+        zone: "Asia/Tokyo",
+      });
+      expect(lastRequest(ok.fetchImpl).url).toContain("/lax/account-time-zone/device");
+      expect(Object.fromEntries(lastRequest(ok.fetchImpl).body)).toEqual({
+        token: "access-token",
+        zone: "Asia/Tokyo",
+      });
+      const down = gateway(async () => new Response("no", { status: 503 }));
+      expect(await down.gateway.reportDeviceZone(actor, "Asia/Tokyo")).toBeNull();
+      expect(await down.gateway.readTimeZone(actor)).toBeNull();
+    });
+
+    it("treats an answer that is not a preference as unavailable", async () => {
+      const { gateway: g } = gateway(async () => Response.json({ mode: "sometimes", zone: 7 }));
+      expect(await g.readTimeZone(actor)).toBeNull();
+      expect(await g.setTimeZone(actor, { mode: "fixed", zone: "Asia/Tokyo" })).toEqual({
+        status: "unavailable",
+      });
     });
   });
 

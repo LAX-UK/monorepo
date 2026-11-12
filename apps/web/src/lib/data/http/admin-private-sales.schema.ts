@@ -148,6 +148,7 @@ export type DealRecord = z.infer<typeof dealRecordSchema>;
 /** A refused write: the code, and what the API said about it. */
 export const dealRefusalSchema = z.object({
   error: z.string(),
+  message: z.string().optional(),
   fields: z.array(z.string()).optional(),
   blockers: z.array(blockerSchema).optional(),
   currentVersion: z.number().optional(),

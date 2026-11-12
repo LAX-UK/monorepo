@@ -1,4 +1,8 @@
-import type { SocialSignInProvider } from "@auction/identity-contracts";
+import type {
+  AccountTimeZone,
+  AccountTimeZoneChange,
+  SocialSignInProvider,
+} from "@auction/identity-contracts";
 import type { PasskeyRow, SignInAccountRow } from "./sign-in-method-rules.js";
 
 export type IdentityOperationTransaction = unknown;
@@ -41,6 +45,8 @@ export type IdentitySessionRecord = {
   isStaff: boolean;
   /** Earlier ids this sign-in stands for, after newer sign-ins in the same browser took them over. */
   previousIds: readonly string[];
+  /** How the sign-in was made, as recorded when it started (see `SessionSignInMethod`). */
+  amr?: readonly string[];
   isCurrent: boolean;
 };
 
@@ -70,6 +76,25 @@ export interface IIdentitySubjectRepository {
     patch: { name?: string; image?: string | null },
     now: Date,
   ): Promise<{ id: string; name: string; image: string | null } | null>;
+  /** The person's time zone preference, or null when there is no such person. */
+  readTimeZone(subjectId: string): Promise<AccountTimeZone | null>;
+  /** Saves the person's choice. Resolves to what is now stored, or null when there is no such person. */
+  updateTimeZone(
+    transaction: IdentityOperationTransaction,
+    subjectId: string,
+    change: AccountTimeZoneChange,
+    now: Date,
+  ): Promise<AccountTimeZone | null>;
+  /**
+   * Stores the zone the person's device reports, only while their mode is automatic and the zone
+   * differs from the one stored. Resolves to what is now stored when it changed, otherwise null.
+   */
+  updateDeviceZone(
+    transaction: IdentityOperationTransaction,
+    subjectId: string,
+    deviceZone: string,
+    now: Date,
+  ): Promise<AccountTimeZone | null>;
   /** Stores a verified number, or reports that another person already holds it. */
   setVerifiedPhone(
     transaction: IdentityOperationTransaction,

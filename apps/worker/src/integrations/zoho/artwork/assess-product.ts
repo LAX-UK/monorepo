@@ -51,6 +51,13 @@ function resolveArtist(
   return { zohoArtistId: product.artist.id, name: product.artist.name, code };
 }
 
+/** Zoho's Unit Price as pounds with pence ("250.00"); null when Zoho has none worth showing. */
+export function zohoPriceText(unitPrice: number | null): string | null {
+  return unitPrice === null || !Number.isFinite(unitPrice) || unitPrice <= 0
+    ? null
+    : unitPrice.toFixed(2);
+}
+
 /**
  * Turns a Zoho Product into what the register needs, with the reasons it cannot be created and
  * the gaps a person should know about. Pure: no reads, no writes.
@@ -106,6 +113,7 @@ export function assessProduct(product: CatalogueProduct): ProductAssessment {
     dimensions: product.dimensions,
     year: product.year,
     catalogueStatus: product.status,
+    zohoPrice: zohoPriceText(product.unitPrice),
   };
   if (product.title) fields.title = product.title;
   if (artist) fields.artist = artist;
@@ -130,6 +138,7 @@ export function assessProduct(product: CatalogueProduct): ProductAssessment {
           year: product.year,
           imageRefs: [],
           catalogueStatus: product.status,
+          zohoPrice: zohoPriceText(product.unitPrice),
           zohoModifiedAt: modifiedAt,
         }
       : null;

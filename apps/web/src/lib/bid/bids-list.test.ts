@@ -135,7 +135,7 @@ describe("the Sales view", () => {
       rows.map((row) => [row.title, row.status.label, row.figure.value, row.figure.label]),
     ).toEqual([
       ["Modern British", "Approved", "£20,000", "a lot"],
-      ["Post-war", "Waiting for approval", "–", "set when approved"],
+      ["Post-war", "Pending review", "–", "set when approved"],
       ["Design", "Not approved", "–", "ask us why"],
     ]);
     expect(rows[0]?.meta).toEqual([

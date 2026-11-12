@@ -1,8 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { DEFAULT_AUCTION_ZONE } from "../../lib/datetime/index.js";
-import { DateRangePicker } from "./date-range-picker.js";
-import { applyPresetForTest } from "./date-range-picker.test-utils.js";
+import { DateRangePicker, applyPreset } from "./date-range-picker.js";
 
 /** Preset boundaries use Europe/London calendar dates (see date-range-picker). */
 describe("DateRangePicker presets", () => {
@@ -10,7 +9,7 @@ describe("DateRangePicker presets", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-05-27T12:00:00Z"));
 
-    const range = applyPresetForTest("today", DEFAULT_AUCTION_ZONE);
+    const range = applyPreset("today", DEFAULT_AUCTION_ZONE);
     expect(range).toEqual({ from: "2026-05-27", to: "2026-05-27" });
 
     vi.useRealTimers();
@@ -20,7 +19,7 @@ describe("DateRangePicker presets", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-05-27T12:00:00Z"));
 
-    const range = applyPresetForTest("7d", DEFAULT_AUCTION_ZONE);
+    const range = applyPreset("7d", DEFAULT_AUCTION_ZONE);
     expect(range).toEqual({ from: "2026-05-21", to: "2026-05-27" });
 
     vi.useRealTimers();

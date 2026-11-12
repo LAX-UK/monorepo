@@ -1,3 +1,4 @@
+import type { SignInMethodKinds } from "@auction/identity-contracts";
 import type {
   AdminActivityEntry,
   AdminUserDetail,
@@ -39,6 +40,8 @@ export type AdminImpersonationRecordFailedEndResult =
 
 export type AdminUserDetailResponse = AdminUserDetail & {
   securityStatusAvailable: boolean;
+  /** Null when the issuer could not say which kinds of sign-in method the person has. */
+  signInMethodKinds: SignInMethodKinds | null;
 };
 
 export interface IAdminImpersonationService {

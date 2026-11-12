@@ -33,6 +33,7 @@ export class DrizzleIdentitySessionRepository implements IIdentitySessionReposit
         lastActiveAt: sql<Date>`${lastActiveAtColumn}`.mapWith(session.createdAt),
         signedInAt: sql<Date>`${signedInAtColumn}`.mapWith(session.createdAt),
         isStaff: sql<boolean>`${sessionPersonIsStaff}`,
+        amr: session.amr,
       })
       .from(session)
       .where(eq(session.userId, subjectId))

@@ -5,7 +5,7 @@ import { formatDeviceLabel } from "@auction/identity-contracts/account";
 export type SessionRowVm = {
   id: string;
   deviceLabel: string;
-  /** "Last active 2 hours ago · Signed in 3 days ago" */
+  /** "Last active 2 hours ago · Signed in 3 days ago with a passkey" */
   detail: string;
   isCurrent: boolean;
 };
@@ -20,6 +20,13 @@ function plural(count: number, unit: string): string {
   return `${count} ${unit}${count === 1 ? "" : "s"}`;
 }
 
+/** How a sign-in was made, in words that follow "Signed in 3 days ago with". */
+const SIGNED_IN_WITH: Record<NonNullable<AccountSession["signedInWith"]>, string> = {
+  password: "your password",
+  passkey: "a passkey",
+  provider: "Google or Apple",
+};
+
 function toRow(session: AccountSession, now: Date): SessionRowVm {
   const lastActive = formatRelativeAge(new Date(session.lastActiveAt), now);
   const signedIn = formatRelativeAge(new Date(session.createdAt), now);
@@ -27,7 +34,9 @@ function toRow(session: AccountSession, now: Date): SessionRowVm {
   return {
     id: session.id,
     deviceLabel: formatDeviceLabel(session.userAgent),
-    detail: `${activity} · Signed in ${signedIn}`,
+    detail: `${activity} · Signed in ${signedIn}${
+      session.signedInWith ? ` with ${SIGNED_IN_WITH[session.signedInWith]}` : ""
+    }`,
     isCurrent: session.isCurrent,
   };
 }

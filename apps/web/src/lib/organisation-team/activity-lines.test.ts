@@ -7,7 +7,7 @@ import {
   activityQueryFor,
   parseActivityFilters,
 } from "./activity-filters";
-import { activityDays, activityLine } from "./activity-lines";
+import { activityDays, activityLine, activityTime } from "./activity-lines";
 
 const ORG = "Northbank Gallery";
 
@@ -87,6 +87,26 @@ describe("activityDays", () => {
       "28 Oct",
       "3 Dec 2025",
     ]);
+  });
+
+  it("keeps London's days whole across the clocks going back", () => {
+    const at = (occurredAt: string, id: number) => ({
+      ...activityLine(entry("invoice_details_changed"), ORG),
+      id,
+      occurredAt,
+    });
+    // 23:30 UTC on the 24th is 00:30 BST on the 25th, the day the clocks go back.
+    const days = activityDays(
+      [at("2026-10-26T00:30:00Z", 1), at("2026-10-25T10:00:00Z", 2), at("2026-10-24T23:30:00Z", 3)],
+      new Date("2026-10-26T09:00:00Z"),
+    );
+    expect(days.map((d) => d.label)).toEqual(["Today", "Yesterday"]);
+    expect(days[1]?.lines).toHaveLength(2);
+  });
+
+  it("shows the year and the time in London time", () => {
+    expect(activityTime("2026-07-01T09:05:00Z")).toBe("10:05");
+    expect(activityTime("2026-12-01T09:05:00Z")).toBe("09:05");
   });
 });
 

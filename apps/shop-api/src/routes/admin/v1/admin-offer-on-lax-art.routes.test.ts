@@ -42,6 +42,7 @@ const assessment = {
   matchedArtist: null,
   existing: null,
   eligible: true,
+  zohoPrice: "4800.00",
   blockers: [],
 };
 
@@ -113,7 +114,11 @@ describe("Offer on lax.art routes", () => {
   it("answers the check with what the dialog shows", async () => {
     const { app } = await buildApp("catalogue_editor");
     const response = await app.inject({ method: "GET", url, headers: headers() });
-    expect(response.json()).toMatchObject({ eligible: true, missing: ["image", "size"] });
+    expect(response.json()).toMatchObject({
+      eligible: true,
+      missing: ["image", "size"],
+      zohoPrice: "4800.00",
+    });
     await app.close();
   });
 

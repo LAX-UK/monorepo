@@ -1,3 +1,5 @@
+import { decodeUtf8Base64Url, encodeUtf8Base64Url } from "./utf8-base64url.js";
+
 /** structured acting-legal-entity cookie (v1).
  * Legacy plain UUID values are still accepted for standard acting context.
  * Impersonation cookies carry only a server-side session id; timestamps are
@@ -29,7 +31,7 @@ export function isUuidString(value: string): boolean {
 }
 
 export function encodeActingContextCookie(payload: ActingContextCookieV1): string {
-  return Buffer.from(JSON.stringify(payload), "utf8").toString("base64url");
+  return encodeUtf8Base64Url(JSON.stringify(payload));
 }
 
 export function decodeActingContextCookie(
@@ -41,9 +43,9 @@ export function decodeActingContextCookie(
     return { v: 1, e: trimmed };
   }
   try {
-    const json = JSON.parse(
-      Buffer.from(trimmed, "base64url").toString("utf8"),
-    ) as ActingContextCookieV1;
+    const decoded = decodeUtf8Base64Url(trimmed);
+    if (decoded === null) return null;
+    const json = JSON.parse(decoded) as ActingContextCookieV1;
     if (json?.v === 1 && typeof json.e === "string" && isUuidString(json.e)) {
       if (json.i !== undefined) {
         if (typeof json.i?.sid !== "string" || !isUuidString(json.i.sid)) return null;

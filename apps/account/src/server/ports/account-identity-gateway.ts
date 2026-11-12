@@ -9,12 +9,17 @@ import type {
   AccountDeletionOutcome,
   AccountDeletionStatus,
   AccountEmailChangeConfirmedResponse,
+  AccountPasskey,
+  AccountPasskeyRemovedResponse,
   AccountPasswordChangedResponse,
   AccountPasswordError,
   AccountSession,
   AccountSignInMethodError,
   AccountSignInMethodUnlinkedResponse,
   AccountSignInMethodsResponse,
+  AccountTimeZone,
+  AccountTimeZoneChange,
+  AccountTimeZoneError,
   SignInMethodKind,
   SocialSignInProvider,
 } from "@auction/identity-contracts";
@@ -36,7 +41,8 @@ export type IdentityCallResult<T> =
         | AccountContactError
         | AccountAddressError
         | AccountPasswordError
-        | AccountSignInMethodError;
+        | AccountSignInMethodError
+        | AccountTimeZoneError;
     }
   | { status: "unavailable" };
 
@@ -48,6 +54,21 @@ export type AccountIdentityGateway = {
   /** The person's current name, or null when the issuer could not answer. */
   readName(actor: IdentityActor): Promise<string | null>;
   rename(actor: IdentityActor, name: string): Promise<IdentityCallResult<string>>;
+  /** The person's time zone preference, or null when the issuer could not answer. */
+  readTimeZone(actor: IdentityActor): Promise<AccountTimeZone | null>;
+  /** Saves "automatic" or "always use one city". Needs no recent sign-in. */
+  setTimeZone(
+    actor: IdentityActor,
+    change: AccountTimeZoneChange,
+  ): Promise<IdentityCallResult<AccountTimeZone>>;
+  /**
+   * Tells the issuer which zone this device is in. It is stored only while the person follows
+   * their device. Resolves to the preference now stored, or null when the issuer could not answer.
+   */
+  reportDeviceZone(
+    actor: IdentityActor,
+    deviceZone: string | null,
+  ): Promise<AccountTimeZone | null>;
   /** The live email and phone on file, or null when the issuer could not answer. */
   readContact(actor: IdentityActor): Promise<AccountContactResponse | null>;
   /** Emails a confirmation link to the current and the new address. Resolves to the new address. */
@@ -143,4 +164,21 @@ export type AccountIdentityGateway = {
     actor: IdentityActor,
     provider: SocialSignInProvider,
   ): Promise<IdentityCallResult<AccountSignInMethodUnlinkedResponse>>;
+  /**
+   * Gives one of the person's own passkeys a new name. The issuer answers "not linked" for a
+   * passkey that is not theirs. No recent sign-in is needed: a name changes how nobody signs in.
+   */
+  renamePasskey(
+    actor: IdentityActor,
+    passkeyId: string,
+    name: string,
+  ): Promise<IdentityCallResult<AccountPasskey>>;
+  /**
+   * Removes one of the person's own passkeys. Needs a recent sign-in, and is refused when it is the
+   * person's last way in. Every other device is signed out; this one stays.
+   */
+  removePasskey(
+    actor: IdentityActor,
+    passkeyId: string,
+  ): Promise<IdentityCallResult<AccountPasskeyRemovedResponse>>;
 };

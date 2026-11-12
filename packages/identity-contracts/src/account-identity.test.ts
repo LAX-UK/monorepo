@@ -41,7 +41,7 @@ describe("account sessions contract", () => {
     const parsed = accountSessionsSchema.parse({
       sessions: [{ ...session, ipAddress: "203.0.113.9", token: "secret" }],
     });
-    expect(parsed.sessions[0]).toEqual(session);
+    expect(parsed.sessions[0]).toEqual({ ...session, signedInWith: null });
   });
 
   it("rejects a session with a malformed time", () => {
