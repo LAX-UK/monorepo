@@ -3,7 +3,7 @@
  * wait. Times are local "HH:MM" and kept with an IANA zone, so 22:00 stays 22:00 through each
  * clock change. A window may cross midnight (22:00 to 07:00).
  */
-import { instantToWallClock, isValidZone } from "@auction/datetime";
+import { instantToWallClock, isKnownZone } from "@auction/datetime";
 
 export const DEFAULT_QUIET_HOURS_TIME_ZONE = "Europe/London";
 
@@ -13,7 +13,7 @@ export type QuietHours = { start: string | null; end: string | null; timeZone: s
 
 /** Whether `timeZone` is an IANA zone this runtime knows. */
 export function isValidTimeZone(timeZone: string): boolean {
-  return isValidZone(timeZone);
+  return isKnownZone(timeZone);
 }
 
 function minutes(hhmm: string): number | null {

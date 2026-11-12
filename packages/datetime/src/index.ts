@@ -33,7 +33,7 @@ export {
 } from "./describe-moment.js";
 export type { LocalTime } from "./local-time.js";
 export { gmtOffsetLabel, offsetMinutes, sameOffset } from "./offset.js";
-export { isPlaceholderZone, isValidZone, normaliseViewerZone } from "./zone.js";
+export { isKnownZone, isPlaceholderZone, isValidZone, normaliseViewerZone } from "./zone.js";
 export { shortMonthFormat, shortZoneName } from "./zone-formats.js";
 export { clockChange, clockChangeNotice } from "./clock-change.js";
 export {
