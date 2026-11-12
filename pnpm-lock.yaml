@@ -1359,6 +1359,18 @@ importers:
         specifier: ^3.0.5
         version: 3.2.6(@types/node@22.20.1)(jiti@2.6.1)(jsdom@25.0.1)(lightningcss@1.32.0)(terser@5.51.2)(tsx@4.21.0)(yaml@2.9.1)
 
+  packages/accounting-domain:
+    devDependencies:
+      '@auction/config-ts':
+        specifier: workspace:*
+        version: link:../config-ts
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.0.5
+        version: 3.2.6(@types/node@22.20.1)(jiti@2.6.1)(jsdom@25.0.1)(lightningcss@1.32.0)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.1)
+
   packages/alerts:
     dependencies:
       '@auction/datetime':
@@ -2426,6 +2438,9 @@ importers:
 
   packages/validators:
     dependencies:
+      '@auction/artwork-register-contracts':
+        specifier: workspace:*
+        version: link:../artwork-register-contracts
       '@auction/datetime':
         specifier: workspace:*
         version: link:../datetime

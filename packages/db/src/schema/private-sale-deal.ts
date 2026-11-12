@@ -71,6 +71,8 @@ export const privateSaleDeal = pgTable(
     invoiceReference: text("invoice_reference"),
     cancelReason: text("cancel_reason"),
     cancelledAt: timestamp("cancelled_at", { mode: "date", withTimezone: true }),
+    /** Why the deal has no register artwork: the seller's own work, or in Zoho but not linked yet. Null when linked. */
+    artworkUnlinkedReason: text("artwork_unlinked_reason"),
     version: integer("version").notNull().default(1),
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
@@ -96,6 +98,10 @@ export const privateSaleDeal = pgTable(
       .on(table.collectionDueAt)
       .where(sql`${table.stage} = 'paid' AND ${table.collectionDueAt} IS NOT NULL`),
     check("private_sale_deal_stage_check", sql.raw(`"stage" IN (${STAGES})`)),
+    check(
+      "private_sale_deal_artwork_unlinked_reason_check",
+      sql`${table.artworkUnlinkedReason} IS NULL OR ${table.artworkUnlinkedReason} IN ('sellers_own_work', 'in_zoho_not_linked')`,
+    ),
     check("private_sale_deal_currency_check", sql`${table.currency} = 'GBP'`),
     check(
       "private_sale_deal_price_check",

@@ -121,6 +121,10 @@ export class EnquiryConversionService implements IEnquiryConversion {
 
     const sides = await this.sidesOf(enquiry, input);
     if ("error" in sides) return { ok: false, error: sides.error };
+    // Exactly one: the artwork in the register, or why it is not there.
+    if ((input.artworkRegisterId !== undefined) === (input.notInRegister !== undefined)) {
+      return { ok: false, error: "artwork_choice_required" };
+    }
     if (input.artworkRegisterId) {
       const artwork = await this.deps.artworks.findById(input.artworkRegisterId);
       if (!artwork) return { ok: false, error: "artwork_not_found" };
@@ -135,6 +139,7 @@ export class EnquiryConversionService implements IEnquiryConversion {
           sourceEnquiryId: enquiry.id,
           ownerUserId: viewer.userId,
           ...(input.artworkRegisterId ? { artworkRegisterId: input.artworkRegisterId } : {}),
+          ...(input.notInRegister ? { artworkUnlinkedReason: input.notInRegister.reason } : {}),
           seller: sides.seller,
           ...(sides.buyer ? { buyer: sides.buyer } : {}),
           ...initialDealTerms(this.deps.policy),

@@ -1,5 +1,6 @@
 import {
   PRIVATE_SALE_DEALS_READ_ACCESS,
+  PRIVATE_SALE_ENQUIRIES_READ_ACCESS,
   type StaffRoles,
   type UserRole,
   userHasAccessTo,
@@ -7,6 +8,7 @@ import {
 import {
   type StaffDealAction,
   adminDealActionSchema,
+  adminDealArtworkSearchQuerySchema,
   adminDealBuyerSchema,
   adminDealListQuerySchema,
   adminDealTermsPatchSchema,
@@ -16,7 +18,10 @@ import {
 import type { Context } from "hono";
 import { createMiddleware } from "hono/factory";
 import { zValidator } from "../../lib/z-validator.js";
-import { createRequireAccess } from "../../middleware/require-capability.js";
+import {
+  createRequireAccess,
+  requirePrivateSaleDealsManage,
+} from "../../middleware/require-capability.js";
 import type { AdminEnquiryRoutesContainer } from "../../services/interfaces/admin-routes/index.js";
 import type { DealWriteError } from "../../services/interfaces/private-sale-deal-desk.js";
 import {
@@ -70,6 +75,29 @@ export function attachAdminPrivateSaleDealRoutes(
     const data = await container.admin.privateSaleDeals.list(viewerOf(c), c.req.valid("query"));
     return c.json({ data });
   });
+
+  /**
+   * GET /admin/private-sales/artworks — the register originals a deal can be made for, those the
+   * register would hold first. Declared before `/:ref` so the word is never read as a reference.
+   */
+  admin.get(
+    "/private-sales/artworks",
+    requirePrivateSaleDealsManage,
+    zValidator("query", adminDealArtworkSearchQuerySchema),
+    async (c) => {
+      const role = c.get("userRole") as UserRole;
+      const staff = c.get("userStaffRoles") as StaffRoles | undefined;
+      const outcome = await container.admin.dealArtworks.search(
+        {
+          userId: c.get("userId") as string,
+          readsPrivateSale: userHasAccessTo(role, staff, PRIVATE_SALE_ENQUIRIES_READ_ACCESS),
+        },
+        c.req.valid("query"),
+      );
+      if (!outcome.ok) return c.json({ error: outcome.error }, 404);
+      return c.json({ data: outcome.result });
+    },
+  );
 
   /** GET /admin/private-sales/:ref — the deal, its parties and checks, money, timeline and moves. */
   admin.get("/private-sales/:ref", zValidator("param", privateSaleRefParamSchema), async (c) => {

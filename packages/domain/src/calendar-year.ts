@@ -1,3 +1,5 @@
+import { calendarYear, dayKey, offsetMinutes, wallClockToInstant } from "@auction/datetime";
+
 /** LAX trades from London, so "this year" is the calendar year on UK time. */
 export const BUSINESS_TIME_ZONE = "Europe/London";
 
@@ -9,72 +11,42 @@ export type CalendarYear = {
   to: Date;
 };
 
-const yearFormatter = new Intl.DateTimeFormat("en-GB", {
-  timeZone: BUSINESS_TIME_ZONE,
-  year: "numeric",
-});
-
-const offsetFormatter = new Intl.DateTimeFormat("en-GB", {
-  timeZone: BUSINESS_TIME_ZONE,
-  hourCycle: "h23",
-  year: "numeric",
-  month: "2-digit",
-  day: "2-digit",
-  hour: "2-digit",
-  minute: "2-digit",
-});
-
 /** Minutes London is ahead of UTC at `instant` (0 in winter, 60 in summer). */
 export function londonOffsetMinutes(instant: Date): number {
-  const parts = offsetFormatter.formatToParts(instant);
-  const part = (type: Intl.DateTimeFormatPartTypes) =>
-    Number(parts.find((p) => p.type === type)?.value ?? 0);
-  const asUtc = Date.UTC(
-    part("year"),
-    part("month") - 1,
-    part("day"),
-    part("hour"),
-    part("minute"),
-  );
-  return Math.round((asUtc - instant.getTime()) / 60_000);
+  return offsetMinutes(instant, BUSINESS_TIME_ZONE);
+}
+
+/** The instant of a wall-clock time on a calendar day in London. Days past month end roll over. */
+function londonInstant(year: number, month: number, day: number, time: string): Date {
+  const calendarDay = new Date(Date.UTC(year, month - 1, day)).toISOString().slice(0, 10);
+  const result = wallClockToInstant(calendarDay, time, BUSINESS_TIME_ZONE);
+  if (!result.ok) throw new RangeError(`London has no ${time} on ${calendarDay}`);
+  return result.instant;
 }
 
 /** Midnight on 1 January of `year` in London, as an instant. */
 function londonNewYear(year: number): Date {
-  const utcMidnight = new Date(Date.UTC(year, 0, 1));
-  return new Date(utcMidnight.getTime() - londonOffsetMinutes(utcMidnight) * 60_000);
+  return londonInstant(year, 1, 1, "00:00");
 }
 
 /** The London calendar year that `now` falls in, as a half-open range of instants. */
 export function londonCalendarYear(now: Date): CalendarYear {
-  const year = Number(yearFormatter.format(now));
+  const year = calendarYear(now, BUSINESS_TIME_ZONE);
   return { year, from: londonNewYear(year), to: londonNewYear(year + 1) };
 }
 
-const dayFormatter = new Intl.DateTimeFormat("en-CA", {
-  timeZone: BUSINESS_TIME_ZONE,
-  year: "numeric",
-  month: "2-digit",
-  day: "2-digit",
-});
-
 /** The London calendar day `instant` falls on. */
 export function londonDateOf(instant: Date): { year: number; month: number; day: number } {
-  const [year, month, day] = dayFormatter.format(instant).split("-").map(Number);
+  const [year, month, day] = dayKey(instant, BUSINESS_TIME_ZONE).split("-").map(Number);
   return { year: year ?? 0, month: month ?? 1, day: day ?? 1 };
 }
 
 /** Midnight in London at the start of the given day (month 1-12; days past month end roll over). */
 export function londonMidnight(year: number, month: number, day: number): Date {
-  const utcMidnight = new Date(Date.UTC(year, month - 1, day));
-  return new Date(utcMidnight.getTime() - londonOffsetMinutes(utcMidnight) * 60_000);
+  return londonInstant(year, month, day, "00:00");
 }
 
 /** The instant at `hour`:00 London wall-clock time on the given day, correct across clock changes. */
 export function londonWallClock(year: number, month: number, day: number, hour: number): Date {
-  const asUtc = new Date(Date.UTC(year, month - 1, day, hour));
-  // The offset in force at the target moment is the one at the instant itself, so read it there
-  // (one step from the UTC reading; clock changes happen at 01:00 UTC, never near 09:00).
-  const guess = new Date(asUtc.getTime() - londonOffsetMinutes(asUtc) * 60_000);
-  return new Date(asUtc.getTime() - londonOffsetMinutes(guess) * 60_000);
+  return londonInstant(year, month, day, `${String(hour).padStart(2, "0")}:00`);
 }

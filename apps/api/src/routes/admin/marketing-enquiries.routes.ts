@@ -64,6 +64,7 @@ const CONVERT_ERROR_STATUS = {
   buyer_is_seller: 422,
   work_not_available: 422,
   work_in_deal: 409,
+  artwork_choice_required: 422,
   artwork_not_found: 422,
   artwork_not_original: 422,
   artwork_unavailable: 409,
