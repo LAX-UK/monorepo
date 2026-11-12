@@ -48,13 +48,8 @@ describe("presentPublicHomeCover", () => {
 
   it("has no cover when the stored measuring no longer carries type", async () => {
     const { saved } = await savedCover();
-    const unreadable = {
-      ...saved,
-      analysis: {
-        ...saved.analysis,
-        breakpoints: { ...saved.analysis.breakpoints, desktop: undefined, wide: undefined },
-      },
-    };
+    const { desktop: _desktop, wide: _wide, ...none } = saved.analysis.breakpoints;
+    const unreadable = { ...saved, analysis: { ...saved.analysis, breakpoints: none } };
     expect(presentPublicHomeCover(unreadable, resolve)).toEqual({ cover: null });
   });
 });

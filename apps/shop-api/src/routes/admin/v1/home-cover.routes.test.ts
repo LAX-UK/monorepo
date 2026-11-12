@@ -50,7 +50,7 @@ async function buildApp(role: ShopStaffRole) {
 }
 
 type App = Awaited<ReturnType<typeof buildApp>>["app"];
-const put = (app: App, payload: unknown = body) =>
+const put = (app: App, payload: object = body) =>
   app.inject({ method: "PUT", url: "/admin/v1/home-cover", headers, payload });
 
 describe("admin home cover routes", () => {
