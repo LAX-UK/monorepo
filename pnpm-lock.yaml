@@ -2076,6 +2076,9 @@ importers:
 
   packages/persistence:
     dependencies:
+      '@auction/accounting-domain':
+        specifier: workspace:*
+        version: link:../accounting-domain
       '@auction/alerts':
         specifier: workspace:*
         version: link:../alerts
