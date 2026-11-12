@@ -140,10 +140,12 @@ function setup(
   return { service, create, createDraft, updateInTransaction, events, locked, offer };
 }
 
+const OWN_WORK = { notInRegister: { reason: "sellers_own_work" } } as const;
+
 describe("EnquiryConversionService", () => {
   it("opens a draft consignment and a proposed deal with the enquirer as seller", async () => {
     const { service, create, createDraft, updateInTransaction, events } = setup();
-    const result = await service.convert(VIEWER, "E-1042", {});
+    const result = await service.convert(VIEWER, "E-1042", OWN_WORK);
     expect(result).toEqual({ ok: true, reference: "PS-0007" });
     expect(createDraft).toHaveBeenCalledWith(expect.anything(), {
       legalEntityId: "le-henry",
@@ -187,7 +189,10 @@ describe("EnquiryConversionService", () => {
         },
       },
     );
-    const result = await service.convert(VIEWER, "E-1042", { workReference: "C-1042" });
+    const result = await service.convert(VIEWER, "E-1042", {
+      workReference: "C-1042",
+      ...OWN_WORK,
+    });
     expect(result).toEqual({ ok: true, reference: "PS-0007" });
     expect(createDraft).not.toHaveBeenCalled();
     expect(create).toHaveBeenCalledWith(
@@ -201,12 +206,15 @@ describe("EnquiryConversionService", () => {
 
   it("asks for the work on a buy enquiry, and refuses one that does not exist", async () => {
     const buy = enquiry({ intent: "private_sale_buy", privateSale: null });
-    expect(await setup(buy).service.convert(VIEWER, "E-1042", {})).toEqual({
+    expect(await setup(buy).service.convert(VIEWER, "E-1042", OWN_WORK)).toEqual({
       ok: false,
       error: "work_required",
     });
     expect(
-      await setup(buy, { work: null }).service.convert(VIEWER, "E-1042", { workReference: "C-1" }),
+      await setup(buy, { work: null }).service.convert(VIEWER, "E-1042", {
+        workReference: "C-1",
+        ...OWN_WORK,
+      }),
     ).toEqual({ ok: false, error: "work_not_found" });
   });
 
@@ -217,25 +225,25 @@ describe("EnquiryConversionService", () => {
       await setup(buy, { work: { ...work, submittedByUserId: null } }).service.convert(
         VIEWER,
         "E-1042",
-        { workReference: "C-1" },
+        { workReference: "C-1", ...OWN_WORK },
       ),
     ).toEqual({ ok: false, error: "work_has_no_seller_contact" });
     expect(
       await setup(buy, {
         work: { ...work, legalEntityId: "le-henry", submittedByUserId: "u" },
-      }).service.convert(VIEWER, "E-1042", { workReference: "C-1" }),
+      }).service.convert(VIEWER, "E-1042", { workReference: "C-1", ...OWN_WORK }),
     ).toEqual({ ok: false, error: "buyer_is_seller" });
   });
 
   it("needs the enquirer to have an account, because the checks are recorded against one", async () => {
     const guest = setup(enquiry({ userId: null }));
-    expect(await guest.service.convert(VIEWER, "E-1042", {})).toEqual({
+    expect(await guest.service.convert(VIEWER, "E-1042", OWN_WORK)).toEqual({
       ok: false,
       error: "account_required",
     });
     expect(guest.create).not.toHaveBeenCalled();
     const unresolved = setup(enquiry(), { partyResolves: null });
-    expect(await unresolved.service.convert(VIEWER, "E-1042", {})).toEqual({
+    expect(await unresolved.service.convert(VIEWER, "E-1042", OWN_WORK)).toEqual({
       ok: false,
       error: "account_required",
     });
@@ -244,7 +252,7 @@ describe("EnquiryConversionService", () => {
   it("hides a private sale enquiry from someone who cannot read them", async () => {
     const { service, create } = setup();
     expect(
-      await service.convert({ userId: "u-clerk", readsPrivateSale: false }, "E-1042", {}),
+      await service.convert({ userId: "u-clerk", readsPrivateSale: false }, "E-1042", OWN_WORK),
     ).toEqual({ ok: false, error: "enquiry_not_found" });
     expect(create).not.toHaveBeenCalled();
   });
@@ -261,14 +269,16 @@ describe("EnquiryConversionService", () => {
 
   it("does not convert twice, or an enquiry nobody has started on", async () => {
     expect(
-      await setup(enquiry({ status: "converted" })).service.convert(VIEWER, "E-1042", {}),
+      await setup(enquiry({ status: "converted" })).service.convert(VIEWER, "E-1042", OWN_WORK),
     ).toEqual({ ok: false, error: "already_converted" });
-    expect(await setup(enquiry({ status: "new" })).service.convert(VIEWER, "E-1042", {})).toEqual({
+    expect(
+      await setup(enquiry({ status: "new" })).service.convert(VIEWER, "E-1042", OWN_WORK),
+    ).toEqual({
       ok: false,
       error: "not_ready",
     });
     expect(
-      await setup(enquiry({ status: "closed" })).service.convert(VIEWER, "E-1042", {}),
+      await setup(enquiry({ status: "closed" })).service.convert(VIEWER, "E-1042", OWN_WORK),
     ).toEqual({
       ok: false,
       error: "not_ready",
@@ -284,7 +294,7 @@ describe("EnquiryConversionService", () => {
 
   it("reports a stale enquiry, and writes nothing else, when it changed while converting", async () => {
     const { service } = setup(enquiry(), { moved: false });
-    expect(await service.convert(VIEWER, "E-1042", {})).toEqual({
+    expect(await service.convert(VIEWER, "E-1042", OWN_WORK)).toEqual({
       ok: false,
       error: "stale_version",
     });
@@ -300,7 +310,10 @@ describe("EnquiryConversionService", () => {
       title: "A work",
     };
     const convert = (options: Parameters<typeof setup>[1]) =>
-      setup(buy, options).service.convert(VIEWER, "E-1042", { workReference: "C-1042" });
+      setup(buy, options).service.convert(VIEWER, "E-1042", {
+        workReference: "C-1042",
+        ...OWN_WORK,
+      });
 
     it.each([
       "draft",
@@ -330,7 +343,9 @@ describe("EnquiryConversionService", () => {
 
     it("refuses a work that is already in a live deal, before anything is written", async () => {
       const { service, create } = setup(buy, { work, openDeal: true });
-      expect(await service.convert(VIEWER, "E-1042", { workReference: "C-1042" })).toEqual({
+      expect(
+        await service.convert(VIEWER, "E-1042", { workReference: "C-1042", ...OWN_WORK }),
+      ).toEqual({
         ok: false,
         error: "work_in_deal",
       });
@@ -352,7 +367,9 @@ describe("EnquiryConversionService", () => {
 
     it("holds the work before opening the deal, and opens it when nothing changed", async () => {
       const { service, locked } = setup(buy, { work });
-      expect(await service.convert(VIEWER, "E-1042", { workReference: "C-1042" })).toEqual({
+      expect(
+        await service.convert(VIEWER, "E-1042", { workReference: "C-1042", ...OWN_WORK }),
+      ).toEqual({
         ok: true,
         reference: "PS-0007",
       });
@@ -364,7 +381,9 @@ describe("EnquiryConversionService", () => {
       ["it stopped being approved", { status: "withdrawn" }],
     ])("refuses, and opens no deal, when %s after the first look", async (_why, heldAs) => {
       const { service, create, updateInTransaction } = setup(buy, { work, heldAs });
-      expect(await service.convert(VIEWER, "E-1042", { workReference: "C-1042" })).toEqual({
+      expect(
+        await service.convert(VIEWER, "E-1042", { workReference: "C-1042", ...OWN_WORK }),
+      ).toEqual({
         ok: false,
         error: "work_not_available",
       });
@@ -374,7 +393,9 @@ describe("EnquiryConversionService", () => {
 
     it("refuses when the work is gone once held", async () => {
       const { service, create } = setup(buy, { work, heldAs: null });
-      expect(await service.convert(VIEWER, "E-1042", { workReference: "C-1042" })).toEqual({
+      expect(
+        await service.convert(VIEWER, "E-1042", { workReference: "C-1042", ...OWN_WORK }),
+      ).toEqual({
         ok: false,
         error: "work_not_available",
       });
@@ -383,7 +404,9 @@ describe("EnquiryConversionService", () => {
 
     it("refuses when another deal for the work was opened before the hold was taken", async () => {
       const { service, create } = setup(buy, { work, dealAppearsAfterHold: true });
-      expect(await service.convert(VIEWER, "E-1042", { workReference: "C-1042" })).toEqual({
+      expect(
+        await service.convert(VIEWER, "E-1042", { workReference: "C-1042", ...OWN_WORK }),
+      ).toEqual({
         ok: false,
         error: "work_in_deal",
       });
@@ -400,7 +423,10 @@ describe("EnquiryConversionService", () => {
       let taken = false;
       const run = async () => {
         const { service } = setup(buy, { work, openDeal: taken });
-        const result = await service.convert(VIEWER, "E-1042", { workReference: "C-1042" });
+        const result = await service.convert(VIEWER, "E-1042", {
+          workReference: "C-1042",
+          ...OWN_WORK,
+        });
         if (result.ok) taken = true;
         return result;
       };
@@ -421,7 +447,9 @@ describe("EnquiryConversionService", () => {
 
     it("refuses someone who is staff or has left the owning account", async () => {
       const { service, create } = setup(buy, { work, sellerResolves: null });
-      expect(await service.convert(VIEWER, "E-1042", { workReference: "C-1042" })).toEqual({
+      expect(
+        await service.convert(VIEWER, "E-1042", { workReference: "C-1042", ...OWN_WORK }),
+      ).toEqual({
         ok: false,
         error: "work_has_no_seller_contact",
       });
@@ -441,10 +469,36 @@ describe("EnquiryConversionService and the artwork register", () => {
     expect(offer).toHaveBeenCalledWith(ARTWORK, "deal-new", "staff:u-specialist");
   });
 
-  it("opens a deal with no artwork exactly as before and does not touch the register", async () => {
+  it.each(["sellers_own_work", "in_zoho_not_linked"] as const)(
+    "records %s on the deal without touching the register",
+    async (reason) => {
+      const { service, create, offer } = setup();
+      const result = await service.convert(VIEWER, "E-1042", { notInRegister: { reason } });
+      expect(result).toEqual({ ok: true, reference: "PS-0007" });
+      expect(create).toHaveBeenCalledWith(
+        expect.objectContaining({ artworkUnlinkedReason: reason }),
+      );
+      expect(create.mock.calls[0]?.[0]).not.toHaveProperty("artworkRegisterId");
+      expect(offer).not.toHaveBeenCalled();
+    },
+  );
+
+  it("does not record a reason when the artwork is linked", async () => {
+    const { service, create } = setup();
+    await service.convert(VIEWER, "E-1042", { artworkRegisterId: ARTWORK });
+    expect(create.mock.calls[0]?.[0]).not.toHaveProperty("artworkUnlinkedReason");
+  });
+
+  it.each([
+    ["neither", {}],
+    ["both", { artworkRegisterId: ARTWORK, ...OWN_WORK }],
+  ] as const)("needs the artwork or the reason it is missing, not %s", async (_label, input) => {
     const { service, create, offer } = setup();
-    await service.convert(VIEWER, "E-1042", {});
-    expect(create.mock.calls[0]?.[0]).not.toHaveProperty("artworkRegisterId");
+    expect(await service.convert(VIEWER, "E-1042", input)).toEqual({
+      ok: false,
+      error: "artwork_choice_required",
+    });
+    expect(create).not.toHaveBeenCalled();
     expect(offer).not.toHaveBeenCalled();
   });
 

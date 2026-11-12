@@ -1,4 +1,5 @@
 import type {
+  PrivateSaleArtworkUnlinkedReason,
   PrivateSaleDealDetail,
   PrivateSaleDealDocument,
   PrivateSaleDocumentKind,
@@ -10,6 +11,8 @@ import type {
 export type NewPrivateSaleDeal = {
   itemSubmissionId: string;
   artworkRegisterId?: string | null;
+  /** Why the deal has no register artwork; only set when `artworkRegisterId` is not. */
+  artworkUnlinkedReason?: PrivateSaleArtworkUnlinkedReason | null;
   sourceEnquiryId?: string | null;
   sourceUnsoldLotChoiceId?: string | null;
   ownerUserId: string | null;

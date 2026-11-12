@@ -18,10 +18,12 @@ import type {
   SourceOfFundsStatus,
 } from "@auction/types";
 import type {
+  AdminDealArtworkSearchQuery,
   AdminDealBuyerInput,
   AdminDealConvertInput,
   AdminDealListQuery,
   AdminDealTerms,
+  DealArtworkSearchResult,
   StaffDealAction,
 } from "@auction/validators";
 import type { DealStaffViewer } from "../private-sale-deal/deal-staff-permissions.js";
@@ -201,6 +203,8 @@ export type ConvertEnquiryError =
   | "work_not_available"
   /** The work is already in a deal that is neither cancelled nor settled. */
   | "work_in_deal"
+  /** The deal needs an artwork from the register, or the reason it is not there: exactly one. */
+  | "artwork_choice_required"
   /** The artwork register has no such entry. */
   | "artwork_not_found"
   /** Only originals are held for a deal; prints are sold in runs. */
@@ -229,6 +233,19 @@ export interface IEnquiryConversion {
     enquiryRef: string,
     input: AdminDealConvertInput,
   ): Promise<ConvertEnquiryResult>;
+}
+
+export type DealArtworkSearchOutcome =
+  | { ok: true; result: DealArtworkSearchResult }
+  /** The enquiry the suggestions were asked for does not exist, or this person cannot see it. */
+  | { ok: false; error: "enquiry_not_found" };
+
+/** The originals staff can choose from for a deal's artwork. */
+export interface IDealArtworkSearch {
+  search(
+    viewer: { userId: string; readsPrivateSale: boolean },
+    query: AdminDealArtworkSearchQuery,
+  ): Promise<DealArtworkSearchOutcome>;
 }
 
 /** A deal as one of its parties lists it. */
