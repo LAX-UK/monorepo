@@ -42,17 +42,20 @@ async function answer(
 }
 
 /**
- * The bidder accepts the offer: binding, with the terms ticked and nothing else. Only a signed-in
- * request can; no address in an email accepts anything. The lot's id comes back so the person
- * lands on the new purchase, where Pay is ready.
+ * The bidder accepts the offer: binding, with the terms ticked and the total the page showed. The
+ * API refuses (`price_changed`) when the lot would now be invoiced at another total, so nobody is
+ * bound to a figure they never saw. Only a signed-in request can accept; no address in an email
+ * accepts anything. The lot's id comes back so the person lands on the new purchase, where Pay is
+ * ready.
  */
 export async function acceptBidderReofferAction(
   reofferId: string,
   termsAccepted: boolean,
+  expectedTotalMinor: number,
 ): Promise<ActionResult<{ lotId: string }>> {
   return instrumentServerAction("acceptBidderReofferAction", async () => {
     const id = reofferIdParamSchema.safeParse({ reofferId });
-    const body = acceptReofferBodySchema.safeParse({ termsAccepted });
+    const body = acceptReofferBodySchema.safeParse({ termsAccepted, expectedTotalMinor });
     if (!id.success || !body.success) {
       return actionFailure(bidderReofferErrorMessage("terms_not_accepted"), undefined, 422);
     }

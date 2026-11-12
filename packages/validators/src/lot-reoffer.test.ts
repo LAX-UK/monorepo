@@ -122,13 +122,23 @@ describe("seller answer", () => {
 });
 
 describe("bidder accept and decline", () => {
-  it("accepting needs the terms ticked", () => {
-    expect(acceptReofferBodySchema.safeParse({ termsAccepted: true }).success).toBe(true);
-    expect(acceptReofferBodySchema.safeParse({ termsAccepted: false }).success).toBe(false);
-    expect(acceptReofferBodySchema.safeParse({}).success).toBe(false);
-    expect(acceptReofferBodySchema.safeParse({ termsAccepted: true, price: 1 }).success).toBe(
+  it("accepting needs the terms ticked and the total the page showed", () => {
+    const shown = { termsAccepted: true, expectedTotalMinor: 102_500_00 };
+    expect(acceptReofferBodySchema.safeParse(shown).success).toBe(true);
+    expect(acceptReofferBodySchema.safeParse({ ...shown, termsAccepted: false }).success).toBe(
       false,
     );
+    expect(acceptReofferBodySchema.safeParse({ termsAccepted: true }).success).toBe(false);
+    expect(acceptReofferBodySchema.safeParse({}).success).toBe(false);
+    expect(acceptReofferBodySchema.safeParse({ ...shown, price: 1 }).success).toBe(false);
+  });
+
+  it("the total shown is whole, non-negative pence", () => {
+    for (const expectedTotalMinor of [-1, 1.5, "102500", null]) {
+      expect(
+        acceptReofferBodySchema.safeParse({ termsAccepted: true, expectedTotalMinor }).success,
+      ).toBe(false);
+    }
   });
 
   it("declining takes an optional trimmed reason of up to 500 characters", () => {

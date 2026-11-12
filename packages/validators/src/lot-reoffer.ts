@@ -70,8 +70,14 @@ export const sellerReofferAnswerBodySchema = z.discriminatedUnion("answer", [
 ]);
 export type SellerReofferAnswerBody = z.infer<typeof sellerReofferAnswerBodySchema>;
 
-/** The bidder accepts: a binding purchase at the total shown, with the terms ticked. */
-export const acceptReofferBodySchema = z.object({ termsAccepted: z.literal(true) }).strict();
+/**
+ * The bidder accepts: a binding purchase at the total shown, with the terms ticked. The total the
+ * page showed comes with it, so the server refuses (`price_changed`) when the lot would now be
+ * invoiced at anything else.
+ */
+export const acceptReofferBodySchema = z
+  .object({ termsAccepted: z.literal(true), expectedTotalMinor: pence })
+  .strict();
 export type AcceptReofferBody = z.infer<typeof acceptReofferBodySchema>;
 
 export const declineReofferBodySchema = z

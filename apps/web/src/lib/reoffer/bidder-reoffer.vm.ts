@@ -44,6 +44,8 @@ export type BidderReofferCardVm = {
 export type BidderReofferPriceVm = {
   rows: Array<{ label: string; value: string; strong?: boolean }>;
   note: string;
+  /** The total in pence, sent with the accept so the server can refuse one that has changed. */
+  totalMinor: number;
 };
 
 export type BidderReofferVm = {
@@ -234,6 +236,7 @@ function priceOf(view: BidderReofferView): BidderReofferPriceVm {
       { label: "Total", value: money(price.totalMinor), strong: true },
     ],
     note: "Delivery or collection is arranged after you pay, as for any purchase.",
+    totalMinor: price.totalMinor,
   };
 }
 

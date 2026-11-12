@@ -8,6 +8,8 @@ type AnswerRefusal = {
   settled: boolean;
   /** The offer ended while the person was answering, which the page says in its own notice. */
   ended?: boolean;
+  /** The total moved since the page loaded: the page reloads with the new one and asks again. */
+  priceChanged?: boolean;
 };
 
 const NO_LONGER_AVAILABLE = "This lot is no longer available. Nothing has been charged.";
@@ -30,6 +32,12 @@ const REFUSALS: Readonly<Record<string, AnswerRefusal>> = {
   money_paused: {
     message: "Offers can't be accepted just now. Try again in a little while.",
     settled: false,
+  },
+  price_changed: {
+    message:
+      "The total for this lot has changed since you opened this page. Nothing has been charged. Check the new total and accept again if you still wish to buy.",
+    settled: true,
+    priceChanged: true,
   },
   conflict: {
     message: "That did not go through. Something changed on this offer. Reload to see where it is.",
@@ -60,4 +68,9 @@ export function bidderReofferIsSettled(code: string | undefined): boolean {
 /** The offer ended while the person was answering. */
 export function bidderReofferEndedWhileAnswering(code: string | undefined): boolean {
   return code !== undefined && REFUSALS[code]?.ended === true;
+}
+
+/** The total changed between the page loading and the accept: the new total needs a new yes. */
+export function bidderReofferPriceChanged(code: string | undefined): boolean {
+  return code !== undefined && REFUSALS[code]?.priceChanged === true;
 }

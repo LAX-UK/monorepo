@@ -138,7 +138,13 @@ export function ReofferOfferView({ vm }: { vm: BidderReofferVm }) {
               {card.notice.detail}
             </Notice>
           ) : null}
-          {card.answerable ? <ReofferOfferAnswer reofferId={vm.id} lotTitle={vm.lotTitle} /> : null}
+          {card.answerable ? (
+            <ReofferOfferAnswer
+              reofferId={vm.id}
+              lotTitle={vm.lotTitle}
+              expectedTotalMinor={vm.price.totalMinor}
+            />
+          ) : null}
           {card.purchaseHref || card.browse ? (
             <div>
               {card.purchaseHref ? (

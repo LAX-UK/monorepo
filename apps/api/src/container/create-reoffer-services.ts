@@ -113,6 +113,7 @@ export function createReofferServices(input: {
       place,
       moneyPause,
       invoicing,
+      pricing,
     }),
     reads: new ReofferReadsService({
       db,

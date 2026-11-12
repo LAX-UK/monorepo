@@ -4,6 +4,7 @@ import {
   bidderReofferEndedWhileAnswering,
   bidderReofferErrorMessage,
   bidderReofferIsSettled,
+  bidderReofferPriceChanged,
 } from "./bidder-reoffer-errors";
 
 describe("refusals of the bidder's answer", () => {
@@ -27,6 +28,15 @@ describe("refusals of the bidder's answer", () => {
       expect(bidderReofferIsSettled(code)).toBe(true);
       expect(bidderReofferEndedWhileAnswering(code)).toBe(false);
     }
+  });
+
+  it("reloads with the new total when the total changed since the page loaded", () => {
+    expect(bidderReofferIsSettled("price_changed")).toBe(true);
+    expect(bidderReofferPriceChanged("price_changed")).toBe(true);
+    expect(bidderReofferEndedWhileAnswering("price_changed")).toBe(false);
+    expect(bidderReofferErrorMessage("price_changed")).toContain("Nothing has been charged");
+    expect(bidderReofferPriceChanged("conflict")).toBe(false);
+    expect(bidderReofferPriceChanged(undefined)).toBe(false);
   });
 
   it("stays on the page for a refusal the person can act on, saying why in words", () => {

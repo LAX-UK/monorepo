@@ -19,7 +19,11 @@ const ID = "11111111-1111-4111-8111-111111111111";
 const accept = vi.mocked(acceptBidderReofferAction);
 const decline = vi.mocked(declineBidderReofferAction);
 
-const open = () => render(<ReofferOfferAnswer reofferId={ID} lotTitle="The Winter Study" />);
+const TOTAL = 102_500_00;
+const open = () =>
+  render(
+    <ReofferOfferAnswer reofferId={ID} lotTitle="The Winter Study" expectedTotalMinor={TOTAL} />,
+  );
 const acceptButton = () => screen.getByRole("button", { name: "Accept and continue" });
 const tick = () => fireEvent.click(screen.getByRole("checkbox"));
 
@@ -41,12 +45,12 @@ describe("ReofferOfferAnswer", () => {
     expect(screen.queryByText("Tick the box to accept.")).toBeNull();
   });
 
-  it("accepts with the terms ticked and lands on the new purchase", async () => {
+  it("accepts with the terms ticked and the total shown, and lands on the new purchase", async () => {
     accept.mockResolvedValue({ ok: true, data: { lotId: "lot-9" } });
     open();
     tick();
     fireEvent.click(acceptButton());
-    await waitFor(() => expect(accept).toHaveBeenCalledWith(ID, true));
+    await waitFor(() => expect(accept).toHaveBeenCalledWith(ID, true, TOTAL));
     await waitFor(() => expect(router.push).toHaveBeenCalledWith("/purchases/lot-9"));
   });
 
@@ -76,6 +80,26 @@ describe("ReofferOfferAnswer", () => {
     tick();
     fireEvent.click(acceptButton());
     await waitFor(() => expect(router.replace).toHaveBeenCalledWith(`/bids/offers/${ID}?late=1`));
+  });
+
+  it("says the total changed, unticks the box and reloads with the new total", async () => {
+    accept.mockResolvedValue({
+      ok: false,
+      error:
+        "The total for this lot has changed since you opened this page. Nothing has been charged. Check the new total and accept again if you still wish to buy.",
+      status: 409,
+      errorCode: "price_changed",
+    });
+    open();
+    tick();
+    fireEvent.click(acceptButton());
+    expect(await screen.findByText("The total has changed")).toBeTruthy();
+    expect(screen.getByText(/has changed since you opened this page/)).toBeTruthy();
+    expect(router.refresh).toHaveBeenCalled();
+    expect(router.push).not.toHaveBeenCalled();
+    // The new total needs its own yes.
+    expect(screen.getByRole("checkbox").getAttribute("aria-checked")).toBe("false");
+    expect(acceptButton().getAttribute("aria-disabled")).toBe("true");
   });
 
   it("reloads with the reason when the offer moved on for another cause", async () => {

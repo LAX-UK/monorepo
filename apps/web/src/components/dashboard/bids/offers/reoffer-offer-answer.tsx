@@ -7,6 +7,7 @@ import {
 import {
   bidderReofferEndedWhileAnswering,
   bidderReofferIsSettled,
+  bidderReofferPriceChanged,
 } from "@/lib/reoffer/bidder-reoffer-errors";
 import { REOFFER_LATE_PARAM, bidderReofferHref } from "@/lib/reoffer/bidder-reoffer-links";
 import { notify } from "@/lib/ui/notify";
@@ -23,6 +24,8 @@ import { useId, useState, useTransition } from "react";
 type Props = {
   reofferId: string;
   lotTitle: string;
+  /** The total the page shows, in pence: what the bidder agrees to pay. */
+  expectedTotalMinor: number;
 };
 
 const REASON_MAX = 500;
@@ -30,11 +33,13 @@ const REASON_MAX = 500;
 /**
  * The bidder's two answers. Accepting is one confirmed step: the terms box ticked, then the
  * button, with the total in view beside it. Declining asks for an optional reason in one field.
- * An offer that ended or changed while the person was answering reloads the page to show where it
- * stands, never a second try; a refusal that leaves the offer open (the account cannot accept)
- * stays here, said in words.
+ * The total shown goes with the accept: when it changed in the meantime nothing is accepted, the
+ * page reloads with the new total, says so, and the box is unticked so the new total needs its
+ * own yes. An offer that ended or changed while the person was answering reloads the page to show
+ * where it stands, never a second try; a refusal that leaves the offer open (the account cannot
+ * accept) stays here, said in words.
  */
-export function ReofferOfferAnswer({ reofferId, lotTitle }: Props) {
+export function ReofferOfferAnswer({ reofferId, lotTitle, expectedTotalMinor }: Props) {
   const router = useRouter();
   const termsId = useId();
   const hintId = useId();
@@ -42,6 +47,7 @@ export function ReofferOfferAnswer({ reofferId, lotTitle }: Props) {
   const [declining, setDeclining] = useState(false);
   const [reason, setReason] = useState("");
   const [problem, setProblem] = useState<string | null>(null);
+  const [priceChanged, setPriceChanged] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [declinePending, startDecline] = useTransition();
 
@@ -51,14 +57,22 @@ export function ReofferOfferAnswer({ reofferId, lotTitle }: Props) {
       router.replace(`${bidderReofferHref(reofferId)}?${REOFFER_LATE_PARAM}=1`);
       return;
     }
+    if (bidderReofferPriceChanged(code)) {
+      // Said beside the box, which is unticked: the new total needs its own yes.
+      setAgreed(false);
+      setPriceChanged(message);
+      router.refresh();
+      return;
+    }
     notify.error(message);
     router.refresh();
   };
 
   const accept = () => {
     setProblem(null);
+    setPriceChanged(null);
     startTransition(async () => {
-      const result = await acceptBidderReofferAction(reofferId, agreed);
+      const result = await acceptBidderReofferAction(reofferId, agreed, expectedTotalMinor);
       if (result.ok) {
         // The lot is theirs: Pay is ready on the new purchase.
         router.push(
@@ -110,6 +124,12 @@ export function ReofferOfferAnswer({ reofferId, lotTitle }: Props) {
           .
         </label>
       </div>
+
+      {priceChanged ? (
+        <Notice tone="warning" alert title="The total has changed">
+          {priceChanged}
+        </Notice>
+      ) : null}
 
       {problem && !declining ? (
         <Notice tone="danger" alert title="That didn't go through">

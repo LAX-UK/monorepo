@@ -155,6 +155,7 @@ describe.skipIf(!HAS_DB)("re-offer API services (integration)", () => {
   const offer = new ReofferOfferService({ ...base, consents, atg, place, moneyPause });
   const response = new ReofferResponseService({
     ...base,
+    pricing,
     consents,
     reaward: new DrizzleLotReawardRepository(),
     atg,
@@ -262,6 +263,17 @@ describe.skipIf(!HAS_DB)("re-offer API services (integration)", () => {
     (await reads.listForBidder(member(who))).filter((v) => v.lotId === lotId);
   const row = async (reofferId: string) =>
     (await db.select().from(lotReoffer).where(eq(lotReoffer.id, reofferId)))[0];
+  /** An accept as the page sends it: the terms ticked and the total the offer's page shows. */
+  const shown = async (reofferId: string) => {
+    const offered = await row(reofferId);
+    if (!offered) throw new Error(`Offer ${reofferId} not found`);
+    const priced = await pricing.priceFor({
+      lotId: offered.lotId,
+      buyerLegalEntityId: offered.offeredLegalEntityId,
+      hammerPence: offered.amountPence,
+    });
+    return { termsAccepted: true, expectedTotalMinor: priced.totalPence };
+  };
   const lotRow = async (lotId: string) => (await db.select().from(lot).where(eq(lot.id, lotId)))[0];
   const codeOf = async (promise: Promise<unknown>) => {
     const error = await promise.then(
@@ -793,11 +805,18 @@ describe.skipIf(!HAS_DB)("re-offer API services (integration)", () => {
       const out = await sentOffer(s);
       clock.now = new Date(T0.getTime() + HOUR);
       expect(
-        await codeOf(response.accept(member("second"), out.reofferId, { termsAccepted: false })),
+        await codeOf(
+          response.accept(member("second"), out.reofferId, {
+            termsAccepted: false,
+            expectedTotalMinor: 0,
+          }),
+        ),
       ).toBe("terms_not_accepted");
-      const accepted = await response.accept(member("second"), out.reofferId, {
-        termsAccepted: true,
-      });
+      const accepted = await response.accept(
+        member("second"),
+        out.reofferId,
+        await shown(out.reofferId),
+      );
       expect(accepted).toMatchObject({ lotId: s.lotId, amountPence: 90_000 });
       // The invoice is due seven days on, to the end of that London day (RA10).
       expect(accepted.invoiceDueAt.toISOString()).toBe("2026-11-18T23:59:59.999Z");
@@ -829,11 +848,46 @@ describe.skipIf(!HAS_DB)("re-offer API services (integration)", () => {
       expect(types).toContain("lot.reawarded");
     });
 
+    it("refuses an accept at a total that changed since the page loaded, changing nothing", async () => {
+      reset();
+      const s = await defaultedLot();
+      const out = await sentOffer(s);
+      const [loaded] = await bidderOffersFor("second", s.lotId);
+      expect(loaded?.price.totalMinor).toBe(112_500);
+
+      // Staff change the lot's premium between the bidder loading the page and accepting.
+      await db.update(lot).set({ buyerPremiumRate: "0.3000" }).where(eq(lot.id, s.lotId));
+      expect(
+        await codeOf(
+          response.accept(member("second"), out.reofferId, {
+            termsAccepted: true,
+            expectedTotalMinor: loaded?.price.totalMinor ?? 0,
+          }),
+        ),
+      ).toBe("price_changed");
+      expect((await row(out.reofferId))?.status).toBe("offered");
+      expect((await row(out.reofferId))?.respondedAt).toBeNull();
+      expect((await lotRow(s.lotId))?.winnerId).toBeNull();
+      expect(control.invoiced).toEqual([]);
+      expect(eventTypes(s.lotId)).not.toContain("lot.reoffer_accepted");
+      expect(eventTypes(s.lotId)).not.toContain("lot.reawarded");
+
+      // The page reloads with the new total, and accepting at that total goes through.
+      const [reloaded] = await bidderOffersFor("second", s.lotId);
+      expect(reloaded?.price).toMatchObject({ buyersPremiumMinor: 27_000, totalMinor: 117_000 });
+      const accepted = await response.accept(member("second"), out.reofferId, {
+        termsAccepted: true,
+        expectedTotalMinor: reloaded?.price.totalMinor ?? 0,
+      });
+      expect(accepted.lotId).toBe(s.lotId);
+      expect(control.invoiced).toEqual([s.lotId]);
+    });
+
     it("keeps the original hammer on the default and never reopens the default's other offers", async () => {
       reset();
       const s = await defaultedLot();
       const out = await sentOffer(s);
-      await response.accept(member("second"), out.reofferId, { termsAccepted: true });
+      await response.accept(member("second"), out.reofferId, await shown(out.reofferId));
       const [original] = await db
         .select()
         .from(buyerDefault)
@@ -854,7 +908,7 @@ describe.skipIf(!HAS_DB)("re-offer API services (integration)", () => {
       expect((await lotRow(s.lotId))?.winnerId).toBeNull();
       expect(eventTypes(s.lotId)).toContain("lot.reoffer_declined");
       expect(
-        await codeOf(response.accept(member("second"), out.reofferId, { termsAccepted: true })),
+        await codeOf(response.accept(member("second"), out.reofferId, await shown(out.reofferId))),
       ).toBe("offer_not_open");
     });
 
@@ -863,11 +917,11 @@ describe.skipIf(!HAS_DB)("re-offer API services (integration)", () => {
       const s = await defaultedLot();
       const out = await sentOffer(s);
       expect(
-        await codeOf(response.accept(member("third"), out.reofferId, { termsAccepted: true })),
+        await codeOf(response.accept(member("third"), out.reofferId, await shown(out.reofferId))),
       ).toBe("offer_not_found");
       expect(
         await codeOf(
-          response.accept(member("second", "finance"), out.reofferId, { termsAccepted: true }),
+          response.accept(member("second", "finance"), out.reofferId, await shown(out.reofferId)),
         ),
       ).toBe("forbidden");
       expect((await row(out.reofferId))?.status).toBe("offered");
@@ -879,7 +933,7 @@ describe.skipIf(!HAS_DB)("re-offer API services (integration)", () => {
       const out = await sentOffer(s);
       clock.now = out.offerEndsAt;
       expect(
-        await codeOf(response.accept(member("second"), out.reofferId, { termsAccepted: true })),
+        await codeOf(response.accept(member("second"), out.reofferId, await shown(out.reofferId))),
       ).toBe("offer_window_ended");
       expect(await codeOf(response.decline(member("second"), out.reofferId, {}))).toBe(
         "offer_window_ended",
@@ -893,7 +947,7 @@ describe.skipIf(!HAS_DB)("re-offer API services (integration)", () => {
       const out = await sentOffer(s);
       await offer.withdraw(staff, out.reofferId, { reason: "Seller changed their mind" });
       expect(
-        await codeOf(response.accept(member("second"), out.reofferId, { termsAccepted: true })),
+        await codeOf(response.accept(member("second"), out.reofferId, await shown(out.reofferId))),
       ).toBe("offer_not_open");
     });
 
@@ -903,17 +957,17 @@ describe.skipIf(!HAS_DB)("re-offer API services (integration)", () => {
       const out = await sentOffer(s);
       control.paused = "Paused";
       expect(
-        await codeOf(response.accept(member("second"), out.reofferId, { termsAccepted: true })),
+        await codeOf(response.accept(member("second"), out.reofferId, await shown(out.reofferId))),
       ).toBe("money_paused");
       control.paused = null;
       control.placeRefusal = "This artwork is in a private sale. Withdraw it there first.";
       expect(
-        await codeOf(response.accept(member("second"), out.reofferId, { termsAccepted: true })),
+        await codeOf(response.accept(member("second"), out.reofferId, await shown(out.reofferId))),
       ).toBe("artwork_offered_elsewhere");
       control.placeRefusal = null;
       control.soldOnAtg = true;
       expect(
-        await codeOf(response.accept(member("second"), out.reofferId, { termsAccepted: true })),
+        await codeOf(response.accept(member("second"), out.reofferId, await shown(out.reofferId))),
       ).toBe("sold_on_atg");
       // Nothing moved: the offer is still out and the lot still has no buyer.
       expect((await row(out.reofferId))?.status).toBe("offered");
@@ -928,7 +982,7 @@ describe.skipIf(!HAS_DB)("re-offer API services (integration)", () => {
       const out = await sentOffer(s);
       await addPayment(s.lotId, "captured");
       expect(
-        await codeOf(response.accept(member("second"), out.reofferId, { termsAccepted: true })),
+        await codeOf(response.accept(member("second"), out.reofferId, await shown(out.reofferId))),
       ).toBe("payment_in_progress");
       expect((await row(out.reofferId))?.status).toBe("offered");
       expect((await lotRow(s.lotId))?.winnerId).toBeNull();
@@ -964,7 +1018,7 @@ describe.skipIf(!HAS_DB)("re-offer API services (integration)", () => {
       });
       await gotLock;
       const accepting = response
-        .accept(member("second"), out.reofferId, { termsAccepted: true })
+        .accept(member("second"), out.reofferId, await shown(out.reofferId))
         .then(
           () => "accepted",
           (e: unknown) => (e as ReofferError).code,
@@ -981,9 +1035,10 @@ describe.skipIf(!HAS_DB)("re-offer API services (integration)", () => {
       reset();
       const s = await defaultedLot();
       const out = await sentOffer(s);
+      const answer = await shown(out.reofferId);
       const results = await Promise.allSettled([
-        response.accept(member("second"), out.reofferId, { termsAccepted: true }),
-        response.accept(member("second"), out.reofferId, { termsAccepted: true }),
+        response.accept(member("second"), out.reofferId, answer),
+        response.accept(member("second"), out.reofferId, answer),
       ]);
       expect(results.map((r) => r.status)).toEqual(["fulfilled", "fulfilled"]);
       const [a, b] = results as PromiseFulfilledResult<{ reofferId: string; acceptedAt: Date }>[];
@@ -1000,11 +1055,19 @@ describe.skipIf(!HAS_DB)("re-offer API services (integration)", () => {
       reset();
       const s = await defaultedLot();
       const out = await sentOffer(s);
-      const first = await response.accept(member("second"), out.reofferId, { termsAccepted: true });
-      const again = await response.accept(member("second"), out.reofferId, { termsAccepted: true });
+      const first = await response.accept(
+        member("second"),
+        out.reofferId,
+        await shown(out.reofferId),
+      );
+      const again = await response.accept(
+        member("second"),
+        out.reofferId,
+        await shown(out.reofferId),
+      );
       expect(again).toEqual(first);
       expect(
-        await codeOf(response.accept(member("third"), out.reofferId, { termsAccepted: true })),
+        await codeOf(response.accept(member("third"), out.reofferId, await shown(out.reofferId))),
       ).toBe("offer_not_found");
       expect(events.filter((e) => e.lotId === s.lotId && e.type === "lot.reawarded")).toHaveLength(
         1,
@@ -1019,7 +1082,9 @@ describe.skipIf(!HAS_DB)("re-offer API services (integration)", () => {
       await suspend(ids.second);
       try {
         expect(
-          await codeOf(response.accept(member("second"), out.reofferId, { termsAccepted: true })),
+          await codeOf(
+            response.accept(member("second"), out.reofferId, await shown(out.reofferId)),
+          ),
         ).toBe("bidder_unavailable");
       } finally {
         await db.delete(bidUserProfile).where(eq(bidUserProfile.userId, ids.second));
@@ -1034,7 +1099,7 @@ describe.skipIf(!HAS_DB)("re-offer API services (integration)", () => {
       const s = await defaultedLot();
       const out = await sentOffer(s);
       const [accepted, withdrawn] = await Promise.allSettled([
-        response.accept(member("second"), out.reofferId, { termsAccepted: true }),
+        response.accept(member("second"), out.reofferId, await shown(out.reofferId)),
         offer.withdraw(staff, out.reofferId, { reason: "Withdrawn at the same moment" }),
       ]);
       const stored = await row(out.reofferId);
@@ -1047,7 +1112,7 @@ describe.skipIf(!HAS_DB)("re-offer API services (integration)", () => {
       reset();
       const s = await defaultedLot();
       const first = await sentOffer(s);
-      await response.accept(member("second"), first.reofferId, { termsAccepted: true });
+      await response.accept(member("second"), first.reofferId, await shown(first.reofferId));
       // The new buyer defaults too: the sale is voided and the winner taken off, as the default does.
       await db
         .update(lot)
@@ -1071,7 +1136,9 @@ describe.skipIf(!HAS_DB)("re-offer API services (integration)", () => {
         .returning({ id: buyerDefault.id });
       // The old offer is history: answering it again is refused, and starts are for the new default.
       expect(
-        await codeOf(response.accept(member("second"), first.reofferId, { termsAccepted: true })),
+        await codeOf(
+          response.accept(member("second"), first.reofferId, await shown(first.reofferId)),
+        ),
       ).toBe("offer_not_open");
       expect(await codeOf(start.start(staff, s.lotId, { buyerDefaultId: s.defaultId }))).toBe(
         "default_not_latest",
