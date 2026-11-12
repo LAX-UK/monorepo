@@ -22,6 +22,14 @@ export interface Lease {
 
 /** Longest a lease may run. A longer one is almost certainly a unit mistake. */
 export const MAX_LEASE_MS = 60 * 60 * 1000;
+
+/**
+ * Clock difference tolerated between workers when reading a record back: a lease granted by a
+ * worker whose clock is slightly ahead must still load on one that is slightly behind. It only
+ * widens the read-back bound; granting a lease is still capped at `MAX_LEASE_MS` exactly.
+ */
+export const CLOCK_SKEW_MS = 60 * 1000;
+
 /**
  * How long after a lease expires the first request is still allowed to land in the provider. The
  * runtime's HTTP timeout must be shorter than the lease; this grace covers provider-side work that
@@ -371,7 +379,7 @@ function parseMismatch(value: unknown): TotalsMismatch | null | undefined {
 export function parseRecord(row: unknown, nowMs: number): Result<DocumentRecord, "bad_record"> {
   const bad = (why: string) => refuse("bad_record", why);
   if (!isTime(nowMs)) return bad("parsing needs the current time");
-  const leaseLimit = nowMs + MAX_LEASE_MS;
+  const leaseLimit = nowMs + MAX_LEASE_MS + CLOCK_SKEW_MS;
   const settleLimit = leaseLimit + SETTLE_GRACE_MS;
   if (typeof row !== "object" || row === null) return bad("not an object");
   const r = row as Record<string, unknown>;

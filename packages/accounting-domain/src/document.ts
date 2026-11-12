@@ -10,6 +10,7 @@ import {
   type Totals,
   buildInclusiveLine,
   buildLine,
+  cumulativeVat,
   isPence,
   lineGrossPence,
   totalsOf,
@@ -136,6 +137,8 @@ export interface Invoice extends Base<"invoice"> {
 }
 
 export interface CreditNote extends Base<"credit_note"> {
+  /** Every line is gross with the VAT inside it; the adapter sends the gross and the stated VAT. */
+  readonly amountsAre: "tax_inclusive";
   readonly contactReference: string;
   readonly invoiceReference: string;
   readonly currency: typeof CURRENCY;
@@ -290,12 +293,6 @@ export function buildBill(input: Common & Priced): Result<Bill, DocumentCode> {
   });
 }
 
-function grossByRole(lines: readonly Line[]): Record<LineRole, Pence> {
-  const out: Record<LineRole, Pence> = { goods: 0, delivery: 0 };
-  for (const line of lines) out[line.role] += lineGrossPence(line);
-  return out;
-}
-
 function sameTotals(a: Totals, b: Totals): boolean {
   return a.netPence === b.netPence && a.vatPence === b.vatPence && a.grossPence === b.grossPence;
 }
@@ -328,11 +325,106 @@ function checkInvoice(invoice: Invoice): Result<null, DocumentCode> {
     })),
   });
   if (!rebuilt.ok) return bad(rebuilt.refusal.message);
-  const same = rebuilt.value.lines.every((l, i) => l.vatPence === invoice.lines[i]?.vatPence);
+  const same = rebuilt.value.lines.every(
+    (l, i) => l.vatPence === invoice.lines[i]?.vatPence && invoice.lines[i]?.basis === l.basis,
+  );
   if (!same || !sameTotals(rebuilt.value.totals, invoice.totals) || invoice.currency !== CURRENCY) {
     return bad("invoice lines or totals do not match");
   }
   return ok(null);
+}
+
+/** What has already been credited on one invoice line. */
+interface LineLedger {
+  readonly line: Line;
+  readonly gross: Pence;
+  creditedGross: Pence;
+  creditedVat: Pence;
+}
+
+function ledgerFor(invoice: Invoice): Record<LineRole, LineLedger[]> {
+  const out: Record<LineRole, LineLedger[]> = { goods: [], delivery: [] };
+  for (const line of invoice.lines) {
+    out[line.role].push({ line, gross: lineGrossPence(line), creditedGross: 0, creditedVat: 0 });
+  }
+  return out;
+}
+
+/** The credit line for `take` gross on a ledger entry: VAT allocated cumulatively, never over the line's. */
+function nextCredit(entry: LineLedger, take: Pence): Result<Line, "bad_line" | "bad_invoice"> {
+  const vat =
+    cumulativeVat(entry.line.vatPence, entry.gross, entry.creditedGross + take) - entry.creditedVat;
+  if (vat < 0) return refuse("bad_invoice", "VAT already credited on a line is too high");
+  const credit = buildInclusiveLine({
+    description: `Credit: ${entry.line.description}`,
+    treatment: entry.line.treatment,
+    role: entry.line.role,
+    grossPence: take,
+    vatPence: Math.min(vat, take),
+  });
+  if (!credit.ok) return refuse("bad_line", credit.refusal.message);
+  return credit;
+}
+
+function record(entry: LineLedger, credit: Line): void {
+  entry.creditedGross += lineGrossPence(credit);
+  entry.creditedVat += credit.vatPence;
+}
+
+/**
+ * Replay the prior credit notes onto the invoice's lines, in order, rebuilding each credit line
+ * exactly as `buildCreditNoteFor` would have made it. A prior credit that differs in any line or
+ * total, or that uses more than a line holds, is refused; nothing a caller states about an
+ * earlier credit is trusted beyond what the rebuild reproduces.
+ */
+function replayPriorCredits(
+  invoice: Invoice,
+  priorCredits: readonly CreditNote[],
+): Result<Record<LineRole, LineLedger[]>, DocumentCode> {
+  const bad = (why: string) => refuse("bad_invoice", why);
+  const ledger = ledgerFor(invoice);
+  const cursor: Record<LineRole, number> = { goods: 0, delivery: 0 };
+  for (const prior of priorCredits) {
+    const priorRef = checkRef(prior.reference, "credit_note", invoice.product);
+    if (!priorRef.ok || prior.invoiceReference !== invoice.reference) {
+      return refuse("bad_reference", "a prior credit note belongs to another invoice");
+    }
+    if (typeof prior !== "object" || !Array.isArray(prior.lines) || prior.lines.length === 0) {
+      return bad("a prior credit note has no lines");
+    }
+    for (const line of prior.lines as readonly Line[]) {
+      const entries = ledger[line.role];
+      if (!entries) return bad("a prior credit line has no role");
+      while (
+        cursor[line.role] < entries.length &&
+        (entries[cursor[line.role]] as LineLedger).creditedGross >=
+          (entries[cursor[line.role]] as LineLedger).gross
+      ) {
+        cursor[line.role] += 1;
+      }
+      const entry = entries[cursor[line.role]];
+      if (!entry || line.basis !== "tax_inclusive" || line.quantity !== 1) {
+        return bad("a prior credit note does not match the invoice");
+      }
+      const take = lineGrossPence(line);
+      const rebuilt =
+        take >= 1 && take <= entry.gross - entry.creditedGross ? nextCredit(entry, take) : null;
+      if (
+        !rebuilt?.ok ||
+        rebuilt.value.description !== line.description ||
+        rebuilt.value.treatment !== line.treatment ||
+        rebuilt.value.unitNetPence !== line.unitNetPence ||
+        rebuilt.value.vatPence !== line.vatPence
+      ) {
+        return bad("a prior credit note does not match the invoice");
+      }
+      record(entry, rebuilt.value);
+    }
+    if (!sameTotals(totalsOf(prior.lines), prior.totals)) {
+      return bad("a prior credit note does not add up");
+    }
+  }
+  return ok(ledger);
 }
 
 /**
@@ -340,10 +432,13 @@ function checkInvoice(invoice: Invoice): Result<null, DocumentCode> {
  * delivery lines, so each keeps its VAT treatment (a margin-scheme sale is credited as margin
  * scheme, delivery as standard rated). The amounts must pass `planRefund` (never more than was
  * paid) and must fit in the invoice's goods and delivery gross minus the credit notes already
- * issued for it. Prior credits are taken to have used the invoice's lines in order. A credit line
- * is tax-inclusive: its VAT is taken out of the gross, so every gross amount up to what is left
- * on the line is accepted. The invoice is rebuilt through the same constructors as a new one, so
- * a forged or hand-edited Invoice is refused (`bad_invoice`).
+ * issued for it. Prior credits are replayed onto the invoice's lines in order and rebuilt; one that
+ * does not reproduce exactly is refused. A credit line is tax-inclusive (`amountsAre`): its VAT is
+ * the cumulative share of the line's VAT for the gross credited so far, less what earlier credits
+ * took, so however a line is split its credits never total more VAT or gross than the invoice line
+ * charged, and the credit that finishes a line takes exactly the rest. The invoice is rebuilt
+ * through the same constructors as a new one, so a forged or hand-edited Invoice is refused
+ * (`bad_invoice`).
  */
 export function buildCreditNoteFor(
   invoice: Invoice,
@@ -369,53 +464,31 @@ export function buildCreditNoteFor(
   if (plan.value.goodsPence + plan.value.deliveryPence === 0) {
     return refuse("zero_total", "a credit note cannot total zero");
   }
-  const priorLines: Line[] = [];
-  for (const prior of input.priorCredits) {
-    const priorRef = checkRef(prior.reference, "credit_note", invoice.product);
-    if (!priorRef.ok || prior.invoiceReference !== invoice.reference) {
-      return refuse("bad_reference", "a prior credit note belongs to another invoice");
-    }
-    const priorTotals = totalsOf(prior.lines);
-    if (
-      prior.lines.some((l) => !isPence(l.vatPence) || l.vatPence > lineGrossPence(l)) ||
-      priorTotals.grossPence !== prior.totals.grossPence
-    ) {
-      return refuse("bad_invoice", "a prior credit note does not add up");
-    }
-    priorLines.push(...prior.lines);
-  }
-  const wanted = plan.value;
-  const priorByRole = grossByRole(priorLines);
-  const invoiceByRole = grossByRole(invoice.lines);
+  const replayed = replayPriorCredits(invoice, input.priorCredits);
+  if (!replayed.ok) return replayed;
+  const ledger = replayed.value;
   const lines: Line[] = [];
   for (const role of LINE_ROLES) {
-    const amount = role === "goods" ? wanted.goodsPence : wanted.deliveryPence;
-    if (amount > invoiceByRole[role] - priorByRole[role]) {
+    const amount = plan.value[role === "goods" ? "goodsPence" : "deliveryPence"];
+    const left = ledger[role].reduce((sum, e) => sum + e.gross - e.creditedGross, 0);
+    if (amount > left) {
       return refuse("exceeds_invoice", `${role} credit exceeds what is left on the invoice`);
     }
-    let alreadyUsed = priorByRole[role];
-    let left = amount;
-    for (const line of invoice.lines) {
-      if (left === 0) break;
-      if (line.role !== role) continue;
-      const gross = lineGrossPence(line);
-      const used = Math.min(alreadyUsed, gross);
-      alreadyUsed -= used;
-      const take = Math.min(left, gross - used);
+    let remaining = amount;
+    for (const entry of ledger[role]) {
+      if (remaining === 0) break;
+      const take = Math.min(remaining, entry.gross - entry.creditedGross);
       if (take === 0) continue;
-      const credit = buildInclusiveLine({
-        description: `Credit: ${line.description}`,
-        treatment: line.treatment,
-        role,
-        grossPence: take,
-      });
-      if (!credit.ok) return refuse("bad_line", credit.refusal.message);
+      const credit = nextCredit(entry, take);
+      if (!credit.ok) return credit;
       lines.push(credit.value);
-      left -= take;
+      record(entry, credit.value);
+      remaining -= take;
     }
   }
   return ok({
     ...b.value,
+    amountsAre: "tax_inclusive",
     contactReference: invoice.contactReference,
     invoiceReference: invoice.reference,
     currency: CURRENCY,

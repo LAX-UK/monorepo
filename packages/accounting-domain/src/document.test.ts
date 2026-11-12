@@ -16,7 +16,7 @@ import {
   legalEntityFor,
   parseLaxReference,
 } from "./document.js";
-import type { LineInput } from "./money.js";
+import { type LineInput, lineAmounts, lineGrossPence } from "./money.js";
 import { forAll, int, pick } from "./testing/generate.js";
 
 const lineInput = (over: Partial<LineInput> = {}): LineInput => ({
@@ -533,7 +533,7 @@ describe("credit notes are bounded by the original invoice", () => {
         if (!r.ok) return;
         const line = r.value.lines[0];
         expect(r.value.totals.grossPence).toBe(g);
-        const exact = (g * 2000) / 12000;
+        const exact = (g * inv.value.totals.vatPence) / total;
         expect(Math.abs((line?.vatPence ?? 0) - exact)).toBeLessThanOrEqual(0.5);
       }
     });
@@ -594,5 +594,147 @@ describe("credit notes are bounded by the original invoice", () => {
       expect(sum("delivery")).toBe(deliveryPence);
       expect(r.value.totals.grossPence).toBeLessThanOrEqual(i.totals.grossPence);
     });
+  });
+});
+
+describe("partial credits on one line (F1, F2, F4)", () => {
+  const invoiceOf = (unit: number, quantity = 1): Invoice => {
+    const r = buildInvoice({
+      ...common,
+      contactReference: contact,
+      issuedOn: "2026-01-01",
+      dueOn: "2026-01-31",
+      lines: [lineInput({ unitNetPence: unit, quantity })],
+    });
+    if (!r.ok) throw new Error("fixture");
+    return r.value;
+  };
+  const credit = (invoice: Invoice, prior: CreditNote[], gross: number, id: string) => {
+    const total = invoice.totals.grossPence;
+    return buildCreditNoteFor(invoice, {
+      sourceId: id,
+      issuedOn: "2026-02-01",
+      buckets: {
+        paidGoodsPence: total,
+        paidDeliveryPence: 0,
+        refundedGoodsPence: prior.reduce((n, c) => n + c.totals.grossPence, 0),
+        refundedDeliveryPence: 0,
+      },
+      request: { goodsPence: gross, deliveryPence: 0 },
+      priorCredits: prior,
+    });
+  };
+  const run = (invoice: Invoice, grosses: readonly number[]): CreditNote[] => {
+    const notes: CreditNote[] = [];
+    grosses.forEach((g, i) => {
+      const r = credit(invoice, notes, g, `cn${i}`);
+      if (!r.ok) throw new Error(`credit ${g}: ${r.refusal.message}`);
+      notes.push(r.value);
+    });
+    return notes;
+  };
+  const sums = (notes: readonly CreditNote[]) => ({
+    vat: notes.reduce((n, c) => n + c.totals.vatPence, 0),
+    net: notes.reduce((n, c) => n + c.totals.netPence, 0),
+    gross: notes.reduce((n, c) => n + c.totals.grossPence, 0),
+  });
+
+  it("the review's splits of a 1,200p line never credit more than 200p VAT", () => {
+    for (const split of [
+      [3, 1197],
+      [501, 699],
+      [9, 1191],
+      [1, 1199],
+    ]) {
+      const notes = run(invoiceOf(1000), split);
+      expect(sums(notes)).toEqual({ vat: 200, net: 1000, gross: 1200 });
+    }
+  });
+  it("four hundred 3p credits credit exactly the invoice's VAT, not 400p", () => {
+    const notes = run(
+      invoiceOf(1000),
+      Array.from({ length: 400 }, () => 3),
+    );
+    expect(sums(notes)).toEqual({ vat: 200, net: 1000, gross: 1200 });
+  });
+  it("property: any sequence of partial credits stays within, then exactly meets, the line", () => {
+    forAll(150, (rng) => {
+      const inv = invoiceOf(int(rng, 1, 5000), int(rng, 1, 3));
+      const total = inv.totals.grossPence;
+      const notes: CreditNote[] = [];
+      let left = total;
+      let steps = 0;
+      while (left > 0 && steps++ < 40) {
+        const g = rng() < 0.2 ? left : int(rng, 1, Math.min(left, pick(rng, [3, 20, 500, left])));
+        const r = credit(inv, notes, g, `cn${steps}`);
+        if (!r.ok) throw new Error(r.refusal.message);
+        notes.push(r.value);
+        left -= g;
+        const s = sums(notes);
+        expect(s.vat).toBeLessThanOrEqual(inv.totals.vatPence);
+        expect(s.gross).toBe(total - left);
+        expect(s.net + s.vat).toBe(s.gross);
+        for (const c of notes)
+          for (const l of c.lines) expect(l.vatPence).toBeLessThanOrEqual(lineGrossPence(l));
+      }
+      if (left > 0) {
+        const r = credit(inv, notes, left, "last");
+        if (!r.ok) throw new Error(r.refusal.message);
+        notes.push(r.value);
+      }
+      expect(sums(notes)).toEqual({
+        vat: inv.totals.vatPence,
+        net: inv.totals.netPence,
+        gross: inv.totals.grossPence,
+      });
+      expect(credit(inv, notes, 1, "over")).toMatchObject({ ok: false });
+    });
+  });
+  it("declares tax-inclusive amounts on the note and on every credit line", () => {
+    const inv = invoiceOf(1000);
+    const [cn] = run(inv, [3]);
+    expect(cn?.amountsAre).toBe("tax_inclusive");
+    for (const l of cn?.lines ?? []) expect(l.basis).toBe("tax_inclusive");
+    for (const l of inv.lines) expect(l.basis).toBe("tax_exclusive");
+  });
+  it("reading each credit line under its declared basis reproduces the totals for every gross", () => {
+    const inv = invoiceOf(1000);
+    for (let g = 1; g <= 1200; g++) {
+      const r = credit(inv, [], g, "x");
+      if (!r.ok) throw new Error(`gross ${g}`);
+      const read = r.value.lines.map(lineAmounts);
+      expect(read.every((a) => a.basis === "tax_inclusive")).toBe(true);
+      expect(read.reduce((n, a) => n + a.grossPence, 0)).toBe(g);
+      expect(read.reduce((n, a) => n + a.vatPence, 0)).toBe(r.value.totals.vatPence);
+    }
+  });
+  it("refuses a prior credit note that was emptied, inflated or rewritten (F4)", () => {
+    const inv = invoiceOf(1000);
+    const [first] = run(inv, [1200]);
+    if (!first) throw new Error("fixture");
+    const emptied = { ...first, lines: [], totals: { netPence: 0, vatPence: 0, grossPence: 0 } };
+    const line0 = first.lines[0];
+    if (!line0) throw new Error("fixture");
+    const rewritten = { ...first, lines: [{ ...line0, vatPence: 1, unitNetPence: 1199 }] };
+    const doubled = { ...first, lines: [...first.lines, ...first.lines], totals: first.totals };
+    for (const bad of [emptied, rewritten, doubled]) {
+      // The buckets say 2,400p was paid and nothing refunded, so only the prior check can refuse.
+      const next = buildCreditNoteFor(inv, {
+        sourceId: "next",
+        issuedOn: "2026-02-01",
+        buckets: {
+          paidGoodsPence: 2400,
+          paidDeliveryPence: 0,
+          refundedGoodsPence: 0,
+          refundedDeliveryPence: 0,
+        },
+        request: { goodsPence: 1200, deliveryPence: 0 },
+        priorCredits: [bad as CreditNote],
+      });
+      expect(next).toMatchObject({
+        ok: false,
+        refusal: { code: "bad_invoice" },
+      });
+    }
   });
 });

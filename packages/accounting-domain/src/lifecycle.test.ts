@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  CLOCK_SKEW_MS,
   type DocumentRecord,
   type Lease,
   MAX_LEASE_MS,
@@ -483,6 +484,21 @@ describe("never create twice", () => {
 });
 
 describe("parseRecord", () => {
+  it("allows the documented clock-skew margin on a lease, and not a millisecond more", () => {
+    const at = (expiresAtMs: number) =>
+      parseRecord(
+        {
+          kind: "invoice",
+          reference: "LAX-SHOP-INV-1",
+          attempts: 1,
+          status: "sending",
+          lease: { token: "t", expiresAtMs },
+        },
+        NOW,
+      );
+    expect(at(NOW + MAX_LEASE_MS + CLOCK_SKEW_MS).ok).toBe(true);
+    expect(at(NOW + MAX_LEASE_MS + CLOCK_SKEW_MS + 1).ok).toBe(false);
+  });
   it("round-trips every legal record", () => {
     for (const r of [...STATUSES.map(rec), owedReview()]) {
       expect(parseRecord(JSON.parse(JSON.stringify(r)), NOW)).toEqual({ ok: true, value: r });
@@ -520,7 +536,11 @@ describe("parseRecord", () => {
       { ...flat, status: "pending", reference: "anything" },
       { ...flat, status: "pending", reference: "LAX-SHOP-PAY-1" }, // a payment reference on an invoice
       { ...flat, status: "sending", lease: { token: "t", expiresAtMs: 9e15 } },
-      { ...flat, status: "sending", lease: { token: "t", expiresAtMs: NOW + MAX_LEASE_MS + 1 } },
+      {
+        ...flat,
+        status: "sending",
+        lease: { token: "t", expiresAtMs: NOW + MAX_LEASE_MS + CLOCK_SKEW_MS + 1 },
+      },
       { ...flat, status: "unknown", settlesAtMs: 9e15 },
       {
         ...flat,

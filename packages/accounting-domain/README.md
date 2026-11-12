@@ -54,7 +54,21 @@ a bucket already refunded more than it was paid is refused (`over_refunded`), no
 **Credit notes.** `buildCreditNoteFor(invoice, …)` is the only way to make one. Its lines come from the
 original invoice's goods and delivery lines and keep each VAT treatment (margin scheme stays margin scheme).
 The amounts go through `planRefund` (never more than was paid) and must fit in the invoice minus earlier
-credit notes. Credit lines are tax-inclusive (VAT is taken out of the gross, half-up), so every amount up to what is left on the line is accepted. `buildCreditNoteFor` rebuilds the invoice it is given and refuses a forged one (`bad_invoice`).
+credit notes. Prior credit notes are replayed onto the invoice's lines in order and rebuilt; one that does not
+reproduce exactly is refused (`bad_invoice`).
+
+A credit note says `amountsAre: "tax_inclusive"` and every credit line has `basis: "tax_inclusive"` (invoice lines
+are `tax_exclusive`). A credit line's gross is what was credited and its `vatPence` is the VAT inside it, so
+`vatPence` is not `vatForLine(net)` for credit lines. **Adapter contract:** send the gross and the stated VAT
+(`lineAmounts(line)`), never re-derive VAT from the net. VAT is allocated cumulatively per invoice line,
+`round_half_up(lineVat * creditedGross / lineGross)` less what earlier credits took, so any split of a line
+credits at most the line's VAT and gross, and the credit that finishes a line takes exactly the rest. A
+provider that cannot record an exact VAT amount on a credit line must be refused before the refund moves
+money; confirm this in the Zoho Books sandbox before the runtime is built.
+`buildCreditNoteFor` rebuilds the invoice it is given and refuses a forged one (`bad_invoice`).
+
+Not covered here, and owned by the runtime: payment allocations are compared on amount only, `expected` totals
+are not carried on the record, and an `ambiguous` lookup with `count: 0` is accepted.
 
 **Dates.** `YYYY-MM-DD`, validated as real calendar dates (leap years included) with pure arithmetic; every
 date is passed in.
@@ -86,7 +100,7 @@ throw) and refuses two live sources; `parseSwitchConfig` turns unknown input int
   lease, `issued` has the provider document, `unknown` has `settlesAtMs` (a lookup is always owed),
   `needs_review` says whether a lookup is still owed. `parseRecord(row, nowMs)` is the only way to read a stored
   row back; it refuses any illegal combination, a reference that is not the record's kind, and a lease or
-  settle time further out than a lease can be. Provider totals that are missing or not whole pence are
+  settle time further out than a lease can be plus `CLOCK_SKEW_MS` (one minute) of allowed clock skew between workers. Provider totals that are missing or not whole pence are
   refused with `bad_outcome` and change nothing.
 - `sending` carries a `lease` (`token`, `expiresAtMs`). Only the token holder can complete. Times must be
   whole, finite epoch milliseconds (`bad_time` otherwise) and a lease may last at most `MAX_LEASE_MS`.
