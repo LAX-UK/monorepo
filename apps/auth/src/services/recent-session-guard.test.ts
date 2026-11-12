@@ -19,6 +19,8 @@ function session(over: Partial<IdentitySession> & { id: string }): IdentitySessi
     signedInAt: ago(60_000),
     isStaff: false,
     previousIds: [],
+    country: null,
+    clientIds: [],
     isCurrent: false,
     ...over,
   };

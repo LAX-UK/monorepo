@@ -21,6 +21,8 @@ function session(overrides: Partial<IdentitySession> & { id: string }): Identity
     signedInAt: new Date(NOW.getTime() - 60_000),
     isStaff: false,
     previousIds: [],
+    country: null,
+    clientIds: [],
     isCurrent: false,
     ...overrides,
   };

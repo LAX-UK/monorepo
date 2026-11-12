@@ -17,6 +17,8 @@ function session(id: string, createdAt: Date) {
     signedInAt: new Date(NOW.getTime() - 60_000),
     isStaff: false,
     previousIds: [],
+    country: null,
+    clientIds: [],
     isCurrent: false,
   };
 }

@@ -44,6 +44,8 @@ function setup(
         signedInAt: new Date(NOW.getTime() - 60_000),
         isStaff: false,
         previousIds: [],
+        country: null,
+        clientIds: [],
         isCurrent: true,
       },
     ]),

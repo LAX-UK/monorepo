@@ -20,6 +20,8 @@ function session(id: string, ageSeconds: number) {
     signedInAt: new Date(NOW.getTime() - 60_000),
     isStaff: false,
     previousIds: [] as readonly string[],
+    country: null,
+    clientIds: [],
     isCurrent: false,
   };
 }

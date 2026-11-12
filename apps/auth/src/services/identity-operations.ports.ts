@@ -45,6 +45,10 @@ export type IdentitySessionRecord = {
   isStaff: boolean;
   /** Earlier ids this sign-in stands for, after newer sign-ins in the same browser took them over. */
   previousIds: readonly string[];
+  /** Country the edge reported at sign-in (ISO alpha-2); null when none was reported. */
+  country: string | null;
+  /** OAuth clients with live tokens issued under this sign-in or an earlier name of it. */
+  clientIds: readonly string[];
   /** How the sign-in was made, as recorded when it started (see `SessionSignInMethod`). */
   amr?: readonly string[];
   isCurrent: boolean;

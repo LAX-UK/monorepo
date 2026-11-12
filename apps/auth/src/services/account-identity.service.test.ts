@@ -18,6 +18,8 @@ function session(overrides: Partial<IdentitySession> & { id: string }): Identity
     signedInAt: new Date(NOW.getTime() - 60_000),
     isStaff: false,
     previousIds: [],
+    country: null,
+    clientIds: [],
     isCurrent: false,
     ...overrides,
   };
@@ -120,6 +122,43 @@ describe("AccountIdentityService", () => {
         ["other", false],
       ]);
       expect(JSON.stringify(result)).not.toContain("203.0.113.9");
+    });
+
+    it("describes each browser: kind, country, products, first sign-in and last use", async () => {
+      const signedInAt = new Date(NOW.getTime() - 3 * 86_400_000);
+      const lastActiveAt = new Date(NOW.getTime() - 5_000);
+      const { service } = setup([
+        session({
+          id: "current",
+          userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) Safari/604.1",
+          signedInAt,
+          lastActiveAt,
+          country: "FR",
+          clientIds: ["lax-shop-admin", "lax-bid-web", "lax-shop-web"],
+        }),
+        session({ id: "older" }),
+      ]);
+      const result = await service.listSessions(SUBJECT, "current");
+      expect(result.ok && result.sessions).toMatchObject([
+        {
+          id: "current",
+          deviceKind: "phone",
+          country: "FR",
+          // Staff and mobile client ids never leave the sign-in service.
+          products: ["lax-bid-web", "lax-shop-web"],
+          createdAt: signedInAt,
+          lastActiveAt,
+        },
+        {
+          id: "older",
+          deviceKind: "laptop",
+          country: null,
+          products: [],
+          // The repository's fallbacks for a record that kept neither time (its own times).
+          createdAt: new Date(NOW.getTime() - 60_000),
+          lastActiveAt: new Date(NOW.getTime() - 30_000),
+        },
+      ]);
     });
 
     it("says how each sign-in was made, the strongest recorded method first", async () => {

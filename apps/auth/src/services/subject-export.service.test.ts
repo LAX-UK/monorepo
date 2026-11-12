@@ -37,6 +37,8 @@ function setup(options: { sessionAgeMs?: number; signer?: boolean; clock?: { now
           signedInAt: createdAt,
           isStaff: false,
           previousIds: [],
+          country: null,
+          clientIds: [],
           isCurrent: true,
         },
       ];
