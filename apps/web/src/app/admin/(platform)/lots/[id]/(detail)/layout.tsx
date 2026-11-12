@@ -4,6 +4,7 @@ import { loadLotConnectRequired } from "@/lib/admin/connect-readiness";
 import { loadAdminLotDetail } from "@/lib/admin/load-lot-detail";
 import { withdrawalsListController } from "@/lib/admin/withdrawals-list-controller";
 import { requireAdminCapability } from "@/lib/auth/require-admin-capability";
+import { getLotReofferBundle } from "@/lib/data/http/admin-reoffers.server";
 import { getAtgLotSellingSummaries } from "@/lib/data/http/atg.server";
 import { getServerLaxArtReturn } from "@/lib/data/http/lax-art-return.server";
 import { getServerLotDocuments } from "@/lib/data/http/lot-documents.server";
@@ -30,23 +31,32 @@ export default async function AdminLotDetailLayout({ params, children }: Props) 
   const canManageCatalog = userHasAccessTo(role, staffRoles, LOTS_ACCESS);
   const canManageAuction = userHasAccessTo(role, staffRoles, SALES_ACCESS);
   const canDecideWithdrawals = userHasAccessTo(role, staffRoles, WITHDRAWAL_DECISION_ACCESS);
-  const [bundle, bids, documents, connectRequired, withdrawalTasks, selling, laxArtReturn] =
-    await Promise.all([
-      loadAdminLotDetail(id),
-      getServerLotBids(id, 100).catch(() => []),
-      getServerLotDocuments(id).catch(() => []),
-      loadLotConnectRequired(id),
-      canDecideWithdrawals
-        ? withdrawalsListController.fetch().then(
-            (result) => result.tasks,
-            () => [],
-          )
-        : Promise.resolve([]),
-      canManageAuction
-        ? getAtgLotSellingSummaries([id]).then((rows) => rows.get(id) ?? null)
-        : Promise.resolve(null),
-      canManageAuction ? getServerLaxArtReturn(id) : Promise.resolve(null),
-    ]);
+  const [
+    bundle,
+    bids,
+    documents,
+    connectRequired,
+    withdrawalTasks,
+    selling,
+    laxArtReturn,
+    reoffers,
+  ] = await Promise.all([
+    loadAdminLotDetail(id),
+    getServerLotBids(id, 100).catch(() => []),
+    getServerLotDocuments(id).catch(() => []),
+    loadLotConnectRequired(id),
+    canDecideWithdrawals
+      ? withdrawalsListController.fetch().then(
+          (result) => result.tasks,
+          () => [],
+        )
+      : Promise.resolve([]),
+    canManageAuction
+      ? getAtgLotSellingSummaries([id]).then((rows) => rows.get(id) ?? null)
+      : Promise.resolve(null),
+    canManageAuction ? getServerLaxArtReturn(id) : Promise.resolve(null),
+    getLotReofferBundle(id),
+  ]);
 
   const publishReadiness = computeLotDetailReadiness({
     lotId: id,
@@ -70,6 +80,7 @@ export default async function AdminLotDetailLayout({ params, children }: Props) 
       publishReadiness={publishReadiness}
       selling={selling}
       laxArtReturn={laxArtReturn}
+      reoffers={reoffers}
     >
       {children}
     </LotDetailShell>

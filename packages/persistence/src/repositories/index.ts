@@ -334,5 +334,6 @@ export {
   DrizzlePrivateSaleDealPayoutStore,
 } from "./drizzle-private-sale-deal-payment.repository.js";
 export { DrizzlePartyDealRecordReader } from "./drizzle-party-deal-record.reader.js";
+export { DrizzleReofferStaffReader } from "./drizzle-reoffer-staff.reader.js";
 export { DrizzleReofferViewsReader } from "./drizzle-reoffer-views.reader.js";
 export { DrizzleReofferWorkflowReader } from "./drizzle-reoffer-workflow.reader.js";

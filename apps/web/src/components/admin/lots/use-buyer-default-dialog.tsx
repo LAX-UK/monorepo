@@ -1,6 +1,11 @@
 "use client";
 
 import { adminRecordBuyerDefaultResultAction } from "@/lib/actions/admin";
+import {
+  adminLoadReofferPreviewAction,
+  adminStartReofferResultAction,
+} from "@/lib/actions/admin/admin-reoffers";
+import { NO_NEXT_BIDDER_COPY } from "@/lib/admin/reoffer/reoffer-copy";
 import { redirectToHostedReauth } from "@/lib/auth/step-up/use-step-up-coordinator";
 import { notify } from "@/lib/ui/notify";
 import {
@@ -11,28 +16,76 @@ import {
   StaffCheckbox,
   StaffRadio,
   StaffRadioGroup,
+  formatStaffDateTime,
+  formatStaffMoney,
   useStaffStepUp,
 } from "@auction/staff-ui";
+import type { ReofferPreview } from "@auction/validators";
 import { useRouter } from "next/navigation";
 import { useCallback, useId, useState, useTransition } from "react";
 
 /** Where the lot goes once its sale is cancelled. */
 export type BuyerDefaultOutcomeChoice = "returned_to_inventory" | "offered_to_underbidder";
 
-const OUTCOMES: { value: BuyerDefaultOutcomeChoice; label: string; description: string }[] = [
-  {
-    value: "returned_to_inventory",
-    label: "Return to inventory",
+/** Who the second option would offer the lot to: read when the dialog opens. */
+export type NextBidderState =
+  | { status: "loading" }
+  | { status: "failed" }
+  | { status: "ready"; preview: ReofferPreview };
+
+const RETURN_OPTION = {
+  value: "returned_to_inventory",
+  label: "Return to inventory",
+  description:
+    "The lot goes back to draft at its starting price. Its bid history is kept, marked as not winning.",
+} as const;
+
+/** The next bidder in a quiet box under the option, so staff see who they would be offering to. */
+function NextBidderLine({ preview }: { preview: ReofferPreview }) {
+  const { next } = preview;
+  if (!next) return null;
+  return (
+    <span
+      className="mt-2 flex flex-col gap-0.5 rounded-staff-md border border-staff-line-subtle bg-staff-sunken px-3 py-2 text-staff-xs text-staff-muted"
+      data-testid="next-bidder"
+    >
+      <span>
+        <span className="font-medium text-staff-fg">{next.accountName ?? "The next bidder"}</span>
+        {" · their bid "}
+        {formatStaffMoney(next.bidMinor)} on {formatStaffDateTime(next.placedAt)}
+      </span>
+      {next.belowReserve ? <span>Their bid is below the reserve.</span> : null}
+      {next.othersAfter > 0 ? (
+        <span>
+          {next.othersAfter} other {next.othersAfter === 1 ? "bidder" : "bidders"} after them
+        </span>
+      ) : null}
+    </span>
+  );
+}
+
+function offerOption(next: NextBidderState): {
+  label: string;
+  description: string;
+  disabled: boolean;
+  detail: React.ReactNode;
+} {
+  const label = "Offer to the next bidder";
+  if (next.status === "loading") {
+    return { label, description: "Checking who bid next…", disabled: true, detail: null };
+  }
+  if (next.status === "ready" && !next.preview.next) {
+    const reason = next.preview.noneReason ?? "no_other_bidder";
+    return { label, description: NO_NEXT_BIDDER_COPY[reason], disabled: true, detail: null };
+  }
+  return {
+    label,
     description:
-      "The lot goes back to draft at its starting price. Its bid history is kept, marked as not winning.",
-  },
-  {
-    value: "offered_to_underbidder",
-    label: "Offer to the underbidder",
-    description:
-      "Records the offer and tells the next bidder the lot may become available. The seller is asked before it is sold on.",
-  },
-];
+      "Asks the seller first, then offers the lot to the next bidder at their own bid. You send the offer once the seller agrees.",
+    disabled: false,
+    detail: next.status === "ready" ? <NextBidderLine preview={next.preview} /> : null,
+  };
+}
 
 export type BuyerDefaultDialogViewProps = {
   open: boolean;
@@ -42,6 +95,7 @@ export type BuyerDefaultDialogViewProps = {
   failure: string | null;
   outcome: BuyerDefaultOutcomeChoice;
   restrict: boolean;
+  nextBidder: NextBidderState;
   onOutcomeChange: (outcome: BuyerDefaultOutcomeChoice) => void;
   onRestrictChange: (restrict: boolean) => void;
   onConfirm: (details: { reason: string }) => void;
@@ -58,7 +112,7 @@ export function BuyerDefaultDialog(props: BuyerDefaultDialogViewProps) {
       open={props.open}
       onOpenChange={props.onOpenChange}
       title={`Record a buyer default for ${props.lotTitle}?`}
-      description="Use this when the buyer has not paid and the sale is being cancelled. The invoice is voided and kept on record, no seller payout is made, and no fees or interest are added."
+      description="Use this when the buyer has not paid and the sale is being cancelled. The invoice is voided and kept on record, and no seller payout is made."
       confirmLabel="Record buyer default"
       tone="danger"
       loading={busy}
@@ -81,16 +135,25 @@ export function BuyerDefaultDialog(props: BuyerDefaultDialogViewProps) {
           value={props.outcome}
           onValueChange={(value) => props.onOutcomeChange(value as BuyerDefaultOutcomeChoice)}
         >
-          {OUTCOMES.map((option) => {
+          {[
+            RETURN_OPTION,
+            { ...offerOption(props.nextBidder), value: "offered_to_underbidder" as const },
+          ].map((option) => {
             const id = `${radioName}-${option.value}`;
+            const disabled = busy || ("disabled" in option && option.disabled);
             return (
               <ChoiceRow
                 key={option.value}
                 htmlFor={id}
                 label={option.label}
-                description={option.description}
-                disabled={busy}
-                control={<StaffRadio id={id} value={option.value} disabled={busy} />}
+                description={
+                  <>
+                    {option.description}
+                    {"detail" in option ? option.detail : null}
+                  </>
+                }
+                disabled={disabled}
+                control={<StaffRadio id={id} value={option.value} disabled={disabled} />}
               />
             );
           })}
@@ -119,8 +182,9 @@ type Target = { id: string; title: string };
 /**
  * The Buyer default action on an ended lot with a winner: voids the unpaid invoice (kept on
  * record), cancels the sale, tells the buyer and the seller, and sends the lot back to inventory
- * or on to the underbidder. Staff may also pause the buyer's bidding. The reason is required and
- * audited; a refusal from the API (paid, held for checks, no underbidder) stays in the dialog.
+ * or starts an offer to the next bidder, which asks the seller first. Staff may also pause the
+ * buyer's bidding. The reason is required and audited; a refusal from the API (paid, held for
+ * checks) stays in the dialog. The next bidder is read when the dialog opens.
  */
 export function useBuyerDefaultDialog() {
   const router = useRouter();
@@ -128,6 +192,7 @@ export function useBuyerDefaultDialog() {
   const [outcome, setOutcome] = useState<BuyerDefaultOutcomeChoice>("returned_to_inventory");
   const [restrict, setRestrict] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
+  const [nextBidder, setNextBidder] = useState<NextBidderState>({ status: "loading" });
   const [busy, startTransition] = useTransition();
   const stepUp = useStaffStepUp({ onReauthenticate: redirectToHostedReauth });
 
@@ -135,7 +200,13 @@ export function useBuyerDefaultDialog() {
     setOutcome("returned_to_inventory");
     setRestrict(false);
     setFailure(null);
+    setNextBidder({ status: "loading" });
     setTarget(next);
+    void adminLoadReofferPreviewAction(next.id).then((result) =>
+      setNextBidder(
+        result.ok && result.data ? { status: "ready", preview: result.data } : { status: "failed" },
+      ),
+    );
   }, []);
 
   const close = () => {
@@ -153,19 +224,43 @@ export function useBuyerDefaultDialog() {
         reason,
         restrictBidding: restrict,
       });
-      if (result.ok) {
-        close();
+      if (!result.ok) {
+        if (stepUp.handle(result, "record a buyer default")) {
+          close();
+          return;
+        }
+        setFailure(result.error);
+        return;
+      }
+      close();
+      if (outcome === "offered_to_underbidder") {
+        await startOffer(current);
+      } else {
         notify.success(`Buyer default recorded for ${current.title}`, {
           description: "The buyer and the seller have been told.",
         });
-        router.refresh();
-        return;
       }
-      if (stepUp.handle(result, "record a buyer default")) {
-        close();
-        return;
-      }
-      setFailure(result.error);
+      router.refresh();
+    });
+  };
+
+  /** The default is recorded; if the offer cannot start, the lot page offers it again. */
+  const startOffer = async (current: Target) => {
+    const started = await adminStartReofferResultAction(current.id);
+    if (started.ok) {
+      const asked = started.data?.status !== "ready";
+      notify.success(
+        asked
+          ? "Re-offer started: the seller has been asked"
+          : "Re-offer started: it is ready to send",
+        {
+          description: `Buyer default recorded for ${current.title}.`,
+        },
+      );
+      return;
+    }
+    notify.error("Buyer default recorded, but the offer did not start", {
+      description: `${started.error} Start it from the lot page.`,
     });
   };
 
@@ -178,6 +273,7 @@ export function useBuyerDefaultDialog() {
         failure={failure}
         outcome={outcome}
         restrict={restrict}
+        nextBidder={nextBidder}
         onOutcomeChange={setOutcome}
         onRestrictChange={setRestrict}
         onConfirm={confirm}

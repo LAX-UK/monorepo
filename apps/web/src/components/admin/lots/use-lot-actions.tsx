@@ -1,5 +1,6 @@
 "use client";
 
+import { returnToInventoryRequest } from "@/components/admin/lots/return-to-inventory-request";
 import { useBuyerDefaultDialog } from "@/components/admin/lots/use-buyer-default-dialog";
 import { useStaffConfirm } from "@/components/admin/staff/use-staff-confirm";
 import {
@@ -7,7 +8,6 @@ import {
   adminCancelLotResultAction,
   adminDeclineWithdrawalRequestResultAction,
   adminPublishLotResultAction,
-  adminReturnLotToInventoryResultAction,
   adminReturnLotToLaxArtResultAction,
   adminSoftDeleteLotResultAction,
 } from "@/lib/actions/admin";
@@ -34,6 +34,8 @@ export type LotActionTarget = {
   canDelete: boolean;
   /** Ended with a winner: it can no longer go back to inventory. */
   hasWinner: boolean;
+  /** ATG sold it: there is no LAX buyer to default, so the action points to the settlement runbook. */
+  soldOnAtg?: boolean;
   /** The seller asked to withdraw it, and the request is waiting for a decision. */
   withdrawalRequested: boolean;
   /** Why publishing is blocked (e.g. no photos), when it is. */
@@ -155,21 +157,7 @@ export function useLotActions(
   );
 
   const returnToInventory = useCallback(
-    (lot: LotActionTarget) =>
-      ask({
-        title: `Return ${lot.title} to inventory?`,
-        description:
-          "Takes the lot out of its sale and clears its lot number, winner and price back to the starting price. Its bid history is kept, marked as not winning.",
-        confirmLabel: "Return to inventory",
-        tone: "danger",
-        reason: { label: "Reason", description: "Kept in the audit log.", maxLength: 500 },
-        run: ({ reason }) =>
-          adminReturnLotToInventoryResultAction(lot.id, {
-            reason,
-            confirmVoided: lot.status === "voided",
-          }),
-        success: `${lot.title} returned to inventory`,
-      }),
+    (lot: LotActionTarget) => ask(returnToInventoryRequest(lot)),
     [ask],
   );
 
@@ -274,7 +262,15 @@ export function useLotActions(
           ...(canReturn ? {} : { disabledReason: reasons[0] ?? "This lot cannot go back yet" }),
         });
       }
-      if (access.canManageAuction && lot.status === "ended" && lot.hasWinner) {
+      if (access.canManageAuction && lot.status === "ended" && lot.soldOnAtg) {
+        actions.push({
+          id: "buyer-default",
+          label: "Buyer default…",
+          tone: "danger",
+          onSelect: () => undefined,
+          disabledReason: "Sold on ATG: follow the ATG settlement runbook",
+        });
+      } else if (access.canManageAuction && lot.status === "ended" && lot.hasWinner) {
         actions.push({
           id: "buyer-default",
           label: "Buyer default…",

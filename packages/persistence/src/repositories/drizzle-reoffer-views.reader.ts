@@ -1,7 +1,14 @@
 import type { Database } from "@auction/db";
-import { legalEntity, lotReoffer, sellerConsent } from "@auction/db/schema";
+import {
+  bid,
+  bidIdentityDirectory,
+  legalEntity,
+  lotReoffer,
+  sellerConsent,
+} from "@auction/db/schema";
 import { bidderReofferStatus } from "@auction/domain";
 import { and, asc, desc, eq } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import type {
   BidderReofferRow,
   IReofferViewsReader,
@@ -19,11 +26,26 @@ export class DrizzleReofferViewsReader implements IReofferViewsReader {
   constructor(private readonly db: Database) {}
 
   async listForLot(lotId: string): Promise<StaffReofferView[]> {
+    const creator = alias(bidIdentityDirectory, "creator");
+    const closer = alias(bidIdentityDirectory, "closer");
+    const answerer = alias(bidIdentityDirectory, "answerer");
     const rows = await this.db
-      .select({ offer: lotReoffer, consent: sellerConsent, accountName: legalEntity.displayName })
+      .select({
+        offer: lotReoffer,
+        consent: sellerConsent,
+        accountName: legalEntity.displayName,
+        bidPlacedAt: bid.createdAt,
+        createdByName: creator.name,
+        closedByName: closer.name,
+        answeredByName: answerer.name,
+      })
       .from(lotReoffer)
       .leftJoin(sellerConsent, eq(sellerConsent.id, lotReoffer.sellerConsentId))
       .leftJoin(legalEntity, eq(legalEntity.id, lotReoffer.offeredLegalEntityId))
+      .leftJoin(bid, eq(bid.id, lotReoffer.sourceBidId))
+      .leftJoin(creator, eq(creator.subjectId, lotReoffer.createdBy))
+      .leftJoin(closer, eq(closer.subjectId, lotReoffer.closedBy))
+      .leftJoin(answerer, eq(answerer.subjectId, sellerConsent.answeredByUserId))
       .where(eq(lotReoffer.lotId, lotId))
       .orderBy(asc(lotReoffer.createdAt), asc(lotReoffer.sequence));
     return rows.map((row) => {
@@ -31,13 +53,19 @@ export class DrizzleReofferViewsReader implements IReofferViewsReader {
       return {
         offer: toLotReofferView(row.offer),
         offeredAccountName: row.accountName ?? null,
+        sourceBidPlacedAt: row.bidPlacedAt ?? null,
+        createdByName: row.createdByName ?? null,
+        closedByName: row.closedByName ?? null,
         consent: consent && {
           id: consent.id,
           status: consent.status,
           channel: consent.channel,
           note: consent.note,
+          requestedAt: consent.requestedAt,
           dueAt: consent.dueAt,
+          remindedAt: consent.remindedAt,
           answeredAt: consent.answeredAt,
+          answeredByName: row.answeredByName ?? null,
           preferredNext: consent.preferredNext,
           terms: consent.termsSnapshot,
         },
