@@ -1,6 +1,7 @@
 import { AlertDigestGroup } from "../components/AlertDigestGroup.js";
 import { Layout } from "../components/Layout.js";
 import { TextBlock } from "../components/TextBlock.js";
+import { ZoneNoteLine } from "../components/ZoneNoteLine.js";
 import type { TemplateVarsByName } from "../types.js";
 
 export const subject = (vars: TemplateVarsByName["alert-digest"]) => vars.subject;
@@ -10,6 +11,7 @@ export default function AlertDigestEmail({
   title,
   dateLabel,
   groups,
+  zoneNote,
   reason,
   address,
   manageUrl,
@@ -33,6 +35,7 @@ export default function AlertDigestEmail({
       {groups.map((group) => (
         <AlertDigestGroup key={group.heading} group={group} showHeading={groups.length > 1} />
       ))}
+      <ZoneNoteLine note={zoneNote} />
     </Layout>
   );
 }

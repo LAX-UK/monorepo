@@ -340,3 +340,5 @@ export {
 } from "./drizzle-reoffer-sweep.reader.js";
 export { DrizzleReofferViewsReader } from "./drizzle-reoffer-views.reader.js";
 export { DrizzleReofferWorkflowReader } from "./drizzle-reoffer-workflow.reader.js";
+
+export { DrizzleRecipientZoneReader } from "./drizzle-recipient-zone.reader.js";

@@ -54,6 +54,7 @@ export const testUrls: AlertUrls = {
   stop: (t) => `https://lax.bid/alerts/unsubscribe?t=${t}`,
   oneClick: (t) => `https://lax.bid/alerts/unsubscribe?t=${t}`,
   manage: () => "https://lax.bid/settings#alerts",
+  changeTimeZone: () => "https://account.lax.bid/account/profile#time-zone",
   site: (p) => `https://lax.bid${p}`,
 };
 

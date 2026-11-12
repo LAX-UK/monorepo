@@ -15,6 +15,8 @@ export const LAX_ACCOUNT_PATHS = {
   home: "/account",
   /** Name, email and phone. */
   profile: "/account/profile",
+  /** The time zone the person's emails and dates are shown in, under Personal details. */
+  timeZone: "/account/profile#time-zone",
   /** The LAX-wide address book checkout reads saved addresses from. */
   addresses: "/account/profile#addresses",
   /** Every work the person owns or is selling, with each work's documents. */

@@ -1,8 +1,12 @@
-import { LONDON_TIME_ZONE, formatDateTime } from "@auction/datetime";
+import { LONDON_TIME_ZONE } from "@auction/datetime";
 import type { TemplateName, TemplateVarsByName } from "@auction/email";
-import { formatMoneyMajor } from "@auction/email";
+import { RecipientClock, formatMoneyMajor } from "@auction/email";
 import type { IEmailService } from "@auction/email";
-import type { IInvoiceDetailsReader, IUserRepository } from "@auction/persistence/interfaces";
+import type {
+  IInvoiceDetailsReader,
+  IRecipientZoneReader,
+  IUserRepository,
+} from "@auction/persistence/interfaces";
 import { notificationTypeToTemplate } from "@auction/persistence/lib";
 import type { BillToContext } from "@auction/types";
 import {
@@ -65,6 +69,11 @@ export class EmailNotificationChannel implements INotificationChannel {
     private readonly unsubscribeSecret: string,
     /** An organisation's billing email: invoices are copied there. */
     private readonly invoiceDetails: IInvoiceDetailsReader,
+    /** Where each recipient's LAX Account says they are, so times show on their clock too. */
+    private readonly zones: IRecipientZoneReader,
+    /** LAX Account's time zone setting: the link in the footer under a local time. */
+    private readonly changeZoneUrl: string,
+    private readonly now: () => Date = () => new Date(),
   ) {}
 
   supports(type: string): boolean {
@@ -79,6 +88,11 @@ export class EmailNotificationChannel implements INotificationChannel {
     if (template === "payment-receipt" && payload.meta?.audience === "seller") return;
     const recipient = await this.users.findById(userId);
     if (!recipient) return;
+    const clock = new RecipientClock(
+      (await this.zones.zonesFor([userId])).get(userId) ?? null,
+      this.now(),
+      this.changeZoneUrl,
+    );
     await this.email.enqueue({
       template,
       to: recipient.email,
@@ -87,7 +101,7 @@ export class EmailNotificationChannel implements INotificationChannel {
       ...(payload.meta?.emailIdempotencyKey
         ? { idempotencyKey: payload.meta.emailIdempotencyKey }
         : {}),
-      vars: this.varsFor(template, payload, recipient.name, userId) as never,
+      vars: this.varsFor(template, payload, recipient.name, userId, clock) as never,
     });
     if (template === "payment-invoice" || template === "payment-reminder") {
       await this.copyInvoiceToBilling(template, payload, recipient.email);
@@ -118,7 +132,8 @@ export class EmailNotificationChannel implements INotificationChannel {
       recipientResolution: "snapshot",
       category: "transactional",
       ...(key ? { idempotencyKey: `${template}-billing:${payload.legalEntityId}:${key}` } : {}),
-      vars: this.varsFor(template, payload, "", "") as never,
+      // The billing inbox is not the member: it has no saved zone, so it sees official times only.
+      vars: this.varsFor(template, payload, "", "", this.officialOnlyClock()) as never,
     });
   }
 
@@ -127,6 +142,7 @@ export class EmailNotificationChannel implements INotificationChannel {
     payload: NotificationPayload,
     userName: string,
     userId: string,
+    clock: RecipientClock,
   ): TemplateVarsByName[TemplateName] {
     const lotUrl = this.lotUrl(payload);
     const lotTitle = notificationLotTitle(payload);
@@ -277,6 +293,10 @@ export class EmailNotificationChannel implements INotificationChannel {
       case "watched-lot-reminder": {
         const reminder = payload.meta?.watchedLotReminder;
         const closes = reminder?.closesAt ? new Date(reminder.closesAt) : null;
+        const closesAt =
+          closes && !Number.isNaN(closes.getTime())
+            ? clock.moment(closes, reminder?.saleTimeZone ?? LONDON_TIME_ZONE)
+            : null;
         return {
           userName,
           lotTitle,
@@ -284,14 +304,15 @@ export class EmailNotificationChannel implements INotificationChannel {
           unsubscribeUrl,
           kind: reminder?.kind ?? "hour_before_close",
           note: reminder?.note ?? null,
-          closesAt:
-            closes && !Number.isNaN(closes.getTime())
-              ? formatDateTime(closes, LONDON_TIME_ZONE, { engineSept: true })
-              : null,
+          closesAt,
+          ...(closesAt && clock.zoneNote ? { zoneNote: clock.zoneNote } : {}),
         };
       }
       case "payment-reminder": {
         const m = payload.meta;
+        const dueAt = m?.dueAt ? new Date(m.dueAt) : null;
+        const due =
+          dueAt && !Number.isNaN(dueAt.getTime()) ? clock.moment(dueAt, LONDON_TIME_ZONE) : null;
         return {
           userName,
           step: m?.reminderStep ?? "overdue",
@@ -299,6 +320,8 @@ export class EmailNotificationChannel implements INotificationChannel {
           ...(m?.privateSale ? { itemLabel: "Work" as const } : {}),
           amount: formatMoneyMajor(m?.amount, m?.currency) ?? payload.message,
           dueDate: m?.dueDate ?? "",
+          ...(due ? { due } : {}),
+          ...(due && clock.zoneNote ? { zoneNote: clock.zoneNote } : {}),
           payUrl: payload.lotId
             ? `${this.baseUrl()}/purchases/checkout/${encodeURIComponent(payload.lotId)}`
             : `${this.baseUrl()}/purchases`,
@@ -366,6 +389,10 @@ export class EmailNotificationChannel implements INotificationChannel {
       default:
         throw new Error(`Notification payload cannot render template ${template}`);
     }
+  }
+
+  private officialOnlyClock(): RecipientClock {
+    return new RecipientClock(null, this.now(), this.changeZoneUrl);
   }
 
   private baseUrl(): string {

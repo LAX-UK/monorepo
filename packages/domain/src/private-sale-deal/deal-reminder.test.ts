@@ -17,8 +17,10 @@ describe("dealReminderToSend", () => {
   });
 
   it("sends only the latest step reached, and each step once", () => {
-    const late = new Date(dueDay.getTime() + 10 * DAY);
+    const late = new Date(dueDay.getTime() + 3 * DAY + 12 * 3_600_000);
     expect(dealReminderToSend(owed, late)).toBe("overdue");
+    // Once the overdue day has ended nothing is sent late.
+    expect(dealReminderToSend(owed, new Date(dueDay.getTime() + 10 * DAY))).toBeNull();
     expect(dealReminderToSend({ ...owed, sentSteps: ["overdue"] }, late)).toBeNull();
     expect(dealReminderToSend({ ...owed, sentSteps: ["before_due"] }, dueDay)).toBe("due_day");
   });

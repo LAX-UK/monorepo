@@ -19,6 +19,8 @@ export type PendingWatchlistReminder = {
   lotTitle: string;
   startTime: Date;
   endTime: Date;
+  /** The zone the lot's sale runs on: the clock its times are official in. */
+  saleTimeZone: string;
   /** The lot finished (ended, cancelled or voided). */
   closed: boolean;
 };
