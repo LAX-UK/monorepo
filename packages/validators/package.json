@@ -21,6 +21,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@auction/artwork-register-contracts": "workspace:*",
     "@auction/datetime": "workspace:*",
     "@auction/domain": "workspace:*",
     "@auction/types": "workspace:*",
