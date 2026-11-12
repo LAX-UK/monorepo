@@ -61,6 +61,11 @@ export type SellerPreferredNext = "later_sale" | "return_to_me" | "talk_to_us";
 export type SellerConsentTerms = {
   amountPence: number;
   originalHammerPence: number;
+  /**
+   * What the next bidder would pay at the offer (hammer and buyer's premium), the total the
+   * seller's proceeds are worked out from. Missing from requests started before it was kept.
+   */
+  saleAtOfferPence?: number | undefined;
   proceedsAtOfferPence: number;
   proceedsAtOriginalPence: number;
   reservePence: number | null;
