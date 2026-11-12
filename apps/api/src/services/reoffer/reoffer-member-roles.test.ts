@@ -19,6 +19,7 @@ const response = new ReofferResponseService({
   place: never as never,
   moneyPause: never as never,
   invoicing: never as never,
+  pricing: never as never,
 });
 const consent = new ReofferConsentService({
   transactionRunner: tx as never,
@@ -51,7 +52,9 @@ const code = async (promise: Promise<unknown>) =>
 describe("a platform admin acting for an account", () => {
   it("can neither accept, decline nor answer for it", async () => {
     const admin = actor({ isImpersonation: true });
-    expect(await code(response.accept(admin, "o1", { termsAccepted: true }))).toBe("forbidden");
+    expect(
+      await code(response.accept(admin, "o1", { termsAccepted: true, expectedTotalMinor: 0 })),
+    ).toBe("forbidden");
     expect(await code(response.decline(admin, "o1", {}))).toBe("forbidden");
     expect(await code(consent.answerInWorkspace(admin, "o1", { answer: "given" }))).toBe(
       "forbidden",
@@ -61,7 +64,12 @@ describe("a platform admin acting for an account", () => {
   it("is refused before anything is read", async () => {
     // The stubs reject on any call: a forbidden answer proves the check came first.
     expect(
-      await code(response.accept(actor({ role: "viewer" }), "o1", { termsAccepted: true })),
+      await code(
+        response.accept(actor({ role: "viewer" }), "o1", {
+          termsAccepted: true,
+          expectedTotalMinor: 0,
+        }),
+      ),
     ).toBe("forbidden");
   });
 
@@ -72,8 +80,8 @@ describe("a platform admin acting for an account", () => {
 
 describe("accepting", () => {
   it("is refused without the terms box ticked, before any transaction", async () => {
-    expect(await code(response.accept(actor(), "o1", { termsAccepted: false }))).toBe(
-      "terms_not_accepted",
-    );
+    expect(
+      await code(response.accept(actor(), "o1", { termsAccepted: false, expectedTotalMinor: 0 })),
+    ).toBe("terms_not_accepted");
   });
 });

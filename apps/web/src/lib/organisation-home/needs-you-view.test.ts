@@ -17,6 +17,19 @@ const EVERY_TASK: NeedsYouTaskWithLink[] = [
     link: { page: "lot", id: "l88" },
   },
   {
+    kind: "reoffer_offer",
+    offers: [
+      {
+        id: "o1",
+        title: "The Winter Study",
+        offerMinor: 82_000_00,
+        endsAt: new Date("2026-11-14T17:00:00Z"),
+      },
+    ],
+    raisedAt: null,
+    link: { page: "reoffer_offer", id: "o1" },
+  },
+  {
     kind: "pay",
     purchases: [{ id: "l7", title: "Harbour at dawn" }],
     raisedAt: null,
@@ -141,12 +154,27 @@ describe("needsYouRowView", () => {
     }
   });
 
+  it("words an offer to buy at the bidder's own bid, with when it ends", () => {
+    const [offer] = EVERY_TASK.filter((task) => task.kind === "reoffer_offer");
+    if (!offer) throw new Error("no offer task");
+    const view = needsYouRowView(offer, ctx);
+    expect(view).toMatchObject({
+      topic: "bid",
+      title: "An offer for “The Winter Study”",
+      detail: "At your bid of £82,000.00 · the winning bidder did not pay",
+      action: { label: "Review the offer", href: "/bids/offers/o1" },
+      section: "bids",
+    });
+    expect(view.due?.text).toMatch(/^Ends .*Nov, 17:00 GMT$/);
+  });
+
   it("leads each button to where the task is done", () => {
     const hrefs = Object.fromEntries(
       EVERY_TASK.map((task) => [task.kind, needsYouRowView(task, ctx).action.href]),
     );
     expect(hrefs).toMatchObject({
       outbid: "/lot/sun-over-arles/l88",
+      reoffer_offer: "/bids/offers/o1",
       pay: "/purchases/pay?lots=l7",
       won_awaiting_payment: "/purchases",
       unsold_due: "/selling/consignments?tab=unsold",
@@ -196,7 +224,13 @@ describe("needsYouRowView", () => {
   });
 
   it("dates what has a date: a close time ahead in amber, a passed choice date in red", () => {
-    const [outbid, , , unsoldDue] = EVERY_TASK.map((task) => needsYouRowView(task, ctx));
+    const due = (kind: string) => {
+      const task = EVERY_TASK.find((candidate) => candidate.kind === kind);
+      if (!task) throw new Error(`no ${kind} task`);
+      return needsYouRowView(task, ctx);
+    };
+    const outbid = due("outbid");
+    const unsoldDue = due("unsold_due");
     expect(outbid?.due).toMatchObject({ tone: "warning" });
     expect(outbid?.due?.text).toMatch(/^Closes /);
     expect(unsoldDue?.due).toMatchObject({ tone: "danger", text: "Overdue" });

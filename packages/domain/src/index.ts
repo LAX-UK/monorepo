@@ -668,6 +668,7 @@ export {
   unsoldChoiceDueBy,
   type EndingAuthorisation,
   type ExpiredInvitation,
+  type ReofferOfferSubject,
   type PendingAccessRequest,
   type PurchaseNextStepTimes,
   type ReofferRequestSubject,
