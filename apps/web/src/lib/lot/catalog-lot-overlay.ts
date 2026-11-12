@@ -8,6 +8,7 @@ type CatalogLotOverlayLot = Pick<Lot, "id" | "status" | "winnerId"> & {
   startTime: Lot["startTime"] | string | null;
   endTime: Lot["endTime"] | string | null;
   hasWinner?: boolean;
+  resultPending?: boolean;
   currentPrice?: string;
 };
 
@@ -82,10 +83,14 @@ function statusPresentationForLifecycle(
   }
 }
 
-function normalizeLotForLifecycle(
-  lot: CatalogLotOverlayLot,
-): Pick<Lot, "status" | "startTime" | "endTime" | "winnerId" | "currentPrice" | "id"> {
+function normalizeLotForLifecycle(lot: CatalogLotOverlayLot): Pick<
+  Lot,
+  "status" | "startTime" | "endTime" | "winnerId" | "currentPrice" | "id"
+> & {
+  resultPending?: boolean;
+} {
   return {
+    ...(lot.resultPending ? { resultPending: true } : {}),
     id: lot.id,
     status: lot.status,
     winnerId: lot.winnerId ?? null,

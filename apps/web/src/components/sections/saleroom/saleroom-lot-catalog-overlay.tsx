@@ -89,6 +89,7 @@ export function SaleroomLotCatalogOverlay({
         endTime: lot.endTime ?? new Date(),
         winnerId: lot.winnerId ?? null,
         ...(lot.hasWinner !== undefined ? { hasWinner: lot.hasWinner } : {}),
+        ...(lot.resultPending ? { resultPending: true } : {}),
         currentPrice: lot.currentBidValue,
       },
       sale: saleForLifecycle,

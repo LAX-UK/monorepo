@@ -187,7 +187,12 @@ describe("price block by lifecycle", () => {
         amounts: { starting: "4200", current: "7000", hammer: "7000", soldForWithPremium: "8750" },
       }),
     );
-    expect(vm).toMatchObject({ label: "Ended", amount: null, amountText: null, subLine: null });
+    expect(vm).toMatchObject({
+      label: "Ended",
+      amount: null,
+      amountText: null,
+      subLine: "The result will be published here when it is final",
+    });
   });
 
   it.each([

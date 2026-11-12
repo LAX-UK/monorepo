@@ -215,7 +215,12 @@ function headlineOf(input: PriceBlockInput): Headline {
       return unsoldHeadline(input);
     case "endedPending":
       // The result is not final: nothing is said about a buyer or a price.
-      return { label: copy.headlineLabel, amount: null, amountText: null, subLine: null };
+      return {
+        label: copy.headlineLabel,
+        amount: null,
+        amountText: null,
+        subLine: "The result will be published here when it is final",
+      };
     case "cancelled":
     case "withdrawn":
       return {
