@@ -1,5 +1,9 @@
-import { ZOHO_STATUS_FOR_OFFER } from "@auction/artwork-register-contracts";
-import type { OfferState } from "@auction/artwork-register-contracts";
+import {
+  OFFER_STATES,
+  type OfferState,
+  WITHDRAWN_DISPLAY_DAYS,
+  zohoStatusByOfferState,
+} from "@auction/artwork-register-contracts";
 import type { Database } from "@auction/db";
 import { type SQL, sql } from "drizzle-orm";
 import type {
@@ -16,11 +20,23 @@ import { rowsOf } from "../rows-of.js";
 /** Reasons a Product is left out on purpose or is the "deleted in Zoho" case, not a gap in LAX. */
 const NOT_A_GAP = ["demo_artist", "not_found_in_zoho"];
 
-/** The Status LAX writes for each place, as a SQL expression over `offer_state`. */
-const EXPECTED_STATUS: SQL = sql`CASE r.offer_state ${sql.join(
-  Object.entries(ZOHO_STATUS_FOR_OFFER).map(([state, status]) => sql`WHEN ${state} THEN ${status}`),
-  sql` `,
-)} END`;
+/**
+ * The Status LAX wants, as a SQL expression over `r.offer_state` and `w.withdrawn_at` (when the
+ * artwork was withdrawn, null when the history does not say). The values come from the same
+ * mapping the writer uses; only the 30-day Withdrawn window is decided here, in the query, with
+ * the length the "Where it is" place uses.
+ */
+function expectedStatus(now: Date): SQL {
+  const shown = zohoStatusByOfferState(true);
+  const expired = zohoStatusByOfferState(false);
+  const windowOpen = sql`(w.withdrawn_at IS NULL OR w.withdrawn_at + make_interval(days => ${WITHDRAWN_DISPLAY_DAYS}) > ${now.toISOString()}::timestamptz)`;
+  const branches = OFFER_STATES.map((state: OfferState) =>
+    shown[state] === expired[state]
+      ? sql`WHEN ${state} THEN ${shown[state]}`
+      : sql`WHEN ${state} THEN CASE WHEN ${windowOpen} THEN ${shown[state]} ELSE ${expired[state]} END`,
+  );
+  return sql`CASE r.offer_state ${sql.join(branches, sql` `)} END`;
+}
 
 type CountRow = { total: number };
 
@@ -29,7 +45,10 @@ type CountRow = { total: number };
  * one page query and one count query; nothing is read row by row.
  */
 export class DrizzleZohoDriftReader implements IZohoDriftReader {
-  constructor(private readonly db: Database) {}
+  constructor(
+    private readonly db: Database,
+    private readonly now: () => Date = () => new Date(),
+  ) {}
 
   /**
    * Starts from the Products the sync found missing, then keeps those whose newest result is still
@@ -57,7 +76,7 @@ export class DrizzleZohoDriftReader implements IZohoDriftReader {
     const [registerWithoutProduct, productsWithoutRegister, statusMismatches] = await Promise.all([
       count(DrizzleZohoDriftReader.GONE),
       count(DrizzleZohoDriftReader.UNREGISTERED),
-      count(DrizzleZohoDriftReader.MISMATCHED),
+      count(this.mismatched()),
     ]);
     return { registerWithoutProduct, productsWithoutRegister, statusMismatches };
   }
@@ -138,22 +157,38 @@ export class DrizzleZohoDriftReader implements IZohoDriftReader {
     };
   }
 
-  private static readonly MISMATCHED = sql`
-    FROM artwork_register r
-    WHERE r.kind = 'original' AND r.catalogue_status IS DISTINCT FROM ${EXPECTED_STATUS}
-  `;
+  /**
+   * The originals whose Status in Zoho is not the one LAX wants. Each carries when it was last
+   * withdrawn: the newest offer move, when it moved into Withdrawn.
+   */
+  private mismatched(): SQL {
+    const expected = expectedStatus(this.now());
+    return sql`
+      FROM artwork_register r
+      LEFT JOIN LATERAL (
+        SELECT CASE WHEN e.payload -> 'to' ->> 'state' = 'withdrawn' THEN e.created_at END AS withdrawn_at
+        FROM artwork_register_event e
+        WHERE e.register_id = r.id AND e.type = 'offer_moved'
+        ORDER BY e.created_at DESC, e.id DESC
+        LIMIT 1
+      ) w ON true
+      WHERE r.kind = 'original' AND r.catalogue_status IS DISTINCT FROM ${expected}
+    `;
+  }
 
   async statusMismatches(paging: ZohoDriftPaging): Promise<ZohoDriftPage<StatusMismatchRow>> {
+    const from = this.mismatched();
+    const expected = expectedStatus(this.now());
     const [rows, total] = await Promise.all([
       this.db.execute(sql`
         SELECT r.id AS "registerId", r.stock_code AS "stockCode", r.title,
           r.artist_name AS "artistName", r.offer_state AS "offerState",
-          r.catalogue_status AS "zohoStatus", ${EXPECTED_STATUS} AS "expectedStatus"
-        ${DrizzleZohoDriftReader.MISMATCHED}
+          r.catalogue_status AS "zohoStatus", ${expected} AS "expectedStatus"
+        ${from}
         ORDER BY r.stock_code
         LIMIT ${paging.limit} OFFSET ${paging.offset}
       `),
-      this.db.execute(sql`SELECT count(*)::int AS total ${DrizzleZohoDriftReader.MISMATCHED}`),
+      this.db.execute(sql`SELECT count(*)::int AS total ${from}`),
     ]);
     return { rows: rowsOf<StatusMismatchRow>(rows), total: rowsOf<CountRow>(total)[0]?.total ?? 0 };
   }

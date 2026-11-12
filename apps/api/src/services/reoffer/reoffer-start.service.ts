@@ -150,6 +150,20 @@ export class ReofferStartService {
       reserveMinor: lot.reservePence,
     });
     const dueAt = requirement.status === "requested" ? sellerConsentWindow(now).dueAt : null;
+    // What the seller is paid at each hammer: each priced for the buyer who would pay it.
+    const sellerLegalEntityId = lot.sellerLegalEntityId;
+    const atOffer = await this.deps.proceeds.proceedsFor({
+      lotId,
+      sellerLegalEntityId,
+      buyerLegalEntityId: next.bidder.legalEntityId,
+      hammerPence: next.bidder.amountMinor,
+    });
+    const atOriginal = await this.deps.proceeds.proceedsFor({
+      lotId,
+      sellerLegalEntityId,
+      buyerLegalEntityId: latest.buyerLegalEntityId,
+      hammerPence: latest.hammerPence,
+    });
     const created = await offers.create(tx, {
       lotId,
       buyerDefaultId: latest.id,
@@ -166,14 +180,9 @@ export class ReofferStartService {
         terms: {
           amountPence: next.bidder.amountMinor,
           originalHammerPence: latest.hammerPence,
-          proceedsAtOfferPence: await this.deps.proceeds.proceedsPence(
-            lot.sellerLegalEntityId,
-            next.bidder.amountMinor,
-          ),
-          proceedsAtOriginalPence: await this.deps.proceeds.proceedsPence(
-            lot.sellerLegalEntityId,
-            latest.hammerPence,
-          ),
+          saleAtOfferPence: atOffer.salePence,
+          proceedsAtOfferPence: atOffer.proceedsPence,
+          proceedsAtOriginalPence: atOriginal.proceedsPence,
           reservePence: lot.reservePence,
         },
         requestedAt: now,

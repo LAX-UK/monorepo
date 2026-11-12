@@ -35,6 +35,26 @@ describe("PortfolioWorkDetail", () => {
     expect(html).toContain("£1,290.00");
   });
 
+  it("shows a refund as a negative line under the charges", () => {
+    const html = renderToStaticMarkup(
+      <PortfolioWorkDetail
+        work={buildWorkDetail(
+          item({
+            paid: {
+              lines: [{ kind: "price", amount: 45_000, currency: "GBP" }],
+              refunded: { amount: 10_000, currency: "GBP" },
+            },
+          }),
+          [],
+        )}
+      />,
+    );
+    expect(html).toContain("£450.00");
+    expect(html).toContain("Refunded");
+    expect(html).toContain("\u2212£100.00");
+    expect(html).toContain("£350.00");
+  });
+
   it("names the seller business and the product", () => {
     const html = render();
     expect(html).toContain("LAX Bid Ltd");

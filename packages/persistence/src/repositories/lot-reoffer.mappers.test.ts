@@ -124,6 +124,14 @@ describe("toSellerConsentView", () => {
     expect(view.termsSnapshot.reservePence).toBeNull();
   });
 
+  it("reads the sale total the proceeds were worked out from, and tolerates its absence", () => {
+    const kept = consentRow({
+      termsSnapshot: { ...consentRow().termsSnapshot, saleAtOfferPence: 112_500 },
+    });
+    expect(toSellerConsentView(kept).termsSnapshot.saleAtOfferPence).toBe(112_500);
+    expect(toSellerConsentView(consentRow()).termsSnapshot).not.toHaveProperty("saleAtOfferPence");
+  });
+
   it("maps a refusal recorded by staff with the seller's preference", () => {
     expect(
       toSellerConsentView(

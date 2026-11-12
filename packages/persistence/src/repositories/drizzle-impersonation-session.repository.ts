@@ -1,7 +1,7 @@
 import type { Database } from "@auction/db";
 import { impersonationSession } from "@auction/db/schema";
 import { IMPERSONATION_TTL_MS } from "@auction/types";
-import { and, desc, eq, gt, isNull } from "drizzle-orm";
+import { and, desc, eq, gt, isNull, lte } from "drizzle-orm";
 import type {
   IImpersonationSessionRepository,
   ImpersonationDbClient,
@@ -60,6 +60,27 @@ export class DrizzleImpersonationSessionRepository implements IImpersonationSess
           eq(impersonationSession.id, sessionId),
           eq(impersonationSession.actorUserId, actorUserId),
           isNull(impersonationSession.endedAt),
+        ),
+      )
+      .returning({ id: impersonationSession.id });
+    return ended.length > 0;
+  }
+
+  async endExpiredForActor(
+    sessionId: string,
+    actorUserId: string,
+    endReason: ImpersonationEndReason,
+  ): Promise<boolean> {
+    const now = new Date();
+    const ended = await this.db
+      .update(impersonationSession)
+      .set({ endedAt: now, endReason })
+      .where(
+        and(
+          eq(impersonationSession.id, sessionId),
+          eq(impersonationSession.actorUserId, actorUserId),
+          isNull(impersonationSession.endedAt),
+          lte(impersonationSession.expiresAt, now),
         ),
       )
       .returning({ id: impersonationSession.id });

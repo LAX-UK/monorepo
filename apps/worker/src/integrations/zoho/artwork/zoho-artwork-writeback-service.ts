@@ -1,15 +1,18 @@
 import { type ArtworkRegisterEntry, zohoModuleOf } from "@auction/artwork-register-contracts";
-import type { IArtworkRegisterRepository } from "@auction/persistence/interfaces";
+import type {
+  IArtworkRegisterRepository,
+  IZohoStatusSourceReader,
+} from "@auction/persistence/interfaces";
 import type { Logger } from "pino";
 import { crmErrorOutcome } from "../../crm/classify-crm-error.js";
 import { CrmGatewayError } from "../../crm/crm-gateway-error.js";
 import type { CrmSyncResult } from "../../crm/crm-sync-result.js";
 import {
-  type ZohoProductUpdate,
-  planStatusUpdate,
-  planStockCodeUpdate,
-  zohoStatusForOffer,
-} from "./writeback-mapping.js";
+  type StatusOutcome,
+  type ZohoStatusSync,
+  wantedStatus,
+} from "./status/zoho-status-sync.js";
+import { type ZohoProductUpdate, planStockCodeUpdate } from "./writeback-mapping.js";
 import type { ZohoProductWriter } from "./zoho-product-writer.js";
 
 /** `off` does nothing; `dry_run` logs what would be sent without calling Zoho; `live` sends it. */
@@ -21,7 +24,11 @@ export const STOCK_CODE_ASSIGNED_EVENT = "artwork_register.stock_code_assigned";
 export type ZohoArtworkWritebackDeps = {
   mode: ZohoArtworkWritebackMode;
   products: ZohoProductWriter;
-  register: Pick<IArtworkRegisterRepository, "findById" | "recordCatalogueStatusWritten">;
+  register: Pick<IArtworkRegisterRepository, "findById">;
+  /** Compares the Zoho Status and sets it only where that is safe. */
+  status: Pick<ZohoStatusSync, "sync">;
+  /** For a dry run, which reads LAX alone and never reaches Zoho. */
+  sources: Pick<IZohoStatusSourceReader, "readStatusSources">;
   log: Logger;
   now?: () => Date;
 };
@@ -36,8 +43,10 @@ type WritebackEvent = { id?: number; eventType: string; payload: unknown };
  * or out-of-order event can only ever send the state that is true now. Zoho is read before a
  * write and left alone when it already holds the value, so delivering twice sends once.
  *
- * Once the Status is written the register notes the value, so the change coming back through the
- * inbound sync finds nothing different and is not treated as Zoho's.
+ * The Status is Zoho's to hold, so it is compare-and-set (see `ZohoStatusSync`): a Sold or
+ * Reserved that staff set in Zoho is never written over, and the difference is raised as a
+ * conflict instead. Once the Status is written the register notes it, so the change coming back
+ * through the inbound sync finds nothing different and is not treated as Zoho's.
  */
 export class ZohoArtworkWritebackService {
   private readonly now: () => Date;
@@ -75,22 +84,14 @@ export class ZohoArtworkWritebackService {
   }
 
   private async sendStatus(entry: ArtworkRegisterEntry, event: WritebackEvent) {
-    const wanted = zohoStatusForOffer(entry.offer.state);
     if (this.deps.mode === "dry_run") {
-      return this.dryRun(entry, event, { Status: wanted });
+      const [source] = await this.deps.sources.readStatusSources([entry.id]);
+      return this.dryRun(entry, event, {
+        Status: source ? wantedStatus(source, this.now()) : "unknown",
+      });
     }
-
-    const current = await this.requireProduct(entry);
-    const update = planStatusUpdate(entry.offer.state, current);
-    if (update) await this.deps.products.update(entry.zohoProductId, update.fields);
-
-    // Whether sent now or already there, the register should hold what Zoho holds.
-    await this.deps.register.recordCatalogueStatusWritten({
-      registerId: entry.id,
-      status: wanted,
-      now: this.now(),
-    });
-    return this.finish(entry, update, "status_already_in_sync");
+    const [outcome] = await this.deps.status.sync([entry.id]);
+    return statusResult(entry, outcome);
   }
 
   private async sendStockCode(entry: ArtworkRegisterEntry, event: WritebackEvent) {
@@ -141,6 +142,39 @@ export class ZohoArtworkWritebackService {
     return update
       ? { outcome: "success", providerReference: `Products:${entry.zohoProductId}` }
       : { outcome: "skipped", reason: unchangedReason };
+  }
+}
+
+/** A conflict is for staff and sending again cannot settle it; a failure or a stale read can. */
+function statusResult(
+  entry: ArtworkRegisterEntry,
+  outcome: StatusOutcome | undefined,
+): CrmSyncResult {
+  switch (outcome?.kind) {
+    case "written":
+      return { outcome: "success", providerReference: `Products:${entry.zohoProductId}` };
+    case "in_sync":
+      return { outcome: "skipped", reason: "status_already_in_sync" };
+    case "conflict":
+      return { outcome: "skipped", reason: "status_conflict_raised" };
+    case "skipped":
+      return { outcome: "skipped", reason: outcome.reason };
+    case "stale":
+      throw new CrmGatewayError({
+        code: "status_changed_in_zoho_during_read",
+        message: `Zoho Product ${entry.zohoProductId} changed while its Status was being compared`,
+        status: 409,
+        retryable: true,
+      });
+    case "failed":
+      throw new CrmGatewayError({
+        code: outcome.code,
+        message: `Zoho Status for ${entry.zohoProductId} was not written: ${outcome.code}`,
+        status: 400,
+        retryable: outcome.retryable,
+      });
+    case undefined:
+      return { outcome: "skipped", reason: "register_entry_missing" };
   }
 }
 

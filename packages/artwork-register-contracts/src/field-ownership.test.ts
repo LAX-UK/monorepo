@@ -45,6 +45,10 @@ describe("canAcceptZohoValue", () => {
       expect(canAcceptZohoValue(field)).toBe(false);
     }
   });
+
+  it("never takes over a Status conflict: Zoho's Status already stands", () => {
+    expect(canAcceptZohoValue("catalogueStatus")).toBe(false);
+  });
 });
 
 describe("field ownership table", () => {

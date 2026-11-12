@@ -209,4 +209,37 @@ describe("LaxFamilyMenuLinks", () => {
     render(<LaxFamilyBar links={LINKS} />);
     expect(screen.queryByRole("navigation", { name: "Help" })).toBeNull();
   });
+
+  it("follows the header's tone from its data attribute instead of a prop", () => {
+    render(<LaxFamilyBar links={LINKS} tone="follow-header" />);
+    const current = screen.getByRole("link", { name: "lax.shop" });
+    expect(current.className).toContain("font-semibold");
+    expect(current.className).toContain(
+      "group-data-[header-tone=on-dark]/header:text-hero-foreground",
+    );
+    const other = screen.getByRole("link", { name: "lax.art" });
+    expect(other.className).toContain("text-on-surface-variant");
+    expect(other.className).toContain(
+      "group-data-[header-tone=on-dark]/header:hover:text-hero-foreground",
+    );
+  });
+
+  it("keeps follow-header in step with the on-light and on-dark tones", () => {
+    const classesOf = (tone: "on-light" | "on-dark" | "follow-header", name: string) => {
+      const view = render(<LaxFamilyBar links={LINKS} tone={tone} />);
+      const tokens = screen.getByRole("link", { name }).className.split(/\s+/);
+      view.unmount();
+      return tokens;
+    };
+    const GROUP = "group-data-[header-tone=on-dark]/header:";
+    for (const name of ["lax.art", "lax.shop"]) {
+      const follow = new Set(classesOf("follow-header", name));
+      for (const token of classesOf("on-light", name).filter((t) => /text-|border-/.test(t))) {
+        expect(follow.has(token), `on-light ${token}`).toBe(true);
+      }
+      for (const token of classesOf("on-dark", name).filter((t) => /text-hero/.test(t))) {
+        expect(follow.has(`${GROUP}${token}`), `on-dark ${token}`).toBe(true);
+      }
+    }
+  });
 });

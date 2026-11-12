@@ -1,5 +1,6 @@
 import type { IdentityDatabase } from "@auction/identity-db";
 import { SubjectExportRegistry } from "../../subject-export/subject-export.registry.js";
+import { createDrizzleSessionClientsReader } from "../drizzle-session-clients.reader.js";
 import { AddressesExportCategory } from "./categories/addresses.category.js";
 import { ConsentsExportCategory } from "./categories/consents.category.js";
 import { ContactExportCategory } from "./categories/contact.category.js";
@@ -16,7 +17,12 @@ export function createAccountSubjectExportRegistry(
     new ProfileExportCategory(db),
     new ContactExportCategory(db),
     new AddressesExportCategory(db),
-    new SignInAndSecurityExportCategory(db, undefined, crypto),
+    new SignInAndSecurityExportCategory(
+      db,
+      undefined,
+      crypto,
+      createDrizzleSessionClientsReader(db),
+    ),
     new ConsentsExportCategory(db),
     new RequestsExportCategory(db),
   ]);

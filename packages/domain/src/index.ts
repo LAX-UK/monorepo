@@ -670,6 +670,7 @@ export {
   type ExpiredInvitation,
   type PendingAccessRequest,
   type PurchaseNextStepTimes,
+  type ReofferRequestSubject,
   type UnreadReply,
   type NeedsYouCounts,
   type NeedsYouFacts,
@@ -1334,6 +1335,17 @@ export {
   type ReofferSkipReason,
   type SkippedBidder,
 } from "./reoffer-next-bidder.js";
+export {
+  INVOICE_NOT_RAISED_PREFIX,
+  INVOICE_RETRY_BACKOFF_MS,
+  INVOICE_RETRY_PREFIX,
+  invoiceSweepOutcome,
+  isTerminalInvoiceReason,
+  RECOVERABLE_INVOICE_REASONS,
+  TERMINAL_INVOICE_REASONS,
+  type InvoiceAttempt,
+  type InvoiceSweepOutcome,
+} from "./reoffer-invoice-outcome.js";
 export { claimableShortfall, type ClaimableShortfall } from "./reoffer-shortfall.js";
 export {
   reawardGuard,
@@ -1355,6 +1367,16 @@ export {
   sellerConsentWindow,
   type SellerConsentWindow,
 } from "./reoffer-windows.js";
+export {
+  OFFER_REMINDER_LEAD_MS,
+  offerReminderAt,
+  offerStep,
+  sellerRequestStep,
+  type OfferFacts,
+  type OfferStep,
+  type SellerRequestFacts,
+  type SellerRequestStep,
+} from "./reoffer-sweep.js";
 export {
   reofferResponseBlock,
   reofferSendBlock,

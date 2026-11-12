@@ -11,6 +11,8 @@ import {
 import { eq, sql } from "drizzle-orm";
 import type { Logger } from "pino";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import type { ZohoStatusProducts, ZohoStatusState } from "../status/zoho-status-products.js";
+import { ZohoStatusSync } from "../status/zoho-status-sync.js";
 import type { ZohoProductState } from "../writeback-mapping.js";
 import {
   OFFER_CHANGED_EVENT,
@@ -33,11 +35,21 @@ function fakeZohoProduct(id: string) {
   const statusWriter: ZohoProductWriter = {
     async read(productId): Promise<ZohoProductState | null> {
       if (productId !== id) return null;
-      return { status: fields.Status ?? null, stockCode: fields.Reference_Stock_Code ?? null };
+      return { stockCode: fields.Reference_Stock_Code ?? null };
     },
     async update(_productId, values) {
       counter.writes += 1;
       Object.assign(fields, values);
+    },
+  };
+  const statusProducts: ZohoStatusProducts = {
+    async read(productIds) {
+      const state: ZohoStatusState = { status: fields.Status ?? null, modifiedAt: null };
+      return new Map(productIds.includes(id) ? [[id, state]] : []);
+    },
+    async write(_productId, status) {
+      counter.writes += 1;
+      fields.Status = status;
     },
   };
   const listingProducts: ZohoListingProducts = {
@@ -56,7 +68,7 @@ function fakeZohoProduct(id: string) {
       return updates.map((update) => ({ productId: update.productId, ok: true as const }));
     },
   };
-  return { fields, counter, statusWriter, listingProducts };
+  return { fields, counter, statusWriter, statusProducts, listingProducts };
 }
 
 describe.skipIf(!url)("LAX listing on Zoho (Postgres)", { timeout: 30_000 }, () => {
@@ -106,6 +118,16 @@ describe.skipIf(!url)("LAX listing on Zoho (Postgres)", { timeout: 30_000 }, () 
     mode: "live",
     products: zoho.statusWriter,
     register,
+    status: new ZohoStatusSync({
+      mode: "live",
+      sources,
+      register,
+      products: zoho.statusProducts,
+      lock: new DrizzleZohoListingLock(db),
+      log,
+      now,
+    }),
+    sources,
     log,
     now,
   });

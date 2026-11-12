@@ -61,6 +61,11 @@ export type SellerPreferredNext = "later_sale" | "return_to_me" | "talk_to_us";
 export type SellerConsentTerms = {
   amountPence: number;
   originalHammerPence: number;
+  /**
+   * What the next bidder would pay at the offer (hammer and buyer's premium), the total the
+   * seller's proceeds are worked out from. Missing from requests started before it was kept.
+   */
+  saleAtOfferPence?: number | undefined;
   proceedsAtOfferPence: number;
   proceedsAtOriginalPence: number;
   reservePence: number | null;
@@ -144,11 +149,15 @@ export type SellerConsentAnswerWrite = {
 
 export interface ISellerConsentRepository {
   findById(id: string): Promise<SellerConsentView | null>;
-  findForReoffer(reofferId: string): Promise<SellerConsentView | null>;
+  /** Pass the caller's transaction to read it on the same connection, under the caller's locks. */
+  findForReoffer(reofferId: string, tx?: Database): Promise<SellerConsentView | null>;
   /** Records an answer from the status the caller read. Throws `LotReofferConflictError` otherwise. */
   answer(tx: Database, write: SellerConsentAnswerWrite): Promise<void>;
-  /** Marks the one reminder as sent; `false` when it was already sent. */
-  markReminded(id: string, remindedAt: Date): Promise<boolean>;
+  /**
+   * Marks the one reminder as sent; `false` when it was already sent or the request is no longer
+   * waiting. Pass the caller's transaction to make the mark and whatever it triggers one step.
+   */
+  markReminded(id: string, remindedAt: Date, tx?: Database): Promise<boolean>;
 }
 
 /** Why the lot was not re-awarded. */

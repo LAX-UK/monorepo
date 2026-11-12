@@ -32,6 +32,13 @@ export interface IImpersonationSessionRepository {
     actorUserId: string,
     endReason: ImpersonationEndReason,
   ): Promise<boolean>;
+  /** Like `endForActor`, but only when the session has already expired, so a live session is
+   * never ended by a stale snapshot. */
+  endExpiredForActor(
+    sessionId: string,
+    actorUserId: string,
+    endReason: ImpersonationEndReason,
+  ): Promise<boolean>;
   findById(sessionId: string): Promise<ImpersonationSessionRow | null>;
   findActive(sessionId: string): Promise<ImpersonationSessionRow | null>;
   listActiveByActor(actorUserId: string): Promise<ImpersonationSessionRow[]>;

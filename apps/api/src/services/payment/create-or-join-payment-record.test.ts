@@ -1,4 +1,7 @@
-import { BidInvoiceTotalMismatchError } from "@auction/persistence/interfaces";
+import {
+  BidInvoiceLotMovedError,
+  BidInvoiceTotalMismatchError,
+} from "@auction/persistence/interfaces";
 import type { Lot } from "@auction/types";
 import { describe, expect, it, vi } from "vitest";
 import { createOrJoinPaymentRecord } from "./create-pending-for-winner.pipeline.js";
@@ -82,6 +85,16 @@ describe("createOrJoinPaymentRecord (two first Pay requests at once)", () => {
       status: 409,
       code: "invoice_total_changed",
     });
+  });
+
+  it("answers a conflict, not a 500, when the lot was defaulted or re-awarded meanwhile", async () => {
+    const d = deps(async () => {
+      throw new BidInvoiceLotMovedError("lot-1");
+    }, null);
+    const outcome = await createOrJoinPaymentRecord(d, lot, "buyer-1", {} as never, terms);
+    expect(outcome.kind).toBe("joined");
+    if (outcome.kind !== "joined") return;
+    expect(outcome.result._unsafeUnwrapErr()).toMatchObject({ status: 409, code: "lot_moved" });
   });
 
   it("any other failure is not hidden", async () => {

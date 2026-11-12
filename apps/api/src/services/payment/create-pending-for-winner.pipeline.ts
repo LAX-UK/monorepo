@@ -2,6 +2,7 @@ import type { PaymentEligibilityHold } from "@auction/domain";
 import type { PricedInvoice } from "@auction/finance-runtime";
 import type { LotFulfilmentAddressSnapshot } from "@auction/persistence/interfaces";
 import {
+  BidInvoiceLotMovedError,
   BidInvoiceTotalMismatchError,
   type PaymentRecord,
   type RaisedInvoice,
@@ -418,6 +419,20 @@ export async function createOrJoinPaymentRecord(
       raised: await createPaymentRecordForWinner(deps, lot, buyerId, terms),
     };
   } catch (e) {
+    if (e instanceof BidInvoiceLotMovedError) {
+      // Defaulted or re-awarded while the payment was being started: nothing was stored.
+      recordMoneyPathEvent("invoice_raise_lot_moved");
+      return {
+        kind: "joined",
+        result: err(
+          new LotError(
+            "This lot is no longer awaiting your payment. Refresh to see where it stands.",
+            409,
+            "lot_moved",
+          ),
+        ),
+      };
+    }
     if (e instanceof BidInvoiceTotalMismatchError) {
       // The lot's invoice was raised at another total in the meantime; it is never changed.
       recordMoneyPathEvent("invoice_total_mismatch");

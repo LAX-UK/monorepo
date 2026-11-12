@@ -1,10 +1,12 @@
 import type { AlertRetentionStore } from "@auction/alerts";
+import type { MoneyPauseReader } from "@auction/artwork-register-contracts";
 import type { Database } from "@auction/db";
 import type { FastifyBaseLogger } from "fastify";
 import { registerMissingMediaAssets } from "./application/artwork-register/register-media-assets.js";
 import { resolveStorefrontOrigins } from "./domain/storefront-origins.js";
 import type { ShopApiEnv } from "./env.js";
 import { createShopAlertRuntime } from "./infrastructure/alerts/create-shop-alert-runtime.js";
+import { createDrizzleCheckoutMoneyPause } from "./infrastructure/drizzle-checkout-money-pause.js";
 import { createDrizzleShopNotificationPublisher } from "./infrastructure/drizzle-shop-notification.publisher.js";
 import { createDrizzleShopPayeeConnectAccountRepository } from "./infrastructure/drizzle-shop-payee-connect-account.repository.js";
 import { createDrizzleShopUnitOfWork } from "./infrastructure/drizzle-shop-transaction-effects.js";
@@ -33,6 +35,7 @@ import { createGuestOrderClaimTask } from "./scheduler/tasks/guest-order-claim.t
 import { createIdentityMergeTask } from "./scheduler/tasks/identity-merge.task.js";
 import { createLinkedListingSyncTask } from "./scheduler/tasks/linked-listing-sync.task.js";
 import { createNotifyMeDispatchTask } from "./scheduler/tasks/notify-me-dispatch.task.js";
+import { createPausedCheckoutExpiryTask } from "./scheduler/tasks/paused-checkout-expiry.task.js";
 import { createPayoutEligibilityTask } from "./scheduler/tasks/payout-eligibility.task.js";
 import { createPersonalDataAnonymisationTask } from "./scheduler/tasks/personal-data-anonymisation.task.js";
 import { createRefundSubmissionTask } from "./scheduler/tasks/refund-submission.task.js";
@@ -68,6 +71,8 @@ export function buildShopApiSchedulerTasks(input: {
   alertRetention: AlertRetentionStore;
   /** The finance task store, for a payment the sweep finds that never reached us. */
   unappliedMoney: UnappliedMoneyLookup;
+  /** Whether Zoho's Sold/Reserved has paused an artwork's money. */
+  moneyPause: MoneyPauseReader;
 }): ShopSchedulerTask[] {
   const notifications = createDrizzleShopNotificationPublisher();
   const paymentGateway = createStripeShopCheckoutGateway({
@@ -98,6 +103,15 @@ export function buildShopApiSchedulerTasks(input: {
           secret: input.env.ART_REVALIDATE_SECRET,
         })
       : noopArtCacheInvalidator;
+  const moneyPause = createDrizzleCheckoutMoneyPause(input.db, input.moneyPause);
+  const checkoutTransitions = {
+    paymentGateway,
+    notifications,
+    opsAlertEmail,
+    domainEventMode: input.env.DOMAIN_EVENT_PUBLISH_VALIDATE,
+    unappliedMoney: input.unappliedMoney,
+    moneyPause,
+  };
   return [
     createAlertMatchingTask(alerts.matching),
     createAlertDigestTask({ mode: alerts.mode, runs: alerts.digests }),
@@ -109,13 +123,8 @@ export function buildShopApiSchedulerTasks(input: {
         error: (fields, message) => input.log.error(fields, message),
       },
     }),
-    createStaleCheckoutReaperTask(input.db, {
-      paymentGateway,
-      notifications,
-      opsAlertEmail,
-      domainEventMode: input.env.DOMAIN_EVENT_PUBLISH_VALIDATE,
-      unappliedMoney: input.unappliedMoney,
-    }),
+    createStaleCheckoutReaperTask(input.db, checkoutTransitions),
+    createPausedCheckoutExpiryTask(input.db, moneyPause, checkoutTransitions),
     createIdentityMergeTask(input.db, opsAlertEmail),
     createGuestOrderClaimTask(input.db, input.env),
     createPersonalDataAnonymisationTask(input.db, input.env),
@@ -167,6 +176,7 @@ export function createShopApiScheduler(input: {
   log: FastifyBaseLogger;
   alertRetention: AlertRetentionStore;
   unappliedMoney: UnappliedMoneyLookup;
+  moneyPause: MoneyPauseReader;
 }): ShopSchedulerHandle | null {
   if (!input.env.SHOP_SCHEDULER_ENABLED) {
     return null;

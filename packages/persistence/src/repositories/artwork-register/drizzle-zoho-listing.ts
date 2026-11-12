@@ -17,9 +17,11 @@ import type {
   IZohoListingRunStore,
   IZohoListingSaleStartMark,
   IZohoListingSourceReader,
+  IZohoStatusSourceReader,
   ListingLot,
   ListingMove,
   RegisterListingSource,
+  RegisterStatusSource,
   ZohoListingRun,
 } from "../../interfaces/zoho-listing.js";
 import { toEntry } from "./artwork-register.mapper.js";
@@ -78,7 +80,9 @@ function toLot(row: LotRow): ListingLot {
 }
 
 /** Register, LAX Bid lot and sale, and private sale reads for the LAX listing on Zoho. */
-export class DrizzleZohoListingSourceReader implements IZohoListingSourceReader {
+export class DrizzleZohoListingSourceReader
+  implements IZohoListingSourceReader, IZohoStatusSourceReader
+{
   constructor(private readonly db: Database) {}
 
   async read(registerIds: readonly string[]): Promise<RegisterListingSource[]> {
@@ -103,6 +107,16 @@ export class DrizzleZohoListingSourceReader implements IZohoListingSourceReader 
       lot: lots.get(entry.id) ?? null,
       privateSale: deals.get(entry.id) ?? null,
     }));
+  }
+
+  async readStatusSources(registerIds: readonly string[]): Promise<RegisterStatusSource[]> {
+    const ids = [...new Set(registerIds)].filter((id) => UUID.test(id));
+    if (ids.length === 0) return [];
+    const rows = await this.db.select().from(register).where(inArray(register.id, ids));
+    if (rows.length === 0) return [];
+    const entries = rows.map(toEntry);
+    const moves = await this.latestMoves(entries.map((entry) => entry.id));
+    return entries.map((entry) => ({ entry, lastMove: moves.get(entry.id) ?? null }));
   }
 
   async registerIdsForLot(lotId: string): Promise<string[]> {

@@ -1,11 +1,14 @@
 import { randomUUID } from "node:crypto";
 import type { AlertRetentionStore } from "@auction/alerts";
+import type { MoneyPauseReader } from "@auction/artwork-register-contracts";
 import { ArtworkOfferLock } from "@auction/artwork-register-contracts";
 import { type Database, closeDb, createDb } from "@auction/db";
 import { issuerJwksUrl } from "@auction/identity-contracts";
 import {
   DrizzleArtworkRegisterQueueReader,
   DrizzleArtworkRegisterRepository,
+  DrizzleLotNumberReader,
+  DrizzleSoldAttentionStore,
   DrizzleUnappliedMoneyReader,
   DrizzleZohoArtworkSyncStore,
   DrizzleZohoDriftReader,
@@ -29,6 +32,7 @@ import {
 } from "./application/artwork-register/artwork-zoho-link.service.js";
 import { CatalogueChangeService } from "./application/artwork-register/catalogue-change.service.js";
 import { OfferOnLaxArtService } from "./application/artwork-register/offer-on-lax-art.service.js";
+import { SoldAttentionReviewService } from "./application/artwork-register/sold-attention-review.service.js";
 import { ZohoLinkService } from "./application/artwork-register/zoho-link.service.js";
 import { ZohoSyncHealthService } from "./application/artwork-register/zoho-sync-health.service.js";
 import { createShopDeletionEligibilityService } from "./application/deletion-eligibility.service.js";
@@ -268,6 +272,8 @@ export type ShopApiContainer = {
   alertRetention: AlertRetentionStore;
   /** The finance task store, shared with the scheduler's checkout sweep. */
   unappliedMoney: UnappliedMoneyLookup;
+  /** The money pause, shared with the scheduler's sweep of payment pages for paused artworks. */
+  moneyPause: MoneyPauseReader;
   app: ShopApiAppDeps;
   importArtwork: ReturnType<typeof createImportArtworkHandler>;
   grantStaffRole(input: {
@@ -327,10 +333,12 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
     ? createRedisFixedWindowCounter(rateLimitRedis)
     : createInMemoryFixedWindowCounter();
   const unappliedMoney = new DrizzleUnappliedMoneyReader(db);
+  const soldAttentionStore = new DrizzleSoldAttentionStore(db);
   const { commerce, stripeWebhook } = createCommerceServices(db, env, {
     rateLimitCounter,
     originalOffers,
     unappliedMoney,
+    moneyPause: soldAttentionStore,
   });
   const readiness = createDrizzleShopReadinessAdapter(db);
   const storefrontOrigins = resolveStorefrontOrigins({
@@ -694,6 +702,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
     db,
     alertRetention: createShopAlertRetentionStore(db),
     unappliedMoney,
+    moneyPause: soldAttentionStore,
     app: {
       env,
       auth: {
@@ -735,12 +744,17 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
           overview: createDrizzleRegisterOverviewReader(db, registerRowToEntry),
           register: artworkRegisterRepository,
           resolver: artworkRegisterRepository,
+          soldAttention: soldAttentionStore,
           runs: zohoArtworkSyncRuns,
           listingRuns: zohoListingRuns,
           staffNames: createDrizzleStaffNameReader(db),
           listings: laxArtListings,
           catalogueChanges: catalogueChange,
           auction: inventoryMoves,
+        }),
+        soldAttention: new SoldAttentionReviewService({
+          queue: soldAttentionStore,
+          lots: new DrizzleLotNumberReader(db),
         }),
         zohoSyncHealth: new ZohoSyncHealthService({
           health: zohoSyncHealth,
