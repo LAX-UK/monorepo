@@ -670,6 +670,7 @@ export {
   type ExpiredInvitation,
   type PendingAccessRequest,
   type PurchaseNextStepTimes,
+  type ReofferRequestSubject,
   type UnreadReply,
   type NeedsYouCounts,
   type NeedsYouFacts,

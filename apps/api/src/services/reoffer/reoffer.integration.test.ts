@@ -15,6 +15,7 @@ import {
 import {
   DrizzleLotReawardRepository,
   DrizzleLotReofferRepository,
+  DrizzleNeedsYouFactsReader,
   DrizzleReofferViewsReader,
   DrizzleReofferWorkflowReader,
   DrizzleSellerConsentRepository,
@@ -1068,6 +1069,11 @@ describe.skipIf(!HAS_DB)("re-offer API services (integration)", () => {
         originalProceedsMinor: 95_000,
         reserveMinor: 95_000,
         belowReserve: true,
+        lotTitle: `Reoffer lot ${s.lotId.slice(0, 4)}`,
+        lotEndedAt: "2026-10-10T10:00:00.000Z",
+        answeredAt: null,
+        answeredBy: null,
+        soldAt: null,
       });
       const text = JSON.stringify(view);
       for (const secret of [ids.second, ids.buyer, entity.second, entity.buyer, "Entity"]) {
@@ -1077,6 +1083,27 @@ describe.skipIf(!HAS_DB)("re-offer API services (integration)", () => {
         await reads.listForSeller({ ...member("seller"), legalEntityId: entity.otherSeller }),
       ).toEqual([]);
       expect(await codeOf(reads.listForSeller(member("seller", "buyer_agent")))).toBe("forbidden");
+    });
+
+    it("waits on the seller until answered, then says how the answer reached us", async () => {
+      reset();
+      const facts = new DrizzleNeedsYouFactsReader(db);
+      const s = await defaultedLot();
+      const { reofferId } = await start.start(staff, s.lotId);
+      const waiting = await facts.reofferRequests({ legalEntityId: entity.seller, limit: 50 });
+      expect(waiting.find((request) => request.id === reofferId)).toMatchObject({
+        title: `Reoffer lot ${s.lotId.slice(0, 4)}`,
+        offerMinor: 90_000,
+      });
+      expect(await facts.reofferRequests({ legalEntityId: entity.otherSeller, limit: 50 })).toEqual(
+        [],
+      );
+      await consent.recordForSeller(staff, reofferId, { answer: "given", note: "Phoned" });
+      const view = (await reads.listForSeller(member("seller"))).find((v) => v.id === reofferId);
+      expect(view).toMatchObject({ answeredBy: "recorded_by_staff", consentStatus: "given" });
+      expect(view?.answeredAt).not.toBeNull();
+      const after = await facts.reofferRequests({ legalEntityId: entity.seller, limit: 50 });
+      expect(after.some((request) => request.id === reofferId)).toBe(false);
     });
 
     it("shows the bidder nothing until the offer is sent, then the price lines and window, never the seller", async () => {

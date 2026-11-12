@@ -5,6 +5,7 @@ import type {
   PendingAccessRequest,
   PurchaseNextStepFacts,
   PurchaseNextStepTimes,
+  ReofferRequestSubject,
   UnreadReply,
 } from "@auction/domain";
 import type { SubmissionSenderFilter } from "./item-submission.repository.js";
@@ -36,6 +37,12 @@ export interface INeedsYouFactsReader {
     visibleTo: SubmissionSenderFilter | undefined;
     limit: number;
   }): Promise<Array<HomeSubject & { proposedAt: Date | null }>>;
+
+  /** Requests to re-offer a lot to the next bidder that wait for this seller account's answer. */
+  reofferRequests(input: {
+    legalEntityId: string;
+    limit: number;
+  }): Promise<Array<ReofferRequestSubject & { requestedAt: Date | null }>>;
 
   /** Submissions sent back with changes requested. */
   changesRequested(input: {
