@@ -450,6 +450,27 @@ describe.skipIf(!WORKER_URL)("worker_app role contract", { timeout: 60_000 }, ()
     expect(true).toBe(true);
   });
 
+  it("can lock a lot row and raise its invoice and payment in the same transaction", async () => {
+    // The invoice raise locks the lot first (FOR UPDATE, which needs UPDATE on the table) and
+    // re-checks its winner before inserting, so a buyer default cannot slip in between.
+    await withWorkerClient(async (client) => {
+      await client.query("BEGIN");
+      try {
+        await client.query(
+          "SELECT status, winner_id, buyer_legal_entity_id FROM lot LIMIT 1 FOR UPDATE",
+        );
+      } finally {
+        await client.query("ROLLBACK");
+      }
+      const rows = await readTablePrivileges(
+        client,
+        ["bid_invoice", "bid_invoice_line", "payment"],
+        ["INSERT"],
+      );
+      expectTablePrivileges(rows, () => true);
+    });
+  });
+
   it("can insert payout and payout_line for settlement (rolled back)", async () => {
     // biome-ignore lint/style/noNonNullAssertion: gated by skipIf
     const db = createDb(WORKER_URL!);

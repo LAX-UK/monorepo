@@ -889,6 +889,17 @@ jobs:
         env:
           DATABASE_URL: ${{ env.DATABASE_URL_API }}
 
+      # The invoice raise locks the lot (FOR UPDATE) before inserting; run it under both app roles
+      # that raise invoices, so a lost grant fails here and not as `permission denied` at lot end.
+      - name: Invoice raise lot lock as api_app
+        run: pnpm --filter @auction/api exec vitest run --maxWorkers=2 src/services/payment/lot-invoice-lot-moved.integration.test.ts
+        env:
+          INVOICE_RAISE_DATABASE_URL: ${{ env.DATABASE_URL_API }}
+      - name: Invoice raise lot lock as worker_app
+        run: pnpm --filter @auction/api exec vitest run --maxWorkers=2 src/services/payment/lot-invoice-lot-moved.integration.test.ts
+        env:
+          INVOICE_RAISE_DATABASE_URL: postgresql://worker_app:postgres@localhost:5432/auction_ci
+
   build:
     needs: build-packages
     runs-on: ubuntu-latest
