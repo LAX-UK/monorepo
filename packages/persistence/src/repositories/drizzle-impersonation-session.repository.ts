@@ -47,6 +47,25 @@ export class DrizzleImpersonationSessionRepository implements IImpersonationSess
       .where(and(eq(impersonationSession.id, sessionId), isNull(impersonationSession.endedAt)));
   }
 
+  async endForActor(
+    sessionId: string,
+    actorUserId: string,
+    endReason: ImpersonationEndReason,
+  ): Promise<boolean> {
+    const ended = await this.db
+      .update(impersonationSession)
+      .set({ endedAt: new Date(), endReason })
+      .where(
+        and(
+          eq(impersonationSession.id, sessionId),
+          eq(impersonationSession.actorUserId, actorUserId),
+          isNull(impersonationSession.endedAt),
+        ),
+      )
+      .returning({ id: impersonationSession.id });
+    return ended.length > 0;
+  }
+
   async findById(sessionId: string): Promise<ImpersonationSessionRow | null> {
     const [row] = await this.db
       .select()

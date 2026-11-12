@@ -4,7 +4,7 @@ import { useOverlayTone } from "@/components/ui/overlay-tone-context";
 import { overlayPillClasses, overlayToneProps } from "@/lib/ui/overlay-tone-classes";
 import type { PositionIndicatorProps } from "@auction/types";
 import { formatGalleryIndex } from "@auction/types";
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 
 type Props = PositionIndicatorProps & {
   liveId?: string;

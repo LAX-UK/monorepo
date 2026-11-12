@@ -1,9 +1,9 @@
 "use client";
 
 import type { UploadGalleryItem } from "@/lib/forms/image/use-upload-gallery";
-import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { UploadProgress } from "@auction/ui/components/upload-progress";
+import { cn } from "@auction/ui/lib/utils";
 
 type Props = {
   item: UploadGalleryItem;

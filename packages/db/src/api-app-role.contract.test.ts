@@ -44,6 +44,25 @@ describe.skipIf(!API_URL)("api_app role contract", { timeout: 60_000 }, () => {
     });
   });
 
+  it("reads and writes the sealed Xero token columns, and may null the plaintext ones", async () => {
+    await withApiClient(async (client) => {
+      for (const column of [
+        "access_token_sealed",
+        "refresh_token_sealed",
+        "access_token",
+        "refresh_token",
+      ]) {
+        for (const privilege of ["SELECT", "INSERT", "UPDATE"]) {
+          const result = await client.query<{ allowed: boolean }>(
+            "select has_column_privilege(current_user, 'public.xero_connection', $1, $2) as allowed",
+            [column, privilege],
+          );
+          expect(result.rows[0]?.allowed, `${column} ${privilege}`).toBe(true);
+        }
+      }
+    });
+  });
+
   it("may run the buyer refund top-up function", async () => {
     await withApiClient(async (client) => {
       const result = await client.query<{ run: boolean }>(
@@ -132,6 +151,28 @@ describe.skipIf(!API_URL)("api_app role contract", { timeout: 60_000 }, () => {
       const rows = await readTablePrivileges(
         client,
         ["payment_refund"],
+        ["SELECT", "INSERT", "UPDATE", "DELETE"],
+      );
+      expectTablePrivileges(rows, (row) => ["SELECT", "INSERT"].includes(row.privilege));
+    });
+  });
+
+  it("creates, reads, changes and removes re-offers and seller answers", async () => {
+    await withApiClient(async (client) => {
+      const rows = await readTablePrivileges(
+        client,
+        ["lot_reoffer", "seller_consent"],
+        ["SELECT", "INSERT", "UPDATE", "DELETE"],
+      );
+      expectTablePrivileges(rows, () => true);
+    });
+  });
+
+  it("appends the bank-transfer references and reads them, never changing or removing one", async () => {
+    await withApiClient(async (client) => {
+      const rows = await readTablePrivileges(
+        client,
+        ["payment_transfer_reference"],
         ["SELECT", "INSERT", "UPDATE", "DELETE"],
       );
       expectTablePrivileges(rows, (row) => ["SELECT", "INSERT"].includes(row.privilege));

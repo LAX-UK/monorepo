@@ -1,6 +1,6 @@
 import { SalesAuctionRow } from "@/components/sections/sales/sales-auction-row";
 import type { SaleAuctionRowVM } from "@/components/sections/sales/sales-view-models";
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 
 type Props = {
   rows: SaleAuctionRowVM[];

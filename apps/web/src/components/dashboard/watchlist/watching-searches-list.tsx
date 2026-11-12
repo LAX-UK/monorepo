@@ -10,8 +10,10 @@ import {
   searchEmailControl,
 } from "@/lib/watching/search-email";
 import { matchesEveryWord } from "@/lib/workspace/list-search";
-import { InlineActionMenu, RecordList, RecordRow, RecordRowMedia } from "@auction/ui";
-import { ButtonLink, Switch } from "@auction/ui/lax";
+import { InlineActionMenu } from "@auction/ui/components/inline-action-menu";
+import { RecordList, RecordRow, RecordRowMedia } from "@auction/ui/components/record-row";
+import { ButtonLink } from "@auction/ui/lax/button-link";
+import { Switch } from "@auction/ui/lax/switch";
 import { Search } from "lucide-react";
 import Link from "next/link";
 import { useId } from "react";

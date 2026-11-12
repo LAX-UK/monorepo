@@ -1,6 +1,6 @@
 import type { ConsignmentEventKind, ConsignmentEventView } from "@/lib/seller/consignment-history";
 import { PAYOUT_READERS } from "@/lib/seller/payout-readers";
-import { Notice } from "@auction/ui/lax";
+import { Notice } from "@auction/ui/lax/notice";
 import {
   Banknote,
   BookOpen,

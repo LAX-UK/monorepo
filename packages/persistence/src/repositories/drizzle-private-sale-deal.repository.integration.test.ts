@@ -4,6 +4,7 @@ import {
   itemSubmission,
   legalEntity,
   privateSaleDeal,
+  privateSaleDealArtworkHistory,
   privateSaleDealPartyHistory,
   privateSaleDealStageHistory,
   user,
@@ -260,6 +261,61 @@ describe.skipIf(!HAS_DB)("private sale deals (integration)", () => {
         expect(result).toEqual({ kind: "conflict" });
         expect(await repo.artworkHistory(deal.id)).toEqual([]);
         expect((await repo.findById(deal.id))?.artworkUnlinkedReason).toBeNull();
+      });
+    });
+
+    describe("append-only", () => {
+      const link = async (db: Database, submissionId: string) => {
+        const repo = new DrizzlePrivateSaleDealRepository(db);
+        const deal = await repo.create(newDeal(submissionId));
+        await repo.setArtwork(deal.id, deal.version, {
+          action: "linked",
+          actorUserId: staffId,
+          artworkRegisterId: null,
+          unlinkedReason: "sellers_own_work",
+          reason: "Own work.",
+        });
+        return deal.id;
+      };
+
+      it("refuses to change or delete a history row", async () => {
+        await inRollback(async (db, submissionId) => {
+          const dealId = await link(db, submissionId);
+          // Each attempt is in a savepoint, so the refusal does not abort the test's transaction.
+          await expect(
+            db.transaction(async (tx) =>
+              tx
+                .update(privateSaleDealArtworkHistory)
+                .set({ reason: "Rewritten." })
+                .where(eq(privateSaleDealArtworkHistory.dealId, dealId)),
+            ),
+          ).rejects.toMatchObject({ cause: { message: expect.stringMatching(/append-only/) } });
+          await expect(
+            db.transaction(async (tx) =>
+              tx
+                .delete(privateSaleDealArtworkHistory)
+                .where(eq(privateSaleDealArtworkHistory.dealId, dealId)),
+            ),
+          ).rejects.toMatchObject({ cause: { message: expect.stringMatching(/append-only/) } });
+          expect(
+            await new DrizzlePrivateSaleDealRepository(db).artworkHistory(dealId),
+          ).toHaveLength(1);
+        });
+      });
+
+      it("lets the actor be cleared when that person is removed, and nothing else", async () => {
+        await inRollback(async (db, submissionId) => {
+          const dealId = await link(db, submissionId);
+          await db
+            .update(privateSaleDealArtworkHistory)
+            .set({ actorUserId: null })
+            .where(eq(privateSaleDealArtworkHistory.dealId, dealId));
+          const [row] = await db
+            .select()
+            .from(privateSaleDealArtworkHistory)
+            .where(eq(privateSaleDealArtworkHistory.dealId, dealId));
+          expect(row).toMatchObject({ actorUserId: null, reason: "Own work." });
+        });
       });
     });
 

@@ -28,6 +28,25 @@ test("rejects the toLocale family", async () => {
   ]);
 });
 
+test("lets number formatting through toLocaleString, and catches it on a date", () => {
+  const rule = (code) => bannedConstructsIn("apps/web/src/a.ts", code);
+  assert.deepEqual(
+    rule('const n = (1234.5).toLocaleString("en-GB", { maximumFractionDigits: 2 });'),
+    [],
+  );
+  assert.deepEqual(
+    rule('const p = price.toLocaleString("en-GB", { style: "currency", currency: "GBP" });'),
+    [],
+  );
+  assert.deepEqual(rule("const n = count.toLocaleString();"), []);
+  const banned = ["toLocale(Date|Time)String"];
+  assert.deepEqual(rule("const s = new Date(x).toLocaleString();"), banned);
+  assert.deepEqual(rule("const s = closesAt.toLocaleString();"), banned);
+  assert.deepEqual(rule('const s = x.toLocaleString("en-GB", { timeZone: "UTC" });'), banned);
+  assert.deepEqual(rule('const s = x.toLocaleString("en-GB", { dateStyle: "long" });'), banned);
+  assert.deepEqual(rule("const s = x.toLocaleDateString();"), banned);
+});
+
 test("rejects importing @date-fns/tz in every spelling", async () => {
   const text = await fixture("date-fns-tz.txt");
   assert.deepEqual(bannedConstructsIn("packages/ui/src/new-file.ts", text), ["@date-fns/tz"]);
@@ -46,6 +65,13 @@ test("reports every construct a file uses, sorted", async () => {
     "Intl.DateTimeFormat",
     "toLocale(Date|Time)String",
   ]);
+});
+
+test("exempts the self-contained Identity closure, and only it", async () => {
+  const text = await fixture("intl-formatter.txt");
+  assert.deepEqual(bannedConstructsIn("apps/auth/src/services/a.ts", text), []);
+  assert.deepEqual(bannedConstructsIn("packages/identity-contracts/src/a.ts", text), []);
+  assert.deepEqual(bannedConstructsIn("packages/auth/src/a.ts", text), ["Intl.DateTimeFormat"]);
 });
 
 test("passes the module itself", async () => {

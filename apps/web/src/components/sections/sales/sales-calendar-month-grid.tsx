@@ -2,7 +2,8 @@ import { SaleAgendaLiveCountdown } from "@/components/sections/sales/sale-agenda
 import type { SaleAgendaItemVM } from "@/components/sections/sales/sales-view-models";
 import { FOCUS_RING } from "@/lib/marketing/chrome";
 import { LONDON_TIME_ZONE, dayKey, formatMonthYear } from "@auction/datetime";
-import { LiveDot, cn } from "@auction/ui";
+import { LiveDot } from "@auction/ui/components/live-dot";
+import { cn } from "@auction/ui/lib/utils";
 import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 

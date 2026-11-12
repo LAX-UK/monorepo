@@ -1,3 +1,4 @@
+import { LONDON_TIME_ZONE, formatDayMonthOnly } from "@auction/datetime";
 import type { Database } from "@auction/db";
 import { lotNotDeleted, saleNotDeleted } from "@auction/db";
 import {
@@ -22,8 +23,8 @@ import {
 import {
   UNAPPLIED_MONEY_HANDLED_ELSEWHERE,
   UNSOLD_LOT_END_STATUSES,
-  possibleSourceText,
   storedDueAt,
+  unappliedMoneyWorkItemWording,
 } from "@auction/domain";
 import { INVOICE_PAYMENT_DUE_DAYS, type UnsoldLotChoiceKind } from "@auction/types";
 import { and, desc, eq, inArray, isNotNull, isNull, lt, ne, or, sql } from "drizzle-orm";
@@ -33,15 +34,11 @@ import type {
   IAdminWorkItemsReader,
 } from "../interfaces/admin-work-items.reader.js";
 import { adminWorkItemHref } from "../lib/admin-work-item-href.js";
+import { findRegisterLotMismatches } from "./artwork-register/register-lot-mismatch.query.js";
 import { BLOCKED_CAPTURE_EVENT, toBlockedCapture } from "./blocked-capture.query.js";
 import { DrizzleUnappliedMoneyReader } from "./drizzle-unapplied-money.reader.js";
 import { lotWorkItemTitle, sentenceCase } from "./work-item-labels.js";
 
-const DUE_DATE = new Intl.DateTimeFormat("en-GB", {
-  day: "numeric",
-  month: "short",
-  timeZone: "Europe/London",
-});
 const GBP = new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP" });
 
 /** A payment amount stored as a decimal string, shown as pounds ("83750.00" -> "£83,750.00"). */
@@ -209,9 +206,9 @@ export class DrizzleAdminWorkItemsReader implements IAdminWorkItemsReader {
       sourceId: money.dedupeKey,
       kind: "payment_money_unapplied" as const,
       domain: "finance" as const,
-      title: "Money received that could not be applied",
+      title: unappliedMoneyWorkItemWording(money).title,
       subtitle: `${sentenceCase(money.reason)} · ${formatWorkItemAmount(money.amountCents / 100)}`,
-      hint: possibleSourceText(money.possibleGroup ?? null),
+      hint: unappliedMoneyWorkItemWording(money).hint,
       href: adminWorkItemHref("payment_money_unapplied", { paymentId: money.paymentId }),
       saleId: null,
       createdAt: money.receivedAt,
@@ -281,7 +278,7 @@ export class DrizzleAdminWorkItemsReader implements IAdminWorkItemsReader {
         kind: "payment_overdue" as const,
         domain: "finance" as const,
         title: lotWorkItemTitle("Payment overdue", row.lotNumber, row.lotTitle),
-        subtitle: `${row.winnerEmail ?? "Buyer"} · ${formatWorkItemAmount(row.amount)} · due ${DUE_DATE.format(dueAt)}`,
+        subtitle: `${row.winnerEmail ?? "Buyer"} · ${formatWorkItemAmount(row.amount)} · due ${formatDayMonthOnly(dueAt, LONDON_TIME_ZONE)}`,
         href: adminWorkItemHref("payment_overdue", { subjectId: row.lotId }),
         saleId: row.saleId,
         createdAt: dueAt,
@@ -654,7 +651,7 @@ export class DrizzleAdminWorkItemsReader implements IAdminWorkItemsReader {
       kind: "unsold_choice_lapsed" as const,
       domain: "catalogue" as const,
       title: lotWorkItemTitle("No choice made", row.lotNumber, row.lotTitle),
-      subtitle: `Choose-by date was ${LAPSED_DATE.format(row.chooseBy)}. Contact the seller`,
+      subtitle: `Choose-by date was ${formatDayMonthOnly(row.chooseBy, LONDON_TIME_ZONE)}. Contact the seller`,
       href: adminWorkItemHref("unsold_choice_lapsed", { subjectId: row.submissionId }),
       saleId: null,
       createdAt: row.chooseBy,
@@ -754,6 +751,37 @@ export class DrizzleAdminWorkItemsReader implements IAdminWorkItemsReader {
       };
     });
   }
+
+  async listRegisterLotMismatches(limit: number): Promise<AdminWorkItemSourceRow[]> {
+    const mismatches = await findRegisterLotMismatches(this.db, limit);
+    return mismatches.map((row) => ({
+      sourceId: row.registerId,
+      kind: "register_lot_mismatch" as const,
+      domain: "catalogue" as const,
+      title: "Register says this artwork is in a LAX Bid sale, but the lot isn't live",
+      subtitle: `${row.stockCode} · ${row.title} · ${registerLotMismatchState(row.lotStatus)}`,
+      href: adminWorkItemHref("register_lot_mismatch", {
+        subjectId: row.lotStatus === null ? null : row.lotId,
+      }),
+      saleId: null,
+      createdAt: row.changedAt,
+      sourceUpdatedAt: row.changedAt,
+      assignedToUserId: null,
+    }));
+  }
+}
+
+/** What the lot is, in words, when the register still places the artwork in a sale. */
+const REGISTER_LOT_MISMATCH_STATE: Record<string, string> = {
+  draft: "the lot is a draft",
+  cancelled: "the lot was cancelled",
+  voided: "the lot was voided",
+  ended: "the lot ended with no winner",
+};
+
+function registerLotMismatchState(status: string | null): string {
+  if (status === null) return "no lot found";
+  return REGISTER_LOT_MISMATCH_STATE[status] ?? `the lot is ${status}`;
 }
 
 const PURCHASE_PROBLEM_SUBTITLES: Record<string, string> = {
@@ -763,12 +791,6 @@ const PURCHASE_PROBLEM_SUBTITLES: Record<string, string> = {
   invoice_or_payment: "Invoice or payment",
   other: "Other",
 };
-
-const LAPSED_DATE = new Intl.DateTimeFormat("en-GB", {
-  day: "numeric",
-  month: "short",
-  timeZone: "Europe/London",
-});
 
 /** The work a confirmed choice leaves, as the inbox words it. One entry per kind of choice. */
 const UNSOLD_FOLLOW_UP_WORK: Record<

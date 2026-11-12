@@ -1,3 +1,4 @@
+import { instantToWallClock } from "@auction/datetime";
 import { BUSINESS_TIME_ZONE } from "./calendar-year.js";
 import { parseCollectionReference } from "./collection-reference.js";
 
@@ -142,21 +143,9 @@ function utcStamp(instant: Date): string {
   );
 }
 
-const LOCAL_PARTS = new Intl.DateTimeFormat("en-GB", {
-  timeZone: BUSINESS_TIME_ZONE,
-  hourCycle: "h23",
-  year: "numeric",
-  month: "2-digit",
-  day: "2-digit",
-  hour: "2-digit",
-  minute: "2-digit",
-  second: "2-digit",
-});
-
 function londonWallClock(instant: Date): string {
-  const part = (type: Intl.DateTimeFormatPartTypes) =>
-    LOCAL_PARTS.formatToParts(instant).find((p) => p.type === type)?.value ?? "00";
-  return `${part("year")}${part("month")}${part("day")}T${part("hour")}${part("minute")}${part("second")}`;
+  const { day, time } = instantToWallClock(instant, BUSINESS_TIME_ZONE);
+  return `${day.replaceAll("-", "")}T${time.replace(":", "")}${pad(instant.getUTCSeconds())}`;
 }
 
 const HOUR_MS = 3_600_000;

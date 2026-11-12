@@ -21,7 +21,8 @@ export type AdminWorkItemSourceRow = {
     | "unsold_choice_lapsed"
     | "marketing_enquiry"
     | "purchase_problem"
-    | "deletion_hold";
+    | "deletion_hold"
+    | "register_lot_mismatch";
   domain: "finance" | "compliance" | "catalogue" | "saleroom" | "fulfilment" | "clients";
   title: string;
   subtitle: string | null;
@@ -74,4 +75,6 @@ export interface IAdminWorkItemsReader {
   listPurchaseProblems(limit: number): Promise<AdminWorkItemSourceRow[]>;
   /** Account deletions the daily purge is holding, waiting for client services. */
   listDeletionHolds(limit: number): Promise<AdminWorkItemSourceRow[]>;
+  /** Artworks the register places in a LAX Bid sale whose lot is not live; staff decide, nothing changes. */
+  listRegisterLotMismatches(limit: number): Promise<AdminWorkItemSourceRow[]>;
 }

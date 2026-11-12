@@ -13,6 +13,7 @@ function session(overrides: Partial<IdentitySession> & { id: string }): Identity
     ipAddress: "203.0.113.9",
     userAgent: "Mozilla/5.0 (Macintosh) Chrome/130.0",
     lastPasswordAuthAt: null,
+    previousIds: [],
     isCurrent: false,
     ...overrides,
   };
@@ -21,7 +22,11 @@ function session(overrides: Partial<IdentitySession> & { id: string }): Identity
 const fresh = session({ id: "current" });
 const stale = session({ id: "current", createdAt: new Date(NOW.getTime() - 10 * 60_000) });
 
-function setup(sessions: IdentitySession[], unlink?: () => Promise<unknown>) {
+function setup(
+  sessions: IdentitySession[],
+  unlink?: () => Promise<unknown>,
+  available?: { google: boolean; apple: boolean; passkey: boolean },
+) {
   const operations = {
     listSessions: vi.fn().mockResolvedValue(sessions),
     readSignInMethods: vi.fn().mockResolvedValue({
@@ -55,7 +60,13 @@ function setup(sessions: IdentitySession[], unlink?: () => Promise<unknown>) {
   const durable = { settle: vi.fn(async () => undefined) };
   const notices = { notify: vi.fn(async () => undefined) };
   const service = new AccountSignInMethodsService(
-    { operations: operations as never, durable, notices, isStaff: async () => false },
+    {
+      operations: operations as never,
+      durable,
+      notices,
+      isStaff: async () => false,
+      ...(available ? { available } : {}),
+    },
     () => NOW,
   );
   return { service, operations, durable, notices };
@@ -260,7 +271,7 @@ describe("AccountSignInMethodsService.unlink", () => {
       revokedSessions: 1,
     });
 
-    expect(operations.unlinkSocialSignIn).toHaveBeenCalledWith(SUBJECT, "google", "current");
+    expect(operations.unlinkSocialSignIn).toHaveBeenCalledWith(SUBJECT, "google", "current", false);
     expect(durable.settle).toHaveBeenCalledWith("account-sign-in-methods", {
       kind: "revoke_tokens_except_session",
       userId: SUBJECT,
@@ -372,12 +383,35 @@ describe("AccountSignInMethodsService.renamePasskey", () => {
   });
 });
 
+describe("passkeys as a way in", () => {
+  it("are counted only while the environment offers them", async () => {
+    const off = setup([fresh]);
+    await off.service.unlink(SUBJECT, "current", "google");
+    expect(off.operations.unlinkSocialSignIn).toHaveBeenCalledWith(
+      SUBJECT,
+      "google",
+      "current",
+      false,
+    );
+    const on = setup([fresh], undefined, { google: true, apple: false, passkey: true });
+    await on.service.unlink(SUBJECT, "current", "google");
+    expect(on.operations.unlinkSocialSignIn).toHaveBeenCalledWith(
+      SUBJECT,
+      "google",
+      "current",
+      true,
+    );
+    await on.service.removePasskey(SUBJECT, "current", "pk-1");
+    expect(on.operations.removePasskey).toHaveBeenCalledWith(SUBJECT, "pk-1", "current", true);
+  });
+});
+
 describe("AccountSignInMethodsService.removePasskey", () => {
   it("removes the passkey, ends every other sign-in and the products' tokens, and emails the person", async () => {
     const { service, operations, durable, notices } = setup([fresh]);
     const result = await service.removePasskey(SUBJECT, "current", "pk-1");
     expect(result).toEqual({ ok: true, revokedSessions: 1 });
-    expect(operations.removePasskey).toHaveBeenCalledWith(SUBJECT, "pk-1", "current");
+    expect(operations.removePasskey).toHaveBeenCalledWith(SUBJECT, "pk-1", "current", false);
     expect(durable.settle).toHaveBeenCalledWith(
       "account-sign-in-methods",
       expect.objectContaining({ kind: "revoke_tokens_except_session", keepSessionId: "current" }),

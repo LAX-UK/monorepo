@@ -1,4 +1,4 @@
-import { nextImageSrcSet } from "@auction/marketing-ui";
+import { nextImageSrcSet } from "@auction/marketing-ui/media/next-image-src-set";
 
 /*
  * The resized files Bid names for pictures it draws as plain `<img>` (the wall of works, a sale's

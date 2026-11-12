@@ -8,6 +8,7 @@ import { sessionUserToShellRole } from "@/components/layout/app-shell-nav";
 import { WelcomeBackToast } from "@/components/marketing/welcome-back-toast";
 import { FinanceShell } from "@/components/shell/finance-shell";
 import { StaffShell } from "@/components/shell/staff-shell";
+import { ToasterPresence } from "@/components/ui/toaster-presence";
 import { resolveAdminReturnPath } from "@/lib/admin/admin-return-path.server";
 import { buildStaffHeaderAttentionItems } from "@/lib/admin/build-staff-header-attention-items";
 import { withInboxNavCount } from "@/lib/admin/consignment-inbox/inbox-nav-count.server";
@@ -148,6 +149,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
           >
             <ImpersonationEndWarningListener />
             <StaffToaster />
+            <ToasterPresence />
             {impersonation && showImpersonationBanner ? (
               <ImpersonationBanner
                 entityName={impersonation.displayName}

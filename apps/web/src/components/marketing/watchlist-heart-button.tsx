@@ -10,8 +10,8 @@ import {
   resolveOverlayChrome,
 } from "@/lib/ui/overlay-tone-classes";
 import { useWatchlistToggle } from "@/lib/watchlist/use-watchlist-toggle";
-import { cn } from "@auction/ui";
-import { Button } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
+import { cn } from "@auction/ui/lib/utils";
 import { Heart } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback } from "react";

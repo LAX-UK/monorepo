@@ -48,6 +48,17 @@ describe("the queue's URL state", () => {
     );
   });
 
+  it("reads the Sync health tab and its drift list, which only that tab has", () => {
+    expect(parseZohoQueueQuery({ tab: "health" })).toEqual({ tab: "health" });
+    expect(parseZohoQueueQuery({ tab: "health", drift: "status_mismatch", page: "2" })).toEqual({
+      tab: "health",
+      drift: "status_mismatch",
+      page: "2",
+    });
+    expect(parseZohoQueueQuery({ tab: "health", drift: "nonsense" })).toEqual({ tab: "health" });
+    expect(parseZohoQueueQuery({ tab: "all", drift: "status_mismatch" })).toEqual({ tab: "all" });
+  });
+
   it("opens on New from Zoho", () => {
     expect(activeZohoTab({})).toBe("new");
     expect(activeZohoTab({ tab: "check" })).toBe("check");
@@ -385,7 +396,7 @@ describe("the LAX listing check", () => {
   });
 
   it("names why a write failed, with a plain fallback", () => {
-    expect(listingFailureLabel("product_not_found")).toBe("No longer in Zoho");
+    expect(listingFailureLabel("product_not_found")).toBe("Deleted in Zoho");
     expect(listingFailureLabel("SOMETHING_NEW")).toBe("Zoho did not accept it");
   });
 

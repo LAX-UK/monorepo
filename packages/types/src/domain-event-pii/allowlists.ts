@@ -197,6 +197,7 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
     "shopOrderId",
     "shopOrderReference",
     "shopCheckoutSessionId",
+    "transferReference",
     "possibleGroup.id",
     "possibleGroup.status",
   ]),
@@ -436,6 +437,7 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
   /** Queue and job names are code identifiers; the discard note is a staff-typed operational note. */
   /** The reference of the request (DR-0001 or DL-7F3C1A) and nothing about the person or the notes. */
   /** Stock codes and offer states are catalogue identifiers, not personal data. */
+  "artwork_register.catalogue_changed": new Set(["stockCode", "fields"]),
   "artwork_register.offer_changed": new Set(["stockCode", "fromState", "toState"]),
   "artwork_register.stock_code_assigned": new Set(["stockCode"]),
   "data_request.viewed": new Set(["reference"]),

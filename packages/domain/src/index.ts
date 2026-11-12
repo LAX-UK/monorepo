@@ -1235,10 +1235,12 @@ export {
   UNAPPLIED_MONEY_HANDLED_ELSEWHERE,
   UNAPPLIED_MONEY_REASONS,
   UNAPPLIED_MONEY_RESOLVED_EVENT,
+  misappliedTransferText,
   possibleSourceText,
   unappliedMoneyAggregate,
   unappliedMoneyDedupeKey,
   unappliedMoneyPayload,
+  unappliedMoneyWorkItemWording,
   type UnappliedMoney,
   type UnappliedMoneyPayload,
   type UnappliedMoneyReason,
@@ -1334,6 +1336,12 @@ export {
 } from "./reoffer-next-bidder.js";
 export { claimableShortfall, type ClaimableShortfall } from "./reoffer-shortfall.js";
 export {
+  reawardGuard,
+  type ReawardGuard,
+  type ReawardGuardCode,
+  type ReawardGuardFacts,
+} from "./reoffer-reaward.js";
+export {
   reawardBlock,
   reofferStartBlock,
   type ReofferBlock,
@@ -1348,3 +1356,14 @@ export {
   type SellerConsentWindow,
 } from "./reoffer-windows.js";
 export { paymentIsPaidOrBeingPaid, paymentIsSettling } from "./buyer-default.js";
+
+export {
+  type LedgerEntry,
+  type TransferSupply,
+  isSameInvoiceMoney,
+  isTransferAppliedToOtherPayment,
+  normaliseReference,
+  referenceIssuedIn,
+  senderQuotedReference,
+  supplyBehindApplication,
+} from "./misapplied-transfer.js";

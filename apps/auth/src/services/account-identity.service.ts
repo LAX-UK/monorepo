@@ -34,7 +34,22 @@ export type AccountSessionRow = {
   createdAt: Date;
   lastActiveAt: Date;
   isCurrent: boolean;
+  /** How the sign-in was made; null when none was recorded. */
+  signedInWith: "password" | "provider" | "passkey" | null;
 };
+
+/**
+ * The way a sign-in was made, from what was recorded when it started. A passkey outranks the rest
+ * (it is the strongest), then a provider, then the password; none recorded is null.
+ */
+export function signedInWithOf(
+  amr: readonly string[] | undefined,
+): AccountSessionRow["signedInWith"] {
+  for (const method of ["passkey", "provider", "password"] as const) {
+    if (amr?.includes(method)) return method;
+  }
+  return null;
+}
 
 /**
  * What a signed-in person may do to their own identity from LAX Account: read and rename
@@ -97,10 +112,9 @@ export class AccountIdentityService {
     subjectId: string,
     currentSessionId: string,
   ): Promise<{ ok: true; sessions: AccountSessionRow[] } | ReauthRequired> {
+    const current = await this.sessions.findLive(subjectId, currentSessionId);
+    if (!current) return { ok: false, reason: "reauth_required" };
     const live = await this.sessions.liveSessions(subjectId);
-    if (!live.some((session) => session.id === currentSessionId)) {
-      return { ok: false, reason: "reauth_required" };
-    }
     return {
       ok: true,
       sessions: live.map((session) => ({
@@ -108,7 +122,8 @@ export class AccountIdentityService {
         userAgent: session.userAgent,
         createdAt: session.createdAt,
         lastActiveAt: session.updatedAt,
-        isCurrent: session.id === currentSessionId,
+        isCurrent: session.id === current.id,
+        signedInWith: signedInWithOf(session.amr),
       })),
     };
   }
@@ -120,10 +135,11 @@ export class AccountIdentityService {
   ): Promise<
     { ok: true; revoked: number } | ReauthRequired | { ok: false; reason: "cannot_revoke_current" }
   > {
-    if (targetSessionId === currentSessionId) return { ok: false, reason: "cannot_revoke_current" };
-    if (!(await this.sessions.findRecent(subjectId, currentSessionId))) {
-      return { ok: false, reason: "reauth_required" };
+    const current = await this.sessions.findRecent(subjectId, currentSessionId);
+    if (targetSessionId === currentSessionId || targetSessionId === current?.id) {
+      return { ok: false, reason: "cannot_revoke_current" };
     }
+    if (!current) return { ok: false, reason: "reauth_required" };
     const removed = await this.ports.operations.removeSession(subjectId, targetSessionId);
     if (!removed) return { ok: true, revoked: 0 };
     await this.ports.durable.settle(ACCOUNT_SESSIONS_PATH, {
@@ -138,16 +154,15 @@ export class AccountIdentityService {
     subjectId: string,
     currentSessionId: string,
   ): Promise<{ ok: true; revoked: number } | ReauthRequired> {
-    if (!(await this.sessions.findRecent(subjectId, currentSessionId))) {
-      return { ok: false, reason: "reauth_required" };
-    }
-    const removed = await this.ports.operations.removeOtherSessions(subjectId, currentSessionId);
+    const current = await this.sessions.findRecent(subjectId, currentSessionId);
+    if (!current) return { ok: false, reason: "reauth_required" };
+    const removed = await this.ports.operations.removeOtherSessions(subjectId, current.id);
     // Relying-party sessions (Bid, Shop, Art) can outlive the issuer session they came from, so
     // they are ended even when no issuer session was left to delete.
     await this.ports.durable.settle(ACCOUNT_SESSIONS_PATH, {
       kind: "revoke_tokens_except_session",
       userId: subjectId,
-      keepSessionId: currentSessionId,
+      keepSessionId: current.id,
     });
     return { ok: true, revoked: removed.length };
   }

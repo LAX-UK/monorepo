@@ -2,7 +2,7 @@ import { ArtistPortraitFrame } from "@/components/marketing/artist-portrait-fram
 import { MarketingSection } from "@/components/marketing/marketing-section";
 import { MediaImage } from "@/components/ui/media-image";
 import type { HomeArtistCard } from "@/lib/home-sections/types";
-import { MarketingArtistCard } from "@auction/marketing-ui";
+import { MarketingArtistCard } from "@auction/marketing-ui/marketing-artist-card";
 
 /** Artists the house holds work by, as the shared artist card. */
 export function HomeArtistsSection({ artists }: { artists: readonly HomeArtistCard[] }) {

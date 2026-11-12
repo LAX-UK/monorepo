@@ -15,7 +15,8 @@ import {
 import { activityDays, activityLine, activityTime } from "@/lib/organisation-team/activity-lines";
 import { loadOlderActivityAction } from "@/lib/organisation-team/organisation-team.actions";
 import { ACTIVITY_GROUPS, type ActivityGroup } from "@auction/domain";
-import { Button, SelectMenu } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
+import { SelectMenu } from "@auction/ui/lax/select-menu";
 import {
   Download,
   Gavel,

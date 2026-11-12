@@ -9,7 +9,8 @@ import {
   DialogDescription,
   DialogTitle,
 } from "@auction/ui/components/dialog";
-import { Button, TextLink } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
+import { TextLink } from "@auction/ui/lax/text-link";
 import Image from "next/image";
 import Link from "next/link";
 

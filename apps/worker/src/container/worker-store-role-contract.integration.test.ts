@@ -30,6 +30,7 @@ import {
   DrizzleLotRegisterLinkReader,
   DrizzleLotRepository,
   DrizzlePaymentRepository,
+  DrizzleRegisterLotIntegrityReader,
   DrizzleSaleRepository,
   DrizzleUnsoldChoiceDeadlineStore,
   DrizzleUnsoldLotFollowUpRepository,
@@ -38,6 +39,7 @@ import {
   DrizzleZohoListingLock,
   DrizzleZohoListingRunStore,
   DrizzleZohoListingSourceReader,
+  DrizzleZohoSyncHealthStore,
 } from "@auction/persistence/repositories";
 import ts from "typescript";
 import { describe, expect, it } from "vitest";
@@ -84,9 +86,11 @@ const STORES: Record<string, Store> = {
   DrizzleZohoListingSourceReader,
   DrizzleZohoListingLock,
   DrizzleZohoListingRunStore,
+  DrizzleZohoSyncHealthStore,
   DrizzleZohoCampaignsSuppressionRepository,
   DrizzleArtworkRegisterRepository,
   DrizzleLotRegisterLinkReader,
+  DrizzleRegisterLotIntegrityReader,
   DrizzleUnsoldChoiceDeadlineStore,
   DrizzleUnsoldLotFollowUpRepository,
   DrizzleWebhookEventRepository,
@@ -245,6 +249,9 @@ const ARGUMENTS: Record<string, (tx: WorkerDb) => unknown[]> = {
       failures: [],
     },
   ],
+  "DrizzleZohoSyncHealthStore.reportModes": () => [{ artworkSync: "off", listing: "off" }, today],
+  "DrizzleZohoSyncHealthStore.recordTokenRefreshed": () => [today, today],
+  "DrizzleZohoSyncHealthStore.recordTokenRefreshFailed": () => ["role-contract", today],
   "DrizzleZohoListingSourceReader.registerIdsForSalesStartedBetween": () => [
     { from: today, to: today },
     null,

@@ -15,7 +15,7 @@ import { DayMediaThumbnail } from "@/components/sections/saleroom/day-gallery/da
 import type { DayGalleryVM } from "@/components/sections/saleroom/view-models";
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import type { SaleDayMedia } from "@auction/types";
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 import { useState } from "react";
 import { LazyMediaLightbox, preloadMediaLightbox } from "./media-lightbox.lazy";
 

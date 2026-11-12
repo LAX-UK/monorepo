@@ -8,7 +8,8 @@ import {
   PrivateSalesPoints,
 } from "@/components/private-sales/private-sales-intro";
 import type { EnquiryPath } from "@/lib/private-sales/enquiry-values";
-import { MarketingDetailAccordion, MarketingPageShell } from "@auction/marketing-ui";
+import { MarketingDetailAccordion } from "@auction/marketing-ui/marketing-detail-accordion";
+import { MarketingPageShell } from "@auction/marketing-ui/marketing-page-shell";
 
 /**
  * Buy or sell a work privately: what a private sale is, on the left, and the enquiry beside it.

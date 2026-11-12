@@ -8,8 +8,8 @@ import {
   overlayToneProps,
   resolveOverlayChrome,
 } from "@/lib/ui/overlay-tone-classes";
-import { cn } from "@auction/ui";
-import { Button } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
+import { cn } from "@auction/ui/lib/utils";
 import { Eye } from "lucide-react";
 import { type MouseEvent, useRef } from "react";
 import { useLotQuickLookOptional } from "./lot-quick-look-context";

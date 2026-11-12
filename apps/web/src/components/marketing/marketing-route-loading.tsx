@@ -1,6 +1,6 @@
 import { MarketingListSkeleton } from "@/components/marketing/marketing-list-skeleton";
 import { MARKETING_CATALOG_PT, MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 
 /** The shell shown while a marketing page without a skeleton of its own loads. */
 export function MarketingRouteLoading() {

@@ -9,7 +9,7 @@ import {
   type ArtistWorksTab,
   artistWorksTabItems,
 } from "@/lib/artists/artist-works";
-import { TabNav } from "@auction/ui/lax";
+import { TabNav } from "@auction/ui/lax/tabs";
 import Link from "next/link";
 
 type Props = {

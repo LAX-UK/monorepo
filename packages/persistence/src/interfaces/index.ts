@@ -728,6 +728,10 @@ export type {
   IPaymentCheckoutSessionStore,
   RecordedCheckoutSession,
 } from "./payment-checkout-session.store.js";
+export type {
+  IPaymentTransferReferenceStore,
+  TransferReferenceRecord,
+} from "./payment-transfer-reference.store.js";
 export type { IStalePaymentCanceller } from "./stale-payment-canceller.js";
 export type { OpenUnappliedMoneyFilter } from "./unapplied-money.reader.js";
 export type { IUnappliedMoneyReader, OpenUnappliedMoney } from "./unapplied-money.reader.js";
@@ -1254,6 +1258,7 @@ export type {
   CreateRegisterEntryResult,
   AuctionOfferDraftLot,
   AuctionOfferDraftLotSummary,
+  AuctionOfferLotCatalogue,
   AuctionOfferSale,
   IArtworkImageStore,
   IArtworkLinkHistory,
@@ -1265,6 +1270,9 @@ export type {
   IAuctionOfferReader,
   RecordMoveConfirmedInput,
   ILotRegisterLinkReader,
+  IAtgLotSoldReader,
+  IRegisterOfferConflicts,
+  RecordOfferConflictInput,
   LotRegisterLink,
   IArtworkRegisterReader,
   IArtworkRegisterRepository,
@@ -1286,6 +1294,15 @@ export type {
 } from "./deal-artwork-search.js";
 
 export type {
+  IBidPublishSettings,
+  IRegisterLotIntegrityReader,
+  IUnlinkedOriginalsReader,
+  RegisterLotMismatch,
+  UnlinkedOriginal,
+  UnlinkedOriginalsReport,
+} from "./artwork-register-integrity.js";
+
+export type {
   ArtworkRegisterArtistCount,
   IArtworkRegisterQueue,
   QueuedConflict,
@@ -1304,6 +1321,24 @@ export type {
   ZohoArtworkSyncRunSummary,
   ZohoArtworkSyncSummary,
 } from "./zoho-artwork-sync.js";
+
+export type {
+  IZohoDriftReader,
+  IZohoOutboundQueueReader,
+  IZohoSyncHealthReader,
+  IZohoSyncHealthStore,
+  ProductWithoutRegisterRow,
+  RegisterWithoutProductRow,
+  StatusMismatchRow,
+  ZohoDriftCounts,
+  ZohoDriftPage,
+  ZohoDriftPaging,
+  ZohoOutboundQueueStats,
+  ZohoSyncHealthRecord,
+  ZohoSyncModes,
+  ZohoSyncRunMode,
+  ZohoTokenHealth,
+} from "./zoho-sync-health.js";
 
 export type {
   IZohoListingLock,
@@ -1337,6 +1372,24 @@ export {
   type PaymentReminderCandidate,
   type RecordBuyerDefaultInput,
 } from "./buyer-default.js";
+export {
+  LotReawardRefusedError,
+  LotReofferConflictError,
+  type CreateLotReofferInput,
+  type ILotReawardRepository,
+  type ILotReofferReader,
+  type ILotReofferRepository,
+  type ISellerConsentRepository,
+  type LotReofferView,
+  type ReawardLotInput,
+  type ReawardLotResult,
+  type ReofferStatusChange,
+  type SellerConsentAnswerWrite,
+  type SellerConsentChannel,
+  type SellerConsentTerms,
+  type SellerConsentView,
+  type SellerPreferredNext,
+} from "./lot-reoffer.js";
 export type {
   IPrivateSaleDealReader,
   IPrivateSaleDealWriter,

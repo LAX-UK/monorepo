@@ -9,9 +9,9 @@ import {
 } from "@/lib/connect/connect-gap-copy";
 import type { ConnectGapState } from "@auction/connect";
 import { LONDON_TIME_ZONE, formatWhen } from "@auction/datetime";
-import { presentationToDotStatus } from "@auction/ui";
 import { DotStatusPill } from "@auction/ui/components/dot-status-pill";
 import { Surface } from "@auction/ui/components/surface";
+import { presentationToDotStatus } from "@auction/ui/lib/status-presentation-bridge";
 
 const MAX_VISIBLE_MISSING = 5;
 

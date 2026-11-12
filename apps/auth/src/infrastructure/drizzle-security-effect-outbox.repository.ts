@@ -17,14 +17,19 @@ export class DrizzleSecurityEffectOutboxRepository implements SecurityEffectOutb
     job: SecurityEffectJob;
     error: string;
     nextAttemptAt: Date;
-  }): Promise<void> {
-    await this.db.insert(authSecurityEffectOutbox).values({
-      kind: input.job.kind,
-      payload: input.job,
-      userId: input.job.userId,
-      lastError: input.error.slice(0, MAX_ERROR_LENGTH),
-      nextAttemptAt: input.nextAttemptAt,
-    });
+  }): Promise<string> {
+    const [row] = await this.db
+      .insert(authSecurityEffectOutbox)
+      .values({
+        kind: input.job.kind,
+        payload: input.job,
+        userId: input.job.userId,
+        lastError: input.error.slice(0, MAX_ERROR_LENGTH),
+        nextAttemptAt: input.nextAttemptAt,
+      })
+      .returning({ id: authSecurityEffectOutbox.id });
+    if (!row) throw new Error("Security effect was not written to the outbox");
+    return row.id;
   }
 
   async claimDue(input: {

@@ -1,3 +1,4 @@
+import { LONDON_TIME_ZONE, dayKey } from "@auction/datetime";
 /**
  * LAX naming conventions for Zoho CRM deals and generated documents.
  *
@@ -70,14 +71,8 @@ export function clientLabel(input: {
 }
 
 function londonParts(date: Date): { year: string; month: string; day: string } {
-  const parts = new Intl.DateTimeFormat("en-GB", {
-    timeZone: "Europe/London",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(date);
-  const pick = (type: string) => parts.find((p) => p.type === type)?.value ?? "";
-  return { year: pick("year"), month: pick("month"), day: pick("day") };
+  const [year = "", month = "", day = ""] = dayKey(date, LONDON_TIME_ZONE).split("-");
+  return { year, month, day };
 }
 
 /** `2026-03` for the London month of the instant. */

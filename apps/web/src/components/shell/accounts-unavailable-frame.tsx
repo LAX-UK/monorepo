@@ -3,7 +3,7 @@ import {
   AccountsUnavailable,
 } from "@/components/layout/account-switcher/accounts-unavailable";
 import { BidSiteChrome } from "@/components/layout/bid-site-chrome";
-import { AccountArea } from "@auction/marketing-ui";
+import { AccountArea } from "@auction/marketing-ui/account/index";
 
 const REFRESH: AccountsRetry = { kind: "refresh" };
 

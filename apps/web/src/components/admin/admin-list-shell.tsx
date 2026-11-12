@@ -1,8 +1,8 @@
 import { AdminListToolbar } from "@/components/admin/admin-list-toolbar";
 import { AppScreen } from "@/components/dashboard/dashboard-page";
 import { DashboardPageHeader } from "@/components/dashboard/primitives/dashboard-page-header";
-import { EntityList } from "@auction/ui";
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
+import { EntityList } from "@auction/ui/shell";
 import type { ReactNode } from "react";
 
 /**

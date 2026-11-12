@@ -8,8 +8,8 @@ import {
   type StateLineIcon,
   cardStateLine,
 } from "@auction/domain";
-import { cn } from "@auction/ui";
-import { ButtonLink } from "@auction/ui/lax";
+import { ButtonLink } from "@auction/ui/lax/button-link";
+import { cn } from "@auction/ui/lib/utils";
 import { Check, CircleAlert } from "lucide-react";
 import Link from "next/link";
 import type { ComponentType } from "react";

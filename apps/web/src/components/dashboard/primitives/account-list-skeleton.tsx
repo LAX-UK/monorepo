@@ -1,5 +1,5 @@
-import { cn } from "@auction/ui";
 import { Skeleton } from "@auction/ui/components/skeleton";
+import { cn } from "@auction/ui/lib/utils";
 
 type AccountListSkeletonProps = {
   /** Read by screen readers while the list loads ("Loading your bids"). */

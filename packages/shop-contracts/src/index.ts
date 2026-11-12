@@ -310,6 +310,23 @@ export {
   type AdminRegisterResolveResult,
 } from "./admin-artwork-register.js";
 export {
+  ADMIN_ZOHO_DRIFT_PAGE_SIZE,
+  AdminZohoDriftQuerySchema,
+  AdminZohoProductWithoutRegisterListSchema,
+  AdminZohoRegisterWithoutProductListSchema,
+  AdminZohoStatusMismatchListSchema,
+  AdminZohoSyncHealthSchema,
+  ZOHO_DRIFT_LISTS,
+  ZOHO_TOKEN_STATUSES,
+  type AdminZohoDriftQuery,
+  type AdminZohoProductWithoutRegisterList,
+  type AdminZohoRegisterWithoutProductList,
+  type AdminZohoStatusMismatchList,
+  type AdminZohoSyncHealth,
+  type ZohoDriftList,
+  type ZohoTokenStatus,
+} from "./admin-zoho-sync-health.js";
+export {
   ADMIN_LEAD_SEARCH_MAX_LENGTH,
   AdminLeadDetailSchema,
   AdminLeadListQuerySchema,
@@ -1187,6 +1204,17 @@ export {
   type AdminZohoUnlinkBody,
   type AdminZohoUnlinkResult,
 } from "./admin-zoho-link.js";
+export {
+  ADMIN_CATALOGUE_COPIES,
+  AdminCatalogueChangeSchema,
+  AdminCatalogueCopySchema,
+  AdminCatalogueUpdateBodySchema,
+  AdminCatalogueUpdateResponseSchema,
+  type AdminCatalogueChange,
+  type AdminCatalogueCopy,
+  type AdminCatalogueUpdateBody,
+  type AdminCatalogueUpdateResponse,
+} from "./admin-catalogue-change.js";
 export {
   DeliveryQuoteRequestBodySchema,
   DeliveryQuoteRequestIssueSchema,

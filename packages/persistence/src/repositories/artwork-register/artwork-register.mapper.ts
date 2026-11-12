@@ -30,6 +30,7 @@ export function toEntry(row: RegisterRow): ArtworkRegisterEntry {
     year: row.year,
     imageRefs: row.imageRefs,
     catalogueStatus: row.catalogueStatus,
+    zohoPrice: row.zohoPrice,
     offer: { state: row.offerState, ref },
     zohoModifiedAt: row.zohoModifiedAt,
     createdAt: row.createdAt,
@@ -53,6 +54,7 @@ const ZOHO_FIELD_COLUMNS: {
   year: (year) => ({ year }),
   imageRefs: (imageRefs) => ({ imageRefs }),
   catalogueStatus: (catalogueStatus) => ({ catalogueStatus }),
+  zohoPrice: (zohoPrice) => ({ zohoPrice }),
 };
 
 export function columnsForZohoFields(

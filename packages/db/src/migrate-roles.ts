@@ -9,6 +9,8 @@ const { Client } = pg;
 export const AUTH_FULL_TABLES = [
   "user",
   "session",
+  /** The earlier ids a sign-in record stands for after a new sign-in took it over; issuer-only. */
+  "session_lineage",
   "account",
   "verification",
   "jwks_key",
@@ -171,6 +173,7 @@ export const SHOP_COMMERCE_APPEND_ONLY_TABLES = [
 export const API_DENY_TABLES = [
   "user",
   "session",
+  "session_lineage",
   "account",
   "verification",
   "two_factor",
@@ -218,6 +221,19 @@ export const API_SSF_RECEIVER_TABLES = ["bid_ssf_replay"] as const;
  * access.
  */
 export const API_PAYMENT_REFUND_TABLES = ["payment_refund"] as const;
+/**
+ * Each link, change and removal of a private sale deal's artwork. Append-only, so api_app gets
+ * INSERT and SELECT only; no other role has access.
+ */
+export const API_PRIVATE_SALE_ARTWORK_HISTORY_TABLES = [
+  "private_sale_deal_artwork_history",
+] as const;
+
+/**
+ * The reference each bank-transfer payment shows its sender, kept for after the provider stops
+ * showing it. Append-only, so api_app gets INSERT and SELECT only; no other role touches it.
+ */
+export const API_PAYMENT_TRANSFER_REFERENCE_TABLES = ["payment_transfer_reference"] as const;
 /** Shop Identity owns only its local Identity projection. */
 export const SHOP_PRODUCT_PROFILE_TABLES = [
   "shop_user_profile",
@@ -249,6 +265,7 @@ export const SHOP_ARTWORK_REGISTER_READ_TABLES = [
   "artwork_register",
   "zoho_artwork_sync_outcome",
   "zoho_listing_sync_run",
+  "zoho_sync_health",
 ] as const;
 export const SHOP_ARTWORK_REGISTER_CONFLICT_TABLES = ["artwork_register_conflict"] as const;
 export const SHOP_ARTWORK_REGISTER_EVENT_TABLES = ["artwork_register_event"] as const;
@@ -486,6 +503,7 @@ export const WORKER_ZOHO_ARTWORK_SYNC_TABLES = [
   "zoho_artwork_sync_state",
   "zoho_artwork_sync_outcome",
   "zoho_listing_sync_run",
+  "zoho_sync_health",
 ] as const;
 /**
  * The alert engine's Bid tables: the matching projector records matches and announcements, and the
@@ -551,6 +569,32 @@ export const WORKER_DISPLAY_PAIRING_TABLES = ["saleroom_display_pairing"] as con
 
 /** Invoice addressing reads during lot invoice initiation. */
 export const WORKER_FINANCE_READ_TABLES = ["address"] as const;
+
+/**
+ * Re-offers after a buyer default: the sweeps lapse an unanswered seller request, remind the seller
+ * and end an offer the bidder let run out, so worker_app reads these tables and updates the
+ * columns that say where a request or an offer stands, and nothing else. It never creates, deletes
+ * or re-prices an offer, never changes who it is for, and never sets `reawarded_at`: only the
+ * re-award transaction, through the API, makes a lot's winner.
+ */
+export const WORKER_REOFFER_TABLES = ["lot_reoffer", "seller_consent"] as const;
+export const WORKER_REOFFER_UPDATE_COLUMNS = {
+  lot_reoffer: ["status", "close_reason", "closed_by", "updated_at"],
+  /**
+   * A lapse is the same write as an answer (`answer`): status, who and how it arrived (nobody, by
+   * the clock), when, and the note and preference an answer may carry. The reminder sets
+   * `reminded_at`. The request itself (terms, due date, who it is for) is never changed.
+   */
+  seller_consent: [
+    "status",
+    "channel",
+    "answered_by_user_id",
+    "answered_at",
+    "note",
+    "preferred_next",
+    "reminded_at",
+  ],
+} as const;
 
 /** Lot lifecycle notification staging (won/lost) drained by notification outbox cron. */
 export const WORKER_NOTIFICATION_OUTBOX_TABLES = ["notification_outbox"] as const;
@@ -971,7 +1015,14 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
             await grantIfExists(client, "api_app", tableName, "INSERT, SELECT, DELETE");
             continue;
           }
-          if ((API_PAYMENT_REFUND_TABLES as readonly string[]).includes(tableName)) {
+          if ((API_PRIVATE_SALE_ARTWORK_HISTORY_TABLES as readonly string[]).includes(tableName)) {
+            await grantIfExists(client, "api_app", tableName, "INSERT, SELECT");
+            continue;
+          }
+          if (
+            (API_PAYMENT_REFUND_TABLES as readonly string[]).includes(tableName) ||
+            (API_PAYMENT_TRANSFER_REFERENCE_TABLES as readonly string[]).includes(tableName)
+          ) {
             await grantIfExists(client, "api_app", tableName, "INSERT, SELECT");
             continue;
           }
@@ -1174,6 +1225,10 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
         }
         for (const tableName of WORKER_FINANCE_READ_TABLES) {
           await grantIfExists(client, "worker_app", tableName, "SELECT");
+        }
+        for (const [tableName, columns] of Object.entries(WORKER_REOFFER_UPDATE_COLUMNS)) {
+          await grantIfExists(client, "worker_app", tableName, "SELECT");
+          await grantColumnUpdateIfExists(client, "worker_app", tableName, columns);
         }
         for (const tableName of WORKER_NOTIFICATION_OUTBOX_TABLES) {
           await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT, UPDATE");

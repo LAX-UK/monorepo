@@ -13,7 +13,7 @@ import { MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
 import type { SaleFormatExplainerContext } from "@/lib/sale-format-explainer";
 import type { PublicSaleroomSessionStatus } from "@/lib/saleroom/public-session-status";
 import type { SaleDeliveryMode } from "@auction/types";
-import { DisplayHeading } from "@auction/ui";
+import { DisplayHeading } from "@auction/ui/components/typography";
 import type { ReactNode } from "react";
 
 type Props = {

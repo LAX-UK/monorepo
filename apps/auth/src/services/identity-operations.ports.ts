@@ -37,6 +37,10 @@ export type IdentitySessionRecord = {
   ipAddress: string | null;
   userAgent: string | null;
   lastPasswordAuthAt: Date | null;
+  /** Earlier ids this sign-in stands for, after newer sign-ins in the same browser took them over. */
+  previousIds: readonly string[];
+  /** How the sign-in was made, as recorded when it started (see `SessionSignInMethod`). */
+  amr?: readonly string[];
   isCurrent: boolean;
 };
 

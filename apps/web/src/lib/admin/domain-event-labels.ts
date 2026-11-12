@@ -58,6 +58,7 @@ const LABELS: Record<string, string> = {
 
   "export.requested": "Export requested",
 
+  "artwork_register.catalogue_changed": "Zoho changed an artwork's details",
   "artwork_register.offer_changed": "Artwork moved to a new place",
   "artwork_register.stock_code_assigned": "Artwork stock code assigned",
   "data_request.viewed": "Data request opened",
@@ -137,6 +138,16 @@ const LABELS: Record<string, string> = {
   "lot.withdrawal_declined": "Withdrawal declined",
   "lot.returned_to_inventory": "Returned to inventory",
   "lot.buyer_defaulted": "Buyer default recorded",
+  "lot.reoffer_started": "Offer to next bidder started",
+  "lot.seller_consent_given": "Seller agreed to the offer",
+  "lot.seller_consent_refused": "Seller declined the offer",
+  "lot.seller_consent_lapsed": "Seller did not reply to the offer",
+  "lot.reoffer_sent": "Offer sent to bidder",
+  "lot.reoffer_accepted": "Bidder accepted the offer",
+  "lot.reoffer_declined": "Bidder declined the offer",
+  "lot.reoffer_expired": "Offer to bidder expired",
+  "lot.reoffer_withdrawn": "Offer withdrawn",
+  "lot.reawarded": "Lot re-awarded to the next bidder",
 
   "payment.created": "Payment created",
   "payment.authorized": "Payment authorised",

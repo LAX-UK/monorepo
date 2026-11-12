@@ -1,7 +1,7 @@
 "use client";
 import { useConsent } from "@/lib/analytics/consent/context";
 import { isAnalyticsEnabled } from "@/lib/analytics/is-enabled";
-import { readCookie } from "@auction/ui";
+import { readCookie } from "@auction/ui/lib/read-cookie";
 import { useEffect, useRef } from "react";
 
 import { syncMarketingClickIds } from "@/lib/data/http/marketing-click-ids.client";

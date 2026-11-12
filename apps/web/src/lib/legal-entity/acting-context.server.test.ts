@@ -30,12 +30,14 @@ vi.mock("@/lib/data/http/authed-fetch.server", () => ({
   authedServerFetch: (...args: unknown[]) => mockAuthedFetch(...args),
 }));
 
+import { encodeActingContextCookie } from "@auction/types";
 import { isAccountsUnavailableError } from "./accounts-unavailable-error";
 import {
   getActingLegalEntityHeader,
   lookupActingContext,
   requireActingContext,
   resolveActingContext,
+  viewSessionCookieForRequest,
 } from "./acting-context.server";
 
 const ACTING_COOKIE = "lax_acting_legal_entity_id";
@@ -170,5 +172,30 @@ describe("when the accounts cannot be read", () => {
     await expect(getActingLegalEntityHeader("client", [])).resolves.toEqual({
       "x-legal-entity-id": ORG.id,
     });
+  });
+});
+
+describe("the view session forwarded with the acting header", () => {
+  const SID = "0b9a8c7d-6e5f-4a3b-9c2d-1e0f9a8b7c6d";
+
+  beforeEach(() => {
+    cookieValues.clear();
+    mockAuthedFetch.mockReset();
+  });
+
+  it("is built from the same cookie value that names the acting account", async () => {
+    const view = encodeActingContextCookie({ v: 1, e: ORG.id, i: { sid: SID } });
+    cookieValues.set(ACTING_COOKIE, view);
+    mockAuthedFetch.mockResolvedValue(respond(429, { error: "Too many requests" }));
+
+    await expect(getActingLegalEntityHeader("administrator", [])).resolves.toEqual({
+      "x-legal-entity-id": ORG.id,
+    });
+    await expect(viewSessionCookieForRequest()).resolves.toBe(`${ACTING_COOKIE}=${view}`);
+  });
+
+  it("forwards nothing when the chosen value is a plain account choice", async () => {
+    cookieValues.set(ACTING_COOKIE, ORG.id);
+    await expect(viewSessionCookieForRequest()).resolves.toBeNull();
   });
 });

@@ -1,5 +1,5 @@
 import { createTokenContrast } from "@/test/css-token-contrast";
-import { INLINE_ACTION_MENU_TOKENS } from "@auction/ui";
+import { INLINE_ACTION_MENU_TOKENS } from "@auction/ui/components/inline-action-menu";
 import { describe, expect, it } from "vitest";
 
 /**

@@ -1,0 +1,72 @@
+{
+  "measuredWith": "apps/web production build with the browser Sentry SDK on (placeholder DSN); gzip of every start-up script on its own, KB of 1024 bytes",
+  "toleranceKb": 1,
+  "routes": {
+    "apps/web /(marketing)/(home)/page": {
+      "label": "Home",
+      "targetKb": 300,
+      "gzipKb": 460.6,
+      "parsedKb": 1421.3,
+      "frameKb": 389.4,
+      "pageKb": 71.2,
+      "duplicateCount": 120,
+      "duplicateKb": 34.2,
+      "files": 47
+    },
+    "apps/web /(marketing)/sales/(index)/page": {
+      "label": "Sales list",
+      "targetKb": 300,
+      "gzipKb": 501.4,
+      "parsedKb": 1567.9,
+      "frameKb": 389.4,
+      "pageKb": 112.1,
+      "duplicateCount": 110,
+      "duplicateKb": 36.4,
+      "files": 53
+    },
+    "apps/web /(marketing)/sales/[slug]/[id]/page": {
+      "label": "Sale page",
+      "targetKb": 350,
+      "gzipKb": 610.9,
+      "parsedKb": 1902.9,
+      "frameKb": 431.5,
+      "pageKb": 179.4,
+      "duplicateCount": 200,
+      "duplicateKb": 64.7,
+      "files": 64
+    },
+    "apps/web /(marketing)/lot/[slug]/[id]/page": {
+      "label": "Lot page",
+      "targetKb": 350,
+      "gzipKb": 569.5,
+      "parsedKb": 1768.5,
+      "frameKb": 435.1,
+      "pageKb": 134.4,
+      "duplicateCount": 187,
+      "duplicateKb": 58.6,
+      "files": 59
+    },
+    "apps/web /(marketing)/about/page": {
+      "label": "About",
+      "targetKb": 300,
+      "gzipKb": 397.3,
+      "parsedKb": 1235.2,
+      "frameKb": 389.4,
+      "pageKb": 8,
+      "duplicateCount": 68,
+      "duplicateKb": 20.6,
+      "files": 40
+    },
+    "apps/web /(marketing)/terms/page": {
+      "label": "Terms (content page)",
+      "targetKb": 300,
+      "gzipKb": 394.3,
+      "parsedKb": 1226.6,
+      "frameKb": 389.4,
+      "pageKb": 4.9,
+      "duplicateCount": 66,
+      "duplicateKb": 19.7,
+      "files": 40
+    }
+  }
+}

@@ -4,7 +4,7 @@ import { readReducedMotionOverride, setReducedMotionOverride } from "@/hooks/use
 import { updateUiPreferencesAction } from "@/lib/actions/user-ui-preferences";
 import { applyThemeDom } from "@/lib/preferences/apply-theme-dom";
 import { notify } from "@/lib/ui/notify";
-import { SegmentedControl } from "@auction/ui/lax";
+import { SegmentedControl } from "@auction/ui/lax/tabs";
 import type { ThemePreference } from "@auction/validators";
 import { useEffect, useState } from "react";
 

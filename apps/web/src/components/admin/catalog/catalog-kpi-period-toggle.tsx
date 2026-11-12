@@ -1,7 +1,7 @@
 "use client";
 
 import type { AdminKpiPeriodDays } from "@/lib/admin/admin-kpi-period";
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 

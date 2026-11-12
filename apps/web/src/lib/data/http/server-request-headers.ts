@@ -10,7 +10,10 @@ import { readBidSessionIdFromStore } from "@/lib/bff/session-cookie.server";
 import { BidBffTokenService } from "@/lib/bff/token-service.server";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { deriveSsrOriginFromHeaders } from "@/lib/data/http/ssr-origin";
-import { getActingLegalEntityHeader } from "@/lib/legal-entity/acting-context.server";
+import {
+  getActingLegalEntityHeader,
+  viewSessionCookieForRequest,
+} from "@/lib/legal-entity/acting-context.server";
 import { cookies, headers as nextHeaders } from "next/headers";
 
 export type { HeaderBag } from "@/lib/data/http/ssr-origin";
@@ -84,6 +87,15 @@ export function withActingLegalEntity(): HeaderDecorator {
   };
 }
 
+/** Carries the staff "view as client" session cookie (that cookie only) to the API, which validates it. */
+export function withViewSessionCookie(): HeaderDecorator {
+  return async (headers) => {
+    // From the same cookie value as the acting header, so a duplicated cookie is resolved once.
+    const cookie = await viewSessionCookieForRequest();
+    if (cookie) headers.set("Cookie", cookie);
+  };
+}
+
 export function withConsent(snapshot: ConsentSnapshot | null): HeaderDecorator {
   return (headers) => {
     if (!snapshot) return;
@@ -114,7 +126,13 @@ export type BuildAuthedSsrHeadersOptions = {
 export async function buildAuthedSsrHeaders(
   options: BuildAuthedSsrHeadersOptions = {},
 ): Promise<Headers> {
-  const decorators: HeaderDecorator[] = [withBidApiBearer(options.rejectedBearer), withOrigin()];
+  // The view session travels on every API call, whether or not the acting header is sent: the API
+  // uses it only with a matching entity and validates the actor and expiry itself.
+  const decorators: HeaderDecorator[] = [
+    withBidApiBearer(options.rejectedBearer),
+    withOrigin(),
+    withViewSessionCookie(),
+  ];
   if (options.consent !== undefined) {
     decorators.push(withConsent(options.consent));
   } else {

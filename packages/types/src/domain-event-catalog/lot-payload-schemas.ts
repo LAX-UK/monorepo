@@ -98,6 +98,72 @@ export const lotBuyerDefaultedPayloadSchema = z.object({
   offeredUserId: z.string().nullable(),
 });
 
+/** Who moved a re-offer: the seller, the bidder, staff (also on someone's behalf) or the clock. */
+const reofferActorSchema = z.enum(["seller", "bidder", "staff", "clock"]);
+
+/** What every event of one offer of a defaulted lot to one bidder says about the offer. */
+const reofferEventBase = {
+  reofferId: z.string().uuid(),
+  buyerDefaultId: z.string().uuid(),
+  /** 1 for the first offer of the default, up to 3. */
+  sequence: z.number().int().min(1).max(3),
+  actor: reofferActorSchema,
+  /** Whole pence: the amount the bidder bid, the price of the offer. */
+  amountPence: z.number().int().positive(),
+};
+
+export const lotReofferStartedPayloadSchema = z.object({
+  ...reofferEventBase,
+  offeredUserId: z.string(),
+  offeredLegalEntityId: z.string().uuid(),
+  /** `not_needed` for stock LAX owns; otherwise the seller is asked. */
+  consentStatus: z.enum(["requested", "not_needed"]),
+  originalHammerPence: z.number().int().nonnegative(),
+});
+
+export const lotSellerConsentGivenPayloadSchema = z.object({
+  ...reofferEventBase,
+  channel: z.enum(["workspace", "recorded_by_staff"]),
+});
+
+export const lotSellerConsentRefusedPayloadSchema = z.object({
+  ...reofferEventBase,
+  channel: z.enum(["workspace", "recorded_by_staff"]),
+  preferredNext: z.enum(["later_sale", "return_to_me", "talk_to_us"]).nullable(),
+});
+
+export const lotSellerConsentLapsedPayloadSchema = z.object({ ...reofferEventBase });
+
+export const lotReofferSentPayloadSchema = z.object({
+  ...reofferEventBase,
+  offerEndsAt: z.string().datetime(),
+});
+
+export const lotReofferAcceptedPayloadSchema = z.object({ ...reofferEventBase });
+
+export const lotReofferDeclinedPayloadSchema = z.object({
+  ...reofferEventBase,
+  reason: z.string().nullable(),
+});
+
+export const lotReofferExpiredPayloadSchema = z.object({ ...reofferEventBase });
+
+export const lotReofferWithdrawnPayloadSchema = z.object({
+  ...reofferEventBase,
+  reason: z.string(),
+});
+
+/** The lot was won again by the bidder who accepted, at the offered amount. */
+export const lotReawardedPayloadSchema = z.object({
+  ...reofferEventBase,
+  reason: z.string(),
+  newBuyerId: z.string(),
+  newBuyerLegalEntityId: z.string().uuid(),
+  previousBuyerId: z.string().nullable(),
+  /** The hammer of the sale that failed, which stays on the buyer default. */
+  originalHammerPence: z.number().int().nonnegative(),
+});
+
 export const lotSoftDeletedPayloadSchema = z.object({
   title: z.string(),
   from_status: z.string(),
@@ -119,6 +185,16 @@ export const LotEventSchemas = {
   "lot.withdrawal_declined": lotWithdrawalDeclinedPayloadSchema,
   "lot.returned_to_inventory": lotReturnedToInventoryPayloadSchema,
   "lot.buyer_defaulted": lotBuyerDefaultedPayloadSchema,
+  "lot.reoffer_started": lotReofferStartedPayloadSchema,
+  "lot.seller_consent_given": lotSellerConsentGivenPayloadSchema,
+  "lot.seller_consent_refused": lotSellerConsentRefusedPayloadSchema,
+  "lot.seller_consent_lapsed": lotSellerConsentLapsedPayloadSchema,
+  "lot.reoffer_sent": lotReofferSentPayloadSchema,
+  "lot.reoffer_accepted": lotReofferAcceptedPayloadSchema,
+  "lot.reoffer_declined": lotReofferDeclinedPayloadSchema,
+  "lot.reoffer_expired": lotReofferExpiredPayloadSchema,
+  "lot.reoffer_withdrawn": lotReofferWithdrawnPayloadSchema,
+  "lot.reawarded": lotReawardedPayloadSchema,
   "lot.soft_deleted": lotSoftDeletedPayloadSchema,
 } as const;
 

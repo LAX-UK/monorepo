@@ -8,7 +8,10 @@ import {
   DrizzleArtworkRegisterRepository,
   DrizzleUnappliedMoneyReader,
   DrizzleZohoArtworkSyncStore,
+  DrizzleZohoDriftReader,
   DrizzleZohoListingRunStore,
+  DrizzleZohoOutboundQueueReader,
+  DrizzleZohoSyncHealthStore,
   createShopAlertRetentionStore,
   registerRowToEntry,
 } from "@auction/persistence/repositories";
@@ -24,8 +27,10 @@ import {
   ArtworkZohoLinkService,
   withZohoLinks,
 } from "./application/artwork-register/artwork-zoho-link.service.js";
+import { CatalogueChangeService } from "./application/artwork-register/catalogue-change.service.js";
 import { OfferOnLaxArtService } from "./application/artwork-register/offer-on-lax-art.service.js";
 import { ZohoLinkService } from "./application/artwork-register/zoho-link.service.js";
+import { ZohoSyncHealthService } from "./application/artwork-register/zoho-sync-health.service.js";
 import { createShopDeletionEligibilityService } from "./application/deletion-eligibility.service.js";
 import { createDeliveryQuoteStaffService } from "./application/delivery-quote-staff/delivery-quote-staff.service.js";
 import { createDeliveryRegionsService } from "./application/delivery-regions/delivery-regions.service.js";
@@ -107,6 +112,7 @@ import { createDrizzleArtworkCatalogueRepository } from "./infrastructure/drizzl
 import { createDrizzleArtworkCatalogueWriter } from "./infrastructure/drizzle-artwork-catalogue.writer.js";
 import { createDrizzleArtworkImportRepository } from "./infrastructure/drizzle-artwork-import.repository.js";
 import { createDrizzleArtworkInterestRepository } from "./infrastructure/drizzle-artwork-interest.repository.js";
+import { createDrizzleLaxArtCatalogueCopyStore } from "./infrastructure/drizzle-catalogue-copy.js";
 import { createDrizzleCategoryCatalogueRepository } from "./infrastructure/drizzle-category-catalogue.repository.js";
 import { createDrizzleDeletionEligibilityRepository } from "./infrastructure/drizzle-deletion-eligibility.repository.js";
 import { createDrizzleEditionAlertStore } from "./infrastructure/drizzle-edition-alert.store.js";
@@ -393,6 +399,18 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
   const artworkRegisterRepository = new DrizzleArtworkRegisterRepository(db);
   const laxArtListings = createDrizzleLaxArtListingReader(db);
   const auctionOffers = createHttpAuctionOfferGateway(env);
+  const shopUow = createDrizzleShopUnitOfWork(db, env.DOMAIN_EVENT_PUBLISH_VALIDATE);
+  const catalogueChange = new CatalogueChangeService({
+    register: artworkRegisterRepository,
+    laxArt: createDrizzleLaxArtCatalogueCopyStore(db, shopUow, {
+      register: artworkRegisterRepository,
+    }),
+    bid: auctionOffers,
+    resolveImageUrl: resolveMediaUrl,
+    audit: {
+      append: (record) => shopUow.run((tx) => tx.audit.append(record)),
+    },
+  });
   const baseAdminRead = createDrizzleAdminReadRepository(db, env, { resolveMediaUrl });
   const adminRead = {
     ...baseAdminRead,
@@ -401,11 +419,11 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
         register: artworkRegisterRepository,
         staffNames: createDrizzleStaffNameReader(db),
         bidDrafts: auctionOffers,
+        catalogueChanges: catalogueChange,
       }),
       listings: laxArtListings,
     }),
   };
-  const shopUow = createDrizzleShopUnitOfWork(db, env.DOMAIN_EVENT_PUBLISH_VALIDATE);
   const cancellationPolicy = loadShopCancellationPolicy(env);
   const createProductionTask = createCreateProductionTaskHandler({ uow: shopUow });
   const updateFramingTask = createUpdateFramingTaskHandler({ uow: shopUow });
@@ -507,6 +525,9 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
     offers: originalOffers,
   });
   const artistCatalogue = createDrizzleArtistCatalogueWriter(shopUow);
+  const zohoArtworkSyncRuns = new DrizzleZohoArtworkSyncStore(db);
+  const zohoListingRuns = new DrizzleZohoListingRunStore(db);
+  const zohoSyncHealth = new DrizzleZohoSyncHealthStore(db);
   const originalMoveReader = createDrizzleOriginalMoveReader(db);
   const artworkRegister = new DrizzleArtworkRegisterRepository(db);
   const inventoryMoves = new OriginalMoveService({
@@ -714,12 +735,21 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
           overview: createDrizzleRegisterOverviewReader(db, registerRowToEntry),
           register: artworkRegisterRepository,
           resolver: artworkRegisterRepository,
-          runs: new DrizzleZohoArtworkSyncStore(db),
-          listingRuns: new DrizzleZohoListingRunStore(db),
+          runs: zohoArtworkSyncRuns,
+          listingRuns: zohoListingRuns,
           staffNames: createDrizzleStaffNameReader(db),
           listings: laxArtListings,
+          catalogueChanges: catalogueChange,
           auction: inventoryMoves,
         }),
+        zohoSyncHealth: new ZohoSyncHealthService({
+          health: zohoSyncHealth,
+          inboundRuns: zohoArtworkSyncRuns,
+          listingRuns: zohoListingRuns,
+          outbound: new DrizzleZohoOutboundQueueReader(db),
+          drift: new DrizzleZohoDriftReader(db),
+        }),
+        catalogueChange,
         offerOnLaxArt: new OfferOnLaxArtService({
           register: artworkRegisterRepository,
           artists: createDrizzleLaxArtArtistDirectory(db),

@@ -1,6 +1,9 @@
 import type { ConsignmentDocumentsView } from "@/lib/seller/consignment-documents";
 import { PAYOUT_READERS } from "@/lib/seller/payout-readers";
-import { ButtonLink, EmptyState, FileAttachment, Notice } from "@auction/ui/lax";
+import { ButtonLink } from "@auction/ui/lax/button-link";
+import { EmptyState } from "@auction/ui/lax/empty-state";
+import { FileAttachment } from "@auction/ui/lax/file-attachment";
+import { Notice } from "@auction/ui/lax/notice";
 import Link from "next/link";
 import type { ReactNode } from "react";
 

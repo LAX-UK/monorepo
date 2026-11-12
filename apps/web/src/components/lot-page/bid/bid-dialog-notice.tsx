@@ -2,7 +2,9 @@
 
 import { laxAccountUrl } from "@/lib/lax-account-url";
 import type { BidNotice, BidRemedy } from "@auction/domain";
-import { Button, ButtonLink, Notice } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
+import { ButtonLink } from "@auction/ui/lax/button-link";
+import { Notice } from "@auction/ui/lax/notice";
 import Link from "next/link";
 import type { ReactNode } from "react";
 

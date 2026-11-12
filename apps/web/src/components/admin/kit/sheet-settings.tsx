@@ -1,6 +1,10 @@
 "use client";
 
-import { Button, EmptyState, PresetCards, StatusBadge, ToggleRow } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
+import { EmptyState } from "@auction/ui/lax/empty-state";
+import { PresetCards } from "@auction/ui/lax/preset-cards";
+import { StatusBadge } from "@auction/ui/lax/status-badge";
+import { ToggleRow } from "@auction/ui/lax/toggle-row";
 import { useState } from "react";
 import { SheetSection } from "./sheet-frame";
 

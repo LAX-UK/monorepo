@@ -16,8 +16,8 @@ import {
 import { toneAwareScrimStops } from "@/lib/media/tone-aware-scrim";
 import { LOT_TRANSITION_IMAGE_ATTR, LOT_TRANSITION_ROOT_ATTR } from "@/lib/view-transitions";
 import type { DepartmentDisplayStyle } from "@auction/domain";
-import { lotCardMediaClasses } from "@auction/marketing-ui";
-import { cn } from "@auction/ui";
+import { lotCardMediaClasses } from "@auction/marketing-ui/lot-media/lot-card-media-frame";
+import { cn } from "@auction/ui/lib/utils";
 import Link from "next/link";
 import type { ComponentProps, ReactNode } from "react";
 import { Fragment } from "react";

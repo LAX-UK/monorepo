@@ -27,7 +27,7 @@ import { entityActorCan } from "@auction/domain";
 import type { LegalEntityStatus } from "@auction/types";
 import { Surface } from "@auction/ui/components/surface";
 import { TimelineStages } from "@auction/ui/components/timeline-stages";
-import { ButtonLink } from "@auction/ui/lax";
+import { ButtonLink } from "@auction/ui/lax/button-link";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 

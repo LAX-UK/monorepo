@@ -1,5 +1,6 @@
 "use client";
 
+import { CatalogueChanges } from "@/components/from-zoho/catalogue-changes.client";
 import { ConflictCard } from "@/components/from-zoho/conflict-card.client";
 import {
   useCanOfferAtAuction,
@@ -233,6 +234,8 @@ export function FromZohoRecord({
         {open.map((conflict) => (
           <ConflictCard key={conflict.conflictId} conflict={conflict} />
         ))}
+
+        <CatalogueChanges registerId={detail.registerId} changes={detail.catalogueChanges} />
 
         <WhereItIsSection
           chip={detail.whereItIs.chip}

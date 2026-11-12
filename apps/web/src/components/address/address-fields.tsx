@@ -2,7 +2,9 @@
 
 import type { AddressFieldErrors, AddressValues } from "@/lib/address/address-fields";
 import { countriesByName } from "@/lib/ui/countries";
-import { Field, SelectMenu, TextInput } from "@auction/ui/lax";
+import { Field } from "@auction/ui/lax/field";
+import { TextInput } from "@auction/ui/lax/input";
+import { SelectMenu } from "@auction/ui/lax/select-menu";
 import { useMemo } from "react";
 
 /**

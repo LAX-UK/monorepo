@@ -5,7 +5,7 @@ import { PaletteFooter } from "@/components/layout/palette/palette-footer";
 import { PaletteGroup } from "@/components/layout/palette/palette-group";
 import { PaletteSkeleton } from "@/components/layout/palette/palette-skeleton";
 import type { PaletteItem, PaletteSection } from "@/components/layout/palette/types";
-import { CommandList } from "@auction/ui";
+import { CommandList } from "@auction/ui/components/command";
 
 type Props = {
   sections: PaletteSection[];

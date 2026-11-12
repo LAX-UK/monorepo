@@ -178,8 +178,7 @@ export class SubjectExportService {
     exportId: string,
     sessionId: string,
   ): Promise<ReauthRequired | { ok: true; outcome: "deleted" | "not_found" }> {
-    const live = await this.sessions.liveSessions(subjectId);
-    if (!live.some((session) => session.id === sessionId)) {
+    if (!(await this.sessions.findLive(subjectId, sessionId))) {
       return { ok: false, reason: "reauth_required" };
     }
     const now = this.now();

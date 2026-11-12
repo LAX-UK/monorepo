@@ -3,8 +3,9 @@
 import { nextSteps, replyByLabel } from "@/lib/private-sales/enquiry-sent";
 import { departmentOptions } from "@/lib/private-sales/enquiry-values";
 import type { EnquiryPath } from "@/lib/private-sales/enquiry-values";
-import { MarketingEnquiryConfirmation } from "@auction/marketing-ui";
-import { Button, ButtonLink } from "@auction/ui/lax";
+import { MarketingEnquiryConfirmation } from "@auction/marketing-ui/marketing-enquiry-confirmation";
+import { Button } from "@auction/ui/lax/button";
+import { ButtonLink } from "@auction/ui/lax/button-link";
 import Link from "next/link";
 import { useEffect, useRef } from "react";
 

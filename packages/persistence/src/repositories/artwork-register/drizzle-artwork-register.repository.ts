@@ -11,13 +11,16 @@ import {
   assertSeries,
   canAcceptZohoValue,
   imageKeysOf,
+  isCatalogueField,
   nextStockCode,
   parseStockCode,
   printCodeForOriginal,
   reconcileZohoChange,
+  registerFieldValue,
   sameImageSources,
   transitionOffer,
 } from "@auction/artwork-register-contracts";
+import { LONDON_TIME_ZONE, calendarYear } from "@auction/datetime";
 import type { Database } from "@auction/db";
 import {
   artworkRegisterConflict as conflict,
@@ -44,6 +47,7 @@ import type {
   RecordCatalogueStatusWrittenResult,
   RecordLaxArtDraftCreatedInput,
   RecordMoveConfirmedInput,
+  RecordOfferConflictInput,
   RecordZohoLinkInput,
   RegisterActor,
   RegisterConflict,
@@ -292,6 +296,7 @@ export class DrizzleArtworkRegisterRepository
         year: entry.year,
         imageRefs: entry.imageRefs,
         catalogueStatus: entry.catalogueStatus,
+        zohoPrice: entry.zohoPrice ?? null,
         zohoModifiedAt: entry.zohoModifiedAt ?? null,
         createdAt: now,
         updatedAt: now,
@@ -362,6 +367,7 @@ export class DrizzleArtworkRegisterRepository
           zohoModifiedAt: change.modifiedAt.toISOString(),
         });
       }
+      await this.publishCatalogueChange(tx, current, applied, result.apply);
       for (const found of result.conflicts) {
         await this.recordConflict(tx, row.id, found, change.modifiedAt, now);
       }
@@ -451,6 +457,50 @@ export class DrizzleArtworkRegisterRepository
         ...(applied ? { applied } : {}),
       });
       return { ok: true, conflict: toConflict(row) };
+    });
+  }
+
+  async recordOfferConflict(input: RecordOfferConflictInput): Promise<boolean> {
+    return this.db.transaction(async (tx) => {
+      const [locked] = await tx
+        .select({ id: register.id })
+        .from(register)
+        .where(eq(register.id, input.registerId))
+        .for("update");
+      if (!locked) return false;
+      const laxValue = { state: input.state, lotId: input.lotId };
+      // The ATG poll repeats the result every tick. Only one offerState item can be open per
+      // artwork (staff already have one to look at), and a situation staff have settled (this lot,
+      // the register in this state) is not raised again by the next poll.
+      const [seen] = await tx
+        .select({ id: conflict.id })
+        .from(conflict)
+        .where(
+          and(
+            eq(conflict.registerId, input.registerId),
+            eq(conflict.field, "offerState"),
+            or(
+              eq(conflict.status, "open"),
+              sql`${conflict.laxValue} @> ${JSON.stringify(laxValue)}::jsonb`,
+            ),
+          ),
+        )
+        .limit(1);
+      if (seen) return false;
+      await tx.insert(conflict).values({
+        registerId: input.registerId,
+        field: "offerState",
+        zohoValue: input.message,
+        laxValue,
+        zohoModifiedAt: input.now,
+        detectedAt: input.now,
+      });
+      await this.record(tx, input.registerId, "conflict_recorded", "system", input.now, {
+        field: "offerState",
+        message: input.message,
+        ...laxValue,
+      });
+      return true;
     });
   }
 
@@ -626,6 +676,9 @@ export class DrizzleArtworkRegisterRepository
       await this.record(tx, row.id, "zoho_change_applied", "zoho", input.now, {
         fields: { imageRefs: { from: locked.imageRefs, to: refs } },
       });
+      if (!sameKeys(locked.imageRefs, refs)) {
+        await this.publishCatalogueChange(tx, toEntry(locked), ["imageRefs"], { imageRefs: refs });
+      }
       return { status: "replaced", entry: toEntry(row) };
     });
   }
@@ -695,11 +748,43 @@ export class DrizzleArtworkRegisterRepository
     });
   }
 
+  /**
+   * Announces a change to the fields lax.art listings and Bid lots copy, in the transaction that
+   * made it: the event exists exactly when the change does, and only when one of those fields
+   * really changed (a repeated or stale notice applies nothing, so it announces nothing). Carries
+   * the register id and the before and after of the changed fields, never anything personal.
+   */
+  private async publishCatalogueChange(
+    tx: Tx,
+    before: ArtworkRegisterEntry,
+    applied: readonly RegisterField[],
+    values: Partial<Record<RegisterField, unknown>>,
+  ): Promise<void> {
+    const changed = applied.filter(isCatalogueField);
+    if (changed.length === 0) return;
+    await this.publish(tx, before.id, "artwork_register.catalogue_changed", {
+      schemaVersion: 1,
+      registerId: before.id,
+      zohoProductId: before.zohoProductId,
+      stockCode: before.stockCode,
+      fields: changed,
+      changes: Object.fromEntries(
+        changed.map((field) => [
+          field,
+          { from: registerFieldValue(before, field), to: values[field] },
+        ]),
+      ),
+    });
+  }
+
   /** Appends a domain event in the caller's transaction, so it exists exactly when the change does. */
   private async publish(
     tx: Tx,
     registerId: string,
-    eventType: "artwork_register.offer_changed" | "artwork_register.stock_code_assigned",
+    eventType:
+      | "artwork_register.offer_changed"
+      | "artwork_register.stock_code_assigned"
+      | "artwork_register.catalogue_changed",
     payload: Record<string, unknown>,
   ): Promise<void> {
     await tx.insert(domainEvent).values({
@@ -738,11 +823,7 @@ export class DrizzleArtworkRegisterRepository
 
 /** The two-digit registration year, in London time. */
 function registrationYear(now: Date): number {
-  const year = new Intl.DateTimeFormat("en-GB", {
-    timeZone: "Europe/London",
-    year: "numeric",
-  }).format(now);
-  return Number(year) % 100;
+  return calendarYear(now, LONDON_TIME_ZONE) % 100;
 }
 
 function sameKeys(a: readonly string[], b: readonly string[]): boolean {

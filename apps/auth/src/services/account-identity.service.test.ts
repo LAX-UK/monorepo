@@ -14,6 +14,7 @@ function session(overrides: Partial<IdentitySession> & { id: string }): Identity
     ipAddress: "203.0.113.9",
     userAgent: "Mozilla/5.0 (Macintosh) Chrome/130.0",
     lastPasswordAuthAt: null,
+    previousIds: [],
     isCurrent: false,
     ...overrides,
   };
@@ -49,6 +50,41 @@ const staleCurrent = session({ id: "current", createdAt: new Date(NOW.getTime() 
 const other = session({ id: "other", userAgent: "Mozilla/5.0 (iPhone) Safari/605" });
 
 describe("AccountIdentityService", () => {
+  describe("a sign-in that a newer one in the same browser took over", () => {
+    const taken = session({ id: "current", previousIds: ["earlier-name"] });
+
+    it("is still the caller's own sign-in when named by an earlier id", async () => {
+      const { service } = setup([taken, other]);
+      const result = await service.listSessions(SUBJECT, "earlier-name");
+      expect(result.ok && result.sessions.map((row) => [row.id, row.isCurrent])).toEqual([
+        ["current", true],
+        ["other", false],
+      ]);
+    });
+
+    it("is not recent: a sensitive change needs a sign-in of its own", async () => {
+      const { service, operations } = setup([taken, other]);
+      expect(await service.revokeSession(SUBJECT, "earlier-name", "other")).toEqual({
+        ok: false,
+        reason: "reauth_required",
+      });
+      expect(await service.revokeOtherSessions(SUBJECT, "earlier-name")).toEqual({
+        ok: false,
+        reason: "reauth_required",
+      });
+      expect(operations.removeSession).not.toHaveBeenCalled();
+      expect(operations.removeOtherSessions).not.toHaveBeenCalled();
+    });
+
+    it("does not resolve another person's earlier id", async () => {
+      const { service } = setup([session({ id: "mine" })]);
+      expect(await service.listSessions(SUBJECT, "earlier-name")).toEqual({
+        ok: false,
+        reason: "reauth_required",
+      });
+    });
+  });
+
   describe("time zone", () => {
     it("reads and saves without asking for a recent sign-in", async () => {
       const { service, operations } = setup([staleCurrent]);
@@ -81,6 +117,22 @@ describe("AccountIdentityService", () => {
         ["other", false],
       ]);
       expect(JSON.stringify(result)).not.toContain("203.0.113.9");
+    });
+
+    it("says how each sign-in was made, the strongest recorded method first", async () => {
+      const { service } = setup([
+        session({ id: "current", amr: ["password", "passkey"] }),
+        session({ id: "social", amr: ["provider"] }),
+        session({ id: "pw", amr: ["password"] }),
+        session({ id: "old", amr: [] }),
+      ]);
+      const result = await service.listSessions(SUBJECT, "current");
+      expect(result.ok && result.sessions.map((row) => [row.id, row.signedInWith])).toEqual([
+        ["current", "passkey"],
+        ["social", "provider"],
+        ["pw", "password"],
+        ["old", null],
+      ]);
     });
 
     it("hides sessions that have already expired", async () => {

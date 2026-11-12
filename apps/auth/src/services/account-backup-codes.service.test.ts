@@ -13,6 +13,7 @@ function session(overrides: Partial<IdentitySession> & { id: string }): Identity
     ipAddress: "203.0.113.9",
     userAgent: "Mozilla/5.0 (Macintosh) Chrome/130.0",
     lastPasswordAuthAt: null,
+    previousIds: [],
     isCurrent: false,
     ...overrides,
   };

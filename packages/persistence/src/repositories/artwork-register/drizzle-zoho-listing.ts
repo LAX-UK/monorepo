@@ -1,6 +1,7 @@
 import type { OfferState } from "@auction/artwork-register-contracts";
 import type { Database } from "@auction/db";
 import {
+  atgLotLink,
   domainEventDelivery,
   lot,
   privateSaleDeal,
@@ -26,7 +27,7 @@ import { toEntry } from "./artwork-register.mapper.js";
 const OPEN_LOT_STATUSES = ["draft", "scheduled", "active"] as const;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 /** The delivery consumers that write to Zoho Products for the register. */
-const PRODUCT_WRITE_CONSUMERS = ["zoho_artwork_writeback", "zoho_artwork_listing"];
+export const ZOHO_PRODUCT_WRITE_CONSUMERS = ["zoho_artwork_writeback", "zoho_artwork_listing"];
 
 function stateOf(value: unknown): OfferState | null {
   const state = value && typeof value === "object" ? (value as { state?: unknown }).state : null;
@@ -40,6 +41,7 @@ type LotRow = {
   lotNumber: number | null;
   status: ListingLot["status"];
   deletedAt: Date | null;
+  atgSold: boolean | null;
   saleId: string | null;
   saleTitle: string | null;
   saleStatus: NonNullable<ListingLot["sale"]>["status"] | null;
@@ -61,6 +63,7 @@ function toLot(row: LotRow): ListingLot {
     lotNumber: row.lotNumber,
     status: row.status,
     deleted: row.deletedAt !== null,
+    soldOnAtg: row.atgSold === true,
     sale: hasSale
       ? {
           id: row.saleId as string,
@@ -219,6 +222,7 @@ export class DrizzleZohoListingSourceReader implements IZohoListingSourceReader 
         lotNumber: lot.lotNumber,
         status: lot.status,
         deletedAt: lot.deletedAt,
+        atgSold: atgLotLink.sold,
         saleId: sale.id,
         saleTitle: sale.title,
         saleStatus: sale.status,
@@ -228,6 +232,7 @@ export class DrizzleZohoListingSourceReader implements IZohoListingSourceReader 
       })
       .from(lot)
       .leftJoin(sale, eq(sale.id, lot.saleId))
+      .leftJoin(atgLotLink, eq(atgLotLink.lotId, lot.id))
       .where(
         or(
           refIds.length > 0 ? inArray(lot.id, refIds) : sql`FALSE`,
@@ -368,7 +373,7 @@ export class DrizzleZohoListingRunStore
       .from(domainEventDelivery)
       .where(
         and(
-          inArray(domainEventDelivery.consumer, PRODUCT_WRITE_CONSUMERS),
+          inArray(domainEventDelivery.consumer, ZOHO_PRODUCT_WRITE_CONSUMERS),
           eq(domainEventDelivery.status, "dead_lettered"),
         ),
       );

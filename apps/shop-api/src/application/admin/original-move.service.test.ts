@@ -98,6 +98,10 @@ function setup(over: Setup = {}) {
           )) as never,
       createDraftLot: createDraftLot as never,
       findDraftLot: (over.findDraftLot ?? (async () => null)) as never,
+      findLotCatalogue: (async () => null) as never,
+      updateLotCatalogue: (async () => {
+        throw new Error("not used");
+      }) as never,
     },
     withdrawFromLaxArt,
     resolveImageUrl: (value) => (value ? `https://media.example/${value}` : null),
@@ -125,8 +129,16 @@ describe("OriginalMoveService.assess", () => {
       draftLot: null,
       holdingLotId: null,
       eligible: true,
+      zohoPrice: null,
       blockers: [],
     });
+  });
+
+  it("shows Zoho's price for the dialog to put beside the starting price", async () => {
+    const result = await setup({ entry: entry({ zohoPrice: "4800.00" }) }).service.assess(
+      ARTWORK_ID,
+    );
+    expect(result.zohoPrice).toBe("4800.00");
   });
 
   it("gives every reason in words for staff, each with the link that goes with it", async () => {

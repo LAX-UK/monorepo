@@ -16,6 +16,7 @@ function session(id: string, ageSeconds: number) {
     ipAddress: null,
     userAgent: null,
     lastPasswordAuthAt: null,
+    previousIds: [] as readonly string[],
     isCurrent: false,
   };
 }
@@ -139,6 +140,25 @@ describe("AccountActionService.start: the intent", () => {
   it("accepts a sign-in of exactly five minutes", async () => {
     const context = setup({ sessions: [session("sid-1", 300)] });
     expect((await context.service.start(SUBJECT, "sid-1", "google")).ok).toBe(true);
+  });
+
+  it("never treats an earlier name of a newer record as a recent sign-in", async () => {
+    const context = setup({
+      sessions: [{ ...session("sid-2", 30), previousIds: ["sid-1"] }],
+    });
+    expect(await context.service.start(SUBJECT, "sid-1", "google")).toEqual({
+      ok: false,
+      reason: "reauth_required",
+    });
+    expect(context.held.size).toBe(0);
+  });
+
+  it("still starts for the record LAX Account holds after its own step-up", async () => {
+    const context = setup({
+      sessions: [{ ...session("sid-2", 30), previousIds: ["sid-1"] }],
+    });
+    expect((await context.service.start(SUBJECT, "sid-2", "google")).ok).toBe(true);
+    expect([...context.held.values()][0]?.ticket.sessionId).toBe("sid-2");
   });
 
   it("refuses a session that is not the person's own", async () => {

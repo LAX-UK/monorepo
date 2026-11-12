@@ -3,8 +3,9 @@
 import { type LiveNowVM, liveTabName } from "@/lib/hang/live-now";
 import { MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
 import { defaultLiveTab } from "@auction/domain";
-import { MarketingHang } from "@auction/marketing-ui";
-import { Tabs, TextLink } from "@auction/ui/lax";
+import { MarketingHang } from "@auction/marketing-ui/hang/marketing-hang";
+import { Tabs } from "@auction/ui/lax/tab-panels";
+import { TextLink } from "@auction/ui/lax/text-link";
 import Link from "next/link";
 import { useId, useMemo, useState } from "react";
 import { toHangProps } from "./to-hang-props";

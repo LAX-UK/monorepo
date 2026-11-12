@@ -223,7 +223,8 @@ export const privateSaleDealStageHistory = pgTable(
 
 /**
  * Each time staff link, change or take off a deal's artwork: who, when, why, and the artwork
- * before and after. Append-only, written in the same transaction as the change.
+ * before and after. Append-only (a trigger refuses changes and deletes), written in the same
+ * transaction as the change.
  */
 export const privateSaleDealArtworkHistory = pgTable(
   "private_sale_deal_artwork_history",
@@ -237,7 +238,7 @@ export const privateSaleDealArtworkHistory = pgTable(
     toArtworkRegisterId: uuid("to_artwork_register_id"),
     fromUnlinkedReason: text("from_unlinked_reason"),
     toUnlinkedReason: text("to_unlinked_reason"),
-    /** The staff member's own words; required to change or remove an artwork. */
+    /** The staff member's own words: required to change an artwork, an optional note on a removal. */
     reason: text("reason"),
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
   },

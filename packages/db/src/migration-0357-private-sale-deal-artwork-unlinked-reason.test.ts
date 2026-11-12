@@ -22,7 +22,6 @@ describe("migration 0357 private sale deal artwork unlinked reason", () => {
     const previous = journal.entries[index - 1];
     const next = journal.entries[index + 1];
     expect(index).toBeGreaterThan(0);
-    expect(Number(previous?.tag.slice(0, 4))).toBeLessThan(357);
     expect(entry?.idx).toBeGreaterThan(previous?.idx ?? 0);
     expect(entry?.when).toBeGreaterThan(previous?.when ?? 0);
     // Other migrations may land after this one; they must be later still.

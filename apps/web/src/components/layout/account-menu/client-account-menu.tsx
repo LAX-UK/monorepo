@@ -5,8 +5,8 @@ import { MenuAccountList } from "@/components/layout/account-switcher/menu-accou
 import { useLogout } from "@/lib/auth/use-logout";
 import type { AttentionCount } from "@/lib/navigation/client-attention";
 import type { HeaderAccountMenu, HeaderMenuLink } from "@/lib/navigation/header-account-menu.vm";
-import { cn } from "@auction/ui";
-import { Button } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
+import { cn } from "@auction/ui/lib/utils";
 import { ExternalLink, LogOut, Mail } from "lucide-react";
 import Link from "next/link";
 import { Fragment, type ReactNode, createContext, useContext } from "react";

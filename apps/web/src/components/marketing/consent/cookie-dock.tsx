@@ -1,7 +1,7 @@
 "use client";
 
-import { BOTTOM_BAR_ABOVE_CLASS } from "@auction/marketing-ui";
-import { cn } from "@auction/ui";
+import { BOTTOM_BAR_ABOVE_CLASS } from "@auction/marketing-ui/marketing-bottom-tab-bar";
+import { cn } from "@auction/ui/lib/utils";
 import { type ReactNode, useEffect, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 

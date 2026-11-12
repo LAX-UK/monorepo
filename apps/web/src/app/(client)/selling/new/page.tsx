@@ -19,7 +19,7 @@ import { SELL_A_WORK_LABEL } from "@/lib/marketing/sell-flow-copy";
 import { REGISTER_ORGANISATION_HREF } from "@/lib/navigation/account-switcher-model";
 import { decideConsignLink } from "@/lib/seller/consign-link";
 import { actingForOrganisation, sellerAccountChoice } from "@/lib/seller/seller-account-options";
-import { Notice } from "@auction/ui/lax";
+import { Notice } from "@auction/ui/lax/notice";
 import { redirect } from "next/navigation";
 
 /**

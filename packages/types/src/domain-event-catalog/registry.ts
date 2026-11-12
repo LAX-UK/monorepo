@@ -1,6 +1,7 @@
 import type { z } from "zod";
 import { alertSubscriptionConfirmedPayloadSchemaV1 } from "./alert-payload-schemas.js";
 import {
+  artworkRegisterCatalogueChangedPayloadSchemaV1,
   artworkRegisterOfferChangedPayloadSchemaV1,
   artworkRegisterStockCodeAssignedPayloadSchemaV1,
 } from "./artwork-register-payload-schemas.js";
@@ -103,6 +104,7 @@ export const ALL_LIVE_DOMAIN_EVENT_TYPES = [
   "artist.merged",
   "artist.propose_matches",
   "artist.reviewed",
+  "artwork_register.catalogue_changed",
   "artwork_register.offer_changed",
   "artwork_register.stock_code_assigned",
   "auth.account_suspended",
@@ -194,7 +196,17 @@ export const ALL_LIVE_DOMAIN_EVENT_TYPES = [
   "lot.detached_from_sale",
   "lot.ended",
   "lot.published",
+  "lot.reawarded",
+  "lot.reoffer_accepted",
+  "lot.reoffer_declined",
+  "lot.reoffer_expired",
+  "lot.reoffer_sent",
+  "lot.reoffer_started",
+  "lot.reoffer_withdrawn",
   "lot.returned_to_inventory",
+  "lot.seller_consent_given",
+  "lot.seller_consent_lapsed",
+  "lot.seller_consent_refused",
   "lot.soft_deleted",
   "lot.unpublished",
   "lot.voided",
@@ -498,12 +510,66 @@ const REGISTRY_OVERRIDES: Partial<Record<LiveDomainEventType, RegistryOverride>>
     consumers: ["lot_lifecycle_snapshot"],
     piiClassification: "none",
   },
+  "lot.reoffer_started": {
+    schema: LotEventSchemas["lot.reoffer_started"],
+    consumers: ["lot_lifecycle_snapshot"],
+    piiClassification: "none",
+  },
+  "lot.seller_consent_given": {
+    schema: LotEventSchemas["lot.seller_consent_given"],
+    consumers: ["lot_lifecycle_snapshot"],
+    piiClassification: "none",
+  },
+  "lot.seller_consent_refused": {
+    schema: LotEventSchemas["lot.seller_consent_refused"],
+    consumers: ["lot_lifecycle_snapshot"],
+    piiClassification: "none",
+  },
+  "lot.seller_consent_lapsed": {
+    schema: LotEventSchemas["lot.seller_consent_lapsed"],
+    consumers: ["lot_lifecycle_snapshot"],
+    piiClassification: "none",
+  },
+  "lot.reoffer_sent": {
+    schema: LotEventSchemas["lot.reoffer_sent"],
+    consumers: ["lot_lifecycle_snapshot"],
+    piiClassification: "none",
+  },
+  "lot.reoffer_accepted": {
+    schema: LotEventSchemas["lot.reoffer_accepted"],
+    consumers: ["lot_lifecycle_snapshot"],
+    piiClassification: "none",
+  },
+  "lot.reoffer_declined": {
+    schema: LotEventSchemas["lot.reoffer_declined"],
+    consumers: ["lot_lifecycle_snapshot"],
+    piiClassification: "none",
+  },
+  "lot.reoffer_expired": {
+    schema: LotEventSchemas["lot.reoffer_expired"],
+    consumers: ["lot_lifecycle_snapshot"],
+    piiClassification: "none",
+  },
+  "lot.reoffer_withdrawn": {
+    schema: LotEventSchemas["lot.reoffer_withdrawn"],
+    consumers: ["lot_lifecycle_snapshot"],
+    piiClassification: "none",
+  },
+  "lot.reawarded": {
+    schema: LotEventSchemas["lot.reawarded"],
+    consumers: ["lot_lifecycle_snapshot"],
+    piiClassification: "none",
+  },
   "lot.returned_to_inventory": {
     schema: LotEventSchemas["lot.returned_to_inventory"],
     consumers: ["artwork_offer_lock", "lot_lifecycle_snapshot", "zoho_artwork_listing"],
     piiClassification: "none",
   },
-  "lot.soft_deleted": { schema: LotEventSchemas["lot.soft_deleted"], piiClassification: "none" },
+  "lot.soft_deleted": {
+    schema: LotEventSchemas["lot.soft_deleted"],
+    consumers: ["zoho_artwork_listing"],
+    piiClassification: "none",
+  },
   "lot.unpublished": {
     schema: LotEventSchemas["lot.unpublished"],
     consumers: ["artwork_offer_lock", "lot_lifecycle_snapshot", "zoho_artwork_listing"],
@@ -1212,6 +1278,13 @@ const REGISTRY_OVERRIDES: Partial<Record<LiveDomainEventType, RegistryOverride>>
   },
   "sale.unpublished": { consumers: ["zoho_artwork_listing"] },
   "sale.ended": { consumers: ["zoho_artwork_listing"] },
+  "artwork_register.catalogue_changed": {
+    schema: artworkRegisterCatalogueChangedPayloadSchemaV1,
+    producers: ["packages/db"],
+    consumers: ["audit"],
+    idempotencyPolicy: "none",
+    piiClassification: "operational",
+  },
   "artwork_register.offer_changed": {
     schema: artworkRegisterOfferChangedPayloadSchemaV1,
     producers: ["packages/db"],

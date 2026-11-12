@@ -123,6 +123,13 @@ export const oauthAccessToken = pgTable(
     refreshFamilyId: text("refresh_family_id"),
     /** Unprefixed SHA-256/base64url fingerprint used by rotation-family queries. */
     refreshTokenHash: text("refresh_token_hash"),
+    /**
+     * The `sid` of the sign-in these tokens were issued under (the ID token's `sid`), carried to
+     * every refresh successor. Null on tokens issued before it was recorded. Not a foreign key: a
+     * sign-in that was taken over keeps its earlier ids in `session_lineage`, and ending it deletes
+     * the tokens issued under any of them.
+     */
+    sid: text("sid"),
     refreshConsumedAt: timestamp("refresh_consumed_at", {
       mode: "date",
       withTimezone: true,
@@ -139,6 +146,9 @@ export const oauthAccessToken = pgTable(
     index("oauth_access_token_client_id_idx").on(table.clientId),
     index("oauth_access_token_user_id_idx").on(table.userId),
     index("oauth_access_token_refresh_family_idx").on(table.refreshFamilyId),
+    index("oauth_access_token_user_sid_idx")
+      .on(table.userId, table.sid)
+      .where(sql`${table.sid} is not null`),
     uniqueIndex("oauth_access_token_refresh_hash_uidx")
       .on(table.refreshTokenHash)
       .where(sql`${table.refreshTokenHash} is not null`),

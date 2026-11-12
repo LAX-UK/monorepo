@@ -2,7 +2,7 @@
 
 import { consumePendingLotViewTransition } from "@/lib/lot-view-transition-pending";
 import { lotImageTransitionStyle } from "@/lib/view-transitions";
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 import { type CSSProperties, type ReactNode, useLayoutEffect, useState } from "react";
 
 type Props = {

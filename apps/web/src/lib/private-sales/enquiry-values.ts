@@ -1,6 +1,6 @@
 import { errorCopy } from "@/lib/forms/error-copy";
 import { visibleSellDepartmentGroups } from "@/lib/marketing/sell-departments";
-import { parsePoundsToPence } from "@auction/ui";
+import { parsePoundsToPence } from "@auction/ui/lib/money";
 import { z } from "zod";
 
 export type EnquiryPath = "sell" | "buy";

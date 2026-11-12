@@ -1,4 +1,4 @@
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 
 type SparseGridOptions = {
   /** Tailwind classes when item count is 0 (usually unused — callers return early). */

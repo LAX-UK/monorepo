@@ -23,7 +23,7 @@ import { catalogueOrder, soldOrder } from "@/lib/home-sections/lot-order";
 import { coverSaleIds } from "@/lib/marketing-cover/home-cover";
 import type { SaleListRow } from "@/lib/sale-list-row";
 import { liveTabSaleIds, resolveHomeState } from "@auction/domain";
-import { HANG_MAX_WORKS } from "@auction/marketing-ui";
+import { HANG_MAX_WORKS } from "@auction/marketing-ui/hang/hang-layout";
 import type { Lot } from "@auction/types";
 import { cache } from "react";
 

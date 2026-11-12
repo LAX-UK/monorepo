@@ -213,6 +213,7 @@ const ARTWORK_EVENT_TYPE = {
   link: "private_sale_deal.artwork_linked",
   record_reason: "private_sale_deal.artwork_linked",
   change: "private_sale_deal.artwork_changed",
+  replace_reason: "private_sale_deal.artwork_changed",
   remove: "private_sale_deal.artwork_removed",
 } as const;
 

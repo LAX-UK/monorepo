@@ -8,7 +8,9 @@ import {
   organisationRoleLabel,
 } from "@/lib/presenters/organisation-role/organisation-role-presentation";
 import type { LegalEntityMemberRole } from "@auction/types";
-import { Notice, PresetCards, StatusBadge } from "@auction/ui/lax";
+import { Notice } from "@auction/ui/lax/notice";
+import { PresetCards } from "@auction/ui/lax/preset-cards";
+import { StatusBadge } from "@auction/ui/lax/status-badge";
 import { useEffect, useRef, useState } from "react";
 import { MemberChangeDialog } from "./member-change-dialog";
 

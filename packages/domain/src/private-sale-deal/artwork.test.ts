@@ -70,6 +70,51 @@ describe("planDealArtworkMove", () => {
     ).toEqual({ ok: false, refusal: "unchanged" });
   });
 
+  describe("replacing a recorded reason", () => {
+    const own = { artworkRegisterId: null, artworkUnlinkedReason: "sellers_own_work" } as const;
+    const target = { kind: "not_in_register", reason: "in_zoho_not_linked" } as const;
+
+    it.each(["proposed", "offer"] as const)("is a change, allowed while %s", (stage) => {
+      expect(planDealArtworkMove({ stage, ...own }, target)).toEqual({
+        ok: true,
+        move: "replace_reason",
+      });
+    });
+
+    it.each(["agreed", "cleared", "invoiced", "paid", "released", "settled", "cancelled"] as const)(
+      "is refused once the deal is %s, so it can't undo or dodge the Agree check",
+      (stage) => {
+        expect(planDealArtworkMove({ stage, ...own }, target)).toEqual({
+          ok: false,
+          refusal: "stage_locked",
+        });
+        expect(
+          planDealArtworkMove(
+            { stage, artworkRegisterId: null, artworkUnlinkedReason: "in_zoho_not_linked" },
+            { kind: "not_in_register", reason: "sellers_own_work" },
+          ),
+        ).toEqual({ ok: false, refusal: "stage_locked" });
+      },
+    );
+
+    it("still links a register artwork until the deal settles, whatever reason was recorded", () => {
+      for (const stage of ["agreed", "paid", "released"] as const) {
+        expect(
+          planDealArtworkMove({ stage, ...own }, { kind: "register", artworkRegisterId: ART }),
+        ).toEqual({ ok: true, move: "link" });
+      }
+    });
+
+    it("says the same reason is already recorded", () => {
+      expect(
+        planDealArtworkMove(
+          { stage: "agreed", ...own },
+          { kind: "not_in_register", reason: "sellers_own_work" },
+        ),
+      ).toEqual({ ok: false, refusal: "unchanged" });
+    });
+  });
+
   it("changes a held artwork only before the deal is agreed", () => {
     const target = { kind: "register", artworkRegisterId: OTHER } as const;
     expect(planDealArtworkMove({ stage: "proposed", ...held }, target)).toEqual({

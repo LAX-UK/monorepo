@@ -4,7 +4,9 @@ import { loadAccountAlerts, setAlertTopic } from "@/lib/data/http/alerts.client"
 import type { HomeAlertThumbnail } from "@/lib/home-sections/types";
 import { bidSettingsHref } from "@/lib/navigation/settings-links";
 import { notify } from "@/lib/ui/notify";
-import { Button, ButtonLink, Skeleton } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
+import { ButtonLink } from "@auction/ui/lax/button-link";
+import { Skeleton } from "@auction/ui/lax/skeleton";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { HomeAlertsPanel } from "./home-alerts-panel";

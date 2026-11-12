@@ -2,8 +2,8 @@
 
 import { useConsent } from "@/lib/analytics/consent/context";
 import { FOCUS_RING } from "@/lib/marketing/chrome";
-import { cn } from "@auction/ui";
-import { Button } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
+import { cn } from "@auction/ui/lib/utils";
 
 type Props = {
   className?: string;

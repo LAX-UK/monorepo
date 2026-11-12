@@ -2,9 +2,9 @@
 
 import { useSearchCatalogPending } from "@/components/marketing/search-catalog-client";
 import { SORT_OPTIONS, type SearchSortValue } from "@/components/marketing/search-sort-select";
-import { cn } from "@auction/ui";
 import { Label } from "@auction/ui/components/label";
 import { RadioGroup, RadioGroupItem } from "@auction/ui/components/radio-group";
+import { cn } from "@auction/ui/lib/utils";
 import { usePathname, useSearchParams } from "next/navigation";
 
 function buildHref(pathname: string, searchParams: URLSearchParams, sort: SearchSortValue): string {

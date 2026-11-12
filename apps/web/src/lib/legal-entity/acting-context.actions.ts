@@ -88,9 +88,17 @@ export async function switchActingLegalEntity(legalEntityId: string | null): Pro
     if (res.status === 403) return { ok: false, error: "not_a_member" };
     if (!res.ok) return { ok: false, error: "unknown" };
 
+    const body = (await res.json().catch(() => null)) as {
+      data?: { kind?: string; membership?: { isImpersonation?: boolean } };
+    } | null;
+    // Staff who are viewing this account as the client are not members of it: answering the
+    // read-only view is not a switch, and writing a plain choice would orphan the view session.
+    if (body?.data?.membership?.isImpersonation === true) {
+      return { ok: false, error: "not_a_member" };
+    }
+
     // Kill switch: never allow switching into an org context while the org
     // module is disabled (the UI hides orgs, but guard the action too).
-    const body = (await res.json().catch(() => null)) as { data?: { kind?: string } } | null;
     if (body?.data?.kind === "organisation") {
       const orgModuleEnabled = await resolveOrgModuleEnabledFromRequest();
       if (!orgModuleEnabled) return { ok: false, error: "not_a_member" };
@@ -224,6 +232,7 @@ export async function startAdminImpersonation(
       maxAge: IMPERSONATION_COOKIE_MAX_AGE,
       sameSite: "lax",
       httpOnly: false,
+      secure: process.env.NODE_ENV === "production",
     });
     revalidatePath("/", "layout");
     return { ok: true };

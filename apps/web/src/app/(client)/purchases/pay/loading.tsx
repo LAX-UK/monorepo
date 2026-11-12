@@ -1,5 +1,6 @@
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
-import { Skeleton, pageTitleClass } from "@auction/ui/lax";
+import { Skeleton } from "@auction/ui/lax/skeleton";
+import { pageTitleClass } from "@auction/ui/lax/styles";
 
 /** The Pay page while its plan is read: the title at once, then the lots and the payment. */
 export default function PayLoading() {

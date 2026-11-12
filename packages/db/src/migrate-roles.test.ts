@@ -8,6 +8,8 @@ import { beforeAll, describe, expect, it } from "vitest";
 import {
   API_DENY_TABLES,
   API_PAYMENT_REFUND_TABLES,
+  API_PAYMENT_TRANSFER_REFERENCE_TABLES,
+  API_PRIVATE_SALE_ARTWORK_HISTORY_TABLES,
   API_READ_TABLES,
   AUTH_ADDRESS_TABLES,
   AUTH_EXPORT_AUDIT_TABLES,
@@ -52,6 +54,7 @@ import {
   WORKER_QR_CODE_SCAN_PURGE_DELETE_TABLES,
   WORKER_QR_CODE_SCAN_TABLES,
   WORKER_READ_TABLES,
+  WORKER_REOFFER_TABLES,
   WORKER_SHOP_ENQUIRY_READ_COLUMNS,
   WORKER_SHOP_ORDER_READ_COLUMNS,
   WORKER_SHOP_PRINT_GROUP_READ_COLUMNS,
@@ -693,6 +696,7 @@ describe("migrate-roles invariants", () => {
       "artwork_register",
       "zoho_artwork_sync_outcome",
       "zoho_listing_sync_run",
+      "zoho_sync_health",
     ]);
     expect([...SHOP_ARTWORK_REGISTER_CONFLICT_TABLES]).toEqual(["artwork_register_conflict"]);
     expect([...SHOP_ARTWORK_REGISTER_EVENT_TABLES]).toEqual(["artwork_register_event"]);
@@ -720,6 +724,7 @@ describe("migrate-roles invariants", () => {
       "zoho_artwork_sync_outcome",
       "zoho_artwork_sync_state",
       "zoho_listing_sync_run",
+      "zoho_sync_health",
     ]);
     for (const table of WORKER_ZOHO_ARTWORK_SYNC_TABLES) {
       expect([...WORKER_DENY_TABLES]).not.toContain(table);
@@ -807,6 +812,15 @@ describe("migrate-roles invariants", () => {
     expect([...WORKER_INVOICE_RAISE_FULFILMENT_TABLES]).toEqual(["lot_fulfilment"]);
   });
 
+  it("lets the worker update re-offers and seller answers but never create or delete one", () => {
+    expect([...WORKER_REOFFER_TABLES]).toEqual(["lot_reoffer", "seller_consent"]);
+    for (const table of WORKER_REOFFER_TABLES) {
+      expect([...WORKER_DENY_TABLES]).not.toContain(table);
+      expect([...WORKER_FULL_TABLES]).not.toContain(table);
+      expect([...API_DENY_TABLES]).not.toContain(table);
+    }
+  });
+
   it("keeps buyer refunds append-only for the Bid API and the reconcile job, and away from Shop", () => {
     expect([...API_PAYMENT_REFUND_TABLES]).toEqual(["payment_refund"]);
     expect([...WORKER_PAYMENT_REFUND_TABLES]).toEqual(["payment_refund"]);
@@ -816,6 +830,24 @@ describe("migrate-roles invariants", () => {
     expect([...SHOP_COMMERCE_TABLES, ...SHOP_COMMERCE_APPEND_ONLY_TABLES]).not.toContain(
       "payment_refund",
     );
+  });
+
+  it("keeps a deal's artwork history append-only for the Bid API: insert and select, nothing else", async () => {
+    expect([...API_PRIVATE_SALE_ARTWORK_HISTORY_TABLES]).toEqual([
+      "private_sale_deal_artwork_history",
+    ]);
+    expect([...API_DENY_TABLES]).not.toContain("private_sale_deal_artwork_history");
+    const source = await readFile(join(__dirname, "migrate-roles.ts"), "utf8");
+    expect(source).toMatch(
+      /API_PRIVATE_SALE_ARTWORK_HISTORY_TABLES as readonly string\[\]\)\.includes\(tableName\)\) \{\s+await grantIfExists\(client, "api_app", tableName, "INSERT, SELECT"\);/,
+    );
+  });
+
+  it("keeps the bank-transfer references append-only for the Bid API and away from every other role", () => {
+    expect([...API_PAYMENT_TRANSFER_REFERENCE_TABLES]).toEqual(["payment_transfer_reference"]);
+    expect([...API_DENY_TABLES]).not.toContain("payment_transfer_reference");
+    expect([...WORKER_FULL_TABLES]).not.toContain("payment_transfer_reference");
+    expect([...WORKER_READ_TABLES]).not.toContain("payment_transfer_reference");
   });
 
   it("WORKER_PAYMENT_MAINTENANCE_TABLES includes payment (expire-stale-payments)", () => {

@@ -2,7 +2,7 @@
 
 import type { LotBidDialogProps } from "@/components/lot-page/bid/bid-dialog";
 import { runWhenIdle } from "@/lib/ui/run-when-idle";
-import { Dialog } from "@auction/ui/lax";
+import { Dialog } from "@auction/ui/lax/dialog";
 import dynamic from "next/dynamic";
 import { useEffect } from "react";
 

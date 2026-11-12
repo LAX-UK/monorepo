@@ -271,3 +271,66 @@ describe("DurableSecurityEffects", () => {
     expect(s.outbox.rows).toHaveLength(0);
   });
 });
+
+describe("DurableSecurityEffects.reserve", () => {
+  const jobs: SecurityEffectJob[] = [
+    { kind: "revoke_identity_sessions", userId: "ann", sessionIds: ["s1", "s0"] },
+    { kind: "publish_session_revoked", userId: "ann", sessionId: "s1" },
+    { kind: "publish_session_revoked", userId: "ann", sessionId: "s0" },
+  ];
+
+  it("writes every job before anything runs, then runs them and removes the rows", async () => {
+    const { effects, outbox, logout, events } = setup();
+    const reserved = await effects.reserve("/takeover", jobs);
+    expect(outbox.rows).toHaveLength(3);
+    expect(logout.revokeIdentitySessions).not.toHaveBeenCalled();
+
+    await reserved.run();
+
+    expect(logout.revokeIdentitySessions).toHaveBeenCalledWith(["s1", "s0"]);
+    expect(events.publish).toHaveBeenCalledWith({
+      type: "user.session_revoked",
+      userId: "ann",
+      sessionId: "s1",
+    });
+    expect(events.publish).toHaveBeenCalledWith({
+      type: "user.session_revoked",
+      userId: "ann",
+      sessionId: "s0",
+    });
+    expect(outbox.rows).toHaveLength(0);
+  });
+
+  it("is not lost when the process stops before it runs: the drain does it after the grace", async () => {
+    const first = setup();
+    await first.effects.reserve("/takeover", jobs);
+
+    const restarted = setup(first.outbox);
+    await expect(restarted.build().drain()).resolves.toBe(0);
+    restarted.advance(2 * 60_000);
+    await expect(restarted.build().drain()).resolves.toBe(3);
+
+    expect(restarted.logout.revokeIdentitySessions).toHaveBeenCalledWith(["s1", "s0"]);
+    expect(first.outbox.rows).toHaveLength(0);
+  });
+
+  it("keeps a job that fails for the drain to retry, and carries on with the rest", async () => {
+    const { effects, outbox, logout, events, advance, build } = setup();
+    logout.revokeIdentitySessions.mockRejectedValueOnce(new Error("redis down"));
+    const reserved = await effects.reserve("/takeover", jobs);
+
+    await reserved.run();
+
+    expect(events.publish).toHaveBeenCalledTimes(2);
+    expect(outbox.rows).toHaveLength(1);
+    advance(DURABLE_RETRY_DELAYS_MS[0]);
+    await build().drain();
+    expect(outbox.rows).toHaveLength(0);
+  });
+
+  it("throws, so the caller changes nothing, when the rows cannot be written", async () => {
+    const { effects, outbox } = setup();
+    outbox.enqueue = vi.fn().mockRejectedValue(new Error("database down"));
+    await expect(effects.reserve("/takeover", jobs)).rejects.toThrow("database down");
+  });
+});
