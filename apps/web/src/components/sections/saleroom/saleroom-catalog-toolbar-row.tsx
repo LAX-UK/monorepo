@@ -1,15 +1,13 @@
 "use client";
 
-import { HydrationDeferred } from "@/components/layout/hydration-deferred";
 import { CatalogViewSwitcher } from "@/components/marketing/catalog-view-switcher";
 import { MarketingFilterSidebar } from "@/components/marketing/marketing-filter-sidebar";
-import { MarketingFilterTrigger } from "@/components/marketing/marketing-filter-trigger";
 import { MarketingListToolbar } from "@/components/marketing/marketing-list-toolbar";
 import { SaleroomCatalogActiveFilters } from "@/components/sections/saleroom/saleroom-catalog-active-filters";
-import { SaleroomCatalogFilterSheet } from "@/components/sections/saleroom/saleroom-catalog-filter-sheet";
+import { LazySaleroomCatalogFilterSheet } from "@/components/sections/saleroom/saleroom-catalog-filter-sheet.lazy";
 import { SaleroomCatalogSearch } from "@/components/sections/saleroom/saleroom-catalog-search";
+import { LazySaleroomCatalogSort } from "@/components/sections/saleroom/saleroom-catalog-sort.lazy";
 import { SaleroomCatalogToolbar } from "@/components/sections/saleroom/saleroom-catalog-toolbar";
-import { FilterSelect } from "@/components/ui/filter-select";
 import {
   MARKETING_LIST_TOOLBAR_BLEED,
   SALE_CATALOG_TOOLBAR_STICKY_TOP,
@@ -58,13 +56,11 @@ export function SaleroomCatalogToolbarRow({
           stickyTopClassName={SALE_CATALOG_TOOLBAR_STICKY_TOP}
           countLabel={countLabel}
           mobileFilterTrigger={
-            <HydrationDeferred fallback={<MarketingFilterTrigger activeCount={0} />}>
-              <SaleroomCatalogFilterSheet
-                basePath={basePath}
-                resultCountLabel={resultCountLabel}
-                statusCounts={statusCounts}
-              />
-            </HydrationDeferred>
+            <LazySaleroomCatalogFilterSheet
+              basePath={basePath}
+              resultCountLabel={resultCountLabel}
+              statusCounts={statusCounts}
+            />
           }
           filters={
             <MarketingFilterSidebar
@@ -81,25 +77,7 @@ export function SaleroomCatalogToolbarRow({
                   <SaleroomCatalogSearch />
                 </div>
               ) : null}
-              <HydrationDeferred
-                fallback={
-                  <span
-                    className="inline-flex h-10 min-h-10 items-center rounded-md border border-outline-variant/40 bg-surface-container-lowest px-3 font-label text-xs font-medium text-on-surface-variant"
-                    aria-label={`Sort: ${sortLabel}`}
-                  >
-                    {sortLabel}
-                  </span>
-                }
-              >
-                <FilterSelect
-                  param="sort"
-                  defaultValue="lot"
-                  options={[...SALEROOM_CATALOG_SORT_OPTIONS]}
-                  clearParams={["page"]}
-                  ariaLabel="Sort lots"
-                  className="h-10 min-h-10 w-auto min-w-[9.5rem] max-w-[12rem] cursor-pointer border-outline-variant/40 bg-surface-container-lowest px-3 font-label text-xs font-medium shadow-none focus:ring-primary"
-                />
-              </HydrationDeferred>
+              <LazySaleroomCatalogSort sortLabel={sortLabel} />
             </div>
           }
           trailing={

@@ -1,12 +1,12 @@
 import {
-  SaleTelephoneBookingPanel,
-  type SaleTelephoneBookingPanelProps,
-} from "@/components/marketing/sale-telephone-booking-panel";
+  SaleTelephoneBookingCard,
+  type SaleTelephoneBookingCardProps,
+} from "@/components/marketing/sale-telephone-booking-card";
 import { MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
 import { cn } from "@auction/ui/lib/utils";
 
-/** Semantic section landmark for telephone bidding — panel owns card chrome and heading. */
-export function SaleTelephoneBiddingSection(props: SaleTelephoneBookingPanelProps) {
+/** Semantic section landmark for telephone bidding — card owns its chrome and heading. */
+export function SaleTelephoneBiddingSection(props: SaleTelephoneBookingCardProps) {
   return (
     <section
       id="telephone"
@@ -16,7 +16,7 @@ export function SaleTelephoneBiddingSection(props: SaleTelephoneBookingPanelProp
         "scroll-mt-[calc(var(--header-height)+3.5rem)] pb-0 pt-16",
       )}
     >
-      <SaleTelephoneBookingPanel {...props} />
+      <SaleTelephoneBookingCard {...props} />
     </section>
   );
 }
