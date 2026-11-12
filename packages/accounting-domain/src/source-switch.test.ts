@@ -4,6 +4,8 @@ import {
   type Mode,
   type ProductSwitch,
   type SwitchConfig,
+  documentTarget,
+  mayClaim,
   parseSwitchConfig,
   sendsForReal,
   validateProductSwitch,
@@ -92,5 +94,63 @@ describe("source switch policy", () => {
   });
   it("only live sends for real", () => {
     for (const m of MODES) expect(sendsForReal(sw(m, "off"), "xero")).toBe(m === "live");
+  });
+});
+
+describe("document target", () => {
+  it("aims a new document at the live source", () => {
+    expect(documentTarget(sw("live", "test_org"))).toEqual({ provider: "xero", mode: "live" });
+    expect(documentTarget(sw("dry_run", "live"))).toEqual({ provider: "books", mode: "live" });
+  });
+  it("aims at the only provider in rehearsal when none is live", () => {
+    expect(documentTarget(sw("off", "test_org"))).toEqual({ provider: "books", mode: "test_org" });
+    expect(documentTarget(sw("dry_run", "off"))).toEqual({ provider: "xero", mode: "dry_run" });
+  });
+  it("has no target when both are off or both are in rehearsal", () => {
+    expect(documentTarget(sw("off", "off"))).toBeNull();
+    expect(documentTarget(sw("dry_run", "test_org"))).toBeNull();
+    expect(documentTarget(sw("test_org", "test_org"))).toBeNull();
+  });
+  it("is never a rehearsal while a provider is live", () => {
+    for (const xero of MODES) {
+      for (const books of MODES) {
+        if (xero === "live" && books === "live") continue;
+        const target = documentTarget(sw(xero, books));
+        if (xero === "live" || books === "live") expect(target?.mode).toBe("live");
+      }
+    }
+  });
+  it("is claimed only by the provider and mode it was created for", () => {
+    for (const xero of MODES) {
+      for (const books of MODES) {
+        if (xero === "live" && books === "live") continue;
+        const now = sw(xero, books);
+        for (const created of [
+          sw("live", "test_org"),
+          sw("test_org", "live"),
+          sw("off", "dry_run"),
+        ]) {
+          const target = documentTarget(created);
+          for (const provider of ["xero", "books"] as const) {
+            const expected =
+              target !== null && target.provider === provider && now[provider] === target.mode;
+            expect(mayClaim(target, now, provider)).toBe(expected);
+          }
+        }
+      }
+    }
+  });
+  it("lets a test_org or dry_run claimer take nothing that was aimed live", () => {
+    const live = documentTarget(sw("live", "test_org"));
+    expect(mayClaim(live, sw("live", "test_org"), "books")).toBe(false);
+    expect(mayClaim(live, sw("live", "dry_run"), "books")).toBe(false);
+    expect(mayClaim(live, sw("test_org", "test_org"), "xero")).toBe(false);
+    expect(mayClaim(live, sw("live", "test_org"), "xero")).toBe(true);
+  });
+  it("does not re-aim after a switch flip", () => {
+    const target = documentTarget(sw("live", "off"));
+    expect(mayClaim(target, sw("off", "live"), "books")).toBe(false);
+    expect(mayClaim(target, sw("off", "live"), "xero")).toBe(false);
+    expect(mayClaim(null, sw("live", "live"), "xero")).toBe(false);
   });
 });
