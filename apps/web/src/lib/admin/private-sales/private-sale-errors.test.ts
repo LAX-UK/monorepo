@@ -20,7 +20,7 @@ describe("dealErrorMessage for an artwork the register will not hold", () => {
 
   it("asks for a retry when the register was busy", () => {
     expect(dealErrorMessage("artwork_register_busy", 503)).toBe(
-      "The artwork's record is busy. Try again.",
+      "The artwork register couldn't record the hold, so nothing was converted. Try again.",
     );
   });
 });
