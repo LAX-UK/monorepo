@@ -101,6 +101,8 @@ export type AuthEnv = {
    * leave unset in tests.
    */
   enableNewDeviceLoginEmail?: boolean | undefined;
+  /** See `AuthHookDeps.sessionExpiry`. */
+  sessionExpiry?: AuthHookDeps["sessionExpiry"];
   /** When true, `databaseHooks.user.create.before` rejects all new auth users. */
   blockNewUserRegistration?: boolean | undefined;
   breachedPasswordChecker?: import("./ports/breached-password-checker.js").BreachedPasswordChecker;
@@ -222,6 +224,7 @@ export function createAuth(env: AuthEnv): Auth {
     onUserUpdated: env.onUserUpdated,
     enableNewDeviceLoginEmail: env.enableNewDeviceLoginEmail,
     blockNewUserRegistration: env.blockNewUserRegistration,
+    sessionExpiry: env.sessionExpiry,
     revokeAllSessions: env.revokeAllSessions,
     onSocialPolicyReadFailed: env.onSocialPolicyReadFailed,
   };

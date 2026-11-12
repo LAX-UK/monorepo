@@ -10,7 +10,9 @@ export class DrizzleSessionActivityStore implements SessionActivityStore {
   async touch(sessionId: string, now: Date, throttleMs: number): Promise<boolean> {
     const written = await this.db
       .update(session)
-      .set({ lastSeenAt: now })
+      // Never later than the database's own clock, so an instance whose clock runs ahead cannot
+      // push idleness into the future or suppress other instances' writes.
+      .set({ lastSeenAt: sql`LEAST(${now.toISOString()}::timestamptz, clock_timestamp())` })
       .where(
         and(
           eq(session.id, sessionId),

@@ -165,6 +165,7 @@ const browserSignIns = createBrowserSignIns({
   logout: services.oidc.logout,
   durable: durableSecurityEffects,
   onActivityFailed: (error) => log.warn({ err: error }, "session_activity_failed"),
+  onCapFailed: (error, userId) => log.error({ err: error, userId }, "session_cap_failed"),
 });
 const emailChange = new EmailChangeService({
   operations: identityOperations,
@@ -273,6 +274,7 @@ const schedules = await createAuthSchedules({
   log,
   deletionPurge,
   sessionExpiry: browserSignIns.expirySweep,
+  sessionCap: browserSignIns.cap,
   identityOperations,
   logoutDelivery: services.oidc.logoutDelivery,
   securityEffects: durableSecurityEffects,

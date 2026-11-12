@@ -10,19 +10,24 @@ import {
   sessionLineage,
   user,
 } from "@auction/identity-db/schema";
-import { eq, inArray, sql } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { BackchannelLogoutRevocationCoordinator } from "../services/backchannel-logout-revocation.service.js";
 import { SignInLivenessGuard } from "../services/refresh-sign-in-guard.js";
 import { SessionActivity } from "../services/session-activity.service.js";
 import { SessionCap } from "../services/session-cap.service.js";
 import { SessionExpirySweep } from "../services/session-expiry-sweep.service.js";
-import { SESSION_LIFETIME_POLICY, sessionEndReason } from "../services/session-lifetime-policy.js";
+import {
+  SESSION_LIFETIME_POLICY,
+  clampExpiry,
+  sessionEndReason,
+} from "../services/session-lifetime-policy.js";
 import { SessionTakeoverService } from "../services/session-takeover.service.js";
 import { hasStaffMarker } from "../services/staff-marker.js";
 import { DrizzleRpLogoutRepository } from "./drizzle-backchannel-logout.adapters.js";
 import { DrizzleSessionActivityStore } from "./drizzle-session-activity.store.js";
 import { DrizzleSessionCapStore } from "./drizzle-session-cap.store.js";
+import { DrizzleSessionExpiryClamp } from "./drizzle-session-expiry-clamp.js";
 import { DrizzleSessionExpiryStore } from "./drizzle-session-expiry.store.js";
 import { DrizzleSessionTakeoverStore } from "./drizzle-session-takeover.store.js";
 import { DrizzleOidcRpSessionRepository } from "./oidc-session-adapters.js";
@@ -53,16 +58,30 @@ describe.skipIf(!DATABASE_URL)("sign-in lifetimes and the browser cap, against P
     createdAt?: Date;
   };
 
+  /**
+   * A record as the issuer leaves it: unless a test says otherwise, `expires_at` is a day ahead but
+   * held to the person's idle and absolute limits, as the clamp does for every record it writes.
+   */
   async function record(id: string, userId: string, times: Times = {}) {
+    const createdAt = times.createdAt ?? ago(HOUR);
+    const updatedAt = times.updatedAt ?? ago(HOUR);
+    const lastSeenAt = times.lastSeenAt === undefined ? ago(HOUR) : times.lastSeenAt;
+    const signedInAt = times.signedInAt === undefined ? ago(HOUR) : times.signedInAt;
     await database.insert(session).values({
       id,
       token: `tok-${id}`,
       userId,
-      expiresAt: times.expiresAt ?? new Date(now.getTime() + DAY),
-      createdAt: times.createdAt ?? ago(HOUR),
-      updatedAt: times.updatedAt ?? ago(HOUR),
-      lastSeenAt: times.lastSeenAt === undefined ? ago(HOUR) : times.lastSeenAt,
-      signedInAt: times.signedInAt === undefined ? ago(HOUR) : times.signedInAt,
+      expiresAt:
+        times.expiresAt ??
+        clampExpiry(
+          new Date(now.getTime() + DAY),
+          { lastActiveAt: lastSeenAt ?? updatedAt, signedInAt: signedInAt ?? createdAt },
+          userId === STAFF,
+        ),
+      createdAt,
+      updatedAt,
+      lastSeenAt,
+      signedInAt,
     });
   }
 
@@ -163,7 +182,7 @@ describe.skipIf(!DATABASE_URL)("sign-in lifetimes and the browser cap, against P
     return {
       reserve,
       sweep: new SessionExpirySweep(
-        new DrizzleSessionExpiryStore(database),
+        new DrizzleSessionExpiryStore(database, PEOPLE),
         { reserve },
         () => now,
       ),
@@ -240,7 +259,10 @@ describe.skipIf(!DATABASE_URL)("sign-in lifetimes and the browser cap, against P
       expected.set("expired", true);
 
       const ended = (
-        await database.select({ id: session.id }).from(session).where(sessionHasEnded(now))
+        await database
+          .select({ id: session.id })
+          .from(session)
+          .where(and(inArray(session.userId, PEOPLE), sessionHasEnded(now)))
       ).map((row) => row.id);
 
       expect(new Set(ended)).toEqual(
@@ -263,7 +285,10 @@ describe.skipIf(!DATABASE_URL)("sign-in lifetimes and the browser cap, against P
       }
       // Idle 13 hours: over for staff alone.
       const ended = (
-        await database.select({ id: session.id }).from(session).where(sessionHasEnded(now))
+        await database
+          .select({ id: session.id })
+          .from(session)
+          .where(and(inArray(session.userId, PEOPLE), sessionHasEnded(now)))
       ).map((row) => row.id);
       expect(ended).toEqual([`parity-${STAFF}`]);
     });
@@ -273,19 +298,31 @@ describe.skipIf(!DATABASE_URL)("sign-in lifetimes and the browser cap, against P
     const store = () => new DrizzleSessionActivityStore(database);
 
     it("writes once per 15 minutes per record", async () => {
-      await record("rec", ANN, { lastSeenAt: ago(HOUR) });
+      await record("rec", ANN, { lastSeenAt: ago(3 * HOUR) });
       const throttle = SESSION_LIFETIME_POLICY.activityThrottleMs;
+      const first = ago(2 * HOUR);
 
-      await expect(store().touch("rec", now, throttle)).resolves.toBe(true);
-      expect((await lastSeenOf("rec"))?.getTime()).toBe(now.getTime());
+      await expect(store().touch("rec", first, throttle)).resolves.toBe(true);
+      expect((await lastSeenOf("rec"))?.getTime()).toBe(first.getTime());
 
-      const soon = new Date(now.getTime() + throttle - 1);
+      const soon = new Date(first.getTime() + throttle - 1);
       await expect(store().touch("rec", soon, throttle)).resolves.toBe(false);
-      expect((await lastSeenOf("rec"))?.getTime()).toBe(now.getTime());
+      expect((await lastSeenOf("rec"))?.getTime()).toBe(first.getTime());
 
-      const later = new Date(now.getTime() + throttle);
+      const later = new Date(first.getTime() + throttle);
       await expect(store().touch("rec", later, throttle)).resolves.toBe(true);
       expect((await lastSeenOf("rec"))?.getTime()).toBe(later.getTime());
+    });
+
+    it("never writes a time later than the database's own clock, so a fast instance clock cannot stretch idleness", async () => {
+      await record("rec", ANN, { lastSeenAt: ago(HOUR) });
+      const dbBefore = Date.now();
+      await expect(
+        store().touch("rec", new Date(Date.now() + 30 * MINUTE), 15 * MINUTE),
+      ).resolves.toBe(true);
+      const stored = (await lastSeenOf("rec"))?.getTime() ?? Number.POSITIVE_INFINITY;
+      expect(stored).toBeLessThanOrEqual(Date.now() + 1_000);
+      expect(stored).toBeGreaterThanOrEqual(dbBefore - 1_000);
     });
 
     it("writes for a record that has never been stamped", async () => {
@@ -325,7 +362,7 @@ describe.skipIf(!DATABASE_URL)("sign-in lifetimes and the browser cap, against P
       const ended = await database
         .select({ id: session.id })
         .from(session)
-        .where(sessionHasEnded(later));
+        .where(and(inArray(session.userId, PEOPLE), sessionHasEnded(later)));
       expect(ended).toEqual([]);
     });
   });
@@ -416,7 +453,7 @@ describe.skipIf(!DATABASE_URL)("sign-in lifetimes and the browser cap, against P
       for (const id of ["r1", "r2", "r3"]) {
         await record(id, ANN, { lastSeenAt: ago(8 * DAY), updatedAt: ago(8 * DAY) });
       }
-      const store = new DrizzleSessionExpiryStore(database);
+      const store = new DrizzleSessionExpiryStore(database, PEOPLE);
       const first: string[] = [];
       const second: string[] = [];
 
@@ -436,7 +473,7 @@ describe.skipIf(!DATABASE_URL)("sign-in lifetimes and the browser cap, against P
 
     it("deletes nothing when the durable write fails, and a later run takes the record", async () => {
       await record("idle", ANN, { lastSeenAt: ago(8 * DAY), updatedAt: ago(8 * DAY) });
-      const store = new DrizzleSessionExpiryStore(database);
+      const store = new DrizzleSessionExpiryStore(database, PEOPLE);
       await expect(
         store.endExpired(now, 10, async () => {
           throw new Error("outbox down");
@@ -536,7 +573,7 @@ describe.skipIf(!DATABASE_URL)("sign-in lifetimes and the browser cap, against P
       const ended = await database
         .select({ id: session.id })
         .from(session)
-        .where(sessionHasEnded(tomorrow));
+        .where(and(inArray(session.userId, PEOPLE), sessionHasEnded(tomorrow)));
       expect(ended).toEqual([{ id: "gen-3" }]);
     });
 
@@ -560,8 +597,198 @@ describe.skipIf(!DATABASE_URL)("sign-in lifetimes and the browser cap, against P
       const ended = await database
         .select({ id: session.id })
         .from(session)
-        .where(sessionHasEnded(inTwoHours));
+        .where(and(inArray(session.userId, PEOPLE), sessionHasEnded(inTwoHours)));
       expect(ended).toEqual([{ id: "staff-2" }]);
+    });
+  });
+
+  describe("signing in again over a record that is already over", () => {
+    const takeover = () =>
+      new SessionTakeoverService(
+        new DrizzleSessionTakeoverStore(database),
+        { reserve: async () => ({ run: async () => undefined }) },
+        { enforce: async () => 0 },
+        () => now,
+      );
+
+    it("gives a live record with a fresh sign-in time, and leaves the over record and its sids to the sweep", async () => {
+      // Over its 30 days, but Better Auth renewed expires_at, so it is not yet swept.
+      const old = ago(31 * DAY);
+      await record("over-1", ANN, { signedInAt: old, createdAt: old, lastSeenAt: ago(HOUR) });
+      await rpSession(ANN, "product-sid", "over-1");
+      for (const [newId, previousId] of [
+        ["over-new1", "over-1"],
+        ["over-new2", "over-new1"],
+        ["over-new3", "over-new2"],
+      ] as const) {
+        await record(newId, ANN, { signedInAt: null, lastSeenAt: null, createdAt: now });
+        await takeover().takeOver({
+          newSessionId: newId,
+          previousSessionId: previousId,
+          deviceHash: null,
+          country: null,
+        });
+      }
+
+      const rows = await database
+        .select({ id: session.id, signedInAt: session.signedInAt })
+        .from(session)
+        .where(eq(session.userId, ANN));
+      const fresh = rows.filter((row) => row.id.startsWith("over-new"));
+      expect(fresh.map((row) => [row.id, row.signedInAt?.getTime()])).toEqual([
+        ["over-new3", now.getTime()],
+      ]);
+      const live = await database
+        .select({ id: session.id })
+        .from(session)
+        .where(sql`${session.userId} = ${ANN} AND NOT ${sessionHasEnded(now)}`);
+      expect(live.map((row) => row.id).sort()).toEqual(["over-new3"]);
+      // The product session stays on the over record: it is not re-bound to a live one.
+      const [rp] = await database
+        .select({ identitySessionId: oidcRpSession.identitySessionId })
+        .from(oidcRpSession)
+        .where(eq(oidcRpSession.sid, "product-sid"));
+      expect(rp?.identitySessionId).toBe("over-1");
+      expect(
+        await database
+          .select()
+          .from(sessionLineage)
+          .where(eq(sessionLineage.previousSid, "over-1")),
+      ).toEqual([]);
+      // The sweep still ends the over record, with its product sid.
+      const { sweep: sweeper, reserve } = sweep();
+      await sweeper.run();
+      expect(await idsOf(ANN)).not.toContain("over-1");
+      expect(reserve).toHaveBeenCalledWith(
+        expect.objectContaining({ sessionIds: expect.arrayContaining(["over-1"]) }),
+      );
+    });
+
+    it("still ends another person's record named by the session cookie, even when it is over", async () => {
+      const old = ago(31 * DAY);
+      await record("other-over", ORG, { signedInAt: old, createdAt: old });
+      await record("ann-new", ANN, { signedInAt: null, lastSeenAt: null, createdAt: now });
+      await takeover().takeOver({
+        newSessionId: "ann-new",
+        previousSessionId: "other-over",
+        deviceHash: null,
+        country: null,
+      });
+      expect(await idsOf(ORG)).toEqual([]);
+      const [fresh] = await database
+        .select({ signedInAt: session.signedInAt })
+        .from(session)
+        .where(eq(session.id, "ann-new"));
+      expect(fresh?.signedInAt?.getTime()).toBe(now.getTime());
+    });
+  });
+
+  describe("the issuer holds expires_at to the person's limits", () => {
+    const clamp = () => new DrizzleSessionExpiryClamp(database, () => now);
+    const week = new Date(now.getTime() + 7 * DAY);
+    const expiresOf = async (id: string) =>
+      (
+        await database
+          .select({ expiresAt: session.expiresAt })
+          .from(session)
+          .where(eq(session.id, id))
+      )[0]?.expiresAt;
+
+    it("starts a new client's clocks now and a new staff member's too", async () => {
+      expect(
+        (await clamp().clamp({ userId: ANN, sessionId: null, expiresAt: week })).getTime(),
+      ).toBe(week.getTime());
+      expect(
+        (await clamp().clamp({ userId: STAFF, sessionId: null, expiresAt: week })).getTime(),
+      ).toBe(now.getTime() + 12 * HOUR);
+      expect(
+        (await clamp().clamp({ userId: ORG, sessionId: null, expiresAt: week })).getTime(),
+      ).toBe(week.getTime());
+    });
+
+    it("refuses to renew a client past 30 days from first sign-in, or a staff record past 24 hours or 12 idle", async () => {
+      await record("ann-old", ANN, { signedInAt: ago(29 * DAY), createdAt: ago(29 * DAY) });
+      await record("staff-day", STAFF, { signedInAt: ago(23 * HOUR), lastSeenAt: ago(MINUTE) });
+      await record("staff-idle", STAFF, { lastSeenAt: ago(11 * HOUR), updatedAt: ago(11 * HOUR) });
+      expect(
+        (await clamp().clamp({ userId: ANN, sessionId: "ann-old", expiresAt: week })).getTime(),
+      ).toBe(ago(29 * DAY).getTime() + 30 * DAY);
+      expect(
+        (await clamp().clamp({ userId: STAFF, sessionId: "staff-day", expiresAt: week })).getTime(),
+      ).toBe(ago(23 * HOUR).getTime() + 24 * HOUR);
+      expect(
+        (
+          await clamp().clamp({ userId: STAFF, sessionId: "staff-idle", expiresAt: week })
+        ).getTime(),
+      ).toBe(ago(11 * HOUR).getTime() + 12 * HOUR);
+    });
+
+    it("renews a record already past a limit to a time that has passed, so Better Auth refuses it", async () => {
+      await record("ann-over", ANN, { signedInAt: ago(31 * DAY), createdAt: ago(31 * DAY) });
+      await record("staff-over", STAFF, { signedInAt: ago(25 * HOUR), lastSeenAt: ago(MINUTE) });
+      for (const [userId, sessionId] of [
+        [ANN, "ann-over"],
+        [STAFF, "staff-over"],
+      ] as const) {
+        const renewed = await clamp().clamp({ userId, sessionId, expiresAt: week });
+        expect(renewed.getTime()).toBeLessThanOrEqual(now.getTime());
+      }
+    });
+
+    it("never extends what Better Auth proposed", async () => {
+      await record("ann-new", ANN, {});
+      const soon = new Date(now.getTime() + HOUR);
+      expect(
+        (await clamp().clamp({ userId: ANN, sessionId: "ann-new", expiresAt: soon })).getTime(),
+      ).toBe(soon.getTime());
+    });
+
+    it("clamps the record a takeover stamps with the carried first sign-in time", async () => {
+      await record("t-old", ANN, {
+        signedInAt: ago(29 * DAY + 23 * HOUR),
+        createdAt: ago(30 * DAY),
+      });
+      await record("t-new", ANN, {
+        signedInAt: null,
+        lastSeenAt: null,
+        createdAt: now,
+        expiresAt: week,
+      });
+      await new SessionTakeoverService(
+        new DrizzleSessionTakeoverStore(database),
+        { reserve: async () => ({ run: async () => undefined }) },
+        { enforce: async () => 0 },
+        () => now,
+      ).takeOver({
+        newSessionId: "t-new",
+        previousSessionId: "t-old",
+        deviceHash: null,
+        country: null,
+      });
+      // One hour left of the 30 days, not seven days.
+      expect((await expiresOf("t-new"))?.getTime()).toBe(now.getTime() + HOUR);
+    });
+
+    it("lets a staff takeover keep at most what is left of its 24 hours", async () => {
+      await record("s-old", STAFF, { signedInAt: ago(20 * HOUR), createdAt: ago(20 * HOUR) });
+      await record("s-new", STAFF, {
+        signedInAt: null,
+        lastSeenAt: null,
+        createdAt: now,
+        expiresAt: week,
+      });
+      await new SessionTakeoverService(
+        new DrizzleSessionTakeoverStore(database),
+        { reserve: async () => ({ run: async () => undefined }) },
+        { enforce: async () => 0 },
+        () => now,
+      ).takeOver({
+        newSessionId: "s-new",
+        previousSessionId: "s-old",
+        deviceHash: null,
+        country: null,
+      });
+      expect((await expiresOf("s-new"))?.getTime()).toBe(now.getTime() + 4 * HOUR);
     });
   });
 
@@ -675,6 +902,78 @@ describe.skipIf(!DATABASE_URL)("sign-in lifetimes and the browser cap, against P
       expect(await idsOf(ANN)).toHaveLength(24);
     });
 
+    it("finds a person over their cap and ends the excess from the sweep's safety net, with the new sign-in not mattering", async () => {
+      await fill(ANN, 22);
+      await fill(STAFF, 5);
+      await fill(ORG, 20);
+      const { cap: capped } = cap();
+      const store = new DrizzleSessionCapStore(database);
+      const over = (await store.findOverCap(1000)).filter((id) => PEOPLE.includes(id));
+      expect(over).toEqual([ANN]);
+      // enforceOverCap looks at everyone; only this test's people are asserted on.
+      await capped.enforceOverCap();
+      expect(await idsOf(ANN)).toHaveLength(20);
+      expect(await idsOf(ANN)).not.toContain(`${ANN}-s00`);
+      expect(await idsOf(STAFF)).toHaveLength(5);
+    });
+
+    it("reports a person whose cap cannot be enforced and carries on with the rest", async () => {
+      await fill(ANN, 21);
+      await fill(STAFF, 6);
+      const onFailed = vi.fn();
+      let calls = 0;
+      const store = new DrizzleSessionCapStore(database);
+      const flaky = new SessionCap(
+        {
+          findOverCap: async () => [ANN, STAFF],
+          endChosen: (userId, choose, beforeDelete) => {
+            calls++;
+            if (userId === ANN) throw new Error("deadlock detected");
+            return store.endChosen(userId, choose, beforeDelete);
+          },
+        },
+        { reserve: async () => ({ run: async () => undefined }) },
+        () => now,
+        onFailed,
+      );
+      await expect(flaky.enforceOverCap()).resolves.toBe(1);
+      expect(calls).toBe(2);
+      expect(onFailed).toHaveBeenCalledWith(expect.any(Error), ANN);
+      expect(await idsOf(ANN)).toHaveLength(21);
+      expect(await idsOf(STAFF)).toHaveLength(5);
+    });
+
+    it("a sign-in and a cap check of the same person at once never deadlock", async () => {
+      await fill(ANN, 20);
+      const { cap: capped } = cap();
+      const results = await Promise.allSettled(
+        Array.from({ length: 12 }, async (_, i) => {
+          const newId = `${ANN}-race-${i}`;
+          await record(newId, ANN, {
+            signedInAt: null,
+            lastSeenAt: null,
+            createdAt: now,
+            updatedAt: now,
+          });
+          return Promise.all([
+            new SessionTakeoverService(
+              new DrizzleSessionTakeoverStore(database),
+              { reserve: async () => ({ run: async () => undefined }) },
+              capped,
+              () => now,
+            ).takeOver({
+              newSessionId: newId,
+              previousSessionId: `${ANN}-s0${i % 10}`,
+              deviceHash: null,
+              country: null,
+            }),
+            capped.enforce({ userId: ANN, keepSessionId: newId }),
+          ]);
+        }),
+      );
+      expect(results.filter((r) => r.status === "rejected")).toEqual([]);
+    });
+
     it("leaves another person's records alone", async () => {
       const ann = await fill(ANN, 21);
       const staff = await fill(STAFF, 5);
@@ -716,12 +1015,12 @@ describe.skipIf(!DATABASE_URL)("sign-in lifetimes and the browser cap, against P
     });
   });
 
-  it("has the indexes the sweep reads", async () => {
+  it("has the indexes the sweep reads, and none on last use (it would stop touches being HOT)", async () => {
     const { rows } = await database.execute<{ indexname: string }>(
-      sql`SELECT indexname FROM pg_indexes WHERE tablename = 'session' AND indexname IN ('session_last_active_idx', 'session_signed_in_idx')`,
+      sql`SELECT indexname FROM pg_indexes WHERE tablename = 'session' AND indexname IN ('session_last_active_idx', 'session_signed_in_idx', 'session_expires_at_id_idx')`,
     );
     expect(rows.map((r) => r.indexname).sort()).toEqual([
-      "session_last_active_idx",
+      "session_expires_at_id_idx",
       "session_signed_in_idx",
     ]);
   });

@@ -70,6 +70,26 @@ export function sessionEndReason(
   return null;
 }
 
+/**
+ * The latest `expires_at` a record may carry: what Better Auth proposes, but never later than the
+ * idle limit after last use or the absolute limit after first sign-in. With it Better Auth's own
+ * expiry check refuses a record that is over, without waiting for the sweep.
+ */
+export function clampExpiry(
+  proposed: Date,
+  times: Omit<SessionTimes, "expiresAt">,
+  isStaff: boolean,
+): Date {
+  const lifetime = lifetimeFor(isStaff);
+  return new Date(
+    Math.min(
+      proposed.getTime(),
+      times.lastActiveAt.getTime() + lifetime.idleMs,
+      times.signedInAt.getTime() + lifetime.absoluteMs,
+    ),
+  );
+}
+
 export type ActiveSession = { id: string; lastActiveAt: Date };
 
 /**

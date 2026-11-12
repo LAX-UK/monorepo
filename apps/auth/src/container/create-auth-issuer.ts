@@ -20,6 +20,7 @@ import type { AuthAppEnv } from "../env.js";
 import { buildDrizzleDatabase } from "../infrastructure/build-drizzle-database.js";
 import { DrizzleLegalAcceptanceRecorder } from "../infrastructure/drizzle-legal-acceptance.recorder.js";
 import { createPasskeyUsageRecorder } from "../infrastructure/drizzle-passkey-usage.js";
+import { DrizzleSessionExpiryClamp } from "../infrastructure/drizzle-session-expiry-clamp.js";
 import { HibpRangeBreachedPasswordChecker } from "../infrastructure/hibp-range-breached-password-checker.js";
 import {
   type OidcClaims,
@@ -173,6 +174,7 @@ export function createAuthIssuer(options: {
     sessionsSettingsUrl: env.LAX_ACCOUNT_ORIGIN
       ? `${env.LAX_ACCOUNT_ORIGIN.replace(/\/$/, "")}/account/security`
       : `${env.WEB_ORIGIN.replace(/\/$/, "")}/dashboard/settings/sessions`,
+    sessionExpiry: new DrizzleSessionExpiryClamp(options.db),
     revokeAllSessions: createPasswordResetSessionRevoker(options),
     ...(options.onSocialPolicyReadFailed
       ? { onSocialPolicyReadFailed: options.onSocialPolicyReadFailed }

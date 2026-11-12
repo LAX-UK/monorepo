@@ -27,27 +27,35 @@ describe("migration 0365 session lifetime indexes", () => {
     }
   });
 
-  it("only adds two expression indexes, idempotently, under the lock timeout", () => {
+  it("only adds the signed-in expression index, idempotently, under the lock timeout", () => {
     expect(migration).toMatch(/SET LOCAL lock_timeout = '5s'/);
     expect(migration).not.toMatch(/\bDROP\b|ALTER TABLE|ADD COLUMN|CONCURRENTLY|UPDATE /);
-    expect(migration).toMatch(
-      /"session_last_active_idx"\s+ON "session" \(\(coalesce\("last_seen_at", "updated_at"\)\)\)/,
-    );
+    // Last use is written on every touch: indexing it would stop those updates being HOT.
+    expect(migration).not.toContain("session_last_active_idx");
     expect(migration).toMatch(
       /"session_signed_in_idx"\s+ON "session" \(\(coalesce\("signed_in_at", "created_at"\)\)\)/,
     );
-    expect(migration.match(/CREATE INDEX IF NOT EXISTS/g)).toHaveLength(2);
+    expect(migration.match(/CREATE INDEX IF NOT EXISTS/g)).toHaveLength(1);
   });
 
-  it("has a rollback that drops both indexes and nothing else", () => {
+  it("has a rollback that runs in one transaction, drops the indexes and says how to clear the ledger", () => {
+    expect(rollback).toMatch(/^BEGIN;$/m);
+    expect(rollback).toMatch(/^COMMIT;$/m);
+    expect(rollback.indexOf("BEGIN;")).toBeLessThan(rollback.indexOf("SET LOCAL lock_timeout"));
+    expect(rollback).toContain(
+      "DELETE FROM drizzle.__drizzle_migrations WHERE created_at = 1806566400000",
+    );
+  });
+
+  it("has a rollback that drops the indexes and nothing else", () => {
     expect(rollback).toContain('DROP INDEX IF EXISTS "session_last_active_idx"');
     expect(rollback).toContain('DROP INDEX IF EXISTS "session_signed_in_idx"');
     expect(rollback).not.toMatch(/DROP (TABLE|COLUMN)|ALTER TABLE/);
   });
 
-  it("declares both indexes in the schema", () => {
+  it("declares the signed-in index in the schema, and none on last use", () => {
     const names = getTableConfig(session).indexes.map((i) => i.config.name);
-    expect(names).toContain("session_last_active_idx");
+    expect(names).not.toContain("session_last_active_idx");
     expect(names).toContain("session_signed_in_idx");
   });
 });

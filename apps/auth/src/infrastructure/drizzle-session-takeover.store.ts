@@ -5,13 +5,14 @@ import {
   session,
   sessionLineage,
 } from "@auction/identity-db/schema";
-import { and, desc, eq, gt, inArray, ne, or } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, ne, or, sql } from "drizzle-orm";
 import type {
   NewSession,
   SessionSnapshot,
   SessionTakeoverStore,
   TakeoverWrite,
 } from "../services/session-takeover.service.js";
+import { clampedExpiresAt, sessionIsLive } from "./session-lifetime.sql.js";
 
 export class DrizzleSessionTakeoverStore implements SessionTakeoverStore {
   constructor(private readonly db: IdentityDatabase) {}
@@ -32,10 +33,28 @@ export class DrizzleSessionTakeoverStore implements SessionTakeoverStore {
     excludeId: string;
     now: Date;
   }): Promise<SessionSnapshot[]> {
+    // The same person's records count only while they are still signed in: one that is over its
+    // idle or absolute limit but not yet swept is neither carried (its `signed_in_at` would end the
+    // new sign-in on arrival), nor renewed, nor are its earlier ids and product sessions re-bound.
+    // Another person's record named by this request's own session cookie is ended with a
+    // back-channel logout whatever state it is in: it is still that person's sign-in in this browser.
     const matches = [
-      input.previousSessionId ? eq(session.id, input.previousSessionId) : undefined,
+      input.previousSessionId
+        ? or(
+            and(eq(session.id, input.previousSessionId), ne(session.userId, input.userId)),
+            and(
+              eq(session.id, input.previousSessionId),
+              eq(session.userId, input.userId),
+              sessionIsLive(input.now),
+            ),
+          )
+        : undefined,
       input.deviceHash
-        ? and(eq(session.deviceHash, input.deviceHash), eq(session.userId, input.userId))
+        ? and(
+            eq(session.deviceHash, input.deviceHash),
+            eq(session.userId, input.userId),
+            sessionIsLive(input.now),
+          )
         : undefined,
     ].filter((match) => match !== undefined);
     if (matches.length === 0) return [];
@@ -47,9 +66,7 @@ export class DrizzleSessionTakeoverStore implements SessionTakeoverStore {
         signedInAt: session.signedInAt,
       })
       .from(session)
-      .where(
-        and(gt(session.expiresAt, input.now), ne(session.id, input.excludeId), or(...matches)),
-      );
+      .where(and(ne(session.id, input.excludeId), or(...matches)));
     if (rows.length === 0) return [];
     const lineage = await this.db
       .select({ previousSid: sessionLineage.previousSid, sessionId: sessionLineage.sessionId })
@@ -74,6 +91,14 @@ export class DrizzleSessionTakeoverStore implements SessionTakeoverStore {
     const replacedIds = write.sameSubject.map((old) => old.id);
     const endedIds = write.otherSubject.map((old) => old.id);
     await this.db.transaction(async (tx) => {
+      // Locked in id order, the same order the cap takes a person's records in, so a sign-in and
+      // a cap check of the same person queue up instead of deadlocking.
+      await tx
+        .select({ id: session.id })
+        .from(session)
+        .where(inArray(session.id, [...replacedIds, ...endedIds, write.newSessionId]))
+        .orderBy(asc(session.id))
+        .for("update");
       if (replacedIds.length > 0) {
         // Names the old records already stood for now point at the new one, and the products
         // that signed in through an old record are re-bound to it before the old row goes (its
@@ -110,6 +135,9 @@ export class DrizzleSessionTakeoverStore implements SessionTakeoverStore {
           signedInAt: write.signedInAt,
           lastSeenAt: write.now,
           country: write.country,
+          // The carried first sign-in time shortens the record's life: it never outlives the
+          // person's absolute limit, so the issuer's own expiry check enforces it.
+          expiresAt: clampedExpiresAt(sql`${session.expiresAt}`, write.signedInAt, write.now),
         })
         .where(eq(session.id, write.newSessionId));
       const evicted = (

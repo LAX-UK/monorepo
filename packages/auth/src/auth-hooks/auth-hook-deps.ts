@@ -36,6 +36,16 @@ export type AuthHookDeps = {
    * leave unset in tests.
    */
   enableNewDeviceLoginEmail?: boolean | undefined;
+  /**
+   * Holds a session's `expires_at` to the person's idle and absolute limits, so that Better Auth's
+   * own expiry check refuses a record that is over without waiting for the sweep. `sessionId` is
+   * null for a session being created.
+   */
+  sessionExpiry?:
+    | {
+        clamp(input: { userId: string; sessionId: string | null; expiresAt: Date }): Promise<Date>;
+      }
+    | undefined;
   /** When true, reject new auth user rows (email + OAuth) at `user.create.before`. */
   blockNewUserRegistration?: boolean | undefined;
   /**

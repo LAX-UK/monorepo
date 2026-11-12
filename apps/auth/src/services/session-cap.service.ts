@@ -10,6 +10,8 @@ import {
 export type HeldSession = SessionTimes & ActiveSession;
 
 export interface SessionCapStore {
+  /** People who may be over their cap, up to `limit`. */
+  findOverCap(limit: number): Promise<string[]>;
   /**
    * Locks the person's records, asks `choose` which of them to end, and ends those the way a
    * sign-out does (see `endLockedSessions`) in the same transaction, after `beforeDelete` has made
@@ -36,7 +38,25 @@ export class SessionCap {
     private readonly store: SessionCapStore,
     private readonly ended: EndedSessionReservations,
     private readonly now: () => Date = () => new Date(),
+    private readonly onFailed?: (error: unknown, userId: string) => void,
   ) {}
+
+  /**
+   * The safety net behind sign-in: holds anyone over their cap to it, for a cap that was missed
+   * when the person signed in (the cap's transaction failed, or the person was promoted to staff).
+   * A person that fails is reported and does not stop the others. Returns how many records ended.
+   */
+  async enforceOverCap(limit = 100): Promise<number> {
+    let ended = 0;
+    for (const userId of await this.store.findOverCap(limit)) {
+      try {
+        ended += await this.enforce({ userId, keepSessionId: "" });
+      } catch (error) {
+        this.onFailed?.(error, userId);
+      }
+    }
+    return ended;
+  }
 
   /** Returns how many records were ended. */
   async enforce(input: { userId: string; keepSessionId: string }): Promise<number> {

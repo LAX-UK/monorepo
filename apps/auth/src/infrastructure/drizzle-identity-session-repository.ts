@@ -1,12 +1,17 @@
 import type { IdentityDatabase } from "@auction/identity-db";
 import { oauthAccessToken, session, sessionLineage } from "@auction/identity-db/schema";
-import { and, desc, eq, ne, or } from "drizzle-orm";
+import { and, desc, eq, ne, or, sql } from "drizzle-orm";
 import type {
   IIdentitySessionRepository,
   IdentityOperationTransaction,
   IdentitySessionRecord,
 } from "../services/identity-operations.ports.js";
 import { identityOperationDb } from "./drizzle-identity-unit-of-work.js";
+import {
+  lastActiveAtColumn,
+  sessionPersonIsStaff,
+  signedInAtColumn,
+} from "./session-lifetime.sql.js";
 
 export class DrizzleIdentitySessionRepository implements IIdentitySessionRepository {
   constructor(private readonly db: IdentityDatabase) {}
@@ -25,6 +30,9 @@ export class DrizzleIdentitySessionRepository implements IIdentitySessionReposit
         ipAddress: session.ipAddress,
         userAgent: session.userAgent,
         lastPasswordAuthAt: session.lastPasswordAuthAt,
+        lastActiveAt: sql<Date>`${lastActiveAtColumn}`.mapWith(session.createdAt),
+        signedInAt: sql<Date>`${signedInAtColumn}`.mapWith(session.createdAt),
+        isStaff: sql<boolean>`${sessionPersonIsStaff}`,
       })
       .from(session)
       .where(eq(session.userId, subjectId))

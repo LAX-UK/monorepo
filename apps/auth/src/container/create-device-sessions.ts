@@ -10,11 +10,11 @@ import {
   type EndedSessionNotifier,
   SessionTakeoverService,
 } from "../services/session-takeover.service.js";
-import type { SecurityEffectLogger } from "../services/settle-security-effect.js";
+import { type SecurityEffectLogger, describeError } from "../services/settle-security-effect.js";
 import { type DeviceSessionHook, createDeviceSessionHook } from "./device-session-hook.js";
 
 const TAKEOVER_PATH = "session-takeover";
-const CAP_PATH = "session-cap";
+export const CAP_PATH = "session-cap";
 
 /**
  * Another person's records that a new sign-in in the same browser ends: their products are signed
@@ -56,6 +56,9 @@ export function createDeviceSessions(options: {
         new DrizzleSessionCapStore(options.db),
         createEndedSessionNotifier(options.durable, CAP_PATH),
       ),
+      undefined,
+      (error, userId) =>
+        options.log.error({ userId, ...describeError(error) }, "session_cap_failed"),
     ),
     hasher: new DeviceMarkerHasher({
       secret: options.secrets.deviceMarker,

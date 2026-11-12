@@ -33,6 +33,12 @@ export type IdentitySessionRecord = {
   ipAddress: string | null;
   userAgent: string | null;
   lastPasswordAuthAt: Date | null;
+  /** Last real use (`last_seen_at`, or for older records `updated_at`). */
+  lastActiveAt: Date;
+  /** First sign-in on the browser (`signed_in_at`, or for older records `created_at`). */
+  signedInAt: Date;
+  /** Whether the person holds a staff marker, which decides their lifetimes. */
+  isStaff: boolean;
   /** Earlier ids this sign-in stands for, after newer sign-ins in the same browser took them over. */
   previousIds: readonly string[];
   isCurrent: boolean;

@@ -100,6 +100,7 @@ export class SessionTakeoverService {
     private readonly ended: EndedSessionNotifier,
     private readonly cap: SessionCapEnforcer,
     private readonly now: () => Date = () => new Date(),
+    private readonly onCapFailed?: (error: unknown, userId: string) => void,
   ) {}
 
   async takeOver(input: {
@@ -140,7 +141,13 @@ export class SessionTakeoverService {
     });
     await Promise.all(reservations.map((reservation) => reservation.run()));
     // After the new record stands, so the count includes it and it is never the one ended.
-    await this.cap.enforce({ userId: fresh.userId, keepSessionId: fresh.id });
+    // The sign-in stands whether or not this succeeds. A failure is reported, and the sweep's
+    // over-cap pass enforces the cap within a minute.
+    try {
+      await this.cap.enforce({ userId: fresh.userId, keepSessionId: fresh.id });
+    } catch (error) {
+      this.onCapFailed?.(error, fresh.userId);
+    }
   }
 }
 

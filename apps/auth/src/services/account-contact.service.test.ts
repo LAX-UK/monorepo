@@ -13,6 +13,9 @@ function session(id: string, createdAt: Date) {
     ipAddress: null,
     userAgent: null,
     lastPasswordAuthAt: null,
+    lastActiveAt: new Date(NOW.getTime() - 30_000),
+    signedInAt: new Date(NOW.getTime() - 60_000),
+    isStaff: false,
     previousIds: [],
     isCurrent: false,
   };

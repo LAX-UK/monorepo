@@ -3,6 +3,7 @@ import {
   SESSION_LIFETIME_POLICY,
   type SessionTimes,
   chooseEvictions,
+  clampExpiry,
   lifetimeFor,
   sessionEndReason,
 } from "./session-lifetime-policy.js";
@@ -107,5 +108,40 @@ describe("chooseEvictions", () => {
       { id: "keep", lastActiveAt: NOW },
     ];
     expect(chooseEvictions(held, "keep", 2)).toEqual(["a", "b"]);
+  });
+});
+
+describe("clampExpiry", () => {
+  const week = inFuture(7 * DAY);
+
+  it("leaves what Better Auth proposed alone while it is inside both limits", () => {
+    const proposed = inFuture(6 * DAY);
+    expect(clampExpiry(proposed, { lastActiveAt: ago(HOUR), signedInAt: ago(DAY) }, false)).toEqual(
+      proposed,
+    );
+  });
+
+  it("holds a client to 30 days from first sign-in and to 7 days from last use", () => {
+    expect(
+      clampExpiry(week, { lastActiveAt: ago(HOUR), signedInAt: ago(29 * DAY) }, false),
+    ).toEqual(inFuture(DAY));
+    expect(
+      clampExpiry(inFuture(30 * DAY), { lastActiveAt: ago(2 * DAY), signedInAt: ago(DAY) }, false),
+    ).toEqual(inFuture(5 * DAY));
+  });
+
+  it("holds staff to 24 hours from first sign-in and to 12 hours from last use", () => {
+    expect(
+      clampExpiry(week, { lastActiveAt: ago(HOUR), signedInAt: ago(23 * HOUR) }, true),
+    ).toEqual(inFuture(HOUR));
+    expect(
+      clampExpiry(week, { lastActiveAt: ago(11 * HOUR), signedInAt: ago(HOUR) }, true),
+    ).toEqual(inFuture(HOUR));
+  });
+
+  it("gives a time that has passed once a limit is reached, which Better Auth's own check refuses", () => {
+    const over = clampExpiry(week, { lastActiveAt: ago(HOUR), signedInAt: ago(30 * DAY) }, false);
+    expect(over.getTime()).toBeLessThanOrEqual(NOW.getTime());
+    expect(sessionEndReason({ ...times(), expiresAt: over }, false, NOW)).toBe("expired");
   });
 });

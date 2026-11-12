@@ -129,6 +129,19 @@ describe("SessionTakeoverService", () => {
     expect(missing.cap.enforce).not.toHaveBeenCalled();
   });
 
+  it("keeps the sign-in and reports it when holding the person to their cap fails", async () => {
+    const { store, ended, cap } = setup([]);
+    const onCapFailed = vi.fn();
+    const failure = new Error("deadlock detected");
+    cap.enforce.mockRejectedValueOnce(failure);
+    const service = new SessionTakeoverService(store, ended, cap, () => NOW, onCapFailed);
+
+    await expect(service.takeOver(input)).resolves.toBeUndefined();
+
+    expect(store.replace).toHaveBeenCalledOnce();
+    expect(onCapFailed).toHaveBeenCalledWith(failure, "ann");
+  });
+
   it("deletes nothing when the sign-out cannot be made durable", async () => {
     const { store, ended, service } = setup([snapshot({ id: "x", userId: "ben" })]);
     ended.reserve.mockRejectedValueOnce(new Error("outbox down"));

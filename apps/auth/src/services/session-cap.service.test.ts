@@ -20,6 +20,7 @@ function held(id: string, idleFor: number, over: Partial<HeldSession> = {}): Hel
 function setup(sessions: HeldSession[], isStaff = false) {
   const seen: string[][] = [];
   const store: SessionCapStore = {
+    findOverCap: async () => [],
     endChosen: async (_userId, choose, beforeDelete) => {
       const chosen = choose({ isStaff, sessions });
       if (chosen.length === 0) return null;
@@ -85,5 +86,24 @@ describe("SessionCap", () => {
     run.mockImplementation(async () => void order.push("run"));
     await cap.enforce({ userId: "ann", keepSessionId: "s20" });
     expect(order).toEqual(["reserve", "run"]);
+  });
+
+  it("holds everyone the store finds over their cap, reporting one that fails and carrying on", async () => {
+    const onFailed = vi.fn();
+    const calls: string[] = [];
+    const store: SessionCapStore = {
+      findOverCap: async () => ["ann", "ben"],
+      endChosen: async (userId) => {
+        calls.push(userId);
+        if (userId === "ann") throw new Error("deadlock detected");
+        return { ended: 2, prepared: [] } as never;
+      },
+    };
+    const cap = new SessionCap(store, { reserve: vi.fn() }, () => NOW, onFailed);
+
+    await expect(cap.enforceOverCap()).resolves.toBe(2);
+
+    expect(calls).toEqual(["ann", "ben"]);
+    expect(onFailed).toHaveBeenCalledWith(expect.any(Error), "ann");
   });
 });

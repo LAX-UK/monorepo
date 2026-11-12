@@ -3,6 +3,7 @@ import type { Redis } from "ioredis";
 import { DrizzleBrowserSignOutStore } from "../infrastructure/drizzle-browser-sign-out.store.js";
 import { DrizzleOAuthTokenSignInStore } from "../infrastructure/drizzle-oauth-token-sign-in.store.js";
 import { DrizzleSessionActivityStore } from "../infrastructure/drizzle-session-activity.store.js";
+import { DrizzleSessionCapStore } from "../infrastructure/drizzle-session-cap.store.js";
 import { DrizzleSessionExpiryStore } from "../infrastructure/drizzle-session-expiry.store.js";
 import { DrizzleOidcRpSessionRepository } from "../infrastructure/oidc-session-adapters.js";
 import {
@@ -15,7 +16,10 @@ import type { DurableSecurityEffects } from "../services/durable-security-effect
 import { OAuthTokenSignInBinding } from "../services/oauth-token-sign-in-binding.service.js";
 import { SignInLivenessGuard } from "../services/refresh-sign-in-guard.js";
 import { SessionActivity } from "../services/session-activity.service.js";
+import { SessionCap } from "../services/session-cap.service.js";
 import { SessionExpirySweep } from "../services/session-expiry-sweep.service.js";
+
+import { CAP_PATH, createEndedSessionNotifier } from "./create-device-sessions.js";
 
 const SIGN_OUT_PATH = "browser-sign-out";
 const EXPIRY_PATH = "session-expiry";
@@ -32,6 +36,8 @@ export function createBrowserSignIns(options: {
   durable: Pick<DurableSecurityEffects, "settle" | "reserve">;
   /** Told when noting a sign-in's use fails (it never fails the request). */
   onActivityFailed: (error: unknown) => void;
+  /** Told when holding a person to their cap of browsers fails. */
+  onCapFailed?: (error: unknown, userId: string) => void;
   now?: () => Date;
 }) {
   const now = options.now ?? (() => new Date());
@@ -40,6 +46,13 @@ export function createBrowserSignIns(options: {
   const activity = new SessionActivity(new DrizzleSessionActivityStore(options.db), now);
   return {
     activity,
+    // The safety net behind the cap at sign-in, run after each sweep.
+    cap: new SessionCap(
+      new DrizzleSessionCapStore(options.db),
+      createEndedSessionNotifier(options.durable, CAP_PATH),
+      now,
+      options.onCapFailed,
+    ),
     signOut: new BrowserSignOutService(
       new DrizzleBrowserSignOutStore(options.db),
       options.logout,
