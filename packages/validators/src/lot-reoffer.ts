@@ -104,20 +104,56 @@ export const staffReofferSchema = z.object({
 });
 export type StaffReoffer = z.infer<typeof staffReofferSchema>;
 
-/** What the seller needs to decide. It never names a bidder. */
+/** How the seller's answer reached us: from their workspace, or recorded by our team. */
+export const SELLER_ANSWER_CHANNELS = ["workspace", "recorded_by_staff"] as const;
+
+/**
+ * What the seller would receive, at the offer and at the original hammer, as settlement pays it:
+ * the buyer's total (hammer and buyer's premium) less LAX's commission and fees on it.
+ */
+export const sellerReofferProceedsSchema = z
+  .object({
+    /** What the next bidder would pay at the offer, hammer and buyer's premium. */
+    offerSaleMinor: pence,
+    /** What the seller would receive at the offer. */
+    offerProceedsMinor: pence,
+    originalHammerMinor: pence,
+    /** What the seller would have received at the original hammer. */
+    originalProceedsMinor: pence,
+  })
+  .strict();
+export type SellerReofferProceeds = z.infer<typeof sellerReofferProceedsSchema>;
+
+/**
+ * What the seller needs to decide, and where the request stands after. It names the work and
+ * never a bidder.
+ */
 export const sellerReofferViewSchema = z
   .object({
     id: z.string().min(1),
     lotId: z.string().min(1),
+    lotTitle: z.string(),
+    lotNumber: z.number().int().nullable(),
+    /** When the original sale of the lot ended. */
+    lotEndedAt: moment,
     status: reofferStatusSchema,
     consentStatus: sellerConsentStatusSchema,
     offerMinor: pence,
-    originalHammerMinor: pence,
-    estimatedProceedsMinor: pence,
-    originalProceedsMinor: pence,
+    /**
+     * The seller's money, worked out the way settlement pays it. `null` for a member who does
+     * not see the account's payouts (`entity.payouts.read`): a viewer or a consignor.
+     */
+    proceeds: sellerReofferProceedsSchema.nullable(),
     reserveMinor: pence.nullable(),
     belowReserve: z.boolean(),
     answerDueAt: moment.nullable(),
+    answeredAt: moment.nullable(),
+    answeredBy: z.enum(SELLER_ANSWER_CHANNELS).nullable(),
+    declinePreference: declinePreference.nullable(),
+    /** When the next bidder's offer ends, once it was sent. */
+    offerEndsAt: moment.nullable(),
+    /** When the next bidder accepted: the lot was sold again. */
+    soldAt: moment.nullable(),
   })
   .strict();
 export type SellerReofferView = z.infer<typeof sellerReofferViewSchema>;

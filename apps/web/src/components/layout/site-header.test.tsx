@@ -58,8 +58,8 @@ vi.mock("@/components/layout/theme-toggle", () => ({
   ThemeToggle: () => <button type="button">Switch to dark theme</button>,
 }));
 
-vi.mock("@/components/layout/bid-phone-menu", () => ({
-  BidPhoneMenu: ({ open }: { open: boolean }) => (open ? <dialog open>Menu</dialog> : null),
+vi.mock("@/components/layout/bid-phone-menu-mount", () => ({
+  BidPhoneMenuMount: ({ open }: { open: boolean }) => (open ? <dialog open>Menu</dialog> : null),
 }));
 
 vi.mock("@/components/marketing/chrome-icon-button", async () => {
@@ -203,7 +203,11 @@ describe("SiteHeader", () => {
     const header = screen.getByRole("banner");
     expect(header).toHaveAttribute("data-header-tone", "on-dark");
     expect(header.className).toContain("bg-transparent");
-    expect(screen.getByTestId("bid-header-lockup").className).toContain("text-hero-foreground");
+    // The lockup and the top bar are drawn on the server and take the tone from the header.
+    expect(header.className).toContain("group/header");
+    expect(screen.getByTestId("bid-header-lockup").className).toContain(
+      "group-data-[header-tone=on-dark]/header:text-hero-foreground",
+    );
   });
 
   it("uses the page tone for the lockup on a solid header", () => {

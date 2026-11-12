@@ -1,6 +1,7 @@
 import type { AdminRegisterEvent, AdminRegisterLastCheck } from "@auction/shop-contracts";
 import { describe, expect, it } from "vitest";
 import {
+  CONFLICT_FIELD_LABEL,
   activeZohoTab,
   auctionOfferAvailability,
   buildRegisterTimeline,
@@ -20,6 +21,7 @@ import {
   presentOfferState,
   setInLaxLine,
   skippedReasonLabel,
+  soldAttentionActionHref,
   zohoProductUrl,
   zohoQueueApiQuery,
   zohoQueueHref,
@@ -224,6 +226,31 @@ describe("conflictDecisionCopy", () => {
       "LAX changes the stock code to LAX-ORI-PH-GAC-26-0099 straight away",
     );
     expect(copy.description).not.toContain("does not");
+  });
+});
+
+describe("a Status conflict", () => {
+  const conflict = {
+    field: "catalogueStatus" as const,
+    zohoValue: "Reserved",
+    laxValue: "Withdrawn",
+  };
+
+  it("reads as the two Statuses and says LAX left Zoho alone", () => {
+    expect(setInLaxLine(conflict)).toBe(
+      "Zoho Status is Reserved, LAX would set Withdrawn. LAX has left Zoho as it is.",
+    );
+  });
+
+  it("closing it does not promise to change Zoho", () => {
+    const copy = conflictDecisionCopy(conflict, "kept_lax");
+    expect(copy.title).toBe("Close this Status difference?");
+    expect(copy.description).toContain("Closing this does not change Zoho");
+    expect(copy.description).not.toContain("LAX will set Zoho back");
+  });
+
+  it("is labelled as the Zoho Status", () => {
+    expect(CONFLICT_FIELD_LABEL.catalogueStatus).toBe("Zoho Status");
   });
 });
 
@@ -449,5 +476,63 @@ describe("auctionOfferAvailability", () => {
     expect(result.kind === "blocked" ? result.reason : "").toMatch(
       /draft lot is already in LAX Bid/,
     );
+  });
+});
+
+describe("soldAttentionActionHref", () => {
+  const links = {
+    bidAdminUrl: "https://bid.example/admin/",
+    zohoUrlTemplate: "https://crm.example/{module}/{recordId}",
+  };
+  const item = (
+    place: "lax_art" | "bid_sale" | "bid_reoffer" | "private_sale",
+    placeRefId: string | null,
+  ) => ({
+    place,
+    placeRefId,
+    zohoProductId: "z-1",
+  });
+
+  it("sends Unpublish from lax.art to the artwork in LAX Admin", () => {
+    expect(soldAttentionActionHref(item("lax_art", "art-1"), "unpublish_lax_art", links)).toEqual({
+      href: "/artworks/art-1",
+      external: false,
+    });
+  });
+
+  it("sends the lot actions to the lot in Bid admin, and leaves them out without access", () => {
+    expect(soldAttentionActionHref(item("bid_sale", "lot-1"), "withdraw_lot", links)).toEqual({
+      href: "https://bid.example/admin/lots/lot-1",
+      external: true,
+    });
+    expect(
+      soldAttentionActionHref(item("bid_reoffer", "lot-1"), "withdraw_offer", {
+        ...links,
+        bidAdminUrl: null,
+      }),
+    ).toBeNull();
+  });
+
+  it("has no page for a private sale's offer", () => {
+    expect(
+      soldAttentionActionHref(item("private_sale", "p-1"), "withdraw_offer", links),
+    ).toBeNull();
+  });
+
+  it("opens the Zoho record when the CRM link is set", () => {
+    expect(soldAttentionActionHref(item("lax_art", "a"), "open_in_zoho", links)).toEqual({
+      href: "https://crm.example/Products/z-1",
+      external: true,
+    });
+    expect(
+      soldAttentionActionHref(item("lax_art", "a"), "open_in_zoho", {
+        ...links,
+        zohoUrlTemplate: null,
+      }),
+    ).toBeNull();
+  });
+
+  it("does not link It is not sold", () => {
+    expect(soldAttentionActionHref(item("lax_art", "a"), "not_sold", links)).toBeNull();
   });
 });

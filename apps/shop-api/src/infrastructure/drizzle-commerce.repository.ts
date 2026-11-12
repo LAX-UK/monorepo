@@ -1,4 +1,5 @@
 import type { Database } from "@auction/db";
+import type { CheckoutMoneyPause } from "../application/artwork-register/checkout-money-pause.js";
 import type {
   CommerceRepository,
   PaymentCheckoutGateway,
@@ -25,6 +26,8 @@ export function createDrizzleCommerceRepository(
     framingEnabled?: boolean;
     /** Copies of one edition an order may hold; null or absent leaves only the stock. */
     editionOrderLimit?: number | null;
+    /** Refuses a basket holding an artwork Zoho says is sold while it is still for sale. */
+    moneyPause?: CheckoutMoneyPause;
   },
 ): CommerceRepository {
   const basket = createDrizzleBasketRepository(db, {

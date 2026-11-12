@@ -9,6 +9,7 @@ import { payHref } from "@/lib/pay/pay-links";
 import { bidderReofferHref } from "@/lib/reoffer/bidder-reoffer-links";
 import { consignmentMessagesHref } from "@/lib/seller/consignment-records";
 import { consignmentStepLabel } from "@/lib/seller/consignment-step";
+import { sellerReofferHref } from "@/lib/seller/seller-reoffer-links";
 import {
   formatDateInline,
   formatDateTimeShort,
@@ -117,6 +118,10 @@ export function needsYouHref(task: NeedsYouTaskWithLink): string {
       return consignmentMessagesHref(link.id);
     case "consignments":
       return `${CLIENT_ROUTES.consignments}?tab=${link.view}`;
+    case "reoffer_request":
+      return sellerReofferHref(link.id);
+    case "sold_payouts":
+      return CLIENT_ROUTES.payouts;
     case "sale":
       return task.kind === "register" ? salePath(task.sale) : CLIENT_ROUTES.bids;
     case "team":
@@ -207,6 +212,26 @@ const ROWS: { [K in NeedsYouTask["kind"]]: RowBuilder<K> } = {
     due: null,
     label: consignmentStepLabel("agreement"),
   }),
+  reoffer_request: (task, { now }) => {
+    const [first] = task.requests;
+    const soonest = task.requests
+      .flatMap((request) => (request.answerBy ? [request.answerBy] : []))
+      .sort((a, b) => a.getTime() - b.getTime())[0];
+    const by = soonest ? ` · answer by ${formatWhen(soonest, LONDON_TIME_ZONE, now)}` : "";
+    return {
+      topic: "consignment",
+      title:
+        task.requests.length === 1 && first
+          ? `May we offer ${first.title} to the next bidder?`
+          : `May we offer ${task.requests.length} lots to the next bidder?`,
+      detail:
+        task.requests.length === 1 && first
+          ? `The buyer didn't pay. Next bid ${formatMoney(first.offerMinor / 100)}${by}`
+          : `The buyers didn't pay${by}`,
+      due: null,
+      label: "Review and answer",
+    };
+  },
   changes: (task) => ({
     topic: "consignment",
     title: "Make the changes the specialist asked for",

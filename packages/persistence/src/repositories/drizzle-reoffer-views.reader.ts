@@ -70,9 +70,10 @@ export class DrizzleReofferViewsReader implements IReofferViewsReader {
 
   async listForSellerAccount(sellerLegalEntityId: string): Promise<SellerConsentRequestRow[]> {
     const rows = await this.db
-      .select({ consent: sellerConsent, offer: lotReoffer })
+      .select(SELLER_ROW)
       .from(sellerConsent)
       .innerJoin(lotReoffer, eq(lotReoffer.id, sellerConsent.subjectId))
+      .innerJoin(lot, eq(lot.id, sellerConsent.lotId))
       .where(
         and(
           eq(sellerConsent.sellerLegalEntityId, sellerLegalEntityId),
@@ -88,9 +89,10 @@ export class DrizzleReofferViewsReader implements IReofferViewsReader {
     reofferId: string,
   ): Promise<SellerConsentRequestRow | null> {
     const [row] = await this.db
-      .select({ consent: sellerConsent, offer: lotReoffer })
+      .select(SELLER_ROW)
       .from(sellerConsent)
       .innerJoin(lotReoffer, eq(lotReoffer.id, sellerConsent.subjectId))
+      .innerJoin(lot, eq(lot.id, sellerConsent.lotId))
       .where(
         and(
           eq(sellerConsent.sellerLegalEntityId, sellerLegalEntityId),
@@ -110,6 +112,16 @@ const BIDDER_ROW = {
   lotNumber: lot.lotNumber,
   lotSaleId: lot.saleId,
   lotImages: lot.images,
+  lotEndTime: lot.endTime,
+  lotExtendedUntil: lot.extendedUntil,
+};
+
+/** The columns a seller's read needs of a request: the consent, the offer and the lot's name. */
+const SELLER_ROW = {
+  consent: sellerConsent,
+  offer: lotReoffer,
+  lotTitle: lot.title,
+  lotNumber: lot.lotNumber,
   lotEndTime: lot.endTime,
   lotExtendedUntil: lot.extendedUntil,
 };
@@ -149,14 +161,29 @@ function toBidderRow(row: {
 function toSellerRow(row: {
   consent: typeof sellerConsent.$inferSelect;
   offer: typeof lotReoffer.$inferSelect;
+  lotTitle: string;
+  lotNumber: number | null;
+  lotEndTime: Date;
+  lotExtendedUntil: Date | null;
 }): SellerConsentRequestRow {
   const consent = toSellerConsentView(row.consent);
+  const offer = toLotReofferView(row.offer);
   return {
     reofferId: consent.subjectId,
     lotId: consent.lotId,
-    offerStatus: toLotReofferView(row.offer).status,
+    offerStatus: offer.status,
     consentStatus: consent.status,
     terms: consent.termsSnapshot,
     dueAt: consent.dueAt,
+    lot: {
+      title: row.lotTitle,
+      lotNumber: row.lotNumber,
+      endedAt: row.lotExtendedUntil ?? row.lotEndTime,
+    },
+    answeredAt: consent.answeredAt,
+    answerChannel: consent.channel,
+    preferredNext: consent.preferredNext,
+    offerEndsAt: offer.offerEndsAt,
+    respondedAt: offer.respondedAt,
   };
 }

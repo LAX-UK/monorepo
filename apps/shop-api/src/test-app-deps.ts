@@ -7,6 +7,7 @@ import { createArtistApplicantService } from "./application/artist-applications/
 import { createArtistApplicationRateLimiters } from "./application/artist-applications/artist-application-rate-limits.js";
 import { createArtistApplicationReviewService } from "./application/artist-applications/artist-application-review.service.js";
 import { ArtworkRegisterReviewService } from "./application/artwork-register/artwork-register-review.service.js";
+import { SoldAttentionReviewService } from "./application/artwork-register/sold-attention-review.service.js";
 import { ZohoSyncHealthService } from "./application/artwork-register/zoho-sync-health.service.js";
 import { createDeliveryQuoteStaffService } from "./application/delivery-quote-staff/delivery-quote-staff.service.js";
 import type { DeliveryRegionsState } from "./application/delivery-regions/delivery-regions.ports.js";
@@ -306,6 +307,13 @@ export function createMinimalShopApiTestDeps(
           counts: { all: 0, ordered: 0, abandoned_checkout: 0, enquired: 0, joined: 0 },
         }),
         get: async () => null,
+      }),
+      soldAttention: new SoldAttentionReviewService({
+        queue: {
+          listOpen: async () => [],
+          override: async () => ({ ok: false, reason: "not_found" }),
+        },
+        lots: { numbersFor: async () => new Map() },
       }),
       zohoSyncHealth: createTestZohoSyncHealth(),
       artworkRegister: new ArtworkRegisterReviewService({

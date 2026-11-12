@@ -32,6 +32,13 @@ describe("buildClientBreadcrumbTrail", () => {
     ]);
   });
 
+  it("trails a request to re-offer a lot back to Sold & payouts, not to the payouts tab", () => {
+    expect(buildClientBreadcrumbTrail("/selling/payouts/offers/r1")).toEqual([
+      { label: "Sold & payouts", href: "/selling/payouts" },
+      { label: "Offer to the next bidder", record: true },
+    ]);
+  });
+
   it("names the Collection page as the menu does", () => {
     expect(labels("/collection")).toEqual(["Collection"]);
   });

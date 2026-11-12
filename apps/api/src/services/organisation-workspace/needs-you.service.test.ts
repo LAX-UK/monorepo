@@ -18,6 +18,13 @@ function setup(
   options: {
     standing?: Standing | null;
     agreementProposedAt?: Date | null;
+    reofferRequests?: Array<{
+      id: string;
+      title: string;
+      offerMinor: number;
+      answerBy: Date | null;
+      requestedAt: Date | null;
+    }>;
     sourceOfFunds?: { requested: boolean; at: Date | null };
   } = {},
 ) {
@@ -62,6 +69,7 @@ function setup(
             : options.agreementProposedAt,
       },
     ]),
+    reofferRequests: vi.fn(async () => options.reofferRequests ?? []),
     changesRequested: vi.fn(async () => []),
     expiredInvitations: vi.fn(async () => [
       { id: "i1", email: "sam@example.com", expiredAt: new Date("2026-11-08T00:00:00Z") },
@@ -189,6 +197,33 @@ describe("NeedsYouService", () => {
     // Owners have no personal identity step, but source of funds is asked of anyone who buys.
     expect(facts.viewerChecks).toHaveBeenCalledWith("me");
     expect(view.tasks.some((task) => task.kind === "identity")).toBe(false);
+  });
+
+  it("owner: a request to re-offer a lot waits on them, and consignors and viewers are not asked", async () => {
+    const reofferRequests = [
+      {
+        id: "r1",
+        title: "The Winter Study",
+        offerMinor: 8_200_000,
+        answerBy: new Date("2026-11-13T17:00:00Z"),
+        requestedAt: new Date("2026-11-10T09:00:00Z"),
+      },
+    ];
+    const { service, facts } = setup({ reofferRequests });
+    const view = await service.read(member("owner"));
+    const task = view.tasks.find((t) => t.kind === "reoffer_request");
+    expect(task).toMatchObject({
+      link: { page: "reoffer_request", id: "r1" },
+      requests: [{ id: "r1", title: "The Winter Study", offerMinor: 8_200_000 }],
+    });
+    // The reader is asked at the service's clock, so a request past its deadline drops out.
+    expect(facts.reofferRequests).toHaveBeenCalledWith(
+      expect.objectContaining({ legalEntityId: ENTITY, now: NOW }),
+    );
+    const others = setup({ reofferRequests });
+    await others.service.read(member("consignor"));
+    await others.service.read(member("viewer"));
+    expect(others.facts.reofferRequests).not.toHaveBeenCalled();
   });
 
   it("buyer agent: only their own bids, wins and authorisation", async () => {

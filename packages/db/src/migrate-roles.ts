@@ -300,6 +300,27 @@ export const SHOP_ARTWORK_REGISTER_READ_TABLES = [
   "zoho_sync_health",
 ] as const;
 export const SHOP_ARTWORK_REGISTER_CONFLICT_TABLES = ["artwork_register_conflict"] as const;
+/**
+ * "Zoho says Sold" items: LAX Admin reads them (the pause check, the Needs attention list) and
+ * decides one ("It is not sold": UPDATE). The worker raises and closes them, so it also INSERTs.
+ */
+export const SHOP_SOLD_ATTENTION_TABLES = ["artwork_register_sold_attention"] as const;
+export const WORKER_SOLD_ATTENTION_TABLES = ["artwork_register_sold_attention"] as const;
+/** The staff override closes an item; shop writes nothing else on it. */
+export const SHOP_SOLD_ATTENTION_UPDATE_COLUMNS = [
+  "status",
+  "resolution",
+  "resolved_by",
+  "override_reason",
+  "resolved_at",
+] as const;
+/** The monitor closes or replaces an item; it never edits what the item points at. */
+export const WORKER_SOLD_ATTENTION_UPDATE_COLUMNS = [
+  "status",
+  "resolution",
+  "resolved_by",
+  "resolved_at",
+] as const;
 export const SHOP_ARTWORK_REGISTER_EVENT_TABLES = ["artwork_register_event"] as const;
 /**
  * Shop moves an original's offer state through the register (one place at a time across lax.art
@@ -1120,6 +1141,17 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
         for (const tableName of SHOP_ARTWORK_REGISTER_CONFLICT_TABLES) {
           await grantIfExists(client, "shop_app", tableName, "SELECT, UPDATE");
         }
+        /** shop's only write is the staff override; it cannot re-point or reopen an item. */
+        for (const tableName of SHOP_SOLD_ATTENTION_TABLES) {
+          await grantIfExists(client, "shop_app", tableName, "SELECT");
+          await revokeIfExists(client, "shop_app", tableName, "UPDATE");
+          await grantColumnUpdateIfExists(
+            client,
+            "shop_app",
+            tableName,
+            SHOP_SOLD_ATTENTION_UPDATE_COLUMNS,
+          );
+        }
         for (const tableName of SHOP_ARTWORK_REGISTER_EVENT_TABLES) {
           await grantIfExists(client, "shop_app", tableName, "INSERT, SELECT");
         }
@@ -1228,6 +1260,16 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
         }
         for (const tableName of WORKER_ARTWORK_REGISTER_TABLES) {
           await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT, UPDATE");
+        }
+        for (const tableName of WORKER_SOLD_ATTENTION_TABLES) {
+          await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT");
+          await revokeIfExists(client, "worker_app", tableName, "UPDATE");
+          await grantColumnUpdateIfExists(
+            client,
+            "worker_app",
+            tableName,
+            WORKER_SOLD_ATTENTION_UPDATE_COLUMNS,
+          );
         }
         for (const tableName of WORKER_ARTWORK_REGISTER_APPEND_ONLY_TABLES) {
           await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT");

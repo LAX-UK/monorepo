@@ -58,6 +58,19 @@ const EVERY_TASK: NeedsYouTaskWithLink[] = [
     link: { page: "consignment", id: "c1" },
   },
   {
+    kind: "reoffer_request",
+    requests: [
+      {
+        id: "r1",
+        title: "The Winter Study",
+        offerMinor: 8_200_000,
+        answerBy: new Date("2026-11-03T17:00:00Z"),
+      },
+    ],
+    raisedAt: null,
+    link: { page: "reoffer_request", id: "r1" },
+  },
+  {
     kind: "changes",
     submission: { id: "s1", title: "Study" },
     note: "Add a photo",
@@ -166,6 +179,7 @@ describe("needsYouRowView", () => {
       won_awaiting_payment: "/purchases",
       unsold_due: "/selling/consignments?tab=unsold",
       agreement: "/selling/consignments/c1#agreement",
+      reoffer_request: "/selling/payouts/offers/r1",
       changes: "/selling/consignments/s1",
       reply: "/selling/consignments/c2?tab=messages",
       register: "/sales/contemporary/sale1",
@@ -175,6 +189,37 @@ describe("needsYouRowView", () => {
       payouts: "/organisation/payouts",
       identity: "/verify-identity",
       source_of_funds: "/compliance/source-of-funds",
+    });
+  });
+
+  it("asks the seller to answer a request to re-offer, naming the work and the deadline in London time", () => {
+    const row = needsYouRowView(
+      EVERY_TASK.find((task) => task.kind === "reoffer_request") as NeedsYouTaskWithLink,
+      ctx,
+    );
+    expect(row).toMatchObject({
+      title: "May we offer The Winter Study to the next bidder?",
+      detail: "The buyer didn't pay. Next bid £82,000.00 · answer by Tue 3 Nov, 17:00 GMT",
+      action: { label: "Review and answer", href: "/selling/payouts/offers/r1" },
+      section: "consignments",
+    });
+  });
+
+  it("opens Sold & payouts for several requests", () => {
+    const task: NeedsYouTaskWithLink = {
+      kind: "reoffer_request",
+      requests: [
+        { id: "r1", title: "A", offerMinor: 100_00, answerBy: null },
+        { id: "r2", title: "B", offerMinor: 200_00, answerBy: null },
+      ],
+      raisedAt: null,
+      link: { page: "sold_payouts" },
+    };
+    expect(needsYouRowView(task, ctx)).toMatchObject({
+      title: "May we offer 2 lots to the next bidder?",
+      detail: "The buyers didn't pay",
+      action: { href: "/selling/payouts" },
+      items: 2,
     });
   });
 

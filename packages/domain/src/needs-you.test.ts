@@ -33,6 +33,15 @@ function busy(role: LegalEntityMemberRole, overrides: Partial<NeedsYouFacts> = {
     sourceOfFundsRequestedAt: null,
     organisationStatusChangedAt: null,
     agreementsToAccept: [{ id: "c1", title: "Untitled (Blue)", proposedAt: daysAgo(3) }],
+    reofferRequests: [
+      {
+        id: "r1",
+        title: "The Winter Study",
+        offerMinor: 8_200_000,
+        answerBy: inHours(48),
+        requestedAt: daysAgo(1),
+      },
+    ],
     changesRequested: [
       { id: "s1", title: "Study in Ochre", note: "Add a photo", requestedAt: daysAgo(2) },
     ],
@@ -129,6 +138,7 @@ describe("the Needs you table", () => {
       "won_awaiting_payment",
       "unsold_due",
       "agreement",
+      "reoffer_request",
       "changes",
       "reply",
       "unsold",
@@ -153,6 +163,7 @@ describe("the Needs you table", () => {
       "pay",
       "unsold_due",
       "agreement",
+      "reoffer_request",
       "changes",
       "reply",
       "unsold",
@@ -172,6 +183,7 @@ describe("the Needs you table", () => {
       "pay",
       "unsold_due",
       "agreement",
+      "reoffer_request",
       "changes",
       "reply",
       "unsold",
@@ -219,6 +231,7 @@ describe("the Needs you table", () => {
       "pay",
       "unsold_due",
       "agreement",
+      "reoffer_request",
       "changes",
       "reply",
       "unsold",
@@ -249,8 +262,10 @@ describe("the Needs you table", () => {
 
   it("a restricted organisation offers no bidding, selling, offers to accept or invitations", () => {
     const restricted = { status: "restricted" as const, payoutsReady: true };
+    // A request to re-offer a sold lot stays: it waits on a deadline, and answering it is not new selling.
     expect(kinds(busy("owner", { organisation: restricted }))).toEqual([
       "pay",
+      "reoffer_request",
       "choose_delivery",
       "quote_ready",
       "book_collection",
@@ -265,6 +280,7 @@ describe("the Needs you table", () => {
     const selling = new Set<NeedsYouKind>([
       "unsold_due",
       "agreement",
+      "reoffer_request",
       "changes",
       "reply",
       "unsold",
@@ -272,7 +288,14 @@ describe("the Needs you table", () => {
     const consignments = kinds(busy("owner", { organisation: personal })).filter((kind) =>
       selling.has(kind),
     );
-    expect(consignments).toEqual(["unsold_due", "agreement", "changes", "reply", "unsold"]);
+    expect(consignments).toEqual([
+      "unsold_due",
+      "agreement",
+      "reoffer_request",
+      "changes",
+      "reply",
+      "unsold",
+    ]);
   });
 
   it("a person's own account never asks for an organisation's documents, team or payouts", () => {
@@ -293,6 +316,7 @@ describe("the Needs you table", () => {
     const quiet = busy("owner", {
       organisation: { status: "approved", payoutsReady: true },
       agreementsToAccept: [],
+      reofferRequests: [],
       changesRequested: [],
       unreadReplies: [],
       unsoldLots: [],
@@ -440,10 +464,50 @@ describe("tasks", () => {
     expect(needsYouCounts(tasks)).toEqual({
       bids: 4,
       purchases: 4,
-      consignments: 5,
+      consignments: 6,
       team: 3,
       organisation: 1,
     });
+  });
+});
+
+describe("requests to re-offer a lot", () => {
+  const request = (id: string, title: string) => ({
+    id,
+    title,
+    offerMinor: 8_200_000,
+    answerBy: inHours(24),
+    requestedAt: daysAgo(1),
+  });
+
+  it("is one task for the people who run the account, counted on Consignments", () => {
+    const owner = needsYouTasks(busy("owner", { reofferRequests: [request("r1", "Winter")] }));
+    expect(owner.find((task) => task.kind === "reoffer_request")).toMatchObject({
+      requests: [{ id: "r1", title: "Winter", offerMinor: 8_200_000 }],
+      raisedAt: daysAgo(1),
+    });
+    expect(kinds(busy("consignor"))).not.toContain("reoffer_request");
+    expect(kinds(busy("viewer"))).not.toContain("reoffer_request");
+    expect(kinds(busy("finance"))).not.toContain("reoffer_request");
+  });
+
+  it("opens the one request, or Sold & payouts when there are several", () => {
+    const owner = { role: "owner" as const };
+    const task = (reofferRequests: NeedsYouFacts["reofferRequests"]) => {
+      const found = needsYouTasks(busy("owner", { reofferRequests })).find(
+        (t) => t.kind === "reoffer_request",
+      );
+      if (!found) throw new Error("no task");
+      return needsYouLink(found, owner);
+    };
+    expect(task([request("r1", "Winter")])).toEqual({ page: "reoffer_request", id: "r1" });
+    expect(task([request("r1", "Winter"), request("r2", "Spring")])).toEqual({
+      page: "sold_payouts",
+    });
+  });
+
+  it("is absent when no one is waiting", () => {
+    expect(kinds(busy("owner", { reofferRequests: [] }))).not.toContain("reoffer_request");
   });
 });
 
@@ -499,6 +563,8 @@ describe("notifications that announce a task", () => {
       "pay",
       "pay",
       "agreement",
+      "reoffer_request",
+      "reoffer_request",
       "changes",
       "reply",
       "access_requests",

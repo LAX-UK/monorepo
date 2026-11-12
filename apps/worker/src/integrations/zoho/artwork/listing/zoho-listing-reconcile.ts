@@ -5,6 +5,7 @@ import type {
   ZohoListingRunFailure,
 } from "@auction/persistence/interfaces";
 import type { Logger } from "pino";
+import type { ZohoStatusReconcile } from "../status/zoho-status-reconcile.js";
 import { syncPages } from "./sync-pages.js";
 import type {
   ListingSyncReport,
@@ -30,6 +31,8 @@ export class ZohoListingReconcile {
       sync: Pick<ZohoListingSync, "sync">;
       sources: Pick<IZohoListingSourceReader, "pageOriginals">;
       runs: IZohoListingRunStore;
+      /** The Zoho Status check that follows the listing pass; absent when Status writes are off. */
+      statuses?: Pick<ZohoStatusReconcile, "run">;
       log: Logger;
       now?: () => Date;
     },
@@ -73,6 +76,20 @@ export class ZohoListingReconcile {
       { runId, mode: this.deps.mode, checked: report.checked, changed: report.changed, failed },
       "zoho_listing_reconcile_finished",
     );
+    await this.checkStatuses(runId);
     return report;
+  }
+
+  /**
+   * The Status is checked after the listing is recorded, and its failure never undoes or hides
+   * the listing pass: it is logged and the next night tries again.
+   */
+  private async checkStatuses(runId: string): Promise<void> {
+    if (!this.deps.statuses) return;
+    try {
+      await this.deps.statuses.run();
+    } catch (err) {
+      this.deps.log.error({ runId, err }, "zoho_status_reconcile_failed");
+    }
   }
 }

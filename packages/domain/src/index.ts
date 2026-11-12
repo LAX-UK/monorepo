@@ -671,6 +671,7 @@ export {
   type ReofferOfferSubject,
   type PendingAccessRequest,
   type PurchaseNextStepTimes,
+  type ReofferRequestSubject,
   type UnreadReply,
   type NeedsYouCounts,
   type NeedsYouFacts,
