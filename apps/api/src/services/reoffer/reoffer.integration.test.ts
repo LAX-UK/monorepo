@@ -945,7 +945,7 @@ describe.skipIf(!HAS_DB)("re-offer API services (integration)", () => {
       expect((await row(out.reofferId))?.status).toBe("offered");
     });
 
-    it("two accepts of one offer award the lot once", async () => {
+    it("two accepts of one offer award the lot once, and both answer success for the same account", async () => {
       reset();
       const s = await defaultedLot();
       const out = await sentOffer(s);
@@ -953,14 +953,48 @@ describe.skipIf(!HAS_DB)("re-offer API services (integration)", () => {
         response.accept(member("second"), out.reofferId, { termsAccepted: true }),
         response.accept(member("second"), out.reofferId, { termsAccepted: true }),
       ]);
-      expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
-      const failed = results.find((r) => r.status === "rejected") as PromiseRejectedResult;
-      expect((failed.reason as ReofferError).code).toBe("offer_not_open");
+      expect(results.map((r) => r.status)).toEqual(["fulfilled", "fulfilled"]);
+      const [a, b] = results as PromiseFulfilledResult<{ reofferId: string; acceptedAt: Date }>[];
+      expect(a?.value.reofferId).toBe(b?.value.reofferId);
+      expect(a?.value.acceptedAt).toEqual(b?.value.acceptedAt);
       expect(events.filter((e) => e.lotId === s.lotId && e.type === "lot.reawarded")).toHaveLength(
         1,
       );
       expect(control.invoiced).toEqual([s.lotId]);
       expect((await lotRow(s.lotId))?.winnerId).toBe(ids.second);
+    });
+
+    it("a later repeat accept by the same account returns the same result; another account is refused", async () => {
+      reset();
+      const s = await defaultedLot();
+      const out = await sentOffer(s);
+      const first = await response.accept(member("second"), out.reofferId, { termsAccepted: true });
+      const again = await response.accept(member("second"), out.reofferId, { termsAccepted: true });
+      expect(again).toEqual(first);
+      expect(
+        await codeOf(response.accept(member("third"), out.reofferId, { termsAccepted: true })),
+      ).toBe("offer_not_found");
+      expect(events.filter((e) => e.lotId === s.lotId && e.type === "lot.reawarded")).toHaveLength(
+        1,
+      );
+      expect(control.invoiced).toEqual([s.lotId]);
+    });
+
+    it("refuses an accept once the bidder's account is restricted, and does not re-award", async () => {
+      reset();
+      const s = await defaultedLot();
+      const out = await sentOffer(s);
+      await suspend(ids.second);
+      try {
+        expect(
+          await codeOf(response.accept(member("second"), out.reofferId, { termsAccepted: true })),
+        ).toBe("bidder_unavailable");
+      } finally {
+        await db.delete(bidUserProfile).where(eq(bidUserProfile.userId, ids.second));
+      }
+      expect((await row(out.reofferId))?.status).toBe("offered");
+      expect((await lotRow(s.lotId))?.winnerId).not.toBe(ids.second);
+      expect(control.invoiced).toEqual([]);
     });
 
     it("accept racing a withdrawal ends one way: the lot is awarded or the offer is withdrawn, never both", async () => {

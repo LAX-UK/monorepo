@@ -81,13 +81,20 @@ export class ReofferResponseService {
       );
     }
     const result = await this.inTransaction((tx) => this.acceptLocked(tx, actor, reofferId));
+    // A repeat accept by the same account (a double click or a retry) is answered with the
+    // original result; the award and invoice were handled by the first one.
+    if (result.alreadyAccepted) return result.accepted;
     // The re-award is committed; the invoice follows and the backfill covers a failure here.
     try {
-      await this.deps.invoicing.raiseFor(result.lotId);
+      await this.deps.invoicing.raiseFor(result.accepted.lotId);
     } catch (error) {
-      console.error("[ReofferResponseService] raising the invoice failed", result.lotId, error);
+      console.error(
+        "[ReofferResponseService] raising the invoice failed",
+        result.accepted.lotId,
+        error,
+      );
     }
-    return result;
+    return result.accepted;
   }
 
   async decline(
@@ -149,9 +156,23 @@ export class ReofferResponseService {
     tx: Parameters<IReofferWorkflowReader["lockLot"]>[0],
     actor: ReofferMemberActor,
     reofferId: string,
-  ): Promise<AcceptOfferResult> {
+  ): Promise<{ accepted: AcceptOfferResult; alreadyAccepted: boolean }> {
     const { lot, offer } = await this.lockOwn(tx, actor, reofferId);
     const now = this.now();
+    // lockOwn has already limited this to the offered account, so another account never gets here.
+    // Only while that award still stands: a later default that took the lot back makes it history.
+    if (offer.status === "accepted" && offer.respondedAt && lot.winnerId === offer.offeredUserId) {
+      return {
+        alreadyAccepted: true,
+        accepted: {
+          reofferId: offer.id,
+          lotId: lot.id,
+          amountPence: offer.amountPence,
+          acceptedAt: offer.respondedAt,
+          invoiceDueAt: invoiceDueAfterAcceptance(offer.respondedAt),
+        },
+      };
+    }
     const closed = reofferResponseBlock(offer, now);
     if (closed) throw new ReofferError(closed.code, closed.message);
     const move = transitionReoffer(offer.status, "bidder_accepted", "bidder");
@@ -159,6 +180,20 @@ export class ReofferResponseService {
     const consent = await this.deps.consents.findForReoffer(offer.id);
     if (!consent || (consent.status !== "given" && consent.status !== "not_needed")) {
       throw new ReofferError("consent_not_given", "This offer cannot be accepted.");
+    }
+
+    // The bidder's account must still be able to buy (as at send): not restricted, suspended or closed.
+    const bids = await this.deps.workflow.placedBids(tx, lot.id);
+    const source = bids.find((bid) => bid.bidId === offer.sourceBidId);
+    if (
+      !source ||
+      source.legalEntityId !== offer.offeredLegalEntityId ||
+      source.accountState !== "active"
+    ) {
+      throw new ReofferError(
+        "bidder_unavailable",
+        "This account can no longer accept this offer. Contact us if you think this is wrong.",
+      );
     }
 
     if (await this.deps.atg.soldOnAtg(lot.id)) {
@@ -197,11 +232,14 @@ export class ReofferResponseService {
       actor.userId,
     );
     return {
-      reofferId: offer.id,
-      lotId: lot.id,
-      amountPence: offer.amountPence,
-      acceptedAt: now,
-      invoiceDueAt: invoiceDueAfterAcceptance(now),
+      alreadyAccepted: false,
+      accepted: {
+        reofferId: offer.id,
+        lotId: lot.id,
+        amountPence: offer.amountPence,
+        acceptedAt: now,
+        invoiceDueAt: invoiceDueAfterAcceptance(now),
+      },
     };
   }
 
