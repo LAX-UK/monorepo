@@ -154,9 +154,20 @@ export const bidderReofferViewSchema = z
   .object({
     id: z.string().min(1),
     lotId: z.string().min(1),
+    /** The work on offer, as the bidder knows it. */
+    lotTitle: z.string(),
+    lotNumber: z.number().int().nullable(),
+    saleId: z.string().min(1).nullable(),
+    lotImage: z.string().min(1).nullable(),
+    /** When the lot's own sale ended. */
+    lotEndedAt: moment,
     status: bidderReofferStatusSchema,
     price: bidderReofferPriceSchema,
     endsAt: moment,
+    /** When the bidder answered; for an accepted offer, when the lot became theirs. */
+    respondedAt: moment.nullable(),
+    /** When the invoice that follows an accepted offer falls due. */
+    invoiceDueAt: moment.nullable(),
   })
   .strict();
 export type BidderReofferView = z.infer<typeof bidderReofferViewSchema>;

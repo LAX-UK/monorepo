@@ -39,9 +39,16 @@ const price = {
 const bidderView = {
   id: "r1",
   lotId: "l1",
+  lotTitle: "The Winter Study",
+  lotNumber: 2,
+  saleId: "s1",
+  lotImage: "https://media.example/winter-study.jpg",
+  lotEndedAt: "2026-10-29T17:00:00.000Z",
   status: "offered",
   price,
   endsAt: "2026-11-13T17:00:00.000Z",
+  respondedAt: null,
+  invoiceDueAt: null,
 };
 
 describe("send body", () => {

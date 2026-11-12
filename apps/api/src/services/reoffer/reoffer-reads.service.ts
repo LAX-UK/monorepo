@@ -5,6 +5,7 @@ import {
   bidderReofferStatus,
   claimableShortfall,
   entityActorCan,
+  invoiceDueAfterAcceptance,
   selectNextBidder,
 } from "@auction/domain";
 import type {
@@ -106,6 +107,11 @@ export class ReofferReadsService {
     return bidderReofferViewSchema.parse({
       id: row.id,
       lotId: row.lotId,
+      lotTitle: row.lot.title,
+      lotNumber: row.lot.lotNumber,
+      saleId: row.lot.saleId,
+      lotImage: row.lot.image,
+      lotEndedAt: row.lotEndedAt.toISOString(),
       status,
       price: {
         hammerMinor: line("hammer"),
@@ -118,6 +124,12 @@ export class ReofferReadsService {
         totalMinor: priced.totalPence,
       },
       endsAt: row.offerEndsAt.toISOString(),
+      respondedAt: row.respondedAt?.toISOString() ?? null,
+      // Only an accepted offer has an invoice to come: due seven days on, counted from acceptance.
+      invoiceDueAt:
+        status === "accepted" && row.respondedAt
+          ? invoiceDueAfterAcceptance(row.respondedAt).toISOString()
+          : null,
     });
   }
 

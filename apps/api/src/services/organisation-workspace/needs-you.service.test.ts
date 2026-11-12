@@ -30,6 +30,15 @@ function setup(
         outbidAt: new Date("2026-11-10T11:00:00Z"),
       },
     ]),
+    reofferOffers: vi.fn(async () => [
+      {
+        id: "o1",
+        title: "The Winter Study",
+        offerMinor: 8_200_000,
+        endsAt: new Date("2026-11-13T17:00:00Z"),
+        sentAt: new Date("2026-11-10T09:00:00Z"),
+      },
+    ]),
     openPurchases: vi.fn(async () => [
       {
         id: "p1",
@@ -132,6 +141,7 @@ describe("NeedsYouService", () => {
     const view = await service.read(member("owner"));
     expect(view.tasks.map((task) => [task.kind, task.link])).toEqual([
       ["outbid", { page: "lot", id: "l1" }],
+      ["reoffer_offer", { page: "reoffer_offer", id: "o1" }],
       ["pay", { page: "purchase", id: "p1" }],
       // Ended 12 days ago: due within 3 days.
       ["unsold_due", { page: "consignments", view: "unsold" }],
@@ -142,7 +152,7 @@ describe("NeedsYouService", () => {
       ["access_requests", { page: "team", view: "members" }],
     ]);
     expect(view.counts).toEqual({
-      bids: 1,
+      bids: 2,
       purchases: 1,
       consignments: 3,
       team: 2,
@@ -152,6 +162,8 @@ describe("NeedsYouService", () => {
     expect(view.tasks.map((task) => [task.kind, task.raisedAt?.toISOString() ?? null])).toEqual([
       // The bid now leading put the account behind.
       ["outbid", "2026-11-10T11:00:00.000Z"],
+      // The offer was sent to the bidder.
+      ["reoffer_offer", "2026-11-10T09:00:00.000Z"],
       // The sale of the lot ended: it was won.
       ["pay", "2026-11-09T10:00:00.000Z"],
       // The lot's sale ended.
@@ -184,6 +196,7 @@ describe("NeedsYouService", () => {
     const view = await service.read(member("buyer_agent"));
     expect(view.tasks.map((task) => task.kind)).toEqual([
       "outbid",
+      "reoffer_offer",
       "won_awaiting_payment",
       "register",
       "identity",
@@ -214,6 +227,7 @@ describe("NeedsYouService", () => {
     const view = await service.read(member("viewer"));
     expect(view.kinds).toEqual(["source_of_funds"]);
     expect(facts.outbidLots).not.toHaveBeenCalled();
+    expect(facts.reofferOffers).not.toHaveBeenCalled();
     expect(unsold.listUnsoldOutcomes).not.toHaveBeenCalled();
   });
 

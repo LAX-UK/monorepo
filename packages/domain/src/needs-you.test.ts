@@ -91,6 +91,22 @@ function busy(role: LegalEntityMemberRole, overrides: Partial<NeedsYouFacts> = {
     salesToRegister: [
       { id: "sale1", title: "Contemporary", startsAt: new Date("2026-11-14"), bidLimit: null },
     ],
+    reofferOffers: [
+      {
+        id: "o2",
+        title: "Second offer",
+        offerMinor: 4_000_00,
+        endsAt: inHours(40),
+        sentAt: daysAgo(1),
+      },
+      {
+        id: "o1",
+        title: "First offer",
+        offerMinor: 82_000_00,
+        endsAt: inHours(20),
+        sentAt: daysAgo(2),
+      },
+    ],
     outbidLots: [
       { id: "l2", title: "Later lot", endsAt: inHours(30), outbidAt: daysAgo(2) },
       { id: "l1", title: "Closing lot", endsAt: inHours(2), outbidAt: inHours(-1) },
@@ -108,6 +124,7 @@ describe("the Needs you table", () => {
   it("ranks money and time first, then binding steps, the rest of the work, then setup", () => {
     expect(NEEDS_YOU_KINDS).toEqual([
       "outbid",
+      "reoffer_offer",
       "pay",
       "won_awaiting_payment",
       "unsold_due",
@@ -132,6 +149,7 @@ describe("the Needs you table", () => {
   const AUDIENCE: Record<LegalEntityMemberRole, NeedsYouKind[]> = {
     owner: [
       "outbid",
+      "reoffer_offer",
       "pay",
       "unsold_due",
       "agreement",
@@ -150,6 +168,7 @@ describe("the Needs you table", () => {
     ],
     admin: [
       "outbid",
+      "reoffer_offer",
       "pay",
       "unsold_due",
       "agreement",
@@ -177,6 +196,7 @@ describe("the Needs you table", () => {
     consignor: ["changes", "reply", "identity", "source_of_funds"],
     buyer_agent: [
       "outbid",
+      "reoffer_offer",
       "won_awaiting_payment",
       "register",
       "authorisation_ending",
@@ -195,6 +215,7 @@ describe("the Needs you table", () => {
   it("owner: every task in rank order", () => {
     expect(kinds(busy("owner"))).toEqual([
       "outbid",
+      "reoffer_offer",
       "pay",
       "unsold_due",
       "agreement",
@@ -214,6 +235,7 @@ describe("the Needs you table", () => {
   it("buyer agent: outbid first, then wins finance pays, sales to register and their authorisation", () => {
     expect(kinds(busy("buyer_agent"))).toEqual([
       "outbid",
+      "reoffer_offer",
       "won_awaiting_payment",
       "register",
       "authorisation_ending",
@@ -225,7 +247,7 @@ describe("the Needs you table", () => {
     expect(kinds(busy("owner", { actor: { role: "owner", isImpersonation: true } }))).toEqual([]);
   });
 
-  it("a restricted organisation offers no bidding, selling or invitations", () => {
+  it("a restricted organisation offers no bidding, selling, offers to accept or invitations", () => {
     const restricted = { status: "restricted" as const, payoutsReady: true };
     expect(kinds(busy("owner", { organisation: restricted }))).toEqual([
       "pay",
@@ -277,6 +299,7 @@ describe("the Needs you table", () => {
       purchases: [],
       salesToRegister: [],
       outbidLots: [],
+      reofferOffers: [],
       expiredInvitations: [],
       endingAuthorisations: [],
       pendingAccessRequests: [],
@@ -305,6 +328,17 @@ describe("tasks", () => {
       ],
       // The most recent time the account was put behind.
       raisedAt: inHours(-1),
+    });
+  });
+
+  it("reoffer_offer: the offer ending soonest first, raised when the newest was sent", () => {
+    expect(task("reoffer_offer")).toEqual({
+      kind: "reoffer_offer",
+      offers: [
+        { id: "o1", title: "First offer", offerMinor: 82_000_00, endsAt: inHours(20) },
+        { id: "o2", title: "Second offer", offerMinor: 4_000_00, endsAt: inHours(40) },
+      ],
+      raisedAt: daysAgo(1),
     });
   });
 
@@ -404,7 +438,7 @@ describe("tasks", () => {
 
   it("counts the things on each sidebar item", () => {
     expect(needsYouCounts(tasks)).toEqual({
-      bids: 2,
+      bids: 4,
       purchases: 4,
       consignments: 5,
       team: 3,
@@ -432,6 +466,17 @@ describe("links", () => {
     });
   });
 
+  it("one offer opens its page; several open Bids, where they are pinned", () => {
+    const offer = (id: string) => ({ id, title: id, offerMinor: 100, endsAt: NOW });
+    expect(needsYouLink({ kind: "reoffer_offer", offers: [offer("o1")] }, owner)).toEqual({
+      page: "reoffer_offer",
+      id: "o1",
+    });
+    expect(
+      needsYouLink({ kind: "reoffer_offer", offers: [offer("o1"), offer("o2")] }, owner),
+    ).toEqual({ page: "bids" });
+  });
+
   it("an ending authorisation opens Who can bid for managers and Bid settings for the agent", () => {
     const task = {
       kind: "authorisation_ending" as const,
@@ -449,6 +494,8 @@ describe("notifications that announce a task", () => {
   it("maps every needs-action notification to its task", () => {
     expect(NEEDS_ACTION.map(needsYouKindAnnouncedBy)).toEqual([
       "outbid",
+      "reoffer_offer",
+      "reoffer_offer",
       "pay",
       "pay",
       "agreement",

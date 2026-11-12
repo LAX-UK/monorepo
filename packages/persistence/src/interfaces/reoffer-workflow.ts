@@ -93,6 +93,10 @@ export type BidderReofferRow = {
   respondedAt: Date | null;
   offeredUserId: string;
   offeredLegalEntityId: string;
+  /** The work on offer, as the bidder knows it. */
+  lot: { title: string; lotNumber: number | null; saleId: string | null; image: string | null };
+  /** When the lot's own sale ended. */
+  lotEndedAt: Date;
 };
 
 /** What the seller's reads need of a request: the terms they were shown, never who would buy. */

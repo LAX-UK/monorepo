@@ -13,6 +13,7 @@ import {
   itemSubmission,
   lot,
   lotFulfilment,
+  lotReoffer,
   payment,
   sourceOfFunds,
   userInvitation,
@@ -25,6 +26,7 @@ import {
   type PendingAccessRequest,
   type PurchaseNextStepFacts,
   type PurchaseNextStepTimes,
+  type ReofferOfferSubject,
   type UnreadReply,
 } from "@auction/domain";
 import type { PaymentStatus } from "@auction/types";
@@ -70,6 +72,34 @@ const KYC_IDENTITY = { approved: "verified", pending: "checking" } as const;
  */
 export class DrizzleNeedsYouFactsReader implements INeedsYouFactsReader {
   constructor(private readonly db: Database) {}
+
+  async reofferOffers(input: {
+    legalEntityId: string;
+    now: Date;
+    limit: number;
+  }): Promise<Array<ReofferOfferSubject & { sentAt: Date | null }>> {
+    const rows = await this.db
+      .select({
+        id: lotReoffer.id,
+        title: lot.title,
+        offerMinor: lotReoffer.amountPence,
+        endsAt: lotReoffer.offerEndsAt,
+        sentAt: lotReoffer.offerSentAt,
+      })
+      .from(lotReoffer)
+      .innerJoin(lot, eq(lot.id, lotReoffer.lotId))
+      .where(
+        and(
+          eq(lotReoffer.offeredLegalEntityId, input.legalEntityId),
+          eq(lotReoffer.status, "offered"),
+          gt(lotReoffer.offerEndsAt, input.now),
+        ),
+      )
+      .orderBy(asc(lotReoffer.offerEndsAt), asc(lotReoffer.id))
+      .limit(input.limit);
+    // The status and end date above leave only offers that were sent, so both dates are set.
+    return rows.flatMap(({ endsAt, ...row }) => (endsAt ? [{ ...row, endsAt }] : []));
+  }
 
   async outbidLots(input: {
     legalEntityId: string;

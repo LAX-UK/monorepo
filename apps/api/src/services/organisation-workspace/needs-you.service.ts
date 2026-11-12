@@ -109,6 +109,7 @@ export class NeedsYouService implements INeedsYouService {
 
     const [
       outbidLots,
+      reofferOffers,
       purchases,
       agreementsToAccept,
       changesRequested,
@@ -129,6 +130,11 @@ export class NeedsYouService implements INeedsYouService {
             now,
             limit: LIST_LIMIT,
           }),
+        [],
+      ),
+      when(
+        any("reoffer_offer"),
+        () => this.deps.facts.reofferOffers({ legalEntityId, now, limit: LIST_LIMIT }),
         [],
       ),
       when(
@@ -244,14 +250,20 @@ export class NeedsYouService implements INeedsYouService {
           : [],
       ),
       outbidLots,
+      reofferOffers,
       expiredInvitations,
       endingAuthorisations,
       pendingAccessRequests,
     };
     const truncated =
-      [outbidLots, purchases, agreementsToAccept, changesRequested, unreadReplies].some(
-        (rows) => rows.length >= LIST_LIMIT,
-      ) || unsold.total > unsold.rows.length;
+      [
+        outbidLots,
+        reofferOffers,
+        purchases,
+        agreementsToAccept,
+        changesRequested,
+        unreadReplies,
+      ].some((rows) => rows.length >= LIST_LIMIT) || unsold.total > unsold.rows.length;
     return { facts, truncated };
   }
 }

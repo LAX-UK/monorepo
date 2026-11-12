@@ -15,6 +15,8 @@ import {
 import {
   DrizzleLotReawardRepository,
   DrizzleLotReofferRepository,
+  DrizzleNeedsYouFactsReader,
+  DrizzleRecordAccountReader,
   DrizzleReofferViewsReader,
   DrizzleReofferWorkflowReader,
   DrizzleSellerConsentRepository,
@@ -792,6 +794,13 @@ describe.skipIf(!HAS_DB)("re-offer API services (integration)", () => {
         .where(eq(lotFulfilment.lotId, s.lotId));
       expect(fulfilment?.status).toBe("awaiting_payment");
       expect((await row(out.reofferId))?.status).toBe("accepted");
+      // The bidder's page then reads as bought, with when the invoice falls due.
+      const [bought] = await bidderOffersFor("second", s.lotId);
+      expect(bought).toMatchObject({
+        status: "accepted",
+        respondedAt: new Date(T0.getTime() + HOUR).toISOString(),
+        invoiceDueAt: "2026-11-18T23:59:59.999Z",
+      });
       const types = eventTypes(s.lotId);
       expect(types).toContain("lot.reoffer_accepted");
       expect(types).toContain("lot.reawarded");
@@ -1091,6 +1100,11 @@ describe.skipIf(!HAS_DB)("re-offer API services (integration)", () => {
       expect(view).toEqual({
         id: started.reofferId,
         lotId: s.lotId,
+        lotTitle: `Reoffer lot ${s.lotId.slice(0, 4)}`,
+        lotNumber: lotIds.length,
+        saleId: null,
+        lotImage: null,
+        lotEndedAt: "2026-10-10T10:00:00.000Z",
         status: "offered",
         price: {
           hammerMinor: 90_000,
@@ -1101,9 +1115,11 @@ describe.skipIf(!HAS_DB)("re-offer API services (integration)", () => {
           totalMinor: 112_500,
         },
         endsAt: "2026-11-14T17:00:00.000Z",
+        respondedAt: null,
+        invoiceDueAt: null,
       });
       const text = JSON.stringify(view);
-      for (const secret of [entity.seller, ids.buyer, entity.buyer, "Reoffer lot"]) {
+      for (const secret of [entity.seller, ids.buyer, entity.buyer]) {
         expect(text).not.toContain(secret);
       }
       // Another account cannot read it.
@@ -1111,6 +1127,40 @@ describe.skipIf(!HAS_DB)("re-offer API services (integration)", () => {
       expect(await codeOf(reads.getForBidder(member("third"), started.reofferId))).toBe(
         "offer_not_found",
       );
+    });
+
+    it("waits on the offered account only, as a task and as a record it can be linked to, until it is answered or ends", async () => {
+      reset();
+      const needsYou = new DrizzleNeedsYouFactsReader(db);
+      const records = new DrizzleRecordAccountReader(db);
+      const waiting = (who: keyof typeof ids) =>
+        needsYou.reofferOffers({ legalEntityId: entity[who], now: clock.now, limit: 10 });
+      const s = await defaultedLot();
+      const started = await start.start(staff, s.lotId);
+      await consent.recordForSeller(staff, started.reofferId, { answer: "given", note: "yes" });
+      // Not sent yet: nothing waits on the bidder, and the offer is not a record they can open.
+      expect(await waiting("second")).toEqual([]);
+      expect(await records.findOwningAccount("reoffer", started.reofferId)).toBeNull();
+
+      await offer.send(staff, started.reofferId);
+      const [task] = await waiting("second");
+      expect(task).toMatchObject({
+        id: started.reofferId,
+        offerMinor: 90_000,
+        endsAt: new Date("2026-11-14T17:00:00.000Z"),
+        sentAt: clock.now,
+      });
+      expect(task?.title).toBe(`Reoffer lot ${s.lotId.slice(0, 4)}`);
+      expect(await records.findOwningAccount("reoffer", started.reofferId)).toBe(entity.second);
+      // Another account has nothing to answer.
+      expect(await waiting("third")).toEqual([]);
+
+      // Answered, or past its end: it no longer waits.
+      clock.now = new Date("2026-11-14T17:00:01.000Z");
+      expect(await waiting("second")).toEqual([]);
+      clock.now = T0;
+      await response.decline(member("second"), started.reofferId, {});
+      expect(await waiting("second")).toEqual([]);
     });
 
     it("shows staff the bidder, the answer and the shortfall; the seller's refusal is hidden from the bidder", async () => {

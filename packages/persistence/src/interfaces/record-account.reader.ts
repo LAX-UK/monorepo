@@ -1,5 +1,5 @@
 /** Records that belong to one account and can be linked to from outside Bid (emails, alerts). */
-export type AccountRecordKind = "consignment" | "purchase";
+export type AccountRecordKind = "consignment" | "purchase" | "reoffer";
 
 /** Which legal entity owns a record, whatever account the person is using right now. */
 export interface IRecordAccountReader {
