@@ -1,8 +1,9 @@
 # @auction/accounting-zoho-books
 
-The low-level Zoho Books HTTP client for the Xero → Zoho Books move. It sends requests and says,
-in typed errors, what happened. It has no mappers (invoices, payments and so on are the adapter's
-job), no apps wiring and no live calls in its tests.
+The Zoho Books HTTP client and the Books adapter for the Xero → Zoho Books move. The client sends
+requests and says, in typed errors, what happened. The adapter (`src/adapter`) implements the
+`@auction/accounting-domain` ports on top of it. Nothing calls either at runtime yet (no apps wiring,
+Books mode stays off) and no test touches the network.
 
 Depends on `@auction/accounting-domain` (outcome types) and `@auction/identity-contracts` (the token
 envelope). `lint:layers` forbids anything else in the workspace, apps, the database and frameworks.
@@ -52,3 +53,30 @@ Design note for the runtime PR (which owns the wiring; nothing here changes):
 
 The shared budget, rate and refresh lock above, and a `ZohoTokenStore` adapter over `zoho_books_connection`
 (its `version` can be the row's `updated_at`).
+
+## The adapter
+
+`createZohoBooksAdapter({ api, orgs })` returns one port per document kind (`invoices`, `payments`,
+`creditNotes`, `bills`, `contacts`) and `lookup`. Each is its own small class, so a caller depends only on
+the port it uses. `orgs` comes from `parseOrgConfigs`, which checks the per-organisation settings when the
+process starts: the Books organisation id, the custom field that carries the LAX reference, tax ids per VAT
+treatment (`standard` must have one), item and revenue account per line role, the Stripe clearing deposit
+account, the bill expense account, optional templates and numbering groups. None of this is hard-coded in a
+mapper. An entity left out (Bid, until its organisation exists) is refused with a clear reason.
+
+| Concern | Where | Rule |
+| --- | --- | --- |
+| Translation | `adapter/mappers/*` | One pure mapper per document kind: the only code that knows Books field names. Lines go as quantity 1 and a two-decimal rate; credit lines are tax inclusive (gross as the rate, tax id of the line's treatment). No adjustment field is ever sent. |
+| Kinds | `adapter/kinds.ts` | One row per kind: path, list and item keys, id and number fields, how to read totals. A new kind adds a row. |
+| Duplicate guard | `adapter/writer.ts` | Every document carries the LAX reference in a custom field Books refuses to accept twice. A create refused with one of the organisation's duplicate-value codes is looked up and adopted, so a repeat is the same document. The adapter keeps no state. |
+| Lookup | `adapter/lookup.ts` | Searches the kind's collection by the custom field, then reads the document and requires the stored reference to equal the one asked for, so a filter Books ignored can never adopt another document. Absence is only an empty search or a 404. |
+| Dependencies | `adapter/resolve.ts` | A contact or invoice we refer to is found by reference. Missing is a rejection; not confirmable is `unknown`. |
+| Totals | `adapter/kinds.ts` | Books' sub total, tax and total are read back as whole pence (a fraction of a penny is `unknown`). The domain compares them with ours; a difference goes to review. |
+
+`@auction/accounting-zoho-books/testing` adds `InMemoryAccounting` (the fake), `SimulatedBooks` (Books at the
+HTTP edge, with the unique reference field, per-line tax and injectable faults) and `runAccountingContract`,
+one suite run against both the fake and the real client and adapter over the simulator.
+
+Still to confirm in the Books test organisation before any live send: that list endpoints filter on the
+custom field, the duplicate-value code, the field names read back for credit notes and payments, how Books
+rounds tax on tax-inclusive credit lines, and applying a credit note to its invoice.
