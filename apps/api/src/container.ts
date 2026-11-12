@@ -302,6 +302,7 @@ export function createContainer(env: Env): Container {
     watchlistReminders,
     consignmentThreadSweep: consignmentMessages.sweep,
     paymentReminders: buyerDefault.paymentReminders,
+    dealSettlementFollowUps: payments.privateSaleDeals.settlementFollowUps,
   });
   const catalogRoutes = createCatalogRouteServices({
     saleService: catalog.saleService,

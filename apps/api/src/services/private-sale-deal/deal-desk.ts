@@ -3,6 +3,7 @@ import type {
   IPrivateSaleDealCommands,
   IPrivateSaleDealDesk,
   IPrivateSaleDealQueries,
+  IPrivateSaleDealSettlementCommands,
 } from "../interfaces/private-sale-deal-desk.js";
 
 /**
@@ -17,11 +18,13 @@ export class PrivateSaleDealDesk implements IPrivateSaleDealDesk {
   readonly act: IPrivateSaleDealCommands["act"];
   readonly set: IPrivateSaleDealArtworkCommands["set"];
   readonly remove: IPrivateSaleDealArtworkCommands["remove"];
+  readonly markSold: IPrivateSaleDealSettlementCommands["markSold"];
 
   constructor(
     queries: IPrivateSaleDealQueries,
     commands: IPrivateSaleDealCommands,
     artwork: IPrivateSaleDealArtworkCommands,
+    settlement: IPrivateSaleDealSettlementCommands,
   ) {
     this.list = (viewer, query) => queries.list(viewer, query);
     this.detail = (viewer, ref) => queries.detail(viewer, ref);
@@ -30,5 +33,6 @@ export class PrivateSaleDealDesk implements IPrivateSaleDealDesk {
     this.act = (viewer, ref, action, input) => commands.act(viewer, ref, action, input);
     this.set = (viewer, ref, input) => artwork.set(viewer, ref, input);
     this.remove = (viewer, ref, input) => artwork.remove(viewer, ref, input);
+    this.markSold = (viewer, ref) => settlement.markSold(viewer, ref);
   }
 }

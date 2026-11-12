@@ -38,6 +38,7 @@ import {
 import { DealTermsDialog } from "./deal-terms-dialog";
 import { NameBuyerDialog } from "./name-buyer-dialog";
 import { RemoveDealArtworkDialog } from "./remove-deal-artwork-dialog";
+import { SettlementFollowUpNotice } from "./settlement-follow-up-notice";
 
 const NextLink: StaffLinkComponent = Link;
 
@@ -129,6 +130,7 @@ export function DealView({ deal }: { deal: DealRecord }) {
 
   const notice = (
     <div className="flex flex-col gap-3">
+      <SettlementFollowUpNotice deal={deal} />
       <ClosedNotice deal={deal} />
       <PolicyNotice deal={deal} />
       {blocked && next ? (
@@ -142,7 +144,11 @@ export function DealView({ deal }: { deal: DealRecord }) {
       ) : null}
     </div>
   );
-  const hasNotice = deal.stage === "cancelled" || deal.policy.gaps.length > 0 || Boolean(blocked);
+  const hasNotice =
+    deal.stage === "cancelled" ||
+    deal.policy.gaps.length > 0 ||
+    Boolean(blocked) ||
+    deal.settlementFollowUp !== null;
 
   return (
     <>

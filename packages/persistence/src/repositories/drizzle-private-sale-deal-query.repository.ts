@@ -1,11 +1,17 @@
 import type { Database } from "@auction/db";
 import {
+  artworkRegister,
   itemSubmission,
   legalEntity,
   privateSaleDeal,
   privateSaleDealParty,
 } from "@auction/db/schema";
-import { type DealScope, consignmentReference, dealViewCriteria } from "@auction/domain";
+import {
+  type DealScope,
+  consignmentReference,
+  dealViewCriteria,
+  settlementFollowUp,
+} from "@auction/domain";
 import type { PrivateSaleDealStage } from "@auction/types";
 import { type SQL, and, asc, desc, eq, inArray, notInArray, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
@@ -17,6 +23,7 @@ import type {
   PrivateSaleDealListFilter,
   PrivateSaleDealListRow,
   PrivateSaleDealStageCount,
+  SettlementFollowUpRow,
 } from "../interfaces/private-sale-deal-query.repository.js";
 
 const seller = alias(privateSaleDealParty, "deal_seller");
@@ -31,6 +38,16 @@ function scopeConditions(scope: DealScope): SQL[] {
   return [inArray(privateSaleDeal.stage, [...scope.stages])];
 }
 
+/**
+ * A settled deal with a register original that is not recorded sold through the deal. The domain's
+ * `settlementFollowUp` decides how urgent it is; this selects the deals it applies to.
+ */
+const settlementFollowUpOpen = and(
+  eq(privateSaleDeal.stage, "settled"),
+  eq(artworkRegister.kind, "original"),
+  sql`NOT (${artworkRegister.offerState} = 'sold' AND ${artworkRegister.offerRefKind} = 'private_sale' AND ${artworkRegister.offerRefId} = ${privateSaleDeal.id}::text)`,
+);
+
 /** The deal lists staff work from, and the deals a person is named to act in. */
 export class DrizzlePrivateSaleDealQueryRepository implements IPrivateSaleDealQueryReader {
   constructor(private readonly db: Database) {}
@@ -43,6 +60,9 @@ export class DrizzlePrivateSaleDealQueryRepository implements IPrivateSaleDealQu
       conditions.push(inArray(privateSaleDeal.stage, [...criteria.stages]));
     }
     conditions.push(...scopeConditions(filter.scope));
+    if (criteria.settlementFollowUp && settlementFollowUpOpen) {
+      conditions.push(settlementFollowUpOpen);
+    }
     if (criteria.ownedByViewer) {
       conditions.push(eq(privateSaleDeal.ownerUserId, filter.viewerUserId));
     }
@@ -71,9 +91,15 @@ export class DrizzlePrivateSaleDealQueryRepository implements IPrivateSaleDealQu
         paymentDueAt: privateSaleDeal.paymentDueAt,
         collectionDueAt: privateSaleDeal.collectionDueAt,
         updatedAt: privateSaleDeal.updatedAt,
+        artworkRegisterId: privateSaleDeal.artworkRegisterId,
+        registerKind: artworkRegister.kind,
+        registerOfferState: artworkRegister.offerState,
+        registerOfferRefKind: artworkRegister.offerRefKind,
+        registerOfferRefId: artworkRegister.offerRefId,
       })
       .from(privateSaleDeal)
       .innerJoin(itemSubmission, eq(itemSubmission.id, privateSaleDeal.itemSubmissionId))
+      .leftJoin(artworkRegister, eq(artworkRegister.id, privateSaleDeal.artworkRegisterId))
       .innerJoin(seller, and(eq(seller.dealId, privateSaleDeal.id), eq(seller.role, "seller")))
       .innerJoin(sellerEntity, eq(sellerEntity.id, seller.legalEntityId))
       .leftJoin(buyer, and(eq(buyer.dealId, privateSaleDeal.id), eq(buyer.role, "buyer")))
@@ -84,11 +110,62 @@ export class DrizzlePrivateSaleDealQueryRepository implements IPrivateSaleDealQu
         oldestFirst ? asc(privateSaleDeal.id) : desc(privateSaleDeal.id),
       )
       .limit(filter.limit + 1);
-    return rows.map(({ workNumber, stage, ...row }) => ({
-      ...row,
-      stage: stage as PrivateSaleDealStage,
-      workReference: consignmentReference(workNumber),
-    }));
+    return rows.map(
+      ({
+        workNumber,
+        stage,
+        artworkRegisterId,
+        registerKind,
+        registerOfferState,
+        registerOfferRefKind,
+        registerOfferRefId,
+        ...row
+      }) => ({
+        ...row,
+        stage: stage as PrivateSaleDealStage,
+        workReference: consignmentReference(workNumber),
+        settlementFollowUp: settlementFollowUp(
+          { id: row.id, stage: stage as PrivateSaleDealStage, artworkRegisterId },
+          registerKind === null || registerOfferState === null
+            ? null
+            : {
+                kind: registerKind,
+                offerState: registerOfferState,
+                offerRefKind: registerOfferRefKind,
+                offerRefId: registerOfferRefId,
+              },
+        ),
+      }),
+    );
+  }
+
+  async listSettlementFollowUps(scope: DealScope, limit: number): Promise<SettlementFollowUpRow[]> {
+    const rows = await this.db
+      .select({
+        dealId: privateSaleDeal.id,
+        reference: privateSaleDeal.reference,
+        ownerUserId: privateSaleDeal.ownerUserId,
+        updatedAt: privateSaleDeal.updatedAt,
+        artworkRegisterId: privateSaleDeal.artworkRegisterId,
+        kind: artworkRegister.kind,
+        offerState: artworkRegister.offerState,
+        offerRefKind: artworkRegister.offerRefKind,
+        offerRefId: artworkRegister.offerRefId,
+      })
+      .from(privateSaleDeal)
+      .innerJoin(artworkRegister, eq(artworkRegister.id, privateSaleDeal.artworkRegisterId))
+      .where(and(settlementFollowUpOpen, ...scopeConditions(scope)))
+      .orderBy(asc(privateSaleDeal.updatedAt), asc(privateSaleDeal.id))
+      .limit(limit);
+    return rows.flatMap(
+      ({ artworkRegisterId, kind, offerState, offerRefKind, offerRefId, ...row }) => {
+        const severity = settlementFollowUp(
+          { id: row.dealId, stage: "settled", artworkRegisterId },
+          { kind, offerState, offerRefKind, offerRefId },
+        );
+        return severity ? [{ ...row, severity }] : [];
+      },
+    );
   }
 
   async findLiveDealReferenceForWork(itemSubmissionId: string): Promise<string | null> {

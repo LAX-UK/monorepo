@@ -63,6 +63,7 @@ const WRITE_ERROR_STATUS = {
   artwork_not_original: 422,
   artwork_unavailable: 409,
   artwork_register_busy: 503,
+  not_settled: 409,
   unavailable: 503,
 } as const satisfies Record<DealWriteError, 403 | 404 | 409 | 422 | 503>;
 
@@ -179,6 +180,23 @@ export function attachAdminPrivateSaleDealRoutes(
         viewerOf(c),
         c.req.valid("param").ref,
         c.req.valid("json"),
+      );
+      return respond(c, result);
+    },
+  );
+
+  /**
+   * POST /admin/private-sales/:ref/artwork/mark-sold — try again to record a settled deal's artwork
+   * as sold. Safe to repeat; it never moves an artwork the register shows elsewhere.
+   */
+  admin.post(
+    "/private-sales/:ref/artwork/mark-sold",
+    requirePrivateSaleDealsManage,
+    zValidator("param", privateSaleRefParamSchema),
+    async (c) => {
+      const result = await container.admin.privateSaleDeals.markSold(
+        viewerOf(c),
+        c.req.valid("param").ref,
       );
       return respond(c, result);
     },

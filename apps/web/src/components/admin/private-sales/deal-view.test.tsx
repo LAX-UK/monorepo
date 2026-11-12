@@ -24,6 +24,7 @@ vi.mock("@/lib/actions/admin/admin-private-sales", () => ({
   setDealArtworkAction: vi.fn(),
   removeDealArtworkAction: vi.fn(),
   searchDealArtworksAction: vi.fn(),
+  markDealArtworkSoldAction: vi.fn(),
 }));
 vi.mock("@/lib/ui/notify", () => ({
   notify: { success: (...args: unknown[]) => notifySuccess(...args), error: vi.fn() },

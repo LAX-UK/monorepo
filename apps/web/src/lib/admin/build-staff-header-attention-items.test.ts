@@ -61,4 +61,30 @@ describe("buildStaffHeaderAttentionItems", () => {
       buildStaffHeaderAttentionItems(EMPTY_ADMIN_NAV_COUNTS, "staff", ["administrator"]),
     ).toEqual([]);
   });
+
+  it("tells the people who run private sales when a settled deal's artwork is not marked sold", () => {
+    const counts = { ...EMPTY_ADMIN_NAV_COUNTS, privateSalesAttention: 2 };
+    const [item] = buildStaffHeaderAttentionItems(counts, "staff", ["sales_manager"]);
+    expect(item).toMatchObject({
+      id: "nav-private-sales-attention",
+      label: "2 settled private sales not marked sold",
+      count: 2,
+      href: "/admin/private-sales?view=needs_attention",
+      hint: "The artwork's record needs marking sold",
+    });
+  });
+
+  it("warns of a possible double sale when the register shows an artwork elsewhere", () => {
+    const counts = { ...EMPTY_ADMIN_NAV_COUNTS, privateSalesAttention: 1, privateSalesUrgent: 1 };
+    const [item] = buildStaffHeaderAttentionItems(counts, "staff", ["administrator"]);
+    expect(item?.label).toBe("1 settled private sale not marked sold");
+    expect(item?.hint).toContain("may have been sold twice");
+  });
+
+  it("does not show it to people who may only view deals", () => {
+    const counts = { ...EMPTY_ADMIN_NAV_COUNTS, privateSalesAttention: 2 };
+    for (const role of ["finance", "client_services"] as const) {
+      expect(buildStaffHeaderAttentionItems(counts, "staff", [role])).toEqual([]);
+    }
+  });
 });

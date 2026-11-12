@@ -49,6 +49,7 @@ import {
   toBlocker,
 } from "./deal-desk-support.js";
 import type { DealLockLinks } from "./deal-lock-links.js";
+import type { DealSettlementFollowUpPresenter } from "./deal-settlement-follow-up.presenter.js";
 import {
   ACTION_ABILITY,
   type DealStaffViewer,
@@ -78,7 +79,12 @@ export type DealQueryDeps = {
   artworkPresenter: Pick<DealArtworkPresenter, "present">;
   /** The address of an artwork's record in LAX Admin. */
   links: Pick<DealLockLinks, "recordHref">;
+  /** Whether a settled deal's artwork is recorded sold, read from the register. */
+  settlement: Pick<DealSettlementFollowUpPresenter, "present">;
 };
+
+/** How many settled deals needing attention the lists count; the rest are still in the view. */
+const FOLLOW_UP_COUNT_LIMIT = 500;
 
 /** Why change and remove are off once the buyer has agreed to the artwork. */
 export const ARTWORK_CHANGE_OFF = "Change artwork is off from Agreed onwards.";
@@ -111,10 +117,15 @@ export class PrivateSaleDealQueryService implements IPrivateSaleDealQueries {
     });
     const items = rows.slice(0, query.limit);
     const last = items.at(-1);
+    const [stages, followUps] = await Promise.all([
+      this.deps.queries.countByStage(viewer.userId, viewer.scope),
+      this.deps.queries.listSettlementFollowUps(viewer.scope, FOLLOW_UP_COUNT_LIMIT),
+    ]);
     return {
       items,
       nextCursor: rows.length > query.limit && last ? encodeCursor(last) : null,
-      counts: dealViewCounts(await this.deps.queries.countByStage(viewer.userId, viewer.scope)),
+      counts: dealViewCounts(stages, followUps.length),
+      urgentFollowUps: followUps.filter((row) => row.severity === "urgent").length,
     };
   }
 
@@ -202,6 +213,11 @@ export class PrivateSaleDealQueryService implements IPrivateSaleDealQueries {
       artwork: artwork.shown,
       artworkUnlinkedReason: deal.artworkUnlinkedReason,
       artworkAccess: artworkAccessOf(viewer, deal),
+      settlementFollowUp: await this.deps.settlement.present(
+        viewer,
+        deal,
+        [...history].reverse().find((h) => h.toStage === "settled")?.createdAt ?? deal.updatedAt,
+      ),
       artworkMoves: artwork.history.map((move) => ({
         action: move.action,
         from: artwork.titles.get(move.fromArtworkRegisterId ?? "") ?? null,

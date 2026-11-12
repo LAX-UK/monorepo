@@ -14,6 +14,7 @@ import { withInboxNavCount } from "@/lib/admin/consignment-inbox/inbox-nav-count
 import { withDataRequestsNavCount } from "@/lib/admin/data-requests/data-requests-nav-count.server";
 import { withEnquiriesNavCount } from "@/lib/admin/enquiries/enquiries-nav-count.server";
 import { loadStaffProducts } from "@/lib/admin/load-staff-products";
+import { withPrivateSalesNavCount } from "@/lib/admin/private-sales/private-sales-nav-count.server";
 import type { ActingContext } from "@/lib/auth/capabilities";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import {
@@ -109,6 +110,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   navCounts = await withInboxNavCount(navCounts, userRole, staffRoles);
   navCounts = await withEnquiriesNavCount(navCounts, userRole, staffRoles);
   navCounts = await withDataRequestsNavCount(navCounts, userRole, staffRoles);
+  navCounts = await withPrivateSalesNavCount(navCounts, userRole, staffRoles);
 
   const role = sessionUserToShellRole(user);
 
