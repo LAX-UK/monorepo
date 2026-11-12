@@ -20,7 +20,7 @@ vi.mock("@/components/workspace/phone-account-button", () => ({
   ),
 }));
 
-import { BidPhoneAccount } from "./bid-phone-account";
+import { BidPhoneAccountButton } from "./bid-phone-account-button";
 
 const personal = {
   id: "me",
@@ -46,26 +46,26 @@ function context(accounts: AccountMenuContext["accounts"]): AccountMenuContext {
   return { accounts, pendingInvitations: 0 } as AccountMenuContext;
 }
 
-describe("BidPhoneAccount", () => {
+describe("BidPhoneAccountButton", () => {
   it("shows the account in use in Personal for someone with an organisation", () => {
     menuContext.value = context([
       personal,
       { ...personal, id: "org-1", kind: "organisation", name: "Northbank Gallery", current: false },
     ]);
-    render(<BidPhoneAccount />);
+    render(<BidPhoneAccountButton />);
     expect(screen.getByRole("button", { name: "Personal" })).toBeInTheDocument();
   });
 
   it("renders nothing for someone with only their own account", () => {
     menuContext.value = context(null);
-    const { container } = render(<BidPhoneAccount />);
+    const { container } = render(<BidPhoneAccountButton />);
     expect(container).toBeEmptyDOMElement();
   });
 
   it("renders nothing when signed out", () => {
     session.user = null;
     menuContext.value = null;
-    const { container } = render(<BidPhoneAccount />);
+    const { container } = render(<BidPhoneAccountButton />);
     expect(container).toBeEmptyDOMElement();
   });
 });
