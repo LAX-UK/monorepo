@@ -142,6 +142,10 @@ export {
 } from "./forms/unsaved-changes.js";
 export type { UnsavedChangesOptions, UnsavedChangesState } from "./forms/unsaved-changes.js";
 export { FileDropzone } from "./forms/file-dropzone.js";
+export { FocalPointPicker } from "./forms/focal-point-picker.js";
+export type { FocalPointPickerProps } from "./forms/focal-point-picker.js";
+export { describeFocal } from "./forms/focal-point.js";
+export type { FocalPoint } from "./forms/focal-point.js";
 export { MessageComposer } from "./forms/message-composer.js";
 export type {
   ComposerAttachment,

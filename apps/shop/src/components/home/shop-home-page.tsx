@@ -20,12 +20,24 @@ import { composeHomePageData } from "@/lib/home/home-page.composer";
 import { type HomePageViewModel, buildHomePageViewModel } from "@/lib/home/home-page.vm";
 import { homePhotographAddresses } from "@/lib/home/home-release";
 import type { HomeSectionId } from "@/lib/home/home-sections";
+import { loadStaffCover } from "@/lib/home/home-staff-cover.server";
 import { loadShopCatalogueImageOrigins } from "@/lib/media/catalogue-image.server";
 import { loadLinkableShopPolicies } from "@/lib/policies/shop-policy-publication.server";
+import type { CoverPhotoMedia } from "@auction/marketing-ui";
 import { type PublicArtworkSummary, createCatalogueImageResolver } from "@auction/shop-contracts";
 
 /** One home section; the view model decides which are shown and in what order. */
-function HomeSection({ id, vm, now }: { id: HomeSectionId; vm: HomePageViewModel; now: Date }) {
+function HomeSection({
+  id,
+  vm,
+  now,
+  staffCover,
+}: {
+  id: HomeSectionId;
+  vm: HomePageViewModel;
+  now: Date;
+  staffCover: CoverPhotoMedia | null;
+}) {
   switch (id) {
     case "hero":
       return (
@@ -33,6 +45,7 @@ function HomeSection({ id, vm, now }: { id: HomeSectionId; vm: HomePageViewModel
           hero={vm.hero}
           plate={vm.coverPlate}
           catalogueFailed={Boolean(vm.sectionErrors.editions)}
+          staffCover={staffCover}
         />
       );
     case "hang":
@@ -64,7 +77,10 @@ function HomeSection({ id, vm, now }: { id: HomeSectionId; vm: HomePageViewModel
 
 export async function ShopHomePage() {
   const now = new Date();
-  const data = await composeHomePageData(shopApiHomeCatalogueReader);
+  const [data, staffCover] = await Promise.all([
+    composeHomePageData(shopApiHomeCatalogueReader),
+    loadStaffCover(),
+  ]);
   const resolveImage = createCatalogueImageResolver("shop", loadShopCatalogueImageOrigins());
   const imageSrc = (item: PublicArtworkSummary) => resolveImage(item.imageUrl);
   const imageFacts = await readImageFacts(shopImageProbe, homePhotographAddresses(data, imageSrc));
@@ -81,7 +97,7 @@ export async function ShopHomePage() {
   return (
     <>
       {vm.layout.sections.map((id) => (
-        <HomeSection key={id} id={id} vm={vm} now={now} />
+        <HomeSection key={id} id={id} vm={vm} now={now} staffCover={staffCover} />
       ))}
     </>
   );

@@ -11,6 +11,7 @@ import {
   type PublicCategorySummary,
   type PublicDeliveryRegions,
   type PublicEditionFraming,
+  type PublicHomeCover,
   type PublicMerchandiseProductDetail,
   type PublicMerchandiseProductList,
   ShopContractParseError,
@@ -23,6 +24,7 @@ import {
   parsePublicCategorySummary,
   parsePublicDeliveryRegions,
   parsePublicEditionFraming,
+  parsePublicHomeCover,
   parsePublicMerchandiseProductDetail,
   parsePublicMerchandiseProductList,
 } from "@auction/shop-contracts";
@@ -230,6 +232,15 @@ export async function fetchPublicDeliveryRegions(): Promise<PublicDeliveryRegion
     throw new ShopApiBffError("upstream", `Delivery regions request failed (${response.status})`);
   }
   return readValidatedJson(response, parsePublicDeliveryRegions, "delivery regions");
+}
+
+/** The picture staff chose to lead the home's first screen; `cover` is null when none is chosen. */
+export async function fetchPublicHomeCover(): Promise<PublicHomeCover> {
+  const response = await shopApiFetch("/v1/home-cover");
+  if (!response.ok) {
+    throw new ShopApiBffError("upstream", `Home cover request failed (${response.status})`);
+  }
+  return readValidatedJson(response, parsePublicHomeCover, "home cover");
 }
 
 export async function fetchPublicCategoryBySlug(

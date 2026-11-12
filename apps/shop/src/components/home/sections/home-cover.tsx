@@ -3,6 +3,7 @@
 import { SHOP_HOME_CONTENT } from "@/content/home/shop-home-content";
 import { type ShopCoverPlate, toShopCoverSlide } from "@/lib/home/home-cover.adapter";
 import type { HomeHeroVm } from "@/lib/home/home-page.vm";
+import { shopCoverSrcSet } from "@/lib/media/shop-cover-src-set";
 import { type CoverPhotoMedia, MarketingCover } from "@auction/marketing-ui";
 import Link from "next/link";
 import { useMemo } from "react";
@@ -32,6 +33,7 @@ export function HomeCover({
       slides={slides}
       label={SHOP_HOME_CONTENT.hero.coverLabel}
       Link={Link}
+      srcSetFor={shopCoverSrcSet}
       priority
     />
   );
