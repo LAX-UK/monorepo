@@ -11,6 +11,11 @@ export function dayKey(instant: Date, zone: string): string {
   return zoneFormats(zone).dayKey.format(instant);
 }
 
+/** The day key `days` calendar days after `key` ("2026-11-03" plus 7 is "2026-11-10"). */
+export function addCalendarKeyDays(key: string, days: number): string {
+  return new Date(Date.parse(key) + days * 86_400_000).toISOString().slice(0, 10);
+}
+
 /** Whole days from one "YYYY-MM-DD" key to another, regardless of zone or clock changes. */
 export function calendarDaysBetween(fromKey: string, toKey: string): number {
   return Math.round((Date.parse(toKey) - Date.parse(fromKey)) / 86_400_000);
