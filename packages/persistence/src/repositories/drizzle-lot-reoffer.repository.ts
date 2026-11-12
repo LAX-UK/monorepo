@@ -134,8 +134,8 @@ export class DrizzleSellerConsentRepository implements ISellerConsentRepository 
     return row ? toSellerConsentView(row) : null;
   }
 
-  async findForReoffer(reofferId: string): Promise<SellerConsentView | null> {
-    const [row] = await this.db
+  async findForReoffer(reofferId: string, tx?: Database): Promise<SellerConsentView | null> {
+    const [row] = await (tx ?? this.db)
       .select()
       .from(sellerConsent)
       .where(
@@ -161,8 +161,8 @@ export class DrizzleSellerConsentRepository implements ISellerConsentRepository 
     if (updated.length === 0) throw new LotReofferConflictError();
   }
 
-  async markReminded(id: string, remindedAt: Date): Promise<boolean> {
-    const updated = await this.db
+  async markReminded(id: string, remindedAt: Date, tx?: Database): Promise<boolean> {
+    const updated = await (tx ?? this.db)
       .update(sellerConsent)
       .set({ remindedAt })
       .where(
