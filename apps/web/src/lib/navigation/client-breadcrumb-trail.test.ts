@@ -25,6 +25,13 @@ describe("buildClientBreadcrumbTrail", () => {
     expect(labels("/team/activity")).toEqual(["Team"]);
   });
 
+  it("trails an offer to buy at the bidder's own bid back to the bids", () => {
+    expect(buildClientBreadcrumbTrail("/bids/offers/o1")).toEqual([
+      { label: "My bids", href: "/bids" },
+      { label: "Your offer", record: true },
+    ]);
+  });
+
   it("names the Collection page as the menu does", () => {
     expect(labels("/collection")).toEqual(["Collection"]);
   });

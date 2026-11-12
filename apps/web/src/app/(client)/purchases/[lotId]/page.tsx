@@ -20,6 +20,7 @@ import { parsePaidLots, purchaseHandover } from "@/lib/purchases/purchase-handov
 import { purchaseProblemPanel } from "@/lib/purchases/purchase-problem";
 import { loadPurchaseSources } from "@/lib/purchases/purchase-sources.server";
 import { purchaseCard } from "@/lib/purchases/purchases.vm";
+import { reofferBoughtOn } from "@/lib/reoffer/bidder-reoffer.server";
 import { LONDON_TIME_ZONE, formatDate } from "@auction/datetime";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
@@ -104,13 +105,17 @@ export default async function PurchaseDetailPage({ params, searchParams }: PageP
     accountId && card.problemHref
       ? await getServerPurchaseProblem(accountId, lotId).catch(() => null)
       : null;
-  const wonOn = formatDate(row.lot.endTime, LONDON_TIME_ZONE);
+  // A lot bought by accepting an offer after the auction was not won at its sale.
+  const boughtOn = await reofferBoughtOn(lotId);
+  const dated = boughtOn
+    ? `Bought after the auction at your bid · ${formatDate(new Date(boughtOn), LONDON_TIME_ZONE)}`
+    : formatDate(row.lot.endTime, LONDON_TIME_ZONE);
   return (
     <DashboardPage>
       <SetMobileShellTitle title={card.title} />
       <PurchaseDetail
         card={card}
-        subtitle={[card.lotLabel, card.saleTitle, wonOn, card.wonBy ? `won by ${card.wonBy}` : null]
+        subtitle={[card.lotLabel, card.saleTitle, dated, card.wonBy ? `won by ${card.wonBy}` : null]
           .filter(Boolean)
           .join(" · ")}
         panel={panel}

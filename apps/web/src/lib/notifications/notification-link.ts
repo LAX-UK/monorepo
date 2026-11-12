@@ -1,3 +1,4 @@
+import { bidderReofferForLotHref } from "@/lib/reoffer/bidder-reoffer-links";
 import { lotPath } from "@/lib/seo/url";
 import type { UserNotification } from "@auction/types";
 
@@ -18,6 +19,13 @@ const FULFILMENT_NOTIFICATION_TYPES = new Set([
 
 /** Followed-artist and saved-search notices carry the page that lists the new lots. */
 const ALERT_LOT_NOTIFICATION_TYPES = new Set(["artist_lots_listed", "search_lots_listed"]);
+
+/** The bidder's notices about an offer to buy a lot at their bid open that offer, not the lot. */
+const BIDDER_OFFER_NOTIFICATION_TYPES = new Set([
+  "reoffer_offer",
+  "reoffer_offer_reminder",
+  "reoffer_offer_closed",
+]);
 
 /** A path on this site: one slash first, never a protocol-relative or absolute address. */
 function isSitePath(path: string | null | undefined): path is string {
@@ -56,6 +64,9 @@ export function notificationHref(item: UserNotification): string | null {
   if (item.type === "sale_announced" && item.saleId) return `/sales/${item.saleId}`;
   if (ALERT_LOT_NOTIFICATION_TYPES.has(item.type) && isSitePath(item.linkPath)) {
     return item.linkPath;
+  }
+  if (BIDDER_OFFER_NOTIFICATION_TYPES.has(item.type) && item.lotId) {
+    return bidderReofferForLotHref(item.lotId);
   }
   if (item.lotId) return lotPath({ id: item.lotId, title: item.title });
   return null;

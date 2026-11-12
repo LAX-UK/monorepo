@@ -12,7 +12,7 @@ export type RestoredAccount = {
 /** The API's choice, or `unavailable` when it could not answer (never a guess). */
 export type RestoreAnswer = { ok: true; restored: RestoredAccount } | { ok: false };
 
-export type RecordKind = "consignment" | "purchase";
+export type RecordKind = "consignment" | "purchase" | "reoffer";
 
 /**
  * Saves the account the person now uses, on their profile, so other devices open in it. Best
