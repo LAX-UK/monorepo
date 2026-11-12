@@ -33,12 +33,18 @@ describe("formatDeviceLabel", () => {
   });
 
   it("falls back to whichever half it knows, then to an unknown device", () => {
-    expect(formatDeviceLabel("curl/8.4.0")).toBe("Unknown browser");
-    expect(formatDeviceLabel("")).toBe("Unknown browser");
-    expect(formatDeviceLabel(null)).toBe("Unknown browser");
-    expect(formatDeviceLabel(undefined)).toBe("Unknown browser");
+    expect(formatDeviceLabel("curl/8.4.0")).toBe("Unknown device");
+    expect(formatDeviceLabel("")).toBe("Unknown device");
+    expect(formatDeviceLabel(null)).toBe("Unknown device");
+    expect(formatDeviceLabel(undefined)).toBe("Unknown device");
     expect(formatDeviceLabel("Mozilla/5.0 (Macintosh)")).toBe("macOS");
     expect(formatDeviceLabel("Safari/605")).toBe("Safari");
+  });
+
+  it("uses a caller's own wording only when nothing is known", () => {
+    expect(formatDeviceLabel(null, { unknown: "Unknown browser" })).toBe("Unknown browser");
+    expect(formatDeviceLabel("curl/8.4.0", { unknown: "Unknown browser" })).toBe("Unknown browser");
+    expect(formatDeviceLabel("Safari/605", { unknown: "Unknown browser" })).toBe("Safari");
   });
 });
 

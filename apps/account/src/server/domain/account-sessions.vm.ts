@@ -23,6 +23,9 @@ export type SessionsVm = {
   others: SessionRowVm[];
 };
 
+/** The device list's wording for an agent it cannot name; other screens keep "Unknown device". */
+const UNKNOWN_BROWSER = "Unknown browser";
+
 function plural(count: number, unit: string): string {
   return `${count} ${unit}${count === 1 ? "" : "s"}`;
 }
@@ -58,7 +61,7 @@ function toRow(session: AccountSession, now: Date): SessionRowVm {
   const products = deviceProductNames(session.products);
   return {
     id: session.id,
-    deviceLabel: formatDeviceLabel(session.userAgent),
+    deviceLabel: formatDeviceLabel(session.userAgent, { unknown: UNKNOWN_BROWSER }),
     deviceKind: session.deviceKind,
     isCurrent: session.isCurrent,
     activity: joinParts([
