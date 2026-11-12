@@ -12,7 +12,7 @@ export type ReofferWorkersHandle = {
 
 export type ReofferWorkersOptions = Pick<
   Parameters<typeof runReofferSweepJob>[0],
-  "reader" | "clock" | "ensureInvoice"
+  "reader" | "clock" | "marker" | "ensureInvoice"
 >;
 
 /** Every 15 minutes: lapses and ends what has run out, and sends each reminder once. */
