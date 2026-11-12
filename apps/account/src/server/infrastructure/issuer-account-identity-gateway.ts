@@ -27,6 +27,8 @@ import {
   ACCOUNT_SESSIONS_REVOKE_OTHERS_PATH,
   ACCOUNT_SESSIONS_REVOKE_PATH,
   ACCOUNT_SIGN_IN_METHODS_INTENT_PATH,
+  ACCOUNT_SIGN_IN_METHODS_PASSKEY_REMOVE_PATH,
+  ACCOUNT_SIGN_IN_METHODS_PASSKEY_RENAME_PATH,
   ACCOUNT_SIGN_IN_METHODS_PATH,
   ACCOUNT_SIGN_IN_METHODS_UNLINK_PATH,
   ACCOUNT_SIGN_IN_METHOD_ERRORS,
@@ -52,6 +54,8 @@ import {
   accountEmailChangeCancelledSchema,
   accountEmailChangeConfirmedSchema,
   accountEmailChangeStartedSchema,
+  accountPasskeyRemovedSchema,
+  accountPasskeyRenamedSchema,
   accountPasswordChangedSchema,
   accountPhoneCodeSentSchema,
   accountPhoneRemovedSchema,
@@ -402,6 +406,21 @@ export function createIssuerAccountIdentityGateway(
         return { status: "unavailable" };
       }
       return result;
+    },
+    async renamePasskey(actor, passkeyId, name) {
+      const result = await post(
+        ACCOUNT_SIGN_IN_METHODS_PASSKEY_RENAME_PATH,
+        fields(actor, { passkeyId, name }),
+        accountPasskeyRenamedSchema,
+      );
+      return result.status === "ok" ? { status: "ok", value: result.value.passkey } : result;
+    },
+    removePasskey(actor, passkeyId) {
+      return post(
+        ACCOUNT_SIGN_IN_METHODS_PASSKEY_REMOVE_PATH,
+        fields(actor, { passkeyId }),
+        accountPasskeyRemovedSchema,
+      );
     },
     unlinkSignInMethod(actor, provider) {
       return post(

@@ -91,4 +91,10 @@ describe("buildAuthorizeUrl hosted context", () => {
     const url = new URL(buildAuthorizeUrl({ ...base, hostedContext: "sell" }));
     expect(url.searchParams.get("hosted_context")).toBe("sell");
   });
+
+  it("carries why a fresh sign-in is asked for only when given", () => {
+    expect(new URL(buildAuthorizeUrl(base)).searchParams.has("reauth_reason")).toBe(false);
+    const url = new URL(buildAuthorizeUrl({ ...base, reauthReason: "add_sign_in_method" }));
+    expect(url.searchParams.get("reauth_reason")).toBe("add_sign_in_method");
+  });
 });

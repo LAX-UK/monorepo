@@ -27,13 +27,11 @@ const REOFFER_NOTICES = [
 ];
 
 describe("migration 0354 lot re-offer", () => {
-  it("is journalled as entry 349 with a later time than the entry before it", () => {
+  it("is journalled with the next index and a later time than the entry before it", () => {
     const index = journal.entries.findIndex((e) => e.tag === "0354_lot_reoffer");
     const entry = journal.entries[index];
     const previous = journal.entries[index - 1];
-    expect(entry?.idx).toBe(349);
-    expect(entry?.when).toBe(1805788800000);
-    expect(entry?.idx).toBeGreaterThan(previous?.idx ?? 0);
+    expect(entry?.idx).toBe((previous?.idx ?? -1) + 1);
     expect(entry?.when).toBeGreaterThan(previous?.when ?? 0);
   });
 

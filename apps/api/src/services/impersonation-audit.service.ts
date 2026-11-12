@@ -1,5 +1,6 @@
 import type {
   IImpersonationDomainEventReader,
+  IImpersonationSessionRepository,
   ITransactionRunner,
 } from "@auction/persistence/interfaces";
 import { ADMIN_IMPERSONATION_AGGREGATE_TYPE } from "@auction/persistence/lib";
@@ -13,6 +14,10 @@ export class ImpersonationAuditService {
     private readonly transactionRunner: ITransactionRunner,
     private readonly impersonationDomainEventReader: IImpersonationDomainEventReader,
     private readonly publisher: IDomainEventSink,
+    private readonly impersonationSessions: Pick<
+      IImpersonationSessionRepository,
+      "listActiveByActor"
+    >,
   ) {}
 
   /** Idempotent: skips if an `admin.impersonation_ended` row already exists for
@@ -51,9 +56,12 @@ export class ImpersonationAuditService {
     actorUserId: string;
     cookieHeader: string | undefined;
   }): Promise<void> {
-    const payload = parseActingLegalEntityCookieFromHeader(input.cookieHeader);
-    if (payload?.i?.sid && payload.e) {
-      return;
+    const sid = parseActingLegalEntityCookieFromHeader(input.cookieHeader)?.i?.sid;
+    if (sid) {
+      // Only a cookie for one of the actor's own live sessions proves the browser still holds
+      // it; a stale or foreign session id must not hide a cleared cookie.
+      const active = await this.impersonationSessions.listActiveByActor(input.actorUserId);
+      if (active.some((session) => session.id === sid)) return;
     }
 
     await this.recordLatestOpenSessionAsCookieCleared(input.actorUserId);

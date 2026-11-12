@@ -1283,6 +1283,15 @@ export type {
 } from "./artwork-register.js";
 
 export type {
+  IBidPublishSettings,
+  IRegisterLotIntegrityReader,
+  IUnlinkedOriginalsReader,
+  RegisterLotMismatch,
+  UnlinkedOriginal,
+  UnlinkedOriginalsReport,
+} from "./artwork-register-integrity.js";
+
+export type {
   ArtworkRegisterArtistCount,
   IArtworkRegisterQueue,
   QueuedConflict,

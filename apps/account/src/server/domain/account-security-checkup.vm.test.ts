@@ -52,6 +52,7 @@ describe("readAccountSecurityFacts", () => {
       userAgent: null,
       createdAt: "2026-10-23T12:00:00.000Z",
       lastActiveAt: "2026-10-23T12:00:00.000Z",
+      signedInWith: null,
     });
     expect(
       readAccountSecurityFacts(overview, null, [session("a", true), session("b", false)])
@@ -213,5 +214,32 @@ describe("buildSecurityCheckup", () => {
     const checkup = buildSecurityCheckup({ ...none, hasEmail: false }, links);
     expect(checkup.steps.map((s) => s.id)).toEqual(["two-step", "sessions"]);
     expect(checkup.summary).toBe("0 of 2 recommended steps done");
+  });
+});
+
+describe("the passkey step", () => {
+  const ids = (passkeys: Parameters<typeof buildSecurityCheckup>[2]) =>
+    buildSecurityCheckup({ ...none, twoStep: "on" }, links, passkeys).steps.map((step) => step.id);
+
+  it("asks to add one only where passkeys are offered and the person has none", () => {
+    expect(ids({ offered: true, count: 0 })).toContain("passkey");
+    const step = buildSecurityCheckup({ ...none, twoStep: "on" }, links, {
+      offered: true,
+      count: 0,
+    }).steps.find((entry) => entry.id === "passkey");
+    expect(step).toMatchObject({
+      title: "Add a passkey",
+      description: "Sign in with your face or fingerprint.",
+      done: false,
+      actionLabel: "Add a passkey",
+      href: "/account/security#sign-in-methods",
+    });
+  });
+
+  it("leaves the checkup as it was when passkeys are off, already held, or unknown", () => {
+    const before = ids(null);
+    expect(ids({ offered: false, count: 0 })).toEqual(before);
+    expect(ids({ offered: true, count: 2 })).toEqual(before);
+    expect(before).not.toContain("passkey");
   });
 });
