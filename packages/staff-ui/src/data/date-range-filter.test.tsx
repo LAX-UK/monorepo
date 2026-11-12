@@ -2,7 +2,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import type * as React from "react";
 import { describe, expect, it, vi } from "vitest";
 import { DateRangeFilter } from "./date-range-filter.js";
-import { daysBefore, londonToday } from "./date-ranges.js";
+import { daysBefore, londonToday, shiftDay } from "./date-ranges.js";
 
 // Radix popovers keep positioning loops running in jsdom; this stand-in keeps the open contract.
 vi.mock("@auction/ui/components/popover", () => ({
@@ -15,6 +15,13 @@ describe("day helpers", () => {
   it("counts back across month and year ends", () => {
     expect(daysBefore("2026-03-02", 6)).toBe("2026-02-24");
     expect(daysBefore("2026-01-03", 5)).toBe("2025-12-29");
+  });
+
+  it("moves a day across clock changes and leap days without drifting", () => {
+    expect(shiftDay("2026-03-28", 2)).toBe("2026-03-30");
+    expect(shiftDay("2026-10-24", 2)).toBe("2026-10-26");
+    expect(shiftDay("2028-02-28", 1)).toBe("2028-02-29");
+    expect(shiftDay("2026-11-30", 1)).toBe("2026-12-01");
   });
 
   it("reads the London day, not the UTC day, in summer", () => {

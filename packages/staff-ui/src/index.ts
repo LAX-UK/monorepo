@@ -189,7 +189,7 @@ export { DataTable } from "./data/data-table.js";
 export type { DataTableProps } from "./data/data-table.js";
 export { BulkActionBar } from "./data/bulk-action-bar.js";
 export { DateRangeFilter } from "./data/date-range-filter.js";
-export { daysBefore, londonToday } from "./data/date-ranges.js";
+export { daysBefore, londonToday, shiftDay } from "./data/date-ranges.js";
 export type { DateRangePreset, DayRange } from "./data/date-ranges.js";
 export { ListPageSkeleton } from "./data/list-page-skeleton.js";
 export {
