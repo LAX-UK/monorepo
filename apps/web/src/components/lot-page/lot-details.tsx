@@ -1,5 +1,5 @@
 import type { LotDetailsView } from "@/lib/lot-page/lot-details";
-import { FactList } from "@auction/ui/lax";
+import { FactList } from "@auction/ui/lax/fact-list";
 import Link from "next/link";
 
 const TEXT_LINK =

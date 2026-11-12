@@ -51,6 +51,15 @@ export function vatForLine(
 
 declare const lineBrand: unique symbol;
 
+/**
+ * How a line's amounts are to be read. An invoice line is `tax_exclusive`: `unitNetPence` is the
+ * price and `vatPence` is VAT on top of it. A credit line is `tax_inclusive`: its gross is what was
+ * credited and `vatPence` is the share of that gross that is VAT, so `unitNetPence` is the gross
+ * less VAT and `vatPence` is NOT `vatForLine(net)`. An adapter must send the gross with the stated
+ * VAT, never re-derive VAT from the net.
+ */
+export type AmountBasis = "tax_exclusive" | "tax_inclusive";
+
 export const LINE_ROLES = ["goods", "delivery"] as const;
 /** Goods and delivery are refunded and credited separately, so every line says which it is. */
 export type LineRole = (typeof LINE_ROLES)[number];
@@ -67,6 +76,7 @@ export interface Line {
   readonly treatment: VatTreatment;
   readonly role: LineRole;
   readonly vatPence: Pence;
+  readonly basis: AmountBasis;
 }
 
 export interface LineInput {
@@ -120,6 +130,68 @@ export function buildLine(input: LineInput): Result<Line, LineCode> {
     treatment: input.treatment,
     role: input.role,
     vatPence: vat.value,
+    basis: "tax_exclusive",
+  } as Line);
+}
+
+/** The amounts of a line, read under the basis the line declares. */
+export function lineAmounts(line: Line): {
+  readonly basis: AmountBasis;
+  readonly netPence: Pence;
+  readonly vatPence: Pence;
+  readonly grossPence: Pence;
+} {
+  return {
+    basis: line.basis,
+    netPence: lineNetPence(line),
+    vatPence: line.vatPence,
+    grossPence: lineGrossPence(line),
+  };
+}
+
+/**
+ * The VAT that has been credited on a line once `creditedGross` of its `lineGross` is credited:
+ * `round_half_up(lineVat * creditedGross / lineGross)`. It is monotonic, never more than `lineVat`,
+ * and equals `lineVat` exactly when the line is fully credited. Integer (BigInt) arithmetic, because
+ * the product can pass 2^53.
+ */
+export function cumulativeVat(lineVat: Pence, lineGross: Pence, creditedGross: Pence): Pence {
+  if (lineGross <= 0 || creditedGross <= 0) return 0;
+  if (creditedGross >= lineGross) return lineVat;
+  const n = BigInt(lineVat) * BigInt(creditedGross);
+  const d = BigInt(lineGross);
+  return Number((2n * n + d) / (2n * d));
+}
+
+/**
+ * A one-quantity, tax-inclusive line for a known gross and the VAT inside it, used for partial
+ * credits. The caller allocates the VAT (see `cumulativeVat`) so several credits on one line can
+ * never credit more VAT than the line charged. Only `standard` carries VAT, and VAT cannot exceed
+ * the gross; the net is the gross less that VAT.
+ */
+export function buildInclusiveLine(
+  input: Omit<LineInput, "quantity" | "unitNetPence"> & {
+    readonly grossPence: Pence;
+    readonly vatPence: Pence;
+  },
+): Result<Line, LineCode> {
+  const { grossPence, vatPence, ...rest } = input;
+  if (!isPence(grossPence) || grossPence < 0 || grossPence > MAX_LINE_NET_PENCE) {
+    return refuse("bad_amount", "gross must be non-negative whole pence within the line cap");
+  }
+  if (!isPence(vatPence) || vatPence < 0 || vatPence > grossPence) {
+    return refuse("bad_amount", "VAT must be whole pence between 0 and the gross");
+  }
+  const checked = buildLine({ ...rest, quantity: 1, unitNetPence: 0 });
+  if (!checked.ok) return checked;
+  if (rest.treatment !== "standard" && vatPence !== 0) {
+    return refuse("bad_amount", "only standard rated lines carry VAT");
+  }
+  return ok({
+    ...checked.value,
+    unitNetPence: grossPence - vatPence,
+    vatPence,
+    basis: "tax_inclusive",
   } as Line);
 }
 
@@ -148,6 +220,12 @@ export type TotalsMatch =
  * Exact comparison of our totals with the provider's. A difference is a finding to review, never
  * something to paper over with an adjustment or rounding line.
  */
+export function isTotals(value: unknown): value is Totals {
+  if (typeof value !== "object" || value === null) return false;
+  const v = value as Record<string, unknown>;
+  return isPence(v.netPence) && isPence(v.vatPence) && isPence(v.grossPence);
+}
+
 export function compareWithProviderTotals(ours: Totals, theirs: Totals): TotalsMatch {
   for (const field of ["netPence", "vatPence", "grossPence"] as const) {
     if (ours[field] !== theirs[field]) {

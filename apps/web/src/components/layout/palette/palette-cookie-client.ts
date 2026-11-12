@@ -11,7 +11,7 @@ import {
   pushRecent,
   serializeRecentsCookie,
 } from "@/components/layout/palette/recents-store";
-import { readCookie } from "@auction/ui";
+import { readCookie } from "@auction/ui/lib/read-cookie";
 
 const RECENTS_COOKIE = "lax_palette_recents";
 const PINNED_COOKIE = "lax_palette_pinned";

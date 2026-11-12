@@ -14,7 +14,7 @@ import {
 import { MARKETING_PROSE_LINK } from "@/lib/marketing/chrome";
 import { policyHubPageJsonLd } from "@/lib/seo/jsonld";
 import { metadataForStatic } from "@/lib/seo/metadata-factory";
-import { MarketingSectionReveal } from "@auction/marketing-ui";
+import { MarketingSectionReveal } from "@auction/marketing-ui/motion/index";
 import type { Metadata } from "next";
 import Link from "next/link";
 

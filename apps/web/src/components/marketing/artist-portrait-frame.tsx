@@ -6,7 +6,7 @@ import {
   AdaptiveMediaFrameContainer,
 } from "@/components/ui/adaptive-media-frame";
 import { ARTIST_PORTRAIT_SLOTS } from "@/lib/media/overlay-slot-presets";
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 
 type Props = {
   src: string | null | undefined;

@@ -3,7 +3,6 @@
 import { HydrationDeferred } from "@/components/layout/hydration-deferred";
 import { useSplitOverlayOpen } from "@/hooks/use-split-overlay-open";
 import type { CategoryNode } from "@auction/types";
-import { cn, fieldVariantBoxed } from "@auction/ui";
 import {
   BottomSheet,
   BottomSheetContent,
@@ -20,7 +19,9 @@ import {
   CommandItem,
   CommandList,
 } from "@auction/ui/components/command";
+import { fieldVariantBoxed } from "@auction/ui/components/field-variant";
 import { Popover, PopoverContent, PopoverTrigger } from "@auction/ui/components/popover";
+import { cn } from "@auction/ui/lib/utils";
 import { Check } from "lucide-react";
 import { type ComponentPropsWithoutRef, forwardRef, useMemo, useState } from "react";
 

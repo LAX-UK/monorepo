@@ -1,5 +1,5 @@
 import type { HomeNoticeView } from "@/lib/organisation-home/organisation-home-view";
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 import { Info } from "lucide-react";
 import Link from "next/link";
 

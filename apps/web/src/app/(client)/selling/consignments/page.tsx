@@ -16,7 +16,7 @@ import { workspacePageRefusal } from "@/lib/presenters/workspace-access/workspac
 import { defaultConsignmentView, parseConsignmentsListQuery } from "@/lib/seller/consignments-list";
 import { loadConsignments } from "@/lib/seller/consignments.server";
 import { sellingAccess } from "@/lib/seller/selling-access.server";
-import { ButtonLink } from "@auction/ui/lax";
+import { ButtonLink } from "@auction/ui/lax/button-link";
 import { Plus } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";

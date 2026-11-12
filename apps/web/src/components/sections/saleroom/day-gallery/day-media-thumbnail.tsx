@@ -3,8 +3,8 @@
 import { MediaImage } from "@/components/ui/media-image";
 import { FOCUS_RING } from "@/lib/marketing/chrome";
 import type { SaleDayMedia } from "@auction/types";
-import { cn } from "@auction/ui";
-import { Button } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
+import { cn } from "@auction/ui/lib/utils";
 import { PlayCircleIcon } from "lucide-react";
 
 export type DayMediaThumbnailVariant = "inline" | "sheet";

@@ -24,7 +24,7 @@ import {
   entityActorCan,
   organisationInviteRefusal,
 } from "@auction/domain";
-import { Notice } from "@auction/ui/lax";
+import { Notice } from "@auction/ui/lax/notice";
 import { notFound } from "next/navigation";
 
 /**

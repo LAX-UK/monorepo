@@ -6,7 +6,8 @@ import { OnsiteVenueDrawer } from "@/components/sections/artwork/onsite/onsite-v
 import type { OnsiteParticipationContext } from "@/lib/onsite/participation-request-input";
 import type { TelephoneBookingSnapshot } from "@/lib/telephone/telephone-booking-types";
 import type { Sale } from "@auction/types";
-import { Button, ButtonLink } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
+import { ButtonLink } from "@auction/ui/lax/button-link";
 import { ExternalLink, Globe, Mail, MapPin, Phone, Video } from "lucide-react";
 
 type Props = {

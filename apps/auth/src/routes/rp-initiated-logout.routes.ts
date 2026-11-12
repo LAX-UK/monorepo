@@ -1,9 +1,7 @@
 import { REGISTERED_OIDC_CLIENTS, type RegisteredOidcClientId } from "@auction/identity-contracts";
 import { Hono } from "hono";
-import type {
-  LogoutVerificationResult,
-  RpInitiatedLogoutVerifier,
-} from "../services/rp-initiated-logout-verifier.js";
+import type { BrowserSignOutService } from "../services/browser-sign-out.service.js";
+import type { RpInitiatedLogoutVerifier } from "../services/rp-initiated-logout-verifier.js";
 
 type CurrentOpSession = {
   subjectId: string;
@@ -12,10 +10,18 @@ type CurrentOpSession = {
 
 type RpInitiatedLogoutRoutesOptions = {
   authHandler(request: Request): Promise<Response>;
+  /**
+   * Where the issuer's own sign-out lives, from configuration (the issuer URL), never from the
+   * request: TLS ends at the ingress, so the scheme a request arrives with is not the public one
+   * and Better Auth's origin check would refuse a call built from it.
+   */
+  signOutUrl: string;
   currentSession(headers: Headers): Promise<CurrentOpSession | null>;
   verifier: Pick<RpInitiatedLogoutVerifier, "verify">;
   /** Revokes RP sessions bound to a verified `sid` when the OP cookie is absent. */
   revokeIdentitySession(sessionId: string): Promise<unknown>;
+  /** Ends the browser's own sign-in: its products, its record and the tokens issued under it. */
+  signOut: Pick<BrowserSignOutService, "isSignInOf" | "end">;
 };
 
 type EndSessionParams = {
@@ -25,16 +31,56 @@ type EndSessionParams = {
   state: string | null;
 };
 
+/** Browsers say how a request relates to the issuer; a cross-site request is never a sign-out by itself. */
+const SAME_SITE_FETCH = new Set(["same-origin", "same-site"]);
+
+/** The origins of the registered products' own pages: where a genuine sign-out request comes from. */
+const PRODUCT_ORIGINS: ReadonlySet<string> = new Set(
+  Object.values(REGISTERED_OIDC_CLIENTS).flatMap((client) =>
+    client.postLogoutRedirectUris.map((uri) => new URL(uri).origin),
+  ),
+);
+
+/**
+ * Whether a request without an ID token comes from the issuer's own site. Browsers that send
+ * Fetch Metadata say so. Older ones send none, and then the request must say it comes from a
+ * registered product's page (Origin, else Referer); with neither, or from anywhere else, it is
+ * refused, so a page on another site cannot sign anyone out by sending the browser here.
+ */
+function isFromSameSite(request: Request): boolean {
+  const site = request.headers.get("sec-fetch-site");
+  if (site !== null) return SAME_SITE_FETCH.has(site);
+  const from = request.headers.get("origin") ?? request.headers.get("referer");
+  if (!from) return false;
+  try {
+    return PRODUCT_ORIGINS.has(new URL(from).origin);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * RP-initiated logout. Better Auth's own end-session is never reached: it deletes every OAuth token
+ * of the person, which would break product refresh on all their other browsers. Signing out of a
+ * product ends this browser's sign-in only (see `BrowserSignOutService`).
+ *
+ * - With an ID token: it must verify, name the person the browser is signed in as, and carry the
+ *   `sid` of the browser's record or one of its earlier ids.
+ * - Without one (a product that lost its ID token, such as LAX Account with its session store
+ *   down): a same-site request ends the browser's record, and a redirect goes only to a URI
+ *   registered for the named client.
+ */
 export function createRpInitiatedLogoutRoutes(options: RpInitiatedLogoutRoutesOptions): Hono {
   const app = new Hono();
 
   app.all("/oauth2/endsession", async (c) => {
-    const passthroughRequest = c.req.raw.clone();
     const params = await readEndSessionParams(c);
-    if (!params.postLogoutRedirectUri) return options.authHandler(passthroughRequest);
+    const currentSession = await options.currentSession(c.req.raw.headers);
+    const done = (response: Response | null) =>
+      response ?? finish(params.postLogoutRedirectUri, params.state);
 
     if (!params.idTokenHint) {
-      return invalidRequest("a valid id_token_hint is required for cross-site logout");
+      return fallbackSignOut(c.req.raw, params, currentSession, options);
     }
 
     const verified = await options.verifier.verify({
@@ -51,24 +97,19 @@ export function createRpInitiatedLogoutRoutes(options: RpInitiatedLogoutRoutesOp
       return c.json({ error: "invalid_client" }, 400);
     }
 
-    const client = REGISTERED_OIDC_CLIENTS[verified.clientId];
-    if (!client.postLogoutRedirectUris.includes(params.postLogoutRedirectUri)) {
-      return c.json(
-        {
-          error: "invalid_request",
-          error_description: "post_logout_redirect_uri is not registered",
-        },
-        400,
-      );
+    if (params.postLogoutRedirectUri) {
+      const client = REGISTERED_OIDC_CLIENTS[verified.clientId];
+      if (!client.postLogoutRedirectUris.includes(params.postLogoutRedirectUri)) {
+        return invalidRequest("post_logout_redirect_uri is not registered");
+      }
     }
 
-    const currentSession = await options.currentSession(c.req.raw.headers);
     if (!currentSession) {
       if (verified.expired) {
         return invalidRequest("an expired id_token_hint requires a current OP session");
       }
       await options.revokeIdentitySession(verified.sessionId);
-      return redirectOnly(params.postLogoutRedirectUri, params.state);
+      return done(null);
     }
 
     if (currentSession.subjectId !== verified.subjectId) {
@@ -80,7 +121,9 @@ export function createRpInitiatedLogoutRoutes(options: RpInitiatedLogoutRoutesOp
         403,
       );
     }
-    if (currentSession.sessionId !== verified.sessionId) {
+    // The token's `sid` is the browser's record or an earlier id of it: a newer sign-in in the
+    // same browser took the older one over, and products may still hold its id.
+    if (!(await options.signOut.isSignInOf(currentSession, verified.sessionId))) {
       return c.json(
         {
           error: "invalid_request",
@@ -90,17 +133,82 @@ export function createRpInitiatedLogoutRoutes(options: RpInitiatedLogoutRoutesOp
       );
     }
 
-    return delegateVerifiedLogout({
-      request: c.req.raw,
-      authHandler: options.authHandler,
-      verified,
-      idTokenHint: params.idTokenHint,
-      postLogoutRedirectUri: params.postLogoutRedirectUri,
-      state: params.state,
-    });
+    return done(await endBrowserSignIn(c.req.raw, currentSession, options, params));
   });
 
   return app;
+}
+
+/** Without an ID token: a same-site request ends this browser's record and goes to a registered URI. */
+async function fallbackSignOut(
+  request: Request,
+  params: EndSessionParams,
+  currentSession: CurrentOpSession | null,
+  options: RpInitiatedLogoutRoutesOptions,
+): Promise<Response> {
+  if (!isFromSameSite(request)) {
+    return invalidRequest("a valid id_token_hint is required for cross-site logout");
+  }
+  if (params.postLogoutRedirectUri) {
+    const client =
+      params.clientId && Object.hasOwn(REGISTERED_OIDC_CLIENTS, params.clientId)
+        ? REGISTERED_OIDC_CLIENTS[params.clientId as RegisteredOidcClientId]
+        : null;
+    if (!client) return invalidRequest("client_id is required for post_logout_redirect_uri");
+    if (!client.postLogoutRedirectUris.includes(params.postLogoutRedirectUri)) {
+      return invalidRequest("post_logout_redirect_uri is not registered");
+    }
+  }
+  if (!currentSession) return finish(params.postLogoutRedirectUri, params.state);
+  return (
+    (await endBrowserSignIn(request, currentSession, options, params)) ??
+    finish(params.postLogoutRedirectUri, params.state)
+  );
+}
+
+/**
+ * Ends the browser's sign-in through the issuer's own sign-out, which deletes the record, expires
+ * the cookie and announces it. Returns the response to send back (redirecting when asked to), or
+ * null when the sign-out answered and there is nothing to add.
+ */
+async function endBrowserSignIn(
+  request: Request,
+  currentSession: CurrentOpSession,
+  options: RpInitiatedLogoutRoutesOptions,
+  params: EndSessionParams,
+): Promise<Response | null> {
+  const response = await options.signOut.end(currentSession, () =>
+    options.authHandler(signOutRequest(request, options.signOutUrl)),
+  );
+  if (!response.ok) return response;
+  if (!params.postLogoutRedirectUri) return response;
+  const redirect = new URL(params.postLogoutRedirectUri);
+  if (params.state) redirect.searchParams.set("state", params.state);
+  const headers = new Headers(response.headers);
+  headers.delete("content-length");
+  headers.delete("content-type");
+  headers.set("Location", redirect.toString());
+  return new Response(null, { status: 302, headers });
+}
+
+/** Headers a proxy sets; none of them belongs on a call the issuer makes to itself. */
+const FORWARDING_HEADERS = [
+  "forwarded",
+  "x-forwarded-host",
+  "x-forwarded-port",
+  "x-forwarded-proto",
+];
+
+/** The issuer's own sign-out for the cookie this request carries, as a same-origin call. */
+function signOutRequest(request: Request, signOutUrl: string): Request {
+  const url = new URL(signOutUrl);
+  const headers = new Headers(request.headers);
+  for (const name of FORWARDING_HEADERS) headers.delete(name);
+  headers.set("origin", url.origin);
+  headers.set("sec-fetch-site", "same-origin");
+  headers.set("content-type", "application/json");
+  headers.delete("content-length");
+  return new Request(url, { method: "POST", headers, body: "{}" });
 }
 
 async function readEndSessionParams(c: {
@@ -148,37 +256,9 @@ function invalidRequest(description: string): Response {
   );
 }
 
-function redirectOnly(postLogoutRedirectUri: string, state: string | null): Response {
+function finish(postLogoutRedirectUri: string | null, state: string | null): Response {
+  if (!postLogoutRedirectUri) return Response.json({ success: true, message: "Logout successful" });
   const redirect = new URL(postLogoutRedirectUri);
   if (state) redirect.searchParams.set("state", state);
   return Response.redirect(redirect.toString(), 302);
-}
-
-async function delegateVerifiedLogout(input: {
-  request: Request;
-  authHandler(request: Request): Promise<Response>;
-  verified: LogoutVerificationResult;
-  idTokenHint: string;
-  postLogoutRedirectUri: string;
-  state: string | null;
-}): Promise<Response> {
-  const requestUrl = new URL(input.request.url);
-  requestUrl.search = "";
-  requestUrl.searchParams.set("client_id", input.verified.clientId);
-  requestUrl.searchParams.set("id_token_hint", input.idTokenHint);
-
-  const upstreamHeaders = new Headers(input.request.headers);
-  upstreamHeaders.set("Sec-Fetch-Site", "same-origin");
-  upstreamHeaders.delete("content-type");
-  upstreamHeaders.delete("content-length");
-  const upstream = await input.authHandler(
-    new Request(requestUrl, { method: "GET", headers: upstreamHeaders }),
-  );
-  if (!upstream.ok) return upstream;
-
-  const redirect = new URL(input.postLogoutRedirectUri);
-  if (input.state) redirect.searchParams.set("state", input.state);
-  const headers = new Headers(upstream.headers);
-  headers.set("Location", redirect.toString());
-  return new Response(null, { status: 302, headers });
 }

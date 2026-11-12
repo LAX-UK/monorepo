@@ -1,7 +1,7 @@
 "use client";
 
 import { linkIsCurrent } from "@/lib/nav/is-current";
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 

@@ -1,7 +1,7 @@
 import type { FaqItem } from "@/components/marketing/faq/faq-data";
 import { MarketingSection } from "@/components/marketing/marketing-section";
 import { SELL_SECTION_IDS } from "@/lib/marketing/sell-landing";
-import { MarketingDetailAccordion } from "@auction/marketing-ui";
+import { MarketingDetailAccordion } from "@auction/marketing-ui/marketing-detail-accordion";
 
 type Props = { items: readonly FaqItem[] };
 

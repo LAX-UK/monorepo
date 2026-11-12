@@ -1,6 +1,9 @@
 "use client";
 
-import { Button, MetricCell, MetricCellSkeleton, Notice, PlainLink } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
+import { PlainLink } from "@auction/ui/lax/link";
+import { MetricCell, MetricCellSkeleton } from "@auction/ui/lax/metric-cell";
+import { Notice } from "@auction/ui/lax/notice";
 import { Gavel, Wallet } from "lucide-react";
 import { useEffect } from "react";
 import { toast } from "sonner";

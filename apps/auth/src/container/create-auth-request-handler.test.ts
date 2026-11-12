@@ -60,6 +60,7 @@ function setup(
     durable,
     notices,
     sessionStampStore,
+    deviceSessions: async ({ response }) => response,
     readTwoFactorRequirement: (opts.readTwoFactorRequirement ??
       (async () => ({
         required: opts.requiredByPolicy ?? false,
@@ -203,6 +204,7 @@ describe("auth request lifecycle ordering", () => {
       durable: { settle: vi.fn(async () => undefined) },
       notices: { notify: vi.fn(async () => undefined) },
       sessionStampStore: {} as never,
+      deviceSessions: async ({ response }) => response,
       readTwoFactorRequirement: vi.fn(async () => ({ required: false, sources: [] })),
       auth: auth as never,
       oidcSessions: {
@@ -260,6 +262,7 @@ describe("auth request lifecycle ordering", () => {
       durable: { settle: vi.fn(async () => undefined) },
       notices: { notify: vi.fn(async () => undefined) },
       sessionStampStore: {} as never,
+      deviceSessions: async ({ response }) => response,
       readTwoFactorRequirement: vi.fn(async () => ({ required: false, sources: [] })),
       auth: auth as never,
       oidcSessions: {
@@ -507,6 +510,7 @@ describe("when a lookup fails before 2FA changes", () => {
       durable: { settle: vi.fn(async () => undefined) },
       notices: { notify: vi.fn(async () => undefined) },
       sessionStampStore: {} as never,
+      deviceSessions: async ({ response }) => response,
       readTwoFactorRequirement: vi.fn(),
       auth: {
         handler: vi.fn(async () =>

@@ -10,7 +10,7 @@ import {
   lotMediaTreatment,
 } from "@auction/domain";
 import type { Lot, LotStatus } from "@auction/types";
-import type { StatusBadgeShape, StatusBadgeTone } from "@auction/ui/lax";
+import type { StatusBadgeShape, StatusBadgeTone } from "@auction/ui/lax/status-badge";
 import type { WatchedLotReminderVm } from "./watched-lot-reminder.vm";
 
 /** The views of Watching, in order. The ids are the page's `?tab=` values. */

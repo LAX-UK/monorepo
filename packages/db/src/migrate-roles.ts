@@ -9,6 +9,8 @@ const { Client } = pg;
 export const AUTH_FULL_TABLES = [
   "user",
   "session",
+  /** The earlier ids a sign-in record stands for after a new sign-in took it over; issuer-only. */
+  "session_lineage",
   "account",
   "verification",
   "jwks_key",
@@ -171,6 +173,7 @@ export const SHOP_COMMERCE_APPEND_ONLY_TABLES = [
 export const API_DENY_TABLES = [
   "user",
   "session",
+  "session_lineage",
   "account",
   "verification",
   "two_factor",
@@ -254,6 +257,7 @@ export const SHOP_ARTWORK_REGISTER_READ_TABLES = [
   "artwork_register",
   "zoho_artwork_sync_outcome",
   "zoho_listing_sync_run",
+  "zoho_sync_health",
 ] as const;
 export const SHOP_ARTWORK_REGISTER_CONFLICT_TABLES = ["artwork_register_conflict"] as const;
 export const SHOP_ARTWORK_REGISTER_EVENT_TABLES = ["artwork_register_event"] as const;
@@ -491,6 +495,7 @@ export const WORKER_ZOHO_ARTWORK_SYNC_TABLES = [
   "zoho_artwork_sync_state",
   "zoho_artwork_sync_outcome",
   "zoho_listing_sync_run",
+  "zoho_sync_health",
 ] as const;
 /**
  * The alert engine's Bid tables: the matching projector records matches and announcements, and the

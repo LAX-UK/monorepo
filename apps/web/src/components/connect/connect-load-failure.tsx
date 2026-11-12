@@ -2,7 +2,8 @@ import { DashboardSliceErrorAlert } from "@/components/dashboard/dashboard-slice
 import { supportMailto } from "@/lib/dashboard/dashboard-copy";
 import { buildSellerConnectFailure } from "@/lib/dashboard/dashboard-fetch-errors";
 import type { StripeConnectLoadError } from "@/lib/data/http/stripe-connect.types";
-import { ButtonLink, Notice } from "@auction/ui/lax";
+import { ButtonLink } from "@auction/ui/lax/button-link";
+import { Notice } from "@auction/ui/lax/notice";
 
 /**
  * Payout setup that did not load. An account LAX cannot reach is not the visitor's doing and

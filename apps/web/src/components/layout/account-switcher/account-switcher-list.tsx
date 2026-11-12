@@ -10,8 +10,9 @@ import {
   pendingInvitationsLabel,
   showsAccountFilter,
 } from "@/lib/navigation/account-switcher-model";
-import { cn } from "@auction/ui";
-import { Button, TextInput } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
+import { TextInput } from "@auction/ui/lax/input";
+import { cn } from "@auction/ui/lib/utils";
 import { Check, Loader2, Mail, Plus, Search, Users } from "lucide-react";
 import Link from "next/link";
 import { type ReactElement, type ReactNode, useEffect, useId, useState } from "react";

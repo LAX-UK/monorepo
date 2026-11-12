@@ -2,7 +2,8 @@
 
 import { preloadBidDialog } from "@/components/lot-page/bid/bid-dialog.lazy";
 import type { BidEntry, BidEntryControl, BidEntryDestination, BidMode } from "@auction/domain";
-import { Button, ButtonLink } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
+import { ButtonLink } from "@auction/ui/lax/button-link";
 import { Info } from "lucide-react";
 import Link from "next/link";
 import { useId } from "react";

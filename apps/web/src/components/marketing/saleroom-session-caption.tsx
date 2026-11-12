@@ -1,5 +1,5 @@
 import type { SaleroomCaptionParts } from "@/lib/saleroom/saleroom-mobile-chrome";
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 
 type Props = {
   caption: SaleroomCaptionParts;

@@ -8,7 +8,7 @@ import {
 } from "@/lib/collect/collect-calendar";
 import { COLLECT_COPY } from "@/lib/collect/collect-copy";
 import type { CollectionDayView } from "@auction/types";
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 import { useMemo } from "react";
 import { RadioGrid, type RadioGridItem } from "./radio-grid";
 

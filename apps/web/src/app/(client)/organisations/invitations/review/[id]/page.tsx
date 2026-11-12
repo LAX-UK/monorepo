@@ -5,6 +5,7 @@ import { InvitationReviewActions } from "@/components/organisations/invitation-r
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { createPendingInvitationsGateway } from "@/lib/legal-entity/pending-invitations.gateway.server";
 import { organisationRoleLabel } from "@/lib/presenters/organisation-role/organisation-role-presentation";
+import { LONDON_TIME_ZONE, formatDate, formatWeekday } from "@auction/datetime";
 import { StatusBadge } from "@auction/ui/components/status-badge";
 import { Surface } from "@auction/ui/components/surface";
 import type { Metadata } from "next";
@@ -15,12 +16,7 @@ export const metadata: Metadata = { title: "Invitation" };
 function formatExpiry(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleDateString(undefined, {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
+  return `${formatWeekday(d, LONDON_TIME_ZONE)} ${formatDate(d, LONDON_TIME_ZONE)}`;
 }
 
 export default async function InvitationReviewPage({

@@ -22,7 +22,10 @@ import {
   emptyEnquiryValues,
   enquiryFormSchema,
 } from "@/lib/private-sales/enquiry-values";
-import { Button, ErrorSummary, Notice, SegmentedControl } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
+import { ErrorSummary } from "@auction/ui/lax/error-summary";
+import { Notice } from "@auction/ui/lax/notice";
+import { SegmentedControl } from "@auction/ui/lax/tabs";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";

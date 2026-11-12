@@ -6,7 +6,7 @@ import { LotFactGrid } from "@/components/lot-page/lot-fact-grid";
 import { useLotPageViewContext } from "@/components/lot-page/lot-page-view-context";
 import { LotStateLine } from "@/components/lot-page/lot-state-line";
 import type { LotPageView } from "@/lib/lot-page/build-lot-page-view";
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 
 /**
  * The price and the one thing to do next, drawn entirely from the lot's view: the label and the

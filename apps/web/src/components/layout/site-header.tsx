@@ -10,13 +10,13 @@ import { MARKETING_PAGE_GUTTER_X } from "@/lib/marketing/chrome";
 import { useMarketingHeaderTitle } from "@/lib/marketing/marketing-header-title-context";
 import { restoreMegaMenuAuthedHrefs } from "@/lib/marketing/mega-menu-href-rewrite";
 import type { LaxFamilyLinkVm, LaxProductLinkVm } from "@auction/lax-ecosystem";
+import { MarketingTopBarSlots } from "@auction/marketing-ui/header/marketing-top-bar-slots";
 import {
-  LaxFamilyBar,
-  MarketingTopBarSlots,
   headerChromeClassName,
   useHeaderChrome,
-} from "@auction/marketing-ui";
-import { cn } from "@auction/ui";
+} from "@auction/marketing-ui/header/use-header-chrome";
+import { LaxFamilyBar } from "@auction/marketing-ui/lax-family-bar";
+import { cn } from "@auction/ui/lib/utils";
 import { Menu, X } from "lucide-react";
 import { usePathname, useSearchParams } from "next/navigation";
 import {

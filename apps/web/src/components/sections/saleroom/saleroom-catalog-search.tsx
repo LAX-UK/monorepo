@@ -1,7 +1,8 @@
 "use client";
 
-import { cn } from "@auction/ui";
-import { Button, TextInput } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
+import { TextInput } from "@auction/ui/lax/input";
+import { cn } from "@auction/ui/lib/utils";
 import { Search, X } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { type FormEvent, useEffect, useState } from "react";

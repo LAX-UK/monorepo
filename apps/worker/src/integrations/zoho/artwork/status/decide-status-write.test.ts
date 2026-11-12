@@ -1,6 +1,5 @@
-import { WHERE_IT_IS_KEYS } from "@auction/artwork-register-contracts";
+import { WHERE_IT_IS_KEYS, zohoStatusForPlace } from "@auction/artwork-register-contracts";
 import { describe, expect, it } from "vitest";
-import { zohoStatusForPlace } from "../writeback-mapping.js";
 import { decideStatusWrite } from "./decide-status-write.js";
 
 /** Every Status LAX can want, one per place, and the values staff might hold in Zoho. */

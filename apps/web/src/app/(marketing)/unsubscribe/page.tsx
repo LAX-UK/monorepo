@@ -3,7 +3,8 @@ import { UnsubscribeForm } from "@/components/auth/unsubscribe-form";
 import { getUnsubscribePreview } from "@/lib/data/http/email-unsubscribe.server";
 import { maskEmail } from "@/lib/format/mask-email";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
-import { ButtonLink, Notice } from "@auction/ui/lax";
+import { ButtonLink } from "@auction/ui/lax/button-link";
+import { Notice } from "@auction/ui/lax/notice";
 import type { Metadata } from "next";
 import Link from "next/link";
 

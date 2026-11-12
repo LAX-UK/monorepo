@@ -1,8 +1,8 @@
 "use client";
 
 import { TaskRouteHeaderTitle } from "@/components/task/task-route-header-title";
-import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
+import { cn } from "@auction/ui/lib/utils";
 import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";

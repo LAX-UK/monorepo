@@ -1,5 +1,5 @@
-import { cn } from "@auction/ui";
-import { ButtonLink } from "@auction/ui/lax";
+import { ButtonLink } from "@auction/ui/lax/button-link";
+import { cn } from "@auction/ui/lib/utils";
 import Link from "next/link";
 import type { ReactNode } from "react";
 

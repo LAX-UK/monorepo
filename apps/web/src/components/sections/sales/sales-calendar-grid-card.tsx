@@ -6,8 +6,8 @@ import { SaleCardShell } from "@/components/sections/sales/card/sale-card-shell"
 import { SaleCardTitle } from "@/components/sections/sales/card/sale-card-title";
 import type { SaleAction } from "@/components/sections/sales/card/types";
 import type { CalendarGridCardVM } from "@/components/sections/sales/sales-view-models";
-import { MarketingCardReveal } from "@auction/marketing-ui";
-import { cn } from "@auction/ui";
+import { MarketingCardReveal } from "@auction/marketing-ui/motion/index";
+import { cn } from "@auction/ui/lib/utils";
 
 type Props = {
   vm: CalendarGridCardVM;

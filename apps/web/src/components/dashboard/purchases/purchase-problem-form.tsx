@@ -10,15 +10,13 @@ import {
   purchaseProblemFormSchema,
 } from "@/lib/purchases/purchase-problem";
 import { reportPurchaseProblemAction } from "@/lib/purchases/purchase.actions";
-import {
-  Button,
-  ButtonLink,
-  ErrorSummary,
-  Field,
-  NativeSelect,
-  Notice,
-  TextArea,
-} from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
+import { ButtonLink } from "@auction/ui/lax/button-link";
+import { ErrorSummary } from "@auction/ui/lax/error-summary";
+import { Field } from "@auction/ui/lax/field";
+import { TextArea } from "@auction/ui/lax/input";
+import { NativeSelect } from "@auction/ui/lax/native-select";
+import { Notice } from "@auction/ui/lax/notice";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Controller } from "react-hook-form";

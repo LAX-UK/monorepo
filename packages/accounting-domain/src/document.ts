@@ -8,12 +8,12 @@ import {
   MAX_LINES,
   type Pence,
   type Totals,
+  buildInclusiveLine,
   buildLine,
+  cumulativeVat,
   isPence,
   lineGrossPence,
-  lineNetPence,
   totalsOf,
-  vatForLine,
 } from "./money.js";
 import { type PaidBuckets, type RefundSplit, planRefund } from "./refund.js";
 import { type Result, ok, refuse } from "./result.js";
@@ -111,7 +111,8 @@ export type DocumentCode =
   | "bad_source_id"
   | "bad_reference"
   | "exceeds_invoice"
-  | "not_representable"
+  | "bad_invoice"
+  | "bad_email"
   | "refund_refused";
 
 interface Base<K extends DocumentKind> {
@@ -136,6 +137,8 @@ export interface Invoice extends Base<"invoice"> {
 }
 
 export interface CreditNote extends Base<"credit_note"> {
+  /** Every line is gross with the VAT inside it; the adapter sends the gross and the stated VAT. */
+  readonly amountsAre: "tax_inclusive";
   readonly contactReference: string;
   readonly invoiceReference: string;
   readonly currency: typeof CURRENCY;
@@ -221,6 +224,8 @@ function buildLines(inputs: readonly LineInput[]): Result<readonly Line[], Docum
   return ok(lines);
 }
 
+const EMAIL = /^[^\s@]+@[^\s@.]+(\.[^\s@.]+)+$/;
+
 export function buildContact(
   input: Common & { name: string; email?: string | null },
 ): Result<Contact, DocumentCode> {
@@ -229,7 +234,11 @@ export function buildContact(
   if (typeof input.name !== "string" || input.name.trim() === "") {
     return refuse("bad_name", "contact needs a name");
   }
-  return ok({ ...b.value, name: input.name.trim(), email: input.email ?? null });
+  const email = input.email ?? null;
+  if (email !== null && (typeof email !== "string" || !EMAIL.test(email))) {
+    return refuse("bad_email", "email must look like name@domain");
+  }
+  return ok({ ...b.value, name: input.name.trim(), email });
 }
 
 interface Priced {
@@ -284,22 +293,138 @@ export function buildBill(input: Common & Priced): Result<Bill, DocumentCode> {
   });
 }
 
-/** Net that, with its VAT, makes exactly `grossPence` for this treatment; null if none does. */
-function netForGross(grossPence: Pence, line: Line): Pence | null {
-  if (line.treatment !== "standard") return grossPence;
-  const guess = Math.round((grossPence * 10_000) / 12_000);
-  for (const net of [guess, guess - 1, guess + 1, guess - 2, guess + 2]) {
-    if (net < 0) continue;
-    const vat = vatForLine(net, line.treatment);
-    if (vat.ok && net + vat.value === grossPence) return net;
-  }
-  return null;
+function sameTotals(a: Totals, b: Totals): boolean {
+  return a.netPence === b.netPence && a.vatPence === b.vatPence && a.grossPence === b.grossPence;
 }
 
-function grossByRole(lines: readonly Line[]): Record<LineRole, Pence> {
-  const out: Record<LineRole, Pence> = { goods: 0, delivery: 0 };
-  for (const line of lines) out[line.role] += lineGrossPence(line);
+/** Rebuild an invoice through the builder and require it to equal what we were handed. */
+function checkInvoice(invoice: Invoice): Result<null, DocumentCode> {
+  const bad = (why: string) => refuse("bad_invoice", why);
+  if (typeof invoice !== "object" || invoice === null || !Array.isArray(invoice.lines)) {
+    return bad("not an invoice");
+  }
+  if (!PRODUCTS.includes(invoice.product) || invoice.entity !== legalEntityFor(invoice.product)) {
+    return bad("product and legal entity disagree");
+  }
+  const parsed = parseLaxReference(invoice.reference);
+  if (!parsed.ok || parsed.value.kind !== "invoice" || parsed.value.product !== invoice.product) {
+    return bad("reference is not this product's invoice");
+  }
+  const rebuilt = buildInvoice({
+    product: invoice.product,
+    sourceId: parsed.value.sourceId,
+    contactReference: invoice.contactReference,
+    issuedOn: invoice.issuedOn,
+    dueOn: invoice.dueOn,
+    lines: invoice.lines.map((l) => ({
+      description: l.description,
+      quantity: l.quantity,
+      unitNetPence: l.unitNetPence,
+      treatment: l.treatment,
+      role: l.role,
+    })),
+  });
+  if (!rebuilt.ok) return bad(rebuilt.refusal.message);
+  const same = rebuilt.value.lines.every(
+    (l, i) => l.vatPence === invoice.lines[i]?.vatPence && invoice.lines[i]?.basis === l.basis,
+  );
+  if (!same || !sameTotals(rebuilt.value.totals, invoice.totals) || invoice.currency !== CURRENCY) {
+    return bad("invoice lines or totals do not match");
+  }
+  return ok(null);
+}
+
+/** What has already been credited on one invoice line. */
+interface LineLedger {
+  readonly line: Line;
+  readonly gross: Pence;
+  creditedGross: Pence;
+  creditedVat: Pence;
+}
+
+function ledgerFor(invoice: Invoice): Record<LineRole, LineLedger[]> {
+  const out: Record<LineRole, LineLedger[]> = { goods: [], delivery: [] };
+  for (const line of invoice.lines) {
+    out[line.role].push({ line, gross: lineGrossPence(line), creditedGross: 0, creditedVat: 0 });
+  }
   return out;
+}
+
+/** The credit line for `take` gross on a ledger entry: VAT allocated cumulatively, never over the line's. */
+function nextCredit(entry: LineLedger, take: Pence): Result<Line, "bad_line" | "bad_invoice"> {
+  const vat =
+    cumulativeVat(entry.line.vatPence, entry.gross, entry.creditedGross + take) - entry.creditedVat;
+  if (vat < 0) return refuse("bad_invoice", "VAT already credited on a line is too high");
+  const credit = buildInclusiveLine({
+    description: `Credit: ${entry.line.description}`,
+    treatment: entry.line.treatment,
+    role: entry.line.role,
+    grossPence: take,
+    vatPence: Math.min(vat, take),
+  });
+  if (!credit.ok) return refuse("bad_line", credit.refusal.message);
+  return credit;
+}
+
+function record(entry: LineLedger, credit: Line): void {
+  entry.creditedGross += lineGrossPence(credit);
+  entry.creditedVat += credit.vatPence;
+}
+
+/**
+ * Replay the prior credit notes onto the invoice's lines, in order, rebuilding each credit line
+ * exactly as `buildCreditNoteFor` would have made it. A prior credit that differs in any line or
+ * total, or that uses more than a line holds, is refused; nothing a caller states about an
+ * earlier credit is trusted beyond what the rebuild reproduces.
+ */
+function replayPriorCredits(
+  invoice: Invoice,
+  priorCredits: readonly CreditNote[],
+): Result<Record<LineRole, LineLedger[]>, DocumentCode> {
+  const bad = (why: string) => refuse("bad_invoice", why);
+  const ledger = ledgerFor(invoice);
+  const cursor: Record<LineRole, number> = { goods: 0, delivery: 0 };
+  for (const prior of priorCredits) {
+    const priorRef = checkRef(prior.reference, "credit_note", invoice.product);
+    if (!priorRef.ok || prior.invoiceReference !== invoice.reference) {
+      return refuse("bad_reference", "a prior credit note belongs to another invoice");
+    }
+    if (typeof prior !== "object" || !Array.isArray(prior.lines) || prior.lines.length === 0) {
+      return bad("a prior credit note has no lines");
+    }
+    for (const line of prior.lines as readonly Line[]) {
+      const entries = ledger[line.role];
+      if (!entries) return bad("a prior credit line has no role");
+      while (
+        cursor[line.role] < entries.length &&
+        (entries[cursor[line.role]] as LineLedger).creditedGross >=
+          (entries[cursor[line.role]] as LineLedger).gross
+      ) {
+        cursor[line.role] += 1;
+      }
+      const entry = entries[cursor[line.role]];
+      if (!entry || line.basis !== "tax_inclusive" || line.quantity !== 1) {
+        return bad("a prior credit note does not match the invoice");
+      }
+      const take = lineGrossPence(line);
+      const rebuilt =
+        take >= 1 && take <= entry.gross - entry.creditedGross ? nextCredit(entry, take) : null;
+      if (
+        !rebuilt?.ok ||
+        rebuilt.value.description !== line.description ||
+        rebuilt.value.treatment !== line.treatment ||
+        rebuilt.value.unitNetPence !== line.unitNetPence ||
+        rebuilt.value.vatPence !== line.vatPence
+      ) {
+        return bad("a prior credit note does not match the invoice");
+      }
+      record(entry, rebuilt.value);
+    }
+    if (!sameTotals(totalsOf(prior.lines), prior.totals)) {
+      return bad("a prior credit note does not add up");
+    }
+  }
+  return ok(ledger);
 }
 
 /**
@@ -307,9 +432,13 @@ function grossByRole(lines: readonly Line[]): Record<LineRole, Pence> {
  * delivery lines, so each keeps its VAT treatment (a margin-scheme sale is credited as margin
  * scheme, delivery as standard rated). The amounts must pass `planRefund` (never more than was
  * paid) and must fit in the invoice's goods and delivery gross minus the credit notes already
- * issued for it. Prior credits are taken to have used the invoice's lines in order. If an amount
- * cannot be written as a whole-penny net plus VAT on the line it lands on, it is refused rather
- * than rounded.
+ * issued for it. Prior credits are replayed onto the invoice's lines in order and rebuilt; one that
+ * does not reproduce exactly is refused. A credit line is tax-inclusive (`amountsAre`): its VAT is
+ * the cumulative share of the line's VAT for the gross credited so far, less what earlier credits
+ * took, so however a line is split its credits never total more VAT or gross than the invoice line
+ * charged, and the credit that finishes a line takes exactly the rest. The invoice is rebuilt
+ * through the same constructors as a new one, so a forged or hand-edited Invoice is refused
+ * (`bad_invoice`).
  */
 export function buildCreditNoteFor(
   invoice: Invoice,
@@ -321,6 +450,8 @@ export function buildCreditNoteFor(
     priorCredits: readonly CreditNote[];
   },
 ): Result<CreditNote, DocumentCode> {
+  const checked = checkInvoice(invoice);
+  if (!checked.ok) return checked;
   const b = base("credit_note", { product: invoice.product, sourceId: input.sourceId });
   if (!b.ok) return b;
   const dates = checkDates(input.issuedOn);
@@ -333,53 +464,31 @@ export function buildCreditNoteFor(
   if (plan.value.goodsPence + plan.value.deliveryPence === 0) {
     return refuse("zero_total", "a credit note cannot total zero");
   }
-  const priorLines: Line[] = [];
-  for (const prior of input.priorCredits) {
-    if (prior.invoiceReference !== invoice.reference) {
-      return refuse("bad_reference", "a prior credit note belongs to another invoice");
-    }
-    priorLines.push(...prior.lines);
-  }
-  const wanted = plan.value;
-  const priorByRole = grossByRole(priorLines);
-  const invoiceByRole = grossByRole(invoice.lines);
+  const replayed = replayPriorCredits(invoice, input.priorCredits);
+  if (!replayed.ok) return replayed;
+  const ledger = replayed.value;
   const lines: Line[] = [];
   for (const role of LINE_ROLES) {
-    const amount = role === "goods" ? wanted.goodsPence : wanted.deliveryPence;
-    if (amount > invoiceByRole[role] - priorByRole[role]) {
+    const amount = plan.value[role === "goods" ? "goodsPence" : "deliveryPence"];
+    const left = ledger[role].reduce((sum, e) => sum + e.gross - e.creditedGross, 0);
+    if (amount > left) {
       return refuse("exceeds_invoice", `${role} credit exceeds what is left on the invoice`);
     }
-    let alreadyUsed = priorByRole[role];
-    let left = amount;
-    for (const line of invoice.lines) {
-      if (left === 0) break;
-      if (line.role !== role) continue;
-      const gross = lineGrossPence(line);
-      const used = Math.min(alreadyUsed, gross);
-      alreadyUsed -= used;
-      const take = Math.min(left, gross - used);
+    let remaining = amount;
+    for (const entry of ledger[role]) {
+      if (remaining === 0) break;
+      const take = Math.min(remaining, entry.gross - entry.creditedGross);
       if (take === 0) continue;
-      const net = take === gross ? lineNetPence(line) : netForGross(take, line);
-      if (net === null) {
-        return refuse("not_representable", "amount cannot be split into net and VAT on the line");
-      }
-      const credit = buildLine({
-        description: `Credit: ${line.description}`,
-        quantity: 1,
-        unitNetPence: net,
-        treatment: line.treatment,
-        role,
-      });
-      if (!credit.ok) return refuse("bad_line", credit.refusal.message);
-      if (lineGrossPence(credit.value) !== take) {
-        return refuse("not_representable", "amount cannot be split into net and VAT on the line");
-      }
+      const credit = nextCredit(entry, take);
+      if (!credit.ok) return credit;
       lines.push(credit.value);
-      left -= take;
+      record(entry, credit.value);
+      remaining -= take;
     }
   }
   return ok({
     ...b.value,
+    amountsAre: "tax_inclusive",
     contactReference: invoice.contactReference,
     invoiceReference: invoice.reference,
     currency: CURRENCY,

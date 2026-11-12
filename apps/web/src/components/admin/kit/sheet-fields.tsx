@@ -1,6 +1,8 @@
 "use client";
 
-import { Field, ReadOnlyView, Switch, TextArea, TextInput } from "@auction/ui/lax";
+import { Field, ReadOnlyView } from "@auction/ui/lax/field";
+import { TextArea, TextInput } from "@auction/ui/lax/input";
+import { Switch } from "@auction/ui/lax/switch";
 import { Search } from "lucide-react";
 import { useId } from "react";
 import { FORCED, SheetSection, StateRow } from "./sheet-frame";

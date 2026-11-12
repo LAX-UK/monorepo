@@ -1,7 +1,7 @@
 "use client";
 
-import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
+import { cn } from "@auction/ui/lib/utils";
 import { Star } from "lucide-react";
 import { type CSSProperties, type HTMLAttributes, type ReactNode, forwardRef } from "react";
 

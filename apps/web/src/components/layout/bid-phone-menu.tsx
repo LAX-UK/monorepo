@@ -6,7 +6,7 @@ import { megaMenuSectionActive, utilityNav } from "@/components/layout/header-na
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { linkIsCurrent } from "@/lib/nav/is-current";
 import type { LaxFamilyLinkVm } from "@auction/lax-ecosystem";
-import { MarketingPhoneMenu } from "@auction/marketing-ui";
+import { MarketingPhoneMenu } from "@auction/marketing-ui/header/marketing-phone-menu";
 import type { RefObject } from "react";
 
 type BidPhoneMenuProps = {

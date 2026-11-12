@@ -1,7 +1,7 @@
 "use client";
 
 import type { ConditionReportRequestForm } from "@/components/sections/artwork/redesign/condition-report-request-form";
-import { Skeleton } from "@auction/ui/lax";
+import { Skeleton } from "@auction/ui/lax/skeleton";
 import dynamic from "next/dynamic";
 import type { ComponentProps } from "react";
 

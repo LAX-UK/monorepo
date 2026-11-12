@@ -3,7 +3,8 @@
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import { closingChipText } from "@/lib/time/opens-line";
 import { LONDON_TIME_ZONE, formatWhen } from "@auction/datetime";
-import { Countdown, cn } from "@auction/ui";
+import { Countdown } from "@auction/ui/components/countdown";
+import { cn } from "@auction/ui/lib/utils";
 
 type Props = {
   endIso: string;

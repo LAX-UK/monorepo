@@ -1,4 +1,4 @@
-import type { TabNavItem } from "@auction/ui/lax";
+import type { TabNavItem } from "@auction/ui/lax/tabs";
 import {
   consignmentDocumentsHref,
   consignmentHistoryHref,

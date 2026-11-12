@@ -1,7 +1,7 @@
 "use client";
 
 import { reportImageFallback } from "@/lib/observability/report-image-fallback";
-import { ResponsiveImg, type ResponsiveImgProps } from "@auction/marketing-ui";
+import { ResponsiveImg, type ResponsiveImgProps } from "@auction/marketing-ui/media/responsive-img";
 
 /**
  * Bid's picture: a `ResponsiveImg` that reports a resize fallback. It is a client component so

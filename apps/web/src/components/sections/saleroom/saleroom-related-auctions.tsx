@@ -1,6 +1,6 @@
 import { MarketingSectionHeader } from "@/components/marketing/marketing-section-header";
 import { MarketingViewAllLink } from "@/components/marketing/marketing-view-all-link";
-import { DisplayHeading } from "@auction/ui";
+import { DisplayHeading } from "@auction/ui/components/typography";
 import { SaleroomRelatedAuctionCard } from "./saleroom-related-auction-card";
 import type { RelatedSaleVM } from "./view-models";
 

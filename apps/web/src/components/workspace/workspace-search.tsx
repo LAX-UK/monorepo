@@ -12,14 +12,14 @@ import {
   shouldSearchRecords,
   workspaceSearchView,
 } from "@/lib/workspace/workspace-search-model";
-import { cn } from "@auction/ui";
+import { Button } from "@auction/ui/lax/button";
+import { ShortcutKeys } from "@auction/ui/lax/kbd";
 import {
-  Button,
   type PaletteGroup,
   SearchPalette,
-  ShortcutKeys,
   useSearchPaletteShortcut,
-} from "@auction/ui/lax";
+} from "@auction/ui/lax/search-palette";
+import { cn } from "@auction/ui/lib/utils";
 import {
   FileText,
   Gavel,

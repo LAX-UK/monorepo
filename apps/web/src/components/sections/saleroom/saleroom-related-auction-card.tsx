@@ -4,7 +4,7 @@ import { SaleCardMedia } from "@/components/sections/sales/card/sale-card-media"
 import { SaleCardMeta } from "@/components/sections/sales/card/sale-card-meta";
 import { SaleCardShell } from "@/components/sections/sales/card/sale-card-shell";
 import { SaleCardTitle } from "@/components/sections/sales/card/sale-card-title";
-import { MarketingCardReveal } from "@auction/marketing-ui";
+import { MarketingCardReveal } from "@auction/marketing-ui/motion/index";
 import type { RelatedSaleVM } from "./view-models";
 
 type Props = {

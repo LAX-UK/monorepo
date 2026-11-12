@@ -7,8 +7,8 @@ import {
 import { DisplayHeading } from "@/components/ui/typography";
 import { isSessionLookupTransientError } from "@/lib/auth/session-lookup-error";
 import { useReportRouteError } from "@/lib/observability/use-report-route-error";
-import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
+import { cn } from "@auction/ui/lib/utils";
 import Link from "next/link";
 
 export type AppRouteErrorProps = {

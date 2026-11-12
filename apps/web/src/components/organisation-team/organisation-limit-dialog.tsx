@@ -3,7 +3,11 @@
 import { parsePounds } from "@/lib/buyer-agents/authorisation-draft";
 import { setOrganisationBiddingLimitAction } from "@/lib/organisation-team/organisation-team.actions";
 import { notify } from "@/lib/ui/notify";
-import { Button, Dialog, DialogClose, Field, Notice, TextInput } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
+import { Dialog, DialogClose } from "@auction/ui/lax/dialog";
+import { Field } from "@auction/ui/lax/field";
+import { TextInput } from "@auction/ui/lax/input";
+import { Notice } from "@auction/ui/lax/notice";
 import { BUYER_AGENT_BID_LIMIT_MAX } from "@auction/validators";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";

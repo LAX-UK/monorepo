@@ -1,6 +1,6 @@
-import { cn } from "@auction/ui";
 import type { PageHeaderProps } from "@auction/ui/components/page-header";
-import { pageTitleClass } from "@auction/ui/lax";
+import { pageTitleClass } from "@auction/ui/lax/styles";
+import { cn } from "@auction/ui/lib/utils";
 import type { ReactNode } from "react";
 
 export type WorkspacePageHeaderProps = Omit<PageHeaderProps, "title"> & {

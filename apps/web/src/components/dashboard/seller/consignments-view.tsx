@@ -24,19 +24,14 @@ import {
   isConsignmentListNarrowed,
   needsChangesBadge,
 } from "@/lib/seller/consignments-list";
-import { RecordList } from "@auction/ui";
-import {
-  ButtonLink,
-  Field,
-  FilterSheet,
-  ListToolbar,
-  NativeSelect,
-  Notice,
-  ShowingCount,
-  SortMenu,
-  StatusBadge,
-  type TabNavItem,
-} from "@auction/ui/lax";
+import { RecordList } from "@auction/ui/components/record-row";
+import { ButtonLink } from "@auction/ui/lax/button-link";
+import { Field } from "@auction/ui/lax/field";
+import { FilterSheet, ListToolbar, ShowingCount, SortMenu } from "@auction/ui/lax/list-toolbar";
+import { NativeSelect } from "@auction/ui/lax/native-select";
+import { Notice } from "@auction/ui/lax/notice";
+import { StatusBadge } from "@auction/ui/lax/status-badge";
+import type { TabNavItem } from "@auction/ui/lax/tabs";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { ConsignmentRow } from "./consignment-row";

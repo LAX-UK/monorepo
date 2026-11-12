@@ -8,7 +8,7 @@ import { paymentDisplayDotStatus } from "@/lib/presenters/payment-status";
 import { lotPath } from "@/lib/seo/url";
 import { DotStatusPill } from "@auction/ui/components/dot-status-pill";
 import { Surface } from "@auction/ui/components/surface";
-import { ButtonLink } from "@auction/ui/lax";
+import { ButtonLink } from "@auction/ui/lax/button-link";
 import Link from "next/link";
 
 function PrimaryActionCell({ row }: { row: PaymentDisplayRow }) {

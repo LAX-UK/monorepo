@@ -3,7 +3,7 @@
 import { PressMentionTypePlaceholder } from "@/components/illustrations/press-type-placeholders";
 import type { PressCoverageVM } from "@/components/sections/saleroom/view-models";
 import { MARKETING_CARD_MEDIA_HOVER } from "@/lib/marketing/chrome";
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 import { useState } from "react";
 
 type Props = {

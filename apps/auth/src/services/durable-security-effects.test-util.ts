@@ -21,9 +21,12 @@ type Row = {
 export class InMemorySecurityEffectOutbox implements SecurityEffectOutboxRepository {
   readonly rows: Row[] = [];
 
+  private serial = 0;
+
   async enqueue(input: { job: SecurityEffectJob; error: string; nextAttemptAt: Date }) {
+    const id = `row-${++this.serial}`;
     this.rows.push({
-      id: `row-${this.rows.length + 1}`,
+      id,
       job: input.job,
       status: "pending",
       attemptCount: 1,
@@ -31,6 +34,7 @@ export class InMemorySecurityEffectOutbox implements SecurityEffectOutboxReposit
       claimedAt: null,
       lastError: input.error,
     });
+    return id;
   }
 
   async claimDue(input: { now: Date; staleBefore: Date; batchSize: number }) {

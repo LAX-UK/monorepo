@@ -1,3 +1,4 @@
+import { LONDON_TIME_ZONE, formatDate } from "@auction/datetime";
 import type { ItemSubmission, Lot } from "@auction/types";
 import {
   type ConsignmentJourney,
@@ -17,12 +18,6 @@ export type ConsignmentDetailVm = {
   /** The work's page once it is catalogued. */
   listingHref: string | null;
 };
-
-const LONG_DATE = new Intl.DateTimeFormat("en-GB", {
-  day: "numeric",
-  month: "short",
-  year: "numeric",
-});
 
 function known(label: string, value: string | null | undefined) {
   return value?.trim() ? [{ label, value: value.trim() }] : [];
@@ -54,7 +49,7 @@ export function buildConsignmentDetailVm(input: {
       ...known("Size", submission.dimensions),
       ...known("Date", submission.yearOfWork),
       ...known("Lot", lotLabel),
-      { label: "Submitted", value: LONG_DATE.format(submission.createdAt) },
+      { label: "Submitted", value: formatDate(submission.createdAt, LONDON_TIME_ZONE) },
     ],
     listingHref: input.listingHref,
   };

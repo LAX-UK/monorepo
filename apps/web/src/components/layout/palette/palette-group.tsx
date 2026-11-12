@@ -2,7 +2,7 @@
 
 import { PaletteRow } from "@/components/layout/palette/palette-row";
 import type { PaletteItem, PaletteSection } from "@/components/layout/palette/types";
-import { CommandGroup } from "@auction/ui";
+import { CommandGroup } from "@auction/ui/components/command";
 
 type Props = {
   section: PaletteSection;
