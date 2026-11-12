@@ -10,7 +10,10 @@ import {
 } from "@/components/sections/saleroom/day-gallery/day-gallery-config";
 import { DayGalleryOverflowTile } from "@/components/sections/saleroom/day-gallery/day-gallery-overflow-tile";
 import { DayGallerySectionHeader } from "@/components/sections/saleroom/day-gallery/day-gallery-section-header";
-import { DayGalleryViewAllSheet } from "@/components/sections/saleroom/day-gallery/day-gallery-view-all-sheet";
+import {
+  LazyDayGalleryViewAllSheet,
+  preloadDayGalleryViewAllSheet,
+} from "@/components/sections/saleroom/day-gallery/day-gallery-view-all-sheet.lazy";
 import { DayMediaThumbnail } from "@/components/sections/saleroom/day-gallery/day-media-thumbnail";
 import type { DayGalleryVM } from "@/components/sections/saleroom/view-models";
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
@@ -35,6 +38,8 @@ export function SaleroomDayGallery({ vm, className }: Props) {
   const [lightboxIndex, setLightboxIndex] = useState<number>(-1);
   // The viewer mounts on the first open and stays, so its closing motion plays and focus returns.
   const [viewerMounted, setViewerMounted] = useState(false);
+  // The sheet mounts on the first open and stays, so its closing motion plays and focus returns.
+  const [sheetMounted, setSheetMounted] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
   const reduceMotion = useReducedMotion();
 
@@ -49,6 +54,11 @@ export function SaleroomDayGallery({ vm, className }: Props) {
     setLightboxIndex(index);
   };
 
+  const openSheet = () => {
+    setSheetMounted(true);
+    setSheetOpen(true);
+  };
+
   return (
     <>
       <div className={cn("space-y-6", className)} aria-labelledby="auction-day-gallery-heading">
@@ -56,7 +66,8 @@ export function SaleroomDayGallery({ vm, className }: Props) {
           subtitle={formatDayGallerySubtitle(total, hasVideos)}
           total={total}
           showViewAll={showViewAll}
-          onViewAll={() => setSheetOpen(true)}
+          onViewAll={openSheet}
+          onIntent={() => void preloadDayGalleryViewAllSheet()}
         />
 
         <MarketingCatalogGrid
@@ -82,19 +93,22 @@ export function SaleroomDayGallery({ vm, className }: Props) {
               total={total}
               hasVideos={hasVideos}
               backgroundSrc={previewBackgroundSrc(vm.items)}
-              onClick={() => setSheetOpen(true)}
+              onIntent={() => void preloadDayGalleryViewAllSheet()}
+              onClick={openSheet}
             />
           ) : null}
         </MarketingCatalogGrid>
       </div>
 
-      <DayGalleryViewAllSheet
-        open={sheetOpen}
-        onOpenChange={setSheetOpen}
-        items={vm.items}
-        saleTitle={vm.saleTitle}
-        onSelectIndex={openLightboxAt}
-      />
+      {sheetMounted ? (
+        <LazyDayGalleryViewAllSheet
+          open={sheetOpen}
+          onOpenChange={setSheetOpen}
+          items={vm.items}
+          saleTitle={vm.saleTitle}
+          onSelectIndex={openLightboxAt}
+        />
+      ) : null}
 
       {viewerMounted ? (
         <LazyMediaLightbox
