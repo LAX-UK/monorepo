@@ -31,7 +31,9 @@ function toPublicLotView(lot: Lot, reservePriceRef?: string): PublicLotView {
   return {
     ...rest,
     hasReserve: status.kind !== "none",
-    reserveMet: status.kind === "none" ? null : status.kind === "met",
+    // An open result shows the starting price, so met/not met would be worked out from the wrong
+    // figure and could contradict the result once it is final: say nothing until then.
+    reserveMet: status.kind === "none" || lot.resultPending ? null : status.kind === "met",
   };
 }
 

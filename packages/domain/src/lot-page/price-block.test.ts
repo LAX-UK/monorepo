@@ -191,7 +191,7 @@ describe("price block by lifecycle", () => {
       label: "Ended",
       amount: null,
       amountText: null,
-      subLine: "The result will be published here when it is final",
+      subLine: null,
     });
   });
 
