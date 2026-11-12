@@ -5,6 +5,7 @@ import type {
   PendingAccessRequest,
   PurchaseNextStepFacts,
   PurchaseNextStepTimes,
+  ReofferOfferSubject,
   ReofferRequestSubject,
   UnreadReply,
 } from "@auction/domain";
@@ -23,6 +24,13 @@ export interface INeedsYouFactsReader {
     now: Date;
     limit: number;
   }): Promise<Array<HomeSubject & { endsAt: Date; outbidAt: Date | null }>>;
+
+  /** Offers to buy a lot at the account's own bid that wait for its answer and have not ended. */
+  reofferOffers(input: {
+    legalEntityId: string;
+    now: Date;
+    limit: number;
+  }): Promise<Array<ReofferOfferSubject & { sentAt: Date | null }>>;
 
   /** Won lots that are not finished: unpaid, or paid and not yet delivered or collected. */
   openPurchases(input: {

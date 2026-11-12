@@ -38,21 +38,29 @@ const sellerView = {
   soldAt: null,
 };
 
+/** The lines today's invoice carries: the hammer and the buyer's premium, nothing else. */
 const price = {
   hammerMinor: 82_000_00,
   buyersPremiumMinor: 20_500_00,
-  vatOnPremiumMinor: 4_100_00,
+  vatOnPremiumMinor: null,
   vatOnLotMinor: null,
   artistsResaleRightMinor: null,
-  totalMinor: 106_600_00,
+  totalMinor: 102_500_00,
 };
 
 const bidderView = {
   id: "r1",
   lotId: "l1",
+  lotTitle: "The Winter Study",
+  lotNumber: 2,
+  saleId: "s1",
+  lotImage: "https://media.example/winter-study.jpg",
+  lotEndedAt: "2026-10-29T17:00:00.000Z",
   status: "offered",
   price,
   endsAt: "2026-11-13T17:00:00.000Z",
+  respondedAt: null,
+  invoiceDueAt: null,
 };
 
 describe("send body", () => {
@@ -114,13 +122,23 @@ describe("seller answer", () => {
 });
 
 describe("bidder accept and decline", () => {
-  it("accepting needs the terms ticked", () => {
-    expect(acceptReofferBodySchema.safeParse({ termsAccepted: true }).success).toBe(true);
-    expect(acceptReofferBodySchema.safeParse({ termsAccepted: false }).success).toBe(false);
-    expect(acceptReofferBodySchema.safeParse({}).success).toBe(false);
-    expect(acceptReofferBodySchema.safeParse({ termsAccepted: true, price: 1 }).success).toBe(
+  it("accepting needs the terms ticked and the total the page showed", () => {
+    const shown = { termsAccepted: true, expectedTotalMinor: 102_500_00 };
+    expect(acceptReofferBodySchema.safeParse(shown).success).toBe(true);
+    expect(acceptReofferBodySchema.safeParse({ ...shown, termsAccepted: false }).success).toBe(
       false,
     );
+    expect(acceptReofferBodySchema.safeParse({ termsAccepted: true }).success).toBe(false);
+    expect(acceptReofferBodySchema.safeParse({}).success).toBe(false);
+    expect(acceptReofferBodySchema.safeParse({ ...shown, price: 1 }).success).toBe(false);
+  });
+
+  it("the total shown is whole, non-negative pence", () => {
+    for (const expectedTotalMinor of [-1, 1.5, "102500", null]) {
+      expect(
+        acceptReofferBodySchema.safeParse({ termsAccepted: true, expectedTotalMinor }).success,
+      ).toBe(false);
+    }
   });
 
   it("declining takes an optional trimmed reason of up to 500 characters", () => {
@@ -151,6 +169,21 @@ describe("bidder price", () => {
     expect(bidderReofferPriceSchema.safeParse({ ...withAll, totalMinor: 15_000_00 }).success).toBe(
       false,
     );
+  });
+
+  it("adds up for a lot with no buyer's premium line", () => {
+    expect(
+      bidderReofferPriceSchema.safeParse({
+        ...price,
+        buyersPremiumMinor: null,
+        totalMinor: price.hammerMinor,
+      }).success,
+    ).toBe(true);
+  });
+
+  it("names every line, null when the invoice has none, never leaves one out", () => {
+    const { vatOnPremiumMinor: _omitted, ...withoutVat } = price;
+    expect(bidderReofferPriceSchema.safeParse(withoutVat).success).toBe(false);
   });
 
   it("refuses a total that does not match its lines", () => {
