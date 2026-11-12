@@ -42,6 +42,10 @@ const SLA_MS: Partial<Record<AdminWorkItemSourceKind, number>> = {
   payment_overdue: 48 * 60 * 60 * 1000,
   deletion_hold: 72 * 60 * 60 * 1000,
   register_lot_mismatch: 72 * 60 * 60 * 1000,
+  // The seller's window has closed or is closing, and a bidder waits behind it.
+  reoffer_no_reply: 24 * 60 * 60 * 1000,
+  reoffer_ready: 24 * 60 * 60 * 1000,
+  reoffer_decision: 48 * 60 * 60 * 1000,
 };
 
 /** Kinds due in business days (Monday to Friday) rather than hours. */
@@ -84,6 +88,10 @@ const BASE_SEVERITY: Record<AdminWorkItemSourceKind, WorkItemSeverity> = {
   payment_overdue: "medium",
   deletion_hold: "medium",
   register_lot_mismatch: "medium",
+  reoffer_no_reply: "high",
+  reoffer_ready: "high",
+  reoffer_decision: "high",
+  reoffer_accepted: "low",
 };
 
 export function applyWorkItemSla(

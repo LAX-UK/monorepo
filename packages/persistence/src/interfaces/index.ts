@@ -1480,8 +1480,11 @@ export type * from "./accounting.js";
 
 export type {
   BidderReofferRow,
+  IReofferStaffReader,
   IReofferViewsReader,
   IReofferWorkflowReader,
+  ReofferLotFacts,
+  StaffBuyerDefaultView,
   PlacedBidWithId,
   ReofferDefaultFacts,
   ReofferLockedLot,

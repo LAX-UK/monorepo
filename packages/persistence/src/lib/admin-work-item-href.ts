@@ -38,6 +38,10 @@ export function adminWorkItemHref(
     case "lot_withdrawal":
     case "lot_draft_past_start":
     case "register_lot_mismatch":
+    case "reoffer_no_reply":
+    case "reoffer_ready":
+    case "reoffer_decision":
+    case "reoffer_accepted":
       return subjectId ? adminRoutes.lot(subjectId) : adminRoutes.lots.list();
     case "payment_overdue":
       return requireId(kind, subjectId, adminRoutes.lot);
