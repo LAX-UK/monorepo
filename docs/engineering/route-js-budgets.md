@@ -171,6 +171,11 @@ Two hooks carry the pattern: `useNearViewport` (true once an element is within a
 screen, and stays true) and `useDeferredModule` (a dynamic import with idle, loading, ready and
 failed states, a timeout and a retry).
 
+Measured on the CI build (Sentry on, gzip, start-up set): the sale page went from 584.6 to 538.7 KB
+(page-only part from 179.4 to 133.1 KB). Routes that do not use these parts moved by about 1.2 KB
+up or down because webpack regrouped shared chunks, so their ratchets were re-recorded. The sale
+group's budget is now 593 KB.
+
 Not moved: the live session provider, the live lot banner and the socket client. They share one
 subscription with the lot cards and the mobile summary bar, and the socket is the last PR of the
 plan. The toast library still reaches the sale page through the time chip's zone dialog

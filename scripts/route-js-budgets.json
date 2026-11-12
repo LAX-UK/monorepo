@@ -11,7 +11,7 @@
           "match": []
         },
         "sale": {
-          "budgetKb": 644,
+          "budgetKb": 593,
           "enforce": true,
           "match": ["^/\\(marketing\\)/sales/\\[slug\\]/\\[id\\]"]
         },
