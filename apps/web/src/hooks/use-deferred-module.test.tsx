@@ -1,4 +1,5 @@
-import { act, renderHook, waitFor } from "@testing-library/react";
+import { act, render, renderHook, waitFor } from "@testing-library/react";
+import { renderToString } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { useDeferredModule } from "./use-deferred-module";
 
@@ -51,5 +52,46 @@ describe("useDeferredModule", () => {
     });
     expect(result.current.status).toBe("ready");
     expect(result.current.value).toBe("late");
+  });
+
+  it("is ready on the first render of a later mount once the module has arrived", async () => {
+    const load = vi.fn(() => Promise.resolve("part"));
+    const first = renderHook(() => useDeferredModule(load, true));
+    await waitFor(() => expect(first.result.current.status).toBe("ready"));
+    first.unmount();
+
+    const seen: string[] = [];
+    const { result } = renderHook(() => {
+      const state = useDeferredModule(load, false);
+      seen.push(state.status);
+      return state;
+    });
+    expect(seen[0]).toBe("ready");
+    expect(result.current.value).toBe("part");
+    expect(load).toHaveBeenCalledTimes(1);
+  });
+
+  it("draws the stand-in while server HTML hydrates, even when the module has arrived", async () => {
+    const load = () => Promise.resolve("part");
+    const warm = renderHook(() => useDeferredModule(load, true));
+    await waitFor(() => expect(warm.result.current.status).toBe("ready"));
+    warm.unmount();
+
+    const seen: string[] = [];
+    function Part() {
+      const state = useDeferredModule(load, true);
+      seen.push(state.status);
+      return <span>{state.status === "ready" ? state.value : "stand-in"}</span>;
+    }
+    const container = document.createElement("div");
+    container.innerHTML = renderToString(<Part />);
+    document.body.append(container);
+    const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+    render(<Part />, { container, hydrate: true });
+    expect(seen[1]).toBe("idle");
+    await waitFor(() => expect(container).toHaveTextContent("part"));
+    expect(errors).not.toHaveBeenCalled();
+    errors.mockRestore();
+    container.remove();
   });
 });

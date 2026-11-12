@@ -19,6 +19,8 @@ export type SaleroomCatalogFilterSheetProps = {
   resultCountLabel: string;
   /** Lots per status; null when they could not be counted. */
   statusCounts: SaleroomStatusCounts | null;
+  /** Open on mount: the trigger was pressed while this sheet was still being fetched. */
+  defaultOpen?: boolean;
 };
 
 /** Mobile filter sheet for saleroom lot status on `/sales/[slug]/[id]`. */
@@ -26,8 +28,9 @@ export function SaleroomCatalogFilterSheet({
   basePath,
   resultCountLabel,
   statusCounts,
+  defaultOpen = false,
 }: SaleroomCatalogFilterSheetProps) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(defaultOpen);
   const router = useRouter();
   const params = useSearchParams();
   const searchParams = new URLSearchParams(params?.toString() ?? "");
