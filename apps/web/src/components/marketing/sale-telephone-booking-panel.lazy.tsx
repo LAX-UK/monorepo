@@ -6,7 +6,7 @@ import { useDeferredModule } from "@/hooks/use-deferred-module";
 import { useNearViewport } from "@/hooks/use-near-viewport";
 import { Button } from "@auction/ui/lax/button";
 import { Skeleton } from "@auction/ui/lax/skeleton";
-import { useRef } from "react";
+import { useEffect, useId, useRef } from "react";
 
 const loadPanelForm = () =>
   import("@/components/marketing/sale-telephone-booking-panel").then(
@@ -44,30 +44,70 @@ function BookingPanelFormPlaceholder({ contactNumber }: { contactNumber: string 
 /**
  * The telephone request form, fetched when its card is within a screen of the viewport, or as soon
  * as a link to its section is pointed at (the section tab), so a jump does not wait. Until it
- * arrives the card shows a placeholder of the form's own height; if the fetch fails or takes more
- * than ten seconds the card says so and offers a retry. The rest of the page is not affected.
+ * arrives the card shows a placeholder of the form's own height. If the fetch fails or takes more
+ * than ten seconds, the message and a retry are laid over that same box (the placeholder stays,
+ * hidden, underneath), so the card never changes height. The rest of the page is not affected.
+ *
+ * Focus: pressing Try again moves focus to this region, which stays mounted, so it is not lost to
+ * the page; if the retry fails again, focus returns to Try again.
  */
 export function LazySaleTelephoneBookingPanelForm(props: SaleTelephoneBookingPanelFormProps) {
   const anchor = useRef<HTMLDivElement>(null);
+  const retryButton = useRef<HTMLButtonElement>(null);
+  const retried = useRef(false);
+  const messageId = useId();
   const near = useNearViewport(anchor);
   const jumping = useAnchorIntent("telephone");
   const loaded = useDeferredModule(loadPanelForm, near || jumping);
+  const failed = loaded.status === "failed";
+
+  useEffect(() => {
+    if (failed && retried.current) retryButton.current?.focus();
+  }, [failed]);
+
+  const retry = () => {
+    retried.current = true;
+    anchor.current?.focus();
+    loaded.retry();
+  };
 
   return (
-    <div ref={anchor} aria-busy={loaded.status !== "ready" && loaded.status !== "failed"}>
+    <div
+      ref={anchor}
+      // biome-ignore lint/a11y/useSemanticElements: a fieldset would wrap the form's own fields and change their box (min-content sizing); this is only a labelled focus target
+      role="group"
+      aria-label="Telephone line request"
+      tabIndex={-1}
+      className="outline-none"
+      aria-busy={loaded.status !== "ready" && !failed}
+    >
       {loaded.status === "ready" ? (
         <loaded.value {...props} />
-      ) : loaded.status === "failed" ? (
-        <div className="space-y-3">
-          <p className="font-body text-sm text-on-surface">
-            The booking form did not load. Check your connection and try again.
-          </p>
-          <Button variant="secondary" type="button" onClick={loaded.retry}>
-            Try again
-          </Button>
-        </div>
       ) : (
-        <BookingPanelFormPlaceholder contactNumber={props.contactNumber} />
+        <div className="grid" data-testid="telephone-form-box">
+          <div
+            className={failed ? "invisible col-start-1 row-start-1" : "col-start-1 row-start-1"}
+            aria-hidden={failed || undefined}
+          >
+            <BookingPanelFormPlaceholder contactNumber={props.contactNumber} />
+          </div>
+          {failed ? (
+            <div role="alert" className="col-start-1 row-start-1 space-y-3 self-start">
+              <p id={messageId} className="font-body text-sm text-on-surface">
+                The booking form did not load. Check your connection and try again.
+              </p>
+              <Button
+                ref={retryButton}
+                variant="secondary"
+                type="button"
+                aria-describedby={messageId}
+                onClick={retry}
+              >
+                Try again
+              </Button>
+            </div>
+          ) : null}
+        </div>
       )}
     </div>
   );

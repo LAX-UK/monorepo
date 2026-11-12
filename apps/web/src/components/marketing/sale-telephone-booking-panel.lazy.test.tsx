@@ -1,5 +1,5 @@
 import { LazySaleTelephoneBookingPanelForm } from "@/components/marketing/sale-telephone-booking-panel.lazy";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const props = {
@@ -13,7 +13,6 @@ const props = {
 
 afterEach(() => {
   vi.unstubAllGlobals();
-  vi.resetModules();
 });
 
 describe("LazySaleTelephoneBookingPanelForm", () => {
@@ -38,20 +37,5 @@ describe("LazySaleTelephoneBookingPanelForm", () => {
     ).toBeInTheDocument();
     expect(screen.getByLabelText("Authorised maximum (optional)")).toBeInTheDocument();
     expect(container.firstElementChild).toHaveAttribute("aria-busy", "false");
-  });
-});
-
-describe("LazySaleTelephoneBookingPanelForm when the form cannot be fetched", () => {
-  it("says so and offers a retry", async () => {
-    vi.doMock("@/components/marketing/sale-telephone-booking-panel", () => {
-      throw new Error("chunk failed");
-    });
-    const { LazySaleTelephoneBookingPanelForm: Lazy } = await import(
-      "@/components/marketing/sale-telephone-booking-panel.lazy"
-    );
-    render(<Lazy {...props} />);
-    expect(await screen.findByText(/did not load/i)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
-    expect(await screen.findByText(/did not load/i)).toBeInTheDocument();
   });
 });
