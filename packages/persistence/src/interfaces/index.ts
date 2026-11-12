@@ -612,7 +612,11 @@ export type {
   NewLaxAdminRoleRemoval,
 } from "./lax-admin-roles.repository.js";
 
-export { BidInvoiceTotalMismatchError, bidInvoiceKey } from "./bid-invoice.repository.js";
+export {
+  BidInvoiceLotMovedError,
+  BidInvoiceTotalMismatchError,
+  bidInvoiceKey,
+} from "./bid-invoice.repository.js";
 export type {
   BidInvoiceRecord,
   IBidInvoiceBatchReader,
@@ -1200,7 +1204,10 @@ export type {
   PrivateSaleDealListFilter,
   PrivateSaleDealListRow,
   PrivateSaleDealStageCount,
+  SettlementFollowUpCount,
+  SettlementFollowUpRow,
 } from "./private-sale-deal-query.repository.js";
+export type { IDealSettlementFollowUpMarker } from "./deal-settlement-follow-up.marker.js";
 export type {
   DealReminderCandidate,
   IPrivateSaleDealReminderStore,
@@ -1251,6 +1258,7 @@ export type {
 
 export type {
   ApplyZohoChangeResult,
+  CatalogueStatusLedger,
   ConflictCursor,
   CreateRegisterEntryResult,
   AuctionOfferDraftLot,
@@ -1283,6 +1291,16 @@ export type {
   ResolveConflictResult,
 } from "./artwork-register.js";
 
+export type {
+  ISoldAttentionStore,
+  OverrideSoldAttentionResult,
+  RaiseSoldAttentionInput,
+  ResolveSoldAttentionInput,
+  SoldAttentionItem,
+  SoldAttentionLiveCursor,
+  SoldAttentionLiveRef,
+  SoldAttentionRecord,
+} from "./artwork-register-sold-attention.js";
 export type {
   DealArtworkSearchInput,
   IDealArtworkSearchReader,
@@ -1343,9 +1361,11 @@ export type {
   IZohoListingRunStore,
   IZohoListingSaleStartMark,
   IZohoListingSourceReader,
+  IZohoStatusSourceReader,
   ListingLot,
   ListingMove,
   RegisterListingSource,
+  RegisterStatusSource,
   ZohoListingRun,
   ZohoListingRunFailure,
   ZohoListingRunMode,
@@ -1453,6 +1473,9 @@ export type {
   GuardSettingsTransaction,
 } from "./collection-settings.repository.js";
 export type { IPartyDealRecordReader } from "./party-deal-record.reader.js";
+
+export type * from "./accounting.js";
+
 export type {
   BidderReofferRow,
   IReofferViewsReader,
@@ -1463,3 +1486,4 @@ export type {
   SellerConsentRequestRow,
   StaffReofferView,
 } from "./reoffer-workflow.js";
+export type { IReofferSweepReader, ReofferSweepRef } from "./reoffer-sweep.js";

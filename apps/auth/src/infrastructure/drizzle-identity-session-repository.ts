@@ -1,15 +1,19 @@
 import type { IdentityDatabase } from "@auction/identity-db";
 import { oauthAccessToken, session, sessionLineage } from "@auction/identity-db/schema";
-import { and, desc, eq, ne, or } from "drizzle-orm";
+import { and, desc, eq, gt, isNotNull, isNull, ne, or, sql } from "drizzle-orm";
 import type {
   IIdentitySessionRepository,
   IdentityOperationTransaction,
   IdentitySessionRecord,
 } from "../services/identity-operations.ports.js";
 import { identityOperationDb } from "./drizzle-identity-unit-of-work.js";
+import { retireRevokedBrowserMarkers } from "./drizzle-known-device.store.js";
 
 export class DrizzleIdentitySessionRepository implements IIdentitySessionRepository {
-  constructor(private readonly db: IdentityDatabase) {}
+  constructor(
+    private readonly db: IdentityDatabase,
+    private readonly now: () => Date = () => new Date(),
+  ) {}
 
   async listForSubject(
     subjectId: string,
@@ -26,6 +30,9 @@ export class DrizzleIdentitySessionRepository implements IIdentitySessionReposit
         userAgent: session.userAgent,
         lastPasswordAuthAt: session.lastPasswordAuthAt,
         amr: session.amr,
+        signedInAt: session.signedInAt,
+        lastSeenAt: session.lastSeenAt,
+        country: session.country,
       })
       .from(session)
       .where(eq(session.userId, subjectId))
@@ -34,13 +41,45 @@ export class DrizzleIdentitySessionRepository implements IIdentitySessionReposit
       .select({ previousSid: sessionLineage.previousSid, sessionId: sessionLineage.sessionId })
       .from(sessionLineage)
       .where(eq(sessionLineage.userId, subjectId));
-    return rows.map(({ token, ...row }) => ({
-      ...row,
-      previousIds: lineage
+    const clientsBySid = await this.liveClientsBySid(subjectId);
+    return rows.map(({ token, ...row }) => {
+      const previousIds = lineage
         .filter((entry) => entry.sessionId === row.id)
-        .map((entry) => entry.previousSid),
-      isCurrent: Boolean(currentSessionToken) && token === currentSessionToken,
-    }));
+        .map((entry) => entry.previousSid);
+      return {
+        ...row,
+        previousIds,
+        clientIds: [
+          ...new Set([row.id, ...previousIds].flatMap((sid) => clientsBySid.get(sid) ?? [])),
+        ],
+        isCurrent: Boolean(currentSessionToken) && token === currentSessionToken,
+      };
+    });
+  }
+
+  /**
+   * The OAuth clients holding live tokens for each sign-in id, for the person's own tokens. Live
+   * means the refresh token is unexpired and has not been rotated out: rotation keeps the
+   * predecessor with `refresh_consumed_at` set, and introspection already treats it as inactive.
+   * Revoked tokens are deleted, so they never reach this query.
+   */
+  private async liveClientsBySid(subjectId: string): Promise<Map<string, string[]>> {
+    const tokens = await this.db
+      .selectDistinct({ sid: oauthAccessToken.sid, clientId: oauthAccessToken.clientId })
+      .from(oauthAccessToken)
+      .where(
+        and(
+          eq(oauthAccessToken.userId, subjectId),
+          isNotNull(oauthAccessToken.sid),
+          gt(oauthAccessToken.refreshTokenExpiresAt, sql`now()`),
+          isNull(oauthAccessToken.refreshConsumedAt),
+        ),
+      );
+    const bySid = new Map<string, string[]>();
+    for (const { sid, clientId } of tokens) {
+      if (sid) bySid.set(sid, [...(bySid.get(sid) ?? []), clientId]);
+    }
+    return bySid;
   }
 
   async findStamp(
@@ -100,7 +139,8 @@ export class DrizzleIdentitySessionRepository implements IIdentitySessionReposit
     const deleted = await tx
       .delete(session)
       .where(and(eq(session.userId, subjectId), eq(session.id, sessionId)))
-      .returning({ id: session.id });
+      .returning({ id: session.id, deviceHash: session.deviceHash });
+    await this.retireMarkers(tx, subjectId, deleted);
     return deleted.length > 0;
   }
 
@@ -113,7 +153,11 @@ export class DrizzleIdentitySessionRepository implements IIdentitySessionReposit
     const where = exceptSessionToken
       ? and(eq(session.userId, subjectId), ne(session.token, exceptSessionToken))
       : eq(session.userId, subjectId);
-    const deleted = await tx.delete(session).where(where).returning({ id: session.id });
+    const deleted = await tx
+      .delete(session)
+      .where(where)
+      .returning({ id: session.id, deviceHash: session.deviceHash });
+    await this.retireMarkers(tx, subjectId, deleted);
     return deleted.length;
   }
 
@@ -126,8 +170,22 @@ export class DrizzleIdentitySessionRepository implements IIdentitySessionReposit
     const deleted = await tx
       .delete(session)
       .where(and(eq(session.userId, subjectId), ne(session.id, keepSessionId)))
-      .returning({ id: session.id });
+      .returning({ id: session.id, deviceHash: session.deviceHash });
+    await this.retireMarkers(tx, subjectId, deleted);
     return deleted.map((row) => row.id);
+  }
+
+  /** Browsers signed out here stop being known and owe a new sign-in email (see retireRevokedBrowserMarkers). */
+  private retireMarkers(
+    tx: Pick<IdentityDatabase, "delete" | "insert">,
+    subjectId: string,
+    deleted: readonly { deviceHash: string | null }[],
+  ): Promise<void> {
+    return retireRevokedBrowserMarkers(tx, {
+      userId: subjectId,
+      deviceHashes: deleted.map((row) => row.deviceHash),
+      at: this.now(),
+    });
   }
 
   async purgeSubjectSessionsAndTokens(

@@ -670,6 +670,7 @@ export {
   type ExpiredInvitation,
   type PendingAccessRequest,
   type PurchaseNextStepTimes,
+  type ReofferRequestSubject,
   type UnreadReply,
   type NeedsYouCounts,
   type NeedsYouFacts,
@@ -1363,6 +1364,16 @@ export {
   sellerConsentWindow,
   type SellerConsentWindow,
 } from "./reoffer-windows.js";
+export {
+  OFFER_REMINDER_LEAD_MS,
+  offerReminderAt,
+  offerStep,
+  sellerRequestStep,
+  type OfferFacts,
+  type OfferStep,
+  type SellerRequestFacts,
+  type SellerRequestStep,
+} from "./reoffer-sweep.js";
 export {
   reofferResponseBlock,
   reofferSendBlock,

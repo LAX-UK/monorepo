@@ -1,5 +1,6 @@
 "use client";
 
+import { SoldAttentionSection } from "@/components/from-zoho/sold-attention-section.client";
 import {
   FROM_ZOHO_DESCRIPTION,
   FROM_ZOHO_TITLE,
@@ -25,6 +26,7 @@ import type {
   AdminRegisterConflictItem,
   AdminRegisterConflictList,
   AdminRegisterNewList,
+  AdminSoldAttentionList,
 } from "@auction/shop-contracts";
 import {
   type DataColumn,
@@ -216,11 +218,16 @@ export function NewFromZohoList({
 export function NeedsDecisionList({
   query,
   page,
+  attention,
+  bidAdminUrl = null,
   unlinked = 0,
   zohoUrlTemplate = null,
 }: {
   query: ZohoQueueQuery;
   page: AdminRegisterConflictList;
+  /** Artworks Zoho says are sold that are still for sale; they come before the conflicts. */
+  attention?: AdminSoldAttentionList;
+  bidAdminUrl?: string | null;
   unlinked?: number;
   zohoUrlTemplate?: string | null;
 }) {
@@ -287,9 +294,20 @@ export function NeedsDecisionList({
         views={views}
         loading={pending}
         filtered={false}
+        {...(attention && attention.items.length > 0
+          ? {
+              notice: (
+                <SoldAttentionSection
+                  items={attention.items}
+                  bidAdminUrl={bidAdminUrl}
+                  zohoUrlTemplate={zohoUrlTemplate}
+                />
+              ),
+            }
+          : {})}
         empty={{
           illustration: "plinth",
-          title: "Nothing needs a decision",
+          title: attention?.emptyMessage ?? "Nothing needs attention. Zoho and LAX agree.",
           description:
             "When Zoho and LAX disagree about an artwork, it appears here with both versions.",
         }}

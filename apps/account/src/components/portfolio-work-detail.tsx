@@ -84,6 +84,7 @@ function AcquisitionRecord({ work }: { work: WorkDetailVm }) {
               <TableRow key={line.key}>
                 <TableCell>{line.label}</TableCell>
                 <TableCell className="text-right tabular-nums">
+                  {line.deduction ? "\u2212" : ""}
                   {formatMinorUnits(line.amount, line.currency)}
                 </TableCell>
               </TableRow>

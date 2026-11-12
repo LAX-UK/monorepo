@@ -45,7 +45,7 @@ describe.skipIf(!ownerUrl)("portal portfolio reader (integration)", () => {
     ];
     const [boughtEdition, pendingEdition, offeredEdition, resoldEdition] = [id(), id(), id(), id()];
     const [paidOrder, pendingOrder, expiredOrder, otherOrder] = [id(), id(), id(), id()];
-    const [paidLine, pendingLine, otherLine] = [id(), id(), id()];
+    const [paidLine, pendingLine, otherLine, releasedLine] = [id(), id(), id(), id(), id()];
     const documentId = id();
     const originalSaleId = id();
     const ledgerId = id();
@@ -177,6 +177,15 @@ describe.skipIf(!ownerUrl)("portal portfolio reader (integration)", () => {
             editionNumber: 1,
             unitPricePence: 30_000,
           },
+          // A work released after a refund: it is no longer an edition the person holds.
+          {
+            id: releasedLine,
+            orderId: paidOrder,
+            editionId: offeredEdition,
+            artworkId: offeredArt,
+            unitPricePence: 20_000,
+            releasedAt: new Date("2026-05-12T00:00:00.000Z"),
+          },
           // A previous owner's order: its price must not be shown to the current owner.
           {
             id: otherLine,
@@ -215,6 +224,7 @@ describe.skipIf(!ownerUrl)("portal portfolio reader (integration)", () => {
         await tx.insert(shopRefund).values({
           id: refundId,
           orderId: paidOrder,
+          orderLineId: releasedLine,
           amountPence: 10_000,
           status: "succeeded",
           idempotencyKey: `portfolio-refund-${tag}`,
@@ -237,7 +247,7 @@ describe.skipIf(!ownerUrl)("portal portfolio reader (integration)", () => {
         const reader = createDrizzlePortalPortfolioRepository(tx as never);
         const result = await reader.loadFacts(subject, { includeSales: true });
 
-        // Editions: the bought one with price, shipping on the first line, fulfilment and
+        // Editions: the bought one with price, fulfilment and
         // certificate; the one on offer with no purchase; the resold one without the old price.
         const byId = new Map(result.editions.map((e) => [e.editionId, e]));
         expect([...byId.keys()].sort()).toEqual(
@@ -254,10 +264,10 @@ describe.skipIf(!ownerUrl)("portal portfolio reader (integration)", () => {
           },
           purchase: {
             orderId: paidOrder,
+            orderLineId: paidLine,
             orderStatus: "paid",
             channel: "shop",
             unitPricePence: 45_000,
-            shippingPence: 2_500,
             fulfilmentStatus: "in_transit",
           },
         });
@@ -285,8 +295,17 @@ describe.skipIf(!ownerUrl)("portal portfolio reader (integration)", () => {
             orderLineId: pendingLine,
             orderId: pendingOrder,
             unitPricePence: 30_000,
-            shippingPence: 2_500,
             work: expect.objectContaining({ title: "pending" }),
+          }),
+        ]);
+
+        // Settled: the released work is kept, the held edition is not.
+        expect(result.settledOrderLines).toEqual([
+          expect.objectContaining({
+            orderLineId: releasedLine,
+            orderId: paidOrder,
+            unitPricePence: 20_000,
+            work: expect.objectContaining({ title: "offered" }),
           }),
         ]);
 
@@ -305,8 +324,17 @@ describe.skipIf(!ownerUrl)("portal portfolio reader (integration)", () => {
         expect(result.orders.map((o) => o.orderId).sort()).toEqual(
           [paidOrder, pendingOrder, expiredOrder].sort(),
         );
+        expect(result.orders.find((o) => o.orderId === paidOrder)).toMatchObject({
+          totalPence: 47_500,
+          shippingPence: 2_500,
+        });
         expect(result.refunds).toEqual([
-          expect.objectContaining({ refundId, orderId: paidOrder, amountPence: 10_000 }),
+          expect.objectContaining({
+            refundId,
+            orderId: paidOrder,
+            orderLineId: releasedLine,
+            amountPence: 10_000,
+          }),
         ]);
 
         // Sales are left out when payouts are switched off.
@@ -321,6 +349,7 @@ describe.skipIf(!ownerUrl)("portal portfolio reader (integration)", () => {
           editions: [],
           originals: [],
           pendingOrderLines: [],
+          settledOrderLines: [],
           sales: [],
           orders: [],
           refunds: [],

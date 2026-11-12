@@ -7,6 +7,11 @@ export type MarketingFooterColumn = {
   id: string;
   title: string;
   links: ReadonlyArray<{ label: string; href: string }>;
+  /**
+   * A ready-made list that replaces `links`, for a column whose links depend on the visitor and so
+   * are drawn in the browser. Give it the same `ul` markup as the default list.
+   */
+  list?: ReactNode;
   /** Non-link status line after the links (e.g. "Sign-in status unavailable"). */
   note?: string;
 };
@@ -83,26 +88,28 @@ export function MarketingFooter({
               headingId={`${headingId}-${column.id}`}
               title={column.title}
             >
-              <ul className="flex flex-col gap-3">
-                {column.links.map((link) => (
-                  <li key={link.href}>
-                    {renderLink ? (
-                      renderLink(link)
-                    ) : (
-                      <a href={link.href} className={linkClass}>
-                        {link.label}
-                      </a>
-                    )}
-                  </li>
-                ))}
-                {column.note ? (
-                  <li>
-                    <span className="font-footer-links text-base text-on-surface-variant">
-                      {column.note}
-                    </span>
-                  </li>
-                ) : null}
-              </ul>
+              {column.list ?? (
+                <ul className="flex flex-col gap-3">
+                  {column.links.map((link) => (
+                    <li key={link.href}>
+                      {renderLink ? (
+                        renderLink(link)
+                      ) : (
+                        <a href={link.href} className={linkClass}>
+                          {link.label}
+                        </a>
+                      )}
+                    </li>
+                  ))}
+                  {column.note ? (
+                    <li>
+                      <span className="font-footer-links text-base text-on-surface-variant">
+                        {column.note}
+                      </span>
+                    </li>
+                  ) : null}
+                </ul>
+              )}
             </MarketingFooterSection>
           ))}
           {socials ? (

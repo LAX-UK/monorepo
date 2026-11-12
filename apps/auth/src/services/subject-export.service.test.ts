@@ -34,6 +34,10 @@ function setup(options: { sessionAgeMs?: number; signer?: boolean; clock?: { now
           userAgent: null,
           lastPasswordAuthAt: null,
           previousIds: [],
+          signedInAt: null,
+          lastSeenAt: null,
+          country: null,
+          clientIds: [],
           isCurrent: true,
         },
       ];

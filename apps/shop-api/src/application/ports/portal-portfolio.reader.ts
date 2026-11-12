@@ -21,12 +21,12 @@ export type PortfolioWork = {
 
 export type PortfolioPurchase = {
   orderId: string;
+  /** The order line this edition was bought on. */
+  orderLineId: string;
   orderStatus: string;
   channel: PortfolioChannel;
   paidAt: Date | null;
   unitPricePence: number;
-  /** The order's delivery charge, carried on the first line of the order only. */
-  shippingPence: number;
   /** Null until fulfilment has been set up for the order. */
   fulfilmentStatus: string | null;
 };
@@ -68,7 +68,20 @@ export type PortfolioPendingOrderLineFact = {
   work: PortfolioWork;
   editionNumber: number | null;
   unitPricePence: number;
-  shippingPence: number;
+  createdAt: Date;
+};
+
+/**
+ * A work line of a paid order that the person does not hold as an edition today: the edition was
+ * released back to stock, resold, or never recorded. It is kept so the money paid for it, and any
+ * refund against it, still has a place in the portfolio.
+ */
+export type PortfolioSettledLineFact = {
+  orderLineId: string;
+  orderId: string;
+  channel: PortfolioChannel;
+  work: PortfolioWork;
+  unitPricePence: number;
   createdAt: Date;
 };
 
@@ -91,6 +104,8 @@ export type PortfolioOrderFact = {
   channel: PortfolioChannel;
   status: string;
   totalPence: number;
+  /** The order's delivery charge: part of `totalPence`, carried by one work line when shown. */
+  shippingPence: number;
   paidAt: Date | null;
   createdAt: Date;
   checkoutExpiresAt: Date | null;
@@ -99,6 +114,8 @@ export type PortfolioOrderFact = {
 export type PortfolioRefundFact = {
   refundId: string;
   orderId: string;
+  /** The order line the refund was made against; null when it was made against the whole order. */
+  orderLineId: string | null;
   channel: PortfolioChannel;
   amountPence: number;
   status: string;
@@ -109,6 +126,7 @@ export type PortalPortfolioFacts = {
   editions: PortfolioEditionFact[];
   originals: PortfolioOriginalFact[];
   pendingOrderLines: PortfolioPendingOrderLineFact[];
+  settledOrderLines: PortfolioSettledLineFact[];
   /** Sales paid out through the payout ledger; empty unless the caller asked for them. */
   sales: PortfolioSaleFact[];
   orders: PortfolioOrderFact[];

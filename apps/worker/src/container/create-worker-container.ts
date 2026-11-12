@@ -82,6 +82,7 @@ import { registerMarketingWorkers } from "../workers/register-marketing-workers.
 import { registerMediaWorkers } from "../workers/register-media-workers.js";
 import { registerPayoutWorkers } from "../workers/register-payout-workers.js";
 import { registerPurgeWorkers } from "../workers/register-purge-workers.js";
+import { registerReofferWorkers } from "../workers/register-reoffer-workers.js";
 import { registerSubjectExportWorker } from "../workers/register-subject-export-worker.js";
 import { registerWebhookWorker } from "../workers/register-webhook-worker.js";
 import { registerZohoListingWorker } from "../workers/register-zoho-listing-worker.js";
@@ -93,12 +94,14 @@ import {
 import { createAtgSyncRuntime } from "./create-atg-sync-runtime.js";
 import { createBidAlertRuntime } from "./create-bid-alert-runtime.js";
 import { createExportProviderDeps } from "./create-export-provider-deps.js";
+import { createReofferClock } from "./create-reoffer-clock.js";
 import { createWorkerRepositories } from "./create-worker-repositories.js";
 import { createZohoArtworkListing } from "./create-zoho-artwork-listing.js";
 import { createZohoArtworkSyncRuntime } from "./create-zoho-artwork-sync.js";
 import { createZohoArtworkWriteback } from "./create-zoho-artwork-writeback.js";
 import { createZohoCampaignsSuppressionRuntime } from "./create-zoho-campaigns-suppression.js";
 import { createZohoFulfilmentMirror } from "./create-zoho-fulfilment-mirror.js";
+import { createZohoStatusNightly } from "./create-zoho-status-nightly.js";
 
 export type WorkerContainer = {
   env: WorkerEnv;
@@ -117,6 +120,7 @@ export type WorkerContainer = {
   payoutWorkers: ReturnType<typeof registerPayoutWorkers>;
   complianceWorkers: ReturnType<typeof registerComplianceWorkers>;
   collectionWorkers: ReturnType<typeof registerCollectionWorkers>;
+  reofferWorkers: ReturnType<typeof registerReofferWorkers>;
   purgeWorkers: ReturnType<typeof registerPurgeWorkers>;
   alertWorkers: ReturnType<typeof registerAlertWorkers>;
   atgSyncWorkers: ReturnType<typeof registerAtgSyncWorker>;
@@ -393,6 +397,12 @@ export function createWorkerContainer(): WorkerContainer {
         : {}),
   };
 
+  const zohoStatusNightly = createZohoStatusNightly({
+    env,
+    db,
+    log,
+    listingOn: zohoArtworkListing !== undefined,
+  });
   const webhookWorkers = registerWebhookWorker({
     ...deps,
     webhookProcessorDeps,
@@ -401,6 +411,13 @@ export function createWorkerContainer(): WorkerContainer {
       : {}),
     ...(zohoCampaignsSuppression
       ? { runZohoCampaignsSuppressionSync: zohoCampaignsSuppression }
+      : {}),
+    ...(zohoStatusNightly
+      ? {
+          runZohoStatusNightlyCheck: async () => {
+            await zohoStatusNightly.run();
+          },
+        }
       : {}),
     runRegisterLotIntegrityCheck: async () => {
       await checkRegisterLotIntegrity({ reader: new DrizzleRegisterLotIntegrityReader(db), log });
@@ -425,6 +442,18 @@ export function createWorkerContainer(): WorkerContainer {
     reader: repositories.collectionNoticeReader,
     collectByReader: repositories.collectByReader,
     lotFacts: repositories.collectionLotFacts,
+  });
+  const reofferClock = createReofferClock({
+    db,
+    transactionRunner: repositories.transactionRunner,
+    domainEventSink: repositories.domainEventSink,
+    people: repositories.collectionNoticeReader,
+  });
+  const reofferWorkers = registerReofferWorkers(deps, {
+    ...reofferClock,
+    ensureInvoice: workerFinanceServices
+      ? (lotId) => workerFinanceServices.ensureLotInvoice(lotId)
+      : null,
   });
   const purgeWorkers = registerPurgeWorkers(deps, {
     retentionHoldAlerts: new RetentionHoldAlerts({
@@ -484,6 +513,7 @@ export function createWorkerContainer(): WorkerContainer {
       ...payoutWorkers.errorHandlers,
       ...complianceWorkers.errorHandlers,
       ...collectionWorkers.errorHandlers,
+      ...reofferWorkers.errorHandlers,
       ...purgeWorkers.errorHandlers,
       ...alertWorkers.errorHandlers,
       ...cronWorkers.errorHandlers,
@@ -525,6 +555,7 @@ export function createWorkerContainer(): WorkerContainer {
     heartbeat("marketing-sync"),
     ...(isMarketingEventsEnabled(env) ? [heartbeat("marketing-events")] : []),
     heartbeat("collection-reminders"),
+    heartbeat("reoffer-sweep"),
     heartbeat("payout-statements"),
     heartbeat("legal-entity-archive"),
     heartbeat("impersonation-sweeper"),
@@ -536,6 +567,7 @@ export function createWorkerContainer(): WorkerContainer {
           heartbeat("payment-reminders"),
           heartbeat("watched-lot-reminders"),
           heartbeat("staff-role-expiry"),
+          heartbeat("private-sale-settlement-follow-ups"),
           heartbeat("consignment-thread-sweep"),
           heartbeat("lot-lifecycle-tick"),
           heartbeat("expire-stale-payments"),
@@ -664,6 +696,7 @@ export function createWorkerContainer(): WorkerContainer {
     payoutWorkers,
     complianceWorkers,
     collectionWorkers,
+    reofferWorkers,
     purgeWorkers,
     alertWorkers,
     cronWorkers,
@@ -700,6 +733,7 @@ export async function shutdownWorkerContainer(
         container.payoutWorkers.close(),
         container.complianceWorkers.close(),
         container.collectionWorkers.close(),
+        container.reofferWorkers.close(),
         container.purgeWorkers.close(),
         container.alertWorkers.close(),
         container.cronWorkers.close(),

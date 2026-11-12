@@ -67,6 +67,9 @@ provider that cannot record an exact VAT amount on a credit line must be refused
 money; confirm this in the Zoho Books sandbox before the runtime is built.
 `buildCreditNoteFor` rebuilds the invoice it is given and refuses a forged one (`bad_invoice`).
 
+`priorCredits` must be every credit note already issued for the invoice (all states except `cancelled` and
+`failed`), in creation order. `buildCreditNoteFor` refuses when they cover less than the refunded buckets say.
+
 Not covered here, and owned by the runtime: payment allocations are compared on amount only, `expected` totals
 are not carried on the record, and an `ambiguous` lookup with `count: 0` is accepted.
 
@@ -115,6 +118,14 @@ throw) and refuses two live sources; `parseSwitchConfig` turns unknown input int
 - A `needs_review` record that holds a provider document (a totals mismatch) can be neither requeued nor
   cancelled: a person resolves it.
 - `issued` and `cancelled` are final.
+
+## Storage
+
+`@auction/persistence` stores these records (tables from migration 0368; see `repositories/accounting`). A row
+is one `DocumentRecord` plus the document, and CHECK constraints allow only the combinations `parseRecord`
+accepts. Every move calls the functions above and writes the new state and a history row together; the
+history table is append-only for every role. The source switch is one row per product (`xero_mode`,
+`books_mode`, never both `live`). Dry run: nothing calls a provider.
 
 ## Out of scope for this phase
 

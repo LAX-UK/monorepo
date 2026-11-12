@@ -24,6 +24,7 @@ import type {
   AdminRegisterCounts,
   AdminRegisterLastCheck,
   AdminRegisterNewList,
+  AdminSoldAttentionList,
   AdminZohoLinkCount,
   AdminZohoLinkReport,
   AdminZohoProductWithoutRegisterList,
@@ -129,15 +130,23 @@ export default async function FromZohoPage({
   }
 
   if (tab === "decisions") {
-    const result = await fetchAdminJson<AdminRegisterConflictList>(
-      `artwork-register/conflicts${suffix}`,
-    );
-    if (result.status === "unauthorized") redirect("/login");
+    const [result, attention] = await Promise.all([
+      fetchAdminJson<AdminRegisterConflictList>(`artwork-register/conflicts${suffix}`),
+      fetchAdminJson<AdminSoldAttentionList>("artwork-register/attention"),
+    ]);
+    if (result.status === "unauthorized" || attention.status === "unauthorized") {
+      redirect("/login");
+    }
     if (result.status !== "ok") return <AdminFailedPage title={TITLE} status={result.status} />;
+    if (attention.status !== "ok") {
+      return <AdminFailedPage title={TITLE} status={attention.status} />;
+    }
     return (
       <NeedsDecisionList
         query={query}
         page={result.data}
+        attention={attention.data}
+        bidAdminUrl={await loadBidAdminUrl()}
         unlinked={unlinked}
         zohoUrlTemplate={getShopAdminContainer().config.crmRecordUrlTemplate ?? null}
       />

@@ -6,6 +6,7 @@ import type {
   OfferRef,
   OfferState,
   OfferTransitionRefusal,
+  RegisterConflictField,
   RegisterField,
   StockCodeKind,
   StockCodeSeries,
@@ -26,7 +27,10 @@ export type RegisterEventType =
   | "move_confirmed"
   | "lax_art_draft_created"
   | "zoho_link_linked"
-  | "zoho_link_unlinked";
+  | "zoho_link_unlinked"
+  | "sold_while_live_raised"
+  | "sold_while_live_resolved"
+  | "sold_while_live_overridden";
 
 export type RegisterEvent = {
   id: string;
@@ -40,7 +44,7 @@ export type RegisterEvent = {
 export type RegisterConflict = {
   id: string;
   registerId: string;
-  field: FieldConflict["field"];
+  field: RegisterConflictField;
   zohoValue: unknown;
   laxValue: unknown;
   status: "open" | "resolved";
@@ -158,6 +162,27 @@ export type RecordCatalogueStatusWrittenResult = {
   status: "not_found" | "unchanged" | "recorded";
 };
 
+export type CatalogueStatusLedger = {
+  written: string | null;
+  conflictOpen: boolean;
+};
+
+export type RecordCatalogueStatusConflictInput = {
+  registerId: string;
+  /** The Status the Zoho Product shows now. */
+  zohoStatus: string;
+  /** The Status LAX would have written. */
+  laxStatus: string;
+  /** When the Zoho Product was last modified, as read with the Status. */
+  zohoModifiedAt: Date;
+  now: Date;
+};
+
+export type RecordCatalogueStatusConflictResult = {
+  /** `unchanged` when an open conflict already holds both values. */
+  status: "not_found" | "unchanged" | "recorded";
+};
+
 /**
  * Writes to the register. Every write that changes a record is optimistic (the version moves
  * on) and leaves an event. Bid and Shop reach the register only through this port.
@@ -202,11 +227,35 @@ export interface IArtworkRegisterRepository
   moveOffer(input: MoveOfferInput): Promise<MoveOfferResult>;
   /**
    * Notes that LAX wrote this Status to the Zoho Product, so the register's copy of Zoho's value
-   * matches and the change coming back through the inbound sync is seen as no change.
+   * matches and the change coming back through the inbound sync is seen as no change. The value is
+   * also kept apart as the Status LAX last wrote, and an open Status conflict for the record is
+   * closed: LAX and Zoho agree again.
    */
   recordCatalogueStatusWritten(
     input: RecordCatalogueStatusWrittenInput,
   ): Promise<RecordCatalogueStatusWrittenResult>;
+  /**
+   * Closes an open Status conflict because Zoho now shows the Status LAX wants. Records nothing as
+   * "written": LAX sent nothing, so `catalogue_status_written` is left as it is. The event says the
+   * conflict closed because Zoho matched LAX, not because LAX wrote.
+   */
+  closeCatalogueStatusConflict(input: { registerId: string; now: Date }): Promise<{
+    closed: boolean;
+  }>;
+  /**
+   * For each record found: the Status LAX last wrote to the Zoho Product (null when it has not
+   * written one) and whether a Status conflict is open. Records not found are absent.
+   */
+  findCatalogueStatusLedgers(
+    registerIds: readonly string[],
+  ): Promise<Map<string, CatalogueStatusLedger>>;
+  /**
+   * Raises a Status conflict: Zoho shows a value LAX did not write, so LAX left it alone. Raising
+   * it again with the same values changes nothing; with other values it updates the open one.
+   */
+  recordCatalogueStatusConflict(
+    input: RecordCatalogueStatusConflictInput,
+  ): Promise<RecordCatalogueStatusConflictResult>;
   /**
    * Decides a conflict. Keeping LAX's value changes nothing in the register. Accepting Zoho's value
    * for a stock code applies it in the same transaction, after checking it is a valid code for

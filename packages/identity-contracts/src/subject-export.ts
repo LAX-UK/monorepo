@@ -270,11 +270,17 @@ const ACCOUNT_CATEGORIES = [
     [
       f(
         "kind",
-        "What the record describes: session, device, sign-in method, two-step, security notice or security event.",
+        "What the record describes: session, device, sign-in method, two-step, security notice or security event. A device record is what we keep to tell a new sign-in from a familiar one: one for each browser, system and country you signed in from, and one for each browser itself, so the same browser can appear more than once.",
       ),
       f("device", "The device or browser."),
       f("ipAddress", "The IP address the activity came from, for sessions."),
       f("approximateLocation", "The approximate place derived from the IP address."),
+      f("country", "The country the sign-in came from, as the network edge reported it."),
+      f(
+        "products",
+        "The LAX products this browser was signed in to: LAX Account, LAX Bid, LAX Shop or lax.art.",
+      ),
+      f("lastActiveAt", "When this browser last used its sign-in, in any LAX product."),
       f("startedAt", "When the session or activity started."),
       f("endedAt", "When the session ended, or null if it is still active."),
       f("method", "The sign-in method: password, passkey or a social provider."),

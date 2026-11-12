@@ -54,6 +54,12 @@ export const UNAPPLIED_MONEY_REASONS = [
   "shop_order_edition_state_invalid",
   /** A Shop order that was already paid received a second payment, in another session. */
   "shop_order_paid_twice",
+  /**
+   * A Shop buyer paid for an artwork Zoho says is Sold or Reserved (an open "Needs attention" item
+   * paused its money) before or while they were paying. Nothing was fulfilled and the order was
+   * closed; finance refunds the buyer; if staff say it is not sold, the buyer is asked to buy it again.
+   */
+  "shop_order_paid_while_paused",
   /** A Shop buyer paid for an order that does not exist here (live mode only). */
   "shop_order_not_found",
   /**

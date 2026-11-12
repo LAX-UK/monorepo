@@ -15,6 +15,7 @@ export function listItem(overrides: Partial<DealListItem> = {}): DealListItem {
     paymentDueAt: null,
     collectionDueAt: null,
     updatedAt: "2026-11-03T10:00:00.000Z",
+    settlementFollowUp: null,
     ...overrides,
   };
 }
@@ -72,6 +73,7 @@ export function dealRecord(overrides: Partial<DealRecord> = {}): DealRecord {
     artworkUnlinkedReason: null,
     artworkAccess: { canLink: false, canChange: true, changeOffReason: null },
     artworkMoves: [],
+    settlementFollowUp: null,
     seller: {
       role: "seller",
       legalEntityId: "le-seller",

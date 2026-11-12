@@ -15,7 +15,10 @@ const SID = "22222222-2222-4222-8222-222222222222";
 const REAL_TARGET = "11111111-1111-4111-8111-111111111111";
 const FORGED_E = "99999999-9999-4999-8999-999999999999";
 
-function setup(row: Partial<ImpersonationSessionRow> | null) {
+function setup(
+  row: Partial<ImpersonationSessionRow> | null,
+  reader: Partial<IImpersonationDomainEventReader> = {},
+) {
   const publish = vi.fn().mockResolvedValue(undefined);
   const sessions = {
     forConnection: vi.fn(),
@@ -49,7 +52,7 @@ function setup(row: Partial<ImpersonationSessionRow> | null) {
     runner,
     legalEntities,
     sessions as unknown as IImpersonationSessionRepository,
-    {} as IImpersonationDomainEventReader,
+    reader as IImpersonationDomainEventReader,
     sink,
   );
   return { service, sessions, publish };
@@ -125,5 +128,32 @@ describe("AdminImpersonationService.startImpersonation replacing a session", () 
         actingLegalEntityId: REAL_TARGET,
       }),
     );
+  });
+});
+
+describe("AdminImpersonationService.recordFailedEnd", () => {
+  const started = { actingLegalEntityId: REAL_TARGET };
+  const reader = {
+    findStartedEvent: vi.fn().mockResolvedValue(started),
+    hasEndedEvent: vi.fn().mockResolvedValue(false),
+  };
+  const input = { actorUserId: ACTOR, sessionId: SID, legalEntityId: REAL_TARGET };
+
+  it("ends the actor's session and records the cleared cookie once", async () => {
+    const { service, sessions, publish } = setup({}, reader);
+    expect(await service.recordFailedEnd(input)).toEqual({ ok: true });
+    expect(sessions.endForActor).toHaveBeenCalledWith(
+      SID,
+      ACTOR,
+      "cookie_cleared_after_failed_end",
+    );
+    expect(publish).toHaveBeenCalledTimes(1);
+  });
+
+  it("records nothing when the row was ended elsewhere first (timeout or another reconcile)", async () => {
+    const { service, sessions, publish } = setup({}, reader);
+    sessions.endForActor.mockResolvedValue(false);
+    expect(await service.recordFailedEnd(input)).toEqual({ ok: true, alreadyEnded: true });
+    expect(publish).not.toHaveBeenCalled();
   });
 });

@@ -7,7 +7,10 @@
  *   XERO_TOKEN_DEK_KEY=... DATABASE_URL=... pnpm db:backfill-xero-token-sealing --verify
  *
  * Rollout order: (1) apply migration 0367, (2) deploy api and worker with XERO_TOKEN_DEK_KEY set,
- * (3) confirm no previous-release api or worker instance is still running (it writes plaintext and
+ * replacing them (stop old, then start new) rather than rolling, or pausing the proactive Xero
+ * refresh until no old instance remains: the new release seals and nulls the plaintext from its
+ * first refresh, so an overlapping old instance would read null tokens and mark the connection
+ * needs_reauth, (3) confirm no previous-release api or worker instance is still running (it writes plaintext and
  * cannot read sealed tokens), (4) --apply, (5) --verify. A plaintext value always wins over a
  * sealed one, as it can only come from a newer write by a previous release.
  */

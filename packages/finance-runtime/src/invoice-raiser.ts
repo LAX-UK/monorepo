@@ -103,15 +103,21 @@ export class InvoiceRaiser {
     }
   }
 
-  /** Stores the priced invoice with its lines and the payment that settles it. */
+  /**
+   * Stores the priced invoice with its lines and the payment that settles it. Throws
+   * `BidInvoiceLotMovedError` when the lot is no longer sold to `lot.winnerId` in
+   * `lot.buyerLegalEntityId` (defaulted or re-awarded since it was read).
+   */
   async raise(input: {
     lot: Lot;
     priced: PricedInvoice;
     payment: Omit<CreatePaymentRow, "amount" | "invoiceId">;
   }): Promise<RaisedInvoice> {
     const { lot, priced, payment } = input;
-    if (!lot.buyerLegalEntityId || !lot.sellerLegalEntityId) {
-      throw new InvoiceInvariantError("A lot needs its buyer and seller accounts to be invoiced");
+    if (!lot.winnerId || !lot.buyerLegalEntityId || !lot.sellerLegalEntityId) {
+      throw new InvoiceInvariantError(
+        "A lot needs its winner and its buyer and seller accounts to be invoiced",
+      );
     }
     assertLinesAddUp(priced.lines, priced.totalPence);
     const raisedAt = this.now();
@@ -126,6 +132,8 @@ export class InvoiceRaiser {
         pricingPolicyId: priced.policyId,
         lines: priced.lines,
       },
+      // The lot as it was read: the store raises nothing if it has since moved on.
+      winnerId: lot.winnerId,
       payment,
     });
   }

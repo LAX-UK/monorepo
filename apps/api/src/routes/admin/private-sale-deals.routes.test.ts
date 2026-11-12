@@ -14,6 +14,8 @@ function createApp(staffRoles: StaffRoles | undefined) {
     act: vi.fn().mockResolvedValue({ ok: true, record: RECORD }),
     set: vi.fn().mockResolvedValue({ ok: true, record: RECORD }),
     remove: vi.fn().mockResolvedValue({ ok: true, record: RECORD }),
+    markSold: vi.fn().mockResolvedValue({ ok: true, record: RECORD }),
+    attentionCount: vi.fn().mockResolvedValue({ total: 2, urgent: 1 }),
   };
   const dealArtworks = {
     search: vi.fn().mockResolvedValue({
@@ -121,6 +123,15 @@ describe("GET /private-sales", () => {
     await app.request("http://test/private-sales");
     expect(privateSaleDeals.list).toHaveBeenCalledWith(expect.anything(), {
       view: "active",
+      limit: 25,
+    });
+  });
+
+  it("offers the needs attention view", async () => {
+    const { app, privateSaleDeals } = createApp(["specialist"]);
+    expect((await app.request("http://test/private-sales?view=needs_attention")).status).toBe(200);
+    expect(privateSaleDeals.list).toHaveBeenCalledWith(expect.anything(), {
+      view: "needs_attention",
       limit: 25,
     });
   });
@@ -528,5 +539,95 @@ describe("PUT and DELETE /private-sales/:ref/artwork", () => {
     const res = await app.request("http://test/private-sales/PS-0012/artwork", send("PUT", change));
     expect(res.status).toBe(status);
     expect(await res.json()).toEqual({ error });
+  });
+});
+
+describe("POST /private-sales/:ref/artwork/mark-sold", () => {
+  const url = "http://test/private-sales/PS-0012/artwork/mark-sold";
+
+  it.each(["administrator", "sales_manager", "specialist"] as const)(
+    "%s may try again",
+    async (role) => {
+      const { app, privateSaleDeals } = createApp([role]);
+      expect((await app.request(url, { method: "POST" })).status).toBe(200);
+      expect(privateSaleDeals.markSold).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: "staff-1",
+          abilities: expect.objectContaining({ manage: true }),
+        }),
+        "PS-0012",
+      );
+    },
+  );
+
+  it.each([
+    "client_services",
+    "finance",
+    "fulfilment",
+    "compliance",
+    "cataloguer",
+    "saleroom_clerk",
+    "read_only",
+  ] as const)("%s cannot: 403, and the desk is never asked", async (role) => {
+    const { app, privateSaleDeals } = createApp([role]);
+    expect((await app.request(url, { method: "POST" })).status).toBe(403);
+    expect(privateSaleDeals.markSold).not.toHaveBeenCalled();
+  });
+
+  it("is not a reference the route reads as anything else", async () => {
+    const { app, privateSaleDeals } = createApp(["sales_manager"]);
+    expect(
+      (await app.request("http://test/private-sales/nope/artwork/mark-sold", { method: "POST" }))
+        .status,
+    ).toBe(400);
+    expect(privateSaleDeals.markSold).not.toHaveBeenCalled();
+  });
+
+  it("answers a deal that is not settled with 409, and the register's own words when it is elsewhere", async () => {
+    const { app, privateSaleDeals } = createApp(["sales_manager"]);
+    privateSaleDeals.markSold.mockResolvedValueOnce({ ok: false, error: "not_settled" });
+    expect((await app.request(url, { method: "POST" })).status).toBe(409);
+    privateSaleDeals.markSold.mockResolvedValueOnce({
+      ok: false,
+      error: "artwork_unavailable",
+      message: "It is in a sale.",
+      lock: { reason: "in_bid_sale", message: "It is in a sale.", link: null },
+    });
+    const res = await app.request(url, { method: "POST" });
+    expect(res.status).toBe(409);
+    expect(await res.json()).toMatchObject({
+      error: "artwork_unavailable",
+      message: "It is in a sale.",
+    });
+  });
+
+  it("answers 404 for a deal the person cannot see and 503 when the register is busy", async () => {
+    const { app, privateSaleDeals } = createApp(["sales_manager"]);
+    privateSaleDeals.markSold.mockResolvedValueOnce({ ok: false, error: "deal_not_found" });
+    expect((await app.request(url, { method: "POST" })).status).toBe(404);
+    privateSaleDeals.markSold.mockResolvedValueOnce({ ok: false, error: "artwork_register_busy" });
+    expect((await app.request(url, { method: "POST" })).status).toBe(503);
+  });
+});
+
+describe("GET /private-sales/attention-count", () => {
+  it.each(["administrator", "sales_manager", "specialist", "finance", "client_services"] as const)(
+    "%s reads the count, cut to their scope, and it is not read as a reference",
+    async (role) => {
+      const { app, privateSaleDeals } = createApp([role]);
+      const res = await app.request("http://test/private-sales/attention-count");
+      expect(res.status).toBe(200);
+      expect(await res.json()).toEqual({ data: { total: 2, urgent: 1 } });
+      expect(privateSaleDeals.attentionCount).toHaveBeenCalledWith(
+        expect.objectContaining({ userId: "staff-1" }),
+      );
+      expect(privateSaleDeals.detail).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(["cataloguer", "saleroom_clerk", "read_only"] as const)("%s does not", async (role) => {
+    const { app, privateSaleDeals } = createApp([role]);
+    expect((await app.request("http://test/private-sales/attention-count")).status).toBe(403);
+    expect(privateSaleDeals.attentionCount).not.toHaveBeenCalled();
   });
 });

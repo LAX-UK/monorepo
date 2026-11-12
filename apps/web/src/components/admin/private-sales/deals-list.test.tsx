@@ -18,6 +18,7 @@ const COUNTS = {
   needs_me: 1,
   waiting_on_checks: 1,
   payment_due: 1,
+  needs_attention: 1,
   settled: 0,
   cancelled: 0,
   all: 3,
@@ -48,6 +49,7 @@ function renderList(patch: Partial<DealsListProps> = {}) {
       ],
       nextCursor: null,
       counts: COUNTS,
+      urgentFollowUps: 0,
     },
     search: {},
     filters: parseDealsSearch({}),
@@ -105,6 +107,48 @@ describe("DealsList", () => {
     expect(within(tabs).getByRole("link", { name: /Needs me/ })).toHaveTextContent("1");
   });
 
+  it("says in the row when a settled deal's artwork wasn't marked sold, and when it may be a double sale", () => {
+    renderList({
+      page: {
+        items: [
+          listItem({
+            id: "d-s1",
+            reference: "PS-0021",
+            workTitle: "Quiet harbour",
+            stage: "settled",
+            settlementFollowUp: "normal",
+          }),
+          listItem({
+            id: "d-s2",
+            reference: "PS-0022",
+            workTitle: "Red study II",
+            stage: "settled",
+            settlementFollowUp: "urgent",
+          }),
+          listItem({ id: "d-s3", reference: "PS-0023", workTitle: "Clear one", stage: "settled" }),
+        ],
+        nextCursor: null,
+        counts: COUNTS,
+        urgentFollowUps: 1,
+      },
+    });
+    const rowOf = (title: string) =>
+      screen.getAllByRole("row").find((r) => within(r).queryByText(title)) as HTMLElement;
+    expect(within(rowOf("Quiet harbour")).getByText("Not marked sold")).toBeInTheDocument();
+    expect(within(rowOf("Red study II")).getByText("Possible double sale")).toBeInTheDocument();
+    expect(within(rowOf("Clear one")).queryByText(/marked sold|double sale/)).toBeNull();
+  });
+
+  it("offers the needs attention view with its count", () => {
+    renderList({ filters: parseDealsSearch({ view: "needs_attention" }) });
+    const tabs = screen.getByRole("navigation", { name: /views/i });
+    expect(within(tabs).getByRole("link", { name: /Needs attention/ })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    expect(within(tabs).getByRole("link", { name: /Needs attention/ })).toHaveTextContent("1");
+  });
+
   it("opens a deal from its row", () => {
     renderList();
     for (const link of screen.getAllByRole("link", { name: "Harbour at dusk" })) {
@@ -114,7 +158,7 @@ describe("DealsList", () => {
 
   it("says what an empty view is for, and offers no export or total", () => {
     renderList({
-      page: { items: [], nextCursor: null, counts: COUNTS },
+      page: { items: [], nextCursor: null, counts: COUNTS, urgentFollowUps: 0 },
       filters: parseDealsSearch({ view: "payment_due" }),
       pagination: null,
     });

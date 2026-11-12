@@ -27,6 +27,7 @@ export const SHOP_PAYMENT_FAILURE_REASONS = {
   edition_state_invalid: "shop_order_edition_state_invalid",
   paid_twice: "shop_order_paid_twice",
   paid_after_close: "shop_order_paid_after_close",
+  paid_while_money_paused: "shop_order_paid_while_paused",
 } as const satisfies Record<UnappliedPaymentFailure, ShopUnappliedReason>;
 
 /**
@@ -38,6 +39,7 @@ export const SHOP_PAYMENT_FAILURE_REASONS = {
 const FAILURES_THAT_CLOSE_THE_ORDER: ReadonlySet<UnappliedPaymentFailure> = new Set([
   "amount_mismatch",
   "edition_state_invalid",
+  "paid_while_money_paused",
 ]);
 
 export function closesOrder(failure: UnappliedPaymentFailure): boolean {

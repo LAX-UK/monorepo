@@ -67,6 +67,7 @@ export const ADMIN_ROUTE_TABLE = [
     requirement: CONDITION_REPORTS_READ_ACCESS,
   },
   { pattern: "/admin/enquiries/[reference]", area: "platform", requirement: ENQUIRIES_ACCESS },
+  { pattern: "/admin/private-sales", area: "shared", requirement: PRIVATE_SALE_DEALS_READ_ACCESS },
   {
     pattern: "/admin/private-sales/[reference]",
     area: "shared",
@@ -133,6 +134,8 @@ export const laxAdminRoutes = {
 /** One builder per link target. Ids are encoded; query strings are part of the builder. */
 export const adminRoutes = {
   privateSales: {
+    /** Settled deals whose artwork the register does not show as sold. */
+    needsAttention: () => "/admin/private-sales?view=needs_attention",
     deal: (reference: string) => `/admin/private-sales/${encodeURIComponent(reference)}`,
   },
   payments: {

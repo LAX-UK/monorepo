@@ -16,6 +16,7 @@ type SessionRow = {
   actorUserId: string;
   targetLegalEntityId: string;
   endedAt: Date | null;
+  expiresAt: Date;
 };
 
 const EXPIRED_SID = "44444444-4444-4444-8444-444444444444";
@@ -23,15 +24,18 @@ const EXPIRED_SID = "44444444-4444-4444-8444-444444444444";
 function setup(options: { live: string[]; rows?: SessionRow[]; started?: string[] }) {
   const publish = vi.fn().mockResolvedValue(undefined);
   const rows = options.rows ?? [];
-  const endForActor = vi.fn(async (id: string, actor: string) => {
-    const row = rows.find((r) => r.id === id && r.actorUserId === actor && !r.endedAt);
+  const endExpiredForActor = vi.fn(async (id: string, actor: string) => {
+    const row = rows.find(
+      (r) =>
+        r.id === id && r.actorUserId === actor && !r.endedAt && r.expiresAt.getTime() <= Date.now(),
+    );
     if (row) row.endedAt = new Date();
     return Boolean(row);
   });
   const sessions = {
     listActiveByActor: vi.fn().mockResolvedValue(options.live.map((id) => ({ id }))),
     findById: vi.fn(async (id: string) => rows.find((r) => r.id === id) ?? null),
-    endForActor,
+    endExpiredForActor,
     forConnection: () => sessions,
   };
   const reader = {
@@ -50,7 +54,7 @@ function setup(options: { live: string[]; rows?: SessionRow[]; started?: string[
     { withTx: () => ({ publish }) } as unknown as IDomainEventSink,
     sessions as never,
   );
-  return { service, publish, endForActor };
+  return { service, publish, endExpiredForActor };
 }
 
 const ownRow = (id: string): SessionRow => ({
@@ -58,6 +62,7 @@ const ownRow = (id: string): SessionRow => ({
   actorUserId: "a",
   targetLegalEntityId: ENTITY,
   endedAt: null,
+  expiresAt: new Date(Date.now() - 1000),
 });
 
 const cookie = (sid: string) =>
@@ -65,32 +70,39 @@ const cookie = (sid: string) =>
 
 describe("ImpersonationAuditService.reconcileFromAdminRequestCookie", () => {
   it("records nothing while the cookie holds one of the actor's live sessions", async () => {
-    const { service, publish, endForActor } = setup({ live: [OWN_SID] });
+    const { service, publish, endExpiredForActor } = setup({ live: [OWN_SID] });
     await service.reconcileFromAdminRequestCookie({
       actorUserId: "a",
       cookieHeader: cookie(OWN_SID),
     });
     expect(publish).not.toHaveBeenCalled();
-    expect(endForActor).not.toHaveBeenCalled();
+    expect(endExpiredForActor).not.toHaveBeenCalled();
   });
 
   it("ends a session that is not live and records the cleared cookie when there is none", async () => {
-    const { service, publish, endForActor } = setup({ live: [], rows: [ownRow(OWN_SID)] });
+    const { service, publish, endExpiredForActor } = setup({ live: [], rows: [ownRow(OWN_SID)] });
     await service.reconcileFromAdminRequestCookie({ actorUserId: "a", cookieHeader: undefined });
-    expect(endForActor).toHaveBeenCalledWith(OWN_SID, "a", "cookie_cleared_after_failed_end");
+    expect(endExpiredForActor).toHaveBeenCalledWith(
+      OWN_SID,
+      "a",
+      "cookie_cleared_after_failed_end",
+    );
     expect(publish).toHaveBeenCalledTimes(1);
     expect(publish.mock.calls[0]?.[0].payload.end_reason).toBe("cookie_cleared_after_failed_end");
   });
 
   it("leaves a live session alone when this browser has no cookie (another browser holds it)", async () => {
-    const { service, publish, endForActor } = setup({ live: [OWN_SID], rows: [ownRow(OWN_SID)] });
+    const { service, publish, endExpiredForActor } = setup({
+      live: [OWN_SID],
+      rows: [ownRow(OWN_SID)],
+    });
     await service.reconcileFromAdminRequestCookie({ actorUserId: "a", cookieHeader: undefined });
-    expect(endForActor).not.toHaveBeenCalled();
+    expect(endExpiredForActor).not.toHaveBeenCalled();
     expect(publish).not.toHaveBeenCalled();
   });
 
   it("ends the actor's own expired session as a timeout, not as a cleared cookie", async () => {
-    const { service, publish, endForActor } = setup({
+    const { service, publish, endExpiredForActor } = setup({
       live: [],
       rows: [ownRow(EXPIRED_SID)],
       started: [EXPIRED_SID],
@@ -99,8 +111,8 @@ describe("ImpersonationAuditService.reconcileFromAdminRequestCookie", () => {
       actorUserId: "a",
       cookieHeader: cookie(EXPIRED_SID),
     });
-    expect(endForActor).toHaveBeenCalledTimes(1);
-    expect(endForActor).toHaveBeenCalledWith(EXPIRED_SID, "a", "timeout");
+    expect(endExpiredForActor).toHaveBeenCalledTimes(1);
+    expect(endExpiredForActor).toHaveBeenCalledWith(EXPIRED_SID, "a", "timeout");
     expect(publish).toHaveBeenCalledTimes(1);
     expect(publish.mock.calls[0]?.[0].payload.end_reason).toBe("timeout");
     expect(publish.mock.calls[0]?.[0].actingLegalEntityId).toBe(ENTITY);
@@ -127,10 +139,50 @@ describe("ImpersonationAuditService.reconcileFromAdminRequestCookie", () => {
     expect(publish).not.toHaveBeenCalled();
   });
 
+  it("never ends a session that started after the live snapshot was taken", async () => {
+    const fresh: SessionRow = { ...ownRow(OWN_SID), expiresAt: new Date(Date.now() + 60_000) };
+    const { service, publish } = setup({ live: [], rows: [fresh] });
+    await service.reconcileFromAdminRequestCookie({ actorUserId: "a", cookieHeader: undefined });
+    expect(fresh.endedAt).toBeNull();
+    expect(publish).not.toHaveBeenCalled();
+  });
+
   it("records nothing when the session row is already ended", async () => {
     const ended: SessionRow = { ...ownRow(OWN_SID), endedAt: new Date() };
     const { service, publish } = setup({ live: [], rows: [ended] });
     await service.reconcileFromAdminRequestCookie({ actorUserId: "a", cookieHeader: undefined });
+    expect(publish).not.toHaveBeenCalled();
+  });
+});
+
+describe("ImpersonationAuditService.recordSessionTimedOut", () => {
+  it("ends the expired session and records one timeout event", async () => {
+    const { service, publish, endExpiredForActor } = setup({ live: [], rows: [ownRow(OWN_SID)] });
+    await service.recordSessionTimedOut({
+      sessionId: OWN_SID,
+      actorUserId: "a",
+      actingLegalEntityId: ENTITY,
+    });
+    expect(endExpiredForActor).toHaveBeenCalledWith(OWN_SID, "a", "timeout");
+    expect(publish).toHaveBeenCalledTimes(1);
+    expect(publish.mock.calls[0]?.[0].payload.end_reason).toBe("timeout");
+  });
+
+  it("writes a single event when parallel requests see the same expiry", async () => {
+    const { service, publish } = setup({ live: [], rows: [ownRow(OWN_SID)] });
+    const input = { sessionId: OWN_SID, actorUserId: "a", actingLegalEntityId: ENTITY };
+    await Promise.all([1, 2, 3].map(() => service.recordSessionTimedOut(input)));
+    expect(publish).toHaveBeenCalledTimes(1);
+  });
+
+  it("records nothing for a session that is already ended", async () => {
+    const ended: SessionRow = { ...ownRow(OWN_SID), endedAt: new Date() };
+    const { service, publish } = setup({ live: [], rows: [ended] });
+    await service.recordSessionTimedOut({
+      sessionId: OWN_SID,
+      actorUserId: "a",
+      actingLegalEntityId: ENTITY,
+    });
     expect(publish).not.toHaveBeenCalled();
   });
 });

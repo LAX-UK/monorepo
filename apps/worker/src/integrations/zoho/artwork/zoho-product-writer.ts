@@ -40,7 +40,7 @@ export class CrmZohoProductWriter implements ZohoProductWriter {
     const page = await this.coql.queryCoql(productWriteStateQuery(productId));
     const row = page.rows[0];
     if (!row) return null;
-    return { status: text(row.Status), stockCode: text(row.Reference_Stock_Code) };
+    return { stockCode: text(row.Reference_Stock_Code) };
   }
 
   async update(productId: string, fields: Record<string, string>): Promise<void> {

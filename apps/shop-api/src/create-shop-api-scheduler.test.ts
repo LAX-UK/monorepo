@@ -20,6 +20,7 @@ function taskNames(env: Record<string, unknown>): string[] {
     env: env as never,
     log: {} as never,
     alertRetention: { name: "shop", prune: async () => ({}) as never },
+    moneyPause: { isPaused: async () => false },
     unappliedMoney: { lockKey: async () => undefined, existsForShopPayment: async () => false },
   }).map((task) => task.name);
 }
@@ -28,6 +29,7 @@ describe("createShopApiScheduler", () => {
   it("omits phase 2+ tasks when payout and third-party flags are off", () => {
     const names = taskNames(baseEnv);
     expect(names).toContain("stale-checkout-reaper");
+    expect(names).toContain("paused-checkout-expiry");
     expect(names).toContain("identity-merge");
     expect(names).toContain("staff-access");
     expect(names).toContain("personal-data-anonymisation");

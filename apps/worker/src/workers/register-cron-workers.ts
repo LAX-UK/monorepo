@@ -3,6 +3,7 @@ import {
   CONSIGNMENT_AGREEMENT_REMINDERS_QUEUE_NAME,
   CONSIGNMENT_THREAD_SWEEP_QUEUE_NAME,
   PAYMENT_REMINDERS_QUEUE_NAME,
+  PRIVATE_SALE_SETTLEMENT_FOLLOW_UPS_QUEUE_NAME,
   SHOP_STOCK_RECONCILIATION_QUEUE_NAME,
   STAFF_ROLE_EXPIRY_QUEUE_NAME,
   STALE_SUBMISSION_DRAFT_REMINDERS_QUEUE_NAME,
@@ -12,6 +13,7 @@ import { Queue, Worker } from "bullmq";
 import { runConsignmentAgreementRemindersJob } from "../jobs/consignment-agreement-reminders.js";
 import { runConsignmentThreadSweepJob } from "../jobs/consignment-thread-sweep.js";
 import { runPaymentRemindersJob } from "../jobs/payment-reminders.js";
+import { runPrivateSaleSettlementFollowUpsJob } from "../jobs/private-sale-settlement-follow-ups.js";
 import { runShopStockReconciliationJob } from "../jobs/shop-stock-reconciliation.job.js";
 import { runStaffRoleExpiryJob } from "../jobs/staff-role-expiry.js";
 import { runStaleSubmissionDraftRemindersJob } from "../jobs/stale-submission-draft-reminders.js";
@@ -251,6 +253,48 @@ export function registerCronWorkers(deps: WorkerBootstrapDeps): CronWorkersHandl
   log.info("staff-role-expiry repeat registered (daily)");
   errorHandlers.push({ worker: staffRoleExpiryWorker, queue: STAFF_ROLE_EXPIRY_QUEUE_NAME });
   closables.push(staffRoleExpiryWorker, staffRoleExpiryQueue);
+
+  const settlementFollowUpsQueue = new Queue(
+    PRIVATE_SALE_SETTLEMENT_FOLLOW_UPS_QUEUE_NAME,
+    bullConnection,
+  );
+  const settlementFollowUpsWorker = new Worker(
+    PRIVATE_SALE_SETTLEMENT_FOLLOW_UPS_QUEUE_NAME,
+    async () => {
+      await withSentryCronMonitor(
+        PRIVATE_SALE_SETTLEMENT_FOLLOW_UPS_QUEUE_NAME,
+        sentryMonitorSlugs,
+        async () => {
+          await runPrivateSaleSettlementFollowUpsJob({
+            apiBaseUrl: env.API_INTERNAL_BASE_URL,
+            cronSecret,
+            log,
+          });
+          await heartbeat(PRIVATE_SALE_SETTLEMENT_FOLLOW_UPS_QUEUE_NAME);
+        },
+      );
+    },
+    bullConnection,
+  );
+  settlementFollowUpsWorker.on("failed", (job, err) => {
+    reportWorkerJobFailure(PRIVATE_SALE_SETTLEMENT_FOLLOW_UPS_QUEUE_NAME, job, err);
+  });
+  // Daily: the item itself is derived on every read; this check tells staff once per deal.
+  void settlementFollowUpsQueue.add(
+    PRIVATE_SALE_SETTLEMENT_FOLLOW_UPS_QUEUE_NAME,
+    {},
+    {
+      jobId: "daily-private-sale-settlement-follow-ups",
+      repeat: { every: 24 * 60 * 60 * 1000 },
+      removeOnComplete: 50,
+    },
+  );
+  log.info("private-sale-settlement-follow-ups repeat registered (daily)");
+  errorHandlers.push({
+    worker: settlementFollowUpsWorker,
+    queue: PRIVATE_SALE_SETTLEMENT_FOLLOW_UPS_QUEUE_NAME,
+  });
+  closables.push(settlementFollowUpsWorker, settlementFollowUpsQueue);
 
   const threadSweepQueue = new Queue(CONSIGNMENT_THREAD_SWEEP_QUEUE_NAME, bullConnection);
   const threadSweepWorker = new Worker(

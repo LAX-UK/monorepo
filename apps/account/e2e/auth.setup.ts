@@ -1,6 +1,3 @@
-import { spawnSync } from "node:child_process";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { test as setup } from "@playwright/test";
 import { accountAuthState } from "./helpers/account-auth-state";
 import {
@@ -10,16 +7,7 @@ import {
   newPersonCredentials,
   signInAccount,
 } from "./helpers/account-e2e";
-
-const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
-
-function flushAuthRateLimits(): void {
-  const result = spawnSync("node", [path.join(repoRoot, "scripts/ci/flush-auth-rate-limits.mjs")], {
-    stdio: "inherit",
-    env: process.env,
-  });
-  if (result.status !== 0) throw new Error("failed to flush auth rate-limit keys before sign-in");
-}
+import { flushAuthRateLimits } from "./helpers/flush-auth-rate-limits";
 
 setup.describe.configure({ mode: "serial" });
 
