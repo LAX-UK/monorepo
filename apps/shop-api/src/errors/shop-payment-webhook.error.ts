@@ -10,6 +10,8 @@ export const UNAPPLIED_PAYMENT_FAILURES = [
   "paid_twice",
   /** The order had been closed (expired, cancelled, failed or refunded) before the payment. */
   "paid_after_close",
+  /** Zoho says the artwork is Sold or Reserved and staff have not decided: nothing is fulfilled. */
+  "paid_while_money_paused",
 ] as const;
 
 export type UnappliedPaymentFailure = (typeof UNAPPLIED_PAYMENT_FAILURES)[number];

@@ -17,6 +17,7 @@ import {
   WORKER_SHOP_ENQUIRY_READ_COLUMNS,
   WORKER_SHOP_ORDER_READ_COLUMNS,
   WORKER_SHOP_PRINT_GROUP_READ_COLUMNS,
+  WORKER_SOLD_ATTENTION_UPDATE_COLUMNS,
 } from "./migrate-roles.js";
 import {
   expectTablePrivileges,
@@ -53,6 +54,22 @@ async function withWorkerClient<T>(fn: (client: pg.Client) => Promise<T>): Promi
 
 /** Cutover gate: worker_app can perform delivery, payment maintenance, and lifecycle writes. */
 describe.skipIf(!WORKER_URL)("worker_app role contract", { timeout: 60_000 }, () => {
+  it("updates only the worker Sold-while-live columns, so it cannot re-point an item", async () => {
+    await withWorkerClient(async (client) => {
+      const rows = await client.query<{ column_name: string; allowed: boolean }>(
+        `select column_name,
+                has_column_privilege(current_user, 'public.artwork_register_sold_attention', column_name, 'UPDATE') as allowed
+           from information_schema.columns
+          where table_schema = 'public' and table_name = 'artwork_register_sold_attention'`,
+      );
+      const allowed = rows.rows.filter((row) => row.allowed).map((row) => row.column_name);
+      expect(allowed.sort()).toEqual([...WORKER_SOLD_ATTENTION_UPDATE_COLUMNS].sort());
+      for (const column of ["zoho_product_id", "register_id", "place", "override_reason"]) {
+        expect(allowed, column).not.toContain(column);
+      }
+    });
+  });
+
   it("adds to buyer refunds and reads them, never changing or removing one", async () => {
     await withWorkerClient(async (client) => {
       const rows = await readTablePrivileges(

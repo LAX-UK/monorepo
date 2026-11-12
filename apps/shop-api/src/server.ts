@@ -21,6 +21,7 @@ const scheduler = createShopApiScheduler({
   log: app.log,
   alertRetention: container.alertRetention,
   unappliedMoney: container.unappliedMoney,
+  moneyPause: container.moneyPause,
 });
 
 const shutdown = async () => {

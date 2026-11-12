@@ -4,6 +4,7 @@ import {
   DrizzleLotLifecycleSnapshotRepository,
   DrizzleLotReofferRepository,
   DrizzleNotificationOutboxRepository,
+  DrizzleReofferInvoiceMarker,
   DrizzleReofferSweepReader,
   DrizzleReofferWorkflowReader,
   DrizzleSellerConsentRepository,
@@ -40,5 +41,5 @@ export function createReofferClock(input: {
     notices: new OutboxReofferNotices(new DrizzleNotificationOutboxRepository(db), input.people),
     ...(input.now ? { now: input.now } : {}),
   });
-  return { clock, reader };
+  return { clock, reader, marker: new DrizzleReofferInvoiceMarker(db) };
 }

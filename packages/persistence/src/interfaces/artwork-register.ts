@@ -27,7 +27,10 @@ export type RegisterEventType =
   | "move_confirmed"
   | "lax_art_draft_created"
   | "zoho_link_linked"
-  | "zoho_link_unlinked";
+  | "zoho_link_unlinked"
+  | "sold_while_live_raised"
+  | "sold_while_live_resolved"
+  | "sold_while_live_overridden";
 
 export type RegisterEvent = {
   id: string;
