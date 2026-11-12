@@ -25,6 +25,7 @@ export class DrizzleIdentitySessionRepository implements IIdentitySessionReposit
         ipAddress: session.ipAddress,
         userAgent: session.userAgent,
         lastPasswordAuthAt: session.lastPasswordAuthAt,
+        amr: session.amr,
       })
       .from(session)
       .where(eq(session.userId, subjectId))

@@ -2441,6 +2441,13 @@
     {
       "idx": 349,
       "version": "7",
+      "when": 1805961600000,
+      "tag": "0358_bid_catalogue_setting",
+      "breakpoints": true
+    },
+    {
+      "idx": 350,
+      "version": "7",
       "when": 1806652800000,
       "tag": "0366_zoho_sync_health",
       "breakpoints": true

@@ -4,7 +4,10 @@ import type { LotRegisterLink } from "@auction/persistence/interfaces";
 import { describe, expect, it, vi } from "vitest";
 import { LotError } from "../lib/errors.js";
 import type { LotLifecycleEventRecorder } from "./lot-lifecycle-event-recorder.js";
-import { OfferLockLotLifecycleRecording } from "./offer-lock-lot-lifecycle-recording.service.js";
+import {
+  OfferLockLotLifecycleRecording,
+  UNLINKED_LOT_MESSAGE,
+} from "./offer-lock-lot-lifecycle-recording.service.js";
 
 const tx = {} as Database;
 const lotRow = {
@@ -14,7 +17,11 @@ const lotRow = {
   sellerLegalEntityId: "22222222-2222-4222-8222-222222222222",
 };
 
-function setup(options: { link: LotRegisterLink | null; entry?: Partial<ArtworkRegisterEntry> }) {
+function setup(options: {
+  link: LotRegisterLink | null;
+  entry?: Partial<ArtworkRegisterEntry>;
+  blockUnlinked?: boolean;
+}) {
   const entry = {
     id: "reg-1",
     kind: "original",
@@ -28,12 +35,20 @@ function setup(options: { link: LotRegisterLink | null; entry?: Partial<ArtworkR
     moveOffer: vi.fn().mockResolvedValue({ ok: true, entry }),
   };
   const journal = { record: vi.fn().mockResolvedValue(undefined) };
+  const sessions: Database[] = [];
   const recording = new OfferLockLotLifecycleRecording(
     journal as unknown as LotLifecycleEventRecorder,
-    new ArtworkOfferLock(register),
+    (session) => {
+      sessions.push(session);
+      return new ArtworkOfferLock(register);
+    },
     { findLink: vi.fn().mockResolvedValue(options.link) },
+    {
+      blockUnlinkedPublish: vi.fn().mockResolvedValue(options.blockUnlinked ?? false),
+      setBlockUnlinkedPublish: vi.fn(),
+    },
   );
-  return { recording, register, journal };
+  return { recording, register, journal, sessions };
 }
 
 const link: LotRegisterLink = {
@@ -58,11 +73,35 @@ describe("OfferLockLotLifecycleRecording.recordPublished", () => {
     );
   });
 
+  it("asks the register on the publish transaction, so a rollback leaves no hold", async () => {
+    const { recording, sessions } = setup({ link });
+    await recording.recordPublished(tx, lotRow, "user-1");
+    expect(sessions).toEqual([tx]);
+  });
+
   it("publishes a lot with no register link exactly as before", async () => {
     const { recording, register, journal } = setup({ link: null });
     await recording.recordPublished(tx, lotRow, "user-1");
     expect(journal.record).toHaveBeenCalledOnce();
     expect(register.moveOffer).not.toHaveBeenCalled();
+  });
+
+  it("refuses a lot with no register link when the switch is on, telling staff to link it", async () => {
+    const { recording, register } = setup({ link: null, blockUnlinked: true });
+    const refusal = recording.recordPublished(tx, lotRow, "user-1");
+    await expect(refusal).rejects.toBeInstanceOf(LotError);
+    await expect(refusal).rejects.toMatchObject({
+      message: UNLINKED_LOT_MESSAGE,
+      status: 409,
+      code: "lot_not_linked_to_register",
+    });
+    expect(register.moveOffer).not.toHaveBeenCalled();
+  });
+
+  it("still publishes a linked lot when the switch is on", async () => {
+    const { recording, register } = setup({ link, blockUnlinked: true });
+    await recording.recordPublished(tx, lotRow, "user-1");
+    expect(register.moveOffer).toHaveBeenCalledOnce();
   });
 
   it("refuses, with a conflict staff can read, when the artwork is offered on lax.art", async () => {

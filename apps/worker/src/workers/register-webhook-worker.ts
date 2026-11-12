@@ -10,6 +10,11 @@ import {
   processInboundWebhookEvent,
 } from "../jobs/process-inbound-webhook-event.js";
 import {
+  REGISTER_LOT_INTEGRITY_JOB_NAME,
+  REGISTER_LOT_INTEGRITY_PATTERN,
+  REGISTER_LOT_INTEGRITY_TIME_ZONE,
+} from "../jobs/register-lot-integrity-check.job.js";
+import {
   ZOHO_ARTWORK_NIGHTLY_JOB_NAME,
   ZOHO_ARTWORK_NIGHTLY_MONITOR_KEY,
   ZOHO_ARTWORK_NIGHTLY_PATTERN,
@@ -41,6 +46,8 @@ export type RegisterWebhookWorkerInput = WorkerBootstrapDeps & {
   runZohoArtworkNightlyCheck?: () => Promise<void>;
   /** Set when the LAX listing on Zoho is on; schedules its nightly pass on this queue. */
   runZohoListingNightlyCheck?: () => Promise<void>;
+  /** Finds artworks the register places in a Bid sale whose lot is not live; runs nightly. */
+  runRegisterLotIntegrityCheck?: () => Promise<void>;
   /** Set when the Zoho Campaigns suppression sync is on; schedules its daily pass here. */
   runZohoCampaignsSuppressionSync?: () => Promise<void>;
 };
@@ -53,6 +60,7 @@ export function registerWebhookWorker(input: RegisterWebhookWorkerInput): Webhoo
     webhookProcessorDeps,
     runZohoArtworkNightlyCheck,
     runZohoListingNightlyCheck,
+    runRegisterLotIntegrityCheck,
     runZohoCampaignsSuppressionSync,
     sentryMonitorSlugs,
     queueOpts,
@@ -102,6 +110,14 @@ export function registerWebhookWorker(input: RegisterWebhookWorkerInput): Webhoo
           sentryMonitorSlugs,
           runZohoListingNightlyCheck,
         );
+        await heartbeat("webhook-events");
+        return;
+      }
+
+      if (job.name === REGISTER_LOT_INTEGRITY_JOB_NAME) {
+        if (!runRegisterLotIntegrityCheck)
+          throw new Error("register lot integrity check not configured");
+        await runRegisterLotIntegrityCheck();
         await heartbeat("webhook-events");
         return;
       }
@@ -168,6 +184,21 @@ export function registerWebhookWorker(input: RegisterWebhookWorkerInput): Webhoo
       {
         jobId: ZOHO_LISTING_NIGHTLY_JOB_NAME,
         repeat: { pattern: ZOHO_LISTING_NIGHTLY_PATTERN, tz: ZOHO_LISTING_NIGHTLY_TIME_ZONE },
+        removeOnComplete: 30,
+      },
+    );
+  }
+
+  if (runRegisterLotIntegrityCheck) {
+    void webhookQueue.add(
+      REGISTER_LOT_INTEGRITY_JOB_NAME,
+      { eventKey: REGISTER_LOT_INTEGRITY_JOB_NAME },
+      {
+        jobId: REGISTER_LOT_INTEGRITY_JOB_NAME,
+        repeat: {
+          pattern: REGISTER_LOT_INTEGRITY_PATTERN,
+          tz: REGISTER_LOT_INTEGRITY_TIME_ZONE,
+        },
         removeOnComplete: 30,
       },
     );

@@ -5,10 +5,13 @@ import { ACCOUNT_ROUTES } from "./account-settings.vm";
 /** Where the "Where you're signed in" list sits on the Password and security page. */
 export const SIGNED_IN_DEVICES_HREF = `${ACCOUNT_ROUTES.security}#signed-in-devices`;
 
+/** Where the sign-in methods (and the passkey row) sit on the Password and security page. */
+export const SIGN_IN_METHODS_HREF = `${ACCOUNT_ROUTES.security}#sign-in-methods`;
+
 /** Where the backup codes section sits on the Password and security page. */
 export const BACKUP_CODES_HREF = `${ACCOUNT_ROUTES.security}#backup-codes`;
 
-export type CheckupStepId = "verify-email" | "two-step" | "backup-codes" | "sessions";
+export type CheckupStepId = "verify-email" | "two-step" | "passkey" | "backup-codes" | "sessions";
 
 export type CheckupStepVm = {
   id: CheckupStepId;
@@ -61,6 +64,8 @@ function sessionsDescription(otherSessionCount: number | null): string {
  *  - the email step does not apply to an account with no email;
  *  - adding a phone number is left out until Account can edit it.
  *
+ * "Add a passkey" appears only where passkeys are offered and the person has none.
+ *
  * "Review where you're signed in" is done when this is the only device signed in. A person who
  * signs in on two devices on purpose keeps seeing it open: Account cannot tell a device they
  * recognise from one they do not, so it asks rather than guesses.
@@ -68,6 +73,12 @@ function sessionsDescription(otherSessionCount: number | null): string {
 export function buildSecurityCheckup(
   facts: AccountSecurityFacts,
   links: Pick<AccountLinksVm, "verifyEmail" | "manageTwoStep">,
+  /**
+   * Whether passkeys are offered here and how many the person has. Only a person with none is
+   * asked to add one; where passkeys are not offered, or the list could not be read (null), the
+   * checkup is as it was.
+   */
+  passkeys: { offered: boolean; count: number } | null = null,
 ): SecurityCheckupVm {
   const steps: CheckupStepVm[] = [];
 
@@ -96,6 +107,17 @@ export function buildSecurityCheckup(
       facts.twoStep === "on" ? null : facts.twoStep === "off" ? "Turn on" : "Set up or review",
     href: links.manageTwoStep,
   });
+
+  if (passkeys?.offered && passkeys.count === 0) {
+    steps.push({
+      id: "passkey",
+      title: "Add a passkey",
+      description: "Sign in with your face or fingerprint.",
+      done: false,
+      actionLabel: "Add a passkey",
+      href: SIGN_IN_METHODS_HREF,
+    });
+  }
 
   if (
     facts.twoStep === "on" &&

@@ -21,6 +21,10 @@
       "reason": "Settings: weekly hours, rules and closures for collecting works"
     },
     { "page": "bid-admin:(platform)/settings/security/page.tsx", "reason": "Settings" },
+    {
+      "page": "bid-admin:(platform)/settings/unlinked-originals/page.tsx",
+      "reason": "Settings: a switch with the short report that tells staff when to turn it on"
+    },
     { "page": "lax-admin:page.tsx", "reason": "Redirects to Overview" },
     { "page": "lax-admin:overview/page.tsx", "reason": "Overview: work inbox" },
     { "page": "lax-admin:editorial/page.tsx", "reason": "Editorial hub" },

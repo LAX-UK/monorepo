@@ -46,13 +46,28 @@ export async function authedServerFetch(
   });
 }
 
-/** Refetch without acting-entity header when the first response is 403. */
+const VIEW_SESSION_REFUSALS = new Set([
+  "impersonation_session_expired",
+  "invalid_impersonation_session",
+]);
+
+/** A 403 that says the staff "view as client" session is over: the page shows that, not another account. */
+async function isViewSessionRefusal(res: Response): Promise<boolean> {
+  try {
+    const body = (await res.clone().json()) as { code?: unknown; error?: unknown };
+    return VIEW_SESSION_REFUSALS.has(String(body.code ?? body.error));
+  } catch {
+    return false;
+  }
+}
+
+/** Refetch without acting-entity header when the first response is 403 (but not for an ended view session). */
 export async function authedServerFetchWithEntityFallback(
   path: string,
   init?: AuthedServerFetchInit,
 ): Promise<Response> {
   let res = await authedServerFetch(path, init);
-  if (res.status === 403) {
+  if (res.status === 403 && !(await isViewSessionRefusal(res))) {
     res = await authedServerFetch(path, {
       ...init,
       skipActingLegalEntityHeader: true,

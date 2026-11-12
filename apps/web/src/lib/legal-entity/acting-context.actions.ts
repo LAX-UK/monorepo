@@ -224,6 +224,7 @@ export async function startAdminImpersonation(
       maxAge: IMPERSONATION_COOKIE_MAX_AGE,
       sameSite: "lax",
       httpOnly: false,
+      secure: process.env.NODE_ENV === "production",
     });
     revalidatePath("/", "layout");
     return { ok: true };

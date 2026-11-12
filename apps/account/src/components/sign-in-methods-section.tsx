@@ -6,6 +6,7 @@ import {
   NOTICE,
   NoticeTitle,
 } from "@/components/account-ui";
+import { buildReauthHref } from "@/server/domain/account-reauth";
 import type { SettingsRowVm } from "@/server/domain/account-settings.vm";
 import type {
   SignInMethodFlashVm,
@@ -81,7 +82,12 @@ export function SignInMethodsSection({
       description="The ways you can sign in to LAX. Keep at least one you can always use."
     >
       {flash ? (
-        <SignInMethodFlash flash={flash} pagePath={pagePath} reauthHref={reauthHref} />
+        // The notice that asks to sign in again is always about adding a way in.
+        <SignInMethodFlash
+          flash={flash}
+          pagePath={pagePath}
+          reauthHref={buildReauthHref(pagePath, "add_sign_in_method")}
+        />
       ) : null}
       {section.status === "list" ? (
         <SignInMethodsList
