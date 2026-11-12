@@ -12,12 +12,16 @@ import {
   WORKER_SHOP_ENQUIRY_READ_COLUMNS,
   WORKER_SHOP_ORDER_READ_COLUMNS,
   WORKER_SHOP_PRINT_GROUP_READ_COLUMNS,
+  WORKER_ZOHO_BOOKS_INSERT_COLUMNS,
+  WORKER_ZOHO_BOOKS_SELECT_COLUMNS,
+  WORKER_ZOHO_BOOKS_UPDATE_COLUMNS,
 } from "./migrate-roles.js";
 import {
   expectTablePrivileges,
   expectUniformTablePrivileges,
   readTablePrivileges,
 } from "./role-contract/table-privileges.test-helpers.js";
+import { expectZohoBooksConnectionGrants } from "./role-contract/zoho-books-connection-privileges.test-helpers.js";
 import {
   absenteeBid,
   bid,
@@ -48,6 +52,16 @@ async function withWorkerClient<T>(fn: (client: pg.Client) => Promise<T>): Promi
 
 /** Cutover gate: worker_app can perform delivery, payment maintenance, and lifecycle writes. */
 describe.skipIf(!WORKER_URL)("worker_app role contract", { timeout: 60_000 }, () => {
+  it("holds only the token columns it reads and writes on the Zoho Books connections, never DELETE or TRUNCATE", async () => {
+    await withWorkerClient(async (client) => {
+      await expectZohoBooksConnectionGrants(client, {
+        select: [...WORKER_ZOHO_BOOKS_SELECT_COLUMNS],
+        insert: [...WORKER_ZOHO_BOOKS_INSERT_COLUMNS],
+        update: [...WORKER_ZOHO_BOOKS_UPDATE_COLUMNS],
+      });
+    });
+  });
+
   it("adds to buyer refunds and reads them, never changing or removing one", async () => {
     await withWorkerClient(async (client) => {
       const rows = await readTablePrivileges(

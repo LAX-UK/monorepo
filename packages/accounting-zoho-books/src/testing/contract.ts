@@ -1,4 +1,5 @@
 import type { ZohoCertainty, ZohoErrorKind } from "../errors.js";
+import type { ZohoTokenStore } from "../ports.js";
 import { type Reply, tokenReply } from "./fake-transport.js";
 import type { ClientHarness } from "./harness.js";
 
@@ -115,5 +116,62 @@ export function runZohoBooksClientContract(api: TestApi, makeHarness: () => Clie
         });
       }
     }
+  });
+}
+
+/**
+ * What every `ZohoTokenStore` adapter must do. The writes that follow a read are compare-and-set on
+ * `version`: a refresh that started before a reconnect must not overwrite or flag the new connection.
+ */
+export function runZohoTokenStoreContract(api: TestApi, makeStore: () => ZohoTokenStore): void {
+  const { describe, it, expect } = api;
+  const ORG = "20091234567";
+  describe("Zoho token store contract", () => {
+    it("loads nothing for an organisation that is not connected", async () => {
+      expect(await makeStore().load(ORG)).toBe(null);
+    });
+
+    it("saves a refresh against the version that was read and changes the version", async () => {
+      const store = makeStore();
+      await store.saveConnection(ORG, "v1:refresh");
+      const before = await store.load(ORG);
+      const applied = await store.saveRefreshed(ORG, before?.version ?? "", {
+        accessTokenSealed: "v1:access",
+        accessTokenExpiresAtMs: 123,
+      });
+      expect(applied).toBe(true);
+      const after = await store.load(ORG);
+      expect(after?.accessTokenSealed).toBe("v1:access");
+      expect(after?.refreshTokenSealed).toBe("v1:refresh");
+      expect(after?.version === before?.version).toBe(false);
+    });
+
+    it("refuses a refresh and a reauth flag written against a version a reconnect has replaced", async () => {
+      const store = makeStore();
+      await store.saveConnection(ORG, "v1:refresh-1");
+      const stale = (await store.load(ORG))?.version ?? "";
+      await store.saveConnection(ORG, "v1:refresh-2");
+      expect(
+        await store.saveRefreshed(ORG, stale, {
+          accessTokenSealed: "v1:stale-access",
+          accessTokenExpiresAtMs: 1,
+        }),
+      ).toBe(false);
+      expect(await store.markNeedsReauth(ORG, stale, "zoho_books_invalid_grant")).toBe(false);
+      const row = await store.load(ORG);
+      expect(row?.refreshTokenSealed).toBe("v1:refresh-2");
+      expect(row?.accessTokenSealed).toBe(null);
+      expect(row?.status).toBe("healthy");
+    });
+
+    it("flags needs_reauth against the current version, and a reconnect clears it", async () => {
+      const store = makeStore();
+      await store.saveConnection(ORG, "v1:refresh");
+      const current = (await store.load(ORG))?.version ?? "";
+      expect(await store.markNeedsReauth(ORG, current, "zoho_books_invalid_grant")).toBe(true);
+      expect((await store.load(ORG))?.status).toBe("needs_reauth");
+      await store.saveConnection(ORG, "v1:refresh-new");
+      expect((await store.load(ORG))?.status).toBe("healthy");
+    });
   });
 }

@@ -32,6 +32,11 @@ export interface ZohoTransport {
 
 /** What is stored per organisation. Only sealed values: the store never sees a plaintext token. */
 export interface StoredZohoTokens {
+  /**
+   * Opaque. Changes whenever the connection row changes (reconnect, refresh, reauth flag), for
+   * example its `updated_at`. Writes that follow a read pass it back and apply only if it still matches.
+   */
+  readonly version: string;
   readonly refreshTokenSealed: string;
   readonly accessTokenSealed: string | null;
   readonly accessTokenExpiresAtMs: number | null;
@@ -42,16 +47,25 @@ export interface ZohoTokenStore {
   load(organizationId: string): Promise<StoredZohoTokens | null>;
   /** Create or replace a connection with a freshly authorised refresh token; status becomes healthy. */
   saveConnection(organizationId: string, refreshTokenSealed: string): Promise<void>;
-  /** Store a refreshed access token; `refreshTokenSealed` only when Zoho rotated the refresh token. */
+  /**
+   * Store a refreshed access token; `refreshTokenSealed` only when Zoho rotated the refresh token.
+   * Compare-and-set: applies only if the row's version is still `expectedVersion`. Returns whether it applied.
+   */
   saveRefreshed(
     organizationId: string,
+    expectedVersion: string,
     tokens: {
       readonly accessTokenSealed: string;
       readonly accessTokenExpiresAtMs: number;
       readonly refreshTokenSealed?: string;
     },
-  ): Promise<void>;
-  markNeedsReauth(organizationId: string, errorCode: string): Promise<void>;
+  ): Promise<boolean>;
+  /** Compare-and-set like `saveRefreshed`: a reconnect after `expectedVersion` was read is never flagged. */
+  markNeedsReauth(
+    organizationId: string,
+    expectedVersion: string,
+    errorCode: string,
+  ): Promise<boolean>;
 }
 
 export interface BudgetDecision {

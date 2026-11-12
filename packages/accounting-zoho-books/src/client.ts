@@ -68,7 +68,7 @@ const RETRYABLE_SERVER = new Set([500, 502, 503, 504]);
  * It never throws a Zoho failure: it returns a `ZohoResult` whose error says whether the call was
  * `rejected` or `unknown` (may have happened).
  *
- * Retries: a GET is retried on 429, 500/502/503/504, timeouts and connection failures; any other
+ * Retries: a GET is retried on 429, 500/502/503/504, HTTP 408, timeouts and connection failures (a local timeout is a `network` error); any other
  * method only on 429 (Zoho did not act on it). A write that ends in 5xx or a timeout is never
  * retried here: it is `unknown`, and the domain looks the document up before trying again. A 401
  * gets one token refresh and replay (safe for every method: Zoho refused it before acting).
@@ -336,6 +336,7 @@ export class ZohoBooksClient {
       case "server":
         return error.httpStatus !== undefined && RETRYABLE_SERVER.has(error.httpStatus);
       case "unknown":
+        // Only an HTTP 408 reply; our own timeout is a `network` error (see http.ts).
         return error.code === "request_timeout";
       default:
         return false;

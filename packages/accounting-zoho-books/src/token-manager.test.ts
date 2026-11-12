@@ -132,7 +132,7 @@ describe("token handling", () => {
   it("a transient token failure is reported as rejected (nothing was sent to Books) and does not need re-auth", async () => {
     const h = createClientHarness();
     await h.connect(TEST_ORG, null);
-    for (let i = 0; i < 3; i++) h.transport.enqueue({ status: 503, body: {} }, isTokenRequest);
+    h.transport.enqueue({ status: 503, body: {} }, isTokenRequest);
     const result = await h.clock.settle(h.client.post(TEST_ORG, "/invoices", { total: 1 }));
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.error.certainty).toBe("rejected");
@@ -156,6 +156,7 @@ describe("token handling", () => {
       accessTokenSealed: null,
       accessTokenExpiresAtMs: null,
       status: "healthy",
+      version: 1,
     });
     const result = await h.clock.settle(h.client.get(TEST_ORG, "/invoices"));
     expect(result.ok).toBe(false);
@@ -176,5 +177,102 @@ describe("token handling", () => {
           tokenStore: h.store,
         }),
     ).toThrow(expect.objectContaining({ code: "key_missing" }));
+  });
+
+  it("does not flag an organisation that was reconnected while the failing refresh was in flight", async () => {
+    const h = createClientHarness();
+    await h.connect(TEST_ORG, null);
+    h.transport.enqueue(async () => {
+      // Staff reconnect while Zoho is still answering the old refresh token.
+      await h.client.registerRefreshToken(TEST_ORG, `${TEST_REFRESH_TOKEN}-new`);
+      return { status: 200, body: { error: "invalid_grant" } };
+    }, isTokenRequest);
+    const result = await h.clock.settle(h.client.get(TEST_ORG, "/invoices"));
+    expect(result.ok).toBe(false);
+    expect(h.store.rows.get(TEST_ORG)?.status).toBe("healthy");
+  });
+
+  it("drops a refresh answer that arrives after a reconnect instead of overwriting the new connection", async () => {
+    const h = createClientHarness();
+    await h.connect(TEST_ORG, null);
+    h.transport.enqueue(async () => {
+      await h.client.registerRefreshToken(TEST_ORG, `${TEST_REFRESH_TOKEN}-new`);
+      return tokenReply("stale-access-token");
+    }, isTokenRequest);
+    const result = await h.clock.settle(h.client.get(TEST_ORG, "/invoices"));
+    expect(result.ok).toBe(false);
+    expect(h.store.rows.get(TEST_ORG)?.accessTokenSealed).toBe(null);
+    expect(h.transport.requests.filter(isApiRequest)).toHaveLength(0);
+  });
+
+  it("never repeats a refresh after a timeout or a lost reply, and re-reads the store before the next one", async () => {
+    for (const reply of [{ hang: true }, { fail: new Error("ECONNRESET") }] as const) {
+      const h = createClientHarness();
+      await h.connect(TEST_ORG, null);
+      h.transport.enqueue(reply, isTokenRequest);
+      const first = await h.clock.settle(h.client.get(TEST_ORG, "/invoices"));
+      expect(first.ok).toBe(false);
+      // One request only: no retry with a refresh token Zoho may already have used.
+      expect(h.transport.requests.filter(isTokenRequest)).toHaveLength(1);
+      expect(h.store.rows.get(TEST_ORG)?.status).toBe("healthy");
+
+      // Meanwhile another process refreshed: the next call uses what is stored, without asking Zoho.
+      const other = ZohoBooksTokenSealer.fromKey(TEST_DEK_KEY);
+      const row = h.store.rows.get(TEST_ORG);
+      if (row)
+        h.store.rows.set(TEST_ORG, {
+          ...row,
+          accessTokenSealed: other.seal("access-from-other-process"),
+          accessTokenExpiresAtMs: h.clock.now() + 3_600_000,
+          version: row.version + 1,
+        });
+      const loadsBefore = h.store.loads;
+      h.transport.enqueue(zohoOkReply(), isApiRequest);
+      const second = await h.clock.settle(h.client.get(TEST_ORG, "/invoices"));
+      expect(second.ok).toBe(true);
+      expect(h.store.loads).toBeGreaterThan(loadsBefore);
+      expect(h.transport.requests.filter(isTokenRequest)).toHaveLength(1);
+    }
+  });
+
+  it("does not retry a refresh that ended in a 5xx either", async () => {
+    const h = createClientHarness();
+    await h.connect(TEST_ORG, null);
+    h.transport.enqueue({ status: 502, body: {} }, isTokenRequest);
+    await h.clock.settle(h.client.get(TEST_ORG, "/invoices"));
+    expect(h.transport.requests.filter(isTokenRequest)).toHaveLength(1);
+  });
+
+  it("reads the token lifetime in seconds, from expires_in_sec first, and treats a huge expires_in as milliseconds", async () => {
+    const cases: Array<[Record<string, unknown>, number]> = [
+      [{ expires_in_sec: 3600, expires_in: 3_600_000 }, 3_600_000],
+      [{ expires_in: 3_600_000 }, 3_600_000],
+      [{ expires_in: 1800 }, 1_800_000],
+      [{ expires_in: 999_999_999 }, 3_600_000],
+    ];
+    for (const [fields, expectedMs] of cases) {
+      const h = createClientHarness();
+      await h.connect(TEST_ORG, null);
+      h.transport.enqueue(
+        { status: 200, body: { access_token: "a-token", ...fields } },
+        isTokenRequest,
+      );
+      h.transport.enqueue(zohoOkReply(), isApiRequest);
+      const startedAt = h.clock.now();
+      await h.clock.settle(h.client.get(TEST_ORG, "/invoices"));
+      expect(h.store.rows.get(TEST_ORG)?.accessTokenExpiresAtMs).toBe(startedAt + expectedMs);
+    }
+  });
+
+  it("retries a GET that got an HTTP 408 and does not retry a write", async () => {
+    const h = createClientHarness();
+    await h.connect(TEST_ORG);
+    h.transport.enqueue({ status: 408, body: {} }, isApiRequest);
+    h.transport.enqueue(zohoOkReply(), isApiRequest);
+    const got = await h.clock.settle(h.client.get(TEST_ORG, "/invoices"));
+    expect(got.ok).toBe(true);
+    h.transport.enqueue({ status: 408, body: {} }, isApiRequest);
+    const posted = await h.clock.settle(h.client.post(TEST_ORG, "/invoices", { total: 1 }));
+    expect(posted.ok).toBe(false);
   });
 });

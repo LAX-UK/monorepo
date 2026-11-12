@@ -4,7 +4,13 @@ import { fileURLToPath } from "node:url";
 import { getTableColumns, getTableName } from "drizzle-orm";
 import { getTableConfig } from "drizzle-orm/pg-core";
 import { describe, expect, it } from "vitest";
-import { WORKER_DENY_TABLES, WORKER_ZOHO_BOOKS_TABLES } from "./migrate-roles.js";
+import {
+  API_DENY_TABLES,
+  WORKER_DENY_TABLES,
+  WORKER_ZOHO_BOOKS_SELECT_COLUMNS,
+  WORKER_ZOHO_BOOKS_TABLES,
+  WORKER_ZOHO_BOOKS_UPDATE_COLUMNS,
+} from "./migrate-roles.js";
 import { zohoBooksConnection } from "./schema/zoho-books-connection.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -61,12 +67,18 @@ describe("migration 0369 Zoho Books connection", () => {
     expect(rollback).toContain('DROP TABLE IF EXISTS "zoho_books_connection"');
   });
 
-  it("grants only the worker, without DELETE", () => {
+  it("grants only the worker, by column, and denies the API", () => {
     expect([...WORKER_ZOHO_BOOKS_TABLES]).toEqual(["zoho_books_connection"]);
     expect([...WORKER_DENY_TABLES]).not.toContain("zoho_books_connection");
+    expect([...API_DENY_TABLES]).toContain("zoho_books_connection");
+    const columns = Object.keys(getTableColumns(zohoBooksConnection)).length;
+    expect(WORKER_ZOHO_BOOKS_SELECT_COLUMNS.length).toBeLessThan(columns);
+    for (const column of ["id", "created_at"]) {
+      expect([...WORKER_ZOHO_BOOKS_SELECT_COLUMNS]).not.toContain(column);
+      expect([...WORKER_ZOHO_BOOKS_UPDATE_COLUMNS]).not.toContain(column);
+    }
+    expect([...WORKER_ZOHO_BOOKS_UPDATE_COLUMNS]).not.toContain("organization_id");
     const roles = readFileSync(join(__dirname, "migrate-roles.ts"), "utf8");
-    expect(roles).toMatch(
-      /WORKER_ZOHO_BOOKS_TABLES\) \{\s*await grantIfExists\(client, "worker_app", tableName, "INSERT, SELECT, UPDATE"\);/,
-    );
+    expect(roles).not.toMatch(/WORKER_ZOHO_BOOKS_TABLES\) \{\s*await grantIfExists/);
   });
 });

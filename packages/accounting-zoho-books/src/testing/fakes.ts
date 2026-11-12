@@ -8,15 +8,20 @@ import type {
   ZohoTokenStore,
 } from "../ports.js";
 
+type Row = Omit<StoredZohoTokens, "version"> & { version: number; lastErrorCode?: string };
+
 export class InMemoryTokenStore implements ZohoTokenStore {
-  readonly rows = new Map<string, StoredZohoTokens & { lastErrorCode?: string }>();
+  readonly rows = new Map<string, Row>();
   failSaves = false;
   failLoads = false;
   saves = 0;
+  loads = 0;
 
   async load(organizationId: string): Promise<StoredZohoTokens | null> {
     if (this.failLoads) throw new Error("store down");
-    return this.rows.get(organizationId) ?? null;
+    this.loads += 1;
+    const row = this.rows.get(organizationId);
+    return row ? { ...row, version: String(row.version) } : null;
   }
 
   async saveConnection(organizationId: string, refreshTokenSealed: string): Promise<void> {
@@ -26,20 +31,22 @@ export class InMemoryTokenStore implements ZohoTokenStore {
       accessTokenSealed: null,
       accessTokenExpiresAtMs: null,
       status: "healthy",
+      version: (this.rows.get(organizationId)?.version ?? 0) + 1,
     });
   }
 
   async saveRefreshed(
     organizationId: string,
+    expectedVersion: string,
     tokens: {
       accessTokenSealed: string;
       accessTokenExpiresAtMs: number;
       refreshTokenSealed?: string;
     },
-  ): Promise<void> {
+  ): Promise<boolean> {
     if (this.failSaves) throw new Error("store down");
     const row = this.rows.get(organizationId);
-    if (!row) throw new Error("no connection");
+    if (!row || String(row.version) !== expectedVersion) return false;
     this.saves += 1;
     this.rows.set(organizationId, {
       ...row,
@@ -47,13 +54,25 @@ export class InMemoryTokenStore implements ZohoTokenStore {
       accessTokenSealed: tokens.accessTokenSealed,
       accessTokenExpiresAtMs: tokens.accessTokenExpiresAtMs,
       status: "healthy",
+      version: row.version + 1,
     });
+    return true;
   }
 
-  async markNeedsReauth(organizationId: string, errorCode: string): Promise<void> {
+  async markNeedsReauth(
+    organizationId: string,
+    expectedVersion: string,
+    errorCode: string,
+  ): Promise<boolean> {
     const row = this.rows.get(organizationId);
-    if (row)
-      this.rows.set(organizationId, { ...row, status: "needs_reauth", lastErrorCode: errorCode });
+    if (!row || String(row.version) !== expectedVersion) return false;
+    this.rows.set(organizationId, {
+      ...row,
+      status: "needs_reauth",
+      lastErrorCode: errorCode,
+      version: row.version + 1,
+    });
+    return true;
   }
 }
 

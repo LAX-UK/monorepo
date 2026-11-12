@@ -21,7 +21,10 @@ import { type ZohoBooksTokenSealer, ZohoBooksTokenSealingError } from "./token-s
 
 /** A cached token is renewed this long before it expires. */
 const EXPIRY_SKEW_MS = 60_000;
-const MAX_TOKEN_LIFETIME_MS = 24 * 3_600_000;
+/** Zoho's documented access-token lifetime; a longer one in a reply is never trusted. */
+const MAX_TOKEN_LIFETIME_SECONDS = 3_600;
+/** A bare `expires_in` above this cannot be seconds (older accounts replies send milliseconds). */
+const MAX_PLAUSIBLE_SECONDS = 86_400;
 /** Zoho answers HTTP 200 with `{"error": ...}` for a bad refresh token. */
 const REAUTH_ERRORS: ReadonlySet<string> = new Set(["invalid_code", "invalid_grant"]);
 
@@ -45,7 +48,12 @@ interface CachedToken {
  * however many calls ask at once, one request goes to Zoho and all of them share its answer (Zoho
  * limits how many tokens one refresh token may mint). Plaintext tokens live only in this
  * process's memory; the store only ever sees sealed values. Single-flight is per process; sharing a
- * refresh across processes is the store's job (an advisory lock in the adapter's runtime).
+ * refresh across processes is the store's job (see the README: the runtime must add a shared lock).
+ *
+ * A refresh that ends in a timeout, a connection failure or a 5xx is never repeated inside the call:
+ * Zoho may already have acted on it (a rotated refresh token would be lost with the answer). The call
+ * fails, and the next call starts from `store.load`, so it sees whatever another process saved.
+ * The store's `version` guards the writes: a refresh that began before a reconnect cannot overwrite it.
  */
 export class ZohoTokenManager {
   private readonly cache = new Map<string, CachedToken>();
@@ -105,7 +113,7 @@ export class ZohoTokenManager {
         }
       }
       const refreshToken = sealer.open(stored.refreshTokenSealed);
-      return await this.refresh(organizationId, refreshToken);
+      return await this.refresh(organizationId, refreshToken, stored.version);
     } catch (error) {
       if (error instanceof ZohoBooksTokenSealingError) {
         throw new ZohoAuthError({ code: `token_${error.code}` });
@@ -120,7 +128,11 @@ export class ZohoTokenManager {
     return token;
   }
 
-  private async refresh(organizationId: string, refreshToken: string): Promise<CachedToken> {
+  private async refresh(
+    organizationId: string,
+    refreshToken: string,
+    version: string,
+  ): Promise<CachedToken> {
     const { config, clock, store, sealer, metrics, logger } = this.deps;
     const body = new URLSearchParams({
       grant_type: "refresh_token",
@@ -139,9 +151,9 @@ export class ZohoTokenManager {
     };
 
     const started = clock.now();
-    let outcome: "ok" | "reauth" | "error" = "error";
+    let outcome: "ok" | "reauth" | "stale" | "error" = "error";
     try {
-      const response = await this.sendWithRetry(request);
+      const response = await this.send(request);
       const parsed = parseJson(response.body);
       const payload =
         parsed.ok && typeof parsed.value === "object"
@@ -165,8 +177,9 @@ export class ZohoTokenManager {
       if (failure !== null) {
         if (REAUTH_ERRORS.has(failure)) {
           outcome = "reauth";
+          // Only if the connection is still the one that was refused: a reconnect in the meantime wins.
           await store
-            .markNeedsReauth(organizationId, `zoho_books_${failure}`)
+            .markNeedsReauth(organizationId, version, `zoho_books_${failure}`)
             .catch(() => undefined);
           throw new ZohoAuthError({ code: "reauth_required", httpStatus: response.status });
         }
@@ -180,13 +193,12 @@ export class ZohoTokenManager {
       }
 
       const accessToken = payload.access_token;
-      const seconds = payload.expires_in_sec ?? payload.expires_in;
+      const seconds = lifetimeSeconds(payload);
       if (
         response.status !== 200 ||
         typeof accessToken !== "string" ||
         accessToken === "" ||
-        typeof seconds !== "number" ||
-        !(seconds > 0)
+        seconds === null
       ) {
         throw new ZohoAuthError({ code: "refresh_failed", httpStatus: response.status });
       }
@@ -194,10 +206,11 @@ export class ZohoTokenManager {
         typeof payload.refresh_token === "string" && payload.refresh_token !== ""
           ? payload.refresh_token
           : undefined;
-      const expiresAtMs = clock.now() + Math.min(seconds * 1000, MAX_TOKEN_LIFETIME_MS);
+      const expiresAtMs = clock.now() + Math.min(seconds, MAX_TOKEN_LIFETIME_SECONDS) * 1000;
 
+      let saved: boolean;
       try {
-        await store.saveRefreshed(organizationId, {
+        saved = await store.saveRefreshed(organizationId, version, {
           accessTokenSealed: sealer.seal(accessToken),
           accessTokenExpiresAtMs: expiresAtMs,
           ...(rotated === undefined ? {} : { refreshTokenSealed: sealer.seal(rotated) }),
@@ -205,6 +218,12 @@ export class ZohoTokenManager {
       } catch {
         // Nothing has been sent to the Books API yet; a rotated refresh token we could not store must not be used.
         throw new ZohoAuthError({ code: "token_store_unavailable" });
+      }
+      if (!saved) {
+        // The connection changed while this refresh was in flight (reconnected or refreshed elsewhere):
+        // this answer is stale and is not used. The next call starts from the stored state.
+        outcome = "stale";
+        throw new ZohoAuthError({ code: "connection_changed" });
       }
       outcome = "ok";
       return this.remember(organizationId, accessToken, expiresAtMs);
@@ -218,30 +237,35 @@ export class ZohoTokenManager {
     }
   }
 
-  /** The token endpoint is safe to repeat: retry network failures a couple of times. */
-  private async sendWithRetry(request: Parameters<typeof sendWithTimeout>[1]) {
+  /**
+   * One attempt, no retry: a timeout or a lost reply leaves it unknown whether Zoho minted a token
+   * (or rotated the refresh token), so repeating it with the same refresh token is not safe.
+   */
+  private async send(request: Parameters<typeof sendWithTimeout>[1]) {
     const { config, clock, transport } = this.deps;
-    const attempts = Math.min(config.maxAttempts, 3);
-    for (let attempt = 1; ; attempt++) {
-      try {
-        const response = await sendWithTimeout(
-          { transport, clock },
-          request,
-          config.requestTimeoutMs,
-          config.maxResponseBytes,
-        );
-        if (response.status < 500 || attempt >= attempts) return response;
-      } catch (error) {
-        const retryable = error instanceof ZohoNetworkError;
-        if (!retryable || attempt >= attempts) {
-          throw error instanceof ZohoBooksError
-            ? error
-            : new ZohoNetworkError({ code: "connection_failed" });
-        }
-      }
-      await clock.sleep(
-        Math.min(config.retryMaxDelayMs, config.retryBaseDelayMs * 2 ** (attempt - 1)),
+    try {
+      return await sendWithTimeout(
+        { transport, clock },
+        request,
+        config.requestTimeoutMs,
+        config.maxResponseBytes,
       );
+    } catch (error) {
+      throw error instanceof ZohoBooksError
+        ? error
+        : new ZohoNetworkError({ code: "connection_failed" });
     }
   }
+}
+
+/**
+ * Lifetime in seconds. `expires_in_sec` is always seconds; a bare `expires_in` is seconds too unless
+ * it is implausibly large, when older accounts replies mean milliseconds.
+ */
+function lifetimeSeconds(payload: Record<string, unknown>): number | null {
+  const explicit = payload.expires_in_sec;
+  if (typeof explicit === "number" && explicit > 0) return explicit;
+  const bare = payload.expires_in;
+  if (typeof bare !== "number" || !(bare > 0)) return null;
+  return bare > MAX_PLAUSIBLE_SECONDS ? bare / 1000 : bare;
 }

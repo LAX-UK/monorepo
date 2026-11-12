@@ -11,6 +11,7 @@ import {
   expectTablePrivileges,
   readTablePrivileges,
 } from "./role-contract/table-privileges.test-helpers.js";
+import { expectZohoBooksConnectionGrants } from "./role-contract/zoho-books-connection-privileges.test-helpers.js";
 import { buildPgConnectionConfig } from "./ssl.js";
 
 const API_URL = process.env.DATABASE_URL_API ?? process.env.API_APP_DATABASE_URL;
@@ -28,6 +29,12 @@ async function withApiClient<T>(fn: (client: pg.Client) => Promise<T>): Promise<
 }
 
 describe.skipIf(!API_URL)("api_app role contract", { timeout: 60_000 }, () => {
+  it("has no privilege at all on the sealed Zoho Books tokens", async () => {
+    await withApiClient(async (client) => {
+      await expectZohoBooksConnectionGrants(client);
+    });
+  });
+
   it("can read but not write the Bid identity directory", async () => {
     await withApiClient(async (client) => {
       const read = await client.query<{ allowed: boolean }>(
