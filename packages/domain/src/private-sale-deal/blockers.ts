@@ -4,6 +4,7 @@ import type { PrivateSalePartyRole } from "@auction/types";
 export type DealBlockerCode =
   | "invalid_transition"
   | "buyer_not_named"
+  | "artwork_not_linked"
   | "price_not_set"
   | "party_missing"
   | "kyc_not_clear"
@@ -42,6 +43,8 @@ export function describeDealBlocker(blocker: DealBlocker): string {
       return "The deal is not in a stage where this can happen.";
     case "buyer_not_named":
       return "Name the buyer first.";
+    case "artwork_not_linked":
+      return "Link the artwork, or record that it is the seller's own work.";
     case "price_not_set":
       return "Set the agreed price first.";
     case "party_missing":

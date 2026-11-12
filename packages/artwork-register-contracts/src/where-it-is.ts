@@ -144,3 +144,53 @@ function withdrawnPlace(input: WhereItIsInput): WhereItIs {
     showUntil,
   };
 }
+
+/** The part of a register history entry the offer moves are read from. */
+export type OfferHistoryEvent = {
+  type: string;
+  payload: Record<string, unknown>;
+  createdAt: Date;
+};
+
+/** One move of the offer, as the history records it. */
+export type OfferMove = { at: Date; from: OfferState | null; to: OfferState };
+
+function stateOf(value: unknown): OfferState | null {
+  const state = value && typeof value === "object" ? (value as { state?: unknown }).state : null;
+  return typeof state === "string" ? (state as OfferState) : null;
+}
+
+/** The offer moves in the history, in the order the history is given (oldest first). */
+export function offerMovesOf(events: readonly OfferHistoryEvent[]): OfferMove[] {
+  return events
+    .filter((event) => event.type === "offer_moved")
+    .flatMap((event) => {
+      const to = stateOf(event.payload.to);
+      return to ? [{ at: event.createdAt, from: stateOf(event.payload.from), to }] : [];
+    });
+}
+
+/** The latest move into a state, or `undefined` when the history has none. */
+export function lastMoveInto(
+  moves: readonly OfferMove[],
+  state: OfferState,
+): OfferMove | undefined {
+  return [...moves].reverse().find((move) => move.to === state);
+}
+
+const WITHDRAWN_SOURCES: readonly OfferState[] = ["lax_art", "bid_sale", "private_sale"];
+
+/**
+ * When and from where an artwork now Withdrawn was withdrawn, from its history; `null` for any
+ * other state, or when the history does not say.
+ */
+export function withdrawalOf(
+  moves: readonly OfferMove[],
+  state: OfferState,
+): NonNullable<WhereItIsInput["withdrawn"]> | null {
+  const into = state === "withdrawn" ? lastMoveInto(moves, "withdrawn") : undefined;
+  if (!into) return null;
+  const from =
+    into.from && WITHDRAWN_SOURCES.includes(into.from) ? (into.from as WithdrawnFrom) : null;
+  return { at: into.at, from };
+}

@@ -3,6 +3,7 @@ export { cityName } from "./city.js";
 export { type DateInput, toDate } from "./date-input.js";
 export {
   addCalendarDays,
+  addCalendarKeyDays,
   calendarDaysBetween,
   dayKey,
   dayOffset,
@@ -32,7 +33,7 @@ export {
 } from "./describe-moment.js";
 export type { LocalTime } from "./local-time.js";
 export { gmtOffsetLabel, offsetMinutes, sameOffset } from "./offset.js";
-export { isPlaceholderZone, isValidZone, normaliseViewerZone } from "./zone.js";
+export { isKnownZone, isPlaceholderZone, isValidZone, normaliseViewerZone } from "./zone.js";
 export { shortMonthFormat, shortZoneName } from "./zone-formats.js";
 export { clockChange, clockChangeNotice } from "./clock-change.js";
 export {
@@ -74,3 +75,9 @@ export {
   formatWeekdayDayMonth,
   runtimeTimeZone,
 } from "./calendar-formats.js";
+export {
+  defaultScheduleInstants,
+  instantFromDatetimeFormString,
+  resolveWallClock,
+  toDatetimeFormString,
+} from "./wall-clock-form.js";

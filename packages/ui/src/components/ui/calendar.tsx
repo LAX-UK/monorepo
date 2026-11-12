@@ -1,11 +1,18 @@
 "use client";
 
+import { runtimeTimeZone, shortMonthFormat } from "@auction/datetime";
 import { ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 import * as React from "react";
 import { type DayButton, DayPicker, getDefaultClassNames } from "react-day-picker";
 
 import { cn } from "../../lib/utils.js";
 import { Button, buttonVariants } from "./button.js";
+
+/** "2026-11-03": the picker's own (local) calendar day, for tests and styling hooks. */
+function localDayKey(date: Date): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
 
 function Calendar({
   className,
@@ -32,7 +39,7 @@ function Calendar({
       )}
       captionLayout={captionLayout}
       formatters={{
-        formatMonthDropdown: (date) => date.toLocaleString("default", { month: "short" }),
+        formatMonthDropdown: (date) => shortMonthFormat(runtimeTimeZone(), {}).format(date),
         ...formatters,
       }}
       classNames={{
@@ -157,7 +164,7 @@ function CalendarDayButton({
       ref={ref}
       variant="ghost"
       size="icon"
-      data-day={day.date.toLocaleDateString()}
+      data-day={localDayKey(day.date)}
       data-selected-single={
         modifiers.selected &&
         !modifiers.range_start &&

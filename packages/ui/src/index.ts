@@ -445,7 +445,6 @@ export {
   toDateFormString,
   toDatetimeFormString,
   toTimeFormString,
-  tzDateFromParts,
   zonedInstantToDatetimeFormString,
 } from "./lib/datetime/index.js";
 export type {

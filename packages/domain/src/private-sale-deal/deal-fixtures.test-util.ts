@@ -29,6 +29,7 @@ export function deal(overrides: Partial<PrivateSaleDealDetail> = {}): PrivateSal
     stage: "proposed",
     itemSubmissionId: "sub-1",
     artworkRegisterId: null,
+    artworkUnlinkedReason: null,
     sourceEnquiryId: null,
     sourceUnsoldLotChoiceId: null,
     ownerUserId: "u-owner",

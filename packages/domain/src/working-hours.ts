@@ -1,3 +1,4 @@
+import { instantToWallClock, resolveWallClock } from "@auction/datetime";
 import { BUSINESS_TIME_ZONE } from "./calendar-year.js";
 
 /**
@@ -40,30 +41,13 @@ function addDays(date: LocalDate, days: number): LocalDate {
   return { year: next.getUTCFullYear(), month: next.getUTCMonth() + 1, day: next.getUTCDate() };
 }
 
-const partsFormatters = new Map<string, Intl.DateTimeFormat>();
-
 function partsIn(instant: Date, timeZone: string) {
-  let formatter = partsFormatters.get(timeZone);
-  if (!formatter) {
-    formatter = new Intl.DateTimeFormat("en-GB", {
-      timeZone,
-      hourCycle: "h23",
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-    partsFormatters.set(timeZone, formatter);
-  }
-  const parts = formatter.formatToParts(instant);
-  const part = (type: Intl.DateTimeFormatPartTypes) =>
-    Number(parts.find((p) => p.type === type)?.value ?? 0);
+  const { day, time } = instantToWallClock(instant, timeZone);
   return {
-    year: part("year"),
-    month: part("month"),
-    day: part("day"),
-    minute: part("hour") * 60 + part("minute"),
+    year: Number(day.slice(0, 4)),
+    month: Number(day.slice(5, 7)),
+    day: Number(day.slice(8, 10)),
+    minute: Number(time.slice(0, 2)) * 60 + Number(time.slice(3, 5)),
   };
 }
 
@@ -73,19 +57,15 @@ export function localDateOf(instant: Date, timeZone: string): LocalDate {
   return { year, month, day };
 }
 
-/** Minutes the zone is ahead of UTC at an instant. */
-function offsetMinutes(instant: Date, timeZone: string): number {
-  const p = partsIn(instant, timeZone);
-  const asUtc = Date.UTC(p.year, p.month - 1, p.day, 0, p.minute);
-  return Math.round((asUtc - Math.floor(instant.getTime() / MINUTE_MS) * MINUTE_MS) / MINUTE_MS);
-}
-
 /** The instant a local date and minute of the day names in the zone. */
 export function zonedInstant(date: LocalDate, minuteOfDay: number, timeZone: string): Date {
-  const naive = Date.UTC(date.year, date.month - 1, date.day, 0, minuteOfDay);
-  const first = naive - offsetMinutes(new Date(naive), timeZone) * MINUTE_MS;
-  // Read the offset again at the first guess, which settles the days the clocks change.
-  return new Date(naive - offsetMinutes(new Date(first), timeZone) * MINUTE_MS);
+  // A minute past the day's end rolls into the next day, as the arithmetic always did.
+  const wall = new Date(
+    Date.UTC(date.year, date.month - 1, date.day, 0, minuteOfDay),
+  ).toISOString();
+  const instant = resolveWallClock(wall.slice(0, 10), wall.slice(11, 16), timeZone);
+  if (!instant) throw new RangeError(`No instant for ${wall} in ${timeZone}`);
+  return instant;
 }
 
 /** Easter Sunday (Gregorian), by the anonymous algorithm. */

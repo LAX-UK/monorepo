@@ -1255,6 +1255,7 @@ export type {
   CreateRegisterEntryResult,
   AuctionOfferDraftLot,
   AuctionOfferDraftLotSummary,
+  AuctionOfferLotCatalogue,
   AuctionOfferSale,
   IArtworkImageStore,
   IArtworkLinkHistory,
@@ -1281,6 +1282,13 @@ export type {
   ResolveConflictInput,
   ResolveConflictResult,
 } from "./artwork-register.js";
+
+export type {
+  DealArtworkSearchInput,
+  IDealArtworkSearchReader,
+  IOpenLotPlaceReader,
+  OpenLotPlace,
+} from "./deal-artwork-search.js";
 
 export type {
   IBidPublishSettings,

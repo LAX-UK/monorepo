@@ -30,7 +30,11 @@ import type { IEnquiryRouting, IMarketingEnquiryDesk } from "../marketing-enquir
 import type { IOnsiteEventAdminService } from "../onsite-event-admin-service.js";
 import type { IOnsiteEventStaffCheckInService } from "../onsite-event-staff-check-in-service.js";
 import type { IStaffDeliveryQuoteService } from "../organisation-buying-service.js";
-import type { IEnquiryConversion, IPrivateSaleDealDesk } from "../private-sale-deal-desk.js";
+import type {
+  IDealArtworkSearch,
+  IEnquiryConversion,
+  IPrivateSaleDealDesk,
+} from "../private-sale-deal-desk.js";
 import type { IPurchaseProblemDesk } from "../purchase-problem-desk-service.js";
 import type {
   ActorContext,
@@ -102,6 +106,8 @@ export type AdminEnquiryRouteServices = {
   purchaseProblems: IPurchaseProblemDesk;
   privateSaleDeals: IPrivateSaleDealDesk;
   enquiryConversion: IEnquiryConversion;
+  /** The register originals staff choose from for a deal's artwork. */
+  dealArtworks: IDealArtworkSearch;
 };
 
 /** Third-party integrations staff operate from the admin (composed in the container root). */

@@ -146,6 +146,25 @@ describe.skipIf(!url)(
       });
     });
 
+    it.each(["sellers_own_work", "in_zoho_not_linked"] as const)(
+      "opens the deal with %s and holds nothing in the register",
+      async (reason) => {
+        await inRollback(async ({ service, tx, registers, newArtwork }) => {
+          const untouched = await newArtwork("9103");
+          const result = await service.convert(VIEWER, await enquiryRef(tx), {
+            notInRegister: { reason },
+          });
+          expect(result.ok).toBe(true);
+          const [deal] = await tx
+            .select()
+            .from(privateSaleDeal)
+            .where(eq(privateSaleDeal.sourceEnquiryId, enquiryId));
+          expect(deal).toMatchObject({ artworkRegisterId: null, artworkUnlinkedReason: reason });
+          expect((await registers.findById(untouched))?.offer.state).toBe("held");
+        });
+      },
+    );
+
     it("leaves no deal, no work and the enquiry unconverted when the artwork is live elsewhere", async () => {
       await inRollback(async ({ service, tx, registers, newArtwork }) => {
         const artworkId = await newArtwork("9102");
