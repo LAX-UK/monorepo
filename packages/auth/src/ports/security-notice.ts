@@ -11,6 +11,11 @@ export type SecurityNoticeEvent =
       userAgent: string | null;
       /** Coarse location signal such as an ISO country code from the edge; never an IP address. */
       region: string | null;
+      /**
+       * Keyed hash of the browser's private device marker, when the request carried one. It lets
+       * the issuer tell a browser it has seen before from a new one; never the marker itself.
+       */
+      deviceHash?: string | null;
     }
   | { kind: "password_changed"; userId: string; at: Date; userAgent?: string | null }
   | { kind: "two_factor_enabled"; userId: string; at: Date; userAgent?: string | null }
