@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatDeviceLabel } from "./device-label.js";
+import { detectDeviceKind, formatDeviceLabel } from "./device-label.js";
 
 describe("formatDeviceLabel", () => {
   it.each([
@@ -33,11 +33,29 @@ describe("formatDeviceLabel", () => {
   });
 
   it("falls back to whichever half it knows, then to an unknown device", () => {
-    expect(formatDeviceLabel("curl/8.4.0")).toBe("Unknown device");
-    expect(formatDeviceLabel("")).toBe("Unknown device");
-    expect(formatDeviceLabel(null)).toBe("Unknown device");
-    expect(formatDeviceLabel(undefined)).toBe("Unknown device");
+    expect(formatDeviceLabel("curl/8.4.0")).toBe("Unknown browser");
+    expect(formatDeviceLabel("")).toBe("Unknown browser");
+    expect(formatDeviceLabel(null)).toBe("Unknown browser");
+    expect(formatDeviceLabel(undefined)).toBe("Unknown browser");
     expect(formatDeviceLabel("Mozilla/5.0 (Macintosh)")).toBe("macOS");
     expect(formatDeviceLabel("Safari/605")).toBe("Safari");
+  });
+});
+
+describe("detectDeviceKind", () => {
+  it.each([
+    ["Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) Safari/604.1", "phone"],
+    ["Mozilla/5.0 (iPad; CPU OS 17_0 like Mac OS X) Safari/604.1", "tablet"],
+    ["Mozilla/5.0 (Linux; Android 14; SM-S911B) Chrome/120.0 Mobile Safari/537.36", "phone"],
+    ["Mozilla/5.0 (Linux; Android 13; SM-X700) Chrome/120.0 Safari/537.36", "tablet"],
+    ["Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) Chrome/120.0 Safari/537.36", "laptop"],
+    ["Mozilla/5.0 (Windows NT 10.0; Win64; x64) Edg/120.0", "laptop"],
+  ])("reads %s as a %s", (userAgent, kind) => {
+    expect(detectDeviceKind(userAgent)).toBe(kind);
+  });
+
+  it("falls back to the neutral laptop when nothing is known", () => {
+    expect(detectDeviceKind(null)).toBe("laptop");
+    expect(detectDeviceKind("curl/8.4.0")).toBe("laptop");
   });
 });

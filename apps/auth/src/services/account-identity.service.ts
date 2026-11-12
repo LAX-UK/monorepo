@@ -1,3 +1,5 @@
+import type { DeviceKind } from "@auction/identity-contracts";
+import { detectDeviceKind } from "@auction/identity-contracts";
 import type { AccountTimeZone, AccountTimeZoneChange } from "@auction/identity-contracts";
 import type { DurableSecurityEffects } from "./durable-security-effects.js";
 import type { IdentityOperationsService } from "./identity-operations.service.js";
@@ -36,6 +38,11 @@ export type AccountSessionRow = {
   isCurrent: boolean;
   /** How the sign-in was made; null when none was recorded. */
   signedInWith: "password" | "provider" | "passkey" | null;
+  deviceKind: DeviceKind;
+  /** ISO alpha-2 country the edge reported; null when unknown. */
+  country: string | null;
+  /** OAuth client ids of the products used on this browser. */
+  products: readonly string[];
 };
 
 /**
@@ -120,10 +127,15 @@ export class AccountIdentityService {
       sessions: live.map((session) => ({
         id: session.id,
         userAgent: session.userAgent,
-        createdAt: session.createdAt,
-        lastActiveAt: session.updatedAt,
+        // The browser's first sign-in, and its last real use; records from before those were kept
+        // fall back to the record's own times.
+        createdAt: session.signedInAt ?? session.createdAt,
+        lastActiveAt: session.lastSeenAt ?? session.updatedAt,
         isCurrent: session.id === current.id,
         signedInWith: signedInWithOf(session.amr),
+        deviceKind: detectDeviceKind(session.userAgent),
+        country: session.country,
+        products: session.clientIds,
       })),
     };
   }

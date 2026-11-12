@@ -1,6 +1,6 @@
 import type { IdentityDatabase } from "@auction/identity-db";
 import { oauthAccessToken, session, sessionLineage } from "@auction/identity-db/schema";
-import { and, desc, eq, ne, or } from "drizzle-orm";
+import { and, desc, eq, gt, isNotNull, ne, or, sql } from "drizzle-orm";
 import type {
   IIdentitySessionRepository,
   IdentityOperationTransaction,
@@ -26,6 +26,9 @@ export class DrizzleIdentitySessionRepository implements IIdentitySessionReposit
         userAgent: session.userAgent,
         lastPasswordAuthAt: session.lastPasswordAuthAt,
         amr: session.amr,
+        signedInAt: session.signedInAt,
+        lastSeenAt: session.lastSeenAt,
+        country: session.country,
       })
       .from(session)
       .where(eq(session.userId, subjectId))
@@ -34,13 +37,39 @@ export class DrizzleIdentitySessionRepository implements IIdentitySessionReposit
       .select({ previousSid: sessionLineage.previousSid, sessionId: sessionLineage.sessionId })
       .from(sessionLineage)
       .where(eq(sessionLineage.userId, subjectId));
-    return rows.map(({ token, ...row }) => ({
-      ...row,
-      previousIds: lineage
+    const clientsBySid = await this.liveClientsBySid(subjectId);
+    return rows.map(({ token, ...row }) => {
+      const previousIds = lineage
         .filter((entry) => entry.sessionId === row.id)
-        .map((entry) => entry.previousSid),
-      isCurrent: Boolean(currentSessionToken) && token === currentSessionToken,
-    }));
+        .map((entry) => entry.previousSid);
+      return {
+        ...row,
+        previousIds,
+        clientIds: [
+          ...new Set([row.id, ...previousIds].flatMap((sid) => clientsBySid.get(sid) ?? [])),
+        ],
+        isCurrent: Boolean(currentSessionToken) && token === currentSessionToken,
+      };
+    });
+  }
+
+  /** The OAuth clients holding unexpired tokens for each sign-in id, for the person's own tokens. */
+  private async liveClientsBySid(subjectId: string): Promise<Map<string, string[]>> {
+    const tokens = await this.db
+      .selectDistinct({ sid: oauthAccessToken.sid, clientId: oauthAccessToken.clientId })
+      .from(oauthAccessToken)
+      .where(
+        and(
+          eq(oauthAccessToken.userId, subjectId),
+          isNotNull(oauthAccessToken.sid),
+          gt(oauthAccessToken.refreshTokenExpiresAt, sql`now()`),
+        ),
+      );
+    const bySid = new Map<string, string[]>();
+    for (const { sid, clientId } of tokens) {
+      if (sid) bySid.set(sid, [...(bySid.get(sid) ?? []), clientId]);
+    }
+    return bySid;
   }
 
   async findStamp(
