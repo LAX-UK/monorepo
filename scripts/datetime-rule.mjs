@@ -4,14 +4,23 @@
  * zone that is a parameter instead of a constant needs one place to live.
  *
  * Banned outside packages/datetime: `new Intl.DateTimeFormat(...)`, `toLocaleDateString(...)`,
- * `toLocaleTimeString(...)`, `toLocaleString(...)`, and importing `@date-fns/tz`. Tests are exempt.
+ * `toLocaleTimeString(...)`, `toLocaleString(...)` on a Date (a Date receiver or date options; number formatting is fine), and importing `@date-fns/tz`. Tests are exempt.
  */
 export const DATETIME_PACKAGE_PREFIX = "packages/datetime/";
 
 /** The banned constructs, by the name the baseline and the error message use. */
 export const BANNED = {
   "Intl.DateTimeFormat": /\b(?:new\s+)?Intl\.DateTimeFormat\s*\(/,
-  "toLocale(Date|Time)String": /\.toLocale(?:Date|Time)?String\s*\(/,
+  "toLocale(Date|Time)String": new RegExp(
+    [
+      // Always a date or a time.
+      String.raw`\.toLocale(?:Date|Time)String\s*\(`,
+      // toLocaleString is also how numbers are formatted: only a Date receiver or date options count.
+      String.raw`\bnew\s+Date\s*\([^()]*\)\s*\.toLocaleString\s*\(`,
+      String.raw`\b\w*(?:Date|Time|At|Instant)\s*\.toLocaleString\s*\(`,
+      String.raw`\.toLocaleString\s*\([^)]*\b(?:timeZone|dateStyle|timeStyle|hour12|hourCycle|weekday|era|timeZoneName)\b`,
+    ].join("|"),
+  ),
   "@date-fns/tz": /\b(?:from\s*|import\s*\(\s*|require\s*\(\s*|import\s+)["']@date-fns\/tz["']/,
 };
 

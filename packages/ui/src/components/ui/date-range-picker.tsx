@@ -1,7 +1,6 @@
 "use client";
 
-import { TZDate } from "@date-fns/tz";
-import { addDays } from "date-fns";
+import { addCalendarKeyDays } from "@auction/datetime";
 import * as React from "react";
 import type { DateRange } from "react-day-picker";
 
@@ -37,16 +36,11 @@ function toYmd(d: Date, zone: string): string {
   return toDateFormString(d, zone);
 }
 
-function applyPreset(preset: DateRangePreset, zone: string): DateRangeValue {
-  const end = new TZDate(new Date(), zone);
-  const endInstant = new Date(end.getTime());
-  if (preset === "today") {
-    const ymd = toYmd(endInstant, zone);
-    return { from: ymd, to: ymd };
-  }
+export function applyPreset(preset: DateRangePreset, zone: string): DateRangeValue {
+  const to = toYmd(new Date(), zone);
+  if (preset === "today") return { from: to, to };
   const days = preset === "7d" ? 7 : preset === "30d" ? 30 : preset === "90d" ? 90 : 30;
-  const start = addDays(new TZDate(endInstant, zone), -(days - 1));
-  return { from: toYmd(new Date(start.getTime()), zone), to: toYmd(endInstant, zone) };
+  return { from: addCalendarKeyDays(to, -(days - 1)), to };
 }
 
 const presets: { id: DateRangePreset; label: string }[] = [
