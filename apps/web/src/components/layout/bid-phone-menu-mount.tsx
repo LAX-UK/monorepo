@@ -2,7 +2,7 @@
 
 import type { BidPhoneMenuProps } from "@/components/layout/bid-phone-menu";
 import { preloadWhenIdle } from "@/lib/ui/idle-preload";
-import { type ComponentType, useEffect, useState } from "react";
+import { type ComponentType, useEffect, useRef, useState } from "react";
 
 type PhoneMenu = ComponentType<BidPhoneMenuProps>;
 
@@ -20,21 +20,52 @@ const loadPhoneMenu = (): Promise<PhoneMenu> =>
 export function BidPhoneMenuMount(props: BidPhoneMenuProps) {
   const [Menu, setMenu] = useState<PhoneMenu | null>(null);
   const wanted = Menu === null;
+  const { open, onOpenChange } = props;
+  const onOpenChangeRef = useRef(onOpenChange);
+  onOpenChangeRef.current = onOpenChange;
+  const openFailures = useRef(0);
 
   useEffect(() => {
     if (!wanted) return;
     let current = true;
-    const load = () =>
-      void loadPhoneMenu().then((component) => {
-        if (current) setMenu(() => component);
-      });
-    if (props.open) load();
-    const cancelIdle = preloadWhenIdle(load);
+    const load = (fromTap: boolean) =>
+      loadPhoneMenu().then(
+        (component) => {
+          openFailures.current = 0;
+          if (current) setMenu(() => component);
+        },
+        () => {
+          if (!fromTap || !current) return;
+          // A tap that could not load the menu must not leave the header stuck "open". The
+          // next tap tries again; if that fails too (a stale deploy, a lost connection), a
+          // reload fetches a current page so the menu works again.
+          openFailures.current += 1;
+          if (openFailures.current >= 2) {
+            openFailures.current = 0;
+            window.location.reload();
+            return;
+          }
+          onOpenChangeRef.current(false);
+        },
+      );
+    if (open) {
+      void load(true);
+      // The menu is not there yet, so Escape is handled here until it mounts.
+      const onKey = (event: KeyboardEvent) => {
+        if (event.key === "Escape") onOpenChangeRef.current(false);
+      };
+      document.addEventListener("keydown", onKey);
+      return () => {
+        current = false;
+        document.removeEventListener("keydown", onKey);
+      };
+    }
+    const cancelIdle = preloadWhenIdle(() => void load(false));
     return () => {
       current = false;
       cancelIdle();
     };
-  }, [wanted, props.open]);
+  }, [wanted, open]);
 
   return Menu ? <Menu {...props} /> : null;
 }
