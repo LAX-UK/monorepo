@@ -83,6 +83,18 @@ const rules = [
     ],
   },
   {
+    dir: "packages/accounting-domain",
+    label:
+      "packages/accounting-domain must stay pure: no apps, no workspace package, no database or framework",
+    forbiddenSpecifiers: [
+      /^@auction\//,
+      /(^|\/)apps\//,
+      /^drizzle-orm(\/|$)/,
+      /^(hono|fastify|next|react|react-dom)(\/|$)/,
+      /^node:/,
+    ],
+  },
+  {
     dir: "packages/shop-contracts",
     label: "packages/shop-contracts must not import from apps/**",
     forbiddenSpecifiers: [/^@auction\/(api|web|worker|ws|auth-app|event)$/, /(^|\/)apps\//],
