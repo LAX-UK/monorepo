@@ -133,6 +133,13 @@ export const EMAIL_TEMPLATE_LABELS: Readonly<Record<TemplateName, string>> = {
   "sale-cancelled-notice": "Sale cancelled",
   "payment-reminder": "Payment reminder",
   "buyer-default-notice": "Buyer default notice",
+  "reoffer-seller-consent-request": "Re-offer: seller's agreement requested",
+  "reoffer-offer-made": "Re-offer: offer to the next bidder",
+  "reoffer-offer-reminder": "Re-offer: reminder before the offer ends",
+  "reoffer-offer-accepted": "Re-offer: offer accepted",
+  "reoffer-offer-closed": "Re-offer: offer closed",
+  "reoffer-seller-outcome": "Re-offer: outcome for the seller",
+  "reoffer-staff-notice": "Re-offer: bidder's answer (staff)",
 };
 
 export type EmailTemplateDescription = { label: string; essential: boolean };

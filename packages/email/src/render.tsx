@@ -227,6 +227,22 @@ import PhoneVerifiedEmail, { subject as phoneVerifiedSubject } from "./templates
 import ProxyCancelledNoticeEmail, {
   subject as proxyCancelledNoticeSubject,
 } from "./templates/proxy-cancelled-notice.js";
+import {
+  OfferAcceptedEmail,
+  OfferClosedEmail,
+  OfferMadeEmail,
+  OfferReminderEmail,
+  SellerConsentRequestEmail,
+  SellerOutcomeEmail,
+  StaffNoticeEmail,
+  offerAcceptedSubject,
+  offerClosedSubject,
+  offerMadeSubject,
+  offerReminderSubject,
+  sellerConsentRequestSubject,
+  sellerOutcomeSubject,
+  staffNoticeSubject,
+} from "./templates/reoffer-notices.js";
 import ResetPassword, { subject as resetPasswordSubject } from "./templates/reset-password.js";
 import SaleCancelledNoticeEmail, {
   subject as saleCancelledNoticeSubject,
@@ -557,6 +573,34 @@ const renderers: { [T in TemplateName]: TemplateRenderer<T> } = {
   "buyer-default-notice": {
     subject: buyerDefaultNoticeSubject,
     component: (vars) => <BuyerDefaultNoticeEmail {...vars} />,
+  },
+  "reoffer-seller-consent-request": {
+    subject: sellerConsentRequestSubject,
+    component: (vars) => <SellerConsentRequestEmail {...vars} />,
+  },
+  "reoffer-offer-made": {
+    subject: offerMadeSubject,
+    component: (vars) => <OfferMadeEmail {...vars} />,
+  },
+  "reoffer-offer-reminder": {
+    subject: offerReminderSubject,
+    component: (vars) => <OfferReminderEmail {...vars} />,
+  },
+  "reoffer-offer-accepted": {
+    subject: offerAcceptedSubject,
+    component: (vars) => <OfferAcceptedEmail {...vars} />,
+  },
+  "reoffer-offer-closed": {
+    subject: offerClosedSubject,
+    component: (vars) => <OfferClosedEmail {...vars} />,
+  },
+  "reoffer-seller-outcome": {
+    subject: sellerOutcomeSubject,
+    component: (vars) => <SellerOutcomeEmail {...vars} />,
+  },
+  "reoffer-staff-notice": {
+    subject: staffNoticeSubject,
+    component: (vars) => <StaffNoticeEmail {...vars} />,
   },
   "payment-invoice": {
     subject: paymentInvoiceSubject,
