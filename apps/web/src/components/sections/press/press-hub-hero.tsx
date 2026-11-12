@@ -13,8 +13,9 @@ import {
 } from "@/lib/marketing/chrome";
 import { type PressHubStats, formatPressHubStatsLabel } from "@/lib/marketing/press-hub-stats";
 import { LONDON_TIME_ZONE, formatDate } from "@auction/datetime";
-import { DisplayHeading, cn } from "@auction/ui";
-import { ButtonLink } from "@auction/ui/lax";
+import { DisplayHeading } from "@auction/ui/components/typography";
+import { ButtonLink } from "@auction/ui/lax/button-link";
+import { cn } from "@auction/ui/lib/utils";
 import { Rss } from "lucide-react";
 import Link from "next/link";
 

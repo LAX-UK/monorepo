@@ -26,7 +26,12 @@ import { QUIET_HOUR_OPTIONS, quietHoursZoneLabel } from "@/lib/notifications/qui
 import { notify } from "@/lib/ui/notify";
 import { LOCKED_NOTIFICATION_PREFERENCE_REASON } from "@auction/domain";
 import type { NotificationPreference } from "@auction/types";
-import { Button, Field, NativeSelect, PresetCards, ReasonTooltip, Switch } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
+import { Field } from "@auction/ui/lax/field";
+import { NativeSelect } from "@auction/ui/lax/native-select";
+import { PresetCards } from "@auction/ui/lax/preset-cards";
+import { Switch } from "@auction/ui/lax/switch";
+import { ReasonTooltip } from "@auction/ui/lax/tooltip";
 import { Lock } from "lucide-react";
 import Link from "next/link";
 import { useRef, useState, useTransition } from "react";

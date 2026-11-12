@@ -1,6 +1,7 @@
 "use client";
 
-import { ReasonTooltip, Switch } from "@auction/ui/lax";
+import { Switch } from "@auction/ui/lax/switch";
+import { ReasonTooltip } from "@auction/ui/lax/tooltip";
 import { useId } from "react";
 
 /**

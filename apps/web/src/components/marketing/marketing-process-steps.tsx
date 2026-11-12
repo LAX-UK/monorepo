@@ -1,4 +1,4 @@
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 

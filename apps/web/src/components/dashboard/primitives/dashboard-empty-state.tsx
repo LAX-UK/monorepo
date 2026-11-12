@@ -4,9 +4,9 @@ import {
   resolveEmptyStateIllustration,
 } from "@/components/illustrations/empty-state-illustrations";
 import { CONTEXT_DEFAULT_ILLUSTRATION, type EmptyStateContext } from "@/lib/ui/empty-state-copy";
-import { cn } from "@auction/ui";
 import { EmptyState } from "@auction/ui/components/empty-state";
-import { pageTitleClass } from "@auction/ui/lax";
+import { pageTitleClass } from "@auction/ui/lax/styles";
+import { cn } from "@auction/ui/lib/utils";
 import { type ComponentProps, type ReactNode, useId } from "react";
 
 type EmptyProps = Omit<ComponentProps<typeof EmptyState>, "variant">;

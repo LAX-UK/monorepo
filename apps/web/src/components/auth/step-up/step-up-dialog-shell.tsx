@@ -1,6 +1,5 @@
 "use client";
 
-import { cn } from "@auction/ui";
 import {
   Dialog,
   DialogContent,
@@ -9,6 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@auction/ui/components/dialog";
+import { cn } from "@auction/ui/lib/utils";
 import type { ReactNode } from "react";
 
 /**

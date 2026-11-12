@@ -5,7 +5,8 @@ import {
   type ArtistWatchlistClient,
   defaultArtistWatchlistClient,
 } from "@/lib/data/http/artist-watchlist.client";
-import { Button, ButtonLink } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
+import { ButtonLink } from "@auction/ui/lax/button-link";
 import { Bell, BellRing } from "lucide-react";
 import { useCallback, useState } from "react";
 

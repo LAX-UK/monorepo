@@ -7,7 +7,7 @@ import {
   MARKETING_CATALOG_MAIN_COLUMN,
 } from "@/lib/marketing/chrome";
 import { readSkeletonView } from "@/lib/preferences/skeleton-view.server";
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 
 const pulse = "animate-pulse rounded bg-surface-container-high";
 

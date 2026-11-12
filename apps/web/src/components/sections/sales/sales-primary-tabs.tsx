@@ -5,7 +5,8 @@ import {
   calendarSalesHrefFromState,
 } from "@/lib/marketing/sales-calendar-params";
 import type { CalendarTab } from "@/lib/marketing/sales-calendar-tabs";
-import { type LinkProps, TabNav } from "@auction/ui/lax";
+import type { LinkProps } from "@auction/ui/lax/link";
+import { TabNav } from "@auction/ui/lax/tabs";
 import Link from "next/link";
 
 /** A calendar tab changes what the list shows, so it keeps the reader's place on the page. */

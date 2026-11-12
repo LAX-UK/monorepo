@@ -8,7 +8,9 @@ import type { WithdrawnLotPageData } from "@/lib/lot-page/load-withdrawn-lot.ser
 import { buildLotDetails, lotFactsLine } from "@/lib/lot-page/lot-details";
 import { buildWithdrawnLotView } from "@/lib/lot-page/withdrawn-lot";
 import { toGalleryImages } from "@auction/types";
-import { LaxDensityProvider, TooltipProvider, laxDensityAttributes } from "@auction/ui/lax";
+import { LaxDensityProvider } from "@auction/ui/lax/density";
+import { laxDensityAttributes } from "@auction/ui/lax/density-attributes";
+import { TooltipProvider } from "@auction/ui/lax/tooltip";
 
 /**
  * A lot that has been withdrawn from its sale: the work, who made it and a notice with the way

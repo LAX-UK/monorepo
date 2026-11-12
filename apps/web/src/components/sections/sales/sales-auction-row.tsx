@@ -6,7 +6,7 @@ import { SaleCardShell } from "@/components/sections/sales/card/sale-card-shell"
 import { SaleCardTitle } from "@/components/sections/sales/card/sale-card-title";
 import type { SaleAction } from "@/components/sections/sales/card/types";
 import type { SaleAuctionRowVM } from "@/components/sections/sales/sales-view-models";
-import { MarketingCardReveal } from "@auction/marketing-ui";
+import { MarketingCardReveal } from "@auction/marketing-ui/motion/index";
 
 type Props = {
   vm: SaleAuctionRowVM;

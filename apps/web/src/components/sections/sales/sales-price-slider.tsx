@@ -3,7 +3,7 @@
 import type { CalendarSalesUrlState } from "@/lib/marketing/sales-calendar-params";
 import { calendarSalesHrefFromState } from "@/lib/marketing/sales-calendar-params";
 import { Slider } from "@auction/ui/components/slider";
-import { Button } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 

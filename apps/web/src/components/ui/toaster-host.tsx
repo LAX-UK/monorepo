@@ -4,8 +4,8 @@ import { CLIENT_KIT_REVIEW_PATH } from "@/lib/kit/client-kit-review";
 import { isAdminPath } from "@/lib/navigation/admin-path";
 import { isClientAreaPath } from "@/lib/navigation/client-routes";
 import { registerToaster } from "@/lib/ui/toast-bridge";
-import { Toaster as AuctionToaster } from "@auction/ui";
-import { Toaster as LaxToaster } from "@auction/ui/lax";
+import { Toaster as AuctionToaster } from "@auction/ui/components/sonner";
+import { Toaster as LaxToaster } from "@auction/ui/lax/toaster";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 

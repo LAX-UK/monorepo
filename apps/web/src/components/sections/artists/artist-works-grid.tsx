@@ -8,7 +8,7 @@ import { lotCardLineModel, lotCardShowsStatusBadge } from "@/lib/lot-card/lot-ca
 import { lotEstimateLine } from "@/lib/lot-marketing-display";
 import { lotStatusBadgeProps } from "@/lib/presenters/lot-status-badge-props";
 import { lotPath } from "@/lib/seo/url";
-import { MarketingWorkCard, MarketingWorkGrid } from "@auction/marketing-ui";
+import { MarketingWorkCard, MarketingWorkGrid } from "@auction/marketing-ui/marketing-work-card";
 import type { Lot } from "@auction/types";
 import { isPublicLotStatus } from "@auction/validators";
 

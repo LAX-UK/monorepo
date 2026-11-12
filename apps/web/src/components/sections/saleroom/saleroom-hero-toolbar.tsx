@@ -2,7 +2,7 @@
 
 import { ShareButton } from "@/components/marketing/share-button";
 import { FOCUS_RING } from "@/lib/marketing/chrome";
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 
 type Props = {
   shareUrl: string;

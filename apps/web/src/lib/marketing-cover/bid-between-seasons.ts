@@ -1,5 +1,9 @@
 import { LONDON_TIME_ZONE, formatMonthName } from "@auction/datetime";
-import type { CoverMedia, CoverSeasonRow, CoverSlide } from "@auction/marketing-ui";
+import type {
+  CoverMedia,
+  CoverSeasonRow,
+  CoverSlide,
+} from "@auction/marketing-ui/cover/cover-types";
 import type { SaleCoverSlotAssets } from "@auction/types";
 import { type BidCoverLot, photoFromCover, plateFromLot } from "./bid-cover.adapter";
 import { coverDay } from "./cover-time";

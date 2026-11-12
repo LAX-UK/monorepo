@@ -2,8 +2,8 @@
 
 import type { LotQueueCardVM } from "@/components/sections/artwork/artwork-view-models";
 import { LotQueueCard } from "@/components/sections/artwork/online/lot-queue-card";
-import { cn } from "@auction/ui";
-import { Button } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
+import { cn } from "@auction/ui/lib/utils";
 import { ChevronDown } from "lucide-react";
 import { useId, useState } from "react";
 

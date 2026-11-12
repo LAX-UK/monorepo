@@ -2,10 +2,10 @@
 
 import { MarketingChipStrip } from "@/components/marketing/marketing-chip-strip";
 import { type ArchiveSortMode, archiveSortLabel } from "@/lib/archive/build-archive-params";
-import { FilterChip } from "@auction/ui";
-import { cn } from "@auction/ui";
+import { FilterChip } from "@auction/ui/components/filter-chip";
 import { Label } from "@auction/ui/components/label";
 import { RadioGroup, RadioGroupItem } from "@auction/ui/components/radio-group";
+import { cn } from "@auction/ui/lib/utils";
 import { useArchiveFilterNavigation } from "./use-archive-filter-navigation";
 
 type Category = { id: string; name: string };

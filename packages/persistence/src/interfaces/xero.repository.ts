@@ -1,8 +1,23 @@
 import type { paymentExternalRef, xeroConnection, xeroWebhookEvent } from "@auction/db/schema";
 import type { InferInsertModel, InferSelectModel } from "drizzle-orm";
 
-export type XeroConnectionRow = InferSelectModel<typeof xeroConnection>;
-export type XeroConnectionInsert = InferInsertModel<typeof xeroConnection>;
+type XeroConnectionStoredRow = InferSelectModel<typeof xeroConnection>;
+/** The stored token columns (plaintext legacy and sealed), which callers never see. */
+type XeroConnectionTokenStorage =
+  | "accessToken"
+  | "refreshToken"
+  | "accessTokenSealed"
+  | "refreshTokenSealed";
+
+/** A connection with its OAuth tokens opened. The sealed storage columns stay in the repository. */
+export type XeroConnectionRow = Omit<XeroConnectionStoredRow, XeroConnectionTokenStorage> & {
+  accessToken: string;
+  refreshToken: string;
+};
+export type XeroConnectionInsert = Omit<
+  InferInsertModel<typeof xeroConnection>,
+  XeroConnectionTokenStorage
+> & { accessToken: string; refreshToken: string };
 
 export type PaymentExternalRefRow = InferSelectModel<typeof paymentExternalRef>;
 export type PaymentExternalRefInsert = InferInsertModel<typeof paymentExternalRef>;

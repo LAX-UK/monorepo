@@ -1,6 +1,6 @@
 import { payHref } from "@/lib/pay/pay-links";
 import type { BidderAttentionGroup } from "@auction/domain";
-import { formatGbp } from "@auction/ui";
+import { formatGbp } from "@auction/ui/lib/money";
 import { CLIENT_ROUTES } from "./client-routes";
 
 /**

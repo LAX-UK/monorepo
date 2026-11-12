@@ -1,5 +1,7 @@
 import type { PayoutDetailVm } from "@/lib/seller/payout-detail.vm";
-import { ButtonLink, StatusBadge, pageTitleClass } from "@auction/ui/lax";
+import { ButtonLink } from "@auction/ui/lax/button-link";
+import { StatusBadge } from "@auction/ui/lax/status-badge";
+import { pageTitleClass } from "@auction/ui/lax/styles";
 import { Download } from "lucide-react";
 
 const CELL = "px-4 py-3 text-lax-14 md:px-5";

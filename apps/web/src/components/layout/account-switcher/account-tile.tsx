@@ -1,5 +1,5 @@
 import type { AccountOption } from "@/lib/navigation/account-switcher-model";
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 
 type Props = {
   account: Pick<AccountOption, "kind" | "initials">;

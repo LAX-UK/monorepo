@@ -37,7 +37,7 @@ import { dashboardIdentityOnboardingHref } from "@/lib/kyc/identity-onboarding";
 import { isActionableStripeDisabledReason, shouldSkipConnect } from "@auction/connect";
 import { Alert, AlertDescription } from "@auction/ui/components/alert";
 import { Surface } from "@auction/ui/components/surface";
-import { Button } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
 import { useCallback, useMemo } from "react";
 
 type Props = {

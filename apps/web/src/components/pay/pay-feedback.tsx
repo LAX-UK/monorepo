@@ -1,7 +1,8 @@
 "use client";
 
 import { PAY_COPY } from "@/lib/pay/pay-copy";
-import { Button, Notice } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
+import { Notice } from "@auction/ui/lax/notice";
 import { useEffect, useRef } from "react";
 import { usePaySession } from "./pay-session";
 

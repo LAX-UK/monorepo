@@ -1,5 +1,5 @@
 import { SaleStreamPreview } from "@/components/marketing/sale-stream-preview";
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 
 type Props = {
   streamUrl: string;

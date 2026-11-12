@@ -6,7 +6,7 @@ import {
 } from "@/components/layout/palette/palette-cookie-client";
 import type { PalettePinnedRef } from "@/components/layout/palette/pinned-store";
 import { sidebarNavItemClassName } from "@/lib/layout/sidebar-nav-classes";
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";

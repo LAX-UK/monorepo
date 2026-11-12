@@ -1,7 +1,7 @@
 "use client";
 
 import { MarketingChipStrip } from "@/components/marketing/marketing-chip-strip";
-import { FilterChip } from "@auction/ui";
+import { FilterChip } from "@auction/ui/components/filter-chip";
 import { useArchiveFilterNavigation } from "./use-archive-filter-navigation";
 
 type Category = { id: string; name: string };

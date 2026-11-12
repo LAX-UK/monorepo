@@ -1,6 +1,6 @@
 import { AccountRestoreHop } from "@/components/layout/account-switcher/account-restore-hop";
 import { BidSiteChrome } from "@/components/layout/bid-site-chrome";
-import { AccountArea } from "@auction/marketing-ui";
+import { AccountArea } from "@auction/marketing-ui/account/index";
 
 /**
  * The client area while this browser is put in its account: the lax.bid frame with the restore

@@ -1,6 +1,7 @@
 "use client";
 
-import { Button, Dialog } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
+import { Dialog } from "@auction/ui/lax/dialog";
 import { Component, type ReactNode } from "react";
 
 type Props = {

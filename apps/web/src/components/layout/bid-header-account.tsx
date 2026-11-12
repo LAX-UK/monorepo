@@ -4,8 +4,8 @@ import { useAppSession } from "@/lib/auth/use-app-session";
 import { useAuthHeaderLinks } from "@/lib/auth/use-auth-header-links";
 import type { SiteHeaderTone } from "@/lib/layout/header-chrome-tone";
 import type { LaxProductLinkVm } from "@auction/lax-ecosystem";
-import { MarketingAccountEntry } from "@auction/marketing-ui";
-import { cn } from "@auction/ui";
+import { MarketingAccountEntry } from "@auction/marketing-ui/marketing-account-entry";
+import { cn } from "@auction/ui/lib/utils";
 import dynamic from "next/dynamic";
 
 type BidHeaderAccountProps = {

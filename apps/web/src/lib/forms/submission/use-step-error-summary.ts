@@ -1,6 +1,6 @@
 "use client";
 
-import type { ErrorSummaryItem } from "@auction/ui/lax";
+import type { ErrorSummaryItem } from "@auction/ui/lax/error-summary";
 import type { ItemSubmissionFormValues } from "@auction/validators";
 import { useCallback, useEffect, useState } from "react";
 import { type UseFormReturn, get, useFormState } from "react-hook-form";

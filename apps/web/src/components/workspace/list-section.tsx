@@ -1,5 +1,5 @@
-import { cn } from "@auction/ui";
-import { formatCount } from "@auction/ui/lax";
+import { formatCount } from "@auction/ui/lax/count";
+import { cn } from "@auction/ui/lib/utils";
 import type { ReactNode } from "react";
 
 type Props = {

@@ -1,4 +1,4 @@
-import { Skeleton } from "@auction/ui";
+import { Skeleton } from "@auction/ui/components/skeleton";
 
 const ROW_KEYS = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j"] as const;
 

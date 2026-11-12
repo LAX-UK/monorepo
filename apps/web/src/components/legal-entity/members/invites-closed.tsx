@@ -1,5 +1,5 @@
 import { invitesClosedCopy } from "@/lib/legal-entity/member-change-copy";
-import { Notice } from "@auction/ui/lax";
+import { Notice } from "@auction/ui/lax/notice";
 
 type Props = { refusalCode: string; organisationName: string };
 
