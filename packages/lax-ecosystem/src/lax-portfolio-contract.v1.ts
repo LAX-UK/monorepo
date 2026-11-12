@@ -94,6 +94,13 @@ export const LaxCostLineV1 = Type.Object({
 });
 export type LaxCostLineV1 = Static<typeof LaxCostLineV1>;
 
+/** Money handed back for a work, kept apart from its cost lines so each line states what was charged. */
+export const LaxRefundedV1 = Type.Object({
+  amount: minorUnitsSchema,
+  currency: currencySchema,
+});
+export type LaxRefundedV1 = Static<typeof LaxRefundedV1>;
+
 export const LaxPortfolioDocumentV1 = Type.Object({
   kind: stringEnum(LAX_DOCUMENT_KINDS),
   available: Type.Boolean(),
@@ -145,7 +152,14 @@ export const LaxPortfolioItemV1 = Type.Object({
   image: Type.Union([Type.String({ minLength: 1 }), Type.Null()]),
   acquiredAt: isoDateTimeSchema,
   status: stringEnum(LAX_PORTFOLIO_ITEM_STATUSES),
-  paid: Type.Object({ lines: Type.Array(LaxCostLineV1) }),
+  /**
+   * `lines` are the charges as made (delivery included). `refunded`, when present, is the part
+   * of them handed back: what was paid and kept is the lines less the refund.
+   */
+  paid: Type.Object({
+    lines: Type.Array(LaxCostLineV1),
+    refunded: Type.Optional(LaxRefundedV1),
+  }),
   documents: Type.Array(LaxPortfolioDocumentV1),
   actions: Type.Array(LaxPortfolioActionV1),
   business: LaxBusinessV1,

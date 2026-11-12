@@ -206,6 +206,8 @@ export class NotificationFactory implements INotificationFactory {
     amount: string;
     /** The due date in words ("10 November 2026"). */
     dueDate: string;
+    /** The moment it is due: the end of the London day. */
+    dueAt?: Date;
     step: PaymentReminderStepKey;
     /** The reminder is for a private sale deal: the email calls the item a work, not a lot. */
     privateSale?: boolean;
@@ -230,6 +232,7 @@ export class NotificationFactory implements INotificationFactory {
         paymentId: input.paymentId,
         amount: input.amount,
         dueDate: input.dueDate,
+        ...(input.dueAt ? { dueAt: input.dueAt.toISOString() } : {}),
         lotTitle: input.lotTitle,
         reminderStep: input.step,
         ...(input.held ? { heldReason: input.held } : {}),

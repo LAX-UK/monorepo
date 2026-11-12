@@ -25,7 +25,7 @@ const rememberAccountBodySchema = z.object({
 });
 
 const recordAccountParamSchema = z.object({
-  kind: z.enum(["consignment", "purchase"]),
+  kind: z.enum(["consignment", "purchase", "reoffer"]),
   id: z.string().uuid(),
 });
 

@@ -4,7 +4,10 @@ import { buildSessionDatabaseHooks } from "./session-hooks.js";
 
 const CREATED = new Date("2026-10-23T13:05:00.000Z");
 
-function setup(enableNewDeviceLoginEmail: boolean | undefined = true) {
+function setup(
+  enableNewDeviceLoginEmail: boolean | undefined = true,
+  readDeviceHash?: (headers: Headers | undefined) => string | null,
+) {
   const notify = vi.fn(async () => undefined);
   const hooks = buildSessionDatabaseHooks({
     ports: {
@@ -12,6 +15,7 @@ function setup(enableNewDeviceLoginEmail: boolean | undefined = true) {
       securityNotices: { notify },
     },
     enableNewDeviceLoginEmail,
+    readDeviceHash,
   } as unknown as AuthHookDeps);
   return { hooks, notify };
 }
@@ -35,6 +39,7 @@ describe("session create hook", () => {
       at: CREATED,
       userAgent: "Mozilla/5.0 Chrome/130",
       region: "GB",
+      deviceHash: null,
     });
     expect(JSON.stringify(notify.mock.calls)).not.toContain("203.0.113.9");
   });
@@ -52,11 +57,70 @@ describe("session create hook", () => {
     );
   });
 
+  it("attaches the hash of the request's device marker, never the marker", async () => {
+    const { hooks, notify } = setup(true, (headers) =>
+      headers?.get("cookie")?.includes("__Host-lax_device") ? "keyed-hash" : null,
+    );
+
+    await hooks.create.after(
+      { userId: "user-1", createdAt: CREATED },
+      { request: { headers: new Headers({ cookie: "__Host-lax_device=raw-marker-value" }) } },
+    );
+
+    expect(notify).toHaveBeenCalledWith(expect.objectContaining({ deviceHash: "keyed-hash" }));
+    expect(JSON.stringify(notify.mock.calls)).not.toContain("raw-marker-value");
+  });
+
   it("does nothing unless new-device notices are enabled", async () => {
     const { hooks, notify } = setup(false);
 
     await hooks.create.after({ userId: "user-1", createdAt: CREATED });
 
     expect(notify).not.toHaveBeenCalled();
+  });
+});
+
+describe("session delete hook", () => {
+  const markerHash = (headers: Headers | undefined) =>
+    headers?.get("cookie")?.includes("__Host-lax_device=") ? "keyed-hash" : null;
+  const withMarker = { headers: new Headers({ cookie: "__Host-lax_device=raw-marker-value" }) };
+
+  function deleteSetup() {
+    const forgetDeviceMarker = vi.fn(async () => undefined);
+    const hooks = buildSessionDatabaseHooks({
+      ports: { subjectStatusReader: { isDisabledOrMerged: async () => false } },
+      readDeviceHash: markerHash,
+      forgetDeviceMarker,
+    } as unknown as AuthHookDeps);
+    return { hooks, forgetDeviceMarker };
+  }
+
+  it("forgets the marker of the browser that signs itself out", async () => {
+    const { hooks, forgetDeviceMarker } = deleteSetup();
+
+    await hooks.delete.after({ userId: "user-1" }, { path: "/sign-out", request: withMarker });
+
+    expect(forgetDeviceMarker).toHaveBeenCalledWith({ userId: "user-1", deviceHash: "keyed-hash" });
+  });
+
+  it("leaves markers alone when sessions end for another reason, such as a password change", async () => {
+    const { hooks, forgetDeviceMarker } = deleteSetup();
+
+    await hooks.delete.after(
+      { userId: "user-1" },
+      { path: "/change-password", request: withMarker },
+    );
+    await hooks.delete.after({ userId: "user-1" }, null);
+
+    expect(forgetDeviceMarker).not.toHaveBeenCalled();
+  });
+
+  it("never turns a sign-out into an error when forgetting fails", async () => {
+    const { hooks, forgetDeviceMarker } = deleteSetup();
+    forgetDeviceMarker.mockRejectedValue(new Error("db down"));
+
+    await expect(
+      hooks.delete.after({ userId: "user-1" }, { path: "/sign-out", request: withMarker }),
+    ).resolves.toBeUndefined();
   });
 });

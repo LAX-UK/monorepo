@@ -7,7 +7,12 @@ import type {
   SellerConsentStatus,
 } from "@auction/domain";
 import type { LotStatus, PaymentStatus } from "@auction/types";
-import type { LotReofferView, SellerConsentTerms } from "./lot-reoffer.js";
+import type {
+  LotReofferView,
+  SellerConsentChannel,
+  SellerConsentTerms,
+  SellerPreferredNext,
+} from "./lot-reoffer.js";
 
 /** The lot as read under its row lock: what every re-offer step re-checks before it writes. */
 export type ReofferLockedLot = {
@@ -93,6 +98,10 @@ export type BidderReofferRow = {
   respondedAt: Date | null;
   offeredUserId: string;
   offeredLegalEntityId: string;
+  /** The work on offer, as the bidder knows it. */
+  lot: { title: string; lotNumber: number | null; saleId: string | null; image: string | null };
+  /** When the lot's own sale ended. */
+  lotEndedAt: Date;
 };
 
 /** What the seller's reads need of a request: the terms they were shown, never who would buy. */
@@ -103,6 +112,16 @@ export type SellerConsentRequestRow = {
   consentStatus: SellerConsentStatus;
   terms: SellerConsentTerms;
   dueAt: Date | null;
+  /** The work the request is about, as the seller knows it. */
+  lot: { title: string; lotNumber: number | null; endedAt: Date };
+  answeredAt: Date | null;
+  /** How the answer was given; `null` until there is one. */
+  answerChannel: SellerConsentChannel | null;
+  preferredNext: SellerPreferredNext | null;
+  /** When the bidder's offer ends, once it was sent. */
+  offerEndsAt: Date | null;
+  /** When the bidder answered; for an accepted offer, when the lot was sold again. */
+  respondedAt: Date | null;
 };
 
 export interface IReofferViewsReader {

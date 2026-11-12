@@ -8,7 +8,11 @@ const trim = (url: string) => url.replace(/\/$/, "");
  * the address mail apps POST to for one-click). Managing alerts is one page for every product, so
  * its address is given whole (null when there is none).
  */
-export function webAlertUrls(origin: string, manageUrl: string | null): AlertUrls {
+export function webAlertUrls(
+  origin: string,
+  manageUrl: string | null,
+  changeTimeZoneUrl: string | null = null,
+): AlertUrls {
   const base = trim(origin);
   const stop = (token: string) => `${base}/alerts/unsubscribe?t=${encodeURIComponent(token)}`;
   return {
@@ -16,6 +20,7 @@ export function webAlertUrls(origin: string, manageUrl: string | null): AlertUrl
     stop,
     oneClick: stop,
     manage: () => manageUrl,
+    changeTimeZone: () => changeTimeZoneUrl,
     site: (path) => `${base}${path}`,
   };
 }

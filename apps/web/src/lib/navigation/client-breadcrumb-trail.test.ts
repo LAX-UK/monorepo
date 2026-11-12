@@ -25,6 +25,20 @@ describe("buildClientBreadcrumbTrail", () => {
     expect(labels("/team/activity")).toEqual(["Team"]);
   });
 
+  it("trails an offer to buy at the bidder's own bid back to the bids", () => {
+    expect(buildClientBreadcrumbTrail("/bids/offers/o1")).toEqual([
+      { label: "My bids", href: "/bids" },
+      { label: "Your offer", record: true },
+    ]);
+  });
+
+  it("trails a request to re-offer a lot back to Sold & payouts, not to the payouts tab", () => {
+    expect(buildClientBreadcrumbTrail("/selling/payouts/offers/r1")).toEqual([
+      { label: "Sold & payouts", href: "/selling/payouts" },
+      { label: "Offer to the next bidder", record: true },
+    ]);
+  });
+
   it("names the Collection page as the menu does", () => {
     expect(labels("/collection")).toEqual(["Collection"]);
   });

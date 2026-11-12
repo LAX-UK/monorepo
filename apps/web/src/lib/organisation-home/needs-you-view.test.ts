@@ -17,6 +17,19 @@ const EVERY_TASK: NeedsYouTaskWithLink[] = [
     link: { page: "lot", id: "l88" },
   },
   {
+    kind: "reoffer_offer",
+    offers: [
+      {
+        id: "o1",
+        title: "The Winter Study",
+        offerMinor: 82_000_00,
+        endsAt: new Date("2026-11-14T17:00:00Z"),
+      },
+    ],
+    raisedAt: null,
+    link: { page: "reoffer_offer", id: "o1" },
+  },
+  {
     kind: "pay",
     purchases: [{ id: "l7", title: "Harbour at dawn" }],
     raisedAt: null,
@@ -43,6 +56,19 @@ const EVERY_TASK: NeedsYouTaskWithLink[] = [
     consignment: { id: "c1", title: "Thames" },
     raisedAt: null,
     link: { page: "consignment", id: "c1" },
+  },
+  {
+    kind: "reoffer_request",
+    requests: [
+      {
+        id: "r1",
+        title: "The Winter Study",
+        offerMinor: 8_200_000,
+        answerBy: new Date("2026-11-03T17:00:00Z"),
+      },
+    ],
+    raisedAt: null,
+    link: { page: "reoffer_request", id: "r1" },
   },
   {
     kind: "changes",
@@ -128,16 +154,32 @@ describe("needsYouRowView", () => {
     }
   });
 
+  it("words an offer to buy at the bidder's own bid, with when it ends", () => {
+    const [offer] = EVERY_TASK.filter((task) => task.kind === "reoffer_offer");
+    if (!offer) throw new Error("no offer task");
+    const view = needsYouRowView(offer, ctx);
+    expect(view).toMatchObject({
+      topic: "bid",
+      title: "An offer for “The Winter Study”",
+      detail: "At your bid of £82,000.00 · the winning bidder did not pay",
+      action: { label: "Review the offer", href: "/bids/offers/o1" },
+      section: "bids",
+    });
+    expect(view.due?.text).toMatch(/^Ends .*Nov, 17:00 GMT$/);
+  });
+
   it("leads each button to where the task is done", () => {
     const hrefs = Object.fromEntries(
       EVERY_TASK.map((task) => [task.kind, needsYouRowView(task, ctx).action.href]),
     );
     expect(hrefs).toMatchObject({
       outbid: "/lot/sun-over-arles/l88",
+      reoffer_offer: "/bids/offers/o1",
       pay: "/purchases/pay?lots=l7",
       won_awaiting_payment: "/purchases",
       unsold_due: "/selling/consignments?tab=unsold",
       agreement: "/selling/consignments/c1#agreement",
+      reoffer_request: "/selling/payouts/offers/r1",
       changes: "/selling/consignments/s1",
       reply: "/selling/consignments/c2?tab=messages",
       register: "/sales/contemporary/sale1",
@@ -150,8 +192,45 @@ describe("needsYouRowView", () => {
     });
   });
 
+  it("asks the seller to answer a request to re-offer, naming the work and the deadline in London time", () => {
+    const row = needsYouRowView(
+      EVERY_TASK.find((task) => task.kind === "reoffer_request") as NeedsYouTaskWithLink,
+      ctx,
+    );
+    expect(row).toMatchObject({
+      title: "May we offer The Winter Study to the next bidder?",
+      detail: "The buyer didn't pay. Next bid £82,000.00 · answer by Tue 3 Nov, 17:00 GMT",
+      action: { label: "Review and answer", href: "/selling/payouts/offers/r1" },
+      section: "consignments",
+    });
+  });
+
+  it("opens Sold & payouts for several requests", () => {
+    const task: NeedsYouTaskWithLink = {
+      kind: "reoffer_request",
+      requests: [
+        { id: "r1", title: "A", offerMinor: 100_00, answerBy: null },
+        { id: "r2", title: "B", offerMinor: 200_00, answerBy: null },
+      ],
+      raisedAt: null,
+      link: { page: "sold_payouts" },
+    };
+    expect(needsYouRowView(task, ctx)).toMatchObject({
+      title: "May we offer 2 lots to the next bidder?",
+      detail: "The buyers didn't pay",
+      action: { href: "/selling/payouts" },
+      items: 2,
+    });
+  });
+
   it("dates what has a date: a close time ahead in amber, a passed choice date in red", () => {
-    const [outbid, , , unsoldDue] = EVERY_TASK.map((task) => needsYouRowView(task, ctx));
+    const due = (kind: string) => {
+      const task = EVERY_TASK.find((candidate) => candidate.kind === kind);
+      if (!task) throw new Error(`no ${kind} task`);
+      return needsYouRowView(task, ctx);
+    };
+    const outbid = due("outbid");
+    const unsoldDue = due("unsold_due");
     expect(outbid?.due).toMatchObject({ tone: "warning" });
     expect(outbid?.due?.text).toMatch(/^Closes /);
     expect(unsoldDue?.due).toMatchObject({ tone: "danger", text: "Overdue" });

@@ -36,7 +36,10 @@ describe("createIssuerAccountIdentityGateway", () => {
     const { fetchImpl, gateway: g } = gateway(async () => Response.json({ sessions: [SESSION] }));
     expect(await g.listSessions(actor)).toEqual({
       status: "ok",
-      value: [{ ...SESSION, signedInWith: null }],
+      // A sign-in service that has not yet been updated leaves the newer fields out.
+      value: [
+        { ...SESSION, signedInWith: null, deviceKind: "laptop", country: null, products: [] },
+      ],
     });
     const { url, init, body } = lastRequest(fetchImpl);
     expect(url).toBe("https://auth.internal/api/auth/lax/account-sessions");

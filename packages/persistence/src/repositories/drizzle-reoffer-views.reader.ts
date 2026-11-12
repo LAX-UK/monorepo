@@ -1,5 +1,5 @@
 import type { Database } from "@auction/db";
-import { legalEntity, lotReoffer, sellerConsent } from "@auction/db/schema";
+import { legalEntity, lot, lotReoffer, sellerConsent } from "@auction/db/schema";
 import { bidderReofferStatus } from "@auction/domain";
 import { and, asc, desc, eq } from "drizzle-orm";
 import type {
@@ -47,8 +47,9 @@ export class DrizzleReofferViewsReader implements IReofferViewsReader {
 
   async listForBidderAccount(legalEntityId: string): Promise<BidderReofferRow[]> {
     const rows = await this.db
-      .select()
+      .select(BIDDER_ROW)
       .from(lotReoffer)
+      .innerJoin(lot, eq(lot.id, lotReoffer.lotId))
       .where(eq(lotReoffer.offeredLegalEntityId, legalEntityId))
       .orderBy(desc(lotReoffer.createdAt));
     return rows.flatMap((row) => toBidderRow(row) ?? []);
@@ -59,8 +60,9 @@ export class DrizzleReofferViewsReader implements IReofferViewsReader {
     reofferId: string,
   ): Promise<BidderReofferRow | null> {
     const [row] = await this.db
-      .select()
+      .select(BIDDER_ROW)
       .from(lotReoffer)
+      .innerJoin(lot, eq(lot.id, lotReoffer.lotId))
       .where(and(eq(lotReoffer.id, reofferId), eq(lotReoffer.offeredLegalEntityId, legalEntityId)))
       .limit(1);
     return row ? toBidderRow(row) : null;
@@ -68,9 +70,10 @@ export class DrizzleReofferViewsReader implements IReofferViewsReader {
 
   async listForSellerAccount(sellerLegalEntityId: string): Promise<SellerConsentRequestRow[]> {
     const rows = await this.db
-      .select({ consent: sellerConsent, offer: lotReoffer })
+      .select(SELLER_ROW)
       .from(sellerConsent)
       .innerJoin(lotReoffer, eq(lotReoffer.id, sellerConsent.subjectId))
+      .innerJoin(lot, eq(lot.id, sellerConsent.lotId))
       .where(
         and(
           eq(sellerConsent.sellerLegalEntityId, sellerLegalEntityId),
@@ -86,9 +89,10 @@ export class DrizzleReofferViewsReader implements IReofferViewsReader {
     reofferId: string,
   ): Promise<SellerConsentRequestRow | null> {
     const [row] = await this.db
-      .select({ consent: sellerConsent, offer: lotReoffer })
+      .select(SELLER_ROW)
       .from(sellerConsent)
       .innerJoin(lotReoffer, eq(lotReoffer.id, sellerConsent.subjectId))
+      .innerJoin(lot, eq(lot.id, sellerConsent.lotId))
       .where(
         and(
           eq(sellerConsent.sellerLegalEntityId, sellerLegalEntityId),
@@ -101,10 +105,39 @@ export class DrizzleReofferViewsReader implements IReofferViewsReader {
   }
 }
 
+/** The columns a bidder's read needs of an offer: the offer itself and the work it is for. */
+const BIDDER_ROW = {
+  offer: lotReoffer,
+  lotTitle: lot.title,
+  lotNumber: lot.lotNumber,
+  lotSaleId: lot.saleId,
+  lotImages: lot.images,
+  lotEndTime: lot.endTime,
+  lotExtendedUntil: lot.extendedUntil,
+};
+
+/** The columns a seller's read needs of a request: the consent, the offer and the lot's name. */
+const SELLER_ROW = {
+  consent: sellerConsent,
+  offer: lotReoffer,
+  lotTitle: lot.title,
+  lotNumber: lot.lotNumber,
+  lotEndTime: lot.endTime,
+  lotExtendedUntil: lot.extendedUntil,
+};
+
 /** `null` while the bidder has nothing to see: the seller has not agreed, or said no. */
-function toBidderRow(row: typeof lotReoffer.$inferSelect): BidderReofferRow | null {
-  if (bidderReofferStatus(toReofferRecord(row)) === null) return null;
-  const offer = toLotReofferView(row);
+function toBidderRow(row: {
+  offer: typeof lotReoffer.$inferSelect;
+  lotTitle: string;
+  lotNumber: number | null;
+  lotSaleId: string | null;
+  lotImages: string[];
+  lotEndTime: Date;
+  lotExtendedUntil: Date | null;
+}): BidderReofferRow | null {
+  if (bidderReofferStatus(toReofferRecord(row.offer)) === null) return null;
+  const offer = toLotReofferView(row.offer);
   return {
     id: offer.id,
     lotId: offer.lotId,
@@ -115,20 +148,42 @@ function toBidderRow(row: typeof lotReoffer.$inferSelect): BidderReofferRow | nu
     respondedAt: offer.respondedAt,
     offeredUserId: offer.offeredUserId,
     offeredLegalEntityId: offer.offeredLegalEntityId,
+    lot: {
+      title: row.lotTitle,
+      lotNumber: row.lotNumber,
+      saleId: row.lotSaleId,
+      image: row.lotImages[0] ?? null,
+    },
+    lotEndedAt: row.lotExtendedUntil ?? row.lotEndTime,
   };
 }
 
 function toSellerRow(row: {
   consent: typeof sellerConsent.$inferSelect;
   offer: typeof lotReoffer.$inferSelect;
+  lotTitle: string;
+  lotNumber: number | null;
+  lotEndTime: Date;
+  lotExtendedUntil: Date | null;
 }): SellerConsentRequestRow {
   const consent = toSellerConsentView(row.consent);
+  const offer = toLotReofferView(row.offer);
   return {
     reofferId: consent.subjectId,
     lotId: consent.lotId,
-    offerStatus: toLotReofferView(row.offer).status,
+    offerStatus: offer.status,
     consentStatus: consent.status,
     terms: consent.termsSnapshot,
     dueAt: consent.dueAt,
+    lot: {
+      title: row.lotTitle,
+      lotNumber: row.lotNumber,
+      endedAt: row.lotExtendedUntil ?? row.lotEndTime,
+    },
+    answeredAt: consent.answeredAt,
+    answerChannel: consent.channel,
+    preferredNext: consent.preferredNext,
+    offerEndsAt: offer.offerEndsAt,
+    respondedAt: offer.respondedAt,
   };
 }

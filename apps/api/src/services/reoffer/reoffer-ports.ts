@@ -39,9 +39,17 @@ export interface IReofferAtgGuard {
   soldOnAtg(lotId: string): Promise<boolean>;
 }
 
-/** What the seller would receive, so the seller is asked about money they can read. */
+/**
+ * What the seller would receive if the lot sold to a buyer at a hammer, worked out the way
+ * settlement pays it (see `sellerNetForSale`), so the seller is asked about money they will see.
+ */
 export interface IReofferSellerProceeds {
-  proceedsPence(sellerLegalEntityId: string, hammerPence: number): Promise<number>;
+  proceedsFor(input: {
+    lotId: string;
+    sellerLegalEntityId: string;
+    buyerLegalEntityId: string;
+    hammerPence: number;
+  }): Promise<{ salePence: number; proceedsPence: number }>;
 }
 
 export interface IReofferLotOwnership {
@@ -56,11 +64,15 @@ export interface IReofferInvoicing {
   raiseFor(lotId: string): Promise<void>;
 }
 
-/** The invoice lines a hammer would be charged at, for the lot and the account that would buy it. */
+/**
+ * The invoice lines a hammer would be charged at, for the lot and the account that would buy it.
+ * Once that account's invoice is raised, its stored lines and stored due date.
+ */
 export interface IReofferPricing {
-  priceFor(input: {
-    lotId: string;
-    buyerLegalEntityId: string;
-    hammerPence: number;
-  }): Promise<{ lines: readonly { kind: string; amountPence: number }[]; totalPence: number }>;
+  priceFor(input: { lotId: string; buyerLegalEntityId: string; hammerPence: number }): Promise<{
+    lines: readonly { kind: string; amountPence: number }[];
+    totalPence: number;
+    /** The live invoice's own due date, once one is raised for the account; else absent. */
+    invoiceDueAt?: Date | null;
+  }>;
 }

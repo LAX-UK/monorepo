@@ -49,6 +49,7 @@ const TRAILS: readonly [RegExp, (match: RegExpMatchArray) => Crumb[]][] = [
   [/^\/home$/, () => [here("Home")]],
   [/^\/bids$/, () => [here("My bids")]],
   [/^\/bids\/telephone\/[^/]+$/, () => [MY_BIDS, here("Telephone bid")]],
+  [/^\/bids\/offers\/[^/]+$/, () => [MY_BIDS, record("Your offer")]],
   [/^\/purchases$/, () => [here("Purchases")]],
   [/^\/purchases\/pay$/, () => [PURCHASES, here("Pay")]],
   [/^\/purchases\/([^/]+)$/, () => [PURCHASES, record("Purchase")]],
@@ -85,6 +86,10 @@ const TRAILS: readonly [RegExp, (match: RegExpMatchArray) => Crumb[]][] = [
   ],
   [/^\/collection$/, () => [here("Collection")]],
   [/^\/selling\/payouts$/, () => [here("Sold & payouts")]],
+  [
+    /^\/selling\/payouts\/offers\/[^/]+$/,
+    () => [SOLD_AND_PAYOUTS, record("Offer to the next bidder")],
+  ],
   [/^\/selling\/payouts\/[^/]+$/, () => [PAYOUTS, record("Payout")]],
   [/^\/selling\/payout-setup$/, () => [SOLD_AND_PAYOUTS, here("Payout setup")]],
   [/^\/selling\/artist$/, () => [here("Artist profile")]],

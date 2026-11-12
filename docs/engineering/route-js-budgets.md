@@ -122,6 +122,32 @@ Sizes after this change (Sentry on, gzip): the frame of a content page went from
 389.1 KB, home from 494.1 to 460.3 KB, the sales list from 526.8 to 501.2 KB, the sale page from
 638.4 to 610.6 KB and the lot page from 592.0 to 569.2 KB.
 
+## Header and footer drawn on the server
+
+The footer and the parts of the header that only show links or the logo are Server Components, so
+their code is not in the page's scripts. What still needs the browser is a small island:
+
+| Part | Where it is drawn |
+| --- | --- |
+| Footer (`SiteFooter`, `MarketingFooter`, social links, logo, link columns) | server |
+| Footer Account list | browser island (`FooterAccountList`): it follows the session, which can change without a reload |
+| Footer link that marks the current page, cookie settings button, phone section fold | browser islands |
+| LAX top bar (`LaxFamilyBar`) and Bid lockup (`BidHeaderLockup`) | server, handed to the header as slots |
+| Header bar (scroll tone, menus, search, theme, account) | browser (`SiteHeaderChrome`) |
+| Phone menu | on demand: fetched when the page is idle, or at once if opened first |
+
+The header's tone (white over a cover photograph, ink on the page) changes as the page scrolls, so
+the server cannot hand it to a part as a prop. The header carries `group/header` and its
+`data-header-tone`, and the server-drawn parts take their colours from it with
+`group-data-[header-tone=on-dark]/header:` classes (`LaxFamilyBar` has `tone="follow-header"` for
+this). A lazy component must not hold the phone menu: one that suspends swaps the whole header for
+its Suspense fallback and drops the open state, so the loaded menu is kept in plain state, as the
+toast host is.
+
+Sizes (Sentry on, gzip, start-up set): the frame of a content page went from 388.0 KB to 362.3 KB,
+home from 458.5 to 432.8 KB, the sales list from 500.1 to 475.0 KB, the sale page from 610.5 to
+584.6 KB and the lot page from 564.5 to 535.3 KB. Lenis is untouched.
+
 ## Sale page parts loaded on demand
 
 Four parts of the sale page are separate chunks, fetched when they are needed:
@@ -144,11 +170,6 @@ booking never download the form.
 Two hooks carry the pattern: `useNearViewport` (true once an element is within a viewport of the
 screen, and stays true) and `useDeferredModule` (a dynamic import with idle, loading, ready and
 failed states, a timeout and a retry).
-
-Measured (Sentry on, gzip, start-up set; the same machine, before and after): the sale page went
-from 610.6 to 558.2 KB (page-only part from 179.5 to 126.2 KB), the lot page from 564.6 to 562.4 KB.
-Other routes moved by under 1.2 KB either way, which is how webpack regrouped shared chunks. The
-sale group's budget is now 614 KB and the lot group's 619 KB.
 
 Not moved: the live session provider, the live lot banner and the socket client. They share one
 subscription with the lot cards and the mobile summary bar, and the socket is the last PR of the

@@ -2507,6 +2507,27 @@
       "when": 1808294400000,
       "tag": "0368_accounting_tables",
       "breakpoints": true
+    },
+    {
+      "idx": 359,
+      "version": "7",
+      "when": 1808467200000,
+      "tag": "0359_artwork_register_status_written",
+      "breakpoints": true
+    },
+    {
+      "idx": 360,
+      "version": "7",
+      "when": 1808553600000,
+      "tag": "0360_artwork_register_sold_attention",
+      "breakpoints": true
+    },
+    {
+      "idx": 361,
+      "version": "7",
+      "when": 1809777600000,
+      "tag": "0371_reminder_candidate_indexes",
+      "breakpoints": true
     }
   ]
 }

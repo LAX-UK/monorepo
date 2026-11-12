@@ -38,6 +38,8 @@ export interface INotificationFactory {
     paymentId: string;
     amount: string;
     dueDate: string;
+    /** The moment it is due, for the email to show on the reader's own clock. */
+    dueAt?: Date;
     step: PaymentReminderStepKey;
     /** The reminder is for a private sale deal: the email calls the item a work, not a lot. */
     privateSale?: boolean;

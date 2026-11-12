@@ -612,7 +612,11 @@ export type {
   NewLaxAdminRoleRemoval,
 } from "./lax-admin-roles.repository.js";
 
-export { BidInvoiceTotalMismatchError, bidInvoiceKey } from "./bid-invoice.repository.js";
+export {
+  BidInvoiceLotMovedError,
+  BidInvoiceTotalMismatchError,
+  bidInvoiceKey,
+} from "./bid-invoice.repository.js";
 export type {
   BidInvoiceRecord,
   IBidInvoiceBatchReader,
@@ -1254,6 +1258,7 @@ export type {
 
 export type {
   ApplyZohoChangeResult,
+  CatalogueStatusLedger,
   ConflictCursor,
   CreateRegisterEntryResult,
   AuctionOfferDraftLot,
@@ -1286,6 +1291,16 @@ export type {
   ResolveConflictResult,
 } from "./artwork-register.js";
 
+export type {
+  ISoldAttentionStore,
+  OverrideSoldAttentionResult,
+  RaiseSoldAttentionInput,
+  ResolveSoldAttentionInput,
+  SoldAttentionItem,
+  SoldAttentionLiveCursor,
+  SoldAttentionLiveRef,
+  SoldAttentionRecord,
+} from "./artwork-register-sold-attention.js";
 export type {
   DealArtworkSearchInput,
   IDealArtworkSearchReader,
@@ -1346,9 +1361,11 @@ export type {
   IZohoListingRunStore,
   IZohoListingSaleStartMark,
   IZohoListingSourceReader,
+  IZohoStatusSourceReader,
   ListingLot,
   ListingMove,
   RegisterListingSource,
+  RegisterStatusSource,
   ZohoListingRun,
   ZohoListingRunFailure,
   ZohoListingRunMode,
@@ -1358,6 +1375,8 @@ export type {
   BidAlertLotNotice,
   IBidAlertLotNoticeWriter,
 } from "./bid-alert-lot-notice.js";
+export type { IRecipientZoneReader } from "./recipient-zone.reader.js";
+
 export type {
   AnnouncedSale,
   IBidAlertSaleNoticeWriter,
@@ -1467,3 +1486,8 @@ export type {
   SellerConsentRequestRow,
   StaffReofferView,
 } from "./reoffer-workflow.js";
+export type {
+  IReofferInvoiceMarker,
+  IReofferSweepReader,
+  ReofferSweepRef,
+} from "./reoffer-sweep.js";

@@ -18,6 +18,13 @@ function setup(
   options: {
     standing?: Standing | null;
     agreementProposedAt?: Date | null;
+    reofferRequests?: Array<{
+      id: string;
+      title: string;
+      offerMinor: number;
+      answerBy: Date | null;
+      requestedAt: Date | null;
+    }>;
     sourceOfFunds?: { requested: boolean; at: Date | null };
   } = {},
 ) {
@@ -28,6 +35,15 @@ function setup(
         title: "Closing lot",
         endsAt: new Date("2026-11-10T14:00:00Z"),
         outbidAt: new Date("2026-11-10T11:00:00Z"),
+      },
+    ]),
+    reofferOffers: vi.fn(async () => [
+      {
+        id: "o1",
+        title: "The Winter Study",
+        offerMinor: 8_200_000,
+        endsAt: new Date("2026-11-13T17:00:00Z"),
+        sentAt: new Date("2026-11-10T09:00:00Z"),
       },
     ]),
     openPurchases: vi.fn(async () => [
@@ -53,6 +69,7 @@ function setup(
             : options.agreementProposedAt,
       },
     ]),
+    reofferRequests: vi.fn(async () => options.reofferRequests ?? []),
     changesRequested: vi.fn(async () => []),
     expiredInvitations: vi.fn(async () => [
       { id: "i1", email: "sam@example.com", expiredAt: new Date("2026-11-08T00:00:00Z") },
@@ -132,6 +149,7 @@ describe("NeedsYouService", () => {
     const view = await service.read(member("owner"));
     expect(view.tasks.map((task) => [task.kind, task.link])).toEqual([
       ["outbid", { page: "lot", id: "l1" }],
+      ["reoffer_offer", { page: "reoffer_offer", id: "o1" }],
       ["pay", { page: "purchase", id: "p1" }],
       // Ended 12 days ago: due within 3 days.
       ["unsold_due", { page: "consignments", view: "unsold" }],
@@ -142,7 +160,7 @@ describe("NeedsYouService", () => {
       ["access_requests", { page: "team", view: "members" }],
     ]);
     expect(view.counts).toEqual({
-      bids: 1,
+      bids: 2,
       purchases: 1,
       consignments: 3,
       team: 2,
@@ -152,6 +170,8 @@ describe("NeedsYouService", () => {
     expect(view.tasks.map((task) => [task.kind, task.raisedAt?.toISOString() ?? null])).toEqual([
       // The bid now leading put the account behind.
       ["outbid", "2026-11-10T11:00:00.000Z"],
+      // The offer was sent to the bidder.
+      ["reoffer_offer", "2026-11-10T09:00:00.000Z"],
       // The sale of the lot ended: it was won.
       ["pay", "2026-11-09T10:00:00.000Z"],
       // The lot's sale ended.
@@ -179,11 +199,39 @@ describe("NeedsYouService", () => {
     expect(view.tasks.some((task) => task.kind === "identity")).toBe(false);
   });
 
+  it("owner: a request to re-offer a lot waits on them, and consignors and viewers are not asked", async () => {
+    const reofferRequests = [
+      {
+        id: "r1",
+        title: "The Winter Study",
+        offerMinor: 8_200_000,
+        answerBy: new Date("2026-11-13T17:00:00Z"),
+        requestedAt: new Date("2026-11-10T09:00:00Z"),
+      },
+    ];
+    const { service, facts } = setup({ reofferRequests });
+    const view = await service.read(member("owner"));
+    const task = view.tasks.find((t) => t.kind === "reoffer_request");
+    expect(task).toMatchObject({
+      link: { page: "reoffer_request", id: "r1" },
+      requests: [{ id: "r1", title: "The Winter Study", offerMinor: 8_200_000 }],
+    });
+    // The reader is asked at the service's clock, so a request past its deadline drops out.
+    expect(facts.reofferRequests).toHaveBeenCalledWith(
+      expect.objectContaining({ legalEntityId: ENTITY, now: NOW }),
+    );
+    const others = setup({ reofferRequests });
+    await others.service.read(member("consignor"));
+    await others.service.read(member("viewer"));
+    expect(others.facts.reofferRequests).not.toHaveBeenCalled();
+  });
+
   it("buyer agent: only their own bids, wins and authorisation", async () => {
     const { service, facts } = setup();
     const view = await service.read(member("buyer_agent"));
     expect(view.tasks.map((task) => task.kind)).toEqual([
       "outbid",
+      "reoffer_offer",
       "won_awaiting_payment",
       "register",
       "identity",
@@ -214,6 +262,7 @@ describe("NeedsYouService", () => {
     const view = await service.read(member("viewer"));
     expect(view.kinds).toEqual(["source_of_funds"]);
     expect(facts.outbidLots).not.toHaveBeenCalled();
+    expect(facts.reofferOffers).not.toHaveBeenCalled();
     expect(unsold.listUnsoldOutcomes).not.toHaveBeenCalled();
   });
 

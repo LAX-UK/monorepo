@@ -1,5 +1,6 @@
 import { DashboardListPage } from "@/components/dashboard/dashboard-list-page";
 import { SellerProfileUnavailableAlert } from "@/components/dashboard/seller-profile-unavailable-alert";
+import { SellerReofferRows } from "@/components/dashboard/seller/seller-reoffer-rows";
 import { SoldAndPayoutsView } from "@/components/dashboard/seller/sold-and-payouts-view";
 import { SoldExportButton } from "@/components/dashboard/seller/sold-export-button";
 import { SetMobileShellTitle } from "@/components/layout/set-mobile-shell-title";
@@ -12,6 +13,8 @@ import {
 } from "@/lib/legal-entity/seller-acting-context.server";
 import { organisationHref } from "@/lib/navigation/client-routes";
 import { workspacePageRefusal } from "@/lib/presenters/workspace-access/workspace-access";
+import { listSellerReoffers } from "@/lib/seller/seller-reoffer.server";
+import { sellerReofferRows } from "@/lib/seller/seller-reoffer.vm";
 import { sellingAccess } from "@/lib/seller/selling-access.server";
 import { parseSoldListQuery, soldInView, soldRecord } from "@/lib/seller/sold-and-payouts-list";
 import { loadSoldAndPayouts } from "@/lib/seller/sold-and-payouts.server";
@@ -42,9 +45,10 @@ export default async function SellerPayoutsPage({ searchParams }: PageProps) {
   }
   const { sellerEntityId, sellingAsOrganisation } = sellerCtx;
   const { organisation } = sellingAccess(sellerCtx);
-  const [vm, sp] = await Promise.all([
+  const [vm, sp, requests] = await Promise.all([
     sellerEntityId ? loadSoldAndPayouts(sellerEntityId) : Promise.resolve(null),
     searchParams,
+    sellerEntityId ? listSellerReoffers() : Promise.resolve([]),
   ]);
   const query = parseSoldListQuery(sp);
   const now = new Date();
@@ -80,6 +84,7 @@ export default async function SellerPayoutsPage({ searchParams }: PageProps) {
       }
     >
       <SetMobileShellTitle title="Sold & payouts" />
+      <SellerReofferRows rows={sellerReofferRows(requests, now)} />
       {sellerEntityId ? (
         <SoldAndPayoutsView vm={vm} query={query} organisation={organisation} setup={setup} />
       ) : null}

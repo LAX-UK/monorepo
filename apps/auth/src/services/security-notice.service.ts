@@ -10,19 +10,23 @@ import {
   DELETION_HOLD_COPY,
   SUBJECT_EXPORT_RETENTION_DAYS,
   deletionHoldNextCheck,
+  effectiveAccountTimeZone,
   formatDeviceLabel,
 } from "@auction/identity-contracts";
-import { formatLondonDate, formatLondonTime } from "./format-london-time.js";
+import { formatLondonDate, formatNoticeTime } from "./format-london-time.js";
 import type { IIdentitySubjectRepository } from "./identity-operations.ports.js";
 import {
   type KnownDeviceStore,
   NEW_DEVICE_NOTICES_PER_DAY,
   NEW_DEVICE_NOTICE_WINDOW_MS,
   fingerprintDevice,
+  fingerprintMarker,
+  fingerprintMarkerOwingNotice,
   isNewDevice,
 } from "./known-device.js";
 import { type SecurityEffectLogger, describeError } from "./settle-security-effect.js";
 
+const SIGNED_IN_DEVICES_ANCHOR = "signed-in-devices";
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /** How each way to sign in reads in the one "added or removed" email. */
@@ -34,7 +38,7 @@ const SIGN_IN_METHOD_LABELS = {
 
 export type SecurityNoticeDeps = {
   /** Read straight from the repository, not the operations service, which itself sends notices. */
-  subjects: Pick<IIdentitySubjectRepository, "findById">;
+  subjects: Pick<IIdentitySubjectRepository, "findById" | "readTimeZone">;
   email: EmailSender;
   devices: KnownDeviceStore;
   /** LAX Account's security page: where "this wasn't me" sends the reader. */
@@ -88,9 +92,15 @@ export class SecurityNoticeService implements SecurityNoticePublisher, SecurityN
     }
     const subject = await this.deps.subjects.findById(event.userId);
     if (!subject) return;
+    // A sign-in is the person's own event, so it is told on their clock: the zone saved in LAX
+    // Account, or London when there is none.
+    const preference = await this.deps.subjects.readTimeZone(event.userId);
     const base = {
       userName: subject.name,
-      whenDisplay: formatLondonTime(event.at),
+      whenDisplay: formatNoticeTime(
+        event.at,
+        preference ? effectiveAccountTimeZone(preference) : null,
+      ),
       deviceLabel: event.userAgent ? formatDeviceLabel(event.userAgent) : null,
       secureAccountUrl: this.deps.secureAccountUrl,
     };
@@ -216,22 +226,69 @@ export class SecurityNoticeService implements SecurityNoticePublisher, SecurityN
         return;
       }
       case "sign_in":
-        await this.notifyIfNewDevice(event, () => enqueue("new-device-login", subject.email, {}));
+        await this.notifyIfNewDevice(event, () =>
+          enqueue("new-device-login", subject.email, {
+            reviewDevicesUrl: this.reviewDevicesUrl(),
+          }),
+        );
         return;
     }
+  }
+
+  /** The signed-in devices list on LAX Account's security page. */
+  private reviewDevicesUrl(): string {
+    const url = new URL(this.deps.secureAccountUrl);
+    url.hash = SIGNED_IN_DEVICES_ANCHOR;
+    return url.toString();
   }
 
   private async notifyIfNewDevice(
     event: Extract<SecurityNoticeEvent, { kind: "sign_in" }>,
     send: () => Promise<unknown>,
   ): Promise<void> {
+    const { userId, at } = event;
     const fingerprint = fingerprintDevice(event);
-    const seen = await this.deps.devices.touch({ userId: event.userId, fingerprint, at: event.at });
-    if (!isNewDevice(seen, event.at)) return;
+    const marker = event.deviceHash
+      ? fingerprintMarker({ userId, deviceHash: event.deviceHash })
+      : null;
+    const owedKey = event.deviceHash
+      ? fingerprintMarkerOwingNotice({ userId, deviceHash: event.deviceHash })
+      : null;
+    // A browser that was signed out from the devices list (or whose last notice failed) owes an
+    // email, whatever its label or country says.
+    const owed = owedKey
+      ? await this.deps.devices.hasSeen({ userId, fingerprint: owedKey, at })
+      : false;
+    // A browser the person has signed in from in the last 90 days is never new, whatever its label
+    // or country says now. Without a marker (a first visit, cleared cookies) the label rule decides.
+    const knownBrowser =
+      !owed && marker
+        ? await this.deps.devices.hasSeen({ userId, fingerprint: marker, at })
+        : false;
+    const seen = await this.deps.devices.touch({ userId, fingerprint, at });
+    // The marker is remembered only once the browser has been dealt with: no notice was due, the
+    // notice was queued, or the daily cap deliberately held it back. A notice that failed to queue
+    // leaves the browser unknown and owing, so its next sign-in is reported.
+    const settleBrowser = async () => {
+      if (!marker) return;
+      await this.deps.devices.remember({ userId, fingerprint: marker, at });
+      if (owed && owedKey) await this.deps.devices.forget({ userId, fingerprints: [owedKey] });
+    };
+    if (!owed && (knownBrowser || !isNewDevice(seen, at))) {
+      await settleBrowser();
+      return;
+    }
     const since = new Date(this.now().getTime() - NEW_DEVICE_NOTICE_WINDOW_MS);
-    const sent = await this.deps.devices.countNoticesSince(event.userId, since);
-    if (sent >= NEW_DEVICE_NOTICES_PER_DAY) return;
-    await send();
-    await this.deps.devices.markNotified({ userId: event.userId, fingerprint, at: event.at });
+    const sent = await this.deps.devices.countNoticesSince(userId, since);
+    if (sent < NEW_DEVICE_NOTICES_PER_DAY) {
+      try {
+        await send();
+      } catch (error) {
+        if (owedKey) await this.deps.devices.remember({ userId, fingerprint: owedKey, at });
+        throw error;
+      }
+      await this.deps.devices.markNotified({ userId, fingerprint, at });
+    }
+    await settleBrowser();
   }
 }

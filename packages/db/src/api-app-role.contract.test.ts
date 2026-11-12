@@ -30,6 +30,27 @@ async function withApiClient<T>(fn: (client: pg.Client) => Promise<T>): Promise<
 }
 
 describe.skipIf(!API_URL)("api_app role contract", { timeout: 60_000 }, () => {
+  it("can lock a lot row and raise its invoice and payment in the same transaction", async () => {
+    // The invoice raise locks the lot first (FOR UPDATE, which needs UPDATE on the table) and
+    // re-checks its winner before inserting, so a buyer default cannot slip in between.
+    await withApiClient(async (client) => {
+      await client.query("BEGIN");
+      try {
+        await client.query(
+          "SELECT status, winner_id, buyer_legal_entity_id FROM lot LIMIT 1 FOR UPDATE",
+        );
+      } finally {
+        await client.query("ROLLBACK");
+      }
+      const rows = await readTablePrivileges(
+        client,
+        ["bid_invoice", "bid_invoice_line", "payment"],
+        ["INSERT"],
+      );
+      expectTablePrivileges(rows, () => true);
+    });
+  });
+
   it("can read but not write the Bid identity directory", async () => {
     await withApiClient(async (client) => {
       const read = await client.query<{ allowed: boolean }>(

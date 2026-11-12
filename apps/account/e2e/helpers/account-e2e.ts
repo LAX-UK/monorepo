@@ -26,6 +26,16 @@ export function newPersonCredentials(): AccountCredentials | null {
   return email && password ? { email, password } : null;
 }
 
+/**
+ * A seeded person only the signed-in devices journeys use. They sign in from several browsers and
+ * sign others out, which would end the sessions other specs reuse, so no other spec shares them.
+ */
+export function devicesPersonCredentials(): AccountCredentials | null {
+  const email = process.env.ACCOUNT_E2E_DEVICES_EMAIL?.trim();
+  const password = process.env.ACCOUNT_E2E_DEVICES_PASSWORD;
+  return email && password ? { email, password } : null;
+}
+
 /** Why the collector journeys cannot run here, or null when they can. */
 export function collectorSkipReason(): string | null {
   if (!accountE2eEnabled) return accountE2eSkipReason;
@@ -36,6 +46,12 @@ export function collectorSkipReason(): string | null {
 export function newPersonSkipReason(): string | null {
   if (!accountE2eEnabled) return accountE2eSkipReason;
   return newPersonCredentials() ? null : "ACCOUNT_E2E_EMPTY_EMAIL / _PASSWORD not set";
+}
+
+/** Why the signed-in devices journeys cannot run here, or null when they can. */
+export function devicesPersonSkipReason(): string | null {
+  if (!accountE2eEnabled) return accountE2eSkipReason;
+  return devicesPersonCredentials() ? null : "ACCOUNT_E2E_DEVICES_EMAIL / _PASSWORD not set";
 }
 
 /**

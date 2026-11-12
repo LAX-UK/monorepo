@@ -36,6 +36,8 @@ const REOFFER_ERRORS = {
   lot_not_reawardable: 409,
   lot_has_buyer: 409,
   lot_not_ended: 409,
+  /** The total the bidder accepted is no longer what the lot would be invoiced at. */
+  price_changed: 409,
   // Other products
   artwork_offered_elsewhere: 409,
   money_paused: 423,

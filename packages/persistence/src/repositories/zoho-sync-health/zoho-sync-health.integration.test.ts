@@ -17,6 +17,7 @@ const TABLES = [
   "zoho_artwork_sync_outcome",
   "zoho_sync_health",
   "artwork_register",
+  "artwork_register_event",
   "domain_events",
   "domain_event_delivery",
 ];
@@ -48,6 +49,14 @@ async function register(input: {
     VALUES (${input.productId}, ${input.stockCode}, ${input.kind ?? "original"}, ${`Work ${input.stockCode}`},
       'An Artist', 'AA', ${offer}, ${refKind}, ${refKind ? "ref-1" : null},
       ${input.status === undefined ? "Available" : input.status})
+  `);
+}
+
+async function offerMoved(zohoProductId: string, to: string, at: Date) {
+  await db.execute(sql`
+    INSERT INTO artwork_register_event (register_id, type, actor, payload, created_at)
+    SELECT id, 'offer_moved', 'system', ${JSON.stringify({ from: { state: "lax_art" }, to: { state: to } })}::jsonb, ${at}
+    FROM artwork_register WHERE zoho_product_id = ${zohoProductId}
   `);
 }
 
@@ -285,6 +294,28 @@ describe.skipIf(!url)("Zoho sync health read models (Postgres)", { timeout: 30_0
         [code(12), "Available", "In Auction"],
         [code(13), null, "Sold"],
       ]);
+    });
+
+    it("expects Withdrawn for 30 days after the withdrawal, then Available", async () => {
+      const day = 24 * 60 * 60 * 1000;
+      const now = new Date("2026-11-12T12:00:00.000Z");
+      const clocked = new DrizzleZohoDriftReader(db, () => now);
+      const withdrawn = async (id: string, n: number, status: string, daysAgo: number | null) => {
+        await register({ productId: id, stockCode: code(n), offer: "withdrawn", status });
+        if (daysAgo !== null)
+          await offerMoved(id, "withdrawn", new Date(now.getTime() - daysAgo * day));
+      };
+      await withdrawn("w5", 31, "Available", 5);
+      await withdrawn("w31", 32, "Available", 31);
+      await withdrawn("w31w", 33, "Withdrawn", 31);
+      await withdrawn("w5w", 34, "Withdrawn", 5);
+      await withdrawn("wn", 35, "Withdrawn", null);
+      const page = await clocked.statusMismatches(PAGE);
+      expect(page.rows.map((row) => [row.stockCode, row.zohoStatus, row.expectedStatus])).toEqual([
+        [code(31), "Available", "Withdrawn"],
+        [code(33), "Withdrawn", "Available"],
+      ]);
+      expect((await clocked.counts()).statusMismatches).toBe(2);
     });
 
     it("counts every list without reading its rows", async () => {
