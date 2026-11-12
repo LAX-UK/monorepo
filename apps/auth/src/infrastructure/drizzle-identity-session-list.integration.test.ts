@@ -47,6 +47,7 @@ describe.skipIf(!DATABASE_URL)("the device list's data, against Postgres", () =>
     clientId: string,
     sid: string | null,
     refreshExpiresAt = new Date(now.getTime() + 30 * DAY),
+    extra: Partial<typeof oauthAccessToken.$inferInsert> = {},
   ) {
     await database.insert(oauthAccessToken).values({
       id,
@@ -60,6 +61,7 @@ describe.skipIf(!DATABASE_URL)("the device list's data, against Postgres", () =>
       sid,
       createdAt: now,
       updatedAt: now,
+      ...extra,
     });
   }
 
@@ -134,6 +136,28 @@ describe.skipIf(!DATABASE_URL)("the device list's data, against Postgres", () =>
     await token(`${ANN}-t1`, ANN, BID, `${ANN}-a`, new Date(now.getTime() - 1_000));
     await token(`${ANN}-t2`, ANN, SHOP, null);
     const [row] = await repository.listForSubject(ANN);
+    expect(row?.clientIds).toEqual([]);
+  });
+
+  it("does not count a refresh token that was rotated out, even before it expires", async () => {
+    await record(`${ANN}-a`, ANN);
+    // LAX Bid refreshed once: the predecessor is kept as consumed, the successor is live.
+    await token(`${ANN}-t1`, ANN, BID, `${ANN}-a`, undefined, {
+      refreshFamilyId: `${ANN}-fam`,
+      refreshConsumedAt: new Date(now.getTime() - 60_000),
+    });
+    await token(`${ANN}-t2`, ANN, BID, `${ANN}-a`, undefined, { refreshFamilyId: `${ANN}-fam` });
+    // LAX Shop's only token was rotated out, and its successor has since been revoked (deleted).
+    await token(`${ANN}-t3`, ANN, SHOP, `${ANN}-a`, undefined, {
+      refreshFamilyId: `${ANN}-fam2`,
+      refreshConsumedAt: new Date(now.getTime() - 60_000),
+    });
+    let [row] = await repository.listForSubject(ANN);
+    expect(row?.clientIds).toEqual([BID]);
+
+    // Revoking LAX Bid's live token leaves only its consumed predecessor, so LAX Bid goes too.
+    await database.delete(oauthAccessToken).where(inArray(oauthAccessToken.id, [`${ANN}-t2`]));
+    [row] = await repository.listForSubject(ANN);
     expect(row?.clientIds).toEqual([]);
   });
 

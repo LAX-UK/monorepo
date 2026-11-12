@@ -1,6 +1,6 @@
 import type { IdentityDatabase } from "@auction/identity-db";
 import { oauthAccessToken, session, sessionLineage } from "@auction/identity-db/schema";
-import { and, desc, eq, gt, isNotNull, ne, or, sql } from "drizzle-orm";
+import { and, desc, eq, gt, isNotNull, isNull, ne, or, sql } from "drizzle-orm";
 import type {
   IIdentitySessionRepository,
   IdentityOperationTransaction,
@@ -53,7 +53,12 @@ export class DrizzleIdentitySessionRepository implements IIdentitySessionReposit
     });
   }
 
-  /** The OAuth clients holding unexpired tokens for each sign-in id, for the person's own tokens. */
+  /**
+   * The OAuth clients holding live tokens for each sign-in id, for the person's own tokens. Live
+   * means the refresh token is unexpired and has not been rotated out: rotation keeps the
+   * predecessor with `refresh_consumed_at` set, and introspection already treats it as inactive.
+   * Revoked tokens are deleted, so they never reach this query.
+   */
   private async liveClientsBySid(subjectId: string): Promise<Map<string, string[]>> {
     const tokens = await this.db
       .selectDistinct({ sid: oauthAccessToken.sid, clientId: oauthAccessToken.clientId })
@@ -63,6 +68,7 @@ export class DrizzleIdentitySessionRepository implements IIdentitySessionReposit
           eq(oauthAccessToken.userId, subjectId),
           isNotNull(oauthAccessToken.sid),
           gt(oauthAccessToken.refreshTokenExpiresAt, sql`now()`),
+          isNull(oauthAccessToken.refreshConsumedAt),
         ),
       );
     const bySid = new Map<string, string[]>();
