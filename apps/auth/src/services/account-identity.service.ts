@@ -1,11 +1,16 @@
 import type { DeviceKind } from "@auction/identity-contracts";
-import { detectDeviceKind } from "@auction/identity-contracts";
+import { DEVICE_LIST_PRODUCTS, detectDeviceKind } from "@auction/identity-contracts";
 import type { AccountTimeZone, AccountTimeZoneChange } from "@auction/identity-contracts";
 import type { DurableSecurityEffects } from "./durable-security-effects.js";
 import type { IdentityOperationsService } from "./identity-operations.service.js";
 import { RecentSessionGuard } from "./recent-session-guard.js";
 
 const ACCOUNT_SESSIONS_PATH = "account-sessions";
+
+/** Only the products the device list names leave this service; internal client ids stay here. */
+const DEVICE_LIST_CLIENT_IDS: ReadonlySet<string> = new Set(
+  DEVICE_LIST_PRODUCTS.map((product) => product.clientId),
+);
 
 export type AccountIdentityPorts = {
   operations: Pick<
@@ -41,7 +46,7 @@ export type AccountSessionRow = {
   deviceKind: DeviceKind;
   /** ISO alpha-2 country the edge reported; null when unknown. */
   country: string | null;
-  /** OAuth client ids of the products used on this browser. */
+  /** OAuth client ids of the public products used on this browser (never staff or mobile clients). */
   products: readonly string[];
 };
 
@@ -135,7 +140,7 @@ export class AccountIdentityService {
         signedInWith: signedInWithOf(session.amr),
         deviceKind: detectDeviceKind(session.userAgent),
         country: session.country,
-        products: session.clientIds,
+        products: session.clientIds.filter((clientId) => DEVICE_LIST_CLIENT_IDS.has(clientId)),
       })),
     };
   }

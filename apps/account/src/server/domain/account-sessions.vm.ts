@@ -5,6 +5,7 @@ import {
   deviceProductNames,
   formatDeviceLabel,
 } from "@auction/identity-contracts/account";
+import { countryName } from "./account-addresses.vm";
 
 export type SessionRowVm = {
   id: string;
@@ -42,14 +43,11 @@ function describeActivity(lastActiveAt: Date, now: Date): string {
   return `Last active ${formatWeekdayDayMonth(lastActiveAt, now)}`;
 }
 
-let regionNames: Intl.DisplayNames | null = null;
-
-/** "United Kingdom" for "GB"; null when the code is not one the runtime can name. */
-function countryName(code: string | null): string | null {
+/** "United Kingdom" for "GB", worded as in the address book; null when the runtime cannot name it. */
+function deviceCountryName(code: string | null): string | null {
   if (!code) return null;
-  regionNames ??= new Intl.DisplayNames(["en"], { type: "region" });
-  const name = regionNames.of(code);
-  return name && name !== code ? name : null;
+  const name = countryName(code);
+  return name !== code ? name : null;
 }
 
 /** Parts the person has no value for are left out, never worded as unknown. */
@@ -66,7 +64,7 @@ function toRow(session: AccountSession, now: Date): SessionRowVm {
     isCurrent: session.isCurrent,
     activity: joinParts([
       describeActivity(new Date(session.lastActiveAt), now),
-      countryName(session.country),
+      deviceCountryName(session.country),
     ]),
     signedIn: joinParts([
       `Signed in ${formatWeekdayDayMonth(session.createdAt, now)}`,

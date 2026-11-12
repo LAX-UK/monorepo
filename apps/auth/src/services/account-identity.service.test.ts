@@ -133,7 +133,7 @@ describe("AccountIdentityService", () => {
           signedInAt,
           lastSeenAt,
           country: "FR",
-          clientIds: ["lax-bid-web", "lax-shop-web"],
+          clientIds: ["lax-shop-admin", "lax-bid-web", "lax-shop-web"],
         }),
         session({ id: "older" }),
       ]);
@@ -143,6 +143,7 @@ describe("AccountIdentityService", () => {
           id: "current",
           deviceKind: "phone",
           country: "FR",
+          // Staff and mobile client ids never leave the sign-in service.
           products: ["lax-bid-web", "lax-shop-web"],
           createdAt: signedInAt,
           lastActiveAt: lastSeenAt,
