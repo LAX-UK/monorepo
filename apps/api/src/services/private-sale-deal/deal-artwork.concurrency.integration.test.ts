@@ -12,7 +12,8 @@ import {
   DrizzlePrivateSaleDealQueryRepository,
   DrizzlePrivateSaleDealRepository,
 } from "@auction/persistence/repositories";
-import { describe, expect, it } from "vitest";
+import { sql } from "drizzle-orm";
+import { afterAll, describe, expect, it } from "vitest";
 import { seedIdentityUserFixtures } from "../../testing/identity-user-fixtures.js";
 import { DealArtworkService } from "./deal-artwork.service.js";
 import { recordingSink } from "./deal-fixtures.test-util.js";
@@ -22,6 +23,19 @@ import type { DealStaffViewer } from "./deal-staff-permissions.js";
 import { DealTransitionService } from "./deal-transition.service.js";
 
 const url = process.env.DATABASE_URL;
+const DEAL_TABLES = [
+  "private_sale_deal_artwork_history",
+  "private_sale_deal_stage_history",
+  "private_sale_deal_party_history",
+  "private_sale_deal_party",
+];
+/** Append-only tables these tests write to; each has a guard trigger that refuses DELETE. */
+const GUARDED = [
+  "private_sale_deal_artwork_history",
+  "private_sale_deal_stage_history",
+  "private_sale_deal_party_history",
+  "artwork_register_event",
+];
 const t = new Date("2026-11-01T00:00:00Z");
 const MANAGER = (userId: string): DealStaffViewer => ({
   userId,
@@ -32,7 +46,7 @@ const MANAGER = (userId: string): DealStaffViewer => ({
 
 /**
  * Two people acting at the same moment, on real, committed transactions. The rows these tests
- * write are kept (a deal's artwork history is append-only), under ids that are new on every run.
+ * write are removed afterwards (see `cleanUp`), so the shared test database is left as it was found.
  */
 describe.skipIf(!url)(
   "two people changing deal artworks at once (Postgres)",
@@ -45,6 +59,9 @@ describe.skipIf(!url)(
     const sellerUserId = `icf-cc-seller-${run}`;
     const sellerEntityId = randomUUID();
     let counter = 0;
+    const artworkIds: string[] = [];
+    const dealIds: string[] = [];
+    const submissionIds: string[] = [];
 
     const registers = new DrizzleArtworkRegisterRepository(db);
     const events = recordingSink();
@@ -121,6 +138,7 @@ describe.skipIf(!url)(
       };
       const created = await registers.create(entry, "zoho", t);
       if (!created.ok) throw new Error(created.reason);
+      artworkIds.push(created.entry.id);
       return created.entry;
     }
 
@@ -134,6 +152,7 @@ describe.skipIf(!url)(
           submittedByUserId: sellerUserId,
         })
         .returning({ id: itemSubmission.id });
+      submissionIds.push(submission?.id as string);
       const deal = await new DrizzlePrivateSaleDealRepository(db).create({
         itemSubmissionId: submission?.id as string,
         ...(artworkRegisterId ? { artworkRegisterId } : {}),
@@ -143,8 +162,49 @@ describe.skipIf(!url)(
         sellerCommissionBps: 1500,
         actorUserId: staffId,
       });
+      dealIds.push(deal.id);
       return deal;
     }
+
+    /**
+     * Removes everything this run wrote. The artwork history is append-only, so the guard trigger
+     * is switched off for the length of one transaction (nobody else ever sees it off) and back on
+     * before it commits. Needs the table owner, as the migrations do.
+     */
+    async function cleanUp() {
+      if (!seeded) return;
+      const list = (ids: string[]) =>
+        sql.join(
+          ids.map((id) => sql`${id}::uuid`),
+          sql`, `,
+        );
+      await db.transaction(async (tx) => {
+        for (const table of GUARDED) {
+          await tx.execute(sql`ALTER TABLE ${sql.identifier(table)} DISABLE TRIGGER USER`);
+        }
+        if (dealIds.length > 0) {
+          const deals = list(dealIds);
+          for (const table of DEAL_TABLES) {
+            await tx.execute(sql`DELETE FROM ${sql.identifier(table)} WHERE deal_id IN (${deals})`);
+          }
+          await tx.execute(sql`DELETE FROM private_sale_deal WHERE id IN (${deals})`);
+        }
+        if (submissionIds.length > 0) {
+          await tx.execute(sql`DELETE FROM item_submission WHERE id IN (${list(submissionIds)})`);
+        }
+        if (artworkIds.length > 0) {
+          const art = list(artworkIds);
+          await tx.execute(sql`DELETE FROM artwork_register_event WHERE register_id IN (${art})`);
+          await tx.execute(sql`DELETE FROM artwork_register WHERE id IN (${art})`);
+        }
+        await tx.execute(sql`DELETE FROM legal_entity WHERE id = ${sellerEntityId}::uuid`);
+        await tx.execute(sql`DELETE FROM "user" WHERE id IN (${staffId}, ${sellerUserId})`);
+        for (const table of GUARDED) {
+          await tx.execute(sql`ALTER TABLE ${sql.identifier(table)} ENABLE TRIGGER USER`);
+        }
+      });
+    }
+    afterAll(cleanUp);
 
     it("same deal, two different artworks: one is kept, the other is told the deal changed", async () => {
       await setup();

@@ -11,6 +11,11 @@ import { parseOptionalBooleanFlag } from "@auction/validators";
 import { z } from "zod";
 
 /** Docker Compose uses `VAR=` for unset substitutions, which is `""`, not missing. */
+function emptyToUndefined(val: unknown): unknown {
+  if (val === "" || val === null) return undefined;
+  return val;
+}
+
 /** An address staff open from the screens: https, or http on this machine while developing. */
 function httpsUrl() {
   return z
@@ -21,11 +26,6 @@ function httpsUrl() {
         url.startsWith("https://") || /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?(\/|$)/.test(url),
       "must be an https address (http only for localhost)",
     );
-}
-
-function emptyToUndefined(val: unknown): unknown {
-  if (val === "" || val === null) return undefined;
-  return val;
 }
 
 function trimEmptyToUndefined(val: unknown): unknown {

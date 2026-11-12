@@ -351,6 +351,30 @@ describe("DealArtworkService holding through the register's lock", () => {
     },
   );
 
+  it.each(["agreed", "paid", "released"] as const)(
+    "needs a note to record a first reason once the deal is %s",
+    async (stage) => {
+      const { service, committed } = setup({
+        deal: { stage, artworkRegisterId: null, artworkUnlinkedReason: null },
+      });
+      const body = { version: 3, notInRegister: { reason: "sellers_own_work" } } as const;
+      expect(await service.set(viewer(), "PS-0001", body)).toMatchObject({
+        ok: false,
+        error: "reason_required",
+      });
+      expect(committed.changes).toEqual([]);
+      const noted = await service.set(viewer(), "PS-0001", {
+        ...body,
+        reason: "Seller's own work.",
+      });
+      expect(noted.ok).toBe(true);
+      expect(committed.changes[0]).toMatchObject({
+        action: "linked",
+        reason: "Seller's own work.",
+      });
+    },
+  );
+
   it("replaces a recorded reason before agreement, needs a note, and records it as a change", async () => {
     const deal = { artworkRegisterId: null, artworkUnlinkedReason: "sellers_own_work" } as const;
     const body = { version: 3, notInRegister: { reason: "in_zoho_not_linked" } } as const;
@@ -419,13 +443,13 @@ describe("DealArtworkService holding through the register's lock", () => {
   });
 
   it("answers stale when someone else changed the deal between reading it and writing", async () => {
-    const { service, offer, committed } = setup({ writeKind: "conflict" });
+    const { service, committed } = setup({ writeKind: "conflict" });
     expect(await service.set(viewer(), "PS-0001", CHANGE)).toEqual({
       ok: false,
       error: "stale_version",
       currentVersion: 3,
     });
-    expect(offer).not.toHaveBeenCalled();
+    // The artwork is held first and rolled back with the transaction; nothing is published.
     expect(committed.events).toEqual([]);
   });
 
