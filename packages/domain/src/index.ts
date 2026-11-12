@@ -1336,7 +1336,12 @@ export {
 } from "./reoffer-next-bidder.js";
 export {
   INVOICE_NOT_RAISED_PREFIX,
+  INVOICE_RETRY_BACKOFF_MS,
+  INVOICE_RETRY_PREFIX,
   invoiceSweepOutcome,
+  isTerminalInvoiceReason,
+  RECOVERABLE_INVOICE_REASONS,
+  TERMINAL_INVOICE_REASONS,
   type InvoiceAttempt,
   type InvoiceSweepOutcome,
 } from "./reoffer-invoice-outcome.js";

@@ -1,5 +1,12 @@
 import pino from "pino";
 import { describe, expect, it, vi } from "vitest";
+
+const captureMessage = vi.hoisted(() => vi.fn());
+vi.mock("@auction/observability", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@auction/observability")>();
+  return { ...actual, Sentry: { ...actual.Sentry, captureMessage } };
+});
+
 import { INVOICE_GRACE_MS, runReofferSweepJob } from "./reoffer-sweep.js";
 
 const log = pino({ level: "silent" });
@@ -83,6 +90,7 @@ describe("runReofferSweepJob", () => {
     });
     expect(reader.acceptedWithoutInvoice).toHaveBeenCalledWith({
       reawardedBefore: new Date(now.getTime() - INVOICE_GRACE_MS),
+      retryMarkedBefore: new Date(now.getTime() - 24 * 60 * 60 * 1000),
       limit: 200,
     });
     expect(ensureInvoice.mock.calls.map(([id]) => id)).toEqual(["lot-1", "lot-2"]);
@@ -101,38 +109,83 @@ describe("runReofferSweepJob", () => {
     expect(reader.acceptedWithoutInvoice).not.toHaveBeenCalled();
   });
 
-  it.each([
-    "lot_not_found",
-    "lot_not_ended",
-    "no_winner",
-    "missing_buyer_legal_entity",
-    "missing_seller_legal_entity",
-    "payment_already_exists",
-    "already_refunded",
-    "payment_amount_exceeds_limit",
-    "invalid_payment_amount",
-    "lot_moved",
-  ])("counts, logs and marks %s so the row is not listed again", async (reason) => {
-    const marker = markerOf();
-    const warn = vi.fn();
-    const result = await runReofferSweepJob({
+  const sweepOnce = (reason: string | undefined, marker = markerOf(), warn = vi.fn()) =>
+    runReofferSweepJob({
       reader: readerOf({ missed: [1] }),
       clock: { settleSellerRequest: vi.fn(), settleOffer: vi.fn() },
       marker,
-      ensureInvoice: vi.fn(async () => ({ created: false, reason })),
+      ensureInvoice: vi.fn(async () =>
+        reason === undefined ? { created: false } : { created: false, reason },
+      ),
       log: { ...log, info: vi.fn(), warn } as unknown as typeof log,
     });
+
+  it.each([
+    "payment_already_exists",
+    "already_refunded",
+    "lot_moved",
+    "no_winner",
+    "lot_not_found",
+    "lot_not_ended",
+    "missing_buyer_legal_entity",
+  ])(
+    "counts, logs and marks %s for good: an invoice exists or the award is gone",
+    async (reason) => {
+      const marker = markerOf();
+      const warn = vi.fn();
+      const result = await sweepOnce(reason, marker, warn);
+      expect(result.invoicesUnraised).toBe(1);
+      expect(result.invoicesRaised).toBe(0);
+      expect(result.failed).toBe(0);
+      expect(marker.markInvoiceNotRaised).toHaveBeenCalledWith(
+        "offer-1",
+        `invoice_not_raised:${reason}`,
+      );
+      expect(warn).toHaveBeenCalledWith(
+        expect.objectContaining({ reofferId: "offer-1", lotId: "lot-1", reason, retry: false }),
+        "reoffer_invoice_not_raised",
+      );
+    },
+  );
+
+  it.each([
+    "missing_seller_legal_entity",
+    "payment_amount_exceeds_limit",
+    "invalid_payment_amount",
+    "some_future_reason",
+  ])("counts, logs and marks %s for a retry after the back-off, never for good", async (reason) => {
+    const marker = markerOf();
+    const warn = vi.fn();
+    const result = await sweepOnce(reason, marker, warn);
     expect(result.invoicesUnraised).toBe(1);
-    expect(result.invoicesRaised).toBe(0);
     expect(result.failed).toBe(0);
     expect(marker.markInvoiceNotRaised).toHaveBeenCalledWith(
       "offer-1",
-      `invoice_not_raised:${reason}`,
+      `invoice_not_raised:retry:${reason}`,
     );
     expect(warn).toHaveBeenCalledWith(
-      expect.objectContaining({ reofferId: "offer-1", lotId: "lot-1", reason }),
+      expect.objectContaining({ reason, retry: true }),
       "reoffer_invoice_not_raised",
     );
+  });
+
+  it("retries an unexplained refusal", async () => {
+    const marker = markerOf();
+    await sweepOnce(undefined, marker);
+    expect(marker.markInvoiceNotRaised).toHaveBeenCalledWith(
+      "offer-1",
+      "invoice_not_raised:retry:unchanged",
+    );
+  });
+
+  it("reports before it marks, so a crash at the mark cannot lose the report", async () => {
+    captureMessage.mockClear();
+    const marker = markerOf();
+    const warn = vi.fn();
+    await sweepOnce("missing_seller_legal_entity", marker, warn);
+    const markAt = marker.markInvoiceNotRaised.mock.invocationCallOrder[0] ?? 0;
+    expect(warn.mock.invocationCallOrder[0]).toBeLessThan(markAt);
+    expect(captureMessage.mock.invocationCallOrder[0]).toBeLessThan(markAt);
   });
 
   it("does not mark a raised invoice", async () => {
@@ -147,7 +200,8 @@ describe("runReofferSweepJob", () => {
     expect(marker.markInvoiceNotRaised).not.toHaveBeenCalled();
   });
 
-  it("reports a failed mark as a failed step", async () => {
+  it("reports a failed mark as a failed step, after the warning went out", async () => {
+    captureMessage.mockClear();
     const result = await runReofferSweepJob({
       reader: readerOf({ missed: [1] }),
       clock: { settleSellerRequest: vi.fn(), settleOffer: vi.fn() },
@@ -157,5 +211,9 @@ describe("runReofferSweepJob", () => {
     });
     expect(result.failed).toBe(1);
     expect(result.invoicesUnraised).toBe(0);
+    expect(captureMessage).toHaveBeenCalledWith(
+      expect.stringContaining("none can be raised"),
+      expect.objectContaining({ level: "warning" }),
+    );
   });
 });

@@ -1,4 +1,4 @@
-import { invoiceSweepOutcome } from "@auction/domain";
+import { INVOICE_RETRY_BACKOFF_MS, invoiceSweepOutcome } from "@auction/domain";
 import { Sentry } from "@auction/observability";
 import type {
   IReofferInvoiceMarker,
@@ -24,7 +24,10 @@ export type ReofferSweepResult = {
   ended: number;
   offerReminders: number;
   invoicesRaised: number;
-  /** Missed invoices that cannot be raised; each is reported once and marked. */
+  /**
+   * Missed invoices that were not raised this run: reported and marked, for good when an invoice
+   * exists or the award is gone, otherwise to be tried again after the back-off.
+   */
   invoicesUnraised: number;
   failed: number;
 };
@@ -91,23 +94,30 @@ export async function runReofferSweepJob(options: {
   if (ensureInvoice) {
     const missed = await reader.acceptedWithoutInvoice({
       reawardedBefore: new Date(now().getTime() - INVOICE_GRACE_MS),
+      retryMarkedBefore: new Date(now().getTime() - INVOICE_RETRY_BACKOFF_MS),
       limit: SWEEP_BATCH,
     });
     await each("invoice", missed, async (ref) => {
       const outcome = invoiceSweepOutcome(await ensureInvoice(ref.lotId));
       if (outcome.kind === "raised") return "raised";
-      // Terminal: another run would get the same answer. Mark first, so a crash re-reports at most once.
-      await marker.markInvoiceNotRaised(ref.reofferId, outcome.marker);
-      result.invoicesUnraised += 1;
+      // Report first, then mark: a crash in between reports the row twice, never zero times.
+      const retry = outcome.kind === "retry";
       log.warn(
-        { reofferId: ref.reofferId, lotId: ref.lotId, reason: outcome.reason },
+        { reofferId: ref.reofferId, lotId: ref.lotId, reason: outcome.reason, retry },
         "reoffer_invoice_not_raised",
       );
-      Sentry.captureMessage("reoffer sweep: re-awarded lot has no invoice and none can be raised", {
-        level: "warning",
-        tags: { job: "reoffer_sweep", step: "invoice", reason: outcome.reason },
-        extra: { reofferId: ref.reofferId, lotId: ref.lotId },
-      });
+      Sentry.captureMessage(
+        retry
+          ? "reoffer sweep: re-awarded lot has no invoice; will retry once the cause is fixed"
+          : "reoffer sweep: re-awarded lot has no invoice and none can be raised",
+        {
+          level: "warning",
+          tags: { job: "reoffer_sweep", step: "invoice", reason: outcome.reason, retry },
+          extra: { reofferId: ref.reofferId, lotId: ref.lotId },
+        },
+      );
+      await marker.markInvoiceNotRaised(ref.reofferId, outcome.marker);
+      result.invoicesUnraised += 1;
       return outcome.reason;
     });
   }

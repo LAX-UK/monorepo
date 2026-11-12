@@ -1,20 +1,32 @@
 import { type Database, lotNotDeleted } from "@auction/db";
-import { buyerDefault, lot, lotReoffer, payment, sellerConsent } from "@auction/db/schema";
-import { and, asc, desc, eq, inArray, isNotNull, isNull, lt, notExists, sql } from "drizzle-orm";
+import {
+  bidInvoice,
+  buyerDefault,
+  lot,
+  lotReoffer,
+  payment,
+  sellerConsent,
+} from "@auction/db/schema";
+import { INVOICE_RETRY_PREFIX } from "@auction/domain";
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  isNotNull,
+  isNull,
+  like,
+  lt,
+  ne,
+  notExists,
+  or,
+  sql,
+} from "drizzle-orm";
 import type {
   IReofferInvoiceMarker,
   IReofferSweepReader,
   ReofferSweepRef,
 } from "../interfaces/reoffer-sweep.js";
-
-/** Payments that stand for an invoice: the ones `ensureForLot` itself treats as one. */
-const LIVE_PAYMENT_STATUSES = [
-  "pending",
-  "authorized",
-  "captured",
-  "requires_manual_review",
-  "refunded",
-] as const;
 
 /** The listings the clock sweeps start from. Each is a pointer; the sweeps re-read under locks. */
 export class DrizzleReofferSweepReader implements IReofferSweepReader {
@@ -52,6 +64,7 @@ export class DrizzleReofferSweepReader implements IReofferSweepReader {
 
   async acceptedWithoutInvoice(input: {
     reawardedBefore: Date;
+    retryMarkedBefore: Date;
     limit: number;
   }): Promise<ReofferSweepRef[]> {
     return this.db
@@ -69,22 +82,35 @@ export class DrizzleReofferSweepReader implements IReofferSweepReader {
           eq(lot.winnerId, lotReoffer.offeredUserId),
           // The account the invoice would be raised to is the one the offer went to.
           eq(lot.buyerLegalEntityId, lotReoffer.offeredLegalEntityId),
-          // Not already tried and found unraisable (see `DrizzleReofferInvoiceMarker`).
-          isNull(lotReoffer.closeReason),
+          // Not already tried and found unraisable for good, nor tried too recently to try again
+          // (see `DrizzleReofferInvoiceMarker`).
+          or(
+            isNull(lotReoffer.closeReason),
+            and(
+              like(lotReoffer.closeReason, `${INVOICE_RETRY_PREFIX}%`),
+              lt(lotReoffer.updatedAt, input.retryMarkedBefore),
+            ),
+          ),
           sql`${lotReoffer.buyerDefaultId} = (
             select ${buyerDefault.id} from ${buyerDefault}
              where ${buyerDefault.lotId} = ${lotReoffer.lotId}
              order by ${buyerDefault.createdAt} desc, ${buyerDefault.id} desc
              limit 1)`,
+          // No payment of this account stands for an invoice on the lot. Every payment does, whatever
+          // its status (a buyer who relinquished, a stale checkout that was cancelled, a refund),
+          // except a cancelled one whose invoice was voided: only a buyer default voids an invoice,
+          // and that one is the earlier award the re-award replaced. A cancelled payment with no
+          // invoice, or a live invoice, still counts, so an unclear row is never re-invoiced.
           notExists(
             this.db
               .select({ id: payment.id })
               .from(payment)
+              .leftJoin(bidInvoice, eq(bidInvoice.id, payment.invoiceId))
               .where(
                 and(
                   eq(payment.lotId, lotReoffer.lotId),
                   eq(payment.buyerLegalEntityId, lotReoffer.offeredLegalEntityId),
-                  inArray(payment.status, [...LIVE_PAYMENT_STATUSES]),
+                  or(ne(payment.status, "cancelled"), isNull(bidInvoice.voidedAt)),
                 ),
               ),
           ),
@@ -96,9 +122,10 @@ export class DrizzleReofferSweepReader implements IReofferSweepReader {
 }
 
 /**
- * Marks an accepted offer whose invoice cannot be raised, in `close_reason` (an accepted offer is
- * not closed, so the column is free and the worker already holds UPDATE on it). The listing skips
- * marked offers, so one dead row is reported once and does not crowd out new missed invoices.
+ * Marks an accepted offer whose invoice was not raised, in `close_reason` (an accepted offer is
+ * not closed, so the column is free and the worker already holds UPDATE on it). A terminal marker
+ * keeps the offer out of the listing for good; a retry marker (`invoice_not_raised:retry:…`) and
+ * its `updated_at` keep it out for the back-off only. A terminal marker is never overwritten.
  */
 export class DrizzleReofferInvoiceMarker implements IReofferInvoiceMarker {
   constructor(private readonly db: Database) {}
@@ -111,7 +138,10 @@ export class DrizzleReofferInvoiceMarker implements IReofferInvoiceMarker {
         and(
           eq(lotReoffer.id, reofferId),
           eq(lotReoffer.status, "accepted"),
-          isNull(lotReoffer.closeReason),
+          or(
+            isNull(lotReoffer.closeReason),
+            like(lotReoffer.closeReason, `${INVOICE_RETRY_PREFIX}%`),
+          ),
         ),
       )
       .returning({ id: lotReoffer.id });

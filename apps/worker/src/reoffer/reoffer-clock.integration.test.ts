@@ -3,6 +3,7 @@ import { closeDb, createDb } from "@auction/db";
 import {
   bid,
   bidIdentityDirectory,
+  bidInvoice,
   buyerDefault,
   domainEvent,
   legalEntity,
@@ -654,10 +655,14 @@ describe.skipIf(!ownerUrl || !workerUrl)(
         await owner.transaction((tx) => reaward.reaward(tx, { reofferId: o.id }));
         return { s, o };
       }
-      const listed = async (reawardedBefore: Date) =>
-        (await sweepReader.acceptedWithoutInvoice({ reawardedBefore, limit: 500 })).map(
-          (ref) => ref.reofferId,
-        );
+      const listed = async (reawardedBefore: Date, retryMarkedBefore = new Date(0)) =>
+        (
+          await sweepReader.acceptedWithoutInvoice({
+            reawardedBefore,
+            retryMarkedBefore,
+            limit: 500,
+          })
+        ).map((ref) => ref.reofferId);
       const later = () => new Date(Date.now() + 60_000);
 
       it("lists it, once the award is older than the grace period, and raises the invoice", async () => {
@@ -739,10 +744,26 @@ describe.skipIf(!ownerUrl || !workerUrl)(
         expect(await listed(later())).toContain(o.id);
       });
 
+      const invoiceOf = async (lotId: string, voided: boolean) => {
+        const [row] = await owner
+          .insert(bidInvoice)
+          .values({
+            lotId,
+            buyerLegalEntityId: bidderEntity,
+            sellerLegalEntityId: sellerEntity,
+            totalPence: 97_200,
+            raisedAt: new Date(),
+            dueAt: new Date(Date.now() + 7 * 86_400_000),
+            voidedAt: voided ? new Date() : null,
+          })
+          .returning({ id: bidInvoice.id });
+        return row?.id as string;
+      };
       const paymentOf = (
         lotId: string,
-        status: "cancelled" | "authorized",
+        status: "cancelled" | "authorized" | "refunded",
         entity = bidderEntity,
+        invoiceId: string | null = null,
       ) =>
         owner.insert(payment).values({
           lotId,
@@ -752,13 +773,55 @@ describe.skipIf(!ownerUrl || !workerUrl)(
           amount: "972.00",
           platformFee: "90.00",
           status,
+          invoiceId,
+        });
+      const sweepWith = (ensureInvoice: (lotId: string) => Promise<{ created: boolean }>) =>
+        runReofferSweepJob({
+          reader: sweepReader,
+          clock: {
+            settleSellerRequest: async () => "waiting" as const,
+            settleOffer: async () => "waiting" as const,
+          },
+          marker,
+          ensureInvoice,
+          log,
+          now: () => new Date(Date.now() + 3_600_000),
         });
 
-      it("counts only live payments: a cancelled one hides nothing", async () => {
+      it("never re-invoices a buyer whose own payment on a live invoice was cancelled", async () => {
+        // The buyer relinquished the win, or a stale checkout was cancelled (and may yet be
+        // captured late): the invoice stands, so the sweep must neither list nor raise it.
         const { s, o } = await reawarded();
-        await paymentOf(s.lotId, "cancelled");
-        await paymentOf(s.lotId, "cancelled");
+        const invoiceId = await invoiceOf(s.lotId, false);
+        await paymentOf(s.lotId, "cancelled", bidderEntity, invoiceId);
+        expect(await listed(later())).not.toContain(o.id);
+        const ensureInvoice = vi.fn(async () => ({ created: true }));
+        await sweepWith(ensureInvoice);
+        expect(ensureInvoice).not.toHaveBeenCalledWith(s.lotId);
+      });
+
+      it("never re-invoices on a cancelled payment with no invoice, nor on a refunded one", async () => {
+        const cancelled = await reawarded();
+        await paymentOf(cancelled.s.lotId, "cancelled");
+        const refunded = await reawarded();
+        await paymentOf(refunded.s.lotId, "refunded");
+        const ids = await listed(later());
+        expect(ids).not.toContain(cancelled.o.id);
+        expect(ids).not.toContain(refunded.o.id);
+      });
+
+      it("lists the account's earlier payment that a default cancelled with its voided invoice", async () => {
+        const { s, o } = await reawarded();
+        await paymentOf(s.lotId, "cancelled", bidderEntity, await invoiceOf(s.lotId, true));
+        await paymentOf(s.lotId, "cancelled", bidderEntity, await invoiceOf(s.lotId, true));
         expect(await listed(later())).toContain(o.id);
+        // Any payment on the new, live invoice hides it again, whatever its status.
+        await paymentOf(s.lotId, "cancelled", bidderEntity, await invoiceOf(s.lotId, false));
+        expect(await listed(later())).not.toContain(o.id);
+      });
+
+      it("a live payment hides it", async () => {
+        const { s, o } = await reawarded();
         await paymentOf(s.lotId, "authorized");
         expect(await listed(later())).not.toContain(o.id);
       });
@@ -770,42 +833,75 @@ describe.skipIf(!ownerUrl || !workerUrl)(
       });
 
       describe.each([
-        ["lot_not_found"],
-        ["payment_amount_exceeds_limit"],
-        ["invalid_payment_amount"],
-        ["missing_seller_legal_entity"],
-        ["no_winner"],
-        ["lot_not_ended"],
-        ["missing_buyer_legal_entity"],
         ["payment_already_exists"],
         ["already_refunded"],
         ["lot_moved"],
-      ])("when ensureForLot answers %s", (reason) => {
-        it("counts it, marks it, and lists the row only once", async () => {
+        ["no_winner"],
+        ["lot_not_found"],
+        ["lot_not_ended"],
+        ["missing_buyer_legal_entity"],
+      ])("when ensureForLot answers %s (terminal)", (reason) => {
+        it("counts it, marks it for good, and never lists the row again", async () => {
           const { o } = await reawarded();
           const ensureInvoice = vi.fn(async () => ({ created: false, reason }));
-          const sweep = () =>
-            runReofferSweepJob({
-              reader: sweepReader,
-              clock: {
-                settleSellerRequest: async () => "waiting" as const,
-                settleOffer: async () => "waiting" as const,
-              },
-              marker,
-              ensureInvoice,
-              log,
-              now: () => new Date(Date.now() + 3_600_000),
-            });
-          const first = await sweep();
+          const first = await sweepWith(ensureInvoice);
           expect(first.invoicesUnraised).toBeGreaterThanOrEqual(1);
           expect(first.failed).toBe(0);
           expect((await offerRow(o.id))?.closeReason).toBe(`invoice_not_raised:${reason}`);
           expect((await offerRow(o.id))?.status).toBe("accepted");
           expect(await listed(later())).not.toContain(o.id);
+          // Not even once the back-off of a retry would have passed.
+          expect(await listed(later(), later())).not.toContain(o.id);
           ensureInvoice.mockClear();
-          await sweep();
+          await sweepWith(ensureInvoice);
           expect(ensureInvoice).not.toHaveBeenCalledWith(o.ref.lotId);
         });
+      });
+
+      describe.each([
+        ["missing_seller_legal_entity"],
+        ["payment_amount_exceeds_limit"],
+        ["invalid_payment_amount"],
+        ["some_future_reason"],
+      ])("when ensureForLot answers %s (recoverable)", (reason) => {
+        it("marks it for a retry, lists it again after the back-off, and raises it once fixed", async () => {
+          const { o } = await reawarded();
+          const refused = vi.fn(async () => ({ created: false, reason }));
+          const first = await sweepWith(refused);
+          expect(first.invoicesUnraised).toBeGreaterThanOrEqual(1);
+          expect(first.failed).toBe(0);
+          const marked = await offerRow(o.id);
+          expect(marked?.closeReason).toBe(`invoice_not_raised:retry:${reason}`);
+          expect(marked?.status).toBe("accepted");
+          const markedAt = marked?.updatedAt as Date;
+          // Within the back-off it is left alone ...
+          expect(await listed(later(), new Date(markedAt.getTime() - 1))).not.toContain(o.id);
+          // ... and once the back-off has passed it is listed again.
+          expect(await listed(later(), new Date(markedAt.getTime() + 1))).toContain(o.id);
+
+          // A run within the back-off does not try it.
+          refused.mockClear();
+          await sweepWith(refused);
+          expect(refused).not.toHaveBeenCalledWith(o.ref.lotId);
+
+          // The cause is fixed; the next run after the back-off raises the invoice.
+          await owner
+            .update(lotReoffer)
+            .set({ updatedAt: new Date(Date.now() - 2 * 86_400_000) })
+            .where(eq(lotReoffer.id, o.id));
+          const raised = vi.fn(async () => ({ created: true }));
+          await sweepWith(raised);
+          expect(raised).toHaveBeenCalledWith(o.ref.lotId);
+        });
+      });
+
+      it("a terminal marker is never overwritten, a retry marker is", async () => {
+        const { o } = await reawarded();
+        expect(await marker.markInvoiceNotRaised(o.id, "invoice_not_raised:retry:a")).toBe(true);
+        expect(await marker.markInvoiceNotRaised(o.id, "invoice_not_raised:retry:b")).toBe(true);
+        expect(await marker.markInvoiceNotRaised(o.id, "invoice_not_raised:lot_moved")).toBe(true);
+        expect(await marker.markInvoiceNotRaised(o.id, "invoice_not_raised:retry:c")).toBe(false);
+        expect((await offerRow(o.id))?.closeReason).toBe("invoice_not_raised:lot_moved");
       });
 
       it("marks an offer once, only while accepted", async () => {
