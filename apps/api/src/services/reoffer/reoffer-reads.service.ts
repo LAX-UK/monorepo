@@ -199,6 +199,9 @@ function sellerView(row: SellerConsentRequestRow): SellerReofferView {
   return sellerReofferViewSchema.parse({
     id: row.reofferId,
     lotId: row.lotId,
+    lotTitle: row.lot.title,
+    lotNumber: row.lot.lotNumber,
+    lotEndedAt: row.lot.endedAt.toISOString(),
     status: row.offerStatus,
     consentStatus: row.consentStatus,
     offerMinor: terms.amountPence,
@@ -208,5 +211,10 @@ function sellerView(row: SellerConsentRequestRow): SellerReofferView {
     reserveMinor: terms.reservePence,
     belowReserve: terms.reservePence !== null && terms.amountPence < terms.reservePence,
     answerDueAt: row.dueAt?.toISOString() ?? null,
+    answeredAt: row.answeredAt?.toISOString() ?? null,
+    answeredBy: row.answerChannel === "house_stock" ? null : row.answerChannel,
+    declinePreference: row.preferredNext,
+    offerEndsAt: row.offerEndsAt?.toISOString() ?? null,
+    soldAt: row.offerStatus === "accepted" ? (row.respondedAt?.toISOString() ?? null) : null,
   });
 }
