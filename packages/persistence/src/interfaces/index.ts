@@ -1470,3 +1470,4 @@ export type {
   SellerConsentRequestRow,
   StaffReofferView,
 } from "./reoffer-workflow.js";
+export type { IReofferSweepReader, ReofferSweepRef } from "./reoffer-sweep.js";

@@ -1356,6 +1356,16 @@ export {
   type SellerConsentWindow,
 } from "./reoffer-windows.js";
 export {
+  OFFER_REMINDER_LEAD_MS,
+  offerReminderAt,
+  offerStep,
+  sellerRequestStep,
+  type OfferFacts,
+  type OfferStep,
+  type SellerRequestFacts,
+  type SellerRequestStep,
+} from "./reoffer-sweep.js";
+export {
   reofferResponseBlock,
   reofferSendBlock,
   type ReofferResponseBlockCode,
