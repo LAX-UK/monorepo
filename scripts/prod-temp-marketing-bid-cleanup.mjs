@@ -1,6 +1,7 @@
 /**
  * Remove temp marketing demo fixtures from prod (run when testing is done).
- * Usage: DATABASE_URL='postgresql://.../auction' node scripts/prod-temp-marketing-bid-cleanup.mjs
+ * Usage: DATABASE_URL='postgresql://.../auction' TEMP_USER_EMAIL='person@example.com' \
+ *        node scripts/prod-temp-marketing-bid-cleanup.mjs
  */
 import pg from "pg";
 
@@ -8,11 +9,11 @@ const TEMP_SALE_ID = "a9000001-0000-4000-8000-000000000001";
 const TEMP_LOT_ID = "a9000002-0000-4000-8000-000000000002";
 const TEMP_BUYER_LE_ID = "a9000003-0000-4000-8000-000000000003";
 const TEMP_BID_ID = "a9000004-0000-4000-8000-000000000004";
-const USER_EMAIL = "danalytics.ah@gmail.com";
+const USER_EMAIL = process.env.TEMP_USER_EMAIL;
 
 const url = process.env.DATABASE_URL;
-if (!url) {
-  console.error("DATABASE_URL is required");
+if (!url || !USER_EMAIL) {
+  console.error("DATABASE_URL and TEMP_USER_EMAIL are required");
   process.exit(1);
 }
 
