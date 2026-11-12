@@ -56,27 +56,56 @@ The shared budget, rate and refresh lock above, and a `ZohoTokenStore` adapter o
 
 ## The adapter
 
-`createZohoBooksAdapter({ api, orgs })` returns one port per document kind (`invoices`, `payments`,
-`creditNotes`, `bills`, `contacts`) and `lookup`. Each is its own small class, so a caller depends only on
-the port it uses. `orgs` comes from `parseOrgConfigs`, which checks the per-organisation settings when the
-process starts: the Books organisation id, the custom field that carries the LAX reference, tax ids per VAT
-treatment (`standard` must have one), item and revenue account per line role, the Stripe clearing deposit
-account, the bill expense account, optional templates and numbering groups. None of this is hard-coded in a
-mapper. An entity left out (Bid, until its organisation exists) is refused with a clear reason.
+`createZohoBooksAdapter({ api, orgs, writes })` returns one port per document kind (`invoices`, `payments`,
+`creditNotes`, `bills`), `contacts` (customers), `vendors` (payout recipients) and `lookup`. Each is its own
+small class, so a caller depends only on the port it uses. `orgs` comes from `parseOrgConfigs`, which checks the
+per-organisation settings when the process starts: the Books organisation id, the custom field that carries the
+LAX reference, whether the organisation is VAT registered (required, no default), tax ids per VAT treatment, item
+and revenue account per line role, the Stripe clearing deposit account, the bill expense account, optional
+templates and numbering groups. None of this is hard-coded in a mapper. An entity left out (Bid, until its
+organisation exists) is refused with a clear reason.
 
 | Concern | Where | Rule |
 | --- | --- | --- |
-| Translation | `adapter/mappers/*` | One pure mapper per document kind: the only code that knows Books field names. Lines go as quantity 1 and a two-decimal rate; credit lines are tax inclusive (gross as the rate, tax id of the line's treatment). No adjustment field is ever sent. |
+| Writes | `adapter/write-gate.ts` | Dry-run by default: every create and update is refused with `zoho_books_writes_disabled` before any request (dependency lookups included). Writing needs `writes: { mode: "test_org" \| "live", organizationIds }`, and each id must be a configured organisation. The API handed to the gateways also refuses POST/PUT to any organisation not on that list. |
+| One organisation per document | `adapter/api.ts` `orgFor`, `adapter/gateways.ts` `prepare` | The organisation is chosen once, from the product. A document whose `entity` disagrees, or that refers to a contact or invoice of another product, is refused (`zoho_books_entity_mismatch`) before any request. Every dependency lookup, the write and the duplicate-adopt lookup use that one organisation. |
+| VAT registration | `adapter/org-config.ts`, `adapter/mappers/common.ts` | `vatRegistered` is stated per organisation. When false, no tax id may be configured or sent, and a line that carries VAT or claims the standard rate is refused (`zoho_books_mapping_vat_on_unregistered_entity`) and held for staff: never sent without its VAT, never sent with it. |
+| VAT to the penny | `adapter/mappers/common.ts` `lineTax` | Books works VAT out per line from what we send; it cannot be handed our figure. A line is only sent when the VAT Books will compute (half-up, per line, inclusive or exclusive) equals the VAT LAX stated; otherwise `zoho_books_mapping_vat_differs_from_books`, nothing sent. Totals read back are still compared by the domain (a difference goes to review, never adjusted). |
+| Translation | `adapter/mappers/*` | One pure mapper per document kind: the only code that knows Books field names. Lines go as quantity 1 and a two-decimal rate through one shared line rule (bills included); a line whose basis differs from the document's is refused. Every priced document and payment sends `currency_code`. No adjustment field is ever sent. |
+| Customers and vendors | `adapter/mappers/contact.ts`, `adapter/resolve.ts` | Invoices, credit notes and payments go to a `customer` contact; bills only to a `vendor` contact (`vendors.upsertVendor`). A vendor's reference field holds the LAX reference with a `:vendor` suffix, because the field is unique across all contacts and one person may be both. A contact read back with the wrong type is refused. |
 | Kinds | `adapter/kinds.ts` | One row per kind: path, list and item keys, id and number fields, how to read totals. A new kind adds a row. |
 | Duplicate guard | `adapter/writer.ts` | Every document carries the LAX reference in a custom field Books refuses to accept twice. A create refused with one of the organisation's duplicate-value codes is looked up and adopted, so a repeat is the same document. The adapter keeps no state. |
+| Payments read back | `adapter/gateways.ts` `paymentMatches` | A payment (fresh or adopted) is only accepted when Books holds the same customer, amount, currency, date and amount applied to each invoice; otherwise `zoho_books_payment_mismatch`. |
 | Lookup | `adapter/lookup.ts` | Searches the kind's collection by the custom field, then reads the document and requires the stored reference to equal the one asked for, so a filter Books ignored can never adopt another document. Absence is only an empty search or a 404. |
-| Dependencies | `adapter/resolve.ts` | A contact or invoice we refer to is found by reference. Missing is a rejection; not confirmable is `unknown`. |
+| Dependencies | `adapter/resolve.ts` | A contact or invoice we refer to is found by reference in the document's organisation. Missing is a rejection; not confirmable is `unknown`. |
 | Totals | `adapter/kinds.ts` | Books' sub total, tax and total are read back as whole pence (a fraction of a penny is `unknown`). The domain compares them with ours; a difference goes to review. |
 
+Every reason the adapter itself refuses with is in `ZOHO_BOOKS_REJECTIONS` (`adapter/rejections.ts`).
+
 `@auction/accounting-zoho-books/testing` adds `InMemoryAccounting` (the fake), `SimulatedBooks` (Books at the
-HTTP edge, with the unique reference field, per-line tax and injectable faults) and `runAccountingContract`,
-one suite run against both the fake and the real client and adapter over the simulator.
+HTTP edge, with the unique reference field, per-line tax, per-organisation taxes, contact types, required currency
+and injectable faults) and `runAccountingContract`, one suite run against both the fake and the real client and
+adapter over the simulator. The fake refuses with the adapter's own reasons, so tests written against it see what
+they would see against Books. In the fixtures London Art Exchange is not VAT registered (as in Books); the Bid
+organisation is modelled as registered only so the VAT paths have an organisation to run against.
+
+## Open questions for the owners and accountant (Books stays dry-run until answered)
+
+- **Is London Auction Xchange LTD (Bid) VAT registered?** Its Books organisation does not exist yet. The adapter
+  takes the answer from `vatRegistered` in its organisation settings and has no default; until it is set, Bid
+  cannot be configured at all.
+- **What VAT should Shop / lax.art documents carry?** London Art Exchange Ltd is not VAT registered in Books, but
+  the domain builders still produce standard-rated lines for Shop. Every such document is refused by the adapter
+  (`zoho_books_mapping_vat_on_unregistered_entity`) and held for staff. Which treatment Shop lines should use is a
+  domain decision, not something the adapter changes.
+- **Partial credits whose VAT Books rounds differently.** The domain allocates credit VAT cumulatively; Books
+  rounds each tax-inclusive line on its own. About 1 partial credit in 9 differs by 1p, and those are refused
+  (`zoho_books_mapping_vat_differs_from_books`). Options: confirm in the test organisation whether Books accepts a
+  line-level tax amount (then send ours), or align the domain's allocation with Books' rule, or accept these going
+  to staff.
 
 Still to confirm in the Books test organisation before any live send: that list endpoints filter on the
-custom field, the duplicate-value code, the field names read back for credit notes and payments, how Books
-rounds tax on tax-inclusive credit lines, and applying a credit note to its invoice.
+custom field, the duplicate-value code, the field names read back for credit notes and payments
+(`invoices[].amount_applied`, `currency_code`, `date`, `customer_id`), `contact_type` on a contact read back,
+that a bill to a customer contact is refused, how Books rounds tax on tax-inclusive credit lines, and applying a
+credit note to its invoice.
