@@ -325,6 +325,7 @@ export {
   DrizzleDealWorkStore,
   DrizzlePrivateSaleDealQueryRepository,
 } from "./drizzle-private-sale-deal-query.repository.js";
+export { DrizzleDealSettlementFollowUpMarker } from "./drizzle-deal-settlement-follow-up.marker.js";
 export { DrizzlePrivateSaleDealReminderStore } from "./drizzle-private-sale-deal-reminder.store.js";
 export {
   DrizzlePrivateSaleDealFinanceStore,

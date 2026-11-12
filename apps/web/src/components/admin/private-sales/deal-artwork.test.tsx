@@ -10,6 +10,7 @@ vi.mock("@/lib/actions/admin/admin-private-sales", () => ({
   setDealArtworkAction: vi.fn(),
   removeDealArtworkAction: vi.fn(),
   searchDealArtworksAction: vi.fn(),
+  markDealArtworkSoldAction: vi.fn(),
 }));
 vi.mock("next/link", () => ({
   default: ({ href, children, ...rest }: { href: string; children: React.ReactNode }) => (
