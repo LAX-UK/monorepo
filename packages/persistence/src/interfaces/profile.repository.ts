@@ -62,6 +62,9 @@ export type ProfileMeRow = {
   /** TOTP / backup-code 2FA enabled for this account (Better Auth). */
   twoFactorEnabled: boolean;
   suspended: boolean;
+  /** LAX Account's time zone choice; the zone is the device's last reading while automatic. */
+  timeZoneMode: "automatic" | "fixed";
+  timeZone: string | null;
 };
 
 export interface IProfileReader {

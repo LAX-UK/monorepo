@@ -36,12 +36,14 @@ function lotIdOf(event: LotEvent): string | null {
  * What an event means for the register. A lot that is draft, cancelled, voided or ended with no
  * winner is not offered; one that is scheduled, live or won stays offered. The lot's current state
  * decides, not the event's age, so events replayed out of step (a lot published again after being
- * unpublished) never withdraw a live offer. A captured payment completes the sale.
+ * unpublished) never withdraw a live offer. A captured payment completes the sale. A lot ended
+ * without a LAX winner that ATG sold is sold too: its result lives on the ATG link, not a winner.
  */
 export function bidOfferMove(event: LotEvent, link: LotRegisterLink | null): BidOfferMove {
   const lotId = lotIdOf(event);
   if (!lotId || !link) return null;
   if (event.eventType === "payment.captured") return { kind: "sold", lotId };
+  if (link.status === "ended" && !link.hasWinner && link.soldOnAtg) return { kind: "sold", lotId };
   const withdrawn =
     link.status === "draft" ||
     link.status === "cancelled" ||

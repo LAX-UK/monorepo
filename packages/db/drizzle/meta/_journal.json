@@ -2418,9 +2418,51 @@
       "breakpoints": true
     },
     {
+      "idx": 346,
+      "version": "7",
+      "when": 1805443200000,
+      "tag": "0352_account_time_zone",
+      "breakpoints": true
+    },
+    {
+      "idx": 347,
+      "version": "7",
+      "when": 1805529600000,
+      "tag": "0353_payment_group_refund_state",
+      "breakpoints": true
+    },
+    {
+      "idx": 348,
+      "version": "7",
+      "when": 1805702400000,
+      "tag": "0355_payment_transfer_reference",
+      "breakpoints": true
+    },
+    {
+      "idx": 349,
+      "version": "7",
+      "when": 1805961600000,
+      "tag": "0358_bid_catalogue_setting",
+      "breakpoints": true
+    },
+    {
       "idx": 350,
       "version": "7",
-      "when": 1805788800000,
+      "when": 1806307200000,
+      "tag": "0362_artwork_register_zoho_price",
+      "breakpoints": true
+    },
+    {
+      "idx": 351,
+      "version": "7",
+      "when": 1806393600000,
+      "tag": "0357_private_sale_deal_artwork_unlinked_reason",
+      "breakpoints": true
+    },
+    {
+      "idx": 352,
+      "version": "7",
+      "when": 1807171200000,
       "tag": "0356_session_device_marker",
       "breakpoints": true
     }

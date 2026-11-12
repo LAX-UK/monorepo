@@ -1,3 +1,4 @@
+import { ACTING_LEGAL_ENTITY_COOKIE_NAME, encodeActingContextCookie } from "@auction/types";
 import { describe, expect, it } from "vitest";
 import {
   isApprovedProxyPath,
@@ -62,5 +63,20 @@ describe("Bid BFF proxy policy", () => {
     expect(headers.has("set-cookie")).toBe(false);
     expect(headers.has("connection")).toBe(false);
     expect(headers.get("etag")).toBe('"abc"');
+  });
+
+  it("forwards only the view-as-client cookie, never the rest of the Cookie header", () => {
+    const view = encodeActingContextCookie({
+      v: 1,
+      e: "6f1c2d3e-4a5b-4c6d-8e7f-0a1b2c3d4e5f",
+      i: { sid: "0b9a8c7d-6e5f-4a3b-9c2d-1e0f9a8b7c6d" },
+    });
+    const headers = sanitizedProxyRequestHeaders(
+      new Headers({
+        cookie: `identity=secret; ${ACTING_LEGAL_ENTITY_COOKIE_NAME}=${view}; lax_bid_session=s`,
+      }),
+      "resource-token",
+    );
+    expect(headers.get("cookie")).toBe(`${ACTING_LEGAL_ENTITY_COOKIE_NAME}=${view}`);
   });
 });

@@ -1,7 +1,9 @@
 import {
   AUCTION_SALES_SUBROUTE,
   DRAFT_LOT_SUBROUTE,
+  LOT_CATALOGUE_SUBROUTE,
   draftLotRequestSchema,
+  lotCatalogueUpdateRequestSchema,
   registerIdSchema,
 } from "@auction/artwork-register-contracts";
 import { Hono } from "hono";
@@ -41,6 +43,27 @@ export function createInternalInventoryRoutes(
       return c.json({ error: "invalid_request", message: "The request was not understood." }, 400);
     }
     return c.json({ lot: await container.inventoryMoves.draftLots.findDraft(registerId.data) });
+  });
+
+  routes.get(`${LOT_CATALOGUE_SUBROUTE}/:registerId`, async (c) => {
+    const registerId = registerIdSchema.safeParse(c.req.param("registerId"));
+    if (!registerId.success) {
+      return c.json({ error: "invalid_request", message: "The request was not understood." }, 400);
+    }
+    return c.json({ lot: await container.inventoryMoves.lotCatalogue.describe(registerId.data) });
+  });
+
+  routes.post(`${LOT_CATALOGUE_SUBROUTE}/:registerId`, async (c) => {
+    const registerId = registerIdSchema.safeParse(c.req.param("registerId"));
+    const parsed = lotCatalogueUpdateRequestSchema.safeParse(await c.req.json().catch(() => null));
+    if (!registerId.success || !parsed.success) {
+      return c.json({ error: "invalid_request", message: "The request was not understood." }, 400);
+    }
+    const outcome = await container.inventoryMoves.lotCatalogue.updateDraft(
+      registerId.data,
+      parsed.data,
+    );
+    return outcome.ok ? c.json(outcome.data) : c.json(outcome.refusal, outcome.status);
   });
 
   return routes;

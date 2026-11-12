@@ -78,6 +78,16 @@ const offer = (service: OfferOnLaxArtService) =>
     idempotencyKey: "key-1",
   });
 
+describe("OfferOnLaxArtService.assess: Zoho's price", () => {
+  it("shows Zoho's price, and none when Zoho has none", async () => {
+    expect(
+      (await build({ found: entry({ zohoPrice: "3200.00" }) }).service.assess(REGISTER_ID))
+        .zohoPrice,
+    ).toBe("3200.00");
+    expect((await build().service.assess(REGISTER_ID)).zohoPrice).toBeNull();
+  });
+});
+
 describe("OfferOnLaxArtService.assess", () => {
   it("is ready for a held original, with the artist matched by Zoho artist code", async () => {
     const { service, deps } = build();

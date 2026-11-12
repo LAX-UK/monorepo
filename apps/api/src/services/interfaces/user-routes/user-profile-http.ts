@@ -10,6 +10,18 @@ type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
 export interface IUserProfileHttpApplicationService {
   updateProfile(input: { userId: string; body: UpdateProfileInput }): Promise<UserHttpJson>;
 
+  /** Saves the person's LAX Account time zone choice (automatic, or always one city). */
+  setTimeZone(input: {
+    userId: string;
+    body: { mode: "automatic" | "fixed"; zone?: string | null | undefined };
+  }): Promise<UserHttpJson>;
+
+  /** Records the zone of the device in use; only stored while the person follows their device. */
+  reportDeviceZone(input: {
+    userId: string;
+    body: { zone?: string | null | undefined };
+  }): Promise<UserHttpJson>;
+
   listAddresses(input: { userId: string }): Promise<UserHttpJson>;
 
   createAddress(input: { userId: string; body: CreateAddressBody }): Promise<UserHttpJson>;

@@ -11,9 +11,17 @@ import {
   type Response,
   expect,
 } from "@playwright/test";
+import { rememberSignIn, signOutContext } from "../../../../scripts/ci/e2e-sign-out.mjs";
 import { roleAuthState } from "./auth-state";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../..");
+
+/** Signs a browser out of Bid through Bid's own sign-out, which also ends the issuer session. */
+function signOutOfBid(context: BrowserContext): Promise<void> {
+  return signOutContext(context, {
+    origin: process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3000",
+  });
+}
 
 /**
  * Clears the test Redis rate-limit keys. The issuer allows one address 30 requests a minute on
@@ -597,6 +605,8 @@ async function login(
         .evaluate((form) => (form as HTMLFormElement).requestSubmit());
     }
     await waitForLoginDestination(page, destination);
+    // A sign-in this spec made on a fresh browser: the spec fixture ends it when the spec ends.
+    rememberSignIn(page.context(), signOutOfBid);
   } catch (error) {
     if (await resumeIfAlreadySignedIn(page, destination)) return;
     const detail = await readLoginBannerErrors(page);

@@ -1,4 +1,3 @@
-import { expect, test } from "@playwright/test";
 import {
   type AdminSessionFeatures,
   requireFeatureOrSkip,
@@ -6,6 +5,7 @@ import {
 } from "./support/feature-gate.js";
 import { requireStaffAcceptanceCredentials } from "./support/staff-credentials.js";
 import { openStaffBrowserSession } from "./support/staff-session.js";
+import { expect, test } from "./support/test.js";
 
 const enabled = process.env.PLAYWRIGHT_E2E === "1";
 const authBaseUrl = process.env.AUTH_BASE_URL ?? "https://test-auth.lax.bid";

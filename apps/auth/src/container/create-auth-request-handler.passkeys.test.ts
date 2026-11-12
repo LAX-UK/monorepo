@@ -42,6 +42,7 @@ function setup(options: Options = {}) {
   const grants = {
     holds: vi.fn(async () => options.granted ?? true),
     spend: vi.fn(async () => options.granted ?? true),
+    noteCreated: vi.fn(async () => undefined),
     grant: vi.fn(async () => undefined),
   };
   const onRegistered = vi.fn(async () => undefined);
@@ -246,6 +247,20 @@ describe("after a passkey is made", () => {
       name: "iCloud Keychain",
       userAgent: "Mozilla/5.0 Chrome/130",
     });
+  });
+
+  it("remembers the passkey made, so only that one can be renamed from the page", async () => {
+    const { handler, grants } = setup({ response: created });
+    await handler(verifyRegistration({ response: {} }));
+    expect(grants.noteCreated).toHaveBeenCalledWith(SESSION, SUBJECT, "pk-1");
+  });
+
+  it("remembers nothing when the plugin refused", async () => {
+    const { handler, grants } = setup({
+      response: () => Response.json({ code: "passkey_limit" }, { status: 422 }),
+    });
+    await handler(verifyRegistration({ response: {} }));
+    expect(grants.noteCreated).not.toHaveBeenCalled();
   });
 
   it("answers with what the page shows, never the public key or the credential id", async () => {

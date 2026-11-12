@@ -3,6 +3,7 @@ import type { OriginalMoveService } from "./application/admin/original-move.serv
 import type { ReleaseAlertSummaryReader } from "./application/alerts/alert-ports.js";
 import type { ArtistApplicationReviewService } from "./application/artist-applications/artist-application-review.service.js";
 import type { ArtworkRegisterReviewService } from "./application/artwork-register/artwork-register-review.service.js";
+import type { CatalogueChangeService } from "./application/artwork-register/catalogue-change.service.js";
 import type { OfferOnLaxArtService } from "./application/artwork-register/offer-on-lax-art.service.js";
 import type { ZohoLinkService } from "./application/artwork-register/zoho-link.service.js";
 import type { DeliveryQuoteStaffService } from "./application/delivery-quote-staff/delivery-quote-staff.service.js";
@@ -95,6 +96,7 @@ export type AdminRoutesDeps = {
   artworkRegister: ArtworkRegisterReviewService;
   /** Offer on lax.art: check a From Zoho record and make the lax.art draft from it. */
   offerOnLaxArt: Pick<OfferOnLaxArtService, "assess" | "offer">;
+  catalogueChange: Pick<CatalogueChangeService, "update">;
   /** Link lax.art: match originals made before the register to their Zoho records, and link them. */
   zohoLink: Pick<
     ZohoLinkService,

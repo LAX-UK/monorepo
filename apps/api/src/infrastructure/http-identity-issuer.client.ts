@@ -3,10 +3,16 @@ import {
   type AccountAddressDefaultKind,
   type AccountAddressInput,
   type AccountDeletionOutcome,
+  type AccountTimeZone,
+  type AccountTimeZoneChange,
   STAFF_EMAIL_CHANGE_MACHINE_SCOPE,
+  type SignInMethodKinds,
   accountAddressResultSchema,
   accountAddressesSchema,
   accountDeletionOutcomeSchema,
+  accountTimeZoneSchema,
+  identitySignInMethodKindsPath,
+  signInMethodKindsSchema,
   staffEmailChangeCancelledSchema,
   staffEmailChangeResultSchema,
 } from "@auction/identity-contracts";
@@ -277,6 +283,24 @@ export class HttpIdentityIssuerClient
           "securityStatus.emailChangeExpiresAt",
         ),
       };
+    } catch (error) {
+      if (
+        error instanceof IdentityIssuerClientError &&
+        error.status === 404 &&
+        error.code === "subject_not_found"
+      ) {
+        return null;
+      }
+      throw error;
+    }
+  }
+
+  async readSignInMethodKinds(subjectId: string): Promise<SignInMethodKinds | null> {
+    try {
+      const body = await this.machineRequest("GET", identitySignInMethodKindsPath(subjectId));
+      const parsed = isRecord(body) ? signInMethodKindsSchema.safeParse(body.kinds) : null;
+      if (!parsed?.success) throw invalidResponse("sign-in method kinds");
+      return parsed.data;
     } catch (error) {
       if (
         error instanceof IdentityIssuerClientError &&
@@ -612,6 +636,36 @@ export class HttpIdentityIssuerClient
       `/identity/subjects/${encodeURIComponent(subjectId)}/profile`,
       patch,
     );
+  }
+
+  async setSubjectTimeZone(
+    subjectId: string,
+    change: AccountTimeZoneChange,
+  ): Promise<AccountTimeZone> {
+    const body = await this.machineRequest(
+      "PUT",
+      `/identity/subjects/${encodeURIComponent(subjectId)}/time-zone`,
+      change.mode === "fixed"
+        ? { mode: "fixed", zone: change.zone }
+        : { mode: "automatic", zone: change.deviceZone },
+    );
+    const parsed = accountTimeZoneSchema.safeParse(body);
+    if (!parsed.success) throw invalidResponse("time zone");
+    return parsed.data;
+  }
+
+  async reportSubjectDeviceZone(
+    subjectId: string,
+    deviceZone: string | null,
+  ): Promise<AccountTimeZone> {
+    const body = await this.machineRequest(
+      "POST",
+      `/identity/subjects/${encodeURIComponent(subjectId)}/time-zone/device`,
+      { zone: deviceZone },
+    );
+    const parsed = accountTimeZoneSchema.safeParse(body);
+    if (!parsed.success) throw invalidResponse("time zone");
+    return parsed.data;
   }
 
   async requestAccountDeletion(subjectId: string): Promise<AccountDeletionOutcome> {

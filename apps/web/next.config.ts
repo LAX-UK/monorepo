@@ -130,6 +130,8 @@ const nextConfig: NextConfig = {
     optimizePackageImports: [
       "lucide-react",
       "@auction/ui",
+      "@auction/ui/lax",
+      "@auction/ui/time",
       "@auction/marketing-ui",
       "@auction/staff-ui",
     ],

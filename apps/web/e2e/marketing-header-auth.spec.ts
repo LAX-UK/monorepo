@@ -1,4 +1,4 @@
-import { type Page, expect, test } from "@playwright/test";
+import type { Page } from "@playwright/test";
 /**
  * E2E test: Marketing header shows authenticated state after client-side navigation.
  */
@@ -9,6 +9,7 @@ import {
   e2eEnabled,
   e2eSkipReason,
 } from "./helpers/auth";
+import { expect, test } from "./helpers/test";
 
 // Signed in, the trigger is named "Account menu, <name>"; signed out it is "Account menu" alone.
 const accountMenu = (page: Page) => page.getByRole("button", { name: /^account menu, /i });

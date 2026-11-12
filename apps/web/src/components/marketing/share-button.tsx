@@ -1,3 +1,4 @@
 "use client";
 
-export { MarketingShareButton as ShareButton } from "@auction/marketing-ui";
+import { MarketingShareButton } from "@auction/marketing-ui";
+export { MarketingShareButton as ShareButton };

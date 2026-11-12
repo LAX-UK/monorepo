@@ -66,6 +66,7 @@ function setup(
       ),
       findOpenLotForRegister,
       findDraftLotForRegister: vi.fn().mockResolvedValue(over.draft ?? null),
+      findLotCatalogueForRegister: vi.fn().mockResolvedValue(null),
     },
     register: {
       findById: vi.fn().mockResolvedValue(over.register === undefined ? entry() : over.register),
@@ -236,6 +237,57 @@ describe("AuctionDraftLotService.createDraft", () => {
     expect((privateSale as { refusal: { message: string } }).refusal.message).toMatch(
       /private sale/,
     );
+  });
+
+  describe("when the register shows the artwork in a LAX Bid sale", () => {
+    const LAST_LOT = "55555555-5555-4555-8555-555555555555";
+    const onLot = (id: string) =>
+      entry({ offer: { state: "bid_sale", ref: { kind: "bid_lot", id } } as never });
+
+    it("refuses a new draft while the last lot waits for payment or a re-offer", async () => {
+      const { service, create } = setup({ register: onLot(LAST_LOT) });
+      expect(await service.createDraft(request)).toEqual({
+        ok: false,
+        status: 409,
+        refusal: {
+          error: "artwork_offered_elsewhere",
+          message: "This artwork's last lot is waiting for payment or a re-offer.",
+        },
+      });
+      expect(create).not.toHaveBeenCalled();
+    });
+
+    it("refuses when the open lot is not the one the register shows", async () => {
+      const { service, create } = setup({
+        register: onLot(LAST_LOT),
+        existing: { lotId: "lot-other", saleId: SALE_ID, status: "draft" },
+      });
+      const answer = await service.createDraft(request);
+      expect(answer).toMatchObject({ ok: false, status: 409 });
+      expect(create).not.toHaveBeenCalled();
+    });
+
+    it("still returns the same lot when it is the lot holding the place", async () => {
+      const { service, create } = setup({
+        register: onLot(LAST_LOT),
+        existing: { lotId: LAST_LOT, saleId: SALE_ID, status: "draft" },
+      });
+      expect(await service.createDraft(request)).toEqual({
+        ok: true,
+        data: { lotId: LAST_LOT, saleId: SALE_ID, created: false },
+      });
+      expect(create).not.toHaveBeenCalled();
+    });
+
+    it("allows a new draft once the offer was withdrawn", async () => {
+      const { service, create } = setup({
+        register: entry({
+          offer: { state: "withdrawn", ref: { kind: "bid_lot", id: LAST_LOT } } as never,
+        }),
+      });
+      expect(await service.createDraft(request)).toMatchObject({ ok: true });
+      expect(create).toHaveBeenCalledOnce();
+    });
   });
 
   it("allows an artwork that is still on lax.art (the move withdraws it) or held", async () => {

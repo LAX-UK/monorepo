@@ -1,8 +1,14 @@
+import { ArtworkOfferLock } from "@auction/artwork-register-contracts";
 import type { createDb } from "@auction/db";
+import {
+  DrizzleArtworkRegisterRepository,
+  DrizzleLotRegisterLinkReader,
+} from "@auction/persistence/repositories";
 import type { WorkerEnv } from "../env.js";
 import { type AtgConfigCheckResult, checkAtgConfig } from "../integrations/atg/atg-config-check.js";
 import { loadAtgRuntimeConfig } from "../integrations/atg/atg-config.js";
 import { HttpAtgImageInspector } from "../integrations/atg/atg-image-inspector.js";
+import { AtgSoldRegisterService } from "../integrations/atg/atg-sold-register.js";
 import { AtgSyncService } from "../integrations/atg/atg-sync-service.js";
 import { DrizzleAtgSyncStore } from "../integrations/atg/drizzle-atg-sync-store.js";
 import { GapHttpAdapter } from "../integrations/atg/gap-http-adapter.js";
@@ -25,6 +31,7 @@ export function createAtgSyncRuntime(deps: {
   const config = loadAtgRuntimeConfig(deps.env);
   if (!config) return null;
   const gateway = new GapHttpAdapter(config.adapter);
+  const registerRepository = new DrizzleArtworkRegisterRepository(deps.db);
   return {
     service: new AtgSyncService({
       gateway,
@@ -33,6 +40,11 @@ export function createAtgSyncRuntime(deps: {
       config: config.sync,
       onTickError: deps.onTickError,
       onFeeMismatch: deps.onFeeMismatch,
+      soldRegister: new AtgSoldRegisterService(
+        new ArtworkOfferLock(registerRepository),
+        new DrizzleLotRegisterLinkReader(deps.db),
+        registerRepository,
+      ),
     }),
     pollIntervalMs: config.pollIntervalMs,
     checkConfig: async () => {

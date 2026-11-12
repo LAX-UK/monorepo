@@ -1,3 +1,4 @@
+import { buildSignInMethodsSection } from "@/server/domain/account-sign-in-methods.vm";
 import {
   type SignInMethodFlashVm,
   type SignInMethodsSectionVm,
@@ -31,6 +32,11 @@ const google = (blockedReason: string | null) =>
     address: "ada@example.com",
     linkedOn: "Linked 1 Oct 2026",
     blockedReason,
+    confirm: {
+      title: "Remove Google sign-in?",
+      body: "You'll no longer be able to sign in to LAX with Google.",
+      confirmLabel: "Remove Google",
+    },
   }) as const;
 
 const render = (section: SignInMethodsSectionVm, flash: SignInMethodFlashVm | null = null) =>
@@ -138,5 +144,47 @@ describe("SignInMethodsSection", () => {
     expect(render({ status: "list", rows: [password(true)], hint: null })).not.toContain(
       "data-sign-in-method-flash",
     );
+  });
+
+  describe("with passkeys off in this environment", () => {
+    const account = (available: { passkey: boolean }, passkeys: unknown[]) =>
+      buildSignInMethodsSection({
+        status: "ok",
+        value: {
+          hasPassword: true,
+          social: [
+            {
+              provider: "google",
+              linkedAt: "2026-10-01T09:00:00.000Z",
+              providerEmail: "ada@example.com",
+              hidden: false,
+            },
+          ],
+          passkeys: passkeys as never,
+          available: { google: true, apple: false, ...available },
+        },
+      });
+
+    it("draws the Security card exactly as it was before passkeys, whatever the account holds", () => {
+      const held = [
+        {
+          id: "pk-1",
+          name: "iCloud Keychain",
+          synced: true,
+          kind: "platform",
+          createdAt: "2026-11-03T09:00:00.000Z",
+          lastUsedAt: null,
+        },
+      ];
+      const off = render(account({ passkey: false }, held));
+      expect(off).toBe(render(account({ passkey: false }, [])));
+      expect(off).not.toMatch(/passkey/i);
+    });
+
+    it("draws the passkeys row once they are on", () => {
+      const on = render(account({ passkey: true }, []));
+      expect(on).toContain("Passkeys");
+      expect(on).toContain("Add a passkey");
+    });
   });
 });

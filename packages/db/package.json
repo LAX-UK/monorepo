@@ -39,6 +39,7 @@
     "db:migrate:kit": "drizzle-kit migrate",
     "db:seed:dev": "tsx src/seed/runners/cli.ts --env=dev",
     "db:seed:demo-topup": "tsx src/seed/runners/demo-topup-cli.ts",
+    "db:seed:check-accounts": "tsx src/seed/runners/check-accounts-cli.ts",
     "db:seed:demo-full": "tsx src/seed/runners/demo-full-cli.ts",
     "db:studio": "drizzle-kit studio",
     "db:report-email-collisions": "tsx scripts/report-email-collisions.ts",

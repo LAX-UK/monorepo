@@ -33,5 +33,7 @@ test("exempts tests, verbatim policies and the identity mirror", () => {
   assert.equal(isExempt("apps/web/src/a.test.ts"), true);
   assert.equal(isExempt("packages/marketing-ui/src/legal/london-art-exchange/terms.ts"), true);
   assert.equal(isExempt("packages/identity-contracts/src/legal-documents.ts"), true);
+  assert.equal(isExempt("packages/accounting-domain/src/document.ts"), true);
+  assert.equal(isExempt("packages/accounting-domain/src/lifecycle.ts"), false);
   assert.equal(isExempt("apps/web/src/footer.tsx"), false);
 });

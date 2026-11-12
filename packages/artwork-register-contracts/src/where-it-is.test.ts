@@ -6,6 +6,9 @@ import {
   WITHDRAWN_DISPLAY_DAYS,
   type WhereItIsInput,
   deriveWhereItIs,
+  lastMoveInto,
+  offerMovesOf,
+  withdrawalOf,
 } from "./where-it-is.js";
 
 const NOW = new Date("2026-11-04T12:00:00Z");
@@ -136,5 +139,51 @@ describe("deriveWhereItIs", () => {
   it("gives the same answer for the same input", () => {
     const input = { offer: { state: "withdrawn" as const, ref: null }, now: NOW };
     expect(deriveWhereItIs(input)).toEqual(deriveWhereItIs(input));
+  });
+});
+
+describe("reading the offer's history", () => {
+  const moved = (from: string | null, to: string, day: number) => ({
+    type: "offer_moved",
+    payload: { from: from ? { state: from } : null, to: { state: to } },
+    createdAt: new Date(NOW.getTime() - day * DAY),
+  });
+
+  it("keeps only offer moves that name where the artwork went", () => {
+    const events = [
+      { type: "created", payload: {}, createdAt: NOW },
+      moved("held", "lax_art", 9),
+      { type: "offer_moved", payload: { to: "lax_art" }, createdAt: NOW },
+      moved("lax_art", "withdrawn", 3),
+    ];
+    expect(offerMovesOf(events).map((m) => [m.from, m.to])).toEqual([
+      ["held", "lax_art"],
+      ["lax_art", "withdrawn"],
+    ]);
+  });
+
+  it("finds the latest move into a state", () => {
+    const moves = offerMovesOf([
+      moved("held", "withdrawn", 20),
+      moved("withdrawn", "lax_art", 10),
+      moved("lax_art", "withdrawn", 2),
+    ]);
+    expect(lastMoveInto(moves, "withdrawn")?.at).toEqual(new Date(NOW.getTime() - 2 * DAY));
+    expect(lastMoveInto(moves, "sold")).toBeUndefined();
+  });
+
+  it("says when and from where a withdrawn artwork was withdrawn", () => {
+    const moves = offerMovesOf([moved("bid_sale", "withdrawn", 4)]);
+    expect(withdrawalOf(moves, "withdrawn")).toEqual({
+      at: new Date(NOW.getTime() - 4 * DAY),
+      from: "bid_sale",
+    });
+  });
+
+  it("does not name a place it was not withdrawn from, and says nothing for other states", () => {
+    const moves = offerMovesOf([moved("held", "withdrawn", 4)]);
+    expect(withdrawalOf(moves, "withdrawn")?.from).toBeNull();
+    expect(withdrawalOf(moves, "held")).toBeNull();
+    expect(withdrawalOf([], "withdrawn")).toBeNull();
   });
 });

@@ -97,7 +97,7 @@ export function ChangePasswordForm({
         newPassword: values.next,
       }).catch(() => null);
       if (result?.status === "reauth_required") {
-        window.location.assign(buildReauthHref(returnTo));
+        window.location.assign(buildReauthHref(returnTo, "change_password"));
         return;
       }
       if (result?.status === "ok") {

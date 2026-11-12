@@ -254,7 +254,7 @@ const SKIPPED_REASON_LABEL: Record<string, string> = {
   missing_artist: "No artist",
   missing_artist_code: "Artist has no code",
   duplicate_stock_code: "Stock code already belongs to another artwork",
-  not_found_in_zoho: "No longer in Zoho",
+  not_found_in_zoho: "Deleted in Zoho",
   register_entry_missing: "Not in LAX yet",
 };
 
@@ -329,7 +329,7 @@ export function listingFigures(run: ListingRun): CheckFigure[] {
 }
 
 const LISTING_FAILURE_LABEL: Record<string, string> = {
-  product_not_found: "No longer in Zoho",
+  product_not_found: "Deleted in Zoho",
   INVALID_DATA: "Zoho refused the value",
   NO_PERMISSION: "The LAX integration may not write these fields",
   OAUTH_SCOPE_MISMATCH: "The LAX integration may not write these fields",

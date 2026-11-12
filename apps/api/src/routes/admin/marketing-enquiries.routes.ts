@@ -64,6 +64,11 @@ const CONVERT_ERROR_STATUS = {
   buyer_is_seller: 422,
   work_not_available: 422,
   work_in_deal: 409,
+  artwork_choice_required: 422,
+  artwork_not_found: 422,
+  artwork_not_original: 422,
+  artwork_unavailable: 409,
+  artwork_register_busy: 503,
   stale_version: 409,
   unavailable: 503,
 } as const satisfies Record<ConvertEnquiryError, 404 | 409 | 422 | 503>;
@@ -134,7 +139,14 @@ export function attachAdminMarketingEnquiryRoutes(
         c.req.valid("json"),
       );
       if (result.ok) return c.json({ data: { reference: result.reference } }, 201);
-      return c.json({ error: result.error }, CONVERT_ERROR_STATUS[result.error]);
+      return c.json(
+        {
+          error: result.error,
+          ...(result.message ? { message: result.message } : {}),
+          ...(result.lock ? { lock: result.lock } : {}),
+        },
+        CONVERT_ERROR_STATUS[result.error],
+      );
     },
   );
 

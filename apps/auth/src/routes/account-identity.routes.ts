@@ -5,7 +5,11 @@ import {
   ACCOUNT_SESSIONS_PATH,
   ACCOUNT_SESSIONS_REVOKE_OTHERS_PATH,
   ACCOUNT_SESSIONS_REVOKE_PATH,
+  ACCOUNT_TIME_ZONE_DEVICE_PATH,
+  ACCOUNT_TIME_ZONE_PATH,
+  ACCOUNT_TIME_ZONE_UPDATE_PATH,
   accountNameSchema,
+  parseAccountTimeZoneChange,
 } from "@auction/identity-contracts";
 import { type Context, Hono } from "hono";
 import type { AccountIdentityService } from "../services/account-identity.service.js";
@@ -14,7 +18,14 @@ import { type AccountCallerDeps, authenticateAccountCaller } from "./account-cal
 export type AccountIdentityRouteDeps = Omit<AccountCallerDeps, "rateLimit"> & {
   identity: Pick<
     AccountIdentityService,
-    "readProfile" | "rename" | "listSessions" | "revokeSession" | "revokeOtherSessions"
+    | "readProfile"
+    | "rename"
+    | "readTimeZone"
+    | "setTimeZone"
+    | "reportDeviceZone"
+    | "listSessions"
+    | "revokeSession"
+    | "revokeOtherSessions"
   >;
   /** Budget for reads (the profile and the session list). */
   readRateLimit: AccountCallerDeps["rateLimit"];
@@ -73,6 +84,50 @@ export function createAccountIdentityRoutes(deps: AccountIdentityRouteDeps) {
     });
   });
 
+  app.post(ACCOUNT_TIME_ZONE_PATH, async (c) => {
+    const caller = await authenticateAccountCaller(c, reads);
+    if (caller instanceof Response) return caller;
+    return guarded(c, async () => {
+      const preference = await deps.identity.readTimeZone(caller.subjectId);
+      if (!preference) return c.json({ error: "invalid_token" }, 401);
+      return c.json({ mode: preference.mode, zone: preference.zone });
+    });
+  });
+
+  app.post(ACCOUNT_TIME_ZONE_UPDATE_PATH, async (c) => {
+    const caller = await authenticateAccountCaller(c, writes);
+    if (caller instanceof Response) return caller;
+    const change = parseAccountTimeZoneChange({
+      mode: caller.params.get("mode"),
+      zone: caller.params.get("zone"),
+    });
+    if (!change) return c.json({ error: "invalid_time_zone" }, 400);
+    return guarded(c, async () => {
+      const saved = await deps.identity.setTimeZone(caller.subjectId, change);
+      return c.json({ mode: saved.mode, zone: saved.zone });
+    });
+  });
+
+  // Called on each visit from a signed-in device. It writes only when the person follows their
+  // device and the zone changed; an unusable reading (UTC, nothing) is ignored, not refused.
+  app.post(ACCOUNT_TIME_ZONE_DEVICE_PATH, async (c) => {
+    const caller = await authenticateAccountCaller(c, writes);
+    if (caller instanceof Response) return caller;
+    const change = parseAccountTimeZoneChange({
+      mode: "automatic",
+      zone: caller.params.get("zone"),
+    });
+    return guarded(c, async () => {
+      const stored =
+        change?.mode === "automatic" && change.deviceZone
+          ? await deps.identity.reportDeviceZone(caller.subjectId, change.deviceZone)
+          : null;
+      const preference = stored ?? (await deps.identity.readTimeZone(caller.subjectId));
+      if (!preference) return c.json({ error: "invalid_token" }, 401);
+      return c.json({ mode: preference.mode, zone: preference.zone });
+    });
+  });
+
   app.post(ACCOUNT_SESSIONS_PATH, async (c) => {
     const caller = await authenticateAccountCaller(c, reads);
     if (caller instanceof Response) return caller;
@@ -89,6 +144,7 @@ export function createAccountIdentityRoutes(deps: AccountIdentityRouteDeps) {
           createdAt: session.createdAt.toISOString(),
           lastActiveAt: session.lastActiveAt.toISOString(),
           isCurrent: session.isCurrent,
+          signedInWith: session.signedInWith,
         })),
       });
     });

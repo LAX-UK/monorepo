@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   testAtgConfig,
   testLot,
@@ -1366,6 +1366,56 @@ describe("AtgSyncService", () => {
       await store.saveAuctionLink("sale-1", { lastError: "lot 2: rejected" });
       await service.pollSale("sale-1");
       expect(store.auctionLinks.get("sale-1")?.lastError).toBe("lot 2: rejected");
+    });
+  });
+  describe("pollSale register recording", () => {
+    const soldLot = (atgLotId: string, sold: boolean): AtgRemoteLot => ({
+      ...remoteLot(atgLotId),
+      sold,
+      status: sold ? 4 : 2,
+    });
+
+    it("tells the register about each lot ATG reports sold, and only those", async () => {
+      const recordSold = vi.fn(async () => ({ status: "moved" as const }));
+      build();
+      service = new AtgSyncService({
+        gateway,
+        store,
+        imageInspector: images,
+        config: testAtgConfig,
+        now: () => NOW,
+        soldRegister: { recordSold },
+      });
+      await service.pushSale("sale-1");
+      gateway.remoteLots = [soldLot("atg-lot-1", true), soldLot("atg-lot-2", false)];
+
+      await service.pollSale("sale-1");
+
+      expect(recordSold).toHaveBeenCalledTimes(1);
+      expect(recordSold).toHaveBeenCalledWith("lot-1");
+    });
+
+    it("keeps the stored results and reports when the register write fails", async () => {
+      const onTickError = vi.fn();
+      const recordSold = vi.fn(async () => {
+        throw new Error("register down");
+      });
+      service = new AtgSyncService({
+        gateway,
+        store,
+        imageInspector: images,
+        config: testAtgConfig,
+        now: () => NOW,
+        soldRegister: { recordSold },
+        onTickError,
+      });
+      await service.pushSale("sale-1");
+      gateway.remoteLots = [soldLot("atg-lot-1", true)];
+
+      await expect(service.pollSale("sale-1")).resolves.toBeUndefined();
+
+      expect(store.lotLinks.get("lot-1")).toMatchObject({ sold: true });
+      expect(onTickError).toHaveBeenCalledWith("sale-1", expect.any(Error));
     });
   });
 });

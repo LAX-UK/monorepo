@@ -48,10 +48,23 @@ let root;
 let configPath;
 const logs = [];
 const log = (line) => logs.push(line);
+let baselinePath;
 const run = (argv, env = {}) => {
   logs.length = 0;
-  return main(argv, { root, configPath, env, log });
+  return main(argv, { root, configPath, baselinePath, env, log });
 };
+const writeBaseline = (gzipKb) =>
+  writeFileSync(
+    baselinePath,
+    JSON.stringify({
+      measuredWith: "test",
+      toleranceKb: 1,
+      routes: {
+        "apps/built /(marketing)/page": { label: "Home", targetKb: 5, gzipKb },
+        "apps/unbuilt /(marketing)/page": { label: "Elsewhere", targetKb: 5, gzipKb: 1 },
+      },
+    }),
+  );
 const writeConfig = (config) => writeFileSync(configPath, JSON.stringify(config));
 const config = (enforce, budgetKb, extra = {}) => ({
   enforce,
@@ -69,6 +82,7 @@ const config = (enforce, budgetKb, extra = {}) => ({
 before(() => {
   root = mkdtempSync(path.join(tmpdir(), "route-js-budget-"));
   configPath = path.join(root, "route-js-budgets.json");
+  baselinePath = path.join(root, "route-js-baseline.json");
   const next = path.join(root, "apps/built/.next");
   mkdirSync(path.join(next, "static/chunks/app/(marketing)"), { recursive: true });
   writeFileSync(path.join(next, "app-build-manifest.json"), JSON.stringify(APP_MANIFEST));
@@ -164,7 +178,34 @@ test("--app refuses a missing value, including when another option follows", () 
     all: true,
     suggest: false,
     enforce: true,
+    writeBaseline: false,
     allowNoSentry: false,
   });
   assert.equal(parseArgs(["--allow-no-sentry"]).allowNoSentry, true);
+});
+
+test("a tracked route over its ratchet fails even in a group that only warns", () => {
+  writeConfig(config(false, 100));
+  writeBaseline(1);
+  assert.equal(run(["--app", "apps/built"]), 1);
+  assert.match(logs.join("\n"), /^error: Home \(apps\/built .* over its ratchet of 1\.0 KB/m);
+  assert.match(logs.join("\n"), /Tracked routes against their ratchet and target/);
+});
+
+test("a tracked route within its ratchet passes; routes of unbuilt apps are not judged", () => {
+  writeConfig(config(false, 100));
+  writeBaseline(100);
+  assert.equal(run(["--app", "apps/built"]), 0);
+});
+
+test("--write-baseline records the measured size and keeps label and target", () => {
+  writeConfig(config(false, 100));
+  writeBaseline(1);
+  assert.equal(run(["--app", "apps/built", "--write-baseline"]), 0);
+  const entry = JSON.parse(readFileSync(baselinePath, "utf8")).routes[
+    "apps/built /(marketing)/page"
+  ];
+  assert.equal(entry.label, "Home");
+  assert.equal(entry.targetKb, 5);
+  assert.ok(entry.gzipKb > 1 && entry.parsedKb > entry.gzipKb);
 });
