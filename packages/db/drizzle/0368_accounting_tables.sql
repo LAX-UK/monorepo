@@ -40,7 +40,7 @@ CREATE TABLE IF NOT EXISTS "accounting_document" (
     OR ("product" <> 'bid' AND "legal_entity" = 'london_art_exchange')
   ),
   CONSTRAINT "accounting_document_reference_ck" CHECK (
-    "lax_reference" ~ '^LAX-(BID|SHOP|ART)-(INV|PAY|CN|BILL|CON)-[a-z0-9_-]{1,64}$'
+    "lax_reference" ~ '^LAX-(BID|SHOP|ART)-(INV|PAY|CN|BILL|CON)-[a-z0-9][a-z0-9_-]{0,63}$'
     AND "lax_reference" LIKE 'LAX-' || CASE "product"
       WHEN 'bid' THEN 'BID' WHEN 'shop' THEN 'SHOP' ELSE 'ART' END
       || '-' || CASE "kind"
@@ -49,13 +49,23 @@ CREATE TABLE IF NOT EXISTS "accounting_document" (
   ),
   CONSTRAINT "accounting_document_source_event_ck" CHECK ("source_event_ref" <> ''),
   CONSTRAINT "accounting_document_payload_ck" CHECK (jsonb_typeof("payload") = 'object'),
+  -- Totals as the domain holds them: gross is net plus VAT; a contact has no money and every
+  -- other kind is refused at zero; a payment carries no VAT.
   CONSTRAINT "accounting_document_totals_ck" CHECK (
     "net_pence" >= 0 AND "vat_pence" >= 0 AND "gross_pence" = "net_pence" + "vat_pence"
+    AND (("kind" = 'contact') = ("gross_pence" = 0 AND "net_pence" = 0))
+    AND ("kind" <> 'payment' OR "vat_pence" = 0)
   ),
   CONSTRAINT "accounting_document_state_ck" CHECK (
     "state" IN ('pending', 'sending', 'issued', 'unknown', 'needs_review', 'failed', 'cancelled')
   ),
   CONSTRAINT "accounting_document_provider_ck" CHECK ("provider" IS NULL OR "provider" IN ('xero', 'books')),
+  -- Lookup before retry must ask the provider the first request went to, so a row that was or may
+  -- have been sent always names it. The claim stamps the provider as it leases the document.
+  CONSTRAINT "accounting_document_provider_sent_ck" CHECK (
+    "provider" IS NOT NULL
+    OR ("attempts" = 0 AND "state" IN ('pending', 'cancelled'))
+  ),
   CONSTRAINT "accounting_document_attempts_ck" CHECK ("attempts" >= 0),
   -- Only a sending document holds a lease, and a lease is a token with an expiry.
   CONSTRAINT "accounting_document_lease_ck" CHECK (
@@ -89,7 +99,7 @@ CREATE TABLE IF NOT EXISTS "accounting_document" (
   CONSTRAINT "accounting_document_mismatch_ck" CHECK (
     ("mismatch_field" IS NULL) = ("mismatch_difference_pence" IS NULL)
     AND ("mismatch_field" IS NULL OR "mismatch_field" IN ('netPence', 'vatPence', 'grossPence'))
-    AND ("mismatch_field" IS NULL OR ("provider_id" IS NOT NULL AND "review_lookup" = 'clear'))
+    AND ("mismatch_field" IS NULL OR ("provider_id" IS NOT NULL AND "review_lookup" IS NOT DISTINCT FROM 'clear'))
     AND ("mismatch_difference_pence" IS NULL OR "mismatch_difference_pence" <> 0)
   ),
   CONSTRAINT "accounting_document_failed_ck" CHECK (

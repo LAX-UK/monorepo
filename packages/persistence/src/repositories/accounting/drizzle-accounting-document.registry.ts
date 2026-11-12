@@ -66,7 +66,7 @@ export class DrizzleAccountingDocumentRegistry implements IAccountingDocumentReg
           detail: { sourceEventRef },
           occurredAt: at,
         });
-        const stored = rowToStored(inserted);
+        const stored = rowToStored(inserted, at.getTime());
         return stored.ok
           ? ok({ created: true, stored: stored.value })
           : refuse("bad_document", stored.refusal.message);
@@ -85,7 +85,7 @@ export class DrizzleAccountingDocumentRegistry implements IAccountingDocumentReg
       if (!existing || !isDeepStrictEqual(existing.payload, payload)) {
         return refuse("reference_in_use", "that reference holds a different document");
       }
-      const stored = rowToStored(existing);
+      const stored = rowToStored(existing, at.getTime());
       return stored.ok
         ? ok({ created: false, stored: stored.value })
         : refuse("bad_document", stored.refusal.message);

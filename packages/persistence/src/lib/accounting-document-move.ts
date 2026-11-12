@@ -87,7 +87,7 @@ export async function persistMove(
   before: DocumentRecord,
   move: Move,
 ): Promise<Result<StoredAccountingDocument, TransitionCode>> {
-  if (move.next === before) return rowToStored(row);
+  if (move.next === before) return rowToStored(row, move.at.getTime());
   const [updated] = await tx
     .update(accountingDocument)
     .set({
@@ -109,7 +109,7 @@ export async function persistMove(
     detail: move.detail,
     occurredAt: move.at,
   });
-  return rowToStored(updated);
+  return rowToStored(updated, move.at.getTime());
 }
 
 /** Lock one document, read it through the domain, apply a transition and persist it. */
@@ -119,7 +119,7 @@ export async function applyLockedTransition(
   transition: DocumentTransition,
   at: Date,
 ): Promise<Result<StoredAccountingDocument, TransitionCode>> {
-  const record = rowToRecord(row);
+  const record = rowToRecord(row, at.getTime());
   if (!record.ok) return refuse("bad_stored_document", record.refusal.message);
   const next = decide(record.value, transition, at.getTime(), rowTotals(row));
   if (!next.ok) return next;

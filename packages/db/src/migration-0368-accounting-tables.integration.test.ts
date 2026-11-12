@@ -59,12 +59,23 @@ describe.skipIf(!url)("migration 0368 accounting tables (database)", { timeout: 
 
   it("accepts one legal row for every status", async () => {
     expect(await document({})).toBe(true);
-    expect(await document({ state: "sending", attempts: 1, ...LEASE })).toBe(true);
+    expect(await document({ state: "sending", attempts: 1, provider: "books", ...LEASE })).toBe(
+      true,
+    );
     expect(await document({ state: "issued", ...ISSUED, pdf_ref: "pdf" })).toBe(true);
-    expect(await document({ state: "unknown", settles_at: "2030-01-01T00:01:00Z" })).toBe(true);
+    expect(
+      await document({
+        state: "unknown",
+        attempts: 1,
+        provider: "books",
+        settles_at: "2030-01-01T00:01:00Z",
+      }),
+    ).toBe(true);
     expect(
       await document({
         state: "needs_review",
+        attempts: 1,
+        provider: "books",
         review_lookup: "owed",
         settles_at: "2030-01-01T00:01:00Z",
         needs_review_reason: "two documents",
@@ -80,7 +91,14 @@ describe.skipIf(!url)("migration 0368 accounting tables (database)", { timeout: 
         mismatch_difference_pence: -1,
       }),
     ).toBe(true);
-    expect(await document({ state: "failed", last_error_class: "rejected" })).toBe(true);
+    expect(
+      await document({
+        state: "failed",
+        attempts: 1,
+        provider: "xero",
+        last_error_class: "rejected",
+      }),
+    ).toBe(true);
     expect(await document({ state: "cancelled" })).toBe(true);
   });
 
@@ -145,6 +163,85 @@ describe.skipIf(!url)("migration 0368 accounting tables (database)", { timeout: 
     expect(await document({ state: "failed" })).toBe(false);
     // an issued document cannot also be in review's lookup, or carry an unknown state
     expect(await document({ state: "done" })).toBe(false);
+  });
+
+  it("D1: refuses a totals mismatch on any row but a reviewed one holding the provider's document", async () => {
+    const mismatch = { mismatch_field: "netPence", mismatch_difference_pence: 1 };
+    // The NULL hole: an issued row has no review_lookup, so `review_lookup = 'clear'` was NULL.
+    expect(await document({ state: "issued", ...ISSUED, ...mismatch })).toBe(false);
+    expect(
+      await document({
+        state: "needs_review",
+        review_lookup: "clear",
+        needs_review_reason: "x",
+        attempts: 1,
+        ...ISSUED,
+        ...mismatch,
+      }),
+    ).toBe(true);
+    expect(await document({ ...mismatch })).toBe(false);
+  });
+
+  it("D2: a row that was or may have been sent names its provider", async () => {
+    const at = "2030-01-01T00:01:00Z";
+    expect(await document({ state: "sending", attempts: 1, ...LEASE })).toBe(false);
+    expect(await document({ state: "unknown", attempts: 1, settles_at: at })).toBe(false);
+    expect(await document({ state: "failed", attempts: 1, last_error_class: "x" })).toBe(false);
+    expect(
+      await document({
+        state: "needs_review",
+        attempts: 1,
+        review_lookup: "owed",
+        needs_review_reason: "x",
+        settles_at: at,
+      }),
+    ).toBe(false);
+    // Even a requeued or cancelled document that was sent once keeps its provider.
+    expect(await document({ attempts: 1 })).toBe(false);
+    expect(await document({ state: "cancelled", attempts: 2 })).toBe(false);
+    expect(await document({ attempts: 1, provider: "xero" })).toBe(true);
+    // Never sent: no provider needed.
+    expect(await document({})).toBe(true);
+    expect(await document({ state: "cancelled" })).toBe(true);
+  });
+
+  it("L3: a reference id starts with a letter or digit, as the domain requires", async () => {
+    expect(await document({ lax_reference: "LAX-BID-INV-_a" })).toBe(false);
+    expect(await document({ lax_reference: "LAX-BID-INV--a" })).toBe(false);
+    expect(await document({ lax_reference: "LAX-BID-INV-a_b-c" })).toBe(true);
+    expect(await document({ lax_reference: `LAX-BID-INV-${"a".repeat(64)}` })).toBe(true);
+    expect(await document({ lax_reference: `LAX-BID-INV-${"a".repeat(65)}` })).toBe(false);
+  });
+
+  it("L4: totals follow the domain: contacts carry no money, nothing else is zero, payments no VAT", async () => {
+    const contact = { kind: "contact", lax_reference: "LAX-BID-CON-1" };
+    const zero = { net_pence: 0, vat_pence: 0, gross_pence: 0 };
+    expect(await document({ ...contact, ...zero })).toBe(true);
+    expect(await document({ ...contact, net_pence: 100, vat_pence: 20, gross_pence: 120 })).toBe(
+      false,
+    );
+    expect(await document(zero)).toBe(false);
+    expect(await document({ ...zero, kind: "credit_note", lax_reference: "LAX-BID-CN-1" })).toBe(
+      false,
+    );
+    const payment = { kind: "payment", lax_reference: "LAX-BID-PAY-1" };
+    expect(await document({ ...payment, net_pence: 500, vat_pence: 0, gross_pence: 500 })).toBe(
+      true,
+    );
+    expect(await document({ ...payment, net_pence: 500, vat_pence: 100, gross_pence: 600 })).toBe(
+      false,
+    );
+    expect(await document({ ...payment, ...zero })).toBe(false);
+    // A zero-priced line is fine as long as the document is not zero in total.
+    expect(
+      await document({
+        net_pence: 0,
+        vat_pence: 0,
+        gross_pence: 0,
+        kind: "bill",
+        lax_reference: "LAX-BID-BILL-1",
+      }),
+    ).toBe(false);
   });
 
   it("refuses bad references, entities and money", async () => {

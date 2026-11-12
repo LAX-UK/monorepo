@@ -90,7 +90,9 @@ export type DocumentTransition =
 /**
  * Move a document along its life cycle. The pure domain function decides; the new state and its
  * history row are written together or not at all. Anything the domain refuses is returned as its
- * refusal and nothing is written.
+ * refusal and nothing is written. A lookup after an unknown outcome must ask the provider stored
+ * on the document (`StoredAccountingDocument.provider`), never whichever provider the switch names
+ * now: the first request went to that one.
  */
 export interface IAccountingDocumentTransitions {
   apply(
@@ -108,8 +110,9 @@ export interface ClaimRequest {
 
 /**
  * Hand out the oldest pending document, locked and leased so two callers never get the same one.
- * A document whose lease ran out is not handed out again: it becomes unknown and goes through
- * lookup first.
+ * Only documents of a product whose source switch lets `request.provider` act (mode `dry_run`,
+ * `test_org` or `live`) are handed out; with the mode `off` nothing is. A document whose lease ran
+ * out is not handed out again: it becomes unknown and goes through lookup first.
  */
 export interface IAccountingDocumentWorkQueue {
   claimNext(

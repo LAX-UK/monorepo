@@ -4,6 +4,7 @@ import {
   type Product,
   type Result,
   SETTLE_GRACE_MS,
+  buildCreditNoteFor,
   buildInvoice,
   laxReference,
 } from "@auction/accounting-domain";
@@ -97,15 +98,29 @@ describe.skipIf(!HAS_DB)("accounting persistence (integration)", { timeout: 60_0
     return must(await repos.registry.register({ document, sourceEventRef: `evt-${newId()}` }));
   }
 
+  /** The seed, and Books in dry run for every product so the Books worker may claim. */
+  async function setModes(books: "off" | "dry_run" | "test_org" | "live") {
+    await owner.execute(sql`
+      insert into accounting_source_setting (product, xero_mode, books_mode) values
+        ('bid', 'live', ${books}), ('shop', 'off', ${books}), ('lax_art', 'off', ${books})
+      on conflict (product) do update
+        set xero_mode = excluded.xero_mode, books_mode = excluded.books_mode`);
+  }
+  async function restoreSeed() {
+    await setModes("off");
+  }
+
   beforeAll(async () => {
     await drain();
   });
   beforeEach(async () => {
     nowMs = T0;
+    await setModes("dry_run");
     await drain();
   });
   afterAll(async () => {
     await drain();
+    await restoreSeed();
     await closeDb(owner);
     await closeDb(worker);
   });
@@ -182,6 +197,178 @@ describe.skipIf(!HAS_DB)("accounting persistence (integration)", { timeout: 60_0
       const read = await repos.lookup.findByReference("bid", stored.reference);
       expect(read.ok).toBe(false);
       if (!read.ok) expect(read.refusal.code).toBe("bad_stored_document");
+    });
+  });
+
+  describe("claiming follows the source switch (D4)", () => {
+    const claim = (provider: AccountingProvider) =>
+      repos.workQueue.claimNext({ provider, leaseToken: randomUUID(), leaseMs: LEASE_MS });
+
+    it("hands nothing to a provider whose mode for the product is off", async () => {
+      await setModes("off");
+      const doc = await register(invoice("bid", newId()));
+      expect(must(await claim("books"))).toBeNull();
+      // Bid's source is Xero live, so Xero may claim it while Books may not.
+      const owned = must(await claim("xero"));
+      expect(owned?.id).toBe(doc.stored.id);
+      expect(owned?.provider).toBe("xero");
+    });
+
+    it("claims only documents of products whose Books mode allows it", async () => {
+      await owner.execute(sql`
+        update accounting_source_setting set books_mode = 'off' where product = 'bid'`);
+      const bid = await register(invoice("bid", newId()));
+      const shop = await register(invoice("shop", newId()));
+      const first = must(await claim("books"));
+      expect(first?.id).toBe(shop.stored.id);
+      expect(must(await claim("books"))).toBeNull();
+      const state = await owner.execute<{ state: string; provider: string | null }>(
+        sql`select state, provider from accounting_document where id = ${bid.stored.id}`,
+      );
+      expect(state.rows[0]).toEqual({ state: "pending", provider: null });
+    });
+
+    it("claims in dry_run, test_org and live, and in none of the other cases", async () => {
+      for (const mode of ["dry_run", "test_org", "live"] as const) {
+        await owner.execute(sql`
+          update accounting_source_setting set xero_mode = 'off', books_mode = ${mode}
+           where product = 'shop'`);
+        await drain();
+        const doc = await register(invoice("shop", newId()));
+        expect(must(await claim("books"))?.id, mode).toBe(doc.stored.id);
+      }
+      await owner.execute(sql`
+        update accounting_source_setting set books_mode = 'off' where product = 'shop'`);
+      await drain();
+      await register(invoice("shop", newId()));
+      expect(must(await claim("books"))).toBeNull();
+    });
+
+    it("still settles a lapsed lease when the switch is off, and calls no provider", async () => {
+      const doc = await register(invoice("shop", newId()));
+      expect(must(await claim("books"))?.id).toBe(doc.stored.id);
+      await setModes("off");
+      nowMs = T0 + LEASE_MS + 1;
+      expect(must(await claim("books"))).toBeNull();
+      const row = await owner.execute<{ state: string }>(
+        sql`select state from accounting_document where id = ${doc.stored.id}`,
+      );
+      expect(row.rows[0]?.state).toBe("unknown");
+    });
+  });
+
+  describe("credit notes round-trip through storage (D3)", () => {
+    it("registers and reads back partial credit notes of 3p and 501p, which are tax-inclusive", async () => {
+      const inv = invoice("shop", newId(), 1000);
+      if (inv.kind !== "invoice") throw new Error("fixture");
+      await register(inv);
+      const buckets = {
+        paidGoodsPence: 1200,
+        paidDeliveryPence: 0,
+        refundedGoodsPence: 0,
+        refundedDeliveryPence: 0,
+      };
+      const prior: AccountingDocument[] = [];
+      let refunded = 0;
+      for (const gross of [3, 501, 696]) {
+        const credit = must(
+          buildCreditNoteFor(inv, {
+            sourceId: newId(),
+            issuedOn: "2031-03-02",
+            buckets: { ...buckets, refundedGoodsPence: refunded },
+            request: { goodsPence: gross, deliveryPence: 0 },
+            priorCredits: prior as never,
+          }),
+        );
+        const registered = await register(credit);
+        expect(registered.stored.document).toEqual(credit);
+        const read = must(await repos.lookup.findByReference("shop", credit.reference));
+        expect(read?.document).toEqual(credit);
+        prior.push(credit);
+        refunded += gross;
+      }
+      expect(
+        prior.reduce((n, c) => n + (c as { totals: { vatPence: number } }).totals.vatPence, 0),
+      ).toBe(200);
+    });
+
+    it("refuses a credit note whose lines are not tax-inclusive, or whose VAT exceeds its gross", async () => {
+      const inv = invoice("shop", newId(), 1000);
+      if (inv.kind !== "invoice") throw new Error("fixture");
+      const credit = must(
+        buildCreditNoteFor(inv, {
+          sourceId: newId(),
+          issuedOn: "2031-03-02",
+          buckets: {
+            paidGoodsPence: 1200,
+            paidDeliveryPence: 0,
+            refundedGoodsPence: 0,
+            refundedDeliveryPence: 0,
+          },
+          request: { goodsPence: 600, deliveryPence: 0 },
+          priorCredits: [],
+        }),
+      );
+      const flip = (patch: object) =>
+        repos.registry.register({
+          document: { ...credit, ...patch } as unknown as AccountingDocument,
+          sourceEventRef: "evt",
+        });
+      expect((await flip({ amountsAre: "tax_exclusive" })).ok).toBe(false);
+      const line = credit.kind === "credit_note" ? credit.lines[0] : undefined;
+      expect((await flip({ lines: [{ ...line, basis: "tax_exclusive" }] })).ok).toBe(false);
+      expect((await flip({ lines: [{ ...line, vatPence: 10_000, unitNetPence: 0 }] })).ok).toBe(
+        false,
+      );
+    });
+
+    it("reads a row whose lease a slightly faster worker clock granted", async () => {
+      const doc = await register(invoice("shop", newId()));
+      must(
+        await repos.workQueue.claimNext({ provider: PROVIDER, leaseToken: "t", leaseMs: LEASE_MS }),
+      );
+      // A reader 30 s behind the granting clock still loads the row (the skew margin).
+      const behind = createAccountingRepositories(worker, { now: () => new Date(nowMs - 30_000) });
+      expect(
+        must(await behind.lookup.findByReference("shop", doc.stored.reference))?.record.status,
+      ).toBe("sending");
+    });
+  });
+
+  describe("least privilege (L1, L2)", () => {
+    it.skipIf(!WORKER_URL)("L1: the worker cannot rewrite what a document says", async () => {
+      const doc = await register(invoice("shop", newId()));
+      for (const set of [
+        sql`payload = '{}'::jsonb`,
+        sql`gross_pence = 1`,
+        sql`product = 'bid'`,
+        sql`lax_reference = 'LAX-SHOP-INV-other'`,
+      ]) {
+        expect(
+          await rejectedCode(
+            worker.execute(sql`update accounting_document set ${set} where id = ${doc.stored.id}`),
+          ),
+        ).toBe("42501");
+      }
+      // What it writes still works.
+      await worker.execute(
+        sql`update accounting_document set last_error_class = 'x', updated_at = now() where id = ${doc.stored.id}`,
+      );
+    });
+
+    it.skipIf(!API_URL)("L2: the Bid API reads the switch but cannot update it", async () => {
+      const api = createDb(API_URL as string);
+      try {
+        const read = await api.execute(sql`select product from accounting_source_setting`);
+        expect(read.rows.length).toBe(3);
+        expect(
+          await rejectedCode(
+            api.execute(sql`update accounting_source_setting set books_mode = 'live'`),
+          ),
+        ).toBe("42501");
+      } finally {
+        await closeDb(api);
+      }
     });
   });
 
@@ -575,7 +762,8 @@ describe.skipIf(!HAS_DB)("accounting persistence (integration)", { timeout: 60_0
   });
 
   describe("source switch", () => {
-    const settingsDb = createDb(API_URL || (OWNER_URL as string));
+    // The API role is read-only on the switch until a staff route exists, so the writer runs as owner.
+    const settingsDb = createDb(OWNER_URL as string);
     const settings = createAccountingRepositories(settingsDb, clock);
 
     async function restoreSeed() {

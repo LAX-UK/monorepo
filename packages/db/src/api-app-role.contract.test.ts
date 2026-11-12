@@ -46,13 +46,17 @@ describe.skipIf(!API_URL)("api_app role contract", { timeout: 60_000 }, () => {
     });
   });
 
-  it("reads accounting documents and their history, and changes only the source switch", async () => {
+  it("only reads accounting documents, their history and the source switch", async () => {
     await withApiClient(async (client) => {
       const privileges = ["SELECT", "INSERT", "UPDATE", "DELETE"];
       const documents = await readTablePrivileges(client, API_ACCOUNTING_READ_TABLES, privileges);
       expectTablePrivileges(documents, (row) => row.privilege === "SELECT");
       const settings = await readTablePrivileges(client, API_ACCOUNTING_SETTING_TABLES, privileges);
-      expectTablePrivileges(settings, (row) => ["SELECT", "UPDATE"].includes(row.privilege));
+      expectTablePrivileges(settings, (row) => row.privilege === "SELECT");
+      const column = await client.query<{ allowed: boolean }>(
+        `select has_column_privilege(current_user, 'public.accounting_source_setting', 'books_mode', 'UPDATE') as allowed`,
+      );
+      expect(column.rows[0]).toEqual({ allowed: false });
     });
   });
 

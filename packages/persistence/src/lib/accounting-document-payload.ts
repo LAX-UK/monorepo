@@ -7,6 +7,7 @@ import {
   PRODUCTS,
   type Product,
   type Result,
+  buildInclusiveLine,
   buildLine,
   expectedTotals,
   isPence,
@@ -25,12 +26,35 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-/** Lines are rebuilt through the domain's `buildLine`, and the stored VAT must be what it computes. */
-function readLines(value: unknown): Result<readonly Line[], "bad_document"> {
+/**
+ * Lines are rebuilt through the domain's constructors. An invoice or bill line is tax-exclusive:
+ * the stored VAT must be what `buildLine` computes. A credit line is tax-inclusive (the domain
+ * allocates its VAT cumulatively across a split line, so it cannot be recomputed from the line
+ * alone): it is rebuilt with `buildInclusiveLine` from its gross and stored VAT, which checks the
+ * VAT is whole pence between 0 and the gross and only on a standard rated line.
+ */
+function readLines(value: unknown, inclusive: boolean): Result<readonly Line[], "bad_document"> {
   if (!Array.isArray(value) || value.length === 0) return bad("a priced document needs lines");
   const lines: Line[] = [];
   for (const raw of value) {
     if (!isRecord(raw)) return bad("line is not an object");
+    if (raw.basis !== (inclusive ? "tax_inclusive" : "tax_exclusive")) {
+      return bad("a line's amounts are not on the basis its document uses");
+    }
+    if (inclusive) {
+      const { quantity, unitNetPence, vatPence } = raw;
+      if (quantity !== 1 || !isPence(unitNetPence) || !isPence(vatPence)) {
+        return bad("a credit line is one quantity of whole pence");
+      }
+      const built = buildInclusiveLine({
+        ...(raw as unknown as Omit<LineInput, "quantity" | "unitNetPence">),
+        grossPence: unitNetPence + vatPence,
+        vatPence,
+      });
+      if (!built.ok) return bad(built.refusal.message);
+      lines.push(built.value);
+      continue;
+    }
     const built = buildLine(raw as unknown as LineInput);
     if (!built.ok) return bad(built.refusal.message);
     if (built.value.vatPence !== raw.vatPence) return bad("a line's VAT differs from the rule");
@@ -102,7 +126,10 @@ export function readDocumentPayload(
   const dates = [value.issuedOn, ...(kind === "credit_note" ? [] : [value.dueOn])];
   if (!dates.every((d) => typeof d === "string" && isValidIsoDate(d))) return bad("bad date");
   if (kind === "credit_note" && !text(value.invoiceReference)) return bad("missing invoice");
-  const lines = readLines(value.lines);
+  if (kind === "credit_note" && value.amountsAre !== "tax_inclusive") {
+    return bad("a credit note's amounts are tax-inclusive");
+  }
+  const lines = readLines(value.lines, kind === "credit_note");
   if (!lines.ok) return lines;
   const document = { ...value, lines: lines.value } as unknown as AccountingDocument;
   if (!sameTotals(value.totals, totalsOf(lines.value)))

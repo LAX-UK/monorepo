@@ -31,7 +31,7 @@ export function createAccountingRepositories(
   clock: AccountingClock,
 ): AccountingRepositories {
   return {
-    lookup: new DrizzleAccountingDocumentReader(db),
+    lookup: new DrizzleAccountingDocumentReader(db, clock),
     registry: new DrizzleAccountingDocumentRegistry(db, clock),
     transitions: new DrizzleAccountingDocumentTransitions(db, clock),
     workQueue: new DrizzleAccountingDocumentWorkQueue(db, clock),

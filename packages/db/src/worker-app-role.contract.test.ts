@@ -7,6 +7,7 @@ import { createDb } from "./client.js";
 import {
   WORKER_ACCOUNTING_APPEND_ONLY_TABLES,
   WORKER_ACCOUNTING_DOCUMENT_TABLES,
+  WORKER_ACCOUNTING_DOCUMENT_UPDATE_COLUMNS,
   WORKER_ACCOUNTING_READ_TABLES,
   WORKER_DENY_TABLES,
   WORKER_EMAIL_SUPPRESSION_UPDATE_COLUMNS,
@@ -68,7 +69,30 @@ describe.skipIf(!WORKER_URL)("worker_app role contract", { timeout: 60_000 }, ()
         WORKER_ACCOUNTING_DOCUMENT_TABLES,
         privileges,
       );
-      expectTablePrivileges(documents, (row) => row.privilege !== "DELETE");
+      // UPDATE is by column (below), so the table-level check sees only INSERT and SELECT.
+      expectTablePrivileges(documents, (row) => ["SELECT", "INSERT"].includes(row.privilege));
+      const columns = await client.query<{ column_name: string; allowed: boolean }>(
+        `select column_name::text,
+                has_column_privilege(current_user, 'public.accounting_document', column_name, 'UPDATE') as allowed
+           from information_schema.columns
+          where table_schema = 'public' and table_name = 'accounting_document'`,
+      );
+      const updatable = columns.rows.filter((row) => row.allowed).map((row) => row.column_name);
+      expect(updatable.sort()).toEqual([...WORKER_ACCOUNTING_DOCUMENT_UPDATE_COLUMNS].sort());
+      for (const fixed of [
+        "payload",
+        "net_pence",
+        "vat_pence",
+        "gross_pence",
+        "product",
+        "kind",
+        "lax_reference",
+        "legal_entity",
+        "source_event_ref",
+        "created_at",
+      ]) {
+        expect(updatable, fixed).not.toContain(fixed);
+      }
       const history = await readTablePrivileges(
         client,
         WORKER_ACCOUNTING_APPEND_ONLY_TABLES,

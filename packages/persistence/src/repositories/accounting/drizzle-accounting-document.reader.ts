@@ -3,6 +3,7 @@ import type { Database } from "@auction/db";
 import { accountingDocument } from "@auction/db/schema";
 import { and, eq } from "drizzle-orm";
 import type {
+  AccountingClock,
   IAccountingDocumentLookup,
   StoredAccountingDocument,
   StoredDocumentCode,
@@ -10,7 +11,10 @@ import type {
 import { rowToStored } from "../../lib/accounting-document-row.js";
 
 export class DrizzleAccountingDocumentReader implements IAccountingDocumentLookup {
-  constructor(private readonly db: Database) {}
+  constructor(
+    private readonly db: Database,
+    private readonly clock: AccountingClock,
+  ) {}
 
   async findByReference(
     product: Product,
@@ -27,6 +31,6 @@ export class DrizzleAccountingDocumentReader implements IAccountingDocumentLooku
         ),
       );
     if (!row) return ok(null);
-    return rowToStored(row);
+    return rowToStored(row, this.clock.now().getTime());
   }
 }

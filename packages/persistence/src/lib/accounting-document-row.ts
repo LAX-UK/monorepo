@@ -121,8 +121,11 @@ function recordInput(row: AccountingDocumentRow): Record<string, unknown> {
   };
 }
 
-export function rowToRecord(row: AccountingDocumentRow): Result<DocumentRecord, "bad_record"> {
-  return parseRecord(recordInput(row));
+export function rowToRecord(
+  row: AccountingDocumentRow,
+  nowMs: number,
+): Result<DocumentRecord, "bad_record"> {
+  return parseRecord(recordInput(row), nowMs);
 }
 
 export function rowTotals(row: AccountingDocumentRow): Totals {
@@ -132,9 +135,10 @@ export function rowTotals(row: AccountingDocumentRow): Totals {
 /** A row read back through the domain's rules; a row the domain would not accept is refused. */
 export function rowToStored(
   row: AccountingDocumentRow,
+  nowMs: number,
 ): Result<StoredAccountingDocument, "bad_stored_document"> {
   const bad = (why: string) => refuse("bad_stored_document", why);
-  const record = rowToRecord(row);
+  const record = rowToRecord(row, nowMs);
   if (!record.ok) return bad(record.refusal.message);
   const document = readDocumentPayload(row.payload, {
     product: row.product,

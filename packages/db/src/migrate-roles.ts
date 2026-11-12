@@ -235,6 +235,24 @@ export const API_ACCOUNTING_READ_TABLES = [
 ] as const;
 export const API_ACCOUNTING_SETTING_TABLES = ["accounting_source_setting"] as const;
 export const WORKER_ACCOUNTING_DOCUMENT_TABLES = ["accounting_document"] as const;
+/** The columns the work queue and the transitions write; see `lifecycleColumns` in persistence. */
+export const WORKER_ACCOUNTING_DOCUMENT_UPDATE_COLUMNS = [
+  "state",
+  "attempts",
+  "lease_token",
+  "lease_expires_at",
+  "settles_at",
+  "review_lookup",
+  "needs_review_reason",
+  "provider",
+  "provider_id",
+  "provider_number",
+  "pdf_ref",
+  "mismatch_field",
+  "mismatch_difference_pence",
+  "last_error_class",
+  "updated_at",
+] as const;
 export const WORKER_ACCOUNTING_APPEND_ONLY_TABLES = ["accounting_document_event"] as const;
 export const WORKER_ACCOUNTING_READ_TABLES = ["accounting_source_setting"] as const;
 /** Shop Identity owns only its local Identity projection. */
@@ -995,7 +1013,9 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
             continue;
           }
           if ((API_ACCOUNTING_SETTING_TABLES as readonly string[]).includes(tableName)) {
-            await grantIfExists(client, "api_app", tableName, "SELECT, UPDATE");
+            // Read only until a staff route changes the switch; that route's PR grants
+            // UPDATE (xero_mode, books_mode, updated_at, updated_by) and nothing wider.
+            await grantIfExists(client, "api_app", tableName, "SELECT");
             continue;
           }
           if (
@@ -1161,7 +1181,15 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
           await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT");
         }
         for (const tableName of WORKER_ACCOUNTING_DOCUMENT_TABLES) {
-          await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT, UPDATE");
+          // The worker moves a document along its life cycle; it never rewrites what the document
+          // says (payload, totals, product, reference), so UPDATE is column by column.
+          await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT");
+          await grantColumnUpdateIfExists(
+            client,
+            "worker_app",
+            tableName,
+            WORKER_ACCOUNTING_DOCUMENT_UPDATE_COLUMNS,
+          );
         }
         for (const tableName of WORKER_ACCOUNTING_APPEND_ONLY_TABLES) {
           await grantIfExists(client, "worker_app", tableName, "INSERT");
