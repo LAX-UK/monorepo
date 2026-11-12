@@ -1,4 +1,4 @@
-import { addCalendarKeyDays } from "./day.js";
+import { addCalendarKeyDays } from "./day-key.js";
 import { offsetMinutes } from "./offset.js";
 import { instantToWallClock, wallClockToInstant } from "./wall-clock.js";
 
