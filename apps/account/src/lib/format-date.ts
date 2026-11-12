@@ -8,6 +8,7 @@
  * The words come from `@auction/datetime`, which spells every short month the same way.
  */
 import {
+  formatDayMonth,
   formatTimeWithZone,
   formatWeekday,
   formatWhen,
@@ -28,6 +29,13 @@ export function formatDate(value: DateLike): string {
   const date = toDate(value);
   if (!date) return String(value);
   return `${formatWeekday(date, ZONE)} ${formatZonedDate(date, ZONE)}`;
+}
+
+/** "Thu 12 Nov": weekday, day and month; the year follows only when it is not `now`'s. */
+export function formatWeekdayDayMonth(value: DateLike, now: DateLike = new Date()): string {
+  const date = toDate(value);
+  if (!date) return String(value);
+  return `${formatWeekday(date, ZONE)} ${formatDayMonth(date, ZONE, toDate(now) ?? date)}`;
 }
 
 /** "04:49 GMT" or "04:49 BST": the London 24-hour clock with the zone in force at that moment. */
