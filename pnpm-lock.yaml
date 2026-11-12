@@ -1621,6 +1621,9 @@ importers:
 
   packages/domain:
     dependencies:
+      '@auction/accounting-domain':
+        specifier: workspace:*
+        version: link:../accounting-domain
       '@auction/datetime':
         specifier: workspace:*
         version: link:../datetime

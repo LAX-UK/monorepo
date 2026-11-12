@@ -117,6 +117,10 @@ jobs:
 
       - name: Brand name
         run: pnpm lint:brand-name
+
+      - name: Seller commission (one calculator)
+        run: pnpm lint:seller-commission
+
       - name: Route JavaScript budget rule
         run: pnpm lint:route-js-budget
 

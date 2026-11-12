@@ -125,14 +125,14 @@ describe.skipIf(!HAS_DB)("re-offer API services (integration)", () => {
     ...base,
     atg,
     proceeds: {
-      // Settlement's shape: a 25% premium on the hammer, and a 5% fee on that total.
+      // A 25% premium on the hammer, and a seller figure the test controls.
       proceedsFor: async ({ buyerLegalEntityId, hammerPence }) => {
         control.pricedFor.push({ buyerLegalEntityId, hammerPence });
         const salePence = Math.round(hammerPence * 1.25);
         return { salePence, proceedsPence: Math.round(salePence * 0.95) };
       },
     },
-    ownership: { of: () => (control.laxOwned ? "lax_owned" : "seller") },
+    ownership: { of: async () => (control.laxOwned ? "lax_owned" : "seller") },
   });
   const consent = new ReofferConsentService({ ...base, consents });
   const offer = new ReofferOfferService({ ...base, consents, atg, place, moneyPause });

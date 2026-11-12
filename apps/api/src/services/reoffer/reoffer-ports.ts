@@ -40,8 +40,10 @@ export interface IReofferAtgGuard {
 }
 
 /**
- * What the seller would receive if the lot sold to a buyer at a hammer, worked out the way
- * settlement pays it (see `sellerNetForSale`), so the seller is asked about money they will see.
+ * What the seller would receive if the lot sold to a buyer at a hammer, worked out by the same
+ * rule settlement pays by (`sellerProceeds`: the signed agreement's commission on the hammer, plus
+ * VAT), so the seller is asked about money they will see. Refuses with a `ReofferError` when the
+ * lot has no agreement to price it on.
  */
 export interface IReofferSellerProceeds {
   proceedsFor(input: {
@@ -53,7 +55,8 @@ export interface IReofferSellerProceeds {
 }
 
 export interface IReofferLotOwnership {
-  of(sellerLegalEntityId: string | null): LotOwnership;
+  /** Whether the seller account is LAX's own stock (the account's subkind), or a seller. */
+  of(sellerLegalEntityId: string | null): Promise<LotOwnership>;
 }
 
 /**

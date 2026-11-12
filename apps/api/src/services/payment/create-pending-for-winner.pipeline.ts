@@ -1,4 +1,4 @@
-import type { PaymentEligibilityHold } from "@auction/domain";
+import type { PaymentEligibilityHold, SellerTermsSnapshot } from "@auction/domain";
 import type { PricedInvoice } from "@auction/finance-runtime";
 import type { LotFulfilmentAddressSnapshot } from "@auction/persistence/interfaces";
 import {
@@ -250,23 +250,24 @@ export async function handleExistingPaymentForWinner(
   return handler(ctx);
 }
 
+/** What a new payment is raised with: the buyer's total, the seller's terms and the review outcome. */
+export type NewPaymentTerms = {
+  amount: string;
+  amountPence: number;
+  priced: PricedInvoice;
+  /** The payment's `platform_fee` in major units; settlement reads it until it pays from the terms. */
+  platformFee: string;
+  /** What the seller is paid for the sale, stored with the payment. */
+  sellerTerms: SellerTermsSnapshot;
+  requiresManualReview: boolean;
+  manualReviewReason: ManualReviewReason | null;
+};
+
 export async function computeNewPaymentTerms(
   deps: PaymentServiceDeps,
   lot: Lot,
   buyerId: string,
-): Promise<
-  Result<
-    {
-      amount: string;
-      amountPence: number;
-      priced: PricedInvoice;
-      platformFee: string;
-      requiresManualReview: boolean;
-      manualReviewReason: ManualReviewReason | null;
-    },
-    LotError
-  >
-> {
+): Promise<Result<NewPaymentTerms, LotError>> {
   if (!lot.sellerLegalEntityId || !lot.buyerLegalEntityId) {
     return err(new LotError("Winning legal entity is missing for this lot", 400));
   }
@@ -295,9 +296,6 @@ export async function computeNewPaymentTerms(
   }
   const amountPence = priced.totalPence;
   const amount = gbpPenceToMajorString(amountPence);
-  const platformFee = deps.platformFeePolicy
-    ? await deps.platformFeePolicy.computePlatformFeeFromPence(sellerLegalEntityId, amountPence)
-    : gbpPenceToMajorString(Math.round(amountPence * 0.05));
   const amountValidation = deps.paymentTierPolicy.validateCheckoutAmountPence(amountPence);
   if (amountValidation === "blocked") {
     return err(
@@ -311,6 +309,8 @@ export async function computeNewPaymentTerms(
   if (amountValidation === "invalid_amount") {
     return err(new LotError("Invalid payment amount", 400, "invalid_payment_amount"));
   }
+
+  const { sellerTerms, platformFee } = await deps.sellerTerms.forInvoice({ lot, priced });
 
   const sellerEntity =
     deps.legalEntityRepository && sellerLegalEntityId
@@ -335,6 +335,7 @@ export async function computeNewPaymentTerms(
     amountPence,
     priced,
     platformFee,
+    sellerTerms,
     requiresManualReview,
     manualReviewReason,
   });
@@ -344,13 +345,7 @@ export async function createPaymentRecordForWinner(
   deps: PaymentServiceDeps,
   lot: Lot,
   buyerId: string,
-  terms: {
-    amount: string;
-    priced: PricedInvoice;
-    platformFee: string;
-    requiresManualReview: boolean;
-    manualReviewReason: ManualReviewReason | null;
-  },
+  terms: Omit<NewPaymentTerms, "amountPence">,
 ): Promise<RaisedInvoice> {
   if (!lot.buyerLegalEntityId || !lot.sellerLegalEntityId) {
     throw new LotError("Winning legal entity is missing for this lot", 400);
@@ -368,6 +363,7 @@ export async function createPaymentRecordForWinner(
       stripePaymentIntentId: null,
       status: terms.requiresManualReview ? "requires_manual_review" : "pending",
     },
+    sellerTerms: terms.sellerTerms,
   });
   const created = raised.payment;
 
@@ -561,17 +557,10 @@ export async function createPendingForWinner(
 
   const termsResult = await computeNewPaymentTerms(deps, lot, buyerId);
   if (termsResult.isErr()) return err(termsResult.error);
-  const { amount, priced, platformFee, requiresManualReview, manualReviewReason } =
-    termsResult.value;
+  const terms = termsResult.value;
+  const { requiresManualReview, manualReviewReason } = terms;
 
-  const record = await createOrJoinPaymentRecord(
-    deps,
-    lot,
-    buyerId,
-    addressSnapshot,
-    { amount, priced, platformFee, requiresManualReview, manualReviewReason },
-    held,
-  );
+  const record = await createOrJoinPaymentRecord(deps, lot, buyerId, addressSnapshot, terms, held);
   if (record.kind === "joined") return record.result;
   const created = record.raised.payment;
 

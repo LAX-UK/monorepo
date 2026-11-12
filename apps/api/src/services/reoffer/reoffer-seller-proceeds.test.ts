@@ -1,12 +1,12 @@
-import { saleLineBreakdown } from "@auction/domain";
-import { InvoiceRaiser, PaymentTierPolicy, PlatformFeePolicy } from "@auction/finance-runtime";
-import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
+import { SellerTermsPolicy } from "@auction/domain";
+import { InvoiceRaiser, SellerTermsAtRaiseService } from "@auction/finance-runtime";
 import type { Lot, Sale } from "@auction/types";
 import { describe, expect, it } from "vitest";
-import { computeNewPaymentTerms } from "../payment/create-pending-for-winner.pipeline.js";
+import { SIGNED_AT_15_PERCENT } from "../../testing/seller-terms.js";
+import { ReofferError } from "./reoffer-errors.js";
 import { settlementSellerProceeds } from "./reoffer-seller-proceeds.js";
 
-const SELLER = "le-seller";
+const SELLER = "seller-acct";
 const lot = {
   id: "lot-1",
   saleId: "sale-1",
@@ -18,103 +18,104 @@ const lot = {
 } as unknown as Lot;
 const sale = { id: "sale-1", buyerPremiumTiers: null } as unknown as Sale;
 
-/** The settlement pieces, real: the invoice pricing and the seller account's platform fee. */
-function settlement(platformFeeBps: number | null) {
-  const raiser = new InvoiceRaiser({
-    invoices: {
-      findLiveByLotAndBuyerAccount: async () => null,
-      findByPaymentIds: async () => new Map(),
-      raise: async () => {
-        throw new Error("nothing is raised here");
-      },
+const raiser = new InvoiceRaiser({
+  invoices: {
+    findLiveByLotAndBuyerAccount: async () => null,
+    findByPaymentIds: async () => new Map(),
+    raise: async () => {
+      throw new Error("nothing is raised here");
     },
-    sales: { findById: async () => sale },
-  });
-  const legalEntities = {
-    findById: async (id: string) =>
-      id === SELLER ? { id, platformFeeBps, status: "active" } : null,
-  } as unknown as ILegalEntityRepository;
-  const feePolicy = new PlatformFeePolicy(legalEntities);
-  return { raiser, feePolicy, legalEntities };
-}
+  },
+  sales: { findById: async () => sale },
+});
 
-/** What Sold & payouts shows the seller receiving once the buyer pays at this hammer. */
-async function settledNetPence(platformFeeBps: number | null, buyer: string, hammer: number) {
-  const { raiser, feePolicy, legalEntities } = settlement(platformFeeBps);
-  const won = {
-    ...lot,
-    winnerId: "user-1",
-    buyerLegalEntityId: buyer,
-    currentPrice: (hammer / 100).toFixed(2),
-  };
-  const terms = await computeNewPaymentTerms(
+/** The lot priced as the container prices a re-offer: at the hammer, for the buyer who would pay. */
+const pricing = {
+  async priceFor({
+    buyerLegalEntityId,
+    hammerPence,
+  }: { buyerLegalEntityId: string; hammerPence: number }) {
+    const priced = await raiser.price({
+      ...lot,
+      buyerLegalEntityId,
+      currentPrice: (hammerPence / 100).toFixed(2),
+    });
+    return { lines: priced.lines, totalPence: priced.totalPence };
+  },
+};
+
+function policy(
+  options: { laxOwned?: boolean; agreement?: typeof SIGNED_AT_15_PERCENT | null } = {},
+) {
+  return new SellerTermsPolicy(
     {
-      invoiceRaiser: raiser,
-      platformFeePolicy: feePolicy,
-      legalEntityRepository: legalEntities,
-      paymentTierPolicy: new PaymentTierPolicy({
-        minPence: 30,
-        cardMaxPence: 1_000_000_000,
-        manualReviewMinPence: 1_000_000_000,
-        absoluteMaxPence: 1_000_000_000,
-      }),
-      settlementCompliance: null,
-      payments: { findRefundedByLotAndBuyerAccount: async () => null },
-    } as never,
-    won,
-    "user-1",
+      isLaxOwned: async () => options.laxOwned ?? false,
+      agreementForLot: async () =>
+        options.agreement === undefined ? SIGNED_AT_15_PERCENT : options.agreement,
+    },
+    { read: async () => "standard" },
   );
-  const { amount, platformFee } = terms._unsafeUnwrap();
-  const split = saleLineBreakdown({ lineAmount: amount, paymentAmount: amount, platformFee });
-  return Math.round(Number(split.net) * 100);
 }
 
-function estimate(platformFeeBps: number | null) {
-  const { raiser, feePolicy } = settlement(platformFeeBps);
-  return settlementSellerProceeds({
-    feePolicy,
-    pricing: {
-      // As the container prices a re-offer: the lot at the hammer, for the buyer who would pay it.
-      async priceFor({ buyerLegalEntityId, hammerPence }) {
-        const priced = await raiser.price({
-          ...lot,
-          buyerLegalEntityId,
-          currentPrice: (hammerPence / 100).toFixed(2),
-        });
-        return { lines: priced.lines, totalPence: priced.totalPence };
-      },
-    },
+const ask = (terms: SellerTermsPolicy, hammerPence: number) =>
+  settlementSellerProceeds({ pricing, terms }).proceedsFor({
+    lotId: lot.id,
+    sellerLegalEntityId: SELLER,
+    buyerLegalEntityId: "le-next",
+    hammerPence,
   });
-}
 
 describe("the seller's proceeds on a re-offer", () => {
-  it.each([
-    [null, 8_200_000],
-    [500, 8_200_000],
-    [1_500, 8_200_000],
-    [1_250, 8_799_999],
-    [0, 12_345],
-  ])(
-    "equal what settlement pays at the same hammer (fee %s bps, hammer %s)",
-    async (bps, hammer) => {
-      const got = await estimate(bps).proceedsFor({
-        lotId: lot.id,
-        sellerLegalEntityId: SELLER,
-        buyerLegalEntityId: "le-next",
-        hammerPence: hammer,
-      });
-      expect(got.proceedsPence).toBe(await settledNetPence(bps, "le-next", hammer));
-    },
-  );
-
-  it("works from the buyer's total, hammer and premium, as settlement does", async () => {
-    const got = await estimate(500).proceedsFor({
-      lotId: lot.id,
-      sellerLegalEntityId: SELLER,
-      buyerLegalEntityId: "le-next",
-      hammerPence: 8_200_000,
+  it("is the signed agreement's commission on the hammer plus VAT, and the buyer's total as the sale", async () => {
+    // £82,000 hammer at 15% plus VAT: the seller receives £67,240. The buyer pays £102,500.
+    expect(await ask(policy(), 8_200_000)).toEqual({
+      salePence: 10_250_000,
+      proceedsPence: 6_724_000,
     });
-    // £82,000 + 25% premium = £102,500; 5% of it is £5,125; the seller receives £97,375.
-    expect(got).toEqual({ salePence: 10_250_000, proceedsPence: 9_737_500 });
+  });
+
+  it("never counts the buyer's premium as the seller's", async () => {
+    const withPremium = await ask(policy(), 8_200_000);
+    expect(withPremium.salePence).toBeGreaterThan(8_200_000);
+    expect(withPremium.proceedsPence).toBeLessThan(8_200_000);
+  });
+
+  it("equals what is stored at raise for the same hammer", async () => {
+    const raise = new SellerTermsAtRaiseService(policy(), {
+      computePlatformFeeFromPence: async () => "0.00",
+    });
+    const hammerPence = 8_799_999;
+    const priced = await pricing.priceFor({ buyerLegalEntityId: "le-next", hammerPence });
+    const { sellerTerms } = await raise.forInvoice({ lot, priced });
+    const estimate = await ask(policy(), hammerPence);
+    expect(sellerTerms).toMatchObject({
+      basis: "agreement",
+      sellerNetPence: estimate.proceedsPence,
+    });
+  });
+
+  it("pays LAX-owned stock nothing out", async () => {
+    expect(await ask(policy({ laxOwned: true, agreement: null }), 480_000)).toEqual({
+      salePence: 600_000,
+      proceedsPence: 0,
+    });
+  });
+
+  it.each([
+    ["no agreement", { agreement: null }],
+    [
+      "an agreement the seller has not accepted",
+      { agreement: { ...SIGNED_AT_15_PERCENT, acceptedAt: null } },
+    ],
+    [
+      "an agreement with no commission",
+      { agreement: { ...SIGNED_AT_15_PERCENT, commissionPercent: null } },
+    ],
+  ])("refuses to show a guessed figure for %s", async (_name, options) => {
+    await expect(ask(policy(options), 1_000_000)).rejects.toMatchObject({
+      name: "ReofferError",
+      code: "seller_terms_unavailable",
+    });
+    await expect(ask(policy(options), 1_000_000)).rejects.toBeInstanceOf(ReofferError);
   });
 });

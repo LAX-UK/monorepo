@@ -2521,6 +2521,13 @@
       "when": 1808553600000,
       "tag": "0360_artwork_register_sold_attention",
       "breakpoints": true
+    },
+    {
+      "idx": 361,
+      "version": "7",
+      "when": 1809691200000,
+      "tag": "0369_sale_seller_terms",
+      "breakpoints": true
     }
   ]
 }

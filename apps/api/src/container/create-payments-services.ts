@@ -8,15 +8,18 @@ import {
   InvoiceRecipients,
   StalePaymentStore,
   StripeCheckoutCloser,
+  createSellerTermsAtRaise,
 } from "@auction/finance-runtime";
 import {
   DrizzleBidActorEligibilityReader,
   DrizzleBidInvoiceRepository,
+  DrizzleCommissionVatSettingReader,
   DrizzleLotFulfilmentRepository,
   DrizzlePaymentCheckoutSessionRepository,
   DrizzlePaymentDomainEventsRepository,
   DrizzlePaymentTransferReferenceRepository,
   DrizzlePrivateSaleDealRepository,
+  DrizzleSellerTermsFactsReader,
   DrizzleStalePaymentCanceller,
   DrizzleUnappliedMoneyReader,
 } from "@auction/persistence/repositories";
@@ -54,7 +57,6 @@ import {
   PaymentTierPolicy,
   parsePaymentTierLimits,
 } from "../services/payment/payment-tier.policy.js";
-import { PlatformFeePolicy } from "../services/payment/platform-fee.policy.js";
 import { StripeCheckoutService } from "../services/payment/stripe-checkout.service.js";
 import {
   type IUnappliedMoneyHandling,
@@ -180,7 +182,11 @@ export function createPaymentsServices(
     env.XERO_CLIENT_ID && env.XERO_CLIENT_SECRET && env.XERO_REDIRECT_URI,
   );
 
-  const platformFeePolicy = new PlatformFeePolicy(legalEntityRepository);
+  const sellerTermsAtRaise = createSellerTermsAtRaise({
+    facts: new DrizzleSellerTermsFactsReader(db),
+    vatSetting: new DrizzleCommissionVatSettingReader(db),
+    legalEntities: legalEntityRepository,
+  });
 
   const paymentTierPolicy = new PaymentTierPolicy(parsePaymentTierLimits(env));
 
@@ -368,7 +374,7 @@ export function createPaymentsServices(
     },
     saleRepo,
     marketingEventService,
-    platformFeePolicy,
+    sellerTermsAtRaise,
     paymentCaptureService,
     stripeCheckoutService,
     payoutAdjustmentService,
@@ -395,7 +401,7 @@ export function createPaymentsServices(
     paymentRepo,
     settlementCompliancePolicy,
     paymentTierPolicy,
-    platformFeePolicy,
+    sellerTermsAtRaise,
     accountingProvider,
     notificationOutboxService,
     notificationFactory,

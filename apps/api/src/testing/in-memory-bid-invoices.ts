@@ -1,3 +1,4 @@
+import type { SellerTermsSnapshot } from "@auction/domain";
 import { InvoiceRaiser } from "@auction/finance-runtime";
 import type {
   BidInvoiceRecord,
@@ -16,6 +17,8 @@ import type {
 export class InMemoryBidInvoices implements IBidInvoiceReader, IBidInvoiceRaiseRepository {
   readonly invoices: BidInvoiceRecord[] = [];
   private readonly invoiceByPayment = new Map<string, BidInvoiceRecord>();
+  /** What the seller is paid for each payment raised, as the store keeps it with the payment. */
+  readonly sellerTermsByPayment = new Map<string, SellerTermsSnapshot>();
 
   constructor(
     private readonly createPayment: (row: CreatePaymentRow) => Promise<PaymentRecord>,
@@ -59,6 +62,7 @@ export class InMemoryBidInvoices implements IBidInvoiceReader, IBidInvoiceRaiseR
       invoiceId: invoice.id,
     });
     this.invoiceByPayment.set(payment.id, invoice);
+    this.sellerTermsByPayment.set(payment.id, input.sellerTerms);
     return { invoice, payment, invoiceCreated: !existing };
   }
 }

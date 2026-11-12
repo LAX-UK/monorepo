@@ -19,6 +19,7 @@ const REOFFER_ERRORS = {
   offer_limit_reached: 409,
   no_other_bidder: 422,
   no_eligible_bidder: 422,
+  seller_terms_unavailable: 409,
   // The seller's answer
   consent_already_answered: 409,
   consent_not_requested: 409,

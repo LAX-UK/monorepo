@@ -129,11 +129,6 @@ const envSchema = z
      * operator from `legalEntityFor("bid")`; override it only if the company changes.
      */
     LAX_BID_LEGAL_NAME: z.string().min(1).default(legalEntityFor("bid").name),
-    /**
-     * Seller accounts whose lots LAX owns itself (comma-separated legal entity ids). Offering such
-     * a lot to an underbidder needs no seller answer. Empty: every offer asks the seller.
-     */
-    REOFFER_LAX_OWNED_SELLER_ENTITY_IDS: z.preprocess(emptyToUndefined, z.string().optional()),
     /** Comma-separated browser origins allowed for CORS (e.g. main web + event microsite). */
     WEB_ORIGINS: z.preprocess((val) => {
       let source = val;

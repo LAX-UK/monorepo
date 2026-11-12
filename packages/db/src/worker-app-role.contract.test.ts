@@ -5,6 +5,8 @@ import { describe, expect, it } from "vitest";
 import { readUserReadCutoverFromEnv } from "./applied-user-read-cutover.js";
 import { createDb } from "./client.js";
 import {
+  FINANCE_SETTING_READ_TABLES,
+  SELLER_TERMS_INSERT_SELECT_TABLES,
   WORKER_ACCOUNTING_APPEND_ONLY_TABLES,
   WORKER_ACCOUNTING_DOCUMENT_TABLES,
   WORKER_ACCOUNTING_DOCUMENT_UPDATE_COLUMNS,
@@ -121,6 +123,22 @@ describe.skipIf(!WORKER_URL)("worker_app role contract", { timeout: 60_000 }, ()
       expectTablePrivileges(history, (row) => row.privilege === "INSERT");
       const settings = await readTablePrivileges(client, WORKER_ACCOUNTING_READ_TABLES, privileges);
       expectTablePrivileges(settings, (row) => row.privilege === "SELECT");
+    });
+  });
+
+  it("adds seller terms and reads them, reads the finance settings and the agreements behind a lot", async () => {
+    await withWorkerClient(async (client) => {
+      const privileges = ["SELECT", "INSERT", "UPDATE", "DELETE"];
+      const terms = await readTablePrivileges(
+        client,
+        SELLER_TERMS_INSERT_SELECT_TABLES,
+        privileges,
+      );
+      expectTablePrivileges(terms, (row) => ["SELECT", "INSERT"].includes(row.privilege));
+      const settings = await readTablePrivileges(client, FINANCE_SETTING_READ_TABLES, privileges);
+      expectTablePrivileges(settings, (row) => row.privilege === "SELECT");
+      const agreements = await readTablePrivileges(client, ["consignment_agreement"], privileges);
+      expectTablePrivileges(agreements, (row) => row.privilege === "SELECT");
     });
   });
 

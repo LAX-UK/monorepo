@@ -21,6 +21,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@auction/accounting-domain": "workspace:*",
     "@auction/datetime": "workspace:*",
     "@auction/types": "workspace:*"
   },

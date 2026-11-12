@@ -21,7 +21,9 @@ import {
   AUTH_LEGAL_ACCEPTANCE_TABLES,
   AUTH_POLICY_TABLES,
   AUTH_READ_TABLES,
+  FINANCE_SETTING_READ_TABLES,
   LIFT_ZOHO_CAMPAIGNS_OPT_OUT_ROLES,
+  SELLER_TERMS_INSERT_SELECT_TABLES,
   SHOP_ARTWORK_REGISTER_CONFLICT_TABLES,
   SHOP_ARTWORK_REGISTER_EVENT_TABLES,
   SHOP_ARTWORK_REGISTER_OFFER_TABLES,
@@ -876,6 +878,19 @@ describe("migrate-roles invariants", () => {
       expect([...WORKER_READ_TABLES]).not.toContain(table);
       expect([...SHOP_COMMERCE_TABLES, ...SHOP_COMMERCE_APPEND_ONLY_TABLES]).not.toContain(table);
       expect([...API_DENY_TABLES]).not.toContain(table);
+    }
+  });
+
+  it("lets the API and the worker add seller terms but never rewrite them, and keeps both away from Shop", () => {
+    expect([...SELLER_TERMS_INSERT_SELECT_TABLES]).toEqual(["sale_seller_terms"]);
+    expect([...FINANCE_SETTING_READ_TABLES]).toEqual(["bid_finance_setting"]);
+    expect([...WORKER_READ_TABLES]).toContain("consignment_agreement");
+    for (const table of [...SELLER_TERMS_INSERT_SELECT_TABLES, ...FINANCE_SETTING_READ_TABLES]) {
+      expect([...WORKER_FULL_TABLES]).not.toContain(table);
+      expect([...WORKER_DENY_TABLES]).not.toContain(table);
+      expect([...WORKER_READ_TABLES]).not.toContain(table);
+      expect([...API_DENY_TABLES]).not.toContain(table);
+      expect([...SHOP_COMMERCE_TABLES, ...SHOP_COMMERCE_APPEND_ONLY_TABLES]).not.toContain(table);
     }
   });
 
