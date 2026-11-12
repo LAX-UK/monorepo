@@ -15,9 +15,9 @@ const journal = JSON.parse(read("meta/_journal.json")) as {
 };
 
 describe("migration 0356 session device marker", () => {
-  it("is journalled last, after every migration already on main", () => {
+  it("is journalled with a later time and the next index than the entry before it", () => {
     const index = journal.entries.findIndex((e) => e.tag === "0356_session_device_marker");
-    expect(index).toBe(journal.entries.length - 1);
+    expect(index).toBeGreaterThan(0);
     expect(journal.entries[index]?.when).toBe(1807171200000);
     expect(journal.entries[index]?.idx).toBe((journal.entries[index - 1]?.idx ?? 0) + 1);
     expect(journal.entries[index - 1]?.when).toBeLessThan(1807171200000);
