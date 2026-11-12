@@ -4,6 +4,7 @@ import { and, asc, eq, gt, inArray, isNull } from "drizzle-orm";
 import type {
   AuctionOfferDraftLot,
   AuctionOfferDraftLotSummary,
+  AuctionOfferLotCatalogue,
   AuctionOfferSale,
   IAuctionOfferReader,
 } from "../../interfaces/artwork-register.js";
@@ -47,6 +48,31 @@ export class DrizzleAuctionOfferReader implements IAuctionOfferReader {
       .leftJoin(sale, eq(sale.id, lot.saleId))
       .where(
         and(eq(lot.artworkRegisterId, registerId), isNull(lot.deletedAt), eq(lot.status, "draft")),
+      )
+      .orderBy(asc(lot.createdAt))
+      .limit(1);
+    return row ?? null;
+  }
+
+  async findLotCatalogueForRegister(registerId: string): Promise<AuctionOfferLotCatalogue | null> {
+    const [row] = await this.db
+      .select({
+        lotId: lot.id,
+        status: lot.status,
+        saleStatus: sale.status,
+        title: lot.title,
+        medium: lot.medium,
+        dimensions: lot.dimensions,
+        images: lot.images,
+      })
+      .from(lot)
+      .leftJoin(sale, eq(sale.id, lot.saleId))
+      .where(
+        and(
+          eq(lot.artworkRegisterId, registerId),
+          isNull(lot.deletedAt),
+          inArray(lot.status, [...OPEN_LOT_STATUSES]),
+        ),
       )
       .orderBy(asc(lot.createdAt))
       .limit(1);

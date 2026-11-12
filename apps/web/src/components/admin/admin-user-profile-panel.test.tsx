@@ -27,6 +27,7 @@ const user: AdminUserDetailPayload = {
   kycRetryCount: 2,
   deletionRequestedAt: null,
   securityStatusAvailable: true,
+  signInMethodKinds: null,
   suspendedReason: null,
   dateOfBirth: null,
   emailStatusChangedAt: null,
@@ -77,5 +78,38 @@ describe("AdminUserProfilePanel", () => {
     // Roles have their own section on the staff record.
     expect(screen.queryByText("Finance")).toBeNull();
     expect(screen.queryByText("Signed up as")).toBeNull();
+  });
+
+  it("lists sign-in method kinds and counts as read-only facts", () => {
+    renderPanel({
+      ...user,
+      signInMethodKinds: { password: true, google: true, apple: false, passkeys: 3 },
+    });
+
+    const methods = screen.getByRole("region", { name: "Sign-in methods" });
+    expect(within(methods).getByText("Set")).toBeInTheDocument();
+    expect(within(methods).getByText("Linked")).toBeInTheDocument();
+    expect(within(methods).getByText("Not linked")).toBeInTheDocument();
+    expect(within(methods).getByText("Passkeys")).toBeInTheDocument();
+    expect(within(methods).getByText("3")).toBeInTheDocument();
+    expect(within(methods).queryByRole("button")).toBeNull();
+  });
+
+  it("hides passkeys when they are not offered", () => {
+    renderPanel({
+      ...user,
+      signInMethodKinds: { password: false, google: false, apple: false, passkeys: null },
+    });
+
+    const methods = screen.getByRole("region", { name: "Sign-in methods" });
+    expect(within(methods).getByText("Not set")).toBeInTheDocument();
+    expect(within(methods).queryByText("Passkeys")).toBeNull();
+  });
+
+  it("says Not available when the issuer could not answer", () => {
+    renderPanel(user);
+
+    const methods = screen.getByRole("region", { name: "Sign-in methods" });
+    expect(within(methods).getByText("Not available")).toBeInTheDocument();
   });
 });

@@ -5,6 +5,7 @@ import {
   index,
   integer,
   jsonb,
+  numeric,
   pgTable,
   text,
   timestamp,
@@ -47,6 +48,8 @@ export const artworkRegister = pgTable(
     /** When the pictures were last compared with Zoho's; null until the first check. */
     imagesCheckedAt: timestamp("images_checked_at", { mode: "date", withTimezone: true }),
     catalogueStatus: text("catalogue_status"),
+    /** Zoho's Unit Price in pounds; shown beside the LAX price, never the price itself. */
+    zohoPrice: numeric("zoho_price", { precision: 12, scale: 2 }),
     offerState: text("offer_state")
       .$type<"held" | "lax_art" | "bid_sale" | "private_sale" | "sold" | "withdrawn">()
       .notNull()

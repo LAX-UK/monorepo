@@ -3,6 +3,7 @@ import {
   decideRemovePasskey,
   decideUnlink,
   describeSignInMethods,
+  summariseSignInMethodKinds,
 } from "./sign-in-method-rules.js";
 
 const at = (day: number) => new Date(`2026-10-${String(day).padStart(2, "0")}T09:00:00Z`);
@@ -129,5 +130,40 @@ describe("decideRemovePasskey", () => {
   it("does not count the emailed sign-in link, which is no method the person set up", () => {
     // Nothing in the account rows stands for the email link, so it can never save the last passkey.
     expect(decideRemovePasskey([row("magic-link")], 1)).toBe("last_sign_in_method");
+  });
+});
+
+describe("summariseSignInMethodKinds", () => {
+  const passkey = (id: string) => ({
+    id,
+    name: "Work laptop",
+    deviceType: "multiDevice" as const,
+    backedUp: true,
+    transports: null,
+    createdAt: at(4),
+    lastUsedAt: null,
+  });
+  const methods = describeSignInMethods(
+    [credential, { ...google, providerEmail: "person@gmail.com" }],
+    [passkey("a"), passkey("b")],
+  );
+
+  it("reports kinds and a passkey count, and nothing that identifies a method", () => {
+    const kinds = summariseSignInMethodKinds(methods, true);
+    expect(kinds).toEqual({ password: true, google: true, apple: false, passkeys: 2 });
+    expect(JSON.stringify(kinds)).not.toMatch(/gmail|Work laptop/);
+  });
+
+  it("says nothing about passkeys when they are not offered", () => {
+    expect(summariseSignInMethodKinds(methods, false).passkeys).toBeNull();
+  });
+
+  it("reports an empty set as nothing linked and zero passkeys", () => {
+    expect(summariseSignInMethodKinds(describeSignInMethods([]), true)).toEqual({
+      password: false,
+      google: false,
+      apple: false,
+      passkeys: 0,
+    });
   });
 });

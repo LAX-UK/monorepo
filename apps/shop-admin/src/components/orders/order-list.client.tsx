@@ -139,7 +139,7 @@ export function OrderList({
   ];
 
   const exportRows = (rows: readonly OrderRow[]) => {
-    download(`orders-${now.slice(0, 10)}.csv`, ordersCsv(rows));
+    download(`orders-${londonToday(serverNow)}.csv`, ordersCsv(rows));
     toast.success(`Exported ${rows.length} ${rows.length === 1 ? "order" : "orders"}`);
   };
 

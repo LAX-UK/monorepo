@@ -88,8 +88,10 @@ export {
   type StaffRoleRemovedPayloadV1,
 } from "./lax-staff-access-payload-schemas.js";
 export {
+  artworkRegisterCatalogueChangedPayloadSchemaV1,
   artworkRegisterOfferChangedPayloadSchemaV1,
   artworkRegisterStockCodeAssignedPayloadSchemaV1,
+  type ArtworkRegisterCatalogueChangedPayloadV1,
   type ArtworkRegisterOfferChangedPayloadV1,
   type ArtworkRegisterStockCodeAssignedPayloadV1,
 } from "./artwork-register-payload-schemas.js";
