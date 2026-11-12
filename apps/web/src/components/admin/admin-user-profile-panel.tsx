@@ -1,5 +1,6 @@
 import { formatEmailDeliverabilityStatus, formatUserRole } from "@/lib/admin/admin-user-presenters";
 import { formatBirthDate } from "@/lib/admin/people/format-birth-date";
+import { signInMethodFacts } from "@/lib/admin/people/sign-in-method-facts";
 import { staffStatus } from "@/lib/admin/staff-kit-status";
 import { formatAmlHoldReason } from "@/lib/admin/status-badge-variants";
 import type { AdminUserDetailPayload } from "@/lib/data/http/admin.server";
@@ -134,6 +135,14 @@ export function AdminUserProfilePanel({ user }: { user: AdminUserDetailPayload }
         className="scroll-mt-20"
       >
         <KeyValueList items={security} columns={2} />
+      </Section>
+      <Section
+        id="sign-in-methods"
+        title="Sign-in methods"
+        description="Which ways this person can sign in. Read only."
+        className="scroll-mt-20"
+      >
+        <KeyValueList items={signInMethodFacts(user.signInMethodKinds)} columns={2} />
       </Section>
     </>
   );

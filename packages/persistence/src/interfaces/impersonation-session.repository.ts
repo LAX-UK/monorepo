@@ -26,6 +26,12 @@ export interface IImpersonationSessionRepository {
     endReason: ImpersonationEndReason,
     client?: ImpersonationDbClient,
   ): Promise<void>;
+  /** Ends the session only when `actorUserId` owns it and it is still open. */
+  endForActor(
+    sessionId: string,
+    actorUserId: string,
+    endReason: ImpersonationEndReason,
+  ): Promise<boolean>;
   findById(sessionId: string): Promise<ImpersonationSessionRow | null>;
   findActive(sessionId: string): Promise<ImpersonationSessionRow | null>;
   listActiveByActor(actorUserId: string): Promise<ImpersonationSessionRow[]>;

@@ -1,4 +1,4 @@
-import { formatStaffDate, londonToday, londonWallTimeToIso } from "@auction/staff-ui";
+import { formatStaffDate, londonToday, londonWallTimeToIso, shiftDay } from "@auction/staff-ui";
 import {
   BID_STAFF_ROLE_RULES,
   LAX_ADMIN_ROLE_RULES,
@@ -78,9 +78,7 @@ export function staffRoleEndsAtFromLastDay(lastDay: string | null): string | nul
   if (!lastDay) return null;
   const [y, m, d] = lastDay.split("-").map(Number);
   if (!y || !m || !d) return null;
-  const next = new Date(Date.UTC(y, m - 1, d + 1));
-  const day = next.toISOString().slice(0, 10);
-  return londonWallTimeToIso(day, "00:00");
+  return londonWallTimeToIso(shiftDay(lastDay, 1), "00:00");
 }
 
 /** The last day a role is held: the day before the moment it ends. */

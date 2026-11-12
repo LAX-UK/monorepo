@@ -189,3 +189,20 @@ export type AccountPasskeyRenamedResponse = z.infer<typeof accountPasskeyRenamed
 export type AccountPasskeyRemovedResponse = z.infer<typeof accountPasskeyRemovedSchema>;
 export type AccountSignInMethodsResponse = z.infer<typeof accountSignInMethodsSchema>;
 export type AccountSignInMethodUnlinkedResponse = z.infer<typeof accountSignInMethodUnlinkedSchema>;
+
+/**
+ * Which kinds of sign-in method a person has, for staff to read. Kinds and a passkey count only:
+ * never a provider address, a passkey name or a credential identifier.
+ */
+export const signInMethodKindsSchema = z.object({
+  password: z.boolean(),
+  google: z.boolean(),
+  apple: z.boolean(),
+  /** How many passkeys the person holds; null when this environment does not offer passkeys. */
+  passkeys: z.number().int().nonnegative().nullable(),
+});
+export type SignInMethodKinds = z.infer<typeof signInMethodKindsSchema>;
+
+/** Issuer machine route that answers {@link SignInMethodKinds} for one subject. */
+export const identitySignInMethodKindsPath = (subjectId: string) =>
+  `/identity/subjects/${encodeURIComponent(subjectId)}/sign-in-method-kinds`;
