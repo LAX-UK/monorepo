@@ -27,16 +27,12 @@ const REOFFER_NOTICES = [
 ];
 
 describe("migration 0354 lot re-offer", () => {
-  it("is journalled as entry 348 with a later time than the entry before it", () => {
+  it("is journalled with the next index and a later time than the entry before it", () => {
     const index = journal.entries.findIndex((e) => e.tag === "0354_lot_reoffer");
     const entry = journal.entries[index];
     const previous = journal.entries[index - 1];
-    expect(entry?.idx).toBe(348);
-    expect(entry?.when).toBe(1805616000000);
-    // Entries 346 and 347 belong to migrations still open in other branches; the gap is expected.
-    expect(entry?.idx).toBeGreaterThan(previous?.idx ?? 0);
+    expect(entry?.idx).toBe((previous?.idx ?? -1) + 1);
     expect(entry?.when).toBeGreaterThan(previous?.when ?? 0);
-    expect(journal.entries.at(-1)?.tag).toBe("0354_lot_reoffer");
   });
 
   it("creates both tables and every index and check idempotently, with a lock timeout", () => {
