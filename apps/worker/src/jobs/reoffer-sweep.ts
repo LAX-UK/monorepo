@@ -1,5 +1,10 @@
+import { INVOICE_RETRY_BACKOFF_MS, invoiceSweepOutcome } from "@auction/domain";
 import { Sentry } from "@auction/observability";
-import type { IReofferSweepReader, ReofferSweepRef } from "@auction/persistence/interfaces";
+import type {
+  IReofferInvoiceMarker,
+  IReofferSweepReader,
+  ReofferSweepRef,
+} from "@auction/persistence/interfaces";
 import type pino from "pino";
 import { reofferSweepTotal } from "../lib/reoffer-sweep-metrics.js";
 import type { ReofferClockService } from "../reoffer/reoffer-clock.service.js";
@@ -19,6 +24,11 @@ export type ReofferSweepResult = {
   ended: number;
   offerReminders: number;
   invoicesRaised: number;
+  /**
+   * Missed invoices that were not raised this run: reported and marked, for good when an invoice
+   * exists or the award is gone, otherwise to be tried again after the back-off.
+   */
+  invoicesUnraised: number;
   failed: number;
 };
 
@@ -34,18 +44,21 @@ type Step = "seller_request" | "offer" | "invoice";
 export async function runReofferSweepJob(options: {
   reader: IReofferSweepReader;
   clock: Pick<ReofferClockService, "settleSellerRequest" | "settleOffer">;
+  /** Marks an offer whose invoice cannot be raised, so the next run does not list it again. */
+  marker: IReofferInvoiceMarker;
   /** Raises the invoice for a re-awarded lot; the finance runtime's idempotent `ensureForLot`. */
   ensureInvoice: ((lotId: string) => Promise<{ created: boolean; reason?: string }>) | null;
   log: pino.Logger;
   now?: () => Date;
 }): Promise<ReofferSweepResult> {
-  const { reader, clock, ensureInvoice, log, now = () => new Date() } = options;
+  const { reader, clock, marker, ensureInvoice, log, now = () => new Date() } = options;
   const result: ReofferSweepResult = {
     lapsed: 0,
     requestReminders: 0,
     ended: 0,
     offerReminders: 0,
     invoicesRaised: 0,
+    invoicesUnraised: 0,
     failed: 0,
   };
 
@@ -81,11 +94,31 @@ export async function runReofferSweepJob(options: {
   if (ensureInvoice) {
     const missed = await reader.acceptedWithoutInvoice({
       reawardedBefore: new Date(now().getTime() - INVOICE_GRACE_MS),
+      retryMarkedBefore: new Date(now().getTime() - INVOICE_RETRY_BACKOFF_MS),
       limit: SWEEP_BATCH,
     });
     await each("invoice", missed, async (ref) => {
-      const raised = await ensureInvoice(ref.lotId);
-      return raised.created ? "raised" : (raised.reason ?? "unchanged");
+      const outcome = invoiceSweepOutcome(await ensureInvoice(ref.lotId));
+      if (outcome.kind === "raised") return "raised";
+      // Report first, then mark: a crash in between reports the row twice, never zero times.
+      const retry = outcome.kind === "retry";
+      log.warn(
+        { reofferId: ref.reofferId, lotId: ref.lotId, reason: outcome.reason, retry },
+        "reoffer_invoice_not_raised",
+      );
+      Sentry.captureMessage(
+        retry
+          ? "reoffer sweep: re-awarded lot has no invoice; will retry once the cause is fixed"
+          : "reoffer sweep: re-awarded lot has no invoice and none can be raised",
+        {
+          level: "warning",
+          tags: { job: "reoffer_sweep", step: "invoice", reason: outcome.reason, retry },
+          extra: { reofferId: ref.reofferId, lotId: ref.lotId },
+        },
+      );
+      await marker.markInvoiceNotRaised(ref.reofferId, outcome.marker);
+      result.invoicesUnraised += 1;
+      return outcome.reason;
     });
   }
 
