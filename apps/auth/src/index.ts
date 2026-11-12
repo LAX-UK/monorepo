@@ -11,6 +11,7 @@ import { createAuthMetrics } from "./container/create-auth-metrics.js";
 import { createAuthRepositories } from "./container/create-auth-repositories.js";
 import { createAuthRequestHandler } from "./container/create-auth-request-handler.js";
 import { createAuthSchedules } from "./container/create-auth-schedules.js";
+import { createBrowserSignIns } from "./container/create-browser-sign-ins.js";
 import { createDataRequests } from "./container/create-data-requests.js";
 import { createDeviceSessions } from "./container/create-device-sessions.js";
 import { createIdentityAddressService } from "./container/create-identity-address-service.js";
@@ -157,6 +158,13 @@ const durableSecurityEffects = createDurableSecurityEffects({
   },
   log: withAlertingLog(log),
 });
+const browserSignIns = createBrowserSignIns({
+  db,
+  redis,
+  sealer: envelope ?? undefined,
+  logout: services.oidc.logout,
+  durable: durableSecurityEffects,
+});
 const emailChange = new EmailChangeService({
   operations: identityOperations,
   email: emailSender,
@@ -262,6 +270,7 @@ const schedules = await createAuthSchedules({
   db,
   log,
   deletionPurge,
+  sessionExpiry: browserSignIns.expirySweep,
   identityOperations,
   logoutDelivery: services.oidc.logoutDelivery,
   securityEffects: durableSecurityEffects,
@@ -398,6 +407,7 @@ const app = createAuthApp({
     webOrigins,
     retryResponseCrypto: envelope,
     refreshFamilies,
+    browserSignIns,
     idTokenRenewal: refreshedIdTokens,
     replay: {
       reserve: async (key, value, ttlSec) =>

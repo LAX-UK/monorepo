@@ -1,5 +1,10 @@
 import type { IdentityDatabase } from "@auction/identity-db";
-import { oidcRpSession, session, sessionLineage } from "@auction/identity-db/schema";
+import {
+  oauthAccessToken,
+  oidcRpSession,
+  session,
+  sessionLineage,
+} from "@auction/identity-db/schema";
 import { and, desc, eq, gt, inArray, ne, or } from "drizzle-orm";
 import type {
   NewSession,
@@ -107,20 +112,29 @@ export class DrizzleSessionTakeoverStore implements SessionTakeoverStore {
           country: write.country,
         })
         .where(eq(session.id, write.newSessionId));
+      const evicted = (
+        await tx
+          .select({ previousSid: sessionLineage.previousSid })
+          .from(sessionLineage)
+          .where(eq(sessionLineage.sessionId, write.newSessionId))
+          .orderBy(desc(sessionLineage.createdAt), desc(sessionLineage.previousSid))
+          .offset(write.maxLineage)
+      ).map((row) => row.previousSid);
+      if (evicted.length === 0) return;
+      // Tokens issued under a name that falls off the list move to the record itself, so a
+      // sign-out of the record still finds them and their refresh still resolves to it.
+      await tx
+        .update(oauthAccessToken)
+        .set({ sid: write.newSessionId })
+        .where(
+          and(eq(oauthAccessToken.userId, write.userId), inArray(oauthAccessToken.sid, evicted)),
+        );
       await tx
         .delete(sessionLineage)
         .where(
           and(
             eq(sessionLineage.sessionId, write.newSessionId),
-            inArray(
-              sessionLineage.previousSid,
-              tx
-                .select({ previousSid: sessionLineage.previousSid })
-                .from(sessionLineage)
-                .where(eq(sessionLineage.sessionId, write.newSessionId))
-                .orderBy(desc(sessionLineage.createdAt), desc(sessionLineage.previousSid))
-                .offset(write.maxLineage),
-            ),
+            inArray(sessionLineage.previousSid, evicted),
           ),
         );
     });
