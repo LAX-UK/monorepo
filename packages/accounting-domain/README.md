@@ -116,6 +116,14 @@ throw) and refuses two live sources; `parseSwitchConfig` turns unknown input int
   cancelled: a person resolves it.
 - `issued` and `cancelled` are final.
 
+## Storage
+
+`@auction/persistence` stores these records (tables from migration 0368; see `repositories/accounting`). A row
+is one `DocumentRecord` plus the document, and CHECK constraints allow only the combinations `parseRecord`
+accepts. Every move calls the functions above and writes the new state and a history row together; the
+history table is append-only for every role. The source switch is one row per product (`xero_mode`,
+`books_mode`, never both `live`). Dry run: nothing calls a provider.
+
 ## Out of scope for this phase
 
 - Margin-scheme purchase price and margin: the model prints no VAT on a margin-scheme sale and carries no
