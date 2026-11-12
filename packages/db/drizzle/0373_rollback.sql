@@ -1,4 +1,4 @@
--- Rollback for 0372_shop_home_cover. The chosen cover picture is dropped with the table; the Shop
+-- Rollback for 0373_shop_home_cover. The chosen cover picture is dropped with the table; the Shop
 -- home then leads with the newest edition, as it did before the picture could be chosen. Roll
 -- back the release first, then this.
 BEGIN;
