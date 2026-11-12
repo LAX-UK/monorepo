@@ -248,6 +248,8 @@ export const envSchema = z
       .default(false),
     XERO_CLIENT_ID: z.preprocess(emptyToUndefined, z.string().optional()),
     XERO_CLIENT_SECRET: z.preprocess(emptyToUndefined, z.string().optional()),
+    /** Same key as the API: seals Xero OAuth tokens at rest. */
+    XERO_TOKEN_DEK_KEY: z.preprocess(emptyToUndefined, z.string().optional()),
     XERO_REDIRECT_URI: z.preprocess(emptyToUndefined, z.string().url().optional()),
     XERO_DEFAULT_REVENUE_ACCOUNT_CODE: z.string().min(1).default("200"),
     XERO_DEFAULT_TAX_TYPE: z.string().min(1).default("NONE"),

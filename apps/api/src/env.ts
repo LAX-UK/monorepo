@@ -237,6 +237,8 @@ const envSchema = z
     /** Xero OAuth app (optional). When set with secret + redirect, admins can connect Xero. */
     XERO_CLIENT_ID: z.string().optional(),
     XERO_CLIENT_SECRET: z.string().optional(),
+    /** 32-byte key (64 hex chars or base64) that seals Xero OAuth tokens at rest. Required to connect Xero. */
+    XERO_TOKEN_DEK_KEY: z.preprocess(emptyToUndefined, z.string().optional()),
     /** Must match the web app callback route registered in the Xero developer portal (e.g. https://lax.bid/admin/integrations/xero/callback). */
     XERO_REDIRECT_URI: z.preprocess(emptyToUndefined, z.string().url().optional()),
     /** Webhook signing key from Xero (optional until webhooks are configured). */

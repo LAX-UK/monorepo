@@ -21,8 +21,16 @@ export const xeroConnection = pgTable(
     id: uuid("id").defaultRandom().primaryKey(),
     tenantId: text("tenant_id").notNull().unique(),
     tenantName: text("tenant_name"),
-    accessToken: text("access_token").notNull(),
-    refreshToken: text("refresh_token").notNull(),
+    /**
+     * Legacy plaintext tokens. Nullable since migration 0367: new writes leave them null and store
+     * the envelope-sealed values below. A value here is only ever a row not yet backfilled.
+     */
+    accessToken: text("access_token"),
+    refreshToken: text("refresh_token"),
+    /** AES-256-GCM envelope (`v1:` prefix) of the OAuth access token. */
+    accessTokenSealed: text("access_token_sealed"),
+    /** AES-256-GCM envelope (`v1:` prefix) of the OAuth refresh token. */
+    refreshTokenSealed: text("refresh_token_sealed"),
     expiresAt: timestamp("expires_at", { mode: "date", withTimezone: true }).notNull(),
     scopes: text("scopes"),
     connectedByUserId: text("connected_by_user_id").references(() => user.id, {

@@ -16,6 +16,10 @@
       "types": "./dist/lib/qualified-column.d.ts",
       "default": "./dist/lib/qualified-column.js"
     },
+    "./xero-token-sealing": {
+      "types": "./dist/xero-token-sealing/index.d.ts",
+      "default": "./dist/xero-token-sealing/index.js"
+    },
     "./migrate-roles": {
       "types": "./dist/migrate-roles.d.ts",
       "default": "./dist/migrate-roles.js"
@@ -44,6 +48,7 @@
     "db:studio": "drizzle-kit studio",
     "db:report-email-collisions": "tsx scripts/report-email-collisions.ts",
     "db:backfill-auth-at-rest": "tsx src/scripts/backfill-auth-at-rest.ts",
+    "db:backfill-xero-token-sealing": "tsx src/scripts/backfill-xero-token-sealing.ts",
     "db:backfill-lot-lifecycle-snapshot": "tsx src/scripts/backfill-lot-lifecycle-snapshot.ts",
     "db:backfill-identity-addresses": "tsx src/scripts/backfill-identity-addresses.ts",
     "db:backfill-user-mobile-e164": "tsx src/scripts/backfill-user-mobile-e164.ts",
