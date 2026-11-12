@@ -101,6 +101,8 @@ export type AuthEnv = {
    * leave unset in tests.
    */
   enableNewDeviceLoginEmail?: boolean | undefined;
+  /** See `AuthHookDeps.sessionExpiry`. */
+  sessionExpiry?: AuthHookDeps["sessionExpiry"];
   /** Hash of the private device marker a request carries, or null (see AuthHookDeps). */
   readDeviceHash?: ((headers: Headers | undefined) => string | null) | undefined;
   /** Forgets a browser's marker when it signs itself out (see AuthHookDeps). */
@@ -230,6 +232,7 @@ export function createAuth(env: AuthEnv): Auth {
     readDeviceHash: env.readDeviceHash,
     forgetDeviceMarker: env.forgetDeviceMarker,
     blockNewUserRegistration: env.blockNewUserRegistration,
+    sessionExpiry: env.sessionExpiry,
     revokeAllSessions: env.revokeAllSessions,
     onSocialPolicyReadFailed: env.onSocialPolicyReadFailed,
   };

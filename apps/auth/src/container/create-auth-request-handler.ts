@@ -14,6 +14,7 @@ import {
   createAuthorizationServerErrorResponse,
   readAuthorizationCodeFromResponse,
 } from "../services/oidc-session-coordinator.js";
+import { IDENTIFY_ONLY } from "../services/session-read-query.js";
 import {
   SECURITY_EFFECT_RETRY_DELAYS_MS,
   type SecurityEffectLogger,
@@ -83,7 +84,10 @@ export function createAuthRequestHandler(options: {
     let priorSession: Awaited<ReturnType<typeof options.auth.api.getSession>> = null;
     if (logoutSensitive || twoFactorSensitive) {
       try {
-        priorSession = await options.auth.api.getSession({ headers: request.headers });
+        priorSession = await options.auth.api.getSession({
+          headers: request.headers,
+          query: IDENTIFY_ONLY,
+        });
       } catch (error) {
         options.log.error({ ...describeError(error), path }, "auth_prior_session_lookup_failed");
         return temporarilyUnavailableResponse();
@@ -184,7 +188,7 @@ export function createAuthRequestHandler(options: {
       const codeSession = await options.auth.api
         .getSession({
           headers: headersWithResponseSessionCookie(request, response),
-          query: { disableCookieCache: true },
+          query: { ...IDENTIFY_ONLY, disableCookieCache: true },
         })
         .catch((error: unknown) => {
           options.log.error({ ...describeError(error), path }, "auth_code_session_lookup_failed");

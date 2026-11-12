@@ -8,6 +8,7 @@ import { isValidPasskeyName } from "@auction/identity-contracts";
 import { normaliseRequestPath } from "../lib/normalise-request-path.js";
 import type { PasskeyEnrolmentGrants } from "../services/passkey-enrolment-grant.js";
 import { presentRegisteredPasskey } from "../services/present-registered-passkey.js";
+import { IDENTIFY_ONLY } from "../services/session-read-query.js";
 import {
   type SecurityEffectLogger,
   describeError,
@@ -103,7 +104,10 @@ export function createPasskeyRequestPolicy(deps: {
       return { kind: "answer", response: Response.json({ code: "NOT_FOUND" }, { status: 404 }) };
     }
     try {
-      const found = await deps.auth.api.getSession({ headers: request.headers });
+      const found = await deps.auth.api.getSession({
+        headers: request.headers,
+        query: IDENTIFY_ONLY,
+      });
       const userId = found?.user?.id;
       const sessionId = found?.session?.id;
       if (!userId || !sessionId) {

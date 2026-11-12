@@ -37,12 +37,14 @@ export type IdentitySessionRecord = {
   ipAddress: string | null;
   userAgent: string | null;
   lastPasswordAuthAt: Date | null;
+  /** Last real use (`last_seen_at`, or for older records `updated_at`). */
+  lastActiveAt: Date;
+  /** First sign-in on the browser (`signed_in_at`, or for older records `created_at`). */
+  signedInAt: Date;
+  /** Whether the person holds a staff marker, which decides their lifetimes. */
+  isStaff: boolean;
   /** Earlier ids this sign-in stands for, after newer sign-ins in the same browser took them over. */
   previousIds: readonly string[];
-  /** When the person first signed in on this browser; null for records made before it was kept. */
-  signedInAt: Date | null;
-  /** Last real use of the sign-in; null for records made before it was kept. */
-  lastSeenAt: Date | null;
   /** Country the edge reported at sign-in (ISO alpha-2); null when none was reported. */
   country: string | null;
   /** OAuth clients with live tokens issued under this sign-in or an earlier name of it. */

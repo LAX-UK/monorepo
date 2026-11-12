@@ -48,8 +48,9 @@ function setup(prior: SessionSnapshot[], newSession: NewSession | null = fresh) 
   };
   const run = vi.fn(async () => undefined);
   const ended = { reserve: vi.fn(async () => ({ run })) };
-  const service = new SessionTakeoverService(store, ended, () => NOW);
-  return { store, ended, run, service };
+  const cap = { enforce: vi.fn(async () => 0) };
+  const service = new SessionTakeoverService(store, ended, cap, () => NOW);
+  return { store, ended, run, cap, service };
 }
 
 const input = {
@@ -112,6 +113,33 @@ describe("SessionTakeoverService", () => {
     run.mockImplementation(async () => void order.push("run"));
     await service.takeOver(input);
     expect(order).toEqual(["reserve", "replace", "run"]);
+  });
+
+  it("holds the person to their cap once the new record stands, and never for a missing record", async () => {
+    const order: string[] = [];
+    const { store, cap, service } = setup([snapshot({ id: "a" })]);
+    vi.mocked(store.replace).mockImplementation(async () => void order.push("replace"));
+    cap.enforce.mockImplementation(async () => void order.push("cap") as never);
+    await service.takeOver(input);
+    expect(order).toEqual(["replace", "cap"]);
+    expect(cap.enforce).toHaveBeenCalledWith({ userId: "ann", keepSessionId: "new" });
+
+    const missing = setup([], null);
+    await missing.service.takeOver(input);
+    expect(missing.cap.enforce).not.toHaveBeenCalled();
+  });
+
+  it("keeps the sign-in and reports it when holding the person to their cap fails", async () => {
+    const { store, ended, cap } = setup([]);
+    const onCapFailed = vi.fn();
+    const failure = new Error("deadlock detected");
+    cap.enforce.mockRejectedValueOnce(failure);
+    const service = new SessionTakeoverService(store, ended, cap, () => NOW, onCapFailed);
+
+    await expect(service.takeOver(input)).resolves.toBeUndefined();
+
+    expect(store.replace).toHaveBeenCalledOnce();
+    expect(onCapFailed).toHaveBeenCalledWith(failure, "ann");
   });
 
   it("deletes nothing when the sign-out cannot be made durable", async () => {

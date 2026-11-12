@@ -29,6 +29,8 @@ export async function createAuthSchedules(options: {
   deletionPurge: Pick<IdentityDeletionPurgeService, "run">;
   /** Ends sign-in records that ran out, with back-channel logout for their products. */
   sessionExpiry: Pick<SessionExpirySweep, "run" | "batchSize">;
+  /** Holds anyone over their cap of browsers to it; the safety net for a cap missed at sign-in. */
+  sessionCap: { enforceOverCap(): Promise<number> };
   ssfStreams: Pick<SsfStreamService, "provisionRegisteredStreams">;
   ssfDelivery: Pick<SsfDeliveryWorker, "enqueueFromDomainEvents" | "deliverDue">;
   subjectExports: Pick<SubjectExportService, "expireDue" | "claimDeadlineAlerts">;
@@ -103,6 +105,16 @@ export async function createAuthSchedules(options: {
       Sentry.captureException(err);
     },
     onSwept: (count) => options.log.info({ count }, "session_expiry_swept"),
+    onStalled: ({ since, failed }) => {
+      options.log.error({ since, failed }, "session_expiry_sweep_stalled");
+      Sentry.captureMessage("session_expiry_sweep_stalled", {
+        level: "error",
+        extra: { since: since.toISOString(), failed },
+      });
+    },
+    afterSweep: async () => {
+      await options.sessionCap.enforceOverCap();
+    },
   });
   const deletionPurge = startIdentityDeletionPurgeSchedule({
     service: options.deletionPurge,

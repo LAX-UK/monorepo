@@ -132,10 +132,10 @@ export class AccountIdentityService {
       sessions: live.map((session) => ({
         id: session.id,
         userAgent: session.userAgent,
-        // The browser's first sign-in, and its last real use; records from before those were kept
-        // fall back to the record's own times.
-        createdAt: session.signedInAt ?? session.createdAt,
-        lastActiveAt: session.lastSeenAt ?? session.updatedAt,
+        // The browser's first sign-in and its last real use. The record reads them with the
+        // fallback to its own times for records made before those were kept.
+        createdAt: session.signedInAt,
+        lastActiveAt: session.lastActiveAt,
         isCurrent: session.id === current.id,
         signedInWith: signedInWithOf(session.amr),
         deviceKind: detectDeviceKind(session.userAgent),

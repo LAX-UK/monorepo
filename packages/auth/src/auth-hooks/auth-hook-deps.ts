@@ -36,6 +36,18 @@ export type AuthHookDeps = {
    * leave unset in tests.
    */
   enableNewDeviceLoginEmail?: boolean | undefined;
+  /**
+   * Holds a session's `expires_at` to the person's idle and absolute limits, so that Better Auth's
+   * own expiry check refuses a record that is over without waiting for the sweep. `sessionId` is
+   * null for a session being created.
+   */
+  sessionExpiry?:
+    | {
+        clamp(input: { userId: string; sessionId: string | null; expiresAt: Date }): Promise<Date>;
+        /** The clock the clamp reads; a renewal that clamps to or before it is refused. */
+        readonly now?: () => Date;
+      }
+    | undefined;
   /** Hash of the private device marker a request carries, or null; attached to sign-in reports. */
   readDeviceHash?: ((headers: Headers | undefined) => string | null) | undefined;
   /**
