@@ -4,6 +4,7 @@ import {
   AML_REVIEW_ACCESS,
   type CapabilityRequirement,
   FINANCE_ACCESS,
+  PRIVATE_SALE_DEALS_MANAGE_ACCESS,
   type StaffRoles,
   type UserRole,
   adminRoutes,
@@ -14,7 +15,10 @@ type StaffHeaderAttentionSpec = {
   id: string;
   countKey: keyof AdminNavCounts;
   requirement: CapabilityRequirement;
-  buildItem: (count: number) => Pick<StaffAttentionItem, "label" | "href" | "hint">;
+  buildItem: (
+    count: number,
+    counts: AdminNavCounts,
+  ) => Pick<StaffAttentionItem, "label" | "href" | "hint">;
 };
 
 /**
@@ -72,6 +76,20 @@ export const STAFF_HEADER_ATTENTION_SPECS: readonly StaffHeaderAttentionSpec[] =
       hint: "Settlement gated until MLRO approval",
     }),
   },
+  {
+    // For the people who can act on it: the deal's owner, and those who run every deal.
+    id: "nav-private-sales-attention",
+    countKey: "privateSalesAttention",
+    requirement: PRIVATE_SALE_DEALS_MANAGE_ACCESS,
+    buildItem: (count, counts) => ({
+      label: `${count} settled private sale${count === 1 ? "" : "s"} not marked sold`,
+      href: adminRoutes.privateSales.needsAttention(),
+      hint:
+        counts.privateSalesUrgent > 0
+          ? "The register shows an artwork somewhere else: it may have been sold twice"
+          : "The artwork's record needs marking sold",
+    }),
+  },
 ];
 
 export function buildStaffHeaderAttentionItems(
@@ -86,7 +104,7 @@ export function buildStaffHeaderAttentionItems(
     if (count <= 0) continue;
     if (!userHasAccessTo(role, staffRoles, spec.requirement)) continue;
 
-    const { label, href, hint } = spec.buildItem(count);
+    const { label, href, hint } = spec.buildItem(count, navCounts);
     items.push({
       id: spec.id,
       label,

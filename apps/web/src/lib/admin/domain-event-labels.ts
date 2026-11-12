@@ -209,6 +209,8 @@ const LABELS: Record<string, string> = {
   "private_sale_deal.artwork_changed": "Private sale artwork changed",
   "private_sale_deal.artwork_removed": "Private sale artwork removed",
   "private_sale_deal.artwork_record_not_updated": "Private sale artwork record not updated",
+  "private_sale_deal.settlement_follow_up_raised": "Private sale artwork not marked sold",
+  "private_sale_deal.artwork_mark_sold_retried": "Private sale artwork marked sold again",
   "collection.booking.created": "Collection booked",
   "collection.booking.changed": "Collection changed",
   "collection.booking.cancelled": "Collection cancelled",

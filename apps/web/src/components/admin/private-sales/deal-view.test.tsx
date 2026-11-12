@@ -24,6 +24,7 @@ vi.mock("@/lib/actions/admin/admin-private-sales", () => ({
   setDealArtworkAction: vi.fn(),
   removeDealArtworkAction: vi.fn(),
   searchDealArtworksAction: vi.fn(),
+  markDealArtworkSoldAction: vi.fn(),
 }));
 vi.mock("@/lib/ui/notify", () => ({
   notify: { success: (...args: unknown[]) => notifySuccess(...args), error: vi.fn() },
@@ -291,6 +292,30 @@ describe("DealView: people who work without the checks", () => {
 });
 
 describe("DealView: people who cannot act", () => {
+  it("is not view only for someone who can try marking a settled deal's artwork sold again", () => {
+    const settled = (canRetry: boolean) =>
+      dealRecord({
+        stage: "settled",
+        actions: [],
+        editableTerms: [],
+        canNameBuyer: false,
+        artworkAccess: { canLink: false, canChange: false, changeOffReason: null },
+        settlementFollowUp: {
+          severity: "normal",
+          settledAt: "2026-11-09T16:00:00.000Z",
+          lock: null,
+          canRetry,
+        },
+      });
+    const { unmount } = renderView(settled(true));
+    expect(screen.queryByText(/View only/)).toBeNull();
+    expect(screen.getByRole("button", { name: "Try again" })).toBeInTheDocument();
+    unmount();
+    renderView(settled(false));
+    expect(screen.getByText(/View only/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
+  });
+
   it("is view only, with no buttons that would be refused", () => {
     renderView(
       dealRecord({

@@ -2,6 +2,7 @@ import type {
   DealBlockerCode,
   DealView,
   PrivateSalePolicyGap,
+  SettlementFollowUpSeverity,
   VatTreatment,
 } from "@auction/domain";
 import type { PrivateSaleDealListRow } from "@auction/persistence/interfaces";
@@ -62,6 +63,8 @@ export type DealListPage = {
   items: PrivateSaleDealListRow[];
   nextCursor: string | null;
   counts: Record<DealView, number>;
+  /** How many of the settled deals that need attention may have been sold twice. */
+  urgentFollowUps: number;
 };
 
 export type DealRecordParty = {
@@ -124,6 +127,20 @@ export type DealArtworkAccess = {
   changeOffReason: string | null;
 };
 
+/**
+ * A settled deal whose artwork the register does not show as sold through it. Derived on every
+ * read; it is there while the register disagrees and gone the moment it is right.
+ */
+export type DealRecordSettlementFollowUp = {
+  severity: SettlementFollowUpSeverity;
+  /** When the deal settled. */
+  settledAt: Date;
+  /** The register's own reason, words and link, when it shows the artwork somewhere else. */
+  lock: DealArtworkLock | null;
+  /** This person may ask the register to mark the artwork sold again: not once it is shown elsewhere. */
+  canRetry: boolean;
+};
+
 export type DealStaffRecord = {
   reference: string;
   stage: PrivateSaleDealStage;
@@ -153,6 +170,8 @@ export type DealStaffRecord = {
   artworkUnlinkedReason: PrivateSaleArtworkUnlinkedReason | null;
   artworkAccess: DealArtworkAccess;
   artworkMoves: DealRecordArtworkMove[];
+  /** `null` unless the deal settled and its artwork is not recorded sold through it. */
+  settlementFollowUp: DealRecordSettlementFollowUp | null;
   seller: DealRecordParty;
   buyer: DealRecordParty | null;
   /** `null` for people who may not see how the checks stand. */
@@ -210,6 +229,10 @@ export type DealWriteError =
   | "artwork_unavailable"
   /** The register could not record the change, so nothing was changed. */
   | "artwork_register_busy"
+  /** Marking sold applies only to a settled deal with a linked artwork. */
+  | "not_settled"
+  /** The register does not govern this artwork (a print, or no register row), so there is nothing to mark. */
+  | "not_applicable"
   | "unavailable";
 
 export type DealWriteResult =
@@ -230,6 +253,8 @@ export type DealWriteResult =
 export interface IPrivateSaleDealQueries {
   list(viewer: DealStaffViewer, query: AdminDealListQuery): Promise<DealListPage>;
   detail(viewer: DealStaffViewer, ref: string): Promise<DealStaffRecord | null>;
+  /** Settled deals needing attention, and the urgent ones among them, for the nav count and bell. */
+  attentionCount(viewer: DealStaffViewer): Promise<{ total: number; urgent: number }>;
 }
 
 /** Every change a person can make to a deal, each against the version they were looking at. */
@@ -268,11 +293,21 @@ export interface IPrivateSaleDealArtworkCommands {
   ): Promise<DealWriteResult>;
 }
 
+/** What staff do when a settled deal's artwork was not recorded sold. */
+export interface IPrivateSaleDealSettlementCommands {
+  /**
+   * Asks the register to record the artwork sold through this deal. Safe to repeat: when it is
+   * already recorded this answers as done. It never moves an artwork the register shows elsewhere.
+   */
+  markSold(viewer: DealStaffViewer, ref: string): Promise<DealWriteResult>;
+}
+
 /** Staff work on private sale deals here. Who may see or do what is decided in these services. */
 export interface IPrivateSaleDealDesk
   extends IPrivateSaleDealQueries,
     IPrivateSaleDealCommands,
-    IPrivateSaleDealArtworkCommands {}
+    IPrivateSaleDealArtworkCommands,
+    IPrivateSaleDealSettlementCommands {}
 
 export type ConvertEnquiryError =
   | "enquiry_not_found"

@@ -536,6 +536,7 @@ export function createWorkerContainer(): WorkerContainer {
           heartbeat("payment-reminders"),
           heartbeat("watched-lot-reminders"),
           heartbeat("staff-role-expiry"),
+          heartbeat("private-sale-settlement-follow-ups"),
           heartbeat("consignment-thread-sweep"),
           heartbeat("lot-lifecycle-tick"),
           heartbeat("expire-stale-payments"),
