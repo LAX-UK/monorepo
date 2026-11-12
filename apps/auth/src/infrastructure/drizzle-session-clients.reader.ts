@@ -8,6 +8,10 @@ import type { SessionClientsReader } from "./subject-export/categories/sign-in-a
  * had when they were issued, so a record that took over an earlier one answers for the earlier
  * ids too. Only the client ids are selected, never a token, and only for the one person asked
  * about.
+ *
+ * Its rows reach the "Download my data" file, so it is held to the export exclusions contract
+ * (`subject-export/categories/exclusions.queries.contract.test.ts`): it may name only
+ * `oauthAccessToken.sid`, `.clientId` and `.userId`, and the table only in `.from(...)`.
  */
 export function createDrizzleSessionClientsReader(db: IdentityDatabase): SessionClientsReader {
   return async (subjectId, sessionIds) => {

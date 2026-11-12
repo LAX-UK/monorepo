@@ -93,6 +93,8 @@ describe.skipIf(!DATABASE_URL)("sign-in and security export: devices", () => {
     await token(OLD_LAPTOP, ANN, "lax-bid-web", 2);
     await token(LAPTOP, ANN, "lax-shop-admin", 3);
     await token(BENS, BEN, "lax-art-web", 4);
+    // Ben's token carrying Ann's laptop sid: the person filter, not the sid, keeps it out.
+    await token(LAPTOP, BEN, "lax-shop-web", 5);
   });
 
   afterAll(async () => {
@@ -135,5 +137,19 @@ describe.skipIf(!DATABASE_URL)("sign-in and security export: devices", () => {
     expect(await sessionsOf(BEN)).toEqual([
       expect.objectContaining({ id: BENS, country: "FR", products: ["lax.art"] }),
     ]);
+  });
+
+  it("never puts a token value, or a token row's id, in the file", async () => {
+    if (!db) return;
+    const page = await new SignInAndSecurityExportCategory(
+      db,
+      () => now,
+      null,
+      createDrizzleSessionClientsReader(db),
+    ).readPage(ANN, null);
+    const text = JSON.stringify(page);
+    expect(text).not.toContain(`sd5-${run}-access-`);
+    expect(text).not.toContain(`sd5-${run}-refresh-`);
+    expect(text).not.toContain(`sd5-${run}-t`);
   });
 });
