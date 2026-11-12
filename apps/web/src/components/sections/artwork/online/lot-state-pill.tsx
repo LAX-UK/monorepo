@@ -20,6 +20,7 @@ type LotPick = Pick<
   "status" | "startTime" | "endTime" | "winnerId" | "currentPrice" | "id"
 > & {
   hasWinner?: boolean | undefined;
+  resultPending?: boolean | undefined;
 };
 type SalePick =
   | (Pick<Sale, "status" | "deliveryMode"> & Partial<Pick<Sale, "allowOnlineBidsBeforeGoLive">>)
@@ -62,6 +63,7 @@ function lifecycleDetail(
       return "The auction is paused — bidding will resume when the auctioneer continues.";
     case "endedSold":
     case "endedNoSale":
+    case "endedPending":
     case "cancelled":
     case "withdrawn":
       return "Bidding is closed for this lot.";

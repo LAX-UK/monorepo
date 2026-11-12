@@ -100,6 +100,20 @@ describe("summariseSaleResults", () => {
     expect(result).toMatchObject({ state: "final", lotCount: 1, soldCount: 1 });
   });
 
+  it("leaves out a lot whose result is still open: not sold, not unsold, no price in a total", () => {
+    const result = summarise([
+      lot({ id: "a" }),
+      lot({ id: "p", currentPrice: "5000.00", hasWinner: true, resultPending: true }),
+      lot({ id: "q", currentPrice: "7000.00", hasWinner: false, resultPending: true }),
+    ]);
+    expect(result).toMatchObject({
+      state: "final",
+      lotCount: 1,
+      soldCount: 1,
+      totalWithPremium: "120.00",
+    });
+  });
+
   it("reports the close of the last lot, including an extension", () => {
     const extended = new Date("2026-10-31T18:07:00Z");
     const result = summarise([lot({ id: "a" }), lot({ id: "b", extendedUntil: extended })]);

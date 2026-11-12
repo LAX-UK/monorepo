@@ -3,10 +3,14 @@
 import { AuditTimeline } from "@/components/admin/audit/audit-timeline";
 import { useLotDetailReadiness } from "@/components/admin/lot-detail/lot-detail-readiness-context";
 import { lotDetailTabHref } from "@/components/admin/lot-detail/lot-detail-types";
+import { BuyerDefaultCard } from "@/components/admin/reoffer/buyer-default-card";
+import { ReofferCardSection } from "@/components/admin/reoffer/reoffer-card-section";
 import type { AdminKpiPeriodDays } from "@/lib/admin/admin-kpi-period";
 import { toIssueItems } from "@/lib/admin/detail-board/to-issue-items";
 import type { DetailStatRow } from "@/lib/admin/detail-board/types";
 import type { LotDetailContext } from "@/lib/admin/lot-detail-context";
+import type { LotReofferBundle } from "@/lib/admin/reoffer/reoffer-bundle";
+import { offerPriceTile, openOffer, showsReofferCard } from "@/lib/admin/reoffer/reoffer-lot-state";
 import type { AdminLotAttention } from "@/lib/data/http/admin-lot-attention.server";
 import type { AdminLotDetailMetrics } from "@/lib/data/http/admin-lot-detail-metrics.server";
 import type { AdminLotOverviewKpiTrends } from "@/lib/data/http/admin-lot-overview-kpi-trends.server";
@@ -48,6 +52,9 @@ type Props = {
   attention?: AdminLotAttention | null;
   kpiTrends?: AdminLotOverviewKpiTrends | null;
   kpiPeriodDays?: AdminKpiPeriodDays;
+  /** The lot's re-offer story; left out for a lot that cannot have one. */
+  reoffers?: LotReofferBundle | null;
+  reofferAccess?: { canAct: boolean; canRecordAnswer: boolean };
 };
 
 /** Facts the page header already shows (type, sale, artist) or the numbers above repeat. */
@@ -68,6 +75,8 @@ export function LotOverviewTab({
   attention = null,
   kpiTrends = null,
   kpiPeriodDays = 30,
+  reoffers = null,
+  reofferAccess = { canAct: false, canRecordAnswer: false },
 }: Props) {
   const readinessContext = useLotDetailReadiness();
   const readiness = readinessContext?.publishReadiness ?? null;
@@ -107,8 +116,22 @@ export function LotOverviewTab({
   const imageAlts = auction.marketingDetails.imageAlts ?? [];
   const keep = (row: { id: string }) => !IN_HEADER_OR_NUMBERS.has(row.id);
 
+  const lotFacts = { status: auction.status, hasWinner: auction.winnerId != null };
+  const readyReoffers =
+    reoffers?.status === "ready" && showsReofferCard(reoffers, lotFacts) ? reoffers : null;
+  const tiles = offerPriceTile(
+    vm.kpiTiles.slice(0, 4),
+    readyReoffers ? openOffer(readyReoffers.offers) : null,
+  );
+
   const rail = (
     <>
+      {readyReoffers ? (
+        <BuyerDefaultCard
+          buyerDefault={readyReoffers.buyerDefault}
+          latestOffer={readyReoffers.offers.at(-1) ?? null}
+        />
+      ) : null}
       <Section
         title="Photos"
         action={
@@ -158,7 +181,7 @@ export function LotOverviewTab({
     <DetailColumns rail={rail} railLabel="Lot activity">
       <StatGrid
         label="Lot numbers"
-        items={vm.kpiTiles.slice(0, 4).map((tile) => ({
+        items={tiles.map((tile) => ({
           id: tile.id,
           label: tile.label,
           // Whole pounds for a range, as the lists show it: "£2,000–£3,000".
@@ -169,6 +192,19 @@ export function LotOverviewTab({
         }))}
       />
       <IssueList Link={NextLink} items={issues} allClear={null} />
+      {reoffers ? (
+        <ReofferCardSection
+          bundle={reoffers}
+          lot={{
+            id: lotId,
+            title: auction.title,
+            status: auction.status,
+            hasWinner: lotFacts.hasWinner,
+          }}
+          canAct={reofferAccess.canAct}
+          canRecordAnswer={reofferAccess.canRecordAnswer}
+        />
+      ) : null}
       <Section title="Pricing and timing">
         <KeyValueList items={vm.commercialRows.filter(keep).map(statItem)} />
       </Section>

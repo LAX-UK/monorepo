@@ -8,6 +8,7 @@ export type DigestItem = {
   title: string;
   subtitle: string | null;
   detail: string | null;
+  moments: readonly { label: string; at: string; zone: string }[];
   imageUrl: string | null;
   path: string;
 };
@@ -41,6 +42,7 @@ function toItem(s: MatchSnapshot): DigestItem {
     title: s.title,
     subtitle: s.subtitle ?? null,
     detail: s.detail ?? null,
+    moments: s.moments ?? [],
     imageUrl: s.imageUrl ?? null,
     path: s.path,
   };

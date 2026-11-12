@@ -168,4 +168,14 @@ Suggested alert rules:
 
 In Sentry, create an issue alert on the `auction-auth` project for events whose message is `auth_security_effect_abandoned`, and a metric alert on `rate_limit_redis_unavailable_using_in_process_fallback` events.
 
-The security emails (two-step on or off, new backup codes, password, email address and phone changes, and sign-ins from a device not seen for 90 days) are queued through the same `/internal/identity/emails` endpoint. New-device mail is capped at three a day per person. `auth_known_device` holds only a hash of the browser, system and country for each person, never a user agent string or an IP address.
+The security emails (two-step on or off, new backup codes, password, email address and phone changes, and sign-ins from a device not seen for 90 days; a browser that carries the sign-in service's device marker and has signed in before is never new) are queued through the same `/internal/identity/emails` endpoint. New-device mail is capped at three a day per person. `auth_known_device` holds only hashes for each person (one of the browser, system and country, and one of the browser's device marker), never a user agent string, an IP address or a marker. The email links to the signed-in devices list. A browser the person signs out from the devices list (one browser, or "sign out everywhere else"), or that a password reset or a support two-step reset signs out, stops being known and owes the person an email on its next sign-in; a browser that signs itself out is only forgotten, so the 90-day rule decides its next sign-in. The marker is remembered only after the email was queued, or when no email was due or the daily cap held it back; if queuing fails, the browser's next sign-in is reported.
+
+Deployed flags for the new-device email (auth service):
+
+| Environment | Flags | Result |
+| --- | --- | --- |
+| Production | `NODE_ENV=production` (set by the image), `APP_ENV` unset or `production`, `NEW_DEVICE_EMAIL_ENABLED` unset | Sent |
+| Test site | `NODE_ENV=production` (set by the image), `APP_ENV=test`, `NEW_DEVICE_EMAIL_ENABLED` unset | Not sent |
+| Test site, checking the email | as above plus `NEW_DEVICE_EMAIL_ENABLED=true` | Sent to the address of whoever signs in |
+
+It is off on the test site by default because nothing in this repository restricts whom test-site mail reaches: the worker passes every queued email to Postmark with its real recipient, filtered only by the suppression list. Turn it on there only for a check with seeded or owner accounts, and turn it off afterwards. `NEW_DEVICE_EMAIL_ENABLED=false` switches it off anywhere.

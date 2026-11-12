@@ -109,8 +109,10 @@ export class NeedsYouService implements INeedsYouService {
 
     const [
       outbidLots,
+      reofferOffers,
       purchases,
       agreementsToAccept,
+      reofferRequests,
       changesRequested,
       unreadReplies,
       unsold,
@@ -132,6 +134,11 @@ export class NeedsYouService implements INeedsYouService {
         [],
       ),
       when(
+        any("reoffer_offer"),
+        () => this.deps.facts.reofferOffers({ legalEntityId, now, limit: LIST_LIMIT }),
+        [],
+      ),
+      when(
         any(...purchaseKinds) && purchaseScope !== null,
         () =>
           this.deps.facts.openPurchases({
@@ -144,6 +151,11 @@ export class NeedsYouService implements INeedsYouService {
       when(
         any("agreement"),
         () => this.deps.facts.agreementsToAccept({ legalEntityId, visibleTo, limit: LIST_LIMIT }),
+        [],
+      ),
+      when(
+        any("reoffer_request"),
+        () => this.deps.facts.reofferRequests({ legalEntityId, now, limit: LIST_LIMIT }),
         [],
       ),
       when(
@@ -222,6 +234,7 @@ export class NeedsYouService implements INeedsYouService {
       sourceOfFundsRequestedAt: checks.sourceOfFundsRequestedAt,
       organisationStatusChangedAt: standing.statusChangedAt,
       agreementsToAccept,
+      reofferRequests,
       changesRequested,
       unreadReplies,
       unsoldLots: unsold.rows.map((row) => ({
@@ -244,14 +257,21 @@ export class NeedsYouService implements INeedsYouService {
           : [],
       ),
       outbidLots,
+      reofferOffers,
       expiredInvitations,
       endingAuthorisations,
       pendingAccessRequests,
     };
     const truncated =
-      [outbidLots, purchases, agreementsToAccept, changesRequested, unreadReplies].some(
-        (rows) => rows.length >= LIST_LIMIT,
-      ) || unsold.total > unsold.rows.length;
+      [
+        outbidLots,
+        reofferOffers,
+        purchases,
+        agreementsToAccept,
+        reofferRequests,
+        changesRequested,
+        unreadReplies,
+      ].some((rows) => rows.length >= LIST_LIMIT) || unsold.total > unsold.rows.length;
     return { facts, truncated };
   }
 }

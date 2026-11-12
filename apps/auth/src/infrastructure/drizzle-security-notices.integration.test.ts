@@ -7,6 +7,7 @@ import {
   DURABLE_RETRY_DELAYS_MS,
   DurableSecurityEffects,
 } from "../services/durable-security-effects.js";
+import { KNOWN_DEVICE_WINDOW_MS } from "../services/known-device.js";
 import { DrizzleKnownDeviceStore } from "./drizzle-known-device.store.js";
 import { DrizzleSecurityEffectOutboxRepository } from "./drizzle-security-effect-outbox.repository.js";
 
@@ -53,6 +54,49 @@ describe.skipIf(!DATABASE_URL)("security notices against Postgres", () => {
         previousLastSeenAt: null,
         hadOtherDevices: true,
       });
+    });
+
+    it("remembers a browser marker without reporting it, and finds it per person", async () => {
+      if (!db) return;
+      const store = new DrizzleKnownDeviceStore(db);
+      const fingerprint = "marker-a";
+      expect(await store.hasSeen({ userId: USER, fingerprint, at: now })).toBe(false);
+
+      await store.remember({ userId: USER, fingerprint, at: now });
+      expect(await store.hasSeen({ userId: USER, fingerprint, at: now })).toBe(true);
+
+      const later = new Date(now.getTime() + 60_000);
+      await store.remember({ userId: USER, fingerprint, at: later });
+      const [row] = await db
+        .select({
+          firstSeenAt: authKnownDevice.firstSeenAt,
+          lastSeenAt: authKnownDevice.lastSeenAt,
+        })
+        .from(authKnownDevice)
+        .where(eq(authKnownDevice.fingerprint, fingerprint));
+      expect(row).toEqual({ firstSeenAt: now, lastSeenAt: later });
+      expect(
+        await store.hasSeen({
+          userId: "90000000-0000-4000-8000-000000000072",
+          fingerprint,
+          at: later,
+        }),
+      ).toBe(false);
+    });
+
+    it("stops vouching for a browser not seen for 90 days, and forgets on request", async () => {
+      if (!db) return;
+      const store = new DrizzleKnownDeviceStore(db);
+      const fingerprint = "marker-window";
+      await store.remember({ userId: USER, fingerprint, at: now });
+      const edge = new Date(now.getTime() + KNOWN_DEVICE_WINDOW_MS);
+      expect(await store.hasSeen({ userId: USER, fingerprint, at: edge })).toBe(true);
+      expect(
+        await store.hasSeen({ userId: USER, fingerprint, at: new Date(edge.getTime() + 1) }),
+      ).toBe(false);
+
+      await store.forget({ userId: USER, fingerprints: [fingerprint] });
+      expect(await store.hasSeen({ userId: USER, fingerprint, at: now })).toBe(false);
     });
 
     it("counts notices per person inside the window", async () => {

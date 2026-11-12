@@ -53,6 +53,9 @@ describe("readAccountSecurityFacts", () => {
       createdAt: "2026-10-23T12:00:00.000Z",
       lastActiveAt: "2026-10-23T12:00:00.000Z",
       signedInWith: null,
+      deviceKind: "laptop" as const,
+      country: null,
+      products: [],
     });
     expect(
       readAccountSecurityFacts(overview, null, [session("a", true), session("b", false)])

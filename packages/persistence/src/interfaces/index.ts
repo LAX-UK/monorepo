@@ -612,7 +612,11 @@ export type {
   NewLaxAdminRoleRemoval,
 } from "./lax-admin-roles.repository.js";
 
-export { BidInvoiceTotalMismatchError, bidInvoiceKey } from "./bid-invoice.repository.js";
+export {
+  BidInvoiceLotMovedError,
+  BidInvoiceTotalMismatchError,
+  bidInvoiceKey,
+} from "./bid-invoice.repository.js";
 export type {
   BidInvoiceRecord,
   IBidInvoiceBatchReader,
@@ -1004,6 +1008,8 @@ export type {
   SubmissionAttentionRow,
 } from "./attention-feed.reader.js";
 
+export type { IPublicLotResultReader } from "./public-lot-result.reader.js";
+
 export type {
   ISaleResultLotsReader,
   SaleResultLotRow,
@@ -1254,6 +1260,7 @@ export type {
 
 export type {
   ApplyZohoChangeResult,
+  CatalogueStatusLedger,
   ConflictCursor,
   CreateRegisterEntryResult,
   AuctionOfferDraftLot,
@@ -1286,6 +1293,16 @@ export type {
   ResolveConflictResult,
 } from "./artwork-register.js";
 
+export type {
+  ISoldAttentionStore,
+  OverrideSoldAttentionResult,
+  RaiseSoldAttentionInput,
+  ResolveSoldAttentionInput,
+  SoldAttentionItem,
+  SoldAttentionLiveCursor,
+  SoldAttentionLiveRef,
+  SoldAttentionRecord,
+} from "./artwork-register-sold-attention.js";
 export type {
   DealArtworkSearchInput,
   IDealArtworkSearchReader,
@@ -1346,9 +1363,11 @@ export type {
   IZohoListingRunStore,
   IZohoListingSaleStartMark,
   IZohoListingSourceReader,
+  IZohoStatusSourceReader,
   ListingLot,
   ListingMove,
   RegisterListingSource,
+  RegisterStatusSource,
   ZohoListingRun,
   ZohoListingRunFailure,
   ZohoListingRunMode,
@@ -1358,6 +1377,8 @@ export type {
   BidAlertLotNotice,
   IBidAlertLotNoticeWriter,
 } from "./bid-alert-lot-notice.js";
+export type { IRecipientZoneReader } from "./recipient-zone.reader.js";
+
 export type {
   AnnouncedSale,
   IBidAlertSaleNoticeWriter,
@@ -1454,13 +1475,24 @@ export type {
   GuardSettingsTransaction,
 } from "./collection-settings.repository.js";
 export type { IPartyDealRecordReader } from "./party-deal-record.reader.js";
+
+export type * from "./accounting.js";
+
 export type {
   BidderReofferRow,
+  IReofferStaffReader,
   IReofferViewsReader,
   IReofferWorkflowReader,
+  ReofferLotFacts,
+  StaffBuyerDefaultView,
   PlacedBidWithId,
   ReofferDefaultFacts,
   ReofferLockedLot,
   SellerConsentRequestRow,
   StaffReofferView,
 } from "./reoffer-workflow.js";
+export type {
+  IReofferInvoiceMarker,
+  IReofferSweepReader,
+  ReofferSweepRef,
+} from "./reoffer-sweep.js";

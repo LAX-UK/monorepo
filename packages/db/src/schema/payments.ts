@@ -84,6 +84,9 @@ export const payment = pgTable(
       .where(
         sql`${table.status} in ('pending', 'authorized', 'captured', 'requires_manual_review')`,
       ),
+    index("payment_reminder_candidate_idx")
+      .on(table.createdAt)
+      .where(sql`${table.status} in ('pending', 'cancelled')`),
     index("payment_buyer_id_status_idx").on(table.buyerId, table.status),
   ],
 );

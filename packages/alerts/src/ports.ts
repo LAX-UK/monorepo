@@ -146,6 +146,10 @@ export type DigestMessage = {
   /** Null for a visitor, who has no account to manage alerts in. */
   manageUrl: string | null;
   audience: "account" | "visitor";
+  /** The zone the person's LAX Account has saved, so times can be shown on their clock too. */
+  viewerZone: string | null;
+  /** Where the person changes that zone; null where the product has no Account page for it. */
+  changeZoneUrl: string | null;
 };
 
 export interface AlertMailer {
@@ -170,6 +174,12 @@ export interface DigestNoticeWriter {
   write(input: DigestNoticeInput): Promise<void>;
 }
 
+/** Where each account holder's LAX Account says they are; visitors have none. */
+export interface SubscriberZoneLookup {
+  /** The saved zone of the account, or null when it has none. */
+  zoneOf(subjectId: string): Promise<string | null>;
+}
+
 export interface VerifiedAddressLookup {
   /** The account's address and whether it is verified; null when the account does not exist. */
   find(subjectId: string): Promise<{ email: string; verified: boolean } | null>;
@@ -187,5 +197,7 @@ export interface AlertUrls {
   /** The address mail apps POST to for one-click unsubscribe. */
   oneClick(token: string): string;
   manage(): string | null;
+  /** Where the person changes their Account time zone; null when the product has no such page. */
+  changeTimeZone(): string | null;
   site(path: string): string;
 }

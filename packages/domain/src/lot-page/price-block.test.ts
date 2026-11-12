@@ -180,6 +180,21 @@ describe("price block by lifecycle", () => {
     });
   });
 
+  it("ended with the result still open: only that it ended, whatever the lot's figures", () => {
+    const vm = buildPriceBlock(
+      input({
+        lifecycle: "endedPending",
+        amounts: { starting: "4200", current: "7000", hammer: "7000", soldForWithPremium: "8750" },
+      }),
+    );
+    expect(vm).toMatchObject({
+      label: "Ended",
+      amount: null,
+      amountText: null,
+      subLine: null,
+    });
+  });
+
   it.each([
     ["withdrawn", "This lot was withdrawn from the sale"],
     ["cancelled", "This lot was cancelled"],
@@ -193,7 +208,13 @@ describe("price block by lifecycle", () => {
   });
 
   it("never prints a live word on a closed lot", () => {
-    for (const lifecycle of ["endedSold", "endedNoSale", "withdrawn", "cancelled"] as const) {
+    for (const lifecycle of [
+      "endedSold",
+      "endedNoSale",
+      "endedPending",
+      "withdrawn",
+      "cancelled",
+    ] as const) {
       const vm = buildPriceBlock(
         input({
           lifecycle,

@@ -38,6 +38,7 @@ async function renderedReminder() {
     },
     factory: new NotificationFactory(),
     recipients: { forInvoice: async () => ["u-buyer"] } as never,
+    zones: { zonesFor: async () => new Map<string, string>() },
     now: () => dueDay,
   });
   await service.sendDueReminders();
@@ -54,6 +55,8 @@ async function renderedReminder() {
     "https://test.lax.bid/",
     "7e6d5c4b-3a29-4180-9f8e-7d6c5b4a3921",
     { find: async () => null },
+    { zonesFor: async () => new Map<string, string>() },
+    "https://account.test.lax.bid/account/profile#time-zone",
   );
   await channel.send("u-buyer", payloads[0] as NotificationPayload);
   const [message] = enqueued;

@@ -15,6 +15,7 @@ import {
 const lot = {
   id: "lot-1",
   saleId: "sale-1",
+  winnerId: "user-1",
   buyerLegalEntityId: "buyer-acct",
   sellerLegalEntityId: "seller-acct",
   currentPrice: "1000.00",
@@ -118,10 +119,24 @@ describe("InvoiceRaiser.raise", () => {
     });
     const priced = await raiser.price(lot);
     await raiser.raise({ lot, priced, payment: paymentRow });
-    const [{ invoice }] = raise.mock.calls[0] as [{ invoice: { raisedAt: Date; dueAt: Date } }];
+    const [{ invoice, winnerId }] = raise.mock.calls[0] as [
+      { invoice: { raisedAt: Date; dueAt: Date }; winnerId: string },
+    ];
+    // The store re-checks the lot under its lock against the winner it was read with.
+    expect(winnerId).toBe("user-1");
     expect(invoice.raisedAt).toEqual(NOW);
     // Friday 6 November 2026 + 7 days = Friday 13 November, to the end of that London day (GMT).
     expect(invoice.dueAt.toISOString()).toBe("2026-11-13T23:59:59.999Z");
+  });
+
+  it("refuses a lot with no winner before anything is stored", async () => {
+    const { invoices, raise } = store();
+    const raiser = new InvoiceRaiser({ invoices, sales: { findById: async () => sale } });
+    const priced = await raiser.price(lot);
+    await expect(
+      raiser.raise({ lot: { ...lot, winnerId: null }, priced, payment: paymentRow }),
+    ).rejects.toBeInstanceOf(InvoiceInvariantError);
+    expect(raise).not.toHaveBeenCalled();
   });
 
   it("refuses lines that do not add up to the total", async () => {

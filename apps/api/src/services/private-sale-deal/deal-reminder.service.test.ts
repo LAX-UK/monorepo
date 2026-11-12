@@ -22,7 +22,14 @@ const candidate = (over: Partial<DealReminderCandidate> = {}): DealReminderCandi
 
 function setup(
   candidates: DealReminderCandidate[],
-  over: { hold?: boolean; eligibility?: unknown; fail?: boolean } = {},
+  over: {
+    hold?: boolean;
+    eligibility?: unknown;
+    fail?: boolean;
+    /** Saved Account zones by person. */
+    zones?: [string, string][];
+    at?: Date;
+  } = {},
 ) {
   const claimed = new Set<string>();
   const store = {
@@ -53,7 +60,8 @@ function setup(
     factory: { createPaymentReminder, createDealCollectionReminder } as never,
     recipients: { forInvoice: async () => ["u-buyer", "u-payer"] } as never,
     ...(over.eligibility ? { eligibility: { check: async () => over.eligibility } as never } : {}),
-    now: () => dueDay,
+    zones: { zonesFor: async () => new Map<string, string>(over.zones ?? []) },
+    now: () => over.at ?? dueDay,
   });
   return { service, store, stageDispatch, createPaymentReminder, createDealCollectionReminder };
 }
@@ -125,11 +133,43 @@ describe("DealReminderService", () => {
     );
   });
 
-  it("gives the step back when the send fails so the next run tries again", async () => {
+  it("takes no payment step when the send fails, so the next run tries again", async () => {
     const { service, store } = setup([candidate()], { fail: true });
     const quiet = vi.spyOn(console, "error").mockImplementation(() => undefined);
     expect(await service.sendDueReminders()).toEqual({ reminded: 0 });
     quiet.mockRestore();
-    expect(store.release).toHaveBeenCalledWith("deal-1", "payment", "due_day");
+    expect(store.claim).not.toHaveBeenCalled();
+  });
+
+  it("gives a collection step back when its send fails", async () => {
+    const { service, store } = setup([candidate({ kind: "collection", stage: "paid" })], {
+      fail: true,
+    });
+    const quiet = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    expect(await service.sendDueReminders()).toEqual({ reminded: 0 });
+    quiet.mockRestore();
+    expect(store.release).toHaveBeenCalledWith("deal-1", "collection", "due_day");
+  });
+
+  it("reminds a payer in Sydney at 09:00 their time and the buyer at 09:00 London", async () => {
+    const zones: [string, string][] = [["u-payer", "Australia/Sydney"]];
+    const london = setup([candidate()], { zones });
+    expect(await london.service.sendDueReminders()).toEqual({ reminded: 0 });
+    expect(london.stageDispatch.mock.calls.map(([call]) => call.idempotencyKey)).toEqual([
+      "private_sale_payment_reminder:deal-1:due_day:u-buyer",
+    ]);
+    // 09:00 on 21 November in Sydney (UTC+11) is 22:00 on 20 November London.
+    const sydney = setup([candidate()], { zones, at: new Date("2026-11-20T22:00:00Z") });
+    expect(await sydney.service.sendDueReminders()).toEqual({ reminded: 1 });
+    expect(sydney.stageDispatch).toHaveBeenCalledTimes(2);
+  });
+
+  it("keeps a collection reminder at 09:00 London whatever zone anyone has saved", async () => {
+    const { service, createDealCollectionReminder } = setup(
+      [candidate({ kind: "collection", stage: "paid" })],
+      { zones: [["u-payer", "Australia/Sydney"]] },
+    );
+    expect(await service.sendDueReminders()).toEqual({ reminded: 1 });
+    expect(createDealCollectionReminder).toHaveBeenCalledTimes(2);
   });
 });

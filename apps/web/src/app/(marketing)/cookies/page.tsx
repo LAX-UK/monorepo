@@ -149,10 +149,23 @@ export default function CookiesPage() {
                 <td className="py-2 pr-4">Pinned pages in the staff command palette.</td>
                 <td className="py-2">90 days</td>
               </tr>
-              <tr>
+              <tr className="border-b border-border/60">
                 <td className="py-2 pr-4 font-mono text-xs text-primary">lax_dashboard_density</td>
                 <td className="py-2 pr-4">Dashboard density preference.</td>
                 <td className="py-2">365 days</td>
+              </tr>
+              <tr>
+                <td className="py-2 pr-4 font-mono text-xs text-primary">__Host-lax_device</td>
+                <td className="py-2 pr-4">
+                  Strictly necessary, for your account&apos;s security. Set only by the LAX sign-in
+                  service, on its own address. It lets signing in again on the same browser replace
+                  that browser&apos;s sign-in instead of adding another device to your list, and it
+                  decides whether we email you about a sign-in from a new browser. It is never sent
+                  to our products, analytics or other sites.
+                </td>
+                <td className="py-2">
+                  400 days, renewed when you sign in or open a page of the sign-in service
+                </td>
               </tr>
             </tbody>
           </table>

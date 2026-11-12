@@ -22,7 +22,11 @@ export type AdminWorkItemSourceRow = {
     | "marketing_enquiry"
     | "purchase_problem"
     | "deletion_hold"
-    | "register_lot_mismatch";
+    | "register_lot_mismatch"
+    | "reoffer_no_reply"
+    | "reoffer_ready"
+    | "reoffer_decision"
+    | "reoffer_accepted";
   domain: "finance" | "compliance" | "catalogue" | "saleroom" | "fulfilment" | "clients";
   title: string;
   subtitle: string | null;
@@ -77,4 +81,6 @@ export interface IAdminWorkItemsReader {
   listDeletionHolds(limit: number): Promise<AdminWorkItemSourceRow[]>;
   /** Artworks the register places in a LAX Bid sale whose lot is not live; staff decide, nothing changes. */
   listRegisterLotMismatches(limit: number): Promise<AdminWorkItemSourceRow[]>;
+  /** What a buyer default's re-offer leaves staff: no seller reply, ready to send, decide, accepted. */
+  listReofferWork(limit: number, now: Date): Promise<AdminWorkItemSourceRow[]>;
 }

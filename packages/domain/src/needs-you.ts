@@ -37,12 +37,16 @@ export type NeedsYouTask = NeedsYouTaskBody & { raisedAt: Date | null };
 type NeedsYouTaskBody =
   /** Lots the account is no longer leading while they are still open. */
   | { kind: "outbid"; lots: Array<HomeSubject & { endsAt: Date }> }
+  /** Offers to buy a lot at the account's own bid after its buyer did not pay, open until a date. */
+  | { kind: "reoffer_offer"; offers: ReofferOfferSubject[] }
   | { kind: "pay"; purchases: HomeSubject[] }
   /** A buyer agent's wins that finance pays; the agent is only told. */
   | { kind: "won_awaiting_payment"; purchases: HomeSubject[] }
   /** Unsold lots whose choice is due soon or overdue, with the earliest date. */
   | { kind: "unsold_due"; lots: HomeSubject[]; dueBy: Date }
   | { kind: "agreement"; consignment: HomeSubject }
+  /** Offers to the next bidder after a buyer default that wait for the seller's answer. */
+  | { kind: "reoffer_request"; requests: ReofferRequestSubject[] }
   | { kind: "changes"; submission: HomeSubject; note: string | null }
   /** A specialist wrote on a consignment and nobody who answers has read it yet. */
   | { kind: "reply"; consignment: HomeSubject; from: string }
@@ -61,6 +65,26 @@ type NeedsYouTaskBody =
   | { kind: "payouts" };
 
 export type NeedsYouKind = NeedsYouTaskBody["kind"];
+
+/**
+ * An offer to the next bidder that waits for the bidder's answer. The subject is the offer itself
+ * (its page is where it is answered), titled by the work; it never names the seller.
+ */
+export type ReofferOfferSubject = HomeSubject & {
+  /** The bidder's own bid, in pence: the price the offer is made at. */
+  offerMinor: number;
+  endsAt: Date;
+};
+
+/**
+ * A request to sell a lot at the next bidder's price. The subject is the request itself (its page
+ * is the answer) titled by the work; it never names a bidder.
+ */
+export type ReofferRequestSubject = HomeSubject & {
+  offerMinor: number;
+  /** When the answer is due; `null` when no window applies. */
+  answerBy: Date | null;
+};
 
 export type EndingAuthorisation = { id: string; memberName: string; endsAt: Date };
 export type ExpiredInvitation = { id: string; email: string; expiredAt: Date };
@@ -102,6 +126,8 @@ export type NeedsYouFacts = {
   organisationStatusChangedAt: Date | null;
   /** Open consignments whose specialist's terms wait to be accepted. */
   agreementsToAccept: ReadonlyArray<HomeSubject & { proposedAt: Date | null }>;
+  /** Requests for the seller's agreement to re-offer a lot after its buyer defaulted. */
+  reofferRequests: ReadonlyArray<ReofferRequestSubject & { requestedAt: Date | null }>;
   /** Submissions a specialist sent back, with the note and when they did. */
   changesRequested: ReadonlyArray<HomeSubject & { note: string | null; requestedAt: Date | null }>;
   /** Consignments where the specialist's newest messages are unread, newest first. */
@@ -115,6 +141,8 @@ export type NeedsYouFacts = {
   purchases: ReadonlyArray<HomeSubject & PurchaseNextStepFacts & PurchaseNextStepTimes>;
   /** Sales a buyer agent is authorised for and has not registered in. */
   salesToRegister: ReadonlyArray<HomeSubject & { startsAt: Date; bidLimit: string | null }>;
+  /** Offers made to the account that it has not answered and that have not ended. */
+  reofferOffers: ReadonlyArray<ReofferOfferSubject & { sentAt: Date | null }>;
   /** Open lots where the account has bid and is not leading. */
   outbidLots: ReadonlyArray<HomeSubject & { endsAt: Date; outbidAt: Date | null }>;
   /** Invitations that lapsed recently and were not sent again. */
@@ -157,11 +185,14 @@ export type NeedsYouSection = "bids" | "purchases" | "consignments" | "team" | "
 export type NeedsYouLink =
   | { page: "lot"; id: string }
   | { page: "bids" }
+  | { page: "reoffer_offer"; id: string }
   | { page: "purchase"; id: string }
   | { page: "purchases" }
   | { page: "consignment"; id: string }
   | { page: "consignment_messages"; id: string }
   | { page: "consignments"; view: "unsold" }
+  | { page: "reoffer_request"; id: string }
+  | { page: "sold_payouts" }
   | { page: "sale"; id: string }
   | { page: "team"; view: "members" | "invitations" | "who_can_bid" }
   | { page: "bid_settings" }
@@ -284,6 +315,34 @@ const SPECS: { readonly [K in NeedsYouKind]: Spec<K> } = {
       return task.lots.length === 1 && only ? { page: "lot", id: only.id } : { page: "bids" };
     },
   },
+  reoffer_offer: {
+    kind: "reoffer_offer",
+    section: "bids",
+    // Accepting binds the account to a purchase, so it is for the people who may bid for it.
+    allowed: (actor) => entityActorCan(actor, "entity.bid.place") && acting(actor),
+    // The offer is answered as the account: one that cannot bid is not asked to.
+    requires: "bid",
+    announcedBy: ["reoffer_offer", "reoffer_offer_reminder"],
+    collect: (facts) =>
+      facts.reofferOffers.length > 0
+        ? [
+            {
+              kind: "reoffer_offer",
+              offers: [...facts.reofferOffers]
+                .sort((a, b) => a.endsAt.getTime() - b.endsAt.getTime())
+                .map(({ id, title, offerMinor, endsAt }) => ({ id, title, offerMinor, endsAt })),
+              raisedAt: newest(facts.reofferOffers.map((offer) => offer.sentAt)),
+            },
+          ]
+        : [],
+    items: (task) => task.offers.length,
+    link: (task) => {
+      const [only] = task.offers;
+      return task.offers.length === 1 && only
+        ? { page: "reoffer_offer", id: only.id }
+        : { page: "bids" };
+    },
+  },
   pay: {
     kind: "pay",
     section: "purchases",
@@ -341,6 +400,36 @@ const SPECS: { readonly [K in NeedsYouKind]: Spec<K> } = {
       })),
     items: one,
     link: (task) => ({ page: "consignment", id: task.consignment.id }),
+  },
+  reoffer_request: {
+    kind: "reoffer_request",
+    section: "consignments",
+    // The people who run the account answer. Consignors and viewers get no task: they can open
+    // the request's page from a link, read-only and without the seller's money.
+    allowed: capability("entity.consignments.after_sale"),
+    announcedBy: ["reoffer_seller_request", "reoffer_seller_reminder"],
+    collect: (facts) =>
+      facts.reofferRequests.length > 0
+        ? [
+            {
+              kind: "reoffer_request",
+              requests: facts.reofferRequests.map(({ id, title, offerMinor, answerBy }) => ({
+                id,
+                title,
+                offerMinor,
+                answerBy,
+              })),
+              raisedAt: newest(facts.reofferRequests.map((request) => request.requestedAt)),
+            },
+          ]
+        : [],
+    items: (task) => task.requests.length,
+    link: (task) => {
+      const [only] = task.requests;
+      return task.requests.length === 1 && only
+        ? { page: "reoffer_request", id: only.id }
+        : { page: "sold_payouts" };
+    },
   },
   changes: {
     kind: "changes",

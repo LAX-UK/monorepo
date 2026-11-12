@@ -147,3 +147,5 @@ export { anonymiseEnquiries } from "./anonymise-enquiries.js";
 export { eraseAlertSubscribers } from "./erase-alert-subscribers.js";
 export { isPgUniqueViolation, pgUniqueViolationConstraint } from "./pg-unique-violation.js";
 export { collectionRequestCanonical } from "./collection-request-canonical.js";
+export { lockReofferLotThenOffer, type LockedReoffer } from "./lock-reoffer-lot-then-offer.js";
+export { lotResultPendingSql, lotSoldAfterAuctionSql } from "./lot-result-pending.sql.js";

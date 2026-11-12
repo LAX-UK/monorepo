@@ -7,7 +7,12 @@ import type {
   SellerConsentStatus,
 } from "@auction/domain";
 import type { LotStatus, PaymentStatus } from "@auction/types";
-import type { LotReofferView, SellerConsentTerms } from "./lot-reoffer.js";
+import type {
+  LotReofferView,
+  SellerConsentChannel,
+  SellerConsentTerms,
+  SellerPreferredNext,
+} from "./lot-reoffer.js";
 
 /** The lot as read under its row lock: what every re-offer step re-checks before it writes. */
 export type ReofferLockedLot = {
@@ -70,13 +75,22 @@ export interface IReofferWorkflowReader {
 export type StaffReofferView = {
   offer: LotReofferView;
   offeredAccountName: string | null;
+  /** When the bid the offer is made at was placed. */
+  sourceBidPlacedAt: Date | null;
+  /** The staff who started, or closed, the offer; `null` when the clock did. */
+  createdByName: string | null;
+  closedByName: string | null;
   consent: {
     id: string;
     status: SellerConsentStatus;
     channel: string | null;
     note: string | null;
+    requestedAt: Date;
     dueAt: Date | null;
+    remindedAt: Date | null;
     answeredAt: Date | null;
+    /** Who answered: the seller's member, or the staff who recorded it; `null` for a lapse. */
+    answeredByName: string | null;
     preferredNext: string | null;
     terms: SellerConsentTerms;
   } | null;
@@ -93,6 +107,10 @@ export type BidderReofferRow = {
   respondedAt: Date | null;
   offeredUserId: string;
   offeredLegalEntityId: string;
+  /** The work on offer, as the bidder knows it. */
+  lot: { title: string; lotNumber: number | null; saleId: string | null; image: string | null };
+  /** When the lot's own sale ended. */
+  lotEndedAt: Date;
 };
 
 /** What the seller's reads need of a request: the terms they were shown, never who would buy. */
@@ -103,6 +121,16 @@ export type SellerConsentRequestRow = {
   consentStatus: SellerConsentStatus;
   terms: SellerConsentTerms;
   dueAt: Date | null;
+  /** The work the request is about, as the seller knows it. */
+  lot: { title: string; lotNumber: number | null; endedAt: Date };
+  answeredAt: Date | null;
+  /** How the answer was given; `null` until there is one. */
+  answerChannel: SellerConsentChannel | null;
+  preferredNext: SellerPreferredNext | null;
+  /** When the bidder's offer ends, once it was sent. */
+  offerEndsAt: Date | null;
+  /** When the bidder answered; for an accepted offer, when the lot was sold again. */
+  respondedAt: Date | null;
 };
 
 export interface IReofferViewsReader {
@@ -117,4 +145,42 @@ export interface IReofferViewsReader {
     sellerLegalEntityId: string,
     reofferId: string,
   ): Promise<SellerConsentRequestRow | null>;
+}
+
+/** The lot as the staff screens read it, without taking its lock. */
+export type ReofferLotFacts = {
+  id: string;
+  status: LotStatus;
+  winnerId: string | null;
+  winnerLegalEntityId: string | null;
+  /** Whole pence; `null` when no reserve was agreed. */
+  reservePence: number | null;
+  deleted: boolean;
+};
+
+/** The buyer default a re-offer answers, as staff read it. */
+export type StaffBuyerDefaultView = {
+  id: string;
+  recordedAt: Date;
+  recordedByName: string | null;
+  reason: string;
+  outcome: string;
+  /** Whole pence. */
+  originalHammerPence: number;
+  wonAt: Date;
+  buyerRestricted: boolean;
+  buyerUserId: string;
+  buyerAccountName: string | null;
+  /** The voided invoice's own number and due date, when one was raised. */
+  voidedInvoiceNumber: string | null;
+  voidedInvoiceTotalPence: number | null;
+  voidedInvoiceDueAt: Date | null;
+};
+
+/** What the staff preview of the next bidder needs beyond the bids. */
+export interface IReofferStaffReader {
+  lotFacts(db: Database, lotId: string): Promise<ReofferLotFacts | null>;
+  latestDefaultView(db: Database, lotId: string): Promise<StaffBuyerDefaultView | null>;
+  /** Account display names, for staff to read the bidders by name. */
+  accountNames(db: Database, legalEntityIds: readonly string[]): Promise<Map<string, string>>;
 }

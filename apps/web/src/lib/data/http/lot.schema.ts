@@ -98,6 +98,7 @@ const lotRowSchema = z
       status: row.status as Lot["status"],
       winnerId: row.winnerId == null ? null : String(row.winnerId),
       ...(typeof row.hasWinner === "boolean" ? { hasWinner: row.hasWinner } : {}),
+      ...(row.resultPending === true ? { resultPending: true } : {}),
       ...(typeof row.atgSold === "boolean" ? { atgSold: row.atgSold } : {}),
       ...(row.atgSaleState === "live" || row.atgSaleState === "ended"
         ? { atgSaleState: row.atgSaleState }

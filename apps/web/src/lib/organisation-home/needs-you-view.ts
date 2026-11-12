@@ -6,8 +6,10 @@ import {
 } from "@/lib/navigation/client-routes";
 import { bidSettingsHref } from "@/lib/navigation/settings-links";
 import { payHref } from "@/lib/pay/pay-links";
+import { bidderReofferHref } from "@/lib/reoffer/bidder-reoffer-links";
 import { consignmentMessagesHref } from "@/lib/seller/consignment-records";
 import { consignmentStepLabel } from "@/lib/seller/consignment-step";
+import { sellerReofferHref } from "@/lib/seller/seller-reoffer-links";
 import {
   formatDateInline,
   formatDateTimeShort,
@@ -15,6 +17,7 @@ import {
   formatMoney,
 } from "@/lib/ui/format";
 import type { NeedsYouTaskWithLink } from "@/lib/workspace/needs-you-read";
+import { LONDON_TIME_ZONE, formatWhen } from "@auction/datetime";
 import {
   type HomeSubject,
   type NeedsYouLink,
@@ -100,6 +103,8 @@ export function needsYouHref(task: NeedsYouTaskWithLink): string {
     }
     case "bids":
       return CLIENT_ROUTES.bids;
+    case "reoffer_offer":
+      return bidderReofferHref(link.id);
     case "purchase":
       // Paying for one purchase opens the Pay page for it.
       return task.kind === "pay" ? payHref([link.id]) : CLIENT_ROUTES.purchases;
@@ -113,6 +118,10 @@ export function needsYouHref(task: NeedsYouTaskWithLink): string {
       return consignmentMessagesHref(link.id);
     case "consignments":
       return `${CLIENT_ROUTES.consignments}?tab=${link.view}`;
+    case "reoffer_request":
+      return sellerReofferHref(link.id);
+    case "sold_payouts":
+      return CLIENT_ROUTES.payouts;
     case "sale":
       return task.kind === "register" ? salePath(task.sale) : CLIENT_ROUTES.bids;
     case "team":
@@ -153,6 +162,21 @@ const ROWS: { [K in NeedsYouTask["kind"]]: RowBuilder<K> } = {
       label: task.lots.length === 1 ? "Bid again" : "Review bids",
     };
   },
+  reoffer_offer: (task, { now }) => {
+    const [first] = task.offers;
+    return {
+      topic: "bid",
+      title: oneOrMany(task.offers, "An offer for", (n) => `Offers for ${n} lots`),
+      detail:
+        task.offers.length === 1 && first
+          ? `At your bid of ${formatMoney(first.offerMinor / 100)} · the winning bidder did not pay`
+          : `${listOf(task.offers)} · at your own bids`,
+      due: first
+        ? due(first.endsAt, `Ends ${formatWhen(first.endsAt, LONDON_TIME_ZONE, now)}`, now)
+        : null,
+      label: task.offers.length === 1 ? "Review the offer" : "Review offers",
+    };
+  },
   pay: (task, ctx) => ({
     topic: "purchase",
     title: oneOrMany(task.purchases, "Pay for", (n) => `Pay for ${n} purchases`),
@@ -188,6 +212,26 @@ const ROWS: { [K in NeedsYouTask["kind"]]: RowBuilder<K> } = {
     due: null,
     label: consignmentStepLabel("agreement"),
   }),
+  reoffer_request: (task, { now }) => {
+    const [first] = task.requests;
+    const soonest = task.requests
+      .flatMap((request) => (request.answerBy ? [request.answerBy] : []))
+      .sort((a, b) => a.getTime() - b.getTime())[0];
+    const by = soonest ? ` · answer by ${formatWhen(soonest, LONDON_TIME_ZONE, now)}` : "";
+    return {
+      topic: "consignment",
+      title:
+        task.requests.length === 1 && first
+          ? `May we offer ${first.title} to the next bidder?`
+          : `May we offer ${task.requests.length} lots to the next bidder?`,
+      detail:
+        task.requests.length === 1 && first
+          ? `The buyer didn't pay. Next bid ${formatMoney(first.offerMinor / 100)}${by}`
+          : `The buyers didn't pay${by}`,
+      due: null,
+      label: "Review and answer",
+    };
+  },
   changes: (task) => ({
     topic: "consignment",
     title: "Make the changes the specialist asked for",

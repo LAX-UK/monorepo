@@ -118,10 +118,12 @@ jobs:
       # Charlotte Hayes: Bid works from the demo seed plus one Shop edition seeded below.
       ACCOUNT_E2E_COLLECTOR_EMAIL: collector@lax.bid
       ACCOUNT_E2E_COLLECTOR_PASSWORD: Password123!
-      # Felix Nakamura: a dev-seeded password user with no lots, bids, orders or payments in any
-      # product (apple-test@lax.bid has bids, so it is not an empty account).
-      ACCOUNT_E2E_EMPTY_EMAIL: unverified@lax.bid
+      # Check accounts (db:seed:check-accounts): a person with no works, payments or alerts in any
+      # product, and one only the signed-in devices journeys use.
+      ACCOUNT_E2E_EMPTY_EMAIL: check-new-person@lax.bid
       ACCOUNT_E2E_EMPTY_PASSWORD: Password123!
+      ACCOUNT_E2E_DEVICES_EMAIL: check-devices@lax.bid
+      ACCOUNT_E2E_DEVICES_PASSWORD: Password123!
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -147,6 +149,7 @@ jobs:
           pnpm --filter @auction/db db:migrate
           pnpm --filter @auction/db db:seed:dev
           pnpm --filter @auction/db db:seed:demo-full
+          pnpm --filter @auction/db db:seed:check-accounts
           DATABASE_URL_OWNER="$DATABASE_URL" pnpm --filter @auction/db db:roles
           DATABASE_URL_AUTH="$DATABASE_URL" \
             OIDC_CLIENT_IDS=lax-account-web \

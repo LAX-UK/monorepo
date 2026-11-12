@@ -37,6 +37,8 @@ const SITUATION: Record<UnappliedMoneyReason, string> = {
     "A Shop buyer paid, but the print held for their order was no longer reserved for it (it may have gone to another order). Nothing was applied: the order was closed and its basket restored. Open the order in LAX Admin, then refund the buyer or find them the print.",
   shop_order_paid_twice:
     "A Shop order that was already paid received a second payment, in a different payment session. Nothing was applied to the order. Open the order in LAX Admin and refund the second payment.",
+  shop_order_paid_while_paused:
+    "A Shop buyer paid for an artwork that Zoho says is Sold or Reserved, while its sale was paused. Nothing was applied or fulfilled: the order was closed, its prints released and its basket restored. Open the order in LAX Admin, then refund the buyer. If staff have said the artwork is not sold, contact the buyer so they can buy it again.",
   shop_order_not_found:
     "A Shop payment arrived for an order that does not exist here. There is no order to open: find the buyer from the Stripe payment shown, then refund them.",
   shop_order_paid_not_confirmed:

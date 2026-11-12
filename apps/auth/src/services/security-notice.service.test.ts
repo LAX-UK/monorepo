@@ -1,11 +1,13 @@
 import type { EmailEnqueueInput } from "@auction/auth";
 import { describe, expect, it, vi } from "vitest";
-import { formatLondonTime } from "./format-london-time.js";
+import { formatLondonTime, formatNoticeTime } from "./format-london-time.js";
 import {
   KNOWN_DEVICE_WINDOW_MS,
   type KnownDeviceStore,
   NEW_DEVICE_NOTICES_PER_DAY,
   fingerprintDevice,
+  fingerprintMarker,
+  fingerprintMarkerOwingNotice,
   isNewDevice,
 } from "./known-device.js";
 import { SecurityNoticeService } from "./security-notice.service.js";
@@ -18,8 +20,20 @@ const SECURE_URL = "https://account.lax.bid/account/security";
 const CANCEL_URL = "https://account.lax.bid/account/security/delete";
 const DATA_URL = "https://account.lax.bid/account/privacy/download";
 
+/** The "owes a notice" keys the fake store answers `owesNotice` for. */
+const owedKeys = new Set([
+  fingerprintMarkerOwingNotice({ userId: USER, deviceHash: "hash-of-marker" }),
+]);
+
 function setup(
-  options: { seen?: Awaited<ReturnType<KnownDeviceStore["touch"]>>; sentToday?: number } = {},
+  options: {
+    seen?: Awaited<ReturnType<KnownDeviceStore["touch"]>>;
+    sentToday?: number;
+    zone?: string | null;
+    knownMarker?: boolean;
+    /** The browser was signed out from the devices list, or its last notice failed. */
+    owesNotice?: boolean;
+  } = {},
 ) {
   const email = {
     enqueue: vi.fn<(input: EmailEnqueueInput) => Promise<{ outboxId: string }>>(async () => ({
@@ -28,11 +42,19 @@ function setup(
   };
   const devices = {
     touch: vi.fn(async () => options.seen ?? { previousLastSeenAt: null, hadOtherDevices: true }),
+    hasSeen: vi.fn(async (input: { userId: string; fingerprint: string; at: Date }) =>
+      owedKeys.has(input.fingerprint)
+        ? (options.owesNotice ?? false)
+        : (options.knownMarker ?? false),
+    ),
+    remember: vi.fn(async () => undefined),
+    forget: vi.fn(async () => undefined),
     countNoticesSince: vi.fn(async () => options.sentToday ?? 0),
     markNotified: vi.fn(async () => undefined),
   };
   const subjects = {
     findById: vi.fn(async () => ({ id: USER, email: "ada@example.com", name: "Ada" })),
+    readTimeZone: vi.fn(async () => ({ mode: "fixed" as const, zone: options.zone ?? null })),
   };
   const log = { warn: vi.fn(), error: vi.fn() };
   const service = new SecurityNoticeService(
@@ -52,14 +74,37 @@ function setup(
 
 describe("formatLondonTime", () => {
   it("names the zone and follows British Summer Time", () => {
-    expect(formatLondonTime(new Date("2026-10-23T13:05:00.000Z"))).toBe(
-      "23 October 2026 at 14:05 BST",
-    );
+    expect(formatLondonTime(new Date("2026-10-23T13:05:00.000Z"))).toBe("Fri 23 Oct, 14:05 BST");
   });
 
   it("uses GMT in winter", () => {
-    expect(formatLondonTime(new Date("2026-12-01T13:05:00.000Z"))).toBe(
-      "1 December 2026 at 13:05 GMT",
+    expect(formatLondonTime(new Date("2026-12-01T13:05:00.000Z"))).toBe("Tue 1 Dec, 13:05 GMT");
+  });
+});
+
+describe("formatNoticeTime", () => {
+  it("is London with the zone named when the person has no saved zone", () => {
+    expect(formatNoticeTime(AT, null)).toBe("Fri 23 Oct, 14:05 BST");
+  });
+
+  it("is the saved zone's clock with that zone named, on its own day", () => {
+    const late = new Date("2026-10-23T20:30:00.000Z");
+    expect(formatNoticeTime(late, "Australia/Sydney")).toBe("Sat 24 Oct, 07:30 GMT+11 (Sydney)");
+  });
+});
+
+describe("SecurityNoticeService sign-in times", () => {
+  it("tells a new sign-in on the clock of the zone saved in LAX Account", async () => {
+    const { service, email } = setup({ zone: "Africa/Cairo" });
+    await service.deliver({
+      kind: "password_changed",
+      userId: USER,
+      at: AT,
+      userAgent: CHROME_MAC,
+    } as never);
+    const sent = email.enqueue.mock.calls[0]?.[0];
+    expect((sent?.vars as { whenDisplay: string }).whenDisplay).toBe(
+      "Fri 23 Oct, 16:05 EEST (Cairo)",
     );
   });
 });
@@ -187,7 +232,7 @@ describe("SecurityNoticeService data download", () => {
       to: "ada@example.com",
       category: "auth",
       vars: {
-        whenDisplay: "23 October 2026 at 14:05 BST",
+        whenDisplay: "Fri 23 Oct, 14:05 BST",
         deviceLabel: "Chrome on macOS",
         secureAccountUrl: SECURE_URL,
       },
@@ -233,7 +278,7 @@ describe("SecurityNoticeService", () => {
         category: "auth",
         vars: {
           userName: "Ada",
-          whenDisplay: "23 October 2026 at 14:05 BST",
+          whenDisplay: "Fri 23 Oct, 14:05 BST",
           deviceLabel: "Chrome on macOS",
           secureAccountUrl: SECURE_URL,
         },
@@ -453,6 +498,156 @@ describe("new-device sign-in notices", () => {
     await service.notify(signIn);
 
     expect(devices.markNotified).not.toHaveBeenCalled();
+  });
+});
+
+describe("new-device notices for a browser with a device marker", () => {
+  const signIn = {
+    kind: "sign_in",
+    userId: USER,
+    at: AT,
+    userAgent: CHROME_MAC,
+    region: "GB",
+    deviceHash: "hash-of-marker",
+  } as const;
+  const marker = fingerprintMarker({ userId: USER, deviceHash: "hash-of-marker" });
+  const stale = new Date(AT.getTime() - KNOWN_DEVICE_WINDOW_MS - 60_000);
+
+  it("never emails a browser the person signed in from in the last 90 days, whatever its label says", async () => {
+    const { service, email, devices } = setup({
+      knownMarker: true,
+      seen: { previousLastSeenAt: stale, hadOtherDevices: true },
+    });
+
+    await service.notify(signIn);
+
+    expect(devices.hasSeen).toHaveBeenCalledWith({ userId: USER, fingerprint: marker, at: AT });
+    expect(email.enqueue).not.toHaveBeenCalled();
+  });
+
+  it("falls back to the 90 day rule for a marker it has not seen, and remembers it", async () => {
+    const { service, email, devices } = setup({
+      knownMarker: false,
+      seen: { previousLastSeenAt: stale, hadOtherDevices: true },
+    });
+
+    await service.notify(signIn);
+
+    expect(email.enqueue).toHaveBeenCalledTimes(1);
+    expect(devices.remember).toHaveBeenCalledWith({ userId: USER, fingerprint: marker, at: AT });
+  });
+
+  it("does not email a new marker on a device label seen recently", async () => {
+    const { service, email, devices } = setup({
+      knownMarker: false,
+      seen: { previousLastSeenAt: AT, hadOtherDevices: true },
+    });
+
+    await service.notify(signIn);
+
+    expect(email.enqueue).not.toHaveBeenCalled();
+    expect(devices.remember).toHaveBeenCalledTimes(1);
+  });
+
+  it("emails a browser that owes a notice even when its label was seen recently, then settles it", async () => {
+    const { service, email, devices } = setup({
+      owesNotice: true,
+      knownMarker: true,
+      seen: { previousLastSeenAt: AT, hadOtherDevices: true },
+    });
+
+    await service.notify(signIn);
+
+    expect(email.enqueue).toHaveBeenCalledTimes(1);
+    expect(devices.markNotified).toHaveBeenCalledTimes(1);
+    expect(devices.remember).toHaveBeenCalledWith({ userId: USER, fingerprint: marker, at: AT });
+    expect(devices.forget).toHaveBeenCalledWith({
+      userId: USER,
+      fingerprints: [fingerprintMarkerOwingNotice({ userId: USER, deviceHash: "hash-of-marker" })],
+    });
+  });
+
+  it("remembers the marker only after the notice was queued", async () => {
+    const { service, email, devices } = setup({
+      seen: { previousLastSeenAt: stale, hadOtherDevices: true },
+    });
+    const order: string[] = [];
+    email.enqueue.mockImplementation(async () => {
+      order.push("enqueue");
+      return { outboxId: "o1" };
+    });
+    devices.remember.mockImplementation(async () => {
+      order.push("remember");
+    });
+
+    await service.notify(signIn);
+
+    expect(order).toEqual(["enqueue", "remember"]);
+  });
+
+  it("leaves the browser unknown and owing a notice when the email could not be queued", async () => {
+    const { service, email, devices, log } = setup({
+      seen: { previousLastSeenAt: stale, hadOtherDevices: true },
+    });
+    email.enqueue.mockRejectedValue(new Error("outbox down"));
+
+    await service.notify(signIn);
+
+    expect(devices.remember).toHaveBeenCalledTimes(1);
+    expect(devices.remember).toHaveBeenCalledWith({
+      userId: USER,
+      fingerprint: fingerprintMarkerOwingNotice({ userId: USER, deviceHash: "hash-of-marker" }),
+      at: AT,
+    });
+    expect(devices.remember).not.toHaveBeenCalledWith(
+      expect.objectContaining({ fingerprint: marker }),
+    );
+    expect(devices.markNotified).not.toHaveBeenCalled();
+    expect(log.error).toHaveBeenCalledWith(
+      expect.objectContaining({ kind: "sign_in" }),
+      "security_notice_failed",
+    );
+  });
+
+  it("remembers a browser the daily cap deliberately held back, sending nothing", async () => {
+    const { service, email, devices } = setup({
+      sentToday: NEW_DEVICE_NOTICES_PER_DAY,
+      seen: { previousLastSeenAt: stale, hadOtherDevices: true },
+    });
+
+    await service.notify(signIn);
+
+    expect(email.enqueue).not.toHaveBeenCalled();
+    expect(devices.remember).toHaveBeenCalledWith({ userId: USER, fingerprint: marker, at: AT });
+  });
+
+  it("does not look a marker up for a sign-in that carried none", async () => {
+    const { service, devices } = setup();
+
+    await service.notify({ ...signIn, deviceHash: null });
+
+    expect(devices.hasSeen).not.toHaveBeenCalled();
+    expect(devices.remember).not.toHaveBeenCalled();
+  });
+
+  it("links the email to the signed-in devices list", async () => {
+    const { service, email } = setup();
+
+    await service.notify(signIn);
+
+    expect(email.enqueue.mock.calls[0]?.[0].vars.reviewDevicesUrl).toBe(
+      "https://account.lax.bid/account/security#signed-in-devices",
+    );
+  });
+});
+
+describe("fingerprintMarker", () => {
+  it("differs by person and by browser, and is a hash", () => {
+    const a = fingerprintMarker({ userId: USER, deviceHash: "one" });
+    expect(a).toMatch(/^[0-9a-f]{64}$/);
+    expect(a).not.toBe(fingerprintMarker({ userId: USER, deviceHash: "two" }));
+    expect(a).not.toBe(fingerprintMarker({ userId: "other-user", deviceHash: "one" }));
+    expect(a).not.toBe(fingerprintDevice({ userId: USER, userAgent: CHROME_MAC, region: "GB" }));
   });
 });
 

@@ -18,6 +18,22 @@ function renderFooter() {
   return render(<MarketingFooter logo={<span>logo</span>} columns={columns} copyright="© LAX" />);
 }
 
+describe("MarketingFooter list", () => {
+  it("draws a column's own list in place of its links", () => {
+    render(
+      <MarketingFooter
+        logo={<span>logo</span>}
+        columns={[
+          { id: "account", title: "Account", links: [], list: <ul data-testid="own-list" /> },
+        ]}
+        copyright="© LAX"
+      />,
+    );
+    expect(screen.getByTestId("own-list")).toBeInTheDocument();
+    expect(screen.getAllByRole("list")).toHaveLength(1);
+  });
+});
+
 function stubViewport(phone: boolean) {
   vi.stubGlobal(
     "matchMedia",

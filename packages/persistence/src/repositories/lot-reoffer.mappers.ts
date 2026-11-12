@@ -26,6 +26,7 @@ const termsSchema = z
   .object({
     amountPence: pence,
     originalHammerPence: pence,
+    saleAtOfferPence: pence.optional(),
     proceedsAtOfferPence: pence,
     proceedsAtOriginalPence: pence,
     reservePence: pence.nullable(),

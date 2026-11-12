@@ -49,6 +49,18 @@ export class BidInvoiceTotalMismatchError extends Error {
   }
 }
 
+/**
+ * The lot is no longer sold to the buyer the invoice was being raised for: between reading the lot
+ * and raising its invoice it was defaulted, re-awarded, reopened or moved to another buying
+ * account. Nothing is stored, so no invoice or payment is left for someone who no longer owns it.
+ */
+export class BidInvoiceLotMovedError extends Error {
+  constructor(readonly lotId: string) {
+    super(`Lot ${lotId} is no longer sold to the buyer this invoice was raised for`);
+    this.name = "BidInvoiceLotMovedError";
+  }
+}
+
 /** Reading the live invoices of many lots at once, for lists. */
 export interface IBidInvoiceBatchReader {
   /**
@@ -85,6 +97,11 @@ export type RaisedInvoice = {
 export interface IBidInvoiceRaiseRepository {
   /**
    * Stores the invoice with its lines and the payment row that settles it, in one transaction.
+   * The transaction first locks the lot row (`FOR UPDATE`, lot first, as a buyer default and a
+   * re-award do) and requires it to be still ended, won by `winnerId` and bought in
+   * `invoice.buyerLegalEntityId`; otherwise it throws `BidInvoiceLotMovedError` and stores nothing.
+   * `winnerId` is the lot's winner as the caller read it; the payer (`payment.paidByUserId`) is
+   * that winner at lot end, or one of the buying account's payers at checkout.
    * When the lot already has a live invoice for the buyer account (a retry after the previous
    * payment expired, or a request that raced this one) the existing invoice is used as is: it is
    * not priced again and its due date does not move, and the payment row takes its total.
@@ -93,6 +110,7 @@ export interface IBidInvoiceRaiseRepository {
    */
   raise(input: {
     invoice: NewBidInvoice;
+    winnerId: string;
     payment: Omit<CreatePaymentRow, "amount" | "invoiceId">;
   }): Promise<RaisedInvoice>;
 }

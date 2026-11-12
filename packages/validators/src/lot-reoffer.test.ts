@@ -16,32 +16,51 @@ import {
 const sellerView = {
   id: "r1",
   lotId: "l1",
+  lotTitle: "The Winter Study",
+  lotNumber: 2,
+  lotEndedAt: "2026-10-29T18:00:00.000Z",
   status: "awaiting_seller",
   consentStatus: "requested",
   offerMinor: 82_000_00,
-  originalHammerMinor: 88_000_00,
-  estimatedProceedsMinor: 72_160_00,
-  originalProceedsMinor: 77_440_00,
+  proceeds: {
+    offerSaleMinor: 102_500_00,
+    offerProceedsMinor: 97_375_00,
+    originalHammerMinor: 88_000_00,
+    originalProceedsMinor: 104_500_00,
+  },
   reserveMinor: 85_000_00,
   belowReserve: true,
   answerDueAt: "2026-11-16T17:00:00.000Z",
+  answeredAt: null,
+  answeredBy: null,
+  declinePreference: null,
+  offerEndsAt: null,
+  soldAt: null,
 };
 
+/** The lines today's invoice carries: the hammer and the buyer's premium, nothing else. */
 const price = {
   hammerMinor: 82_000_00,
   buyersPremiumMinor: 20_500_00,
-  vatOnPremiumMinor: 4_100_00,
+  vatOnPremiumMinor: null,
   vatOnLotMinor: null,
   artistsResaleRightMinor: null,
-  totalMinor: 106_600_00,
+  totalMinor: 102_500_00,
 };
 
 const bidderView = {
   id: "r1",
   lotId: "l1",
+  lotTitle: "The Winter Study",
+  lotNumber: 2,
+  saleId: "s1",
+  lotImage: "https://media.example/winter-study.jpg",
+  lotEndedAt: "2026-10-29T17:00:00.000Z",
   status: "offered",
   price,
   endsAt: "2026-11-13T17:00:00.000Z",
+  respondedAt: null,
+  invoiceDueAt: null,
 };
 
 describe("send body", () => {
@@ -103,13 +122,23 @@ describe("seller answer", () => {
 });
 
 describe("bidder accept and decline", () => {
-  it("accepting needs the terms ticked", () => {
-    expect(acceptReofferBodySchema.safeParse({ termsAccepted: true }).success).toBe(true);
-    expect(acceptReofferBodySchema.safeParse({ termsAccepted: false }).success).toBe(false);
-    expect(acceptReofferBodySchema.safeParse({}).success).toBe(false);
-    expect(acceptReofferBodySchema.safeParse({ termsAccepted: true, price: 1 }).success).toBe(
+  it("accepting needs the terms ticked and the total the page showed", () => {
+    const shown = { termsAccepted: true, expectedTotalMinor: 102_500_00 };
+    expect(acceptReofferBodySchema.safeParse(shown).success).toBe(true);
+    expect(acceptReofferBodySchema.safeParse({ ...shown, termsAccepted: false }).success).toBe(
       false,
     );
+    expect(acceptReofferBodySchema.safeParse({ termsAccepted: true }).success).toBe(false);
+    expect(acceptReofferBodySchema.safeParse({}).success).toBe(false);
+    expect(acceptReofferBodySchema.safeParse({ ...shown, price: 1 }).success).toBe(false);
+  });
+
+  it("the total shown is whole, non-negative pence", () => {
+    for (const expectedTotalMinor of [-1, 1.5, "102500", null]) {
+      expect(
+        acceptReofferBodySchema.safeParse({ termsAccepted: true, expectedTotalMinor }).success,
+      ).toBe(false);
+    }
   });
 
   it("declining takes an optional trimmed reason of up to 500 characters", () => {
@@ -142,6 +171,21 @@ describe("bidder price", () => {
     );
   });
 
+  it("adds up for a lot with no buyer's premium line", () => {
+    expect(
+      bidderReofferPriceSchema.safeParse({
+        ...price,
+        buyersPremiumMinor: null,
+        totalMinor: price.hammerMinor,
+      }).success,
+    ).toBe(true);
+  });
+
+  it("names every line, null when the invoice has none, never leaves one out", () => {
+    const { vatOnPremiumMinor: _omitted, ...withoutVat } = price;
+    expect(bidderReofferPriceSchema.safeParse(withoutVat).success).toBe(false);
+  });
+
   it("refuses a total that does not match its lines", () => {
     expect(
       bidderReofferPriceSchema.safeParse({ ...price, totalMinor: price.totalMinor + 1 }).success,
@@ -153,6 +197,14 @@ describe("member-safe views", () => {
   it("accept their own fields", () => {
     expect(sellerReofferViewSchema.safeParse(sellerView).success).toBe(true);
     expect(bidderReofferViewSchema.safeParse(bidderView).success).toBe(true);
+  });
+
+  it("let the seller's view leave out the money for a member who does not see the payouts", () => {
+    expect(sellerReofferViewSchema.safeParse({ ...sellerView, proceeds: null }).success).toBe(true);
+    const { proceeds: _money, ...withoutKey } = sellerView;
+    expect(sellerReofferViewSchema.safeParse(withoutKey).success).toBe(false);
+    const flat = { ...withoutKey, proceeds: null, estimatedProceedsMinor: 1 };
+    expect(sellerReofferViewSchema.safeParse(flat).success).toBe(false);
   });
 
   it("reject staff fields and the other party's identity", () => {
@@ -181,6 +233,20 @@ describe("member-safe views", () => {
     }
   });
 
+  it("tell the seller how an answer reached us, and no more than that", () => {
+    const answered = {
+      ...sellerView,
+      answeredAt: "2026-11-12T10:00:00.000Z",
+      answeredBy: "recorded_by_staff",
+      declinePreference: "later_sale",
+    };
+    expect(sellerReofferViewSchema.safeParse(answered).success).toBe(true);
+    // Staff-only channels never reach a seller.
+    expect(
+      sellerReofferViewSchema.safeParse({ ...answered, answeredBy: "house_stock" }).success,
+    ).toBe(false);
+  });
+
   it("show the bidder only bidder-side statuses", () => {
     for (const status of BIDDER_REOFFER_STATUSES) {
       expect(bidderReofferViewSchema.safeParse({ ...bidderView, status }).success).toBe(true);
@@ -198,28 +264,66 @@ describe("member-safe views", () => {
 });
 
 describe("staff view", () => {
-  it("carries the shortfall and the bidder", () => {
-    const parsed = staffReofferSchema.safeParse({
-      id: "r1",
-      lotId: "l1",
-      sequence: 1,
-      status: "ready",
-      consentStatus: "given",
-      bidder: { userId: "u2", legalEntityId: "e2" },
-      offerMinor: 82_000_00,
-      originalHammerMinor: 88_000_00,
-      belowReserve: false,
-      consentDueAt: null,
-      offerEndsAt: null,
-      claimableShortfall: {
-        hammerDifferenceMinor: 6_000_00,
-        premiumLostMinor: 22_000_00,
-        totalMinor: 28_000_00,
-      },
-      skippedBidders: [
-        { userId: "u3", legalEntityId: "e3", amountMinor: 90_000_00, reason: "suspended" },
-      ],
-    });
+  const price = {
+    hammerMinor: 82_000_00,
+    buyersPremiumMinor: 20_500_00,
+    vatOnPremiumMinor: 4_100_00,
+    vatOnLotMinor: null,
+    artistsResaleRightMinor: null,
+    totalMinor: 106_600_00,
+  };
+  const view = {
+    id: "r1",
+    lotId: "l1",
+    sequence: 1,
+    status: "ready",
+    consentStatus: "given",
+    bidder: { userId: "u2", legalEntityId: "e2", accountName: "Northbank Gallery" },
+    offerMinor: 82_000_00,
+    price,
+    sourceBidId: "bid-2",
+    bidPlacedAt: "2026-10-23T18:11:00.000Z",
+    originalHammerMinor: 88_000_00,
+    estimatedProceedsMinor: 72_160_00,
+    reserveMinor: null,
+    belowReserve: false,
+    consentDueAt: null,
+    consent: {
+      channel: "workspace",
+      requestedAt: "2026-11-10T10:30:00.000Z",
+      remindedAt: null,
+      answeredAt: "2026-11-11T09:02:00.000Z",
+      answeredByName: "Priya Shah",
+      note: null,
+      declinePreference: null,
+    },
+    createdAt: "2026-11-10T10:30:00.000Z",
+    createdByName: "Eleanor Pereira",
+    offerSentAt: null,
+    offerEndsAt: null,
+    respondedAt: null,
+    declineReason: null,
+    closeReason: null,
+    closedByName: null,
+    invoiceId: null,
+    claimableShortfall: {
+      hammerDifferenceMinor: 6_000_00,
+      premiumLostMinor: 22_000_00,
+      totalMinor: 28_000_00,
+    },
+    skippedBidders: [
+      { userId: "u3", legalEntityId: "e3", amountMinor: 90_000_00, reason: "suspended" },
+    ],
+  };
+
+  it("carries the shortfall, the bidder by name, the price lines and who answered", () => {
+    const parsed = staffReofferSchema.safeParse(view);
     expect(parsed.success).toBe(true);
+  });
+
+  it("refuses a price whose total is not the sum of its lines", () => {
+    expect(
+      staffReofferSchema.safeParse({ ...view, price: { ...price, totalMinor: 1 } }).success,
+    ).toBe(false);
   });
 });

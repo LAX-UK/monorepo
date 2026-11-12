@@ -188,6 +188,7 @@ describe("unapplied money alert", () => {
     ["shop_order_session_mismatch", "not the one their order was opened with"],
     ["shop_order_edition_state_invalid", "no longer reserved for it"],
     ["shop_order_paid_twice", "already paid received a second payment"],
+    ["shop_order_paid_while_paused", "while its sale was paused"],
   ] as const)(
     "tells finance about a Shop payment that could not be applied (%s), linking the order in LAX Admin",
     async (reason, words) => {

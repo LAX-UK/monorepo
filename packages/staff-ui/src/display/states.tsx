@@ -153,6 +153,7 @@ export { Skeleton } from "@auction/ui/lax";
  */
 export function Section({
   title,
+  status,
   description,
   action,
   children,
@@ -161,6 +162,8 @@ export function Section({
   id,
 }: {
   title: string;
+  /** A status badge beside the title, for a record whose state is the point of the section. */
+  status?: React.ReactNode;
   description?: React.ReactNode;
   action?: React.ReactNode;
   children: React.ReactNode;
@@ -177,12 +180,15 @@ export function Section({
     >
       <header className="flex min-h-12 items-center justify-between gap-3 border-b border-staff-line-subtle px-4 py-2.5">
         <div className="min-w-0">
-          <h2
-            {...(headingId ? { id: headingId } : {})}
-            className="font-staff text-staff-md font-semibold text-staff-fg"
-          >
-            {title}
-          </h2>
+          <div className="flex flex-wrap items-center gap-2">
+            <h2
+              {...(headingId ? { id: headingId } : {})}
+              className="font-staff text-staff-md font-semibold text-staff-fg"
+            >
+              {title}
+            </h2>
+            {status}
+          </div>
           {description ? <p className="text-staff-xs text-staff-muted">{description}</p> : null}
         </div>
         {action ? <div className="flex shrink-0 items-center gap-2">{action}</div> : null}

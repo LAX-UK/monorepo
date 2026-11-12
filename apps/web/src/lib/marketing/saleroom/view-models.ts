@@ -97,6 +97,8 @@ export type SaleLotCardVM = {
   /** Drives Sold vs Unsold when status is `ended`. */
   winnerId?: string | null | undefined;
   hasWinner?: boolean;
+  /** Ended with the result not final yet: the badge says Ended. */
+  resultPending?: boolean;
 } & LotCardTimingVM;
 
 export type RelatedSaleVM = {

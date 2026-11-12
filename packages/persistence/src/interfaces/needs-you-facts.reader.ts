@@ -5,6 +5,8 @@ import type {
   PendingAccessRequest,
   PurchaseNextStepFacts,
   PurchaseNextStepTimes,
+  ReofferOfferSubject,
+  ReofferRequestSubject,
   UnreadReply,
 } from "@auction/domain";
 import type { SubmissionSenderFilter } from "./item-submission.repository.js";
@@ -23,6 +25,13 @@ export interface INeedsYouFactsReader {
     limit: number;
   }): Promise<Array<HomeSubject & { endsAt: Date; outbidAt: Date | null }>>;
 
+  /** Offers to buy a lot at the account's own bid that wait for its answer and have not ended. */
+  reofferOffers(input: {
+    legalEntityId: string;
+    now: Date;
+    limit: number;
+  }): Promise<Array<ReofferOfferSubject & { sentAt: Date | null }>>;
+
   /** Won lots that are not finished: unpaid, or paid and not yet delivered or collected. */
   openPurchases(input: {
     legalEntityId: string;
@@ -36,6 +45,16 @@ export interface INeedsYouFactsReader {
     visibleTo: SubmissionSenderFilter | undefined;
     limit: number;
   }): Promise<Array<HomeSubject & { proposedAt: Date | null }>>;
+
+  /**
+   * Requests to re-offer a lot to the next bidder that wait for this seller account's answer and
+   * can still be answered at `now`: a request past its deadline is closed (the worker lapses it).
+   */
+  reofferRequests(input: {
+    legalEntityId: string;
+    now: Date;
+    limit: number;
+  }): Promise<Array<ReofferRequestSubject & { requestedAt: Date | null }>>;
 
   /** Submissions sent back with changes requested. */
   changesRequested(input: {

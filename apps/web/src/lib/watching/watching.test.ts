@@ -73,6 +73,31 @@ describe("buildWatchedLots", () => {
     expect(rows[1]?.figure.value).toBe("£2,000.00 – £3,000.00");
   });
 
+  it("reads an ended lot whose result is still open as ended, with no price", () => {
+    const pending = lot("pending", {
+      status: "ended",
+      resultPending: true,
+      hasWinner: false,
+      currentPrice: "250",
+      endTime: new Date("2026-10-30T18:00:00Z"),
+    });
+    const sold = lot("sold-public", {
+      status: "ended",
+      hasWinner: true,
+      endTime: new Date("2026-10-30T18:00:00Z"),
+    });
+    const rows = buildWatchedLots({
+      rows: [watched(pending), watched(sold)],
+      bids: [],
+      userId: "me",
+      now: NOW,
+    });
+    expect(rows.map((row) => [row.standing.label, row.figure.value, row.figure.label])).toEqual([
+      ["Ended", "–", "ended"],
+      ["Sold", "£2,600.00", "sold for"],
+    ]);
+  });
+
   it("puts open lots first, soonest to close, and ended ones last", () => {
     const rows = buildWatchedLots({
       rows: [watched(sold), watched(upcoming), watched(open)],
