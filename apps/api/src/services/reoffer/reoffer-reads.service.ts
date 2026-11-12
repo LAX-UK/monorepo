@@ -116,10 +116,11 @@ export class ReofferReadsService {
       price: bidderPriceLines(priced),
       endsAt: row.offerEndsAt.toISOString(),
       respondedAt: row.respondedAt?.toISOString() ?? null,
-      // Only an accepted offer has an invoice to come: due seven days on, counted from acceptance.
+      // Only an accepted offer has an invoice. Its stored due date once it is raised (it counts
+      // from when it was raised); until then, seven days on from acceptance as the raise will set.
       invoiceDueAt:
         status === "accepted" && row.respondedAt
-          ? invoiceDueAfterAcceptance(row.respondedAt).toISOString()
+          ? (priced.invoiceDueAt ?? invoiceDueAfterAcceptance(row.respondedAt)).toISOString()
           : null,
     });
   }

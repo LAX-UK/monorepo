@@ -31,7 +31,10 @@ const pricedLot = (buyerPremiumRate: string) =>
 /** The real invoice pricing: the page's lines are the invoice's lines, nothing invented. */
 const PRICED = buildInvoiceLines(pricedLot("0.25"), null);
 
-function service(rows: BidderReofferRow[], priced: InvoiceLines = PRICED) {
+function service(
+  rows: BidderReofferRow[],
+  priced: InvoiceLines & { invoiceDueAt?: Date | null } = PRICED,
+) {
   return new ReofferReadsService({
     db: never as never,
     views: {
@@ -100,6 +103,17 @@ describe("the bidder's view of an offer", () => {
     expect(view.respondedAt).toBe("2026-11-12T10:30:00.000Z");
     // Seven days on, at the end of that London day.
     expect(view.invoiceDueAt).toBe("2026-11-19T23:59:59.999Z");
+  });
+
+  it("gives the stored invoice's own due date once the invoice is raised", async () => {
+    // Raised a day late by the backfill: the invoice is due seven days from then, not from acceptance.
+    const accepted = row({ status: "accepted", respondedAt: new Date("2026-11-12T10:30:00Z") });
+    const stored = new Date("2026-11-20T23:59:59.999Z");
+    const view = await service([accepted], { ...PRICED, invoiceDueAt: stored }).getForBidder(
+      bidder,
+      accepted.id,
+    );
+    expect(view.invoiceDueAt).toBe(stored.toISOString());
   });
 
   it("does not show an offer the bidder was never told about", async () => {
