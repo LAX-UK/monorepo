@@ -44,6 +44,7 @@ const ready = {
     matchedArtist: { artistId: ARTIST_ID, displayName: "Ada Rowe" },
     existing: null,
     eligible: true,
+    zohoPrice: "4800.00",
     blockers: [],
   },
 };
@@ -75,6 +76,18 @@ describe("OfferOnLaxArtDialog", () => {
     expect(screen.getByRole("status", { name: "Checking this artwork" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Create lax.art draft" })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Cancel" })).toBeInTheDocument();
+  });
+
+  it("shows Zoho's price with Zoho's other facts, as information only", async () => {
+    assess.mockResolvedValue(ready);
+    open();
+    expect(await screen.findByText("£4,800.00")).toBeInTheDocument();
+  });
+
+  it("says so when Zoho has no price", async () => {
+    assess.mockResolvedValue(withData({ zohoPrice: null }));
+    open();
+    expect(await screen.findByText("Not set in Zoho")).toBeInTheDocument();
   });
 
   it("shows Zoho's facts read-only, marked From Zoho, with the artist matched by code", async () => {

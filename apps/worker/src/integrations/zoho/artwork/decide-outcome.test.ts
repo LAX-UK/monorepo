@@ -18,6 +18,7 @@ function entry(overrides: Partial<ArtworkRegisterEntry> = {}): ArtworkRegisterEn
     year: 2024,
     imageRefs: [],
     catalogueStatus: "Available",
+    zohoPrice: "4200.00",
     offer: { state: "held", ref: null },
     zohoModifiedAt: new Date("2026-09-01T00:00:00.000Z"),
     createdAt: new Date("2026-09-01T00:00:00.000Z"),
@@ -120,5 +121,24 @@ describe("decideArtworkOutcome", () => {
     });
     expect(decision.outcome).toBe("update");
     expect(decision.conflicts).toEqual([]);
+  });
+});
+
+describe("decideArtworkOutcome: Zoho's price", () => {
+  it("updates the register when only Zoho's price differs, without touching a catalogue field", () => {
+    const decision = decideArtworkOutcome(assessProduct(product(1)), {
+      existing: entry({ zohoPrice: "3900.00" }),
+      holderOfStockCode: null,
+    });
+    expect(decision.outcome).toBe("update");
+    expect(decision.changes).toEqual({ zohoPrice: { from: "3900.00", to: "4200.00" } });
+  });
+
+  it("fills the price on a record that has none yet", () => {
+    const decision = decideArtworkOutcome(assessProduct(product(1)), {
+      existing: entry({ zohoPrice: null }),
+      holderOfStockCode: null,
+    });
+    expect(decision.changes).toEqual({ zohoPrice: { from: null, to: "4200.00" } });
   });
 });
