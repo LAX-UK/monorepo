@@ -101,6 +101,26 @@ function Harness({ target, access = FULL }: { target: LotActionTarget; access?: 
   );
 }
 
+/** Two lots on one page, so the one Buyer default dialog can be opened for each in turn. */
+function TwoLots({ a, b }: { a: LotActionTarget; b: LotActionTarget }) {
+  const actions = useLotActions(FULL);
+  return (
+    <>
+      {[a, b].map((target) =>
+        actions
+          .actionsFor(target)
+          .filter((action) => action.label === "Buyer default…")
+          .map((action) => (
+            <button key={target.id} type="button" onClick={() => action.onSelect?.()}>
+              {`${action.label} ${target.title}`}
+            </button>
+          )),
+      )}
+      {actions.dialogs}
+    </>
+  );
+}
+
 describe("useLotActions", () => {
   beforeEach(() => {
     for (const fn of [
@@ -324,6 +344,61 @@ describe("useLotActions", () => {
       await record();
       expect(await screen.findByText("The buyer has paid.")).toBeInTheDocument();
       expect(startAction).not.toHaveBeenCalled();
+    });
+
+    it("never shows one lot's next bidder under another lot", async () => {
+      let answerA: (value: unknown) => void = () => undefined;
+      previewAction.mockImplementation((lotId: string) =>
+        lotId === "lot_a"
+          ? new Promise((resolve) => {
+              answerA = resolve;
+            })
+          : Promise.resolve({
+              ok: true,
+              data: {
+                ...NEXT_BIDDER,
+                next: { ...NEXT_BIDDER.next, accountName: "Lot B's bidder" },
+              },
+            }),
+      );
+      render(
+        <TwoLots
+          a={{ ...ended, id: "lot_a", title: "Lot A" }}
+          b={{ ...ended, id: "lot_b", title: "Lot B" }}
+        />,
+      );
+      fireEvent.click(screen.getByRole("button", { name: "Buyer default… Lot A" }));
+      fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+      fireEvent.click(screen.getByRole("button", { name: "Buyer default… Lot B" }));
+      expect(await screen.findByTestId("next-bidder")).toHaveTextContent("Lot B's bidder");
+      // A's answer arrives late, while B is open: it is dropped.
+      answerA({
+        ok: true,
+        data: { ...NEXT_BIDDER, next: { ...NEXT_BIDDER.next, accountName: "Lot A's bidder" } },
+      });
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(screen.getByTestId("next-bidder")).toHaveTextContent("Lot B's bidder");
+      expect(screen.queryByText(/Lot A's bidder/)).not.toBeInTheDocument();
+    });
+
+    it("asks for a fresh sign-in when starting the offer needs one, and keeps the default", async () => {
+      buyerDefaultAction.mockResolvedValue({ ok: true });
+      startAction.mockResolvedValue({
+        ok: false,
+        error: "Confirm it’s you",
+        errorCode: "step_up_required",
+      });
+      render(<Harness target={ended} />);
+      fireEvent.click(screen.getByRole("button", { name: "Buyer default…" }));
+      await record();
+      expect(
+        await screen.findByText(
+          "To start this offer, sign in again. You will come back to this page to finish.",
+        ),
+      ).toBeInTheDocument();
+      expect(notifyError).not.toHaveBeenCalled();
+      expect(notifySuccess).toHaveBeenCalledWith("Buyer default recorded for Blue Interior");
+      expect(refresh).toHaveBeenCalled();
     });
 
     it("no longer promises that no fees are added", async () => {

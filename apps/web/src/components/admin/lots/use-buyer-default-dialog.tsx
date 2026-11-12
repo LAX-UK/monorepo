@@ -22,7 +22,7 @@ import {
 } from "@auction/staff-ui";
 import type { ReofferPreview } from "@auction/validators";
 import { useRouter } from "next/navigation";
-import { useCallback, useId, useState, useTransition } from "react";
+import { useCallback, useId, useRef, useState, useTransition } from "react";
 
 /** Where the lot goes once its sale is cancelled. */
 export type BuyerDefaultOutcomeChoice = "returned_to_inventory" | "offered_to_underbidder";
@@ -192,24 +192,38 @@ export function useBuyerDefaultDialog() {
   const [outcome, setOutcome] = useState<BuyerDefaultOutcomeChoice>("returned_to_inventory");
   const [restrict, setRestrict] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
-  const [nextBidder, setNextBidder] = useState<NextBidderState>({ status: "loading" });
+  // The next bidder is kept with the lot it was read for, and shown only for that lot: a slow
+  // answer for a lot the dialog has since moved on from can never show under another lot.
+  const [preview, setPreview] = useState<{ lotId: string; state: NextBidderState } | null>(null);
+  const openFor = useRef<string | null>(null);
   const [busy, startTransition] = useTransition();
   const stepUp = useStaffStepUp({ onReauthenticate: redirectToHostedReauth });
+  const nextBidder: NextBidderState =
+    target && preview?.lotId === target.id ? preview.state : { status: "loading" };
 
   const open = useCallback((next: Target) => {
     setOutcome("returned_to_inventory");
     setRestrict(false);
     setFailure(null);
-    setNextBidder({ status: "loading" });
+    setPreview(null);
     setTarget(next);
-    void adminLoadReofferPreviewAction(next.id).then((result) =>
-      setNextBidder(
-        result.ok && result.data ? { status: "ready", preview: result.data } : { status: "failed" },
-      ),
+    openFor.current = next.id;
+    const settle = (state: NextBidderState) => {
+      if (openFor.current === next.id) setPreview({ lotId: next.id, state });
+    };
+    adminLoadReofferPreviewAction(next.id).then(
+      (result) =>
+        settle(
+          result.ok && result.data
+            ? { status: "ready", preview: result.data }
+            : { status: "failed" },
+        ),
+      () => settle({ status: "failed" }),
     );
   }, []);
 
   const close = () => {
+    openFor.current = null;
     setFailure(null);
     setTarget(null);
   };
@@ -257,6 +271,14 @@ export function useBuyerDefaultDialog() {
           description: `Buyer default recorded for ${current.title}.`,
         },
       );
+      return;
+    }
+    // The default stands on its own. A fresh sign-in is asked for here; once back, staff start
+    // the offer from the lot page, which offers it again.
+    if (stepUp.handle(started, "start this offer")) {
+      notify.success(`Buyer default recorded for ${current.title}`, {
+        description: "Confirm it’s you, then start the offer from the lot page.",
+      });
       return;
     }
     notify.error("Buyer default recorded, but the offer did not start", {

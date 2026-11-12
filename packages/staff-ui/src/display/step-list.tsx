@@ -47,18 +47,21 @@ export function StepList({
     <ol aria-label={label} className={cn("divide-y divide-staff-line-subtle", className)}>
       {items.map((item) => (
         <li key={item.id} className="flex gap-3 py-3 first:pt-0 last:pb-0">
-          <span
-            aria-hidden
-            className={cn("mt-[5px] size-2.5 shrink-0 rounded-full", DOT[item.state])}
-          />
+          {/* The dot sits in a box one label line tall, so it centres on the label's first line
+              at any type scale without a pixel offset. */}
+          <span aria-hidden className="flex shrink-0 items-center text-staff-sm">
+            {"\u200b"}
+            <span className={cn("size-2.5 rounded-full", DOT[item.state])} />
+          </span>
           <div className="flex min-w-0 flex-1 flex-col gap-0.5 sm:flex-row sm:justify-between sm:gap-4">
             <div className="min-w-0">
               <p className="text-staff-sm font-medium text-staff-fg">
                 {item.label}
                 <span className="sr-only">. {STATE_WORD[item.state]}</span>
               </p>
-              {item.details?.map((line) => (
-                <p key={line} className="text-staff-xs text-staff-muted">
+              {item.details?.map((line, index) => (
+                // Two facts may read the same, so the key is the line's place, not its words.
+                <p key={`${item.id}-${index}`} className="text-staff-xs text-staff-muted">
                   {line}
                 </p>
               ))}

@@ -3,7 +3,7 @@ import type { Database } from "@auction/db";
 import { lotNotDeleted } from "@auction/db";
 import { legalEntity, lot, lotReoffer, sellerConsent } from "@auction/db/schema";
 import type { ReofferStatus } from "@auction/domain";
-import { and, desc, eq, gt, inArray, isNull, lt, notExists, or, sql } from "drizzle-orm";
+import { and, desc, eq, gt, inArray, isNull, lt, ne, notExists, or, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import type { AdminWorkItemSourceRow } from "../interfaces/admin-work-items.reader.js";
 import { adminWorkItemHref } from "../lib/admin-work-item-href.js";
@@ -64,8 +64,11 @@ const DECISION_STATUSES: ReofferStatus[] = ["declined", "expired", "seller_decli
 
 /**
  * The work a re-offer leaves staff: a seller who has not replied, an offer ready to send, an offer
- * that ended and needs a decision, and an accepted offer for information. A decision item shows
- * only for a lot still waiting for a buyer, and only for the latest offer of the lot.
+ * that ended and needs a decision, and an accepted offer for information. Every item but the
+ * accepted one shows only while the lot still waits for a buyer (ended, no winner), so it clears
+ * as soon as the lot leaves the re-offer flow: returned to inventory, relisted, re-awarded or
+ * deleted. A decision item shows only for the lot's latest offer. An accepted offer shows for a
+ * week, and only while its award stands.
  */
 export class DrizzleReofferWorkItemsReader {
   constructor(private readonly db: Database) {}
@@ -108,22 +111,26 @@ export class DrizzleReofferWorkItemsReader {
               gt(lotReoffer.respondedAt, new Date(now.getTime() - ACCEPTED_ITEM_DAYS * DAY_MS)),
             ),
           ),
-          // A closed offer is work only while it is the lot's latest and the lot has no buyer.
+          // An accepted offer is news only while its award stands: the lot is ended and the bidder
+          // is still its winner (a later default or a return to inventory takes that away).
+          or(
+            ne(lotReoffer.status, "accepted"),
+            and(eq(lot.status, "ended"), eq(lot.winnerId, lotReoffer.offeredUserId)),
+          ),
+          // Every other offer is work only while the lot still waits for a buyer: ended, with no
+          // winner. Returning the lot to inventory (a draft with no winner), relisting it or
+          // re-awarding it clears the item, whatever the offer's own status says.
+          or(eq(lotReoffer.status, "accepted"), and(eq(lot.status, "ended"), isNull(lot.winnerId))),
+          // A closed offer is work only while it is the lot's latest.
           or(
             inArray(lotReoffer.status, ["awaiting_seller", "ready", "accepted"]),
-            and(
-              isNull(lot.winnerId),
-              notExists(
-                this.db
-                  .select({ one: sql`1` })
-                  .from(later)
-                  .where(
-                    and(
-                      eq(later.lotId, lotReoffer.lotId),
-                      gt(later.createdAt, lotReoffer.createdAt),
-                    ),
-                  ),
-              ),
+            notExists(
+              this.db
+                .select({ one: sql`1` })
+                .from(later)
+                .where(
+                  and(eq(later.lotId, lotReoffer.lotId), gt(later.createdAt, lotReoffer.createdAt)),
+                ),
             ),
           ),
         ),

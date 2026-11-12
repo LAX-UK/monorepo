@@ -14,8 +14,11 @@ import type {
 import { NO_NEXT_BIDDER_COPY } from "./reoffer-copy";
 import { REOFFER_STATUS_PRESENTATION, SELLER_PREFERENCE_LABEL } from "./reoffer-status";
 
-export const READ_ONLY_NOTE =
-  "Only Sales managers, Finance and Administrators can act on a re-offer.";
+/**
+ * Shown to someone who can see the lot but not act on it. Only people with `auction.manage` (Sales
+ * managers and Administrators) can both reach the lot page and act; Finance-only staff never see it.
+ */
+export const READ_ONLY_NOTE = "Only Sales managers and Administrators can act on a re-offer.";
 
 /** What a person can do with the card: act on the offer, and answer for the seller. */
 export type ReofferCardAccess = { canAct: boolean; canRecordAnswer: boolean };
@@ -312,12 +315,15 @@ function noticeFor(
   if (!waitingForDecision) return null;
   if (preview.next) {
     if (offer === null) return null;
-    const lower = preview.next.bidMinor < offer.offerMinor;
+    // The seller is asked for every offer except on stock LAX owns, whatever the price; a lot's
+    // ownership never changes between offers, so the last offer's consent tells us the next one's.
+    const consent =
+      offer.consentStatus === "not_needed"
+        ? "No seller consent needed: LAX-owned."
+        : "The seller will be asked again.";
     return {
       title: `Next in line: ${by(preview.next.accountName, "the next bidder")}, ${money(preview.next.bidMinor)}`,
-      body: `Offer ${offer.sequence + 1} of up to ${MAX_REOFFERS_PER_DEFAULT}. The seller will be asked again${
-        lower ? ", because the price is lower" : ""
-      }.`,
+      body: `Offer ${offer.sequence + 1} of up to ${MAX_REOFFERS_PER_DEFAULT}. ${consent}`,
     };
   }
   if (!canOfferAgain && offer) return noNextBidder("offer_limit_reached");

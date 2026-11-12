@@ -78,7 +78,7 @@ describe("the Re-offer card on the lot page", () => {
     renderCard(bundle([ready]), { canAct: false, canRecordAnswer: false });
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
     expect(
-      screen.getByText("Only Sales managers, Finance and Administrators can act on a re-offer."),
+      screen.getByText("Only Sales managers and Administrators can act on a re-offer."),
     ).toBeInTheDocument();
   });
 

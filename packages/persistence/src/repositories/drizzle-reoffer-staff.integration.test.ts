@@ -10,10 +10,11 @@ import {
   sellerConsent,
   user,
 } from "@auction/db/schema";
-import { inArray } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { DrizzleAdminWorkItemsReader } from "./drizzle-admin-work-items.reader.js";
 import { DrizzleLotReofferRepository } from "./drizzle-lot-reoffer.repository.js";
+import { DrizzleLotTransitionRepository } from "./drizzle-lot-transition.repository.js";
 import { DrizzleReofferStaffReader } from "./drizzle-reoffer-staff.reader.js";
 import { DrizzleReofferViewsReader } from "./drizzle-reoffer-views.reader.js";
 
@@ -34,6 +35,7 @@ describe.skipIf(!HAS_DB)("staff reads of a re-offer (integration)", () => {
   const views = new DrizzleReofferViewsReader(db);
   const work = new DrizzleAdminWorkItemsReader(db);
   const offers = new DrizzleLotReofferRepository();
+  const transitions = new DrizzleLotTransitionRepository();
 
   const staffId = `rs-staff-${randomUUID()}`;
   const buyerId = `rs-buyer-${randomUUID()}`;
@@ -89,13 +91,13 @@ describe.skipIf(!HAS_DB)("staff reads of a re-offer (integration)", () => {
   async function offer(
     s: Awaited<ReturnType<typeof defaultedLot>>,
     status: string,
-    over: { dueAt?: Date; respondedAt?: Date } = {},
+    over: { dueAt?: Date; respondedAt?: Date; sequence?: number } = {},
   ) {
     const created = await db.transaction((tx) =>
       offers.create(tx, {
         lotId: s.lotId,
         buyerDefaultId: s.defaultId,
-        sequence: 1,
+        sequence: over.sequence ?? 1,
         offeredUserId: rivalId,
         offeredLegalEntityId: rivalEntity,
         sourceBidId: s.secondBidId,
@@ -118,6 +120,19 @@ describe.skipIf(!HAS_DB)("staff reads of a re-offer (integration)", () => {
       .where(inArray(lotReoffer.id, [created.id]));
     return created;
   }
+
+  /** Gives each lot to the offer's bidder, as a re-award does. */
+  const reawardTo = async (...scenarios: { lotId: string }[]) => {
+    await db
+      .update(lot)
+      .set({ winnerId: rivalId, buyerLegalEntityId: rivalEntity })
+      .where(
+        inArray(
+          lot.id,
+          scenarios.map((scenario) => scenario.lotId),
+        ),
+      );
+  };
 
   /** The re-offer work for just these lots, so one test's lots never show in another's. */
   const workFor = async (...scenarios: { lotId: string }[]) => {
@@ -262,26 +277,107 @@ describe.skipIf(!HAS_DB)("staff reads of a re-offer (integration)", () => {
       ]);
     });
 
-    it("leaves out a withdrawn offer, a lot back in inventory and a closed offer that is not the latest", async () => {
+    /** Every status an offer can leave work in, besides an accepted one. */
+    const WORK_STATUSES = [
+      "awaiting_seller",
+      "ready",
+      "seller_lapsed",
+      "seller_declined",
+      "declined",
+      "expired",
+    ] as const;
+    const onLastDay = { dueAt: new Date("2026-11-12T17:00:00Z") };
+
+    it("leaves out a withdrawn offer", async () => {
       const withdrawn = await defaultedLot();
       await offer(withdrawn, "withdrawn");
-      const inventory = await defaultedLot("ended");
-      await offer(inventory, "declined");
+      expect(await workFor(withdrawn)).toEqual([]);
+    });
+
+    it.each(WORK_STATUSES)(
+      "clears a %s item once the lot is returned to inventory",
+      async (status) => {
+        const s = await defaultedLot();
+        await offer(s, status, onLastDay);
+        expect(await workFor(s)).toHaveLength(1);
+        // The real return: a draft with no sale, number, winner or buyer account.
+        await db.transaction((tx) => transitions.resetLotForInventoryReturn(tx, s.lotId, "ended"));
+        const [row] = await db.select().from(lot).where(eq(lot.id, s.lotId));
+        expect(row).toMatchObject({
+          status: "draft",
+          winnerId: null,
+          saleId: null,
+          lotNumber: null,
+        });
+        expect(await workFor(s)).toEqual([]);
+      },
+    );
+
+    it.each(WORK_STATUSES)("clears a %s item once the lot is relisted", async (status) => {
+      const s = await defaultedLot();
+      await offer(s, status, onLastDay);
+      expect(await workFor(s)).toHaveLength(1);
+      await db.update(lot).set({ status: "scheduled" }).where(eq(lot.id, s.lotId));
+      expect(await workFor(s)).toEqual([]);
+    });
+
+    it.each(WORK_STATUSES)("clears a %s item once the lot has a buyer again", async (status) => {
+      const s = await defaultedLot();
+      await offer(s, status, onLastDay);
+      expect(await workFor(s)).toHaveLength(1);
       await db
         .update(lot)
-        .set({ winnerId: buyerId })
-        .where(inArray(lot.id, [inventory.lotId]));
-      expect(await workFor(withdrawn, inventory)).toEqual([]);
+        .set({ winnerId: buyerId, buyerLegalEntityId: buyerEntity })
+        .where(eq(lot.id, s.lotId));
+      expect(await workFor(s)).toEqual([]);
     });
+
+    it.each(WORK_STATUSES)("clears a %s item once the lot is deleted", async (status) => {
+      const s = await defaultedLot();
+      await offer(s, status, onLastDay);
+      expect(await workFor(s)).toHaveLength(1);
+      await db.update(lot).set({ deletedAt: new Date() }).where(eq(lot.id, s.lotId));
+      expect(await workFor(s)).toEqual([]);
+    });
+
+    it.each(["seller_lapsed", "seller_declined", "declined", "expired"] as const)(
+      "clears a %s item once a newer offer is made on the lot",
+      async (status) => {
+        const s = await defaultedLot();
+        await offer(s, status);
+        expect(await workFor(s)).toHaveLength(1);
+        await offer(s, "withdrawn", { sequence: 2 });
+        expect(await workFor(s)).toEqual([]);
+      },
+    );
 
     it("lists an accepted offer for a week, then lets it clear itself", async () => {
       const recent = await defaultedLot();
       await offer(recent, "accepted", { respondedAt: new Date("2026-11-10T09:00:00Z") });
       const old = await defaultedLot();
       await offer(old, "accepted", { respondedAt: new Date("2026-11-01T09:00:00Z") });
+      await reawardTo(recent, old);
       const rows = await workFor(recent, old);
       expect(rows.map((row) => row.kind)).toEqual(["reoffer_accepted"]);
       expect(rows[0]?.href).toBe(`/admin/lots/${recent.lotId}`);
+    });
+
+    it("clears an accepted offer once its award no longer stands", async () => {
+      const defaulted = await defaultedLot();
+      await offer(defaulted, "accepted", { respondedAt: new Date("2026-11-10T09:00:00Z") });
+      const returned = await defaultedLot();
+      await offer(returned, "accepted", { respondedAt: new Date("2026-11-10T09:00:00Z") });
+      await reawardTo(defaulted, returned);
+      expect(await workFor(defaulted, returned)).toHaveLength(2);
+      // The re-awarded bidder defaults in turn: the lot has no winner again.
+      await db
+        .update(lot)
+        .set({ winnerId: null, buyerLegalEntityId: null })
+        .where(eq(lot.id, defaulted.lotId));
+      await db.transaction((tx) =>
+        transitions.resetLotForInventoryReturn(tx, returned.lotId, "ended"),
+      );
+      expect(await workFor(defaulted, returned)).toEqual([]);
     });
   });
 });

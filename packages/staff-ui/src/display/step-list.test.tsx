@@ -1,5 +1,5 @@
 import { render, screen, within } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { StepList } from "./step-list.js";
 
 describe("StepList", () => {
@@ -35,5 +35,27 @@ describe("StepList", () => {
   it("leaves out the date and facts a step does not have", () => {
     render(<StepList label="Steps" items={[{ id: "a", label: "Only step", state: "todo" }]} />);
     expect(screen.getByRole("listitem").querySelectorAll("p")).toHaveLength(1);
+  });
+
+  it("shows two facts that read the same, without a key clash", () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    render(
+      <StepList
+        label="Steps"
+        items={[
+          { id: "a", label: "Reminded", details: ["Email sent", "Email sent"], state: "done" },
+        ]}
+      />,
+    );
+    expect(screen.getAllByText("Email sent")).toHaveLength(2);
+    expect(error.mock.calls.flat().map(String).join(" ")).not.toMatch(/same key/);
+    error.mockRestore();
+  });
+
+  it("uses only kit tokens, never an arbitrary value", () => {
+    const { container } = render(
+      <StepList label="Steps" items={[{ id: "a", label: "Only step", state: "current" }]} />,
+    );
+    expect(container.innerHTML).not.toMatch(/-\[[^\]]+\]/);
   });
 });

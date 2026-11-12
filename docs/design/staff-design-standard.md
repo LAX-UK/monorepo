@@ -589,7 +589,10 @@ independent and heavy.**
   - When tabs exist, each has a URL, and reload keeps the tab.
 - **Kit:** `MET`. `DetailPage` lays out the header, a summary card, optional tabs, and the main
   column beside a rail (2fr / 1fr from 1280px), built from `Section`, `KeyValueList` and
-  `TabNav`.
+  `TabNav`. `Section.status` puts a status badge beside a section's title when that section's
+  state is the point of it (a re-offer, a refund), so the state is never behind a tab or below the
+  fold. `StepList` shows a short process inside a section: each step's state as a dot and in
+  words, its facts and its date.
 - **Sources:** [polaris-details]
 
 **PRD-4. Every reference can be copied in one click.**
@@ -1130,7 +1133,8 @@ invalid (for fields).**
   - Grey-scale the screenshot. Every status is still readable by its label and shape.
   - No badge says "Status: Paid".
 - **Kit:** `PARTIAL`. Tint, dot, label, `defineStatusMap`, a neutral fallback and `live` pulse
-  exist. All tones use the same dot shape: add `shape` (ring, dot, check, alert).
+  exist. All tones use the same dot shape: add `shape` (ring, dot, check, alert). `StepList`
+  already draws a step not started as a hollow ring and says every step's state in words.
 - **Sources:** [polaris-badge] [polaris-badge-migrate] [wcag-use-of-color]
 
 **CRF-8. Counts and labels are different things.**

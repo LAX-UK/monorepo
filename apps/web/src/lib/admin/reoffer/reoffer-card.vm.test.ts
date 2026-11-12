@@ -169,7 +169,7 @@ describe("the Re-offer card", () => {
     });
   });
 
-  it("names who is next in line, and that the seller is asked again at a lower price", () => {
+  it("names who is next in line, and that the seller is asked again, whatever the price", () => {
     const model = card([
       offer({
         status: "declined",
@@ -179,8 +179,23 @@ describe("the Re-offer card", () => {
     ]);
     expect(model.notice).toEqual({
       title: "Next in line: Hollis Byrne, £75,000.00",
-      body: "Offer 2 of up to 3. The seller will be asked again, because the price is lower.",
+      body: "Offer 2 of up to 3. The seller will be asked again.",
     });
+  });
+
+  it("never says the seller will be asked for stock LAX owns", () => {
+    const model = card([
+      offer({
+        status: "declined",
+        consentStatus: "not_needed",
+        offerSentAt: "2026-11-11T10:00:00.000Z",
+      }),
+    ]);
+    expect(model.notice).toEqual({
+      title: "Next in line: Hollis Byrne, £75,000.00",
+      body: "Offer 2 of up to 3. No seller consent needed: LAX-owned.",
+    });
+    expect(model.notice?.body).not.toMatch(/seller will be asked/);
   });
 
   it("stops offering after three offers have reached a bidder", () => {
@@ -246,6 +261,8 @@ describe("the Re-offer card", () => {
       });
       expect(model.actions).toEqual([]);
       expect(model.readOnlyNote).toBe(READ_ONLY_NOTE);
+      // Only `auction.manage` both reaches the lot page and acts; Finance-only staff never see it.
+      expect(READ_ONLY_NOTE).toBe("Only Sales managers and Administrators can act on a re-offer.");
     });
 
     it("keeps recording the seller's answer apart from acting on the offer", () => {
