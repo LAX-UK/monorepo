@@ -503,7 +503,11 @@ const REGISTRY_OVERRIDES: Partial<Record<LiveDomainEventType, RegistryOverride>>
     consumers: ["artwork_offer_lock", "lot_lifecycle_snapshot", "zoho_artwork_listing"],
     piiClassification: "none",
   },
-  "lot.soft_deleted": { schema: LotEventSchemas["lot.soft_deleted"], piiClassification: "none" },
+  "lot.soft_deleted": {
+    schema: LotEventSchemas["lot.soft_deleted"],
+    consumers: ["zoho_artwork_listing"],
+    piiClassification: "none",
+  },
   "lot.unpublished": {
     schema: LotEventSchemas["lot.unpublished"],
     consumers: ["artwork_offer_lock", "lot_lifecycle_snapshot", "zoho_artwork_listing"],

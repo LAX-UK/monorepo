@@ -181,4 +181,8 @@ describe("DOMAIN_EVENT_REGISTRY", () => {
     expect(DOMAIN_EVENT_REGISTRY["sale.rescheduled"].consumers).toContain("zoho_artwork_listing");
     expect(DOMAIN_EVENT_REGISTRY["sale.rescheduled"].piiClassification).toBe("none");
   });
+
+  it("refreshes the Zoho listing when a lot is soft-deleted", () => {
+    expect(DOMAIN_EVENT_REGISTRY["lot.soft_deleted"].consumers).toContain("zoho_artwork_listing");
+  });
 });

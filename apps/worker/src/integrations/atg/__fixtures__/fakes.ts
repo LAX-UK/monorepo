@@ -183,7 +183,7 @@ export class InMemoryAtgSyncStore implements AtgSyncStore {
       lockedFieldsHash: string;
     },
   ) {
-    this.lotLinks.set(link.lotId, { ...link, imageNames: [], numberOfBids: 0 });
+    this.lotLinks.set(link.lotId, { ...link, imageNames: [], numberOfBids: 0, sold: false });
   }
   async updateLotLink(lotId: string, patch: AtgLotLinkPatch) {
     const current = this.lotLinks.get(lotId);

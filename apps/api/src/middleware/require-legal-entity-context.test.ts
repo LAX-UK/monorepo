@@ -270,6 +270,74 @@ describe("createRequireLegalEntityContext (required)", () => {
     const body = (await res.json()) as { code?: string };
     expect(body.code).toBe("invalid_impersonation_session");
   });
+
+  it("refuses a non-staff person who presents a view-as-client cookie", async () => {
+    const { stub } = repo(null);
+    const sid = "55555555-5555-4555-8555-555555555555";
+    const validate = vi.fn().mockResolvedValue({
+      ok: true,
+      session: { id: sid, expiresAt: new Date(Date.now() + 60_000) },
+    });
+    const cookieVal = encodeActingContextCookie({ v: 1, e: ENTITY_ID, i: { sid } });
+    const mw = createRequireLegalEntityContext(stub, {
+      impersonationSessions: { validateForRequest: validate },
+    });
+    const app = appWithMiddleware(mw, { setUserId: USER_ID, setUserRole: "client" });
+
+    const res = await app.request("/", {
+      headers: {
+        [X_LEGAL_ENTITY_ID_HEADER]: ENTITY_ID,
+        Cookie: `${ACTING_LEGAL_ENTITY_COOKIE_NAME}=${cookieVal}`,
+      },
+    });
+
+    expect(res.status).toBe(403);
+    expect(((await res.json()) as { error: string }).error).toBe("not_a_member_of_legal_entity");
+    expect(validate).not.toHaveBeenCalled();
+  });
+
+  it("refuses a staff cookie whose entity differs from the requested entity", async () => {
+    const { stub } = repo(null);
+    const sid = "66666666-6666-4666-8666-666666666666";
+    const validate = vi.fn();
+    const cookieVal = encodeActingContextCookie({
+      v: 1,
+      e: "99999999-9999-4999-8999-999999999999",
+      i: { sid },
+    });
+    const mw = createRequireLegalEntityContext(stub, {
+      impersonationSessions: { validateForRequest: validate },
+    });
+    const app = appWithMiddleware(mw, {
+      setUserId: USER_ID,
+      setUserRole: "staff",
+      setUserStaffRoles: ["administrator"],
+    });
+
+    const res = await app.request("/", {
+      headers: {
+        [X_LEGAL_ENTITY_ID_HEADER]: ENTITY_ID,
+        Cookie: `${ACTING_LEGAL_ENTITY_COOKIE_NAME}=${cookieVal}`,
+      },
+    });
+
+    expect(res.status).toBe(403);
+    expect(validate).not.toHaveBeenCalled();
+  });
+
+  it("refuses staff who send the header without a view-as-client cookie", async () => {
+    const { stub } = repo(null);
+    const mw = createRequireLegalEntityContext(stub, {
+      impersonationSessions: { validateForRequest: vi.fn() },
+    });
+    const app = appWithMiddleware(mw, {
+      setUserId: USER_ID,
+      setUserRole: "staff",
+      setUserStaffRoles: ["administrator"],
+    });
+    const res = await app.request("/", { headers: { [X_LEGAL_ENTITY_ID_HEADER]: ENTITY_ID } });
+    expect(res.status).toBe(403);
+  });
 });
 
 describe("createSubmissionsLegalEntityContext", () => {

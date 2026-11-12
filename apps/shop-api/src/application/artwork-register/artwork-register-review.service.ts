@@ -250,10 +250,28 @@ export class ArtworkRegisterReviewService {
             changed: run.changed,
             unchanged: run.unchanged,
             failed: run.failed,
-            failures: run.failures,
+            failures: await Promise.all(run.failures.map((failure) => this.withPlace(failure))),
           }
         : null,
     };
+  }
+
+  /**
+   * A Product deleted in Zoho keeps its LAX record, so say where that record is now. Nothing is
+   * withdrawn for the deletion; staff decide from here.
+   */
+  private async withPlace<F extends { registerId: string; code: string }>(
+    failure: F,
+  ): Promise<F & { place?: string }> {
+    if (failure.code !== "product_not_found") return failure;
+    const entry = await this.deps.register.findById(failure.registerId);
+    if (!entry) return failure;
+    const { chip } = deriveWhereItIs({
+      offer: entry.offer,
+      now: (this.deps.now ?? (() => new Date()))(),
+      hasLaxArtDraft: false,
+    });
+    return { ...failure, place: chip.label };
   }
 
   async get(registerId: string): Promise<AdminRegisterDetail | null> {

@@ -66,6 +66,7 @@ function createApp(
           draftLots: { listSales, createDraft, findDraft },
           lotCatalogue: { describe, updateDraft },
           returnToLaxArt: {} as never,
+          unlinkedOriginals: {} as never,
         },
       },
       env as never,

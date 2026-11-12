@@ -4,7 +4,9 @@ import type { PlatformCatalogLegalEntityIdProvider } from "@auction/persistence/
 import {
   DrizzleArtworkRegisterRepository,
   DrizzleAuctionOfferReader,
+  DrizzleBidPublishSettings,
   DrizzleLotRegisterLinkReader,
+  DrizzleUnlinkedOriginalsReader,
 } from "@auction/persistence/repositories";
 import type { Env } from "../env.js";
 import { createArtListingGateway } from "../infrastructure/http-art-listing.gateway.js";
@@ -19,6 +21,7 @@ import {
   LotCatalogueService,
 } from "../services/inventory/lot-catalogue.service.js";
 import { ReturnLotToLaxArtService } from "../services/inventory/return-lot-to-lax-art.service.js";
+import { UnlinkedOriginalsService } from "../services/inventory/unlinked-originals.service.js";
 
 /** Composes LAX Bid's two halves of moving an original between lax.art and auction. */
 export function createInventoryMoveServices(input: {
@@ -51,6 +54,10 @@ export function createInventoryMoveServices(input: {
       lock: new ArtworkOfferLock(register),
       shop: createArtListingGateway(input.env),
       history: register,
+    }),
+    unlinkedOriginals: new UnlinkedOriginalsService({
+      originals: new DrizzleUnlinkedOriginalsReader(db),
+      settings: new DrizzleBidPublishSettings(db),
     }),
   };
 }

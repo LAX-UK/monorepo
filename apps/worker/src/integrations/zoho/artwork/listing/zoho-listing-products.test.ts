@@ -125,6 +125,17 @@ describe("CrmZohoListingProducts against Zoho's answers", () => {
     ]);
   });
 
+  it("reports a Product deleted in Zoho as not found, never to be retried", async () => {
+    const body = (code: string) =>
+      JSON.stringify({ data: [{ code, status: "error", message: "gone", details: {} }] });
+    for (const code of ["RECORD_NOT_FOUND", "ID_INVALID"]) {
+      vi.mocked(fetch).mockResolvedValueOnce(respond(207, body(code)));
+      expect(
+        await products().update([{ productId: "1", fields: { LAX_Listing: "On lax.art" } }]),
+      ).toEqual([{ productId: "1", ok: false, code: "product_not_found", retryable: false }]);
+    }
+  });
+
   it("sends nothing for no updates", async () => {
     expect(await products().update([])).toEqual([]);
     expect(fetch).not.toHaveBeenCalled();

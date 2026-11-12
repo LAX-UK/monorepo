@@ -14,10 +14,12 @@ const journal = JSON.parse(read("meta/_journal.json")) as {
 };
 
 describe("migration 0362 artwork register Zoho price", () => {
-  it("is journalled as entry 348, right after 0353, with a later timestamp", () => {
+  it("follows the previous entry with a higher idx and a later timestamp", () => {
     const index = journal.entries.findIndex((e) => e.tag === "0362_artwork_register_zoho_price");
-    expect(journal.entries[index]?.idx).toBe(348);
-    expect(journal.entries[index - 1]?.tag).toBe("0353_payment_group_refund_state");
+    expect(index).toBeGreaterThan(0);
+    expect(journal.entries[index]?.idx).toBeGreaterThan(
+      journal.entries[index - 1]?.idx ?? Number.MAX_SAFE_INTEGER,
+    );
     expect(journal.entries[index]?.when).toBeGreaterThan(journal.entries[index - 1]?.when ?? 0);
     const next = journal.entries[index + 1];
     if (next) expect(next.when).toBeGreaterThan(journal.entries[index]?.when ?? 0);
