@@ -3,7 +3,7 @@ import {
   type HoldingRowVm,
   type LaxPortfolioItemStatus,
   type LaxPortfolioItemV1,
-  paidLines,
+  paidAmounts,
   sumByCurrency,
 } from "@auction/lax-ecosystem";
 import { STATUS_LABELS, mostUrgentStatus } from "./portfolio-labels";
@@ -75,7 +75,7 @@ function describeGroup(key: string, copies: HoldingRowVm[]): HoldingGroupVm {
     key,
     rows,
     lead,
-    paid: sumByCurrency(rows.flatMap((row) => paidLines(row.item))),
+    paid: sumByCurrency(rows.flatMap((row) => paidAmounts(row.item))),
     due: sumByCurrency(rows.flatMap((row) => row.due)),
     documentsAvailable: rows.reduce((sum, row) => sum + row.documentsAvailable, 0),
     documentsExpected: rows.reduce((sum, row) => sum + row.documentsExpected, 0),

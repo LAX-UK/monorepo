@@ -14,8 +14,15 @@ import type {
   PortfolioOriginalFact,
   PortfolioPendingOrderLineFact,
   PortfolioSaleFact,
+  PortfolioSettledLineFact,
   PortfolioWork,
 } from "../ports/portal-portfolio.reader.js";
+import {
+  type AllocationLine,
+  type LineShare,
+  type OrderRefund,
+  allocateOrders,
+} from "./order-allocation.js";
 
 /**
  * Maps Shop and lax.art records onto the shared portfolio contract. Pure: image URLs, origins
@@ -60,31 +67,28 @@ function refundCountsAgainstPaid(status: string): boolean {
   return status !== "failed" && status !== "cancelled";
 }
 
-/**
- * The refunded money of each order that is still to be taken off its paid lines. A refund is
- * recorded against the order, not a line, so it is handed to the order's works in turn: price
- * first, then delivery. What a work shows as paid is then what was paid and kept, which is what
- * Money's paid total less its refunded total says.
- */
-class RefundPool {
-  private readonly remaining = new Map<string, number>();
-
-  constructor(refunds: PortalPortfolioFacts["refunds"]) {
-    for (const refund of refunds) {
-      if (!refundCountsAgainstPaid(refund.status)) continue;
-      this.remaining.set(
-        refund.orderId,
-        (this.remaining.get(refund.orderId) ?? 0) + refund.amountPence,
-      );
-    }
+/** The refunds that moved, or are moving, money back, grouped by the order they belong to. */
+function refundsByOrder(refunds: PortalPortfolioFacts["refunds"]): Map<string, OrderRefund[]> {
+  const byOrder = new Map<string, OrderRefund[]>();
+  for (const refund of refunds) {
+    if (!refundCountsAgainstPaid(refund.status)) continue;
+    byOrder.set(refund.orderId, [
+      ...(byOrder.get(refund.orderId) ?? []),
+      { lineId: refund.orderLineId, amountPence: refund.amountPence },
+    ]);
   }
+  return byOrder;
+}
 
-  /** Takes the refund off a line, returning what the line still counts for. */
-  net(orderId: string, amount: number): number {
-    const refunded = Math.min(this.remaining.get(orderId) ?? 0, amount);
-    this.remaining.set(orderId, (this.remaining.get(orderId) ?? 0) - refunded);
-    return amount - refunded;
-  }
+/** Charges as made, with what was handed back kept apart so no charge reads lower than it was. */
+function paidOf(share: LineShare | undefined, fallbackPrice: number): LaxPortfolioItemV1["paid"] {
+  const price = share?.pricePence ?? fallbackPrice;
+  const shipping = share?.shippingPence ?? 0;
+  const lines: LaxCostLineV1[] = [];
+  if (price > 0) lines.push({ kind: "price", amount: price, currency: CURRENCY });
+  if (shipping > 0) lines.push({ kind: "shipping", amount: shipping, currency: CURRENCY });
+  const refunded = share?.refundedPence ?? 0;
+  return refunded > 0 ? { lines, refunded: { amount: refunded, currency: CURRENCY } } : { lines };
 }
 
 function businessOf(ctx: ShopPortfolioContext): LaxBusinessV1 {
@@ -170,20 +174,15 @@ function editionStatus(fact: PortfolioEditionFact): LaxPortfolioItemV1["status"]
 function editionItem(
   fact: PortfolioEditionFact,
   ctx: ShopPortfolioContext,
-  refunds: RefundPool,
+  shares: ReadonlyMap<string, LineShare>,
 ): LaxPortfolioItemV1 | null {
   const status = editionStatus(fact);
   if (!status) return null;
   const { work, purchase } = fact;
   const channel = purchase?.channel ?? work.channel;
-
-  const lines: LaxCostLineV1[] = [];
-  if (purchase) {
-    const price = refunds.net(purchase.orderId, purchase.unitPricePence);
-    const shipping = refunds.net(purchase.orderId, purchase.shippingPence);
-    if (price > 0) lines.push({ kind: "price", amount: price, currency: CURRENCY });
-    if (shipping > 0) lines.push({ kind: "shipping", amount: shipping, currency: CURRENCY });
-  }
+  const paid = purchase
+    ? paidOf(shares.get(purchase.orderLineId), purchase.unitPricePence)
+    : { lines: [] };
 
   const actions: LaxPortfolioActionV1[] = [];
   if (status === "awaiting_shipment" && purchase) {
@@ -204,7 +203,7 @@ function editionItem(
     image: ctx.imageUrl(work.imageKey),
     acquiredAt: (purchase?.paidAt ?? fact.createdAt).toISOString(),
     status,
-    paid: { lines },
+    paid,
     documents: certificateDocument(fact, channel, ctx),
     actions,
     business: businessOf(ctx),
@@ -247,13 +246,9 @@ function originalItem(fact: PortfolioOriginalFact, ctx: ShopPortfolioContext): L
 function pendingLineItem(
   fact: PortfolioPendingOrderLineFact,
   ctx: ShopPortfolioContext,
+  share: LineShare | undefined,
 ): LaxPortfolioItemV1 {
-  const lines: LaxCostLineV1[] = [
-    { kind: "price", amount: fact.unitPricePence, currency: CURRENCY },
-  ];
-  if (fact.shippingPence > 0) {
-    lines.push({ kind: "shipping", amount: fact.shippingPence, currency: CURRENCY });
-  }
+  const paid = paidOf(share, fact.unitPricePence);
   return {
     product: fact.channel,
     id: fact.orderLineId,
@@ -262,10 +257,11 @@ function pendingLineItem(
     image: ctx.imageUrl(fact.work.imageKey),
     acquiredAt: fact.createdAt.toISOString(),
     status: "awaiting_payment",
-    paid: { lines },
-    // The delivery charge rides on the order's first line, so the lines add up to the order total.
+    paid,
+    // The delivery charge and anything else the order carries ride on its first line, so the
+    // lines add up to the order total.
     owed: {
-      amount: fact.unitPricePence + fact.shippingPence,
+      amount: paid.lines.reduce((sum, line) => sum + line.amount, 0),
       currency: CURRENCY,
       state: "due",
     },
@@ -274,6 +270,34 @@ function pendingLineItem(
       { kind: "pay", href: orderHref(ctx, fact.channel, fact.orderId) },
       { kind: "view", href: artworkHref(ctx, fact.work) },
     ],
+    business: businessOf(ctx),
+  };
+}
+
+/**
+ * A work paid for on an order that the person no longer holds as an edition (resold, or released
+ * after a part refund) and for which money was kept. It is shown as sold so the money paid and
+ * kept is accounted for on the work it was paid for; a work with nothing kept has no row.
+ */
+function settledLineItem(
+  fact: PortfolioSettledLineFact,
+  ctx: ShopPortfolioContext,
+  share: LineShare | undefined,
+): LaxPortfolioItemV1 | null {
+  const paid = paidOf(share, fact.unitPricePence);
+  const charged = paid.lines.reduce((sum, line) => sum + line.amount, 0);
+  if (charged - (paid.refunded?.amount ?? 0) <= 0) return null;
+  return {
+    product: fact.channel,
+    id: fact.orderLineId,
+    title: fact.work.title,
+    artist: fact.work.artistName,
+    image: ctx.imageUrl(fact.work.imageKey),
+    acquiredAt: fact.createdAt.toISOString(),
+    status: "sold",
+    paid,
+    documents: [],
+    actions: [{ kind: "view", href: artworkHref(ctx, fact.work) }],
     business: businessOf(ctx),
   };
 }
@@ -296,6 +320,39 @@ function saleItem(fact: PortfolioSaleFact, ctx: ShopPortfolioContext): LaxPortfo
   };
 }
 
+/**
+ * The works on every order the person has paid or still owes, as allocation lines. An edition
+ * that produces no portfolio row (its order was refunded) is not held, like a released work.
+ */
+function allocationLines(facts: PortalPortfolioFacts): AllocationLine[] {
+  return [
+    ...facts.editions.flatMap((fact): AllocationLine[] =>
+      fact.purchase
+        ? [
+            {
+              id: fact.purchase.orderLineId,
+              orderId: fact.purchase.orderId,
+              pricePence: fact.purchase.unitPricePence,
+              held: editionStatus(fact) !== null,
+            },
+          ]
+        : [],
+    ),
+    ...facts.settledOrderLines.map((fact) => ({
+      id: fact.orderLineId,
+      orderId: fact.orderId,
+      pricePence: fact.unitPricePence,
+      held: false,
+    })),
+    ...facts.pendingOrderLines.map((fact) => ({
+      id: fact.orderLineId,
+      orderId: fact.orderId,
+      pricePence: fact.unitPricePence,
+      held: true,
+    })),
+  ];
+}
+
 /** Owned and offered editions, originals, orders awaiting payment, and sales through payout. */
 export function buildShopPortfolioItems(
   facts: PortalPortfolioFacts,
@@ -303,11 +360,22 @@ export function buildShopPortfolioItems(
 ): LaxPortfolioItemV1[] {
   const compact = (items: (LaxPortfolioItemV1 | null)[]) =>
     items.filter((item): item is LaxPortfolioItemV1 => item !== null);
-  const refunds = new RefundPool(facts.refunds);
+  const shares = allocateOrders({
+    lines: allocationLines(facts),
+    orders: new Map(facts.orders.map((order) => [order.orderId, order])),
+    refunds: refundsByOrder(facts.refunds),
+  });
   return [
-    ...compact(facts.editions.map((fact) => editionItem(fact, ctx, refunds))),
+    ...compact(facts.editions.map((fact) => editionItem(fact, ctx, shares))),
     ...facts.originals.map((fact) => originalItem(fact, ctx)),
-    ...facts.pendingOrderLines.map((fact) => pendingLineItem(fact, ctx)),
+    ...facts.pendingOrderLines.map((fact) =>
+      pendingLineItem(fact, ctx, shares.get(fact.orderLineId)),
+    ),
+    ...compact(
+      facts.settledOrderLines.map((fact) =>
+        settledLineItem(fact, ctx, shares.get(fact.orderLineId)),
+      ),
+    ),
     ...compact(facts.sales.map((fact) => saleItem(fact, ctx))),
   ];
 }
