@@ -1,3 +1,16 @@
+/**
+ * Time-zone coverage for payment reminders.
+ *
+ * The default run is a deterministic, seeded sample: every zone at the London clock-change
+ * edges and at month and year ends, plus a seeded random sample. It finishes in seconds.
+ *
+ * The exhaustive sweep (every zone, every day of 2026 and 2027, roughly a minute) is opt-in:
+ *
+ *   pnpm --filter @auction/domain test:exhaustive-tz     (sets EXHAUSTIVE_TZ=1)
+ *
+ * Long loops yield to the event loop between chunks so the vitest worker can keep answering
+ * its RPC channel.
+ */
 import { instantToWallClock, wallClockToInstant } from "@auction/datetime";
 import { describe, expect, it } from "vitest";
 import { londonDateOf } from "./calendar-year.js";
@@ -214,7 +227,7 @@ describe("a window that has closed is never sent late", () => {
   });
 });
 
-describe("every zone, every day of 2026 and 2027: one reminder per London day, inside it", () => {
+describe("every zone: one reminder per London day, inside it", () => {
   const ALL_ZONES = [
     ...new Set([
       ...Intl.supportedValuesOf("timeZone"),
@@ -226,46 +239,94 @@ describe("every zone, every day of 2026 and 2027: one reminder per London day, i
     ]),
   ];
   const londonDay = londonDayOf;
-  /** Zones in slices, so each test stays short and the suite never blocks for long at a time. */
-  const SLICE = 40;
-  const slices = Array.from({ length: Math.ceil(ALL_ZONES.length / SLICE) + 1 }, (_, n) =>
-    n === 0 ? [null] : ALL_ZONES.slice((n - 1) * SLICE, n * SLICE),
+  const DAY_MS = DAY;
+  const FIRST = Date.UTC(2026, 0, 1);
+  const SWEEP_DAYS = 730;
+  /** Let the worker answer vitest's RPC between chunks, so a long sweep never blocks it. */
+  const yieldToWorker = () => new Promise<void>((resolve) => setImmediate(resolve));
+
+  /** Checks one zone and due day; returns the failures it found. */
+  function checkDay(zone: string | null, dueAt: Date, failures: string[]) {
+    const seen = new Set<string>();
+    for (const step of PAYMENT_REMINDER_STEPS) {
+      const sendAt = reminderSendAt(step, dueAt, zone);
+      const opens = reminderOpensAt(step, dueAt);
+      const label = `${zone ?? "none"} ${dueAt.toISOString()} ${step} -> ${sendAt.toISOString()}`;
+      // A poll is missed, then the next one runs a whole interval (less 1 ms) late: the
+      // latest run that can still send the step. It must still be in the step's London day.
+      const lastRun = new Date(sendAt.getTime() + 2 * POLL - 1);
+      if (londonDay(sendAt) !== londonDay(opens)) failures.push(`${label}: wrong London day`);
+      if (londonDay(lastRun) !== londonDay(opens)) {
+        failures.push(`${label}: sent by a run in the next London day`);
+      }
+      if (step === "due_day" && lastRun.getTime() > dueAt.getTime()) {
+        failures.push(`${label}: sent by a run after the due time`);
+      }
+      if (sendAt.getTime() < opens.getTime()) failures.push(`${label}: before it opens`);
+      if (step === "due_day" && sendAt.getTime() > dueAt.getTime()) {
+        failures.push(`${label}: after the due time`);
+      }
+      seen.add(londonDay(lastRun));
+    }
+    if (seen.size !== PAYMENT_REMINDER_STEPS.length)
+      failures.push(`${zone} ${dueAt.toISOString()}: shared a London day`);
+  }
+
+  const dueOfDayIndex = (i: number) => {
+    const at = new Date(FIRST + i * DAY_MS);
+    return dueOf(at.getUTCFullYear(), at.getUTCMonth() + 1, at.getUTCDate());
+  };
+
+  /** Day indexes (from 1 Jan 2026) the default run checks in every zone. */
+  const REPRESENTATIVE_DAYS = (() => {
+    const days = new Set<number>();
+    const indexOf = (iso: string) => Math.round((Date.parse(`${iso}T00:00:00Z`) - FIRST) / DAY_MS);
+    // London clock-change edges, and the US/Australian ones that fall around them.
+    for (const due of EDGE_DUES) days.add(indexOf(due.toISOString().slice(0, 10)));
+    // Each month end, and the start of each year.
+    for (let month = 0; month < 24; month += 1) {
+      const year = 2026 + Math.floor(month / 12);
+      const m = month % 12;
+      if (m === 0) days.add(Math.round((Date.UTC(year, 0, 1) - FIRST) / DAY_MS));
+      days.add(Math.round((Date.UTC(year, m + 1, 0) - FIRST) / DAY_MS));
+    }
+    return [...days].filter((i) => i >= 0 && i < SWEEP_DAYS).sort((a, b) => a - b);
+  })();
+
+  it(
+    "holds in every zone on the clock-change edges and at month and year ends",
+    { timeout: 30_000 },
+    async () => {
+      const failures: string[] = [];
+      for (const zone of [null, ...ALL_ZONES]) {
+        for (const i of REPRESENTATIVE_DAYS) checkDay(zone, dueOfDayIndex(i), failures);
+        await yieldToWorker();
+      }
+      expect(failures.slice(0, 20)).toEqual([]);
+    },
   );
 
-  it.each(slices.map((zones, n) => [`slice ${n + 1} of ${slices.length}`, zones] as const))(
-    "holds for every day's due date in every zone: %s",
-    { timeout: 120_000 },
-    (_name, zones) => {
+  it("holds for a seeded random sample of zones and days", { timeout: 30_000 }, async () => {
+    const failures: string[] = [];
+    const next = stream(20_260_101);
+    for (let n = 0; n < 4_000; n += 1) {
+      const zone = ALL_ZONES[Math.floor(next() * ALL_ZONES.length)] ?? null;
+      checkDay(zone, dueOfDayIndex(Math.floor(next() * SWEEP_DAYS)), failures);
+      if (n % 500 === 499) await yieldToWorker();
+    }
+    expect(failures.slice(0, 20)).toEqual([]);
+  });
+
+  // Opt-in: every zone, every day of 2026 and 2027 (about 300,000 cases, around a minute).
+  it.runIf(process.env.EXHAUSTIVE_TZ === "1")(
+    "exhaustive: holds for every day's due date in every zone",
+    { timeout: 600_000 },
+    async () => {
       const failures: string[] = [];
-      const first = Date.UTC(2026, 0, 1);
-      const days = 730;
-      for (const zone of zones) {
-        for (let i = 0; i < days; i += 1) {
-          const at = new Date(first + i * DAY);
-          const dueAt = dueOf(at.getUTCFullYear(), at.getUTCMonth() + 1, at.getUTCDate());
-          const seen = new Set<string>();
-          for (const step of PAYMENT_REMINDER_STEPS) {
-            const sendAt = reminderSendAt(step, dueAt, zone);
-            const opens = reminderOpensAt(step, dueAt);
-            const label = `${zone ?? "none"} ${dueAt.toISOString()} ${step} -> ${sendAt.toISOString()}`;
-            // A poll is missed, then the next one runs a whole interval (less 1 ms) late: the
-            // latest run that can still send the step. It must still be in the step's London day.
-            const lastRun = new Date(sendAt.getTime() + 2 * POLL - 1);
-            if (londonDay(sendAt) !== londonDay(opens)) failures.push(`${label}: wrong London day`);
-            if (londonDay(lastRun) !== londonDay(opens)) {
-              failures.push(`${label}: sent by a run in the next London day`);
-            }
-            if (step === "due_day" && lastRun.getTime() > dueAt.getTime()) {
-              failures.push(`${label}: sent by a run after the due time`);
-            }
-            if (sendAt.getTime() < opens.getTime()) failures.push(`${label}: before it opens`);
-            if (step === "due_day" && sendAt.getTime() > dueAt.getTime()) {
-              failures.push(`${label}: after the due time`);
-            }
-            seen.add(londonDay(lastRun));
-          }
-          if (seen.size !== PAYMENT_REMINDER_STEPS.length)
-            failures.push(`${zone} ${dueAt.toISOString()}: shared a London day`);
+      for (const zone of [null, ...ALL_ZONES]) {
+        for (let i = 0; i < SWEEP_DAYS; i += 1) {
+          checkDay(zone, dueOfDayIndex(i), failures);
+          if (i % 100 === 99) await yieldToWorker();
         }
       }
       expect(failures.slice(0, 20)).toEqual([]);
