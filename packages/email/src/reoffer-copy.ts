@@ -1,4 +1,5 @@
 import { LONDON_TIME_ZONE, formatDate, formatTime, toDate } from "@auction/datetime";
+import { formatMoneyMajor } from "./format-money.js";
 
 /**
  * The words of a re-offer: when a buyer has defaulted and the lot is offered to the next
@@ -16,6 +17,12 @@ import { LONDON_TIME_ZONE, formatDate, formatTime, toDate } from "@auction/datet
 /** Days after acceptance that the invoice falls due. */
 export const REOFFER_INVOICE_DUE_DAYS = 7;
 
+/** Whose stock the lot is. LAX-owned lots need no seller agreement, so the words differ. */
+export type ReofferSellerKind = "seller" | "lax_owned";
+
+/** An amount in major units ("1200.00") with its ISO currency, formatted by `formatMoneyMajor`. */
+export type ReofferMoney = { amount: string; currency: string };
+
 export type ReofferNoticeCopy = {
   /** The email subject and the in-app title. */
   title: string;
@@ -31,10 +38,17 @@ function instantOf(instant: string): Date {
   return date;
 }
 
-/** "17:00 on 15 November 2026": a deadline in London time, as a person reads it. */
+/** "£1,200.00": a placed-bid price as the shared money formatter shows it. */
+export function reofferPriceText(money: ReofferMoney): string {
+  const text = formatMoneyMajor(money.amount, money.currency);
+  if (text === null) throw new Error(`Not a valid amount: ${money.amount}`);
+  return text;
+}
+
+/** "17:00 (London time) on 15 November 2026": a deadline, as a person reads it. */
 export function reofferDeadlineText(instant: string): string {
   const date = instantOf(instant);
-  return `${formatTime(date, LONDON_TIME_ZONE)} on ${formatDate(date, LONDON_TIME_ZONE, { month: "long" })}`;
+  return `${formatTime(date, LONDON_TIME_ZONE)} (London time) on ${formatDate(date, LONDON_TIME_ZONE, { month: "long" })}`;
 }
 
 /** "15 November 2026": a calendar day in London. */
@@ -43,9 +57,9 @@ export function reofferDayText(instant: string): string {
 }
 
 /** The binding terms, summarised beside every offer to a bidder. */
-export function reofferBindingTerms(price: string): string[] {
+export function reofferBindingTerms(price: ReofferMoney): string[] {
   return [
-    `Accepting is binding: you agree to buy the lot at ${price}.`,
+    `Accepting is binding: you agree to buy the lot at ${reofferPriceText(price)}.`,
     "The price is your highest placed bid. It is never a hidden maximum.",
     `Your invoice will be due ${REOFFER_INVOICE_DUE_DAYS} days after you accept.`,
     "If you do not accept before the offer ends, it lapses and you owe nothing.",
@@ -53,10 +67,11 @@ export function reofferBindingTerms(price: string): string[] {
   ];
 }
 
-type SellerConsentInput = { lotTitle: string; price: string; answerBy: string };
+type SellerConsentInput = { lotTitle: string; placedBidPrice: ReofferMoney; answerBy: string };
 
 export function sellerConsentRequestCopy(input: SellerConsentInput): ReofferNoticeCopy {
-  const { lotTitle, price, answerBy } = input;
+  const { lotTitle, answerBy } = input;
+  const price = reofferPriceText(input.placedBidPrice);
   return {
     title: `Can we sell ${lotTitle} to the next bidder?`,
     heading: "We would like to sell to the next highest bidder",
@@ -68,36 +83,58 @@ export function sellerConsentRequestCopy(input: SellerConsentInput): ReofferNoti
   };
 }
 
-type OfferInput = { lotTitle: string; price: string; windowEndsAt: string };
+/** The one reminder to the seller, if they have not yet answered the request. */
+export function sellerConsentReminderCopy(input: SellerConsentInput): ReofferNoticeCopy {
+  const { lotTitle, answerBy } = input;
+  const price = reofferPriceText(input.placedBidPrice);
+  return {
+    title: `Reminder: can we sell ${lotTitle} to the next bidder?`,
+    heading: "We are still waiting for your answer",
+    paragraphs: [
+      `We are still waiting for your answer about offering ${lotTitle} to the next highest bidder at ${price}, the highest bid they placed. Please tell us by ${reofferDeadlineText(answerBy)}.`,
+      "If we do not hear from you by then, we will not make the offer. If you would rather not, or would prefer another route, tell us.",
+      "The bidder is not named to you, and you are not named to them.",
+    ],
+  };
+}
 
-export function offerMadeCopy(input: OfferInput): ReofferNoticeCopy {
-  const { lotTitle, price, windowEndsAt } = input;
+type OfferInput = { lotTitle: string; placedBidPrice: ReofferMoney; windowEndsAt: string };
+type OfferMadeInput = OfferInput & { sellerKind: ReofferSellerKind };
+
+export function offerMadeCopy(input: OfferMadeInput): ReofferNoticeCopy {
+  const { lotTitle, windowEndsAt, sellerKind } = input;
+  const price = reofferPriceText(input.placedBidPrice);
+  const offered =
+    sellerKind === "lax_owned"
+      ? `we are offering it to you at ${price}, your highest placed bid`
+      : `the seller has agreed to sell it to you at ${price}, your highest placed bid`;
   return {
     title: `An offer to buy ${lotTitle} at ${price}`,
     heading: "The lot is available to you",
     paragraphs: [
-      `The winning bidder did not complete the purchase of ${lotTitle}, and the seller has agreed to sell it to you at ${price}, your highest placed bid.`,
-      `You have until ${reofferDeadlineText(windowEndsAt)} (London time) to accept or decline, from your workspace.`,
+      `The winning bidder did not complete the purchase of ${lotTitle}, and ${offered}. You have until ${reofferDeadlineText(windowEndsAt)} to accept or decline, from your workspace.`,
     ],
   };
 }
 
 export function offerReminderCopy(input: OfferInput): ReofferNoticeCopy {
-  const { lotTitle, price, windowEndsAt } = input;
+  const { lotTitle, windowEndsAt } = input;
+  const price = reofferPriceText(input.placedBidPrice);
   return {
     title: `Your offer for ${lotTitle} ends soon`,
     heading: "Your offer ends soon",
     paragraphs: [
-      `The offer to buy ${lotTitle} at ${price} ends at ${reofferDeadlineText(windowEndsAt)} (London time).`,
+      `The offer to buy ${lotTitle} at ${price} ends at ${reofferDeadlineText(windowEndsAt)}.`,
       "Accept or decline from your workspace. If you do nothing, the offer lapses and you owe nothing.",
     ],
   };
 }
 
-type AcceptedInput = { lotTitle: string; price: string; invoiceDueAt: string };
+type AcceptedInput = { lotTitle: string; placedBidPrice: ReofferMoney; invoiceDueAt: string };
 
 export function offerAcceptedCopy(input: AcceptedInput): ReofferNoticeCopy {
-  const { lotTitle, price, invoiceDueAt } = input;
+  const { lotTitle, invoiceDueAt } = input;
+  const price = reofferPriceText(input.placedBidPrice);
   return {
     title: `You have bought ${lotTitle}`,
     heading: "The lot is yours",
@@ -146,46 +183,50 @@ export type ReofferStaffOutcome = "accepted" | ReofferClosedOutcome;
 
 type StaffInput = {
   lotTitle: string;
-  price: string;
+  placedBidPrice: ReofferMoney;
   bidderName: string;
   outcome: ReofferStaffOutcome;
+  sellerKind: ReofferSellerKind;
 };
 
-const STAFF_VERB: Record<ReofferStaffOutcome, string> = {
-  accepted: "accepted",
-  declined: "declined",
-  expired: "let lapse",
-  withdrawn: "had their offer withdrawn for",
-};
-
-const STAFF_NEXT: Record<ReofferStaffOutcome, string> = {
-  accepted: "The lot has been re-awarded and a new unpaid sale created. The seller has been told.",
-  declined:
-    "The offer is closed. You can offer the lot to the next bidder or return it to inventory.",
-  expired:
-    "The offer is closed. You can offer the lot to the next bidder or return it to inventory.",
-  withdrawn: "The offer is closed and the bidder has been told.",
-};
+const CLOSED_NEXT =
+  "The offer is closed. You can offer the lot to the next bidder or return it to inventory.";
 
 export function reofferStaffCopy(input: StaffInput): ReofferNoticeCopy {
-  const { lotTitle, price, bidderName, outcome } = input;
-  const verb = STAFF_VERB[outcome];
+  const { lotTitle, bidderName, outcome, sellerKind } = input;
+  const price = reofferPriceText(input.placedBidPrice);
+  const sentence: Record<ReofferStaffOutcome, string> = {
+    accepted: `${bidderName} accepted the re-offer of ${lotTitle} at ${price}.`,
+    declined: `${bidderName} declined the re-offer of ${lotTitle} at ${price}.`,
+    expired: `${bidderName} let the re-offer of ${lotTitle} at ${price} lapse.`,
+    withdrawn: `The re-offer of ${lotTitle} to ${bidderName} at ${price} was withdrawn.`,
+  };
+  const next: Record<ReofferStaffOutcome, string> = {
+    accepted: `The lot has been re-awarded and a new unpaid sale created.${
+      sellerKind === "seller" ? " The seller has been told." : ""
+    }`,
+    declined: CLOSED_NEXT,
+    expired: CLOSED_NEXT,
+    withdrawn: "The offer is closed and the bidder has been told.",
+  };
   return {
     title: `Re-offer ${outcome}: ${lotTitle}`,
     heading: `Re-offer ${outcome}`,
-    paragraphs: [
-      `${bidderName} ${verb} the re-offer of ${lotTitle} at ${price}.`,
-      STAFF_NEXT[outcome],
-    ],
+    paragraphs: [sentence[outcome], next[outcome]],
   };
 }
 
 export type ReofferSellerOutcome = "accepted" | "not_accepted";
 
-type SellerOutcomeInput = { lotTitle: string; price: string; outcome: ReofferSellerOutcome };
+type SellerOutcomeInput = {
+  lotTitle: string;
+  placedBidPrice: ReofferMoney;
+  outcome: ReofferSellerOutcome;
+};
 
 export function sellerOutcomeCopy(input: SellerOutcomeInput): ReofferNoticeCopy {
-  const { lotTitle, price, outcome } = input;
+  const { lotTitle, outcome } = input;
+  const price = reofferPriceText(input.placedBidPrice);
   if (outcome === "accepted") {
     return {
       title: `${lotTitle} has been sold`,

@@ -232,6 +232,7 @@ import {
   OfferClosedEmail,
   OfferMadeEmail,
   OfferReminderEmail,
+  SellerConsentReminderEmail,
   SellerConsentRequestEmail,
   SellerOutcomeEmail,
   StaffNoticeEmail,
@@ -239,6 +240,7 @@ import {
   offerClosedSubject,
   offerMadeSubject,
   offerReminderSubject,
+  sellerConsentReminderSubject,
   sellerConsentRequestSubject,
   sellerOutcomeSubject,
   staffNoticeSubject,
@@ -577,6 +579,10 @@ const renderers: { [T in TemplateName]: TemplateRenderer<T> } = {
   "reoffer-seller-consent-request": {
     subject: sellerConsentRequestSubject,
     component: (vars) => <SellerConsentRequestEmail {...vars} />,
+  },
+  "reoffer-seller-consent-reminder": {
+    subject: sellerConsentReminderSubject,
+    component: (vars) => <SellerConsentReminderEmail {...vars} />,
   },
   "reoffer-offer-made": {
     subject: offerMadeSubject,

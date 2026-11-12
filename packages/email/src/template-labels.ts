@@ -134,6 +134,7 @@ export const EMAIL_TEMPLATE_LABELS: Readonly<Record<TemplateName, string>> = {
   "payment-reminder": "Payment reminder",
   "buyer-default-notice": "Buyer default notice",
   "reoffer-seller-consent-request": "Re-offer: seller's agreement requested",
+  "reoffer-seller-consent-reminder": "Re-offer: reminder to the seller",
   "reoffer-offer-made": "Re-offer: offer to the next bidder",
   "reoffer-offer-reminder": "Re-offer: reminder before the offer ends",
   "reoffer-offer-accepted": "Re-offer: offer accepted",

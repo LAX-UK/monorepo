@@ -12,7 +12,9 @@ import {
   reofferBindingTerms,
   reofferDayText,
   reofferDeadlineText,
+  reofferPriceText,
   reofferStaffCopy,
+  sellerConsentReminderCopy,
   sellerConsentRequestCopy,
   sellerOutcomeCopy,
 } from "../reoffer-copy.js";
@@ -81,7 +83,27 @@ export function SellerConsentRequestEmail(v: Vars<"reoffer-seller-consent-reques
       eyebrow="Sale update"
       facts={[
         { label: "Lot", value: v.lotTitle },
-        { label: "Offer price", value: v.price },
+        { label: "Offer price", value: reofferPriceText(v.placedBidPrice) },
+        { label: "Answer by", value: reofferDeadlineText(v.answerBy) },
+      ]}
+      greetingName={v.userName}
+      supportContactEmail={v.supportContactEmail}
+    />
+  );
+}
+
+export const sellerConsentReminderSubject = (v: Vars<"reoffer-seller-consent-reminder">) =>
+  sellerConsentReminderCopy(v).title;
+
+export function SellerConsentReminderEmail(v: Vars<"reoffer-seller-consent-reminder">) {
+  return (
+    <Notice
+      action={{ href: v.actionUrl, label: "Give your answer" }}
+      copy={sellerConsentReminderCopy(v)}
+      eyebrow="Sale update"
+      facts={[
+        { label: "Lot", value: v.lotTitle },
+        { label: "Offer price", value: reofferPriceText(v.placedBidPrice) },
         { label: "Answer by", value: reofferDeadlineText(v.answerBy) },
       ]}
       greetingName={v.userName}
@@ -100,12 +122,12 @@ export function OfferMadeEmail(v: Vars<"reoffer-offer-made">) {
       eyebrow="Offer"
       facts={[
         { label: "Lot", value: v.lotTitle },
-        { label: "Price", value: v.price },
+        { label: "Price", value: reofferPriceText(v.placedBidPrice) },
         { label: "Offer ends", value: reofferDeadlineText(v.windowEndsAt) },
       ]}
       greetingName={v.userName}
       supportContactEmail={v.supportContactEmail}
-      terms={reofferBindingTerms(v.price)}
+      terms={reofferBindingTerms(v.placedBidPrice)}
     />
   );
 }
@@ -121,12 +143,12 @@ export function OfferReminderEmail(v: Vars<"reoffer-offer-reminder">) {
       eyebrow="Offer reminder"
       facts={[
         { label: "Lot", value: v.lotTitle },
-        { label: "Price", value: v.price },
+        { label: "Price", value: reofferPriceText(v.placedBidPrice) },
         { label: "Offer ends", value: reofferDeadlineText(v.windowEndsAt) },
       ]}
       greetingName={v.userName}
       supportContactEmail={v.supportContactEmail}
-      terms={reofferBindingTerms(v.price)}
+      terms={reofferBindingTerms(v.placedBidPrice)}
     />
   );
 }
@@ -142,7 +164,7 @@ export function OfferAcceptedEmail(v: Vars<"reoffer-offer-accepted">) {
       eyebrow="Purchase"
       facts={[
         { label: "Lot", value: v.lotTitle },
-        { label: "Price", value: v.price },
+        { label: "Price", value: reofferPriceText(v.placedBidPrice) },
         { label: "Invoice due", value: reofferDayText(v.invoiceDueAt) },
       ]}
       greetingName={v.userName}
@@ -177,7 +199,7 @@ export function SellerOutcomeEmail(v: Vars<"reoffer-seller-outcome">) {
       eyebrow="Sale update"
       facts={[
         { label: "Lot", value: v.lotTitle },
-        { label: "Offer price", value: v.price },
+        { label: "Offer price", value: reofferPriceText(v.placedBidPrice) },
       ]}
       greetingName={v.userName}
       supportContactEmail={v.supportContactEmail}
@@ -196,7 +218,7 @@ export function StaffNoticeEmail(v: Vars<"reoffer-staff-notice">) {
       facts={[
         { label: "Lot", value: v.lotTitle },
         { label: "Reference", value: v.lotReference, mono: true },
-        { label: "Price", value: v.price },
+        { label: "Price", value: reofferPriceText(v.placedBidPrice) },
         { label: "Bidder", value: v.bidderName },
       ]}
       greet={false}
