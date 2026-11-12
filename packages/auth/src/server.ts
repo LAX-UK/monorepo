@@ -101,6 +101,12 @@ export type AuthEnv = {
    * leave unset in tests.
    */
   enableNewDeviceLoginEmail?: boolean | undefined;
+  /** Hash of the private device marker a request carries, or null (see AuthHookDeps). */
+  readDeviceHash?: ((headers: Headers | undefined) => string | null) | undefined;
+  /** Forgets a browser's marker when it signs itself out (see AuthHookDeps). */
+  forgetDeviceMarker?:
+    | ((input: { userId: string; deviceHash: string }) => Promise<void>)
+    | undefined;
   /** When true, `databaseHooks.user.create.before` rejects all new auth users. */
   blockNewUserRegistration?: boolean | undefined;
   breachedPasswordChecker?: import("./ports/breached-password-checker.js").BreachedPasswordChecker;
@@ -221,6 +227,8 @@ export function createAuth(env: AuthEnv): Auth {
     onAccountCreated: env.onAccountCreated,
     onUserUpdated: env.onUserUpdated,
     enableNewDeviceLoginEmail: env.enableNewDeviceLoginEmail,
+    readDeviceHash: env.readDeviceHash,
+    forgetDeviceMarker: env.forgetDeviceMarker,
     blockNewUserRegistration: env.blockNewUserRegistration,
     revokeAllSessions: env.revokeAllSessions,
     onSocialPolicyReadFailed: env.onSocialPolicyReadFailed,

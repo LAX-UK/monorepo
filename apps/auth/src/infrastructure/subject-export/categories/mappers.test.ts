@@ -103,6 +103,32 @@ describe("sessions", () => {
     });
   });
 
+  it("adds the country, the products used and when the browser was last active", () => {
+    expect(
+      mapSession(
+        {
+          ...row,
+          country: "GB",
+          lastSeenAt: d(3),
+          clientIds: ["lax-art-web", "lax-account-web", "lax-shop-admin"],
+        },
+        d(4),
+      ),
+    ).toMatchObject({
+      country: "GB",
+      products: ["LAX Account", "lax.art"],
+      lastActiveAt: d(3).toISOString(),
+    });
+  });
+
+  it("reports no country, products or last activity for a record made before they were kept", () => {
+    expect(mapSession(row, d(2))).toMatchObject({
+      country: null,
+      products: [],
+      lastActiveAt: null,
+    });
+  });
+
   it("shows an end only once the session has expired", () => {
     expect(mapSession(row, d(9)).endedAt).toBe(d(8).toISOString());
   });

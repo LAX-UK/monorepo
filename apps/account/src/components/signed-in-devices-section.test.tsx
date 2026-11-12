@@ -12,13 +12,17 @@ vi.mock("@/server/application/account-identity-actions.server", () => ({
 const current = {
   id: "mac",
   deviceLabel: "Chrome on macOS",
-  detail: "Active now · Signed in 5 minutes ago",
+  deviceKind: "laptop" as const,
+  activity: "Active now · United Kingdom",
+  signedIn: "Signed in Mon 9 Nov · LAX Account, LAX Bid",
   isCurrent: true,
 };
 const phone = {
   id: "phone",
   deviceLabel: "Safari on iPhone",
-  detail: "Last active 2 hours ago · Signed in 3 days ago",
+  deviceKind: "phone" as const,
+  activity: "Last active 2 hours ago · United Kingdom",
+  signedIn: "Signed in Sun 1 Nov · LAX Shop, lax.art",
   isCurrent: false,
 };
 
@@ -38,6 +42,9 @@ describe("SignedInDevicesSection", () => {
     expect(html).toContain("Where you&#x27;re signed in");
     expect(html).toContain("Chrome on macOS");
     expect(html).toContain("This device");
+    expect(html).toContain("Each browser or device signed in to your");
+    expect(html).toContain("Active now · United Kingdom");
+    expect(html).toContain("Signed in Sun 1 Nov");
     expect(html).toContain('aria-label="Sign out Safari on iPhone"');
     expect(html).not.toContain('aria-label="Sign out Chrome on macOS"');
     expect(html).toContain("Sign out everywhere else");
@@ -45,7 +52,7 @@ describe("SignedInDevicesSection", () => {
 
   it("says so, and offers no bulk sign-out, when this is the only device", () => {
     const html = render({ status: "list", sessions: { current, others: [] } });
-    expect(html).toContain("You&#x27;re not signed in on any other device.");
+    expect(html).toContain("You&#x27;re not signed in anywhere else.");
     expect(html).not.toContain("Sign out everywhere else");
   });
 
@@ -62,6 +69,6 @@ describe("SignedInDevicesSection", () => {
     const html = render({ status: "unavailable" });
     expect(html).toContain("We can&#x27;t show your devices right now");
     expect(html).toContain('href="/account/security"');
-    expect(html).not.toContain("not signed in on any other device");
+    expect(html).not.toContain("not signed in anywhere else");
   });
 });

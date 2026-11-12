@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { DEVICE_KINDS } from "./device-label.js";
 
 /** Issuer routes LAX Account calls (under the Better Auth base path) to manage sign-ins. */
 export const ACCOUNT_SESSIONS_PATH = "/lax/account-sessions";
@@ -41,7 +42,9 @@ export const accountSessionSchema = z.object({
   id: z.string(),
   /** Raw browser user agent; LAX Account turns it into a device label. Never an IP address. */
   userAgent: z.string().nullable(),
+  /** When the person first signed in on this browser. */
   createdAt: z.string().datetime({ offset: true }),
+  /** Last real use of the sign-in, from this browser or one of its products. */
   lastActiveAt: z.string().datetime({ offset: true }),
   /** True for the sign-in that made this request, so it is never offered for sign-out. */
   isCurrent: z.boolean(),
@@ -51,6 +54,16 @@ export const accountSessionSchema = z.object({
    * null when an older issuer leaves it out.
    */
   signedInWith: z.enum(["password", "provider", "passkey"]).nullable().default(null),
+  /** The icon's kind. A v1 issuer leaves it out, which reads as the neutral laptop. */
+  deviceKind: z.enum(DEVICE_KINDS).default("laptop"),
+  /** ISO 3166-1 alpha-2 country the edge reported, never an address; null when unknown. */
+  country: z
+    .string()
+    .regex(/^[A-Z]{2}$/)
+    .nullable()
+    .default(null),
+  /** OAuth client ids of the products this browser has used; Account words them (see account-device-products). */
+  products: z.array(z.string()).default([]),
 });
 
 export const accountSessionsSchema = z.object({ sessions: z.array(accountSessionSchema) });

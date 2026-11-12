@@ -9,6 +9,7 @@ import {
   user,
 } from "@auction/identity-db/schema";
 import { and, asc, eq, inArray, isNotNull, ne, sql } from "drizzle-orm";
+import { deviceProductNames } from "../../../services/device-product-names.js";
 import {
   type ExportSource,
   SourcedExportCategory,
@@ -91,6 +92,12 @@ export function mapSession(
     createdAt: Date;
     expiresAt: Date;
     amr?: readonly string[] | null;
+    /** The ISO country the sign-in came from, as the edge reported it; null when unknown. */
+    country?: string | null;
+    /** The last time the browser used its sign-in, in any LAX product. */
+    lastSeenAt?: Date | null;
+    /** The OAuth clients this browser's sign-in was used for. */
+    clientIds?: readonly string[];
   },
   now: Date,
 ) {
@@ -103,6 +110,9 @@ export function mapSession(
     ipAddress: row.ipAddress,
     // No place is derived from the address when a session starts, so none is held.
     approximateLocation: null,
+    country: row.country ?? null,
+    products: deviceProductNames(row.clientIds ?? []),
+    lastActiveAt: iso(row.lastSeenAt),
     startedAt: isoRequired(row.createdAt),
     endedAt: row.expiresAt <= now ? isoRequired(row.expiresAt) : null,
   };
@@ -154,6 +164,15 @@ export function mapSecurityEvent(row: {
 const SECURITY_EVENT_TYPES = Object.keys(EVENT_NAMES);
 
 /**
+ * Which OAuth clients each of a person's sign-in records was used for, by record id. Only client
+ * ids come through this port: nothing about a token does.
+ */
+export type SessionClientsReader = (
+  subjectId: string,
+  sessionIds: readonly string[],
+) => Promise<ReadonlyMap<string, readonly string[]>>;
+
+/**
  * How the person signs in and what has happened on their account. The password hash, two-step
  * secret, backup codes, session tokens, provider tokens and device hashes are never selected:
  * a password is reported only as set or not set, with the date it last changed.
@@ -167,6 +186,8 @@ export class SignInAndSecurityExportCategory extends SourcedExportCategory {
     now: () => Date = () => new Date(),
     /** Opens the address a provider reported, which is stored sealed. */
     crypto: { open(sealed: string): string } | null = null,
+    /** Names the products each browser was used for; without it no products are listed. */
+    readSessionClients: SessionClientsReader = async () => new Map(),
   ) {
     super();
     const readAddress = (value: string | null) => openProviderEmail(value, crypto);
@@ -250,13 +271,22 @@ export class SignInAndSecurityExportCategory extends SourcedExportCategory {
               createdAt: session.createdAt,
               expiresAt: session.expiresAt,
               amr: session.amr,
+              country: session.country,
+              lastSeenAt: session.lastSeenAt,
             })
             .from(session)
             .where(and(eq(session.userId, subjectId), afterKey(session.id, key)))
             .orderBy(asc(session.id))
             .limit(limit);
           const at = now();
-          return rows.map((row) => ({ key: row.id, record: mapSession(row, at) }));
+          const clients = await readSessionClients(
+            subjectId,
+            rows.map((row) => row.id),
+          );
+          return rows.map((row) => ({
+            key: row.id,
+            record: mapSession({ ...row, clientIds: clients.get(row.id) ?? [] }, at),
+          }));
         },
       },
       {
