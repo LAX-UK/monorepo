@@ -1,5 +1,7 @@
+import { isValidIsoDate } from "./dates.js";
 import { type Pence, isPence } from "./money.js";
 import { type Result, ok, refuse } from "./result.js";
+import { compareText } from "./text.js";
 
 export interface OpenInvoice {
   readonly reference: string;
@@ -19,8 +21,6 @@ export interface AllocationPlan {
   readonly unallocatedPence: Pence;
 }
 
-const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
-
 /**
  * Spread one payment across invoices, oldest due first (ties by reference, so the result is
  * deterministic). Each invoice gets at most its outstanding amount; the remainder is reported.
@@ -29,16 +29,19 @@ export function allocatePayment(
   paymentPence: Pence,
   invoices: readonly OpenInvoice[],
 ): Result<AllocationPlan, "bad_amount" | "bad_due_date" | "duplicate_invoice"> {
-  if (!isPence(paymentPence) || paymentPence < 0) {
-    return refuse("bad_amount", "payment must be non-negative whole pence");
+  if (!isPence(paymentPence) || paymentPence <= 0) {
+    return refuse("bad_amount", "payment must be positive whole pence");
   }
   const seen = new Set<string>();
   for (const invoice of invoices) {
     if (!isPence(invoice.outstandingPence) || invoice.outstandingPence < 0) {
       return refuse("bad_amount", `outstanding on ${invoice.reference} is not valid pence`);
     }
-    if (!ISO_DATE.test(invoice.dueOn)) {
-      return refuse("bad_due_date", `due date on ${invoice.reference} is not YYYY-MM-DD`);
+    if (!isValidIsoDate(invoice.dueOn)) {
+      return refuse(
+        "bad_due_date",
+        `due date on ${invoice.reference} is not a real YYYY-MM-DD date`,
+      );
     }
     if (seen.has(invoice.reference)) {
       return refuse("duplicate_invoice", `${invoice.reference} listed twice`);
@@ -46,7 +49,7 @@ export function allocatePayment(
     seen.add(invoice.reference);
   }
   const ordered = [...invoices].sort(
-    (a, b) => a.dueOn.localeCompare(b.dueOn) || a.reference.localeCompare(b.reference),
+    (a, b) => compareText(a.dueOn, b.dueOn) || compareText(a.reference, b.reference),
   );
   let remaining = paymentPence;
   const allocations: Allocation[] = [];

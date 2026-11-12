@@ -30,11 +30,26 @@ describe("planRefund", () => {
       refusal: { code: "exceeds_paid_delivery" },
     });
   });
+  it("refuses a refund of zero in both buckets", () => {
+    expect(planRefund(buckets(), { goodsPence: 0, deliveryPence: 0 })).toMatchObject({
+      refusal: { code: "bad_amount" },
+    });
+  });
+  it("refuses buckets that were already over-refunded instead of clamping them", () => {
+    const corrupt = buckets({ paidGoodsPence: 100, refundedGoodsPence: 500 });
+    expect(planRefund(corrupt, { goodsPence: 0, deliveryPence: 1 })).toMatchObject({
+      refusal: { code: "over_refunded" },
+    });
+    expect(splitRefundTotal(corrupt, 1)).toMatchObject({ refusal: { code: "over_refunded" } });
+    expect(refundableOf(buckets({ refundedDeliveryPence: 1_501 }))).toMatchObject({
+      refusal: { code: "over_refunded" },
+    });
+  });
   it("refuses fractional or negative amounts", () => {
     expect(planRefund(buckets(), { goodsPence: -1, deliveryPence: 0 }).ok).toBe(false);
     expect(planRefund(buckets(), { goodsPence: 0.5, deliveryPence: 0 }).ok).toBe(false);
     expect(
-      planRefund(buckets({ paidGoodsPence: -1 }), { goodsPence: 0, deliveryPence: 0 }).ok,
+      planRefund(buckets({ paidGoodsPence: -1 }), { goodsPence: 1, deliveryPence: 0 }).ok,
     ).toBe(false);
   });
 });
@@ -56,6 +71,9 @@ describe("splitRefundTotal", () => {
     });
     expect(splitRefundTotal(buckets(), -1).ok).toBe(false);
   });
+  it("refuses a refund of zero", () => {
+    expect(splitRefundTotal(buckets(), 0)).toMatchObject({ refusal: { code: "bad_amount" } });
+  });
   it("property: split sums to the request and never exceeds what was paid", () => {
     forAll(500, (rng) => {
       const b: PaidBuckets = {
@@ -69,8 +87,10 @@ describe("splitRefundTotal", () => {
         refundedGoodsPence: int(rng, 0, b.paidGoodsPence),
         refundedDeliveryPence: int(rng, 0, b.paidDeliveryPence),
       };
-      const left = refundableOf(b2);
-      const total = int(rng, 0, left.goodsPence + left.deliveryPence + 2_000);
+      const leftResult = refundableOf(b2);
+      if (!leftResult.ok) throw new Error("fixture");
+      const left = leftResult.value;
+      const total = int(rng, 1, left.goodsPence + left.deliveryPence + 2_000);
       const r = splitRefundTotal(b2, total);
       if (total > left.goodsPence + left.deliveryPence) {
         expect(r.ok).toBe(false);

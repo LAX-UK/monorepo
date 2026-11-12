@@ -16,58 +16,97 @@ stores records and calls providers live elsewhere and depend on this package, ne
 | Refunds | `refund.ts` | Goods/delivery split; never more than paid. |
 | Source switch | `source-switch.ts` | One live source per product; refuses two. |
 
-Every function that can say no returns `Result<T, Code>` (`ok` / `refusal`) instead of throwing.
+Every function that can say no returns `Result<T, Code>` (`ok` / `refusal`) instead of throwing; none of the
+exported functions throws.
 Time is always passed in (epoch ms for leases, `YYYY-MM-DD` for document dates); nothing reads a clock.
 
 ## Rules
 
-**References.** `laxReference(kind, sourceId)` gives `LAX-INV-…`, `LAX-PAY-…`, `LAX-CN-…`,
-`LAX-BILL-…`, `LAX-CON-…`. Same input, same text. It is the duplicate guard and the lookup key.
+**References.** `laxReference(product, kind, sourceId)` gives `LAX-<PRODUCT>-<KIND>-<id>`, e.g.
+`LAX-SHOP-INV-123`, `LAX-ART-INV-123`, `LAX-BID-BILL-123` (kinds `INV`, `PAY`, `CN`, `BILL`, `CON`; products
+`BID`, `SHOP`, `ART`). It is injective over `(product, kind, sourceId)`, so Shop order 123 and lax.art
+order 123 never collide inside one Books organisation. Source ids are lower case (`[a-z0-9_-]`, at most 64):
+providers may search references case-insensitively, so `abc` and `ABC` must not be two documents. Builders
+take a `sourceId`, never a reference string, and check every other reference they are given
+(`parseLaxReference`: contact, invoice) is of the right kind and product. `DocumentLookupPort.findByReference`
+takes the product so an adapter can never search the wrong organisation.
 
 **Legal entity.** Bid → London Auction Xchange LTD. Shop and lax.art → London Art Exchange Ltd.
 
 **VAT.** Treatments: `standard` (20%), `zero`, `exempt`, `margin_scheme`, `outside_scope`. Only
 `standard` carries VAT; margin-scheme VAT is never shown. VAT is computed per line, rounded half-up
 (`floor((net × bps + 5000) / 10000)`, integers only). Document totals = sum of lines; there is no
-document-level rounding. A provider total is compared exactly (`compareWithProviderTotals`); a
-difference is reported, never absorbed in an adjustment line.
+document-level rounding. Lines are only made by `buildLine` (the `Line` type is branded, and the document
+builders take `LineInput[]`), so a hand-made line with a negative net or VAT on a margin-scheme sale cannot
+reach a document. Line nets are capped at £1bn and documents at 1000 lines. A document or refund of zero is
+refused (zero-priced lines such as free delivery are fine). The provider's own totals come back in every
+`issued`/`found` outcome and `completeSending`/`applyLookup` compare them exactly with ours: a difference
+goes to `needs_review` with the provider's identity kept, never absorbed in an adjustment line.
 
 **Payments.** `allocatePayment` fills invoices oldest due first (ties by reference), never gives an
 invoice more than it owes, and reports the unallocated remainder. `buildPayment` refuses allocations
-that exceed the payment.
+that exceed the payment. A payment of zero is refused.
 
 **Refunds.** `planRefund` checks goods and delivery separately against paid minus already refunded.
-`splitRefundTotal` takes one amount, goods first, then delivery. Neither can exceed what was paid.
+`splitRefundTotal` takes one amount, goods first, then delivery. Neither can exceed what was paid, and
+a bucket already refunded more than it was paid is refused (`over_refunded`), not clamped.
+
+**Credit notes.** `buildCreditNoteFor(invoice, …)` is the only way to make one. Its lines come from the
+original invoice's goods and delivery lines and keep each VAT treatment (margin scheme stays margin scheme).
+The amounts go through `planRefund` (never more than was paid) and must fit in the invoice minus earlier
+credit notes. An amount that is not a whole-penny net plus VAT on its line is refused, not rounded.
+
+**Dates.** `YYYY-MM-DD`, validated as real calendar dates (leap years included) with pure arithmetic; every
+date is passed in.
 
 **Source switch.** Per product, each of `xero` and `books` has a mode: `off | dry_run | test_org |
-live`. At most one may be `live`. `validateSwitchConfig` refuses two live sources.
+live`. At most one may be `live`. `validateSwitchConfig` checks every product in `PRODUCTS` (a missing one is `missing_product`, never a
+throw) and refuses two live sources; `parseSwitchConfig` turns unknown input into a `SwitchConfig`.
 
 ## Life cycle
 
 ```
-                 startSending                completeSending(issued)
+                 startSending                completeSending(issued, totals match)
    pending ───────────────────► sending ─────────────────────────────► issued (final)
-      ▲  │                        │  │
+      ▲  │                        │  │  └─ totals differ ──────────────► needs_review (document exists)
       │  │ cancel                 │  └─ completeSending(rejected) ──► failed ──┐ requeue ─► pending
       │  ▼                        │                                     │      │ cancel ─► cancelled
       │ cancelled                 │                                     └ escalate ┐
       │                           │ completeSending(unknown/timeout)             ▼
       │                           │ expireLease / answer after expiry        needs_review
-      │                           ▼                                              ▲   │ requeue (no lookup owed)
-      │                        unknown ── applyLookup(found) ─► issued           │   │ cancel (no lookup owed)
-      │                           │   ── applyLookup(ambiguous) ────────────────┘   ▼
-      │                           │   ── applyLookup(unavailable): stays unknown   pending / cancelled
-      │                           └─ applyLookup(not_found): lookup cleared
-      └────────── startSending (only after not_found) ◄─────────┘
+      │                           ▼                                              ▲   │ requeue (nothing owed, no document)
+      │                        unknown ── applyLookup(found) ─► issued (or review if totals differ)
+      │                           │   ── applyLookup(ambiguous) ────────────────┘
+      │                           │   ── applyLookup(unavailable): stays unknown
+      │                           └─ applyLookup(not_found), only at or after settlesAtMs ─► pending
+      └───────────────── startSending ◄──────────────────────────────┘
 ```
 
-- `sending` carries a `lease` (`token`, `expiresAtMs`). Only the token holder can complete.
+- `DocumentRecord` is a union on `status`, so each status carries exactly its own fields: `sending` has a
+  lease, `issued` has the provider document, `unknown` has `settlesAtMs` (a lookup is always owed),
+  `needs_review` says whether a lookup is still owed. `parseRecord(row)` is the only way to read a stored
+  row back, and it refuses any illegal combination.
+- `sending` carries a `lease` (`token`, `expiresAtMs`). Only the token holder can complete. Times must be
+  whole, finite epoch milliseconds (`bad_time` otherwise) and a lease may last at most `MAX_LEASE_MS`.
 - A lease that has expired means the outcome is **unknown**, whether noticed by `expireLease` or by an
   answer arriving late (the answer is not trusted).
-- `unknown` sets `lookupRequired`. While it is set, `startSending`, `requeue` and `cancel` are refused
-  with `lookup_required`: the next step is `DocumentLookupPort.findByReference`, then `applyLookup`.
+- `unknown` keeps `settlesAtMs = lease.expiresAtMs + SETTLE_GRACE_MS`. A lookup that finds nothing is
+  trusted only at or after that time; earlier it is refused with `lookup_too_early`, because the first
+  request may still land and a second create would duplicate it. **The runtime's HTTP timeout must be
+  shorter than the lease**, and the grace covers provider-side work that outlives a client timeout.
+  `found` is believed at any time.
 - `rejected` is a definite refusal by the provider, so `failed` can be requeued safely.
+- A `needs_review` record that holds a provider document (a totals mismatch) can be neither requeued nor
+  cancelled: a person resolves it.
 - `issued` and `cancelled` are final.
+
+## Out of scope for this phase
+
+- Margin-scheme purchase price and margin: the model prints no VAT on a margin-scheme sale and carries no
+  cost, so margin VAT for the return is derived elsewhere. Lines carry no rate: only the standard 20% rate
+  is modelled, so a reduced-rate line cannot be represented yet.
+- Per-document source of record: a credit note or payment for an invoice issued in Xero must be routed to
+  Xero even after Books is live for the product. The runtime PR must carry the source with the document.
 
 ## Tests
 

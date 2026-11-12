@@ -248,6 +248,34 @@ function isTestSource(rel) {
   return /\.(test|spec|integration\.test)\.(ts|tsx)$/.test(rel);
 }
 
+// ─── Accounting domain purity ────────────────────────────────────────────────
+
+/** The accounting domain reads no clock, randomness, environment or network: callers pass them in. */
+const ACCOUNTING_BANNED_GLOBALS =
+  /\b(?:Date\s*[.(]|Math\.random|process\.|console\.|fetch\s*\(|setTimeout|setInterval|crypto\.|performance\.now|new\s+Intl\b|localeCompare|toLocale\w*)/;
+const accountingPurityViolations = [];
+
+for (const file of listSources(join(root, "packages/accounting-domain/src"))) {
+  const rel = relative(root, file).split("\\").join("/");
+  if (isTestSource(rel) || rel.includes("/testing/")) continue;
+  readFileSync(file, "utf8")
+    .split("\n")
+    .forEach((line, index) => {
+      if (/^\s*(\/\/|\*|\/\*)/.test(line)) return;
+      if (ACCOUNTING_BANNED_GLOBALS.test(line)) {
+        accountingPurityViolations.push(`${rel}:${index + 1}: ${line.trim()}`);
+      }
+    });
+}
+
+if (accountingPurityViolations.length > 0) {
+  console.error(
+    "packages/accounting-domain must stay pure (no Date, randomness, process, console, fetch, timers, locale):\n",
+  );
+  for (const violation of accountingPurityViolations) console.error(`  ${violation}`);
+  process.exit(1);
+}
+
 // ─── API Identity storage boundary ───────────────────────────────────────────
 
 const IDENTITY_TABLE_IMPORT_RE =

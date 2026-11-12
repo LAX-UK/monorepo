@@ -51,9 +51,26 @@ describe("allocatePayment", () => {
     expect(p.allocations.map((a) => a.invoiceReference)).toEqual(["X", "Z"]);
   });
 
-  it("zero payment or no invoices allocates nothing", () => {
-    expect(plan(0, [inv("A", "2026-01-01", 5)])).toEqual({ allocations: [], unallocatedPence: 0 });
+  it("no invoices allocates nothing", () => {
     expect(plan(70, [])).toEqual({ allocations: [], unallocatedPence: 70 });
+  });
+
+  it("refuses a payment of zero", () => {
+    expect(allocatePayment(0, [inv("A", "2026-01-01", 5)])).toMatchObject({
+      ok: false,
+      refusal: { code: "bad_amount" },
+    });
+  });
+
+  it("refuses impossible due dates and orders by code unit, not locale", () => {
+    expect(allocatePayment(10, [inv("A", "2026-02-30", 1)]).ok).toBe(false);
+    expect(allocatePayment(10, [inv("A", "2026-13-45", 1)]).ok).toBe(false);
+    const p = plan(100, [
+      inv("a_b", "2026-01-01", 1),
+      inv("B", "2026-01-01", 1),
+      inv("A-b", "2026-01-01", 1),
+    ]);
+    expect(p.allocations.map((a) => a.invoiceReference)).toEqual(["A-b", "B", "a_b"]);
   });
 
   it.each([
@@ -73,7 +90,7 @@ describe("allocatePayment", () => {
       const invoices = Array.from({ length: int(rng, 0, 8) }, (_, i) =>
         inv(`R${i}`, `2026-0${int(rng, 1, 9)}-1${int(rng, 0, 9)}`, int(rng, 0, 100_000)),
       );
-      const payment = int(rng, 0, 400_000);
+      const payment = int(rng, 1, 400_000);
       const p = plan(payment, invoices);
       const allocated = p.allocations.reduce((n, a) => n + a.amountPence, 0);
       expect(allocated + p.unallocatedPence).toBe(payment);
@@ -93,7 +110,9 @@ describe("allocatePayment", () => {
       }
       // any partly paid or unpaid invoice is never older than a fully paid one it follows
       const order = [...invoices].sort(
-        (a, b) => a.dueOn.localeCompare(b.dueOn) || a.reference.localeCompare(b.reference),
+        (a, b) =>
+          (a.dueOn < b.dueOn ? -1 : a.dueOn > b.dueOn ? 1 : 0) ||
+          (a.reference < b.reference ? -1 : a.reference > b.reference ? 1 : 0),
       );
       expect(p.allocations.map((a) => a.invoiceReference)).toEqual(
         order

@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   type DocumentRecord,
   type Lease,
+  MAX_LEASE_MS,
+  SETTLE_GRACE_MS,
   STATUSES,
   type Status,
   applyLookup,
@@ -11,60 +13,89 @@ import {
   expireLease,
   isLeaseExpired,
   newRecord,
+  parseRecord,
   requeue,
   startSending,
 } from "./lifecycle.js";
+import type { Totals } from "./money.js";
 import type { IssueOutcome, LookupOutcome } from "./ports.js";
+import { forAll, int, pick } from "./testing/generate.js";
 
 const NOW = 1_000_000;
 const lease: Lease = { token: "t1", expiresAtMs: NOW + 60_000 };
+const SETTLED = lease.expiresAtMs + SETTLE_GRACE_MS;
+const totals: Totals = { netPence: 10_000, vatPence: 2_000, grossPence: 12_000 };
 const issuedOutcome: IssueOutcome = {
   status: "issued",
   number: "INV-1",
   providerId: "p1",
   pdfRef: null,
+  totals,
 };
-const found: LookupOutcome = { status: "found", number: "INV-1", providerId: "p1", pdfRef: "pdf" };
+const found: LookupOutcome = {
+  status: "found",
+  number: "INV-1",
+  providerId: "p1",
+  pdfRef: "pdf",
+  totals,
+};
+const doc = { number: "INV-1", providerId: "p1", pdfRef: null };
+const base = { kind: "invoice", reference: "LAX-SHOP-INV-1", attempts: 1 } as const;
 
-function rec(status: Status, over: Partial<DocumentRecord> = {}): DocumentRecord {
-  return {
-    ...newRecord("invoice", "LAX-INV-1"),
-    status,
-    lease: status === "sending" ? lease : null,
-    lookupRequired: status === "unknown",
-    ...over,
-  };
+function rec(status: Status): DocumentRecord {
+  switch (status) {
+    case "pending":
+      return { ...base, status };
+    case "sending":
+      return { ...base, status, lease };
+    case "issued":
+      return { ...base, status, issued: doc };
+    case "unknown":
+      return { ...base, status, settlesAtMs: SETTLED };
+    case "needs_review":
+      return { ...base, status, lookup: "clear", issued: null, mismatch: null, reason: "r" };
+    case "failed":
+      return { ...base, status, reason: "r" };
+    case "cancelled":
+      return { ...base, status };
+  }
 }
+const owedReview = (): DocumentRecord => ({
+  ...base,
+  status: "needs_review",
+  lookup: "owed",
+  settlesAtMs: SETTLED,
+  reason: "r",
+});
 
 function statusAfter(r: { ok: boolean; value?: DocumentRecord }): Status | "refused" {
   return r.ok && r.value ? r.value.status : "refused";
 }
+function must<T>(r: { ok: boolean; value?: T }): T {
+  if (!r.ok) throw new Error("expected ok");
+  return r.value as T;
+}
 
 describe("startSending", () => {
   it("pending -> sending, takes the lease and counts the attempt", () => {
-    const r = startSending(newRecord("invoice", "LAX-INV-1"), lease, NOW);
+    const r = startSending(newRecord("invoice", "LAX-SHOP-INV-1"), lease, NOW);
     expect(r).toMatchObject({ ok: true, value: { status: "sending", lease, attempts: 1 } });
   });
   it("refuses every other status", () => {
-    const expected: Record<Status, string> = {
-      pending: "sending",
-      sending: "refused",
-      issued: "refused",
-      unknown: "refused", // lookup owed
-      needs_review: "refused",
-      failed: "refused",
-      cancelled: "refused",
-    };
-    for (const s of STATUSES)
-      expect(statusAfter(startSending(rec(s), lease, NOW))).toBe(expected[s]);
+    for (const s of STATUSES.filter((x) => x !== "pending")) {
+      expect(statusAfter(startSending(rec(s), lease, NOW))).toBe("refused");
+    }
+    expect(statusAfter(startSending(owedReview(), lease, NOW))).toBe("refused");
   });
-  it("unknown is refused with lookup_required until a lookup rules the document out", () => {
+  it("an unknown record is refused with lookup_required, and a settled not_found makes it pending", () => {
     expect(startSending(rec("unknown"), lease, NOW)).toMatchObject({
       refusal: { code: "lookup_required" },
     });
-    const looked = applyLookup(rec("unknown"), { status: "not_found" });
-    if (!looked.ok) throw new Error("lookup");
-    expect(startSending(looked.value, lease, NOW)).toMatchObject({
+    const looked = must(applyLookup(rec("unknown"), { status: "not_found" }, SETTLED, totals));
+    expect(looked.status).toBe("pending");
+    expect(
+      startSending(looked, { token: "t9", expiresAtMs: SETTLED + 60_000 }, SETTLED),
+    ).toMatchObject({
       ok: true,
       value: { status: "sending" },
     });
@@ -74,27 +105,43 @@ describe("startSending", () => {
       refusal: { code: "lease_held" },
     });
   });
-  it("refuses an empty token or a lease already expired", () => {
-    expect(startSending(rec("pending"), { token: "", expiresAtMs: NOW + 1 }, NOW)).toMatchObject({
-      refusal: { code: "bad_lease" },
-    });
-    expect(startSending(rec("pending"), { token: "t", expiresAtMs: NOW }, NOW)).toMatchObject({
-      refusal: { code: "bad_lease" },
-    });
+  it("refuses an empty token, an expired lease and one longer than the maximum", () => {
+    const pending = rec("pending");
+    for (const l of [
+      { token: "", expiresAtMs: NOW + 1 },
+      { token: "t", expiresAtMs: NOW },
+      { token: "t", expiresAtMs: NOW + MAX_LEASE_MS + 1 },
+    ]) {
+      expect(startSending(pending, l, NOW)).toMatchObject({ refusal: { code: "bad_lease" } });
+    }
+    expect(startSending(pending, { token: "t", expiresAtMs: NOW + MAX_LEASE_MS }, NOW).ok).toBe(
+      true,
+    );
+  });
+  it("refuses NaN, Infinity and fractional times: a lease can never be un-expirable", () => {
+    const pending = rec("pending");
+    for (const bad of [Number.NaN, Number.POSITIVE_INFINITY, 1000.5, -1, 2 ** 60]) {
+      expect(startSending(pending, { token: "t", expiresAtMs: bad }, NOW)).toMatchObject({
+        refusal: { code: "bad_time" },
+      });
+      expect(startSending(pending, lease, bad)).toMatchObject({ refusal: { code: "bad_time" } });
+    }
   });
 });
 
 describe("expireLease", () => {
-  it("an expired lease means unknown, with a lookup owed", () => {
-    const r = expireLease(rec("sending"), lease.expiresAtMs);
-    expect(r).toMatchObject({
+  it("an expired lease means unknown, with the settle time set", () => {
+    expect(expireLease(rec("sending"), lease.expiresAtMs)).toMatchObject({
       ok: true,
-      value: { status: "unknown", lease: null, lookupRequired: true },
+      value: { status: "unknown", settlesAtMs: SETTLED },
     });
     expect(isLeaseExpired(lease, lease.expiresAtMs - 1)).toBe(false);
   });
-  it("refuses a live lease and every non-sending status", () => {
+  it("refuses a live lease, a bad clock and every non-sending status", () => {
     expect(expireLease(rec("sending"), NOW)).toMatchObject({ refusal: { code: "lease_held" } });
+    for (const bad of [Number.NaN, Number.POSITIVE_INFINITY, 1.5]) {
+      expect(expireLease(rec("sending"), bad)).toMatchObject({ refusal: { code: "bad_time" } });
+    }
     for (const s of STATUSES.filter((x) => x !== "sending")) {
       expect(statusAfter(expireLease(rec(s), NOW + 10 ** 9))).toBe("refused");
     }
@@ -102,88 +149,150 @@ describe("expireLease", () => {
 });
 
 describe("completeSending", () => {
-  it("issued -> issued, keeps number, provider id and pdf", () => {
-    expect(completeSending(rec("sending"), "t1", issuedOutcome, NOW)).toMatchObject({
+  it("issued with matching totals -> issued, keeps number, provider id and pdf", () => {
+    expect(completeSending(rec("sending"), "t1", issuedOutcome, NOW, totals)).toMatchObject({
       ok: true,
-      value: {
-        status: "issued",
-        lease: null,
-        issued: { number: "INV-1", providerId: "p1", pdfRef: null },
-      },
+      value: { status: "issued", issued: { number: "INV-1", providerId: "p1", pdfRef: null } },
     });
+  });
+  it("a one-penny difference in any total goes to needs_review and keeps the provider identity", () => {
+    for (const field of ["netPence", "vatPence", "grossPence"] as const) {
+      const theirs = { ...totals, [field]: totals[field] + 1 };
+      const r = must(
+        completeSending(rec("sending"), "t1", { ...issuedOutcome, totals: theirs }, NOW, totals),
+      );
+      expect(r).toMatchObject({
+        status: "needs_review",
+        lookup: "clear",
+        issued: { number: "INV-1", providerId: "p1" },
+        mismatch: { field, differencePence: 1 },
+      });
+    }
+  });
+  it("a mismatched document can never be sent, requeued or cancelled", () => {
+    const r = must(
+      completeSending(
+        rec("sending"),
+        "t1",
+        { ...issuedOutcome, totals: { ...totals, grossPence: 12_001 } },
+        NOW,
+        totals,
+      ),
+    );
+    expect(statusAfter(startSending(r, lease, NOW))).toBe("refused");
+    expect(statusAfter(requeue(r))).toBe("refused");
+    expect(statusAfter(cancel(r))).toBe("refused");
+    expect(statusAfter(escalate(r, "x"))).toBe("refused");
   });
   it("rejected -> failed with the reason", () => {
     expect(
-      completeSending(rec("sending"), "t1", { status: "rejected", reason: "bad VAT" }, NOW),
-    ).toMatchObject({
-      ok: true,
-      value: { status: "failed", failureReason: "bad VAT", lookupRequired: false },
-    });
+      completeSending(rec("sending"), "t1", { status: "rejected", reason: "bad VAT" }, NOW, totals),
+    ).toMatchObject({ ok: true, value: { status: "failed", reason: "bad VAT" } });
   });
-  it("unknown / timeout -> unknown with lookup owed", () => {
-    expect(completeSending(rec("sending"), "t1", { status: "unknown" }, NOW)).toMatchObject({
-      ok: true,
-      value: { status: "unknown", lookupRequired: true },
-    });
+  it("unknown / timeout -> unknown, settling after the lease plus grace", () => {
+    expect(completeSending(rec("sending"), "t1", { status: "unknown" }, NOW, totals)).toMatchObject(
+      { ok: true, value: { status: "unknown", settlesAtMs: SETTLED } },
+    );
   });
   it("an answer after the lease expired is not trusted, even a success", () => {
-    expect(completeSending(rec("sending"), "t1", issuedOutcome, lease.expiresAtMs)).toMatchObject({
-      ok: true,
-      value: { status: "unknown", lookupRequired: true, issued: null },
-    });
+    expect(
+      completeSending(rec("sending"), "t1", issuedOutcome, lease.expiresAtMs, totals),
+    ).toMatchObject({ ok: true, value: { status: "unknown", settlesAtMs: SETTLED } });
   });
-  it("refuses a wrong token and every non-sending status", () => {
-    expect(completeSending(rec("sending"), "other", issuedOutcome, NOW)).toMatchObject({
+  it("refuses a wrong token, a bad clock and every non-sending status", () => {
+    expect(completeSending(rec("sending"), "other", issuedOutcome, NOW, totals)).toMatchObject({
       refusal: { code: "lease_mismatch" },
     });
+    expect(completeSending(rec("sending"), "t1", issuedOutcome, Number.NaN, totals)).toMatchObject({
+      refusal: { code: "bad_time" },
+    });
     for (const s of STATUSES.filter((x) => x !== "sending")) {
-      expect(statusAfter(completeSending(rec(s), "t1", issuedOutcome, NOW))).toBe("refused");
+      expect(statusAfter(completeSending(rec(s), "t1", issuedOutcome, NOW, totals))).toBe(
+        "refused",
+      );
     }
+  });
+  it("a late answer is distrusted even with an Infinity-like clock", () => {
+    expect(completeSending(rec("sending"), "t1", issuedOutcome, 1e15, totals)).toMatchObject({
+      ok: true,
+      value: { status: "unknown" },
+    });
+    expect(completeSending(rec("sending"), "t1", issuedOutcome, 2 ** 60, totals)).toMatchObject({
+      refusal: { code: "bad_time" },
+    });
   });
 });
 
 describe("applyLookup", () => {
-  it("found -> issued from unknown, with the provider's identity", () => {
-    expect(applyLookup(rec("unknown"), found)).toMatchObject({
+  it("found with matching totals -> issued, with the provider's identity", () => {
+    expect(applyLookup(rec("unknown"), found, NOW, totals)).toMatchObject({
       ok: true,
-      value: {
-        status: "issued",
-        lookupRequired: false,
-        issued: { number: "INV-1", pdfRef: "pdf" },
-      },
+      value: { status: "issued", issued: { number: "INV-1", pdfRef: "pdf" } },
     });
   });
-  it("not_found stays unknown but clears the duty, so a retry is allowed", () => {
-    expect(applyLookup(rec("unknown"), { status: "not_found" })).toMatchObject({
-      ok: true,
-      value: { status: "unknown", lookupRequired: false },
+  it("found with different totals -> needs_review, identity kept, nothing owed", () => {
+    for (const status of ["unknown", "owed"] as const) {
+      const r = applyLookup(
+        status === "unknown" ? rec("unknown") : owedReview(),
+        { ...found, totals: { ...totals, grossPence: 12_001 } },
+        NOW,
+        totals,
+      );
+      expect(r).toMatchObject({
+        ok: true,
+        value: {
+          status: "needs_review",
+          lookup: "clear",
+          issued: { providerId: "p1" },
+          mismatch: { field: "grossPence", differencePence: 1 },
+        },
+      });
+    }
+  });
+  it("not_found before the first request has settled is refused", () => {
+    expect(applyLookup(rec("unknown"), { status: "not_found" }, SETTLED - 1, totals)).toMatchObject(
+      {
+        refusal: { code: "lookup_too_early" },
+      },
+    );
+    expect(applyLookup(owedReview(), { status: "not_found" }, SETTLED - 1, totals)).toMatchObject({
+      refusal: { code: "lookup_too_early" },
     });
+  });
+  it("not_found after it has settled: unknown -> pending; a review is cleared of its duty", () => {
+    expect(applyLookup(rec("unknown"), { status: "not_found" }, SETTLED, totals)).toMatchObject({
+      ok: true,
+      value: { status: "pending", attempts: 1 },
+    });
+    expect(applyLookup(owedReview(), { status: "not_found" }, SETTLED, totals)).toMatchObject({
+      ok: true,
+      value: { status: "needs_review", lookup: "clear", issued: null },
+    });
+  });
+  it("found is believed at any time: the document exists", () => {
+    expect(statusAfter(applyLookup(rec("unknown"), found, 0, totals))).toBe("issued");
   });
   it("ambiguous -> needs_review, and the lookup is still owed", () => {
-    expect(applyLookup(rec("unknown"), { status: "ambiguous", count: 2 })).toMatchObject({
-      ok: true,
-      value: { status: "needs_review", lookupRequired: true },
-    });
+    expect(
+      applyLookup(rec("unknown"), { status: "ambiguous", count: 2 }, NOW, totals),
+    ).toMatchObject({ ok: true, value: { status: "needs_review", lookup: "owed" } });
   });
   it("unavailable changes nothing", () => {
     const r = rec("unknown");
-    expect(applyLookup(r, { status: "unavailable", reason: "429" })).toEqual({
+    expect(applyLookup(r, { status: "unavailable", reason: "429" }, NOW, totals)).toEqual({
       ok: true,
       value: r,
     });
   });
   it("a review that still owes a lookup can be resolved by one", () => {
-    expect(statusAfter(applyLookup(rec("needs_review", { lookupRequired: true }), found))).toBe(
-      "issued",
-    );
+    expect(statusAfter(applyLookup(owedReview(), found, NOW, totals))).toBe("issued");
   });
-  it("refuses when no lookup is owed", () => {
-    for (const s of STATUSES) {
-      if (s === "unknown") continue;
-      expect(statusAfter(applyLookup(rec(s), found))).toBe("refused");
+  it("refuses when no lookup is owed, and a bad clock", () => {
+    for (const s of STATUSES.filter((x) => x !== "unknown")) {
+      expect(statusAfter(applyLookup(rec(s), found, NOW, totals))).toBe("refused");
     }
-    expect(applyLookup(rec("unknown", { lookupRequired: false }), found)).toMatchObject({
-      refusal: { code: "bad_lookup_state" },
+    expect(applyLookup(rec("unknown"), found, Number.NaN, totals)).toMatchObject({
+      refusal: { code: "bad_time" },
     });
   });
 });
@@ -196,18 +305,16 @@ describe("escalate, requeue, cancel", () => {
       );
     }
     expect(escalate(rec("unknown"), "check")).toMatchObject({
-      value: { lookupRequired: true, failureReason: "check" },
+      value: { lookup: "owed", reason: "check", settlesAtMs: SETTLED },
+    });
+    expect(escalate(rec("failed"), "check")).toMatchObject({
+      value: { lookup: "clear", issued: null },
     });
   });
   it("requeue: failed -> pending; needs_review -> pending only with no lookup owed", () => {
-    expect(requeue(rec("failed"))).toMatchObject({
-      ok: true,
-      value: { status: "pending", failureReason: null },
-    });
+    expect(requeue(rec("failed"))).toMatchObject({ ok: true, value: { status: "pending" } });
     expect(requeue(rec("needs_review"))).toMatchObject({ ok: true, value: { status: "pending" } });
-    expect(requeue(rec("needs_review", { lookupRequired: true }))).toMatchObject({
-      refusal: { code: "lookup_required" },
-    });
+    expect(requeue(owedReview())).toMatchObject({ refusal: { code: "lookup_required" } });
     for (const s of STATUSES.filter((x) => x !== "failed" && x !== "needs_review")) {
       expect(statusAfter(requeue(rec(s)))).toBe("refused");
     }
@@ -216,41 +323,213 @@ describe("escalate, requeue, cancel", () => {
     expect(statusAfter(cancel(rec("pending")))).toBe("cancelled");
     expect(statusAfter(cancel(rec("failed")))).toBe("cancelled");
     expect(statusAfter(cancel(rec("needs_review")))).toBe("cancelled");
-    expect(cancel(rec("needs_review", { lookupRequired: true }))).toMatchObject({
-      refusal: { code: "lookup_required" },
-    });
+    expect(cancel(owedReview())).toMatchObject({ refusal: { code: "lookup_required" } });
     expect(cancel(rec("unknown"))).toMatchObject({ refusal: { code: "lookup_required" } });
-    for (const s of ["sending", "issued", "cancelled"] as const)
+    for (const s of ["sending", "issued", "cancelled"] as const) {
       expect(statusAfter(cancel(rec(s)))).toBe("refused");
+    }
   });
 });
 
-describe("end to end", () => {
-  it("timeout -> lookup finds it -> issued, with no second send", () => {
-    let r = startSending(newRecord("invoice", "LAX-INV-9"), lease, NOW);
-    if (!r.ok) throw new Error("start");
-    r = completeSending(r.value, "t1", { status: "unknown", detail: "timeout" }, NOW + 1);
-    if (!r.ok) throw new Error("complete");
-    expect(startSending(r.value, { token: "t2", expiresAtMs: NOW + 9 }, NOW + 2).ok).toBe(false);
-    r = applyLookup(r.value, found);
-    expect(r).toMatchObject({ ok: true, value: { status: "issued", attempts: 1 } });
-  });
-  it("timeout -> lookup finds nothing -> retry sends again", () => {
-    let r = startSending(newRecord("invoice", "LAX-INV-9"), lease, NOW);
-    if (!r.ok) throw new Error("start");
-    r = expireLease(r.value, lease.expiresAtMs);
-    if (!r.ok) throw new Error("expire");
-    r = applyLookup(r.value, { status: "not_found" });
-    if (!r.ok) throw new Error("lookup");
-    expect(
-      startSending(
-        r.value,
-        { token: "t2", expiresAtMs: lease.expiresAtMs + 60_000 },
-        lease.expiresAtMs + 1,
+describe("never create twice", () => {
+  const start = () => must(startSending(newRecord("invoice", "LAX-SHOP-INV-9"), lease, NOW));
+
+  it("timeout inside the lease -> immediate not_found is refused -> no second send", () => {
+    // the HTTP client gave up at NOW + 30s, but the provider is still processing the POST
+    const unknown = must(
+      completeSending(
+        start(),
+        "t1",
+        { status: "unknown", detail: "timeout" },
+        NOW + 30_000,
+        totals,
       ),
-    ).toMatchObject({
+    );
+    expect(unknown.status).toBe("unknown");
+    const early = applyLookup(unknown, { status: "not_found" }, NOW + 30_001, totals);
+    expect(early).toMatchObject({ refusal: { code: "lookup_too_early" } });
+    expect(
+      statusAfter(startSending(unknown, { token: "t2", expiresAtMs: NOW + 90_000 }, NOW + 30_002)),
+    ).toBe("refused");
+  });
+  it("timeout -> lookup finds it -> issued, with no second send", () => {
+    const unknown = must(completeSending(start(), "t1", { status: "unknown" }, NOW + 1, totals));
+    expect(startSending(unknown, { token: "t2", expiresAtMs: NOW + 9 }, NOW + 2).ok).toBe(false);
+    expect(applyLookup(unknown, found, NOW + 2, totals)).toMatchObject({
       ok: true,
-      value: { status: "sending", attempts: 2 },
+      value: { status: "issued", attempts: 1 },
     });
+  });
+  it("timeout -> settled not_found -> retry sends again", () => {
+    const unknown = must(expireLease(start(), lease.expiresAtMs));
+    const pending = must(applyLookup(unknown, { status: "not_found" }, SETTLED, totals));
+    expect(
+      startSending(pending, { token: "t2", expiresAtMs: SETTLED + 60_000 }, SETTLED + 1),
+    ).toMatchObject({ ok: true, value: { status: "sending", attempts: 2 } });
+  });
+
+  it("property: random action sequences never send twice without a settled not_found between", () => {
+    forAll(400, (rng) => {
+      let record: DocumentRecord = newRecord("invoice", "LAX-SHOP-INV-p");
+      let now = NOW;
+      let token = 0;
+      // true while a request may exist in the provider that no settled lookup has ruled out
+      let mayExist = false;
+      let sends = 0;
+      for (let step = 0; step < 40; step++) {
+        now += int(rng, 0, 90_000);
+        const action = pick(rng, [
+          "start",
+          "ok",
+          "ok_wrong_total",
+          "timeout",
+          "rejected",
+          "expire",
+          "not_found",
+          "found",
+          "ambiguous",
+          "unavailable",
+          "escalate",
+          "requeue",
+          "cancel",
+        ] as const);
+        let next: ReturnType<typeof startSending> | undefined;
+        switch (action) {
+          case "start": {
+            token++;
+            next = startSending(
+              record,
+              { token: `t${token}`, expiresAtMs: now + int(rng, 1, 120_000) },
+              now,
+            );
+            if (next.ok) {
+              expect(mayExist).toBe(false);
+              sends++;
+              mayExist = true;
+            }
+            break;
+          }
+          case "ok":
+          case "ok_wrong_total":
+          case "timeout":
+          case "rejected": {
+            const outcome: IssueOutcome =
+              action === "timeout"
+                ? { status: "unknown" }
+                : action === "rejected"
+                  ? { status: "rejected", reason: "no" }
+                  : {
+                      ...issuedOutcome,
+                      totals: action === "ok" ? totals : { ...totals, netPence: 1 },
+                    };
+            const tok = record.status === "sending" ? record.lease.token : "x";
+            next = completeSending(record, tok, outcome, now, totals);
+            if (next.ok && next.value.status === "failed") mayExist = false;
+            if (
+              next.ok &&
+              (next.value.status === "issued" || next.value.status === "needs_review")
+            ) {
+              mayExist = false; // it exists and we hold its identity: nothing to duplicate
+            }
+            break;
+          }
+          case "expire":
+            next = expireLease(record, now);
+            break;
+          case "not_found":
+          case "found":
+          case "ambiguous":
+          case "unavailable": {
+            const outcome: LookupOutcome =
+              action === "found"
+                ? found
+                : action === "ambiguous"
+                  ? { status: "ambiguous", count: 2 }
+                  : action === "unavailable"
+                    ? { status: "unavailable", reason: "x" }
+                    : { status: "not_found" };
+            next = applyLookup(record, outcome, now, totals);
+            if (next.ok && action === "not_found") {
+              mayExist = false;
+              // accepted only once the request can no longer land
+              expect(record.status === "unknown" || record.status === "needs_review").toBe(true);
+              if (record.status === "unknown" || record.status === "needs_review") {
+                if ("settlesAtMs" in record) expect(now).toBeGreaterThanOrEqual(record.settlesAtMs);
+              }
+            }
+            if (next.ok && action === "found") mayExist = false;
+            break;
+          }
+          case "escalate":
+            next = escalate(record, "x");
+            break;
+          case "requeue": {
+            next = requeue(record);
+            if (next.ok) expect(mayExist).toBe(false);
+            break;
+          }
+          case "cancel":
+            next = cancel(record);
+            break;
+        }
+        if (next?.ok) record = next.value;
+        // whatever happened, a record that may have a request in flight is never sendable
+        if (mayExist && record.status === "pending") {
+          throw new Error(`pending while a send may still exist (sends: ${sends})`);
+        }
+      }
+    });
+  });
+});
+
+describe("parseRecord", () => {
+  it("round-trips every legal record", () => {
+    for (const r of [...STATUSES.map(rec), owedReview()]) {
+      expect(parseRecord(JSON.parse(JSON.stringify(r)))).toEqual({ ok: true, value: r });
+    }
+  });
+  it("refuses the illegal states a flat row could hold", () => {
+    const flat = { kind: "invoice", reference: "LAX-SHOP-INV-1", attempts: 1 };
+    const rows: unknown[] = [
+      null,
+      "x",
+      { ...flat, status: "unknown" }, // no settle time: lookup would not be owed
+      { ...flat, status: "unknown", settlesAtMs: Number.NaN },
+      { ...flat, status: "unknown", settlesAtMs: Number.POSITIVE_INFINITY },
+      { ...flat, status: "sending" },
+      { ...flat, status: "sending", lease: { token: "", expiresAtMs: 5 } },
+      { ...flat, status: "sending", lease: { token: "t", expiresAtMs: Number.NaN } },
+      { ...flat, status: "issued" },
+      { ...flat, status: "issued", issued: null },
+      { ...flat, status: "failed" },
+      { ...flat, status: "needs_review", reason: "r" },
+      { ...flat, status: "needs_review", reason: "r", lookup: "owed" },
+      { ...flat, status: "needs_review", reason: "r", lookup: "clear", issued: 5 },
+      {
+        ...flat,
+        status: "needs_review",
+        reason: "r",
+        lookup: "clear",
+        issued: null,
+        mismatch: { field: "grossPence", differencePence: 1 },
+      },
+      { ...flat, status: "nonsense" },
+      { ...flat, status: "pending", attempts: -1 },
+      { ...flat, status: "pending", kind: "refund" },
+      { ...flat, status: "pending", reference: "" },
+    ];
+    for (const row of rows) {
+      expect(parseRecord(row)).toMatchObject({ ok: false, refusal: { code: "bad_record" } });
+    }
+  });
+  it("a defaulted row (unknown, lookup_required false) cannot become a resend", () => {
+    const row = {
+      kind: "invoice",
+      reference: "LAX-SHOP-INV-1",
+      attempts: 1,
+      status: "unknown",
+      lookupRequired: false,
+    };
+    expect(parseRecord(row).ok).toBe(false);
   });
 });

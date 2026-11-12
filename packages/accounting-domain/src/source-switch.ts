@@ -1,4 +1,4 @@
-import type { Product } from "./document.js";
+import { PRODUCTS, type Product } from "./document.js";
 import { type Result, ok, refuse } from "./result.js";
 
 export const SOURCES = ["xero", "books"] as const;
@@ -13,22 +13,20 @@ export type Mode = (typeof MODES)[number];
 export type ProductSwitch = Readonly<Record<Source, Mode>>;
 export type SwitchConfig = Readonly<Record<Product, ProductSwitch>>;
 
-export type SwitchCode = "two_live_sources" | "bad_mode";
+export type SwitchCode = "two_live_sources" | "bad_mode" | "missing_product";
 
-/** The one live source for a product, or "none". Throws if two are live: validate first. */
-export function liveSourceOf(product: ProductSwitch): LiveSource {
-  const live = SOURCES.filter((s) => product[s] === "live");
-  if (live.length > 1) throw new Error("two live sources");
-  return live[0] ?? "none";
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
 }
 
 /** Refuse a configuration that has two live invoice sources for the same product. */
 export function validateProductSwitch(
   product: Product,
-  config: ProductSwitch,
+  config: unknown,
 ): Result<LiveSource, SwitchCode> {
+  if (!isRecord(config)) return refuse("missing_product", `${product}: no switch configured`);
   for (const source of SOURCES) {
-    if (!MODES.includes(config[source])) {
+    if (!MODES.includes(config[source] as Mode)) {
       return refuse("bad_mode", `${product}: unknown mode for ${source}`);
     }
   }
@@ -39,15 +37,32 @@ export function validateProductSwitch(
   return ok(live[0] ?? "none");
 }
 
-/** Validate every product; the first refusal wins. */
+/**
+ * Read a configuration of unknown shape. Every product in `PRODUCTS` must be present and valid,
+ * so a product can never be skipped; a missing one is a refusal, never a throw. The first refusal wins.
+ */
+export function parseSwitchConfig(config: unknown): Result<SwitchConfig, SwitchCode> {
+  const out: Partial<Record<Product, ProductSwitch>> = {};
+  for (const product of PRODUCTS) {
+    const entry = isRecord(config) ? config[product] : undefined;
+    const result = validateProductSwitch(product, entry);
+    if (!result.ok) return result;
+    const e = entry as Record<Source, Mode>;
+    out[product] = { xero: e.xero, books: e.books };
+  }
+  return ok(out as SwitchConfig);
+}
+
+/** Validate every product and give the one live source of each. */
 export function validateSwitchConfig(
-  config: SwitchConfig,
-  products: readonly Product[],
+  config: unknown,
 ): Result<Readonly<Record<Product, LiveSource>>, SwitchCode> {
+  const parsed = parseSwitchConfig(config);
+  if (!parsed.ok) return parsed;
   const live: Partial<Record<Product, LiveSource>> = {};
-  for (const product of products) {
-    const result = validateProductSwitch(product, config[product]);
-    if (!result.ok) return { ok: false, refusal: result.refusal };
+  for (const product of PRODUCTS) {
+    const result = validateProductSwitch(product, parsed.value[product]);
+    if (!result.ok) return result;
     live[product] = result.value;
   }
   return ok(live as Record<Product, LiveSource>);
