@@ -5,14 +5,9 @@ export type ReofferMoneyStep = "reoffer_send" | "reoffer_accept";
 
 /**
  * The Zoho sold-while-live guard. It throws (a `ReofferError` with code `money_paused`) when
- * money movement is paused. HOOK POINT: `assertMoneyNotPaused` from `@auction/artwork-register-contracts`
- * is not on main yet; when it lands, the container adapter calls it here with these step names
- * and nothing else changes. Until then the default adapter allows every step.
- *
- * RELEASE GATE: the allow-all default means the Zoho sold-while-live pause is NOT enforced in
- * production. Do not announce or switch on the re-offer feature until the container passes a real
- * `moneyPause` into `createReofferServices`. The register place guard still refuses a Sold or
- * Reserved artwork, but it does not replace the pause.
+ * money movement is paused for the lot's artwork. The container supplies `RegisterMoneyPauseGuard`,
+ * which asks `assertMoneyNotPaused` from `@auction/artwork-register-contracts`; there is no
+ * allow-all default, so every caller of `createReofferServices` states its guard.
  */
 export interface IReofferMoneyPauseGuard {
   assertNotPaused(
@@ -20,11 +15,6 @@ export interface IReofferMoneyPauseGuard {
     context: { lotId: string; reofferId: string },
   ): Promise<void>;
 }
-
-/** Placeholder until the real guard is wired; see the RELEASE GATE note on the interface above. */
-export const allowAllMoneyPauseGuard: IReofferMoneyPauseGuard = {
-  async assertNotPaused() {},
-};
 
 /**
  * The gallery-sale-wins rule (IC6/Q7): the artwork may be offered or sold elsewhere while the lot

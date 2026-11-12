@@ -1,51 +1,44 @@
-import { readFileSync, readdirSync, statSync } from "node:fs";
-import { dirname, join, relative } from "node:path";
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { MONEY_PAUSE_ACTIONS } from "./money-pause.js";
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "../../..");
+const reofferDir = "apps/api/src/services/reoffer";
 
-function sourceFiles(dir: string): string[] {
-  const found: string[] = [];
-  for (const name of readdirSync(dir)) {
-    if (name === "node_modules" || name === "dist") continue;
-    const path = join(dir, name);
-    if (statSync(path).isDirectory()) found.push(...sourceFiles(path));
-    else if (/\.tsx?$/.test(name) && !/\.test\.tsx?$/.test(name)) found.push(path);
-  }
-  return found;
+function read(path: string): string {
+  return readFileSync(join(repoRoot, path), "utf8");
 }
 
-/** Re-offer send/accept services: apps only. The domain package holds pure rules, not endpoints. */
-function reofferServices(): string[] {
-  const apps = join(repoRoot, "apps");
-  return readdirSync(apps)
-    .map((app) => join(apps, app, "src"))
-    .filter((dir) => {
-      try {
-        return statSync(dir).isDirectory();
-      } catch {
-        return false;
-      }
-    })
-    .flatMap(sourceFiles)
-    .filter((file) => /reoffer/i.test(relative(repoRoot, file)))
-    .filter((file) => /(send|accept)/i.test(file.split("/").pop() ?? ""));
-}
-
+/**
+ * The re-offer steps that move money live in two api services. Each must ask the pause guard
+ * with its own step name, and the container must hand both the real guard (never an allow-all).
+ * Behaviour is covered in the api tests; this fails if the call or the wiring is removed.
+ */
 describe("re-offer services and the money pause", () => {
-  it("every re-offer send/accept service calls assertMoneyNotPaused (tracked: none exists yet)", () => {
-    const missing = reofferServices().filter((file) => {
-      const name = file.split("/").pop() ?? "";
-      const text = readFileSync(file, "utf8");
-      const needed = [
-        ...(/send/i.test(name) ? ["reoffer_send"] : []),
-        ...(/accept/i.test(name) ? ["reoffer_accept"] : []),
-      ];
-      return (
-        !text.includes("assertMoneyNotPaused") || needed.some((action) => !text.includes(action))
-      );
-    });
-    expect(missing.map((file) => relative(repoRoot, file))).toEqual([]);
+  it("names both re-offer steps among the pause actions", () => {
+    expect(MONEY_PAUSE_ACTIONS).toEqual(expect.arrayContaining(["reoffer_send", "reoffer_accept"]));
+  });
+
+  it.each([
+    ["reoffer-offer.service.ts", "reoffer_send"],
+    ["reoffer-response.service.ts", "reoffer_accept"],
+  ])("%s asks the pause guard with %s", (file, step) => {
+    expect(read(`${reofferDir}/${file}`)).toContain(`moneyPause.assertNotPaused("${step}"`);
+  });
+
+  it("the guard adapter calls assertMoneyNotPaused with the step it is given", () => {
+    expect(read(`${reofferDir}/register-money-pause.guard.ts`)).toMatch(
+      /assertMoneyNotPaused\([^)]*\bstep\b\s*\)/s,
+    );
+  });
+
+  it("the container wires the real guard into both services, with no allow-all fallback", () => {
+    const container = read("apps/api/src/container/create-reoffer-services.ts");
+    expect(container).toContain("new RegisterMoneyPauseGuard(");
+    expect(container).not.toMatch(/allow-?all/i);
+    expect(container).toMatch(/new ReofferOfferService\(\{[^}]*\bmoneyPause\b[^}]*\}\)/s);
+    expect(container).toMatch(/new ReofferResponseService\(\{[^}]*\bmoneyPause\b[^}]*\}\)/s);
   });
 });
