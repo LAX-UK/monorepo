@@ -17,6 +17,7 @@ import {
   validateOfferOnLaxArtForm,
   withArtist,
 } from "@/lib/offer-on-lax-art-form";
+import { zohoPriceLabel } from "@/lib/zoho-price";
 import {
   getLaxArtOfferAssessment,
   offerOnLaxArt,
@@ -86,6 +87,11 @@ function ZohoFacts({ assessment }: { assessment: AdminLaxArtOfferAssessment }) {
       label: "Size",
       text: lacks("size") ? "Missing in Zoho" : (assessment.dimensions ?? ""),
       tone: lacks("size") ? "warning" : "normal",
+    },
+    {
+      label: "Price",
+      text: zohoPriceLabel(assessment.zohoPrice) ?? "Not set in Zoho",
+      tone: "normal",
     },
     {
       label: "Year",

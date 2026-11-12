@@ -2448,6 +2448,13 @@
     {
       "idx": 350,
       "version": "7",
+      "when": 1806307200000,
+      "tag": "0362_artwork_register_zoho_price",
+      "breakpoints": true
+    },
+    {
+      "idx": 351,
+      "version": "7",
       "when": 1806652800000,
       "tag": "0366_zoho_sync_health",
       "breakpoints": true

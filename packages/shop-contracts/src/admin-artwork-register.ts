@@ -1,4 +1,5 @@
 import { type Static, Type } from "@sinclair/typebox";
+import { AdminCatalogueChangeSchema } from "./admin-catalogue-change.js";
 import {
   AdminLaxArtListingSchema,
   AdminLaxArtOfferBlockerSchema,
@@ -213,6 +214,8 @@ export const AdminRegisterDetailSchema = Type.Object({
   year: Type.Union([Type.Integer(), Type.Null()]),
   imageCount: Type.Integer({ minimum: 0 }),
   catalogueStatus: Type.Union([Type.String(), Type.Null()]),
+  /** Zoho's price in pounds ("250.00"), shown beside the LAX price; null when Zoho has none. Information only. */
+  zohoPrice: Type.Union([Type.String(), Type.Null()]),
   offerState: Type.String(),
   /** Where it is, drawn the same on every page (see `deriveWhereItIs`). */
   whereItIs: AdminWhereItIsSchema,
@@ -220,6 +223,8 @@ export const AdminRegisterDetailSchema = Type.Object({
   laxArt: Type.Union([AdminLaxArtListingSchema, Type.Null()]),
   /** Why it cannot go on lax.art now, most important first; empty when it can. */
   offerBlockers: Type.Array(AdminLaxArtOfferBlockerSchema),
+  /** Where the lax.art listing or Bid lot made from this record no longer matches Zoho; empty when none differ. */
+  catalogueChanges: Type.Array(AdminCatalogueChangeSchema),
   /** Why it cannot be offered at auction now, most important first; empty when it can. */
   auctionBlockers: Type.Array(AdminLaxArtOfferBlockerSchema),
   missing: Type.Array(GapSchema),

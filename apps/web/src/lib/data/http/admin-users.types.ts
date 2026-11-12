@@ -1,4 +1,5 @@
 import type { AdminAmlScreeningRow } from "@/lib/data/http/compliance.server";
+import type { SignInMethodKinds } from "@auction/identity-contracts";
 import type { LegalEntity } from "@auction/types";
 
 export type AdminUserRow = {
@@ -52,6 +53,8 @@ export type GetAdminUserListParams = {
 
 export type AdminUserDetailPayload = AdminUserRow & {
   securityStatusAvailable: boolean;
+  /** Null ("Not available") when the issuer could not say which kinds of sign-in method exist. */
+  signInMethodKinds: SignInMethodKinds | null;
   suspendedReason: string | null;
   dateOfBirth: string | null;
   emailStatusChangedAt: string | null;

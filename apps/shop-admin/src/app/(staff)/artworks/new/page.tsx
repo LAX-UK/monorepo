@@ -2,6 +2,7 @@ import { AdminFailedPage } from "@/components/admin-fetch-state";
 import { ArtworkEditor } from "@/components/artworks/artwork-editor.client";
 import { loadNewArtworkPage } from "@/server/application/load-artwork-pages";
 import { singleParam } from "@/server/domain/list-url-state";
+import { LONDON_TIME_ZONE, calendarYear } from "@auction/datetime";
 import { redirect } from "next/navigation";
 
 export const metadata = { title: "New artwork" };
@@ -27,7 +28,7 @@ export default async function NewArtworkPage({
       initialArtist={result.data.initialArtist}
       companionOf={result.data.companionOf}
       permissions={result.data.permissions}
-      currentYear={new Date().getFullYear()}
+      currentYear={calendarYear(new Date(), LONDON_TIME_ZONE)}
     />
   );
 }

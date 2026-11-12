@@ -16,6 +16,7 @@ import { registerAdminArtistApplicationRoutes } from "./routes/admin/v1/admin-ar
 import { registerAdminArtistIdentityRoutes } from "./routes/admin/v1/admin-artist-identity.routes.js";
 import { registerAdminArtistRoutes } from "./routes/admin/v1/admin-artists.routes.js";
 import { registerAdminArtworkRegisterRoutes } from "./routes/admin/v1/admin-artwork-register.routes.js";
+import { registerAdminCatalogueChangeRoutes } from "./routes/admin/v1/admin-catalogue-change.routes.js";
 import { registerAdminEditorialRoutes } from "./routes/admin/v1/admin-editorial.routes.js";
 import { registerAdminEnquiryRoutes } from "./routes/admin/v1/admin-enquiries.routes.js";
 import { registerAdminGuestRoutes } from "./routes/admin/v1/admin-guests.routes.js";
@@ -215,6 +216,7 @@ export function createShopApiApp(options: CreateShopApiAppOptions) {
         void registerAdminArtworkRegisterRoutes(adminScope, options.deps.admin.artworkRegister);
         void registerAdminZohoSyncHealthRoutes(adminScope, options.deps.admin.zohoSyncHealth);
         void registerAdminOfferOnLaxArtRoutes(adminScope, options.deps.admin);
+        void registerAdminCatalogueChangeRoutes(adminScope, options.deps.admin);
         void registerAdminZohoLinkRoutes(adminScope, options.deps.admin);
         void registerAdminReleaseAlertRoutes(adminScope, options.deps.admin.releaseAlertSummary);
         void registerAdminPrintPartyRoutes(adminScope, options.deps.admin.printParties);

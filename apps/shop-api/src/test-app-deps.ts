@@ -309,6 +309,7 @@ export function createMinimalShopApiTestDeps(
       }),
       zohoSyncHealth: createTestZohoSyncHealth(),
       artworkRegister: new ArtworkRegisterReviewService({
+        catalogueChanges: { changesFor: async () => [] },
         queue: {
           listHeld: async () => ({ entries: [], total: 0 }),
           listOpenConflicts: async () => ({ items: [], total: 0 }),
@@ -342,6 +343,11 @@ export function createMinimalShopApiTestDeps(
           },
         },
       }),
+      catalogueChange: {
+        update: async () => {
+          throw new Error("catalogueChange.update is not stubbed");
+        },
+      },
       offerOnLaxArt: {
         assess: async () => {
           throw new Error("offerOnLaxArt.assess is not stubbed");

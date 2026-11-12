@@ -12,9 +12,12 @@ const journal = JSON.parse(read("meta/_journal.json")) as {
 };
 
 describe("migration 0366 Zoho sync health", () => {
-  it("is journal entry 349, after the entry before it", () => {
+  it("follows the entry before it with a higher idx and a later timestamp", () => {
     const at = journal.entries.findIndex((e) => e.tag === "0366_zoho_sync_health");
-    expect(journal.entries[at]?.idx).toBe(349);
+    expect(at).toBeGreaterThan(0);
+    expect(journal.entries[at]?.idx).toBeGreaterThan(
+      journal.entries[at - 1]?.idx ?? Number.MAX_SAFE_INTEGER,
+    );
     expect(journal.entries[at]?.when).toBeGreaterThan(
       journal.entries[at - 1]?.when ?? Number.POSITIVE_INFINITY,
     );

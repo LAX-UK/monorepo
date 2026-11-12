@@ -44,6 +44,7 @@ export function isIgnored(appConfig, routeKey) {
  */
 export function auditApp({ app, appConfig, appManifest, buildManifest, chunkOf, enforce = false }) {
   const sumKb = (files) => files.reduce((sum, file) => sum + chunkOf(file).gzipKb, 0);
+  const sumParsedKb = (files) => files.reduce((sum, file) => sum + chunkOf(file).rawBytes / KB, 0);
   return pageRoutes(appManifest)
     .filter((route) => !isIgnored(appConfig, route))
     .map((route) => {
@@ -58,6 +59,7 @@ export function auditApp({ app, appConfig, appManifest, buildManifest, chunkOf, 
         group,
         files: files.length,
         gzipKb: sumKb(files),
+        parsedKb: sumParsedKb(files),
         frameKb: sumKb(frame),
         pageKb: sumKb(page),
         duplicateCount: duplicates.count,
