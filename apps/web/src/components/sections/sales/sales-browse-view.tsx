@@ -11,9 +11,9 @@ import { SalesPrimaryTabs } from "@/components/sections/sales/sales-primary-tabs
 import { MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
 import type { SalesBrowsePageData } from "@/lib/marketing/load-sales-browse-page";
 import { calendarSalesHref } from "@/lib/marketing/sales-calendar-params";
-import { MarketingSectionReveal } from "@auction/marketing-ui";
-import { cn } from "@auction/ui";
-import { ButtonLink } from "@auction/ui/lax";
+import { MarketingSectionReveal } from "@auction/marketing-ui/motion/index";
+import { ButtonLink } from "@auction/ui/lax/button-link";
+import { cn } from "@auction/ui/lib/utils";
 import Link from "next/link";
 
 type SalesBrowseViewProps = SalesBrowsePageData;

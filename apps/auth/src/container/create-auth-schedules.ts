@@ -5,12 +5,14 @@ import { startDataRequestRetentionSchedule } from "../infrastructure/data-reques
 import { startIdentityDeletionPurgeSchedule } from "../infrastructure/identity-deletion-purge.schedule.js";
 import { startIdentityLifecycleReconciliationSchedule } from "../infrastructure/identity-lifecycle-reconciliation.schedule.js";
 import { startIdentityRetentionSchedule } from "../infrastructure/identity-retention.schedule.js";
+import { startSessionExpirySchedule } from "../infrastructure/session-expiry.schedule.js";
 import { startSubjectExportMaintenanceSchedule } from "../infrastructure/subject-export-maintenance.schedule.js";
 import type { BackchannelLogoutDeliveryWorker } from "../services/backchannel-logout-delivery.worker.js";
 import { startBackchannelLogoutSchedule } from "../services/backchannel-logout.schedule.js";
 import type { DataRequestWriter } from "../services/data-request.ports.js";
 import type { DurableSecurityEffects } from "../services/durable-security-effects.js";
 import type { IdentityDeletionPurgeService } from "../services/identity-deletion-purge.service.js";
+import type { SessionExpirySweep } from "../services/session-expiry-sweep.service.js";
 import type { SsfDeliveryWorker } from "../services/ssf-delivery.worker.js";
 import type { SsfStreamService } from "../services/ssf-stream.service.js";
 import type { SubjectExportService } from "../services/subject-export.service.js";
@@ -25,6 +27,8 @@ export async function createAuthSchedules(options: {
   logoutDelivery: Pick<BackchannelLogoutDeliveryWorker, "drain">;
   securityEffects: Pick<DurableSecurityEffects, "drain" | "settle">;
   deletionPurge: Pick<IdentityDeletionPurgeService, "run">;
+  /** Ends sign-in records that ran out, with back-channel logout for their products. */
+  sessionExpiry: Pick<SessionExpirySweep, "run" | "batchSize">;
   ssfStreams: Pick<SsfStreamService, "provisionRegisteredStreams">;
   ssfDelivery: Pick<SsfDeliveryWorker, "enqueueFromDomainEvents" | "deliverDue">;
   subjectExports: Pick<SubjectExportService, "expireDue" | "claimDeadlineAlerts">;
@@ -91,6 +95,14 @@ export async function createAuthSchedules(options: {
       options.log.error({ err }, "identity_retention_purge_failed");
       Sentry.captureException(err);
     },
+  });
+  const sessionExpiry = startSessionExpirySchedule({
+    sweep: options.sessionExpiry,
+    onError: (err) => {
+      options.log.error({ err }, "session_expiry_sweep_failed");
+      Sentry.captureException(err);
+    },
+    onSwept: (count) => options.log.info({ count }, "session_expiry_swept"),
   });
   const deletionPurge = startIdentityDeletionPurgeSchedule({
     service: options.deletionPurge,
@@ -198,6 +210,7 @@ export async function createAuthSchedules(options: {
         logout.stop(),
         securityEffects.stop(),
         retention.stop(),
+        sessionExpiry.stop(),
         deletionPurge.stop(),
         lifecycleReconciliation.stop(),
         subjectExportMaintenance.stop(),

@@ -5,6 +5,7 @@ import {
 import type { MyPaymentRow } from "@/lib/data/http/payments.server";
 import { formatMoney } from "@/lib/format-currency";
 import { getPaymentStatusView } from "@/lib/presenters/payment-status";
+import { LONDON_TIME_ZONE, formatDate } from "@auction/datetime";
 import type { ManualReviewReason, PaymentStatus } from "@auction/types";
 
 /** Display-ready row consumed by the buyer payments page. Pure shape. */
@@ -35,16 +36,10 @@ export type PaymentDisplayRow = {
   manualReviewReason: ManualReviewReason | null;
 };
 
-const DATE_FMT = new Intl.DateTimeFormat("en-GB", {
-  day: "2-digit",
-  month: "short",
-  year: "numeric",
-});
-
-function formatDate(iso: string): { label: string; iso: string } {
+function paymentDate(iso: string): { label: string; iso: string } {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return { label: iso, iso };
-  return { label: DATE_FMT.format(d), iso: d.toISOString() };
+  return { label: formatDate(d, LONDON_TIME_ZONE), iso: d.toISOString() };
 }
 
 /** Build the buyer's primary CTA per row. Pending → pay (unless compliance-held); otherwise invoice if known. */
@@ -96,7 +91,7 @@ function buildPrimaryAction(row: MyPaymentRow): PaymentDisplayRow["primaryAction
 export function toPaymentDisplayRows(rows: MyPaymentRow[]): PaymentDisplayRow[] {
   return rows.map((row) => {
     const view = getPaymentStatusView(row.status);
-    const { label: createdAtLabel, iso: createdAtIso } = formatDate(row.createdAt);
+    const { label: createdAtLabel, iso: createdAtIso } = paymentDate(row.createdAt);
     return {
       id: row.id,
       lotId: row.lotId,

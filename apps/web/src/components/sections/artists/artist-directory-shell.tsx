@@ -16,17 +16,19 @@ import { SELL_A_WORK_LABEL } from "@/lib/marketing/sell-flow-copy";
 import { breadcrumbJsonLd, itemListJsonLd, jsonLdScript } from "@/lib/seo/structured-data";
 import { artistPath } from "@/lib/seo/url";
 import { getSiteUrl } from "@/lib/site-url";
+import { MarketingAlphabetFilter } from "@auction/marketing-ui/marketing-alphabet-filter";
 import {
-  MarketingAlphabetFilter,
   MarketingDirectory,
   MarketingDirectoryHeader,
   MarketingDirectorySearch,
+} from "@auction/marketing-ui/marketing-directory";
+import {
   type MarketingFilterLinkGroup,
   MarketingFilterLinkGroups,
-  MarketingLinkFilterSheet,
-  MarketingSortLinks,
-} from "@auction/marketing-ui";
-import { ButtonLink } from "@auction/ui/lax";
+} from "@auction/marketing-ui/marketing-filter-link-groups";
+import { MarketingLinkFilterSheet } from "@auction/marketing-ui/marketing-link-filter-sheet";
+import { MarketingSortLinks } from "@auction/marketing-ui/marketing-sort-links";
+import { ButtonLink } from "@auction/ui/lax/button-link";
 import Link from "next/link";
 
 const SORT_OPTIONS = [

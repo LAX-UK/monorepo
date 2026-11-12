@@ -3,7 +3,8 @@ import { collectHref } from "@/lib/collect/collect-links";
 import { visitCard } from "@/lib/collect/collect-visit.vm";
 import { formatCollectionWhen } from "@auction/domain";
 import type { CollectionVisitView } from "@auction/types";
-import { ButtonLink, Notice } from "@auction/ui/lax";
+import { ButtonLink } from "@auction/ui/lax/button-link";
+import { Notice } from "@auction/ui/lax/notice";
 import Link from "next/link";
 import { VisitCard } from "./visit-card";
 

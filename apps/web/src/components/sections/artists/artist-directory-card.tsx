@@ -5,10 +5,11 @@ import { artistCardCaption } from "@/lib/artists/artist-card-caption";
 import { artistKindMeta } from "@/lib/artists/kind-presenter";
 import type { ArtistProfileLinkContext } from "@/lib/marketing/catalog-links";
 import { artistProfileHref } from "@/lib/marketing/catalog-links";
-import { MarketingArtistCard, marketingArtistFactsLine } from "@auction/marketing-ui";
+import { MarketingArtistCard } from "@auction/marketing-ui/marketing-artist-card";
+import { marketingArtistFactsLine } from "@auction/marketing-ui/marketing-artist-facts";
 import type { PublicArtistDirectoryRow } from "@auction/types";
-import { cn } from "@auction/ui";
-import { StatusBadge } from "@auction/ui/lax";
+import { StatusBadge } from "@auction/ui/lax/status-badge";
+import { cn } from "@auction/ui/lib/utils";
 
 type Props = {
   artist: PublicArtistDirectoryRow;

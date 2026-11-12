@@ -7,7 +7,7 @@ import { wizardStepIndex } from "@/lib/forms/submission/step-validation";
 import { useSubmissionWizardController } from "@/lib/forms/submission/use-submission-wizard-controller";
 import { sendToSpecialistsLabel } from "@/lib/seller/sell-flow";
 import type { SellerAccountChoice, SellerAccountOption } from "@/lib/seller/seller-account-options";
-import { Button } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
 import type { ItemSubmissionFormValues } from "@auction/validators";
 import { useEffect, useRef, useState } from "react";
 

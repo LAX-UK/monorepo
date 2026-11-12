@@ -2,7 +2,11 @@
 
 import { SUBMISSION_SUBMIT_LABEL } from "@/lib/marketing/sell-flow-copy";
 import type { SellerAccountOption } from "@/lib/seller/seller-account-options";
-import { Button, ButtonLink, Notice, PresetCards, TextLink } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
+import { ButtonLink } from "@auction/ui/lax/button-link";
+import { Notice } from "@auction/ui/lax/notice";
+import { PresetCards } from "@auction/ui/lax/preset-cards";
+import { TextLink } from "@auction/ui/lax/text-link";
 import Link from "next/link";
 
 type Props = {

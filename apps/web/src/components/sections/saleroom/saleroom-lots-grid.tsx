@@ -2,7 +2,7 @@ import { MarketingCatalogGrid } from "@/components/marketing/marketing-catalog-g
 import { MarketingEmptyState } from "@/components/marketing/marketing-empty-state";
 import type { SaleroomSaleForLifecycle } from "@/components/sections/saleroom/saleroom-lot-catalog-overlay";
 import type { CatalogueRow } from "@/lib/marketing/saleroom/catalogue-rows";
-import { MarketingCardReveal } from "@auction/marketing-ui";
+import { MarketingCardReveal } from "@auction/marketing-ui/motion/index";
 import type { ReactNode } from "react";
 import { SaleroomLotCard } from "./saleroom-lot-card";
 import { SaleroomWithdrawnRow } from "./saleroom-withdrawn-row";

@@ -26,6 +26,7 @@ export class DrizzleRefreshTokenFamilyRepository implements IRefreshTokenFamilyR
         userId: oauthAccessToken.userId,
         familyId: oauthAccessToken.refreshFamilyId,
         expiresAt: oauthAccessToken.refreshTokenExpiresAt,
+        sid: oauthAccessToken.sid,
       })
       .from(oauthAccessToken)
       .where(
@@ -52,6 +53,7 @@ export class DrizzleRefreshTokenFamilyRepository implements IRefreshTokenFamilyR
       userId: row.userId,
       familyId,
       expiresAt: row.expiresAt,
+      sid: row.sid,
     };
   }
 
@@ -62,11 +64,18 @@ export class DrizzleRefreshTokenFamilyRepository implements IRefreshTokenFamilyR
   }): Promise<void> {
     try {
       await this.db.transaction(async (tx) => {
+        // The successor is issued under the same sign-in as the token it replaces.
+        const [consumed] = await tx
+          .select({ sid: oauthAccessToken.sid })
+          .from(oauthAccessToken)
+          .where(eq(oauthAccessToken.id, input.consumedTokenId))
+          .limit(1);
         const [successor] = await tx
           .update(oauthAccessToken)
           .set({
             refreshFamilyId: input.familyId,
             refreshTokenHash: hashRefreshToken(input.newRawToken),
+            sid: consumed?.sid ?? null,
           })
           .where(
             or(
@@ -97,6 +106,10 @@ export class DrizzleRefreshTokenFamilyRepository implements IRefreshTokenFamilyR
         );
       throw error;
     }
+  }
+
+  async deleteFamilyTokens(familyId: string): Promise<void> {
+    await this.db.delete(oauthAccessToken).where(eq(oauthAccessToken.refreshFamilyId, familyId));
   }
 
   async revokeFamily(familyId: string, userId: string | null): Promise<void> {

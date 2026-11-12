@@ -15,7 +15,323 @@
     },
     "./marketing-ui.css": "./src/marketing-ui.css",
     "./marketing-header.css": "./src/marketing-header.css",
-    "./marketing-sentence-case.css": "./src/marketing-sentence-case.css"
+    "./marketing-sentence-case.css": "./src/marketing-sentence-case.css",
+    "./account/index": {
+      "types": "./dist/account/index.d.ts",
+      "default": "./dist/account/index.js"
+    },
+    "./alerts/alert-link-copy": {
+      "types": "./dist/alerts/alert-link-copy.d.ts",
+      "default": "./dist/alerts/alert-link-copy.js"
+    },
+    "./alerts/alert-link-page": {
+      "types": "./dist/alerts/alert-link-page.d.ts",
+      "default": "./dist/alerts/alert-link-page.js"
+    },
+    "./bottom-bar/bottom-slot": {
+      "types": "./dist/bottom-bar/bottom-slot.d.ts",
+      "default": "./dist/bottom-bar/bottom-slot.js"
+    },
+    "./bottom-bar/bottom-tab-config": {
+      "types": "./dist/bottom-bar/bottom-tab-config.d.ts",
+      "default": "./dist/bottom-bar/bottom-tab-config.js"
+    },
+    "./catalog-active-filter-chips": {
+      "types": "./dist/catalog-active-filter-chips.d.ts",
+      "default": "./dist/catalog-active-filter-chips.js"
+    },
+    "./catalog-filter-rail": {
+      "types": "./dist/catalog-filter-rail.d.ts",
+      "default": "./dist/catalog-filter-rail.js"
+    },
+    "./catalog-view/catalog-view": {
+      "types": "./dist/catalog-view/catalog-view.d.ts",
+      "default": "./dist/catalog-view/catalog-view.js"
+    },
+    "./catalog-view/catalog-view-url-store": {
+      "types": "./dist/catalog-view/catalog-view-url-store.d.ts",
+      "default": "./dist/catalog-view/catalog-view-url-store.js"
+    },
+    "./catalog-view/use-catalog-view": {
+      "types": "./dist/catalog-view/use-catalog-view.d.ts",
+      "default": "./dist/catalog-view/use-catalog-view.js"
+    },
+    "./cover/cover-clock": {
+      "types": "./dist/cover/cover-clock.d.ts",
+      "default": "./dist/cover/cover-clock.js"
+    },
+    "./cover/cover-neutral": {
+      "types": "./dist/cover/cover-neutral.d.ts",
+      "default": "./dist/cover/cover-neutral.js"
+    },
+    "./cover/cover-sources": {
+      "types": "./dist/cover/cover-sources.d.ts",
+      "default": "./dist/cover/cover-sources.js"
+    },
+    "./cover/cover-time-line": {
+      "types": "./dist/cover/cover-time-line.d.ts",
+      "default": "./dist/cover/cover-time-line.js"
+    },
+    "./cover/cover-types": {
+      "types": "./dist/cover/cover-types.d.ts",
+      "default": "./dist/cover/cover-types.js"
+    },
+    "./cover/marketing-cover": {
+      "types": "./dist/cover/marketing-cover.d.ts",
+      "default": "./dist/cover/marketing-cover.js"
+    },
+    "./email-text": {
+      "types": "./dist/email-text.d.ts",
+      "default": "./dist/email-text.js"
+    },
+    "./footer-legal-column": {
+      "types": "./dist/footer-legal-column.d.ts",
+      "default": "./dist/footer-legal-column.js"
+    },
+    "./hang/hang-layout": {
+      "types": "./dist/hang/hang-layout.d.ts",
+      "default": "./dist/hang/hang-layout.js"
+    },
+    "./hang/marketing-hang": {
+      "types": "./dist/hang/marketing-hang.d.ts",
+      "default": "./dist/hang/marketing-hang.js"
+    },
+    "./hang/marketing-hang-label": {
+      "types": "./dist/hang/marketing-hang-label.d.ts",
+      "default": "./dist/hang/marketing-hang-label.js"
+    },
+    "./hang/marketing-hang-skeleton": {
+      "types": "./dist/hang/marketing-hang-skeleton.d.ts",
+      "default": "./dist/hang/marketing-hang-skeleton.js"
+    },
+    "./header/header-chrome-tone": {
+      "types": "./dist/header/header-chrome-tone.d.ts",
+      "default": "./dist/header/header-chrome-tone.js"
+    },
+    "./header/hero-presence": {
+      "types": "./dist/header/hero-presence.d.ts",
+      "default": "./dist/header/hero-presence.js"
+    },
+    "./header/marketing-account-sheet": {
+      "types": "./dist/header/marketing-account-sheet.d.ts",
+      "default": "./dist/header/marketing-account-sheet.js"
+    },
+    "./header/marketing-chrome-icon-button": {
+      "types": "./dist/header/marketing-chrome-icon-button.d.ts",
+      "default": "./dist/header/marketing-chrome-icon-button.js"
+    },
+    "./header/marketing-header-mega-nav": {
+      "types": "./dist/header/marketing-header-mega-nav.d.ts",
+      "default": "./dist/header/marketing-header-mega-nav.js"
+    },
+    "./header/marketing-phone-menu": {
+      "types": "./dist/header/marketing-phone-menu.d.ts",
+      "default": "./dist/header/marketing-phone-menu.js"
+    },
+    "./header/marketing-top-bar-slots": {
+      "types": "./dist/header/marketing-top-bar-slots.d.ts",
+      "default": "./dist/header/marketing-top-bar-slots.js"
+    },
+    "./header/use-header-chrome": {
+      "types": "./dist/header/use-header-chrome.d.ts",
+      "default": "./dist/header/use-header-chrome.js"
+    },
+    "./lax-family-bar": {
+      "types": "./dist/lax-family-bar.d.ts",
+      "default": "./dist/lax-family-bar.js"
+    },
+    "./lax-lockup": {
+      "types": "./dist/lax-lockup.d.ts",
+      "default": "./dist/lax-lockup.js"
+    },
+    "./legal/legal-document": {
+      "types": "./dist/legal/legal-document.d.ts",
+      "default": "./dist/legal/legal-document.js"
+    },
+    "./legal/legal-hub": {
+      "types": "./dist/legal/legal-hub.d.ts",
+      "default": "./dist/legal/legal-hub.js"
+    },
+    "./legal/london-art-exchange/index": {
+      "types": "./dist/legal/london-art-exchange/index.d.ts",
+      "default": "./dist/legal/london-art-exchange/index.js"
+    },
+    "./lot-media/lot-card-media-frame": {
+      "types": "./dist/lot-media/lot-card-media-frame.d.ts",
+      "default": "./dist/lot-media/lot-card-media-frame.js"
+    },
+    "./marketing-account-entry": {
+      "types": "./dist/marketing-account-entry.d.ts",
+      "default": "./dist/marketing-account-entry.js"
+    },
+    "./marketing-alphabet-filter": {
+      "types": "./dist/marketing-alphabet-filter.d.ts",
+      "default": "./dist/marketing-alphabet-filter.js"
+    },
+    "./marketing-artist-card": {
+      "types": "./dist/marketing-artist-card.d.ts",
+      "default": "./dist/marketing-artist-card.js"
+    },
+    "./marketing-artist-facts": {
+      "types": "./dist/marketing-artist-facts.d.ts",
+      "default": "./dist/marketing-artist-facts.js"
+    },
+    "./marketing-artist-hero": {
+      "types": "./dist/marketing-artist-hero.d.ts",
+      "default": "./dist/marketing-artist-hero.js"
+    },
+    "./marketing-attention-strip": {
+      "types": "./dist/marketing-attention-strip.d.ts",
+      "default": "./dist/marketing-attention-strip.js"
+    },
+    "./marketing-bottom-tab-bar": {
+      "types": "./dist/marketing-bottom-tab-bar.d.ts",
+      "default": "./dist/marketing-bottom-tab-bar.js"
+    },
+    "./marketing-card-media": {
+      "types": "./dist/marketing-card-media.d.ts",
+      "default": "./dist/marketing-card-media.js"
+    },
+    "./marketing-catalog-hub-shell": {
+      "types": "./dist/marketing-catalog-hub-shell.d.ts",
+      "default": "./dist/marketing-catalog-hub-shell.js"
+    },
+    "./marketing-chip-strip": {
+      "types": "./dist/marketing-chip-strip.d.ts",
+      "default": "./dist/marketing-chip-strip.js"
+    },
+    "./marketing-detail-accordion": {
+      "types": "./dist/marketing-detail-accordion.d.ts",
+      "default": "./dist/marketing-detail-accordion.js"
+    },
+    "./marketing-detail-shell": {
+      "types": "./dist/marketing-detail-shell.d.ts",
+      "default": "./dist/marketing-detail-shell.js"
+    },
+    "./marketing-directory": {
+      "types": "./dist/marketing-directory.d.ts",
+      "default": "./dist/marketing-directory.js"
+    },
+    "./marketing-email-error": {
+      "types": "./dist/marketing-email-error.d.ts",
+      "default": "./dist/marketing-email-error.js"
+    },
+    "./marketing-enquiry-confirmation": {
+      "types": "./dist/marketing-enquiry-confirmation.d.ts",
+      "default": "./dist/marketing-enquiry-confirmation.js"
+    },
+    "./marketing-filter-checkbox-row": {
+      "types": "./dist/marketing-filter-checkbox-row.d.ts",
+      "default": "./dist/marketing-filter-checkbox-row.js"
+    },
+    "./marketing-filter-link-groups": {
+      "types": "./dist/marketing-filter-link-groups.d.ts",
+      "default": "./dist/marketing-filter-link-groups.js"
+    },
+    "./marketing-filter-radio-row": {
+      "types": "./dist/marketing-filter-radio-row.d.ts",
+      "default": "./dist/marketing-filter-radio-row.js"
+    },
+    "./marketing-filter-sheet": {
+      "types": "./dist/marketing-filter-sheet.d.ts",
+      "default": "./dist/marketing-filter-sheet.js"
+    },
+    "./marketing-filter-trigger": {
+      "types": "./dist/marketing-filter-trigger.d.ts",
+      "default": "./dist/marketing-filter-trigger.js"
+    },
+    "./marketing-footer": {
+      "types": "./dist/marketing-footer.d.ts",
+      "default": "./dist/marketing-footer.js"
+    },
+    "./marketing-footer-socials": {
+      "types": "./dist/marketing-footer-socials.d.ts",
+      "default": "./dist/marketing-footer-socials.js"
+    },
+    "./marketing-gallery-team-band": {
+      "types": "./dist/marketing-gallery-team-band.d.ts",
+      "default": "./dist/marketing-gallery-team-band.js"
+    },
+    "./marketing-icons": {
+      "types": "./dist/marketing-icons.d.ts",
+      "default": "./dist/marketing-icons.js"
+    },
+    "./marketing-link-filter-sheet": {
+      "types": "./dist/marketing-link-filter-sheet.d.ts",
+      "default": "./dist/marketing-link-filter-sheet.js"
+    },
+    "./marketing-list-toolbar": {
+      "types": "./dist/marketing-list-toolbar.d.ts",
+      "default": "./dist/marketing-list-toolbar.js"
+    },
+    "./marketing-not-found": {
+      "types": "./dist/marketing-not-found.d.ts",
+      "default": "./dist/marketing-not-found.js"
+    },
+    "./marketing-page-shell": {
+      "types": "./dist/marketing-page-shell.d.ts",
+      "default": "./dist/marketing-page-shell.js"
+    },
+    "./marketing-read-more": {
+      "types": "./dist/marketing-read-more.d.ts",
+      "default": "./dist/marketing-read-more.js"
+    },
+    "./marketing-section-header": {
+      "types": "./dist/marketing-section-header.d.ts",
+      "default": "./dist/marketing-section-header.js"
+    },
+    "./marketing-share-button": {
+      "types": "./dist/marketing-share-button.d.ts",
+      "default": "./dist/marketing-share-button.js"
+    },
+    "./marketing-signed-in-toast": {
+      "types": "./dist/marketing-signed-in-toast.d.ts",
+      "default": "./dist/marketing-signed-in-toast.js"
+    },
+    "./marketing-sort-links": {
+      "types": "./dist/marketing-sort-links.d.ts",
+      "default": "./dist/marketing-sort-links.js"
+    },
+    "./marketing-split-feature": {
+      "types": "./dist/marketing-split-feature.d.ts",
+      "default": "./dist/marketing-split-feature.js"
+    },
+    "./marketing-toolbar-row": {
+      "types": "./dist/marketing-toolbar-row.d.ts",
+      "default": "./dist/marketing-toolbar-row.js"
+    },
+    "./marketing-work-card": {
+      "types": "./dist/marketing-work-card.d.ts",
+      "default": "./dist/marketing-work-card.js"
+    },
+    "./media/media-image": {
+      "types": "./dist/media/media-image.d.ts",
+      "default": "./dist/media/media-image.js"
+    },
+    "./media/media-image.server": {
+      "types": "./dist/media/media-image.server.d.ts",
+      "default": "./dist/media/media-image.server.js"
+    },
+    "./media/next-image-src-set": {
+      "types": "./dist/media/next-image-src-set.d.ts",
+      "default": "./dist/media/next-image-src-set.js"
+    },
+    "./media/responsive-img": {
+      "types": "./dist/media/responsive-img.d.ts",
+      "default": "./dist/media/responsive-img.js"
+    },
+    "./motion/index": {
+      "types": "./dist/motion/index.d.ts",
+      "default": "./dist/motion/index.js"
+    },
+    "./split-filter-sheet": {
+      "types": "./dist/split-filter-sheet.d.ts",
+      "default": "./dist/split-filter-sheet.js"
+    },
+    "./use-marketing-form-errors": {
+      "types": "./dist/use-marketing-form-errors.d.ts",
+      "default": "./dist/use-marketing-form-errors.js"
+    }
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",

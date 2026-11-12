@@ -1,5 +1,5 @@
 import type { NeedsYouRaised } from "@/lib/organisation-home/needs-you-view";
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 
 /** When a task arose ("3 hours ago", "29 Oct 2026"); nothing when no record says. */
 export function NeedsYouRaisedTime({

@@ -7,7 +7,8 @@ import { fetchCoverViewer } from "@/lib/marketing-cover/cover-viewer.client";
 import { HOME_COVER_LABEL, HOME_COVER_LINKS } from "@/lib/marketing-cover/home-cover-links";
 import { bidCoverSrcSet } from "@/lib/media/bid-image-src-set";
 import { reportImageFallback } from "@/lib/observability/report-image-fallback";
-import { type CoverSlide, MarketingCover } from "@auction/marketing-ui";
+import type { CoverSlide } from "@auction/marketing-ui/cover/cover-types";
+import { MarketingCover } from "@auction/marketing-ui/cover/marketing-cover";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 

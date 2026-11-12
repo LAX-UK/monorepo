@@ -7,7 +7,10 @@ import {
   departmentOptions,
   timingOptions,
 } from "@/lib/private-sales/enquiry-values";
-import { Checkbox, Field, NativeSelect, TextArea, TextInput } from "@auction/ui/lax";
+import { Checkbox } from "@auction/ui/lax/checkbox";
+import { Field } from "@auction/ui/lax/field";
+import { TextArea, TextInput } from "@auction/ui/lax/input";
+import { NativeSelect } from "@auction/ui/lax/native-select";
 import { useId } from "react";
 import { Controller, type UseFormReturn } from "react-hook-form";
 

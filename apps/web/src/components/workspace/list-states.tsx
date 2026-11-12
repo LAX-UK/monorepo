@@ -1,7 +1,10 @@
 "use client";
 
 import { DashboardListPage } from "@/components/dashboard/dashboard-list-page";
-import { Button, EmptyState, type EmptyStateProps, Notice, Skeleton } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
+import { EmptyState, type EmptyStateProps } from "@auction/ui/lax/empty-state";
+import { Notice } from "@auction/ui/lax/notice";
+import { Skeleton } from "@auction/ui/lax/skeleton";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 

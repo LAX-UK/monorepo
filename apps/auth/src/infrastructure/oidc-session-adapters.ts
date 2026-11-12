@@ -1,6 +1,6 @@
 import type { IdentityDatabase } from "@auction/identity-db";
-import { oidcRpSession, session } from "@auction/identity-db/schema";
-import { and, eq, gt } from "drizzle-orm";
+import { oidcRpSession, session, sessionLineage } from "@auction/identity-db/schema";
+import { and, eq, gt, inArray, or } from "drizzle-orm";
 import type { Redis } from "ioredis";
 import type {
   OidcCodeCorrelationStore,
@@ -54,7 +54,10 @@ export class DrizzleOidcRpSessionRepository implements OidcRpSessionRepository {
     return row ?? null;
   }
 
-  /** The Identity session behind `sid` while it is still signed in (not ended or expired). */
+  /**
+   * The Identity session behind `sid` while it is still signed in (not ended or expired). A `sid`
+   * that a newer sign-in in the same browser took over resolves to the record that replaced it.
+   */
   async findLiveIdentitySession(identitySessionId: string, now: Date) {
     const [row] = await this.db
       .select({
@@ -66,7 +69,21 @@ export class DrizzleOidcRpSessionRepository implements OidcRpSessionRepository {
         amr: session.amr,
       })
       .from(session)
-      .where(and(eq(session.id, identitySessionId), gt(session.expiresAt, now)))
+      .where(
+        and(
+          or(
+            eq(session.id, identitySessionId),
+            inArray(
+              session.id,
+              this.db
+                .select({ sessionId: sessionLineage.sessionId })
+                .from(sessionLineage)
+                .where(eq(sessionLineage.previousSid, identitySessionId)),
+            ),
+          ),
+          gt(session.expiresAt, now),
+        ),
+      )
       .limit(1);
     return row ?? null;
   }

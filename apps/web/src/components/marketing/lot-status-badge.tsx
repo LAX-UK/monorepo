@@ -19,7 +19,8 @@ import {
   resolveLotStatusPresentation,
 } from "@/lib/presenters/status-presentation";
 import { useCountdownTick } from "@/lib/time/use-clock";
-import { LiveBadge, StatusBadge } from "@auction/ui";
+import { LiveBadge } from "@auction/ui/components/live-badge";
+import { StatusBadge } from "@auction/ui/components/status-badge";
 
 export { LotCardTimer as LotStatusTimer, LotCardTimer, type LotCardTimerProps };
 

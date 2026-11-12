@@ -7,9 +7,9 @@ import {
   saleFormatExplainerAriaLabel,
 } from "@/lib/sale-format-explainer";
 import { saleFormatIcon, saleFormatIconToneClass } from "@/lib/sale-format-icon";
-import { cn } from "@auction/ui";
 import { Popover, PopoverContent, PopoverTrigger } from "@auction/ui/components/popover";
-import { Button } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
+import { cn } from "@auction/ui/lib/utils";
 import { HelpCircle } from "lucide-react";
 import type * as React from "react";
 

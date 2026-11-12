@@ -1,7 +1,7 @@
 "use client";
 
 import { openStripeDashboardLinkAction } from "@/lib/actions/stripe-connect.actions";
-import { Button } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
 import { useTransition } from "react";
 
 type Props = {

@@ -6,7 +6,7 @@ import type { ConditionsSection } from "@/lib/legal/conditions-of-business-part-
 import type { ConsignmentWithdrawalViewModel } from "@/lib/seller/consignment-withdrawal-view";
 import { notify } from "@/lib/ui/notify";
 import { ConfirmDialog } from "@auction/ui/components/confirm-dialog";
-import { Button } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
 import { Clock } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";

@@ -4,7 +4,7 @@ import { useLiveLotBid } from "@/hooks/use-live-lot-bid";
 import { useTabVisible } from "@/hooks/use-tab-visible";
 import type { HangLabelModel } from "@/lib/hang/hang-label";
 import { formatHangMoney } from "@/lib/hang/hang-money";
-import { MarketingHangLabel } from "@auction/marketing-ui";
+import { MarketingHangLabel } from "@auction/marketing-ui/hang/marketing-hang-label";
 
 /**
  * A wall label that follows the price while the lot can take bids and the tab is in front. A new

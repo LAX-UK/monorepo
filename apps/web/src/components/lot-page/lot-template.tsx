@@ -9,7 +9,9 @@ import { LotPriceBlock } from "@/components/lot-page/lot-price-block";
 import { LotSecondaryActions } from "@/components/lot-page/lot-secondary-actions";
 import { LotTimeEffects } from "@/components/lot-page/lot-time-effects";
 import type { LotTemplateData } from "@/lib/lot-page/lot-template-props";
-import { LaxDensityProvider, TooltipProvider, laxDensityAttributes } from "@auction/ui/lax";
+import { LaxDensityProvider } from "@auction/ui/lax/density";
+import { laxDensityAttributes } from "@auction/ui/lax/density-attributes";
+import { TooltipProvider } from "@auction/ui/lax/tooltip";
 import type { ReactNode } from "react";
 
 export type LotTemplateProps = LotTemplateData & {

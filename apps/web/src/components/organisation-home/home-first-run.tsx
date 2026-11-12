@@ -1,6 +1,7 @@
 import type { FirstRunView } from "@/lib/organisation-home/organisation-dashboard-view";
 import { LaxIllustration, type LaxIllustrationName } from "@auction/ui/components/lax-illustration";
-import { ButtonLink, EmptyState } from "@auction/ui/lax";
+import { ButtonLink } from "@auction/ui/lax/button-link";
+import { EmptyState } from "@auction/ui/lax/empty-state";
 import Link from "next/link";
 import { HomeSection } from "./home-section";
 

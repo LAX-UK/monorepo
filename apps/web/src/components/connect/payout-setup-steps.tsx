@@ -1,5 +1,5 @@
 import type { PayoutSetupStep } from "@/lib/presenters/payout-setup-steps";
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 import { Check } from "lucide-react";
 
 /** The plain steps to set up payouts, numbered, with a tick on the ones already done. */

@@ -1,17 +1,10 @@
+import { LONDON_TIME_ZONE, formatDate } from "@auction/datetime";
 import type { BuyerAgentAuthorisationView } from "@auction/types";
-
-const LONDON = "Europe/London";
-const dayFormat = new Intl.DateTimeFormat("en-GB", {
-  timeZone: LONDON,
-  day: "numeric",
-  month: "short",
-  year: "numeric",
-});
 
 /** "12 Nov 2026", in London time so a day picked in the UK reads back the same. */
 export function formatLondonDay(iso: string): string {
   const date = new Date(iso);
-  return Number.isNaN(date.getTime()) ? "" : dayFormat.format(date);
+  return Number.isNaN(date.getTime()) ? "" : formatDate(date, LONDON_TIME_ZONE);
 }
 
 /** A `YYYY-MM-DD` day as "1 Nov 2026" (read at noon, so the zone never shifts the day). */

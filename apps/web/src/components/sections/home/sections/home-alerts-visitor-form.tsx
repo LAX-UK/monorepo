@@ -1,8 +1,12 @@
 "use client";
 
 import type { CoverAlertsOutcome } from "@/lib/marketing-cover/cover-alerts-outcome";
-import { marketingEmailError, useMarketingFormErrors } from "@auction/marketing-ui";
-import { Button, Field, Notice, TextInput } from "@auction/ui/lax";
+import { marketingEmailError } from "@auction/marketing-ui/marketing-email-error";
+import { useMarketingFormErrors } from "@auction/marketing-ui/use-marketing-form-errors";
+import { Button } from "@auction/ui/lax/button";
+import { Field } from "@auction/ui/lax/field";
+import { TextInput } from "@auction/ui/lax/input";
+import { Notice } from "@auction/ui/lax/notice";
 import type { FormEvent } from "react";
 
 type Props = {

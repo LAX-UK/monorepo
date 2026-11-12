@@ -7,7 +7,7 @@ import { useOverlayTone } from "@/components/ui/overlay-tone-context";
 import { useActiveSaleCountdownEndIso } from "@/lib/sale/use-active-sale-countdown-end-iso";
 import { overlayPillClasses, overlayToneProps } from "@/lib/ui/overlay-tone-classes";
 import type { Sale } from "@auction/types";
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 
 type SaleStatusBadgeProps = {
   countdownEndIso?: string;

@@ -1,7 +1,7 @@
 "use client";
 
 import { ConsentBar } from "@/components/marketing/consent/consent-bar";
-import { ConsentPreferencesDialog } from "@/components/marketing/consent/consent-dialog";
+import { ConsentPreferencesMount } from "@/components/marketing/consent/consent-preferences-mount";
 import { CookieDock } from "@/components/marketing/consent/cookie-dock";
 import { showsConsentBanner } from "@/lib/analytics/consent/surfaces";
 import { usePathname } from "next/navigation";
@@ -19,7 +19,7 @@ export function ConsentShell() {
       <CookieDock>
         <ConsentBar />
       </CookieDock>
-      <ConsentPreferencesDialog />
+      <ConsentPreferencesMount />
     </>
   );
 }

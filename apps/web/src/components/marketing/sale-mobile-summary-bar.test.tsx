@@ -1,7 +1,7 @@
 import { CookieDock } from "@/components/marketing/consent/cookie-dock";
 import { SaleMobileSummaryBar } from "@/components/marketing/sale-mobile-summary-bar";
 import type { SaleroomLotRef } from "@/lib/saleroom/saleroom-mobile-chrome";
-import { MarketingBottomTabBar } from "@auction/marketing-ui";
+import { MarketingBottomTabBar } from "@auction/marketing-ui/marketing-bottom-tab-bar";
 import type { Sale } from "@auction/types";
 import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";

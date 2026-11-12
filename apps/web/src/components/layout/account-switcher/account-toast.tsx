@@ -1,6 +1,6 @@
 "use client";
 
-import { Button } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
 import { X } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
 import { AccountTile } from "./account-tile";

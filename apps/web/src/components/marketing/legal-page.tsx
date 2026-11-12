@@ -1,7 +1,11 @@
 import { SITE_NAME } from "@/lib/brand";
-import { LegalDocument, LegalHeading, type LegalHeadingProps } from "@auction/marketing-ui";
-import { cn } from "@auction/ui";
-import type { TocNavItem } from "@auction/ui";
+import {
+  LegalDocument,
+  LegalHeading,
+  type LegalHeadingProps,
+} from "@auction/marketing-ui/legal/legal-document";
+import type { TocNavItem } from "@auction/ui/components/toc-nav";
+import { cn } from "@auction/ui/lib/utils";
 import type { HTMLAttributes, ReactNode } from "react";
 
 type Props = {

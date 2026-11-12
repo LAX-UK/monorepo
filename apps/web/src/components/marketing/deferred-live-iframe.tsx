@@ -1,7 +1,7 @@
 "use client";
 
 import { MediaImage } from "@/components/ui/media-image";
-import { Button } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
 import { useMemo, useState } from "react";
 
 type Props = {

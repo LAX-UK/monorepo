@@ -14,7 +14,7 @@ import type { sellContactHref } from "@/lib/marketing/sell-intake";
 import { metadataForStatic } from "@/lib/seo/metadata-factory";
 import { breadcrumbJsonLd, jsonLdScript } from "@/lib/seo/structured-data";
 import { departmentDisplayStyle } from "@auction/domain";
-import { Notice } from "@auction/ui/lax";
+import { Notice } from "@auction/ui/lax/notice";
 import type { Metadata } from "next";
 
 export type SellDepartmentPageProps = {

@@ -46,7 +46,8 @@ import { lotPath } from "@/lib/seo/url";
 import { getSiteUrl } from "@/lib/site-url";
 import { buildLotMediaTreatmentIndex } from "@auction/domain";
 import type { Lot } from "@auction/types";
-import { ButtonLink, EmptyState } from "@auction/ui/lax";
+import { ButtonLink } from "@auction/ui/lax/button-link";
+import { EmptyState } from "@auction/ui/lax/empty-state";
 import type { Metadata } from "next";
 import Link from "next/link";
 

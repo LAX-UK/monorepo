@@ -12,7 +12,7 @@ import {
 } from "@/components/sections/artwork/onsite/live-feed-header";
 import type { LotLifecycleKind } from "@/lib/lot/lot-lifecycle";
 import { PLATFORM_DEFAULT_CURRENCY } from "@/lib/money/currency";
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 import { Gavel } from "lucide-react";
 import type { CSSProperties } from "react";
 import { useMemo } from "react";

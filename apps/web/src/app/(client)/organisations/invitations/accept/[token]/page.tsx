@@ -9,7 +9,7 @@ import { resolveOrgModuleEnabledFromRequest } from "@/lib/legal-entity/org-modul
 import { invitationAcceptAction, invitationLinkPath } from "@/lib/navigation/invitation-link";
 import { buildInvitationLinkView } from "@/lib/organisations/invitation-link.vm";
 import { Surface } from "@auction/ui/components/surface";
-import { ButtonLink } from "@auction/ui/lax";
+import { ButtonLink } from "@auction/ui/lax/button-link";
 import { LogIn, UserPlus } from "lucide-react";
 import type { Metadata } from "next";
 

@@ -5,6 +5,7 @@ import {
   TOPIC_CATALOGUE,
 } from "@auction/alerts";
 import { LAX_PRODUCT_NAMES } from "@auction/branding";
+import { formatWeekdayDate } from "@auction/datetime";
 import type { AlertDigestGroup, AlertTemplateVars } from "./templates/types/sale-alerts.js";
 
 const CONFIRM_COPY = {
@@ -52,14 +53,11 @@ function reasonFor(message: DigestMessage): string {
 
 /** "Wednesday 4 November": the London day a digest is for, from its `YYYY-MM-DD` date. */
 export function digestDateLabel(localDate: string): string {
-  const parts = new Intl.DateTimeFormat("en-GB", {
-    timeZone: "UTC",
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-  }).formatToParts(new Date(`${localDate}T12:00:00Z`));
-  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "";
-  return `${get("weekday")} ${get("day")} ${get("month")}`;
+  // The weekday leads without a comma, however the runtime punctuates it.
+  return formatWeekdayDate(new Date(`${localDate}T12:00:00Z`), "UTC", { year: false }).replace(
+    ",",
+    "",
+  );
 }
 
 /** The title leads with the strongest item, as the subject does: "New sale: Modern British and Irish Art". */

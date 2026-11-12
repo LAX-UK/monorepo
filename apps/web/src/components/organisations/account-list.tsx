@@ -1,8 +1,9 @@
 import { AccountTile } from "@/components/layout/account-switcher/account-tile";
 import { hopUrl } from "@/lib/navigation/hop-href";
 import type { AccountRowVm } from "@/lib/organisations/organisation-accounts.vm";
-import { RecordList, RecordRow } from "@auction/ui";
-import { ButtonLink, StatusBadge } from "@auction/ui/lax";
+import { RecordList, RecordRow } from "@auction/ui/components/record-row";
+import { ButtonLink } from "@auction/ui/lax/button-link";
+import { StatusBadge } from "@auction/ui/lax/status-badge";
 import { AccountSwitchLink } from "./account-switch-link";
 import { initials } from "./initials";
 

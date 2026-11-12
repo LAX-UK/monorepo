@@ -4,12 +4,17 @@
  */
 
 import { PLATFORM_DEFAULT_CURRENCY } from "@/lib/money/currency";
+import {
+  calendarYear,
+  formatDate as datetimeFormatDate,
+  formatTime,
+  runtimeTimeZone,
+} from "@auction/datetime";
 
 const DEFAULT_MONEY_LOCALE = "en-GB";
 const DEFAULT_DATE_LOCALE = "en-GB";
 
 const moneyFormatters = new Map<string, Intl.NumberFormat>();
-const dateFormatters = new Map<string, Intl.DateTimeFormat>();
 
 function moneyFormatter(currency: string, locale = DEFAULT_MONEY_LOCALE): Intl.NumberFormat {
   const key = `${locale}:${currency}`;
@@ -17,19 +22,6 @@ function moneyFormatter(currency: string, locale = DEFAULT_MONEY_LOCALE): Intl.N
   if (!fmt) {
     fmt = new Intl.NumberFormat(locale, { style: "currency", currency });
     moneyFormatters.set(key, fmt);
-  }
-  return fmt;
-}
-
-function dateFormatter(
-  options: Intl.DateTimeFormatOptions,
-  locale = DEFAULT_DATE_LOCALE,
-): Intl.DateTimeFormat {
-  const key = `${locale}:${JSON.stringify(options)}`;
-  let fmt = dateFormatters.get(key);
-  if (!fmt) {
-    fmt = new Intl.DateTimeFormat(locale, options);
-    dateFormatters.set(key, fmt);
   }
   return fmt;
 }
@@ -63,14 +55,20 @@ function normalizeCurrencyCode(raw: string): string {
   return /^[A-Z]{3}$/.test(code) ? code : PLATFORM_DEFAULT_CURRENCY;
 }
 
+/** "19 May": the day and short month in the runtime zone, without the year. */
+function dayAndMonth(d: Date): string {
+  return datetimeFormatDate(d, runtimeTimeZone()).replace(/ \d{4}$/, "");
+}
+
+function twoDigitYear(d: Date): string {
+  return String(calendarYear(d, runtimeTimeZone())).slice(-2);
+}
+
 /** Short date, e.g. 19 May 2026 */
-export function formatDate(
-  value: Date | string | number | null | undefined,
-  locale = DEFAULT_DATE_LOCALE,
-): string {
+export function formatDate(value: Date | string | number | null | undefined): string {
   const d = toDate(value);
   if (!d) return "—";
-  return dateFormatter({ day: "numeric", month: "short", year: "numeric" }, locale).format(d);
+  return datetimeFormatDate(d, runtimeTimeZone());
 }
 
 /**
@@ -78,11 +76,8 @@ export function formatDate(
  * between "4" and "Nov 2026". Use it for display text; keep `formatDate` for values compared or
  * parsed elsewhere.
  */
-export function formatDateInline(
-  value: Date | string | number | null | undefined,
-  locale = DEFAULT_DATE_LOCALE,
-): string {
-  return formatDate(value, locale).replace(/ /g, " ");
+export function formatDateInline(value: Date | string | number | null | undefined): string {
+  return formatDate(value).replace(/ /g, " ");
 }
 
 /**
@@ -92,65 +87,40 @@ export function formatDateInline(
 export function formatPeriod(
   start: Date | string | number | null | undefined,
   end: Date | string | number | null | undefined,
-  locale = DEFAULT_DATE_LOCALE,
 ): string {
   const from = toDate(start);
   const to = toDate(end);
   const openStart = from == null || from.getTime() < 86_400_000;
-  if (openStart) return to ? `Up to ${formatDate(to, locale)}` : "—";
-  return `${formatDate(from, locale)} → ${formatDate(to, locale)}`;
+  if (openStart) return to ? `Up to ${formatDate(to)}` : "—";
+  return `${formatDate(from)} → ${formatDate(to)}`;
 }
 
 /** Dense table date with 2-digit year, e.g. 19 May 26 */
-export function formatDateShort(
-  value: Date | string | number | null | undefined,
-  locale = DEFAULT_DATE_LOCALE,
-): string {
+export function formatDateShort(value: Date | string | number | null | undefined): string {
   const d = toDate(value);
   if (!d) return "—";
-  return dateFormatter({ day: "numeric", month: "short", year: "2-digit" }, locale).format(d);
+  return `${dayAndMonth(d)} ${twoDigitYear(d)}`;
 }
 
 /** Date + time for staff tables and detail panels */
-export function formatDateTime(
-  value: Date | string | number | null | undefined,
-  locale = DEFAULT_DATE_LOCALE,
-): string {
+export function formatDateTime(value: Date | string | number | null | undefined): string {
   const d = toDate(value);
   if (!d) return "—";
-  return dateFormatter(
-    {
-      day: "numeric",
-      month: "short",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    },
-    locale,
-  ).format(d);
+  const zone = runtimeTimeZone();
+  return `${datetimeFormatDate(d, zone)}, ${formatTime(d, zone)}`;
 }
 
 /** Compact date + time for table secondary lines (drops year when same as reference). */
 export function formatDateTimeShort(
   value: Date | string | number | null | undefined,
   reference: Date = new Date(),
-  locale = DEFAULT_DATE_LOCALE,
 ): string {
   const d = toDate(value);
   if (!d) return "—";
-  const sameYear = d.getFullYear() === reference.getFullYear();
-  return dateFormatter(
-    sameYear
-      ? { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }
-      : {
-          day: "numeric",
-          month: "short",
-          year: "2-digit",
-          hour: "2-digit",
-          minute: "2-digit",
-        },
-    locale,
-  ).format(d);
+  const zone = runtimeTimeZone();
+  const sameYear = calendarYear(d, zone) === calendarYear(reference, zone);
+  const day = dayAndMonth(d);
+  return `${sameYear ? day : `${day} ${twoDigitYear(d)}`}, ${formatTime(d, zone)}`;
 }
 
 /** Relative time, e.g. "3 hours ago" */
@@ -170,7 +140,7 @@ export function formatRelativeTime(
   if (absHr < 24) return rtf.format(Math.round(diffMs / 3_600_000), "hour");
   const absDay = Math.round(absHr / 24);
   if (absDay < 30) return rtf.format(Math.round(diffMs / 86_400_000), "day");
-  return formatDate(d, locale);
+  return formatDate(d);
 }
 
 /**
@@ -186,7 +156,7 @@ export function formatEventTime(
   const d = toDate(value);
   if (!d) return "—";
   const elapsedMs = now.getTime() - d.getTime();
-  if (elapsedMs >= 24 * 3_600_000) return formatDateInline(d, locale);
+  if (elapsedMs >= 24 * 3_600_000) return formatDateInline(d);
   const rtf = new Intl.RelativeTimeFormat(locale, { numeric: "auto" });
   const minutes = Math.floor(Math.max(elapsedMs, 0) / 60_000);
   if (minutes < 1) return "just now";

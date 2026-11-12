@@ -5,7 +5,8 @@ import type { SalesFacetCounts } from "@/lib/marketing/sales-calendar-facets";
 import type { CalendarSalesUrlState } from "@/lib/marketing/sales-calendar-params";
 import { calendarSalesHrefFromState } from "@/lib/marketing/sales-calendar-params";
 import type { SalesFilterSidebarGroupValue } from "@/lib/marketing/sales-filter-sidebar-catalog";
-import { MarketingFilterCheckboxRow, MarketingFilterRadioRow } from "@auction/marketing-ui";
+import { MarketingFilterCheckboxRow } from "@auction/marketing-ui/marketing-filter-checkbox-row";
+import { MarketingFilterRadioRow } from "@auction/marketing-ui/marketing-filter-radio-row";
 import { RadioGroup } from "@auction/ui/components/radio-group";
 import { useRouter } from "next/navigation";
 

@@ -2462,7 +2462,35 @@
     {
       "idx": 352,
       "version": "7",
-      "when": 1806480000000,
+      "when": 1806739200000,
+      "tag": "0367_xero_token_sealing",
+      "breakpoints": true
+    },
+    {
+      "idx": 353,
+      "version": "7",
+      "when": 1807171200000,
+      "tag": "0356_session_device_marker",
+      "breakpoints": true
+    },
+    {
+      "idx": 354,
+      "version": "7",
+      "when": 1807257600000,
+      "tag": "0361_oauth_token_sign_in",
+      "breakpoints": true
+    },
+    {
+      "idx": 355,
+      "version": "7",
+      "when": 1807776000000,
+      "tag": "0366_zoho_sync_health",
+      "breakpoints": true
+    },
+    {
+      "idx": 356,
+      "version": "7",
+      "when": 1808035200000,
       "tag": "0354_lot_reoffer",
       "breakpoints": true
     }
