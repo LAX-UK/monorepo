@@ -160,6 +160,7 @@ describe.skipIf(!url)("migration 0372 sale seller terms (database)", { timeout: 
       "other_seller",
       "vat_setting_missing",
       "negative_net",
+      "legacy_invoice",
     ]) {
       expect(await terms({ held_reason }), held_reason).toBe(true);
     }

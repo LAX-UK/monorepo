@@ -275,6 +275,16 @@ export const WORKER_ACCOUNTING_READ_TABLES = ["accounting_source_setting"] as co
  */
 export const SELLER_TERMS_INSERT_SELECT_TABLES = ["sale_seller_terms"] as const;
 export const FINANCE_SETTING_READ_TABLES = ["bid_finance_setting"] as const;
+/**
+ * The worker reads the signed agreement behind a lot to price the seller's side at lot end, and
+ * only the columns the rule needs: not the reserve, the estimates or the recorded-copy details.
+ */
+export const WORKER_SELLER_TERMS_READ_COLUMNS = [
+  [
+    "consignment_agreement",
+    ["id", "submission_id", "legal_entity_id", "accepted_at", "proposed_at", "commission_percent"],
+  ],
+] as const;
 /** Shop Identity owns only its local Identity projection. */
 export const SHOP_PRODUCT_PROFILE_TABLES = [
   "shop_user_profile",
@@ -362,8 +372,6 @@ export const WORKER_READ_TABLES = [
   /** Catalogue tables scanned by backfill-media-assets (read image key columns only). */
   "sale",
   "item_submission",
-  /** The seller terms worker reads the signed agreement behind a lot to price the seller's side. */
-  "consignment_agreement",
   "category",
   "artist_profile",
   /** Legal Entity Model - worker needs SELECT for projectors */
@@ -1298,6 +1306,11 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
         }
         for (const tableName of FINANCE_SETTING_READ_TABLES) {
           await grantIfExists(client, "worker_app", tableName, "SELECT");
+        }
+        for (const [tableName, columns] of WORKER_SELLER_TERMS_READ_COLUMNS) {
+          // A table-wide SELECT from an earlier build of this grant is taken back first.
+          await revokeIfExists(client, "worker_app", tableName, "SELECT");
+          await grantColumnSelectIfExists(client, "worker_app", tableName, columns);
         }
         for (const tableName of WORKER_ACCOUNTING_DOCUMENT_TABLES) {
           // The worker moves a document along its life cycle; it never rewrites what the document

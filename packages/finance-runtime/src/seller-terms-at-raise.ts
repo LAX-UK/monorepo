@@ -2,6 +2,7 @@ import {
   type ICommissionVatSettingReader,
   type ISellerTermsFacts,
   type ISellerTermsPolicy,
+  SELLER_RULE_VERSION,
   SellerTermsPolicy,
   type SellerTermsSnapshot,
 } from "@auction/domain";
@@ -28,24 +29,27 @@ export interface ISellerTermsAtRaise {
   }): Promise<SellerTermsAtRaise>;
 }
 
-/** The hammer and the buyer's premium of an invoice, from its stored lines. */
-export function hammerAndPremiumOf(lines: readonly { kind: string; amountPence: number }[]): {
-  hammerPence: number;
-  premiumPence: number;
-} {
+/**
+ * The hammer and the buyer's premium of an invoice, from its stored lines, or `null` when the
+ * invoice has no hammer line (a pre-itemisation invoice stored as one `legacy_total` line). The
+ * caller decides what that means; nothing here guesses a hammer from the total.
+ */
+export function hammerAndPremiumOf(
+  lines: readonly { kind: string; amountPence: number }[],
+): { hammerPence: number; premiumPence: number } | null {
+  if (!lines.some((line) => line.kind === "hammer")) return null;
   const sumOf = (kind: string) =>
     lines.filter((line) => line.kind === kind).reduce((total, line) => total + line.amountPence, 0);
-  if (!lines.some((line) => line.kind === "hammer")) {
-    throw new InvoiceInvariantError(
-      "The invoice has no hammer line, so the seller's side cannot be priced",
-    );
-  }
   return { hammerPence: sumOf("hammer"), premiumPence: sumOf("buyers_premium") };
 }
 
 /**
  * The one way both payment-raising paths (checkout and lot end) get the seller's side: the terms
  * from the seller-terms policy, priced on the invoice's own hammer, and the payment's legacy fee.
+ *
+ * The agreement and the VAT setting are read here, before the raise transaction opens, not inside
+ * it. The window is tiny, and the snapshot stored is exactly what was read, so a change landing in
+ * between is simply picked up by the next sale; nothing stored disagrees with itself.
  */
 export class SellerTermsAtRaiseService implements ISellerTermsAtRaise {
   constructor(
@@ -61,13 +65,26 @@ export class SellerTermsAtRaiseService implements ISellerTermsAtRaise {
     if (!lot.sellerLegalEntityId) {
       throw new InvoiceInvariantError("A lot needs its seller account to be invoiced");
     }
-    const { hammerPence, premiumPence } = hammerAndPremiumOf(priced.lines);
-    const sellerTerms = await this.policy.snapshotFor({
-      lotId: lot.id,
-      sellerLegalEntityId: lot.sellerLegalEntityId,
-      hammerPence,
-      premiumPence,
-    });
+    const split = hammerAndPremiumOf(priced.lines);
+    // A live invoice from before itemised invoices has no hammer line. Its payment is still
+    // raised (what the buyer pays and the legacy fee need only the total); the seller's side is
+    // held until staff price it, never guessed from the total.
+    const sellerTerms: SellerTermsSnapshot = split
+      ? await this.policy.snapshotFor({
+          lotId: lot.id,
+          sellerLegalEntityId: lot.sellerLegalEntityId,
+          hammerPence: split.hammerPence,
+          premiumPence: split.premiumPence,
+        })
+      : {
+          lotId: lot.id,
+          sellerLegalEntityId: lot.sellerLegalEntityId,
+          hammerPence: 0,
+          premiumPence: 0,
+          ruleVersion: SELLER_RULE_VERSION,
+          basis: "held",
+          heldReason: "legacy_invoice",
+        };
     const platformFee = await this.legacyFee.computePlatformFeeFromPence(
       lot.sellerLegalEntityId,
       priced.totalPence,

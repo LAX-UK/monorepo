@@ -32,6 +32,15 @@ const HAMMER_TIMES_RATE = new RegExp(
   String.raw`\b${HAMMER}\s*\*\s*${RATE}|\b${RATE}\s*\*\s*${HAMMER}`,
   "i",
 );
+const MONEY = String.raw`(?:\w+\.)*\w*(?:pence|amount|hammer|price|total|minor)\w*`;
+/**
+ * The old 5% fallback (`Math.round(amountPence * 0.05)`): a money figure times a flat 5%. The
+ * legacy platform fee is in basis points in its own policy, so nothing else needs this shape.
+ */
+const FLAT_FIVE_PERCENT = new RegExp(
+  String.raw`\b${MONEY}\s*\*\s*0?\.05\b|(?<![\w.])0?\.05\s*\*\s*${MONEY}`,
+  "i",
+);
 const OLD_FEE_POLICY = /PlatformFeePolicy|platform-fee\.policy/;
 
 function linesMatching(source, pattern) {
@@ -45,6 +54,11 @@ function linesMatching(source, pattern) {
 /** Every line that multiplies a hammer by a commission rate. */
 export function findHammerTimesRate(source) {
   return linesMatching(source, HAMMER_TIMES_RATE);
+}
+
+/** Every line that takes a flat 5% of a money figure: the old fallback commission. */
+export function findFlatFivePercent(source) {
+  return linesMatching(source, FLAT_FIVE_PERCENT);
 }
 
 /** Every line that names the old platform fee policy. */
@@ -71,9 +85,15 @@ function main() {
     for (const file of listFiles(join(repoRoot, root))) {
       const path = rel(file);
       if (path === CALCULATOR_FILE) continue;
-      for (const hit of findHammerTimesRate(readFileSync(file, "utf8"))) {
+      const source = readFileSync(file, "utf8");
+      for (const hit of findHammerTimesRate(source)) {
         violations.push(
           `${path}:${hit.line}  multiplies a hammer by a commission rate; use sellerProceeds`,
+        );
+      }
+      for (const hit of findFlatFivePercent(source)) {
+        violations.push(
+          `${path}:${hit.line}  takes a flat 5% of a money figure; use sellerProceeds`,
         );
       }
     }

@@ -5,11 +5,17 @@ type NewSellerTermsRow = typeof saleSellerTerms.$inferInsert;
 
 /**
  * The stored shape of a snapshot, one row per basis. Figures a basis does not carry are left
- * unset, which is what the table's shape check requires.
+ * unset, which is what the table's shape check requires. `legacyPlatformFeePence` is the payment's
+ * old-rule `platform_fee`, kept beside the new figures so old and new can be reconciled per sale.
  */
-export function sellerTermsRow(paymentId: string, terms: SellerTermsSnapshot): NewSellerTermsRow {
+export function sellerTermsRow(
+  paymentId: string,
+  terms: SellerTermsSnapshot,
+  legacyPlatformFeePence: number | null = null,
+): NewSellerTermsRow {
   const common = {
     paymentId,
+    legacyPlatformFeePence,
     lotId: terms.lotId,
     sellerLegalEntityId: terms.sellerLegalEntityId,
     basis: terms.basis,

@@ -3,6 +3,7 @@ import { createDb } from "@auction/db";
 import {
   bidFinanceSetting,
   bidInvoice,
+  bidInvoiceLine,
   consignmentAgreement,
   itemSubmission,
   legalEntity,
@@ -250,7 +251,8 @@ describe.skipIf(!HAS_DB)("seller terms at raise (integration)", () => {
         commissionVatPence: 246_000,
         otherCharges: [],
         sellerNetPence: 6_724_000,
-        legacyPlatformFeePence: null,
+        // The payment's old-rule fee, kept beside the new figures for reconciliation.
+        legacyPlatformFeePence: 512_500,
         ruleVersion: "agreement_hammer_v1",
         source: "raised",
       });
@@ -292,6 +294,71 @@ describe.skipIf(!HAS_DB)("seller terms at raise (integration)", () => {
       },
     );
 
+    it("raises a new payment on a live legacy invoice with no hammer line, holding the seller's side", async () => {
+      // Backfilled by migration 0319: one legacy_total line, below the lot's current price, and
+      // a payment on it that has expired. The buyer still pays the stored total.
+      const l = await newLot({ price: "1000.00", agreement: {} });
+      const [invoice] = await db
+        .insert(bidInvoice)
+        .values({
+          lotId: l.id,
+          buyerLegalEntityId: buyerEntity,
+          sellerLegalEntityId: sellerEntity,
+          totalPence: 99_900,
+          raisedAt: new Date(Date.now() - 2 * day),
+          dueAt: new Date(Date.now() + 5 * day),
+        })
+        .returning({ id: bidInvoice.id });
+      if (!invoice) throw new Error("invoice was not stored");
+      await db.insert(bidInvoiceLine).values({
+        invoiceId: invoice.id,
+        position: 1,
+        kind: "legacy_total",
+        label: "Total",
+        amountPence: 99_900,
+      });
+      const [expired] = await db
+        .insert(payment)
+        .values({
+          lotId: l.id,
+          buyerId,
+          buyerLegalEntityId: buyerEntity,
+          sellerLegalEntityId: sellerEntity,
+          amount: "999.00",
+          platformFee: "49.95",
+          status: "cancelled",
+          invoiceId: invoice.id,
+        })
+        .returning({ id: payment.id });
+
+      const paymentId = await raise(l);
+      expect(paymentId).toBeTruthy();
+      expect(paymentId).not.toBe(expired?.id);
+
+      const [paid] = await db
+        .select()
+        .from(payment)
+        .where(eq(payment.id, paymentId as string));
+      expect(paid?.invoiceId).toBe(invoice.id);
+      expect(Number(paid?.amount)).toBe(999);
+      // The legacy fee on the total, as before this change.
+      expect(Number(paid?.platformFee)).toBe(49.95);
+
+      const rows = await db.select().from(saleSellerTerms).where(eq(saleSellerTerms.lotId, l.id));
+      expect(rows).toHaveLength(1);
+      expect(rows[0]).toMatchObject({
+        paymentId,
+        basis: "held",
+        heldReason: "legacy_invoice",
+        agreementId: null,
+        hammerPence: 0,
+        premiumPence: 0,
+        commissionPence: null,
+        sellerNetPence: null,
+        legacyPlatformFeePence: 4_995,
+      });
+    });
+
     it("pays LAX-owned stock no commission and no seller line", async () => {
       const l = await newLot({ seller: laxStockEntity, agreement: null });
       await raise(l);
@@ -317,6 +384,35 @@ describe.skipIf(!HAS_DB)("seller terms at raise (integration)", () => {
       [first.payment.id, retry.payment.id].sort(),
     );
     expect(rows.every((r) => r.basis === "agreement" && r.hammerPence === 100_000)).toBe(true);
+  });
+
+  it("prefers the seller's own agreement when two submissions point at the lot", async () => {
+    const l = await newLot({ agreement: { commissionPercent: "12.50" } });
+    // Another account's submission, converted into the same lot and accepted later.
+    const otherSubmission = randomUUID();
+    submissionIds.push(otherSubmission);
+    await db.insert(itemSubmission).values({
+      id: otherSubmission,
+      legalEntityId: otherEntity,
+      title: "Another consignment",
+      convertedLotId: l.id,
+    });
+    await db.insert(consignmentAgreement).values({
+      submissionId: otherSubmission,
+      legalEntityId: otherEntity,
+      termsVersion: "v1",
+      commissionPercent: "20.00",
+      acceptedAt: new Date("2026-10-05T10:00:00Z"),
+    });
+    const reader = new DrizzleSellerTermsFactsReader(db);
+    expect(await reader.agreementForLot(l.id, sellerEntity)).toMatchObject({
+      legalEntityId: sellerEntity,
+      commissionPercent: "12.50",
+    });
+    // With no agreement of the seller's own, the other account's shows (and is held as such).
+    expect(await reader.agreementForLot(l.id, laxStockEntity)).toMatchObject({
+      legalEntityId: otherEntity,
+    });
   });
 
   it("stores no terms and no payment when the raise fails", async () => {

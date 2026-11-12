@@ -37,7 +37,7 @@ CREATE TABLE IF NOT EXISTS "sale_seller_terms" (
   CONSTRAINT "sale_seller_terms_held_reason_ck" CHECK (
     "held_reason" IS NULL OR "held_reason" IN (
       'no_agreement', 'not_accepted', 'no_commission', 'other_seller',
-      'vat_setting_missing', 'negative_net'
+      'vat_setting_missing', 'negative_net', 'legacy_invoice'
     )
   ),
   CONSTRAINT "sale_seller_terms_source_ck" CHECK (

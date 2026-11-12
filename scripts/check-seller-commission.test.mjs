@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { findHammerTimesRate, findOldFeePolicy } from "./check-seller-commission.mjs";
+import {
+  findFlatFivePercent,
+  findHammerTimesRate,
+  findOldFeePolicy,
+} from "./check-seller-commission.mjs";
 
 test("flags a hammer multiplied by a commission rate, in either order", () => {
   for (const code of [
@@ -44,4 +48,25 @@ test("flags the old platform fee policy", () => {
   );
   assert.equal(findOldFeePolicy('import type { X } from "./platform-fee.policy.js";').length, 1);
   assert.deepEqual(findOldFeePolicy("const sellerTerms = policy.snapshotFor(x);"), []);
+});
+
+test("flags the old flat 5% fallback on a money figure, in either order", () => {
+  for (const code of [
+    "const fee = Math.round(amountPence * 0.05);",
+    "const fee = Math.round(0.05 * lot.hammerPence);",
+    "const fee = totalMinor * .05;",
+  ]) {
+    assert.equal(findFlatFivePercent(code).length, 1, code);
+  }
+});
+
+test("accepts 0.05 that is not a share of money", () => {
+  for (const code of [
+    "tracesSampleRate: 0.05,",
+    "return (lighter + 0.05) / (darker + 0.05);",
+    "const step = zoom * 0.05;",
+    "const fee = amountPence * 0.055;",
+  ]) {
+    assert.deepEqual(findFlatFivePercent(code), [], code);
+  }
 });

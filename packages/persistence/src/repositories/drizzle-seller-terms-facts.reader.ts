@@ -32,7 +32,10 @@ export class DrizzleSellerTermsFactsReader implements ISellerTermsFacts {
     return row !== undefined;
   }
 
-  async agreementForLot(lotId: string): Promise<AgreementFacts | null> {
+  async agreementForLot(
+    lotId: string,
+    sellerLegalEntityId: string,
+  ): Promise<AgreementFacts | null> {
     const [row] = await this.db
       .select({
         id: consignmentAgreement.id,
@@ -43,8 +46,10 @@ export class DrizzleSellerTermsFactsReader implements ISellerTermsFacts {
       .from(itemSubmission)
       .innerJoin(consignmentAgreement, eq(consignmentAgreement.submissionId, itemSubmission.id))
       .where(eq(itemSubmission.convertedLotId, lotId))
-      // An accepted agreement wins; among several, the most recently accepted.
+      // The seller's own agreement wins over another account's (item_submission.converted_lot_id
+      // is not unique); then an accepted one; among several, the most recently accepted.
       .orderBy(
+        sql`${consignmentAgreement.legalEntityId} <> ${sellerLegalEntityId}`,
         sql`${consignmentAgreement.acceptedAt} is null`,
         desc(consignmentAgreement.acceptedAt),
         desc(consignmentAgreement.proposedAt),

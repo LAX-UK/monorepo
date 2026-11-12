@@ -51,10 +51,8 @@ describe("hammerAndPremiumOf", () => {
     });
   });
 
-  it("refuses an invoice with no hammer line, rather than pricing the seller on a guess", () => {
-    expect(() => hammerAndPremiumOf([{ kind: "legacy_total", amountPence: 5_000 }])).toThrow(
-      InvoiceInvariantError,
-    );
+  it("gives nothing for an invoice with no hammer line, rather than guessing from the total", () => {
+    expect(hammerAndPremiumOf([{ kind: "legacy_total", amountPence: 5_000 }])).toBeNull();
   });
 });
 
@@ -79,6 +77,28 @@ describe("SellerTermsAtRaiseService", () => {
     const got = await service(null).instance.forInvoice({ lot, priced });
     expect(got.sellerTerms).toMatchObject({ basis: "held", heldReason: "no_agreement" });
     expect(got.platformFee).toBe("5125.00");
+  });
+
+  it("holds a legacy invoice with no hammer line, and still gives the payment its fee on the total", async () => {
+    const { instance, legacy } = service();
+    const got = await instance.forInvoice({
+      lot,
+      priced: {
+        lines: [{ kind: "legacy_total", label: "Total", ratePercent: null, amountPence: 99_900 }],
+        totalPence: 99_900,
+      },
+    });
+    expect(got.sellerTerms).toEqual({
+      lotId: "lot-1",
+      sellerLegalEntityId: SELLER,
+      hammerPence: 0,
+      premiumPence: 0,
+      ruleVersion: "agreement_hammer_v1",
+      basis: "held",
+      heldReason: "legacy_invoice",
+    });
+    expect(got.platformFee).toBe("49.95");
+    expect(legacy).toHaveBeenCalledWith(SELLER, 99_900);
   });
 
   it("refuses a lot with no seller account", async () => {

@@ -14,6 +14,8 @@ const HELD_MESSAGES: Record<SellerTermsHeldReason, string> = {
   vat_setting_missing:
     "The company's VAT setting for commission is missing, so what the seller would receive cannot be worked out.",
   negative_net: "The agreed commission and VAT on it are more than this hammer.",
+  legacy_invoice:
+    "The buyer's invoice for this lot has no hammer line, so what the seller would receive cannot be worked out.",
 };
 
 /**
@@ -29,7 +31,11 @@ export function settlementSellerProceeds(deps: {
   return {
     async proceedsFor({ lotId, sellerLegalEntityId, buyerLegalEntityId, hammerPence }) {
       const priced = await deps.pricing.priceFor({ lotId, buyerLegalEntityId, hammerPence });
-      const { premiumPence } = hammerAndPremiumOf(priced.lines);
+      const split = hammerAndPremiumOf(priced.lines);
+      if (!split) {
+        throw new ReofferError("seller_terms_unavailable", HELD_MESSAGES.legacy_invoice);
+      }
+      const { premiumPence } = split;
       const terms = await deps.terms.snapshotFor({
         lotId,
         sellerLegalEntityId,

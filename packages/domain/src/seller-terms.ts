@@ -13,7 +13,12 @@ export type SellerTermsHeldReason =
   | "no_commission"
   | "other_seller"
   | "vat_setting_missing"
-  | "negative_net";
+  | "negative_net"
+  /**
+   * The buyer's invoice predates itemised invoices: it has one `legacy_total` line and no hammer
+   * line, so the seller's side cannot be priced from it. The payment is still raised.
+   */
+  | "legacy_invoice";
 
 /** What was known about a sale when its buyer's invoice was raised. */
 type SnapshotBase = {
@@ -61,9 +66,11 @@ export interface ISellerTermsFacts {
   isLaxOwned(sellerLegalEntityId: string): Promise<boolean>;
   /**
    * The agreement of the submission the lot came from (lot, then the submission converted into it,
-   * then that submission's agreement), or `null` when there is none.
+   * then that submission's agreement), or `null` when there is none. When several submissions
+   * point at the lot, an agreement made with `sellerLegalEntityId` is preferred, so another
+   * account's agreement only shows (and holds the sale as `other_seller`) when the seller has none.
    */
-  agreementForLot(lotId: string): Promise<AgreementFacts | null>;
+  agreementForLot(lotId: string, sellerLegalEntityId: string): Promise<AgreementFacts | null>;
 }
 
 /** Reads the Bid company's VAT setting. `null` means it has not been set. */
@@ -112,7 +119,7 @@ export class SellerTermsPolicy implements ISellerTermsPolicy {
       return { ...base, basis: "lax_owned" };
     }
 
-    const agreement = await this.facts.agreementForLot(request.lotId);
+    const agreement = await this.facts.agreementForLot(request.lotId, request.sellerLegalEntityId);
     if (!agreement) return held("no_agreement");
     if (agreement.legalEntityId !== request.sellerLegalEntityId) return held("other_seller");
     if (!agreement.acceptedAt) return held("not_accepted");
