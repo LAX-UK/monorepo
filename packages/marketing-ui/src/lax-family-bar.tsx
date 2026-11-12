@@ -32,8 +32,16 @@ type ToneClasses = {
   accented: boolean;
 };
 
-/** Colours per header tone: the page surface, or a transparent header over a photograph. */
-const TONES: Readonly<Record<MarketingHeaderTone, ToneClasses>> = {
+/**
+ * The bar's colours: the page surface, a transparent header over a photograph, or `follow-header`
+ * for a bar drawn on the server, which takes the header's tone from the header's own
+ * `data-header-tone` (the header carries the `group/header` class) so it never needs the tone as
+ * a prop and none of the bar has to be sent to the browser.
+ */
+export type LaxFamilyBarTone = MarketingHeaderTone | "follow-header";
+
+/** Colours per tone. */
+const TONES: Readonly<Record<LaxFamilyBarTone, ToneClasses>> = {
   "on-light": {
     link: "text-on-surface-variant hover:text-on-surface",
     current: "text-on-surface",
@@ -50,6 +58,17 @@ const TONES: Readonly<Record<MarketingHeaderTone, ToneClasses>> = {
     divider: "border-hero-foreground/30",
     underline: "before:bg-current",
     accented: false,
+  },
+  "follow-header": {
+    link: "text-on-surface-variant hover:text-on-surface group-data-[header-tone=on-dark]/header:text-hero-foreground/80 group-data-[header-tone=on-dark]/header:hover:text-hero-foreground",
+    current: "text-on-surface group-data-[header-tone=on-dark]/header:text-hero-foreground",
+    muted:
+      "text-on-surface-variant group-data-[header-tone=on-dark]/header:text-hero-foreground/80",
+    divider:
+      "border-on-surface-variant/35 group-data-[header-tone=on-dark]/header:border-hero-foreground/30",
+    underline:
+      "before:bg-[var(--family-accent,currentColor)] dark:before:bg-[var(--family-accent-on-dark,currentColor)] group-data-[header-tone=on-dark]/header:before:bg-current group-data-[header-tone=on-dark]/header:dark:before:bg-current",
+    accented: true,
   },
 };
 
@@ -92,7 +111,7 @@ export type LaxFamilyBarProps = {
    * @deprecated Controls move to the product action row. Kept until every product has adopted it.
    */
   actions?: ReactNode;
-  tone?: MarketingHeaderTone;
+  tone?: LaxFamilyBarTone;
   className?: string;
 };
 

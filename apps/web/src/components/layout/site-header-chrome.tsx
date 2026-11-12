@@ -15,11 +15,11 @@ import {
   headerChromeClassName,
   useHeaderChrome,
 } from "@auction/marketing-ui/header/use-header-chrome";
-import { LaxFamilyBar } from "@auction/marketing-ui/lax-family-bar";
 import { cn } from "@auction/ui/lib/utils";
 import { Menu, X } from "lucide-react";
 import { usePathname, useSearchParams } from "next/navigation";
 import {
+  type ReactNode,
   Suspense,
   forwardRef,
   useEffect,
@@ -31,25 +31,27 @@ import {
 import { AccountNeedsYouProvider } from "./account-switcher/account-needs-you";
 import { BidAttentionPrompt } from "./bid-attention-prompt";
 import { BidHeaderAccount } from "./bid-header-account";
-import { BidHeaderLockup } from "./bid-header-lockup";
 import { BidPhoneAccount } from "./bid-phone-account";
-import { BidPhoneMenu } from "./bid-phone-menu";
+import { BidPhoneMenuMount } from "./bid-phone-menu-mount";
 import { HeaderMegaNav } from "./header-mega-nav";
-import { utilityNav } from "./header-nav-config";
 import { HeaderSearchTrigger } from "./header-search";
 import { ThemeToggle } from "./theme-toggle";
 
 /** There is nothing to subscribe to: the value only differs between the server and the client. */
 const subscribeNever = () => () => {};
 
-type SiteHeaderChromeVariant = "solid" | "transparentUntilScroll";
+export type SiteHeaderChromeVariant = "solid" | "transparentUntilScroll";
 
 type SiteHeaderProps = {
   nav?: MegaMenuSection[];
   chromeVariant?: SiteHeaderChromeVariant;
   laxProductLinks?: LaxProductLinkVm[];
-  /** The LAX top bar: the products, then LAX Account. */
+  /** The LAX top bar's links, for the phone menu, where the bar is hidden. */
   familyLinks?: LaxFamilyLinkVm[];
+  /** The LAX top bar, drawn on the server. It follows this header's `data-header-tone`. */
+  familyBar: ReactNode;
+  /** The Bid lockup, drawn on the server. It follows this header's `data-header-tone`. */
+  lockup: ReactNode;
 };
 
 type SiteHeaderShellProps = SiteHeaderProps & {
@@ -62,6 +64,8 @@ function SiteHeaderShell({
   searchParams,
   laxProductLinks = [],
   familyLinks = [],
+  familyBar,
+  lockup,
 }: SiteHeaderShellProps) {
   const { user } = useAppSession();
   const nav = useMemo(() => {
@@ -110,11 +114,11 @@ function SiteHeaderShell({
         {...(heroPending ? { "data-hero-pending": "" } : {})}
         data-at-top={atTop ? "true" : "false"}
         data-header-tone={headerTone}
-        className={headerChromeClassName(isTransparent, megaOpen)}
+        className={cn("group/header", headerChromeClassName(isTransparent, megaOpen))}
       >
         <div className={cn("mx-auto max-w-[var(--container-max,1440px)]", MARKETING_PAGE_GUTTER_X)}>
           {/* 36px, from 1024px. About us, Contact us and FAQ sit at its right. */}
-          <LaxFamilyBar links={familyLinks} helpLinks={utilityNav} tone={headerTone} />
+          {familyBar}
 
           {/* The main row: the slim 56px bar up to 1023px, 72px on a desktop. */}
           <div className="flex h-14 items-center lg:h-[72px]">
@@ -124,7 +128,7 @@ function SiteHeaderShell({
               searchParams={searchParams}
               onOpenChange={setMegaOpen}
               headerTone={headerTone}
-              logo={<BidHeaderLockup tone={headerTone} />}
+              logo={lockup}
               trailing={
                 // One provider for the phone account button and the account menu, so the
                 // "needs you" numbers are read once when either list opens.
@@ -181,7 +185,7 @@ function SiteHeaderShell({
           </div>
         ) : null}
 
-        <BidPhoneMenu
+        <BidPhoneMenuMount
           open={menuOpen}
           onOpenChange={setMenuOpen}
           pathname={pathname}
@@ -200,7 +204,7 @@ function SiteHeaderWithSearchParams(props: SiteHeaderProps) {
   return <SiteHeaderShell {...props} searchParams={searchParams} />;
 }
 
-export function SiteHeader(props: SiteHeaderProps) {
+export function SiteHeaderChrome(props: SiteHeaderProps) {
   return (
     <Suspense fallback={<SiteHeaderShell {...props} searchParams={null} />}>
       <SiteHeaderWithSearchParams {...props} />

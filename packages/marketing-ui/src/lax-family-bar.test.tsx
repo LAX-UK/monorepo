@@ -209,4 +209,18 @@ describe("LaxFamilyMenuLinks", () => {
     render(<LaxFamilyBar links={LINKS} />);
     expect(screen.queryByRole("navigation", { name: "Help" })).toBeNull();
   });
+
+  it("follows the header's tone from its data attribute instead of a prop", () => {
+    render(<LaxFamilyBar links={LINKS} tone="follow-header" />);
+    const current = screen.getByRole("link", { name: "lax.shop" });
+    expect(current.className).toContain("font-semibold");
+    expect(current.className).toContain(
+      "group-data-[header-tone=on-dark]/header:text-hero-foreground",
+    );
+    const other = screen.getByRole("link", { name: "lax.art" });
+    expect(other.className).toContain("text-on-surface-variant");
+    expect(other.className).toContain(
+      "group-data-[header-tone=on-dark]/header:hover:text-hero-foreground",
+    );
+  });
 });
