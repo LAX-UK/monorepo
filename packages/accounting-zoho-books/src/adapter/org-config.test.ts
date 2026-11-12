@@ -52,12 +52,35 @@ describe("per-organisation config", () => {
     expect(codeOf(input)).toBe("org_configs_shared_organization");
   });
 
-  it("refuses a standard rate with no tax id, but allows none for exempt", () => {
+  it("refuses a VAT-registered organisation with no standard tax id, but allows none for exempt", () => {
     const input = raw();
     (
-      (input.london_art_exchange as Record<string, unknown>).taxIds as Record<string, unknown>
+      (input.london_auction_xchange as Record<string, unknown>).taxIds as Record<string, unknown>
     ).standard = null;
-    expect(codeOf(input)).toBe("org_london_art_exchange_tax_standard_required");
+    expect(codeOf(input)).toBe("org_london_auction_xchange_tax_standard_required");
+  });
+
+  it("requires every organisation to state whether it is VAT registered, with no default", () => {
+    for (const value of [undefined, "no", 0, null]) {
+      const input = raw();
+      setAt(input, ["vatRegistered"], value);
+      expect(codeOf(input)).toBe("org_london_art_exchange_vat_registered_missing");
+    }
+  });
+
+  it("reads London Art Exchange as not VAT registered, with no tax ids at all", () => {
+    const shop = parseOrgConfigs(raw()).london_art_exchange;
+    expect(shop?.vatRegistered).toBe(false);
+    expect(Object.values(shop?.taxIds ?? {}).every((t) => t === null)).toBe(true);
+  });
+
+  it("refuses a tax id for an organisation that is not VAT registered", () => {
+    const input = raw();
+    setAt(input, ["taxIds"], { standard: "9110000000001" });
+    expect(codeOf(input)).toBe("org_london_art_exchange_tax_standard_not_vat_registered");
+    const zero = raw();
+    setAt(zero, ["taxIds"], { zero: "9110000000002", standard: null });
+    expect(codeOf(zero)).toBe("org_london_art_exchange_tax_zero_not_vat_registered");
   });
 
   it("refuses ids that are not Books ids", () => {

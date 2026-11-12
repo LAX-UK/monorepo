@@ -28,7 +28,16 @@ export interface ZohoOrgConfig {
    * with one of these is looked up and adopted instead of failing. Confirm in the test organisation.
    */
   readonly duplicateValueZohoCodes: readonly number[];
-  /** The Books tax per VAT treatment; `null` means no tax id is sent (never allowed for `standard`). */
+  /**
+   * Whether the legal entity is registered for VAT. A fact the owners and accountant state per
+   * organisation; there is no default. When false, no tax id is configured or ever sent, and any
+   * line that carries VAT (or claims the standard rate) is refused before anything is posted.
+   */
+  readonly vatRegistered: boolean;
+  /**
+   * The Books tax per VAT treatment; `null` means no tax id is sent. A registered organisation must
+   * have one for `standard`; an unregistered one must have none at all.
+   */
   readonly taxIds: Readonly<Record<VatTreatment, string | null>>;
   /** The item and revenue account every line of a role is posted to. */
   readonly lines: Readonly<
@@ -82,7 +91,23 @@ function optionalId(value: unknown, path: string): string | undefined {
   return value === undefined ? undefined : id(value, path);
 }
 
-function parseTaxIds(value: unknown, path: string): Record<VatTreatment, string | null> {
+function parseTaxIds(
+  value: unknown,
+  path: string,
+  vatRegistered: boolean,
+): Record<VatTreatment, string | null> {
+  if (!vatRegistered) {
+    // An entity that is not VAT registered has no taxes in Books: nothing may be configured.
+    const raw = value === undefined ? {} : record(value, path);
+    const out = {} as Record<VatTreatment, string | null>;
+    for (const treatment of VAT_TREATMENTS) {
+      if (raw[treatment] !== undefined && raw[treatment] !== null) {
+        fail(`${path}_${treatment}`, "not_vat_registered");
+      }
+      out[treatment] = null;
+    }
+    return out;
+  }
   const raw = record(value, path);
   const out = {} as Record<VatTreatment, string | null>;
   for (const treatment of VAT_TREATMENTS) {
@@ -120,6 +145,8 @@ function parseCodes(value: unknown, path: string): readonly number[] {
 function parseOrg(value: unknown, entity: LegalEntity): ZohoOrgConfig {
   const p = entity;
   const raw = record(value, p);
+  if (typeof raw.vatRegistered !== "boolean") fail(`${p}_vat_registered`, "missing");
+  const vatRegistered = raw.vatRegistered;
   const field = record(raw.laxReferenceField, `${p}_reference_field`);
   const apiName = field.apiName;
   if (typeof apiName !== "string" || !API_NAME.test(apiName))
@@ -138,7 +165,8 @@ function parseOrg(value: unknown, entity: LegalEntity): ZohoOrgConfig {
     organizationId: id(raw.organizationId, `${p}_organization`),
     laxReferenceField: { fieldId: id(field.fieldId, `${p}_reference_field_id`), apiName },
     duplicateValueZohoCodes: parseCodes(raw.duplicateValueZohoCodes, `${p}_duplicate_codes`),
-    taxIds: parseTaxIds(raw.taxIds, `${p}_tax`),
+    vatRegistered,
+    taxIds: parseTaxIds(raw.taxIds, `${p}_tax`, vatRegistered),
     lines: parseLines(raw.lines, `${p}_lines`),
     payments: {
       depositAccountId: id(payments.depositAccountId, `${p}_deposit_account`),
@@ -160,7 +188,8 @@ function parseOrg(value: unknown, entity: LegalEntity): ZohoOrgConfig {
  * Read the per-organisation settings from plain data (for example JSON from the environment) and
  * refuse anything incomplete, so a missing id is found when the process starts rather than on the
  * first invoice. An entity may be left out (the Bid organisation does not exist yet); a document for
- * it is then refused with a clear reason. Two entities may never share one Books organisation.
+ * it is then refused with a clear reason. Each organisation must say whether it is VAT registered:
+ * the parser never assumes either answer. Two entities may never share one Books organisation.
  */
 export function parseOrgConfigs(input: unknown): ZohoOrgConfigs {
   const raw = record(input, "configs");

@@ -1,7 +1,13 @@
 import type { Invoice, Result } from "@auction/accounting-domain";
 import { ok } from "@auction/accounting-domain";
 import type { ZohoOrgConfig } from "../org-config.js";
-import { type LineItemBody, type MapCode, lineItemBodies, referenceField } from "./common.js";
+import {
+  type LineItemBody,
+  type MapCode,
+  type TaxConfig,
+  lineItemBodies,
+  referenceField,
+} from "./common.js";
 
 export interface InvoiceBody {
   readonly customer_id: string;
@@ -18,8 +24,9 @@ export interface InvoiceBody {
 
 export type InvoiceConfig = Pick<
   ZohoOrgConfig,
-  "lines" | "taxIds" | "laxReferenceField" | "templateIds" | "numberSeriesIds"
->;
+  "lines" | "laxReferenceField" | "templateIds" | "numberSeriesIds"
+> &
+  TaxConfig;
 
 /** Invoice -> Books invoice. The customer is the Books id of the contact, resolved by the caller. */
 export function invoiceBody(
@@ -27,7 +34,7 @@ export function invoiceBody(
   customerId: string,
   config: InvoiceConfig,
 ): Result<InvoiceBody, MapCode> {
-  const lines = lineItemBodies(invoice.lines, config);
+  const lines = lineItemBodies(invoice.lines, "tax_exclusive", config);
   if (!lines.ok) return lines;
   return ok({
     customer_id: customerId,

@@ -43,6 +43,11 @@ const halfUp = (numerator: number, denominator: number) =>
  * keeps documents per organisation, refuses a second document with the same LAX reference, works
  * tax out per line as Books does, and can be told to misbehave (`faults`). It is what the adapter
  * contract runs against instead of the live service: no network, synthetic ids.
+ *
+ * It is at least as strict as Books is expected to be (to confirm in the test organisation): a
+ * tax id must be one of the receiving organisation's own (an organisation that is not VAT
+ * registered has none), every priced document and payment names its currency, an invoice, credit
+ * note or payment goes to a customer contact and a bill to a vendor contact.
  */
 export class SimulatedBooks implements ZohoTransport {
   readonly faults = new FaultQueue();
@@ -101,6 +106,16 @@ export class SimulatedBooks implements ZohoTransport {
   }
 
   private list(org: ZohoOrgConfig, kind: DocumentKind, query: URLSearchParams): TransportResponse {
+    const fault = this.faults.takeLookup();
+    if (fault === "lookup_unavailable") return reply(200, { code: 0, message: "success" });
+    if (fault === "lookup_ambiguous") {
+      const idField = KIND_SPECS[kind].idField;
+      return reply(200, {
+        code: 0,
+        message: "success",
+        [KIND_SPECS[kind].listKey]: [{ [idField]: "1" }, { [idField]: "2" }],
+      });
+    }
     const wanted = query.get(org.laxReferenceField.apiName);
     const perPage = Number(query.get("per_page") ?? 200);
     const rows = this.held(org, kind)
@@ -180,6 +195,15 @@ export class SimulatedBooks implements ZohoTransport {
     return this.held(org, kind).some((d) => d.id === id);
   }
 
+  private contactOfType(org: ZohoOrgConfig, id: unknown, type: "customer" | "vendor"): boolean {
+    return this.held(org, "contact").some((d) => d.id === id && d.record.contact_type === type);
+  }
+
+  /** The tax ids this organisation holds: none for one that is not VAT registered. */
+  private orgTaxIds(org: ZohoOrgConfig): ReadonlySet<string> {
+    return new Set(Object.values(org.taxIds).filter((t): t is string => t !== null));
+  }
+
   /** What Books works out for a document: totals per line for priced ones, the amount for a payment. */
   private price(
     org: ZohoOrgConfig,
@@ -187,19 +211,31 @@ export class SimulatedBooks implements ZohoTransport {
     body: Json,
     query: URLSearchParams,
   ): { fields: Json } | { error: TransportResponse } {
+    if (kind === "contact") {
+      const type = body.contact_type;
+      if (type !== "customer" && type !== "vendor") return { error: failure(400, 1, "bad type") };
+      return { fields: { contact_name: body.contact_name, contact_type: type } };
+    }
     const party = kind === "bill" ? body.vendor_id : body.customer_id;
-    if (kind === "contact") return { fields: { contact_name: body.contact_name } };
     if (!this.exists(org, "contact", party))
       return { error: failure(400, 1003, "no such contact") };
+    if (!this.contactOfType(org, party, kind === "bill" ? "vendor" : "customer")) {
+      return { error: failure(400, 1006, "contact is not of the right type") };
+    }
+    if (body.currency_code !== "GBP") return { error: failure(400, 1007, "currency required") };
     if (kind === "payment") return this.pricePayment(org, body);
     if (kind === "credit_note" && !this.exists(org, "invoice", query.get("invoice_id"))) {
       return { error: failure(400, 1004, "no such invoice") };
     }
     const inclusive = body.is_inclusive_tax === true;
+    const taxIds = this.orgTaxIds(org);
     let net = 0;
     let vat = 0;
     let gross = 0;
     for (const raw of (body.line_items ?? []) as Json[]) {
+      if (raw.tax_id !== undefined && !taxIds.has(raw.tax_id as string)) {
+        return { error: failure(400, 1008, "tax does not exist in this organisation") };
+      }
       const amount = pence((raw.rate as number) * (raw.quantity as number));
       const bps = raw.tax_id === undefined ? 0 : (TEST_TAX_RATES_BPS[raw.tax_id as string] ?? 0);
       const lineVat = inclusive ? halfUp(amount * bps, 10_000 + bps) : halfUp(amount * bps, 10_000);
@@ -225,13 +261,23 @@ export class SimulatedBooks implements ZohoTransport {
   ): { fields: Json } | { error: TransportResponse } {
     const amount = pence(body.amount as number);
     let applied = 0;
+    const invoices: Json[] = [];
     for (const raw of (body.invoices ?? []) as Json[]) {
       if (!this.exists(org, "invoice", raw.invoice_id)) {
         return { error: failure(400, 1004, "no such invoice") };
       }
       applied += pence(raw.amount_applied as number);
+      invoices.push({ invoice_id: raw.invoice_id, amount_applied: raw.amount_applied });
     }
     if (applied > amount) return { error: failure(400, 1005, "applied more than the amount") };
-    return { fields: { amount: pounds(amount) } };
+    return {
+      fields: {
+        amount: pounds(amount),
+        customer_id: body.customer_id,
+        date: body.date,
+        currency_code: body.currency_code,
+        invoices,
+      },
+    };
   }
 }
