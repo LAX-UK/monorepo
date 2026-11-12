@@ -1,17 +1,12 @@
 "use client";
 
+import type { TelephoneBookingPanelEntity } from "@/components/marketing/sale-telephone-booking-panel";
 import { LazySaleTelephoneBookingPanelForm } from "@/components/marketing/sale-telephone-booking-panel.lazy";
 import type { TelephoneBookingSnapshot } from "@/lib/telephone/telephone-booking-types";
 import { TelephoneParticipationGate } from "@/lib/telephone/telephone-participation-gate";
 import { Button } from "@auction/ui/lax/button";
 import Link from "next/link";
 import { useState } from "react";
-
-type Entity = {
-  id: string;
-  displayName: string;
-  memberRole: string;
-};
 
 type Props = {
   saleId: string;
@@ -22,7 +17,7 @@ type Props = {
   mobile: string | null;
   phoneNumberVerified?: boolean;
   mobileDisplay?: string | null;
-  buyerEntities: Entity[];
+  buyerEntities: TelephoneBookingPanelEntity[];
   existingBooking?: TelephoneBookingSnapshot | null;
   orgModuleEnabled?: boolean;
 };
