@@ -129,7 +129,7 @@ describe.skipIf(!HAS_DB)("private sale deal reminders (integration)", () => {
   it("leaves out a deadline whose last reminder window closed days ago", async () => {
     await inRollback(async (db, dealId) => {
       const store = new DrizzlePrivateSaleDealReminderStore(db);
-      await moveTo(db, dealId, "invoiced", { paymentDueAt: new Date(Date.now() - 5 * 86_400_000) });
+      await moveTo(db, dealId, "invoiced", { paymentDueAt: new Date(Date.now() - 6 * 86_400_000) });
       expect(await store.listCandidates(10)).toEqual([]);
       await moveTo(db, dealId, "invoiced", { paymentDueAt: new Date(Date.now() - 3 * 86_400_000) });
       expect(await store.listCandidates(10)).toHaveLength(1);
