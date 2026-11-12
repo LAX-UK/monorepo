@@ -8,10 +8,12 @@ import {
 import { BID_API_AUDIENCE } from "@/lib/bff/config.server";
 import { readBidSessionIdFromStore } from "@/lib/bff/session-cookie.server";
 import { BidBffTokenService } from "@/lib/bff/token-service.server";
-import { viewSessionCookieHeader } from "@/lib/bff/view-session-cookie";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { deriveSsrOriginFromHeaders } from "@/lib/data/http/ssr-origin";
-import { getActingLegalEntityHeader } from "@/lib/legal-entity/acting-context.server";
+import {
+  getActingLegalEntityHeader,
+  viewSessionCookieForRequest,
+} from "@/lib/legal-entity/acting-context.server";
 import { cookies, headers as nextHeaders } from "next/headers";
 
 export type { HeaderBag } from "@/lib/data/http/ssr-origin";
@@ -88,8 +90,8 @@ export function withActingLegalEntity(): HeaderDecorator {
 /** Carries the staff "view as client" session cookie (that cookie only) to the API, which validates it. */
 export function withViewSessionCookie(): HeaderDecorator {
   return async (headers) => {
-    // The raw header, so a duplicated cookie resolves to the first one, as on the BFF and the API.
-    const cookie = viewSessionCookieHeader((await nextHeaders()).get("cookie"));
+    // From the same cookie value as the acting header, so a duplicated cookie is resolved once.
+    const cookie = await viewSessionCookieForRequest();
     if (cookie) headers.set("Cookie", cookie);
   };
 }

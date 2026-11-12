@@ -4,6 +4,13 @@ import type {
   ActivityEntryView,
 } from "@/lib/data/http/organisation-team.types";
 import { organisationRoleLabel } from "@/lib/presenters/organisation-role/organisation-role-presentation";
+import {
+  LONDON_TIME_ZONE,
+  addCalendarKeyDays,
+  dayKey,
+  formatDayMonth,
+  formatTime,
+} from "@auction/datetime";
 import type { ActivityGroup } from "@auction/domain";
 
 /**
@@ -128,38 +135,19 @@ export function activityLine(entry: ActivityEntryView, organisation: string): Ac
 
 export type ActivityDayView = { key: string; label: string; lines: ActivityLineView[] };
 
-const LONDON = "Europe/London";
-const dayKey = new Intl.DateTimeFormat("en-CA", { timeZone: LONDON });
-const dayLabel = new Intl.DateTimeFormat("en-GB", {
-  timeZone: LONDON,
-  day: "numeric",
-  month: "short",
-});
-const dayLabelWithYear = new Intl.DateTimeFormat("en-GB", {
-  timeZone: LONDON,
-  day: "numeric",
-  month: "short",
-  year: "numeric",
-});
-const timeLabel = new Intl.DateTimeFormat("en-GB", {
-  timeZone: LONDON,
-  hour: "2-digit",
-  minute: "2-digit",
-});
-
 /** "10:42", in London time. */
 export function activityTime(iso: string): string {
-  return timeLabel.format(new Date(iso));
+  return formatTime(new Date(iso), LONDON_TIME_ZONE);
 }
 
 /** Lines grouped by London day, newest first: "Today", "Yesterday", "28 Oct", "3 Dec 2025". */
 export function activityDays(lines: readonly ActivityLineView[], now: Date): ActivityDayView[] {
-  const today = dayKey.format(now);
-  const yesterday = dayKey.format(new Date(now.getTime() - 86_400_000));
+  const today = dayKey(now, LONDON_TIME_ZONE);
+  const yesterday = addCalendarKeyDays(today, -1);
   const days: ActivityDayView[] = [];
   for (const line of lines) {
     const at = new Date(line.occurredAt);
-    const key = dayKey.format(at);
+    const key = dayKey(at, LONDON_TIME_ZONE);
     let day = days[days.length - 1];
     if (!day || day.key !== key) {
       const label =
@@ -167,9 +155,7 @@ export function activityDays(lines: readonly ActivityLineView[], now: Date): Act
           ? "Today"
           : key === yesterday
             ? "Yesterday"
-            : at.getUTCFullYear() === now.getUTCFullYear()
-              ? dayLabel.format(at)
-              : dayLabelWithYear.format(at);
+            : formatDayMonth(at, LONDON_TIME_ZONE, now);
       day = { key, label, lines: [] };
       days.push(day);
     }

@@ -2460,9 +2460,9 @@
       "breakpoints": true
     },
     {
-      "idx": 357,
+      "idx": 352,
       "version": "7",
-      "when": 1806393600000,
+      "when": 1807516800000,
       "tag": "0363_private_sale_deal_artwork_history",
       "breakpoints": true
     }
