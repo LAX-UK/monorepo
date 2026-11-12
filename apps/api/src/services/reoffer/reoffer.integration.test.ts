@@ -1133,9 +1133,12 @@ describe.skipIf(!HAS_DB)("re-offer API services (integration)", () => {
       reset();
       const needsYou = new DrizzleNeedsYouFactsReader(db);
       const records = new DrizzleRecordAccountReader(db);
-      const waiting = (who: keyof typeof ids) =>
-        needsYou.reofferOffers({ legalEntityId: entity[who], now: clock.now, limit: 10 });
+      // Other tests leave offers with these accounts: look at this lot's only.
       const s = await defaultedLot();
+      const waiting = async (who: keyof typeof ids) =>
+        (
+          await needsYou.reofferOffers({ legalEntityId: entity[who], now: clock.now, limit: 100 })
+        ).filter((offer) => offer.title === `Reoffer lot ${s.lotId.slice(0, 4)}`);
       const started = await start.start(staff, s.lotId);
       await consent.recordForSeller(staff, started.reofferId, { answer: "given", note: "yes" });
       // Not sent yet: nothing waits on the bidder, and the offer is not a record they can open.
