@@ -19,7 +19,7 @@ import { createOrganisationHubGateway } from "@/lib/legal-entity/organisation-hu
 import { resolveSellerWorkspaceContext } from "@/lib/legal-entity/seller-acting-context.server";
 import { organisationHref } from "@/lib/navigation/client-routes";
 import { payoutSetupSteps } from "@/lib/presenters/payout-setup-steps";
-import { EmailLink } from "@auction/marketing-ui";
+import { EmailLink } from "@auction/marketing-ui/email-text";
 import { redirect } from "next/navigation";
 
 export default async function SellerPayoutSetupPage() {

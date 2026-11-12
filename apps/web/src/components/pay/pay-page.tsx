@@ -1,6 +1,9 @@
 import { ListEmpty } from "@/components/workspace/list-states";
 import type { PayPageVm } from "@/lib/pay/pay-page.vm";
-import { ButtonLink, StatusBadge, TextLink, pageTitleClass } from "@auction/ui/lax";
+import { ButtonLink } from "@auction/ui/lax/button-link";
+import { StatusBadge } from "@auction/ui/lax/status-badge";
+import { pageTitleClass } from "@auction/ui/lax/styles";
+import { TextLink } from "@auction/ui/lax/text-link";
 import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
 import { PayDeliveryPanel } from "./pay-delivery-panel";

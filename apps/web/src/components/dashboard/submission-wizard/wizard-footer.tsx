@@ -3,9 +3,9 @@
 import type { AutosaveStatus } from "@/lib/forms/submission/use-submission-wizard-controller";
 import { wizardAutosaveLabel } from "@/lib/forms/submission/wizard-autosave-label";
 import { SUBMISSION_FINISH_LATER_LABEL } from "@/lib/marketing/sell-flow-copy";
-import { cn } from "@auction/ui";
 import { WizardNav } from "@auction/ui/components/wizard-nav";
-import { Button } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
+import { cn } from "@auction/ui/lib/utils";
 import { useEffect, useRef } from "react";
 
 /** The custom property the form reads, so a focused field scrolls to above the bar. */

@@ -1,8 +1,9 @@
 "use client";
 
 import type { UploadItem } from "@/lib/private-sales/enquiry-uploads";
-import { cn } from "@auction/ui";
-import { Button, FilePickerButton } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
+import { FilePickerButton } from "@auction/ui/lax/file-picker-button";
+import { cn } from "@auction/ui/lib/utils";
 import { CircleAlert, FileText, ImageIcon, Upload, X } from "lucide-react";
 import { type DragEvent, useId, useState } from "react";
 

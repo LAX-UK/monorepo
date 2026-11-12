@@ -1,5 +1,5 @@
-import { cn } from "@auction/ui";
 import { Alert, AlertDescription } from "@auction/ui/components/alert";
+import { cn } from "@auction/ui/lib/utils";
 
 export function FieldError({ message }: { message?: string }) {
   if (!message) return null;

@@ -8,7 +8,7 @@ import type { SearchEndingWindow } from "@/lib/marketing/parse-search-params";
 import { buildSearchQs } from "@/lib/marketing/search-qs";
 import type { CatalogLayoutView } from "@/lib/preferences/view-cookie";
 import type { LotStatus } from "@auction/types";
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 import Link from "next/link";
 
 export type SearchStatusChipsProps = {

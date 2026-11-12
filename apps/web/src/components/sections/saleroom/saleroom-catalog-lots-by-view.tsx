@@ -4,7 +4,7 @@ import { MarketingEmptyState } from "@/components/marketing/marketing-empty-stat
 import type { SaleroomSaleForLifecycle } from "@/components/sections/saleroom/saleroom-lot-catalog-overlay";
 import type { CatalogueRow } from "@/lib/marketing/saleroom/catalogue-rows";
 import type { CatalogLayoutView } from "@/lib/preferences/view-cookie";
-import { ButtonLink } from "@auction/ui/lax";
+import { ButtonLink } from "@auction/ui/lax/button-link";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { SaleroomLotCard } from "./saleroom-lot-card";

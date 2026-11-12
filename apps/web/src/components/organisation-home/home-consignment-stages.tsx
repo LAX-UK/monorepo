@@ -1,6 +1,6 @@
 import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
 import type { ConsignmentStageView } from "@/lib/organisation-home/organisation-dashboard-view";
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 import Link from "next/link";
 import { HOME_CELL_LINK_CLASS, HOME_PANEL_CLASS, HomeSection } from "./home-section";
 

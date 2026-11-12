@@ -7,7 +7,7 @@ import { getServerMyConditionReportRequests } from "@/lib/data/http/condition-re
 import { getServerMyTelephoneBookings } from "@/lib/data/http/telephone-booking.server";
 import { resolveSaleTitles } from "@/lib/data/sale-titles.server";
 import { telephoneBookingRow } from "@/lib/telephone/telephone-booking-rows.vm";
-import { RecordList } from "@auction/ui";
+import { RecordList } from "@auction/ui/components/record-row";
 
 const TELEPHONE = {
   id: "telephone-bids",

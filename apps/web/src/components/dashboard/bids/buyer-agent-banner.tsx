@@ -1,5 +1,5 @@
 import type { AuthorisationLineVm, BuyerAgentBannerVm } from "@/lib/bid/buyer-agent-banner";
-import { Notice } from "@auction/ui/lax";
+import { Notice } from "@auction/ui/lax/notice";
 
 /** How much of a total is in use, as a quiet bar under the sentence that says it. */
 function UsageBar({ line }: { line: AuthorisationLineVm }) {

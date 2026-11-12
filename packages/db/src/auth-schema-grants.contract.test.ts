@@ -18,6 +18,7 @@ import {
   oidcRpSession,
   passkey,
   session,
+  sessionLineage,
   ssfDelivery,
   ssfStream,
   twoFactor,
@@ -30,6 +31,7 @@ describe("Better Auth schema and auth_app grant drift", () => {
     const configuredAuthTables = [
       user,
       session,
+      sessionLineage,
       account,
       verification,
       twoFactor,

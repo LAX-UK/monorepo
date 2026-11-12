@@ -2462,7 +2462,21 @@
     {
       "idx": 352,
       "version": "7",
-      "when": 1807430400000,
+      "when": 1806739200000,
+      "tag": "0367_xero_token_sealing",
+      "breakpoints": true
+    },
+    {
+      "idx": 353,
+      "version": "7",
+      "when": 1807171200000,
+      "tag": "0356_session_device_marker",
+      "breakpoints": true
+    },
+    {
+      "idx": 354,
+      "version": "7",
+      "when": 1808294400000,
       "tag": "0368_accounting_tables",
       "breakpoints": true
     }

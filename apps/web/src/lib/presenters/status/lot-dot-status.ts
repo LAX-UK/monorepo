@@ -1,6 +1,6 @@
 import type { LotStatus } from "@auction/types";
-import type { DotStatusPillTone } from "@auction/ui";
-import { presentationToDotStatus } from "@auction/ui";
+import type { DotStatusPillTone } from "@auction/ui/components/dot-status-pill";
+import { presentationToDotStatus } from "@auction/ui/lib/status-presentation-bridge";
 import { resolveLotStatusPresentation } from "./resolver";
 
 export type LotDotStatusContext = "sale-board" | "global";

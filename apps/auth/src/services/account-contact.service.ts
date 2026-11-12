@@ -67,8 +67,7 @@ export class AccountContactService {
     subjectId: string,
     currentSessionId: string,
   ): Promise<ReauthRequired | EmailChangeResult<object>> {
-    const live = await this.sessions.liveSessions(subjectId);
-    if (!live.some((session) => session.id === currentSessionId)) {
+    if (!(await this.sessions.findLive(subjectId, currentSessionId))) {
       return { ok: false, reason: "reauth_required" };
     }
     return this.ports.emailChange.cancel(subjectId);

@@ -2,8 +2,8 @@ import type { AuctionSessionHeaderVM } from "@/components/sections/artwork/artwo
 import { OnsiteSaleScheduleCountdown } from "@/components/sections/artwork/onsite/onsite-sale-schedule-countdown";
 import { salePath } from "@/lib/seo/url";
 import type { Sale } from "@auction/types";
-import { cn } from "@auction/ui";
-import { ButtonLink } from "@auction/ui/lax";
+import { ButtonLink } from "@auction/ui/lax/button-link";
+import { cn } from "@auction/ui/lib/utils";
 import Link from "next/link";
 
 type Props = {

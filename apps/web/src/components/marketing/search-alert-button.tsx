@@ -15,7 +15,8 @@ import {
   switchSearchEmail,
   turnedOnMessage,
 } from "@/lib/watching/search-email";
-import { Button, ButtonLink } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
+import { ButtonLink } from "@auction/ui/lax/button-link";
 import { Bell, BellRing } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";

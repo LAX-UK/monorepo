@@ -6,7 +6,7 @@ import { dashboardCheckoutLotUrl } from "@/lib/dashboard/dashboard-copy";
 import type { LotPageView } from "@/lib/lot-page/build-lot-page-view";
 import type { LotActionSurface } from "@/lib/lot-page/lot-action-surface";
 import { buildPhoneBarSummary } from "@/lib/lot-page/phone-bar";
-import { ButtonLink } from "@auction/ui/lax";
+import { ButtonLink } from "@auction/ui/lax/button-link";
 import { ArrowLeft, Mail, Receipt } from "lucide-react";
 import Link from "next/link";
 import { type ReactNode, type RefObject, useRef } from "react";

@@ -11,7 +11,7 @@ import { resolveOrgModuleEnabledFromRequest } from "@/lib/legal-entity/org-modul
 import { REGISTER_ORGANISATION_HREF } from "@/lib/navigation/account-switcher-model";
 import { accountRows, invitationRows } from "@/lib/organisations/organisation-accounts.vm";
 import { loadOrganisationsHub } from "@/lib/organisations/organisations-hub.server";
-import { ButtonLink } from "@auction/ui/lax";
+import { ButtonLink } from "@auction/ui/lax/button-link";
 import type { Metadata } from "next";
 import Link from "next/link";
 

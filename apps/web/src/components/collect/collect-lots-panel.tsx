@@ -4,7 +4,8 @@ import { WorkspacePanel } from "@/components/dashboard/primitives/workspace-pane
 import { COLLECT_COPY } from "@/lib/collect/collect-copy";
 import { COLLECT_FIELD_IDS } from "@/lib/collect/collect-form";
 import type { CollectionLotLine } from "@auction/types";
-import { Checkbox, FieldError } from "@auction/ui/lax";
+import { Checkbox } from "@auction/ui/lax/checkbox";
+import { FieldError } from "@auction/ui/lax/field";
 
 /** The lots in this visit: those that can be booked are ticked, the rest say why they cannot. */
 export function CollectLotsPanel({

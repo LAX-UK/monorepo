@@ -1,5 +1,5 @@
 import { CONSIGNMENT_STAGE_LABEL } from "@/lib/seller/consignment-status";
-import { ButtonLink } from "@auction/ui/lax";
+import { ButtonLink } from "@auction/ui/lax/button-link";
 import { CircleCheck } from "lucide-react";
 import Link from "next/link";
 

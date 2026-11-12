@@ -1,5 +1,5 @@
-import { cn } from "@auction/ui";
 import { AsyncButton } from "@auction/ui/components/loading-button";
+import { cn } from "@auction/ui/lib/utils";
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 
 type AuthSubmitButtonProps = {

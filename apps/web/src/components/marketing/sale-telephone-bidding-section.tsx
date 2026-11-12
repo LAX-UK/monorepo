@@ -3,7 +3,7 @@ import {
   type SaleTelephoneBookingPanelProps,
 } from "@/components/marketing/sale-telephone-booking-panel";
 import { MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 
 /** Semantic section landmark for telephone bidding — panel owns card chrome and heading. */
 export function SaleTelephoneBiddingSection(props: SaleTelephoneBookingPanelProps) {

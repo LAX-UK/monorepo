@@ -1,7 +1,8 @@
 "use client";
 
 import { othersConfirmationText } from "@/lib/watching/search-email";
-import { Button, Dialog } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
+import { Dialog } from "@auction/ui/lax/dialog";
 
 /**
  * Asked before turning on one saved search's email brings other searches' email back with it:

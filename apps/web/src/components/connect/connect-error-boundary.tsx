@@ -1,6 +1,6 @@
 "use client";
 
-import { Button } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
 import type { ReactNode } from "react";
 import { Component, type ErrorInfo } from "react";
 

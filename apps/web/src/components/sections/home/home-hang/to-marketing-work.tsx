@@ -1,6 +1,6 @@
 import type { HomeHangWork } from "@/lib/hang/home-hang";
 import { bidCardSrcSet } from "@/lib/media/bid-image-src-set";
-import type { MarketingHangWork } from "@auction/marketing-ui";
+import type { MarketingHangWork } from "@auction/marketing-ui/hang/marketing-hang";
 import { HangLotLabel } from "./hang-lot-label";
 
 /** A hang work from the view model, with its live wall label. */

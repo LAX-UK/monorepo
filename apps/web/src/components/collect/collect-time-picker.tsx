@@ -4,8 +4,9 @@ import { COLLECT_COPY } from "@/lib/collect/collect-copy";
 import { LONDON_TIME_ZONE, formatTime } from "@auction/datetime";
 import { londonZoneLabel } from "@auction/domain";
 import type { CollectionSlotView } from "@auction/types";
-import { cn } from "@auction/ui";
-import { Button, Skeleton } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
+import { Skeleton } from "@auction/ui/lax/skeleton";
+import { cn } from "@auction/ui/lib/utils";
 import { RadioGrid, type RadioGridItem } from "./radio-grid";
 
 const SKELETON_KEYS = ["a", "b", "c", "d", "e", "f", "g", "h"] as const;

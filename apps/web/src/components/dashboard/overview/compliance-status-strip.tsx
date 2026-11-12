@@ -3,9 +3,9 @@ import type { SessionUser } from "@/lib/data/contracts";
 import type { KycStatusSummaryDto } from "@/lib/data/dto/dashboard-dtos";
 import { dashboardIdentityOnboardingHref } from "@/lib/kyc/identity-onboarding";
 import { laxAccountUrl } from "@/lib/lax-account-url";
-import { cn } from "@auction/ui";
-import type { DotStatusPillTone } from "@auction/ui";
+import type { DotStatusPillTone } from "@auction/ui/components/dot-status-pill";
 import { DotStatusPill } from "@auction/ui/components/dot-status-pill";
+import { cn } from "@auction/ui/lib/utils";
 import {
   AlertTriangle,
   Hourglass,

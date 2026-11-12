@@ -10,7 +10,7 @@ import {
 } from "@auction/ui/components/form";
 import { Input } from "@auction/ui/components/input";
 import { Textarea } from "@auction/ui/components/textarea";
-import { Checkbox } from "@auction/ui/lax";
+import { Checkbox } from "@auction/ui/lax/checkbox";
 
 export function DetailsStep({ form }: StepProps) {
   return (

@@ -1,5 +1,5 @@
-import { cn } from "@auction/ui";
 import { LaxIllustration, type LaxIllustrationName } from "@auction/ui/components/lax-illustration";
+import { cn } from "@auction/ui/lib/utils";
 
 /**
  * Bid's names for the shared LAX illustration set (packages/ui). The drawings live in one place

@@ -4,7 +4,7 @@ import { LotEstimateLine } from "@/components/lot-card/lot-estimate-line";
 import { MarketingWatchlistHeart } from "@/components/marketing/watchlist-heart-button";
 import { MediaImage } from "@/components/ui/media-image";
 import type { HomeLotCard } from "@/lib/home-sections/types";
-import { MarketingWorkCard, MarketingWorkGrid } from "@auction/marketing-ui";
+import { MarketingWorkCard, MarketingWorkGrid } from "@auction/marketing-ui/marketing-work-card";
 
 export type HomeLotWatch = {
   isAuthenticated: boolean;

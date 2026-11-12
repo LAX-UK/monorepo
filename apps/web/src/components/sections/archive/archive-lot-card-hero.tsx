@@ -14,7 +14,7 @@ import { FOCUS_RING } from "@/lib/marketing/chrome";
 import { EDITORIAL_BOLD_SLOTS } from "@/lib/media/overlay-slot-presets";
 import { LONDON_TIME_ZONE, formatMonthYear } from "@auction/datetime";
 import type { Lot } from "@auction/types";
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 import Link from "next/link";
 
 function closingSeason(endTime: Date): string {

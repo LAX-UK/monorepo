@@ -1,5 +1,6 @@
 import { ArtistWatchToggle } from "@/components/marketing/artist-watch-toggle";
-import { ButtonLink, EmptyState } from "@auction/ui/lax";
+import { ButtonLink } from "@auction/ui/lax/button-link";
+import { EmptyState } from "@auction/ui/lax/empty-state";
 import Link from "next/link";
 
 type FollowProps = {

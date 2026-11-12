@@ -5,7 +5,7 @@ import {
 } from "@/lib/marketing-cover/cover-alerts-outcome";
 import { HOME_COVER_NOTIFY_ACTION } from "@/lib/marketing-cover/home-cover-links";
 import { TOPIC_CATALOGUE } from "@auction/alerts/topics";
-import { Notice } from "@auction/ui/lax";
+import { Notice } from "@auction/ui/lax/notice";
 import { HomeAlertsPanel } from "./home-alerts-panel";
 import { HomeAlertsSignedIn } from "./home-alerts-signed-in";
 import { HomeAlertsVisitorForm } from "./home-alerts-visitor-form";

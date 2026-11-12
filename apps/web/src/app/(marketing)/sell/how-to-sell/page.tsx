@@ -15,7 +15,7 @@ import { SELL_HOW_TO_SELL_PATH } from "@/lib/marketing/sell-landing";
 import { SELL_PAGE_TOC } from "@/lib/marketing/sell-page-toc";
 import { metadataForStatic } from "@/lib/seo/metadata-factory";
 import { breadcrumbJsonLd, jsonLdScript } from "@/lib/seo/structured-data";
-import { MarketingSectionReveal } from "@auction/marketing-ui";
+import { MarketingSectionReveal } from "@auction/marketing-ui/motion/index";
 import type { Metadata } from "next";
 import Link from "next/link";
 

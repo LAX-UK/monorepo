@@ -6,7 +6,7 @@ import { AccountSwitcherSheet } from "@/components/layout/account-switcher/accou
 import type { SessionUser } from "@/lib/data/contracts";
 import { accountButtonView } from "@/lib/navigation/account-button.vm";
 import type { AccountChrome } from "@/lib/navigation/account-switcher-model";
-import { Button } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
 import { useState } from "react";
 
 type Props = {

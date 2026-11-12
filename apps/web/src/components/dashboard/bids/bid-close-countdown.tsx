@@ -7,7 +7,7 @@ import {
   formatCountdownSpoken,
 } from "@/lib/format-countdown";
 import { useCountdownTick } from "@/lib/time/use-clock";
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 
 /**
  * Text colour per urgency. The `*-on-surface` status tokens reach 4.5:1 on the page and card

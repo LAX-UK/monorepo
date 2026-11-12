@@ -1,5 +1,5 @@
 import { createTokenContrast } from "@/test/css-token-contrast";
-import { DotStatusPill, type DotStatusPillTone } from "@auction/ui";
+import { DotStatusPill, type DotStatusPillTone } from "@auction/ui/components/dot-status-pill";
 import { render } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 

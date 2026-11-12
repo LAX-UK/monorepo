@@ -20,7 +20,7 @@ import {
   SelectValue,
 } from "@auction/ui/components/select";
 import { Textarea } from "@auction/ui/components/textarea";
-import { Button } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
 import { useState, useTransition } from "react";

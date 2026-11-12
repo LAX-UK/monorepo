@@ -1,6 +1,6 @@
 import { evaluateSubmissionQuality } from "@auction/domain";
 import type { ItemSubmission } from "@auction/types";
-import type { DotStatusPillTone } from "@auction/ui";
+import type { DotStatusPillTone } from "@auction/ui/components/dot-status-pill";
 
 import {
   formatSubmissionSlaCountdownLabel,

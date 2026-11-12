@@ -1,5 +1,5 @@
-import { MarketingHangSkeleton } from "@auction/marketing-ui";
-import { Skeleton } from "@auction/ui";
+import { MarketingHangSkeleton } from "@auction/marketing-ui/hang/marketing-hang-skeleton";
+import { Skeleton } from "@auction/ui/components/skeleton";
 
 /** F5b — Per-section skeleton mirroring the actual home composition.
  *

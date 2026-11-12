@@ -4,7 +4,7 @@ import type { MegaMenuSection } from "@/components/layout/header-nav-config";
 import { megaMenuSectionActive } from "@/components/layout/header-nav-config";
 import { fetchLiveStreamsStatus } from "@/lib/data/http/live-streams.client";
 import type { SiteHeaderTone } from "@/lib/layout/header-chrome-tone";
-import { MarketingHeaderMegaNav } from "@auction/marketing-ui";
+import { MarketingHeaderMegaNav } from "@auction/marketing-ui/header/marketing-header-mega-nav";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 

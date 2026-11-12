@@ -13,7 +13,15 @@ export type IdTokenContinuityRecord = {
   subject: string;
   clientId: string;
   claims: Record<string, unknown>;
+  /**
+   * How and when the person signed in, as the original ID token stated it. A sign-in that a newer
+   * one took over is renewed with these, never with the newer record's. Absent on records kept
+   * before this was added, which are then renewed only while their own record is live.
+   */
+  sessionClaims?: OriginalSessionClaims | undefined;
 };
+
+export type OriginalSessionClaims = { auth_time?: number; acr?: string; amr?: string[] };
 
 /** Keeps a continuity record against the refresh token currently able to renew it. */
 export interface IdTokenContinuityStore {
@@ -65,6 +73,16 @@ function identityClaims(payload: Record<string, unknown>): Record<string, unknow
   );
 }
 
+function originalSessionClaims(payload: Record<string, unknown>): OriginalSessionClaims {
+  return {
+    ...(typeof payload.auth_time === "number" ? { auth_time: payload.auth_time } : {}),
+    ...(typeof payload.acr === "string" ? { acr: payload.acr } : {}),
+    ...(Array.isArray(payload.amr) && payload.amr.every((entry) => typeof entry === "string")
+      ? { amr: payload.amr as string[] }
+      : {}),
+  };
+}
+
 function singleAudience(aud: unknown): string | null {
   if (typeof aud === "string") return aud;
   if (Array.isArray(aud) && aud.length === 1 && typeof aud[0] === "string") return aud[0];
@@ -103,6 +121,7 @@ export class RefreshedIdTokenService {
         subject: payload.sub,
         clientId,
         claims: identityClaims(payload),
+        sessionClaims: originalSessionClaims(payload),
       },
       this.deps.continuityTtlSec,
     );
@@ -119,9 +138,16 @@ export class RefreshedIdTokenService {
     const record = await this.deps.continuity.take(hashRefreshToken(input.previousRefreshToken));
     if (!record) return null;
 
+    // Resolves through the lineage, so a sign-in that was taken over keeps renewing.
     const session = await this.deps.findLiveIdentitySession(record.sid);
     if (!session || session.subjectId !== record.subject) return null;
     if (!(await this.deps.isSubjectActive(record.subject))) return null;
+
+    // A sign-in taken over by a newer one in the same browser proves only that the browser is still
+    // signed in: how and when the person signed in stays what the original token said, so a
+    // renewal can never claim a fresher or stronger sign-in than the one the client received.
+    const takenOver = session.id !== record.sid;
+    if (takenOver && !record.sessionClaims) return null;
 
     const access = await this.deps.accessClaims({
       subjectId: record.subject,
@@ -133,7 +159,13 @@ export class RefreshedIdTokenService {
       audience: record.clientId,
       subject: record.subject,
       expirationTime: `${this.deps.idTokenTtlSec}s`,
-      claims: { ...record.claims, ...identityClaims(access), ...oidcSessionClaims(session) },
+      // `sid` stays the one the client signed in with: the client matches back-channel logout by it.
+      claims: {
+        ...record.claims,
+        ...identityClaims(access),
+        ...(takenOver ? record.sessionClaims : oidcSessionClaims(session)),
+        sid: record.sid,
+      },
     });
     await this.deps.continuity.put(
       hashRefreshToken(input.nextRefreshToken),

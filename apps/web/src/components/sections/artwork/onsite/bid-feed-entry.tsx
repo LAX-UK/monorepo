@@ -1,5 +1,5 @@
 import type { BidFeedEntryVM } from "@/components/sections/artwork/artwork-view-models";
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 import { Calendar } from "lucide-react";
 
 type Props = {
