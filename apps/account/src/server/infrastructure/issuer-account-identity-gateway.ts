@@ -27,13 +27,21 @@ import {
   ACCOUNT_SESSIONS_REVOKE_OTHERS_PATH,
   ACCOUNT_SESSIONS_REVOKE_PATH,
   ACCOUNT_SIGN_IN_METHODS_INTENT_PATH,
+  ACCOUNT_SIGN_IN_METHODS_PASSKEY_REMOVE_PATH,
+  ACCOUNT_SIGN_IN_METHODS_PASSKEY_RENAME_PATH,
   ACCOUNT_SIGN_IN_METHODS_PATH,
   ACCOUNT_SIGN_IN_METHODS_UNLINK_PATH,
   ACCOUNT_SIGN_IN_METHOD_ERRORS,
+  ACCOUNT_TIME_ZONE_DEVICE_PATH,
+  ACCOUNT_TIME_ZONE_ERRORS,
+  ACCOUNT_TIME_ZONE_PATH,
+  ACCOUNT_TIME_ZONE_UPDATE_PATH,
   type AccountAddressError,
   type AccountContactError,
   type AccountPasswordError,
   type AccountSignInMethodError,
+  type AccountTimeZoneChange,
+  type AccountTimeZoneError,
   accountActionIntentSchema,
   accountAddressDeletedSchema,
   accountAddressResultSchema,
@@ -46,6 +54,8 @@ import {
   accountEmailChangeCancelledSchema,
   accountEmailChangeConfirmedSchema,
   accountEmailChangeStartedSchema,
+  accountPasskeyRemovedSchema,
+  accountPasskeyRenamedSchema,
   accountPasswordChangedSchema,
   accountPhoneCodeSentSchema,
   accountPhoneRemovedSchema,
@@ -55,6 +65,7 @@ import {
   accountSessionsSchema,
   accountSignInMethodUnlinkedSchema,
   accountSignInMethodsSchema,
+  accountTimeZoneSchema,
 } from "@auction/identity-contracts";
 import type { z } from "zod";
 import type { LaxAccountConfig } from "../config";
@@ -71,19 +82,27 @@ const REJECTION_REASONS: ReadonlySet<string> = new Set([
   ...ACCOUNT_ADDRESS_ERRORS,
   ...ACCOUNT_PASSWORD_ERRORS,
   ...ACCOUNT_SIGN_IN_METHOD_ERRORS,
+  ...ACCOUNT_TIME_ZONE_ERRORS,
 ]);
 
 type RejectionReason =
   | AccountContactError
   | AccountAddressError
   | AccountPasswordError
-  | AccountSignInMethodError;
+  | AccountSignInMethodError
+  | AccountTimeZoneError;
 
 function rejectionReason(body: unknown): RejectionReason | null {
   const error = (body as { error?: unknown } | null)?.error;
   return typeof error === "string" && REJECTION_REASONS.has(error)
     ? (error as RejectionReason)
     : null;
+}
+
+function timeZoneFields(change: AccountTimeZoneChange): Record<string, string> {
+  return change.mode === "fixed"
+    ? { mode: "fixed", zone: change.zone }
+    : { mode: "automatic", ...(change.deviceZone ? { zone: change.deviceZone } : {}) };
 }
 
 /** Whether `url` is the issuer's own `/account-action` page, on the issuer's public origin. */
@@ -183,6 +202,29 @@ export function createIssuerAccountIdentityGateway(
         accountProfileSchema,
       );
       return result.status === "ok" ? { status: "ok", value: result.value.name } : result;
+    },
+    async readTimeZone(actor) {
+      const result = await post(
+        ACCOUNT_TIME_ZONE_PATH,
+        { token: actor.accessToken },
+        accountTimeZoneSchema,
+      );
+      return result.status === "ok" ? result.value : null;
+    },
+    setTimeZone(actor, change) {
+      return post(
+        ACCOUNT_TIME_ZONE_UPDATE_PATH,
+        { token: actor.accessToken, ...timeZoneFields(change) },
+        accountTimeZoneSchema,
+      );
+    },
+    async reportDeviceZone(actor, deviceZone) {
+      const result = await post(
+        ACCOUNT_TIME_ZONE_DEVICE_PATH,
+        { token: actor.accessToken, ...(deviceZone ? { zone: deviceZone } : {}) },
+        accountTimeZoneSchema,
+      );
+      return result.status === "ok" ? result.value : null;
     },
     async readContact(actor) {
       const result = await post(
@@ -364,6 +406,21 @@ export function createIssuerAccountIdentityGateway(
         return { status: "unavailable" };
       }
       return result;
+    },
+    async renamePasskey(actor, passkeyId, name) {
+      const result = await post(
+        ACCOUNT_SIGN_IN_METHODS_PASSKEY_RENAME_PATH,
+        fields(actor, { passkeyId, name }),
+        accountPasskeyRenamedSchema,
+      );
+      return result.status === "ok" ? { status: "ok", value: result.value.passkey } : result;
+    },
+    removePasskey(actor, passkeyId) {
+      return post(
+        ACCOUNT_SIGN_IN_METHODS_PASSKEY_REMOVE_PATH,
+        fields(actor, { passkeyId }),
+        accountPasskeyRemovedSchema,
+      );
     },
     unlinkSignInMethod(actor, provider) {
       return post(

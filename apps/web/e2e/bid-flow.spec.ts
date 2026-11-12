@@ -1,5 +1,6 @@
-import { type Page, expect, test } from "@playwright/test";
+import type { Page } from "@playwright/test";
 import { type Credentials, buyerSession, loginWithCredentials } from "./helpers/auth";
+import { expect, test } from "./helpers/test";
 
 const enabled = process.env.PLAYWRIGHT_E2E === "1";
 const skipReason =

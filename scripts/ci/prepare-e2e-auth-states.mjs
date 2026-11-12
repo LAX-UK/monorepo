@@ -167,7 +167,7 @@ for (const project of setupProjects) {
     {
       cwd: webDir,
       stdio: "inherit",
-      env: { ...process.env, PLAYWRIGHT_E2E: "1" },
+      env: { ...process.env, PLAYWRIGHT_E2E: "1", PLAYWRIGHT_KEEP_AUTH_STATE: "1" },
     },
   );
   if (result.status !== 0) {

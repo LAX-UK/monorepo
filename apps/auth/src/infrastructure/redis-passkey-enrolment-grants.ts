@@ -1,6 +1,7 @@
 import {
   PASSKEY_ENROLMENT_GRANT_TTL_SECONDS,
   type PasskeyEnrolmentGrants,
+  passkeyCreatedKey,
   passkeyGrantKey,
 } from "../services/passkey-enrolment-grant.js";
 
@@ -30,5 +31,25 @@ export class RedisPasskeyEnrolmentGrants implements PasskeyEnrolmentGrants {
 
   async spend(sessionId: string, subjectId: string): Promise<boolean> {
     return (await this.redis.getdel(passkeyGrantKey(sessionId))) === subjectId;
+  }
+
+  async noteCreated(sessionId: string, subjectId: string, passkeyId: string): Promise<void> {
+    await this.redis.set(
+      passkeyCreatedKey(sessionId),
+      JSON.stringify([subjectId, passkeyId]),
+      "EX",
+      PASSKEY_ENROLMENT_GRANT_TTL_SECONDS,
+    );
+  }
+
+  async createdPasskey(sessionId: string, subjectId: string): Promise<string | null> {
+    const raw = await this.redis.get(passkeyCreatedKey(sessionId));
+    if (!raw) return null;
+    try {
+      const [owner, passkeyId] = JSON.parse(raw) as [unknown, unknown];
+      return owner === subjectId && typeof passkeyId === "string" ? passkeyId : null;
+    } catch {
+      return null;
+    }
   }
 }

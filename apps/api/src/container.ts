@@ -42,6 +42,7 @@ import { createComplianceMedia } from "./container/create-compliance-media.js";
 import { createComplianceRouteServices } from "./container/create-compliance-route-services.js";
 import { createConsignmentMessageServices } from "./container/create-consignment-message-services.js";
 import { createCronServices } from "./container/create-cron-services.js";
+import { createDealArtworkSearch } from "./container/create-deal-artwork-search.js";
 import { createFinanceRouteServices } from "./container/create-finance-route-services.js";
 import { createIdentityRouteServices } from "./container/create-identity-route-services.js";
 import { createInfra } from "./container/create-infra.js";
@@ -785,6 +786,7 @@ export function createContainer(env: Env): Container {
       marketingAttributionEnabled: complianceMedia.marketingAttributionEnabled,
       userService: userMisc.userService,
       mediaUrlResolver: complianceMedia.mediaUrlResolver,
+      identityTimeZone: identityIssuer,
       conditionReportService: catalog.conditionReportService,
       userDashboardReadService: userMisc.userDashboardReadService,
       lotService: catalog.lotService,
@@ -829,6 +831,7 @@ export function createContainer(env: Env): Container {
       marketingEnquiries: marketingEnquiries.desk,
       privateSaleDeals: payments.privateSaleDeals.desk,
       enquiryConversion: payments.privateSaleDeals.conversion,
+      dealArtworks: createDealArtworkSearch({ db, media: complianceMedia.mediaUrlResolver }),
       enquiryRouting: marketingEnquiries.routing,
       purchaseProblems: createPurchaseProblemDesk({
         db,

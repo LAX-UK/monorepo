@@ -1411,6 +1411,9 @@ importers:
       '@better-auth/utils':
         specifier: 0.4.2
         version: 0.4.2
+      '@simplewebauthn/browser':
+        specifier: 13.3.0
+        version: 13.3.0
       better-auth:
         specifier: 1.6.22
         version: 1.6.22(patch_hash=bll55xegex3amw2u525f36aufi)(@opentelemetry/api@1.9.1)(drizzle-kit@0.31.10)(drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@types/pg@8.20.0)(kysely@0.29.5)(pg@8.20.0))(next@15.5.21(@opentelemetry/api@1.9.1)(@playwright/test@1.55.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(pg@8.20.0)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(vitest@3.2.6(@types/node@22.20.1)(jiti@2.6.1)(jsdom@25.0.1)(lightningcss@1.32.0)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.1))
@@ -2417,6 +2420,9 @@ importers:
 
   packages/validators:
     dependencies:
+      '@auction/artwork-register-contracts':
+        specifier: workspace:*
+        version: link:../artwork-register-contracts
       '@auction/datetime':
         specifier: workspace:*
         version: link:../datetime

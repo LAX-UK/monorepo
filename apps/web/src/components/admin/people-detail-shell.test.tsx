@@ -77,6 +77,7 @@ function client(overrides: Partial<AdminUserDetailPayload> = {}): AdminUserDetai
     kycRetryCount: 0,
     deletionRequestedAt: null,
     securityStatusAvailable: true,
+    signInMethodKinds: null,
     suspendedReason: null,
     dateOfBirth: null,
     emailStatusChangedAt: null,

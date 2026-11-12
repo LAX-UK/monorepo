@@ -737,6 +737,33 @@ ol {
   border-top: 1px solid var(--color-input-border);
 }
 
+/* The quiet line under a passkey button, and the signed-in person on "Confirm it's you". */
+.passkey-note {
+  margin: -0.75rem 0 0;
+  font-family: var(--font-supporting);
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--color-on-surface-variant);
+}
+
+.confirm-person {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.5rem 0.5rem 0.5rem 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  font-family: var(--font-supporting);
+  font-size: 1rem;
+  color: var(--color-on-surface);
+}
+
+.confirm-person-email {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 .auth-fineprint {
   margin: 0;
   font-family: var(--font-supporting);

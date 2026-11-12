@@ -1,5 +1,5 @@
-import { expect, test } from "@playwright/test";
 import { signInShopBuyer } from "./helpers/shop-auth";
+import { expect, test } from "./helpers/test";
 
 const paidOrderId = process.env.SHOP_ACCEPTANCE_PAID_ORDER_ID?.trim();
 const skipReason = "Set SHOP_ACCEPTANCE_PAID_ORDER_ID from staging Stripe webhook rehearsal";

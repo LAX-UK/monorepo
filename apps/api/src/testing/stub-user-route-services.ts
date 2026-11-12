@@ -79,6 +79,8 @@ export function stubUserRouteServices(overrides?: Partial<UserRouteServices>): U
       updateAddress: vi.fn(),
       deleteAddress: vi.fn(),
       setDefaultAddress: vi.fn(),
+      setTimeZone: vi.fn(),
+      reportDeviceZone: vi.fn(),
       getMe: vi.fn(),
     },
     accountOnboardingHttp: {

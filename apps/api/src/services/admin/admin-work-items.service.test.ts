@@ -45,6 +45,7 @@ function createReader(overrides: Partial<IAdminWorkItemsReader> = {}): IAdminWor
     listMarketingEnquiries: vi.fn().mockResolvedValue([]),
     listPurchaseProblems: vi.fn().mockResolvedValue([]),
     listDeletionHolds: vi.fn().mockResolvedValue([]),
+    listRegisterLotMismatches: vi.fn().mockResolvedValue([]),
     ...overrides,
   };
 }
@@ -328,6 +329,38 @@ describe("AdminWorkItemsService", () => {
     });
     expect(finance.items.some((item) => item.kind === "deletion_hold")).toBe(false);
     expect(listDeletionHolds).not.toHaveBeenCalled();
+  });
+
+  it("shows an artwork the register places in a Bid sale without a live lot to lot staff, not finance", async () => {
+    const listRegisterLotMismatches = vi.fn().mockResolvedValue([
+      row({
+        sourceId: "register-1",
+        kind: "register_lot_mismatch",
+        domain: "catalogue",
+        title: "Register says this artwork is in a LAX Bid sale, but the lot isn't live",
+      }),
+    ]);
+    const service = new AdminWorkItemsService(createReader({ listRegisterLotMismatches }));
+    const query = { limit: 25, assignment: "all" as const, urgentOnly: false };
+
+    const admin = await service.listWorkItems({
+      actorUserId: "u1",
+      actorRole: "staff",
+      actorStaffRoles: ["administrator"],
+      query,
+    });
+    expect(admin.items.map((item) => item.id)).toEqual(["register_lot_mismatch:register-1"]);
+    expect(admin.items[0]?.actions).toEqual([]);
+
+    listRegisterLotMismatches.mockClear();
+    const finance = await service.listWorkItems({
+      actorUserId: "u1",
+      actorRole: "staff",
+      actorStaffRoles: ["finance"],
+      query,
+    });
+    expect(finance.items.some((item) => item.kind === "register_lot_mismatch")).toBe(false);
+    expect(listRegisterLotMismatches).not.toHaveBeenCalled();
   });
 
   it("ranks critical finance items before medium catalogue items", async () => {

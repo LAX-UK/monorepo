@@ -5,6 +5,7 @@ import { loadArtworkEditorPage } from "@/server/application/load-artwork-pages";
 import { loadBidAdminUrl } from "@/server/application/load-bid-admin-url";
 import { getShopAdminContainer } from "@/server/container";
 import { zohoProductUrl } from "@/server/domain/zoho-register.vm";
+import { LONDON_TIME_ZONE, calendarYear } from "@auction/datetime";
 import type { AdminEditionFraming } from "@auction/shop-contracts";
 import { notFound, redirect } from "next/navigation";
 
@@ -37,7 +38,7 @@ export default async function ArtworkEditorPage({
       key={detail?.artworkId}
       detail={detail}
       permissions={permissions}
-      currentYear={new Date().getFullYear()}
+      currentYear={calendarYear(new Date(), LONDON_TIME_ZONE)}
       framing={framingRead?.status === "ok" ? framingRead.data : null}
       framingFailed={framingRead !== null && framingRead.status !== "ok"}
       arrivedFromZoho={arrived === "zoho"}

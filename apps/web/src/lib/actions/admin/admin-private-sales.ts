@@ -63,7 +63,7 @@ async function refusal(res: Response): Promise<ActionResult<never>> {
   const body = dealRefusalSchema.safeParse(await res.json().catch(() => null));
   const code = body.success ? body.data.error : undefined;
   return actionFailure(
-    dealErrorMessage(code, res.status),
+    dealErrorMessage(code, res.status, body.success ? body.data.message : undefined),
     undefined,
     res.status,
     code,

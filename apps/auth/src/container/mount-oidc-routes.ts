@@ -1,6 +1,7 @@
 import {
   AUTH_RATE_LIMIT_POLICY,
   type EmailSender,
+  type HostedAuthCapabilities,
   type SecurityNoticePublisher,
   type SessionStampStore,
   type SmsSender,
@@ -47,6 +48,7 @@ import {
   createRefreshReplayGateMiddleware,
 } from "../middleware/refresh-replay-gate.js";
 import { createResilientSlidingWindowStore } from "../middleware/resilient-sliding-window-store.js";
+import { createAccountActionPasskeyRoutes } from "../routes/account-action-passkey.routes.js";
 import { createAccountActionRoutes } from "../routes/account-action.routes.js";
 import { createAccountAddressRoutes } from "../routes/account-addresses.routes.js";
 import { createAccountBackupCodesRoutes } from "../routes/account-backup-codes.routes.js";
@@ -104,8 +106,10 @@ export type OidcRouteMountOptions = {
   clientIp: ClientIpResolver;
   services: AuthRouteServicesSlice;
   identityOperations: IdentityOperationsService;
+  /** What the hosted pages are built from, so the issuer's own pages match the sign-in pages. */
+  hostedCapabilities: HostedAuthCapabilities;
   /** Permission to make a passkey, given when the hand-off for adding one is spent. */
-  passkeyGrants: Pick<PasskeyEnrolmentGrants, "grant">;
+  passkeyGrants: Pick<PasskeyEnrolmentGrants, "grant" | "holds" | "createdPasskey">;
   /** What the Google and Apple rules read about a person: staff markers and two-step. */
   socialSubjectPorts: SocialSubjectPorts;
   emailChange: EmailChangeService;
@@ -348,6 +352,14 @@ export function mountOidcRoutes(app: Hono, options: OidcRouteMountOptions): void
     // Passkeys are on when the environment turns them on: the issuer can then create and check them.
     passkey: options.env.PASSKEYS_ENABLED,
   };
+  const accountOrigin = (env.LAX_ACCOUNT_ORIGIN ?? DEFAULT_LAX_ACCOUNT_ORIGIN).replace(/\/+$/, "");
+  /** The issuer session the browser's cookie holds, reduced to the two ids the routes need. */
+  const readBrowserSession = async (headers: Headers) => {
+    const found = await options.auth.api.getSession({ headers });
+    const sessionId = found?.session?.id;
+    const userId = found?.user?.id;
+    return sessionId && userId ? { session: { id: sessionId }, user: { id: userId } } : null;
+  };
   const accountActions = new AccountActionService({
     tickets: new RedisAccountActionTicketStore(options.redis),
     grants: options.passkeyGrants,
@@ -362,12 +374,7 @@ export function mountOidcRoutes(app: Hono, options: OidcRouteMountOptions): void
     "/",
     createAccountActionRoutes({
       actions: accountActions,
-      getSession: async (headers) => {
-        const found = await options.auth.api.getSession({ headers });
-        const sessionId = found?.session?.id;
-        const userId = found?.user?.id;
-        return sessionId && userId ? { session: { id: sessionId }, user: { id: userId } } : null;
-      },
+      getSession: readBrowserSession,
       startLink: async (provider, headers) => {
         const done = `${issuer}${ACCOUNT_ACTION_DONE_PATH}?provider=${provider}`;
         const response = await options.auth.api.linkSocialAccount({
@@ -387,27 +394,44 @@ export function mountOidcRoutes(app: Hono, options: OidcRouteMountOptions): void
         if (!url) throw new Error("link_social_no_url");
         return { url, cookies: response.headers.getSetCookie() };
       },
-      accountOrigin: (env.LAX_ACCOUNT_ORIGIN ?? DEFAULT_LAX_ACCOUNT_ORIGIN).replace(/\/+$/, ""),
+      accountOrigin,
       // The ticket is single-use and the people it serves are signed in: this only bounds floods.
       rateLimit: accountRateLimit("account-action", 30),
       clientKey: (c) => options.clientIp(c) ?? "unknown",
       onFailure: (error) => options.log.error({ err: error }, "account_action_failed"),
     }),
   );
+  const signInMethods = new AccountSignInMethodsService({
+    operations: options.identityOperations,
+    durable: options.durableSecurityEffects,
+    notices: options.securityNotices,
+    available: signInMethodsAvailable,
+    isStaff: (subjectId) => hasStaffMarker(options.socialSubjectPorts, subjectId),
+    onStaffCheckFailed: (error) =>
+      options.log.warn({ err: error }, "account_sign_in_methods_staff_check_failed"),
+  });
+  if (env.PASSKEYS_ENABLED) {
+    app.route(
+      "/",
+      createAccountActionPasskeyRoutes({
+        capabilities: options.hostedCapabilities,
+        getSession: readBrowserSession,
+        grants: options.passkeyGrants,
+        methods: signInMethods,
+        issuerOrigin: issuer,
+        accountOrigin,
+        rateLimit: accountRateLimit("account-action-passkey", 30),
+        clientKey: (c) => options.clientIp(c) ?? "unknown",
+        onFailure: (error) => options.log.error({ err: error }, "account_action_passkey_failed"),
+      }),
+    );
+  }
   app.route(
     "/api/auth",
     createAccountSignInMethodsRoutes({
       clients: services.oidc.confidentialClients,
       tokens: services.oidc.tokenManagement,
-      methods: new AccountSignInMethodsService({
-        operations: options.identityOperations,
-        durable: options.durableSecurityEffects,
-        notices: options.securityNotices,
-        available: signInMethodsAvailable,
-        isStaff: (subjectId) => hasStaffMarker(options.socialSubjectPorts, subjectId),
-        onStaffCheckFailed: (error) =>
-          options.log.warn({ err: error }, "account_sign_in_methods_staff_check_failed"),
-      }),
+      methods: signInMethods,
       actions: accountActions,
       readRateLimit: accountRateLimit("account-sign-in-methods-read", 120),
       writeRateLimit: accountRateLimit("account-sign-in-methods-write", 10),

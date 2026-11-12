@@ -42,6 +42,7 @@ import {
   StaffDate,
   StatusBadge,
   TableSearch,
+  londonToday,
   searchChipLabel,
   toast,
 } from "@auction/staff-ui";
@@ -86,7 +87,7 @@ export function LeadList({
   }));
 
   const exportRows = (rows: readonly AdminLeadSummary[]) => {
-    download(`leads-${now.slice(0, 10)}.csv`, leadsCsv(rows));
+    download(`leads-${londonToday(new Date(now))}.csv`, leadsCsv(rows));
     toast.success(`Exported ${rows.length} ${rows.length === 1 ? "lead" : "leads"}`);
   };
 

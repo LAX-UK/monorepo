@@ -12,8 +12,8 @@ export type ZonePreferencePort = {
   save: (zone: string) => Promise<void> | void;
   /** Follow the device's own zone ("Automatic"). */
   followDevice: () => Promise<void> | void;
-  /** The line under the choice: where it goes. */
-  savedNote: string;
+  /** The line under the choice: where it goes. Left out where the page says it elsewhere. */
+  savedNote?: string;
 };
 
 export const deviceZonePreference: ZonePreferencePort = {

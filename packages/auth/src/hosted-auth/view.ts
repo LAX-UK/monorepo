@@ -14,6 +14,8 @@ export type HostedAuthCapabilities = {
   shopAdminOrigin: string;
   bidOrigin: string;
   accountOrigin?: string;
+  /** Passkeys are on: the sign-in pages offer them. Off unless the environment turns them on. */
+  passkeysEnabled?: boolean;
   emailFirst: boolean;
   requireEmailVerification: boolean;
 };

@@ -5011,6 +5011,7 @@ export async function runLegacyDemoSeed() {
     estateOwnerId: ESTATE_OWNER_ID,
     consignorId: CONSIGNOR_ID,
     buyerAgentId: BUYER_AGENT_ID,
+    buyerAgentPersonalId: LEX.buyerAgent,
     northbankId: LE.gallery,
     restrictedId: LEO.otherRestricted,
     sellerAccountId: LE.user2,

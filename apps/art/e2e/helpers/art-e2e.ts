@@ -1,4 +1,5 @@
-import { type Page, expect } from "@playwright/test";
+import { type BrowserContext, type Page, expect } from "@playwright/test";
+import { forgetSignIn, rememberSignIn } from "../../../../scripts/ci/e2e-sign-out.mjs";
 
 export const artE2eEnabled = process.env.PLAYWRIGHT_E2E === "1";
 export const artE2eSkipReason =
@@ -42,6 +43,32 @@ export async function signInArtBuyer(
   await page.waitForURL((url) => url.pathname.startsWith(returnTo.split("?")[0] ?? returnTo), {
     timeout: 60_000,
   });
+  // The spec fixture signs this browser out when the spec ends.
+  rememberSignIn(page.context(), signOutContextThroughMenu);
+}
+
+/** Signs out through the account menu, so the sign-in service ends the session too. */
+export async function signOutArtBuyer(page: Page): Promise<void> {
+  await page.goto("/account", { waitUntil: "domcontentloaded" });
+  await page.getByRole("button", { name: "Account menu" }).filter({ visible: true }).click();
+  await Promise.all([
+    page.waitForURL((url) => url.pathname === "/signed-out" || url.pathname === "/", {
+      timeout: 90_000,
+    }),
+    page.getByRole("menuitem", { name: "Sign out" }).click(),
+  ]);
+  forgetSignIn(page.context());
+}
+
+/** Signs a signed-in browser out from a desktop-sized page, whatever size the spec ran at. */
+async function signOutContextThroughMenu(context: BrowserContext): Promise<void> {
+  const page = await context.newPage();
+  try {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await signOutArtBuyer(page);
+  } finally {
+    await page.close();
+  }
 }
 
 /**

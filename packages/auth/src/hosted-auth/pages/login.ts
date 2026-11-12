@@ -21,6 +21,11 @@ import {
 
 export { HOSTED_LOGIN_SCRIPT } from "../scripts.js";
 
+/** The email box lets the browser offer saved passkeys when passkeys are on. */
+function emailAutocomplete(view: HostedAuthView): string {
+  return view.capabilities.passkeysEnabled ? "username webauthn" : "username";
+}
+
 function phoneAndSignUp(view: HostedAuthView): string {
   if (view.flow.audience === "staff") {
     return `<p class="links-secondary staff-access-note">Access is limited to LAX staff accounts. Ask a Shop administrator if you need access.</p>`;
@@ -43,10 +48,10 @@ function magicLinkInsteadButton(view: HostedAuthView): string {
 
 function emailFirstBody(view: HostedAuthView): string {
   return `<div id="login-root" class="auth-stack" data-email-first="true" data-legal-product="${hostedLegalProduct(view.flow.product)}">
-    ${socialActions(view, HOSTED_COPY.socialSignInAgreement)}
+    ${socialActions(view, HOSTED_COPY.socialSignInAgreement, { passkey: true })}
     <form id="login-form" class="auth-form" novalidate>
       <div class="auth-step" data-login-step="email">
-        ${floatingInput({ id: "email", label: "Email address", type: "email", autocomplete: "username", ...(view.flow.loginHint ? { value: view.flow.loginHint } : {}) })}
+        ${floatingInput({ id: "email", label: "Email address", type: "email", autocomplete: emailAutocomplete(view), ...(view.flow.loginHint ? { value: view.flow.loginHint } : {}) })}
         ${hostedButton({ label: "Continue", loadingLabel: "Continue" })}
       </div>
       <div class="auth-step" data-login-step="credentials" hidden>
@@ -82,9 +87,9 @@ function emailFirstBody(view: HostedAuthView): string {
 
 function combinedBody(view: HostedAuthView): string {
   return `<div id="login-root" class="auth-stack" data-email-first="false" data-legal-product="${hostedLegalProduct(view.flow.product)}">
-    ${socialActions(view, HOSTED_COPY.socialSignInAgreement)}
+    ${socialActions(view, HOSTED_COPY.socialSignInAgreement, { passkey: true })}
     <form id="login-form" class="auth-form" novalidate>
-      ${floatingInput({ id: "email", label: "Email address", type: "email", autocomplete: "username", ...(view.flow.loginHint ? { value: view.flow.loginHint } : {}) })}
+      ${floatingInput({ id: "email", label: "Email address", type: "email", autocomplete: emailAutocomplete(view), ...(view.flow.loginHint ? { value: view.flow.loginHint } : {}) })}
       ${passwordField({ id: "password", label: "Password", autocomplete: "current-password" })}
       <div class="field-row-end">${continuationAnchor("Forgot password?", "/forgot-password", view.flow)}</div>
       ${hostedButton({ label: "Sign in", loadingLabel: "Signing in…" })}

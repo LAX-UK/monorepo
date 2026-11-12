@@ -121,6 +121,52 @@ describe("computeZohoListing", () => {
     });
   });
 
+  it("says a lot ATG sold was sold in LAX Bid on ATG, in the register's sold state", () => {
+    const soldAt = moved("sold", "bid_sale", "2026-11-14T21:00:00Z");
+    const atgLot = lotIn("ended", "ended", { soldOnAtg: true });
+    expect(compute(factsFor("sold", lotRef, { lot: atgLot, ...soldAt }))).toMatchObject({
+      value: "Sold in LAX Bid",
+      detail: "Autumn Modern · Lot 12 · Sold in LAX Bid (ATG) · 14 Nov 2026",
+      link: PUBLIC_LOT,
+    });
+  });
+
+  it("recomputes the same listing from the facts however often it runs (nightly pass)", () => {
+    const soldAt = moved("sold", "bid_sale", "2026-11-14T21:00:00Z");
+    const facts = factsFor("sold", lotRef, {
+      lot: lotIn("ended", "ended", { soldOnAtg: true }),
+      ...soldAt,
+    });
+    expect(compute(facts)).toEqual(compute(facts));
+    expect(compute(facts).detail).toContain("Sold in LAX Bid (ATG)");
+    const unsold = factsFor("sold", lotRef, { lot: lotIn("ended", "ended"), ...soldAt });
+    expect(compute(unsold).detail).not.toContain("ATG");
+  });
+
+  it("says a closed lot ATG sold was sold on ATG, not waiting for a buyer to pay", () => {
+    const facts = factsFor("bid_sale", lotRef, {
+      lot: lotIn("ended", "ended", { soldOnAtg: true }),
+    });
+    expect(compute(facts).detail).toBe("Autumn Modern · Lot 12 · lot closed, sold on ATG");
+  });
+
+  it("names the deal and the day on an artwork sold through a private sale", () => {
+    const soldAt = moved("sold", "private_sale", "2026-11-14T21:00:00Z");
+    expect(
+      compute(
+        factsFor(
+          "sold",
+          { kind: "private_sale", id: "d" },
+          { privateSale: { id: "d", reference: "PS-0007" }, ...soldAt },
+        ),
+      ),
+    ).toMatchObject({
+      value: "Sold privately",
+      detail: "Private sale PS-0007 · sold 14 Nov 2026",
+      link: RECORD,
+    });
+  });
+
   it("says where a sale was made", () => {
     const soldAt = moved("sold", "bid_sale", "2026-11-14T21:00:00Z");
     expect(

@@ -1235,10 +1235,12 @@ export {
   UNAPPLIED_MONEY_HANDLED_ELSEWHERE,
   UNAPPLIED_MONEY_REASONS,
   UNAPPLIED_MONEY_RESOLVED_EVENT,
+  misappliedTransferText,
   possibleSourceText,
   unappliedMoneyAggregate,
   unappliedMoneyDedupeKey,
   unappliedMoneyPayload,
+  unappliedMoneyWorkItemWording,
   type UnappliedMoney,
   type UnappliedMoneyPayload,
   type UnappliedMoneyReason,
@@ -1354,3 +1356,14 @@ export {
   type SellerConsentWindow,
 } from "./reoffer-windows.js";
 export { paymentIsPaidOrBeingPaid, paymentIsSettling } from "./buyer-default.js";
+
+export {
+  type LedgerEntry,
+  type TransferSupply,
+  isSameInvoiceMoney,
+  isTransferAppliedToOtherPayment,
+  normaliseReference,
+  referenceIssuedIn,
+  senderQuotedReference,
+  supplyBehindApplication,
+} from "./misapplied-transfer.js";

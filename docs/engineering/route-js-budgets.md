@@ -77,6 +77,31 @@ change in what is counted:
 "Counted before" is the old method on a build without Sentry (`public` was one group then, and its
 largest route was the sale page).
 
+After the public-frame leak fixes (Sentry on, largest route per group, budget = size + 10%):
+
+| Bid group | Largest route | Before | After | Frame after | Budget |
+| --- | --- | --- | --- | --- | --- |
+| public | home | 554.4 KB | 493.2 KB | 424.6 KB | 543 KB |
+| listing | search | 737.9 KB | 554.0 KB | 424.6 KB | 610 KB |
+| sale | sale page | 805.2 KB | 637.1 KB | 466.9 KB | 701 KB |
+| lot | lot page | 644.1 KB | 590.8 KB | 472.0 KB | 650 KB |
+| checkout | purchases/collect | 576.4 KB | 553.6 KB | 517.7 KB | 609 KB |
+| account | consignment edit | 650.7 KB | 624.5 KB | 520.0 KB | 687 KB |
+
+What moved: the Node `Buffer` polyfill (attribution and acting-context cookies now use `TextEncoder`
+and `btoa`), the staff nav and presenters that the account menu pulled in through
+`app-shell-nav`, and the kit barrels. Two causes were behind the barrels. `@auction/ui/lax` and
+`@auction/ui/time` were not in `optimizePackageImports`, which lists exact specifiers, so every
+import of them shipped the whole barrel. And `export { X } from "@auction/ui"` in a consumer is not
+rewritten by that option the way `import { X } from "@auction/ui"` is, so each such re-export file
+shipped the entire package; write it as an `import` followed by an `export`.
+
+Code that can run in the browser must not use `Buffer`. Next injects a polyfill for it, and that
+polyfill throws `Unknown encoding: base64url`. The acting-context cookie (which carries a staff
+"view as client" session id) could therefore not be decoded in the browser before; it is now read
+through `decodeUtf8Base64Url`, so the browser keeps the cookie as it is and sends the viewed
+account's `X-Legal-Entity-Id` header. That is a declared behaviour change of the Buffer fix.
+
 ## Enforcement
 
 `enforce` is set per group. A route over budget in a group with `"enforce": true` is an error line
@@ -176,6 +201,65 @@ module that refers to the free variable `Buffer`. On public pages that is
 `mergeAttributionSnapshot` from the `@auction/validators` root. `packages/types/src/acting-context-cookie.ts`
 also uses `Buffer`, but only ships with admin pages today. Replacing `Buffer` with `btoa`, `atob` and
 `TextEncoder` in `marketing-attribution.ts` removes the polyfill from every public page.
+
+## Per-route ratchet and first-load baseline
+
+The group budgets stop a group's largest page growing; the ratchet in
+`scripts/route-js-baseline.json` is stricter and tracks six Bid pages one by one: home, sales list,
+sale page, lot page, about and a content page (terms). For each it records the size it was measured
+at (gzip transfer, parsed size, frame, page, duplicates), and the **target** it is being brought
+down to: 300 KB for home, sales list and content pages, an interim 350 KB for the sale and lot
+pages. The check fails the build when a tracked route is more than `toleranceKb` (1 KB, for
+compression differences between machines) above its recorded gzip size, in every group whether
+enforced or not. It prints a notice when a route is more than the tolerance below its ratchet.
+
+When a page is slimmed, record the lower size so it cannot come back:
+
+```sh
+node scripts/check-route-js-budget.mjs --app apps/web --write-baseline
+```
+
+This keeps each route's label and target and rewrites only the measured sizes. Raising a ratchet is
+the same decision as raising a budget (see below) and is reviewed the same way.
+
+Baseline of 2026-11-12 (production build of `apps/web`, browser Sentry SDK on, KB of 1024 bytes):
+
+| Route | Transfer (gzip) | Parsed | Target | To cut | Frame | Page | Duplicate modules |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Home | 494.1 | 1531.6 | 300 | 194.1 | 425.5 | 68.6 | 110 (33.9) |
+| Sales list | 526.8 | 1644.7 | 300 | 226.8 | 425.5 | 101.4 | 102 (38.7) |
+| Sale page | 638.4 | 1989.1 | 350 | 288.4 | 467.8 | 170.7 | 207 (70.2) |
+| Lot page | 592.0 | 1841.3 | 350 | 242.0 | 472.8 | 119.2 | 170 (58.9) |
+| About | 433.4 | 1355.0 | 300 | 133.4 | 425.5 | 8.0 | 64 (23.0) |
+| Terms (content page) | 430.3 | 1346.3 | 300 | 130.3 | 425.5 | 4.9 | 62 (22.1) |
+
+The frame is 425 to 473 KB on every page, so the 300 KB target for content pages cannot be met by
+page-level work: it needs the shared frame cut by about a third.
+
+### Largest contributors (gzip estimate)
+
+From `ANALYZE=true ANALYZE_MODE=json` on the same build, via `route-bundle-report.mjs`. The right
+column says which step of the page-weight plan removes it.
+
+| Contributor | Home | Sales list | Sale page | Lot page | Terms | Plan step |
+| --- | --- | --- | --- | --- | --- | --- |
+| App source | 81.5 | 87.3 | 145.5 | 150.5 | 62.0 | 5 (sale and lot islands), 4 (server header and footer), 3 (frame parts on demand) |
+| `next` runtime and router | 75.4 | 75.4 | 76.4 | 75.2 | 75.2 | none (framework) |
+| `react-dom` | 54.1 | 54.1 | 54.1 | 54.1 | 54.1 | none (framework) |
+| `@auction/ui` | 32.9 | 51.8 | 62.1 | 48.4 | 28.0 | 2 (barrel imports), 3 |
+| `@auction/marketing-ui` | 33.9 | 25.2 | 32.0 | 19.5 | 18.5 | 2 (barrel imports), 4 |
+| `@sentry/core` | 27.9 | 27.9 | 27.9 | 27.9 | 27.9 | 6 (error reporting stays; browser tracing and debug code go) |
+| `@sentry-internal/browser-utils` | 9.1 | 9.1 | 9.1 | 9.1 | 9.1 | 6 (tracing) |
+| `zod` | 12.9 | 14.5 | 14.5 | 12.9 | 12.9 | 6 (library trims) |
+| `@tanstack/query-core` | 10.6 | 8.6 | 10.6 | 10.6 | 8.6 | 3 (signed-in extras on demand), 6 |
+| `@auction/branding` | 10.1 | 10.0 | 10.6 | 9.7 | 9.7 | 6 |
+| `sonner` | 9.1 | 9.1 | 9.1 | 9.1 | 9.1 | 3 (toaster on demand) |
+| `react-hook-form` | | 11.1 | 11.1 | | | 5 (sale page islands) |
+| `lucide-react` | 7.5 | | 9.7 | 9.4 | | 6 |
+| `vaul` | | | 8.5 | | | 5 |
+
+Live-sale socket code (`socket.io-client`, `engine.io-client`) sits further down on the sale and lot
+pages and goes in step 7. Lenis is part of the frame and stays exactly as it is.
 
 ## Raising a budget on purpose
 
