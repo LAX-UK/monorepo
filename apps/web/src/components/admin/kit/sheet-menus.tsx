@@ -1,14 +1,14 @@
 "use client";
 
+import { Button } from "@auction/ui/lax/button";
 import {
-  Button,
   Menu,
   MenuContent,
   MenuItem,
   MenuLabel,
   MenuSeparator,
   MenuTrigger,
-} from "@auction/ui/lax";
+} from "@auction/ui/lax/menu";
 import { ChevronDown, Eye, Mail, UserMinus, Users } from "lucide-react";
 import { SheetSection } from "./sheet-frame";
 

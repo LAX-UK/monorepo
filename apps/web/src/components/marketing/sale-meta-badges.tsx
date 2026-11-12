@@ -3,8 +3,8 @@ import { SaleScheduleBadges } from "@/components/marketing/sale-status-badge";
 import { SaleTypeBadge } from "@/components/marketing/sale-type-badge";
 import type { SaleFormatExplainerContext } from "@/lib/sale-format-explainer";
 import type { Sale, SaleDeliveryMode } from "@auction/types";
-import { cn } from "@auction/ui";
-import { StatusBadge } from "@auction/ui/lax";
+import { StatusBadge } from "@auction/ui/lax/status-badge";
+import { cn } from "@auction/ui/lib/utils";
 
 type Props = {
   status: Sale["status"] | "voided";

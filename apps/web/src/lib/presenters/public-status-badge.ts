@@ -1,5 +1,5 @@
 import type { StatusPresentation } from "@/lib/presenters/status-presentation";
-import type { StatusBadgeShape, StatusBadgeTone } from "@auction/ui";
+import type { StatusBadgeShape, StatusBadgeTone } from "@auction/ui/components/status-badge";
 
 export type PublicStatusBadgeProps = {
   tone: StatusBadgeTone;

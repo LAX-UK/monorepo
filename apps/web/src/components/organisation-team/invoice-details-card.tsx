@@ -11,7 +11,11 @@ import {
 } from "@/lib/organisation-team/invoice-details.vm";
 import { saveInvoiceDetailsAction } from "@/lib/organisation-team/organisation-team.actions";
 import { notify } from "@/lib/ui/notify";
-import { Button, Field, Notice, Switch, TextInput } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
+import { Field } from "@auction/ui/lax/field";
+import { TextInput } from "@auction/ui/lax/input";
+import { Notice } from "@auction/ui/lax/notice";
+import { Switch } from "@auction/ui/lax/switch";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import { SettingsCard, SettingsRow } from "./settings-section";

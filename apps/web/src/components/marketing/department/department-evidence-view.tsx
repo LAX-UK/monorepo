@@ -3,8 +3,9 @@ import { DepartmentWorkCard } from "@/components/marketing/department/department
 import { MarketingSection } from "@/components/marketing/marketing-section";
 import type { DepartmentEvidence } from "@/lib/departments/department-evidence";
 import type { DepartmentDisplayStyle } from "@auction/domain";
-import { MarketingWorkGrid } from "@auction/marketing-ui";
-import { ButtonLink, EmptyState } from "@auction/ui/lax";
+import { MarketingWorkGrid } from "@auction/marketing-ui/marketing-work-card";
+import { ButtonLink } from "@auction/ui/lax/button-link";
+import { EmptyState } from "@auction/ui/lax/empty-state";
 import Link from "next/link";
 
 type Props = {

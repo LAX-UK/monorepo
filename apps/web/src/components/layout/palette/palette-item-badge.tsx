@@ -2,7 +2,8 @@
 
 import { AdminQueueCountBadge } from "@/components/admin/admin-status-badge";
 import type { PaletteItem } from "@/components/layout/palette/types";
-import { CountPill, LiveBadge } from "@auction/ui";
+import { CountPill } from "@auction/ui/components/count-pill";
+import { LiveBadge } from "@auction/ui/components/live-badge";
 
 export function PaletteItemBadge({ item }: { item: PaletteItem }) {
   const count = item.badge ?? 0;

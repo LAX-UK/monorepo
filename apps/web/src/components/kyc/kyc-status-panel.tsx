@@ -1,7 +1,7 @@
 "use client";
 
 import type { KycStatusSummaryDto } from "@/lib/data/dto/dashboard-dtos";
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 import { Hourglass, ShieldAlert, ShieldCheck } from "lucide-react";
 import {
   KYC_VERIFY_DESCRIPTION,

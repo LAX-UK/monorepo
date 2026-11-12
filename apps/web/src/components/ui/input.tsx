@@ -1,5 +1,5 @@
-import { cn } from "@auction/ui";
 import { type InputProps, Input as UiInput } from "@auction/ui/components/input";
+import { cn } from "@auction/ui/lib/utils";
 
 export type UnderlineInputProps = Omit<InputProps, "variant">;
 

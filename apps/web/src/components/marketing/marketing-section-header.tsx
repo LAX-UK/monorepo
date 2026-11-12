@@ -1,4 +1,4 @@
-import { SectionHeader } from "@auction/ui";
+import { SectionHeader } from "@auction/ui/components/section-header";
 import type { ReactNode } from "react";
 
 export type MarketingSectionHeaderProps = {

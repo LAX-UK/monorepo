@@ -1,7 +1,7 @@
 import { MarketingSectionHeader } from "@/components/marketing/marketing-section-header";
 import { SITE_BUSINESS_ADDRESS_INLINE, SITE_NAME, SITE_PRESS_EMAIL } from "@/lib/brand";
 import { MARKETING_PROSE_LINK } from "@/lib/marketing/chrome";
-import { DisplayHeading } from "@auction/ui";
+import { DisplayHeading } from "@auction/ui/components/typography";
 import Link from "next/link";
 
 export function PressMediaKitBlock() {

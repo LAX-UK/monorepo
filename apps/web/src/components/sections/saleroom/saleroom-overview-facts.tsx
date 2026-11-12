@@ -1,4 +1,4 @@
-import { LabelCaps } from "@auction/ui";
+import { LabelCaps } from "@auction/ui/components/typography";
 import Link from "next/link";
 import { formatBuyerPremiumTierLabel } from "./mappers";
 import type { SaleOverviewVM } from "./view-models";

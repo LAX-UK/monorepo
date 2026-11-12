@@ -1,6 +1,6 @@
 import type { PayoutAccountView } from "@/lib/data/http/organisation-profile.types";
 import { payoutBankLineWithCurrency } from "@/lib/organisation-team/payout-bank-account.vm";
-import { StatusBadge } from "@auction/ui/lax";
+import { StatusBadge } from "@auction/ui/lax/status-badge";
 import { Landmark } from "lucide-react";
 import { SettingsCard, SettingsRow } from "./settings-section";
 

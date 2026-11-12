@@ -10,7 +10,7 @@ import { useOverlayTone } from "@/components/ui/overlay-tone-context";
 import { OverlayToneText } from "@/components/ui/overlay-tone-text";
 import { EDITORIAL_BOLD_SLOTS } from "@/lib/media/overlay-slot-presets";
 import { toneAwareScrimStops } from "@/lib/media/tone-aware-scrim";
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 import type { ReactNode } from "react";
 
 export type SaleCardEditorialProps = {

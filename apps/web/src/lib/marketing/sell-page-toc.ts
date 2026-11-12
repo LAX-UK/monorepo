@@ -1,4 +1,4 @@
-import type { TocNavItem } from "@auction/ui";
+import type { TocNavItem } from "@auction/ui/components/toc-nav";
 
 /** Anchor ids must match `LegalH2 id=` on `sell/how-to-sell/page.tsx`. */
 export const SELL_PAGE_TOC: readonly TocNavItem[] = [

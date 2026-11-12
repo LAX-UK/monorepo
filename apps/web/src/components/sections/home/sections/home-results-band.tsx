@@ -1,6 +1,6 @@
 import { MarketingSection } from "@/components/marketing/marketing-section";
 import type { HomeResultsBand } from "@/lib/home-sections/types";
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 import { HomeLotGrid, type HomeLotWatch } from "./home-lot-grid";
 
 function Fact({

@@ -10,9 +10,9 @@ import {
   MARKETING_PAGE_INNER,
 } from "@/lib/marketing/chrome";
 import { sparseGridClasses } from "@/lib/ui/sparse-grid-classes";
-import { MarketingCardReveal } from "@auction/marketing-ui";
+import { MarketingCardReveal } from "@auction/marketing-ui/motion/index";
 import type { Lot } from "@auction/types";
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 import Link from "next/link";
 
 export type ArchiveLotVM = {

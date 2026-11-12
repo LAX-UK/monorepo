@@ -1,5 +1,5 @@
 import type { PersonEmailDeliveryView } from "@auction/types";
-import { TooltipProvider } from "@auction/ui/lax";
+import { TooltipProvider } from "@auction/ui/lax/tooltip";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { EmailDeliveryView } from "./email-delivery-view";

@@ -1,6 +1,6 @@
 "use client";
 
-import type { ErrorSummaryItem } from "@auction/ui/lax";
+import type { ErrorSummaryItem } from "@auction/ui/lax/error-summary";
 import { useEffect } from "react";
 import type { FieldErrors, FieldValues, UseFormReturn } from "react-hook-form";
 

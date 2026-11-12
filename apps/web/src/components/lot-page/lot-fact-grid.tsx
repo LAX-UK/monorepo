@@ -1,5 +1,5 @@
 import type { LotInfoRow } from "@/lib/lot-page/lot-time-rows";
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 import { LotCountdownFact } from "./lot-countdown-fact";
 import { LotFact } from "./lot-fact";
 

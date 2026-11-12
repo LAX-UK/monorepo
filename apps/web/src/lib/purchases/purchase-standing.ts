@@ -1,7 +1,7 @@
 import type { AccountPurchaseFacts } from "@/lib/data/http/account-buying.types";
 import { LONDON_TIME_ZONE, formatDayMonthOnly } from "@auction/datetime";
 import type { PurchaseDeliveryStage } from "@auction/domain";
-import type { StatusBadgeShape, StatusBadgeTone } from "@auction/ui/lax";
+import type { StatusBadgeShape, StatusBadgeTone } from "@auction/ui/lax/status-badge";
 import { PURCHASE_STATE_LABEL } from "./purchase-labels";
 import { type PurchaseState, purchaseEndedEarly } from "./purchase-progress";
 

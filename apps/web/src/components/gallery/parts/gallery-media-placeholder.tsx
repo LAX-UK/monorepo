@@ -1,7 +1,7 @@
 "use client";
 
 import { MediaPlaceholder, type MediaPlaceholderProps } from "@/components/ui/media-placeholder";
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 
 export const GALLERY_MEDIA_PLACEHOLDER_LABEL = "Lot artwork";
 

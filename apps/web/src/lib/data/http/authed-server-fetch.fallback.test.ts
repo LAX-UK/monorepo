@@ -36,4 +36,12 @@ describe("authedServerFetchWithEntityFallback", () => {
       expect(res.status).toBe(403);
     },
   );
+
+  it("retries without the acting header when the 403 body is not JSON", async () => {
+    send.mockResolvedValueOnce(new Response("Forbidden", { status: 403 }));
+    send.mockResolvedValueOnce(new Response("{}", { status: 200 }));
+    const res = await authedServerFetchWithEntityFallback("/x");
+    expect(send).toHaveBeenCalledTimes(2);
+    expect(res.status).toBe(200);
+  });
 });

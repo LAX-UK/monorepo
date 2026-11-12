@@ -3,7 +3,7 @@ import type { AccountRegistrationView } from "@/lib/data/http/account-buying.typ
 import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
 import { matchesEveryWord } from "@/lib/workspace/list-search";
 import { LONDON_TIME_ZONE, formatDateTime, formatDayMonthOnly } from "@auction/datetime";
-import type { StatusBadgeShape, StatusBadgeTone } from "@auction/ui/lax";
+import type { StatusBadgeShape, StatusBadgeTone } from "@auction/ui/lax/status-badge";
 
 type RegistrationStatus = AccountRegistrationView["status"];
 

@@ -1,5 +1,5 @@
 import type { NavBadgeTone } from "@/lib/shell/contracts";
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 
 const TONE_CLASS: Record<NavBadgeTone, string> = {
   default: "bg-lot-orange text-white",

@@ -1,7 +1,7 @@
 import type { SessionUser } from "@/lib/data/contracts";
 import { sessionUserToShellRole } from "@/lib/shell/session-user-shell-role";
 import { shellRolePillLabel } from "@/lib/shell/shell-role-pill-label";
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 import { appShellRoleMeta } from "./app-shell-role-meta";
 
 /** The signed-in person's role ("Client", or their staff role) as the account menus show it. */

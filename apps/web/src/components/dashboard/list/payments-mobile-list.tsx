@@ -14,7 +14,7 @@ import type { PaymentDisplayRow } from "@/lib/data/view-models/dashboard-payment
 import { paymentDisplayDotStatus } from "@/lib/presenters/payment-status";
 import { lotPath } from "@/lib/seo/url";
 import { DotStatusPill } from "@auction/ui/components/dot-status-pill";
-import { Button } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
 import Link from "next/link";
 
 function PrimaryAction({ row }: { row: PaymentDisplayRow }) {

@@ -1,6 +1,6 @@
 "use client";
 
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 import { RadioGroup as RadioGroupPrimitive } from "radix-ui";
 import type { ReactNode } from "react";
 

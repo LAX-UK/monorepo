@@ -1,5 +1,5 @@
 import { sparseGridClasses } from "@/lib/ui/sparse-grid-classes";
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 import type { ReactElement, ReactNode } from "react";
 import { Children, isValidElement } from "react";
 

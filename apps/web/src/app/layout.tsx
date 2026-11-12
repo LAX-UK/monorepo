@@ -45,7 +45,7 @@ import { isIndexingAllowedAtBuildTime } from "@/lib/seo/is-indexing-allowed";
 import { rootMetadataBase } from "@/lib/seo/metadata-factory";
 import { jsonLdScript, organizationJsonLd, websiteJsonLd } from "@/lib/seo/structured-data";
 import { accountTimeZoneFor, loadViewerZone } from "@/lib/time/viewer-zone.server";
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 import { ViewerZoneProvider } from "@auction/ui/time";
 import type { Metadata, Viewport } from "next";
 import { cookies, headers } from "next/headers";

@@ -2,7 +2,9 @@ import { WorkspacePanel } from "@/components/dashboard/primitives/workspace-pane
 import { PAY_COPY } from "@/lib/pay/pay-copy";
 import type { PayMethodsVm } from "@/lib/pay/pay-methods";
 import type { PayAction, PayMoneyVm, PayPageVm } from "@/lib/pay/pay-page.vm";
-import { Button, Meter, TextLink } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
+import { Meter } from "@auction/ui/lax/meter";
+import { TextLink } from "@auction/ui/lax/text-link";
 import Link from "next/link";
 import { PayActionButton, PayActionNote } from "./pay-action-button";
 import { PayMethodChoice } from "./pay-method-choice";

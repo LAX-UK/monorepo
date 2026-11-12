@@ -5,7 +5,10 @@ import {
   payoutStatusToBadgeVariant,
 } from "@/lib/presenters/status-presentation";
 import type { PaymentStatus, PayoutStatus } from "@auction/types";
-import { presentationToDotStatus, statusBadgeVariantToDotTone } from "@auction/ui";
+import {
+  presentationToDotStatus,
+  statusBadgeVariantToDotTone,
+} from "@auction/ui/lib/status-presentation-bridge";
 
 export type StatusBadgeTone = "success" | "danger" | "info" | "neutral";
 

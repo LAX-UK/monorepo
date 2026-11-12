@@ -1,8 +1,8 @@
 import type { KpiRowTile } from "@/lib/admin/kpi-row-tile.types";
 import { type AccentTrack, accentHeroBorderClass } from "@/lib/dashboard/accent-track";
-import { cn } from "@auction/ui";
 import { KpiTile } from "@auction/ui/components/kpi-tile";
 import { StatStrip } from "@auction/ui/components/stat-strip";
+import { cn } from "@auction/ui/lib/utils";
 import Link from "next/link";
 
 export type { KpiRowTile };

@@ -4,7 +4,7 @@ import type { PressCoverageVM } from "@/components/sections/saleroom/view-models
 import { PullQuote } from "@/components/ui/pull-quote";
 import { FOCUS_RING, MARKETING_CARD_LIFT, MARKETING_PROSE_LINK } from "@/lib/marketing/chrome";
 import { getPressMentionTypeLabel } from "@/lib/marketing/press-params";
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 import Link from "next/link";
 
 type SaleContext = {

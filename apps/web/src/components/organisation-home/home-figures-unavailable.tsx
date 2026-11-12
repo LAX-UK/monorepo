@@ -1,6 +1,6 @@
 "use client";
 
-import { Button } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 import { HomePanel, HomeSection } from "./home-section";

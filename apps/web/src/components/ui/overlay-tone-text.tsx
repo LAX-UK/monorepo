@@ -7,7 +7,7 @@ import {
   overlayTextMutedClasses,
   overlayToneProps,
 } from "@/lib/ui/overlay-tone-classes";
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 import type { ComponentPropsWithoutRef, ElementType } from "react";
 
 type Variant = "body" | "muted" | "display";

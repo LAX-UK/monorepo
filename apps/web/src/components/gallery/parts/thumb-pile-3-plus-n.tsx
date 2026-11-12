@@ -1,7 +1,8 @@
 "use client";
 
 import type { PositionIndicatorProps } from "@auction/types";
-import { Button, cn } from "@auction/ui";
+import { Button } from "@auction/ui/components/button";
+import { cn } from "@auction/ui/lib/utils";
 
 const MAX_VISIBLE = 3;
 const TAP_MIN = "min-h-11 min-w-11";

@@ -1,4 +1,4 @@
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 import type { ComponentProps } from "react";
 
 /** Org tab section header — hidden on mobile when shell title already shows the tab name. */

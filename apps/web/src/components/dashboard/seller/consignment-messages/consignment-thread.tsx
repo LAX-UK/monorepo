@@ -4,7 +4,7 @@ import {
   messageRows,
   threadCounterpart,
 } from "@/lib/seller/consignment-thread";
-import { ButtonLink } from "@auction/ui/lax";
+import { ButtonLink } from "@auction/ui/lax/button-link";
 import { Lock, MessageSquare } from "lucide-react";
 import Link from "next/link";
 import { ConsignmentMessageComposer } from "./consignment-message-composer";

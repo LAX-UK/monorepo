@@ -1,5 +1,5 @@
 import type { BidSettingsSection as SectionId } from "@/lib/navigation/settings-links";
-import { Notice } from "@auction/ui/lax";
+import { Notice } from "@auction/ui/lax/notice";
 import type { ReactNode } from "react";
 
 type BidSettingsSectionProps = {

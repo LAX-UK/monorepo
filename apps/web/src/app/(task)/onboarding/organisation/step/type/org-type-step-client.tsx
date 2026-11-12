@@ -3,11 +3,11 @@
 import { postOrgOnboardingStepCompleteAction } from "@/app/(task)/onboarding/organisation/onboarding-actions";
 import { orgOnboardingStepHref } from "@/lib/legal-entity/org-onboarding-resume";
 import { orgSubkindDescription } from "@/lib/legal-entity/org-onboarding-subkind-descriptions";
-import { cn } from "@auction/ui";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { Button } from "@auction/ui/components/button";
 import { Label } from "@auction/ui/components/label";
 import { RadioGroup, RadioGroupItem } from "@auction/ui/components/radio-group";
+import { cn } from "@auction/ui/lib/utils";
 import type { PublicOrganisationSubkind } from "@auction/validators";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";

@@ -1,6 +1,6 @@
 import { MarketingCatalogHubShell } from "@/components/marketing/marketing-catalog-hub-shell";
 import { MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 
 const PRESS_LOADING_SKELETON_IDS = [
   "press-skeleton-a",
