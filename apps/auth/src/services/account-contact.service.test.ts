@@ -14,6 +14,10 @@ function session(id: string, createdAt: Date) {
     userAgent: null,
     lastPasswordAuthAt: null,
     previousIds: [],
+    signedInAt: null,
+    lastSeenAt: null,
+    country: null,
+    clientIds: [],
     isCurrent: false,
   };
 }

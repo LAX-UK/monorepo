@@ -5,6 +5,7 @@ import type {
   PrivateSalePaymentRail,
   PrivateSaleStageChange,
 } from "@auction/types";
+import type { SettlementFollowUpSeverity } from "./settlement-follow-up.js";
 
 export const PRIVATE_SALE_DEAL_EVENT_AGGREGATE = "private_sale_deal";
 
@@ -121,7 +122,26 @@ export type PrivateSaleDealEvent =
         reason: "skipped" | "failed";
         message: string;
       };
+    }
+  | {
+      eventType: "private_sale_deal.settlement_follow_up_raised";
+      payload: {
+        dealId: string;
+        reference: string;
+        severity: SettlementFollowUpSeverity;
+      };
+    }
+  | {
+      eventType: "private_sale_deal.artwork_mark_sold_retried";
+      payload: {
+        dealId: string;
+        reference: string;
+        outcome: MarkSoldOutcome;
+      };
     };
+
+/** What a staff member's "Try again" achieved in the register. */
+export type MarkSoldOutcome = "marked" | "already_marked" | "skipped" | "failed";
 
 /**
  * The events a deal publishes carry identifiers, stage codes and amounts only. Names, the cancel
@@ -161,6 +181,31 @@ export function dealArtworkRecordNotUpdatedEvent(
       reason: failure.reason,
       message: `Deal ${deal.reference} ${failure.stage}, but the artwork's record couldn't be marked sold — check where it is`,
     },
+  };
+}
+
+/**
+ * The daily check found a settled deal whose artwork the register does not show as sold. Raised
+ * once per deal, so the audit log says when staff were first told. Identifiers and the severity only.
+ */
+export function dealSettlementFollowUpRaisedEvent(
+  deal: DealRef,
+  severity: SettlementFollowUpSeverity,
+): PrivateSaleDealEvent {
+  return {
+    eventType: "private_sale_deal.settlement_follow_up_raised",
+    payload: { dealId: deal.id, reference: deal.reference, severity },
+  };
+}
+
+/** Staff asked the register to mark the settled deal's artwork sold again, and what came of it. */
+export function dealArtworkMarkSoldRetriedEvent(
+  deal: DealRef,
+  outcome: MarkSoldOutcome,
+): PrivateSaleDealEvent {
+  return {
+    eventType: "private_sale_deal.artwork_mark_sold_retried",
+    payload: { dealId: deal.id, reference: deal.reference, outcome },
   };
 }
 

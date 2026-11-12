@@ -218,6 +218,10 @@ function buildStaffNavGroupSpecs(
           icon: Handshake,
           match: exactOrNested("/admin/private-sales"),
           requirement: PRIVATE_SALE_DEALS_READ_ACCESS,
+          ...navBadge(
+            navCounts.privateSalesAttention,
+            navCounts.privateSalesUrgent > 0 ? "danger" : "warning",
+          ),
         },
         {
           id: "condition-reports",

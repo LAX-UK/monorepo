@@ -4,6 +4,7 @@ import { ENQUIRIES_PATH } from "@/lib/admin/enquiries/enquiries.vm";
 import { idempotencyHeader } from "@/lib/admin/finance/idempotency-key";
 import { dealErrorMessage } from "@/lib/admin/private-sales/private-sale-errors";
 import { DEALS_PATH, dealHref } from "@/lib/admin/private-sales/private-sales.vm";
+import { markSoldErrorMessage } from "@/lib/admin/private-sales/settlement-follow-up.vm";
 import { denyUnlessAdminCapability } from "@/lib/auth/assert-admin-action-capability";
 import { isStaffStepUpResponse } from "@/lib/auth/step-up/staff-step-up.server";
 import { stepUpRequiredFailure } from "@/lib/auth/step-up/step-up-failure";
@@ -62,14 +63,17 @@ const MONEY_ACTIONS: ReadonlySet<StaffDealAction> = new Set([
 ]);
 
 /** The API's refusal as an action result, keeping what a screen needs to explain it. */
-async function refusal(res: Response): Promise<ActionResult<never>> {
+async function refusal(
+  res: Response,
+  messageFor: typeof dealErrorMessage = dealErrorMessage,
+): Promise<ActionResult<never>> {
   if (await isStaffStepUpResponse(res)) {
     return stepUpRequiredFailure();
   }
   const body = dealRefusalSchema.safeParse(await res.json().catch(() => null));
   const code = body.success ? body.data.error : undefined;
   return actionFailure(
-    dealErrorMessage(code, res.status, body.success ? body.data.message : undefined),
+    messageFor(code, res.status, body.success ? body.data.message : undefined),
     undefined,
     res.status,
     code,
@@ -230,6 +234,29 @@ export async function removeDealArtworkAction(
     ).catch(() => null);
     if (!res) return actionFailure(dealErrorMessage(undefined, undefined), undefined, 503);
     return res.ok ? record(res, "DELETE /admin/private-sales/:ref/artwork") : refusal(res);
+  });
+}
+
+/**
+ * Tries again to record a settled deal's artwork as sold. Safe to repeat; the register never moves
+ * an artwork it shows elsewhere, and says where it is instead.
+ */
+export async function markDealArtworkSoldAction(ref: string): Promise<ActionResult<DealRecord>> {
+  return instrumentServerAction("markDealArtworkSoldAction", async () => {
+    const denied = await denyUnlessAdminCapability(PRIVATE_SALE_DEALS_MANAGE_ACCESS);
+    if (denied) return denied;
+    const reference = privateSaleReferenceSchema.safeParse(ref);
+    if (!reference.success) return actionFailure("Check the reference.", undefined, 400);
+    const res = await authedServerFetch(
+      `/admin/private-sales/${encodeURIComponent(reference.data)}/artwork/mark-sold`,
+      { method: "POST" },
+    ).catch(() => null);
+    const messageFor: typeof dealErrorMessage = (code, status, apiMessage) =>
+      markSoldErrorMessage(code, status, apiMessage, dealErrorMessage);
+    if (!res) return actionFailure(messageFor(undefined, undefined, undefined), undefined, 503);
+    return res.ok
+      ? record(res, "POST /admin/private-sales/:ref/artwork/mark-sold")
+      : refusal(res, messageFor);
   });
 }
 

@@ -63,6 +63,8 @@ const WRITE_ERROR_STATUS = {
   artwork_not_original: 422,
   artwork_unavailable: 409,
   artwork_register_busy: 503,
+  not_settled: 409,
+  not_applicable: 409,
   unavailable: 503,
 } as const satisfies Record<DealWriteError, 403 | 404 | 409 | 422 | 503>;
 
@@ -108,6 +110,15 @@ export function attachAdminPrivateSaleDealRoutes(
       return c.json({ data: outcome.result });
     },
   );
+
+  /**
+   * GET /admin/private-sales/attention-count — settled deals needing attention, cut to the person's
+   * scope: one aggregate for the sidebar count and the bell. Declared before `/:ref`.
+   */
+  admin.get("/private-sales/attention-count", async (c) => {
+    const data = await container.admin.privateSaleDeals.attentionCount(viewerOf(c));
+    return c.json({ data });
+  });
 
   /** GET /admin/private-sales/:ref — the deal, its parties and checks, money, timeline and moves. */
   admin.get("/private-sales/:ref", zValidator("param", privateSaleRefParamSchema), async (c) => {
@@ -179,6 +190,23 @@ export function attachAdminPrivateSaleDealRoutes(
         viewerOf(c),
         c.req.valid("param").ref,
         c.req.valid("json"),
+      );
+      return respond(c, result);
+    },
+  );
+
+  /**
+   * POST /admin/private-sales/:ref/artwork/mark-sold — try again to record a settled deal's artwork
+   * as sold. Safe to repeat; it never moves an artwork the register shows elsewhere.
+   */
+  admin.post(
+    "/private-sales/:ref/artwork/mark-sold",
+    requirePrivateSaleDealsManage,
+    zValidator("param", privateSaleRefParamSchema),
+    async (c) => {
+      const result = await container.admin.privateSaleDeals.markSold(
+        viewerOf(c),
+        c.req.valid("param").ref,
       );
       return respond(c, result);
     },

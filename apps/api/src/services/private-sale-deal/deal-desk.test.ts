@@ -126,6 +126,8 @@ function setup(options: Setup = {}) {
     queries: {
       list: async () => [],
       countByStage: async () => [],
+      listSettlementFollowUps: async () => [],
+      countSettlementFollowUps: async () => ({ total: 0, urgent: 0 }),
       listIdsForActingUser: async () => [],
       findLiveDealReferenceForWork: async () => null,
       findReferencesByIds: async () => new Map<string, string>(),
@@ -173,6 +175,7 @@ function setup(options: Setup = {}) {
         ) as never,
     },
     links: { recordHref: (id: string) => `https://admin.test/from-zoho/${id}` },
+    settlement: { present: async () => null },
   };
   const queries = new PrivateSaleDealQueryService(queryDeps);
   const transfers = {
@@ -195,10 +198,12 @@ function setup(options: Setup = {}) {
     events,
     records: queries,
   });
-  const real = new PrivateSaleDealDesk(queries, commands, {
-    set: vi.fn(),
-    remove: vi.fn(),
-  });
+  const real = new PrivateSaleDealDesk(
+    queries,
+    commands,
+    { set: vi.fn(), remove: vi.fn() },
+    { markSold: vi.fn() },
+  );
   // Moves are made against the version the person saw; these tests saw the deal as it is now.
   const desk = {
     list: real.list,

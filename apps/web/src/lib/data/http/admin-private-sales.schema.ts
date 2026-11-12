@@ -1,4 +1,4 @@
-import { DEAL_VIEWS } from "@auction/domain";
+import { DEAL_VIEWS, SETTLEMENT_FOLLOW_UP_SEVERITIES } from "@auction/domain";
 import { PRIVATE_SALE_DEAL_STAGES } from "@auction/types";
 import { PRIVATE_SALE_ARTWORK_UNLINKED_REASONS } from "@auction/types";
 import {
@@ -26,6 +26,8 @@ export const dealListItemSchema = z.object({
   paymentDueAt: z.string().nullable(),
   collectionDueAt: z.string().nullable(),
   updatedAt: z.string(),
+  /** Set on a settled deal whose artwork the register does not show as sold through it. */
+  settlementFollowUp: z.enum(SETTLEMENT_FOLLOW_UP_SEVERITIES).nullable(),
 });
 export type DealListItem = z.infer<typeof dealListItemSchema>;
 
@@ -33,8 +35,14 @@ export const dealListPageSchema = z.object({
   items: z.array(dealListItemSchema),
   nextCursor: z.string().nullable(),
   counts: z.record(z.enum(DEAL_VIEWS), z.number()),
+  /** Of the settled deals needing attention, how many may have been sold twice. */
+  urgentFollowUps: z.number(),
 });
 export type DealListPage = z.infer<typeof dealListPageSchema>;
+
+/** Settled deals needing attention for this person, and the urgent ones among them. */
+export const dealAttentionCountSchema = z.object({ total: z.number(), urgent: z.number() });
+export type DealAttentionCount = z.infer<typeof dealAttentionCountSchema>;
 
 const blockerSchema = z.object({
   code: z.string(),
@@ -105,6 +113,16 @@ const artworkMoveSchema = z.object({
 });
 export type DealArtworkMoveRecord = z.infer<typeof artworkMoveSchema>;
 
+/** A settled deal whose artwork the register does not show as sold through it. */
+const settlementFollowUpSchema = z.object({
+  severity: z.enum(SETTLEMENT_FOLLOW_UP_SEVERITIES),
+  settledAt: z.string(),
+  /** The register's own reason, words and link, when it shows the artwork somewhere else. */
+  lock: dealArtworkLockSchema.nullable(),
+  canRetry: z.boolean(),
+});
+export type DealSettlementFollowUp = z.infer<typeof settlementFollowUpSchema>;
+
 export const dealRecordSchema = z.object({
   reference: z.string(),
   stage,
@@ -137,6 +155,7 @@ export const dealRecordSchema = z.object({
     changeOffReason: z.string().nullable(),
   }),
   artworkMoves: z.array(artworkMoveSchema),
+  settlementFollowUp: settlementFollowUpSchema.nullable(),
   seller: partySchema,
   buyer: partySchema.nullable(),
   /** `null` for people who may not see how the checks stand. */

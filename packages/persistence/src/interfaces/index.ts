@@ -1200,7 +1200,10 @@ export type {
   PrivateSaleDealListFilter,
   PrivateSaleDealListRow,
   PrivateSaleDealStageCount,
+  SettlementFollowUpCount,
+  SettlementFollowUpRow,
 } from "./private-sale-deal-query.repository.js";
+export type { IDealSettlementFollowUpMarker } from "./deal-settlement-follow-up.marker.js";
 export type {
   DealReminderCandidate,
   IPrivateSaleDealReminderStore,
@@ -1451,6 +1454,9 @@ export type {
   GuardSettingsTransaction,
 } from "./collection-settings.repository.js";
 export type { IPartyDealRecordReader } from "./party-deal-record.reader.js";
+
+export type * from "./accounting.js";
+
 export type {
   BidderReofferRow,
   IReofferViewsReader,
@@ -1461,3 +1467,4 @@ export type {
   SellerConsentRequestRow,
   StaffReofferView,
 } from "./reoffer-workflow.js";
+export type { IReofferSweepReader, ReofferSweepRef } from "./reoffer-sweep.js";

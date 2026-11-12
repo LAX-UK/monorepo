@@ -72,3 +72,44 @@ export function validateSwitchConfig(
 export function sendsForReal(product: ProductSwitch, source: Source): boolean {
   return product[source] === "live";
 }
+
+/** The modes a document can be aimed at; `off` aims nothing. */
+export type TargetMode = Exclude<Mode, "off">;
+
+/**
+ * The provider and mode a document was created for, fixed when it is created and never changed:
+ * a later switch flip never re-aims an existing document, and no other provider or mode may take it.
+ */
+export interface DocumentTarget {
+  readonly provider: Source;
+  readonly mode: TargetMode;
+}
+
+/**
+ * Where a new document for a product is aimed, from the switch as it stands at creation: the live
+ * source if there is one, otherwise the only provider that is not `off`. With nothing to aim at
+ * (both `off`) or no way to choose (both in rehearsal) the document has no target, and is never
+ * handed to anyone. A live document is therefore never aimed at a rehearsal.
+ */
+export function documentTarget(product: ProductSwitch): DocumentTarget | null {
+  const live = SOURCES.find((s) => product[s] === "live");
+  if (live) return { provider: live, mode: "live" };
+  const active = SOURCES.filter((s) => product[s] !== "off");
+  const only = active.length === 1 ? active[0] : undefined;
+  if (only === undefined) return null;
+  return { provider: only, mode: product[only] as TargetMode };
+}
+
+/**
+ * May `provider` take a document aimed at `target`, given the product's switch now? Only the
+ * provider and mode the document was created for, and only while that provider is still in that
+ * mode: a Books claim in `test_org` can never take a document aimed at Xero live, and a flip of
+ * the switch never moves a document to a different provider or mode.
+ */
+export function mayClaim(
+  target: DocumentTarget | null,
+  product: ProductSwitch,
+  provider: Source,
+): boolean {
+  return target !== null && target.provider === provider && product[provider] === target.mode;
+}
