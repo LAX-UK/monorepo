@@ -1,13 +1,27 @@
 import { sql } from "drizzle-orm";
-import { index, numeric, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import {
+  type AnyPgColumn,
+  index,
+  numeric,
+  pgTable,
+  text,
+  timestamp,
+  uniqueIndex,
+  uuid,
+} from "drizzle-orm/pg-core";
 import { user } from "./auth.js";
 import { itemSubmission } from "./item-submissions.js";
 import { legalEntity } from "./legal-entities.js";
+import { uploadObject } from "./upload-objects.js";
 
 /**
  * One consignment agreement per submission: the specialist's estimate and terms, proposed when
  * the work is accepted, and the seller's acceptance under a versioned set of seller conditions.
  * Acceptance records who accepted, when, and which version they read.
+ *
+ * `source` says where the agreement came from: `online` (made and accepted in the product) or
+ * `recorded` (staff recorded a signed paper copy, with the signed file and the reason). A corrected
+ * agreement names the one it replaces.
  */
 export const consignmentAgreement = pgTable(
   "consignment_agreement",
@@ -37,6 +51,18 @@ export const consignmentAgreement = pgTable(
     acceptedByUserId: text("accepted_by_user_id").references(() => user.id, {
       onDelete: "set null",
     }),
+    source: text("source").notNull().default("online"),
+    recordedByUserId: text("recorded_by_user_id").references(() => user.id, {
+      onDelete: "set null",
+    }),
+    signedDocumentId: uuid("signed_document_id").references(() => uploadObject.id, {
+      onDelete: "restrict",
+    }),
+    recordReason: text("record_reason"),
+    replacesAgreementId: uuid("replaces_agreement_id").references(
+      (): AnyPgColumn => consignmentAgreement.id,
+      { onDelete: "set null" },
+    ),
     reminderDay3SentAt: timestamp("reminder_day3_sent_at", { mode: "date", withTimezone: true }),
     reminderDay7SentAt: timestamp("reminder_day7_sent_at", { mode: "date", withTimezone: true }),
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),

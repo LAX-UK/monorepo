@@ -20,6 +20,7 @@ import {
   deleteIdentityUserFixtures,
   seedIdentityUserFixtures,
 } from "../../testing/identity-user-fixtures.js";
+import { sellerTermsForTests } from "../../testing/seller-terms.js";
 import type { OrganisationMemberActor } from "../interfaces/organisation-membership-service.js";
 import { NotificationFactory } from "../notification.factory.js";
 import { PaymentTierPolicy, parsePaymentTierLimits } from "../payment/payment-tier.policy.js";
@@ -120,7 +121,7 @@ describe.skipIf(!HAS_DB)("pay several raises what the plan counts (integration)"
           STRIPE_ABSOLUTE_MAX: 999_999.99,
         }),
       ),
-      { computePlatformFee: vi.fn(), computePlatformFeeFromPence: async () => "0.00" },
+      sellerTermsForTests(),
       { isConfigured: () => false, ensureInvoiceForPayment: vi.fn() } as never,
       { stageDispatch: async () => undefined } as never,
       new NotificationFactory(),

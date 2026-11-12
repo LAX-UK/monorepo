@@ -28,6 +28,7 @@ import {
   deleteIdentityUserFixtures,
   seedIdentityUserFixtures,
 } from "../../testing/identity-user-fixtures.js";
+import { heldSellerTerms, sellerTermsForTests } from "../../testing/seller-terms.js";
 
 const HAS_DB = Boolean(process.env.DATABASE_URL);
 /**
@@ -115,10 +116,7 @@ describe.skipIf(!HAS_DB)("raising an invoice for a lot that moved (integration)"
           STRIPE_ABSOLUTE_MAX: 999_999.99,
         }),
       ),
-      {
-        computePlatformFee: async () => "0.00",
-        computePlatformFeeFromPence: async () => "0.00",
-      },
+      sellerTermsForTests(),
       { isConfigured: () => false, ensureInvoiceForPayment: async () => ({ ok: true }) } as never,
       { stageDispatch },
       {
@@ -244,6 +242,7 @@ describe.skipIf(!HAS_DB)("raising an invoice for a lot that moved (integration)"
       .raise({
         lot: read,
         priced,
+        sellerTerms: heldSellerTerms(lotId, sellerEntity),
         payment: {
           lotId,
           paidByUserId: buyerId,
@@ -279,6 +278,7 @@ describe.skipIf(!HAS_DB)("raising an invoice for a lot that moved (integration)"
       raiser.raise({
         lot: { ...read, winnerId: staffId },
         priced,
+        sellerTerms: heldSellerTerms(lotId, sellerEntity),
         payment: {
           lotId,
           paidByUserId: staffId,

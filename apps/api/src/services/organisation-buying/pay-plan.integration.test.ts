@@ -19,6 +19,7 @@ import {
   deleteIdentityUserFixtures,
   seedIdentityUserFixtures,
 } from "../../testing/identity-user-fixtures.js";
+import { heldSellerTerms } from "../../testing/seller-terms.js";
 import { PayPlanService } from "./pay-plan.service.js";
 import { PayProgressResolver } from "./pay-progress.resolver.js";
 import { PurchaseCandidateReader } from "./purchase-candidate.reader.js";
@@ -69,6 +70,7 @@ describe.skipIf(!HAS_DB)("pay plan (integration)", () => {
     return raiser.raise({
       lot: l,
       priced: await raiser.price(l),
+      sellerTerms: heldSellerTerms(l.id, sellerEntity),
       payment: {
         lotId: l.id,
         paidByUserId: buyerId,

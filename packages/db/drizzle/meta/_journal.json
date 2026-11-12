@@ -2542,6 +2542,13 @@
       "when": 1810036800000,
       "tag": "0365_session_lifetime_indexes",
       "breakpoints": true
+    },
+    {
+      "idx": 364,
+      "version": "7",
+      "when": 1810209600000,
+      "tag": "0372_sale_seller_terms",
+      "breakpoints": true
     }
   ]
 }

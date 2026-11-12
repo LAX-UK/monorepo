@@ -1,7 +1,9 @@
 import type { Database } from "@auction/db";
-import { PlatformFeePolicy, gbpPenceToMajorString } from "@auction/finance-runtime";
+import { SellerTermsPolicy } from "@auction/domain";
+import { gbpPenceToMajorString } from "@auction/finance-runtime";
 import {
   DrizzleArtworkRegisterRepository,
+  DrizzleCommissionVatSettingReader,
   DrizzleLotReawardRepository,
   DrizzleLotRegisterLinkReader,
   DrizzleLotReofferRepository,
@@ -9,18 +11,15 @@ import {
   DrizzleReofferViewsReader,
   DrizzleReofferWorkflowReader,
   DrizzleSellerConsentRepository,
+  DrizzleSellerTermsFactsReader,
   DrizzleSoldAttentionStore,
 } from "@auction/persistence/repositories";
-import type { Env } from "../env.js";
 import { RegisterArtworkPlaceGuard } from "../services/reoffer/register-artwork-place.guard.js";
 import { RegisterMoneyPauseGuard } from "../services/reoffer/register-money-pause.guard.js";
 import { ReofferConsentService } from "../services/reoffer/reoffer-consent.service.js";
+import { lotOwnershipFromAccount } from "../services/reoffer/reoffer-lot-ownership.js";
 import { ReofferOfferService } from "../services/reoffer/reoffer-offer.service.js";
-import type {
-  IReofferInvoicing,
-  IReofferLotOwnership,
-  IReofferPricing,
-} from "../services/reoffer/reoffer-ports.js";
+import type { IReofferInvoicing, IReofferPricing } from "../services/reoffer/reoffer-ports.js";
 import { ReofferPreviewService } from "../services/reoffer/reoffer-preview.service.js";
 import { ReofferReadsService } from "../services/reoffer/reoffer-reads.service.js";
 import { ReofferResponseService } from "../services/reoffer/reoffer-response.service.js";
@@ -39,30 +38,15 @@ export type ContainerReofferServices = {
   preview: ReofferPreviewService;
 };
 
-/**
- * Lots LAX owns itself are listed by their seller account (`REOFFER_LAX_OWNED_SELLER_ENTITY_IDS`,
- * comma separated); nobody has to agree to sell them below the hammer. Every other lot needs the
- * seller's agreement, so an empty list means every offer asks the seller.
- */
-export function laxOwnedSellers(raw: string | undefined): IReofferLotOwnership {
-  const ids = new Set(
-    (raw ?? "")
-      .split(",")
-      .map((id) => id.trim())
-      .filter((id) => id.length > 0),
-  );
-  return { of: (sellerId) => (sellerId !== null && ids.has(sellerId) ? "lax_owned" : "seller") };
-}
-
 export function createReofferServices(input: {
-  env: Pick<Env, "REOFFER_LAX_OWNED_SELLER_ENTITY_IDS">;
   db: Database;
   platform: Pick<ContainerPlatformServices, "transactionRunner" | "lotLifecycleRecording">;
-  repos: Pick<ContainerRepositories, "legalEntityRepository" | "lotRepo">;
+  repos: Pick<ContainerRepositories, "lotRepo">;
   payments: Pick<ContainerPaymentsServices, "lotInvoiceInitiationService" | "invoiceRaiser">;
 }): ContainerReofferServices {
   const { db, platform, payments } = input;
-  const feePolicy = new PlatformFeePolicy(input.repos.legalEntityRepository);
+  const sellerFacts = new DrizzleSellerTermsFactsReader(db);
+  const terms = new SellerTermsPolicy(sellerFacts, new DrizzleCommissionVatSettingReader(db));
   const workflow = new DrizzleReofferWorkflowReader();
   const offers = new DrizzleLotReofferRepository();
   const consents = new DrizzleSellerConsentRepository(db);
@@ -94,7 +78,7 @@ export function createReofferServices(input: {
       };
     },
   };
-  const proceeds = settlementSellerProceeds({ pricing, feePolicy });
+  const proceeds = settlementSellerProceeds({ pricing, terms });
   const invoicing: IReofferInvoicing = {
     async raiseFor(lotId) {
       await payments.lotInvoiceInitiationService.ensureForLot(lotId);
@@ -106,7 +90,8 @@ export function createReofferServices(input: {
       ...base,
       atg: links,
       proceeds,
-      ownership: laxOwnedSellers(input.env.REOFFER_LAX_OWNED_SELLER_ENTITY_IDS),
+      // LAX-owned stock is the seller account's own subkind, never a list kept in configuration.
+      ownership: lotOwnershipFromAccount(sellerFacts),
     }),
     consent: new ReofferConsentService({ ...base, consents }),
     offer: new ReofferOfferService({ ...base, consents, atg: links, place, moneyPause }),

@@ -12,6 +12,7 @@ import type {
 import type { Lot } from "@auction/types";
 import { describe, expect, it, vi } from "vitest";
 import { inMemoryInvoiceRaiser } from "../testing/in-memory-bid-invoices.js";
+import { sellerTermsForTests } from "../testing/seller-terms.js";
 import type { ISettlementCompliancePolicy } from "./aml/settlement-compliance.policy.js";
 import type { IDomainEventSink } from "./domain-event-sink.js";
 import type { IInvoiceAccountingProvider } from "./interfaces/invoice-accounting.js";
@@ -95,10 +96,7 @@ function build(
       peek: vi.fn(),
     } as unknown as ISettlementCompliancePolicy,
     tierPolicy,
-    {
-      computePlatformFee: vi.fn(),
-      computePlatformFeeFromPence: vi.fn().mockResolvedValue("62.50"),
-    },
+    sellerTermsForTests({ platformFee: "62.50" }),
     {
       isConfigured: vi.fn().mockReturnValue(true),
       ensureInvoiceForPayment,

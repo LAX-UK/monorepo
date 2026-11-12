@@ -13,6 +13,7 @@ import {
   deleteIdentityUserFixtures,
   seedIdentityUserFixtures,
 } from "../../testing/identity-user-fixtures.js";
+import { heldSellerTerms } from "../../testing/seller-terms.js";
 import { groupStripeLineItems } from "../stripe/stripe-payment-group.gateway.js";
 import { loadCheckedInvoiceLines } from "./invoice-stripe-lines.js";
 import { buildStripeCheckoutLineItems } from "./stripe-checkout-product-display.js";
@@ -121,6 +122,7 @@ describe.skipIf(!HAS_DB)("Stripe checkout lines from stored invoices (integratio
     const raised = await raiser.raise({
       lot: found,
       priced,
+      sellerTerms: heldSellerTerms(lotId, sellerId),
       payment: {
         lotId,
         paidByUserId: buyerUserId,

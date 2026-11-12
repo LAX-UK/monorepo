@@ -21,7 +21,9 @@ import {
   AUTH_LEGAL_ACCEPTANCE_TABLES,
   AUTH_POLICY_TABLES,
   AUTH_READ_TABLES,
+  FINANCE_SETTING_READ_TABLES,
   LIFT_ZOHO_CAMPAIGNS_OPT_OUT_ROLES,
+  SELLER_TERMS_INSERT_SELECT_TABLES,
   SHOP_ARTWORK_REGISTER_CONFLICT_TABLES,
   SHOP_ARTWORK_REGISTER_EVENT_TABLES,
   SHOP_ARTWORK_REGISTER_OFFER_TABLES,
@@ -60,6 +62,7 @@ import {
   WORKER_QR_CODE_SCAN_TABLES,
   WORKER_READ_TABLES,
   WORKER_REOFFER_TABLES,
+  WORKER_SELLER_TERMS_READ_COLUMNS,
   WORKER_SHOP_ENQUIRY_READ_COLUMNS,
   WORKER_SHOP_ORDER_READ_COLUMNS,
   WORKER_SHOP_PRINT_GROUP_READ_COLUMNS,
@@ -876,6 +879,30 @@ describe("migrate-roles invariants", () => {
       expect([...WORKER_READ_TABLES]).not.toContain(table);
       expect([...SHOP_COMMERCE_TABLES, ...SHOP_COMMERCE_APPEND_ONLY_TABLES]).not.toContain(table);
       expect([...API_DENY_TABLES]).not.toContain(table);
+    }
+  });
+
+  it("lets the API and the worker add seller terms but never rewrite them, and keeps both away from Shop", () => {
+    expect([...SELLER_TERMS_INSERT_SELECT_TABLES]).toEqual(["sale_seller_terms"]);
+    expect([...FINANCE_SETTING_READ_TABLES]).toEqual(["bid_finance_setting"]);
+    // The worker reads only the agreement columns the rule needs, never the whole table.
+    expect([...WORKER_READ_TABLES]).not.toContain("consignment_agreement");
+    expect(Object.fromEntries(WORKER_SELLER_TERMS_READ_COLUMNS)).toEqual({
+      consignment_agreement: [
+        "id",
+        "submission_id",
+        "legal_entity_id",
+        "accepted_at",
+        "proposed_at",
+        "commission_percent",
+      ],
+    });
+    for (const table of [...SELLER_TERMS_INSERT_SELECT_TABLES, ...FINANCE_SETTING_READ_TABLES]) {
+      expect([...WORKER_FULL_TABLES]).not.toContain(table);
+      expect([...WORKER_DENY_TABLES]).not.toContain(table);
+      expect([...WORKER_READ_TABLES]).not.toContain(table);
+      expect([...API_DENY_TABLES]).not.toContain(table);
+      expect([...SHOP_COMMERCE_TABLES, ...SHOP_COMMERCE_APPEND_ONLY_TABLES]).not.toContain(table);
     }
   });
 

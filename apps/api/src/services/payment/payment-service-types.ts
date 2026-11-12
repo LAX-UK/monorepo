@@ -1,6 +1,7 @@
 import type {
   IHeldInvoiceCheckouts,
   IInvoiceRecipients,
+  ISellerTermsAtRaise,
   InvoiceDueDateExtender,
   InvoiceRaiser,
 } from "@auction/finance-runtime";
@@ -22,7 +23,6 @@ import type { IStripeCheckoutService } from "../interfaces/checkout-rail.js";
 import type { IInvoiceAccountingProvider } from "../interfaces/invoice-accounting.js";
 import type { IPaymentCaptureService } from "../interfaces/payment-capture.js";
 import type { IPayoutAdjustmentService } from "../interfaces/payout-adjustment.js";
-import type { IPlatformFeePolicy } from "../interfaces/platform-fee.js";
 import type { MediaUrlResolver } from "../media-url-resolver.js";
 import type { NotificationDispatcher } from "../notification.dispatcher.js";
 import type { NotificationFactory } from "../notification.factory.js";
@@ -65,7 +65,8 @@ export type PaymentServiceDeps = {
   invoiceDueDates: InvoiceDueDateExtender | null;
   /** The stored invoice behind a payment: its lines and due date. */
   invoices: IBidInvoiceReader;
-  platformFeePolicy: IPlatformFeePolicy | null;
+  /** The seller's terms for each new payment, stored with it, and the payment's legacy fee. */
+  sellerTerms: ISellerTermsAtRaise;
   paymentCapture: IPaymentCaptureService | null;
   stripeCheckout: IStripeCheckoutService | null;
   payoutAdjustments: IPayoutAdjustmentService | null;

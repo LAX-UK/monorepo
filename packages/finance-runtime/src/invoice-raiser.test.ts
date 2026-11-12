@@ -1,3 +1,4 @@
+import type { SellerTermsSnapshot } from "@auction/domain";
 import type {
   BidInvoiceRecord,
   IBidInvoiceRaiseRepository,
@@ -44,6 +45,17 @@ function store(existing: BidInvoiceRecord | null = null) {
   };
   return { raise, invoices: { ...reader, raise } };
 }
+
+/** The seller's side the raise is given, which the store keeps with the payment. */
+const sellerTerms: SellerTermsSnapshot = {
+  lotId: "lot-1",
+  sellerLegalEntityId: "seller-acct",
+  basis: "held",
+  heldReason: "no_agreement",
+  hammerPence: 100_000,
+  premiumPence: 25_000,
+  ruleVersion: "agreement_hammer_v1",
+};
 
 const NOW = new Date("2026-11-06T12:00:00.000Z");
 
@@ -118,13 +130,14 @@ describe("InvoiceRaiser.raise", () => {
       now: () => NOW,
     });
     const priced = await raiser.price(lot);
-    await raiser.raise({ lot, priced, payment: paymentRow });
+    await raiser.raise({ lot, priced, payment: paymentRow, sellerTerms });
     const [{ invoice, winnerId }] = raise.mock.calls[0] as [
       { invoice: { raisedAt: Date; dueAt: Date }; winnerId: string },
     ];
     // The store re-checks the lot under its lock against the winner it was read with.
     expect(winnerId).toBe("user-1");
     expect(invoice.raisedAt).toEqual(NOW);
+    expect(raise.mock.calls[0]?.[0].sellerTerms).toBe(sellerTerms);
     // Friday 6 November 2026 + 7 days = Friday 13 November, to the end of that London day (GMT).
     expect(invoice.dueAt.toISOString()).toBe("2026-11-13T23:59:59.999Z");
   });
@@ -134,7 +147,7 @@ describe("InvoiceRaiser.raise", () => {
     const raiser = new InvoiceRaiser({ invoices, sales: { findById: async () => sale } });
     const priced = await raiser.price(lot);
     await expect(
-      raiser.raise({ lot: { ...lot, winnerId: null }, priced, payment: paymentRow }),
+      raiser.raise({ lot: { ...lot, winnerId: null }, priced, payment: paymentRow, sellerTerms }),
     ).rejects.toBeInstanceOf(InvoiceInvariantError);
     expect(raise).not.toHaveBeenCalled();
   });
@@ -154,6 +167,7 @@ describe("InvoiceRaiser.raise", () => {
           existing: null,
         },
         payment: paymentRow,
+        sellerTerms,
       }),
     ).rejects.toBeInstanceOf(InvoiceInvariantError);
     expect(raise).not.toHaveBeenCalled();
@@ -175,6 +189,7 @@ describe("InvoiceRaiser.raise", () => {
           existing: null,
         },
         payment: paymentRow,
+        sellerTerms,
       }),
     ).rejects.toBeInstanceOf(InvoiceInvariantError);
     expect(raise).not.toHaveBeenCalled();
@@ -183,7 +198,7 @@ describe("InvoiceRaiser.raise", () => {
   it("refuses an invoice with no lines or no total", async () => {
     const { invoices } = store();
     const raiser = new InvoiceRaiser({ invoices, sales: null });
-    const base = { lot, payment: paymentRow };
+    const base = { lot, payment: paymentRow, sellerTerms };
     await expect(
       raiser.raise({
         ...base,

@@ -268,6 +268,25 @@ export const WORKER_ACCOUNTING_DOCUMENT_UPDATE_COLUMNS = [
 ] as const;
 export const WORKER_ACCOUNTING_APPEND_ONLY_TABLES = ["accounting_document_event"] as const;
 export const WORKER_ACCOUNTING_READ_TABLES = ["accounting_source_setting"] as const;
+/**
+ * What a seller is paid for each sale, fixed when the buyer's invoice is raised (migration 0372).
+ * Both payment-raising processes (the API at checkout, the worker at lot end) write the row in the
+ * invoice's transaction and read it; nobody updates or deletes it. `bid_finance_setting` holds the
+ * Bid company's finance settings: both roles read it, and the staff route that changes it gets its
+ * own UPDATE grant in the PR that adds the route. No other role has access.
+ */
+export const SELLER_TERMS_INSERT_SELECT_TABLES = ["sale_seller_terms"] as const;
+export const FINANCE_SETTING_READ_TABLES = ["bid_finance_setting"] as const;
+/**
+ * The worker reads the signed agreement behind a lot to price the seller's side at lot end, and
+ * only the columns the rule needs: not the reserve, the estimates or the recorded-copy details.
+ */
+export const WORKER_SELLER_TERMS_READ_COLUMNS = [
+  [
+    "consignment_agreement",
+    ["id", "submission_id", "legal_entity_id", "accepted_at", "proposed_at", "commission_percent"],
+  ],
+] as const;
 /** Shop Identity owns only its local Identity projection. */
 export const SHOP_PRODUCT_PROFILE_TABLES = [
   "shop_user_profile",
@@ -1122,6 +1141,14 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
             await grantIfExists(client, "api_app", tableName, "INSERT, SELECT, DELETE");
             continue;
           }
+          if ((SELLER_TERMS_INSERT_SELECT_TABLES as readonly string[]).includes(tableName)) {
+            await grantIfExists(client, "api_app", tableName, "INSERT, SELECT");
+            continue;
+          }
+          if ((FINANCE_SETTING_READ_TABLES as readonly string[]).includes(tableName)) {
+            await grantIfExists(client, "api_app", tableName, "SELECT");
+            continue;
+          }
           if ((API_ACCOUNTING_READ_TABLES as readonly string[]).includes(tableName)) {
             await grantIfExists(client, "api_app", tableName, "SELECT");
             continue;
@@ -1318,6 +1345,17 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
         }
         for (const tableName of WORKER_ARTWORK_REGISTER_APPEND_ONLY_TABLES) {
           await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT");
+        }
+        for (const tableName of SELLER_TERMS_INSERT_SELECT_TABLES) {
+          await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT");
+        }
+        for (const tableName of FINANCE_SETTING_READ_TABLES) {
+          await grantIfExists(client, "worker_app", tableName, "SELECT");
+        }
+        for (const [tableName, columns] of WORKER_SELLER_TERMS_READ_COLUMNS) {
+          // A table-wide SELECT from an earlier build of this grant is taken back first.
+          await revokeIfExists(client, "worker_app", tableName, "SELECT");
+          await grantColumnSelectIfExists(client, "worker_app", tableName, columns);
         }
         for (const tableName of WORKER_ACCOUNTING_DOCUMENT_TABLES) {
           // The worker moves a document along its life cycle; it never rewrites what the document

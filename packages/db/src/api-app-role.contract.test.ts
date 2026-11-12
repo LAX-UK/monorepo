@@ -8,6 +8,8 @@ import {
   API_PRODUCT_PROFILE_TABLES,
   API_READ_TABLES,
   API_SSF_RECEIVER_TABLES,
+  FINANCE_SETTING_READ_TABLES,
+  SELLER_TERMS_INSERT_SELECT_TABLES,
 } from "./migrate-roles.js";
 import {
   expectTablePrivileges,
@@ -85,6 +87,20 @@ describe.skipIf(!API_URL)("api_app role contract", { timeout: 60_000 }, () => {
         `select has_column_privilege(current_user, 'public.accounting_source_setting', 'books_mode', 'UPDATE') as allowed`,
       );
       expect(column.rows[0]).toEqual({ allowed: false });
+    });
+  });
+
+  it("adds seller terms and reads them, never changes or deletes them, and only reads the finance settings", async () => {
+    await withApiClient(async (client) => {
+      const privileges = ["SELECT", "INSERT", "UPDATE", "DELETE"];
+      const terms = await readTablePrivileges(
+        client,
+        SELLER_TERMS_INSERT_SELECT_TABLES,
+        privileges,
+      );
+      expectTablePrivileges(terms, (row) => ["SELECT", "INSERT"].includes(row.privilege));
+      const settings = await readTablePrivileges(client, FINANCE_SETTING_READ_TABLES, privileges);
+      expectTablePrivileges(settings, (row) => row.privilege === "SELECT");
     });
   });
 

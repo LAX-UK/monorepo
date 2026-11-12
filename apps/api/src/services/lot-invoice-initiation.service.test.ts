@@ -4,11 +4,11 @@ import type { ILotRepository, IUserRepository } from "@auction/persistence/inter
 import type { Lot } from "@auction/types";
 import { describe, expect, it, vi } from "vitest";
 import { inMemoryInvoiceRaiser } from "../testing/in-memory-bid-invoices.js";
+import { sellerTermsForTests } from "../testing/seller-terms.js";
 import type { ISettlementCompliancePolicy } from "./aml/settlement-compliance.policy.js";
 import type { IDomainEventSink } from "./domain-event-sink.js";
 import type { IInvoiceAccountingProvider } from "./interfaces/invoice-accounting.js";
 import type { INotificationOutboxService } from "./interfaces/notification-outbox.js";
-import type { IPlatformFeePolicy } from "./interfaces/platform-fee.js";
 import { LotInvoiceInitiationService } from "./lot-invoice-initiation.service.js";
 import { NotificationFactory } from "./notification.factory.js";
 import { PaymentTierPolicy, parsePaymentTierLimits } from "./payment/payment-tier.policy.js";
@@ -77,9 +77,7 @@ function buildService(
       ...overrides.settlement,
     } as unknown as ISettlementCompliancePolicy,
     tierPolicy,
-    {
-      computePlatformFeeFromPence: vi.fn().mockResolvedValue("62.50"),
-    } as unknown as IPlatformFeePolicy,
+    sellerTermsForTests({ platformFee: "62.50" }),
     {
       isConfigured: vi.fn().mockReturnValue(true),
       ensureInvoiceForPayment,

@@ -127,6 +127,11 @@ export {
 export { DrizzleLaxAdminRolesRepository } from "./drizzle-lax-admin-roles.repository.js";
 export { DrizzlePaymentRepository } from "./drizzle-payment.repository.js";
 export { DrizzleBidInvoiceRepository } from "./drizzle-bid-invoice.repository.js";
+export {
+  COMMISSION_VAT_SETTING_KEY,
+  DrizzleCommissionVatSettingReader,
+  DrizzleSellerTermsFactsReader,
+} from "./drizzle-seller-terms-facts.reader.js";
 export { DrizzleCollectionBookingRepository } from "./drizzle-collection-booking.repository.js";
 export { DrizzleCollectionDeskFulfilment } from "./drizzle-collection-desk-fulfilment.js";
 export { DrizzleCollectionDeskReader } from "./drizzle-collection-desk.reader.js";

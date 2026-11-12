@@ -5,6 +5,8 @@ import { describe, expect, it } from "vitest";
 import { readUserReadCutoverFromEnv } from "./applied-user-read-cutover.js";
 import { createDb } from "./client.js";
 import {
+  FINANCE_SETTING_READ_TABLES,
+  SELLER_TERMS_INSERT_SELECT_TABLES,
   WORKER_ACCOUNTING_APPEND_ONLY_TABLES,
   WORKER_ACCOUNTING_DOCUMENT_TABLES,
   WORKER_ACCOUNTING_DOCUMENT_UPDATE_COLUMNS,
@@ -14,6 +16,7 @@ import {
   WORKER_REOFFER_READ_COLUMNS,
   WORKER_REOFFER_TABLES,
   WORKER_REOFFER_UPDATE_COLUMNS,
+  WORKER_SELLER_TERMS_READ_COLUMNS,
   WORKER_SHOP_ENQUIRY_READ_COLUMNS,
   WORKER_SHOP_ORDER_READ_COLUMNS,
   WORKER_SHOP_PRINT_GROUP_READ_COLUMNS,
@@ -135,6 +138,38 @@ describe.skipIf(!WORKER_URL)("worker_app role contract", { timeout: 60_000 }, ()
       expectTablePrivileges(history, (row) => row.privilege === "INSERT");
       const settings = await readTablePrivileges(client, WORKER_ACCOUNTING_READ_TABLES, privileges);
       expectTablePrivileges(settings, (row) => row.privilege === "SELECT");
+    });
+  });
+
+  it("adds seller terms and reads them, reads the finance settings and the agreements behind a lot", async () => {
+    await withWorkerClient(async (client) => {
+      const privileges = ["SELECT", "INSERT", "UPDATE", "DELETE"];
+      const terms = await readTablePrivileges(
+        client,
+        SELLER_TERMS_INSERT_SELECT_TABLES,
+        privileges,
+      );
+      expectTablePrivileges(terms, (row) => ["SELECT", "INSERT"].includes(row.privilege));
+      const settings = await readTablePrivileges(client, FINANCE_SETTING_READ_TABLES, privileges);
+      expectTablePrivileges(settings, (row) => row.privilege === "SELECT");
+      // The agreement is read column by column: the table-level check sees nothing, and only the
+      // columns the rule needs are readable.
+      const agreements = await readTablePrivileges(client, ["consignment_agreement"], privileges);
+      expectTablePrivileges(agreements, () => false);
+      for (const [table, wanted] of WORKER_SELLER_TERMS_READ_COLUMNS) {
+        const columns = await client.query<{ column_name: string; allowed: boolean }>(
+          `select column_name,
+                  has_column_privilege(current_user, 'public.' || $1, column_name, 'SELECT') as allowed
+             from information_schema.columns
+            where table_schema = 'public' and table_name = $1`,
+          [table],
+        );
+        for (const column of columns.rows) {
+          expect(column.allowed, `${table}.${column.column_name}`).toBe(
+            (wanted as readonly string[]).includes(column.column_name),
+          );
+        }
+      }
     });
   });
 

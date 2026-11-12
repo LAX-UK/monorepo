@@ -29,7 +29,13 @@ export {
 export { InvoiceDueDateExtender } from "./invoice-due-date-extender.js";
 export { PaymentTierPolicy } from "./payment-tier.policy.js";
 export { PlatformFeePolicy, type IPlatformFeePolicy } from "./platform-fee.policy.js";
-export { sellerNetForSale, type SellerNet } from "./seller-net.js";
+export {
+  SellerTermsAtRaiseService,
+  createSellerTermsAtRaise,
+  hammerAndPremiumOf,
+  type ISellerTermsAtRaise,
+  type SellerTermsAtRaise,
+} from "./seller-terms-at-raise.js";
 export type {
   IInvoiceAccountingProvider,
   InvoiceAccountingContext,
