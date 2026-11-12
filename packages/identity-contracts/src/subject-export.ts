@@ -270,7 +270,7 @@ const ACCOUNT_CATEGORIES = [
     [
       f(
         "kind",
-        "What the record describes: session, device, sign-in method, two-step, security notice or security event.",
+        "What the record describes: session, device, sign-in method, two-step, security notice or security event. A device record is what we keep to tell a new sign-in from a familiar one: one for each browser, system and country you signed in from, and one for each browser itself, so the same browser can appear more than once.",
       ),
       f("device", "The device or browser."),
       f("ipAddress", "The IP address the activity came from, for sessions."),
