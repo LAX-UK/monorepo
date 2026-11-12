@@ -16,6 +16,7 @@ import {
   workAreaViews,
   workInboxHref,
   workInboxSummary,
+  workItemGuidance,
   workOwner,
   workPriority,
 } from "@/lib/admin/dashboard/work-inbox.vm";
@@ -312,10 +313,7 @@ export function WorkInbox({
             },
             {
               label: "What to do",
-              value:
-                open.actions.length > 0
-                  ? open.actions.map((action) => WORK_ACTION_LABELS[action]).join(", ")
-                  : "Open the record to deal with it",
+              value: workItemGuidance(open),
             },
           ]}
           headerActions={

@@ -3,6 +3,7 @@ import { lotNotDeleted } from "@auction/db";
 import { bid, lot } from "@auction/db/schema";
 import { and, eq, gte, lt, sql } from "drizzle-orm";
 import type { ArchiveEndedAggregateFilter } from "../../interfaces/index.js";
+import { lotResultPendingSql } from "../../lib/lot-result-pending.sql.js";
 import { queryCreatedAtDailyCounts } from "../created-at-daily-count.query.js";
 import { type ListWhereInput, endYearBoundsUtc, listWhere } from "./lot-list-filters.js";
 
@@ -25,8 +26,9 @@ export async function sumEndedLotHammer(
   const whereClause = and(...conditions);
   const [row] = await db
     .select({
-      // Only a sold lot has a hammer price; an unsold lot's last bid is not part of the total.
-      total: sql<string>`coalesce(sum(${lot.currentPrice}) filter (where ${lot.winnerId} is not null), 0)::text`,
+      // Only a sold lot has a hammer price; an unsold lot's last bid is not part of the total, and
+      // neither is a lot whose result is still open (offered on, or the new buyer has not paid).
+      total: sql<string>`coalesce(sum(${lot.currentPrice}) filter (where ${lot.winnerId} is not null and not ${lotResultPendingSql()}), 0)::text`,
       cnt: sql<number>`count(*)::int`,
     })
     .from(lot)

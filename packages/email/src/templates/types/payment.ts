@@ -1,4 +1,5 @@
 import type { BillToContext } from "@auction/types";
+import type { EmailMoment, ZoneNote } from "./moment.js";
 import type { TemplateDomainSlice } from "./shared.js";
 
 const names = [
@@ -71,6 +72,10 @@ type PaymentTemplateVars = {
     amount: string;
     /** The due date in words ("10 November 2026"). */
     dueDate: string;
+    /** When it is due: the end of the London day, then the recipient's local time if different. */
+    due?: EmailMoment | null;
+    /** Where the local time comes from; present only when a local time is shown. */
+    zoneNote?: ZoneNote | null;
     /** Checkout for this lot. */
     payUrl: string;
     supportContactEmail: string /** The invoice cannot be paid yet; the email says what to do instead of "Pay now". */;

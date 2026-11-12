@@ -38,6 +38,13 @@ function lifecycleBlockPresentation(kind: LotLifecycleKind): BidBlockerPresentat
         detail: "This lot closed without a sale.",
         action: { kind: "status", label: "Closed" },
       };
+    case "endedPending":
+      return {
+        tone: "neutral",
+        title: "Bidding closed",
+        detail: "Bidding is closed for this lot.",
+        action: { kind: "status", label: "Ended" },
+      };
     case "cancelled":
       return {
         tone: "neutral",

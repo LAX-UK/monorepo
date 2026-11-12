@@ -70,6 +70,11 @@ export const WORK_ITEM_KIND_ACCESS: Record<AdminWorkItemSourceKind, CapabilityRe
   payment_overdue: SALES_ACCESS,
   deletion_hold: DELETION_HOLD_ACCESS,
   register_lot_mismatch: LOTS_ACCESS,
+  // The step lives on the lot page, which only sales staff can act from (as for an overdue payment).
+  reoffer_no_reply: SALES_ACCESS,
+  reoffer_ready: SALES_ACCESS,
+  reoffer_decision: SALES_ACCESS,
+  reoffer_accepted: SALES_ACCESS,
 };
 
 const REVIEW_TASK_SOURCE_ACCESS: CapabilityRequirement = {
@@ -162,6 +167,10 @@ function stampActions(
     case "payment_overdue":
     case "deletion_hold":
     case "register_lot_mismatch":
+    case "reoffer_no_reply":
+    case "reoffer_ready":
+    case "reoffer_decision":
+    case "reoffer_accepted":
       break;
   }
 
@@ -283,6 +292,11 @@ export class AdminWorkItemsService {
       {
         access: WORK_ITEM_KIND_ACCESS.register_lot_mismatch,
         fetch: () => this.reader.listRegisterLotMismatches(perSourceLimit),
+      },
+      {
+        // All four re-offer kinds share one access rule and one query.
+        access: WORK_ITEM_KIND_ACCESS.reoffer_no_reply,
+        fetch: () => this.reader.listReofferWork(perSourceLimit, this.now()),
       },
     ];
 

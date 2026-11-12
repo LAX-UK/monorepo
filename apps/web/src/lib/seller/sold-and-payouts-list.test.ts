@@ -24,6 +24,7 @@ function sold(id: string, overrides: Partial<SoldLot> = {}): SoldLot {
     saleTitle: "Autumn Modern British",
     soldAt: new Date("2026-10-22T18:00:00Z"),
     hammerPrice: "9200.00",
+    soldAfterAuction: false,
     stage: "buyer_paying",
     net: null,
     payout: null,
@@ -55,6 +56,16 @@ describe("soldRecord", () => {
     ]);
     expect(paid.net).toBe("£8,096.00");
     expect(paid.payoutHref).toBe("/selling/payouts/p1");
+  });
+
+  it("says a lot sold on to the next bidder was sold after the auction", () => {
+    const record = soldRecord(sold("c", { soldAfterAuction: true }), NOW);
+    expect(record.meta).toEqual([
+      "Autumn Modern British",
+      "lot 31",
+      "sold 22 Oct",
+      "after the auction",
+    ]);
   });
 
   it("filters by year and sorts, keeping the address short", () => {
@@ -115,6 +126,7 @@ describe("payoutDetailVm", () => {
         note: null,
         lot: { id: "lot", title: "Marsh in October", lotNumber: 7, hammerPrice: "14600.00" },
         breakdown: { gross: "14600.00", commissionAndFees: "2363.40", net: "12236.60" },
+        soldAfterAuction: false,
         amount: "14600.00",
       },
       {
@@ -123,10 +135,21 @@ describe("payoutDetailVm", () => {
         note: "Frame damaged",
         lot: null,
         breakdown: null,
+        soldAfterAuction: false,
         amount: "-50.00",
       },
     ],
   };
+
+  it("explains a sale that was sold on after the first buyer did not pay, without naming anyone", () => {
+    const [first] = detail.lines;
+    if (!first) throw new Error("fixture has a sale line");
+    const vm = payoutDetailVm(
+      { ...detail, lines: [{ ...first, soldAfterAuction: true }] },
+      { sellerEntityId: "le-1", now: NOW },
+    );
+    expect(vm.lines[0]?.note).toBe("Sold after the auction to the next bidder");
+  });
 
   it("splits each sale and names other lines in the seller's words", () => {
     const vm = payoutDetailVm(detail, { sellerEntityId: "le-1", now: NOW });

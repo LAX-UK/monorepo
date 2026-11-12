@@ -9,5 +9,12 @@ export default async function AdminLotBidsPage({ params }: Props) {
   const { id } = await params;
   const page = await loadAdminLotBidsPage(id);
 
-  return <LotBidsTabBoard lotId={page.lotId} rows={page.rows} capped={page.capped} />;
+  return (
+    <LotBidsTabBoard
+      lotId={page.lotId}
+      rows={page.rows}
+      capped={page.capped}
+      standings={page.standings}
+    />
+  );
 }

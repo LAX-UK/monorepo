@@ -70,8 +70,14 @@ export const sellerReofferAnswerBodySchema = z.discriminatedUnion("answer", [
 ]);
 export type SellerReofferAnswerBody = z.infer<typeof sellerReofferAnswerBodySchema>;
 
-/** The bidder accepts: a binding purchase at the total shown, with the terms ticked. */
-export const acceptReofferBodySchema = z.object({ termsAccepted: z.literal(true) }).strict();
+/**
+ * The bidder accepts: a binding purchase at the total shown, with the terms ticked. The total the
+ * page showed comes with it, so the server refuses (`price_changed`) when the lot would now be
+ * invoiced at anything else.
+ */
+export const acceptReofferBodySchema = z
+  .object({ termsAccepted: z.literal(true), expectedTotalMinor: pence })
+  .strict();
 export type AcceptReofferBody = z.infer<typeof acceptReofferBodySchema>;
 
 export const declineReofferBodySchema = z
@@ -84,25 +90,6 @@ const claimableShortfallSchema = z.object({
   premiumLostMinor: pence,
   totalMinor: pence,
 });
-
-/** One offer as staff see it. */
-export const staffReofferSchema = z.object({
-  id: z.string().min(1),
-  lotId: z.string().min(1),
-  sequence: z.number().int().min(1),
-  status: reofferStatusSchema,
-  consentStatus: sellerConsentStatusSchema,
-  bidder: z.object({ userId: z.string().min(1), legalEntityId: z.string().min(1) }),
-  offerMinor: pence,
-  originalHammerMinor: pence,
-  belowReserve: z.boolean(),
-  consentDueAt: moment.nullable(),
-  offerEndsAt: moment.nullable(),
-  /** Staff only: never shown to the seller, the bidder or the defaulting buyer. */
-  claimableShortfall: claimableShortfallSchema,
-  skippedBidders: z.array(skippedBidderSchema),
-});
-export type StaffReoffer = z.infer<typeof staffReofferSchema>;
 
 /** How the seller's answer reached us: from their workspace, or recorded by our team. */
 export const SELLER_ANSWER_CHANNELS = ["workspace", "recorded_by_staff"] as const;
@@ -159,15 +146,16 @@ export const sellerReofferViewSchema = z
 export type SellerReofferView = z.infer<typeof sellerReofferViewSchema>;
 
 /**
- * The price the bidder pays, line by line. A line that does not apply to the lot is `null`,
- * never zero: VAT on the lot only for a lot sold with VAT, the Artist's Resale Right only for a
- * lot that owes it. The total is the sum of the lines.
+ * The price the bidder pays, line by line, exactly as the invoice will carry it. The hammer is
+ * always there; every other line is `null` when the invoice has no such line, never zero: a lot
+ * with no buyer's premium, VAT only once the invoice charges it, the Artist's Resale Right only
+ * for a lot that owes it. The total is the sum of the lines.
  */
 export const bidderReofferPriceSchema = z
   .object({
     hammerMinor: pence,
-    buyersPremiumMinor: pence,
-    vatOnPremiumMinor: pence,
+    buyersPremiumMinor: pence.nullable(),
+    vatOnPremiumMinor: pence.nullable(),
     vatOnLotMinor: pence.nullable(),
     artistsResaleRightMinor: pence.nullable(),
     totalMinor: pence,
@@ -177,22 +165,140 @@ export const bidderReofferPriceSchema = z
     (price) =>
       price.totalMinor ===
       price.hammerMinor +
-        price.buyersPremiumMinor +
-        price.vatOnPremiumMinor +
+        (price.buyersPremiumMinor ?? 0) +
+        (price.vatOnPremiumMinor ?? 0) +
         (price.vatOnLotMinor ?? 0) +
         (price.artistsResaleRightMinor ?? 0),
     { message: "The total must equal the lines", path: ["totalMinor"] },
   );
 export type BidderReofferPrice = z.infer<typeof bidderReofferPriceSchema>;
 
+const SELLER_CONSENT_CHANNELS = ["workspace", "recorded_by_staff", "house_stock"] as const;
+
+/** The seller's request and answer as staff read them: who answered, how, and the note kept. */
+export const staffConsentSchema = z.object({
+  channel: z.enum(SELLER_CONSENT_CHANNELS).nullable(),
+  requestedAt: moment,
+  remindedAt: moment.nullable(),
+  answeredAt: moment.nullable(),
+  answeredByName: z.string().nullable(),
+  note: z.string().nullable(),
+  declinePreference: declinePreference.nullable(),
+});
+
+/** One offer as staff see it. */
+export const staffReofferSchema = z.object({
+  id: z.string().min(1),
+  lotId: z.string().min(1),
+  sequence: z.number().int().min(1),
+  status: reofferStatusSchema,
+  consentStatus: sellerConsentStatusSchema,
+  bidder: z.object({
+    userId: z.string().min(1),
+    legalEntityId: z.string().min(1),
+    accountName: z.string().nullable(),
+  }),
+  offerMinor: pence,
+  /** What the bidder would pay, line by line (the invoice's own pricing). Staff see it before sending. */
+  price: bidderReofferPriceSchema,
+  /** The bid the offer is made at, and when the bidder placed it. */
+  sourceBidId: z.string().min(1),
+  bidPlacedAt: moment.nullable(),
+  originalHammerMinor: pence,
+  /** What the seller would receive at this offer, from the terms they were shown. */
+  estimatedProceedsMinor: pence,
+  reserveMinor: pence.nullable(),
+  belowReserve: z.boolean(),
+  consentDueAt: moment.nullable(),
+  consent: staffConsentSchema,
+  createdAt: moment,
+  createdByName: z.string().nullable(),
+  offerSentAt: moment.nullable(),
+  offerEndsAt: moment.nullable(),
+  respondedAt: moment.nullable(),
+  declineReason: z.string().nullable(),
+  closeReason: z.string().nullable(),
+  closedByName: z.string().nullable(),
+  /** The new buyer's invoice, once the offer was accepted. */
+  invoiceId: z.string().nullable(),
+  /** Staff only: never shown to the seller, the bidder or the defaulting buyer. */
+  claimableShortfall: claimableShortfallSchema,
+  skippedBidders: z.array(skippedBidderSchema),
+});
+export type StaffReoffer = z.infer<typeof staffReofferSchema>;
+
 /** What the next bidder sees. It never names the seller or the defaulting buyer. */
 export const bidderReofferViewSchema = z
   .object({
     id: z.string().min(1),
     lotId: z.string().min(1),
+    /** The work on offer, as the bidder knows it. */
+    lotTitle: z.string(),
+    lotNumber: z.number().int().nullable(),
+    saleId: z.string().min(1).nullable(),
+    lotImage: z.string().min(1).nullable(),
+    /** When the lot's own sale ended. */
+    lotEndedAt: moment,
     status: bidderReofferStatusSchema,
     price: bidderReofferPriceSchema,
     endsAt: moment,
+    /** When the bidder answered; for an accepted offer, when the lot became theirs. */
+    respondedAt: moment.nullable(),
+    /** When the invoice that follows an accepted offer falls due. */
+    invoiceDueAt: moment.nullable(),
   })
   .strict();
 export type BidderReofferView = z.infer<typeof bidderReofferViewSchema>;
+
+/** Who the lot would be offered to next, and why there may be nobody. */
+export const nextBidderNoneReasonSchema = z.enum([
+  "no_buyer",
+  "offer_limit_reached",
+  "no_other_bidder",
+  "no_eligible_bidder",
+]);
+export type NextBidderNoneReason = z.infer<typeof nextBidderNoneReasonSchema>;
+
+/**
+ * Staff's look at the next step of a lot after a default: the bidder in line with their highest
+ * placed bid (never a hidden maximum), the bidders after them and any passed over.
+ */
+export const reofferPreviewSchema = z.object({
+  /** The lot sold on ATG: LAX has no buyer or bids to re-offer to (RA19). */
+  soldOnAtg: z.boolean(),
+  next: z
+    .object({
+      userId: z.string().min(1),
+      legalEntityId: z.string().min(1),
+      accountName: z.string().nullable(),
+      bidMinor: pence,
+      placedAt: moment,
+      belowReserve: z.boolean(),
+      /** Eligible bidders after this one (before the cap of three offers). */
+      othersAfter: z.number().int().nonnegative(),
+    })
+    .nullable(),
+  noneReason: nextBidderNoneReasonSchema.nullable(),
+  skippedBidders: z.array(skippedBidderSchema),
+  /** Offers already made for this default, out of the cap. */
+  offersMade: z.number().int().nonnegative(),
+});
+export type ReofferPreview = z.infer<typeof reofferPreviewSchema>;
+
+/** The buyer default the re-offer answers, for the lot page's rail. Staff only. */
+export const staffBuyerDefaultSchema = z.object({
+  id: z.string().min(1),
+  recordedAt: moment,
+  recordedByName: z.string().nullable(),
+  reason: z.string(),
+  outcome: z.enum(["returned_to_inventory", "offered_to_underbidder"]),
+  originalHammerMinor: pence,
+  wonAt: moment,
+  buyerRestricted: z.boolean(),
+  buyerUserId: z.string().min(1),
+  buyerAccountName: z.string().nullable(),
+  voidedInvoiceNumber: z.string().nullable(),
+  voidedInvoiceTotalMinor: pence.nullable(),
+  voidedInvoiceDueAt: moment.nullable(),
+});
+export type StaffBuyerDefault = z.infer<typeof staffBuyerDefaultSchema>;

@@ -8,6 +8,7 @@ export type LotStatusBadgeInputs = LotTimerInputs & {
   winnerId?: string | null | undefined;
   /** List-row sold flag when buyer id is omitted from public summaries. */
   hasWinner?: boolean;
+  resultPending?: boolean | undefined;
 };
 
 export type LotStatusBadgeSource = {
@@ -16,6 +17,7 @@ export type LotStatusBadgeSource = {
   endTime: Lot["endTime"] | LotCardTimingVM["endTime"];
   winnerId?: string | null | undefined;
   hasWinner?: boolean;
+  resultPending?: boolean | undefined;
 };
 
 /** Lot VM → timer inputs + winnerId for `LotStatusBadge`. */
@@ -38,5 +40,6 @@ export function lotStatusBadgeProps(lot: LotStatusBadgeSource): LotStatusBadgeIn
     ...timing,
     ...(lot.winnerId !== undefined ? { winnerId: lot.winnerId } : {}),
     ...(lot.hasWinner !== undefined ? { hasWinner: lot.hasWinner } : {}),
+    ...(lot.resultPending ? { resultPending: true } : {}),
   };
 }

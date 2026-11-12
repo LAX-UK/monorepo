@@ -20,6 +20,8 @@ export type LotRailCardVM = {
   priceLabel: string;
   endTime: string | null;
   status: Lot["status"];
+  /** Ended, with the result not final yet: the card says so instead of showing a price. */
+  resultPending?: boolean;
   sellerId: string;
   deliveryMode?: Sale["deliveryMode"] | null;
 };
@@ -50,6 +52,7 @@ function lotToRailCard(
     priceLabel: lotHeadlineLabel("live", lotPriceHasBids(lot)),
     endTime: normalizeAuctionTime(lot.endTime),
     status: lot.status,
+    resultPending: lot.resultPending === true,
     sellerId: lot.sellerId ?? lot.sellerLegalEntityId ?? "",
     deliveryMode: deliveryMode ?? null,
   };

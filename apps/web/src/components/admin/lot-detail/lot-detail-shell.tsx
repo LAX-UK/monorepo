@@ -16,6 +16,8 @@ import { computeLotDetailReadiness } from "@/lib/admin/compute-lot-detail-readin
 import type { AdminLotDetailBundle } from "@/lib/admin/load-lot-detail";
 import { type LaxArtReturnView, laxArtReturnTarget } from "@/lib/admin/lots/lax-art-return";
 import { lotDetailNotice, lotEditLink } from "@/lib/admin/lots/lot-detail-page.vm";
+import type { LotReofferBundle } from "@/lib/admin/reoffer/reoffer-bundle";
+import { reofferHeader } from "@/lib/admin/reoffer/reoffer-lot-state";
 import { staffStatus } from "@/lib/admin/staff-kit-status";
 import { LOTS_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { lotAuctionTypeLabel } from "@/lib/presenters/lot-auction-type/lot-auction-type-registry";
@@ -57,6 +59,8 @@ type Props = {
   selling?: AtgLotSellingSummary | null;
   /** Whether the lot can hand its artwork back to lax.art; null when it has no register link. */
   laxArtReturn?: LaxArtReturnView | null;
+  /** The lot's re-offer story, for the header after a buyer default and the ATG note. */
+  reoffers?: LotReofferBundle | null;
   children: ReactNode;
 };
 
@@ -79,13 +83,19 @@ export function LotDetailShell({
   publishReadiness: publishReadinessProp,
   selling = null,
   laxArtReturn = null,
+  reoffers = null,
   children,
 }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { auction, context } = bundle;
   const publicHref = lotPath({ id: auction.id, title: auction.title });
-  const status = staffStatus("lot", auction.status, { lot: { winnerId: auction.winnerId } });
+  const baseStatus = staffStatus("lot", auction.status, { lot: { winnerId: auction.winnerId } });
+  const reofferState = reoffers
+    ? reofferHeader(reoffers, { status: auction.status, hasWinner: auction.winnerId != null })
+    : { badge: null, meta: null };
+  const status = reofferState.badge ?? baseStatus;
+  const soldOnAtg = reoffers?.status === "ready" && reoffers.preview.soldOnAtg;
   const connectBlocked = connectRequired || searchParams.get("error_code") === "connect_required";
   const inDraftSale = context.sale?.status === "draft";
   const sellingBadge = selling ? atgLotSellingBadge(selling) : null;
@@ -128,6 +138,7 @@ export function LotDetailShell({
     inDraftSale,
     canDelete: bundle.deleteEligibility?.canDelete === true,
     hasWinner: auction.winnerId != null,
+    soldOnAtg,
     withdrawalRequested: withdrawalRequestedAt !== null,
     laxArtReturn: laxArtReturnTarget(laxArtReturn),
     publishBlockedReason: connectBlocked
@@ -266,6 +277,7 @@ export function LotDetailShell({
               </MetaItem>
             ) : null}
             <MetaItem label="Type">{lotAuctionTypeLabel(auction.auctionType)}</MetaItem>
+            {reofferState.meta ? <MetaItem label="Re-offer">{reofferState.meta}</MetaItem> : null}
           </>
         }
         primaryAction={publishButton ?? editButton}

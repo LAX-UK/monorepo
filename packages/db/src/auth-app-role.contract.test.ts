@@ -5,6 +5,7 @@ import {
   expectUniformTablePrivileges,
   readTablePrivileges,
 } from "./role-contract/table-privileges.test-helpers.js";
+import { expectZohoBooksConnectionGrants } from "./role-contract/zoho-books-connection-privileges.test-helpers.js";
 import { buildPgConnectionConfig } from "./ssl.js";
 
 const AUTH_URL = process.env.DATABASE_URL_AUTH ?? process.env.AUTH_APP_DATABASE_URL;
@@ -22,6 +23,12 @@ async function withAuthClient<T>(fn: (client: pg.Client) => Promise<T>): Promise
 }
 
 describe.skipIf(!AUTH_URL)("auth_app role contract", { timeout: 60_000 }, () => {
+  it("has no privilege at all on the sealed Zoho Books tokens", async () => {
+    await withAuthClient(async (client) => {
+      await expectZohoBooksConnectionGrants(client);
+    });
+  });
+
   it("has full DML only for Better Auth-owned tables", async () => {
     await withAuthClient(async (client) => {
       expectUniformTablePrivileges(

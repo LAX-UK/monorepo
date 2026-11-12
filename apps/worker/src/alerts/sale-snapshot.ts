@@ -17,11 +17,19 @@ function lots(count: number): string {
   return `${count} ${count === 1 ? "lot" : "lots"}`;
 }
 
-/** What an email and an in-app notice show about a newly announced sale. */
+/**
+ * What an email shows about a newly announced sale. The opening and closing are kept as instants
+ * on the sale's own clock, so each email shows them with their zone and, for a reader with a saved
+ * Account zone, on their clock too.
+ */
 export function saleSnapshot(sale: AnnouncedSale, lotCount: number | null): MatchSnapshot {
   return {
     title: sale.title,
-    subtitle: `${DELIVERY_LABEL[sale.deliveryMode]} · opens ${londonDayLabel(sale.startTime)}, closes ${londonDayLabel(sale.endTime)}`,
+    subtitle: DELIVERY_LABEL[sale.deliveryMode],
+    moments: [
+      { label: "Opens", at: sale.startTime.toISOString(), zone: sale.timeZone },
+      { label: "Closes", at: sale.endTime.toISOString(), zone: sale.timeZone },
+    ],
     ...(lotCount !== null ? { detail: lots(lotCount) } : {}),
     path: `/sales/${sale.id}`,
   };

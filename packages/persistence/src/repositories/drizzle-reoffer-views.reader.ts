@@ -1,7 +1,15 @@
 import type { Database } from "@auction/db";
-import { legalEntity, lot, lotReoffer, sellerConsent } from "@auction/db/schema";
+import {
+  bid,
+  bidIdentityDirectory,
+  legalEntity,
+  lot,
+  lotReoffer,
+  sellerConsent,
+} from "@auction/db/schema";
 import { bidderReofferStatus } from "@auction/domain";
 import { and, asc, desc, eq } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import type {
   BidderReofferRow,
   IReofferViewsReader,
@@ -19,11 +27,26 @@ export class DrizzleReofferViewsReader implements IReofferViewsReader {
   constructor(private readonly db: Database) {}
 
   async listForLot(lotId: string): Promise<StaffReofferView[]> {
+    const creator = alias(bidIdentityDirectory, "creator");
+    const closer = alias(bidIdentityDirectory, "closer");
+    const answerer = alias(bidIdentityDirectory, "answerer");
     const rows = await this.db
-      .select({ offer: lotReoffer, consent: sellerConsent, accountName: legalEntity.displayName })
+      .select({
+        offer: lotReoffer,
+        consent: sellerConsent,
+        accountName: legalEntity.displayName,
+        bidPlacedAt: bid.createdAt,
+        createdByName: creator.name,
+        closedByName: closer.name,
+        answeredByName: answerer.name,
+      })
       .from(lotReoffer)
       .leftJoin(sellerConsent, eq(sellerConsent.id, lotReoffer.sellerConsentId))
       .leftJoin(legalEntity, eq(legalEntity.id, lotReoffer.offeredLegalEntityId))
+      .leftJoin(bid, eq(bid.id, lotReoffer.sourceBidId))
+      .leftJoin(creator, eq(creator.subjectId, lotReoffer.createdBy))
+      .leftJoin(closer, eq(closer.subjectId, lotReoffer.closedBy))
+      .leftJoin(answerer, eq(answerer.subjectId, sellerConsent.answeredByUserId))
       .where(eq(lotReoffer.lotId, lotId))
       .orderBy(asc(lotReoffer.createdAt), asc(lotReoffer.sequence));
     return rows.map((row) => {
@@ -31,13 +54,19 @@ export class DrizzleReofferViewsReader implements IReofferViewsReader {
       return {
         offer: toLotReofferView(row.offer),
         offeredAccountName: row.accountName ?? null,
+        sourceBidPlacedAt: row.bidPlacedAt ?? null,
+        createdByName: row.createdByName ?? null,
+        closedByName: row.closedByName ?? null,
         consent: consent && {
           id: consent.id,
           status: consent.status,
           channel: consent.channel,
           note: consent.note,
+          requestedAt: consent.requestedAt,
           dueAt: consent.dueAt,
+          remindedAt: consent.remindedAt,
           answeredAt: consent.answeredAt,
+          answeredByName: row.answeredByName ?? null,
           preferredNext: consent.preferredNext,
           terms: consent.termsSnapshot,
         },
@@ -47,8 +76,9 @@ export class DrizzleReofferViewsReader implements IReofferViewsReader {
 
   async listForBidderAccount(legalEntityId: string): Promise<BidderReofferRow[]> {
     const rows = await this.db
-      .select()
+      .select(BIDDER_ROW)
       .from(lotReoffer)
+      .innerJoin(lot, eq(lot.id, lotReoffer.lotId))
       .where(eq(lotReoffer.offeredLegalEntityId, legalEntityId))
       .orderBy(desc(lotReoffer.createdAt));
     return rows.flatMap((row) => toBidderRow(row) ?? []);
@@ -59,8 +89,9 @@ export class DrizzleReofferViewsReader implements IReofferViewsReader {
     reofferId: string,
   ): Promise<BidderReofferRow | null> {
     const [row] = await this.db
-      .select()
+      .select(BIDDER_ROW)
       .from(lotReoffer)
+      .innerJoin(lot, eq(lot.id, lotReoffer.lotId))
       .where(and(eq(lotReoffer.id, reofferId), eq(lotReoffer.offeredLegalEntityId, legalEntityId)))
       .limit(1);
     return row ? toBidderRow(row) : null;
@@ -103,6 +134,17 @@ export class DrizzleReofferViewsReader implements IReofferViewsReader {
   }
 }
 
+/** The columns a bidder's read needs of an offer: the offer itself and the work it is for. */
+const BIDDER_ROW = {
+  offer: lotReoffer,
+  lotTitle: lot.title,
+  lotNumber: lot.lotNumber,
+  lotSaleId: lot.saleId,
+  lotImages: lot.images,
+  lotEndTime: lot.endTime,
+  lotExtendedUntil: lot.extendedUntil,
+};
+
 /** The columns a seller's read needs of a request: the consent, the offer and the lot's name. */
 const SELLER_ROW = {
   consent: sellerConsent,
@@ -114,9 +156,17 @@ const SELLER_ROW = {
 };
 
 /** `null` while the bidder has nothing to see: the seller has not agreed, or said no. */
-function toBidderRow(row: typeof lotReoffer.$inferSelect): BidderReofferRow | null {
-  if (bidderReofferStatus(toReofferRecord(row)) === null) return null;
-  const offer = toLotReofferView(row);
+function toBidderRow(row: {
+  offer: typeof lotReoffer.$inferSelect;
+  lotTitle: string;
+  lotNumber: number | null;
+  lotSaleId: string | null;
+  lotImages: string[];
+  lotEndTime: Date;
+  lotExtendedUntil: Date | null;
+}): BidderReofferRow | null {
+  if (bidderReofferStatus(toReofferRecord(row.offer)) === null) return null;
+  const offer = toLotReofferView(row.offer);
   return {
     id: offer.id,
     lotId: offer.lotId,
@@ -127,6 +177,13 @@ function toBidderRow(row: typeof lotReoffer.$inferSelect): BidderReofferRow | nu
     respondedAt: offer.respondedAt,
     offeredUserId: offer.offeredUserId,
     offeredLegalEntityId: offer.offeredLegalEntityId,
+    lot: {
+      title: row.lotTitle,
+      lotNumber: row.lotNumber,
+      saleId: row.lotSaleId,
+      image: row.lotImages[0] ?? null,
+    },
+    lotEndedAt: row.lotExtendedUntil ?? row.lotEndTime,
   };
 }
 

@@ -1,4 +1,8 @@
-import type { ISaleChannelReader, ITransactionRunner } from "@auction/persistence/interfaces";
+import type {
+  IPublicLotResultReader,
+  ISaleChannelReader,
+  ITransactionRunner,
+} from "@auction/persistence/interfaces";
 import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
 import type { ILotRepository, ISaleRepository } from "@auction/persistence/interfaces";
 import type { IRepositoryFactory } from "@auction/persistence/interfaces";
@@ -65,6 +69,7 @@ export type SaleServiceOptions = {
   qrCodeService?: IQrCodeService | null;
   repoFactory?: IRepositoryFactory | null;
   saleChannelReader?: ISaleChannelReader | null;
+  publicLotResults?: IPublicLotResultReader | null;
   telephoneBookings?: LotBookingRemoval | null;
   salePublishService: ISalePublishService;
 };
@@ -94,6 +99,7 @@ export class SaleService implements ISaleService {
       qrCodeService: opts.qrCodeService ?? null,
       repoFactory: opts.repoFactory ?? null,
       saleChannelReader: opts.saleChannelReader ?? null,
+      publicLotResults: opts.publicLotResults ?? null,
       telephoneBookings: opts.telephoneBookings ?? null,
     };
     this.publishService = opts.salePublishService;

@@ -23,6 +23,8 @@ export type NotificationPayload = {
     invoiceNumber?: string;
     /** Payment due date for invoice emails (human-readable, e.g. "7 July 2026"). */
     dueDate?: string;
+    /** The moment the payment is due (ISO), so the email can show it on the reader's own clock. */
+    dueAt?: string;
     /** How a lot ended, for the seller's sold or unsold notice. */
     outcome?: "sold" | "unsold";
     /** The bid this notification is about, in major units: the new high bid for an outbid
@@ -64,6 +66,8 @@ export type NotificationPayload = {
       kind: "sale_start" | "day_before_close" | "hour_before_close";
       note: string | null;
       closesAt: string;
+      /** The zone the lot's sale runs on; London when absent. */
+      saleTimeZone?: string;
     };
     /** An access request's words for its email: who asked, for what and why, and the decision. */
     accessRequest?: {

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   PAYMENT_REMINDER_STEPS,
   type PaymentReminderFacts,
+  paymentReminderOpen,
   paymentReminderToSend,
   reminderDueAt,
 } from "./payment-reminder.js";
@@ -109,7 +110,9 @@ describe("paymentReminderToSend", () => {
   });
 
   it("sends only the latest step after a gap, never a backlog", () => {
-    expect(paymentReminderToSend(owed, at(4 * DAY))).toBe("overdue");
+    expect(paymentReminderToSend(owed, at(3 * DAY))).toBe("overdue");
+    // Once the overdue day has ended nothing is sent late.
+    expect(paymentReminderToSend(owed, at(4 * DAY))).toBeNull();
   });
 
   it("keeps reminding a buyer whose checkout was abandoned", () => {
@@ -185,5 +188,25 @@ describe("due-day reminder at the fixed morning hour", () => {
     const due = "2026-12-10T23:59:59.999Z";
     expect(dueDay(due, "2026-12-10T10:05:00Z", ["due_day"])).toBeNull();
     expect(dueDay(due, "2026-12-10T23:00:00Z", ["due_day"])).toBeNull();
+  });
+});
+
+describe("the step open to recipients in any zone", () => {
+  it("opens with the London day, hours before 09:00 London, and closes once the step is sent", () => {
+    expect(paymentReminderOpen(owed, new Date("2026-11-07T23:59:00Z"))).toMatchObject({
+      step: "before_due",
+    });
+    expect(paymentReminderOpen(owed, new Date("2026-11-08T00:00:00Z"))).toMatchObject({
+      step: "due_day",
+    });
+    expect(
+      paymentReminderOpen({ ...owed, sentSteps: ["due_day"] }, new Date("2026-11-08T05:00:00Z")),
+    ).toBeNull();
+  });
+
+  it("keeps London's own schedule for the person with no saved zone", () => {
+    const earlierSent = { ...owed, sentSteps: ["before_due" as const] };
+    expect(paymentReminderToSend(earlierSent, new Date("2026-11-08T08:59:00Z"))).toBeNull();
+    expect(paymentReminderToSend(earlierSent, dueDayReminderAt)).toBe("due_day");
   });
 });

@@ -38,11 +38,21 @@ function setup(
     at: Date;
     payers?: string[];
     eligibility?: import("@auction/domain").PaymentEligibility;
+    /** Saved Account zones by person; anyone absent has none. */
+    zones?: Record<string, string>;
   },
 ) {
   const claimed = new Set<string>();
   const store: IPaymentReminderStore = {
-    listCandidates: vi.fn().mockResolvedValue(rows),
+    // What the store reports as taken follows what was claimed, as the table does.
+    listCandidates: vi.fn(async () =>
+      rows.map((row) => ({
+        ...row,
+        sentSteps: [...claimed]
+          .filter((key) => key.startsWith(`${row.paymentId}:`))
+          .map((key) => key.split(":")[1] as string),
+      })),
+    ),
     claim: vi.fn(async (id: string, step: string) => {
       const key = `${id}:${step}`;
       if (claimed.has(key)) return false;
@@ -55,12 +65,16 @@ function setup(
   };
   const dispatch = vi.fn().mockResolvedValue(undefined);
   const staged: string[] = [];
+  const stagedKeys = new Set<string>();
   const service = new PaymentReminderService({
     store,
     compliance: { peek: vi.fn().mockResolvedValue({ hold: opts.hold ?? false, reason: null }) },
     outbox: {
       stageDispatch: vi.fn(
         async (input: { userId: string; payload: unknown; idempotencyKey: string }) => {
+          // The outbox keeps one row per key, so a second staging of the same one is a no-op.
+          if (stagedKeys.has(input.idempotencyKey)) return;
+          stagedKeys.add(input.idempotencyKey);
           staged.push(input.idempotencyKey);
           await dispatch(input.userId, input.payload);
         },
@@ -73,6 +87,7 @@ function setup(
     recipients: new InvoiceRecipients({
       listUserIdsForAudience: vi.fn(async () => opts.payers ?? []),
     }),
+    zones: { zonesFor: async () => new Map(Object.entries(opts.zones ?? {})) },
     now: () => opts.at,
   });
   return { service, dispatch, store, staged };
@@ -193,12 +208,60 @@ describe("PaymentReminderService", () => {
     expect(dispatch).not.toHaveBeenCalled();
   });
 
-  it("gives the step back when the notice cannot be sent, so the next run retries", async () => {
+  it("stages nothing it cannot send, takes no step, and retries on the next run", async () => {
     const { service, dispatch, store } = setup([candidate()], { at: dueAt });
     dispatch.mockRejectedValueOnce(new Error("down"));
     vi.spyOn(console, "error").mockImplementation(() => undefined);
     expect(await service.sendDueReminders()).toEqual({ reminded: 0 });
-    expect(store.release).toHaveBeenCalledWith("pay-1", "due_day");
+    expect(store.claim).not.toHaveBeenCalled();
     expect(await service.sendDueReminders()).toEqual({ reminded: 1 });
+  });
+});
+
+describe("PaymentReminderService reminds each person at 09:00 their time", () => {
+  // Due at the end of 20 November (GMT): the due-day reminder is 09:00 London, 20 November.
+  const stored = new Date("2026-11-20T23:59:59.999Z");
+  const people = {
+    payers: ["la-owner", "sydney-finance"],
+    zones: {
+      "la-owner": "America/Los_Angeles",
+      "sydney-finance": "Australia/Sydney",
+    },
+  };
+  const run = (at: string) =>
+    setup([candidate({ dueAt: stored, buyerId: "buyer-1" })], { at: new Date(at), ...people });
+
+  it("reminds the person with no saved zone at 09:00 London and waits for the others", async () => {
+    const { service, staged, store } = run("2026-11-20T09:30:00Z");
+    expect(await service.sendDueReminders()).toEqual({ reminded: 0 });
+    expect(staged).toEqual(["payment_reminder:pay-1:due_day:buyer-1"]);
+    expect(store.claim).not.toHaveBeenCalled();
+  });
+
+  it("reminds a person in Los Angeles at 09:00 there, the same London day", async () => {
+    const { service, staged } = run("2026-11-20T17:30:00Z");
+    await service.sendDueReminders();
+    expect(staged).toContain("payment_reminder:pay-1:due_day:la-owner");
+    expect(staged).not.toContain("payment_reminder:pay-1:due_day:sydney-finance");
+  });
+
+  it("takes the step once everyone has had theirs, never sending anyone's twice", async () => {
+    const options = { at: new Date("2026-11-20T09:30:00Z"), ...people };
+    const { service, staged, store } = setup(
+      [candidate({ dueAt: stored, buyerId: "buyer-1" })],
+      options,
+    );
+    // The worker polls hourly through the day; the clock moves between runs.
+    for (const time of ["09:30", "10:30", "17:30", "18:30", "22:30", "23:30"]) {
+      options.at = new Date(`2026-11-20T${time}:00Z`);
+      await service.sendDueReminders();
+    }
+    expect(staged).toEqual([
+      "payment_reminder:pay-1:due_day:buyer-1",
+      "payment_reminder:pay-1:due_day:la-owner",
+      "payment_reminder:pay-1:due_day:sydney-finance",
+    ]);
+    expect(store.claim).toHaveBeenCalledTimes(1);
+    expect(store.claim).toHaveBeenCalledWith("pay-1", "due_day");
   });
 });

@@ -80,9 +80,7 @@ export function createOrganisationReofferRoutes(
     zValidator("json", acceptReofferBodySchema),
     (c) =>
       respond(c, () =>
-        response.accept(memberActor(c), c.req.valid("param").reofferId, {
-          termsAccepted: c.req.valid("json").termsAccepted,
-        }),
+        response.accept(memberActor(c), c.req.valid("param").reofferId, c.req.valid("json")),
       ),
   );
 

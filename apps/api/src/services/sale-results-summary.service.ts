@@ -50,6 +50,7 @@ function toResultLot(
     status: row.status,
     currentPrice: row.currentPrice,
     hasWinner: row.hasWinner,
+    resultPending: row.resultPending,
     endTime: row.endTime,
     extendedUntil: row.extendedUntil,
     external,

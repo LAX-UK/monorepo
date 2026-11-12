@@ -32,6 +32,7 @@ export class BidAlertSaleReader implements IBidAlertSaleReader {
         title: sale.title,
         startTime: sale.startTime,
         endTime: sale.endTime,
+        timeZone: sale.timeZone,
         status: sale.status,
         deliveryMode: sale.deliveryMode,
         isTest: sale.isTest,

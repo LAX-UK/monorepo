@@ -22,6 +22,7 @@ import type {
   IReofferAtgGuard,
   IReofferInvoicing,
   IReofferMoneyPauseGuard,
+  IReofferPricing,
 } from "./reoffer-ports.js";
 
 export type ReofferResponseServiceDeps = {
@@ -36,6 +37,8 @@ export type ReofferResponseServiceDeps = {
   /** The Zoho sold-while-live guard hook (`reoffer_accept`). */
   moneyPause: IReofferMoneyPauseGuard;
   invoicing: IReofferInvoicing;
+  /** The invoice's pricing, the same the bidder's page is drawn from. */
+  pricing: IReofferPricing;
   now?: () => Date;
 };
 
@@ -71,7 +74,7 @@ export class ReofferResponseService {
   async accept(
     actor: ReofferMemberActor,
     reofferId: string,
-    input: { termsAccepted: boolean },
+    input: { termsAccepted: boolean; expectedTotalMinor: number },
   ): Promise<AcceptOfferResult> {
     this.requireMayAnswer(actor);
     if (input.termsAccepted !== true) {
@@ -80,7 +83,9 @@ export class ReofferResponseService {
         "Tick the box to confirm you accept the terms of this purchase.",
       );
     }
-    const result = await this.inTransaction((tx) => this.acceptLocked(tx, actor, reofferId));
+    const result = await this.inTransaction((tx) =>
+      this.acceptLocked(tx, actor, reofferId, input.expectedTotalMinor),
+    );
     // A repeat accept by the same account (a double click or a retry) is answered with the
     // original result; the award and invoice were handled by the first one.
     if (result.alreadyAccepted) return result.accepted;
@@ -156,6 +161,7 @@ export class ReofferResponseService {
     tx: Parameters<IReofferWorkflowReader["lockLot"]>[0],
     actor: ReofferMemberActor,
     reofferId: string,
+    expectedTotalMinor: number,
   ): Promise<{ accepted: AcceptOfferResult; alreadyAccepted: boolean }> {
     const { lot, offer } = await this.lockOwn(tx, actor, reofferId);
     const now = this.now();
@@ -202,6 +208,21 @@ export class ReofferResponseService {
     const place = await this.deps.place.check(lot.id);
     if (!place.ok) throw new ReofferError("artwork_offered_elsewhere", place.message);
     await this.deps.moneyPause.assertNotPaused("reoffer_accept", { lotId: lot.id, reofferId });
+
+    // The bidder agrees to the total the page showed. Priced again here, under the lot lock and
+    // after every other check, so a premium changed since the page loaded is refused with
+    // nothing changed rather than invoiced at a total the bidder never saw.
+    const priced = await this.deps.pricing.priceFor({
+      lotId: lot.id,
+      buyerLegalEntityId: offer.offeredLegalEntityId,
+      hammerPence: offer.amountPence,
+    });
+    if (priced.totalPence !== expectedTotalMinor) {
+      throw new ReofferError(
+        "price_changed",
+        "The total for this lot has changed since you opened this page. Check the new total and accept again if you still wish to buy.",
+      );
+    }
 
     await this.deps.offers.changeStatus(tx, {
       id: offer.id,

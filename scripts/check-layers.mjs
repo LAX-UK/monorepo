@@ -95,6 +95,17 @@ const rules = [
     ],
   },
   {
+    dir: "packages/accounting-zoho-books",
+    label:
+      "packages/accounting-zoho-books is the Zoho Books HTTP client only: no apps, no database or framework, and no workspace package except accounting-domain and identity-contracts (the token envelope)",
+    forbiddenSpecifiers: [
+      /^@auction\/(?!accounting-domain(\/|$)|identity-contracts(\/|$))/,
+      /(^|\/)apps\//,
+      /^drizzle-orm(\/|$)/,
+      /^(hono|fastify|next|react|react-dom|ioredis|pg)(\/|$)/,
+    ],
+  },
+  {
     dir: "packages/shop-contracts",
     label: "packages/shop-contracts must not import from apps/**",
     forbiddenSpecifiers: [/^@auction\/(api|web|worker|ws|auth-app|event)$/, /(^|\/)apps\//],

@@ -75,13 +75,22 @@ export interface IReofferWorkflowReader {
 export type StaffReofferView = {
   offer: LotReofferView;
   offeredAccountName: string | null;
+  /** When the bid the offer is made at was placed. */
+  sourceBidPlacedAt: Date | null;
+  /** The staff who started, or closed, the offer; `null` when the clock did. */
+  createdByName: string | null;
+  closedByName: string | null;
   consent: {
     id: string;
     status: SellerConsentStatus;
     channel: string | null;
     note: string | null;
+    requestedAt: Date;
     dueAt: Date | null;
+    remindedAt: Date | null;
     answeredAt: Date | null;
+    /** Who answered: the seller's member, or the staff who recorded it; `null` for a lapse. */
+    answeredByName: string | null;
     preferredNext: string | null;
     terms: SellerConsentTerms;
   } | null;
@@ -98,6 +107,10 @@ export type BidderReofferRow = {
   respondedAt: Date | null;
   offeredUserId: string;
   offeredLegalEntityId: string;
+  /** The work on offer, as the bidder knows it. */
+  lot: { title: string; lotNumber: number | null; saleId: string | null; image: string | null };
+  /** When the lot's own sale ended. */
+  lotEndedAt: Date;
 };
 
 /** What the seller's reads need of a request: the terms they were shown, never who would buy. */
@@ -132,4 +145,42 @@ export interface IReofferViewsReader {
     sellerLegalEntityId: string,
     reofferId: string,
   ): Promise<SellerConsentRequestRow | null>;
+}
+
+/** The lot as the staff screens read it, without taking its lock. */
+export type ReofferLotFacts = {
+  id: string;
+  status: LotStatus;
+  winnerId: string | null;
+  winnerLegalEntityId: string | null;
+  /** Whole pence; `null` when no reserve was agreed. */
+  reservePence: number | null;
+  deleted: boolean;
+};
+
+/** The buyer default a re-offer answers, as staff read it. */
+export type StaffBuyerDefaultView = {
+  id: string;
+  recordedAt: Date;
+  recordedByName: string | null;
+  reason: string;
+  outcome: string;
+  /** Whole pence. */
+  originalHammerPence: number;
+  wonAt: Date;
+  buyerRestricted: boolean;
+  buyerUserId: string;
+  buyerAccountName: string | null;
+  /** The voided invoice's own number and due date, when one was raised. */
+  voidedInvoiceNumber: string | null;
+  voidedInvoiceTotalPence: number | null;
+  voidedInvoiceDueAt: Date | null;
+};
+
+/** What the staff preview of the next bidder needs beyond the bids. */
+export interface IReofferStaffReader {
+  lotFacts(db: Database, lotId: string): Promise<ReofferLotFacts | null>;
+  latestDefaultView(db: Database, lotId: string): Promise<StaffBuyerDefaultView | null>;
+  /** Account display names, for staff to read the bidders by name. */
+  accountNames(db: Database, legalEntityIds: readonly string[]): Promise<Map<string, string>>;
 }

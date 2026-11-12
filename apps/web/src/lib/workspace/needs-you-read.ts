@@ -25,6 +25,7 @@ const raisedAt = date.nullable().catch(null);
 const link = z.discriminatedUnion("page", [
   z.object({ page: z.literal("lot"), id: z.string() }),
   z.object({ page: z.literal("bids") }),
+  z.object({ page: z.literal("reoffer_offer"), id: z.string() }),
   z.object({ page: z.literal("purchase"), id: z.string() }),
   z.object({ page: z.literal("purchases") }),
   z.object({ page: z.literal("consignment"), id: z.string() }),
@@ -47,6 +48,10 @@ const task = z.discriminatedUnion("kind", [
   withLink({
     kind: z.literal("outbid"),
     lots: z.array(subject.extend({ endsAt: date })),
+  }),
+  withLink({
+    kind: z.literal("reoffer_offer"),
+    offers: z.array(subject.extend({ offerMinor: z.number().int(), endsAt: date })),
   }),
   withLink({ kind: z.literal("pay"), purchases }),
   withLink({ kind: z.literal("won_awaiting_payment"), purchases }),
