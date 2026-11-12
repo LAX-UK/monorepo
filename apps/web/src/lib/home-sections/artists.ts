@@ -2,7 +2,7 @@ import { artistCardCaption } from "@/lib/artists/artist-card-caption";
 import { HOME_SECTION_LIMITS } from "@/lib/home-sections/limits";
 import type { HomeArtistCard } from "@/lib/home-sections/types";
 import { artistProfileHref } from "@/lib/marketing/catalog-links";
-import { marketingArtistFactsLine } from "@auction/marketing-ui";
+import { marketingArtistFactsLine } from "@auction/marketing-ui/marketing-artist-facts";
 import type { PublicArtistDirectoryRow } from "@auction/types";
 
 /**

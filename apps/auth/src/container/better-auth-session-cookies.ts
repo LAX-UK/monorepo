@@ -88,3 +88,51 @@ export function withSessionDataClearedOnLogout(response: Response, path: string)
     headers,
   });
 }
+
+const SET_SESSION_TOKEN = /(?:__Secure-)?better-auth\.session_token=([^;,]*)/;
+
+/** The session token cookie value a response sets (a new sign-in), or null; clearing cookies do not count. */
+export function readResponseSessionToken(response: Response): string | null {
+  for (const setCookie of readResponseSetCookies(response)) {
+    if (sessionTokenClearCookie(setCookie)) continue;
+    const value = SET_SESSION_TOKEN.exec(setCookie)?.[1];
+    if (value) return value;
+  }
+  return null;
+}
+
+/** The session token cookie value a request carries, or null. */
+export function readRequestSessionToken(request: Request): string | null {
+  for (const part of (request.headers.get("cookie") ?? "").split(";")) {
+    const match = /^\s*(?:__Secure-)?better-auth\.session_token=(.*)$/.exec(part);
+    if (match?.[1]) return match[1].trim();
+  }
+  return null;
+}
+
+/** The request's headers with the session cookie the response just set, so a lookup sees the new sign-in. */
+export function headersWithResponseSessionCookie(request: Request, response: Response): Headers {
+  const headers = new Headers(request.headers);
+  const responseSessionCookie = readResponseSetCookies(response)
+    .map((cookie) => /((?:__Secure-)?better-auth\.session_token=[^;,]+)/.exec(cookie)?.[1])
+    .find(Boolean);
+  headers.set(
+    "cookie",
+    buildCookieHeaderForAuthorizationCodeCapture(
+      headers.get("cookie"),
+      responseSessionCookie ?? null,
+    ),
+  );
+  return headers;
+}
+
+/** The response with one more Set-Cookie line; the body is passed through untouched. */
+export function withAppendedSetCookie(response: Response, setCookie: string): Response {
+  const headers = new Headers(response.headers);
+  headers.append("set-cookie", setCookie);
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}

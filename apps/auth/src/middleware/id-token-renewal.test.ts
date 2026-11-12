@@ -14,17 +14,22 @@ function setup(options: {
     rememberIssued: vi.fn(async () => undefined),
     renew: vi.fn(options.renew ?? (async () => "renewed-id-token")),
   } satisfies Renewal;
+  const signIns = { bindIssued: vi.fn(async () => undefined) };
   const outcomes: string[] = [];
   const app = new Hono();
   app.use("/api/auth/oauth2/token", createOAuthTokenRequestContextMiddleware());
   app.use(
     "/api/auth/*",
-    createIdTokenRenewalMiddleware({ renewal, onOutcome: (outcome) => outcomes.push(outcome) }),
+    createIdTokenRenewalMiddleware({
+      renewal,
+      signIns,
+      onOutcome: (outcome) => outcomes.push(outcome),
+    }),
   );
   app.post("/api/auth/oauth2/token", (c) =>
     c.json(options.response, (options.status ?? 200) as 200),
   );
-  return { app, renewal, outcomes };
+  return { app, renewal, signIns, outcomes };
 }
 
 function tokenRequest(app: Hono, body: string) {
@@ -113,5 +118,42 @@ describe("ID token renewal middleware", () => {
       idToken: "id-1",
     });
     expect(outcomes).toEqual(["remembered"]);
+  });
+
+  it("records the sign-in on the tokens an authorization code issues", async () => {
+    const { app, signIns } = setup({
+      response: { access_token: "a", refresh_token: "refresh-1", id_token: "id-1" },
+    });
+
+    await tokenRequest(app, "grant_type=authorization_code&code=abc&code_verifier=v");
+
+    expect(signIns.bindIssued).toHaveBeenCalledWith({ refreshToken: "refresh-1", idToken: "id-1" });
+  });
+
+  it("does not hand out tokens whose sign-in could not be recorded", async () => {
+    const { app, signIns, renewal, outcomes } = setup({
+      response: { access_token: "a", refresh_token: "refresh-1", id_token: "id-1" },
+    });
+    signIns.bindIssued.mockRejectedValueOnce(new Error("database down"));
+
+    const response = await tokenRequest(
+      app,
+      "grant_type=authorization_code&code=abc&code_verifier=v",
+    );
+
+    expect(response.status).toBe(500);
+    expect(await response.json()).toMatchObject({ error: "server_error" });
+    expect(renewal.rememberIssued).not.toHaveBeenCalled();
+    expect(outcomes).toEqual(["bind_failed"]);
+  });
+
+  it("does not record a sign-in on a refresh", async () => {
+    const { app, signIns } = setup({
+      response: { access_token: "a", refresh_token: "refresh-2", scope: "openid" },
+    });
+
+    await tokenRequest(app, REFRESH);
+
+    expect(signIns.bindIssued).not.toHaveBeenCalled();
   });
 });

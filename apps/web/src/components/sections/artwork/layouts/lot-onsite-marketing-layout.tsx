@@ -25,7 +25,7 @@ import { MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
 import { resolveSaleStreamContext } from "@/lib/sale-stream-policy";
 import { getOnsiteNoWebBiddingNote } from "@/lib/sale-type-presentation";
 import type { Lot, PublicLotView, Sale } from "@auction/types";
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 import { formatPostalAddressLines } from "@auction/validators";
 import type { ReactNode } from "react";
 

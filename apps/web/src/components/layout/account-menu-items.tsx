@@ -6,7 +6,7 @@ import { FOCUS_RING } from "@/lib/marketing/chrome";
 import type { AccountMenuEntry, AccountMenuFacts } from "@/lib/navigation/account-menu-model";
 import { buildAccountMenu } from "@/lib/navigation/account-menu-model";
 import { useAccountMenuContext } from "@/lib/navigation/use-account-menu-context.client";
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 import Link from "next/link";
 import { Fragment, type ReactElement, useMemo } from "react";
 

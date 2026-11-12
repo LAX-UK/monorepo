@@ -2,7 +2,6 @@
 
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import { useSplitOverlayOpenSm } from "@/hooks/use-split-overlay-open";
-import { cn } from "@auction/ui";
 import {
   BottomSheet,
   BottomSheetContent,
@@ -15,6 +14,7 @@ import {
   DialogDescription,
   DialogTitle,
 } from "@auction/ui/components/dialog";
+import { cn } from "@auction/ui/lib/utils";
 import { useCallback, useEffect, useState } from "react";
 import { emitQuickLookDeckNav } from "./lot-quick-look-analytics";
 import { useLotQuickLook } from "./lot-quick-look-context";

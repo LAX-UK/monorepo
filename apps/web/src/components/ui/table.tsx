@@ -1,4 +1,3 @@
-import { cn } from "@auction/ui";
 import {
   TableBody as UiTableBody,
   TableCell as UiTableCell,
@@ -6,6 +5,7 @@ import {
   TableHead as UiTableTh,
   TableHeader as UiTableThead,
 } from "@auction/ui/components/table";
+import { cn } from "@auction/ui/lib/utils";
 import type { KeyboardEvent, ReactNode } from "react";
 
 type TableProps = { children: ReactNode; className?: string };

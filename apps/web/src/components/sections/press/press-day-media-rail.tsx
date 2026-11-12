@@ -9,8 +9,9 @@ import {
   MARKETING_CARD_MEDIA_HOVER,
   MARKETING_PROSE_LINK,
 } from "@/lib/marketing/chrome";
-import { MarketingCardReveal } from "@auction/marketing-ui";
-import { DisplayHeading, cn } from "@auction/ui";
+import { MarketingCardReveal } from "@auction/marketing-ui/motion/index";
+import { DisplayHeading } from "@auction/ui/components/typography";
+import { cn } from "@auction/ui/lib/utils";
 import Image from "next/image";
 import Link from "next/link";
 

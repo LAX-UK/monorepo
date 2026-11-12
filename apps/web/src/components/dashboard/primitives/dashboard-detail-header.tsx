@@ -1,6 +1,7 @@
 import { BACK_LINK_CLASS, EYEBROW_CLASS } from "@/lib/dashboard/accent-track";
-import { cn } from "@auction/ui";
-import { ButtonLink, pageTitleClass } from "@auction/ui/lax";
+import { ButtonLink } from "@auction/ui/lax/button-link";
+import { pageTitleClass } from "@auction/ui/lax/styles";
+import { cn } from "@auction/ui/lib/utils";
 import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";

@@ -1,7 +1,7 @@
 import { MediaImage } from "@/components/ui/media-image";
 import type { UpcomingSaleView } from "@/lib/organisation-home/organisation-dashboard-view";
-import { LiveBadge } from "@auction/ui";
-import { StatusBadge } from "@auction/ui/lax";
+import { LiveBadge } from "@auction/ui/components/live-badge";
+import { StatusBadge } from "@auction/ui/lax/status-badge";
 import Link from "next/link";
 import { HomeSection } from "./home-section";
 

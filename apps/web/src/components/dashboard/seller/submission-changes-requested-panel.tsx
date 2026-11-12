@@ -2,7 +2,7 @@ import { changesRequestedCopy } from "@/lib/seller/consignment-changes-copy";
 import { formatDate } from "@/lib/ui/format";
 import type { ItemSubmission } from "@auction/types";
 import { Surface } from "@auction/ui/components/surface";
-import { ButtonLink } from "@auction/ui/lax";
+import { ButtonLink } from "@auction/ui/lax/button-link";
 import { MessageSquareText } from "lucide-react";
 import Link from "next/link";
 

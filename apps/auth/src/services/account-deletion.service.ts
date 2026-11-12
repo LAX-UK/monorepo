@@ -131,8 +131,7 @@ export class AccountDeletionService {
     subjectId: string,
     currentSessionId: string,
   ): Promise<ReauthRequired | { ok: true; outcome: "cancelled" | "not_requested" }> {
-    const live = await this.sessions.liveSessions(subjectId);
-    if (!live.some((session) => session.id === currentSessionId)) {
+    if (!(await this.sessions.findLive(subjectId, currentSessionId))) {
       return { ok: false, reason: "reauth_required" };
     }
     return { ok: true, outcome: await this.cancelForSubject(subjectId) };

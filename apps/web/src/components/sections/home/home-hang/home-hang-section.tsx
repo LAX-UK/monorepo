@@ -1,7 +1,7 @@
 "use client";
 
 import type { HomeHangVM } from "@/lib/hang/home-hang";
-import { MarketingHang } from "@auction/marketing-ui";
+import { MarketingHang } from "@auction/marketing-ui/hang/marketing-hang";
 import { toHangProps } from "./to-hang-props";
 
 /**

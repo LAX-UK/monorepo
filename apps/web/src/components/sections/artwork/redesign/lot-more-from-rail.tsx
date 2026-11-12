@@ -19,8 +19,9 @@ import { PLATFORM_DEFAULT_CURRENCY, formatWholeMoney } from "@/lib/format-curren
 import { FOCUS_RING } from "@/lib/marketing/chrome";
 import { LOT_CARD_GRID_SLOTS } from "@/lib/media/overlay-slot-presets";
 import { useClockNow } from "@/lib/time/use-clock";
-import { cn } from "@auction/ui";
-import { Button, TextLink } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
+import { TextLink } from "@auction/ui/lax/text-link";
+import { cn } from "@auction/ui/lib/utils";
 import Link from "next/link";
 
 type Props = {

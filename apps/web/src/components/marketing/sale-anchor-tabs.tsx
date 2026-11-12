@@ -2,8 +2,9 @@
 
 import { SALE_ANCHOR_STICKY_CLASS } from "@/lib/marketing/chrome";
 import { activeSectionId } from "@/lib/marketing/sale-anchor-active";
-import { cn } from "@auction/ui";
-import { OverflowTabs, PlainLink } from "@auction/ui/lax";
+import { PlainLink } from "@auction/ui/lax/link";
+import { OverflowTabs } from "@auction/ui/lax/tabs";
+import { cn } from "@auction/ui/lib/utils";
 import { useCallback, useEffect, useState } from "react";
 
 /** Where a section counts as being read: a third of the way down the viewport. */

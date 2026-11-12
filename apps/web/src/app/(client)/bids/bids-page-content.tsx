@@ -9,7 +9,7 @@ import { getServerDataContainer } from "@/lib/data/container.server";
 import { shouldOfferIdentityOnboarding } from "@/lib/kyc/identity-onboarding";
 import { isIdentityOnboardingEnabled } from "@/lib/kyc/identity-onboarding-rollout.server";
 import { roleNeedsPersonalIdentity } from "@auction/domain";
-import { Notice } from "@auction/ui/lax";
+import { Notice } from "@auction/ui/lax/notice";
 import type { ReactNode } from "react";
 
 type PageProps = {

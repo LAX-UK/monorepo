@@ -1,7 +1,7 @@
 import { ArtworkImageStage } from "@/components/sections/artwork/artwork-image-stage";
 import { LotHeroViewTransitionShell } from "@/components/sections/artwork/lot-hero-view-transition-shell";
 import type { Lot } from "@auction/types";
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 
 type Props = {
   lot: Pick<Lot, "id" | "title" | "images" | "imageAssets" | "marketingDetails" | "dimensions">;

@@ -20,16 +20,13 @@ import {
   inboxTypeLabel,
 } from "@/lib/notifications/inbox-query";
 import { type NeedsActionView, searchNeedsAction } from "@/lib/notifications/needs-action";
-import {
-  Button,
-  Field,
-  FilterSheet,
-  ListToolbar,
-  NativeSelect,
-  Notice,
-  SelectionBar,
-  type TabNavItem,
-} from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
+import { Field } from "@auction/ui/lax/field";
+import { FilterSheet, ListToolbar } from "@auction/ui/lax/list-toolbar";
+import { NativeSelect } from "@auction/ui/lax/native-select";
+import { Notice } from "@auction/ui/lax/notice";
+import { SelectionBar } from "@auction/ui/lax/selection-bar";
+import type { TabNavItem } from "@auction/ui/lax/tabs";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { NeedsActionRow } from "./notifications/needs-action-row";

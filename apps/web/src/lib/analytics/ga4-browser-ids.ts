@@ -1,4 +1,4 @@
-import { readCookie } from "@auction/ui";
+import { readCookie } from "@auction/ui/lib/read-cookie";
 
 /** Read GA4 browser identifiers under analytics consent for server-event stitching. */
 

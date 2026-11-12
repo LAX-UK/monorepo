@@ -2,6 +2,7 @@ import { AUTH_ROUTE_PATH } from "@auction/auth";
 import type { MiddlewareHandler } from "hono";
 import {
   type IRefreshTokenFamilyRepository,
+  type RefreshSignInGuard,
   hashRefreshToken,
 } from "../services/refresh-token-family.ports.js";
 import { getOAuthTokenRequestContext } from "./oauth-token-request-context.js";
@@ -35,9 +36,11 @@ function replayKey(rawToken: string): string {
 export function createRefreshReplayGateMiddleware(options: {
   replay: RefreshReplayRedis;
   families: IRefreshTokenFamilyRepository;
+  /** Refuses a refresh whose sign-in has ended or expired; see `RefreshSignInGuard`. */
+  signIns: RefreshSignInGuard;
   graceMs?: number;
   now?: () => number;
-  onOutcome?: (outcome: "rotated" | "retry_grace" | "reuse" | "failed") => void;
+  onOutcome?: (outcome: "rotated" | "retry_grace" | "reuse" | "failed" | "sign_in_ended") => void;
   retryResponseCrypto?: {
     seal(plaintext: string): string;
     open(sealed: string): string;
@@ -70,6 +73,24 @@ export function createRefreshReplayGateMiddleware(options: {
     if (!token) {
       await next();
       return;
+    }
+
+    // The 30-day refresh lifetime never outlasts the sign-in it came from: once the record behind
+    // the token (or an earlier id of it) has ended or expired, the token is spent and the product
+    // asks the person to sign in again.
+    if (
+      !(await options.signIns.isLive({
+        userId: token.userId,
+        sid: token.sid,
+        refreshToken,
+      }))
+    ) {
+      await options.families.deleteFamilyTokens(token.familyId);
+      options.onOutcome?.("sign_in_ended");
+      return c.json(
+        { error: "invalid_grant", error_description: "The sign-in for this token has ended" },
+        400,
+      );
     }
 
     const ttlSec = Math.max(1, Math.ceil((token.expiresAt.getTime() - now()) / 1000));

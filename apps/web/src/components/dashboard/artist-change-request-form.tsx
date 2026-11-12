@@ -11,7 +11,7 @@ import {
 } from "@auction/ui/components/select";
 import { Surface } from "@auction/ui/components/surface";
 import { Textarea } from "@auction/ui/components/textarea";
-import { Button } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
 import { ArrowRight, Send } from "lucide-react";
 import { useId, useMemo, useState } from "react";
 

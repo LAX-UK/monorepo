@@ -1,5 +1,5 @@
 import type { SaleCardTitleProps } from "@/components/sections/sales/card/types";
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 import Link from "next/link";
 
 export function SaleCardTitle(props: SaleCardTitleProps) {

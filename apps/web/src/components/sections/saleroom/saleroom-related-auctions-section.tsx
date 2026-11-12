@@ -2,7 +2,7 @@ import { mapSaleToRelatedVM } from "@/components/sections/saleroom/mappers";
 import { SaleroomRelatedAuctions } from "@/components/sections/saleroom/saleroom-related-auctions";
 import type { RelatedSale } from "@/lib/data/http/saleroom.server";
 import { MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 
 type Props = {
   relatedSales: RelatedSale[];

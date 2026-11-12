@@ -9,8 +9,9 @@ import {
 import { type InvitationRowView, groupInvitations } from "@/lib/legal-entity/member-row.vm";
 import { ROLE_CHANGE_UNDO_MS } from "@/lib/legal-entity/role-change-flow";
 import { notify } from "@/lib/ui/notify";
-import { RecordList, RecordRow } from "@auction/ui";
-import { Button, Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from "@auction/ui/lax";
+import { RecordList, RecordRow } from "@auction/ui/components/record-row";
+import { Button } from "@auction/ui/lax/button";
+import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from "@auction/ui/lax/menu";
 import { Ellipsis, Mail, RotateCw, X } from "lucide-react";
 import { useState } from "react";
 import { MemberInitials } from "./member-initials";

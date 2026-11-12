@@ -5,7 +5,7 @@ import {
   watchingBadge,
 } from "@/lib/navigation/bid-bottom-tabs";
 import { NO_ATTENTION } from "@/lib/navigation/client-attention";
-import { isTabCurrent } from "@auction/marketing-ui";
+import { isTabCurrent } from "@auction/marketing-ui/bottom-bar/bottom-tab-config";
 import { describe, expect, it } from "vitest";
 
 const icons = { home: null, auctions: null, search: null, watching: null, account: null };

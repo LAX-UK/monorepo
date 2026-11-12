@@ -1,7 +1,7 @@
 "use client";
 
-import { cn } from "@auction/ui";
 import { Combobox } from "@auction/ui/components/combobox";
+import { cn } from "@auction/ui/lib/utils";
 import { getPhoneCountryOptions } from "@auction/validators";
 import type { PhoneInputValues } from "@auction/validators";
 import type { CountryCode } from "libphonenumber-js";

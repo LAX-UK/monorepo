@@ -1,6 +1,6 @@
 "use client";
 
-import { TabNav, type TabNavItem } from "@auction/ui/lax";
+import { TabNav, type TabNavItem } from "@auction/ui/lax/tabs";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 

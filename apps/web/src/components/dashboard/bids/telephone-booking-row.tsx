@@ -1,8 +1,8 @@
 "use client";
 
 import type { TelephoneBookingRowVm } from "@/lib/telephone/telephone-booking-rows.vm";
-import { RecordRow, RecordRowMedia } from "@auction/ui";
-import { StatusBadge } from "@auction/ui/lax";
+import { RecordRow, RecordRowMedia } from "@auction/ui/components/record-row";
+import { StatusBadge } from "@auction/ui/lax/status-badge";
 import { Phone } from "lucide-react";
 import Link from "next/link";
 

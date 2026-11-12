@@ -1,6 +1,5 @@
 "use client";
 
-import { cn } from "@auction/ui";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,7 +12,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@auction/ui/components/select";
-import { Button } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
+import { cn } from "@auction/ui/lib/utils";
 import { MoreHorizontal, SlidersHorizontal } from "lucide-react";
 import type { ReactNode } from "react";
 

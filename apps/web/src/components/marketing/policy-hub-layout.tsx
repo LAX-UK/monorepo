@@ -1,7 +1,7 @@
 "use client";
 
 import { policyRoutes } from "@/components/marketing/policy-routes";
-import { LegalHub } from "@auction/marketing-ui";
+import { LegalHub } from "@auction/marketing-ui/legal/legal-hub";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 

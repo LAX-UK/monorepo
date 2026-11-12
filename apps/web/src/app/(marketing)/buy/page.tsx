@@ -11,8 +11,8 @@ import { SITE_SEO_NAME } from "@/lib/brand";
 import { MARKETING_PROSE_LINK } from "@/lib/marketing/chrome";
 import { metadataForStatic } from "@/lib/seo/metadata-factory";
 import { breadcrumbJsonLd, jsonLdScript } from "@/lib/seo/structured-data";
-import { MarketingSectionReveal } from "@auction/marketing-ui";
-import { ButtonLink } from "@auction/ui/lax";
+import { MarketingSectionReveal } from "@auction/marketing-ui/motion/index";
+import { ButtonLink } from "@auction/ui/lax/button-link";
 import type { Metadata } from "next";
 import Link from "next/link";
 

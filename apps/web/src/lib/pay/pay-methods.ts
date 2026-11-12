@@ -1,5 +1,5 @@
 import type { PayPlan } from "@auction/types";
-import { formatGbp } from "@auction/ui";
+import { formatGbp } from "@auction/ui/lib/money";
 import { PAY_COPY } from "./pay-copy";
 
 export type PayMethod = "card" | "bank_transfer";

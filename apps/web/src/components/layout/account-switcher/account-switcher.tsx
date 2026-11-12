@@ -2,8 +2,8 @@
 
 import { ActingAsTooltip } from "@/components/layout/acting-as-tooltip";
 import { type AccountChrome, accountRowText } from "@/lib/navigation/account-switcher-model";
-import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
+import { cn } from "@auction/ui/lib/utils";
 import { ChevronsUpDown, Loader2 } from "lucide-react";
 import { AccountSwitcherPopover } from "./account-switcher-popover";
 import { AccountTile } from "./account-tile";

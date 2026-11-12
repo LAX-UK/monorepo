@@ -4,7 +4,7 @@ import { type OverlaySlotDef, OverlayToneProvider } from "@/components/ui/overla
 import { DEFAULT_OVERLAY_TONE, useImageOverlayTones } from "@/hooks/use-image-overlay-tones";
 import type { ObjectFitMode } from "@/lib/media/overlay-tone-types";
 import { resolveMediaSrc } from "@/lib/media/resolve-media-src";
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 import {
   type ReactNode,
   type RefObject,

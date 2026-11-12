@@ -7,7 +7,10 @@ import {
   isMarketingOffered,
 } from "@/lib/analytics/consent/categories";
 import { useConsent } from "@/lib/analytics/consent/context";
-import { Button, Dialog, Switch, TextLink } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
+import { Dialog } from "@auction/ui/lax/dialog";
+import { Switch } from "@auction/ui/lax/switch";
+import { TextLink } from "@auction/ui/lax/text-link";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 

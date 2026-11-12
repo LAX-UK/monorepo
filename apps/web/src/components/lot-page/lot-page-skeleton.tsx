@@ -1,6 +1,8 @@
 import { MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
-import { cn } from "@auction/ui";
-import { LaxDensityProvider, Skeleton, laxDensityAttributes } from "@auction/ui/lax";
+import { LaxDensityProvider } from "@auction/ui/lax/density";
+import { laxDensityAttributes } from "@auction/ui/lax/density-attributes";
+import { Skeleton } from "@auction/ui/lax/skeleton";
+import { cn } from "@auction/ui/lib/utils";
 
 /**
  * The lot page while it loads: the real layout at its final size (the mat, the identity lines, the

@@ -6,7 +6,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@auction/ui/components/collapsible";
-import { Button } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
 import { ChevronDownIcon } from "lucide-react";
 import type { SaleOverviewVM } from "./view-models";
 

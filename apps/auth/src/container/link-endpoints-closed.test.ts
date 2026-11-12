@@ -140,6 +140,12 @@ async function realIssuer() {
         findAndPrepare: vi.fn(async () => null),
         completeRotation: vi.fn(async () => undefined),
         revokeFamily: vi.fn(async () => undefined),
+        deleteFamilyTokens: vi.fn(async () => undefined),
+      },
+      browserSignIns: {
+        signOut: { isSignInOf: vi.fn(async () => false), end: vi.fn() },
+        refreshGuard: { isLive: vi.fn(async () => true) },
+        tokenBinding: { bindIssued: vi.fn(async () => undefined) },
       },
       idTokenRenewal: {
         rememberIssued: vi.fn(async () => undefined),

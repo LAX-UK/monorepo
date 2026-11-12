@@ -15,7 +15,7 @@ import { Input } from "@auction/ui/components/input";
 import { Label } from "@auction/ui/components/label";
 import { RadioCardGroup } from "@auction/ui/components/radio-card-group";
 import { Surface } from "@auction/ui/components/surface";
-import { Button } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
 import { CheckCircle2, Clock } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useId, useState, useTransition } from "react";

@@ -1,6 +1,7 @@
 import type { PayAction, PayNotice } from "@/lib/pay/pay-page.vm";
-import { cn } from "@auction/ui";
-import { ButtonLink, Notice } from "@auction/ui/lax";
+import { ButtonLink } from "@auction/ui/lax/button-link";
+import { Notice } from "@auction/ui/lax/notice";
+import { cn } from "@auction/ui/lib/utils";
 import Link from "next/link";
 
 /**

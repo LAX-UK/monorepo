@@ -1,7 +1,6 @@
 "use client";
 
 import { urlTitleSearchSchema } from "@/lib/forms/schemas/url-search";
-import { cn } from "@auction/ui";
 import {
   Form,
   FormControl,
@@ -11,6 +10,7 @@ import {
   FormMessage,
 } from "@auction/ui/components/form";
 import { Input } from "@auction/ui/components/input";
+import { cn } from "@auction/ui/lib/utils";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2 } from "lucide-react";
 import { useEffect, useRef } from "react";

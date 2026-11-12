@@ -3,8 +3,10 @@
 import { useConsent } from "@/lib/analytics/consent/context";
 import { MARKETING_PAGE_GUTTER_X } from "@/lib/marketing/chrome";
 import { useSignInNoticeActive } from "@/lib/ui/first-visit-overlays";
-import { cn } from "@auction/ui";
-import { Button, TextLink, laxDensityAttributes } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
+import { laxDensityAttributes } from "@auction/ui/lax/density-attributes";
+import { TextLink } from "@auction/ui/lax/text-link";
+import { cn } from "@auction/ui/lib/utils";
 import Link from "next/link";
 import { type FocusEvent, useCallback, useEffect, useRef } from "react";
 

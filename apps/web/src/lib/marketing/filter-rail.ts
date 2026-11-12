@@ -5,7 +5,7 @@ import {
   MARKETING_FILTER_RAIL_STICKY,
   MARKETING_FILTER_RESULT_COUNT,
   marketingFilterRailLink,
-} from "@auction/marketing-ui";
+} from "@auction/marketing-ui/catalog-filter-rail";
 export {
   MARKETING_FILTER_ACCORDION_TRIGGER,
   MARKETING_FILTER_GROUP_TITLE,

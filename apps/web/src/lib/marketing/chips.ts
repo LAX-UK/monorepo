@@ -1,5 +1,5 @@
 import { FOCUS_RING } from "@/lib/marketing/chrome";
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 
 /** Outline → tinted filter pill rendered in a horizontal `MarketingChipStrip`
  * (search categories, saleroom status). Single source of truth so every

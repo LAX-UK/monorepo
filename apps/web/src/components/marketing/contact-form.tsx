@@ -8,16 +8,13 @@ import { useActionForm } from "@/lib/forms/use-action-form";
 import { useFormErrorSummary } from "@/lib/forms/use-form-error-summary";
 import { contactIntentFromSearchParams } from "@/lib/marketing/contact-intent-copy";
 import { sellIntakeHref } from "@/lib/marketing/sell-intake";
-import {
-  Button,
-  ButtonLink,
-  ErrorSummary,
-  Field,
-  NativeSelect,
-  Notice,
-  TextArea,
-  TextInput,
-} from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
+import { ButtonLink } from "@auction/ui/lax/button-link";
+import { ErrorSummary } from "@auction/ui/lax/error-summary";
+import { Field } from "@auction/ui/lax/field";
+import { TextArea, TextInput } from "@auction/ui/lax/input";
+import { NativeSelect } from "@auction/ui/lax/native-select";
+import { Notice } from "@auction/ui/lax/notice";
 import Link from "next/link";
 import { useState } from "react";
 import { Controller } from "react-hook-form";

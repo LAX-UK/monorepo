@@ -12,7 +12,7 @@ import {
   BottomSheetTitle,
   BottomSheetTrigger,
 } from "@auction/ui/components/bottom-sheet";
-import { Button } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
 import { MoreVertical } from "lucide-react";
 import { useState } from "react";
 

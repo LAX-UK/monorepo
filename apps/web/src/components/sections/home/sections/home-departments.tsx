@@ -3,8 +3,8 @@ import { ScrollRegion } from "@/components/marketing/rail/scroll-region";
 import { MediaImage } from "@/components/ui/media-image";
 import type { HomeDepartment } from "@/lib/home-sections/types";
 import { FOCUS_RING } from "@/lib/marketing/chrome";
-import { MarketingCardMedia } from "@auction/marketing-ui";
-import { cn } from "@auction/ui";
+import { MarketingCardMedia } from "@auction/marketing-ui/marketing-card-media";
+import { cn } from "@auction/ui/lib/utils";
 import Link from "next/link";
 
 /**

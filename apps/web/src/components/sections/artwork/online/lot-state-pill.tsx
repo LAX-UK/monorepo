@@ -12,7 +12,7 @@ import {
 } from "@/lib/lot/lot-lifecycle";
 import { useClockNow } from "@/lib/time/use-clock";
 import type { Lot, Sale } from "@auction/types";
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 import { useMemo } from "react";
 
 type LotPick = Pick<

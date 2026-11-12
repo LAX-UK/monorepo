@@ -1,7 +1,7 @@
 "use client";
 
 import type { EnquiryFormValues } from "@/lib/private-sales/enquiry-values";
-import { Checkbox } from "@auction/ui/lax";
+import { Checkbox } from "@auction/ui/lax/checkbox";
 import { Lock } from "lucide-react";
 import Link from "next/link";
 import { useId } from "react";
