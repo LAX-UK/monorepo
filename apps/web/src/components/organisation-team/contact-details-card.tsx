@@ -12,7 +12,10 @@ import {
 } from "@/lib/organisation-team/contact-details.vm";
 import { saveContactDetailsAction } from "@/lib/organisation-team/organisation-team.actions";
 import { notify } from "@/lib/ui/notify";
-import { Button, Field, Notice, TextInput } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
+import { Field } from "@auction/ui/lax/field";
+import { TextInput } from "@auction/ui/lax/input";
+import { Notice } from "@auction/ui/lax/notice";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import { SettingsCard, SettingsRow } from "./settings-section";

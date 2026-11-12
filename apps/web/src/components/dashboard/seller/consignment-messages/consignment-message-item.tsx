@@ -1,7 +1,7 @@
 import { MemberInitials } from "@/components/legal-entity/members/member-initials";
 import type { MessageRowView } from "@/lib/seller/consignment-thread";
-import { cn } from "@auction/ui";
-import { FileAttachment } from "@auction/ui/lax";
+import { FileAttachment } from "@auction/ui/lax/file-attachment";
+import { cn } from "@auction/ui/lib/utils";
 import type { ReactNode } from "react";
 
 /**

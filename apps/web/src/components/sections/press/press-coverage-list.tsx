@@ -1,8 +1,8 @@
 import { MarketingEmptyState } from "@/components/marketing/marketing-empty-state";
 import { MarketingSectionHeader } from "@/components/marketing/marketing-section-header";
-import { MarketingCardReveal } from "@auction/marketing-ui";
-import { DisplayHeading } from "@auction/ui";
-import { ButtonLink } from "@auction/ui/lax";
+import { MarketingCardReveal } from "@auction/marketing-ui/motion/index";
+import { DisplayHeading } from "@auction/ui/components/typography";
+import { ButtonLink } from "@auction/ui/lax/button-link";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import type { PressArchiveEntryVM } from "./mappers";

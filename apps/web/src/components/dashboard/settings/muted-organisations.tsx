@@ -5,7 +5,7 @@ import { initials } from "@/components/organisations/initials";
 import { setOrganisationMuted } from "@/lib/services/client/notifications-inbox.client";
 import { notify } from "@/lib/ui/notify";
 import type { NotificationAccountMute } from "@auction/types";
-import { Button } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
 import { useState } from "react";
 
 /**

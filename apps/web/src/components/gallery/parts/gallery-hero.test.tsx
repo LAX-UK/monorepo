@@ -22,8 +22,8 @@ vi.mock("@/components/ui/overlay-tone-context", () => ({
   useOverlayToneContext: () => null,
 }));
 
-vi.mock("@auction/ui", async (importOriginal) => {
-  const original = await importOriginal<typeof import("@auction/ui")>();
+vi.mock("@auction/ui/components/carousel", async (importOriginal) => {
+  const original = await importOriginal<typeof import("@auction/ui/components/carousel")>();
   const Pass = ({ children }: { children?: ReactNode }) => <div>{children}</div>;
   return {
     ...original,

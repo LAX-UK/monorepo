@@ -25,6 +25,7 @@ vi.mock("@/lib/actions/admin/admin-enquiries", () => ({
 }));
 vi.mock("@/lib/actions/admin/admin-private-sales", () => ({
   convertEnquiryAction: vi.fn(),
+  searchDealArtworksAction: vi.fn(),
 }));
 vi.mock("@/lib/ui/notify", () => ({
   notify: { success: (...args: unknown[]) => notifySuccess(...args), error: vi.fn() },

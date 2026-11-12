@@ -1,6 +1,6 @@
 import { DEFAULT_OVERLAY_TONE } from "@/hooks/use-image-overlay-tones";
 import type { OverlayToneResult } from "@/lib/media/overlay-tone-types";
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 
 /** Where overlay chrome is rendered — decouples visual shell from layout positioning. */
 export type OverlaySurface = "auto" | "onImage" | "inline";

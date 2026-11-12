@@ -19,7 +19,7 @@ import {
   saleroomOnBlockCaption,
   saleroomPausedCaption,
 } from "@/lib/saleroom/saleroom-mobile-chrome";
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 import Link from "next/link";
 
 export type { SaleroomLotRef, SaleroomLiveLotRef } from "@/lib/saleroom/saleroom-mobile-chrome";

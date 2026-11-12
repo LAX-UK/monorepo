@@ -2,7 +2,9 @@
 
 import { LotPageMessage } from "@/components/lot-page/lot-page-message";
 import { useReportRouteError } from "@/lib/observability/use-report-route-error";
-import { Button, ButtonLink, EmptyState } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
+import { ButtonLink } from "@auction/ui/lax/button-link";
+import { EmptyState } from "@auction/ui/lax/empty-state";
 import { RefreshCw } from "lucide-react";
 import Link from "next/link";
 

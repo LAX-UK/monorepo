@@ -3,7 +3,9 @@
 import { type BidsListQuery, bidsInView } from "@/lib/bid/bids-list";
 import { type MyBidStatus, type MyBidTab, myBidTab } from "@/lib/bid/my-bid-status";
 import { MY_BID_STATUS_LABEL, type MyBidsVm } from "@/lib/bid/my-bids.vm";
-import { Field, FilterSheet, NativeSelect } from "@auction/ui/lax";
+import { Field } from "@auction/ui/lax/field";
+import { FilterSheet } from "@auction/ui/lax/list-toolbar";
+import { NativeSelect } from "@auction/ui/lax/native-select";
 import { useEffect, useMemo, useState } from "react";
 
 const ANY = "any";

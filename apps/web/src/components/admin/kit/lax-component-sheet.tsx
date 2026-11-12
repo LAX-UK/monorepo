@@ -1,7 +1,7 @@
 "use client";
 
 import { PageHeader } from "@auction/staff-ui";
-import type { LaxDensity } from "@auction/ui/lax";
+import type { LaxDensity } from "@auction/ui/lax/density-attributes";
 import { SheetButtons } from "./sheet-buttons";
 import { SheetFigures, SheetNotices, SheetToasts } from "./sheet-feedback";
 import { SheetFields } from "./sheet-fields";

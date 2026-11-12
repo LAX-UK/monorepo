@@ -1,5 +1,5 @@
 import type { WithdrawnRowVM } from "@/lib/marketing/saleroom/catalogue-rows";
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 
 type Props = {
   row: WithdrawnRowVM;

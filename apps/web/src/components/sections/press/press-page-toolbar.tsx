@@ -10,7 +10,7 @@ import {
   countActivePressHubFilters,
   formatPressApplyButtonLabel,
 } from "@/lib/marketing/press-params";
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 import { Rss } from "lucide-react";
 import Link from "next/link";
 

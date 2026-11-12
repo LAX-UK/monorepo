@@ -8,8 +8,8 @@ import { MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
 import { SELL_A_WORK_LABEL } from "@/lib/marketing/sell-flow-copy";
 import { sellContactHref, sellIntakeHref } from "@/lib/marketing/sell-intake";
 import { SELL_HERO_LEAD, SELL_HERO_TITLE, SELL_TALK_LABEL } from "@/lib/marketing/sell-landing";
-import { cn } from "@auction/ui";
-import { buttonVariants } from "@auction/ui/lax";
+import { buttonVariants } from "@auction/ui/lax/button-variants";
+import { cn } from "@auction/ui/lib/utils";
 import Link from "next/link";
 
 /** The top of the selling page: what is offered, and the two ways to begin. */

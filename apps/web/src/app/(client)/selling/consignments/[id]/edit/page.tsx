@@ -24,7 +24,7 @@ import { workspacePageRefusal } from "@/lib/presenters/workspace-access/workspac
 import { consignmentActionsVm } from "@/lib/seller/consignment-actions.vm";
 import { consignmentHref } from "@/lib/seller/consignment-records";
 import { evaluateSubmissionQuality } from "@auction/domain";
-import { Notice } from "@auction/ui/lax";
+import { Notice } from "@auction/ui/lax/notice";
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 

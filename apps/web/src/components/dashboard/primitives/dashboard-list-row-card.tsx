@@ -1,5 +1,5 @@
-import { cn } from "@auction/ui";
 import { Surface } from "@auction/ui/components/surface";
+import { cn } from "@auction/ui/lib/utils";
 import type { ReactNode } from "react";
 
 export type DashboardListRowCardProps = {

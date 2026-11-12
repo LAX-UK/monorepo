@@ -1,7 +1,8 @@
 import { MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
 import type { ResultsBandVM, ResultsStat } from "@/lib/marketing/saleroom/results-band";
-import { cn } from "@auction/ui";
-import { Notice, TextLink } from "@auction/ui/lax";
+import { Notice } from "@auction/ui/lax/notice";
+import { TextLink } from "@auction/ui/lax/text-link";
+import { cn } from "@auction/ui/lib/utils";
 import Link from "next/link";
 
 function Stat({ stat }: { stat: ResultsStat }) {

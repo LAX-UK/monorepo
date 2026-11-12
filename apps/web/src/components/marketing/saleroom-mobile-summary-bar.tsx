@@ -10,7 +10,7 @@ import {
   saleroomOnBlockCaption,
   saleroomPausedCaption,
 } from "@/lib/saleroom/saleroom-mobile-chrome";
-import { Button } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
 import Link from "next/link";
 
 type Props = {

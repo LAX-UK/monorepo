@@ -8,7 +8,8 @@ import {
   MARKETING_PAGE_SHELL,
 } from "@/lib/marketing/chrome";
 import { readSkeletonView } from "@/lib/preferences/skeleton-view.server";
-import { Skeleton, cn } from "@auction/ui";
+import { Skeleton } from "@auction/ui/components/skeleton";
+import { cn } from "@auction/ui/lib/utils";
 
 const CHIP_KEYS = ["chip-a", "chip-b", "chip-c", "chip-d", "chip-e"];
 const RAIL_KEYS = ["rail-a", "rail-b", "rail-c", "rail-d"];

@@ -17,6 +17,11 @@ vi.mock("@/lib/legal-entity/org-module-host.server", () => ({
 }));
 vi.mock("@/lib/data/http/authed-fetch.server", () => ({
   authedServerFetch: vi.fn(async (path: string) => {
+    if (path === `/legal-entities/${VIEWED_ID}`) {
+      return new Response(
+        JSON.stringify({ data: { kind: "individual", membership: { isImpersonation: true } } }),
+      );
+    }
     if (path.startsWith("/admin/impersonation/start")) {
       return new Response(JSON.stringify({ data: { actingCookie: "impersonation-cookie" } }));
     }
@@ -27,6 +32,7 @@ vi.mock("@/lib/data/http/authed-fetch.server", () => ({
   }),
 }));
 
+const VIEWED_ID = vi.hoisted(() => "33333333-3333-4333-8333-333333333333");
 const PERSONAL_ID = vi.hoisted(() => "22222222-2222-4222-8222-222222222222");
 const rememberAccount = vi.hoisted(() => vi.fn(async () => true));
 vi.mock("./remembered-account.server", () => ({ rememberAccount }));
@@ -61,6 +67,14 @@ describe("acting legal entity cookie writes", () => {
       expect.anything(),
     );
     expect(cookieOptions(0)).not.toHaveProperty("domain");
+  });
+
+  it("refuses to switch to the account staff are viewing as the client, and keeps the view cookie", async () => {
+    await expect(switchActingLegalEntity(VIEWED_ID)).resolves.toEqual({
+      ok: false,
+      error: "not_a_member",
+    });
+    expect(jar.set).not.toHaveBeenCalled();
   });
 
   it("switches to the personal account explicitly, so a remembered organisation never returns", async () => {

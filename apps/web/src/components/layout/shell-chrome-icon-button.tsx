@@ -1,8 +1,8 @@
 "use client";
 
 import { type ChromeSurface, chromeIconButtonClassName } from "@/lib/layout/chrome-surface";
-import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
+import { cn } from "@auction/ui/lib/utils";
 import { type ButtonHTMLAttributes, type ReactNode, forwardRef } from "react";
 
 export type ShellChromeIconButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {

@@ -23,7 +23,7 @@ import { MARKETING_PAGE_SHELL, SALE_SECTION_SCROLL_MT } from "@/lib/marketing/ch
 import type { SaleroomDetailPageData } from "@/lib/marketing/load-saleroom-detail-page";
 import { buildSaleAnchorTabs } from "@/lib/marketing/sale-anchor-tab-list";
 import { SALE_CATALOG_LOAD_ALL_CAP } from "@/lib/marketing/saleroom-page-data.service";
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 
 type SaleroomDetailViewProps = SaleroomDetailPageData;
 

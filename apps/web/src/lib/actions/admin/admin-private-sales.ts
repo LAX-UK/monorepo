@@ -25,11 +25,15 @@ import {
 import { instrumentServerAction } from "@/lib/observability/instrument-server-action";
 import type { CapabilityRequirement } from "@auction/types";
 import {
+  type AdminDealArtworkSearchQuery,
+  type DealArtworkSearchResult,
   type StaffDealAction,
   adminDealActionSchema,
+  adminDealArtworkSearchQuerySchema,
   adminDealBuyerSchema,
   adminDealConvertSchema,
   adminDealTermsPatchSchema,
+  dealArtworkSearchResultSchema,
   enquiryRefParamSchema,
   privateSaleReferenceSchema,
 } from "@auction/validators";
@@ -205,5 +209,33 @@ export async function convertEnquiryAction(
     revalidatePath(DEALS_PATH);
     revalidatePath(ENQUIRIES_PATH);
     return actionSuccess(converted);
+  });
+}
+
+/** The register originals a deal can be made for, those the register would hold first. */
+export async function searchDealArtworksAction(
+  query: Partial<AdminDealArtworkSearchQuery>,
+): Promise<ActionResult<DealArtworkSearchResult>> {
+  return instrumentServerAction("searchDealArtworksAction", async () => {
+    const denied = await denyUnlessAdminCapability(PRIVATE_SALE_DEALS_MANAGE_ACCESS);
+    if (denied) return denied;
+    const parsed = adminDealArtworkSearchQuerySchema.safeParse(query);
+    if (!parsed.success) return actionFailure("Check the search.", undefined, 400);
+    const params = new URLSearchParams();
+    for (const [key, value] of Object.entries(parsed.data)) {
+      if (value !== undefined && value !== "") params.set(key, String(value));
+    }
+    const res = await authedServerFetch(`/admin/private-sales/artworks?${params}`).catch(
+      () => null,
+    );
+    if (!res) return actionFailure(dealErrorMessage(undefined, undefined), undefined, 503);
+    if (!res.ok) return refusal(res);
+    return actionSuccess(
+      readDataEnvelope(
+        await readJsonBody(res),
+        dealArtworkSearchResultSchema,
+        "GET /admin/private-sales/artworks",
+      ),
+    );
   });
 }

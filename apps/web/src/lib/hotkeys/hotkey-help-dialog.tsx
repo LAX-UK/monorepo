@@ -5,7 +5,7 @@ import {
   getGroupedHotkeys,
   subscribeHotkeys,
 } from "@/lib/hotkeys/hotkey-registry";
-import { KeyboardShortcutsDialog, type ShortcutGroup } from "@auction/ui/lax";
+import { KeyboardShortcutsDialog, type ShortcutGroup } from "@auction/ui/lax/shortcuts-dialog";
 import { useEffect, useState } from "react";
 
 export const STAFF_SHORTCUTS_NOTE =

@@ -6,7 +6,7 @@ import { WIZARD_STEPS } from "@/lib/forms/submission/step-validation";
 import { useStepErrorSummary } from "@/lib/forms/submission/use-step-error-summary";
 import { validateStep } from "@/lib/forms/submission/validate-step";
 import { Form } from "@auction/ui/components/form";
-import { ErrorSummary } from "@auction/ui/lax";
+import { ErrorSummary } from "@auction/ui/lax/error-summary";
 import { itemSubmissionFormSchema } from "@auction/validators";
 import type { ItemSubmissionFormValues } from "@auction/validators";
 import { zodResolver } from "@hookform/resolvers/zod";

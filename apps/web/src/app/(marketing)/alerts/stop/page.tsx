@@ -2,8 +2,8 @@ import { StopAlertLink } from "@/components/alerts/alert-link-client";
 import { readAlertLink } from "@/lib/data/http/alerts.server";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
 import { TOPIC_CATALOGUE, isAlertTopic } from "@auction/alerts/topics";
-import { ALERT_LINK_COPY } from "@auction/marketing-ui";
-import { EmptyState } from "@auction/ui/lax";
+import { ALERT_LINK_COPY } from "@auction/marketing-ui/alerts/alert-link-copy";
+import { EmptyState } from "@auction/ui/lax/empty-state";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = metadataForPrivate(

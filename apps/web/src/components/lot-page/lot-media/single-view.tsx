@@ -1,7 +1,7 @@
 "use client";
 
 import { MediaImage } from "@/components/ui/media-image";
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 import {
   EmptyStage,
   LotMediaStrip,

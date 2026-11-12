@@ -6,7 +6,8 @@ import {
   formatWeekday,
 } from "@auction/datetime";
 
-import { type CoverTimeTick, formatCoverClock } from "@auction/marketing-ui";
+import { formatCoverClock } from "@auction/marketing-ui/cover/cover-clock";
+import type { CoverTimeTick } from "@auction/marketing-ui/cover/cover-types";
 
 const MINUTE = 60_000;
 const HOUR = 60 * MINUTE;

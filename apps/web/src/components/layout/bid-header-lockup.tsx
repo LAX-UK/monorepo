@@ -2,8 +2,8 @@
 
 import type { SiteHeaderTone } from "@/lib/layout/header-chrome-tone";
 import { FOCUS_RING } from "@/lib/marketing/chrome";
-import { LaxLockup } from "@auction/marketing-ui";
-import { cn } from "@auction/ui";
+import { LaxLockup } from "@auction/marketing-ui/lax-lockup";
+import { cn } from "@auction/ui/lib/utils";
 import Link from "next/link";
 
 /**

@@ -6,7 +6,7 @@ import {
   type ConfirmLinkState,
   type StopChoice,
   type StopLinkState,
-} from "@auction/marketing-ui";
+} from "@auction/marketing-ui/alerts/alert-link-page";
 import Link from "next/link";
 
 /** The confirm page's button: the request is made on the press and not before. */

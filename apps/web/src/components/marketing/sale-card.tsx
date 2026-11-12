@@ -1,7 +1,7 @@
 import { MarketingLinkCard } from "@/components/marketing/marketing-link-card";
 import { SaleCardEditorial } from "@/components/marketing/sale-card-editorial";
 import { SALE_CARD_SHELL_CLASSNAME } from "@/components/sections/sales/card/sale-card-shell";
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 import type { ReactNode } from "react";
 
 export type { SaleCardEditorialProps } from "@/components/marketing/sale-card-editorial";

@@ -19,7 +19,7 @@ import { loadOrganisationDocuments } from "@/lib/organisations/organisation-docu
 import { buildOrganisationDocumentsView } from "@/lib/organisations/organisation-documents.vm";
 import { entityActorCan } from "@auction/domain";
 import type { ConsignmentAgreement } from "@auction/types";
-import { ButtonLink } from "@auction/ui/lax";
+import { ButtonLink } from "@auction/ui/lax/button-link";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 

@@ -1,6 +1,12 @@
 "use client";
 
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@auction/ui";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@auction/ui/components/sheet";
 import { type ReactNode, useRef } from "react";
 
 type Props = {

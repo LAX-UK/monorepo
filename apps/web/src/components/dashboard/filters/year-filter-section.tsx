@@ -1,7 +1,7 @@
 "use client";
 
 import { DashboardFilterSection } from "@/components/dashboard/filters/dashboard-filter-section";
-import { FilterChip } from "@auction/ui";
+import { FilterChip } from "@auction/ui/components/filter-chip";
 
 type YearFilterSectionProps = {
   years: readonly number[];

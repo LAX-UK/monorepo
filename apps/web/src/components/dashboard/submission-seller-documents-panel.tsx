@@ -16,7 +16,8 @@ import {
 } from "@/lib/seller/seller-documents-visibility";
 import { notify } from "@/lib/ui/notify";
 import type { EntityDocument, ItemSubmission, SubmissionDocumentKind } from "@auction/types";
-import { Button, FileAttachment } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
+import { FileAttachment } from "@auction/ui/lax/file-attachment";
 import { Plus } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 

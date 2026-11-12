@@ -4,15 +4,15 @@ import { openCommandPalette } from "@/components/layout/command-palette-events";
 import { useBidAttention } from "@/hooks/use-bid-attention";
 import { showsPublicBottomBar } from "@/lib/layout/bottom-chrome";
 import { buildBidBottomTabs } from "@/lib/navigation/bid-bottom-tabs";
+import { MarketingAvatar } from "@auction/marketing-ui/marketing-account-entry";
+import { MarketingBottomTabBar } from "@auction/marketing-ui/marketing-bottom-tab-bar";
 import {
-  MarketingAvatar,
-  MarketingBottomTabBar,
   MarketingEyeIcon,
   MarketingGavelIcon,
   MarketingHomeIcon,
   MarketingSearchIcon,
   MarketingUserIcon,
-} from "@auction/marketing-ui";
+} from "@auction/marketing-ui/marketing-icons";
 import { usePathname } from "next/navigation";
 import { useMemo } from "react";
 

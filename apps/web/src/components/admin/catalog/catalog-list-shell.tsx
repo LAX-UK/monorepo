@@ -3,7 +3,7 @@ import type {
   AdminListShellVariant,
 } from "@/components/admin/admin-list-shell";
 import { AdminListShell } from "@/components/admin/admin-list-shell";
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 import type { ReactNode } from "react";
 
 type Props = {
