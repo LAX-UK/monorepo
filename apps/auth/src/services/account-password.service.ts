@@ -65,7 +65,7 @@ export class AccountPasswordService {
       outcome = await this.ports.operations.changeAccountPassword(subjectId, {
         currentPassword: input.currentPassword,
         newPassword: input.newPassword,
-        keepSessionId: currentSessionId,
+        keepSessionId: current.id,
       });
     } catch (error) {
       if (error instanceof IdentityOperationError && REFUSALS.has(error.code)) {
@@ -78,7 +78,7 @@ export class AccountPasswordService {
     await this.ports.durable.settle(ACCOUNT_PASSWORD_PATH, {
       kind: "revoke_tokens_except_session",
       userId: subjectId,
-      keepSessionId: currentSessionId,
+      keepSessionId: current.id,
     });
     void this.ports.notices.notify({
       kind: "password_changed",

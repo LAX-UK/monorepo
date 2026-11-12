@@ -1,4 +1,4 @@
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 
 /** Shared nav row styling for staff sidebar items and workspace switcher links. */
 export function sidebarNavItemClassName({

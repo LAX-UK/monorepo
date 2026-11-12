@@ -1,7 +1,7 @@
 import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
 import type { SectionTabAccess } from "@/lib/navigation/section-tabs";
 import { AccessDeniedState } from "@auction/ui/components/access-denied-state";
-import { ButtonLink } from "@auction/ui/lax";
+import { ButtonLink } from "@auction/ui/lax/button-link";
 import Link from "next/link";
 
 type Props = { access: Extract<SectionTabAccess<string>, { kind: "forbidden" }> };

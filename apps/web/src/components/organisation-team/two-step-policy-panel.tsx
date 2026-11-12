@@ -8,7 +8,12 @@ import {
   setOrgTwoFactorPolicyAction,
 } from "@/lib/security/two-factor-policy.actions";
 import { notify } from "@/lib/ui/notify";
-import { Button, Dialog, DialogClose, Meter, Notice, StatusBadge, Switch } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
+import { Dialog, DialogClose } from "@auction/ui/lax/dialog";
+import { Meter } from "@auction/ui/lax/meter";
+import { Notice } from "@auction/ui/lax/notice";
+import { StatusBadge } from "@auction/ui/lax/status-badge";
+import { Switch } from "@auction/ui/lax/switch";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { SettingsCard, SettingsRow } from "./settings-section";

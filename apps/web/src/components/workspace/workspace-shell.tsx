@@ -16,7 +16,8 @@ import { ShellChromeProvider, useShellChrome } from "@/lib/shell/shell-chrome-co
 import type { SearchPage } from "@/lib/workspace/workspace-search-model";
 import type { LaxFamilyLinkVm } from "@auction/lax-ecosystem";
 import { TooltipProvider } from "@auction/ui/components/tooltip";
-import { LaxDensityProvider, laxDensityAttributes } from "@auction/ui/lax";
+import { LaxDensityProvider } from "@auction/ui/lax/density";
+import { laxDensityAttributes } from "@auction/ui/lax/density-attributes";
 import type { LucideIcon } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { type ReactNode, useMemo, useRef } from "react";

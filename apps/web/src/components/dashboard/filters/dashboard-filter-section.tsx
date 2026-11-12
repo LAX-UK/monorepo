@@ -1,6 +1,6 @@
 "use client";
 
-import { LabelCaps } from "@auction/ui";
+import { LabelCaps } from "@auction/ui/components/typography";
 import type { ReactNode } from "react";
 
 export type DashboardFilterSectionProps = {

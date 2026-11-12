@@ -16,7 +16,8 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@auction/ui/components/accordion";
-import { Button, Notice } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
+import { Notice } from "@auction/ui/lax/notice";
 import type { ItemSubmissionFormValues } from "@auction/validators";
 function formatProvenance(values: ItemSubmissionFormValues): string {
   if (values.provenance.length === 0) return "";

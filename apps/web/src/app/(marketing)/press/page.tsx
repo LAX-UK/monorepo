@@ -28,7 +28,7 @@ import { pressHubJsonLd } from "@/lib/seo/press/jsonld";
 import { breadcrumbJsonLd, jsonLdScript } from "@/lib/seo/structured-data";
 import { salePath } from "@/lib/seo/url";
 import { getSiteUrl } from "@/lib/site-url";
-import { ButtonLink } from "@auction/ui/lax";
+import { ButtonLink } from "@auction/ui/lax/button-link";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";

@@ -1,6 +1,7 @@
 import { MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
-import { cn } from "@auction/ui";
-import { ButtonLink, EmptyState } from "@auction/ui/lax";
+import { ButtonLink } from "@auction/ui/lax/button-link";
+import { EmptyState } from "@auction/ui/lax/empty-state";
+import { cn } from "@auction/ui/lib/utils";
 import Link from "next/link";
 
 type Props = {

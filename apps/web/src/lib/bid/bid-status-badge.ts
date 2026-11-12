@@ -1,4 +1,4 @@
-import type { StatusBadgeShape, StatusBadgeTone } from "@auction/ui/lax";
+import type { StatusBadgeShape, StatusBadgeTone } from "@auction/ui/lax/status-badge";
 import type { MyBidStatus } from "./my-bid-status";
 
 /**

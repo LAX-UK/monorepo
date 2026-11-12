@@ -3,8 +3,12 @@
 import { AccountTile } from "@/components/layout/account-switcher/account-tile";
 import { hopUrl, isHopHref } from "@/lib/navigation/hop-href";
 import type { InboxAccountTag, InboxRowView } from "@/lib/notifications/inbox-row.vm";
-import { InlineActionMenu, type InlineActionMenuItem, cn } from "@auction/ui";
-import { Checkbox } from "@auction/ui/lax";
+import {
+  InlineActionMenu,
+  type InlineActionMenuItem,
+} from "@auction/ui/components/inline-action-menu";
+import { Checkbox } from "@auction/ui/lax/checkbox";
+import { cn } from "@auction/ui/lib/utils";
 import Link from "next/link";
 import { inboxFullTime, inboxTime } from "./inbox-time";
 import { notificationTypePresenter } from "./notification-presenters";

@@ -1,5 +1,5 @@
 import type { SalePressMentionType } from "@auction/types";
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 import type React from "react";
 import { type SVGProps, useId } from "react";
 

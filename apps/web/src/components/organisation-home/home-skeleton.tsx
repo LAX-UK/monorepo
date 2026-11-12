@@ -1,7 +1,7 @@
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { DashboardPageHeader } from "@/components/dashboard/primitives/dashboard-page-header";
-import { cn } from "@auction/ui";
-import { Skeleton } from "@auction/ui/lax";
+import { Skeleton } from "@auction/ui/lax/skeleton";
+import { cn } from "@auction/ui/lib/utils";
 import { HomePair } from "./home-pair";
 import { HomePanel } from "./home-section";
 

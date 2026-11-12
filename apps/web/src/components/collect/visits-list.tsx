@@ -4,7 +4,7 @@ import { visitCard } from "@/lib/collect/collect-visit.vm";
 import { orderVisits } from "@/lib/collect/collect-visit.vm";
 import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
 import type { CollectionVisitView } from "@auction/types";
-import { ButtonLink } from "@auction/ui/lax";
+import { ButtonLink } from "@auction/ui/lax/button-link";
 import Link from "next/link";
 import { VisitCard } from "./visit-card";
 

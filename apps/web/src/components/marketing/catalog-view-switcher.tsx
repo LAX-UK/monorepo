@@ -3,7 +3,7 @@
 import { useUrlLayoutView } from "@/lib/hooks/use-url-layout-view";
 import { useViewQueryNavigation } from "@/lib/hooks/use-view-query-navigation";
 import type { CatalogLayoutView } from "@/lib/preferences/view-cookie";
-import { type SegmentOption, SegmentedControl } from "@auction/ui/lax";
+import { type SegmentOption, SegmentedControl } from "@auction/ui/lax/tabs";
 import { LayoutGrid, Rows3, Square } from "lucide-react";
 
 const ALL_MODES: readonly SegmentOption<CatalogLayoutView>[] = [

@@ -1,4 +1,5 @@
-import { LaxDensityProvider, laxDensityAttributes } from "@auction/ui/lax";
+import { LaxDensityProvider } from "@auction/ui/lax/density";
+import { laxDensityAttributes } from "@auction/ui/lax/density-attributes";
 import type { ReactNode } from "react";
 
 /**

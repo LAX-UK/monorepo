@@ -1,7 +1,7 @@
 "use client";
 
 import { MarketingWatchlistHeart } from "@/components/marketing/watchlist-heart-button";
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 import type { ReactNode } from "react";
 import { LotQuickLookTrigger } from "./lot-quick-look-trigger";
 import type { LotQuickLookOpenOptions, LotQuickLookVM } from "./types";

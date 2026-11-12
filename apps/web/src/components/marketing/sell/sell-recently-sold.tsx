@@ -4,7 +4,7 @@ import { MarketingSection } from "@/components/marketing/marketing-section";
 import { SELL_SECTION_IDS } from "@/lib/marketing/sell-landing";
 import { type LotMediaTreatmentIndex, lotMediaTreatment } from "@auction/domain";
 import type { Lot } from "@auction/types";
-import { ScrollRow } from "@auction/ui";
+import { ScrollRow } from "@auction/ui/components/scroll-row";
 
 type Props = {
   works: readonly Lot[];

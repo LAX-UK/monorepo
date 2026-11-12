@@ -1,4 +1,4 @@
-import { MarketingFooterSocials } from "@auction/marketing-ui";
+import { MarketingFooterSocials } from "@auction/marketing-ui/marketing-footer-socials";
 
 const socialClass =
   "h-6 w-6 text-brand-800 transition-opacity hover:opacity-70 dark:text-on-surface";

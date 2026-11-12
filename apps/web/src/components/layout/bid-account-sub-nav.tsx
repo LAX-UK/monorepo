@@ -3,7 +3,7 @@
 import { buildAccountSubNav } from "@/lib/navigation/account-sub-nav.vm";
 import type { ClientNavScope } from "@/lib/navigation/client-nav-model";
 import { useAccountMenuContext } from "@/lib/navigation/use-account-menu-context.client";
-import { AccountSubNav } from "@auction/marketing-ui";
+import { AccountSubNav } from "@auction/marketing-ui/account/index";
 import { usePathname } from "next/navigation";
 import { useMemo } from "react";
 

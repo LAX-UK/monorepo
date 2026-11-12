@@ -4,9 +4,9 @@ import type { HomeSelling } from "@/lib/home-sections/types";
 import { MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
 import { SELL_HOW_IT_WORKS_STEPS } from "@/lib/marketing/sell-how-it-works";
 import { sellIntakeHref } from "@/lib/marketing/sell-intake";
-import { MarketingGalleryTeamBand } from "@auction/marketing-ui";
-import { cn } from "@auction/ui";
-import { buttonVariants } from "@auction/ui/lax";
+import { MarketingGalleryTeamBand } from "@auction/marketing-ui/marketing-gallery-team-band";
+import { buttonVariants } from "@auction/ui/lax/button-variants";
+import { cn } from "@auction/ui/lib/utils";
 import Link from "next/link";
 
 const BODY =

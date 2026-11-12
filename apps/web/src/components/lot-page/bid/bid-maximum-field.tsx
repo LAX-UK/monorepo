@@ -1,7 +1,11 @@
 "use client";
 
 import type { BidDialogView } from "@/lib/lot-page/bid-dialog/bid-dialog-view";
-import { Button, Field, NativeSelect, Notice, TextInput } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
+import { Field } from "@auction/ui/lax/field";
+import { TextInput } from "@auction/ui/lax/input";
+import { NativeSelect } from "@auction/ui/lax/native-select";
+import { Notice } from "@auction/ui/lax/notice";
 import { useRef } from "react";
 
 type Maximum = NonNullable<BidDialogView["maximum"]>;

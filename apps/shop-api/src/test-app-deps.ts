@@ -7,6 +7,7 @@ import { createArtistApplicantService } from "./application/artist-applications/
 import { createArtistApplicationRateLimiters } from "./application/artist-applications/artist-application-rate-limits.js";
 import { createArtistApplicationReviewService } from "./application/artist-applications/artist-application-review.service.js";
 import { ArtworkRegisterReviewService } from "./application/artwork-register/artwork-register-review.service.js";
+import { ZohoSyncHealthService } from "./application/artwork-register/zoho-sync-health.service.js";
 import { createDeliveryQuoteStaffService } from "./application/delivery-quote-staff/delivery-quote-staff.service.js";
 import type { DeliveryRegionsState } from "./application/delivery-regions/delivery-regions.ports.js";
 import { createDeliveryRegionsService } from "./application/delivery-regions/delivery-regions.service.js";
@@ -306,6 +307,7 @@ export function createMinimalShopApiTestDeps(
         }),
         get: async () => null,
       }),
+      zohoSyncHealth: createTestZohoSyncHealth(),
       artworkRegister: new ArtworkRegisterReviewService({
         catalogueChanges: { changesFor: async () => [] },
         queue: {
@@ -813,4 +815,28 @@ export function createMinimalShopApiTestDeps(
     },
     ...overrides,
   };
+}
+
+/** A Sync health service with nothing recorded: Zoho off, nothing queued, no drift. */
+export function createTestZohoSyncHealth(
+  overrides: Partial<ConstructorParameters<typeof ZohoSyncHealthService>[0]> = {},
+): ZohoSyncHealthService {
+  const none = async () => ({ rows: [], total: 0 });
+  return new ZohoSyncHealthService({
+    health: { read: async () => null },
+    inboundRuns: { latestNightlyRun: async () => null },
+    listingRuns: { latestRun: async () => null },
+    outbound: { stats: async () => ({ depth: 0, oldestPendingAt: null, deadLettered: 0 }) },
+    drift: {
+      counts: async () => ({
+        registerWithoutProduct: 0,
+        productsWithoutRegister: 0,
+        statusMismatches: 0,
+      }),
+      registerWithoutProduct: none,
+      productsWithoutRegister: none,
+      statusMismatches: none,
+    },
+    ...overrides,
+  });
 }

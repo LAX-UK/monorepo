@@ -1,4 +1,4 @@
-import type { HangLayout } from "@auction/marketing-ui";
+import type { HangLayout } from "@auction/marketing-ui/hang/hang-layout";
 
 const SCALE_NOTE = "hung at true relative scale";
 

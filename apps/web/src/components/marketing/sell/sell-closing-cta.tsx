@@ -4,8 +4,8 @@ import { MARKETING_PROSE_LINK } from "@/lib/marketing/chrome";
 import { SELL_A_WORK_LABEL, SPECIALIST_RESPONSE_PROMISE } from "@/lib/marketing/sell-flow-copy";
 import { sellContactHref, sellIntakeHref } from "@/lib/marketing/sell-intake";
 import { SELL_TALK_LABEL } from "@/lib/marketing/sell-landing";
-import { cn } from "@auction/ui";
-import { buttonVariants } from "@auction/ui/lax";
+import { buttonVariants } from "@auction/ui/lax/button-variants";
+import { cn } from "@auction/ui/lib/utils";
 import Link from "next/link";
 import type { ReactNode } from "react";
 

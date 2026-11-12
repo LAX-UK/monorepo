@@ -1,12 +1,7 @@
 "use client";
 
-import {
-  PlainLink,
-  SecondaryTabNav,
-  SegmentedControl,
-  TabNav,
-  type TabNavItem,
-} from "@auction/ui/lax";
+import { PlainLink } from "@auction/ui/lax/link";
+import { SecondaryTabNav, SegmentedControl, TabNav, type TabNavItem } from "@auction/ui/lax/tabs";
 import { useState } from "react";
 import { SheetSection, StateRow } from "./sheet-frame";
 

@@ -20,6 +20,7 @@ import { parsePaidLots, purchaseHandover } from "@/lib/purchases/purchase-handov
 import { purchaseProblemPanel } from "@/lib/purchases/purchase-problem";
 import { loadPurchaseSources } from "@/lib/purchases/purchase-sources.server";
 import { purchaseCard } from "@/lib/purchases/purchases.vm";
+import { LONDON_TIME_ZONE, formatDate } from "@auction/datetime";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
@@ -103,12 +104,7 @@ export default async function PurchaseDetailPage({ params, searchParams }: PageP
     accountId && card.problemHref
       ? await getServerPurchaseProblem(accountId, lotId).catch(() => null)
       : null;
-  const wonOn = new Intl.DateTimeFormat("en-GB", {
-    timeZone: "Europe/London",
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  }).format(row.lot.endTime);
+  const wonOn = formatDate(row.lot.endTime, LONDON_TIME_ZONE);
   return (
     <DashboardPage>
       <SetMobileShellTitle title={card.title} />

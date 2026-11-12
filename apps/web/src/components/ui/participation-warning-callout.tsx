@@ -5,7 +5,7 @@ import {
   participationWarningCalloutClassName,
   participationWarningCalloutTitleClassName,
 } from "@/lib/presenters/participation-warning-presentation";
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 import { Info } from "lucide-react";
 
 export type ParticipationWarningCalloutProps = {

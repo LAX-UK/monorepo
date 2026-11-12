@@ -1,7 +1,8 @@
 "use client";
 
 import { type ResultsView, resultsHref } from "@/lib/marketing/results-page-params";
-import { type LinkProps, TabNav } from "@auction/ui/lax";
+import type { LinkProps } from "@auction/ui/lax/link";
+import { TabNav } from "@auction/ui/lax/tabs";
 import Link from "next/link";
 
 /** A view change keeps the reader's place on the page. */

@@ -1,6 +1,6 @@
 import { SITE_CONTACT_EMAIL, SITE_TELEPHONE_DISPLAY, SITE_TELEPHONE_HREF } from "@/lib/brand";
 import { MARKETING_PROSE_LINK } from "@/lib/marketing/chrome";
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 import { Clock, Lock, Phone, ShieldCheck } from "lucide-react";
 import type { ReactNode } from "react";
 

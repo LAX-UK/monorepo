@@ -23,19 +23,14 @@ import {
 } from "@/lib/purchases/purchases-list";
 import type { PurchaseCardVm, PurchasesVm } from "@/lib/purchases/purchases.vm";
 import { addMoneyStrings } from "@auction/domain";
-import { RecordList } from "@auction/ui";
-import {
-  Button,
-  ButtonLink,
-  Field,
-  FilterSheet,
-  ListToolbar,
-  NativeSelect,
-  Notice,
-  ShowingCount,
-  SortMenu,
-  type TabNavItem,
-} from "@auction/ui/lax";
+import { RecordList } from "@auction/ui/components/record-row";
+import { Button } from "@auction/ui/lax/button";
+import { ButtonLink } from "@auction/ui/lax/button-link";
+import { Field } from "@auction/ui/lax/field";
+import { FilterSheet, ListToolbar, ShowingCount, SortMenu } from "@auction/ui/lax/list-toolbar";
+import { NativeSelect } from "@auction/ui/lax/native-select";
+import { Notice } from "@auction/ui/lax/notice";
+import type { TabNavItem } from "@auction/ui/lax/tabs";
 import { X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";

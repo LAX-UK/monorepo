@@ -7,7 +7,7 @@ import {
   staffRoleEndsAtFromLastDay,
 } from "@/lib/admin/people/staff-roles.vm";
 import { CommandMenu, DateInput, StaffAvatar } from "@auction/staff-ui";
-import { Field } from "@auction/ui/lax";
+import { Field } from "@auction/ui/lax/field";
 import type { ConsignmentAssignableStaff } from "@auction/validators";
 import { type ReactElement, useEffect, useState } from "react";
 

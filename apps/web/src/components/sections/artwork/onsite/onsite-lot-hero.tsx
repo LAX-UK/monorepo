@@ -6,7 +6,7 @@ import { formatMoney } from "@/lib/format-currency";
 import { saleFormatExplainerContextFromSale } from "@/lib/sale-format-explainer";
 import { salePath } from "@/lib/seo/url";
 import type { Lot, PublicLotView, Sale } from "@auction/types";
-import { ButtonLink } from "@auction/ui/lax";
+import { ButtonLink } from "@auction/ui/lax/button-link";
 import Link from "next/link";
 import { LotMediaBlock } from "../redesign/lot-media-block";
 

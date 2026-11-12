@@ -3,7 +3,6 @@
 import { useGalleryContext } from "@/components/gallery/context/gallery-context";
 import { GALLERY_MEDIA_PLACEHOLDER_LABEL } from "@/components/gallery/parts/gallery-media-placeholder";
 import { MediaImage } from "@/components/ui/media-image";
-import { Button, cn } from "@auction/ui";
 import {
   BottomSheet,
   BottomSheetContent,
@@ -11,6 +10,8 @@ import {
   BottomSheetHeader,
   BottomSheetTitle,
 } from "@auction/ui/components/bottom-sheet";
+import { Button } from "@auction/ui/components/button";
+import { cn } from "@auction/ui/lib/utils";
 import { useCallback, useRef } from "react";
 
 const LONG_PRESS_MS = 500;

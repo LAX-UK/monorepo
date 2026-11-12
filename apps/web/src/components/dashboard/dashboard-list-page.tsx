@@ -3,7 +3,7 @@
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { DashboardPageHeader } from "@/components/dashboard/primitives/dashboard-page-header";
 import { useClientLayout } from "@/components/layout/client-layout-context";
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 import type { ReactNode } from "react";
 
 export type DashboardListPageProps = {

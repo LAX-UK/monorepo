@@ -2,7 +2,7 @@
 
 import type { WorkspaceAccessDenied } from "@/lib/presenters/workspace-access/workspace-access";
 import { AccessDeniedState } from "@auction/ui/components/access-denied-state";
-import { Button } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
 import Link from "next/link";
 import { SwitchAccountAction, useHasOtherAccounts } from "./switch-account-action";
 import { useAccountHomeLink } from "./use-account-home-link";

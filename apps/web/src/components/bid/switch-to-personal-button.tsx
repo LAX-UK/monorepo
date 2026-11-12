@@ -2,7 +2,7 @@
 
 import { switchActingLegalEntity } from "@/lib/legal-entity/acting-context.actions";
 import { notify } from "@/lib/ui/notify";
-import { Button } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 

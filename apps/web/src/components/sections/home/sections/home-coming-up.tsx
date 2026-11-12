@@ -1,6 +1,6 @@
 import { MarketingSection } from "@/components/marketing/marketing-section";
 import type { HomeComingUp } from "@/lib/home-sections/types";
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 import { HomeSaleCard } from "./home-sale-card";
 
 /**

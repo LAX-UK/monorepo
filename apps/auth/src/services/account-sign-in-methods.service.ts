@@ -194,7 +194,7 @@ export class AccountSignInMethodsService {
       outcome = await this.ports.operations.removePasskey(
         subjectId,
         passkeyId,
-        currentSessionId,
+        current.id,
         this.passkeysOffered(),
       );
     } catch (error) {
@@ -206,7 +206,7 @@ export class AccountSignInMethodsService {
     await this.ports.durable.settle(ACCOUNT_SIGN_IN_METHODS_PATH, {
       kind: "revoke_tokens_except_session",
       userId: subjectId,
-      keepSessionId: currentSessionId,
+      keepSessionId: current.id,
     });
     void this.ports.notices.notify({
       kind: "sign_in_method_removed",
@@ -239,7 +239,7 @@ export class AccountSignInMethodsService {
       ({ revokedSessionIds } = await this.ports.operations.unlinkSocialSignIn(
         subjectId,
         provider,
-        currentSessionId,
+        current.id,
         this.passkeysOffered(),
       ));
     } catch (error) {
@@ -253,7 +253,7 @@ export class AccountSignInMethodsService {
     await this.ports.durable.settle(ACCOUNT_SIGN_IN_METHODS_PATH, {
       kind: "revoke_tokens_except_session",
       userId: subjectId,
-      keepSessionId: currentSessionId,
+      keepSessionId: current.id,
     });
     void this.ports.notices.notify({
       kind: "sign_in_method_removed",

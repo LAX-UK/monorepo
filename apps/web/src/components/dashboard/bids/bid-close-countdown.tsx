@@ -1,4 +1,5 @@
-"use client";
+import { LONDON_TIME_ZONE, formatDayMonthOnly, formatTime } from "@auction/datetime";
+("use client");
 
 import {
   type CountdownTier,
@@ -7,7 +8,7 @@ import {
   formatCountdownSpoken,
 } from "@/lib/format-countdown";
 import { useCountdownTick } from "@/lib/time/use-clock";
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 
 /**
  * Text colour per urgency. The `*-on-surface` status tokens reach 4.5:1 on the page and card
@@ -18,15 +19,6 @@ const TIER_TONE: Record<CountdownTier, string> = {
   urgent: "text-warning-on-surface",
   critical: "text-danger-on-surface",
 };
-
-/** "1 Nov, 12:00", in UK time, the same on the server and in every browser. */
-const CLOSING_TIME = new Intl.DateTimeFormat("en-GB", {
-  day: "numeric",
-  month: "short",
-  hour: "2-digit",
-  minute: "2-digit",
-  timeZone: "Europe/London",
-});
 
 /**
  * Time left before a lot closes, in words ("4m 12s"), ticking each second. It warms to amber in
@@ -42,7 +34,7 @@ export function BidCloseCountdown({ endsAt, className }: { endsAt: string; class
   if (now == null) {
     return (
       <time dateTime={endsAt} className={cn("tabular-nums text-on-surface", className)}>
-        {CLOSING_TIME.format(end)}
+        {`${formatDayMonthOnly(new Date(end), LONDON_TIME_ZONE)}, ${formatTime(new Date(end), LONDON_TIME_ZONE)}`}
       </time>
     );
   }

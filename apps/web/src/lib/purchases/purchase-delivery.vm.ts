@@ -3,13 +3,8 @@ import type {
   CollectionBookingOffer,
 } from "@/lib/data/http/account-buying.types";
 import { formatMoney } from "@/lib/format-currency";
+import { LONDON_TIME_ZONE, formatDayMonthOnly } from "@auction/datetime";
 import type { DeliveryAddress } from "./delivery-addresses.vm";
-
-const DAY_MONTH = new Intl.DateTimeFormat("en-GB", {
-  timeZone: "Europe/London",
-  day: "numeric",
-  month: "short",
-});
 
 /** Where the work is collected from, and how a time is booked. */
 export type CollectionVm = {
@@ -81,7 +76,7 @@ export function deliveryPanel(input: {
     case "quote_requested":
       return {
         kind: "quote-requested",
-        line: `Asked on ${DAY_MONTH.format(quote?.requestedAt ?? new Date())}. We reply within 2 working days.`,
+        line: `Asked on ${formatDayMonthOnly(quote?.requestedAt ?? new Date(), LONDON_TIME_ZONE)}. We reply within 2 working days.`,
         canWithdraw: Boolean(quote?.actions.includes("withdraw")),
       };
     case "quote_ready":
@@ -120,7 +115,9 @@ export function deliveryPanel(input: {
         line: [
           "Collected",
           delivery.collectedBy ? ` by ${delivery.collectedBy}` : "",
-          delivery.collectedAt ? ` on ${DAY_MONTH.format(delivery.collectedAt)}` : "",
+          delivery.collectedAt
+            ? ` on ${formatDayMonthOnly(delivery.collectedAt, LONDON_TIME_ZONE)}`
+            : "",
           ".",
         ].join(""),
       };

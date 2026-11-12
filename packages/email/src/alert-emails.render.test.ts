@@ -59,6 +59,8 @@ describe("alert emails", () => {
   it("formats the London day of a digest", () => {
     expect(digestDateLabel("2026-11-04")).toBe("Wednesday 4 November");
     expect(digestDateLabel("2026-07-01")).toBe("Wednesday 1 July");
+    expect(digestDateLabel("2026-10-25")).toBe("Sunday 25 October");
+    expect(digestDateLabel("2026-03-29")).toBe("Sunday 29 March");
   });
 
   it("sends the confirmation at once on the transactional stream with a stable key", async () => {

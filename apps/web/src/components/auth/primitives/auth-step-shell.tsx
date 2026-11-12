@@ -1,8 +1,8 @@
 "use client";
 
-import { useFocusOnMount } from "@auction/ui";
 import type { WizardProgressStep } from "@auction/ui/components/wizard-progress";
 import { WizardProgress } from "@auction/ui/components/wizard-progress";
+import { useFocusOnMount } from "@auction/ui/hooks/use-focus-on-mount";
 import type { ReactNode } from "react";
 
 export type AuthStepShellProps = {

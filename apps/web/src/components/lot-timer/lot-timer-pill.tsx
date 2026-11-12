@@ -2,7 +2,8 @@
 
 import { useOverlayTone } from "@/components/ui/overlay-tone-context";
 import { overlayPillClasses, overlayToneProps } from "@/lib/ui/overlay-tone-classes";
-import { LiveDot, cn } from "@auction/ui";
+import { LiveDot } from "@auction/ui/components/live-dot";
+import { cn } from "@auction/ui/lib/utils";
 import { Clock } from "lucide-react";
 import type { ReactNode, Ref } from "react";
 import type { LotTimerState } from "./classify";

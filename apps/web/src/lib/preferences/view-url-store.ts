@@ -4,7 +4,7 @@ import {
   replaceMarketingViewUrl,
   resetMarketingViewClientState,
   subscribeMarketingViewUrl,
-} from "@auction/marketing-ui";
+} from "@auction/marketing-ui/catalog-view/catalog-view-url-store";
 export {
   notifyMarketingViewUrlChanged,
   readMarketingViewParam,

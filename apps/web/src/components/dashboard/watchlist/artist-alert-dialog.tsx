@@ -12,7 +12,11 @@ import {
   parseArtistAlertDraft,
 } from "@/lib/watching/artist-alert";
 import { type ArtistAlertCriteria, EMPTY_ARTIST_ALERT_CRITERIA } from "@auction/domain";
-import { Button, Dialog, DialogClose, Field, Notice, TextInput } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
+import { Dialog, DialogClose } from "@auction/ui/lax/dialog";
+import { Field } from "@auction/ui/lax/field";
+import { TextInput } from "@auction/ui/lax/input";
+import { Notice } from "@auction/ui/lax/notice";
 import Link from "next/link";
 import { useEffect, useState, useTransition } from "react";
 

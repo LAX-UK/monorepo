@@ -5,7 +5,7 @@ import { hopUrl } from "@/lib/navigation/hop-href";
 import type { InvitationLinkView } from "@/lib/organisations/invitation-link.vm";
 import { Alert, AlertDescription } from "@auction/ui/components/alert";
 import { EmptyState } from "@auction/ui/components/empty-state";
-import { Button } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
 import { AlertCircle, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
