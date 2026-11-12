@@ -3,6 +3,7 @@ import { bidInvoice, bidInvoiceLine, legalEntity, lot, payment } from "@auction/
 import type { InvoiceLine, InvoiceLineKind, InvoiceSource } from "@auction/types";
 import { and, asc, eq, gte, inArray, isNull, lt, notExists, sql } from "drizzle-orm";
 import {
+  BidInvoiceLotMovedError,
   type BidInvoiceRecord,
   BidInvoiceTotalMismatchError,
   type IBidInvoiceBatchReader,
@@ -13,7 +14,6 @@ import {
   type RaisedInvoice,
   bidInvoiceKey,
 } from "../interfaces/bid-invoice.repository.js";
-import type { CreatePaymentRow } from "../interfaces/payment-write.repository.js";
 import { mapPaymentRow } from "./drizzle-payment.repository.js";
 
 type InvoiceRow = typeof bidInvoice.$inferSelect;
@@ -127,13 +127,11 @@ export class DrizzleBidInvoiceRepository
     );
   }
 
-  async raise(input: {
-    invoice: Parameters<IBidInvoiceRaiseRepository["raise"]>[0]["invoice"];
-    payment: Omit<CreatePaymentRow, "amount" | "invoiceId">;
-  }): Promise<RaisedInvoice> {
-    const { invoice, payment: paymentRow } = input;
+  async raise(input: Parameters<IBidInvoiceRaiseRepository["raise"]>[0]): Promise<RaisedInvoice> {
+    const { invoice, winnerId, payment: paymentRow } = input;
     return this.db.transaction(async (tx) => {
       const database = tx as unknown as Database;
+      await lockLotSoldTo(database, invoice.lotId, winnerId, invoice.buyerLegalEntityId);
       const [inserted] = await database
         .insert(bidInvoice)
         .values({
@@ -266,6 +264,33 @@ export class DrizzleBidInvoiceRepository
       )
       .returning({ id: bidInvoice.id });
     return rows.length > 0;
+  }
+}
+
+/**
+ * Locks the lot row first (the order a buyer default and a re-award use) and refuses unless it is
+ * still ended, won by `winnerId` and bought in `buyerLegalEntityId`. A default that committed after
+ * the caller read the lot is seen here, and one still running waits for this transaction.
+ */
+async function lockLotSoldTo(
+  db: Database,
+  lotId: string,
+  winnerId: string,
+  buyerLegalEntityId: string,
+): Promise<void> {
+  const [locked] = await db
+    .select({ status: lot.status, winnerId: lot.winnerId, entityId: lot.buyerLegalEntityId })
+    .from(lot)
+    .where(eq(lot.id, lotId))
+    .for("update")
+    .limit(1);
+  if (
+    !locked ||
+    locked.status !== "ended" ||
+    locked.winnerId !== winnerId ||
+    locked.entityId !== buyerLegalEntityId
+  ) {
+    throw new BidInvoiceLotMovedError(lotId);
   }
 }
 

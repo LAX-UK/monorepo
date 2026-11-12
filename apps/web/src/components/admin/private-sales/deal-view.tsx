@@ -21,8 +21,10 @@ import { Copy, PencilLine, UserRoundPlus } from "@auction/staff-ui/icons";
 import type { StaffDealAction } from "@auction/validators";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useId, useState } from "react";
+import { type ComponentProps, useId, useState } from "react";
 import { DealActionDialog } from "./deal-action-dialog";
+import { DealArtworkDialog, type DealArtworkMode } from "./deal-artwork-dialog";
+import { DealArtworkSection } from "./deal-artwork-section";
 import { DealStageBadge } from "./deal-cells";
 import {
   ClosedNotice,
@@ -35,6 +37,8 @@ import {
 } from "./deal-sections";
 import { DealTermsDialog } from "./deal-terms-dialog";
 import { NameBuyerDialog } from "./name-buyer-dialog";
+import { RemoveDealArtworkDialog } from "./remove-deal-artwork-dialog";
+import { SettlementFollowUpNotice } from "./settlement-follow-up-notice";
 
 const NextLink: StaffLinkComponent = Link;
 
@@ -47,7 +51,12 @@ const FORWARD: readonly StaffDealAction[] = [
   "clear",
 ];
 
-type Dialog = { kind: "action"; action: StaffDealAction } | { kind: "terms" } | { kind: "buyer" };
+type Dialog =
+  | { kind: "action"; action: StaffDealAction }
+  | { kind: "terms" }
+  | { kind: "buyer" }
+  | { kind: "artwork"; mode: DealArtworkMode }
+  | { kind: "remove_artwork" };
 
 /**
  * One private sale on the staff record page: its stage and the one next move, then the money, the
@@ -55,7 +64,14 @@ type Dialog = { kind: "action"; action: StaffDealAction } | { kind: "terms" } | 
  * why, in words, and stays off until the reasons are gone; the checks are read from the existing
  * records and decided in Compliance, never here.
  */
-export function DealView({ deal }: { deal: DealRecord }) {
+export function DealView({
+  deal,
+  markSold,
+}: {
+  deal: DealRecord;
+  /** The action behind "Try again" on a settled deal's notice; the real one unless a test replaces it. */
+  markSold?: ComponentProps<typeof SettlementFollowUpNotice>["markSold"];
+}) {
   const router = useRouter();
   const [dialog, setDialog] = useState<Dialog | null>(null);
   const blockersId = useId();
@@ -66,7 +82,14 @@ export function DealView({ deal }: { deal: DealRecord }) {
   const nextState = next ? offered.get(next) : undefined;
   const blocked = nextState && nextState.blockers.length > 0;
   const canEdit = deal.editableTerms.length > 0;
-  const readOnly = deal.actions.length === 0 && !canEdit && !deal.canNameBuyer;
+  const canWorkOnArtwork = deal.artworkAccess.canLink || deal.artworkAccess.canChange;
+  const canRetrySettlement = deal.settlementFollowUp?.canRetry === true;
+  const readOnly =
+    deal.actions.length === 0 &&
+    !canEdit &&
+    !deal.canNameBuyer &&
+    !canWorkOnArtwork &&
+    !canRetrySettlement;
 
   const overflowActions = [
     ...(["clear", "record_bank_transfer", "refund", "record_bank_refund", "cancel"] as const)
@@ -120,6 +143,7 @@ export function DealView({ deal }: { deal: DealRecord }) {
 
   const notice = (
     <div className="flex flex-col gap-3">
+      <SettlementFollowUpNotice deal={deal} {...(markSold ? { markSold } : {})} />
       <ClosedNotice deal={deal} />
       <PolicyNotice deal={deal} />
       {blocked && next ? (
@@ -133,7 +157,11 @@ export function DealView({ deal }: { deal: DealRecord }) {
       ) : null}
     </div>
   );
-  const hasNotice = deal.stage === "cancelled" || deal.policy.gaps.length > 0 || Boolean(blocked);
+  const hasNotice =
+    deal.stage === "cancelled" ||
+    deal.policy.gaps.length > 0 ||
+    Boolean(blocked) ||
+    deal.settlementFollowUp !== null;
 
   return (
     <>
@@ -149,6 +177,7 @@ export function DealView({ deal }: { deal: DealRecord }) {
         meta={
           <>
             <MetaItem label="Work">{deal.work.reference}</MetaItem>
+            {deal.artwork ? <MetaItem label="Stock code">{deal.artwork.stockCode}</MetaItem> : null}
             {deal.priceMinor !== null ? (
               <MetaItem label="Price">{formatStaffMoney(deal.priceMinor)}</MetaItem>
             ) : null}
@@ -186,13 +215,19 @@ export function DealView({ deal }: { deal: DealRecord }) {
         {...(hasNotice ? { notice } : {})}
         rail={
           <>
+            <DealArtworkSection
+              deal={deal}
+              onLink={() => setDialog({ kind: "artwork", mode: "link" })}
+              onChange={() => setDialog({ kind: "artwork", mode: "change" })}
+              onRemove={() => setDialog({ kind: "remove_artwork" })}
+            />
             <PartiesSection deal={deal} />
             <Section id="history" title="History" description="Each stage the deal has been in.">
               <Timeline label="Private sale history" events={dealTimeline(deal)} />
             </Section>
           </>
         }
-        railLabel="Parties, checks and history"
+        railLabel="Artwork, parties, checks and history"
       >
         <MoneySection deal={deal} />
         <TermsSection deal={deal} />
@@ -219,6 +254,31 @@ export function DealView({ deal }: { deal: DealRecord }) {
         onReload={reload}
         onDone={() => {
           notify.success(`Terms saved · ${deal.reference}`);
+          reload();
+        }}
+      />
+      {dialog?.kind === "artwork" ? (
+        <DealArtworkDialog
+          open
+          onOpenChange={(open) => setDialog(open ? dialog : null)}
+          mode={dialog.mode}
+          deal={deal}
+          onReload={reload}
+          onDone={(mode) => {
+            notify.success(
+              `${mode === "link" ? "Artwork held" : "Artwork changed"} · ${deal.reference}`,
+            );
+            reload();
+          }}
+        />
+      ) : null}
+      <RemoveDealArtworkDialog
+        open={dialog?.kind === "remove_artwork"}
+        onOpenChange={(open) => setDialog(open ? { kind: "remove_artwork" } : null)}
+        deal={deal}
+        onReload={reload}
+        onDone={() => {
+          notify.success(`Artwork removed · ${deal.reference}`);
           reload();
         }}
       />

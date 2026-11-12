@@ -52,6 +52,7 @@ export const DEAL_VIEW_LABELS = {
   needs_me: "Needs me",
   waiting_on_checks: "Waiting on checks",
   payment_due: "Payment due",
+  needs_attention: "Needs attention",
   settled: "Settled",
   cancelled: "Cancelled",
   all: "All",
@@ -62,6 +63,7 @@ export const DEAL_ORDER_NOTE = {
   needs_me: "Longest waiting first",
   waiting_on_checks: "Longest waiting first",
   payment_due: "Longest waiting first",
+  needs_attention: "Longest waiting first",
   settled: "Latest first",
   cancelled: "Latest first",
   all: "Latest first",
@@ -83,6 +85,11 @@ export const DEAL_EMPTY_COPY = {
   payment_due: {
     title: "No payment is due",
     description: "Invoiced deals appear here until the buyer has paid.",
+  },
+  needs_attention: {
+    title: "Nothing needs attention",
+    description:
+      "A settled deal appears here if its artwork's record could not be marked sold. It clears itself once the record is right.",
   },
   settled: {
     title: "No deal has settled yet",
@@ -227,11 +234,17 @@ export const DEAL_ACTION_COPY = {
   cancel: {
     label: "Cancel the deal",
     effect: (deal) =>
-      deal.stage === "paid" || deal.stage === "released"
-        ? "Cancels the deal. The buyer must be refunded first."
-        : deal.stage === "invoiced"
-          ? "Cancels the deal and ends the buyer's open payment, so it can't be paid afterwards."
-          : "Cancels the deal. It can't be reopened.",
+      `${
+        deal.stage === "paid" || deal.stage === "released"
+          ? "Cancels the deal. The buyer must be refunded first."
+          : deal.stage === "invoiced"
+            ? "Cancels the deal and ends the buyer's open payment, so it can't be paid afterwards."
+            : "Cancels the deal. It can't be reopened."
+      }${
+        deal.artwork
+          ? ` Releases ${deal.artwork.title}: it shows as Withdrawn for 30 days and can be offered again.`
+          : ""
+      }`,
     confirm: "Cancel deal",
     reason: {
       label: "Reason",

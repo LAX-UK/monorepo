@@ -64,3 +64,43 @@ describe("LotLifecycleRecording.recordReturnedToInventory", () => {
     );
   });
 });
+
+describe("LotLifecycleRecording.recordReoffer", () => {
+  it("records a re-offer step against the lot, which stays ended", async () => {
+    const record = vi.fn();
+    const recorder = { record } as unknown as LotLifecycleEventRecorder;
+    const svc = new LotLifecycleRecording(recorder);
+    const tx = {} as Database;
+    const payload = {
+      reofferId: "11111111-1111-4111-8111-111111111111",
+      buyerDefaultId: "22222222-2222-4222-8222-222222222222",
+      sequence: 1,
+      actor: "staff" as const,
+      amountPence: 90_000,
+      offerEndsAt: "2026-11-20T17:00:00.000Z",
+    };
+
+    await svc.recordReoffer(
+      tx,
+      { id: "lot-1", saleId: "sale-1", sellerLegalEntityId: "seller-1" },
+      "lot.reoffer_sent",
+      payload,
+      "staff-1",
+    );
+
+    expect(record).toHaveBeenCalledWith(
+      tx,
+      expect.objectContaining({
+        lotId: "lot-1",
+        eventType: "lot.reoffer_sent",
+        payload,
+        actorUserId: "staff-1",
+        actingLegalEntityId: "seller-1",
+        snapshotPatch: expect.objectContaining({
+          currentStatus: "ended",
+          lastEventType: "lot.reoffer_sent",
+        }),
+      }),
+    );
+  });
+});

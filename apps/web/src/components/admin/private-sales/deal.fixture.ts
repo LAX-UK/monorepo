@@ -15,6 +15,7 @@ export function listItem(overrides: Partial<DealListItem> = {}): DealListItem {
     paymentDueAt: null,
     collectionDueAt: null,
     updatedAt: "2026-11-03T10:00:00.000Z",
+    settlementFollowUp: null,
     ...overrides,
   };
 }
@@ -53,6 +54,26 @@ export function dealRecord(overrides: Partial<DealRecord> = {}): DealRecord {
       costsMinor: 25_000,
       netToSellerMinor: 4_055_000,
     },
+    artwork: {
+      id: "reg-1",
+      title: "Evening Tide",
+      artist: "Hannah Cole",
+      medium: "Oil on canvas",
+      size: "76 x 102 cm",
+      stockCode: "LAX-ORI-HC-24-0042",
+      catalogueStatus: "Available",
+      thumbnailUrl: null,
+      whereItIs: {
+        key: "private_sale",
+        chip: { label: "In a private sale", tone: "info", marker: "filled" },
+      },
+      heldSince: "2026-11-01T09:00:00.000Z",
+      recordHref: "https://admin.lax.test/from-zoho/reg-1",
+    },
+    artworkUnlinkedReason: null,
+    artworkAccess: { canLink: false, canChange: true, changeOffReason: null },
+    artworkMoves: [],
+    settlementFollowUp: null,
     seller: {
       role: "seller",
       legalEntityId: "le-seller",

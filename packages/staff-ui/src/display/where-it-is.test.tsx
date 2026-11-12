@@ -24,6 +24,22 @@ describe("WhereItIsSection", () => {
   const chip: WhereItIsChipSpec = { label: "On lax.art", tone: "success", marker: "filled" };
   const event = { id: "e1", title: "Published on lax.art", at: "2026-11-02T15:20:00Z" };
 
+  it("shows what the place is about above the line", () => {
+    render(
+      <WhereItIsSection
+        chip={chip}
+        title="Artwork"
+        subject={<span data-testid="subject">Evening Tide</span>}
+        lead="Held for this deal"
+      />,
+    );
+    const region = screen.getByRole("region", { name: "Artwork" });
+    const subject = within(region).getByTestId("subject");
+    const line = within(region).getByText("Held for this deal");
+    // The subject comes first, then the line.
+    expect(subject.compareDocumentPosition(line) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
   it("is a titled region with the place as a badge and the line in words", () => {
     render(
       <WhereItIsSection chip={chip} lead="Live on lax.art" trail=" since Mon 2 Nov, 15:20 GMT" />,

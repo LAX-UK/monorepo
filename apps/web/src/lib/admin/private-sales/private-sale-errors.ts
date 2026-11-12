@@ -31,6 +31,10 @@ export const DEAL_ERROR_COPY: Readonly<Record<string, string>> = {
   artwork_unavailable: "This artwork is already offered somewhere else, reserved or sold.",
   artwork_register_busy:
     "The artwork register couldn't record the hold, so nothing was converted. Try again.",
+  // Linking, changing and removing the artwork of a deal
+  artwork_locked: "The artwork can't be changed at this stage.",
+  artwork_unchanged: "That is the artwork this deal already has.",
+  reason_required: "Say why the artwork is being changed.",
   work_has_no_seller_contact: "That work has no one who can act for its owner yet.",
 };
 

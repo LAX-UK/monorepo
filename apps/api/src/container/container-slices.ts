@@ -103,6 +103,7 @@ import type { OrganisationTeamServices } from "./create-organisation-team-servic
 import type { OrganisationWorkspaceServices } from "./create-organisation-workspace-services.js";
 import type { ContainerPaymentsServices } from "./create-payments-services.js";
 import type { ContainerPlatformServices } from "./create-platform-services.js";
+import type { ContainerReofferServices } from "./create-reoffer-services.js";
 import type { ContainerRepositories } from "./create-repositories.js";
 import type { ContainerSaleRegistrationServices } from "./create-sale-registration-services.js";
 import type { ContainerUserMiscServices } from "./create-user-misc-services.js";
@@ -371,6 +372,11 @@ export type ContainerOrganisationAccessSlice = {
   organisationAccess: OrganisationAccessServices;
 };
 
+/** Re-offering a defaulted lot to the next bidder: staff steps and both workspaces' answers. */
+export type ContainerReofferSlice = {
+  reoffer: ContainerReofferServices;
+};
+
 /** The client workspace's selling modules for the acting account (`organisationSelling`). */
 export type ContainerOrganisationSellingSlice = {
   organisationSelling: OrganisationSellingServices;
@@ -433,6 +439,7 @@ export type ContainerComposedSlices = ContainerRootSlice &
   ContainerOrganisationHomeSlice &
   ContainerOrganisationBuyingSlice &
   ContainerOrganisationSellingSlice &
+  ContainerReofferSlice &
   ContainerOrganisationAccessSlice &
   ContainerOrganisationWorkspaceSlice &
   ContainerOrganisationTeamSlice &
@@ -722,6 +729,12 @@ export type ContainerOrganisationSellingRoutesSlice = Pick<
   "userSuspensionChecker" | "requireLegalEntityContext" | "organisationSelling"
 >;
 
+/** The offers to the acting account as a bidder, and the requests to it as a seller. */
+export type ContainerReofferRoutesSlice = Pick<
+  Container,
+  "userSuspensionChecker" | "requireLegalEntityContext" | "reoffer"
+>;
+
 /** Registrations, purchases, courier quotes and collection booking for the acting account. */
 export type ContainerOrganisationBuyingRoutesSlice = Pick<
   Container,
@@ -835,7 +848,8 @@ export type ContainerAdminPlatformRoutesSlice = ContainerAdminRoutesSlice &
   Pick<Container, "redis"> &
   ContainerAdminOnsiteEventRoutesSlice &
   ContainerAdminMarketingEventsRoutesSlice &
-  ContainerAdminQueuesRoutesSlice;
+  ContainerAdminQueuesRoutesSlice &
+  ContainerReofferSlice;
 
 /** Password step-up middleware minimum deps. */
 export type ContainerPasswordStepUpSlice = {

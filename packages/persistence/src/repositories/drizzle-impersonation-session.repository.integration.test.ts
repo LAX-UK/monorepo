@@ -56,6 +56,22 @@ describe.skipIf(!HAS_DB)("DrizzleImpersonationSessionRepository (integration)", 
     expect(row?.endReason).toBe("session_replaced");
   });
 
+  it("ends an expired session for its owner but never a live one", async () => {
+    const live = await repo.start(staffId, entityId);
+    expect(await repo.endExpiredForActor(live.id, staffId, "timeout")).toBe(false);
+    expect((await repo.findById(live.id))?.endedAt).toBeNull();
+
+    const expired = await repo.start(staffId, entityId);
+    await db
+      .update(impersonationSession)
+      .set({ expiresAt: new Date(Date.now() - 1000) })
+      .where(eq(impersonationSession.id, expired.id));
+    expect(await repo.endExpiredForActor(expired.id, otherStaffId, "timeout")).toBe(false);
+    expect(await repo.endExpiredForActor(expired.id, staffId, "timeout")).toBe(true);
+    expect(await repo.endExpiredForActor(expired.id, staffId, "manual")).toBe(false);
+    expect((await repo.findById(expired.id))?.endReason).toBe("timeout");
+  });
+
   it("never ends a session for someone who does not own it", async () => {
     const session = await repo.start(staffId, entityId);
 

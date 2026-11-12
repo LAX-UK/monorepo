@@ -65,6 +65,20 @@ describe("LAX Account security emails", () => {
     expectSharedParts(rendered);
   });
 
+  it("sends the new-device notice's reader to their signed-in devices list", async () => {
+    const reviewDevicesUrl = "https://account.lax.bid/account/security#signed-in-devices";
+    const rendered = await renderEmail("new-device-login", { ...BASE, reviewDevicesUrl });
+    expect(rendered.text).toContain("Review where you're signed in");
+    expect(rendered.text).toContain(reviewDevicesUrl);
+    expect(rendered.text).not.toContain("Secure your account");
+  });
+
+  it("falls back to the security page for a new-device notice queued without the list link", async () => {
+    const rendered = await renderEmail("new-device-login", BASE);
+    expect(rendered.text).not.toContain("Review where you're signed in");
+    expect(rendered.text).toContain("Secure your account");
+  });
+
   it("renders phone verified with the masked number", async () => {
     const rendered = await renderEmail("phone-verified", { ...BASE, maskedPhone: "+44 •••• 1234" });
     expect(rendered.subject).toBe("A phone number was verified on your LAX Account");

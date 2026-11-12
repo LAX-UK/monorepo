@@ -13,6 +13,7 @@ import {
   StaffDialog,
   TextInput,
 } from "@auction/staff-ui";
+import { type DealArtworkLock, dealArtworkLockSchema } from "@auction/validators";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import {
   ARTWORK_REFUSED,
@@ -22,6 +23,7 @@ import {
   artworkConvertInput,
   defaultArtworkChoice,
 } from "./artwork-choice";
+import { LockRefusalNotice } from "./lock-refusal-notice";
 import { RegisterArtworkField } from "./register-artwork-field";
 import type { SearchRegisterArtworks } from "./register-artwork-picker";
 import { useEarlierLotArtwork } from "./use-earlier-lot-artwork";
@@ -72,6 +74,7 @@ export function ConvertEnquiryDialog({
     message: string;
     stale: boolean;
     refusedArtwork: boolean;
+    lock: DealArtworkLock | null;
   } | null>(null);
   // The artwork the register refused stays chosen, with a reason to pick another.
   const [refusedId, setRefusedId] = useState<string | null>(null);
@@ -165,10 +168,12 @@ export function ConvertEnquiryDialog({
         // Someone else took it first: ask the register again so the list tells the truth.
         setRefreshKey((key) => key + 1);
       }
+      const lock = dealArtworkLockSchema.safeParse(result.meta?.lock);
       setFailure({
         message: result.error,
         stale: isStaleDeal(result.errorCode),
         refusedArtwork,
+        lock: lock.success ? lock.data : null,
       });
     }
   }
@@ -229,16 +234,10 @@ export function ConvertEnquiryDialog({
               Someone else changed this enquiry while you had it open. Reload to see their changes;
               nothing was converted.
             </Notice>
+          ) : failure.refusedArtwork ? (
+            <LockRefusalNotice message={failure.message} lock={failure.lock} />
           ) : (
-            <Notice
-              tone="danger"
-              alert
-              title={
-                failure.refusedArtwork
-                  ? "That artwork can't be held for this deal"
-                  : "The enquiry couldn't be converted"
-              }
-            >
+            <Notice tone="danger" alert title="The enquiry couldn't be converted">
               {failure.message}
             </Notice>
           )

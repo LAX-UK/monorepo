@@ -8,10 +8,13 @@ import {
 import type { AccountActionResult } from "@/server/domain/account-action-result";
 import { buildReauthHref } from "@/server/domain/account-reauth";
 import {
+  NO_OTHER_DEVICES,
   type SessionRowVm,
   type SessionsVm,
   buildSignOutDeviceConfirm,
   buildSignOutOthersConfirm,
+  buildSignedOutDeviceMessage,
+  buildSignedOutOthersMessage,
   showMoreDevicesLabel,
   splitOtherDevices,
 } from "@/server/domain/account-sessions.vm";
@@ -19,7 +22,8 @@ import { cn } from "@auction/ui";
 import { ConfirmDialog } from "@auction/ui/components/confirm-dialog";
 import { useRouter } from "next/navigation";
 import { type Ref, useEffect, useRef, useState } from "react";
-import { LIST_ROW, ListCard, TAG } from "./account-ui";
+import { ListCard, TAG } from "./account-ui";
+import { DeviceKindIcon } from "./device-kind-icon";
 import { ProductText } from "./product-name";
 
 type Target = { kind: "device"; row: SessionRowVm } | { kind: "others" };
@@ -29,6 +33,13 @@ type SignedInDevicesListProps = {
   /** Where to come back to after a fresh sign-in, which signing a device out may require. */
   returnTo: string;
 };
+
+/**
+ * The icon, the text and Sign out on one line; on a phone Sign out drops under the text, in line
+ * with it rather than with the icon.
+ */
+const DEVICE_ROW =
+  "grid min-h-16 grid-cols-[1.75rem_minmax(0,1fr)] items-center gap-x-3 gap-y-3 px-4 py-3 sm:grid-cols-[1.75rem_minmax(0,1fr)_auto] sm:px-6 sm:py-2.5";
 
 function DeviceRow({
   row,
@@ -44,20 +55,24 @@ function DeviceRow({
     <li
       ref={rowRef}
       tabIndex={rowRef ? -1 : undefined}
-      className={cn(LIST_ROW, "outline-offset-[-2px]")}
+      className={cn(DEVICE_ROW, "outline-offset-[-2px]")}
     >
-      <div className="min-w-0 flex-1 basis-48">
+      <DeviceKindIcon kind={row.deviceKind} />
+      <div className="min-w-0">
         <p className="flex flex-wrap items-center gap-2 text-sm font-medium text-on-surface">
           {row.deviceLabel}
           {row.isCurrent ? <span className={TAG}>This device</span> : null}
         </p>
-        <p className="mt-0.5 text-xs text-on-surface-variant">{row.detail}</p>
+        <p className="mt-0.5 text-xs text-on-surface-variant">{row.activity}</p>
+        <p className="text-xs text-on-surface-variant">
+          <ProductText text={row.signedIn} weight="inherit" />
+        </p>
       </div>
       {onSignOut ? (
         <Button
           type="button"
           variant="outline"
-          className="shrink-0"
+          className="col-start-2 justify-self-start sm:col-start-3 sm:row-start-1 sm:justify-self-end"
           aria-label={`Sign out ${row.deviceLabel}`}
           onClick={onSignOut}
         >
@@ -122,7 +137,11 @@ export function SignedInDevicesList({ sessions, returnTo }: SignedInDevicesListP
       return;
     }
     setTarget(null);
-    setNotice(result.message);
+    setNotice(
+      current.kind === "device"
+        ? buildSignedOutDeviceMessage(current.row)
+        : buildSignedOutOthersMessage(sessions.others.length),
+    );
     router.refresh();
   }
 
@@ -154,7 +173,7 @@ export function SignedInDevicesList({ sessions, returnTo }: SignedInDevicesListP
         </Button>
       ) : null}
       {sessions.others.length === 0 ? (
-        <p className="text-xs text-on-surface-variant">You're not signed in on any other device.</p>
+        <p className="text-xs text-on-surface-variant">{NO_OTHER_DEVICES}</p>
       ) : (
         <Button
           type="button"
@@ -191,6 +210,7 @@ export function SignedInDevicesList({ sessions, returnTo }: SignedInDevicesListP
             </>
           }
           confirmLabel={confirm.confirmLabel}
+          loadingLabel={confirm.loadingLabel}
           loading={busy}
           onConfirm={() => run(target)}
         />

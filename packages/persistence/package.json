@@ -32,6 +32,7 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
+    "@auction/accounting-domain": "workspace:*",
     "@auction/alerts": "workspace:*",
     "@auction/artwork-register-contracts": "workspace:*",
     "@auction/datetime": "workspace:*",

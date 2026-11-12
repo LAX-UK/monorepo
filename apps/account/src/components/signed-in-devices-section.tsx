@@ -21,7 +21,7 @@ export function SignedInDevicesSection({
     <AccountSection
       id="signed-in-devices"
       title="Where you're signed in"
-      description="Sign out any device you don't recognise. If you don't, change your password."
+      description="Each browser or device signed in to your LAX Account. Sign out any you don't recognise, then change your password."
     >
       {section.status === "list" ? (
         <SignedInDevicesList sessions={section.sessions} returnTo={pagePath} />

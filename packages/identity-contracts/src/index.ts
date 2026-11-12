@@ -14,7 +14,13 @@ export {
   type AccountPasswordChangedResponse,
   type AccountPasswordError,
 } from "./account-password.js";
-export { formatDeviceLabel } from "./device-label.js";
+export {
+  DEVICE_KINDS,
+  type DeviceKind,
+  detectDeviceKind,
+  formatDeviceLabel,
+} from "./device-label.js";
+export { DEVICE_LIST_PRODUCTS, deviceProductNames } from "./account-device-products.js";
 export {
   ACCOUNT_DELETION_PENDING_CODE,
   accountDeletionDueAt,

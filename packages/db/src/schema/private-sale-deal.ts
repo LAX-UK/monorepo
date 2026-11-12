@@ -3,6 +3,7 @@ import {
   bigint,
   boolean,
   check,
+  foreignKey,
   index,
   integer,
   pgTable,
@@ -216,6 +217,60 @@ export const privateSaleDealStageHistory = pgTable(
       sql.raw(
         `"to_stage" IN (${STAGES}) AND ("from_stage" IS NULL OR "from_stage" IN (${STAGES}))`,
       ),
+    ),
+  ],
+);
+
+/**
+ * Each time staff link, change or take off a deal's artwork: who, when, why, and the artwork
+ * before and after. Append-only (a trigger refuses changes and deletes), written in the same
+ * transaction as the change.
+ */
+export const privateSaleDealArtworkHistory = pgTable(
+  "private_sale_deal_artwork_history",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    dealId: uuid("deal_id").notNull(),
+    /** `linked` also covers recording the reason there is no register artwork. */
+    action: text("action").notNull(),
+    actorUserId: text("actor_user_id"),
+    fromArtworkRegisterId: uuid("from_artwork_register_id"),
+    toArtworkRegisterId: uuid("to_artwork_register_id"),
+    fromUnlinkedReason: text("from_unlinked_reason"),
+    toUnlinkedReason: text("to_unlinked_reason"),
+    /** The staff member's own words: required to change an artwork, an optional note on a removal. */
+    reason: text("reason"),
+    createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    foreignKey({
+      name: "private_sale_deal_artwork_history_deal_fk",
+      columns: [table.dealId],
+      foreignColumns: [privateSaleDeal.id],
+    }).onDelete("restrict"),
+    foreignKey({
+      name: "private_sale_deal_artwork_history_actor_fk",
+      columns: [table.actorUserId],
+      foreignColumns: [user.id],
+    }).onDelete("set null"),
+    foreignKey({
+      name: "private_sale_deal_artwork_history_from_fk",
+      columns: [table.fromArtworkRegisterId],
+      foreignColumns: [artworkRegister.id],
+    }).onDelete("restrict"),
+    foreignKey({
+      name: "private_sale_deal_artwork_history_to_fk",
+      columns: [table.toArtworkRegisterId],
+      foreignColumns: [artworkRegister.id],
+    }).onDelete("restrict"),
+    index("private_sale_deal_artwork_history_deal_idx").on(table.dealId, table.createdAt),
+    check(
+      "private_sale_deal_artwork_history_action_check",
+      sql`${table.action} IN ('linked', 'changed', 'removed')`,
+    ),
+    check(
+      "private_sale_deal_artwork_history_reasons_check",
+      sql`(${table.fromUnlinkedReason} IS NULL OR ${table.fromUnlinkedReason} IN ('sellers_own_work', 'in_zoho_not_linked')) AND (${table.toUnlinkedReason} IS NULL OR ${table.toUnlinkedReason} IN ('sellers_own_work', 'in_zoho_not_linked'))`,
     ),
   ],
 );

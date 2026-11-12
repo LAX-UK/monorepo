@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  adminDealArtworkRemoveSchema,
   adminDealArtworkSearchQuerySchema,
+  adminDealArtworkSetSchema,
   adminDealConvertSchema,
+  dealArtworkLockSchema,
   dealArtworkSearchResultSchema,
 } from "./private-sale-deal.js";
 
@@ -118,5 +121,84 @@ describe("dealArtworkSearchResultSchema", () => {
       dealArtworkSearchResultSchema.safeParse({ items: [bad], hasMore: false, preselected: null })
         .success,
     ).toBe(false);
+  });
+});
+
+describe("adminDealArtworkSetSchema", () => {
+  const ART = "5b1c1b9e-3a2f-4f6e-9c1d-2f7a8e9d0c11";
+
+  it("takes an artwork, or a reason it is not in the register, against a version", () => {
+    expect(
+      adminDealArtworkSetSchema.safeParse({ version: 3, artworkRegisterId: ART }).success,
+    ).toBe(true);
+    expect(
+      adminDealArtworkSetSchema.safeParse({
+        version: 3,
+        notInRegister: { reason: "sellers_own_work" },
+      }).success,
+    ).toBe(true);
+  });
+
+  it("trims the reason for a change and refuses an empty or very long one", () => {
+    const parsed = adminDealArtworkSetSchema.parse({
+      version: 3,
+      artworkRegisterId: ART,
+      reason: "  Chose it.  ",
+    });
+    expect(parsed.reason).toBe("Chose it.");
+    expect(
+      adminDealArtworkSetSchema.safeParse({ version: 3, artworkRegisterId: ART, reason: "   " })
+        .success,
+    ).toBe(false);
+    expect(
+      adminDealArtworkSetSchema.safeParse({
+        version: 3,
+        artworkRegisterId: ART,
+        reason: "x".repeat(501),
+      }).success,
+    ).toBe(false);
+  });
+
+  it.each([
+    ["no version", { artworkRegisterId: ART }],
+    ["a zero version", { version: 0, artworkRegisterId: ART }],
+    ["an id that is not one", { version: 3, artworkRegisterId: "nope" }],
+    ["a reason that does not exist", { version: 3, notInRegister: { reason: "lost" } }],
+    [
+      "extra keys on the reason",
+      { version: 3, notInRegister: { reason: "sellers_own_work", x: 1 } },
+    ],
+  ])("refuses %s", (_label, body) => {
+    expect(adminDealArtworkSetSchema.safeParse(body).success).toBe(false);
+  });
+});
+
+describe("adminDealArtworkRemoveSchema", () => {
+  it("needs the reason the deal has no register artwork, and takes an optional note", () => {
+    expect(
+      adminDealArtworkRemoveSchema.safeParse({
+        version: 3,
+        notInRegister: { reason: "in_zoho_not_linked" },
+        reason: "Wrong record.",
+      }).success,
+    ).toBe(true);
+    expect(adminDealArtworkRemoveSchema.safeParse({ version: 3 }).success).toBe(false);
+  });
+});
+
+describe("a lock with an address", () => {
+  it("carries the link's address, or none", () => {
+    for (const href of ["/admin/lots/1", null, undefined]) {
+      const parsed = dealArtworkLockSchema.safeParse({
+        reason: "in_bid_sale",
+        message: "In a sale.",
+        link: {
+          label: "Open lot in LAX Bid",
+          target: "bid_lot",
+          ...(href !== undefined ? { href } : {}),
+        },
+      });
+      expect(parsed.success).toBe(true);
+    }
   });
 });

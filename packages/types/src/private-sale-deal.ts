@@ -140,6 +140,33 @@ export type PrivateSaleStageHistoryEntry = {
   createdAt: Date;
 };
 
+/** What staff did to a deal's artwork. */
+export const PRIVATE_SALE_ARTWORK_ACTIONS = ["linked", "changed", "removed"] as const;
+export type PrivateSaleArtworkAction = (typeof PRIVATE_SALE_ARTWORK_ACTIONS)[number];
+
+/** One append-only row each time a deal's artwork is linked, changed or taken off. */
+export type PrivateSaleArtworkHistoryEntry = {
+  id: string;
+  dealId: string;
+  action: PrivateSaleArtworkAction;
+  actorUserId: string | null;
+  fromArtworkRegisterId: string | null;
+  toArtworkRegisterId: string | null;
+  fromUnlinkedReason: PrivateSaleArtworkUnlinkedReason | null;
+  toUnlinkedReason: PrivateSaleArtworkUnlinkedReason | null;
+  reason: string | null;
+  createdAt: Date;
+};
+
+/** What staff's change to a deal's artwork writes: the deal's new artwork and the history row. */
+export type PrivateSaleArtworkChange = {
+  action: PrivateSaleArtworkAction;
+  actorUserId: string;
+  artworkRegisterId: string | null;
+  unlinkedReason: PrivateSaleArtworkUnlinkedReason | null;
+  reason: string | null;
+};
+
 /** What a stage change writes to the deal alongside the new stage. */
 export type PrivateSaleStageChanges = {
   agreedAt?: Date;
