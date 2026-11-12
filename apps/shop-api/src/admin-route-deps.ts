@@ -72,6 +72,7 @@ import type { createRetryRefundHandler } from "./infrastructure/handlers/admin/r
 import type { createUpdateFramingTaskHandler } from "./infrastructure/handlers/admin/update-framing-task.handler.js";
 import type { createUpdateFulfilmentHandler } from "./infrastructure/handlers/admin/update-fulfilment.handler.js";
 import type { AdminIdempotency } from "./infrastructure/idempotent-admin-command.js";
+import type { AdminHomeCoverPort } from "./presenters/home-cover.presenter.js";
 import type { HealthDeps } from "./routes/health.routes.js";
 
 export type AdminRoutesDeps = {
@@ -168,6 +169,8 @@ export type AdminRoutesDeps = {
   artCache: ArtCacheInvalidator;
   /** Featured on home: the prints, artists and categories the home pages feature. */
   homeFeatures: HomeFeaturesService;
+  /** The picture that leads the Shop home's first screen. */
+  homeCover: AdminHomeCoverPort;
   /** The framing catalogue: options, their prices per size band and lead times. */
   framing: FramingService;
   /** Framing on an edition: how it is sold, its offered options and their own prices. */

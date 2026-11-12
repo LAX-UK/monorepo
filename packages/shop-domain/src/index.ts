@@ -153,6 +153,7 @@ export {
   type PlacementTarget,
   type PlacementTargetKind,
 } from "./placement-slot.js";
+export { HOME_COVER_EDIT_CAPABILITY } from "./home-cover.js";
 export {
   HOME_FEATURES_EDIT_CAPABILITY,
   HOME_FEATURE_SLOTS,

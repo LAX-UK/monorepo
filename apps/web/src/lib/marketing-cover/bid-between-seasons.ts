@@ -1,11 +1,12 @@
 import { LONDON_TIME_ZONE, formatMonthName } from "@auction/datetime";
+import { photoFromCover } from "@auction/marketing-ui/cover/cover-photo";
 import type {
   CoverMedia,
   CoverSeasonRow,
   CoverSlide,
 } from "@auction/marketing-ui/cover/cover-types";
 import type { SaleCoverSlotAssets } from "@auction/types";
-import { type BidCoverLot, photoFromCover, plateFromLot } from "./bid-cover.adapter";
+import { type BidCoverLot, plateFromLot } from "./bid-cover.adapter";
 import { coverDay } from "./cover-time";
 
 /** The most sales the season list names after the consignment deadline. */

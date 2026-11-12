@@ -48,6 +48,7 @@ import {
   PortalGeneralEnquiriesResponseSchema,
 } from "./editorial-public.js";
 import { type PublicEditionFraming, PublicEditionFramingSchema } from "./framing-public.js";
+import { type PublicHomeCover, PublicHomeCoverSchema } from "./home-cover.js";
 import {
   type PublicMerchandiseProductDetail,
   PublicMerchandiseProductDetailSchema,
@@ -144,6 +145,13 @@ export function parsePublicCategoryList(value: unknown): PublicCategoryList {
 export function parsePublicDeliveryRegions(value: unknown): PublicDeliveryRegions {
   if (!Value.Check(PublicDeliveryRegionsSchema, value)) {
     throw new ShopContractParseError("Invalid public delivery regions payload");
+  }
+  return value;
+}
+
+export function parsePublicHomeCover(value: unknown): PublicHomeCover {
+  if (!Value.Check(PublicHomeCoverSchema, value)) {
+    throw new ShopContractParseError("Invalid public home cover payload");
   }
   return value;
 }

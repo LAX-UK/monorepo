@@ -8,6 +8,7 @@ import type { createListPublicArtworksHandler } from "./application/handlers/lis
 import type { createListPublicCategoriesHandler } from "./application/handlers/list-public-categories.handler.js";
 
 import type { DeliveryRegionsReader } from "./application/delivery-regions/delivery-regions.ports.js";
+import type { PublicHomeCoverReader } from "./presenters/home-cover.presenter.js";
 
 export type CatalogueRoutesDeps = {
   listPublicArtworks: ReturnType<typeof createListPublicArtworksHandler>;
@@ -20,4 +21,6 @@ export type CatalogueRoutesDeps = {
   getPublicArtist: ReturnType<typeof createGetPublicArtistHandler>;
   /** Where the Shop delivers, for the delivery page and, later, checkout. */
   deliveryRegions: DeliveryRegionsReader;
+  /** The picture staff chose to lead the home's first screen, or none. */
+  homeCover: PublicHomeCoverReader;
 };

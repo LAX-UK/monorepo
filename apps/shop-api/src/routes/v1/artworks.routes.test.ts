@@ -11,6 +11,7 @@ function createCatalogueDeps() {
   return createMinimalShopApiTestDeps({
     catalogue: {
       deliveryRegions: { read: async () => testDeliveryRegionsState() },
+      homeCover: { read: async () => ({ cover: null }) },
       listPublicArtworks: async () => ({
         items: [mockArtworkSummary()],
       }),

@@ -4,6 +4,7 @@ import type { MoneyPauseReader } from "@auction/artwork-register-contracts";
 import { ArtworkOfferLock } from "@auction/artwork-register-contracts";
 import { type Database, closeDb, createDb } from "@auction/db";
 import { issuerJwksUrl } from "@auction/identity-contracts";
+import { SharpCoverImageAnalyser } from "@auction/image-processing";
 import {
   DrizzleArtworkRegisterQueueReader,
   DrizzleArtworkRegisterRepository,
@@ -66,6 +67,7 @@ import { createListPublicMerchandiseProductsHandler } from "./application/handle
 import { createPortalFavoritesHandlers } from "./application/handlers/portal-favorites.handler.js";
 import { createRegisterArtworkInterestHandler } from "./application/handlers/register-artwork-interest.handler.js";
 import { createShopMediaUploadHandlers } from "./application/handlers/shop-media-upload.handler.js";
+import { createHomeCoverService } from "./application/home-cover/home-cover.service.js";
 import { createHomeFeaturesService } from "./application/home-features/home-features.service.js";
 import { createLaxPortfolioHandlers } from "./application/lax-portfolio/lax-portfolio.handler.js";
 import { LeadsService } from "./application/leads/leads.service.js";
@@ -194,6 +196,9 @@ import { createRetryRefundHandler } from "./infrastructure/handlers/admin/retry-
 import { createUpdateFramingTaskHandler } from "./infrastructure/handlers/admin/update-framing-task.handler.js";
 import { createUpdateFulfilmentHandler } from "./infrastructure/handlers/admin/update-fulfilment.handler.js";
 import { createSyncConnectAccountHandler } from "./infrastructure/handlers/webhooks/sync-connect-account.handler.js";
+import { createDrizzleHomeCoverPictures } from "./infrastructure/home-cover/drizzle-home-cover.pictures.js";
+import { readHomeCover } from "./infrastructure/home-cover/drizzle-home-cover.store.js";
+import { createDrizzleHomeCoverUnitOfWork } from "./infrastructure/home-cover/drizzle-home-cover.unit-of-work.js";
 import { createDrizzleHomeFeatureListReader } from "./infrastructure/home-features/drizzle-home-feature.reader.js";
 import { createDrizzleHomeFeaturesUnitOfWork } from "./infrastructure/home-features/drizzle-home-features.unit-of-work.js";
 import {
@@ -232,6 +237,10 @@ import type { InterestRoutesDeps } from "./interest-route-deps.js";
 import type { InventoryRouteDeps } from "./inventory-route-deps.js";
 import type { MerchandiseRoutesDeps } from "./merchandise-route-deps.js";
 import type { PortalRoutesDeps } from "./portal-route-deps.js";
+import {
+  createAdminHomeCoverPort,
+  createPublicHomeCoverReader,
+} from "./presenters/home-cover.presenter.js";
 import { resolveShopMediaPublicUrl } from "./presenters/resolve-shop-media-url.js";
 import type { StripeConnectWebhookDeps } from "./routes/webhooks/stripe-connect.routes.js";
 
@@ -570,6 +579,16 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
     lists: createDrizzleHomeFeatureListReader(db, { resolveMediaUrl }),
     clock: { now: () => new Date() },
   });
+  const homeCoverService = createHomeCoverService({
+    uow: createDrizzleHomeCoverUnitOfWork(shopUow),
+    reader: { read: () => readHomeCover(db) },
+    pictures: createDrizzleHomeCoverPictures(db, {
+      storage: shopMediaStorage?.storage ?? null,
+      resolveMediaUrl,
+    }),
+    measuring: { analyser: new SharpCoverImageAnalyser(), probe: createSharpImageProbe() },
+    clock: { now: () => new Date() },
+  });
   const framing = createFramingService({
     uow: createDrizzleFramingUnitOfWork(shopUow),
     lists: createDrizzleFramingListReader(db),
@@ -825,6 +844,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
         artistCatalogue,
         artCache,
         homeFeatures,
+        homeCover: createAdminHomeCoverPort(homeCoverService, resolveMediaUrl),
         framing,
         editionFraming,
         deliveryRegions,
@@ -891,6 +911,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
         countArtworkFacets: createCountArtworkFacetsHandler(catalogueReader),
         listPublicCategories: createListPublicCategoriesHandler(categoryReader),
         deliveryRegions: deliveryRegionsReader,
+        homeCover: createPublicHomeCoverReader(homeCoverService, resolveMediaUrl),
         getPublicCategory: createGetPublicCategoryHandler(categoryReader),
         listPublicArtists: createListPublicArtistsHandler(artistReader),
         getPublicArtist: createGetPublicArtistHandler(artistReader),
