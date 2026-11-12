@@ -334,6 +334,44 @@ describe("DealArtworkService holding through the register's lock", () => {
     expect(committed.events).toEqual(["private_sale_deal.artwork_removed"]);
   });
 
+  it.each(["agreed", "paid", "released"] as const)(
+    "does not rewrite a recorded reason once the deal is %s",
+    async (stage) => {
+      const { service, committed } = setup({
+        deal: { stage, artworkRegisterId: null, artworkUnlinkedReason: "sellers_own_work" },
+      });
+      expect(
+        await service.set(viewer(), "PS-0001", {
+          version: 3,
+          notInRegister: { reason: "in_zoho_not_linked" },
+          reason: "Changed my mind.",
+        }),
+      ).toEqual({ ok: false, error: "artwork_locked" });
+      expect(committed.changes).toEqual([]);
+    },
+  );
+
+  it("replaces a recorded reason before agreement, needs a note, and records it as a change", async () => {
+    const deal = { artworkRegisterId: null, artworkUnlinkedReason: "sellers_own_work" } as const;
+    const body = { version: 3, notInRegister: { reason: "in_zoho_not_linked" } } as const;
+    expect(await setup({ deal }).service.set(viewer(), "PS-0001", body)).toEqual({
+      ok: false,
+      error: "reason_required",
+    });
+    const { service, committed, offer, withdraw } = setup({ deal });
+    expect((await service.set(viewer(), "PS-0001", { ...body, reason: "It is in Zoho." })).ok).toBe(
+      true,
+    );
+    expect(offer).not.toHaveBeenCalled();
+    expect(withdraw).not.toHaveBeenCalled();
+    expect(committed.changes[0]).toMatchObject({
+      action: "changed",
+      unlinkedReason: "in_zoho_not_linked",
+      reason: "It is in Zoho.",
+    });
+    expect(committed.events).toEqual(["private_sale_deal.artwork_changed"]);
+  });
+
   it("records a reason on a deal with no artwork without touching the register", async () => {
     const { service, offer, withdraw, committed } = setup({ deal: { artworkRegisterId: null } });
     expect(
@@ -385,6 +423,7 @@ describe("DealArtworkService holding through the register's lock", () => {
     expect(await service.set(viewer(), "PS-0001", CHANGE)).toEqual({
       ok: false,
       error: "stale_version",
+      currentVersion: 3,
     });
     expect(offer).not.toHaveBeenCalled();
     expect(committed.events).toEqual([]);

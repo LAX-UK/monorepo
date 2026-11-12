@@ -218,6 +218,13 @@ export const API_SSF_RECEIVER_TABLES = ["bid_ssf_replay"] as const;
  * access.
  */
 export const API_PAYMENT_REFUND_TABLES = ["payment_refund"] as const;
+/**
+ * Each link, change and removal of a private sale deal's artwork. Append-only, so api_app gets
+ * INSERT and SELECT only; no other role has access.
+ */
+export const API_PRIVATE_SALE_ARTWORK_HISTORY_TABLES = [
+  "private_sale_deal_artwork_history",
+] as const;
 /** Shop Identity owns only its local Identity projection. */
 export const SHOP_PRODUCT_PROFILE_TABLES = [
   "shop_user_profile",
@@ -969,6 +976,10 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
           }
           if ((API_SSF_RECEIVER_TABLES as readonly string[]).includes(tableName)) {
             await grantIfExists(client, "api_app", tableName, "INSERT, SELECT, DELETE");
+            continue;
+          }
+          if ((API_PRIVATE_SALE_ARTWORK_HISTORY_TABLES as readonly string[]).includes(tableName)) {
+            await grantIfExists(client, "api_app", tableName, "INSERT, SELECT");
             continue;
           }
           if ((API_PAYMENT_REFUND_TABLES as readonly string[]).includes(tableName)) {

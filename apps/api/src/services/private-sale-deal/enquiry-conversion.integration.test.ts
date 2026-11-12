@@ -192,7 +192,13 @@ describe.skipIf(!url)(
             .from(privateSaleDeal)
             .where(eq(privateSaleDeal.sourceEnquiryId, enquiryId)),
         ).toHaveLength(0);
-        expect(await tx.select().from(itemSubmission)).toHaveLength(0);
+        // Only this test's own client: other suites commit work of their own.
+        expect(
+          await tx
+            .select()
+            .from(itemSubmission)
+            .where(eq(itemSubmission.legalEntityId, clientEntityId)),
+        ).toHaveLength(0);
         const [enquiry] = await tx
           .select({ status: marketingEnquiry.status })
           .from(marketingEnquiry)

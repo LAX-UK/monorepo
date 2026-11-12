@@ -30,7 +30,7 @@ describe("migration 0363 private sale deal artwork history", () => {
   it("only adds a table, with a short lock timeout and nothing destructive", () => {
     expect(migration).toMatch(/SET LOCAL lock_timeout = '5s'/);
     expect(migration).toContain('CREATE TABLE IF NOT EXISTS "private_sale_deal_artwork_history"');
-    expect(migration).not.toMatch(/DROP |ALTER TABLE/);
+    expect(migration).not.toMatch(/DROP (TABLE|COLUMN|INDEX|CONSTRAINT)|ALTER TABLE|TRUNCATE/);
   });
 
   it("is mirrored by the schema", () => {
@@ -47,7 +47,26 @@ describe("migration 0363 private sale deal artwork history", () => {
     for (const fk of config.foreignKeys) expect(migration).toContain(fk.getName());
   });
 
+  it("keeps the history append-only, allowing only the actor to be cleared with its user", () => {
+    expect(migration).toContain(
+      'CREATE OR REPLACE FUNCTION "private_sale_deal_artwork_history_guard"',
+    );
+    expect(migration).toMatch(/BEFORE UPDATE OR DELETE ON "private_sale_deal_artwork_history"/);
+    expect(migration).toContain("IS NOT DISTINCT FROM");
+    expect(migration).toContain(
+      "RAISE EXCEPTION 'private_sale_deal_artwork_history is append-only'",
+    );
+    // Every column other than the actor is compared, so none can change.
+    for (const column of Object.keys(getTableColumns(privateSaleDealArtworkHistory))) {
+      const name = column.replace(/[A-Z]/g, (c) => `_${c.toLowerCase()}`);
+      if (name === "actor_user_id") continue;
+      expect(migration).toContain(`NEW."${name}"`);
+    }
+  });
+
   it("is undone by the rollback", () => {
+    expect(rollback).toMatch(/DROP TRIGGER IF EXISTS "private_sale_deal_artwork_history_guard"/);
+    expect(rollback).toMatch(/DROP FUNCTION IF EXISTS "private_sale_deal_artwork_history_guard"/);
     expect(rollback).toMatch(/^BEGIN;/m);
     expect(rollback).toContain('DROP TABLE IF EXISTS "private_sale_deal_artwork_history";');
     expect(rollback).toMatch(/COMMIT;/);

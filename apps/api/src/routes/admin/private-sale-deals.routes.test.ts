@@ -478,6 +478,21 @@ describe("PUT and DELETE /private-sales/:ref/artwork", () => {
     expect(privateSaleDeals.remove).not.toHaveBeenCalled();
   });
 
+  it("answers 409 when the artwork can't be changed at this stage, including a recorded reason", async () => {
+    const { app, privateSaleDeals } = createApp(["specialist"]);
+    privateSaleDeals.set.mockResolvedValueOnce({ ok: false, error: "artwork_locked" });
+    const res = await app.request(
+      "http://test/private-sales/PS-0012/artwork",
+      send("PUT", {
+        version: 3,
+        notInRegister: { reason: "in_zoho_not_linked" },
+        reason: "Changed my mind.",
+      }),
+    );
+    expect(res.status).toBe(409);
+    expect(await res.json()).toEqual({ error: "artwork_locked" });
+  });
+
   it("passes the lock's own reason, message and link on when the register refuses", async () => {
     const { app, privateSaleDeals } = createApp(["sales_manager"]);
     const lock = {

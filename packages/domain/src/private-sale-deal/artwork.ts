@@ -35,7 +35,11 @@ export type DealArtworkTarget =
   | { kind: "register"; artworkRegisterId: string }
   | { kind: "not_in_register"; reason: PrivateSaleArtworkUnlinkedReason };
 
-export type DealArtworkMove = "link" | "change" | "remove" | "record_reason";
+/**
+ * `record_reason` is the first note that there is no register artwork; `replace_reason` swaps one
+ * recorded reason for the other, which is a change like any other and is held to the same rules.
+ */
+export type DealArtworkMove = "link" | "change" | "remove" | "record_reason" | "replace_reason";
 
 export type DealArtworkRefusal =
   /** The stage no longer allows this move. */
@@ -60,9 +64,12 @@ export function planDealArtworkMove(
   if (!held) {
     if (!canLinkArtwork(deal.stage)) return { ok: false, refusal: "stage_locked" };
     if (target.kind === "register") return { ok: true, move: "link" };
-    return deal.artworkUnlinkedReason === target.reason
-      ? { ok: false, refusal: "unchanged" }
-      : { ok: true, move: "record_reason" };
+    if (deal.artworkUnlinkedReason === null) return { ok: true, move: "record_reason" };
+    if (deal.artworkUnlinkedReason === target.reason) return { ok: false, refusal: "unchanged" };
+    // Rewriting the reason after the buyer has agreed could undo or dodge the Agree check.
+    return canChangeArtwork(deal.stage)
+      ? { ok: true, move: "replace_reason" }
+      : { ok: false, refusal: "stage_locked" };
   }
   if (!canChangeArtwork(deal.stage)) return { ok: false, refusal: "stage_locked" };
   if (target.kind === "register") {

@@ -225,3 +225,34 @@ describe("envSchema private sale deadlines", () => {
     expect(parse({ PRIVATE_SALE_COLLECTION_DUE_DAYS: "400" }).success).toBe(false);
   });
 });
+
+describe("envSchema addresses opened from private sale artwork refusals", () => {
+  const parse = (extra: Record<string, unknown>) => envSchema.safeParse(productionEnvBase(extra));
+
+  it("takes https addresses, or none", () => {
+    expect(parse({}).success).toBe(true);
+    const set = parse({
+      LAX_ADMIN_PUBLIC_ORIGIN: "https://admin.example.com",
+      ZOHO_CRM_RECORD_URL_TEMPLATE: "https://crm.example.com/tab/{module}/{recordId}",
+    });
+    expect(set.success).toBe(true);
+    expect(parse({ LAX_ADMIN_PUBLIC_ORIGIN: "", ZOHO_CRM_RECORD_URL_TEMPLATE: "" }).success).toBe(
+      true,
+    );
+  });
+
+  it("refuses a scheme that is not https, other than http on this machine", () => {
+    expect(parse({ LAX_ADMIN_PUBLIC_ORIGIN: "javascript:alert(1)" }).success).toBe(false);
+    expect(parse({ LAX_ADMIN_PUBLIC_ORIGIN: "http://admin.example.com" }).success).toBe(false);
+    expect(parse({ LAX_ADMIN_PUBLIC_ORIGIN: "http://localhost:3050" }).success).toBe(true);
+    expect(
+      parse({ ZOHO_CRM_RECORD_URL_TEMPLATE: "ftp://crm.example.com/{recordId}" }).success,
+    ).toBe(false);
+  });
+
+  it("needs the record id in the Zoho template", () => {
+    expect(
+      parse({ ZOHO_CRM_RECORD_URL_TEMPLATE: "https://crm.example.com/tab/{module}" }).success,
+    ).toBe(false);
+  });
+});

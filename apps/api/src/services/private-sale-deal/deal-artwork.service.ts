@@ -65,6 +65,7 @@ const ACTION: Record<DealArtworkMove, PrivateSaleArtworkAction> = {
   link: "linked",
   record_reason: "linked",
   change: "changed",
+  replace_reason: "changed",
   remove: "removed",
 };
 
@@ -132,7 +133,8 @@ export class DealArtworkService implements IPrivateSaleDealArtworkCommands {
     }
     // Removing is only ever asked for on a held artwork; recording a reason is not a removal.
     if (expected && planned.move !== expected) return { ok: false, error: "artwork_unchanged" };
-    if (planned.move === "change" && note === null) return { ok: false, error: "reason_required" };
+    if ((planned.move === "change" || planned.move === "replace_reason") && note === null)
+      return { ok: false, error: "reason_required" };
 
     const entry =
       target.kind === "register"
@@ -150,7 +152,7 @@ export class DealArtworkService implements IPrivateSaleDealArtworkCommands {
       );
       return { ok: true, record: await this.deps.records.recordOf(viewer, written) };
     } catch (error) {
-      return this.refusalOf(error, entry);
+      return this.refusalOf(error, entry, ref);
     }
   }
 
@@ -198,10 +200,22 @@ export class DealArtworkService implements IPrivateSaleDealArtworkCommands {
   private async refusalOf(
     error: unknown,
     entry: ArtworkRegisterEntry | null,
+    ref: string,
   ): Promise<DealWriteResult> {
-    if (error instanceof DealMovedOn) return { ok: false, error: "stale_version" };
-    if (error instanceof DealArtworkRefused && entry) {
-      const [lock] = await this.deps.lockLinks.attach([{ entry, lock: error.lock }]);
+    if (error instanceof DealMovedOn) {
+      // Someone changed the deal between reading it and writing: say which version it is at now.
+      const current = await this.deps.deals.findByReference(ref);
+      return {
+        ok: false,
+        error: "stale_version",
+        ...(current ? { currentVersion: current.version } : {}),
+      };
+    }
+    if (error instanceof DealArtworkRefused) {
+      // Only holding an artwork is refused, and then the artwork is known; without it the link has no address.
+      const [lock] = entry
+        ? await this.deps.lockLinks.attach([{ entry, lock: error.lock }])
+        : [{ ...error.lock, link: error.lock.link ? { ...error.lock.link, href: null } : null }];
       return {
         ok: false,
         error: "artwork_unavailable",
