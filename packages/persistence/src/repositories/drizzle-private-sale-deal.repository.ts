@@ -2,12 +2,16 @@ import type { Database } from "@auction/db";
 import {
   legalEntity,
   privateSaleDeal,
+  privateSaleDealArtworkHistory,
   privateSaleDealDocument,
   privateSaleDealParty,
   privateSaleDealPartyHistory,
   privateSaleDealStageHistory,
 } from "@auction/db/schema";
 import type {
+  PrivateSaleArtworkAction,
+  PrivateSaleArtworkChange,
+  PrivateSaleArtworkHistoryEntry,
   PrivateSaleArtworkUnlinkedReason,
   PrivateSaleDealDetail,
   PrivateSaleDealDocument,
@@ -134,6 +138,65 @@ export class DrizzlePrivateSaleDealRepository
       reason: row.reason,
       createdAt: row.createdAt,
     }));
+  }
+
+  async artworkHistory(dealId: string): Promise<PrivateSaleArtworkHistoryEntry[]> {
+    const rows = await this.db
+      .select()
+      .from(privateSaleDealArtworkHistory)
+      .where(eq(privateSaleDealArtworkHistory.dealId, dealId))
+      .orderBy(asc(privateSaleDealArtworkHistory.createdAt), asc(privateSaleDealArtworkHistory.id));
+    return rows.map((row) => ({
+      id: row.id,
+      dealId: row.dealId,
+      action: row.action as PrivateSaleArtworkAction,
+      actorUserId: row.actorUserId,
+      fromArtworkRegisterId: row.fromArtworkRegisterId,
+      toArtworkRegisterId: row.toArtworkRegisterId,
+      fromUnlinkedReason: row.fromUnlinkedReason as PrivateSaleArtworkUnlinkedReason | null,
+      toUnlinkedReason: row.toUnlinkedReason as PrivateSaleArtworkUnlinkedReason | null,
+      reason: row.reason,
+      createdAt: row.createdAt,
+    }));
+  }
+
+  async setArtwork(
+    dealId: string,
+    expectedVersion: number,
+    change: PrivateSaleArtworkChange,
+  ): Promise<PrivateSaleDealWriteResult> {
+    return this.db.transaction(async (tx) => {
+      const [before] = await tx
+        .select({
+          artworkRegisterId: privateSaleDeal.artworkRegisterId,
+          artworkUnlinkedReason: privateSaleDeal.artworkUnlinkedReason,
+        })
+        .from(privateSaleDeal)
+        .where(and(eq(privateSaleDeal.id, dealId), eq(privateSaleDeal.version, expectedVersion)))
+        .for("update");
+      if (!before) return this.missOrConflict(tx, dealId);
+      await tx
+        .update(privateSaleDeal)
+        .set({
+          artworkRegisterId: change.artworkRegisterId,
+          artworkUnlinkedReason: change.unlinkedReason,
+          version: sql`${privateSaleDeal.version} + 1`,
+          updatedAt: sql`now()`,
+        })
+        .where(eq(privateSaleDeal.id, dealId));
+      await tx.insert(privateSaleDealArtworkHistory).values({
+        dealId,
+        action: change.action,
+        actorUserId: change.actorUserId,
+        fromArtworkRegisterId: before.artworkRegisterId,
+        toArtworkRegisterId: change.artworkRegisterId,
+        fromUnlinkedReason: before.artworkUnlinkedReason,
+        toUnlinkedReason: change.unlinkedReason,
+        reason: change.reason,
+        createdAt: sql`clock_timestamp()`,
+      });
+      return this.okOf(tx, dealId);
+    });
   }
 
   async create(input: NewPrivateSaleDeal): Promise<PrivateSaleDealDetail> {

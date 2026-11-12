@@ -16,6 +16,7 @@ import { eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { seedIdentityUserFixtures } from "../../testing/identity-user-fixtures.js";
 import { recordingSink } from "./deal-fixtures.test-util.js";
+import { DealLockLinks } from "./deal-lock-links.js";
 import { ArtworkRegisterDealLock } from "./deal-register-lock.js";
 import { EnquiryConversionService } from "./enquiry-conversion.service.js";
 
@@ -101,6 +102,7 @@ describe.skipIf(!url)(
             openDeals: new DrizzlePrivateSaleDealQueryRepository(tx),
             dealsForTx: (executor) => new DrizzlePrivateSaleDealRepository(executor),
             artworks: registers,
+            lockLinks: new DealLockLinks({}, new DrizzlePrivateSaleDealQueryRepository(tx)),
             registerForTx: (executor) =>
               new ArtworkRegisterDealLock<Database>(
                 executor,
@@ -190,7 +192,13 @@ describe.skipIf(!url)(
             .from(privateSaleDeal)
             .where(eq(privateSaleDeal.sourceEnquiryId, enquiryId)),
         ).toHaveLength(0);
-        expect(await tx.select().from(itemSubmission)).toHaveLength(0);
+        // Only this test's own client: other suites commit work of their own.
+        expect(
+          await tx
+            .select()
+            .from(itemSubmission)
+            .where(eq(itemSubmission.legalEntityId, clientEntityId)),
+        ).toHaveLength(0);
         const [enquiry] = await tx
           .select({ status: marketingEnquiry.status })
           .from(marketingEnquiry)

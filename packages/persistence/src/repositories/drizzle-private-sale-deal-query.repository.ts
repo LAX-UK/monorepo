@@ -105,6 +105,15 @@ export class DrizzlePrivateSaleDealQueryRepository implements IPrivateSaleDealQu
     return row?.reference ?? null;
   }
 
+  async findReferencesByIds(ids: readonly string[]): Promise<Map<string, string>> {
+    if (ids.length === 0) return new Map();
+    const rows = await this.db
+      .select({ id: privateSaleDeal.id, reference: privateSaleDeal.reference })
+      .from(privateSaleDeal)
+      .where(inArray(privateSaleDeal.id, [...ids]));
+    return new Map(rows.map((row) => [row.id, row.reference]));
+  }
+
   async countByStage(viewerUserId: string, scope: DealScope): Promise<PrivateSaleDealStageCount[]> {
     const rows = await this.db
       .select({

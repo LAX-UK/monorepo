@@ -9,6 +9,7 @@ import {
   API_DENY_TABLES,
   API_PAYMENT_REFUND_TABLES,
   API_PAYMENT_TRANSFER_REFERENCE_TABLES,
+  API_PRIVATE_SALE_ARTWORK_HISTORY_TABLES,
   API_READ_TABLES,
   AUTH_ADDRESS_TABLES,
   AUTH_EXPORT_AUDIT_TABLES,
@@ -828,6 +829,17 @@ describe("migrate-roles invariants", () => {
     expect([...WORKER_FULL_TABLES]).not.toContain("payment_refund");
     expect([...SHOP_COMMERCE_TABLES, ...SHOP_COMMERCE_APPEND_ONLY_TABLES]).not.toContain(
       "payment_refund",
+    );
+  });
+
+  it("keeps a deal's artwork history append-only for the Bid API: insert and select, nothing else", async () => {
+    expect([...API_PRIVATE_SALE_ARTWORK_HISTORY_TABLES]).toEqual([
+      "private_sale_deal_artwork_history",
+    ]);
+    expect([...API_DENY_TABLES]).not.toContain("private_sale_deal_artwork_history");
+    const source = await readFile(join(__dirname, "migrate-roles.ts"), "utf8");
+    expect(source).toMatch(
+      /API_PRIVATE_SALE_ARTWORK_HISTORY_TABLES as readonly string\[\]\)\.includes\(tableName\)\) \{\s+await grantIfExists\(client, "api_app", tableName, "INSERT, SELECT"\);/,
     );
   });
 

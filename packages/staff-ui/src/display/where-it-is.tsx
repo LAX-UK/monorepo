@@ -33,6 +33,8 @@ export function WhereItIsChip({ chip }: { chip: WhereItIsChipSpec }) {
 
 export type WhereItIsSectionProps = {
   chip: WhereItIsChipSpec;
+  /** What the place is about, shown above the line: a thumbnail and the artwork's name. */
+  subject?: React.ReactNode;
   /** The place in a few words, set in semibold: "Live on lax.art". */
   lead: string;
   /** What follows the lead on the same line, with its own punctuation: " since Mon 2 Nov". */
@@ -64,6 +66,7 @@ const DIVIDER = "border-t border-staff-line-subtle";
  */
 export function WhereItIsSection({
   chip,
+  subject,
   lead,
   trail,
   note,
@@ -93,7 +96,8 @@ export function WhereItIsSection({
       bodyClassName="p-0"
       {...(className ? { className } : {})}
     >
-      <div className="flex flex-col gap-1 px-4 pt-3.5 pb-1">
+      {subject ? <div className="px-4 pt-3.5">{subject}</div> : null}
+      <div className={`flex flex-col gap-1 px-4 ${subject ? "pt-3" : "pt-3.5"} pb-1`}>
         <p className="text-staff-sm text-staff-fg">
           <strong className="font-semibold">{lead}</strong>
           {trail}

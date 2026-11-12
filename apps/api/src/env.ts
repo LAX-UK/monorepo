@@ -16,6 +16,18 @@ function emptyToUndefined(val: unknown): unknown {
   return val;
 }
 
+/** An address staff open from the screens: https, or http on this machine while developing. */
+function httpsUrl() {
+  return z
+    .string()
+    .url()
+    .refine(
+      (url) =>
+        url.startsWith("https://") || /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?(\/|$)/.test(url),
+      "must be an https address (http only for localhost)",
+    );
+}
+
 function trimEmptyToUndefined(val: unknown): unknown {
   if (val === "" || val === null) return undefined;
   if (typeof val === "string") {
@@ -103,6 +115,15 @@ const envSchema = z
     WEB_ORIGIN: z.string().url().default("http://localhost:3000"),
     /** Where LAX Account lives; the "manage your alerts" link in alert emails goes there. */
     LAX_ACCOUNT_PUBLIC_ORIGIN: z.preprocess(emptyToUndefined, z.string().url().optional()),
+    /** Where LAX Admin lives; links from the artwork register's messages to an artwork's record open there. */
+    LAX_ADMIN_PUBLIC_ORIGIN: z.preprocess(emptyToUndefined, httpsUrl().optional()),
+    /** The Zoho CRM record page, with `{module}` and `{recordId}` in it, for "Edit in Zoho" links. */
+    ZOHO_CRM_RECORD_URL_TEMPLATE: z.preprocess(
+      emptyToUndefined,
+      httpsUrl()
+        .refine((url) => url.includes("{recordId}"), "must contain {recordId}")
+        .optional(),
+    ),
     /**
      * Legal entity that owns Bid records in the cross-product portfolio. Defaults to Bid's
      * operator from `legalEntityFor("bid")`; override it only if the company changes.

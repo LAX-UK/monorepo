@@ -2,6 +2,8 @@ import {
   type DealClearancePort,
   type PartyClearance,
   type PrivateSalePolicy,
+  canChangeArtwork,
+  canLinkArtwork,
   dealCommandsFrom,
   dealRefundRecorded,
   dealRefundableMinor,
@@ -12,6 +14,7 @@ import {
   termsAcceptance,
 } from "@auction/domain";
 import type {
+  IArtworkRegisterReader,
   IMarketingEnquiryRepository,
   IPrivateSaleDealPaymentReader,
   IPrivateSaleDealPayoutStore,
@@ -27,11 +30,14 @@ import {
 import type {
   DealActionBlocker,
   DealActionState,
+  DealArtworkAccess,
   DealListPage,
+  DealRecordArtwork,
   DealRecordParty,
   DealStaffRecord,
   IPrivateSaleDealQueries,
 } from "../interfaces/private-sale-deal-desk.js";
+import type { DealArtworkPresenter } from "./deal-artwork-presenter.js";
 import {
   OFFER_STAGES,
   REFUND_BLOCKERS,
@@ -42,6 +48,7 @@ import {
   termIsOpen,
   toBlocker,
 } from "./deal-desk-support.js";
+import type { DealLockLinks } from "./deal-lock-links.js";
 import {
   ACTION_ABILITY,
   type DealStaffViewer,
@@ -57,7 +64,7 @@ export interface DealActorNames {
 }
 
 export type DealQueryDeps = {
-  deals: Pick<IPrivateSaleDealReader, "findByReference" | "history">;
+  deals: Pick<IPrivateSaleDealReader, "findByReference" | "history" | "artworkHistory">;
   queries: IPrivateSaleDealQueryReader;
   payments: Pick<IPrivateSaleDealPaymentReader, "listForDeal">;
   payouts: Pick<IPrivateSaleDealPayoutStore, "hasPayoutLine">;
@@ -66,7 +73,15 @@ export type DealQueryDeps = {
   policy: PrivateSalePolicy;
   enquiries: Pick<IMarketingEnquiryRepository, "findById">;
   names: DealActorNames;
+  /** The register, to name the artworks a deal's history mentions. */
+  register: Pick<IArtworkRegisterReader, "findById">;
+  artworkPresenter: Pick<DealArtworkPresenter, "present">;
+  /** The address of an artwork's record in LAX Admin. */
+  links: Pick<DealLockLinks, "recordHref">;
 };
+
+/** Why change and remove are off once the buyer has agreed to the artwork. */
+export const ARTWORK_CHANGE_OFF = "Change artwork is off from Agreed onwards.";
 
 const encodeCursor = (row: { updatedAt: Date; id: string }): string =>
   Buffer.from(`${row.updatedAt.toISOString()}|${row.id}`).toString("base64url");
@@ -111,7 +126,7 @@ export class PrivateSaleDealQueryService implements IPrivateSaleDealQueries {
   /** The record of a deal the caller has already loaded and checked against the viewer's scope. */
   async recordOf(viewer: DealStaffViewer, deal: PrivateSaleDealDetail): Promise<DealStaffRecord> {
     const { policy } = this.deps;
-    const [clearance, history, work, payments, hasPayoutLine] = await Promise.all([
+    const [clearance, history, work, payments, hasPayoutLine, artwork] = await Promise.all([
       this.deps.clearance.snapshot({
         dealId: deal.id,
         seller: {
@@ -126,9 +141,12 @@ export class PrivateSaleDealQueryService implements IPrivateSaleDealQueries {
       this.deps.queries.findWorkSummary(deal.itemSubmissionId),
       this.deps.payments.listForDeal(deal.id),
       this.deps.payouts.hasPayoutLine(deal.id),
+      this.artworkOf(viewer, deal),
     ]);
     const names = await this.deps.names.namesOf([
-      ...new Set(history.flatMap((h) => (h.actorUserId ? [h.actorUserId] : []))),
+      ...new Set(
+        [...history, ...artwork.history].flatMap((h) => (h.actorUserId ? [h.actorUserId] : [])),
+      ),
     ]);
     const sourceEnquiry = deal.sourceEnquiryId
       ? await this.deps.enquiries.findById(deal.sourceEnquiryId)
@@ -181,6 +199,19 @@ export class PrivateSaleDealQueryService implements IPrivateSaleDealQueries {
       createdAt: deal.createdAt,
       updatedAt: deal.updatedAt,
       money: projectDealForStaff(deal).money,
+      artwork: artwork.shown,
+      artworkUnlinkedReason: deal.artworkUnlinkedReason,
+      artworkAccess: artworkAccessOf(viewer, deal),
+      artworkMoves: artwork.history.map((move) => ({
+        action: move.action,
+        from: artwork.titles.get(move.fromArtworkRegisterId ?? "") ?? null,
+        to: artwork.titles.get(move.toArtworkRegisterId ?? "") ?? null,
+        fromUnlinkedReason: move.fromUnlinkedReason,
+        toUnlinkedReason: move.toUnlinkedReason,
+        reason: move.reason,
+        createdAt: move.createdAt,
+        actorName: move.actorUserId ? (names.get(move.actorUserId) ?? "Former staff member") : null,
+      })),
       seller: party("seller", deal.seller, clearance.seller),
       buyer: deal.buyer ? party("buyer", deal.buyer, clearance.buyer) : null,
       sourceOfFunds: viewer.checks
@@ -242,6 +273,47 @@ export class PrivateSaleDealQueryService implements IPrivateSaleDealQueries {
     };
   }
 
+  /** The deal's linked artwork as shown on its page, and the artworks its history names. */
+  private async artworkOf(
+    viewer: DealStaffViewer,
+    deal: PrivateSaleDealDetail,
+  ): Promise<{
+    shown: DealRecordArtwork | null;
+    history: Awaited<ReturnType<DealQueryDeps["deals"]["artworkHistory"]>>;
+    titles: Map<string, { title: string; stockCode: string }>;
+  }> {
+    const history = await this.deps.deals.artworkHistory(deal.id);
+    const ids = [
+      ...new Set(
+        [
+          deal.artworkRegisterId,
+          ...history.flatMap((h) => [h.fromArtworkRegisterId, h.toArtworkRegisterId]),
+        ].filter((id): id is string => id !== null),
+      ),
+    ];
+    const entries = (await Promise.all(ids.map((id) => this.deps.register.findById(id)))).flatMap(
+      (entry) => (entry ? [entry] : []),
+    );
+    const titles = new Map(
+      entries.map((entry) => [entry.id, { title: entry.title, stockCode: entry.stockCode }]),
+    );
+    const linked = entries.find((entry) => entry.id === deal.artworkRegisterId);
+    if (!linked) return { shown: null, history, titles };
+    const presented = (await this.deps.artworkPresenter.present([linked])).get(linked.id);
+    if (!presented) return { shown: null, history, titles };
+    const { draftLot: _draftLot, ...summary } = presented.summary;
+    const heldAt = [...history].reverse().find((h) => h.toArtworkRegisterId !== null)?.createdAt;
+    return {
+      shown: {
+        ...summary,
+        heldSince: heldAt ?? deal.createdAt,
+        recordHref: canDo(viewer, "manage") ? this.deps.links.recordHref(linked.id) : null,
+      },
+      history,
+      titles,
+    };
+  }
+
   /** The moves this person may make from the deal's stage, each with what stands in its way. */
   private async actionsFor(
     viewer: DealStaffViewer,
@@ -295,4 +367,17 @@ export class PrivateSaleDealQueryService implements IPrivateSaleDealQueries {
     });
     return redactBlockers(viewer, (blockers ?? []).map(toBlocker));
   }
+}
+
+/** Link while the deal is open; change and remove only before the buyer has agreed. */
+function artworkAccessOf(viewer: DealStaffViewer, deal: PrivateSaleDealDetail): DealArtworkAccess {
+  const manage = canDo(viewer, "manage");
+  const held = deal.artworkRegisterId !== null;
+  const open = canLinkArtwork(deal.stage);
+  return {
+    canLink: manage && !held && open,
+    canChange: manage && held && canChangeArtwork(deal.stage),
+    changeOffReason:
+      manage && held && open && !canChangeArtwork(deal.stage) ? ARTWORK_CHANGE_OFF : null,
+  };
 }

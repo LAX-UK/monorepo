@@ -21,6 +21,9 @@ vi.mock("@/lib/actions/admin/admin-private-sales", () => ({
   updateDealTermsAction: (...args: unknown[]) => updateTerms(...args),
   nameDealBuyerAction: (...args: unknown[]) => nameBuyer(...args),
   convertEnquiryAction: vi.fn(),
+  setDealArtworkAction: vi.fn(),
+  removeDealArtworkAction: vi.fn(),
+  searchDealArtworksAction: vi.fn(),
 }));
 vi.mock("@/lib/ui/notify", () => ({
   notify: { success: (...args: unknown[]) => notifySuccess(...args), error: vi.fn() },
@@ -289,11 +292,19 @@ describe("DealView: people who work without the checks", () => {
 
 describe("DealView: people who cannot act", () => {
   it("is view only, with no buttons that would be refused", () => {
-    renderView(dealRecord({ actions: [], editableTerms: [], canNameBuyer: false }));
+    renderView(
+      dealRecord({
+        actions: [],
+        editableTerms: [],
+        canNameBuyer: false,
+        artworkAccess: { canLink: false, canChange: false, changeOffReason: null },
+      }),
+    );
     expect(screen.getByText(/View only/)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Record the agreement" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Edit terms" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Name the buyer" })).toBeNull();
+    expect(screen.queryByRole("button", { name: /artwork…/ })).toBeNull();
   });
 
   it("says a cancelled deal is cancelled, with its reason, and offers nothing", () => {

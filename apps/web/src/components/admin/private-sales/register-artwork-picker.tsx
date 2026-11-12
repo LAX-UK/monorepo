@@ -3,7 +3,7 @@
 import { EntityPicker } from "@auction/staff-ui";
 import type { DealArtworkOption, DealArtworkSearchResult } from "@auction/validators";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { toArtworkOption } from "./artwork-option";
+import { type EnquirySuggestion, toArtworkOption } from "./artwork-option";
 
 /** Looks the register up for what was typed; rejects when the register cannot be read. */
 export type SearchRegisterArtworks = (query: string) => Promise<DealArtworkSearchResult>;
@@ -61,6 +61,7 @@ export function RegisterArtworkPicker({
   // What the last search returned, so a chosen option maps back to the full record.
   const known = useRef(new Map<string, DealArtworkOption>());
   const [hasMore, setHasMore] = useState(false);
+  const suggestion = useRef<EnquirySuggestion | null>(null);
   // The print message says the same as the footer, so a print's code shows it once.
   const [query, setQuery] = useState("");
   const footer = PRINT_STOCK_CODE.test(query)
@@ -74,7 +75,10 @@ export function RegisterArtworkPicker({
       const result = await search(query);
       known.current = new Map(result.items.map((item) => [item.id, item]));
       setHasMore(result.hasMore);
-      return result.items.map((item) => toArtworkOption(item, { suggestions: query === "" }));
+      suggestion.current = result.suggestion ?? null;
+      return result.items.map((item) =>
+        toArtworkOption(item, { suggestions: query === "", suggestion: suggestion.current }),
+      );
     },
     [search, refreshKey],
   );
