@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  CLOCK_SKEW_MS,
   type DocumentRecord,
   type Lease,
   MAX_LEASE_MS,
@@ -483,9 +484,24 @@ describe("never create twice", () => {
 });
 
 describe("parseRecord", () => {
+  it("allows the documented clock-skew margin on a lease, and not a millisecond more", () => {
+    const at = (expiresAtMs: number) =>
+      parseRecord(
+        {
+          kind: "invoice",
+          reference: "LAX-SHOP-INV-1",
+          attempts: 1,
+          status: "sending",
+          lease: { token: "t", expiresAtMs },
+        },
+        NOW,
+      );
+    expect(at(NOW + MAX_LEASE_MS + CLOCK_SKEW_MS).ok).toBe(true);
+    expect(at(NOW + MAX_LEASE_MS + CLOCK_SKEW_MS + 1).ok).toBe(false);
+  });
   it("round-trips every legal record", () => {
     for (const r of [...STATUSES.map(rec), owedReview()]) {
-      expect(parseRecord(JSON.parse(JSON.stringify(r)))).toEqual({ ok: true, value: r });
+      expect(parseRecord(JSON.parse(JSON.stringify(r)), NOW)).toEqual({ ok: true, value: r });
     }
   });
   it("refuses the illegal states a flat row could hold", () => {
@@ -517,9 +533,26 @@ describe("parseRecord", () => {
       { ...flat, status: "pending", attempts: -1 },
       { ...flat, status: "pending", kind: "refund" },
       { ...flat, status: "pending", reference: "" },
+      { ...flat, status: "pending", reference: "anything" },
+      { ...flat, status: "pending", reference: "LAX-SHOP-PAY-1" }, // a payment reference on an invoice
+      { ...flat, status: "sending", lease: { token: "t", expiresAtMs: 9e15 } },
+      {
+        ...flat,
+        status: "sending",
+        lease: { token: "t", expiresAtMs: NOW + MAX_LEASE_MS + CLOCK_SKEW_MS + 1 },
+      },
+      { ...flat, status: "unknown", settlesAtMs: 9e15 },
+      {
+        ...flat,
+        status: "needs_review",
+        reason: "r",
+        lookup: "clear",
+        issued: doc,
+        mismatch: { field: "grossPence", differencePence: Number.NaN },
+      },
     ];
     for (const row of rows) {
-      expect(parseRecord(row)).toMatchObject({ ok: false, refusal: { code: "bad_record" } });
+      expect(parseRecord(row, NOW)).toMatchObject({ ok: false, refusal: { code: "bad_record" } });
     }
   });
   it("a defaulted row (unknown, lookup_required false) cannot become a resend", () => {
@@ -530,6 +563,58 @@ describe("parseRecord", () => {
       status: "unknown",
       lookupRequired: false,
     };
-    expect(parseRecord(row).ok).toBe(false);
+    expect(parseRecord(row, NOW).ok).toBe(false);
+  });
+});
+
+describe("malformed provider totals", () => {
+  const sending = (): DocumentRecord => rec("sending");
+  const unknown = (): DocumentRecord => rec("unknown");
+  const bad: unknown[] = [
+    undefined,
+    null,
+    {},
+    { netPence: Number.NaN, vatPence: 0, grossPence: 0 },
+    { netPence: 1, vatPence: 1.5, grossPence: 2 },
+    { netPence: 1, vatPence: 1, grossPence: Number.POSITIVE_INFINITY },
+    { netPence: "1", vatPence: 1, grossPence: 2 },
+  ];
+  it("completeSending refuses them with a typed refusal and never throws", () => {
+    for (const totals of bad) {
+      const outcome = { ...issuedOutcome, totals } as unknown as IssueOutcome;
+      expect(completeSending(sending(), "t1", outcome, NOW, totals as Totals)).toMatchObject({
+        ok: false,
+        refusal: { code: "bad_outcome" },
+      });
+      expect(completeSending(sending(), "t1", outcome, NOW, { ...totals } as Totals).ok).toBe(
+        false,
+      );
+    }
+  });
+  it("applyLookup refuses them and leaves the record able to look again", () => {
+    for (const totals of bad) {
+      const outcome = { ...found, totals } as unknown as LookupOutcome;
+      expect(applyLookup(unknown(), outcome, SETTLED, { ...totals } as Totals)).toMatchObject({
+        ok: false,
+        refusal: { code: "bad_outcome" },
+      });
+      const nothing = { ...found } as Record<string, unknown>;
+      nothing.totals = undefined;
+      expect(
+        applyLookup(unknown(), nothing as unknown as LookupOutcome, SETTLED, totals),
+      ).toMatchObject({ ok: false, refusal: { code: "bad_outcome" } });
+    }
+  });
+  it("bad expected totals are refused too, and every record that is produced reads back", () => {
+    expect(
+      applyLookup(unknown(), found, SETTLED, { netPence: Number.NaN } as unknown as Totals).ok,
+    ).toBe(false);
+    const r = applyLookup(
+      unknown(),
+      { ...found, totals: { ...totals, grossPence: 12_001 } },
+      SETTLED,
+      totals,
+    );
+    expect(r.ok && parseRecord(JSON.parse(JSON.stringify(r.value)), NOW)).toEqual(r);
   });
 });
