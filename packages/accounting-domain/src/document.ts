@@ -427,12 +427,22 @@ function replayPriorCredits(
   return ok(ledger);
 }
 
+function missingPriorCredit(role: LineRole): Result<never, DocumentCode> {
+  return refuse(
+    "bad_invoice",
+    `prior credit notes cover less ${role} than has been refunded; one may be missing`,
+  );
+}
+
 /**
  * A credit note for part of an issued invoice. The lines come from the invoice's own goods and
  * delivery lines, so each keeps its VAT treatment (a margin-scheme sale is credited as margin
  * scheme, delivery as standard rated). The amounts must pass `planRefund` (never more than was
  * paid) and must fit in the invoice's goods and delivery gross minus the credit notes already
- * issued for it. Prior credits are replayed onto the invoice's lines in order and rebuilt; one that
+ * issued for it. `priorCredits` must hold every credit note already issued for the invoice (all
+ * states except cancelled and failed), in creation order: if they cover less than `buckets` says
+ * was refunded, the call is refused, since a missing one would let its VAT be credited twice.
+ * Prior credits are replayed onto the invoice's lines in order and rebuilt; one that
  * does not reproduce exactly is refused. A credit line is tax-inclusive (`amountsAre`): its VAT is
  * the cumulative share of the line's VAT for the gross credited so far, less what earlier credits
  * took, so however a line is split its credits never total more VAT or gross than the invoice line
@@ -467,6 +477,16 @@ export function buildCreditNoteFor(
   const replayed = replayPriorCredits(invoice, input.priorCredits);
   if (!replayed.ok) return replayed;
   const ledger = replayed.value;
+  const refunded: Record<LineRole, Pence> = {
+    goods: input.buckets.refundedGoodsPence,
+    delivery: input.buckets.refundedDeliveryPence,
+  };
+  for (const role of LINE_ROLES) {
+    const credited = ledger[role].reduce((sum, e) => sum + e.creditedGross, 0);
+    if (credited < refunded[role]) {
+      return missingPriorCredit(role);
+    }
+  }
   const lines: Line[] = [];
   for (const role of LINE_ROLES) {
     const amount = plan.value[role === "goods" ? "goodsPence" : "deliveryPence"];
