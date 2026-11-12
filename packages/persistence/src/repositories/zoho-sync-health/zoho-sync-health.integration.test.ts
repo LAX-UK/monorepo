@@ -1,13 +1,26 @@
-import { createDb } from "@auction/db";
+import { randomUUID } from "node:crypto";
+import { type Database, closeDb, createDb } from "@auction/db";
 import { sql } from "drizzle-orm";
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { rowsOf } from "../rows-of.js";
 import { DrizzleZohoDriftReader } from "./drizzle-zoho-drift.reader.js";
 import { DrizzleZohoOutboundQueueReader } from "./drizzle-zoho-outbound-queue.reader.js";
 import { DrizzleZohoSyncHealthStore } from "./drizzle-zoho-sync-health.store.js";
 
 const url = process.env.DATABASE_URL;
-const db = url ? createDb(url) : (null as never);
+
+// The read models count whole tables, so the suite runs against private copies of those tables in
+// a schema of its own (first on the search path). Nothing here touches, or is touched by, the rows
+// other integration files keep in the shared public tables.
+const SCHEMA = `zoho_health_${randomUUID().replaceAll("-", "").slice(0, 12)}`;
+const TABLES = [
+  "zoho_artwork_sync_outcome",
+  "zoho_sync_health",
+  "artwork_register",
+  "domain_events",
+  "domain_event_delivery",
+];
+let db: Database = null as never;
 
 const T0 = new Date("2026-11-03T02:30:00.000Z");
 const T1 = new Date("2026-11-04T02:30:00.000Z");
@@ -54,15 +67,44 @@ async function outcome(input: {
 }
 
 describe.skipIf(!url)("Zoho sync health read models (Postgres)", { timeout: 30_000 }, () => {
+  beforeAll(async () => {
+    const admin = createDb(url as string);
+    try {
+      await admin.execute(sql.raw(`CREATE SCHEMA "${SCHEMA}"`));
+      for (const table of TABLES) {
+        await admin.execute(
+          sql.raw(`CREATE TABLE "${SCHEMA}"."${table}" (LIKE public."${table}" INCLUDING ALL)`),
+        );
+      }
+    } finally {
+      await closeDb(admin);
+    }
+    const target = new URL(url as string);
+    target.searchParams.set("options", `-c search_path=${SCHEMA},public`);
+    db = createDb(target.toString());
+  });
+
+  afterAll(async () => {
+    await closeDb(db);
+    const admin = createDb(url as string);
+    try {
+      await admin.execute(sql.raw(`DROP SCHEMA IF EXISTS "${SCHEMA}" CASCADE`));
+    } finally {
+      await closeDb(admin);
+    }
+  });
+
   beforeEach(async () => {
-    await db.execute(sql`
-      TRUNCATE zoho_artwork_sync_outcome, zoho_sync_health, artwork_register,
-        domain_event_delivery, domain_events CASCADE
-    `);
+    await db.execute(
+      sql.raw(`TRUNCATE ${TABLES.map((table) => `"${SCHEMA}"."${table}"`).join(", ")}`),
+    );
   });
 
   describe("sync health store", () => {
-    const store = new DrizzleZohoSyncHealthStore(db);
+    let store: DrizzleZohoSyncHealthStore;
+    beforeAll(() => {
+      store = new DrizzleZohoSyncHealthStore(db);
+    });
 
     it("reads nothing before the worker has reported", async () => {
       expect(await store.read()).toBeNull();
@@ -97,7 +139,10 @@ describe.skipIf(!url)("Zoho sync health read models (Postgres)", { timeout: 30_0
   });
 
   describe("outbound queue", () => {
-    const reader = new DrizzleZohoOutboundQueueReader(db);
+    let reader: DrizzleZohoOutboundQueueReader;
+    beforeAll(() => {
+      reader = new DrizzleZohoOutboundQueueReader(db);
+    });
 
     async function delivery(consumer: string, status: string, createdAt: Date) {
       const [event] = rowsOf<{ id: number }>(
@@ -129,7 +174,10 @@ describe.skipIf(!url)("Zoho sync health read models (Postgres)", { timeout: 30_0
   });
 
   describe("drift", () => {
-    const reader = new DrizzleZohoDriftReader(db);
+    let reader: DrizzleZohoDriftReader;
+    beforeAll(() => {
+      reader = new DrizzleZohoDriftReader(db);
+    });
 
     it("lists register artworks whose Product is gone, until it comes back", async () => {
       await register({ productId: "p1", stockCode: code(1) });
