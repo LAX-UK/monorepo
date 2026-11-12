@@ -25,6 +25,7 @@ function session(overrides: Partial<AccountSession> & { id: string }): AccountSe
     createdAt: ago(5 * MINUTE),
     lastActiveAt: ago(0),
     isCurrent: false,
+    signedInWith: null,
     ...overrides,
   };
 }
@@ -128,5 +129,20 @@ describe("buildReauthHref", () => {
     expect(buildReauthHref("/account/security")).toBe(
       "/api/auth/login?returnTo=%2Faccount%2Fsecurity&intent=reauth",
     );
+  });
+});
+
+describe("how each sign-in was made", () => {
+  const detailOf = (signedInWith: AccountSession["signedInWith"]) =>
+    buildSessionsVm([session({ id: "a", isCurrent: true, signedInWith })], NOW).current?.detail;
+
+  it("is said after when it started, in words for each method", () => {
+    expect(detailOf("passkey")).toBe("Active now · Signed in 5 minutes ago with a passkey");
+    expect(detailOf("password")).toBe("Active now · Signed in 5 minutes ago with your password");
+    expect(detailOf("provider")).toBe("Active now · Signed in 5 minutes ago with Google or Apple");
+  });
+
+  it("is left out for a sign-in that did not record one", () => {
+    expect(detailOf(null)).toBe("Active now · Signed in 5 minutes ago");
   });
 });

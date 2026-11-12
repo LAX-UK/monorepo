@@ -10,3 +10,7 @@ export {
   DrizzleZohoListingRunStore,
   DrizzleZohoListingSourceReader,
 } from "./drizzle-zoho-listing.js";
+export { DrizzleBidPublishSettings } from "./drizzle-bid-publish-settings.js";
+export { DrizzleRegisterLotIntegrityReader } from "./drizzle-register-lot-integrity.reader.js";
+export { DrizzleUnlinkedOriginalsReader } from "./drizzle-unlinked-originals.reader.js";
+export { findRegisterLotMismatches } from "./register-lot-mismatch.query.js";

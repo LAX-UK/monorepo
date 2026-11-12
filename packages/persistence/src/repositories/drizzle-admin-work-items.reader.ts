@@ -22,8 +22,8 @@ import {
 import {
   UNAPPLIED_MONEY_HANDLED_ELSEWHERE,
   UNSOLD_LOT_END_STATUSES,
-  possibleSourceText,
   storedDueAt,
+  unappliedMoneyWorkItemWording,
 } from "@auction/domain";
 import { INVOICE_PAYMENT_DUE_DAYS, type UnsoldLotChoiceKind } from "@auction/types";
 import { and, desc, eq, inArray, isNotNull, isNull, lt, ne, or, sql } from "drizzle-orm";
@@ -33,6 +33,7 @@ import type {
   IAdminWorkItemsReader,
 } from "../interfaces/admin-work-items.reader.js";
 import { adminWorkItemHref } from "../lib/admin-work-item-href.js";
+import { findRegisterLotMismatches } from "./artwork-register/register-lot-mismatch.query.js";
 import { BLOCKED_CAPTURE_EVENT, toBlockedCapture } from "./blocked-capture.query.js";
 import { DrizzleUnappliedMoneyReader } from "./drizzle-unapplied-money.reader.js";
 import { lotWorkItemTitle, sentenceCase } from "./work-item-labels.js";
@@ -209,9 +210,9 @@ export class DrizzleAdminWorkItemsReader implements IAdminWorkItemsReader {
       sourceId: money.dedupeKey,
       kind: "payment_money_unapplied" as const,
       domain: "finance" as const,
-      title: "Money received that could not be applied",
+      title: unappliedMoneyWorkItemWording(money).title,
       subtitle: `${sentenceCase(money.reason)} · ${formatWorkItemAmount(money.amountCents / 100)}`,
-      hint: possibleSourceText(money.possibleGroup ?? null),
+      hint: unappliedMoneyWorkItemWording(money).hint,
       href: adminWorkItemHref("payment_money_unapplied", { paymentId: money.paymentId }),
       saleId: null,
       createdAt: money.receivedAt,
@@ -754,6 +755,37 @@ export class DrizzleAdminWorkItemsReader implements IAdminWorkItemsReader {
       };
     });
   }
+
+  async listRegisterLotMismatches(limit: number): Promise<AdminWorkItemSourceRow[]> {
+    const mismatches = await findRegisterLotMismatches(this.db, limit);
+    return mismatches.map((row) => ({
+      sourceId: row.registerId,
+      kind: "register_lot_mismatch" as const,
+      domain: "catalogue" as const,
+      title: "Register says this artwork is in a LAX Bid sale, but the lot isn't live",
+      subtitle: `${row.stockCode} · ${row.title} · ${registerLotMismatchState(row.lotStatus)}`,
+      href: adminWorkItemHref("register_lot_mismatch", {
+        subjectId: row.lotStatus === null ? null : row.lotId,
+      }),
+      saleId: null,
+      createdAt: row.changedAt,
+      sourceUpdatedAt: row.changedAt,
+      assignedToUserId: null,
+    }));
+  }
+}
+
+/** What the lot is, in words, when the register still places the artwork in a sale. */
+const REGISTER_LOT_MISMATCH_STATE: Record<string, string> = {
+  draft: "the lot is a draft",
+  cancelled: "the lot was cancelled",
+  voided: "the lot was voided",
+  ended: "the lot ended with no winner",
+};
+
+function registerLotMismatchState(status: string | null): string {
+  if (status === null) return "no lot found";
+  return REGISTER_LOT_MISMATCH_STATE[status] ?? `the lot is ${status}`;
 }
 
 const PURCHASE_PROBLEM_SUBTITLES: Record<string, string> = {

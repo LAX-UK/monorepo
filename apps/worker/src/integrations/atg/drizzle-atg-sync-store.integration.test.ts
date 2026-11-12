@@ -127,6 +127,7 @@ describe.skipIf(!HAS_DB)("DrizzleAtgSyncStore (integration)", () => {
           payloadHash: "h",
           lockedFieldsHash: "l",
           numberOfBids: 0,
+          sold: false,
         },
       ]);
     });
@@ -179,6 +180,7 @@ describe.skipIf(!HAS_DB)("DrizzleAtgSyncStore (integration)", () => {
         payloadHash: "h1",
         lockedFieldsHash: "l1",
         numberOfBids: 7,
+        sold: true,
       });
       const [row] = await db.select().from(atgLotLink).where(eq(atgLotLink.lotId, lotIds[0]));
       expect(row).toMatchObject({

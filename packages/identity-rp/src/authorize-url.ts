@@ -15,6 +15,11 @@ export function buildAuthorizeUrl(input: {
   loginHint?: string;
   /** Why the person is here, so the hosted page can say so ("sell"); it changes wording only. */
   hostedContext?: "sell";
+  /**
+   * Why a fresh sign-in is asked for (a word from the issuer's fixed list, see
+   * `ACCOUNT_STEP_UP_REASONS`), so the hosted page can say so. It changes wording only.
+   */
+  reauthReason?: string;
 }): string {
   const url = new URL(input.authorizationEndpoint);
   url.searchParams.set("response_type", "code");
@@ -27,6 +32,7 @@ export function buildAuthorizeUrl(input: {
   }
   if (input.loginHint) url.searchParams.set("login_hint", input.loginHint);
   if (input.hostedContext) url.searchParams.set("hosted_context", input.hostedContext);
+  if (input.reauthReason) url.searchParams.set("reauth_reason", input.reauthReason);
   url.searchParams.set("state", input.state);
   url.searchParams.set("nonce", input.nonce);
   url.searchParams.set("code_challenge", input.codeChallenge);

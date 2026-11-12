@@ -194,6 +194,7 @@ export class OriginalMoveService {
       holdingLotId:
         offer?.state === "bid_sale" && offer.ref?.kind === "bid_lot" ? offer.ref.id : null,
       eligible: blockers.length === 0,
+      zohoPrice: entry?.zohoPrice ?? null,
       blockers: blockers.map(({ message, link }) => ({ message, link })),
     };
   }

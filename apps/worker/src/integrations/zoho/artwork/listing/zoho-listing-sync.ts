@@ -5,6 +5,7 @@ import type {
   ZohoListingRunFailure,
 } from "@auction/persistence/interfaces";
 import type { Logger } from "pino";
+import { PRODUCT_NOT_FOUND } from "../zoho-product-gone.js";
 import { computeZohoListing } from "./compute-zoho-listing.js";
 import type { LaxArtListings } from "./lax-art-listings.js";
 import type { ListingLinks } from "./listing-links.js";
@@ -112,7 +113,7 @@ export class ZohoListingSync {
         report.failures.push({
           registerId: entry.id,
           stockCode: entry.stockCode,
-          code: "product_not_found",
+          code: PRODUCT_NOT_FOUND,
           retryable: false,
         });
         continue;

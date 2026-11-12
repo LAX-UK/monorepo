@@ -38,6 +38,7 @@ const assessment = {
   draftLot: null,
   holdingLotId: null,
   eligible: true,
+  zohoPrice: "4800.00",
   blockers: [],
 };
 const body = { saleId: SALE_ID, startingPrice: "250.00", consignorAgreed: true };
@@ -122,7 +123,11 @@ describe("Offer at auction from a From Zoho record: routes", () => {
   it("answers the check with what the dialog shows", async () => {
     const { app } = await buildApp("catalogue_editor");
     const response = await app.inject({ method: "GET", url, headers });
-    expect(response.json()).toMatchObject({ eligible: true, registerId: REGISTER_ID });
+    expect(response.json()).toMatchObject({
+      eligible: true,
+      registerId: REGISTER_ID,
+      zohoPrice: "4800.00",
+    });
     await app.close();
   });
 

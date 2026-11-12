@@ -69,6 +69,7 @@ export const WORK_ITEM_KIND_ACCESS: Record<AdminWorkItemSourceKind, CapabilityRe
   // The default action lives on the lot page, which finance-only staff cannot open.
   payment_overdue: SALES_ACCESS,
   deletion_hold: DELETION_HOLD_ACCESS,
+  register_lot_mismatch: LOTS_ACCESS,
 };
 
 const REVIEW_TASK_SOURCE_ACCESS: CapabilityRequirement = {
@@ -160,6 +161,7 @@ function stampActions(
     case "purchase_problem":
     case "payment_overdue":
     case "deletion_hold":
+    case "register_lot_mismatch":
       break;
   }
 
@@ -277,6 +279,10 @@ export class AdminWorkItemsService {
       {
         access: WORK_ITEM_KIND_ACCESS.deletion_hold,
         fetch: () => this.reader.listDeletionHolds(perSourceLimit),
+      },
+      {
+        access: WORK_ITEM_KIND_ACCESS.register_lot_mismatch,
+        fetch: () => this.reader.listRegisterLotMismatches(perSourceLimit),
       },
     ];
 

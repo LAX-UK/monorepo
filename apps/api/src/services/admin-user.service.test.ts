@@ -7,13 +7,17 @@ import type {
 import { describe, expect, it, vi } from "vitest";
 import { AuthzError } from "../lib/errors.js";
 import { AdminUserService } from "./admin-user.service.js";
-import type { IIdentitySecurityClient } from "./interfaces/identity-issuer-client.js";
+import type {
+  IIdentitySecurityClient,
+  IIdentitySignInMethodsClient,
+} from "./interfaces/identity-issuer-client.js";
 
 function makeService(
   bids: IAdminUserBidsReader,
   input: {
     reader?: IAdminUserReader;
     identitySecurity?: IIdentitySecurityClient;
+    identitySignInMethods?: IIdentitySignInMethodsClient;
   } = {},
 ) {
   const reader =
@@ -35,6 +39,7 @@ function makeService(
     undefined,
     undefined,
     input.identitySecurity,
+    input.identitySignInMethods,
   );
 }
 
@@ -135,6 +140,7 @@ describe("AdminUserService.getById", () => {
     await expect(service.getById("staff", ["client_services"], "user-1")).resolves.toEqual({
       ...detail,
       securityStatusAvailable: false,
+      signInMethodKinds: null,
     });
   });
 
@@ -151,5 +157,66 @@ describe("AdminUserService.getById", () => {
 
     await expect(service.getById("staff", ["client_services"], "missing")).resolves.toBeNull();
     expect(readSecurityStatus).not.toHaveBeenCalled();
+  });
+
+  describe("sign-in method kinds", () => {
+    const detail = { id: "user-1", twoFactorEnabled: false, pendingNewEmail: null };
+    const security = {
+      readSecurityStatus: vi.fn().mockResolvedValue({
+        twoFactorEnabled: true,
+        phoneNumber: null,
+        phoneNumberVerified: false,
+        pendingNewEmail: null,
+        emailChangeExpiresAt: null,
+      }),
+    };
+    const build = (identitySignInMethods?: IIdentitySignInMethodsClient) =>
+      makeService({ listForUser: vi.fn() } as unknown as IAdminUserBidsReader, {
+        reader: {
+          list: vi.fn(),
+          getById: vi.fn().mockResolvedValue(detail),
+          getByIds: vi.fn(),
+        } as unknown as IAdminUserReader,
+        identitySecurity: security,
+        ...(identitySignInMethods ? { identitySignInMethods } : {}),
+      });
+
+    it("returns the kinds the issuer reports", async () => {
+      const kinds = { password: true, google: false, apple: true, passkeys: 2 };
+      const readSignInMethodKinds = vi.fn().mockResolvedValue(kinds);
+      const result = await build({ readSignInMethodKinds }).getById(
+        "staff",
+        ["client_services"],
+        "user-1",
+      );
+      expect(result).toMatchObject({ securityStatusAvailable: true, signInMethodKinds: kinds });
+      expect(readSignInMethodKinds).toHaveBeenCalledWith("user-1");
+    });
+
+    it.each([
+      ["returns null", vi.fn().mockResolvedValue(null)],
+      ["throws", vi.fn().mockRejectedValue(new Error("Identity unavailable"))],
+    ])("says not available, without failing the page, when the issuer %s", async (_s, read) => {
+      const result = await build({ readSignInMethodKinds: read }).getById(
+        "staff",
+        ["client_services"],
+        "user-1",
+      );
+      expect(result).toMatchObject({ securityStatusAvailable: true, signInMethodKinds: null });
+    });
+
+    it("says not available when no issuer client is wired", async () => {
+      await expect(build().getById("staff", ["client_services"], "user-1")).resolves.toMatchObject({
+        signInMethodKinds: null,
+      });
+    });
+
+    it("is refused for staff without the people directory, before any issuer read", async () => {
+      const readSignInMethodKinds = vi.fn();
+      await expect(
+        build({ readSignInMethodKinds }).getById("staff", ["read_only"], "user-1"),
+      ).rejects.toMatchObject({ status: 403 });
+      expect(readSignInMethodKinds).not.toHaveBeenCalled();
+    });
   });
 });

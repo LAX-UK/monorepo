@@ -17,6 +17,10 @@ import {
   type IUnappliedMoneyRecorder,
   NO_UNAPPLIED_MONEY_RECORDER,
 } from "./payment/unapplied-money.recorder.js";
+import {
+  type TransferCheckDeps,
+  handleCashBalanceTransactionCreated,
+} from "./stripe-webhook/cash-balance-transaction.handler.js";
 import { handleChargeRefunded } from "./stripe-webhook/checkout-refund-handlers.js";
 import {
   type PaymentGroupWebhookDeps,
@@ -30,6 +34,10 @@ import {
 } from "./stripe-webhook/deal-payment-webhook-handlers.js";
 import type { StripePaymentWebhookDeps } from "./stripe-webhook/payment-webhook-lookup.js";
 import type { PaymentWebhookResult } from "./stripe-webhook/payment-webhook-types.js";
+import {
+  PaymentIntentRequiresActionHandler,
+  ReferenceNotingHandler,
+} from "./stripe-webhook/transfer-reference.js";
 import type { UnappliedMoneyRefundHandler } from "./stripe-webhook/unapplied-money-refund.handler.js";
 
 export type { PaymentWebhookResult } from "./stripe-webhook/payment-webhook-types.js";
@@ -47,6 +55,7 @@ const UNWIRED_PAYMENT_REFUNDS: IPaymentRefundLedger = {
 export class StripePaymentWebhookService {
   private readonly deps: StripePaymentWebhookDeps;
   private readonly handlers: ReturnType<typeof createPaymentWebhookHandlers>;
+  private readonly requiresAction: PaymentIntentRequiresActionHandler | null;
 
   constructor(
     transactionRunner: ITransactionRunner,
@@ -64,6 +73,7 @@ export class StripePaymentWebhookService {
     paymentEligibility: IPaymentEligibilityGate | null = null,
     paymentRefunds: IPaymentRefundLedger | null = null,
     errorReporter?: IErrorReporter,
+    private readonly transferChecks: TransferCheckDeps | null = null,
   ) {
     this.deps = {
       transactionRunner,
@@ -79,7 +89,41 @@ export class StripePaymentWebhookService {
       ...(errorReporter ? { errorReporter } : {}),
     };
     const handlers = createPaymentWebhookHandlers(this.deps, paymentGroups);
-    this.handlers = dealPayments ? withDealPaymentHandlers(handlers, dealPayments) : handlers;
+    const routed = dealPayments ? withDealPaymentHandlers(handlers, dealPayments) : handlers;
+    const references = transferChecks?.references;
+    this.handlers = references
+      ? {
+          ...routed,
+          paymentIntentProcessing: new ReferenceNotingHandler(
+            routed.paymentIntentProcessing,
+            references,
+            transferChecks?.groups ?? null,
+            errorReporter,
+          ),
+          paymentIntentPartiallyFunded: new ReferenceNotingHandler(
+            routed.paymentIntentPartiallyFunded,
+            references,
+            transferChecks?.groups ?? null,
+            errorReporter,
+          ),
+        }
+      : routed;
+    this.requiresAction = references
+      ? new PaymentIntentRequiresActionHandler(
+          references,
+          transferChecks?.groups ?? null,
+          errorReporter,
+        )
+      : null;
+  }
+
+  /** A bank-transfer intent shows its transfer instructions: the reference is kept. */
+  async handlePaymentIntentRequiresAction(
+    event: Stripe.Event,
+    paymentIntent: Stripe.PaymentIntent,
+  ): Promise<PaymentWebhookResult> {
+    if (!this.requiresAction) return { processed: false };
+    return this.requiresAction.handle(event, paymentIntent);
   }
 
   async handlePaymentIntentSucceeded(
@@ -175,6 +219,15 @@ export class StripePaymentWebhookService {
     if (deal) return deal;
     const grouped = await this.paymentGroups?.chargeEvents.chargeRefunded(event, charge);
     return grouped ?? handleChargeRefunded(this.deps, event, charge);
+  }
+
+  /** Money moved in a buyer's transfer balance: checked for a transfer applied to another invoice. */
+  async handleCashBalanceTransactionCreated(
+    event: Stripe.Event,
+    txn: Stripe.CustomerCashBalanceTransaction,
+  ): Promise<PaymentWebhookResult> {
+    if (!this.transferChecks) return { processed: false };
+    return handleCashBalanceTransactionCreated(this.deps, this.transferChecks, event, txn);
   }
 
   /** A bank transfer reached the buyer's Stripe balance and Stripe could not apply it. */

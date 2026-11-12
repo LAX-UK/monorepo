@@ -227,7 +227,8 @@ export class ReturnLotToLaxArtService {
       move: {
         registerLinked: true,
         lotStatus: link.status,
-        hasWinner: link.hasWinner,
+        // A lot ATG sold has no LAX winner but is just as sold: it cannot go back to lax.art.
+        hasWinner: link.hasWinner || link.soldOnAtg,
         offerState: entry.offer.state,
         offerLotId: entry.offer.ref?.kind === "bid_lot" ? entry.offer.ref.id : null,
         lotId,
