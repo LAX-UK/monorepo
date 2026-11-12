@@ -97,7 +97,13 @@ export function showMoreDevicesLabel(count: number): string {
   return `Show ${count} more ${count === 1 ? "device" : "devices"}`;
 }
 
-export type SignOutConfirmVm = { title: string; body: string; confirmLabel: string };
+export type SignOutConfirmVm = {
+  title: string;
+  body: string;
+  confirmLabel: string;
+  /** The confirm button while the sign-out runs. */
+  loadingLabel: string;
+};
 
 export function buildSignOutDeviceConfirm(
   row: Pick<SessionRowVm, "deviceLabel">,
@@ -106,6 +112,7 @@ export function buildSignOutDeviceConfirm(
     title: `Sign out ${row.deviceLabel}?`,
     body: "That device will be signed out of LAX Account, LAX Bid, LAX Shop and lax.art. Whoever is using it will need to sign in again.",
     confirmLabel: "Sign out",
+    loadingLabel: "Signing out…",
   };
 }
 
@@ -114,6 +121,7 @@ export function buildSignOutOthersConfirm(count: number): SignOutConfirmVm {
     title: "Sign out everywhere else?",
     body: `${plural(count, "other device")} will be signed out of LAX Account, LAX Bid, LAX Shop and lax.art. You'll stay signed in on this device.`,
     confirmLabel: "Sign out everywhere else",
+    loadingLabel: "Signing out…",
   };
 }
 

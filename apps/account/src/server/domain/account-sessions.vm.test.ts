@@ -159,6 +159,7 @@ describe("sign-out confirmations", () => {
     );
     expect(buildSignOutOthersConfirm(3).body).toContain("3 other devices");
     expect(one.confirmLabel).toBe("Sign out everywhere else");
+    expect(one.loadingLabel).toBe("Signing out…");
   });
 });
 
