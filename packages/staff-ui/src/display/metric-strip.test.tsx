@@ -179,4 +179,23 @@ describe("AttentionStrip", () => {
     );
     expect(container).toBeEmptyDOMElement();
   });
+
+  it("lays out as many cells per row as asked, so a short set leaves no empty cell", () => {
+    const { container } = render(
+      <StatGrid
+        label="Three facts"
+        columns={3}
+        narrowColumns={1}
+        items={[
+          { id: "a", label: "A", value: "1" },
+          { id: "b", label: "B", value: "2" },
+          { id: "c", label: "C", value: "3" },
+        ]}
+      />,
+    );
+    const grid = container.querySelector(".grid");
+    expect(grid?.className).toContain("md:grid-cols-3");
+    expect(grid?.className).toContain("grid-cols-1");
+    expect(grid?.className).not.toContain("md:grid-cols-4");
+  });
 });

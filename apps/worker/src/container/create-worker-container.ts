@@ -8,6 +8,7 @@ import {
   DrizzleRegisterLotIntegrityReader,
   DrizzleUnsoldChoiceDeadlineStore,
   DrizzleUnsoldLotFollowUpRepository,
+  DrizzleZohoSyncHealthStore,
 } from "@auction/persistence/repositories";
 import { DrizzleRepositoryFactory } from "@auction/persistence/repositories";
 import { DrizzleWebhookEventRepository } from "@auction/persistence/repositories";
@@ -40,7 +41,9 @@ import {
   syncXeroInvoiceWebhookLocal,
 } from "../integrations/xero/create-xero-live-executor-ports-local.js";
 import { createZohoCrmGateway } from "../integrations/zoho/create-zoho-crm-gateway.js";
+import { setZohoTokenRefreshObserver } from "../integrations/zoho/oauth-token-refresh.js";
 import { assertZohoCrmOrgEnvironment } from "../integrations/zoho/zoho-crm-org-check.js";
+import { ZohoTokenHealthMonitor } from "../integrations/zoho/zoho-token-health.js";
 import { runIdentityOutboxRelayJob } from "../jobs/identity-outbox-relay.job.js";
 import { marketingEventsOutcomeTotal } from "../jobs/marketing-event-processor.js";
 import type { ProcessInboundWebhookDeps } from "../jobs/process-inbound-webhook-event.js";
@@ -362,6 +365,14 @@ export function createWorkerContainer(): WorkerContainer {
     lifecycleExecutor,
   };
 
+  const zohoHealth = new DrizzleZohoSyncHealthStore(db);
+  setZohoTokenRefreshObserver(new ZohoTokenHealthMonitor({ store: zohoHealth, log }));
+  void zohoHealth
+    .reportModes(
+      { artworkSync: env.ZOHO_ARTWORK_SYNC_MODE, listing: env.ZOHO_ARTWORK_LISTING_MODE },
+      new Date(),
+    )
+    .catch((error: unknown) => log.warn({ err: error }, "zoho_sync_modes_report_failed"));
   const zohoArtworkSync = createZohoArtworkSyncRuntime({ env, db, log });
   const zohoArtworkWriteback = createZohoArtworkWriteback({ env, db, log });
   const zohoArtworkListing = createZohoArtworkListing({ env, db, log });

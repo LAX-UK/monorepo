@@ -11,6 +11,7 @@ import type {
   ZohoArtworkSyncRunSummary,
   ZohoArtworkSyncSummary,
 } from "../../interfaces/zoho-artwork-sync.js";
+import { rowsOf } from "../rows-of.js";
 
 const EMPTY_SUMMARY: ZohoArtworkSyncSummary = {
   create: 0,
@@ -170,12 +171,4 @@ export class DrizzleZohoArtworkSyncStore
     `);
     return rowsOf<{ gap: string; count: number }>(result);
   }
-}
-
-function rowsOf<T>(result: unknown): T[] {
-  if (Array.isArray(result)) return result as T[];
-  if (result && typeof result === "object" && "rows" in result) {
-    return (result as { rows?: T[] }).rows ?? [];
-  }
-  return [];
 }
