@@ -4,7 +4,11 @@ import type {
   IdentityEventPublisher,
   ProductSubjectUsageProbe,
 } from "@auction/auth";
-import type { SocialSignInProvider } from "@auction/identity-contracts";
+import type {
+  AccountTimeZone,
+  AccountTimeZoneChange,
+  SocialSignInProvider,
+} from "@auction/identity-contracts";
 import { hashPassword, verifyPassword } from "@better-auth/utils/password";
 import { pendingEmailChangeState } from "../lib/pending-email-change.js";
 import { findNewPasswordPolicyViolation } from "../schemas/validate-new-password.js";
@@ -311,12 +315,17 @@ export class IdentityOperationsService {
     subjectId: string,
     provider: SocialSignInProvider,
     keepSessionId: string,
+    /**
+     * Whether passkeys can sign anyone in here. When they cannot, the passkeys a person holds are
+     * not a way in, so they do not stop the last other method from being protected.
+     */
+    passkeysOffered = true,
   ): Promise<{ revokedSessionIds: string[] }> {
     let revokedSessionIds: string[] = [];
     await this.repositories.unitOfWork.transaction(async (transaction) => {
       const rows = await this.repositories.credentials.lockSignInAccounts(transaction, subjectId);
       const passkeys = await this.repositories.credentials.lockPasskeys(transaction, subjectId);
-      const decision = decideUnlink(rows, provider, passkeys);
+      const decision = decideUnlink(rows, provider, passkeysOffered ? passkeys : 0);
       if (decision !== "allowed") throw new IdentityOperationError(decision);
       await this.repositories.credentials.deleteSocialAccount(transaction, subjectId, provider);
       await this.identityEventPublisher.publish(
@@ -350,6 +359,8 @@ export class IdentityOperationsService {
     subjectId: string,
     passkeyId: string,
     keepSessionId: string,
+    /** As for `unlinkSocialSignIn`: other passkeys count as a way in only while they are offered. */
+    passkeysOffered = true,
   ): Promise<{ revokedSessionIds: string[]; name: string | null }> {
     let revokedSessionIds: string[] = [];
     let name: string | null = null;
@@ -363,7 +374,7 @@ export class IdentityOperationsService {
       );
       if (!removed) throw new IdentityOperationError("not_linked");
       // Throwing here rolls the delete back with the rest of the transaction.
-      if (decideRemovePasskey(rows, held) !== "allowed") {
+      if (decideRemovePasskey(rows, passkeysOffered ? held : 1) !== "allowed") {
         throw new IdentityOperationError("last_sign_in_method");
       }
       name = removed.name;
@@ -646,6 +657,56 @@ export class IdentityOperationsService {
       deleted = await this.repositories.subjects.deleteSubject(transaction, subjectId);
     });
     return deleted;
+  }
+
+  readTimeZone(subjectId: string): Promise<AccountTimeZone | null> {
+    return this.repositories.subjects.readTimeZone(subjectId);
+  }
+
+  /** Saves the person's time zone choice and tells every product in the same transaction. */
+  async setTimeZone(subjectId: string, change: AccountTimeZoneChange): Promise<AccountTimeZone> {
+    let result: AccountTimeZone | null = null;
+    await this.repositories.unitOfWork.transaction(async (transaction) => {
+      const saved = await this.repositories.subjects.updateTimeZone(
+        transaction,
+        subjectId,
+        change,
+        this.now(),
+      );
+      if (!saved) throw new IdentityOperationError("subject_not_found");
+      await publishIdentityProfileUpdated(
+        this.identityEventPublisher,
+        { subjectId, timeZoneMode: saved.mode, timeZone: saved.zone },
+        { transaction },
+      );
+      result = saved;
+    });
+    if (!result) throw new IdentityOperationError("subject_not_found");
+    return result;
+  }
+
+  /**
+   * Remembers the zone a device reports, for people who follow their device. Nothing is written
+   * (and no event is sent) when the mode is fixed or the zone is already the one stored.
+   */
+  async reportDeviceZone(subjectId: string, deviceZone: string): Promise<AccountTimeZone | null> {
+    let result: AccountTimeZone | null = null;
+    await this.repositories.unitOfWork.transaction(async (transaction) => {
+      const saved = await this.repositories.subjects.updateDeviceZone(
+        transaction,
+        subjectId,
+        deviceZone,
+        this.now(),
+      );
+      if (!saved) return;
+      await publishIdentityProfileUpdated(
+        this.identityEventPublisher,
+        { subjectId, timeZoneMode: saved.mode, timeZone: saved.zone },
+        { transaction },
+      );
+      result = saved;
+    });
+    return result;
   }
 
   async updateSubjectProfile(

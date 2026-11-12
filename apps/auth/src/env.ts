@@ -176,8 +176,9 @@ const envSchema = z
       .preprocess((value) => value === "true" || value === true, z.boolean())
       .default(false),
     /**
-     * Passkeys on the issuer (sign in with a passkey, and add one from Security). Off until the
-     * hosted pages for them ship; the relying party is always the issuer's own host.
+     * Passkeys on the issuer: the hosted sign-in, "Confirm it's you" and "Add a passkey" pages,
+     * and the passkey endpoints behind them. Off unless an environment turns it on; the relying
+     * party is always the issuer's own host.
      */
     PASSKEYS_ENABLED: z
       .preprocess((value) => value === "true" || value === true, z.boolean())

@@ -46,7 +46,13 @@ describe("soldRecord", () => {
       }),
       NOW,
     );
-    expect(paid.badge.label).toBe("Paid out 26 Sep");
+    expect(paid.badge.label).toBe("Paid out");
+    expect(paid.meta).toEqual([
+      "Autumn Modern British",
+      "lot 31",
+      "sold 22 Oct",
+      "paid out 26 Sep",
+    ]);
     expect(paid.net).toBe("£8,096.00");
     expect(paid.payoutHref).toBe("/selling/payouts/p1");
   });

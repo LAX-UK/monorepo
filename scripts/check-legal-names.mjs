@@ -23,6 +23,7 @@ export const LEGAL_NAME_ROOTS = [
   "apps/shop-identity/src",
   "apps/web/src",
   "apps/worker/src",
+  "packages/accounting-domain/src",
   "packages/email/src",
   "packages/identity-contracts/src",
   "packages/lax-ecosystem/src",
@@ -42,6 +43,12 @@ const VERBATIM_POLICY_DIR = "packages/marketing-ui/src/legal/london-art-exchange
  * it against legal-entity.ts, so the copy cannot drift.
  */
 const IDENTITY_NAME_MIRROR = "packages/identity-contracts/src/legal-documents.ts";
+/**
+ * The accounting domain is pure and cannot import @auction/branding either, so it keeps its own copy
+ * of the registered names. apps/web/src/lib/legal/accounting-legal-names.test.ts checks every name
+ * in it against legal-entity.ts, so the copy cannot drift.
+ */
+const ACCOUNTING_NAME_MIRROR = "packages/accounting-domain/src/document.ts";
 
 /** Registered company names, in any casing of the suffix. */
 export const COMPANY_NAME = /London Auction Xchange|London Art Exchange (Ltd|Limited)\b/i;
@@ -51,7 +58,12 @@ const COMMENT_LINE = /^\s*(\/\/|\*|\/\*)/;
 
 /** True for files the guard does not read (tests, verbatim policies, the identity mirror). */
 export function isExempt(rel) {
-  return TEST_FILE.test(rel) || rel.startsWith(VERBATIM_POLICY_DIR) || rel === IDENTITY_NAME_MIRROR;
+  return (
+    TEST_FILE.test(rel) ||
+    rel.startsWith(VERBATIM_POLICY_DIR) ||
+    rel === IDENTITY_NAME_MIRROR ||
+    rel === ACCOUNTING_NAME_MIRROR
+  );
 }
 
 /** Every non-comment line of `source` matching `pattern`, with its 1-based line number. */

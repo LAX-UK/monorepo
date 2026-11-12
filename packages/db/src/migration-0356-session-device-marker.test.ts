@@ -15,11 +15,12 @@ const journal = JSON.parse(read("meta/_journal.json")) as {
 };
 
 describe("migration 0356 session device marker", () => {
-  it("is journalled as entry 350, after the migrations other open changes take (0352 to 0355)", () => {
+  it("is journalled last, after every migration already on main", () => {
     const index = journal.entries.findIndex((e) => e.tag === "0356_session_device_marker");
-    expect(journal.entries[index]?.idx).toBe(350);
-    expect(journal.entries[index]?.when).toBe(1805788800000);
-    expect(journal.entries[index - 1]?.when).toBeLessThan(1805788800000);
+    expect(index).toBe(journal.entries.length - 1);
+    expect(journal.entries[index]?.when).toBe(1807171200000);
+    expect(journal.entries[index]?.idx).toBe((journal.entries[index - 1]?.idx ?? 0) + 1);
+    expect(journal.entries[index - 1]?.when).toBeLessThan(1807171200000);
   });
 
   it("only adds nullable columns and one table, idempotently, so older records and the previous release keep working", () => {

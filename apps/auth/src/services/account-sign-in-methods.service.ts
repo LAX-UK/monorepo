@@ -116,6 +116,11 @@ export class AccountSignInMethodsService {
     this.sessions = new RecentSessionGuard(ports.operations, now);
   }
 
+  /** Passkeys are a way in only where this environment lets them sign anyone in. */
+  private passkeysOffered(): boolean {
+    return this.ports.available?.passkey ?? false;
+  }
+
   async read(subjectId: string): Promise<AccountSignInMethodsResponse> {
     const methods = await this.ports.operations.readSignInMethods(subjectId);
     const offered = this.ports.available ?? { google: false, apple: false, passkey: false };
@@ -186,7 +191,12 @@ export class AccountSignInMethodsService {
     if (!current) return { ok: false, reason: "reauth_required" };
     let outcome: { revokedSessionIds: string[]; name: string | null };
     try {
-      outcome = await this.ports.operations.removePasskey(subjectId, passkeyId, current.id);
+      outcome = await this.ports.operations.removePasskey(
+        subjectId,
+        passkeyId,
+        current.id,
+        this.passkeysOffered(),
+      );
     } catch (error) {
       if (error instanceof IdentityOperationError && REFUSALS.has(error.code)) {
         return { ok: false, kind: error.code as AccountSignInMethodRefusal };
@@ -230,6 +240,7 @@ export class AccountSignInMethodsService {
         subjectId,
         provider,
         current.id,
+        this.passkeysOffered(),
       ));
     } catch (error) {
       if (error instanceof IdentityOperationError && REFUSALS.has(error.code)) {

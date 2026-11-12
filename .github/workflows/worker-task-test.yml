@@ -12,6 +12,7 @@ on:
           - alerts-seed
           - demo-full
           - backfill-bid-invoices
+          - check-accounts
 
 concurrency:
   group: worker-task-test
@@ -70,6 +71,13 @@ jobs:
       - name: Backfill bid invoices
         if: inputs.task == 'backfill-bid-invoices'
         run: pnpm --filter @auction/db exec tsx scripts/backfill-bid-invoices.ts
+      # Dedicated accounts for automated checks against test, so they never sign in as demo or owner
+      # accounts. Additive and idempotent: missing accounts are added, existing ones are left alone.
+      - name: Check accounts seed
+        if: inputs.task == 'check-accounts'
+        env:
+          APP_ENV: test
+        run: pnpm --filter @auction/db db:seed:check-accounts
       - name: Alerts first-run seed
         if: inputs.task == 'alerts-seed'
         run: pnpm --filter @auction/worker exec tsx src/scripts/seed-bid-alerts.ts

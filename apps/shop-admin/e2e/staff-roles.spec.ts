@@ -9,6 +9,7 @@ import type { AdminSessionFeatures } from "./support/feature-gate.js";
 import { ALL_FEATURES } from "./support/lax-admin-pages.js";
 import {
   type StaffSession,
+  closeStaffSession,
   e2eEnabled,
   openStaffPage,
   openStaffSession,
@@ -79,7 +80,7 @@ test.describe("LAX Admin staff roles @roles", () => {
 
         expect(shown).toEqual(expected);
       } finally {
-        await session?.context.close();
+        if (session) await closeStaffSession(session);
       }
     });
   }

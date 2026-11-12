@@ -8,6 +8,7 @@ import {
   privateSaleDealStageHistory,
 } from "@auction/db/schema";
 import type {
+  PrivateSaleArtworkUnlinkedReason,
   PrivateSaleDealDetail,
   PrivateSaleDealDocument,
   PrivateSaleDealParty,
@@ -55,6 +56,7 @@ function mapDeal(row: DealRow): Omit<PrivateSaleDealDetail, "seller" | "buyer" |
     stage: row.stage as PrivateSaleDealStage,
     itemSubmissionId: row.itemSubmissionId,
     artworkRegisterId: row.artworkRegisterId,
+    artworkUnlinkedReason: row.artworkUnlinkedReason as PrivateSaleArtworkUnlinkedReason | null,
     sourceEnquiryId: row.sourceEnquiryId,
     sourceUnsoldLotChoiceId: row.sourceUnsoldLotChoiceId,
     ownerUserId: row.ownerUserId,
@@ -141,6 +143,7 @@ export class DrizzlePrivateSaleDealRepository
         .values({
           itemSubmissionId: input.itemSubmissionId,
           artworkRegisterId: input.artworkRegisterId ?? null,
+          artworkUnlinkedReason: input.artworkUnlinkedReason ?? null,
           sourceEnquiryId: input.sourceEnquiryId ?? null,
           sourceUnsoldLotChoiceId: input.sourceUnsoldLotChoiceId ?? null,
           ownerUserId: input.ownerUserId,

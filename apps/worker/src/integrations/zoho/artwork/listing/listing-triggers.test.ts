@@ -32,3 +32,21 @@ describe("sale.rescheduled", () => {
     expect(s.registerIdsForSale).toHaveBeenCalledWith("sale-1");
   });
 });
+
+describe("lot.soft_deleted", () => {
+  const event: ListingTriggerEvent = {
+    eventType: "lot.soft_deleted",
+    aggregateId: "lot-1",
+    payload: {},
+  };
+
+  it("is a listing trigger", () => {
+    expect(LISTING_TRIGGER_EVENT_TYPES).toContain("lot.soft_deleted");
+  });
+
+  it("refreshes the artwork the lot was on", async () => {
+    const s = sources();
+    expect(await registerIdsFor(event, s)).toEqual(["lot-reg"]);
+    expect(s.registerIdsForLot).toHaveBeenCalledWith("lot-1");
+  });
+});

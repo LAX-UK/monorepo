@@ -236,6 +236,58 @@ describe("HttpIdentityIssuerClient", () => {
     });
   });
 
+  it("reads sign-in method kinds from the machine boundary", async () => {
+    const requested: string[] = [];
+    const fetchImpl = vi.fn(async (input: Parameters<typeof fetch>[0]) => {
+      if (String(input).endsWith("/internal/oauth/token")) {
+        return Response.json({ access_token: "machine-token", expires_in: 300 });
+      }
+      requested.push(String(input));
+      return Response.json({
+        kinds: { password: true, google: false, apple: true, passkeys: null },
+      });
+    });
+    const client = new HttpIdentityIssuerClient({
+      issuerBaseUrl: "https://identity.example.com",
+      fetchImpl,
+      machineClientId: "api-service",
+      machineClientSecret: "machine-secret-at-least-32-characters",
+    });
+
+    await expect(client.readSignInMethodKinds("user-1")).resolves.toEqual({
+      password: true,
+      google: false,
+      apple: true,
+      passkeys: null,
+    });
+    expect(requested).toEqual([
+      "https://identity.example.com/internal/identity/subjects/user-1/sign-in-method-kinds",
+    ]);
+  });
+
+  it("treats subject_not_found as absent and rejects a malformed sign-in method answer", async () => {
+    const answer = (response: () => Response) =>
+      new HttpIdentityIssuerClient({
+        issuerBaseUrl: "https://identity.example.com",
+        fetchImpl: vi.fn(async (input: Parameters<typeof fetch>[0]) =>
+          String(input).endsWith("/internal/oauth/token")
+            ? Response.json({ access_token: "machine-token", expires_in: 300 })
+            : response(),
+        ),
+        machineClientId: "api-service",
+        machineClientSecret: "machine-secret-at-least-32-characters",
+      });
+
+    await expect(
+      answer(() =>
+        Response.json({ code: "subject_not_found" }, { status: 404 }),
+      ).readSignInMethodKinds("x"),
+    ).resolves.toBeNull();
+    await expect(
+      answer(() => Response.json({ kinds: { password: "yes" } })).readSignInMethodKinds("x"),
+    ).rejects.toThrow();
+  });
+
   it("parses authoritative security status from the machine boundary", async () => {
     const fetchImpl = vi.fn(async (input: Parameters<typeof fetch>[0]) => {
       if (String(input).endsWith("/internal/oauth/token")) {
@@ -701,6 +753,70 @@ describe("HttpIdentityIssuerClient address book", () => {
       kind: "http",
       status: 404,
       code: "subject_not_found",
+    });
+  });
+});
+
+describe("HttpIdentityIssuerClient time zone", () => {
+  function client(answer: () => Response) {
+    const calls: { url: string; init: RequestInit }[] = [];
+    const fetchImpl = vi.fn(async (input: Parameters<typeof fetch>[0], init?: RequestInit) => {
+      const url = String(input);
+      if (url.endsWith("/internal/oauth/token")) {
+        return Response.json({ access_token: "machine-token", expires_in: 300 });
+      }
+      calls.push({ url, init: init ?? {} });
+      return answer();
+    });
+    return {
+      calls,
+      issuer: new HttpIdentityIssuerClient({
+        issuerBaseUrl: "https://identity.example.com",
+        fetchImpl: fetchImpl as never,
+        machineClientId: "api-service",
+        machineClientSecret: "machine-secret-that-is-long-enough-0123",
+      }),
+    };
+  }
+
+  it("saves a fixed city and the automatic choice through the machine route", async () => {
+    const { issuer, calls } = client(() => Response.json({ mode: "fixed", zone: "Asia/Tokyo" }));
+    expect(
+      await issuer.setSubjectTimeZone("user/1", { mode: "fixed", zone: "Asia/Tokyo" }),
+    ).toEqual({
+      mode: "fixed",
+      zone: "Asia/Tokyo",
+    });
+    await issuer.setSubjectTimeZone("user/1", { mode: "automatic", deviceZone: null });
+    const url = "https://identity.example.com/internal/identity/subjects/user%2F1/time-zone";
+    expect(calls.map((call) => `${call.init.method} ${call.url}`)).toEqual([
+      `PUT ${url}`,
+      `PUT ${url}`,
+    ]);
+    expect(JSON.parse(String(calls[0]?.init.body))).toEqual({ mode: "fixed", zone: "Asia/Tokyo" });
+    expect(JSON.parse(String(calls[1]?.init.body))).toEqual({ mode: "automatic", zone: null });
+  });
+
+  it("reports a device's zone", async () => {
+    const { issuer, calls } = client(() =>
+      Response.json({ mode: "automatic", zone: "Asia/Tokyo" }),
+    );
+    expect(await issuer.reportSubjectDeviceZone("u1", "Asia/Tokyo")).toEqual({
+      mode: "automatic",
+      zone: "Asia/Tokyo",
+    });
+    expect(calls[0]?.url).toBe(
+      "https://identity.example.com/internal/identity/subjects/u1/time-zone/device",
+    );
+    expect(JSON.parse(String(calls[0]?.init.body))).toEqual({ zone: "Asia/Tokyo" });
+  });
+
+  it("rejects an answer it does not recognise", async () => {
+    const { issuer } = client(() => Response.json({ mode: "sometimes" }));
+    await expect(
+      issuer.setSubjectTimeZone("u1", { mode: "fixed", zone: "Asia/Tokyo" }),
+    ).rejects.toMatchObject({
+      kind: "invalid_response",
     });
   });
 });

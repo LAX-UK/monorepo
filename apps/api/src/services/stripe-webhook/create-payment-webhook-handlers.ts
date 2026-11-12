@@ -41,7 +41,10 @@ export type PaymentWebhookHandlers = {
 export type PaymentGroupWebhookDeps = {
   settlement: Pick<PaymentGroupSettlementService, "settle" | "markProcessing" | "release">;
   chargeEvents: Pick<PaymentGroupChargeEvents, "chargeRefunded">;
-  groups: Pick<IPaymentGroupRepository, "findById" | "findBankTransferGroupsForCustomer">;
+  groups: Pick<
+    IPaymentGroupRepository,
+    "findById" | "findBankTransferGroupsForCustomer" | "listMembers"
+  >;
   payments: Pick<IPaymentReadRepository, "findById">;
   gateway: Pick<IPaymentGroupGateway, "expireCheckout">;
 };

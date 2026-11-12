@@ -6,7 +6,11 @@
 export type AccountActionResult =
   | { status: "ok"; message: string }
   | { status: "reauth_required" }
-  | { status: "error"; message: string };
+  /**
+   * `stale` says the page was out of date (that method was already gone, or is now the last way
+   * in), so the person is shown the list as it is, with the message.
+   */
+  | { status: "error"; message: string; stale?: true };
 
 /** The result of creating backup codes: the codes themselves, instead of a message. */
 export type BackupCodesActionResult =
@@ -33,3 +37,9 @@ export type LinkActionResult =
   | { status: "ok"; url: string }
   | { status: "reauth_required" }
   | { status: "error"; message: string; refresh: boolean };
+
+/** The result of saving the time zone, or of reporting the device's: what is stored now. */
+export type TimeZoneActionResult =
+  | { status: "ok"; mode: "automatic" | "fixed"; zone: string | null }
+  | { status: "reauth_required" }
+  | { status: "error"; message: string };

@@ -50,6 +50,14 @@ export {
   HOSTED_VERIFY_EMAIL_SCRIPT,
   HOSTED_RESEND_VERIFICATION_SCRIPT,
   HOSTED_MAGIC_LINK_SCRIPT,
+  HOSTED_PASSKEY_ADD_SCRIPT,
+  HOSTED_CONFIRM_SCRIPT,
+  buildHostedAddPasskeyHtml,
+  buildHostedPasskeyExpiredHtml,
+  buildHostedConfirmHtml,
+  hasConfirmMethod,
+  type ConfirmMethods,
+  type HostedAddPasskeyInput,
   buildHostedLoginHtml,
   buildHostedAccountChooserHtml,
   type HostedAccountChooserIntent,
@@ -104,6 +112,10 @@ export {
   buildPasskeyPlugin,
   passkeyConfigForIssuer,
 } from "./passkey-plugin.js";
+export {
+  PASSKEY_NOT_ALLOWED,
+  PASSKEY_WRONG_PERSON,
+} from "./passkey-error-codes.js";
 export { SUGGESTED_PASSKEY_NAME_MAX_LENGTH, suggestPasskeyName } from "./passkey-names.js";
 export {
   PASSKEY_LIMIT_ERROR_CODE,

@@ -1,3 +1,5 @@
+import { formatStaffDate } from "@auction/staff-ui";
+
 /** Compact relative timestamp for admin triage labels (locale-neutral numbers). */
 export function formatAdminRelativeTimeLabel(
   value: Date | string | null | undefined,
@@ -16,7 +18,7 @@ export function formatAdminRelativeTimeLabel(
   if (hours < 24) return `${hours}h ago`;
   const days = Math.floor(hours / 24);
   if (days < 14) return `${days}d ago`;
-  return date.toISOString().slice(0, 10);
+  return formatStaffDate(date, now);
 }
 
 export type AdminIssueAgeUrgency = "none" | "attention" | "stale";

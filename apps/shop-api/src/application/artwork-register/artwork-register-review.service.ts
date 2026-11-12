@@ -9,6 +9,7 @@ import {
 import {
   ADMIN_REGISTER_PAGE_SIZE,
   type AdminAuctionOfferAssessment,
+  type AdminCatalogueChange,
   type AdminRegisterAllItem,
   type AdminRegisterAllList,
   type AdminRegisterArtworkSummary,
@@ -56,6 +57,8 @@ export type ArtworkRegisterReviewDeps = {
   staffNames: StaffNameReader;
   /** The lax.art listing made from a record, for "Where it is". */
   listings: LaxArtListingReader;
+  /** Where the lax.art listing or Bid lot made from a record no longer matches Zoho. */
+  catalogueChanges: { changesFor(entry: ArtworkRegisterEntry): Promise<AdminCatalogueChange[]> };
   /** Whether the record can be offered at auction, and the draft lot LAX Bid already holds. */
   auction: { assessRegister(registerId: string): Promise<AdminAuctionOfferAssessment> };
   now?: () => Date;
@@ -247,20 +250,39 @@ export class ArtworkRegisterReviewService {
             changed: run.changed,
             unchanged: run.unchanged,
             failed: run.failed,
-            failures: run.failures,
+            failures: await Promise.all(run.failures.map((failure) => this.withPlace(failure))),
           }
         : null,
     };
   }
 
+  /**
+   * A Product deleted in Zoho keeps its LAX record, so say where that record is now. Nothing is
+   * withdrawn for the deletion; staff decide from here.
+   */
+  private async withPlace<F extends { registerId: string; code: string }>(
+    failure: F,
+  ): Promise<F & { place?: string }> {
+    if (failure.code !== "product_not_found") return failure;
+    const entry = await this.deps.register.findById(failure.registerId);
+    if (!entry) return failure;
+    const { chip } = deriveWhereItIs({
+      offer: entry.offer,
+      now: (this.deps.now ?? (() => new Date()))(),
+      hasLaxArtDraft: false,
+    });
+    return { ...failure, place: chip.label };
+  }
+
   async get(registerId: string): Promise<AdminRegisterDetail | null> {
     const entry = await this.deps.register.findById(registerId);
     if (!entry) return null;
-    const [conflicts, events, laxArt, auction] = await Promise.all([
+    const [conflicts, events, laxArt, auction, catalogueChanges] = await Promise.all([
       this.deps.queue.listConflictsFor(registerId),
       this.deps.register.listEvents(registerId, HISTORY_LIMIT),
       this.deps.listings.findByZohoProductId(entry.zohoProductId),
       this.deps.auction.assessRegister(registerId),
+      this.deps.catalogueChanges.changesFor(entry).catch(() => []),
     ]);
     const names = await this.deps.staffNames.namesFor(staffIdsOf(events));
     return {
@@ -277,6 +299,7 @@ export class ArtworkRegisterReviewService {
       year: entry.year,
       imageCount: entry.imageRefs.length,
       catalogueStatus: entry.catalogueStatus,
+      zohoPrice: entry.zohoPrice ?? null,
       offerState: entry.offer.state,
       whereItIs: presentWhereItIs({
         entry,
@@ -291,6 +314,7 @@ export class ArtworkRegisterReviewService {
         ? []
         : laxArtOfferBlockers(entry, DRAFT_PROBE).map(({ message, link }) => ({ message, link })),
       auctionBlockers: auction.blockers,
+      catalogueChanges,
       missing: catalogueGapsOf(entry),
       zohoModifiedAt: iso(entry.zohoModifiedAt),
       createdAt: entry.createdAt.toISOString(),

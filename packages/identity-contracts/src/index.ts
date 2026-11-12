@@ -65,6 +65,24 @@ export {
   type AccountProfileResponse,
 } from "./account-profile.js";
 export {
+  ACCOUNT_TIME_ZONE_DEVICE_PATH,
+  ACCOUNT_TIME_ZONE_ERRORS,
+  ACCOUNT_TIME_ZONE_MODES,
+  ACCOUNT_TIME_ZONE_PATH,
+  ACCOUNT_TIME_ZONE_UPDATE_PATH,
+  accountPlaceZoneSchema,
+  accountTimeZoneSchema,
+  effectiveAccountTimeZone,
+  parseAccountTimeZoneChange,
+} from "./account-time-zone.js";
+export { normalisePlaceZone } from "./place-zone.js";
+export type {
+  AccountTimeZone,
+  AccountTimeZoneChange,
+  AccountTimeZoneError,
+  AccountTimeZoneMode,
+} from "./account-time-zone.js";
+export {
   STAFF_STEP_UP_MAX_AGE_SECONDS,
   STAFF_STEP_UP_REQUIRED,
   isRecentStaffAuthentication,
@@ -75,6 +93,10 @@ export {
   ACCOUNT_SESSIONS_REVOKE_OTHERS_PATH,
   ACCOUNT_SESSIONS_REVOKE_PATH,
   ACCOUNT_STEP_UP_MAX_AGE_SECONDS,
+  ACCOUNT_STEP_UP_REASONS,
+  ACCOUNT_STEP_UP_REASON_PARAM,
+  parseAccountStepUpReason,
+  type AccountStepUpReason,
   accountSessionSchema,
   accountSessionsRevokedSchema,
   accountSessionsSchema,

@@ -67,7 +67,7 @@ describe("PrivateSaleRows", () => {
         heading="Private sales"
       />,
     );
-    expect(screen.getByText("Offer under discussion")).toBeInTheDocument();
+    expect(screen.getByText("In discussion")).toBeInTheDocument();
     expect(screen.queryByText(/£/)).toBeNull();
     expect(screen.getByRole("link", { name: "Accept the terms for PS-0012" })).toBeInTheDocument();
   });

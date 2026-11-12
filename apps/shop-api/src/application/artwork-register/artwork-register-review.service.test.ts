@@ -67,6 +67,7 @@ function assessment(over: Partial<AdminAuctionOfferAssessment> = {}): AdminAucti
     draftLot: null,
     holdingLotId: null,
     eligible: true,
+    zohoPrice: null,
     blockers: [],
     ...over,
   };
@@ -118,6 +119,7 @@ function service(overrides: Partial<ArtworkRegisterReviewDeps> = {}) {
         }),
       })),
     },
+    catalogueChanges: { changesFor: vi.fn(async () => []) },
     runs: { latestNightlyRun: vi.fn(async () => null) },
     listingRuns: { latestRun: async () => null, countFailedDeliveries: async () => 0 },
     staffNames: { namesFor: async () => new Map([["u1", "Cat Alogue"]]) },
@@ -301,6 +303,31 @@ describe("ArtworkRegisterReviewService", () => {
         failures,
       },
     });
+  });
+
+  it("shows where a Product deleted in Zoho now sits in LAX, and only for those", async () => {
+    const failures = [
+      { registerId: ID, stockCode: "LAX-ORI-PH-GAC-26-0001", code: "product_not_found" },
+      { registerId: ID, stockCode: "LAX-ORI-PH-GAC-26-0002", code: "INVALID_DATA" },
+    ];
+    const { service: s } = service({
+      listingRuns: {
+        latestRun: async () => ({
+          mode: "live",
+          finishedAt: T0,
+          checked: 2,
+          changed: 0,
+          unchanged: 0,
+          failed: 2,
+          failures,
+        }),
+        countFailedDeliveries: async () => 0,
+      },
+    });
+    const shown = (await s.lastCheck()).listing.run?.failures ?? [];
+    expect(shown[0]?.place).toEqual(expect.any(String));
+    expect(shown[0]?.place).not.toBe("");
+    expect(shown[1]).not.toHaveProperty("place");
   });
 
   it("opens one artwork with its conflicts and history, newest first, naming staff", async () => {

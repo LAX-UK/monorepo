@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { cityName } from "./city.js";
-import { isPlaceholderZone, isValidZone, normaliseViewerZone } from "./zone.js";
+import { isKnownZone, isPlaceholderZone, isValidZone, normaliseViewerZone } from "./zone.js";
 
 describe("zone validation", () => {
   it.each([
@@ -52,5 +52,19 @@ describe("cityName", () => {
     ["Africa/Cairo", "Cairo"],
   ])("%s -> %s", (zone, city) => {
     expect(cityName(zone)).toBe(city);
+  });
+});
+
+describe("isKnownZone", () => {
+  it("accepts every zone the runtime can compute with, including UTC", () => {
+    expect(isKnownZone("Europe/London")).toBe(true);
+    expect(isKnownZone("UTC")).toBe(true);
+    expect(isKnownZone("Etc/GMT+5")).toBe(true);
+  });
+
+  it("rejects what it cannot", () => {
+    expect(isKnownZone("Not/AZone")).toBe(false);
+    expect(isKnownZone("")).toBe(false);
+    expect(isKnownZone(undefined)).toBe(false);
   });
 });

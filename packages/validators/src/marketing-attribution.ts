@@ -1,5 +1,9 @@
 import type { MarketingAttributionSnapshot, MarketingAttributionTouch } from "@auction/types";
-import { MARKETING_ATTRIBUTION_VERSION } from "@auction/types";
+import {
+  MARKETING_ATTRIBUTION_VERSION,
+  decodeUtf8Base64Url,
+  encodeUtf8Base64Url,
+} from "@auction/types";
 import { z } from "zod";
 
 const touchField = z.string().trim().min(1).max(256);
@@ -286,34 +290,9 @@ export function mergeServerAttributionPut(
 
 const MARKETING_ATTRIBUTION_HEADER_PREFIX = "1.";
 
-function utf8ToBase64Url(value: string): string {
-  const bytes = new TextEncoder().encode(value);
-  if (typeof Buffer !== "undefined") {
-    return Buffer.from(bytes).toString("base64url");
-  }
-  let binary = "";
-  for (const byte of bytes) binary += String.fromCharCode(byte);
-  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-}
-
-function base64UrlToUtf8(encoded: string): string | null {
-  try {
-    if (typeof Buffer !== "undefined") {
-      return Buffer.from(encoded, "base64url").toString("utf8");
-    }
-    const padded = encoded.replace(/-/g, "+").replace(/_/g, "/");
-    const padLen = (4 - (padded.length % 4)) % 4;
-    const binary = atob(padded + "=".repeat(padLen));
-    const bytes = Uint8Array.from(binary, (c) => c.charCodeAt(0));
-    return new TextDecoder().decode(bytes);
-  } catch {
-    return null;
-  }
-}
-
 /** ASCII-safe wire format for `x-lax-attribution` (Fetch Headers reject non-Latin-1). */
 export function encodeMarketingAttributionHeaderJson(json: string): string | null {
-  const wire = `${MARKETING_ATTRIBUTION_HEADER_PREFIX}${utf8ToBase64Url(json)}`;
+  const wire = `${MARKETING_ATTRIBUTION_HEADER_PREFIX}${encodeUtf8Base64Url(json)}`;
   if (new TextEncoder().encode(wire).byteLength > 4096) return null;
   return wire;
 }
@@ -321,7 +300,7 @@ export function encodeMarketingAttributionHeaderJson(json: string): string | nul
 export function decodeMarketingAttributionHeaderRaw(raw: string): string | null {
   const trimmed = raw.trim();
   if (trimmed.startsWith(MARKETING_ATTRIBUTION_HEADER_PREFIX)) {
-    return base64UrlToUtf8(trimmed.slice(MARKETING_ATTRIBUTION_HEADER_PREFIX.length));
+    return decodeUtf8Base64Url(trimmed.slice(MARKETING_ATTRIBUTION_HEADER_PREFIX.length));
   }
   return trimmed;
 }

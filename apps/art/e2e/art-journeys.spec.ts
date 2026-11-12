@@ -1,4 +1,3 @@
-import { expect, test } from "@playwright/test";
 import {
   artBuyerCredentials,
   artE2eEnabled,
@@ -7,6 +6,7 @@ import {
   firstArtworkHref,
   signInArtBuyer,
 } from "./helpers/art-e2e";
+import { expect, test } from "./helpers/test";
 
 test.describe("lax.art journeys", () => {
   test.beforeEach(() => {

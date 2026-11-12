@@ -25,6 +25,7 @@ export function lotIn(
     lotNumber: 12,
     status,
     deleted: false,
+    soldOnAtg: false,
     sale:
       saleStatus === null
         ? null

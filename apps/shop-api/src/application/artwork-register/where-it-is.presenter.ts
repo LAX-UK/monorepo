@@ -1,39 +1,13 @@
 import {
   type ArtworkRegisterEntry,
-  type OfferState,
   WITHDRAWN_FROM_LABEL,
-  type WithdrawnFrom,
   deriveWhereItIs,
+  lastMoveInto,
+  offerMovesOf,
+  withdrawalOf,
 } from "@auction/artwork-register-contracts";
 import type { AdminBidLotRef, AdminLaxArtListing, AdminWhereItIs } from "@auction/shop-contracts";
 import type { RegisterEventRecord } from "../ports/artwork-register-review.ports.js";
-
-type Move = { at: Date; from: OfferState | null; to: OfferState };
-
-function stateOf(value: unknown): OfferState | null {
-  const state = value && typeof value === "object" ? (value as { state?: unknown }).state : null;
-  return typeof state === "string" ? (state as OfferState) : null;
-}
-
-/** The offer moves in the history, oldest first. */
-function movesOf(events: readonly RegisterEventRecord[]): Move[] {
-  return events
-    .filter((event) => event.type === "offer_moved")
-    .flatMap((event) => {
-      const to = stateOf(event.payload.to);
-      return to ? [{ at: event.createdAt, from: stateOf(event.payload.from), to }] : [];
-    });
-}
-
-const WITHDRAWN_SOURCES: readonly OfferState[] = ["lax_art", "bid_sale", "private_sale"];
-
-function withdrawnFrom(state: OfferState | null): WithdrawnFrom | null {
-  return state && WITHDRAWN_SOURCES.includes(state) ? (state as WithdrawnFrom) : null;
-}
-
-function lastInto(moves: readonly Move[], state: OfferState): Move | undefined {
-  return [...moves].reverse().find((move) => move.to === state);
-}
 
 /** The lot a place is about: the draft lot, or the lot that holds the artwork in a sale. */
 function bidLotOf(
@@ -60,13 +34,13 @@ export function presentWhereItIs(input: {
   now: Date;
 }): AdminWhereItIs {
   const { entry, events, laxArt, bidDraft = null, now } = input;
-  const moves = movesOf(events);
-  const into = lastInto(moves, entry.offer.state);
-  const withdrawn = into && entry.offer.state === "withdrawn" ? into : null;
+  const moves = offerMovesOf(events);
+  const into = lastMoveInto(moves, entry.offer.state);
+  const withdrawn = withdrawalOf(moves, entry.offer.state);
   const place = deriveWhereItIs({
     offer: entry.offer,
     now,
-    withdrawn: withdrawn ? { at: withdrawn.at, from: withdrawnFrom(withdrawn.from) } : null,
+    withdrawn,
     hasLaxArtDraft: laxArt !== null && !laxArt.published,
     hasBidDraftLot: bidDraft !== null,
   });
@@ -90,6 +64,6 @@ export function presentWhereItIs(input: {
       bidLot,
     };
   }
-  const since = place.key === "lax_art" ? lastInto(moves, "lax_art")?.at : undefined;
+  const since = place.key === "lax_art" ? lastMoveInto(moves, "lax_art")?.at : undefined;
   return { key, chip, from: null, since: since?.toISOString() ?? null, bidLot };
 }

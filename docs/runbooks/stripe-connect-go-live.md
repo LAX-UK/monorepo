@@ -12,7 +12,7 @@ Stripe allows **one scope per destination** ([Connect webhooks](https://docs.str
 | Veriff event (optional) | **Veriff Customer Portal** | `https://api.yourdomain.com/webhooks/veriff/event` | Session progress (`started`, `submitted`) |
 | Connect accounts | **Connected accounts** | `/webhooks/stripe/connect` | `account.updated`, `capability.updated`, `account.external_account.created`, `account.external_account.updated` (payout bank changes: Activity and the required notice to owners, admins and finance) |
 | Transfers | **Your account** | `/webhooks/stripe/transfers` | `transfer.created`, `transfer.updated`, `transfer.reversed` |
-| Payments | **Your account** | `/webhooks/stripe/payments` | `payment_intent.succeeded`, `payment_intent.processing`, `payment_intent.partially_funded`, `payment_intent.payment_failed`, `payment_intent.canceled`, `charge.dispute.*`, `charge.refunded` |
+| Payments | **Your account** | `/webhooks/stripe/payments` | `payment_intent.succeeded`, `payment_intent.processing`, `payment_intent.partially_funded`, `payment_intent.payment_failed`, `payment_intent.canceled`, `charge.dispute.*`, `charge.refunded`, `payment_intent.requires_action`, `cash_balance.funds_available`, `customer_cash_balance_transaction.created` (without the last two, a transfer applied to the wrong invoice is not reported) |
 
 Optional: `radar.early_fraud_warning.created` (Payments), `payout.failed` (Connected accounts).
 - [ ] **Connect accounts destination** also subscribes to `account.application.deauthorized` (seller revokes platform access).
