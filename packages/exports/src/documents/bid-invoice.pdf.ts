@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { finished } from "node:stream/promises";
 import { legalEntityFor, productCopyrightLine } from "@auction/branding";
+import { LONDON_TIME_ZONE, formatDate, formatWeekday } from "@auction/datetime";
 import PDFDocument from "pdfkit";
 
 /** One line of an invoice as it was raised, in whole pence. */
@@ -65,17 +66,10 @@ function invoiceFonts(): { regular: Buffer; bold: Buffer } {
 }
 
 const GBP = new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP" });
-const DAY = new Intl.DateTimeFormat("en-GB", {
-  weekday: "short",
-  day: "numeric",
-  month: "short",
-  year: "numeric",
-  timeZone: "Europe/London",
-});
 
 /** "Fri 13 Nov 2026": the London day, in the one date style, with the year an invoice needs. */
 function dayLabel(date: Date): string {
-  return DAY.format(date).replace(",", "");
+  return `${formatWeekday(date, LONDON_TIME_ZONE)} ${formatDate(date, LONDON_TIME_ZONE)}`;
 }
 
 /** "£1,234.50" from whole pence. */

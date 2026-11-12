@@ -148,7 +148,7 @@ describe("BuyerDefaultService void and outcome", () => {
     expect(order).toEqual(["void", "audit"]);
     expect(deps.repository.record).toHaveBeenCalledWith(
       expect.anything(),
-      expect.objectContaining({ offeredUserId: "under-1", offeredAmount: "900.00" }),
+      expect.objectContaining({ outcome: "offered_to_underbidder" }),
     );
     const audiences = deps.dispatcher.dispatch.mock.calls.map((c) => c[1].meta.audience);
     expect(audiences.sort()).toEqual(["buyer", "seller", "underbidder"]);

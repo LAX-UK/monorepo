@@ -1,4 +1,4 @@
-import { toast } from "sonner";
+import { runToast, runToastIfRaised } from "@/lib/ui/toast-bridge";
 
 export type NotifyAction = {
   label: string;
@@ -24,60 +24,75 @@ export type NotifyPromiseMessages<T> = {
   error: string | ((error: unknown) => string);
 };
 
-/** Imperative toasts — single chokepoint for Sonner.
+/** Imperative toasts — single chokepoint for Sonner, loaded when the first toast is raised
+ * (`toast-bridge.ts`), so none of them returns an id.
  * Do not import `sonner` elsewhere in `apps/web` (see `sonner-import.contract.test.ts`).
  * * TODO: optional Sentry breadcrumb on `error` for production diagnostics.
  */
 export const notify = {
-  success(title: string, opts?: NotifyOpts): string | number {
-    return toast.success(title, {
-      duration: opts?.duration ?? DEFAULT_SUCCESS_DURATION_MS,
-      ...(opts?.description !== undefined ? { description: opts.description } : {}),
-      ...(opts?.id !== undefined ? { id: opts.id } : {}),
+  success(title: string, opts?: NotifyOpts): void {
+    runToast((toast) => {
+      toast.success(title, {
+        duration: opts?.duration ?? DEFAULT_SUCCESS_DURATION_MS,
+        ...(opts?.description !== undefined ? { description: opts.description } : {}),
+        ...(opts?.id !== undefined ? { id: opts.id } : {}),
+      });
     });
   },
 
   /** Realtime / repeatable events must pass `id` for deduplication. */
-  info(title: string, opts: NotifyOpts & { id: string }): string | number {
-    return toast.info(title, {
-      id: opts.id,
-      duration: opts.duration ?? DEFAULT_SUCCESS_DURATION_MS,
-      ...(opts.description !== undefined ? { description: opts.description } : {}),
+  info(title: string, opts: NotifyOpts & { id: string }): void {
+    runToast((toast) => {
+      toast.info(title, {
+        id: opts.id,
+        duration: opts.duration ?? DEFAULT_SUCCESS_DURATION_MS,
+        ...(opts.description !== undefined ? { description: opts.description } : {}),
+      });
     });
   },
 
-  warning(title: string, opts?: NotifyOpts): string | number {
-    return toast.warning(title, {
-      duration: opts?.duration ?? DEFAULT_SUCCESS_DURATION_MS,
-      ...(opts?.description !== undefined ? { description: opts.description } : {}),
-      ...(opts?.id !== undefined ? { id: opts.id } : {}),
+  warning(title: string, opts?: NotifyOpts): void {
+    runToast((toast) => {
+      toast.warning(title, {
+        duration: opts?.duration ?? DEFAULT_SUCCESS_DURATION_MS,
+        ...(opts?.description !== undefined ? { description: opts.description } : {}),
+        ...(opts?.id !== undefined ? { id: opts.id } : {}),
+      });
     });
   },
 
-  error(title: string, opts?: NotifyOpts): string | number {
-    return toast.error(title, {
-      duration: opts?.duration ?? DEFAULT_ERROR_DURATION_MS,
-      ...(opts?.description !== undefined ? { description: opts.description } : {}),
-      ...(opts?.id !== undefined ? { id: opts.id } : {}),
-      ...(opts?.action !== undefined ? { action: opts.action } : {}),
-      ...(opts?.cancel !== undefined ? { cancel: opts.cancel } : {}),
+  error(title: string, opts?: NotifyOpts): void {
+    runToast((toast) => {
+      toast.error(title, {
+        duration: opts?.duration ?? DEFAULT_ERROR_DURATION_MS,
+        ...(opts?.description !== undefined ? { description: opts.description } : {}),
+        ...(opts?.id !== undefined ? { id: opts.id } : {}),
+        ...(opts?.action !== undefined ? { action: opts.action } : {}),
+        ...(opts?.cancel !== undefined ? { cancel: opts.cancel } : {}),
+      });
     });
   },
 
   promise<T>(promise: Promise<T>, msgs: NotifyPromiseMessages<T>): Promise<T> {
-    void toast.promise(promise, msgs);
+    runToast((toast) => {
+      void toast.promise(promise, msgs);
+    });
     return promise;
   },
 
   dismiss(toastId?: string | number): void {
-    toast.dismiss(toastId);
+    runToastIfRaised((toast) => {
+      toast.dismiss(toastId);
+    });
   },
 
   /** Long-running staff action — pair with `success`/`error` using the same `id` to resolve. */
-  loading(title: string, opts?: NotifyOpts): string | number {
-    return toast.loading(title, {
-      ...(opts?.description !== undefined ? { description: opts.description } : {}),
-      ...(opts?.id !== undefined ? { id: opts.id } : {}),
+  loading(title: string, opts?: NotifyOpts): void {
+    runToast((toast) => {
+      toast.loading(title, {
+        ...(opts?.description !== undefined ? { description: opts.description } : {}),
+        ...(opts?.id !== undefined ? { id: opts.id } : {}),
+      });
     });
   },
 
@@ -88,15 +103,17 @@ export const notify = {
       actionLabel?: string;
       onAction: () => void;
     },
-  ): string | number {
-    return toast.success(title, {
-      duration: opts.duration ?? DEFAULT_SUCCESS_DURATION_MS,
-      ...(opts.description !== undefined ? { description: opts.description } : {}),
-      ...(opts.id !== undefined ? { id: opts.id } : {}),
-      action: {
-        label: opts.actionLabel ?? "Undo",
-        onClick: opts.onAction,
-      },
+  ): void {
+    runToast((toast) => {
+      toast.success(title, {
+        duration: opts.duration ?? DEFAULT_SUCCESS_DURATION_MS,
+        ...(opts.description !== undefined ? { description: opts.description } : {}),
+        ...(opts.id !== undefined ? { id: opts.id } : {}),
+        action: {
+          label: opts.actionLabel ?? "Undo",
+          onClick: opts.onAction,
+        },
+      });
     });
   },
 };

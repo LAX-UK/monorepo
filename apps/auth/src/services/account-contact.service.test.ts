@@ -13,6 +13,7 @@ function session(id: string, createdAt: Date) {
     ipAddress: null,
     userAgent: null,
     lastPasswordAuthAt: null,
+    previousIds: [],
     isCurrent: false,
   };
 }

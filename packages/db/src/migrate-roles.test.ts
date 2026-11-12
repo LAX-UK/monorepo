@@ -54,6 +54,7 @@ import {
   WORKER_QR_CODE_SCAN_PURGE_DELETE_TABLES,
   WORKER_QR_CODE_SCAN_TABLES,
   WORKER_READ_TABLES,
+  WORKER_REOFFER_TABLES,
   WORKER_SHOP_ENQUIRY_READ_COLUMNS,
   WORKER_SHOP_ORDER_READ_COLUMNS,
   WORKER_SHOP_PRINT_GROUP_READ_COLUMNS,
@@ -695,6 +696,7 @@ describe("migrate-roles invariants", () => {
       "artwork_register",
       "zoho_artwork_sync_outcome",
       "zoho_listing_sync_run",
+      "zoho_sync_health",
     ]);
     expect([...SHOP_ARTWORK_REGISTER_CONFLICT_TABLES]).toEqual(["artwork_register_conflict"]);
     expect([...SHOP_ARTWORK_REGISTER_EVENT_TABLES]).toEqual(["artwork_register_event"]);
@@ -722,6 +724,7 @@ describe("migrate-roles invariants", () => {
       "zoho_artwork_sync_outcome",
       "zoho_artwork_sync_state",
       "zoho_listing_sync_run",
+      "zoho_sync_health",
     ]);
     for (const table of WORKER_ZOHO_ARTWORK_SYNC_TABLES) {
       expect([...WORKER_DENY_TABLES]).not.toContain(table);
@@ -807,6 +810,15 @@ describe("migrate-roles invariants", () => {
       "bid_invoice_line",
     ]);
     expect([...WORKER_INVOICE_RAISE_FULFILMENT_TABLES]).toEqual(["lot_fulfilment"]);
+  });
+
+  it("lets the worker update re-offers and seller answers but never create or delete one", () => {
+    expect([...WORKER_REOFFER_TABLES]).toEqual(["lot_reoffer", "seller_consent"]);
+    for (const table of WORKER_REOFFER_TABLES) {
+      expect([...WORKER_DENY_TABLES]).not.toContain(table);
+      expect([...WORKER_FULL_TABLES]).not.toContain(table);
+      expect([...API_DENY_TABLES]).not.toContain(table);
+    }
   });
 
   it("keeps buyer refunds append-only for the Bid API and the reconcile job, and away from Shop", () => {

@@ -9,6 +9,8 @@
 import { LOCALE } from "./constants.js";
 import { formatDate, formatTime } from "./date-style.js";
 
+export { runtimeTimeZone } from "./runtime-zone.js";
+
 type ShortMonthOptions = { engineSept?: boolean | undefined };
 
 const formats = new Map<string, Intl.DateTimeFormat>();
@@ -75,9 +77,4 @@ export function formatWeekdayDateTime(date: Date, zone: string): string {
 /** "9:05" (the hour is not padded): a door time. */
 export function formatTimeUnpadded(date: Date, zone: string): string {
   return intl(zone, { hour: "numeric", minute: "2-digit" }).format(date);
-}
-
-/** The zone the runtime itself runs in (a browser's, or a server's `TZ`), unnormalised. */
-export function runtimeTimeZone(): string {
-  return new Intl.DateTimeFormat().resolvedOptions().timeZone;
 }

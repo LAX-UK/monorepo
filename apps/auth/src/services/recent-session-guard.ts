@@ -19,6 +19,26 @@ export class RecentSessionGuard {
     return sessions.filter((session) => session.expiresAt.getTime() > nowMs);
   }
 
+  /**
+   * The live sign-in `sessionId` names: that record, or the one that replaced it when a newer
+   * sign-in in the same browser took it over. A product keeps the id it signed in with, so this is
+   * how it keeps being recognised. Only the person's own records are searched. For reading and for
+   * actions that only take something away; a sensitive change uses `findRecent`.
+   */
+  async findLive(subjectId: string, sessionId: string): Promise<IdentitySession | null> {
+    const live = await this.liveSessions(subjectId);
+    return (
+      live.find((row) => row.id === sessionId) ??
+      live.find((row) => row.previousIds.includes(sessionId)) ??
+      null
+    );
+  }
+
+  /**
+   * The sign-in `sessionId` itself, when it is live and was made within the step-up window. Only
+   * the exact id counts: an earlier name never inherits the recency of the record that replaced
+   * it, so a caller holding one is sent through a fresh sign-in of its own.
+   */
   async findRecent(subjectId: string, sessionId: string): Promise<IdentitySession | null> {
     const session = (await this.liveSessions(subjectId)).find((row) => row.id === sessionId);
     if (!session) return null;

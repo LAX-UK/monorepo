@@ -1320,6 +1320,24 @@ export type {
 } from "./zoho-artwork-sync.js";
 
 export type {
+  IZohoDriftReader,
+  IZohoOutboundQueueReader,
+  IZohoSyncHealthReader,
+  IZohoSyncHealthStore,
+  ProductWithoutRegisterRow,
+  RegisterWithoutProductRow,
+  StatusMismatchRow,
+  ZohoDriftCounts,
+  ZohoDriftPage,
+  ZohoDriftPaging,
+  ZohoOutboundQueueStats,
+  ZohoSyncHealthRecord,
+  ZohoSyncModes,
+  ZohoSyncRunMode,
+  ZohoTokenHealth,
+} from "./zoho-sync-health.js";
+
+export type {
   IZohoListingLock,
   IZohoListingRunReader,
   IZohoListingRunStore,
@@ -1351,6 +1369,24 @@ export {
   type PaymentReminderCandidate,
   type RecordBuyerDefaultInput,
 } from "./buyer-default.js";
+export {
+  LotReawardRefusedError,
+  LotReofferConflictError,
+  type CreateLotReofferInput,
+  type ILotReawardRepository,
+  type ILotReofferReader,
+  type ILotReofferRepository,
+  type ISellerConsentRepository,
+  type LotReofferView,
+  type ReawardLotInput,
+  type ReawardLotResult,
+  type ReofferStatusChange,
+  type SellerConsentAnswerWrite,
+  type SellerConsentChannel,
+  type SellerConsentTerms,
+  type SellerConsentView,
+  type SellerPreferredNext,
+} from "./lot-reoffer.js";
 export type {
   IPrivateSaleDealReader,
   IPrivateSaleDealWriter,

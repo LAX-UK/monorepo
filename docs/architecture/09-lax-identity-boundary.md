@@ -221,6 +221,17 @@ an exactly registered post-logout redirect. Confidential clients may use
 `/api/auth/oauth2/revoke` and `/api/auth/oauth2/introspect`. Revocation can
 invalidate refresh families and enqueue client-targeted logout.
 
+Signing out of a product ends that browser's sign-in only. The ID token's `sid` may
+be the browser's record or an earlier id of it (a newer sign-in in the same browser
+took the older one over); the issuer ends that record, sends back-channel logout for
+the record and each earlier id, and deletes only the OAuth tokens issued under them
+(`oauth_access_token.sid`). The person's other browsers keep their records, tokens
+and refresh. Better Auth's own end-session is never reached, because it deletes every
+token of the person. Without an ID token (for example LAX Account with its session
+store down) a same-site request ends the browser's record from its cookie. A refresh
+is refused (`invalid_grant`) once the record behind its `sid` has ended or expired,
+and the issuer sweeps expired records with the same back-channel sign-out.
+
 Back-channel endpoints are:
 
 - Bid: `https://lax.bid/api/auth/backchannel-logout`

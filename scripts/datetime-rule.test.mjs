@@ -67,6 +67,13 @@ test("reports every construct a file uses, sorted", async () => {
   ]);
 });
 
+test("exempts the self-contained Identity closure, and only it", async () => {
+  const text = await fixture("intl-formatter.txt");
+  assert.deepEqual(bannedConstructsIn("apps/auth/src/services/a.ts", text), []);
+  assert.deepEqual(bannedConstructsIn("packages/identity-contracts/src/a.ts", text), []);
+  assert.deepEqual(bannedConstructsIn("packages/auth/src/a.ts", text), ["Intl.DateTimeFormat"]);
+});
+
 test("passes the module itself", async () => {
   const text = await fixture("intl-formatter.txt");
   assert.deepEqual(bannedConstructsIn("packages/datetime/src/zone-formats.ts", text), []);

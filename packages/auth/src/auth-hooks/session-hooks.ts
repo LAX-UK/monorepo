@@ -17,6 +17,11 @@ export function isSocialSessionPath(path: string | undefined): boolean {
 /** Edge headers that carry a country code; a coarse signal, never an address. */
 const REGION_HEADERS = ["cf-ipcountry", "x-vercel-ip-country"] as const;
 
+/** The country code the edge reported for a request, or null; never an address. */
+export function readRequestRegion(headers: Headers | undefined): string | null {
+  return REGION_HEADERS.map((name) => headers?.get(name)?.trim()).find(Boolean) ?? null;
+}
+
 export function buildSessionDatabaseHooks(deps: AuthHookDeps) {
   return {
     create: {
@@ -59,7 +64,7 @@ export function buildSessionDatabaseHooks(deps: AuthHookDeps) {
           userId: sess.userId,
           at: new Date(sess.createdAt),
           userAgent: sess.userAgent ?? headers?.get("user-agent") ?? null,
-          region: REGION_HEADERS.map((name) => headers?.get(name)?.trim()).find(Boolean) ?? null,
+          region: readRequestRegion(headers),
         });
       },
     },

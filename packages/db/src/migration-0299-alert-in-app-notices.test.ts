@@ -13,6 +13,16 @@ const journal = JSON.parse(read("meta/_journal.json")) as {
 };
 
 const NEW_TYPES = ["artist_lots_listed", "search_lots_listed"];
+/** Types added by later migrations: this migration's list stops before them. */
+const LATER_TYPES = [
+  "reoffer_seller_request",
+  "reoffer_seller_reminder",
+  "reoffer_seller_outcome",
+  "reoffer_offer",
+  "reoffer_offer_reminder",
+  "reoffer_offer_closed",
+];
+const TYPES_AT_0299 = NOTIFICATION_TYPES.filter((t) => !LATER_TYPES.includes(t));
 
 const typesIn = (sql: string) => {
   const at = sql.lastIndexOf("ADD CONSTRAINT notification_type_check");
@@ -30,14 +40,14 @@ describe("migration 0299 alert in-app notices", () => {
   });
 
   it("allows every type the schema lists, the two new ones included", () => {
-    expect(typesIn(migration)).toEqual([...NOTIFICATION_TYPES]);
+    expect(typesIn(migration)).toEqual([...TYPES_AT_0299]);
     for (const type of [...NEW_TYPES, "sale_announced", "buyer_default_notice", "outbid"]) {
       expect(typesIn(migration)).toContain(type);
     }
   });
 
   it("rolls back to the previous list and deletes the notices the old constraint refuses", () => {
-    expect(typesIn(rollback)).toEqual(NOTIFICATION_TYPES.filter((t) => !NEW_TYPES.includes(t)));
+    expect(typesIn(rollback)).toEqual(TYPES_AT_0299.filter((t) => !NEW_TYPES.includes(t)));
     expect(rollback).toContain(
       "DELETE FROM notification WHERE type IN ('artist_lots_listed', 'search_lots_listed')",
     );

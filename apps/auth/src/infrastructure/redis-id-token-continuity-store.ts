@@ -8,6 +8,7 @@ const KEY_PREFIX = "auth:id-token-continuity:";
 export type ContinuityRedis = {
   set(key: string, value: string, mode: "EX", ttlSec: number): Promise<unknown>;
   getdel(key: string): Promise<string | null>;
+  get(key: string): Promise<string | null>;
 };
 
 /** Seals records at rest when an envelope is configured: they carry email and name claims. */
@@ -43,7 +44,14 @@ export class RedisIdTokenContinuityStore implements IdTokenContinuityStore {
   }
 
   async take(refreshTokenHash: string): Promise<IdTokenContinuityRecord | null> {
-    const stored = await this.redis.getdel(`${KEY_PREFIX}${refreshTokenHash}`);
+    return this.read(await this.redis.getdel(`${KEY_PREFIX}${refreshTokenHash}`));
+  }
+
+  async peek(refreshTokenHash: string): Promise<IdTokenContinuityRecord | null> {
+    return this.read(await this.redis.get(`${KEY_PREFIX}${refreshTokenHash}`));
+  }
+
+  private read(stored: string | null): IdTokenContinuityRecord | null {
     if (!stored) return null;
     try {
       const parsed: unknown = JSON.parse(this.sealer ? this.sealer.open(stored) : stored);

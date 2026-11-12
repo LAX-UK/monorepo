@@ -17,7 +17,8 @@ export async function withSentryCronMonitor(
   fn: () => Promise<void>,
 ): Promise<void> {
   const slug = monitorSlugs[slugKey];
-  if (!slug) {
+  // Without a DSN Sentry is not running, so there is nothing to check in with.
+  if (!slug || !process.env.SENTRY_DSN_WORKER) {
     await fn();
     return;
   }

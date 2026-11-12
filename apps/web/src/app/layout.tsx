@@ -1,5 +1,5 @@
 import { AnalyticsBootstrap } from "@/components/analytics/analytics-bootstrap";
-import { AnalyticsDebugPanel } from "@/components/analytics/analytics-debug-panel";
+import { AnalyticsDebugPanelLazy } from "@/components/analytics/analytics-debug-panel-lazy";
 import { AnalyticsPageView } from "@/components/analytics/analytics-page-view";
 import { AuthAnalyticsSync } from "@/components/analytics/auth-analytics-sync";
 import { ConsentInit } from "@/components/analytics/consent-init";
@@ -7,17 +7,19 @@ import { GtmNoscript } from "@/components/analytics/gtm-noscript";
 import { MarketingAttributionSync } from "@/components/analytics/marketing-attribution-sync";
 import { MarketingClickIdsSync } from "@/components/analytics/marketing-click-ids-sync";
 import { SilentSignInNotice } from "@/components/auth/silent-sign-in-notice.client";
-import { AccountSwitchGreeting } from "@/components/layout/account-switcher/account-switch-greeting";
 import { AccountZonePreference } from "@/components/layout/account-zone-preference";
 import { BottomChromeSync } from "@/components/layout/bottom-chrome-sync";
 import { SessionThemeSync } from "@/components/layout/session-theme-sync";
+import {
+  SignedInAccountSwitchGreeting,
+  SignedInPushBootstrap,
+} from "@/components/layout/signed-in-extras";
 import { ThemeInit } from "@/components/layout/theme-init";
 import { ThemeSystemListener } from "@/components/layout/theme-system-listener";
 import { ViewerZoneInit } from "@/components/layout/viewer-zone-init";
 import { WebVitalsReporter } from "@/components/layout/web-vitals-reporter";
 import { ConsentShell } from "@/components/marketing/consent/consent-shell";
 import { BrowserOfflineBanner } from "@/components/pwa/browser-offline-banner";
-import { PushBootstrap } from "@/components/pwa/push-bootstrap";
 import { PwaInstallPrompt } from "@/components/pwa/pwa-install-prompt";
 import { Toaster } from "@/components/ui/toaster";
 import { ConsentProvider } from "@/lib/analytics/consent/context";
@@ -160,20 +162,20 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
               <SilentFedcmBootstrap fedcm={silentFedcmProps} />
             </Suspense>
             <AppQueryProvider>
-              <PushBootstrap />
+              <SignedInPushBootstrap />
               <PwaInstallPrompt />
               <ViewerZoneProvider initial={viewerZone}>
                 <AccountZonePreference timeZone={user?.timeZone ?? null}>
                   {children}
                 </AccountZonePreference>
               </ViewerZoneProvider>
-              <AccountSwitchGreeting />
+              <SignedInAccountSwitchGreeting />
             </AppQueryProvider>
           </AuthSessionProvider>
           <Toaster />
           <WebVitalsReporter />
           <ConsentShell />
-          <AnalyticsDebugPanel />
+          <AnalyticsDebugPanelLazy />
         </ConsentProvider>
       </body>
     </html>

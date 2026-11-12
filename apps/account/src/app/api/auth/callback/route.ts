@@ -1,7 +1,7 @@
 import { safeReturnTo } from "@/lib/safe-return-to";
 import { LAX_ACCOUNT_LOGIN_COOKIE, LAX_ACCOUNT_LOGIN_RETRY_COOKIE } from "@/lib/session-cookie";
+import { discardReplacedSession } from "@/server/application/discard-replaced-session";
 import { resolveAccountOAuthCallback } from "@/server/application/handle-account-oauth-callback";
-import { retireReplacedSession } from "@/server/application/retire-replaced-session";
 import { getLaxAccountContainer } from "@/server/container";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
@@ -74,11 +74,10 @@ export async function GET(request: Request): Promise<Response> {
       maxAge: container.config.sessionTtlSeconds,
     });
     if (outcome.pending.reauth) {
-      await retireReplacedSession({
+      await discardReplacedSession({
         replacedSessionId,
         newSessionId: result.sessionId,
         sessions: container.sessions,
-        identity: container.identity,
       });
     }
     return NextResponse.redirect(new URL(safeReturnTo(result.returnTo), publicOrigin));
