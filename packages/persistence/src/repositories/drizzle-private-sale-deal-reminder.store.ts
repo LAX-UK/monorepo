@@ -25,9 +25,13 @@ const DEADLINES = [
 
 /**
  * The last step closes with the London day three days after the deadline, so a deadline more than
- * four days past has nothing left to send; leaving it out keeps long-past deals from filling the batch.
+ * four days past has nothing left to send. The bound is five days so that the autumn clock change
+ * (a 25-hour London day) cannot shorten the window for a deadline in the first hour of a London
+ * day; the send-time guard rules out late sends. Leaving older deals out keeps them from filling
+ * the batch. A deadline just after London midnight has a very short due-day window, so that
+ * reminder is claimed unsent if a poll is late; snapping deadlines to the end of the day would fix it.
  */
-const LAST_STEP_TAIL_DAYS = 4;
+const LAST_STEP_TAIL_DAYS = 5;
 
 /** Which deals have a deadline to remind the buyer of, and which reminders have gone out. */
 export class DrizzlePrivateSaleDealReminderStore implements IPrivateSaleDealReminderStore {

@@ -20,10 +20,12 @@ const FIRST_STEP_LEAD_DAYS = 3;
 
 /**
  * The last step (overdue) closes with the London day three days after the due day, so an invoice
- * due more than four days ago has no open step left. Leaving it out stops stale unclaimed rows
+ * due more than four days ago has no open step left. The bound is five days, a day looser than that,
+ * so a London clock change cannot shorten the window below the last step. The send-time guard
+ * rules out late sends, so a loose bound is safe. Leaving stale rows out stops stale unclaimed rows
  * from filling the batch and starving newer invoices.
  */
-const LAST_STEP_TAIL_DAYS = 4;
+const LAST_STEP_TAIL_DAYS = 5;
 
 export class DrizzlePaymentReminderStore implements IPaymentReminderStore {
   constructor(private readonly db: Database) {}
