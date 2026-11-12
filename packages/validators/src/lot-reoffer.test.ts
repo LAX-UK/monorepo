@@ -16,6 +16,9 @@ import {
 const sellerView = {
   id: "r1",
   lotId: "l1",
+  lotTitle: "The Winter Study",
+  lotNumber: 2,
+  lotEndedAt: "2026-10-29T18:00:00.000Z",
   status: "awaiting_seller",
   consentStatus: "requested",
   offerMinor: 82_000_00,
@@ -25,6 +28,11 @@ const sellerView = {
   reserveMinor: 85_000_00,
   belowReserve: true,
   answerDueAt: "2026-11-16T17:00:00.000Z",
+  answeredAt: null,
+  answeredBy: null,
+  declinePreference: null,
+  offerEndsAt: null,
+  soldAt: null,
 };
 
 const price = {
@@ -179,6 +187,20 @@ describe("member-safe views", () => {
     ]) {
       expect(keys).not.toContain(forbidden);
     }
+  });
+
+  it("tell the seller how an answer reached us, and no more than that", () => {
+    const answered = {
+      ...sellerView,
+      answeredAt: "2026-11-12T10:00:00.000Z",
+      answeredBy: "recorded_by_staff",
+      declinePreference: "later_sale",
+    };
+    expect(sellerReofferViewSchema.safeParse(answered).success).toBe(true);
+    // Staff-only channels never reach a seller.
+    expect(
+      sellerReofferViewSchema.safeParse({ ...answered, answeredBy: "house_stock" }).success,
+    ).toBe(false);
   });
 
   it("show the bidder only bidder-side statuses", () => {
