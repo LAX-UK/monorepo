@@ -116,7 +116,13 @@ const MISMATCH_COLUMNS: DataColumn<MismatchRow>[] = [
     header: "Zoho shows",
     width: "150px",
     mobile: "meta",
-    cell: (row) => row.zohoStatus ?? NO_ZOHO_STATUS,
+    cell: (row) => (
+      <>
+        <span className="md:hidden">Zoho shows </span>
+        {row.zohoStatus ?? NO_ZOHO_STATUS}
+        <span className="md:hidden">, LAX writes {row.expectedStatus}</span>
+      </>
+    ),
   },
 ];
 

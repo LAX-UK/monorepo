@@ -104,7 +104,14 @@ export default async function FromZohoPage({
     ]);
     if (health.status === "unauthorized") redirect("/login");
     if (health.status !== "ok") return <AdminFailedPage title={TITLE} status={health.status} />;
-    return <SyncHealthView {...frame} health={health.data} bidAdminUrl={bidAdminUrl} />;
+    return (
+      <SyncHealthView
+        {...frame}
+        health={health.data}
+        now={new Date().toISOString()}
+        bidAdminUrl={bidAdminUrl}
+      />
+    );
   }
 
   if (tab === "check") {

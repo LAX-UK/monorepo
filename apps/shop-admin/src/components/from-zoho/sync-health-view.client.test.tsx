@@ -79,6 +79,7 @@ const view = (health: AdminZohoSyncHealth, bidAdminUrl: string | null = "https:/
       query={{ tab: "health" }}
       counts={COUNTS}
       health={health}
+      now={new Date().toISOString()}
       bidAdminUrl={bidAdminUrl}
     />,
   );
@@ -264,7 +265,7 @@ describe("drift lists", () => {
         page={page}
       />,
     );
-    expect(screen.getAllByText("No Status in Zoho").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Not set").length).toBeGreaterThan(0);
     expect(screen.getByText("1–25 of 60")).toBeTruthy();
     expect(screen.getByRole("link", { name: /Next/ }).getAttribute("href")).toBe(
       "/from-zoho?tab=health&drift=status_mismatch&page=2",

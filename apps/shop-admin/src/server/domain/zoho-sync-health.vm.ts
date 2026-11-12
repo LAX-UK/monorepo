@@ -7,7 +7,19 @@ export type HealthFigure = {
   value: string;
   hint?: string;
   href?: string;
+  /** Attention for something slipping, critical only for something failing; absent when fine. */
+  tone?: "attention" | "critical";
 };
+
+const HOUR_MS = 3_600_000;
+/** The nightly passes are overdue after a day and a half, which also covers a late night. */
+export const NIGHTLY_STALE_AFTER_HOURS = 36;
+/** Writes normally leave the queue within minutes; one waiting longer than this is a backlog. */
+export const QUEUE_BACKLOG_AFTER_HOURS = 1;
+
+function olderThanHours(iso: string, now: string, hours: number): boolean {
+  return Date.parse(now) - Date.parse(iso) > hours * HOUR_MS;
+}
 
 /** Where Failed jobs lives in LAX Bid admin. */
 export const FAILED_JOBS_PATH = "/admin/failed-jobs";
@@ -25,6 +37,7 @@ type Format = (iso: string) => string;
 export function inboundFigures(
   run: AdminZohoSyncHealth["inbound"]["run"],
   format: Format,
+  now: string,
 ): HealthFigure[] {
   if (!run) {
     return [
@@ -35,8 +48,15 @@ export function inboundFigures(
     ];
   }
   const dry = run.mode === "dry_run";
+  const stale = olderThanHours(run.finishedAt, now, NIGHTLY_STALE_AFTER_HOURS);
   return [
-    { id: "at", label: "Last run", value: format(run.finishedAt), hint: SYNC_MODE_LABEL[run.mode] },
+    {
+      id: "at",
+      label: "Last run",
+      value: format(run.finishedAt),
+      hint: stale ? "Overdue, it runs every night" : SYNC_MODE_LABEL[run.mode],
+      ...(stale ? { tone: "attention" as const } : {}),
+    },
     { id: "seen", label: "Products seen", value: String(run.seen) },
     { id: "changed", label: dry ? "Would change" : "Changed", value: String(run.changed) },
     {
@@ -51,6 +71,7 @@ export function inboundFigures(
 export function listingFigures(
   run: AdminZohoSyncHealth["listing"]["run"],
   format: Format,
+  now: string,
 ): HealthFigure[] {
   if (!run) {
     return [
@@ -60,12 +81,14 @@ export function listingFigures(
       { id: "failed", label: "Not written", value: NONE },
     ];
   }
+  const stale = olderThanHours(run.finishedAt, now, NIGHTLY_STALE_AFTER_HOURS);
   return [
     {
       id: "at",
       label: "Last check",
       value: format(run.finishedAt),
-      hint: SYNC_MODE_LABEL[run.mode],
+      hint: stale ? "Overdue, it runs every night" : SYNC_MODE_LABEL[run.mode],
+      ...(stale ? { tone: "attention" as const } : {}),
     },
     { id: "checked", label: "Artworks checked", value: String(run.checked) },
     {
@@ -73,7 +96,12 @@ export function listingFigures(
       label: run.mode === "dry_run" ? "Drift it would correct" : "Drift corrected",
       value: String(run.drift),
     },
-    { id: "failed", label: "Not written", value: String(run.failed) },
+    {
+      id: "failed",
+      label: "Not written",
+      value: String(run.failed),
+      ...(run.failed > 0 ? { tone: "attention" as const } : {}),
+    },
   ];
 }
 
@@ -81,14 +109,24 @@ export function outboundFigures(
   outbound: AdminZohoSyncHealth["outbound"],
   format: Format,
   failedJobs: string | null,
+  now: string,
 ): HealthFigure[] {
+  const backlog =
+    outbound.oldestPendingAt !== null &&
+    olderThanHours(outbound.oldestPendingAt, now, QUEUE_BACKLOG_AFTER_HOURS);
+  const tone = backlog ? { tone: "attention" as const } : {};
   return [
-    { id: "depth", label: "Waiting to go to Zoho", value: String(outbound.depth) },
+    { id: "depth", label: "Waiting to go to Zoho", value: String(outbound.depth), ...tone },
     {
       id: "oldest",
       label: "Oldest waiting",
       value: outbound.oldestPendingAt ? format(outbound.oldestPendingAt) : NONE,
-      ...(outbound.oldestPendingAt ? {} : { hint: "Nothing is waiting" }),
+      ...(outbound.oldestPendingAt
+        ? backlog
+          ? { hint: "Waiting longer than usual" }
+          : {}
+        : { hint: "Nothing is waiting" }),
+      ...tone,
     },
     {
       id: "failed",
@@ -100,6 +138,7 @@ export function outboundFigures(
             ? "Open Failed jobs to retry or discard"
             : "Waiting in Failed jobs in LAX Bid admin"
           : "Nothing has given up",
+      ...(outbound.deadLettered > 0 ? { tone: "attention" as const } : {}),
       ...(outbound.deadLettered > 0 && failedJobs ? { href: failedJobs } : {}),
     },
   ];
@@ -122,6 +161,9 @@ export function tokenFigures(token: AdminZohoSyncHealth["token"], format: Format
       id: "failures",
       label: "Refreshes failed in a row",
       value: String(token.failureStreak),
+      ...(token.failureStreak > 0
+        ? { tone: token.status === "failing" ? ("critical" as const) : ("attention" as const) }
+        : {}),
       ...(token.lastFailureAt ? { hint: `Last failed ${format(token.lastFailureAt)}` } : {}),
     },
   ];
@@ -238,8 +280,8 @@ export function syncHealthHref(
   return zohoQueueHref({ ...query, tab: "health" }, { drift: null, ...change });
 }
 
-/** The words for a Zoho Status that is not there. */
-export const NO_ZOHO_STATUS = "No Status in Zoho";
+/** The words for a Zoho Status that is not set. */
+export const NO_ZOHO_STATUS = "Not set";
 
 /** Why a Product was left out, for the list of Zoho Products LAX has no record of. */
 export function leftOutReason(reason: string | null, label: (reason: string) => string): string {

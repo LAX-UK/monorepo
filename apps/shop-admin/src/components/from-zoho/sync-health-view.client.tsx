@@ -60,12 +60,15 @@ export function SyncHealthView({
   query,
   counts,
   health,
+  now,
   unlinked = 0,
   bidAdminUrl = null,
 }: {
   query: ZohoQueueQuery;
   counts: { new: number; decisions: number };
   health: AdminZohoSyncHealth;
+  /** When the page was built, as an ISO time: what "overdue" is measured against. */
+  now: string;
   unlinked?: number;
   bidAdminUrl?: string | null;
 }) {
@@ -104,7 +107,8 @@ export function SyncHealthView({
             >
               <StatGrid
                 label="Last inbound run"
-                items={inboundFigures(health.inbound.run, formatStaffDateTime)}
+                narrowColumns={1}
+                items={inboundFigures(health.inbound.run, formatStaffDateTime, now)}
               />
             </Section>
             <Section
@@ -114,7 +118,8 @@ export function SyncHealthView({
             >
               <StatGrid
                 label="Last listing and Status check"
-                items={listingFigures(health.listing.run, formatStaffDateTime)}
+                narrowColumns={1}
+                items={listingFigures(health.listing.run, formatStaffDateTime, now)}
               />
             </Section>
             <Section
@@ -124,7 +129,9 @@ export function SyncHealthView({
             >
               <StatGrid
                 label="Write queue to Zoho"
-                items={outboundFigures(health.outbound, formatStaffDateTime, failedJobs)}
+                columns={3}
+                narrowColumns={1}
+                items={outboundFigures(health.outbound, formatStaffDateTime, failedJobs, now)}
                 Link={Link}
               />
             </Section>
@@ -135,6 +142,8 @@ export function SyncHealthView({
             >
               <StatGrid
                 label="Zoho token"
+                columns={3}
+                narrowColumns={1}
                 items={tokenFigures(health.token, formatStaffDateTime)}
               />
             </Section>
@@ -143,7 +152,13 @@ export function SyncHealthView({
               title="Where Zoho and LAX disagree"
               description="Zoho is the source of truth for the catalogue. Open a list to see the artworks."
             >
-              <StatGrid label="Drift" items={driftFigures(health.drift)} Link={Link} />
+              <StatGrid
+                label="Drift"
+                items={driftFigures(health.drift)}
+                Link={Link}
+                columns={3}
+                narrowColumns={1}
+              />
             </Section>
           </div>
         )}
