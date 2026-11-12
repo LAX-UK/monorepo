@@ -154,3 +154,35 @@ describe("ImpersonationAuditService.reconcileFromAdminRequestCookie", () => {
     expect(publish).not.toHaveBeenCalled();
   });
 });
+
+describe("ImpersonationAuditService.recordSessionTimedOut", () => {
+  it("ends the expired session and records one timeout event", async () => {
+    const { service, publish, endExpiredForActor } = setup({ live: [], rows: [ownRow(OWN_SID)] });
+    await service.recordSessionTimedOut({
+      sessionId: OWN_SID,
+      actorUserId: "a",
+      actingLegalEntityId: ENTITY,
+    });
+    expect(endExpiredForActor).toHaveBeenCalledWith(OWN_SID, "a", "timeout");
+    expect(publish).toHaveBeenCalledTimes(1);
+    expect(publish.mock.calls[0]?.[0].payload.end_reason).toBe("timeout");
+  });
+
+  it("writes a single event when parallel requests see the same expiry", async () => {
+    const { service, publish } = setup({ live: [], rows: [ownRow(OWN_SID)] });
+    const input = { sessionId: OWN_SID, actorUserId: "a", actingLegalEntityId: ENTITY };
+    await Promise.all([1, 2, 3].map(() => service.recordSessionTimedOut(input)));
+    expect(publish).toHaveBeenCalledTimes(1);
+  });
+
+  it("records nothing for a session that is already ended", async () => {
+    const ended: SessionRow = { ...ownRow(OWN_SID), endedAt: new Date() };
+    const { service, publish } = setup({ live: [], rows: [ended] });
+    await service.recordSessionTimedOut({
+      sessionId: OWN_SID,
+      actorUserId: "a",
+      actingLegalEntityId: ENTITY,
+    });
+    expect(publish).not.toHaveBeenCalled();
+  });
+});

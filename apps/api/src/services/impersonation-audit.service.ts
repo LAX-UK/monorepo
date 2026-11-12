@@ -21,29 +21,20 @@ export class ImpersonationAuditService {
     >,
   ) {}
 
-  /** Idempotent: skips if an `admin.impersonation_ended` row already exists for
-   * this session aggregate.
+  /** Ends an expired session with `timeout` and records it. Ending and recording are one
+   * transaction and the event is written only when this call ended the row, so parallel requests
+   * that all see the same expiry produce exactly one `admin.impersonation_ended` event.
    */
   async recordSessionTimedOut(input: {
     sessionId: string;
     actorUserId: string;
     actingLegalEntityId: string;
   }): Promise<void> {
-    await this.transactionRunner.runInTransaction(async (tx) => {
-      if (await this.impersonationDomainEventReader.hasEndedEvent(input.sessionId)) return;
-
-      await this.publisher.withTx(tx).publish({
-        aggregateType: ADMIN_IMPERSONATION_AGGREGATE_TYPE,
-        aggregateId: input.sessionId,
-        eventType: "admin.impersonation_ended",
-        payload: {
-          session_id: input.sessionId,
-          end_reason: "timeout",
-        },
-        actorUserId: input.actorUserId,
-        actingLegalEntityId: input.actingLegalEntityId,
-        schemaVersion: 1,
-      });
+    await this.endAndRecord({
+      sessionId: input.sessionId,
+      actorUserId: input.actorUserId,
+      actingLegalEntityId: input.actingLegalEntityId,
+      endReason: "timeout",
     });
   }
 
