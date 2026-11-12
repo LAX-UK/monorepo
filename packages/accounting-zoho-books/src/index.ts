@@ -12,3 +12,4 @@ export * from "./secret.js";
 export * from "./system-clock.js";
 export * from "./token-manager.js";
 export * from "./token-sealer.js";
+export * from "./adapter/index.js";
