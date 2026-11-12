@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@auction/connect": "workspace:*",
+    "@auction/datetime": "workspace:*",
     "@auction/domain": "workspace:*",
     "@auction/email": "workspace:*",
     "@auction/finance-cron-app": "workspace:*",

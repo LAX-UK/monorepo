@@ -1395,6 +1395,9 @@ importers:
 
   packages/artwork-register-contracts:
     dependencies:
+      '@auction/datetime':
+        specifier: workspace:*
+        version: link:../datetime
       zod:
         specifier: ^3.24.1
         version: 3.25.76
@@ -1643,6 +1646,9 @@ importers:
       '@auction/branding':
         specifier: workspace:^
         version: link:../branding
+      '@auction/datetime':
+        specifier: workspace:*
+        version: link:../datetime
       '@auction/db':
         specifier: workspace:^
         version: link:../db
@@ -1689,6 +1695,9 @@ importers:
       '@auction/branding':
         specifier: workspace:*
         version: link:../branding
+      '@auction/datetime':
+        specifier: workspace:*
+        version: link:../datetime
       '@auction/db':
         specifier: workspace:*
         version: link:../db
@@ -1745,6 +1754,9 @@ importers:
       '@auction/connect':
         specifier: workspace:*
         version: link:../connect
+      '@auction/datetime':
+        specifier: workspace:*
+        version: link:../datetime
       '@auction/domain':
         specifier: workspace:*
         version: link:../domain
@@ -2064,12 +2076,18 @@ importers:
 
   packages/persistence:
     dependencies:
+      '@auction/accounting-domain':
+        specifier: workspace:*
+        version: link:../accounting-domain
       '@auction/alerts':
         specifier: workspace:*
         version: link:../alerts
       '@auction/artwork-register-contracts':
         specifier: workspace:*
         version: link:../artwork-register-contracts
+      '@auction/datetime':
+        specifier: workspace:*
+        version: link:../datetime
       '@auction/db':
         specifier: workspace:*
         version: link:../db
@@ -2157,6 +2175,9 @@ importers:
 
   packages/shop-domain:
     dependencies:
+      '@auction/datetime':
+        specifier: workspace:*
+        version: link:../datetime
       '@auction/validators':
         specifier: workspace:*
         version: link:../validators
@@ -2173,6 +2194,9 @@ importers:
 
   packages/shop-portal:
     dependencies:
+      '@auction/datetime':
+        specifier: workspace:*
+        version: link:../datetime
       '@auction/shop-contracts':
         specifier: workspace:*
         version: link:../shop-contracts

@@ -12,6 +12,9 @@ let pathname = "/";
 vi.mock("@/lib/auth/use-app-session", () => ({
   useAppSession: () => ({ user: null, pending: false }),
 }));
+// The prompt and the phone account button load for a signed-in visitor only; the session is
+// not what these tests are about, so the gate lets them through.
+vi.mock("@/components/layout/signed-in-only", () => ({ whenSignedIn: (part: unknown) => part }));
 
 vi.mock("@/hooks/use-bid-attention", () => ({ useBidAttention: () => attention }));
 
@@ -217,10 +220,10 @@ describe("SiteHeader attention prompt", () => {
     expect(screen.queryByTestId("attention-chip")).toBeNull();
   });
 
-  it("is a strip under the bar below 640px and a chip in the row from 640px, one link each", () => {
+  it("is a strip under the bar below 640px and a chip in the row from 640px, one link each", async () => {
     attention = OUTBID;
     render(<SiteHeader familyLinks={FAMILY} />);
-    const strips = screen.getAllByTestId("attention-strip");
+    const strips = await screen.findAllByTestId("attention-strip", {}, { timeout: 15_000 });
     const row = screen.getByRole("navigation", { name: "Primary" }).parentElement;
     // The visible strip is the one under the row: it follows the row in the document.
     const underBar = strips.find((strip) => strip.closest('[data-placement="strip"]'));

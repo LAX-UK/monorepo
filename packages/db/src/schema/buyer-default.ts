@@ -46,7 +46,7 @@ export const buyerDefault = pgTable(
     /** Staff's reason, kept with the audit entry. */
     reason: text("reason").notNull(),
     outcome: text("outcome").notNull(),
-    /** The next bidder, when the lot is offered on. */
+    /** Retired: offers to underbidders live in `lot_reoffer`. Kept for rows written before it. */
     offeredUserId: text("offered_user_id").references(() => user.id, { onDelete: "set null" }),
     offeredAmount: numeric("offered_amount", { precision: 18, scale: 2 }),
     /** Whether the buyer's bidding was restricted with the default. */

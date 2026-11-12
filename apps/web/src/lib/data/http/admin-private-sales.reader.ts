@@ -3,8 +3,10 @@ import "server-only";
 import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
 import { readDataEnvelope, readJsonBody, safeReadData } from "@/lib/data/http/envelope";
 import {
+  type DealAttentionCount,
   type DealListPage,
   type DealRecord,
+  dealAttentionCountSchema,
   dealListPageSchema,
   dealRecordSchema,
 } from "./admin-private-sales.schema";
@@ -25,4 +27,16 @@ export async function getAdminDeal(ref: string): Promise<DealRecord | null> {
     nullStatuses: [404],
     notOkMessage: (status) => (status === 403 ? "forbidden" : `Deal unavailable: ${status}`),
   });
+}
+
+/** How many settled deals need attention for this person; throws when the Bid API does not answer. */
+export async function getAdminDealsAttentionCount(): Promise<DealAttentionCount> {
+  const res = await authedServerFetch("/admin/private-sales/attention-count");
+  if (res.status === 403) throw new Error("forbidden");
+  if (!res.ok) throw new Error(`Private sales unavailable: ${res.status}`);
+  return readDataEnvelope(
+    await readJsonBody(res),
+    dealAttentionCountSchema,
+    "GET /admin/private-sales/attention-count",
+  );
 }

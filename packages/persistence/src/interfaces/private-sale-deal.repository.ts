@@ -1,4 +1,6 @@
 import type {
+  PrivateSaleArtworkChange,
+  PrivateSaleArtworkHistoryEntry,
   PrivateSaleArtworkUnlinkedReason,
   PrivateSaleDealDetail,
   PrivateSaleDealDocument,
@@ -48,6 +50,8 @@ export interface IPrivateSaleDealReader {
   findByReference(reference: string): Promise<PrivateSaleDealDetail | null>;
   /** Oldest first. */
   history(dealId: string): Promise<PrivateSaleStageHistoryEntry[]>;
+  /** Each link, change and removal of the deal's artwork, oldest first. */
+  artworkHistory(dealId: string): Promise<PrivateSaleArtworkHistoryEntry[]>;
 }
 
 export interface IPrivateSaleDealWriter {
@@ -63,6 +67,15 @@ export interface IPrivateSaleDealWriter {
     dealId: string,
     expectedVersion: number,
     patch: PrivateSaleDealTermsPatch,
+  ): Promise<PrivateSaleDealWriteResult>;
+  /**
+   * Sets the deal's artwork, or the reason it has none, and appends the history row, in one
+   * transaction. Refused as a conflict if the deal changed since it was read.
+   */
+  setArtwork(
+    dealId: string,
+    expectedVersion: number,
+    change: PrivateSaleArtworkChange,
   ): Promise<PrivateSaleDealWriteResult>;
   /**
    * Applies a stage change the state machine allowed and appends its history row, in one

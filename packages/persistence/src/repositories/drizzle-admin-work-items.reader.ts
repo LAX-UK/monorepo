@@ -1,3 +1,4 @@
+import { LONDON_TIME_ZONE, formatDayMonthOnly } from "@auction/datetime";
 import type { Database } from "@auction/db";
 import { lotNotDeleted, saleNotDeleted } from "@auction/db";
 import {
@@ -38,11 +39,6 @@ import { BLOCKED_CAPTURE_EVENT, toBlockedCapture } from "./blocked-capture.query
 import { DrizzleUnappliedMoneyReader } from "./drizzle-unapplied-money.reader.js";
 import { lotWorkItemTitle, sentenceCase } from "./work-item-labels.js";
 
-const DUE_DATE = new Intl.DateTimeFormat("en-GB", {
-  day: "numeric",
-  month: "short",
-  timeZone: "Europe/London",
-});
 const GBP = new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP" });
 
 /** A payment amount stored as a decimal string, shown as pounds ("83750.00" -> "£83,750.00"). */
@@ -282,7 +278,7 @@ export class DrizzleAdminWorkItemsReader implements IAdminWorkItemsReader {
         kind: "payment_overdue" as const,
         domain: "finance" as const,
         title: lotWorkItemTitle("Payment overdue", row.lotNumber, row.lotTitle),
-        subtitle: `${row.winnerEmail ?? "Buyer"} · ${formatWorkItemAmount(row.amount)} · due ${DUE_DATE.format(dueAt)}`,
+        subtitle: `${row.winnerEmail ?? "Buyer"} · ${formatWorkItemAmount(row.amount)} · due ${formatDayMonthOnly(dueAt, LONDON_TIME_ZONE)}`,
         href: adminWorkItemHref("payment_overdue", { subjectId: row.lotId }),
         saleId: row.saleId,
         createdAt: dueAt,
@@ -655,7 +651,7 @@ export class DrizzleAdminWorkItemsReader implements IAdminWorkItemsReader {
       kind: "unsold_choice_lapsed" as const,
       domain: "catalogue" as const,
       title: lotWorkItemTitle("No choice made", row.lotNumber, row.lotTitle),
-      subtitle: `Choose-by date was ${LAPSED_DATE.format(row.chooseBy)}. Contact the seller`,
+      subtitle: `Choose-by date was ${formatDayMonthOnly(row.chooseBy, LONDON_TIME_ZONE)}. Contact the seller`,
       href: adminWorkItemHref("unsold_choice_lapsed", { subjectId: row.submissionId }),
       saleId: null,
       createdAt: row.chooseBy,
@@ -795,12 +791,6 @@ const PURCHASE_PROBLEM_SUBTITLES: Record<string, string> = {
   invoice_or_payment: "Invoice or payment",
   other: "Other",
 };
-
-const LAPSED_DATE = new Intl.DateTimeFormat("en-GB", {
-  day: "numeric",
-  month: "short",
-  timeZone: "Europe/London",
-});
 
 /** The work a confirmed choice leaves, as the inbox words it. One entry per kind of choice. */
 const UNSOLD_FOLLOW_UP_WORK: Record<

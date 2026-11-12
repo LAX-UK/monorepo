@@ -1200,7 +1200,10 @@ export type {
   PrivateSaleDealListFilter,
   PrivateSaleDealListRow,
   PrivateSaleDealStageCount,
+  SettlementFollowUpCount,
+  SettlementFollowUpRow,
 } from "./private-sale-deal-query.repository.js";
+export type { IDealSettlementFollowUpMarker } from "./deal-settlement-follow-up.marker.js";
 export type {
   DealReminderCandidate,
   IPrivateSaleDealReminderStore,
@@ -1320,6 +1323,24 @@ export type {
 } from "./zoho-artwork-sync.js";
 
 export type {
+  IZohoDriftReader,
+  IZohoOutboundQueueReader,
+  IZohoSyncHealthReader,
+  IZohoSyncHealthStore,
+  ProductWithoutRegisterRow,
+  RegisterWithoutProductRow,
+  StatusMismatchRow,
+  ZohoDriftCounts,
+  ZohoDriftPage,
+  ZohoDriftPaging,
+  ZohoOutboundQueueStats,
+  ZohoSyncHealthRecord,
+  ZohoSyncModes,
+  ZohoSyncRunMode,
+  ZohoTokenHealth,
+} from "./zoho-sync-health.js";
+
+export type {
   IZohoListingLock,
   IZohoListingRunReader,
   IZohoListingRunStore,
@@ -1351,6 +1372,24 @@ export {
   type PaymentReminderCandidate,
   type RecordBuyerDefaultInput,
 } from "./buyer-default.js";
+export {
+  LotReawardRefusedError,
+  LotReofferConflictError,
+  type CreateLotReofferInput,
+  type ILotReawardRepository,
+  type ILotReofferReader,
+  type ILotReofferRepository,
+  type ISellerConsentRepository,
+  type LotReofferView,
+  type ReawardLotInput,
+  type ReawardLotResult,
+  type ReofferStatusChange,
+  type SellerConsentAnswerWrite,
+  type SellerConsentChannel,
+  type SellerConsentTerms,
+  type SellerConsentView,
+  type SellerPreferredNext,
+} from "./lot-reoffer.js";
 export type {
   IPrivateSaleDealReader,
   IPrivateSaleDealWriter,
@@ -1415,3 +1454,16 @@ export type {
   GuardSettingsTransaction,
 } from "./collection-settings.repository.js";
 export type { IPartyDealRecordReader } from "./party-deal-record.reader.js";
+
+export type * from "./accounting.js";
+
+export type {
+  BidderReofferRow,
+  IReofferViewsReader,
+  IReofferWorkflowReader,
+  PlacedBidWithId,
+  ReofferDefaultFacts,
+  ReofferLockedLot,
+  SellerConsentRequestRow,
+  StaffReofferView,
+} from "./reoffer-workflow.js";

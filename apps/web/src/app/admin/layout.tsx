@@ -8,12 +8,14 @@ import { sessionUserToShellRole } from "@/components/layout/app-shell-nav";
 import { WelcomeBackToast } from "@/components/marketing/welcome-back-toast";
 import { FinanceShell } from "@/components/shell/finance-shell";
 import { StaffShell } from "@/components/shell/staff-shell";
+import { ToasterPresence } from "@/components/ui/toaster-presence";
 import { resolveAdminReturnPath } from "@/lib/admin/admin-return-path.server";
 import { buildStaffHeaderAttentionItems } from "@/lib/admin/build-staff-header-attention-items";
 import { withInboxNavCount } from "@/lib/admin/consignment-inbox/inbox-nav-count.server";
 import { withDataRequestsNavCount } from "@/lib/admin/data-requests/data-requests-nav-count.server";
 import { withEnquiriesNavCount } from "@/lib/admin/enquiries/enquiries-nav-count.server";
 import { loadStaffProducts } from "@/lib/admin/load-staff-products";
+import { withPrivateSalesNavCount } from "@/lib/admin/private-sales/private-sales-nav-count.server";
 import type { ActingContext } from "@/lib/auth/capabilities";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import {
@@ -109,6 +111,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   navCounts = await withInboxNavCount(navCounts, userRole, staffRoles);
   navCounts = await withEnquiriesNavCount(navCounts, userRole, staffRoles);
   navCounts = await withDataRequestsNavCount(navCounts, userRole, staffRoles);
+  navCounts = await withPrivateSalesNavCount(navCounts, userRole, staffRoles);
 
   const role = sessionUserToShellRole(user);
 
@@ -146,6 +149,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
           >
             <ImpersonationEndWarningListener />
             <StaffToaster />
+            <ToasterPresence />
             {impersonation && showImpersonationBanner ? (
               <ImpersonationBanner
                 entityName={impersonation.displayName}

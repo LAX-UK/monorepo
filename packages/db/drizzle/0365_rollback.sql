@@ -4,8 +4,8 @@
 --
 -- Also remove the migration's row from the ledger, or re-applying 0365 later will be skipped as
 -- already applied:
---   DELETE FROM drizzle.__drizzle_migrations WHERE created_at = 1807344000000;
--- (1807344000000 is the "when" of this migration in meta/_journal.json; look the row up first.)
+--   DELETE FROM drizzle.__drizzle_migrations WHERE created_at = 1808380800000;
+-- (1808380800000 is the "when" of this migration in meta/_journal.json; look the row up first.)
 BEGIN;
 SET LOCAL lock_timeout = '5s';
 

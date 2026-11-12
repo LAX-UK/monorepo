@@ -1,15 +1,10 @@
+import { LONDON_TIME_ZONE, formatWeekdayDate } from "@auction/datetime";
 import type { EnquiryPath } from "./enquiry-values";
 
 /** "Wednesday 4 November": the day the reply is promised, as a person in London reads it. */
 export function replyByLabel(iso: string): string {
-  const parts = new Intl.DateTimeFormat("en-GB", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    timeZone: "Europe/London",
-  }).formatToParts(new Date(iso));
-  const part = (type: string) => parts.find((p) => p.type === type)?.value ?? "";
-  return `${part("weekday")} ${part("day")} ${part("month")}`;
+  // The weekday leads without a comma, however the runtime punctuates it.
+  return formatWeekdayDate(new Date(iso), LONDON_TIME_ZONE, { year: false }).replace(",", "");
 }
 
 /** A step's first words are set in bold; the rest follows in running text. */

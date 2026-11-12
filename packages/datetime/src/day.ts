@@ -6,14 +6,11 @@ import {
 } from "date-fns";
 import { zoneFormats } from "./zone-formats.js";
 
+export { addCalendarKeyDays } from "./day-key.js";
+
 /** "2026-11-03": the calendar day in `zone`, for grouping and comparing days. */
 export function dayKey(instant: Date, zone: string): string {
   return zoneFormats(zone).dayKey.format(instant);
-}
-
-/** The day key `days` calendar days after `key` ("2026-11-03" plus 7 is "2026-11-10"). */
-export function addCalendarKeyDays(key: string, days: number): string {
-  return new Date(Date.parse(key) + days * 86_400_000).toISOString().slice(0, 10);
 }
 
 /** Whole days from one "YYYY-MM-DD" key to another, regardless of zone or clock changes. */

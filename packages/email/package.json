@@ -23,6 +23,7 @@
   "dependencies": {
     "@auction/alerts": "workspace:^",
     "@auction/branding": "workspace:^",
+    "@auction/datetime": "workspace:*",
     "@auction/db": "workspace:^",
     "@auction/queues": "workspace:^",
     "@auction/types": "workspace:^",

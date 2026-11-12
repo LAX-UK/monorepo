@@ -2483,7 +2483,35 @@
     {
       "idx": 355,
       "version": "7",
-      "when": 1807344000000,
+      "when": 1807776000000,
+      "tag": "0366_zoho_sync_health",
+      "breakpoints": true
+    },
+    {
+      "idx": 356,
+      "version": "7",
+      "when": 1808035200000,
+      "tag": "0354_lot_reoffer",
+      "breakpoints": true
+    },
+    {
+      "idx": 357,
+      "version": "7",
+      "when": 1808121600000,
+      "tag": "0363_private_sale_deal_artwork_history",
+      "breakpoints": true
+    },
+    {
+      "idx": 358,
+      "version": "7",
+      "when": 1808294400000,
+      "tag": "0368_accounting_tables",
+      "breakpoints": true
+    },
+    {
+      "idx": 359,
+      "version": "7",
+      "when": 1808380800000,
       "tag": "0365_session_lifetime_indexes",
       "breakpoints": true
     }

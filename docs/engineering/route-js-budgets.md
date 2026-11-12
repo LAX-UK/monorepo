@@ -102,6 +102,26 @@ polyfill throws `Unknown encoding: base64url`. The acting-context cookie (which 
 through `decodeUtf8Base64Url`, so the browser keeps the cookie as it is and sends the viewed
 account's `X-Legal-Entity-Id` header. That is a declared behaviour change of the Buffer fix.
 
+## Frame parts loaded on demand
+
+The parts of the frame that nobody needs for the first paint are separate chunks, fetched when
+they are needed:
+
+| Part | Loaded |
+| --- | --- |
+| Toast library and its host (`components/ui/toaster.tsx`, `lib/ui/toast-bridge.ts`) | when the first toast is raised; a toast raised earlier is queued and shown once the host is on screen |
+| Signed-in account control, phone account switcher, attention prompt, push bootstrap and the account-switch greeting | for a signed-in visitor only (`whenSignedIn`, `signed-in-extras.tsx`) |
+| Cookie settings dialog | the first time it is opened |
+| Analytics debug panel | only with `?lax_analytics_debug` in the URL |
+
+The server draws the same markup as before, and parts that draw nothing until they have data (the
+attention prompt, the phone switcher, the greeting) are loaded without a server render. Smooth
+scrolling is untouched.
+
+Sizes after this change (Sentry on, gzip): the frame of a content page went from 425.5 KB to
+389.1 KB, home from 494.1 to 460.3 KB, the sales list from 526.8 to 501.2 KB, the sale page from
+638.4 to 610.6 KB and the lot page from 592.0 to 569.2 KB.
+
 ## Enforcement
 
 `enforce` is set per group. A route over budget in a group with `"enforce": true` is an error line

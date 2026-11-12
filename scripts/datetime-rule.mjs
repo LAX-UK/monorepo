@@ -3,10 +3,17 @@
  * anywhere else is how "Sept", a missing zone name and a hard-wired London crept in, and a time
  * zone that is a parameter instead of a constant needs one place to live.
  *
- * Banned outside packages/datetime: `new Intl.DateTimeFormat(...)`, `toLocaleDateString(...)`,
+ * Banned outside packages/datetime (and the self-contained Identity closure): `new Intl.DateTimeFormat(...)`, `toLocaleDateString(...)`,
  * `toLocaleTimeString(...)`, `toLocaleString(...)` on a Date (a Date receiver or date options; number formatting is fine), and importing `@date-fns/tz`. Tests are exempt.
  */
 export const DATETIME_PACKAGE_PREFIX = "packages/datetime/";
+
+/**
+ * The Identity closure ships and extracts on its own (see scripts/identity/closure.mjs), so it
+ * cannot depend on @auction/datetime; its few London date lines stay local and are covered by
+ * its own tests. This is the only exemption, and it is a whole closure, never a single file.
+ */
+export const IDENTITY_CLOSURE_PREFIXES = ["apps/auth/", "packages/identity-contracts/"];
 
 /** The banned constructs, by the name the baseline and the error message use. */
 export const BANNED = {
@@ -33,6 +40,7 @@ const TEST_DIRECTORY_RE = /(?:^|\/)(?:__tests__|e2e|tests?)\//;
  */
 export function isScanned(rel) {
   if (rel.startsWith(DATETIME_PACKAGE_PREFIX)) return false;
+  if (IDENTITY_CLOSURE_PREFIXES.some((prefix) => rel.startsWith(prefix))) return false;
   return !TEST_FILE_RE.test(rel) && !TEST_DIRECTORY_RE.test(rel);
 }
 

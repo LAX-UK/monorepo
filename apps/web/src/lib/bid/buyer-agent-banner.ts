@@ -1,4 +1,5 @@
 import { formatPounds } from "@/lib/buyer-agents/authorisation-presenter";
+import { LONDON_TIME_ZONE, formatDayMonthOnly } from "@auction/datetime";
 import type { MyBuyerAgentAuthorisation, OrganisationBiddingLimitsView } from "@auction/types";
 
 /** One authorisation as the banner reads it: where and how much, and what is used. */
@@ -13,12 +14,6 @@ export type AuthorisationLineVm = {
 export type BuyerAgentBannerVm =
   | { kind: "authorised"; organisation: string; lines: AuthorisationLineVm[] }
   | { kind: "not-authorised"; organisation: string };
-
-const DAY_MONTH = new Intl.DateTimeFormat("en-GB", {
-  timeZone: "Europe/London",
-  day: "numeric",
-  month: "short",
-});
 
 function percentUsed(exposure: string, limit: string): number {
   const total = Number.parseFloat(limit);
@@ -36,7 +31,7 @@ function lineFor(
     ? ` up to ${formatPounds(authorisation.bidLimit)} a lot`
     : " with no limit a lot";
   const until = authorisation.validUntil
-    ? `, until ${DAY_MONTH.format(new Date(authorisation.validUntil))}`
+    ? `, until ${formatDayMonthOnly(new Date(authorisation.validUntil), LONDON_TIME_ZONE)}`
     : "";
   const usage = limits?.authorisations.find((entry) => entry.saleId === saleId)?.total ?? null;
   return {

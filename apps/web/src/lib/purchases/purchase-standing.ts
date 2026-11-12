@@ -1,4 +1,5 @@
 import type { AccountPurchaseFacts } from "@/lib/data/http/account-buying.types";
+import { LONDON_TIME_ZONE, formatDayMonthOnly } from "@auction/datetime";
 import type { PurchaseDeliveryStage } from "@auction/domain";
 import type { StatusBadgeShape, StatusBadgeTone } from "@auction/ui/lax/status-badge";
 import { PURCHASE_STATE_LABEL } from "./purchase-labels";
@@ -11,12 +12,6 @@ export type PurchaseBadge = {
   /** What the short label leaves out, said in the row's facts ("overdue since 29 Oct"). */
   note?: string;
 };
-
-const DAY_MONTH = new Intl.DateTimeFormat("en-GB", {
-  timeZone: "Europe/London",
-  day: "numeric",
-  month: "short",
-});
 
 /** How each delivery stage reads on a row: one table, so the list and the page agree. */
 export const DELIVERY_STAGE_BADGE: Record<PurchaseDeliveryStage, PurchaseBadge> = {
@@ -77,11 +72,15 @@ export function purchaseBadge(
       label: "Overdue",
       tone: "danger",
       shape: "alert",
-      note: `overdue since ${DAY_MONTH.format(invoice.dueAt)}`,
+      note: `overdue since ${formatDayMonthOnly(invoice.dueAt, LONDON_TIME_ZONE)}`,
     };
   }
   if (invoice?.status === "due" && invoice.dueAt) {
-    return { label: `Due ${DAY_MONTH.format(invoice.dueAt)}`, tone: "warning", shape: "dot" };
+    return {
+      label: `Due ${formatDayMonthOnly(invoice.dueAt, LONDON_TIME_ZONE)}`,
+      tone: "warning",
+      shape: "dot",
+    };
   }
   if (invoice?.status === "not_invoiced") {
     return { label: "Invoice to follow", tone: "neutral", shape: "ring" };

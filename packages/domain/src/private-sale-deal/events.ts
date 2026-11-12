@@ -1,13 +1,21 @@
 import type {
+  PrivateSaleArtworkUnlinkedReason,
   PrivateSaleDealStage,
   PrivateSalePartyRole,
   PrivateSalePaymentRail,
   PrivateSaleStageChange,
 } from "@auction/types";
+import type { SettlementFollowUpSeverity } from "./settlement-follow-up.js";
 
 export const PRIVATE_SALE_DEAL_EVENT_AGGREGATE = "private_sale_deal";
 
 type DealRef = { id: string; reference: string };
+
+/** What a deal's artwork was or is: identifiers only, never the staff's own words. */
+export type DealArtworkSnapshot = {
+  artworkRegisterId: string | null;
+  unlinkedReason: PrivateSaleArtworkUnlinkedReason | null;
+};
 
 export type PrivateSaleDealEvent =
   | {
@@ -93,6 +101,19 @@ export type PrivateSaleDealEvent =
       payload: { dealId: string; reference: string; payoutId: string; netToSellerMinor: number };
     }
   | {
+      eventType:
+        | "private_sale_deal.artwork_linked"
+        | "private_sale_deal.artwork_changed"
+        | "private_sale_deal.artwork_removed";
+      payload: {
+        dealId: string;
+        reference: string;
+        /** The register artwork before and after, and the reason recorded when there is none. */
+        from: DealArtworkSnapshot;
+        to: DealArtworkSnapshot;
+      };
+    }
+  | {
       eventType: "private_sale_deal.artwork_record_not_updated";
       payload: {
         dealId: string;
@@ -101,7 +122,26 @@ export type PrivateSaleDealEvent =
         reason: "skipped" | "failed";
         message: string;
       };
+    }
+  | {
+      eventType: "private_sale_deal.settlement_follow_up_raised";
+      payload: {
+        dealId: string;
+        reference: string;
+        severity: SettlementFollowUpSeverity;
+      };
+    }
+  | {
+      eventType: "private_sale_deal.artwork_mark_sold_retried";
+      payload: {
+        dealId: string;
+        reference: string;
+        outcome: MarkSoldOutcome;
+      };
     };
+
+/** What a staff member's "Try again" achieved in the register. */
+export type MarkSoldOutcome = "marked" | "already_marked" | "skipped" | "failed";
 
 /**
  * The events a deal publishes carry identifiers, stage codes and amounts only. Names, the cancel
@@ -141,6 +181,54 @@ export function dealArtworkRecordNotUpdatedEvent(
       reason: failure.reason,
       message: `Deal ${deal.reference} ${failure.stage}, but the artwork's record couldn't be marked sold — check where it is`,
     },
+  };
+}
+
+/**
+ * The daily check found a settled deal whose artwork the register does not show as sold. Raised
+ * once per deal, so the audit log says when staff were first told. Identifiers and the severity only.
+ */
+export function dealSettlementFollowUpRaisedEvent(
+  deal: DealRef,
+  severity: SettlementFollowUpSeverity,
+): PrivateSaleDealEvent {
+  return {
+    eventType: "private_sale_deal.settlement_follow_up_raised",
+    payload: { dealId: deal.id, reference: deal.reference, severity },
+  };
+}
+
+/** Staff asked the register to mark the settled deal's artwork sold again, and what came of it. */
+export function dealArtworkMarkSoldRetriedEvent(
+  deal: DealRef,
+  outcome: MarkSoldOutcome,
+): PrivateSaleDealEvent {
+  return {
+    eventType: "private_sale_deal.artwork_mark_sold_retried",
+    payload: { dealId: deal.id, reference: deal.reference, outcome },
+  };
+}
+
+const ARTWORK_EVENT_TYPE = {
+  link: "private_sale_deal.artwork_linked",
+  record_reason: "private_sale_deal.artwork_linked",
+  change: "private_sale_deal.artwork_changed",
+  replace_reason: "private_sale_deal.artwork_changed",
+  remove: "private_sale_deal.artwork_removed",
+} as const;
+
+/**
+ * The artwork a deal holds was linked, changed or taken off. The reason staff gave stays with the
+ * deal's artwork history; the event carries only which artworks were involved.
+ */
+export function dealArtworkMovedEvent(
+  deal: DealRef,
+  move: keyof typeof ARTWORK_EVENT_TYPE,
+  change: { from: DealArtworkSnapshot; to: DealArtworkSnapshot },
+): PrivateSaleDealEvent {
+  return {
+    eventType: ARTWORK_EVENT_TYPE[move],
+    payload: { dealId: deal.id, reference: deal.reference, from: change.from, to: change.to },
   };
 }
 
