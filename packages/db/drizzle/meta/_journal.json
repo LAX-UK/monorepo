@@ -2462,6 +2462,13 @@
     {
       "idx": 352,
       "version": "7",
+      "when": 1806739200000,
+      "tag": "0367_xero_token_sealing",
+      "breakpoints": true
+    },
+    {
+      "idx": 353,
+      "version": "7",
       "when": 1806998400000,
       "tag": "0359_artwork_register_status_written",
       "breakpoints": true
