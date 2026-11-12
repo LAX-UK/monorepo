@@ -157,6 +157,16 @@ describe("resolveCatalogLotOverlay", () => {
     }
   });
 
+  it("shows Ended, not Unsold, for an ended lot whose result is still open", () => {
+    const vm = resolveCatalogLotOverlay({
+      lot: { ...lotBase("ended"), hasWinner: false, resultPending: true },
+      sale: hybridSale,
+      nowMs: Date.now(),
+    });
+    expect(vm.kind).toBe("status");
+    if (vm.kind === "status") expect(vm.presentation.label).toBe("Ended");
+  });
+
   it("shows In saleroom for scheduled queue lot past endTime with live session", () => {
     const t = Date.now();
     const lot = lotBase("scheduled", {

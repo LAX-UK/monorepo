@@ -652,12 +652,13 @@ export const WORKER_REOFFER_UPDATE_COLUMNS = {
 } as const;
 
 /**
- * What the re-offer clock reads of the buyer default: which one is the lot's latest, so it never
- * reminds a bidder about an offer a later default has overtaken. Three columns only; the hammer,
- * the buyer and the reason stay with the API.
+ * What the worker reads of the buyer default: which one is the lot's latest, so the re-offer clock
+ * never reminds a bidder about an offer a later default has overtaken, and what it decided (offer
+ * on or return to inventory), so a public total leaves out a lot whose result is still open. Four
+ * columns only; the hammer, the buyer and the reason stay with the API.
  */
 export const WORKER_REOFFER_READ_COLUMNS = [
-  ["buyer_default", ["id", "lot_id", "created_at"]],
+  ["buyer_default", ["id", "lot_id", "created_at", "outcome"]],
 ] as const;
 
 /** Lot lifecycle notification staging (won/lost) drained by notification outbox cron. */

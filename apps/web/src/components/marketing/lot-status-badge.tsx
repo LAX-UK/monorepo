@@ -29,10 +29,17 @@ type LotStatusBadgeProps = LotTimerInputs & {
   winnerId?: string | null | undefined;
   /** List-row sold flag when buyer id is omitted from public summaries. */
   hasWinner?: boolean;
+  /** The result is not final yet: the badge says Ended. */
+  resultPending?: boolean | undefined;
 };
 
 /** Compact inline lot status — live / opens soon / API status + optional countdown. */
-export function LotStatusBadge({ winnerId, hasWinner, ...inputs }: LotStatusBadgeProps) {
+export function LotStatusBadge({
+  winnerId,
+  hasWinner,
+  resultPending,
+  ...inputs
+}: LotStatusBadgeProps) {
   const now = useCountdownTick(lotTimerMoments(inputs), { surface: "card" });
   const state = classifyLotTimerState(inputs, now);
 
@@ -61,6 +68,7 @@ export function LotStatusBadge({ winnerId, hasWinner, ...inputs }: LotStatusBadg
     const presentation = resolveLotStatusPresentation(inputs.status, {
       ...(winnerId !== undefined ? { winnerId } : {}),
       ...(hasWinner !== undefined ? { hasWinner } : {}),
+      ...(resultPending ? { resultPending } : {}),
     });
     return (
       <StatusBadge {...toPublicStatusBadgeProps(presentation)}>{presentation.label}</StatusBadge>

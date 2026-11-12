@@ -14,6 +14,7 @@ import {
   presentSaleImages,
   presentSalesWithLotsImages,
 } from "../../lib/media-presenters.js";
+import { withPublicLotResults } from "../../lib/public-lot-result.js";
 import {
   withAtgLotResults,
   withSellingPlatform,
@@ -80,9 +81,10 @@ export async function getSaleDetailForPublicApi(
           presentLotsImages(deps.mediaUrlResolver, rows, deps.mediaAssetEnricher),
         ),
   ]);
+  // Staff see the real buyer and price; everyone else sees an open result as "ended".
   const visibleLots = canPreview
     ? lots
-    : lots
+    : (await withPublicLotResults(deps.publicLotResults, lots))
         .filter((lot) => isPublicCatalogueLot(lot, saleWithPlatform))
         .map(presentCatalogueRowForPublic);
   return { data: { sale, lots: visibleLots, viewer: { isFollowing } } };
@@ -125,7 +127,24 @@ export async function listSalesForPublicApi(
         : {}),
     ...(canPreview ? {} : { includeAtgOwnedDrafts: true, excludeTestSales: true }),
   };
-  const rows = await list(deps, queryFilter);
+  const listed = await list(deps, queryFilter);
+  // Staff see the real buyer and price; everyone else sees an open result as "ended".
+  const shown = canPreview
+    ? null
+    : new Map(
+        (
+          await withPublicLotResults(
+            deps.publicLotResults,
+            listed.flatMap(({ lots }) => lots),
+          )
+        ).map((lot) => [lot.id, lot]),
+      );
+  const rows = shown
+    ? listed.map(({ sale, lots }) => ({
+        sale,
+        lots: lots.map((lot) => shown.get(lot.id) ?? lot),
+      }))
+    : listed;
   const data = await presentSalesWithLotsImages(
     deps.catalogueMediaUrlResolver,
     rows,
@@ -186,7 +205,11 @@ export async function listSaleLotsPageForPublicApi(
   );
   return {
     data: {
-      items: canPreview ? items : items.map(presentCatalogueRowForPublic),
+      items: canPreview
+        ? items
+        : (await withPublicLotResults(deps.publicLotResults, items)).map(
+            presentCatalogueRowForPublic,
+          ),
       total: page.total,
       limit: opts.limit,
       offset: opts.offset,

@@ -51,6 +51,7 @@ const SOLD_COLUMNS: ExportColumn[] = [
   { key: "soldOn", header: "Sold on" },
   { key: "hammer", header: "Hammer price" },
   { key: "net", header: "Net to you" },
+  { key: "soldAfterAuction", header: "Sold after the auction" },
   { key: "status", header: "Status" },
   { key: "paidOutOn", header: "Paid out on" },
 ];
@@ -78,6 +79,7 @@ function soldView(row: SoldLotRow): SoldLotView {
     saleTitle: row.saleTitle,
     soldAt: row.soldAt,
     hammerPrice: row.hammerPrice,
+    soldAfterAuction: row.soldAfterAuction,
     stage,
     net:
       paid && row.payment
@@ -144,6 +146,7 @@ export class SoldAndPayoutsService implements ISoldAndPayoutsService {
         soldOn: isoDay(view.soldAt),
         hammer: view.hammerPrice,
         net: view.net ?? "",
+        soldAfterAuction: view.soldAfterAuction ? "Yes" : "",
         status: STAGE_WORDS[view.stage],
         paidOutOn: view.stage === "paid_out" ? isoDay(view.payout?.settledAt ?? null) : "",
       };
@@ -183,6 +186,7 @@ export class SoldAndPayoutsService implements ISoldAndPayoutsService {
         lot: line.lot,
         amount: line.amount,
         breakdown: payoutLineBreakdown(line),
+        soldAfterAuction: line.soldAfterAuction,
       })),
     });
   }

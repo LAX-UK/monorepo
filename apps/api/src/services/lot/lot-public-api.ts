@@ -6,6 +6,7 @@ import { resolvePublicLotListFilter, viewerCanSeeNonPublicCatalog } from "@aucti
 import { lotBidderRef } from "../../lib/lot-bidder-ref.js";
 import { maskLotForPublicView } from "../../lib/lot-public-view.js";
 import { presentLotsImages } from "../../lib/media-presenters.js";
+import { withPublicLotResults } from "../../lib/public-lot-result.js";
 import { withAtgLotStates } from "../sale-selling-platform.js";
 import { clampLotBidsLimitQuery } from "./lot-read.js";
 import type {
@@ -26,8 +27,10 @@ export async function listLotsForPublicApi(
     statuses: filter.statuses,
     viewerCanSeeNonPublic,
   });
+  // Listing a buyer's lots by their id would tell anyone what that person bought: staff only.
+  const { winnerId, ...unscoped } = filter;
   const queryFilter: ListLotsFilter = {
-    ...filter,
+    ...(viewerCanSeeNonPublic ? filter : unscoped),
     ...(resolved.statuses !== undefined
       ? { statuses: resolved.statuses, status: undefined }
       : resolved.status !== undefined
@@ -42,9 +45,11 @@ export async function listLotsForPublicApi(
     );
   }
 
+  const listed = await deps.lotRepo.list(queryFilter);
   const rows = await withAtgLotStates(
     viewerCanSeeNonPublic ? null : deps.saleChannelReader,
-    await deps.lotRepo.list(queryFilter),
+    // Staff see the real buyer and price; everyone else sees an open result as "ended".
+    viewerCanSeeNonPublic ? listed : await withPublicLotResults(deps.publicLotResults, listed),
   );
 
   const resolveImages = filter.resolveImages !== false;
@@ -95,7 +100,8 @@ export async function listBidsForPublicApi(
   }
   if (
     (lot.auctionType === "sealed" && lot.status === "active") ||
-    HISTORY_HIDDEN_STATUSES.has(lot.status)
+    HISTORY_HIDDEN_STATUSES.has(lot.status) ||
+    (await resultStillOpen(deps, lot.id))
   ) {
     if (!roleHasCapability(viewerRole, "auction.manage", vStaff)) {
       return { kind: "ok", data: [] };
@@ -112,6 +118,15 @@ export async function listBidsForPublicApi(
     return toSafeBidRow(bid, bidderRef, Boolean(viewerId && bid.placedByUserId === viewerId));
   });
   return { kind: "ok", data };
+}
+
+/**
+ * A lot whose winner did not pay and that is being offered on. Its highest bid is the first buyer's
+ * price, so the public reads no bids of it until the result is final.
+ */
+async function resultStillOpen(deps: LotServiceDeps, lotId: string): Promise<boolean> {
+  const pending = await deps.publicLotResults?.pendingAmong([lotId]);
+  return pending?.has(lotId) === true;
 }
 
 /** Withdrawn lots keep their page but not their history. */
@@ -131,7 +146,10 @@ export async function listPublicBidHistory(
   const lot = await deps.lotRepo.findById(input.lotId);
   if (!lot) return { kind: "not_found" };
   if (HISTORY_HIDDEN_STATUSES.has(lot.status)) return { kind: "ok", data: EMPTY_PUBLIC_HISTORY };
-  if (lot.auctionType === "sealed" && lot.status === "active") {
+  if (
+    (lot.auctionType === "sealed" && lot.status === "active") ||
+    (await resultStillOpen(deps, lot.id))
+  ) {
     return { kind: "ok", data: EMPTY_PUBLIC_HISTORY };
   }
   const limit = clampLotBidsLimitQuery(input.limitQuery);

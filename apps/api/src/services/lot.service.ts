@@ -1,5 +1,9 @@
 import type { PublicBidHistory } from "@auction/domain";
-import type { ISaleChannelReader, ITransactionRunner } from "@auction/persistence/interfaces";
+import type {
+  IPublicLotResultReader,
+  ISaleChannelReader,
+  ITransactionRunner,
+} from "@auction/persistence/interfaces";
 import type { ILegalEntityNotificationRecipientReader } from "@auction/persistence/interfaces";
 import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
 import type {
@@ -16,6 +20,7 @@ import type { UpdateLotMarketingDetailsInput } from "@auction/validators";
 import { type Result, err } from "neverthrow";
 import type { LotCancelledPayload } from "../domain/lot-events.js";
 import { type AuthzError, LotError } from "../lib/errors.js";
+import { withPublicLotResults } from "../lib/public-lot-result.js";
 import type { IDomainEventSink } from "./domain-event-sink.js";
 import type { IImageCleanup } from "./interfaces/image-cleanup.js";
 import type { ILotJobScheduler } from "./interfaces/job-scheduler.js";
@@ -73,6 +78,7 @@ export type LotServiceOptions = {
   telephoneBidBookingService?: ITelephoneBidBookingSaleroomBridge | null;
   repoFactory?: IRepositoryFactory | null;
   saleChannelReader?: ISaleChannelReader | null;
+  publicLotResults?: IPublicLotResultReader | null;
 };
 
 export class LotService implements ILotService {
@@ -102,6 +108,7 @@ export class LotService implements ILotService {
       telephoneBidBookingService: opts.telephoneBidBookingService ?? null,
       repoFactory: opts.repoFactory ?? null,
       saleChannelReader: opts.saleChannelReader ?? null,
+      publicLotResults: opts.publicLotResults ?? null,
     };
     this._lotTransitionOrchestrator = opts.lotTransitionOrchestrator ?? null;
   }
@@ -180,6 +187,10 @@ export class LotService implements ILotService {
     viewerStaffRoles?: StaffRoles | undefined,
   ): Promise<{ data: (Lot | PublicLotView)[] }> {
     return listLotsForPublicApi(this.deps, filter, viewerRole, viewerStaffRoles);
+  }
+
+  presentForPublic<T extends Lot>(lots: readonly T[]): Promise<T[]> {
+    return withPublicLotResults(this.deps.publicLotResults, lots);
   }
 
   bulkPublishOrCancel(

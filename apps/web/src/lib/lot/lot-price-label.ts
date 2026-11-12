@@ -17,6 +17,7 @@ const AMOUNT = { kind: "amount" } as const;
 const CLOSED_PRICE_LABEL: Partial<Record<LotLifecycleKind, LotPriceLabel>> = {
   endedSold: { label: "Hammer price", value: AMOUNT },
   endedNoSale: { label: "Result", value: { kind: "text", text: "Not sold" } },
+  endedPending: { label: "Result", value: { kind: "text", text: "Ended" } },
   cancelled: { label: "Result", value: { kind: "text", text: "Cancelled" } },
   withdrawn: { label: "Result", value: { kind: "text", text: "Withdrawn" } },
 };
@@ -31,6 +32,10 @@ export function lotPriceLabel(kind: LotLifecycleKind, hasBids: boolean): LotPric
 /** Lifecycles in which bidding is over: no next bid, no live feed. */
 export function lotLifecycleIsClosed(kind: LotLifecycleKind): boolean {
   return (
-    kind === "endedSold" || kind === "endedNoSale" || kind === "cancelled" || kind === "withdrawn"
+    kind === "endedSold" ||
+    kind === "endedNoSale" ||
+    kind === "endedPending" ||
+    kind === "cancelled" ||
+    kind === "withdrawn"
   );
 }

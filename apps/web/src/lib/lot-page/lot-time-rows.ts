@@ -253,6 +253,7 @@ export const TIME_ROW_BUILDERS: Readonly<Record<LotLifecycleKind, TimeRowBuilder
   saleroomPaused: noRow,
   endedSold: endedRow,
   endedNoSale: endedRow,
+  endedPending: endedRow,
   cancelled: noRow,
   withdrawn: noRow,
 };

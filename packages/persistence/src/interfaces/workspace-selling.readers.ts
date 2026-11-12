@@ -38,6 +38,8 @@ export type SoldLotRow = {
   saleTitle: string | null;
   soldAt: Date;
   hammerPrice: string;
+  /** The first buyer did not pay and the lot was re-awarded to the next bidder. */
+  soldAfterAuction: boolean;
   /** The buyer's payment, open or settled, or `null` before one exists. */
   payment: { status: PaymentStatus; amount: string; platformFee: string } | null;
   /** The payout the sale is on, or `null` while it is on none; with the amount its line settles. */
@@ -63,6 +65,8 @@ export type PayoutLineRow = {
   note: string | null;
   lot: { id: string; title: string; lotNumber: number | null; hammerPrice: string } | null;
   payment: { amount: string; platformFee: string } | null;
+  /** The sale line settles a lot that was re-awarded to the next bidder after a default. */
+  soldAfterAuction: boolean;
 };
 
 export type PayoutWithLines = {
