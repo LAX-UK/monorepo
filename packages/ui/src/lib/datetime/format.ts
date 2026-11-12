@@ -1,53 +1,21 @@
-import { wallClockToInstant } from "@auction/datetime";
-import { TZDate } from "@date-fns/tz";
-import { format } from "date-fns";
+import {
+  formatDate,
+  formatWeekday,
+  instantFromDatetimeFormString as instantFromFormString,
+  instantToWallClock,
+  resolveWallClock,
+  toDatetimeFormString as toFormString,
+} from "@auction/datetime";
 
 import { DEFAULT_AUCTION_ZONE } from "./constants.js";
 import type { DateFormString, DatetimeFormString, TimeFormString, ZonedInstant } from "./types.js";
-
-function pad(n: number): string {
-  return String(n).padStart(2, "0");
-}
-
-/** Build a TZDate from parts interpreted in `zone`. */
-export function tzDateFromParts(
-  year: number,
-  month: number,
-  day: number,
-  hour: number,
-  minute: number,
-  zone: string = DEFAULT_AUCTION_ZONE,
-): TZDate {
-  return new TZDate(year, month - 1, day, hour, minute, 0, 0, zone);
-}
 
 /** Parse `yyyy-MM-dd'T'HH:mm` as a zoned wall-clock time. */
 export function fromDatetimeFormString(
   raw: DatetimeFormString,
   zone: string = DEFAULT_AUCTION_ZONE,
 ): ZonedInstant {
-  const trimmed = raw.trim();
-  if (!trimmed) {
-    return { instant: new Date(Number.NaN), zone };
-  }
-  const [datePart, timePart = "00:00"] = trimmed.split("T");
-  const dateBits = datePart?.split("-").map(Number) ?? [];
-  const timeBits = timePart.split(":").map(Number);
-  const year = dateBits[0] ?? 0;
-  const month = dateBits[1] ?? 1;
-  const day = dateBits[2] ?? 1;
-  const hour = timeBits[0] ?? 0;
-  const minute = timeBits[1] ?? 0;
-  // The shared engine reads the time in any zone; a time the clocks skip has no instant there, so
-  // it falls back to the date library's reading (the hour after the change).
-  const exact = wallClockToInstant(
-    datePart ?? "",
-    `${hour}:${String(minute).padStart(2, "0")}`,
-    zone,
-  );
-  if (exact.ok) return { instant: exact.instant, zone };
-  const tz = tzDateFromParts(year, month, day, hour, minute, zone);
-  return { instant: new Date(tz.getTime()), zone };
+  return { instant: instantFromFormString(raw, zone), zone };
 }
 
 /** Format an instant as `yyyy-MM-dd'T'HH:mm` in `zone`. */
@@ -55,19 +23,23 @@ export function toDatetimeFormString(
   instant: Date,
   zone: string = DEFAULT_AUCTION_ZONE,
 ): DatetimeFormString {
-  const tz = new TZDate(instant, zone);
-  return format(tz, "yyyy-MM-dd'T'HH:mm");
+  return toFormString(instant, zone);
 }
 
-/** Human-readable datetime for picker triggers and display copy. */
+/** "Mon 15 Jun 2026, 2:30 PM": the 12-hour label picker triggers show. */
 export function formatDatetimeDisplayHuman(
   raw: DatetimeFormString,
   zone: string = DEFAULT_AUCTION_ZONE,
 ): string {
   if (!raw.trim()) return "";
   const { instant } = fromDatetimeFormString(raw, zone);
-  const tz = new TZDate(instant, zone);
-  return format(tz, "EEE d MMM yyyy, h:mm a");
+  if (Number.isNaN(instant.getTime())) return "";
+  const { time } = instantToWallClock(instant, zone);
+  const hour24 = Number(time.slice(0, 2));
+  const minutes = time.slice(3, 5);
+  const hour12 = hour24 % 12 === 0 ? 12 : hour24 % 12;
+  const meridiem = hour24 < 12 ? "AM" : "PM";
+  return `${formatWeekday(instant, zone)} ${formatDate(instant, zone)}, ${hour12}:${minutes} ${meridiem}`;
 }
 
 export function fromDateFormString(
@@ -81,43 +53,32 @@ export function toDateFormString(
   instant: Date,
   zone: string = DEFAULT_AUCTION_ZONE,
 ): DateFormString {
-  const tz = new TZDate(instant, zone);
-  return format(tz, "yyyy-MM-dd");
+  return instantToWallClock(instant, zone).day;
 }
 
+/** The instant `raw` ("HH:mm") means on the day `referenceInstant` falls on in `zone`. */
 export function fromTimeFormString(
   raw: TimeFormString,
   zone: string = DEFAULT_AUCTION_ZONE,
   referenceInstant: Date = new Date(),
 ): ZonedInstant {
-  const trimmed = raw.trim();
-  const [hourStr, minuteStr] = trimmed.split(":");
-  const hour = Number(hourStr ?? 0);
-  const minute = Number(minuteStr ?? 0);
-  const ref = new TZDate(referenceInstant, zone);
-  const tz = tzDateFromParts(
-    ref.getFullYear(),
-    ref.getMonth() + 1,
-    ref.getDate(),
-    hour,
-    minute,
-    zone,
-  );
-  return { instant: new Date(tz.getTime()), zone };
+  const [hourStr, minuteStr] = raw.trim().split(":");
+  const clock = `${String(Number(hourStr ?? 0)).padStart(2, "0")}:${String(Number(minuteStr ?? 0)).padStart(2, "0")}`;
+  const { day } = instantToWallClock(referenceInstant, zone);
+  return { instant: resolveWallClock(day, clock, zone) ?? new Date(Number.NaN), zone };
 }
 
 export function toTimeFormString(
   instant: Date,
   zone: string = DEFAULT_AUCTION_ZONE,
 ): TimeFormString {
-  const tz = new TZDate(instant, zone);
-  return `${pad(tz.getHours())}:${pad(tz.getMinutes())}`;
+  return instantToWallClock(instant, zone).time;
 }
 
 /** Date for react-day-picker (instant in zone, as JS Date). */
 export function toCalendarDate(instant: Date, zone: string = DEFAULT_AUCTION_ZONE): Date {
-  const tz = new TZDate(instant, zone);
-  return new Date(tz.getFullYear(), tz.getMonth(), tz.getDate());
+  const [year, month, day] = instantToWallClock(instant, zone).day.split("-").map(Number);
+  return new Date(year ?? 0, (month ?? 1) - 1, day ?? 1);
 }
 
 /** Combine date (yyyy-MM-dd) + time (HH:mm) in zone → instant. */

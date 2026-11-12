@@ -11,7 +11,6 @@ export {
   toDateFormString,
   toDatetimeFormString,
   toTimeFormString,
-  tzDateFromParts,
   zonedInstantToDatetimeFormString,
 } from "./format.js";
 export type {

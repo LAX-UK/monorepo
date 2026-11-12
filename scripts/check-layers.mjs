@@ -83,6 +83,18 @@ const rules = [
     ],
   },
   {
+    dir: "packages/accounting-domain",
+    label:
+      "packages/accounting-domain must stay pure: no apps, no workspace package, no database or framework",
+    forbiddenSpecifiers: [
+      /^@auction\//,
+      /(^|\/)apps\//,
+      /^drizzle-orm(\/|$)/,
+      /^(hono|fastify|next|react|react-dom)(\/|$)/,
+      /^node:/,
+    ],
+  },
+  {
     dir: "packages/shop-contracts",
     label: "packages/shop-contracts must not import from apps/**",
     forbiddenSpecifiers: [/^@auction\/(api|web|worker|ws|auth-app|event)$/, /(^|\/)apps\//],
@@ -234,6 +246,34 @@ const PUBLISH_TX_RE = /publish\s*\(\s*tx\b/;
 /** @param {string} rel POSIX path relative to repo root */
 function isTestSource(rel) {
   return /\.(test|spec|integration\.test)\.(ts|tsx)$/.test(rel);
+}
+
+// ─── Accounting domain purity ────────────────────────────────────────────────
+
+/** The accounting domain reads no clock, randomness, environment or network: callers pass them in. */
+const ACCOUNTING_BANNED_GLOBALS =
+  /\b(?:Date\s*[.(]|Math\.random|process\.|console\.|fetch\s*\(|setTimeout|setInterval|crypto\.|performance\.now|new\s+Intl\b|localeCompare|toLocale\w*)/;
+const accountingPurityViolations = [];
+
+for (const file of listSources(join(root, "packages/accounting-domain/src"))) {
+  const rel = relative(root, file).split("\\").join("/");
+  if (isTestSource(rel) || rel.includes("/testing/")) continue;
+  readFileSync(file, "utf8")
+    .split("\n")
+    .forEach((line, index) => {
+      if (/^\s*(\/\/|\*|\/\*)/.test(line)) return;
+      if (ACCOUNTING_BANNED_GLOBALS.test(line)) {
+        accountingPurityViolations.push(`${rel}:${index + 1}: ${line.trim()}`);
+      }
+    });
+}
+
+if (accountingPurityViolations.length > 0) {
+  console.error(
+    "packages/accounting-domain must stay pure (no Date, randomness, process, console, fetch, timers, locale):\n",
+  );
+  for (const violation of accountingPurityViolations) console.error(`  ${violation}`);
+  process.exit(1);
 }
 
 // ─── API Identity storage boundary ───────────────────────────────────────────

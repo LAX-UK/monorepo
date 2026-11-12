@@ -16,7 +16,8 @@ describe("quiet hours", () => {
       "London time (BST)",
     );
     expect(quietHoursZoneLabel("America/New_York", new Date("2026-12-01T12:00:00Z"))).toBe(
-      "New York time (GMT-5)",
+      "New York time (EST)",
     );
+    expect(quietHoursZoneLabel("Not/AZone")).toBe("AZone time");
   });
 });

@@ -70,6 +70,17 @@ export type PrivateSaleDealDocument = {
   createdAt: Date;
 };
 
+/**
+ * Why a deal has no artwork in the register. Only `sellers_own_work` lets the deal be agreed: it
+ * is not gallery stock. `in_zoho_not_linked` is a note that the artwork still has to be linked.
+ */
+export const PRIVATE_SALE_ARTWORK_UNLINKED_REASONS = [
+  "sellers_own_work",
+  "in_zoho_not_linked",
+] as const;
+export type PrivateSaleArtworkUnlinkedReason =
+  (typeof PRIVATE_SALE_ARTWORK_UNLINKED_REASONS)[number];
+
 /** The deal as stored. Money is in pence, GBP only. */
 export type PrivateSaleDeal = {
   id: string;
@@ -77,8 +88,10 @@ export type PrivateSaleDeal = {
   reference: string;
   stage: PrivateSaleDealStage;
   itemSubmissionId: string;
-  /** The artwork register entry for the work, once the register is in use for it. Never required. */
+  /** The artwork register entry for the work. A deal is agreed only once it has one or a reason. */
   artworkRegisterId: string | null;
+  /** Why the deal has no register artwork; `null` while one is linked or nothing was recorded. */
+  artworkUnlinkedReason: PrivateSaleArtworkUnlinkedReason | null;
   sourceEnquiryId: string | null;
   sourceUnsoldLotChoiceId: string | null;
   ownerUserId: string | null;
