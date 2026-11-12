@@ -3,6 +3,7 @@ import type { BetterAuthPlugin } from "better-auth";
 import { createAuthMiddleware, getOAuthState } from "better-auth/api";
 import { deleteSessionCookie, expireCookie } from "better-auth/cookies";
 import { generateRandomString } from "better-auth/crypto";
+import type { AuthAfterHook } from "./auth-after-hook.js";
 import { appendOidcAuthorizeParams } from "./hosted-auth/flow-context.js";
 import { isSafeMagicLinkNextPath } from "./magic-link-callback.js";
 
@@ -217,7 +218,9 @@ export function resolveCallbackUrl(
   return typeof oauthState?.callbackURL === "string" ? oauthState.callbackURL : null;
 }
 
-export function buildTwoFactorEnforcementAfterHook(options: { authOrigin?: string | undefined }) {
+export function buildTwoFactorEnforcementAfterHook(options: {
+  authOrigin?: string | undefined;
+}): AuthAfterHook {
   const authOrigin = options.authOrigin ?? "https://auth.lax.bid";
 
   return {
