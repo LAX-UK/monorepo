@@ -14,9 +14,11 @@ import {
 import { eq } from "drizzle-orm";
 import { afterAll, describe, expect, it } from "vitest";
 import { lotSoldAfterAuctionSql } from "../lib/lot-result-pending.sql.js";
+import { DrizzleLotRepository } from "./drizzle-lot.repository.js";
 import { DrizzlePublicLotResultReader } from "./drizzle-public-lot-result.reader.js";
 import { DrizzleSaleResultLotsReader } from "./drizzle-sale-result-lots.reader.js";
 import { sumEndedLotHammer } from "./lot/lot-analytics-queries.js";
+import { listCatalogLotsBySalePage } from "./lot/lot-catalog-queries.js";
 
 const HAS_DB = Boolean(process.env.DATABASE_URL);
 
@@ -243,6 +245,42 @@ describe.skipIf(!HAS_DB)("public lot result (integration)", () => {
     const rows = (await new DrizzleSaleResultLotsReader(db).listBySaleIds([saleId])).get(saleId);
     expect(rows?.find((row) => row.id === open.lotId)?.resultPending).toBe(true);
     expect(rows?.find((row) => row.id === paid.lotId)?.resultPending).toBe(false);
+    await db.delete(sale).where(eq(sale.id, saleId));
+  });
+
+  it("orders a lot with an open result by the starting price it shows, not its hammer", async () => {
+    // Hammered at 1000.00, shown at its 100.00 start while the result is open.
+    const open = await defaultedLot({});
+    // An ordinary sold lot at 900.00.
+    const sold = await defaultedLot({ winner: "next" });
+    const [saleRow] = await db
+      .insert(sale)
+      .values({
+        title: `Order ${tag}`,
+        status: "ended",
+        startTime: new Date(closed.getTime() - 86_400_000),
+        endTime: closed,
+        createdByLegalEntityId: entities.seller,
+      })
+      .returning({ id: sale.id });
+    const saleId = saleRow?.id as string;
+    await db.update(lot).set({ saleId }).where(eq(lot.id, open.lotId));
+    await db.update(lot).set({ saleId }).where(eq(lot.id, sold.lotId));
+
+    const page = async (sort: "priceAsc" | "priceDesc") =>
+      (await listCatalogLotsBySalePage(db, { saleId, sort, limit: 10, offset: 0 })).items.map(
+        (row) => row.id,
+      );
+    expect(await page("priceDesc")).toEqual([sold.lotId, open.lotId]);
+    expect(await page("priceAsc")).toEqual([open.lotId, sold.lotId]);
+    const hammer = await new DrizzleLotRepository(db).list({
+      saleId,
+      sort: "hammerDesc",
+      limit: 10,
+      offset: 0,
+    });
+    expect(hammer.map((row) => row.id)).toEqual([sold.lotId, open.lotId]);
+    await db.update(lot).set({ saleId: null }).where(eq(lot.saleId, saleId));
     await db.delete(sale).where(eq(sale.id, saleId));
   });
 });
