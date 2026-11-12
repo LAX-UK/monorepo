@@ -1,6 +1,7 @@
 import type { OfferState } from "@auction/artwork-register-contracts";
 import type { Database } from "@auction/db";
 import {
+  atgLotLink,
   domainEventDelivery,
   lot,
   privateSaleDeal,
@@ -16,9 +17,11 @@ import type {
   IZohoListingRunStore,
   IZohoListingSaleStartMark,
   IZohoListingSourceReader,
+  IZohoStatusSourceReader,
   ListingLot,
   ListingMove,
   RegisterListingSource,
+  RegisterStatusSource,
   ZohoListingRun,
 } from "../../interfaces/zoho-listing.js";
 import { toEntry } from "./artwork-register.mapper.js";
@@ -40,6 +43,7 @@ type LotRow = {
   lotNumber: number | null;
   status: ListingLot["status"];
   deletedAt: Date | null;
+  atgSold: boolean | null;
   saleId: string | null;
   saleTitle: string | null;
   saleStatus: NonNullable<ListingLot["sale"]>["status"] | null;
@@ -61,6 +65,7 @@ function toLot(row: LotRow): ListingLot {
     lotNumber: row.lotNumber,
     status: row.status,
     deleted: row.deletedAt !== null,
+    soldOnAtg: row.atgSold === true,
     sale: hasSale
       ? {
           id: row.saleId as string,
@@ -75,7 +80,9 @@ function toLot(row: LotRow): ListingLot {
 }
 
 /** Register, LAX Bid lot and sale, and private sale reads for the LAX listing on Zoho. */
-export class DrizzleZohoListingSourceReader implements IZohoListingSourceReader {
+export class DrizzleZohoListingSourceReader
+  implements IZohoListingSourceReader, IZohoStatusSourceReader
+{
   constructor(private readonly db: Database) {}
 
   async read(registerIds: readonly string[]): Promise<RegisterListingSource[]> {
@@ -100,6 +107,16 @@ export class DrizzleZohoListingSourceReader implements IZohoListingSourceReader 
       lot: lots.get(entry.id) ?? null,
       privateSale: deals.get(entry.id) ?? null,
     }));
+  }
+
+  async readStatusSources(registerIds: readonly string[]): Promise<RegisterStatusSource[]> {
+    const ids = [...new Set(registerIds)].filter((id) => UUID.test(id));
+    if (ids.length === 0) return [];
+    const rows = await this.db.select().from(register).where(inArray(register.id, ids));
+    if (rows.length === 0) return [];
+    const entries = rows.map(toEntry);
+    const moves = await this.latestMoves(entries.map((entry) => entry.id));
+    return entries.map((entry) => ({ entry, lastMove: moves.get(entry.id) ?? null }));
   }
 
   async registerIdsForLot(lotId: string): Promise<string[]> {
@@ -219,6 +236,7 @@ export class DrizzleZohoListingSourceReader implements IZohoListingSourceReader 
         lotNumber: lot.lotNumber,
         status: lot.status,
         deletedAt: lot.deletedAt,
+        atgSold: atgLotLink.sold,
         saleId: sale.id,
         saleTitle: sale.title,
         saleStatus: sale.status,
@@ -228,6 +246,7 @@ export class DrizzleZohoListingSourceReader implements IZohoListingSourceReader 
       })
       .from(lot)
       .leftJoin(sale, eq(sale.id, lot.saleId))
+      .leftJoin(atgLotLink, eq(atgLotLink.lotId, lot.id))
       .where(
         or(
           refIds.length > 0 ? inArray(lot.id, refIds) : sql`FALSE`,

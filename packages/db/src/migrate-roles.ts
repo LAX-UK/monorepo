@@ -218,6 +218,11 @@ export const API_SSF_RECEIVER_TABLES = ["bid_ssf_replay"] as const;
  * access.
  */
 export const API_PAYMENT_REFUND_TABLES = ["payment_refund"] as const;
+/**
+ * The reference each bank-transfer payment shows its sender, kept for after the provider stops
+ * showing it. Append-only, so api_app gets INSERT and SELECT only; no other role touches it.
+ */
+export const API_PAYMENT_TRANSFER_REFERENCE_TABLES = ["payment_transfer_reference"] as const;
 /** Shop Identity owns only its local Identity projection. */
 export const SHOP_PRODUCT_PROFILE_TABLES = [
   "shop_user_profile",
@@ -257,6 +262,21 @@ export const SHOP_ARTWORK_REGISTER_CONFLICT_TABLES = ["artwork_register_conflict
  */
 export const SHOP_SOLD_ATTENTION_TABLES = ["artwork_register_sold_attention"] as const;
 export const WORKER_SOLD_ATTENTION_TABLES = ["artwork_register_sold_attention"] as const;
+/** The staff override closes an item; shop writes nothing else on it. */
+export const SHOP_SOLD_ATTENTION_UPDATE_COLUMNS = [
+  "status",
+  "resolution",
+  "resolved_by",
+  "override_reason",
+  "resolved_at",
+] as const;
+/** The monitor closes or replaces an item; it never edits what the item points at. */
+export const WORKER_SOLD_ATTENTION_UPDATE_COLUMNS = [
+  "status",
+  "resolution",
+  "resolved_by",
+  "resolved_at",
+] as const;
 export const SHOP_ARTWORK_REGISTER_EVENT_TABLES = ["artwork_register_event"] as const;
 /**
  * Shop moves an original's offer state through the register (one place at a time across lax.art
@@ -977,7 +997,10 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
             await grantIfExists(client, "api_app", tableName, "INSERT, SELECT, DELETE");
             continue;
           }
-          if ((API_PAYMENT_REFUND_TABLES as readonly string[]).includes(tableName)) {
+          if (
+            (API_PAYMENT_REFUND_TABLES as readonly string[]).includes(tableName) ||
+            (API_PAYMENT_TRANSFER_REFERENCE_TABLES as readonly string[]).includes(tableName)
+          ) {
             await grantIfExists(client, "api_app", tableName, "INSERT, SELECT");
             continue;
           }
@@ -1024,8 +1047,16 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
         for (const tableName of SHOP_ARTWORK_REGISTER_CONFLICT_TABLES) {
           await grantIfExists(client, "shop_app", tableName, "SELECT, UPDATE");
         }
+        /** shop's only write is the staff override; it cannot re-point or reopen an item. */
         for (const tableName of SHOP_SOLD_ATTENTION_TABLES) {
-          await grantIfExists(client, "shop_app", tableName, "SELECT, UPDATE");
+          await grantIfExists(client, "shop_app", tableName, "SELECT");
+          await revokeIfExists(client, "shop_app", tableName, "UPDATE");
+          await grantColumnUpdateIfExists(
+            client,
+            "shop_app",
+            tableName,
+            SHOP_SOLD_ATTENTION_UPDATE_COLUMNS,
+          );
         }
         for (const tableName of SHOP_ARTWORK_REGISTER_EVENT_TABLES) {
           await grantIfExists(client, "shop_app", tableName, "INSERT, SELECT");
@@ -1137,7 +1168,14 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
           await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT, UPDATE");
         }
         for (const tableName of WORKER_SOLD_ATTENTION_TABLES) {
-          await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT, UPDATE");
+          await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT");
+          await revokeIfExists(client, "worker_app", tableName, "UPDATE");
+          await grantColumnUpdateIfExists(
+            client,
+            "worker_app",
+            tableName,
+            WORKER_SOLD_ATTENTION_UPDATE_COLUMNS,
+          );
         }
         for (const tableName of WORKER_ARTWORK_REGISTER_APPEND_ONLY_TABLES) {
           await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT");

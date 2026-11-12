@@ -100,6 +100,7 @@ const ConflictFieldSchema = Type.Union([
   Type.Literal("kind"),
   Type.Literal("sourceOriginalId"),
   Type.Literal("offerState"),
+  Type.Literal("catalogueStatus"),
 ]);
 const ConflictResolutionSchema = Type.Union([
   Type.Literal("kept_lax"),
@@ -171,6 +172,8 @@ export const AdminRegisterLastCheckSchema = Type.Object({
             registerId: Type.String(),
             stockCode: Type.Optional(Type.String()),
             code: Type.String(),
+            /** Where the record is in LAX now, for a Product deleted in Zoho. */
+            place: Type.Optional(Type.String()),
           }),
         ),
       }),

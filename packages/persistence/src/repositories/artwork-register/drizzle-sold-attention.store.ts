@@ -35,8 +35,13 @@ export class DrizzleSoldAttentionStore implements ISoldAttentionStore {
       .select()
       .from(attention)
       .where(and(eq(attention.registerId, registerId), inArray(attention.status, [...LIVE])))
-      // One live item per status is allowed, so after a race there can be two: the newest decides.
-      .orderBy(desc(attention.raisedAt), desc(attention.id))
+      // One live item per status is allowed, so after a race there can be two. An open one keeps
+      // money paused, so it decides; among equals the newest does.
+      .orderBy(
+        sql`(${attention.status} = 'open') desc`,
+        desc(attention.raisedAt),
+        desc(attention.id),
+      )
       .limit(1);
     return row ? toRecord(row) : null;
   }

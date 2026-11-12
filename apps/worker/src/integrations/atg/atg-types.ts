@@ -101,6 +101,8 @@ export type AtgLotLink = {
   lockedFieldsHash: string | null;
   /** Bids ATG reported at the last poll; 0 before the first poll. */
   numberOfBids: number;
+  /** ATG reported the lot sold at the last poll; false before the first poll or when unsold. */
+  sold: boolean;
 };
 
 export type AtgPushSummary = {

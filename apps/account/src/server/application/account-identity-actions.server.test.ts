@@ -15,6 +15,8 @@ const identity = {
   changePassword: vi.fn(),
   regenerateBackupCodes: vi.fn(),
   unlinkSignInMethod: vi.fn(),
+  renamePasskey: vi.fn(),
+  removePasskey: vi.fn(),
   startSignInMethodAction: vi.fn(),
   requestDeletion: vi.fn(),
   cancelDeletion: vi.fn(),
@@ -30,8 +32,10 @@ const {
   changePasswordAction,
   confirmEmailChangeAction,
   regenerateBackupCodesAction,
+  removePasskeyAction,
   removeSignInMethodAction,
   renameAccountAction,
+  renamePasskeyAction,
   reportDeviceZoneAction,
   requestAccountDeletionAction,
   saveTimeZoneAction,
@@ -39,7 +43,7 @@ const {
   signOutDeviceAction,
   signOutOtherDevicesAction,
   startEmailChangeAction,
-  startSignInMethodLinkAction,
+  startSignInMethodAddAction,
   removePhoneAction,
   verifyPhoneAction,
 } = await import("./account-identity-actions.server");
@@ -126,27 +130,45 @@ describe("account identity actions", () => {
     });
   });
 
-  describe("startSignInMethodLinkAction", () => {
+  describe("startSignInMethodAddAction", () => {
     const URL_OK = "https://auth.example.com/account-action?ticket=abc";
 
     it("asks the issuer to add the provider as the signed-in person and returns its address", async () => {
       identity.startSignInMethodAction.mockResolvedValue({ status: "ok", value: { url: URL_OK } });
-      expect(await startSignInMethodLinkAction("google")).toEqual({ status: "ok", url: URL_OK });
+      expect(await startSignInMethodAddAction("google")).toEqual({ status: "ok", url: URL_OK });
       expect(identity.startSignInMethodAction).toHaveBeenCalledWith(ACTOR, "google");
     });
 
-    it("refuses anything but Google or Apple before calling the issuer", async () => {
-      for (const provider of ["passkey", "credential", "", "GOOGLE"]) {
-        expect(await startSignInMethodLinkAction(provider)).toMatchObject({ status: "error" });
+    it("asks the issuer to add a passkey the same way", async () => {
+      identity.startSignInMethodAction.mockResolvedValue({ status: "ok", value: { url: URL_OK } });
+      expect(await startSignInMethodAddAction("passkey")).toEqual({ status: "ok", url: URL_OK });
+      expect(identity.startSignInMethodAction).toHaveBeenCalledWith(ACTOR, "passkey");
+    });
+
+    it("refuses anything that is not a way to sign in before calling the issuer", async () => {
+      for (const kind of ["credential", "", "GOOGLE", "password"]) {
+        expect(await startSignInMethodAddAction(kind)).toMatchObject({ status: "error" });
       }
       expect(identity.startSignInMethodAction).not.toHaveBeenCalled();
     });
 
+    it("says at the limit that there are already ten passkeys", async () => {
+      identity.startSignInMethodAction.mockResolvedValue({
+        status: "rejected",
+        reason: "passkey_limit",
+      });
+      expect(await startSignInMethodAddAction("passkey")).toEqual({
+        status: "error",
+        message: "You have 10 passkeys, the most an account can have. Remove one to add another.",
+        refresh: false,
+      });
+    });
+
     it("sends the person through a fresh sign-in when theirs is too old or ended", async () => {
       identity.startSignInMethodAction.mockResolvedValue({ status: "reauth_required" });
-      expect(await startSignInMethodLinkAction("apple")).toEqual({ status: "reauth_required" });
+      expect(await startSignInMethodAddAction("apple")).toEqual({ status: "reauth_required" });
       loadAccountRecord.mockResolvedValue(null);
-      expect(await startSignInMethodLinkAction("apple")).toEqual({ status: "reauth_required" });
+      expect(await startSignInMethodAddAction("apple")).toEqual({ status: "reauth_required" });
     });
 
     it("tells a staff account why there is no link, and does not ask for a refresh", async () => {
@@ -154,7 +176,7 @@ describe("account identity actions", () => {
         status: "rejected",
         reason: "staff_not_allowed",
       });
-      expect(await startSignInMethodLinkAction("google")).toEqual({
+      expect(await startSignInMethodAddAction("google")).toEqual({
         status: "error",
         message: "Staff accounts can't sign in with Google or Apple. Add a passkey instead.",
         refresh: false,
@@ -164,7 +186,7 @@ describe("account identity actions", () => {
     it("asks for a refresh when the page was out of date", async () => {
       for (const reason of ["already_linked", "not_available"] as const) {
         identity.startSignInMethodAction.mockResolvedValue({ status: "rejected", reason });
-        expect(await startSignInMethodLinkAction("google")).toMatchObject({
+        expect(await startSignInMethodAddAction("google")).toMatchObject({
           status: "error",
           refresh: true,
         });
@@ -173,11 +195,123 @@ describe("account identity actions", () => {
 
     it("says nothing changed when the issuer could not answer", async () => {
       identity.startSignInMethodAction.mockResolvedValue({ status: "unavailable" });
-      expect(await startSignInMethodLinkAction("google")).toEqual({
+      expect(await startSignInMethodAddAction("google")).toEqual({
         status: "error",
         message: expect.stringContaining("Nothing was changed"),
         refresh: false,
       });
+    });
+  });
+
+  describe("removePasskeyAction", () => {
+    it("removes the passkey as the signed-in person and says it emailed them", async () => {
+      identity.removePasskey.mockResolvedValue({
+        status: "ok",
+        value: { removed: true, revokedSessions: 1 },
+      });
+      expect(await removePasskeyAction("pk-1")).toEqual({
+        status: "ok",
+        message: "Passkey removed. We've emailed you to confirm.",
+      });
+      expect(identity.removePasskey).toHaveBeenCalledWith(ACTOR, "pk-1");
+    });
+
+    it("acts for nobody when the person is not signed in", async () => {
+      loadAccountRecord.mockResolvedValue(null);
+      expect(await removePasskeyAction("pk-1")).toEqual({ status: "reauth_required" });
+      expect(identity.removePasskey).not.toHaveBeenCalled();
+    });
+
+    it("sends the person through a fresh sign-in when theirs is too old", async () => {
+      identity.removePasskey.mockResolvedValue({ status: "reauth_required" });
+      expect(await removePasskeyAction("pk-1")).toEqual({ status: "reauth_required" });
+    });
+
+    it("explains the last-way-in refusal and a passkey that is already gone", async () => {
+      identity.removePasskey.mockResolvedValue({
+        status: "rejected",
+        reason: "last_sign_in_method",
+      });
+      expect(await removePasskeyAction("pk-1")).toEqual({
+        status: "error",
+        message:
+          "This is the only way you can sign in. Add a passkey or a password first, then you can remove it.",
+        stale: true,
+      });
+      identity.removePasskey.mockResolvedValue({ status: "rejected", reason: "not_linked" });
+      expect(await removePasskeyAction("pk-1")).toMatchObject({ status: "error" });
+    });
+
+    it("marks a refusal that means the page was out of date, and words a gone passkey as one", async () => {
+      identity.removePasskey.mockResolvedValue({
+        status: "rejected",
+        reason: "last_sign_in_method",
+      });
+      expect(await removePasskeyAction("pk-1")).toMatchObject({ status: "error", stale: true });
+      identity.removePasskey.mockResolvedValue({ status: "rejected", reason: "not_linked" });
+      expect(await removePasskeyAction("pk-1")).toEqual({
+        status: "error",
+        message: "That passkey isn't on your account any more.",
+        stale: true,
+      });
+    });
+
+    it("refuses a crafted id cleanly, without calling the issuer", async () => {
+      for (const bad of ["", "x".repeat(129), 42 as never, null as never]) {
+        expect(await removePasskeyAction(bad)).toMatchObject({ status: "error" });
+        expect(await renamePasskeyAction(bad, "Mine")).toMatchObject({ status: "error" });
+      }
+      expect(await renamePasskeyAction("pk-1", { toString: () => "x" } as never)).toMatchObject({
+        status: "error",
+      });
+      expect(identity.removePasskey).not.toHaveBeenCalled();
+      expect(identity.renamePasskey).not.toHaveBeenCalled();
+    });
+
+    it("says nothing was changed when the issuer could not answer, and needs a passkey id", async () => {
+      identity.removePasskey.mockResolvedValue({ status: "unavailable" });
+      expect(await removePasskeyAction("pk-1")).toMatchObject({
+        status: "error",
+        message: expect.stringContaining("Nothing was changed"),
+      });
+      identity.removePasskey.mockClear();
+      expect(await removePasskeyAction("")).toMatchObject({ status: "error" });
+      expect(identity.removePasskey).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("renamePasskeyAction", () => {
+    it("renames with the trimmed name as the signed-in person", async () => {
+      identity.renamePasskey.mockResolvedValue({ status: "ok", value: { id: "pk-1" } });
+      expect(await renamePasskeyAction("pk-1", "  Studio iMac ")).toEqual({
+        status: "ok",
+        message: "Passkey renamed.",
+      });
+      expect(identity.renamePasskey).toHaveBeenCalledWith(ACTOR, "pk-1", "Studio iMac");
+    });
+
+    it("checks the name before calling the issuer, saying what is wrong with it", async () => {
+      expect(await renamePasskeyAction("pk-1", "   ")).toEqual({
+        status: "error",
+        message: "Enter a name for this passkey.",
+      });
+      expect(await renamePasskeyAction("pk-1", "x".repeat(41))).toEqual({
+        status: "error",
+        message: "Use 40 characters or fewer.",
+      });
+      expect(await renamePasskeyAction("pk-1", "one\ntwo")).toMatchObject({ status: "error" });
+      expect(await renamePasskeyAction("pk-1", "a\u202Eb")).toMatchObject({ status: "error" });
+      expect(identity.renamePasskey).not.toHaveBeenCalled();
+    });
+
+    it("reports a passkey that is not the person's as no longer there", async () => {
+      identity.renamePasskey.mockResolvedValue({ status: "rejected", reason: "not_linked" });
+      expect(await renamePasskeyAction("pk-9", "Mine")).toMatchObject({ status: "error" });
+    });
+
+    it("sends a person who is not signed in through a fresh sign-in", async () => {
+      loadAccountRecord.mockResolvedValue(null);
+      expect(await renamePasskeyAction("pk-1", "Mine")).toEqual({ status: "reauth_required" });
     });
   });
 
@@ -207,6 +341,7 @@ describe("account identity actions", () => {
       expect(await removeSignInMethodAction("google")).toEqual({
         status: "error",
         message: expect.stringContaining("only way you can sign in"),
+        stale: true,
       });
     });
 

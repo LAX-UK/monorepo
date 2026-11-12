@@ -728,6 +728,10 @@ export type {
   IPaymentCheckoutSessionStore,
   RecordedCheckoutSession,
 } from "./payment-checkout-session.store.js";
+export type {
+  IPaymentTransferReferenceStore,
+  TransferReferenceRecord,
+} from "./payment-transfer-reference.store.js";
 export type { IStalePaymentCanceller } from "./stale-payment-canceller.js";
 export type { OpenUnappliedMoneyFilter } from "./unapplied-money.reader.js";
 export type { IUnappliedMoneyReader, OpenUnappliedMoney } from "./unapplied-money.reader.js";
@@ -1247,6 +1251,7 @@ export type {
 
 export type {
   ApplyZohoChangeResult,
+  CatalogueStatusLedger,
   ConflictCursor,
   CreateRegisterEntryResult,
   AuctionOfferDraftLot,
@@ -1262,6 +1267,9 @@ export type {
   IAuctionOfferReader,
   RecordMoveConfirmedInput,
   ILotRegisterLinkReader,
+  IAtgLotSoldReader,
+  IRegisterOfferConflicts,
+  RecordOfferConflictInput,
   LotRegisterLink,
   IArtworkRegisterReader,
   IArtworkRegisterRepository,
@@ -1285,6 +1293,15 @@ export type {
   SoldAttentionLiveRef,
   SoldAttentionRecord,
 } from "./artwork-register-sold-attention.js";
+
+export type {
+  IBidPublishSettings,
+  IRegisterLotIntegrityReader,
+  IUnlinkedOriginalsReader,
+  RegisterLotMismatch,
+  UnlinkedOriginal,
+  UnlinkedOriginalsReport,
+} from "./artwork-register-integrity.js";
 
 export type {
   ArtworkRegisterArtistCount,
@@ -1312,9 +1329,11 @@ export type {
   IZohoListingRunStore,
   IZohoListingSaleStartMark,
   IZohoListingSourceReader,
+  IZohoStatusSourceReader,
   ListingLot,
   ListingMove,
   RegisterListingSource,
+  RegisterStatusSource,
   ZohoListingRun,
   ZohoListingRunFailure,
   ZohoListingRunMode,

@@ -2,6 +2,7 @@ import { CrmGatewayError } from "../../crm/crm-gateway-error.js";
 import type { CrmCoqlQuery, CrmGateway } from "../../crm/crm-gateway.js";
 import { productWriteStateQuery } from "./coql.js";
 import type { ZohoProductState } from "./writeback-mapping.js";
+import { PRODUCT_NOT_FOUND, deletedInZoho } from "./zoho-product-gone.js";
 
 /** Reads and updates Zoho Products for the writeback. The service depends on this, not on Zoho. */
 export interface ZohoProductWriter {
@@ -19,6 +20,7 @@ const NON_RETRYABLE_CODES = new Set([
   "DUPLICATE_DATA",
   "NO_PERMISSION",
   "OAUTH_SCOPE_MISMATCH",
+  PRODUCT_NOT_FOUND,
 ]);
 
 function text(value: unknown): string | null {
@@ -38,7 +40,7 @@ export class CrmZohoProductWriter implements ZohoProductWriter {
     const page = await this.coql.queryCoql(productWriteStateQuery(productId));
     const row = page.rows[0];
     if (!row) return null;
-    return { status: text(row.Status), stockCode: text(row.Reference_Stock_Code) };
+    return { stockCode: text(row.Reference_Stock_Code) };
   }
 
   async update(productId: string, fields: Record<string, string>): Promise<void> {
@@ -48,7 +50,7 @@ export class CrmZohoProductWriter implements ZohoProductWriter {
       fields,
     });
     if (result.status === "success") return;
-    const code = result.code ?? "ERROR";
+    const code = deletedInZoho(result.code) ? PRODUCT_NOT_FOUND : (result.code ?? "ERROR");
     throw new CrmGatewayError({
       code,
       message: result.message ?? "product_update_failed",

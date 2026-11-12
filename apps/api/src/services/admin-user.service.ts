@@ -1,3 +1,4 @@
+import type { SignInMethodKinds } from "@auction/identity-contracts";
 import type {
   AdminKycSession,
   AdminUserListFilter,
@@ -30,6 +31,7 @@ import { ADMIN_SUSPEND_REASON_MIN } from "@auction/validators";
 import { AuthzError } from "../lib/errors.js";
 import type {
   IIdentitySecurityClient,
+  IIdentitySignInMethodsClient,
   IdentitySecurityStatus,
 } from "./interfaces/identity-issuer-client.js";
 import type { IUserSuspensionCacheInvalidator } from "./interfaces/user-suspension.js";
@@ -79,6 +81,7 @@ export class AdminUserService {
     private readonly kyc?: IAdminUserKycReader,
     private readonly suspensionCacheInvalidator?: IUserSuspensionCacheInvalidator,
     private readonly identitySecurity?: IIdentitySecurityClient,
+    private readonly identitySignInMethods?: IIdentitySignInMethodsClient,
   ) {}
 
   list(actorRole: string, actorStaffRoles: StaffRoles | undefined, filter: AdminUserListFilter) {
@@ -94,21 +97,39 @@ export class AdminUserService {
     assertAdminAccess(actorRole, actorStaffRoles, USERS_DIRECTORY_ACCESS);
     const detail = await this.reader.getById(id);
     if (!detail) return null;
-    if (!this.identitySecurity) return { ...detail, securityStatusAvailable: false };
-    let security: IdentitySecurityStatus | null;
-    try {
-      security = await this.identitySecurity.readSecurityStatus(id);
-    } catch {
-      return { ...detail, securityStatusAvailable: false };
-    }
-    if (!security) return { ...detail, securityStatusAvailable: false };
+    const [security, signInMethodKinds] = await Promise.all([
+      this.readSecurityStatus(id),
+      this.readSignInMethodKinds(id),
+    ]);
+    if (!security) return { ...detail, securityStatusAvailable: false, signInMethodKinds };
     return {
       ...detail,
       securityStatusAvailable: true,
+      signInMethodKinds,
       twoFactorEnabled: security.twoFactorEnabled,
       pendingNewEmail: security.pendingNewEmail,
       emailChangeExpiresAt: security.emailChangeExpiresAt,
     };
+  }
+
+  /** The issuer's live security status, or null when it cannot answer. */
+  private async readSecurityStatus(id: string): Promise<IdentitySecurityStatus | null> {
+    if (!this.identitySecurity) return null;
+    try {
+      return await this.identitySecurity.readSecurityStatus(id);
+    } catch {
+      return null;
+    }
+  }
+
+  /** Which sign-in method kinds the person has, or null ("not available") when the issuer cannot say. */
+  private async readSignInMethodKinds(id: string): Promise<SignInMethodKinds | null> {
+    if (!this.identitySignInMethods) return null;
+    try {
+      return await this.identitySignInMethods.readSignInMethodKinds(id);
+    } catch {
+      return null;
+    }
   }
 
   getByIds(actorRole: string, actorStaffRoles: StaffRoles | undefined, ids: string[]) {

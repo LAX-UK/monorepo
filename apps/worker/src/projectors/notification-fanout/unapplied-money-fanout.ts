@@ -1,6 +1,7 @@
 import {
   type UnappliedMoneyPayload,
   type UnappliedMoneyReason,
+  misappliedTransferText,
   possibleSourceText,
 } from "@auction/domain";
 import type { IEmailService } from "@auction/email";
@@ -37,11 +38,13 @@ const SITUATION: Record<UnappliedMoneyReason, string> = {
   shop_order_paid_twice:
     "A Shop order that was already paid received a second payment, in a different payment session. Nothing was applied to the order. Open the order in LAX Admin and refund the second payment.",
   shop_order_paid_while_paused:
-    "A Shop buyer paid for an artwork that Zoho says is Sold or Reserved, while its sale was paused. Nothing was applied or fulfilled: the order was closed, its prints released and its basket restored. Open the order in LAX Admin, then refund the buyer, or reinstate the order if staff have said the artwork is not sold.",
+    "A Shop buyer paid for an artwork that Zoho says is Sold or Reserved, while its sale was paused. Nothing was applied or fulfilled: the order was closed, its prints released and its basket restored. Open the order in LAX Admin, then refund the buyer. If staff have said the artwork is not sold, contact the buyer so they can buy it again.",
   shop_order_not_found:
     "A Shop payment arrived for an order that does not exist here. There is no order to open: find the buyer from the Stripe payment shown, then refund them.",
   shop_order_paid_not_confirmed:
     "Stripe shows a Shop buyer's checkout as paid, but the payment could not be read or confirmed, so it was not applied. The order was closed and its prints released. The amount shown is the order's total, not necessarily what Stripe took. Open the order in LAX Admin, check the payment in Stripe, then refund the buyer or reinstate the order.",
+  transfer_applied_to_other_invoice:
+    "A bank transfer sent with one invoice's payment reference was applied to a different invoice of the same buyer.",
   private_sale_refund_after_payout:
     "Money went back to a private sale buyer after the seller's payout included the deal. The seller's payout may need adjusting.",
 };
@@ -57,6 +60,8 @@ export type UnappliedMoneyAlert = {
   /** The Shop order the money was paid for, when it is one's: its id, for the link to LAX Admin. */
   shopOrderId: string | null;
   reference: string;
+  /** Full wording for money applied to a different invoice than its reference names; else null. */
+  situationText: string | null;
   amountCents: number;
   currency: string;
 };
@@ -68,6 +73,10 @@ export function alertFromUnappliedMoney(payload: UnappliedMoneyPayload): Unappli
     paymentId: payload.paymentId,
     dealReference: payload.privateSaleDealReference ?? null,
     shopOrderId: payload.shopOrderId ?? null,
+    situationText:
+      payload.reason === "transfer_applied_to_other_invoice"
+        ? misappliedTransferText(payload)
+        : null,
     reference:
       payload.privateSaleDealReference ??
       payload.shopOrderReference ??
@@ -123,7 +132,9 @@ export async function fanoutUnappliedMoney(options: {
       ...(target.snapshot ? { recipientResolution: "snapshot" as const } : {}),
       vars: {
         recipientFirstName: target.firstName,
-        situation: [SITUATION[alert.situation], alert.possibleSource].filter(Boolean).join(" "),
+        situation: [alert.situationText ?? SITUATION[alert.situation], alert.possibleSource]
+          .filter(Boolean)
+          .join(" "),
         amount,
         reference: alert.reference,
         ...(hasNoPageToOpen ? {} : { reviewUrl: `${base}${path}` }),

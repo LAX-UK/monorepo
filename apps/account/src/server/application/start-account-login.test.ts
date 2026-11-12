@@ -30,4 +30,19 @@ describe("startAccountLogin", () => {
       reauthSubject: "user-a",
     });
   });
+
+  it("passes why a fresh sign-in is asked for, only with a step-up", () => {
+    const withReason = startAccountLogin({
+      config,
+      returnTo: "/account/security",
+      reauth: { subject: "user-a", reason: "remove_sign_in_method" },
+    });
+    expect(withReason.authorizeUrl.searchParams.get("reauth_reason")).toBe("remove_sign_in_method");
+    const without = startAccountLogin({
+      config,
+      returnTo: "/account/security",
+      reauth: { subject: "user-a" },
+    });
+    expect(without.authorizeUrl.searchParams.has("reauth_reason")).toBe(false);
+  });
 });

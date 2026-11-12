@@ -2434,6 +2434,27 @@
     {
       "idx": 348,
       "version": "7",
+      "when": 1805702400000,
+      "tag": "0355_payment_transfer_reference",
+      "breakpoints": true
+    },
+    {
+      "idx": 349,
+      "version": "7",
+      "when": 1805961600000,
+      "tag": "0358_bid_catalogue_setting",
+      "breakpoints": true
+    },
+    {
+      "idx": 350,
+      "version": "7",
+      "when": 1806048000000,
+      "tag": "0359_artwork_register_status_written",
+      "breakpoints": true
+    },
+    {
+      "idx": 351,
+      "version": "7",
       "when": 1806134400000,
       "tag": "0360_artwork_register_sold_attention",
       "breakpoints": true

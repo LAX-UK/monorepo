@@ -13,6 +13,8 @@ export type ListingLot = {
   status: BidLotStatus;
   /** Soft-deleted lots are kept so a sold artwork still names the lot that sold it. */
   deleted: boolean;
+  /** ATG reports the lot sold: it has no LAX winner, so the listing needs this to say so. */
+  soldOnAtg: boolean;
   sale: {
     id: string;
     title: string;
@@ -59,6 +61,15 @@ export interface IZohoListingSourceReader {
   registerIdsForLaxArtListing(artworkId: string): Promise<string[]>;
   /** Originals in id order after the cursor: the nightly pass walks the whole register. */
   pageOriginals(after: string | null, limit: number): Promise<string[]>;
+}
+
+/** What the Zoho Status needs of a record: the register entry and when it last moved. */
+export type RegisterStatusSource = { entry: ArtworkRegisterEntry; lastMove: ListingMove | null };
+
+/** Reads the register for the Status LAX writes to the Zoho Product. Reads only. */
+export interface IZohoStatusSourceReader {
+  /** The sources for these records, any kind, in no particular order. */
+  readStatusSources(registerIds: readonly string[]): Promise<RegisterStatusSource[]>;
 }
 
 /**

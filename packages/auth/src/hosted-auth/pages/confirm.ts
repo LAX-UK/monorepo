@@ -79,7 +79,7 @@ export function buildHostedConfirmHtml(
   const providerButtons = providers.map((provider) => socialProviderButton(provider)).join("");
   return buildHostedAuthHtml({
     title: COPY.title,
-    description: COPY.lead,
+    description: view.flow.reauthReason ? COPY.leadByReason[view.flow.reauthReason] : COPY.lead,
     ...viewChrome(view),
     showDestination: false,
     ...(productBack ? { productBack } : {}),

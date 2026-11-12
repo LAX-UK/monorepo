@@ -1,6 +1,7 @@
 import type { AdminRegisterEvent, AdminRegisterLastCheck } from "@auction/shop-contracts";
 import { describe, expect, it } from "vitest";
 import {
+  CONFLICT_FIELD_LABEL,
   activeZohoTab,
   auctionOfferAvailability,
   buildRegisterTimeline,
@@ -217,6 +218,31 @@ describe("conflictDecisionCopy", () => {
   });
 });
 
+describe("a Status conflict", () => {
+  const conflict = {
+    field: "catalogueStatus" as const,
+    zohoValue: "Reserved",
+    laxValue: "Withdrawn",
+  };
+
+  it("reads as the two Statuses and says LAX left Zoho alone", () => {
+    expect(setInLaxLine(conflict)).toBe(
+      "Zoho Status is Reserved, LAX would set Withdrawn. LAX has left Zoho as it is.",
+    );
+  });
+
+  it("closing it does not promise to change Zoho", () => {
+    const copy = conflictDecisionCopy(conflict, "kept_lax");
+    expect(copy.title).toBe("Close this Status difference?");
+    expect(copy.description).toContain("Closing this does not change Zoho");
+    expect(copy.description).not.toContain("LAX will set Zoho back");
+  });
+
+  it("is labelled as the Zoho Status", () => {
+    expect(CONFLICT_FIELD_LABEL.catalogueStatus).toBe("Zoho Status");
+  });
+});
+
 describe("setInLaxLine", () => {
   it("says where it is set and what LAX will send back to Zoho", () => {
     expect(setInLaxLine({ field: "offerState", laxValue: "lax_art" })).toBe(
@@ -386,7 +412,7 @@ describe("the LAX listing check", () => {
   });
 
   it("names why a write failed, with a plain fallback", () => {
-    expect(listingFailureLabel("product_not_found")).toBe("No longer in Zoho");
+    expect(listingFailureLabel("product_not_found")).toBe("Deleted in Zoho");
     expect(listingFailureLabel("SOMETHING_NEW")).toBe("Zoho did not accept it");
   });
 

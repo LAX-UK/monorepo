@@ -1,27 +1,33 @@
-import type { OfferState } from "@auction/artwork-register-contracts";
+import type { WhereItIsKey } from "@auction/artwork-register-contracts";
+import { ZOHO_STATUS } from "./status/decide-status-write.js";
 
 /** The Zoho Products field LAX writes the artwork's place into. Its values are a Zoho picklist. */
 export const ZOHO_STATUS_FIELD = "Status";
 /** The Zoho Products field LAX writes the stock code into. */
 export const ZOHO_STOCK_CODE_FIELD = "Reference_Stock_Code";
 
-/** Where each LAX place shows in the Zoho Products Status picklist. */
-const STATUS_FOR_OFFER: Readonly<Record<OfferState, string>> = {
-  held: "Available",
-  lax_art: "Available",
-  bid_sale: "In Auction",
-  private_sale: "Reserved",
-  sold: "Sold",
-  withdrawn: "Withdrawn",
+/**
+ * Where each place an artwork is shown reads in the Zoho Products Status picklist. It maps the
+ * "Where it is" place, not the raw register state, so a withdrawn artwork reads Withdrawn only for
+ * the 30 days that place shows it and is Available again after that.
+ */
+const STATUS_FOR_PLACE: Readonly<Record<WhereItIsKey, string>> = {
+  not_offered: ZOHO_STATUS.available,
+  draft_lax_art: ZOHO_STATUS.available,
+  lax_art: ZOHO_STATUS.available,
+  draft_bid_lot: ZOHO_STATUS.available,
+  bid_sale: ZOHO_STATUS.inAuction,
+  private_sale: ZOHO_STATUS.reserved,
+  withdrawn: ZOHO_STATUS.withdrawn,
+  sold: ZOHO_STATUS.sold,
 };
 
-export function zohoStatusForOffer(state: OfferState): string {
-  return STATUS_FOR_OFFER[state];
+export function zohoStatusForPlace(place: WhereItIsKey): string {
+  return STATUS_FOR_PLACE[place];
 }
 
-/** What Zoho holds for a Product now, as far as the writeback cares. */
+/** What Zoho holds for a Product now, as far as the stock code writeback cares. */
 export type ZohoProductState = {
-  status: string | null;
   stockCode: string | null;
 };
 
@@ -29,15 +35,6 @@ export type ZohoProductState = {
 export type ZohoProductUpdate = {
   fields: Record<string, string>;
 };
-
-/** Sends the Status only when it differs; Zoho owns the rest of the Product. */
-export function planStatusUpdate(
-  offerState: OfferState,
-  current: ZohoProductState,
-): ZohoProductUpdate | null {
-  const wanted = zohoStatusForOffer(offerState);
-  return current.status === wanted ? null : { fields: { [ZOHO_STATUS_FIELD]: wanted } };
-}
 
 /** Sends the stock code only when it differs. */
 export function planStockCodeUpdate(

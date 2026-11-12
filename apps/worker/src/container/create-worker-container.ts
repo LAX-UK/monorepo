@@ -5,6 +5,7 @@ import { captureBackgroundError, initNodeSentry } from "@auction/observability";
 import {
   DrizzleArtworkRegisterRepository,
   DrizzleLotRegisterLinkReader,
+  DrizzleRegisterLotIntegrityReader,
   DrizzleUnsoldChoiceDeadlineStore,
   DrizzleUnsoldLotFollowUpRepository,
 } from "@auction/persistence/repositories";
@@ -43,6 +44,7 @@ import { assertZohoCrmOrgEnvironment } from "../integrations/zoho/zoho-crm-org-c
 import { runIdentityOutboxRelayJob } from "../jobs/identity-outbox-relay.job.js";
 import { marketingEventsOutcomeTotal } from "../jobs/marketing-event-processor.js";
 import type { ProcessInboundWebhookDeps } from "../jobs/process-inbound-webhook-event.js";
+import { checkRegisterLotIntegrity } from "../jobs/register-lot-integrity-check.js";
 import {
   ClamAvHttpMalwareScanner,
   ClamAvMalwareScanner,
@@ -94,6 +96,7 @@ import { createZohoArtworkSyncRuntime } from "./create-zoho-artwork-sync.js";
 import { createZohoArtworkWriteback } from "./create-zoho-artwork-writeback.js";
 import { createZohoCampaignsSuppressionRuntime } from "./create-zoho-campaigns-suppression.js";
 import { createZohoFulfilmentMirror } from "./create-zoho-fulfilment-mirror.js";
+import { createZohoStatusNightly } from "./create-zoho-status-nightly.js";
 
 export type WorkerContainer = {
   env: WorkerEnv;
@@ -380,6 +383,12 @@ export function createWorkerContainer(): WorkerContainer {
         : {}),
   };
 
+  const zohoStatusNightly = createZohoStatusNightly({
+    env,
+    db,
+    log,
+    listingOn: zohoArtworkListing !== undefined,
+  });
   const webhookWorkers = registerWebhookWorker({
     ...deps,
     webhookProcessorDeps,
@@ -389,6 +398,16 @@ export function createWorkerContainer(): WorkerContainer {
     ...(zohoCampaignsSuppression
       ? { runZohoCampaignsSuppressionSync: zohoCampaignsSuppression }
       : {}),
+    ...(zohoStatusNightly
+      ? {
+          runZohoStatusNightlyCheck: async () => {
+            await zohoStatusNightly.run();
+          },
+        }
+      : {}),
+    runRegisterLotIntegrityCheck: async () => {
+      await checkRegisterLotIntegrity({ reader: new DrizzleRegisterLotIntegrityReader(db), log });
+    },
     ...(zohoArtworkListing
       ? {
           runZohoListingNightlyCheck: async () => {

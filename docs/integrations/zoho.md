@@ -162,25 +162,53 @@ Roll out in this order: sandbox org with `dry_run`; review the first nightly rep
 
 ## Artwork state to Zoho Products (outbound)
 
-LAX writes the state it owns back to the Zoho Product, and nothing else (Zoho owns the catalogue):
+LAX writes the state it owns back to the Zoho Product, and nothing else (Zoho owns the catalogue). The `Status` follows where the artwork is shown, the "Where it is" place LAX Admin draws, not the raw register state:
 
-| LAX offer state | Zoho `Status` |
-|-----------------|---------------|
-| `held`, `lax_art` | `Available` |
-| `bid_sale` | `In Auction` |
-| `private_sale` | `Reserved` |
-| `sold` | `Sold` |
-| `withdrawn` | `Withdrawn` |
+| "Where it is" place | Zoho `Status` |
+|---------------------|---------------|
+| Not offered, Draft on lax.art, On lax.art, Draft lot in LAX Bid | `Available` |
+| In a LAX Bid sale | `In Auction` |
+| In a private sale | `Reserved` |
+| Sold | `Sold` |
+| Withdrawn | `Withdrawn` |
+
+Withdrawn shows for 30 days after the artwork leaves a place, then the place reads Not offered, so the `Status` returns to `Available` after the window (the nightly pass makes the change, as below). With no record of when it was withdrawn it stays `Withdrawn`.
 
 The stock code is written to `Reference_Stock_Code` when LAX issues one. A stock code that came from Zoho is not sent back, and a stock code edited later in Zoho is a conflict for staff, never overwritten.
 
 The register repository publishes `artwork_register.offer_changed` and `artwork_register.stock_code_assigned` in the same transaction as the change. The worker's `zoho_artwork_writeback` projector has its own cursor and its own `domain_event_delivery` consumer (`zoho_artwork_writeback`), independent of `ZOHO_CRM_SYNC_MODE` and its event allowlist. Failures retry with the shared backoff and then dead-letter in the same delivery ledger as the CRM sync.
 
-Each delivery reads the register's current state (never the event's), then reads the Product from Zoho and skips the write when Zoho already holds the value, so a repeated or late event sends at most one update. After a Status write the register records the value as Zoho's own copy (`catalogue_status`, history event `zoho_writeback_recorded`), so the change coming back through the inbound sync is an `unchanged` outcome, not a Zoho edit. Updates are sent with `ZOHO_CRM_UPSERT_TRIGGER` (empty by default), so no Zoho workflow fires from LAX's own write.
+Each delivery reads the register's current state (never the event's), then reads the Product from Zoho and skips the write when Zoho already holds the value, so a repeated or late event sends at most one update. After a Status write the register records the value as Zoho's own copy (`catalogue_status`, history event `zoho_writeback_recorded`), so the change coming back through the inbound sync is an `unchanged` outcome, not a Zoho edit. The Status is written only as described under Status ownership below. Updates are sent with `ZOHO_CRM_UPSERT_TRIGGER` (empty by default), so no Zoho workflow fires from LAX's own write.
+
+### Status ownership
+
+Zoho Products is the source of truth for inventory; LAX owns where an artwork is offered. The `Status` is therefore Zoho's to hold, and LAX writes it only when it can account for what Zoho shows. Every path (the register events and the nightly pass) goes through one compare-and-set, `ZohoStatusSync`, which decides with `decideStatusWrite` (`apps/worker/src/integrations/zoho/artwork/status/`).
+
+Per artwork, under its advisory lock, LAX reads the register facts, then the Product's `Status` and `Modified_Time` from Zoho, and decides:
+
+| Zoho `Status` now | LAX does |
+|-------------------|----------|
+| The value LAX wants | Nothing is sent; the register notes it as last written. |
+| Nothing (blank) | Writes it. |
+| `Available` | Writes it. |
+| The value LAX last wrote (`artwork_register.catalogue_status_written`) | Writes it. |
+| Anything else: a `Sold` or `Reserved` set by hand, `In Auction`/`Withdrawn` LAX did not write, or a value LAX does not know | Writes nothing and raises a conflict. |
+
+A Product that Zoho changed after the facts were read (`Modified_Time` later than the read) is left for the next pass, so an older picture never goes over a newer one; an event retries, the nightly pass counts it as stale.
+
+**How strong the compare-and-set is, and what is left.** Zoho's update API takes no precondition (no `If-Match`, no version on a Product), so the write cannot be made conditional on the Status. LAX therefore re-reads the Product (`Status` and `Modified_Time`) immediately before each write and sends only if both equal the read the decision was made on; if either differs, nothing is sent, the outcome is `stale` and the next run re-evaluates from fresh facts. A re-read that no longer finds the Product is a failure that will not pass (`product_not_found`). **Residual race:** a staff edit that lands in Zoho in the milliseconds between that re-read and Zoho applying LAX's update is overwritten, and the next pass then sees LAX's own value, not the edit. The window is one API round trip; it cannot be closed without Zoho supporting conditional updates. A dry run only reads once and sends nothing.
+
+**Upgrade backfill.** Migration 0359 seeds `catalogue_status_written` from the latest `zoho_writeback_recorded` event for each register whose value still equals `catalogue_status`, so a Status LAX wrote before the column existed is not mistaken for a staff edit (an `In Auction` LAX wrote and later Sold, or a Withdrawn reaching day 30). Registers with no such event stay empty and are treated as not written by LAX.
+
+A conflict appears in LAX Admin's From Zoho queue as the field "Zoho Status": "Zoho Status is X, LAX would set Y". It records both values and is not applied either way: closing it does not change Zoho. It is closed automatically once LAX and Zoho agree again (staff set the Status to `Available` or to what LAX wants, and the next pass writes or finds it in sync), and the nightly pass raises it again, or keeps the open one, while the difference stands. A conflict is raised once per pair of values.
+
+`catalogue_status` (a Zoho-owned copy, updated by the inbound sync) is deliberately not the compare value: it follows whatever Zoho shows, including a Status staff set. `catalogue_status_written` holds only what LAX sent.
+
+The **nightly pass** (03:00 London, after the listing check in the same job) walks every original and runs the same compare-and-set, so a missed event or a Withdrawn artwork's 30 days running out is repaired where compare-and-set allows and raised or kept as a conflict where it does not. It logs `zoho_status_reconcile_finished` with `checked`, `written` (or would-be, in a dry run), `unchanged`, `conflicts`, `stale` and `failed`, and `zoho_status_conflict` for each conflict. A failure of the Status pass is logged (`zoho_status_reconcile_failed`) and never hides the listing result. It is part of the nightly listing job, so it runs when `ZOHO_ARTWORK_LISTING_MODE` is not `off`, in the mode of `ZOHO_ARTWORK_WRITEBACK_MODE`: off does nothing, `dry_run` reads Zoho and writes and records nothing, `live` writes.
 
 | Variable | App | Purpose |
 |----------|-----|---------|
-| `ZOHO_ARTWORK_WRITEBACK_MODE` | worker | `off` (default) \| `dry_run` \| `live`. `dry_run` logs the update that would be sent (`zoho_artwork_writeback_dry_run`) and does not call Zoho; its deliveries are recorded as skipped, so changes made during a dry run are not sent on switching to `live` (replay them from the delivery ledger or re-save the artwork). `live` writes and needs the three OAuth values. |
+| `ZOHO_ARTWORK_WRITEBACK_MODE` | worker | `off` (default) \| `dry_run` \| `live`. `dry_run` logs the update that would be sent (`zoho_artwork_writeback_dry_run`) and does not call Zoho (the nightly Status check below does read Zoho in a dry run, and writes nothing); its deliveries are recorded as skipped, so changes made during a dry run are not sent on switching to `live` (replay them from the delivery ledger or re-save the artwork). `live` writes and needs the three OAuth values. |
 
 **Extra OAuth scope** for the refresh token: `ZohoCRM.modules.products.UPDATE`. Generate a new refresh token after adding it. A missing scope shows as failed deliveries.
 

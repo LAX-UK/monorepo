@@ -34,11 +34,12 @@ export default async function AccountOverviewPage() {
     withLiveSecurity: true,
     withLiveName: true,
     withLiveSessions: true,
+    withLiveSignInMethods: true,
   });
   if (session.status === "unavailable")
     return <AccountUnavailable retryHref={ACCOUNT_ROUTES.overview} />;
   if (session.status !== "ok") redirect(`/api/auth/login?returnTo=${ACCOUNT_ROUTES.overview}`);
-  const { overview, liveSecurity, liveSessions } = session;
+  const { overview, liveSecurity, liveSessions, liveSignInMethods } = session;
   const { config } = getLaxAccountContainer();
   const links = buildAccountLinks(config, { email: overview.email });
   const checkup = buildSecurityCheckup(
@@ -48,6 +49,12 @@ export default async function AccountOverviewPage() {
       liveSessions?.status === "ok" ? liveSessions.value : null,
     ),
     links,
+    liveSignInMethods?.status === "ok"
+      ? {
+          offered: liveSignInMethods.value.available.passkey,
+          count: liveSignInMethods.value.passkeys.length,
+        }
+      : null,
   );
   // Email and phone are covered by the Security Checkup, so the prompt only asks for the name.
   const gaps = profileGaps(overview).filter((gap) => gap === "name");

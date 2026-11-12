@@ -5,6 +5,7 @@ import {
   SHOP_CRM_READ_TABLES,
   SHOP_EMAIL_OUTBOX_TABLES,
   SHOP_PRODUCT_PROFILE_TABLES,
+  SHOP_SOLD_ATTENTION_UPDATE_COLUMNS,
   SHOP_SSF_RECEIVER_TABLES,
   SHOP_SUBJECT_EXPORT_READ_TABLES,
 } from "./migrate-roles.js";
@@ -30,6 +31,22 @@ async function withShopClient<T>(fn: (client: pg.Client) => Promise<T>): Promise
 }
 
 describe.skipIf(!SHOP_URL)("shop_app role contract", { timeout: 60_000 }, () => {
+  it("updates only the shop Sold-while-live columns, so it cannot re-point or reopen an item", async () => {
+    await withShopClient(async (client) => {
+      const rows = await client.query<{ column_name: string; allowed: boolean }>(
+        `select column_name,
+                has_column_privilege(current_user, 'public.artwork_register_sold_attention', column_name, 'UPDATE') as allowed
+           from information_schema.columns
+          where table_schema = 'public' and table_name = 'artwork_register_sold_attention'`,
+      );
+      const allowed = rows.rows.filter((row) => row.allowed).map((row) => row.column_name);
+      expect(allowed.sort()).toEqual([...SHOP_SOLD_ATTENTION_UPDATE_COLUMNS].sort());
+      for (const column of ["zoho_product_id", "register_id", "place"]) {
+        expect(allowed, column).not.toContain(column);
+      }
+    });
+  });
+
   it("has only the required DML on the Shop profile", async () => {
     await withShopClient(async (client) => {
       for (const table of SHOP_PRODUCT_PROFILE_TABLES) {

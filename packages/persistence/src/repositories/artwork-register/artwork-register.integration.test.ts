@@ -752,6 +752,180 @@ describe.skipIf(!url)("artwork register repository (Postgres)", { timeout: 30_00
     });
   });
 
+  describe("Status compare-and-set ledger", () => {
+    it("keeps what LAX wrote apart from the Status Zoho last showed", async () => {
+      const entry = await created();
+      expect((await repo.findCatalogueStatusLedgers([entry.id])).get(entry.id)).toEqual({
+        written: null,
+        conflictOpen: false,
+      });
+      await repo.recordCatalogueStatusWritten({
+        registerId: entry.id,
+        status: "In Auction",
+        now: T1,
+      });
+      expect((await repo.findCatalogueStatusLedgers([entry.id])).get(entry.id)?.written).toBe(
+        "In Auction",
+      );
+    });
+
+    it("notes a Status Zoho already held as written, without a history event", async () => {
+      const entry = await created();
+      const before = (await repo.listEvents(entry.id, 10)).length;
+      expect(
+        await repo.recordCatalogueStatusWritten({
+          registerId: entry.id,
+          status: "Available",
+          now: T1,
+        }),
+      ).toEqual({ status: "unchanged" });
+      expect((await repo.findCatalogueStatusLedgers([entry.id])).get(entry.id)?.written).toBe(
+        "Available",
+      );
+      expect(await repo.listEvents(entry.id, 10)).toHaveLength(before);
+    });
+
+    it("leaves records it does not find out of the answer", async () => {
+      const ledgers = await repo.findCatalogueStatusLedgers([
+        "00000000-0000-4000-8000-000000000000",
+      ]);
+      expect(ledgers.size).toBe(0);
+      expect((await repo.findCatalogueStatusLedgers([])).size).toBe(0);
+    });
+
+    it("raises a Status conflict in the From Zoho queue, once for the same two values", async () => {
+      const entry = await created();
+      const input = {
+        registerId: entry.id,
+        zohoStatus: "Reserved",
+        laxStatus: "Withdrawn",
+        zohoModifiedAt: T0,
+        now: T1,
+      };
+      expect(await repo.recordCatalogueStatusConflict(input)).toEqual({ status: "recorded" });
+      expect(await repo.recordCatalogueStatusConflict(input)).toEqual({ status: "unchanged" });
+      const open = await repo.listOpenConflicts(10);
+      expect(open).toHaveLength(1);
+      expect(open[0]).toMatchObject({
+        registerId: entry.id,
+        field: "catalogueStatus",
+        zohoValue: "Reserved",
+        laxValue: "Withdrawn",
+        status: "open",
+      });
+      expect((await repo.findCatalogueStatusLedgers([entry.id])).get(entry.id)?.conflictOpen).toBe(
+        true,
+      );
+    });
+
+    it("updates the open conflict when Zoho or LAX shows something else", async () => {
+      const entry = await created();
+      const base = { registerId: entry.id, zohoModifiedAt: T0, now: T1 };
+      await repo.recordCatalogueStatusConflict({
+        ...base,
+        zohoStatus: "Sold",
+        laxStatus: "Withdrawn",
+      });
+      await repo.recordCatalogueStatusConflict({
+        ...base,
+        zohoStatus: "Sold",
+        laxStatus: "Available",
+      });
+      const open = await repo.listOpenConflicts(10);
+      expect(open).toHaveLength(1);
+      expect(open[0]).toMatchObject({ zohoValue: "Sold", laxValue: "Available" });
+    });
+
+    it("closes the open conflict, with a history event, when LAX and Zoho agree again", async () => {
+      const entry = await created();
+      await repo.recordCatalogueStatusConflict({
+        registerId: entry.id,
+        zohoStatus: "Reserved",
+        laxStatus: "Withdrawn",
+        zohoModifiedAt: T0,
+        now: T1,
+      });
+      await repo.recordCatalogueStatusWritten({
+        registerId: entry.id,
+        status: "Withdrawn",
+        now: T2,
+      });
+      expect(await repo.listOpenConflicts(10)).toHaveLength(0);
+      expect((await repo.listEvents(entry.id, 20)).map((e) => e.type)).toContain(
+        "conflict_resolved",
+      );
+      expect((await repo.findCatalogueStatusLedgers([entry.id])).get(entry.id)?.conflictOpen).toBe(
+        false,
+      );
+    });
+
+    it("closes a conflict because Zoho matched LAX without recording the Status as written", async () => {
+      const entry = await created();
+      await repo.recordCatalogueStatusConflict({
+        registerId: entry.id,
+        zohoStatus: "Sold",
+        laxStatus: "Available",
+        zohoModifiedAt: T0,
+        now: T1,
+      });
+      expect(await repo.closeCatalogueStatusConflict({ registerId: entry.id, now: T2 })).toEqual({
+        closed: true,
+      });
+      expect(await repo.listOpenConflicts(10)).toHaveLength(0);
+      const ledger = (await repo.findCatalogueStatusLedgers([entry.id])).get(entry.id);
+      expect(ledger).toEqual({ written: null, conflictOpen: false });
+      const resolved = (await repo.listEvents(entry.id, 20)).filter(
+        (e) => e.type === "conflict_resolved",
+      );
+      expect(resolved.at(-1)?.payload).toMatchObject({ reason: "zoho_matched_lax" });
+      expect(await repo.closeCatalogueStatusConflict({ registerId: entry.id, now: T2 })).toEqual({
+        closed: false,
+      });
+    });
+
+    it("never accepts Zoho's Status through a decision: it already stands", async () => {
+      const entry = await created();
+      await repo.recordCatalogueStatusConflict({
+        registerId: entry.id,
+        zohoStatus: "Sold",
+        laxStatus: "Withdrawn",
+        zohoModifiedAt: T0,
+        now: T1,
+      });
+      const [conflict] = await repo.listOpenConflicts(10);
+      expect(
+        await repo.resolveConflict({
+          conflictId: conflict?.id ?? "",
+          resolution: "accepted_zoho",
+          resolvedBy: staff,
+          now: T2,
+        }),
+      ).toEqual({ ok: false, reason: "cannot_accept_field" });
+      expect(
+        (
+          await repo.resolveConflict({
+            conflictId: conflict?.id ?? "",
+            resolution: "kept_lax",
+            resolvedBy: staff,
+            now: T2,
+          })
+        ).ok,
+      ).toBe(true);
+    });
+
+    it("reports an unknown record when raising a conflict", async () => {
+      expect(
+        await repo.recordCatalogueStatusConflict({
+          registerId: "00000000-0000-4000-8000-000000000000",
+          zohoStatus: "Sold",
+          laxStatus: "Available",
+          zohoModifiedAt: T0,
+          now: T1,
+        }),
+      ).toEqual({ status: "not_found" });
+    });
+  });
+
   it("refuses to change or delete history", async () => {
     const entry = await created();
     await expect(

@@ -256,6 +256,29 @@ describe.skipIf(!hasShopIntegrationDb)("checkout money pause, on every payment p
       expect(t.recording.expired).toEqual([sessionId]);
     });
 
+    it("is left alone when the order has no payment page yet, and recovers after a false alarm", async () => {
+      const t = await setup("pause-sweep-bare");
+      const order = await t.repo.createCheckoutOrder(t.request());
+      await t.db
+        .update(shopOrder)
+        .set({ stripeCheckoutSessionId: null })
+        .where(eq(shopOrder.id, order.orderId));
+      const options = { paymentGateway: t.recording.gateway, domainEventMode: "off" as const };
+
+      t.pauseNow();
+      await expirePausedShopCheckouts(t.db, t.guard, options);
+      expect(t.recording.expired).toEqual([]);
+      expect((await orderRow(t, order.orderId)).status).toBe("pending_payment");
+      // Still unpayable while paused.
+      await expect(t.resume(order.orderId)).rejects.toMatchObject(refused);
+
+      // Staff clear "It is not sold": the same order carries on.
+      t.resumeNow();
+      await expirePausedShopCheckouts(t.db, t.guard, options);
+      expect((await orderRow(t, order.orderId)).status).toBe("pending_payment");
+      await expect(t.resume(order.orderId)).resolves.toMatchObject({ orderId: order.orderId });
+    });
+
     const paymentFor = (orderId: string, sessionId: string, totalPence: number) => ({
       eventId: `evt_paused_${orderId}`,
       orderId,

@@ -1,6 +1,6 @@
 import type { Database } from "@auction/db";
 import { shopOrder } from "@auction/db/schema";
-import { asc, eq } from "drizzle-orm";
+import { and, asc, eq, isNotNull } from "drizzle-orm";
 import type pino from "pino";
 import type { CheckoutMoneyPause } from "../application/artwork-register/checkout-money-pause.js";
 import {
@@ -17,7 +17,7 @@ export function moneyPauseEventIdForOrder(orderId: string): string {
 }
 
 /**
- * Ends the payment pages of orders waiting for payment whose artwork Zoho now says is Sold or
+ * Ends the payment pages of orders (that have one) waiting for payment whose artwork Zoho now says is Sold or
  * Reserved. The checkout guards only stop LAX opening or returning a page; one opened before the
  * item was raised would otherwise stay payable until its hold ran out. Each order goes through the
  * same expiry the reaper uses: Stripe is asked to end the session first, a payment that already
@@ -34,7 +34,13 @@ export async function expirePausedShopCheckouts(
   const pending = await db
     .select({ id: shopOrder.id })
     .from(shopOrder)
-    .where(eq(shopOrder.status, "pending_payment"))
+    // Only orders with a payment page can be paid while paused. One with none (a delivery quote
+    // waiting for staff, a session not yet opened) is already unpayable: resume and accept-and-pay
+    // refuse it while the artwork is paused. It stays pending, so a false alarm cleared by staff
+    // leaves the buyer's order and hold as they were.
+    .where(
+      and(eq(shopOrder.status, "pending_payment"), isNotNull(shopOrder.stripeCheckoutSessionId)),
+    )
     .orderBy(asc(shopOrder.createdAt))
     .limit(SWEEP_BATCH_SIZE * 20);
 

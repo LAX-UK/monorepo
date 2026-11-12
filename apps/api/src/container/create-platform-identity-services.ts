@@ -96,6 +96,7 @@ export function createPlatformIdentityServices(
     core.transactionRunner,
     repos.impersonationDomainEventReader,
     domainEventSink,
+    repos.impersonationSessionRepository,
   );
   const impersonationSessionService = new ImpersonationSessionService(
     repos.impersonationSessionRepository,

@@ -3,6 +3,7 @@ import type { Database } from "@auction/db";
 import type { ITransactionRunner } from "@auction/persistence/interfaces";
 import {
   DrizzleArtworkRegisterRepository,
+  DrizzleBidPublishSettings,
   DrizzleLotRegisterLinkReader,
   DrizzleTransactionRunner,
 } from "@auction/persistence/repositories";
@@ -41,10 +42,13 @@ export function createPlatformCore(
     domainEventSink,
     repos.lotLifecycleSnapshotRepository,
   );
+  const artworkRegister = new DrizzleArtworkRegisterRepository(db);
+  // The lock runs on the publish transaction, so a publish that rolls back leaves no hold.
   const lotLifecycleRecording: ILotLifecycleRecorder = new OfferLockLotLifecycleRecording(
     lotLifecycleEventRecorder,
-    new ArtworkOfferLock(new DrizzleArtworkRegisterRepository(db)),
+    (tx) => new ArtworkOfferLock(artworkRegister.withExecutor(tx)),
     new DrizzleLotRegisterLinkReader(db),
+    new DrizzleBidPublishSettings(db),
   );
   const authAuditPublisher = new AuthAuditPublisher(domainEventSink);
   const strategyFactory = new LotStrategyFactory();
