@@ -52,6 +52,7 @@ import { attachAdminPersonEmailDeliveryRoutes } from "./admin/person-email-deliv
 import { attachAdminPrivateSaleDealRoutes } from "./admin/private-sale-deals.routes.js";
 import { attachAdminPurchaseProblemRoutes } from "./admin/purchase-problems.routes.js";
 import { attachAdminQrCodesRoutes } from "./admin/qr-codes.routes.js";
+import { attachAdminReofferRoutes } from "./admin/reoffers.routes.js";
 import { attachAdminSaleCoverRoutes } from "./admin/sale-cover.routes.js";
 import { attachAdminSaleRegistrationsRoutes } from "./admin/sale-registrations.routes.js";
 import { attachAdminSaleroomSessionRoutes } from "./admin/saleroom-session.routes.js";
@@ -137,6 +138,7 @@ export function createAdminRoutes(
   attachAdminLotsCatalogRoutes(platform, container);
   attachAdminAttentionRoutes(platform, container);
   attachAdminLotsRoutes(platform, container, guards);
+  attachAdminReofferRoutes(platform, container, guards);
   attachAdminLotLaxArtReturnRoutes(platform, container);
   attachAdminAuditRoutes(platform, container);
   attachAdminCatalogRoutes(platform, container);
