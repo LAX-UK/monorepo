@@ -7,7 +7,8 @@ import { useSaleroomLive } from "@/lib/context/saleroom-live-provider";
 import { resolveCatalogLotOverlay } from "@/lib/lot/catalog-lot-overlay";
 import { useClockNow } from "@/lib/time/use-clock";
 import type { Sale } from "@auction/types";
-import { StatusBadge, cn } from "@auction/ui";
+import { StatusBadge } from "@auction/ui/components/status-badge";
+import { cn } from "@auction/ui/lib/utils";
 import { useMemo } from "react";
 
 export type SaleroomSaleForLifecycle =

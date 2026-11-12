@@ -2,12 +2,12 @@
 
 import { useAppSession } from "@/lib/auth/use-app-session";
 import { notify } from "@/lib/ui/notify";
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 import { Bookmark, BookmarkCheck } from "lucide-react";
 import { useState } from "react";
 
 import { createSavedSearch } from "@/lib/data/http/saved-searches.client";
-import { Button } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
 
 type Props = {
   label: string;

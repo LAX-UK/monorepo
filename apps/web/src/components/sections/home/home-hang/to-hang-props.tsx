@@ -1,7 +1,7 @@
 import { hangMetaLine } from "@/lib/hang/hang-meta";
 import type { HomeHangVM } from "@/lib/hang/home-hang";
 import { reportImageFallback } from "@/lib/observability/report-image-fallback";
-import type { MarketingHangProps } from "@auction/marketing-ui";
+import type { MarketingHangProps } from "@auction/marketing-ui/hang/marketing-hang";
 import { toMarketingWork } from "./to-marketing-work";
 
 /** The wall's meta line, seeAll link and works for a hang, shared by every place that hangs one. */

@@ -5,7 +5,7 @@ import {
   atgWhiteLabelUrl,
 } from "@/lib/catalog/atg-white-label";
 import type { Sale } from "@auction/types";
-import { ButtonLink } from "@auction/ui/lax";
+import { ButtonLink } from "@auction/ui/lax/button-link";
 import { isAtgOwnedCatalogSale } from "@auction/validators";
 import { ExternalLinkIcon } from "lucide-react";
 

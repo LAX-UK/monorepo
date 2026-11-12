@@ -13,8 +13,11 @@ import {
 } from "@/components/ui/adaptive-media-frame";
 import { saleroomOnBlockBadge, saleroomOnBlockRingClass } from "@/lib/lot/lot-lifecycle";
 import { LOT_CARD_GRID_SLOTS, LOT_CARD_TIMER_SLOTS } from "@/lib/media/overlay-slot-presets";
-import { lotCardMediaClasses, lotCardMediaFrame } from "@auction/marketing-ui";
-import { cn } from "@auction/ui";
+import {
+  lotCardMediaClasses,
+  lotCardMediaFrame,
+} from "@auction/marketing-ui/lot-media/lot-card-media-frame";
+import { cn } from "@auction/ui/lib/utils";
 import Link from "next/link";
 import { Fragment, type ReactNode } from "react";
 import type { SaleLotCardVM } from "./view-models";

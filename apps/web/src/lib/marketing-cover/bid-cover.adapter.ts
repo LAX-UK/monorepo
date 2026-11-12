@@ -7,7 +7,7 @@ import type {
   CoverPhotoSlot,
   CoverPlateMedia,
   CoverSlide,
-} from "@auction/marketing-ui";
+} from "@auction/marketing-ui/cover/cover-types";
 import type { SaleCoverSlotAsset, SaleCoverSlotAssets, SaleDeliveryMode } from "@auction/types";
 import { type CoverSaleStatus, coverTimeLine } from "./cover-time";
 

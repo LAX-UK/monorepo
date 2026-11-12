@@ -1,6 +1,6 @@
 "use client";
 
-import { Button } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
 import { ChevronDown, Loader2 } from "lucide-react";
 import { useAccountChrome } from "./account-chrome-context";
 import { AccountSwitcherPopover } from "./account-switcher-popover";

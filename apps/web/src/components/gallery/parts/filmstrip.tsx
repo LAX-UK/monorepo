@@ -3,7 +3,8 @@
 import { useGalleryContext } from "@/components/gallery/context/gallery-context";
 import { GALLERY_MEDIA_PLACEHOLDER_LABEL } from "@/components/gallery/parts/gallery-media-placeholder";
 import { MediaImage } from "@/components/ui/media-image";
-import { Button, cn } from "@auction/ui";
+import { Button } from "@auction/ui/components/button";
+import { cn } from "@auction/ui/lib/utils";
 import { useEffect, useRef } from "react";
 
 /** Horizontal thumbnail strip with active-thumb auto-center. */

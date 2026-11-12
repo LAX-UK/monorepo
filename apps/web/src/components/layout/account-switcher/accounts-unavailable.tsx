@@ -2,7 +2,7 @@
 
 import { SITE_SUPPORT_EMAIL } from "@/lib/brand";
 import { EmptyState } from "@auction/ui/components/empty-state";
-import { Button } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
 import { Loader2, RotateCw } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";

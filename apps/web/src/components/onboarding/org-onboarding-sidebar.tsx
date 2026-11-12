@@ -1,7 +1,6 @@
 import { orgOnboardingSidebarSections } from "@/lib/legal-entity/org-onboarding-sidebar-copy";
 import { ORG_ONBOARDING_STEP_META } from "@/lib/legal-entity/org-onboarding-steps";
 import type { OrgOnboardingStepKey } from "@auction/types";
-import { cn } from "@auction/ui";
 import {
   Card,
   CardContent,
@@ -9,6 +8,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@auction/ui/components/card";
+import { cn } from "@auction/ui/lib/utils";
 import type { PublicOrganisationSubkind } from "@auction/validators";
 import { CheckCircle2 } from "lucide-react";
 import Link from "next/link";

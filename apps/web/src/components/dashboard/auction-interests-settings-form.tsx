@@ -8,7 +8,7 @@ import { notify } from "@/lib/ui/notify";
 import { reconcileBuyerInterestSelection } from "@auction/domain";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { Checkbox } from "@auction/ui/components/checkbox";
-import { Button } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
 import { Check, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useState } from "react";

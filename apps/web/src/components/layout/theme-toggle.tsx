@@ -6,7 +6,7 @@ import { syncUiThemeFromClientAction } from "@/lib/actions/user-ui-preferences";
 import type { ChromeSurface } from "@/lib/layout/chrome-surface";
 import { type SiteHeaderTone, headerChromeIconClass } from "@/lib/layout/header-chrome-tone";
 import { applyThemeDom } from "@/lib/preferences/apply-theme-dom";
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 import { Moon, Sun } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 

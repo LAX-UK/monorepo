@@ -19,9 +19,10 @@ import { requireOrganisationTab } from "@/lib/navigation/organisation-tabs";
 import { bankChangeNotice, bankChangedLine } from "@/lib/organisation-team/bank-change-notice";
 import { payoutSetupSteps } from "@/lib/presenters/payout-setup-steps";
 import { entityActorCan } from "@auction/domain";
-import { DisplayHeading } from "@auction/ui";
 import { SectionHeader } from "@auction/ui/components/section-header";
-import { ButtonLink, Notice } from "@auction/ui/lax";
+import { DisplayHeading } from "@auction/ui/components/typography";
+import { ButtonLink } from "@auction/ui/lax/button-link";
+import { Notice } from "@auction/ui/lax/notice";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 

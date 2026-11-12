@@ -17,7 +17,7 @@ import {
   summariseAmountsOwed,
 } from "@auction/domain";
 import type { PortfolioRow } from "@auction/types";
-import { formatGbp } from "@auction/ui";
+import { formatGbp } from "@auction/ui/lib/money";
 import { PURCHASE_STATE_LABEL } from "./purchase-labels";
 import { purchaseProblemHref } from "./purchase-problem";
 import {

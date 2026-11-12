@@ -1,7 +1,7 @@
 import { LotStatusTimer } from "@/components/marketing/lot-status-badge";
 import { MediaImage } from "@/components/ui/media-image";
-import { cn } from "@auction/ui";
-import { Button } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
+import { cn } from "@auction/ui/lib/utils";
 import type { ReactNode, TouchEvent } from "react";
 import { useRef } from "react";
 import { LotQuickLookDeckNav } from "./lot-quick-look-deck-nav";

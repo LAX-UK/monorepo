@@ -1,5 +1,6 @@
 import { MARKETING_PAGE_GUTTER_X, MARKETING_PAGE_INNER } from "@/lib/marketing/chrome";
-import { DisplayHeading, cn } from "@auction/ui";
+import { DisplayHeading } from "@auction/ui/components/typography";
+import { cn } from "@auction/ui/lib/utils";
 import type { ReactNode } from "react";
 
 type HeroShared = {

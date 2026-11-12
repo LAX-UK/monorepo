@@ -1,4 +1,4 @@
-import { CommandEmpty } from "@auction/ui";
+import { CommandEmpty } from "@auction/ui/components/command";
 
 type Props = {
   query: string;

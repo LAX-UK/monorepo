@@ -3,7 +3,7 @@ import type { HomeAlertThumbnail } from "@/lib/home-sections/types";
 import { HOME_ALERTS_ANCHOR } from "@/lib/marketing-cover/cover-alerts-outcome";
 import { MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
 import { bidThumbSrcSet } from "@/lib/media/bid-image-src-set";
-import { MarketingSplitFeature } from "@auction/marketing-ui";
+import { MarketingSplitFeature } from "@auction/marketing-ui/marketing-split-feature";
 import type { ReactNode } from "react";
 
 type Props = {

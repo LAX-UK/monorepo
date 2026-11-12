@@ -1,7 +1,7 @@
 import type { ChecklistItemView } from "@/lib/seller/consignment-checklist-copy";
-import { cn } from "@auction/ui";
 import { Surface } from "@auction/ui/components/surface";
-import { ButtonLink } from "@auction/ui/lax";
+import { ButtonLink } from "@auction/ui/lax/button-link";
+import { cn } from "@auction/ui/lib/utils";
 import { CheckCircle2, Circle, Clock } from "lucide-react";
 import Link from "next/link";
 

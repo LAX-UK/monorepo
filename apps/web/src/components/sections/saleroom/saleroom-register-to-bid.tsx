@@ -18,8 +18,12 @@ import {
   saleroomHeroActionSizing,
 } from "@/lib/ui/overlay-tone-classes";
 import type { LegalEntityMemberRole } from "@auction/types";
-import { cn } from "@auction/ui";
-import { Button, Field, NativeSelect, Notice, TextInput } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
+import { Field } from "@auction/ui/lax/field";
+import { TextInput } from "@auction/ui/lax/input";
+import { NativeSelect } from "@auction/ui/lax/native-select";
+import { Notice } from "@auction/ui/lax/notice";
+import { cn } from "@auction/ui/lib/utils";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type ReactNode, useMemo, useState } from "react";

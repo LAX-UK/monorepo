@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, type ButtonProps } from "@auction/ui/lax";
+import { Button, type ButtonProps } from "@auction/ui/lax/button";
 import { Download, MoreHorizontal, Plus } from "lucide-react";
 import { FORCED, SheetSection, StateRow } from "./sheet-frame";
 

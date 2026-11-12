@@ -3,8 +3,9 @@
 import { useLogout } from "@/lib/auth/use-logout";
 import { laxAccountHomeUrl } from "@/lib/lax-account-url";
 import type { AccountChrome } from "@/lib/navigation/account-switcher-model";
-import { cn } from "@auction/ui";
-import { Button, Dialog } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
+import { Dialog } from "@auction/ui/lax/dialog";
+import { cn } from "@auction/ui/lib/utils";
 import { ArrowUpRight, LogOut, UserRound } from "lucide-react";
 import { AccountSwitcherList, SWITCHER_ROW } from "./account-switcher-list";
 import { useAccountSwitch } from "./use-account-switch";

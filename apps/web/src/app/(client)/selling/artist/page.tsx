@@ -5,7 +5,7 @@ import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { SITE_CONSIGNMENT_EMAIL } from "@/lib/brand";
 import { resolveSellerWorkspaceContext } from "@/lib/legal-entity/seller-acting-context.server";
 import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
-import { EmailLink } from "@auction/marketing-ui";
+import { EmailLink } from "@auction/marketing-ui/email-text";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { redirect } from "next/navigation";
 

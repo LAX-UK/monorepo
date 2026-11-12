@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const pathname = vi.fn(() => "/");
 vi.mock("next/navigation", () => ({ usePathname: () => pathname() }));
-vi.mock("@auction/ui", () => ({
+vi.mock("@auction/ui/components/sonner", () => ({
   Toaster: ({ theme, mobileOffset }: { theme: string; mobileOffset?: { bottom?: string } }) => (
     <div
       data-testid="public-toaster"
@@ -12,7 +12,7 @@ vi.mock("@auction/ui", () => ({
     />
   ),
 }));
-vi.mock("@auction/ui/lax", () => ({
+vi.mock("@auction/ui/lax/toaster", () => ({
   Toaster: ({ density }: { density: string }) => (
     <div data-testid="workspace-toaster" data-density={density} />
   ),

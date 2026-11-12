@@ -1,7 +1,10 @@
 import { buildHostedLoginStartHref } from "@/lib/auth/hosted-login-start-href";
 import type { ClientAttention } from "@/lib/navigation/client-attention";
 import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
-import type { MarketingBottomTab, MarketingBottomTabBadge } from "@auction/marketing-ui";
+import type {
+  MarketingBottomTab,
+  MarketingBottomTabBadge,
+} from "@auction/marketing-ui/bottom-bar/bottom-tab-config";
 import type { ReactNode } from "react";
 
 /** The icons for each tab, supplied by the component so this module stays plain data. */

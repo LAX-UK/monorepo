@@ -6,7 +6,8 @@ import {
   resolveCalendarEmptyState,
 } from "@/lib/marketing/sales-calendar-empty-state";
 import { calendarClearFiltersHref } from "@/lib/marketing/sales-calendar-params";
-import { ButtonLink, EmptyState } from "@auction/ui/lax";
+import { ButtonLink } from "@auction/ui/lax/button-link";
+import { EmptyState } from "@auction/ui/lax/empty-state";
 import Link from "next/link";
 
 type Props = { vm: SalesBrowsePageVM };

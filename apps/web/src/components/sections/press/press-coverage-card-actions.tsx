@@ -2,13 +2,13 @@
 
 import { ShareActions } from "@/components/ui/share-actions";
 import { FOCUS_RING } from "@/lib/marketing/chrome";
-import { cn } from "@auction/ui";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@auction/ui/components/tooltip";
+import { cn } from "@auction/ui/lib/utils";
 import { ExternalLinkIcon } from "lucide-react";
 
 type Props = {

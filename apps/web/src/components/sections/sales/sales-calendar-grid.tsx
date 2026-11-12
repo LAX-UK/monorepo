@@ -1,7 +1,7 @@
 import { SalesCalendarGridCard } from "@/components/sections/sales/sales-calendar-grid-card";
 import type { CalendarGridCardVM } from "@/components/sections/sales/sales-view-models";
 import { sparseGridClasses } from "@/lib/ui/sparse-grid-classes";
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 
 type Props = {
   vms: CalendarGridCardVM[];

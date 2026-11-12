@@ -8,7 +8,7 @@ import {
   type SellDepartmentCard,
   sellDepartmentCards,
 } from "@/lib/marketing/sell-landing";
-import { cn } from "@auction/ui";
+import { cn } from "@auction/ui/lib/utils";
 import Link from "next/link";
 
 const CARD_CLASS = cn(

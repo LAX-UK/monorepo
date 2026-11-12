@@ -2,8 +2,8 @@
 
 import { FOCUS_RING } from "@/lib/marketing/chrome";
 import { useWatchlistToggle } from "@/lib/watchlist/use-watchlist-toggle";
-import { cn } from "@auction/ui";
-import { Button } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
+import { cn } from "@auction/ui/lib/utils";
 import { Bookmark, BookmarkCheck, Loader2, LogIn } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";

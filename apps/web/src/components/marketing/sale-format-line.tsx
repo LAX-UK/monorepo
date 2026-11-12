@@ -5,8 +5,8 @@ import type { SaleFormatExplainerContext } from "@/lib/sale-format-explainer";
 import { saleFormatIcon } from "@/lib/sale-format-icon";
 import { getSaleTypePresentation } from "@/lib/sale-type-presentation";
 import type { SaleDeliveryMode } from "@auction/types";
-import { cn } from "@auction/ui";
-import { Button } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
+import { cn } from "@auction/ui/lib/utils";
 import { HelpCircle } from "lucide-react";
 
 type Props = {

@@ -9,8 +9,8 @@ import type {
   PayPlanPayable,
   PayPlanProgress,
 } from "@auction/types";
-import { formatGbp } from "@auction/ui";
-import type { NoticeTone } from "@auction/ui/lax";
+import type { NoticeTone } from "@auction/ui/lax/notice";
+import { formatGbp } from "@auction/ui/lib/money";
 import { GATE_COPY, INVOICE_LINE_KIND_LABEL, LEFT_OUT_REASON_COPY, PAY_COPY } from "./pay-copy";
 import { type PayMethod, type PayMethodsVm, payMethodsVm } from "./pay-methods";
 

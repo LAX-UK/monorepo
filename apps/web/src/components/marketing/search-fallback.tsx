@@ -10,7 +10,8 @@ import { type SearchAlertState, pastResultsSentence } from "@/lib/marketing/sear
 import type { CatalogLayoutView } from "@/lib/preferences/view-cookie";
 import type { AlertAccess } from "@/lib/watching/search-email";
 import type { LotMediaTreatmentIndex } from "@auction/domain";
-import { ButtonLink, EmptyState } from "@auction/ui/lax";
+import { ButtonLink } from "@auction/ui/lax/button-link";
+import { EmptyState } from "@auction/ui/lax/empty-state";
 import Link from "next/link";
 import type { ReactNode } from "react";
 

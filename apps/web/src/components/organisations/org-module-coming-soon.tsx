@@ -2,7 +2,7 @@ import { DashboardEmptyState } from "@/components/dashboard/primitives/dashboard
 import { SITE_SUPPORT_EMAIL } from "@/lib/brand";
 import { DASHBOARD_EMPTY } from "@/lib/dashboard/dashboard-copy";
 import { StatusBadge } from "@auction/ui/components/status-badge";
-import { ButtonLink } from "@auction/ui/lax";
+import { ButtonLink } from "@auction/ui/lax/button-link";
 import Link from "next/link";
 
 /** Shown on production when the organisation module is not yet available. */

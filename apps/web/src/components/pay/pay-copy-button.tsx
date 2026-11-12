@@ -2,7 +2,7 @@
 
 import { PAY_COPY } from "@/lib/pay/pay-copy";
 import { notify } from "@/lib/ui/notify";
-import { Button } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
 import { Check, Copy } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 

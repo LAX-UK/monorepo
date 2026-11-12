@@ -1,4 +1,4 @@
-import { Notice, type NoticeTone } from "@auction/ui/lax";
+import { Notice, type NoticeTone } from "@auction/ui/lax/notice";
 import type { ReactNode } from "react";
 
 export type PolicyNoticeVariant = "error" | "primary" | "warning";

@@ -1,6 +1,6 @@
 import { CookieDock } from "@/components/marketing/consent/cookie-dock";
 import { MarketingStickyBidBar } from "@/components/marketing/marketing-sticky-bid-bar";
-import { MarketingBottomTabBar } from "@auction/marketing-ui";
+import { MarketingBottomTabBar } from "@auction/marketing-ui/marketing-bottom-tab-bar";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 

@@ -3,7 +3,8 @@
 import { bidsInView, parseBidsListQuery } from "@/lib/bid/bids-list";
 import { bidsExportHref } from "@/lib/bid/my-bids-csv";
 import type { MyBidsVm } from "@/lib/bid/my-bids.vm";
-import { Button, ExportSheet } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
+import { ExportSheet } from "@auction/ui/lax/export-sheet";
 import { Download } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";

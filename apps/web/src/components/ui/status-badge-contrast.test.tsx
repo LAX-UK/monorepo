@@ -1,5 +1,8 @@
 import { createTokenContrast } from "@/test/css-token-contrast";
-import { STATUS_BADGE_TONE_CLASSES, type StatusBadgeTone } from "@auction/ui";
+import {
+  STATUS_BADGE_TONE_CLASSES,
+  type StatusBadgeTone,
+} from "@auction/ui/components/status-badge";
 import { describe, expect, it } from "vitest";
 
 const TONES = Object.keys(STATUS_BADGE_TONE_CLASSES) as StatusBadgeTone[];

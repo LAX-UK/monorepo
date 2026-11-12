@@ -1,5 +1,5 @@
 import { MediaPlaceholder } from "@/components/ui/media-placeholder";
-import { MarketingNotFound } from "@auction/marketing-ui";
+import { MarketingNotFound } from "@auction/marketing-ui/marketing-not-found";
 import Link from "next/link";
 import { NOT_FOUND_COPY, type NotFoundKind } from "./not-found-copy";
 
