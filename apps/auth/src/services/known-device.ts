@@ -15,6 +15,10 @@ export type KnownDeviceStore = {
     /** Whether the person had signed in from any other device before. */
     hadOtherDevices: boolean;
   }>;
+  /** Whether the person has signed in from the browser holding this private device marker before. */
+  hasSeen(input: { userId: string; fingerprint: string }): Promise<boolean>;
+  /** Remembers a device (or browser marker) without reporting anything about it. */
+  remember(input: { userId: string; fingerprint: string; at: Date }): Promise<void>;
   countNoticesSince(userId: string, since: Date): Promise<number>;
   markNotified(input: { userId: string; fingerprint: string; at: Date }): Promise<void>;
 };
@@ -32,6 +36,15 @@ export function fingerprintDevice(input: {
   const label = formatDeviceLabel(input.userAgent);
   const region = input.region?.trim().toUpperCase() ?? "";
   return createHash("sha256").update(`${input.userId}\n${label}\n${region}`).digest("hex");
+}
+
+/**
+ * The key for a browser that carries the sign-in service's private device marker: a hash of the
+ * person and the keyed hash of the marker. It tells two browsers with the same label and country
+ * apart, and a browser that updates or travels stays the same one.
+ */
+export function fingerprintMarker(input: { userId: string; deviceHash: string }): string {
+  return createHash("sha256").update(`${input.userId}\nmarker\n${input.deviceHash}`).digest("hex");
 }
 
 /**

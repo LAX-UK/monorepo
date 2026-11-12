@@ -36,6 +36,8 @@ export type AuthHookDeps = {
    * leave unset in tests.
    */
   enableNewDeviceLoginEmail?: boolean | undefined;
+  /** Hash of the private device marker a request carries, or null; attached to sign-in reports. */
+  readDeviceHash?: ((headers: Headers | undefined) => string | null) | undefined;
   /** When true, reject new auth user rows (email + OAuth) at `user.create.before`. */
   blockNewUserRegistration?: boolean | undefined;
   /**

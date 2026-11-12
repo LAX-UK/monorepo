@@ -26,6 +26,8 @@ import {
   adaptOidcClaimsResolver,
 } from "../infrastructure/oidc-claim-resolver-adapter.js";
 import type { BackchannelLogoutRevoker } from "../services/backchannel-logout-revocation.service.js";
+import { DeviceMarkerHasher, readDeviceMarker } from "../services/device-marker.js";
+import { isNewDeviceEmailEnabled } from "../services/new-device-email-policy.js";
 import type { OidcSessionCoordinator } from "../services/oidc-session-coordinator.js";
 import { publishIdentityProfileUpdated } from "../services/publish-identity-profile-updated.js";
 import { publishUserEmailVerified } from "../services/publish-user-email-verified.js";
@@ -135,6 +137,10 @@ export function createAuthIssuer(options: {
     env.AUTH_DEK_KEY && env.AUTH_DEK_KEY.trim().length > 0
       ? createEnvelopeCrypto(parseAuthDekKey(env.AUTH_DEK_KEY.trim()))
       : undefined;
+  const deviceHasher = new DeviceMarkerHasher({
+    secret: env.DEVICE_MARKER_SECRET,
+    fallbackSecret: env.BETTER_AUTH_SECRET,
+  });
   const identityPorts = createIdentityAuthPorts(options.db, { envelope });
   const ports: AuthPorts = {
     ...identityPorts,
@@ -189,7 +195,11 @@ export function createAuthIssuer(options: {
           : {}),
         image: user.image ?? null,
       }),
-    enableNewDeviceLoginEmail: env.NODE_ENV === "production",
+    enableNewDeviceLoginEmail: isNewDeviceEmailEnabled(env),
+    readDeviceHash: (headers) => {
+      const marker = readDeviceMarker(headers?.get("cookie"));
+      return marker ? deviceHasher.hash(marker) : null;
+    },
     blockNewUserRegistration: Boolean(env.DISABLE_NEW_USER_REGISTRATION),
     resolveOidcIdTokenClaims: adaptOidcClaimsResolver(async (input) => ({
       ...(await options.oidcSessions.resolveIdTokenClaims(input)),

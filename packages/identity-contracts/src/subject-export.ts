@@ -275,6 +275,12 @@ const ACCOUNT_CATEGORIES = [
       f("device", "The device or browser."),
       f("ipAddress", "The IP address the activity came from, for sessions."),
       f("approximateLocation", "The approximate place derived from the IP address."),
+      f("country", "The country the sign-in came from, as the network edge reported it."),
+      f(
+        "products",
+        "The LAX products this browser was signed in to: LAX Account, LAX Bid, LAX Shop or lax.art.",
+      ),
+      f("lastActiveAt", "When this browser last used its sign-in, in any LAX product."),
       f("startedAt", "When the session or activity started."),
       f("endedAt", "When the session ended, or null if it is still active."),
       f("method", "The sign-in method: password, passkey or a social provider."),

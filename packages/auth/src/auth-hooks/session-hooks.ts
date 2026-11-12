@@ -65,6 +65,7 @@ export function buildSessionDatabaseHooks(deps: AuthHookDeps) {
           at: new Date(sess.createdAt),
           userAgent: sess.userAgent ?? headers?.get("user-agent") ?? null,
           region: readRequestRegion(headers),
+          deviceHash: deps.readDeviceHash?.(headers) ?? null,
         });
       },
     },

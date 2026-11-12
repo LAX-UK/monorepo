@@ -55,6 +55,30 @@ describe.skipIf(!DATABASE_URL)("security notices against Postgres", () => {
       });
     });
 
+    it("remembers a browser marker without reporting it, and finds it per person", async () => {
+      if (!db) return;
+      const store = new DrizzleKnownDeviceStore(db);
+      const fingerprint = "marker-a";
+      expect(await store.hasSeen({ userId: USER, fingerprint })).toBe(false);
+
+      await store.remember({ userId: USER, fingerprint, at: now });
+      expect(await store.hasSeen({ userId: USER, fingerprint })).toBe(true);
+
+      const later = new Date(now.getTime() + 60_000);
+      await store.remember({ userId: USER, fingerprint, at: later });
+      const [row] = await db
+        .select({
+          firstSeenAt: authKnownDevice.firstSeenAt,
+          lastSeenAt: authKnownDevice.lastSeenAt,
+        })
+        .from(authKnownDevice)
+        .where(eq(authKnownDevice.fingerprint, fingerprint));
+      expect(row).toEqual({ firstSeenAt: now, lastSeenAt: later });
+      expect(
+        await store.hasSeen({ userId: "90000000-0000-4000-8000-000000000072", fingerprint }),
+      ).toBe(false);
+    });
+
     it("counts notices per person inside the window", async () => {
       if (!db) return;
       const store = new DrizzleKnownDeviceStore(db);

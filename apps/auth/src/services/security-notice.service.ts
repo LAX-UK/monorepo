@@ -19,10 +19,12 @@ import {
   NEW_DEVICE_NOTICES_PER_DAY,
   NEW_DEVICE_NOTICE_WINDOW_MS,
   fingerprintDevice,
+  fingerprintMarker,
   isNewDevice,
 } from "./known-device.js";
 import { type SecurityEffectLogger, describeError } from "./settle-security-effect.js";
 
+const SIGNED_IN_DEVICES_ANCHOR = "signed-in-devices";
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /** How each way to sign in reads in the one "added or removed" email. */
@@ -216,9 +218,20 @@ export class SecurityNoticeService implements SecurityNoticePublisher, SecurityN
         return;
       }
       case "sign_in":
-        await this.notifyIfNewDevice(event, () => enqueue("new-device-login", subject.email, {}));
+        await this.notifyIfNewDevice(event, () =>
+          enqueue("new-device-login", subject.email, {
+            reviewDevicesUrl: this.reviewDevicesUrl(),
+          }),
+        );
         return;
     }
+  }
+
+  /** The signed-in devices list on LAX Account's security page. */
+  private reviewDevicesUrl(): string {
+    const url = new URL(this.deps.secureAccountUrl);
+    url.hash = SIGNED_IN_DEVICES_ANCHOR;
+    return url.toString();
   }
 
   private async notifyIfNewDevice(
@@ -226,8 +239,19 @@ export class SecurityNoticeService implements SecurityNoticePublisher, SecurityN
     send: () => Promise<unknown>,
   ): Promise<void> {
     const fingerprint = fingerprintDevice(event);
+    // A browser the person has signed in from before is never new, whatever its label or country
+    // says now. Without a marker (a first visit, cleared cookies) the 90-day rule below decides.
+    const marker = event.deviceHash
+      ? fingerprintMarker({ userId: event.userId, deviceHash: event.deviceHash })
+      : null;
+    const knownBrowser = marker
+      ? await this.deps.devices.hasSeen({ userId: event.userId, fingerprint: marker })
+      : false;
     const seen = await this.deps.devices.touch({ userId: event.userId, fingerprint, at: event.at });
-    if (!isNewDevice(seen, event.at)) return;
+    if (marker) {
+      await this.deps.devices.remember({ userId: event.userId, fingerprint: marker, at: event.at });
+    }
+    if (knownBrowser || !isNewDevice(seen, event.at)) return;
     const since = new Date(this.now().getTime() - NEW_DEVICE_NOTICE_WINDOW_MS);
     const sent = await this.deps.devices.countNoticesSince(event.userId, since);
     if (sent >= NEW_DEVICE_NOTICES_PER_DAY) return;

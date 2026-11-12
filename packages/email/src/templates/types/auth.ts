@@ -140,7 +140,10 @@ type AuthTemplateVarsBase = {
     /** The provider that proved the email, already in display form: "Google" or "Apple". */
     providerName: string;
   };
-  "new-device-login": SecurityNoticeVars;
+  "new-device-login": SecurityNoticeVars & {
+    /** LAX Account's signed-in devices list; absent on an email queued before it existed. */
+    reviewDevicesUrl?: string | null;
+  };
   "password-changed-elsewhere": {
     userName?: string | null;
   };
