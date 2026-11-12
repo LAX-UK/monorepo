@@ -10,9 +10,10 @@ import {
 } from "@auction/ui/components/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@auction/ui/components/popover";
 import { fieldBox, readOnlyBox, useField } from "@auction/ui/lax";
-import { Check, ChevronsUpDown, LoaderCircle } from "lucide-react";
+import { Check, ChevronsUpDown, Info, LoaderCircle, Lock } from "lucide-react";
 import * as React from "react";
 import { STAFF_LAYER, cn } from "../lib/cn.js";
+import { StaffButton } from "../primitives/button.js";
 import { staffCommandClass, staffCommandItemClass } from "./command-styles.js";
 
 export type EntityOption = {
@@ -23,6 +24,17 @@ export type EntityOption = {
   description?: string;
   /** Right-aligned detail, e.g. a status or a price. */
   meta?: React.ReactNode;
+  /** Drawn before the label, in the list and in the closed control: a thumbnail. */
+  leading?: React.ReactNode;
+  /**
+   * The option cannot be chosen, and this says why in the lock's own words. It stays in the list
+   * as unavailable (skipped by the arrow keys, as every disabled option is), with the reason
+   * always visible under it, read with the option, and never hidden behind a hover.
+   */
+  disabledReason?: string;
+  /** A heading above the first of a run of options that share it ("Can be held"). */
+  group?: string;
+  /** Unavailable with no reason to give: skipped by the arrow keys and read as unavailable. */
   disabled?: boolean;
 };
 
@@ -48,7 +60,14 @@ export type EntityPickerProps = {
   selected?: EntityOption | null;
   placeholder?: string;
   searchPlaceholder?: string;
-  emptyText?: string;
+  /** Shown when nothing matches; a function receives what was typed. */
+  emptyText?: React.ReactNode | ((query: string) => React.ReactNode);
+  /** Shown while a server search runs. */
+  searchingText?: string;
+  /** Shown, with a Try again button, when the server search fails. */
+  searchErrorText?: React.ReactNode;
+  /** A note under the list, such as what the list leaves out. */
+  footer?: React.ReactNode;
   disabled?: boolean;
   invalid?: boolean;
   id?: string;
@@ -72,6 +91,9 @@ export function EntityPicker({
   placeholder = "Choose…",
   searchPlaceholder = "Search…",
   emptyText = "No matches.",
+  searchingText = "Searching…",
+  searchErrorText = "Couldn't search. Try again in a moment.",
+  footer,
   disabled,
   invalid,
   id,
@@ -84,18 +106,25 @@ export function EntityPicker({
   const [query, setQuery] = React.useState("");
   const [remote, setRemote] = React.useState<readonly EntityOption[] | null>(null);
   const [loading, setLoading] = React.useState(false);
+  const [failed, setFailed] = React.useState(false);
+  const [attempt, setAttempt] = React.useState(0);
 
   React.useEffect(() => {
     if (!search || !open) return;
     let cancelled = false;
     setLoading(true);
+    setFailed(false);
+    void attempt;
     const timer = window.setTimeout(() => {
       search(query.trim())
         .then((results) => {
           if (!cancelled) setRemote(results);
         })
         .catch(() => {
-          if (!cancelled) setRemote([]);
+          if (!cancelled) {
+            setRemote([]);
+            setFailed(true);
+          }
         })
         .finally(() => {
           if (!cancelled) setLoading(false);
@@ -105,7 +134,7 @@ export function EntityPicker({
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [search, open, query]);
+  }, [search, open, query, attempt]);
 
   const list = search ? (remote ?? []) : filter ? filter(options, query) : options;
   const current =
@@ -149,26 +178,15 @@ export function EntityPicker({
           {...(aria["aria-label"] ? { "aria-label": aria["aria-label"] } : {})}
           className={cn(
             fieldBox,
-            "staff-focus staff-target h-control-md justify-between text-left text-staff-md",
+            "staff-focus staff-target justify-between text-left text-staff-md",
+            current?.leading ? "min-h-control-lg py-1" : "h-control-md",
             "aria-invalid:border-staff-danger disabled:cursor-not-allowed disabled:border-staff-line disabled:bg-staff-sunken disabled:text-staff-disabled",
             "data-[state=open]:border-staff-control-border-hover",
             className,
           )}
         >
           {current ? (
-            <span className="flex min-w-0 items-baseline gap-2">
-              <span className="truncate">{current.label}</span>
-              {current.description ? (
-                <span
-                  className={cn(
-                    "truncate text-staff-sm text-staff-muted",
-                    triggerDescriptionFromSm && "hidden sm:inline",
-                  )}
-                >
-                  {current.description}
-                </span>
-              ) : null}
-            </span>
+            <TriggerValue option={current} fromSm={triggerDescriptionFromSm} />
           ) : (
             <span className="truncate text-staff-subtle">{placeholder}</span>
           )}
@@ -191,48 +209,170 @@ export function EntityPicker({
           />
           <CommandList id={listId} className="max-h-72 p-1">
             {loading ? (
-              <div className="flex items-center gap-2 px-2 py-3 text-staff-sm text-staff-muted">
+              <output className="flex items-center gap-2 px-2 py-3 text-staff-sm text-staff-muted">
                 <LoaderCircle aria-hidden className="size-4 animate-spin" />
-                Searching…
+                {searchingText}
+              </output>
+            ) : failed ? (
+              <div role="alert" className="flex flex-col items-start gap-2 px-2 py-4 text-staff-sm">
+                <p className="text-staff-fg">{searchErrorText}</p>
+                <StaffButton size="sm" variant="secondary" onClick={() => setAttempt((n) => n + 1)}>
+                  Try again
+                </StaffButton>
               </div>
             ) : (
               <CommandEmpty className="px-2 py-6 text-center text-staff-sm text-staff-muted">
-                {emptyText}
+                {typeof emptyText === "function" ? emptyText(query.trim()) : emptyText}
               </CommandEmpty>
             )}
-            <CommandGroup className="p-0">
-              {list.map((option) => (
-                <CommandItem
-                  key={option.id}
-                  value={`${option.label} ${option.description ?? ""} ${option.id}`}
-                  disabled={option.disabled ?? false}
-                  onSelect={() => {
-                    onValueChange(option.id === value ? null : option);
-                    setOpen(false);
-                  }}
-                  className={staffCommandItemClass}
-                >
-                  <Check
-                    aria-hidden
-                    className={cn(option.id === value ? "opacity-100" : "opacity-0")}
-                  />
-                  <span className="flex min-w-0 flex-1 flex-col">
-                    <span className="truncate">{option.label}</span>
-                    {option.description ? (
-                      <span className="truncate text-staff-xs text-staff-muted">
-                        {option.description}
-                      </span>
-                    ) : null}
-                  </span>
-                  {option.meta ? (
-                    <span className="shrink-0 text-staff-xs text-staff-muted">{option.meta}</span>
-                  ) : null}
-                </CommandItem>
-              ))}
-            </CommandGroup>
+            {loading || failed ? null : (
+              <OptionGroups
+                options={list}
+                value={value}
+                listId={listId}
+                onPick={(option) => {
+                  onValueChange(option.id === value ? null : option);
+                  setOpen(false);
+                }}
+              />
+            )}
           </CommandList>
+          {footer && !loading && !failed ? (
+            <div className="flex items-start gap-2 border-t border-staff-line px-3 py-2 text-staff-xs text-staff-muted">
+              <Info aria-hidden className="mt-px size-3.5 shrink-0" />
+              <span>{footer}</span>
+            </div>
+          ) : null}
         </Command>
       </PopoverContent>
     </Popover>
+  );
+}
+
+/** The chosen option in the closed control: its label and second line, with its thumbnail if any. */
+function TriggerValue({ option, fromSm }: { option: EntityOption; fromSm: boolean }) {
+  const description = option.description ? (
+    <span className={cn("truncate text-staff-sm text-staff-muted", fromSm && "hidden sm:inline")}>
+      {option.description}
+    </span>
+  ) : null;
+  if (option.leading) {
+    return (
+      <span className="flex min-w-0 items-center gap-2.5">
+        {option.leading}
+        <span className="flex min-w-0 flex-col">
+          <span className="truncate">{option.label}</span>
+          {description}
+        </span>
+      </span>
+    );
+  }
+  return (
+    <span className="flex min-w-0 items-baseline gap-2">
+      <span className="truncate">{option.label}</span>
+      {description}
+    </span>
+  );
+}
+
+/** The options, in the order given, with a heading where a new group starts. */
+function OptionGroups({
+  options,
+  value,
+  listId,
+  onPick,
+}: {
+  options: readonly EntityOption[];
+  value: string | null;
+  listId: string;
+  onPick: (option: EntityOption) => void;
+}) {
+  const runs: { heading: string | undefined; items: EntityOption[] }[] = [];
+  for (const option of options) {
+    const last = runs[runs.length - 1];
+    if (last && last.heading === option.group) last.items.push(option);
+    else runs.push({ heading: option.group, items: [option] });
+  }
+  return (
+    <>
+      {runs.map((run, index) => (
+        <CommandGroup
+          // biome-ignore lint/suspicious/noArrayIndexKey: runs are positional and rebuilt with the list
+          key={index}
+          {...(run.heading ? { heading: run.heading } : {})}
+          className="p-0"
+        >
+          {run.items.map((option) => (
+            <OptionRow
+              key={option.id}
+              option={option}
+              selected={option.id === value}
+              listId={listId}
+              onPick={onPick}
+            />
+          ))}
+        </CommandGroup>
+      ))}
+    </>
+  );
+}
+
+function OptionRow({
+  option,
+  selected,
+  listId,
+  onPick,
+}: {
+  option: EntityOption;
+  selected: boolean;
+  listId: string;
+  onPick: (option: EntityOption) => void;
+}) {
+  const reasonId = `${listId}-${option.id}-why`;
+  const locked = option.disabledReason !== undefined;
+  return (
+    <CommandItem
+      value={`${option.label} ${option.description ?? ""} ${option.id}`}
+      disabled={locked || (option.disabled ?? false)}
+      aria-describedby={locked ? reasonId : undefined}
+      onSelect={() => onPick(option)}
+      className={cn(
+        staffCommandItemClass,
+        // A locked option stays readable: its title is muted, never faded out.
+        locked && "cursor-not-allowed items-start data-[disabled=true]:text-staff-muted",
+      )}
+    >
+      <div className="flex w-full min-w-0 items-start gap-2.5">
+        {option.leading ?? (
+          <Check
+            aria-hidden
+            className={cn("shrink-0 self-center", selected ? "opacity-100" : "opacity-0")}
+          />
+        )}
+        <div className="flex min-w-0 flex-1 flex-col gap-1">
+          <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+            <span className="flex min-w-0 flex-1 flex-col">
+              <span className="truncate">{option.label}</span>
+              {option.description ? (
+                <span className="truncate text-staff-xs text-staff-muted max-sm:whitespace-normal">
+                  {option.description}
+                </span>
+              ) : null}
+            </span>
+            {option.meta ? (
+              <span className="shrink-0 text-staff-xs text-staff-muted max-sm:basis-full">
+                {option.meta}
+              </span>
+            ) : null}
+          </div>
+          {locked ? (
+            <p id={reasonId} className="flex gap-1.5 text-staff-xs text-staff-muted">
+              <Lock aria-hidden className="mt-px size-3.5 shrink-0" />
+              <span>{option.disabledReason}</span>
+            </p>
+          ) : null}
+        </div>
+      </div>
+    </CommandItem>
   );
 }

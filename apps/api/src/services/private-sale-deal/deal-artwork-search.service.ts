@@ -64,8 +64,18 @@ function refusalFor(entry: ArtworkRegisterEntry) {
   return check.ok ? null : check.error;
 }
 
-function placeDetail(place: OpenLotPlace | undefined): OfferPlaceDetail | undefined {
-  return place ? { saleName: place.saleTitle, lotNumber: place.lotNumber } : undefined;
+/**
+ * The sale and lot a refusal names: those of the lot the register says the artwork is offered at
+ * (its offer ref), never another open lot that happens to share the artwork.
+ */
+function placeDetail(
+  place: OpenLotPlace | undefined,
+  offer: ArtworkRegisterEntry["offer"],
+): OfferPlaceDetail | undefined {
+  const offeredAt = offer.ref?.kind === "bid_lot" ? offer.ref.id : null;
+  return place && offeredAt === place.lotId
+    ? { saleName: place.saleTitle, lotNumber: place.lotNumber }
+    : undefined;
 }
 
 /**
@@ -180,7 +190,7 @@ export class DealArtworkSearchService implements IDealArtworkSearch {
       });
       // The sale and lot make the refusal say where; without them it says what the register says.
       const lock: DealArtworkLock | undefined = refusal
-        ? offerRefusal(refusal.reason, refusal.state, placeDetail(place))
+        ? offerRefusal(refusal.reason, refusal.state, placeDetail(place, entry.offer))
         : undefined;
       return {
         id: entry.id,

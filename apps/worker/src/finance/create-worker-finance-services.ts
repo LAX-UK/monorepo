@@ -1,4 +1,5 @@
 import type { Database } from "@auction/db";
+import { XeroTokenSealer } from "@auction/db/xero-token-sealing";
 import { LifecycleCronService, PaymentMaintenanceCronService } from "@auction/finance-cron-app";
 import type { IFinanceCronHandlers } from "@auction/finance-cron-app";
 import {
@@ -99,7 +100,12 @@ export function createWorkerFinanceServices(
     env: financeEnv,
     redis,
     log,
-    connections: new DrizzleXeroConnectionRepository(db),
+    connections: new DrizzleXeroConnectionRepository(
+      db,
+      env.XERO_TOKEN_DEK_KEY
+        ? XeroTokenSealer.fromKey(env.XERO_TOKEN_DEK_KEY)
+        : XeroTokenSealer.unavailable(),
+    ),
     externalRefs: new DrizzlePaymentExternalRefRepository(db),
     payments,
     invoices: new DrizzleBidInvoiceRepository(db),
