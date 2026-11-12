@@ -16,7 +16,7 @@ export type SettlementNoticeView = {
   link: { label: string; href: string } | null;
 };
 
-export const SETTLEMENT_ITEM_LABEL = "The artwork's record wasn't marked sold";
+export const SETTLEMENT_ITEM_LABEL = "Not marked sold";
 export const SETTLEMENT_URGENT_LABEL = "Possible double sale";
 
 const URGENT_NEXT_STEP =

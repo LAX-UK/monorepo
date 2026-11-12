@@ -61,7 +61,7 @@ describe("settlementNotice", () => {
 
 describe("settlementRowLabel", () => {
   it("names the problem in the list", () => {
-    expect(settlementRowLabel("normal")).toBe("The artwork's record wasn't marked sold");
+    expect(settlementRowLabel("normal")).toBe("Not marked sold");
     expect(settlementRowLabel("urgent")).toBe("Possible double sale");
   });
 });

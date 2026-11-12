@@ -21,7 +21,7 @@ import { Copy, PencilLine, UserRoundPlus } from "@auction/staff-ui/icons";
 import type { StaffDealAction } from "@auction/validators";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useId, useState } from "react";
+import { type ComponentProps, useId, useState } from "react";
 import { DealActionDialog } from "./deal-action-dialog";
 import { DealArtworkDialog, type DealArtworkMode } from "./deal-artwork-dialog";
 import { DealArtworkSection } from "./deal-artwork-section";
@@ -64,7 +64,14 @@ type Dialog =
  * why, in words, and stays off until the reasons are gone; the checks are read from the existing
  * records and decided in Compliance, never here.
  */
-export function DealView({ deal }: { deal: DealRecord }) {
+export function DealView({
+  deal,
+  markSold,
+}: {
+  deal: DealRecord;
+  /** The action behind "Try again" on a settled deal's notice; the real one unless a test replaces it. */
+  markSold?: ComponentProps<typeof SettlementFollowUpNotice>["markSold"];
+}) {
   const router = useRouter();
   const [dialog, setDialog] = useState<Dialog | null>(null);
   const blockersId = useId();
@@ -76,7 +83,13 @@ export function DealView({ deal }: { deal: DealRecord }) {
   const blocked = nextState && nextState.blockers.length > 0;
   const canEdit = deal.editableTerms.length > 0;
   const canWorkOnArtwork = deal.artworkAccess.canLink || deal.artworkAccess.canChange;
-  const readOnly = deal.actions.length === 0 && !canEdit && !deal.canNameBuyer && !canWorkOnArtwork;
+  const canRetrySettlement = deal.settlementFollowUp?.canRetry === true;
+  const readOnly =
+    deal.actions.length === 0 &&
+    !canEdit &&
+    !deal.canNameBuyer &&
+    !canWorkOnArtwork &&
+    !canRetrySettlement;
 
   const overflowActions = [
     ...(["clear", "record_bank_transfer", "refund", "record_bank_refund", "cancel"] as const)
@@ -130,7 +143,7 @@ export function DealView({ deal }: { deal: DealRecord }) {
 
   const notice = (
     <div className="flex flex-col gap-3">
-      <SettlementFollowUpNotice deal={deal} />
+      <SettlementFollowUpNotice deal={deal} {...(markSold ? { markSold } : {})} />
       <ClosedNotice deal={deal} />
       <PolicyNotice deal={deal} />
       {blocked && next ? (

@@ -134,9 +134,7 @@ describe("DealsList", () => {
     });
     const rowOf = (title: string) =>
       screen.getAllByRole("row").find((r) => within(r).queryByText(title)) as HTMLElement;
-    expect(
-      within(rowOf("Quiet harbour")).getByText("The artwork's record wasn't marked sold"),
-    ).toBeInTheDocument();
+    expect(within(rowOf("Quiet harbour")).getByText("Not marked sold")).toBeInTheDocument();
     expect(within(rowOf("Red study II")).getByText("Possible double sale")).toBeInTheDocument();
     expect(within(rowOf("Clear one")).queryByText(/marked sold|double sale/)).toBeNull();
   });
