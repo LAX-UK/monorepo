@@ -1,6 +1,7 @@
 "use client";
 
 import type { SaleTelephoneBookingFormProps } from "@/components/marketing/sale-telephone-booking-form";
+import { useAnchorIntent } from "@/hooks/use-anchor-intent";
 import { useDeferredModule } from "@/hooks/use-deferred-module";
 import { useNearViewport } from "@/hooks/use-near-viewport";
 import { Button } from "@auction/ui/lax/button";
@@ -21,34 +22,36 @@ function BookingFormPlaceholder({ contactNumber }: { contactNumber: string | nul
   return (
     <div className="space-y-4">
       <div className="space-y-2">
-        <Skeleton className={`h-[18px] w-20 ${bar}`} />
+        <Skeleton className={`h-4 w-20 ${bar}`} />
         <Skeleton className={`h-9 w-full ${bar}`} />
       </div>
       <div className="space-y-2">
-        <Skeleton className={`h-[18px] w-48 ${bar}`} />
+        <Skeleton className={`h-4 w-48 ${bar}`} />
         <Skeleton className={`h-9 w-full ${bar}`} />
       </div>
       <div className="space-y-2">
-        <Skeleton className={`h-[18px] w-44 ${bar}`} />
+        <Skeleton className={`h-4 w-44 ${bar}`} />
         <Skeleton className={`h-[78px] w-full ${bar}`} />
       </div>
       <p className="font-body text-xs text-on-surface-variant">
         We will call {contactNumber} when your lot is approaching the block.
       </p>
-      <Skeleton className={`h-9 w-40 ${bar}`} />
+      <Skeleton className={`lax-target h-9 w-40 ${bar}`} />
     </div>
   );
 }
 
 /**
- * The telephone request form, fetched when its card is within a screen of the viewport. Until it
+ * The telephone request form, fetched when its card is within a screen of the viewport, or as soon
+ * as a link to its section is pointed at (the section tab), so a jump does not wait. Until it
  * arrives the card shows a placeholder of the form's own height; if the fetch fails or takes more
  * than ten seconds the card says so and offers a retry. The rest of the page is not affected.
  */
 export function LazySaleTelephoneBookingForm(props: SaleTelephoneBookingFormProps) {
   const anchor = useRef<HTMLDivElement>(null);
   const near = useNearViewport(anchor);
-  const loaded = useDeferredModule(loadBookingForm, near);
+  const jumping = useAnchorIntent("telephone");
+  const loaded = useDeferredModule(loadBookingForm, near || jumping);
 
   return (
     <div ref={anchor} aria-busy={loaded.status !== "ready" && loaded.status !== "failed"}>
