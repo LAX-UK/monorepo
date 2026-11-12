@@ -1,5 +1,5 @@
-import type { DocumentKind } from "./document.js";
-import { type Totals, compareWithProviderTotals } from "./money.js";
+import { type DocumentKind, parseLaxReference } from "./document.js";
+import { type Totals, compareWithProviderTotals, isTotals } from "./money.js";
 import type { IssueOutcome, IssuedDocument, LookupOutcome } from "./ports.js";
 import { type Result, ok, refuse } from "./result.js";
 
@@ -78,6 +78,7 @@ export type LifecycleCode =
   | "bad_lease"
   | "bad_time"
   | "bad_lookup_state"
+  | "bad_outcome"
   | "bad_record";
 
 export function newRecord(kind: DocumentKind, reference: string): DocumentRecord {
@@ -170,12 +171,19 @@ function reviewFromProvider(
   };
 }
 
-/** Issued if the provider's totals equal ours exactly; otherwise needs_review, identity kept. */
+/**
+ * Issued if the provider's totals equal ours exactly; otherwise needs_review, identity kept.
+ * Totals that are missing or not whole pence are refused with `bad_outcome` and the record is
+ * left as it was, so the caller can retry the lookup; nothing unreadable is ever produced.
+ */
 function acceptProviderDocument(
   record: DocumentRecord,
   provider: IssuedDocument & { readonly totals: Totals },
   expected: Totals,
-): DocumentRecord {
+): Result<DocumentRecord, LifecycleCode> {
+  if (!isTotals(provider?.totals) || !isTotals(expected)) {
+    return refuse("bad_outcome", "provider totals must be whole pence; nothing was recorded");
+  }
   const document: IssuedDocument = {
     number: provider.number,
     providerId: provider.providerId,
@@ -183,12 +191,14 @@ function acceptProviderDocument(
   };
   const match = compareWithProviderTotals(expected, provider.totals);
   if (!match.matches) {
-    return reviewFromProvider(record, document, {
-      field: match.field,
-      differencePence: match.differencePence,
-    });
+    return ok(
+      reviewFromProvider(record, document, {
+        field: match.field,
+        differencePence: match.differencePence,
+      }),
+    );
   }
-  return { ...core(record), status: "issued", issued: document };
+  return ok({ ...core(record), status: "issued", issued: document });
 }
 
 /**
@@ -213,7 +223,7 @@ export function completeSending(
   if (outcome.status === "rejected") {
     return ok({ ...core(record), status: "failed", reason: outcome.reason });
   }
-  return ok(acceptProviderDocument(record, outcome, expected));
+  return acceptProviderDocument(record, outcome, expected);
 }
 
 /**
@@ -236,7 +246,7 @@ export function applyLookup(
   if (!owed) return refuse("bad_lookup_state", `no lookup is owed from ${record.status}`);
   switch (outcome.status) {
     case "found":
-      return ok(acceptProviderDocument(record, outcome, expected));
+      return acceptProviderDocument(record, outcome, expected);
     case "not_found":
       if (nowMs < record.settlesAtMs) {
         return refuse(
@@ -355,18 +365,23 @@ function parseMismatch(value: unknown): TotalsMismatch | null | undefined {
 /**
  * Read a stored row back into a record, only in a legal state. Anything else (a status with the
  * wrong fields, an unknown with no settle time, a needs_review that says nothing about its
- * lookup) is refused instead of being trusted. Storage layers must go through this.
+ * lookup) is refused instead of being trusted. Storage layers must go through this, passing the current time: the reference must belong to the
+ * record's kind, and a lease or settle time beyond what a lease can grant is refused.
  */
-export function parseRecord(row: unknown): Result<DocumentRecord, "bad_record"> {
+export function parseRecord(row: unknown, nowMs: number): Result<DocumentRecord, "bad_record"> {
   const bad = (why: string) => refuse("bad_record", why);
+  if (!isTime(nowMs)) return bad("parsing needs the current time");
+  const leaseLimit = nowMs + MAX_LEASE_MS;
+  const settleLimit = leaseLimit + SETTLE_GRACE_MS;
   if (typeof row !== "object" || row === null) return bad("not an object");
   const r = row as Record<string, unknown>;
   if (typeof r.kind !== "string" || !KINDS.includes(r.kind)) return bad("unknown kind");
-  if (!str(r.reference)) return bad("missing reference");
+  const ref = parseLaxReference(r.reference as string);
+  if (!ref.ok || ref.value.kind !== r.kind) return bad("reference does not belong to this kind");
   if (!Number.isSafeInteger(r.attempts) || (r.attempts as number) < 0) return bad("bad attempts");
   const c: Core = {
     kind: r.kind as DocumentKind,
-    reference: r.reference,
+    reference: r.reference as string,
     attempts: r.attempts as number,
   };
   switch (r.status) {
@@ -378,6 +393,9 @@ export function parseRecord(row: unknown): Result<DocumentRecord, "bad_record"> 
       if (typeof l !== "object" || l === null || !str(l.token) || !isTime(l.expiresAtMs)) {
         return bad("sending needs a lease");
       }
+      if (l.expiresAtMs > leaseLimit) {
+        return bad("lease runs further ahead than a lease can");
+      }
       return ok({ ...c, status: "sending", lease: { token: l.token, expiresAtMs: l.expiresAtMs } });
     }
     case "issued": {
@@ -385,7 +403,7 @@ export function parseRecord(row: unknown): Result<DocumentRecord, "bad_record"> 
       return issued ? ok({ ...c, status: "issued", issued }) : bad("issued needs the document");
     }
     case "unknown":
-      return isTime(r.settlesAtMs)
+      return isTime(r.settlesAtMs) && r.settlesAtMs <= settleLimit
         ? ok({ ...c, status: "unknown", settlesAtMs: r.settlesAtMs })
         : bad("unknown needs a settle time");
     case "failed":
@@ -393,7 +411,7 @@ export function parseRecord(row: unknown): Result<DocumentRecord, "bad_record"> 
     case "needs_review": {
       if (!str(r.reason)) return bad("no reason");
       if (r.lookup === "owed") {
-        return isTime(r.settlesAtMs)
+        return isTime(r.settlesAtMs) && r.settlesAtMs <= settleLimit
           ? ok({
               ...c,
               status: "needs_review",

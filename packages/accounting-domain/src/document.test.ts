@@ -337,7 +337,19 @@ describe("builders", () => {
   });
 });
 
+describe("contact email", () => {
+  it("accepts a plain address and refuses text that is not one", () => {
+    expect(buildContact({ ...common, name: "Ada", email: "ada@example.com" }).ok).toBe(true);
+    for (const email of ["not-an-email", "a@b", "a b@c.com", "@x.com", "a@.com"]) {
+      expect(buildContact({ ...common, name: "Ada", email })).toMatchObject({
+        refusal: { code: "bad_email" },
+      });
+    }
+  });
+});
+
 describe("credit notes are bounded by the original invoice", () => {
+  const inv0 = () => ({ ...inv });
   const original = (): Invoice => {
     const r = buildInvoice({
       ...inv,
@@ -477,17 +489,91 @@ describe("credit notes are bounded by the original invoice", () => {
       refusal: { code: "bad_source_id" },
     });
   });
-  it("refuses an amount that cannot be a whole-penny net plus VAT, rather than rounding", () => {
-    // At 20% VAT no whole-penny net gives a gross of 3 (net 2 -> 2, net 3 -> 4).
-    const r = buildCreditNoteFor(original(), {
-      ...args,
-      request: { goodsPence: 0, deliveryPence: 3 },
+  it("accepts every partial gross amount, including ones with no whole-penny net", () => {
+    // At 20% no net gives a gross of 3 (net 2 -> 2, net 3 -> 4); inclusive VAT handles it.
+    for (const gross of [3, 4, 9, 1_003]) {
+      expect(
+        buildCreditNoteFor(original(), {
+          ...args,
+          request: { goodsPence: 0, deliveryPence: gross },
+        }),
+      ).toMatchObject({ ok: true, value: { totals: { grossPence: gross } } });
+    }
+  });
+  it("property: every gross up to the remaining creditable gross is accepted, over many lines", () => {
+    forAll(40, (rng) => {
+      const unit = int(rng, 1, 400_000);
+      const qty = int(rng, 1, 4);
+      const inv = buildInvoice({
+        ...inv0(),
+        lines: [lineInput({ unitNetPence: unit, quantity: qty })],
+      });
+      if (!inv.ok) throw new Error("fixture");
+      const total = inv.value.totals.grossPence;
+      const probes = [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        total - 1,
+        total,
+        ...Array.from({ length: 60 }, () => int(rng, 1, total)),
+      ];
+      for (const g of probes) {
+        if (g < 1 || g > total) continue;
+        const r = buildCreditNoteFor(inv.value, {
+          ...args,
+          buckets: { ...buckets, paidGoodsPence: total, paidDeliveryPence: 0 },
+          request: { goodsPence: g, deliveryPence: 0 },
+        });
+        expect(r.ok, `gross ${g} of line ${unit}x${qty}`).toBe(true);
+        if (!r.ok) return;
+        const line = r.value.lines[0];
+        expect(r.value.totals.grossPence).toBe(g);
+        const exact = (g * 2000) / 12000;
+        expect(Math.abs((line?.vatPence ?? 0) - exact)).toBeLessThanOrEqual(0.5);
+      }
     });
-    expect(r).toMatchObject({ refusal: { code: "not_representable" } });
-    // a representable one succeeds with the exact gross
+  });
+  it("exhaustively accepts every gross from 1 to the line gross for small lines", () => {
+    for (const unit of [1, 5, 7, 100, 833, 1_001]) {
+      const inv = buildInvoice({ ...inv0(), lines: [lineInput({ unitNetPence: unit })] });
+      if (!inv.ok) throw new Error("fixture");
+      const total = inv.value.totals.grossPence;
+      for (let g = 1; g <= total; g++) {
+        const r = buildCreditNoteFor(inv.value, {
+          ...args,
+          buckets: { ...buckets, paidGoodsPence: total, paidDeliveryPence: 0 },
+          request: { goodsPence: g, deliveryPence: 0 },
+        });
+        expect(r.ok && r.value.totals.grossPence, `unit ${unit} gross ${g}`).toBe(g);
+      }
+    }
+  });
+  it("a forged invoice (lines rewritten by spread) is refused", () => {
+    const i = original();
+    const forged = {
+      ...i,
+      lines: i.lines.map((l) => ({ ...l, unitNetPence: 10_000_000, vatPence: 0 })),
+    };
     expect(
-      buildCreditNoteFor(original(), { ...args, request: { goodsPence: 0, deliveryPence: 4 } }),
-    ).toMatchObject({ ok: true, value: { totals: { grossPence: 4 } } });
+      buildCreditNoteFor(forged, { ...args, request: { goodsPence: 5_000_000, deliveryPence: 0 } }),
+    ).toMatchObject({ ok: false, refusal: { code: "bad_invoice" } });
+    const retotalled = { ...i, totals: { ...i.totals, grossPence: 1 } };
+    expect(
+      buildCreditNoteFor(retotalled, { ...args, request: { goodsPence: 1, deliveryPence: 0 } }),
+    ).toMatchObject({ refusal: { code: "bad_invoice" } });
+    const wrongRef = { ...i, reference: "LAX-SHOP-PAY-1" };
+    expect(
+      buildCreditNoteFor(wrongRef, { ...args, request: { goodsPence: 1, deliveryPence: 0 } }),
+    ).toMatchObject({ refusal: { code: "bad_invoice" } });
+    const wrongEntity = { ...i, entity: "london_auction_xchange" as const };
+    expect(
+      buildCreditNoteFor(wrongEntity, { ...args, request: { goodsPence: 1, deliveryPence: 0 } }),
+    ).toMatchObject({ refusal: { code: "bad_invoice" } });
   });
   it("property: any accepted credit equals the request exactly and stays within the invoice", () => {
     const i = original();

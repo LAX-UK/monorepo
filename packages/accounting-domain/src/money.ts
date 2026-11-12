@@ -123,6 +123,28 @@ export function buildLine(input: LineInput): Result<Line, LineCode> {
   } as Line);
 }
 
+/**
+ * A one-quantity line for a known gross, used for partial credits. The VAT is taken out of the
+ * gross (half-up) rather than added to a net, so every gross amount from 0 up to the line cap is
+ * representable; the net is the gross less that VAT. Only `standard` carries VAT.
+ */
+export function buildInclusiveLine(
+  input: Omit<LineInput, "quantity" | "unitNetPence"> & { readonly grossPence: Pence },
+): Result<Line, LineCode> {
+  const { grossPence, ...rest } = input;
+  if (!isPence(grossPence) || grossPence < 0 || grossPence > MAX_LINE_NET_PENCE) {
+    return refuse("bad_amount", "gross must be non-negative whole pence within the line cap");
+  }
+  const checked = buildLine({ ...rest, quantity: 1, unitNetPence: 0 });
+  if (!checked.ok) return checked;
+  const divisor = 10_000 + STANDARD_VAT_RATE_BPS;
+  const vat =
+    rest.treatment === "standard"
+      ? Math.floor((grossPence * STANDARD_VAT_RATE_BPS + divisor / 2) / divisor)
+      : 0;
+  return ok({ ...checked.value, unitNetPence: grossPence - vat, vatPence: vat } as Line);
+}
+
 export interface Totals {
   readonly netPence: Pence;
   readonly vatPence: Pence;
@@ -148,6 +170,12 @@ export type TotalsMatch =
  * Exact comparison of our totals with the provider's. A difference is a finding to review, never
  * something to paper over with an adjustment or rounding line.
  */
+export function isTotals(value: unknown): value is Totals {
+  if (typeof value !== "object" || value === null) return false;
+  const v = value as Record<string, unknown>;
+  return isPence(v.netPence) && isPence(v.vatPence) && isPence(v.grossPence);
+}
+
 export function compareWithProviderTotals(ours: Totals, theirs: Totals): TotalsMatch {
   for (const field of ["netPence", "vatPence", "grossPence"] as const) {
     if (ours[field] !== theirs[field]) {

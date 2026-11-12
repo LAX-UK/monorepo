@@ -54,7 +54,7 @@ a bucket already refunded more than it was paid is refused (`over_refunded`), no
 **Credit notes.** `buildCreditNoteFor(invoice, …)` is the only way to make one. Its lines come from the
 original invoice's goods and delivery lines and keep each VAT treatment (margin scheme stays margin scheme).
 The amounts go through `planRefund` (never more than was paid) and must fit in the invoice minus earlier
-credit notes. An amount that is not a whole-penny net plus VAT on its line is refused, not rounded.
+credit notes. Credit lines are tax-inclusive (VAT is taken out of the gross, half-up), so every amount up to what is left on the line is accepted. `buildCreditNoteFor` rebuilds the invoice it is given and refuses a forged one (`bad_invoice`).
 
 **Dates.** `YYYY-MM-DD`, validated as real calendar dates (leap years included) with pure arithmetic; every
 date is passed in.
@@ -84,8 +84,10 @@ throw) and refuses two live sources; `parseSwitchConfig` turns unknown input int
 
 - `DocumentRecord` is a union on `status`, so each status carries exactly its own fields: `sending` has a
   lease, `issued` has the provider document, `unknown` has `settlesAtMs` (a lookup is always owed),
-  `needs_review` says whether a lookup is still owed. `parseRecord(row)` is the only way to read a stored
-  row back, and it refuses any illegal combination.
+  `needs_review` says whether a lookup is still owed. `parseRecord(row, nowMs)` is the only way to read a stored
+  row back; it refuses any illegal combination, a reference that is not the record's kind, and a lease or
+  settle time further out than a lease can be. Provider totals that are missing or not whole pence are
+  refused with `bad_outcome` and change nothing.
 - `sending` carries a `lease` (`token`, `expiresAtMs`). Only the token holder can complete. Times must be
   whole, finite epoch milliseconds (`bad_time` otherwise) and a lease may last at most `MAX_LEASE_MS`.
 - A lease that has expired means the outcome is **unknown**, whether noticed by `expireLease` or by an
