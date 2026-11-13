@@ -221,6 +221,11 @@ export interface IPayoutLifecycleRepository {
    * includes rows awaiting a Connect transfer retry after a transient failure.
    */
   listScheduledPayoutsAwaitingTransfer(limit?: number): Promise<Payout[]>;
+  /** `scheduled` payouts with a negative net and no `stripe_transfer_id`: a refund or dispute
+   * line that found no open payout made a payout of its own. Nothing is sent for them; the payout
+   * run moves each one still negative to `clawback_pending`. Oldest first.
+   */
+  listScheduledPayoutsWithNegativeNet(limit?: number): Promise<Payout[]>;
 }
 
 export type AdminPayoutListSummary = {

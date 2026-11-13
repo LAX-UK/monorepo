@@ -88,6 +88,7 @@ function fakeRepo(openPayout: ReturnType<typeof scheduledPayout>): IPayoutReposi
     findUnlinkedCapturedPayments: vi.fn(),
     listLegalEntityIdsWithUnlinkedCapturedPayments: vi.fn(),
     listScheduledPayoutsAwaitingTransfer: vi.fn(),
+    listScheduledPayoutsWithNegativeNet: vi.fn().mockResolvedValue([]),
     updateStatus: vi.fn(),
     updateStatusIfCurrent: vi.fn().mockResolvedValue(null),
     updateXeroBillId: vi.fn(),

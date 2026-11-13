@@ -579,6 +579,22 @@ export class DrizzlePayoutRepository implements IPayoutRepository, IPayoutProces
     return rows.map(rowToPayout);
   }
 
+  async listScheduledPayoutsWithNegativeNet(limit = 1000): Promise<Payout[]> {
+    const rows = await this.db
+      .select()
+      .from(payout)
+      .where(
+        and(
+          eq(payout.status, "scheduled"),
+          sql`${payout.stripeTransferId} IS NULL`,
+          sql`(${payout.netAmount})::numeric < 0`,
+        ),
+      )
+      .orderBy(asc(payout.createdAt))
+      .limit(limit);
+    return rows.map(rowToPayout);
+  }
+
   async updateTotals(
     payoutId: string,
     totals: {

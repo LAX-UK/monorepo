@@ -12,8 +12,10 @@ When it paid several invoices, or none, the case waits in "needs allocation" and
 until finance allocates it; each allocation line then claws back that seller's net share.
 `charge.dispute.funds_reinstated`, or `charge.dispute.closed` with **`status=won`**, reverses each
 line once. A loss creates no further line. If there is no open seller payout, the system creates
-an adjustment-only payout. The next payout settlement pass marks that payout `clawback_pending`
-and emits `payout.clawback_required`.
+an adjustment-only payout with a negative net. It stays `scheduled`, so later lines for the seller
+can still net it. At the end of the next payout run, one still negative is marked
+`clawback_pending` and `payout.clawback_required` is emitted; the Payouts list counts it under
+"payouts need funds recovered".
 
 ## Triage
 
