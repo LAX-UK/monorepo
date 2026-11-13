@@ -168,8 +168,14 @@ describe.skipIf(!HAS_DB)("Bid accounting facts (integration)", { timeout: 60_000
         totalPence: 154_320,
         raisedAt: RAISED_AT.toISOString(),
       });
-      // A second raise for the same lot and account joins the invoice and says nothing new.
-      await raise(tx, seeded);
+      // A retry after the payment expired joins the invoice and says nothing new.
+      await tx
+        .update(payment)
+        .set({ status: "cancelled" })
+        .where(eq(payment.id, raised.payment.id));
+      const retried = await raise(tx, seeded);
+      expect(retried.invoice.id).toBe(raised.invoice.id);
+      expect(retried.invoiceCreated).toBe(false);
       const again = await tx
         .select()
         .from(domainEvent)
