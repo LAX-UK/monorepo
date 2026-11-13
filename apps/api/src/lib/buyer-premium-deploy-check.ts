@@ -23,6 +23,11 @@ export type PremiumCheckLot = {
   status: string;
   hasWinner: boolean;
   hasLiveInvoice: boolean;
+  /**
+   * Whether the live invoice itemises the hammer. A legacy backfilled invoice holds one total
+   * line instead (`legacy_total`); absent when there is no live invoice.
+   */
+  invoiceItemisesHammer?: boolean;
   /** `lot.buyer_premium_rate` as stored. */
   lotRate: string | null;
 };
@@ -108,6 +113,13 @@ export type PremiumLotCheck = {
    * from its rate. Blocks the deploy.
    */
   bandedOverride: boolean;
+  /**
+   * The live invoice is a legacy single total. Public pages and results cannot show it as the
+   * sold-for figure (it is the buyer's payment, can be below the hammer and is not split), so
+   * they price the lot under today's rules: after 0380, its sale's bands or its kept flat rate,
+   * as the old release did. Counted for the record; it does not block.
+   */
+  legacyTotalInvoice: boolean;
 };
 
 const UNOPENED = new Set(["draft", "scheduled"]);
@@ -125,9 +137,17 @@ export function checkPremiumLot(
     saleHasBands(sale) &&
     lotPremiumDiffersFromSale(lotRate, sale);
   if (lot.hasLiveInvoice) {
-    return { lotRate, changed: null, noLegacyRate: false, differsFromSale: false, bandedOverride };
+    return {
+      lotRate,
+      changed: null,
+      noLegacyRate: false,
+      differsFromSale: false,
+      bandedOverride,
+      legacyTotalInvoice: lot.invoiceItemisesHammer === false,
+    };
   }
   return {
+    legacyTotalInvoice: false,
     lotRate,
     changed: premiumChangedAtDeploy(lot, sale, opts),
     noLegacyRate: legacyBuyerPremiumSchedule(lot.lotRate, sale) === null,

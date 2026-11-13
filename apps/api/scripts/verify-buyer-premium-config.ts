@@ -23,14 +23,14 @@
  * that differs from its sale's (the sale page lists these for staff; marked ⚠).
  */
 import { createDb } from "@auction/db";
-import { bidInvoice, lot as lotTable, sale as saleTable } from "@auction/db/schema";
+import { bidInvoice, bidInvoiceLine, lot as lotTable, sale as saleTable } from "@auction/db/schema";
 import {
   addMoneyStrings,
   describeBuyerPremium,
   resolveBuyerPremium,
   saleBuyerPremiumSchedule,
 } from "@auction/validators";
-import { and, eq, inArray, isNull } from "drizzle-orm";
+import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import {
   checkPremiumLot,
   premiumCheckExitCode,
@@ -74,6 +74,7 @@ if (sales.length === 0) {
 
 const totals = { changed: 0, differsFromSale: 0, bandedOverride: 0 };
 let totalLots = 0;
+let legacyTotals = 0;
 
 for (const sale of sales) {
   console.log(
@@ -102,11 +103,16 @@ for (const sale of sales) {
     continue;
   }
 
-  const invoiced = new Set(
+  // Each lot's live invoice, and whether it itemises the hammer (a legacy one holds one total).
+  const invoiced = new Map(
     (
       await db
-        .select({ lotId: bidInvoice.lotId })
+        .select({
+          lotId: bidInvoice.lotId,
+          itemisesHammer: sql<boolean>`coalesce(bool_or(${bidInvoiceLine.kind} = 'hammer'), false)`,
+        })
         .from(bidInvoice)
+        .leftJoin(bidInvoiceLine, eq(bidInvoiceLine.invoiceId, bidInvoice.id))
         .where(
           and(
             inArray(
@@ -116,7 +122,8 @@ for (const sale of sales) {
             isNull(bidInvoice.voidedAt),
           ),
         )
-    ).map((row) => row.lotId),
+        .groupBy(bidInvoice.id)
+    ).map((row) => [row.lotId, row.itemisesHammer] as const),
   );
 
   for (const lot of lots) {
@@ -128,6 +135,7 @@ for (const sale of sales) {
         status: lot.status,
         hasWinner: lot.winnerId !== null,
         hasLiveInvoice,
+        invoiceItemisesHammer: invoiced.get(lot.id),
         lotRate: lot.buyerPremiumRate,
       },
       sale,
@@ -136,11 +144,15 @@ for (const sale of sales) {
     if (check.changed) totals.changed += 1;
     if (check.differsFromSale) totals.differsFromSale += 1;
     if (check.bandedOverride) totals.bandedOverride += 1;
+    if (check.legacyTotalInvoice) legacyTotals += 1;
     const override = check.bandedOverride
       ? `✖ keeps its own ${check.lotRate} in a sale with bands: re-priced at it if its invoice is voided | `
       : "";
     if (hasLiveInvoice) {
-      console.log(`  ${override || "  "}${label} | invoiced: shows and charges its stored invoice`);
+      const shows = check.legacyTotalInvoice
+        ? `invoiced (legacy single total): charges its stored invoice; public pages show premium ${describeBuyerPremium(resolveBuyerPremium({ lotRate: check.lotRate, sale }).schedule)}`
+        : "invoiced: shows and charges its stored invoice";
+      console.log(`  ${override || "  "}${label} | ${shows}`);
       continue;
     }
     const { policy, source } = resolveBuyerPremium({ lotRate: check.lotRate, sale });
@@ -178,5 +190,11 @@ console.log(
     ? `⚠ ${totals.differsFromSale} unsold lot(s) have their own premium that differs from their sale's — check the sale page${preDeploy ? " (does not block the deploy)" : ""}.`
     : "Every unsold lot charges its sale's premium, or its own premium equals it.",
 );
+
+if (legacyTotals > 0) {
+  console.log(
+    `ⓘ ${legacyTotals} invoiced lot(s) have a legacy single-total invoice: public pages show today's premium for them (does not block).`,
+  );
+}
 
 process.exit(premiumCheckExitCode(totals, { preDeploy }));

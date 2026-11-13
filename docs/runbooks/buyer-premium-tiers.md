@@ -107,6 +107,12 @@ from today's rules: `apps/api/src/lib/invoiced-sale-prices.ts` (`withInvoicedSal
 `checkoutPricing` from `IInvoicedSalePriceReader.findInvoicedSalePrices` (one batched read for a
 list). Historical invoices, receipts and sold lines keep the figure the buyer actually paid.
 
+A legacy backfilled invoice with one `legacy_total` line is not overlaid: that total is the buyer's
+payment, can be below the hammer and is not split into hammer and premium, so it is not safe to show
+as anyone's "sold for". Those lots are priced under today's rules on public pages, which after 0380
+is what the old release showed (their sale's bands, or their kept flat rate). The pre-deploy check
+lists and counts them (`ⓘ legacy single total`); they do not block.
+
 ## Migration 0380 and the pre-deploy check
 
 Migration `0380_lot_premium_uses_sale.sql`:

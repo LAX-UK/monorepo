@@ -108,6 +108,22 @@ describe("checkPremiumLot", () => {
     });
   });
 
+  it("counts a live legacy single-total invoice, which public pages cannot show (L7)", () => {
+    const legacy = { ...invoiced, invoiceItemisesHammer: false };
+    expect(checkPremiumLot(legacy, banded, { preDeploy: true })).toMatchObject({
+      legacyTotalInvoice: true,
+      lotRate: null,
+      bandedOverride: false,
+    });
+    expect(
+      checkPremiumLot({ ...invoiced, invoiceItemisesHammer: true }, banded, { preDeploy: true })
+        .legacyTotalInvoice,
+    ).toBe(false);
+    expect(checkPremiumLot(soldNotInvoiced, banded, { preDeploy: true }).legacyTotalInvoice).toBe(
+      false,
+    );
+  });
+
   it("with --pre-deploy, compares an unopened lot's own premium after the migration (M3)", () => {
     const draft = lot({ status: "draft" });
     expect(checkPremiumLot(draft, banded, { preDeploy: false }).differsFromSale).toBe(true);
