@@ -6,10 +6,20 @@ import {
 import {
   type AdminSaleFormValues,
   type SaleBuyerPremiumMode,
+  buyerPremiumBandProblem,
   standardBuyerPremiumTierRows,
 } from "@/lib/forms/schemas/admin-sale-form";
-import { FieldRow, FormSection, KeyValueList, ListEditor, Notice } from "@auction/staff-ui";
-import { STANDARD_BUYER_PREMIUM, describeBuyerPremium } from "@auction/validators";
+import {
+  Field,
+  FieldError,
+  FieldRow,
+  FormSection,
+  ListEditor,
+  Notice,
+  formatGbp,
+  parsePoundsToPence,
+} from "@auction/staff-ui";
+import { useState } from "react";
 import type {
   FieldArrayWithId,
   UseFieldArrayAppend,
@@ -30,16 +40,15 @@ type Props = {
   syncsToAtg?: boolean | undefined;
 };
 
-const STANDARD_TERMS = describeBuyerPremium(STANDARD_BUYER_PREMIUM);
-
 export const BUYER_PREMIUM_MODE_OPTIONS: ReadonlyArray<{
   value: SaleBuyerPremiumMode;
   label: string;
   description: string;
 }> = [
   {
+    // The terms themselves are in the example below, so they are not repeated here.
     value: "standard",
-    label: `Standard: ${STANDARD_TERMS}`,
+    label: "Standard",
     description: "The premium in the Conditions of Sale. Use it unless the sale has agreed terms.",
   },
   {
@@ -54,10 +63,31 @@ export const BUYER_PREMIUM_MODE_OPTIONS: ReadonlyArray<{
   },
 ];
 
+/** What the example line says while there is no example to show. */
+export function premiumExampleFallback(
+  mode: SaleBuyerPremiumMode,
+  preview: TierPreview,
+): string | null {
+  if (preview.ok) return null;
+  if (mode !== "bands") return "Enter a flat rate to see an example.";
+  return preview.reason === "incomplete"
+    ? "Finish every band to see an example."
+    : "Fix the bands to see an example.";
+}
+
+/** The note in band 1 after the band above it was removed and it now starts at £0. */
+export function rebasedBandNote(previousStartMajor: string): string {
+  const parsed = parsePoundsToPence(previousStartMajor);
+  const from = parsed.ok ? formatGbp(parsed.pence) : null;
+  return from
+    ? `It started at ${from} before the band above it was removed. Check its rate.`
+    : "The band above it was removed. Check its rate.";
+}
+
 /**
  * The buyer's premium every lot in the sale charges unless a lot has its own: the standard
  * premium, one flat rate, or bands charged slice by slice. A worked example shows what the
- * choice charges. Fixed once the sale is published.
+ * choice charges, once every band is complete. Fixed once the sale is published.
  */
 export function BuyerPremiumSection({
   form,
@@ -70,6 +100,19 @@ export function BuyerPremiumSection({
 }: Props) {
   const f = { control: form.control, formId: SALE_FORM_ID, disabled: !isDraft } as const;
   const mode = form.watch("buyerPremiumMode");
+  const rows = form.watch("buyerPremiumTiers") ?? [];
+  const { touchedFields, isSubmitted } = form.formState;
+  // Set when band 1 is removed and the next band moves up to start at £0, so staff are told.
+  const [rebasedFrom, setRebasedFrom] = useState<string | null>(null);
+  const fallback = premiumExampleFallback(mode, tierBandPreview);
+
+  const bandError = (index: number): string | null => {
+    const row = rows[index];
+    if (!row) return null;
+    const touched = Boolean(touchedFields.buyerPremiumTiers?.[index]);
+    return isSubmitted || touched ? buyerPremiumBandProblem(row, index) : null;
+  };
+
   return (
     <FormSection
       title="Buyer's premium"
@@ -92,13 +135,8 @@ export function BuyerPremiumSection({
         }}
       />
       {mode === "flat" ? (
-        <StaffPercentField
-          {...f}
-          name="buyerPremiumRate"
-          label="Flat rate"
-          placeholder="15"
-          description="Charged on the whole hammer price."
-        />
+        // The choice above already says the rate is charged on the whole hammer.
+        <StaffPercentField {...f} name="buyerPremiumRate" label="Flat rate" placeholder="15" />
       ) : null}
       {mode === "bands" ? (
         <ListEditor
@@ -109,40 +147,76 @@ export function BuyerPremiumSection({
           emptyText="No bands yet. Add the first band, which starts at £0."
           max={16}
           disabled={!isDraft}
-          onAdd={() => append({ hammerThresholdMajor: fields.length === 0 ? "0" : "", rate: "" })}
-          onRemove={(index) => remove(index)}
-          renderItem={(_item, index) => (
-            <FieldRow>
-              {index === 0 ? (
-                <KeyValueList items={[{ label: "From hammer", value: "£0.00", numeric: true }]} />
-              ) : (
-                <StaffMoneyField
-                  {...f}
-                  name={`buyerPremiumTiers.${index}.hammerThresholdMajor`}
-                  label="From hammer"
-                />
-              )}
-              <StaffPercentField
-                {...f}
-                name={`buyerPremiumTiers.${index}.rate`}
-                label="Rate"
-                placeholder="15"
-              />
-            </FieldRow>
-          )}
+          onAdd={() => {
+            setRebasedFrom(null);
+            append({ hammerThresholdMajor: fields.length === 0 ? "0" : "", rate: "" });
+          }}
+          onRemove={(index) => {
+            // Band 1 always starts at £0: when it goes, the next band moves up and starts at £0
+            // too, which changes what it charges, so the form says so rather than doing it
+            // silently.
+            const next = index === 0 ? rows[1] : undefined;
+            setRebasedFrom(next ? next.hammerThresholdMajor : null);
+            remove(index);
+            if (next) {
+              form.setValue("buyerPremiumTiers.0.hammerThresholdMajor", "0", {
+                shouldDirty: true,
+              });
+            }
+          }}
+          renderItem={(_item, index) => {
+            const error = bandError(index);
+            const errorId = `${SALE_FORM_ID}-band-${index + 1}-error`;
+            const startId = `${SALE_FORM_ID}-band-1-from`;
+            return (
+              <>
+                {index === 0 && rebasedFrom !== null ? (
+                  <Notice tone="warning" title="Band 1 now starts at £0">
+                    {rebasedBandNote(rebasedFrom)}
+                  </Notice>
+                ) : null}
+                <FieldRow>
+                  {index === 0 ? (
+                    // Fixed at £0: shown in the same label and box rhythm as the field beside it.
+                    <Field
+                      id={startId}
+                      label="From hammer"
+                      description="Band 1 always starts at £0."
+                    >
+                      <output
+                        id={startId}
+                        className="flex h-lax-control-md items-center text-lax-14 tabular-nums text-lax-fg"
+                      >
+                        £0.00
+                      </output>
+                    </Field>
+                  ) : (
+                    <StaffMoneyField
+                      {...f}
+                      name={`buyerPremiumTiers.${index}.hammerThresholdMajor`}
+                      label="From hammer"
+                    />
+                  )}
+                  <StaffPercentField
+                    {...f}
+                    name={`buyerPremiumTiers.${index}.rate`}
+                    label="Rate"
+                    placeholder="15"
+                  />
+                </FieldRow>
+                {error ? <FieldError id={errorId}>{error}</FieldError> : null}
+              </>
+            );
+          }}
         />
       ) : null}
       {/* A persistent status region: it announces the worked example as it changes, and keeps a
-          line here when the bands are not yet valid instead of vanishing silently. */}
+          line here when the bands are not yet complete instead of vanishing silently. */}
       <Notice
         tone="info"
         title={tierBandPreview.ok ? `Buyer's premium: ${tierBandPreview.terms}` : "Buyer's premium"}
       >
-        {tierBandPreview.ok
-          ? `${tierBandPreview.example}.`
-          : mode === "bands"
-            ? "Fix the bands to see an example."
-            : "Enter a flat rate to see an example."}
+        {tierBandPreview.ok ? tierBandPreview.example : fallback}
       </Notice>
     </FormSection>
   );

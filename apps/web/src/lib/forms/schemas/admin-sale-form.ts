@@ -159,6 +159,19 @@ export const adminSaleFormValuesSchema = z
         path: ["buyerPremiumTiers"],
       });
     }
+    if (values.buyerPremiumMode === "bands") {
+      // A half-filled band is never dropped silently on save: each says what it still needs.
+      values.buyerPremiumTiers.forEach((row, index) => {
+        const message = buyerPremiumBandProblem(row, index);
+        if (message) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message,
+            path: ["buyerPremiumTiers", index],
+          });
+        }
+      });
+    }
     if (isSaleroomDeliveryMode(values.deliveryMode)) {
       const postcode = values.locationPostcode.trim();
       if (postcode) {
@@ -189,6 +202,22 @@ export function adminSaleDraftScheduleSchema() {
 }
 
 export type AdminSaleTierRow = z.infer<typeof adminSaleTierRowSchema>;
+
+/**
+ * What a custom band row still needs, or `null` when it is complete: "Band 2 needs a rate and a
+ * starting hammer". Band 1 always starts at £0, so it only ever needs its rate.
+ */
+export function buyerPremiumBandProblem(
+  row: Pick<AdminSaleTierRow, "hammerThresholdMajor" | "rate">,
+  index: number,
+): string | null {
+  const hasRate = row.rate.trim() !== "";
+  const hasStart = index === 0 || row.hammerThresholdMajor.trim() !== "";
+  if (hasRate && hasStart) return null;
+  const band = `Band ${index + 1}`;
+  if (!hasRate && !hasStart) return `${band} needs a rate and a starting hammer`;
+  return hasRate ? `${band} needs a starting hammer` : `${band} needs a rate`;
+}
 
 export type AdminSaleFormValues = z.infer<typeof adminSaleFormValuesSchema>;
 

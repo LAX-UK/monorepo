@@ -61,14 +61,14 @@ export function describeBuyerPremiumBreakdown(slices: readonly BuyerPremiumSlice
     .join(" + ");
 }
 
-/** "On a £600,000 hammer the buyer pays £85,000 premium". */
+/** "On a £600,000 hammer the buyer's premium is £85,000." (a whole sentence, with its full stop). */
 export function buyerPremiumWorkedExample(
   schedule: BuyerPremiumSchedule,
   hammerMinor: number,
 ): string {
   const hammer = Number.isSafeInteger(hammerMinor) && hammerMinor > 0 ? BigInt(hammerMinor) : 0n;
   const premium = Number(premiumMinorFor(schedule, hammer));
-  return `On a ${formatPremiumMoney(hammerMinor)} hammer the buyer pays ${formatPremiumMoney(premium)} premium`;
+  return `On a ${formatPremiumMoney(hammerMinor)} hammer the buyer's premium is ${formatPremiumMoney(premium)}.`;
 }
 
 /**

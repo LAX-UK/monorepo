@@ -72,7 +72,7 @@ describe("buyer's premium wording", () => {
 
   it("gives a worked example", () => {
     expect(buyerPremiumWorkedExample(STANDARD_BUYER_PREMIUM, 60_000_000)).toBe(
-      "On a £600,000 hammer the buyer pays £85,000 premium",
+      "On a £600,000 hammer the buyer's premium is £85,000.",
     );
   });
 });
