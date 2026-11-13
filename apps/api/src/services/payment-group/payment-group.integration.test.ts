@@ -575,6 +575,65 @@ describe.skipIf(!HAS_DB)("pay several: one payment for several invoices (integra
     );
   });
 
+  it("counts a refund only once it succeeded: pending then failed, then a real £25 refund once", async () => {
+    const groupId = await startOk([ids.a, ids.b]);
+    const pi = succeeded(groupId);
+    await webhooks.handlePaymentIntentSucceeded(eventOf("payment_intent.succeeded", pi), pi);
+    const charge = {
+      id: pi.latest_charge as string,
+      payment_intent: pi.id,
+      amount: 20_000,
+      amount_refunded: 2_500,
+      currency: "gbp",
+      metadata: {},
+    } as unknown as Stripe.Charge;
+    const refundOf = (id: string) =>
+      ({ id, charge: charge.id, payment_intent: pi.id, currency: "gbp" }) as Stripe.Refund;
+    const refundedEvents = () =>
+      publish.mock.calls.filter(
+        ([e]) =>
+          (e as { eventType: string; aggregateId: string }).eventType === "payment.refunded" &&
+          (e as { aggregateId: string }).aggregateId === ids.a,
+      );
+    const before = refundedEvents().length;
+
+    // £25 refund is pending: the gateway lists only succeeded refunds, so nothing yet.
+    chargeRefunds = [];
+    expect(
+      await webhooks.handleChargeRefunded(eventOf("charge.refunded", charge), charge),
+    ).toMatchObject({ reason: "no_new_refund_amount" });
+    // It fails.
+    expect(
+      await webhooks.handleChargeRefundUpdated(
+        eventOf("charge.refund.updated", refundOf("re_1")),
+        refundOf("re_1"),
+      ),
+    ).toMatchObject({ reason: "no_new_refund_amount" });
+    expect(await payouts.sumRefundLineCentsForPayment(ids.a)).toBe(0);
+    expect((await paymentRefunds.sumRefundedPence(ids.a)).pence).toBe(0);
+
+    // A new £25 refund succeeds; its event is delivered twice, then its own update arrives.
+    chargeRefunds = [{ paymentId: ids.a, amountPence: 2_500 }];
+    const created = eventOf("charge.refunded", charge);
+    expect(await webhooks.handleChargeRefunded(created, charge)).toMatchObject({
+      action: "refund_received",
+    });
+    expect(await webhooks.handleChargeRefunded(created, charge)).toMatchObject({
+      reason: "duplicate_event",
+    });
+    expect(
+      await webhooks.handleChargeRefundUpdated(
+        eventOf("charge.refund.updated", refundOf("re_2")),
+        refundOf("re_2"),
+      ),
+    ).toMatchObject({ reason: "no_new_refund_amount" });
+
+    expect(await payouts.sumRefundLineCentsForPayment(ids.a)).toBe(2_500);
+    expect((await paymentRefunds.sumRefundedPence(ids.a)).pence).toBe(2_500);
+    expect(refundedEvents().length - before).toBe(1);
+    expect((await statusOf(ids.a)).status).toBe("captured");
+  });
+
   it("does not charge the seller back again for a refund the previous release handled", async () => {
     const groupId = await startOk([ids.a, ids.b]);
     const pi = succeeded(groupId);

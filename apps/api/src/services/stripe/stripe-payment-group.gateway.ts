@@ -17,8 +17,14 @@ import {
 } from "../payment/stripe-checkout-product-display.js";
 
 const PRODUCT_NAME_MAX = 250;
-/** Refunds that took or are taking money back; failed and cancelled ones returned nothing. */
-const COUNTED_REFUND_STATUSES = new Set(["succeeded", "pending", "requires_action"]);
+/**
+ * Only a refund that has gone through counts. A pending or requires_action refund can still fail
+ * or be cancelled, and what the group stores and announces only ever rises: counting one early
+ * would leave the total at a high point a later failure never brings down, so a real refund of the
+ * same amount afterwards would add nothing. A pending refund is counted when Stripe reports it
+ * succeeded (`charge.refund.updated`).
+ */
+const COUNTED_REFUND_STATUSES = new Set(["succeeded"]);
 
 /** The idempotency key of a group's checkout: one per group and rail, never per attempt. */
 export function groupCheckoutIdempotencyKey(

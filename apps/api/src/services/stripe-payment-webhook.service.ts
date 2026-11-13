@@ -221,6 +221,18 @@ export class StripePaymentWebhookService {
     return grouped ?? handleChargeRefunded(this.deps, event, charge);
   }
 
+  /**
+   * A refund changed status. Only a payment group's charge is reconciled here (its refunds are
+   * counted once they succeed); any other charge is left to `charge.refunded`.
+   */
+  async handleChargeRefundUpdated(
+    event: Stripe.Event,
+    refund: Stripe.Refund,
+  ): Promise<PaymentWebhookResult> {
+    const grouped = await this.paymentGroups?.chargeEvents.refundUpdated(event, refund);
+    return grouped ?? { processed: false, action: "skipped", reason: "not_a_group_charge" };
+  }
+
   /** Money moved in a buyer's transfer balance: checked for a transfer applied to another invoice. */
   async handleCashBalanceTransactionCreated(
     event: Stripe.Event,
