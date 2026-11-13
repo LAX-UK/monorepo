@@ -164,6 +164,9 @@ importers:
 
   apps/api:
     dependencies:
+      '@auction/accounting-domain':
+        specifier: workspace:*
+        version: link:../../packages/accounting-domain
       '@auction/alerts':
         specifier: workspace:*
         version: link:../../packages/alerts
@@ -309,9 +312,6 @@ importers:
         specifier: ^3.24.1
         version: 3.25.76
     devDependencies:
-      '@auction/accounting-domain':
-        specifier: workspace:*
-        version: link:../../packages/accounting-domain
       '@auction/config-ts':
         specifier: workspace:*
         version: link:../../packages/config-ts

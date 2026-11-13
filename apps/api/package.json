@@ -33,6 +33,7 @@
     "check:compliance-dip": "node scripts/check-compliance-routes-dip.mjs"
   },
   "dependencies": {
+    "@auction/accounting-domain": "workspace:*",
     "@auction/alerts": "workspace:*",
     "@auction/artwork-register-contracts": "workspace:*",
     "@auction/auth": "workspace:*",
@@ -83,7 +84,6 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
-    "@auction/accounting-domain": "workspace:*",
     "@auction/config-ts": "workspace:*",
     "@sinclair/typebox": "^0.34.41",
     "@types/node": "^22.10.5",

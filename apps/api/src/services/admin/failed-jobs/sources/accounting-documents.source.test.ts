@@ -62,7 +62,10 @@ describe("AccountingDocumentsSource", () => {
     expect(result.queues).toEqual([
       { id: BOOKS_QUEUE_ID, label: "Zoho Books documents", count: 2 },
     ]);
-    expect(result.rows.map((r) => r.id)).toEqual(["accounting:b2", "accounting:a1"]);
+    expect(result.rows.map((r) => r.id)).toEqual([
+      "accounting:needs_person:b2",
+      "accounting:failed:a1",
+    ]);
     expect(result.rows[1]).toMatchObject({
       source: "integrations.books",
       canAct: false,
@@ -88,7 +91,7 @@ describe("AccountingDocumentsSource", () => {
       [],
     );
     const searched = await source.list(query(["integrations.books"], { q: "locked in books" }));
-    expect(searched.rows.map((r) => r.id)).toEqual(["accounting:b2"]);
+    expect(searched.rows.map((r) => r.id)).toEqual(["accounting:needs_person:b2"]);
     expect(searched.total).toBe(1);
   });
 

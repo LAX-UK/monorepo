@@ -1,3 +1,4 @@
+import { queueTabFor } from "@auction/accounting-domain";
 import type {
   IAccountingDocumentBrowser,
   StoredAccountingDocument,
@@ -106,7 +107,8 @@ export class AccountingDocumentsSource implements FailedJobSourceAdapter {
   private summary(document: StoredAccountingDocument): FailedJobSummary {
     const at = failedAt(document);
     return {
-      id: `${FAILED_JOB_ID_PREFIXES.accounting}${document.id}`,
+      // `accounting:<tab>:<id>`, so the screen opens the Accounting tab the document is in.
+      id: `${FAILED_JOB_ID_PREFIXES.accounting}${queueTabFor(document.record) ?? "failed"}:${document.id}`,
       source: SOURCE,
       canAct: false,
       queue: BOOKS_QUEUE_ID,
