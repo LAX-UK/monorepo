@@ -1,11 +1,22 @@
 import { sellerProceeds } from "@auction/domain";
 import { formatStaffDate, formatStaffMoney } from "@auction/staff-ui";
 
+/** The deploy setting that says when seller payouts began to follow each signed agreement. */
+export const SELLER_RULE_GO_LIVE_ENV = "SELLER_RULE_GO_LIVE_AT";
+
 /**
- * When seller payouts began to follow each signed agreement: the release that settled sales from
- * their seller-terms snapshot. The notice shows for 30 days from here at most.
+ * When seller payouts began to follow each signed agreement, from the deploy's configuration (an
+ * ISO time), so the notice starts on the day the change reached production, not the day the code
+ * merged. `null` when it is not set or cannot be read: then there is no notice.
  */
-export const SELLER_RULE_GO_LIVE = "2026-11-13T00:00:00.000Z";
+export function sellerRuleGoLive(
+  env: Readonly<Record<string, string | undefined>> = process.env,
+): Date | null {
+  const raw = env[SELLER_RULE_GO_LIVE_ENV]?.trim();
+  if (!raw || !/^\d{4}-\d{2}-\d{2}T/.test(raw)) return null;
+  const at = new Date(raw);
+  return Number.isNaN(at.getTime()) ? null : at;
+}
 
 /** How long the notice can be shown, from go-live, and how long a dismissal lasts. */
 export const FINANCE_NOTICE_MAX_DAYS = 30;
@@ -26,21 +37,32 @@ export function financeNoticeCookieName(userId: string): string {
   return `lax_staff_notice_seller_rule_${tag(userId)}`;
 }
 
-/** The cookie a "Got it" writes: kept until the notice would have ended anyway. */
-export function financeNoticeDismissCookie(userId: string, now: Date = new Date()): string {
-  const ends = new Date(SELLER_RULE_GO_LIVE).getTime() + FINANCE_NOTICE_MAX_DAYS * DAY_MS;
+/**
+ * The cookie a "Got it" writes: kept until the notice would have ended anyway, sent only over
+ * HTTPS, and only to the admin pages.
+ */
+export function financeNoticeDismissCookie(
+  userId: string,
+  goLive: Date,
+  now: Date = new Date(),
+): string {
+  const ends = goLive.getTime() + FINANCE_NOTICE_MAX_DAYS * DAY_MS;
   const maxAge = Math.max(
     0,
     Math.min(FINANCE_NOTICE_MAX_DAYS * 86_400, Math.ceil((ends - now.getTime()) / 1000)),
   );
-  return `${financeNoticeCookieName(userId)}=1; Max-Age=${maxAge}; Path=/admin; SameSite=Lax`;
+  return `${financeNoticeCookieName(userId)}=1; Max-Age=${maxAge}; Path=/admin; SameSite=Lax; Secure`;
 }
 
-/** Whether this person should see the notice now. */
-export function showFinanceNotice(input: { dismissed: boolean; now?: Date }): boolean {
-  if (input.dismissed) return false;
+/** Whether this person should see the notice now: within 30 days of a configured go-live. */
+export function showFinanceNotice(input: {
+  dismissed: boolean;
+  goLive: Date | null;
+  now?: Date;
+}): boolean {
+  if (input.dismissed || !input.goLive) return false;
   const now = (input.now ?? new Date()).getTime();
-  const start = new Date(SELLER_RULE_GO_LIVE).getTime();
+  const start = input.goLive.getTime();
   return now >= start && now < start + FINANCE_NOTICE_MAX_DAYS * DAY_MS;
 }
 
@@ -53,7 +75,7 @@ export type FinanceNoticeContent = {
 };
 
 /** The notice's words. The example is priced by the one calculator, not typed in. */
-export function financeNoticeContent(now: Date = new Date()): FinanceNoticeContent {
+export function financeNoticeContent(goLive: Date, now: Date = new Date()): FinanceNoticeContent {
   const example = sellerProceeds({
     hammerPence: 620_000,
     party: { kind: "agreement", commissionBps: 1200 },
@@ -65,7 +87,7 @@ export function financeNoticeContent(now: Date = new Date()): FinanceNoticeConte
       : "";
   return {
     title: "Seller payouts now follow each signed agreement.",
-    since: `Since ${formatStaffDate(SELLER_RULE_GO_LIVE, now)}. Payouts already paid haven't changed.`,
+    since: `Since ${formatStaffDate(goLive, now)}. Payouts already paid haven't changed.`,
     sections: [
       {
         heading: "What changed",
