@@ -45,10 +45,22 @@ describe("bid-invoice-issued", () => {
     for (const storedAttachment of [
       { ...vars.storedAttachment, storageKey: "../secrets.pdf" },
       { ...vars.storedAttachment, filename: 'invoice".pdf' },
+      // Only LAX's stored accounting copies, and only PDFs.
+      { ...vars.storedAttachment, storageKey: "uploads/kyc/passport-1.pdf" },
+      { ...vars.storedAttachment, storageKey: "accountingx/doc.pdf" },
+      { ...vars.storedAttachment, storageKey: "accounting/london_auction_xchange/doc.png" },
+      { ...vars.storedAttachment, storageKey: "accounting/london_auction_xchange/doc.pdf.zip" },
     ]) {
       expect(() =>
         storedEmailAttachments("bid-invoice-issued", { ...vars, storedAttachment }),
       ).toThrow("stored_email_attachment_invalid");
+    }
+  });
+
+  it("never reads a stored file for any other template, whatever its variables say", () => {
+    const planted = { storedAttachment: vars.storedAttachment } as never;
+    for (const template of ["payment-receipt", "collection-booked", "lot-won"] as const) {
+      expect(storedEmailAttachments(template, planted)).toEqual([]);
     }
   });
 });
