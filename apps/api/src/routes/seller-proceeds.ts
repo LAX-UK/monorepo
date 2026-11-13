@@ -21,6 +21,7 @@ import { oldRuleReviewRow } from "../services/seller-proceeds/old-rule-review.js
 import { SellerProceedsError } from "../services/seller-proceeds/seller-proceeds-errors.js";
 
 const payoutIdParamSchema = z.object({ payoutId: z.string().uuid() });
+const settledOutsideBodySchema = z.object({ reason: z.string().max(2000) });
 const pageQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(200).default(50),
   offset: z.coerce.number().int().min(0).default(0),
@@ -103,6 +104,25 @@ export function createAdminSellerProceedsRoutes(
         }),
       );
     },
+  );
+
+  /** POST /admin/seller-proceeds/lots/:lotId/settled-outside: an ATG sale settled by hand. */
+  r.post(
+    "/lots/:lotId/settled-outside",
+    requireAuth,
+    requireSellerAgreementRecord,
+    requireStepUp,
+    zValidator("param", lotIdOnlyParamSchema),
+    zValidator("json", settledOutsideBodySchema),
+    (c) =>
+      respond(c, async () => {
+        await sellerProceeds.settledOutside.mark({
+          lotId: c.req.valid("param").lotId,
+          reason: c.req.valid("json").reason,
+          actorUserId: c.get("userId") as string,
+        });
+        return { ok: true };
+      }),
   );
 
   /** GET /admin/seller-proceeds/payouts/:payoutId: each sale on the payout, and those held. */

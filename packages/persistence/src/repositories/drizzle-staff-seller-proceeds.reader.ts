@@ -4,6 +4,7 @@ import {
   bidInvoice,
   bidInvoiceLine,
   consignmentAgreement,
+  domainEvent,
   itemSubmission,
   legalEntity,
   lot,
@@ -27,6 +28,9 @@ import type {
   StaffSellerTermsSource,
 } from "../interfaces/staff-seller-proceeds.reader.js";
 import { DrizzleCommissionVatSettingReader } from "./drizzle-seller-terms-facts.reader.js";
+
+/** The audit event that records an ATG sale settled with its seller outside LAX. */
+export const SETTLED_OUTSIDE_EVENT = "lot.seller_settled_outside_lax";
 
 /** Payments that still stand for a sale; a cancelled one was replaced or never taken. */
 const LIVE_PAYMENT = ["pending", "authorized", "captured", "requires_manual_review", "refunded"];
@@ -114,10 +118,11 @@ export class DrizzleStaffLotSellerProceedsReader
       .limit(1);
     if (!lotRow) return null;
 
-    const [sale, submission, vatSetting] = await Promise.all([
+    const [sale, submission, vatSetting, settledOutsideAt] = await Promise.all([
       this.liveSale(lotId),
       this.submissionAgreement(lotId, lotRow.sellerLegalEntityId),
       new DrizzleCommissionVatSettingReader(this.db).read(),
+      lotRow.atgSold === true ? this.settledOutsideAt(lotId) : Promise.resolve(null),
     ]);
     const snapshotAgreementId = sale?.agreementId ?? null;
     const agreement =
@@ -132,6 +137,7 @@ export class DrizzleStaffLotSellerProceedsReader
       sellerLegalEntityId: lotRow.sellerLegalEntityId,
       sellerName: lotRow.sellerName ?? null,
       soldOnAtg: lotRow.atgSold === true,
+      settledOutsideAt,
       sale: sale?.facts ?? null,
       agreement,
       submissionId: submission.submissionId,
@@ -184,6 +190,23 @@ export class DrizzleStaffLotSellerProceedsReader
           : null,
       };
     });
+  }
+
+  /** The latest time staff marked the lot's ATG sale as settled outside LAX. */
+  private async settledOutsideAt(lotId: string): Promise<Date | null> {
+    const [row] = await this.db
+      .select({ at: domainEvent.occurredAt })
+      .from(domainEvent)
+      .where(
+        and(
+          eq(domainEvent.aggregateType, "lot"),
+          eq(domainEvent.aggregateId, lotId),
+          eq(domainEvent.eventType, SETTLED_OUTSIDE_EVENT),
+        ),
+      )
+      .orderBy(desc(domainEvent.occurredAt))
+      .limit(1);
+    return row?.at ?? null;
   }
 
   private async liveSale(

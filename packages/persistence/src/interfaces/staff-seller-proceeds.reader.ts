@@ -71,6 +71,8 @@ export type StaffLotSellerProceedsFacts = {
   sellerLegalEntityId: string | null;
   sellerName: string | null;
   soldOnAtg: boolean;
+  /** When staff marked an ATG sale as settled with the seller outside LAX. */
+  settledOutsideAt: Date | null;
   sale: StaffLotSaleFacts | null;
   /** The agreement on the sale's snapshot, or (when it is held) the lot's agreement, if any. */
   agreement: StaffAgreementFacts | null;

@@ -208,6 +208,7 @@ export const ALL_LIVE_DOMAIN_EVENT_TYPES = [
   "lot.reoffer_withdrawn",
   "lot.returned_to_inventory",
   "lot.seller_agreement_recorded",
+  "lot.seller_settled_outside_lax",
   "lot.seller_consent_given",
   "lot.seller_consent_lapsed",
   "lot.seller_consent_refused",
@@ -563,6 +564,12 @@ const REGISTRY_OVERRIDES: Partial<Record<LiveDomainEventType, RegistryOverride>>
   },
   "lot.seller_agreement_recorded": {
     schema: LotEventSchemas["lot.seller_agreement_recorded"],
+    producers: ["apps/api"],
+    consumers: ["audit"],
+    piiClassification: "operational",
+  },
+  "lot.seller_settled_outside_lax": {
+    schema: LotEventSchemas["lot.seller_settled_outside_lax"],
     producers: ["apps/api"],
     consumers: ["audit"],
     piiClassification: "operational",

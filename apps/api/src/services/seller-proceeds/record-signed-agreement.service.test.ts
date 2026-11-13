@@ -27,6 +27,7 @@ function heldFacts(over: Partial<StaffLotSellerProceedsFacts> = {}): StaffLotSel
     sellerLegalEntityId: SELLER,
     sellerName: "Northbank Gallery Ltd",
     soldOnAtg: false,
+    settledOutsideAt: null,
     sale: {
       paymentId: "pay-1",
       paymentStatus: "captured",

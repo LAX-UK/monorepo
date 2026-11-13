@@ -98,6 +98,20 @@ export const DANGEROUS_STAFF_ACTIONS: readonly DangerousStaffAction[] = [
     "route",
   ),
   a("payout_override", "payout.reverse", "POST", "/admin/payouts/:payoutId/reverse", "route"),
+  a(
+    "payout_release",
+    "seller-proceeds.record-signed-agreement",
+    "POST",
+    "/admin/seller-proceeds/lots/:lotId/signed-agreement",
+    "route",
+  ),
+  a(
+    "payout_override",
+    "seller-proceeds.settled-outside",
+    "POST",
+    "/admin/seller-proceeds/lots/:lotId/settled-outside",
+    "route",
+  ),
   // Roles and permissions
   a("role_permission", "user.role", "PATCH", "/admin/users/:userId/role"),
   a("role_permission", "user.staff-role", "PATCH", "/admin/users/:userId/staff-role"),

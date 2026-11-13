@@ -200,6 +200,15 @@ export const lotSellerAgreementRecordedPayloadSchema = z.object({
   sellerNetPence: z.number().int().nonnegative().nullable(),
 });
 
+/** Staff settled an ATG sale with its seller outside LAX, following the ATG settlement runbook. */
+export const lotSellerSettledOutsideLaxPayloadSchema = z.object({
+  lotId: z.string().uuid(),
+  paymentId: z.string().uuid().nullable(),
+  reason: z.string().min(1),
+  /** What the seller was owed, from the sale's snapshot, when it has one. */
+  sellerNetPence: z.number().int().nonnegative().nullable(),
+});
+
 export const LotEventSchemas = {
   "lot.created": lotCreatedPayloadSchema,
   "lot.activated": lotActivatedPayloadSchema,
@@ -226,6 +235,7 @@ export const LotEventSchemas = {
   "lot.reawarded": lotReawardedPayloadSchema,
   "lot.soft_deleted": lotSoftDeletedPayloadSchema,
   "lot.seller_agreement_recorded": lotSellerAgreementRecordedPayloadSchema,
+  "lot.seller_settled_outside_lax": lotSellerSettledOutsideLaxPayloadSchema,
 } as const;
 
 export type LotEventType = keyof typeof LotEventSchemas;

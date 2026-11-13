@@ -8,7 +8,9 @@ export type SellerProceedsErrorCode =
   | "no_consignment"
   | "agreement_on_record"
   | "replace_needs_administrator"
-  | "document_not_ready";
+  | "document_not_ready"
+  | "not_sold_on_atg"
+  | "reason_required";
 
 /** A refusal staff can act on: a code for the screen, a sentence to show, and field errors. */
 export class SellerProceedsError extends Error {

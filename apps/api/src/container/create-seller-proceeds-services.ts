@@ -13,6 +13,7 @@ import {
   DrizzleStaffPayoutSalesReader,
   DrizzleUploadObjectReader,
 } from "@auction/persistence/repositories";
+import { MarkSettledOutsideService } from "../services/seller-proceeds/mark-settled-outside.service.js";
 import { RecordSignedAgreementService } from "../services/seller-proceeds/record-signed-agreement.service.js";
 import type { ContainerPlatformServices } from "./create-platform-services.js";
 
@@ -21,6 +22,7 @@ export type ContainerSellerProceedsServices = {
   payoutSales: IStaffPayoutSalesReader;
   vatSetting: ICommissionVatSettingReader;
   recordAgreement: RecordSignedAgreementService;
+  settledOutside: MarkSettledOutsideService;
 };
 
 export function createSellerProceedsServices(input: {
@@ -33,6 +35,7 @@ export function createSellerProceedsServices(input: {
     reader,
     payoutSales: new DrizzleStaffPayoutSalesReader(db),
     vatSetting: new DrizzleCommissionVatSettingReader(db),
+    settledOutside: new MarkSettledOutsideService({ reader, events: platform.domainEventSink }),
     recordAgreement: new RecordSignedAgreementService({
       reader,
       uploads: new DrizzleUploadObjectReader(db),

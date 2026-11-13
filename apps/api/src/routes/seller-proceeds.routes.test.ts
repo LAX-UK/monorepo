@@ -56,8 +56,9 @@ function build(who: Who) {
     oldRuleSales: vi.fn().mockResolvedValue({ rows: [OLD_RULE_ROW], total: 1 }),
   };
   const vatSetting = { read: vi.fn().mockResolvedValue("standard") };
+  const settledOutside = { mark: vi.fn().mockResolvedValue(undefined) };
   const container = {
-    sellerProceeds: { reader, recordAgreement, payoutSales, vatSetting },
+    sellerProceeds: { reader, recordAgreement, payoutSales, vatSetting, settledOutside },
     userSuspensionChecker: { isSuspended: vi.fn().mockResolvedValue(false) },
     admin: { stepUp: { isRecent: vi.fn().mockResolvedValue(who?.recent ?? true) } },
   } as unknown as ContainerSellerProceedsRoutesSlice;
@@ -74,7 +75,7 @@ function build(who: Who) {
   };
   const app = new Hono();
   app.route("/admin/seller-proceeds", createAdminSellerProceedsRoutes(container, authenticator));
-  return { app, reader, recordAgreement, payoutSales };
+  return { app, reader, recordAgreement, payoutSales, settledOutside };
 }
 
 const get = (app: Hono, path: string) => app.request(`http://test/admin/seller-proceeds${path}`);
@@ -219,6 +220,32 @@ describe("seller proceeds routes", () => {
     it("refuses an out-of-range page size", async () => {
       const { app } = build(staff("finance"));
       expect((await get(app, "/old-rule?limit=1000")).status).toBe(400);
+    });
+  });
+
+  describe("marking an ATG sale settled outside LAX", () => {
+    const path = `/lots/${LOT}/settled-outside`;
+    it.each([
+      ["finance", 200],
+      ["sales_manager", 200],
+      ["cataloguer", 403],
+    ])("%s gets %i", async (role, status) => {
+      const { app, settledOutside } = build(staff(role));
+      const res = await post(app, path, { reason: "Paid by bank transfer per runbook" });
+      expect(res.status).toBe(status);
+      if (status === 200) {
+        expect(settledOutside.mark).toHaveBeenCalledWith({
+          lotId: LOT,
+          reason: "Paid by bank transfer per runbook",
+          actorUserId: "usr_1",
+        });
+      }
+    });
+
+    it("asks for a fresh sign-in first", async () => {
+      const { app, settledOutside } = build(staff("finance", false));
+      expect((await post(app, path, { reason: "Paid by bank transfer" })).status).toBe(403);
+      expect(settledOutside.mark).not.toHaveBeenCalled();
     });
   });
 });

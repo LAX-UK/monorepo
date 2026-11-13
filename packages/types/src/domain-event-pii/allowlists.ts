@@ -281,6 +281,7 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
   /** lot voided at close (anti-shilling). */
   "lot.voided": new Set(["reason"]),
   "lot.seller_agreement_recorded": new Set(["reason", "commissionPercent"]),
+  "lot.seller_settled_outside_lax": new Set(["reason"]),
   "sale.created": new Set(["from_status", "to_status", "deliveryMode", "lotCount", "isTest"]),
   "sale.published": new Set(["from_status", "to_status", "lotCount", "deliveryMode"]),
   "sale.unpublished": new Set(["from_status", "to_status"]),
