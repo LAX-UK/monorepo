@@ -15,7 +15,16 @@ export type SaleLotsBoardMode = "catalog" | "live";
 
 export type SaleLotsCatalogLens = "all" | "complete" | "incomplete";
 export type SaleLotsLiveLens = "all" | "live" | "withdraw" | "sold";
-export type SaleLotsLens = SaleLotsCatalogLens | SaleLotsLiveLens;
+/** Unsold lots that charge their own premium, not the sale's (the overview warning links here). */
+export type SaleLotsPremiumLens = "own-premium";
+export type SaleLotsLens = SaleLotsCatalogLens | SaleLotsLiveLens | SaleLotsPremiumLens;
+
+export const OWN_PREMIUM_FILTER: DetailBoardFilter = { id: "own-premium", label: "Own premium" };
+
+/** The lens a lots tab address asks for: `?premium=own` opens the "Own premium" filter. */
+export function saleLotsLensFromQuery(premium: string | string[] | undefined): SaleLotsLens {
+  return premium === "own" ? "own-premium" : "all";
+}
 
 export type SaleLotsFilterContext = LotCatalogSaleContext;
 
@@ -33,19 +42,29 @@ export function resolveSaleLotsBoardMode(saleStatus: SaleStatus): SaleLotsBoardM
   return saleStatus === "draft" || saleStatus === "scheduled" ? "catalog" : "live";
 }
 
-export function saleLotsBoardFilters(mode: SaleLotsBoardMode): DetailBoardFilter[] {
+/**
+ * The filters above the sale's lots. "Own premium" is offered only while some unsold lot charges
+ * its own premium, so it never opens on an empty list.
+ */
+export function saleLotsBoardFilters(
+  mode: SaleLotsBoardMode,
+  options: { ownPremium?: boolean } = {},
+): DetailBoardFilter[] {
+  const premium = options.ownPremium ? [OWN_PREMIUM_FILTER] : [];
   if (mode === "live") {
     return [
       { id: "all", label: "All" },
       { id: "live", label: "Live" },
       { id: "withdraw", label: "Withdraw" },
       { id: "sold", label: "Sold" },
+      ...premium,
     ];
   }
   return [
     { id: "all", label: "All" },
     { id: "complete", label: "Complete" },
     { id: "incomplete", label: "Incomplete" },
+    ...premium,
   ];
 }
 
@@ -66,7 +85,10 @@ export function filterSaleLotsByLens<T extends Parameters<typeof isLotCatalogCom
   lens: SaleLotsLens,
   sale: SaleLotsFilterContext,
   mode: SaleLotsBoardMode,
+  /** Whether a lot charges its own premium; the "Own premium" lens keeps those lots. */
+  chargesOwnPremium: (lot: T) => boolean = () => false,
 ): T[] {
+  if (lens === "own-premium") return lots.filter(chargesOwnPremium);
   if (mode === "live") {
     switch (lens) {
       case "live":

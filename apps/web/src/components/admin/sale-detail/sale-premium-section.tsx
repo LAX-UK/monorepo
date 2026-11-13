@@ -2,12 +2,26 @@
 
 import { adminUseSalePremiumForLotsResultAction } from "@/lib/admin/catalog-lifecycle/admin-catalog-lifecycle-mutations";
 import {
+  READ_ONLY_NEXT_STEP,
   type SalePremiumOverview,
   differingLotsTitle,
+  moreLotsLabel,
+  openLotsNote,
+  salePremiumActionLabel,
 } from "@/lib/admin/sales/sale-premium-overview";
 import { LOTS_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { notify } from "@/lib/ui/notify";
-import { ConfirmActionDialog, KeyValueList, Notice, Section, StaffButton } from "@auction/staff-ui";
+import {
+  ConfirmActionDialog,
+  KeyValueList,
+  Notice,
+  Section,
+  StaffButton,
+  StatusBadge,
+  TextLink,
+  useStaffCan,
+} from "@auction/staff-ui";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
@@ -21,18 +35,20 @@ function lotsWord(count: number): string {
 }
 
 /**
- * The sale's buyer's premium in words with a worked example, and a warning listing unsold lots
- * that charge their own premium, with one action to put them back on the sale's. The action
- * changes only lots whose bidding has not opened, is confirmed first and is recorded in the
- * audit log. People who may not edit lots see the list without the action.
+ * The sale's buyer's premium in words with a worked example, and a warning naming the first few
+ * unsold lots that charge their own premium (the rest are a link to the lots tab, filtered to
+ * them), with one action to put them back on the sale's. The action changes only lots whose
+ * bidding has not opened, is confirmed first and is recorded in the audit log. People who may
+ * not edit lots see the list and who to ask instead of the action.
  */
 export function SalePremiumSection({ saleId, overview }: Props) {
   const router = useRouter();
+  const canEditLots = useStaffCan(LOTS_ACCESS);
   const [open, setOpen] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const editable = overview.editableLotIds.length;
-  const lockedCount = overview.differingLots.length - editable;
+  const openNote = openLotsNote(overview.openCount);
 
   const confirm = () => {
     setFailure(null);
@@ -43,7 +59,7 @@ export function SalePremiumSection({ saleId, overview }: Props) {
         overview.editableLotIds,
       ).catch(() => null);
       if (!result?.ok) {
-        setFailure(result?.error || "The lots could not be changed. Try again.");
+        setFailure(result?.error || "The request did not reach the server.");
         return;
       }
       setOpen(false);
@@ -70,9 +86,12 @@ export function SalePremiumSection({ saleId, overview }: Props) {
       {overview.differingLots.length > 0 ? (
         <Notice
           tone="warning"
+          // The action sits in the notice's top-right slot, level with the title, however long
+          // the list below it is.
+          className="sm:items-start"
           title={differingLotsTitle(overview.differingLots.length)}
           actions={
-            editable > 0 ? (
+            editable > 0 && canEditLots ? (
               <StaffButton
                 type="button"
                 size="sm"
@@ -83,20 +102,31 @@ export function SalePremiumSection({ saleId, overview }: Props) {
                   setOpen(true);
                 }}
               >
-                Use the sale&apos;s premium for these lots
+                {salePremiumActionLabel(editable)}
               </StaffButton>
             ) : null
           }
         >
-          <KeyValueList
-            items={overview.differingLots.map((lot) => ({ label: lot.label, value: lot.premium }))}
-          />
-          {lockedCount > 0 ? (
-            <p>
-              {lotsWord(lockedCount)} {lockedCount === 1 ? "is" : "are"} open for bidding and keep
-              {lockedCount === 1 ? "s" : ""} {lockedCount === 1 ? "its" : "their"} premium.
+          <ul className="mt-1 flex flex-col gap-1" aria-label="Lots with their own premium">
+            {overview.shownLots.map((lot) => (
+              <li key={lot.id} className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                <TextLink href={lot.href} Link={Link}>
+                  {lot.label}
+                </TextLink>
+                <span>{lot.premium}</span>
+                {lot.editable ? null : <StatusBadge tone="live">Open for bidding</StatusBadge>}
+              </li>
+            ))}
+          </ul>
+          {overview.more ? (
+            <p className="mt-1">
+              <TextLink href={overview.more.href} Link={Link}>
+                {moreLotsLabel(overview.more.count)}
+              </TextLink>
             </p>
           ) : null}
+          {openNote ? <p className="mt-1">{openNote}</p> : null}
+          {canEditLots ? null : <p className="mt-1">{READ_ONLY_NEXT_STEP}</p>}
         </Notice>
       ) : null}
       <ConfirmActionDialog
@@ -104,24 +134,25 @@ export function SalePremiumSection({ saleId, overview }: Props) {
         onOpenChange={(next) => {
           if (!pending) setOpen(next);
         }}
-        title={`Use the sale's premium for ${lotsWord(editable)}?`}
+        title={failure ? "Lots not changed" : `Use the sale's premium for ${lotsWord(editable)}?`}
         description={
-          <>
-            {lotsWord(editable)} will charge {overview.terms} instead of{" "}
-            {editable === 1 ? "its" : "their"} own premium. Sold lots and lots open for bidding are
-            not changed. The change is recorded in the sale&apos;s activity.
-          </>
+          failure ? (
+            // Announced as it appears: the person pressed confirm and is waiting on the outcome.
+            <span role="alert">
+              {failure} None of the {lotsWord(editable)} changed, so you can try again.
+            </span>
+          ) : (
+            <>
+              {lotsWord(editable)} will charge {overview.terms} instead of{" "}
+              {editable === 1 ? "its" : "their"} own premium. Sold lots and lots open for bidding
+              are not changed. The change is recorded in the sale&apos;s activity.
+            </>
+          )
         }
-        confirmLabel={`Use the sale's premium for ${lotsWord(editable)}`}
+        confirmLabel={failure ? "Try again" : salePremiumActionLabel(editable)}
         loading={pending}
         onConfirm={confirm}
-      >
-        {failure ? (
-          <Notice tone="danger" title="The lots were not changed" alert>
-            {failure}
-          </Notice>
-        ) : null}
-      </ConfirmActionDialog>
+      />
     </Section>
   );
 }
