@@ -8,11 +8,12 @@
 -- Forward-fix only once this release has charged a refund by the new rule. The previous release
 -- reads a refund line's amount as the buyer's refund, so a line that charged the seller's share,
 -- nothing, or a credit would be misread: the top-up would record buyer refunds that never happened
--- and the next refund event would charge the seller again. The rollback stops while any such line
--- exists. To check first:
+-- and the next refund event would charge the seller again. A line giving back a failed refund
+-- (negative buyer refund) belongs to the same rule, so it stops the rollback too, whatever its
+-- amount. The rollback stops while any such line exists. To check first:
 --   SELECT count(*) FROM "payout_line"
 --   WHERE "kind" = 'refund' AND "buyer_refund_pence" IS NOT NULL
---     AND "buyer_refund_pence" <> -"amount" * 100;
+--     AND ("buyer_refund_pence" < 0 OR "buyer_refund_pence" <> -"amount" * 100);
 BEGIN;
 
 SET LOCAL lock_timeout = '30s';
@@ -29,7 +30,7 @@ BEGIN
   ) THEN
     SELECT count(*) INTO new_rule_lines FROM "payout_line"
     WHERE "kind" = 'refund' AND "buyer_refund_pence" IS NOT NULL
-      AND "buyer_refund_pence" <> -"amount" * 100;
+      AND ("buyer_refund_pence" < 0 OR "buyer_refund_pence" <> -"amount" * 100);
     IF new_rule_lines > 0 THEN
       RAISE EXCEPTION '% refund line(s) charge the seller other than the buyer''s refund; 0378 is forward-fix only once such lines exist', new_rule_lines;
     END IF;

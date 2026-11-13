@@ -4,6 +4,10 @@
 -- VAT totals of the sales on it beside its existing totals, which keep their meaning: gross is the
 -- hammer total for new payouts and platform_fee is commission plus VAT. A refund line keeps the
 -- buyer's refund it answers for, because the seller is charged back only their share of it.
+-- Sign convention of buyer_refund_pence: zero or more on a line charging a buyer refund (amount
+-- zero or below, or a true-up credit answering for nothing new); negative on a line giving back a
+-- buyer refund that failed (the refund it reverses, amount zero or more). Every sum over the lines
+-- is signed, so a give-back cancels the charge it reverses.
 -- Additive: nullable columns that nothing reads until the new release is running. Two guards come
 -- with it: the top-up of the buyer's refund record reads what a refund line answered for, and a
 -- seller-terms row may be re-priced only while it is held.
@@ -32,11 +36,14 @@ BEGIN
         "seller_terms_id" IS NULL OR ("kind" = 'sale' AND "payment_id" IS NOT NULL)
       );
   END IF;
-  -- Only a refund line answers for a buyer's refund, and never for a negative one.
+  -- Only a refund line answers for a buyer's refund. A negative one is a failed refund given
+  -- back, so it never takes money from the seller.
   IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'payout_line_buyer_refund_ck') THEN
     ALTER TABLE "payout_line"
       ADD CONSTRAINT "payout_line_buyer_refund_ck" CHECK (
-        "buyer_refund_pence" IS NULL OR ("kind" = 'refund' AND "buyer_refund_pence" >= 0)
+        "buyer_refund_pence" IS NULL OR (
+          "kind" = 'refund' AND ("buyer_refund_pence" >= 0 OR "amount" >= 0)
+        )
       );
   END IF;
   -- The three seller-terms totals are written together, and never below zero.
@@ -59,7 +66,8 @@ CREATE INDEX IF NOT EXISTS "payout_line_seller_terms_idx"
 -- The top-up of the buyer's refund record (0344, signed by 0376), reading each refund line's buyer
 -- refund where the line keeps it. A line since this release can charge less than the buyer's refund
 -- (the seller's share), nothing (a share already taken back), or give back part of a charge made in
--- full before this release; only what it answered for says what the buyer was refunded. A line
+-- full before this release; only what it answered for says what the buyer was refunded, and a line
+-- giving back a failed refund answers for it as a negative figure, so it cancels the charge. A line
 -- that keeps no buyer refund counts its amount with its sign, as 0376 does: a charge was the
 -- buyer's refund, and a compensating line (a failed refund given back) cancels the line it
 -- corrects, so those rows top up exactly as they did after 0376.

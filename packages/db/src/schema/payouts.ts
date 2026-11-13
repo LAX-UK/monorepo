@@ -113,7 +113,9 @@ export const payoutLine = pgTable(
     /**
      * On a refund line: the buyer's refund, in pence, that the line answers for. The seller is
      * charged back only their share of it, so the line's amount alone cannot say how much of the
-     * buyer's refund the seller's ledger has already taken into account.
+     * buyer's refund the seller's ledger has already taken into account. Zero or more on a line
+     * charging a refund; negative on a line giving back a refund that failed (the buyer refund it
+     * reverses, with an amount of zero or more). Lines are always added up with their sign.
      */
     buyerRefundPence: bigint("buyer_refund_pence", { mode: "number" }),
     amount: numeric("amount", { precision: 18, scale: 2 }).notNull(),
@@ -165,7 +167,7 @@ export const payoutLine = pgTable(
     ),
     check(
       "payout_line_buyer_refund_ck",
-      sql`${table.buyerRefundPence} IS NULL OR (${table.kind} = 'refund' AND ${table.buyerRefundPence} >= 0)`,
+      sql`${table.buyerRefundPence} IS NULL OR (${table.kind} = 'refund' AND (${table.buyerRefundPence} >= 0 OR ${table.amount} >= 0))`,
     ),
     // A line settles a lot payment or a deal, never both, and only a sale line settles a deal.
     check(

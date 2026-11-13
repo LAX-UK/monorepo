@@ -89,6 +89,14 @@ describe("migration 0378 payout seller terms", () => {
     expect(read("0376_stripe_refund_watch.sql")).toContain(signed);
   });
 
+  it("lets a refund line answer for a negative buyer refund only when it gives money back", () => {
+    // A failed refund given back to the seller reverses the buyer refund its charge answered for.
+    expect(migration).toContain(
+      `"kind" = 'refund' AND ("buyer_refund_pence" >= 0 OR "amount" >= 0)`,
+    );
+    expect(migration).toMatch(/^-- Sign convention of buyer_refund_pence:/m);
+  });
+
   it("locks refund lines before the guard reads them, so none is written between the check and the drop", () => {
     const lock = rollback.indexOf('LOCK TABLE "payout_line" IN SHARE MODE;');
     expect(lock).toBeGreaterThan(rollback.indexOf("BEGIN;"));
@@ -98,7 +106,9 @@ describe("migration 0378 payout seller terms", () => {
   it("stops the rollback, before it changes anything, while a refund line charged by the new rule", () => {
     const guard = rollback.indexOf("RAISE EXCEPTION");
     expect(guard).toBeGreaterThan(-1);
-    expect(rollback).toContain(`"buyer_refund_pence" <> -"amount" * 100`);
+    expect(rollback).toContain(
+      `("buyer_refund_pence" < 0 OR "buyer_refund_pence" <> -"amount" * 100)`,
+    );
     expect(rollback).toMatch(/^-- Forward-fix only once/m);
     expect(guard).toBeLessThan(rollback.indexOf("DROP TRIGGER"));
   });

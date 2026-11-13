@@ -124,12 +124,19 @@ describe.skipIf(!url)("migration 0378 payout seller terms (database)", { timeout
     expect(await line({ seller_terms_id: "00000000-0000-0000-0000-000000000000" })).toBe(false);
   });
 
-  it("keeps the buyer's refund only on refund lines, never negative", async () => {
+  it("keeps the buyer's refund only on refund lines, negative only on a line giving money back", async () => {
     expect(
       await line({ kind: "refund", amount: "-67240.00", buyer_refund_pence: 10_250_000 }),
     ).toBe(true);
+    // A failed refund given back: the share it charged, or nothing, comes back.
+    expect(
+      await line({ kind: "refund", amount: "67240.00", buyer_refund_pence: -10_250_000 }),
+    ).toBe(true);
+    expect(await line({ kind: "refund", amount: "0.00", buyer_refund_pence: -1 })).toBe(true);
+    // A negative buyer refund never takes money from the seller.
     expect(await line({ kind: "refund", amount: "-1.00", buyer_refund_pence: -1 })).toBe(false);
     expect(await line({ buyer_refund_pence: 100 })).toBe(false);
+    expect(await line({ amount: "1.00", buyer_refund_pence: -100 })).toBe(false);
   });
 
   it("writes the three seller-terms totals together and never below zero", async () => {
@@ -255,6 +262,43 @@ describe.skipIf(!url)("migration 0378 rollback", { timeout: 120_000 }, () => {
       expect(await hasBuyerRefundColumn(pool)).toBe(false);
       // Run again, it finds nothing left to remove.
       await runRollback(pool);
+    });
+  });
+
+  it("refuses while a failed refund was given back by the new rule, even one charged in full", async () => {
+    await withTemporaryDatabase(async (pool) => {
+      await runMigrationsPerTransaction(pool);
+      const { sellerId, paymentId } = await seedPayment(pool);
+      const refundLine = (amount: string, buyerRefundPence: number | null, note: string) =>
+        pool.query(
+          `with p as (
+             insert into payout (legal_entity_id, period_start, period_end, gross_amount, platform_fee, stripe_fee, net_amount)
+             values ($1, now() - interval '1 day', now(), 0, 0, 0, 0) returning id
+           )
+           insert into payout_line (payout_id, payment_id, amount, kind, note, buyer_refund_pence)
+           select p.id, $2, $3, 'refund', $4, $5 from p`,
+          [sellerId, paymentId, amount, note, buyerRefundPence],
+        );
+      // A £50 refund charged in full, which then failed and was given back in full: the amounts
+      // alone add up for the previous release, but the negative buyer refund is the new rule's.
+      await refundLine("-50.00", 5_000, "charged in full");
+      await refundLine("50.00", -5_000, "given back");
+
+      await expect(runRollback(pool)).rejects.toThrow(
+        /1 refund line\(s\) charge the seller other than the buyer's refund; 0378 is forward-fix only/,
+      );
+      expect(await hasBuyerRefundColumn(pool)).toBe(true);
+      // The top-up adds the lines up with their sign: the give-back cancels the charge.
+      await pool.query("select payment_refund_backfill_from_payout_lines($1::uuid)", [paymentId]);
+      const recorded = await pool.query<{ n: string }>(
+        "select count(*)::text as n from payment_refund where payment_id = $1",
+        [paymentId],
+      );
+      expect(Number(recorded.rows[0]?.n)).toBe(0);
+
+      await pool.query(`delete from payout_line where note = 'given back'`);
+      await runRollback(pool);
+      expect(await hasBuyerRefundColumn(pool)).toBe(false);
     });
   });
 
