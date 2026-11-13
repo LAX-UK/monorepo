@@ -219,11 +219,10 @@ function mount(
                     issued: { number: "INV-000123", providerId: "46", pdfRef: null },
                   },
                   grossPence: 100_010,
-                  updatedAt: new Date("2026-11-12T14:05:00Z"),
+                  issuedAt: new Date("2026-11-12T14:05:00Z"),
                   copy: { storageKey: "accounting/x/doc.pdf", rehearsal: false },
                 },
               ],
-              creditNotes: [],
             }),
         },
         storage: { getObjectBytes: async () => STORED_PDF },
@@ -650,7 +649,6 @@ describe("organisation buying routes", () => {
           issuedAt: "2026-11-12T14:05:00.000Z",
           invoiceDocumentId: BOOKS_DOCUMENT,
           cancelledAt: null,
-          creditNotes: [],
         },
       });
     });

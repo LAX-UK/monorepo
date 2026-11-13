@@ -36,7 +36,7 @@ describe("PurchaseInvoiceCard", () => {
     expect(screen.getByRole("status")).toHaveTextContent("Our team has been told.");
   });
 
-  it("links the stored invoice and each credit note", () => {
+  it("links the stored invoice, and nothing else", () => {
     render(
       <PurchaseInvoiceCard
         card={{
@@ -44,26 +44,15 @@ describe("PurchaseInvoiceCard", () => {
           title: "Invoice INV-000123",
           meta: "Issued Thu 12 Nov, 14:05 GMT",
           download: { label: "Download invoice (PDF)", href: "/purchases/l/documents/d" },
-          credits: [
-            {
-              label: "Refunded −£250.00",
-              link: {
-                label: "Download credit note CN-000007 (PDF)",
-                href: "/purchases/l/documents/c",
-              },
-            },
-          ],
         }}
       />,
     );
+    expect(screen.getByText("Issued Thu 12 Nov, 14:05 GMT")).toBeInTheDocument();
+    expect(screen.getAllByRole("link")).toHaveLength(1);
     expect(screen.getByRole("link", { name: /Download invoice \(PDF\)/ })).toHaveAttribute(
       "href",
       "/purchases/l/documents/d",
     );
-    expect(screen.getByText("Refunded −£250.00")).toBeInTheDocument();
-    expect(
-      screen.getByRole("link", { name: /Download credit note CN-000007 \(PDF\)/ }),
-    ).toHaveAttribute("href", "/purchases/l/documents/c");
   });
 
   it("keeps LAX's own invoice link as it was", () => {

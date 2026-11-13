@@ -1,18 +1,9 @@
-import { formatMoney } from "@/lib/format-currency";
 import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
 import { LONDON_TIME_ZONE, formatWhen } from "@auction/datetime";
 import type { PurchaseInvoiceCard } from "@auction/types";
 
-/** A download on the card: LAX's stored copy of a Books document, or LAX's own invoice. */
+/** A download on the card: LAX's stored copy of the Books invoice, or LAX's own invoice. */
 export type InvoiceCardLink = { label: string; href: string };
-
-/** A refund given back on the invoice, with its credit note to download. */
-export type InvoiceCardCredit = {
-  /** "Refunded −£250.00". */
-  label: string;
-  /** "Download credit note CN-000007 (PDF)". */
-  link: InvoiceCardLink;
-};
 
 /**
  * The invoice card on a Bid purchase, ready to draw. Each state's words are fixed here and
@@ -33,7 +24,6 @@ export type PurchaseInvoiceCardVm =
       /** "Issued Thu 12 Nov, 14:05 GMT". */
       meta: string;
       download: InvoiceCardLink;
-      credits: InvoiceCardCredit[];
     }
   | { kind: "cancelled"; title: string; detail: string }
   | {
@@ -62,11 +52,6 @@ export function purchaseDocumentHref(lotId: string, documentId: string): string 
 /** "Thu 12 Nov, 14:05 GMT": the shared moment style, in London (the invoice's own zone). */
 function moment(iso: string, now: Date): string {
   return formatWhen(new Date(iso), LONDON_TIME_ZONE, now);
-}
-
-/** "−£250.00": a refund, with a true minus sign. */
-function refunded(pence: number): string {
-  return `Refunded −${formatMoney(pence / 100, "GBP")}`;
 }
 
 /**
@@ -112,13 +97,6 @@ export function purchaseInvoiceCard(input: {
           label: INVOICE_CARD_COPY.download,
           href: purchaseDocumentHref(lotId, card.invoiceDocumentId),
         },
-        credits: card.creditNotes.map((note) => ({
-          label: refunded(note.amountPence),
-          link: {
-            label: `Download credit note ${note.number} (PDF)`,
-            href: purchaseDocumentHref(lotId, note.documentId),
-          },
-        })),
       };
     }
     case "cancelled":

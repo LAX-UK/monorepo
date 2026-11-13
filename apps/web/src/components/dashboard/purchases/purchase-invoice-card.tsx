@@ -2,7 +2,6 @@ import type {
   InvoiceCardLink,
   PurchaseInvoiceCardVm,
 } from "@/lib/purchases/purchase-invoice-card.vm";
-import { cn } from "@auction/ui/lib/utils";
 import { AlertTriangle, Download, FileText, FileX } from "lucide-react";
 
 const ROW_LINK =
@@ -39,7 +38,7 @@ function DownloadRow({
 
 /**
  * The invoice on a purchase: being prepared (and late), issued under its Books number with LAX's
- * stored PDF and any credit notes, cancelled, or LAX's own invoice while Books does not issue it.
+ * stored PDF, cancelled, or LAX's own invoice while Books does not issue it.
  */
 export function PurchaseInvoiceCard({ card }: { card: PurchaseInvoiceCardVm }) {
   switch (card.kind) {
@@ -86,27 +85,6 @@ export function PurchaseInvoiceCard({ card }: { card: PurchaseInvoiceCardVm }) {
             <p className="text-lax-13 text-lax-muted">{card.meta}</p>
           </div>
           <DownloadRow link={card.download} title={card.download.label} />
-          {card.credits.length > 0 ? (
-            <ul className="mt-2 flex flex-col gap-1 border-t border-lax-line pt-3">
-              {card.credits.map((credit) => (
-                <li key={credit.link.href}>
-                  <p className="text-lax-14 tabular-nums text-lax-fg">{credit.label}</p>
-                  <a
-                    href={credit.link.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={cn(
-                      "inline-flex items-center gap-2 text-lax-13 text-lax-fg underline underline-offset-4",
-                      "lax-focus rounded-lax-control",
-                    )}
-                  >
-                    <Download aria-hidden className="size-3.5" />
-                    {credit.link.label}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          ) : null}
         </div>
       );
     case "cancelled":

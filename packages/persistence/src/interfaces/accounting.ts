@@ -377,8 +377,11 @@ export interface BidInvoiceBooksDocument {
   readonly targetMode: TargetMode;
   readonly record: DocumentRecord;
   readonly grossPence: number;
-  /** When the record last changed: for an issued document, when it was issued (issued is final). */
-  readonly updatedAt: Date;
+  /**
+   * When the document was issued: the `occurred_at` of its transition to `issued` in the event
+   * log (never the row's `updated_at`, which later writes move). Null when not issued.
+   */
+  readonly issuedAt: Date | null;
   readonly copy: { readonly storageKey: string; readonly rehearsal: boolean } | null;
 }
 
@@ -392,8 +395,6 @@ export interface BidInvoiceBooksState {
   };
   /** The invoice document per target mode (at most one each). */
   readonly invoices: readonly BidInvoiceBooksDocument[];
-  /** Credit notes made against the invoice, oldest first, every mode. */
-  readonly creditNotes: readonly BidInvoiceBooksDocument[];
 }
 
 /** Reads one Bid invoice's Books documents and their stored copies (the Bid API, read only). */
