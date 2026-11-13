@@ -44,8 +44,8 @@ import {
   type ResolvedLotAction,
   bidModesFor,
   bidPlacedAnnouncement,
-  bidSummary,
   buildBidEntry,
+  describeBuyersPremiumTerms,
   lotLifecycleCopy,
 } from "@auction/domain";
 import type { Lot, PublicLotView } from "@auction/types";
@@ -163,8 +163,7 @@ export function LotBidEntry({ auction: lot, artistName, gate, buyersPremium }: L
     position: viewer.position,
     nextBid,
     agentLimitLeft: viewer.agentLimitLeft,
-    premiumPercent:
-      buyersPremium && nextBid ? bidSummary(buyersPremium, nextBid).percentLabel : null,
+    premiumTerms: buyersPremium ? describeBuyersPremiumTerms(buyersPremium) : null,
     format,
   });
 

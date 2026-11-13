@@ -3,6 +3,7 @@ import { LotDetailsInline } from "@/components/sections/artwork/redesign/lot-det
 import { getMinNextBidAmount } from "@/lib/bid/lot-min-bid";
 import type { PublicUser } from "@/lib/data/contracts";
 import type { LotDocumentPublicRow } from "@/lib/data/lot-documents-public";
+import { lotBuyerPremiumCopy } from "@/lib/lot/buyer-premium-copy";
 import { resolveLotReserveContext } from "@/lib/lot/reserve-presentation";
 import {
   ARTWORK_PAGE_ACCORDION_IDS,
@@ -10,7 +11,7 @@ import {
   mapLotToAccordionBlocks,
 } from "@/lib/marketing/artwork/artwork-view-models";
 import { LONDON_TIME_ZONE, formatWhen } from "@auction/datetime";
-import type { Lot, PublicLotView } from "@auction/types";
+import type { Lot, PublicLotView, Sale } from "@auction/types";
 import Link from "next/link";
 
 /** Marketing accordion plus “Lot details” and “Bid history” (rich nodes).
@@ -20,8 +21,11 @@ export function buildArtworkPageAccordionBlocks(args: {
   lot: Lot | PublicLotView;
   artist: PublicUser | null;
   documents?: LotDocumentPublicRow[];
+  /** The lot's sale, so the premium shown is the one the lot charges. */
+  premiumSale?: Pick<Sale, "buyerPremiumRate" | "buyerPremiumTiers"> | null;
 }): AccordionBlock[] {
   const { lot, artist, documents = [] } = args;
+  const premiumTerms = lotBuyerPremiumCopy(lot, args.premiumSale)?.terms ?? null;
   const minNext = getMinNextBidAmount(lot, lot.currentPrice).toFixed(2);
   const reserveContext = resolveLotReserveContext(lot, lot.currentPrice);
   const saleEndLocal = formatWhen(new Date(lot.endTime), LONDON_TIME_ZONE, new Date());
@@ -53,17 +57,19 @@ export function buildArtworkPageAccordionBlocks(args: {
           ),
         };
 
-  const bpPct = ((Number(lot.buyerPremiumRate) || 0) * 100).toFixed(0);
   const feesBlock: AccordionBlock = {
     id: ARTWORK_PAGE_ACCORDION_IDS.fees,
     title: "Fees & buyer's premium",
     hidden: false,
     contentNode: (
       <div className="space-y-3 text-sm leading-relaxed text-on-surface-variant">
-        <p>
-          Buyer&apos;s premium: <span className="font-medium text-on-surface">{bpPct}%</span> on the
-          hammer (excluding VAT, where applicable).
-        </p>
+        {premiumTerms ? (
+          <p>
+            Buyer&apos;s premium:{" "}
+            <span className="font-medium text-on-surface">{premiumTerms}</span> (excluding VAT,
+            where applicable), as set out in the Conditions of Sale.
+          </p>
+        ) : null}
         <p>
           Import duties, resale royalties, and other charges may apply depending on jurisdiction and
           the nature of the work.
@@ -97,6 +103,7 @@ export function buildArtworkPageAccordionBlocks(args: {
       contentNode: (
         <LotDetailsInline
           lot={lot}
+          premiumTerms={premiumTerms}
           minNextBid={minNext}
           saleEndLocalLabel={saleEndLocal}
           currentPrice={lot.currentPrice}

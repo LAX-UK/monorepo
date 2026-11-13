@@ -1,5 +1,6 @@
 import { isIndexableObject } from "@/lib/data/http/object-guards";
 import type { BuyersPremiumTerms } from "@auction/domain";
+import { type BuyerPremiumSource, isBuyerPremiumSource } from "@auction/types";
 
 /**
  * What the lot detail response carries beyond the lot itself: the server clock, the next valid
@@ -33,11 +34,15 @@ function isoOrNull(value: unknown): string | null {
   return text !== null && !Number.isNaN(Date.parse(text)) ? text : null;
 }
 
+function premiumSourceOf(raw: unknown): { source?: BuyerPremiumSource } {
+  return isBuyerPremiumSource(raw) ? { source: raw } : {};
+}
+
 function parsePremiumTerms(raw: unknown): BuyersPremiumTerms | null {
   if (!isIndexableObject(raw)) return null;
   if (raw.kind === "flat") {
     const rate = stringOrNull(raw.rate);
-    return rate ? { kind: "flat", rate } : null;
+    return rate ? { kind: "flat", rate, ...premiumSourceOf(raw.source) } : null;
   }
   if (raw.kind !== "banded" || !Array.isArray(raw.bands)) return null;
   const bands = raw.bands.flatMap((band: unknown) => {
@@ -46,7 +51,7 @@ function parsePremiumTerms(raw: unknown): BuyersPremiumTerms | null {
     const rate = stringOrNull(band.rate);
     return fromHammer && rate ? [{ fromHammer, rate }] : [];
   });
-  return bands.length > 0 ? { kind: "banded", bands } : null;
+  return bands.length > 0 ? { kind: "banded", bands, ...premiumSourceOf(raw.source) } : null;
 }
 
 /** Reads the bidding fields off a lot detail payload; anything missing stays `null`. */

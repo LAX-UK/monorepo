@@ -94,7 +94,7 @@ describe("LotPriceBlockView", () => {
     });
     expect(screen.getByText("Sold for")).toBeInTheDocument();
     expect(screen.getByText("£8,750")).toBeInTheDocument();
-    expect(screen.getByText("Hammer £7,000 plus 25% buyer's premium")).toBeInTheDocument();
+    expect(screen.getByText("Hammer £7,000 plus £1,750 buyer's premium")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Bid entry" })).toBeNull();
     expect(screen.getByRole("button", { name: /alerts for Anna Whitcombe/ })).toBeInTheDocument();
   });

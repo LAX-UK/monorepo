@@ -8,6 +8,8 @@ import { Fragment } from "react";
 
 type Props = {
   lot: Lot | PublicLotView;
+  /** The premium the lot charges, in words (`lotBuyerPremiumCopy`); `null` leaves the line out. */
+  premiumTerms: string | null;
   /** Min next bid and sale end (live auction UX preserved) */
   minNextBid: string;
   saleEndLocalLabel: string;
@@ -22,6 +24,7 @@ type Props = {
  */
 export function LotDetailsInline({
   lot,
+  premiumTerms,
   minNextBid,
   saleEndLocalLabel,
   currentPrice,
@@ -78,10 +81,7 @@ export function LotDetailsInline({
         <li>
           {biddingOpen ? "Closes" : "Closed"}: {saleEndLocalLabel}
         </li>
-        <li>
-          Buyer&apos;s premium: {((Number(lot.buyerPremiumRate) || 0) * 100).toFixed(0)}% on the
-          hammer
-        </li>
+        {premiumTerms ? <li>Buyer&apos;s premium: {premiumTerms}</li> : null}
       </ul>
       <div className="flex flex-wrap gap-4">
         <Link

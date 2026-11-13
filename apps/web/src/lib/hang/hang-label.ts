@@ -5,7 +5,12 @@ import { lotWasSold } from "@/lib/lot/lot-outcome";
 import { LONDON_TIME_ZONE, formatMoment } from "@auction/datetime";
 import { lotHeadlineLabel, lotPriceHasBids } from "@auction/domain";
 import type { Lot, Sale } from "@auction/types";
-import { buildBuyerPremiumPolicy, majorToMinor, minorToMajor } from "@auction/validators";
+import {
+  type BuyerPremiumSaleTerms,
+  majorToMinor,
+  minorToMajor,
+  resolveBuyerPremium,
+} from "@auction/validators";
 
 /** Everything a wall label prints, as plain data: the page decides how it looks. */
 export type HangLabelModel = {
@@ -18,21 +23,22 @@ export type HangLabelModel = {
 };
 
 export type HangLabelContext = {
-  sale: Pick<Sale, "buyerPremiumTiers"> | null;
+  sale: Pick<Sale, "buyerPremiumRate" | "buyerPremiumTiers"> | null;
   now: Date;
   /** Add "Shown framed" when the photograph shows a frame we have no size for. */
   shownFramed?: boolean;
 };
 
-/** The hammer plus the buyer's premium: what the buyer paid, which is what a result shows. */
+/**
+ * The hammer plus the buyer's premium: what the buyer paid, which is what a result shows. The
+ * server's figure (`checkoutPricing`) when the lot carries it, else the shared resolver's.
+ */
 export function soldPriceWithPremium(
-  lot: Pick<Lot, "currentPrice" | "buyerPremiumRate">,
-  sale: Pick<Sale, "buyerPremiumTiers"> | null,
+  lot: Pick<Lot, "currentPrice" | "buyerPremiumRate"> & Partial<Pick<Lot, "checkoutPricing">>,
+  sale: BuyerPremiumSaleTerms | null,
 ): string {
-  const policy = buildBuyerPremiumPolicy({
-    saleTiers: sale?.buyerPremiumTiers ?? null,
-    lotRate: lot.buyerPremiumRate,
-  });
+  if (lot.checkoutPricing) return lot.checkoutPricing.totalMajor;
+  const { policy } = resolveBuyerPremium({ lotRate: lot.buyerPremiumRate, sale });
   const hammerMinor = majorToMinor(lot.currentPrice);
   return minorToMajor(hammerMinor + policy.computePremiumMinor(hammerMinor));
 }

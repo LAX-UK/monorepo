@@ -1,6 +1,6 @@
+import { BUYER_PREMIUM_CONDITIONS_HREF } from "@/lib/lot/buyer-premium-copy";
 import { LabelCaps } from "@auction/ui/components/typography";
 import Link from "next/link";
-import { formatBuyerPremiumTierLabel } from "./mappers";
 import type { SaleOverviewVM } from "./view-models";
 
 function Fact({ label, value }: { label: string; value: string }) {
@@ -33,9 +33,8 @@ function endFactLabelForStatus(status: SaleOverviewVM["status"]): string {
   }
 }
 
-/** Starts / ends / format / premium + quick policy links. */
+/** Starts / ends / format / premium in words + quick policy links (the Conditions set the premium). */
 export function SaleroomOverviewFacts({ overview }: Props) {
-  const tiers = overview.buyerPremiumTiers ?? [];
   const showStarts = overview.status === "scheduled";
   const endFactLabel = endFactLabelForStatus(overview.status);
 
@@ -51,23 +50,6 @@ export function SaleroomOverviewFacts({ overview }: Props) {
         <Fact label="Format" value={overview.formatLabel} />
         <Fact label="Buyer's premium" value={overview.buyerPremiumLabel} />
       </dl>
-      {tiers.length > 0 ? (
-        <div className="border-b border-outline-variant/25 py-3">
-          <LabelCaps className="mb-2 text-on-surface-variant">Premium tiers</LabelCaps>
-          <table className="w-full text-sm text-on-surface">
-            <tbody>
-              {tiers.map((tier) => (
-                <tr
-                  key={`${tier.hammerThresholdMinor}-${tier.rate}`}
-                  className="border-t border-outline-variant/15 first:border-t-0"
-                >
-                  <td className="py-2 pr-4">{formatBuyerPremiumTierLabel(tier)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ) : null}
       {overview.categoryLabels.length > 0 ? (
         <div className="border-b border-outline-variant/25 py-3">
           <LabelCaps className="mb-2 text-on-surface-variant">Categories</LabelCaps>
@@ -93,6 +75,12 @@ export function SaleroomOverviewFacts({ overview }: Props) {
         </Link>
         <Link href="/shipping" className="text-on-surface underline-offset-4 hover:underline">
           Shipping
+        </Link>
+        <Link
+          href={BUYER_PREMIUM_CONDITIONS_HREF}
+          className="text-on-surface underline-offset-4 hover:underline"
+        >
+          Conditions of Sale
         </Link>
       </p>
     </div>

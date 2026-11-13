@@ -2,6 +2,7 @@ import type { LotBiddingView } from "@/lib/lot-page/lot-bidding-view";
 import { type LotDetailsView, buildLotDetails, lotFactsLine } from "@/lib/lot-page/lot-details";
 import type { LotViewerView } from "@/lib/lot-page/lot-viewer";
 import type { LotPageLot, LotPageViewSource } from "@/lib/lot-page/use-lot-page-view";
+import { lotBuyerPremiumCopy, termsBuyerPremiumCopy } from "@/lib/lot/buyer-premium-copy";
 import { salePath } from "@/lib/seo/url";
 import {
   DEFAULT_LOT_MEDIA_TREATMENT,
@@ -29,7 +30,8 @@ export type LotTemplateData = {
   artist: { id: string; name: string; href: string; lifespan: string | null } | null;
   factsLine: string | null;
   details: LotDetailsView;
-  premiumPercent: string | null;
+  /** The premium the lot charges, in words ("15% up to £500,000, 10% above"); null when not for sale. */
+  premiumTerms: string | null;
   sale: { href: string; label: string };
   initialWatching: boolean;
   /** How the lot's department presents its pictures. */
@@ -55,11 +57,15 @@ export type LotTemplateInput = {
 
 const NOT_FOR_SALE: ReadonlySet<Lot["status"]> = new Set(["voided", "cancelled"]);
 
-/** "25%": the buyer's premium rate as the page prints it; whole percentages stay whole. */
-function premiumPercentOf(rate: string): string | null {
-  const value = Number.parseFloat(rate) * 100;
-  if (!Number.isFinite(value) || value <= 0) return null;
-  return `${Number(value.toFixed(2))}%`;
+/** The premium in words: the server's resolved terms when it sent them, else the lot's own. */
+function premiumTermsOf(
+  auction: WithSaleZone<Lot | PublicLotView>,
+  bidding: LotBiddingView,
+): string | null {
+  const copy = bidding.buyersPremium
+    ? termsBuyerPremiumCopy(bidding.buyersPremium)
+    : lotBuyerPremiumCopy(auction);
+  return copy?.terms ?? null;
 }
 
 function pageLotOf(auction: WithSaleZone<Lot | PublicLotView>): LotPageLot {
@@ -115,9 +121,7 @@ export function toLotTemplateData(input: LotTemplateInput): LotTemplateData {
       marketingDetails: auction.marketingDetails,
       documents: input.documents,
     }),
-    premiumPercent: NOT_FOR_SALE.has(auction.status)
-      ? null
-      : premiumPercentOf(auction.buyerPremiumRate),
+    premiumTerms: NOT_FOR_SALE.has(auction.status) ? null : premiumTermsOf(auction, input.bidding),
     sale: input.parentSale
       ? { href: salePath(input.parentSale), label: "Back to the sale" }
       : { href: "/search", label: "Search lots" },

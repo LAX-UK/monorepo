@@ -260,7 +260,7 @@ export function buildSaleroomPageVM(input: BuildSaleroomPageVMInput): SaleroomDe
       now,
       initialWatching: secondary.watchedLotIds.has(lot.id),
       catalogLinkParams: lotLinkParams,
-      premiumTiers: bundle.sale.buyerPremiumTiers,
+      premiumSale: bundle.sale,
       ...(treatments ? { treatments } : {}),
       ...(atgState ? { atgState } : {}),
     }),
