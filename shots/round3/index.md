@@ -1,0 +1,46 @@
+# Accounting page screenshots, round 3
+
+PR #1342, branch `books6-accounting-page` at `063eb1e5` (UI fix round 2: `9bd3c20f` kit, `063eb1e5` Accounting page).
+
+How they were made: as in round 2. The real `AccountingQueueList`, `FailedJobsList`, `ManualReviewStaffList` and `ListPageSkeleton` components, rendered with fixture data through a temporary, uncommitted dev route inside the real `FinanceShell` (Accounting, Payments) and `StaffShell` (Failed jobs), under `next dev`. Captured with Playwright at 2x pixel density. Dark shots set both `prefers-color-scheme: dark` and the app's theme (`lax_theme=dark` cookie, `dark` class and `data-theme` on `<html>`). The dev-only overlays (Next.js dev tools and TanStack Query devtools) and the cookie banner are hidden. The fixture data is made up. Relative times ("12 minutes ago") are against the capture time.
+
+Names follow `<state>-<width>-<theme>.png`, with widths 1440 (1440x900) and 375 (375x812) and themes light and dark. Each state below has four files.
+
+| State | What it shows | Files |
+| --- | --- | --- |
+| `tab-needs-person` | Needs a person tab with counts (3 / 4 / 3 / Issued today 9); header source line "Zoho Books · both companies · last sent 12 minutes ago"; locked-period notice; a locked-period row, a contact-ambiguous row, and a row that cannot be tried again (no button) | [1440/light](tab-needs-person-1440-light.png) [1440/dark](tab-needs-person-1440-dark.png) [375/light](tab-needs-person-375-light.png) [375/dark](tab-needs-person-375-dark.png) |
+| `tab-failed` | Failed tab: four refused documents, including one with no stored reason ("Books gave no reason.") | [1440/light](tab-failed-1440-light.png) [1440/dark](tab-failed-1440-dark.png) [375/light](tab-failed-375-light.png) [375/dark](tab-failed-375-dark.png) |
+| `tab-waiting` | Waiting tab: Queued, Sending and Checking Books rows, with no actions | [1440/light](tab-waiting-1440-light.png) [1440/dark](tab-waiting-1440-dark.png) [375/light](tab-waiting-375-light.png) [375/dark](tab-waiting-375-dark.png) |
+| `tab-issued` | Issued today tab: "In Books" column with Books number links, one Books number with no link, and Open buttons | [1440/light](tab-issued-1440-light.png) [1440/dark](tab-issued-1440-dark.png) [375/light](tab-issued-375-light.png) [375/dark](tab-issued-375-dark.png) |
+| `rehearsal-issued` | Issued today tab in rehearsal: header reads "Rehearsal only · last rehearsed …", Rehearsal notice, rows show Rehearsed and "Rehearsal, not in Books" | [1440/light](rehearsal-issued-1440-light.png) [1440/dark](rehearsal-issued-1440-dark.png) [375/light](rehearsal-issued-375-light.png) [375/dark](rehearsal-issued-375-dark.png) |
+| `search-valid` | Search by a valid LAX reference (LAX-BID-CN-01HX5A): one match, tab counts narrowed | [1440/light](search-valid-1440-light.png) [1440/dark](search-valid-1440-dark.png) [375/light](search-valid-375-light.png) [375/dark](search-valid-375-dark.png) |
+| `search-invalid` | Search by something that is not a LAX reference ("invoice 412"): "That is not a LAX reference" notice, no counts, and the no-results state | [1440/light](search-invalid-1440-light.png) [1440/dark](search-invalid-1440-dark.png) [375/light](search-invalid-375-light.png) [375/dark](search-invalid-375-dark.png) |
+| `organisation-art-exchange` | Company segmented control set to Art Exchange on the Failed tab: rows and counts for London Art Exchange Ltd only | [1440/light](organisation-art-exchange-1440-light.png) [1440/dark](organisation-art-exchange-1440-dark.png) [375/light](organisation-art-exchange-375-light.png) [375/dark](organisation-art-exchange-375-dark.png) |
+| `details-sheet` | Row details sheet for a failed credit note: Last problem, company, amount, attempts, copyable LAX reference, dates, Try again in the footer | [1440/light](details-sheet-1440-light.png) [1440/dark](details-sheet-1440-dark.png) [375/light](details-sheet-375-light.png) [375/dark](details-sheet-375-dark.png) |
+| `details-sheet-issued` | Row details sheet for a document in Books (opened from the Issued tab), with Books number and Open in Books | [1440/light](details-sheet-issued-1440-light.png) [1440/dark](details-sheet-issued-1440-dark.png) [375/light](details-sheet-issued-375-light.png) [375/dark](details-sheet-issued-375-dark.png) |
+| `try-again-confirm` | Try again confirm for an ordinary failed document (same document, same LAX reference) | [1440/light](try-again-confirm-1440-light.png) [1440/dark](try-again-confirm-1440-dark.png) [375/light](try-again-confirm-375-light.png) [375/dark](try-again-confirm-375-dark.png) |
+| `try-again-locked` | Try again confirm for a locked-period document: locked-period text, acknowledgement unticked, Try again disabled | [1440/light](try-again-locked-1440-light.png) [1440/dark](try-again-locked-1440-dark.png) [375/light](try-again-locked-375-light.png) [375/dark](try-again-locked-375-dark.png) |
+| `try-again-locked-acknowledged` | The same locked-period confirm with the acknowledgement ticked, Try again enabled | [1440/light](try-again-locked-acknowledged-1440-light.png) [1440/dark](try-again-locked-acknowledged-1440-dark.png) [375/light](try-again-locked-acknowledged-375-light.png) [375/dark](try-again-locked-acknowledged-375-dark.png) |
+| `empty` | Empty Failed tab ("Nothing was refused") | [1440/light](empty-1440-light.png) [1440/dark](empty-1440-dark.png) [375/light](empty-375-light.png) [375/dark](empty-375-dark.png) |
+| `loading` | Loading skeleton (the route's loading.tsx: ListPageSkeleton) | [1440/light](loading-1440-light.png) [1440/dark](loading-1440-dark.png) [375/light](loading-375-light.png) [375/dark](loading-375-dark.png) |
+| `error` | Load error: "Accounting documents couldn't be loaded" with Try again | [1440/light](error-1440-light.png) [1440/dark](error-1440-dark.png) [375/light](error-375-light.png) [375/dark](error-375-dark.png) |
+| `long-list` | Long Failed list (312 documents), top of the first page of 50 | [1440/light](long-list-1440-light.png) [1440/dark](long-list-1440-dark.png) [375/light](long-list-375-light.png) [375/dark](long-list-375-dark.png) |
+| `long-list-bottom` | The same long list scrolled to the footer: "1–50 of 312 documents", Previous disabled, Next enabled | [1440/light](long-list-bottom-1440-light.png) [1440/dark](long-list-bottom-1440-dark.png) [375/light](long-list-bottom-375-light.png) [375/dark](long-list-bottom-375-dark.png) |
+| `view-only` | View-only (canAct false): View only badge in the header, no Try again buttons | [1440/light](view-only-1440-light.png) [1440/dark](view-only-1440-dark.png) [375/light](view-only-375-light.png) [375/dark](view-only-375-dark.png) |
+| `failed-jobs-books` | Failed jobs page (admin, StaffShell) with two Zoho Books rows ("Integrations · Zoho Books", no checkbox) beside an email job and a Xero sync | [1440/light](failed-jobs-books-1440-light.png) [1440/dark](failed-jobs-books-1440-dark.png) [375/light](failed-jobs-books-375-light.png) [375/dark](failed-jobs-books-375-dark.png) |
+| `kit-list-without-search` | Another staff list with ListPage and no search (Payments › Manual review), showing the kit change: on a phone the tabs keep their own row and Filter/Display drop below | [1440/light](kit-list-without-search-1440-light.png) [1440/dark](kit-list-without-search-1440-dark.png) [375/light](kit-list-without-search-375-light.png) [375/dark](kit-list-without-search-375-dark.png) |
+
+## What changed since round 2
+
+- **1440, Last problem**: the column is now the table's flexible column (minimum 220px, two-line clamp; about 225px at 1440 against "This f" before). Fixed columns are narrower: Document 172px, Status 136px, Amount 96px, Attempts 92px, Updated 112px (date over time on two lines), Action 104px. Below the minimum the table scrolls sideways instead of squeezing it. See `tab-needs-person-1440-*`, `tab-failed-1440-*`, `long-list-1440-*`.
+- **1440, Tried column**: gone from the table. The kit now has `phoneOnly` columns, left out of the table and the Columns menu; the Accounting page was the only list with a phone-only column. The Updated dates no longer overlap anything.
+- **1440, Company**: legal names wrap to two lines ("London Auction / Xchange LTD") instead of "London Auction Xchan…".
+- **375, toolbar**: the company control takes a full row and Display drops to the next one; nothing is clipped and the 16px gutters hold (`tab-*-375-*`). The kit caps the controls group at the row's width, so this holds on any list.
+- **375, reference**: the LAX reference wraps whole (`PrimaryCell wrap`); the status badge moved to the line under it, beside the amount.
+- **375, last problem**: shown on the row under the reference, two lines then an ellipsis (new kit phone role `mobile: "detail"`).
+- **Tabs**: "Issued" is now "Issued today", since its count is the documents that reached Books today (London). The list under it still holds every issued document.
+
+## Seen while capturing
+
+- At 375 the phone meta line ("Tried once · last Fri 13 Nov, 08:0…") is still cut at the end where the row's Try again button narrows the column; the full time is in the details sheet. Not in this round's brief.
+- The view-only state is a fixture with `canAct: false`. As the review notes say, no current role can read Accounting without also being allowed to act.
