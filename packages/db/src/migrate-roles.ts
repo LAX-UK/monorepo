@@ -158,6 +158,8 @@ export const SHOP_COMMERCE_TABLES = [
   "shop_delivery_region",
   "shop_delivery_restricted_country",
   "shop_delivery_quote",
+  /** The picture staff chose to lead the Shop home's first screen. */
+  "shop_home_cover",
 ] as const;
 
 /** Append-only Shop tables: shop_app may INSERT and SELECT only. */

@@ -509,6 +509,12 @@ describe("migrate-roles invariants", () => {
     }
   });
 
+  it("keeps the Shop home cover to shop_app, denied to the Bid API and the worker", () => {
+    expect([...SHOP_COMMERCE_TABLES]).toContain("shop_home_cover");
+    expect([...API_DENY_TABLES]).toContain("shop_home_cover");
+    expect([...WORKER_DENY_TABLES]).toContain("shop_home_cover");
+  });
+
   it("gives shop_app the print-facts tables, and keeps them from api_app and the worker", () => {
     for (const table of ["shop_edition_facts", "shop_print_exception"]) {
       expect([...SHOP_COMMERCE_TABLES]).toContain(table);

@@ -21,6 +21,7 @@ import {
 import { createEditionFramingService } from "./application/framing/edition-framing.service.js";
 import { createFramingService } from "./application/framing/framing.service.js";
 import { GuestErasureService } from "./application/guest-erasure/guest-erasure.service.js";
+import { HOME_COVER_MIN_WIDTH } from "./application/home-cover/home-cover.rules.js";
 import { createHomeFeaturesService } from "./application/home-features/home-features.service.js";
 import { LeadsService } from "./application/leads/leads.service.js";
 import { createProductionTaskService } from "./application/production-task.service.js";
@@ -186,6 +187,7 @@ export function createMinimalShopApiTestDeps(
       }),
       listPublicCategories: async () => ({ items: [] }),
       deliveryRegions: { read: async () => testDeliveryRegionsState() },
+      homeCover: { read: async () => ({ cover: null }) },
       getPublicCategory: async () => null,
       listPublicArtists: async () => ({ items: [] }),
       getPublicArtist: async () => null,
@@ -672,6 +674,12 @@ export function createMinimalShopApiTestDeps(
         clock: { now: () => new Date() },
       }),
       exportPaymentEnabled: false,
+      homeCover: {
+        read: async () => ({ cover: null, minimumWidth: HOME_COVER_MIN_WIDTH }),
+        searchPictures: async () => ({ items: [] }),
+        save: () => Promise.reject(new Error("No home cover store in this test")),
+        clear: () => Promise.reject(new Error("No home cover store in this test")),
+      },
       homeFeatures: createHomeFeaturesService({
         uow: { run: () => Promise.reject(new Error("No featured lists store in this test")) },
         lists: {

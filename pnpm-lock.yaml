@@ -1926,6 +1926,12 @@ importers:
 
   packages/image-processing:
     dependencies:
+      '@auction/domain':
+        specifier: workspace:*
+        version: link:../domain
+      '@auction/types':
+        specifier: workspace:*
+        version: link:../types
       sharp:
         specifier: 0.35.0
         version: 0.35.0

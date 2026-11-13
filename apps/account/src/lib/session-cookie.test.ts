@@ -6,6 +6,7 @@ describe("accountCookiePolicy", () => {
     expect(accountCookiePolicy("https://test-account.lax.bid")).toEqual({
       secure: true,
       sessionCookie: "__Host-lax-account-session",
+      loginCookie: "__Host-lax-account-login",
     });
   });
 
@@ -13,6 +14,7 @@ describe("accountCookiePolicy", () => {
     expect(accountCookiePolicy("http://localhost:3040")).toEqual({
       secure: false,
       sessionCookie: "lax-account-session",
+      loginCookie: "lax-account-login",
     });
   });
 });

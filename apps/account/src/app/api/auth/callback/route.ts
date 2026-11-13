@@ -1,3 +1,4 @@
+import { openPendingLogin } from "@/lib/pending-login-cookie";
 import { safeReturnTo } from "@/lib/safe-return-to";
 import { LAX_ACCOUNT_LOGIN_COOKIE, LAX_ACCOUNT_LOGIN_RETRY_COOKIE } from "@/lib/session-cookie";
 import { discardReplacedSession } from "@/server/application/discard-replaced-session";
@@ -16,10 +17,11 @@ function signInErrorRedirect(publicOrigin: string, reason: string): URL {
 export async function GET(request: Request): Promise<Response> {
   const container = getLaxAccountContainer();
   const publicOrigin = container.config.publicOrigin;
-  const { secure, sessionCookie } = container.cookies;
+  const { secure, sessionCookie, loginCookie } = container.cookies;
   const url = new URL(request.url);
   const cookieStore = await cookies();
   const clearLoginCookies = () => {
+    cookieStore.delete(loginCookie);
     cookieStore.delete(LAX_ACCOUNT_LOGIN_COOKIE);
     cookieStore.delete(LAX_ACCOUNT_LOGIN_RETRY_COOKIE);
   };
@@ -32,7 +34,11 @@ export async function GET(request: Request): Promise<Response> {
       errorDescription: url.searchParams.get("error_description"),
     },
     {
-      pendingRaw: cookieStore.get(LAX_ACCOUNT_LOGIN_COOKIE)?.value,
+      // A missing, unsigned or altered cookie reads as an expired sign-in: the flow restarts.
+      pendingRaw: openPendingLogin(
+        cookieStore.get(loginCookie)?.value,
+        container.config.sessionEncryptionKey,
+      ),
       hadLoginRetry: Boolean(cookieStore.get(LAX_ACCOUNT_LOGIN_RETRY_COOKIE)?.value),
     },
   );

@@ -61,6 +61,14 @@ describe("the Pay page, ready to pay", () => {
     expect(screen.getByRole("region", { name: "Delivery" })).toBeInTheDocument();
   });
 
+  it("stacks the lot and delivery panels so the rail's height never opens a gap between them", () => {
+    draw(ready());
+    const lot = screen.getByRole("region", { name: "Lot" });
+    const grid = lot.parentElement?.parentElement as HTMLElement;
+    expect(grid.className).toContain("lg:grid-rows-[auto_1fr]");
+    expect(grid.className).toContain("lg:items-start");
+  });
+
   it("links the Conditions instead of asking for a checkbox", () => {
     draw(ready());
     expect(screen.queryByRole("checkbox")).toBeNull();

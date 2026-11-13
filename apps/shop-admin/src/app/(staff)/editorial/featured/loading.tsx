@@ -1,3 +1,4 @@
+import { HOME_COVER_COPY } from "@/lib/home-cover";
 import { HOME_FEATURE_SLOT_COPY, HOME_FEATURE_SLOT_ORDER } from "@/lib/home-features";
 import { PageHeader, Skeleton } from "@auction/staff-ui";
 
@@ -7,6 +8,18 @@ export default function FeaturedOnHomeLoading() {
     <div className="flex flex-col gap-6" aria-busy="true">
       <PageHeader title="Featured on home" />
       <div className="flex w-full max-w-[1040px] flex-col gap-6">
+        <section
+          aria-label={HOME_COVER_COPY.title}
+          className="flex flex-col gap-4 rounded-staff-lg border border-staff-line bg-staff-surface p-4 sm:p-6"
+        >
+          <div className="flex flex-col gap-2">
+            <h2 className="font-staff text-staff-md font-semibold text-staff-fg">
+              {HOME_COVER_COPY.title}
+            </h2>
+            <Skeleton className="h-4 w-full max-w-md" />
+          </div>
+          <Skeleton className="h-40 w-full" />
+        </section>
         {HOME_FEATURE_SLOT_ORDER.map((slot) => (
           <section
             key={slot}

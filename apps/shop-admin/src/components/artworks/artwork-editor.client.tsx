@@ -1360,7 +1360,7 @@ export function ArtworkEditor({
           ) : null}
 
           {!canSave ? null : (
-            <FormActions className="border-t border-staff-line-subtle pt-4">
+            <FormActions>
               <StaffButton asChild variant="secondary">
                 <Link href={companion ? `/artworks/${companion.artworkId}` : "/artworks"}>
                   Cancel

@@ -8,3 +8,5 @@ export {
   NORMALIZED_MAX_EDGE_PX,
   createSharpImageNormalizer,
 } from "./sharp-image-normalizer.js";
+export type { CoverImageAnalyser, CoverMeasureRequest } from "./cover/cover-image-analyser.js";
+export { SharpCoverImageAnalyser } from "./cover/sharp-cover-image-analyser.js";

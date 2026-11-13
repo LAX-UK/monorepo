@@ -174,7 +174,9 @@ only what is staff: `requires` on buttons and menu items, read-only views, and e
   an optional calendar, a 24-hour clock and a fixed London zone label), `useUnsavedChanges`,
   `UnsavedChangesGuard` and `confirmDiscardChanges` (ask before unsaved changes are lost),
   `FileDropzone` (drop or browse; the native
-  file input stays inside, visually hidden), `EnumSelect` (closed lists, e.g. valid next
+  file input stays inside, visually hidden), `FocalPointPicker` (mark where a picture's subject is by
+  click, drag or arrow keys; each move is announced politely; the marker's white-and-black ring is a
+  documented exception to the colour tokens, as it must show on any photograph), `EnumSelect` (closed lists, e.g. valid next
   states), `EntityPicker` (search records by name), `FormSection`, `FieldRow`, `FormActions`,
   `FormErrorSummary` (takes focus, links focus each field), `StaffCheckbox`, `StaffRadio`,
   `StaffSwitch`, `ChoiceRow`,

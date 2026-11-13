@@ -66,7 +66,7 @@ export function MarketingPromptDialog({
       <DialogContent
         data-testid="marketing-prompt-dialog"
         data-variant={variant}
-        className="!top-auto !right-0 !bottom-0 !left-0 grid max-h-[min(92svh,48rem)] !w-auto !max-w-none !translate-x-0 !translate-y-0 grid-cols-1 gap-0 overflow-y-auto rounded-t-2xl border-outline-variant/50 bg-surface-container-lowest p-0 shadow-2xl motion-reduce:duration-0 sm:!top-1/2 sm:!right-auto sm:!bottom-auto sm:!left-1/2 sm:max-h-[min(86vh,40rem)] sm:!w-[min(64rem,calc(100vw-3rem))] sm:!translate-x-[-50%] sm:!translate-y-[-50%] sm:grid-cols-[minmax(0,45%)_minmax(0,55%)] sm:overflow-hidden sm:rounded-lg"
+        className="!top-auto !right-0 !bottom-0 !left-0 grid max-h-[min(92svh,48rem)] !w-auto !max-w-none !translate-x-0 !translate-y-0 grid-cols-1 gap-0 overflow-y-auto rounded-t-2xl rounded-b-none border-outline-variant/50 bg-surface-container-lowest p-0 shadow-2xl motion-reduce:duration-0 sm:!top-1/2 sm:!right-auto sm:!bottom-auto sm:!left-1/2 sm:max-h-[min(86vh,40rem)] sm:!w-[min(64rem,calc(100vw-3rem))] sm:!translate-x-[-50%] sm:!translate-y-[-50%] sm:grid-cols-[minmax(0,45%)_minmax(0,55%)] sm:overflow-hidden sm:rounded-lg"
         overlayClassName="bg-black/50 motion-reduce:duration-0"
         overlayProps={{ onClick: onDismiss }}
         onPointerDownOutside={(event) => event.preventDefault()}

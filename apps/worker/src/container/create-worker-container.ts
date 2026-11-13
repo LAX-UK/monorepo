@@ -1,6 +1,7 @@
 import { ArtworkOfferLock } from "@auction/artwork-register-contracts";
 import { assertRuntimeOwnership } from "@auction/background-runtime";
 import { closeDb, createDb } from "@auction/db";
+import { SharpCoverImageAnalyser } from "@auction/image-processing";
 import { captureBackgroundError, initNodeSentry } from "@auction/observability";
 import {
   DrizzleArtworkRegisterRepository,
@@ -57,7 +58,6 @@ import { isMarketingEventsEnabled } from "../lib/marketing-events-enabled.js";
 import { queueRuntimeEnvFromWorkerEnv } from "../lib/queue-runtime-env.js";
 import { runtimeOwnershipConfigFromWorkerEnv } from "../lib/runtime-ownership-config.js";
 import { loadSentryMonitorSlugs } from "../lib/sentry-cron.js";
-import { SharpCoverImageAnalyser } from "../lib/sharp-cover-image-analyser.js";
 import { SharpImageProcessor } from "../lib/sharp-image-processor.js";
 import { createUploadStorage } from "../lib/upload-storage.js";
 import { registerWorkerLotLifecycleConsumer } from "../lifecycle/register-lot-lifecycle-worker.js";

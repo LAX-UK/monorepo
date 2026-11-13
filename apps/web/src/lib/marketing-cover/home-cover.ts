@@ -1,6 +1,7 @@
 import { lotWasSold } from "@/lib/lot/lot-outcome";
 import { salePath } from "@/lib/seo/url";
 import type { HomeStateResult } from "@auction/domain";
+import { photoFromCover } from "@auction/marketing-ui/cover/cover-photo";
 import { COVER_MAX_SLIDES } from "@auction/marketing-ui/cover/cover-sources";
 import type { CoverSlide } from "@auction/marketing-ui/cover/cover-types";
 import type { Lot, Sale } from "@auction/types";
@@ -11,7 +12,6 @@ import {
   type BidCoverLinks,
   type BidCoverSaleVM,
   type BidViewerSale,
-  photoFromCover,
   toBidCoverSlide,
 } from "./bid-cover.adapter";
 import { coverFilmFor } from "./cover-film";

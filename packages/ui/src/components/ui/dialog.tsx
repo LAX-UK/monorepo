@@ -39,7 +39,7 @@ const DialogContent = React.forwardRef<
       ref={ref}
       data-lenis-prevent
       className={cn(
-        "fixed top-[50%] left-[50%] z-[var(--z-overlay,60)] grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border border-outline-variant/20 bg-surface-container-lowest p-6 shadow-lg duration-300 sm:rounded-lg",
+        "fixed top-[50%] left-[50%] z-[var(--z-overlay,60)] grid w-[calc(100%-2rem)] max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border border-outline-variant/20 bg-surface-container-lowest p-6 shadow-lg duration-300 rounded-lg",
         className,
       )}
       {...props}

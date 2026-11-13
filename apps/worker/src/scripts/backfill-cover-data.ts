@@ -33,6 +33,7 @@ import { createDb, sale } from "@auction/db";
  */
 import { coverAnalysisHash } from "@auction/domain";
 import { resolveCoverSlotSources } from "@auction/domain";
+import { SharpCoverImageAnalyser } from "@auction/image-processing";
 import { SALE_COVER_SLOT_NAMES, type SaleCoverSlot, type SaleCoverSlotName } from "@auction/types";
 import { and, eq, isNull, sql } from "drizzle-orm";
 import pino from "pino";
@@ -44,7 +45,6 @@ import { type PictureReport, summarisePictures } from "../lib/cover-backfill-rep
 import { coverSlotVerdict, lotPlateVerdict } from "../lib/cover-picture-verdict.js";
 import { fetchExternalPicture, meanLuminance } from "../lib/external-picture.js";
 import { loadMediaAssetSizes } from "../lib/media-asset-sizes.js";
-import { SharpCoverImageAnalyser } from "../lib/sharp-cover-image-analyser.js";
 import { SharpImageProcessor } from "../lib/sharp-image-processor.js";
 import { createUploadStorage } from "../lib/upload-storage.js";
 import { DrizzleCoverAnalysisJobRepository } from "../repositories/drizzle-cover-analysis-job.repository.js";

@@ -42,6 +42,7 @@ import { registerAdminEditionRunRoutes } from "./routes/admin/v1/edition-runs.ro
 import { registerAdminFramingTaskRoutes } from "./routes/admin/v1/framing-tasks.routes.js";
 import { registerAdminFramingRoutes } from "./routes/admin/v1/framing.routes.js";
 import { registerAdminHealthRoutes } from "./routes/admin/v1/health.routes.js";
+import { registerAdminHomeCoverRoutes } from "./routes/admin/v1/home-cover.routes.js";
 import { registerAdminHomeFeatureRoutes } from "./routes/admin/v1/home-features.routes.js";
 import { registerAdminInventoryMoveRoutes } from "./routes/admin/v1/inventory-moves.routes.js";
 import { registerAdminOperationsRoutes } from "./routes/admin/v1/operations.routes.js";
@@ -68,6 +69,7 @@ import { registerPublicFramingRoutes } from "./routes/v1/framing.routes.js";
 import { registerGuestCheckoutRoutes } from "./routes/v1/guest-checkout.routes.js";
 import { registerGuestOrderHelpRoutes } from "./routes/v1/guest-order-help.routes.js";
 import { registerHelpRoutes } from "./routes/v1/help.routes.js";
+import { registerHomeCoverRoutes } from "./routes/v1/home-cover.routes.js";
 import { registerMerchandiseRoutes } from "./routes/v1/merchandise.routes.js";
 import { registerOrderRoutes } from "./routes/v1/orders.routes.js";
 import { registerPortalConnectRoutes } from "./routes/v1/portal-connect.routes.js";
@@ -182,6 +184,7 @@ export function createShopApiApp(options: CreateShopApiAppOptions) {
   void registerPublicFramingRoutes(app, options.deps.framing);
   void registerCategoryRoutes(app, options.deps.catalogue);
   void registerDeliveryRegionRoutes(app, options.deps.catalogue);
+  void registerHomeCoverRoutes(app, options.deps.catalogue);
   void registerArtistRoutes(app, options.deps.catalogue);
   void registerArtistApplicationRoutes(app, options.deps.artistApplicant);
   if (options.deps.env.SHOP_EDITORIAL_ENABLED && options.deps.editorial) {
@@ -233,6 +236,7 @@ export function createShopApiApp(options: CreateShopApiAppOptions) {
         void registerAdminEditionRunRoutes(adminScope, options.deps.admin);
         void registerAdminPrintFulfilmentRoutes(adminScope, options.deps.admin);
         void registerAdminHomeFeatureRoutes(adminScope, options.deps.admin);
+        void registerAdminHomeCoverRoutes(adminScope, options.deps.admin);
         void registerAdminFramingRoutes(adminScope, options.deps.admin);
         void registerAdminEditionFramingRoutes(adminScope, options.deps.admin);
         void registerAdminFramingTaskRoutes(adminScope, options.deps.admin);
