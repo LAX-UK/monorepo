@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import * as React from "react";
 import { describe, expect, it, vi } from "vitest";
-import { DataTable } from "./data-table.js";
+import { DataTable, tableMinWidths } from "./data-table.js";
 import type { DataColumn } from "./types.js";
 
 type Row = { id: string; name: string; total: number };
@@ -445,5 +445,90 @@ describe("DataTable phone cards", () => {
     );
     const facts = card?.querySelectorAll("span.truncate.min-w-0") ?? [];
     expect([...facts].map((fact) => fact.textContent)).toEqual(["27 Nov"]);
+  });
+
+  it("keeps a phone-only column out of the table and puts it in the phone card", () => {
+    render(
+      <DataTable
+        label="People"
+        columns={[
+          { id: "name", header: "Name", mobile: "title", cell: (row) => row.name },
+          {
+            id: "seen",
+            header: "Seen",
+            headerHidden: true,
+            phoneOnly: true,
+            mobile: "meta",
+            cell: (row) => `Seen ${row.total} times`,
+          },
+        ]}
+        data={rows}
+        getRowId={(r) => r.id}
+      />,
+    );
+    expect(
+      within(screen.getByRole("table", { name: "People" })).queryByText("Seen 300 times"),
+    ).toBeNull();
+    expect(
+      within(screen.getByRole("table", { name: "People" })).getAllByRole("columnheader"),
+    ).toHaveLength(1);
+    const list = screen.getByRole("list", { name: "People" });
+    expect(within(list).getByText("Seen 300 times")).toBeInTheDocument();
+  });
+
+  it("gives a detail column a wrapping line of its own under the title", () => {
+    render(
+      <DataTable
+        label="People"
+        columns={[
+          { id: "name", header: "Name", mobile: "title", cell: (row) => row.name },
+          {
+            id: "note",
+            header: "Note",
+            mobile: "detail",
+            cell: (row) => (row.id === "a" ? "A long note that should wrap, not be cut" : null),
+          },
+        ]}
+        data={rows}
+        getRowId={(r) => r.id}
+      />,
+    );
+    const list = screen.getByRole("list", { name: "People" });
+    const [first, second] = within(list).getAllByRole("listitem");
+    const note = within(first as HTMLElement).getByText("A long note that should wrap, not be cut");
+    expect(note).toHaveClass("break-words");
+    expect(note).not.toHaveClass("truncate");
+    // An empty detail takes no line.
+    expect(second?.querySelector(".break-words")).toBeNull();
+  });
+});
+
+describe("tableMinWidths", () => {
+  const base: DataColumn<Row>[] = [
+    { id: "name", header: "Name", width: "160px", cell: (row) => row.name },
+    { id: "note", header: "Note", minWidth: "240px", cell: (row) => row.name },
+    { id: "co", header: "Company", width: "140px", hideBelow: "lg", cell: (row) => row.name },
+    { id: "made", header: "Made", width: "100px", hideBelow: "xl", cell: (row) => row.name },
+    { id: "share", header: "Share", width: "10%", cell: (row) => row.name },
+  ];
+
+  it("adds up the px widths showing at each breakpoint and the flexible column's minimum", () => {
+    expect(tableMinWidths(base, false)).toEqual({ md: 400, lg: 540, xl: 640 });
+    // The selection column is 44px.
+    expect(tableMinWidths(base, true)).toEqual({ md: 444, lg: 584, xl: 684 });
+  });
+
+  it("is off when no column sets a minimum", () => {
+    expect(tableMinWidths(columns, false)).toBeNull();
+  });
+
+  it("sets the minimums on the table so a squeezed table scrolls instead", () => {
+    render(<DataTable label="People" columns={base} data={rows} getRowId={(r) => r.id} />);
+    expect(
+      screen.getByRole("table", { name: "People" }).style.getPropertyValue("--staff-table-min-xl"),
+    ).toBe("640px");
+    expect(screen.getByRole("table", { name: "People" }).className).toContain(
+      "xl:min-w-(--staff-table-min-xl)",
+    );
   });
 });
