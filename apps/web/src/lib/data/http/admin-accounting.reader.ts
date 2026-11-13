@@ -12,6 +12,7 @@ import type {
 export type AccountingQueueParams = {
   tab: AccountingQueueTab;
   organisation: AccountingOrganisation | null;
+  reference: string | null;
   limit: number;
   offset: number;
 };
@@ -23,6 +24,7 @@ export function accountingQueryString(params: AccountingQueueParams): string {
     offset: String(params.offset),
   });
   if (params.organisation) qs.set("organisation", params.organisation);
+  if (params.reference) qs.set("reference", params.reference);
   return qs.toString();
 }
 

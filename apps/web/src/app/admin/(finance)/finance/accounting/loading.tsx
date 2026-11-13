@@ -6,7 +6,7 @@ export default function AccountingLoading() {
     <ListPageSkeleton
       title="Accounting"
       description={ACCOUNTING_DESCRIPTION}
-      columns={["Document", "Status", "Last problem", "Company", "Amount", "Updated"]}
+      columns={["Document", "Status", "Last problem", "Company", "Amount", "Attempts", "Updated"]}
     />
   );
 }

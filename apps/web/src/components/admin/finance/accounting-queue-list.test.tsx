@@ -5,7 +5,11 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AccountingQueueList, type AccountingQueueListProps } from "./accounting-queue-list";
 
-const { tryAgain, refresh } = vi.hoisted(() => ({ tryAgain: vi.fn(), refresh: vi.fn() }));
+const { tryAgain, refresh, navigate } = vi.hoisted(() => ({
+  tryAgain: vi.fn(),
+  refresh: vi.fn(),
+  navigate: vi.fn(),
+}));
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ refresh, push: vi.fn(), replace: vi.fn() }),
@@ -14,6 +18,17 @@ vi.mock("next/navigation", () => ({
 }));
 vi.mock("@/lib/actions/admin/admin-accounting", () => ({
   tryAgainAccountingDocumentAction: tryAgain,
+}));
+vi.mock("@/components/admin/staff/use-staff-list-navigation", () => ({
+  useStaffListNavigation: () => ({
+    pending: false,
+    navigate,
+    Link: ({ href, children, ...rest }: { href: string; children: React.ReactNode }) => (
+      <a href={href} {...rest}>
+        {children}
+      </a>
+    ),
+  }),
 }));
 
 const rows = toAccountingStaffRows([
@@ -36,6 +51,11 @@ function renderList(patch: Partial<AccountingQueueListProps> = {}) {
     tab: "failed",
     rows,
     counts,
+    issuedToday: 0,
+    lastSent: null,
+    organisation: null,
+    reference: "",
+    referenceError: null,
     pageSize: 50,
     pagination: { summary: "1–2 of 2 documents", prevHref: null, nextHref: null },
     filtered: false,
@@ -65,6 +85,7 @@ describe("AccountingQueueList", () => {
   beforeEach(() => {
     tryAgain.mockReset();
     refresh.mockReset();
+    navigate.mockReset();
   });
 
   it("lists each document with its reference, type, company, amount and problem", () => {
@@ -74,7 +95,7 @@ describe("AccountingQueueList", () => {
       "Invoice · Bid",
       "Credit note · lax.art",
       "£150.00",
-      "Refused",
+      "Failed",
       "Locked period",
       "A line carries VAT, but Books has no VAT rate set up for it.",
     ]) {
@@ -82,12 +103,33 @@ describe("AccountingQueueList", () => {
     }
   });
 
-  it("counts the tabs that have work waiting", () => {
-    renderList();
+  it("counts the waiting tabs, and the Issued tab by today's total", () => {
+    renderList({ issuedToday: 5 });
     const tabs = screen.getByRole("navigation", { name: /views/i });
     expect(within(tabs).getByRole("link", { name: /Needs a person/ })).toHaveTextContent("4");
     expect(within(tabs).getByRole("link", { name: /Failed/ })).toHaveTextContent("2");
+    expect(within(tabs).getByRole("link", { name: /Issued/ })).toHaveTextContent("5");
+  });
+
+  it("leaves the Issued tab uncounted when nothing was issued today", () => {
+    renderList({ issuedToday: 0 });
+    const tabs = screen.getByRole("navigation", { name: /views/i });
     expect(within(tabs).getByRole("link", { name: /Issued/ })).not.toHaveTextContent(/\d/);
+  });
+
+  it("names the source and when it last reached Books", () => {
+    renderList({
+      lastSent: { at: "2026-11-11T09:00:00.000Z", rehearsal: false },
+      organisation: "london_art_exchange",
+    });
+    expect(
+      screen.getByText(/Zoho Books · London Art Exchange Ltd · last sent/),
+    ).toBeInTheDocument();
+  });
+
+  it("says when the last document was only rehearsed", () => {
+    renderList({ lastSent: { at: "2026-11-11T09:00:00.000Z", rehearsal: true } });
+    expect(screen.getByText(/Rehearsal only · last rehearsed/)).toBeInTheDocument();
   });
 
   it("tries a document again after a confirm that names the same reference", async () => {
@@ -108,17 +150,27 @@ describe("AccountingQueueList", () => {
     await waitFor(() => expect(refresh).toHaveBeenCalled());
   });
 
+  it("offers each actionable row a visible Try again button", () => {
+    renderList();
+    // The failed row has a Try again button in its own cell, as well as in the … menu.
+    expect(screen.getAllByRole("button", { name: "Try again" }).length).toBeGreaterThan(0);
+  });
+
   it("explains a locked period above the list", () => {
     renderList({ tab: "needs_person" });
     expect(screen.getByText("1 document is dated in a locked period")).toBeInTheDocument();
   });
 
-  it("asks for confirmation of today's date before trying a locked period again", async () => {
+  it("requires an acknowledgement before trying a locked period again", async () => {
     renderList();
     const menu = await openActions("LAX-ART-CN-7");
     fireEvent.click(within(menu).getByRole("menuitem", { name: "Try again" }));
     const dialog = await screen.findByRole("dialog");
-    expect(within(dialog).getByText(/today's date/)).toBeInTheDocument();
+    expect(within(dialog).getByText(/accountant has closed/)).toBeInTheDocument();
+    const confirm = within(dialog).getByRole("button", { name: "Try again" });
+    expect(confirm).toBeDisabled();
+    fireEvent.click(within(dialog).getByRole("checkbox"));
+    expect(confirm).toBeEnabled();
   });
 
   it("keeps the dialog open with the reason when the try again is refused", async () => {
@@ -141,7 +193,17 @@ describe("AccountingQueueList", () => {
     expect(within(menu).getByRole("menuitem", { name: "Copy LAX reference" })).toBeInTheDocument();
   });
 
-  it("links an issued document to Books", () => {
+  it("opens a details sheet with the whole problem when a row is opened", async () => {
+    renderList();
+    fireEvent.click(screen.getAllByText("LAX-BID-INV-01hx3")[0] as HTMLElement);
+    const sheet = await screen.findByRole("dialog");
+    expect(
+      within(sheet).getByText("A line carries VAT, but Books has no VAT rate set up for it."),
+    ).toBeInTheDocument();
+    expect(within(sheet).getByText("LAX reference")).toBeInTheDocument();
+  });
+
+  it("links an issued document to Books by its Books number", () => {
     renderList({
       tab: "issued",
       rows: toAccountingStaffRows([
@@ -157,10 +219,23 @@ describe("AccountingQueueList", () => {
         }),
       ]),
     });
-    expect(screen.getAllByRole("link", { name: /INV-000042 · 4600000000123/ })[0]).toHaveAttribute(
+    expect(screen.getAllByRole("link", { name: /INV-000042/ })[0]).toHaveAttribute(
       "href",
       "https://books.zoho.eu/app/1#/invoices/4600000000123",
     );
+  });
+
+  it("searches by LAX reference from the toolbar", () => {
+    renderList();
+    const search = screen.getByRole("searchbox", { name: /LAX reference/ });
+    fireEvent.change(search, { target: { value: "LAX-BID-INV-9" } });
+    fireEvent.submit(search.closest("form") as HTMLFormElement);
+    expect(navigate).toHaveBeenCalledWith(expect.stringContaining("reference=LAX-BID-INV-9"));
+  });
+
+  it("warns when the search is not a LAX reference", () => {
+    renderList({ referenceError: "Enter a LAX reference, e.g. LAX-BID-INV-….", rows: [] });
+    expect(screen.getByText("That is not a LAX reference")).toBeInTheDocument();
   });
 
   it("says a rehearsal reaches no Books organisation", () => {
@@ -173,14 +248,14 @@ describe("AccountingQueueList", () => {
     expect(screen.getByText("Nothing needs a person")).toBeInTheDocument();
   });
 
-  it("shows a filter by company as a chip", () => {
+  it("shows the company filter as a segmented control", () => {
     renderList({
-      rows: [],
-      pagination: null,
-      filtered: true,
+      organisation: "london_art_exchange",
       search: { organisation: "london_art_exchange" },
     });
-    expect(screen.getByText("Company: London Art Exchange")).toBeInTheDocument();
+    const active = screen.getByRole("radio", { name: "Art Exchange" });
+    expect(active).toHaveAttribute("data-state", "on");
+    expect(screen.getByRole("radio", { name: "Both" })).toHaveAttribute("data-state", "off");
   });
 
   it("shows a failure in place of the rows, with a way to try loading again", () => {

@@ -2,15 +2,19 @@ import { describe, expect, it } from "vitest";
 import { accountingRow } from "./accounting-queue.fixture";
 import {
   ACCOUNTING_EMPTY_COPY,
+  ORGANISATION_SEGMENTS,
   accountingBooksCell,
-  accountingFilterChips,
   accountingHref,
   accountingRangeSummary,
   accountingStatePresentation,
   accountingTabs,
   activeAccountingTab,
   activeOrganisation,
+  activeReference,
+  legalNameForOrganisation,
+  legalNamesForFilter,
   lockedPeriodTitle,
+  rowMetaLine,
   toAccountingStaffRows,
   tryAgainCopy,
   tryAgainToast,
@@ -26,6 +30,8 @@ describe("Accounting URL state", () => {
     expect(activeOrganisation({})).toBeNull();
     expect(activeOrganisation({ organisation: "london_art_exchange" })).toBe("london_art_exchange");
     expect(activeOrganisation({ organisation: "bid" })).toBeNull();
+    expect(activeReference({})).toBe("");
+    expect(activeReference({ reference: "  LAX-BID-INV-1  " })).toBe("LAX-BID-INV-1");
   });
 
   it("builds links that keep the filter and restart paging", () => {
@@ -37,26 +43,36 @@ describe("Accounting URL state", () => {
     );
   });
 
-  it("offers the four tabs, counting only the ones with work waiting", () => {
-    const tabs = accountingTabs({ organisation: "london_auction_xchange" }, counts);
+  it("offers the four tabs, counting waiting work and the Issued tab by today's total", () => {
+    const tabs = accountingTabs({ organisation: "london_auction_xchange" }, counts, 7);
     expect(tabs.map((tab) => [tab.id, tab.label, tab.count])).toEqual([
       ["needs_person", "Needs a person", 3],
       ["failed", "Failed", undefined],
       ["waiting", "Waiting", 12],
-      ["issued", "Issued", undefined],
+      ["issued", "Issued", 7],
     ]);
     expect(tabs[0]?.href).toBe("/admin/finance/accounting?organisation=london_auction_xchange");
+    // Nothing issued today leaves the Issued tab without a count.
+    expect(accountingTabs({}, counts, 0)[3]?.count).toBeUndefined();
   });
 
-  it("shows the company filter as a chip that clears it", () => {
-    expect(accountingFilterChips({})).toEqual([]);
-    expect(accountingFilterChips({ organisation: "london_art_exchange", tab: "failed" })).toEqual([
-      {
-        id: "organisation",
-        label: "Company: London Art Exchange",
-        clearHref: "/admin/finance/accounting?tab=failed",
-      },
+  it("offers the three-way company filter as a segmented control, both first", () => {
+    expect(ORGANISATION_SEGMENTS.map((s) => s.value)).toEqual([
+      "",
+      "london_auction_xchange",
+      "london_art_exchange",
     ]);
+  });
+});
+
+describe("Company names", () => {
+  it("uses the filed company name with its legal suffix", () => {
+    expect(legalNameForOrganisation("london_auction_xchange")).toBe("London Auction Xchange LTD");
+    expect(legalNameForOrganisation("london_art_exchange")).toBe("London Art Exchange Ltd");
+    expect(legalNamesForFilter(null)).toBe(
+      "London Auction Xchange LTD and London Art Exchange Ltd",
+    );
+    expect(legalNamesForFilter("london_art_exchange")).toBe("London Art Exchange Ltd");
   });
 });
 
@@ -66,15 +82,24 @@ describe("Accounting rows", () => {
     expect(row).toMatchObject({
       reference: "LAX-BID-INV-01hx3",
       kind: "Invoice · Bid",
-      company: "London Auction Xchange",
+      company: "London Auction Xchange LTD",
       amount: "£150.00",
       attempts: 2,
-      state: { label: "Refused", tone: "danger" },
+      state: { label: "Failed", tone: "danger" },
       problem: "A line carries VAT, but Books has no VAT rate set up for it.",
       books: { kind: "none" },
       canTryAgain: true,
       rehearsal: false,
     });
+  });
+
+  it("shows the phone row meta as tries and the last attempt", () => {
+    expect(rowMetaLine({ attempts: 1, updatedAt: "2026-11-11T09:30:00Z" })).toMatch(
+      /^Tried once · last /,
+    );
+    expect(rowMetaLine({ attempts: 3, updatedAt: "2026-11-11T09:30:00Z" })).toMatch(
+      /^Tried 3 times · last /,
+    );
   });
 
   it("marks a locked period, a rehearsal and each stage with a badge that reads without colour", () => {
@@ -91,19 +116,20 @@ describe("Accounting rows", () => {
     expect(accountingStatePresentation(accountingRow({ state: "unknown" })).label).toBe(
       "Checking Books",
     );
+    expect(accountingStatePresentation(accountingRow({ state: "failed" })).label).toBe("Failed");
     expect(accountingStatePresentation(accountingRow({ state: "issued" })).label).toBe("In Books");
   });
 
-  it("links an issued document to Books, and never a rehearsal", () => {
+  it("links an issued document to Books by its Books number only, and never a rehearsal", () => {
     const books = { number: "INV-000042", id: "4600000000123", url: "https://books.zoho.eu/x" };
     expect(accountingBooksCell(accountingRow({ books }))).toEqual({
       kind: "link",
-      label: "INV-000042 · 4600000000123",
+      label: "INV-000042",
       href: "https://books.zoho.eu/x",
     });
     expect(accountingBooksCell(accountingRow({ books: { ...books, url: null } }))).toEqual({
       kind: "text",
-      label: "INV-000042 · 4600000000123",
+      label: "INV-000042",
     });
     expect(
       accountingBooksCell(
@@ -125,10 +151,10 @@ describe("Try again", () => {
     expect(copy.confirmLabel).toBe("Try again");
   });
 
-  it("asks a person to confirm booking on today's date first for a locked period", () => {
+  it("tells a person to have the accountant reopen the period first for a locked period", () => {
     const copy = tryAgainCopy({ reference: "LAX-BID-INV-01hx3", lockedPeriod: true });
-    expect(copy.description).toContain("today's date");
-    expect(copy.description).toContain("Only try again once that is confirmed.");
+    expect(copy.description).toContain("accountant has closed");
+    expect(copy.description).toContain("reopen it");
   });
 
   it("heads the locked-period explanation with how many documents it covers", () => {

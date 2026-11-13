@@ -21,6 +21,11 @@ export default async function AdminAccountingPage({
       tab={page.tab}
       rows={page.rows}
       counts={page.counts}
+      issuedToday={page.issuedToday}
+      lastSent={page.lastSent}
+      organisation={page.organisation}
+      reference={page.reference}
+      referenceError={page.referenceError}
       pageSize={page.pageSize}
       pagination={page.pagination}
       filtered={page.filtered}

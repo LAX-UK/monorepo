@@ -1,15 +1,14 @@
 import { buildListHref } from "@/lib/admin/admin-list-params";
+import { legalEntityFor } from "@auction/branding";
 import {
-  type FilterOption,
   type DataView as StaffDataView,
   type StatusPresentation,
+  formatStaffDateTime,
   formatStaffMoney,
 } from "@auction/staff-ui";
 import {
   ACCOUNTING_DOCUMENT_TYPE_LABELS,
   ACCOUNTING_LOCKED_PERIOD_TEXT,
-  ACCOUNTING_ORGANISATIONS,
-  ACCOUNTING_ORGANISATION_LABELS,
   ACCOUNTING_PRODUCT_LABELS,
   ACCOUNTING_QUEUE_TABS,
   ACCOUNTING_QUEUE_TAB_LABELS,
@@ -21,6 +20,23 @@ import {
   isAccountingOrganisation,
   isAccountingQueueTab,
 } from "@auction/types";
+
+/** Which company runs the accounting for each organisation, so its filed name can be read. */
+const ORGANISATION_PRODUCT: Readonly<Record<AccountingOrganisation, "bid" | "shop">> = {
+  london_auction_xchange: "bid",
+  london_art_exchange: "shop",
+};
+
+/** The company's registered name, with its legal suffix ("London Auction Xchange LTD"). */
+export function legalNameForOrganisation(organisation: AccountingOrganisation): string {
+  return legalEntityFor(ORGANISATION_PRODUCT[organisation]).name;
+}
+
+/** The company names the current filter covers, joined for the header: one company, or both. */
+export function legalNamesForFilter(organisation: AccountingOrganisation | null): string {
+  if (organisation) return legalNameForOrganisation(organisation);
+  return `${legalNameForOrganisation("london_auction_xchange")} and ${legalNameForOrganisation("london_art_exchange")}`;
+}
 
 export const ACCOUNTING_PATH = "/admin/finance/accounting";
 
@@ -44,6 +60,18 @@ export function activeOrganisation(search: AccountingSearch): AccountingOrganisa
   return isAccountingOrganisation(organisation) ? organisation : null;
 }
 
+/** A reference typed into the toolbar search, trimmed; empty when there is none. */
+export function activeReference(search: AccountingSearch): string {
+  return first(search.reference).trim();
+}
+
+/** The three-way organisation filter as a segmented control: both companies, or one. */
+export const ORGANISATION_SEGMENTS: readonly { value: string; label: string }[] = [
+  { value: "", label: "Both" },
+  { value: "london_auction_xchange", label: "Auction Xchange" },
+  { value: "london_art_exchange", label: "Art Exchange" },
+];
+
 /** A link to the page with some of its URL state changed; paging restarts unless it is changed. */
 export function accountingHref(
   search: AccountingSearch,
@@ -60,34 +88,26 @@ export function accountingHref(
 /** The tabs a person works through, each with its count while it has work in it. */
 const COUNTED_TABS: readonly AccountingQueueTab[] = ["needs_person", "failed", "waiting"];
 
+/**
+ * The queue tabs. The waiting tabs carry the count waiting; Issued carries how many reached Books
+ * today (London), so staff see the day's progress rather than the lifetime total.
+ */
 export function accountingTabs(
   search: AccountingSearch,
   counts: Record<AccountingQueueTab, number>,
+  issuedToday: number,
 ): StaffDataView[] {
-  return ACCOUNTING_QUEUE_TABS.map((tab) => ({
-    id: tab,
-    label: ACCOUNTING_QUEUE_TAB_LABELS[tab],
-    href: accountingHref(search, { tab: tab === DEFAULT_ACCOUNTING_TAB ? null : tab }),
-    ...(COUNTED_TABS.includes(tab) && counts[tab] > 0 ? { count: counts[tab] } : {}),
-  }));
-}
-
-export const ORGANISATION_FILTERS: readonly FilterOption[] = ACCOUNTING_ORGANISATIONS.map(
-  (value) => ({ value, label: ACCOUNTING_ORGANISATION_LABELS[value] }),
-);
-
-export type AccountingFilterChip = { id: string; label: string; clearHref: string };
-
-export function accountingFilterChips(search: AccountingSearch): AccountingFilterChip[] {
-  const organisation = activeOrganisation(search);
-  if (!organisation) return [];
-  return [
-    {
-      id: "organisation",
-      label: `Company: ${ACCOUNTING_ORGANISATION_LABELS[organisation]}`,
-      clearHref: accountingHref(search, { organisation: null }),
-    },
-  ];
+  return ACCOUNTING_QUEUE_TABS.map((tab) => {
+    const count = tab === "issued" ? issuedToday : counts[tab];
+    const shows =
+      tab === "issued" ? issuedToday > 0 : COUNTED_TABS.includes(tab) && counts[tab] > 0;
+    return {
+      id: tab,
+      label: ACCOUNTING_QUEUE_TAB_LABELS[tab],
+      href: accountingHref(search, { tab: tab === DEFAULT_ACCOUNTING_TAB ? null : tab }),
+      ...(shows ? { count } : {}),
+    };
+  });
 }
 
 const STATE_PRESENTATION: Readonly<Record<AccountingDocumentState, StatusPresentation>> = {
@@ -95,7 +115,8 @@ const STATE_PRESENTATION: Readonly<Record<AccountingDocumentState, StatusPresent
   sending: { label: "Sending", tone: "info" },
   unknown: { label: "Checking Books", tone: "info" },
   needs_review: { label: "Needs a person", tone: "warning" },
-  failed: { label: "Refused", tone: "danger" },
+  // One word, matching the Failed tab and the Failed jobs source.
+  failed: { label: "Failed", tone: "danger" },
   issued: { label: "In Books", tone: "success" },
   cancelled: { label: "Cancelled", tone: "neutral" },
 };
@@ -121,7 +142,8 @@ export function accountingBooksCell(
 ): AccountingBooksCell {
   if (!row.books) return { kind: "none" };
   if (row.targetMode === "dry_run") return { kind: "text", label: "Rehearsal, not in Books" };
-  const label = `${row.books.number} · ${row.books.id}`;
+  // Only the Books number staff would quote, never the internal provider id.
+  const label = row.books.number;
   return row.books.url ? { kind: "link", label, href: row.books.url } : { kind: "text", label };
 }
 
@@ -154,7 +176,7 @@ export function toAccountingStaffRows(rows: readonly AccountingQueueRow[]): Acco
       reference: row.reference,
       kind: `${documentType} · ${ACCOUNTING_PRODUCT_LABELS[row.product]}`,
       documentType,
-      company: ACCOUNTING_ORGANISATION_LABELS[row.organisation],
+      company: legalNameForOrganisation(row.organisation),
       amount: formatStaffMoney(row.grossPence, "GBP"),
       grossPence: row.grossPence,
       attempts: row.attempts,
@@ -179,11 +201,15 @@ export function tryAgainCopy(row: Pick<AccountingStaffRow, "reference" | "locked
   const same = `It is sent again as the same document, under the same LAX reference ${row.reference}. No new document is made.`;
   return {
     title: `Try ${row.reference} again?`,
-    description: row.lockedPeriod
-      ? `${ACCOUNTING_LOCKED_PERIOD_TEXT} Only try again once that is confirmed. ${same}`
-      : same,
+    description: row.lockedPeriod ? `${ACCOUNTING_LOCKED_PERIOD_TEXT} ${same}` : same,
     confirmLabel: "Try again",
   };
+}
+
+/** The phone-only row meta: "Tried 3 times · last Wed 11 Nov, 09:30 GMT". */
+export function rowMetaLine(row: Pick<AccountingStaffRow, "attempts" | "updatedAt">): string {
+  const tries = row.attempts === 1 ? "Tried once" : `Tried ${row.attempts} times`;
+  return `${tries} · last ${formatStaffDateTime(row.updatedAt)}`;
 }
 
 /** The heading over the locked-period explanation on the list. */

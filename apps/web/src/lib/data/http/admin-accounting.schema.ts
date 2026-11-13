@@ -34,6 +34,7 @@ export const accountingQueueRowSchema: z.ZodType<AccountingQueueRow> = z.object(
 export const accountingQueuePageSchema: z.ZodType<AccountingQueuePage> = z.object({
   tab,
   organisation: organisation.nullable(),
+  reference: z.string().nullable(),
   rows: z.array(accountingQueueRowSchema),
   total: z.number().int(),
   counts: z.object({
@@ -42,6 +43,8 @@ export const accountingQueuePageSchema: z.ZodType<AccountingQueuePage> = z.objec
     waiting: z.number().int(),
     issued: z.number().int(),
   }),
+  issuedToday: z.number().int(),
+  lastSent: z.object({ at: z.string(), rehearsal: z.boolean() }).nullable(),
   limit: z.number().int(),
   offset: z.number().int(),
   unreadable: z.number().int(),

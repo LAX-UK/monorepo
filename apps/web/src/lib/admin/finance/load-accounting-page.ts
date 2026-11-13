@@ -8,11 +8,13 @@ import {
   accountingRangeSummary,
   activeAccountingTab,
   activeOrganisation,
+  activeReference,
   toAccountingStaffRows,
 } from "@/lib/admin/finance/accounting-queue.vm";
 import { getAccountingQueuePage } from "@/lib/data/http/admin-accounting.reader";
 import { parseStaffPageSize } from "@auction/staff-ui";
-import type { AccountingQueueTab } from "@auction/types";
+import type { AccountingLastSent, AccountingQueueTab } from "@auction/types";
+import { adminAccountingReferenceSchema } from "@auction/validators";
 
 const EMPTY_COUNTS: Record<AccountingQueueTab, number> = {
   needs_person: 0,
@@ -24,6 +26,8 @@ const EMPTY_COUNTS: Record<AccountingQueueTab, number> = {
 /** Shown in place of the rows; the raw HTTP failure stays in the server logs. */
 const ACCOUNTING_LOAD_ERROR = "We could not reach the accounting service. Try again in a moment.";
 const ACCOUNTING_FORBIDDEN = "You do not have access to accounting documents.";
+/** Shown under the search box when what was typed is not a LAX reference. */
+const ACCOUNTING_BAD_REFERENCE = "Enter a LAX reference, e.g. LAX-BID-INV-….";
 
 function plainSearch(sp: AccountingSearch): Record<string, string> {
   return Object.fromEntries(
@@ -38,6 +42,13 @@ export type AdminAccountingPage = {
   filtered: boolean;
   rows: AccountingStaffRow[];
   counts: Record<AccountingQueueTab, number>;
+  issuedToday: number;
+  lastSent: AccountingLastSent | null;
+  organisation: ReturnType<typeof activeOrganisation>;
+  /** What is in the toolbar search box, as typed. */
+  reference: string;
+  /** The search box holds something that is not a LAX reference. */
+  referenceError: string | null;
   canAct: boolean;
   rehearsal: boolean;
   unreadable: number;
@@ -51,10 +62,48 @@ export async function loadAdminAccountingPage(sp: AccountingSearch): Promise<Adm
   const search = plainSearch(sp);
   const tab = activeAccountingTab(search);
   const organisation = activeOrganisation(search);
-  const shared = { search, tab, pageSize: limit, filtered: organisation !== null };
+  const typedReference = activeReference(search);
+  // Only a well-formed reference reaches the API; anything else is a gentle error, not a 400.
+  const parsedReference = typedReference
+    ? adminAccountingReferenceSchema.safeParse(typedReference)
+    : null;
+  const reference = parsedReference?.success ? parsedReference.data : null;
+  const referenceError =
+    typedReference && !parsedReference?.success ? ACCOUNTING_BAD_REFERENCE : null;
+  const shared = {
+    search,
+    tab,
+    pageSize: limit,
+    organisation,
+    reference: typedReference,
+    referenceError,
+    filtered: organisation !== null || typedReference !== "",
+  };
+
+  // A reference that is not valid narrows to nothing without troubling the service.
+  if (referenceError) {
+    return {
+      ...shared,
+      rows: [],
+      counts: EMPTY_COUNTS,
+      issuedToday: 0,
+      lastSent: null,
+      canAct: false,
+      rehearsal: false,
+      unreadable: 0,
+      loadError: null,
+      pagination: null,
+    };
+  }
 
   try {
-    const page = await getAccountingQueuePage({ tab, organisation, limit, offset: base.offset });
+    const page = await getAccountingQueuePage({
+      tab,
+      organisation,
+      reference,
+      limit,
+      offset: base.offset,
+    });
     const rows = toAccountingStaffRows(page.rows);
     const total = Math.max(page.total, base.offset + rows.length);
     const shownTo = base.offset + rows.length;
@@ -62,6 +111,8 @@ export async function loadAdminAccountingPage(sp: AccountingSearch): Promise<Adm
       ...shared,
       rows,
       counts: page.counts,
+      issuedToday: page.issuedToday,
+      lastSent: page.lastSent,
       canAct: page.canAct,
       rehearsal: rows.some((row) => row.rehearsal),
       unreadable: page.unreadable,
@@ -84,6 +135,8 @@ export async function loadAdminAccountingPage(sp: AccountingSearch): Promise<Adm
       ...shared,
       rows: [],
       counts: EMPTY_COUNTS,
+      issuedToday: 0,
+      lastSent: null,
       canAct: false,
       rehearsal: false,
       unreadable: 0,
