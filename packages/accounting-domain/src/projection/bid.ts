@@ -1,4 +1,3 @@
-import { allocatePayment } from "../allocation.js";
 import {
   type Contact,
   type CreditNote,
@@ -6,7 +5,6 @@ import {
   buildContact,
   buildCreditNoteFor,
   buildInvoice,
-  buildPayment,
 } from "../document.js";
 import {
   type LineInput,
@@ -46,14 +44,6 @@ export interface BidInvoiceFacts {
   readonly lines: readonly BidInvoiceLineFacts[];
 }
 
-/** A captured card or bank-transfer payment of one Bid invoice. */
-export interface BidPaymentFacts {
-  readonly paymentId: string;
-  readonly invoice: BidInvoiceFacts;
-  readonly amountPence: Pence;
-  readonly capturedOn: string;
-}
-
 /** One refund given back on a payment (a `payment_refund` row: it exists only once it went through). */
 export interface BidRefundFacts {
   readonly refundId: string;
@@ -68,7 +58,7 @@ export interface BidRefundsFacts {
   readonly refunds: readonly BidRefundFacts[];
 }
 
-interface LineBooking {
+export interface LineBooking {
   readonly role: LineRole;
   readonly treatment: VatTreatment;
 }
@@ -104,7 +94,8 @@ export const BID_LINES_AWAITING_ACCOUNTANT: readonly string[] = [
 
 const EMAIL = /^[^\s@]+@[^\s@.]+(\.[^\s@.]+)+$/;
 
-function bidContact(buyer: BidBuyerFacts): Result<Contact, ProjectionCode> {
+/** The buyer's contact; every Bid flow names the same one for the same account. */
+export function bidContact(buyer: BidBuyerFacts): Result<Contact, ProjectionCode> {
   // An address the books would refuse is left off the contact rather than stopping the invoice:
   // the contact is still the same account (keyed by its id), and Books needs no email to book it.
   const email = typeof buyer.email === "string" && EMAIL.test(buyer.email) ? buyer.email : null;
@@ -142,13 +133,13 @@ function bidLines(lines: readonly BidInvoiceLineFacts[]): Result<LineInput[], Pr
   return ok(out);
 }
 
-interface InvoiceWithContact {
+export interface InvoiceWithContact {
   readonly contact: Contact;
   readonly invoice: Invoice;
 }
 
 /** The contact and invoice for a raised Bid invoice; every Bid flow starts from these two. */
-function bidInvoice(facts: BidInvoiceFacts): Result<InvoiceWithContact, ProjectionCode> {
+export function bidInvoice(facts: BidInvoiceFacts): Result<InvoiceWithContact, ProjectionCode> {
   const contact = bidContact(facts.buyer);
   if (!contact.ok) return contact;
   const lines = bidLines(facts.lines);
@@ -170,44 +161,6 @@ export const projectBidInvoiceRaised: ProjectionPolicy<BidInvoiceFacts> = (facts
   const built = bidInvoice(facts);
   if (!built.ok) return built;
   return ok({ documents: [built.value.contact, built.value.invoice] });
-};
-
-/**
- * Bid invoice paid: the contact and invoice (a replay when the invoice was already projected),
- * then the payment, all of it applied to the invoice. A payment for more than the invoice is
- * refused: the remainder would sit unexplained on the buyer's account.
- */
-export const projectBidPaymentCaptured: ProjectionPolicy<BidPaymentFacts> = (facts) => {
-  const built = bidInvoice(facts.invoice);
-  if (!built.ok) return built;
-  const { contact, invoice } = built.value;
-  if (!isPence(facts.amountPence) || facts.amountPence <= 0) {
-    return refuse("bad_amount", "payment must be positive whole pence");
-  }
-  const plan = allocatePayment(facts.amountPence, [
-    {
-      reference: invoice.reference,
-      dueOn: invoice.dueOn,
-      outstandingPence: invoice.totals.grossPence,
-    },
-  ]);
-  if (!plan.ok) return refuse("bad_facts", plan.refusal.message);
-  if (plan.value.unallocatedPence > 0) {
-    return refuse(
-      "payment_exceeds_invoice",
-      `payment is ${plan.value.unallocatedPence} pence more than the invoice`,
-    );
-  }
-  const payment = buildPayment({
-    product: "bid",
-    sourceId: facts.paymentId,
-    contactReference: contact.reference,
-    receivedOn: facts.capturedOn,
-    amountPence: facts.amountPence,
-    allocations: plan.value.allocations,
-  });
-  if (!payment.ok) return payment;
-  return ok({ documents: [contact, invoice, payment.value] });
 };
 
 /**
