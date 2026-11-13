@@ -203,8 +203,12 @@ describe("DOMAIN_EVENT_REGISTRY", () => {
       ok: true,
       data: payload,
     });
+    // Matches the invoice table's own check (total > 0): a 0p Bid invoice cannot be raised.
     expect(parseDomainEventPayload("invoice.raised", 1, { ...payload, totalPence: 0 }).ok).toBe(
       false,
+    );
+    expect(parseDomainEventPayload("invoice.raised", 1, { ...payload, totalPence: 1 }).ok).toBe(
+      true,
     );
   });
 });
