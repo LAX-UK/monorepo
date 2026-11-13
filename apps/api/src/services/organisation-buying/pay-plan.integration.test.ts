@@ -205,4 +205,30 @@ describe.skipIf(!HAS_DB)("pay plan (integration)", () => {
       .where(eq(bidInvoice.lotId, notInvoiced.id));
     expect(raisedForIt).toHaveLength(0);
   });
+
+  it("shows a part-paid single-invoice bank transfer's progress from what has arrived", async () => {
+    // A £1,250 invoice paid on its own by bank transfer; £400 has arrived so far.
+    const transfer = await newLot("1000.00");
+    const raised = await invoiced(transfer);
+    await db.transaction(async (tx) => {
+      await payments.applyAuthorizedInTransaction(tx, raised.payment.id);
+      await payments.recordTransferReceivedInTransaction(tx, raised.payment.id, 40_000);
+    });
+
+    const plan = (await service.plan(actor, [transfer.id]))._unsafeUnwrap();
+
+    expect(plan.leftOut).toEqual([{ lotId: transfer.id, reason: "being_confirmed" }]);
+    expect(plan.progress).toMatchObject({
+      rail: "bank_transfer",
+      stage: "part_received",
+      totalPence: 125_000,
+      receivedPence: 40_000,
+      remainingPence: 85_000,
+      receivedPercent: 32,
+      otherInvoices: 0,
+    });
+    expect(plan.progress?.lots.map((l) => [l.lotId, l.totalPence])).toEqual([
+      [transfer.id, 125_000],
+    ]);
+  });
 });

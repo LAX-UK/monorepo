@@ -34,7 +34,8 @@ export class PaymentIntentPartiallyFundedHandler implements IPaymentIntentWebhoo
       return { processed: false, action: "skipped", reason: "amount_mismatch" };
     }
 
-    const amountRemainingCents = transferFunding(paymentIntent).remainingPence;
+    const funding = transferFunding(paymentIntent);
+    const amountRemainingCents = funding.remainingPence;
 
     return this.deps.transactionRunner.runInTransaction(async (tx) => {
       const { claimed } = await tryClaimProcessedStripeEvent(
@@ -47,6 +48,13 @@ export class PaymentIntentPartiallyFundedHandler implements IPaymentIntentWebhoo
       }
 
       await this.deps.payments.applyAuthorizedInTransaction(tx, paymentId);
+      // What has arrived so far, for the Pay page's progress. Only raised: a replayed or older
+      // notice reports less and changes nothing.
+      await this.deps.payments.recordTransferReceivedInTransaction(
+        tx,
+        paymentId,
+        funding.receivedPence,
+      );
 
       await this.deps.domainEventSink.withTx(tx).publish({
         aggregateType: "payment",

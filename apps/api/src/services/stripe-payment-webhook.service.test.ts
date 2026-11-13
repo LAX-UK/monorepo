@@ -110,6 +110,7 @@ function createWebhookService(deps: {
   const payments = {
     applyRefundedInTransaction: vi.fn().mockResolvedValue(true),
     applyAuthorizedInTransaction: vi.fn().mockResolvedValue(true),
+    recordTransferReceivedInTransaction: vi.fn().mockResolvedValue(true),
     applyCancelledInTransaction: vi.fn().mockResolvedValue(true),
     findById: vi.fn().mockResolvedValue({
       id: "pay_1",
@@ -219,6 +220,21 @@ describe("StripePaymentWebhookService dispute webhooks", () => {
       "closed",
     ]);
     expect(record).toHaveBeenCalledWith("created", event, dispute);
+  });
+});
+
+describe("StripePaymentWebhookService.handleChargeRefundUpdated", () => {
+  it("leaves a refund on a charge that is not a group's to charge.refunded", async () => {
+    const { svc, paymentRefunds, payoutAdjustments } = createWebhookService({});
+    const refund = { id: "re_1", charge: "ch_single", currency: "gbp" } as Stripe.Refund;
+    const event = { id: "evt_ru", type: "charge.refund.updated" } as Stripe.Event;
+    await expect(svc.handleChargeRefundUpdated(event, refund)).resolves.toEqual({
+      processed: false,
+      action: "skipped",
+      reason: "not_a_group_charge",
+    });
+    expect(paymentRefunds.entries).toEqual([]);
+    expect(payoutAdjustments.addPaymentLineToOpenPayoutOrCreateClawback).not.toHaveBeenCalled();
   });
 });
 
@@ -968,6 +984,7 @@ describe("StripePaymentWebhookService.handlePaymentIntentSucceeded", () => {
     vi.mocked(tryClaimProcessedStripeEvent).mockResolvedValue({ claimed: true });
     const capture = vi.fn();
     const applyAuthorized = vi.fn().mockResolvedValue(true);
+    const recordReceived = vi.fn().mockResolvedValue(true);
     const publish = vi.fn().mockResolvedValue(undefined);
     const db = mockDbWithPayment({
       id: "pay_1",
@@ -989,6 +1006,7 @@ describe("StripePaymentWebhookService.handlePaymentIntentSucceeded", () => {
           status: "pending",
         }),
         applyAuthorizedInTransaction: applyAuthorized,
+        recordTransferReceivedInTransaction: recordReceived,
       },
     });
     const event = {
@@ -1011,6 +1029,8 @@ describe("StripePaymentWebhookService.handlePaymentIntentSucceeded", () => {
     expect(result).toEqual({ processed: true, action: "payment_intent_partially_funded" });
     expect(capture).not.toHaveBeenCalled();
     expect(applyAuthorized).toHaveBeenCalledWith(expect.anything(), "pay_1");
+    // £50 of the £100 has arrived: kept for the Pay page's progress.
+    expect(recordReceived).toHaveBeenCalledWith(expect.anything(), "pay_1", 5000);
     expect(publisher.publish).toHaveBeenCalledWith(
       expect.objectContaining({ eventType: "payment.bank_transfer_partially_funded" }),
     );

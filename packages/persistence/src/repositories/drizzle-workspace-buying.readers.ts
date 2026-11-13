@@ -226,6 +226,7 @@ export class DrizzleAccountPurchaseFactsReader implements IAccountPurchaseFactsR
           amount: payment.amount,
           raisedAt: payment.createdAt,
           dueAt: bidInvoice.dueAt,
+          transferReceivedPence: payment.transferReceivedPence,
         })
         .from(payment)
         .leftJoin(bidInvoice, eq(bidInvoice.id, payment.invoiceId))
@@ -274,7 +275,14 @@ export class DrizzleAccountPurchaseFactsReader implements IAccountPurchaseFactsR
         wonBy: l.winnerId ? { userId: l.winnerId, name: l.winnerName ?? null } : null,
         wonAt: l.wonAt,
         payment: p
-          ? { id: p.id, status: p.status, amount: p.amount, raisedAt: p.raisedAt, dueAt: p.dueAt }
+          ? {
+              id: p.id,
+              status: p.status,
+              amount: p.amount,
+              raisedAt: p.raisedAt,
+              dueAt: p.dueAt,
+              transferReceivedPence: p.transferReceivedPence,
+            }
           : null,
         fulfilment: f
           ? {

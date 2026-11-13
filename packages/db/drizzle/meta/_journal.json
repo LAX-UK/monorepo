@@ -2556,6 +2556,13 @@
       "when": 1810382400000,
       "tag": "0373_shop_home_cover",
       "breakpoints": true
+    },
+    {
+      "idx": 366,
+      "version": "7",
+      "when": 1810555200000,
+      "tag": "0374_payment_transfer_received",
+      "breakpoints": true
     }
   ]
 }

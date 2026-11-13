@@ -6,7 +6,11 @@ import type {
   IPayProgressReadService,
 } from "../interfaces/organisation-buying-service.js";
 import type { OrganisationMemberActor } from "../interfaces/organisation-membership-service.js";
-import { type PayProgressResolver, groupedLotsOf } from "./pay-progress.resolver.js";
+import {
+  type PayProgressResolver,
+  firstProgressOf,
+  groupedLotsOf,
+} from "./pay-progress.resolver.js";
 import type { PurchaseCandidateReader } from "./purchase-candidate.reader.js";
 import { buyingError, entityActorOf } from "./purchase-view.js";
 
@@ -34,9 +38,7 @@ export class PayProgressReadService implements IPayProgressReadService {
     try {
       const { entries } = await this.deps.candidates.read(actor, scope === "own", lotIds);
       const byGroup = await this.deps.progress.resolve(groupedLotsOf(entries));
-      const first = entries.find((e) => e.flags.group && byGroup.get(e.flags.group.id));
-      const progress = first?.flags.group ? (byGroup.get(first.flags.group.id) ?? null) : null;
-      return ok({ progress });
+      return ok({ progress: firstProgressOf(entries, byGroup) });
     } catch (error) {
       console.error(
         JSON.stringify({
