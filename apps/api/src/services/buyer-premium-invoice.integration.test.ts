@@ -5,16 +5,20 @@ import { InvoiceRaiser } from "@auction/finance-runtime";
 import {
   DrizzleBidInvoiceRepository,
   DrizzleLotRepository,
+  DrizzleRepositoryFactory,
   DrizzleSaleRepository,
 } from "@auction/persistence/repositories";
 import { standardBuyerPremiumBands } from "@auction/validators";
-import { inArray } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { transactionRunnerFromDb } from "../test/transaction-runner-from-db.js";
 import {
   deleteIdentityUserFixtures,
   seedIdentityUserFixtures,
 } from "../testing/identity-user-fixtures.js";
 import { heldSellerTerms } from "../testing/seller-terms.js";
+import { DomainEventSink } from "./domain-event-sink.js";
+import { DomainEventPublisher } from "./domain-event.publisher.js";
 import { useSalePremiumForLots } from "./sale/sale-lot-premium.js";
 import type { SaleServiceDeps } from "./sale/sale-types.js";
 
@@ -52,6 +56,8 @@ describe.skipIf(!HAS_DB)("buyer's premium on raised invoices (integration)", () 
     differs: { id: randomUUID(), status: "draft" as const, rate: "0.2500" },
     usesSale: { id: randomUUID(), status: "draft" as const, rate: null },
     live: { id: randomUUID(), status: "active" as const, rate: "0.2500" },
+    opensMidReset: { id: randomUUID(), status: "scheduled" as const, rate: "0.2500" },
+    scheduled: { id: randomUUID(), status: "scheduled" as const, rate: "0.2000" },
   };
   const allLotIds = [...Object.values(sold), ...Object.values(draft)].map((l) => l.id);
 
@@ -61,6 +67,7 @@ describe.skipIf(!HAS_DB)("buyer's premium on raised invoices (integration)", () 
     const ended = new Date(now.getTime() - 86_400_000);
     await seedIdentityUserFixtures(db, [
       { id: buyerUserId, name: "Buyer", email: `${buyerUserId}@integration.test` },
+      { id: staffUserId, name: "Staff", email: `${staffUserId}@integration.test` },
     ]);
     await db.insert(legalEntity).values(
       [buyerId, sellerId].map((id) => ({
@@ -137,7 +144,7 @@ describe.skipIf(!HAS_DB)("buyer's premium on raised invoices (integration)", () 
     await db.delete(domainEvent).where(inArray(domainEvent.aggregateId, [bandedSaleId]));
     await db.delete(sale).where(inArray(sale.id, [bandedSaleId, flatSaleId]));
     await db.delete(legalEntity).where(inArray(legalEntity.id, [buyerId, sellerId]));
-    await deleteIdentityUserFixtures(db, [buyerUserId]);
+    await deleteIdentityUserFixtures(db, [buyerUserId, staffUserId]);
   });
 
   async function raise(lotId: string) {
@@ -244,5 +251,54 @@ describe.skipIf(!HAS_DB)("buyer's premium on raised invoices (integration)", () 
       lotIds: [draft.differs.id],
     });
     expect(outcome.isErr()).toBe(true);
+  });
+
+  it("re-checks each lot inside the transaction: a lot that opens mid-reset keeps its premium", async () => {
+    // The lot list is read, then the lot opens for bidding before the write: the race the
+    // in-transaction check exists for.
+    const racingLotRepo = Object.assign(Object.create(lotRepo) as DrizzleLotRepository, {
+      findBySaleId: async (saleId: string) => {
+        const rows = await lotRepo.findBySaleId(saleId);
+        await db.update(lot).set({ status: "active" }).where(eq(lot.id, draft.opensMidReset.id));
+        return rows;
+      },
+    });
+    const deps = {
+      saleRepo,
+      lotRepo: racingLotRepo,
+      transactionRunner: transactionRunnerFromDb(db),
+      repoFactory: new DrizzleRepositoryFactory(db),
+      domainEventSink: new DomainEventSink(new DomainEventPublisher(), db),
+    } as unknown as SaleServiceDeps;
+    const outcome = await useSalePremiumForLots(deps, {
+      actorUserId: staffUserId,
+      userRole: "staff",
+      userStaffRoles: ["administrator"],
+      saleId: bandedSaleId,
+      lotIds: [draft.opensMidReset.id, draft.scheduled.id],
+    });
+    expect(outcome._unsafeUnwrap()).toEqual({
+      updatedLotIds: [draft.scheduled.id],
+      skipped: [{ lotId: draft.opensMidReset.id, reason: "not_editable" }],
+    });
+    expect((await lotRepo.findById(draft.opensMidReset.id))?.buyerPremiumRate).toBe("0.2500");
+    expect((await lotRepo.findById(draft.scheduled.id))?.buyerPremiumRate).toBeNull();
+    // The audit entry is written in the same transaction and names only the lot that changed.
+    const events = await db
+      .select({ payload: domainEvent.payload })
+      .from(domainEvent)
+      .where(
+        and(
+          eq(domainEvent.aggregateId, bandedSaleId),
+          eq(domainEvent.eventType, "sale.lot_premiums_reset"),
+        ),
+      );
+    expect(events.map((e) => e.payload)).toEqual([
+      {
+        lot_ids: [draft.scheduled.id],
+        previous_rates: { [draft.scheduled.id]: "0.2000" },
+        differed_from_sale: 1,
+      },
+    ]);
   });
 });

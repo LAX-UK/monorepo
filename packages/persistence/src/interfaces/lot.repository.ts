@@ -69,6 +69,15 @@ export interface ILotWriteRepository {
   ): Promise<boolean>;
   /** Clear sale association (admin detach; draft sale only at service layer). */
   clearSaleId(id: string): Promise<void>;
+  /**
+   * Puts the given lots of a sale back on the sale's premium (clears their own rate), in one
+   * statement that locks and re-checks each row: only lots still draft or scheduled, with no
+   * winner and a rate of their own, change. Returns each changed lot with the rate it held.
+   */
+  clearOwnPremiumOfUnopenedLots(
+    saleId: string,
+    lotIds: readonly string[],
+  ): Promise<{ lotId: string; previousRate: string }[]>;
 }
 
 export interface ILotLifecycleRepository {

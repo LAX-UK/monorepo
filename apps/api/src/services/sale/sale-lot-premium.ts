@@ -32,9 +32,10 @@ function skipReason(
 
 /**
  * Puts the chosen lots back on their sale's premium by clearing their own rate. Only unsold lots
- * whose bidding has not opened change; a sold, live or ended lot keeps what it charges. The
- * change and its audit entry (`sale.lot_premiums_reset`, with each lot's previous rate) are
- * written in one transaction.
+ * whose bidding has not opened change; a sold, live or ended lot keeps what it charges. The write
+ * locks and re-checks each lot, so one that opens or is won after the list is read is skipped as
+ * not editable. The change and its audit entry (`sale.lot_premiums_reset`, with each changed
+ * lot's previous rate) are written in one transaction.
  */
 export async function useSalePremiumForLots(
   deps: SaleServiceDeps,
@@ -70,28 +71,39 @@ export async function useSalePremiumForLots(
   }
   if (changing.length === 0) return ok({ updatedLotIds: [], skipped });
 
-  const payload = {
-    lot_ids: changing.map((l) => l.id),
-    previous_rates: Object.fromEntries(changing.map((l) => [l.id, l.buyerPremiumRate])),
-    differed_from_sale: changing.filter((l) => lotPremiumDiffersFromSale(l.buyerPremiumRate, sale))
-      .length,
-  };
-  const event = {
+  const clear = (lotRepo: SaleServiceDeps["lotRepo"]) =>
+    lotRepo.clearOwnPremiumOfUnopenedLots(
+      input.saleId,
+      changing.map((l) => l.id),
+    );
+  const eventFor = (cleared: readonly { lotId: string; previousRate: string }[]) => ({
     aggregateType: "sale",
     aggregateId: input.saleId,
     eventType: SALE_LOT_PREMIUMS_RESET_EVENT,
-    payload,
+    payload: {
+      lot_ids: cleared.map((c) => c.lotId),
+      previous_rates: Object.fromEntries(cleared.map((c) => [c.lotId, c.previousRate])),
+      differed_from_sale: cleared.filter((c) => lotPremiumDiffersFromSale(c.previousRate, sale))
+        .length,
+    },
     actorUserId: input.actorUserId,
-  };
+  });
+  // The write re-checks each lot under its row lock: one that opened for bidding or was won
+  // since the read above is left as it is and reported as not editable.
+  let cleared: { lotId: string; previousRate: string }[];
   if (deps.transactionRunner && deps.repoFactory) {
-    await deps.transactionRunner.runInTransaction(async (tx) => {
-      const lotRepo = txRepos(deps, tx).lot;
-      for (const lot of changing) await lotRepo.update(lot.id, { buyerPremiumRate: null });
-      await deps.domainEventSink?.withTx(tx).publish(event);
+    cleared = await deps.transactionRunner.runInTransaction(async (tx) => {
+      const rows = await clear(txRepos(deps, tx).lot);
+      if (rows.length > 0) await deps.domainEventSink?.withTx(tx).publish(eventFor(rows));
+      return rows;
     });
   } else {
-    for (const lot of changing) await deps.lotRepo.update(lot.id, { buyerPremiumRate: null });
-    await deps.domainEventSink?.publish(event);
+    cleared = await clear(deps.lotRepo);
+    if (cleared.length > 0) await deps.domainEventSink?.publish(eventFor(cleared));
   }
-  return ok({ updatedLotIds: payload.lot_ids, skipped });
+  const updated = new Set(cleared.map((c) => c.lotId));
+  for (const lot of changing) {
+    if (!updated.has(lot.id)) skipped.push({ lotId: lot.id, reason: "not_editable" });
+  }
+  return ok({ updatedLotIds: changing.filter((l) => updated.has(l.id)).map((l) => l.id), skipped });
 }
