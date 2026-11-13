@@ -285,9 +285,13 @@ Measured on production builds (Sentry on, gzip, start-up set), before the Zod ch
 then this change: settings 501.0, 506.2, 497.7 KB; notifications 503.4, 508.5, 501.1; checkout
 456.2, 457.8, 451.5; bids 532.4, 530.3, 523.1; purchases 507.9, 509.4, 502.0. Public pages also
 lose 1.4 to 3.3 KB (home 409.8 to 407.5, sale page 508.6 to 505.3). Sign-in and onboarding pages
-(`(task)`), which had no duplicate copies, gain about 0.5 KB for the extra file. The ratchets were
-re-recorded from that build and each budget is the lower of `--suggest` and its previous value:
-public 449, listing 523, sale 556, lot 542, checkout 538, account 620 KB.
+(`(task)`), which had no duplicate copies, gain about 0.5 KB for the extra file.
+
+The buyer's premium change (#1343) landed on `main` meanwhile: on the merged tree the sale page is
+507.4 KB (+2.1, still under `main`'s 508.7 ratchet), the lot page 486.7 and the sales list 455.0,
+settings 498.9, notifications 502.0 and checkout 450.0. The ratchets were re-recorded from a build
+of the merged tree and each budget is the lower of `--suggest` and its previous value: public 448,
+listing 523, sale 556, lot 536, checkout 537, account 620 KB.
 
 ## Enforcement
 

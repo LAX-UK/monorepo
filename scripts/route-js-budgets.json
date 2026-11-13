@@ -6,7 +6,7 @@
       "ignore": ["^/admin", "^/dev/", "^/display/"],
       "groups": {
         "public": {
-          "budgetKb": 449,
+          "budgetKb": 448,
           "enforce": true,
           "match": []
         },
@@ -24,12 +24,12 @@
           ]
         },
         "lot": {
-          "budgetKb": 542,
+          "budgetKb": 536,
           "enforce": true,
           "match": ["^/\\(marketing\\)/(lot|artist)/"]
         },
         "checkout": {
-          "budgetKb": 538,
+          "budgetKb": 537,
           "match": ["^/\\(client\\)/purchases/(checkout|pay|collect)"]
         },
         "account": {
