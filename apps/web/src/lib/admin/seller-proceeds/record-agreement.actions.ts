@@ -117,10 +117,13 @@ export async function markSettledOutsideAction(input: {
     }
     if (await isStaffStepUpResponse(res)) return stepUpRequiredFailure();
     const body = (await res.json().catch(() => ({}))) as Refusal;
+    // Already marked by someone else: the page shows that mark once it is read again.
+    if (res.status === 409) revalidatePath(`/admin/lots/${lotId.data}`);
     return actionFailure(
       typeof body.error === "string" ? body.error : "The sale could not be marked as settled.",
       undefined,
       res.status,
+      typeof body.code === "string" ? body.code : undefined,
     );
   });
 }

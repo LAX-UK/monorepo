@@ -45,7 +45,17 @@ export function createSellerProceedsServices(input: {
     reader,
     payoutSales: new DrizzleStaffPayoutSalesReader(db),
     vatSetting: new DrizzleCommissionVatSettingReader(db),
-    settledOutside: new MarkSettledOutsideService({ reader, events: platform.domainEventSink }),
+    settledOutside: new MarkSettledOutsideService({
+      reader,
+      unitOfWork: (work) =>
+        platform.transactionRunner.runInTransaction((tx) =>
+          work({
+            facts: new DrizzleStaffLotSellerProceedsReader(tx as unknown as Database),
+            locks: new DrizzleSignedAgreementWriter(tx),
+            events: platform.domainEventSink.withTx(tx),
+          }),
+        ),
+    }),
     recordAgreement: new RecordSignedAgreementService({
       reader,
       uploads,

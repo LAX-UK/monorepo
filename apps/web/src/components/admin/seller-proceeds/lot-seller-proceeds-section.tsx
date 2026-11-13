@@ -164,6 +164,11 @@ export function LotSellerProceedsSection({
                 router.refresh();
               } else if (!handleStaffStepUp(result)) {
                 toast.error(result.error);
+                // Someone marked it first: close and show their mark.
+                if (result.status === 409) {
+                  setSettling(false);
+                  router.refresh();
+                }
               }
             })
           }

@@ -1,10 +1,13 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
-vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
+const refresh = vi.hoisted(() => vi.fn());
+const toastError = vi.hoisted(() => vi.fn());
+const markSettledOutsideAction = vi.hoisted(() => vi.fn());
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh }) }));
+vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: toastError } }));
 vi.mock("@/lib/admin/seller-proceeds/record-agreement.actions", () => ({
-  markSettledOutsideAction: vi.fn(),
+  markSettledOutsideAction,
   recordSignedAgreementAction: vi.fn(),
 }));
 vi.mock("@/hooks/use-upload-object-lifecycle", () => ({ uploadObjectFile: vi.fn() }));
@@ -58,5 +61,28 @@ describe("LotSellerProceedsSection", () => {
     const state = buildLotSellerProceeds(fixtureLotProceeds());
     render(<LotSellerProceedsSection state={state} lotId="lot-1" />);
     expect(screen.queryByRole("link", { name: /^Open signed agreement/ })).toBeNull();
+  });
+
+  it("when the ATG sale was already marked by someone else, says so and shows their mark", async () => {
+    markSettledOutsideAction.mockResolvedValue({
+      ok: false,
+      error: "This sale was already marked as settled outside LAX on 12/11/2026.",
+      status: 409,
+    });
+    const state = buildLotSellerProceeds(fixtureLotProceeds({ soldOnAtg: true }));
+    render(<LotSellerProceedsSection state={state} lotId="lot-1" canSettleOutside />);
+    fireEvent.click(screen.getByRole("button", { name: "Mark as settled outside LAX" }));
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.change(within(dialog).getByRole("textbox"), {
+      target: { value: "Paid by bank transfer per runbook" },
+    });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Mark as settled" }));
+    await waitFor(() =>
+      expect(toastError).toHaveBeenCalledWith(
+        "This sale was already marked as settled outside LAX on 12/11/2026.",
+      ),
+    );
+    expect(refresh).toHaveBeenCalled();
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   });
 });

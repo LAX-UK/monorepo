@@ -30,13 +30,22 @@ function facts(soldOnAtg: boolean): StaffLotSellerProceedsFacts {
   };
 }
 
-function setup(found: StaffLotSellerProceedsFacts | null) {
+function setup(
+  found: StaffLotSellerProceedsFacts | null,
+  inTx: StaffLotSellerProceedsFacts | null = found,
+) {
   const publish = vi.fn().mockResolvedValue(undefined);
+  const lockSale = vi.fn().mockResolvedValue(undefined);
   const service = new MarkSettledOutsideService({
     reader: { forLot: vi.fn().mockResolvedValue(found) },
-    events: { publish },
+    unitOfWork: (work) =>
+      work({
+        facts: { forLot: vi.fn().mockResolvedValue(inTx) },
+        locks: { lockSale },
+        events: { publish },
+      }),
   });
-  return { service, publish };
+  return { service, publish, lockSale };
 }
 
 const input = { lotId: LOT, reason: "Paid by bank transfer per runbook", actorUserId: "staff-1" };
@@ -69,6 +78,28 @@ describe("MarkSettledOutsideService", () => {
     const error = await service.mark({ ...input, ...over }).catch((e: unknown) => e);
     expect(error).toBeInstanceOf(SellerProceedsError);
     expect((error as SellerProceedsError).code).toBe(code);
+    expect(publish).not.toHaveBeenCalled();
+  });
+
+  it("refuses (409) a sale already marked, and says when", async () => {
+    const marked = { ...facts(true), settledOutsideAt: new Date("2026-11-12T15:30:00Z") };
+    const { service, publish } = setup(marked);
+    const error = await service.mark(input).catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(SellerProceedsError);
+    expect((error as SellerProceedsError).status).toBe(409);
+    expect((error as SellerProceedsError).code).toBe("already_settled_outside");
+    expect((error as SellerProceedsError).message).toBe(
+      "This sale was already marked as settled outside LAX on 12/11/2026.",
+    );
+    expect(publish).not.toHaveBeenCalled();
+  });
+
+  it("refuses the second of two clicks: the mark is read again under the payment's lock", async () => {
+    const markedMeanwhile = { ...facts(true), settledOutsideAt: new Date("2026-11-13T09:00:00Z") };
+    const { service, publish, lockSale } = setup(facts(true), markedMeanwhile);
+    const error = await service.mark(input).catch((e: unknown) => e);
+    expect(lockSale).toHaveBeenCalledWith({ paymentId: PAYMENT, sellerTermsId: null });
+    expect((error as SellerProceedsError).code).toBe("already_settled_outside");
     expect(publish).not.toHaveBeenCalled();
   });
 });
